@@ -937,9 +937,11 @@ C	probes/t2238-holidays-if-3d-branch.case.json	76
 C	probes/t2275-address-bounds.case.json	298
 C	probes/t2277-hyperlink-location-length.case.json	15
 C	probes/t2280-ifs-one-cell-range-condition.case.json	82
+C	probes/t2287-regex-r-x-spans.case.json	83
 C	probes/t2311-pivotby-value-cause.case.json	195
 C	probes/t2311-pivotby-value-columns-error.case.json	127
 C	probes/t2314-textbefore-instance-bound.case.json	29
+C	probes/t2364-regex-dollar-final-cr.case.json	5
 C	probes/table-edits/table-convert-to-range.case.json	0
 C	probes/table-edits/table-delete-column-before.case.json	12
 C	probes/table-edits/table-delete-column-qty.case.json	12
@@ -2368,8 +2370,6 @@ F	probes/rate-empty-arguments.case.json	Sheet1!A5
 F	probes/rate-empty-arguments.case.json	Sheet1!A6
 F	probes/rate-empty-arguments.case.json	Sheet1!A8
 F	probes/rate-empty-arguments.case.json	Sheet1!A9
-F	probes/regex-ascii-classes.case.json	Sheet1!A27
-F	probes/regex-ascii-classes.case.json	Sheet1!A42
 F	probes/regex-pcre2-features.case.json	Sheet1!C10
 F	probes/regex-pcre2-features.case.json	Sheet1!C13
 F	probes/regex-pcre2-features.case.json	Sheet1!C14
@@ -2723,6 +2723,10 @@ F	probes/t2311-pivotby-value-cause.case.json	P!D46
 F	probes/t2311-pivotby-value-cause.case.json	P!D51
 F	probes/t2311-pivotby-value-columns-error.case.json	P!C12
 F	probes/t2311-pivotby-value-columns-error.case.json	P!D12
+F	probes/t2364-regex-dollar-final-cr.case.json	Sheet1!A1
+F	probes/t2364-regex-dollar-final-cr.case.json	Sheet1!A2
+F	probes/t2364-regex-dollar-final-cr.case.json	Sheet1!A3
+F	probes/t2364-regex-dollar-final-cr.case.json	Sheet1!A4
 F	probes/table-edits/table-convert-to-range.case.json	!EngineError
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5

@@ -3,7 +3,7 @@ id: T-2287
 title: "REGEX functions match \R and \X as PCRE2 does (regex-ascii-classes A27, A42)"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -38,13 +38,13 @@ text.md, then implement on T-1900's `pcre::Program` (no second matcher; reuse an
 already has, search with `rg grapheme` before adding a dependency).
 
 ## Acceptance criteria
-- [ ] probes/regex-ascii-classes A27 and A42 pass, and these 2 known-failure lines disappear from
+- [x] probes/regex-ascii-classes A27 and A42 pass, and these 2 known-failure lines disappear from
       eval/baseline/probes.txt (`make eval-baseline`) with no new ones in any baseline.
-- [ ] A new probe case (excel-graph values) pins the match spans above; its cells pass, and text.md records the rule
+- [x] A new probe case (excel-graph values) pins the match spans above; its cells pass, and text.md records the rule
       (VERIFIED) with an "Ours" line.
-- [ ] Directive 5: `\X` and `\R` charge the call's work counter per character like the other backtracker steps; a
+- [x] Directive 5: `\X` and `\R` charge the call's work counter per character like the other backtracker steps; a
       unit test runs `\X+` over a 32,767-character text within the call budget.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other PCRE2 escapes (`\N`, `\v`, scripts): T-1972 probes them.
@@ -53,3 +53,17 @@ already has, search with `rg grapheme` before adding a dependency).
 Decision 0083: A27 and A42 are wrong-type cells (an error where Excel gives TRUE), so this task is in the campaign.
 Its target is that every cell it owns has Excel's type, error and value; the acceptance criteria above are that
 target.
+
+## Outcome
+- Probe probes/t2287-regex-r-x-spans (83 cells, excel-graph, 2026-10-22) pins what `\R` and `\X` match. Both are
+  atomic. `\X` is UAX #29 without GB9c, plus two quirks of PCRE2's join table: an indicator joins only an indicator, and
+  a Prepend does not join an emoji. Recorded in text.md "`\R` and `\X` are atomic; `\X` is PCRE2's grapheme cluster".
+- `\R` is parsed into PCRE2's atomic group. `\X` is a new backtracker instruction (`Inst::Grapheme`) built on
+  `pcre/grapheme.rs`, which reads its break values from regex-syntax's Unicode tables. No new dependency and no second
+  matcher. `Ast::Unimplemented` is gone.
+- Directive 5: each character `\X` takes is charged one step. Unit tests cover `\X+` over 32,767 characters within the
+  budget, and one 32,767-character cluster searched from every start.
+- Eval delta: probes/regex-ascii-classes A27 and A42 fixed; the new case passes 83/83. The probe also found that `$`
+  matches before a final CR or CRLF. Those 5 cells moved to probes/t2364-regex-dollar-final-cr, and its 4 known failures
+  are owned by the follow-up T-2364. There are no other new known failures.
+- Follow-up: T-2364.

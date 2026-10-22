@@ -570,7 +570,8 @@ impl Parser {
             'Z' => return node(Ast::Anchor(Anchor::EndOrFinalLf)),
             'G' => return node(Ast::Anchor(Anchor::SearchStart)),
             'K' => return node(Ast::KeepOut),
-            'R' | 'X' => return node(Ast::Unimplemented),
+            'R' => return node(line_break()),
+            'X' => return node(Ast::Grapheme),
             'Q' => Escape::Quote,
             'E' => Escape::Nothing,
             'g' => {
@@ -982,4 +983,20 @@ fn close(frame: Frame) -> Result<(Ast, u32), Invalid> {
         }
     };
     Ok((ast, depth))
+}
+
+/// `\R` as PCRE2 runs it: `(?>\r\n|[\n\x0B\f\r\x85\x{2028}\x{2029}])`, so `\r\n` is one
+/// break that is never given back (`^\R\n$` does not match `\r\n`; probes/t2287-regex-r-x-spans
+/// A1-A10, A34-A37).
+fn line_break() -> Ast {
+    let literal = |c| Ast::Literal { c, fold: false };
+    let breaks = ClassUnicode::new([
+        ClassUnicodeRange::new('\n', '\r'),
+        ClassUnicodeRange::new('\u{85}', '\u{85}'),
+        ClassUnicodeRange::new('\u{2028}', '\u{2029}'),
+    ]);
+    Ast::Atomic(Box::new(Ast::Alternation(vec![
+        Ast::Concat(vec![literal('\r'), literal('\n')]),
+        Ast::Class(breaks),
+    ])))
 }

@@ -53,9 +53,9 @@ pub(super) enum Ast {
     },
     /// `\K`: resets the start of the reported match.
     KeepOut,
-    /// `\R` (any line break, atomic in PCRE2) and `\X` (an extended grapheme cluster): Excel
-    /// accepts both (probes/regex-ascii-classes A27, A42); T-2287 implements them.
-    Unimplemented,
+    /// `\X`: one extended grapheme cluster, atomic (`grapheme::cluster_end`). `\R` needs no
+    /// node of its own: the parser spells it as the atomic group PCRE2 runs.
+    Grapheme,
 }
 
 /// A zero-width assertion.
@@ -128,7 +128,7 @@ impl Ast {
                 | Ast::Atomic(_)
                 | Ast::Conditional { .. }
                 | Ast::KeepOut
-                | Ast::Unimplemented => return false,
+                | Ast::Grapheme => return false,
                 _ => ast.push_children(&mut stack),
             }
         }
@@ -155,7 +155,7 @@ impl Ast {
             | Ast::Anchor(_)
             | Ast::Backref { .. }
             | Ast::KeepOut
-            | Ast::Unimplemented => {}
+            | Ast::Grapheme => {}
         }
     }
 }
@@ -181,8 +181,6 @@ pub(super) fn fixed_length(ast: &Ast) -> Option<u32> {
         Ast::Repeat { min, max, ast, .. } if Some(*min) == *max => {
             min.checked_mul(fixed_length(ast)?)
         }
-        Ast::Repeat { .. } | Ast::Backref { .. } | Ast::Conditional { .. } | Ast::Unimplemented => {
-            None
-        }
+        Ast::Repeat { .. } | Ast::Backref { .. } | Ast::Conditional { .. } | Ast::Grapheme => None,
     }
 }
