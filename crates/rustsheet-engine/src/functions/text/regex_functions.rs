@@ -5,7 +5,7 @@ use regex_automata::Match;
 use super::{
     lifted::COMPARED_BYTES_PER_VISIT,
     pcre::{self, BacktrackCache, FinalLf, Form},
-    regex_engine::{BuildFailure, Engine, Spent},
+    regex_engine::{within_size_limits, BuildFailure, Engine, Spent},
     regex_replacement::Replacement,
     regex_search::{Matcher, Search, SearchError},
     util::within_text_budget,
@@ -20,13 +20,6 @@ use crate::{
     model::Model,
     Text,
 };
-
-/// The size limits a pattern is compiled under, smallest first. A pattern is compiled under the
-/// next one only when it is too big for the one before; the last is the regex crate's default,
-/// so every pattern that compiled before T-1272 still compiles. Compile time grows with the
-/// limit: in a release build the largest patterns the last admits take 70-90 ms to compile
-/// (`\w{200}`), a failed attempt about as long as its limit admits.
-const SIZE_LIMITS: [usize; 5] = [1 << 16, 1 << 18, 1 << 20, 4 << 20, 10 << 20];
 
 /// Bytes of size limit one call may compile under, attempts that were too big included: 2,048
 /// small patterns, 409 of 256 KiB or 8 of the largest, about 1 s of compiling. A call that needs
@@ -195,24 +188,6 @@ impl PatternCache {
             result
         }
     }
-}
-
-/// What `build` builds under the smallest of [`SIZE_LIMITS`] it fits, each attempt charged its
-/// limit from the call's compile `budget`: `None` when it is invalid or too big for every limit,
-/// spent once the budget is.
-pub(super) fn within_size_limits<T>(
-    budget: &mut usize,
-    mut build: impl FnMut(usize) -> Result<T, BuildFailure>,
-) -> Result<Option<T>, Spent> {
-    for limit in SIZE_LIMITS {
-        *budget = budget.checked_sub(limit).ok_or(Spent)?;
-        match build(limit) {
-            Ok(built) => return Ok(Some(built)),
-            Err(BuildFailure::TooBig) => {}
-            Err(BuildFailure::Invalid) => break,
-        }
-    }
-    Ok(None)
 }
 
 fn too_much_regex_work(cell: CellReferenceIndex) -> CalcResult {

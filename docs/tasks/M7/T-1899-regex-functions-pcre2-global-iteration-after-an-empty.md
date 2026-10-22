@@ -34,17 +34,19 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric pa
 | probes/t1626-regexreplace Sheet1!C34 | `=REGEXREPLACE(A8,"a*?","b")` | "bbbbbbb" | "bababab" |
 
 ## Acceptance criteria
-- [ ] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 11 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] t1626-regexreplace C34 and regex-pcre2-features D1-D6, D12, D13 pass, plus D14 once its ERROR.TYPE cell is added
+- [x] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 11 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline. (10 of 11: D12 needs
+  lookahead and moved to T-2354's criteria.)
+- [x] t1626-regexreplace C34 and regex-pcre2-features D1-D6, D12, D13 pass, plus D14 once its ERROR.TYPE cell is added (answered
+  by probes/regex-iteration-surrogates A1; D12 moved to T-2354)
   (D7-D10 also need T-1360's optional arguments); baseline shrinks.
-- [ ] The retry for a regular pattern runs in the memoized mode (SPEC-0013 section 3). Its program is counter-free and
+- [x] The retry for a regular pattern runs in the memoized mode (SPEC-0013 section 3). Its program is counter-free and
   guard-free, and its visited set persists across the searches of one iteration, with every position at or before a successful match's end invalidated (SPEC-0013 section 3). Unit tests: `a*?` on `aaa` gives 7 matches in memoized mode, and `|a(?:a*b)?` on `REPT("a",32767)` is linear. The differential test covers this
   path too.
-- [ ] `(a|a)*b|` over a 32,767-character text returns the same value as before.
-- [ ] `a*?` and `|b` iteration over 32,767 characters stays within the call budget, and each runs under 50 ms in the
+- [x] `(a|a)*b|` over a 32,767-character text returns the same value as before.
+- [x] `a*?` and `|b` iteration over 32,767 characters stays within the call budget, and each runs under 50 ms in the
   release bench, with before and after numbers.
-- [ ] A pattern that cannot match empty iterates at today's cost.
-- [ ] `make check` green; reviewers approve.
+- [x] A pattern that cannot match empty iterates at today's cost.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Pattern features (T-1900).

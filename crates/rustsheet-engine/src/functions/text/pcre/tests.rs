@@ -194,9 +194,9 @@ fn spans(caps: &Captures) -> Vec<Option<(usize, usize)>> {
 #[test]
 fn backtracker_agrees_with_the_automata_on_regular_patterns() {
     // Random regular patterns over a small alphabet: the same match, groups and PCRE2 iteration
-    // (the retries after an empty match included) on the automata and on the memoized mode; and on T-1900's plain mode where no unbounded loop can
-    // match empty (PCRE2's empty-iteration rule is not the NFA's there, so `(a?)*` sets its group
-    // differently).
+    // (the retries after an empty match included) on the automata and on the memoized mode; and
+    // on T-1900's plain mode where no unbounded loop can match empty (PCRE2's empty-iteration
+    // rule is not the NFA's there, so `(a?)*` sets its group differently).
     let atoms = [
         "a", "b", ".", "[ab]", r"\w", "^", "$", r"\b", r"\B", "(a)", "(a|)", "(|a)", "(?:ab|a)",
         "()", "(b*)", "(?:a?)", "(a|b)",

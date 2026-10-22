@@ -11,8 +11,7 @@ use regex_automata::{
 
 use super::{
     pcre::{Backtrack, BacktrackCache, Backtracker, Program},
-    regex_engine::{BuildFailure, Caches, Engine, EngineSearch, Spent},
-    regex_functions::within_size_limits,
+    regex_engine::{within_size_limits, BuildFailure, Caches, Engine, EngineSearch, Spent},
 };
 
 /// Why a search gave no answer.
@@ -33,11 +32,13 @@ impl From<Spent> for SearchError {
 
 /// A compiled pattern and its search caches (the automata's boxed: they are some kilobytes).
 pub(super) enum Matcher {
+    /// A regular pattern.
     Automata {
         engine: Box<Engine>,
         caches: Box<Caches>,
         retry: Box<Retry>,
     },
+    /// A pattern only the backtracker runs, or a regular one its memoized mode runs.
     Backtrack {
         program: Program,
         cache: BacktrackCache,
@@ -48,8 +49,9 @@ pub(super) enum Matcher {
 /// compiled the first time an iteration needs one: a pattern that cannot match empty never
 /// does.
 pub(super) enum Retry {
-    /// Not needed yet.
+    /// Not needed yet: the pattern to compile.
     Pending(Backtrack),
+    /// Compiled, with the visited set its retries share.
     Compiled {
         program: Program,
         cache: BacktrackCache,
@@ -60,22 +62,23 @@ impl Retry {
     /// The program and its cache, compiled within the call's compile `budget` if this is the
     /// first retry; spent when the budget or every size limit is passed.
     fn compiled(&mut self, budget: &mut usize) -> Result<(&Program, &mut BacktrackCache), Spent> {
-        if let Retry::Pending(source) = self {
-            let program = within_size_limits(budget, |limit| {
-                source.compile(limit).map_err(BuildFailure::from)
-            })?
-            .ok_or(Spent)?;
-            *self = Retry::Compiled {
-                program,
-                cache: BacktrackCache::default(),
-            };
-        }
         match self {
             Retry::Compiled { program, cache } => Ok((program, cache)),
-            Retry::Pending(_) => Err(Spent),
+            Retry::Pending(source) => {
+                let program = within_size_limits(budget, |limit| {
+                    source.compile(limit).map_err(BuildFailure::from)
+                })?
+                .ok_or(Spent)?;
+                *self = Retry::Compiled {
+                    program,
+                    cache: BacktrackCache::default(),
+                };
+                self.compiled(budget)
+            }
         }
     }
 
+    /// The heap memory the compiled program and its cache hold.
     fn memory_usage(&self) -> usize {
         match self {
             Retry::Pending(_) => 0,
@@ -177,7 +180,8 @@ impl Search<'_> {
 
     /// Fills `caps` with the groups of `m`, a match the iteration over `text` found. The
     /// iteration is replayed up to it: `\G` stands where that search started, and a retry's
-    /// match gets the groups the retry found.
+    /// match gets the groups the retry found. One pass up to `m` per call: for one match, not
+    /// for a loop over them.
     pub(super) fn captures_at(
         &mut self,
         text: &str,
@@ -335,7 +339,7 @@ impl Finder for Automata<'_> {
             return self.search.captures_at(text, found.m, caps);
         }
         // The automata would find the empty match at its start again: the retry's slots hold
-        // the groups.
+        // the groups, untouched while `each_match` calls `each` before its next search.
         let (program, cache) = self.retry.compiled(self.budget)?;
         Backtracker::resume(program, cache, &mut *self.search.work, self.room).fill(caps);
         Ok(())

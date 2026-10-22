@@ -76,12 +76,37 @@ const SPARSE_TRANSITION: u64 = 3;
 /// search a character.
 const SEARCH: u64 = 64;
 
+/// The size limits a pattern is compiled under, smallest first. A pattern is compiled under the
+/// next one only when it is too big for the one before; the last is the regex crate's default,
+/// so every pattern that compiled before T-1272 still compiles. Compile time grows with the
+/// limit: in a release build the largest patterns the last admits take 70-90 ms to compile
+/// (`\w{200}`), a failed attempt about as long as its limit admits.
+const SIZE_LIMITS: [usize; 5] = [1 << 16, 1 << 18, 1 << 20, 4 << 20, 10 << 20];
+
 /// Why a pattern did not compile.
 pub(super) enum BuildFailure {
     /// Too big for the size limit it was compiled under.
     TooBig,
     /// Not a valid pattern.
     Invalid,
+}
+
+/// What `build` builds under the smallest of [`SIZE_LIMITS`] it fits, each attempt charged its
+/// limit from the call's compile `budget`: `None` when it is invalid or too big for every limit,
+/// spent once the budget is.
+pub(super) fn within_size_limits<T>(
+    budget: &mut usize,
+    mut build: impl FnMut(usize) -> Result<T, BuildFailure>,
+) -> Result<Option<T>, Spent> {
+    for limit in SIZE_LIMITS {
+        *budget = budget.checked_sub(limit).ok_or(Spent)?;
+        match build(limit) {
+            Ok(built) => return Ok(Some(built)),
+            Err(BuildFailure::TooBig) => {}
+            Err(BuildFailure::Invalid) => break,
+        }
+    }
+    Ok(None)
 }
 
 /// The work a call has left, in the units above; spent once a charge does not fit.
