@@ -135,3 +135,17 @@ fn test_fn_geomean_exact_roots_are_exact() {
     // 1.7320508075688774 (Excel, ironcalc-calc GEOMEAN C23), one ulp above the correctly rounded root
     assert_eq!(model._get_text("A6"), "2.22045E-16");
 }
+
+#[test]
+fn test_fn_harmean_no_numbers_is_na() {
+    let mut model = new_empty_model();
+    model._set("A1", "=HARMEAN(D3:D4)");
+    model._set("A2", "=HARMEAN(4,)");
+    model._set("A3", "=HARMEAN(2,2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    // A written empty argument counts as 0, which is not strictly positive.
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"2");
+}
