@@ -684,7 +684,7 @@ impl Model {
     }
 
     /// One `CELL` result per element of an `info_type` grid; an error element passes through and
-    /// any other non-text element (number, boolean, blank) is `#VALUE!` (probes/
+    /// any other non-text element (number, blank) is `#VALUE!` (probes/
     /// info-cell-info-type-grid-errors, excel-graph, T-2232).
     fn lifted_cell(
         &mut self,
