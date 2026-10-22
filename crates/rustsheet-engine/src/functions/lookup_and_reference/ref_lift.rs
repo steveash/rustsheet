@@ -503,8 +503,8 @@ impl Model {
     }
 
     /// The driver's arguments for `values`: those that `lifts_value` accepts ([`lifts`] or
-    /// [`lifts_one_by_one`]: the reason it is a parameter) read into their cells, the rest scalars. An unreadable one (a
-    /// range across sheets) is the call's error.
+    /// [`lifts_one_by_one`]: the reason it is a parameter) read into their cells, the rest
+    /// scalars. An unreadable one (a range across sheets) is the call's error.
     pub(super) fn reference_lift_args(
         &mut self,
         values: ArgBuf<CalcResult>,
