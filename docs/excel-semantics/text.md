@@ -657,7 +657,8 @@ Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Implemented in: `Model::fn_asc` (functions/text/char_code.rs). Tasks: T-1863
 
 ## REGEXTEST and REGEXREPLACE edge cases (T-1626)
-Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); surrogate pairs are UNVERIFIED (not probed). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending; UNVERIFIED. REGEXTEST case_sensitivity 2 and -1 (C23, C24, undecoded here) are `#VALUE!` (probes/regex-optional-args A3, A4; next entry but two).
+Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); `.` matches a surrogate pair as one character
+(`REGEXREPLACE("a😀",".","-")` is `--`, probes/regex-iteration-surrogates A9). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending; UNVERIFIED. REGEXTEST case_sensitivity 2 and -1 (C23, C24, undecoded here) are `#VALUE!` (probes/regex-optional-args A3, A4; next entry but two).
 Evidence: probes/t1626-regextest, t1626-regexreplace (excel-graph, 2026-10-16).
 Ours: the optional arguments since T-1360 (next entry but two, "REGEX* optional arguments"); `\1` in the replacement matches since T-1688; the pattern
 backreference (REGEXTEST C29) is T-1900 and the lazy empty matches (REGEXREPLACE C34) match since T-1899.
@@ -800,8 +801,14 @@ advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:a
 `abc` to `-a---c-`, `b|` to `-a--c-` and `(?=b)|b` to `a--c`; REGEXEXTRACT's all-matches mode gives 7 matches for
 `a*?` on `aaa` (`,a,,a,,a,`), and REGEXREPLACE's occurrence counts the same matches (occurrence 2 is `baa`, 4 is
 `aba`, -1 `aaab`). An empty pattern over text with a surrogate pair is `#VALUE!` (`REGEXREPLACE("a"&UNICHAR(128512)&"b","","-")`,
-ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
-Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
+ERROR.TYPE 3; with `x*` too, ERROR.TYPE 3). Only an iteration that reaches the pair that way fails: a non-empty match
+steps over it (`REGEXREPLACE("😀b","😀|b","-")` is `--`, `.` on `a😀` gives `--`), an n-th occurrence stops at its
+match (`REGEXREPLACE("a😀","","-",1)` is `-a😀`; with `a*` on `😀a` `-😀a`, `b|` occurrence 2 on `ab😀` `a-😀`, `a|`
+occurrence 1 `-b😀`), while occurrence 3 of `""` on `a😀` and REGEXEXTRACT's all-matches mode over it are `#VALUE!`;
+REGEXEXTRACT's first match is unaffected (`""`). A negative occurrence needs the whole iteration, so it is `#VALUE!`
+in ours whenever the iteration splits a pair: UNVERIFIED (not probed).
+Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18; D11 and D14 undecoded there,
+answered by the next case); probes/regex-iteration-surrogates A1-A11 (excel-graph, 2026-10-22, T-1899).
 Ours: PCRE2's grammar since T-1973 (functions/text/pcre/): comments, `\Q..\E`, `(?x)` and scoped flags match
 (C14-C19). Backreferences (C1-C5), atomic groups and possessive quantifiers (B29, C11) and `\G` match on T-1900's
 backtracker (functions/text/pcre/backtrack.rs). Several PCRE2 behaviors it implements are UNVERIFIED for Excel
@@ -815,9 +822,8 @@ backtracker (functions/text/pcre/backtrack.rs). Several PCRE2 behaviors it imple
 `(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals parse but are
 `#VALUE!` until T-2354 (so `(?=b)|b`, D12, waits for it). Iteration is PCRE2's since T-1899
 (functions/text/regex_search.rs `each_match`): the retry runs on the backtracker, a regular pattern's on its memoized
-mode, and an advance of one UTF-16 unit into a surrogate pair is `#VALUE!`. That cause of D11, D13 and D14 is
-inferred (Excel iterating UTF-16 units), not probed: whether an emoji the iteration steps over by a non-empty match
-is fine (`REGEXREPLACE("😀b","😀|b","-")` is `--` in ours) is UNVERIFIED. The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
+mode, and an advance of one UTF-16 unit into a surrogate pair is `#VALUE!` (the cause, Excel iterating UTF-16
+units, is inferred; every regex-iteration-surrogates cell matches it). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
 unprobed features), T-1973 (parser), T-1900 (backtracker), T-2354 (lookaround, `\K`, conditionals), T-2355 (memoized
 mode), T-1899 (iteration), T-1974 (costs), T-2356 (probe of the backtracker's behaviors).
 Status: VERIFIED (excel-graph); the backtracker behaviors listed above UNVERIFIED (T-2356)

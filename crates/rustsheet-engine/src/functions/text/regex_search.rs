@@ -366,11 +366,11 @@ fn to_match((start, end): (usize, usize)) -> Match {
 }
 
 /// Calls `each` with every successive match of `finder` in `text` while it returns true, by
-/// PCRE2's global rule (SPEC-0013 section 4; text.md "REGEX* global iteration after an empty
-/// match"): after a non-empty match the next search starts at its end; after an empty match at
-/// `p`, one attempt anchored at `p` that refuses the empty match, and if that fails a search one
-/// UTF-16 unit on, which inside a surrogate pair is [`SearchError::SplitSurrogate`]. Visible to
-/// `pcre`'s differential test.
+/// PCRE2's global rule (SPEC-0013 section 4; text.md "REGEX* patterns and match iteration are
+/// PCRE2 (T-1688)"): after a non-empty match the next search starts at its end; after an empty
+/// match at `p`, one attempt anchored at `p` that refuses the empty match, and if that fails a
+/// search one UTF-16 unit on, which inside a surrogate pair is [`SearchError::SplitSurrogate`].
+/// Visible to `pcre`'s differential test.
 pub(in crate::functions::text) fn each_match(
     finder: &mut dyn Finder,
     text: &str,
