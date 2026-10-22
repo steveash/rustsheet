@@ -3,7 +3,7 @@ id: T-2215
 title: "Probe INT negatives and the 1E+15 boundary"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
