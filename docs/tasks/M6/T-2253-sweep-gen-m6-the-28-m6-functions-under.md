@@ -3,7 +3,7 @@ id: T-2253
 title: "Sweep gen-m6: the 28 M6 functions under 400 Excel cells to at least 500, with edge pools"
 milestone: M6
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -46,3 +46,22 @@ visibly-off count means something (decision 0094).
 ## Visible-parity stage
 Coverage half of decision 0094's checkpoint: this task is done when its functions meet the
 400-cell bar and their visibly-off cells all have tasks.
+
+## Outcome
+The coverage bar was already met when this task was picked up. T-2180 (merged after the 2026-10-21 eval this task's counts come from)
+added 55 focus cases of 400 formulas (seed 2). By `make eval`'s fifteen-digit checkpoint (main 74babade), 27 of the 28 functions have
+656 to 1,211 Excel-backed cells and 575 to 638 generated ones (minimum: CHOOSECOLS 656 cells, NETWORKDAYS.INTL 575 generated), all
+excel-graph.
+What T-2180 lacked was T-2286's lookup and array pools (this task's dependency), so this PR adds a top-up sweep of the eight listed
+functions that draw from them: `rustsheet-gen --milestone M6 --focus --functions CHOOSECOLS,CHOOSEROWS,LOOKUP,TRANSPOSE,NETWORKDAYS,
+NETWORKDAYS.INTL,WORKDAY,WORKDAY.INTL --count 5 --formulas 400 --seed 22`. That is 5 cases and 2,000 cells, about 250 outer calls each.
+`rustsheet-oracle fill -b excel-graph --suite gen-m6` wrote 5 sidecars (0 failures, 0 refused, 0 conflicts). gen-m6 now has 85 cases and
+25,000 cells, 99.78% bit-exact, and stays gated.
+Eval delta: +2,000 gen-m6 cells, 8 new-coverage known failures, 0 regressions.
+Triage of the 8 (all visibly off):
+- T-2395 (new): a holidays array holding blanks from `HSTACK(Data!Z1:Z2,{1;2})` is accepted (6 cells).
+- T-2271 (extended): a blank weekend cell and a FALSE weekend cell are `#NUM!` (2 cells).
+dates.md records both.
+GETPIVOTDATA stays at 54 cells with no generated cell. It needs a pivot source the generator cannot build (T-1708, SPEC-0015), so it is
+not exempted and does not meet the bar here. Params with no pool among the 28: ADDRESS, AREAS, COLUMN, ROW, HYPERLINK, TIME and
+TRIMRANGE (noted for the pool tasks, per Out of scope).
