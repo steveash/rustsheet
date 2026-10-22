@@ -410,7 +410,8 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
 }
 
 /// Whether `kind(args)` is `INDEX(<number>,0)` or `INDEX(<number>,0,0)`: the whole of a scalar is
-/// an array, so it reads like an array constant under N or T, `#VALUE!`, and Excel shows no `@`
+/// an array, so it reads like an array constant under N, `#VALUE!`, and Excel shows no `@` (T shares the
+/// path and is inferred, unprobed)
 /// (`=N(INDEX(5,0,0))`, `=N(INDEX(5,0))`; probes/index-zero-index-scalar-shape E5, E6, F5, F6,
 /// T-2191). Other indices of a scalar are unprobed and keep their `@`.
 fn indexes_a_number_whole(kind: &Function, args: &[Node]) -> bool {
