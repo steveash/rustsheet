@@ -195,7 +195,8 @@ fn fraction_literal(token: Token) -> Option<TextToken> {
     }
 }
 
-/// Whether `token` prints part of a date or a clock time: AM/PM alone does not count.
+/// Whether `token` prints part of a date or a clock time: AM/PM alone does not count. A negative
+/// list on purpose: every `TextToken` outside it is a date or time token.
 fn is_calendar_or_clock(token: &TextToken) -> bool {
     !matches!(
         token,

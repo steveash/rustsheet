@@ -71,7 +71,7 @@ fn currency_text_prints_as_it_is() {
 #[test]
 fn a_bare_digit_beside_a_date_token_rejects_the_code() {
     for code in ["42abc", "4b", "b4", "4 d", "4:mm", "[h]4", "4g", "0;4b"] {
-        assert!(number(3.14159, code).1, "{code} on 3.14159");
+        assert!(number(3.25, code).1, "{code} on 3.25");
         assert!(rejects_text("x", code), "{code} on \"x\"");
     }
     for (code, text) in [
@@ -81,6 +81,6 @@ fn a_bare_digit_beside_a_date_token_rejects_the_code() {
         ("4;b", "4"),
         ("4a", "4a"),
     ] {
-        assert_eq!(number(3.14159, code), (text.to_string(), false), "{code}");
+        assert_eq!(number(3.25, code), (text.to_string(), false), "{code}");
     }
 }
