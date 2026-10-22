@@ -1138,7 +1138,6 @@ product `RN64(ln 2) * log2 x` from the nearest 53-bit midpoint, in 53-bit ulps, 
 - Controls: all 50 points at 0.1-0.4 ulp53 from a midpoint agree across fills and equal the model.
 - Consequence for T-2144: no single model can match every fill at the unstable points; fit only on points that agree
   across fills (357 of 380 here).
-The probe keeps the 27 near-ties of that run as known failures in eval/baseline/probes.txt.
 Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
 sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
 `test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
