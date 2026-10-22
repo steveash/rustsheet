@@ -3,35 +3,80 @@
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    functions::util::is_span_or_if_of_span,
+    expressions::{
+        parser::{is_multi_sheet_span, is_span_or_if_of_span, ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
+    functions::Function,
     model::Model,
+    reference_operators::Picked,
 };
 
 impl Model {
     /// The serials of a holidays argument, read whole: a range is not intersected
     /// (docs/excel-semantics/dates.md "WORKDAY holidays take the whole range"). Each must be a
     /// date (`#NUM!`), and a value that is not a number is `#VALUE!`. A 3-D reference is
-    /// `#VALUE!` too, not `#REF!`, also as a branch of IF (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`,
-    /// `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; probes/date-text-weekend-3d M9-N13).
+    /// `#VALUE!` too, not `#REF!`, also as the branch IF takes, but only that branch counts
+    /// (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)` and
+    /// `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))` are `#VALUE!`, probes/date-text-weekend-3d
+    /// M9-N13; `WORKDAY(45000,5,IF(FALSE,Sheet1:Sheet2!A1,A1))` reads A1,
+    /// probes/t2238-holidays-if-3d-branch D1:I9, T-2238). IF's pick is followed here, its condition
+    /// read once, because IF itself hands a span branch on as a reference (`#REF!`). CHOOSE needs
+    /// no such step: evaluating it reads its picked span as `#VALUE!` (D4:G7).
     pub(super) fn holiday_serials(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<i64>, CalcResult> {
-        if is_span_or_if_of_span(arg) {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "3-D reference in holidays".to_string(),
-            ));
-        }
+        let (mut arg, mut picked) = (arg, false);
+        let value = loop {
+            if is_multi_sheet_span(arg) {
+                return Err(three_d_holidays(cell));
+            }
+            match arg.ungrouped() {
+                Node::FunctionKind {
+                    kind: Function::If,
+                    args,
+                } => match self.if_pick(args, cell) {
+                    Picked::Node(arm) => (arg, picked) = (arm, true),
+                    // An array condition evaluates both branches, and a 3-D one hands on #REF!
+                    // elements: any element taking it makes the call one #VALUE!, no array
+                    // (`WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1))`; with {FALSE;FALSE}
+                    // A1 is read; probes/t2238-holidays-if-3d-branch M1-M8).
+                    Picked::Value(value) if is_span_or_if_of_span(arg) && has_ref_error(&value) => {
+                        return Err(three_d_holidays(cell));
+                    }
+                    Picked::Value(value) => break value,
+                },
+                // A picked arm is read as IF reads it (an external reference's cached value).
+                _ if picked => break self.if_branch_value(arg, cell),
+                _ => break self.evaluate_node_in_context(arg, cell),
+            }
+        };
         let mut serials = Vec::new();
-        self.collect_serial_numbers(arg, cell, |serial| {
+        self.collect_serial_numbers(value, cell, |serial| {
             serials.push(serial);
             Ok(())
         })?;
         Ok(serials)
+    }
+}
+
+/// The `#VALUE!` of a 3-D holidays reference.
+fn three_d_holidays(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "3-D reference in holidays".to_string())
+}
+
+/// Whether `value` is `#REF!` or an array holding one.
+fn has_ref_error(value: &CalcResult) -> bool {
+    match value {
+        CalcResult::Error { error, .. } => *error == Error::REF,
+        CalcResult::Array(rows) => rows
+            .iter()
+            .flatten()
+            .any(|node| matches!(node, ArrayNode::Error(Error::REF))),
+        _ => false,
     }
 }
 

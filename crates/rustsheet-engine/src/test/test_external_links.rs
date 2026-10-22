@@ -423,3 +423,127 @@ fn let_body_picking_an_external_reference_is_that_reference() {
         assert_eq!(eval(&mut model, &formula), expected, "{formula}");
     }
 }
+
+/// A LET whose body may pick a reference into another workbook or another argument is the
+/// external reference when it picks it (probes/external-ref-no-link-let-index A3:A7), and
+/// otherwise the reference or value it picks, read while its names are bound (T-1721).
+#[test]
+fn let_body_picking_an_external_reference_or_another_argument() {
+    let mut model = new_empty_model();
+    model._set("D1", "1");
+    model._set("D2", "x");
+    let ext = "'[other.xlsx]Sheet1'!";
+    for (formula, expected) in [
+        (format!("=ISREF(OFFSET(LET(c,TRUE,{ext}A1),1,1))"), "FALSE"),
+        (format!("=OFFSET(LET(c,TRUE,{ext}A1),1/0,1)"), "#DIV/0!"),
+        (format!("=ROWS(LET(c,TRUE,IF(c,{ext}A1:B3,\"x\")))"), "3"),
+        (format!("=ROWS(LET(c,TRUE,IF(c,{ext}A1:B3,D1:D2)))"), "3"),
+        (format!("=ISREF(LET(c,TRUE,IF(c,{ext}A1,D1)))"), "TRUE"),
+        (format!("=COUNTA(LET(c,TRUE,IF(c,{ext}A1:B2,1)))"), "0"),
+        (format!("=ROW(LET(c,TRUE,IF(c,{ext}B3,D1)))"), "3"),
+        (
+            format!("=AREAS(LET(c,TRUE,IF(c,({ext}A1,{ext}B2),D1)))"),
+            "2",
+        ),
+        // The other argument, a name bound by the LET included.
+        (format!("=ISREF(LET(c,FALSE,IF(c,{ext}A1,D1)))"), "TRUE"),
+        (format!("=ISREF(LET(c,FALSE,IF(c,{ext}A1,1)))"), "FALSE"),
+        (
+            format!("=ROWS(LET(r,D1:D2,c,FALSE,IF(c,{ext}A1:B3,r)))"),
+            "2",
+        ),
+        (
+            format!("=COUNTA(LET(r,D1:D3,c,FALSE,IF(c,{ext}A1:B2,r)))"),
+            "2",
+        ),
+        (
+            format!("=SUM(LET(r,D1:D3,c,FALSE,IF(c,{ext}A1:B2,r)))"),
+            "1",
+        ),
+        (format!("=ROW(LET(r,D2,c,FALSE,IF(c,{ext}B3,r)))"), "2"),
+        (format!("=ROW(LET(c,FALSE,IF(c,{ext}B3,1)))"), "#VALUE!"),
+        (format!("=AREAS(LET(c,FALSE,IF(c,{ext}A1,(D1,E1))))"), "2"),
+        (
+            format!("=ROWS(LET(c,FALSE,IF(c,{ext}A1,(D1,E1))))"),
+            "#REF!",
+        ),
+        (
+            format!("=INDEX(LET(r,D1:D2,c,FALSE,IF(c,{ext}A1,r)),2)"),
+            "x",
+        ),
+        (
+            format!("=COUNTBLANK(LET(r,D1:D3,c,FALSE,IF(c,{ext}A1,r)))"),
+            "1",
+        ),
+        (
+            format!("=ISREF(OFFSET(LET(c,FALSE,IF(c,{ext}A1,D1)),1,1))"),
+            "TRUE",
+        ),
+        (format!("=OFFSET(LET(c,FALSE,IF(c,{ext}A1,D1)),1,0)"), "x"),
+    ] {
+        assert_eq!(eval(&mut model, &formula), expected, "{formula}");
+    }
+}
+
+// Book `[1]` caches what fixtures/external-link-cached-3d-span does: `Uses` as in
+// [`cached_ranges_fixture`], `Defines` A1 "Test A1", B2 142, and an empty `56737`.
+fn cached_span_fixture() -> Model {
+    let mut model = cached_ranges_fixture();
+    let book = &mut model.workbook.external_books[0];
+    book.sheet_names
+        .extend(["Defines".to_string(), "56737".to_string()]);
+    book.cells
+        .insert((1, 1, 1), SpillValue::Text("Test A1".into()));
+    book.cells.insert((1, 2, 2), SpillValue::Number(142.0));
+    model
+}
+
+// A 3-D span of the cached sheets aggregates over them, in either order; it is no reference to
+// ISREF, `#REF!` as a value and `#VALUE!` where one sheet is needed, as a span of this workbook
+// is (fixtures/external-link-cached-3d-span Refs!B2:B10, excel-graph; T-1654).
+#[test]
+fn span_of_cached_sheets_aggregates_over_them() {
+    let mut model = cached_span_fixture();
+    assert_eq!(eval(&mut model, "=SUM([1]Uses:Defines!$B$2)"), "142");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses:Defines!$A$1:$B$2)"), "157");
+    assert_eq!(eval(&mut model, "=COUNT([1]Uses:Defines!$A$1:$C$3)"), "4");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses:Defines!$A$1:$C$3)"), "9");
+    assert_eq!(eval(&mut model, "=MAX([1]Uses:Defines!$B$1:$B$2)"), "142");
+    assert_eq!(eval(&mut model, "=ISREF([1]Uses:Defines!$A$1)"), "FALSE");
+    assert_eq!(eval(&mut model, "=ERROR.TYPE([1]Uses:Defines!$A$1)"), "4");
+    assert_eq!(eval(&mut model, "=SUM([1]Defines:Uses!$B$2)"), "142");
+    assert_eq!(
+        eval(&mut model, "=ROWS([1]Uses:Defines!$A$1:$B$3)"),
+        "#VALUE!"
+    );
+}
+
+#[test]
+fn span_of_cached_sheets_round_trips() {
+    let mut model = cached_span_fixture();
+    model._set("C1", "=SUM([1]Uses:Defines!$A$1:$B$2)");
+    assert_eq!(
+        model._get_formula("C1"),
+        "=SUM('[1]Uses:Defines'!$A$1:$B$2)"
+    );
+}
+
+// A span over many cached sheets walks the cache once, not once per sheet (CLAUDE.md
+// directive 5); an end the cache does not hold stays `#BLOCKED!`, and a malformed span prefix does
+// not parse as one (T-1654).
+#[test]
+fn span_of_many_cached_sheets_is_one_walk() {
+    let mut model = cached_span_fixture();
+    let book = &mut model.workbook.external_books[0];
+    book.sheet_names
+        .extend((0..100_000).map(|index| format!("P{index}x")));
+    book.cells.insert((100_001, 7, 1), SpillValue::Number(1.0));
+    assert_eq!(eval(&mut model, "=SUM([1]Uses:P99999x!$A:$B)"), "158");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses:P99999x!$A:$C)"), "10");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses:Nope!$B$2)"), "#BLOCKED!");
+    for formula in ["=[1]A:!B1", "=[1]:B!A1", "=[1]A:B:C!A1"] {
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("C1"), "#ERROR!", "{formula}");
+    }
+}

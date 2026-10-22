@@ -43,8 +43,10 @@ impl SpillExtent {
                 .sheets
                 .iter()
                 .flat_map(|s| {
-                    // An input moved by a row insert is known at its new address (T-1933).
-                    s.cells.keys().filter_map(|a1| {
+                    // An input moved by a row insert is known at its new address (T-1933); a
+                    // pivot's rendered cells are inputs of the engine case (T-2084).
+                    let rendered = s.pivot_tables.iter().flat_map(|p| p.rendered.keys());
+                    s.cells.keys().chain(rendered).filter_map(|a1| {
                         let addr = spec
                             .sheet_ops
                             .iter()

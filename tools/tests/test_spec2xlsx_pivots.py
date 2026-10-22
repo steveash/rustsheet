@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from rustsheet_tools.spec2xlsx import build_xlsx
+from rustsheet_tools.spec_cli import bake_pivots
 
 _DATA: dict[str, object] = {
     "A1": "Region",
@@ -118,3 +119,16 @@ def test_rows_only_average_pivot() -> None:
 def test_malformed_pivots_are_refused(change: dict[str, Any], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         build_xlsx(_spec(_PIVOT | change, {"H1": "=1"}))
+
+
+def test_rendered_cells_must_match_the_layout() -> None:
+    spec = _spec(_PIVOT, {"H1": "=1"})
+    baked = bake_pivots(spec)
+    assert baked
+    rendered = spec["sheets"][1]["pivot_tables"][0]["rendered"]
+    assert rendered["A3"] == "Sum of Sales" and rendered["B4"] == "A"
+    assert not bake_pivots(spec)  # already baked
+    build_xlsx(spec)
+    rendered["B5"] = 99
+    with pytest.raises(ValueError, match="differ from its layout"):
+        build_xlsx(spec)

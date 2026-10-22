@@ -14,7 +14,7 @@ depends_on: [T-1931, T-2203]
 Establish with oracle evidence what Excel's EXP does at its range edges, and make the engine match.
 
 ## Context
-- Evidence first (planner, 2026-10-20): the probe this task asks for is T-2203 (research), which fills `probes-numeric/t2203-exp-range-edges`. Use that case; do not probe again. Its failing cells are this task's cells too.
+- Evidence first (planner, 2026-10-20): the probe this task asks for is T-2203 (research), which fills `probes-numeric/t2203-exp-range-edges`.  Filled 2026-10-22: the engine matches all 780 checked cells (last finite 709.782712893384, first #NUM! 709.7827128933841, underflow switch between -745.1332191019412 and -745.1332191019411; numbers.md "Range edges"). Use that case; do not probe again. Its failing cells are this task's cells too.
 - `EXP_SIGN.xlsx` B44 is no longer this task's cell. Excel keeps 2^-1074 there (probes/subnormal-function-results C4), and Excel writes a kept subnormal to the saved file as 0 (probes/subnormal-saved-as-zero, T-2204), so the cached 0 is that artifact. Decision 0089 names it an M5 exit exception owned by T-2210; it is out of this task's scope.
 - Since T-1931 the worksheet EXP is model V6 (`x87_exp::excel_exp`; docs/excel-semantics/numbers.md "EXP is an
   x87 2^(a*log2 e) evaluation, not correctly rounded"). V6 has not been probed at the edges of its range.

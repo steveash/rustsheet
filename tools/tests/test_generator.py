@@ -180,16 +180,28 @@ def test_generator_emits_every_m5_text_function() -> None:
 
 
 def test_generator_emits_every_m5_logical_information_and_web_function() -> None:
-    # T-1088: every in-scope M5 logical, information and web entry but INFO and SHEETS (`oracle: none`)
-    # is generator-ready.
+    # T-1088: every in-scope M5 logical, information and web entry (INFO and SHEETS only in their
+    # oracle-accepted forms) is generator-ready.
     m5 = {
         f["name"]
         for f in catalog().functions
         if "params" in f and f["milestone"] == "M5" and f["category"] in {"logical", "information", "web"}
     }
-    assert len(m5) == 26
+    assert len(m5) == 28
     seen = emitted("M5")
     assert not sorted(m5 - seen)
+
+
+def test_generator_emits_only_oracle_accepted_info_and_sheets_forms() -> None:
+    # T-2251: the canary refuses SHEETS() with no argument and INFO("numfile"); the generator never writes them.
+    calls: set[str] = set()
+    for seed in range(40):
+        case = str(generate_case(catalog(), seed, milestone="M5", formulas=80))
+        calls.update(re.findall(r"(?:INFO|SHEETS)\([^)]*\)", case))
+    assert any(c.startswith("INFO(") for c in calls) and any(c.startswith("SHEETS(") for c in calls)
+    for c in calls:
+        assert c != "SHEETS()"
+        assert "numfile" not in c.lower()
 
 
 def test_generator_emits_every_m6_date_function() -> None:
@@ -642,7 +654,7 @@ def _outer_function(formula: str) -> str:
 
 def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
-    # `pool:` keys (T-2109) removed, which do draw from the rng.
+    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures).
     catalog = copy.deepcopy(_loaded_catalog())
     for f in catalog.functions:
         for p in f.get("params", []):
@@ -650,7 +662,7 @@ def test_unfocused_output_is_unchanged() -> None:
     body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
     assert (
         hashlib.sha256(body.encode()).hexdigest()
-        == "866c628ae89f0f953bf667e60bbbaad9c0fb6d510b297988862867da51405f92"
+        == "e8451736288c9469b1e6765e45893f3218f803430abb6e01ae2cd7494392bd29"
     )
 
 
@@ -661,7 +673,7 @@ def test_focus_cycles_target_milestone_functions_evenly() -> None:
         for f in catalog.scoped("M5").functions
         if f.get("milestone") == "M5"
     }
-    assert len(targets) == 131
+    assert len(targets) == 133
     spelled = set(targets.values())
     outer: Counter[str] = Counter()
     for i in range(50):

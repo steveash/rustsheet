@@ -75,6 +75,9 @@ pub enum EditError {
     /// The table name is invalid or taken, or its range or header row is not valid.
     #[error("invalid table: {0}")]
     Table(String),
+    /// A pivot table could not be registered (`Txn::add_pivot_table`, test support).
+    #[error("invalid pivot table: {0}")]
+    Pivot(#[from] crate::edit::PivotError),
     /// Any other engine error, passed through verbatim.
     #[error("engine error: {0}")]
     Engine(String),

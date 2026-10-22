@@ -8,6 +8,7 @@
 //! evaluation results as well as where an `@` goes: a change to it needs a probe's legacy values,
 //! not only its FORMULATEXT (SPEC-0012 "Placement", item 4).
 
+use super::if_arm::{is_reference_arm, returns_range_arm};
 use super::lifted::lifts_arrays_at;
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
@@ -240,7 +241,7 @@ pub(super) fn legacy_array_call_at(
 /// [`spilling_switch_position`] finds it (probes/legacy-switch-at-shapes, T-1964).
 pub(super) fn is_spilling_switch(node: &Node, ranges: bool) -> bool {
     matches!(node, Node::FunctionKind { kind: kind @ Function::Switch, args }
-    if returns_only(kind, args, |result| match under_at(result) {
+    if returns_only(kind, args, |result| match under_at(result).lowered() {
         Node::ArrayKind(_) => true,
         Node::RangeKind { .. } => ranges,
         _ => false,
@@ -431,9 +432,12 @@ fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool 
     matches!(kind, Function::Choose)
         && matches!(index, Node::ArrayKind(_))
         && !arms.is_empty()
-        && arms
-            .iter()
-            .all(|arm| matches!(arm, Node::ReferenceKind { .. } | Node::RangeKind { .. }))
+        && arms.iter().all(|arm| {
+            matches!(
+                arm.lowered(),
+                Node::ReferenceKind { .. } | Node::RangeKind { .. }
+            )
+        })
 }
 
 /// Whether `kind` has an argument it can return ([`is_returned_argument`]) and every one is an
@@ -614,52 +618,6 @@ fn legacy_intersects(
         || legacy_value_operand(kind, index, arg)
 }
 
-/// Whether `arg` is an arm of IF that is a range, possibly in parentheses, which a legacy formula
-/// passes on whole as IF's result: the `@` goes on the IF where its result is a value
-/// (`=IF(TRUE,B1:B6)` shows as `=@IF(TRUE,B1:B6)`, `=ABS(IF(TRUE,B1:B6))` as
-/// `=ABS(@IF(TRUE,B1:B6))`), and none where it is a range argument (`=SUM(IF(TRUE,B1:B6))` is 12
-/// and `=MATCH(3,IF(B1:B6>0,B1:B6),0)` 3 on and off the range's rows, the condition intersected;
-/// probes/legacy-if-arm-range-argument, legacy-match-lookup-array-intersection J2, excel-graph,
-/// T-1935). An operation over the range is still a value (`=MATCH(3,IF(TRUE,@B1:B6+0),0)`), and
-/// so is IFERROR's value (`=MATCH(3,IFERROR(@B1:B6,0),0)`); other reference shapes in an arm are
-/// unprobed and keep their `@`. An explicit `@` on the range is looked through, so the export
-/// keeps it (`SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))`).
-fn is_reference_arm(kind: &Function, index: usize, arg: &Node) -> bool {
-    matches!(kind, Function::If) && index > 0 && is_range_arm(arg)
-}
-
-/// Whether `arm` is a range, possibly in parentheses or under an explicit `@`, or an IF that
-/// returns one ([`returns_range_arm`]): `=MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)` shows no `@` and
-/// is 3 off the range's rows (probes/legacy-if-arm-range-argument T). An explicit stack keeps the
-/// walk off the call stack: a formula's tree is untrusted input.
-fn is_range_arm(arm: &Node) -> bool {
-    let mut pending = vec![arm];
-    while let Some(node) = pending.pop() {
-        let node = match node.ungrouped() {
-            Node::ImplicitIntersection { child, .. } => child.ungrouped(),
-            other => other,
-        };
-        match node {
-            Node::RangeKind { .. } => return true,
-            Node::FunctionKind {
-                kind: Function::If,
-                args,
-            } if args.len() > 1 => pending.extend(&args[1..]),
-            _ => {}
-        }
-    }
-    false
-}
-
-/// Whether `kind(args)` is an IF with an arm that is a range ([`is_range_arm`]), which a legacy
-/// formula intersects as a whole wherever it reads the IF as a value, also under a range
-/// argument: `=SUM(IF(TRUE,B1:B6)+0)` shows as `=SUM(@IF(TRUE,B1:B6)+0)`, 2 on the range's rows
-/// and `#VALUE!` off them, and so do `-`, a comparison, `&` and `=MATCH(3,IF(TRUE,B1:B6)*1,0)`
-/// (probes/legacy-if-arm-range-argument-b, excel-graph, T-1935).
-pub(super) fn returns_range_arm(kind: &Function, args: &[Node]) -> bool {
-    matches!(kind, Function::If) && args.len() > 1 && args[1..].iter().any(is_range_arm)
-}
-
 /// Whether `arg` of `kind` needs no intersection although `kind` takes a scalar: a scalar, or
 /// under N or T, which read a reference and give its top-left cell, a range or an IF or OFFSET
 /// of one ([`is_plain_reference`]): a legacy `=N(Z1:Z2)`,
@@ -693,7 +651,7 @@ fn is_plain_reference(node: &Node) -> bool {
     let is_literal = |node: &Node| matches!(node, Node::NumberKind(_) | Node::BooleanKind(_));
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
-        match node {
+        match node.lowered() {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => {}
             Node::FunctionKind {
                 kind: Function::If,

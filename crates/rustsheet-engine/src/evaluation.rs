@@ -25,7 +25,6 @@
 //!   anchor gives them up and only its own inputs were blocked by them, they
 //!   were history, not a dependency. They are dropped for the rest of the
 //!   evaluation and the pass starts again without them.
-//!
 //! * The recursion is bounded, in formulas and in stack. When it would go
 //!   deeper it **unwinds**: the formulas in progress end without storing
 //!   anything but stay on the stack, still `Evaluating`. The outermost one
@@ -43,6 +42,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::calc_result::CalcResult;
+use crate::circular::circular_reference;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
@@ -82,7 +82,7 @@ pub type KeyBuild = std::hash::BuildHasherDefault<KeyHasher>;
 /// `(sheet, row, column)`: a position in the workbook.
 pub(crate) type CellKey = (u32, i32, i32);
 
-fn key(cell: CellReferenceIndex) -> CellKey {
+pub(crate) fn key(cell: CellReferenceIndex) -> CellKey {
     (cell.sheet, cell.row, cell.column)
 }
 
@@ -361,10 +361,19 @@ pub(crate) struct Evaluation {
     /// The cell the driver is evaluating: the root of the current recursion,
     /// on whose behalf every read of the pass is recorded.
     pub(crate) root: Option<CellReferenceIndex>,
-    /// Cells known to be circular. Marked on the stack when a read closes a
-    /// loop, or by the driver when an anchor's spill contradicts its own inputs;
-    /// the latter survive restarts within one evaluation.
+    /// Cells known to be circular, or to read a circular cell: each stores 0
+    /// (recalc.md "A circular reference without iteration is 0"). Marked on the
+    /// stack when a read closes a loop or reads a circular cell, or by the
+    /// driver when an anchor's spill contradicts its own inputs; the latter
+    /// survive restarts within one evaluation.
     pub(crate) circular: HashSet<CellKey, KeyBuild>,
+    /// The anchors the driver marked circular (`RestartLog`): they run no
+    /// formula. A cell marked in the pass still runs, so that its reads are
+    /// made, and recorded, whatever the order the pass reaches it in.
+    pub(crate) circular_anchors: HashSet<CellKey, KeyBuild>,
+    /// How many cells at the bottom of `stack` are already in `circular`, so
+    /// that marking the stack costs only the cells pushed since.
+    pub(crate) circular_below: usize,
     /// What formulas saw at the positions they read in the current pass, and
     /// the root of the recursion the read was made in (the cell the driver was
     /// evaluating at the time), one record per kind.
@@ -399,6 +408,8 @@ pub(crate) struct Evaluation {
     /// restart, the cells stay on `stack`, still `Evaluating`, to be run again
     /// from the top once the recursion has unwound.
     pub(crate) unwinding: bool,
+    /// GETPIVOTDATA's per-pivot indices and memo, dropped at each `evaluate()` (`pivot_index.rs`).
+    pub(crate) pivot_indexes: crate::functions::lookup_and_reference::pivot_index::PivotIndexes,
 }
 
 /// How deep the recursion may go when nobody has said otherwise, in formulas
@@ -439,6 +450,8 @@ impl Default for Evaluation {
             stack: Vec::new(),
             root: None,
             circular: HashSet::default(),
+            circular_anchors: HashSet::default(),
+            circular_below: 0,
             seen: HashMap::default(),
             seen_ranges: crate::seen_ranges::SeenRanges::default(),
             restart: None,
@@ -450,6 +463,7 @@ impl Default for Evaluation {
             max_stack: DEFAULT_MAX_STACK,
             stack_base: 0,
             unwinding: false,
+            pivot_indexes: Default::default(),
         }
     }
 }
@@ -615,13 +629,11 @@ impl Model {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
-                if matches!(
-                    cell,
-                    Cell::ArrayFormula {
-                        kind: ArrayKind::Dynamic,
-                        ..
-                    }
-                ) {
+                if let Cell::ArrayFormula {
+                    kind: ArrayKind::Dynamic,
+                    ..
+                } = cell
+                {
                     found.push(CellReferenceIndex {
                         sheet: sheet as u32,
                         row,
@@ -645,6 +657,8 @@ impl Model {
         state.depth = 0;
         state.unwinding = false;
         state.circular = circular_anchors.iter().copied().collect();
+        state.circular_anchors = circular_anchors.iter().copied().collect();
+        state.circular_below = 0;
         state.in_pass = true;
         // dynamic links (HYPERLINK) are rebuilt on every evaluation
         self.links.clear();
@@ -768,10 +782,13 @@ impl Model {
         let key = key(cell_reference);
         match self.evaluation.cells.get(&key) {
             Some(CellState::Evaluating) => {
-                self.mark_cycle(cell_reference);
-                return circular_reference(cell_reference);
+                self.mark_stack_circular();
+                return circular_reference();
             }
-            Some(CellState::Evaluated) => return self.stored_value(cell_reference),
+            Some(CellState::Evaluated) => {
+                self.mark_readers_of(key);
+                return self.stored_value(cell_reference);
+            }
             None => {}
         }
         self.evaluation.cells.insert(key, CellState::Evaluating);
@@ -787,6 +804,7 @@ impl Model {
         }
         let result = self.run_top(cell_reference, cell);
         if self.evaluation.depth > 0 || !self.evaluation.unwinding {
+            self.mark_readers_of(key);
             return result;
         }
         // This is the outermost formula and the recursion below it got too
@@ -801,6 +819,7 @@ impl Model {
         if self.evaluation.restart.is_some() {
             return CalcResult::EmptyCell;
         }
+        self.mark_readers_of(key);
         self.stored_value(cell_reference)
     }
 
@@ -835,7 +854,7 @@ impl Model {
                     None => {
                         // Not expected: nothing replaces a formula during a
                         // pass. Let go of it rather than loop on it.
-                        self.evaluation.stack.pop();
+                        self.pop_stack();
                         self.evaluation.cells.insert(key(top), CellState::Evaluated);
                     }
                 }
@@ -857,8 +876,8 @@ impl Model {
             self.links.remove(&key);
         }
         self.evaluation.depth += 1;
-        let result = if self.evaluation.circular.contains(&key) {
-            circular_reference(cell_reference)
+        let result = if self.evaluation.circular_anchors.contains(&key) {
+            circular_reference()
         } else {
             self.compute_formula(cell_reference, cell.f)
         };
@@ -868,7 +887,7 @@ impl Model {
         }
         // The cell may have been found on a cycle while it ran.
         let result = if self.evaluation.circular.contains(&key) {
-            circular_reference(cell_reference)
+            circular_reference()
         } else {
             result
         };
@@ -878,7 +897,7 @@ impl Model {
         } else {
             self.set_cells_with_result(cell_reference, cell, &result)
         };
-        self.evaluation.stack.pop();
+        self.pop_stack();
         if let Err(message) = stored {
             // Not expected to happen; keep the cell from being evaluated again.
             self.evaluation.cells.insert(key, CellState::Evaluated);
@@ -932,19 +951,6 @@ impl Model {
         match self.fetch_cell(cell_reference) {
             Some(cell) => self.get_cell_value(cell, cell_reference),
             None => CalcResult::EmptyCell,
-        }
-    }
-
-    /// A read closed a loop at `from`: every cell on the stack from `from` to the
-    /// top is on the loop. They all store `#CIRC!`, whatever their formula would
-    /// have made of the error, so that the verdict does not depend on where the
-    /// recursion entered the loop.
-    fn mark_cycle(&mut self, from: CellReferenceIndex) {
-        let Some(start) = self.evaluation.stack.iter().rposition(|c| *c == from) else {
-            return;
-        };
-        for cell in &self.evaluation.stack[start..] {
-            self.evaluation.circular.insert(key(*cell));
         }
     }
 
@@ -1060,12 +1066,4 @@ impl Model {
         });
         true
     }
-}
-
-fn circular_reference(cell_reference: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(
-        Error::CIRC,
-        cell_reference,
-        "Circular reference detected".to_string(),
-    )
 }

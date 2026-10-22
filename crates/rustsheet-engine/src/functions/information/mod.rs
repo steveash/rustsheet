@@ -1,7 +1,7 @@
 mod isomitted;
 mod offline_errors;
 
-use crate::external_reference::PickedReference;
+use crate::external_reference::{may_be_external, PickedReference};
 use crate::{
     calc_result::{CalcResult, Range},
     cast::{calc_result_to_array_node, MAX_SHORT_TEXT_UNITS},
@@ -141,22 +141,24 @@ impl Model {
         // intersection or LET (probes/external-ref-no-link-shapes A4, external-ref-no-link-index
         // A28, A33, external-ref-no-link-let A1, A10); one into two workbooks is `#VALUE!`, so
         // not a reference.
+        // So is one a LET whose body may pick it picks: `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` is
+        // TRUE (probes/external-ref-no-link-let-index A6).
         let node = match self.pick_reference(node, cell) {
             PickedReference::Node(node) => node,
             PickedReference::External(areas) => return areas.is_ok(),
+            PickedReference::Read(read) => return matches!(read, RefArg::Ranges(_)),
             PickedReference::Value(_) => return false,
         };
         // OFFSET of one is `#VALUE!`, so not a reference (probes/external-ref-no-link-index
-        // A16), where OFFSET otherwise counts as one unevaluated (`kind.returns_reference()`).
+        // A16), also of one a LET picks (probes/external-ref-no-link-let-index A3), where OFFSET
+        // otherwise counts as one unevaluated (`kind.returns_reference()`).
         if let Node::FunctionKind {
             kind: crate::functions::Function::Offset,
             args,
         } = node
         {
-            if let Some(reference) = args.first() {
-                if self.external_reference(reference, cell).is_some() {
-                    return false;
-                }
+            if args.first().is_some_and(may_be_external) {
+                return matches!(self.offset_reference(args, cell), RefArg::Ranges(_));
             }
             // A lifted OFFSET is an array of references, not a reference: `ISREF(OFFSET(A1,{0;1},0))`
             // is FALSE (probes/reference-lift-elements F15).
@@ -681,7 +683,9 @@ impl Model {
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
     }
 
-    /// One `CELL` result per element of an `info_type` grid; a non-text element is `#VALUE!`.
+    /// One `CELL` result per element of an `info_type` grid; an error element passes through and
+    /// any other non-text element (number, blank) is `#VALUE!` (probes/
+    /// info-cell-info-type-grid-errors, excel-graph, T-2232).
     fn lifted_cell(
         &mut self,
         types: &[Vec<ArrayNode>],
@@ -697,6 +701,7 @@ impl Model {
                         ArrayNode::String(name) => {
                             calc_result_to_array_node(self.cell_info(name, ranges, reference, cell))
                         }
+                        ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
                         _ => ArrayNode::Error(Error::VALUE),
                     })
                     .collect()

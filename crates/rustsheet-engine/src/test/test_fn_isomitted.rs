@@ -56,3 +56,14 @@ fn test_isomitted_optional_arg_default_pattern() {
     assert_eq!(model._get_text("A1"), *"6");
     assert_eq!(model._get_text("A2"), *"36");
 }
+
+#[test]
+fn test_isomitted_function_result_empty_value_is_not_omitted() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "5");
+    // LOOKUP hands back the blank cell B2 as the empty value, which is not an omitted argument.
+    model._set("D1", "=ISOMITTED(LOOKUP(1,A1:A1,B2:B2))");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), *"FALSE");
+}

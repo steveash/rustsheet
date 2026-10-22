@@ -7,8 +7,8 @@ use super::arg_buf::ArgBuf;
 use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, NumbersKernel};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use super::number_result;
+use crate::expressions::parser::is_multi_sheet_span;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::is_multi_sheet_span;
 use crate::functions::Function;
 use crate::limits::{check_range_size, too_many_visits, MAX_LIFTED_CELL_VISITS};
 use crate::{
@@ -149,7 +149,11 @@ impl Model {
         if !kinds.accepts(args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let options = LiftOptions::for_entry(kinds);
+        let mut options = LiftOptions::for_entry(kinds);
+        // SORTBY's emptied elements are `#VALUE!` once the call has a second by_array, sort_order
+        // pair (probes/m7-lift-take-drop-sortby sheet Sort; arrays.md "UNIQUE's and SORTBY's
+        // lifted elements"; T-1839).
+        options.later_error = args.len() > kinds.params.len();
         // Calls of up to three arguments (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
         // most of the per-call overhead over the old math macros (T-1773 bench).

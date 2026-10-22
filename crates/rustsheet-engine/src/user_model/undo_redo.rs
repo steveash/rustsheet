@@ -4,7 +4,7 @@ use crate::{
     cf_types::ConditionalFormatting,
     constants::COLUMN_WIDTH_FACTOR,
     expressions::types::Area,
-    types::{ArrayKind, Cell, Style},
+    types::{Cell, Style},
     UserModel,
 };
 
@@ -20,70 +20,11 @@ impl UserModel {
                     sheet,
                     row,
                     column,
-                    new_value: _,
                     old_value,
+                    ..
                 } => {
                     needs_evaluation = true;
-                    // If the current cell is a dynamic ArrayFormula anchor, its
-                    // spill cells are not tracked in the diff (they are created
-                    // as a side-effect of evaluate()). Clear them now so that
-                    // after undo evaluate() re-spills into a clean area.
-                    let spill_dims = self
-                        .model
-                        .workbook
-                        .worksheet(*sheet)
-                        .ok()
-                        .and_then(|ws| ws.cell(*row, *column))
-                        .and_then(|cell| match cell {
-                            Cell::ArrayFormula {
-                                kind: ArrayKind::Dynamic,
-                                r,
-                                ..
-                            } => Some(*r),
-                            _ => None,
-                        });
-                    if let Some((w, h)) = spill_dims {
-                        let ws = self.model.workbook.worksheet_mut(*sheet)?;
-                        for r in *row..*row + h {
-                            for c in *column..*column + w {
-                                if r == *row && c == *column {
-                                    continue;
-                                }
-                                if matches!(ws.cell(r, c), Some(Cell::SpillCell { a, .. }) if *a == (*row, *column))
-                                {
-                                    let _ = ws.cell_clear_contents(r, c);
-                                }
-                            }
-                        }
-                    }
-                    match *old_value.clone() {
-                        Some(value) => {
-                            self.model
-                                .workbook
-                                .worksheet_mut(*sheet)?
-                                .update_cell(*row, *column, value)?;
-                        }
-                        None => {
-                            if spill_dims.is_some() {
-                                // The spill cells were already cleared above; only
-                                // the anchor itself remains.  range_clear_all would
-                                // re-expand to the full spill range and erase cells
-                                // that were just restored by earlier diffs in this
-                                // same undo operation (e.g. the cut source that
-                                // overlaps the paste target's spill area).
-                                let _ = self
-                                    .model
-                                    .workbook
-                                    .worksheet_mut(*sheet)?
-                                    .cell_clear_contents(*row, *column);
-                            } else {
-                                self.model
-                                    .workbook
-                                    .worksheet_mut(*sheet)?
-                                    .cell_clear_contents(*row, *column)?;
-                            }
-                        }
-                    }
+                    self.undo_set_cell_value(*sheet, *row, *column, old_value.as_ref().as_ref())?;
                 }
                 Diff::SetArrayValue {
                     sheet,
@@ -418,13 +359,14 @@ impl UserModel {
                         self.model.range_clear_all(&area)?;
                     }
                 }
-                Diff::DeleteSheet { sheet, old_data } => {
+                Diff::DeleteSheet {
+                    sheet,
+                    old_data,
+                    tables,
+                } => {
                     needs_evaluation = true;
-                    let sheet_name = &old_data.name.clone();
-                    let sheet_index = *sheet;
-                    let sheet_id = old_data.sheet_id;
-                    self.model
-                        .insert_sheet(sheet_name, sheet_index, Some(sheet_id))?;
+                    let (name, id) = (old_data.name.clone(), old_data.sheet_id);
+                    self.model.insert_sheet(&name, *sheet, Some(id))?;
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (row, column, cell) in old_data.sheet_data.cells() {
                         worksheet.update_cell(row, column, cell.clone())?;
@@ -438,9 +380,8 @@ impl UserModel {
                     worksheet.color = old_data.color.clone();
                     worksheet.merged_cells = old_data.merged_cells.clone();
                     worksheet.shared_formulas = old_data.shared_formulas.clone();
-                    self.model.reset_parsed_structures();
-
-                    self.set_selected_sheet(sheet_index)?;
+                    self.model.restore_tables(tables.clone());
+                    self.set_selected_sheet(*sheet)?;
                 }
                 Diff::SetColumnStyle {
                     sheet,
@@ -659,11 +600,17 @@ impl UserModel {
                     row,
                     column,
                     new_value,
+                    legacy,
                     old_value: _,
                 } => {
                     needs_evaluation = true;
-                    self.model
-                        .set_user_input(*sheet, *row, *column, new_value.to_string())?;
+                    self.model.reenter_user_input(
+                        *sheet,
+                        *row,
+                        *column,
+                        new_value.to_string(),
+                        *legacy,
+                    )?;
                 }
                 Diff::SetArrayValue {
                     sheet,
@@ -822,7 +769,7 @@ impl UserModel {
                     new_value,
                     old_value: _,
                 } => self.model.set_frozen_columns(*sheet, *new_value)?,
-                Diff::DeleteSheet { sheet, old_data: _ } => {
+                Diff::DeleteSheet { sheet, .. } => {
                     self.model.delete_sheet(*sheet)?;
                     if *sheet > 0 {
                         self.set_selected_sheet(*sheet - 1)?;

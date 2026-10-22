@@ -14,6 +14,7 @@ use rustsheet_engine::Text;
 
 use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
 use crate::cellref::{parse_range, Addr};
+use crate::spec_pivots;
 use crate::value::Value;
 
 /// A workbook after recalculation, ready to be queried.
@@ -219,6 +220,7 @@ impl Engine for RustSheetEngine {
                 for formulas in [false, true] {
                     for (sheet, &id) in spec.sheets.iter().zip(&ids) {
                         if formulas {
+                            spec_pivots::add_pivots(tx, spec, &ids, sheet, id)?;
                             for table in &sheet.tables {
                                 tx.add_table(
                                     table_range(id, &table.range, table.totals_row)?,
@@ -226,6 +228,9 @@ impl Engine for RustSheetEngine {
                                     table.filter,
                                 )?;
                             }
+                        }
+                        if !formulas {
+                            spec_pivots::write_rendered(tx, sheet, id, spec_input)?;
                         }
                         for (addr, a1, input) in row_major(&sheet.cells)? {
                             let Some(mut input) = spec_input(input) else {
@@ -311,17 +316,45 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
                 let id = sheet_id_of(workbook, sheet)?;
                 workbook.edit(|tx| tx.move_sheet(id, *to)).map(drop)
             }
-            // Not a `Txn` edit: the facade has no row insert yet, so the harness uses its
-            // feature-gated one (decision 0076). `row` is 1-based, as in the case file.
-            SheetOp::InsertRow { sheet, row } => {
+            SheetOp::DeleteSheet { sheet } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                workbook.edit(|tx| tx.delete_sheet(id)).map(drop)
+            }
+            // The engine has no convert to range yet: the case scores as an adapter error.
+            SheetOp::ConvertTable { .. } => {
+                return Err(format!(
+                    "sheet op {op:?}: the engine cannot convert a table to a range"
+                ));
+            }
+            // Not `Txn` edits: the facade has no structural edits yet, so the harness uses its
+            // feature-gated ones (decisions 0076, 0098). Rows and columns are 1-based in the case
+            // file. A `Txn` edit recalculates on commit; these do not.
+            SheetOp::DeleteTable { table, .. } => workbook
+                .delete_table(table)
+                .map(|()| workbook.recalculate()),
+            SheetOp::InsertRow { sheet, row } | SheetOp::DeleteRow { sheet, row } => {
                 let id = sheet_id_of(workbook, sheet)?;
                 let row = row
                     .checked_sub(1)
                     .ok_or_else(|| format!("sheet op {op:?}: rows are 1-based"))?;
-                // A `Txn` edit recalculates on commit; this one does not.
-                workbook
-                    .insert_rows(id, row, 1)
-                    .map(|()| workbook.recalculate())
+                let result = if matches!(op, SheetOp::InsertRow { .. }) {
+                    workbook.insert_rows(id, row, 1)
+                } else {
+                    workbook.delete_rows(id, row, 1)
+                };
+                result.map(|()| workbook.recalculate())
+            }
+            SheetOp::InsertColumn { sheet, column } | SheetOp::DeleteColumn { sheet, column } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                let column = Addr::col_index(column)
+                    .map(|c| c - 1)
+                    .ok_or_else(|| format!("sheet op {op:?}: not a column letter"))?;
+                let result = if matches!(op, SheetOp::InsertColumn { .. }) {
+                    workbook.insert_columns(id, column, 1)
+                } else {
+                    workbook.delete_columns(id, column, 1)
+                };
+                result.map(|()| workbook.recalculate())
             }
         };
         done.map_err(|e| format!("sheet op {op:?}: {e}"))?;
@@ -350,14 +383,27 @@ fn calculations(spec: &CaseSpec) -> usize {
 /// A spec table's `A1:B9` range on sheet `id`, without its last row when that is a totals row
 /// (`TableSpec::totals_row`).
 fn table_range(id: SheetId, a1: &str, totals_row: bool) -> Result<RangeRef, rustsheet::EditError> {
-    let (first, last) = parse_range(a1)
-        .ok_or_else(|| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
-    let bottom = (last.row - 1).saturating_sub(u32::from(totals_row));
+    let range = range_ref(id, a1)
+        .map_err(|_| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
+    let bottom = range.bottom.saturating_sub(u32::from(totals_row));
+    Ok(RangeRef::new(
+        id,
+        range.top,
+        range.left,
+        bottom,
+        range.right,
+    )?)
+}
+
+/// An A1 range (`A1:B4`, one-based) of sheet `id` as a facade range.
+pub(crate) fn range_ref(id: SheetId, a1: &str) -> Result<RangeRef, rustsheet::EditError> {
+    let (first, last) =
+        parse_range(a1).ok_or_else(|| rustsheet::EditError::Engine(format!("bad range {a1}")))?;
     Ok(RangeRef::new(
         id,
         first.row - 1,
         first.col - 1,
-        bottom,
+        last.row - 1,
         last.col - 1,
     )?)
 }
@@ -473,6 +519,65 @@ mod tests {
             evaluated.value("New", Addr { row: 1, col: 1 }),
             Some(Value::Empty)
         );
+    }
+
+    #[test]
+    fn structural_sheet_ops_shift_cells_and_rewrite_references() {
+        // T-2323: A3 refers to B2; a row delete above, a column insert left of it and a delete
+        // of the sheet and the table named by the later ops all replay in order.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1",
+                "sheets":[{"name":"Calc","cells":{"A1":1,"B2":5,"A3":"=B2*2","B3":"=SUM(A1:A2)",
+                                     "D1":"x","E1":"y","D2":1,"E2":2},
+                           "tables":[{"name":"Sales","ref":"D1:E2"}]},
+                          {"name":"Gone","cells":{"A1":1}}],
+                "sheet_ops":[{"op":"delete_row","sheet":"Calc","row":1},
+                             {"op":"insert_column","sheet":"Calc","column":"A"},
+                             {"op":"delete_column","sheet":"Calc","column":"A"},
+                             {"op":"delete_sheet","sheet":"Gone"},
+                             {"op":"delete_table","sheet":"Calc","table":"Sales"}]}"#,
+        );
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
+        // The deleted row 1 took A1; B2 moved to B1 and A3 to A2, still pointing at it.
+        assert_eq!(
+            evaluated.value("Calc", Addr { row: 2, col: 1 }),
+            Some(Value::Number(10.0))
+        );
+        assert_eq!(
+            evaluated.value("Calc", Addr { row: 1, col: 2 }),
+            Some(Value::Number(5.0))
+        );
+        // T-2341: the table's cells are cleared, so D1 is empty (table-delete-table F!A6).
+        assert_eq!(
+            evaluated.value("Calc", Addr { row: 1, col: 4 }),
+            Some(Value::Empty)
+        );
+    }
+
+    #[test]
+    fn convert_table_and_bad_structural_ops_are_adapter_errors() {
+        for op in [
+            r#"{"op":"convert_table","sheet":"Calc","table":"Sales"}"#,
+            r#"{"op":"delete_table","sheet":"Calc","table":"Nope"}"#,
+            r#"{"op":"delete_row","sheet":"Calc","row":0}"#,
+            r#"{"op":"delete_row","sheet":"Nope","row":1}"#,
+            r#"{"op":"insert_column","sheet":"Calc","column":"A1"}"#,
+            r#"{"op":"delete_column","sheet":"Calc","column":"XFE"}"#,
+            r#"{"op":"delete_sheet","sheet":"Calc"}"#,
+        ] {
+            let json = format!(
+                r#"{{"format":"rustsheet-case/v1",
+                    "sheets":[{{"name":"Calc","cells":{{"A1":"h","A2":1}},
+                                "tables":[{{"name":"Sales","ref":"A1:A2"}}]}}],
+                    "sheet_ops":[{op}]}}"#
+            );
+            assert!(
+                RustSheetEngine.evaluate_spec(&spec(&json), None).is_err(),
+                "{op}"
+            );
+        }
     }
 
     #[test]
@@ -614,6 +719,28 @@ mod tests {
                 "number_formats":{"nope":"0"}}]}"#,
         );
         assert!(RustSheetEngine.evaluate_spec(&bad_cell, None).is_err());
+    }
+
+    #[test]
+    fn spec_pivot_rendered_cells_reach_the_engine() {
+        let pivot = |rendered: &str| {
+            spec(&format!(
+                r#"{{"format":"rustsheet-case/v1","sheets":[{{"name":"S","cells":{{
+                    "A1":"Key","B1":"Val","A2":"a","B2":1,"A3":"b","B3":2,"H1":"=D2"}},
+                    "pivot_tables":[{{"name":"Pv","source":"A1:B3","location":"D1","row":"Key",
+                    "value":"Val","rendered":{rendered}}}]}}]}}"#
+            ))
+        };
+        let ok = pivot(r#"{"D1":"Row Labels","E1":"Sum of Val","D2":"a","E2":1}"#);
+        let evaluated = RustSheetEngine.evaluate_spec(&ok, None).expect("evaluates");
+        // The rendered cell is a constant a formula reads.
+        assert_eq!(
+            evaluated.value("S", Addr { row: 1, col: 8 }),
+            Some(Value::Text("a".into()))
+        );
+        // Without rendered cells the pivot has no location.
+        let err = RustSheetEngine.evaluate_spec(&pivot("{}"), None).err();
+        assert!(err.is_some_and(|e| e.contains("bake-pivots")));
     }
 
     #[test]

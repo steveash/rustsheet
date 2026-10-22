@@ -1,0 +1,69 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2278: XLOOKUP with a match_mode of 101 and an 8x2 array search_mode (gen-m6/e3a562557696e2fc A33), alone, under INDIRECT, and its parts: a mismatched return_array, an array search_mode, INDIRECT of an error and of an array.",
+  "tags": [
+    "probe",
+    "lookup",
+    "T-2278",
+    "M6"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A6": 0.2,
+        "C10": 0.5,
+        "C11": "1.5",
+        "C2": 1,
+        "C3": -2.5,
+        "C6": 1e-15,
+        "C7": true,
+        "C8": "#N/A",
+        "C9": -2.5,
+        "D11": 7,
+        "D2": 42,
+        "D4": 1e-15,
+        "D5": 123456789.123,
+        "D6": "x",
+        "D7": 2.5,
+        "D9": 2.5,
+        "E10": -0.0001,
+        "E11": 3.14159,
+        "E2": "x~*",
+        "E3": 3.14159,
+        "E4": 0.3,
+        "E5": true,
+        "E6": "x",
+        "E7": 2,
+        "E8": "1.5",
+        "E9": 1
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=INDIRECT(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,(Data!C$5+Data!E$4),(Data!$E9+100),INDEX(Data!D4:E11,0)),Data!A6)",
+        "A2": "=INDIRECT(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,(Data!C$5+Data!E$4),(Data!$E9+100),INDEX(Data!D4:E11,0)))",
+        "A3": "=ISERROR(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,(Data!C$5+Data!E$4),(Data!$E9+100),INDEX(Data!D4:E11,0)))",
+        "A4": "=ROWS(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,(Data!C$5+Data!E$4),(Data!$E9+100),INDEX(Data!D4:E11,0)))",
+        "A5": "=COLUMNS(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,(Data!C$5+Data!E$4),(Data!$E9+100),INDEX(Data!D4:E11,0)))",
+        "A6": "=ERROR.TYPE(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,(Data!C$5+Data!E$4),(Data!$E9+100),INDEX(Data!D4:E11,0)))",
+        "A7": "=ERROR.TYPE(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8))",
+        "A8": "=ERROR.TYPE(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,0.3,101))",
+        "A9": "=ERROR.TYPE(XLOOKUP(Data!D3,Data!E5:E9,Data!D5:D9,0.3,101))",
+        "A10": "=ERROR.TYPE(XLOOKUP(Data!D3,Data!E5:E9,Data!D5:D9,0.3,0,INDEX(Data!D4:E11,0)))",
+        "A11": "=ROWS(XLOOKUP(2,Data!E5:E9,Data!D5:D9,0.3,0,{1;2}))",
+        "A12": "=ERROR.TYPE(XLOOKUP(2,Data!E5:E9,Data!D5:D9,0.3,0,{1;2}))",
+        "A13": "=ERROR.TYPE(INDIRECT(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8)))",
+        "A14": "=ERROR.TYPE(INDIRECT(XLOOKUP(Data!D3,Data!E5:E9,Data!D5:D9,0.3,101)))",
+        "A15": "=ERROR.TYPE(INDIRECT(XLOOKUP(2,Data!E5:E9,Data!D5:D9,0.3,0,{1;2})))",
+        "A16": "=ERROR.TYPE(INDIRECT(XLOOKUP(Data!D3,Data!E5:E9,Data!D5:D9,0.3,0,INDEX(Data!D4:E11,0))))",
+        "A17": "=ERROR.TYPE(INDIRECT(1/0))",
+        "A18": "=ERROR.TYPE(INDIRECT(NA()))",
+        "A19": "=ERROR.TYPE(INDIRECT({\"Data!A6\";\"Data!A7\"}))",
+        "A20": "=ERROR.TYPE(INDIRECT(MAKEARRAY(2,1,LAMBDA(r,c,1/0))))",
+        "A21": "=ERROR.TYPE(INDIRECT(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,(Data!C$5+Data!E$4),(Data!$E9+100),INDEX(Data!D4:E11,0)),Data!A6))"
+      }
+    }
+  ]
+}

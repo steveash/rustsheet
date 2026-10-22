@@ -121,7 +121,7 @@ board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 
 # ---------------------------------------------------------------- Merge lock (decision 0075)
 .PHONY: merge-lock-acquire merge-lock-release merge-lock-status
-merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 (exit 1: busy)
+merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 (exit 1: busy; 3: PR already done)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_lock.py acquire --pr '$(PR)'
 

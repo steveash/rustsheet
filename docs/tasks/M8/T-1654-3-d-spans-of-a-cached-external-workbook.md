@@ -3,7 +3,7 @@ id: T-1654
 title: "3-D spans of a cached external workbook ([1]Uses:Defines!) parse and read the cache"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,12 +27,20 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 4 cells, 0 numeric pas
 | fixtures/external-link-cached-3d-span.xlsx Refs!B7 | `=ISREF([1]Uses:Defines!$A$1)` | FALSE | #ERROR! |
 
 ## Acceptance criteria
-- [ ] Visible parity: the 4 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 4 lines in eval/baseline/fixtures.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] fixtures/external-link-cached-3d-span B2:B10 pass; baseline updated with `make eval-baseline`.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 4 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 4 lines in eval/baseline/fixtures.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] fixtures/external-link-cached-3d-span B2:B10 pass; baseline updated with `make eval-baseline`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Opening or updating the linked workbook; 3-D spans of this workbook's own sheets.
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#ERROR!` where Excel reads a cached external 3-D span), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+The lexer reads `[n]First:Last!ref` as the quoted `'[n]First:Last'!ref`; `Model::cached_span_cells`
+reads the cached cells of the sheets between the ends (sheetNames order, either direction) in one
+walk of the cache, for the aggregates and COUNTA; the span is `#REF!` as a value and `#VALUE!` where
+one sheet is needed. Eval: fixtures known failures 9 -> 0 (external-link-cached-3d-span Refs!B2:B10,
+the 4 visibly-off cells included), no regressions. Unprobed forms are UNVERIFIED in references.md and
+go to T-2331.

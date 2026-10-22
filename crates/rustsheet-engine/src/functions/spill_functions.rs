@@ -228,18 +228,6 @@ impl Model {
 
     // ── SORT ──────────────────────────────────────────────────────────────────
 
-    /// Evaluates a `sort_order` argument without validating its value (an omitted one is 1).
-    fn get_sort_order_arg(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<i32, CalcResult> {
-        if matches!(node, Node::EmptyArgKind) {
-            return Ok(1);
-        }
-        Ok(self.get_number(node, cell)? as i32)
-    }
-
     fn validate_sort_order(order: i32, cell: CellReferenceIndex) -> Result<bool, CalcResult> {
         match order {
             1 => Ok(true),
@@ -263,7 +251,11 @@ impl Model {
     ///
     /// `array` is evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn fn_sort(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 4 {
+        let kind = Function::Sort;
+        if !kind
+            .arg_kinds()
+            .is_some_and(|kinds| kinds.accepts(args.len()))
+        {
             return CalcResult::new_args_number_error(cell);
         }
 
@@ -311,18 +303,46 @@ impl Model {
                 return e.clone();
             }
         }
-        let by_col: bool = if args.len() >= 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-        let raw_order = match raw_order {
-            Ok(list) => list,
-            Err(e) => return e,
-        };
+        // The array, sort_index and sort_order are read once here; by_col lifts over an array, one
+        // SORT per element (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`,
+        // gen-m7/7307132bb8820f17 A1076; T-2319). Each element sorts the whole array. That an
+        // element is its call's top-left, and that a range lifts too, is UNVERIFIED (T-2366).
+        let cells = u64::try_from(num_rows.saturating_mul(num_cols))
+            .unwrap_or(u64::MAX)
+            .max(1);
+        self.lift_call_costed(
+            kind,
+            args,
+            LiftCost::Cells(cells),
+            cell,
+            &mut |model, values| {
+                let by_col = match values.get(3) {
+                    None | Some(CalcResult::EmptyArg) => Ok(false),
+                    Some(value) => Self::cast_bool_ref(value, cell),
+                };
+                match (by_col, &raw_order) {
+                    (Err(error), _) => error,
+                    (Ok(_), Err(error)) => error.clone(),
+                    (Ok(by_col), Ok(raw_order)) => {
+                        model.sort_by_keys(&data, &raw_index, raw_order, by_col, cell)
+                    }
+                }
+            },
+        )
+    }
+
+    /// One SORT call over the read `data`: the `sort_index` and `sort_order` lists validated against
+    /// `data` (rows, or columns when `by_col`), then the sort.
+    fn sort_by_keys(
+        &self,
+        data: &[Vec<ArrayNode>],
+        raw_index: &[f64],
+        raw_order: &[f64],
+        by_col: bool,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let num_rows = data.len();
+        let num_cols = data.first().map_or(0, Vec::len);
         // An array or range sort_index is a list of keys, applied in order, and a sort_order list
         // must be as long (`SORT(A1:B3,{1;2})` sorts by column 1 then 2; `SORT(A1:B3,1,{1;-1})` is
         // `#VALUE!`: probes/m7-argument-modes F10:H11). Rows tied on a key are ordered by the
@@ -435,9 +455,12 @@ impl Model {
     ///   * `by_array` must have the same number of rows as array
     ///   * Valid argument counts: 2, 3, 5, 7, … (additional keys in pairs)
     pub(crate) fn fn_sortby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let n = args.len();
-        // Valid: 2, 3, 5, 7, ... (n==2 || n==3 || n>=5 with odd count)
-        if n < 2 || (n > 3 && n.is_multiple_of(2)) {
+        let kind = Function::Sortby;
+        // Valid: 2, 3, 5, 7, ... arguments (whole by_array, sort_order pairs).
+        if !kind
+            .arg_kinds()
+            .is_some_and(|kinds| kinds.accepts(args.len()))
+        {
             return CalcResult::new_args_number_error(cell);
         }
 
@@ -452,31 +475,61 @@ impl Model {
 
         let num_rows = data.len();
 
-        // Every argument is evaluated left to right and the first error wins before any value
-        // is validated (probes/sort-error-args H73-H105; docs/excel-semantics/arrays.md).
-        let mut raw_keys: Vec<(SortByArray, i32)> = Vec::new();
-        let mut i = 1;
-        while i < n {
-            let key = match self.eval_to_array(&args[i], cell) {
-                Ok(d) => d,
-                Err(e) => return e,
+        // The array and the by_arrays are read once here; the sort_orders lift over an array and
+        // a range (SPEC-0011 "Array-valued functions", T-1839). Each element sorts the whole
+        // array, so the call is charged its cells and the by_arrays' per element.
+        let keys: Vec<Result<SortByArray, CalcResult>> = (1..args.len())
+            .step_by(2)
+            .map(|i| self.eval_to_array(&args[i], cell))
+            .collect();
+        let cells = data.iter().map(Vec::len).sum::<usize>()
+            + keys
+                .iter()
+                .flatten()
+                .map(|key| key.iter().map(Vec::len).sum::<usize>())
+                .sum::<usize>();
+        let cells = u64::try_from(cells).unwrap_or(u64::MAX).max(1);
+        self.lift_call_costed(
+            kind,
+            args,
+            LiftCost::Cells(cells),
+            cell,
+            &mut |model, values| model.sortby_of(&data, &keys, values, num_rows, cell),
+        )
+    }
+
+    /// One SORTBY call over the read `data` and `keys`, with the `sort_orders` in `values` (at the
+    /// argument positions 2, 4, ...). Every argument is taken left to right and the first error
+    /// wins before any value is validated (probes/sort-error-args H73-H105;
+    /// docs/excel-semantics/arrays.md).
+    fn sortby_of(
+        &mut self,
+        data: &[Vec<ArrayNode>],
+        keys: &[Result<SortByArray, CalcResult>],
+        values: &[CalcResult],
+        num_rows: usize,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let mut raw_keys: Vec<(&SortByArray, i32)> = Vec::with_capacity(keys.len());
+        for (pair, key) in keys.iter().enumerate() {
+            let key = match key {
+                Ok(key) => key,
+                Err(error) => return error.clone(),
             };
-            let order = if i + 1 < n {
-                match self.get_sort_order_arg(&args[i + 1], cell) {
-                    Ok(o) => o,
-                    Err(e) => return e,
-                }
-            } else {
-                1
+            let order = match values.get(2 + 2 * pair) {
+                None | Some(CalcResult::EmptyArg) => 1,
+                Some(value) => match self.cast_to_number(value.clone(), cell) {
+                    Ok(order) => order as i32,
+                    Err(error) => return error,
+                },
             };
             raw_keys.push((key, order));
-            i += 2;
         }
 
         // Collect sort keys: (flat key column, ascending)
-        let mut sort_keys: Vec<(Vec<ArrayNode>, bool)> = Vec::new();
+        let mut sort_keys: Vec<(Vec<ArrayNode>, bool)> = Vec::with_capacity(raw_keys.len());
         for (key, order) in raw_keys {
-            let Some(key_flat) = extract_key_column(&key, num_rows) else {
+            let Some(key_flat) = extract_key_column(key, num_rows) else {
                 return CalcResult::new_error(
                     Error::VALUE,
                     cell,
@@ -521,14 +574,14 @@ impl Model {
         // The array is read once and handed to every element whole; by_col and exactly_once lift
         // over an array and a range (SPEC-0011 "Array-valued functions", T-1836). Each element
         // walks the array, so the call is charged its cells per element.
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+        // An error array is every element's result: `UNIQUE(<#VALUE!>,HSTACK(0.2,1E+15))` is two
+        // `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434; T-2300).
+        let data = self.eval_to_array(&args[0], cell);
+        let cells = match &data {
+            Ok(d) if d.is_empty() || d[0].is_empty() => return CalcResult::Array(vec![]),
+            Ok(d) => d.iter().map(Vec::len).sum::<usize>(),
+            Err(_) => 1,
         };
-        if data.is_empty() || data[0].is_empty() {
-            return CalcResult::Array(vec![]);
-        }
-        let cells = data.iter().map(Vec::len).sum::<usize>();
         let cells = u64::try_from(cells).unwrap_or(u64::MAX).max(1);
         self.lift_call_costed(
             kind,
@@ -536,12 +589,16 @@ impl Model {
             LiftCost::Cells(cells),
             cell,
             &mut |_, values| {
+                let data = match &data {
+                    Ok(data) => data,
+                    Err(error) => return error.clone(),
+                };
                 let flag = |index: usize| match values.get(index) {
                     None | Some(CalcResult::EmptyArg) => Ok(false),
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
                 match (flag(1), flag(2)) {
-                    (Ok(by_col), Ok(exactly_once)) => unique_of(&data, by_col, exactly_once, cell),
+                    (Ok(by_col), Ok(exactly_once)) => unique_of(data, by_col, exactly_once, cell),
                     (Err(error), _) | (_, Err(error)) => error,
                 }
             },

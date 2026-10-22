@@ -9,7 +9,7 @@ import pytest
 
 from rustsheet_tools.fitlab import fit
 from rustsheet_tools.fitlab.kernels import registry, solvers
-from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, parse_arg, serial_date
+from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
 
 
 def test_parse_arg_reads_array_literals_and_dates() -> None:
@@ -67,13 +67,11 @@ def test_xirr_fit_scores() -> None:
     assert s["bisect fitted, m=(a+b)/2"] == 225
     assert s["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 227
     oos = _scores("xirr-oos")
-    assert oos["cells"] == 22  # 11 numbers and 11 errors; the model solves three cells Excel rejects
-    assert (
-        oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 16
-    )  # 8 of 11 numbers, 8 of 11 errors
-    # T-1583: all 11 numbers, and 10 of 11 errors (two by non-convergence, not Excel's input check)
-    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 21
-    assert oos["bisect, first-value sign, fitted stop"] == 18
+    assert oos["cells"] == 52  # T-1591 added 30 cells (probes/xirr-span-zero-first)
+    assert oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 28
+    # T-1583 misses xirr-early-dates A7 (input check) and the root-0.1 cells at 20, 40 and 120 years (T-1591)
+    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 48
+    assert oos["bisect, first-value sign, fitted stop"] == 30
 
 
 @pytest.mark.usefixtures("real_cases")
@@ -166,3 +164,38 @@ def test_yield_back_chain_shares_a_frequency_independent_iterate() -> None:
         solvers.newton_back_chain(traces[k].args, traces[k].expected, 3)[3] for k in ("Y!C2", "Y!D2", "Y!E2")
     ]
     assert max(starts) - min(starts) < 1e-6
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_yield_start_sweep_newton_from_a_shared_start() -> None:
+    # T-2187: yield-start-sweep A1 (frequency 2) and B1 (frequency 1) step back to the same iterate as
+    # yield-solver-sweep S!A1; C1 (frequency 4) is at PRICE's root. Run forward from that start,
+    # analytic Newton returning the iterate after the first step below the cut gives Excel's value on
+    # every cell of columns A to C (redemption 100 to 101 at frequency 2, 1 and 4) to 5e-14 relative (worst 1.2e-14).
+    # The cells bracket the cut between 6.66e-6 and 7.11e-6; 6.9e-6 is an arbitrary point inside.
+    cells = load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells
+    by_key = {c.key: c for c in cells}
+    a1, b1 = (solvers.newton_back_chain(by_key[k].args, by_key[k].expected, 1)[1] for k in ("S!A1", "S!B1"))
+    assert abs(a1 - 0.0552344627) < 1e-10
+    assert abs(a1 - b1) < 1e-10
+    price_of, _, pr = solvers._bond_price(by_key["S!C1"].args)
+    assert abs(price_of(by_key["S!C1"].expected) - pr) < 1e-12
+    swept = [c for c in cells if c.address[0] in "ABC"]
+    assert len(swept) == 63
+    newton = solvers._newton_yield(a1, 6.9e-6)
+    for cell in swept:
+        assert abs(newton(*cell.args) - cell.expected) < 5e-14 * cell.expected, cell.key
+
+
+def test_yield_start_moves_with_the_basis_days_over_its_year() -> None:
+    # T-1592: yield-start-sweep D2 (basis 1) and D11 (basis 0) step back to hidden starts 1.04e-6 apart.
+    # A frequency-free annuity model over T = settlement-to-maturity days in the basis over 360 (basis 0)
+    # or 365 (basis 1), 1559/360 against 1581/365, moves by the same amount to 1e-8, whatever its
+    # compounding; over 366 or 365.25 days it would move 1e-6 to 1e-5 more.
+    cells = load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells
+    by_key = {c.key: c for c in cells}
+    d2, d11 = (solvers.newton_back_chain(by_key[k].args, by_key[k].expected, 1)[1] for k in ("S!D2", "S!D11"))
+    for m in (0, 1, 2, 4):
+        model = solvers._annuity_model_root(m)
+        moved = model(*by_key["S!D2"].args) - model(*by_key["S!D11"].args)
+        assert abs(moved - (d2 - d11)) < 3e-8, m

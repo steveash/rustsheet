@@ -449,13 +449,7 @@ impl UserModel {
         } else {
             old_value
         };
-        let mut diff_list = vec![Diff::SetCellValue {
-            sheet,
-            row,
-            column,
-            new_value: value.to_string(),
-            old_value: Box::new(old_value),
-        }];
+        let mut diff_list = vec![Diff::set_cell_value(sheet, row, column, value, old_value)];
         self.set_user_input_with_link_diffs(sheet, row, column, value.to_string(), &mut diff_list)?;
 
         self.evaluate_if_not_paused();
@@ -622,10 +616,10 @@ impl UserModel {
     /// * [`Model::delete_sheet`]
     pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-
         self.push_diff_list(vec![Diff::DeleteSheet {
             sheet,
             old_data: Box::new(worksheet.clone()),
+            tables: self.model.tables_on_sheet(&worksheet.name),
         }]);
 
         let sheet_count = self.model.workbook.worksheets.len() as u32;

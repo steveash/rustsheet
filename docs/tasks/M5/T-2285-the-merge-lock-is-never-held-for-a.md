@@ -3,7 +3,7 @@ id: T-2285
 title: "The merge lock is never held for a PR that is already merged or closed"
 milestone: M5
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ in the repository.
 
 ## Out of scope
 - Changing the TTL.
+
+## Outcome
+`acquire` reads the PR's state once from the GitHub API (`pr_finished`; unknown on any failure, as before): a merged or closed PR is refused with exit 3, and a lock whose PR is finished is taken over at any age. Decision 0097 and the steward paragraph record it; tests in scripts/test_merge_lock.py (17 pass). Eval delta: none.

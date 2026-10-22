@@ -8,7 +8,7 @@ priority: P2
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2187]
+depends_on: [T-2187, T-2304]
 ---
 
 ## Goal
@@ -37,7 +37,7 @@ rate, 0, 0.1 and the current yield do not give these values.
 ## Out of scope
 - Engine changes (T-1532).
 
-## Blocked because
+## Evidence so far (blocked until T-2187)
 No start formula fits, so the model cannot be raised from 3/90 with the evidence at hand. The lab now has
 `newton_back_chain` (solvers.py). A test pins the shared one-step-back iterate of S!A1 and S!F1:
 0.05523446268, equal to 1.1e-11 across frequencies 2 and 1. Candidates tried, with counts in financial.md
@@ -53,7 +53,19 @@ evidence: Excel cells whose YIELD is forced to stop after k iterations do not ex
 - Or the same back-chain analysis on PRICE's inverse with other day-count bases (probe cells with
   basis 1 to 4 and more than one coupon).
 
-Waiting on T-2187 (oracle sweep). Reopen when it lands.
+Unblocked by T-2187 (2026-10-21). probes/yield-start-sweep is now in `YIELD_CASES`. On its 63 basis-0 cells across
+redemption and frequency, analytic Newton run forward from the fixed start 0.0552344627 matches Excel to 1.2e-14 relative.
+It returns the iterate after the first step below about 7e-6 (the cut lies between 6.66e-6 and 7.11e-6).
+financial.md "YIELD stops short of PRICE's root" has the T-2187 paragraph. Next hypothesis: fit the start S as a
+function of rate, price and the basis's time to maturity (it moves with price, column E, and with basis 1/3 against
+0/4, column D, but not with redemption or frequency), then this step-size stop.
+
+## Blocked because
+Blocked because: needs T-2304 (YIELD probe cells across coupon rate and term). Second round (2026-10-21): the basis
+moves the start as days over 360 or 365 do (lab test), but none of six frequency-free start models raises the lab
+fit past the best candidate (Newton from 0.1 to 1e-12, 4/178 bit-exact), and every probe so far fixes the rate at
+0.05 and one set of dates, so a start formula in rate and term cannot be tested. Candidates and counts:
+financial.md "YIELD stops short of PRICE's root", T-1592 second round. Unblock when T-2304 is done.
 
 ## Visible-parity stage
 Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.

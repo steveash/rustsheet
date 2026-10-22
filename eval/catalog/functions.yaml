@@ -78,8 +78,9 @@
 #              also forbids during evaluation). Entries without `scope` (the M2 signatures) are in.
 #              SQL.REQUEST (in decision 0027's list) is absent: Microsoft no longer lists it and
 #              its page is gone, so it is not a current Excel function.
-#   oracle     none = the excel-graph oracle cannot return any value for the function (today
-#              INFO and SHEETS: the canary refuses workbooks that call them). A web value, error
+#   oracle     none = the excel-graph oracle cannot return any value for the function (no function
+#              today: INFO and SHEETS left it with T-2113, the canary now refuses only SHEETS() with no
+#              argument and INFO("numfile"), so their entries generate only the accepted forms). A web value, error
 #              values included, is a golden (decision 0039), so a function that is #NAME? or
 #              fails on the web is not `none`. Absent = the oracle evaluates it
 #              (probes/catalog/availability-*).
@@ -1688,7 +1689,7 @@ functions:
       - { name: array, mode: array, type: any }
       - { name: rows, mode: value, type: number, domain: { int: true, min: 1, max: 5 } }
       - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 5 } }
-      - { name: pad_with, mode: value, type: any, optional: true }
+      - { name: pad_with, mode: array, type: any, optional: true }
   - name: EXPON.DIST
     category: statistical
     milestone: M9
@@ -2458,7 +2459,17 @@ functions:
     params:
       - { name: ref_text, mode: value, type: text, domain: { enum: ["Data!A1", "Data!B3", "Data!$C$5", "Data!A2:A4", "Data!E12", "Data!Z99"] } }
       - { name: a1, mode: value, type: bool, optional: true }
-  - { name: INFO, category: information, milestone: M5, scope: in, oracle: none, v15: exempt, v15_reason: "a closed set of type texts, each covered" }  # the oracle canary refuses SHEETS()/INFO() workbooks (tools/src/rustsheet_tools/oracle/canary.py)
+  # Only the accepted forms are generated: the canary refuses INFO("numfile") (T-2113), so it is not in the enum.
+  - name: INFO
+    category: information
+    milestone: M5
+    scope: in
+    v15: exempt
+    v15_reason: "a closed set of type texts, each covered"
+    prior: 0.05
+    returns: any
+    params:
+      - { name: type_text, mode: value, type: text, domain: { enum: ["directory", "origin", "osversion", "recalc", "release", "system"], hard: true } }
   - name: INT
     category: math
     milestone: M5
@@ -3895,7 +3906,14 @@ functions:
     prior: 0.05
     returns: number
     params: [{ name: value, mode: array, type: any, optional: true }]
-  - { name: SHEETS, category: information, milestone: M5, scope: in, oracle: none }  # the oracle canary refuses SHEETS()/INFO() workbooks (tools/src/rustsheet_tools/oracle/canary.py)
+  # Only the accepted form is generated: the canary refuses SHEETS() with no argument (T-2113), so the reference is required.
+  - name: SHEETS
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: reference, mode: range, type: any, optional: true, always: true }]
   - name: SIGN
     category: math
     milestone: M5

@@ -4,7 +4,7 @@ title: "Legacy N over INDEX of a scalar with a 0 index is #VALUE! and FORMULATEX
 milestone: M2
 lane: functions-lookup
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: sonnet
 depends_on: []

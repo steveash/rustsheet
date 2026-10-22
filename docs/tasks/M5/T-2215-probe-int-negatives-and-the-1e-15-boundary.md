@@ -3,7 +3,7 @@ id: T-2215
 title: "Probe INT negatives and the 1E+15 boundary"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2171 cuts INT to 15 significant digits (`round_decimal`) below 1E+15 and floor
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/t2215-int-negatives-boundary` (63 cells, excel-graph) covers negatives, ties, fractions in (-1E15,-1E14] and the 1E+15 boundary up to 2^53. `fn_int` already matches every cell, so no code change beyond the comment; findings recorded in docs/excel-semantics/numbers.md. Eval delta: +63 passing probe cells, no regressions.

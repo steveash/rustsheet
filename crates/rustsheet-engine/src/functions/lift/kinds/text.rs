@@ -4,7 +4,8 @@
 use super::ArgKind::Lift;
 use super::KernelWork::Constant;
 use super::{
-    ArgKinds, CallResult, LIFT_1, LIFT_1_OF_2, LIFT_2, LIFT_2_OF_3, LIFT_3, LIFT_3_OF_4, LIFT_4,
+    ArgKinds, CallResult, LIFT_1, LIFT_1_OF_2, LIFT_1_OF_3, LIFT_2, LIFT_2_OF_3, LIFT_3,
+    LIFT_3_OF_4, LIFT_4,
 };
 use crate::functions::Function;
 
@@ -12,7 +13,7 @@ use crate::functions::Function;
 const CONCATENATE: ArgKinds = ArgKinds {
     required: 1,
     params: &[],
-    repeat: Some(Lift),
+    repeat: &[Lift],
     max: 255,
     work: Constant,
     result: CallResult::Value,
@@ -44,7 +45,11 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         | Function::Leftb
         | Function::Right
         | Function::Rightb
-        | Function::Valuetotext => Some(&LIFT_1_OF_2),
+        | Function::Valuetotext
+        | Function::Dollar => Some(&LIFT_1_OF_2),
+        // Every argument of DOLLAR, FIXED and NUMBERVALUE lifts over a range and an array, and
+        // mixed shapes broadcast with #N/A fill (probes/t2198-m5-lift-argument-kinds rows 20-35).
+        Function::Fixed | Function::Numbervalue => Some(&LIFT_1_OF_3),
         Function::Rept | Function::Exact | Function::Text | Function::Filterxml => Some(&LIFT_2),
         Function::Find | Function::Findb | Function::Search | Function::Searchb => {
             Some(&LIFT_2_OF_3)

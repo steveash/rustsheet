@@ -17,7 +17,7 @@ use crate::{
     model::Model,
     reference_operators::{
         empty_intersection, names_other_workbook, several_areas, several_areas_ref, too_many_areas,
-        Picked, MAX_AREAS,
+        Picked, RefArg, MAX_AREAS,
     },
 };
 
@@ -66,6 +66,19 @@ impl ExternalArea {
 /// (`'[other.xlsx]S1:S2'!A1`) is not a reference: ISREF is FALSE (external-ref-no-link-shapes
 /// A12). `None` also for an area off the grid.
 pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<ExternalArea> {
+    match written_external_area(node, cell)? {
+        (name, area) if !name.contains(':') => Some(area),
+        _ => None,
+    }
+}
+
+/// The sheet prefix of `node` and the area it covers when it is a reference written into another
+/// workbook, on one sheet (`[1]Uses`) or a 3-D span of its sheets (`[1]Uses:Defines`); `None`
+/// for any other node and an area off the grid.
+pub(crate) fn written_external_area(
+    node: &Node,
+    cell: CellReferenceIndex,
+) -> Option<(&str, ExternalArea)> {
     let (sheet_name, first, last) = match node.ungrouped() {
         Node::WrongReferenceKind {
             sheet_name,
@@ -94,10 +107,9 @@ pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<Ext
         ),
         _ => return None,
     };
-    let name = sheet_name.as_deref();
-    if !names_other_workbook(name) || name.is_some_and(|name| name.contains(':')) {
-        return None;
-    }
+    let name = sheet_name
+        .as_deref()
+        .filter(|name| names_other_workbook(Some(name)))?;
     // Relative coordinates are offsets from the formula's cell, as for a reference on a sheet.
     let absolute = |(row, column, absolute_row, absolute_column): (i32, i32, bool, bool)| {
         (
@@ -117,7 +129,7 @@ pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<Ext
         && area.first_column >= 1
         && area.last_row <= LAST_ROW
         && area.last_column <= LAST_COLUMN;
-    on_grid.then_some(area)
+    on_grid.then_some((name, area))
 }
 
 impl ExternalArea {
@@ -183,9 +195,9 @@ fn may_pick_external(node: &Node) -> bool {
 }
 
 /// Whether `node` may stand for a reference into another workbook, from its form alone: such a
-/// reference written, an external name, or INDEX, a reference operator, IF or CHOOSE over one.
-/// Bounded by the parser's depth cap.
-fn may_be_external(node: &Node) -> bool {
+/// reference written, an external name, or INDEX, a reference operator, IF, CHOOSE or LET over
+/// one. Bounded by the parser's depth cap.
+pub(crate) fn may_be_external(node: &Node) -> bool {
     match node.ungrouped() {
         Node::WrongReferenceKind { sheet_name, .. } | Node::WrongRangeKind { sheet_name, .. } => {
             names_other_workbook(sheet_name.as_deref())
@@ -198,35 +210,14 @@ fn may_be_external(node: &Node) -> bool {
         Node::OpUnionKind { left, right, .. } | Node::OpIntersectKind { left, right, .. } => {
             may_be_external(left) || may_be_external(right)
         }
-        // A LET whose body picks only such references stands for the one it picks
+        // A LET whose body may pick such a reference stands for the one it picks
         // (`ROWS(IF(TRUE,LET(c,1,…!A1:B3)))` is 3; probes/external-ref-no-link-let A13).
         Node::FunctionKind {
             kind: Function::Let,
             args,
-        } => let_picks_external(args),
+        } => args.last().is_some_and(may_be_external),
         node => may_pick_external(node),
     }
-}
-
-/// Whether `node` can only stand for a reference into another workbook or a value an IF or
-/// CHOOSE gives in its place, never a reference into this workbook: every argument IF or CHOOSE
-/// may pick is such a reference ([`may_be_external`]). Only such a LET body is read while its
-/// names are bound ([`Model::pick_reference`]), so a LET that may pick a reference into this
-/// workbook stays the reference it evaluates to. Bounded by the parser's depth cap.
-fn picks_only_external(node: &Node) -> bool {
-    match node.ungrouped() {
-        Node::FunctionKind {
-            kind: Function::If | Function::Choose,
-            args,
-        } => args.len() > 1 && args.iter().skip(1).all(picks_only_external),
-        node => may_be_external(node),
-    }
-}
-
-/// Whether a LET with arguments `args` has a body that picks only references into another
-/// workbook ([`picks_only_external`]).
-fn let_picks_external(args: &[Node]) -> bool {
-    args.last().is_some_and(picks_only_external)
 }
 
 /// What a reference argument stands for once IF, CHOOSE and LET have picked it
@@ -239,12 +230,17 @@ pub(crate) enum PickedReference<'a> {
     Node(&'a Node),
     /// The value an IF, CHOOSE or LET gives in place of a reference ([`Picked::Value`]).
     Value(CalcResult),
+    /// What a LET body that may pick a reference into another workbook picked instead, read
+    /// in reference context while the LET's names were bound
+    /// ([`Model::evaluate_picked_reference_arg`]): the reading a caller gives a LET.
+    Read(RefArg),
 }
 
 impl crate::functions::logical::ScopeResult for PickedReference<'_> {
     fn lambda(&self) -> Option<usize> {
         match self {
             PickedReference::Value(value) => value.lambda(),
+            PickedReference::Read(read) => read.lambda(),
             PickedReference::External(_) | PickedReference::Node(_) => None,
         }
     }
@@ -417,11 +413,14 @@ impl Model {
 
     /// `node` once IF, CHOOSE ([`Model::pick_branch`]) and LET have picked the argument it
     /// stands for, with a reference into another workbook read as its areas
-    /// ([`Model::external_reference`]). A LET whose body picks only such references
-    /// ([`picks_only_external`]) is read while its names are bound, so it is the reference its
-    /// body picks: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3, `ISREF` TRUE, `COUNTA` 0
-    /// (probes/external-ref-no-link-ifchoose A26, external-ref-no-link-let). Each condition,
-    /// index and LET value is read once. Bounded by the parser's depth cap.
+    /// ([`Model::external_reference`]). A LET whose body may pick such a reference
+    /// ([`may_be_external`]) is read while its names are bound, so it is the reference its body
+    /// picks, even where another argument could be picked: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` and
+    /// `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE,
+    /// `COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0 (probes/external-ref-no-link-ifchoose A26,
+    /// external-ref-no-link-let, external-ref-no-link-let-index A4:A7). Any other argument such a
+    /// body picks is read there too ([`PickedReference::Read`]). Each condition, index and LET
+    /// value is read once. Bounded by the parser's depth cap.
     pub(crate) fn pick_reference<'a>(
         &mut self,
         node: &'a Node,
@@ -436,15 +435,17 @@ impl Model {
             args,
         } = node
         {
-            if let_picks_external(args) {
+            if args.last().is_some_and(may_be_external) {
                 let picked = self.let_scope(args, cell, |model, body| {
                     match model.pick_reference(body, cell) {
                         PickedReference::External(areas) => PickedReference::External(areas),
                         PickedReference::Value(value) => PickedReference::Value(value),
-                        // A form that names another workbook but is no reference of it (an
-                        // area off the grid, an external name with no area): its value.
+                        PickedReference::Read(read) => PickedReference::Read(read),
+                        // The argument picked is no reference into another workbook (one into
+                        // this workbook, a value, or a form naming another workbook that is no
+                        // reference of it): read now, while the names it may use are bound.
                         PickedReference::Node(body) => {
-                            PickedReference::Value(model.evaluate_node_with_reference(body, cell))
+                            PickedReference::Read(model.evaluate_picked_reference_arg(body, cell))
                         }
                     }
                 });

@@ -4,15 +4,16 @@ use crate::functions::lift::lifting_table_functions;
 use crate::functions::lookup_and_reference::lifts_into_references;
 use crate::functions::Function;
 use broadcast::{broadcast_shapes, static_analysis_operator_chain};
+use if_arm::returns_range_arm;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
-    returns_range_arm,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
 mod aggregate;
 mod broadcast;
+mod if_arm;
 mod legacy;
 mod lifted;
 mod redundant;
@@ -22,16 +23,15 @@ mod row_column;
 mod signature;
 use signature::{
     args_signature_arraytotext, args_signature_bycol_byrow, args_signature_cell,
-    args_signature_choose, args_signature_choosecols, args_signature_expand,
-    args_signature_fieldvalue, args_signature_filter, args_signature_getpivotdata,
-    args_signature_groupby, args_signature_hlookup, args_signature_ifs, args_signature_index,
-    args_signature_lambda, args_signature_let, args_signature_lookup, args_signature_map,
-    args_signature_match, args_signature_npv, args_signature_offset, args_signature_one_vector,
-    args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
-    args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sortby,
-    args_signature_sumif, args_signature_textafter, args_signature_textjoin,
-    args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_wrapcols, args_signature_xlookup, args_signature_xmatch, Signature,
+    args_signature_choose, args_signature_choosecols, args_signature_fieldvalue,
+    args_signature_filter, args_signature_getpivotdata, args_signature_groupby,
+    args_signature_hlookup, args_signature_ifs, args_signature_index, args_signature_lambda,
+    args_signature_let, args_signature_lookup, args_signature_map, args_signature_match,
+    args_signature_npv, args_signature_offset, args_signature_one_vector, args_signature_pivotby,
+    args_signature_randarray, args_signature_reduce, args_signature_row, args_signature_scalars,
+    args_signature_scan, args_signature_sumif, args_signature_textafter, args_signature_textjoin,
+    args_signature_textsplit, args_signature_trimrange, args_signature_xlookup,
+    args_signature_xmatch, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -112,13 +112,28 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         | Node::EmptyArgKind
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
-        | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
         | Node::OpUnionKind { .. }
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
+        // A span of one sheet is that sheet's reference (`=@Data1:Data1!A1` is 1,
+        // probes/3d-ref-span-edges B2), so its range gets the `@` a plain range gets (T-2351).
+        // A wider span is `#REF!` as a value either way and gets none.
+        Node::SheetSpanKind {
+            first_index,
+            last_index,
+            reference,
+            ..
+        } => {
+            if add
+                && first_index == last_index
+                && matches!(reference.as_ref(), Node::RangeKind { .. })
+            {
+                *node = Node::automatic_at(node.clone());
+            }
+        }
         Node::ImplicitIntersection { child, .. } => {
             // We need to check whether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
@@ -159,6 +174,13 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
             }
         }
         Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
+        // A structured reference is its area: a range gets the `@` a plain range gets, around
+        // the reference as written (SPEC-0016).
+        Node::StructuredReferenceKind { lowered, .. } => {
+            if add && matches!(lowered.as_ref(), Node::RangeKind { .. }) {
+                *node = Node::automatic_at(node.clone());
+            }
+        }
         // A range of another workbook too (fixtures/external-link-cached-ranges Refs!B44, T-1526).
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::WrongRangeKind { .. } => {
             if add {
@@ -278,7 +300,9 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::WrongReferenceKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
         Node::WrongRangeKind { .. } => wrong_range_shape(node), // T-1454
-        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+        Node::UnaryKind { right: child, .. }
+        | Node::Group { child, .. }
+        | Node::StructuredReferenceKind { lowered: child, .. } => {
             run_static_analysis_on_node(child)
         }
         Node::NamedFunctionKind { .. } => {
@@ -302,8 +326,22 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
             StaticResult::Unknown
         }
-        // A 3-D reference is a value only as an error (`#REF!`), so it never spills.
-        Node::ReferenceKind { .. } | Node::SheetSpanKind { .. } => StaticResult::Scalar,
+        Node::ReferenceKind { .. } => StaticResult::Scalar,
+        // A span of one sheet evaluates as that sheet's reference, so it has its shape
+        // (`Model::get_sheet_span_value`, T-2351); a wider 3-D reference is a value only as an
+        // error (`#REF!`), so it never spills.
+        Node::SheetSpanKind {
+            first_index,
+            last_index,
+            reference,
+            ..
+        } => {
+            if first_index == last_index {
+                run_static_analysis_on_node(reference)
+            } else {
+                StaticResult::Scalar
+            }
+        }
 
         // binary operations
         Node::OpConcatenateKind { .. }
@@ -430,7 +468,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Areas | Function::Phonetic => args_signature_one_vector(arg_count),
         Function::Choosecols => args_signature_choosecols(arg_count),
         Function::Chooserows => args_signature_choosecols(arg_count),
-        Function::Expand => args_signature_expand(arg_count),
         Function::Hlookup => args_signature_hlookup(arg_count),
         Function::Hstack => vec![Signature::Vector; arg_count],
         Function::Index => args_signature_index(arg_count),
@@ -442,15 +479,10 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Rows => args_signature_one_vector(arg_count),
         Function::Vlookup => args_signature_hlookup(arg_count),
         Function::Vstack => vec![Signature::Vector; arg_count],
-        Function::Wrapcols => args_signature_wrapcols(arg_count),
-        Function::Wraprows => args_signature_wrapcols(arg_count),
         Function::Xlookup => args_signature_xlookup(arg_count),
         Function::Xmatch => args_signature_xmatch(arg_count),
         Function::Trimrange => args_signature_trimrange(arg_count),
-        Function::Sort => args_signature_sort(arg_count),
-        Function::Sortby => args_signature_sortby(arg_count),
         Function::Filter => args_signature_filter(arg_count),
-        Function::Torow => args_signature_tocol(arg_count),
         Function::Transpose => args_signature_one_vector(arg_count),
         Function::Mmult => {
             if arg_count == 2 {
@@ -501,12 +533,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Clean => args_signature_scalars(arg_count, 1, 0),
         Function::Asc | Function::Dbcs => args_signature_scalars(arg_count, 1, 0),
         Function::Arraytotext => args_signature_arraytotext(arg_count),
-        Function::Dollar => args_signature_scalars(arg_count, 1, 1),
         Function::Image => args_signature_scalars(arg_count, 1, 4),
         Function::Stockhistory => args_signature_scalars(arg_count, 2, 9),
         Function::Fieldvalue => args_signature_fieldvalue(arg_count),
-        Function::Fixed => args_signature_scalars(arg_count, 1, 2),
-        Function::Numbervalue => args_signature_scalars(arg_count, 1, 2),
         Function::Proper => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
         Function::Gcd => vec![Signature::Vector; arg_count],
@@ -685,7 +714,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Areas => aggregate::areas_static_result(args),
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
-        Function::Expand => StaticResult::Unknown,
         Function::Hlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
         // INDEX has two forms, but they are indistinguishable at parse time.
@@ -699,8 +727,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Rows => not_implemented(args),
         Function::Vlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Vstack => StaticResult::Unknown,
-        Function::Wrapcols => StaticResult::Unknown,
-        Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => StaticResult::Unknown,
         // Spills by lookup_value, match_mode and search_mode, broadcast; lookup_array is consumed
         // (T-1241, T-1958).
@@ -711,13 +737,13 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
                 .map(|(_, a)| a),
         ),
         Function::Trimrange => reference_result::static_analysis_trimrange(args),
-        Function::Sort | Function::Sortby => StaticResult::Unknown,
         Function::Filter => StaticResult::Unknown,
-        Function::Torow | Function::Transpose => StaticResult::Unknown,
+        Function::Transpose => StaticResult::Unknown,
         Function::Mmult => StaticResult::Unknown,
         Function::Bycol | Function::Byrow => StaticResult::Unknown,
         Function::Groupby | Function::Pivotby => StaticResult::Unknown,
-        Function::Getpivotdata => StaticResult::Scalar,
+        // Spills by its items, broadcast; the other arguments never lift (SPEC-0015, T-2083).
+        Function::Getpivotdata => broadcast_static_result(args.iter().skip(3).step_by(2)),
         Function::Map | Function::Reduce => StaticResult::Unknown,
         Function::Scan => StaticResult::Unknown,
         Function::Randarray => StaticResult::Unknown,
@@ -739,11 +765,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Asc | Function::Dbcs => scalar_arguments(args),
         Function::Phonetic => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
-        Function::Dollar => not_implemented(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
-        Function::Fixed => not_implemented(args),
-        Function::Numbervalue => not_implemented(args),
         Function::Proper => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
         Function::Average => not_implemented(args),
