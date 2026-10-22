@@ -44,6 +44,7 @@ fn substitute_instance_num_above_2_pow_31_minus_2_is_value_error() {
     model._set("A3", "=SUBSTITUTE(\"abc\",\"z\",\"x\",1E+15)");
     model._set("A4", "=SUBSTITUTE(\"abc\",\"\",\"x\",1E+15)");
     model._set("A5", "=SUBSTITUTE(\"bbb\",\"b\",\"x\",1.5)");
+    model._set("A6", "=SUBSTITUTE(\"\",\"b\",\"x\",1E+15)");
 
     model.evaluate();
 
@@ -52,4 +53,5 @@ fn substitute_instance_num_above_2_pow_31_minus_2_is_value_error() {
     assert_eq!(model._get_text("A3"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#VALUE!");
     assert_eq!(model._get_text("A5"), *"xbb");
+    assert_eq!(model._get_text("A6"), *"#VALUE!");
 }

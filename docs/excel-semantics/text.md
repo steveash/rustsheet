@@ -839,7 +839,8 @@ Rule: SUBSTITUTE floors instance_num and gives `#VALUE!` unless the result is in
 `#VALUE!`; 32767, 65536, 2^30 and 2147483520 are fine; 2^31, 2^32, 2^53, 1E+10, 1E+15 and 1E+300 are
 `#VALUE!`; 0.5 is `#VALUE!` and 1.5 acts as 1. This explains gen-m6/9615a6de0f3ac417 Calc!A144
 (`LOOKUP(SUBSTITUTE(...,1E+15),...)` is `#VALUE!`).
-Evidence: probes/substitute-instance-num-bound (excel-graph, 2026-10-21).
+Evidence: probes/substitute-instance-num-bound (excel-graph, 2026-10-21). Its D5 (an array instance_num) is
+`#SPILL!` only because the probe cell has no room to spill; it says nothing about the bound.
 Status: implemented (`substitute_element`)
 Tasks: T-2279
 
