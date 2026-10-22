@@ -86,6 +86,20 @@ const SORTBY: ArgKinds = ArgKinds {
     result: CallResult::ArrayFirst,
 };
 // --- End M7 (T-1839) ---
+// --- M7 (T-1835) ---
+/// `EXPAND(array, rows, [columns], [pad_with])`: rows and columns lift over an array and a range
+/// (`ROWS(EXPAND(A1:A2,{3;4}))` is 2, probes/m7-argument-modes F7:H7; columns,
+/// probes/m7-lift-take-drop-sortby row 20), `pad_with` does not: an array there is `#VALUE!` (same
+/// case row 21). The array is read once by the function and handed to every element whole; each
+/// element walks it (`LiftCost::Cells`) and is charged the cells it builds.
+const EXPAND: ArgKinds =
+    ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift, Whole], Output { weight: 1 }).array();
+/// `WRAPROWS(vector, wrap_count, [pad_with])` and WRAPCOLS: `wrap_count` and `pad_with` lift over an
+/// array and a range (`ROWS(WRAPROWS(A1:A3,{1;2}))` is 2, probes/m7-argument-modes F8:H8, G42;
+/// probes/m7-lift-take-drop-sortby rows 22-23). Read and charged as [`EXPAND`].
+const WRAP: ArgKinds =
+    ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();
+// --- End M7 (T-1835) ---
 // --- End array-valued (T-1834) ---------------------------------------------------------------
 
 /// This family's part of the lifting table (`Function::arg_kinds`).
@@ -138,6 +152,8 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Sequence => Some(&SEQUENCE),
         Function::Makearray => Some(&MAKEARRAY),
         Function::Take | Function::Drop => Some(&TAKE_DROP),
+        Function::Expand => Some(&EXPAND),
+        Function::Wrapcols | Function::Wraprows => Some(&WRAP),
         Function::Tocol => Some(&TOCOL),
         Function::Unique => Some(&UNIQUE),
         Function::Sortby => Some(&SORTBY),

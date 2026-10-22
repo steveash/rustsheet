@@ -1352,6 +1352,18 @@ Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes every Total col
 Status: VERIFIED
 Tasks: T-2311
 
+## EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not
+Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes/m7-lift-take-drop-sortby rows 20-23,
+2026-10-21; T-1835): EXPAND's rows and columns, and WRAPROWS's and WRAPCOLS's wrap_count and pad_with, lift over an array
+and a range, one call per element whose value is its top-left (`ROWS(EXPAND(A1:A2,{3;4}))` is 2,
+`COLUMNS(WRAPCOLS(A1:A3,2,{0;1}))` is 1). EXPAND's pad_with does not lift: an array there makes the whole call `#VALUE!`
+(`ROWS(EXPAND(A1:A2,3,1,{0;1}))` is `#VALUE!`, not 3 rows padded with errors). Implemented through the lifting table.
+Open (follow-up in T-1835's Handoff): when the vector argument is itself an error (`WRAPROWS(<#VALUE!>,-1,<array>)`,
+gen-m7/90de8755a2e565e6 A889), Excel fills the whole lifted shape of the other arguments with that error; ours returns
+the one error.
+Status: VERIFIED (excel-graph)
+Tasks: T-1835
+
 ## WRAPROWS and WRAPCOLS with a huge wrap_count
 Rule: a wrap_count around 1E+15 or more is `#NUM!`, although a wrap_count past the vector's length is otherwise clamped (see
 "Stacked results past the grid": `COLUMNS(WRAPROWS(SEQUENCE(16385),16385))` is 16385). `WRAPROWS(Data!E6:E10,1000000000000001.5,..)`
