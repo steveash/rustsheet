@@ -346,6 +346,7 @@ fn networkdays_handles_large_date_ranges_efficiently() {
     );
 }
 
+/// UNVERIFIED: counting (not skipping) number text; the oracle cells use serial 1, outside every range.
 /// Excel: a one-cell holidays reference to a blank cell is no holiday, and a holiday cell holding
 /// number text is one (docs/excel-semantics/dates.md "WORKDAY and NETWORKDAYS holidays", T-2270).
 #[test]
