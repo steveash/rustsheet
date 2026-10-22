@@ -3,7 +3,7 @@ id: T-0451
 title: "Probe circular references without iteration: a spilling reader, and readers that take a reference without its value"
 milestone: M3
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -33,3 +33,9 @@ answers in recalc.md. If ours differs, file a functions/engine task for the cell
 
 ## Out of scope
 - Iterative calculation.
+
+## Outcome
+Added probes/t0451-circular-spill-and-ref-readers (filled on excel-graph). Excel: a would-be spill that reads a
+loop is one 0 with no spill; reference-only readers (ISREF, CELL, ROWS, COLUMNS, OFFSET, INDEX, ISFORMULA) are
+not reads, INDIRECT is. Ours already matches on all 17 cells, so no follow-up task. Eval delta: +1 case, +17 cells,
+all bit-exact; no baseline change.
