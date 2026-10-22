@@ -3,7 +3,7 @@ id: T-2232
 title: "Probe CELL info_type grid elements that are errors or non-text (array and range)"
 milestone: M9
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ CELL over an info_type grid (array or multi-cell range) has oracle evidence for 
 
 ## Out of scope
 -
+
+## Outcome
+Probed with excel-graph (probes/info-cell-info-type-grid-errors). An error element of an info_type grid now passes through instead of `#VALUE!` (`lifted_cell`); other non-text stays `#VALUE!`. Recorded in information.md. Eval: probe case 17/17 cells pass (new case, no baseline change).

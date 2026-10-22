@@ -683,7 +683,9 @@ impl Model {
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
     }
 
-    /// One `CELL` result per element of an `info_type` grid; a non-text element is `#VALUE!`.
+    /// One `CELL` result per element of an `info_type` grid; an error element passes through and
+    /// any other non-text element (number, boolean, blank) is `#VALUE!` (probes/
+    /// info-cell-info-type-grid-errors, excel-graph, T-2232).
     fn lifted_cell(
         &mut self,
         types: &[Vec<ArrayNode>],
@@ -699,6 +701,7 @@ impl Model {
                         ArrayNode::String(name) => {
                             calc_result_to_array_node(self.cell_info(name, ranges, reference, cell))
                         }
+                        ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
                         _ => ArrayNode::Error(Error::VALUE),
                     })
                     .collect()
