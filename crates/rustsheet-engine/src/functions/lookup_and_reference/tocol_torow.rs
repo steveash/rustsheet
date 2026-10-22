@@ -18,50 +18,9 @@ impl Model {
     ///   * ignore: 0=keep all (default), 1=ignore blanks, 2=ignore errors, 3=ignore both
     ///   * `scan_by_col`: FALSE=row-by-row (default), TRUE=column-by-column
     pub(crate) fn fn_tocol(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let kind = Function::Tocol;
-        if !kind
-            .arg_kinds()
-            .is_some_and(|kinds| kinds.accepts(args.len()))
-        {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // The array is read once and handed to every element whole; ignore and scan_by_column
-        // lift over an array and a range (SPEC-0011 "Array-valued functions", T-1836). Each
-        // element walks the array, so the call is charged its cells per element.
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(data) => data,
-            Err(error) => return error,
-        };
-        let cells = data.iter().map(Vec::len).sum::<usize>();
-        let cells = u64::try_from(cells).unwrap_or(u64::MAX).max(1);
-        self.lift_call_costed(
-            kind,
-            args,
-            LiftCost::Cells(cells),
-            cell,
-            &mut |model, values| {
-                let ignore = match values.get(1) {
-                    None | Some(CalcResult::EmptyArg) => Ok(0),
-                    Some(value) => model
-                        .cast_number_ref(value, cell)
-                        .and_then(|n| ignore_mode(n, cell)),
-                };
-                let scan_by_col = match values.get(2) {
-                    None | Some(CalcResult::EmptyArg) => Ok(false),
-                    Some(value) => Self::cast_bool_ref(value, cell),
-                };
-                match (ignore, scan_by_col) {
-                    (Ok(ignore), Ok(scan_by_col)) => match flatten_data(&data, ignore, scan_by_col)
-                    {
-                        Some(flat) => {
-                            CalcResult::Array(flat.into_iter().map(|v| vec![v]).collect())
-                        }
-                        None => empty_flatten(cell),
-                    },
-                    (Err(error), _) | (_, Err(error)) => error,
-                }
-            },
-        )
+        self.lift_flatten(Function::Tocol, args, cell, |flat| {
+            flat.into_iter().map(|v| vec![v]).collect()
+        })
     }
 
     // ── TOROW ─────────────────────────────────────────────────────────────────
@@ -72,37 +31,76 @@ impl Model {
     ///   * ignore: 0=keep all (default), 1=ignore blanks, 2=ignore errors, 3=ignore both
     ///   * `scan_by_col`: FALSE=row-by-row (default), TRUE=column-by-column
     pub(crate) fn fn_torow(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        match self.flatten_array_impl(args, cell) {
-            Ok(flat) => CalcResult::Array(vec![flat]),
-            Err(e) => e,
-        }
+        self.lift_flatten(Function::Torow, args, cell, |flat| vec![flat])
     }
 
-    fn flatten_array_impl(
+    /// TOCOL and TOROW: the array is read once and handed to every element whole; ignore and
+    /// scan_by_column lift over an array and a range (SPEC-0011 "Array-valued functions"; TOCOL
+    /// T-1836, TOROW T-2313: `TOROW(Data!B3:E8,3,WRAPCOLS(Data!D3:D11,1))` is one element per
+    /// scan_by_column entry, gen-m7/7d67c559ce7536fa A619:E619). Each element walks the array, so
+    /// the call is charged its cells per element; `shape` lays the flat values out.
+    fn lift_flatten(
         &mut self,
+        kind: Function,
         args: &[Node],
         cell: CellReferenceIndex,
-    ) -> Result<Vec<ArrayNode>, CalcResult> {
-        if args.is_empty() || args.len() > 3 {
-            return Err(CalcResult::new_args_number_error(cell));
+        shape: fn(Vec<ArrayNode>) -> Vec<Vec<ArrayNode>>,
+    ) -> CalcResult {
+        if !kind
+            .arg_kinds()
+            .is_some_and(|kinds| kinds.accepts(args.len()))
+        {
+            return CalcResult::new_args_number_error(cell);
         }
-
-        let data = self.eval_to_array(&args[0], cell)?;
-
-        let ignore: u8 = if args.len() >= 2 {
-            let n = self.get_number(&args[1], cell)?;
-            ignore_mode(n, cell)?
-        } else {
-            0
-        };
-
-        let scan_by_col: bool = if args.len() >= 3 {
-            self.get_boolean(&args[2], cell)?
-        } else {
-            false
-        };
-
-        flatten_data(&data, ignore, scan_by_col).ok_or_else(|| empty_flatten(cell))
+        // An array that is an error is every element's result: `TOROW(<#NUM!>,3,<5x3 SCAN>)`
+        // spills 15 `#NUM!`s (gen-m7/611ce3bbfab27cef A919:C923); unlifted it is the one error.
+        let data = self.eval_to_array(&args[0], cell);
+        let cells = data.as_ref().map_or(1, |data| {
+            let cells = data.iter().map(Vec::len).sum::<usize>();
+            u64::try_from(cells).unwrap_or(u64::MAX).max(1)
+        });
+        self.lift_call_costed(
+            kind,
+            args,
+            LiftCost::Cells(cells),
+            cell,
+            &mut |model, values| {
+                let data = match &data {
+                    Ok(data) => data,
+                    Err(error) => return error.clone(),
+                };
+                let ignore = values.get(1).filter(|v| !matches!(v, CalcResult::EmptyArg));
+                let scan_by_col = values.get(2).filter(|v| !matches!(v, CalcResult::EmptyArg));
+                // An error argument comes before an invalid one: `TOCOL(Data!B1:B5,Data!B8,NA())`
+                // with an invalid ignore is `#N/A` (gen-m7/8044dce50616cfe9 A1508).
+                for value in [ignore, scan_by_col].into_iter().flatten() {
+                    if value.is_error() {
+                        return value.clone();
+                    }
+                }
+                let ignore = match ignore {
+                    None => 0,
+                    Some(value) => match model
+                        .cast_number_ref(value, cell)
+                        .and_then(|n| ignore_mode(n, cell))
+                    {
+                        Ok(ignore) => ignore,
+                        Err(error) => return error,
+                    },
+                };
+                let scan_by_col = match scan_by_col {
+                    None => false,
+                    Some(value) => match Self::cast_bool_ref(value, cell) {
+                        Ok(scan_by_col) => scan_by_col,
+                        Err(error) => return error,
+                    },
+                };
+                match flatten_data(data, ignore, scan_by_col) {
+                    Some(flat) => CalcResult::Array(shape(flat)),
+                    None => empty_flatten(cell),
+                }
+            },
+        )
     }
 }
 
