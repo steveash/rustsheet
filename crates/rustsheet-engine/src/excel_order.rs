@@ -99,19 +99,9 @@ impl Model {
     /// The formula cells of the workbook in natural `(sheet, row, column)` order: the chain
     /// starts at the last one.
     fn formula_positions(&self) -> Vec<CellReferenceIndex> {
-        let mut found = Vec::new();
-        for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
-                if matches!(cell, Cell::CellFormula { .. } | Cell::ArrayFormula { .. }) {
-                    found.push(CellReferenceIndex {
-                        sheet: sheet as u32,
-                        row,
-                        column,
-                    });
-                }
-            }
-        }
-        found
+        self.positions_where(|cell| {
+            matches!(cell, Cell::CellFormula { .. } | Cell::ArrayFormula { .. })
+        })
     }
 
     /// Everything after the anchors of a pass in Excel order. The anchors ran first, as in the

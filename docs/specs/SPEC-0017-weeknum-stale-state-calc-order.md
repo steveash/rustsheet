@@ -130,7 +130,9 @@ and unwinding on ordinary workbooks, for a function almost no workbook uses this
   cells after them form the chain. The anchor part of the pass is then the default pass's, so its
   restarts are too, and `RestartLog`'s proof that restarts end still holds; after the anchors no
   cell can restart the pass. gen-m6 showed that a spilling formula empties the state at its place
-  in the order (dates.md), so the chain empties it when it reaches an anchor's position.
+  in the order (dates.md), so the chain empties it when it reaches an anchor's position. The chain's cells are the formula
+  positions collected once per pass in natural order (`formula_positions`), walked from the last;
+  the links index that list, and a precedent is found in it by binary search.
 
 T-2069 replaces "sheet index" in the reversed order with the sheet's load rank. This is a
 `load_rank: u32` per worksheet, set from the sheet's position when the workbook is read, and set to

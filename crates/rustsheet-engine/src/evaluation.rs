@@ -269,8 +269,9 @@ pub(crate) struct Evaluation {
     pub(crate) unwinding: bool,
     /// GETPIVOTDATA's per-pivot indices and memo, dropped at each `evaluate()` (`pivot_index.rs`).
     pub(crate) pivot_indexes: crate::functions::lookup_and_reference::pivot_index::PivotIndexes,
-    /// WEEKNUM's stale `return_type` state, and whether a WEEKNUM read it in this pass (SPEC-0017).
+    /// WEEKNUM's stale `return_type` state (SPEC-0017).
     pub(crate) weeknum_start: Option<WeeknumStart>,
+    /// Whether a WEEKNUM read that state in this pass.
     pub(crate) weeknum_read: bool,
     /// Passes run in Excel's fresh-load order (`excel_order.rs`): set once a pass had a reader.
     pub(crate) excel_order: bool,
@@ -518,14 +519,23 @@ impl Model {
     }
 
     fn dynamic_anchors_in_natural_order(&self) -> Vec<CellReferenceIndex> {
+        self.positions_where(|cell| {
+            matches!(
+                cell,
+                Cell::ArrayFormula {
+                    kind: ArrayKind::Dynamic,
+                    ..
+                }
+            )
+        })
+    }
+
+    /// The positions of the cells that `keep` accepts, in natural `(sheet, row, column)` order.
+    pub(crate) fn positions_where(&self, keep: impl Fn(&Cell) -> bool) -> Vec<CellReferenceIndex> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
-                if let Cell::ArrayFormula {
-                    kind: ArrayKind::Dynamic,
-                    ..
-                } = cell
-                {
+                if keep(cell) {
                     found.push(CellReferenceIndex {
                         sheet: sheet as u32,
                         row,
