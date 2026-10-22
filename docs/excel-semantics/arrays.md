@@ -1221,7 +1221,7 @@ ISOMITTED inside `LAMBDA(x,[y],...)` matches ours in every probed form (A20-A49)
 (`(1,)`, A24-A25) counts as omitted and so does a required parameter left empty (`(,2)`, A34), while `""` (A26-A27) and a reference to a
 filled cell (A28-A31) count as supplied (FALSE), and so is a reference to a blank cell: `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank is FALSE (probes/dynamic-array-reshape-reprobe E20-E21); outside a LAMBDA `ISOMITTED(5)`, `ISOMITTED(A1)` and `ISOMITTED(#N/A)` are FALSE (A43-A45).
 A function result is not omitted either: `ISOMITTED(LOOKUP(ROWS(Data!D$3),Data!C9:C12,Data!B10:B12))` (an unsorted lookup vector, a
-shorter result vector over blank cells) is FALSE (gen-m7/2c5ea078f25443a2 Calc!A1087, excel-graph, 2026-10-21, T-2225). Ours: TRUE (T-2317).
+shorter result vector over blank cells) is FALSE (gen-m7/2c5ea078f25443a2 Calc!A1087, excel-graph, 2026-10-21, T-2225). Ours: FALSE for a LOOKUP call since T-2317 (`fn_isomitted`); other built-ins that can pass an omitted parameter through (`IF(TRUE,y)`, `CHOOSE`, `LET`, `IFERROR`) and a LAMBDA call around the LOOKUP are unprobed and unchanged.
 Status: VERIFIED (excel-graph)
 Tasks: T-1627, T-1630, T-1632
 
