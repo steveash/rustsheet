@@ -1,6 +1,6 @@
 ---
 id: T-2406
-title: "NUMBERVALUE with a comma decimal separator and no group separator: NUMBERVALUE(\"1.5\",\",\") is 15"
+title: "NUMBERVALUE with a comma decimal separator and no group separator reads the text 1.5 as 15"
 milestone: M5
 lane: functions-text
 status: todo
