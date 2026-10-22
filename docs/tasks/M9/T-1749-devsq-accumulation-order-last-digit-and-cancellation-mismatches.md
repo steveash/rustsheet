@@ -15,7 +15,7 @@ depends_on: []
 DEVSQ matches Excel's value to the last digit, including under cancellation.
 
 ## Context
-Oracle: `DEVSQ(L1:L6)` = 48.833333333333336 (ours ...34), `DEVSQ(0.1,0.2,0.3)` = 0.019999999999999997 (ours ...976), `DEVSQ(1E15,1E15+1)` = 0.5 (ours 0), plus 1-ulp cases A278, A280, A290, A300 in probes/stat-order-floor-batch. Excel looks like a mean-then-squared-deviation two-pass; fit the accumulation order against these cells (see coercion.md note on I392).
+Oracle: `DEVSQ(L1:L6)` = 48.833333333333336 (ours ...34), `DEVSQ(0.1,0.2,0.3)` = 0.019999999999999997 (ours ...976), `DEVSQ(1E15,1E15+1)` = 0.5 (ours 0), plus 1-ulp cases A278, A280, A290, A300 in probes/stat-order-floor-batch. More last-digit cells (T-1927): probes/ftest-decomposition Calc!B9 `DEVSQ(Data!C1:C3)` = 4.666666666666666 (ours ...668), C9/F10 77.60000000000001 (ours 77.6), C10/F9 30.8 (ours 30.799999999999997), D10 11.719999999999999 (ours 11.720000000000013). Excel looks like a mean-then-squared-deviation two-pass; fit the accumulation order against these cells (see coercion.md note on I392).
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 1 cell, 1 numeric past half a unit in the 15th digit and 0 with a wrong type, error or text, blamed on DEVSQ 1. Every one is listed above.
 
