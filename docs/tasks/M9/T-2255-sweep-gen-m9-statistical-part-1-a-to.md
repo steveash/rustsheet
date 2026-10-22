@@ -3,7 +3,7 @@ id: T-2255
 title: "Sweep gen-m9 statistical, part 1 (A to L): every function under 400 Excel cells to at least 500"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
