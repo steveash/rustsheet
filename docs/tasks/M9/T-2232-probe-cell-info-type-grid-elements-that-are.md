@@ -3,7 +3,7 @@ id: T-2232
 title: "Probe CELL info_type grid elements that are errors or non-text (array and range)"
 milestone: M9
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
