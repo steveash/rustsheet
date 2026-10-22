@@ -3,7 +3,7 @@ id: T-2220
 title: "Oracle sweep for the F distribution: F.DIST cdf and pdf and F.DIST.RT over a degrees-of-freedom grid (T-2221 fit)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: sonnet
