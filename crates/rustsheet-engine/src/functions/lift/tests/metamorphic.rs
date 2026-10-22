@@ -37,7 +37,8 @@ fn mismatches(function: &Function, kinds: &ArgKinds, checked: &mut Vec<usize>) -
     // A repeated parameter is checked up to one repeat past the listed ones.
     let last = kinds.max.min(kinds.params.len() + 1).min(SAMPLES[0].len());
     let mut calls = Vec::new();
-    for count in kinds.required.max(1)..=last {
+    // Only valid counts: a count that stops inside a repeat cycle is the count error.
+    for count in (kinds.required.max(1)..=last).filter(|&count| kinds.accepts(count)) {
         for sample in &SAMPLES {
             let scalar = &sample[..count];
             for index in (0..count).filter(|&index| lifts(kinds, index)) {
