@@ -3,7 +3,7 @@ id: T-2379
 title: "NUMBERVALUE with a 600-character decimal separator or case-only separator clash is #VALUE!"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,9 +32,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 | gen-m5/9a7a94353845ea12 Calc!A162 | `=NUMBERVALUE(Data!D1,PROPER(REPT("ab",300)),("a*"&(Data!E4&Data!$D7)))` | #VALUE! | 0.2 |
 
 ## Acceptance criteria
-- [ ] A probes case with the cells above, oracle-filled (excel-graph), passes in full; text.md states the rule.
-- [ ] This 1 known-failure line disappears from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes case with the cells above, oracle-filled (excel-graph), passes in full; text.md states the rule.
+- [x] This 1 known-failure line disappears from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Separators outside the BMP (text.md "Unprobed").
@@ -43,3 +43,10 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 Decision 0083 (gap triage 2026-10-22, T-2252): every cell this task owns has the wrong type, error, text or boolean, or is a
 number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
 criteria above are already the visible-parity stage.
+
+## Outcome
+Probed (probes/numbervalue-separator-edges A1:A20, excel-graph): a separator over 255 characters is `#VALUE!`, which the
+engine now applies (`numbervalue_of`, reusing `number_text_too_long`); separators differing only in case do not clash, and a
+letter decimal separator leaves "0.2" readable (both already matched). text.md states the rules. Found on the way:
+`NUMBERVALUE("1.5",",")` is 15 (an omitted group separator is not "," then), filed as T-2406, 1 new known failure (A8).
+Eval delta: gen-m5 fixed 1 (9a7a94353845ea12 Calc!A162), probes new case 19/20, new-coverage failures 1 (T-2406), regressions 0.
