@@ -14,7 +14,7 @@ depends_on: [T-1890]
 ## Goal
 CUMIPMT and CUMPRINC are within half a unit of the 15th significant digit of Excel on the probed
 cells a per-period form for type 0 and a type 1 overflow payment can reach (rescoped 2026-10-22 by
-the second opus run; the cells it could not reach moved to T-2362, see Outcome).
+the second opus run; the cells it could not reach moved to T-2363, see Outcome).
 
 ## Context
 T-1890 made CUMPRINC a closed form at every length, so its visibly-off cells are fixed. CUMIPMT's
@@ -40,7 +40,7 @@ Visibly off on the T-1890 head:
 - [x] probes/fin-cumipmt-overflow-and-forms A2, A12, A16 and A20-A24 are within half a unit of the
   15th significant digit (A2 a number), with no new failures.
 - [x] The other listed cells (A5, A6, A7 = CUMPRINC_CUMIPMT.xlsx G2, A9-A11, fin-remaining-later-argument-ranges
-  K3, fin-cumipmt-period-bound A18, H26) are owned by T-2362, which inherits this goal for them.
+  K3, fin-cumipmt-period-bound A18, H26) are owned by T-2363, which inherits this goal for them.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -80,7 +80,7 @@ CUMPRINC_CUMIPMT.xlsx) found:
 functions/financial/cumulative.rs now takes those forms for type 0 over up to 32 periods (falling
 back to the old paths where they overflow) and that payment as type 1's CUMPRINC fallback.
 Visibly fixed: probes/fin-cumipmt-overflow-and-forms A2, A12, A16, A20-A24 (8 of the 17 listed cells).
-The other nine (A5, A6, A7 = G2, A9-A11, K3, period-bound A18, H26) moved to **T-2362** with the
+The other nine (A5, A6, A7 = G2, A9-A11, K3, period-bound A18, H26) moved to **T-2363** with the
 fit's leads. docs/excel-semantics/financial.md "CUMIPMT and CUMPRINC over many periods" records it.
 Eval delta: probes known failures 2070 -> 2065 (A2, A12, A14, A20, A21 bit-exact), 0 regressions in
 every gated suite; visibly-off in-scope cells 2335.

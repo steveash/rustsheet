@@ -750,8 +750,8 @@ interest the balance form (the closed form where it overflows), and type 1's pri
 `r/(1+r)` payment where `pv·r` overflows. Type 1's interest keeps the IPMT sum, and its principal
 the closed form: the per-period form misses H22 and H25, which pass.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A5, A6, A7 (= G2), A9-A11 and K3 near
-period 1E15, fin-cumipmt-period-bound A18 and H26: T-2362; the short sums' last digits in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-2362, T-1374
+period 1E15, fin-cumipmt-period-bound A18 and H26: T-2363; the short sums' last digits in T-1374)
+Tasks: T-1845, T-1890, T-2192, T-2363, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's

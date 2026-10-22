@@ -194,7 +194,7 @@ impl Periods {
     /// difference or product of powers was 33 to 343 ulps off (`CUMPRINC(1E10,40,1,1,20,0)`
     /// -9.999999980000501E-201, probes/fin-cumipmt-overflow-and-forms A16, A20-A24; T-2192).
     /// Other probed type 0 cells are 0 to 4 ulps off (fin-argument-modes H80 4, `CUMPRINC_CUMIPMT.xlsx`
-    /// H29 3 where the closed form was 1; T-2362).
+    /// H29 3 where the closed form was 1; T-2363).
     /// `None` when the sum is not finite.
     fn discounted_principal(&self) -> Option<f64> {
         let log_growth = self.rate.ln_1p();
@@ -225,7 +225,7 @@ impl Periods {
     /// This form matches 19 of the 28 probe cells over many periods or past an overflow (22 of the
     /// case's 30 cells pass overall) bit for
     /// bit and the others within 6 ulps, but for 48 to 64 near period 1E15 (fin-remaining-later-
-    /// argument-ranges K3, A18; TODO(T-2362)). `None` when the result is not finite.
+    /// argument-ranges K3, A18; TODO(T-2363)). `None` when the result is not finite.
     fn closed_form(&self, paid: Paid) -> Option<f64> {
         let log_growth = self.rate.ln_1p();
         let discount = |periods: f64| (periods * log_growth).exp();
