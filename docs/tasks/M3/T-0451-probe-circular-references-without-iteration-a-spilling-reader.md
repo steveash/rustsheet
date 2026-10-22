@@ -27,9 +27,9 @@ Write one probe case under eval/suites/probes (tag M3), fill it on excel-graph, 
 answers in recalc.md. If ours differs, file a functions/engine task for the cells that are off.
 
 ## Acceptance criteria
-- [ ] probes/<new case> is filled on excel-graph, with the cells above.
-- [ ] recalc.md states the answers, and any cell where ours differs has its own task.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/<new case> is filled on excel-graph, with the cells above.
+- [x] recalc.md states the answers, and any cell where ours differs has its own task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Iterative calculation.
@@ -38,4 +38,4 @@ answers in recalc.md. If ours differs, file a functions/engine task for the cell
 Added probes/t0451-circular-spill-and-ref-readers (filled on excel-graph). Excel: a would-be spill that reads a
 loop is one 0 with no spill; reference-only readers (ISREF, CELL, ROWS, COLUMNS, OFFSET, INDEX, ISFORMULA) are
 not reads, INDIRECT is. Ours already matches on all 17 cells, so no follow-up task. Eval delta: +1 case, +17 cells,
-all bit-exact; no baseline change.
+all bit-exact; the new case is recorded in eval/baseline/probes.txt.

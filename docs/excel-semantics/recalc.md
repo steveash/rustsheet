@@ -46,7 +46,7 @@ reader of a reader, at any depth (`=B1+1` reading `=A1+10`), and so are `=IFERRO
 A reference IF does not evaluate is no cycle: `=IF(FALSE,B2,7)` in B2 and `=IF(TRUE,7,E2)` in E2 are
 7. `=ROW(D2)+COLUMN(D2)` in D2 is 6 (ROW and COLUMN do not read the cell).
 A formula that would spill does not spill when it reads a loop: `=SEQUENCE(3)+A1` (A1 `=A1+1`) is the single
-number 0 and B2 is blank (`ISBLANK(B2)` TRUE); `=ROWS(B1#)` over it is 0 (not 1) and `=SUM(B1:B3)` is 0.
+number 0 and B2 is blank (`ISBLANK(B2)` TRUE, `ISREF(B2)` TRUE, `=B3` 0); `=ROWS(B1#)` over it is 0 (not 1) and `=SUM(B1:B3)` is 0.
 Readers that take a reference without its value are not circular: `ISREF(A1)` TRUE, `CELL("row",A1)` 1,
 `ROWS(A1)` 1, `COLUMNS(A1:B1)` 2, `ISFORMULA(A1)` TRUE, `OFFSET(A1,1,0)` (target holds 7) 7,
 `INDEX(A1:A2,2)` 7, `ROWS(OFFSET(A1,0,0,2,1))` 2; `INDIRECT("A1")` reads the value, so it is 0.
