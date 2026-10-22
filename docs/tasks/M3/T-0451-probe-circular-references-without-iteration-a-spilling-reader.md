@@ -3,7 +3,7 @@ id: T-0451
 title: "Probe circular references without iteration: a spilling reader, and readers that take a reference without its value"
 milestone: M3
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
