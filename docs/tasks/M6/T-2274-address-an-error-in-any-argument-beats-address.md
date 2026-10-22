@@ -3,7 +3,7 @@ id: T-2274
 title: "ADDRESS: an error in any argument beats ADDRESS's own #VALUE!, and a TRUE/FALSE sheet_text is quoted"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
