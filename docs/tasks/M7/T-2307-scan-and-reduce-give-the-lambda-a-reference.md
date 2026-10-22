@@ -3,7 +3,7 @@ id: T-2307
 title: "SCAN and REDUCE give the LAMBDA a reference initial_value and range elements as references (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,13 +28,20 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 17 known-failure li
 - gen-m7/2c5ea078f25443a2.case.json A1767 `=REDUCE(Data!C7,Data!E12,_xleta.COUNT)`: A1767 Excel 1.0, ours 2.0; cells (1): A1767
 
 ## Acceptance criteria
-- [ ] Visible parity: the 17 gen-m7 cells listed under Context have Excel's value, type, error and text: these 17 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
-- [ ] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 17 gen-m7 cells listed under Context have Excel's value, type, error and text: these 17 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
+- [x] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Error short-circuiting (T-2306); MAP and BYROW argument kinds.
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+- `fn_scan` and `fn_reduce` now take initial_value through `Model::lambda_initial_value` (map_reduce.rs). It uses `eval_ref_or_index`, as a LAMBDA call binds its argument, so a single-cell reference stays a reference. A union is read as before.
+- No new probe was needed to split the rule. A285 and A1767 need a reference initial value, and A467 needs a reference element. Range elements, a one-cell range included, were already references (`lambda_cells`, T-1442). Recorded in arrays.md "SCAN and REDUCE keep errors in the LAMBDA".
+- Eval delta:
+  - gen-m7: 990 → 973 known failures (the 17 owned lines).
+  - Regressions: 0 in every suite.
