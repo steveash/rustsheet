@@ -207,8 +207,9 @@ that is an expression reading the cell is evaluated, so it is a cycle: `ROWS(VST
 cell: `ROWS(5:5)` in W5 is 1, `COLUMNS(6:6)` in W6 16384, `ISREF(7:7)` in W7 TRUE.
 Evidence: probes/vstack-self-past-grid W2-W12 (excel-graph, 2026-10-21, T-1965).
 Ours: `limits::check_stack_size` in `fn_hstack`, `fn_vstack` (T-1803), EXPAND, WRAPROWS and WRAPCOLS (T-1967). `fn_vstack`
-evaluates every argument but a one-cell reference, a range only to its corners, and checks the rows of the references
-before reading them (T-1965). W9 is `#CIRC!` (a cycle is an error in ours, recalc.md), and so is -c3 W1, which sits in
+evaluates every argument but a one-cell reference, a range only to its corners, and checks the rows of every argument
+before reading a reference (T-1965); that an evaluated array's rows count too, `ROWS(VSTACK(SEQUENCE(1048576),1:1))` in
+row 1 `#NUM!`, follows from that order but is unprobed. W9 is `#CIRC!` (a cycle is an error in ours, recalc.md), and so is -c3 W1, which sits in
 row 1, which it stacks.
 Status: VERIFIED (excel-graph)
 Tasks: T-1803, T-1967, T-1965

@@ -91,26 +91,29 @@ impl Model {
         // would make a cycle (`=ROWS(VSTACK(2:2,A:A))` in W2, `=ROWS(VSTACK(A:A,W8))` in W8;
         // probes/vstack-self-past-grid, scalar-lift-open-c2 W1; arrays.md "Stacked results past
         // the grid"; T-1965). A one-cell reference is read after the check (`None` here); a
-        // range is evaluated to its corners, which reads nothing.
+        // range is evaluated to its corners, which reads nothing. Every argument's rows count.
         let mut results: Vec<Option<CalcResult>> = Vec::with_capacity(args.len());
-        let mut reference_rows = 0_usize;
+        let mut known_rows = 0_usize;
         for arg in args {
             if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
-                reference_rows = reference_rows.saturating_add(1);
+                known_rows = known_rows.saturating_add(1);
                 results.push(None);
                 continue;
             }
             match self.evaluate_node_in_context(arg, cell) {
                 err @ CalcResult::Error { .. } => return err,
                 result => {
-                    if let CalcResult::Range { left, right } = result {
-                        reference_rows = reference_rows.saturating_add(range_dims(left, right).0);
-                    }
+                    let rows = match &result {
+                        CalcResult::Range { left, right } => range_dims(*left, *right).0,
+                        CalcResult::Array(array) => array.len(),
+                        _ => 1,
+                    };
+                    known_rows = known_rows.saturating_add(rows);
                     results.push(Some(result));
                 }
             }
         }
-        if let Some((error, message)) = check_stack_size(reference_rows, 1) {
+        if let Some((error, message)) = check_stack_size(known_rows, 1) {
             return CalcResult::new_error(error, cell, message);
         }
 

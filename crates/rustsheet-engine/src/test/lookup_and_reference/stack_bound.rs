@@ -57,10 +57,12 @@ fn vstack_checks_its_rows_before_reading_a_reference_to_its_own_cell() {
     model._set("W4", "=ROWS(VSTACK(1/0,A:A,4:4))");
     model._set("W8", "=ROWS(VSTACK(A:A,W8))");
     model._set("W12", "=COLUMNS(VSTACK(A:A,12:12))");
+    // An evaluated array's rows count too (follows from the order above; unprobed).
+    model._set("W13", "=ROWS(VSTACK(SEQUENCE(1048576),13:13))");
 
     model.evaluate();
 
-    for cell in ["W1", "W2", "W8", "W12"] {
+    for cell in ["W1", "W2", "W8", "W12", "W13"] {
         assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
     }
     for cell in ["W3", "W4"] {
