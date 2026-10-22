@@ -3,10 +3,10 @@ id: T-2310
 title: "SORTBY: a single-value by_array keeps the array's order, and a fractional sort_order reads its sign (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 campaign: visible
 depends_on: []
 ---
@@ -29,13 +29,24 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 83 known-failure li
 - gen-m7/90de8755a2e565e6.case.json A717 `=REGEXEXTRACT(SORT(Data!B11:B11),REGEXREPLACE(SWITCH(Data!E4,0.1,Data!A7),TEXTBEFORE("x~*","a"),"-",0),SORTBY(Data!E1:E12,Data!D3,((-0.0001)/Data!A3)))`: A718 Excel #N/A, ours <empty>; cells (11): A718, A719, A720, A721, A722, A723, A724, A725, A726, A727, A728
 
 ## Acceptance criteria
-- [ ] Visible parity: the 83 gen-m7 cells listed under Context have Excel's value, type, error and text: these 83 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
-- [ ] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 83 gen-m7 cells listed under Context have Excel's value, type, error and text: these 83 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
+- [x] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Lifted sort_order arrays (T-1839); unprobed variants (a positive fraction, a one-cell range by_array).
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Handoff (resumed)
+Tried (sonnet run, 2026-10-22): in `fn_sortby`/`sortby_of` (functions/spill_functions.rs) a by_array argument that is not a `Node::RangeKind` and evaluates to a 1x1 array skips sorting (still validating sort_order), and a sort_order in (-1, 0) reads as -1 (`-0.0001`). With every single value accepted, 83 cells fixed but 243 regressed; with "non-integer number only", 83 fixed and 24 regressed (7d67c559ce7536fa A1358:B1359.., `SORTBY(Data!B1:C12,IFS((Data!$D3<Data!E$4),(Data!D11+Data!$D8)),1)`, by_array 0.5, Excel `#VALUE!`). Integers (`(-1)`, 2147483647) are `#VALUE!` in Excel; kept: 1234567.89123 (`MAX(..)%`), 0.2952 (`TIMEVALUE`). A rule "fractional bits beyond 2^-10" passes all of these but not 90de8755a2e565e6 A718:A728 (by_array `Data!D3` = -0.5, 11 cells still off), and is overfit, so I reverted the code. The fractional sort_order half is clean. Next: probe the by_array value (0.5, 0.25, 0.3, 1.5, -0.5, 1/3, a cell reference vs a computed value, text and booleans) with `rustsheet-oracle` to find what separates the kept values from the `#VALUE!` ones before coding; the dubious cell is A717 (its `#N/A` may not come from SORTBY).
+
+## Outcome
+Probed what the handoff could not separate (probes/t2310-sortby-single-by-array, 42 formulas, excel-graph): a by_array is a
+column as tall as the array (sorts rows) or a row as wide as it (sorts columns), the same way for every key, so a single value
+keeps a one-column array and is `#VALUE!` on a wider one, whatever the value; the "inexact fraction" pattern was the arrays'
+widths. A sort_order reads as `near_integer_count` (floor, snapped up near an integer). `fn_sortby`/`sortby_of` now sort
+columns for a row by_array (a row as long as the array's height was wrongly read as a row key). Eval: gen-m7 known failures
+194 -> 111 (the 83 owned cells), no regressions; the new probe case passes all 90 cells.

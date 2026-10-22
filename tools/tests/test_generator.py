@@ -33,7 +33,7 @@ from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
-from rustsheet_tools.gen.pools import MAX_STRING_LITERAL, POOLS
+from rustsheet_tools.gen.pools import MAX_STRING_LITERAL, POOLS, lambda_arity
 from rustsheet_tools.gen.tables import CATEGORIES as TABLES_CATEGORIES
 from rustsheet_tools.gen.tables import FORMULA_HEADERS, escape_column, generate_tables, this_row
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1, prefix_bound_names
@@ -776,8 +776,75 @@ def test_pool_param_draws_from_its_pool_about_35_percent_of_the_time() -> None:
     assert not any(g.argument_text(hard, "value", 0) in POOLS["angle"] for _ in range(500))
 
 
+def test_pooled_range_param_draws_array_constants_about_35_percent_of_the_time() -> None:
+    # T-2286: LOOKUP's lookup_vector and XMATCH's lookup_array take array constants from `lookup_table`.
+    g = Gen(random.Random(3), Catalog([], []), 12, 5, 3)
+    pooled = {"name": "lookup_array", "mode": "range", "type": "any", "vector": True, "pool": "lookup_table"}
+    draws = [g.argument(pooled, 0) for _ in range(2000)]
+    share = sum(d in POOLS["lookup_table"] for d in draws) / len(draws)
+    assert 0.25 <= share <= 0.45
+    assert all(d in POOLS["lookup_table"] or re.fullmatch(r"Data!([A-Z])\d+:\1\d+", d) for d in draws)
+
+
+def test_pooled_lambdas_have_the_arity_the_call_needs_and_free_names() -> None:
+    # T-2286: MAP's LAMBDA takes one parameter per array, REDUCE's and SCAN's two; an outer name is never reused.
+    assert {lambda_arity(t) for t in POOLS["lambda_body"]} == {1, 2}
+    for arity in (1, 2, 3):
+        g = Gen(random.Random(arity), Catalog([], []), 12, 5, 3)
+        g.scope = ["x"]
+        p = {"name": "function", "mode": "lambda", "arity": arity, "pool": "lambda_body"}
+        draws = [g.pooled_lambda(p, arity) for _ in range(400)]
+        pooled = [d for d in draws if d is not None]
+        if arity == 3:
+            assert not pooled
+            continue
+        assert 0.25 <= len(pooled) / len(draws) <= 0.45
+        for text in pooled:
+            assert lambda_arity(text) == arity, text
+            params = re.match(r"LAMBDA\(((?:\[?[a-z_0-9]+\]?,)+)", text)
+            assert params and "x" not in params.group(1).strip(",[]").replace("[", "").split(","), text
+        assert g.scope == ["x"]
+
+
+def test_pooled_catalog_params_keep_their_domain() -> None:
+    # T-2286: a pool never overrides a hard domain, and a soft enum (the REGEX patterns) still draws in-domain
+    # values most of the time.
+    pooled = [
+        p
+        for f in _loaded_catalog().functions
+        for p in f.get("params", [])
+        if isinstance(p, dict) and "pool" in p
+    ]
+    assert not [p for p in pooled if (p.get("domain") or {}).get("hard")]
+    pattern = next(
+        p
+        for f in _loaded_catalog().functions
+        if f["name"] == "REGEXTEST"
+        for p in f["params"]
+        if p["name"] == "pattern"
+    )
+    g = Gen(random.Random(11), Catalog([], []), 12, 5, 3)
+    draws = [g.argument_text(pattern, "value", 0) for _ in range(2000)]
+    enum = {'"' + v + '"' for v in pattern["domain"]["enum"]}
+    assert sum(d in enum for d in draws) / len(draws) >= 0.6
+    assert any(d in POOLS["regex_pattern"] and d not in enum for d in draws)
+
+
 def test_text_pools_respect_the_string_literal_limit_and_clock_free_values() -> None:
-    for name in ("text_edges", "numeric_text", "number_formats", "date_text", "time_text", "weekend_mask"):
+    for name in (
+        "text_edges",
+        "numeric_text",
+        "number_formats",
+        "date_text",
+        "time_text",
+        "weekend_mask",
+        "array_shape",
+        "array_holes",
+        "lookup_value",
+        "lookup_table",
+        "regex_pattern",
+        "lambda_body",
+    ):
         for text in POOLS[name]:
             for literal in re.findall(r'"((?:[^"]|"")*)"', text):
                 assert len(literal.replace('""', '"')) <= MAX_STRING_LITERAL, (name, text)
