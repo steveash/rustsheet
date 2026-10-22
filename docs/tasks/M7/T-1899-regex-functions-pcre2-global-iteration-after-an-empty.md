@@ -3,7 +3,7 @@ id: T-1899
 title: "REGEX functions: PCRE2 global iteration after an empty match"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
