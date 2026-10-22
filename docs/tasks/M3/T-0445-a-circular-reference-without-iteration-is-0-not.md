@@ -46,5 +46,7 @@ may move it, so check that task's state first and coordinate rather than duplica
   ISERROR, TYPE, ISBLANK and text formulas over a loop are all 0. Passes.
 - Eval: probes known failures 2097 -> 2084 (fixed 13: circular-iteration-off x10,
   vstack-self-past-grid W9, circular-iteration-on B2, scalar-lift-open-c3 W1), 0 regressions.
+  circular-iteration-on B2 (`=B2`) passes only because its 0 is also the iteration-off value;
+  iterative calculation is still not implemented.
 - Tests: `Model::_is_circular` (stored 0 and in the circular set) replaces the `#CIRC!`
   assertions; the consistency oracle skips circular cells.
