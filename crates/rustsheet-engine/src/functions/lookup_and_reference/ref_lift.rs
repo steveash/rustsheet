@@ -177,15 +177,25 @@ fn array_cells(rows: &[Vec<ArrayNode>]) -> u64 {
         .fold(0, u64::saturating_add)
 }
 
-/// Whether an argument's value lifts the call: an array or a range of more than one cell. A
-/// one-cell range and a 1x1 array are their value, as before (whether Excel lifts
-/// `OFFSET(A1,{1},0)` is unprobed; `Model::lift_references` keeps a 1x1 broadcast scalar too).
+/// Whether an argument's value lifts INDIRECT or TRIMRANGE: an array or a range of more than
+/// one cell. A one-cell range and a 1x1 array are their value, as before (whether Excel lifts a
+/// 1x1 array there is unprobed, TODO(T-2347); OFFSET, TAKE and DROP do, [`lifts_one_by_one`]).
 pub(super) fn lifts(value: &CalcResult) -> bool {
     match value {
         CalcResult::Range { left, right } => left != right,
         CalcResult::Array(rows) => rows.len() > 1 || rows.first().is_some_and(|row| row.len() > 1),
         _ => false,
     }
+}
+
+/// Whether an argument's value lifts OFFSET, TAKE or DROP: what [`lifts`] accepts, and a 1x1
+/// array too, which gives one element: `TAKE(A1:B3,{2})` is one element, A1:B2, so ROWS of it
+/// is 1 and spilled directly it is `#VALUE!` (probes/m7-lift-take-drop-sortby Sheet1 F13, G13,
+/// I13:K13, W65); ROWS of `DROP(A1:B3,{1})` and of `OFFSET(A1:B2,{1},0)` is 1 too
+/// (probes/m7-one-cell-operand-lift F6, F7, F16, F17; T-2298). A one-cell range is still its
+/// value.
+pub(super) fn lifts_one_by_one(value: &CalcResult) -> bool {
+    lifts(value) || matches!(value, CalcResult::Array(_))
 }
 
 /// Whether `node` may stand for an array of references (SPEC-0014 rule 7): a call to a producer
@@ -493,16 +503,18 @@ impl Model {
         values
     }
 
-    /// The driver's arguments for `values`: those that [`lifts`] read into their cells, the rest
+    /// The driver's arguments for `values`: those that `lifts_value` accepts ([`lifts`] or
+    /// [`lifts_one_by_one`]: the reason it is a parameter) read into their cells, the rest
     /// scalars. An unreadable one (a range across sheets) is the call's error.
     pub(super) fn reference_lift_args(
         &mut self,
         values: ArgBuf<CalcResult>,
+        lifts_value: fn(&CalcResult) -> bool,
         cell: CellReferenceIndex,
     ) -> Result<Vec<LiftedArg>, CalcResult> {
         let mut lifted = Vec::with_capacity(values.as_slice().len());
         for value in values {
-            lifted.push(if lifts(&value) {
+            lifted.push(if lifts_value(&value) {
                 LiftedArg::read(self, value, cell)?
             } else {
                 LiftedArg::Scalar(value)
