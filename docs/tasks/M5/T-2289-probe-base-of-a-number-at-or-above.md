@@ -3,7 +3,7 @@ id: T-2289
 title: "Probe BASE of a number at or above 2^53 (the engine prints i64::MAX's digits)"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,9 +25,12 @@ Excel's BASE result for a number at or above 2^53 (and near 2^63) is known from 
   min_length 0 is empty; BASE past 2^53 is #NUM!" records them; the fix is T-2373, which waits for this probe's edge.
 
 ## Acceptance criteria
-- [ ] A probes case with those cells, oracle-filled (excel-graph), in eval/suites/probes.
-- [ ] numbers.md entry with the cut and the result past it (extend the entry named above); T-2373 is the fix task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes case with those cells, oracle-filled (excel-graph), in eval/suites/probes.
+- [x] numbers.md entry with the cut and the result past it (extend the entry named above); T-2373 is the fix task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing BASE (the fix task's).
+
+## Outcome
+Probes case `base-number-upper-bound` (50 cells, excel-graph filled): the cut is exactly 2^53 (2^53-1 accepted, 2^53 and above `#NUM!`, with or without min_length). Recorded in numbers.md; T-2373 is the fix. No eval delta (probe only).
