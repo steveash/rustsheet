@@ -4,10 +4,10 @@ title: "Data tables: load <f t=dataTable> cells and compute TABLE() results (pro
 milestone: M11
 lane: engine
 status: blocked
-priority: P3
+priority: P2
 size: M
 tier: opus
-depends_on: [T-0401]
+depends_on: [T-0401, T-0446]
 ---
 
 ## Goal
@@ -31,10 +31,20 @@ which needs the dependency graph's recalculation of a substituted cell (SPEC-000
 blocked on it. Directive 5: the number of substitutions is rows x columns of the table; it needs a
 work bound like the other walkers.
 
+Real-world evidence (mog head-to-head, docs/research/mog-head-to-head-2026-10-22.md, 2026-10-22): 21 of
+the 107 Excel-saved financial models in the Calipers corpus (calipers/pv_goldens, T-0446) contain data
+tables, and rustsheet refuses to load every one of them (`Not Implemented Error: data table formulas`),
+so none of their cells are scored. Mog loads them. Before the full calculation, the import could keep
+the data-table cells as stored constants (Excel's cached results) instead of failing the whole workbook.
+That would be a separate S task if the owner wants it before Phase 2. Priority raised P3 to P2 at the
+owner's request.
+
 ## Acceptance criteria
 - [ ] The 15 probes/data-tables lines leave eval/baseline/probes.txt (`make eval-baseline`) with no new F
       lines; a round-trip test keeps the `dataTable` formula on export.
 - [ ] recalc.md's data-table entry gains an "Ours" line; any work cap is a DEVIATION entry if Excel has none.
+- [ ] The calipers/pv_goldens cases that fail to load today load and calculate; their known failures in
+      eval/baseline/calipers.txt drop, with no new known failure in any suite.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
