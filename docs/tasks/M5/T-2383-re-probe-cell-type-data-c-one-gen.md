@@ -3,7 +3,7 @@ id: T-2383
 title: "Re-probe CELL('type',Data!C$9): one gen-m5 cell reads the referenced sheet, against the own-sheet rule"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,9 +32,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 | gen-m5/74b183ca6fc1d190 Calc!A347 | `=RIGHTB(CELL("type",Data!C$9),3)` | "l" | "b" |
 
 ## Acceptance criteria
-- [ ] information.md states the outcome (a rule with evidence, or the artefact with the re-fill's result); a fix task is filed if the engine must change.
-- [ ] Artefact: the re-filled sidecar removes this known-failure line from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite. Rule: the filed fix task owns the line (its Context lists the cell).
-- [ ] `make check` green; reviewers approve.
+- [x] information.md states the outcome (a rule with evidence, or the artefact with the re-fill's result); a fix task is filed if the engine must change.
+- [x] Artefact: the re-filled sidecar removes this known-failure line from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite. Rule: the filed fix task owns the line (its Context lists the cell).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing `fn_cell` (the follow-up task's).
@@ -43,3 +43,10 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 Decision 0083 (gap triage 2026-10-22, T-2252): every cell this task owns has the wrong type, error, text or boolean, or is a
 number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
 criteria above are already the visible-parity stage.
+
+## Outcome
+Artefact. Re-filling gen-m5/74b183ca6fc1d190 on excel-graph (same input_sha256) gives "b" for Calc!A347, the own-sheet
+answer; no other cell changed. The new probe probes/info-cell-type-cross-sheet-reprobe (24 cells: bare, RIGHTB, LEFT, `&""`,
+the `$` forms, rows 8-10, Calc-side text/number, eleven repeats of the gen formula) fits the own-sheet rule everywhere, and ours
+passes it. information.md "Conflicting cell (T-2383)" records the artefact. No engine change, no fix task.
+Eval: gen-m5 24 -> 23 known failures; probes +1 case (24 cells, all pass); no regressions.
