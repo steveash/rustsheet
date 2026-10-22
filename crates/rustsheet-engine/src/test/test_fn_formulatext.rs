@@ -205,3 +205,18 @@ fn a_bound_name_use_prints_in_the_spelling_of_its_declaration() {
         assert_eq!(model._get_formula("A4"), "=LET(Ab,LAMBDA(Q,Q+1),Ab(2))");
     }
 }
+
+/// An INDEX that errors or picks a value is its own error; a plain value stays `#ERROR!`
+/// (probes/index-reference-args Calc!A4, A5; T-2137).
+#[test]
+fn index_argument_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", "=FORMULATEXT(INDEX(C1:C3,9))");
+    model._set("A2", "=FORMULATEXT(INDEX({1,2,3},2))");
+    model._set("A3", "=FORMULATEXT(1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#REF!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+}
