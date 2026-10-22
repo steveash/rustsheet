@@ -680,7 +680,7 @@ impl Model {
         if !values.as_slice().iter().any(lifts) {
             return RefArg::from(self.indirect_of(values.as_slice(), cell));
         }
-        match self.reference_lift_args(values, cell) {
+        match self.reference_lift_args(values, lifts, cell) {
             Ok(lifted) => self.lift_references(lifted, cell, &mut |model, values| {
                 model.indirect_of(values, cell)
             }),

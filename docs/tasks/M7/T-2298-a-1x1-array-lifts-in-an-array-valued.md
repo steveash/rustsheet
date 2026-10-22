@@ -3,7 +3,7 @@ id: T-2298
 title: "A 1x1 array lifts in an array-valued function's lifted parameter (delete T-1834's 1x1 rule)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -62,3 +62,8 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 6 known-failure lin
 
 ## Out of scope
 - SORTBY (T-1839).
+
+## Outcome
+The driver's 1x1 rule is gone from `lift_grids` and `lift_references`: a 1x1 grid lifts like any other. A single cell never reaches the driver as a grid: a one-cell range was already its value in the read phase, and an arithmetic operator now reads a one-cell range operand as its cell's value (`arithmetic_operand`, arithmetic.rs), so `SEQUENCE(INDIRECT("A3")*1)` keeps spilling (row 39, the one regression of deleting the rule alone). TAKE's and DROP's counts lift a 1x1 array (`count_lifts`); OFFSET, INDIRECT and TRIMRANGE keep `lifts` (unprobed). Static shape of a 1x1 lift stays `Unknown`. SPEC-0011 "As built (T-1834)" and arrays.md updated.
+
+Eval delta: probes known failures 2446 -> 2425 (21 lines fixed), gen-m7 1068 -> 1052 (16 lines fixed), 0 regressions; rows 38-42 still pass. Not fixed here: Sheet1!F15 (EXPAND), gen-m7 A1754 (EXPAND) and A1781 (WRAPROWS), because EXPAND and WRAPROWS are not lifted on main yet; they pass through this driver change once T-1835 lifts them, and are handed to T-1835's Context.

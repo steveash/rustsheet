@@ -101,18 +101,33 @@ fn lifted_output_is_charged_against_the_visit_cap() {
     assert_eq!(model._get_text("B1"), "#ERROR!");
 }
 
-/// A call whose lifted arguments are all 1x1 runs once and keeps its whole array, as before
-/// T-1834 (`SEQUENCE(C3*1)` with C3 = 3 spills three rows). Excel lifts a 1x1 array here
-/// (`SEQUENCE({3})` is 1x1, probes/m7-lift-take-drop-sortby row 12), so B1's pin is TODO(T-2298).
+/// A 1x1 array lifts to one element, but a one-cell reference, and arithmetic over one, is its
+/// cell's value and runs one unlifted call that keeps its whole array: with A3 = 3,
+/// `SEQUENCE({3})` and `SEQUENCE(A3+{0})` are the 1x1 1, while `SEQUENCE(A3*1)`,
+/// `SEQUENCE(INDIRECT("A3")*1)` and `SEQUENCE(A3:A3)` spill three rows
+/// (probes/m7-lift-take-drop-sortby Sheet1 rows 12, 14 and 38-43; T-2298).
 #[test]
-fn a_one_cell_array_argument_runs_one_unlifted_call() {
+fn a_one_cell_array_lifts_but_a_one_cell_reference_does_not() {
     let mut model = new_empty_model();
     model._set("C3", "3");
-    model._set("A1", "=ROWS(SEQUENCE(INDIRECT(\"C3\")*1))");
-    model._set("B1", "=ROWS(SEQUENCE({3}))");
-    model._set("D1", "=SEQUENCE(C3*1)");
+    model._set("A1", "=ROWS(SEQUENCE({3}))");
+    model._set("B1", "=ROWS(SEQUENCE(C3+{0}))");
+    model._set("C1", "=COLUMNS(SEQUENCE({3},2))");
+    model._set("D1", "=ROWS(SEQUENCE(INDIRECT(\"C3\")*1))");
+    model._set("E1", "=ROWS(SEQUENCE(C3:C3))");
+    model._set("F1", "=SEQUENCE(C3*1)");
+    model._set("G1", "=SEQUENCE({3})");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "3");
-    assert_eq!(model._get_text("B1"), "3");
-    assert_eq!(model._get_text("D3"), "3");
+    for (cell, want) in [
+        ("A1", "1"),
+        ("B1", "1"),
+        ("C1", "1"),
+        ("D1", "3"),
+        ("E1", "3"),
+        ("F3", "3"),
+        ("G1", "1"),
+        ("G2", ""),
+    ] {
+        assert_eq!(model._get_text(cell), want, "{cell}");
+    }
 }

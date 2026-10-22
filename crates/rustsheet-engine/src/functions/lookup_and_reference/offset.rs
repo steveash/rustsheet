@@ -94,7 +94,7 @@ impl Model {
         if !values.as_slice().iter().any(lifts) {
             return RefArg::from(self.offset_of(&reference, values.as_slice(), cell));
         }
-        let lifted = match self.reference_lift_args(values, cell) {
+        let lifted = match self.reference_lift_args(values, lifts, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
         };
@@ -129,7 +129,7 @@ impl Model {
         values: ArgBuf<CalcResult>,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        let mut lifted = match self.reference_lift_args(values, cell) {
+        let mut lifted = match self.reference_lift_args(values, lifts, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
         };

@@ -392,7 +392,8 @@ A 1x1 array in a lifted parameter lifts to one element, but a single cell does n
 `SEQUENCE({3},2)`, `SEQUENCE(A3+{0})` and `EXPAND(A1:A2,{3})` are the 1x1 1 (ROWS 1; `=SEQUENCE({3})` spills one
 cell), `TOCOL(A1:B3,{0})` and `UNIQUE(D1:D3,{FALSE})` are 1x1, `TAKE(A1:B3,{2})` is one reference element A1:B2
 (spilled `#VALUE!`), while `SEQUENCE(A3*1)`, `SEQUENCE(INDIRECT("A3")*1)`, `SEQUENCE(A3:A3)`, `SEQUENCE(IF(TRUE,A3))`
-and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows. A lifted element error stays in place:
+and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows: arithmetic over a one-cell reference is that cell's value
+here, not a 1x1 array (row 39). A lifted element error stays in place:
 `INDEX(SEQUENCE({1;0}),2,1)` is `#CALC!`. UNIQUE's and SORTBY's later elements follow their own rule ("UNIQUE's and
 SORTBY's lifted elements" below).
 These take an array whole: the delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are a list of delimiters
@@ -421,7 +422,7 @@ case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
-per-parameter rule, which T-1960 confirmed; a 1x1 array argument still runs one unlifted call where Excel lifts it, T-2298); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
+per-parameter rule, which T-1960 confirmed; a 1x1 array argument lifts to one element since T-2298, a one-cell range and arithmetic over one (`INDIRECT("A3")*1`) being the cell's value: `arithmetic_operand` in arithmetic.rs, TAKE's and DROP's `count_lifts`; EXPAND's and WRAPROWS's 1x1 cases wait on T-1835, which lifts them); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
 EXPAND's columns, WRAPROWS's pad_with and WRAPCOLS's array wrap_count are T-1835's, and EXPAND's array pad_with is `#VALUE!` there too (ours lifts it);
 TAKE and DROP lift since T-1838 (reference elements; IF, CHOOSE and OFFSET do not hand the grid on, and `TAKE(NA(),{1;2})` is one `#N/A`: T-2299);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a

@@ -179,7 +179,7 @@ fn array_cells(rows: &[Vec<ArrayNode>]) -> u64 {
 
 /// Whether an argument's value lifts the call: an array or a range of more than one cell. A
 /// one-cell range and a 1x1 array are their value, as before (whether Excel lifts
-/// `OFFSET(A1,{1},0)` is unprobed; `Model::lift_references` keeps a 1x1 broadcast scalar too).
+/// `OFFSET(A1,{1},0)` is unprobed; TAKE's and DROP's counts lift a 1x1 array, T-2298).
 pub(super) fn lifts(value: &CalcResult) -> bool {
     match value {
         CalcResult::Range { left, right } => left != right,
@@ -493,16 +493,18 @@ impl Model {
         values
     }
 
-    /// The driver's arguments for `values`: those that [`lifts`] read into their cells, the rest
-    /// scalars. An unreadable one (a range across sheets) is the call's error.
+    /// The driver's arguments for `values`: those that `lifts_value` accepts ([`lifts`], or
+    /// TAKE's and DROP's wider rule) read into their cells, the rest scalars. An unreadable one (a
+    /// range across sheets) is the call's error.
     pub(super) fn reference_lift_args(
         &mut self,
         values: ArgBuf<CalcResult>,
+        lifts_value: fn(&CalcResult) -> bool,
         cell: CellReferenceIndex,
     ) -> Result<Vec<LiftedArg>, CalcResult> {
         let mut lifted = Vec::with_capacity(values.as_slice().len());
         for value in values {
-            lifted.push(if lifts(&value) {
+            lifted.push(if lifts_value(&value) {
                 LiftedArg::read(self, value, cell)?
             } else {
                 LiftedArg::Scalar(value)
