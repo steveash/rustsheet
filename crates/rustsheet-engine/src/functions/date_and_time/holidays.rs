@@ -1,6 +1,7 @@
 //! The holidays of WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL, read once per call
 //! and prepared so that each lifted element counts them in O(log holidays) (T-1236).
 
+use super::out_of_range_date;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -71,11 +72,7 @@ impl Model {
             // Serial 0 is a holiday too (dates.md "WORKDAY and NETWORKDAYS from serial 0").
             if date_system.date_of_serial_from_zero(serial).is_none() {
                 out_of_range = true;
-                return Err(CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Out of range parameters for date".to_string(),
-                ));
+                return Err(out_of_range_date(cell));
             }
             serials.push(serial);
             Ok(())

@@ -119,12 +119,15 @@ impl Model {
         let Some(arg) = arg else {
             return Ok(Holidays::none());
         };
-        let serials = self.holiday_serials(arg, cell)?;
-        // `holiday_serials` keeps only serials of the date range, so none is dropped here.
-        let days = serials
+        let days = self
+            .holiday_serials(arg, cell)?
             .into_iter()
-            .filter_map(|serial| self.excel_date(serial, cell).ok().map(day_number))
-            .collect();
+            .map(|serial| self.excel_date(serial, cell).map(day_number))
+            .collect::<Result<Vec<i64>, CalcResult>>()
+            .map_err(|error| HolidaysError {
+                error,
+                before_weekend: false,
+            })?;
         Ok(Holidays::new(days))
     }
 
@@ -159,6 +162,7 @@ impl Model {
         // (`WORKDAY.INTL(1,-18,"abc",NA())` and `WORKDAY.INTL(5,-6,"1111111")` are `#NUM!`, while
         // `WORKDAY.INTL(5,-5,"1111111")` is `#VALUE!`; probes/workday-holidays-error-order rows 4,
         // 5, 12, 13, 18, 19, Q29:Q36, Q65:Q67).
+        // (`start` is a checked date serial, so the sum cannot overflow.)
         self.excel_date(start + i64::from(days), cell)?;
         // A single holiday that is no number comes before the weekend, also before a bad weekend
         // code: `WORKDAY.INTL(45000,5,99,NA())` is `#N/A` (probes/date-text-weekend-3d P3, P31,

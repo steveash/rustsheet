@@ -106,7 +106,7 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 58 in eval/baseli
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
 
 ## Outcome
-Probe probes/workday-holidays-error-order (excel-graph, 554 cells: twelve holidays shapes against 36 call shapes, plus
+Probe probes/workday-holidays-error-order (excel-graph, 536 formula cells, 541 checked: twelve holidays shapes against 36 call shapes, plus
 column Q) fixed the order, recorded in dates.md "WORKDAY and NETWORKDAYS holidays: blank and number-text cells, and the
 error order". WORKDAY(.INTL): start (type, range), days (type), days 0 is the start, `#NUM!` when start + days is off the
 calendar, a single non-number holiday, the weekend, the other holidays errors (first bad one in reading order), then a walk

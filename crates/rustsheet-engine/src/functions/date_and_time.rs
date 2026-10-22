@@ -372,11 +372,7 @@ impl Model {
             .date_of_serial_from_zero(serial)
         {
             Some(date) => Ok(date),
-            None => Err(CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Out of range parameters for date".to_string(),
-            }),
+            None => Err(out_of_range_date(cell)),
         }
     }
 
@@ -810,6 +806,15 @@ impl Model {
         }
         result
     }
+}
+
+/// The `#NUM!` of a WORKDAY or NETWORKDAYS date or holiday off the calendar.
+fn out_of_range_date(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        "Out of range parameters for date".to_string(),
+    )
 }
 
 /// The serial of a holiday number: its floor, not yet checked against the date range.
