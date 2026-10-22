@@ -733,9 +733,9 @@ Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them
 - Now `#VALUE!` (fail closed): `\v` (was VT), `^*`, and spaces inside quantifier braces (`a{1, 2}`, a quantifier
   before). Also `--`, `~~` and `||` inside a bracket, which were set operations; Excel's nested brackets suggest a
   UTS #18 dialect, where they may be set operations too. `$` and `\Z` on a text that holds another LF before
-its final one still match only at the very end (PCRE2 also matches before the final LF) until T-1900's memoized mode.
+its final one still match only at the very end (PCRE2 also matches before the final LF) until T-2355's memoized mode.
 Status: VERIFIED (excel-graph)
-Tasks: T-1829 (probe), T-1900, T-1903, T-1973
+Tasks: T-1829 (probe), T-1900, T-1903, T-2355, T-1973
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
@@ -752,14 +752,15 @@ advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:a
 ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
 Ours: PCRE2's grammar since T-1973 (functions/text/pcre/): comments, `\Q..\E`, `(?x)` and scoped flags match
-(C14-C19). Backreferences, lookaround, atomic groups, possessive quantifiers, `\K`, `\G` and conditionals parse
-but are `#VALUE!` until T-1900's backtracker. Excel's answer for `a++a` is `#N/A` (B29). C11 passes only because it
-tests ISERROR. Possessive patterns whose result does not depend on possessiveness (`REGEXTEST("aaa","a++")`, TRUE
-in PCRE2, unprobed in Excel) were right before T-1973 and are `#VALUE!` until T-1900. SPEC-0013 accepts that temporary loss. Iteration is
+(C14-C19). Backreferences (C1-C5), atomic groups and possessive quantifiers (B29, C11) and `\G` match on T-1900's
+backtracker (functions/text/pcre/backtrack.rs). A backreference ignores case as its scope's flags say, and a
+backreference to a group that did not take part fails to match (PCRE2's default). Lookaround, `\K` and conditionals
+parse but are `#VALUE!` until T-2354. Iteration is
 still Rust's (`bababab`) until T-1899. The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
-unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
+unprobed features), T-1973 (parser), T-1900 (backtracker), T-2354 (lookaround, `\K`, conditionals), T-2355 (memoized
+mode), T-1899 (iteration), T-1974 (costs).
 Status: VERIFIED (excel-graph)
-Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974
+Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974, T-2354, T-2355
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.

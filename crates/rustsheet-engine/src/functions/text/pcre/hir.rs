@@ -14,7 +14,7 @@ use super::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::functions::text) enum FinalLf {
     /// `Look::End`: exact on a text with no `\n`, and today's gap on one holding a `\n` before
-    /// its last character (the backtracker's memoized mode closes it, T-1900).
+    /// its last character (the backtracker's memoized mode closes it, T-2355).
     End,
     /// `Look::EndLF`: exact on a text whose only `\n` is its last character.
     EndLf,

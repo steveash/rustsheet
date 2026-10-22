@@ -473,7 +473,8 @@ impl Parser {
                 } else if self.eat('\'') {
                     Reference::Name(self.name('\'')?)
                 } else {
-                    // Assertion conditions, recursion (`R`) and `DEFINE` are left to T-1900.
+                    // Assertion conditions are left to T-2354; recursion (`R`) and `DEFINE` stay
+                    // invalid (SPEC-0013 rollout step 6).
                     return Err(Invalid);
                 };
                 self.expect(')')?;

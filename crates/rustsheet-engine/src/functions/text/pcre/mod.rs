@@ -82,7 +82,7 @@ pub(super) fn translate(
 
 /// Which translation of `$` searching `text` needs (SPEC-0013 section 2): `EndLf` unless `text`
 /// holds a `\n` before its last character, where neither is exact and `End` keeps today's
-/// meaning until T-1900's memoized mode.
+/// meaning until T-2355's memoized mode.
 pub(super) fn final_lf_for(text: &str) -> FinalLf {
     let body = text.strip_suffix('\n').unwrap_or(text);
     if body.contains('\n') {

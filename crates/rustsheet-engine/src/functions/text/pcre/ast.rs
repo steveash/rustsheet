@@ -95,7 +95,7 @@ pub(super) enum Reference {
 }
 
 /// What a conditional group tests: whether the group has matched. Assertion conditions
-/// (`(?(?=x)..)`) are left to T-1900 and are invalid until then.
+/// (`(?(?=x)..)`) are left to T-2354 and are invalid until then.
 #[derive(Debug, Clone)]
 pub(super) enum Condition {
     Group(Reference),

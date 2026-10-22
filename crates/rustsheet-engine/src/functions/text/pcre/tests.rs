@@ -64,7 +64,7 @@ fn dollar_matches_before_a_final_line_feed() {
     assert!(!matches(r"a\z", "a\n", false));
     assert!(!matches("a$", "a\nb", false));
     assert!(matches("a$", "a", false));
-    // A text with another \n keeps `\z` until T-1900's memoized mode: PCRE2 matches here.
+    // A text with another \n keeps `\z` until T-2355's memoized mode: PCRE2 matches here.
     assert!(!matches("a$", "b\na\n", false));
 }
 
