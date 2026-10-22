@@ -3,7 +3,7 @@ id: T-2334
 title: "IMCSC, IMLOG2 and IMCOT of 0 are #NUM!, not NaN/inf text"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-2043's sweep: probes-numeric `im-last-digit-sweep` D21, M21, P21 (exp
 
 ## Out of scope
 - Last-digit kernels (T-2044).
+
+## Outcome
+IMCSC, IMLOG2 and IMCOT of 0 now answer `#NUM!` (complex.rs); unit test `fn_imcsc_imlog2_imcot_of_zero_are_num`. Sweep cells D21:F21, M21:R21 pass. probes-numeric is ungated, so no baseline entries moved.
