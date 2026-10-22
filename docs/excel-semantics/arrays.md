@@ -1226,8 +1226,8 @@ The same holds for a multi-cell array value, not only a range: `MAP(Data!C4:D12,
 (gen-m7/611ce3bbfab27cef Calc!A944), `SCAN(Data!B8,Data!B6:E11,LAMBDA(acc,v,HSTACK(..)))` (b24ce74f08d3f91a A430), a SCAN step that is a FILTER
 result (7307132bb8820f17 A619) or a TRIMRANGE (2c5ea078f25443a2 A1717), a MAP step raising to a BYROW column (7307132bb8820f17 A1324) and a SCAN
 whose array initial value is returned as the accumulator (9359f03972e94026 A1705) are each one `#CALC!` with nothing spilled (excel-graph,
-2026-10-21, T-2225). Ours: a multi-cell array step is the one `#CALC!` of a multi-cell range since T-2306 (`lambda_result_value`); a LAMBDA returning an array is otherwise still T-2309's.
-Tasks: T-2309
+2026-10-21, T-2225). Ours: implemented (T-2306, T-2309): a multi-cell array step of MAP or SCAN is the one `#CALC!` of a multi-cell range (`lambda_result_value`); REDUCE does not go through it.
+Tasks: T-2309, T-2306
 
 ## SCAN and REDUCE keep errors in the LAMBDA
 Rule: SCAN and REDUCE do not stop at an error. An error initial_value, an error accumulator and an error element are handed

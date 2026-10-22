@@ -350,8 +350,9 @@ impl Model {
                     Err(error) => return Err(error),
                 }
             }
-            // A multi-cell array is no element either (the same `#CALC!` as a multi-cell range:
-            // docs/excel-semantics/arrays.md "SCAN and REDUCE keep errors in the LAMBDA", T-2309).
+            // A multi-cell array is no element either, the same `#CALC!` as a multi-cell range
+            // (docs/excel-semantics/arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell
+            // range", T-2309).
             CalcResult::Array(rows)
                 if rows.len() > 1 || rows.first().is_some_and(|r| r.len() > 1) =>
             {

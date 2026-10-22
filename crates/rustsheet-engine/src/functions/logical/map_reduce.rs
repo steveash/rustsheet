@@ -113,7 +113,8 @@ impl Model {
         }
 
         let (mut accumulator, start) = if has_initial {
-            // Excel: an error initial value goes to the LAMBDA like any value (docs/excel-semantics/arrays.md "SCAN and REDUCE keep errors in the LAMBDA").
+            // Excel: an error initial value goes to the LAMBDA like any value
+            // (docs/excel-semantics/arrays.md "SCAN and REDUCE keep errors in the LAMBDA").
             (self.evaluate_node_in_context(&args[0], cell), 0)
         } else {
             (data.at(0, 0), 1)

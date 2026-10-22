@@ -696,3 +696,14 @@ fn reduce_error_initial_value_is_passed_to_the_lambda() {
     assert_eq!(model._get_text("B2"), "8");
     assert_eq!(model._get_text("B3"), "2");
 }
+
+#[test]
+fn map_multi_cell_array_step_is_one_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("B1", "=MAP(A1:A2, LAMBDA(x, HSTACK(x, x)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#CALC!");
+    assert_eq!(model._get_text("B2"), "");
+}
