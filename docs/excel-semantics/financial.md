@@ -1308,3 +1308,29 @@ Backend: excel-graph.
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_npv`, `fn_fvschedule` in functions/financial/mod.rs (T-1373)
 Tasks: T-1084, T-1373
+
+## Financial edge-pool smoke check (T-2248)
+Rule: observed values at the edges of the M9 financial generator pools (tools/src/rustsheet_tools/gen/pools.py), one
+formula per pool entry:
+- The annuity `type` is any nonzero number as the start of the period: `PV(0.05,12,-100,0,t)` is 930.6414218271249 for
+  t = 1, 2, -1, 0.5, 1.5, TRUE and "1", and 886.325163644881 for 0 and FALSE; `"x"` is `#VALUE!`.
+- A coupon frequency truncates: `COUPNUM(39448,43831,2.5)` is 24 and `...,4.9)` 48; `"2"` is coerced (24); 3, 0, 12, -1
+  and -0.0001 are `#NUM!`.
+- EFFECT floors npery: `EFFECT(0.05,1.5)` = `EFFECT(0.05,1)` = 0.050000000000000044, and npery 0.5, 0.999, 0 and -1 are
+  `#NUM!`. `EFFECT(0.05,1E+10)` is 0.05127110072502061 (ours 0.05127110027547532, T-2392).
+- PMT: a rate of -1 and nper 0 are `#NUM!`; a negative nper computes (`PMT(0.05,-12,1000)` = 62.82541002081538); nper
+  1E+6, 1E+9 and 1E+300 give -50 (`-pv*rate`). IPMT per 0, 0.5, -1 and past nper (13 of 12) is `#NUM!`; per 1.5 computes.
+- IRR: no sign change, a single flow and all zeros are `#NUM!`; text and TRUE inside an array literal are skipped
+  (`IRR({-100,"a",60})` = `IRR({-100,TRUE,60})` = -0.40000000000000013), and an error element makes it `#VALUE!`
+  (`IRR({-100,#N/A,60})`; ours `#N/A`, T-2390).
+- XNPV: dates whose first is not the earliest, dates from serial 0 to 61, and fewer dates than values are `#NUM!`; equal
+  dates give 0; fractional dates truncate.
+- YIELD: a price of 0 or -1 is `#NUM!`, and so are 1E+6 and 1E+300 (ours -0.6330938491144911 at 1E+6, T-2391); a price of
+  200 computes (-0.02224401627496982).
+Evidence: a scratch suite of 169 cells (one formula per entry of the pools rate, nper, period, cash_amount, price,
+annuity_type, security_date, basis, frequency, npery, cash_flows and cash_dates), filled through excel-graph on
+2026-10-22 and deleted afterwards, as the task asked; T-2390, T-2391 and T-2392 commit probes for the three mismatches.
+Ours: 127 of 169 cells match; the rest are the known PMT/IPMT last-digit misses ("PMT, IPMT and PPMT are the exact
+payment"), YIELD's ("YIELD stops short of PRICE's root"), two IRR last-digit misses and the three cells above.
+Status: UNVERIFIED (probe pending: T-2390, T-2391, T-2392 commit the probe cases)
+Tasks: T-2248, T-2390, T-2391, T-2392
