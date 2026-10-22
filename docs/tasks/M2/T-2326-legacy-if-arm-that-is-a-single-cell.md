@@ -3,7 +3,7 @@ id: T-2326
 title: "Legacy IF arm that is a single-cell INDEX(range,row) shows no @ at all (probes/legacy-if-arm-other-references M12)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
