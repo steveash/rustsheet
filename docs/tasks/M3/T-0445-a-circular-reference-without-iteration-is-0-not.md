@@ -3,7 +3,7 @@ id: T-0445
 title: "A circular reference without iteration is 0, not #CIRC!, for its cells and readers"
 milestone: M3
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
