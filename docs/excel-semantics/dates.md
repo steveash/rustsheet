@@ -589,6 +589,9 @@ cell's value (1 row), and a one-cell or 3-D `weekend` is answered in "An error-v
 and holidays" (probes/date-text-weekend-3d, T-1428). DATEDIF's unit and DAYS360's method over an array are answered
 in "Date function argument modes" (they lift).
 A well-ordered, in-calendar pair with an unknown unit is `#NUM!` too, whatever makes the unit unknown: text (`"x~*"`, `""`, `" x "`, `"ü"`, `"Hello World"`), a number (`DATEDIF(16934,34631,IFERROR(1/0,AVERAGE(..)))`) or a boolean (gen-m6/3e51213f35889d06 Calc!A322, 4ca39e0876796fa5 A172, c96ac1ada46179c4 A198/A236, 9e6a1b733ee1e1e0 A12, 121a7c17092038d9 A114; all 40 cells are listed in T-2288; excel-graph 2026-10-21). Ours: `#VALUE!` (`datedif_value`'s last match arm), T-2288.
+Also under other calls in gen-m7 (excel-graph, 2026-10-22): `TOROW(DATEDIF(..,(Data!C8&Data!D$8)),..)` (gen-m7/2d9b48c6363e7a16 A1306), a
+FILTER unit array lifting DATEDIF into TOCOL's ignore (8 `#NUM!`, 7ea6ef6ceabacafd A1875) and `DATEDIF(17490,55420,"?b")` in a SCAN step
+(9bb61f6ae34c7e20 A2505) are `#NUM!`.
 Status: VERIFIED (excel-graph). Before T-1430 the engine checked DATEDIF's reversed pair before the unit's error.
 Implemented in: `datedif_value` (crates/rustsheet-engine/src/functions/date_and_time.rs).
 Tasks: T-1355, T-1430
