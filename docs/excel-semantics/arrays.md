@@ -303,20 +303,25 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1751
 
 ## MINVERSE: singularity rule
-Rule: Excel inverts matrices whose LU is nearly singular and
-returns `#NUM!` only in rare cases. `MINVERSE({1,2,3;4,5,6;7,8,9})` (last partial-pivot LU pivot 1.11E-16) is a residual inverse
+Rule: Excel inverts every matrix whose partial-pivot LU has no exactly-zero pivot, however tiny,
+and returns `#NUM!` only for an exactly-zero one. `MINVERSE({1,2,3;4,5,6;7,8,9})` (last partial-pivot LU pivot 1.11E-16) is a residual inverse
 {-4503599627370498, 9007199254740992, -4503599627370496; 9007199254740996, -1.8014398509481984E+16, 9007199254740991;
 -4503599627370498, 9007199254740992, -4503599627370495.5}; `{1E-20}` is 1E+20, `{1E-17,0;0,1}` is {1E+17,0;0,1}, and `{1E-300}` is
-9.999999999999999E+299, the plain IEEE reciprocal `1/1E-300` (no scaling), not a quirk. `#NUM!` for `{1,2;2,4}` (exactly-zero pivot) and also for `{1,1;1,1.0000000000000002}`, whose last pivot
-is 2.22E-16, larger than the 3x3's 1.11E-16 that is inverted: the singularity test is not a monotone absolute-pivot cutoff and is unexplained
-(T-2362). Ours (`f64::EPSILON` cutoff) differs on all the inverted cases.
-MINVERSE inverts a 1x1 pivot far below 2.2E-16: `MINVERSE(1.0000000000000085E-108)` is 9.999999999999914E+107 (ours `#NUM!`),
+9.999999999999999E+299, the plain IEEE reciprocal `1/1E-300` (no scaling), not a quirk. `#NUM!` only for an exactly-zero pivot:
+`{1,2;2,4}`, and also `{1,1;1,1.0000000000000002}`, because the literal 1.0000000000000002 is read at 15 significant digits as
+1 (numbers.md "Formula number literals are read at 15 significant digits"), so that matrix is `{1,1;1,1}` with a last pivot of
+exactly 0, not 2.22E-16. The inverse is the MDETERM elimination above (multiplier first) followed by forward substitution
+with L and back substitution with U per identity column (subtract then divide by the pivot): in IEEE doubles that reproduces
+all nine 3x3 residual entries bit for bit (T-2362). Dividing each U entry by the pivot before subtracting, or multiplying by
+the pivot's reciprocal, misses some of them.
+Unprobed: an inverse element past the double range (`MINVERSE(1E-300*1E-10)`) is `#NUM!` for the whole result, as for MDETERM.
+MINVERSE inverts a 1x1 pivot far below 2.2E-16: `MINVERSE(1.0000000000000085E-108)` is 9.999999999999914E+107 (before T-2362 ours was `#NUM!`),
 gen-m5/9284730052aff46c Calc!A39 (excel-graph, 2026-10-20).
 `MINVERSE((Data!E1+Data!E1)/TRUNC(2^31))` = `MINVERSE(9.313225746154786E-25)` is 1.0737418239999999E+24, the IEEE reciprocal
-(ours `#NUM!`): gen-m5/12a3d13f2a5aa246 Calc!A258 (excel-graph, 2026-10-22, T-2252 triage).
+(before T-2362 ours was `#NUM!`): gen-m5/12a3d13f2a5aa246 Calc!A258 (excel-graph, 2026-10-22, T-2252 triage).
 Evidence: probes/minverse-singular-near-singular (46 cells, excel-graph, T-2067); gen-m5/9284730052aff46c Calc!A39.
-Implemented in: `fn_minverse` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs) with a wrong `f64::EPSILON` pivot cutoff.
-Status: VERIFIED (excel-graph); engine DIVERGENT until T-2362 lands.
+Implemented in: `fn_minverse` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs, T-2362)
+Status: VERIFIED (excel-graph)
 Tasks: T-2067, T-2362
 
 ## LOG, DECIMAL, BASE, ATAN2, ARABIC, DOLLAR, FIXED and NUMBERVALUE return arrays over array arguments (T-2159, T-2160)
