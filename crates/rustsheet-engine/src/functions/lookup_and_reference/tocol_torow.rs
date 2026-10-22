@@ -35,9 +35,9 @@ impl Model {
     }
 
     /// TOCOL and TOROW: the array is read once and handed to every element whole; ignore and
-    /// scan_by_column lift over an array and a range (SPEC-0011 "Array-valued functions"; TOCOL
+    /// `scan_by_column` lift over an array and a range (SPEC-0011 "Array-valued functions"; TOCOL
     /// T-1836, TOROW T-2313: `TOROW(Data!B3:E8,3,WRAPCOLS(Data!D3:D11,1))` is one element per
-    /// scan_by_column entry, gen-m7/7d67c559ce7536fa A619:E619). Each element walks the array, so
+    /// `scan_by_column` entry, gen-m7/7d67c559ce7536fa A619:E619). Each element walks the array, so
     /// the call is charged its cells per element; `shape` lays the flat values out.
     fn lift_flatten(
         &mut self,
