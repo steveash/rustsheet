@@ -302,11 +302,13 @@ impl Model {
             return e;
         }
 
+        // No numbers is #N/A, unlike SKEW and KURT (#DIV/0!): probes/stats-evidence-floor-t1623
+        // S!Q50 (statistics.md "SKEW, SKEW.P, KURT, HARMEAN ... edge pools").
         if values.is_empty() {
             return CalcResult::Error {
-                error: Error::DIV,
+                error: Error::NA,
                 origin: cell,
-                message: "Division by Zero".to_string(),
+                message: "HARMEAN needs at least one number".to_string(),
             };
         }
 

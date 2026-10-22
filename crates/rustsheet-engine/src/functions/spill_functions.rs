@@ -521,14 +521,14 @@ impl Model {
         // The array is read once and handed to every element whole; by_col and exactly_once lift
         // over an array and a range (SPEC-0011 "Array-valued functions", T-1836). Each element
         // walks the array, so the call is charged its cells per element.
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+        // An error array is every element's result: `UNIQUE(<#VALUE!>,HSTACK(0.2,1E+15))` is two
+        // `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434; T-2300).
+        let data = self.eval_to_array(&args[0], cell);
+        let cells = match &data {
+            Ok(d) if d.is_empty() || d[0].is_empty() => return CalcResult::Array(vec![]),
+            Ok(d) => d.iter().map(Vec::len).sum::<usize>(),
+            Err(_) => 1,
         };
-        if data.is_empty() || data[0].is_empty() {
-            return CalcResult::Array(vec![]);
-        }
-        let cells = data.iter().map(Vec::len).sum::<usize>();
         let cells = u64::try_from(cells).unwrap_or(u64::MAX).max(1);
         self.lift_call_costed(
             kind,
@@ -536,12 +536,16 @@ impl Model {
             LiftCost::Cells(cells),
             cell,
             &mut |_, values| {
+                let data = match &data {
+                    Ok(data) => data,
+                    Err(error) => return error.clone(),
+                };
                 let flag = |index: usize| match values.get(index) {
                     None | Some(CalcResult::EmptyArg) => Ok(false),
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
                 match (flag(1), flag(2)) {
-                    (Ok(by_col), Ok(exactly_once)) => unique_of(&data, by_col, exactly_once, cell),
+                    (Ok(by_col), Ok(exactly_once)) => unique_of(data, by_col, exactly_once, cell),
                     (Err(error), _) | (_, Err(error)) => error,
                 }
             },

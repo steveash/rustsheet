@@ -2176,8 +2176,10 @@ Implemented in: partly. The engine treats every table as SPEC-0016's fallback (a
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
 move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339),
-the `#REF!` spelling of a deleted table or sheet (T-2340), the adapter's delete_table (T-2341) and convert to
-range (T-2342; the adapter refuses `convert_table`) do not.
+the `#REF!` spelling of a deleted table or sheet (T-2340), and convert to range (T-2342; the adapter refuses
+`convert_table`) do not. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
+and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
+(T-2341, table-delete-table-cells, excel-graph 2026-10-22).
 Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342
 
 ## Unknown function call names: spelling in FORMULATEXT
