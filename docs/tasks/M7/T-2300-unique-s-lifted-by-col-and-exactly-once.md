@@ -3,7 +3,7 @@ id: T-2300
 title: "UNIQUE's lifted by_col and exactly_once: later elements are empty unless every entry is equal"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
