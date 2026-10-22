@@ -661,6 +661,26 @@ functions/logical/let.rs (`Model::bind_argument`, which binds in reference conte
 callee is evaluated with `evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
 Tasks: T-0149, T-1092, T-1224, T-1231, T-1232, T-1252
 
+## Calling a call's result
+Rule: a call followed directly by `(...)`, with no space, calls what the first call returned: `=LAMBDA(a,LAMBDA(b,a*b))(3)(4)`
+is 12, `=LAMBDA(a,LAMBDA(b,LAMBDA(c,a*100+b*10+c)))(1)(2)(3)` is 123, and so are a parenthesized LAMBDA's call
+(`=(LAMBDA(a,LAMBDA(b,a*b)))(3)(4)` is 12), a LET name's (`=LET(f,LAMBDA(a,LAMBDA(b,a*b)),f(3)(4))` is 12,
+`f(1)(2)(3)` too) and a LAMBDA passed as an argument (`=LAMBDA(x,x)(LAMBDA(y,y*2))(5)` is 10). A returned value is called
+as a LET-bound value is ("Calling a parenthesized operand" above): `=LAMBDA(x,x)(1)(2)` is `#NAME?`, `=LAMBDA(x,x)("a")(2)` is
+0, `=LAMBDA(x,x)(1/0)(2)` is `#DIV/0!` and `=LAMBDA(x,x)(A1)(2)` is `#REF!` (an ordinary error: IFERROR catches it). A called
+reference called again stays `#REF!`: `=$A$1(1)(2)`, `=$A$1:A2(1)(2)`, `=(A1)(1)(2)`. A built-in's result may be called too,
+but not every built-in's: `=INDEX(A1:A3,1)(2)` is `#REF!` and `=IF(TRUE,LAMBDA(x,x*2))(3)` is 6, while Excel for the web refuses
+a workbook holding `=SUM(1)(2)` (FileCorruptTryRepair, one single-formula workbook, T-2038), so the engine reads it as a syntax
+error. With a space, `=LAMBDA(a,LAMBDA(b,a*b))(3) (4)` is refused the same way (no intersection), and the engine reads it as a
+syntax error too. `LAMBDA(x,LAMBDA(y,x+y))(1)()` gives an error the oracle could not decode (unprobed).
+Evidence: probes/lambda-escaping-closures H8, H10; probes/chained-calls-lambda B1:B10; probes/chained-calls-ref-1..4, -6
+(oracle: excel-graph, 2026-10-22, T-2038); the refused `SUM(1)(2)` and spaced forms were single-formula workbooks, not kept as
+cases (a refused workbook gives no values).
+Status: VERIFIED (Excel for the web)
+Implemented in: expressions/parser/lambda.rs (`Parser::chain_calls`, after a call and a name call), node_frames.rs (a called
+value, `Model::call_variable`). A built-in's result is not chained yet (`INDEX(...)(2)` is a parse error): T-2405.
+Tasks: T-2038, T-2405
+
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =
 `Sheet1!$A$1:$A$3 Sheet1!$A$2:$B$2` and `wide` = `Sheet1!$A$1:$B$3 Sheet1!$A$2:$B$3`: `=isect` = 2,

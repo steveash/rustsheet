@@ -3,7 +3,7 @@ id: T-2038
 title: "Curried and chained calls: a call of a call, LAMBDA(a,LAMBDA(b,a*b))(3)(4) and INDEX(s,1,3)(0)"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -23,9 +23,18 @@ needs T-2039. Mind the intersection rule: `(A1) (A2)` with a space is an interse
 space and a function call result `INDEX(...)(0)` are calls before extending the grammar.
 
 ## Acceptance criteria
-- [ ] probes/lambda-escaping-closures H8 and H10 pass; any new grammar case is probed first.
-- [ ] FORMULATEXT / round trip of a chained call keeps its text.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/lambda-escaping-closures H8 and H10 pass; any new grammar case is probed first.
+- [x] FORMULATEXT / round trip of a chained call keeps its text.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - LAMBDA values in arrays (T-2039).
+
+## Outcome
+A call followed directly by `(...)` calls what it returned (`Parser::chain_calls`, after a LAMBDA, parenthesized, reference or
+name call; each chained call counts toward the formula depth limit), and a returned value is called like a LET-bound one
+(`Model::call_variable`: `LAMBDA(x,x)(1)(2)` is `#NAME?`). Printing keeps a chain bare (`callee_operand`). New probes
+(excel-graph): probes/chained-calls-lambda and chained-calls-ref-1..4, -6. Excel refuses `SUM(1)(2)` and a spaced
+`...(3) (4)`, which stay syntax errors. A built-in's result is not chained yet: T-2405 (2 new known failures,
+chained-calls-ref-4 and -6; H3 also needs T-2039). Semantics: references.md "Calling a call's result".
+Eval delta: probes fixed 2 (lambda-escaping-closures H8, H10), new-coverage failures 2 (T-2405), regressions 0.

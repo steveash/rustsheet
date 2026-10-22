@@ -288,9 +288,12 @@ impl Model {
         let callee = self
             .evaluate_reference_arg(lambda, cell)
             .into_single_area(cell);
-        // The same guard as `call_callee`'s, kept in step with it.
+        // The same guards as `call_callee`'s and `call_variable`'s, kept in step with them.
         if let CalcResult::Range { .. } = callee {
             return RefArg::Value(reference_called(cell));
+        }
+        if !matches!(callee, CalcResult::Lambda(_)) {
+            return RefArg::Value(self.call_variable(callee, call_args, cell));
         }
         let mut caller = self
             .lambda_caller(&callee, call_args.len())
@@ -318,7 +321,7 @@ impl Model {
     }
 
     /// A LET variable or LAMBDA parameter called like a function, `f(2)` in `LET(f,..,f(2))` or
-    /// `LAMBDA(f,f(2))`.
+    /// `LAMBDA(f,f(2))`, or what a call returned, called again (`LAMBDA(x,x)(1)(2)`, T-2038).
     /// A LAMBDA is called and a reference is `#REF!` (`call_callee`); a value gives Excel's odd
     /// results without its arguments being read: a number or boolean is `#NAME?`, text is 0, an
     /// error is itself, and an array is called element by element

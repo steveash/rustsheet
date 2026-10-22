@@ -456,16 +456,16 @@ impl Parser {
             .filter(|_| self.lexer.is_a1_mode() && !name.contains('$'))
         {
             let callee = self.reference_operand(None, cell.row, cell.column, false, false);
-            return Node::LambdaCallKind {
+            return self.chain_calls(Node::LambdaCallKind {
                 lambda: Box::new(callee),
                 args,
-            };
+            });
         }
-        Node::NamedFunctionKind {
+        self.chain_calls(Node::NamedFunctionKind {
             name: name.trim_start_matches("_xlpm.").to_string(),
             args,
             id: None,
-        }
+        })
     }
 
     /// `TRUE` or `FALSE`, or the calls `TRUE()` and `FALSE()`.
