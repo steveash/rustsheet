@@ -510,7 +510,7 @@ top-left of its call.
   `UNIQUE(D1:D3,{FALSE;FALSE})` "x", "x"; `UNIQUE(D1:D3,FALSE,{TRUE;TRUE})` "y", "y".
 - TOCOL's scan_by_column (`TOCOL(A1:B3,0,{FALSE;TRUE})`: element 2 is 1, ROWS 1) and the other M7 lifts do not show it.
 - A 2-D exactly_once whose entries are all equal does not give every element its call's top-left: `UNIQUE(Data!C2:E10,TRUE,
-  <3x3 of FALSE>)` spills the top-left 100 down the first column and empty elements (0) in the other two (gen-m7/2c156ba98ef0220a.case.json
+  <3x3 of FALSE>)` spills the top-left 100 down the first column and 0 in the other two (whether those are blank elements is unprobed, T-2348) (gen-m7/2c156ba98ef0220a.case.json
   Calc!A1284, excel-graph, 2026-10-22, T-2254 triage). Ours: 100 in all nine. Whether the rule is "first of each row" or follows
   by_col is unprobed (T-2348).
 Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
