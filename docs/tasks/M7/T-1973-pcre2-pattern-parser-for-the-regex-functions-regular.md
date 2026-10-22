@@ -48,7 +48,7 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 1 known-failure lin
 - gen-m7/7307132bb8820f17.case.json A581 `=REGEXEXTRACT(Data!C$9,OFFSET(Data!B2:E9,2,3))`: A587 Excel <empty>, ours #VALUE!; cells (1): A587
 
 ## Acceptance criteria
-- [ ] The 1 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 1 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
+- [ ] (Deferred to T-2343, see Outcome.) The 1 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 1 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
 - [x] Visible parity: the 6 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] The parser is iterative (no recursion on pattern size), caps nesting, and fails closed (`#VALUE!`) on every
   construct it does not know.

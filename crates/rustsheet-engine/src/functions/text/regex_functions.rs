@@ -4,8 +4,8 @@ use regex_automata::Match;
 
 use super::{
     lifted::COMPARED_BYTES_PER_VISIT,
-    regex_engine::{BuildFailure, Caches, Engine, Search, Spent},
     pcre::{self, FinalLf},
+    regex_engine::{BuildFailure, Caches, Engine, Search, Spent},
     regex_replacement::Replacement,
     util::within_text_budget,
 };
@@ -65,7 +65,12 @@ struct PatternCache {
 impl PatternCache {
     fn new() -> Self {
         PatternCache {
-            entries: [HashMap::new(), HashMap::new(), HashMap::new(), HashMap::new()],
+            entries: [
+                HashMap::new(),
+                HashMap::new(),
+                HashMap::new(),
+                HashMap::new(),
+            ],
             held: 0,
             budget: COMPILE_BUDGET,
             work: SEARCH_BUDGET,
@@ -86,7 +91,8 @@ impl PatternCache {
         if self.exhausted {
             return Err(too_much_regex_work(cell));
         }
-        // Only a pattern that can hold `$` or `\Z` reads differently per text.
+        // Only a pattern that can hold `$` or `\Z` reads differently per text. The text test
+        // over-approximates on purpose (a literal `[$]` or `Z` costs one equivalent compile).
         let final_lf = if pattern.contains(['$', 'Z']) {
             pcre::final_lf_for(text)
         } else {
@@ -133,7 +139,8 @@ impl PatternCache {
         final_lf: FinalLf,
         cell: CellReferenceIndex,
     ) -> Result<Option<(Engine, Caches)>, CalcResult> {
-        let Ok(translated) = pcre::translate(pattern, case_insensitive, final_lf, self.budget) else {
+        let Ok(translated) = pcre::translate(pattern, case_insensitive, final_lf, self.budget)
+        else {
             return Ok(None);
         };
         // Case folding walks every code point of a folded class; one budget byte per code point
@@ -532,7 +539,9 @@ impl Model {
                     Ok(options) => options,
                     Err(error) => return error,
                 };
-                match cache.with(&pattern, insensitive, &text, cell, |search| search.is_match(&text)) {
+                match cache.with(&pattern, insensitive, &text, cell, |search| {
+                    search.is_match(&text)
+                }) {
                     Ok(matched) => CalcResult::Boolean(matched),
                     Err(error) => error,
                 }
@@ -628,8 +637,9 @@ mod tests {
         let small = COMPILE_BUDGET / (1 << 16);
         let mut spent = false;
         for i in 0..=small {
-            spent |=
-                is_error(&cache.with(&format!("a{i}"), false, "", CELL, |search| search.is_match("")));
+            spent |= is_error(&cache.with(&format!("a{i}"), false, "", CELL, |search| {
+                search.is_match("")
+            }));
         }
         assert!(spent);
     }

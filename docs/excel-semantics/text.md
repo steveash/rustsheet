@@ -362,6 +362,12 @@ Excel's are (T-1817, below); POSIX classes are rewritten to Excel's Unicode ones
 The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE replacement syntax (T-1688)"; the
 pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
+Pattern limits of our PCRE2 parser (T-1973, functions/text/pcre/parse.rs):
+- Nesting is capped at 250 levels. That is PCRE2's default parentheses limit, UNVERIFIED for Excel (T-1972).
+- Stacked quantifiers and nested brackets also count toward that cap. This is our own directive-5 limit, a
+  DEVIATION: `REPT("(",250)&"a*"&REPT(")",250)` is `#VALUE!`, as it already was under regex-syntax's nest limit.
+- Repeat counts are capped at 65,535 (PCRE2's), as are capture groups. Group names are capped at 32 characters
+  (PCRE2 before 10.44, which may have raised it). All of these are UNVERIFIED for Excel (T-1972).
 Status: DEVIATION (decision 0014)
 Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
@@ -715,7 +721,16 @@ U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]
 `a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
 Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
-`\X` and `\R` (A27, A42) parse but stay `#VALUE!` until T-2287. `$` and `\Z` on a text that holds another LF before
+`\X` and `\R` (A27, A42) parse but stay `#VALUE!` until T-2287.
+`\Z` follows `$`'s final-LF rule, as SPEC-0013 reads PCRE2. That is UNVERIFIED for Excel (T-1972); before T-1973 it was
+`#VALUE!`.
+Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them):
+- Now accepted as PCRE2 reads it: `(?n)`, `(?-)`, `(?'name'..)`, `\e`, `\cX`, `[\b]`, `\p{^Lu}`, a `{` that starts
+  no quantifier (a literal), and spaces inside a bracket under `(?x)` (literal).
+- Changed meaning: `\<` is a literal `<`, not a word start.
+- Now `#VALUE!` (fail closed): `\v` (was VT), `^*`, and spaces inside quantifier braces (`a{1, 2}`, a quantifier
+  before). Also `--`, `~~` and `||` inside a bracket, which were set operations; Excel's nested brackets suggest a
+  UTS #18 dialect, where they may be set operations too. `$` and `\Z` on a text that holds another LF before
 its final one still match only at the very end (PCRE2 also matches before the final LF) until T-1900's memoized mode.
 Status: VERIFIED (excel-graph)
 Tasks: T-1829 (probe), T-1900, T-1903, T-1973
@@ -735,8 +750,10 @@ advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:a
 ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
 Ours: PCRE2's grammar since T-1973 (functions/text/pcre/): comments, `\Q..\E`, `(?x)` and scoped flags match
-(C14-C19). Backreferences, lookaround, atomic groups, possessive quantifiers (`a++` is `#VALUE!`, C11's answer;
-B29 still differs), `\K`, `\G` and conditionals parse but are `#VALUE!` until T-1900's backtracker. Iteration is
+(C14-C19). Backreferences, lookaround, atomic groups, possessive quantifiers, `\K`, `\G` and conditionals parse
+but are `#VALUE!` until T-1900's backtracker. Excel's answer for `a++a` is `#N/A` (B29). C11 passes only because it
+tests ISERROR. Possessive patterns whose result does not depend on possessiveness (`REGEXTEST("aaa","a++")`, TRUE
+in Excel) were right before T-1973 and are `#VALUE!` until T-1900. SPEC-0013 accepts that temporary loss. Iteration is
 still Rust's (`bababab`) until T-1899. The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
 unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
 Status: VERIFIED (excel-graph)

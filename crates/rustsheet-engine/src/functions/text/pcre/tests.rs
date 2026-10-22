@@ -86,7 +86,11 @@ fn no_posix_class_folds_while_the_other_items_do() {
         ("[[:alpha:]&&[:lower:]]", "A", false),
         ("[[:alpha:]]", "é", true),
     ] {
-        assert_eq!(matches(pattern, text, false), expected, "{pattern} on {text}");
+        assert_eq!(
+            matches(pattern, text, false),
+            expected,
+            "{pattern} on {text}"
+        );
     }
     assert!(!matches("[^[:upper:]x]", "X", true));
     assert!(matches("[^[:upper:]x]", "b", true));
@@ -111,7 +115,14 @@ fn posix_syntax_pcre2_rejects_is_invalid() {
     ] {
         assert!(invalid(pattern), "{pattern}");
     }
-    for pattern in [r"[\[:alpha:]]", "[[:alpha:]-]", "[-[:alpha:]]", "[:a]", "[a:]", "[[:alpha:]]"] {
+    for pattern in [
+        r"[\[:alpha:]]",
+        "[[:alpha:]-]",
+        "[-[:alpha:]]",
+        "[:a]",
+        "[a:]",
+        "[[:alpha:]]",
+    ] {
         assert!(!invalid(pattern), "{pattern}");
     }
 }
@@ -142,7 +153,9 @@ fn backtracking_constructs_parse_but_stay_unsupported() {
 
 #[test]
 fn unknown_constructs_fail_closed() {
-    for pattern in ["(", ")", "a{2,1}", "*", "(?P>x)", "(*FAIL)", r"\v", r"\N", "a{,3}", "(?|a)"] {
+    for pattern in [
+        "(", ")", "a{2,1}", "*", "(?P>x)", "(*FAIL)", r"\v", r"\N", "a{,3}", "(?|a)",
+    ] {
         assert!(invalid(pattern), "{pattern}");
     }
     // A brace that starts no quantifier is a literal in PCRE2.
@@ -178,13 +191,20 @@ fn folding_stops_at_its_budget() {
     let translated = translate(&ranges, true, FinalLf::EndLf, 1 << 27).unwrap();
     assert_eq!(translated.fold_cost, usize::MAX);
     assert!(start.elapsed().as_secs() < 5);
-    assert_eq!(translate("[a-c]", true, FinalLf::EndLf, 100).unwrap().fold_cost, 3);
+    assert_eq!(
+        translate("[a-c]", true, FinalLf::EndLf, 100)
+            .unwrap()
+            .fold_cost,
+        3
+    );
 }
 
 #[test]
 fn our_hir_agrees_with_regex_syntax_where_the_dialects_agree() {
     // Patterns both dialects read alike (no \Q, possessive or POSIX class): the same Hir.
-    let atoms = ["a", "b", ".", r"\d", r"\w", "[a-c]", "[^b]", r"\b", "^", "(a)", "(?:ab)", "(?i)a"];
+    let atoms = [
+        "a", "b", ".", r"\d", r"\w", "[a-c]", "[^b]", r"\b", "^", "(a)", "(?:ab)", "(?i)a",
+    ];
     let quantifiers = ["", "*", "+?", "?", "{2}", "{1,3}"];
     let mut seed: u32 = 12_345;
     let mut next = |n: usize| {
@@ -204,7 +224,9 @@ fn our_hir_agrees_with_regex_syntax_where_the_dialects_agree() {
                 pattern.push_str(quantifiers[next(quantifiers.len())]);
             }
         }
-        let ours = translate(&pattern, false, FinalLf::EndLf, usize::MAX).unwrap().hir;
+        let ours = translate(&pattern, false, FinalLf::EndLf, usize::MAX)
+            .unwrap()
+            .hir;
         let theirs = regex_syntax::Parser::new().parse(&pattern).expect(&pattern);
         assert_eq!(ours, theirs, "{pattern}");
     }

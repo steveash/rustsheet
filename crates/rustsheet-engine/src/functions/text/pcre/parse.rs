@@ -2,9 +2,12 @@
 //! explicit frame stack), and failing closed: every construct it does not know is
 //! [`Invalid`]. Brackets nest and recurse, but under the same [`NEST_LIMIT`] as groups.
 
-use regex_syntax::hir::{Class, ClassUnicode, ClassUnicodeRange, HirKind};
+use regex_syntax::hir::{ClassUnicode, ClassUnicodeRange};
 
-use super::ast::{fixed_length, Anchor, Ast, Condition, LookKind, Reference, RepeatKind};
+use super::{
+    ast::{fixed_length, Anchor, Ast, Condition, LookKind, Reference, RepeatKind},
+    class::{class_of, is_extended_space, posix_class_text, BLANK},
+};
 
 /// The deepest a pattern may nest: groups, brackets and stacked quantifiers each count one
 /// level. PCRE2's default parentheses nest limit; T-1972 probes Excel's.
@@ -289,7 +292,10 @@ impl Parser {
                     Ast::Alternation(asts) => asts.iter().collect(),
                     one => vec![one],
                 };
-                if alternatives.into_iter().any(|ast| fixed_length(ast).is_none()) {
+                if alternatives
+                    .into_iter()
+                    .any(|ast| fixed_length(ast).is_none())
+                {
                     return Err(Invalid);
                 }
             }
@@ -356,6 +362,20 @@ impl Parser {
     /// starts no quantifier, which PCRE2 then reads as a literal.
     fn counted(&mut self) -> Result<Option<(u32, Option<u32>)>, Invalid> {
         let start = self.pos;
+        // Spaces inside a quantifier's braces (`a{1, 2}`) are allowed from PCRE2 10.43 only, as
+        // `{,m}` is: unprobed, so invalid rather than literal text (T-1972 probes both).
+        let body: Vec<char> = self.chars[start..]
+            .iter()
+            .copied()
+            .take_while(|&c| c.is_ascii_digit() || c == ',' || c == ' ')
+            .take(32)
+            .collect();
+        if body.contains(&' ')
+            && body.iter().any(char::is_ascii_digit)
+            && self.chars.get(start + body.len()) == Some(&'}')
+        {
+            return Err(Invalid);
+        }
         let Some(min) = self.number()? else {
             // `{,m}` is a quantifier from PCRE2 10.43 only: unprobed, so invalid.
             if self.peek() == Some(',') && self.peek_at(1).is_some_and(|c| c.is_ascii_digit()) {
@@ -784,6 +804,10 @@ impl Parser {
                     }
                     self.no_range_after_class()?;
                 }
+                // `--`, `~~` and `||` are set operators in the regex crate's (UTS #18) brackets
+                // and literals in stock PCRE2; Excel's brackets nest like the former, so the
+                // meaning is unprobed: invalid until T-1972 answers.
+                '-' | '~' | '|' if self.peek() == Some(c) => return Err(Invalid),
                 '&' if self.eat('&') => {
                     let mut set = self.close_set(plain, fixed);
                     if let Some(before) = intersection {
@@ -868,7 +892,13 @@ impl Parser {
             return Ok(None);
         };
         let rest = &self.chars[self.pos + 1..];
-        let Some(end) = rest.windows(2).position(|w| w[0] == mark && w[1] == ']') else {
+        // The item ends at the first `]`, which must follow the mark: one bounded scan.
+        let Some(end) = rest
+            .iter()
+            .position(|&c| c == ']')
+            .and_then(|close| close.checked_sub(1))
+            .filter(|&end| rest[end] == mark)
+        else {
             return Ok(None);
         };
         let inner = &rest[..end];
@@ -891,73 +921,6 @@ impl Parser {
         }
         Ok(Some(class))
     }
-}
-
-/// PCRE2's `\h` and `[:blank:]`: Zs, tab and U+180E; LF, VT, NEL and U+2028 are not blank.
-const BLANK: &str = r"[\t\p{Zs}\x{180E}]";
-
-/// The Unicode class each POSIX class matches, as regex-syntax text (probes/regex-posix-classes;
-/// the characters it does not probe follow PCRE2's UCP definitions).
-fn posix_class_text(name: &str) -> Option<&'static str> {
-    Some(match name {
-        "alnum" => r"[\p{L}\p{N}]",
-        "alpha" => r"\p{L}",
-        "ascii" => r"[\x00-\x7F]",
-        "blank" => BLANK,
-        "cntrl" => r"\p{Cc}",
-        "digit" => r"\p{Nd}",
-        // L, M, N, P, S and Cf (soft hyphen, ZWSP and BOM are graphic), but no separator.
-        "graph" => r"[[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Cf}]--[\x{61C}\x{180E}\x{2066}-\x{2069}]]",
-        "lower" => r"\p{Ll}",
-        // Graph plus the Zs spaces (not tab, LF or U+2028).
-        "print" => r"[[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Cf}\p{Zs}]--[\x{61C}\x{180E}\x{2066}-\x{2069}]]",
-        // Every P, plus the ASCII symbols (`$+<=>^`|~`); `×` and `€` are not punctuation.
-        "punct" => r"[\p{P}[\x00-\x7F&&\p{S}]]",
-        // White_Space plus U+180E (probes/regex-posix-classes-c A29): NEL, NBSP, U+2028 and
-        // U+3000 are spaces, ZWSP is not.
-        "space" => r"[\p{White_Space}\x{180E}]",
-        "upper" => r"\p{Lu}",
-        // Letters, all numbers (`²`, `½`, `Ⅳ`), non-spacing marks and connectors.
-        "word" => r"[\p{L}\p{N}\p{Mn}\p{Pc}]",
-        "xdigit" => r"[0-9A-Fa-f\x{FF10}-\x{FF19}\x{FF21}-\x{FF26}\x{FF41}-\x{FF46}]",
-        _ => return None,
-    })
-}
-
-/// The Unicode class regex-syntax builds for `text` (a fixed spelling of ours, or `\p{name}`
-/// with a name from the pattern, which regex-syntax rejects when unknown).
-fn class_of(text: &str) -> Result<ClassUnicode, Invalid> {
-    let hir = regex_syntax::Parser::new()
-        .parse(text)
-        .map_err(|_| Invalid)?;
-    match hir.kind() {
-        HirKind::Class(Class::Unicode(class)) => Ok(class.clone()),
-        HirKind::Literal(literal) => {
-            let c = std::str::from_utf8(&literal.0)
-                .ok()
-                .and_then(|s| s.chars().next())
-                .ok_or(Invalid)?;
-            Ok(ClassUnicode::new([ClassUnicodeRange::new(c, c)]))
-        }
-        _ => Err(Invalid),
-    }
-}
-
-/// PCRE2's extended-mode white space (`(?x)`).
-fn is_extended_space(c: char) -> bool {
-    matches!(
-        c,
-        ' ' | '\t'
-            | '\n'
-            | '\u{B}'
-            | '\u{C}'
-            | '\r'
-            | '\u{85}'
-            | '\u{200E}'
-            | '\u{200F}'
-            | '\u{2028}'
-            | '\u{2029}'
-    )
 }
 
 /// The items of one alternative as a node, and its depth.

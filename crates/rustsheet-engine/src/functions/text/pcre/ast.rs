@@ -171,8 +171,6 @@ pub(super) fn fixed_length(ast: &Ast) -> Option<u32> {
         Ast::Repeat { min, max, ast, .. } if Some(*min) == *max => {
             min.checked_mul(fixed_length(ast)?)
         }
-        Ast::Repeat { .. } | Ast::Backref(_) | Ast::Conditional { .. } | Ast::Unimplemented => {
-            None
-        }
+        Ast::Repeat { .. } | Ast::Backref(_) | Ast::Conditional { .. } | Ast::Unimplemented => None,
     }
 }

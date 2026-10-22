@@ -20,7 +20,6 @@ use super::{
     lifted::to_u64,
     regex_reach::{Reach, Visits},
 };
-use regex_syntax::hir::Hir;
 use regex_automata::{
     hybrid::{
         dfa::{Cache as DfaCache, Config as DfaConfig, DFA},
@@ -34,6 +33,7 @@ use regex_automata::{
     util::{captures::Captures, iter::Searcher},
     Anchored, Input, Match, MatchError, MatchKind, PatternID,
 };
+use regex_syntax::hir::Hir;
 
 /// Lazy DFA cache capacity, per direction: the `regex` crate's default.
 const DFA_CACHE: usize = 2 << 20;

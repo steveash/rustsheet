@@ -4,6 +4,7 @@
 //! conditionals, `\G`) is T-1900; until then they parse and are `#VALUE!`.
 
 mod ast;
+mod class;
 mod hir;
 mod parse;
 #[cfg(test)]
