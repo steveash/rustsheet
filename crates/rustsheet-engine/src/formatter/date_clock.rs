@@ -142,9 +142,10 @@ fn at_most_one_out_of_range(hour: u32, minute: u32, second: f64) -> bool {
 /// Serial value of clock text in Excel's en-US grammar, before any wrap to one day:
 /// `H:M`, `H:M:S[.f]`, `M:S.f` (two components with a fraction are minutes and seconds) or the
 /// odd `H:M.f:S` (see [`fraction_as_seconds`]; `S` is checked and then ignored), spaces allowed
-/// around `:` and `.`, one trailing `:` ignored (so `H:` alone is an hour), components up to 9999 and at most one
-/// of them out of its usual range (see [`at_most_one_out_of_range`]), an optional ` AM`/` PM`/` A`/` P` suffix after whitespace
-/// (then the hour is at most 12 and minutes and whole seconds at most 59). The value is
+/// around `:` and `.`, one trailing `:` ignored (so `H:` alone is an hour), components up to
+/// 9999 and at most one of them out of its usual range (see [`at_most_one_out_of_range`]), an
+/// optional ` AM`/` PM`/` A`/` P` suffix after whitespace (then the hour is at most 12 and
+/// minutes and whole seconds at most 59). The value is
 /// `(total_ms / 1000) / 86400`, which matches Excel bit for bit (`"10:11:12.5"` is
 /// 0.4244502314814815). Excel: see docs/excel-semantics/dates.md#time-text.
 pub(crate) fn parse_clock_text(text: &str) -> Option<f64> {
