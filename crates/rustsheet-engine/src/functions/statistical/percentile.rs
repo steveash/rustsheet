@@ -14,7 +14,7 @@ use crate::{
 
 /// The numbers of the data argument of PERCENTILE*, QUARTILE* and PERCENTRANK*: a range's
 /// numbers (text, booleans and blanks skipped), an array's, a number, or nothing for an empty
-/// argument; an error value is that error, which comes before a bad `k` (`PERCENTILE(NA(),2)` and
+/// argument; a typed boolean or text is a one-element array (see below); an error value is that error, which comes before a bad `k` (`PERCENTILE(NA(),2)` and
 /// `QUARTILE.EXC(NA(),9)` are `#N/A`, probes/stat-test-lift P81, P83; T-1982); anything else is
 /// `#VALUE!`.
 fn percentile_numbers(
@@ -22,9 +22,18 @@ fn percentile_numbers(
     arg: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
+    let typed_in_place = !matches!(arg.ungrouped(), Node::ReferenceKind { .. });
     match model.evaluate_node_in_context(arg, cell) {
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
         error @ CalcResult::Error { .. } => Err(error),
+        // A typed boolean is a one-element array (`QUARTILE(TRUE,1)` is 1, probes-numeric/t1748-
+        // typed-boolean-data A1-A8 for the whole family, probes/stat-order-floor-batch A102, A128),
+        // and typed text a number (A11). A single cell holding either is unprobed and keeps the
+        // old reading below.
+        CalcResult::Boolean(b) if typed_in_place => Ok(vec![f64::from(u8::from(b))]),
+        text @ CalcResult::String(_) if typed_in_place => {
+            model.cast_number_ref(&text, cell).map(|n| vec![n])
+        }
         value => model.numeric_flat_of(value, cell),
     }
 }

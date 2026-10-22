@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1748 probe: a typed boolean as the data argument of the order-statistic family, and SUMSQ(1,).",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1748"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=PERCENTILE(TRUE,0.5)",
+    "A2": "=PERCENTILE.INC(TRUE,0.5)",
+    "A3": "=PERCENTILE.EXC(TRUE,0.5)",
+    "A4": "=QUARTILE.EXC(TRUE,2)",
+    "A5": "=PERCENTRANK(TRUE,1)",
+    "A6": "=PERCENTRANK.EXC(TRUE,1)",
+    "A7": "=QUARTILE(FALSE,1)",
+    "A8": "=QUARTILE(TRUE,0)",
+    "A9": "=SMALL(TRUE,1)",
+    "A10": "=LARGE(TRUE,1)",
+    "A11": "=QUARTILE(\"1\",1)",
+    "A12": "=SUMSQ(1,)"
+   }
+  }
+ ],
+ "expected": {},
+ "hypotheses": {
+  "Calc!A1": "=PERCENTILE(TRUE,0.5)",
+  "Calc!A2": "=PERCENTILE.INC(TRUE,0.5)",
+  "Calc!A3": "=PERCENTILE.EXC(TRUE,0.5)",
+  "Calc!A4": "=QUARTILE.EXC(TRUE,2)",
+  "Calc!A5": "=PERCENTRANK(TRUE,1)",
+  "Calc!A6": "=PERCENTRANK.EXC(TRUE,1)",
+  "Calc!A7": "=QUARTILE(FALSE,1)",
+  "Calc!A8": "=QUARTILE(TRUE,0)",
+  "Calc!A9": "=SMALL(TRUE,1)",
+  "Calc!A10": "=LARGE(TRUE,1)",
+  "Calc!A11": "=QUARTILE(\"1\",1)",
+  "Calc!A12": "=SUMSQ(1,)"
+ }
+}

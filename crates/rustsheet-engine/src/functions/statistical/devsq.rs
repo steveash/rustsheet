@@ -22,7 +22,7 @@ impl Model {
             *count += 1;
         }
 
-        if let Err(error) = self.for_each_value_skip_empty(args, cell, |value| {
+        if let Err(error) = self.for_each_value(args, cell, |value| {
             accumulate(&mut sum, &mut sumsq, &mut count, value);
         }) {
             return error;
