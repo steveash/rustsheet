@@ -221,6 +221,8 @@ fn z_test_is_norm_s_dist_of_minus_z() {
             ("H7", "=Z.TEST(O1,0,1)", "#DIV/0!"),
             ("H8", "=Z.TEST(7,4,1)", "#DIV/0!"),
             ("H9", "=Z.TEST(B1:B10,5,-1)", "#NUM!"),
+            ("H10", "=Z.TEST(TRUE,0.5,1)", "#DIV/0!"),
+            ("H11", "=ZTEST(TRUE,0.5,1)", "#DIV/0!"),
         ],
     );
 }
