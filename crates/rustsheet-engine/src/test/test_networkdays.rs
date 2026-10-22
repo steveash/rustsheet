@@ -346,9 +346,9 @@ fn networkdays_handles_large_date_ranges_efficiently() {
     );
 }
 
-/// UNVERIFIED: counting (not skipping) number text; the oracle cells use serial 1, outside every range.
 /// Excel: a one-cell holidays reference to a blank cell is no holiday, and a holiday cell holding
-/// number text is one (docs/excel-semantics/dates.md "WORKDAY and NETWORKDAYS holidays", T-2270).
+/// number text is one (docs/excel-semantics/dates.md "WORKDAY and NETWORKDAYS holidays", T-2270). Counting number
+/// text inside the date range, rather than skipping it, is UNVERIFIED (T-2369).
 #[test]
 fn holidays_blank_cell_and_number_text_cell_for_all_four_functions() {
     let mut model = new_empty_model();
@@ -388,4 +388,11 @@ fn holidays_blank_cell_and_number_text_cell_for_all_four_functions() {
         "#VALUE!",
         "non-number text stays #VALUE!"
     );
+    // A range with number text: 1.005, "1.5" and 0.3 are all serial 1, outside the span.
+    model._set("F1", "1.005");
+    model._set("F2", "'1.5");
+    model._set("F3", "0.3");
+    model._set("D6", "=NETWORKDAYS(44927,44936,F1:F3)");
+    model.evaluate();
+    assert_eq!(model._get_text("D6"), "7");
 }
