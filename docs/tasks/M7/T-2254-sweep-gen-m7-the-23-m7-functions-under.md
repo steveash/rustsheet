@@ -3,7 +3,7 @@ id: T-2254
 title: "Sweep gen-m7: the 23 M7 functions under 400 Excel cells to at least 500, with edge pools"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
