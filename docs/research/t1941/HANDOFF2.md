@@ -457,3 +457,47 @@ Scripts and logs of this run are in `docs/research/t1941/t2122/` on the research
 - (1.5,2]: the w6t/k3t cases beyond the committed ones must be regenerated and filled before W6's pkscan, which
   is hours of CPU per stage; not started.
 - No kernel is bit-exact yet, so `gamma_kernels.rs` has no new arrays to swap (no engine task filed this run).
+
+## 14. T-2122 run 2 (2026-10-22, single opus worker, ~40 minutes, K3 only)
+
+Script `t2122/k3_n6first.py` (main and the research branch; logs `k3_n6first_*.log` on the research branch). It
+reads the per-stage slopes `w5/p5/ladder.py` prints and solves the N chain top-down instead of by the joint RANSAC
+(13.4 step 1): N6's equations alone give (dN7, dN8, dN9), with a consensus start over minimal subsets and alias
+shifts of 2^maxrung cycles/x; N7's reads are then a check; N5 adds dN6; N3 adds dN4 and dN5. With `JOINT67=1` it
+also fits N6 and N7 jointly, enumerating alias shifts on the N7 rows only. It needs only numpy (no `libsc.so`). No
+new oracle data this run.
+
+### 14.1 Results
+- **N6 is one smooth quadratic law at 8 of the 9 readable anchors.** In coefficient units, slope·ulp(S6) runs
+  −3.83e-9 (0.8741), −4.19e-9 (1.0309), −4.22e-9 (1.1023) down to −3.74e-9 (1.4531). S6 stays in one binade
+  (ulp 2^-56) over [0.73, 1.46], so the near-constant cycles/x read of 13.4 is not a binade artefact.
+  - Fit on 8 anchors: residuals ≤ 2e6 cycles/x (0.7%).
+  - The 0.9517 read (−7.6e6) is off by −2.83e8, about 2^28. It is an alias at rung 28 or a wrong-branch unwrap.
+- **Anchors a-f alone are fully consistent.** `ladder_real_af30.log` gives 4 N6 equations and 2 N7 equations. The
+  joint N6+N7 fit leaves rms 2.4e4 cycles/x, with N7@1.3527 at alias −1 (one period of 2^30). The moves are **N7
+  +4.005e8, N8 −4.61e10, N9 +3.502e12 ulps** (`k3_n6first_real_af.log`).
+- **With all 12 anchors the joint N6+N7 fit breaks.** Rms is 1.25e7 cycles/x and N7 residuals reach 3.7e7
+  (`k3_n6first_real.log`). The N6-only 12-anchor fit moves N7 to +7.5e8 (+5.6e8 jointly). So the g-l anchors
+  (0.7311 to 1.4129) pull against a-f by ~2e8 ulps in N7.
+- The lower stages are not consistent yet: N5 has 3 readable anchors, 2 dropped; N3 keeps 6 of 10 at a 3e6
+  tolerance, giving N4 −3.8e8 and N5 +1.04e9 ulps. They depend on the head move, so they mean nothing until N7-N9
+  are settled.
+- **Controls:**
+  - On the 12-anchor planted control (`ladder_ctl30_1e10_12a.log`), N6-only recovers truth N7 to 1% (−1.33e9
+    against −1.344e9). It does not recover N8 or N9 (−1.5e9 against −1.08e9; 3.9e10 against 4.3e9): N6's
+    equations fix N7 and only a combination of N8 and N9.
+  - The control's N7 reads miss the N6 prediction by 2e6-1.4e7. So N7 reads are good to ~1e7 cycles/x at best, and
+    the real 12-anchor N7 misfit is only 2-3 times that.
+  - **The `JOINT67` fit fails its control** (rms 2.7e8). It enumerates alias shifts on N7 rows only, and the
+    control needs one on N6 (1.1789, alias −1). Its a-f real result passed because there no N6 row needed a shift.
+    Fix this before trusting any 12-anchor joint number.
+
+### 14.2 Next steps (in order)
+1. Let the joint fit enumerate alias shifts on every row: ±1 on all, or a RANSAC over (rows, shift). Validate it on
+   `ladder_ctl30_1e10_12a.log` until it recovers truth N7 and the N8/N9 combination.
+2. Score the a-f head move (N7 +4.005e8, N8 −4.61e10, N9 +3.502e12 on ss_fc) against the 12-anchor one on the
+   rows6 data. This is 13.4 step 2 and needs `w5/libsc.so` built: `make` in `w5/`.
+   - If a-f wins, re-read the g-l ladders: the second-batch anchors are the suspect, rung by rung.
+   - If neither wins, the head offset is not a coefficient move. That would be the same reading as K2's
+     sawtooth (13.3).
+3. Only after the head is fixed: N5 → dN6, then N3 → (dN4, dN5), each with its alias shifts free.

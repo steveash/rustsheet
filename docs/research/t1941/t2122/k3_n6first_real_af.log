@@ -1,0 +1,27 @@
+N6 eqs: moves N7 +4.021e+08 ulps N8 -4.616e+10 ulps N9 +3.506e+12 ulps
+   x 0.9517 alias +0 residual   -287435505 cycles/x DROPPED
+   x 1.1023 alias +0 residual         +126 cycles/x 
+   x 1.2519 alias +0 residual         -545 cycles/x 
+   x 1.3527 alias +0 residual         +653 cycles/x 
+   x 1.4531 alias +0 residual         -233 cycles/x 
+N7 check (predicted from N6 solve):
+   x 1.3527 read +2.528e+08 pred -2.844e+08 alias +1 residual +271922
+   x 1.4531 read -1.983e+08 pred -1.984e+08 alias +0 residual +115434
+N5 eqs: moves N6 +3.979e+08 ulps
+   x 0.8013 alias +0 residual           +0 cycles/x 
+   x 0.9517 alias +0 residual   -169266047 cycles/x DROPPED
+   x 1.1023 alias +0 residual   +203616656 cycles/x DROPPED
+N3 eqs: moves N4 -3.474e+08 ulps N5 +9.099e+08 ulps
+   x 0.8013 alias +0 residual    -23651237 cycles/x DROPPED
+   x 0.9517 alias +0 residual     -8920848 cycles/x DROPPED
+   x 1.1023 alias +0 residual      -563582 cycles/x 
+   x 1.2519 alias +0 residual     +1400009 cycles/x 
+   x 1.3527 alias +0 residual      -836427 cycles/x 
+N moves (ulps): N4 -3.474e+08 N5 +9.099e+08 N6 +3.979e+08 N7 +4.021e+08 N8 -4.616e+10 N9 +3.506e+12
+joint N6+N7: rms 2.36e+04 cycles/x, moves N7 +4.005e+08 ulps N8 -4.61e+10 ulps N9 +3.502e+12 ulps
+   N6 x 1.1023 alias +0 residual       +24885
+   N6 x 1.2519 alias +0 residual       +11667
+   N7 x 1.3527 alias -1 residual       -25220
+   N6 x 1.3527 alias +0 residual        -5090
+   N7 x 1.4531 alias +0 residual       +30503
+   N6 x 1.4531 alias +0 residual       -31462

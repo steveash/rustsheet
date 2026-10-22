@@ -1,0 +1,40 @@
+N6 eqs: moves N7 -1.33e+09 ulps N8 -1.515e+09 ulps N9 +3.891e+10 ulps
+   x 0.9517 alias +0 residual   -143902949 cycles/x DROPPED
+   x 1.1023 alias +0 residual      +752190 cycles/x 
+   x 1.2519 alias +0 residual      -208181 cycles/x 
+   x 1.3527 alias +0 residual       -65253 cycles/x 
+   x 1.4531 alias +0 residual      +139088 cycles/x 
+   x 0.8741 alias +0 residual       -94994 cycles/x 
+   x 1.0309 alias +0 residual      -158353 cycles/x 
+   x 1.1789 alias -1 residual      -268078 cycles/x 
+   x 1.3021 alias +0 residual      -146112 cycles/x 
+   x 1.4129 alias +0 residual       +49694 cycles/x 
+N7 check (predicted from N6 solve):
+   x 1.3527 read -3.246e+07 pred -3.449e+07 alias +0 residual +2023166
+   x 1.4531 read -1.951e+07 pred -3.353e+07 alias +0 residual +14019111
+   x 1.0309 read +8.496e+07 pred -3.754e+07 alias +0 residual +122503649
+   x 1.1789 read -3.238e+07 pred -3.614e+07 alias +0 residual +3753090
+   x 1.4129 read -3.214e+07 pred -3.391e+07 alias +0 residual +1776115
+N5 eqs: moves N6 +0 ulps
+N3 eqs: moves N4 +6.654e+08 ulps N5 +2.398e+09 ulps
+   x 0.8013 alias +0 residual     +1080845 cycles/x 
+   x 0.9517 alias +0 residual     -1121645 cycles/x 
+   x 1.1023 alias +0 residual     +4992515 cycles/x DROPPED
+   x 0.8741 alias +0 residual     -1016121 cycles/x 
+   x 1.0309 alias +0 residual     +1056921 cycles/x 
+N moves (ulps): N4 +6.654e+08 N5 +2.398e+09 N6 +0 N7 -1.33e+09 N8 -1.515e+09 N9 +3.891e+10
+joint N6+N7: rms 2.7e+08 cycles/x, moves N7 -1.24e+09 ulps N8 +1.474e+10 ulps N9 -1.494e+12 ulps
+   N6 x 1.1023 alias +0 residual   +132804547
+   N6 x 1.2519 alias +0 residual   +120414065
+   N7 x 1.3527 alias +0 residual      -271542
+   N6 x 1.3527 alias +0 residual   +109312776
+   N7 x 1.4531 alias +0 residual    -49845608
+   N6 x 1.4531 alias +0 residual    +95482252
+   N6 x 0.8741 alias +0 residual   +137292177
+   N7 x 1.0309 alias +0 residual      -307411
+   N6 x 1.0309 alias +0 residual   +135134543
+   N7 x 1.1789 alias +0 residual    +63049106
+   N6 x 1.1789 alias +0 residual   -947025283
+   N6 x 1.3021 alias +0 residual   +115232858
+   N7 x 1.4129 alias +0 residual    -22556392
+   N6 x 1.4129 alias +0 residual   +101352064
