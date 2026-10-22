@@ -29,7 +29,7 @@ POOLS: dict[str, list[str]] = {
         "1+2^-52 | 1-2^-53 | 2.675 | 0.285 | (-2.5) | 0 | 59 | 60 | 61 | 2958465 | 2958466 | "
         "0.999988426"
     ),
-    # ASIN, ACOS, ATANH (FISHER later): both ends of [-1, 1] and the first doubles past them.
+    # ASIN, ACOS, ATANH, FISHER: both ends of [-1, 1] and the first doubles past them.
     "unit_interval": entries(
         "(-1) | (-1-2^-52) | (-0.9999999999999999) | (-0.5) | (-1E-300) | 0 | 1E-300 | 0.5 | "
         "0.9999999999999999 | 1 | 1+2^-52 | 1.5"
@@ -162,6 +162,59 @@ POOLS: dict[str, list[str]] = {
         "LAMBDA(x,LAMBDA(y,y)) | LAMBDA(x,Data!A1:B2) | LAMBDA(x,y,x+y) | LAMBDA(x,y,y) | LAMBDA(x,y,x&y) | "
         "LAMBDA(x,y,IF(y>x,y,x)) | LAMBDA(x,y,NA()) | LAMBDA(x,y,{1,2}) | LAMBDA(x,y,ISBLANK(y)) | "
         'LAMBDA(x,y,IFERROR(x/y,"e")) | LAMBDA(x,y,VSTACK(x,y)) | LAMBDA(x,y,x*y) | LAMBDA(x,[y],ISOMITTED(y))'
+    ),
+    # Probabilities of the distributions and their inverses, the alphas of BINOM.INV, CRITBINOM and CONFIDENCE,
+    # PERCENTILE's k and TRIMMEAN's percent (docs/excel-semantics/statistics.md): both ends of [0, 1]; the tiny
+    # and near-1 values the inverse CDFs still answer ("Inverse CDF functions at a tiny or near-1 probability":
+    # 1-1E-16 is a double below 1, 1-1E-17 is 1 and gives #NUM!; "Student-t quantile at a tiny probability":
+    # T.INV(1E-300,1) is finite); the usual test levels; and the first values outside the interval.
+    "probability": entries(
+        "0 | 1 | 1E-300 | 1E-200 | 1E-100 | 1E-20 | 1E-16 | 1E-10 | 0.001 | 0.025 | 0.05 | 0.5 | 0.95 | "
+        "0.975 | 0.999999 | 1-1E-10 | 1-1E-16 | 1-1E-17 | (-1E-300) | (-0.5) | 1+2^-52 | 1.5"
+    ),
+    # Degrees of freedom, shapes (BETA, GAMMA, WEIBULL alpha and beta), EXPON's lambda, POISSON's mean and the
+    # standard deviations (statistics.md): 1 and 2 ("T.DIST.RT at df 2 is BETA.DIST's closed form"), values that
+    # truncate ("df is truncated, not rounded": 1.999 is df 1), below 1 (#NUM!, or the t pdf's #DIV/0!), 0 and
+    # negatives, tiny shapes (BETA.INV(p,0.01,0.01) is #NUM!), 1E5 (where our kernels switch method) and the
+    # df cut: 1E10 and 10000000000.5 work, 10000000001 and 1.5E10 are #NUM! ("F-distribution df limit",
+    # "Upper df limit").
+    "shape": entries(
+        "1 | 2 | 3 | 0.5 | 1.5 | 2.5 | 0.999 | 1.999 | 0.01 | 1E-10 | 1E-300 | 0 | (-0.5) | (-1) | 30 | 100 | "
+        "99999 | 1E+5 | 1E+8 | 1E+10 | 10000000000.5 | 10000000001 | 1.5E+10"
+    ),
+    # x and z of the distributions: 0, the tiny values either side of it, values near the mode and median of the
+    # usual shapes, the normal's deep tails (its density underflows past about 38; "The normal CDF is not always
+    # correctly rounded"), large values and the overflowing products of "Overflowing arguments, PERMUT's limit
+    # and argument error order" (F.DIST's deg_freedom1 * x). Nothing at 1E+308: a literal there is refused.
+    "stat_x": entries(
+        "0 | 1E-300 | (-1E-300) | 1E-10 | 0.5 | 1 | (-1) | 1.5 | 2 | (-2) | 3 | 5 | 10 | 37.5 | 38.5 | (-38.5) | "
+        "40 | (-40) | 100 | 1E+5 | 1E+10 | 1E+300 | (-1E+300) | 1E+307"
+    ),
+    # GAMMA, GAMMALN and GAMMALN.PRECISE ("GAMMA and GAMMALN sweep"): exact small integers, 25 and 26 (where a
+    # factorial table stops matching), the poles at 0 and the negative integers, values between poles, the
+    # overflow edge (171.6 is finite, 171.7 is #NUM!) and GAMMALN, which has no upper limit.
+    "gamma_x": entries(
+        "1 | 2 | 3 | 0.5 | 1E-300 | 1E-10 | 0 | (-1) | (-0.5) | (-1.5) | (-170.5) | 25 | 26 | 171 | 171.5 | "
+        "171.6 | 171.7 | 172 | 200 | 1E+300"
+    ),
+    # The cumulative flag of the distributions and LINEST/LOGEST/GROWTH/TREND's const and stats: booleans as
+    # TRUE and FALSE, as 0, 1 and other numbers, as text (logical text and other text: "Thin distribution
+    # functions: argument coercion, truncation and error edges"), and an error.
+    "flag": entries(
+        'TRUE | FALSE | 0 | 1 | 2 | (-1) | 0.5 | "TRUE" | "FALSE" | "true" | "1" | "x" | "" | NA()'
+    ),
+    # Data of the statistical aggregates, the order statistics and the paired functions: one value as a scalar
+    # and as an array ("Array arguments given a scalar, a single cell or an error"), constant values (zero
+    # variance), two values ("SKEW.P of two numbers is #DIV/0!"), text, booleans and blanks inside an array
+    # ("VARA family: single-cell reference arguments", "AVERAGEA, MAXA and MINA over an array"; Data!Z is
+    # never filled), an error element, a big common offset and values that cancel ("VAR/STDEV switch between a
+    # one-pass and a two-pass formula", "Paired regression functions: ... large offsets"; {0.02,0.027} takes
+    # the two-pass form), squares that overflow, negatives and zeros (GEOMEAN, HARMEAN), ties (MODE, RANK) and a
+    # row instead of a column (paired sizes that differ are #N/A).
+    "stat_data": entries(
+        '5 | {5} | {3,3,3,3} | {1,2} | {1;2;3;4;5} | {1,2,3,4,5,6,7,8,9,10} | {1,"a",TRUE,3} | {1;2;"";4} | '
+        "{TRUE,FALSE,1} | Data!Z1:Z3 | {1,#N/A,3} | {100000000.1,100000000.2,100000000.3} | {1E+15,1,-1E+15} | "
+        "{1E+200,1E+200,-1E+200} | {0.02,0.027} | {-1,0,1} | {0,0,0} | {1,1,2,2,2,3} | Data!A1:A12 | Data!A1:E1"
     ),
 }
 
