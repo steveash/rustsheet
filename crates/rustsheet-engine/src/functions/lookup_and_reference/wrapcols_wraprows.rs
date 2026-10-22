@@ -105,7 +105,8 @@ impl Model {
         // wrap_count is read: it fills the lifted shape of the other arguments. A WRAPROWS whose
         // vector is `..-SIGN("ABC")`, wrap_count -1 and pad_with a 6x4 array is a 6x4 grid of
         // `#VALUE!`s in Excel, not one `#VALUE!` or `#NUM!` (gen-m7/90de8755a2e565e6 A889:D894);
-        // with nothing lifted it stays the single error.
+        // with nothing lifted it stays the single error. That cell's pad_with is all `#VALUE!`
+        // too, so this order is UNVERIFIED (arrays.md; T-2365 probes it).
         let flat = self.flatten_vector(args, cell);
         let cells = flat.as_ref().map_or(1, |flat| {
             u64::try_from(flat.len()).unwrap_or(u64::MAX).max(1)
@@ -159,7 +160,7 @@ impl Model {
 /// The `pad_with` value (3rd arg of WRAPCOLS/WRAPROWS, 4th of EXPAND). An error `pad_with` is
 /// a value like another: it fills the padded cells, and when nothing is padded the array is
 /// returned (probes/wrapcols-wraprows-pad-with, `WRAPROWS({1,2,3,4},4,VALUE("x"))`). A missing
-/// one is `#N/A`; an array or a range is `#VALUE!` (it is read whole by EXPAND).
+/// one is `#N/A`; any other non-scalar value (the callers never pass one) is `#VALUE!`.
 pub(super) fn pad_with_of(value: Option<&CalcResult>) -> ArrayNode {
     match value {
         None => ArrayNode::Error(Error::NA),

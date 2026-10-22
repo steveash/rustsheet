@@ -72,7 +72,8 @@ fn a_lifted_call_is_bounded() {
 #[test]
 fn a_vector_error_fills_the_lifted_shape() {
     // The vector's `#VALUE!` comes before wrap_count's `#NUM!` and is every element's result
-    // (gen-m7/90de8755a2e565e6 A889:D894); unlifted, it is the one error.
+    // (gen-m7/90de8755a2e565e6 A889:D894); unlifted, it is the one error. Hand-written: Excel's
+    // cell there has an all-`#VALUE!` pad_with, so this clean pad_with is UNVERIFIED (T-2365).
     check(&[
         ("B1", "=ROWS(WRAPROWS(SIGN(\"x\"),-1,{1,2;3,4}))", "2"),
         ("B2", "=COLUMNS(WRAPROWS(SIGN(\"x\"),-1,{1,2;3,4}))", "2"),

@@ -33,8 +33,9 @@ impl Model {
         // The array is read once and handed to every element whole; rows and columns lift over
         // an array and a range, one EXPAND per element whose value is that call's top-left
         // (`ROWS(EXPAND(A1:A2,{3;4}))` is 2, probes/m7-argument-modes F7:H7,
-        // probes/m7-lift-take-drop-sortby row 20). pad_with does not lift: an array or a range
-        // there is `#VALUE!` (`EXPAND(A1:A2,3,1,{0;1})`, same case row 21; T-1835).
+        // probes/m7-lift-take-drop-sortby row 20). pad_with does not lift: an array there is
+        // `#VALUE!` (`EXPAND(A1:A2,3,1,{0;1})`, same case row 21; T-1835), and a range is read as a
+        // value (a 1x1 array and a multi-cell range are unprobed, T-2365).
         let data = match self.eval_to_array(&args[0], cell) {
             Ok(d) => d,
             Err(e) => return e,
