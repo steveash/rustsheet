@@ -68,3 +68,19 @@ fn a_lifted_call_is_bounded() {
     // SPEC-0011 rule 3: 1024 elements of 1024 x 1 cells is past the cap.
     check(&[("A9", "=ROWS(EXPAND(1,SEQUENCE(1024),1024))", "#ERROR!")]);
 }
+
+#[test]
+fn a_vector_error_fills_the_lifted_shape() {
+    // The vector's `#VALUE!` comes before wrap_count's `#NUM!` and is every element's result
+    // (gen-m7/90de8755a2e565e6 A889:D894); unlifted, it is the one error.
+    check(&[
+        ("B1", "=ROWS(WRAPROWS(SIGN(\"x\"),-1,{1,2;3,4}))", "2"),
+        ("B2", "=COLUMNS(WRAPROWS(SIGN(\"x\"),-1,{1,2;3,4}))", "2"),
+        (
+            "B3",
+            "=INDEX(WRAPROWS(SIGN(\"x\"),-1,{1,2;3,4}),2,2)",
+            "#VALUE!",
+        ),
+        ("B4", "=WRAPCOLS(SIGN(\"x\"),-1)", "#VALUE!"),
+    ]);
+}

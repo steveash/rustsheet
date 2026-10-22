@@ -98,17 +98,25 @@ impl Model {
         {
             return CalcResult::new_args_number_error(cell);
         }
-        let flat = match self.flatten_vector(args, cell) {
-            Ok(flat) => flat,
-            Err(error) => return error,
-        };
-        let cells = u64::try_from(flat.len()).unwrap_or(u64::MAX).max(1);
+        // A vector that is an error (or not a vector) is every element's result, before
+        // wrap_count is read: it fills the lifted shape of the other arguments. A WRAPROWS whose
+        // vector is `..-SIGN("ABC")`, wrap_count -1 and pad_with a 6x4 array is a 6x4 grid of
+        // `#VALUE!`s in Excel, not one `#VALUE!` or `#NUM!` (gen-m7/90de8755a2e565e6 A889:D894);
+        // with nothing lifted it stays the single error.
+        let flat = self.flatten_vector(args, cell);
+        let cells = flat.as_ref().map_or(1, |flat| {
+            u64::try_from(flat.len()).unwrap_or(u64::MAX).max(1)
+        });
         self.lift_call_costed(
             kind,
             args,
             LiftCost::Cells(cells),
             cell,
             &mut |model, values| {
+                let flat = match &flat {
+                    Ok(flat) => flat,
+                    Err(error) => return error.clone(),
+                };
                 let wrap_count = match model.wrap_count_of(values.get(1), flat.len(), cell) {
                     Ok(wrap_count) => wrap_count,
                     Err(error) => return error,
