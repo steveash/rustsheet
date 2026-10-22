@@ -261,12 +261,14 @@ Evidence: probes/info-cell-legacy-range (40 cells; oracle: excel-graph, 2026-10-
 Status: VERIFIED (excel-graph); desktop UNVERIFIED (same caveat as "contents", T-1075 item 9).
 Ours: matches (`cell_info` "TYPE" reads `cell.sheet` since T-1433). Cross-sheet "address": next entry.
 Tasks: T-1230, T-1433
-Conflicting cell (T-2383): `RIGHTB(CELL("type",Data!C$9),3)` is "l" in gen-m5/74b183ca6fc1d190 Calc!A347 (excel-graph,
-2026-10-22), where Data!C9 is the text "abc" and Calc!C9 is blank, so this one cell reads the *referenced* sheet; ours, by the
-own-sheet rule, is "b". Every one of the 25 bare `=CELL("type",Data!..)` cells of the generated suites whose two sheets disagree at
-that address fits the own-sheet rule (for example `CELL("type",Data!C9)` = "b" with Data!C9 a number, gen-m5/901e91c09b347914
-Calc!A391, and `CELL("type",Data!E$6)` = "b" with Data!E6 = 0, gen-m5/38b1b8e51dbad326 Calc!A391), as do the "contents" cells. Whether the rule depends on something the generator varies (the active sheet, calculation order, the RIGHTB caller)
-or the cell is an oracle artefact is open: T-2383 re-probes it. Excel is right either way; the engine keeps the own-sheet rule until then.
+Conflicting cell (T-2383), an oracle artefact: `RIGHTB(CELL("type",Data!C$9),3)` was "l" in gen-m5/74b183ca6fc1d190 Calc!A347
+(excel-graph, 2026-10-22 16:40), where Data!C9 is the text "abc" and Calc!C9 is blank, as if this one cell read the referenced
+sheet. Re-filling the same workbook (identical input_sha256) at 18:17 gave "b", the own-sheet answer, and no other cell of the
+case changed. The re-probe probes/info-cell-type-cross-sheet-reprobe (excel-graph, 2026-10-22, T-2383) fits the own-sheet rule
+in all 24 cells: `CELL("type",Data!C$9)` bare, under RIGHTB, LEFT and `&""`, as `Data!C9`, `Data!$C9` and `Data!$C$9`, eleven
+repeats of the gen formula (A14:A23, A347) all "b"; rows 8 and 10 "b"; Calc!E9 text gives "l" and Calc!G9 a number "v" for
+`Data!E$9` / `Data!G$9` with Data blank there. So excel-graph can, rarely and not repeatably (one observation, T-2383), answer a cross-sheet "type" from
+the referenced sheet; the rule stands, and a single conflicting cell is re-filled before it is believed.
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
 Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name

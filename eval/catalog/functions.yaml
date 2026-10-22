@@ -535,14 +535,14 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: AVERAGEA
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: AVERAGEIF
     category: statistical
     milestone: M9
@@ -624,10 +624,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
       - { name: "A", mode: value, type: number, optional: true }
       - { name: "B", mode: value, type: number, optional: true }
   - name: BETA.INV
@@ -637,9 +637,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
       - { name: "A", mode: value, type: number, optional: true }
       - { name: "B", mode: value, type: number, optional: true }
   - name: BETADIST
@@ -649,9 +649,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
       - { name: "A", mode: value, type: number, optional: true }
       - { name: "B", mode: value, type: number, optional: true }
   - name: BETAINV
@@ -661,9 +661,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
       - { name: "A", mode: value, type: number, optional: true }
       - { name: "B", mode: value, type: number, optional: true }
   - name: BIN2DEC
@@ -701,8 +701,8 @@ functions:
     params:
       - { name: number_s, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
       - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: probability_s, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: probability_s, mode: value, type: number, pool: probability }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: BINOM.DIST.RANGE
     category: statistical
     milestone: M9
@@ -711,7 +711,7 @@ functions:
     returns: number
     params:
       - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: probability_s, mode: value, type: number }
+      - { name: probability_s, mode: value, type: number, pool: probability }
       - { name: number_s, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
       - { name: number_s2, mode: value, type: number, domain: { int: true, min: 0, max: 10 }, optional: true }
   - name: BINOM.INV
@@ -722,8 +722,8 @@ functions:
     returns: number
     params:
       - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: probability_s, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
+      - { name: probability_s, mode: value, type: number, pool: probability }
+      - { name: alpha, mode: value, type: number, pool: probability }
   - name: BINOMDIST
     category: statistical
     milestone: M9
@@ -733,8 +733,8 @@ functions:
     params:
       - { name: number_s, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
       - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: probability_s, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: probability_s, mode: value, type: number, pool: probability }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: BITAND
     category: engineering
     milestone: M9
@@ -854,8 +854,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: CHIINV
     category: statistical
     milestone: M9
@@ -863,8 +863,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: CHISQ.DIST
     category: statistical
     milestone: M9
@@ -872,9 +872,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: CHISQ.DIST.RT
     category: statistical
     milestone: M9
@@ -882,8 +882,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: CHISQ.INV
     category: statistical
     milestone: M9
@@ -891,8 +891,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: CHISQ.INV.RT
     category: statistical
     milestone: M9
@@ -900,8 +900,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: CHISQ.TEST
     category: statistical
     milestone: M9
@@ -1017,8 +1017,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: alpha, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: alpha, mode: value, type: number, pool: probability }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
       - { name: size, mode: value, type: number, domain: { int: true, min: 1, max: 30 } }
   - name: CONFIDENCE.NORM
     category: statistical
@@ -1027,8 +1027,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: alpha, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: alpha, mode: value, type: number, pool: probability }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
       - { name: size, mode: value, type: number, domain: { int: true, min: 1, max: 30 } }
   - name: CONFIDENCE.T
     category: statistical
@@ -1037,8 +1037,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: alpha, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: alpha, mode: value, type: number, pool: probability }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
       - { name: size, mode: value, type: number, domain: { int: true, min: 1, max: 30 } }
   - name: CONVERT
     category: engineering
@@ -1058,8 +1058,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
   - name: COS
     category: math
     milestone: M5
@@ -1168,8 +1168,8 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
   - name: COVARIANCE.P
     category: statistical
     milestone: M9
@@ -1177,8 +1177,8 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
   - name: COVARIANCE.S
     category: statistical
     milestone: M9
@@ -1186,8 +1186,8 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
   - name: CRITBINOM
     category: statistical
     milestone: M9
@@ -1196,8 +1196,8 @@ functions:
     returns: number
     params:
       - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: probability_s, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
+      - { name: probability_s, mode: value, type: number, pool: probability }
+      - { name: alpha, mode: value, type: number, pool: probability }
   - name: CSC
     category: math
     milestone: M5
@@ -1413,7 +1413,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: DGET
     category: database
     milestone: M9
@@ -1697,9 +1697,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: lambda, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: lambda, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: EXPONDIST
     category: statistical
     milestone: M9
@@ -1707,9 +1707,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: lambda, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: lambda, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: F.DIST
     category: statistical
     milestone: M9
@@ -1717,10 +1717,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: F.DIST.RT
     category: statistical
     milestone: M9
@@ -1728,9 +1728,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: F.INV
     category: statistical
     milestone: M9
@@ -1738,9 +1738,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: F.INV.RT
     category: statistical
     milestone: M9
@@ -1748,9 +1748,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: F.TEST
     category: statistical
     milestone: M9
@@ -1758,8 +1758,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
   - name: FACT
     category: math
     milestone: M5
@@ -1790,9 +1790,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - { name: FIELDVALUE, category: lookup, milestone: M6, scope: out, reason: "reads linked data types (decision 0027)" }
   - name: FILTER
     category: lookup
@@ -1843,16 +1843,16 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: FISHER
     category: statistical
     milestone: M9
     scope: in
     prior: 0.05
     returns: number
-    params: [{ name: x, mode: value, type: number }]
+    params: [{ name: x, mode: value, type: number, pool: unit_interval }]
   - name: FISHERINV
     category: statistical
     milestone: M9
@@ -1994,8 +1994,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
   - name: FV
     category: financial
     milestone: M9
@@ -2023,7 +2023,7 @@ functions:
     scope: in
     prior: 0.05
     returns: number
-    params: [{ name: x, mode: value, type: number }]
+    params: [{ name: x, mode: value, type: number, pool: gamma_x }]
   - name: GAMMA.DIST
     category: statistical
     milestone: M9
@@ -2031,10 +2031,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: GAMMA.INV
     category: statistical
     milestone: M9
@@ -2042,9 +2042,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
   - name: GAMMADIST
     category: statistical
     milestone: M9
@@ -2052,10 +2052,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: GAMMAINV
     category: statistical
     milestone: M9
@@ -2063,30 +2063,30 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
   - name: GAMMALN
     category: statistical
     milestone: M9
     scope: in
     prior: 0.05
     returns: number
-    params: [{ name: x, mode: value, type: number }]
+    params: [{ name: x, mode: value, type: number, pool: gamma_x }]
   - name: GAMMALN.PRECISE
     category: statistical
     milestone: M9
     scope: in
     prior: 0.05
     returns: number
-    params: [{ name: x, mode: value, type: number }]
+    params: [{ name: x, mode: value, type: number, pool: gamma_x }]
   - name: GAUSS
     category: statistical
     milestone: M9
     scope: in
     prior: 0.05
     returns: number
-    params: [{ name: z, mode: value, type: number }]
+    params: [{ name: z, mode: value, type: number, pool: stat_x }]
   - name: GCD
     category: math
     milestone: M5
@@ -2100,7 +2100,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: GESTEP
     category: engineering
     milestone: M9
@@ -2140,14 +2140,14 @@ functions:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number, optional: true }
       - { name: "new_x's", mode: array, type: number, optional: true }
-      - { name: const, mode: value, type: bool, optional: true }
+      - { name: const, mode: value, type: bool, optional: true, pool: flag }
   - name: HARMEAN
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: HEX2BIN
     category: engineering
     milestone: M9
@@ -2211,7 +2211,7 @@ functions:
       - { name: number_sample, mode: value, type: number, domain: { int: true, min: 1, max: 5 } }
       - { name: population_s, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
       - { name: number_pop, mode: value, type: number, domain: { int: true, min: 1, max: 20 } }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: HYPGEOMDIST
     category: statistical
     milestone: M9
@@ -2659,7 +2659,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: LAMBDA
     category: logical
     milestone: M7
@@ -2677,7 +2677,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: k, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
   - name: LCM
     category: math
@@ -2723,8 +2723,8 @@ functions:
     params:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number, optional: true }
-      - { name: const, mode: value, type: bool, optional: true }
-      - { name: stats, mode: value, type: bool, optional: true }
+      - { name: const, mode: value, type: bool, optional: true, pool: flag }
+      - { name: stats, mode: value, type: bool, optional: true, pool: flag }
   - name: LN
     category: math
     milestone: M5
@@ -2758,8 +2758,8 @@ functions:
     params:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number, optional: true }
-      - { name: const, mode: value, type: bool, optional: true }
-      - { name: stats, mode: value, type: bool, optional: true }
+      - { name: const, mode: value, type: bool, optional: true, pool: flag }
+      - { name: stats, mode: value, type: bool, optional: true, pool: flag }
   - name: LOGINV
     category: statistical
     milestone: M9
@@ -2767,9 +2767,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
+      - { name: probability, mode: value, type: number, pool: probability }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
   - name: LOGNORM.DIST
     category: statistical
     milestone: M9
@@ -2777,10 +2777,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
+      - { name: x, mode: value, type: number, pool: stat_x }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: LOGNORM.INV
     category: statistical
     milestone: M9
@@ -2788,9 +2788,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
+      - { name: probability, mode: value, type: number, pool: probability }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
   - name: LOGNORMDIST
     category: statistical
     milestone: M9
@@ -2798,9 +2798,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
+      - { name: x, mode: value, type: number, pool: stat_x }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
   - name: LOOKUP
     category: lookup
     milestone: M6
@@ -2838,7 +2838,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: MAXIFS
     category: statistical
     milestone: M9
@@ -2875,7 +2875,7 @@ functions:
     scope: in
     prior: 0.5
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: MIDB
     category: text
     milestone: M5
@@ -2892,7 +2892,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: MINIFS
     category: statistical
     milestone: M9
@@ -2954,7 +2954,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: MODE.MULT
     category: statistical
     milestone: M9
@@ -2962,14 +2962,14 @@ functions:
     prior: 0.1
     returns: number
     dynamic_array: true
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: MODE.SNGL
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: MROUND
     category: math
     milestone: M5
@@ -3020,8 +3020,8 @@ functions:
     params:
       - { name: number_f, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
       - { name: number_s, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: probability_s, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: probability_s, mode: value, type: number, pool: probability }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: NEGBINOMDIST
     category: statistical
     milestone: M9
@@ -3031,7 +3031,7 @@ functions:
     params:
       - { name: number_f, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
       - { name: number_s, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: probability_s, mode: value, type: number }
+      - { name: probability_s, mode: value, type: number, pool: probability }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: NETWORKDAYS
     category: date
@@ -3071,10 +3071,10 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: x, mode: value, type: number }
+      - { name: x, mode: value, type: number, pool: stat_x }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: NORM.INV
     category: statistical
     milestone: M9
@@ -3082,9 +3082,9 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
+      - { name: probability, mode: value, type: number, pool: probability }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
   - name: NORM.S.DIST
     category: statistical
     milestone: M9
@@ -3092,15 +3092,15 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: z, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: z, mode: value, type: number, pool: stat_x }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: NORM.S.INV
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: probability, mode: value, type: number }]
+    params: [{ name: probability, mode: value, type: number, pool: probability }]
   - name: NORMDIST
     category: statistical
     milestone: M9
@@ -3108,10 +3108,10 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: x, mode: value, type: number }
+      - { name: x, mode: value, type: number, pool: stat_x }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: NORMINV
     category: statistical
     milestone: M9
@@ -3119,23 +3119,23 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
+      - { name: probability, mode: value, type: number, pool: probability }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
   - name: NORMSDIST
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: z, mode: value, type: number }]
+    params: [{ name: z, mode: value, type: number, pool: stat_x }]
   - name: NORMSINV
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: probability, mode: value, type: number }]
+    params: [{ name: probability, mode: value, type: number, pool: probability }]
   - { name: NOW, category: date, milestone: M2, scope: in, v15: exempt, v15_reason: "volatile: no Excel value can match" }
   - name: NPER
     category: financial
@@ -3293,8 +3293,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
   - name: PERCENTILE
     category: statistical
     milestone: M9
@@ -3302,8 +3302,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: array, mode: array, type: number }
-      - { name: k, mode: value, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
+      - { name: k, mode: value, type: number, pool: probability }
   - name: PERCENTILE.EXC
     category: statistical
     milestone: M9
@@ -3311,8 +3311,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: array, mode: array, type: number }
-      - { name: k, mode: value, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
+      - { name: k, mode: value, type: number, pool: probability }
   - name: PERCENTILE.INC
     category: statistical
     milestone: M9
@@ -3320,8 +3320,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: array, mode: array, type: number }
-      - { name: k, mode: value, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
+      - { name: k, mode: value, type: number, pool: probability }
   - name: PERCENTOF
     category: math
     milestone: M5
@@ -3338,7 +3338,7 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: x, mode: value, type: number }
       - { name: significance, mode: value, type: number, domain: { int: true, min: 1, max: 5 }, optional: true }
   - name: PERCENTRANK.EXC
@@ -3348,7 +3348,7 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: x, mode: value, type: number }
       - { name: significance, mode: value, type: number, domain: { int: true, min: 1, max: 5 }, optional: true }
   - name: PERCENTRANK.INC
@@ -3358,7 +3358,7 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: x, mode: value, type: number }
       - { name: significance, mode: value, type: number, domain: { int: true, min: 1, max: 5 }, optional: true }
   - name: PERMUT
@@ -3385,7 +3385,7 @@ functions:
     scope: in
     prior: 0.05
     returns: number
-    params: [{ name: x, mode: value, type: number }]
+    params: [{ name: x, mode: value, type: number, pool: stat_x }]
   - name: PHONETIC
     category: text
     milestone: M5
@@ -3443,8 +3443,8 @@ functions:
     returns: number
     params:
       - { name: x, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: mean, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: mean, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: POISSON.DIST
     category: statistical
     milestone: M9
@@ -3453,8 +3453,8 @@ functions:
     returns: number
     params:
       - { name: x, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: mean, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: mean, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: POWER
     category: math
     milestone: M5
@@ -3562,7 +3562,7 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: quart, mode: value, type: number, domain: { int: true, min: 0, max: 4 } }
   - name: QUARTILE.EXC
     category: statistical
@@ -3571,7 +3571,7 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: quart, mode: value, type: number, domain: { int: true, min: 0, max: 4 } }
   - name: QUARTILE.INC
     category: statistical
@@ -3580,7 +3580,7 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: quart, mode: value, type: number, domain: { int: true, min: 0, max: 4 } }
   - name: QUOTIENT
     category: math
@@ -3941,14 +3941,14 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: SKEW.P
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: SLN
     category: financial
     milestone: M9
@@ -3975,7 +3975,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: k, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
   - name: SORT
     category: lookup
@@ -4021,51 +4021,51 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
+      - { name: x, mode: value, type: number, pool: stat_x }
       - { name: mean, mode: value, type: number }
-      - { name: standard_dev, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number, pool: shape }
   - name: STDEV
     category: statistical
     milestone: M9
     scope: in
     prior: 0.5
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: STDEV.P
     category: statistical
     milestone: M9
     scope: in
     prior: 0.2
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: STDEV.S
     category: statistical
     milestone: M9
     scope: in
     prior: 0.5
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: STDEVA
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: STDEVP
     category: statistical
     milestone: M9
     scope: in
     prior: 0.2
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: STDEVPA
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: STEYX
     category: statistical
     milestone: M9
@@ -4175,9 +4175,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: T.DIST.2T
     category: statistical
     milestone: M9
@@ -4185,8 +4185,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: T.DIST.RT
     category: statistical
     milestone: M9
@@ -4194,8 +4194,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: T.INV
     category: statistical
     milestone: M9
@@ -4203,8 +4203,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: T.INV.2T
     category: statistical
     milestone: M9
@@ -4212,8 +4212,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: T.TEST
     category: statistical
     milestone: M9
@@ -4221,8 +4221,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
       - { name: tails, mode: value, type: number, domain: { int: true, min: 1, max: 2 } }
       - { name: type, mode: value, type: number, domain: { int: true, min: 1, max: 3 } }
   - name: TAKE
@@ -4287,8 +4287,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
       - { name: tails, mode: value, type: number, domain: { int: true, min: 1, max: 2 } }
   - name: TEXT
     category: text
@@ -4374,8 +4374,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: probability, mode: value, type: number }
-      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability, mode: value, type: number, pool: probability }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: shape }
   - name: TOCOL
     category: lookup
     milestone: M7
@@ -4420,7 +4420,7 @@ functions:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number, optional: true }
       - { name: "new_x's", mode: array, type: number, optional: true }
-      - { name: const, mode: value, type: bool, optional: true }
+      - { name: const, mode: value, type: bool, optional: true, pool: flag }
   - name: TRIMMEAN
     category: statistical
     milestone: M9
@@ -4428,8 +4428,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: array, mode: array, type: number }
-      - { name: percent, mode: value, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
+      - { name: percent, mode: value, type: number, pool: probability }
   - name: TRIMRANGE
     category: lookup
     milestone: M6
@@ -4466,8 +4466,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: array1, mode: array, type: number }
-      - { name: array2, mode: array, type: number }
+      - { name: array1, mode: array, type: number, pool: stat_data }
+      - { name: array2, mode: array, type: number, pool: stat_data }
       - { name: tails, mode: value, type: number, domain: { int: true, min: 1, max: 2 } }
       - { name: type, mode: value, type: number, domain: { int: true, min: 1, max: 3 } }
   # A range or array is 64, no lift (probes/info-logic-argument-modes A7, A23).
@@ -4528,42 +4528,42 @@ functions:
     scope: in
     prior: 0.2
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: VAR.P
     category: statistical
     milestone: M9
     scope: in
     prior: 0.2
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: VAR.S
     category: statistical
     milestone: M9
     scope: in
     prior: 0.2
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: VARA
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: VARP
     category: statistical
     milestone: M9
     scope: in
     prior: 0.2
     returns: number
-    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: VARPA
     category: statistical
     milestone: M9
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255, pool: stat_data }]
   - name: VDB
     category: financial
     milestone: M9
@@ -4614,10 +4614,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   - name: WEIBULL.DIST
     category: statistical
     milestone: M9
@@ -4625,10 +4625,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: alpha, mode: value, type: number }
-      - { name: beta, mode: value, type: number }
-      - { name: cumulative, mode: value, type: bool }
+      - { name: x, mode: value, type: number, pool: stat_x }
+      - { name: alpha, mode: value, type: number, pool: shape }
+      - { name: beta, mode: value, type: number, pool: shape }
+      - { name: cumulative, mode: value, type: bool, pool: flag }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: WORKDAY
     category: date
@@ -4785,9 +4785,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: x, mode: value, type: number }
-      - { name: sigma, mode: value, type: number, optional: true }
+      - { name: sigma, mode: value, type: number, optional: true, pool: shape }
   - name: ZTEST
     category: statistical
     milestone: M9
@@ -4795,6 +4795,6 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: array, mode: array, type: number }
+      - { name: array, mode: array, type: number, pool: stat_data }
       - { name: x, mode: value, type: number }
-      - { name: sigma, mode: value, type: number, optional: true }
+      - { name: sigma, mode: value, type: number, optional: true, pool: shape }
