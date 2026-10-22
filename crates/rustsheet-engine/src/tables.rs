@@ -140,13 +140,19 @@ impl Model {
             .ok_or_else(|| format!("No sheet named '{}'", table.sheet_name))?;
         let (left, top, right, bottom) = parse_range(&table.reference)
             .map_err(|_| format!("Table '{name}' has an invalid range"))?;
-        self.range_clear_all(&Area {
-            sheet,
-            row: top,
-            column: left,
-            width: right - left + 1,
-            height: bottom - top + 1,
-        })?;
+        // Clamped to the used area: the range comes from the file and can span the whole sheet,
+        // and the cells past the used area are empty, so clearing them changes nothing.
+        let (last_row, last_column) = self.workbook.worksheet(sheet)?.used_area_end();
+        let (bottom, right) = (bottom.min(last_row), right.min(last_column));
+        if top <= bottom && left <= right {
+            self.range_clear_all(&Area {
+                sheet,
+                row: top,
+                column: left,
+                width: right - left + 1,
+                height: bottom - top + 1,
+            })?;
+        }
         self.remove_table(name)
     }
 

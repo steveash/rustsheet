@@ -549,7 +549,7 @@ mod tests {
             evaluated.value("Calc", Addr { row: 1, col: 2 }),
             Some(Value::Number(5.0))
         );
-        // T-2341: delete_table cleared the table's cells (D2 held 1 and moved up to D1).
+        // T-2341: the table's cells are cleared, so D1 is empty (table-delete-table F!A6).
         assert_eq!(
             evaluated.value("Calc", Addr { row: 1, col: 4 }),
             Some(Value::Empty)

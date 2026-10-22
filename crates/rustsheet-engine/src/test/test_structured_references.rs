@@ -419,3 +419,25 @@ fn r_and_c_table_names_survive_a_reparse() {
         assert_eq!(formula(&model, 0, 1, 5), format!("=SUM({name}[Qty])"));
     }
 }
+
+#[test]
+fn delete_table_clears_the_cells_and_a_huge_range_is_clamped() {
+    // T-2341: Graph's DELETE tables clears the range (probes/table-edits/table-delete-table).
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model.set_user_input(0, 1, 1, "Qty".to_string()).unwrap();
+    model.set_user_input(0, 2, 1, "5".to_string()).unwrap();
+    model.set_user_input(0, 4, 1, "7".to_string()).unwrap();
+    model.add_table(0, "Sales", (1, 1, 2, 1), false).unwrap();
+    model.delete_table("Sales").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 1).unwrap(), "7");
+    assert!(model.delete_table("Sales").is_err());
+    // A table over every row of the sheet must not walk every cell.
+    model.set_user_input(0, 1, 3, "Big".to_string()).unwrap();
+    model.set_user_input(0, 2, 3, "1".to_string()).unwrap();
+    model
+        .add_table(0, "Whole", (1, 3, 1_048_576, 3), false)
+        .unwrap();
+    model.delete_table("Whole").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 3).unwrap(), "");
+}
