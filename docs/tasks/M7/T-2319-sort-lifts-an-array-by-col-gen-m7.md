@@ -3,7 +3,7 @@ id: T-2319
 title: "SORT lifts an array by_col (gen-m7 7307132bb8820f17 A1076 is a 2x4 #VALUE!)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
