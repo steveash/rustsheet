@@ -3,7 +3,7 @@ id: T-1755
 title: "STANDARDIZE reads a direct TRUE as 1"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
