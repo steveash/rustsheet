@@ -3,7 +3,7 @@ id: T-2038
 title: "Curried and chained calls: a call of a call, LAMBDA(a,LAMBDA(b,a*b))(3)(4) and INDEX(s,1,3)(0)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
