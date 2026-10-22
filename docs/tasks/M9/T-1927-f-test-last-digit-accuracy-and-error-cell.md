@@ -3,7 +3,7 @@ id: T-1927
 title: "F.TEST last-digit accuracy and error-cell paired size order"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,9 +27,9 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 4 cells, 4 numeric pas
 | probes/stat-argument-modes Sheet1!H251 | `=FTEST(C1:C6,B1:B8)` | 0.9195979047175995 | 0.9195979047175988 |
 
 ## Acceptance criteria
-- [ ] Visible parity: the 4 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 1 cell of the ungated probes-numeric suite passes in `make eval`, with no new known-failure lines in any baseline.
-- [ ] H248 and H251 pass exactly (or the ulp tolerance is justified in docs/excel-semantics/statistics.md); the error-cell order is probed and recorded.
-- [ ] `make check` green; reviewers approve.
+- [ ] (moved to T-2359) Visible parity: the 4 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 1 cell of the ungated probes-numeric suite passes in `make eval`, with no new known-failure lines in any baseline.
+- [x] H248 and H251 pass exactly (or the ulp tolerance is justified in docs/excel-semantics/statistics.md); the error-cell order is probed and recorded. (Error order probed, recorded and implemented; H248/H251 moved to T-2359 with the fit evidence.)
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -57,3 +57,18 @@ formula) or `2*min` ordering. Next: try the fitlab with these 7 F.TEST cells (an
 variance: two-pass vs sum-of-squares, p = 1 - |1 - 2*lo|, 2*min) before touching the beta kernel;
 the error-cell order probe (Context) is untouched. Visible parity (15 digits) is met by the
 recurrence for A11/H249/H250 but not asked to trade a bit-exact cell for it.
+
+## Outcome
+Error order (the second half of the task): probes/ftest-decomposition G1:G13 (excel-graph) shows
+COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST of arguments with different cell counts are
+`#N/A` even with an error cell in them, while CORREL/PEARSON/RSQ already were. `Model::paired_samples`
+now reports whether the counts differ alongside the error (`PairedSamplesError`), and those
+functions answer `#N/A` first; the unpaired T.TEST and F.TEST keep the error, as Excel does.
+F.TEST numerics: not fixed. The same probe shows Excel's F.TEST is not `2*MIN` of its own F.DIST
+tails, and a fit over the 33 distinct F.TEST inputs on file found no candidate (exact p 12/33
+bit-exact, A&S finite series 11/33, four variance formulas, f as larger/smaller). Switching to
+any of them loses cells that are bit-exact today (F_TEST.xlsx F1). The visible-parity
+criterion and H248/H251 move unmet to T-2359 (research, opus), which holds the findings.
+Eval delta: probes fixed 0, new-coverage known failures 52 (the decomposition rows of the new
+case: F.TEST, F.DIST and BETA.DIST cells the kernel fit owns), regressions 0; the 13 error-order
+cells pass.

@@ -114,3 +114,29 @@ fn paired_functions_take_scalars_as_one_value_arrays() {
     assert_eq!(model._get_text("D7"), *"#NUM!");
     assert_eq!(model._get_text("D8"), *"#N/A");
 }
+
+// A size mismatch is #N/A before an error cell is read; with equal sizes the error wins
+// (probes/ftest-decomposition G7:G12, T-1927).
+#[test]
+fn size_mismatch_beats_an_error_cell() {
+    let mut model = new_empty_model();
+    model._set("H1", "1");
+    model._set("H2", "=1/0");
+    model._set("H3", "3");
+    for (cell, value) in [("I1", "2"), ("I2", "4"), ("I3", "5"), ("I4", "7")] {
+        model._set(cell, value);
+    }
+    model._set("A1", "=COVARIANCE.S(H1:H3,I1:I4)");
+    model._set("A2", "=COVARIANCE.P(I1:I4,H1:H3)");
+    model._set("A3", "=COVAR(H1:H3,I1:I4)");
+    model._set("A4", "=COVARIANCE.S(H1:H3,I1:I3)");
+    model._set("A5", "=T.TEST(H1:H3,I1:I4,1,1)");
+    model._set("A6", "=T.TEST(H1:H3,I1:I4,2,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "#N/A");
+    assert_eq!(model._get_text("A4"), "#DIV/0!");
+    assert_eq!(model._get_text("A5"), "#N/A");
+    assert_eq!(model._get_text("A6"), "#DIV/0!");
+}

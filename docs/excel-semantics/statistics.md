@@ -2283,4 +2283,25 @@ but Excel returns 0.5023992107800741, and `F.TEST(C1:C6,B1:B8)` of probes/stat-a
 (df 1,7) is 0.91959790471759887 exactly against Excel's 0.9195979047175995, while
 `F.TEST(A1:A8,B1:B8)` (df 7,7) and `FTEST(B1:C5,B1:B5)` (df 9,4) are Excel's correctly rounded
 values. An exact incomplete beta therefore fixes some cells and regresses others; matching all
-needs Excel's own algorithm (see the F.DIST/BETA.DIST fit notes). Still open: T-1927.
+needs Excel's own algorithm (see the F.DIST/BETA.DIST fit notes).
+F.TEST is not built on Excel's own F.DIST either (probes/ftest-decomposition, excel-graph,
+2026-10-22, T-1927): `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` with f = `VAR.S(x)/VAR.S(y)` is
+0.7947858780819459 and 0.5236816407506065 where F.TEST is 0.7947858780819458 and
+0.5236816407506063 (A8/A7, B8/B7), and F.TEST is exactly symmetric in its arguments (A7 = E7,
+C7 = F7). Over the 33 distinct F.TEST inputs on file (probes stat-argument-modes,
+ftest-decomposition; probes-numeric m9-legacy-ftest, t1049-ftest) Excel is within -6..+4 ulps of
+the exact two-tailed p, on both sides; neither the exact p (12 of 33 bit-exact) nor the A&S
+26.6.4-26.6.8 finite series in doubles (11 of 33), with a two-pass, textbook or corrected
+variance, or with f taken as larger over smaller, reproduces it. Open: T-2359.
+
+## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
+COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell
+counts are `#N/A` even when a cell holds an error: `COVARIANCE.S(H1:H3,I1:I4)` with H2 `=1/0` is
+`#N/A`, as is the argument order swapped; with equal sizes the error wins
+(`COVARIANCE.S(H1:H3,I1:I3)` `#DIV/0!`). CORREL, PEARSON and RSQ already check sizes first
+(`#N/A`). The tests that allow unequal sizes return the error: `T.TEST(H1:H3,I1:I4,2,2)` and
+`F.TEST(H1:H3,I1:I4)` are `#DIV/0!`. Evidence: probes/ftest-decomposition G1:G13 (excel-graph,
+2026-10-22).
+Engine: `Model::paired_samples` (`PairedSamplesError::sizes_differ`) in
+crates/rustsheet-engine/src/functions/statistical/paired.rs.
+Status: implemented (T-1927)
