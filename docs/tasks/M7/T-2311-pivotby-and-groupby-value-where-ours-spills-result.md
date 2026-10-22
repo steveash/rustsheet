@@ -3,7 +3,7 @@ id: T-2311
 title: "PIVOTBY and GROUPBY: #VALUE! where ours spills, result widths and lifted arguments (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
