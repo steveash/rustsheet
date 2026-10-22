@@ -3,6 +3,7 @@
 mod autofill;
 mod border;
 mod border_utils;
+mod cell_undo;
 mod clipboard;
 mod common;
 mod conditional_formatting;
