@@ -308,7 +308,7 @@ Rule: Excel inverts matrices whose LU is nearly singular and
 returns `#NUM!` only in rare cases. `MINVERSE({1,2,3;4,5,6;7,8,9})` (last partial-pivot LU pivot 1.11E-16) is a residual inverse
 {-4503599627370498, 9007199254740992, -4503599627370496; 9007199254740996, -1.8014398509481984E+16, 9007199254740991;
 -4503599627370498, 9007199254740992, -4503599627370495.5}; `{1E-20}` is 1E+20, `{1E-17,0;0,1}` is {1E+17,0;0,1}, and `{1E-300}` is
-9.999999999999999E+299 (not 1E+300). `#NUM!` for `{1,2;2,4}` (exactly-zero pivot) and also for `{1,1;1,1.0000000000000002}`, whose last pivot
+9.999999999999999E+299, the plain IEEE reciprocal `1/1E-300` (no scaling), not a quirk. `#NUM!` for `{1,2;2,4}` (exactly-zero pivot) and also for `{1,1;1,1.0000000000000002}`, whose last pivot
 is 2.22E-16, larger than the 3x3's 1.11E-16 that is inverted: the singularity test is not a monotone absolute-pivot cutoff and is unexplained
 (T-2362). Ours (`f64::EPSILON` cutoff) differs on all the inverted cases.
 MINVERSE inverts a 1x1 pivot far below 2.2E-16: `MINVERSE(1.0000000000000085E-108)` is 9.999999999999914E+107 (ours `#NUM!`),
