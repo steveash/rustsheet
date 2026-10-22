@@ -402,11 +402,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 TextToken::SecondFraction(digits) => Some(*digits),
                 _ => None,
             });
-            // Excel: a fraction of a second over a serial past 9999-12-31 is #VALUE!, elapsed
-            // tokens or not (`TEXT(1234567890,"[mm]:ss.0")`, `"h:mm:ss.00"`; gen-m10
-            // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20, fbdab487cb11409e T!A25). The
-            // same for the other clock tokens is T-1731.
-            if fraction_digits.is_some() && value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0 {
+            // Excel: any token but a lone elapsed one (`[s]`) over a serial past 9999-12-31 is
+            // #VALUE!: `TEXT(1234567890,"h:mm")`, `"[h]:mm"`, `"[mm]:ss.0"` (gen-m10
+            // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20; gen-m5 6a511beadb56b932 Calc!A126).
+            if value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0
+                && !negative_serial_allowed(tokens, DateSystem::Excel1900)
+            {
                 return invalid_date(value_original);
             }
             let fraction = fraction_digits.and_then(|digits| FractionalSeconds::new(value, digits));

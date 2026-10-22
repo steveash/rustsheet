@@ -926,8 +926,10 @@ C	probes/t2199-text-length-and-combin-cuts.case.json	77
 C	probes/t2200-blank-and-padded-m5-args.case.json	70
 C	probes/t2201-mround-quotient-rounding.case.json	221
 C	probes/t2202-text-code-check-on-text.case.json	88
+C	probes/t2215-int-negatives-boundary.case.json	63
 C	probes/t2275-address-bounds.case.json	298
 C	probes/t2280-ifs-one-cell-range-condition.case.json	82
+C	probes/t2314-textbefore-instance-bound.case.json	29
 C	probes/table-edits/table-convert-to-range.case.json	0
 C	probes/table-edits/table-delete-column-before.case.json	12
 C	probes/table-edits/table-delete-column-qty.case.json	12
