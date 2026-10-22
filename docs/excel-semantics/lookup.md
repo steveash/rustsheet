@@ -142,6 +142,10 @@ Rule: lookup_value and range_lookup lift together, broadcast like any two arrays
 against a 2x1 range_lookup gives `#N/A` in the third row; a column against a row gives 2-D). Each pair
 is a scalar call, so an error or text range_lookup element is that element's result
 (`VLOOKUP({2;3},A1:B4,2,{#DIV/0!;TRUE})` is `#DIV/0!`, "three"; `{"a";"b"}` is `#VALUE!` twice).
+A scalar text range_lookup beside a lifted lookup_value lifts the same way, one array of that error rather than one `#VALUE!`:
+`WRAPROWS(Data!E6:E11,1,VLOOKUP(OFFSET(Data!D6:E8,2,0),Data!B5:C5,3,"1"))` spills a 3x2 grid of E6's 3.14159, so the VLOOKUP there is a 3x2
+array that WRAPROWS's pad_with lifts over (gen-m7/f7e94a817e5385ac Calc!A2430, excel-graph, 2026-10-22; its elements are not visible
+there, `#VALUE!` each by the scalar rule, UNVERIFIED). Ours: one `#VALUE!` (`VLOOKUP({1,2},B5:C5,3,"1")`), T-2411.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
 search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is
 validated in reading order and the first bad one is the error of the whole call, with no spill
