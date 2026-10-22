@@ -18,7 +18,6 @@ use bitcode::{Decode, Encode};
 use thiserror::Error as ThisError;
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::parser::stringify::DisplaceData;
 use crate::expressions::token::Error;
 use crate::model::Model;
 use crate::types::{sheet_names_match, Workbook};
@@ -418,6 +417,15 @@ impl Workbook {
     }
 }
 
+/// Which lines a structural edit inserts or deletes ([`Model::displace_pivots`]).
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub(crate) enum PivotLines {
+    /// Whole rows.
+    Rows,
+    /// Whole columns.
+    Columns,
+}
+
 /// What a row or column insert or delete does to the 0-based span `[first, last]` of a pivot's
 /// rows or columns ([`displace_span`]).
 #[derive(Debug, PartialEq, Eq)]
@@ -471,21 +479,19 @@ impl Model {
         Ok(())
     }
 
-    /// Moves the pivots of a row or column insert or delete (`DisplaceData::Row` or
-    /// `DisplaceData::Column`, 1-based, a negative `delta` deleting) with their cells, or refuses
-    /// the edit, leaving every pivot as it was, when it cuts through one ([`displace_span`]).
-    /// Other displacements leave pivots alone. Called before the edit changes anything, so a
-    /// refusal leaves the model unchanged. SPEC-0015 "Data model".
-    pub(crate) fn displace_pivots(&mut self, data: &DisplaceData) -> Result<(), String> {
-        let (sheet, at, delta, rows) = match *data {
-            DisplaceData::Row { sheet, row, delta } => (sheet, row, delta, true),
-            DisplaceData::Column {
-                sheet,
-                column,
-                delta,
-            } => (sheet, column, delta, false),
-            _ => return Ok(()),
-        };
+    /// Moves the pivots of the sheet at index `sheet` for an insert (`delta > 0`) or delete
+    /// (`delta < 0`) of `|delta|` rows or columns at the 1-based line `at`, with their cells, or
+    /// refuses the edit, leaving every pivot as it was, when it cuts through one
+    /// ([`displace_span`]). Called before the edit changes anything, so a refusal leaves the model
+    /// unchanged. SPEC-0015 "Data model".
+    pub(crate) fn displace_pivots(
+        &mut self,
+        sheet: u32,
+        lines: PivotLines,
+        at: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        let rows = lines == PivotLines::Rows;
         let sheet_id = self.workbook.worksheet(sheet)?.sheet_id;
         let (at, delta) = (i64::from(at) - 1, i64::from(delta));
         // The last 0-based line; `LAST_ROW` and `LAST_COLUMN` are 1-based and positive, so the

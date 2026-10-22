@@ -10,6 +10,7 @@ use crate::expressions::utils;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
+use crate::pivot::PivotLines;
 use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
 
 /// Applies `map` to the (row, column) key of every link in the worksheet, so
@@ -620,11 +621,7 @@ impl Model {
                     .to_string(),
             );
         }
-        self.displace_pivots(&DisplaceData::Column {
-            sheet,
-            column,
-            delta: column_count,
-        })?;
+        self.displace_pivots(sheet, PivotLines::Columns, column, column_count)?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
@@ -740,12 +737,7 @@ impl Model {
                 "Cannot delete columns because that would break an array formula".to_string(),
             );
         }
-
-        self.displace_pivots(&DisplaceData::Column {
-            sheet,
-            column,
-            delta: -column_count,
-        })?;
+        self.displace_pivots(sheet, PivotLines::Columns, column, -column_count)?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
@@ -1016,12 +1008,7 @@ impl Model {
                     .to_string(),
             );
         }
-
-        self.displace_pivots(&DisplaceData::Row {
-            sheet,
-            row,
-            delta: row_count,
-        })?;
+        self.displace_pivots(sheet, PivotLines::Rows, row, row_count)?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
@@ -1121,12 +1108,7 @@ impl Model {
         if !self.can_delete_rows(sheet, row, row_count)? {
             return Err("Cannot delete rows because that would break an array formula".to_string());
         }
-
-        self.displace_pivots(&DisplaceData::Row {
-            sheet,
-            row,
-            delta: -row_count,
-        })?;
+        self.displace_pivots(sheet, PivotLines::Rows, row, -row_count)?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
