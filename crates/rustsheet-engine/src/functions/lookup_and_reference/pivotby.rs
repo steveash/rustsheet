@@ -464,9 +464,7 @@ impl Model {
                     }
                     Slot::Total { .. } => records,
                 };
-                let relative = grid
-                    .sets
-                    .map_or(NO_RELATIVE, |sets| sets.of_cell(grid.row, slot_item(slot)));
+                let relative = grid.relative_of(slot);
                 let at = Aggregate {
                     rows: cell_rows,
                     relative,
@@ -499,9 +497,7 @@ impl Model {
             if grid.total_error {
                 return;
             }
-            let relative = grid
-                .sets
-                .map_or(NO_RELATIVE, |sets| sets.of_cell(grid.row, slot_item(slot)));
+            let relative = grid.relative_of(slot);
             let at = Aggregate {
                 rows: records,
                 relative,
@@ -930,6 +926,14 @@ struct Grid<'a> {
     /// columns", T-2311). Empty otherwise.
     checked_totals: &'a [Slot],
     total_error: bool,
+}
+
+impl<'a> Grid<'a> {
+    /// The relative set of `slot`'s cell in the row being laid out ([`RelativeSets::of_cell`]).
+    fn relative_of(&self, slot: Slot) -> Relative<'a> {
+        self.sets
+            .map_or(NO_RELATIVE, |sets| sets.of_cell(self.row, slot_item(slot)))
+    }
 }
 
 /// The column item of a slot ([`RelativeSets::of_cell`]).
