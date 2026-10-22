@@ -60,12 +60,23 @@ Implemented in: `Lexer::next_token` (formatter/lexer.rs), `BUDDHIST_ERA_OFFSET` 
 any date or time token that prints is `#VALUE!` in the engine: the Hijri calendar is not implemented (unprobed). Whether
 the lone-`B` error is about the end of the code or of the section is inferred from `"B"` and `"dB"` only.
 Tasks: T-1262
-Observation (T-2377): bare digits in front of a date token make the code `#VALUE!` for a number:
-`TEXT(Data!A$2+Data!$B9,Data!C10&"abc")` = `TEXT(3.14159,"42abc")` is `#VALUE!` (gen-m5/2b01cadfd03df4b5 Calc!A211 inside LENB,
-excel-graph, 2026-10-22), while `"ABC"` alone is "A43C" (above) and a bare digit alone is a literal (`TEXT(5,"2")` = "2",
-"Bare letters and digits in a number format"). Ours prints "42a43c". The likeliest reading, unprobed, is that a bare digit 1-9
-counts as a number token, so it joins the rule that a date token beside digit placeholders is `#VALUE!` (`"0b"`, T-2202).
-Status of this observation: OBSERVED (one excel-graph cell; T-2377 probes it).
+
+## Bare digits beside a date token
+Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`TEXT(5,"2")` = "2", `"4a"` = "4a",
+`"4 0"` = "4 3"). But a section holding one beside any date or time token, before or after it, makes the whole code
+`#VALUE!`. That holds for 3.14159, 100 and -3 alike, with `"42abc"`, `"4b"`, `"b4"`, `"4 b"`, `"1b"`, `"9b"`, `"4d"`, `"d4"`,
+`"4 d"`, `"d 4"`, `"dd 4"`, `"4yy"`, `"4mmm"`, `"4h"`, `"4s"`, `"4:mm"`, `"4e"`, `"4g"`, `"[h]4"`, `"4[h]"`, `"4/d"`, `"b.4"`,
+`"4%b"` and `"x4b"` (rows 1-6, 9-15, 22-24, 27-28, 30-34, 37-39; `"0b"` and `"#b"`, rows 7-8, are the digit-placeholder rule of T-2202). AM/PM alone does not count (`"4am/pm"` and `"4AM/PM"` are "4AM"), and
+a quoted or escaped digit prints (`"\4b"` and `"""4""b"` are "443"). The check covers every number section, also one the
+value does not use: `TEXT(3.14159,"0;4b")` is `#VALUE!`, while `"4;b"` gives "4" and `"b;4"` "43". A text or boolean value
+is rejected too (`TEXT("x","42abc")`, `TEXT(TRUE,"42abc")` and `TEXT("5","42abc")` are `#VALUE!`; `TEXT("x","4;b")` is "x";
+column D), as "TEXT checks the code before it looks at a text or boolean value" describes. `TEXT(-3,"b1")` is "-": a
+calendar prefix alone is no date token for a negative value. Ours is `#VALUE!` there (T-2388).
+Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
+Status: VERIFIED
+Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a
+code with any bad number section (formatter/format.rs).
+Tasks: T-2377, T-2388
 
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the

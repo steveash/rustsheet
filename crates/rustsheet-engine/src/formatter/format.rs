@@ -21,8 +21,8 @@ use super::{
     lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{
-        is_text_section, numeric_section_count, section_tokens, GeneralPart, ParsePart, Parser,
-        TextToken,
+        is_text_section, numeric_section_count, section_tokens, ErrorPart, GeneralPart, ParsePart,
+        Parser, TextToken,
     },
 };
 
@@ -307,10 +307,20 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     // When you skip code sections in your number format,
     // you must include a semicolon for each of the missing sections of code.
     // You can use the ampersand (&) text operator to join, or concatenate, two values.
+    // Excel: a bare digit beside a date token in any number section rejects the whole code, also
+    // for a number another section formats (`TEXT(3.14159,"0;4b")` is #VALUE!;
+    // probes/text-format-digits-date-token A42, B42).
+    let sections = numeric_section_count(&parts);
+    if parts[..sections]
+        .iter()
+        .any(|part| matches!(part, ParsePart::Error(ErrorPart { whole_code: true })))
+    {
+        return format_error();
+    }
     let mut value = value_original;
     let general = ParsePart::General(GeneralPart {});
     let part;
-    match numeric_section_count(&parts) {
+    match sections {
         // Excel: an empty format shows nothing but a negative's minus, also for a value that
         // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
         // A32-A35).
