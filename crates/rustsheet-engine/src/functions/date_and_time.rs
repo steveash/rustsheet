@@ -329,6 +329,10 @@ impl Model {
                     for value in row {
                         match value {
                             ArrayNode::Number(num) => handle(holiday_serial(num))?,
+                            // A blank element (HSTACK of a blank cell) is no holiday; skipped, as
+                            // serial 0 gives the same results (dates.md "WORKDAY and NETWORKDAYS
+                            // holidays: blank and number-text cells", T-2395).
+                            ArrayNode::Empty => {}
                             ArrayNode::Error(error) => {
                                 return Err(CalcResult::Error {
                                     error,

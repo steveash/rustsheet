@@ -3,7 +3,7 @@ id: T-2395
 title: "WORKDAY/NETWORKDAYS(.INTL): a holidays array holding blanks from HSTACK of empty cells is accepted (ours #VALUE!)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -42,3 +42,6 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 6 in eval/baselin
 
 ## Out of scope
 - Text or boolean elements inside a holidays array (T-2270, T-2272).
+
+## Outcome
+The holidays reader skips blank array elements (`ArrayNode::Empty`); the six gen-m6 cells now pass. Rule recorded in dates.md.
