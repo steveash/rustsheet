@@ -156,3 +156,28 @@ fn test_address_book_sheet_text_unquoted() {
     assert_eq!(model._get_text("A2"), "'Sheet 1'!$A$1");
     assert_eq!(model._get_text("A3"), "Sheet2!$A$1");
 }
+
+#[test]
+fn test_address_argument_error_beats_own_value_error() {
+    // gen-m6/0fd242eb9b2456a8 A280, 870c5e38f51ce5d4 A229: a later argument's error wins over a
+    // bad row or abs_num.
+    let mut model = new_empty_model();
+    model._set("A1", "=ADDRESS(-1,1,1,NA())");
+    model._set("A2", "=ADDRESS(1,1,0,NA())");
+    model._set("A3", "=ADDRESS(1,1,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+}
+
+#[test]
+fn test_address_boolean_sheet_text_is_quoted() {
+    // gen-m6/c96ac1ada46179c4 A197, ee56a4ed5a612a0d A306.
+    let mut model = new_empty_model();
+    model._set("A1", "=ADDRESS(1,1,1,TRUE,\"FALSE\")");
+    model._set("A2", "=ADDRESS(9,26,3,TRUE,\"TRUE\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "'FALSE'!$A$1");
+    assert_eq!(model._get_text("A2"), "'TRUE'!$Z9");
+}
