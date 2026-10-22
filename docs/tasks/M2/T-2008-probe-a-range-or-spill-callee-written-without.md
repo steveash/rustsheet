@@ -30,4 +30,4 @@ operand", T-0149) and `$D$1(1)` `#REF!` (probes/cell-call-edges-a, T-1806), so t
 - Shapes T-1806 probed.
 
 ## Outcome
-Probed six shapes (probes/callee-unparenthesized-*). Excel: unparenthesized range and spill callees are `#REF!` and print bare; `=a0(1)`/`=a1048577(1)` are `#NAME?`, printed as written (ours already matched); `=$A$1(2)#` makes Excel refuse the workbook, recorded without a case. Fixed the parser (`range_or_call_operand`, spill call, `callee_operand` prints them bare). Eval delta: +3 cells fixed over new probes (all six probe cases pass).
+Probed six shapes (five cases, probes/callee-unparenthesized-*). Excel: unparenthesized range and spill callees are `#REF!` and print bare; `=a0(1)`/`=a1048577(1)` are `#NAME?`, printed as written (ours already matched); `=$A$1(2)#` makes Excel refuse the workbook, recorded without a case. Fixed the parser (`range_or_call_operand`, spill call, `callee_operand` prints them bare). Eval delta: +3 cells fixed over new probes (all five probe cases pass).
