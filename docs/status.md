@@ -89,7 +89,7 @@ Queues at the start of the run:
 
 Upstream IronCalc: four new commits under base/, xlsx/ or bindings/python.
 - 1fd0ff4f extends the Excel-authored `LOG_LOG10_LN.xlsx`. Filed **T-2350** (functions-math, sonnet) to take it into ironcalc-calc.
-- 7e271963 and 34b8bb6e bump dependencies. Upstream's statrs 0.18 → 0.19.1 bump changed a CHISQ result (its test now expects 6.999999999 instead of 7), so T-2350 says not to take statrs 0.19.
+- 7e271963 and 34b8bb6e bump dependencies. Upstream's statrs 0.18 → 0.19.1 bump changed a CHISQ result (its `test_fn_chisq.rs` expectation changed from 7 to 6.999999999), so T-2350 says not to take statrs 0.19.
 - eb9ca75b is a version bump only.
 - UPSTREAM.md is triaged through 7e271963.
 

@@ -30,6 +30,6 @@ Excel-computed, not IronCalc-written, before trusting them). Triaged by the 2026
 
 ## Out of scope
 - Upstream 7e271963 / 34b8bb6e (dependency bumps). Upstream's statrs 0.18 -> 0.19.1 bump changed
-  CHISQ results (its test now expects 6.999999999 where Excel shows 7), so do not take statrs 0.19
+  CHISQ results (its `test_fn_chisq.rs` expectation changed from 7 to 6.999999999), so do not take statrs 0.19
   as part of this task.
 - eb9ca75b (version bump only).
