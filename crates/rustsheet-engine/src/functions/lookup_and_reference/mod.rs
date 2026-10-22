@@ -852,8 +852,8 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        if let CalcResult::Range { left, right } = self.evaluate_node_with_reference(&args[0], cell)
-        {
+        let reference = self.evaluate_node_with_reference(&args[0], cell);
+        if let CalcResult::Range { left, right } = reference {
             if left.sheet != right.sheet {
                 return CalcResult::Error {
                     error: Error::ERROR,
@@ -900,6 +900,24 @@ impl Model {
                 rows.push(values);
             }
             CalcResult::Array(rows)
+        } else if matches!(
+            args[0].ungrouped(),
+            Node::FunctionKind {
+                kind: Function::Index,
+                ..
+            }
+        ) {
+            // An erroring INDEX is its own error (`FORMULATEXT(INDEX(A1:A3,9))` is `#REF!`) and an
+            // INDEX of an array constant picks a value, not a cell, so is `#VALUE!`
+            // (probes/index-reference-args Calc!A4, A5; T-2137).
+            match reference {
+                error @ CalcResult::Error { .. } => error,
+                _ => CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Argument must be a reference".to_string(),
+                ),
+            }
         } else {
             CalcResult::Error {
                 error: Error::ERROR,

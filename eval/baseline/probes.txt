@@ -1911,8 +1911,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
-F	probes/index-reference-args.case.json	Calc!A4
-F	probes/index-reference-args.case.json	Calc!A5
 F	probes/lambda-escaping-closures.case.json	Sheet1!H10
 F	probes/lambda-escaping-closures.case.json	Sheet1!H2
 F	probes/lambda-escaping-closures.case.json	Sheet1!H3

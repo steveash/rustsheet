@@ -517,6 +517,9 @@ TEXT() with the same codes. Points the earlier probes did not show:
   formats", "A numerator that overflows".
 - Clock and date fields come from the serial rounded to the shown second: 0.9999999999 is "0:00"
   under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
+  Also `[m]:ss` "1440:00", `d \d\a\y\s h:mm` "1 days 0:00", `dd/mm/yy` "01/01/00" (VERIFIED, gen-m10, T-1732). Implemented in
+  `DisplayClock` (formatter/elapsed.rs, rounded to whole seconds): clock fields and the day always
+  round; an elapsed count rounds only when a seconds token is in the section (`[h]`/`[m]` alone keep their truncation; unprobed).
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".
 - The text section formats booleans as well as text: `"pre "@` on TRUE is "pre TRUE", `;;;` shows
   nothing, `0.0;[Red]-0.0;0.0;"<"@">"` on an empty string "<>".
