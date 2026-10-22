@@ -38,8 +38,9 @@ pub(super) enum Ast {
         kind: RepeatKind,
         ast: Box<Ast>,
     },
-    /// A backreference to a group, by number (resolved once the pattern is parsed) or name.
-    Backref(Reference),
+    /// A backreference to a group, by number (resolved once the pattern is parsed) or name;
+    /// `fold` when it ignores case (simple case folding, as its scope's flags say).
+    Backref { reference: Reference, fold: bool },
     /// A lookahead or lookbehind.
     LookAround { kind: LookKind, ast: Box<Ast> },
     /// `(?>..)`.
@@ -139,7 +140,7 @@ impl Ast {
                 }
                 Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
                 Ast::Anchor(Anchor::SearchStart)
-                | Ast::Backref(_)
+                | Ast::Backref { .. }
                 | Ast::LookAround { .. }
                 | Ast::Atomic(_)
                 | Ast::Conditional { .. }
@@ -172,6 +173,8 @@ pub(super) fn fixed_length(ast: &Ast) -> Option<u32> {
         Ast::Repeat { min, max, ast, .. } if Some(*min) == *max => {
             min.checked_mul(fixed_length(ast)?)
         }
-        Ast::Repeat { .. } | Ast::Backref(_) | Ast::Conditional { .. } | Ast::Unimplemented => None,
+        Ast::Repeat { .. } | Ast::Backref { .. } | Ast::Conditional { .. } | Ast::Unimplemented => {
+            None
+        }
     }
 }

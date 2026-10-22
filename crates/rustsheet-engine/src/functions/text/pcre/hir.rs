@@ -87,7 +87,7 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
                 sub: Box::new(to_hir(ast, final_lf)?),
             })
         }
-        Ast::Backref(_)
+        Ast::Backref { .. }
         | Ast::LookAround { .. }
         | Ast::Atomic(_)
         | Ast::Conditional { .. }

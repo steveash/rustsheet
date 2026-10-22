@@ -30,8 +30,11 @@ use regex_automata::{
         pikevm::{Cache as PikeCache, PikeVM},
         WhichCaptures, NFA,
     },
-    util::{captures::Captures, iter::Searcher},
-    Anchored, Input, Match, MatchError, MatchKind, PatternID,
+    util::{
+        captures::{Captures, GroupInfo},
+        iter::Searcher,
+    },
+    Anchored, Input, Match, MatchError, MatchKind,
 };
 use regex_syntax::hir::Hir;
 
@@ -176,22 +179,9 @@ impl Engine {
         }
     }
 
-    /// Captures for one match of this pattern.
-    pub(super) fn create_captures(&self) -> Captures {
-        self.pike.create_captures()
-    }
-
-    /// The index of the capture group named `name`.
-    pub(super) fn group_index(&self, name: &str) -> Option<usize> {
-        self.pike
-            .get_nfa()
-            .group_info()
-            .to_index(PatternID::ZERO, name)
-    }
-
-    /// The number of capture groups of this pattern, the whole match (group 0) included.
-    pub(super) fn group_len(&self) -> usize {
-        self.pike.get_nfa().group_info().group_len(PatternID::ZERO)
+    /// The pattern's capture groups, the whole match (group 0) included.
+    pub(super) fn group_info(&self) -> &GroupInfo {
+        self.pike.get_nfa().group_info()
     }
 
     /// The heap memory the pattern and `caches` hold.
@@ -235,13 +225,13 @@ fn dfa_work(before: (usize, usize, usize), after: (usize, usize, usize)) -> u64 
 }
 
 /// Searches with one [`Engine`], charging each against the work left.
-pub(super) struct Search<'a> {
+pub(super) struct EngineSearch<'a> {
     pub(super) engine: &'a Engine,
     pub(super) caches: &'a mut Caches,
     pub(super) work: &'a mut u64,
 }
 
-impl Search<'_> {
+impl EngineSearch<'_> {
     /// Charges a `PikeVM` search over `len` bytes.
     fn charge_pike(&mut self, len: usize) -> Result<(), Spent> {
         let len = to_u64(len);

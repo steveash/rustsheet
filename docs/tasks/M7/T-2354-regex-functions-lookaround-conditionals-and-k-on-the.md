@@ -1,6 +1,6 @@
 ---
 id: T-2354
-title: "REGEX functions: lookaround, conditionals and \\K on the T-1900 backtracker"
+title: "REGEX functions: lookaround, conditionals and the K escape on the T-1900 backtracker"
 milestone: M7
 lane: functions-text
 status: todo
