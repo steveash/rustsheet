@@ -314,8 +314,9 @@ lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and 
 match_type inside it is `#VALUE!` and `INDEX(A5:B7,NA(),3)` is `#N/A` (the row error wins over the
 out-of-range column, which alone is `#REF!`).
 An error column beats a row index below 1 as well: `INDEX(Data!B2:E6,TAN(-0.5),MATCH("1",Data!B5:C8,1))` (row -0.546, column
-`#N/A` from MATCH over a 2-D range) is `#N/A`, while ours checks the row first and is `#VALUE!` (gen-m5/372a676d47aa1427
-Calc!A371 inside `MMULT(Data!A1,..)`, excel-graph, 2026-10-22, T-2252 triage; fix T-2375).
+`#N/A` from MATCH over a 2-D range) is `#N/A` (VERIFIED, gen-m5/372a676d47aa1427 Calc!A371 inside `MMULT(Data!A1,..)`, excel-graph, 2026-10-22, T-2252 triage).
+Implemented (T-2375) in `index_numbers` (functions/lookup_and_reference/index.rs): the cast errors of row and column come
+before a negative row or column; `INDEX(range,-0.5,1)` stays `#VALUE!`.
 Rule 3: the cell stays a reference through IF, IFS, CHOOSE, SWITCH and LET, so `MATCH(2,A5:A7,IFS(TRUE,D1))`
 with D1 = "x" is `#REF!` too (as are the same with IF, CHOOSE, SWITCH, `LET(a,D1,a)`); D2 = 1
 gives 2. IFERROR returns the value, so `IFERROR(D1,0)` is `#VALUE!`, like literal text

@@ -14,7 +14,6 @@ use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
     run_static_analysis_on_node, static_analysis_on_function, Node, Signature, StaticResult,
 };
-use crate::expressions::token::OpUnary;
 use crate::functions::Function;
 
 /// Legacy formulas evaluate SUMPRODUCT's arguments as arrays, with no implicit intersection inside
@@ -236,117 +235,17 @@ pub(super) fn legacy_array_call_at(
         })
 }
 
-/// Whether `node` is a SWITCH whose results are each an array constant or, with `ranges`, a range,
-/// maybe under an `@`. A legacy cell spills such a SWITCH where
-/// [`spilling_switch_position`] finds it (probes/legacy-switch-at-shapes, T-1964).
-pub(super) fn is_spilling_switch(node: &Node, ranges: bool) -> bool {
-    matches!(node, Node::FunctionKind { kind: kind @ Function::Switch, args }
-    if returns_only(kind, args, |result| match under_at(result).lowered() {
-        Node::ArrayKind(_) => true,
-        Node::RangeKind { .. } => ranges,
-        _ => false,
-    }))
-}
-
-/// Where a legacy formula `root` holds a SWITCH that takes no automatic `@`, nor do its results
-/// ([`is_spilling_switch`]): the root itself (results array constants or ranges,
-/// `=SWITCH(1,1,{2;3})`, `=SWITCH(1,1,Z30:AA31)`), or the argument of ABS or LEN or of a unary
-/// minus (array constants, `=ABS(SWITCH(1,1,{-2;3}))`, `=-SWITCH(1,1,{2;3})`); Excel shows no
-/// `@` and the cell spills (probes/legacy-switch-at-shapes A20, D20, G20, J20, M20, Y20;
-/// legacy-array-at-shapes C20, T-1910, T-1964). Only these shapes are probed: elsewhere (other
-/// callers, binary operators, a result that is an operation or a call) a SWITCH keeps its `@`.
-/// The position may hold an `@` over the SWITCH, typed on import (kept) or added by the pass.
-pub(super) fn spilling_switch_position(root: &mut Node) -> Option<&mut Node> {
-    let nested = matches!(root,
-        Node::FunctionKind { kind: Function::Abs | Function::Len, args } if args.len() == 1)
-        || matches!(
-            root,
-            Node::UnaryKind {
-                kind: OpUnary::Minus,
-                ..
-            }
-        );
-    let position = if nested {
-        match root {
-            Node::FunctionKind { args, .. } => args.first_mut()?,
-            Node::UnaryKind { right, .. } => right.as_mut(),
-            _ => return None,
-        }
-    } else {
-        root
-    };
-    is_spilling_switch(under_at(position), !nested).then_some(position)
-}
-
-/// [`add_legacy_intersection`] on a whole formula: the automatic `@`s the pass puts on a spilling
-/// SWITCH and its results ([`spilling_switch_position`]) are taken off, while one typed there is
-/// meaningful and kept (the export keeps it too, `remove_redundant_implicit_intersection`).
+/// [`add_legacy_intersection`] on a whole formula. A legacy formula holding a SWITCH at any depth
+/// gets no automatic `@` anywhere, not on the SWITCH, its arguments or the rest of the formula,
+/// and the cell spills: `=SIN(SWITCH(1,1,{2;3}))`, `=SWITCH(1,1,2)+Z30:Z32`, `=SWITCH(1,1,2)`,
+/// `=IF(1,SWITCH(1,1,{2;3}))` all show no `@` in FORMULATEXT, while `=ABS(Z30:Z32)` keeps its
+/// (probes/legacy-switch-callers, legacy-switch-at-shapes; T-1964, T-2121). An `@` typed in such a
+/// formula is meaningful and stays; the export keeps it too (`remove_redundant_implicit_intersection`).
 pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
-    if add
-        && matches!(
-            node,
-            Node::ImplicitIntersection {
-                automatic: false,
-                ..
-            }
-        )
-        && spilling_switch_position(node).is_some()
-    {
-        return; // A typed `@` on a root SWITCH stays as it is.
-    }
-    let typed = if add {
-        typed_switch_results(node)
-    } else {
-        None
-    };
-    add_legacy_intersection(node, add, add);
-    let Some(typed) = typed else {
+    if add && node.contains_function(&[Function::Switch]) {
         return;
-    };
-    if let Some(position) = spilling_switch_position(node) {
-        take_automatic_at(position);
-        for_each_switch_result_mut(position, |index, result| {
-            if !typed.contains(&index) {
-                take_automatic_at(result);
-            }
-        });
     }
-}
-
-/// Before the pass, the results of the spilling SWITCH in `root` that have a typed `@`, which
-/// stays: the pass marks a typed `@` it would add anyway as automatic. `None` without such a
-/// SWITCH, or with an `@` typed over it, which then keeps all it holds as the pass leaves them.
-fn typed_switch_results(root: &mut Node) -> Option<Vec<usize>> {
-    let position = spilling_switch_position(root)?;
-    if matches!(position, Node::ImplicitIntersection { .. }) {
-        return None;
-    }
-    let mut typed = Vec::new();
-    for_each_switch_result_mut(position, |index, result| {
-        if matches!(result, Node::ImplicitIntersection { .. }) {
-            typed.push(index);
-        }
-    });
-    Some(typed)
-}
-
-/// Calls `each` with the index and node of every result of the SWITCH `switch`.
-pub(super) fn for_each_switch_result_mut(
-    switch: &mut Node,
-    mut each: impl FnMut(usize, &mut Node),
-) {
-    if let Node::FunctionKind {
-        kind: kind @ Function::Switch,
-        args,
-    } = switch
-    {
-        let count = args.len();
-        for (index, arg) in args.iter_mut().enumerate() {
-            if is_returned_argument(kind, index, count) {
-                each(index, arg);
-            }
-        }
-    }
+    add_legacy_intersection(node, add, add);
 }
 
 /// `node`, or the operand of an `@` over it.

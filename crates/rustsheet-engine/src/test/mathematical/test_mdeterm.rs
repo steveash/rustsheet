@@ -92,7 +92,7 @@ fn mdeterm_keeps_the_elimination_residual() {
     model._set("A1", "=MDETERM({1,2,3;4,5,6;7,8,9})");
     model._set("A2", "=MDETERM({1,2,3;4,5,6;7,8,10})");
     model._set("A3", "=MDETERM({1,2;2,4})");
-    model._set("A4", "=MINVERSE({1,2,3;4,5,6;7,8,9})");
+    model._set("A4", "=INDEX(MINVERSE({1,2,3;4,5,6;7,8,9}),1,1)");
     model._set("A5", "=MDETERM({1E+200,0;0,1E+200})");
     model.evaluate();
     let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
@@ -102,8 +102,10 @@ fn mdeterm_keeps_the_elimination_residual() {
     assert_eq!(bits("A1"), 6.661_338_147_750_939e-16_f64.to_bits());
     assert_eq!(bits("A2"), (-2.999_999_999_999_998_2_f64).to_bits());
     assert_eq!(bits("A3"), 0.0_f64.to_bits());
-    // MINVERSE keeps its near-singular cutoff (no Excel evidence there yet).
-    assert_eq!(model._get_text("A4"), *"#NUM!");
-    // An overflowing pivot product is `#NUM!`, not an infinity (no Excel evidence; T-1751).
+    // MINVERSE inverts the same tiny pivot: its residual inverse starts -4503599627370498
+    // (probes/minverse-singular-near-singular A1, excel-graph, T-2362).
+    assert_eq!(bits("A4"), (-4_503_599_627_370_498.0_f64).to_bits());
+    // An overflowing pivot product is `#NUM!`, not an infinity
+    // (probes/minverse-singular-near-singular H1, excel-graph, T-2067).
     assert_eq!(model._get_text("A5"), *"#NUM!");
 }

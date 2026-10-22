@@ -3,7 +3,7 @@ id: T-2375
 title: "INDEX: an error column index beats a row index below 1 (INDEX(B2:E6,-0.5,#N/A) is #N/A)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -39,3 +39,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 Decision 0083 (gap triage 2026-10-22, T-2252): every cell this task owns has the wrong type, error, text or boolean, or is a
 number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
 criteria above are already the visible-parity stage.
+
+## Outcome
+`index_numbers` now reads the row and column cast errors before range-checking either for a negative; the area_num order is unchanged. gen-m5 372a676d47aa1427 Calc!A371 left eval/baseline/gen-m5.txt (1 fixed, 0 regressions). Unit test `test_index_error_column_beats_negative_row`.

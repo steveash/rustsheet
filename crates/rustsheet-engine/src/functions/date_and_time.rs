@@ -299,7 +299,9 @@ impl Model {
     }
 
     /// Walk a scalar / range / array value and invoke the provided closure with every
-    /// numeric date serial that is encountered.
+    /// numeric date serial that is encountered, in reading order. The serials are not checked
+    /// against the date range here: the closure does that, so the first bad holiday decides
+    /// whether its error is a type's `#VALUE!` or a range's `#NUM!`.
     fn collect_serial_numbers<F>(
         &mut self,
         value: CalcResult,
@@ -310,11 +312,11 @@ impl Model {
         F: FnMut(i64) -> Result<(), CalcResult>,
     {
         match value {
-            CalcResult::Number(v) => handle(self.holiday_serial(v, cell)?)?,
+            CalcResult::Number(v) => handle(holiday_serial(v))?,
             CalcResult::Range { left, right } => {
                 let areas = [Range { left, right }];
                 self.for_each_cell_in_areas(&areas, cell, |model, value| match value {
-                    CalcResult::Number(v) => handle(model.holiday_serial(v, cell)?),
+                    CalcResult::Number(v) => handle(holiday_serial(v)),
                     CalcResult::EmptyCell => Ok(()),
                     // Excel: a cell holding number text is a holiday (dates.md "WORKDAY and
                     // NETWORKDAYS holidays: blank and number-text cells").
@@ -326,7 +328,7 @@ impl Model {
                 for row in array {
                     for value in row {
                         match value {
-                            ArrayNode::Number(num) => handle(self.holiday_serial(num, cell)?)?,
+                            ArrayNode::Number(num) => handle(holiday_serial(num))?,
                             ArrayNode::Error(error) => {
                                 return Err(CalcResult::Error {
                                     error,
@@ -348,17 +350,10 @@ impl Model {
         Ok(())
     }
 
-    /// The serial of a holiday number: its floor, which must be a date (`#NUM!`).
-    fn holiday_serial(&self, number: f64, cell: CellReferenceIndex) -> Result<i64, CalcResult> {
-        let serial = number.floor() as i64;
-        self.excel_date(serial, cell)?;
-        Ok(serial)
-    }
-
     /// The serial of a holiday cell holding number text; other text is `#VALUE!`.
     fn holiday_text_serial(&self, text: &str, cell: CellReferenceIndex) -> Result<i64, CalcResult> {
         match self.cast_number(text) {
-            Some(number) => self.holiday_serial(number, cell),
+            Some(number) => Ok(holiday_serial(number)),
             None => Err(invalid_holiday(cell)),
         }
     }
@@ -377,11 +372,7 @@ impl Model {
             .date_of_serial_from_zero(serial)
         {
             Some(date) => Ok(date),
-            None => Err(CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Out of range parameters for date".to_string(),
-            }),
+            None => Err(out_of_range_date(cell)),
         }
     }
 
@@ -400,14 +391,10 @@ impl Model {
         let mut weekend = DEFAULT_WEEKEND;
         match value {
             CalcResult::Number(n) => {
+                // A fraction truncates: `WORKDAY.INTL(45351,10,1.005)` is 45365 and
+                // `WORKDAY.INTL(11303,-4,1.25,..)` reads its holidays (dates.md "WORKDAY.INTL and
+                // NETWORKDAYS.INTL: weekend number coercion").
                 let code = n.trunc() as i32;
-                if (n - n.trunc()).abs() > f64::EPSILON {
-                    return Err(CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        "Invalid weekend".to_string(),
-                    ));
-                }
                 weekend = match WeekendPattern::try_from(code) {
                     Ok(pattern) => pattern.to_mask(),
                     Err(_) => {
@@ -819,6 +806,20 @@ impl Model {
         }
         result
     }
+}
+
+/// The `#NUM!` of a WORKDAY or NETWORKDAYS date or holiday off the calendar.
+fn out_of_range_date(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        "Out of range parameters for date".to_string(),
+    )
+}
+
+/// The serial of a holiday number: its floor, not yet checked against the date range.
+fn holiday_serial(number: f64) -> i64 {
+    number.floor() as i64
 }
 
 /// The `#VALUE!` of a holiday that is not a date.
