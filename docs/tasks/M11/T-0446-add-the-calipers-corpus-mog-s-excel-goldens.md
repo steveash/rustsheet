@@ -3,7 +3,7 @@ id: T-0446
 title: "Add the Calipers corpus (mog's Excel goldens) as a fetched eval suite"
 milestone: M11
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -33,17 +33,28 @@ Owner request (2026-10-22), after a head-to-head of rustsheet and mog (docs/rese
 - Nothing about Calipers' own `verify` gate (formula text, styles) is in scope: the suite scores values.
 
 ## Acceptance criteria
-- [ ] pv26_002 and pv26_2_002 are excluded with a comment naming T-0449, which owns their calculation
+- [x] pv26_002 and pv26_2_002 are excluded with a comment naming T-0449, which owns their calculation
       time, because a timed-out case's worker keeps running until the run ends.
-- [ ] `eval/suites/calipers/suite.toml` fetches Calipers at a pinned full commit id (`[fetch]` with
+- [x] `eval/suites/calipers/suite.toml` fetches Calipers at a pinned full commit id (`[fetch]` with
       `rev` and `subdir = "verification/cases"`), includes `**/golden.xlsx`, excludes `_disabled/**`,
       scores cached values, and is gated with a `cells` baseline.
-- [ ] `rustsheet-eval fetch --suite calipers` then `make eval-baseline` records the suite's current known
+- [x] `rustsheet-eval fetch --suite calipers` then `make eval-baseline` records the suite's current known
       failures in eval/baseline/calipers.txt; no other baseline changes.
-- [ ] docs/research/mog-head-to-head-2026-10-22.md records the comparison, its method and its numbers;
+- [x] docs/research/mog-head-to-head-2026-10-22.md records the comparison, its method and its numbers;
       docs/excel-semantics/recalc.md notes that Excel-authored data-table workbooks now exist in a suite.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing any failure the suite finds (T-0441, T-0447, T-0448, T-0449 own the known ones).
 - Calipers' Office.js scripts and its formula-text and style comparisons.
+
+## Outcome
+- eval/suites/calipers fetches Calipers 9e47ea4f (`rustsheet-eval fetch --suite calipers`, 458 goldens, about
+  170 MB) and scores 456 of them; pv26_002 and pv26_2_002 are excluded (T-0449).
+- eval/baseline/calipers.txt: 173 cases with formula cells, 6,679 known failures. These include 21
+  `!EngineError` workbooks with data tables (T-0441) and the `#CIRC!` cells of pv23_021 and pv26_004
+  (T-0447). No other baseline changed.
+- The suite adds about 4 minutes to a 4-core `make eval`. Like poi and corpus-bench, it is only checked
+  where it has been fetched.
+- Comparison numbers: docs/research/mog-head-to-head-2026-10-22.md.
+
