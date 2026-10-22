@@ -2296,7 +2296,7 @@ C7 = F7). Over the 33 distinct F.TEST inputs on file (probes stat-argument-modes
 ftest-decomposition; probes-numeric m9-legacy-ftest, t1049-ftest) Excel is within -6..+4 ulps of
 the exact two-tailed p, on both sides; neither the exact p (12 of 33 bit-exact) nor the A&S
 26.6.4-26.6.8 finite series in doubles (11 of 33), with a two-pass, textbook or corrected
-variance, or with f taken as larger over smaller, reproduces it. Open: T-2359.
+variance, or with f taken as larger over smaller, reproduces it. Open: T-2361.
 
 ## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
 COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell

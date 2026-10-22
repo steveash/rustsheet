@@ -1,5 +1,5 @@
 ---
-id: T-2359
+id: T-2361
 title: "Fit Excel's F.TEST kernel: bit-exact two-tailed p (not 2*MIN of its F.DIST)"
 milestone: M9
 lane: research
