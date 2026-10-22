@@ -104,8 +104,36 @@ fn numbervalue_reads_currency_parentheses_dates_and_times() {
         ("=NUMBERVALUE(\"12:30\")*48", "25"),
         // Group "5" turns "25:00" into "2:00" (gen-m5/34f69d858a39f497 A227).
         ("=NUMBERVALUE(\"25:00\",\"x\",\"5\")*24", "2"),
+        // Group "0" leaves "25:", an hour and a bare colon: 25 hours (gen-m5/eb942f4a59b1c004 A115).
+        ("=NUMBERVALUE(\"25:00\",\".\",\"0\")*24", "25"),
         // Decimal "F", group "2": "1,000" keeps its comma as VALUE reads it (gen-m6/07171fa3f7493f51 A261).
         ("=NUMBERVALUE(\"1,000\",FALSE,2.5)", "1000"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+/// One trailing colon after a bare hour is ignored by every time-text reader: `"12:"` is 12:00, but
+/// not before an AM/PM suffix or after a fraction (docs/excel-semantics/dates.md "Time text",
+/// probes/t2352-time-text-trailing-colon A2, A3, A16, A18).
+#[test]
+fn value_reads_an_hour_with_a_trailing_colon() {
+    let mut model = new_empty_model();
+    let cases = [
+        ("=VALUE(\"12:\")*24", "12"),
+        ("=(\"12:\"+0)*24", "12"),
+        ("=VALUE(\"12: PM\")", "#VALUE!"),
+        ("=VALUE(\"1.5:\")", "#VALUE!"),
+        ("=VALUE(\"12::\")", "#VALUE!"),
     ];
     for (i, (formula, _)) in cases.iter().enumerate() {
         model._set(&format!("A{}", i + 1), formula);
