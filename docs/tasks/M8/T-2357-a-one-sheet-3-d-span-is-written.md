@@ -27,6 +27,8 @@ export of such a formula still opens.
 
 ## Acceptance criteria
 - [ ] probes/3d-ref-one-sheet-span-lift Calc!B6 passes; the case leaves the baseline.
+- [ ] A legacy-import probe confirms the automatic `@` T-2351 puts on a one-sheet span range
+  (`SIN(Sheet1:Sheet1!A1:A10)` stored without the dynamic-array flag), or the rule is corrected.
 - [ ] A unit test pins FORMULATEXT of a one-sheet span over a cell and over a range.
 - [ ] `make check` green; reviewers approve.
 

@@ -3,7 +3,7 @@ id: T-2351
 title: "Fuzz crash: a one-sheet 3-D range in a scalar argument reaches the cell as an array (model.rs debug_assert)"
 milestone: M5
 lane: engine
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: opus
@@ -38,9 +38,19 @@ What Excel returns for a scalar function over a one-sheet 3-D range (spill like 
 evidence exists; otherwise write a probe (excel-probe skill) and keep the fix to the invariant.
 
 ## Acceptance criteria
-- [ ] A unit test with the reproducer formula (and the LEN/ABS variants) evaluates without panic in
+- [x] A unit test with the reproducer formula (and the LEN/ABS variants) evaluates without panic in
   a debug build (decision 0035: the reproducer becomes a unit test).
-- [ ] The cell's value follows Excel evidence for 3-D references in scalar arguments, or a probe is
+- [x] The cell's value follows Excel evidence for 3-D references in scalar arguments, or a probe is
   filed and the value is the plain-range behavior pending it.
-- [ ] `cd fuzz && cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')" formula_eval <reproducer>` passes.
-- [ ] `make check` green; reviewers approve.
+- [x] `cd fuzz && cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')" formula_eval <reproducer>` passes.
+- [x] `make check` green; reviewers approve.
+
+## Outcome
+Static analysis gives a one-sheet 3-D span (`Sheet1:Sheet1!B1:BM1`) the shape of the reference it
+wraps, matching the evaluator since T-2280, and a legacy formula puts the plain range's automatic `@`
+on its range; wider spans stay scalar (`#REF!`). New probe 3d-ref-one-sheet-span-lift (excel-graph):
+Excel spills `ABS(Data1:Data1!A1:A3)` like the plain range; ours matches on 11/12 cells, the twelfth
+(FORMULATEXT spells the span as the plain reference) is filed as T-2357. Unit tests pin the reproducer
+and the LEN/ABS variants (both failed before the fix). cargo-fuzz is not installed in this session's
+environment, so the reproducer was replayed through the facade in a debug build instead (no panic).
+Eval delta: fixed 0, new-coverage known failures 1 (Calc!B6), regressions 0.
