@@ -4,8 +4,8 @@ use regex_automata::Match;
 
 use super::{
     lifted::COMPARED_BYTES_PER_VISIT,
+    pcre::{self, FinalLf},
     regex_engine::{BuildFailure, Caches, Engine, Search, Spent},
-    regex_posix::{foldable_span, unicode_posix_classes},
     regex_replacement::Replacement,
     util::within_text_budget,
 };
@@ -53,8 +53,9 @@ struct Compiled {
 /// pattern is compiled once for each case sensitivity, within [`COMPILE_BUDGET`] and
 /// [`HELD_LIMIT`], and every search is charged against [`SEARCH_BUDGET`].
 struct PatternCache {
-    /// The case-sensitive patterns, then the case-insensitive ones.
-    entries: [HashMap<String, Compiled>; 2],
+    /// The case-sensitive patterns, then the case-insensitive ones; each once with `$` read as
+    /// [`FinalLf::EndLf`], then as [`FinalLf::End`] (compiled only for a text that needs it).
+    entries: [HashMap<String, Compiled>; 4],
     held: usize,
     budget: usize,
     work: u64,
@@ -64,7 +65,12 @@ struct PatternCache {
 impl PatternCache {
     fn new() -> Self {
         PatternCache {
-            entries: [HashMap::new(), HashMap::new()],
+            entries: [
+                HashMap::new(),
+                HashMap::new(),
+                HashMap::new(),
+                HashMap::new(),
+            ],
             held: 0,
             budget: COMPILE_BUDGET,
             work: SEARCH_BUDGET,
@@ -72,21 +78,29 @@ impl PatternCache {
         }
     }
 
-    /// Runs `searches` with `pattern`, ignoring case when `case_insensitive`: its result; or the
-    /// `#VALUE!` of an invalid pattern; or `#ERROR!` once the call's work is spent.
+    /// Runs `searches` over `text` with `pattern`, ignoring case when `case_insensitive`: its
+    /// result; or the `#VALUE!` of an invalid pattern; or `#ERROR!` once the call's work is spent.
     fn with<R>(
         &mut self,
         pattern: &str,
         case_insensitive: bool,
+        text: &str,
         cell: CellReferenceIndex,
         searches: impl FnOnce(&mut Search<'_>) -> Result<R, Spent>,
     ) -> Result<R, CalcResult> {
         if self.exhausted {
             return Err(too_much_regex_work(cell));
         }
-        let index = usize::from(case_insensitive);
+        // Only a pattern that can hold `$` or `\Z` reads differently per text. The text test
+        // over-approximates on purpose (a literal `[$]` or `Z` costs one equivalent compile).
+        let final_lf = if pattern.contains(['$', 'Z']) {
+            pcre::final_lf_for(text)
+        } else {
+            FinalLf::EndLf
+        };
+        let index = usize::from(case_insensitive) + 2 * usize::from(final_lf == FinalLf::End);
         if !self.entries[index].contains_key(pattern) {
-            let engine = self.compile(pattern, case_insensitive, cell)?;
+            let engine = self.compile(pattern, case_insensitive, final_lf, cell)?;
             self.entries[index].insert(pattern.to_string(), Compiled { engine, held: 0 });
         }
         let Some(entry) = self.entries[index].get_mut(pattern) else {
@@ -122,14 +136,16 @@ impl PatternCache {
         &mut self,
         pattern: &str,
         case_insensitive: bool,
+        final_lf: FinalLf,
         cell: CellReferenceIndex,
     ) -> Result<Option<(Engine, Caches)>, CalcResult> {
-        let Ok(pattern) = unicode_posix_classes(pattern, case_insensitive) else {
+        let Ok(translated) = pcre::translate(pattern, case_insensitive, final_lf, self.budget)
+        else {
             return Ok(None);
         };
-        // regex-syntax's case folding runs inside every `Engine::new`, before any size limit
-        // applies; one budget byte per code point is about the nanoseconds it takes (T-2138).
-        let fold = foldable_span(&pattern, case_insensitive);
+        // Case folding walks every code point of a folded class; one budget byte per code point
+        // is about the nanoseconds it takes (T-2138). The parser stops folding past the budget.
+        let fold = translated.fold_cost;
         if self.budget < fold {
             self.exhausted = true;
             return Err(too_much_regex_work(cell));
@@ -141,7 +157,7 @@ impl PatternCache {
                 return Err(too_much_regex_work(cell));
             }
             self.budget -= limit;
-            match Engine::new(&pattern, limit, case_insensitive) {
+            match Engine::new(&translated.hir, limit) {
                 Ok(engine) => {
                     let caches = engine.create_caches();
                     return Ok(Some((engine, caches)));
@@ -344,7 +360,7 @@ impl Model {
                 };
                 let no_groups =
                     || CalcResult::new_error(Error::VALUE, cell, "No capture groups".to_string());
-                let found = cache.with(&pattern, insensitive, cell, |search| match mode {
+                let found = cache.with(&pattern, insensitive, &text, cell, |search| match mode {
                     ReturnMode::First => Ok(Ok(search.find(&text)?.map(|m| vec![Some(m.range())]))),
                     ReturnMode::All => {
                         let mut all = Vec::new();
@@ -438,7 +454,7 @@ impl Model {
                     Err(error) => return error,
                 };
                 // Two passes over the text: one measures the result, one builds it.
-                let replaced = cache.with(&pattern, insensitive, cell, |search| {
+                let replaced = cache.with(&pattern, insensitive, &text, cell, |search| {
                     let Some(replacement) = Replacement::new(search.engine, &replacement) else {
                         // An invalid replacement is #VALUE! only once a match it replaces is
                         // found: else the text comes back unchanged (regex-pcre2-features E1-E3,
@@ -523,7 +539,9 @@ impl Model {
                     Ok(options) => options,
                     Err(error) => return error,
                 };
-                match cache.with(&pattern, insensitive, cell, |search| search.is_match(&text)) {
+                match cache.with(&pattern, insensitive, &text, cell, |search| {
+                    search.is_match(&text)
+                }) {
                     Ok(matched) => CalcResult::Boolean(matched),
                     Err(error) => error,
                 }
@@ -562,17 +580,17 @@ mod tests {
         let mut cache = PatternCache::new();
         for _ in 0..100 {
             assert!(matches!(
-                cache.with("x", false, CELL, |search| search.is_match(&text)),
+                cache.with("x", false, "", CELL, |search| search.is_match(&text)),
                 Ok(false)
             ));
         }
         let mut cache = PatternCache::new();
         cache.work = 1_000;
         assert!(is_error(
-            &cache.with("x", false, CELL, |search| search.is_match(&text))
+            &cache.with("x", false, "", CELL, |search| search.is_match(&text))
         ));
         assert!(is_error(
-            &cache.with("x", false, CELL, |search| search.is_match("x"))
+            &cache.with("x", false, "", CELL, |search| search.is_match("x"))
         ));
     }
 
@@ -594,7 +612,7 @@ mod tests {
         let mut cache = PatternCache::new();
         let mut searches = 0;
         while cache
-            .with(pattern, false, CELL, |search| search.is_match(&text))
+            .with(pattern, false, "", CELL, |search| search.is_match(&text))
             .is_ok()
         {
             searches += 1;
@@ -610,7 +628,7 @@ mod tests {
     fn compiles_are_budgeted() {
         let mut cache = PatternCache::new();
         assert!(matches!(
-            cache.with("(", false, CELL, |search| search.is_match("")),
+            cache.with("(", false, "", CELL, |search| search.is_match("")),
             Err(CalcResult::Error {
                 error: Error::VALUE,
                 ..
@@ -619,8 +637,9 @@ mod tests {
         let small = COMPILE_BUDGET / (1 << 16);
         let mut spent = false;
         for i in 0..=small {
-            spent |=
-                is_error(&cache.with(&format!("a{i}"), false, CELL, |search| search.is_match("")));
+            spent |= is_error(&cache.with(&format!("a{i}"), false, "", CELL, |search| {
+                search.is_match("")
+            }));
         }
         assert!(spent);
     }
@@ -633,7 +652,7 @@ mod tests {
         let start = std::time::Instant::now();
         let mut cache = PatternCache::new();
         assert!(is_error(
-            &cache.with(&ranges, true, CELL, |search| search.is_match(""))
+            &cache.with(&ranges, true, "", CELL, |search| search.is_match(""))
         ));
         assert!(cache.exhausted);
         assert!(start.elapsed().as_secs() < 5);
@@ -641,6 +660,7 @@ mod tests {
         assert!(!is_error(&cache.with(
             "[\\x{0}-\\x{10FFFF}]",
             false,
+            "",
             CELL,
             |search| search.is_match("")
         )));

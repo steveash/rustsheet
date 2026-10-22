@@ -3,7 +3,7 @@ id: T-1973
 title: "PCRE2 pattern parser for the REGEX functions, regular patterns on the automata"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -48,33 +48,33 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 1 known-failure lin
 - gen-m7/7307132bb8820f17.case.json A581 `=REGEXEXTRACT(Data!C$9,OFFSET(Data!B2:E9,2,3))`: A587 Excel <empty>, ours #VALUE!; cells (1): A587
 
 ## Acceptance criteria
-- [ ] The 1 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 1 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
-- [ ] Visible parity: the 6 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The parser is iterative (no recursion on pattern size), caps nesting, and fails closed (`#VALUE!`) on every
+- [ ] (Deferred to T-2343, see Outcome.) The 1 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 1 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
+- [x] Visible parity: the 6 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The parser is iterative (no recursion on pattern size), caps nesting, and fails closed (`#VALUE!`) on every
   construct it does not know.
-- [ ] regex-pcre2-features C14-C19 pass (`(?#..)`, `\Q..\E`, `(?x)`, `(?-i)`; none needs backtracking), as do
+- [x] regex-pcre2-features C14-C19 pass (`(?#..)`, `\Q..\E`, `(?x)`, `(?-i)`; none needs backtracking), as do
   probes/regex-optional-args A24-A26 (case folding), with no new known failures in eval/baseline/. POSIX classes keep
   the Unicode meaning T-1903 gave them (`regex_posix.rs`, probes/regex-posix-classes and -b pass), and the parser
   replaces that pre-compile rewrite. The bracket probes keep passing: probes/regex-posix-classes, -b and -c
   (nesting, `&&`, the `(?i)` rule; T-1903, T-1989) and the syntax-error cells (regex-posix-classes Z1-Z3, Z8-Z10,
   regex-posix-classes-b A4, A5, T-1985; regex-posix-syntax-edges A1-A14, T-2010).
-- [ ] Every AST pass (parse, `is_regular`, `to_hir`, `Drop`) is iterative or depth-bounded. Stacked quantifiers count
+- [x] Every AST pass (parse, `is_regular`, `to_hir`, `Drop`) is iterative or depth-bounded. Stacked quantifiers count
   toward the nest cap, and repeat counts are capped at 65,535 with checked arithmetic. Unit tests cover 250 nested
   groups, 32,767 stacked quantifiers and `(?:a{65535}){65535}` (`TooBig`, no overflow).
-- [ ] `$` and `\Z` match before a final `\n` (SPEC-0013 section 2): `Look::End` on a text that does not end in `\n`,
+- [x] `$` and `\Z` match before a final `\n` (SPEC-0013 section 2): `Look::End` on a text that does not end in `\n`,
   `Look::EndLF` on one whose only `\n` is the final one, so regex-ascii-classes A34 passes. A text that ends in `\n`
   and holds another one keeps `\z` until T-1900's memoized mode, pinned by a unit test.
-- [ ] `\h` and a leading `(*UCP)` are accepted (regex-ascii-classes A41, A17 pass). `\R` and `\X` (A42, A27) parse
+- [x] `\h` and a leading `(*UCP)` are accepted (regex-ascii-classes A41, A17 pass). `\R` and `\X` (A42, A27) parse
   and stay `#VALUE!`; T-2287 (functions-text, depends on T-1900) implements them.
-- [ ] A unit test pins `a++` as `#VALUE!` until T-1900.
-- [ ] A differential unit test checks our parser's `Hir` against `regex-syntax`'s for random patterns both dialects
+- [x] A unit test pins `a++` as `#VALUE!` until T-1900.
+- [x] A differential unit test checks our parser's `Hir` against `regex-syntax`'s for random patterns both dialects
   read alike.
-- [ ] `regex-syntax = "0.8"` is a direct dependency with one locked copy (`cargo tree -d`) and a short decision record.
-- [ ] Before and after timings of REGEX* over a column, `^\d{5}$` over a column and many distinct small patterns
+- [x] `regex-syntax = "0.8"` is a direct dependency with one locked copy (`cargo tree -d`) and a short decision record.
+- [x] Before and after timings of REGEX* over a column, `^\d{5}$` over a column and many distinct small patterns
   in one call are in the PR, measured ad hoc (T-1830's benchmark suite is not required; dropped as a dependency
   2026-10-21 so this campaign task does not wait on the perf lane). A slowdown over 50% is justified there
   (decision 0081).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The backtracker (T-1900).
@@ -82,3 +82,35 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 1 known-failure lin
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#VALUE!` or FALSE where Excel accepts `(?#..)`, `\Q..\E`, `(*UCP)`, `\h` and `$` before a final LF), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. `\X` and `\R` (A27, A42) are T-2287.
+
+## Outcome
+New module functions/text/pcre/ (`ast.rs`, `parse.rs`, `hir.rs`, `mod.rs`).
+- Every REGEX* pattern is parsed by one hand-written PCRE2 parser, translated to a `Hir`, and compiled with
+  `build_from_hir`.
+- The parser keeps an explicit group stack. Brackets recurse, but under the same 250-level cap that groups and
+  stacked quantifiers count toward. Repeat counts are capped at 65,535 with checked arithmetic.
+- It replaces regex_posix.rs. POSIX classes, nested brackets, `&&` and the `(?i)` rule are now built directly
+  as folded or unfolded `ClassUnicode`s, and folding is charged per code point.
+- Comments, `\Q..\E`, `(?x)`, scoped flags, `(*UCP)` and `\h` are now read.
+- Unknown constructs fail closed. Backtracking-only constructs parse but stay `#VALUE!` (T-1900).
+- `$` and `\Z` are `Look::EndLF` on texts without an inner LF, so A34 passes. A text with an inner LF keeps `\z`
+  until T-1900, and a unit test pins it.
+- The differential unit test compares 2,000 random patterns against regex-syntax's `Hir`.
+- Decision 0099 records regex-syntax as a direct dependency. `cargo tree -d` shows one copy.
+
+Eval: probes -7 known failures (regex-ascii-classes A17, A34, A41; regex-pcre2-features C11, C15, C16;
+regex-posix-classes Z7), 0 regressions in any suite.
+
+Not met: gen-m7/7307132bb8820f17 A587 (`REGEXEXTRACT(0.2,"?b")`). PCRE2 rejects `?b` at compile time and we give
+`#VALUE!`, yet Excel's grid shows an empty cell. Follow-up T-2343 probes it.
+
+Timings (release, best of 3, before -> after):
+| formula | before | after |
+|---|---|---|
+| `REGEXTEST` "x" over 100,000 200-byte cells | 102 ms | 104 ms |
+| `^\d{5}$` over 100,000 cells | 167 ms | 170 ms |
+| `\w{10}` over 100,000 cells | 76 ms | 77 ms |
+| `REGEXREPLACE` "o" over 100,000 cells | 102 ms | 106 ms |
+| 2,000 distinct patterns in one call | 37 ms | 33 ms |
+
+All are within noise.

@@ -2188,7 +2188,7 @@ as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `
 written `_xlfn.`-prefixed in the file.
 Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
 Status: VERIFIED (excel-graph).
-Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404; the others above are open.
+Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404 and HARMEAN of no numbers (`#N/A`, Q50) by T-1753; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
 
 ## AGGREGATE 14-19: k is read before the array, a referenced error k is `#VALUE!` (T-2281)
