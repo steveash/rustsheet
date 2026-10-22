@@ -102,7 +102,7 @@ fn edate_kinds() -> &'static ArgKinds {
 const LIFT_ALL: ArgKinds = ArgKinds {
     required: 1,
     params: &[],
-    repeat: Some(ArgKind::Lift),
+    repeat: &[ArgKind::Lift],
     max: 255,
     work: KernelWork::Constant,
     result: CallResult::Value,
@@ -341,6 +341,7 @@ fn an_array_first_entry_empties_later_elements_unless_every_entry_is_equal() {
         reuse: Reuse::Never,
         work: KernelWork::Output { weight: 1 },
         result: CallResult::ArrayFirst,
+        later_error: false,
     };
     let mut kernel = |_: &mut Model, values: &[CalcResult]| match values {
         [CalcResult::Number(entry)] if *entry != 0.0 => CalcResult::Array(vec![vec![
@@ -773,6 +774,7 @@ fn a_weighted_kernel_is_charged_its_weight() {
             reuse: Reuse::Never,
             work: KernelWork::Weighted(weight),
             result: CallResult::Value,
+            later_error: false,
         };
         let mut calls = 0;
         let mut kernel = |_: &mut Model, _: &[CalcResult]| {
@@ -818,6 +820,7 @@ fn element_texts_count_against_the_text_budget() {
         reuse: Reuse::Never,
         work: KernelWork::Constant,
         result: CallResult::Value,
+        later_error: false,
     };
     let mut kernel = |_: &mut Model, _: &[CalcResult]| long.clone();
     // 2048 texts of 32,767 bytes fit 64 MiB; 2049 are #VALUE!.

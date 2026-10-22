@@ -281,11 +281,14 @@ impl CallResult {
 }
 
 /// The parameters of one function: `params[i]` is the kind of argument `i`. Arguments past
-/// `params` take `repeat`, and the call is valid with `required..=max` arguments.
+/// `params` take the kinds of `repeat` in turn, a cycle (SORTBY's by_array, sort_order pairs;
+/// SPEC-0011 "Array-valued functions" rule 4), and the call is valid with `required..=max`
+/// arguments that end on a whole cycle.
 pub(crate) struct ArgKinds {
     pub(crate) required: usize,
     pub(crate) params: &'static [ArgKind],
-    pub(crate) repeat: Option<ArgKind>,
+    /// Empty when nothing repeats.
+    pub(crate) repeat: &'static [ArgKind],
     pub(crate) max: usize,
     pub(crate) work: KernelWork,
     pub(crate) result: CallResult,
@@ -301,7 +304,7 @@ impl ArgKinds {
         Self {
             required,
             params,
-            repeat: None,
+            repeat: &[],
             max: params.len(),
             work,
             result: CallResult::Value,
@@ -330,12 +333,19 @@ impl ArgKinds {
         if index >= self.max {
             return None;
         }
-        self.params.get(index).copied().or(self.repeat)
+        match index.checked_sub(self.params.len()) {
+            None => self.params.get(index).copied(),
+            Some(past) => self.repeat.get(past % self.repeat.len().max(1)).copied(),
+        }
     }
 
-    /// Whether a call with `count` arguments is valid.
+    /// Whether a call with `count` arguments is valid: past `params` only whole cycles of
+    /// `repeat` (`SORTBY` takes 2, 3, 5, 7, ... arguments).
     pub(crate) fn accepts(&self, count: usize) -> bool {
-        (self.required..=self.max).contains(&count)
+        let whole_cycles = count
+            .checked_sub(self.params.len())
+            .is_none_or(|past| past % self.repeat.len().max(1) == 0);
+        (self.required..=self.max).contains(&count) && whole_cycles
     }
 }
 

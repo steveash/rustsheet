@@ -48,7 +48,7 @@ const RATE: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift, Lift],
 const NPV: ArgKinds = ArgKinds {
     required: 2,
     params: &[Lift],
-    repeat: Some(WholeByCaller),
+    repeat: &[WholeByCaller],
     max: 255,
     work: Constant,
     result: CallResult::Value,

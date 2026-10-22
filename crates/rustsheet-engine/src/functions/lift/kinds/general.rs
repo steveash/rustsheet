@@ -4,7 +4,7 @@
 use super::ArgKind::{Lift, LiftArrays, Whole, WholeByCaller};
 use super::KernelWork::{Constant, Output};
 use super::{
-    ArgKinds, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2, LIFT_1_OF_3, LIFT_2,
+    ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2, LIFT_1_OF_3, LIFT_2,
     LIFT_2_OF_3, LIFT_3,
 };
 use crate::functions::Function;
@@ -69,6 +69,23 @@ const TOCOL: ArgKinds =
 const UNIQUE: ArgKinds =
     ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first();
 // --- End M7 (T-1836) ---
+// --- M7 (T-1839) ---
+/// `SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`: the sort_orders lift
+/// over an array and a range (`SORTBY(A1:A3,B1:B3,{1;-1})` is 2x1, probes/m7-argument-modes
+/// F26:H26), the array and the by_arrays are read once by the function. Unless every entry is
+/// equal only the first element keeps its call's top-left (`CallResult::ArrayFirst`;
+/// `SORTBY(A1:A3,C1:C3,{1;-1;1})` is {1;0;0}, probes/sort-error-args H97-H99), `#VALUE!` once the
+/// call has a second pair (probes/m7-lift-take-drop-sortby sheet Sort). Each element sorts the
+/// whole array: read and charged as [`TOCOL`].
+const SORTBY: ArgKinds = ArgKinds {
+    required: 2,
+    params: &[WholeByCaller, WholeByCaller, Lift],
+    repeat: &[WholeByCaller, Lift],
+    max: 255,
+    work: Output { weight: 1 },
+    result: CallResult::ArrayFirst,
+};
+// --- End M7 (T-1839) ---
 // --- End array-valued (T-1834) ---------------------------------------------------------------
 
 /// This family's part of the lifting table (`Function::arg_kinds`).
@@ -123,6 +140,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Take | Function::Drop => Some(&TAKE_DROP),
         Function::Tocol => Some(&TOCOL),
         Function::Unique => Some(&UNIQUE),
+        Function::Sortby => Some(&SORTBY),
         Function::Hyperlink => Some(&LIFT_1_OF_2),
         // --- Math (T-1802) ---
         // QUOTIENT, FACTDOUBLE and SERIESSUM's x, n and m are Analysis ToolPak arguments: they
