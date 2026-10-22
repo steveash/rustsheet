@@ -1313,9 +1313,14 @@ TOCOL(Data!E7:E11))` spills five `#NUM!` (36809e9faa59553f A334),
 `SEQUENCE(0,1,ROUNDDOWN(SORT(..),-6),COLUMNS(COTH(..)))` has `#VALUE!` elements (611ce3bbfab27cef A1633) and `TAKE(Data!B9:C10,0,
 LN(ROUND(..)))` is `#VALUE!` (7d67c559ce7536fa A1296). `SEQUENCE(0)` alone stays `#CALC!`. A817's error argument (its start, a UNIQUE over an XLOOKUP) is not isolated.
 `SEQUENCE(WRAPROWS(Data!C2,3,Data!$A$3)+..,0,..)` (611ce3bbfab27cef A1065) is one `#VALUE!` with no error argument: its rows is
-an array (WRAPROWS pads with a blank) of about 1E+15; its cause is UNVERIFIED and not this rule.
+an array (WRAPROWS pads with a blank) of about 1E+15, past the grid, which is `#VALUE!` as `SEQUENCE(1048577)` is, and that also
+beats the zero columns; the reading fits the cell but is not isolated by a probe.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-Ours: `#CALC!` (T-2316).
+A zero rows beats an invalid columns: `SEQUENCE(0,<negative>)` is `#CALC!` (c36ff5f42a1a4d47 A359). So SEQUENCE reads all four
+arguments, an error value in any of them winning, and only then checks rows (negative or past the grid `#VALUE!`, 0 `#CALC!`), then
+columns.
+Ours: `sequence_kernel` in that order; TAKE reads both counts before a zero one is `#CALC!` (`edge_spans`; T-2316).
+Unprobed: whether an error start beats a negative extent (ours: it does, by the reading above).
 Status: VERIFIED (excel-graph)
 Tasks: T-2316
 
