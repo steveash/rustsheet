@@ -3,7 +3,7 @@ id: T-2373
 title: "BASE of a number at or above 2^53 is #NUM! (BASE(ROUNDUP(2^53,-6),10,5))"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
