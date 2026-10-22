@@ -3,7 +3,7 @@ id: T-2377
 title: "TEXT of a number with bare digits beside a date token: TEXT(3.14159,'42abc') is #VALUE!"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
