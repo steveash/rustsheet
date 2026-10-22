@@ -342,9 +342,11 @@ impl ArgKinds {
     /// Whether a call with `count` arguments is valid: past `params` only whole cycles of
     /// `repeat` (`SORTBY` takes 2, 3, 5, 7, ... arguments).
     pub(crate) fn accepts(&self, count: usize) -> bool {
-        let whole_cycles = count
-            .checked_sub(self.params.len())
-            .is_none_or(|past| past % self.repeat.len().max(1) == 0);
+        let whole_cycles = match count.checked_sub(self.params.len()) {
+            None | Some(0) => true,
+            // An empty `repeat` takes no argument past `params`.
+            Some(past) => !self.repeat.is_empty() && past % self.repeat.len() == 0,
+        };
         (self.required..=self.max).contains(&count) && whole_cycles
     }
 }

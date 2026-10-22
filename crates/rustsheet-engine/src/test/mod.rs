@@ -176,6 +176,7 @@ mod test_fn_round;
 mod test_fn_scan;
 mod test_fn_tocol_torow;
 mod test_fn_tocol_unique_lift;
+mod test_fn_sortby_lift;
 mod test_fn_transpose;
 mod test_fn_type;
 mod test_format_case;

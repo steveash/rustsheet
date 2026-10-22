@@ -388,6 +388,34 @@ fn an_array_first_entry_empties_later_elements_unless_every_entry_is_equal() {
     }
 }
 
+#[test]
+fn a_repeat_cycle_takes_its_kinds_in_turn_and_whole_cycles_only() {
+    const PAIRS: ArgKinds = ArgKinds {
+        required: 2,
+        params: &[ArgKind::Whole, ArgKind::Whole, ArgKind::Lift],
+        repeat: &[ArgKind::Whole, ArgKind::Lift],
+        max: 9,
+        work: KernelWork::Constant,
+        result: CallResult::Value,
+    };
+    // No cycle: nothing past `params`, whatever `max` says.
+    const NONE: ArgKinds = ArgKinds {
+        required: 1,
+        params: &[ArgKind::Lift],
+        repeat: &[],
+        max: 3,
+        work: KernelWork::Constant,
+        result: CallResult::Value,
+    };
+    assert_eq!(PAIRS.kind(5), Some(ArgKind::Whole));
+    assert_eq!(PAIRS.kind(6), Some(ArgKind::Lift));
+    assert_eq!(PAIRS.kind(9), None);
+    let counts = |kinds: &ArgKinds| (0..12).filter(|&c| kinds.accepts(c)).collect::<Vec<_>>();
+    assert_eq!(counts(&PAIRS), vec![2, 3, 5, 7, 9]);
+    assert_eq!(counts(&NONE), vec![1]);
+    assert_eq!(NONE.kind(1), None);
+}
+
 // ---------------------------------------------------------------- errors per element
 
 #[test]

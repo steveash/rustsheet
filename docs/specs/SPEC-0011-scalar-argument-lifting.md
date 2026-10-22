@@ -891,7 +891,11 @@ m7-one-cell-operand-lift F6, F7, F16, F17); INDIRECT and TRIMRANGE keep `lifts`,
 (unprobed). The static shape of a 1x1 lift stays
 `Unknown`, since it cannot tell a one-cell range from a 1x1 array.
 
-**4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds:
+**4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds. *As built (T-1839):* SORTBY's entry is
+`params: [WholeByCaller, WholeByCaller, Lift]`, `repeat: [WholeByCaller, Lift]`, `CallResult::ArrayFirst`. The array and the
+by_arrays are read once by `fn_sortby`, and errors are still taken left to right in its kernel. `LiftOptions::later_error`
+makes the emptied elements `#VALUE!` when a call uses its cycle (more arguments than `params`). `LiftKinds::repeat` and
+`catalog_lift.py` read the cycle as a list.
 ```rust
 pub(crate) struct ArgKinds {
     // ...
