@@ -1766,6 +1766,37 @@ statrs' inversion or with the inversion run on the new cdf. Under statrs they pa
 with both functions wrong in the same way. Excel's own pair lands on x exactly at H2 (3) and H14
 (0.7) but not at H23 (-0.23399999999999987) or H42 (0.23399999999999999), as T-1745 found. The
 switch waits for T-2119.
+### Dense F sweep (T-2220)
+Evidence: `probes-numeric/t2220-f-dist-sweep-{cdf,pdf,rt}` (100 df pairs d1, d2 in {1,2,3,4,5,7,10,20,50,100}
+x x in {0.1,0.25,0.5,1,1.5,2,3,5,10,100}: 1,000 cells each) and `t2220-f-dist-sweep-d1-1`, `-d2-1`
+(d1 = 1 or d2 = 1, 30 x points over 1E-6..1E6: 900 and 810 cells). All 4,710 cells are numbers, no
+errors. Compared against a 50-digit reference (mpmath regularized incomplete beta, density from the
+closed form) rounded to a double:
+- Excel is not correctly rounded anywhere: no (d1, d2) pair, for any of F.DIST TRUE, F.DIST FALSE or
+  F.DIST.RT, has all its cells equal to the correctly rounded double, and that includes d1 = d2 = 1
+  and d1 = 1 or d2 = 1 with closed forms available.
+- Cells equal to the correctly rounded value: cdf 760/1570 (48%), RT 608/1570 (39%), pdf 147/1570
+  (9%). The density is the least accurate: only 4/10 at d1, d2 <= 2 and 1/40 at d1 = d2 = 1.
+- Error size: most cells are within 4 ulp (cdf 1,416/1,570, RT 1,317/1,570, pdf 1,053/1,570 within
+  4 ulp); the cdf worst case is relative 2.8E-14 and the density worst case 7.8E-14.
+  A T-2221 acceptance bar of "bit-exact or within 4 ulp" therefore covers 90% of the cdf, 84% of the
+  tail and 67% of the density cells of this grid; it cannot cover all of them.
+- `F.DIST(x,d1,d2,TRUE) + F.DIST.RT(x,d1,d2)` is exactly 1.0 in 1,486 of 1,570 cells and not exactly
+  1 in 84, e.g. (x,d1,d2) = (100,1,3), (5,1,4), (10,1,50), (0.1,3,1), (100,3,3), (0.1,3,5), (100,3,7),
+  (3,3,10). So the complement is not exact (the first PARTIAL rule above is refuted as a rule), but it
+  holds for most cells, so Excel's two tails are usually evaluated as complementary pieces of one
+  quantity rather than independently.
+- d1 = d2 = 1: `F.DIST(1,1,1,TRUE)` = 0.5000000000000001 and `F.DIST.RT(1,1,1)` =
+  0.4999999999999999 reproduce on the sweep (also F.DIST(3,1,1,TRUE) = 0.6666666666666666 and
+  F.DIST.RT(3,1,1) = 0.33333333333333337); `F.DIST.RT(10,1,1)` and `F.DIST(0.1,1,1,TRUE)` are the same
+  double (0.19498222904213666), consistent with the reflection F.DIST.RT(x) = F.DIST(1/x) at d1 = d2.
+- Far tails (below about 1E-40) are not reliable in the reference at 50 digits: eight RT cells at
+  d1 = 1 with x of 1.27E3 or more, d2 of 20..100, and (100,10,100) disagree with the reference by
+  more than 1E-9 relative; they are cancellation in the reference, not necessarily in Excel
+ , so T-2221 should refit them with a
+  higher-precision reference.
+Status: VERIFIED (observation, with the case ids above); the algorithm stays UNVERIFIED (T-2221).
+
 Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
 densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
 stays UNVERIFIED (T-1744).
