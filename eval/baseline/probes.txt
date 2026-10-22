@@ -69,6 +69,7 @@ C	probes/callee-unparenthesized-lower-row-over.case.json	2
 C	probes/callee-unparenthesized-lower-row0.case.json	2
 C	probes/callee-unparenthesized-range-plain.case.json	2
 C	probes/callee-unparenthesized-range-sheet.case.json	2
+C	probes/callee-unparenthesized-spill-anchor.case.json	5
 C	probes/callee-unparenthesized-spill-plain.case.json	2
 C	probes/case-mapping-expanding.case.json	81
 C	probes/catalog/availability-01.case.json	12
