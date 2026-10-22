@@ -1,0 +1,51 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2380 SERIESSUM with a negative x to a non-integer power: does the read stop (#NUM!) or go on to a later text/error/boolean coefficient; array literals, Data ranges, and overflow-vs-domain order.",
+ "tags": [
+  "M5",
+  "probe",
+  "math"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "B1": "a",
+    "A2": 1,
+    "B2": 2,
+    "A3": "a",
+    "B3": 1,
+    "A4": 0,
+    "B4": "a"
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=SERIESSUM(-2,0.5,1,{1,\"a\"})",
+    "A2": "=SERIESSUM(-2,0.5,1,{1,2})",
+    "A3": "=SERIESSUM(-2,0.5,1,{1,#N/A})",
+    "A4": "=SERIESSUM(-2,0.5,1,{\"a\",1})",
+    "A5": "=SERIESSUM(-2,0.5,2,{1,1})",
+    "A6": "=SERIESSUM(-2,1,0.5,{1,1,\"a\"})",
+    "A7": "=SERIESSUM(-2,0.5,1,{0,\"a\"})",
+    "A8": "=SERIESSUM(-2,0.5,1,{0,1})",
+    "A9": "=SERIESSUM(-2,0.5,1,{1,TRUE})",
+    "A10": "=SERIESSUM(-2,1,0.5,{1,1,1})",
+    "A11": "=SERIESSUM(-2,0.5,1,Data!A1:B1)",
+    "A12": "=SERIESSUM(-2,0.5,1,Data!A2:B2)",
+    "A13": "=SERIESSUM(-2,0.5,1,Data!A3:B3)",
+    "A14": "=SERIESSUM(-2,0.5,1,Data!A4:B4)",
+    "A15": "=SERIESSUM(10,400,0,{1,1})",
+    "A16": "=SERIESSUM(10,400,0,{1,\"a\"})",
+    "A17": "=SERIESSUM(-10,400,-399.5,{1,1,\"a\"})",
+    "A18": "=SERIESSUM(-10,0.5,399.5,{1,1,\"a\"})",
+    "A19": "=SERIESSUM(-10,0.5,399.5,{1,1})",
+    "A20": "=SERIESSUM(-2,0.5,1,{1,#N/A,\"a\"})",
+    "A21": "=SERIESSUM(-2,0.5,1,{1,\"a\",#N/A})"
+   }
+  }
+ ],
+ "expected": {}
+}

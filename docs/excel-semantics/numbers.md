@@ -1857,14 +1857,21 @@ Status: VERIFIED (excel-graph); implemented (T-2163) in `fn_seriessum`: blank ce
 numbered, each term is `coeff * arithmetic::power(x, n + i*m)` and is `#NUM!` at once when the power fails or the term is not
 finite. All 8 cells pass, and so does gen-m5/38b1b8e51dbad326 Calc!A10 (`EVEN(0.1/E5*SERIESSUM(-2.5,B10,3,0.1))`).
 
-## SERIESSUM: a negative x to a non-integer power does not stop the read (T-2380)
-Observation: `SERIESSUM(-308641972.8075,30864197.28075,2,D1:E8)` is `#VALUE!` (ours `#NUM!`). D1:E8 read row by row is 2, 1E-15,
-the text "#N/A", the text "ü", 0, 0.5, 2.5, TRUE, blank, -0.5, ..., so the first term is `2*x^n` with a negative x and a non-integer
-power, which `^` refuses with `#NUM!`; Excel still reaches the text coefficient and gives `#VALUE!`. An overflowing term, by
-contrast, is `#NUM!` before a later text coefficient (the T-2163 entry above). So a domain failure of the power is not an
-immediate `#NUM!` the way an overflow is (perhaps a NaN term that is only judged at the end), unprobed beyond this cell.
-Evidence: gen-m5/bf8903e05ec369ca Calc!A326 (excel-graph, 2026-10-22, T-2252 triage).
-Status: OBSERVED; T-2380 probes and fixes it.
+## SERIESSUM: a negative x to a non-integer power is a term of 0 (T-2380)
+Rule: in SERIESSUM, a term whose power `x^(n+i*m)` has a negative x and a non-integer exponent (which `^` refuses with `#NUM!`)
+counts as 0, and the read goes on to the later coefficients. So `SERIESSUM(-2,0.5,1,{1,2})` and `SERIESSUM(-2,0.5,2,{1,1})` are 0;
+`SERIESSUM(-2,1,0.5,{1,1,1})` (powers 1, 1.5, 2) is -2+0+4 = 2. A later text or boolean coefficient is `#VALUE!` (`{1,"a"}`,
+`{0,"a"}`, `{1,TRUE}`, and the same with a range of cells), and a later error is that error (`{1,#N/A}`); the first bad
+coefficient wins (`{1,#N/A,"a"}` is `#N/A`, `{1,"a",#N/A}` `#VALUE!`). An overflowing term stays `#NUM!` at once, before or after a
+zero term (`SERIESSUM(-10,0.5,399.5,{1,1,"a"})`, powers 0.5 and 400, is `#NUM!`; the T-2163 entry above).
+So `SERIESSUM(-308641972.8075,30864197.28075,2,D1:E8)` is `#VALUE!` (gen-m5/bf8903e05ec369ca Calc!A326): its first term is 0 and the
+read reaches the text "#N/A" in D2.
+Unprobed: an odd-root exponent (`(-8)^(1/3)` is a real number for `^`) inside SERIESSUM, and negative-x exponents of 2^32-1 or
+more that are not integers (the engine gives both the `^` value and 0 respectively).
+Evidence: probes/seriessum-negative-x-fractional-power (21 cells, excel-graph, 2026-10-22, T-2380); gen-m5/bf8903e05ec369ca Calc!A326.
+Implemented in: `seriessum_of` (crates/rustsheet-engine/src/functions/math_and_trigonometry/seriessum.rs, T-2380)
+Status: VERIFIED (excel-graph)
+Tasks: T-2380
 
 ## SUMXMY2 is 1 ulp above the correctly rounded sum on a 1.5E+16 result (T-2384)
 Observation: `SUMXMY2(C10:E12,C6:E8)`, whose numeric pairs are (-1, 123456789.123), (7, 1E-15) and (-1, 0.3), is
