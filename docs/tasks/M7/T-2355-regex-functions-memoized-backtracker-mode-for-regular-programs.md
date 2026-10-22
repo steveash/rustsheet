@@ -60,5 +60,8 @@ and a unit test in `pcre/tests.rs` pins that gap.
   of the `(x+)?` layout each fail it.
 - Release timings over `"a"&CHAR(10)&REPT("a",32764)&CHAR(10)`: `(a|a)*b$` 4.6 ms,
   `(a|a)*a$` 2.0 ms, REGEXREPLACE `(a|a)*b$|a` 6.5 ms (`memoized_mode_is_linear`, 1 s bound).
-- Eval delta: none expected (no eval case holds `$` over a text with an inner `\n`); see the PR.
+- New probe probes/t2355-regex-dollar-inner-lf (excel-graph): 11/11 cells pass. No other eval
+  cell changes (`make eval-check`: 0 regressions, 0 fixed).
+- Review round 1: texts with an inner `\n` but no final one stay on the automata (`FinalLf::End`,
+  `Look::End`), so only texts ending in `\n` with another go memoized.
 - T-1899 now depends on T-2355 too (its retry runs on this mode).

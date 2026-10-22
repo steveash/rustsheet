@@ -184,11 +184,11 @@ fn memoized_mode_is_linear() {
 #[test]
 fn the_visited_set_is_held_memory() {
     assert_eq!(
-        value(r#"=REGEXTEST("a"&CHAR(10)&REPT("a",32765),"(?:b[a-z]{20000}|a)*b$")"#),
+        value(r#"=REGEXTEST("a"&CHAR(10)&REPT("a",32764)&CHAR(10),"(?:b[a-z]{20000}|a)*b$")"#),
         "#ERROR!"
     );
     assert_eq!(
-        value(r#"=REGEXTEST("a"&CHAR(10)&REPT("a",3000),"(?:b[a-z]{20000}|a)*b$")"#),
+        value(r#"=REGEXTEST("a"&CHAR(10)&REPT("a",3000)&CHAR(10),"(?:b[a-z]{20000}|a)*b$")"#),
         "FALSE"
     );
 }

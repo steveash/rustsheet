@@ -179,7 +179,7 @@ fn to_match((start, end): (usize, usize)) -> Match {
 /// true, by the rule the automata's iterator follows (`regex_automata`'s `Searcher`): the next
 /// search starts where a match ended, and an empty match may not end where the previous match
 /// did, so the search that found one is repeated one character later. The PCRE2 rule is
-/// T-1899's.
+/// T-1899's. Visible to `pcre`'s differential test.
 pub(in crate::functions::text) fn each_match(
     bt: &mut Backtracker<'_>,
     text: &str,

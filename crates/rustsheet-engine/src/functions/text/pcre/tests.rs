@@ -87,6 +87,22 @@ fn dollar_matches_before_a_final_line_feed() {
     assert!(!matches("a$", "a\nb\n", false));
     assert!(!matches(r"a\z", "b\na\n", false));
     assert!(matches("(?m)a$", "a\nb\n", false));
+    // Only that text kind leaves the automata (SPEC-0013 section 2).
+    let automata = |pattern: &str, text: &str| {
+        matches!(
+            translate(pattern, false, super::final_lf_for(text), usize::MAX)
+                .unwrap()
+                .form,
+            Form::Automata(_)
+        )
+    };
+    assert!(automata("a$", "a\nb"));
+    assert!(!matches("a$", "a\nb", false));
+    assert!(matches("b$", "a\nb", false));
+    assert!(automata("a$", "a\n"));
+    assert!(automata("a$", "ab"));
+    assert!(automata("a[$]", "a\nb\n"));
+    assert!(!automata("a$", "a\nb\n"));
 }
 
 /// The match of `program` in `text`, its groups' spans, and every match of its iteration.

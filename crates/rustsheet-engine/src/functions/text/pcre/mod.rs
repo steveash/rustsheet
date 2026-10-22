@@ -91,7 +91,7 @@ pub(super) fn translate(
             memoized: true,
         })
     } else {
-        Form::Automata(hir::to_hir(&parsed.ast).map_err(|_| Unsupported)?)
+        Form::Automata(hir::to_hir(&parsed.ast, final_lf).map_err(|_| Unsupported)?)
     };
     Ok(Translated {
         form,
@@ -99,13 +99,14 @@ pub(super) fn translate(
     })
 }
 
-/// Which kind of text `text` is for `$` (SPEC-0013 section 2): `InnerLf` when it holds a `\n`
-/// before its last character, where no automata translation of `$` is exact.
+/// Which kind of text `text` is for `$` (SPEC-0013 section 2): `End` when it holds a `\n` but
+/// does not end in one, `InnerLf` when it ends in a `\n` and holds another (where no automata
+/// translation of `$` is exact), `EndLf` otherwise.
 pub(super) fn final_lf_for(text: &str) -> FinalLf {
-    let body = text.strip_suffix('\n').unwrap_or(text);
-    if body.contains('\n') {
-        FinalLf::InnerLf
-    } else {
-        FinalLf::EndLf
+    match text.strip_suffix('\n') {
+        Some(body) if body.contains('\n') => FinalLf::InnerLf,
+        Some(_) => FinalLf::EndLf,
+        None if text.contains('\n') => FinalLf::End,
+        None => FinalLf::EndLf,
     }
 }

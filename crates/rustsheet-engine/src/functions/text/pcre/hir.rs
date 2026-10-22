@@ -10,9 +10,11 @@ use super::{
 };
 
 /// Which texts a pattern is compiled for, as `$` and `\Z` (at the end or before a final `\n`)
-/// read on them.
+/// read on them (SPEC-0013 section 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::functions::text) enum FinalLf {
+    /// Texts that hold a `\n` but do not end in one: `$` is `Look::End`, exact there.
+    End,
     /// Texts whose only `\n`, if any, is the last character: `$` is `Look::EndLF` (the end, or
     /// before a `\n`), exact there.
     EndLf,
@@ -21,9 +23,10 @@ pub(in crate::functions::text) enum FinalLf {
     InnerLf,
 }
 
-/// `ast` as a `Hir`, `$` and `\Z` read for [`FinalLf::EndLf`] texts; `Invalid` for a construct
-/// only the backtracker runs. The recursion is bounded by the parser's nest limit.
-pub(super) fn to_hir(ast: &Ast) -> Result<Hir, Invalid> {
+/// `ast` as a `Hir`, `$` and `\Z` read for `final_lf` texts ([`FinalLf::InnerLf`] reads as
+/// `EndLf`: `translate` sends a pattern holding them to the backtracker there); `Invalid` for a
+/// construct only the backtracker runs. The recursion is bounded by the parser's nest limit.
+pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
     Ok(match ast {
         Ast::Empty => Hir::empty(),
         Ast::Literal { c, fold } => {
@@ -44,7 +47,10 @@ pub(super) fn to_hir(ast: &Ast) -> Result<Hir, Invalid> {
             Anchor::StartLine => Look::StartLF,
             Anchor::EndLine => Look::EndLF,
             Anchor::End => Look::End,
-            Anchor::EndOrFinalLf => Look::EndLF,
+            Anchor::EndOrFinalLf => match final_lf {
+                FinalLf::End => Look::End,
+                FinalLf::EndLf | FinalLf::InnerLf => Look::EndLF,
+            },
             Anchor::WordBoundary => Look::WordUnicode,
             Anchor::NotWordBoundary => Look::WordUnicodeNegate,
             Anchor::SearchStart => return Err(Invalid),
@@ -52,16 +58,16 @@ pub(super) fn to_hir(ast: &Ast) -> Result<Hir, Invalid> {
         Ast::Capture { index, name, ast } => Hir::capture(Capture {
             index: *index,
             name: name.clone(),
-            sub: Box::new(to_hir(ast)?),
+            sub: Box::new(to_hir(ast, final_lf)?),
         }),
         Ast::Concat(asts) => Hir::concat(
             asts.iter()
-                .map(|ast| to_hir(ast))
+                .map(|ast| to_hir(ast, final_lf))
                 .collect::<Result<_, _>>()?,
         ),
         Ast::Alternation(asts) => Hir::alternation(
             asts.iter()
-                .map(|ast| to_hir(ast))
+                .map(|ast| to_hir(ast, final_lf))
                 .collect::<Result<_, _>>()?,
         ),
         Ast::Repeat {
@@ -79,7 +85,7 @@ pub(super) fn to_hir(ast: &Ast) -> Result<Hir, Invalid> {
                 min: *min,
                 max: *max,
                 greedy,
-                sub: Box::new(to_hir(ast)?),
+                sub: Box::new(to_hir(ast, final_lf)?),
             })
         }
         Ast::Backref { .. }

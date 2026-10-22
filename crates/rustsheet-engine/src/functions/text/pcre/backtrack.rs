@@ -126,7 +126,8 @@ impl Visited {
                 chunk.stamp = 0;
                 continue;
             }
-            // Keep the bits of the positions after `to` in this chunk.
+            // Keep the bits of the positions after `to` in this chunk: none when `to` is its last
+            // position, where the shift by 64 overflows to 0.
             let keep = u64::MAX
                 .checked_shl(u32::try_from(to % CHUNK + 1).unwrap_or(u32::MAX))
                 .unwrap_or(0);
@@ -227,6 +228,7 @@ impl<'a> Backtracker<'a> {
             visited.chunks.resize_with(index + 1, Chunk::default);
         }
         let stamp = visited.stamp;
+        let table = visited.chunks.len() * std::mem::size_of::<Chunk>();
         let Some(chunk) = visited.chunks.get_mut(index) else {
             return Err(Spent);
         };
@@ -237,7 +239,7 @@ impl<'a> Backtracker<'a> {
                     .bytes
                     .saturating_sub(chunk.words.len() * std::mem::size_of::<u64>())
                     .saturating_add(words.saturating_mul(std::mem::size_of::<u64>()));
-                let stack = self.cache.stack.len() * std::mem::size_of::<Frame>();
+                let stack = self.cache.stack.len() * std::mem::size_of::<Frame>() + table;
                 if held.saturating_add(stack) > self.room {
                     return Err(Spent);
                 }
