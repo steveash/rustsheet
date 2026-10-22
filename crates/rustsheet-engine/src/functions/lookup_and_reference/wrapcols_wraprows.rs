@@ -9,6 +9,9 @@ use crate::{
     model::Model,
 };
 
+/// The smallest `wrap_count` Excel refuses (`#NUM!`): 2^31.
+const MAX_WRAP_COUNT_EXCLUSIVE: f64 = 2_147_483_648.0;
+
 impl Model {
     // ── WRAPCOLS ──────────────────────────────────────────────────────────────
 
@@ -173,12 +176,15 @@ impl Model {
         // Below 1 is checked before truncation: 0.5 and 0 are `#NUM!` (arrays.md "WRAPCOLS of a
         // single value is not padded"; probes/dynamic-array-reshape-and-isomitted C20/C36/D20/D36 (0, -1),
         // gen-m7/f68fafa0ca2eba26 A39, gen-m9/50f10c4062fb2e98 A21).
+        // A count of 2^31 or more is `#NUM!` too, before any clamp: 2^31 - 0.5
+        // wraps, 2^31 does not (arrays.md "WRAPROWS and WRAPCOLS with a huge wrap_count";
+        // probes/t2312-wrap-count-threshold).
         let wrap_count = self.get_number(&args[1], cell)?;
-        if wrap_count.is_nan() || wrap_count < 1.0 {
+        if wrap_count.is_nan() || !(1.0..MAX_WRAP_COUNT_EXCLUSIVE).contains(&wrap_count) {
             return Err(CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "wrap_count must be >= 1".to_string(),
+                "wrap_count must be >= 1 and below 2^31".to_string(),
             ));
         }
         Ok((wrap_count as usize).min(len.max(1)))
