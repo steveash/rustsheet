@@ -58,7 +58,8 @@ const TAKE_DROP: ArgKinds = ArgKinds::fixed(2, &[Whole, Lift, Lift], Output { we
 /// (`TOCOL(A1:B3,{0;1})` is 2x1 with first element 1, probes/m7-argument-modes F9:H9, K8; over an
 /// array, gen-m9/1782efcecd5d4b1b Calc!A19), `scan_by_column` too (probes/m7-lift-take-drop-sortby
 /// row 24). The array is read once by the function and handed to every element whole; each
-/// element walks it (`LiftCost::Cells`) and is charged the cells it builds.
+/// element walks it (`LiftCost::Cells`) and is charged the cells it builds. TOROW shares it
+/// (`TOROW(Data!B3:E8,3,WRAPCOLS(Data!D3:D11,1))` is 1x9, gen-m7/7d67c559ce7536fa A619; T-2313).
 const TOCOL: ArgKinds =
     ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();
 /// `UNIQUE(array, [by_col], [exactly_once])`: `by_col` lifts over an array and a range
@@ -86,6 +87,19 @@ const SORTBY: ArgKinds = ArgKinds {
     result: CallResult::ArrayFirst,
 };
 // --- End M7 (T-1839) ---
+// --- M7 (T-2319) ---
+/// `SORT(array, [sort_index], [sort_order], [by_col])`: `by_col` lifts over an array
+/// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
+/// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
+/// sorts the whole array: read and charged as [`TOCOL`]. Whether a later non-error element is its
+/// call's top-left (`.array()`) or empty (SORTBY's `.array_first()`) is UNVERIFIED (T-2366).
+const SORT: ArgKinds = ArgKinds::fixed(
+    1,
+    &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],
+    Output { weight: 1 },
+)
+.array();
+// --- End M7 (T-2319) ---
 // --- M7 (T-1835) ---
 /// `EXPAND(array, rows, [columns], [pad_with])`: rows and columns lift over an array and a range
 /// (`ROWS(EXPAND(A1:A2,{3;4}))` is 2, probes/m7-argument-modes F7:H7; columns,
@@ -154,9 +168,10 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Take | Function::Drop => Some(&TAKE_DROP),
         Function::Expand => Some(&EXPAND),
         Function::Wrapcols | Function::Wraprows => Some(&WRAP),
-        Function::Tocol => Some(&TOCOL),
+        Function::Tocol | Function::Torow => Some(&TOCOL),
         Function::Unique => Some(&UNIQUE),
         Function::Sortby => Some(&SORTBY),
+        Function::Sort => Some(&SORT),
         Function::Hyperlink => Some(&LIFT_1_OF_2),
         // --- Math (T-1802) ---
         // QUOTIENT, FACTDOUBLE and SERIESSUM's x, n and m are Analysis ToolPak arguments: they

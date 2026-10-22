@@ -70,8 +70,10 @@ macro_rules! lifting_table_functions {
             | Function::Expand
             | Function::Wrapcols
             | Function::Wraprows
+            | Function::Torow
             | Function::Unique
             | Function::Sortby
+            | Function::Sort
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
