@@ -3,7 +3,7 @@ id: T-2252
 title: "Sweep gen-m5 round 2: the 64 M5 functions under 400 Excel cells to at least 500"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
