@@ -67,6 +67,9 @@ macro_rules! lifting_table_functions {
             | Function::Take
             | Function::Drop
             | Function::Tocol
+            | Function::Expand
+            | Function::Wrapcols
+            | Function::Wraprows
             | Function::Unique
             | Function::Sortby
             | Function::Hyperlink
