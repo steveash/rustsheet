@@ -524,7 +524,11 @@ Every pool entry has an `edge_class` id. A literal is drawn as
 `tools/src/rustsheet_tools/gen/pools.py` 35% of the time, after its `domain` draw and never on a `hard`
 domain; other parameters still build a free expression. The pools there are `number_edges`, `unit_interval`,
 `angle` and `code_point` (T-2109), and `text_edges`, `numeric_text`, `number_formats` (the codes of
-`number_formats.py`, quoted) and `errors` (T-2110).
+`number_formats.py`, quoted) and `errors` (T-2110). T-2286 added `array_shape`, `array_holes`, `lookup_value`,
+`lookup_table`, `regex_pattern` and `lambda_body` for the M6 and M7 lookup, array, REGEX and LAMBDA functions, with
+two draw extensions: a pooled `range` parameter (LOOKUP's lookup_vector, XMATCH's lookup_array) takes a pool entry
+35% of the time in place of a range, and a pooled `lambda` parameter takes an entry with the parameter count the call
+needs (MAP's one per array), its `x` and `y` renamed to free names.
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),

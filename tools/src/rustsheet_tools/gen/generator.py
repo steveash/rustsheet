@@ -22,7 +22,7 @@ from typing import Any
 import yaml
 
 from rustsheet_tools.gen.common import quoted
-from rustsheet_tools.gen.pools import POOLS
+from rustsheet_tools.gen.pools import POOLS, lambda_arity
 
 MILESTONES = ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"]
 
@@ -271,6 +271,19 @@ class Gen:
         del self.scope[outer:]
         return f"LAMBDA({','.join(names)},{body})"
 
+    def pooled_lambda(self, p: dict[str, Any], arity: int) -> str | None:
+        """A `lambda_body` pool entry of `arity` parameters (POOL_RATE of the time), with x and y renamed to
+        free names so an outer LAMBDA or LET name is never shadowed; None to build one."""
+        fitting = [t for t in POOLS.get(p.get("pool", ""), []) if lambda_arity(t) == arity]
+        if not fitting or self.rng.random() >= POOL_RATE:
+            return None
+        text = self.rng.choice(fitting)
+        names = {"x": self.fresh_name()}
+        self.scope.append(names["x"])
+        names["y"] = self.fresh_name()
+        self.scope.pop()
+        return re.sub(r"\b[xy]\b", lambda m: names[m.group(0)], text)
+
     def argument(self, p: dict[str, Any], depth: int, arity: int = 1) -> str:
         mode = p.get("mode", "value")
         if mode == "name":
@@ -279,13 +292,17 @@ class Gen:
             return name
         if mode == "lambda":
             n = p.get("arity", 1)
-            return self.lambda_arg(arity if n == "repeat" else int(n), depth)
+            want = arity if n == "repeat" else int(n)
+            return self.pooled_lambda(p, want) or self.lambda_arg(want, depth)
         if mode == "array" and p.get("mask"):
             # FILTER's include: one TRUE/FALSE per data row, so it fits a `full` array.
             text = f"({self.range_ref(full=True)}{self.rng.choice(MASK_OPS)}{self.literal('number')})"
         elif mode in ("array", "aggregate", "aggregate_a") and self.scope and self.rng.random() < 0.5:
             # A LAMBDA parameter or LET variable often holds the row, column or array (BYROW's SUM(x)).
             text = self.rng.choice(self.scope)
+        elif mode == "range" and p.get("pool") and self.rng.random() < POOL_RATE:
+            # A pooled `range` param takes array constants too (LOOKUP's and XMATCH's lookup_table).
+            text = self.rng.choice(POOLS[p["pool"]])
         else:
             text = self.argument_text(p, mode, depth)
         # A LET variable is visible from the argument after its value on.

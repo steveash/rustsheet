@@ -20,7 +20,12 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.with_area_budget(cell, |model| model.evaluate_node_in_context(node, cell))
+        // WEEKNUM's stale return_type state lives for one formula here (SPEC-0017 "State").
+        self.evaluation.weeknum_start = None;
+        let result =
+            self.with_area_budget(cell, |model| model.evaluate_node_in_context(node, cell));
+        self.evaluation.weeknum_start = None;
+        result
     }
 
     /// Evaluates a formula string on a sheet, returning the numeric result.

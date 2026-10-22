@@ -1220,7 +1220,7 @@ Evidence: gen-m7/c5d278a8662ef4b2 Calc!A39 (by_col `HLOOKUP(ADDRESS(19,19),Data!
 Evidence (T-1850, probes/sort-error-args, excel-graph): errors are reported left to right, before any value is validated:
 - SORT: sort_index error beats sort_order error (H29 `NA(),1/0` is #N/A, H33 `1/0,NA()` is #DIV/0!); sort_index (H37) and sort_order (H53) errors beat a by_col error; an error sort_order with sort_index 0 returns the error (H13); an error by_col with sort_index 0 returns the error (H25); an error sort_order with a valid sort_index returns the error (H17).
 - SORTBY: by_array1, order1, by_array2... left to right (H77, H89 `C,NA(),B,1/0` is #N/A, H93 is #DIV/0!); an error in a later pair beats an invalid earlier order (H85 `C,0,B,NA()` is #N/A); an error order beats a by_array row-count mismatch (H105).
-- Invalid values: `SORT(arr,0,1)`, `SORT(arr,1,0)`, `SORTBY(arr,key,0)`, a row-count mismatch and a two-column by_array (`SORTBY(A1:A3,C1:B3,1)`, H101) are #VALUE!. `SORT(NA(),0,1)` and `SORTBY(NA(),...)` are #N/A.
+- Invalid values: `SORT(arr,0,1)`, `SORT(arr,1,0)`, `SORTBY(arr,key,0)`, a row-count mismatch (a single value is not one on a one-column array: "SORTBY with a single-value by_array or a fractional sort_order") and a two-column by_array (`SORTBY(A1:A3,C1:B3,1)`, H101) are #VALUE!. `SORT(NA(),0,1)` and `SORTBY(NA(),...)` are #N/A.
 - Array sort arguments: `SORT(arr,{1,2},1)` is a multi-key sort (H57), `SORT(arr,{1,2},{1,-1},TRUE)` too (H69), `SORT(arr,1,{1,-1})` is #VALUE! (H61, H65), and `SORTBY(A1:A3,C1:C3,{1;-1;1})` returns {1;0;0} (H97-H99; the rule is "UNIQUE's and SORTBY's lifted elements").
 Ours: errors left to right and the two-column by_array rejected (T-1850). A #VALUE! sort_order is still returned after by_col's error (multi-cell order of c5d278a8662ef4b2 A39 needs it; a real `"a"+1` order against a later error argument is UNVERIFIED for both SORT and SORTBY, which returns it at once). SORT reads array sort_index/sort_order lists since T-1837 (H57:J71 pass; see "Dynamic-array and LAMBDA function argument modes" for the list rules); SORTBY's array sort_order is T-1839.
 Status: VERIFIED (excel-graph)
@@ -1325,15 +1325,29 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2308
 
 ## SORTBY with a single-value by_array or a fractional sort_order
-Rule: a by_array that is one value (not a range or an array of the array's height) does not make SORTBY `#VALUE!`: the array comes back
-in its own order. `SORTBY(Data!E1:E12,MAX(..)%,-1)` is Data!E1:E12 unchanged (gen-m7/18b80d3fd292d63a Calc!A123:A134) and
-`SORTBY(Data!C1:C12,IFNA(TIMEVALUE("2024-02-29 07:05:09"),..),1)` is Data!C1:C12 with its blanks as 0 (7307132bb8820f17 A966:A977).
-A fractional sort_order is not `#VALUE!`: `SORTBY(Data!B1:E12,Data!E1:E12,-0.0001,Data!B1:B12,-1)` inside a TEXTSPLIT is a value
-(07d27aa0add0247f A658), and reading it as -1 reproduces that value; that it is read by its sign is derived, not a measured -1 control (UNVERIFIED). A positive fraction and a one-cell range as by_array are UNVERIFIED. The "Invalid values" list of
-"SORT and SORTBY argument errors" (`SORTBY(arr,key,0)` `#VALUE!`) still holds.
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-Ours: `#VALUE!` for both (T-2310).
-Status: VERIFIED (excel-graph) for the cells cited
+Rule: a by_array sorts the array's rows when it is one column as tall as the array, and its columns when it is one row as wide
+as the array; every by_array of the call must sort the same way, or the call is `#VALUE!`. So a single value (a number, text, a
+boolean, a one-cell range, `{7}`) is both a one-wide row and a one-tall column: it leaves a one-column or one-row array in its
+own order and is `#VALUE!` on any other array. With A1:A3 = 3,1,2 and B1:B3 = 30,10,20 (probes/t2310-sortby-single-by-array, excel-graph, 2026-10-22, T-2310):
+- `SORTBY(A1:A3,5)`, `0.5`, `-1`, `"x"`, `TRUE`, `{7}`, `C1` (a cell) are 3,1,2 (H1-H49); `SORTBY(A1:B3,5)`, `0.5`,
+  `1234567.89123`, `C1` are `#VALUE!` (H13-H33); `SORTBY(A1:A3,NA())` is `#N/A` (H45); `SORTBY(A1,5)` is 3 (H153).
+- `SORTBY(A20:C20,5)` (a one-row array) keeps its order, and `SORTBY(A20:C20,A20:C20,-1)` sorts its columns (H53-H65).
+- `SORTBY(A1:B3,{2,1})` and `SORTBY(A1:B3,{1,2},-1)` swap the columns (H69, H73); `SORTBY(A1:A3,{3,1,2})` and
+  `SORTBY(A1:A3,A20:C20)` are `#VALUE!` (a row as long as the array's height does not sort its rows: H77, H81).
+- Mixed directions are `#VALUE!`: `SORTBY(A1:A3,5,1,A1:A3,-1)`, `SORTBY(A1:A3,A1:A3,1,5,1)`, `SORTBY(A1:B3,A1:A3,1,{2,1},1)`
+  (H85-H93). A one-value by_array on a one-row array next to a row by_array is unprobed (ours: `#VALUE!`).
+A sort_order reads as its floor, snapped up near an integer (the count rule of LEFT and INDEX, `near_integer_count`): -0.0001,
+-0.5, -0.9999 sort descending, 1.5 and 1.0000001 ascending; 0.0001, 0.5, 0.9999, -1.5, 2, -2 and -1E-300 (floor -1, snapped
+to 0) are `#VALUE!`; `"-1"` is descending and TRUE ascending (H97-H165). That the snap tolerance is LEFT's 2^-22 + 2^-33 is
+UNVERIFIED (only -1E-300 and 0.9999 bound it). SORT's own sort_order still truncates (unprobed for fractions).
+This is why `SORTBY(Data!E1:E12,MAX(..)%,-1)` (gen-m7/18b80d3fd292d63a Calc!A123:A134), `SORTBY(Data!C1:C12,IFNA(TIMEVALUE(..),..),1)`
+(7307132bb8820f17 A966:A977) keep their one-column arrays, `SORTBY(Data!B1:C12,(-1),1)` (0e40208f51c2454c Calc!A2) and the
+by_array 0.5 on Data!B1:C12 (7d67c559ce7536fa A1358) are `#VALUE!`, and `SORTBY(Data!B1:E12,Data!E1:E12,-0.0001,..)`
+(07d27aa0add0247f A658) sorts descending. The "Invalid values" list of "SORT and SORTBY argument errors" (`SORTBY(arr,key,0)`
+`#VALUE!`) still holds.
+Evidence: probes/t2310-sortby-single-by-array (42 formulas, excel-graph, 2026-10-22); gen-m7 (excel-graph, 2026-10-21, T-2225).
+Ours: implemented (T-2310): `by_array_axes` and `sortby_of` in functions/spill_functions.rs.
+Status: VERIFIED (excel-graph)
 Tasks: T-2310
 
 ## PIVOTBY: an error column total over several value columns is #VALUE! (T-2311)
