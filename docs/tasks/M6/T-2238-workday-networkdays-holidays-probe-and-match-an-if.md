@@ -3,7 +3,7 @@ id: T-2238
 title: "WORKDAY/NETWORKDAYS holidays: probe and match an IF whose 3-D branch is not taken and a 3-D holidays with 0 days (ours #VALUE! and the start date, unprobed)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
