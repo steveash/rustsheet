@@ -3,7 +3,8 @@ Reads the per-stage slopes printed by w5/p5/ladder.py (a log), then solves the N
 joint RANSAC: N6's equations alone give (dN7, dN8, dN9); N7's reads are a consistency check; each lower stage then
 adds one unknown (N5 -> dN6, N3 -> dN4 + dN5 jointly). Every equation is known only modulo its alias period
 2^maxrung cycles/x, so each residual is reported reduced to that period and as the integer alias shift.
-usage: k3_n6first.py LOG BASE   (BASE: ../w5/p4/ss_fc.txt)"""
+usage: k3_n6first.py LOG BASE   (BASE: ../w5/p4/ss_fc.txt)
+JOINTALL=1 adds the joint N6+N7 fit with alias freedom on every row (run 3, HANDOFF2 15); env TOL, MAXALIAS, TOP, SKIPX."""
 import sys, re, math, os, itertools
 import numpy as np
 def ld(f):   # as w5/p5/hypolib.ld (without its compiled helpers)
@@ -72,6 +73,7 @@ s3, d3 = fit('N', 3, [4, 5], known, TOL); show('N3 eqs', s3, [4, 5], N0, d3); kn
 print('N moves (ulps): ' + ' '.join('N%d %+.4g' % (k, known[k]/np.spacing(abs(N0[k]))) for k in sorted(known)))
 # 5. joint N6 + N7 (dN7, dN8, dN9): does one quadratic satisfy both stages? Weighted per equation by 1/ulp.
 # CAVEAT (HANDOFF2 14.1): alias shifts are enumerated on N7 rows only (4^rows), so this fails the 12-anchor planted
+# control; superseded by JOINTALL below (HANDOFF2 15), kept for the run 2 logs.
 # control; do not trust a 12-anchor joint number until every row gets alias freedom (14.2 step 1).
 if os.environ.get('JOINT67'):
     rows = [(c_, jj, x, s, per) for c_, jj, x, s, per in eq if c_ == 'N' and jj in (6, 7) and not (jj == 6 and abs(x-0.9517) < 1e-4)]
@@ -90,3 +92,49 @@ if os.environ.get('JOINT67'):
     sc, sol, m, res = best
     print('joint N6+N7: rms %.3g cycles/x, moves %s' % (sc, ' '.join('N%d %+.4g ulps' % (k, d/np.spacing(abs(N0[k]))) for k, d in zip(ks, sol))))
     for r, mm, rr in zip(rows, m, res): print('   N%d x %.4f alias %+d residual %+12.0f' % (r[1], r[2], mm, rr))
+# 6. joint N6 + N7 with alias freedom on EVERY row (HANDOFF2 14.2 step 1, run 3). RANSAC: every minimal subset of 3
+# rows times every alias shift in {-1,0,+1} on each of them; the solve with the most rows within TOL (after reducing
+# each residual to its own period) wins; then iterate LS -> nearest alias shift per row, as fit() does.
+if os.environ.get('JOINTALL'):
+    skip = os.environ.get('SKIPX')
+    rows = [(c_, jj, x, s, per) for c_, jj, x, s, per in eq if c_ == 'N' and jj in (6, 7)
+            and not (skip and any(abs(x-float(v)) < 1e-4 for v in skip.split(',')))]
+    ks = [7, 8, 9]; A = []; y = []; P = []; U = []
+    for _, jj, x, s, per in rows:
+        u = math.ulp(abs(sval(N0, jj, x))); A.append(row(N0, jj, x, ks)/u); y.append(s); P.append(per)
+    A, y, P = map(np.array, (A, y, P))
+    # With three free moves, rows can be fitted by large alias lattices (|alias| 50-75 on the control) at any move
+    # size, so a row is kept only at |alias| <= MAXA (default 2: the ladders' top rung already bounds the slope).
+    MAXA = int(os.environ.get('MAXALIAS', 2))
+    def refine(sol):
+        for _ in range(30):
+            r = A@sol-y; m = np.round(r/P); keep = (np.abs(r-m*P) < TOL) & (np.abs(m) <= MAXA)
+            if keep.sum() < 3: break
+            new = np.linalg.lstsq(A[keep], y[keep]+m[keep]*P[keep], rcond=None)[0]
+            if np.array_equal(new, sol): break
+            sol = new
+        r = A@sol-y; m = np.round(r/P); res = r-m*P; keep = (np.abs(res) < TOL) & (np.abs(m) <= MAXA)
+        return sol, m, res, keep
+    # A uniform alias shift on many rows is nearly a coefficient move of its own (the planted control fits at rms
+    # 2.9e5 with every N6 row at alias -1 and N7 4x off truth), so collect every refined consensus solution and rank
+    # them by rows kept, then by total |alias| (the least-aliased explanation), then by rms.
+    sols = {}
+    for sub in itertools.combinations(range(len(y)), 3):
+        sub = list(sub)
+        for sh in itertools.product([-1, 0, 1], repeat=3):
+            try: sol0 = np.linalg.solve(A[sub], y[sub]+np.array(sh)*P[sub])
+            except np.linalg.LinAlgError: continue
+            sol, m, res, keep = refine(sol0)
+            if keep.sum() < 3: continue
+            key = (tuple(keep), tuple(m[keep].astype(int)))   # the kept set and its aliases identify a solution
+            sc = np.sqrt(np.mean(res[keep]**2))
+            if key not in sols or sc < sols[key][0]: sols[key] = (sc, sol, m, res, keep)
+    ranked = sorted(sols.values(), key=lambda t: (-int(t[4].sum()), int(np.abs(t[2][t[4]]).sum()), t[0]))
+    for sc, sol, m, res, keep in ranked[:int(os.environ.get('TOP', 6))]:
+        print('candidate: %d/%d rows kept, sum|alias| %d, rms %.3g cycles/x, moves %s' % (keep.sum(), len(y),
+              np.abs(m[keep]).sum(), sc, ' '.join('N%d %+.4g ulps' % (k, d/np.spacing(abs(N0[k]))) for k, d in zip(ks, sol))))
+    sc, sol, m, res, keep = ranked[0]
+    print('joint N6+N7 (all-row aliases): %d/%d rows kept, rms %.3g cycles/x, moves %s' % (keep.sum(), len(y),
+          sc, ' '.join('N%d %+.4g ulps' % (k, d/np.spacing(abs(N0[k]))) for k, d in zip(ks, sol))))
+    for rw, mm, rr, kk in zip(rows, m, res, keep):
+        print('   N%d x %.4f alias %+d residual %+12.0f %s' % (rw[1], rw[2], mm, rr, '' if kk else 'DROPPED'))

@@ -501,3 +501,39 @@ new oracle data this run.
    - If neither wins, the head offset is not a coefficient move. That would be the same reading as K2's
      sawtooth (13.3).
 3. Only after the head is fixed: N5 → dN6, then N3 → (dN4, dN5), each with its alias shifts free.
+
+## 15. T-2122 run 3 (2026-10-22, single opus worker, ~30 minutes, K3 step 14.2.1)
+
+`t2122/k3_n6first.py` gains `JOINTALL=1`: the joint N6+N7 fit for (dN7, dN8, dN9) with alias freedom on every row.
+It runs a RANSAC over every minimal 3-row subset times shifts {-1,0,+1} on each, refines each start (LS, then the
+nearest alias per row), keeps a row only within `TOL` (default 3e6 cycles/x) and at |alias| <= `MAXALIAS` (default
+2), and ranks solutions by rows kept, then total |alias| on kept rows, then rms. Logs: `t2122/k3_jointall_ctl.log`,
+`t2122/k3_jointall_real.log`. Needs only numpy (a scratch venv works; the tools venv has none).
+
+### 15.1 Results
+- **The planted control passes** (`ladder_ctl30_1e10_12a.log`): 12/15 rows kept, rms 2.85e5 cycles/x, **N7
+  -1.344e9 (truth -1.344e9)**, N8 -1.116e9 (truth -1.08e9), N9 +7.96e9 (truth 4.3e9; N9 is the weakly determined
+  direction, as in 14.1). The one alias it needs is N6@1.1789 = -1, the row JOINT67 could not shift.
+- **Degenerate family:** equal-rms solutions differ only in N7, by steps of about 4.3e9 ulps (2^32: a uniform alias
+  on the N6 rows is itself almost a move of N7). Ranking by least total alias picks truth on the control. Do not
+  rank by rms alone (the first JOINTALL draft picked N7 -5.6e9 that way, every N6 row at alias -1).
+- **Two traps fixed while building it:** (1) the refine step, unbounded, drifts into lattice fits with |alias| 50-200
+  that keep rows at any move size: hence `MAXALIAS`; (2) deduplicating solutions by their alias vector alone lets a
+  low-rms 5-row fit overwrite a 12-row fit with the same aliases: key by (kept mask, aliases on kept rows).
+- **Real 12-anchor data (`ladder_real_12a30.log`): one head move fits a-f and g-l together.** 10/14 rows kept at
+  rms **2.65e4 cycles/x** (ten times tighter than the control's noise), moves **N7 +4.007e8, N8 -4.611e10, N9
+  +3.503e12 ulps**: the a-f-only move of 14.1 (+4.005e8, -4.61e10, +3.502e12) to 3-4 digits. Kept: every N6 row
+  but 0.9517 and 0.8741, and N7 at 1.3527 (alias -1), 1.4531, 1.4129. Dropped: N6@0.9517 (-2.9e8, the known 2^28
+  alias/wrong branch of 14.1), N6@0.8741 (-8.4e6), N7@1.1789 (+2.6e7), N7@1.3021 (+5.9e7, alias -1). The control
+  shows N7 reads good only to ~1e7, so the N7 drops are 2.6 and 6 times that noise, not evidence against the move.
+  TOL 1e6 gives the same solution; TOL 1e7 keeps 12/14 and moves N7 to +4.99e8 (rms 4.5e6), i.e. the dropped rows
+  pull by ~1e8 ulps at most.
+- So run 2's "g-l pull N7 by ~2e8" was the missing N6 alias freedom, not a second-batch anchor problem.
+
+### 15.2 Next steps (in order)
+1. 14.2 step 2 with this move: score N7 +4.007e8, N8 -4.611e10, N9 +3.503e12 (on `w5/p4/ss_fc.txt`) against the base
+   on the rows6 data (`make` in `w5/` for `libsc.so`). Also score the TOL=1e7 variant (+4.99e8, -4.96e10, +3.81e12)
+   as the sensitivity check.
+2. Re-read N6@0.8741 and N7@1.1789/1.3021 rung by rung (they are the only rows that disagree beyond noise).
+3. Then 14.2 step 3 (N5 -> dN6, N3 -> dN4, dN5) with the head fixed; give those fits the same all-row alias freedom
+   and least-alias ranking (port JOINTALL's search into `fit()`).

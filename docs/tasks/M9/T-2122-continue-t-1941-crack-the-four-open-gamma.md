@@ -3,7 +3,7 @@ id: T-2122
 title: "Continue T-1941: crack the four open gamma kernels to the bit"
 milestone: M9
 lane: research
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -60,6 +60,11 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
 > - keep a ~40-minute self check-in;
 > - when a kernel goes bit-exact (≥ 99.9% with only documented x87 near-ties), update T-2123's model list and
 >   `docs/excel-semantics/statistics.md`.
+- Run 3 (2026-10-22, one opus worker, ~30 min, K3 only): HANDOFF2 section 15, `JOINTALL=1` in `t2122/k3_n6first.py`.
+  The joint N6+N7 fit with alias freedom on every row passes the 12-anchor planted control (N7 -1.344e9 against truth
+  -1.344e9) and fits all 12 real anchors with one head move, N7 +4.007e8, N8 -4.611e10, N9 +3.503e12 ulps (10/14 rows,
+  rms 2.65e4 cycles/x): the a-f move. Run 2's g-l conflict was the missing N6 alias freedom. Next: score that move on
+  rows6 (15.2 step 1, needs `make` in `w5/`).
 
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses

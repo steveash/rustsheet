@@ -1,0 +1,49 @@
+N6 eqs: moves N7 -1.33e+09 ulps N8 -1.515e+09 ulps N9 +3.891e+10 ulps
+   x 0.9517 alias +0 residual   -143902949 cycles/x DROPPED
+   x 1.1023 alias +0 residual      +752190 cycles/x 
+   x 1.2519 alias +0 residual      -208181 cycles/x 
+   x 1.3527 alias +0 residual       -65253 cycles/x 
+   x 1.4531 alias +0 residual      +139088 cycles/x 
+   x 0.8741 alias +0 residual       -94994 cycles/x 
+   x 1.0309 alias +0 residual      -158353 cycles/x 
+   x 1.1789 alias -1 residual      -268078 cycles/x 
+   x 1.3021 alias +0 residual      -146112 cycles/x 
+   x 1.4129 alias +0 residual       +49694 cycles/x 
+N7 check (predicted from N6 solve):
+   x 1.3527 read -3.246e+07 pred -3.449e+07 alias +0 residual +2023166
+   x 1.4531 read -1.951e+07 pred -3.353e+07 alias +0 residual +14019111
+   x 1.0309 read +8.496e+07 pred -3.754e+07 alias +0 residual +122503649
+   x 1.1789 read -3.238e+07 pred -3.614e+07 alias +0 residual +3753090
+   x 1.4129 read -3.214e+07 pred -3.391e+07 alias +0 residual +1776115
+N5 eqs: moves N6 +0 ulps
+N3 eqs: moves N4 +6.654e+08 ulps N5 +2.398e+09 ulps
+   x 0.8013 alias +0 residual     +1080845 cycles/x 
+   x 0.9517 alias +0 residual     -1121645 cycles/x 
+   x 1.1023 alias +0 residual     +4992515 cycles/x DROPPED
+   x 0.8741 alias +0 residual     -1016121 cycles/x 
+   x 1.0309 alias +0 residual     +1056921 cycles/x 
+N moves (ulps): N4 +6.654e+08 N5 +2.398e+09 N6 +0 N7 -1.33e+09 N8 -1.515e+09 N9 +3.891e+10
+candidate: 12/15 rows kept, sum|alias| 1, rms 2.85e+05 cycles/x, moves N7 -1.344e+09 ulps N8 -1.116e+09 ulps N9 +7.958e+09 ulps
+candidate: 12/15 rows kept, sum|alias| 8, rms 2.85e+05 cycles/x, moves N7 +2.951e+09 ulps N8 -1.116e+09 ulps N9 +7.958e+09 ulps
+candidate: 12/15 rows kept, sum|alias| 10, rms 2.85e+05 cycles/x, moves N7 -5.639e+09 ulps N8 -1.116e+09 ulps N9 +7.958e+09 ulps
+candidate: 12/15 rows kept, sum|alias| 17, rms 2.85e+05 cycles/x, moves N7 +7.246e+09 ulps N8 -1.116e+09 ulps N9 +7.958e+09 ulps
+candidate: 10/15 rows kept, sum|alias| 1, rms 5.4e+05 cycles/x, moves N7 -1.412e+09 ulps N8 +6.99e+08 ulps N9 -1.17e+11 ulps
+candidate: 10/15 rows kept, sum|alias| 1, rms 1.6e+06 cycles/x, moves N7 -1.329e+09 ulps N8 -2.29e+09 ulps N9 +1.406e+11 ulps
+candidate: 10/15 rows kept, sum|alias| 7, rms 1.6e+06 cycles/x, moves N7 +2.966e+09 ulps N8 -2.29e+09 ulps N9 +1.406e+11 ulps
+candidate: 10/15 rows kept, sum|alias| 8, rms 5.4e+05 cycles/x, moves N7 +2.883e+09 ulps N8 +6.99e+08 ulps N9 -1.17e+11 ulps
+joint N6+N7 (all-row aliases): 12/15 rows kept, rms 2.85e+05 cycles/x, moves N7 -1.344e+09 ulps N8 -1.116e+09 ulps N9 +7.958e+09 ulps
+   N6 x 0.9517 alias +0 residual   -143836051 DROPPED
+   N6 x 1.1023 alias +0 residual      +881751 
+   N6 x 1.2519 alias +0 residual      -143636 
+   N7 x 1.3527 alias +0 residual      +228181 
+   N6 x 1.3527 alias +0 residual      -116042 
+   N7 x 1.4531 alias +0 residual    -12526461 DROPPED
+   N6 x 1.4531 alias +0 residual       -83820 
+   N6 x 0.8741 alias +0 residual      -110567 
+   N7 x 1.0309 alias +0 residual   -117820543 DROPPED
+   N6 x 1.0309 alias +0 residual       -42476 
+   N7 x 1.1789 alias +0 residual      -188381 
+   N6 x 1.1789 alias -1 residual      -155961 
+   N6 x 1.3021 alias +0 residual      -131808 
+   N7 x 1.4129 alias +0 residual       +20316 
+   N6 x 1.4129 alias +0 residual       -97440 
