@@ -94,10 +94,19 @@ def test_unreadable_workbook_is_never_filled_unchecked(monkeypatch: pytest.Monke
         cli._drop_desktop_conflicts(Path("x.xlsx"), {"S": {}})
 
 
-def test_undecoded_rich_errors_are_never_written_as_goldens() -> None:
+def test_undecoded_rich_errors_stay_in_the_sidecar_as_the_marker(capsys: pytest.CaptureFixture[str]) -> None:
+    # Dropping the cell would make a spill member an expected blank (gen-m7 C951:E962, T-2397);
+    # the marker keeps it pending, as the runner never scores it.
     values = {"S": {"A1": dict(cli.UNDECODED), "A2": {"t": "n", "v": 2.0}}}
-    cli._drop_undecoded(Path("x.xlsx"), values)
-    assert values == {"S": {"A2": {"t": "n", "v": 2.0}}}
+    cli._report_undecoded(Path("x.xlsx"), values)
+    assert values == {"S": {"A1": dict(cli.UNDECODED), "A2": {"t": "n", "v": 2.0}}}
+    assert "UNDECODED x.xlsx S!A1" in capsys.readouterr().err
+
+
+def test_undecoded_cell_is_no_hand_disagreement(capsys: pytest.CaptureFixture[str]) -> None:
+    spec = {"expected": {"S!A1": {"t": "e", "v": "#VALUE!"}}}
+    cli._report_hand_disagreements(Path("x.case.json"), spec, {"S": {"A1": dict(cli.UNDECODED)}})
+    assert capsys.readouterr().err == ""
 
 
 def test_undecoded_marker_matches_the_harness_constant() -> None:

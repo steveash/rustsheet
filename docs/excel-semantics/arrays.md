@@ -55,6 +55,18 @@ Implemented in: `value_metadata_errors` in `crates/rustsheet-xlsx/src/import/ric
 the importer (cached `#CALC!`/`#SPILL!`/`#CONNECT!`/`#BLOCKED!`/`#FIELD!`; unmapped errorTypes stay `#VALUE!`) and the eval
 snapshot reader (expected values; T-0921).
 
+A `#VALUE!` from a GROUPBY function argument (`LAMBDA(w,REGEXEXTRACT(...,-1))`) is stored in every
+spilled value cell as a rich error of a third `_error` structure, `errorType, ptg, subType`, with
+values (2, 6, 0). Its real value is `#VALUE!` (ERROR.TYPE 3 through INDEX, probes/groupby-lifted-args
+A33 and B33). errorType 2 has no other evidence yet, so the harness leaves it undecoded.
+Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
+`GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
+2026-10-22, T-2397). That scratch recalc reported all four spilled value cells, so no case of a
+spilled rich error missing from the workbook was reproduced. `rustsheet-oracle fill` keeps such cells in
+the sidecar as `#UNDECODED!` instead of dropping them, because a spill member missing from the sidecar
+is scored as an expected blank (T-2397).
+Status: confirmed (storage); the errorType 2 mapping is UNVERIFIED.
+
 ## MOD lifts over array arguments
 Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The
 two arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions past a
