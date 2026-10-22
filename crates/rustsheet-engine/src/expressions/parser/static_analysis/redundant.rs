@@ -1,8 +1,6 @@
 //! The export side of the legacy `@` rewrite: which `@`s [`add_implicit_intersection`] would add
 //! again on import, so the export drops them instead of writing `_xlfn.SINGLE`.
 
-use crate::functions::Function;
-
 #[cfg(doc)]
 use super::add_implicit_intersection;
 use super::legacy::{
