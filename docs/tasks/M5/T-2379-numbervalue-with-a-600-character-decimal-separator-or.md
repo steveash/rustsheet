@@ -3,7 +3,7 @@ id: T-2379
 title: "NUMBERVALUE with a 600-character decimal separator or case-only separator clash is #VALUE!"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
