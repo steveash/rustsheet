@@ -101,9 +101,10 @@ pub(super) fn load_pivots<R: Read + Seek>(
             Err(reason) => log_skip("pivot tables of", &sheet.path, &reason),
         }
     }
+    let reached = occurrences(parts.iter().map(|(_, part)| part));
     let mut pivot_tables = Vec::new();
     for (sheet_id, part) in &parts {
-        let result = if parts.iter().filter(|(_, p)| p == part).count() > 1 {
+        let result = if reached.get(part).is_some_and(|&n| n > 1) {
             skip("the part is reached twice")
         } else {
             archive
@@ -117,6 +118,17 @@ pub(super) fn load_pivots<R: Read + Seek>(
         }
     }
     (pivot_caches, pivot_tables)
+}
+
+/// How many times each value occurs (a file can list millions, so never a pairwise scan).
+fn occurrences<'a, T: Eq + std::hash::Hash + 'a>(
+    values: impl Iterator<Item = &'a T>,
+) -> HashMap<&'a T, usize> {
+    let mut counts = HashMap::new();
+    for value in values {
+        *counts.entry(value).or_insert(0) += 1;
+    }
+    counts
 }
 
 fn log_skip(what: &str, part: &str, reason: &Skip) {
@@ -144,6 +156,8 @@ fn load_caches<R: Read + Seek>(
             (id, part)
         })
         .collect();
+    let id_counts = occurrences(listed.iter().filter_map(|(id, _)| id.as_ref()));
+    let part_counts = occurrences(listed.iter().filter_map(|(_, part)| part.as_ref()));
     let mut pivot_caches = Vec::new();
     let mut ids = HashMap::new();
     for (id, part) in &listed {
@@ -151,16 +165,10 @@ fn load_caches<R: Read + Seek>(
         let result = match (id, part) {
             (None, _) => skip("no valid cacheId"),
             (_, None) => skip("no internal pivotCacheDefinition relationship"),
-            (Some(id), _) if listed.iter().filter(|(i, _)| i == &Some(*id)).count() > 1 => {
+            (Some(id), _) if id_counts.get(id).is_some_and(|&n| n > 1) => {
                 skip(format!("cacheId {id} is listed twice"))
             }
-            (_, Some(part))
-                if listed
-                    .iter()
-                    .filter(|(_, p)| p.as_ref() == Some(part))
-                    .count()
-                    > 1 =>
-            {
+            (_, Some(part)) if part_counts.get(part).is_some_and(|&n| n > 1) => {
                 skip("the part is reached twice")
             }
             (Some(id), Some(part)) => load_cache(archive, part, values_left).map(|c| (*id, c)),
