@@ -69,7 +69,7 @@ where a read of an uncalculated formula cell stops the root with no effect (stat
 moves it just after that precedent. Moved cells remember their precedent and are moved again
 without running while it is uncalculated; moves are capped at `4 × formula cells + 2^24`, past
 which the pass evaluates on demand (DEVIATION entry in dates.md). `RestartLog` moved to
-`restart_log.rs` to make room (evaluation.rs leaves the oversized list).
+`restart_log.rs` to make room (evaluation.rs drops to 984 lines; its entry in the protected `quality/oversized-files.json` is left for a steward ratchet run).
 
 New Excel quirk, from the gen-m6 cells this change first regressed: a spilling formula empties
 the state at its place in the order (8 readers, all `#NUM!` in Excel; dates.md). The chain
