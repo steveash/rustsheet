@@ -52,4 +52,4 @@ boolean values. Recorded in number-formats.md "Bare digits beside a date token".
 across the number sections. Other section errors keep their per-section behavior: making every bad section reject the code
 regressed 56 gen-m10 cells whose `[Cyan]` section we do not parse (T-1737).
 Eval delta: gen-m5 24 -> 23 (2b01cadfd03df4b5 A211 fixed). The new probe passes 131/132; C25 (`TEXT(-3,"b1")` is "-", ours
-`#VALUE!`) is a new-coverage known failure, filed as T-2387. No regressions.
+`#VALUE!`) is a new-coverage known failure, filed as T-2388. No regressions.
