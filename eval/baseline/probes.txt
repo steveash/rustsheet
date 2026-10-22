@@ -393,6 +393,7 @@ C	probes/groupby-blank-values.case.json	110
 C	probes/groupby-custom-labels.case.json	262
 C	probes/groupby-eta-arity.case.json	101
 C	probes/groupby-lambda-forms.case.json	491
+C	probes/groupby-lifted-args.case.json	129
 C	probes/groupby-pivotby-followup.case.json	1081
 C	probes/groupby-pivotby-followup2.case.json	607
 C	probes/groupby-pivotby-followup3.case.json	499
@@ -1811,6 +1812,8 @@ F	probes/geomean-same-product.case.json	Sheet1!A21
 F	probes/geomean-same-product.case.json	Sheet1!A9
 F	probes/geomean-single-and-copies.case.json	Copies!A35
 F	probes/geomean-stored-3ulps-low.case.json	Sheet1!R1
+F	probes/groupby-lifted-args.case.json	Calc!A153
+F	probes/groupby-lifted-args.case.json	Calc!I153
 F	probes/growth-modes.case.json	Sheet1!K1
 F	probes/growth-modes.case.json	Sheet1!K100
 F	probes/growth-modes.case.json	Sheet1!K101

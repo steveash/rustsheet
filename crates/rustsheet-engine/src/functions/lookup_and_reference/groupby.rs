@@ -9,6 +9,7 @@ use super::grouping::{
     at, effective_depth, empty_text, subtotal_levels, value_error, Axis, Grouping, ParentOrder,
     Relative, SetId, SortOrder,
 };
+use super::lifted_options::depth_bound;
 use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
@@ -286,6 +287,13 @@ impl Model {
     /// `=GROUPBY(row_fields, values, function, [field_headers], [total_depth], [sort_order],
     /// [filter_array], [field_relationship])`
     pub(crate) fn fn_groupby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // An array field_headers or total_depth lifts the call (probes/groupby-lifted-args).
+        let depth = depth_bound(self, args.first(), cell);
+        if let Some(lifted) =
+            self.lifted_option(args, &[(3, 3), (4, depth)], Model::fn_groupby, cell)
+        {
+            return lifted;
+        }
         let inputs = match self.groupby_inputs(args, cell) {
             Ok(inputs) => inputs,
             Err(error) => return error,

@@ -15,6 +15,7 @@ use super::grouping::{
     at, effective_depth, empty_text, shown_key, subtotal_levels, value_error, Aggregates, Axis,
     Group, Grouping, Line, ParentOrder, Relative, SortOrder,
 };
+use super::lifted_options::depth_bound;
 use super::relative_to::{Item, RelativeSets, RelativeTo};
 use crate::{
     calc_result::CalcResult,
@@ -246,6 +247,14 @@ impl Model {
     /// `=PIVOTBY(row_fields, col_fields, values, function, [field_headers], [row_total_depth],
     /// [row_sort_order], [col_total_depth], [col_sort_order], [filter_array], [relative_to])`
     pub(crate) fn fn_pivotby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // An array field_headers, row_total_depth or col_total_depth lifts the call
+        // (probes/groupby-lifted-args A121-A137).
+        let rows = depth_bound(self, args.first(), cell);
+        let cols = depth_bound(self, args.get(1), cell);
+        let options = [(4, 3), (5, rows), (7, cols)];
+        if let Some(lifted) = self.lifted_option(args, &options, Model::fn_pivotby, cell) {
+            return lifted;
+        }
         match self.pivotby(args, cell) {
             Ok(array) => CalcResult::Array(array),
             Err(error) => error,
