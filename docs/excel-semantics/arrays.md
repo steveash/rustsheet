@@ -1445,10 +1445,11 @@ of the call with that element in the argument's place, or that call's error. A o
   of a later argument's error value, and an error element is that error: `GROUPBY(k,v,SUM,0,{1,"x",#N/A},,,1/0)` is `#DIV/0!`,
   `#VALUE!`, `#N/A` (A97).
 - A multi-cell range lifts as an array does (`Data!D1:E1` holding 0 and 1, as field_headers or total_depth: A177, A225), and a
-  blank element reads as 0 (A185).
+  blank element is valid (A185; whether as 0 or as omitted is unprobed: the data has no header to tell them apart).
 - An invalid number comes after a later argument's error value (`GROUPBY(k,v,SUM,0,{5},,,1/0)` and the scalar
-  `...,0,5,,,1/0)` are `#DIV/0!`: A193, A217), but text that is no number comes before it, scalar or lifted
-  (`GROUPBY(k,v,SUM,0,"x",,,1/0)` is `#VALUE!`: A201).
+  `...,0,5,,,1/0)` are `#DIV/0!`: A193, A217), but text that is no number, typed or computed, comes before it,
+  scalar or lifted (`GROUPBY(k,v,SUM,0,"x",,,1/0)` is `#VALUE!`: A201). Text read from a one-cell reference is unprobed (ours
+  keeps the reference, so the later error wins).
 - Two array options broadcast: `GROUPBY(k,v,SUM,{0,1},{0;1})` is 2x2 (A209:B210; not yet matched, T-2399).
 - `sort_order` does not lift (it takes arrays of its own): `GROUPBY(k,v,SUM,0,1,{1,-1})` with one key is a single `#VALUE!` (A81).
 - REGEXEXTRACT with an invalid return mode (-1) is `#VALUE!`, inside a GROUPBY function too (K1-K10). excel-graph returns those
