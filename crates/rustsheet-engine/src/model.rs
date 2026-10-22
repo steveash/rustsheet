@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
-use crate::functions::logical::{NamedLambdas, SharedLambda};
+use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
 use crate::{
     calc_result::{CalcResult, Range},
     cell::{spill_value_to_calc_result, CellValue},
@@ -164,6 +164,14 @@ pub struct Model {
     pub(crate) eta_lambdas: HashMap<usize, crate::functions::Function>,
     /// The defined-name LAMBDAs called in this evaluation, keyed by the same ids as `lambdas`.
     pub(crate) named_lambdas: NamedLambdas,
+    /// What each LAMBDA made inside a LET or a LAMBDA call captured of the variables in scope
+    /// (`Model::close_over`), keyed by the same ids as `lambdas`.
+    pub(crate) lambda_captures: HashMap<usize, Captures>,
+    /// The cells `lambda_captures` holds copies of, against `MAX_CAPTURED_CELLS`.
+    pub(crate) captured_cells: usize,
+    /// Where the stack was when the outermost LAMBDA call running now started
+    /// (`Model::lambda_stack_base`), `None` while no call runs.
+    pub(crate) lambda_calls_base: Option<usize>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
@@ -236,10 +244,20 @@ impl Model {
         self.last_lambda_id += 1;
         id
     }
+    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
+    /// made it (a cell holding one is `#CALC!`), so what the LAMBDAs captured
+    /// (`Model::close_over`) is dropped with it, not kept for the rest of the pass.
+    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
+        self.evaluate_cell(cell);
+        self.lambda_captures.clear();
+        self.captured_cells = 0;
+    }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
         self.eta_lambdas.clear();
         self.named_lambdas = NamedLambdas::default();
+        self.lambda_captures.clear();
+        self.captured_cells = 0;
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
@@ -346,7 +364,9 @@ impl Model {
                     _ => self.evaluate_node_in_context(node, cell),
                 }
             }
-            _ => self.evaluate_call_with_reference(node, cell),
+            _ => self
+                .cached_external_span_reference(node, cell)
+                .unwrap_or_else(|| self.evaluate_call_with_reference(node, cell)),
         }
     }
 
@@ -563,11 +583,9 @@ impl Model {
                     column: column1,
                 })
             }
-            WrongReferenceKind { sheet_name, .. } => self
-                .external_reference_value(node, cell)
-                .unwrap_or_else(|| {
-                    Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
-                }),
+            WrongReferenceKind { .. } | WrongRangeKind { .. } => {
+                self.wrong_reference_value(node, cell)
+            }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
             SheetSpanKind {
@@ -577,10 +595,6 @@ impl Model {
                 ..
             } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
             OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
-            WrongRangeKind { sheet_name, .. } => match self.cached_external_area(node, cell) {
-                Some(area) => self.external_area_value(area, cell),
-                None => Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range"),
-            },
             RangeKind {
                 sheet_index,
                 row1,
@@ -698,7 +712,12 @@ impl Model {
             ),
             EmptyArgKind => CalcResult::EmptyArg,
             // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
-            Group { .. } => CalcResult::new_error(Error::ERROR, cell, "Unpeeled group".to_string()),
+            // `ungrouped` above sees through both.
+            Group { .. } | StructuredReferenceKind { .. } => CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "Unpeeled group or structured reference".to_string(),
+            ),
             SpillRangeOperator { child } => match self.spill_anchor_operand(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {
@@ -2755,8 +2774,16 @@ impl Model {
     // false otherwise.
     pub(crate) fn can_clear_range(&self, range: &Area) -> Result<bool, String> {
         let sheet = range.sheet;
-        for row in range.row..range.row + range.height {
-            for column in range.column..range.column + range.width {
+        // Existing cells only: an absent one is a plain cell, and a table's range can span the sheet.
+        let sheet_data = &self.workbook.worksheet(sheet)?.sheet_data;
+        let rows = sheet_data
+            .rows()
+            .into_iter()
+            .filter(|row| (range.row..range.row + range.height).contains(row));
+        for row in rows {
+            let columns = sheet_data.columns_in_row(row).into_iter();
+            for column in columns.filter(|c| (range.column..range.column + range.width).contains(c))
+            {
                 match self.get_cell_structure(sheet, row, column)? {
                     CellStructure::ArrayFormula { range: r } => {
                         let (width, height) = r;

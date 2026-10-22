@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM stale return_type: the evaluation order of a 3x3 grid on one sheet (row- or column-major, forward or reverse). Readers decode the reused start weekday: WEEKNUM(2..7,99) joined gives 111111 Sun, 222222 Mon, 122222 Tue, 112222 Wed, 111222 Thu, 111122 Fri, 111112 Sat; markers WEEKNUM(100,t) with t 1 Sun, 2 Mon, 12 Tue, 13 Wed, 14 Thu (T-1484)",
+  "tags": [
+    "M6",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Grid",
+      "cells": {
+        "A1": "=WEEKNUM(100,1)",
+        "B1": "=WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99)",
+        "C1": "=WEEKNUM(100,2)",
+        "A2": "=WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99)",
+        "B2": "=WEEKNUM(100,12)",
+        "C2": "=WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99)",
+        "A3": "=WEEKNUM(100,13)",
+        "B3": "=WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99)",
+        "C3": "=WEEKNUM(100,14)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Grid!A1",
+    "Grid!B1",
+    "Grid!C1",
+    "Grid!A2",
+    "Grid!B2",
+    "Grid!C2",
+    "Grid!A3",
+    "Grid!B3",
+    "Grid!C3"
+  ]
+}

@@ -42,7 +42,7 @@ Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `Parser::parse_part` (formatter/parser.rs, the implicit `#`
 before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: `General` next to digit
 placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), a negative's minus for a value that rounds to
-zero under a literal-only format or `.` (`TEXT(-0.4,"x")` is "x" and `TEXT(-0.5,".")` "1." here; T-1129), and a lowercase
+zero under a literal-only format or `.` (`TEXT(-0.4,"x")` is "x" and `TEXT(-0.5,".")` is "-1." here, unprobed; T-1129), and a lowercase
 scientific `0.0e+0` (always the year token here, so `#VALUE!` as before).
 Tasks: T-1262, T-1450
 
@@ -342,12 +342,30 @@ apply: `TEXT(" x ","TRUE")`, `TEXT("TRUE",TRUE)`, `TEXT("a",FALSE)`, `TEXT(FALSE
 `TEXT(TRUE,"#N/A")`, `TEXT("TRUE","HELLO ")`, `TEXT("a*",FALSE)` and `TEXT(FALSE,"x~*0.1Hello World")` are `#VALUE!` (a bare
 `E` without a sign, an `N`, or a date token beside digit placeholders: "Bare letters and digits in a number format" above).
 Ours returns the text or boolean unchanged. Also `TEXT(2.5,"a*?b1")` is `#VALUE!` (ours "a "); which part Excel rejects (the
-`*?` fill followed by `b1`) is unprobed.
+part is `b1` after a prefix) was identified in T-2202 (below).
+Probed (excel-graph, 2026-10-21, T-2202, probes/t2202-text-code-check-on-text, Calc!A1:A88; each code against the number 2.5,
+"a", "" and TRUE): for every probed code the check is all-or-nothing across the four values: a rejected code is `#VALUE!` for every one of them, and
+an accepted code is for none. Rejected: `"*?b1"`, `"ab1"`, `"*xb1"`, `"a*?b1"`, `"n"`, `"0E0"`, `"0b"`, `"0.b"`, and each of
+the last four with an `@` text section added (`"n;n;n;@"`, `"0E0;0E0;0E0;@"`, `"0b;0b;0b;@"`, `"0.b;0.b;0.b;@"`), so an `@` section
+does not rescue a rejected code. Accepted: `"a*?"`, `"b1"`, `"*?"`, `"b"`, `"a*?b"` (2.5 gives "a43"), `"0.0"`, `"@"`,
+`"0;-0;0;@"`, `"\"x\""` and `"General"`; text, empty text and booleans come back unchanged ("a", "", "TRUE") under all of them.
+Answer for `"a*?b1"`: the part Excel rejects is `b1` (a calendar prefix, "Buddhist-era year, era and calendar tokens" above) when something precedes it. Neither
+`*?` alone (`"*?"`, `"a*?"`) nor `b1` alone (`"b1"`) nor `*?` followed by `b` without the digit (`"a*?b"`) is rejected, but
+`b1` after the probed prefixes `a` (`"ab1"`), the fill `*x` (`"*xb1"`) and the fill `*?` (`"*?b1"`, `"a*?b1"`) is. Other prefixes
+(quoted or escaped literals, digit placeholders, spaces, date tokens) were not probed; the likely rule, unprobed, is that a
+calendar prefix is valid only at the start of a section. `TEXT(2.5,"b1")` is "" and `TEXT(2.5,"b")` is "43" (a Buddhist-year
+date token).
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/25768de48ae7f2f9 Calc!A395, gen-m5/5704666097cbc5b2 Calc!A133,
 gen-m5/651e713f5ae232ed Calc!A3, gen-m5/6b831f5e2a20bc34 Calc!A320, gen-m5/8a387c26d182e73c Calc!A281, gen-m5/8df4830f888f16ae Calc!A149,
 gen-m5/a6fec430ac350c1a Calc!A331, gen-m5/c688ca172fe533dc Calc!A139, gen-m5/d1b251fd6e9c4b4b Calc!A120, gen-m5/d9fb1e918971111b Calc!A243,
 gen-m5/f0f205865a3a4328 Calc!A262.
-Status: VERIFIED (excel-graph); not implemented (T-2157). Related: T-1130 (text values under 1-3 section codes).
+Ours (T-2157): `format_text_value` (formatter/format.rs) is `#VALUE!` when a number section of the code does not parse, and
+the lexer rejects a `B1`/`B2` calendar prefix after any token that prints in its section (a locale bracket before it is
+fine, probes/text-locale-calendars; a color, condition or currency bracket before it, and `0;b1`, are accepted too,
+UNVERIFIED, T-2303), so the 11 gen-m5 cells above and the rejected probe codes pass. A bad section a number would
+not use in a multi-section code (`TEXT("a","0;ab1")`) rejects a text value too: UNVERIFIED (T-2303). The fill characters of the
+accepted codes (`TEXT(2.5,"a*?")` "a", ours "a ") are T-1735's.
+Status: VERIFIED (excel-graph); implemented (T-2157). Related: T-1130 (text values under 1-3 section codes).
 
 ## TEXT reads a number-like text value as its number; control characters are literals (T-2158)
 Rule: a text value that reads as a number is formatted as that number: `TEXT("1","0,000.0")` is "0,001.0" and
@@ -355,8 +373,8 @@ Rule: a text value that reads as a number is formatted as that number: `TEXT("1"
 as a literal: `TEXT(100,CHAR(10))` is a line feed and `TEXT(-2.5,CHAR(1))` is "-" followed by CHAR(1) (ours `#VALUE!` for both).
 Evidence (excel-graph, 2026-10-20): gen-m5/901e91c09b347914 Calc!A210, gen-m5/eb942f4a59b1c004 Calc!A54,
 gen-m5/d586a1e0c9896942 Calc!A38, gen-m5/c0651f0e0fb544d0 Calc!A336.
-Unprobed: date-like and percent text values, other control characters.
-Status: VERIFIED (excel-graph); not implemented (T-2158).
+Unprobed (the engine's choices, all UNVERIFIED): date-like and percent text (they coerce only because VALUE's parser reads them); number-like text with a text section (`@`, or four sections), where the engine keeps the text path (`TEXT("001","@")` is "001"); the trimming (VALUE's, spaces only); control characters other than CHAR(1) and CHAR(10) (the engine treats every `char::is_control` character as a literal).
+Status: VERIFIED (excel-graph); implemented (T-2158).
 
 ## Unquoted ASCII letters in a number format (T-1450)
 
@@ -401,7 +419,7 @@ Rule: a `[$-tag]` with no currency symbol prints nothing, but in its own section
 - **One tag per section.** A second tag in a section is `#VALUE!`, even the same one or a system tag (`[$-40C]mmmm [$-40C]mmmm`, `[$-40C]mmmm [$€-407]mmmm`, `[$-F800][$-F400]`); tags in different sections are fine.
 - **Regional variants and more languages** (probes/text-locale-regional-lcids, 252 cells, T-1858). The language fallback does not hold across regions: `[$-C07]` de-AT has "Jän"/"Jänner" for January, "Mär" for March, and `ddd` "Mi."/"Do." (de-DE differs in all three); `[$-1004]` zh-SG mixes the two: short months as zh-TW ("一月"), days as zh-CN ("周三"); `[$-C04]` zh-HK equals zh-TW ("週三"); `[$-80A]` es-MX and `[$-2C0A]` es-AR differ from es-ES in `ddd` and the day halves ("a. m."/"p. m."), and es-AR's halves use a non-breaking space where es-MX's use a plain one. Languages that now resolve: `[$-408]` Greek ("Ιαν", "πμ"/"μμ"), `[$-41E]` Thai (Thai names, AM/PM stay Latin), `[$-41B]` Slovak (short months are the numerals "1"…"12", like Japanese), `[$-422]` Ukrainian (AM/PM stay Latin), `[$-401]` Arabic ("ص"/"م"), `[$-40D]` Hebrew (AM/PM stay Latin), `[$-439]` Hindi ("पूर्वाह्न"/"अपराह्न"). Calendar and digit switches of Thai, Arabic and Hebrew are T-1859's.
 - **Not yet modelled:** locales not in the table list print English and keep `A/P` letters, though Excel very likely localizes them. Eras and calendar digits are in "Calendars of a locale tag" below.
-- **A currency tag with a locale** (`[$€-40C]`, `[$€-fr-FR]`) is a symbol plus a locale tag in one: the symbol prints where it is written in a date section (`[$€-40C]d mmmm` "€15 mars", `d [$€-40C]mmmm` "15 €mars", `mmmm[$€-40C]` "mars€", `dddd [$€-40C]` "mercredi €", `[$€-40C]yyyy` "€2023", `[$€-40C]h:mm AM/PM` "€6:00 PM", `[$€]mmmm` "€March") and the locale localizes the section like `[$-40C]`. It counts as the section's one tag (`[$€-40C]mmmm [$-40C]mmmm` is `#VALUE!`; tags in different sections are fine). A system locale drops the symbol (`[$€-F800]` is the system long date). A multi-character symbol with a locale (`[$USD-40C]mmmm` is "USDmars") is not modelled yet (T-1883). Evidence: probes/text-currency-locale-date (excel-graph, 2026-10-18, T-1865).
+- **A currency tag with a locale** (`[$€-40C]`, `[$€-fr-FR]`) is a symbol plus a locale tag in one: the symbol prints where it is written in a date section (`[$€-40C]d mmmm` "€15 mars", `d [$€-40C]mmmm` "15 €mars", `mmmm[$€-40C]` "mars€", `dddd [$€-40C]` "mercredi €", `[$€-40C]yyyy` "€2023", `[$€-40C]h:mm AM/PM` "€6:00 PM", `[$€]mmmm` "€March") and the locale localizes the section like `[$-40C]`. It counts as the section's one tag (`[$€-40C]mmmm [$-40C]mmmm` is `#VALUE!`; tags in different sections are fine). A system locale drops the symbol (`[$€-F800]` is the system long date). A multi-character symbol with a locale (`[$USD-40C]mmmm` is "USDmars") prints as text, the locale applying as above (implemented in T-2157; T-1883 keeps its unprobed edges). Evidence: probes/text-currency-locale-date (excel-graph, 2026-10-18, T-1865).
 - The cell display path shows the same text (probes/displayed-text-locale-names).
 Evidence: probes/text-locale-date-names (124 cells), probes/text-locale-name-tables (601), probes/text-locale-am-neutral (47), probes/displayed-text-locale-names (5), probes/text-locale-regional-lcids (252) (excel-graph, 2026-10-18). Morning strings of locales whose afternoon is "PM" are inferred as "AM" beyond fr, de, de-AT, th, sk, uk and he (probed).
 Implemented in: locale/excel_date_names.rs (tables), formatter/locale_tag.rs (resolution), `Token::Locale` (lexer.rs), `DatePart::names` and `Parser::system_part` (parser.rs), format.rs.
@@ -465,9 +483,9 @@ General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on P
 Evidence: probes/displayed-text-formats S!A1:A24, B1:B4 (excel-graph `text`, 2026-10-16, T-1610).
 Desktop `.Text` does depend on the width (`####` when a number does not fit), unprobed here: the
 excel-graph text is what the M10 suite scores (decision 0068).
-Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030), "1,234" for
-`TEXT(1234.5,"#,##0")` (a value failure too: Excel rounds the 15-digit decimal half away from zero,
-as General and ROUND do; ours rounds an exact binary tie to even, T-2206).
+Implemented (T-2206): Excel rounds the shown place on the 15-digit decimal half away from zero, as
+General and ROUND do, so `TEXT(1234.5,"#,##0")` is "1,235".
+Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030).
 Implemented in: formatter/formatted.rs (`Formatted::displayed`: every serial the formatter rejects as a
 date, where TEXT is `#VALUE!`, displays 255 `#`; T-1711).
 Status: VERIFIED (Excel for the web)
@@ -512,13 +530,19 @@ TEXT() with the same codes. Points the earlier probes did not show:
   "1.0E+02") (T-2227).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
+Implemented (T-2206): the shown place rounds the 15-digit decimal half away from zero (`0`, `#,##0`,
+`0%`, `"("0")"` on 2.5, -2.5, 36.5, 0.125 and 12.345 are "3", "-3", "37", "13%" and "1235%"). Rounding now runs
+before the sign test, so a negative that rounds to one unit keeps its minus (-0.5 under `0` is "-1",
+`00000` "-00001", `[$¥-411]#,##0` "-¥1"; gen-m10 810fee377a42575b F!B16, e1c29d3fe448682c F!B19,
+9a8b7d68507d7ada F!B1) and 0.0049 under `0%` is "0%" and under `%0` "%0" (no double rounding through 0.5;
+gen-m10 659cd5776d423ce3 F!F16, 8e073c5b2145567a F!C10). A tie at the 16th significant digit goes toward zero, as ROUND
+and General do (unprobed for displayed formats).
 Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
 rejects as a date (TEXT `#VALUE!`) displays 255 `#`.
-Not implemented: ours passes 9,481 of 10,400 text cells (91.2%).
+Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%).
 clock and elapsed-with-clock codes past 2958465.99999, which still format (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
-the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
-scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-2206: `0`, `#,##0`, `0%`, `"("0")"` ... on 2.5, -2.5, 36.5, 0.125 and 12.345 are "3", "-3", "37", "13%" and "1235%", half away from zero on the 15-digit decimal), the sign of -0.5 (T-1129),
-fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
+the text section on text and booleans (T-1736), `[Cyan]` (T-1737; `[$USD]` currency text is implemented since T-2157, which needed it), `?.??`/`#%` (T-1738),
+scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030, T-2206
 

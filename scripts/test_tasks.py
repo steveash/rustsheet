@@ -120,14 +120,26 @@ def run_next(
     claims: tuple[set[str], set[str]] = (set(), set()),
     active: frozenset[tuple[str, str]] = frozenset(),
     lane: str | None = None,
+    limited: dict[str, str] | None = None,
+) -> str:
+    return run_next_line(root, tier, claims, active, lane, limited).split()[0]
+
+
+def run_next_line(
+    root: Path,
+    tier: str,
+    claims: tuple[set[str], set[str]] = (set(), set()),
+    active: frozenset[tuple[str, str]] = frozenset(),
+    lane: str | None = None,
+    limited: dict[str, str] | None = None,
 ) -> str:
     argv = ["tasks.py", "next", "--tier", tier, *(["--lane", lane] if lane else [])]
     with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
             mock.patch.object(tasks.sys, "argv", argv), \
-            mock.patch.object(tasks, "branch_claims", return_value=(*claims, set(active))), \
+            mock.patch.object(tasks, "branch_claims", return_value=(*claims, set(active), limited or {})), \
             mock.patch("builtins.print") as printed:
         tasks.main()
-    return str(printed.call_args[0][0]).split()[0]
+    return str(printed.call_args[0][0])
 
 
 class Tiers(unittest.TestCase):
@@ -175,6 +187,22 @@ class Tiers(unittest.TestCase):
             self.assertEqual(run_next(root, "opus"), "T-0002")
             write_task(root, "T-0001", tier="opus", priority="P0", milestone="M9")
             self.assertEqual(run_next(root, "opus"), "T-0001")
+
+    def test_open_dependency_of_a_campaign_task_is_picked_as_campaign(self) -> None:
+        # Decision 0094: a sweep the campaign fix waits on beats milestone order; a done one does not count.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0210", tier="opus", priority="P1", milestone="M2")
+            write_task(root, "T-2145", tier="opus", priority="P3", milestone="M9", lane="research", depends_on="T-2144")
+            write_task(root, "T-2144", tier="opus", priority="P3", milestone="M9", lane="research")
+            write_task(root, "T-2146", tier="opus", milestone="M9", lane="functions-stat", depends_on="T-2145",
+                       campaign="visible")
+            self.assertEqual(run_next(root, "opus"), "T-2144")
+            write_task(root, "T-2144", tier="opus", priority="P3", milestone="M9", lane="research", status="done")
+            self.assertEqual(run_next(root, "opus"), "T-2145")
+            write_task(root, "T-2146", tier="opus", milestone="M9", lane="functions-stat", depends_on="T-2145",
+                       campaign="visible", status="done")
+            self.assertEqual(run_next(root, "opus"), "T-0210")
 
     def test_unknown_campaign_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -232,6 +260,25 @@ class Tiers(unittest.TestCase):
             write_task(root, "T-0002", tier="sonnet")
             self.assertEqual(run_next(root, "sonnet", ({"T-0001"}, set())), "T-0002")
 
+    def test_review_limited_task_is_resumed_by_opus_after_handoffs_and_before_new_work(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="opus", campaign="visible")
+            write_task(root, "T-0002", tier="sonnet", lane="engine")  # blocked on its branch
+            write_task(root, "T-0003", tier="opus", body="\n## Handoff\nstuck\n")
+            write_task(root, "T-0004", tier="sonnet")
+            claims = ({"T-0002"}, set())
+            limited = {"T-0002": "agent/engine/T-0002-x"}
+            busy = frozenset({("engine", "T-0009")})
+            self.assertEqual(run_next(root, "opus", claims, busy, limited=limited), "T-0003")
+            (root / "docs/tasks/M0/T-0003-x.md").unlink()
+            line = run_next_line(root, "opus", claims, busy, limited=limited)
+            self.assertEqual(line.split()[0], "T-0002")
+            self.assertIn("resume agent/engine/T-0002-x", line)
+            # Sonnet never re-reviews it, and a plain blocked claim is not offered at all.
+            self.assertEqual(run_next(root, "sonnet", claims, limited=limited), "T-0004")
+            self.assertEqual(run_next(root, "opus", claims), "T-0001")
+
     def test_ready_lists_what_next_could_pick_and_counts_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -242,7 +289,7 @@ class Tiers(unittest.TestCase):
             with mock.patch.object(tasks, "ROOT", root), \
                     mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
                     mock.patch.object(tasks.sys, "argv", ["tasks.py", "ready", "--tier", "sonnet"]), \
-                    mock.patch.object(tasks, "branch_claims", return_value=({"T-0002"}, set(), set())), \
+                    mock.patch.object(tasks, "branch_claims", return_value=({"T-0002"}, set(), set(), {})), \
                     mock.patch("builtins.print") as printed:
                 self.assertEqual(tasks.main(), 0)
         lines = [str(c[0][0]) for c in printed.call_args_list]
@@ -350,7 +397,9 @@ class BranchClaims(unittest.TestCase):
         with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
             # T-0001 is recent, so its lane is busy; T-0003's handoff waits for opus and keeps
             # harness free.
-            self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0001"}, {"T-0003"}, {("engine", "T-0001")}))
+            self.assertEqual(
+                tasks.branch_claims(fetch=False), ({"T-0001"}, {"T-0003"}, {("engine", "T-0001")}, {})
+            )
 
     def test_blocked_task_on_its_branch_frees_the_lane_but_stays_claimed(self) -> None:
         now = int(time.time())
@@ -372,7 +421,7 @@ class BranchClaims(unittest.TestCase):
         with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
             # T-0002 was blocked a minute ago: nobody restarts it, but research may take its next task.
             self.assertEqual(
-                tasks.branch_claims(fetch=False), ({"T-0001", "T-0002"}, set(), {("engine", "T-0001")})
+                tasks.branch_claims(fetch=False), ({"T-0001", "T-0002"}, set(), {("engine", "T-0001")}, {})
             )
 
     def test_task_blocked_on_a_stale_branch_stays_claimed(self) -> None:
@@ -395,7 +444,43 @@ class BranchClaims(unittest.TestCase):
         with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
             # A blocked task stays claimed however old its branch is (decision 0048); an abandoned
             # in-progress branch past the TTL frees its task.
-            self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0002"}, set(), set()))
+            self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0002"}, set(), set(), {}))
+
+    def test_review_limited_branch_is_offered_once_idle_and_only_on_the_first_block(self) -> None:
+        now = int(time.time())
+        idle = now - tasks.BUSY_SECONDS - 60
+        refs = (
+            f"refs/remotes/origin/agent/engine/T-0001-limit {idle}\n"
+            f"refs/remotes/origin/agent/engine/T-0002-limit-recent {now - 60}\n"
+            f"refs/remotes/origin/agent/harness/T-0003-twice {idle}\n"
+            f"refs/remotes/origin/agent/harness/T-0004-other-block {idle}\n"
+            f"refs/remotes/origin/agent/harness/T-0005-$(touch-x) {idle}\n"
+        )
+        reasons = {
+            "T-0001": "review-round limit",
+            "T-0002": "review-round limit",
+            "T-0003": "review-round limit, twice",
+            "T-0004": "time-boxed (decision 0056)",
+            "T-0005": "review-round limit",
+        }
+
+        def fake_run(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            if args[0] == "for-each-ref":
+                return mock.Mock(stdout=refs)
+            if args[0] == "ls-tree":
+                tid = args[3].rsplit("/", 1)[-1][:6]
+                return mock.Mock(stdout=f"docs/tasks/M0/{tid}-x.md\n")
+            tid = next(t for t in reasons if t in args[1].split(":")[0])
+            body = f"---\nid: x\nstatus: blocked\n---\n## Blocked because\nBlocked because: {reasons[tid]}\n"
+            return mock.Mock(stdout=body)
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
+            claimed, _, _, limited = tasks.branch_claims(fetch=False)
+        self.assertEqual(claimed, set(reasons))
+        # T-0002 moved a minute ago (its run may still be at it); T-0003 is the owner's now; T-0005's
+        # branch name is not one `next` will print for an agent to check out.
+        self.assertEqual(limited, {"T-0001": "agent/engine/T-0001-limit"})
 
 
 class Slug(unittest.TestCase):

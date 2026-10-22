@@ -36,6 +36,40 @@ fn test_address_relative() {
     assert_eq!(model._get_text("A1"), "E3");
 }
 
+// Bounds and flooring per abs_num and a1 (probes/t2275-address-bounds, excel-graph).
+#[test]
+fn test_address_bounds_and_relative_offsets() {
+    let cases = [
+        ("=ADDRESS(2.9,3)", "$C$2"),
+        ("=ADDRESS(1048576.9,3,4)", "C1048576"),
+        ("=ADDRESS(1048577,3)", "#VALUE!"),
+        ("=ADDRESS(5,16385,4,FALSE)", "#VALUE!"),
+        ("=ADDRESS(0.5,3)", "#VALUE!"),
+        ("=ADDRESS(0,3,3,FALSE)", "RC3"),
+        ("=ADDRESS(9,0,2,FALSE)", "R9C"),
+        ("=ADDRESS(10,-2.5,4,FALSE)", "R[10]C[-3]"),
+        ("=ADDRESS(-0.5,3,3,FALSE)", "R[-1]C3"),
+        ("=ADDRESS(-1048575,3,3,FALSE)", "R[-1048575]C3"),
+        ("=ADDRESS(-1048576,3,3,FALSE)", "#VALUE!"),
+        ("=ADDRESS(1048576,3,3,FALSE)", "#VALUE!"),
+        ("=ADDRESS(5,16384,2,FALSE)", "#VALUE!"),
+        ("=ADDRESS(5,16384,1,FALSE)", "R5C16384"),
+        ("=ADDRESS(-1,3.14159,2,NA())", "#N/A"),
+    ];
+    let mut model = new_empty_model();
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
 #[test]
 fn test_address_with_sheet() {
     let mut model = new_empty_model();

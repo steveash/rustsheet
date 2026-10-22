@@ -20,12 +20,3 @@ C	fixtures/t-d-pre-1900.xlsx	2
 C	fixtures/t-d-time-only.xlsx	2
 C	fixtures/t-d-z-suffix.xlsx	2
 C	fixtures/workday-intl-legacy-holidays.xlsx	6
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B10
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B2
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B3
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B4
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B5
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B6
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B7
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B8
-F	fixtures/external-link-cached-3d-span.xlsx	Refs!B9

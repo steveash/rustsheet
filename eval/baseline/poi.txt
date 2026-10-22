@@ -80,7 +80,7 @@ C	poi/GeneralFormatTests.xlsx	72
 C	poi/HsGetVal.xlsx	2
 C	poi/InlineStrings.xlsx	6
 C	poi/Intersection-52111-xssf.xlsx	3
-C	poi/LIBRE_OFFICE-128382-0.xlsx	0
+C	poi/LIBRE_OFFICE-128382-0.xlsx	4
 C	poi/MatrixFormulaEvalTestData.xlsx	266
 C	poi/NewStyleConditionalFormattings.xlsx	304
 C	poi/NewlineInFormulas.xlsx	9
@@ -153,7 +153,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!G936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H936
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I1360
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J1328
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136
@@ -163,7 +162,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O3
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O5
 F	poi/HsGetVal.xlsx	Sheet1!B5
 F	poi/HsGetVal.xlsx	Sheet1!C5
-F	poi/LIBRE_OFFICE-128382-0.xlsx	!EngineError
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H104
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H108
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H116

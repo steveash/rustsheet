@@ -31,7 +31,7 @@ build: ## Release build of the eval harness
 	$(CARGO) build --release -p rustsheet_eval
 
 # ---------------------------------------------------------------- Eval (Excel compatibility)
-.PHONY: eval eval-check eval-baseline eval-show evidence-floor
+.PHONY: eval eval-check eval-baseline eval-lower-visible-lock eval-show evidence-floor
 eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
 	$(EVAL_GUARDED) run
 
@@ -41,6 +41,9 @@ eval-check: build ## Gate: fail on any regression vs eval/baseline (CI)
 eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json after fixes (refuses regressions)
 	$(EVAL_GUARDED) update-baseline
 	$(EVAL) evidence-floor --update
+
+eval-lower-visible-lock: build ## Steward only, daily: also record a drop in eval/baseline/visible-parity.json (decision 0093)
+	$(EVAL_GUARDED) update-baseline --lower-visible-lock
 
 evidence-floor: build ## Gate: no more in-scope functions below the evidence floor (T-0056, CI)
 	$(EVAL) evidence-floor
@@ -93,7 +96,7 @@ check: fmt-check clippy test eval-check evidence-floor py-check py-bindings hygi
 ci: check deny machete
 
 # ---------------------------------------------------------------- Tasks
-.PHONY: tasks next-task ready-tasks board new-task new-decision
+.PHONY: tasks next-task ready-tasks board new-task new-decision exit-owners
 tasks: ## List tasks (LANE=, STATUS=, MILESTONE= filters)
 	$(PY) scripts/tasks.py list $(if $(LANE),--lane $(LANE)) $(if $(STATUS),--status $(STATUS)) $(if $(MILESTONE),--milestone $(MILESTONE))
 
@@ -109,12 +112,16 @@ new-task: ## New task file with a collision-free id: make new-task MILESTONE=M1 
 new-decision: ## New decision record with a collision-free number: make new-decision TITLE="..." (fetches origin; decision 0029)
 	$(PY) scripts/new_decision.py --title "$(TITLE)"
 
+exit-owners: ## Failing exit cells of a milestone that no open task of it owns, after make eval: make exit-owners MILESTONE=M5 [STRICT=1] (decision 0096)
+	$(if $(MILESTONE),,$(error MILESTONE=M<n> is required))
+	$(PY) scripts/exit_owners.py --milestone '$(MILESTONE)' $(if $(STRICT),--strict)
+
 board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board
 
 # ---------------------------------------------------------------- Merge lock (decision 0075)
 .PHONY: merge-lock-acquire merge-lock-release merge-lock-status
-merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 (exit 1: busy)
+merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 (exit 1: busy; 3: PR already done)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_lock.py acquire --pr '$(PR)'
 

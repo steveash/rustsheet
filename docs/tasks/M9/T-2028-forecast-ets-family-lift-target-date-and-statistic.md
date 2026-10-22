@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -32,7 +33,10 @@ regenerate eval/catalog/lift-kinds.json (`cd tools && uv run rustsheet-catalog-l
 The elements themselves stay `#N/IMPL!`, so H266/H267/H270/H271/H274-H278/H281 and the other K cells keep
 failing (desktop evidence, T-1553).
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 7 cells, 0 numeric past half a unit in the 15th digit and 7 with a wrong type, error or text, blamed on ROWS 6, FORECAST.ETS 3, FORECAST.ETS.CONFINT 2, FORECAST.ETS.STAT 2. Every one is listed above.
+
 ## Acceptance criteria
+- [ ] Visible parity: the 7 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 7 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The 7 lines above (K38, H268, H269, H272, H273, H279, H280) leave eval/baseline/probes.txt
       (`make eval-baseline`), with no new F lines in any baseline.
 - [ ] Every other call still returns `#N/IMPL!` (unit test), and statistics.md's entry has an "Ours" line
@@ -44,3 +48,6 @@ failing (desktop evidence, T-1553).
   sizes): it cannot be told apart from a valid call on the web (T-1553).
 - The gen-m9 cells whose FORECAST.ETS.CONFINT is `#VALUE!` on the web (gen-m9/1782efcecd5d4b1b A27,
   3462856259a37891 A28): their cause is unknown; list it in the Outcome if found, else leave them.
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (`#N/IMPL!` where Excel lifts or coerces first), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. The other FORECAST.ETS cells stay `#N/IMPL!` by statistics.md "FORECAST.ETS family: excel-graph never computes it" (T-1553) and are not this stage.

@@ -36,17 +36,18 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
 
     // Name and display name are normally the same and are unique in a workbook
     // They also need to be different from any defined name
-    let name = table
-        .attribute("name")
-        .ok_or_else(|| XlsxError::Xml("Corrupt XML structure: missing table name".to_string()))?
-        .to_string();
-
-    let display_name = table
-        .attribute("name")
-        .ok_or_else(|| {
-            XlsxError::Xml("Corrupt XML structure: missing table display name".to_string())
-        })?
-        .to_string();
+    // A part written by LibreOffice can carry only displayName; Excel reaches the table through it
+    // (docs/excel-semantics/xlsx-storage.md), so each attribute stands in for the other.
+    let (name, display_name) = match (table.attribute("name"), table.attribute("displayName")) {
+        (Some(n), Some(d)) => (n.to_string(), d.to_string()),
+        (Some(n), None) => (n.to_string(), n.to_string()),
+        (None, Some(d)) => (d.to_string(), d.to_string()),
+        (None, None) => {
+            return Err(XlsxError::Xml(
+                "Corrupt XML structure: missing table name".to_string(),
+            ))
+        }
+    };
 
     // Range of the table, including the totals if any and headers.
     let reference = table

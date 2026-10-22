@@ -2,7 +2,7 @@
 
 use crate::{
     calc_result::CalcResult,
-    cast::calc_result_to_string,
+    cast::calc_result_to_text,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -109,8 +109,10 @@ impl Model {
             let [text] = values else {
                 return Err(Error::ERROR);
             };
-            let s = calc_result_to_string(text)?;
-            let c = s.chars().next().ok_or(Error::VALUE)?;
+            let text = calc_result_to_text(text)?;
+            super::common::reject_over_short_limit(&text)?;
+            // The lossy view: a lone surrogate reads as U+FFFD, which is outside Windows-1252.
+            let c = text.chars().next().ok_or(Error::VALUE)?;
             // Excel: a character outside Windows-1252 gives 63, the code of "?"
             // (docs/excel-semantics/text.md#clean-and-code-scalar-edges).
             let n = char_to_win1252(c).unwrap_or(63);

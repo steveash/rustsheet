@@ -247,16 +247,21 @@ reference into another workbook is that reference. `ROWS(LET(c,TRUE,IF(c,…!A1:
 reference, LET gives IF's value: `ROWS(LET(c,FALSE,IF(c,…!A1:B3)))` is 1, `ISREF(…)` FALSE, and a
 condition error is that error (`ROWS(LET(c,1/0,IF(c,…!A1:B3)))` `#DIV/0!`).
 Evidence: probes/external-ref-no-link-let Calc!A1:A20, external-ref-no-link-ifchoose A26
-(excel-graph, 2026-10-16, T-1535). Engine: `Model::pick_reference` reads such a LET with its names
-bound (`let_scope`) when every argument its body may pick names another workbook; a LET whose body
-may pick any other argument (a reference into this workbook, a value: `IF(c,…!A1:B3,"x")`) is read
-as before. Probed since (T-1710, probes/external-ref-no-link-let-index, excel-graph 2026-10-16):
-INDEX over such a LET is INDEX over the reference it picks (`ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))`
-`#N/A`, `ROWS(INDEX(…,2,0))` 1; ours matches), and a LET body that may also pick another argument is
-still read with its names bound and the IF's pick made: `ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))` and
-`ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE and
-`COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0; ours gives `#BLOCKED!`, FALSE and 1 (T-1721). OFFSET over
-such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (ours TRUE; T-1721), as OFFSET over the bare external reference is (external-ref-no-link-index A16, A17): the miss is that ours does not unwrap the LET first.
+(excel-graph, 2026-10-16, T-1535). Probed since (T-1710, probes/external-ref-no-link-let-index,
+excel-graph 2026-10-16): INDEX over such a LET is INDEX over the reference it picks
+(`ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))` `#N/A`, `ROWS(INDEX(…,2,0))` 1), and a LET body
+that may also pick another argument is still read with its names bound and the IF's pick made:
+`ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))` and `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3,
+`ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE and `COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0 (A4:A7). OFFSET
+over such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (A3), as OFFSET
+over the bare external reference is (external-ref-no-link-index A16, A17).
+Engine (T-1721): `Model::pick_reference` reads every LET whose body may pick a reference into
+another workbook (`may_be_external`) with its names bound (`let_scope`); when the body picks
+another argument (a reference into this workbook, a value), that argument is read there, in
+reference context, as a LET's body is (`PickedReference::Read`). OFFSET takes its reference
+through `pick_reference`, so OFFSET over a LET picking an external reference is `#VALUE!`.
+Unprobed: what Excel gives when such a LET picks the other argument (ours reads it as any LET body:
+`ISREF(LET(c,FALSE,IF(c,…!A1,D1)))` TRUE, `ROWS(LET(r,D1:D2,c,FALSE,IF(c,…!A1:B3,r)))` 2).
 `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
 arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
@@ -356,8 +361,18 @@ the web keeps the cache on upload):
   `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, and `SUM([1]Defines:Uses!$B$2)` for the span reversed 142
   (fixtures/external-link-cached-3d-span Refs!B9; the other aggregates reversed are unprobed); but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
   ROWS `#VALUE!`, as for a span of this workbook ("3-D references outside the aggregates"), while
-  without a link `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` (T-1381). Ours does not parse the span
-  (`#ERROR!`; T-1654).
+  without a link `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` (T-1381). Engine (T-1654): the lexer
+  reads the unquoted `[n]First:Last!` prefix as the quoted `'[n]First:Last'!` (the formula text
+  keeps the quoted form, as for `'[1]Uses'!`), and `Model::cached_span_cells` gives the cells the
+  cache holds in the written area on the sheets between the two ends in `sheetNames` order, in
+  sheet, row and column order, in one walk of the cache, which the aggregates and COUNTA read
+  (blanks skipped); it is `#REF!` as a value and `#VALUE!` where one sheet is needed. Unprobed, so
+  UNVERIFIED (T-2331 probes them): a span with an end the cache does not hold, kept `#BLOCKED!`
+  here (a span of this workbook with a missing end is `#NAME?`); blanks for the readers that keep
+  them (`TEXTJOIN(",",FALSE,[1]Uses:Defines!$A$1:$B$2)`), skipped here; a one-sheet span
+  (`[1]Uses:Uses!A1`), read here as a span (`#REF!` as a value, not that sheet's cell as a
+  one-sheet span of this workbook is); `@` of a span; and the reversed span in the other
+  aggregates.
 A workbook whose formulas reference a sheet with `refreshError="1"` (`[1]'56737'!$A$1:$B$2`) does
 not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a desktop question.
 Engine: a cached area carries its cache (`external_links.rs`); aggregates and RANK read its cells
@@ -1651,11 +1666,23 @@ row 2 (on the ranges' rows) / row 10 (off them):
   `=INDEX(IF(TRUE,B1:B6,5),3)`, 3 / 3 with no `@`.
 Evidence: probes/legacy-if-arm-range-argument and -b (excel-graph, 2026-10-19, T-1935),
 probes/legacy-match-lookup-array-intersection J2, Y2.
-Engine: `is_reference_arm`, `returns_range_arm` (static_analysis/legacy.rs). Other reference
-shapes in an arm (a defined name, OFFSET, INDEX, a `:` range operation) are unprobed and keep
-their `@`.
+Engine: `is_reference_arm`, `is_range_arm`, `returns_range_arm` (static_analysis/if_arm.rs; moved out of legacy.rs, T-1969).
+Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2 / row 10, Rng = B1:B6):
+`=SUM(IF(TRUE,Rng))`, `=SUM(IF(TRUE,OFFSET(B1,0,0,6)))`, `=SUM(IF(TRUE,INDEX(B1:C6,0,1)))` and
+`=SUM(IF(TRUE,B1:INDEX(B1:B6,6)))` are 12 / 12 with no `@`. IFS's value arms too:
+`=SUM(IFS(TRUE,B1:B6))` 12 / 12, `=MATCH(3,IFS(TRUE,B1:B6),0)` 3 / 3, and at the root
+`=IFS(TRUE,B1:B6)` shows as `=@IFS(TRUE,B1:B6)` (2 / `#VALUE!`).
+Value contexts hold the same way (probes/legacy-if-arm-other-references K-T, excel-graph): `=IF(TRUE,OFFSET(B1,0,0,6))`
+shows `=@IF(TRUE,OFFSET(B1,0,0,6))`, `=ABS(IFS(TRUE,B1:B6))` `=ABS(@IFS(TRUE,B1:B6))`,
+`=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)` is 3. A single-cell INDEX arm, `=IF(TRUE,INDEX(B1:B6,3))`, shows no
+`@` at all in Excel; ours puts `@` on the IF (known failure, probes M12, filed as a follow-up task).
+Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
+`=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
+`=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).
+Excel drops the `@` for both one-cell arms (M12, S12), which T-2326 needs.
+Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
-Tasks: T-1935
+Tasks: T-1935, T-1969
 
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
@@ -2011,6 +2038,12 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   above or below the table) it is `#VALUE!`: this-row e1bf5aa0ffb4ed87, `Sales` at A2:C16, Data!AA11 gives
   the row-11 value (`#N/A`), Data!AE19, AF17 and AH22 give `#VALUE!`; a cell in the header row (Data!AA1
   for `Tiny` at J1:K2) is `#VALUE!` too.
+- The formula's row is used from another sheet too, and the result is a reference: with `Sales` at S!B3:C7
+  (data rows 4-7), `=Sales[@Qty]` on sheet F row 6 is S!C6's value and `ISREF(Sales[@Qty])` on F row 5 is
+  TRUE; off the data rows (S rows 1, 2, 3 = the header, 9 and 10; F rows 1 and 2) the value is `#VALUE!`
+  and `ISREF` FALSE.
+  `ISREF` of `Sales[Qty]`, `Sales` and `Sales[#Headers]` is TRUE (excel-graph, 2026-10-21, T-2197,
+  probes/table-edits/table-this-row-off-data-isref).
 - Inside the table (a formula column) `[@Col]` reads the same row; `Sales[Col]` there is the whole column
   (in-table 19fdc25163755713).
 - `Table[#Totals]` and `Table[[#Totals],[Col]]` of a table without a totals row are `#REF!`
@@ -2049,6 +2082,105 @@ Evidence: gen-m8b in-table 19fdc25163755713 and this-row e1bf5aa0ffb4ed87 (excel
 Status: VERIFIED for evaluation; UNVERIFIED for FORMULATEXT (RustSheet shows the lowered `=$A$2`; Excel's output unprobed) and for rejecting unbracketed multi-word `T[@Unit Price]` / unterminated `T[@Qty`.
 Implemented in: `Lexer::consume_this_row_shorthand`.
 Tasks: T-1672, T-1683
+
+## Structured references when the table changes
+Rule (excel-graph, 2026-10-21, T-2197; probes/table-edits, `Sales` at S!B3:C7 with header row 3, data rows
+4-7 and in the totals cases a totals row 8, the formulas on sheet F; each `insert_row` is one whole sheet row
+inserted above row r, Graph `range('r:r')/insert` shift Down): a formula keeps its structured reference
+through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Region])`,
+`=Sales[[#Totals],[Qty]]`) and evaluates against the table as it now is:
+- Insert above the header row or any row before it (r = 3, r = 1): the table moves down by one row
+  (`ROW(Sales[#Headers])` 4, `ROWS(Sales)` 4); a plain `S!C4:C7` shifts to `S!C5:C8`
+  (table-insert-row-above-header, table-insert-row-before).
+- Insert between the header and the first data row (r = 4), strictly inside the data (r = 6) or above the
+  last data row (r = 7): the table grows by one blank data row (header stays at 3, `ROWS(Sales)` 5,
+  `#All` 6, `SUM(Sales[Qty])` 15) (table-insert-row-above-first-data, -inside-data, -above-last-data).
+- Insert between the last data row and the totals row (r = 8 with a totals row): the table grows too (data
+  5 rows, `#All` 7, the totals row moves to 9 and `Sales[[#Totals],[Qty]]` is still 15)
+  (table-insert-row-above-totals).
+- Insert just below the table (r = 8 without a totals row, r = 9 with one): the table is unchanged
+  (table-insert-row-below, table-insert-row-below-totals).
+- Quirk: a plain range onto the table's data column grows with the two edge inserts. `=SUM(S!C4:C7)` (the
+  data rows) becomes `=SUM(S!C4:C8)` after the insert above row 4, where an ordinary insert at a range's
+  first row shifts it (`S!C5:C8`, as above the header), and after the insert above the totals row 8, where
+  an ordinary insert just below a range leaves it (as `S!C4:C7` stays for r = 8 without totals).
+- So SPEC-0016's edge-case table is wrong on two rows: an insert at r == d1 and at r == t *grows* the
+  table (it said fallback); the move, grow-inside and none rows hold (T-2321).
+- A loaded formula naming a table the file does not have (`=SUM(Nope[Qty])`) or a column its table does not
+  have (`=SUM(Sales[Nope])`) is loaded by Excel for the web with the reference rewritten: `#REF!`, and FORMULATEXT prints
+  `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
+Status: VERIFIED (excel-graph)
+Implemented in: partly (T-2195, SPEC-0016 step 1). Every structured reference except `#This Row` (T-1699)
+is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference.rs) and its area is
+re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
+first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
+before), and `restore_sheet` puts the tables back. Tables do not move on structural edits yet: every edit
+that changes the area a structured reference resolves to rewrites it to the displaced plain range (the
+fallback of SPEC-0016 for every table); one that leaves the area unchanged keeps the text. So today the
+values match Excel except where the table grows (`ROWS(Sales)` stays 4, `ROWS(Sales[#All])` 5 for Excel's 7) and FORMULATEXT prints the plain
+range; the plain-range quirk is not implemented. The move and grow classes are T-2297, the two edge rows
+and the quirk T-2321. With no table of that name (engine API `remove_table`), the formula is a parse
+error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
+is a parse error too (`#ERROR!`, FORMULATEXT the original text; T-2322). FORMULATEXT shows the stored
+canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
+table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322
+
+## Structured references under row deletes, column edits, convert, table and sheet delete
+Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases
+above, Qty 1,2,4,8, formulas on F, plus `COLUMNS(Sales)` and `COLUMN(Sales[Qty])`; `delete_row` is Graph
+`range('r:r')/delete` shift Up, `insert_column` / `delete_column` `range('C:C')/insert|delete` shift
+Right/Left):
+- Row deletes. Above the table (r = 1) the table moves up (`ROW(Sales[#Headers])` 2, plain `S!C4:C7` becomes
+  `S!C3:C6`); just below it (r = 8) nothing changes (table-delete-row-before, -below). Excel refuses a delete
+  of the header row: 409 InsertDeleteConflict, "This won't work because it would move cells in a table on your
+  worksheet" (no case: there is no value to score; excel-graph only, desktop unprobed, T-2325). A delete of the first data row (r = 4), one inside the
+  data (r = 5) or the last data row (r = 7) shrinks the table (`ROWS(Sales)` 3; `SUM(Sales[Qty])` 14, 13, 7)
+  and the plain `S!C4:C7` becomes `S!C4:C6` in all three (table-delete-row-first-data, -inside-data,
+  -last-data). With a totals row, deleting the last data row moves the totals row up (`#All` 5,
+  `ROW(Sales[#Totals])` 7, `Sales[[#Totals],[Qty]]` 7) (table-delete-row-last-data-totals); deleting the
+  totals row removes it: `Sales[[#Totals],[Qty]]` and `ROW(Sales[#Totals])` are `#REF!` though FORMULATEXT still
+  prints `=Sales[[#Totals],[Qty]]`, and `ROWS(Sales[#All])` is 5 (table-delete-row-totals). Deleting row 4 four
+  times, every data row, leaves the header and one blank data row: `ROWS(Sales)` 1, `#All` 2, `SUM` 0,
+  `COUNTA(Sales[Region])` 0, the plain range `S!C4:C4` (table-delete-row-all-data). The last of the four deletes
+  is not an ordinary row delete: a plain range onto only that row survives as `S!C4:C4` instead of `#REF!`, so
+  Excel keeps the table's one data row (cleared or refused); whether cells below the table shift up on that
+  last delete is open.
+- Column inserts. At A or B (left of or at the table's first column) the table moves right
+  (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
+  (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes
+  (table-insert-column-before, -left-edge, -inside, -right-edge).
+- Column deletes. Deleting A moves the table left (table-delete-column-before). Deleting a table column drops
+  it: deleting C (Qty) makes `SUM(Sales[Qty])` `#REF!`, printed `=SUM(#REF!)`, and the plain `S!C4:C7`
+  `=SUM(S!#REF!)`, while `COLUMNS(Sales)` is 1 and `ROWS(Sales)` 4 (table-delete-column-qty); deleting B
+  (Region) makes `COUNTA(Sales[Region])` 1, a COUNTA of the `#REF!` error, printed `=COUNTA(#REF!)`
+  (table-delete-column-region).
+- Convert to Range (`tables/convertToRange`): every value is kept and each structured reference from another
+  sheet is rewritten as an absolute, sheet-qualified range: `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
+  `=COLUMN(S!$C$4:$C$7)`; `ROWS(Sales)` 4, `ROWS(Sales[#All])` 5 and `ROW(Sales[#Headers])` 3 keep their values
+  (table-convert-to-range).
+- Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
+  `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
+  cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
+- Delete the table's sheet (`DELETE worksheets('S')`): every reference is `#REF!` (`COUNTA` 1), and FORMULATEXT
+  prints `=SUM(#REF!)` for the structured reference and `=SUM(#REF!C4:C7)` for the plain `S!C4:C7`
+  (table-delete-sheet). SPEC-0016's assumption (`#REF!`) holds for the values.
+- Renaming the table's sheet (S to Data) keeps every structured reference and value; the plain range prints
+  `=SUM(Data!C4:C7)` (table-rename-sheet).
+Cut and paste of table cells, row and column moves, undo after a sheet delete and a duplicated sheet have no
+Graph REST endpoint, so only desktop Excel can answer them (M14, T-2325); a duplicated sheet gets no table in
+the engine and its references to the source sheet's tables are written as the retargeted plain ranges (Excel
+is believed to add a renamed table to the copy, hand).
+Status: VERIFIED (excel-graph)
+Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
+inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
+match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
+move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339),
+the `#REF!` spelling of a deleted table or sheet (T-2340), and convert to range (T-2342; the adapter refuses
+`convert_table`) do not. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
+and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
+(T-2341, table-delete-table-cells, excel-graph 2026-10-22).
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

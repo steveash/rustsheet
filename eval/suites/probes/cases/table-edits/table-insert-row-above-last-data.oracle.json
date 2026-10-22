@@ -1,0 +1,52 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "F": {
+   "A1": {
+    "t": "n",
+    "v": 15.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A3": {
+    "t": "n",
+    "v": 6.0
+   },
+   "A4": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A5": {
+    "t": "s",
+    "v": "=SUM(Sales[Qty])"
+   },
+   "A6": {
+    "t": "n",
+    "v": 15.0
+   },
+   "A7": {
+    "t": "s",
+    "v": "=SUM(S!C4:C8)"
+   },
+   "A8": {
+    "t": "n",
+    "v": 4.0
+   },
+   "A9": {
+    "t": "s",
+    "v": "=COUNTA(Sales[Region])"
+   }
+  },
+  "S": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "fc86d74c992a6bcd8f4c720b423bc18dd888256a8e9792146b201ffbe7edda6e",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-21T17:52:32+00:00",
+  "version": null,
+  "workbook_name": "5d4f8767c3bc48ca2ba7106e1f20909c1d3141578ea0650bf39651d51c76ca7a.xlsx"
+ }
+}

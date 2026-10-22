@@ -1,7 +1,7 @@
 mod isomitted;
 mod offline_errors;
 
-use crate::external_reference::PickedReference;
+use crate::external_reference::{may_be_external, PickedReference};
 use crate::{
     calc_result::{CalcResult, Range},
     cast::{calc_result_to_array_node, MAX_SHORT_TEXT_UNITS},
@@ -13,7 +13,6 @@ use crate::{
         utils::number_to_column,
     },
     functions::Function,
-    get_all_timezones,
     limits::check_range_size,
     model::Model,
     reference_operators::{Ranges, RefArg},
@@ -50,16 +49,6 @@ fn n_of(value: &ArrayNode) -> ArrayNode {
         ArrayNode::String(_) | ArrayNode::Empty => ArrayNode::Number(0.0),
         ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
     }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn get_system() -> String {
-    std::env::consts::OS.to_string()
-}
-
-#[cfg(target_arch = "wasm32")]
-fn get_system() -> String {
-    "browser".to_string()
 }
 
 impl Model {
@@ -152,22 +141,24 @@ impl Model {
         // intersection or LET (probes/external-ref-no-link-shapes A4, external-ref-no-link-index
         // A28, A33, external-ref-no-link-let A1, A10); one into two workbooks is `#VALUE!`, so
         // not a reference.
+        // So is one a LET whose body may pick it picks: `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` is
+        // TRUE (probes/external-ref-no-link-let-index A6).
         let node = match self.pick_reference(node, cell) {
             PickedReference::Node(node) => node,
             PickedReference::External(areas) => return areas.is_ok(),
+            PickedReference::Read(read) => return matches!(read, RefArg::Ranges(_)),
             PickedReference::Value(_) => return false,
         };
         // OFFSET of one is `#VALUE!`, so not a reference (probes/external-ref-no-link-index
-        // A16), where OFFSET otherwise counts as one unevaluated (`kind.returns_reference()`).
+        // A16), also of one a LET picks (probes/external-ref-no-link-let-index A3), where OFFSET
+        // otherwise counts as one unevaluated (`kind.returns_reference()`).
         if let Node::FunctionKind {
             kind: crate::functions::Function::Offset,
             args,
         } = node
         {
-            if let Some(reference) = args.first() {
-                if self.external_reference(reference, cell).is_some() {
-                    return false;
-                }
+            if args.first().is_some_and(may_be_external) {
+                return matches!(self.offset_reference(args, cell), RefArg::Ranges(_));
             }
             // A lifted OFFSET is an array of references, not a reference: `ISREF(OFFSET(A1,{0;1},0))`
             // is FALSE (probes/reference-lift-elements F15).
@@ -434,7 +425,15 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
+        let mut value = self.evaluate_node_in_context(&args[0], cell);
+        // Excel: a one-cell range is its cell's type, `TYPE(D7:D7)` is 1 (docs/excel-semantics/information.md
+        // "TYPE of a one-cell range", gen-m5/2abdc1524e5aa685 Calc!A371).
+        if let CalcResult::Range { left, right } = &value {
+            if left == right {
+                value = self.evaluate_cell(*left);
+            }
+        }
+        match value {
             // Excel: text over 255 UTF-16 units is 64, not 2 (probes/type-long-text A4-A10, C7).
             CalcResult::String(text) if text.len_utf16() > MAX_SHORT_TEXT_UNITS => {
                 CalcResult::Number(64.0)
@@ -510,10 +509,23 @@ impl Model {
                 // (probes/info-logic-argument-modes A12, excel-graph).
                 // Reached through INDEX, IF or a union it is the same: a union of areas on one
                 // sheet gives that sheet (probes/volatile-and-info-rand-true-false-sheet D18, D19, D26).
-                if let RefArg::Ranges(ranges) = self.evaluate_reference_arg(arg, cell) {
-                    if let Some(first) = ranges.first() {
-                        return CalcResult::Number(first.left.sheet as f64 + 1.0);
+                match self.evaluate_reference_arg(arg, cell) {
+                    RefArg::Ranges(ranges) => {
+                        if let Some(first) = ranges.first() {
+                            return CalcResult::Number(first.left.sheet as f64 + 1.0);
+                        }
                     }
+                    // An array of references is neither lifted nor read as a value: one #N/A
+                    // (`SHEET(OFFSET(A1,{0;1},0))`, probes/reference-lift-consumers-b1d E101;
+                    // SPEC-0014 rule 2).
+                    RefArg::Grid(_) => {
+                        return CalcResult::new_error(
+                            Error::NA,
+                            cell,
+                            "SHEET of an array of references".to_string(),
+                        )
+                    }
+                    RefArg::Value(_) => {}
                 }
                 // Now it should be the name of a sheet
                 let sheet_name = match self.get_string(arg, cell) {
@@ -650,23 +662,18 @@ impl Model {
         };
         // An array info_type lifts: one result per element (CELL({"row","col"},B2) spills 2, 2;
         // probes/info-logic-argument-modes A27:B27, excel-graph).
+        // A multi-cell range lifts the same way (`CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
+        // filled column; gen-m5/c0651f0e0fb544d0 Calc!A293, excel-graph, information.md).
         let info_type = match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(s) => s.into_lossy_string(),
+            CalcResult::Range { left, right } if left != right && left.sheet == right.sheet => {
+                return match self.evaluate_range(left, right, cell) {
+                    Ok(types) => self.lifted_cell(&types, ranges.as_deref(), reference, cell),
+                    Err(error) => error,
+                };
+            }
             CalcResult::Array(types) => {
-                let lifted = types
-                    .iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|item| match item {
-                                ArrayNode::String(name) => calc_result_to_array_node(
-                                    self.cell_info(name, ranges.as_deref(), reference, cell),
-                                ),
-                                _ => ArrayNode::Error(Error::VALUE),
-                            })
-                            .collect()
-                    })
-                    .collect();
-                return CalcResult::Array(lifted);
+                return self.lifted_cell(&types, ranges.as_deref(), reference, cell);
             }
             _ => match self.get_string(&args[0], cell) {
                 Ok(s) => s,
@@ -674,6 +681,30 @@ impl Model {
             },
         };
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
+    }
+
+    /// One `CELL` result per element of an `info_type` grid; a non-text element is `#VALUE!`.
+    fn lifted_cell(
+        &mut self,
+        types: &[Vec<ArrayNode>],
+        ranges: Option<&[Range]>,
+        reference: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let lifted = types
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|item| match item {
+                        ArrayNode::String(name) => {
+                            calc_result_to_array_node(self.cell_info(name, ranges, reference, cell))
+                        }
+                        _ => ArrayNode::Error(Error::VALUE),
+                    })
+                    .collect()
+            })
+            .collect();
+        CalcResult::Array(lifted)
     }
 
     /// The workbook's file name as CELL names it (`Budget.xlsx`), `None` for an unnamed workbook
@@ -786,47 +817,21 @@ impl Model {
     }
 
     /// `INFO(text_type)`
-    /// NB: In Excel "`text_type`" is localized. Here it is always in English.
+    ///
+    /// `#VALUE!` for every `type_text` (valid, legacy, empty or unknown, in any case) in Excel for
+    /// the web, the oracle of record (decision 0039 rule 2): probes/info-sheets-info-types
+    /// Alpha!D25:D49, excel-graph, 2026-10-20. The desktop values are T-2182 (M14).
     pub(crate) fn fn_info(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let type_text = match self.get_string(&args[0], cell) {
-            Ok(s) => s.to_uppercase(),
-            Err(e) => return e,
-        };
-        // We take the release version from the git tag at build time. (v0.7.1-202-g847240b0 for example)
-        // See build.rs
-        let release = env!("GIT_VERSION");
-        match type_text.as_str() {
-            "DIRECTORY" | "ORIGIN" | "OSVERSION" => CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "type_text not implemented".to_string(),
-            },
-
-            // For now we just show the count of sheets in the current workbook
-            "NUMFILE" => CalcResult::Number(self.workbook.worksheets.len() as f64),
-
-            // At the moment we always do automatic recalc
-            "RECALC" => CalcResult::String("Automatic".into()),
-            "RELEASE" => CalcResult::String(release.to_string().into()),
-            "SYSTEM" => CalcResult::String(get_system().into()),
-            "TIMEZONE" => CalcResult::String(self.get_timezone().into()),
-            "TIMEZONES" => {
-                let mut tzs = get_all_timezones();
-                tzs.sort();
-                let list: Vec<Vec<ArrayNode>> = tzs
-                    .into_iter()
-                    .map(|name| vec![ArrayNode::String(name.to_string().into())])
-                    .collect();
-                CalcResult::Array(list)
-            }
-            _ => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid type_text".to_string(),
-            },
+        if let Err(e) = self.get_string(&args[0], cell) {
+            return e;
+        }
+        CalcResult::Error {
+            error: Error::VALUE,
+            origin: cell,
+            message: "INFO is not available".to_string(),
         }
     }
 }

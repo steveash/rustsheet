@@ -35,6 +35,16 @@ impl Addr {
         Some(Addr { row, col })
     }
 
+    /// Column letters to a 1-based column number (`B` → 2): 1 to 3 letters, A to `XFD`, either
+    /// case; `None` for anything else (a cell address, `$B`).
+    #[must_use]
+    pub fn col_index(letters: &str) -> Option<u32> {
+        if !letters.chars().all(|c| c.is_ascii_alphabetic()) {
+            return None;
+        }
+        Addr::parse(&format!("{letters}1")).map(|a| a.col)
+    }
+
     /// Column number to letters (1 → `A`, 27 → `AA`).
     #[must_use]
     pub fn col_letters(mut col: u32) -> String {
