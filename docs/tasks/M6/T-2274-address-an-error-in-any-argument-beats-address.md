@@ -3,7 +3,7 @@ id: T-2274
 title: "ADDRESS: an error in any argument beats ADDRESS's own #VALUE!, and a TRUE/FALSE sheet_text is quoted"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -60,3 +60,6 @@ as it is cast), or are the sheet_text quoting cells.
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+ADDRESS checks abs_num after every argument cast (a later argument's error wins) and quotes a `sheet_text` of "TRUE"/"FALSE" (done in `address_sheet_text`, not the shared `quote_name`; other spellings unprobed). Eval: gen-m6 known failures -8 in this task (the other 9 listed cells, including 04fdc9a67474aab9 A326, were already gone from the baseline); no regressions.
