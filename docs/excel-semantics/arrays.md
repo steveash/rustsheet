@@ -61,7 +61,7 @@ values (2, 6, 0). Its real value is `#VALUE!` (ERROR.TYPE 3 through INDEX, probe
 A33 and B33). errorType 2 has no other evidence yet, so the harness leaves it undecoded.
 Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
 `GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
-2026-10-22, T-2397). That scratch recalc reported all four spilled value cells, so no case of a
+2026-10-22, T-2397; recalc input_sha256 e07a9239… and 7cf52886…). That scratch recalc reported all four spilled value cells, so no case of a
 spilled rich error missing from the workbook was reproduced. `rustsheet-oracle fill` keeps such cells in
 the sidecar as `#UNDECODED!` instead of dropping them, because a spill member missing from the sidecar
 is scored as an expected blank (T-2397).
