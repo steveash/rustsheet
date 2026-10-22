@@ -1785,6 +1785,7 @@ gives "9007199254740990" (15 significant digits, below 2^53); whether the cut ha
 Evidence (excel-graph, 2026-10-22): probes/base-number-upper-bound (T-2289); T-2252 triage: gen-m5/dde5ea295a38fb16 Calc!A254 (zero, min_length 0.3);
 gen-m5/55afc805e00a1509 Calc!A101, gen-m5/08eafc9e61602bcb Calc!A98 (past 2^53); the "0" and zero-padded cells, which pass:
 gen-m5/cd883013bea3b305 Calc!A22, gen-m5/9a7a94353845ea12 Calc!A45, gen-m5/90bf45bea539723d Calc!A251.
+Unprobed: zero with a written-empty or blank-cell `min_length` (`BASE(0,2,)`, `BASE(0,2,Z99)`, `BASE(0,2,"")`); the engine reads them as 0, so they give empty text.
 Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374).
 Tasks: T-2289, T-2373, T-2374
 
