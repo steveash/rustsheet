@@ -162,7 +162,7 @@ fn backtracker_agrees_with_the_automata_on_regular_patterns() {
         "", "", "*", "*?", "+", "+?", "?", "??", "{2}", "{1,3}", "{0,2}?", "{2,}", "{0,}?",
     ];
     let texts = [
-        "", "a", "b", "ab", "ba", "aab", "abab", "bbaa", "a\n", "ab ab", "aaaa",
+        "", "a", "b", "ab", "bba", "aab", "abab", "bbaa", "a\n", "ab ab", "aaaa",
     ];
     let mut seed: u32 = 2_355;
     let mut next = |n: usize| {
