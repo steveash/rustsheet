@@ -609,11 +609,11 @@ and `NUMBERVALUE(0.2,REPT("A",256),"b")`, `NUMBERVALUE("2",REPT("A",256),"b")` a
 `NUMBERVALUE("1x5","x","X")` are 1.5, but `NUMBERVALUE("1,5","A","a")` is `#VALUE!` (the "," is no separator) and the decimal
 separator matches case (`NUMBERVALUE("1a5","A","b")` is `#VALUE!`). A letter decimal separator leaves "0.2" readable
 (`NUMBERVALUE("0.2","A","b")` and `NUMBERVALUE("0.2","A")` are 0.2). With a "," decimal separator and no group separator,
-`NUMBERVALUE("1.5",",")` is 15: the default group separator is then not "," (ours `#VALUE!`, T-2406).
+`NUMBERVALUE("1.5",",")` is 15: the default group separator is then not "," (ours `#VALUE!`, T-2406). Separators whose first characters agree clash even when
+the rest differs: `NUMBERVALUE("1A5","A","AB")` is `#VALUE!` (A20).
 Evidence: probes/numbervalue-separator-edges A1:A20 (excel-graph, 2026-10-22, T-2379). Whether the 255 counts characters or
 UTF-16 units is unprobed (the engine counts as for the text, `number_text_too_long`).
-Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
-when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
+Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
 after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
 colon after a bare hour (T-2352, in the shared clock parser).
