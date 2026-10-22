@@ -24,6 +24,8 @@ pub(super) enum Inst {
     Class(Box<[ClassUnicodeRange]>),
     /// `.`: any character, `\n` only when `dot_all`.
     Any { dot_all: bool },
+    /// `\X`: one extended grapheme cluster, whole.
+    Grapheme,
     /// Tries the first target, then the second on failure.
     Split(usize, usize),
     /// Continues at the target.
@@ -58,7 +60,7 @@ pub(super) enum CompileError {
     /// The program passes its size limit.
     TooBig,
     /// A construct the backtracker does not run yet: lookaround, conditionals and `\K`
-    /// (T-2354), `\R` and `\X` (T-2287); `#VALUE!` until then.
+    /// (T-2354); `#VALUE!` until then.
     Unsupported,
 }
 
@@ -274,10 +276,12 @@ impl Compiler<'_> {
                 self.node(ast)?;
                 self.push(Inst::AtomicEnd)?;
             }
-            Ast::LookAround { .. }
-            | Ast::Conditional { .. }
-            | Ast::KeepOut
-            | Ast::Unimplemented => return Err(CompileError::Unsupported),
+            Ast::Grapheme => {
+                self.push(Inst::Grapheme)?;
+            }
+            Ast::LookAround { .. } | Ast::Conditional { .. } | Ast::KeepOut => {
+                return Err(CompileError::Unsupported)
+            }
         }
         Ok(())
     }

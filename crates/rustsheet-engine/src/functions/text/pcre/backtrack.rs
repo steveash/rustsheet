@@ -14,6 +14,7 @@ use regex_automata::{
 
 use super::ast::Anchor;
 use super::class::literal_class;
+use super::grapheme::cluster_end;
 use super::program::{Inst, Program};
 use crate::functions::text::regex_engine::{charge, Spent};
 
@@ -146,6 +147,15 @@ impl Backtracker<'_> {
                         true
                     }
                     _ => false,
+                },
+                Some(Inst::Grapheme) => match cluster_end(text, pos) {
+                    Some((end, chars)) => {
+                        // Each character past the first is a step of its own.
+                        charge(self.work, STEP.saturating_mul(chars - 1))?;
+                        pos = end;
+                        true
+                    }
+                    None => false,
                 },
                 Some(Inst::Split(first, second)) => {
                     self.push(Frame::Retry { pc: *second, pos })?;

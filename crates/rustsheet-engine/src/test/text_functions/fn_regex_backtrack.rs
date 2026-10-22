@@ -1,5 +1,5 @@
 //! REGEX* patterns only the backtracker runs (T-1900, SPEC-0013 section 3): backreferences,
-//! atomic and possessive groups, `\G`.
+//! atomic and possessive groups, `\G`, `\R` and `\X`.
 
 use crate::test::util::new_empty_model;
 
@@ -139,4 +139,79 @@ fn empty_repeat_bodies_are_charged_at_compile() {
         );
         assert!(start.elapsed().as_secs() < 10, "{pattern}");
     }
+}
+
+#[test]
+fn line_breaks_and_grapheme_clusters_are_atomic() {
+    // probes/t2287-regex-r-x-spans (excel-graph): `\r\n` is one `\R` and one `\X`, and neither
+    // gives a character back.
+    let cr_lf = r#"CHAR(13)&CHAR(10)"#;
+    assert_eq!(value(&format!(r#"=REGEXTEST({cr_lf},"^\R$")"#)), "TRUE");
+    assert_eq!(value(&format!(r#"=REGEXTEST({cr_lf},"^\R\n$")"#)), "FALSE");
+    assert_eq!(value(&format!(r#"=REGEXTEST({cr_lf},"^\X\n$")"#)), "FALSE");
+    assert_eq!(value(r#"=REGEXTEST(UNICHAR(8232),"\R")"#), "TRUE");
+    assert_eq!(value(r#"=REGEXTEST("a","[\R]")"#), "#VALUE!");
+    assert_eq!(value(r#"=REGEXTEST("e"&UNICHAR(769),"^\X$")"#), "TRUE");
+    assert_eq!(value(r#"=REGEXTEST("e"&UNICHAR(769),"^\X.$")"#), "FALSE");
+    assert_eq!(
+        value(r#"=REGEXREPLACE("e"&UNICHAR(769)&"a","\X","[$0]")"#),
+        "[e\u{301}][a]"
+    );
+}
+
+#[test]
+fn grapheme_clusters_follow_pcre2s_join_table() {
+    // probes/t2287-regex-r-x-spans: the lengths of each `\X` in the text.
+    let lengths = |text: &str| {
+        value(&format!(
+            r#"=TEXTJOIN(",",,LEN(REGEXEXTRACT({text},"\X",1)))"#
+        ))
+    };
+    // A ZWJ family emoji and a flag are one cluster each; three indicators are a pair and one.
+    assert_eq!(
+        lengths("UNICHAR(128104)&UNICHAR(8205)&UNICHAR(128105)&UNICHAR(8205)&UNICHAR(128103)"),
+        "8"
+    );
+    assert_eq!(
+        lengths("UNICHAR(127482)&UNICHAR(127480)&UNICHAR(127482)"),
+        "4,2"
+    );
+    // No GB9c: a Devanagari conjunct is two clusters (A20).
+    assert_eq!(lengths("UNICHAR(2325)&UNICHAR(2381)&UNICHAR(2359)"), "2,1");
+    // PCRE2's quirks: nothing but an indicator joins an indicator, and a Prepend does not join
+    // an emoji (B3, B4), though it joins an indicator (B5).
+    assert_eq!(lengths("UNICHAR(127482)&UNICHAR(769)"), "2,1");
+    assert_eq!(lengths("UNICHAR(1536)&UNICHAR(128512)"), "1,2");
+    assert_eq!(lengths("UNICHAR(1536)&UNICHAR(127482)"), "3");
+    // A ZWJ joins an emoji only after an emoji and its extenders (A24, B17, B19).
+    assert_eq!(lengths(r#""a"&UNICHAR(8205)&UNICHAR(128104)"#), "2,2");
+    assert_eq!(
+        lengths("UNICHAR(128104)&UNICHAR(769)&UNICHAR(8205)&UNICHAR(128105)"),
+        "6"
+    );
+    assert_eq!(
+        lengths("UNICHAR(128512)&UNICHAR(2307)&UNICHAR(8205)&UNICHAR(128512)"),
+        "4,2"
+    );
+}
+
+/// `\X` charges each character it takes like any other step (directive 5), and a text of the
+/// longest length a cell holds still fits in a call's budget.
+#[test]
+fn grapheme_clusters_over_a_long_text_fit_the_budget() {
+    assert_eq!(
+        value(r#"=LEN(REGEXEXTRACT(REPT("a",32767),"\X+"))"#),
+        "32767"
+    );
+    assert_eq!(
+        value(r#"=LEN(REGEXEXTRACT(REPT("e"&UNICHAR(769),16383),"\X+"))"#),
+        "32766"
+    );
+    // One cluster of 32,767 characters, read again from every start: an answer or the call's
+    // work spent, quickly.
+    let bound = if cfg!(debug_assertions) { 120 } else { 10 };
+    let start = std::time::Instant::now();
+    let result = value(r#"=REGEXTEST("a"&REPT(UNICHAR(769),32766),"\Xb")"#);
+    assert!(result == "#ERROR!" || result == "FALSE", "{result}");
+    assert!(start.elapsed().as_secs() < bound);
 }

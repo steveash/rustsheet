@@ -370,4 +370,13 @@ fn test_cell_shaped_callee_is_call_of_cell() {
         );
         assert_eq!(to_english_localized_string(&node, &cell()), printed);
     }
+    // So are a range and a spill written without parentheses, and they print bare (T-2008).
+    for formula in ["Sheet1!$A$1:$A$2(2)", "$A$1:A2(2)", "A1#(2)"] {
+        let node = p.parse(formula, &cell());
+        assert!(
+            matches!(node, Node::LambdaCallKind { .. }),
+            "{formula}: {node:?}"
+        );
+        assert_eq!(to_english_localized_string(&node, &cell()), formula);
+    }
 }
