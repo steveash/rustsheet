@@ -6,7 +6,7 @@ mod month_shift;
 mod networkdays;
 pub(crate) mod time_text;
 mod weekend;
-mod weeknum;
+pub(crate) mod weeknum;
 mod workday;
 mod yearfrac;
 use weekend::WeekendPattern;
@@ -816,10 +816,16 @@ impl Model {
 
     pub(crate) fn fn_isoweeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
-        self.numbers_fn(Function::Isoweeknum, args, [0.0], cell, |[serial]| {
+        let result = self.numbers_fn(Function::Isoweeknum, args, [0.0], cell, |[serial]| {
             let serial = date_system.to_1900_serial(serial.floor() as i64);
             weeknum::iso_week(serial.ok_or(Error::NUM)?)
-        })
+        });
+        // ISOWEEKNUM of a valid serial keeps a Monday start in WEEKNUM's stale return_type state
+        // (probes/weeknum-stale-reset-isoweeknum, SPEC-0017 rule 2).
+        if matches!(result, CalcResult::Number(_)) {
+            self.evaluation.weeknum_start = Some(weeknum::WeeknumStart::Monday);
+        }
+        result
     }
 }
 

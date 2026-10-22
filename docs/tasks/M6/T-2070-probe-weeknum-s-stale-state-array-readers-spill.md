@@ -23,6 +23,9 @@ marker; the order is bottom to top. Write one probe case per question group and 
   - a reader that lifts over an array, `=SUM(IFERROR(WEEKNUM(100,{99,99}),0))`, after a Monday marker;
   - a spilling formula: a reader spilling (`=WEEKNUM(100,99)+SEQUENCE(2)*0`) above and below a
     marker, to show where anchors sit in the order;
+  - a spilling formula with no WEEKNUM between a Monday marker and a reader: gen-m6 says it
+    empties the state (dates.md, T-2068). Tell a spill from a 1×1 array result
+    (`=TRANSPOSE("abc")`) and from `#SPILL!`, and whether the anchor runs at its place;
   - WEEKNUM inside a defined name, inside LET and inside a LAMBDA called from a cell, as both setter
     and reader;
   - a reader in a conditional-formatting rule, if the harness can read it; otherwise say it cannot;
