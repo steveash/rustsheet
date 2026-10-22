@@ -936,6 +936,7 @@ C	probes/table-edits/table-delete-row-last-data-totals.case.json	15
 C	probes/table-edits/table-delete-row-last-data.case.json	12
 C	probes/table-edits/table-delete-row-totals.case.json	15
 C	probes/table-edits/table-delete-sheet.case.json	12
+C	probes/table-edits/table-delete-table-cells.case.json	6
 C	probes/table-edits/table-delete-table.case.json	12
 C	probes/table-edits/table-edit-baseline.case.json	9
 C	probes/table-edits/table-insert-column-before.case.json	12
