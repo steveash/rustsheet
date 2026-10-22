@@ -571,14 +571,22 @@ Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
   `INDEX(WORKDAY.INTL(1/0,5,{1;#N/A}),2)` `#DIV/0!`, while every `INDEX(NETWORKDAYS.INTL(..,{1;#N/A}),2)` is `#VALUE!`
   (P26-P30, Q26-Q30); `ROWS(WORKDAY.INTL({45000;45001},5,Sheet1:Sheet2!W1))` is 2 (M6, N6).
 - A 3-D `holidays` is `#VALUE!`, also as a branch of IF and in WORKDAY and NETWORKDAYS
-  (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`, `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; M9-N13). Unprobed: an IF whose 3-D branch is not taken
-  (`IF(FALSE,Sheet1:Sheet2!A1,A1)`, ours `#VALUE!`) and a 3-D holidays with a day count of 0 (ours the start date).
+  (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`, `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; M9-N13). Only the
+  branch IF or CHOOSE takes counts (probes/t2238-holidays-if-3d-branch, excel-graph 2026-10-22, T-2238):
+  `IF(FALSE,Sheet1:Sheet2!A1,A1)`, `IF(TRUE,A1,Sheet1:Sheet2!A1)`, `IF(A9,Sheet1:Sheet2!A1,A1)` with A9 FALSE and
+  `CHOOSE(2,Sheet1:Sheet2!A1,A1)` are A1 in all four functions (D1:G4), while a taken 3-D branch, `CHOOSE(1,..)` included,
+  is `#VALUE!` (D5:G7). Lifted, the error is per element: `ROWS(WORKDAY({45000;45001},5,IF(TRUE,Sheet1:Sheet2!A1,A1)))`
+  is 2 and its second element `#VALUE!` (H5, I5). `IF(FALSE,Sheet1:Sheet2!A1)` is FALSE as holidays, `#VALUE!` (row 9).
+  A day count of 0 (or 0.5) never reads the holidays: WORKDAY and WORKDAY.INTL give the start date, a weekend start
+  included, with a 3-D, `NA()` or `"x"` holidays (K1-K4, K8-K9, K11-K14), but 1 day is `#VALUE!` (K10); NETWORKDAYS
+  and NETWORKDAYS.INTL over one day still read them (`NETWORKDAYS(45000,45000,Sheet1:Sheet2!A1)` is `#VALUE!`, K5-K7).
 - A one-cell `weekend` range is that cell's value (`WORKDAY.INTL(45000,5,W1:W1)` = 45007, 1 row; J7-J9, K7-K9).
 Ours: `Model::weekend_mask` turns an error-valued weekend into the caller's error (`#NUM!` or `#VALUE!`);
 `workday_of` reads the holidays before the weekend and `networkdays_of` reads the weekend first; `holiday_serials`
-refuses a 3-D reference (`is_span_or_if_of_span`) with `#VALUE!` (crates/rustsheet-engine/src/functions/date_and_time/).
+follows the branch IF picks (`if_pick`) and refuses a 3-D reference there with `#VALUE!` (T-2238;
+crates/rustsheet-engine/src/functions/date_and_time/).
 Status: VERIFIED
-Tasks: T-1428
+Tasks: T-1428, T-2238
 
 ## TIMEVALUE of chrono-pattern date-time text in a 1904 workbook (T-1445)
 Rule: in a 1904 workbook `TIMEVALUE("7/7/2026 4:35 PM")` and `TIMEVALUE("2024-03-15 16:35")` both give
