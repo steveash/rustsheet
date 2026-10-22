@@ -1,0 +1,78 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2278: MATCH match_type -1 (and -2.2, truncated) over the unsorted 0.5,0.3,0,-2.5,2.5,-1,1,0.1,100 (gen-m6/50f0dd9a8ee2cb57 A204) with a blank key, 0, +-0.0001 and \"\", over the whole vector and its 5- to 8-cell prefixes.",
+  "tags": [
+    "probe",
+    "lookup",
+    "T-2278",
+    "M6"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": true,
+        "C2": 2.5,
+        "Z1": "x",
+        "E4": 0.5,
+        "E5": 0.3,
+        "E6": 0,
+        "E7": -2.5,
+        "E8": 2.5,
+        "E9": -1,
+        "E10": 1,
+        "E11": 0.1,
+        "E12": 100,
+        "B3": false,
+        "B4": 3.14159,
+        "B5": 42,
+        "B6": -1,
+        "B7": "ABC",
+        "B8": -0.0001,
+        "B9": -0.0001,
+        "B10": true,
+        "E25": true,
+        "E26": "x",
+        "E27": 2,
+        "E28": "1.5",
+        "E29": 1,
+        "C23": -2.5,
+        "C26": 1e-15,
+        "C27": true,
+        "D24": 1e-15,
+        "D25": 123456789.123,
+        "D26": "x",
+        "D27": 2.5,
+        "D29": 2.5,
+        "D31": 7,
+        "E30": -0.0001,
+        "E31": 3.14159,
+        "E24": 0.3,
+        "A26": "A1"
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=MATCH(Data!B2,Data!E4:E12,-1)",
+        "A2": "=MATCH(Data!B2,Data!E4:E12,-2.2)",
+        "A3": "=MATCH(0,Data!E4:E12,-1)",
+        "A4": "=MATCH(0,Data!E4:E12,-2.2)",
+        "A5": "=MATCH(0.0001,Data!E4:E12,-1)",
+        "A6": "=MATCH(0.0001,Data!E4:E12,-2.2)",
+        "A7": "=MATCH(-0.0001,Data!E4:E12,-1)",
+        "A8": "=MATCH(-0.0001,Data!E4:E12,-2.2)",
+        "A9": "=MATCH(\"\",Data!E4:E12,-1)",
+        "A10": "=MATCH(\"\",Data!E4:E12,-2.2)",
+        "A11": "=MATCH(Data!B2,Data!E4:E8,-1)",
+        "A12": "=MATCH(0,Data!E4:E8,-1)",
+        "A13": "=MATCH(Data!B2,Data!E4:E9,-1)",
+        "A14": "=MATCH(0,Data!E4:E9,-1)",
+        "A15": "=MATCH(Data!B2,Data!E4:E10,-1)",
+        "A16": "=MATCH(0,Data!E4:E10,-1)",
+        "A17": "=MATCH(Data!B2,Data!E4:E11,-1)",
+        "A18": "=MATCH(0,Data!E4:E11,-1)"
+      }
+    }
+  ]
+}

@@ -120,13 +120,15 @@ impl Model {
     /// blank cell stays blank (so `#VALUE!`) rather than becoming a scalar 0
     /// (gen-m5 `MINVERSE(Data!$B4)`, `MDETERM(Data!D$1)`, `MMULT(Data!A5,Data!B11)`:
     /// docs/excel-semantics/arrays.md "MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!").
+    /// The empty value a lookup gives for a blank result cell is blank too:
+    /// `MMULT(LOOKUP(TRUE,B2:B10,E11:E11),2.5)` is `#VALUE!` (probes/lookup-short-result-vector A20).
     pub(crate) fn eval_matrix_arg(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
-            CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![vec![ArrayNode::Empty]]),
             other => self.result_to_array(other, cell),
         }
     }

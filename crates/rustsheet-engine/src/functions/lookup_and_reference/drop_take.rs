@@ -13,7 +13,7 @@ use crate::{
     reference_operators::{Picked, RefArg, RefGrid},
 };
 
-use super::ref_lift::lifts;
+use super::ref_lift::lifts_one_by_one;
 
 /// Whether a call keeps (TAKE) or removes (DROP) the rows and columns it counts.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -120,7 +120,7 @@ impl Model {
             self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
         };
         let counts = self.reference_lift_values(&args[1..], cell);
-        if counts.as_slice().iter().any(lifts) {
+        if counts.as_slice().iter().any(lifts_one_by_one) {
             // TODO(T-2212) a lifted count over an array of references is unprobed; it reads the
             // grid's value view.
             return self.take_drop_lifted(source, counts, edge, cell);
@@ -160,7 +160,7 @@ impl Model {
         if let CalcResult::Range { left, right } = source {
             if left.sheet == right.sheet {
                 let (num_rows, num_cols) = range_dims(left, right);
-                let lifted = match self.reference_lift_args(counts, cell) {
+                let lifted = match self.reference_lift_args(counts, lifts_one_by_one, cell) {
                     Ok(lifted) => lifted,
                     Err(error) => return RefArg::Value(error),
                 };

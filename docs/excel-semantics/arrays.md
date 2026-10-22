@@ -284,7 +284,7 @@ Implemented in: `coerce_to_f64` (crates/rustsheet-engine/src/functions/math_and_
 Status: VERIFIED (Excel-cached; the boolean rule excel-graph)
 Tasks: T-0943, T-1358
 A single blank cell is a blank matrix too: `MINVERSE(B4)`, `MDETERM(D$1)`, `MMULT(100,C$9)` and `MMULT(1E-15,B11)`
-with the cell blank are `#VALUE!`. Implemented in `Model::eval_matrix_arg` (matrix.rs, T-2164); any blank result, not only a direct reference, stays blank (a blank through IF/INDEX/CHOOSE is unprobed). Evidence (excel-graph, 2026-10-20): gen-m5/cf893ec19f53a7fc
+with the cell blank are `#VALUE!`. Implemented in `Model::eval_matrix_arg` (matrix.rs, T-2164); any blank result, not only a direct reference, stays blank (a blank through INDEX or CHOOSE is unprobed). So does the empty value a lookup gives for a blank result cell: `MMULT(LOOKUP(TRUE,Data!B2:B10,Data!E11:E11),2.5)` is `#VALUE!` (probes/lookup-short-result-vector A20, T-2278; lookup.md "LOOKUP past a short result vector"), as do `MMULT(,2)`, IFERROR of a blank and `IF(TRUE,<blank>)` (probes/lookup-t2278-followups A1-A5). Evidence (excel-graph, 2026-10-20): gen-m5/cf893ec19f53a7fc
 Calc!A204, gen-m5/fc81c2f704bef138 Calc!A381, gen-m5/3e134e52393061b1 Calc!A10, gen-m5/d9fb1e918971111b Calc!A213 (T-2164).
 
 ## MDETERM: partial-pivot LU, no singularity cutoff
@@ -392,7 +392,13 @@ A 1x1 array in a lifted parameter lifts to one element, but a single cell does n
 `SEQUENCE({3},2)`, `SEQUENCE(A3+{0})` and `EXPAND(A1:A2,{3})` are the 1x1 1 (ROWS 1; `=SEQUENCE({3})` spills one
 cell), `TOCOL(A1:B3,{0})` and `UNIQUE(D1:D3,{FALSE})` are 1x1, `TAKE(A1:B3,{2})` is one reference element A1:B2
 (spilled `#VALUE!`), while `SEQUENCE(A3*1)`, `SEQUENCE(INDIRECT("A3")*1)`, `SEQUENCE(A3:A3)`, `SEQUENCE(IF(TRUE,A3))`
-and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows. A lifted element error stays in place:
+and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows: arithmetic over a one-cell reference is that cell's value
+here, not a 1x1 array (row 39), and so through any operator: `SEQUENCE(-INDIRECT("A3")*-1)`,
+`SEQUENCE(--INDIRECT("A3"))`, `SEQUENCE(INDIRECT("A3")%*100)`, `SEQUENCE(INDIRECT("A3")&"")`,
+`SEQUENCE(IF(INDIRECT("A3")=3,3))`, `SEQUENCE(OFFSET(A3,0,0)+0)`, `SEQUENCE(--A3:A3)` and
+`TAKE(A1:B3,--INDIRECT("A3"))` all have 3 rows, where the same operators over `{3}` give one element
+(probes/m7-one-cell-operand-lift F1-F15). OFFSET lifts a 1x1 array too: `OFFSET(A1:B2,{1},0)` has ROWS and
+COLUMNS 1 (F16, F17), as `DROP(A1:B3,{1})` (F6; its element has 2 rows, F7). A lifted element error stays in place:
 `INDEX(SEQUENCE({1;0}),2,1)` is `#CALC!`. UNIQUE's and SORTBY's later elements follow their own rule ("UNIQUE's and
 SORTBY's lifted elements" below).
 These take an array whole: the delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are a list of delimiters
@@ -421,7 +427,7 @@ case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
-per-parameter rule, which T-1960 confirmed; a 1x1 array argument still runs one unlifted call where Excel lifts it, T-2298); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
+per-parameter rule, which T-1960 confirmed; a 1x1 array argument lifts to one element since T-2298, a one-cell range read through any operator being the cell's value: `number_or_array`, `value_or_array` and `string_or_array` in cast.rs, OFFSET's, TAKE's and DROP's `lifts_one_by_one`; EXPAND's and WRAPROWS's 1x1 cases wait on T-1835, which lifts them); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
 EXPAND's columns, WRAPROWS's pad_with and WRAPCOLS's array wrap_count are T-1835's, and EXPAND's array pad_with is `#VALUE!` there too (ours lifts it);
 TAKE and DROP lift since T-1838 (reference elements; IF, CHOOSE and OFFSET do not hand the grid on, and `TAKE(NA(),{1;2})` is one `#N/A`: T-2299);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a

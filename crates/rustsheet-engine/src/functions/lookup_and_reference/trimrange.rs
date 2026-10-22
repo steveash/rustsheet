@@ -191,7 +191,7 @@ impl Model {
                 },
             );
         };
-        let lifted = match self.reference_lift_args(values, cell) {
+        let lifted = match self.reference_lift_args(values, lifts, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
         };

@@ -85,6 +85,8 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 28 known-failure li
 - gen-m7/6db767d720c5b55a.case.json A12 `=WRAPCOLS(Data!D3:D3,UNIQUE(Data!B3:E4,SWITCH((-0.5),"a*",Data!$E9,Data!A12,1.005,Data!B9,Data!A6,(-0.0001))))`: A12 Excel #SPILL!, ours #N/IMPL!; cells (1): A12
 - gen-m7/90de8755a2e565e6.case.json A889 `=WRAPROWS(((Data!B5+Data!C7)-SIGN(Data!B4)),(-1),((Data!B4-(-0.5))*FILTER(Data!A1:D12,(Data!B1:B12>3.14159))))`: B889 Excel #VALUE!, ours <empty>; cells (23): B889:D889, A890:D890, A891:D891, A892:D892, A893:D893, A894:D894
 
+Owned cells (from T-2298, 2026-10-22): a 1x1 array lifts in the driver since T-2298, so these pass once EXPAND and WRAPROWS lift: probes/m7-lift-take-drop-sortby Sheet1!F15 `=ROWS(EXPAND(A1:A2,{3}))` (Excel 1, ours 3); gen-m7/18b80d3fd292d63a Calc!A1754 (EXPAND over a one-cell SCAN, Excel <empty>, ours #N/A); gen-m7/8044dce50616cfe9 Calc!A1781 (WRAPROWS with a MINVERSE pad_with, Excel <empty>, ours 0.3).
+
 ## Acceptance criteria
 - [ ] The 28 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 28 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
 - [ ] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 10 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 1 cell of the ungated gen-m7 suite passes in `make eval`, with no new known-failure lines in any baseline.
