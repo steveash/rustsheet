@@ -438,6 +438,7 @@ C	probes/info-cell-address-cross-sheet.case.json	13
 C	probes/info-cell-contents-range.case.json	50
 C	probes/info-cell-info-type-grid-errors.case.json	17
 C	probes/info-cell-legacy-range.case.json	40
+C	probes/info-cell-type-cross-sheet-reprobe.case.json	24
 C	probes/info-logic-argument-modes-2.case.json	11
 C	probes/info-logic-argument-modes.case.json	42
 C	probes/info-modes-isref-value-op.case.json	1
