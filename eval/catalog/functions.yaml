@@ -32,7 +32,8 @@
 # `pool: <name>` on a `value` param: 35% of its values come from that edge pool in
 # tools/src/rustsheet_tools/gen/pools.py (T-2109: number_edges, unit_interval, angle, code_point; T-2110: text_edges,
 # numeric_text, number_formats, errors; T-2179: date_serial, time_serial, date_text, time_text, weekend_mask,
-# weekday_return, weeknum_return, month_offset), after the `domain`
+# weekday_return, weeknum_return, month_offset; T-2248, the M9 financial params: rate, nper, period,
+# cash_amount, price, annuity_type, security_date, basis, frequency, npery, cash_flows, cash_dates), after the `domain`
 # draw and never on a `hard` domain.
 # `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
 # vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself; WRAPROWS/WRAPCOLS on an
@@ -362,14 +363,14 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: first_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: par, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
-      - { name: calc_method, mode: value, lift: arrays, type: bool, optional: true }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 }, pool: security_date }
+      - { name: first_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 }, pool: security_date }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: par, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 }, pool: cash_amount }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
+      - { name: calc_method, mode: value, lift: arrays, type: bool, optional: true, pool: flag }
   - name: ACCRINTM
     category: financial
     milestone: M9
@@ -377,11 +378,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: par, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 }, pool: security_date }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: par, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 }, pool: cash_amount }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: ACOS
     category: math
     milestone: M5
@@ -439,13 +440,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: cost, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: date_purchased, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 38000 } }
-      - { name: first_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 38001, max: 40000 } }
-      - { name: salvage, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: period, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: cost, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 100000 }, pool: cash_amount }
+      - { name: date_purchased, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 38000 }, pool: security_date }
+      - { name: first_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 38001, max: 40000 }, pool: security_date }
+      - { name: salvage, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 900 }, pool: cash_amount }
+      - { name: period, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 10 }, pool: period }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: AMORLINC
     category: financial
     milestone: M9
@@ -453,13 +454,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: cost, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: date_purchased, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 38000 } }
-      - { name: first_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 38001, max: 40000 } }
-      - { name: salvage, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: period, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: cost, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 100000 }, pool: cash_amount }
+      - { name: date_purchased, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 38000 }, pool: security_date }
+      - { name: first_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 38001, max: 40000 }, pool: security_date }
+      - { name: salvage, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 900 }, pool: cash_amount }
+      - { name: period, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 10 }, pool: period }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: ARABIC
     category: math
     milestone: M5
@@ -1102,10 +1103,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: COUPDAYS
     category: financial
     milestone: M9
@@ -1113,10 +1114,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: COUPDAYSNC
     category: financial
     milestone: M9
@@ -1124,10 +1125,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: COUPNCD
     category: financial
     milestone: M9
@@ -1135,10 +1136,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: COUPNUM
     category: financial
     milestone: M9
@@ -1146,10 +1147,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: COUPPCD
     category: financial
     milestone: M9
@@ -1157,10 +1158,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: COVAR
     category: statistical
     milestone: M9
@@ -1226,12 +1227,12 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: nper, mode: value, lift: arrays, type: number, domain: { int: true, min: 24, max: 360 } }
-      - { name: pv, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 500000 } }
-      - { name: start_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 } }
-      - { name: end_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 13, max: 24 } }
-      - { name: type, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: nper, mode: value, lift: arrays, type: number, domain: { int: true, min: 24, max: 360 }, pool: nper }
+      - { name: pv, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 500000 }, pool: cash_amount }
+      - { name: start_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 }, pool: period }
+      - { name: end_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 13, max: 24 }, pool: period }
+      - { name: type, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
   - name: CUMPRINC
     category: financial
     milestone: M9
@@ -1239,12 +1240,12 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: nper, mode: value, lift: arrays, type: number, domain: { int: true, min: 24, max: 360 } }
-      - { name: pv, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 500000 } }
-      - { name: start_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 } }
-      - { name: end_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 13, max: 24 } }
-      - { name: type, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: nper, mode: value, lift: arrays, type: number, domain: { int: true, min: 24, max: 360 }, pool: nper }
+      - { name: pv, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 500000 }, pool: cash_amount }
+      - { name: start_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 }, pool: period }
+      - { name: end_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 13, max: 24 }, pool: period }
+      - { name: type, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
   - name: DATE
     category: date
     milestone: M6
@@ -1309,10 +1310,10 @@ functions:
     prior: 0.15
     returns: number
     params:
-      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: life, mode: value, type: number, domain: { int: true, min: 10, max: 40 } }
-      - { name: period, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 }, pool: cash_amount }
+      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 }, pool: cash_amount }
+      - { name: life, mode: value, type: number, domain: { int: true, min: 10, max: 40 }, pool: nper }
+      - { name: period, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: period }
       - { name: month, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 12 } }
   - name: DBCS
     category: text
@@ -1349,10 +1350,10 @@ functions:
     prior: 0.15
     returns: number
     params:
-      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: life, mode: value, type: number, domain: { int: true, min: 10, max: 40 } }
-      - { name: period, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 }, pool: cash_amount }
+      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 }, pool: cash_amount }
+      - { name: life, mode: value, type: number, domain: { int: true, min: 10, max: 40 }, pool: nper }
+      - { name: period, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: period }
       - { name: factor, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
   - name: DEC2BIN
     category: engineering
@@ -1431,11 +1432,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 99 } }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 99 }, pool: price }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: DMAX
     category: database
     milestone: M9
@@ -1541,12 +1542,12 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: coupon, mode: value, lift: arrays, type: number }
-      - { name: yld, mode: value, lift: arrays, type: number }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: coupon, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: yld, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: DVAR
     category: database
     milestone: M9
@@ -1593,8 +1594,8 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: nominal_rate, mode: value, lift: arrays, type: number }
-      - { name: npery, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 } }
+      - { name: nominal_rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: npery, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 }, pool: npery }
   # Lifts over an array; #VALUE! for every argument on excel-graph (probes/info-logic-argument-modes-2, T-1088).
   - name: ENCODEURL
     category: web
@@ -2003,11 +2004,11 @@ functions:
     prior: 0.4
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 } }
-      - { name: pmt, mode: value, type: number, domain: { int: true, min: -1000, max: -1 } }
-      - { name: pv, mode: value, type: number, optional: true, domain: { int: true, min: -10000, max: 0 } }
-      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 }, pool: nper }
+      - { name: pmt, mode: value, type: number, domain: { int: true, min: -1000, max: -1 }, pool: cash_amount }
+      - { name: pv, mode: value, type: number, optional: true, domain: { int: true, min: -10000, max: 0 }, pool: cash_amount }
+      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
   - name: FVSCHEDULE
     category: financial
     milestone: M9
@@ -2015,8 +2016,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: principal, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 } }
-      - { name: schedule, mode: array, type: number }
+      - { name: principal, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 }, pool: cash_amount }
+      - { name: schedule, mode: array, type: number, pool: cash_flows }
   - name: GAMMA
     category: statistical
     milestone: M9
@@ -2493,11 +2494,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: investment, mode: value, lift: arrays, type: number, domain: { int: true, min: 80000, max: 99000 } }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100000, max: 110000 } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: investment, mode: value, lift: arrays, type: number, domain: { int: true, min: 80000, max: 99000 }, pool: cash_amount }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100000, max: 110000 }, pool: price }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: IPMT
     category: financial
     milestone: M9
@@ -2505,12 +2506,12 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: per, mode: value, type: number, domain: { int: true, min: 1, max: 12 } }
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 12, max: 360 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 } }
-      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 } }
-      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: per, mode: value, type: number, domain: { int: true, min: 1, max: 12 }, pool: period }
+      - { name: nper, mode: value, type: number, domain: { int: true, min: 12, max: 360 }, pool: nper }
+      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 }, pool: cash_amount }
+      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 }, pool: cash_amount }
+      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
   - name: IRR
     category: financial
     milestone: M9
@@ -2518,8 +2519,8 @@ functions:
     prior: 0.4
     returns: number
     params:
-      - { name: values, mode: array, type: number }
-      - { name: guess, mode: value, type: number, optional: true }
+      - { name: values, mode: array, type: number, pool: cash_flows }
+      - { name: guess, mode: value, type: number, optional: true, pool: rate }
   # The IS* type tests lift over ranges and arrays (docs/excel-semantics/information.md).
   - name: ISBLANK
     category: information
@@ -2625,10 +2626,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: per, mode: value, type: number, domain: { int: true, min: 1, max: 12 } }
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 12, max: 360 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 } }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: per, mode: value, type: number, domain: { int: true, min: 1, max: 12 }, pool: period }
+      - { name: nper, mode: value, type: number, domain: { int: true, min: 12, max: 360 }, pool: nper }
+      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 }, pool: cash_amount }
   # Takes a range whole (TRUE, no lift) and any value (ISREF(1) is FALSE; probes/info-logic-argument-modes A9:A10).
   - name: ISREF
     category: information
@@ -2863,12 +2864,12 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: coupon, mode: value, lift: arrays, type: number }
-      - { name: yld, mode: value, lift: arrays, type: number }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: coupon, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: yld, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: MEDIAN
     category: statistical
     milestone: M9
@@ -2926,9 +2927,9 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: values, mode: array, type: number }
-      - { name: finance_rate, mode: value, type: number }
-      - { name: reinvest_rate, mode: value, type: number }
+      - { name: values, mode: array, type: number, pool: cash_flows }
+      - { name: finance_rate, mode: value, type: number, pool: rate }
+      - { name: reinvest_rate, mode: value, type: number, pool: rate }
   - name: MMULT
     category: math
     milestone: M5
@@ -3062,8 +3063,8 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: effect_rate, mode: value, lift: arrays, type: number }
-      - { name: npery, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 } }
+      - { name: effect_rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: npery, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 }, pool: npery }
   - name: NORM.DIST
     category: statistical
     milestone: M9
@@ -3144,11 +3145,11 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: pmt, mode: value, type: number, domain: { int: true, min: -1000, max: -1 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 100, max: 10000 } }
-      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 } }
-      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: pmt, mode: value, type: number, domain: { int: true, min: -1000, max: -1 }, pool: cash_amount }
+      - { name: pv, mode: value, type: number, domain: { int: true, min: 100, max: 10000 }, pool: cash_amount }
+      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 }, pool: cash_amount }
+      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
   - name: NPV
     category: financial
     milestone: M9
@@ -3156,8 +3157,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: value, mode: aggregate, type: number, repeat: true, min: 1, max: 254 }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: value, mode: aggregate, type: number, repeat: true, min: 1, max: 254, pool: cash_flows }
   - name: NUMBERVALUE
     category: text
     milestone: M5
@@ -3208,15 +3209,15 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: first_coupon, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: yld, mode: value, lift: arrays, type: number }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 }, pool: security_date }
+      - { name: first_coupon, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: yld, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: ODDFYIELD
     category: financial
     milestone: M9
@@ -3224,15 +3225,15 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: first_coupon, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 } }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 }, pool: security_date }
+      - { name: first_coupon, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 }, pool: price }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: ODDLPRICE
     category: financial
     milestone: M9
@@ -3240,14 +3241,14 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: last_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: yld, mode: value, lift: arrays, type: number }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: last_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: yld, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: ODDLYIELD
     category: financial
     milestone: M9
@@ -3255,14 +3256,14 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: last_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 } }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: last_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 }, pool: price }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: OFFSET
     category: lookup
     milestone: M6
@@ -3283,9 +3284,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 100, max: 10000 } }
-      - { name: fv, mode: value, type: number, domain: { int: true, min: 10001, max: 50000 } }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: pv, mode: value, type: number, domain: { int: true, min: 100, max: 10000 }, pool: cash_amount }
+      - { name: fv, mode: value, type: number, domain: { int: true, min: 10001, max: 50000 }, pool: cash_amount }
   - name: PEARSON
     category: statistical
     milestone: M9
@@ -3430,11 +3431,11 @@ functions:
     prior: 0.6
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 } }
-      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 } }
-      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 }, pool: nper }
+      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 }, pool: cash_amount }
+      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 }, pool: cash_amount }
+      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
   - name: POISSON
     category: statistical
     milestone: M9
@@ -3471,12 +3472,12 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: per, mode: value, type: number, domain: { int: true, min: 1, max: 12 } }
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 12, max: 360 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 } }
-      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 } }
-      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: per, mode: value, type: number, domain: { int: true, min: 1, max: 12 }, pool: period }
+      - { name: nper, mode: value, type: number, domain: { int: true, min: 12, max: 360 }, pool: nper }
+      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 }, pool: cash_amount }
+      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 }, pool: cash_amount }
+      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
   - name: PRICE
     category: financial
     milestone: M9
@@ -3484,13 +3485,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: yld, mode: value, lift: arrays, type: number }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: yld, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: PRICEDISC
     category: financial
     milestone: M9
@@ -3498,11 +3499,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: discount, mode: value, lift: arrays, type: number }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: discount, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: PRICEMAT
     category: financial
     milestone: M9
@@ -3510,12 +3511,12 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: yld, mode: value, lift: arrays, type: number }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: yld, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: PROB
     category: statistical
     milestone: M9
@@ -3549,11 +3550,11 @@ functions:
     prior: 0.4
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 } }
-      - { name: pmt, mode: value, type: number, domain: { int: true, min: -1000, max: -1 } }
-      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 } }
-      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, type: number, pool: rate }
+      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 }, pool: nper }
+      - { name: pmt, mode: value, type: number, domain: { int: true, min: -1000, max: -1 }, pool: cash_amount }
+      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 }, pool: cash_amount }
+      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
   - { name: PY, category: addin, milestone: M5, scope: out, reason: "runs Python in the Microsoft Cloud (decision 0027)" }
   - name: QUARTILE
     category: statistical
@@ -3673,12 +3674,12 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 } }
-      - { name: pmt, mode: value, type: number, domain: { int: true, min: -1000, max: -1 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 } }
-      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
-      - { name: guess, mode: value, type: number, optional: true }
+      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 }, pool: nper }
+      - { name: pmt, mode: value, type: number, domain: { int: true, min: -1000, max: -1 }, pool: cash_amount }
+      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 }, pool: cash_amount }
+      - { name: fv, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1000 }, pool: cash_amount }
+      - { name: type, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 }, pool: annuity_type }
+      - { name: guess, mode: value, type: number, optional: true, pool: rate }
   - name: RECEIVED
     category: financial
     milestone: M9
@@ -3686,11 +3687,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: investment, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 1000000 } }
-      - { name: discount, mode: value, lift: arrays, type: number }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: investment, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 1000000 }, pool: cash_amount }
+      - { name: discount, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: REDUCE
     category: logical
     milestone: M7
@@ -3809,9 +3810,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 100, max: 10000 } }
-      - { name: fv, mode: value, type: number, domain: { int: true, min: 10001, max: 50000 } }
+      - { name: nper, mode: value, type: number, domain: { int: true, min: 1, max: 360 }, pool: nper }
+      - { name: pv, mode: value, type: number, domain: { int: true, min: 100, max: 10000 }, pool: cash_amount }
+      - { name: fv, mode: value, type: number, domain: { int: true, min: 10001, max: 50000 }, pool: cash_amount }
   - name: RSQ
     category: statistical
     milestone: M9
@@ -3956,9 +3957,9 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: life, mode: value, type: number, domain: { int: true, min: 1, max: 40 } }
+      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 }, pool: cash_amount }
+      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 }, pool: cash_amount }
+      - { name: life, mode: value, type: number, domain: { int: true, min: 1, max: 40 }, pool: nper }
   - name: SLOPE
     category: statistical
     milestone: M9
@@ -4155,10 +4156,10 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: life, mode: value, type: number, domain: { int: true, min: 10, max: 40 } }
-      - { name: per, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 }, pool: cash_amount }
+      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 }, pool: cash_amount }
+      - { name: life, mode: value, type: number, domain: { int: true, min: 10, max: 40 }, pool: nper }
+      - { name: per, mode: value, type: number, domain: { int: true, min: 1, max: 10 }, pool: period }
   # T does not lift over a range (probes/text-argument-modes F9); `value` only gets scalars from the generator.
   - name: T
     category: text
@@ -4257,9 +4258,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number }
-      - { name: discount, mode: value, lift: arrays, type: number }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, pool: security_date }
+      - { name: discount, mode: value, lift: arrays, type: number, pool: rate }
   - name: TBILLPRICE
     category: financial
     milestone: M9
@@ -4267,9 +4268,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number }
-      - { name: discount, mode: value, lift: arrays, type: number }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, pool: security_date }
+      - { name: discount, mode: value, lift: arrays, type: number, pool: rate }
   - name: TBILLYIELD
     category: financial
     milestone: M9
@@ -4277,9 +4278,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number }
-      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 90, max: 99 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, pool: security_date }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 90, max: 99 }, pool: price }
   - name: TDIST
     category: statistical
     milestone: M9
@@ -4571,13 +4572,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: life, mode: value, type: number, domain: { int: true, min: 10, max: 40 } }
-      - { name: start_period, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
-      - { name: end_period, mode: value, type: number, domain: { int: true, min: 6, max: 10 } }
+      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 }, pool: cash_amount }
+      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 }, pool: cash_amount }
+      - { name: life, mode: value, type: number, domain: { int: true, min: 10, max: 40 }, pool: nper }
+      - { name: start_period, mode: value, type: number, domain: { int: true, min: 0, max: 5 }, pool: period }
+      - { name: end_period, mode: value, type: number, domain: { int: true, min: 6, max: 10 }, pool: period }
       - { name: factor, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
-      - { name: no_switch, mode: value, type: bool, optional: true }
+      - { name: no_switch, mode: value, type: bool, optional: true, pool: flag }
   - name: VSTACK
     category: lookup
     milestone: M7
@@ -4681,9 +4682,9 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: values, mode: array, type: number }
-      - { name: dates, mode: array, type: number }
-      - { name: guess, mode: value, lift: arrays, type: number, optional: true }
+      - { name: values, mode: array, type: number, pool: cash_flows }
+      - { name: dates, mode: array, type: number, pool: cash_dates }
+      - { name: guess, mode: value, lift: arrays, type: number, optional: true, pool: rate }
   - name: XLOOKUP
     category: lookup
     milestone: M6
@@ -4716,9 +4717,9 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: values, mode: array, type: number }
-      - { name: dates, mode: array, type: number }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: values, mode: array, type: number, pool: cash_flows }
+      - { name: dates, mode: array, type: number, pool: cash_dates }
   # Like AND: text and blanks in a range or array are skipped, direct text is coerced, a lone text cell is #VALUE! (probes/info-logic-argument-modes A1:A5, -2 A10:A11); XOR() is refused (T-1088).
   - name: XOR
     category: logical
@@ -4746,13 +4747,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 } }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 }, pool: price }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] }, pool: frequency }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: YIELDDISC
     category: financial
     milestone: M9
@@ -4760,11 +4761,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 99 } }
-      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 99 }, pool: price }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 }, pool: price }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: YIELDMAT
     category: financial
     milestone: M9
@@ -4772,12 +4773,12 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: rate, mode: value, lift: arrays, type: number }
-      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 } }
-      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 }, pool: security_date }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 }, pool: security_date }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 }, pool: security_date }
+      - { name: rate, mode: value, lift: arrays, type: number, pool: rate }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 }, pool: price }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 }, pool: basis }
   - name: Z.TEST
     category: statistical
     milestone: M9

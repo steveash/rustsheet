@@ -292,7 +292,8 @@ def test_number_enums_are_number_literals() -> None:
         for formula in spec["sheets"][1]["cells"].values():
             freqs += re.findall(r"COUP(?:DAYBS|DAYS|DAYSNC|NCD|NUM|PCD)\(\d+,\d+,([^,()]*)", formula)
     assert freqs and {"1", "2", "4"} & set(freqs), freqs
-    assert not any(f.startswith('"') for f in freqs), freqs
+    # The frequency pool's "2" is the one deliberate text frequency (T-2248).
+    assert not any(f.startswith('"') and f not in POOLS["frequency"] for f in freqs), freqs
 
 
 def m7_formulas() -> list[str]:
@@ -830,22 +831,32 @@ def test_pooled_catalog_params_keep_their_domain() -> None:
     assert any(d in POOLS["regex_pattern"] and d not in enum for d in draws)
 
 
+def test_pooled_financial_params_keep_their_soft_domain() -> None:
+    # T-2248: a financial param with an int or enum domain (a bond's settlement serials, frequency 1, 2 or 4) still
+    # draws in-domain most of the time, and its pool adds the edges outside it.
+    g = Gen(random.Random(13), Catalog([], []), 12, 5, 3)
+    checked = 0
+    for f in _loaded_catalog().functions:
+        if f.get("category") != "financial":
+            continue
+        for p in f.get("params", []):
+            dom = p.get("domain") or {}
+            if "pool" not in p or not (dom.get("int") or dom.get("enum")):
+                continue
+            if dom.get("int"):
+                inside = {str(v) for v in range(dom.get("min", 0), dom.get("max", 10) + 1)}
+            else:
+                inside = {str(v) for v in dom["enum"]}
+            draws = [g.argument_text(p, "value", 0) for _ in range(400)]
+            assert sum(d in inside for d in draws) / len(draws) >= 0.6, (f["name"], p["name"])
+            assert any(d in POOLS[p["pool"]] and d not in inside for d in draws), (f["name"], p["name"])
+            checked += 1
+    assert checked >= 100
+
+
 def test_text_pools_respect_the_string_literal_limit_and_clock_free_values() -> None:
-    for name in (
-        "text_edges",
-        "numeric_text",
-        "number_formats",
-        "date_text",
-        "time_text",
-        "weekend_mask",
-        "array_shape",
-        "array_holes",
-        "lookup_value",
-        "lookup_table",
-        "regex_pattern",
-        "lambda_body",
-    ):
-        for text in POOLS[name]:
+    for name, pool in POOLS.items():
+        for text in pool:
             for literal in re.findall(r'"((?:[^"]|"")*)"', text):
                 assert len(literal.replace('""', '"')) <= MAX_STRING_LITERAL, (name, text)
     # A year-less date such as "1/2" reads as a date in the current year, so its value depends on the clock.

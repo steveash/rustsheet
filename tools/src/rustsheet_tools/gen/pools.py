@@ -216,6 +216,82 @@ POOLS: dict[str, list[str]] = {
         "{TRUE,FALSE,1} | Data!Z1:Z3 | {1,#N/A,3} | {100000000.1,100000000.2,100000000.3} | {1E+15,1,-1E+15} | "
         "{1E+200,1E+200,-1E+200} | {0.02,0.027} | {-1,0,1} | {0,0,0} | {1,1,2,2,2,3} | Data!A1:A12 | Data!A1:E1"
     ),
+    # The M9 financial functions (docs/excel-semantics/financial.md). Rates, guesses and yields: 0 (PV, FV, PMT
+    # and NPER take their rate-0 branch), -1 (1+rate is 0) and the first doubles above it, tiny rates that 1+rate
+    # rounds away ("CUMIPMT and CUMPRINC over many periods": a rate of 1E-300 is not lost), the usual monthly and
+    # yearly rates, 1 and 100 where (1+rate)^nper overflows ("PMT when (1+rate)^nper overflows or underflows":
+    # PMT(1,2000,1), PMT(100,184,439103)), negatives (a negative coupon or price is #NUM!) and 1E+10
+    # (CUMIPMT(1E10,100,1,1,100,0)); 1E+300 overflows EFFECT's power ("EFFECT and NOMINAL raise to their power").
+    "rate": entries(
+        "0 | (-1) | (-0.9999999999) | (-1+2^-52) | (-0.5) | (-0.05) | 1E-300 | 1E-10 | 1E-9 | 0.05/12 | 0.05 | "
+        "0.1 | 0.5 | 1 | 10 | 100 | 1E+10 | 1E+300"
+    ),
+    # nper and an asset's life: 0 (PMT(0.05,0,1000) is #NUM!), fractions (CUMIPMT's end period below nper + 1, an
+    # integer-power path that no longer applies), the 1023/1024 and 2000 periods where (1+rate)^nper overflows at a
+    # rate of 1 ("PMT when (1+rate)^nper overflows"), 1E+6 and 1E+9 (constant-time CUMIPMT, the CUMIPMT, DB and
+    # VDB caps), negatives (PMT(1,-2000,1) is #NUM!; PMT(0.05,-12,1000) computes) and 1E+300.
+    "nper": entries(
+        "0 | 1 | 0.5 | 1.5 | 12.5 | 360 | 1023 | 1024 | 2000 | 1E+6 | 1E+9 | (-1) | (-12) | 1E+300"
+    ),
+    # A period inside nper (IPMT and PPMT per, DB and DDB period, CUMIPMT's and VDB's start and end): 0 and
+    # negatives (#NUM!), 1, fractions (CUMIPMT rounds the start up and the end down; VDB's charge order), and
+    # periods past the domain's nper (an end period past nper is #NUM!, "DB and VDB period cap").
+    "period": entries("0 | 1 | 2 | 0.5 | 1.5 | 1.999 | (-1) | 12 | 13 | 360 | 361 | 1E+6"),
+    # pv, fv, pmt and the depreciation and securities amounts: zeros (PMT(1,2000,0,5) is 0), both signs of one
+    # value (an annuity needs pv and fv of opposite signs for NPER and RATE; independent draws give every sign
+    # combination), the overflow edge of pv*(1+rate)^nper (PMT(100,184,439103)), a tiny value and +-1E+300.
+    "cash_amount": entries(
+        "0 | 1 | (-1) | 0.01 | 100 | (-100) | 1000 | (-1000) | 439103 | (-439103) | 1E-300 | 1E+300 | (-1E+300)"
+    ),
+    # A security's price, redemption and par percentage: 0 and negatives (#NUM!), par itself and the values just
+    # either side of it, a deep discount and premium, and 1E+300 (YIELD's slowest solve, "Yield and odd-coupon work
+    # cap").
+    "price": entries("0 | (-1) | 0.01 | 50 | 95.04 | 99.999 | 100 | 100.001 | 105 | 200 | 1E+6 | 1E+300"),
+    # The annuity `type` (payment at the start or end of a period): 0 and 1, other numbers, fractions and negatives
+    # (any nonzero is the start: PV at 2, -1 and 0.5 equals PV at 1), booleans, number text (coerced) and other
+    # text (#VALUE!) ("Financial edge-pool smoke check (T-2248)").
+    "annuity_type": entries('0 | 1 | 2 | (-1) | 0.5 | 1.5 | TRUE | FALSE | "1" | "x"'),
+    # Settlement, maturity, issue and the coupon and purchase dates: serial 0, 0.5 and -1 ("Coupon settlement
+    # before the calendar": PRICE is #NUM! below serial 1, the COUP* functions only below 0), serial 1 and the
+    # fictitious 1900-02-29 at 60 with its neighbours ("Coupon schedules at the calendar's edges": COUPDAYBS(60,...)
+    # is -1), leap days and February ends of 2000, 2007, 2008, 2020, 2023 and 2024 ("COUPDAYS basis 1 around 29
+    # February"), month ends (31st, 30th, 31 December: month-end coupon schedules), the last serial 2958465 and
+    # the first past it, a fractional serial (it truncates) and a text date. Settlement and maturity draw from the
+    # same pool, so the same day and the wrong order both occur.
+    "security_date": entries(
+        "0 | 0.5 | (-1) | 1 | 59 | 60 | 61 | 366 | 36584 | 36585 | 36586 | 39141 | 39448 | 39507 | 43830 | "
+        "43831 | 43890 | 44985 | 45322 | 45351 | 45412 | 45535 | 45657 | 47664 | 48638 | 45351.75 | 2958465 | "
+        '2958466 | "2024-02-29"'
+    ),
+    # The day-count basis: 0-4, the first values outside (5 and -1 are #NUM!, and any negative: "Day-count basis:
+    # a negative basis is #NUM!"), fractions that truncate (4.9 is 4, -0.5 is #NUM!), number text (coerced) and a
+    # boolean (#VALUE!: "Discount-security functions: settlement 0, basis and argument modes").
+    "basis": entries('0 | 1 | 2 | 3 | 4 | 5 | (-1) | (-0.5) | 1.9 | 4.9 | "1" | TRUE'),
+    # Coupon frequency: 1, 2 and 4, and what is #NUM! ("Analysis ToolPak securities functions check frequency and
+    # dates first": 3, 0, 12, negatives, -0.0001), fractions (they truncate: 2.5 is 2 and 4.9 is 4) and number text
+    # (coerced) ("Financial edge-pool smoke check (T-2248)").
+    "frequency": entries('1 | 2 | 4 | 3 | 0 | 12 | 2.5 | 4.9 | (-1) | (-0.0001) | "2"'),
+    # EFFECT and NOMINAL npery (floored, "EFFECT and NOMINAL raise to their power with ^"): 1 (an exact power), 2
+    # (NOMINAL's square root), 4.5 (NOMINAL(0.5,4.5)), 12 and 365, values below 1 that floor to 0 (#NUM!), 0,
+    # negatives and the large counts where (1+r/n)^n meets its limit.
+    "npery": entries("1 | 2 | 4 | 4.5 | 12 | 365 | 0.5 | 0.999 | 1.5 | 0 | (-1) | 1E+6 | 1E+10"),
+    # Cash flows of NPV, IRR, MIRR, XNPV, XIRR and FVSCHEDULE ("IRR, RATE and XIRR stop early", "MIRR error and edge
+    # cases", "NPV, IRR and MIRR error order", "NPV and FVSCHEDULE arguments"): one sign change, none (#NUM! for IRR
+    # and MIRR), several (more than one root), leading and trailing zeros, a single flow, all zeros, a long flat
+    # run, huge flows, a column instead of a row, and text, a boolean and an error inside the array.
+    "cash_flows": entries(
+        "{-100,10,20,30,40} | {-1000,300,400,500} | {100,200,300} | {-100,-200,-300} | {-100,230,-132} | "
+        "{-100,300,-300,101} | {0,0,-100,50,60} | {-100,50,60,0,0} | {-1,0,0,0,0,0,0,0,0,1000} | {-100,100} | "
+        '{-100} | {0,0,0} | {-1E+300,1E+300} | {-100;30;40;50} | {-100,"a",60} | {-100,TRUE,60} | {-100,#N/A,60}'
+    ),
+    # XNPV and XIRR dates, five per entry like most cash_flows entries (other sizes are #NUM!): increasing,
+    # all the same day, the first not the earliest (XIRR accepts earlier dates, "XIRR reads empty cells as 0 and
+    # accepts earlier dates"), serials 0-61 around the fictitious 1900-02-29, a leap day and fractional serials.
+    "cash_dates": entries(
+        "{39448,39508,39859,39904,40000} | {39448,39448,39448,39448,39448} | {40000,39448,39508,39859,39904} | "
+        "{0,1,59,60,61} | {45322,45351,45352,45657,45658} | {39448.5,39508.25,39859,39904,40000.9} | "
+        "{39448,39508,39859} | {39448;39508;39859;39904;40000}"
+    ),
 }
 
 
