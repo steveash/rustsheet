@@ -74,6 +74,8 @@ returns the value of the pivot cell the field/item pairs pick, including subtota
   source field the pivot does not show), the same field twice with different items, and a field with no
   item (an odd argument count).
 - An intersection that has no source rows (shown blank) is **0**, not `#REF!` (West/C).
+  An Average pivot's empty intersection is 0 too (three cells of a T-2396 generator sample, excel-graph 2026-10-22,
+  not committed; ours `#REF!`, T-2404 probes it with count, max and min).
 - `pivot_table` may be any cell of the pivot (`$C$6`, inside the data area) or a range covering it
   (`$A$3:$E$7`); a cell outside every pivot (`$H$30`, or the source data `Data!$A$1`) is `#REF!`.
 - An array of items lifts: `"Region",{"East";"West"}` spills 22, 27 and `"Product",{"A","B","C"}` spills

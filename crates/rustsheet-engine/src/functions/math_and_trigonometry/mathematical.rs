@@ -22,6 +22,8 @@ const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
 
 /// The largest `min_length` BASE accepts (probes/base-min-length).
 const BASE_MAX_MIN_LENGTH: f64 = 255.0;
+/// BASE refuses a `number` of 2^53 or more (2^53 - 1 is accepted).
+const BASE_NUMBER_LIMIT: f64 = 9_007_199_254_740_992.0;
 /// COMBIN's `number`, and COMBINA's `number + number_chosen - 1`, at or above which Excel gives
 /// `#NUM!`, whatever the coefficient: 2^31-1 (probes/t2199-text-length-and-combin-cuts A20-A37,
 /// B20-B34; numbers.md "COMBINA is COMBIN(n+k-1, k)", "Bound").
@@ -86,6 +88,11 @@ fn base_text(number: f64, radix: i64, min_length: f64) -> Result<String, Error> 
     // number must be >= 0, checked before truncation: `BASE(-0.0001,5,4)` is `#NUM!`
     // (gen-m5/a6fec430ac350c1a Calc!A31; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
     if number < 0.0 {
+        return Err(Error::NUM);
+    }
+    // Excel: 2^53 - 1 is accepted, 2^53 and above are #NUM! in every radix, with or without
+    // `min_length` (probes/base-number-upper-bound; numbers.md "BASE past 2^53 is #NUM!").
+    if number >= BASE_NUMBER_LIMIT {
         return Err(Error::NUM);
     }
     let mut value = number.trunc() as i64;
