@@ -3,7 +3,7 @@ id: T-2008
 title: "Probe a range or spill callee written without parentheses: Sheet1!:(2), :A2(2), (2)#"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
