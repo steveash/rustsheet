@@ -549,7 +549,7 @@ in "Date function argument modes" (they lift).
 A well-ordered, in-calendar pair with an unknown unit is `#NUM!` too, whatever makes the unit unknown: text (`"x~*"`, `""`, `" x "`, `"ü"`, `"Hello World"`), a number (`DATEDIF(16934,34631,IFERROR(1/0,AVERAGE(..)))`) or a boolean (gen-m6/3e51213f35889d06 Calc!A322, 4ca39e0876796fa5 A172, c96ac1ada46179c4 A198/A236, 9e6a1b733ee1e1e0 A12, 121a7c17092038d9 A114; all 40 cells are listed in T-2288; excel-graph 2026-10-21). Ours: implemented (T-2288).
 Status: VERIFIED (excel-graph). Before T-1430 the engine checked DATEDIF's reversed pair before the unit's error.
 Implemented in: `datedif_value` (crates/rustsheet-engine/src/functions/date_and_time.rs).
-Tasks: T-1355, T-1430
+Tasks: T-1355, T-1430, T-2288
 
 ## An error-valued or 3-D weekend, 3-D date text and holidays
 Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):

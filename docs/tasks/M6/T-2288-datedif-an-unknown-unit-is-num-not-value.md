@@ -75,11 +75,11 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 2 known-failure lin
 - gen-m7/c36ff5f42a1a4d47.case.json A1051 `=DROP(WORKDAY(DATEDIF(1077,5272,Data!A4),-4),-2)`: A1051 Excel #NUM!, ours #VALUE!; cells (1): A1051
 
 ## Acceptance criteria
-- [ ] The 2 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 2 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
-- [ ] These 40 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] probes/datedif-days360-error-order and probes/date-math-lift-driver-edges still pass; a unit test covers a well-ordered pair with "x", "", a number and TRUE as unit.
-- [ ] dates.md's new sentence says Ours: implemented (T-2288).
-- [ ] `make check` green; reviewers approve.
+- [x] The 2 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 2 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
+- [x] These 40 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] probes/datedif-days360-error-order and probes/date-math-lift-driver-edges still pass; a unit test covers a well-ordered pair with "x", "", a number and TRUE as unit.
+- [x] dates.md's new sentence says Ours: implemented (T-2288).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - DATEDIF's day counts (T-2263, T-2264).
