@@ -9,8 +9,8 @@
 //! ([`Model::displace_pivots`]), a sheet rename rewrites the
 //! cache sources naming it, and a sheet deletion takes the sheet's pivots with it so an undo puts
 //! them back. A row or column move still drops the sheet's pivots
-//! ([`Workbook::drop_pivots_on_sheet`]; docs/excel-semantics/web.md "GETPIVOTDATA against a pivot
-//! table").
+//! ([`Workbook::drop_pivots_on_sheet`]; docs/excel-semantics/web.md "Pivot tables and structural
+//! edits").
 
 use std::collections::HashMap;
 
