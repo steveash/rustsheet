@@ -3,7 +3,7 @@ id: T-2008
 title: "Probe a range or spill callee written without parentheses: Sheet1!:(2), :A2(2), (2)#"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,8 +23,11 @@ operand", T-0149) and `$D$1(1)` `#REF!` (probes/cell-call-edges-a, T-1806), so t
 `excel-probe` skill, one small case per risky shape. Code: `reference_or_call_operand` (parser/operands.rs).
 
 ## Acceptance criteria
-- [ ] Each shape has an oracle-backed probe cell or a recorded refusal, and the evidenced cells pass.
-- [ ] `make check` green; reviewers approve.
+- [x] Each shape has an oracle-backed probe cell or a recorded refusal, and the evidenced cells pass.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Shapes T-1806 probed.
+
+## Outcome
+Probed six shapes (probes/callee-unparenthesized-*). Excel: unparenthesized range and spill callees are `#REF!` and print bare; `=a0(1)`/`=a1048577(1)` are `#NAME?`, printed as written (ours already matched); `=$A$1(2)#` makes Excel refuse the workbook, recorded without a case. Fixed the parser (`range_or_call_operand`, spill call, `callee_operand` prints them bare). Eval delta: +3 cells fixed over new probes (all six probe cases pass).
