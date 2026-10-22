@@ -293,7 +293,7 @@ def test_number_enums_are_number_literals() -> None:
             freqs += re.findall(r"COUP(?:DAYBS|DAYS|DAYSNC|NCD|NUM|PCD)\(\d+,\d+,([^,()]*)", formula)
     assert freqs and {"1", "2", "4"} & set(freqs), freqs
     # The frequency pool's "2" is the one deliberate text frequency (T-2248).
-    assert not any(f.startswith('"') and f not in POOLS["frequency"] for f in freqs), freqs
+    assert not any(f.startswith('"') and f != '"2"' for f in freqs), freqs
 
 
 def m7_formulas() -> list[str]:
