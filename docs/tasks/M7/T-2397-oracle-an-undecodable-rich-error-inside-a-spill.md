@@ -3,7 +3,7 @@ id: T-2397
 title: "Oracle: an undecodable rich error inside a spill is scored as an expected blank; leave it pending instead"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
