@@ -3,7 +3,7 @@ id: T-2203
 title: "Oracle grid for EXP's overflow and underflow edges (T-1944)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -48,3 +48,6 @@ evidence instead of probing first.
 ## Out of scope
 - Changing EXP or V6 (T-1944).
 - SINH/COSH overflow (T-2169), and the cached 0 of ironcalc-calc `EXP_SIGN.xlsx` B44 (T-2204).
+
+## Outcome
+Added `probes-numeric/t2203-exp-range-edges` (527 rows, excel-graph filled, no pending cell). Excel: last finite arg 709.782712893384, first `#NUM!` 709.7827128933841; underflow to 0 for a <= -745.1332191019412. Engine matches all 780 cells; no eval baseline change (probes cases are all-pass). numbers.md and T-1944 Context updated.
