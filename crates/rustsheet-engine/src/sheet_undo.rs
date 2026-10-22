@@ -2,16 +2,20 @@
 
 use crate::{
     model::Model,
+    pivot::PivotTable,
     types::{Table, Worksheet},
 };
 
-/// A sheet taken out of a model by [`Model::take_sheet`], with the tables that were on it.
+/// A sheet taken out of a model by [`Model::take_sheet`], with the tables and pivots that were on
+/// it.
 #[derive(Debug, Clone)]
 pub struct TakenSheet {
     /// The sheet.
     pub worksheet: Worksheet,
     /// Its tables, by name; [`Model::restore_sheet`] puts them back (SPEC-0016).
     tables: Vec<(String, Table)>,
+    /// Its pivot tables; [`Model::restore_sheet`] puts them back (SPEC-0015, T-2086).
+    pivots: Vec<PivotTable>,
 }
 
 impl Model {
@@ -31,11 +35,15 @@ impl Model {
         if sheet_index as usize >= self.workbook.worksheets.len() {
             return Err("Sheet index too large".to_string());
         }
-        self.drop_pivots_on(sheet_index)?;
+        let pivots = self.take_pivots_on(sheet_index)?;
         let tables = self.take_tables_of_sheet(sheet_index);
         let worksheet = self.workbook.worksheets.remove(sheet_index as usize);
         self.reset_tables();
-        Ok(TakenSheet { worksheet, tables })
+        Ok(TakenSheet {
+            worksheet,
+            tables,
+            pivots,
+        })
     }
 
     /// Puts a sheet obtained from [`Model::take_sheet`] back at `sheet_index`.
@@ -44,6 +52,7 @@ impl Model {
         let TakenSheet {
             worksheet: sheet,
             tables,
+            pivots,
         } = sheet;
         if sheet_index as usize > self.workbook.worksheets.len() {
             return Err("Sheet index out of range".to_string());
@@ -59,6 +68,7 @@ impl Model {
         }
         self.workbook.worksheets.insert(sheet_index as usize, sheet);
         self.restore_tables(tables);
+        self.restore_pivots(pivots);
         Ok(())
     }
 }

@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A call of a call's result, written directly after it with no space (T-2038): a LAMBDA returned by a call, parenthesized or LET-bound, called again; a non-LAMBDA result called. Sheet1 A1:A3 = 1,2,3.",
+  "tags": [
+    "M7",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "=(LAMBDA(a,LAMBDA(b,a*b)))(3)(4)",
+        "B2": "=LET(f,LAMBDA(a,LAMBDA(b,a*b)),f(3)(4))",
+        "B3": "=LAMBDA(x,x)(LAMBDA(y,y*2))(5)",
+        "B4": "=LAMBDA(x,x)(1)(2)",
+        "B5": "=LAMBDA(x,x)(\"a\")(2)",
+        "B6": "=LAMBDA(x,x)(1/0)(2)",
+        "B8": "=LAMBDA(x,x)(A1)(2)",
+        "B9": "=LET(f,LAMBDA(a,LAMBDA(b,LAMBDA(c,a+b+c))),f(1)(2)(3))",
+        "B10": "=IFERROR(LAMBDA(x,x)(1)(2),\"e\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!B1",
+    "Sheet1!B2",
+    "Sheet1!B3",
+    "Sheet1!B4",
+    "Sheet1!B5",
+    "Sheet1!B6",
+    "Sheet1!B8",
+    "Sheet1!B9",
+    "Sheet1!B10"
+  ]
+}

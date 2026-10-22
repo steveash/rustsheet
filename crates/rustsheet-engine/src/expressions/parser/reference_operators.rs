@@ -516,6 +516,7 @@ pub(crate) fn at_text(child: &Node, sub: &dyn Fn(&Node) -> String) -> String {
 /// cell and prints bare, `AB1(1)` (probes/unknown-function-name-spelling B8, T-1758;
 /// probes/cell-call-edges-a B5-B7, T-1806). So do a range and a spill written without parentheses,
 /// `$A$1:A2(2)`, `A1#(2)`: a parenthesized one is a `Group` (probes/callee-unparenthesized-*, T-2008).
+/// A call, or a call of a name, prints bare too: `f(3)(4)` chains (T-2038).
 pub(crate) fn callee_operand(text: String, node: &Node) -> String {
     if matches!(
         node,
@@ -524,6 +525,8 @@ pub(crate) fn callee_operand(text: String, node: &Node) -> String {
             | Node::SpillRangeOperator { .. }
             | Node::LambdaDefKind { .. }
             | Node::Group { .. }
+            | Node::LambdaCallKind { .. }
+            | Node::NamedFunctionKind { .. }
     ) {
         text
     } else {

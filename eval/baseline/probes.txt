@@ -126,6 +126,12 @@ C	probes/cell-call-edges-b.case.json	4
 C	probes/cell-call-edges-c.case.json	4
 C	probes/cell-call-edges-f.case.json	2
 C	probes/cell-call-edges-g.case.json	2
+C	probes/chained-calls-lambda.case.json	9
+C	probes/chained-calls-ref-1.case.json	1
+C	probes/chained-calls-ref-2.case.json	1
+C	probes/chained-calls-ref-3.case.json	1
+C	probes/chained-calls-ref-4.case.json	1
+C	probes/chained-calls-ref-6.case.json	1
 C	probes/choose-array-index-range-arms.case.json	66
 C	probes/circular-iteration-delta-boundary.case.json	1
 C	probes/circular-iteration-delta-no-reader.case.json	2
@@ -1249,6 +1255,8 @@ C	probes/yield-solver-sweep.case.json	66
 C	probes/yield-start-rate-term.case.json	150
 C	probes/yield-start-sweep.case.json	100
 F	probes/3d-ref-one-sheet-span-lift.case.json	Calc!B6
+F	probes/chained-calls-ref-4.case.json	Sheet1!B1
+F	probes/chained-calls-ref-6.case.json	Sheet1!B1
 F	probes/circular-iteration-delta-boundary.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!B1
@@ -1928,12 +1936,10 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
-F	probes/lambda-escaping-closures.case.json	Sheet1!H10
 F	probes/lambda-escaping-closures.case.json	Sheet1!H2
 F	probes/lambda-escaping-closures.case.json	Sheet1!H3
 F	probes/lambda-escaping-closures.case.json	Sheet1!H4
 F	probes/lambda-escaping-closures.case.json	Sheet1!H5
-F	probes/lambda-escaping-closures.case.json	Sheet1!H8
 F	probes/lambda-escaping-closures.case.json	Sheet1!I2
 F	probes/lambda-escaping-closures.case.json	Sheet1!J2
 F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12

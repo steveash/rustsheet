@@ -111,7 +111,20 @@ is not a number, a number or boolean data_field, and an array data_field, pivot_
 lifts). An error in a single-cell pivot_table propagates even inside a pivot, and an overflowing aggregate is `#NUM!`
 (both unprobed, SPEC-0015 unknowns 13 and 16). Count, Max, Min, Product,
 Var and StdDev pivots are unprobed (UNVERIFIED: the worksheet functions' algorithms over the picked numbers).
-Known interim gap: until T-2086 moves pivots with their cells, any row
-or column insertion, deletion or move, and any sheet rename or deletion, on a sheet holding pivots drops those pivots, so
-GETPIVOTDATA against them is `#REF!` (Excel keeps the pivot, refusing an edit that would cut it); undoing a sheet deletion
-brings the sheet back without them. xlsx export drops pivots.
+Structural edits: see "Pivot tables and structural edits" below. xlsx export drops pivots.
+
+## Pivot tables and structural edits
+Rule (engine; Excel UNVERIFIED): a whole-row or whole-column insert at or before a pivot's first line, or a delete wholly
+before it, shifts the pivot with its cells; an insert or delete after its last line leaves it; a delete of every one of its
+lines drops it with its cells (GETPIVOTDATA against it is then `#REF!`). Any other insert or delete that meets its lines (an
+insert inside it, a delete of its first line, an inner line or its last line) is refused with an error and changes nothing:
+SPEC-0015 states that Excel refuses an edit that would change part of a pivot, and refusing is the engine's way of matching
+that (as for an edit that would break an array formula), never a silently cut pivot. A sheet rename keeps the sheet's pivots
+(they are keyed by sheet id) and rewrites the cache sources naming that sheet; a sheet deletion removes its pivots and undoing
+it brings them back. A row or column move on a sheet holding pivots still drops them (`#REF!`), a known gap (T-2401).
+Evidence: none from Excel yet. The formula oracle cannot make structural edits; T-2402 records which inserts and deletes
+Excel refuses (Graph range insert/delete or a desktop observation), including whether deleting every line of a pivot deletes it.
+Status: UNVERIFIED
+Implemented in: crates/rustsheet-engine/src/pivot.rs (`Model::displace_pivots`, `take_pivots_on`, `restore_pivots`,
+`rename_pivot_sources`), called from the insert/delete actions in actions.rs and from sheet_undo.rs and new_empty.rs (T-2086).
+Tasks: T-2086, T-2401, T-2402
