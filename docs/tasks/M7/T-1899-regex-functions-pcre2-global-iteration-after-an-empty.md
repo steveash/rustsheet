@@ -52,7 +52,7 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric pa
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (wrong REGEXREPLACE and REGEXEXTRACT text after an empty match), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
 
-## Handoff
+## Handoff (resumed)
 Opus run of 2026-10-22: no code yet. This run landed T-2355 (#1530), which this task needed, then
 stopped at its session budget. Notes for the next run, from reading the code on main after #1530:
 - Memoized mode exists: `pcre::program::compile_memoized(ast, limit)` builds a guard-free
