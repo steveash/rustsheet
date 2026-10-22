@@ -544,7 +544,7 @@ negative `DOLLAR(-1E+187,1)` (255) prints and `DOLLAR(-1E+188,1)` (256) does not
 commas) is `#VALUE!`.
 Evidence: probes/fixed-dollar-length-bound A1:B41 (oracle: excel-graph, 2026-10-22, T-2378); gen-m5/55afc805e00a1509
 Calc!A392.
-Status: VERIFIED
+Status: VERIFIED (excel-graph); desktop confirmation pending
 Implemented in: crates/rustsheet-engine/src/functions/text/string_format.rs (`MAX_FORMATTED_LEN`, `formatted_result`)
 
 ## DOLLAR and FIXED decimals
