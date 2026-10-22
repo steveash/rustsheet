@@ -303,10 +303,10 @@ impl Model {
                 return e.clone();
             }
         }
-        // The array, sort_index and sort_order are read once here; by_col lifts over an array and
-        // a range, one SORT per element whose value is that call's top-left
-        // (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`,
-        // gen-m7/7307132bb8820f17 A1076; T-2319). Each element sorts the whole array.
+        // The array, sort_index and sort_order are read once here; by_col lifts over an array, one
+        // SORT per element (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`,
+        // gen-m7/7307132bb8820f17 A1076; T-2319). Each element sorts the whole array. That an
+        // element is its call's top-left, and that a range lifts too, is UNVERIFIED (T-2366).
         let cells = u64::try_from(num_rows.saturating_mul(num_cols))
             .unwrap_or(u64::MAX)
             .max(1);
