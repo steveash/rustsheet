@@ -273,7 +273,7 @@ impl Parser {
         let mut stack = vec![ast];
         while let Some(ast) = stack.pop() {
             let reference = match ast {
-                Ast::Backref(reference)
+                Ast::Backref { reference, .. }
                 | Ast::Conditional {
                     condition: Condition::Group(reference),
                     ..
@@ -304,25 +304,7 @@ impl Parser {
                     return Err(Invalid);
                 }
             }
-            match ast {
-                Ast::Capture { ast, .. }
-                | Ast::Repeat { ast, .. }
-                | Ast::LookAround { ast, .. }
-                | Ast::Atomic(ast) => stack.push(ast),
-                Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
-                Ast::Conditional { yes, no, .. } => {
-                    stack.push(yes);
-                    stack.push(no);
-                }
-                Ast::Empty
-                | Ast::Literal { .. }
-                | Ast::Class(_)
-                | Ast::Dot { .. }
-                | Ast::Anchor(_)
-                | Ast::Backref(_)
-                | Ast::KeepOut
-                | Ast::Unimplemented => {}
-            }
+            ast.push_children(&mut stack);
         }
         Ok(())
     }
@@ -473,7 +455,8 @@ impl Parser {
                 } else if self.eat('\'') {
                     Reference::Name(self.name('\'')?)
                 } else {
-                    // Assertion conditions, recursion (`R`) and `DEFINE` are left to T-1900.
+                    // Assertion conditions are left to T-2354; recursion (`R`) and `DEFINE` stay
+                    // invalid (SPEC-0013 rollout step 6).
                     return Err(Invalid);
                 };
                 self.expect(')')?;
@@ -590,7 +573,10 @@ impl Parser {
             'R' | 'X' => return node(Ast::Unimplemented),
             'Q' => Escape::Quote,
             'E' => Escape::Nothing,
-            'g' => return node(Ast::Backref(self.g_reference()?)),
+            'g' => {
+                let reference = self.g_reference()?;
+                return node(self.backref(reference));
+            }
             'k' => {
                 let close = match self.next()? {
                     '<' => '>',
@@ -598,14 +584,15 @@ impl Parser {
                     '{' => '}',
                     _ => return Err(Invalid),
                 };
-                return node(Ast::Backref(Reference::Name(self.name(close)?)));
+                let name = self.name(close)?;
+                return node(self.backref(Reference::Name(name)));
             }
             '1'..='9' => {
                 // A backreference (PCRE2 reads `\12` as octal when there are fewer groups; such
-                // a pattern stays #VALUE! until T-1900, as every backreference does).
+                // a pattern stays #VALUE!, as a reference to a missing group).
                 self.pos -= 1;
                 let number = self.number()?.ok_or(Invalid)?;
-                return node(Ast::Backref(Reference::Number(number)));
+                return node(self.backref(Reference::Number(number)));
             }
             'a' => Escape::Char('\u{7}'),
             'e' => Escape::Char('\u{1B}'),
@@ -682,6 +669,14 @@ impl Parser {
             return Err(Invalid);
         }
         char::from_u32(value).ok_or(Invalid)
+    }
+
+    /// A backreference to `reference`, ignoring case where the flags do.
+    fn backref(&self, reference: Reference) -> Ast {
+        Ast::Backref {
+            reference,
+            fold: self.flags.caseless,
+        }
     }
 
     /// `\g` followed by `n`, `{n}`, `{-n}`, `-n`, `+n` or `{name}`, after the `g`. Relative
