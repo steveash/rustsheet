@@ -38,6 +38,8 @@ Leads from T-2192's fit (float64 checks against the oracle values, no engine cha
   two (they pass today), and `pv·(r/(1+r))/(1-v^nper)` as type 1's payment gets H3, H16 and H31 to
   the bit but misses H25 by an ulp.
 - A6's per-period `exp` sum is -4.085993687045532E-19 against Excel's ...525 (just past half a unit).
+- T-2192's type 0 principal form moved CUMPRINC_CUMIPMT.xlsx H29 from 1 ulp to 3 (still visibly
+  right); a bit-exact fit (T-1374) should start there.
 Code: functions/financial/cumulative.rs.
 
 ## Acceptance criteria

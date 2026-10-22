@@ -94,8 +94,8 @@ impl Model {
         };
         // Per-period sums only over a short range, and only where every period is an exact
         // integer: past 2^53 `period + 1` is `period`, and the closed form takes over. Type 0 has
-        // its own per-period forms, Excel's within an ulp or two where the closed form and the
-        // IPMT sum are up to 343 ulps off (T-2192). Type 1's interest is the IPMT sum, which is
+        // its own per-period forms, within 4 ulps of Excel on every probed cell where the closed
+        // form and the IPMT sum were up to 343 ulps off (T-2192). Type 1's interest is the IPMT sum, which is
         // bit-exact on CUMPRINC_CUMIPMT.xlsx G3, G4, G9, G15 where those forms are not, and its
         // principal the closed form: summing PPMT loses a small principal's digits to the payment
         // it is taken from (H5 had 8 right digits, H7 7; T-1890), and the type 0 form misses H22
@@ -161,14 +161,20 @@ impl Periods {
     /// The payment at the end of each period as a positive amount, `pv·r/(1 - v^nper)` with
     /// `1 - v^nper = -expm1(-nper·L)` and `L = log1p(r)`, as [`Periods::closed_form`] has it.
     fn end_payment(&self, log_growth: f64) -> f64 {
-        self.pv * self.rate / -(-self.nper * log_growth).exp_m1()
+        self.pv * self.rate / self.unpaid_share(log_growth)
+    }
+
+    /// `1 - v^nper = -expm1(-nper·L)`, the share of the loan the payments' discounted sum covers
+    /// per unit of interest: the payment's denominator.
+    fn unpaid_share(&self, log_growth: f64) -> f64 {
+        -(-self.nper * log_growth).exp_m1()
     }
 
     /// Type 0's interest over a short range, period by period from the balance after `k-1`
     /// payments: `-(pv·q·r - pmt·(q-1))` with `q = exp((k-1)·L)`. Excel's interest is this form,
     /// not the exact sum: `CUMIPMT(0.01,100,100000,100,100,0)` is -15.708656559792416 to the bit
     /// where the IPMT sum gives ...592 (probes/fin-cumipmt-overflow-and-forms A12, A14;
-    /// fin-argument-modes H72 and CUMPRINC_CUMIPMT.xlsx G29 within 4 ulps, T-2192). `None` where
+    /// fin-argument-modes H72 and `CUMPRINC_CUMIPMT.xlsx` G29 within 4 ulps, T-2192). `None` where
     /// `q` overflows (a rate of 1E10, A18, A19; periods near 1E15, A9-A11), which the other forms
     /// take.
     fn balance_interest(&self) -> Option<f64> {
@@ -187,6 +193,8 @@ impl Periods {
     /// rate of 1E10 is within an ulp of Excel on every probed cell, where the closed form's
     /// difference or product of powers was 33 to 343 ulps off (`CUMPRINC(1E10,40,1,1,20,0)`
     /// -9.999999980000501E-201, probes/fin-cumipmt-overflow-and-forms A16, A20-A24; T-2192).
+    /// Other probed type 0 cells are 0 to 4 ulps off (fin-argument-modes H80 4, `CUMPRINC_CUMIPMT.xlsx`
+    /// H29 3 where the closed form was 1; T-2362).
     /// `None` when the sum is not finite.
     fn discounted_principal(&self) -> Option<f64> {
         let log_growth = self.rate.ln_1p();
@@ -216,7 +224,7 @@ impl Periods {
     /// This form matches 19 of the 28 probe cells over many periods or past an overflow (22 of the
     /// case's 30 cells pass overall) bit for
     /// bit and the others within 6 ulps, but for 48 to 64 near period 1E15 (fin-remaining-later-
-    /// argument-ranges K3, A18; TODO(T-2192)). `None` when the result is not finite.
+    /// argument-ranges K3, A18; TODO(T-2362)). `None` when the result is not finite.
     fn closed_form(&self, paid: Paid) -> Option<f64> {
         let log_growth = self.rate.ln_1p();
         let discount = |periods: f64| (periods * log_growth).exp();
@@ -230,7 +238,7 @@ impl Periods {
                 // -1E300 (probes/fin-cumipmt-overflow-and-forms A2; the CUMIPMT of an
                 // overflowing payment is `#NUM!`, A1, A3). Everywhere else that form misses
                 // CUMPRINC_CUMIPMT.xlsx H25 by an ulp, so it is only the fallback (T-2192).
-                -(self.pv * (self.rate / (1.0 + self.rate)) / -(-self.nper * log_growth).exp_m1())
+                -(self.pv * (self.rate / (1.0 + self.rate)) / self.unpaid_share(log_growth))
             };
         }
         // Type 1 pays no interest in period 1, so its principal is the whole payment.

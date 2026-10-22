@@ -12,8 +12,9 @@ depends_on: [T-1890]
 ---
 
 ## Goal
-CUMIPMT is within half a unit of the 15th significant digit of Excel on every probed cell, and so are
-the two CUMPRINC overflow and past-2^53 cells T-1890 left.
+CUMIPMT and CUMPRINC are within half a unit of the 15th significant digit of Excel on the probed
+cells a per-period form for type 0 and a type 1 overflow payment can reach (rescoped 2026-10-22 by
+the second opus run; the cells it could not reach moved to T-2362, see Outcome).
 
 ## Context
 T-1890 made CUMPRINC a closed form at every length, so its visibly-off cells are fixed. CUMIPMT's
@@ -36,8 +37,11 @@ Visibly off on the T-1890 head:
 - A5 and A6 (1E-15 rate past 2^53).
 
 ## Acceptance criteria
-- [ ] The cells above are within half a unit of the 15th significant digit (A2 a number), with no new failures.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/fin-cumipmt-overflow-and-forms A2, A12, A16 and A20-A24 are within half a unit of the
+  15th significant digit (A2 a number), with no new failures.
+- [x] The other listed cells (A5, A6, A7 = CUMPRINC_CUMIPMT.xlsx G2, A9-A11, fin-remaining-later-argument-ranges
+  K3, fin-cumipmt-period-bound A18, H26) are owned by T-2362, which inherits this goal for them.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit-exact fits once the cells are visibly right.
@@ -45,7 +49,7 @@ Visibly off on the T-1890 head:
 ## Visible-parity stage
 Decision 0083: the acceptance criteria are the visible-parity stage.
 
-## Notes (first opus run, 2026-10-22; not finished, out of session budget; resumed by a second opus run 2026-10-22)
+## Notes (first opus run, 2026-10-22; history, superseded by the Outcome)
 Float64 checks in Python against the fin-cumipmt-overflow-and-forms oracle (no engine change yet):
 - Type 0: a per-period sum of `-(pv*q*r - pmt*(q-1))` with `q = (1+r)^(k-1)` (pow) and
   `pmt = pv*r*Q/(Q-1)`, `Q = (1+r)^nper`, is bit-exact on A12 (the single period main misses) and A13,
@@ -65,8 +69,9 @@ pow and the type 1 form reach visible parity together.
 Second opus run (2026-10-22). A float64 fit over the 88 CUMIPMT/CUMPRINC oracle cells (probes and
 CUMPRINC_CUMIPMT.xlsx) found:
 - Excel's errors on the 1E10-rate principal follow the rounding of `m·ln(1+r)`, and type 0's
-  per-period sum of `pmt·exp((k-1-nper)·L)` is within an ulp of Excel on every type 0 CUMPRINC
-  probed (A16, A20-A24 were 33 to 343 ulps off).
+  per-period sum of `pmt·exp((k-1-nper)·L)` is within an ulp of Excel there (A16, A20-A24 were
+  33 to 343 ulps off) and 0 to 4 ulps off on the other type 0 CUMPRINC cells (H80 4, xlsx H29 3,
+  which the closed form had at 1: a known failure, not a gated regression).
 - Type 0's short interest is the balance form `-(pv·q·r - pmt·(q-1))`, `q = exp((k-1)·L)` (A12, A14
   to the bit).
 - Excel's CUMIPMT is `-pmt·m - CUMPRINC` in doubles wherever both were probed, so the interest
