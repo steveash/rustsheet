@@ -3,7 +3,7 @@ id: T-2352
 title: "NUMBERVALUE reads \"25:\" (hours and a bare colon left by the group separator) as 25 hours"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
