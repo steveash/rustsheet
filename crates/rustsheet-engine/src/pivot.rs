@@ -21,7 +21,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::stringify::DisplaceData;
 use crate::expressions::token::Error;
 use crate::model::Model;
-use crate::types::Workbook;
+use crate::types::{sheet_names_match, Workbook};
 
 /// Most records in one cache (SPEC-0015 "Untrusted-input limits").
 pub const MAX_RECORDS: usize = 1_048_576;
@@ -498,19 +498,19 @@ impl Model {
                 (area.left, area.right)
             }
         };
-        let edits: Vec<SpanEdit> = self
+        // `None` for a pivot on another sheet, which the edit leaves alone.
+        let edits: Vec<Option<SpanEdit>> = self
             .workbook
             .pivot_tables
             .iter()
             .map(|pivot| {
-                if pivot.sheet_id != sheet_id {
-                    return SpanEdit::Keep(0, 0);
-                }
-                let (first, last) = span(&pivot.location);
-                displace_span(first, last, at, delta, max)
+                (pivot.sheet_id == sheet_id).then(|| {
+                    let (first, last) = span(&pivot.location);
+                    displace_span(first, last, at, delta, max)
+                })
             })
             .collect();
-        if let Some(i) = edits.iter().position(|e| *e == SpanEdit::Refuse) {
+        if let Some(i) = edits.iter().position(|e| *e == Some(SpanEdit::Refuse)) {
             let name = self
                 .workbook
                 .pivot_tables
@@ -525,7 +525,7 @@ impl Model {
             .into_iter()
             .zip(edits)
             .filter_map(|(mut pivot, edit)| match edit {
-                SpanEdit::Keep(first, last) if pivot.sheet_id == sheet_id => {
+                Some(SpanEdit::Keep(first, last)) => {
                     let area = &mut pivot.location;
                     if rows {
                         (area.top, area.bottom) = (first, last);
@@ -534,8 +534,8 @@ impl Model {
                     }
                     Some(pivot)
                 }
-                SpanEdit::Drop => None,
-                _ => Some(pivot),
+                Some(SpanEdit::Drop) => None,
+                None | Some(SpanEdit::Refuse) => Some(pivot),
             })
             .collect();
         // The indices are keyed by position in `pivot_tables`, which dropping shifts.
@@ -565,10 +565,9 @@ impl Model {
     /// Rewrites the cache sources on the sheet `old_name` (sheet names ignore case) to
     /// `new_name`, so they keep naming their sheet after a rename.
     pub(crate) fn rename_pivot_sources(&mut self, old_name: &str, new_name: &str) {
-        let old_name = old_name.to_uppercase();
         let sources = self.workbook.pivot_caches.iter_mut();
         for source in sources.filter_map(|cache| cache.source.as_mut()) {
-            if source.sheet_name.to_uppercase() == old_name {
+            if sheet_names_match(&source.sheet_name, old_name) {
                 new_name.clone_into(&mut source.sheet_name);
             }
         }
