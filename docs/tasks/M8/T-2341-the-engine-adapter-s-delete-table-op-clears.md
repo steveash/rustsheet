@@ -31,4 +31,4 @@ table" command (M14 if needed).
 - Cut and paste, row and column moves, undo and duplicated sheets (desktop, T-2325).
 
 ## Outcome
-The adapter's `delete_table` now calls the new `Model::delete_table`, which clears the table's range and then removes the table. F!A6 of table-delete-table passes (probes known failures 12 to 11 in the baseline file; 0 regressions). The oracle shows the cells cleared and F!A7's text unshifted, so rows are cleared, not removed; no extra probe was run (no oracle access in this run). oracle.md and references.md state it.
+The adapter's `delete_table` now calls the new `Model::delete_table`, which clears the table's range and then removes the table. F!A6 of table-delete-table passes (probes known failures 12 to 11 in the baseline file; 0 regressions). The oracle shows the cells cleared and F!A7's text unshifted, so rows are cleared, not removed; table-delete-table-cells (excel-graph) shows the header, the text column and the Qty column all cleared and the cells below the table unmoved, so rows are cleared, not removed. oracle.md and references.md state it.
