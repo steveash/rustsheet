@@ -40,7 +40,9 @@ Visibly-off cells (from T-1900's list, decision 0083):
 ## Acceptance criteria
 - [ ] Visible parity: the six cells above have Excel's value, and their lines leave
       `eval/baseline/probes.txt` (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The rest of regex-pcre2-features C1-C19 that use these constructs passes.
+- [ ] The rest of regex-pcre2-features C1-C19 that use these constructs passes, and D12
+      (`REGEXREPLACE("abc","(?=b)|b","-")` is `a--c`), which needs only lookahead since T-1899's
+      iteration.
 - [ ] Directive 5: no recursion; lookbehind charged per character stepped back, barrier pops per
       frame, at T-1900's conservative placeholder costs; a release-mode test runs a nested-lookaround
       pathological pattern on 32,767 characters to `Spent` or an answer within a stated wall-clock bound.

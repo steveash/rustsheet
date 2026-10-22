@@ -10,6 +10,7 @@ import re
 import zipfile
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -687,6 +688,67 @@ def test_focus_cycles_target_milestone_functions_evenly() -> None:
 def test_focus_without_target_functions_is_an_error() -> None:
     with pytest.raises(ValueError, match="no generator-ready functions"):
         generate_case(_loaded_catalog(), 1, milestone="M0", focus=True)
+
+
+def _focus_outer_counts(**kw: Any) -> Counter[str]:
+    outer: Counter[str] = Counter()
+    # Exactly even within one case: the cycle runs through every target before repeating.
+    spec = generate_case(_loaded_catalog(), 3 * 1_000_003, milestone="M5", formulas=400, focus=True, **kw)
+    outer.update(_outer_function(f) for f in spec["sheets"][1]["cells"].values())
+    return outer
+
+
+def test_focus_functions_narrows_outer_calls_evenly() -> None:
+    names = {
+        f["name"]: f.get("spelled", f["name"])
+        for f in _loaded_catalog().functions
+        if f.get("milestone") == "M5"
+    }
+    picked = sorted(names)[:3]
+    outer = _focus_outer_counts(functions=picked)
+    assert set(outer) == {names[n] for n in picked}
+    assert max(outer.values()) - min(outer.values()) <= 1
+
+
+def test_focus_category_narrows_outer_calls_to_that_category() -> None:
+    cat = next(f["category"] for f in _loaded_catalog().functions if f.get("milestone") == "M5")
+    members = {
+        f.get("spelled", f["name"])
+        for f in _loaded_catalog().scoped("M5").functions
+        if f.get("milestone") == "M5" and f.get("category") == cat
+    }
+    outer = _focus_outer_counts(category=cat)
+    assert set(outer) == members
+    assert max(outer.values()) - min(outer.values()) <= 1
+
+
+@pytest.mark.parametrize(
+    ("kw", "match"),
+    [
+        ({"functions": ["NOSUCHFN"]}, "unknown function"),
+        ({"category": "nosuchcat"}, "unknown category"),
+        ({"functions": ["XLOOKUP"]}, "outside milestone"),
+    ],
+)
+def test_focus_narrowing_errors(kw: dict[str, Any], match: str) -> None:
+    with pytest.raises(ValueError, match=match):
+        generate_case(_loaded_catalog(), 1, milestone="M5", focus=True, **kw)
+
+
+@pytest.mark.parametrize("kw", [{"functions": ["MROUND"]}, {"category": "math"}])
+def test_narrowing_without_focus_is_an_error(kw: dict[str, Any]) -> None:
+    with pytest.raises(ValueError, match="pass --focus"):
+        generate_case(_loaded_catalog(), 1, milestone="M5", **kw)
+
+
+def test_focus_functions_and_category_with_empty_intersection_is_an_error() -> None:
+    m5 = [f for f in _loaded_catalog().functions if f.get("milestone") == "M5"]
+    first = m5[0]
+    other = next(f["category"] for f in m5 if f["category"] != first["category"])
+    with pytest.raises(ValueError, match="no generator-ready"):
+        generate_case(
+            _loaded_catalog(), 1, milestone="M5", focus=True, functions=[first["name"]], category=other
+        )
 
 
 def test_every_catalog_pool_exists_and_stays_under_the_literal_limit() -> None:

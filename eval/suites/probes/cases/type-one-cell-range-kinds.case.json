@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2262: TYPE of a one-cell range over blank, text, boolean, error, 256-unit text and a spill anchor, and of one-cell OFFSET and INDIRECT results. A6 is a blocked spill anchor (#SPILL!), E1 a working one.",
+  "tags": [
+    "M6",
+    "probe",
+    "T-2262",
+    "type"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A2": "x",
+        "A3": true,
+        "A4": "=1/0",
+        "A5": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "A6": "=SEQUENCE(3)",
+        "A7": 5,
+        "C1": "=TYPE(A1:A1)",
+        "C2": "=TYPE(A2:A2)",
+        "C3": "=TYPE(A3:A3)",
+        "C4": "=TYPE(A4:A4)",
+        "C5": "=TYPE(A5:A5)",
+        "C6": "=TYPE(A6:A6)",
+        "C7": "=TYPE(A7:A7)",
+        "C8": "=TYPE(OFFSET(A2,0,0,1,1))",
+        "C9": "=TYPE(OFFSET(A1,0,0,1,1))",
+        "C10": "=TYPE(OFFSET(A4,0,0,1,1))",
+        "C11": "=TYPE(INDIRECT(\"A2:A2\"))",
+        "C12": "=TYPE(INDIRECT(\"A3:A3\"))",
+        "C13": "=TYPE(INDIRECT(\"A4:A4\"))",
+        "C14": "=TYPE(INDIRECT(\"A1:A1\"))",
+        "E1": "=SEQUENCE(3)",
+        "C15": "=TYPE(E1:E1)"
+      }
+    }
+  ],
+  "expected": {}
+}
