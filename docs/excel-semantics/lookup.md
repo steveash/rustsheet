@@ -246,7 +246,7 @@ Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
 Tasks: T-0211, T-0264, T-2234
 
 ## Approximate-match lookups: type-skipping binary search
-Rule: VLOOKUP/HLOOKUP with range_lookup TRUE (or omitted), LOOKUP, and MATCH with a non-zero
+Rule: VLOOKUP/HLOOKUP with range_lookup TRUE (or omitted), LOOKUP, and MATCH with a positive
 match_type run one binary search over the vector that only compares cells of the lookup value's
 own type (number, text or boolean; a blank lookup value is the number 0):
 ```
@@ -257,14 +257,14 @@ while lo <= hi:
     if m > hi: hi = mid-1; continue
     c = compare(v[m], key)                                  # text case-insensitive
     if c == 0: return the last index of the run of adjacent equal cells starting at m
-               (the first index of the run, walking down, for a descending search)
-    if (c < 0 ascending) or (c > 0 descending): best = m; lo = m+1
+    if c < 0: best = m; lo = m+1
     else: hi = m-1
 return best (none -> #N/A)
 ```
 Blanks never match and there is no cross-type match (`VLOOKUP(TRUE,{blank;-1},1,TRUE)` is `#N/A`).
 The run of equal cells stops at the first cell that is not equal, whatever its type
-(`MATCH(2,{0,0,0,2,"x",2,9})` = 4). Any negative match_type searches descending and any positive one
+(`MATCH(2,{0,0,0,2,"x",2,9})` = 4). A negative match_type is no binary search at all: see "MATCH descending
+search scans from the top" below. Any negative match_type searches descending and any positive one
 ascending (`MATCH(5,{9,5,5,5,1},-2)` = 2, `MATCH(2,…,2)` = `MATCH(2,…,1)`). Only the sign of a fractional match_type counts: `-0.5` and `-0.0001` search descending (gen-m2/f7e6d351c8538ef5 Calc!A160, gen-m2/96a0952412cefa6c Calc!A241, T-1304) and `0.5`, `0.0001` and `0.999` search ascending, not exact (`MATCH(2.5,{1,2,3,4,5},0.5)` = 2; probes/match-fractional-match-type C1-C3, T-1391). A blank MATCH key is 0
 in an approximate search (`MATCH(blank,{1,blank,0,blank,2})` = 3).
 Exact match (range_lookup FALSE, MATCH 0) only matches cells of the key's type: a blank cell never
@@ -284,23 +284,25 @@ Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_posi
 `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
 Tasks: T-0212, T-0220
 
-## MATCH descending search skips backward; a text match_type read from a cell is #REF!
-Rule 1: in a descending search (negative match_type) the probe step that lands on a cell of another
-type moves *backward* to the nearest cell of the key's type, not forward as in the ascending
-pseudo-code above. `MATCH(0.5,{0.1,TRUE,3.14159},-1)` is `#N/A` (backward skip reaches 0.1, which is
-below the key, so nothing qualifies; a forward skip would reach 3.14159 and give 3), while
-`MATCH(0.5,{3,TRUE,0.1},-1)` = 1, `MATCH(2,{5,"x",3,1},-1)` = 3 and `MATCH(2,{5,TRUE,TRUE,1},-1)` = 1
-(the range forms agree). One backward-skip reading fits all four; the evidence does not exclude
-other rules for a skip that passes the low bound. When the backward skip finds no cell of the key's
-type between the live range's low bound and the midpoint, the search continues forward from the
-midpoint: `MATCH(-14,{FALSE,0.5},-1)` = 2 (gen-m2 b4392a6514a36ade Calc!A277; a backward-only skip
-gives #N/A). The forward continuation is verified by 20 further cells (probes/match-descending-forward-continuation J1-J20, excel-graph, T-1396):
-with a prefix of text, boolean or error cells before a run of numbers (or text), the descending
-search behaves as a plain binary search over the cells of the key's type (J1, J3 and J11-J16 have nothing of the key's type at or below the midpoint; the longer vectors J2 and J7-J10 only exercise the ordinary search after a mixed prefix). `MATCH(3,{"a","b","c",5,3,1},-1)` = 5,
+## MATCH descending search scans from the top; a text match_type read from a cell is #REF!
+Rule 1: a descending search (negative match_type) is a linear scan from the first cell, not a binary
+search. It passes over blanks, errors and cells of another type, ends at the first cell equal to the key
+(the first of a run of equal cells), and otherwise stops at the first cell of the key's type that is
+below the key, giving the last cell before it that is above the key (`#N/A` if the first one is already
+below, or there is none). Over the unsorted 0.5, 0.3, 0, -2.5, 2.5, -1, 1, 0.1, 100, keys 0, a blank
+(0) and -0.0001 give 3 and 0.0001 gives 2, over the whole vector and its 5- to 8-cell prefixes alike, and
+`""` is `#N/A` (probes/lookup-match-descending-blank A1-A18, excel-graph, 2026-10-21, T-2278; a binary search
+gives 9). The scan also gives every earlier cell this section was first written for, which a backward
+skip from a binary-search midpoint was fitted to: `MATCH(0.5,{0.1,TRUE,3.14159},-1)` is `#N/A` (0.1 is
+below the key), `MATCH(0.5,{3,TRUE,0.1},-1)` = 1, `MATCH(2,{5,"x",3,1},-1)` = 3, `MATCH(2,{5,TRUE,TRUE,1},-1)` = 1
+(the range forms agree) and `MATCH(-14,{FALSE,0.5},-1)` = 2 (gen-m2 b4392a6514a36ade Calc!A277). So do the 20
+cells of probes/match-descending-forward-continuation J1-J20 (excel-graph, T-1396), a prefix of text, boolean or
+error cells before a run of numbers (or text): `MATCH(3,{"a","b","c",5,3,1},-1)` = 5,
 `MATCH(1,{TRUE,FALSE,"c",9,7,5,3,1},-1)` = 8, `MATCH("b",{1,TRUE,2,"c","b","a"},-1)` = 5, `{#N/A,#N/A,5,4,3,2}` and
 prefixes of 2-4 text, boolean or mixed cells (J11-J14) give the same positions as the typed tail alone; an inexact key picks the last cell >= key
 (`MATCH(4.5,{"a","b","c",9,8,7,6,5,4,3},-1)` = 8) and a key above everything is #N/A (`MATCH(1,{"a","b",0.5,0.2},-1)`);
-range forms (a column and a row) agree. The engine already matches all 20 cells.
+range forms (a column and a row) agree, as does `MATCH(5,{9,5,5,5,1},-2)` = 2 above. Replacing the backward-skip
+binary search with the scan changed no other cell of any suite (T-2278).
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
 lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
@@ -317,9 +319,9 @@ A multi-cell range is its top-left cell, plain or picked by IF, IFS, SWITCH, LET
 (probes/match-type-nested-passthrough K1:K17, excel-graph, T-1452).
 Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
 2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, b4392a6514a36ade Calc!A277, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
-Implemented in: `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed). Rule 3: `match_type_arg` evaluates through `evaluate_chosen_reference` (util.rs), which IF, IFS, SWITCH, LET and CHOOSE share; aggregates such as SUM are deliberately unchanged (no oracle evidence).
+Implemented in: Rule 1 `SearchVector::descending_search` (lookup_table.rs); `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed). Rule 3: `match_type_arg` evaluates through `evaluate_chosen_reference` (util.rs), which IF, IFS, SWITCH, LET and CHOOSE share; aggregates such as SUM are deliberately unchanged (no oracle evidence).
 Status: VERIFIED
-Tasks: T-1305, T-1312, T-1313, T-1399, T-1452
+Tasks: T-1305, T-1312, T-1313, T-1399, T-1452, T-2278
 
 ## INDEX with one index into a 2-D range is #REF!
 Rule: `INDEX(range2d, n)` with only a row index (including 0 and 1E-15) is `#REF!`:
@@ -898,7 +900,15 @@ Tasks: T-2078
 ## XLOOKUP: an error lookup_value beats a size mismatch
 Rule (VERIFIED, probes/workday-serial-zero F40, excel-graph, 2026-10-19, T-1254): `XLOOKUP(NA(),A1:A4,B1:B5)` is
 `#N/A`, not the `#VALUE!` of lookup and return arrays of different sizes: the lookup value's error is returned first.
-Tasks: T-1254
+An error match_mode or search_mode comes next, before an unknown mode in the other one and before the size mismatch:
+`XLOOKUP(<blank>,Data!E5:E9,Data!C3:D8,0.3,101,INDEX(Data!D4:E11,0))` is `#REF!` (INDEX of a 2-D range with one index,
+"INDEX with one index into a 2-D range is #REF!"), and so is INDIRECT, ROWS and COLUMNS of it, while without that
+search_mode it is `#VALUE!` (the 6-row return array against the 5-cell lookup array, and match_mode 101 alike)
+(probes/xlookup-array-search-mode-indirect A1-A10, A21, excel-graph, 2026-10-22, T-2278; gen-m6/e3a562557696e2fc A33).
+INDIRECT of an error is that error (`INDIRECT(1/0)` `#DIV/0!`, `INDIRECT(NA())` `#N/A`), and an array search_mode of valid
+modes lifts (`ROWS(XLOOKUP(2,..,{1;2}))` 2). Which of an error match_mode and an error search_mode wins is unprobed (ours: match_mode).
+Implemented in: `xlookup_modes` (crates/rustsheet-engine/src/functions/xlookup.rs).
+Tasks: T-1254, T-2278
 
 ## CHOOSEROWS and CHOOSECOLS: an error argument beats an out-of-range index (T-2273)
 Rule (excel-graph, gen-m6, 2026-10-21): an error value in any argument, the array or a later index, is the result even when an
@@ -950,23 +960,16 @@ Calc!A17, 44194b2fefa30de2 A169, d0c30225243fde60 A377, c6621490a4d67f4e A214/B2
 Status: VERIFIED
 Tasks: T-2277
 
-## Unexplained gen-m6 lookup cells (T-2278)
-Observed (excel-graph, gen-m6, 2026-10-21), not yet explained:
-- `DATE(2088,MATCH(<blank>,Data!E4:E12,-2.2),30)` = 68757 (MATCH 3) over 0.5, 0.3, 0, -2.5, 2.5, -1, 1, 0.1, 100; the descending search
-  above gives 9 (ours 68941) (gen-m6/50f0dd9a8ee2cb57 Calc!A204).
-- `WEEKDAY(MMULT(LOOKUP(TRUE,Data!B2:B10,Data!E11:E11),Data!C$2))` is `#VALUE!` (TRUE matches B10, the 9th cell, past the
-  one-cell result vector); ours 7. A LOOKUP result read as a blank *cell* would make MMULT `#VALUE!` (arrays.md: a blank matrix
-  cell), UNVERIFIED (50f0dd9a8ee2cb57 A315).
-- `INDIRECT(XLOOKUP(<blank>,Data!E5:E9,Data!C3:D8,..,101,INDEX(Data!D4:E11,0)),0.2)` is `#REF!`; ours `#VALUE!` (e3a562557696e2fc A33).
-Probed (excel-graph, 2026-10-21, T-2278):
-- MATCH, probes/lookup-match-descending-blank: a blank key is 0, and -2.2 is -1. Over this unsorted vector, keys 0, blank and
-  -0.0001 give 3 and 0.0001 gives 2, over the whole vector and over its 5- to 8-cell prefixes alike; `""` is `#N/A`. That is
-  where a scan from the top meets the first value below the key (-2.5, or 0 for 0.0001), not what the descending search above
-  gives (ours 9 for all of them). Not yet reconciled with that rule's own evidence: the rule is open (T-2278).
-- LOOKUP past a one-cell result vector, probes/lookup-short-result-vector: the result shows as 0, but it is no reference
-  (`ISREF` FALSE, a two-cell result vector too), and `ROWS` of it, `MMULT` of it with 2.5 and the gen-m6 `WEEKDAY(MMULT(..))` are
-  `#VALUE!` (ours 0, 0 and 7). It behaves like the blank-cell value arrays.md describes, not like a number 0.
-- XLOOKUP with an array search_mode under INDIRECT: not probed yet. Excel for the web refused the workbook holding those
-  formulas (`unsupportedWorkbook`, also with CELL("address",LOOKUP(..))); split them into smaller cases.
-Status: VERIFIED for the MATCH and LOOKUP observations above (excel-graph); the MATCH search rule and the XLOOKUP cell UNVERIFIED
+## LOOKUP past a short result vector gives a blank's empty value; MMULT of it is #VALUE! (T-2278)
+Rule: when LOOKUP's match position lies past a one-cell result vector, it reads on to the blank cell there and gives its
+empty value ("VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0"): it shows 0, but it is no reference
+(`ISREF` FALSE, with a two-cell result vector too), `ROWS` of it is `#VALUE!`, and a matrix function treats it as a blank
+matrix cell (arrays.md "MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!"): `MMULT(LOOKUP(TRUE,Data!B2:B10,Data!E11:E11),2.5)`
+and `WEEKDAY(MMULT(LOOKUP(..),Data!C$2))` are `#VALUE!` (TRUE matches B10, the 9th cell).
+Evidence: probes/lookup-short-result-vector A19-A26 (excel-graph, 2026-10-21, T-2278); gen-m6/50f0dd9a8ee2cb57 Calc!A315.
+The same gen-m6 workbook's A204, `DATE(2088,MATCH(<blank>,Data!E4:E12,-2.2),30)` = 68757, is the descending scan above
+("MATCH descending search scans from the top"), and e3a562557696e2fc A33 is "XLOOKUP: an error lookup_value beats a size mismatch".
+Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as blank, as a blank cell. The empty value of
+IFERROR of a blank and an omitted argument (`MMULT(,2)`) under a matrix function are unprobed and take the same path.
+Status: VERIFIED (excel-graph)
 Tasks: T-2278

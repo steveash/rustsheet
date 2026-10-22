@@ -120,6 +120,14 @@ fn xlookup_modes(
     cell: CellReferenceIndex,
 ) -> Result<(MatchMode, SearchMode), CalcResult> {
     let unexpected = || CalcResult::new_error(Error::VALUE, cell, "Unexpected number".to_string());
+    // An error argument wins over an unknown mode in the other one: an unknown match_mode 101
+    // with a `#REF!` search_mode is `#REF!` (probes/xlookup-array-search-mode-indirect A6).
+    if let Some(error) = [match_mode, search_mode]
+        .into_iter()
+        .find(|mode| mode.is_error())
+    {
+        return Err(error.clone());
+    }
     let match_mode = match model.cast_to_number(match_mode.clone(), cell)?.floor() as i32 {
         -1 => MatchMode::ExactMatchSmaller,
         1 => MatchMode::ExactMatchLarger,

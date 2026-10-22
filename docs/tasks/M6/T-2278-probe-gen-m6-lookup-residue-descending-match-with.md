@@ -3,7 +3,7 @@ id: T-2278
 title: "Probe gen-m6 lookup residue: descending MATCH with a blank key, LOOKUP's extended result vector as a reference, INDIRECT over XLOOKUP"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -36,9 +36,9 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 3 in eval/baselin
 | gen-m6/e3a562557696e2fc Calc!A33 | `=INDIRECT(XLOOKUP(Data!D3,Data!E5:E9,Data!C3:D8,(Data!C$5+Data!E$4),(Data!$E9+100),INDEX(Data!D4:E11,0)),Da...` | "#REF!" | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] These 3 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite, or each remaining one has a filed task named in the Outcome.
-- [ ] A new probes case (excel-graph) holds the probes above; lookup.md replaces the "Unexplained" entry with the rules found.
-- [ ] `make check` green; reviewers approve.
+- [x] These 3 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite, or each remaining one has a filed task named in the Outcome.
+- [x] A new probes case (excel-graph) holds the probes above; lookup.md replaces the "Unexplained" entry with the rules found.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other lookup functions.
@@ -59,3 +59,15 @@ Lead for the LOOKUP cell: `lookup_result_at` (lookup.rs) reads on past the one-c
 `EmptyCell`, and `eval_matrix_arg` (matrix.rs) maps a scalar `EmptyCell` to `ArrayNode::Empty`, which MMULT refuses with
 `#VALUE!`; yet ours gives 0 for `MMULT(LOOKUP(..),2.5)`, so the blank becomes a number 0 between the two (the argument's
 evaluation context or LOOKUP's array path). Trace that first.
+
+## Outcome
+- MATCH with a negative match_type is a scan from the top that stops before the first value below the key
+  (`SearchVector::descending_search`), not a binary search with a backward skip; the ascending `approximate_search`
+  lost its descending branches. The scan fits every earlier descending-MATCH cell, and no other cell of any suite moved.
+- Matrix functions read the empty value a lookup gives for a blank result cell as a blank matrix cell (`#VALUE!`).
+- XLOOKUP returns an error match_mode or search_mode before an unknown mode and before the return-array size mismatch;
+  the gen-m6 cell's `#REF!` came from `INDEX(Data!D4:E11,0)` (new probe probes/xlookup-array-search-mode-indirect, 21 cells).
+- lookup.md: "MATCH descending search scans from the top" rewritten, the "Unexplained gen-m6 lookup cells" entry replaced by
+  "LOOKUP past a short result vector..", the XLOOKUP error-order entry extended; arrays.md notes the empty value.
+- Eval delta: gen-m6 known failures 166 -> 163 (all 3 cells), probes +3 cases (46 cells, all passing), no regressions;
+  visible parity 3667 -> 3663.
