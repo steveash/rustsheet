@@ -1,6 +1,7 @@
 //! A pattern compiled for the backtracker (SPEC-0013 section 3): a flat instruction vector that
-//! [`super::backtrack`] runs. Only patterns the automata cannot run come here (`Ast::is_regular`
-//! is false).
+//! [`super::backtrack`] runs: patterns the automata cannot run (`Ast::is_regular` is false), and
+//! regular patterns the automata cannot read exactly, compiled for the memoized mode
+//! ([`compile_memoized`], T-2355).
 //!
 //! Counted repeats are expanded into copies rather than run by a counter instruction, and the
 //! program's size is capped by the caller's compile budget, so `x{1000}` costs 1000 copies of
@@ -13,7 +14,7 @@ use regex_syntax::hir::{ClassUnicode, ClassUnicodeRange};
 
 use super::class::literal_class;
 
-use super::ast::{Anchor, Ast, Reference, RepeatKind};
+use super::ast::{can_match_empty, Anchor, Ast, Reference, RepeatKind};
 
 /// One instruction.
 #[derive(Debug, Clone)]
@@ -77,6 +78,11 @@ pub(in crate::functions::text) struct Program {
     pub(super) group_info: GroupInfo,
     /// Whether every match starts at the start of the text (`\A`, `^` without `(?m)`).
     pub(super) anchored: bool,
+    /// Whether the program is for the memoized mode: compiled from a regular pattern
+    /// Thompson-style, with no loop guards, so whether a state leads to a match depends only on
+    /// its instruction and position and the backtracker may skip a state it has visited
+    /// (SPEC-0013 section 3).
+    pub(super) memoized: bool,
 }
 
 impl Program {
@@ -102,6 +108,22 @@ impl Program {
 
 /// Compiles `ast` within `size_limit` bytes of instructions (their class ranges included).
 pub(super) fn compile(ast: &Ast, size_limit: usize) -> Result<Program, CompileError> {
+    build(ast, size_limit, false)
+}
+
+/// Compiles the regular `ast` for the memoized mode, within `size_limit` bytes. An unbounded
+/// repeat is laid out as `regex_automata`'s Thompson compiler lays it out (`x*` as `(?:x+)?` when
+/// `x` can match the empty string), with no loop guard: a visited state ends a path that comes
+/// back to it, as the NFA's epsilon closure does, so the two give one match and one set of
+/// captures (the differential test in `pcre/tests.rs`).
+pub(super) fn compile_memoized(ast: &Ast, size_limit: usize) -> Result<Program, CompileError> {
+    if !ast.is_regular() {
+        return Err(CompileError::Unsupported);
+    }
+    build(ast, size_limit, true)
+}
+
+fn build(ast: &Ast, size_limit: usize, memoized: bool) -> Result<Program, CompileError> {
     let names = group_names(ast);
     let group_info = GroupInfo::new([std::iter::once(None)
         .chain(names.iter().map(|name| name.as_deref()))
@@ -113,6 +135,7 @@ pub(super) fn compile(ast: &Ast, size_limit: usize) -> Result<Program, CompileEr
         size_limit,
         loops: 0,
         names: &names,
+        memoized,
     };
     compiler.push(Inst::Save(0))?;
     compiler.node(ast)?;
@@ -124,6 +147,7 @@ pub(super) fn compile(ast: &Ast, size_limit: usize) -> Result<Program, CompileEr
         insts: compiler.insts,
         group_info,
         anchored: starts_anchored(ast),
+        memoized,
     })
 }
 
@@ -171,6 +195,8 @@ struct Compiler<'a> {
     size_limit: usize,
     loops: usize,
     names: &'a [Option<Box<str>>],
+    /// Lays loops out guard-free for the memoized mode.
+    memoized: bool,
 }
 
 impl Compiler<'_> {
@@ -322,6 +348,9 @@ impl Compiler<'_> {
         lazy: bool,
         ast: &Ast,
     ) -> Result<(), CompileError> {
+        if max.is_none() && self.memoized {
+            return self.thompson_loop(min, lazy, ast);
+        }
         for _ in 0..min {
             self.node(ast)?;
         }
@@ -348,6 +377,40 @@ impl Compiler<'_> {
         let exit = self.next();
         for split in splits {
             self.set_split(split, split + 1, exit, lazy);
+        }
+        Ok(())
+    }
+
+    /// `ast` at least `min` times, as `regex_automata`'s `c_at_least` lays it out: `min - 1`
+    /// copies and then `x+` (a copy whose end splits back to its start); with no minimum, `x*`
+    /// is a split around a copy that jumps back to it, or `(?:x+)?` when `x` can match the empty
+    /// string, which keeps the leftmost-first priority order (rust-lang/regex#779).
+    fn thompson_loop(&mut self, min: u32, lazy: bool, ast: &Ast) -> Result<(), CompileError> {
+        if min == 0 && !can_match_empty(ast) {
+            // L: split(body, exit); body: ast; jump L; exit:
+            let split = self.push(Inst::Split(0, 0))?;
+            self.node(ast)?;
+            self.push(Inst::Jump(split))?;
+            let exit = self.next();
+            self.set_split(split, split + 1, exit, lazy);
+            return Ok(());
+        }
+        let question = if min == 0 {
+            Some(self.push(Inst::Split(0, 0))?)
+        } else {
+            for _ in 1..min {
+                self.node(ast)?;
+            }
+            None
+        };
+        // body: ast; plus: split(body, exit); exit:
+        let body = self.next();
+        self.node(ast)?;
+        let plus = self.push(Inst::Split(0, 0))?;
+        let exit = self.next();
+        self.set_split(plus, body, exit, lazy);
+        if let Some(question) = question {
+            self.set_split(question, body, exit, lazy);
         }
         Ok(())
     }

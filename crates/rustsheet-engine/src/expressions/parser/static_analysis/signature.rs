@@ -235,15 +235,6 @@ pub(super) fn args_signature_randarray(arg_count: usize) -> Vec<Signature> {
     vec![Signature::Scalar; arg_count]
 }
 
-pub(super) fn args_signature_tocol(arg_count: usize) -> Vec<Signature> {
-    if !(1..=3).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
-}
-
 pub(super) fn args_signature_bycol_byrow(arg_count: usize) -> Vec<Signature> {
     if arg_count != 2 {
         return vec![Signature::Error; arg_count];

@@ -1,11 +1,14 @@
 #![allow(clippy::unwrap_used)]
 
+use regex_automata::{meta::Regex, util::captures::Captures, Match};
 use regex_syntax::hir::Hir;
 
 use super::{
     parse::{parse, Invalid, NEST_LIMIT},
-    translate, FinalLf, Form, ProgramFailure,
+    program::{compile, compile_memoized, Program},
+    translate, BacktrackCache, Backtracker, FinalLf, Form, ProgramFailure,
 };
+use crate::functions::text::regex_search::each_match;
 
 /// `pattern` translated for the automata; panics on a pattern only the backtracker runs.
 fn hir(pattern: &str, caseless: bool, final_lf: FinalLf) -> Hir {
@@ -18,12 +21,26 @@ fn hir(pattern: &str, caseless: bool, final_lf: FinalLf) -> Hir {
     }
 }
 
-/// Whether `pattern` matches `text`, translated as REGEXTEST translates it.
+/// Whether `pattern` matches `text`, translated as REGEXTEST translates it, on the engine it
+/// picks for `text`.
 fn matches(pattern: &str, text: &str, caseless: bool) -> bool {
-    regex_automata::meta::Regex::builder()
-        .build_from_hir(&hir(pattern, caseless, super::final_lf_for(text)))
+    match translate(pattern, caseless, super::final_lf_for(text), usize::MAX)
         .unwrap()
-        .is_match(text)
+        .form
+    {
+        Form::Automata(hir) => Regex::builder()
+            .build_from_hir(&hir)
+            .unwrap()
+            .is_match(text),
+        Form::Backtrack(backtrack) => {
+            let program = backtrack.compile(usize::MAX).ok().unwrap();
+            let (mut cache, mut work) = (BacktrackCache::default(), u64::MAX);
+            Backtracker::new(&program, &mut cache, &mut work, usize::MAX)
+                .find_from(text, 0)
+                .unwrap()
+                .is_some()
+        }
+    }
 }
 
 fn invalid(pattern: &str) -> bool {
@@ -64,8 +81,158 @@ fn dollar_matches_before_a_final_line_feed() {
     assert!(!matches(r"a\z", "a\n", false));
     assert!(!matches("a$", "a\nb", false));
     assert!(matches("a$", "a", false));
-    // A text with another \n keeps `\z` until T-2355's memoized mode: PCRE2 matches here.
-    assert!(!matches("a$", "b\na\n", false));
+    // A text with another \n runs on the memoized mode, which reads `$` exactly (T-2355).
+    assert!(matches("a$", "b\na\n", false));
+    assert!(matches(r"a\Z", "b\na\n", false));
+    assert!(!matches("a$", "a\nb\n", false));
+    assert!(!matches(r"a\z", "b\na\n", false));
+    assert!(matches("(?m)a$", "a\nb\n", false));
+    // Only that text kind leaves the automata (SPEC-0013 section 2).
+    let automata = |pattern: &str, text: &str| {
+        matches!(
+            translate(pattern, false, super::final_lf_for(text), usize::MAX)
+                .unwrap()
+                .form,
+            Form::Automata(_)
+        )
+    };
+    assert!(automata("a$", "a\nb"));
+    assert!(!matches("a$", "a\nb", false));
+    assert!(matches("b$", "a\nb", false));
+    assert!(automata("a$", "a\n"));
+    assert!(automata("a$", "ab"));
+    assert!(automata("a[$]", "a\nb\n"));
+    assert!(!automata("a$", "a\nb\n"));
+}
+
+/// The match of `program` in `text`, its groups' spans, and every match of its iteration.
+type Outcome = (Vec<Option<(usize, usize)>>, Vec<(usize, usize)>);
+
+fn run_program(program: &Program, text: &str) -> Outcome {
+    let (mut cache, mut work) = (BacktrackCache::default(), u64::MAX);
+    let mut caps = Captures::all(program.group_info().clone());
+    let mut bt = Backtracker::new(program, &mut cache, &mut work, usize::MAX);
+    let groups = if bt.find_from(text, 0).unwrap().is_some() {
+        bt.fill(&mut caps);
+        spans(&caps)
+    } else {
+        Vec::new()
+    };
+    let mut all = Vec::new();
+    each_match(&mut bt, text, |_, m| {
+        all.push((m.start(), m.end()));
+        true
+    })
+    .unwrap();
+    (groups, all)
+}
+
+fn run_automata(regex: &Regex, text: &str) -> Outcome {
+    let mut caps = regex.create_captures();
+    regex.captures(text, &mut caps);
+    let groups = if caps.is_match() {
+        spans(&caps)
+    } else {
+        Vec::new()
+    };
+    let all = regex
+        .find_iter(text)
+        .map(|m: Match| (m.start(), m.end()))
+        .collect();
+    (groups, all)
+}
+
+fn spans(caps: &Captures) -> Vec<Option<(usize, usize)>> {
+    (0..caps.group_len())
+        .map(|group| caps.get_group(group).map(|span| (span.start, span.end)))
+        .collect()
+}
+
+#[test]
+fn backtracker_agrees_with_the_automata_on_regular_patterns() {
+    // Random regular patterns over a small alphabet: the same match, groups and iteration on the
+    // automata and on the memoized mode; and on T-1900's plain mode where no unbounded loop can
+    // match empty (PCRE2's empty-iteration rule is not the NFA's there, so `(a?)*` sets its group
+    // differently).
+    let atoms = [
+        "a", "b", ".", "[ab]", r"\w", "^", "$", r"\b", r"\B", "(a)", "(a|)", "(|a)", "(?:ab|a)",
+        "()", "(b*)", "(?:a?)", "(a|b)",
+    ];
+    let quantifiers = [
+        "", "", "*", "*?", "+", "+?", "?", "??", "{2}", "{1,3}", "{0,2}?", "{2,}", "{0,}?",
+    ];
+    let texts = [
+        "", "a", "b", "ab", "bba", "aab", "abab", "bbaa", "a\n", "ab ab", "aaaa",
+    ];
+    let mut seed: u32 = 2_355;
+    let mut next = |n: usize| {
+        seed = seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+        (seed >> 16) as usize % n
+    };
+    let mut plain_compared = 0;
+    for _ in 0..3_000 {
+        let mut pattern = String::new();
+        for _ in 0..=next(4) {
+            if !pattern.is_empty() && next(5) == 0 {
+                pattern.push('|');
+            }
+            let atom = atoms[next(atoms.len())];
+            // An assertion takes no quantifier, in a group or not.
+            let assertion = matches!(atom, "^" | "$" | r"\b" | r"\B");
+            let group = !assertion && next(4) == 0;
+            if group {
+                pattern.push_str("(?:");
+            }
+            pattern.push_str(atom);
+            if !assertion {
+                pattern.push_str(quantifiers[next(quantifiers.len())]);
+            }
+            if group {
+                pattern.push(')');
+                pattern.push_str(quantifiers[next(quantifiers.len())]);
+            }
+        }
+        let Ok(parsed) = parse(&pattern, false, usize::MAX) else {
+            panic!("{pattern}");
+        };
+        let regex = Regex::builder()
+            .build_from_hir(&hir(&pattern, false, FinalLf::EndLf))
+            .unwrap();
+        let memoized = compile_memoized(&parsed.ast, usize::MAX).unwrap();
+        let plain =
+            (!has_empty_loop(&parsed.ast)).then(|| compile(&parsed.ast, usize::MAX).unwrap());
+        for text in texts {
+            let expected = run_automata(&regex, text);
+            assert_eq!(
+                run_program(&memoized, text),
+                expected,
+                "{pattern} on {text:?}"
+            );
+            if let Some(plain) = &plain {
+                plain_compared += 1;
+                assert_eq!(
+                    run_program(plain, text),
+                    expected,
+                    "plain {pattern} on {text:?}"
+                );
+            }
+        }
+    }
+    assert!(plain_compared > 10_000);
+}
+
+/// Whether an unbounded repeat in `ast` has a body that can match empty.
+fn has_empty_loop(ast: &super::ast::Ast) -> bool {
+    let mut stack = vec![ast];
+    while let Some(ast) = stack.pop() {
+        if let super::ast::Ast::Repeat { max: None, ast, .. } = ast {
+            if super::ast::can_match_empty(ast) {
+                return true;
+            }
+        }
+        ast.push_children(&mut stack);
+    }
+    false
 }
 
 #[test]

@@ -377,10 +377,17 @@ Backtracker limits (T-1900, functions/text/pcre/backtrack.rs and program.rs):
   answers are UNVERIFIED (T-2356).
 - Counted repeats are expanded into copies, and every node a copy visits counts against the compile size limit.
   `(?:(?:){65535}){65535}(a)\1` is too big, and `#VALUE!`, where PCRE2 compiles it.
+- The memoized mode (T-2355; a regular pattern with `$` or `\Z` over a text with a line feed before its last
+  character) keeps one bit per instruction and byte position it reaches, in chunks of 64 positions, held with the
+  stack within what the call may still hold (64 MiB at most): 4 KiB per instruction over a 32,767-character ASCII
+  text. A search that would pass it is `#ERROR!`, where Excel answers FALSE (checked once on excel-graph,
+  2026-10-22, for T-2355; not kept as a case, being this deviation)
+  (`REGEXTEST("a"&CHAR(10)&REPT("a",32764)&CHAR(10),"(?:b[a-z]{20000}|a)*b$")`). Each chunk it reaches is charged one unit
+  a word, and each state it enters a step.
 Status: DEVIATION (decision 0014)
 Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138
+Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
@@ -744,10 +751,14 @@ Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them
   "xa\nx" in ours).
 - Now `#VALUE!` (fail closed): `\v` (was VT), `^*`, and spaces inside quantifier braces (`a{1, 2}`, a quantifier
   before). Also `--`, `~~` and `||` inside a bracket, which were set operations; Excel's nested brackets suggest a
-  UTS #18 dialect, where they may be set operations too. `$` and `\Z` on a text that holds another LF before
-its final one still match only at the very end (PCRE2 also matches before the final LF) until T-2355's memoized mode.
+  UTS #18 dialect, where they may be set operations too.
+`$` and `\Z` on a text that holds another LF before its final one also match before the final LF, as Excel's do
+(`REGEXTEST("b"&CHAR(10)&"a"&CHAR(10),"a$")` is TRUE, `REGEXREPLACE("a"&CHAR(10)&CHAR(10),"$","x")` puts an x before
+and after the final LF; probes/t2355-regex-dollar-inner-lf A1-A10, excel-graph, 2026-10-22), since T-2355: the pattern
+then runs on the backtracker's memoized mode. Before, they matched only at the very end. A text with an LF inside
+but none at the end stays on the automata, `$` meaning its end (A7, A8).
 Status: VERIFIED (excel-graph)
-Tasks: T-1829 (probe), T-1900, T-1903, T-2355, T-1973
+Tasks: T-1829 (probe), T-1900, T-1903, T-2355 (probe t2355-regex-dollar-inner-lf), T-1973
 
 ## `\R` and `\X` are atomic; `\X` is PCRE2's grapheme cluster (T-2287)
 Rule: `\R` is one line break, CR LF or any one of LF, VT, FF, CR, NEL, U+2028 and U+2029, and it never gives back the

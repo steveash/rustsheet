@@ -50,8 +50,8 @@ fn span_order_and_quoting() {
     // Written backwards it is the same span (3d-ref-aggregates C2).
     assert_eq!(eval(&mut model, "=SUM(Data3:Data1!A1)"), "111");
     assert_eq!(eval(&mut model, "=SUM('Data2:Q 4'!A1)"), "1110");
-    // The formula's own sheet may be in the span.
-    assert_eq!(eval(&mut model, "=SUM(Sheet1:Data2!A1)"), "#CIRC!");
+    // The formula's own sheet may be in the span: a loop, so 0 (recalc.md).
+    assert_eq!(eval(&mut model, "=SUM(Sheet1:Data2!A1)"), "0");
     model._set("B1", "=SUM(Sheet1:Data2!A1)");
     model._set("A1", "7");
     model.evaluate();
