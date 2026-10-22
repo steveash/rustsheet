@@ -2187,9 +2187,27 @@ Status: VERIFIED (excel-graph).
 Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
 
-## AGGREGATE 18 with a multi-cell k under EDATE (T-2281)
-Observed (excel-graph, gen-m6, 2026-10-21): `EDATE(AGGREGATE(18,3,Data!C3:D3,Data!C3:D10),-21)` is `#VALUE!`, ours `#NUM!`
-(gen-m6/03333cc38ec06a14 Calc!A120; C3 is "x", the first k). Consistent with AGGREGATE lifting over a range k so that the first
-element is k = "x" (`#VALUE!`), UNVERIFIED (T-2281 probes it).
-Status: UNVERIFIED (one cell)
-Tasks: T-2281
+## AGGREGATE 14-19: k is read before the array, a referenced error k is `#VALUE!` (T-2281)
+Rule: functions 14-19 read k as a number before they read the array, so a text k is `#VALUE!`
+and an error k its own error even where the array holds an error or no numbers, while a blank,
+TRUE or "2" k is coerced and the array decides (no numbers: `#NUM!`). A k that is a reference,
+written or returned by OFFSET, INDIRECT or IF, reads its top-left cell (a multi-cell range does not
+lift), and a referenced cell holding an error is `#VALUE!`, not that error (options 0, 4 and 6
+probed, the others assumed alike).
+Cells (probes/aggregate-range-k-first-cell, excel-graph 2026-10-21; Data A1:A5 = 1..5, B1 "x",
+B2 blank, B3 0.5, B4 2, C1:C2 no numbers, D1 `=NA()`, E1 `=NA()`, E2 2):
+- `AGGREGATE(18,3,C1:C2,B1:B3)`, `AGGREGATE(14,6,C1:C2,"x")`, functions 14-19 over C1:C2 with
+  k B1:B3: `#VALUE!` (A3, A5:A11); `EDATE(…,-21)` `#VALUE!` (A19, and gen-m6/03333cc38ec06a14
+  Calc!A120). `AGGREGATE(14,4,E1:E2,"x")` `#VALUE!`, not the array's `#N/A` (C8).
+- `AGGREGATE(18,3,C1:C2,0.5)`, k -1, k B2:B3 (blank), k B3:B4 (0.5), k "2", k TRUE: `#NUM!` (A4,
+  A12, A20, A21, A25, A26); k `1/0`: `#DIV/0!` (A24); `AGGREGATE(14,6,A1:A5,NA())` `#N/A` (C9).
+- `AGGREGATE(14,6,A1:A5,B1:B3)` `#VALUE!` (A2), `AGGREGATE(16,6,A1:A5,B3:B4)` 3 (A14),
+  `AGGREGATE(14,6,A1:A5,B4:B5)` 4 and `ROWS(…)` 1 (A16, A17), `AGGREGATE(14,6,A1:A5,"2")` 4 (A28);
+  k `OFFSET(B4,0,0)`, `OFFSET(B4,0,0,2,1)`, `INDIRECT("Data!B4")`, `IF(TRUE,B4)`: 4 (C5, E1, C12,
+  C13), and `OFFSET(B1,0,0)` over C1:C2 `#VALUE!` (C7).
+- k D1 or D1:D2 over A1:A5 or C1:C2 under options 0, 4 and 6, and k `INDIRECT("Data!D1")` or
+  `IF(TRUE,D1)`: `#VALUE!` (A27, A29:A31, C1:C4, C6, C10, C11, C14).
+- An array k still lifts: `AGGREGATE(14,6,C1:C2,{"x";1})` spills `#VALUE!`, `#NUM!` (A22:A23).
+Engine: `Model::aggregate_k` (crates/rustsheet-engine/src/functions/aggregate.rs); `fn_aggregate`
+keeps a fourth argument IF or CHOOSE picks a reference for as that reference.
+Status: implemented (T-2281)

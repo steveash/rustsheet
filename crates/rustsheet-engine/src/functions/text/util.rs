@@ -294,6 +294,9 @@ pub(crate) fn within_text_budget(total: &mut usize, len: usize) -> bool {
     *total <= MAX_BROADCAST_TEXT_BYTES
 }
 
+/// Largest `instance_num` SUBSTITUTE accepts (2^31 - 2; text.md, T-2279).
+const MAX_SUBSTITUTE_INSTANCE: f64 = 2_147_483_646.0;
+
 /// Computes a single SUBSTITUTE result from one element of each argument.
 /// Without an `instance_num` every instance is replaced.
 pub(super) fn substitute_element(
@@ -307,11 +310,14 @@ pub(super) fn substitute_element(
     let new_text = calc_result_to_text(new_text)?;
     let instance_num = match instance_num {
         Some(n) => {
+            // Excel accepts 1..=2^31-2 after flooring: 2147483646.9 is fine, 2147483647 and
+            // above (1E+15, 1E+300) are #VALUE!, even with no match and before an empty
+            // old_text short-circuits (probes/substitute-instance-num-bound, T-2279).
             let n = n?.floor();
-            if n < 1.0 {
+            if !(1.0..=MAX_SUBSTITUTE_INSTANCE).contains(&n) {
                 return Err(Error::VALUE);
             }
-            Some(n.min(i32::MAX as f64) as i32)
+            Some(n as i32)
         }
         None => None,
     };

@@ -3,7 +3,7 @@ id: T-2279
 title: "SUBSTITUTE: probe the instance_num bound (instance_num 1E+15 is #VALUE! in Excel)"
 milestone: M6
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -28,12 +28,19 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baselin
 | gen-m6/9615a6de0f3ac417 Calc!A144 | `=LOOKUP(SUBSTITUTE(("x~*"&Data!B2),RIGHTB(Data!$E4),CHOOSE(3,Data!C8,Data!A2,Data!C4),(Data!D$6+10000000000...` | "#VALUE!" | "#N/A" |
 
 ## Acceptance criteria
-- [ ] This 1 known-failure line disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A new probes case (excel-graph) holds the grid; text.md states the bound with cells.
-- [ ] `make check` green; reviewers approve.
+- [x] This 1 known-failure line disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A new probes case (excel-graph) holds the grid; text.md states the bound with cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - REPLACE/MID bounds.
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+Probed on excel-graph (probes/substitute-instance-num-bound, 68 cells): SUBSTITUTE floors instance_num and is
+`#VALUE!` unless it is in 1..=2147483646 (2^31 - 2), match or not, empty text or old_text included (65536,
+2^30, 2147483646.9 fine; 2147483647, 2^31, 1E+10, 1E+15, 1E+300 `#VALUE!`). `substitute_element` checks that
+range; text.md states it. Eval: gen-m6/9615a6de0f3ac417 Calc!A144 fixed (gen-m6 known failures -1), the new
+probe case passes in full, no regressions.
