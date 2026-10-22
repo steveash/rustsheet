@@ -850,6 +850,7 @@ C	probes/securities-argument-error-order.case.json	192
 C	probes/sequence-step-accumulation.case.json	11
 C	probes/seriessum-blank-and-underflow.case.json	9
 C	probes/seriessum-boolean-coefficients.case.json	18
+C	probes/seriessum-negative-x-fractional-power.case.json	25
 C	probes/seriessum-x-zero-error-precedence.case.json	27
 C	probes/seriessum-x-zero.case.json	22
 C	probes/sheet-names-like-cells-3d-spans.case.json	7
