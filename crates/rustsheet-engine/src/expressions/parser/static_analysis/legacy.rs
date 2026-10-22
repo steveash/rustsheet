@@ -406,6 +406,21 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
         && returns_only_array_constants(kind, args))
         || chooses_between_references_and_array_constants(kind, args)
         || chooses_references_by_an_array_index(kind, args)
+        || indexes_a_number_whole(kind, args)
+}
+
+/// Whether `kind(args)` is `INDEX(<number>,0)` or `INDEX(<number>,0,0)`: the whole of a scalar is
+/// an array, so it reads like an array constant under N or T, `#VALUE!`, and Excel shows no `@`
+/// (`=N(INDEX(5,0,0))`, `=N(INDEX(5,0))`; probes/index-zero-index-scalar-shape E5, E6, F5, F6,
+/// T-2191). Other indices of a scalar are unprobed and keep their `@`.
+fn indexes_a_number_whole(kind: &Function, args: &[Node]) -> bool {
+    let is_zero = |arg: &Node| matches!(arg, Node::NumberKind(n) if *n == 0.0);
+    matches!(kind, Function::Index)
+        && match args {
+            [Node::NumberKind(_), row] => is_zero(row),
+            [Node::NumberKind(_), row, column] => is_zero(row) && is_zero(column),
+            _ => false,
+        }
 }
 
 /// Whether `kind(args)` is a CHOOSE with an array constant for its index over cell or range
