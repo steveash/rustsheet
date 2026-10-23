@@ -209,6 +209,12 @@ WRAPROWS allow columns past the grid: `ROWS(WRAPCOLS(SEQUENCE(16385),1))` is 1 a
 16385; their rows never pass the grid (wrap_count is clamped to the vector, and `SEQUENCE(1048577)` is itself `#VALUE!`).
 `COLUMNS(VSTACK(TEXTSPLIT(REPT(",",16384),","),1))` is 16385.
 Evidence: probes/expand-wrap-past-grid W1-W10 (excel-graph, 2026-10-19, T-1967).
+Far larger sizes give other errors (gen-m7, excel-graph, 2026-10-22, T-2254 triage): EXPAND with rows 1E+21
+(`EXPAND(1e-15,ROUND(1E+21,45),1)`, gen-m7/2d9b48c6363e7a16 Calc!A2454) or 1.83E+42 (8c4570978f18f4c2 A4006) is `#VALUE!`, not `#NUM!`
+(so the error changes somewhere between 1E+9 and 1E+21 rows); `EXPAND("a",4,123456789.123)` is `#NUM!` (4dac39f89709e2fc A2150), a size
+Excel refuses itself (ours `#ERROR!`, the cell bound below); and MAKEARRAY allows columns past the grid as HSTACK does:
+`MAKEARRAY(4,25000,_xleta.AVERAGE)` is `#SPILL!` (21b4eef18424ce94 A3348), the 4 x 25,000 result built and not spillable (ours `#VALUE!`).
+The thresholds are unprobed (T-2408).
 VSTACK checks its rows before it reads a referenced cell, after it evaluates every other argument: a stack past the grid
 is `#NUM!` even when a reference argument holds the formula's own cell, so `ROWS(VSTACK(A:A,1:1))` in W1 (-c2),
 `ROWS(VSTACK(2:2,A:A))` in W2, `ROWS(VSTACK(A:A,W8))` in W8 and `COLUMNS(VSTACK(A:A,12:12))` in W12 are `#NUM!`, not a
@@ -223,7 +229,7 @@ evaluates every argument but a one-cell reference, a range only to its corners, 
 before reading a reference (T-1965); that an evaluated array's rows count too, `ROWS(VSTACK(SEQUENCE(1048576),1:1))` in
 row 1 `#NUM!`, follows from that order but is unprobed. W9 is 0 since T-0445 (recalc.md), and so is -c3 W1, which sits in row 1, which it stacks.
 Status: VERIFIED (excel-graph)
-Tasks: T-1803, T-1967, T-1965
+Tasks: T-1803, T-1967, T-1965, T-2408
 
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
@@ -515,6 +521,10 @@ top-left of its call.
   `{FALSE;FALSE;TRUE}` "x", empty, empty; `UNIQUE(D1:D3,{FALSE;TRUE})` and `{TRUE;FALSE}` "x", empty;
   `UNIQUE(D1:D3,{FALSE;FALSE})` "x", "x"; `UNIQUE(D1:D3,FALSE,{TRUE;TRUE})` "y", "y".
 - TOCOL's scan_by_column (`TOCOL(A1:B3,0,{FALSE;TRUE})`: element 2 is 1, ROWS 1) and the other M7 lifts do not show it.
+- A 2-D exactly_once whose entries are all equal does not give every element its call's top-left: `UNIQUE(Data!C2:E10,TRUE,
+  <3x3 of FALSE>)` spills the top-left 100 down the first column and 0 in the other two (whether those are blank elements is unprobed, T-2348) (gen-m7/2c156ba98ef0220a.case.json
+  Calc!A1284, excel-graph, 2026-10-22, T-2254 triage). Ours: 100 in all nine. Whether the rule is "first of each row" or follows
+  by_col is unprobed (T-2348).
 Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
 UNVERIFIED for SORTBY (taken from UNIQUE's rule, unprobed; T-2349):
 - a leading invalid entry (`{2;1}`): ours `#VALUE!`, then the next element's top-left;
@@ -1080,8 +1090,12 @@ makes the whole MAP `#VALUE!`. `MAP(1,LAMBDA(x,x))`, `MAP("a",LAMBDA(x,x))` and 
 Evidence: probes/lambda-value-arguments A27-A32, B1-B10 (excel-graph, 2026-10-19, T-1511); gen-m7/44ef4f5638e25bcd Calc!A7.
 Ours: `fn_map` reads its second and later arrays with `refuse_scalar` (`by_slices_source`, bycol_byrow.rs) since T-1511. A blank or
 an error value as a later array is unprobed (ours: a blank is refused, an error passes), as is `MAP(1,LAMBDA(x,y,x))` (T-1946).
+gen-m7 shows an error value as a later array is `#VALUE!` whatever the error: a BASE `#NUM!` (gen-m7/4dac39f89709e2fc Calc!A137), a MOD
+`#DIV/0!` (21b4eef18424ce94 A1393), `DROP(Data!B5:B12,0,3)` `#CALC!` (a470dc9e165bdb20 A3360) and `SEQUENCE(1,SIN(Data!E9))` `#CALC!`
+(f19581ac44da1653 A2477) as MAP's second or third array are `#VALUE!` (excel-graph, 2026-10-22, T-2254 triage; also the three T-2225 cells
+in T-1946). Ours passes the error on (T-1946 files the fix).
 Status: VERIFIED (excel-graph)
-Tasks: T-1511
+Tasks: T-1511, T-1946
 
 ## An uncalled LAMBDA is one value
 Rule: an uncalled LAMBDA, or a function passed by name, is one value that is neither an error nor text. `ROWS` and `COLUMNS`
@@ -1184,6 +1198,23 @@ Evidence: probes/byrow-bycol-array-results (excel-graph, 2026-10-16, T-1670).
 Ours: bycol_byrow.rs `calc_result_to_array_node` unwraps a 1x1 array; `makes_calc_error` leaves it alone (T-1670).
 Status: VERIFIED (excel-graph)
 Tasks: T-1664, T-1670
+
+## MAKEARRAY with an array step; BYROW, BYCOL and MAP with a LAMBDA step
+Rule: MAKEARRAY whose LAMBDA returns an array for a cell is one `#CALC!`, nothing spilled, as BYROW and BYCOL are: `MAKEARRAY(2,2,
+LAMBDA(acc,z,{1,2}))` (gen-m7/0624b684889e9228 Calc!A39), `MAKEARRAY(2,3,LAMBDA(y,v,VSTACK(y,v)))` (23b5367c18059af2 A245),
+`MAKEARRAY(4,2,LAMBDA(w,x,HSTACK({1,2,3})+x*Data!B6))` (f7e94a817e5385ac A208), a step `HLOOKUP(..)*SORT(Data!D6:D12)`
+(b2078b5d702c691a A2785), and even `MAKEARRAY(1,1,LAMBDA(x,acc,{1,2}))` (23b5367c18059af2 A3493). The `#CALC!` then behaves as any
+scalar error: as REGEXEXTRACT's pattern it fills the lifted text's 6x3 shape (f19581ac44da1653 A465), as TEXTSPLIT's ignore_empty it is
+the result (21b4eef18424ce94 A1661). 20 formulas in all.
+A LAMBDA whose result is itself a LAMBDA (an uncalled function value) is `#CALC!` in that element of BYROW, BYCOL and MAP, which keep their
+shape: `BYCOL(Data!A11:D11,LAMBDA(x,LAMBDA(v,v)))` is four `#CALC!` (bc4a69b0b512bc04 A294), `MAP(Data!D1:E4,LAMBDA(acc,LAMBDA(w,w)))`
+eight (A2102), `BYROW({"",0,FALSE},LAMBDA(acc,LAMBDA(x,x)))` one (21b4eef18424ce94 A3078), and over a one-cell range or an empty cell
+alike (18 formulas). This fits "An uncalled LAMBDA is one value" (a cell shows it as `#CALC!`).
+Evidence: gen-m7 (excel-graph, 2026-10-22, T-2254 triage; the cells are listed in T-2406).
+Ours: MAKEARRAY keeps the grid with `#VALUE!` per element, and a LAMBDA element is `#VALUE!` (an array element cannot hold a LAMBDA,
+T-2039); T-2406 fixes both. Whether MAKEARRAY unwraps a 1x1 array step, as BYROW does, is unprobed.
+Status: VERIFIED (excel-graph)
+Tasks: T-2406
 
 ## Functions passed by name (`_xleta.`)
 Rule: a function passed by name, stored `_xleta.NAME` (any case, `_xleta._xlfn.STDEV.S` and `_xleta.STDEV.S` alike), is a
@@ -1300,7 +1331,12 @@ The same holds for a multi-cell array value, not only a range: `MAP(Data!C4:D12,
 result (7307132bb8820f17 A619) or a TRIMRANGE (2c5ea078f25443a2 A1717), a MAP step raising to a BYROW column (7307132bb8820f17 A1324) and a SCAN
 whose array initial value is returned as the accumulator (9359f03972e94026 A1705) are each one `#CALC!` with nothing spilled (excel-graph,
 2026-10-21, T-2225). Ours: implemented (T-2306, T-2309): a multi-cell array step of MAP or SCAN is the one `#CALC!` of a multi-cell range (`lambda_result_value`); REDUCE does not go through it.
-Tasks: T-2309, T-2306
+A 1x1 array step is its one value, as in BYROW: `MAP(Data!B5:E6,..,LAMBDA(w,x,TRANSPOSE(w)))` is the cells' values (gen-m7/b2078b5d702c691a
+Calc!A2162; f7e94a817e5385ac A842), `SCAN(..,LAMBDA(w,acc,HSTACK(PROPER(acc))))` "True", "0.3", "0" (7ea6ef6ceabacafd A87) and
+`SCAN(..,LAMBDA(w,x,BYROW(w,_xleta.COUNT)))` 0, 1, 1, 1 (2d9b48c6363e7a16 A2954); so is a 1x1 array initial_value of SCAN:
+`SCAN(MINVERSE(Data!C7),..)` (23b5367c18059af2 A74) and `SCAN(LEN(WRAPROWS("Hello World",4,0.3)),Data!A7:D7,LAMBDA(z,y,z*y))`, 22, 2.2E+16,
+6.6E+15, 0 (7ea6ef6ceabacafd A3615) (excel-graph, 2026-10-22, T-2254 triage). Ours `#VALUE!` for each (T-2407).
+Tasks: T-2309, T-2306, T-2407
 
 ## SCAN and REDUCE keep errors in the LAMBDA
 Rule: SCAN and REDUCE do not stop at an error. An error initial_value, an error accumulator and an error element are handed
@@ -1327,8 +1363,12 @@ A285). Both are references:
 Evidence: gen-m7 cases above (excel-graph, 2026-10-21, T-2225).
 Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot.
 Since T-2307, `lambda_initial_value` keeps a reference initial_value a reference, as `eval_ref_or_index` binds a LAMBDA argument.
+A blank cell taken into an array by HSTACK counts as a 0 argument when an element reaches AVERAGE: `REDUCE(<3x1 text array>,
+HSTACK(Data!Z1:Z2,{1;2}),_xleta.AVERAGE)` is 1.125 = AVERAGE(AVERAGE(AVERAGE(AVERAGE(texts,0),1),0),2) (gen-m7/f19581ac44da1653 Calc!A2088,
+excel-graph, 2026-10-22). Ours `#DIV/0!`: the element stays a blank that AVERAGE skips. Whether Excel's HSTACK makes it 0 or an empty
+value that an argument counts is unprobed (T-2413).
 Status: VERIFIED (excel-graph).
-Tasks: T-2306, T-2307
+Tasks: T-2306, T-2307, T-2413
 
 ## MAKEARRAY rows and columns must be whole numbers
 Rule: MAKEARRAY is `#VALUE!` when rows or columns is not a whole number; it does not truncate as SEQUENCE does. Evidence (gen-m7,
@@ -1338,8 +1378,10 @@ excel-graph, 2026-10-21, T-2225): rows 2.005 (18b80d3fd292d63a Calc!A963), 11111
 element is 3.14159 (c36ff5f42a1a4d47 A1705) are all `#VALUE!`.
 Ours: `#VALUE!` for a fractional rows or columns (T-2308).
 Unverified: a size within one ulp of a whole number (`(0.1+0.2)*10`) is `#VALUE!` in ours (exact test); Excel may round to 15 digits first.
+An error in columns comes before a fractional rows: `MAKEARRAY(123456794.36459264,<#NUM!>,_xleta.AVERAGE)` (the columns an
+`ACOS(1+2^-52)` product) is `#NUM!` (gen-m7/bc4a69b0b512bc04 Calc!A1028, excel-graph, 2026-10-22); ours `#VALUE!` (T-2408).
 Status: VERIFIED (excel-graph)
-Tasks: T-2308
+Tasks: T-2308, T-2408
 
 ## SORTBY with a single-value by_array or a fractional sort_order
 Rule: a by_array sorts the array's rows when it is one column as tall as the array, and its columns when it is one row as wide
@@ -1376,7 +1418,9 @@ column of one row (P!A23), an error value in the data that reaches a column tota
 everywhere (P!A11). Not `#VALUE!`: errors in group cells or in Total row cells under the column groups (P!A1, P!A22: per cell),
 `col_total_depth` 0 (no Total column, P!A9, P!A26, P!A27, though `row_total_depth` 0 still is: P!A25), one value column (P!A3, P!A4),
 several functions (`HSTACK(SUM,LAMBDA(v,NA()))`, Total columns shown: P!A5, P!A24), GROUPBY (P!A18, P!A30), text in the hidden
-total (P!A33), and an array result (`LAMBDA(v,v)`, P!A12: Excel's cells there are not errors to ISERROR, unexplained). With the
+total (P!A33), and an array result (`LAMBDA(v,v)`, P!A12: Excel's cells there are not errors to ISERROR, unexplained; GROUPBY alike: with
+`GROUPBY(Data!B1:B12,Data!B1:E12,LAMBDA(acc,acc),3)` as REGEXEXTRACT's return_mode, 26 elements are "", a valid mode where ours has
+`#VALUE!`, gen-m7/21b4eef18424ce94 Calc!A1504, T-2360). With the
 same functions over one value column, each gen-m7 call below is a pivot with error cells (value-cause `val1` rows). This is
 why five generated PIVOTBY calls are `#VALUE!` (gen-m7/18b80d3fd292d63a Calc!A913, 07d27aa0add0247f A708, A992, 90de8755a2e565e6
 A1, A285). Unprobed: an error only in a column subtotal.
@@ -1396,8 +1440,16 @@ not-a-vector `#VALUE!`) every lifted element's result, before wrap_count's `#NUM
 lifted error element in pad_with is that element's result", since its pad_with is all `#VALUE!` too. EXPAND with an error
 array beside a lifted argument (ours: one error), a 1x1 array or multi-cell range pad_with, and an array pad_with with rows
 past the grid are not probed either; T-2365 probes them.
+A multi-cell *range* pad_with is one `#VALUE!` too, with nothing spilled, whatever the range's shape and whether any cell is padded:
+`EXPAND({1;2;3},5,100,Data!A7:D7)` (gen-m7/0624b684889e9228 Calc!A2004), `EXPAND(Data!C11:D12,2,2,Data!E1:E3)` (gen-m7/2c156ba98ef0220a.case.json A185),
+`EXPAND("a",4,4,Data!C7:C11)` (2d9b48c6363e7a16 A366), `EXPAND({1,2,3},5,4,Data!B5:C11)` (A2686), a 1x1 result that pads nothing,
+`EXPAND(TAN(-Data!A9),1.305,1,Data!B2:B6)` (A830), and one whose spill would collide, `EXPAND(Data!$E8,YEAR(..),2,Data!C1:E3)`
+(gen-m7/2c156ba98ef0220a.case.json A1577: `#VALUE!`, not `#SPILL!`); 17 formulas in all (excel-graph, 2026-10-22, T-2254 triage). Ours intersects the
+range and spills (T-2415).
+An error wrap_count beats WRAPCOLS's not-a-vector `#VALUE!`: `WRAPCOLS(EXPAND({1},2,3),FILTER(..))` with an empty FILTER is `#CALC!`
+(gen-m7/f7e94a817e5385ac A3517, excel-graph, 2026-10-22); ours `#VALUE!` (T-2365).
 Status: VERIFIED (excel-graph) for the lifts; UNVERIFIED for the vector-error part
-Tasks: T-1835, T-2365
+Tasks: T-1835, T-2365, T-2415
 
 ## WRAPROWS and WRAPCOLS with a huge wrap_count
 Rule: a wrap_count of 2^31 or more is `#NUM!` in both functions, padded or not, before any clamp to the vector's length.
@@ -1444,6 +1496,16 @@ analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}
 (T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; each element is its call's top-left, UNVERIFIED against SORTBY's and UNIQUE's first-element-only rule, and a range by_col lifts too, UNVERIFIED: T-2366 probes both); TEXTJOIN: one cell (T-2318).
 Status: VERIFIED (excel-graph)
 Tasks: T-2313, T-2318, T-2319
+
+## TOROW and UNIQUE of a lone blank cell
+Rule: a one-cell reference to a blank cell stays blank in TOROW and UNIQUE: `TOROW(Data!Z1,3)` drops it and is `#CALC!` (nothing
+left; gen-m7/9bb61f6ae34c7e20 Calc!A3029), and `UNIQUE(Data!Z1,TRUE)&..` joins as "" (`TEXTAFTER(UNIQUE(Data!Z1,Data!A$2)&IF(TRUE,
+Data!E5,"a"),"")` is "1000000000000000": gen-m7/f7e94a817e5385ac A2942), as a blank range cell would.
+Evidence: gen-m7 (excel-graph, 2026-10-22, T-2254 triage).
+Ours: the lone reference is read as the value 0 (`TOROW(Z1,3)` 0, `UNIQUE(Z1)&"x"` "0x"), while `Z1:Z1` and `Z1:Z2` already stay blank;
+TOCOL, SORT and TAKE read a lone blank the same way and are unprobed (T-2409).
+Status: VERIFIED (excel-graph)
+Tasks: T-2409
 
 ## GROUPBY and PIVOTBY lift over an array field_headers or total depth
 Rule: an array (or a multi-cell range) given as GROUPBY's `field_headers` or `total_depth`, or PIVOTBY's `field_headers`,
