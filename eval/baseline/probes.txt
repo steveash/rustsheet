@@ -2960,7 +2960,6 @@ F	probes/text-locale-calendars.case.json	S!A99
 F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
-F	probes/weeknum-stale-sheet-moved.case.json	Second!A1
 F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F3
 F	probes/xirr-span-zero-first.case.json	Sheet1!A11
