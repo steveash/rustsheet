@@ -803,6 +803,7 @@ C	probes/reference-lift-pass-through-b.case.json	10
 C	probes/reference-lift-pass-through.case.json	38
 C	probes/regex-ascii-classes.case.json	42
 C	probes/regex-iteration-surrogates.case.json	11
+C	probes/regex-lookaround-keepout-conditionals.case.json	19
 C	probes/regex-optional-args.case.json	149
 C	probes/regex-p-fold.case.json	40
 C	probes/regex-pcre2-features.case.json	62
@@ -2362,13 +2363,6 @@ F	probes/rate-empty-arguments.case.json	Sheet1!A5
 F	probes/rate-empty-arguments.case.json	Sheet1!A6
 F	probes/rate-empty-arguments.case.json	Sheet1!A8
 F	probes/rate-empty-arguments.case.json	Sheet1!A9
-F	probes/regex-pcre2-features.case.json	Sheet1!C10
-F	probes/regex-pcre2-features.case.json	Sheet1!C13
-F	probes/regex-pcre2-features.case.json	Sheet1!C14
-F	probes/regex-pcre2-features.case.json	Sheet1!C7
-F	probes/regex-pcre2-features.case.json	Sheet1!C8
-F	probes/regex-pcre2-features.case.json	Sheet1!C9
-F	probes/regex-pcre2-features.case.json	Sheet1!D12
 F	probes/regression-trend.case.json	Sheet1!L12
 F	probes/regression-trend.case.json	Sheet1!L13
 F	probes/regression-trend.case.json	Sheet1!L14
