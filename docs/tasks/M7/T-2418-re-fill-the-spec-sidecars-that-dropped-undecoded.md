@@ -3,7 +3,7 @@ id: T-2418
 title: "Re-fill the spec sidecars that dropped undecoded rich errors so their spill members stop scoring as expected blanks"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
