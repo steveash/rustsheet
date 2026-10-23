@@ -3,7 +3,7 @@ id: T-2172
 title: "Oracle sweep: TAN on 1E+6 .. 2^27 and ODD/EVEN above 2^53"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -33,8 +33,14 @@ Sweep, as stored inputs (probes-numeric case, `excel-probe` skill):
   magnitudes, each as the three functions.
 
 ## Acceptance criteria
-- [ ] A probes-numeric case with an excel-graph oracle sidecar covers both lists; numbers.md links it from both entries.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes-numeric case with an excel-graph oracle sidecar covers both lists; numbers.md links it from both entries.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fitting (T-2173, T-2147, T-2384).
+
+## Outcome
+Added `eval/suites/probes-numeric/cases/trig-odd-even-sumxmy2-sweep` (case + excel-graph oracle sidecar): TAN/SIN/COS at 145
+arguments (Calc!A1:D145), ODD/EVEN at 66 values (F1:H66), SUMXMY2/SUMX2MY2/SUMX2PY2 on 77 pair sets (J1:X77). Finding: the
+trig cut for fractions is |x| >= 2^27 (134217728.25 is `#NUM!`, 2^27-2^-26 is a number), recorded in numbers.md. No eval
+baseline change expected (new probe cells are oracle-only; checked by `make check`).
