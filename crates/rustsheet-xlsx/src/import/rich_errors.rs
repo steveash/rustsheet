@@ -42,6 +42,7 @@ const RICH_VALUE_TYPE: &str = "XLRICHVALUE";
 /// the `subType` (the reason) does not change the error. Evidence: probes/rich-errors-*
 /// (excel-graph, 2026-10-05, T-0030): each cell's errorType from the cached oracle workbook, its
 /// ERROR.TYPE and its VALUETOTEXT text; ironcalc-calc/ERROR.TYPE.xlsx for 8 and 13.
+/// errorType 2 (`#VALUE!`): probes/rich-errors-spilled-lambda (excel-graph, 2026-10-22, T-2417).
 /// Codes Excel was not seen to write (`#BUSY!`, `#UNKNOWN!`, ...) are never guessed: they are
 /// `None`, so callers cannot mistake them for the cached `#VALUE!`.
 #[must_use]
