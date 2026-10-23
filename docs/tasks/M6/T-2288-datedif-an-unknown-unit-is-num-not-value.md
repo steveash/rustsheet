@@ -3,7 +3,7 @@ id: T-2288
 title: "DATEDIF: an unknown unit is #NUM!, not #VALUE!, whatever the dates"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -83,14 +83,17 @@ as TOROW's array (2d9b48c6363e7a16 A1306), `DATEDIF(3621,58245,FILTER(..))` (a u
 - gen-m7/9bb61f6ae34c7e20.case.json A2505 `=SCAN(FLOOR.PRECISE(TIME(Data!$C6,2,4),ROUNDUP(0.5,-2)),Data!Z1:Z3,LAMBDA(y,w,(PRODUCT(w,w,Data!C4:C5)>=DATEDIF(17490,55420,"?b"))))`: A2505 Excel #NUM!, ours #VALUE!; cells (3): A2505, A2506, A2507
 
 ## Acceptance criteria
-- [ ] The 14 gen-m7 cells listed under Context (2 from the T-2225 triage, 12 from the T-2254 triage) match Excel: their 14 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
-- [ ] These 40 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] probes/datedif-days360-error-order and probes/date-math-lift-driver-edges still pass; a unit test covers a well-ordered pair with "x", "", a number and TRUE as unit.
-- [ ] dates.md's new sentence says Ours: implemented (T-2288).
-- [ ] `make check` green; reviewers approve.
+- [x] The 14 gen-m7 cells listed under Context (2 from the T-2225 triage, 12 from the T-2254 triage) match Excel: their 14 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
+- [x] These 40 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] probes/datedif-days360-error-order and probes/date-math-lift-driver-edges still pass; a unit test covers a well-ordered pair with "x", "", a number and TRUE as unit.
+- [x] dates.md's new sentence says Ours: implemented (T-2288).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - DATEDIF's day counts (T-2263, T-2264).
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`datedif_value`'s fallback arm is now `#NUM!` (the day-0 special case folded in). 40 gen-m6, 14 gen-m7 and 4 gen-m9 known failures removed from the baseline (after merging main, which added the 12 T-2254 cells); no new failures. Unit test `datedif_unknown_unit_is_num`; dates.md updated.

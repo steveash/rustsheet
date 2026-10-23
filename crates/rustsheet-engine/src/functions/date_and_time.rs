@@ -717,11 +717,10 @@ impl Model {
                 Ok((i64::from(moved) - start_1900 + datedif_month_days(start, end)) as f64)
             }
             "MD" => Ok(datedif_month_days(start, end) as f64),
-            // An unknown unit is #VALUE!, but #NUM! when a date is day 0 (in [0, 1)):
-            // `DATEDIF(0.1,874,"1a*")`, `DATEDIF(<blank>,0,<bad>)` (gen-m6/03333cc38ec06a14 A269,
-            // 3a26794015dfbe9d A225, 9130ade4b1924cc8 A137 and 4 more; dates.md "Serials below 61").
-            _ if start.2 == 0 || end.2 == 0 => Err(Error::NUM),
-            _ => Err(Error::VALUE),
+            // An unknown unit is #NUM! for any in-calendar pair, text, number or boolean alike
+            // (gen-m6/03333cc38ec06a14 A318, 4ca39e0876796fa5 A172; dates.md "DATEDIF and DAYS360
+            // error order with a bad unit or method", T-2288).
+            _ => Err(Error::NUM),
         }
     }
 
