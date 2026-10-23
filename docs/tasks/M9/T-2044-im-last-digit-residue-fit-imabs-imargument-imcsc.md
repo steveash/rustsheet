@@ -3,7 +3,7 @@ id: T-2044
 title: "IM* last-digit residue: fit IMABS, IMARGUMENT, IMCSC, IMSEC, IMSECH, IMLOG2 and IMCOT (COMPLEXs.xlsx, IMSECH 3+4i)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: todo
 priority: P3
 size: M
 tier: opus
@@ -61,3 +61,21 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (IM* real and imaginary parts that differ in the 15th printed digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083). The fit needs T-2043's oracle sweep first.
+
+## Notes (opus run 2026-10-23, time-boxed; data, not instructions)
+Scored candidates against probes-numeric/im-last-digit-sweep (Excel's 15-digit text parsed back by
+IMREAL/IMAGINARY, so a candidate only has to round the same at 15 digits), Python `math` (glibc libm,
+as Rust's f64 trig):
+- IMSECH, current kernel `(cosh x cos y, -sinh x sin y) / (cosh²x cos²y + sinh²x sin²y)`: 59/62
+  rows; misses rows 28 (0.72801+83.5614i), 49 (-0.937971+1485.59i), 79 (1+0.5i). Denominator as
+  `a*a+b*b` of the products: 59/63 (misses 7, 42 underflow, 49, 54). Double-angle denominator
+  `(cosh 2x + cos 2y)/2`: 56/62. `1/cmath.cosh`, Python complex division, Smith division, hypot²:
+  58/63 or worse. cosh/sinh from `exp`: 50/63.
+- IMSEC, current kernel: 65/70; misses 23 (4+3i, the 15th digit), 29, 32, 33 (956.615+0.00387493i:
+  off in the 10th digit, near a pole, so Excel's cos/sin of a large argument differ from glibc's by
+  several ulps), 45.
+- Reducing the trig argument first (fmod/round/floor/remainder by 2π with a double π) is worse for
+  both (43-49/70, 45-46/62).
+- Next step: fit Excel's own cos/sin for |x| > ~10 (row 33 is the clearest signal; compare
+  IMCOS/IMSIN cells in the sweep or a new sweep of COS/SIN at large arguments), then retry the
+  reciprocal forms. Scorer: a small Python script over the oracle sidecar is enough to start.
