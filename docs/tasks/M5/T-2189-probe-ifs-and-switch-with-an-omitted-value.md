@@ -3,7 +3,7 @@ id: T-2189
 title: "Probe IFS and SWITCH with an omitted value argument"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,9 +22,14 @@ for the web refused a workbook holding `IFS(TRUE,)` (createSession 501), so it i
 the formula; if excel-graph refuses them all, record that and put the question in M14 (decision 0039).
 
 ## Acceptance criteria
-- [ ] Oracle values for the cells above (or the refusal recorded per formula) in lookup.md "VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0".
-- [ ] An engine follow-up task filed for any mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] Oracle values for the cells above (or the refusal recorded per formula) in lookup.md "VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0".
+- [x] An engine follow-up task filed for any mismatch.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine.
+
+## Outcome
+Four probes (probes/t2189-*, one formula each) were accepted by excel-graph: `IFS(TRUE,)&""` "0", `SWITCH(1,1,)&""` "0",
+`ISBLANK(IFS(TRUE,))` FALSE, `COUNT(SWITCH(1,1,))` 1. The engine already matches all four (eval show: Pass), so no engine follow-up.
+Recorded in lookup.md; the earlier 501 note is narrowed (it was a larger workbook).
