@@ -3,7 +3,7 @@ id: T-2139
 title: "Probe where BESSELY starts to give #NUM! for large orders and Excel's BESSELJ order cap"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
