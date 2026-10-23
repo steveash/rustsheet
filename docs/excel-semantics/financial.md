@@ -1300,11 +1300,11 @@ T-2216 sweep (probes-numeric/m9-fin-rri-sweep, excel-graph, 143 rows: the web ag
 `EXP(LN(fv/pv)*(1/nper))-1`, with the reciprocal taken first; `/nper` is the wrong operation order. Fix: T-2217.
 Status: VERIFIED (excel-graph)
 Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
-Open (gap triage 2026-10-21): RRI is not always the worksheet POWER/`^`. `ironcalc-calc/FINANCIAL/RRI.xlsx` Sheet1!D12
+Resolved by the T-2216 sweep above (gap triage 2026-10-21): RRI is not always the worksheet POWER/`^`. `ironcalc-calc/FINANCIAL/RRI.xlsx` Sheet1!D12
 `RRI(0.5,3,4)` is 0.7777777777777775 (Mac Excel 16.x cached; ours 0.7777777777777777). E12 in the same sheet,
 `POWER(4/3,1/0.5)-1`, is 0.7777777777777777. `EXP(LN(fv/pv)/nper)-1` with Excel's EXP and LN fits D12, RRI.xlsx D3-D6 and every
 excel-graph RRI cell above (the special-case cells fin-rri A5/A6 and RRI.xlsx D2/D8 aside; libm exp/log fits them too). D12 is the only point we have
-where it and `^` differ, so it is a candidate, not a rule, until the T-2216 sweep (which supersedes T-2222). Fix: T-2217.
+where it and `^` differ, so it is a candidate, not a rule, until the T-2216 sweep (which supersedes T-2222); the sweep confirmed it with the `*(1/nper)` order. Fix: T-2217.
 Tasks: T-1975, T-2216, T-2217
 
 ## NPV and FVSCHEDULE arguments
