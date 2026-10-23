@@ -1,2 +1,10 @@
 .harness-bin
 __pycache__/
+# Caches and derived data the scripts rebuild (keep oracle outputs and RESULTS.md).
+*.pkl
+*copy/
+w2-forensics/cells_w2f.tsv
+w2-forensics/exact_w2f.tsv
+w4-fractions/data.tsv
+w5-triangulation/ix_evidence.tsv
+verify-w4-fractions/v1_cells.json

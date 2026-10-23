@@ -1,0 +1,13 @@
+  be x<=0.5              n    43  1 - w3(y,b,a) z53: 32/43  w3(x,a,b) direct formula z53: 1/19  1 - w3(y,b,a) z64: 32/43  w3(x,a,b) direct formula z64: 4/28  CR: 34/43
+  be x>0.5               n    70  1 - w3(y,b,a) z53: 52/69  w3(x,a,b) direct formula z53: 2/15  1 - w3(y,b,a) z64: 51/69  w3(x,a,b) direct formula z64: 2/15  CR: 52/69
+  unit-shape:0 x<=0.5    n    64  1 - w3(y,b,a) z53: 47/64  w3(x,a,b) direct formula z53: 22/58  1 - w3(y,b,a) z64: 46/64  w3(x,a,b) direct formula z64: 16/58  CR: 36/64
+  unit-shape:0 x>0.5     n   128  1 - w3(y,b,a) z53: 84/128  w3(x,a,b) direct formula z53: 12/67  1 - w3(y,b,a) z64: 81/128  w3(x,a,b) direct formula z64: 13/70  CR: 61/128
+  xruns-2:1 x<=0.5       n  1024  1 - w3(y,b,a) z53: 825/1024  w3(x,a,b) direct formula z53: 0/62  1 - w3(y,b,a) z64: 811/1024  w3(x,a,b) direct formula z64: 0/57  CR: 464/1024
+  xruns-2:6 x<=0.5       n   511  1 - w3(y,b,a) z53: 168/511  w3(x,a,b) direct formula z53: 504/511  1 - w3(y,b,a) z64: 165/511  w3(x,a,b) direct formula z64: 371/511  CR: 83/511
+  xruns-2:7 x<=0.5       n   513  1 - w3(y,b,a) z53: 2/361  w3(x,a,b) direct formula z53: 504/513  1 - w3(y,b,a) z64: 0/353  w3(x,a,b) direct formula z64: 374/513  CR: 0/413
+  xruns-2:7 x>0.5        n   511  1 - w3(y,b,a) z53: 488/511  w3(x,a,b) direct formula z53: 32/467  1 - w3(y,b,a) z64: 414/511  w3(x,a,b) direct formula z64: 21/453  CR: 285/511
+  all 1 - w3(y,b,a) z53            1698/2711/2711 of 2864
+  all w3(x,a,b) direct formula z53 1077/1712/1712 of 2864
+  all 1 - w3(y,b,a) z64            1600/2703/2703 of 2864
+  all w3(x,a,b) direct formula z64 801/1705/1705 of 2864
+  all CR                           1015/2763/2763 of 2864
