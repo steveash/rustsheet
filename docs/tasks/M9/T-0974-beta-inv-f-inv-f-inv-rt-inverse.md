@@ -3,7 +3,7 @@ id: T-0974
 title: "BETA.INV/F.INV/F.INV.RT: inverse incomplete beta parity (28 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
