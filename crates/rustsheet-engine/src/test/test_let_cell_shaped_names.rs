@@ -28,7 +28,7 @@ fn let_and_lambda_names_spelled_like_cells_are_variables_in_scope() {
             "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f1,mk(1),f2,mk(100),f1(0)+f2(0)*1000)",
             "100001",
         ),
-        // Unprobed as typed: a use before the binding is the cell (the probe file would prefix it).
+        // Unprobed hand expectation (T-2497): a use before the binding is the cell.
         ("=LET(x,F1,F1,2,x+F1)", "9"),
     ];
     for (row, (formula, _)) in cases.iter().enumerate() {
@@ -47,7 +47,7 @@ fn let_and_lambda_names_spelled_like_cells_are_variables_in_scope() {
 }
 
 // The use takes its declaration's spelling, as for any LET name (T-1720); a `$` or a sheet makes
-// it a cell, which a LET cannot bind.
+// it a cell, which a LET cannot bind (unprobed hand expectation, T-2497).
 #[test]
 fn cell_shaped_names_print_in_their_declaration_spelling() {
     let mut model = new_empty_model();

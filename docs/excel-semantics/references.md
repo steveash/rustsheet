@@ -2089,7 +2089,8 @@ the harness feeds it; a use before the binding (`LET(x,F1,F1,2,...)`) stays the 
 form would prefix it; unprobed). The R1C1 storage writes such a name as `_xlpm.f1` (the R1C1
 lexer refuses a cell-shaped identifier), and the xlsx export as `_xlpm.add5` like any bound
 name. Open: the API accepts the typed form Excel refuses (T-2497). `$F$1` or `Sheet1!F1` is
-never a name (`LET($F$1,1,F1+1)` is `#VALUE!`; unprobed).
+never a name (`LET($F$1,1,F1+1)` is `#VALUE!`; unprobed). Unprobed too: a bound name as a
+range end, `LET(f1,1,f1:G2)` (ours reads the variable, T-2497).
 Evidence: probes/let-cell-shaped-name-stored, let-cell-shaped-name-typed-control, and
 lambda-escaping-closures H4, H5 (excel-graph, 2026-10-23); the refused typed entries were
 single-cell cases like -typed-control (`rustsheet-oracle fill`, 2026-10-23), not committed.
