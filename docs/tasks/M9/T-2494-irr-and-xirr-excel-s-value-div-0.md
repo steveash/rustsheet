@@ -1,6 +1,6 @@
 ---
 id: T-2494
-title: "IRR and XIRR: Excel's #VALUE!, #DIV/0! and #NUM! for a scalar argument, a huge guess, a #DIV/0! of unprobed cause and no root (gen-m9, 21 cells)"
+title: "IRR and XIRR: Excel's #VALUE!, #DIV/0! and #NUM! for IRR(CELL(..)), a huge guess, a #DIV/0! of unprobed cause and no root (gen-m9, 21 cells)"
 milestone: M9
 lane: functions-financial
 status: todo
@@ -16,7 +16,9 @@ IRR returns Excel's `#VALUE!`, `#DIV/0!` or `#NUM!` where ours returns a root or
 
 ## Context
 Gap triage of the T-2257 gen-m9 financial sweep.
-- A scalar (non-range, non-array) argument is `#VALUE!` (a one-cell range is unprobed): `IRR(CELL("row",Data!D$2),0.5)`, `IRR(COUNTBLANK(..),1E+300)` (ours `#NUM!`).
+- `IRR(CELL("row",Data!D$2),0.5)` is `#VALUE!` (ours `#NUM!`), cause unprobed: plain scalar flows and one-cell ranges are
+  `#NUM!` in Excel as in ours (`IRR(123456789.123)`, `IRR(MROUND(2^53,2.5),0.5)`, `IRR(Data!A8:A8)`), so do not make scalars
+  `#VALUE!`; probe the CELL case first. `IRR(COUNTBLANK(..),1E+300)` is `#VALUE!` by the 1E+300 guess below.
 - A guess of 1E+300 (or 2.5E29) is `#VALUE!`: `IRR(Data!E4:E8,1E+300)`, `IRR(Data!C5:D6,1E+300)` (ours 30.13),
   `IRR({0,0,-100,50,60},1E+300)` (ours 0.0639), `IRR(Data!B8:C8,VARPA(..))`.
 - `IRR(Data!A1:D12,0.05)` is `#DIV/0!` (ours `#NUM!`). The flows are mixed, not zero (1E+15 and 123456789.123 among
@@ -62,7 +64,7 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): these 21 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for a scalar argument, a 1E+300 guess and the probed cause of A56's `#DIV/0!`.
+- [ ] Unit tests for a 1E+300 guess and the probed causes of A63's `#VALUE!` and A56's `#DIV/0!`; scalar flows stay `#NUM!`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

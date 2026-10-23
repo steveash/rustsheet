@@ -1413,9 +1413,11 @@ outer call is the function; "inferred" means the other arguments nest calls whos
 - NPER at a rate of 1E-300 is `#DIV/0!` (`NPER(1E-300,-236,2766,945)`, 3c06f9298f65a3ba A148), NPV at a rate of -1 is `#DIV/0!`
   (`NPV(-1,GESTEP(-2.5,-100))`, 3aa168259335be54 A18), EFFECT at a huge nominal rate `#NUM!` (`EFFECT(1E+300,11)`,
   31474c20fc1dafd6 A37).
-- IRR of a scalar (non-range, non-array) argument is `#VALUE!` (`IRR(CELL("row",Data!D$2),0.5)`, 5422bdbf173fc233 A63), a guess of 1E+300 is `#VALUE!`
+- `IRR(CELL("row",Data!D$2),0.5)` is `#VALUE!` with the cause unprobed (5422bdbf173fc233 A63), while plain scalar flows and
+  one-cell ranges are `#NUM!` (`IRR(123456789.123)` e168be7f6d3f84c2 A297, `IRR(MROUND(2^53,2.5),0.5)` d0854366830dcdee A69,
+  `IRR(Data!A8:A8)` 1cd3096e3e87c965 A130, `IRR(Data!D2,2)` 1dce4774f5c0e736 A40); a guess of 1E+300 is `#VALUE!`
   (`IRR({0,0,-100,50,60},1E+300)`, e168be7f6d3f84c2 A395), `IRR(Data!A1:D12,0.05)` over mixed flows (1E+15 and
-  123456789.123 among them) is `#DIV/0!` with the cause unprobed (bc04c1f478c9896c A56; a one-cell range is unprobed too), and Excel gives `#NUM!`
+  123456789.123 among them) is `#DIV/0!` with the cause unprobed (bc04c1f478c9896c A56), and Excel gives `#NUM!`
   on 11 flows where ours finds a root near -1 or far out (T-2494). XIRR with one value and one date is `#N/A`
   (`XIRR(Data!A9:A9,Data!E9:E9)`, 30e20ba3302fea8b A110).
 - PPMT at a huge rate is often exactly 0 (`PPMT(1E+10,12,278,130633)`, 5422bdbf173fc233 A285) and `IPMT(1E+10,10,320,2)` is
