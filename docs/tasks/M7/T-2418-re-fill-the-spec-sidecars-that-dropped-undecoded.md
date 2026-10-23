@@ -39,4 +39,4 @@ old fill had dropped; 21b4eef1 gained none), `eval/baseline` lost 1 failure (gen
 checked-cell counts rose for 10 cases.
 Not committed, because they changed more than added cells: gen-m7/0624b684889e9228 (the re-fill replaced 40+
 `#UNDECODED!` cells with decoded `#VALUE!`, i.e. T-2417 territory) and probes/t2414-gen-m7-unexplained (input hash
-changed); gen-m7/7ea6ef6ceabacafd only differed in `source` fields, also left out. Follow-up: re-fill 0624b684 when T-2417 lands.
+changed); gen-m7/7ea6ef6ceabacafd only differed in `source` fields, also left out. Follow-up: T-2462.
