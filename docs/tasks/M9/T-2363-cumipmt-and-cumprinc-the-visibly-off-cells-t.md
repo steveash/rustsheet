@@ -3,7 +3,7 @@ id: T-2363
 title: "CUMIPMT and CUMPRINC: the visibly-off cells T-2192 left (periods near 1E15, type 1 from period 1, past 2^53)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -107,17 +107,30 @@ Cells:
   the bit, i.e. type 1's principal.
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): the 35 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+- [ ] (Partly met: 17 of the 35 right; the rest moved to T-2514.) Visible parity (gen-m9, T-2257): the 35 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
+- [ ] (Moved to T-2514.) Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity: the nine cells above are within half a unit of the 15th significant digit
+- [ ] (Partly met: A5 right; the rest moved to T-2514.) Visible parity: the nine cells above are within half a unit of the 15th significant digit
   of Excel's value, with no new known-failure lines in any baseline (`make eval-baseline`).
-- [ ] The financial.md entry's "Ours:" line names this task's change.
-- [ ] `make check` green; reviewers approve.
+- [x] The financial.md entry's "Ours:" line names this task's change.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit-exact fits once the cells are visibly right (T-1374).
 
 ## Visible-parity stage
 Decision 0083: the acceptance criteria are the visible-parity stage.
+
+## Outcome
+Type 0's interest is Excel's `-pmt·m - principal` (`pmt = (pv/(1-v^nper))·r`), with the balance form kept over up to
+32 periods while the growth `(1+r)^(end-1) - 1` is within [2^-10, 2^10] (where it is bit-exact and our principal is an
+ulp off Excel's), and the balance drop `(pv/(1-v^nper))·v^(nper-start+1)·expm1(m·L)` as the principal where `1 + rate`
+is 1 and past 32 periods (functions/financial/cumulative.rs; financial.md "CUMIPMT and CUMPRINC over many periods").
+Eval: 18 visibly-off cells right (gen-m9 1cd3096e3e87c965 A316, 1dce4774f5c0e736 A81, 3c06f9298f65a3ba A140 and A189,
+5c6a23c4f6597f1c A343, A392 and A49, 5ded7594e597e31e A81, 6376e27be7a05871 A365, 81bcdc0bec0c8e6b A274 and A372,
+89f0aee953a55a45 A5, a91bad4e84f49739 A83, abb7d565af89b849 A84, ba4ddb817a8e700e A162, d912671baa1364aa A169,
+e168be7f6d3f84c2 A330; probes/fin-cumipmt-overflow-and-forms A5), none regressed.
+Not met: the integer-rate and type 1 principals, type 1's tiny-rate interest, A352, A322, the 1E15 cells and A6
+stay visibly off; their fit (Excel's power function is none of the forms tried) moves to T-2514 with the
+measurements. A91 is POISSON.DIST's.

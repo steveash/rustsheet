@@ -47,7 +47,12 @@ fn is_valid_sheet_name(name: &str) -> bool {
 
 impl Model {
     /// Creates a new worksheet. Note that it does not check if the name or the `sheet_id` exists
-    fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
+    fn new_empty_worksheet(
+        name: &str,
+        sheet_id: u32,
+        load_rank: u32,
+        view_ids: &[&u32],
+    ) -> Worksheet {
         let mut views = HashMap::new();
         for id in view_ids {
             views.insert(
@@ -73,6 +78,7 @@ impl Model {
             shared_formulas: vec![],
             sheet_data: Default::default(),
             sheet_id,
+            load_rank,
             state: SheetState::Visible,
             color: Default::default(),
             frozen_columns: 0,
@@ -82,6 +88,17 @@ impl Model {
             conditional_formatting: vec![],
             links: HashMap::new(),
         }
+    }
+
+    /// The load rank a sheet added now gets: one past the highest in the workbook, so it
+    /// runs before every sheet loaded earlier in Excel's calc order (SPEC-0017).
+    fn get_new_load_rank(&self) -> u32 {
+        self.workbook
+            .worksheets
+            .iter()
+            .map(|worksheet| worksheet.load_rank.saturating_add(1))
+            .max()
+            .unwrap_or(0)
     }
 
     pub fn get_new_sheet_id(&self) -> u32 {
@@ -262,7 +279,8 @@ impl Model {
         // Now we need a sheet_id
         let sheet_id = self.get_new_sheet_id();
         let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
-        let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id, &view_ids);
+        let worksheet =
+            Model::new_empty_worksheet(&sheet_name, sheet_id, self.get_new_load_rank(), &view_ids);
         self.workbook.worksheets.push(worksheet);
         self.reset_parsed_structures();
         (sheet_name, self.workbook.worksheets.len() as u32 - 1)
@@ -294,7 +312,8 @@ impl Model {
             None => self.get_new_sheet_id(),
         };
         let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
-        let worksheet = Model::new_empty_worksheet(sheet_name, sheet_id, &view_ids);
+        let worksheet =
+            Model::new_empty_worksheet(sheet_name, sheet_id, self.get_new_load_rank(), &view_ids);
         if sheet_index as usize > self.workbook.worksheets.len() {
             return Err("Sheet index out of range".to_string());
         }
@@ -383,6 +402,7 @@ impl Model {
         let mut new_worksheet = self.workbook.worksheet(source_index)?.clone();
         new_worksheet.name = new_name.clone();
         new_worksheet.sheet_id = new_sheet_id;
+        new_worksheet.load_rank = self.get_new_load_rank();
 
         // Retarget the copied formulas: references to the source sheet become
         // references to the new sheet, everything else is left as-is. Implicit
@@ -701,7 +721,7 @@ impl Model {
         let workbook = Workbook {
             shared_strings: vec![],
             defined_names: vec![],
-            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, &[&0])],
+            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, 0, &[&0])],
             styles: Default::default(),
             name: name.to_string(),
             settings: WorkbookSettings::new(timezone, locale_id),

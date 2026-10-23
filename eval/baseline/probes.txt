@@ -393,6 +393,7 @@ C	probes/formulatext-written-groups-shapes.case.json	12
 C	probes/fraction-format-features.case.json	128
 C	probes/fraction-numerator-overflow.case.json	76
 C	probes/fraction-numerator-overflow2.case.json	69
+C	probes/fraction-placeholder-past-2-30.case.json	75
 C	probes/ftest-decomposition.case.json	91
 C	probes/gamma-x87-edges.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
@@ -983,6 +984,10 @@ C	probes/t1626-replaceb.case.json	27
 C	probes/t1626-rightb.case.json	29
 C	probes/t1626-searchb.case.json	26
 C	probes/t2127-trimrange-blank-shapes.case.json	63
+C	probes/t2189-ifs-omitted-concat.case.json	1
+C	probes/t2189-ifs-omitted-isblank.case.json	1
+C	probes/t2189-switch-omitted-concat.case.json	1
+C	probes/t2189-switch-omitted-count.case.json	1
 C	probes/t2198-m5-lift-argument-kinds.case.json	104
 C	probes/t2199-text-length-and-combin-cuts.case.json	77
 C	probes/t2200-blank-and-padded-m5-args.case.json	70
@@ -1620,11 +1625,6 @@ F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O9
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A10
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A11
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A13
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A16
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A22
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A23
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A24
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A5
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A6
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A7
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A9
@@ -2958,7 +2958,6 @@ F	probes/text-locale-calendars.case.json	S!A99
 F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
-F	probes/weeknum-stale-sheet-moved.case.json	Second!A1
 F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F3
 F	probes/xirr-span-zero-first.case.json	Sheet1!A11
@@ -3282,3 +3281,4 @@ F	probes/yield-start-sweep.case.json	S!F9
 TC	probes/displayed-text-formats.case.json	28
 TC	probes/fraction-numerator-overflow.case.json	76
 TC	probes/fraction-numerator-overflow2.case.json	69
+TC	probes/fraction-placeholder-past-2-30.case.json	75

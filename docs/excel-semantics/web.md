@@ -53,9 +53,11 @@ A real pivot: see the next section (T-1705).
 Rule: Excel loads a pivot of any size its grid allows. The importer drops, never truncates, a pivot cache with more
 than 1,048,576 records, 16,384 fields, 1,000,000 shared items over its fields or 10,000,000 record values (records x
 fields), every cache once the workbook's caches together pass 10,000,000 record values (in workbook order), and a pivot
-with more than 256 fields on an axis (rows, columns or page) or 256 data fields, or past the 64th pivot of a sheet;
-the pivots on a dropped cache go with it. GETPIVOTDATA against a dropped pivot is `#REF!` rather than a wrong total.
+with more than 256 fields on an axis (rows, columns or page) or 256 data fields, past the 64th pivot of a sheet, or past the 1,000th pivot
+of the workbook (in sheet order; T-2394); the pivots on a dropped cache go with it. GETPIVOTDATA against a dropped pivot is `#REF!` rather than a wrong total.
 The limits are totals counted while parsing, before anything past them is allocated (CLAUDE.md directive 5).
+Part names that differ only by case or by `\` against `/` are one part, so a pivot or cache reached twice that way is skipped like any other. A
+sheet that loses pivots to a cap logs one line with the count, not one per pivot.
 Evidence: none for Excel; this is a resource limit (SPEC-0015 "Untrusted-input limits").
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/pivot.rs (`CacheBuilder`, `MAX_*`), crates/rustsheet-xlsx/src/import/pivots.rs
@@ -99,8 +101,8 @@ includes time-only dates if Excel writes them so), and a pivot whose data field 
 no `location` or not one `pivotField` per cache field, or whose parts are reached outside the package (absolute,
 escaping or External targets), twice, or through a duplicate `cacheId`: GETPIVOTDATA against it is `#REF!`.
 UNVERIFIED: what Excel answers for each of these (presumably it computes them, refreshing a cache saved without
-records); a known gap, not a deviation. Cache `<d>` dates are read as 1900-system serials even in a `date1904`
-workbook, which no answer depends on yet (GETPIVOTDATA matches text items only; T-2393 before dates are matched).
+records); a known gap, not a deviation. A cache `<d>` date is converted to the workbook's date system (T-2393); one before
+the 1904 epoch in a `date1904` workbook has no serial there and skips the cache like a pre-1900 date (UNVERIFIED: Excel's answer). The 1904 serial is the 1900 sum minus 1462, so a timestamp's fraction can differ by one ulp from the 1904 sum's; compute the date part in the target system before pivot date items are matched (T-2085). The 1904 values are derived from the 1462-day epoch offset, not from a 1904 pivot workbook.
 GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
 pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
 Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or

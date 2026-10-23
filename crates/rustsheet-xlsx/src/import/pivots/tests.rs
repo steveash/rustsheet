@@ -116,6 +116,14 @@ fn load_with(
     parts: &[(String, String)],
     list: &[(&str, &str)],
 ) -> (Vec<PivotCache>, Vec<PivotTable>) {
+    load_in(parts, list, DateSystem::Excel1900)
+}
+
+fn load_in(
+    parts: &[(String, String)],
+    list: &[(&str, &str)],
+    date_system: DateSystem,
+) -> (Vec<PivotCache>, Vec<PivotTable>) {
     let sheets = [PivotSheet {
         sheet_id: 7,
         path: "xl/worksheets/sheet1.xml".into(),
@@ -125,6 +133,7 @@ fn load_with(
         &workbook_rels(parts),
         &caches(list),
         &sheets,
+        date_system,
     )
 }
 
@@ -134,6 +143,17 @@ fn load(parts: &[(String, String)]) -> (Vec<PivotCache>, Vec<PivotTable>) {
 
 fn text(s: &str) -> CacheItem {
     CacheItem::Text(s.to_string())
+}
+
+#[test]
+fn date_items_follow_the_workbooks_date_system() {
+    // 2024-01-01 is serial 45292 in the 1900 system and 1462 days lower in the 1904 system.
+    let date = |system| {
+        let (caches, _) = load_in(&parts(), &[("1", "rIdC1")], system);
+        caches[0].fields[1].items[3].clone()
+    };
+    assert_eq!(date(DateSystem::Excel1900), CacheItem::Date(45292.0));
+    assert_eq!(date(DateSystem::Excel1904), CacheItem::Date(43830.0));
 }
 
 #[test]
@@ -347,6 +367,30 @@ fn duplicate_cache_ids_and_parts_reached_twice_are_skipped() {
         ("rIdP2", "pivotTable", "../pivotTables/./pivotTable1.xml"),
     ]);
     assert_no_pivot(&with(parts(), "xl/worksheets/_rels/sheet1.xml.rels", twice));
+    // Part names match case-insensitively, with `\\` as `/` (T-2394).
+    let cased = rels(&[
+        ("rIdP1", "pivotTable", "../pivotTables/pivotTable1.xml"),
+        ("rIdP2", "pivotTable", "../PIVOTTABLES\\PivotTable1.xml"),
+    ]);
+    assert_no_pivot(&with(parts(), "xl/worksheets/_rels/sheet1.xml.rels", cased));
+    // Two cache definitions that differ only by case or separator are one part too.
+    let cased_caches = rels(&[
+        (
+            "rIdC1",
+            "pivotCacheDefinition",
+            "pivotCache/pivotCacheDefinition1.xml",
+        ),
+        (
+            "rIdC2",
+            "pivotCacheDefinition",
+            "PIVOTCACHE\\pivotCacheDefinition1.xml",
+        ),
+    ]);
+    let (caches, _) = load_with(
+        &with(parts(), "xl/_rels/workbook.xml.rels", cased_caches),
+        &[("1", "rIdC1"), ("2", "rIdC2")],
+    );
+    assert!(caches.is_empty());
     // A bad cacheId and an unknown relationship skip only their cache.
     let (caches, _) = load_with(&parts(), &[("x", "rIdC1"), ("2", "rIdNone")]);
     assert!(caches.is_empty());
@@ -384,10 +428,22 @@ fn the_workbook_record_value_budget_drops_whole_caches() {
     let list = caches(&[("1", "rIdC1"), ("2", "rIdC2")]);
     let workbook_rels = workbook_rels(&two);
     // Each cache holds 5 records x 3 fields = 15 values.
-    let (loaded, ids) = load_caches(&mut package(&two), &workbook_rels, &list, 29);
+    let (loaded, ids) = load_caches(
+        &mut package(&two),
+        &workbook_rels,
+        &list,
+        29,
+        DateSystem::Excel1900,
+    );
     assert_eq!(loaded.len(), 1);
     assert_eq!(ids, HashMap::from([(1, 0)]));
-    let (loaded, ids) = load_caches(&mut package(&two), &workbook_rels, &list, 30);
+    let (loaded, ids) = load_caches(
+        &mut package(&two),
+        &workbook_rels,
+        &list,
+        30,
+        DateSystem::Excel1900,
+    );
     assert_eq!(loaded.len(), 2);
     assert_eq!(ids, HashMap::from([(1, 0), (2, 1)]));
 }
@@ -466,4 +522,46 @@ fn the_pivot_limits_drop_the_pivot() {
         .collect();
     many = with(many, "xl/worksheets/_rels/sheet1.xml.rels", rels(&entries));
     assert_eq!(load(&many).1.len(), MAX_PIVOTS_PER_SHEET);
+}
+
+#[test]
+fn pivots_past_the_workbook_cap_are_dropped() {
+    // 17 sheets of 64 pivots each: 1,088 parts, the first MAX_PIVOTS load.
+    let sheets_count = MAX_PIVOTS / MAX_PIVOTS_PER_SHEET + 1;
+    let mut many = parts();
+    let mut sheets = Vec::new();
+    for sheet in 0..sheets_count {
+        let mut entries = Vec::new();
+        for n in 0..MAX_PIVOTS_PER_SHEET {
+            let part = format!("pivotTable{sheet}x{n}.xml");
+            many = with(many, &format!("xl/pivotTables/{part}"), table(TABLE_BODY));
+            entries.push((format!("rIdP{n}"), format!("../pivotTables/{part}")));
+        }
+        let entries: Vec<(&str, &str, &str)> = entries
+            .iter()
+            .map(|(id, target)| (id.as_str(), "pivotTable", target.as_str()))
+            .collect();
+        many = with(
+            many,
+            &format!("xl/worksheets/_rels/sheet{sheet}.xml.rels"),
+            rels(&entries),
+        );
+        sheets.push(PivotSheet {
+            sheet_id: sheet as u32,
+            path: format!("xl/worksheets/sheet{sheet}.xml"),
+        });
+    }
+    let (_, pivots) = load_pivots(
+        &mut package(&many),
+        &workbook_rels(&many),
+        &caches(&[("1", "rIdC1")]),
+        &sheets,
+        DateSystem::Excel1900,
+    );
+    assert_eq!(pivots.len(), MAX_PIVOTS);
+    // In sheet order: sheets 0-14 keep all 64, sheet 15 the 40 that remain, sheet 16 none.
+    let on_sheet = |id| pivots.iter().filter(|p| p.sheet_id == id).count();
+    assert_eq!(on_sheet(14), MAX_PIVOTS_PER_SHEET);
+    assert_eq!(on_sheet(15), MAX_PIVOTS - 15 * MAX_PIVOTS_PER_SHEET);
+    assert_eq!(on_sheet(16), 0);
 }

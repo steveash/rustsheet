@@ -754,9 +754,70 @@ the correctly rounded -4.0859936870455272E-19, and A5's CUMIPMT equals that valu
 `-pmt·9 - P` to the bit, so its sums keep digits that a double `n·L` exponent with n near 1E16
 loses (60-digit reference, T-2363 notes). Type 1's G2 is `-pmt·10 - H2` to the bit, with
 `pmt = pv·r/(-expm1(-nper·L))/(1+r)` and Excel's own H2.
-Status: PARTLY VERIFIED (excel-graph; visibly right but for A5, A6, A7 (= G2), A9-A11 and K3 near
-period 1E15, fin-cumipmt-period-bound A18 and H26: T-2363; the short sums' last digits in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-2363, T-1374
+T-2363 (float64 fit against the 52 type 0 CUMIPMT cells of the probes, CUMPRINC_CUMIPMT.xlsx and the gen-m9
+sweep):
+- Excel's type 0 interest carries the cancellation of `-pmt·m - CUMPRINC` also where the exact sum is easy:
+  `CUMIPMT(1E-9,55,157761,1,18,0)` is -0.002400835590378847 to the bit with that form, where the exact sum is
+  -0.0024008355913268677 (gen-m9 5c6a23c4f6597f1c A392), `CUMIPMT(1E-10,296,197540,13,19,1)` is 6.7E-9 relative
+  off the exact sum the same way (b72d952c5f52cb4d A257, type 1), and at huge rates the interest is the payments
+  `-pmt·m` with no trace of the balance: `CUMIPMT(10,89,267388,3,13,0)` is -29412680, `CUMIPMT(1E10,235,99106,6,18,0)`
+  -1.288378E16, `CUMIPMT(100,167,7,6,16,0)` -7700 (1cd3096e3e87c965 A316, 3c06f9298f65a3ba A140, e168be7f6d3f84c2 A330).
+- Where `1 + rate` is 1 the principal is the drop in the balance `(pv/(1-v^nper))·v^(nper-start+1)·expm1(m·L)`,
+  not the payment added m times: `CUMIPMT(1E-300,243,80923,12,22,0)` is -4.547473508864641E-13 and
+  `CUMIPMT(1E-300,83,156759,5,17,0)` 0 to the bit with it (81bcdc0bec0c8e6b A274, abb7d565af89b849 A84); the same
+  principal gets A5 (`CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)`) to the bit.
+- The principals of integer rates (`CUMPRINC(10,261,484823,4,24,0)` -7.507871520276804E-242, ours 15 ulps off;
+  `CUMPRINC(1,200,480533,5,18,0)` -7.838581871529754E-50, 1 ulp below the exact ...755, ours 11 ulps off) are no
+  `exp(m·log1p r)`, libm `pow`, `exp2(m·log2(1+r))`, repeated product or squaring form tried, with any of six
+  payment forms, nor `log1p r` moved by up to six ulps: Excel's power is 1 ulp off the exact value for base 2 and
+  311 ulps for base 11 (T-2514).
+Ours since T-2363: type 0's interest is `-pmt·m - principal` with `pmt = (pv/(1-v^nper))·r`; the principal is the
+per-period sum over up to 32 periods (the balance drop above where `1 + rate` is 1, and past 32 periods). Over up
+to 32 periods the balance form is kept while the growth `(1+r)^(end-1) - 1` stays within [2^-10, 2^10], where it is
+bit-exact on A12, A14 and G21 and our principal is an ulp off Excel's (A12 would be 256 ulps off, G29 12). 18 visibly
+off cells are right (gen-m9 A316, A81 twice, A140, A189, A343, A392, A49, A365, A274, A372, A5, A83, A84, A162, A169,
+A330; probes A5); none regressed.
+T-2514 (float64 fit against the CUMPRINC cells of the gen-m9 sweep, the probes and CUMPRINC_CUMIPMT.xlsx):
+- Excel's short principal is one geometric sum from the last period back,
+  `-((pmt·((1-v^m)/r·(1+r)))·v^(nper-end+1))` with `pmt = (pv/(1-v^nper))·r`, `v^j = exp(-j·L)`,
+  `1-v^m = -expm1(-m·L)`, in that operation order. Type 1 sums from period 2 and divides that by `1+r`.
+  - It is within an ulp of Excel on the 5 integer-rate type 0 principals, which no power form fitted
+    (T-2363). `CUMPRINC(10,261,484823,4,24,0)` is -7.507871520276804E-242 to the bit, 311 ulps from the exact
+    sum (gen-m9 9a1fa5366bc50918 A361; A18, 67a4c03afd63f988 A110, 1cd3096e3e87c965 A147, d0854366830dcdee A98).
+    So Excel's "power" is not a power at all: the one `exp` of the smallest discount carries the error.
+  - It is bit-exact on these short type 1 principals (every one probed but A372 below), where the closed form was 11 to 104 ulps off:
+    `CUMPRINC(10,121,308352,2,16,1)` -1.263054652346343E-105 (0a957119475760c5 A383; 5ded7594e597e31e A22,
+    A267, a91bad4e84f49739 A193, b6a02893a8d6b151 A398, CUMPRINC_CUMIPMT.xlsx H26 `CUMPRINC(7,36,8000,3,10,1)`).
+- At small discounts the other forms are closer. `CUMPRINC(1E-9,192,2707,8,24,0)` is -239.68227237224258 to the
+  bit with the per-period sum and 2 ulps off with the geometric sum (gen-m9 d912671baa1364aa A300). H25
+  (`0.1234` over 36 periods, discount exponent `(nper-first+1)·L` 3.96) is to the bit with the closed form and
+  3 ulps off with the geometric sum. At exponent 8.9 and above every probed cell is as close or closer with it;
+  between 3.96 and 8.9 nothing is probed.
+- Type 1's interest at a tiny rate is the payments less the principal, `-pmt·m - CUMPRINC` with
+  `pmt = pv·r/(1-v^nper)/(1+r)`. `CUMIPMT(1E-10,296,197540,13,19,1)` is -1.3127066813467536E-4 to the bit
+  (b72d952c5f52cb4d A257, and the STDEVA over one at 6e18550e9fc9c1b9 A329). At ordinary rates the IPMT sum stays
+  bit-exact (G3, G9, G15, G12, G16, G17, G25; T-2363 notes).
+- `CUMPRINC(1E-300,129,257125,1,17,0)`, a rate lost in `1 + rate`, is the balance drop that the interest already
+  used: `DOLLARDE` of it, -33888.31201550391, is to the bit (01523d247594952e A322).
+- Not fitted:
+  - `CUMPRINC(2,151,319288,3,42,1)` -1.049166891970377E-47, a 40-period type 1 range (b73c6cc96e093f03 A62). The
+    closed form is 103 ulps off and the geometric sum 245.
+  - `CUMPRINC(0.1,1023,478581,7,24,1)` -1.589128180790285E-36 (9d9ceba257f8001b A372). The geometric sum is 67
+    ulps off; it is to the bit only with `log1p(0.1)` one ulp low, which no log1p rewrite tried gives.
+  - `CUMIPMT(1E-15,283,(1.005+3.14159+1E15)%,2,16,0)` -0.1456298828125 (79d87fc527927626 A352; ours
+    -0.14581298828125, 3 ulps of `pmt·m`). No pairing of 10 payment forms with 5 principal forms gives it.
+  - `CUMIPMT(1E-9,235,379138,7,14,1)` -0.0029104891709721414 (e168be7f6d3f84c2 A379): neither the IPMT sum nor the
+    payments less the principal fits.
+Ours since T-2514: a short principal (CUMPRINC, and the principal of type 0's interest) is that geometric sum where
+the discount exponent is 8 or more and its power is normal (`GEOMETRIC_MIN_DISCOUNT`). Below that it is the
+per-period sum (type 0) or the closed form (type 1), and the balance drop where `1 + rate` is 1. Type 1's short
+interest is the payments less the closed-form principal where `nper·L` is below 2^-10 (`TINY_RATE_GROWTH`).
+19 known failures are fixed, none regressed, and visibly-off cells go from 8281 to 8267. The gates have no
+oracle cell near their edges (T-2521).
+Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
+fin-cumipmt-period-bound A18, and the gen-m9 cells A62, A372, A352, A379 above: T-2521; the short sums' last digits
+in T-1374)
+Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's
