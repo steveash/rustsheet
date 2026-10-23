@@ -38,6 +38,20 @@ const BALANCE_GROWTH_MIN: f64 = 1.0 / 1024.0;
 /// See [`BALANCE_GROWTH_MIN`].
 const BALANCE_GROWTH_MAX: f64 = 1024.0;
 
+/// The deepest discount's exponent `(nper-first+1)·L` from which a short principal is
+/// [`Periods::geometric_principal`]. Below it the per-period powers are close to exact and the
+/// per-period sum (type 0) or the closed form (type 1) is closer: `CUMPRINC(1E-9,192,2707,8,24,0)`
+/// is -239.68227237224258 to the bit with the sum and 2 ulps off with the geometric form (exponent
+/// 2E-7, gen-m9 d912671baa1364aa A300), and `CUMPRINC_CUMIPMT.xlsx` H25 (`0.1234` over 36 periods,
+/// exponent 3.96) is to the bit with the closed form and 3 ulps off with it. From 8 up every probed
+/// cell is as close or closer with it (H4, exponent 8.9: 1 ulp where the closed form was 3; T-2514).
+const GEOMETRIC_MIN_DISCOUNT: f64 = 8.0;
+
+/// The growth `nper·L` below which type 1's short interest is the payments less the principal
+/// ([`Periods::tiny_rate_interest`]): the rates of 1E-9 and 1E-10 that need it are far below
+/// it, the ordinary rates of `CUMPRINC_CUMIPMT.xlsx` (0.0083 over 36 periods, 0.3) far above.
+const TINY_RATE_GROWTH: f64 = 1.0 / 1024.0;
+
 /// Which sum the kernel returns.
 #[derive(Clone, Copy)]
 enum Paid {
@@ -114,15 +128,23 @@ impl Model {
                 (Paid::Interest, false) => {
                     periods.payments_less_principal(periods.remaining_principal())
                 }
-                (Paid::Principal, true) => periods.discounted_principal(),
+                (Paid::Principal, true) => periods
+                    .geometric_principal()
+                    .or_else(|| periods.discounted_principal()),
                 (Paid::Principal, false) => None,
             };
             if let Some(sum) = sum {
                 return Ok(sum);
             }
         }
-        if short && matches!(paid, Paid::Interest) {
-            if let Some(sum) = periods.summed_interest() {
+        if short {
+            let sum = match paid {
+                Paid::Interest => periods
+                    .tiny_rate_interest()
+                    .or_else(|| periods.summed_interest()),
+                Paid::Principal => periods.geometric_principal(),
+            };
+            if let Some(sum) = sum {
                 return Ok(sum);
             }
         }
@@ -213,7 +235,8 @@ impl Periods {
         let principal = if 1.0 + self.rate == 1.0 {
             self.remaining_principal()
         } else {
-            self.discounted_principal()
+            self.geometric_principal()
+                .or_else(|| self.discounted_principal())
         };
         let principal = principal.or_else(|| self.closed_form(Paid::Principal))?;
         self.payments_less_principal(Some(principal))
@@ -282,6 +305,65 @@ impl Periods {
         // The sum starts at +0, so an underflowed principal is Excel's 0, not -0
         // (fin-cumipmt-period-bound A14).
         sum.is_finite().then_some(sum)
+    }
+
+    /// The principal over a short range as one geometric sum from the last period back:
+    /// `-((pmt·((1-v^m)/r·(1+r)))·v^(nper-end+1))` with `pmt = (pv/(1-v^nper))·r`, `v^j = exp(-j·L)`
+    /// and `1-v^m = -expm1(-m·L)`; type 1 sums from period 2 (period 1 pays no interest) and
+    /// divides that by `1+r`, then adds period 1's whole payment `pmt/(1+r)` when the range starts
+    /// there. Its one power is the smallest discount, so the per-period powers' own rounding
+    /// (hundreds of ulps at integer rates) does not reach it. Within an ulp of Excel on the
+    /// integer-rate principals of type 0 (`CUMPRINC(10,261,484823,4,24,0)` -7.507871520276804E-242
+    /// to the bit, 311 ulps from the exact sum; gen-m9 9a1fa5366bc50918 A361, A18, 67a4c03afd63f988
+    /// A110, 1cd3096e3e87c965 A147, d0854366830dcdee A98) and bit-exact on type 1's (`CUMPRINC(10,121,308352,2,16,1)`
+    /// -1.263054652346343E-105, where the closed form was 104 ulps off; 0a957119475760c5 A383,
+    /// 5ded7594e597e31e A22, a91bad4e84f49739 A193, b6a02893a8d6b151 A398; T-2514). The operation
+    /// order is the fit. `None` where the deepest discount is near 1, the leading power is not
+    /// normal or the result is not finite: the per-period sum or the closed form decides there.
+    fn geometric_principal(&self) -> Option<f64> {
+        let log_growth = self.rate.ln_1p();
+        // Type 1 pays no interest in period 1, so its principal is the whole payment.
+        let first = if self.period_start {
+            self.start.max(2.0)
+        } else {
+            self.start
+        };
+        if self.end < first || (self.nper - first + 1.0) * log_growth < GEOMETRIC_MIN_DISCOUNT {
+            return None;
+        }
+        let payment = self.interest_payment(log_growth);
+        let count = self.end - first + 1.0;
+        let series = -(-count * log_growth).exp_m1() / self.rate * (1.0 + self.rate);
+        let leading = (-(self.nper - self.end + 1.0) * log_growth).exp();
+        if !leading.is_normal() {
+            return None;
+        }
+        let mut principal = -(payment * series * leading);
+        if self.period_start {
+            principal /= 1.0 + self.rate;
+            if self.start == 1.0 {
+                principal -= payment / (1.0 + self.rate);
+            }
+        }
+        principal.is_finite().then_some(principal + 0.0)
+    }
+
+    /// Type 1's interest at a tiny rate, as Excel has it: the payments less the principal,
+    /// `-pmt·m - CUMPRINC` with `pmt = pv·r/(1-v^nper)/(1+r)`. `CUMIPMT(1E-10,296,197540,13,19,1)` is
+    /// -1.3127066813467536E-4 to the bit with it, 6.7E-9 relative off the exact sum that the IPMT
+    /// sum gives (gen-m9 b72d952c5f52cb4d A257; T-2514). Only where `nper·L` is below
+    /// [`TINY_RATE_GROWTH`]: at ordinary rates the IPMT sum is bit-exact on
+    /// `CUMPRINC_CUMIPMT.xlsx` G3, G9, G15, G12, G16, G17 and G25, which this form misses by 1 to 3
+    /// ulps (T-2363). `None` elsewhere, or when the result is not finite.
+    fn tiny_rate_interest(&self) -> Option<f64> {
+        let log_growth = self.rate.ln_1p();
+        if !self.period_start || self.nper * log_growth >= TINY_RATE_GROWTH {
+            return None;
+        }
+        let payment = self.end_payment(log_growth) / (1.0 + self.rate);
+        let principal = self.closed_form(Paid::Principal)?;
+        let sum = -payment * (self.end - self.start + 1.0) - principal;
+        sum.is_finite().then_some(sum + 0.0)
     }
 
     /// The offsets `0..=end-start` of a short range's periods: a bounded count, so the loop ends
