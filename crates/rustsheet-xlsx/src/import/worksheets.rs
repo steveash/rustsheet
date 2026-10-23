@@ -852,6 +852,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             sheet_data,
             name: sheet_name.to_string(),
             sheet_id,
+            load_rank: 0,
             state: state.to_owned(),
             color,
             merged_cells,
@@ -930,6 +931,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
             if is_selected {
                 selected_sheet = sheet_index;
             }
+            let mut s = s;
+            s.load_rank = sheet_index;
             sheets.push(s);
             sheet_index += 1;
         }
