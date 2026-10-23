@@ -1917,8 +1917,8 @@ ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data
 Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. Only the array form is evidenced; the array number and a multi-cell range follow the same table entry unprobed. Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
 COMBINA lifts over arrays (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COMBINA({7;1},4)` is the 2x1 209.99999999999997 (COMBIN(10,4), as above), 1; `COMBINA(Data!E7:E8,4)` and `COMBINA(4,{1;2})` are
 2 rows; `COMBINA(WRAPROWS(E6:E12,1,1),4)` is 7x1: #NUM! (blank is 0), 209.99999999999997, #NUM!, 5, #VALUE! ("abc"), #NUM!, #VALUE!. The gen-m7 `#VALUE!` of
-`VSTACK(COMBINA(..),CHOOSE(3,..))` (f19581ac44da1653 A3357) is the CHOOSE: a scalar-error argument makes VSTACK that error (arrays.md "VSTACK" rule)
-`#VALUE!` (`VSTACK({1;2},CHOOSE(3,1,2))` is `#VALUE!`, ours agrees). Ours COMBINA is `#N/IMPL!` on arrays (T-2453).
+`VSTACK(COMBINA(..),CHOOSE(3,..))` (f19581ac44da1653 A3357) is the CHOOSE: a scalar-error argument makes VSTACK that error (probes/vstack-scalar-error, T-1695)
+(`VSTACK({1;2},CHOOSE(3,1,2))` is `#VALUE!`, ours agrees). Ours COMBINA is `#N/IMPL!` on arrays (T-2453).
 Status: VERIFIED (excel-graph); implemented (T-2154).
 
 ## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes
