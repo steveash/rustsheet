@@ -151,11 +151,7 @@ impl Model {
                                 ));
                             }
                             ArrayNode::Lambda(_) => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    *cell,
-                                    "LAMBDA in array".to_string(),
-                                ));
+                                return Err(Model::lambda_as_number_error(*cell))
                             }
                             ArrayNode::Empty => {
                                 if let Some(value) = handle_empty_cell()? {
