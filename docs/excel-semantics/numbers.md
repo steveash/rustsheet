@@ -258,10 +258,10 @@ Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more cells (A7 A28 A
 gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED. Implementation: `number_to_text` (T-0107).
 ACOT shows no negative zero either: `ACOT(CEILING.PRECISE(Data!C9))` with C9 = -0.0001 is 1.5707963267948966 (PI()/2), the
-value of `ACOT(0)` (gen-m5/6efa59fc1257c475 Calc!A7, excel-graph, 2026-10-22, T-2252 triage). Ours is -1.5707963267948966:
+value of `ACOT(0)` (gen-m5/6efa59fc1257c475 Calc!A7, excel-graph, 2026-10-22, T-2252 triage). Before T-2376 ours was -1.5707963267948966:
 CEILING.PRECISE (and CEILING, CEILING.MATH, ISO.CEILING, ECMA.CEILING, unary minus `-(0)` and `INT(-0)`) yields the double -0.0,
-and `fn_acot` tests `f >= 0.0` (true for -0.0) and returns `atan(1/-0.0)` = -PI()/2. Whether Excel's CEILING.PRECISE yields
-+0 or ACOT ignores the sign of zero cannot be told from the cell; both give PI()/2. Task: T-2376.
+and `fn_acot` tested `f >= 0.0` (true for -0.0) and returned `atan(1/-0.0)` = -PI()/2. Implementation: the zero branch of `fn_acot` (T-2376). Whether Excel's CEILING.PRECISE yields
++0 or ACOT ignores the sign of zero cannot be told from the cell; both give PI()/2.
 
 ## Overflow in `+ - * /` is #NUM! where it happens
 Rule: a sum, difference, product or quotient beyond the double range is the error `#NUM!` at that
