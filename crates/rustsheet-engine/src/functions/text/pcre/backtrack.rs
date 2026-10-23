@@ -463,16 +463,7 @@ impl<'a> Backtracker<'a> {
                         pos = at;
                         break;
                     }
-                    Some(Frame::Slot { slot, old }) => {
-                        if let Some(entry) = self.cache.slots.get_mut(slot) {
-                            *entry = old;
-                        }
-                    }
-                    Some(Frame::Loop { slot, old }) => {
-                        if let Some(entry) = self.cache.loops.get_mut(slot) {
-                            *entry = old;
-                        }
-                    }
+                    Some(frame @ (Frame::Slot { .. } | Frame::Loop { .. })) => self.undo(frame),
                     Some(Frame::Barrier) => {}
                     Some(Frame::Look {
                         pos: at,
@@ -530,6 +521,8 @@ impl<'a> Backtracker<'a> {
                     _ => None,
                 })
         else {
+            // Unreachable: the compiler pairs every `LookEnd` with a `LookStart`. Failing is the
+            // safe answer.
             return Ok(None);
         };
         if !negative {
@@ -538,22 +531,31 @@ impl<'a> Backtracker<'a> {
         }
         let scanned = stack.len().saturating_sub(barrier);
         charge(self.work, to_u64(scanned).saturating_mul(FRAME))?;
+        // Choices and barriers inside the body are dropped with it; only records are undone.
         while self.cache.stack.len() > barrier {
-            match self.cache.stack.pop() {
-                Some(Frame::Slot { slot, old }) => {
-                    if let Some(entry) = self.cache.slots.get_mut(slot) {
-                        *entry = old;
-                    }
-                }
-                Some(Frame::Loop { slot, old }) => {
-                    if let Some(entry) = self.cache.loops.get_mut(slot) {
-                        *entry = old;
-                    }
-                }
-                _ => {}
+            if let Some(frame) = self.cache.stack.pop() {
+                self.undo(frame);
             }
         }
         Ok(None)
+    }
+
+    /// Undoes what a popped frame recorded: a capture slot or a loop's iteration start. Choices
+    /// and barriers record nothing.
+    fn undo(&mut self, frame: Frame) {
+        match frame {
+            Frame::Slot { slot, old } => {
+                if let Some(entry) = self.cache.slots.get_mut(slot) {
+                    *entry = old;
+                }
+            }
+            Frame::Loop { slot, old } => {
+                if let Some(entry) = self.cache.loops.get_mut(slot) {
+                    *entry = old;
+                }
+            }
+            Frame::Retry { .. } | Frame::Barrier | Frame::Look { .. } => {}
+        }
     }
 
     /// Drops the frame at `barrier` and the choices above it, charged per frame scanned, keeping
@@ -561,12 +563,7 @@ impl<'a> Backtracker<'a> {
     fn cut(&mut self, barrier: usize) -> Result<(), Spent> {
         let stack = &mut self.cache.stack;
         let scanned = stack.len().saturating_sub(barrier);
-        charge(
-            self.work,
-            u64::try_from(scanned)
-                .unwrap_or(u64::MAX)
-                .saturating_mul(FRAME),
-        )?;
+        charge(self.work, to_u64(scanned).saturating_mul(FRAME))?;
         let mut kept = barrier;
         for i in barrier..stack.len() {
             if let Some(frame) = stack.get(i).copied() {
