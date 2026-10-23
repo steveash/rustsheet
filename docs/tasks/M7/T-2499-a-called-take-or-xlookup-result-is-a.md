@@ -16,7 +16,7 @@ A called TAKE, DROP, TRIMRANGE or XLOOKUP result is the reference it returns, so
 `=XLOOKUP(1,A1:A3,A1:A3)(2)` (ours spill or give `#NAME?`).
 
 ## Context
-T-2405 chained calls after the built-ins `is_reference_operand` accepts. Those two cells are new
+T-2405 chained calls after the built-ins `is_reference_operand` accepts. These seven cells (TAKE B1, DROP B1:B2, TRIMRANGE B1:B3, XLOOKUP B1) are new
 failures in eval/baseline/probes.txt (probes/chained-calls-builtin-take, -drop, -trimrange, -xlookup, excel-graph
 2026-10-23): ours `#NAME?`, because `LambdaCallKind`'s callee is read by
 `evaluate_reference_arg` (functions/util.rs). There an unlifted TAKE gives its value
