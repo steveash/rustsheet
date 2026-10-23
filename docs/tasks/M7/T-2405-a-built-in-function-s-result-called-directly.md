@@ -3,7 +3,7 @@ id: T-2405
 title: "A built-in function's result called directly: INDEX(A1:A3,1)(2), IF(TRUE,LAMBDA(x,x*2))(3), INDEX(s,1,3)(0)"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -32,9 +32,19 @@ Failing cells, in eval/baseline/probes.txt:
 | probes/chained-calls-ref-6 Sheet1!B1 | `=IF(TRUE,LAMBDA(x,x*2))(3)` | 6 | #ERROR! (parse) |
 
 ## Acceptance criteria
-- [ ] The two cells above pass and leave eval/baseline/probes.txt; the callable set is probed and recorded in references.md.
-- [ ] `=SUM(1)(2)` stays a syntax error (unit test).
-- [ ] `make check` green; reviewers approve.
+- [x] The two cells above pass and leave eval/baseline/probes.txt; the callable set is probed and recorded in references.md.
+- [x] `=SUM(1)(2)` stays a syntax error (unit test).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - LAMBDA values in arrays (T-2039).
+
+## Outcome
+- 16 single-formula probes (excel-graph, 2026-10-23). Callable: IF, IFS, SWITCH, CHOOSE, LET (a LAMBDA
+  result, 6), INDEX, OFFSET, INDIRECT, CHOOSE of a range, TAKE, XLOOKUP (`#REF!`). Refused at load:
+  SUM, ABS, IFERROR, IFNA. That is exactly the set `is_reference_operand` already accepts, so
+  `parse_named_call` chains after those built-ins; FORMULATEXT prints the callee bare.
+  Recorded in references.md "Calling a call's result".
+- Eval: probes 1997 -> 1996 known failures (chained-calls-ref-4, -6 and lambda-escaping-closures
+  H3 fixed); 13 new cases, 2 new-coverage failures (TAKE and XLOOKUP results called: ours
+  `#NAME?`, Excel `#REF!`), follow-up T-2499. No regressions.
