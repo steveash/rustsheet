@@ -37,7 +37,29 @@ Examples:
 Cells:
 - gen-m9/873f30d2bf76f8db.case.json (1): Calc!A360
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): VDB from a fractional start period: `VDB(59720,2.5,26,0.5,6,2)` Excel 20419.595231230724, ours 20478.80080193768; `VDB(41879,589,1023,1.5,9)` and `VDB(97969,872,13,0.0077,0.5)` likewise.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 3 known-failure lines in eval/baseline/gen-m9.txt, 3 visibly off.
+Examples:
+- gen-m9/0a957119475760c5 Calc!A102 `=VDB(59720,2.5,26,0.5,6,2)`: Excel 20419.595231230724, ours 20478.80080193768
+- gen-m9/1cd3096e3e87c965 Calc!A300 `=VDB(41879,589,1023,1.5,9)`: Excel 608.3659774136107, ours 608.4053728488113
+- gen-m9/9a1fa5366bc50918 Calc!A357 `=VDB(97969,872,13,(7^(Data!C12-2.5)),0.5)`: Excel 7411.011840943374, ours 7419.816949901913
+Cells:
+- gen-m9/0a957119475760c5.case.json (1): Calc!A102
+- gen-m9/1cd3096e3e87c965.case.json (1): Calc!A300
+- gen-m9/9a1fa5366bc50918.case.json (1): Calc!A357
+
+Last-digit cells of the same sweep (not visibly off; re-check them after the fix):
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 last-digit (not visibly off).
+Examples:
+- gen-m9/bc04c1f478c9896c Calc!A336 `=VDB(42790,242,100,(1e-15/(1000000000000000.0*0.5)),7,2)`: Excel 5642.90843237285, ours 5642.908432372851
+Cells:
+- gen-m9/bc04c1f478c9896c.case.json (1): Calc!A336
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] The 1 T-2257 last-digit lines in Context are re-checked after the fix; the Outcome says how many pass.
 - [ ] Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 3 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.

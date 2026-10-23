@@ -133,7 +133,28 @@ Cells:
 - gen-m9/c7664e494e418395.case.json (1): Calc!A152
 - gen-m9/ce312817dc9c7f0b.case.json (1): Calc!A327
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): LINEST nested in the financial functions (`AMORLINC(..,LINEST(SUM(..)))`, `TBILLEQ(..,LINEST(-2.5),1E-10)`): Excel's value of the inner LINEST differs from ours (`#VALUE!`), so the enclosing financial call does too.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 8 known-failure lines in eval/baseline/gen-m9.txt, 8 visibly off.
+Examples:
+- gen-m9/01523d247594952e Calc!A6 `=AMORDEGRC(18391,DDB(59219,149,36,6),39662,439103,(LINEST(123456789.123,Data!D9)-XIRR(Data!A10:A12,Data!E3:E7)),0)`: Excel #NUM!, ours #VALUE!
+- gen-m9/01523d247594952e Calc!A339 `=AMORLINC(34854,36797,39625,516,2,LINEST(SUM(Data!E10:E12,Data!E9:E12)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/23d82b62e9a85bdd Calc!A62 `=AMORDEGRC(16276,36866,LINEST((Data!C10-Data!$A3),-123456789.123,(Data!C4="#N/A"),NA()),21,10,(-1))`: Excel #VALUE!, ours #N/A
+- gen-m9/30e20ba3302fea8b Calc!A346 `=TBILLEQ(VLOOKUP(Data!B12,Data!D2:D11,1),LINEST((-2.5)),1E-10)`: Excel #NUM!, ours #VALUE!
+- gen-m9/79d87fc527927626 Calc!A328 `=YIELDMAT(37698,45312,34683,Data!C6,LINEST(SUM(Data!E8:E8,Data!$B12,Data!C1),(Data!C6*Data!B4)),3)`: Excel #NUM!, ours #VALUE!
+- gen-m9/e8d55ec393460bb7 Calc!A376 `=DOLLARDE(LINEST(STDEV.S(Data!A4:A10,Data!E8)),29)`: Excel 0.0, ours #VALUE!
+Cells:
+- gen-m9/01523d247594952e.case.json (2): Calc!A6, A339
+- gen-m9/23d82b62e9a85bdd.case.json (1): Calc!A62
+- gen-m9/30e20ba3302fea8b.case.json (1): Calc!A346
+- gen-m9/79d87fc527927626.case.json (1): Calc!A328
+- gen-m9/9d9ceba257f8001b.case.json (1): Calc!A346
+- gen-m9/abb7d565af89b849.case.json (1): Calc!A374
+- gen-m9/e8d55ec393460bb7.case.json (1): Calc!A376
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 8 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 170 known-failure lines (159 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 13 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 13 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.

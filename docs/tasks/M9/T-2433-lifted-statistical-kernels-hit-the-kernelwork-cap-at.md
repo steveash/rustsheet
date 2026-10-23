@@ -42,7 +42,19 @@ Cells:
 - gen-m9/c2974c061384fdd9.case.json (1): Calc!A56
 - gen-m9/ee2497a5e683c5d9.case.json (2): Calc!A199, A359
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): Lifted calls inside financial functions that are `#SPILL!` in Excel and `#ERROR!` in ours (`ODDFYIELD(..,FILTER(..)-..,..)`, `AMORDEGRC(..,PIVOTBY(..),..)`).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 visibly off.
+Examples:
+- gen-m9/ba4ddb817a8e700e Calc!A323 `=ODDFYIELD(45535,45661,(SQRTPI(3.14159)-AVERAGE(Data!E8:E10,Data!B5:B9,Data!C4)),38502,(FILTER(Data!B1:C12,(Data!B1:B12<>1e-15),Data!D10)-(Data!E6/3.14159)),82,110,4)`: Excel #SPILL!, ours #ERROR!
+- gen-m9/e8d55ec393460bb7 Calc!A10 `=AMORDEGRC(56947,_xlfn.PIVOTBY(Data!B1:C12,Data!A1:C12,Data!B1:E12,LAMBDA(v,v),1,2),39763,716,2,PMT(100,271,417889,43,0),1.9)`: Excel #SPILL!, ours #ERROR!
+Cells:
+- gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A323
+- gen-m9/e8d55ec393460bb7.case.json (1): Calc!A10
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 2 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255): these 9 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The per-call bound still holds for the worst cases the DEVIATION entries list (unit tests unchanged), and the

@@ -1379,3 +1379,51 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 51 cells listed in T-2428.
 Ours: `#VALUE!` for the XIRR cases, `#NUM!` for the XNPV ones; T-2428.
 Status: VERIFIED (excel-graph, inferred through the enclosing call)
 Tasks: T-2428
+
+## Financial functions in the gen-m9 financial sweep (T-2257)
+Rule: the generated financial cells show these Excel rules that ours does not follow yet (each cell is a gen-m9 formula whose
+outer call is the function; "inferred" means the other arguments nest calls whose Excel value is taken to be ours):
+- Argument order of the Analysis ToolPak securities functions (PRICE, YIELD, DURATION, MDURATION, the ODD* four, the
+  discount securities, AMORLINC, AMORDEGRC; inferred): an earlier out-of-range date, a settlement after the maturity, or a
+  negative rate is `#NUM!` before a later argument's error, text or boolean is looked at. `PRICE(36917,-0.5,HOUR(..)<#VALUE!>,..)`
+  (81bcdc0bec0c8e6b A7), `ODDLYIELD(-0.0001,39378,-2.5," x ",92,106,0)` (67a4c03afd63f988 A341), `DURATION(2958466,46410,..,
+  <#VALUE!>,4,0)` (b6a02893a8d6b151 A213) and `PRICEDISC(39668,-1,<text>%,106)` (abb7d565af89b849 A294) are `#NUM!`. AMORLINC and
+  AMORDEGRC give a boolean rate or salvage `#VALUE!` before a negative cost or a salvage above the cost
+  (`AMORLINC(-439103,37926,39037,412,7,FALSE,..)` b73c6cc96e093f03 A360, `AMORDEGRC(27029,37050,39005,789,1E15-0.1,TRUE)`
+  1b60bf99d71424e7 A298 are `#VALUE!`).
+- COUP* functions: a settlement or maturity past 9999-12-31 is `#NUM!` as it is read, before a later error or text
+  (`COUPDAYS(123456789.123,<FALSE>,4)` 89f0aee953a55a45 A363, `COUPNUM(37484,2958466,2,<#VALUE!>)` 1dce4774f5c0e736 A19), and
+  `COUPDAYS(39123,2958466,1,0)` is `#NUM!` (a91bad4e84f49739 A153). `COUPDAYBS(37913,46720,4,4)` = 50 (7d2979fba2c95d64 A304) and
+  `COUPDAYS(5E-05,2958465,2.5,1)` = 184 (b72d952c5f52cb4d A88).
+- ODDLPRICE with the settlement before `last_interest` is `#NUM!`: `ODDLPRICE(59,38163,33447,0,10,110,1,4)` (0a957119475760c5 A351),
+  `ODDLPRICE(36111,38608,36584,..)` (89f0aee953a55a45 A8).
+- A settlement serial below 1 is valid for the T-bills: `TBILLPRICE(1e-15,1,100)` = 72.22222222222221 (0a957119475760c5 A309),
+  `TBILLYIELD(0.3,1,98)` = 7.346938775510203 (e8d55ec393460bb7 A287); and AMORLINC's purchase date may be below 1:
+  `AMORLINC(46557,0,39881,440,0,0.1)` = 46117 (1b60bf99d71424e7 A368).
+- CUMIPMT and CUMPRINC are `#NUM!` for a start period below 1, fractional included: `CUMPRINC(0.05,249,329832,0.3,19,0)`
+  (0a957119475760c5 A40).
+- SYD with a negative salvage is `#NUM!` (`SYD(36746,-100,22,3)`, 31474c20fc1dafd6 A207) and with a life of 1E+300 `#DIV/0!`
+  (5ded7594e597e31e A38); DB with a negative salvage or a life of 1E+300 is `#NUM!` (`DB(0,-439103,27,10)` b72d952c5f52cb4d A303,
+  `DB(6912,0,1E+300,2,6)` e168be7f6d3f84c2 A70); `DB(0.01,488,32,1E+200,10)` = -0.0033416666666666673 (762cd0e4ec9a7aa9 A151),
+  a first Excel value past the "DB and VDB period cap".
+- VDB takes a text `no_switch`: `VDB(17334,389,36,0.2,9,3,"FALSE")` = 9114.101951893414 (762cd0e4ec9a7aa9 A379); DDB takes a
+  TRUE factor from a cell (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8); `VDB(43478,488,1E+9,3,7,0)` = 0.00017196
+  (a91bad4e84f49739 A323).
+- NPER at a rate of 1E-300 is `#DIV/0!` (`NPER(1E-300,-236,2766,945)`, 3c06f9298f65a3ba A148), NPV at a rate of -1 is `#DIV/0!`
+  (`NPV(-1,GESTEP(-2.5,-100))`, 3aa168259335be54 A18), EFFECT at a huge nominal rate `#NUM!` (`EFFECT(1E+300,11)`,
+  31474c20fc1dafd6 A37).
+- IRR of a single value is `#VALUE!` (`IRR(CELL("row",Data!D$2),0.5)`, 5422bdbf173fc233 A63), a guess of 1E+300 is `#VALUE!`
+  (`IRR({0,0,-100,50,60},1E+300)`, e168be7f6d3f84c2 A395), all-zero flows `#DIV/0!` (bc04c1f478c9896c A56), and Excel gives `#NUM!`
+  on 11 flows where ours finds a root near -1 or far out (T-2494). XIRR with one value and one date is `#N/A`
+  (`XIRR(Data!A9:A9,Data!E9:E9)`, 30e20ba3302fea8b A110).
+- PPMT at a huge rate is often exactly 0 (`PPMT(1E+10,12,278,130633)`, 5422bdbf173fc233 A285) and `IPMT(1E+10,10,320,2)` is
+  -20000000000 (89f0aee953a55a45 A124).
+- YIELD is `#NUM!` at a coupon rate far above the yield (`YIELD(38829,45714,100,0.25,2,4,4)`, 31474c20fc1dafd6 A321), and PRICE,
+  DURATION and MDURATION at a huge yield or coupon (`PRICE(39050,44044,0.5,123456789.123,110,4,2)`, 1dce4774f5c0e736 A8;
+  `MDURATION(38368,44642,0.01,1E+300,4,3)`, c0681a8b150ce301 A248); the boundaries are unprobed (T-2488, T-2391).
+- FVSCHEDULE with an empty schedule cell returns the principal (`FVSCHEDULE(6527,<empty>)` = 6527, 30e20ba3302fea8b A250).
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2257); the cells and the rest of each family are listed in the owning tasks.
+Ours: see each task; the triage (T-2257 Outcome) lists every family.
+Status: VERIFIED (excel-graph; the argument-order rules inferred through nested calls)
+Tasks: T-2482, T-2483, T-2484, T-2485, T-2486, T-2487, T-2488, T-2489, T-2490, T-2491, T-2492, T-2493, T-2494, T-2495, T-2496,
+T-2428, T-2241, T-2391

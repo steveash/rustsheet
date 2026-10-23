@@ -46,3 +46,19 @@ visibly-off count means something (decision 0094).
 ## Visible-parity stage
 Coverage half of decision 0094's checkpoint: this task is done when its functions meet the
 400-cell bar and their visibly-off cells all have tasks.
+
+## Handoff
+2026-10-23, opus worker, stopped at the session budget. Done on this branch:
+- 34 new gen-m9 cases (seeds 2257 and 22572; 31 cases x 400 formulas over the 49 functions, then
+  3 x 400 over the 14 still under 400 cells), filled through excel-graph: 34 sidecars, 0 failures.
+- Gated: gen-m9 known failures 7027 -> 8228 (1,201 new-coverage failures, 0 regressions); visible-parity
+  lock 7703 -> 8376, by new coverage only (960 visibly-off cells in the new cases).
+- `make eval` "Excel evidence per function": all 49 functions at 400 or more (minimum 400).
+- The gap-triager traced all 1,201 new lines (965 visibly off, 236 ulp): new tasks T-2482..T-2496 and
+  23 extended tasks (T-1374, T-1528, T-1592, T-1741, T-1742, T-2005, T-2033, T-2093, T-2131, T-2185,
+  T-2217, T-2241, T-2242, T-2329, T-2363, T-2390, T-2391, T-2424, T-2425, T-2427, T-2428, T-2430,
+  T-2433), plus a financial.md section "Financial functions in the gen-m9 financial sweep (T-2257)".
+Left to do: review the triager's task files and financial.md section (the argument-order rules are
+inferred from nested cells, and each of those tasks asks for a confirming probe), write the Outcome with
+the family table, `make check`, the review skill, PR and merge. T-2093 also has a pushed branch
+(agent/functions-stat/T-2093-ftest-scalar), so its file may conflict.
