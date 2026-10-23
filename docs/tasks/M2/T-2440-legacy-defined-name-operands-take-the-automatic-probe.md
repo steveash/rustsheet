@@ -19,6 +19,7 @@ Split from T-2419. Failing cells: probes/legacy-at-defined-name-dynamic-funcs A2
 ## Acceptance criteria
 - [ ] A defined-name operand takes the `@` as the probes show, even for a scalar or SWITCH body; a SWITCH reached only through a name does not remove the host's `@`s.
 - [ ] SORTBY, XMATCH, VSTACK, DROP, TEXTSPLIT and the like are probed (`excel-probe`) and added to `NO_AUTOMATIC_AT` where they remove the `@`.
+- [ ] Probe the shapes T-2419 implements without evidence: a top-level legacy `=LET(x,Z30:Z32,x)`, a range bound through a nested LET, a grouped LET body, and a LET-bound or named lambda call (`=ABS(Z30:Z32)+LET(f,LAMBDA(x,x),f(1))`, which `removes_automatic_at` does not cover).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
