@@ -3,7 +3,7 @@ id: T-2465
 title: "F.INV and F.INV.RT: the last visibly-off cells after T-0974 (df near 1E5, near-tie crossings)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
