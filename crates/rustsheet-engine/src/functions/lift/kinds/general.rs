@@ -280,6 +280,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Decimal | Function::Atan2 => Some(&LIFT_2),
         Function::Base => Some(&LIFT_2_OF_3),
         Function::Arabic => Some(&LIFT_1),
+        Function::Roman => Some(&LIFT_1_OF_2),
         // --- End LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
         _ => None,
     }

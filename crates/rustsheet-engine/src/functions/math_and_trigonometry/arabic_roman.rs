@@ -1,9 +1,7 @@
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::value_error;
 use crate::functions::Function;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
-};
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// Parse Roman (classic or Excel variants) → number
 fn from_roman(s: &str) -> Result<u32, String> {
@@ -207,68 +205,53 @@ fn to_roman_with_form(n: u32, form: i32) -> Result<String, String> {
 }
 
 impl Model {
+    /// `ROMAN(number, [form])`: both arguments lift over arrays and ranges (T-2410;
+    /// numbers.md "ROMAN truncates before its sign check; BASE checks the sign first"). The arguments are read in order, the first
+    /// error winning, and checked in order: the number's range, then the form's.
     pub(crate) fn fn_roman(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let number = match self.get_number(&args[0], cell) {
-            // Excel truncates before the sign check: `ROMAN(-0.5025)` is "" and not `#VALUE!`
-            // (gen-m5/49bfbf67a1409563 Calc!A179; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
-        };
-
-        if number != 0.0 && !(1.0..=3999.0).contains(&number) {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Number must be between 0 and 3999".to_string(),
+        self.lift_call(Function::Roman, args, cell, &mut |model, values| {
+            let (number, form) = match values {
+                [number] => (number, None),
+                [number, form] => (number, Some(form)),
+                _ => return CalcResult::new_args_number_error(cell),
             };
-        }
-        let form = if args.len() == 2 {
-            let mut t = match self.get_number(&args[1], cell) {
-                Ok(f) => f as i32,
-                Err(s) => return s,
+            let number = match model.kernel_number(number, cell) {
+                // Excel truncates before the sign check: `ROMAN(-0.5025)` is "" and not `#VALUE!`
+                // (gen-m5/49bfbf67a1409563 Calc!A179; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
+                Ok(f) => f.trunc(),
+                Err(error) => return error,
             };
-            // If the value is a boolean TRUE/FALSE, convert to 0/4
-            if t == 0 || t == 1 {
-                if let CalcResult::Boolean(b) = self.evaluate_node_in_context(&args[1], cell) {
-                    if b {
-                        // classic form
-                        t = 0;
+            if number != 0.0 && !(1.0..=3999.0).contains(&number) {
+                return value_error(cell);
+            }
+            let form = match form {
+                // TRUE is the classic form 0, FALSE the simplified form 4.
+                Some(CalcResult::Boolean(b)) => {
+                    if *b {
+                        0
                     } else {
-                        // simplified form
-                        t = 4;
+                        4
                     }
                 }
-            }
-            t
-        } else {
-            0
-        };
-        if !(0..=4).contains(&form) {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Form must be between 0 and 4".to_string(),
+                Some(form) => match model.kernel_number(form, cell) {
+                    Ok(f) => f as i32,
+                    Err(error) => return error,
+                },
+                None => 0,
             };
-        }
-        // The form is read and checked even for 0 (`ROMAN(0,#N/A)` is `#N/A`, `ROMAN(0.2,8.09)` is
-        // `#VALUE!`; gen-m5/0362d48f56108faa Calc!A39, gen-m5/1962de140dae0111 Calc!A206).
-        if number == 0.0 {
-            return CalcResult::String(String::new().into());
-        }
-        let roman_numeral = match to_roman_with_form(number as u32, form) {
-            Ok(s) => s,
-            Err(e) => {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: format!("Could not convert to Roman numeral: {e}"),
-                }
+            if !(0..=4).contains(&form) {
+                return value_error(cell);
             }
-        };
-        CalcResult::String(roman_numeral.into())
+            // The form is read and checked even for 0 (`ROMAN(0,#N/A)` is `#N/A`, `ROMAN(0.2,8.09)` is
+            // `#VALUE!`; gen-m5/0362d48f56108faa Calc!A39, gen-m5/1962de140dae0111 Calc!A206).
+            if number == 0.0 {
+                return CalcResult::String(String::new().into());
+            }
+            match to_roman_with_form(number as u32, form) {
+                Ok(s) => CalcResult::String(s.into()),
+                Err(_) => value_error(cell),
+            }
+        })
     }
 
     /// `ARABIC(text)`: the text lifts over arrays and ranges (probes/t2198-m5-lift-argument-kinds
