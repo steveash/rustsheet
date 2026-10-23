@@ -21,6 +21,7 @@ use chrono::{Datelike, NaiveDate};
 use super::accrint::acc_days_between;
 use super::dates::day_count_basis;
 use super::number_or_error;
+use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
     calc_result::CalcResult,
@@ -86,9 +87,20 @@ impl Model {
         let cost = self.cast_number_ref(cost, cell)?;
         let purchased = self.financial_date(self.cast_number_ref(purchased, cell)?);
         let first_period = self.financial_date(self.cast_number_ref(first_period, cell)?);
-        let salvage = self.cast_number_ref(salvage, cell)?;
+        // A date past the calendar is `#NUM!` as it is read, and a boolean salvage or rate is
+        // `#VALUE!` after that but before the value checks (financial.md "Argument order of the
+        // Analysis ToolPak securities functions": `AMORDEGRC(70537,36888,7E13,46,12,TRUE,0)` is
+        // `#NUM!`, gen-m9 e8d55ec393460bb7 A374; `AMORDEGRC(90812,36624,38707,453,3,TRUE,4)` and a
+        // TRUE cell rate are `#VALUE!`, probes/t2455-transpose-single-value A51, A57). A date of
+        // 0 or below waits for the value checks (`AMORDEGRC(-1,<blank>,..,<#VALUE!>)` is `#VALUE!`,
+        // gen-m9 1dce4774f5c0e736 A199).
+        let past_calendar = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        if purchased > past_calendar || first_period > past_calendar {
+            return Err(num_error(cell));
+        }
+        let salvage = self.cast_number_no_bools_ref(salvage, cell)?;
         let period = self.cast_number_ref(period, cell)?;
-        let rate = self.cast_number_ref(rate, cell)?;
+        let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         let basis = day_count_basis(basis).and_then(|basis| i32::try_from(basis).ok());
         let valid = cost >= 0.0
