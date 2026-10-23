@@ -1,6 +1,6 @@
 # Arrays
 
-## Cached rich errors (`#CALC!`, `#SPILL!`, `#BLOCKED!`, ...) are stored as `#VALUE!` plus a `vm` attribute
+## Cached rich errors (`#CALC!`, `#SPILL!`, `#BLOCKED!`, ...) are stored as `#VALUE!` (or `#N/A`) plus a `vm` attribute
 Rule: Excel writes a dynamic-array `#CALC!` (e.g. DROP/TAKE to nothing, `SEQUENCE(0,0)`, FILTER with no
 match) or `#SPILL!` into the sheet XML as `t="e"` with `<v>#VALUE!</v>` and a `vm="N"` attribute. `vm`
 is 1-based into the `<bk>` blocks of `xl/metadata.xml` `<valueMetadata>`; a block's `<rc t=T v=K>` names
@@ -13,7 +13,7 @@ structure (`xl/richData/rdrichvaluestructure.xml`): desktop files put it first, 
 writes the `_error` keys alphabetically (`colOffset, errorType, rwOffset, subType`), so there the
 first field is `colOffset`. (The earlier "first field is the errorType" was wrong for those files;
 T-0208, gen-m2/78bc88199fc96650 Calc!A61 rv `0 8 5 1` is `#SPILL!`.) A reader that ignores `vm`
-sees `#VALUE!`. Every rich error is stored this way, not only the dynamic-array ones; errorType is
+sees `#VALUE!`, except for errorType 6, whose cells cache `<v>#N/A</v>` (see below). Every rich error is stored this way, not only the dynamic-array ones; errorType is
 always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 
 | errorType | error | ERROR.TYPE | produced by (probe cell) |
@@ -68,19 +68,21 @@ VALUETOTEXT through INDEX are 3 and `#VALUE!` (E16, F16, E51, E66). `#DIV/0!`, `
 `#VALUE!` of `"a"+x` in the same positions are plain `t="e"` literals. The cached excel-graph recalcs also store
 errorType 2 in `errorType, iftab[, ptg], subType` structures (subType 0, 33, 39, 40, 59, 133); the reader finds
 errorType by key name and subType does not change the error, so all of them decode to `#VALUE!`. subTypes 0 and 133 have direct ERROR.TYPE
-evidence; the others rest on the T-0030 rule (their cached `<v>#VALUE!</v>` is no evidence: every rich error caches
-`#VALUE!`). subType 133 is REGEXEXTRACT's return_mode 2 with a pattern without capture groups
-(`REGEXEXTRACT("abc","b",2)`, matching or not) is stored as (2, 133), scalar, spilled by MAP or padded by EXPAND, and as
-(errorType 2, ptg 3, subType 133) under `+1`; ERROR.TYPE is 3 directly and through INDEX (probes/rich-errors-regex-group
+evidence; the others rest on the T-0030 rule (their cached `<v>#VALUE!</v>` is no evidence: every rich error but errorType 6
+caches `#VALUE!`). subType 133 is the `#VALUE!` of REGEXEXTRACT's return_mode 2 with a pattern without
+capture groups (`REGEXEXTRACT("abc","b",2)`, matching or not): it is stored as (2, 133) when scalar, spilled by MAP or
+padded by EXPAND, and as (errorType 2, ptg 3, subType 133) when padded as `REGEXEXTRACT(..)+1` (A14:B15); ERROR.TYPE is 3 directly and through INDEX (probes/rich-errors-regex-group
 A1:A3, A8:A9, A11:B12, A14:B15, H/K columns; excel-graph, 2026-10-23, T-2442). In a lifted return_mode, an invalid
 number element (`{0,5}`'s 5, `{-1;0}`'s -1, TOROW's 7) is stored as (2, 0), anchor (A30) or spilled member (B19, B21,
-B23:B24), an element 2 beside a pattern without groups as (2, 133) (B25:B26, GROUPBY's 2s), and a text element (`"x"`,
+B23:B24), a valid mode 2 beside the pattern without groups as (2, 133) (B25, group "b"'s 2, and B26, the total row), and a text element (`"x"`,
 a GROUPBY header) as a plain `#VALUE!` literal (A17:B17, A19, A23:A26).
 
-errorType 6 is `#N/A` (ERROR.TYPE 7): REGEXEXTRACT's no-match `#N/A`, in any return_mode, is stored as the rich error
-(6, 7) and a capture group that took no part in the match (`REGEXEXTRACT("b","(a)?(b)",2)`'s first element) as (6, 9).
+errorType 6 is `#N/A` (ERROR.TYPE 7): REGEXEXTRACT's no-match `#N/A` (return_mode 0 and 2 probed; mode 1 not) is stored as the
+rich error (6, 7) and a capture group that took no part in the match (`REGEXEXTRACT("b","(a)?(b)",2)`'s first element) as (6, 9).
 Both carry Excel's own fallback `<fb t="e">#N/A</fb>` ahead of their fields, and their ERROR.TYPE is 7 and VALUETOTEXT
 `#N/A`, directly and through INDEX, with ISNA TRUE (probes/rich-errors-regex-group A4:A6; excel-graph, 2026-10-23, T-2442).
+Unlike every other rich error, their sheet cells cache `<v>#N/A</v>`, not `#VALUE!` (A4:A6 in the cached
+recalc), so for errorType 6 the cached value agrees with ERROR.TYPE and a reader that ignores `vm` already sees `#N/A`.
 The `<fb>` element is not a field, so the reader's errorType position is unchanged.
 Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
 `GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
