@@ -3,7 +3,7 @@ id: T-2412
 title: "TEXTBEFORE and TEXTAFTER: match_end is cut toward zero, so -0.0001 is 0 (gen-m7)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
