@@ -44,3 +44,10 @@ a < 1, b <= 8: the TOMS 708 betaln structure), "T.DIST.RT's noise beyond t = 1 g
 - Work only in your own subdirectory `docs/research/t2464/<your-dir>/`: scripts, a `RESULTS.md` with what you tried
   and the counts, and any data you derive. Do not edit files outside it, do not run git commit/push, and do not
   touch the engine source. The coordinator merges findings.
+
+## Rebuilding the harness
+`excelmath.py` runs the ignored test `functions::statistical::t2464_harness::t2464_kernels`
+(crates/rustsheet-engine/src/functions/statistical/t2464_harness.rs). Build it with
+`cargo test --release -p rustsheet_engine --lib t2464_kernels --no-run`, then copy the newest
+`target/release/deps/rustsheet_engine-*` executable to `docs/research/t2464/.harness-bin` (git-ignored), or point
+`T2464_HARNESS` at it.

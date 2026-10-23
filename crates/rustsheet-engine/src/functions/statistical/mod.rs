@@ -41,6 +41,8 @@ pub(super) mod special;
 mod standard_dev;
 mod standardize;
 mod student_t;
+#[cfg(test)]
+mod t2464_harness;
 mod t_dist;
 mod trimmean;
 pub(super) mod variance;
