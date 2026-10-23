@@ -3,7 +3,7 @@ id: T-2405
 title: "A built-in function's result called directly: INDEX(A1:A3,1)(2), IF(TRUE,LAMBDA(x,x*2))(3), INDEX(s,1,3)(0)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
