@@ -37,6 +37,14 @@ T-1743 (GROWTH), T-1726 (TREND). The numerics were in those tasks too, so four s
 kernel. Decision 0056 says to fit the kernel first: one lab fit over all of them. This needs numeric fitting against
 several hundred cells, hence opus.
 
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: LINEST and GROWTH last digits (the shared kernel). Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 3 known-failure lines in eval/baseline/gen-m9.txt, 3 formulas.
+Examples:
+- gen-m9/285d87cea1aaa73c Calc!A183 `=LINEST(Data!E11:E12)`: Excel -1e-15, ours -9.999999999999997e-16
+Cells:
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A183
+- gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A178
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A341
+
 ## Acceptance criteria
 - [ ] A fit-lab kernel (tools/src/rustsheet_tools/fitlab/kernels/, a new `regression` fit) scores named candidates
       on the cells above. Candidates: normal equations (today's), Householder QR, modified and classical Gram-Schmidt,
