@@ -3,7 +3,7 @@ id: T-0973
 title: "GAMMA and GAMMALN residue: Excel's gamma-function kernel (39 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
