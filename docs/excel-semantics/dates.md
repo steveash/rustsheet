@@ -139,12 +139,12 @@ Excel's order (crates/rustsheet-engine/src/excel_order.rs), whose values are kep
 evaluations start in that order until a pass has no reader. Dynamic anchors still run first in
 that pass, with their recursion, and empty the state when the order reaches their position.
 Known gaps: the WEEKNUM calls inside a spilling formula, or inside a cell it reads, run when the
-anchor runs, not at their place in the order (T-2070). A sheet keeps its load position
-after a move: sheets are ordered by `Worksheet::load_rank` (T-2069, probes/weeknum-stale-sheet-moved).
-Outside a recalc
-(conditional formats, `evaluate_formula`) the state lives for one formula.
+anchor runs, not at their place in the order (T-2070). Sheets are ordered by their load rank
+(`Worksheet::load_rank`), so a moved sheet keeps its load position (T-2069,
+probes/weeknum-stale-sheet-moved). Outside a recalc (conditional formats, `evaluate_formula`) the
+state lives for one formula.
 Status: VERIFIED
-Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
+Unprobed: the rank of a sheet added or duplicated after load (we give the next free rank), a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
 lifts over one (we leave the state as it is), where a spilling formula sits
 in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
 a return_type in (-1, 0) (truncates to 0, so presumably empties), and whether a reference to an

@@ -852,6 +852,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             sheet_data,
             name: sheet_name.to_string(),
             sheet_id,
+            // Placeholder: `load_sheets` sets the rank from the sheet's position.
             load_rank: 0,
             state: state.to_owned(),
             color,
