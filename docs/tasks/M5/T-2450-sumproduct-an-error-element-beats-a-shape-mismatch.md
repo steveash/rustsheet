@@ -37,4 +37,4 @@ arguments hold one is not probed beyond the cells above; keep the first in argum
 Decision 0083: the gen-m7 cell above has the wrong error, so this task is in the campaign; done when it has Excel's error.
 
 ## Outcome
-`fn_sumproduct` reads every argument and keeps the first element error, returned unless a whole-argument error returns first; it beats a shape mismatch in either order. probes/t2296-sumproduct-error-element and gen-m7 f7e94a817e5385ac A50 fixed (8 cells: probes 7, gen-m7 1), 0 regressions.
+`fn_sumproduct` reads every argument and keeps the first element error, returned unless a whole-argument error returns first; it beats a shape mismatch in either order. probes/t2296-sumproduct-error-element and gen-m7 f7e94a817e5385ac A50 fixed (8 cells: probes 7, gen-m7 1), 0 regressions. A blank one-cell argument after an element error returning first is inferred, not probed (T-2461).
