@@ -3,7 +3,7 @@ id: T-2233
 title: "Placeholder fractions past 2^30: fit Excel's choice of fraction"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,14 +27,20 @@ under scaling and a large denominator too (`?/?%`, `?/100,`, `?/40000`), which T
 the fix that makes them pass.
 
 ## Acceptance criteria
-- [ ] A new probe case holds the number-formats.md cells above plus the denser sweep, and every cell passes
+- [x] A new probe case holds the number-formats.md cells above plus the denser sweep, and every cell passes
   (displayed text and TEXT).
-- [ ] The fitted rule is recorded in number-formats.md, and the existing fraction cases (gen-m10,
+- [x] The fitted rule is recorded in number-formats.md, and the existing fraction cases (gen-m10,
   probes/fraction-*) have no regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The `%`/`,`-scaled and large-fixed-denominator bounds (`?/?%`, `?/100,`, `?/40000`): not probed here, still UNVERIFIED in number-formats.md.
+
+## Outcome
+Fitted Excel's rule on probes/fraction-placeholder-past-2-30 (75 cells, excel-graph 2026-10-23, all passing):
+the continued fraction stops where a partial quotient times the last numerator passes 2^31 - 1, though the new numerator
+itself may pass it, and a stop before any fractional term rounds the value to an integer over 1. Implemented in
+`last_convergent` (formatter/fraction.rs), recorded in number-formats.md. Eval: 75 new probe cells pass, no regressions.
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible. The acceptance criteria above are the stage.
