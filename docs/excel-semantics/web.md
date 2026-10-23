@@ -127,6 +127,6 @@ it brings them back. A row or column move shifts a pivot that lies wholly inside
 Evidence: none from Excel yet. The formula oracle cannot make structural edits; T-2402 records which inserts, deletes and moves
 Excel refuses (Graph range insert/delete or a desktop observation), including whether deleting every line of a pivot deletes it.
 Status: UNVERIFIED
-Implemented in: crates/rustsheet-engine/src/pivot.rs (`Model::displace_pivots`, `take_pivots_on`, `restore_pivots`,
-`rename_pivot_sources`), called from the insert/delete actions in actions.rs and from sheet_undo.rs and new_empty.rs (T-2086).
+Implemented in: crates/rustsheet-engine/src/pivot.rs (`Model::displace_pivots`, `move_pivots`, `take_pivots_on`, `restore_pivots`,
+`rename_pivot_sources`), called from the insert/delete/move actions in actions.rs and from sheet_undo.rs and new_empty.rs (T-2086).
 Tasks: T-2086, T-2401, T-2402
