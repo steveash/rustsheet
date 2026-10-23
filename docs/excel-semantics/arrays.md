@@ -1541,3 +1541,16 @@ with every other argument frozen to its value, so neither an array's size nor ne
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399
+
+## SCAN over a GROUPBY result
+Rule (observed): SCAN whose array is a GROUPBY call is one cell, not a scan of the GROUPBY's cells:
+- `SCAN(GROUPBY(Data!A1:A4,Data!B1:B4,SUM),0,MIN)` is 0.
+- A LAMBDA that ignores the accumulator gives one value (`LAMBDA(a,v,TYPE(v))` is 1, `ROWS(v)*100+COLUMNS(v)` 101).
+- One that uses the accumulator (`LAMBDA(a,v,a+1)`) is `#CALC!`, also through LET, TAKE and VSTACK.
+- With `LAMBDA(w,w)` as the GROUPBY function, SCAN MIN is `#N/A`.
+- MAP and REDUCE over the same GROUPBY see all of its cells (4x2; 8 elements).
+- A GROUPBY whose function returns an array keeps that array in the value cell: `INDEX(GROUPBY(..,LAMBDA(w,w)),4,2)`
+  spills the Total row's {1;2;3;4}.
+Evidence: probes/scan-over-groupby (excel-graph, 2026-10-23, T-2398); probes/groupby-lifted-args A153, A161, A169.
+Status: VERIFIED for these cells; why SCAN collapses is not understood.
+Ours: matches except `SCAN(..LAMBDA(w,w)..,0,MIN)` (`#VALUE!`) and the nested-array value cells (`#VALUE!`); T-2398.

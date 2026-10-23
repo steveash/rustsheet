@@ -32,3 +32,19 @@ Re-split from T-2359. probes/groupby-lifted-args (excel-graph, 2026-10-22):
 
 ## Out of scope
 - GROUPBY's own result.
+
+## Progress (opus run, 2026-10-23)
+Probe committed: probes/scan-over-groupby (69 formulas, excel-graph, 2026-10-23). Data!A1:B4 = a,1; b,2; a,3; c,4. Findings:
+- SCAN over a GROUPBY call is always one cell, whatever the GROUPBY function:
+  - `SCAN(GROUPBY(..,SUM),0,MIN)` is 0.
+  - A LAMBDA that ignores the accumulator gives one value: `LAMBDA(a,v,TYPE(v))` is 1, and `ROWS(v)*100+COLUMNS(v)` is 101.
+  - One that uses it, `LAMBDA(a,v,a+1)` or a concat, is `#CALC!` (ERROR.TYPE 14). LET, TAKE and VSTACK wrappers
+    give the same `#CALC!`.
+  - MAP over the same GROUPBY is a normal 4x2, and REDUCE visits all 8 elements.
+- Ours already matches all of that except A36: `SCAN(GROUPBY(..,LAMBDA(w,w)),0,MIN)` is `#N/A` in Excel and `#VALUE!` in ours.
+- The likely cause is A68:A72. With LAMBDA(w,w), each GROUPBY value cell holds the group's array, and INDEX returns
+  it: `INDEX(GROUPBY(..,LAMBDA(w,w)),4,2)` spills the Total row's {1;2;3;4} (A69:A72), and (1,2) spills too (A68).
+  Ours gives `#VALUE!` there. So SCAN MIN in Excel meets a nested array, and its `#N/A` probably comes from that, not
+  from SCAN itself.
+Next: decide whether fixing A36 needs GROUPBY to keep nested arrays in its cells (listed as out of scope here). If so,
+split that into its own task and make this one depend on it. Then fix A36, A153, A161, A169 and the gen-m7 cell.
