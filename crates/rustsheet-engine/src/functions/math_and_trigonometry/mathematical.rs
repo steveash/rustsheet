@@ -825,17 +825,24 @@ impl Model {
     }
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        let k = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
+        self.lift_call(Function::Combina, args, cell, &mut |model, values| {
+            let [n, k] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let n = match model.kernel_number(n, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            let k = match model.kernel_number(k, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            Self::combina_of(n, k, cell)
+        })
+    }
+
+    /// COMBINA on a floored `n` and `k` (see `fn_combina`).
+    fn combina_of(n: f64, k: f64, cell: CellReferenceIndex) -> CalcResult {
         if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
             return num_error(cell);
         }

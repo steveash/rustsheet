@@ -277,7 +277,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // at most 255 units, BASE writes at most 64 digits and 255 padding, ARABIC makes one pass
         // over its text (`lift/tests/kernel_work.rs`).
         Function::Log => Some(&LIFT_1_OF_2),
-        Function::Decimal | Function::Atan2 => Some(&LIFT_2),
+        Function::Decimal | Function::Atan2 | Function::Combina => Some(&LIFT_2),
         Function::Base => Some(&LIFT_2_OF_3),
         Function::Arabic => Some(&LIFT_1),
         Function::Roman => Some(&LIFT_1_OF_2),
