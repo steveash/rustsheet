@@ -20,7 +20,9 @@ Found by the T-2249 smoke check: a scratch suite of 790 cells, one formula per e
 Code: functions/engineering (bessel_k.rs, the BIT* functions).
 
 ## Acceptance criteria
-- [ ] A probe case holds the cells above and the shift grid.
+- [ ] A probe case holds the cells above and the shift grid, plus the BESSEL order-cap evidence the smoke check saw
+      (`BESSELI(2.5,100001)` and `BESSELI(2.5,1E+6)` are 0) and `BESSELK(2.5,100001)`, so the DEVIATION entry
+      "BESSEL order cap" cites a committed probe.
 - [ ] Ours matches every probe cell; docs/excel-semantics/engineering.md is updated.
 - [ ] `make check` green; reviewers approve.
 

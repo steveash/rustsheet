@@ -371,15 +371,16 @@ POOLS: dict[str, list[str]] = {
         "0 | 1E-300 | (-1E-300) | 1E-10 | 0.5 | 1 | 2 | 3 | 5.9 | 6 | 10 | 26.5 | 27 | 27.3 | 28 | (-0.5) | "
         '(-1) | (-6) | (-27.3) | 1E+300 | (-1E+300) | "0.5" | TRUE'
     ),
-    # BITAND, BITOR, BITXOR and the shifts: Excel's documented limit is 2^48-1 (unprobed here, which is why the
-    # pool has it); a fraction, a negative, number text, a boolean (read as its number: BITAND(TRUE,139) is 1)
-    # and a blank cell.
+    # BITAND, BITOR, BITXOR and the shifts: 2^48-1 is the largest number and 2^48 is #NUM! (numbers.md "CHISQ.DIST
+    # degrees of freedom and BITAND operands are bounded"); a fraction and a negative are #NUM!, number text is
+    # read, a boolean is its number (BITAND(TRUE,139) is 1) and a blank cell is 0 (engineering.md "Engineering
+    # edge-pool smoke check (T-2249)").
     "bit_number": entries(
         "0 | 1 | 13 | 2^47 | 2^48-1 | 2^48 | 281474976710655 | 281474976710656 | 1.5 | 0.9999999999 | (-1) | "
         '"13" | TRUE | Data!Z1'
     ),
-    # BITLSHIFT and BITRSHIFT shift_amount: Excel documents |shift| <= 53 (unprobed here); a negative shifts the
-    # other way, a fraction truncates.
+    # BITLSHIFT and BITRSHIFT shift_amount: 48 and 54 are #NUM! for BITLSHIFT(1,..) but 53 and -53 give 0
+    # (T-2421); a negative shifts the other way and a fraction truncates (the T-2249 smoke check).
     "bit_shift": entries('0 | 1 | (-1) | 47 | 48 | 53 | 54 | (-53) | (-54) | 1.5 | (-1.5) | "2" | TRUE'),
     # The D* database (gen/database.py's sheet Db): the whole table, absolute, the header row alone (no
     # records), one column, the first four records, trailing blank records, the table without its Name column,
