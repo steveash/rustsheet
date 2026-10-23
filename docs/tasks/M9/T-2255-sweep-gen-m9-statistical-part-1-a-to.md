@@ -49,8 +49,8 @@ Coverage half of decision 0094's checkpoint: this task is done when its function
 
 ## Outcome
 gen-m9 grew from 25 to 95 cases and from 998 to 28,862 scored cells, all excel-graph-backed (fills: 43 + 27 sidecars,
-0 failures, no case refused; 36 cells holding an undecodable rich-value error were left pending by the oracle, the
-T-2397 family). The suite is now gated (`gate = true`). Generator commands:
+0 failures, no case refused; 36 cells holding an undecodable rich-value error were left pending by the oracle, owned by
+T-2397). The suite is now gated (`gate = true`). Generator commands:
 - `cd tools && uv run rustsheet-gen --milestone M9 --focus --category statistical --functions <the 61 non-ETS> --count 38 --formulas 400 --seed 41`:
   each function is the outer call of about 250 formulas.
 - FORECAST.ETS family on its own: `--functions FORECAST.ETS,FORECAST.ETS.CONFINT,FORECAST.ETS.SEASONALITY,FORECAST.ETS.STAT --count 5 --formulas 400 --seed 42`.
@@ -63,7 +63,9 @@ Then `uv run rustsheet-oracle fill -b excel-graph --suite gen-m9` and `make eval
 of the 65 functions has at least 500 Excel cells (minimum LOGNORM.DIST 515; the four FORECAST.ETS functions 536-554)
 and at least 320 generated outer-call cells. gen-m9 is 82.19% bit-exact; eval/baseline/gen-m9.txt records 5,147 known
 failures, all new coverage (the 25 earlier cases were never baselined), 0 regressions in every baseline. Visible
-parity: 4,291 of them are visibly off (lock 2,947 -> 6,851, new coverage only, decision 0088). Evidence floor 3 -> 0
+parity: 4,291 of them are visibly off (lock 2,947 -> 6,851, new coverage only, decision 0088). The lock rose by 3,904,
+not 4,291: `make eval-baseline` counted 6,851 = 4,291 in the new cases + 2,560 in cases already baselined, which is 387
+below the old lock (fixes merged on main that no baseline update had recorded yet; a count below the lock passes). Evidence floor 3 -> 0
 (the three FORECAST.ETS functions under 20 cells; decision 0010 entry).
 
 Mismatch families (gap-triager, traced to the innermost diverging sub-expression; visibly-off cells):
@@ -84,7 +86,7 @@ T-2361 119, T-0971 82, T-0977 65, T-0974 51, T-0925 47, T-2146 21, T-0973 6, T-0
 T-2119 2) and the new T-2437 (HARMEAN, EXPON.DIST/EXPONDIST, FISHER/FISHERINV, 22). Quirks recorded in
 docs/excel-semantics/statistics.md and financial.md.
 
-Pool gaps (no edge pool; noted, not invented): integer counts (BINOM.DIST/BINOMDIST/BINOM.DIST.RANGE `number_s`,
+Pool gaps (no edge pool; noted, not invented; filed as T-2438): integer counts (BINOM.DIST/BINOMDIST/BINOM.DIST.RANGE `number_s`,
 `trials`, `number_s2`; BINOM.INV/CRITBINOM `trials`; the HYPGEOM.DIST/HYPGEOMDIST counts; CONFIDENCE* `size`; LARGE `k`),
 the FORECAST.ETS options and a long sorted timeline, BETADIST/BETAINV `A`/`B`, FISHERINV `y`, FORECAST/FORECAST.LINEAR
 `x`, and the lognormal `mean`.
