@@ -2,13 +2,17 @@
 //! table"): EDATE to YEARFRAC, the IS* tests, ADDRESS and HYPERLINK, and the math functions.
 
 use super::ArgKind::{Lift, LiftArrays, Whole, WholeByCaller};
-use super::KernelWork::{Constant, Output};
+use super::KernelWork::{Constant, Output, Weighted};
 use super::{
     ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2,
     LIFT_1_OF_3, LIFT_2, LIFT_2_OF_3, LIFT_3,
 };
 use crate::functions::Function;
 
+/// `COMBINA(number, number_chosen)`: both arguments lift. `combin`'s loop multiplies factors of at
+/// least 1 and stops at the first infinity, so it runs at most about 1,030 steps (T-2453); each
+/// element is charged 2^10.
+const COMBINA: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(1 << 10));
 /// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
 /// `WORKDAY(start_date, days, [holidays])` and `NETWORKDAYS(start_date, end_date, [holidays])`:
@@ -277,7 +281,8 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // at most 255 units, BASE writes at most 64 digits and 255 padding, ARABIC makes one pass
         // over its text (`lift/tests/kernel_work.rs`).
         Function::Log => Some(&LIFT_1_OF_2),
-        Function::Decimal | Function::Atan2 | Function::Combina => Some(&LIFT_2),
+        Function::Decimal | Function::Atan2 => Some(&LIFT_2),
+        Function::Combina => Some(&COMBINA),
         Function::Base => Some(&LIFT_2_OF_3),
         Function::Arabic => Some(&LIFT_1),
         Function::Roman => Some(&LIFT_1_OF_2),
