@@ -3,7 +3,7 @@ id: T-2455
 title: "TRANSPOSE of a single value returns that value (not a 1x1 array)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
