@@ -1,0 +1,48 @@
+---
+id: T-2544
+title: "BIN2DEC, BIN2HEX and BIN2OCT of non-binary text are #NUM!, not #VALUE! (gen-m9, 7 cells)"
+milestone: M9
+lane: functions-engineering
+status: todo
+priority: P2
+size: S
+tier: sonnet
+depends_on: []
+campaign: visible
+---
+
+## Goal
+BIN2DEC, BIN2HEX and BIN2OCT of text that is not binary are `#NUM!`, as Excel gives and as OCT2* and HEX2* already are.
+
+## Context
+Gap triage of the T-2258 gen-m9 engineering sweep (docs/excel-semantics/engineering.md "Engineering functions in the gen-m9 engineering sweep (T-2258)" "Base conversions"). Excel: `BIN2DEC("ABC")`, `BIN2HEX("a")`, `BIN2HEX(" x ")`, `BIN2HEX("TRUE",3)`, `BIN2OCT("abc")`, `BIN2OCT("abc",4)` and `BIN2OCT("a*",7)` (text cells) are `#NUM!`; ours `#VALUE!`. Ours already gives `#NUM!` for `BIN2DEC("2")`, `OCT2DEC("abc")` and `HEX2DEC("xyz")`. A boolean stays `#VALUE!` (`BIN2DEC(TRUE)`, engineering.md "Engineering function argument modes").
+Code: `binary_digits`/`base_digits` in crates/rustsheet-engine/src/functions/engineering/number_basis.rs.
+
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 7 known-failure lines in eval/baseline/gen-m9.txt, 7 formulas, 7 visibly off.
+Examples:
+- gen-m9/7096c4cd615d43ac Calc!A281 `=BIN2OCT(Data!A$12,4)`: Excel #NUM!, ours #VALUE!
+- gen-m9/756a9f7bc3a06bcc Calc!A73 `=BIN2DEC(Data!$E$8)`: Excel #NUM!, ours #VALUE!
+- gen-m9/a1b4181c04804efc Calc!A316 `=BIN2HEX(Data!$A12)`: Excel #NUM!, ours #VALUE!
+- gen-m9/a333e1febf9e93cd Calc!A289 `=BIN2OCT(Data!D10,7)`: Excel #NUM!, ours #VALUE!
+- gen-m9/bf979a17ab5aafcb Calc!A331 `=BIN2HEX(Data!D1,3)`: Excel #NUM!, ours #VALUE!
+- gen-m9/e882060cf4613302 Calc!A155 `=BIN2OCT(Data!E2)`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/7096c4cd615d43ac.case.json (1): Calc!A281
+- gen-m9/756a9f7bc3a06bcc.case.json (1): Calc!A73
+- gen-m9/a1b4181c04804efc.case.json (1): Calc!A316
+- gen-m9/a333e1febf9e93cd.case.json (1): Calc!A289
+- gen-m9/bf979a17ab5aafcb.case.json (1): Calc!A331
+- gen-m9/e882060cf4613302.case.json (1): Calc!A155
+- gen-m9/fb73d8163ad87fc6.case.json (1): Calc!A11
+
+## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Unit tests for BIN2DEC, BIN2HEX and BIN2OCT of "abc" and " x ".
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
