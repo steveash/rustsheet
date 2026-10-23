@@ -371,6 +371,7 @@ C	probes/fin-cumipmt-overflow-and-forms.case.json	25
 C	probes/fin-cumipmt-period-bound.case.json	30
 C	probes/fin-fvschedule-bool-ref.case.json	6
 C	probes/fin-fvschedule.case.json	20
+C	probes/fin-irr-error-array.case.json	38
 C	probes/fin-ispmt-order.case.json	24
 C	probes/fin-later-argument-ranges.case.json	115
 C	probes/fin-mduration-rri-fit.case.json	60
