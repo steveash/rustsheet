@@ -3,7 +3,7 @@ id: T-1538
 title: "F-distribution quantile and cdf at huge df (1E7 to 1E10) differ from Excel in the 6th digit"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
