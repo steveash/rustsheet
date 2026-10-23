@@ -1233,6 +1233,38 @@ over whole columns. A call that does not lift is not charged.
 Status: VERIFIED (excel-graph); the lifted-call bound is DEVIATION (decision 0014)
 Tasks: T-1086, T-1389, T-1390
 
+## Database criteria
+Rule: in every D-function a `database` or a `criteria` range of one row (headers only, `DSUM(A1:E6,2,H1)`,
+`DSUM(A1:E6,2,H1:I1)`, `DSUM(A1:E1,2,H1:H2)`) is `#VALUE!`. A record matches when any criteria row (OR)
+has every non-blank cell holding (AND); a criteria row that is blank under its headers therefore matches
+every record (`H1:H3` with `H3` blank sums all records), as does a blank header over a blank condition.
+- **Header matching.** A criteria header names the database column whose header has the same text,
+  ignoring case and not trimming (`" Qty"` names nothing). Numbers and booleans read as their coerced text
+  (numbers.md "Number → text conversion"): the number 0.5 and the text `"0.5"` name the number header
+  0.5, `"TRUE"` names the boolean header TRUE, and the header 1E-15 is named by the number 1E-15 and by
+  `"0.000000000000001"` but not by `"1E-15"`. A blank or error criteria header names no column, even
+  when the database has a blank header. The same text rule resolves a text `field`, and there `""`
+  names a blank database header (`DSUM(A1:E6,"",H1:H2)` sums the blank-headed column).
+- **Computed criteria.** A condition under a header that names no column (blank, an error, or text that
+  is no database header) is a computed criterion: it holds when its value is TRUE, a non-zero number or
+  the text `"TRUE"`, and fails for FALSE, 0, an error and any other text, `">2"` included. So an
+  unknown header over `">2"` matches nothing, and over TRUE matches everything. A formula condition is
+  evaluated again for each record with its relative references moved down to that record: a blank
+  header over `=B2>2` (cached FALSE, the first record's Qty is 1) sums the records whose Qty is above 2.
+- **Matched conditions** use the shared criteria grammar (criteria.md); `Qty` over TRUE matches only
+  the boolean TRUE record, over `=NA()` nothing.
+Evidence: probes/db-header-criteria-shapes (72 questions; database A1:E6 with headers Name, Qty, 0.5,
+TRUE and a blank) and probes/db-computed-criteria-shapes (45 questions; headers Name, Qty, 1E-15,
+123456789.123 and a blank), excel-graph, 2026-10-23, T-1390.
+Ours: `db_criteria_columns`, `db_row_matches_criteria` and `db_computed_condition` in
+functions/database.rs; a formula condition is evaluated in the context of the criteria cell moved
+down by the record's offset. A formula condition that runs a D-function over its own criteria
+would never pass through a cell, so nested re-evaluations stop at 16 levels or the evaluation's
+stack budget and the condition is `#ERROR!` there, i.e. fails (directive 5; such a workbook is
+circular in Excel).
+Status: VERIFIED (excel-graph)
+Tasks: T-1390
+
 ## GAMMA and GAMMALN sweep (T-1042)
 Rule: Excel's GAMMA is exact only for small integers, GAMMALN is not correctly rounded at integers,
 and the two functions have different domains.
