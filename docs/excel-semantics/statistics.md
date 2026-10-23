@@ -2483,7 +2483,8 @@ error is that error (`FTEST(1/0,..)` `#DIV/0!`, A29). A one-cell reference to a 
 blank two-cell range is `#DIV/0!` (`FTEST(B10:B11,{1;2;3})`, A33).
 F.TEST checks its samples in order, each one's error or blank one-cell reference before the next: `FTEST(1/0,B10)` is
 `#DIV/0!` and `FTEST(NA(),B10:B10)` `#N/A` (A77, A78), so for F.TEST the blank does not beat an earlier sample's error; a
-computed blank (`FTEST(IF(TRUE,B10),{1;2;3})`) is `#VALUE!` too (A79).
+computed blank (`FTEST(IF(TRUE,B10),{1;2;3})`) is `#VALUE!` too (A79). An omitted sample (`FTEST(,{1;2;3})`) is unprobed
+(ours: the one-value `#DIV/0!`).
 Ours: since T-2455 (`fn_f_test`, `f_test_sample`, `is_blank_one_cell` in functions/statistical/fisher.rs). The paired
 functions' blank-cell `#VALUE!` stays with T-2426.
 Status: VERIFIED (excel-graph)
