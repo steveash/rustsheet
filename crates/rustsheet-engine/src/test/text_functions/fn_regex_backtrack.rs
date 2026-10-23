@@ -1,5 +1,5 @@
 //! REGEX* patterns only the backtracker runs (T-1900, SPEC-0013 section 3): backreferences,
-//! atomic and possessive groups, `\G`, `\R` and `\X`.
+//! atomic and possessive groups, `\G`, `\R`, `\X`, lookaround, conditionals and `\K`.
 
 use crate::test::util::new_empty_model;
 
@@ -285,4 +285,59 @@ fn grapheme_clusters_over_a_long_text_fit_the_budget() {
     let result = value(r#"=REGEXTEST("a"&REPT(UNICHAR(769),32766),"\Xb")"#);
     assert!(result == "#ERROR!" || result == "FALSE", "{result}");
     assert!(start.elapsed().as_secs() < bound);
+}
+
+#[test]
+fn lookaround_keep_out_and_conditionals_match_as_pcre2() {
+    // probes/regex-pcre2-features C7-C10, C13, C14 and D12 (excel-graph, T-2354).
+    assert_eq!(value(r#"=REGEXEXTRACT("aXbXc","(?<=X)\w")"#), "b");
+    assert_eq!(
+        value(r#"=REGEXEXTRACT("price 30 dollars","\d+(?= dollars)")"#),
+        "30"
+    );
+    assert_eq!(value(r#"=REGEXEXTRACT("a1b2","[a-z](?!1)")"#), "b");
+    assert_eq!(value(r#"=REGEXEXTRACT("1a2b","(?<!1)[a-z]")"#), "b");
+    assert_eq!(value(r#"=REGEXEXTRACT("foobar","foo\Kbar")"#), "bar");
+    assert_eq!(value(r#"=REGEXEXTRACT("ab","(a)?(?(1)b|c)")"#), "ab");
+    assert_eq!(value(r#"=REGEXREPLACE("abc","(?=b)|b","-")"#), "a--c");
+}
+
+#[test]
+fn lookaround_bodies_are_atomic_and_negative_ones_keep_no_captures() {
+    // probes/regex-lookaround-keepout-conditionals (excel-graph, T-2354): a positive lookahead
+    // keeps its captures but gives back no choice (A1-A2), a negative one sets none (A3),
+    // lookbehind alternatives of different fixed lengths (A4-A5, A13), `\K` in a lookaround is
+    // invalid (A6), an assertion condition is tested once (A7-A8), `\K` in iteration (A11).
+    assert_eq!(value(r#"=REGEXTEST("aaab","^(?=(a+))a*b\1")"#), "FALSE");
+    assert_eq!(value(r#"=REGEXEXTRACT("baaabac","(?=(a+))a*b\1")"#), "aba");
+    assert_eq!(value(r#"=REGEXEXTRACT("ab","(?!(x))a(?(1)c|b)")"#), "ab");
+    assert_eq!(value(r#"=REGEXEXTRACT("xbcd","(?<=a|bc)d")"#), "d");
+    assert_eq!(value(r#"=REGEXEXTRACT("d","(?<=a|bc)d")"#), "#N/A");
+    assert_eq!(value(r#"=REGEXREPLACE("xab yb","(?<!xa)b","-")"#), "xab y-");
+    assert_eq!(value(r#"=REGEXEXTRACT("ab","(?=a\K)")"#), "#VALUE!");
+    assert_eq!(value(r#"=REGEXEXTRACT("ab","(?(?=a)ab|c)")"#), "ab");
+    assert_eq!(value(r#"=REGEXEXTRACT("cd","(?(?=a)ab|c)")"#), "c");
+    assert_eq!(value(r#"=REGEXREPLACE("aaa","a\K","-")"#), "a-a-a-");
+}
+
+/// Nested lookarounds over a 32,767-character text end in `#ERROR!` (the call's work spent) or
+/// an answer within a wall-clock bound: lookbehind steps back are charged per character and
+/// barriers per frame (directive 5). The bound is for a release build.
+#[test]
+fn nested_lookarounds_stop() {
+    let bound = if cfg!(debug_assertions) { 120 } else { 10 };
+    for pattern in [
+        r"(?=(a|a)*b)",
+        r"(?!(?=(a*)*b))x",
+        r"(?<=(?=(a+)+b)a)c",
+        r"(?<=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)(?=(a|aa)*c)",
+    ] {
+        let start = std::time::Instant::now();
+        let result = value(&format!(r#"=REGEXTEST(REPT("a",32767),"{pattern}")"#));
+        assert!(
+            result == "#ERROR!" || result == "FALSE",
+            "{pattern}: {result}"
+        );
+        assert!(start.elapsed().as_secs() < bound, "{pattern}");
+    }
 }

@@ -126,5 +126,7 @@ fn format_array_value(node: &ArrayNode, strict: bool) -> String {
         }
         ArrayNode::Error(e) => format!("{e}"),
         ArrayNode::Empty => String::new(),
+        // Excel: a LAMBDA element is the letter lambda (probes/lambda-arrays B28).
+        ArrayNode::Lambda(_) => "\u{3bb}".to_string(),
     }
 }

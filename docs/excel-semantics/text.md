@@ -844,8 +844,14 @@ backtracker (functions/text/pcre/backtrack.rs). Several PCRE2 behaviors it imple
 - `\G` stands at each iteration search's start;
 - the empty-loop rule;
 - captures made inside an atomic group are undone on backtracking.
-`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals parse but are
-`#VALUE!` until T-2354 (so `(?=b)|b`, D12, waits for it). Iteration is PCRE2's since T-1899
+`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals run on the backtracker
+since T-2354 (C7-C10, C13, C14, D12; probes/regex-lookaround-keepout-conditionals A1-A19, excel-graph, 2026-10-23): a positive
+lookaround keeps its captures but is atomic (`^(?=(a+))a*b\1` is FALSE on `aaab`, and `(?=(a+))a*b\1` extracts
+`aba` from `baaabac`), a negative one keeps none (`(?!(x))a(?(1)c|b)` on `ab` is `ab`), each top-level lookbehind
+alternative has its own fixed length (`(?<=a|bc)d` finds `d` in `xbcd`), a lookbehind over an astral character steps
+back one character (`(?<=.)b` on `😀b` is `b`), `\K` inside a lookaround is `#VALUE!` (ERROR.TYPE 3: PCRE2 10.38 and
+later reject it), `\K` moves each match's start in iteration (`REGEXREPLACE("aaa","a\K","-")` is `a-a-a-`), and an
+assertion condition is accepted and tested once (`(?(?=a)ab|c)` extracts `ab` from `ab` and `c` from `cd`). Iteration is PCRE2's since T-1899
 (functions/text/regex_search.rs `each_match`): the retry runs on the backtracker, a regular pattern's on its memoized
 mode, and an advance of one UTF-16 unit into a surrogate pair is `#VALUE!` (the cause, Excel iterating UTF-16
 units, is inferred; every regex-iteration-surrogates cell matches it). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and

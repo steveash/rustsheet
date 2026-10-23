@@ -136,8 +136,18 @@ Cells:
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A19
 - gen-m9/fec39efaba9284c3.case.json (2): Calc!A30, A106
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): F.INV and F.INV.RT passed through TRIMMEAN and STDEVA (`TRIMMEAN(F.INV.RT(0.001,8,1),..)` Excel 598144.1562499531, ours 598144.1562336558).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 visibly off.
+Examples:
+- gen-m9/91e167cd8d7eb652 Calc!A2 `=STDEVA({1,"a",TRUE,3},F.INV(0.999999,9,4))`: Excel 900.9607521555473, ours 900.9607521550595
+- gen-m9/a63d1c7d6f96c56d Calc!A320 `=TRIMMEAN(F.INV.RT(0.001,8,1),Data!C$5)`: Excel 598144.1562499531, ours 598144.1562336558
+Cells:
+- gen-m9/91e167cd8d7eb652.case.json (1): Calc!A2
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A320
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 96 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 98 known-failure lines (96 from T-2255, 2 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Both NumericMismatch lines (H11, H16) and all NumericClose lines above leave those classes, at
       least 15 of the 28 lines leave `eval/baseline/ironcalc-calc.txt`, no new lines in any baseline;

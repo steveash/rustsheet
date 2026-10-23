@@ -8,6 +8,7 @@ use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
+use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -138,6 +139,8 @@ impl Model {
                         ArrayNode::Number(value) => CalcResult::Number(value),
                         ArrayNode::Boolean(b) => CalcResult::Boolean(b),
                         ArrayNode::String(s) => CalcResult::String(s),
+                        // Cached cells hold no LAMBDA; read as a value it would be `#VALUE!`.
+                        node @ ArrayNode::Lambda(_) => array_node_to_calc_result(&node, cell),
                     };
                     visit(self, ItemSource::ReferencedCell, value)?;
                 }

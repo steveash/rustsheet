@@ -63,8 +63,25 @@ Cells:
 - gen-m9/85f48d5cdfb24555.case.json (1): Calc!A310
 - gen-m9/caa1eed48b1883fe.case.json (1): Calc!A250
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): NORMDIST pdf last digits (cumulative FALSE), none visibly off.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 16 known-failure lines in eval/baseline/gen-m9.txt, 0 visibly off.
+Examples:
+- gen-m9/1b31092a0d79e5f1 Calc!A157 `=NORMDIST(100,SUM((Data!$B4-2)),1E+10,FALSE)`: Excel 3.989422804014327e-11, ours 3.9894228040143264e-11
+Cells:
+- gen-m9/097af1ca33638670.case.json (1): Calc!A236
+- gen-m9/11eb3ab4f4f8104c.case.json (2): Calc!A223, A285
+- gen-m9/1b31092a0d79e5f1.case.json (1): Calc!A157
+- gen-m9/334f3dc9ca937f10.case.json (2): Calc!A321, A383
+- gen-m9/3b7990bd4e3307ba.case.json (2): Calc!A153, A277
+- gen-m9/73f053591a54bc43.case.json (2): Calc!A109, A126
+- gen-m9/787ba8d801105a60.case.json (1): Calc!A261
+- gen-m9/80586b859b73c87d.case.json (3): Calc!A199, A318, A335
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A177
+- gen-m9/bbab6562e88b70e8.case.json (1): Calc!A239
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 17 known-failure lines (1 from T-2255, 16 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The 12 NORM.S.DIST density lines leave `eval/baseline/ironcalc-calc.txt`; the NORM.DIST,
       LOGNORM.DIST and PHI lines leave too if one formulation per function fits every cached density

@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2354: PCRE2 lookaround, \\K and conditionals on the backtracker: a positive lookahead keeps its captures but is atomic (A1-A2), a negative one keeps none (A3), lookbehind alternatives of different fixed lengths (A4-A5, A9, A13, A16), \\K inside a lookaround (A6, A17, A18), assertion conditions (A7, A8, A19), \\K in iteration and replacement (A10-A11), a caseless lookbehind (A12), a named-group condition (A14), a lookbehind over an astral character (A15).",
+ "tags": [
+  "M7",
+  "probe",
+  "T-2354",
+  "regexextract",
+  "regexreplace",
+  "regextest"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=REGEXTEST(\"aaab\",\"^(?=(a+))a*b\\1\")",
+    "A2": "=REGEXEXTRACT(\"baaabac\",\"(?=(a+))a*b\\1\")",
+    "A3": "=REGEXEXTRACT(\"ab\",\"(?!(x))a(?(1)c|b)\")",
+    "A4": "=REGEXEXTRACT(\"xbcd\",\"(?<=a|bc)d\")",
+    "A5": "=REGEXEXTRACT(\"d\",\"(?<=a|bc)d\")",
+    "A6": "=REGEXEXTRACT(\"ab\",\"(?=a\\K)\")",
+    "A7": "=REGEXEXTRACT(\"ab\",\"(?(?=a)ab|c)\")",
+    "A8": "=REGEXEXTRACT(\"cd\",\"(?(?=a)ab|c)\")",
+    "A9": "=REGEXEXTRACT(\"b\",\"(?<!a)b\")",
+    "A10": "=REGEXREPLACE(\"foobar\",\"foo\\Kbar\",\"X\")",
+    "A11": "=REGEXREPLACE(\"aaa\",\"a\\K\",\"-\")",
+    "A12": "=REGEXEXTRACT(\"Ab\",\"(?<=a)b\",0,1)",
+    "A13": "=REGEXREPLACE(\"xab yb\",\"(?<!xa)b\",\"-\")",
+    "A14": "=REGEXEXTRACT(\"ac\",\"(?<n>x)?a(?(<n>)b|c)\")",
+    "A15": "=REGEXEXTRACT(\"😀b\",\"(?<=.)b\")",
+    "A16": "=REGEXREPLACE(\"abcabc\",\"(?<=b)(?=c)\",\"-\")",
+    "A17": "=REGEXEXTRACT(\"ab\",\"(?<=\\Ka)b\")",
+    "A18": "=ERROR.TYPE(REGEXEXTRACT(\"ab\",\"(?=a\\K)\"))",
+    "A19": "=ERROR.TYPE(REGEXEXTRACT(\"ab\",\"(?(?=a)ab|c)\"))"
+   }
+  }
+ ],
+ "expected": {}
+}

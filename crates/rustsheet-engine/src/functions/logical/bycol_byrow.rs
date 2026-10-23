@@ -1,6 +1,6 @@
 use super::lambda::LambdaCaller;
-use crate::cast::calc_result_to_array_node;
-use crate::functions::util::array_node_to_calc_result;
+use crate::cast::calc_result_to_element;
+use crate::functions::util::{array_element_value, array_node_to_calc_result};
 use crate::functions::Function;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -77,13 +77,18 @@ pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
 }
 
 /// A LAMBDA result as one BYROW/BYCOL/MAKEARRAY cell: a 1x1 array is its one value (probes/
-/// byrow-bycol-array-results, excel-graph 2026-10-16); otherwise the shared element mapping.
+/// byrow-bycol-array-results, excel-graph 2026-10-16), a LAMBDA value stays a LAMBDA element, which
+/// a cell shows as `#CALC!` (`BYCOL(Data!A11:D11,LAMBDA(x,LAMBDA(v,v)))` is four `#CALC!`) and `&`
+/// reads as `#VALUE!` (`TEXTSPLIT(..&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`; gen-m7
+/// 23b5367c18059af2 A2578, T-2406) and MAP can call (`MAP(MAKEARRAY(1,2,LAMBDA(r,c,LAMBDA(x,x+c))),
+/// LAMBDA(g,g(10)))` is 11, 12; probes/lambda-arrays B22, T-2039); otherwise the shared element
+/// mapping.
 fn lambda_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
         CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
             rows.remove(0).remove(0)
         }
-        other => calc_result_to_array_node(other),
+        other => calc_result_to_element(other),
     }
 }
 
@@ -293,7 +298,7 @@ impl Model {
                         row.iter()
                             .map(|node| match node {
                                 ArrayNode::Empty => CalcResult::EmptyArg,
-                                node => array_node_to_calc_result(node, cell),
+                                node => array_element_value(node, cell),
                             })
                             .collect()
                     })
@@ -444,6 +449,9 @@ impl Model {
                     [CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
                     cell,
                 );
+                if makes_calc_error(&cell_result) {
+                    return Self::by_slices_calc_error(cell);
+                }
                 row.push(lambda_result_to_array_node(cell_result));
             }
             result.push(row);

@@ -3,10 +3,10 @@ id: T-2406
 title: "MAKEARRAY with an array step is one #CALC!; BYROW, BYCOL and MAP with a LAMBDA step are #CALC! per element (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P1
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: visible
 ---
@@ -77,12 +77,12 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 164 known-failure l
 - gen-m7/7ea6ef6ceabacafd.case.json A3260 `=BYCOL(Data!E8:E8,LAMBDA(acc,LAMBDA(z,z)))`: A3260 Excel #CALC!, ours #VALUE!; cells (1): A3260
 
 ## Acceptance criteria
-- [ ] Visible parity: these 164 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
+- [x] Visible parity: these 164 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
-- [ ] Unit tests: a MAKEARRAY array step (one `#CALC!`, ROWS of it `#CALC!`), a scalar step (unchanged), and BYCOL/MAP with a LAMBDA step
+- [x] Unit tests: a MAKEARRAY array step (one `#CALC!`, ROWS of it `#CALC!`), a scalar step (unchanged), and BYCOL/MAP with a LAMBDA step
       (`#CALC!` per element, shape kept).
-- [ ] The arrays.md entry's "Ours:" line names this task.
-- [ ] `make check` green; reviewers approve.
+- [x] The arrays.md entry's "Ours:" line names this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Arrays that hold LAMBDA values MAP can call (T-2039).
@@ -92,3 +92,19 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Handoff (resumed)
+Superseded by the Outcome below: the LAMBDA-element half is done.
+Done on the branch: MAKEARRAY with a multi-cell step is one `#CALC!` (`fn_makearray` uses `makes_calc_error`); 122 gen-m7 and
+2 gen-m9 cells fixed, 0 regressions, baseline recorded. Not done: BYROW/BYCOL/MAP with a LAMBDA step. Making the element a plain
+`#CALC!` error (in `lambda_result_to_array_node`/MAP) fixed the 42 cells but regressed gen-m7/23b5367c18059af2 A2578
+(`TEXTSPLIT(..&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`), gen-m7/f7e94a817e5385ac A942 and gen-m9/165db58d1540f014
+A273: the element is a LAMBDA value, `#CALC!` as a cell result but `#VALUE!`/other when consumed. Needs a LAMBDA-valued array
+element (T-2039) or a result-position-only rule. Keep this task open for that half (acceptance 1 is the 164 lines; 122 are fixed).
+
+## Outcome
+MAKEARRAY with a multi-cell LAMBDA step is one `#CALC!` (`makes_calc_error`, as BYROW/BYCOL). A LAMBDA element of BYROW, BYCOL and
+MAP is `#CALC!` when the call is the cell formula's outermost node (superseded by T-2039: the element now holds the LAMBDA itself; `Model::lambda_elements_shown`, set by `run_cell_formula`, taken by
+the call) and stays `#VALUE!` where consumed, which keeps the three cells the handoff found regressing. Eval: gen-m7 known failures
+-164 (122 MAKEARRAY + 42 LAMBDA-element), gen-m9 -2, 0 regressions. `tier: opus` is from the sonnet handoff.
+Follow-up: T-2463 (probe the element under ISERROR/IFERROR/ERROR.TYPE/TYPE, non-root positions, MAKEARRAY 1x1 and LAMBDA steps).

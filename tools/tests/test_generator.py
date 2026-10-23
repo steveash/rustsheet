@@ -657,7 +657,7 @@ def _outer_function(formula: str) -> str:
 
 def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
-    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures).
+    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures) and T-2318 (TEXTJOIN's delimiter is an array parameter).
     catalog = copy.deepcopy(_loaded_catalog())
     for f in catalog.functions:
         for p in f.get("params", []):
@@ -665,7 +665,7 @@ def test_unfocused_output_is_unchanged() -> None:
     body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
     assert (
         hashlib.sha256(body.encode()).hexdigest()
-        == "e8451736288c9469b1e6765e45893f3218f803430abb6e01ae2cd7494392bd29"
+        == "505d7bc2688c30017ec88bafbf7512ef881ad1606a3cce3d4cfa30195cad721c"
     )
 
 

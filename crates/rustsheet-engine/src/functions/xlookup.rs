@@ -11,7 +11,7 @@ use super::{
     lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::SearchVector,
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
-    util::array_node_to_calc_result,
+    util::{array_element_value, array_node_to_calc_result},
 };
 
 #[derive(PartialEq)]
@@ -173,7 +173,9 @@ fn xlookup_pick_array(
     } else {
         returns.first().and_then(|row| row.get(index))
     };
-    node.map_or_else(out_of_range, |node| array_node_to_calc_result(node, cell))
+    // A LAMBDA element is that LAMBDA (`LET(g,XLOOKUP(2,{1,2,3},SCAN(..)),g(0))` is 12,
+    // probes/lambda-arrays B33).
+    node.map_or_else(out_of_range, |node| array_element_value(node, cell))
 }
 
 /// Rows and columns of a range or array result (1x1 for anything else).

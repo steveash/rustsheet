@@ -1,0 +1,48 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TAKE and DROP with the rows argument omitted (`TAKE(x,,-1)`): found by T-2039, probes/lambda-arrays B13. Sheet1 A1:B3 = 1..6, D1 blank.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "A3": 5,
+        "B3": 6,
+        "F1": "=TAKE({1,2,3;4,5,6},,-1)",
+        "H1": "=TAKE(A1:B3,,1)",
+        "J1": "=DROP({1,2,3;4,5,6},,1)",
+        "M1": "=ROWS(TAKE({1,2,3;4,5,6},,2))",
+        "M2": "=TAKE({1,2,3;4,5,6},D1,1)",
+        "M3": "=ROWS(TAKE({1,2,3;4,5,6},))",
+        "M4": "=ROWS(DROP({1,2,3;4,5,6},,))",
+        "M5": "=COLUMNS(TAKE({1,2,3;4,5,6},,))",
+        "M6": "=ROWS(DROP(A1:B3,,1))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!F1",
+    "Sheet1!F2",
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!J1",
+    "Sheet1!K1",
+    "Sheet1!J2",
+    "Sheet1!K2",
+    "Sheet1!M1",
+    "Sheet1!M2",
+    "Sheet1!M3",
+    "Sheet1!M4",
+    "Sheet1!M5",
+    "Sheet1!M6"
+  ]
+}

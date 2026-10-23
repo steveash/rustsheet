@@ -136,7 +136,7 @@ impl ArgValue {
             ArrayNode::Boolean(b) => ArgValue::Boolean(*b),
             ArrayNode::String(_) => ArgValue::Text,
             ArrayNode::Empty => ArgValue::Blank,
-            ArrayNode::Error(_) => ArgValue::Error,
+            ArrayNode::Error(_) | ArrayNode::Lambda(_) => ArgValue::Error,
         }
     }
 }

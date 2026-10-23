@@ -37,7 +37,19 @@ PPMT cell made visibly off.
 - probes-numeric is not gated (`gate = false`), so nothing locks T-2130's m9-fin-pmt gain
   (visibly off 250 → 4). Re-check the case with `make eval-show` after any change here.
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): PPMT passed through MINA and MAXA (`MINA(PPMT((-0.5),12,158,..))` Excel -0.00046386718749999705, ours -0.0004638671875).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 2 known-failure lines in eval/baseline/gen-m9.txt, 1 visibly off.
+Examples:
+- gen-m9/38e4fc309fe199ea Calc!A73 `=MINA(PPMT((-0.5),12,158,(Data!$B4-0.1)))`: Excel -0.00046386718749999705, ours -0.0004638671875
+- gen-m9/9e2225ead8a6a07b Calc!A4 `=MAXA((1.005*PPMT(0.1,100,250,309299,Data!E5,Data!C12)))`: Excel -0.017468244384972693, ours -0.017468244384972673
+Cells:
+- gen-m9/38e4fc309fe199ea.case.json (1): Calc!A73
+- gen-m9/9e2225ead8a6a07b.case.json (1): Calc!A4
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2256): these 2 known-failure lines (the T-2256 cells in Context) disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] A82, A166, A412 and A418 are within half a unit of the 15th digit; every other PMT, IPMT
       and PPMT cell of m9-fin-pmt and IPMT_PPMT.xlsx stays within it.
 - [ ] financial.md records the PPMT formulation and its evidence.
