@@ -27,3 +27,16 @@ changing the A1 grammar, and record it in docs/excel-semantics/references.md.
 
 ## Out of scope
 - Defined names spelled like cells (unchanged).
+
+## Notes (first session, 2026-10-23)
+- The engine already binds the stored form: `=_xlfn.LET(_xlpm.f1,1,_xlpm.f1+1)` is 2, and the H4 formula written with
+  `_xlpm.` names is 6 (unit test against `Model::_set`). Only the unprefixed text, `=LET(f1,1,f1+1)`, is read as cells
+  (stored back as `F1`, `#VALUE!`).
+- The oracle cannot probe the unprefixed form: `tools/src/rustsheet_tools/spec2xlsx.py` writes every LET/LAMBDA name as
+  `_xlpm.x` (T-0166), so excel-graph evaluated `_xlpm.add5`. The eval harness, however, hands the engine the case's
+  unprefixed text. So H4/H5 fail because the harness and the oracle evaluate different formulas, not because of the
+  stored-form grammar.
+- Next: decide (spec/decision) between (a) the harness setting case formulas in the `_xlpm.` form spec2xlsx writes
+  (matches what Excel evaluated; crates/rustsheet-eval) and (b) the typed-formula parser binding a cell-shaped name inside
+  a LET/LAMBDA scope (Excel's own typed behaviour is unprobed: Excel for the web refuses such names when typed, by
+  memory only, unverified). (a) needs no Excel evidence beyond the existing H4/H5.
