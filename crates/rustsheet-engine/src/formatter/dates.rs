@@ -60,6 +60,20 @@ impl DateSystem {
         }
     }
 
+    /// This system's serial for an imported date or timestamp whose 1900-system serial is
+    /// `serial` (the xlsx importer's ISO 8601 reader gives those), keeping its time of day.
+    /// `None` for a moment before the 1904 epoch, which has no 1904 serial (what Excel does with
+    /// such a pivot cache date is unprobed, so the importer skips it, as for a pre-1900 date).
+    #[must_use]
+    pub fn serial_from_imported_1900_serial(self, serial: f64) -> Option<f64> {
+        match self {
+            Self::Excel1900 => Some(serial),
+            Self::Excel1904 => {
+                Some(serial - EPOCH_1904_IN_1900_SERIALS as f64).filter(|s| *s >= 0.0)
+            }
+        }
+    }
+
     /// Like `serial_from_1900_serial`, but a day before the 1904 epoch keeps its negative serial:
     /// EDATE and EOMONTH return such days (`EDATE(0,-1)` is -31 and `EOMONTH(0,-1)` is -1 in a 1904
     /// workbook; probes/date-system-1904-readers A8, A9). WORKDAY gives #NUM! there instead (A43).

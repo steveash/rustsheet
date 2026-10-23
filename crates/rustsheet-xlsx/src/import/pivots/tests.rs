@@ -116,6 +116,14 @@ fn load_with(
     parts: &[(String, String)],
     list: &[(&str, &str)],
 ) -> (Vec<PivotCache>, Vec<PivotTable>) {
+    load_in(parts, list, DateSystem::Excel1900)
+}
+
+fn load_in(
+    parts: &[(String, String)],
+    list: &[(&str, &str)],
+    date_system: DateSystem,
+) -> (Vec<PivotCache>, Vec<PivotTable>) {
     let sheets = [PivotSheet {
         sheet_id: 7,
         path: "xl/worksheets/sheet1.xml".into(),
@@ -125,6 +133,7 @@ fn load_with(
         &workbook_rels(parts),
         &caches(list),
         &sheets,
+        date_system,
     )
 }
 
@@ -134,6 +143,17 @@ fn load(parts: &[(String, String)]) -> (Vec<PivotCache>, Vec<PivotTable>) {
 
 fn text(s: &str) -> CacheItem {
     CacheItem::Text(s.to_string())
+}
+
+#[test]
+fn date_items_follow_the_workbooks_date_system() {
+    // 2024-01-01 is serial 45292 in the 1900 system and 1462 days lower in the 1904 system.
+    let date = |system| {
+        let (caches, _) = load_in(&parts(), &[("1", "rIdC1")], system);
+        caches[0].fields[1].items[3].clone()
+    };
+    assert_eq!(date(DateSystem::Excel1900), CacheItem::Date(45292.0));
+    assert_eq!(date(DateSystem::Excel1904), CacheItem::Date(43830.0));
 }
 
 #[test]
@@ -384,10 +404,22 @@ fn the_workbook_record_value_budget_drops_whole_caches() {
     let list = caches(&[("1", "rIdC1"), ("2", "rIdC2")]);
     let workbook_rels = workbook_rels(&two);
     // Each cache holds 5 records x 3 fields = 15 values.
-    let (loaded, ids) = load_caches(&mut package(&two), &workbook_rels, &list, 29);
+    let (loaded, ids) = load_caches(
+        &mut package(&two),
+        &workbook_rels,
+        &list,
+        29,
+        DateSystem::Excel1900,
+    );
     assert_eq!(loaded.len(), 1);
     assert_eq!(ids, HashMap::from([(1, 0)]));
-    let (loaded, ids) = load_caches(&mut package(&two), &workbook_rels, &list, 30);
+    let (loaded, ids) = load_caches(
+        &mut package(&two),
+        &workbook_rels,
+        &list,
+        30,
+        DateSystem::Excel1900,
+    );
     assert_eq!(loaded.len(), 2);
     assert_eq!(ids, HashMap::from([(1, 0), (2, 1)]));
 }

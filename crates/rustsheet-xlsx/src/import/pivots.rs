@@ -19,6 +19,7 @@ use rustsheet_engine::pivot::{
     Aggregate, Axis, AxisField, CacheBuilder, CacheItem, CacheSource, CellArea, DataField,
     PivotCache, PivotCacheError, PivotField, PivotTable, RecordValue, MAX_RECORD_VALUES,
 };
+use rustsheet_engine::types::DateSystem;
 
 use super::iso_date::iso8601_to_serial;
 use super::package::{part_folder_and_rels, resolve_relative_target, Package};
@@ -77,8 +78,10 @@ pub(super) fn load_pivots<R: Read + Seek>(
     rels: &HashMap<String, Relationship>,
     caches: &[(Option<String>, Option<String>)],
     sheets: &[PivotSheet],
+    date_system: DateSystem,
 ) -> (Vec<PivotCache>, Vec<PivotTable>) {
-    let (pivot_caches, cache_ids) = load_caches(archive, rels, caches, MAX_RECORD_VALUES);
+    let (pivot_caches, cache_ids) =
+        load_caches(archive, rels, caches, MAX_RECORD_VALUES, date_system);
     if pivot_caches.is_empty() {
         return (pivot_caches, Vec::new());
     }
@@ -149,6 +152,7 @@ fn load_caches<R: Read + Seek>(
     rels: &HashMap<String, Relationship>,
     caches: &[(Option<String>, Option<String>)],
     mut values_left: usize,
+    date_system: DateSystem,
 ) -> (Vec<PivotCache>, HashMap<u32, u32>) {
     let listed: Vec<(Option<u32>, Option<String>)> = caches
         .iter()
@@ -177,7 +181,9 @@ fn load_caches<R: Read + Seek>(
             (_, Some(part)) if part_counts.get(part).is_some_and(|&n| n > 1) => {
                 skip("the part is reached twice")
             }
-            (Some(id), Some(part)) => load_cache(archive, part, values_left).map(|c| (*id, c)),
+            (Some(id), Some(part)) => {
+                load_cache(archive, part, values_left, date_system).map(|c| (*id, c))
+            }
         };
         match result {
             Ok((id, cache)) => {
@@ -198,10 +204,11 @@ fn load_cache<R: Read + Seek>(
     archive: &mut Package<R>,
     part: &str,
     values_left: usize,
+    date_system: DateSystem,
 ) -> Result<PivotCache, Skip> {
     let limits = *archive.limits();
     let (mut builder, field_count, records_id) =
-        read_definition(archive.open(part)?, values_left, &limits)?;
+        read_definition(archive.open(part)?, values_left, &limits, date_system)?;
     let Some(records_id) = records_id else {
         return skip("no records part (saveData=\"0\")");
     };
@@ -215,7 +222,13 @@ fn load_cache<R: Read + Seek>(
     let Some(records) = records else {
         return skip("no internal pivotCacheRecords relationship");
     };
-    read_records(archive.open(&records)?, &mut builder, field_count, &limits)?;
+    read_records(
+        archive.open(&records)?,
+        &mut builder,
+        field_count,
+        &limits,
+        date_system,
+    )?;
     Ok(builder.finish())
 }
 
@@ -328,6 +341,7 @@ fn index_attribute(element: &BytesStart, name: &str) -> Result<u32, Skip> {
 fn cache_item(
     element: &BytesStart,
     limits: &super::package::ImportLimits,
+    date_system: DateSystem,
 ) -> Result<Option<CacheItem>, Skip> {
     let tag = local_name(element);
     if tag == "m" {
@@ -357,7 +371,11 @@ fn cache_item(
             Some(error) => CacheItem::Error(error),
             None => return skip(format!("unknown error {v:?}")),
         },
-        _ => match iso8601_to_serial(&v) {
+        // `<d>` is an ISO 8601 text; the cell serial it stands for depends on the workbook's date
+        // system (1904 serials are 1462 days lower).
+        _ => match iso8601_to_serial(&v)
+            .and_then(|s| date_system.serial_from_imported_1900_serial(s))
+        {
             Some(serial) => CacheItem::Date(serial),
             None => return skip(format!("bad date {v:?}")),
         },
@@ -373,6 +391,7 @@ fn read_definition<B: BufRead>(
     part: B,
     values_left: usize,
     limits: &super::package::ImportLimits,
+    date_system: DateSystem,
 ) -> Result<(CacheBuilder, u32, Option<String>), Skip> {
     let mut records_id = None;
     let mut source: Option<Option<CacheSource>> = None;
@@ -435,7 +454,9 @@ fn read_definition<B: BufRead>(
             path,
             &[DEFINITION, "cacheFields", "cacheField", "sharedItems"],
         ) {
-            if let (Some(builder), Some(item)) = (builder.as_mut(), cache_item(element, limits)?) {
+            if let (Some(builder), Some(item)) =
+                (builder.as_mut(), cache_item(element, limits, date_system)?)
+            {
                 builder.add_shared_item(field_count - 1, item)?;
             }
         }
@@ -453,6 +474,7 @@ fn read_records<B: BufRead>(
     builder: &mut CacheBuilder,
     field_count: u32,
     limits: &super::package::ImportLimits,
+    date_system: DateSystem,
 ) -> Result<(), Skip> {
     let mut record: Vec<RecordValue> = Vec::new();
     walk(part, |path, tag| {
@@ -469,7 +491,7 @@ fn read_records<B: BufRead>(
                 }
                 let value = if local_name(element) == "x" {
                     RecordValue::Shared(index_attribute(element, "v")?)
-                } else if let Some(item) = cache_item(element, limits)? {
+                } else if let Some(item) = cache_item(element, limits, date_system)? {
                     RecordValue::Inline(item)
                 } else {
                     return skip("an unknown record value");
