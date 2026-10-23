@@ -6,7 +6,9 @@ workbook for one (docs/excel-semantics/numbers.md). `number_edges` is the target
 
 from __future__ import annotations
 
+import math
 import re
+from collections.abc import Iterable
 
 from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM
@@ -18,6 +20,11 @@ MAX_STRING_LITERAL = 255
 def entries(text: str, sep: str = "|") -> list[str]:
     """The `sep`-separated formula texts of `text` (a pool written compactly)."""
     return [e.strip() for e in text.split(sep)]
+
+
+def _column(values: Iterable[float]) -> str:
+    """An array constant holding `values` as one column (a literal, so a pooled call needs no function)."""
+    return "{" + ";".join(f"{v:g}" if isinstance(v, float) else str(v) for v in values) + "}"
 
 
 POOLS: dict[str, list[str]] = {
@@ -403,6 +410,60 @@ POOLS: dict[str, list[str]] = {
         "Db!O1:O2 | Db!P1:P2 | Db!Q1:Q2 | Db!R1:R2 | Db!S1:S2 | Db!F1:G2 | Db!G1:H2 | Db!F1:F3 | Db!F1:G1 | "
         "Db!F1 | Db!$G$1:$G$2 | Db!F1:Q2"
     ),
+    # Integer counts (BINOM.DIST, BINOM.INV, CRITBINOM, BINOM.DIST.RANGE, HYPGEOM.DIST, CONFIDENCE's size, LARGE's k):
+    # 0, 1 and 2; a fraction that truncates (2.9; "LARGE/SMALL: a fractional k rounds up for LARGE and down for
+    # SMALL"); a negative fraction and a negative integer ("HYPGEOMDIST: a sample below the possible range is 0; a
+    # negative or huge count is #NUM!": any negative count is #NUM!, however small); 2^31 and 2^32, where a
+    # 32-bit count would wrap; 1E15, where the huge-count cut sits; text that does and does not read as a number.
+    "count": entries('0 | 1 | 2 | 2.9 | (-0.5) | (-1) | 2^31 | 2^32 | 1E+15 | "3" | "x"'),
+    # FORECAST.ETS family target_date (statistics.md, "FORECAST.ETS family on excel-graph"): inside the
+    # `ets_timeline` pool (1-24), just past its end, between two points, before it, and the date-serial bounds.
+    "ets_target": entries("1 | 12 | 24 | 25 | 24.5 | 30 | 100 | 0 | (-1) | 2958465 | 2958466 | 1E+15"),
+    # seasonality: 0 (detect), 1 (none), 2-4, the first value past 4, and -1 (T-2255 sweep: every scalar argument is read
+    # before the #N/A, an error or text decides first, so these reach the argument checks).
+    "ets_seasonality": entries('0 | 1 | 2 | 3 | 4 | 5 | (-1) | 1.5 | 24 | "x"'),
+    # data_completion: 0 (zeros), 1 (interpolate) and the first value past 1.
+    "ets_completion": entries("0 | 1 | 2 | (-1) | 0.5 | TRUE"),
+    # aggregation: 1-7 and the neighbours 0 and 8.
+    "ets_aggregation": entries("1 | 2 | 3 | 4 | 5 | 6 | 7 | 0 | 8 | (-1)"),
+    # confidence_level (FORECAST.ETS.CONFINT): the ends of (0, 1), the usual 0.95 and values outside it.
+    "ets_confidence": entries("0.95 | 0.5 | 0.99 | 0 | 1 | 1.5 | (-0.5) | 1E-10"),
+    # statistic_type (FORECAST.ETS.STAT): 1-8 and the neighbours 0 and 9.
+    "ets_statistic": entries("1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 0 | 9 | (-1)"),
+    # timeline and values of the FORECAST.ETS family: 24 evenly spaced, sorted points (two seasons of 12), so a
+    # valid call reaches the algorithm; excel-graph answers those `#N/A` (T-1293), desktop values are T-1553. The
+    # values pool's first entry has the same count, as the two must; the generator draws them independently, so a
+    # matching pair is a chance draw and a mismatch is `#N/A` before anything else.
+    "ets_timeline": [
+        _column(range(1, 25)),
+        _column(range(2, 50, 2)),
+        _column(range(45000, 45168, 7)),
+        _column(range(1, 26)),
+        _column(range(1, 31)),
+    ],
+    "ets_values": [
+        _column(round(2 * i + 3 * math.sin(i * math.pi / 6), 3) for i in range(1, 25)),
+        _column(i * i for i in range(1, 25)),
+        _column([5] * 24),
+        _column(-i for i in range(1, 25)),
+        _column(range(1, 26)),
+        _column(range(1, 31)),
+    ],
+    # The A and B bounds of BETA.DIST, BETA.INV, BETADIST and BETAINV: the default 0 and 1, equal bounds, bounds
+    # reversed, shifted, negative and wide.
+    "beta_bound": entries("0 | 1 | 2 | (-1) | 0.5 | 10 | (-10) | 1E+10 | (-1E+10) | 1E-300"),
+    # FISHERINV y ("FISHERINV is (EXP(2y)-1)/(EXP(2y)+1), with its cancellation near 0"): 0, +-1E-7 where the
+    # cancellation shows, moderate values, and 710 and beyond where exp(2y) overflows (FISHERINV(1000) and
+    # FISHERINV(1E10) are 1).
+    "fisherinv_y": entries(
+        "0 | 1E-7 | (-1E-7) | 1E-300 | 1 | (-1) | 0.5 | 5 | 20 | 355 | 710 | 1000 | 1E+10 | (-1000)"
+    ),
+    # FORECAST and FORECAST.LINEAR x: zero, inside and beyond the usual known_x's, far outside (the extrapolation
+    # grows), and numeric text and plain text ("FORECAST ... lifted scalar arguments").
+    "forecast_x": entries('0 | 1 | (-1) | 3.5 | 100 | 1E+10 | 1E+15 | 1E-300 | "3" | "x" | TRUE'),
+    # The lognormal mean (LOGNORM.DIST, LOGNORM.INV, LOGINV, LOGNORMDIST): 0, signs, fractions, and the values where
+    # EXP(mean) leaves the double range (709.78) or the quantile overflows.
+    "lognorm_mean": entries("0 | 1 | (-1) | 0.5 | 10 | 100 | 700 | 710 | (-710) | 1E+5 | 1E-300"),
 }
 
 
