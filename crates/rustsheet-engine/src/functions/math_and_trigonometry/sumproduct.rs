@@ -52,6 +52,9 @@ impl Model {
                     let v = match node {
                         ArrayNode::Number(v) => *v,
                         ArrayNode::Boolean(_) | ArrayNode::String(_) | ArrayNode::Empty => 0.0,
+                        ArrayNode::Lambda(_) => {
+                            return CalcResult::new_error(Error::VALUE, cell, String::new())
+                        }
                         ArrayNode::Error(e) => {
                             return CalcResult::Error {
                                 error: e.clone(),

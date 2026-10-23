@@ -403,6 +403,8 @@ fn to_string_array_node(node: &ArrayNode, locale: &Locale, language: &Language) 
         ArrayNode::String(value) => format!("\"{value}\""),
         ArrayNode::Error(kind) => format!("{kind}"),
         ArrayNode::Empty => "0".to_string(),
+        // Never parsed; printed as what a cell shows for it.
+        ArrayNode::Lambda(_) => "#CALC!".to_string(),
     }
 }
 

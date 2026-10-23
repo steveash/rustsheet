@@ -138,6 +138,10 @@ impl Model {
                         ArrayNode::Number(value) => CalcResult::Number(value),
                         ArrayNode::Boolean(b) => CalcResult::Boolean(b),
                         ArrayNode::String(s) => CalcResult::String(s),
+                        // Cached cells hold no LAMBDA; read as a value it would be `#VALUE!`.
+                        ArrayNode::Lambda(_) => {
+                            CalcResult::new_error(Error::VALUE, cell, String::new())
+                        }
                     };
                     visit(self, ItemSource::ReferencedCell, value)?;
                 }

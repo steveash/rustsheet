@@ -21,8 +21,8 @@ themselves work since T-0439 (`Model::store_closure`). Probe what a cell shows f
 INDEX/TAKE of such an array, before choosing a representation; mind memory (an array of N LAMBDAs).
 
 ## Acceptance criteria
-- [ ] probes/lambda-escaping-closures H2, I2, J2 pass (and H3 once T-2038 lands).
-- [ ] New probe cells for the bare array of LAMBDAs and INDEX of it, with oracle values.
+- [x] probes/lambda-escaping-closures H2, I2, J2 pass (and H3 once T-2038 lands).
+- [x] New probe cells for the bare array of LAMBDAs and INDEX of it, with oracle values.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

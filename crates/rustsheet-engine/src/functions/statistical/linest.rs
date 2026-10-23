@@ -258,6 +258,13 @@ impl Model {
                             crate::expressions::parser::ArrayNode::Error(e) => {
                                 return Err(CalcResult::new_error(e, cell, "".to_string()))
                             }
+                            crate::expressions::parser::ArrayNode::Lambda(_) => {
+                                return Err(CalcResult::new_error(
+                                    Error::VALUE,
+                                    cell,
+                                    String::new(),
+                                ))
+                            }
                             _ => mrow.push(0.0),
                         }
                     }

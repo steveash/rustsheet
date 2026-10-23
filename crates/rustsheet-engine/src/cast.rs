@@ -57,6 +57,16 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// [`calc_result_to_array_node`] for a function whose elements may be LAMBDAs: a LAMBDA is kept as
+/// an element, so that SCAN with a LAMBDA accumulator gives LAMBDAs that MAP can call
+/// (probes/lambda-arrays, probes/lambda-escaping-closures H2, T-2039).
+pub(crate) fn calc_result_to_element(result: CalcResult) -> ArrayNode {
+    match result {
+        CalcResult::Lambda(id) => ArrayNode::Lambda(id),
+        other => calc_result_to_array_node(other),
+    }
+}
+
 /// A scalar value as a one-element array, any other result unchanged: Excel reads a scalar where
 /// LOOKUP or INDEX takes a range or an array as that array (`LOOKUP(2,A1:A2,5)` is 5, probes/
 /// lookup-vector-edges A5-A8; `INDEX(CHOOSE(1,@B1:B6*1),3)` is `#REF!`, probes/legacy-choose-arm-
@@ -97,6 +107,7 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
         }),
         ArrayNode::Empty => Ok("".to_string()),
         ArrayNode::Error(e) => Err(e.clone()),
+        ArrayNode::Lambda(_) => Err(Error::VALUE),
     }
 }
 
@@ -171,6 +182,7 @@ impl Model {
             ArrayNode::Empty => Ok(0.0),
             ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
             ArrayNode::Error(e) => Err(e.clone()),
+            ArrayNode::Lambda(_) => Err(Error::VALUE),
         }
     }
 
@@ -487,6 +499,7 @@ impl Model {
                         ArrayNode::Boolean(b) => Some(if *b { 1.0 } else { 0.0 }),
                         ArrayNode::Empty => Some(0.0),
                         ArrayNode::String(s) => self.cast_number(s),
+                        ArrayNode::Lambda(_) => None,
                         ArrayNode::Error(_) => continue,
                     };
                     *value = match n {
@@ -538,6 +551,11 @@ impl Model {
                         error.to_localized_error_string(self.language),
                     ),
                     ArrayNode::Empty => CalcResult::EmptyCell,
+                    // Read as a value (`CONFIDENCE.NORM(BYROW(..,LAMBDA(acc,LAMBDA(v,v))),..)` is
+                    // `#VALUE!`, gen-m9/165db58d1540f014 A273).
+                    ArrayNode::Lambda(_) => {
+                        CalcResult::new_error(Error::VALUE, cell, String::new())
+                    }
                 }
             }
             other => other,
@@ -604,9 +622,10 @@ impl Model {
             CalcResult::Boolean(f) => Ok(if *f { 1.0 } else { 0.0 }),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(0.0),
             error @ CalcResult::Error { .. } => Err(error.clone()),
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                Err(not_a_scalar(cell))
-            }
+            // As `cast_to_number` reads one: a LAMBDA element a lifted kernel gets is `#VALUE!`
+            // (`CONFIDENCE.NORM(BYROW(..,LAMBDA(acc,LAMBDA(v,v))),..)`, gen-m9/165db58d1540f014 A273).
+            CalcResult::Lambda(_) => Err(Self::lambda_as_number_error(cell)),
+            CalcResult::Range { .. } | CalcResult::Array(_) => Err(not_a_scalar(cell)),
         }
     }
 

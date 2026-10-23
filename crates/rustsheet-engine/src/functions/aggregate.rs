@@ -443,6 +443,7 @@ fn value_of(value: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
         ArrayNode::String(text) => CalcResult::String(text.clone()),
         ArrayNode::Error(error) => CalcResult::new_error(error.clone(), cell, String::new()),
         ArrayNode::Empty => CalcResult::EmptyCell,
+        ArrayNode::Lambda(_) => CalcResult::new_error(Error::VALUE, cell, String::new()),
     }
 }
 

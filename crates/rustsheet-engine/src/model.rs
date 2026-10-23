@@ -98,6 +98,12 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
             m: String::new(),
         },
         ArrayNode::Empty => FormulaValue::Number(0.0),
+        // A LAMBDA element shows `#CALC!`, as a LAMBDA a cell gives does (probes/lambda-arrays B1).
+        ArrayNode::Lambda(_) => FormulaValue::Error {
+            ei: Error::CALC,
+            o: String::new(),
+            m: String::new(),
+        },
     }
 }
 

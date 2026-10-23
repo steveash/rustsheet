@@ -476,6 +476,7 @@ C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
+C	probes/lambda-arrays.case.json	72
 C	probes/lambda-body-picked-references.case.json	52
 C	probes/lambda-call-depth.case.json	12
 C	probes/lambda-escaping-closures.case.json	28
@@ -1018,6 +1019,7 @@ C	probes/table-edits/table-this-row-off-data-isref.case.json	15
 C	probes/table-edits/table-totals-baseline.case.json	13
 C	probes/table-edits/table-unknown-column-load.case.json	4
 C	probes/table-edits/table-unknown-name-load.case.json	4
+C	probes/take-drop-omitted-rows.case.json	15
 C	probes/take-drop-over-ifs-switch-picks.case.json	20
 C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
 C	probes/take-drop-trimrange-over-xlookup.case.json	23
@@ -1948,12 +1950,9 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
-F	probes/lambda-escaping-closures.case.json	Sheet1!H2
 F	probes/lambda-escaping-closures.case.json	Sheet1!H3
 F	probes/lambda-escaping-closures.case.json	Sheet1!H4
 F	probes/lambda-escaping-closures.case.json	Sheet1!H5
-F	probes/lambda-escaping-closures.case.json	Sheet1!I2
-F	probes/lambda-escaping-closures.case.json	Sheet1!J2
 F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10

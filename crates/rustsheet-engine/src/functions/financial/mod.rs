@@ -150,6 +150,13 @@ impl Model {
                                     "Error in array".to_string(),
                                 ));
                             }
+                            ArrayNode::Lambda(_) => {
+                                return Err(CalcResult::new_error(
+                                    Error::VALUE,
+                                    *cell,
+                                    "LAMBDA in array".to_string(),
+                                ));
+                            }
                             ArrayNode::Empty => {
                                 if let Some(value) = handle_empty_cell()? {
                                     values.push(value);
