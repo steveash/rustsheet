@@ -3,7 +3,7 @@ id: T-2233
 title: "Placeholder fractions past 2^30: fit Excel's choice of fraction"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
