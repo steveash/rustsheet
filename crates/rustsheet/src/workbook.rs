@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use rustsheet_engine::clock::Clock;
-use rustsheet_engine::types::{DateSystem, Iteration};
+use rustsheet_engine::types::DateSystem;
 use rustsheet_engine::{Model, LAST_COLUMN, LAST_ROW};
 use rustsheet_xlsx::error::XlsxError;
 use rustsheet_xlsx::import::ImportLimits;
@@ -15,6 +15,7 @@ use crate::refs::{
     parse_cell, parse_range, resolve_sheet_by_name, CellRef, RangeRef, SheetId, Target,
 };
 use crate::value::{lone_text, Array, Value};
+mod calculation;
 
 /// Options for [`Workbook::new`] and the limits shared by all reads.
 #[derive(Clone, Debug)]
@@ -196,18 +197,6 @@ impl Workbook {
     #[must_use]
     pub fn date_system(&self) -> DateSystem {
         self.model.workbook.settings.date_system
-    }
-
-    /// The iterative-calculation settings (`calcPr@iterate`), `None` when iteration is off.
-    #[must_use]
-    pub fn iteration(&self) -> Option<Iteration> {
-        self.model.workbook.settings.iteration
-    }
-
-    /// Turns iterative calculation on with `iteration`'s count and delta, or off with `None`.
-    /// It applies from the next recalculation (docs/excel-semantics/recalc.md).
-    pub fn set_iteration(&mut self, iteration: Option<Iteration>) {
-        self.model.workbook.settings.iteration = iteration;
     }
 
     fn from_model(model: Model, max_read_cells: u64) -> Self {
