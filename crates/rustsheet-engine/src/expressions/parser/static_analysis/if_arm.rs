@@ -85,12 +85,15 @@ fn is_whole_range_arm(arm: &Node) -> bool {
     is_range_arm(arm) && !is_single_cell_index(arm)
 }
 
-/// Whether `arm` is `INDEX(range,row)` with a literal non-zero row, possibly in parentheses.
+/// Whether `arm` is `INDEX(range,row)` over a one-column range with a literal non-zero row,
+/// possibly in parentheses. Only that shape is evidenced (M12); a 2-D range gives a whole row.
 fn is_single_cell_index(arm: &Node) -> bool {
     matches!(
         arm.ungrouped(),
         Node::FunctionKind { kind: Function::Index, args }
-            if args.len() == 2 && matches!(args[1].ungrouped(), Node::NumberKind(n) if *n != 0.0)
+            if args.len() == 2
+                && matches!(args[0].ungrouped(), Node::RangeKind { column1, column2, .. } if column1 == column2)
+                && matches!(args[1].ungrouped(), Node::NumberKind(n) if *n != 0.0)
     )
 }
 
@@ -102,20 +105,17 @@ fn is_single_cell_index(arm: &Node) -> bool {
 pub(super) fn returns_range_arm(kind: &Function, args: &[Node]) -> bool {
     match kind {
         Function::If => args.len() > 1 && args[1..].iter().any(is_whole_range_arm),
-        Function::Ifs => args.iter().skip(1).step_by(2).any(is_whole_range_arm),
+        Function::Ifs => args.iter().skip(1).step_by(2).any(is_range_arm),
         _ => false,
     }
 }
 
-/// Whether `kind(args)` is an IF or IFS whose value arms are all `INDEX(range,row)` with a literal
-/// non-zero row ([`is_single_cell_index`]): one cell whatever the condition, so no `@` on the call.
+/// Whether `kind(args)` is an IF whose value arms are all single-cell `INDEX` calls
+/// ([`is_single_cell_index`]): one cell whatever the condition, so no `@` on the call. IFS is not
+/// covered: no oracle evidence for it.
 pub(super) fn returns_single_cell_index(kind: &Function, args: &[Node]) -> bool {
     match kind {
         Function::If => args.len() > 1 && args[1..].iter().all(is_single_cell_index),
-        Function::Ifs => {
-            let mut arms = args.iter().skip(1).step_by(2).peekable();
-            arms.peek().is_some() && arms.all(is_single_cell_index)
-        }
         _ => false,
     }
 }

@@ -73,6 +73,12 @@ fn simple_test() {
         // (probes/legacy-if-arm-other-references M12, T-2326).
         ("IF(TRUE,INDEX(B1:B6,3))", "IF(TRUE,INDEX(B1:B6,3))"),
         ("IF(TRUE,INDEX(B1:C6,0,1))", "@IF(TRUE,INDEX(B1:C6,0,1))"),
+        // Unevidenced shapes keep the `@`: a 2-D range (INDEX gives a row) and IFS.
+        ("IF(TRUE,INDEX(B1:C6,3))", "@IF(TRUE,INDEX(B1:C6,3))"),
+        (
+            "_xlfn.IFS(TRUE,INDEX(B1:B6,3))",
+            "@IFS(TRUE,INDEX(B1:B6,3))",
+        ),
         // CHOOSE value args pass references through: no `@` on the arms. In a
         // scalar position the whole call is wrapped instead; in a range
         // position (e.g. inside SUM) nothing is wrapped.

@@ -24,4 +24,4 @@ Known failure probes/legacy-if-arm-other-references M12 (T-1969): ours shows `=@
 -
 
 ## Outcome
-A legacy IF or IFS whose value arms are all `INDEX(range,row)` with a literal non-zero row gets no `@` (`returns_single_cell_index`, static_analysis/if_arm.rs); the INDEX arm stays a reference arm. probes/legacy-if-arm-other-references M12 fixed (1 known failure removed), P12 unchanged.
+A legacy IF whose value arms are all `INDEX(one-column range,row)` with a literal non-zero row (IFS, 2-D and other shapes unprobed, keep `@`) gets no `@` (`returns_single_cell_index`, static_analysis/if_arm.rs); the INDEX arm stays a reference arm. probes/legacy-if-arm-other-references M12 fixed (1 known failure removed), P12 unchanged.
