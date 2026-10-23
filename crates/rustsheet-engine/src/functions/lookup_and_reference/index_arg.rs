@@ -71,7 +71,9 @@ impl Model {
     /// `lookup_value`, `table_array`, index, `range_lookup`, so a table error beats the last two,
     /// and a lifted `lookup_value` gives each element the table error
     /// (probes/lookup-argument-edges H66-H123, T-2234). The `lookup_value`'s error beats
-    /// `range_lookup`'s, lifted or not (H30-H51).
+    /// `range_lookup`'s, lifted or not (H30-H51). A scalar `range_lookup` that is not a boolean
+    /// beside a lifted `lookup_value` is kept as its error, so each element's scalar call gives it
+    /// (gen-m7/f7e94a817e5385ac Calc!A2430, T-2411).
     pub(super) fn lookup_head(
         &mut self,
         args: &[Node],
@@ -97,7 +99,12 @@ impl Model {
             Err(error) if lifts => LookupIndexArg::Failed(error),
             Err(error) => return Err(error),
         };
-        Ok((lookup_value, index, is_sorted?))
+        let is_sorted = match is_sorted {
+            Ok(is_sorted) => is_sorted,
+            Err(error) if LiftedArg::is_grid(&lookup_value) => error,
+            Err(error) => return Err(error),
+        };
+        Ok((lookup_value, index, is_sorted))
     }
 
     /// A failed `table_array` under `lookup_value`: the table's error, or, lifted over an array

@@ -370,3 +370,32 @@ fn index_floors_but_snaps_up_near_an_integer() {
     assert_eq!(model._get_text("D5"), *"#REF!");
     assert_eq!(model._get_text("D6"), *"#VALUE!");
 }
+
+#[test]
+fn bad_scalar_range_lookup_beside_a_lifted_lookup_value_is_an_error_per_element() {
+    // gen-m7/f7e94a817e5385ac Calc!A2430 (excel-graph, T-2411): a scalar range_lookup that is not
+    // a boolean ("1") beside a lifted lookup_value is that error in every element, as each
+    // element's scalar call is, not one `#VALUE!`; an error lookup_value element still wins.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("B1", "one"), ("B2", "two")] {
+        model._set(cell, value);
+    }
+    model._set("D1", "=VLOOKUP({1;2},A1:B2,2,\"1\")");
+    model._set("E1", "=ROWS(VLOOKUP({1;2},A1:B2,2,\"1\"))");
+    model._set("F1", "=HLOOKUP({1,2},A1:B2,2,\"x\")");
+    model._set("H1", "=VLOOKUP(A1:A2,A1:B2,2,NA())");
+    model._set("I1", "=VLOOKUP({1;#DIV/0!},A1:B2,2,\"1\")");
+    model._set("J1", "=VLOOKUP(1,A1:B2,2,\"1\")");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), *"#VALUE!");
+    assert_eq!(model._get_text("D2"), *"#VALUE!");
+    assert_eq!(model._get_text("E1"), *"2");
+    assert_eq!(model._get_text("F1"), *"#VALUE!");
+    assert_eq!(model._get_text("G1"), *"#VALUE!");
+    assert_eq!(model._get_text("H1"), *"#N/A");
+    assert_eq!(model._get_text("H2"), *"#N/A");
+    assert_eq!(model._get_text("I1"), *"#VALUE!");
+    assert_eq!(model._get_text("I2"), *"#DIV/0!");
+    // A scalar call is still one `#VALUE!`.
+    assert_eq!(model._get_text("J1"), *"#VALUE!");
+}

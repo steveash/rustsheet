@@ -145,7 +145,8 @@ is a scalar call, so an error or text range_lookup element is that element's res
 A scalar text range_lookup beside a lifted lookup_value lifts the same way, one array of that error rather than one `#VALUE!`:
 `WRAPROWS(Data!E6:E11,1,VLOOKUP(OFFSET(Data!D6:E8,2,0),Data!B5:C5,3,"1"))` spills a 3x2 grid of E6's 3.14159, so the VLOOKUP there is a 3x2
 array that WRAPROWS's pad_with lifts over (gen-m7/f7e94a817e5385ac Calc!A2430, excel-graph, 2026-10-22; its elements are not visible
-there, `#VALUE!` each by the scalar rule, UNVERIFIED). Ours: one `#VALUE!` (`VLOOKUP({1,2},B5:C5,3,"1")`), T-2411.
+there, `#VALUE!` each by the scalar rule, UNVERIFIED). Ours: matches since T-2411: `VLOOKUP({1;2},A1:B2,2,"1")` is
+`#VALUE!` twice (`ROWS` 2), an error lookup_value element is still itself, and the scalar call stays one `#VALUE!`.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
 search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is
 validated in reading order and the first bad one is the error of the whole call, with no spill
