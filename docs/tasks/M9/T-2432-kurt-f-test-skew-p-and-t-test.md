@@ -1,6 +1,6 @@
 ---
 id: T-2432
-title: "KURT, F.TEST, SKEW.P and T.TEST over data whose squares overflow (1E+200): Excel's #DIV/0! and #NUM! (gen-m9, 11 cells)"
+title: "KURT and F.TEST over data whose squares overflow (1E+200): Excel's #DIV/0! and #NUM! (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-stat
 status: todo

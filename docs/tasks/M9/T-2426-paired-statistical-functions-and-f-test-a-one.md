@@ -19,8 +19,8 @@ their size check and before the other argument's error, as Excel does.
 ## Context
 Gap triage of the T-2255 gen-m9 sweep. statistics.md "A one-cell reference to an empty cell is #VALUE! in the paired
 functions and F.TEST (T-2255)" records the rule and the cells; it contradicts the inference in "Array arguments given a
-scalar, a single cell or an error" that an empty cell is one value with no number. 109 cells, in 23 functions'
-positions (FORECAST/FORECAST.LINEAR: known_y and known_x; the others: both arrays), 31 nested in another call. A one-cell
+scalar, a single cell or an error" that an empty cell is one value with no number. 109 cells (the array positions:
+known_y and known_x for FORECAST/FORECAST.LINEAR, both arrays for the others), 23 nested in another call. A one-cell
 reference holding a number, text or a boolean keeps today's one-value rule (`FTEST(6,Data!A$11)` with A11 = "x" is
 `#DIV/0!`, 35e8168aae2b00f8 A253, passes and must keep passing). This answers T-2051's question (CORREL of a number cell
 against an empty cell) with gen-m9 evidence; fcf11f2ec6f7a59d A9 is owned here.

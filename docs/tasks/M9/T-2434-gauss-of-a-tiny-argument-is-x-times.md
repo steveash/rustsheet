@@ -17,7 +17,7 @@ GAUSS(z) for a tiny z returns Excel's z times phi(0) (`GAUSS(1E-300)` = 3.989422
 
 ## Context
 Gap triage of the T-2255 gen-m9 sweep. statistics.md "GAUSS of a tiny argument is x times phi(0) (T-2255)" records it: 8
-cells (GAUSS(±1E-300) six times, GAUSS(1E-15) once via a cell, GAUSS(-1E-300) once). ours computes Phi(z) - 0.5, which
+cells (GAUSS(1E-300) five times, GAUSS(-1E-300) twice, GAUSS(1E-15) once through a cell). Ours computes Phi(z) - 0.5, which
 cancels. 3.989422804014327E-301 is the double nearest 1E-300 * 0.3989422804014327 (phi(0) = 1/sqrt(2*pi)); compute
 GAUSS from erf(z/sqrt(2))/2 or from z*phi(0) below a cut, and check that every passing GAUSS cell in eval/ still passes
 (probes-numeric and gen-m9 have about 250 more).

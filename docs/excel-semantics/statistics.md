@@ -1152,7 +1152,8 @@ Evidence: gen-m9/1782efcecd5d4b1b Calc!A27, gen-m9/3462856259a37891 Calc!A28, ge
 2026-10-12, T-1289).
 Ours: `#N/IMPL!` for every call.
 Status: VERIFIED (web) for these three shapes
-Tasks: T-1293
+Tasks: T-1293, T-2424 (the gen-m9 sweep's 1,196 such cells: "FORECAST.ETS family on excel-graph: argument errors, text and
+lifting decide before the #N/A (T-2255)" below)
 
 ## FORECAST.ETS family: excel-graph never computes it
 Rule: on excel-graph (Excel for the web) every valid call of FORECAST.ETS, FORECAST.ETS.CONFINT,

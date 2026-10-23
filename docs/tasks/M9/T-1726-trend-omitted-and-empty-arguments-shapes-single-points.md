@@ -31,7 +31,18 @@ Also: a blank new_x makes the whole result `#VALUE!` (ours 2 rows of numbers, tr
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 78 cells, 8 numeric past half a unit in the 15th digit and 70 with a wrong type, error or text, blamed on TREND 78, COLUMNS 20, ROWS 19.
 - probes/regression-trend (78): Sheet1!L12, Sheet1!L13, Sheet1!L14, Sheet1!L15, Sheet1!L16, Sheet1!L20, Sheet1!L21, Sheet1!L25, Sheet1!L26, Sheet1!L28, Sheet1!L29, Sheet1!L30, Sheet1!L31, Sheet1!L33, Sheet1!L34, Sheet1!L35, Sheet1!L37, Sheet1!L39, Sheet1!L43, Sheet1!M6, Sheet1!M12, Sheet1!M13, Sheet1!M14, Sheet1!M15, Sheet1!M16, Sheet1!M20, Sheet1!M21, Sheet1!M25, Sheet1!M26, Sheet1!M28, Sheet1!M29, Sheet1!M30, Sheet1!M31, Sheet1!M33, Sheet1!M34, Sheet1!M35, Sheet1!M37, Sheet1!M39, Sheet1!M43, Sheet1!N6, Sheet1!N12, Sheet1!N13, Sheet1!N14, Sheet1!N15, Sheet1!N16, Sheet1!N20, Sheet1!N21, Sheet1!N25, Sheet1!N26, Sheet1!N28, Sheet1!N29, Sheet1!N30, Sheet1!N31, Sheet1!N33, Sheet1!N34, Sheet1!N35, Sheet1!N37, Sheet1!N39, Sheet1!N43, Sheet1!O12, Sheet1!O13, Sheet1!O14, Sheet1!O15, Sheet1!O16, Sheet1!O20, Sheet1!O21, Sheet1!O25, Sheet1!O26, Sheet1!O28, Sheet1!O29, Sheet1!O30, Sheet1!O31, Sheet1!O33, Sheet1!O34, Sheet1!O35, Sheet1!O37, Sheet1!O39, Sheet1!O43
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). Two cells where a TREND inside another call diverges first (the TREND rules
+above).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/165db58d1540f014 Calc!A371 `=FTEST(IF((Data!C1<Data!D8),Data!$C$4,TREND(Data!C9,Data!$B$1)),Data!B3:C12)`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/165db58d1540f014 Calc!A91 `=KURT(TREND(Data!B10:B10,Data!C8),Data!A6:A10)`: Excel #VALUE!, ours #REF!
+Cells:
+- gen-m9/165db58d1540f014.case.json (2): Calc!A91, A371
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 78 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 78 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The mismatching non-ULP cells of probes/regression-trend pass (or the remaining ones are listed in an Outcome note) and the baseline shrinks.
 - [ ] `make check` green; reviewers approve.

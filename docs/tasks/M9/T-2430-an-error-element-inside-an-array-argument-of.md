@@ -19,7 +19,7 @@ VARPA, COVAR, COVARIANCE.S and CORREL is that error, not `#VALUE!`, as Excel doe
 Gap triage of the T-2255 gen-m9 sweep. statistics.md "An error element of an array argument is that error (T-2255)"
 records the rule (`LARGE({1,#N/A,3},3)` `#N/A`, `COVARIANCE.S({1,#N/A,3},{-1,0,1})` `#N/A`); it answers the
 "Unprobed: an error inside an array constant" note of "Paired functions: a size mismatch is #N/A before an error cell"
-for equal sizes. 19 cells, 12 nested (the enclosing function passes the error on). F.TEST's own cells are T-2093's.
+for equal sizes. 19 cells, 11 nested (the enclosing function passes the error on). F.TEST's own cells are T-2093's.
 Two cells need care: `LINEST(..,(MAP({1,#N/A,3},..)+..),FALSE,..)` is `#REF!` in Excel (LINEST's size check before the
 error, T-1741), and `FREQUENCY(0.1,VARPA(ACOTH(..),..,{1,#N/A,3}))` is `#NUM!` (VARPA's first argument's error first).
 Code: the array readers of these functions (functions/statistical/: `values_from_array` callers, paired.rs,

@@ -1,6 +1,6 @@
 ---
 id: T-2436
-title: "Probe the inner sub-expressions of 115 gen-m9 statistical cells whose divergence is not traced"
+title: "Probe the inner sub-expressions of 116 gen-m9 statistical cells whose divergence is not traced"
 milestone: M9
 lane: research
 status: todo
@@ -12,13 +12,13 @@ campaign: visible
 ---
 
 ## Goal
-Each of these 114 gen-m9 cells has its innermost diverging sub-expression identified from Excel values (a probe case that
+Each of these 116 gen-m9 cells has its innermost diverging sub-expression identified from Excel values (a probe case that
 evaluates the sub-expressions with the same Data sheet), and is then owned by a fix task (new or existing), with the quirks
 recorded in docs/excel-semantics/.
 
 ## Context
-Gap triage of the T-2255 gen-m9 sweep. The triage traced 4,177 of the 4,291 visibly-off cells to a family by evaluating
-every sub-expression in the engine; these 114 are left: their Excel value is an error none of the call's arguments has in
+Gap triage of the T-2255 gen-m9 sweep. The triage traced 4,175 of the 4,291 visibly-off cells to a family by evaluating
+every sub-expression in the engine; these 116 are left: their Excel value is an error none of the call's arguments has in
 ours, or a value that needs an inner function to differ, and the engine alone cannot tell which inner call Excel computes
 differently. Most involve an inner function outside the statistical lane (DATEDIF, INDEX, TEXTSPLIT, MAKEARRAY, PROB,
 ZTEST/Z.TEST, QUARTILE.INC, STANDARDIZE, WEIBULL, BESSELI/BESSELJ, PHI, GROUPBY/PIVOTBY, TRIMRANGE, CONVERT, HEX2OCT,
@@ -28,7 +28,7 @@ three F.TEST cells statistics.md marks UNVERIFIED (a number against a range `#NU
 into a probe case (excel-probe skill), one formula per sub-expression of each cell, fill it through excel-graph, compare
 with the engine, then file or extend the owning task for each family found (decision 0083: `campaign: visible`).
 
-Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 114 known-failure lines in eval/baseline/gen-m9.txt, 114 formulas.
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 116 known-failure lines in eval/baseline/gen-m9.txt, 116 formulas.
 Examples:
 - gen-m9/05d44f6dd6cfc567 Calc!A196 `=COVAR(RANK(HSTACK(Data!A5),Data!A11:D12),5)`: Excel #N/A, ours #VALUE!
 - gen-m9/05d44f6dd6cfc567 Calc!A392 `=GAMMA.DIST(DEGREES(FINV(1E-20,1,6)),-VLOOKUP(Data!E11,Data!B11:E12,Data!C6,Data!C6),3,OR(Data!D4:D11))`: Excel #VALUE!, ours #NUM!
@@ -50,13 +50,13 @@ Cells:
 - gen-m9/3a25a03eb94fcfbd.case.json (1): Calc!A179
 - gen-m9/3e98b26cf6713e77.case.json (2): Calc!A247, A383
 - gen-m9/40425341c5034eed.case.json (1): Calc!A206
-- gen-m9/4250f880ab640c49.case.json (2): Calc!A237, A295
+- gen-m9/4250f880ab640c49.case.json (3): Calc!A237, A295, A325
 - gen-m9/4ab2ba98d26c8a5e.case.json (4): Calc!A23, A116, A341, A395
 - gen-m9/530c636749a85209.case.json (2): Calc!A371, A379
 - gen-m9/589f42e67f4b4b8d.case.json (2): Calc!A164, A185
 - gen-m9/58e3253bbd3a7a82.case.json (3): Calc!A46, A143, A350
 - gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A69
-- gen-m9/623663cacea53bbc.case.json (2): Calc!A256, A353
+- gen-m9/623663cacea53bbc.case.json (3): Calc!A256, A353, A400
 - gen-m9/68d8ffb69ff739d8.case.json (2): Calc!A285, A290
 - gen-m9/7674c89c824aca43.case.json (1): Calc!A305
 - gen-m9/7c20351562a2d71d.case.json (4): Calc!A194, A276, A277, A381
@@ -91,7 +91,7 @@ Cells:
 - gen-m9/fec39efaba9284c3.case.json (4): Calc!A37, A168, A242, A253
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 114 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255): these 116 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Every cell above is listed in a fix task's Context (new or extended), or explained in statistics.md as a quirk
       with its owning task; the probe case's cells are in eval/ and gated or baselined.

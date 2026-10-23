@@ -3,11 +3,11 @@ id: T-2425
 title: "FORECAST.ETS family: implement from desktop Excel values; owns the 877 gen-m9 cells excel-graph leaves #N/A"
 milestone: M9
 lane: functions-stat
-status: todo
+status: blocked
 priority: P3
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-1553, T-2424]
 campaign: visible
 ---
 
@@ -20,7 +20,7 @@ values.
 ## Context
 Gap triage of the T-2255 gen-m9 sweep. These cells have no argument error, text or lift that decides them (that step is
 T-2424): excel-graph gives `#N/A` for every one (statistics.md "FORECAST.ETS family: excel-graph never computes it",
-T-1293), including 54 cells where the call is nested in another function whose value then is `#N/A`. A validation-only
+T-1293), including 53 cells where the call is nested in another function whose value then is `#N/A`. A validation-only
 engine that returns `#N/A` would pass them on the web and be wrong on desktop, which T-1293's Outcome rules out, so they
 cannot be fixed against the excel-graph sidecars. They need desktop values (T-1553, the `excel-desktop` backend, decision
 0039; decision 0030: desktop evidence wins where it exists): re-fill these cases (or a desktop sidecar of them) on desktop
@@ -87,6 +87,10 @@ Cells:
 ## Out of scope
 - The argument step (T-2424).
 - Any implementation that returns the web `#N/A` without desktop evidence (T-1293's Outcome).
+
+## Blocked because
+Needs desktop Excel values for these cases: T-1553 (the `excel-desktop` backend, a Windows machine with Excel; decision
+0039). Proof it is available: `cd tools && uv run rustsheet-oracle status` lists an `excel-desktop` backend as ready.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the wrong type, error, text or value (none is a

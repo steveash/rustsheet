@@ -51,7 +51,17 @@ Engine: `compute_rate` (functions/financial/financial_util.rs), called from `fn_
 RATE's f(r) evaluates the annuity (1+r)^n, so it depends on kernel-map rank 1 (T-1528, time-boxed). If a candidate
 matches the iterates but misses the final bits only through (1+r)^n, record that and stop there.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). This task's single cell gen-m9/eefcc3989f31de76 A5 is now in the gated gen-m9 baseline
+(the sweep gated the suite).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas.
+Examples:
+- gen-m9/eefcc3989f31de76 Calc!A5 `=IFERROR((RATE(199,-805,61378)/Data!E3),SUM(Data!E6:E7,Data!E4:E9))`: Excel -0.011859926889590918, ours -0.011859926889595479
+Cells:
+- gen-m9/eefcc3989f31de76.case.json (1): Calc!A5
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The lab parses the nested `RATE(n,PMT(..),..)` cells and scores every candidate on all RATE cells of
       m9-fin-irr-rate, solver-iteration-traces R and rate-empty-arguments, with iterate hits. Each candidate's
       bit-exact and within-4-ulp counts go into financial.md "RATE iterates on the rate itself", rejected ones included.
