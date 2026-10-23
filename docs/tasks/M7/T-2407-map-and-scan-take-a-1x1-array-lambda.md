@@ -3,7 +3,7 @@ id: T-2407
 title: "MAP and SCAN take a 1x1 array LAMBDA result, and SCAN a 1x1 array initial_value, as its one value (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,11 +37,11 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 19 known-failure li
 - gen-m7/f7e94a817e5385ac.case.json A842 `=MAP(Data!C10:C11,Data!A5:B6,LAMBDA(acc,w,TRANSPOSE(w)))`: A842 Excel FALSE, ours #VALUE!; cells (2): A842, A843
 
 ## Acceptance criteria
-- [ ] Visible parity: these 19 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
+- [x] Visible parity: these 19 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
-- [ ] Unit tests: MAP and SCAN with a `{5}` step, SCAN with a `{3}` initial_value, and a multi-cell step that stays one `#CALC!`.
-- [ ] The arrays.md entry's "Ours:" line names this task.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests: MAP and SCAN with a `{5}` step, SCAN with a `{3}` initial_value, and a multi-cell step that stays one `#CALC!`.
+- [x] The arrays.md entry's "Ours:" line names this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A multi-cell array initial_value (arrays.md: SCAN returning it is one `#CALC!`; REDUCE keeps it, T-2413's cell).
@@ -51,3 +51,6 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+`lambda_result_value` reads a 1x1 array as its one value, so MAP and SCAN steps and a SCAN 1x1 initial_value work as BYROW does; multi-cell steps stay one `#CALC!`. Eval: 28 known-failure lines removed from eval/baseline/gen-m7.txt (19 owned), none added. Unit tests and the arrays.md "Ours:" line updated.
