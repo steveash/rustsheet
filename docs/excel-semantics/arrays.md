@@ -561,8 +561,11 @@ top-left of its call.
   and a 1x3 `UNIQUE(A1:B3,{FALSE,FALSE,FALSE})` is 1, 0, 0 while a 3x1 `{FALSE;FALSE;FALSE}` is 1, 1, 1. It does not depend
   on by_col (TRUE, FALSE and the by_col-only form give the same cells). Entries that are not all equal keep only the top-left
   (`{FALSE,TRUE;FALSE,FALSE;FALSE,FALSE}`: 1 then 0s). The same as gen-m7/2c156ba98ef0220a.case.json Calc!A1284 (3x3: 100
-  down column A, 0 in B:C; excel-graph, 2026-10-22, T-2254 triage). Ours: `empty_past_first_column` (lift/driver.rs) since T-2348;
-  SORTBY's uniform 1xN sort_order is unprobed and takes the same rule, UNVERIFIED.
+  down column A, 0 in B:C; excel-graph, 2026-10-22, T-2254 triage). Ours: UNIQUE only (`CallResult::ArrayFirstColumn`,
+  `empty_past_first_column` in lift/driver.rs) since T-2348. UNVERIFIED: whether an error element past the first column stays
+  (ours: it does, `UNIQUE(D1:D3,FALSE,{"a","a"})` is unprobed), and SORTBY's uniform 1xN sort_order, which keeps every
+  element's top-left in ours (`CallResult::ArrayFirst`; with a second by_array/sort_order pair its emptied elements are `#VALUE!`);
+  both belong with T-2349's SORTBY probes.
 - Lifted-element corners (same probe): text entries are `#VALUE!` elements whatever their case (`UNIQUE(D1:D3,FALSE,{"a";"A"})`
   and `{"a";"a"}` are `#VALUE!`, `#VALUE!`: exactly_once is not read as text), so the case question never arises; `{0;-0}` is
   x, x (equal). A call error from a non-error entry stays and the first good element is kept: `{"abc";FALSE;TRUE}` is

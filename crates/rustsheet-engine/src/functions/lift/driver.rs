@@ -577,11 +577,13 @@ impl Model {
             .then_some(index),
             _ => None,
         };
-        let later = if options.result == CallResult::ArrayFirst
-            && !all_elements_equal(&lifted, rows, columns)
-        {
+        let array_first = matches!(
+            options.result,
+            CallResult::ArrayFirst | CallResult::ArrayFirstColumn
+        );
+        let later = if array_first && !all_elements_equal(&lifted, rows, columns) {
             Later::EmptyAfterFirst { placed: false }
-        } else if options.result == CallResult::ArrayFirst && columns > 1 {
+        } else if options.result == CallResult::ArrayFirstColumn && columns > 1 {
             Later::EmptyPastFirstColumn
         } else {
             Later::Kept
