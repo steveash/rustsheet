@@ -1,6 +1,6 @@
 ---
 id: T-2494
-title: "IRR and XIRR: Excel's #VALUE!, #DIV/0! and #NUM! for a single value, a huge guess, zero flows and no root (gen-m9, 21 cells)"
+title: "IRR and XIRR: Excel's #VALUE!, #DIV/0! and #NUM! for a scalar argument, a huge guess, a #DIV/0! of unprobed cause and no root (gen-m9, 21 cells)"
 milestone: M9
 lane: functions-financial
 status: todo
@@ -16,10 +16,11 @@ IRR returns Excel's `#VALUE!`, `#DIV/0!` or `#NUM!` where ours returns a root or
 
 ## Context
 Gap triage of the T-2257 gen-m9 financial sweep.
-- A single value is `#VALUE!`: `IRR(CELL("row",Data!D$2),0.5)`, `IRR(COUNTBLANK(..),1E+300)` (ours `#NUM!`).
+- A scalar (non-range, non-array) argument is `#VALUE!` (a one-cell range is unprobed): `IRR(CELL("row",Data!D$2),0.5)`, `IRR(COUNTBLANK(..),1E+300)` (ours `#NUM!`).
 - A guess of 1E+300 (or 2.5E29) is `#VALUE!`: `IRR(Data!E4:E8,1E+300)`, `IRR(Data!C5:D6,1E+300)` (ours 30.13),
   `IRR({0,0,-100,50,60},1E+300)` (ours 0.0639), `IRR(Data!B8:C8,VARPA(..))`.
-- Zero flows: `IRR(Data!A1:D12,0.05)` is `#DIV/0!` (ours `#NUM!`).
+- `IRR(Data!A1:D12,0.05)` is `#DIV/0!` (ours `#NUM!`). The flows are mixed, not zero (1E+15 and 123456789.123 among
+  them), so the cause is unknown: probe it (excel-probe skill, e.g. this range and `IRR({0,0,0})`) before implementing.
 - No root where ours finds one near -1 or far out: `IRR(Data!B10:E12,1)` (ours -0.99995), `IRR(Data!C9:D12)` (ours -0.860),
   `IRR(Data!A1:C3)` (ours 31622776.09), `IRR(Data!B3:E9,-0.9999999999)` (ours -0.9999999999), 11 cells: Excel's search gives up
   where ours' fallback goes on (financial.md "The IRR and XIRR solver caps", "IRR is a secant in v = 1/(1 + r)").
@@ -61,7 +62,7 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): these 21 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for a scalar value, a 1E+300 guess and all-zero flows.
+- [ ] Unit tests for a scalar argument, a 1E+300 guess and the probed cause of A56's `#DIV/0!`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -19,7 +19,8 @@ Gap triage of the T-2257 gen-m9 financial sweep.
 - VDB's `no_switch` as text: `VDB(17334,389,36,0.2,9,3,"FALSE")` = 9114.101951893414 (ours `#VALUE!`); with "TRUE", "true"
   or "FALSE" and another argument out of range Excel is `#NUM!` (`VDB(36122,1,26,-7E11,10,3,"TRUE")`,
   `VDB(1,-0.0001,23,1,9,711,"true")`, `VDB(17709,493,0,1E+6,0.693,3,"FALSE")`; ours `#VALUE!`).
-- DDB's factor from a TRUE cell: `DDB(3.14159,866,13,7,<TRUE>)` = 0 (ours `#VALUE!`).
+- DDB's factor from a TRUE cell: `DDB(3.14159,866,13,7,<TRUE>)` = 0 (ours `#VALUE!`). The salvage is above the cost there,
+  so probe a TRUE factor with the cost above the salvage before deciding whether the boolean is read as 1.
 - VDB with a factor of 0, `VDB(43478,488,1E+9,3,7,0)` = 0.00017196, and a start and end of 0 with cost below salvage,
   `VDB(0.01,5,25,0,0,3)` = 0 (ours `#NUM!` for both).
 - Error order: `VDB(-1,0,39,<#NUM!>,9,10,0)` is `#VALUE!` (ours `#NUM!`), `VDB(73409,713,<#DIV/0!>,<#NUM!>,10)` `#NUM!`

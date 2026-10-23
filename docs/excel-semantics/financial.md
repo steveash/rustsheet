@@ -1407,13 +1407,15 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   `DB(6912,0,1E+300,2,6)` e168be7f6d3f84c2 A70); `DB(0.01,488,32,1E+200,10)` = -0.0033416666666666673 (762cd0e4ec9a7aa9 A151),
   a first Excel value past the "DB and VDB period cap".
 - VDB takes a text `no_switch`: `VDB(17334,389,36,0.2,9,3,"FALSE")` = 9114.101951893414 (762cd0e4ec9a7aa9 A379); DDB takes a
-  TRUE factor from a cell (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8); `VDB(43478,488,1E+9,3,7,0)` = 0.00017196
+  TRUE factor from a cell without `#VALUE!` (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8; the salvage is above
+  the cost there, so whether the boolean is read as 1 or the 0 comes before the factor is read is unprobed); `VDB(43478,488,1E+9,3,7,0)` = 0.00017196
   (a91bad4e84f49739 A323).
 - NPER at a rate of 1E-300 is `#DIV/0!` (`NPER(1E-300,-236,2766,945)`, 3c06f9298f65a3ba A148), NPV at a rate of -1 is `#DIV/0!`
   (`NPV(-1,GESTEP(-2.5,-100))`, 3aa168259335be54 A18), EFFECT at a huge nominal rate `#NUM!` (`EFFECT(1E+300,11)`,
   31474c20fc1dafd6 A37).
-- IRR of a single value is `#VALUE!` (`IRR(CELL("row",Data!D$2),0.5)`, 5422bdbf173fc233 A63), a guess of 1E+300 is `#VALUE!`
-  (`IRR({0,0,-100,50,60},1E+300)`, e168be7f6d3f84c2 A395), all-zero flows `#DIV/0!` (bc04c1f478c9896c A56), and Excel gives `#NUM!`
+- IRR of a scalar (non-range, non-array) argument is `#VALUE!` (`IRR(CELL("row",Data!D$2),0.5)`, 5422bdbf173fc233 A63), a guess of 1E+300 is `#VALUE!`
+  (`IRR({0,0,-100,50,60},1E+300)`, e168be7f6d3f84c2 A395), `IRR(Data!A1:D12,0.05)` over mixed flows (1E+15 and
+  123456789.123 among them) is `#DIV/0!` with the cause unprobed (bc04c1f478c9896c A56; a one-cell range is unprobed too), and Excel gives `#NUM!`
   on 11 flows where ours finds a root near -1 or far out (T-2494). XIRR with one value and one date is `#N/A`
   (`XIRR(Data!A9:A9,Data!E9:E9)`, 30e20ba3302fea8b A110).
 - PPMT at a huge rate is often exactly 0 (`PPMT(1E+10,12,278,130633)`, 5422bdbf173fc233 A285) and `IPMT(1E+10,10,320,2)` is
