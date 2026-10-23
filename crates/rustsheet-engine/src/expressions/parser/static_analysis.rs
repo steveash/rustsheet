@@ -35,24 +35,6 @@ use signature::{
     args_signature_xmatch, Signature,
 };
 
-#[cfg(target_arch = "wasm32")]
-use regex_lite as regex;
-
-use regex::Regex;
-use std::sync::OnceLock;
-
-static RANGE_REFERENCE_REGEX: OnceLock<Regex> = OnceLock::new();
-
-#[allow(clippy::expect_used)]
-fn get_re() -> &'static Regex {
-    RANGE_REFERENCE_REGEX
-        .get_or_init(|| Regex::new(r":[A-Z]*[0-9]*$").expect("Regex is known to be valid"))
-}
-
-fn is_range_reference(s: &str) -> bool {
-    get_re().is_match(s)
-}
-
 /*
 
 # NOTES on the Implicit Intersection operator: @
@@ -113,7 +95,6 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         | Node::EmptyArgKind
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
-        | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
         | Node::OpUnionKind { .. }
@@ -203,13 +184,20 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
             });
         }
 
-        Node::DefinedNameKind(v) => {
+        // A defined name takes the `@` in a value position whatever its body: a range, a scalar,
+        // a SWITCH, a LET or a call (`=ABS(swArr)` shows `=ABS(@swArr)`, `=ABS(Z30:Z32)+swOne`
+        // `=ABS(@Z30:Z32)+@swOne`; probes/legacy-at-defined-name-dynamic-funcs A20-V20, T-2440).
+        Node::DefinedNameKind(_) => {
             if add {
-                // Not all defined names deserve the II operator
-                // For instance =Sheet1!A1 doesn't need to be intersected
-                if is_range_reference(&v.2) {
-                    *node = Node::automatic_at(Node::DefinedNameKind(v.to_owned()));
-                }
+                *node = Node::automatic_at(node.clone());
+            }
+        }
+        // A defined-name lambda's call takes the `@` as the name does (`=ABS(Z30:Z32)+myId(1)`
+        // shows `=ABS(@Z30:Z32)+@myId(1)`, probes/legacy-at-dynamic-funcs-2 AE, T-2440); the call
+        // of a LET-bound one removes every `@` (`removes_automatic_at`) and is never reached here.
+        Node::NamedFunctionKind { .. } => {
+            if add {
+                *node = Node::automatic_at(node.clone());
             }
         }
         Node::NamedVariableKind { name, id } => {
@@ -758,11 +746,17 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Lower => scalar_arguments(args),
         // Their text and scalar arguments lift over a range or an array (T-1272), each lifted
         // element keeping one value, so the shape is not known statically.
-        Function::Regexextract | Function::Regexreplace | Function::Regextest => {
-            StaticResult::Unknown
+        Function::Regexextract | Function::Regexreplace => StaticResult::Unknown,
+        // Over scalars alone a single value: a legacy `=LEN(TEXTBEFORE("ab","b"))` and
+        // `=N(REGEXTEST("a","a"))` show no `@` on the call (probes/legacy-at-dynamic-funcs-2 N, O,
+        // Z, T-2440), where REGEXEXTRACT, whose return_mode can spill, takes one (Y).
+        Function::Regextest | Function::Textafter | Function::Textbefore => {
+            match scalar_arguments(args) {
+                StaticResult::Scalar => StaticResult::Scalar,
+                _ => StaticResult::Unknown,
+            }
         }
         Function::T => scalar_arguments(args),
-        Function::Textafter | Function::Textbefore => StaticResult::Unknown,
         Function::Textjoin => not_implemented(args),
         Function::Trim => scalar_arguments(args),
         Function::Char => not_implemented(args),
