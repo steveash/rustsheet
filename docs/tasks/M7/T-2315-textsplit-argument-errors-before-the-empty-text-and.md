@@ -3,7 +3,7 @@ id: T-2315
 title: "TEXTSPLIT: argument errors before the empty-text and empty-delimiter #VALUE!, an all-empty result is #CALC!, lifted arguments (gen-m7)"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -46,13 +46,23 @@ Owned: 24 known-failure lines in eval/baseline/gen-m7.txt, 7 formulas.
 - gen-m7/f7e94a817e5385ac.case.json A2186 `=TEXTSPLIT((Data!D$12&BYCOL(Data!E5:E6,LAMBDA(x,x))),Data!C1:C5,Data!B10:C11,XOR(INDEX(Data!A5:B6,0.2),(Data!$E4<Data!$B1),Data!B1:B10),Data!E6,(COUNT(Data!A11:A11,Data!D5,Data!B11:B12)/BYCOL(Data!B9:D12,LAMBDA(x,NA()))))`: A2186 Excel #CALC!, ours #VALUE!; cells (1): A2186
 
 ## Acceptance criteria
-- [ ] Visible parity: the 41 gen-m7 cells listed under Context (17 from T-2225, 24 from T-2254) have Excel's value, type, error and text: these 41 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
-- [ ] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 41 gen-m7 cells listed under Context (17 from T-2225, 24 from T-2254) have Excel's value, type, error and text: these 41 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
+- [x] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - TEXTBEFORE/TEXTAFTER (T-2314).
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+TEXTSPLIT now checks its arguments in Excel's order: the text, a delimiter that is itself an error, ignore_empty, match_mode, an array
+pad_with (`#VALUE!` per element, no longer lifted with the call), an error element of a delimiter list, then its own empty-delimiter,
+no-delimiter and empty-text `#VALUE!`; a split that ignore_empty empties is `#CALC!`. The order was settled with a new probe,
+probes/textsplit-error-order A1:A18 (excel-graph, 2026-10-23): a scalar error delimiter beats ignore_empty, but an error element of a
+list loses to it (A1-A3, A13, A14), which the gen-m7 cells alone could not separate. text.md "TEXTSPLIT: argument errors first, an
+all-empty result" states the order; the pad_with order the lift entry left UNVERIFIED is settled.
+Eval delta: gen-m7 fixed 27 (every owned line, 637 -> 610), gen-m9 fixed 4 (TEXTSPLIT cells in 530c636749a85209, 68d8ffb69ff739d8,
+8dd2312c96effb1b, f34f66fb7f81e673), probes new case 18/18, regressions 0.
