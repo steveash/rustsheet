@@ -3,7 +3,7 @@ id: T-2189
 title: "Probe IFS and SWITCH with an omitted value argument"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
