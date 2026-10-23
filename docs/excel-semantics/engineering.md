@@ -372,8 +372,8 @@ Also found by the sweep (same case; Ours is what RustSheet gives):
 - `IMCSC("0")`, `IMLOG2("0")` and `IMCOT("0")` are `#NUM!` (D21, M21, P21), `IMARGUMENT("0")` is #DIV/0!. Implemented (T-2334); before it we answered the text `NaNNaNi`, `-inf`, `inf`. Status: VERIFIED.
 - Text quirks (not kernels): `IMCOT("-57.9375+18.7089i")` prints "-4.00011374673746E-17-1i" (P43): the
   imaginary part -0.9999999999999999 keeps its "1", while an exact -1 is "-i" (P44); ours "-i" for both.
-  `IMCSC("1E-20")` and `IMCOT("1E-20")` print "100000000000000000000" (D18, P18); ours "1E+20". Owned by the IM*
-  text-formatting tasks (T-2001, T-2056). Status: VERIFIED (excel-graph).
+  `IMCSC("1E-20")` and `IMCOT("1E-20")` print "100000000000000000000" (D18, P18); ours "1E+20". Owned by T-2532 (after
+  the IM* text-formatting tasks T-2001, T-2056). Status: VERIFIED (excel-graph).
 Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2 and IMCOT #NUM! (D21:F21, M21:R21).
 
 ## IM* reciprocal kernels, IMABS and IMARGUMENT (T-2044)
