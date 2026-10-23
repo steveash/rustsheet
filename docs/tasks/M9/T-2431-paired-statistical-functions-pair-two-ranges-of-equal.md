@@ -43,8 +43,34 @@ Cells:
 - gen-m9/f2bd5f380ec002bf.case.json (3): Calc!A94, A276, A314
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A43
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): the same pairing in PEARSON, RSQ, SLOPE and STEYX (`PEARSON(Data!B11:D12,{1,1,2,2,2,3})` is -0.4999999999999999, ours `#N/A`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 17 known-failure lines in eval/baseline/gen-m9.txt, 17 visibly off.
+Examples:
+- gen-m9/329b177b5d5165ad Calc!A104 `=RSQ(Data!A4:C7,Data!C2:D7)`: Excel 0.3991684810183792, ours #N/A
+- gen-m9/334f3dc9ca937f10 Calc!A63 `=SLOPE(Data!A7:D9,Data!D3:E8)`: Excel 1.0000000246913243, ours #N/A
+- gen-m9/38e4fc309fe199ea Calc!A26 `=PEARSON({3,3,3,3},Data!B8:C9)`: Excel #DIV/0!, ours #N/A
+- gen-m9/7980ffb6095a340d Calc!A352 `=STEYX(Data!C8:E10,Data!C1:C9)`: Excel #DIV/0!, ours #N/A
+- gen-m9/91e167cd8d7eb652 Calc!A304 `=STEYX(Data!A7:A12,Data!B8:D9)`: Excel #DIV/0!, ours #N/A
+Cells:
+- gen-m9/201d67f1d59436ed.case.json (1): Calc!A177
+- gen-m9/329b177b5d5165ad.case.json (2): Calc!A104, A232
+- gen-m9/334f3dc9ca937f10.case.json (1): Calc!A63
+- gen-m9/38e4fc309fe199ea.case.json (1): Calc!A26
+- gen-m9/5395b8a427764a3f.case.json (1): Calc!A191
+- gen-m9/7980ffb6095a340d.case.json (1): Calc!A352
+- gen-m9/7fd0a98183c6babf.case.json (1): Calc!A338
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A45
+- gen-m9/91e167cd8d7eb652.case.json (2): Calc!A304, A352
+- gen-m9/9735c5ab72fa5ecf.case.json (1): Calc!A58
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A181
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A146
+- gen-m9/c4635963fc926284.case.json (1): Calc!A39
+- gen-m9/eccd03df42e40006.case.json (1): Calc!A295
+- gen-m9/ede0323c389fc703.case.json (1): Calc!A75
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 17 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 34 known-failure lines (17 from T-2255, 17 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `CORREL({1,2;3,4},{1;2;3;4})` and `INTERCEPT({1;2;3;4},{1,2;3,5})` give the paired values.
 - [ ] statistics.md's entry gets an "Ours:" line naming this task.
