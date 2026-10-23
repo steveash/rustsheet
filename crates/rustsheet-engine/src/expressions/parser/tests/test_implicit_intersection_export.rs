@@ -131,9 +131,18 @@ fn same_range_depends_on_context() {
 // criterion (T-0278, fixtures/ifs-legacy-range-criteria), so the import adds the automatic
 // `@`. It is redundant there, so the export drops it again.
 #[test]
+fn sumif_range_criterion() {
+    let test_str = "LARGE(SUMIF(E2:E7,@E2:E7),B27)";
+    let test_excel = "LARGE(SUMIF(E2:E7,E2:E7),B27)";
+    check(&[(test_excel, test_str, test_excel)]);
+}
+
+// A UNIQUE or FILTER criterion gets no automatic `@`: the formula holds a function that switches
+// them all off (probes/legacy-at-let-lambda-dynamic-funcs BR, T-2387).
+#[test]
 fn sumif_unique() {
-    let test_str = r#"LARGE(SUMIF(E2:E7,@UNIQUE(FILTER(E2:E7,E2:E7<>""))),B27)"#;
     let test_excel = r#"LARGE(SUMIF(E2:E7,_xlfn.UNIQUE(_xlfn._xlws.FILTER(E2:E7,E2:E7<>""))),B27)"#;
+    let test_str = r#"LARGE(SUMIF(E2:E7,UNIQUE(FILTER(E2:E7,E2:E7<>""))),B27)"#;
     check(&[(test_excel, test_str, test_excel)]);
 }
 
@@ -775,6 +784,18 @@ fn legacy_array_values_intersect_in_value_positions() {
             "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
             "@SWITCH(1,1,{2;3})",
             "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        // The same holds for the other functions that switch the automatic `@` off: a typed `@` is
+        // kept, a bare call is not marked (probes/legacy-at-let-lambda-dynamic-funcs, T-2387).
+        (
+            "ABS(Z30:Z32)+_xlfn.XLOOKUP(2,Z30:Z32,Z30:Z32)",
+            "ABS(Z30:Z32)+XLOOKUP(2,Z30:Z32,Z30:Z32)",
+            "ABS(Z30:Z32)+_xlfn.XLOOKUP(2,Z30:Z32,Z30:Z32)",
+        ),
+        (
+            "ABS(_xlfn.SINGLE(Z30:Z32))+_xlfn.XLOOKUP(2,Z30:Z32,Z30:Z32)",
+            "ABS(@Z30:Z32)+XLOOKUP(2,Z30:Z32,Z30:Z32)",
+            "ABS(_xlfn.SINGLE(Z30:Z32))+_xlfn.XLOOKUP(2,Z30:Z32,Z30:Z32)",
         ),
         (
             "ABS(_xlfn.SWITCH(1,1,{-2;3}))",

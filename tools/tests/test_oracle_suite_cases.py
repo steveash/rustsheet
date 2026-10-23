@@ -10,6 +10,7 @@ import pytest
 
 from rustsheet_tools import snapshot
 from rustsheet_tools.oracle import cli
+from rustsheet_tools.snapshot import UNDECODED
 
 
 def test_suite_cases_come_from_the_harness(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -94,16 +95,25 @@ def test_unreadable_workbook_is_never_filled_unchecked(monkeypatch: pytest.Monke
         cli._drop_desktop_conflicts(Path("x.xlsx"), {"S": {}})
 
 
-def test_undecoded_rich_errors_are_never_written_as_goldens() -> None:
-    values = {"S": {"A1": dict(cli.UNDECODED), "A2": {"t": "n", "v": 2.0}}}
-    cli._drop_undecoded(Path("x.xlsx"), values)
-    assert values == {"S": {"A2": {"t": "n", "v": 2.0}}}
+def test_undecoded_rich_errors_stay_in_the_sidecar_as_the_marker(capsys: pytest.CaptureFixture[str]) -> None:
+    # Dropping the cell would make a spill member an expected blank (gen-m7 C951:E962, T-2397);
+    # the marker keeps it pending, as the runner never scores it.
+    values = {"S": {"A1": dict(UNDECODED), "A2": {"t": "n", "v": 2.0}}}
+    cli._report_undecoded(Path("x.xlsx"), values)
+    assert values == {"S": {"A1": dict(UNDECODED), "A2": {"t": "n", "v": 2.0}}}
+    assert "UNDECODED x.xlsx S!A1" in capsys.readouterr().err
+
+
+def test_undecoded_cell_is_no_hand_disagreement(capsys: pytest.CaptureFixture[str]) -> None:
+    spec = {"expected": {"S!A1": {"t": "e", "v": "#VALUE!"}}}
+    cli._report_hand_disagreements(Path("x.case.json"), spec, {"S": {"A1": dict(UNDECODED)}})
+    assert capsys.readouterr().err == ""
 
 
 def test_undecoded_marker_matches_the_harness_constant() -> None:
     rust = Path(__file__).resolve().parents[2] / "crates/rustsheet-eval/src/xlsx_snapshot.rs"
     m = re.search(r'pub const UNDECODED_RICH_ERROR: &str = "([^"]+)";', rust.read_text())
-    assert m and m.group(1) == cli.UNDECODED["v"]
+    assert m and m.group(1) == UNDECODED["v"]
 
 
 def test_invariant_cells_that_vary_between_fills_stay_pending() -> None:

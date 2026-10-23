@@ -3,7 +3,7 @@ id: T-2387
 title: "Probe legacy @ with SWITCH inside LET or LAMBDA, a defined name, and other dynamic-array-only functions"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2121 found that a SWITCH anywhere in a legacy formula removes every automatic 
 
 ## Out of scope
 -
+
+## Outcome
+Two probe cases (let-lambda-dynamic-funcs, 163 cells; defined-name-dynamic-funcs, 37 cells) filled from excel-graph. A SWITCH inside LET/LAMBDA bodies already matched. XLOOKUP, FILTER, SORT, SEQUENCE, UNIQUE and TAKE remove every legacy `@` like SWITCH; implemented (`NO_AUTOMATIC_AT`). IFS, MAXIFS, LET do not. Remaining gaps (LET result `@`, names, LAMBDA call) recorded in references.md and filed as T-2419. Probe cells passing in let-lambda: 155 of 163 (8 known failures, tracked in T-2419).
