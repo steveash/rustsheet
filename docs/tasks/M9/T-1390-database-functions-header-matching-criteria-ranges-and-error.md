@@ -3,7 +3,7 @@ id: T-1390
 title: "Database functions: header matching, criteria ranges and error choice differ from Excel on generated data (gen-m9 database sample)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
