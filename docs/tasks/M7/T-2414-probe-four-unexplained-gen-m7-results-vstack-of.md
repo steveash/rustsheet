@@ -3,7 +3,7 @@ id: T-2414
 title: "Probe four unexplained gen-m7 results: VSTACK of CELL(contents), a TEXTAFTER #SPILL!, VSTACK of a lifted COMBINA, TEXTSPLIT of TRANSPOSE(value)"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
