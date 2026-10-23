@@ -273,7 +273,7 @@ pub(crate) enum CallResult {
     ArrayFirst,
     /// As [`CallResult::ArrayFirst`], and when every entry is equal and spans several columns the
     /// elements past the first column are empty too (UNIQUE; probes/m7-unique-lift-corners,
-    /// T-2348). SORTBY's uniform 1xN sort_order is unprobed, so it stays on `ArrayFirst`.
+    /// T-2348). SORTBY's uniform 1xN `sort_order` is unprobed, so it stays on `ArrayFirst`.
     ArrayFirstColumn,
 }
 

@@ -236,7 +236,7 @@ enum Later {
     /// [`CallResult::ArrayFirst`] over entries that are not all equal: an error result stays,
     /// the first other one is kept (`placed` once it is), and every later one is empty.
     EmptyAfterFirst { placed: bool },
-    /// [`CallResult::ArrayFirst`] over entries that are all equal: every element runs, then the
+    /// [`CallResult::ArrayFirstColumn`] over entries that are all equal: every element runs, then the
     /// non-error ones past the first column are emptied ([`empty_past_first_column`]).
     EmptyPastFirstColumn,
 }
@@ -269,9 +269,9 @@ fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
     (0..rows).all(|row| (0..columns).all(|column| same_as(args, row, column, (0, 0))))
 }
 
-/// A [`CallResult::ArrayFirst`] call over entries that are all equal and span several columns
+/// A [`CallResult::ArrayFirstColumn`] call over entries that are all equal and span several columns
 /// keeps its call's top-left only down the first column: the other columns' elements are empty,
-/// errors excepted (`UNIQUE(A1:B3,FALSE,{FALSE,FALSE;FALSE,FALSE})` is 1, 1 in column one and
+/// errors excepted (`UNIQUE(D1:D3,FALSE,{FALSE,FALSE;FALSE,FALSE})` is x, x in column one and
 /// empty in column two, `by_col` or not; a 1x3 `{FALSE,FALSE,FALSE}` is 1, empty, empty;
 /// probes/m7-unique-lift-corners, T-2348; docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's
 /// lifted elements").
