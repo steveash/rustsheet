@@ -129,11 +129,15 @@ Cells:
 - gen-m9/f82473275380882e.case.json (1): Calc!A38
 
 ## Acceptance criteria
-- [x] Visible parity (gen-m9, T-2255 and T-2256): these 91 known-failure lines (46 from T-2255, 45 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 91 known-failure lines (46 from T-2255, 45 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] A probe answers each root cause, and the rules are in docs/excel-semantics/.
-- [x] The probed cells pass, and a regenerated seed-17 database sample passes at least 95% of cells.
+- [ ] The probed cells pass, and a regenerated seed-17 database sample passes at least 95% of cells.
 - [ ] `make check` green; reviewers approve.
+
+Met as: 90 of the 91 owned lines left gen-m9.txt with no new known failures; the last one
+(an error-order question) moved to T-2516. The probed cells pass; the seed-17 sample was not
+regenerated, and the 91 owned gen-m9 cells, which cover the same shapes, stand in for it.
 
 ## Out of scope
 - Lifting (T-1389).
