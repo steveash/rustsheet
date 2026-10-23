@@ -59,9 +59,9 @@ Commands: `cd tools && uv run rustsheet-gen --milestone M9 --focus --functions <
 already-covered CONVERT/ERF family took no cells.
 Coverage ("Excel evidence per function"): every listed function now has at least 505 Excel cells (minimum
 IMABS 505, IMCONJUGATE 509, DCOUNTA 510), each with at least 298 new formulas where it is the outer call.
-Eval: gen-m9 261 cases, 95,262 cells, 90.88% bit-exact; known failures 8,095 -> 8,696: 601 new-coverage
-failures, 0 regressions, 0 fixed. Visible-parity lock 8,326 -> 8,760: the new cases add 562 visibly-off
-cells, and the rest of the suite went down by 128.
+Eval: gen-m9 261 cases, 95,262 cells, 90.88% bit-exact; known failures 8,092 -> 8,693 (after merging main): 601 new-coverage
+failures, 0 regressions, 0 fixed. Visible-parity lock 8,326 -> 8,632: the new cases add 562 visibly-off
+cells, and the rest of the suite went down by 256.
 
 Mismatch families (gap-triager, traced to the innermost diverging sub-expression; cells). New:
 T-2532 COMPLEX suffix first (17), T-2533 IM* "1i" (10), T-2534 IM trig of a real via SIN/COS/TAN and 2^27 (62),
