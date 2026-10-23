@@ -221,7 +221,7 @@ fn hypergeometric_walk(
 ) -> Option<Walk> {
     // Above 2^52 the caller keeps statrs: Excel's `HYPGEOMDIST(1,25,3,ROUND(2^53+1,8))` is #NUM!
     // (gen-m9/35e8168aae2b00f8 A128), as statrs' is, where a walk would give 8.3E-15.
-    if population > 1 << 52 {
+    if population > 1 << 52 || draws > population || successes > population {
         return None;
     }
     let (small, big) = (draws.min(successes), draws.max(successes));
@@ -485,7 +485,7 @@ mod tests {
     }
 
     #[test]
-    fn hypergeometric_walks_past_the_budget_or_range_are_none() {
+    fn hypergeometric_walks_at_their_limits() {
         // Excel's HYPGEOM.DIST(1,4,8,2E9,FALSE) is 1.5999999831999996E-08, 3 ulp from the exact
         // value (probes-numeric/t1049-hypgeomdist A51): four start factors and one step.
         let pmf = hypergeometric_pmf(2_000_000_000, 8, 4, 1).unwrap_or(f64::NAN);

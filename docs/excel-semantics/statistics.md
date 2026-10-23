@@ -923,7 +923,8 @@ exact for small integer arguments" above, T-0977). Both are `Lift` entries over 
 a boolean count `#VALUE!` as on main (Excel reads a TRUE as 1: probes-numeric/t1049-hypgeomdist A53, a known failure
 unchanged here), and checks each element alone. Since T-0977 the pmf and cdf are a double-double walk of at most 2^12
 steps (78 us in release) up to a population of 2^52, and past that walk the fallbacks below. The fallback pmf is
-statrs' closed form. The fallback cdf is statrs 0.18's `Hypergeometric::cdf`, which sums the pmf term by term from 0 to x, one `exp` of three `ln_binomial`s
+statrs' closed form. The fallback cdf is statrs 0.18's `Hypergeometric::cdf`, which sums the pmf term by term from 0 to
+x, one `exp` of three `ln_binomial`s
 a term: x + 1 terms whatever the distribution, so `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` took 4.8 s
 in release and an x near 2^64 would never finish. It is now ported to `statistical/hypegeom.rs` with a per-call cap of
 its own: the port skips the terms that are exactly 0, those below max(0, n + K - N) (`exp(-inf)`) and, at a population
@@ -2622,7 +2623,7 @@ Rule (gen-m9, excel-graph, 2026-10-23):
   0620505280d2ea6e A280, 5395b8a427764a3f A385), and a number of about 1E+15 or more is `#NUM!` even with number_chosen 0
   (`PERMUTATIONA(1000000000000000,0)`, 775d053de498b8c7 A152; `PERMUTATIONA(FACT(18),2)`, b9a32ce9a1fd0d71 A378).
 Ours: 0 for the TDIST cells, `#NUM!` for the negative mean, the tiny-p NEGBINOMDIST and the PERMUTATIONA zeros, a value for
-the others; T-2481.
+the others; T-2474.
 Status: VERIFIED (excel-graph), the cuts UNVERIFIED
 
 ## Student t quantile at p = 0 with df below 2 is #DIV/0! (T-2256)
