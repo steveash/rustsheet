@@ -235,14 +235,28 @@ pub(super) fn legacy_array_call_at(
         })
 }
 
-/// [`add_legacy_intersection`] on a whole formula. A legacy formula holding a SWITCH at any depth
-/// gets no automatic `@` anywhere, not on the SWITCH, its arguments or the rest of the formula,
-/// and the cell spills: `=SIN(SWITCH(1,1,{2;3}))`, `=SWITCH(1,1,2)+Z30:Z32`, `=SWITCH(1,1,2)`,
-/// `=IF(1,SWITCH(1,1,{2;3}))` all show no `@` in FORMULATEXT, while `=ABS(Z30:Z32)` keeps its
-/// (probes/legacy-switch-callers, legacy-switch-at-shapes; T-1964, T-2121). An `@` typed in such a
-/// formula is meaningful and stays; the export keeps it too (`remove_redundant_implicit_intersection`).
+/// The functions that switch off every automatic `@` of a legacy formula holding one, as SWITCH
+/// does: XLOOKUP, FILTER, SORT, SEQUENCE, UNIQUE and TAKE behave alike, while IFS, MAXIFS
+/// and LET keep theirs (probes/legacy-at-let-lambda-dynamic-funcs, T-2387).
+pub(super) const NO_AUTOMATIC_AT: [Function; 7] = [
+    Function::Switch,
+    Function::Xlookup,
+    Function::Filter,
+    Function::Sort,
+    Function::Sequence,
+    Function::Unique,
+    Function::Take,
+];
+
+/// [`add_legacy_intersection`] on a whole formula. A legacy formula holding a SWITCH, or any other
+/// [`NO_AUTOMATIC_AT`] function, at any depth gets no automatic `@` anywhere, not on the SWITCH, its
+/// arguments or the rest of the formula, and the cell spills: `=SIN(SWITCH(1,1,{2;3}))`,
+/// `=SWITCH(1,1,2)+Z30:Z32`, `=SWITCH(1,1,2)`, `=IF(1,SWITCH(1,1,{2;3}))` all show no `@` in
+/// FORMULATEXT, while `=ABS(Z30:Z32)` keeps its (probes/legacy-switch-callers, legacy-switch-at-
+/// shapes; T-1964, T-2121). An `@` typed in such a formula is meaningful and stays; the export keeps
+/// it too (`remove_redundant_implicit_intersection`).
 pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
-    if add && node.contains_function(&[Function::Switch]) {
+    if add && node.contains_function(&NO_AUTOMATIC_AT) {
         return;
     }
     add_legacy_intersection(node, add, add);
