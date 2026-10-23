@@ -1536,7 +1536,8 @@ ln x of a rounded x near 1. With ln(1 - y) from the exact complement (T-2465), `
 2.7067247920355326, 5 ulp from Excel's 2.7067247920355353 (gen-m9/27601819397dd56e A81, 48 units of the 15th digit before),
 and `F.INV.RT(0.001,99999,1)` 4 ulp from the true 636616.25590812706 where Excel is 6 ulp above it (c18dbf21f11093f3
 A190, 345 units before). There Excel is the less accurate side, so its last digit is a kernel detail (T-2500).
-Status: VERIFIED as a crossing to 15 digits on the cells above; the solver's start, stop and tie rule are UNVERIFIED.
+Status: VERIFIED as a crossing to 15 digits on the cells above except A81 and A190 (within about a unit) and E6 (T-2500);
+the solver's start, stop and tie rule are UNVERIFIED.
 Tasks: T-0974, T-2465, T-2500
 
 ## T.DIST.RT at df 2 is BETA.DIST's closed form down to y = 0.1 (T-0969)
