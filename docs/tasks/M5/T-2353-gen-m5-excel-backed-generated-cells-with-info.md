@@ -3,7 +3,7 @@ id: T-2353
 title: "gen-m5: Excel-backed generated cells with INFO and SHEETS as the outer call (M5 catalog coverage 135/135)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
