@@ -1390,7 +1390,7 @@ empty value IFERROR gives a blank cell (logic.md "IFERROR / IFNA of a blank cell
 TRUE,FALSE,TRUE,FALSE, `REDUCE(0,..,LAMBDA(a,v,a+COUNT(v)))` 4; A7:A11). VSTACK of one-cell blank references (A13:A23) and
 EXPAND's pad from a blank cell (`ISBLANK` TRUE for the pad elements, A32) make the same empty value. A blank cell of a *range*
 stays a blank cell: over `IF(TRUE,Z1:Z2)` COUNT is 0 and MAP's COUNT 0,0 (A37:A47).
-Ours: a LAMBDA's element binding gives the empty value since T-2413 (`lambda_cells`), which fixes A2088; INDEX of the element, VSTACK of
+Ours: a LAMBDA's element binding gives the empty value since T-2413 (`lambda_cells`, for every blank element of an array value, also from sources not probed such as SORT or FILTER), which fixes A2088; INDEX of the element, VSTACK of
 a blank one-cell reference and EXPAND's blank pad still give a blank cell or 0 (A2, A3, A6, A13, A16, A20, A32; T-2461).
 Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307, T-2413

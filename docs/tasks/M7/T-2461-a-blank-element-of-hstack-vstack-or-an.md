@@ -29,6 +29,10 @@ probes/dynamic-array-reshape-and-isomitted S!B24:B25, so the fix belongs at INDE
 ## Acceptance criteria
 - [ ] The seven t2413-blank-in-stacked-arrays lines above leave eval/baseline/probes.txt, no new known failures.
 - [ ] arrays.md's T-2413 paragraph says "Ours" for each.
+- [ ] The probe also reads (cells added to probes/t2413-blank-in-stacked-arrays or a new case): MAP/REDUCE COUNT over blanks
+      that SORT, FILTER and TAKE put into an array (T-2413 binds every blank array element as the empty value, unprobed for
+      these sources); `MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,ISOMITTED(v)))` and `LAMBDA(x,ISOMITTED(x))(IFERROR(Z1,1))` (ours TRUE;
+      a task if Excel is FALSE); the spill of `MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,v))` (ours 0).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
