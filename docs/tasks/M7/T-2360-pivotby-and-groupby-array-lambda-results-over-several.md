@@ -3,7 +3,7 @@ id: T-2360
 title: "PIVOTBY and GROUPBY: array LAMBDA results over several value columns and WORKDAY.INTL holiday errors (t2311 probe cells)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
