@@ -11,6 +11,7 @@ use crate::{
 };
 
 use super::wrapcols_wraprows::pad_with_of;
+use super::SIZE_LIMIT_EXCLUSIVE;
 
 impl Model {
     // ── EXPAND ────────────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ impl Model {
                 };
                 // A size of 2^31 or more is `#VALUE!`, while a smaller one past the grid is
                 // `#NUM!` (probes/expand-makearray-past-grid A1:A13, -big A1:B3).
-                if target_rows >= TOO_LARGE || target_cols >= TOO_LARGE {
+                if target_rows >= SIZE_LIMIT_EXCLUSIVE || target_cols >= SIZE_LIMIT_EXCLUSIVE {
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
@@ -100,10 +101,6 @@ impl Model {
         )
     }
 }
-
-/// The least rows or columns EXPAND reads as `#VALUE!` rather than as a size past the grid
-/// (`#NUM!`): 2^31.
-const TOO_LARGE: f64 = 2_147_483_648.0;
 
 /// The least columns Excel is known to refuse with `#NUM!` (probes/expand-makearray-past-grid-big
 /// A1); its exact cap lies between 16,386 and this (T-2452).

@@ -63,7 +63,7 @@ or is within half a unit of the 15th significant digit of Excel's value; the vis
 states it.
 
 ## Outcome
-Probes expand-makearray-past-grid (29 cells) and -big (6 cells), excel-graph 2026-10-23: EXPAND rows or columns of 2^31 or more
+Probes expand-makearray-past-grid (28 scored cells) and -big (6 cells), excel-graph 2026-10-23: EXPAND rows or columns of 2^31 or more
 are `#VALUE!`, rows below 2^31 past the grid `#NUM!`; columns have an Excel cap of their own somewhere in 16,386..123,456,789
 (`#NUM!` even in one row), checked after the smaller-than-the-array `#VALUE!`. MAKEARRAY reads both sizes (errors first) before
 validating them, and builds columns past the grid under the cell bound (above it, `#VALUE!` as before). Larger builds hang

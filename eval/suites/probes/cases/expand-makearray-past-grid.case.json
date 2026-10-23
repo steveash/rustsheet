@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-2408: where EXPAND's error for a huge rows argument turns from #NUM! to #VALUE! (A), EXPAND and MAKEARRAY sizes past the grid that build little, and MAKEARRAY's argument errors against a fractional or invalid size (D). Larger builds are in expand-makearray-past-grid-mid and -big.",
+  "description": "T-2408: where EXPAND's error for a huge rows argument turns from #NUM! to #VALUE! (A), EXPAND and MAKEARRAY sizes past the grid that build little, and MAKEARRAY's argument errors against a fractional or invalid size (D). Sizes Excel refuses far past the grid are in expand-makearray-past-grid-big; larger builds hang excel-graph and are unprobed.",
   "tags": [
     "M7",
     "probe",
