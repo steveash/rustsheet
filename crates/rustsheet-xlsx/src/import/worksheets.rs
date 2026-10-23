@@ -787,11 +787,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         rich_errors,
     )?;
     let ws = &worksheet;
-
     let dimension = load_dimension(ws);
-
     let sheet_view = get_sheet_view(ws);
-
     let cols = load_columns(ws)?;
     let color = load_sheet_color(ws, theme)?;
 
