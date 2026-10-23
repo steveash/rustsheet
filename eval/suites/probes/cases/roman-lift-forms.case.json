@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ROMAN over an array number, a multi-cell range form, an array of booleans as the form, and which error wins when number and form are both bad (T-2423).",
+  "tags": [
+    "M5",
+    "math",
+    "roman",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ROMAN({1;4},0)",
+        "C1": "=ROMAN(4,Data!A1:A2)",
+        "E1": "=ROMAN(4,{TRUE,FALSE})",
+        "G1": "=ROMAN(-5,NA())",
+        "H1": "=ROMAN(4000,9)",
+        "I1": "=ROMAN(Data!A1:A2,0)",
+        "K1": "=ROMAN(4,TRUE)",
+        "L1": "=ROMAN(-5,\"x\")"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 0,
+        "A2": 4
+      }
+    }
+  ],
+  "expected": {}
+}
