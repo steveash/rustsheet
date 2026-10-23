@@ -1263,8 +1263,9 @@ functions/database.rs; a formula condition is evaluated in the context of the cr
 down by the record's offset. A formula condition that itself runs a D-function with formula
 conditions would re-evaluate them without passing through a cell, its work growing as the records to
 the power of the nesting, so only one level runs: a nested formula condition is `#ERROR!` and fails
-(directive 5; DEVIATION, decision 0014: Excel evaluates the nested condition).
-Status: VERIFIED (excel-graph); the one-level re-evaluation is DEVIATION
+(directive 5; DEVIATION, decision 0014). What Excel does with a nested formula condition is unprobed.
+Status: VERIFIED (excel-graph); the one-level re-evaluation is DEVIATION (decision 0014), Excel's nested
+behavior UNVERIFIED
 Tasks: T-1390
 
 ## GAMMA and GAMMALN sweep (T-1042)

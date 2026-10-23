@@ -627,8 +627,9 @@ fn self_referencing_formula_condition_is_bounded() {
     model._set("E2", "=DSUM($A$1:$A$6,1,$E$1:$E$2)>0");
     model._set("F1", "=DSUM(A1:A6,1,E1:E2)");
     model.evaluate();
-    // Any value will do; the evaluation has to finish.
-    assert!(!model._get_text("F1").is_empty());
+    // The nested condition in E2 is not re-evaluated (one level only, a DEVIATION in
+    // docs/excel-semantics/statistics.md), so it fails for every record and nothing is summed.
+    assert_eq!(model._get_text("F1"), *"0");
 }
 
 /// A cell first computed while a formula condition is re-evaluated runs its own D-functions in
