@@ -3,7 +3,7 @@ id: T-2410
 title: "ROMAN lifts over an array form (gen-m7 TOROW(ROMAN(561,<2x4>),2) is five DLXI, ours #N/IMPL!)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,11 +32,11 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 5 known-failure lin
 - gen-m7/f7e94a817e5385ac.case.json A1563 `=TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)`: A1563 Excel "DLXI", ours #N/IMPL!; cells (5): A1563:E1563
 
 ## Acceptance criteria
-- [ ] Visible parity: these 5 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
+- [x] Visible parity: these 5 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
-- [ ] Unit tests: `ROMAN(561,{0,1,4,5})` spills "DLXI", "DLXI", "DLXI", `#VALUE!`; `ROMAN({1;4},0)` spills "I", "IV".
-- [ ] numbers.md's ROMAN entry states the lift and names this task; eval/catalog/lift-kinds.json regenerated (`rustsheet-eval lift-kinds`).
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests: `ROMAN(561,{0,1,4,5})` spills "DLXI", "DLXI", "DLXI", `#VALUE!`; `ROMAN({1;4},0)` spills "I", "IV".
+- [x] numbers.md's ROMAN entry states the lift and names this task; eval/catalog/lift-kinds.json regenerated (`rustsheet-eval lift-kinds`).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - COMBINA (T-2414), ARABIC.
@@ -46,3 +46,6 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+ROMAN takes `LIFT_1_OF_2` and `fn_roman` runs on the lift driver; unit test `roman_lifts_over_arrays`; lift-kinds.json regenerated; numbers.md updated. gen-m7 f7e94a817e5385ac A1563:E1563 removed from the baseline.

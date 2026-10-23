@@ -1913,7 +1913,7 @@ Unprobed: which error wins when both the number and the form are bad (`ROMAN(-5,
 reports the number's.
 ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)` is five "DLXI" (forms
 1, 2, 0.5, 3, 4; the 123456789.123 element is `#VALUE!` and the HSTACK pads `#N/A`, both dropped by ignore 2: gen-m7/f7e94a817e5385ac
-Calc!A1563, excel-graph, 2026-10-22). Ours `#N/IMPL!` (no lifting-table entry), T-2410.
+Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. Only the array form is evidenced; the array number and a multi-cell range follow the same table entry unprobed. Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
 Unexplained (T-2414): `VSTACK(COMBINA(WRAPROWS(Data!E6:E12,1,Data!$B1),4),CHOOSE(3,..))` is one `#VALUE!` with nothing spilled
 (gen-m7/f19581ac44da1653 A3357), not the 8x1 stack a lifting COMBINA would give; ours `#N/IMPL!`.
 Status: VERIFIED (excel-graph); implemented (T-2154).

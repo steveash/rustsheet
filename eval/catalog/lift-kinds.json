@@ -274,6 +274,7 @@
   {"name":"REPT","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
   {"name":"RIGHT","required":1,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
   {"name":"RIGHTB","required":1,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
+  {"name":"ROMAN","required":1,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
   {"name":"ROUND","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
   {"name":"ROUNDDOWN","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
   {"name":"ROUNDUP","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
