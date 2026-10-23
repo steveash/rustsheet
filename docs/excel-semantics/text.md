@@ -980,8 +980,12 @@ Ours: matches (`text_around_element`, `around_options` and `around_not_found` in
 match_end is read the same way: -0.0001 is 0, so `TEXTAFTER(LOWER("'a"),Data!A11:B12,1,1,<-0.0001>)`, where no delimiter is in the text,
 is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7/2d9b48c6363e7a16 Calc!A660 (excel-graph, 2026-10-22).
 Ours `#VALUE!` (T-2412). Other match_end values (2, -1, 1.5, TRUE) are unprobed.
-Unexplained (T-2414): `TEXTAFTER(<#VALUE!>,"",1,-INT(2^53),0,OFFSET(Data!B9:C12,5,1,DROP(Data!A3:A5,-2,0),2))` is `#SPILL!`
-(gen-m7/4dac39f89709e2fc A2870), so it is an array of more than one cell in Excel; ours is one `#VALUE!`.
+TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
+`ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
+`ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. The OFFSET alone is a 2x2 reference
+(`ROWS`, `COLUMNS` 2, 2; `INDEX(..,1,1)` one 0, no spill), although `DROP(A3:A5,-2,0)` is the one cell A3 (1E-15): UNVERIFIED mechanism
+(Excel reads the one-cell DROP result as a height giving 2 rows, ours as a lifted 1x1). The gen-m7 `#SPILL!` (4dac39f89709e2fc A2870) is
+then consistent with a 2x2 TEXTAFTER of `#VALUE!` colliding; only ROWS = 2 of it is probed.
 Status: VERIFIED (excel-graph)
 Tasks: T-2314, T-2412
 
@@ -1009,8 +1013,10 @@ references as the row delimiter; 4dac39f89709e2fc A3213 over a 2-row text); an e
 (`TOCOL(Data!A11:D12)` gives 8 rows of `#VALUE!`, 2d9b48c6363e7a16 A3261); a 1x3 text against an 11x2 ignore_empty broadcasts with `#N/A`
 past the shorter one (column 3 of bc4a69b0b512bc04 A538:C548); and a delimiter that is an error beats a text ignore_empty
 (`VLOOKUP(..)` `#N/A` against `"a"`, c36ff5f42a1a4d47 A1409).
-Unexplained (T-2414): `TEXTSPLIT(TRANSPOSE(<0>),Data!A3:C7)` with a "0" delimiter is the 1x2 "", "" (f7e94a817e5385ac A2882:B2882), as if
-TRANSPOSE of a single value were that value: a 1x1 array text would lift to one element (`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1).
+TRANSPOSE of a single value is that value, not a 1x1 array (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COLUMNS(TEXTSPLIT(TRANSPOSE("a,b"),","))`
+and `COLUMNS(TEXTSPLIT(TRANSPOSE(Data!G1),","))` (G1 = "a,b") are 2, so the text does not lift to one element as `{"a,b"}` does
+(`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1); `ISREF(TRANSPOSE(Data!G1))` is FALSE. Ours lifts (1 column, T-2455); is consistent
+with f7e94a817e5385ac B2882 (the probe covers a text literal and a text cell; a numeric TRANSPOSE argument is unprobed).
 Unprobed: an array pad_with against an error element of a delimiter list (ours: the pad_with `#VALUE!`), and a one-cell reference to an
 error cell as the delimiter, which ours reads as a list, so `TEXTSPLIT("abc",B1,,1/0)` with B1 `#N/A` is ours `#DIV/0!`.
 Ours: this order and the `#CALC!` since T-2315 (`fn_textsplit`, `textsplit_element` in functions/text/textsplit.rs).
