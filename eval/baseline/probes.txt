@@ -862,6 +862,7 @@ C	probes/rich-errors-regex-group.case.json	103
 C	probes/rich-errors-shapes-urls.case.json	51
 C	probes/rich-errors-spilled-lambda.case.json	86
 C	probes/rich-errors-stockhistory.case.json	5
+C	probes/roman-lift-forms.case.json	12
 C	probes/round-concat-array-edges.case.json	25
 C	probes/round-concat-array-lift.case.json	14
 C	probes/round-family.case.json	53
@@ -2451,6 +2452,7 @@ F	probes/regression-trend.case.json	Sheet1!O43
 F	probes/regression-trend.case.json	Sheet1!O5
 F	probes/regression-trend.case.json	Sheet1!O6
 F	probes/regression-trend.case.json	Sheet1!O7
+F	probes/roman-lift-forms.case.json	Calc!G1
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
