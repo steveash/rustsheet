@@ -3,7 +3,7 @@ id: T-2354
 title: "REGEX functions: lookaround, conditionals and the K escape on the T-1900 backtracker"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
