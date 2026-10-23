@@ -72,5 +72,7 @@ This is recorded in docs/excel-semantics/arrays.md.
 The 28 "not reported" cells from the T-2254 triage were dropped undecoded cells too. The fill printed an
 UNDECODED line for each of them. 0624b684889e9228, 21b4eef18424ce94 and 9bb61f6ae34c7e20 were re-filled and gained
 22, 14 and 23 `#UNDECODED!` cells; no existing value changed.
-Eval delta: gen-m7 known failures 706 -> 642 (fixed 64), 0 regressions.
+Eval delta: gen-m7 known failures 706 -> 642, 0 regressions. The 64 cells moved from known failures to pending
+(`#UNDECODED!`, never scored); they are not shown to match Excel. Only the GROUPBY ones have evidence of their value
+(`#VALUE!`), and scoring the rest waits on decoding (T-2417).
 Follow-ups: T-2417 (decode errorType 2), T-2418 (re-fill other sidecars that dropped undecoded cells).
