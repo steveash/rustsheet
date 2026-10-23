@@ -1383,8 +1383,15 @@ Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the L
 Since T-2307, `lambda_initial_value` keeps a reference initial_value a reference, as `eval_ref_or_index` binds a LAMBDA argument.
 A blank cell taken into an array by HSTACK counts as a 0 argument when an element reaches AVERAGE: `REDUCE(<3x1 text array>,
 HSTACK(Data!Z1:Z2,{1;2}),_xleta.AVERAGE)` is 1.125 = AVERAGE(AVERAGE(AVERAGE(AVERAGE(texts,0),1),0),2) (gen-m7/f19581ac44da1653 Calc!A2088,
-excel-graph, 2026-10-22). Ours `#DIV/0!`: the element stays a blank that AVERAGE skips. Whether Excel's HSTACK makes it 0 or an empty
-value that an argument counts is unprobed (T-2413).
+excel-graph, 2026-10-22). Probed (probes/t2413-blank-in-stacked-arrays, excel-graph, 2026-10-23, T-2413): the element is the
+empty value IFERROR gives a blank cell (logic.md "IFERROR / IFNA of a blank cell is an empty value"), not 0 and not a blank cell.
+`ISBLANK(INDEX(HSTACK(Z1:Z2,{1;2}),1,1))` is TRUE, TYPE 1 and `&"|"` "|", yet COUNT and COUNTA of it are 1 and
+`AVERAGE(<it>,1)` 0.5 (A1:A6). Handed to a LAMBDA it stays that (`MAP(..,_xleta.COUNT)` 1,1,1,1, `MAP(..,LAMBDA(v,ISBLANK(v)))`
+TRUE,FALSE,TRUE,FALSE, `REDUCE(0,..,LAMBDA(a,v,a+COUNT(v)))` 4; A7:A11). VSTACK of one-cell blank references (A13:A23) and
+EXPAND's pad from a blank cell (`ISBLANK` TRUE for the pad elements, A32) make the same empty value. A blank cell of a *range*
+stays a blank cell: over `IF(TRUE,Z1:Z2)` COUNT is 0 and MAP's COUNT 0,0 (A37:A47).
+Ours: a LAMBDA's element binding gives the empty value since T-2413 (`lambda_cells`), which fixes A2088; INDEX of the element, VSTACK of
+a blank one-cell reference and EXPAND's blank pad still give a blank cell or 0 (A2, A3, A6, A13, A16, A20, A32; T-2461).
 Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307, T-2413
 
