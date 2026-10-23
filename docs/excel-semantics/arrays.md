@@ -766,6 +766,14 @@ T-1322 follow-up (probes/groupby-lambda-forms and probes/groupby-blank-values, e
 of the sheet G anchors give the eta forms' results. The function gets each group's values as an array, not a reference
 (`LAMBDA(x,ISREF(x))` is FALSE), with blank cells as true blanks: `ISBLANK(INDEX(x,1,1))` is TRUE, TYPE 1, LEN 0, and
 COUNTA counts them (the blank-value group's COUNTA is 1), ARRAYTOTEXT shows them as nothing (`"2, b, TRUE, 1, a, FALSE, 2, , 1.5, B"`).
+A LAMBDA array result is shown as `#VALUE!`, but the cell holds the array itself, a nested array (probes/t2360-array-lambda-holidays
+P, excel-graph, 2026-10-23, T-2360): with `LAMBDA(v,v)`, `TYPE(INDEX(GROUPBY(..),r,c))` is 64 and INDEX returns the group's values
+(`ROWS`x`COLUMNS` 2x1 for a two-record group, 4x1 for the total), even a 1x1 array for a one-record PIVOTBY cell (P!B3). One LAMBDA
+over several value columns gives each column its own array. A consumer that lifts over the result reads each cell's top-left, so
+`SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a nested array's top-left is one (`{#N/A;3}`, P!C33 = 1),
+and the gen-m7 REGEXEXTRACT whose return_mode is such a GROUPBY gets a valid mode, not `#VALUE!` (gen-m7/21b4eef18424ce94 A1504),
+while MAP over the result is an error (t2311-pivotby-value-columns-error P!D12). Blank keys show as true blanks in INDEX (`TYPE` 1,
+`&""` is "", G!A12, B3), not 0. Ours: `#VALUE!` per cell and 0 for a blank key (the engine has no nested arrays; follow-ups T-2459, T-2460).
 A LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`) is `#VALUE!` in every cell, like an array result; so is a
 two-parameter LAMBDA (each cell, not the whole result). `field_headers` 2 over two keys and two values generates
 "Row Field 1", "Row Field 2", "Value 1", "Value 2"; `field_headers` 3 with `total_depth` -1 puts the header row first, then
@@ -801,7 +809,7 @@ T-1326 follow-up (probes/pivotby-followup, 63 PIVOTBY questions over the same Da
   `{TRUE;FALSE}` (P!A1581) is `#VALUE!`, and so is an error or other text in it, not the error (P!A1481, P!A1601). With a
   header row, the filter may be as tall as the fields or as the records, aligned with them (P!A1501, P!A1521, P!A1541,
   P!A1561), as in GROUPBY. Short col_fields are `#VALUE!` (P!A301). An error function is passed on (`NA()`, P!A1281); `5` is `#VALUE!` (P!A761).
-- Cells: errors in values make their cells and totals that error (P!A321); a LAMBDA array result is `#VALUE!` per cell, `""`
+- Cells: errors in values make their cells and totals that error (P!A321); a LAMBDA array result is `#VALUE!` per cell (shown; the cell holds a nested array, see the T-2360 paragraph above), `""`
   where there are no records (P!A341); text results show as text (P!A541). An array relative_to (here a filter column put one
   argument too far) is lifted per element: a 10x1 array (P!A681).
 Unprobed: whether one row of text values with no rows below is a header (the engine takes it as data), and where
@@ -1398,8 +1406,15 @@ Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the L
 Since T-2307, `lambda_initial_value` keeps a reference initial_value a reference, as `eval_ref_or_index` binds a LAMBDA argument.
 A blank cell taken into an array by HSTACK counts as a 0 argument when an element reaches AVERAGE: `REDUCE(<3x1 text array>,
 HSTACK(Data!Z1:Z2,{1;2}),_xleta.AVERAGE)` is 1.125 = AVERAGE(AVERAGE(AVERAGE(AVERAGE(texts,0),1),0),2) (gen-m7/f19581ac44da1653 Calc!A2088,
-excel-graph, 2026-10-22). Ours `#DIV/0!`: the element stays a blank that AVERAGE skips. Whether Excel's HSTACK makes it 0 or an empty
-value that an argument counts is unprobed (T-2413).
+excel-graph, 2026-10-22). Probed (probes/t2413-blank-in-stacked-arrays, excel-graph, 2026-10-23, T-2413): the element is the
+empty value IFERROR gives a blank cell (logic.md "IFERROR / IFNA of a blank cell is an empty value"), not 0 and not a blank cell.
+`ISBLANK(INDEX(HSTACK(Z1:Z2,{1;2}),1,1))` is TRUE, TYPE 1 and `&"|"` "|", yet COUNT and COUNTA of it are 1 and
+`AVERAGE(<it>,1)` 0.5 (A1:A6). Handed to a LAMBDA it stays that (`MAP(..,_xleta.COUNT)` 1,1,1,1, `MAP(..,LAMBDA(v,ISBLANK(v)))`
+TRUE,FALSE,TRUE,FALSE, `REDUCE(0,..,LAMBDA(a,v,a+COUNT(v)))` 4; A7:A11). VSTACK of one-cell blank references (A13:A23) and
+EXPAND's pad from a blank cell (`ISBLANK` TRUE for the pad elements, A32) make the same empty value. A blank cell of a *range*
+stays a blank cell: over `IF(TRUE,Z1:Z2)` COUNT is 0 and MAP's COUNT 0,0 (A37:A47).
+Ours: a LAMBDA's element binding gives the empty value since T-2413 (`lambda_cells`, for every blank element of an array value, also from sources not probed such as SORT or FILTER), which fixes A2088; INDEX of the element, VSTACK of
+a blank one-cell reference and EXPAND's blank pad still give a blank cell or 0 (A2, A3, A6, A13, A16, A20, A32; T-2461).
 Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307, T-2413
 
