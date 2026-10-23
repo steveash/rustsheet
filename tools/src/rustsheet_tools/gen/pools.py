@@ -432,7 +432,8 @@ POOLS: dict[str, list[str]] = {
     "ets_statistic": entries("1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 0 | 9 | (-1)"),
     # timeline and values of the FORECAST.ETS family: 24 evenly spaced, sorted points (two seasons of 12), so a
     # valid call reaches the algorithm; excel-graph answers those `#N/A` (T-1293), desktop values are T-1553. The
-    # values pool has the same count, as the two must (a longer or shorter one is `#N/A` before anything else).
+    # values pool's first entry has the same count, as the two must; the generator draws them independently, so a
+    # matching pair is a chance draw and a mismatch is `#N/A` before anything else.
     "ets_timeline": [
         _column(range(1, 25)),
         _column(range(2, 50, 2)),

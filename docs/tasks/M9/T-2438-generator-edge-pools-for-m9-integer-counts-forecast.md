@@ -43,5 +43,5 @@ docs/excel-semantics/statistics.md, citing the entry in a pools.py comment as T-
 Added pools `count`, `ets_target`, `ets_seasonality`, `ets_completion`, `ets_aggregation`, `ets_confidence`, `ets_statistic`,
 `ets_timeline`, `ets_values`, `beta_bound`, `fisherinv_y`, `forecast_x` and `lognorm_mean` (tools/src/rustsheet_tools/gen/pools.py,
 edges cited from statistics.md) and put 58 listed params on them in eval/catalog/functions.yaml; test in tools/tests/test_generator.py.
-Generator-only change: no eval delta. The ETS timeline and values pools are array constants of equal length (24), plus longer
-mismatching ones.
+Generator-only change: no eval delta. The ETS timeline and values pools are array constants whose first entries (24 points each) match in
+length; they are drawn independently, so matching pairs come up by chance (correlated draws would need a generator change).

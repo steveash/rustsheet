@@ -536,8 +536,8 @@ flags, and the data arrays of the aggregates, order statistics and paired functi
 the pool.
 T-2438 added `count` (the integer counts of the binomial, hypergeometric, CONFIDENCE and LARGE functions, with their
 soft `int` domain kept), `ets_target`, `ets_seasonality`, `ets_completion`, `ets_aggregation`, `ets_confidence`,
-`ets_statistic`, the equal-length `ets_timeline` and `ets_values` array constants (24 sorted, evenly spaced points
-beside 24 values, plus longer ones that mismatch), `beta_bound`, `fisherinv_y`, `forecast_x` and `lognorm_mean`.
+`ets_statistic`, `ets_timeline` and `ets_values` array constants (the first entries are 24 sorted, evenly spaced points
+beside 24 values; the two are drawn independently, so a matching pair comes up by chance, the rest are mismatches), `beta_bound`, `fisherinv_y`, `forecast_x` and `lognorm_mean`.
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),
