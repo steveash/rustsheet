@@ -160,7 +160,7 @@
    },
    "A1211": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "A1223": {
     "t": "e",
@@ -944,7 +944,7 @@
    },
    "A2089": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "A209": {
     "t": "e",
@@ -1676,7 +1676,7 @@
    },
    "A2835": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "A2847": {
     "t": "e",
@@ -1864,7 +1864,7 @@
    },
    "A3067": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "A307": {
     "t": "e",
@@ -2640,7 +2640,7 @@
    },
    "A3995": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "A4": {
     "t": "n",
@@ -2736,11 +2736,11 @@
    },
    "A51": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "A515": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "A527": {
     "t": "e",
@@ -2832,7 +2832,7 @@
    },
    "A614": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "A624": {
     "t": "n",
@@ -4376,7 +4376,7 @@
    },
    "B614": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "B624": {
     "t": "n",
@@ -5448,7 +5448,7 @@
    },
    "C614": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "C685": {
     "t": "n",
@@ -6108,15 +6108,15 @@
    },
    "D612": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "D613": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "D614": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "D698": {
     "t": "n",
@@ -6268,15 +6268,15 @@
    },
    "E612": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "E613": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "E614": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "E819": {
     "t": "s",
@@ -6312,15 +6312,15 @@
    },
    "F612": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "F613": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "F614": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "F819": {
     "t": "n",
@@ -6356,15 +6356,15 @@
    },
    "G612": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "G613": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "G614": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#UNDECODED!"
    },
    "G819": {
     "t": "s",
@@ -6641,8 +6641,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "354adcd296c3e33d382048c679a7ce091c30b563d87133b55a0bac62ff8252e8",
   "kind": "excel-graph",
-  "produced_at": "2026-10-23T01:01:42+00:00",
+  "produced_at": "2026-10-22T23:57:00+00:00",
   "version": null,
-  "workbook_name": "efa85857cbddd0163f8def5aa5ca781f20244c9aa3695a048c6cbdc09487be1a.xlsx"
+  "workbook_name": "b3d0ec50083b021eee695e77bdbf08125e609f7971e4ad263244a079a10bdcef.xlsx"
  }
 }
