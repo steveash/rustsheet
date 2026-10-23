@@ -23,7 +23,8 @@ LAMBDA", T-2413 paragraph). T-2413 fixed the LAMBDA element binding only. The re
 Making `array_node_to_calc_result` give `CalcResult::EmptyArg` for every caller was tried and regresses TEXTJOIN over arrays and
 external ranges (probes/textjoin-array-arguments A10, A18, A22; fixtures/external-link-cached-ranges Refs!B76), IFS
 (probes/t2280-ifs-one-cell-range-condition A61:A65), TOCOL (gen-m7/7d67c559ce7536fa A692..) and
-probes/dynamic-array-reshape-and-isomitted S!B24:B25, so the fix belongs at INDEX's array read and in VSTACK/EXPAND's blank copy.
+probes/dynamic-array-reshape-and-isomitted S!B24:B25, so the fix belongs at INDEX's array read and in VSTACK/EXPAND's blank copy. T-2413's `ArrayNode::Empty => CalcResult::EmptyArg` arm in `lambda_cells`
+(functions/logical/bycol_byrow.rs) goes if the fix moves into a shared read.
 
 ## Acceptance criteria
 - [ ] The seven t2413-blank-in-stacked-arrays lines above leave eval/baseline/probes.txt, no new known failures.
