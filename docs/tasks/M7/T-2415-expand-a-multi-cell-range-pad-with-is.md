@@ -3,7 +3,7 @@ id: T-2415
 title: "EXPAND: a multi-cell range pad_with is one #VALUE!, as an array pad_with is (gen-m7, 312 cells)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
