@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1946: MAP with a blank or error later array; INDEX of a LAMBDA out of range.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=MAP({1},,LAMBDA(x,y,x))",
+        "A4": "=MAP({1},Data!Z9,LAMBDA(x,y,x))",
+        "A7": "=MAP({1},NA(),LAMBDA(x,y,x))",
+        "A10": "=MAP({1},Data!B1,LAMBDA(x,y,x))",
+        "A13": "=MAP({1},1/0,LAMBDA(x,y,x))",
+        "A16": "=MAP({1,2},{3,4},LAMBDA(x,y,x+y))",
+        "A19": "=MAP({1},LEFT(NA(),2),LAMBDA(x,y,x))",
+        "A22": "=ERROR.TYPE(MAP(1,LAMBDA(x,y,x)))",
+        "A25": "=ERROR.TYPE(INDEX(LAMBDA(x,x),2))",
+        "A28": "=ERROR.TYPE(INDEX(LAMBDA(x,x),-1))",
+        "A31": "=ERROR.TYPE(INDEX(LAMBDA(x,x),0))",
+        "A34": "=ERROR.TYPE(INDEX(LAMBDA(x,x),1))",
+        "A37": "=MAP({1},{#N/A},LAMBDA(x,y,x))",
+        "A40": "=MAP({1;2},MOD(1,0),LAMBDA(x,y,x))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "B1": "=NA()"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -3,7 +3,7 @@ id: T-1946
 title: "Probe MAP with a blank or error later array and INDEX of a LAMBDA out of range"
 milestone: M7
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -44,10 +44,10 @@ with the 3 T-2225 cells): 4 known-failure lines in eval/baseline/gen-m7.txt, 4 f
 - gen-m7/f19581ac44da1653.case.json A2477 `=MAP(Data!B7:E9,Data!B11:E12,SEQUENCE(1,SIN(Data!E9)),_xleta.MIN)`: A2477 Excel #VALUE!, ours #CALC!; cells (1): A2477
 
 ## Acceptance criteria
-- [ ] The 7 gen-m7 cells listed under Context (3 from the T-2225 triage, 4 from the T-2254 triage) are owned by the functions-logic fix task this probe files, which lists them with `campaign: visible` (their 7 lines in eval/baseline/gen-m7.txt leave when it is done).
-- [ ] A probe case tagged M7 with excel-graph values covers the shapes above.
-- [ ] arrays.md records the results. A fix task is filed if the engine differs.
-- [ ] `make check` green; reviewers approve.
+- [x] The 7 gen-m7 cells listed under Context (3 from the T-2225 triage, 4 from the T-2254 triage) are owned by the functions-logic fix task this probe files, which lists them with `campaign: visible` (their 7 lines in eval/baseline/gen-m7.txt leave when it is done).
+- [x] A probe case tagged M7 with excel-graph values covers the shapes above.
+- [x] arrays.md records the results. A fix task is filed if the engine differs.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -57,3 +57,6 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probe `probes/t1946-map-later-array-index-lambda` (excel-graph, 2026-10-23): blank/reference/array-element/MAP(1,LAMBDA)/INDEX-of-LAMBDA all agree with ours; only a scalar error value as a later array differs (Excel `#VALUE!`). Recorded in arrays.md; the 7 gen-m7 cells are owned by T-2458.

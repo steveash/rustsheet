@@ -1106,12 +1106,15 @@ makes the whole MAP `#VALUE!`. `MAP(1,LAMBDA(x,x))`, `MAP("a",LAMBDA(x,x))` and 
 3), and so do one-cell references (`MAP(Z1,Z2,LAMBDA(x,y,x+y))` is 11). `MAP({1},2,..)`, `MAP(1,2,..)`, `MAP(TRUE,FALSE,..)`,
 `MAP(1,1,1,..)` and `MAP(Z1:Z2,3,..)` are `#VALUE!`, and so is `SUM(MAP(scalar,scalar,scalar,_xleta.MAX))`.
 Evidence: probes/lambda-value-arguments A27-A32, B1-B10 (excel-graph, 2026-10-19, T-1511); gen-m7/44ef4f5638e25bcd Calc!A7.
-Ours: `fn_map` reads its second and later arrays with `refuse_scalar` (`by_slices_source`, bycol_byrow.rs) since T-1511. A blank or
-an error value as a later array is unprobed (ours: a blank is refused, an error passes), as is `MAP(1,LAMBDA(x,y,x))` (T-1946).
-gen-m7 shows an error value as a later array is `#VALUE!` whatever the error: a BASE `#NUM!` (gen-m7/4dac39f89709e2fc Calc!A137), a MOD
+Later arrays that are not single values (T-1946, probes/t1946-map-later-array-index-lambda, excel-graph, 2026-10-23): a blank literal
+(`MAP({1},,LAMBDA(x,y,x))`) is `#VALUE!` (a single value); an empty-cell reference (`MAP({1},Data!Z9,..)`) and a reference to an `#N/A` cell
+(`MAP({1},Data!B1,..)`) are allowed (1), as is an `#N/A` element of an array literal (`MAP({1},{#N/A},..)` is 1). A scalar error value
+is `#VALUE!` whatever the error: `NA()`, `1/0`, `LEFT(NA(),2)`, `MOD(1,0)` (`MAP({1;2},MOD(1,0),..)`). `ERROR.TYPE(MAP(1,LAMBDA(x,y,x)))` is 3
+(`#VALUE!`, the missing second array). Ours: `fn_map` reads its second and later arrays with `refuse_scalar` (`by_slices_source`,
+bycol_byrow.rs) since T-1511; blank, reference and `MAP(1,LAMBDA(x,y,x))` agree, a scalar error value passes the error on (T-2458).
+gen-m7 shows the same for a BASE `#NUM!` (gen-m7/4dac39f89709e2fc Calc!A137), a MOD
 `#DIV/0!` (21b4eef18424ce94 A1393), `DROP(Data!B5:B12,0,3)` `#CALC!` (a470dc9e165bdb20 A3360) and `SEQUENCE(1,SIN(Data!E9))` `#CALC!`
-(f19581ac44da1653 A2477) as MAP's second or third array are `#VALUE!` (excel-graph, 2026-10-22, T-2254 triage; also the three T-2225 cells
-in T-1946). Ours passes the error on (T-1946 files the fix).
+(f19581ac44da1653 A2477) as MAP's second or third array: `#VALUE!` (excel-graph, 2026-10-22, T-2254 triage; also the three T-2225 cells).
 Status: VERIFIED (excel-graph)
 Tasks: T-1511, T-1946
 
@@ -1125,7 +1128,7 @@ ISBLANK and ISREF are FALSE (also through `IF(1,..)`). `ISEVEN(LAMBDA(x,x))` is 
 Evidence: probes/lambda-value-arguments A1-A26 (excel-graph, 2026-10-19, T-1511); probes/m7-argument-modes F44:H44;
 probes/eta-reduced-names E93.
 Ours: `value_extent` (cast.rs), `is_predicate` and `parity_of` (information/mod.rs), `index_select` (index.rs) since T-1511.
-INDEX of a LAMBDA with an index of 2 is `#REF!` there, as for a scalar, which is unprobed (T-1946).
+INDEX of a LAMBDA with an index of 2 is `#REF!` (`ERROR.TYPE` 4) and with -1 `#VALUE!` (3); INDEX(..,0) and INDEX(..,1) give the LAMBDA (probes/t1946-map-later-array-index-lambda, excel-graph, 2026-10-23); ours agrees.
 Status: VERIFIED (excel-graph)
 Tasks: T-1511
 
