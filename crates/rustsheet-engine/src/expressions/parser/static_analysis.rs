@@ -186,16 +186,11 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
 
         // A defined name takes the `@` in a value position whatever its body: a range, a scalar,
         // a SWITCH, a LET or a call (`=ABS(swArr)` shows `=ABS(@swArr)`, `=ABS(Z30:Z32)+swOne`
-        // `=ABS(@Z30:Z32)+@swOne`; probes/legacy-at-defined-name-dynamic-funcs A20-V20, T-2440).
-        Node::DefinedNameKind(_) => {
-            if add {
-                *node = Node::automatic_at(node.clone());
-            }
-        }
-        // A defined-name lambda's call takes the `@` as the name does (`=ABS(Z30:Z32)+myId(1)`
-        // shows `=ABS(@Z30:Z32)+@myId(1)`, probes/legacy-at-dynamic-funcs-2 AE, T-2440); the call
-        // of a LET-bound one removes every `@` (`removes_automatic_at`) and is never reached here.
-        Node::NamedFunctionKind { .. } => {
+        // `=ABS(@Z30:Z32)+@swOne`; probes/legacy-at-defined-name-dynamic-funcs A20-V20), and so
+        // does a defined-name lambda's call (`=ABS(@Z30:Z32)+@myId(1)`, probes/legacy-at-dynamic-
+        // funcs-2 AE; T-2440). The call of a LET-bound one removes every `@`
+        // (`removes_automatic_at`).
+        Node::DefinedNameKind(_) | Node::NamedFunctionKind { .. } => {
             if add {
                 *node = Node::automatic_at(node.clone());
             }
