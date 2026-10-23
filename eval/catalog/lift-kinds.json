@@ -312,6 +312,7 @@
   {"name":"TBILLYIELD","required":3,"params":["LiftArrays","LiftArrays","LiftArrays"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"TDIST","required":3,"params":["Lift","Lift","Lift"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"TEXT","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
+  {"name":"TEXTJOIN","required":3,"params":["WholeByCaller","Lift"],"repeat":["WholeByCaller"],"max":255,"work":"Constant"},
   {"name":"TIME","required":3,"params":["Lift","Lift","Lift"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"TIMEVALUE","required":1,"params":["Lift"],"repeat":[],"max":1,"work":"Constant"},
   {"name":"TINV","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Weighted(65536)"},
