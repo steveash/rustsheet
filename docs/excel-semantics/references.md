@@ -2098,15 +2098,16 @@ rejected with 400 `InvalidArgument`, while `=LET(x,1,x+1)` entered so gives 2. T
 entries cannot be committed as cases.
 Ours: the A1 parser reads a cell-shaped name in a LET or LAMBDA name position as the variable,
 and every later use within the call too (`bind_reference_shaped_name`, parser/operands.rs, the
-mechanism of the Lotus-style names above), so typed text means what its stored form means, as
-the harness feeds it; a use before the binding (`LET(x,F1,F1,2,...)`) stays the cell (its stored
+mechanism of the Lotus-style names above), whether the text is typed or stored; a use before the binding (`LET(x,F1,F1,2,...)`) stays the cell (its stored
 form would prefix it; unprobed). The R1C1 storage writes such a name as `_xlpm.f1` (the R1C1
 lexer refuses a cell-shaped identifier), and the xlsx export as `_xlpm.add5` like any bound
 name. Typed entry refuses it, as Excel does: `Input::Formula` and `Input::Parse` (engine
 `set_typed_user_input`) answer `EditError::InvalidInput` for a formula that binds a cell-shaped
 name, while stored text (xlsx import, re-parses, `Input::StoredFormula`, which the harness uses)
-binds it (decision 0103, T-2497). Lotus-dot names typed are not refused (unprobed).
-`$F$1` or `Sheet1!F1` is
+binds it (decision 0103, T-2497). The refusal extends past the three probed formulas (UNVERIFIED):
+an uppercase name (`LET(A1,...)`), an optional `[f1]` parameter, nested bindings, and desktop
+Excel (the evidence is Excel for the web's input parser). Lotus-dot names typed are not refused
+(unprobed). `$F$1` or `Sheet1!F1` is
 never a name (`LET($F$1,1,F1+1)` is `#VALUE!`; unprobed). Unprobed too: a bound name as a
 range end, `LET(f1,1,f1:G2)` (ours reads the variable, T-2497).
 Evidence: probes/let-cell-shaped-name-stored, let-cell-shaped-name-typed-control, and
@@ -2114,7 +2115,9 @@ lambda-escaping-closures H4, H5 (excel-graph, 2026-10-23); the refused typed ent
 single-cell cases like -typed-control (`rustsheet-oracle fill`, 2026-10-23), not committed.
 Status: VERIFIED (excel-graph)
 Implemented in: `bind_reference_shaped_name`, `binds_reference_shaped_name` (parser/operands.rs),
-`Parser::parse_operand`, `reads_back_as_cell` (parser/stringify/bound_variables.rs).
+`Parser::parse_operand`, `reads_back_as_cell` (parser/stringify/bound_variables.rs); the typed
+refusal: `Parser::set_typed`, `Parser::typed_refusal` (parser/mod.rs), `Model::set_typed_user_input`
+(typed_input.rs), `Input::StoredFormula` (crates/rustsheet edit.rs).
 Tasks: T-0439, T-2040, T-2497
 
 ## Structured references: this row, totals and ranges
