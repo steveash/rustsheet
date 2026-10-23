@@ -415,6 +415,10 @@ fn bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element() {
     model._set("F1", "=VLOOKUP({1;99},A1:B2,1/0,\"1\")");
     model._set("G1", "=VLOOKUP({1;#N/A},A1:B2,\"a\")");
     model._set("H1", "=VLOOKUP(1,A1:B2,\"a\",NA())");
+    // With an array range_lookup too, a not-found element included (G25-G27, G30).
+    model._set("I1", "=VLOOKUP({1;99},A1:B2,\"a\",{TRUE;TRUE})");
+    model._set("J1", "=VLOOKUP(99,A1:B2,\"a\",{TRUE;TRUE})");
+    model._set("K1", "=VLOOKUP({1;2},A1:B2,\"a\",{#N/A;TRUE})");
     model.evaluate();
     assert_eq!(model._get_text("D1"), *"#VALUE!");
     assert_eq!(model._get_text("D2"), *"#VALUE!");
@@ -425,4 +429,7 @@ fn bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element() {
     assert_eq!(model._get_text("G1"), *"#VALUE!");
     assert_eq!(model._get_text("G2"), *"#N/A");
     assert_eq!(model._get_text("H1"), *"#VALUE!");
+    for cell in ["I1", "I2", "J1", "J2", "K1", "K2"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
 }

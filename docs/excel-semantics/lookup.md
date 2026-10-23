@@ -148,13 +148,16 @@ array that WRAPROWS's pad_with lifts over (gen-m7/f7e94a817e5385ac Calc!A2430, e
 the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scalar-range-lookup-lifted, excel-graph,
 2026-10-23, T-2411):
 - `VLOOKUP({1;2},A1:B2,2,"1")` is `#VALUE!` twice, a not-found element included (`{1;99}`).
-- An error range_lookup is that error per element: `NA()` gives `#N/A` twice, `1/0` two rows.
+- An error range_lookup is that error per element: `NA()` gives `#N/A` and `1/0` gives `#DIV/0!` (G7, G29).
 - An error lookup_value element keeps its own error (`{1;#DIV/0!}`).
 - A range lookup_value lifts the same way, and so does HLOOKUP (`HLOOKUP({1,2},D1:E2,2,"x")`, 2 columns of `#VALUE!`).
 - A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's,
   ahead of a bad range_lookup and of the search: `VLOOKUP({1;99},A1:B2,"a")` is `#VALUE!` twice,
   `VLOOKUP({1;2},A1:B2,"a",NA())` is `#VALUE!` per element, and `VLOOKUP({1;99},A1:B2,1/0,"1")` is `#DIV/0!` per element.
-- An index of 0 is checked after the match, as in a scalar call (`#VALUE!` per found element).
+  The same holds beside an array range_lookup: `VLOOKUP({1;99},A1:B2,"a",{TRUE;TRUE})` and
+  `VLOOKUP({1;2},A1:B2,"a",{#N/A;TRUE})` are `#VALUE!` in every element (G25, G26, G30).
+- With an index of 0 and a bad range_lookup, every element is the range_lookup's `#VALUE!`, a not-found one included
+  (`VLOOKUP({1;99},A1:B2,0,"1")`, G28).
 - The scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
 Ours: matches since T-2411.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
@@ -177,7 +180,9 @@ such a spill are the error itself, per row, with room to spill: an error lookup_
 index (`1/0`, `NA()`) and a text index (`"a"` is `#VALUE!`, not the `#REF!` of an array index element)
 each fill every row with that scalar error (VLOOKUP with a range or an array range_lookup; HLOOKUP and
 `NA()` probed with an array range_lookup only, the engine shares one path) (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
-Matches the engine (`LookupIndexArg::Failed`).
+A not-found element gets the index error too: `VLOOKUP(99,A1:B2,"a",{TRUE;TRUE})` is `#VALUE!` per element
+(probes/vlookup-scalar-range-lookup-lifted G27, G32). Ours: matches since T-2411 (`argument_error_each`); before it, a
+not-found element was `#N/A`.
 A multi-cell range *index* lifts once the value is found, and `@` intersects it (T-1426; see "VLOOKUP / HLOOKUP search
 before validating the index"). With a table error, an array index gives one scalar error, not a spill
 (`VLOOKUP(2,1/0,{2,3})` is `#DIV/0!`, probes/lookup-argument-edges H372, H375).

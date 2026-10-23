@@ -37,9 +37,6 @@ pub(super) enum LookupIndexArg {
         left: CellReferenceIndex,
         right: CellReferenceIndex,
     },
-    /// An index that is an error, kept only while `range_lookup` lifts: every found element is
-    /// that error (gen-m2/942bdade381b7537 Calc!A381, T-1468).
-    Failed(CalcResult),
 }
 
 impl LookupIndexArg {
@@ -96,14 +93,14 @@ impl Model {
         }
         let index = match index {
             Ok(index) => index,
-            // A failed value index beside a lifted lookup_value is that error in every element
-            // that is not an error itself, ahead of range_lookup and of the search
-            // (probes/vlookup-scalar-range-lookup-lifted G13-G24, T-2411).
-            Err(error) if LiftedArg::is_grid(&lookup_value) => {
+            // A failed value index in a lifted call is that error in every element whose
+            // lookup_value is not an error itself, ahead of range_lookup and of the search, a
+            // not-found element included (probes/vlookup-scalar-range-lookup-lifted G13-G32, T-2411;
+            // gen-m2/942bdade381b7537 Calc!A381, T-1468).
+            Err(error) if lifts || LiftedArg::is_grid(&lookup_value) => {
                 let sorted_grid = is_sorted.ok().filter(LiftedArg::is_grid);
                 return Err(self.argument_error_each(lookup_value, sorted_grid, error, cell));
             }
-            Err(error) if lifts => LookupIndexArg::Failed(error),
             Err(error) => return Err(error),
         };
         let is_sorted = match is_sorted {
@@ -238,7 +235,6 @@ impl Model {
             LookupIndexArg::Reference(range) => self
                 .cast_to_number(range, cell)
                 .map_err(|_| invalid_reference())?,
-            LookupIndexArg::Failed(error) => return Err(error),
             // Callers narrow an array or range with `first_element`; one that does not gets `#REF!`.
             LookupIndexArg::Array(_) | LookupIndexArg::Range { .. } => {
                 return Err(invalid_reference())

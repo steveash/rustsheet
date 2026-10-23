@@ -70,7 +70,39 @@
     "t": "n",
     "v": 2.0
    },
+   "G25": {
+    "t": "n",
+    "v": 3.0
+   },
+   "G26": {
+    "t": "n",
+    "v": 3.0
+   },
+   "G27": {
+    "t": "n",
+    "v": 3.0
+   },
+   "G28": {
+    "t": "n",
+    "v": 3.0
+   },
+   "G29": {
+    "t": "n",
+    "v": 2.0
+   },
    "G3": {
+    "t": "n",
+    "v": 3.0
+   },
+   "G30": {
+    "t": "n",
+    "v": 3.0
+   },
+   "G31": {
+    "t": "n",
+    "v": 3.0
+   },
+   "G32": {
     "t": "n",
     "v": 3.0
    },
@@ -102,10 +134,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "d0279f73b5f63c3d3861b41547567b28aa5acc3608c2beca7fc83299f4f444f1",
+  "input_sha256": "d62b9d30019fdced41531a970fb5a5375fba4f78aabfd6d80ff407caa601a22d",
   "kind": "excel-graph",
-  "produced_at": "2026-10-23T00:33:37+00:00",
+  "produced_at": "2026-10-23T00:39:44+00:00",
   "version": null,
-  "workbook_name": "fd41f16ca9f7bc29a837a0fa68eb3484b46cf0c0801729739dc764bd59e95688.xlsx"
+  "workbook_name": "4f35f4705acb2db44bf9ab9a04d0ddb430b3499f3d8f297efbda3573acb05f68.xlsx"
  }
 }

@@ -52,10 +52,12 @@ states it.
 `lookup_head` (functions/lookup_and_reference/index_arg.rs) now keeps a scalar `range_lookup`'s coercion error when
 `lookup_value` lifts. Each element's scalar call then gives that error, and an error element of `lookup_value`
 still wins. A scalar call is still one `#VALUE!`. This covers VLOOKUP and HLOOKUP, which share the path.
-Element values were probed in probes/vlookup-scalar-range-lookup-lifted (24 cells, excel-graph, 2026-10-23). The probe
-found that a failed value index (text or error) beside a lifted lookup_value also lifts. Its error beats a bad
-range_lookup and a not-found element. Ours gave one error, and now gives it per element through the table-error path
-(`argument_error_each`).
+Element values were probed in probes/vlookup-scalar-range-lookup-lifted (32 cells, excel-graph, 2026-10-23). The probe
+found that a failed value index (text or error) in any lifted call (a lifted lookup_value, an array range_lookup, or
+both) is the index error in every element. It beats a bad range_lookup and a not-found element, and only an error
+lookup_value element keeps its own error. Before this task, ours gave one error beside a scalar range_lookup, and `#N/A`
+for a not-found element beside an array range_lookup (`LookupIndexArg::Failed`). Both cases now go through the
+table-error path (`argument_error_each`), and `Failed` is removed.
 Tests: `bad_scalar_range_lookup_beside_a_lifted_lookup_value_is_an_error_per_element` and
 `bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element`. lookup.md's entry is rewritten from the probe.
-Eval delta: gen-m7 known failures 706 -> 698 (the 8 owned lines), 0 regressions; probes +1 case (24 cells, all pass).
+Eval delta: gen-m7 known failures 706 -> 698 (the 8 owned lines), 0 regressions; probes +1 case (32 cells, all pass).
