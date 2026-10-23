@@ -329,9 +329,21 @@ impl Model {
         let (Some(values), 1..=2) = (args.first(), args.len()) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let flows = self
-            .get_array_of_numbers(values, &cell)
-            .map_err(CalcResult::without_message);
+        // Excel: an error inside an array or a referenced range is #VALUE!, whatever its kind,
+        // so the original error is dropped. An error argument that is not a single cell
+        // passes through (docs/excel-semantics/financial.md, "IRR over an error element";
+        // probes/fin-irr-error-array).
+        let flows = match self.evaluate_node_in_context(values, cell) {
+            error @ CalcResult::Error { .. }
+                if !matches!(values.ungrouped(), Node::ReferenceKind { .. }) =>
+            {
+                Err(error)
+            }
+            result => self
+                .array_of_numbers_from(result, &cell, true, || Ok(None), || Ok(None))
+                .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new())),
+        }
+        .map_err(CalcResult::without_message);
         self.lift_call_costed(
             Function::Irr,
             args,

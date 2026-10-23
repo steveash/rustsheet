@@ -115,6 +115,31 @@ fn base_text(number: f64, radix: i64, min_length: f64) -> Result<String, Error> 
     Ok(text)
 }
 
+/// Excel's ATAN2(x, y): `ATAN(y/x)` plus or minus π, not libm `atan2(y, x)`; see
+/// docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus π" (probes/atan2-*).
+/// IMARGUMENT is this kernel too (probes-numeric im-last-digit-sweep, T-2044).
+pub(crate) fn excel_atan2(x: f64, y: f64) -> Result<f64, Error> {
+    if x == 0.0 {
+        if y == 0.0 {
+            return Err(Error::DIV);
+        }
+        return Ok(FRAC_PI_2.copysign(y));
+    }
+    // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
+    let q = divide(y, x)?;
+    // `+ 0.0` turns -0 into +0, which Excel never returns.
+    let a = flush_subnormal(q.atan()) + 0.0;
+    Ok(if x < 0.0 {
+        if y >= 0.0 {
+            a + PI
+        } else {
+            a - PI
+        }
+    } else {
+        a
+    })
+}
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -706,26 +731,7 @@ impl Model {
     /// (probes/t2198-m5-lift-argument-kinds; arrays.md).
     pub(crate) fn fn_atan2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.numbers_fn(Function::Atan2, args, [0.0, 0.0], cell, |[x, y]| {
-            // Excel: see docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus pi" (probes/atan2-*).
-            if x == 0.0 {
-                if y == 0.0 {
-                    return Err(Error::DIV);
-                }
-                return Ok(FRAC_PI_2.copysign(y));
-            }
-            // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
-            let q = divide(y, x)?;
-            // `+ 0.0` turns -0 into +0, which Excel never returns.
-            let a = flush_subnormal(q.atan()) + 0.0;
-            Ok(if x < 0.0 {
-                if y >= 0.0 {
-                    a + PI
-                } else {
-                    a - PI
-                }
-            } else {
-                a
-            })
+            excel_atan2(x, y)
         })
     }
 
