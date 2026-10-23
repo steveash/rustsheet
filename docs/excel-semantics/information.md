@@ -269,9 +269,10 @@ in all 24 cells: `CELL("type",Data!C$9)` bare, under RIGHTB, LEFT and `&""`, as 
 repeats of the gen formula (A14:A23, A347) all "b"; rows 8 and 10 "b"; Calc!E9 text gives "l" and Calc!G9 a number "v" for
 `Data!E$9` / `Data!G$9` with Data blank there. So excel-graph can, rarely and not repeatably (one observation, T-2383), answer a cross-sheet "type" from
 the referenced sheet; the rule stands, and a single conflicting cell is re-filled before it is believed.
-Unexplained cell (T-2414): `VSTACK(CELL("contents",Data!$C11),Data!B7:E12)` on Calc is one `#VALUE!` with nothing spilled
-(gen-m7/8c4570978f18f4c2 Calc!A782, excel-graph, 2026-10-22), although Calc!C11 is blank there, so the own-sheet rule gives 0 and the
-VSTACK a 7x4 spill (ours).
+CELL("contents", ref) as a VSTACK argument is `#VALUE!` (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `VSTACK(CELL("contents",Data!C11),1)`,
+`VSTACK(CELL(..),Data!B7:E12)` and `ROWS(VSTACK(CELL(..),Data!B7:E12))` are all one `#VALUE!` (nothing spilled), while `CELL(..)` alone and
+`CELL(..)&"|"` give 0 and "|", and `VSTACK(0,Data!B7:E12)` is the 7x4 stack (`#N/A` padded). So the CELL result, not the blank cell, makes the
+VSTACK an error (gen-m7/8c4570978f18f4c2 Calc!A782). HSTACK and other stacking or array-shaping callers of CELL are unprobed. Ours stacks 0 (T-2452).
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
 Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name

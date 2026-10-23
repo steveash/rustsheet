@@ -980,8 +980,11 @@ Ours: matches (`text_around_element`, `around_options` and `around_not_found` in
 match_end is read the same way: -0.0001 is 0, so `TEXTAFTER(LOWER("'a"),Data!A11:B12,1,1,<-0.0001>)`, where no delimiter is in the text,
 is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7/2d9b48c6363e7a16 Calc!A660 (excel-graph, 2026-10-22).
 Ours `#VALUE!` (T-2412). Other match_end values (2, -1, 1.5, TRUE) are unprobed.
-Unexplained (T-2414): `TEXTAFTER(<#VALUE!>,"",1,-INT(2^53),0,OFFSET(Data!B9:C12,5,1,DROP(Data!A3:A5,-2,0),2))` is `#SPILL!`
-(gen-m7/4dac39f89709e2fc A2870), so it is an array of more than one cell in Excel; ours is one `#VALUE!`.
+TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
+`ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
+`ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. In the gen-m7 cell the OFFSET height is a
+2-element array, so OFFSET lifts to a 2x2 reference array (`ROWS`/`COLUMNS` of it are 2, 2; ours 1, 1, T-2454) and the TEXTAFTER is a 2x2 of
+`#VALUE!` that collides: `#SPILL!` (4dac39f89709e2fc A2870).
 Status: VERIFIED (excel-graph)
 Tasks: T-2314, T-2412
 
@@ -998,9 +1001,10 @@ a 2-row text); an error text beats an array pad_with's `#VALUE!` (`Data!D$12&BYC
 A2186, which settles the order the lift entry above left UNVERIFIED); an array match_mode lifts beside an array pad_with (`TOCOL(Data!A11:D12)`
 gives 8 rows of `#VALUE!`, 2d9b48c6363e7a16 A3261); and a 1x3 text against an 11x2 ignore_empty broadcasts with `#N/A` past the
 shorter one (column 3 of bc4a69b0b512bc04 A538:C548).
-Unexplained (T-2414): `TEXTSPLIT(TRANSPOSE(<0>),Data!A3:C7)` with a "0" delimiter is the 1x2 "", "" (f7e94a817e5385ac A2882:B2882), as if
-TRANSPOSE of a single value were that value: a 1x1 array text would lift to one element (`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1).
-Ours: `#VALUE!` (T-2315).
+TRANSPOSE of a single value is that value, not a 1x1 array (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COLUMNS(TEXTSPLIT(TRANSPOSE("a,b"),","))`
+and `COLUMNS(TEXTSPLIT(TRANSPOSE(Data!G1),","))` (G1 = "a,b") are 2, so the text does not lift to one element as `{"a,b"}` does
+(`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1); `ISREF(TRANSPOSE(Data!G1))` is FALSE. Ours lifts (1 column, T-2455); explains
+f7e94a817e5385ac B2882.
 Status: VERIFIED (excel-graph)
 Tasks: T-2315
 

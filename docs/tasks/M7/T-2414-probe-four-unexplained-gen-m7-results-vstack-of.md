@@ -3,7 +3,7 @@ id: T-2414
 title: "Probe four unexplained gen-m7 results: VSTACK of CELL(contents), a TEXTAFTER #SPILL!, VSTACK of a lifted COMBINA, TEXTSPLIT of TRANSPOSE(value)"
 milestone: M7
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -47,11 +47,11 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 31 known-failure li
 - gen-m7/f7e94a817e5385ac.case.json A2882 `=TEXTSPLIT(TRANSPOSE(SUM(Data!B6,Data!A9:A9)),Data!A3:C7)`: B2882 Excel "", ours <empty>; cells (1): B2882
 
 ## Acceptance criteria
-- [ ] A probe case under eval/suites/probes with the cells above, filled from excel-graph; information.md, text.md and numbers.md record
+- [x] A probe case under eval/suites/probes with the cells above, filled from excel-graph; information.md, text.md and numbers.md record
       what it shows (open lines resolved).
-- [ ] Each of the 31 known-failure lines above is owned by a fix task filed by this task (listing them, with `campaign: visible`), or
+- [x] Each of the 31 known-failure lines above is owned by a fix task filed by this task (listing them, with `campaign: visible`), or
       leaves eval/baseline/gen-m7.txt here with no new known-failure lines.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - ROMAN's lift (T-2410); TEXTSPLIT's argument-error order (T-2315).
@@ -61,3 +61,9 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probe `probes/t2414-gen-m7-unexplained` (excel-graph, 2026-10-23) explains all four: CELL result as a VSTACK argument is `#VALUE!` (T-2452);
+COMBINA lifts over arrays, the A3357 `#VALUE!` is the CHOOSE collapsing the stack, which ours already does (T-2453); OFFSET lifts over array
+height/width so the TEXTAFTER is 2x2 and spills (T-2454); TRANSPOSE of one value is that value (T-2455). Quirks recorded in information.md,
+numbers.md and text.md; the 31 known-failure lines are owned by T-2452..T-2455. The probe's cells it fails today are new probes.txt lines.
