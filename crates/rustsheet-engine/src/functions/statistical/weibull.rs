@@ -30,8 +30,8 @@ impl Model {
         // A TRUE x is 1: WEIBULL(TRUE,1,1,TRUE) = 0.6321205588285577 (probes-numeric/t1048-weibull
         // A25, t1049-weibulldist A33).
         let x = self.cast_number_ref(x, cell)?;
-        let alpha = self.cast_number_no_bools_ref(alpha, cell)?;
-        let beta = self.cast_number_no_bools_ref(beta, cell)?;
+        let alpha = self.cast_number_ref(alpha, cell)?;
+        let beta = self.cast_number_ref(beta, cell)?;
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
         if x < 0.0 || alpha <= 0.0 || beta <= 0.0 {
             return Err(num_error(cell));

@@ -3,7 +3,7 @@ id: T-1849
 title: "BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as 1 in their numeric arguments"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -156,3 +156,6 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Outcome
+BETA.DIST/BETA.INV, F.DIST/F.DIST.RT/F.INV/F.INV.RT, HYPGEOM.DIST, WEIBULL and STANDARDIZE kernels now read a boolean as 1/0 (`cast_number_ref`). Eval: 127 known-failure lines removed (122 gen-m9, 5 probes); none added.

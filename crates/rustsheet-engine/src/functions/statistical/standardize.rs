@@ -24,8 +24,8 @@ impl Model {
         // probes/stat-later-argument-lift L14); mean and standard_dev are unprobed, so they keep
         // the boolean-is-#VALUE! read.
         let x = self.cast_number_ref(x, cell)?;
-        let mean = self.cast_number_no_bools_ref(mean, cell)?;
-        let std_dev = self.cast_number_no_bools_ref(std_dev, cell)?;
+        let mean = self.cast_number_ref(mean, cell)?;
+        let std_dev = self.cast_number_ref(std_dev, cell)?;
         if std_dev <= 0.0 {
             return Err(num_error(cell));
         }
