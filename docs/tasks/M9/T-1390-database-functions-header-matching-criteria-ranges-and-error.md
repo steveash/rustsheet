@@ -164,7 +164,7 @@ it. Bit-level criteria still unmet then move to a follow-up task without the key
 - The seed-17 regenerated sample was not rerun: the 91 owned gen-m9 cells cover the same shapes.
 - Nested formula conditions run one level only (DEVIATION, directive 5), recorded in statistics.md.
 
-## Resume notes (2026-10-23, session budget reached mid-review)
+## Resume notes (2026-10-23, session budget reached mid-review; resumed 17:50 by an opus run)
 Review round 1: security, architecture and quality APPROVE; Excel fidelity REQUEST_CHANGES.
 - BLOCKING (fixed in the last commit, but `make check` and the new unit test
   `cells_reached_from_a_formula_condition_evaluate_in_full` have NOT been run yet): `db_condition_running`
