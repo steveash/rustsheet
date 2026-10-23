@@ -126,3 +126,33 @@ fn textjoin_array_delimiter_cycles_and_counts_toward_the_limit() {
     assert_eq!(model._get_text("A3").len(), 32_767);
     assert_eq!(model._get_text("A4"), "#N/A");
 }
+
+#[test]
+fn array_or_range_ignore_empty_lifts_one_join_per_element() {
+    // probes/textjoin-ignore-empty-lift rows 3, 7, 8, 13, 14 and 30 (excel-graph, T-2318).
+    let mut model = new_empty_model();
+    model._set("C1", "TRUE");
+    model._set("C2", "FALSE");
+    model._set("A1", "=TEXTJOIN(\",\",{TRUE;FALSE},\"a\",\"\",\"b\")");
+    model._set("D1", "=INDEX(TEXTJOIN(\",\",C1:C2,\"a\",\"\",\"b\"),2,1)");
+    model._set(
+        "D2",
+        "=INDEX(TEXTJOIN(\",\",{TRUE;#N/A},\"a\",\"\",\"b\"),2,1)",
+    );
+    model._set(
+        "D3",
+        "=INDEX(TEXTJOIN(\",\",{TRUE;\"x\"},\"a\",\"\",\"b\"),2,1)",
+    );
+    model._set("D4", "=ROWS(TEXTJOIN(#N/A,{TRUE;FALSE},\"a\"))");
+    model._set("D5", "=INDEX(TEXTJOIN(#N/A,{TRUE;FALSE},\"a\"),2,1)");
+    model._set("D6", "=TEXTJOIN(\",\",TRUE,\"a\",\"\",\"b\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "a,b");
+    assert_eq!(model._get_text("A2"), "a,,b");
+    assert_eq!(model._get_text("D1"), "a,,b");
+    assert_eq!(model._get_text("D2"), "#N/A");
+    assert_eq!(model._get_text("D3"), "#VALUE!");
+    assert_eq!(model._get_text("D4"), "2");
+    assert_eq!(model._get_text("D5"), "#N/A");
+    assert_eq!(model._get_text("D6"), "a,b");
+}
