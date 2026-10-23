@@ -173,7 +173,11 @@ impl Model {
     /// inherit them.
     pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         let outer = std::mem::take(&mut self.defined_names_running);
+        // A cell first computed inside a D-function's formula-condition re-evaluation is its
+        // own run: its D-functions re-evaluate their own conditions (functions/database.rs).
+        let outer_condition = std::mem::take(&mut self.db_condition_running);
         let result = self.with_area_budget(cell, |model| model.evaluate_formula_root(node, cell));
+        self.db_condition_running = outer_condition;
         self.defined_names_running = outer;
         result
     }

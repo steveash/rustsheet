@@ -630,3 +630,25 @@ fn self_referencing_formula_condition_is_bounded() {
     // Any value will do; the evaluation has to finish.
     assert!(!model._get_text("F1").is_empty());
 }
+
+/// A cell first computed while a formula condition is re-evaluated runs its own D-functions in
+/// full: the one-level guard belongs to one formula run (T-1390 fidelity review).
+#[test]
+fn cells_reached_from_a_formula_condition_evaluate_in_full() {
+    let mut model = new_empty_model();
+    model._set("A1", "Qty");
+    for row in 2..=6 {
+        model._set(&format!("A{row}"), &(row - 1).to_string());
+        model._set(&format!("K{row}"), "=DCOUNT($A$1:$A$6,1,$G$1:$G$2)");
+    }
+    model._set("G2", "=A2>2");
+    model._set("H2", "=K2>0");
+    model._set("M1", "=DCOUNT(A1:A6,1,H1:H2)");
+    model._set("N1", "=DCOUNT(A1:A6,1,G1:G2)");
+    model.evaluate();
+    for row in 2..=6 {
+        assert_eq!(model._get_text(&format!("K{row}")), *"3");
+    }
+    assert_eq!(model._get_text("M1"), *"5");
+    assert_eq!(model._get_text("N1"), *"3");
+}
