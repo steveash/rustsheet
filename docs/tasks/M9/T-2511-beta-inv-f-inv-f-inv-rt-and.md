@@ -27,9 +27,11 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
   - The estimate is rough: the model CDF was wrong on the T bgrat cells then (T-2509 fixes them), and Excel's start
     and stop rule is unknown.
 - Overlap:
-  - T-0974 (BETA.INV/F.INV/F.INV.RT, 28 ironcalc-calc and 96 gen-m9 lines), T-0967 (T.INV, T.INV.2T, CONFIDENCE.T)
-    and T-1871 (statrs saturation and panics) own those cells.
-  - This task is the shared mechanism they need. Re-triage them in the Outcome and close what this settles.
+  - T-0974 (done 2026-10-23) already solves F.INV, F.INV.RT and FINV as the crossing of F.DIST's own tails with
+    `special::refine_increasing` (statistics.md "F.INV is a crossing of F.DIST's tails"). Reuse that helper for
+    BETA.INV and T.INV* on the ported CDF instead of writing a second search; F.INV moves when its CDF does.
+  - T-0967 (T.INV, T.INV.2T, CONFIDENCE.T) and T-1871 (statrs saturation and panics) own the remaining cells.
+    Re-triage them in the Outcome and close what this settles.
   - T-2119's chained BETA.INV cells are settled in T-2505.
 
 ## Acceptance criteria
