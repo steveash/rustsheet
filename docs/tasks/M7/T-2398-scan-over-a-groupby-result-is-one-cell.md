@@ -3,7 +3,7 @@ id: T-2398
 title: "SCAN over a GROUPBY result is one cell (#N/A, 0 or the error), not a scan of its cells"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
