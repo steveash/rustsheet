@@ -3,7 +3,7 @@ id: T-2207
 title: "PRICE and ODDFPRICE to 15 significant digits: discount each coupon with Excel's ^ kernel, off powf"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
