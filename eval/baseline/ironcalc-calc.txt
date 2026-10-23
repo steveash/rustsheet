@@ -719,9 +719,7 @@ F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E56
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E8
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!F3
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!J2
-F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!J3
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L2
-F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L3
 F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!D1
 F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!K1
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E10
