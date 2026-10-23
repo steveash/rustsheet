@@ -1507,7 +1507,8 @@ Tasks: T-0239
 ## CHISQ.DIST degrees of freedom and BITAND operands are bounded
 Rule: CHISQ.DIST with degrees of freedom above 10^10 is `#NUM!` (10^10 itself is accepted;
 CHISQ.DIST.RT/CHISQ.INV/CHISQ.INV.RT share the constant but are unprobed), and BITAND is `#NUM!` for an operand of
-2^48 or more (2^48-1 is accepted; the other BIT functions share the constant but are unprobed).
+2^48 or more (2^48-1 is accepted). BITOR and BITLSHIFT agree (engineering.md "Engineering edge-pool smoke check
+(T-2249)", UNVERIFIED until T-2421 commits the probe).
 These are Excel's own limits, not deviations.
 Evidence: probes/resource-limits C5, C6 (CHISQ.DIST), C7, C8 (BITAND) (excel-graph, 2026-10-05).
 Status: VERIFIED
