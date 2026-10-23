@@ -49,10 +49,8 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     (Function::TDist2T, Some(BETA_CDF)),
     (Function::TDistRT, Some(BETA_CDF)),
     (Function::TDistCompat, Some(BETA_CDF)),
-    (
-        Function::HypGeomDistCompat,
-        Some("the pmf: three statrs binomials, a fixed factorial cache or ln_gamma each"),
-    ),
+    // A pmf walk of up to 2^12 double-double steps (T-0977): `Weighted`.
+    (Function::HypGeomDistCompat, None),
     (
         Function::Fact,
         Some("descending_product stops at the first infinity: n*(n-1)*... overflows in 170 steps"),

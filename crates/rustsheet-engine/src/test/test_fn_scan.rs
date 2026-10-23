@@ -152,3 +152,18 @@ fn scan_multi_cell_array_step_is_one_calc_error() {
     assert_eq!(model._get_text("G1"), "");
     assert_eq!(model._get_text("F2"), "");
 }
+
+// A 1x1 array step or initial_value is its one value (T-2407).
+#[test]
+fn scan_takes_1x1_arrays_as_one_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SCAN({3},{1;2},LAMBDA(a,x,a+x))");
+    model._set("C1", "=SCAN(0,{1;2},LAMBDA(a,x,{5}))");
+    model._set("E1", "=SCAN(0,{1;2},LAMBDA(a,x,{5,6}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "4");
+    assert_eq!(model._get_text("A2"), "6");
+    assert_eq!(model._get_text("C1"), "5");
+    assert_eq!(model._get_text("C2"), "5");
+    assert_eq!(model._get_text("E1"), "#CALC!");
+}
