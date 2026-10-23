@@ -118,11 +118,33 @@ pub enum DateSystem {
     Excel1904,
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct WorkbookSettings {
     pub tz: String,
     pub locale: String,
     pub date_system: DateSystem,
+    /// Iterative calculation (`calcPr@iterate`); `None` when it is off.
+    pub iteration: Option<Iteration>,
+}
+
+/// Iterative calculation settings: a recalculation sweeps the circular references at most
+/// `max_iterations` times and stops at the first sweep whose largest change is below
+/// `max_change` (docs/excel-semantics/recalc.md, "Iterative calculation").
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Copy)]
+pub struct Iteration {
+    /// `calcPr@iterateCount`, 100 by default.
+    pub max_iterations: u32,
+    /// `calcPr@iterateDelta`, 0.001 by default.
+    pub max_change: f64,
+}
+
+impl Default for Iteration {
+    fn default() -> Self {
+        Self {
+            max_iterations: 100,
+            max_change: 0.001,
+        }
+    }
 }
 
 impl WorkbookSettings {
@@ -132,6 +154,7 @@ impl WorkbookSettings {
             tz: tz.to_string(),
             locale: locale.to_string(),
             date_system: DateSystem::default(),
+            iteration: None,
         }
     }
 }

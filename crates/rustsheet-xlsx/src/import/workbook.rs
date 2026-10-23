@@ -4,7 +4,7 @@ use super::package::Package;
 
 use super::sheet_data::{check_stored_length, MAX_NAME_BODY_UNITS};
 use super::xml::XmlNode;
-use rustsheet_engine::types::{DateSystem, DefinedName, SheetState};
+use rustsheet_engine::types::{DateSystem, DefinedName, Iteration, SheetState};
 
 use crate::error::XlsxError;
 use crate::util::name_from_xlsx;
@@ -23,6 +23,33 @@ pub(crate) struct WorkbookXML {
     pub(crate) defined_names: Vec<DefinedName>,
     /// The `r:id` of each `externalReference`, in order: the first is the book formulas call `[1]`.
     pub(crate) external_references: Vec<String>,
+    /// `calcPr@iterate` and its count and delta.
+    pub(crate) iteration: Option<Iteration>,
+}
+
+/// The iteration settings of a `calcPr` element: on when `iterate` is `1` or `true`, with
+/// `iterateCount` (1 to 32,767, Excel's range) and a finite non-negative `iterateDelta`, each
+/// falling back to Excel's default when absent or out of range (workbooks are untrusted).
+fn iteration_from(calc_pr: Option<&XmlNode>) -> Option<Iteration> {
+    let node = calc_pr?;
+    if !matches!(node.attribute("iterate"), Some("1" | "true")) {
+        return None;
+    }
+    let default = Iteration::default();
+    let count = node
+        .attribute("iterateCount")
+        .and_then(|v| v.parse::<u32>().ok());
+    let delta = node
+        .attribute("iterateDelta")
+        .and_then(|v| v.parse::<f64>().ok());
+    Some(Iteration {
+        max_iterations: count
+            .filter(|c| (1..=32_767).contains(c))
+            .unwrap_or(default.max_iterations),
+        max_change: delta
+            .filter(|d| d.is_finite() && *d >= 0.0)
+            .unwrap_or(default.max_change),
+    })
 }
 
 /// The date system a `workbookPr@date1904` attribute selects: `1` and `true` are 1904; absent,
@@ -112,11 +139,13 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
         // One without an id still takes its index, so the books after it keep theirs.
         .map(|n| n.relationship_id().unwrap_or_default().to_string())
         .collect();
+    let iteration = iteration_from(doc.descendants().find(|n| n.has_tag_name("calcPr")));
     Ok((
         WorkbookXML {
             worksheets: sheets,
             defined_names,
             external_references,
+            iteration,
         },
         date_system,
     ))

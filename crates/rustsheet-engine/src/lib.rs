@@ -72,6 +72,7 @@ mod formula_cells;
 mod function_names;
 mod functions;
 mod implicit_intersection;
+mod iteration;
 mod legacy_formula;
 pub mod links;
 mod merged_cells;

@@ -1,7 +1,8 @@
 # Calculation: circular references, iterative calculation, data tables
 
-Phase 2 (M3, SPEC-0002 / T-0401) implements these; the cases below are its acceptance tests and
-are known failures until then. A case sets iteration with the spec's top-level `"calculation"`
+Iterative calculation (T-0447) and data tables (T-0441) are implemented without the Phase 2
+dependency graph (M3, SPEC-0002 / T-0401); a circular reference without iteration is still
+T-0445's. A case sets iteration with the spec's top-level `"calculation"`
 and data tables with a sheet's `"data_tables"`
 (tools/src/rustsheet_tools/spec2xlsx.py, T-0428).
 
@@ -60,11 +61,20 @@ Jacobi). With iterateCount 100 and the three oracle calculations (300 sweeps):
 - `=B2` stays 0.
 Evidence: probes/circular-iteration-on (iterate, iterateCount 100, iterateDelta 0.001;
 excel-graph, 2026-10-16, T-0428).
-Ours: every cell is an error. The xlsx import also drops `iterate`, `iterateCount` and
-`iterateDelta`, so real models saved with iteration on (calipers pv23_021 and pv26_004, about 3,600
-cells) give `#CIRC!` where Excel has numbers.
+Ours: matches (probes/circular-iteration-on 12/12). With iteration on, no evaluation makes a cycle
+`#CIRC!`; a read that closes one returns the cell's current value (0 for a formula never
+evaluated). The cells on the stack at that moment join the recalculated set, and so does every
+cell that later reads a member. After the pass the members get back their values from before the
+recalculation. They are then swept in row-major order (sheet, row, column), each reading the values
+already updated. The xlsx import reads `iterate`, `iterateCount` and `iterateDelta`, and the export
+writes them back. The Calipers models saved with iteration on now match Excel (pv23_021, pv26_004,
+pv23_019, pv23_027 and pv26_012 bit for bit).
+In a workbook with data tables, the substituted evaluations read a cycle's current values and do
+not iterate it. Four data-table results of calipers pv26_014 differ from Excel by up to 1e-3
+relative (T-0454).
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401, T-0429, T-0447
+Implemented in: crates/rustsheet-engine/src/iteration.rs
+Tasks: T-0428, T-0401, T-0429, T-0447, T-0454
 
 ## iterateDelta stops the iterations for the whole workbook, not per cycle
 Rule: the delta stop ends the iterations of the whole workbook, not of each cycle on its own.
@@ -105,9 +115,23 @@ Evidence: probes/circular-iteration-limits, probes/circular-iteration-delta,
 probes/circular-iteration-delta-small (excel-graph, 2026-10-16, T-0428);
 probes/circular-iteration-delta-no-reader, probes/circular-iteration-delta-boundary (excel-graph,
 2026-10-16, T-0429).
-Ours: every cell is an error.
+Ours: matches (the five probes above). A sweep's change is the largest absolute difference over all
+members, readers included. A member whose value changes type, text, boolean or error never counts
+as converged. Excel's rule for those is unprobed.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401, T-0429
+Implemented in: crates/rustsheet-engine/src/iteration.rs (`Model::sweep`)
+Tasks: T-0428, T-0401, T-0429, T-0447
+
+## Iterative sweeps evaluate at most 2^25 members per recalculation
+Rule: Excel's limit on the work of iterative calculation is unprobed; it runs up to iterateCount
+(at most 32,767) sweeps over every member.
+Evidence: none for Excel; this is a resource limit, not an Excel observation.
+Ours: the sweeps of one recalculation evaluate at most 33,554,432 members together
+(`MAX_SWEEP_EVALUATIONS`). They stop where they are when the budget is spent, so a large cycle with
+a large iterateCount cannot hold the evaluation without bound (CLAUDE.md directive 5).
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/iteration.rs (`MAX_SWEEP_EVALUATIONS`)
+Tasks: T-0447
 
 ## Data tables (TABLE()) are recalculated, and FORMULATEXT shows `{=TABLE(row,column)}`
 Rule: excel-graph recalculates a what-if data table stored as `<f t="dataTable" ref=… dt2D=…

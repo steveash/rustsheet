@@ -3,7 +3,7 @@ id: T-0447
 title: "Iterative calculation: import calcPr iterate, iterateCount and iterateDelta and sweep cycles in place"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -46,14 +46,37 @@ Directive 5: the sweep count is bounded by iterateCount (Excel caps it at 32767)
 existing per-pass work budget.
 
 ## Acceptance criteria
-- [ ] The probes/circular-iteration-on, -limits, -delta, -delta-small, -delta-no-reader and
+- [x] The probes/circular-iteration-on, -limits, -delta, -delta-small, -delta-no-reader and
       -delta-boundary lines leave eval/baseline/probes.txt (`make eval-baseline`).
-- [ ] calipers/pv_goldens/pv23_021 and pv26_004 have no `#CIRC!` cells. Their known failures in
+- [x] calipers/pv_goldens/pv23_021 and pv26_004 have no `#CIRC!` cells. Their known failures in
       eval/baseline/calipers.txt drop (`rustsheet-eval update-baseline --suite calipers`) accordingly, with no new known failure in any suite.
-- [ ] A round-trip test keeps `iterate`, `iterateCount` and `iterateDelta` on export.
-- [ ] recalc.md's two "Ours" lines state the new behavior.
-- [ ] `make check` green; reviewers approve.
+- [x] A round-trip test keeps `iterate`, `iterateCount` and `iterateDelta` on export.
+- [x] recalc.md's two "Ours" lines state the new behavior.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cycles with iteration off (T-0445).
 - Data tables inside a cycle (T-0441).
+
+## Outcome
+- Settings: `WorkbookSettings::iteration` (`Iteration { max_iterations, max_change }`). The xlsx
+  import reads `calcPr@iterate`, `iterateCount` and `iterateDelta`, out-of-range values falling back
+  to Excel's defaults; the export writes them back (round-trip test). The facade has
+  `Workbook::set_iteration`, and the eval adapter sets it from a case's `calculation`.
+- Engine (crates/rustsheet-engine/src/iteration.rs):
+  - With iteration on, a read that closes a cycle returns the cell's current value instead of
+    `#CIRC!`, whatever evaluates it. On-demand evaluations count too, such as conditional
+    formatting at load, which had turned the cycles into stored `#CIRC!`.
+  - The stack at that moment joins the recalculated set, and so does every later reader of a
+    member.
+  - After the pass the members get back their previous values (0 if never evaluated). They are then
+    swept in row-major order, Gauss-Seidel, until the largest change is strictly below the delta or
+    iterateCount is reached.
+  - Directive 5: at most 2^25 member evaluations per recalculation (recalc.md DEVIATION).
+- `Restart`/`RestartLog` moved to evaluation/restart.rs to make room; evaluation.rs is down to
+  about 880 lines.
+- Eval: the six probes/circular-iteration-on/-limits/-delta/-delta-small/-delta-no-reader/
+  -delta-boundary pass. Calipers models with iteration on match Excel: pv23_021, pv26_004, pv23_019,
+  pv23_027 and pv26_012 at 100%, pv26_014 at 98.6%. The rest of pv26_014 is IRR precision (T-2131)
+  and four data-table results in an iterating model (T-0454).
+
