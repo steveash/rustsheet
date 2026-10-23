@@ -81,3 +81,32 @@ takes 0.02–2.5 s:
   against rustsheet's 0.66 GB.
 
 Every lookup and criteria call rescans its range (T-0448, T-0449, T-0430).
+
+## Rerun after data tables (2026-10-23, T-0441)
+Same method, rustsheet at a0141913 with data tables. The calipers suite's own goldens are compared
+separately, and are left out of "our corpus" below.
+
+Calipers (153 cases both evaluated, 1,620,357 formula cells):
+
+| | bit-exact | ≤15 digits | visibly off | cases all ≤15 digits |
+|---|---|---|---|---|
+| rustsheet | 99.33% | 99.45% | 0.55% | 70.6% |
+| mog | 95.75% | 99.26% | 0.74% | 40.5% |
+
+- Rustsheet now loads all 107 financial models and all round trips. The data-table results of the
+  21 workbooks with tables match Excel bit for bit.
+- Its visibly-off cells are almost all 7,572 `#CIRC!` cells in 19 models saved with
+  `iterate="1"` (T-0447). Most of those models loaded only once data tables worked.
+- Mog's two missing models, pv26_002 and pv26_2_002, hit the adapter's 120 s per-workbook limit.
+  Both engines need about 11 minutes each.
+
+Our corpus (2,229 cases, 542,961 formula cells): rustsheet 89.74% bit-exact and 95.23% within 15
+digits, mog 63.58% and 70.43%. Case-weighted, 87.8% against 30.7%. Mog lost 141 cases:
+- 66 crashes;
+- 65 that need post-load edits, more than before because the branch gained probes with sheet ops;
+- 8 file refusals;
+- 2 outputs the reader rejected.
+
+Performance on the 107 financial models: rustsheet is faster on 90, geometric mean 1.84x. The
+data-table models are quick, e.g. pv23_046 (four 9x9 tables) takes 0.14 s against mog's 0.78 s.
+Over all 1,013 real workbooks timed, the geometric mean is 1.78x.
