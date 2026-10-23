@@ -104,8 +104,10 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
 /// The lower-tail F quantile as Excel forms it at a huge df, from its BETA.INV:
 /// (df2/df1) y/(1 - y) with y = BETA.INV(p, df1/2, df2/2) (`inverse_beta::beta_quantile_crossing`),
 /// its flipped root s = 1 - y taken as it is for p above 1/2. F.INV.RT is 1/F.INV(p, df2, df1).
-/// So y near 1 keeps only its distance from 1 on the 2^-53 grid, and `F.INV(0.5,1E10,5)` is Excel's 1.1490395521130337 (probes-numeric/t1538-f-inv-huge-df A3, from
-/// `BETA.INV(0.5,5E9,2.5)` = 0.999999999564854, A134) where the true quantile is 1.1490395821369862.
+/// So y near 1 keeps only its distance from 1 on the 2^-53 grid, and `F.INV(0.5,1E10,5)` is
+/// Excel's 1.1490395521130337 (probes-numeric/t1538-f-inv-huge-df A3, from
+/// `BETA.INV(0.5,5E9,2.5)` = 0.999999999564854, A134) where the true quantile is
+/// 1.1490395821369862.
 /// See docs/excel-semantics/statistics.md "F quantile at a huge df goes through Excel's BETA.INV
 /// (T-1538)".
 fn f_quantile_through_beta(df1: f64, df2: f64, p: f64) -> f64 {
