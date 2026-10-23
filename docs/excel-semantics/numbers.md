@@ -1076,7 +1076,7 @@ quirk. The ATAN kernel is the engine's `f64::atan`, as in `fn_atan`; ulp parity 
 Evidence: probes/atan2-quadrants (all 123 numeric cells equal this model; libm `atan2` misses 25 by one ulp, as does
 the 34-cell G column of probes/asin-atan-sign-source), probes/atan2-error-edges, probes/atan2-kept-subnormal (with `=0`
 companions, decision 0042); excel-graph, 2026-10-19, T-1930.
-Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT may share the kernel (not probed).
+Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT is the same kernel (77 of 77 cells of probes-numeric im-last-digit-sweep; engineering.md "IM* reciprocal kernels, IMABS and IMARGUMENT", T-2044).
 Status: VERIFIED
 Tasks: T-1930, T-1797
 

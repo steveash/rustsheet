@@ -3,7 +3,7 @@ use std::fmt;
 use crate::arithmetic::power;
 use crate::functions::lift::{num_error, value_error};
 use crate::functions::math_and_trigonometry::{
-    excel_quarter_turn_remainder, excel_sin_cos, EXCEL_TRIG_LIMIT,
+    excel_atan2, excel_quarter_turn_remainder, excel_sin_cos, EXCEL_TRIG_LIMIT,
 };
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
@@ -22,6 +22,9 @@ use crate::{
     model::Model,
     number_format::{complex_part_to_text, to_precision},
 };
+
+mod trig;
+use trig::{imcos, imcosh, imcot, imcsc, imcsch, imsec, imsech, imsin, imsinh, imtan};
 
 /// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
 /// `IMPOWER("i",85445658)` (angle 134217725.7) answers and `IMPOWER("i",85445659)` (134217727.3)
@@ -233,32 +236,6 @@ fn finite_complex_result(x: f64, y: f64, suffix: Suffix, cell: CellReferenceInde
     } else {
         num_error(cell)
     }
-}
-
-/// IMSIN and IMCOS are `#NUM!` once `exp(|y|)` overflows (|y| above about 709.78), whatever the
-/// real part, although `cosh y` is still finite there: `IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`
-/// (probes/eng-im-overflow-edges A25-A27, A33-A35).
-fn trig_exp_overflows(y: f64) -> bool {
-    y.abs().exp().is_infinite()
-}
-
-/// IMCOSH and IMSINH are `#NUM!` for a zero imaginary part once `exp(|x|)` overflows, although
-/// `cosh x` is still finite: `IMCOSH("710.4+0i")`. With a nonzero imaginary part they answer
-/// (`IMCOSH("710.4+1.5i")`); a tiny nonzero one is UNVERIFIED (probes/eng-im-overflow-edges A8,
-/// A16).
-fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
-    y == 0.0 && x.abs().exp().is_infinite()
-}
-
-/// The result of a reciprocal (IMSEC, IMCSC, IMSECH, IMCSCH) whose denominator `t` overflowed to
-/// infinity or NaN: Excel answers `0` where `inf / inf` is NaN. A zero or finite `t` is not this
-/// case and stays an error. Examples: `IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`,
-/// `IMSEC("1.5+711i")` (probes/eng-im-overflow-edges A55, A56, A64, A74, A82).
-fn reciprocal_result(x: f64, y: f64, t: f64, suffix: Suffix) -> CalcResult {
-    if !t.is_finite() && (x.is_nan() || y.is_nan()) {
-        return complex_result(0.0, 0.0, suffix);
-    }
-    complex_result(x, y, suffix)
 }
 
 /// How a complex argument reads a blank and empty text.
@@ -744,11 +721,20 @@ impl Model {
 
 // The one-argument complex functions, of a parsed number.
 
+/// IMABS scales by the larger part, `a·sqrt(1 + (b/a)²)` with a = max(|x|, |y|): it matches 77 of
+/// the 78 IMABS cells of probes-numeric im-last-digit-sweep bit for bit (`hypot` 59, `sqrt(x²+y²)`
+/// 55; the miss is B33, `956.615+0.00387493i`, 2 ulps; T-2044). IMPOWER's modulus is [`modulus`].
 fn imabs((x, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    CalcResult::Number(modulus(x, y))
+    let (x, y) = (x.abs(), y.abs());
+    let (large, small) = if x >= y { (x, y) } else { (y, x) };
+    if large == 0.0 {
+        return CalcResult::Number(0.0);
+    }
+    let ratio = small / large;
+    CalcResult::Number(large * (1.0 + ratio * ratio).sqrt())
 }
 
-/// `|x+yi|` as Excel computes it: it matches `hypot`, not `sqrt(x²+y²)`. They differ in the last
+/// `|x+yi|` as IMPOWER takes it: it matches `hypot`, not `sqrt(x²+y²)`. They differ in the last
 /// bit: `IMABS("0.7071067811865476+0.7071067811865476i")` (read as the 15-digit 0.707106781186547)
 /// is 0.9999999999999993 (1-6·2^-53), where `sqrt` gives 1-7·2^-53, and IMPOWER's 170891300th
 /// power of that number confirms the per-factor value (probes/eng-impower-past-cut A15,
@@ -761,74 +747,17 @@ fn imaginary((_, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     CalcResult::Number(y)
 }
 
+/// IMARGUMENT is Excel's ATAN2 kernel, `atan(y/x)` plus or minus π: all 77 numeric cells of
+/// probes-numeric im-last-digit-sweep (libm `atan2` 67; T-2044). "0" is `#DIV/0!` (C21).
 fn imargument((x, y, _): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if x == 0.0 && y == 0.0 {
-        return CalcResult::new_error(Error::DIV, cell, String::new());
+    match excel_atan2(x, y) {
+        Ok(angle) => CalcResult::Number(angle),
+        Err(error) => CalcResult::new_error(error, cell, String::new()),
     }
-    CalcResult::Number(f64::atan2(y, x))
 }
 
 fn imconjugate((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     complex_result(x, -y, suffix)
-}
-
-fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if trig_exp_overflows(y) {
-        return num_error(cell);
-    }
-    finite_complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix, cell)
-}
-
-fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if hyperbolic_exp_overflows(x, y) {
-        return num_error(cell);
-    }
-    finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
-}
-
-fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if x == 0.0 && y != 0.0 {
-        return complex_result(0.0, -1.0 / y.tanh(), suffix);
-    } else if y == 0.0 {
-        return finite_complex_result(1.0 / x.tan(), 0.0, suffix, cell);
-    }
-
-    // The reciprocal of [`tan_parts`], `conj(t) / |t|²`: Excel's digits (COMPLEXs.xlsx T2, T7,
-    // T15; T-0907).
-    let (tan_x, tan_y) = tan_parts(x, y);
-    let t = tan_x * tan_x + tan_y * tan_y;
-    let x = tan_x / t;
-    let y = -tan_y / t;
-
-    if x.is_infinite() || y.is_infinite() || x.is_nan() || y.is_nan() {
-        return num_error(cell);
-    }
-    complex_result(x, y, suffix)
-}
-
-fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    let x_cos = x.cos();
-    let x_sin = x.sin();
-
-    let y_cosh = y.cosh();
-    let y_sinh = y.sinh();
-
-    let t = x_sin * x_sin * y_cosh * y_cosh + x_cos * x_cos * y_sinh * y_sinh;
-    if t == 0.0 {
-        return num_error(cell);
-    }
-    reciprocal_result(x_sin * y_cosh / t, -x_cos * y_sinh / t, t, suffix)
-}
-
-fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let x_cosh = x.cosh();
-    let x_sinh = x.sinh();
-
-    let y_cos = y.cos();
-    let y_sin = y.sin();
-
-    let t = x_sinh * x_sinh * y_cos * y_cos + x_cosh * x_cosh * y_sin * y_sin;
-    reciprocal_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, t, suffix)
 }
 
 fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -892,42 +821,6 @@ fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     CalcResult::Number(x)
 }
 
-fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let x_cos = x.cos();
-    let x_sin = x.sin();
-
-    let y_cosh = y.cosh();
-    let y_sinh = y.sinh();
-
-    let t = x_cos * x_cos * y_cosh * y_cosh + x_sin * x_sin * y_sinh * y_sinh;
-    reciprocal_result(x_cos * y_cosh / t, x_sin * y_sinh / t, t, suffix)
-}
-
-fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let x_cosh = x.cosh();
-    let x_sinh = x.sinh();
-
-    let y_cos = y.cos();
-    let y_sin = y.sin();
-
-    let t = x_cosh * x_cosh * y_cos * y_cos + x_sinh * x_sinh * y_sin * y_sin;
-    reciprocal_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, t, suffix)
-}
-
-fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if trig_exp_overflows(y) {
-        return num_error(cell);
-    }
-    finite_complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix, cell)
-}
-
-fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if hyperbolic_exp_overflows(x, y) {
-        return num_error(cell);
-    }
-    finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
-}
-
 /// Excel squares each part first: a part past `sqrt(DBL_MAX)` (1.34078E154) is `#NUM!`
 /// (`IMSQRT("1.35E154")`, `IMSQRT("1E307")`), but when only the sum of the squares overflows
 /// (`IMSQRT("1E154+1E154i")`) the result is `0`, not an error (probes/eng-imsqrt-large,
@@ -943,31 +836,6 @@ fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
     let r = f64::sqrt(xx + yy).sqrt();
     let a = f64::atan2(y, x);
     complex_result(r * f64::cos(a / 2.0), r * f64::sin(a / 2.0), suffix)
-}
-
-/// tan(x+iy) in its double-angle form, `(sin 2x + i sinh 2y) / (cos 2x + cosh 2y)`: Excel's
-/// digits, where the tan/tanh form loses the last 1-10 of them when the real part is small
-/// (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N2, N7, N15: `IMTAN("1.23+9.5121i")` has real part
-/// 6.89106871662165E-09; T-0907). Past `cosh 2y`'s range the value is `±0 ± i`, as tanh gives;
-/// where the denominator rounds to 0 (y = 0 and x the double nearest π/2) it is `tan x`, finite.
-/// Both fallbacks are unprobed, not Excel evidence (T-1966).
-fn tan_parts(x: f64, y: f64) -> (f64, f64) {
-    let denominator = f64::cos(2.0 * x) + f64::cosh(2.0 * y);
-    if denominator == 0.0 {
-        (x.tan(), 0.0)
-    } else if denominator.is_finite() {
-        (
-            f64::sin(2.0 * x) / denominator,
-            f64::sinh(2.0 * y) / denominator,
-        )
-    } else {
-        (0.0 * f64::sin(2.0 * x), y.signum())
-    }
-}
-
-fn imtan((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let (x, y) = tan_parts(x, y);
-    complex_result(x, y, suffix)
 }
 
 #[cfg(test)]

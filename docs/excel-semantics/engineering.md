@@ -363,14 +363,59 @@ Rule: although sech(3+4i) and sec(4+3i) are mathematically the same real part, E
 rotation, so one kernel cannot serve both. Control pair (these agree, not a second split): `IMSEC("3+4i")` and `IMSECH("4+3i")` both
 give real part -0.0362534969158689 but IMAGINARY +0.00516434460775318 vs -0.00516434460775318
 (sign per the rotation).
-Ours: IMSEC G23/H23 give -0.065294027857947 and IMSECH K58 -0.0652940278579471, i.e. swapped.
+Ours before T-2044: IMSEC G23/H23 gave -0.065294027857947 and IMSECH K58 -0.0652940278579471, i.e. swapped; the kernels in "IM* reciprocal kernels" below give Excel's digits.
 Status: VERIFIED (excel-graph, 2026-10-21, `im-last-digit-sweep`); the kernels are T-2044's.
 
 Also found by the sweep (same case; Ours is what RustSheet gives):
-- Tiny arguments lose about 8 digits in IMCSC and IMCOT: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (E70, F70; exact 50000.0000016667), `IMCSC("0.00001i")` imaginary part -99999.9917276303 (F65), IMCOT real 49999.9958596485 (Q70), imaginary -49999.9958663151 (R70) and -99999.9917326303 (R65). Ours gives the exact values (E70 50000.0000016667, F65 -99999.9999983333). Status: VERIFIED (excel-graph); T-2044 must reproduce this loss.
+- Tiny arguments lose about 8 digits in IMCSC and IMCOT: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (E70, F70; exact 50000.0000016667), `IMCSC("0.00001i")` imaginary part -99999.9917276303 (F65), IMCOT real 49999.9958596485 (Q70), imaginary -49999.9958663151 (R70) and -99999.9917326303 (R65). Reproduced by the T-2044 kernels below (before them ours gave the exact values, E70 50000.0000016667, F65 -99999.9999983333). Status: VERIFIED (excel-graph); implemented (T-2044).
 - Excel keeps tiny results where the denominator is huge: `IMCSC("-724.227-562.884i")` is -6.94796703439417E-245-6.26263832046024E-246i (E55, F55; the IMSEC of it is -6.26263832046024E-246+6.94796703439417E-245i, G55:I55) and `IMSECH("-524.561+5.3113i")` is 1.73046857535442E-228-2.53533899849465E-228i (K42, L42). Ours: 0. Status: VERIFIED; T-2335.
 - `IMCSC("0")`, `IMLOG2("0")` and `IMCOT("0")` are `#NUM!` (D21, M21, P21), `IMARGUMENT("0")` is #DIV/0!. Implemented (T-2334); before it we answered the text `NaNNaNi`, `-inf`, `inf`. Status: VERIFIED.
+- Text quirks (not kernels): `IMCOT("-57.9375+18.7089i")` prints "-4.00011374673746E-17-1i" (P43): the
+  imaginary part -0.9999999999999999 keeps its "1", while an exact -1 is "-i" (P44); ours "-i" for both.
+  `IMCSC("1E-20")` and `IMCOT("1E-20")` print "100000000000000000000" (D18, P18); ours "1E+20". Owned by T-2554 (after
+  the IM* text-formatting tasks T-2001, T-2056). Status: VERIFIED (excel-graph).
 Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2 and IMCOT #NUM! (D21:F21, M21:R21).
+
+## IM* reciprocal kernels, IMABS and IMARGUMENT (T-2044)
+Fitted on probes-numeric `im-last-digit-sweep` (excel-graph, T-2043), scoring each candidate on whether it
+prints Excel's 15 digits (IMABS and IMARGUMENT: the double, bit for bit). SIN and COS of the real (IMSEC, IMCSC,
+IMCOT) or imaginary (IMSECH) part are Excel's own, reduced by the x87 64-bit π (numbers.md "Trig of a huge
+angle"); cosh and sinh are libm's. Rule:
+- IMCSC: `t = sin²x + (cosh 2y − 1)/2`, result `(sin x·(cosh y/t), −cos x·(sinh y/t))`: 69 of the 69 finite cells
+  (the old `sin²x·cosh²y + cos²x·sinh²y` 58). Writing sinh²y as `(cosh 2y − 1)/2` is what loses the tiny-argument
+  digits above; `sin²x + (cosh²y − 1)` reproduces those two rows but misses `0.00829243+6.03779e-05i` (row 31).
+- IMSEC: `t = cos²x + (cosh 2y − 1)/2`, result `(cos x·cosh y/t, sin x·sinh y/t)`: 68 of 70 finite cells; the misses
+  (rows 29 and 33, `23.7944+0.00977722i`, `956.615+0.00387493i`) sit near a pole, row 33 off in the 10th digit.
+- IMSECH: `t = cos²y + sinh²x` (sinh squared itself, unlike IMSEC), result `(cosh x·cos y/t, −sinh x·sin y/t)`: 61 of
+  62 finite cells (miss J34/L34, `1.34384-77.6742i`, last digit of the imaginary part, which the old
+  `cosh²x cos²y + sinh²x sin²y` kernel got right; that kernel missed rows 28, 49, 79 and the IMSECH("3+4i") digit). This is why IMSEC("4+3i") and IMSECH("3+4i") differ.
+- IMCOT: `(sin 2x, −sinh 2y) / (cosh 2y − (2cos²x − 1))`: all 63 cells with a nonzero imaginary part, including the
+  tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit). Past `cosh 2y`'s range the
+  value is `−i` for y > 0 and `i` for y < 0 (P27, P44, P49, P68, P69, P71; P52, P55). A real number keeps `1/tan x`.
+- IMABS: `a·sqrt(1 + (b/a)²)` with a the larger of |x|, |y|: 77 of 78 cells bit for bit (`hypot` 59,
+  `sqrt(x²+y²)` 55, scaling by |x| or by |y| always 66); the miss is B33, `956.615+0.00387493i` (Excel
+  956.6150000078482, ours 2 ulps lower). IMPOWER's modulus is still `hypot` (T-1950 evidence). A part near DBL_MAX overflows the scaled
+  form to infinity as `hypot` does (`IMABS("1E308+1E308i")`); that edge is UNVERIFIED.
+- A real argument skips the kernels: IMCSC is `1/sin x`, IMSEC `1/cos x`, IMSECH `1/cosh x` (gen-m9/2f0d384b8ed0d392
+  A109 and a7fda34502ed3030 A146, `IMCSC(0.2)` 5.03348954767234, where the IMCSC kernel gives ...235; gen-m9/01810fc89c5ec2c0
+  A318, `IMSECH("1.5")` 0.42509603494228; every real row of the sweep agrees).
+- IMARGUMENT: ATAN2's kernel, `atan(y/x)` plus or minus π (numbers.md "ATAN2 is ATAN(y/x) plus or minus π"): 77 of 77
+  (libm `atan2` 67). The overflow and subnormal edges of that kernel are UNVERIFIED for IMARGUMENT.
+- UNVERIFIED: below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1, so IMCSC and IMCOT of a tiny imaginary part
+  (`IMCSC("1E-9i")`, `IMCOT("1E-9i")`, `IMCOT("1E-9+1E-9i")`) are `#NUM!` in ours (before T-2044 about -1E+9i), and
+  between 1E-8 and 1E-6 only a few digits survive; the sweep stops at 1E-5. Probe: T-2531.
+- UNVERIFIED: for |x| ≥ 2^27 (SIN's own `#NUM!` cut) the reciprocal kernels take libm's sine and cosine.
+- Time-boxed (decision 0056), IMLOG2: no candidate fits. Dividing `ln |z|` by the double one ulp below ln 2
+  (0.6931471805599452) prints Excel's digits in 75 of 77 sweep cells and fixes `IMLOG2("1E-20")` (N18, COMPLEXs
+  AH19) and probes/eng-im-overflow-edges A104, A107, A109, but turns A108 `IMLOG2("712+3i")` (9.4757462372528) to
+  ...281, and a fit of a constant factor on `log2 |z|` across those cells is empty (A104 needs at least 1.18 ulps
+  above the exact value, A108 at most 0.36). `log2`, `ln/LN_2`, `ln·log2 e`, x87 FYL2X forms with 64-bit ln 2 or
+  log10 2, and IMLOG10/log10 2 all fit 68-75. Unchanged (`log2 |z|`, `atan2·log2 e`); see the follow-up task.
+Evidence: probes-numeric `im-last-digit-sweep` (excel-graph, 2026-10-21); COMPLEXs.xlsx G7, G8, G14, G23, H14, H23,
+T14, V4, V15, W4, W7, W21, Z25, AB7; probes/eng-argument-modes A45; probes/eng-im-overflow-edges A47.
+Status: VERIFIED (excel-graph)
+Implemented in: `imcsc`, `imsec`, `imsech`, `imcot` in functions/engineering/complex/trig.rs, `imabs`, `imargument` in functions/engineering/complex/mod.rs (T-2044)
+Tasks: T-2044
 
 ## IMTAN and IMCOT use the double-angle form (T-0907)
 Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
@@ -379,9 +424,9 @@ where the real part is small (`IMTAN("1.23+9.5121i")` real part 6.89106871662165
 form 6.89106877738345E-09; `IMCOT("7-12.6i")` real part 2.25273756035673E-11). A fit over every
 row of the workbook: the double-angle IMTAN matches all of them, the reciprocal IMCOT all but one
 (T14, last digit; Smith's division misses T7 too), while `sin z / cos z` and `cos z / sin z` miss
-most. IMCOT of a real number keeps `1/tan x` (`IMCOT("1E-20")` = 1E+20, where the double-angle
+most. IMCOT is now the T-2044 form above (no longer the reciprocal of IMTAN). IMCOT of a real number keeps `1/tan x` (`IMCOT("1E-20")` = 1E+20, where the double-angle
 denominator is 0).
-Remaining after T-0907 (19 cells of COMPLEXs.xlsx, all 1-2 ulps or the 15th digit): IMABS (G7,
+Remaining after T-0907 (19 cells of COMPLEXs.xlsx, all 1-2 ulps or the 15th digit; T-2044 fixed all but IMLOG2 AH19 and the desktop-only H2, H3, H10, K25): IMABS (G7,
 G8, G14, G23; neither `sqrt(x²+y²)` nor `hypot`), IMARGUMENT (H2, H3, H10, H14, H23; neither
 `atan2` nor `atan(y/x)` ± π for all of them), IMCSC (V4, W4, W7, V15, W21), IMSEC (Z25), IMSECH
 (AB7), IMCOS (K25), IMLOG2 (AH19) and IMCOT T14. The workbook's values come from Macintosh Excel,
