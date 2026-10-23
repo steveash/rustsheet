@@ -1153,3 +1153,43 @@ fn legacy_switch_anywhere_adds_no_intersection() {
         ("ABS(A1:A3)", "ABS(@A1:A3)", "ABS(A1:A3)"),
     ]);
 }
+
+// A LET returning a range takes the `@` itself, whatever the case of its variables, through
+// nesting and shadowing; a scalar result takes none; a LAMBDA call removes every automatic `@`
+// (probes/legacy-at-let-lambda-dynamic-funcs P, S, BI, T-2419).
+#[test]
+fn let_range_result_takes_the_at_and_lambda_call_removes_it() {
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for (formula, internal) in [
+        ("ABS(LET(x,A1:A3,x))", "ABS(@LET(x,A1:A3,x))"),
+        ("ABS(LET(x,A1:A3,X))", "ABS(@LET(x,A1:A3,X))"),
+        ("ABS(LET(x,1,A1:A3))", "ABS(@LET(x,1,A1:A3))"),
+        ("ABS(LET(x,A1:A3,y,x,y))", "ABS(@LET(x,A1:A3,y,x,y))"),
+        (
+            "ABS(LET(x,A1:A3,LET(y,x,y)))",
+            "ABS(@LET(x,A1:A3,LET(y,x,y)))",
+        ),
+        ("ABS(LET(x,A1:A3,(x)))", "ABS(@LET(x,A1:A3,(x)))"),
+        // A shadowing scalar and a malformed LET keep the root `@` of any call over an unknown shape.
+        ("ABS(LET(x,A1:A3,x,1,x))", "@ABS(LET(x,A1:A3,x,1,x))"),
+        ("ABS(A1:A3)+LET(x,1,x)", "ABS(@A1:A3)+LET(x,1,x)"),
+        ("ABS(LET(x,A1:A3))", "@ABS(LET(x,A1:A3))"),
+        ("ABS(A1:A3)+LAMBDA(x,x)(1)", "ABS(A1:A3)+LAMBDA(x,x)(1)"),
+    ] {
+        let mut t = parser.parse(formula, &cell_reference);
+        add_implicit_intersection(&mut t, true);
+        assert_eq!(
+            to_english_localized_string(&t, &cell_reference),
+            internal,
+            "internal form of `{formula}`"
+        );
+        // The export drops the automatic `@`s, which the import adds again.
+        let exported = to_excel_string(&t, &cell_reference);
+        assert!(!exported.contains('@'), "export of `{formula}`: {exported}");
+    }
+}
