@@ -124,9 +124,27 @@ truncated from 1.8, 4.2, 8.2, 18.34) = 0.31372549019607815, while 16/51 = 0.3137
 is what C(8,1)*C(10,3)/C(18,4) gives in doubles); `HYPGEOM.DIST(1,4,8,22,TRUE)` = 0.5349282296650714,
 while 559/1045 = 0.5349282296650718. Neither a log-gamma nor a log-factorial `exp(ln C + ln C - ln C)`
 form reproduces both cells (checked during T-0903), so the formulation is open.
-Evidence: `ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx` Sheet1!F2, F3.
-Status: VERIFIED (observation); formulation UNVERIFIED (T-0977, sweeps T-1048 and T-1049)
-Tasks: T-0977
+- T-0977 checked the 104 integer pmf cells of the T-1048/T-1049 sweeps and gen-m9 (populations to 1E5) against the exact
+  rational: Excel is within about 4 ulp of it but rarely on it (`HYPGEOMDIST(0,3,1,6)` = 0.5000000000000001 where the
+  exact value is 1/2; `HYPGEOM.DIST(0,3,5,12,FALSE)` = 0.15909090909090923, 5 ulp above 7/44). None of these
+  reproduces more than 25 of the 84 cells with a population up to 3,000 bit for bit: exp of the nine log-factorials in any
+  of the 9! summation orders (correctly rounded, lgamma or summed logs), ratios of COMBINs, a product of ratios
+  walked from x = 0, or Loader's saddle-point form (R's `dhyper`).
+- The cdf is the sum of Excel's own pmf terms from the lowest: `HYPGEOM.DIST(1,4,8,20,TRUE)` = 0.46542827657378727 is
+  0.10216718266253864 + 0.3632610939112486 in doubles, Excel's two pmfs (t1049-hypgeomdist A1, A31, A2), where the
+  exact cdf rounds to 0.46542827657378744.
+- Excel takes a population of `ROUND(2^53+1,8)` (just below 2^53) as `#NUM!`: `HYPGEOMDIST(1,25,3,ROUND(2^53+1,8))`
+  (gen-m9/35e8168aae2b00f8 A128), while a population of 2E9 is a number (t1049-hypgeomdist A51). The limit between
+  is unprobed.
+Evidence: `ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx` Sheet1!F2, F3; probes-numeric/t1048-hypgeomdist,
+t1049-hypgeomdist (excel-graph).
+Ours: the exact value rounded once, from a double-double walk (`discrete.rs` `hypergeometric_walk`, up to 2^12 steps and
+a population of 2^52; statrs' sum beyond): within 15 digits of Excel everywhere except where Excel's own pmf is
+visibly off the exact value (`HYPGEOMDIST(2,2,3,11)` = 0.05454545454545458 against 3/55, gen-m9/f2bd5f380ec002bf A52;
+`HYPGEOMDIST(2,4,3,19)`, gen-m9/ee2497a5e683c5d9 A310; t1049-hypgeomdist A10, A14, A16; gen-m9/60b0b6e69ad35a45 A140),
+T-2481.
+Status: VERIFIED (observation); formulation UNVERIFIED (T-0977, T-2481)
+Tasks: T-0977, T-2481
 
 ## BETA.DIST is not exact where the exact value is a double
 Rule: `BETA.DIST(2,8,10,TRUE,1,3)` (I_0.5(8,10) = 44923/65536, exactly representable as
@@ -903,8 +921,9 @@ Ours: matches the lift cells (T-1873); the scalar H330 and H337 keep main's last
 exact for small integer arguments" above, T-0977). Both are `Lift` entries over one kernel of the four counts
 (HYPGEOMDIST is its pmf, no longer a call with a fifth argument node), which reads its arguments in the scalar order,
 a boolean count `#VALUE!` as on main (Excel reads a TRUE as 1: probes-numeric/t1049-hypgeomdist A53, a known failure
-unchanged here), and checks each element alone. The pmf is statrs' closed form, so HYPGEOMDIST is `Constant`. The cdf
-is statrs 0.18's `Hypergeometric::cdf`, which sums the pmf term by term from 0 to x, one `exp` of three `ln_binomial`s
+unchanged here), and checks each element alone. Since T-0977 the pmf and cdf are a double-double walk of at most 2^12
+steps (78 us in release) up to a population of 2^52, and past that walk the fallbacks below. The fallback pmf is
+statrs' closed form. The fallback cdf is statrs 0.18's `Hypergeometric::cdf`, which sums the pmf term by term from 0 to x, one `exp` of three `ln_binomial`s
 a term: x + 1 terms whatever the distribution, so `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` took 4.8 s
 in release and an x near 2^64 would never finish. It is now ported to `statistical/hypegeom.rs` with a per-call cap of
 its own: the port skips the terms that are exactly 0, those below max(0, n + K - N) (`exp(-inf)`) and, at a population
@@ -935,7 +954,10 @@ DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted HYPGEOM.DIST of more 
 it runs where Excel computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^22 an element;
 `ROWS(HYPGEOM.DIST(2,3,5,10,SEQUENCE(33)>0))`, unit test `hypgeom_dist_is_charged_its_weight`). At the bound of the
 cap, 32 elements take about 2.1 s, about the 2 s budget of the Bessel entries (engineering.md "BESSEL order cap").
-HYPGEOMDIST is `Constant` and lifts up to the output cap.
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted HYPGEOMDIST of more than 16,384 elements is `#ERROR!` before
+it runs where Excel computes it (2^13 units an element, the bound of its pmf walk, twice BINOM.DIST's; T-0977:
+`ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16385)+19))`, unit test `hypgeom_dist_is_charged_its_weight`): about 1.3 s at the
+bound.
 Status: VERIFIED (excel-graph) for the lifting (the Rule's cells); the term cap is a DEVIATION whose Excel values are unprobed (T-1896)
 Tasks: T-1873, T-1896, T-0977
 
@@ -2600,7 +2622,7 @@ Rule (gen-m9, excel-graph, 2026-10-23):
   0620505280d2ea6e A280, 5395b8a427764a3f A385), and a number of about 1E+15 or more is `#NUM!` even with number_chosen 0
   (`PERMUTATIONA(1000000000000000,0)`, 775d053de498b8c7 A152; `PERMUTATIONA(FACT(18),2)`, b9a32ce9a1fd0d71 A378).
 Ours: 0 for the TDIST cells, `#NUM!` for the negative mean, the tiny-p NEGBINOMDIST and the PERMUTATIONA zeros, a value for
-the others; T-2474.
+the others; T-2481.
 Status: VERIFIED (excel-graph), the cuts UNVERIFIED
 
 ## Student t quantile at p = 0 with df below 2 is #DIV/0! (T-2256)

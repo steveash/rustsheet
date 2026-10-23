@@ -199,6 +199,124 @@ fn binomial_walk(n: u64, p: Dd, q: Dd, lo: u64, hi: u64) -> Option<Walk> {
     })
 }
 
+/// The most steps one hypergeometric walk takes (its start term's factors and its ratio steps)
+/// before its caller falls back to statrs: 2^12 steps of at most two double-double products and two
+/// quotients, 78 us in release for a walk of 4,095 steps (T-0977; lift/kinds/statistical.rs
+/// `HYPGEOMDIST_WEIGHT`), where [`MAX_STEPS`]' 2^10 would not reach the population of 1E5 that
+/// probes-numeric/t1049-hypgeomdist checks (1,100 steps).
+const HYPERGEOMETRIC_MAX_STEPS: u64 = 1 << 12;
+
+/// The hypergeometric terms `C(K, i) C(N - K, n - i) / C(N, n)` (population N, K successes, n
+/// draws) summed over `lo..=hi`, with `max(0, n + K - N) <= lo <= hi <= min(n, K)`. The walk starts
+/// at the support's lowest term m, a product of `min(n, K)` ratios when m = 0 and of `N - max(n, K)`
+/// ratios otherwise (the pmf is symmetric in n and K), then steps by the exact ratio of consecutive
+/// terms `(K - i)(n - i) / ((i + 1)(N - K - n + i + 1))`. `None` past [`HYPERGEOMETRIC_MAX_STEPS`]
+/// or above a population of 2^52.
+fn hypergeometric_walk(
+    population: u64,
+    successes: u64,
+    draws: u64,
+    lo: u64,
+    hi: u64,
+) -> Option<Walk> {
+    // Above 2^52 the caller keeps statrs: Excel's `HYPGEOMDIST(1,25,3,ROUND(2^53+1,8))` is #NUM!
+    // (gen-m9/35e8168aae2b00f8 A128), as statrs' is, where a walk would give 8.3E-15.
+    if population > 1 << 52 {
+        return None;
+    }
+    let (small, big) = (draws.min(successes), draws.max(successes));
+    let first = (draws + successes).saturating_sub(population);
+    if lo < first || hi < lo || hi > small {
+        return None;
+    }
+    let factors = if first == 0 { small } else { population - big };
+    if factors.saturating_add(hi - first) > HYPERGEOMETRIC_MAX_STEPS {
+        return None;
+    }
+    let n = population as f64;
+    // The start term: prod (N - big - i) / (N - i) for i < small when m = 0, else
+    // prod (small - i) / (N - i) for i < N - big, every factor below 1.
+    let mut term: Dd = (1.0, 0.0);
+    let mut exponent: i64 = 0;
+    for i in 0..factors {
+        let numerator = if first == 0 {
+            (population - big - i) as f64
+        } else {
+            (small - i) as f64
+        };
+        term = dd_div_small(dd_mul(term, (numerator, 0.0)), n - i as f64);
+        if term.0 < RESCALE_FACTOR {
+            term = (term.0 * RESCALE_LIMIT, term.1 * RESCALE_LIMIT);
+            exponent = exponent.saturating_sub(i64::from(RESCALE_BITS));
+        }
+    }
+    let mode = (u128::from(draws) + 1) * (u128::from(successes) + 1) / (u128::from(population) + 2);
+    let mut sum: Dd = if lo == first { term } else { (0.0, 0.0) };
+    for i in first..hi {
+        let next = i + 1;
+        term = dd_mul(
+            dd_mul(term, ((successes - i) as f64, 0.0)),
+            ((draws - i) as f64, 0.0),
+        );
+        term = dd_div_small(
+            dd_div_small(term, next as f64),
+            (population + next - successes - draws) as f64,
+        );
+        if next >= lo {
+            sum = dd_add(sum, term);
+        }
+        if sum.0 > RESCALE_LIMIT || term.0 > RESCALE_LIMIT {
+            term = (term.0 * RESCALE_FACTOR, term.1 * RESCALE_FACTOR);
+            sum = (sum.0 * RESCALE_FACTOR, sum.1 * RESCALE_FACTOR);
+            exponent = exponent.saturating_add(i64::from(RESCALE_BITS));
+        } else if sum.0 < RESCALE_FACTOR && term.0 < RESCALE_FACTOR {
+            // Past the mode a pmf's terms shrink: lift them (and a sum as small) away from the
+            // subnormals.
+            term = (term.0 * RESCALE_LIMIT, term.1 * RESCALE_LIMIT);
+            sum = (sum.0 * RESCALE_LIMIT, sum.1 * RESCALE_LIMIT);
+            exponent = exponent.saturating_sub(i64::from(RESCALE_BITS));
+        }
+        // Past the mode the terms only shrink: once one is negligible against the sum, so is the
+        // rest of the range.
+        if next >= lo && lo < hi && u128::from(next) > mode && term.0 < sum.0 * NEGLIGIBLE {
+            break;
+        }
+    }
+    Some(Walk {
+        sum: Scaled {
+            value: sum,
+            exponent,
+        },
+        last: Scaled {
+            value: term,
+            exponent,
+        },
+    })
+}
+
+/// `P(X = k)` for a hypergeometric X (population N, K successes, n draws), k in its support:
+/// the exact value rounded once (T-0977); `None` past the walk's budget.
+pub(super) fn hypergeometric_pmf(
+    population: u64,
+    successes: u64,
+    draws: u64,
+    k: u64,
+) -> Option<f64> {
+    hypergeometric_walk(population, successes, draws, k, k).map(|walk| walk.last.to_f64())
+}
+
+/// `P(X <= k)` for a hypergeometric X, k in its support: the sum of its terms from the lowest, the
+/// exact value rounded once (T-0977); `None` past the walk's budget.
+pub(super) fn hypergeometric_cdf_sum(
+    population: u64,
+    successes: u64,
+    draws: u64,
+    k: u64,
+) -> Option<f64> {
+    let first = draws.saturating_add(successes).saturating_sub(population);
+    hypergeometric_walk(population, successes, draws, first, k).map(|walk| walk.sum.to_f64())
+}
+
 /// A success probability and its complement as exact double-doubles, `0 < p < 1`.
 pub(super) type Odds = (Dd, Dd);
 
@@ -335,6 +453,53 @@ mod tests {
         assert!(binomial_walk(4096, (0.5, 0.0), (0.5, 0.0), 2048, 2048).is_none());
         // Past the mode a cdf stops once its terms are negligible, whatever k.
         assert_eq!(binomial_cdf(1 << 40, odds(1e-12), 1 << 39), Some(1.0));
+    }
+
+    /// C(a, b) exactly, for the small populations of the hypergeometric tests.
+    fn choose(a: u64, b: u64) -> u64 {
+        (0..b).fold(1, |acc, i| acc * (a - i) / (i + 1))
+    }
+
+    #[test]
+    fn hypergeometric_walks_are_the_exact_value_rounded() {
+        // Up to a population of 30 every numerator and C(N, n) are below 2^53, so one division
+        // of the two doubles is the exact value rounded once.
+        for population in 1..=30u64 {
+            for successes in 1..=population {
+                for draws in 1..=population {
+                    let first = (draws + successes).saturating_sub(population);
+                    let total = choose(population, draws) as f64;
+                    let mut numerator = 0;
+                    for k in first..=draws.min(successes) {
+                        let term = choose(successes, k) * choose(population - successes, draws - k);
+                        numerator += term;
+                        let case = format!("{k} of {draws}, {successes} of {population}");
+                        let pmf = hypergeometric_pmf(population, successes, draws, k);
+                        assert_eq!(pmf, Some(term as f64 / total), "pmf {case}");
+                        let cdf = hypergeometric_cdf_sum(population, successes, draws, k);
+                        assert_eq!(cdf, Some(numerator as f64 / total), "cdf {case}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn hypergeometric_walks_past_the_budget_or_range_are_none() {
+        // Excel's HYPGEOM.DIST(1,4,8,2E9,FALSE) is 1.5999999831999996E-08, 3 ulp from the exact
+        // value (probes-numeric/t1049-hypgeomdist A51): four start factors and one step.
+        let pmf = hypergeometric_pmf(2_000_000_000, 8, 4, 1).unwrap_or(f64::NAN);
+        assert!(
+            pmf.to_bits().abs_diff(1.5999999831999996e-08f64.to_bits()) <= 4,
+            "{pmf}"
+        );
+        assert!(hypergeometric_pmf(1 << 30, 1 << 20, 1 << 20, 1 << 10).is_none());
+        assert!(hypergeometric_pmf((1 << 52) + 1, 3, 9, 1).is_none());
+        // Outside the support the caller decides.
+        assert!(hypergeometric_pmf(20, 8, 4, 5).is_none());
+        assert!(hypergeometric_cdf_sum(10, 9, 9, 7).is_none());
+        // A tail far below the smallest double stays finite: 0 rounded.
+        assert_eq!(hypergeometric_pmf(4000, 2000, 2000, 0), Some(0.0));
     }
 
     #[test]
