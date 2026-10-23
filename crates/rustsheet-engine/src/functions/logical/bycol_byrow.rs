@@ -283,11 +283,18 @@ impl Model {
                 rows: usize::try_from(range.right.row - range.left.row + 1).unwrap_or(0),
                 columns: usize::try_from(range.right.column - range.left.column + 1).unwrap_or(0),
             },
+            // A blank element of an array value reaches the LAMBDA as the empty value IFERROR gives
+            // a blank cell: ISBLANK TRUE, yet COUNT and AVERAGE count it as 0
+            // (`MAP(HSTACK(Z1:Z2,{1;2}),_xleta.COUNT)` is 1,1,1,1, probes/t2413-blank-in-stacked-arrays
+            // A7:A11, T-2413). A range's blank cell stays a blank cell (A43:A47).
             Source::Values(data) => LambdaGrid::Values(
                 data.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|node| array_node_to_calc_result(node, cell))
+                            .map(|node| match node {
+                                ArrayNode::Empty => CalcResult::EmptyArg,
+                                node => array_node_to_calc_result(node, cell),
+                            })
                             .collect()
                     })
                     .collect(),
