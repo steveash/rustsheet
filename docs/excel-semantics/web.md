@@ -123,8 +123,8 @@ insert inside it, a delete of its first line, an inner line or its last line) is
 SPEC-0015 states that Excel refuses an edit that would change part of a pivot, and refusing is the engine's way of matching
 that (as for an edit that would break an array formula), never a silently cut pivot. A sheet rename keeps the sheet's pivots
 (they are keyed by sheet id) and rewrites the cache sources naming that sheet; a sheet deletion removes its pivots and undoing
-it brings them back. A row or column move shifts a pivot that lies wholly inside the moved lines, or wholly inside the zone they jump over, with its cells; a move that leaves it outside both leaves it; a move that would split it (some lines in the moved group or zone, some not) is refused with an error and changes nothing, as a move that splits a merged cell is (T-2401).
-Evidence: none from Excel yet. The formula oracle cannot make structural edits; T-2402 records which inserts and deletes
+it brings them back. A row or column move shifts a pivot that lies wholly inside the moved lines, or wholly inside the zone they jump over, with its cells; a pivot wholly outside the moved group and the zone it jumps over stays where it is; a move that would split it (some lines in the moved group or zone, some not) is refused with an error and changes nothing, as a move that splits a merged cell is (T-2401).
+Evidence: none from Excel yet. The formula oracle cannot make structural edits; T-2402 records which inserts, deletes and moves
 Excel refuses (Graph range insert/delete or a desktop observation), including whether deleting every line of a pivot deletes it.
 Status: UNVERIFIED
 Implemented in: crates/rustsheet-engine/src/pivot.rs (`Model::displace_pivots`, `take_pivots_on`, `restore_pivots`,
