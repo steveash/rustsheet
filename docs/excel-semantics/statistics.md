@@ -2093,27 +2093,12 @@ Tasks: T-1530, T-1538
 
 ## F quantile at a huge df goes through Excel's BETA.INV (T-1538)
 Rule: at a huge df Excel's F.INV and F.INV.RT are Excel's BETA.INV mapped to the F scale, and that BETA.INV
-<<<<<<< HEAD
-stops short of its own CDF's crossing by up to about 1E-16 in x (absolute), so for an x near 1E-10 it is off
-by up to about 1E-6 relative. The quantiles are therefore not the true ones: `F.INV(0.5,5,1E10)` =
-=======
 misses its own CDF's crossing by up to about 1E-16 in x (absolute), in either direction, so for an x near
 1E-10 it is off by up to about 1E-6 relative. The quantiles are therefore not the true ones: `F.INV(0.5,5,1E10)` =
->>>>>>> origin/main
 0.8702920369171896 while the true quantile is 0.87029203827791371 (ours 0.8702920382779133).
 - Reciprocal identity: F.INV(p,d1,d2) and 1/F.INV.RT(p,d2,d1) (computed in double) agree within 2 ulps at every
   df probed (5/1E10, 1E10/5, 7/3, 3/7, 2/1E8, 1E8/2, 4/4, 6/1E10, 1E10/6, 1E6/5, 5/1E6; p = 0.5, 0.025, 0.975,
   1E-6, 0.999999, 0.3; bit-equal at 38 of 66 pairs). So `F.INV(0.5,1E10,5)` = 1/`F.INV.RT(0.5,5,1E10)` exactly.
-<<<<<<< HEAD
-- F.INV(p,5,1E10) is d2 y / (d1 (1 - y)) with y = Excel's `BETA.INV(p,2.5,5E9)`, to within about 10 ulps (the mapping's rounding is not pinned).
-- Excel's BETA.DIST is accurate there, so the miss is in BETA.INV: `BETA.DIST(BETA.INV(0.025,2.5,5E9),2.5,5E9,TRUE)`
-  is 0.025000051345569204, and `F.DIST(F.INV(0.025,5,1E10),5,1E10,TRUE)` is 0.02500005134556904.
-  `F.DIST(2,5,1E10,TRUE)` = 0.9247647537543169 is the true value (t1530-f-df-cut A8).
-- BETA.INV(p,2.5,5E9) and BETA.INV(p,3,5E9) miss the true quantile by about -2.9E-17 to +7.7E-17 in x. For x above
-  about 1E-9 (p = 0.975, 0.999999) x is a multiple of 2^-50 to 2^-53 with 21 to 25 significant bits; for shape 2.5,
-  plain bisection of [0, 1] on an accurate CDF reproduces it (52nd or 53rd halving, lower or upper end). For smaller x
-  the result is off that grid (denominators 2^81 to 2^92), and neither bisection, linear interpolation in the
-=======
 - F.INV(p,5,1E10) is d2 y / (d1 (1 - y)) with y = Excel's `BETA.INV(p,2.5,5E9)`, to within about 10 ulps
   (the mapping's rounding is not pinned). F.INV.RT(p,5,1E10) is 2E9 (1 - y') / y' with y' = `BETA.INV(p,5E9,2.5)`
   within 3 ulps at p = 0.5, 0.025, 1E-6 and 0.3; at p = 0.975 and 0.999999 that is 6E-7 relative off, and
@@ -2125,7 +2110,6 @@ misses its own CDF's crossing by up to about 1E-16 in x (absolute), in either di
   about 1E-9 (p = 0.975, 0.999999) x is a multiple of 2^-50 to 2^-53 with 21 to 25 significant bits; plain bisection
   of [0, 1] on an accurate CDF reproduces it (shape 2.5: 52nd or 53rd halving; shape 3: 50th or 52nd; lower or
   upper end). For smaller x the result is off that grid (denominators 2^81 to 2^92), and neither bisection, linear interpolation in the
->>>>>>> origin/main
   last bracket, nor Newton from the mean reproduces it.
 Evidence: probes-numeric t1538-f-inv-huge-df (156 cells) and t1538-beta-dist-at-excel-inv (24 cells), excel-graph,
 2026-10-23.
