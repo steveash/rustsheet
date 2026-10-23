@@ -3,7 +3,7 @@ id: T-2139
 title: "Probe where BESSELY starts to give #NUM! for large orders and Excel's BESSELJ order cap"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -30,5 +30,5 @@ Does Y's `#NUM!` come from overflow of the upward recurrence, giving +-inf, or f
 ## Outcome
 Probe `probes/m9-bessel-order-limits` (excel-graph filled). BESSELY's first `#NUM!` is overflow: n = 152 (x=1), 247 (x=10), 401 (x=50); the engine already matches. BESSELJ's real cap is 10,000,000 (`#NUM!` above, nonzero values below, e.g. `BESSELJ(1E5,100001)`); the engine's 100,000 cap stays (directive 5), seven cells recorded as decision-0014 deviations in `eval/suites/probes/deviations`. BESSELK orders probed too. Recorded in `docs/excel-semantics/engineering.md`.
 
-## Handoff
+## Handoff (resumed)
 Probe, oracle sidecar, `engineering.md` findings, baseline and all four reviewer approvals are done on this branch (PR #1648); `make check` passes locally. CI `hygiene` fails `check_governance.py`: `eval/suites/probes/deviations` is a protected path and needs a decision record in `docs/decisions/` (`make new-decision`). The 7 lines I added there (BESSELJ orders 100,001..10,000,000 where the engine's directive-5 cap gives `#NUM!`) are standard decision-0014 deviations. Next: write the decision record (or have it cite 0014), push, re-run CI, re-review, set `status: done`, merge. Alternative if a record is unwanted: drop those 7 lines and let `make eval-baseline` record them as known failures instead.
