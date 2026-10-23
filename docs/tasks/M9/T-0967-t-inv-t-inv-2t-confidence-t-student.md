@@ -46,7 +46,46 @@ cells that the old code matched by luck; measure regressions on every attempt.
 
 Oracle sweep (T-1043): probes-numeric cases `m9-t-inv`, `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`; findings in docs/excel-semantics/statistics.md "Student t sweep".
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). CONFIDENCE.T, whose Student-t quantile is visibly off (35 cells).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 35 known-failure lines in eval/baseline/gen-m9.txt, 35 formulas.
+Examples:
+- gen-m9/146b46e74f2dac3b Calc!A340 `=CONFIDENCE.T(0.999999,1E-10,((2*(-2.5))+BITXOR(882,42)))`: Excel 4.2975693350469395e-18, ours 3.1591558575874862e-18
+Cells:
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A340
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A389
+- gen-m9/3a25a03eb94fcfbd.case.json (1): Calc!A45
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A181
+- gen-m9/4bad303d32cc3f46.case.json (3): Calc!A5, A188, A371
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A57
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A293
+- gen-m9/68d8ffb69ff739d8.case.json (1): Calc!A53
+- gen-m9/85f48d5cdfb24555.case.json (1): Calc!A372
+- gen-m9/8dd2312c96effb1b.case.json (1): Calc!A256
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A246
+- gen-m9/984cba67bbe6972b.case.json (5): Calc!A128, A177, A310, A317, A338
+- gen-m9/9cca17438a7e6f8a.case.json (2): Calc!A76, A320
+- gen-m9/a61e547a1cab994c.case.json (1): Calc!A4
+- gen-m9/a790a4d4a6a82756.case.json (2): Calc!A132, A254
+- gen-m9/b4173fe25109a238.case.json (1): Calc!A264
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A135
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A341
+- gen-m9/c6cfda6bd10cae93.case.json (2): Calc!A99, A221
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A205
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A90
+- gen-m9/ecc87f80077959e0.case.json (4): Calc!A5, A166, A327, A348
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A11
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: CONFIDENCE.T last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 formulas.
+Examples:
+- gen-m9/8fec7b207f4dd753 Calc!A185 `=CONFIDENCE.T(1E-16,1E+5,12)`: Excel 2388816.5175161078, ours 2388816.5175161064
+Cells:
+- gen-m9/8fec7b207f4dd753.case.json (2): Calc!A2, A185
+- gen-m9/984cba67bbe6972b.case.json (2): Calc!A156, A191
+- gen-m9/a013a45a8fbcab4f.case.json (1): Calc!A198
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 35 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] All 6 NumericMismatch and all 48 NumericClose lines above leave the NumericClose/Mismatch
       classes, at least 45 of the 89 lines leave `eval/baseline/ironcalc-calc.txt`, no new lines in
       any baseline; remaining lines listed in the PR with expected/actual.
