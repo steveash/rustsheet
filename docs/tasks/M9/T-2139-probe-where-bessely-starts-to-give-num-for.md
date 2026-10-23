@@ -32,3 +32,5 @@ Probe `probes/m9-bessel-order-limits` (excel-graph filled). BESSELY's first `#NU
 
 ## Handoff (resumed)
 Probe, oracle sidecar, `engineering.md` findings, baseline and all four reviewer approvals are done on this branch (PR #1648); `make check` passes locally. CI `hygiene` fails `check_governance.py`: `eval/suites/probes/deviations` is a protected path and needs a decision record in `docs/decisions/` (`make new-decision`). The 7 lines I added there (BESSELJ orders 100,001..10,000,000 where the engine's directive-5 cap gives `#NUM!`) are standard decision-0014 deviations. Next: write the decision record (or have it cite 0014), push, re-run CI, re-review, set `status: done`, merge. Alternative if a record is unwanted: drop those 7 lines and let `make eval-baseline` record them as known failures instead.
+
+Resolved by the opus resume: decision 0104 covers the seven deviations lines (the "Next" steps above are done). `tier: opus` is the handoff's (work-loop step 5b).
