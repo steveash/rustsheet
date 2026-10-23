@@ -43,7 +43,7 @@ const BALANCE_GROWTH_MAX: f64 = 1024.0;
 /// per-period sum (type 0) or the closed form (type 1) is closer: `CUMPRINC(1E-9,192,2707,8,24,0)`
 /// is -239.68227237224258 to the bit with the sum and 2 ulps off with the geometric form (exponent
 /// 2E-7, gen-m9 d912671baa1364aa A300), and `CUMPRINC_CUMIPMT.xlsx` H25 (`0.1234` over 36 periods,
-/// exponent 3.96) is to the bit with the closed form and 3 ulps off with it. From 8 up every probed
+/// exponent 3.96) is to the bit with the closed form and 3 ulps off with the geometric form. From 8 up every probed
 /// cell is as close or closer with it (H4, exponent 8.9: 1 ulp where the closed form was 3; T-2514).
 const GEOMETRIC_MIN_DISCOUNT: f64 = 8.0;
 

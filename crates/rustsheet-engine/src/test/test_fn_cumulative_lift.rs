@@ -253,6 +253,18 @@ fn a_short_principal_at_a_large_rate_is_one_geometric_sum() {
             "=CUMIPMT(1E-10,296,197540,13,19,1)",
             "-0.00013127066813467536",
         ),
+        // Below `GEOMETRIC_MIN_DISCOUNT` the old forms keep these to the bit: the per-period
+        // sum (gen-m9 d912671baa1364aa A300) and type 1's closed form (CUMPRINC_CUMIPMT.xlsx H25).
+        (
+            "A6",
+            "=CUMPRINC(1E-9,192,2707,8,24,0)",
+            "-239.68227237224258",
+        ),
+        (
+            "A7",
+            "=CUMPRINC(0.1234,36,8000,3,10,1)",
+            "-212.62776661477534",
+        ),
     ]);
 }
 
