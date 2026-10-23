@@ -3,7 +3,7 @@ id: T-2365
 title: "Probe WRAPROWS, WRAPCOLS, EXPAND and TOCOL error and edge arguments beside a lifted argument"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
