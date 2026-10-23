@@ -21,8 +21,8 @@ use crate::value::Value;
 use rustsheet_engine::expressions::utils::shift::shift_formula_text;
 use rustsheet_engine::types::DateSystem;
 use rustsheet_xlsx::import::{
-    date_system_from_attribute, decode_xlsx_escapes, iso8601_to_serial, rich_errors, ImportLimits,
-    PartNames,
+    date_system_from_attribute, decode_xlsx_escapes, iso8601_to_date_system_serial, rich_errors,
+    ImportLimits, PartNames,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -264,7 +264,12 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         let Some(xml) = read_part(&mut zip, &path)? else {
             continue; // chartsheets / missing parts are not scored
         };
-        let cells = parse_sheet(&xml, &path, &shared, &rich_errors)?;
+        let date_system = if date1904 {
+            DateSystem::Excel1904
+        } else {
+            DateSystem::Excel1900
+        };
+        let cells = parse_sheet(&xml, &path, &shared, &rich_errors, date_system)?;
         read_sheet_tables(&mut zip, &path, &name, &mut tables)?;
         sheets.push(SheetSnapshot { name, cells });
     }
@@ -538,6 +543,7 @@ fn parse_sheet(
     part: &str,
     shared: &[String],
     rich_errors: &[Option<&'static str>],
+    date_system: DateSystem,
 ) -> Result<BTreeMap<Addr, CellSnapshot>, SnapshotError> {
     let mut reader = Reader::from_str(xml);
     let mut cells = BTreeMap::new();
@@ -576,6 +582,7 @@ fn parse_sheet(
                         c,
                         shared,
                         rich_errors,
+                        date_system,
                         &mut shared_masters,
                         &mut array_ranges,
                         &mut cells,
@@ -604,6 +611,7 @@ fn parse_sheet(
                         c,
                         shared,
                         rich_errors,
+                        date_system,
                         &mut shared_masters,
                         &mut array_ranges,
                         &mut cells,
@@ -682,6 +690,7 @@ fn finish_cell(
     c: PendingCell,
     shared: &[String],
     rich_errors: &[Option<&'static str>],
+    date_system: DateSystem,
     masters: &mut HashMap<u32, (Addr, String)>,
     arrays: &mut Vec<(Addr, Addr, Addr)>,
     out: &mut BTreeMap<Addr, CellSnapshot>,
@@ -718,6 +727,7 @@ fn finish_cell(
         c.v_text.as_deref(),
         c.is_text.as_deref(),
         shared,
+        date_system,
     );
     // Excel stores rich errors (`#CALC!`, `#SPILL!`, ...) as `#VALUE!` plus a rich-value `vm`;
     // recover the real error. A `vm` that cannot be resolved (no such entry, no errorType key,
@@ -750,6 +760,7 @@ fn decode_value(
     v: Option<&str>,
     inline: Option<&str>,
     shared: &[String],
+    date_system: DateSystem,
 ) -> Value {
     match (t.unwrap_or("n"), v) {
         ("inlineStr", _) => Value::Text(decode_xlsx_escapes(inline.unwrap_or_default())),
@@ -762,9 +773,8 @@ fn decode_value(
         ("str", v) => Value::Text(decode_xlsx_escapes(v.unwrap_or_default())),
         ("b", Some(v)) => Value::Bool(v.trim() == "1" || v.trim().eq_ignore_ascii_case("true")),
         ("e", Some(v)) => Value::Error(v.trim().to_string()),
-        ("d", Some(v)) => {
-            iso8601_to_serial(v).map_or_else(|| Value::Error("#VALUE!".to_string()), Value::Number)
-        }
+        ("d", Some(v)) => iso8601_to_date_system_serial(v, date_system)
+            .map_or_else(|| Value::Error("#VALUE!".to_string()), Value::Number),
         (_, Some(v)) if !v.trim().is_empty() => v
             .trim()
             .parse::<f64>()
