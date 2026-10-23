@@ -455,7 +455,7 @@ fn getpivotdata_follows_the_pivot_through_moves() {
     model.evaluate();
     // Row 1 jumps over rows 2..=11, so the pivots (A3:E7, A20:B23) move up by one or stay.
     model.move_rows_action(0, 1, 1, 10).unwrap();
-    // Row 2 lies in the first pivot's span: moving it splits the pivot.
+    // Row 3 and column B lie inside the first pivot (now rows 2-6): moving them splits it.
     assert!(model.move_rows_action(0, 3, 1, 1).is_err());
     assert!(model.move_columns_action(0, 2, 1, 1).is_err());
     let areas = |model: &Model| -> Vec<(u32, u32, u32, u32)> {
