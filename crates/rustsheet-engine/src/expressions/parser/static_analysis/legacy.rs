@@ -238,9 +238,13 @@ pub(super) fn legacy_array_call_at(
 }
 
 /// The functions that switch off every automatic `@` of a legacy formula holding one, as SWITCH
-/// does: XLOOKUP, FILTER, SORT, SEQUENCE, UNIQUE and TAKE behave alike, while IFS, MAXIFS
-/// and LET keep theirs (probes/legacy-at-let-lambda-dynamic-funcs, T-2387).
-pub(super) const NO_AUTOMATIC_AT: [Function; 7] = [
+/// does: XLOOKUP, FILTER, SORT, SEQUENCE, UNIQUE and TAKE (probes/legacy-at-let-lambda-dynamic-
+/// funcs, T-2387), and SORTBY, VSTACK, HSTACK, DROP, TEXTSPLIT, TOCOL, TOROW, WRAPROWS, WRAPCOLS,
+/// CHOOSEROWS, CHOOSECOLS, EXPAND, BYROW, BYCOL, MAP, REDUCE, SCAN and MAKEARRAY
+/// (`=ABS(Z30:Z32)+VSTACK(1)` shows no `@` and spills 2, 3, 4; probes/legacy-at-dynamic-funcs-2,
+/// T-2440). IFS, MAXIFS, LET, XMATCH, TEXTBEFORE, TEXTAFTER, ARRAYTOTEXT, VALUETOTEXT, GROUPBY,
+/// REGEXEXTRACT, REGEXTEST, TRIMRANGE, PERCENTOF, TEXTJOIN and CONCAT keep theirs.
+pub(super) const NO_AUTOMATIC_AT: [Function; 25] = [
     Function::Switch,
     Function::Xlookup,
     Function::Filter,
@@ -248,6 +252,24 @@ pub(super) const NO_AUTOMATIC_AT: [Function; 7] = [
     Function::Sequence,
     Function::Unique,
     Function::Take,
+    Function::Sortby,
+    Function::Vstack,
+    Function::Hstack,
+    Function::Drop,
+    Function::Textsplit,
+    Function::Tocol,
+    Function::Torow,
+    Function::Wraprows,
+    Function::Wrapcols,
+    Function::Chooserows,
+    Function::Choosecols,
+    Function::Expand,
+    Function::Byrow,
+    Function::Bycol,
+    Function::Map,
+    Function::Reduce,
+    Function::Scan,
+    Function::Makearray,
 ];
 
 /// Whether the LET call `args` returns a range: its result is a range or a variable bound to one.
@@ -274,9 +296,46 @@ pub(super) fn let_returns_range(args: &[Node]) -> bool {
 
 /// Whether a legacy formula holding `node` gets no automatic `@`: it holds a [`NO_AUTOMATIC_AT`]
 /// function or a LAMBDA call, which removes every `@` like SWITCH (`=ABS(Z30:Z32)+LAMBDA(x,x)(1)`
-/// shows no `@` and spills 2, 3, 4; probes/legacy-at-let-lambda-dynamic-funcs BI, T-2419).
+/// shows no `@` and spills 2, 3, 4; probes/legacy-at-let-lambda-dynamic-funcs BI, T-2419), the
+/// call of a LET-bound lambda included (`=ABS(Z30:Z32)+LET(f,LAMBDA(x,x),f(1))`, probes/
+/// legacy-at-dynamic-funcs-2 AF, T-2440). A defined-name lambda's call does not: it takes the `@`
+/// itself (`=ABS(@Z30:Z32)+@myId(1)`, AE).
 pub(super) fn removes_automatic_at(node: &Node) -> bool {
-    node.contains_function(&NO_AUTOMATIC_AT) || node.contains_lambda_call()
+    node.contains_function(&NO_AUTOMATIC_AT)
+        || node.contains_lambda_call()
+        || calls_bound_variable(node)
+}
+
+/// Whether `node` calls by name a variable that a LET or a LAMBDA in it binds. Scopes are not
+/// tracked: a call of a name bound anywhere in the formula counts. An explicit stack keeps the walk
+/// off the call stack: a formula's tree is untrusted input.
+fn calls_bound_variable(node: &Node) -> bool {
+    let mut bound: Vec<&str> = Vec::new();
+    let mut called: Vec<&str> = Vec::new();
+    let mut pending = vec![node];
+    while let Some(node) = pending.pop() {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } if is_let_call(args) => {
+                for pair in args[..args.len() - 1].chunks_exact(2) {
+                    if let Node::NamedVariableKind { name, .. } = &pair[0] {
+                        bound.push(name);
+                    }
+                }
+            }
+            Node::LambdaDefKind { parameters, .. } => {
+                bound.extend(parameters.iter().map(|parameter| parameter.name.as_str()));
+            }
+            Node::NamedFunctionKind { name, .. } => called.push(name),
+            _ => {}
+        }
+        node.push_children(&mut pending);
+    }
+    called
+        .iter()
+        .any(|call| bound.iter().any(|name| same_variable(name, call)))
 }
 
 /// [`add_legacy_intersection`] on a whole formula. A legacy formula holding a SWITCH, or any other

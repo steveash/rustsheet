@@ -1023,3 +1023,33 @@ def test_db_sheet_keeps_criteria_text_as_text() -> None:
     assert cells["O2"] == "=B2>3"
     assert cells["F2"] == ">2"
     assert "K2" not in cells and "A6" not in cells
+
+
+def test_m9_count_and_ets_pools_reach_their_edges() -> None:
+    # T-2438: integer counts keep their small-integer domain most of the time and add the edges (a truncating
+    # fraction, 2^31, 1E15, text); the FORECAST.ETS options and arrays draw from pools, and the timeline and
+    # values pools are long and equal in count so a valid call reaches the algorithm.
+    catalog = _loaded_catalog()
+    by_name = {f["name"]: f for f in catalog.functions}
+    trials = next(p for p in by_name["BINOM.INV"]["params"] if p["name"] == "trials")
+    assert trials["pool"] == "count" and trials.get("domain", {}).get("int")
+    g = Gen(random.Random(11), Catalog([], []), 12, 5, 3)
+    draws = [g.argument_text(trials, "value", 0) for _ in range(2000)]
+    assert sum(d.isdigit() and int(d) <= 10 for d in draws) / len(draws) >= 0.6
+    assert any(d in POOLS["count"] and not d.isdigit() for d in draws)
+    ets = {p["name"]: p["pool"] for p in by_name["FORECAST.ETS.CONFINT"]["params"] if "pool" in p}
+    assert ets == {
+        "target_date": "ets_target",
+        "values": "ets_values",
+        "timeline": "ets_timeline",
+        "confidence_level": "ets_confidence",
+        "seasonality": "ets_seasonality",
+        "data_completion": "ets_completion",
+        "aggregation": "ets_aggregation",
+    }
+    assert any(p.get("pool") == "ets_statistic" for p in by_name["FORECAST.ETS.STAT"]["params"])
+    for pool in ("ets_timeline", "ets_values"):
+        assert len(POOLS[pool][0].split(";")) == 24
+    assert all(p.startswith("{") and p.endswith("}") for p in POOLS["ets_timeline"] + POOLS["ets_values"])
+    used = {p["pool"] for f in catalog.functions for p in f.get("params", []) if "pool" in p}
+    assert {"beta_bound", "fisherinv_y", "forecast_x", "lognorm_mean"} <= used

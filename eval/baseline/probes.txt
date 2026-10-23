@@ -403,6 +403,7 @@ C	probes/groupby-custom-labels.case.json	262
 C	probes/groupby-eta-arity.case.json	101
 C	probes/groupby-lambda-forms.case.json	491
 C	probes/groupby-lifted-args.case.json	143
+C	probes/groupby-lifted-args2.case.json	46
 C	probes/groupby-pivotby-followup.case.json	1081
 C	probes/groupby-pivotby-followup2.case.json	607
 C	probes/groupby-pivotby-followup3.case.json	499
@@ -489,6 +490,7 @@ C	probes/legacy-array-at-operators.case.json	37
 C	probes/legacy-array-at-shapes.case.json	40
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-at-defined-name-dynamic-funcs.case.json	37
+C	probes/legacy-at-dynamic-funcs-2.case.json	116
 C	probes/legacy-at-let-lambda-dynamic-funcs.case.json	163
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-choose-array-index.case.json	12
@@ -1132,6 +1134,7 @@ C	probes/textjoin-delimiter-elements.case.json	24
 C	probes/textsplit-casefold-length.case.json	8
 C	probes/textsplit-empty-delimiter.case.json	13
 C	probes/textsplit-empty-text.case.json	19
+C	probes/textsplit-error-order.case.json	18
 C	probes/textsplit-lift-guesses.case.json	90
 C	probes/textsplit-padded-size.case.json	6
 C	probes/textsplit-wide.case.json	5
@@ -1831,8 +1834,6 @@ F	probes/geomean-same-product.case.json	Sheet1!A9
 F	probes/geomean-single-and-copies.case.json	Copies!A35
 F	probes/geomean-stored-3ulps-low.case.json	Sheet1!R1
 F	probes/groupby-lifted-args.case.json	Calc!A153
-F	probes/groupby-lifted-args.case.json	Calc!A210
-F	probes/groupby-lifted-args.case.json	Calc!B210
 F	probes/groupby-lifted-args.case.json	Calc!I153
 F	probes/growth-modes.case.json	Sheet1!K1
 F	probes/growth-modes.case.json	Sheet1!K100
@@ -1947,18 +1948,6 @@ F	probes/lambda-escaping-closures.case.json	Sheet1!H4
 F	probes/lambda-escaping-closures.case.json	Sheet1!H5
 F	probes/lambda-escaping-closures.case.json	Sheet1!I2
 F	probes/lambda-escaping-closures.case.json	Sheet1!J2
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!A20
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!D20
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!G11
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!G12
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!G20
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!J10
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!J20
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!M20
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!P20
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!V11
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!V12
-F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!V20
 F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
