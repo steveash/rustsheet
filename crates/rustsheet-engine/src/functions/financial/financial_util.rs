@@ -36,11 +36,8 @@ pub(crate) const RATE_MAX_STEPS: u32 = 200;
 /// it unconverged: probes/rate-step-cap A30 is 0.004999993194059272, the root ...3193119). An
 /// iterate at or below -1, a flat secant (f1 = f0), a residual Excel's `^` cannot form and a run
 /// that has not stopped by then are `#NUM!`. Microsoft documents Newton's method and 20 steps;
-/// neither fits. Scratch fit (T-2005): bit-exact on 240 of 421 numeric RATE cells of
-/// probes-numeric/m9-fin-irr-rate, probes/solver-iteration-traces sheet R and
-/// probes/rate-empty-arguments (Newton: 16), and Excel's value-or-`#NUM!` on 463 of 464; the
-/// other is a root of exactly 0, where f is rounding noise (financial.md "RATE is a secant on the
-/// FV residual").
+/// neither fits. The fit, its scores and the rules not yet probed are in financial.md "RATE is a
+/// secant on the FV residual" (T-2005).
 pub(crate) fn compute_rate(
     pv: f64,
     fv: f64,

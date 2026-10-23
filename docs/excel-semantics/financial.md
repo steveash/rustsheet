@@ -380,8 +380,12 @@ m9-fin-irr-rate A583 `RATE(10,-1E6,1E7)`, root exactly 0, is `#NUM!` in Excel; n
 rounding noise (|f| about 0.1 to 0.4 against the 1E-7 test), the run wanders until the cap and the
 model returns its 200th iterate, -2.6E-9. Whether Excel's run goes flat or rejects earlier there, or
 its cap rule also tests |f| (A30's 200th residual is 7E-5), is unprobed.
+Not probed, kept from the model: `#NUM!` for a flat secant (f1 = f0) and for a residual whose `^` overflows; only the
+iterates r2 are tested against -1 (not r1 = guess - 0.001); f(0) is pv + pmt·n + fv in plain doubles (the three
+guess-0 cells are bit-exact, but no cell separates the order); the cap probe's guesses were chosen by the model's own
+step count, so the cap's position is measured in model steps (A30's exact unconverged bits confirm it).
 Ours: `compute_rate` (functions/financial/financial_util.rs), this model.
-Status: VERIFIED (method, stop rule, cap; excel-graph) / UNVERIFIED (f's last-ulp evaluation)
+Status: VERIFIED (method, stop rule, cap; excel-graph) / UNVERIFIED (f's last-ulp evaluation, the rules above)
 Tasks: T-1525, T-0916, T-1533, T-2005
 
 ## YIELD with one coupon period left is closed form

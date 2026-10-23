@@ -258,9 +258,10 @@ fn discount_securities_and_t_bills_lift_arrays_and_refuse_ranges() {
 #[test]
 fn the_table_enters_rate_as_weighted() {
     use crate::functions::Function;
-    // RATE's Newton iteration has a fixed 50-step cap; each element is charged that weight.
+    // RATE's secant has a fixed 200-step cap (Excel's, probes/rate-step-cap); each element is
+    // charged that weight.
     let weight = |function: Function| function.arg_kinds().map(|kinds| kinds.work.weight());
-    assert_eq!(weight(Function::Rate), Some(50));
+    assert_eq!(weight(Function::Rate), Some(200));
     assert_eq!(weight(Function::Pmt), Some(1));
 }
 
