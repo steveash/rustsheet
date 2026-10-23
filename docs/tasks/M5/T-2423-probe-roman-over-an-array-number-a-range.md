@@ -24,4 +24,4 @@ T-2410 lifted ROMAN (`LIFT_1_OF_2`); only the array form is oracle-evidenced (ge
 -
 
 ## Outcome
-Probe `probes/roman-lift-forms` filled by excel-graph; results in numbers.md (ROMAN section). Array/range/boolean forms lift element-wise as implemented. Whether ours matches on `ROMAN(-5,NA())` (`#N/A`) is checked by `make check`'s eval run; any mismatch is filed below.
+Probe `probes/roman-lift-forms` filled by excel-graph; results in numbers.md (ROMAN section). Array/range/boolean forms lift element-wise as implemented. Whether ours matches on `ROMAN(-5,NA())` (`#N/A`) is checked by `make check`'s eval run; the one mismatch is filed as T-2521.
