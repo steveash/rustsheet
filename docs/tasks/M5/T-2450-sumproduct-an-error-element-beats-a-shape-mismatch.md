@@ -3,7 +3,7 @@ id: T-2450
 title: "SUMPRODUCT: an error element beats a shape mismatch in any argument order"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,13 +25,16 @@ arguments hold one is not probed beyond the cells above; keep the first in argum
 - gen-m7/f7e94a817e5385ac.case.json A50 `=BYROW({1,#N/A,3},LAMBDA(acc,SUMPRODUCT(Data!B1:C4,acc)))`: A50 Excel #N/A, ours #VALUE!.
 
 ## Acceptance criteria
-- [ ] Every cell of probes/t2296-sumproduct-error-element passes; its known-failure lines leave eval/baseline/probes.txt.
-- [ ] Visible parity: gen-m7 f7e94a817e5385ac A50 passes and its line leaves eval/baseline/gen-m7.txt.
-- [ ] The `TODO(T-2450)` comment and the test at test_sumproduct.rs:138 are updated to the probed rule.
-- [ ] `make check` green; reviewers approve.
+- [x] Every cell of probes/t2296-sumproduct-error-element passes; its known-failure lines leave eval/baseline/probes.txt.
+- [x] Visible parity: gen-m7 f7e94a817e5385ac A50 passes and its line leaves eval/baseline/gen-m7.txt.
+- [x] The `TODO(T-2450)` comment and the test at test_sumproduct.rs:138 are updated to the probed rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SUMX2MY2 / SUMX2PY2 / SUMXMY2 (unprobed).
 
 ## Visible-parity stage
 Decision 0083: the gen-m7 cell above has the wrong error, so this task is in the campaign; done when it has Excel's error.
+
+## Outcome
+`fn_sumproduct` reads every argument and keeps the first element error, returned unless a whole-argument error returns first; it beats a shape mismatch in either order. probes/t2296-sumproduct-error-element and gen-m7 f7e94a817e5385ac A50 fixed (8 cells: probes 7, gen-m7 1), 0 regressions.

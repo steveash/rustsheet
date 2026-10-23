@@ -271,8 +271,9 @@ beats a shape mismatch wherever it sits: `SUMPRODUCT(X,R)` and `SUMPRODUCT(R,X)`
 `SUMPRODUCT(X,{1,#N/A;2,3})` and `SUMPRODUCT({1,#N/A;2,3},X)` are `#N/A`, `SUMPRODUCT(X,N,R)` (N a 2x2 of numbers) is `#DIV/0!`, and
 `SUMPRODUCT(B1:C4,{1,#N/A,3})` and `SUMPRODUCT({1,#N/A,3},B1:C4)` are `#N/A` (gen-m7/f7e94a817e5385ac Calc!A50 agrees). A mismatch with no error
 anywhere is `#VALUE!` (`SUMPRODUCT(B1:C4,{1,2,3})`). A whole-argument error beats an error element: `SUMPRODUCT(R,X,NA())`
-and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Ours differs
-(the first mismatched argument stops element reading, and `SUMPRODUCT(R,X,NA())` gives `#DIV/0!`): T-2450.
+and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Implemented in
+`fn_sumproduct` (T-2450): every argument is read, a whole-argument error returns at once, and the first element error in argument then element
+order beats a mismatch (which of several element errors wins is unprobed).
 Tasks: T-0944, T-2150, T-2296, T-2450
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
