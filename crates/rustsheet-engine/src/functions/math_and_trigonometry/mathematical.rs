@@ -849,7 +849,8 @@ impl Model {
         // COMBINA(n, k) is Excel's COMBIN(n + k - 1, k), rounding included: `COMBINA(20,19)` is
         // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"), and so is its bound:
         // `COMBINA(2^31-2,1)` is 2147483646, `COMBINA(2^31-2,2)` and `COMBINA(2^31-1,1)` are #NUM!.
-        // That also caps `combin`'s loop below 2^31 steps; it runs min(k, n - 1) of them.
+        // That also caps `combin`'s loop below 2^31 steps (min(k, n - 1)), and it stops at the first
+        // infinity, within about 1,030 (the lifting table's weight, `lift/kinds/general.rs`).
         if n + k - 1.0 >= COMBIN_MAX_NUMBER {
             return num_error(cell);
         }

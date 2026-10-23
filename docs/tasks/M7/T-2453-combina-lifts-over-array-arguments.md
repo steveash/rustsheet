@@ -32,4 +32,4 @@ Owned gen-m7 cells (T-2414):
 Decision 0083: every cell this task owns has the wrong type, error or value, so the task is in the campaign; done when they have Excel's.
 
 ## Outcome
-COMBINA lifts both arguments (`LIFT_2`, `lift_call`). Removed 14 lines from eval/baseline/probes.txt (t2414-gen-m7-unexplained) and 1 from gen-m7.txt (f19581ac44da1653 A3357).
+COMBINA lifts both arguments (`lift_call`; its own `COMBINA` table entry, `Weighted(1 << 10)` for combin's overflow-bounded loop). Removed 14 lines from eval/baseline/probes.txt (t2414-gen-m7-unexplained) and 1 from gen-m7.txt (f19581ac44da1653 A3357).
