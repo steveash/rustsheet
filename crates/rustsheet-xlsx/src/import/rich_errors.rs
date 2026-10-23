@@ -42,11 +42,15 @@ const RICH_VALUE_TYPE: &str = "XLRICHVALUE";
 /// the `subType` (the reason) does not change the error. Evidence: probes/rich-errors-*
 /// (excel-graph, 2026-10-05, T-0030): each cell's errorType from the cached oracle workbook, its
 /// ERROR.TYPE and its VALUETOTEXT text; ironcalc-calc/ERROR.TYPE.xlsx for 8 and 13.
+/// errorType 2 (`#VALUE!`): probes/rich-errors-spilled-lambda (excel-graph, 2026-10-22, T-2417).
 /// Codes Excel was not seen to write (`#BUSY!`, `#UNKNOWN!`, ...) are never guessed: they are
 /// `None`, so callers cannot mistake them for the cached `#VALUE!`.
 #[must_use]
 pub fn rich_error_name(error_type: &str) -> Option<&'static str> {
     match error_type {
+        // REGEXEXTRACT's #VALUE! spilled by MAP, GROUPBY or EXPAND (probes/rich-errors-spilled-lambda,
+        // T-2417); the other #VALUE!s and the classic errors there are plain literals.
+        "2" => Some("#VALUE!"),
         "8" => Some("#SPILL!"),    // SEQUENCE blocked by a value
         "9" => Some("#CONNECT!"),  // STOCKHISTORY of an unknown ticker
         "10" => Some("#BLOCKED!"), // IMAGE of an unreachable URL; uncached external reference
@@ -343,7 +347,7 @@ mod tests {
     #[test]
     fn error_type_is_read_by_key_name() {
         let structures = r#"<rvStructures><s t="_error"><k n="colOffset" t="i"/><k n="errorType" t="i"/><k n="rwOffset" t="i"/><k n="subType" t="i"/></s><s t="_error"><k n="errorType" t="i"/></s></rvStructures>"#;
-        let rich = r#"<rvData><rv s="0"><v>0</v><v>8</v><v>5</v><v>1</v></rv><rv s="1"><v>13</v></rv><rv s="0"><v>8</v><v>2</v><v>0</v><v>0</v></rv><rv s="1"><v>10</v></rv><rv s="0"><v>0</v></rv></rvData>"#;
+        let rich = r#"<rvData><rv s="0"><v>0</v><v>8</v><v>5</v><v>1</v></rv><rv s="1"><v>13</v></rv><rv s="0"><v>8</v><v>11</v><v>0</v><v>0</v></rv><rv s="1"><v>10</v></rv><rv s="0"><v>0</v></rv></rvData>"#;
         let positions = error_type_positions(structures).unwrap_or_default();
         let got = rich_value_errors(rich, Some(&positions)).unwrap_or_default();
         assert_eq!(
@@ -361,22 +365,35 @@ mod tests {
     /// probes/rich-errors-* (T-0030): errorType = ERROR.TYPE - 1, whatever the subType.
     #[test]
     fn error_codes_follow_the_probes() {
-        let got: Vec<_> = ["8", "9", "10", "12", "13", "11", "x"]
+        let got: Vec<_> = ["2", "8", "9", "10", "12", "13", "6", "11", "x"]
             .into_iter()
             .map(rich_error_name)
             .collect();
         assert_eq!(
             got,
             [
+                Some("#VALUE!"),
                 Some("#SPILL!"),
                 Some("#CONNECT!"),
                 Some("#BLOCKED!"),
                 Some("#FIELD!"),
                 Some("#CALC!"),
                 None,
+                None,
                 None
             ]
         );
+    }
+
+    /// The `errorType, ptg, subType` structure of a spilled REGEXEXTRACT `#VALUE!`
+    /// (gen-m7/18b80d3fd292d63a C951; probes/rich-errors-spilled-lambda, T-2417).
+    #[test]
+    fn spilled_lambda_value_error_is_decoded() {
+        let structures = r#"<rvStructures><s t="_error"><k n="errorType" t="i"/><k n="ptg" t="i"/><k n="subType" t="i"/></s></rvStructures>"#;
+        let rich = r#"<rvData><rv s="0"><v>2</v><v>6</v><v>0</v></rv></rvData>"#;
+        let positions = error_type_positions(structures).unwrap_or_default();
+        let got = rich_value_errors(rich, Some(&positions)).unwrap_or_default();
+        assert_eq!(got, vec![Some("#VALUE!")]);
     }
 
     #[test]

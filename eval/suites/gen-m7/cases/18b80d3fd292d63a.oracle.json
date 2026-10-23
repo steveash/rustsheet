@@ -88,7 +88,7 @@
    },
    "A1036": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "A104": {
     "t": "n",
@@ -604,7 +604,7 @@
    },
    "A1519": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "A152": {
     "t": "n",
@@ -3128,51 +3128,51 @@
    },
    "C951": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C952": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C953": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C954": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C955": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C956": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C957": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C958": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C959": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C960": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C961": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C962": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C975": {
     "t": "e",
@@ -3528,51 +3528,51 @@
    },
    "D951": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D952": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D953": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D954": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D955": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D956": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D957": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D958": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D959": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D960": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D961": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D962": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E1149": {
     "t": "n",
@@ -3708,51 +3708,51 @@
    },
    "E951": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E952": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E953": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E954": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E955": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E956": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E957": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E958": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E959": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E960": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E961": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "E962": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "F13": {
     "t": "n",
@@ -4937,8 +4937,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "e07a9239d720d1517a6d47cab0b456a80d926e7cb8193ef2aec41d376687603b",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:31:59+00:00",
+  "produced_at": "2026-10-23T01:01:51+00:00",
   "version": null,
-  "workbook_name": "2e21aebafbcf8ee140871cf951b3ec58201bd3908d58dd99d6236fe0254bb463.xlsx"
+  "workbook_name": "741dcae9f1ea9129ae657b5209035e3352a62931f91024a3c3ed824848f9e422.xlsx"
  }
 }
