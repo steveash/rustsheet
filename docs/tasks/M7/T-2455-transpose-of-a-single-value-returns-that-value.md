@@ -41,7 +41,7 @@ first-run order regressions, e.g. 05d44f6dd6cfc567 A195), QUARTILE (899f9555e67d
 
 ## Outcome
 `fn_transpose` returns the element itself for a 1x1 result unless the argument is an array constant. That removed accidental
-matches through the 1x1 array, and probes/t2455-transpose-single-value (69 cells, excel-graph) showed what Excel does with
+matches through the 1x1 array, and probes/t2455-transpose-single-value (84 cells, excel-graph) showed what Excel does with
 those cells' real shapes, so this task also fixed them:
 - F.TEST takes a single value as a sample of one (`#DIV/0!`) and a one-cell reference to a blank cell is `#VALUE!` ahead of
   the other sample's error (`f_test_sample`, `is_blank_one_cell`).

@@ -1022,11 +1022,12 @@ past the shorter one (column 3 of bc4a69b0b512bc04 A538:C548); and a delimiter t
 TRANSPOSE of a single value is that value, not a 1x1 array (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COLUMNS(TEXTSPLIT(TRANSPOSE("a,b"),","))`
 and `COLUMNS(TEXTSPLIT(TRANSPOSE(Data!G1),","))` (G1 = "a,b") are 2, so the text does not lift to one element as `{"a,b"}` does
 (`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1); `ISREF(TRANSPOSE(Data!G1))` is FALSE; consistent with f7e94a817e5385ac B2882.
-A one-cell range `TRANSPOSE(B2:B2)` is the value too, while a 1x1 array constant stays an array: `COLUMNS(TEXTSPLIT(TRANSPOSE({"a,b"}),","))`
-is 1 (probes/t2455-transpose-single-value A12:A16, excel-graph, 2026-10-23); a numeric argument follows from F.TEST
+A one-cell range `TRANSPOSE(B2:B2)` is the value too, while a 1x1 array stays an array, a constant or computed:
+`COLUMNS(TEXTSPLIT(TRANSPOSE({"a,b"}),","))`, `TRANSPOSE(IF(TRUE,{"a,b"}))`, `TRANSPOSE(SEQUENCE(1)&"a,b")` and
+`TRANSPOSE(UNIQUE({"a,b"}))` split to 1 column (probes/t2455-transpose-single-value A12:A16, A70:A72, excel-graph, 2026-10-23); a numeric argument follows from F.TEST
 (`FTEST(TRANSPOSE(5),{1;2;3})` is the one-value `#DIV/0!`, A10, statistics.md "F.TEST of a single value") and from UNIQUE
 (`UNIQUE(1,TRANSPOSE("1"))` is `#VALUE!` like `UNIQUE(1,"1")` and `UNIQUE(1,{"1"})`, A1:A3).
-Ours: since T-2455 (`fn_transpose`: a 1x1 result of anything but an array constant is its element).
+Ours: since T-2455 (`fn_transpose`: a 1x1 result of an argument that did not evaluate to an array is its element).
 Unprobed: an array pad_with against an error element of a delimiter list (ours: the pad_with `#VALUE!`), and a one-cell reference to an
 error cell as the delimiter, which ours reads as a list, so `TEXTSPLIT("abc",B1,,1/0)` with B1 `#N/A` is ours `#DIV/0!`.
 Ours: this order and the `#CALC!` since T-2315 (`fn_textsplit`, `textsplit_element` in functions/text/textsplit.rs).

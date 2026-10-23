@@ -2469,7 +2469,8 @@ Tasks: T-2028, T-2424, T-2425, T-1553
 Rule: `QUARTILE(B5:B6,SUMIFS(C1:E1,B11:D12,1))` with no number in B5:B6 is the quart's `#VALUE!` (the SUMIFS of mismatched
 ranges, A58), not the empty-data `#NUM!`; with a valid quart it is `#NUM!` (`QUARTILE(B5:B6,1)`)
 (probes/t2455-transpose-single-value A59, A60, excel-graph, 2026-10-23; gen-m9 899f9555e67da2d6 A344 through LINEST).
-Ours: since T-2455 (`fn_quartile_inc`); QUARTILE.EXC keeps the empty-data check first (unprobed).
+QUARTILE.INC is the same (A83).
+Ours: since T-2455 (`fn_quartile_inc`, QUARTILE and QUARTILE.INC); QUARTILE.EXC keeps the empty-data check first (unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2455
 
@@ -2480,8 +2481,11 @@ Rule: F.TEST takes any single value as a sample of at most one, so it is `#DIV/0
 error is that error (`FTEST(1/0,..)` `#DIV/0!`, A29). A one-cell reference to a blank cell is `#VALUE!` (next entry): `FTEST(B10,{1;2;3})`,
 `FTEST(5,B10)`, `FTEST(B1,B10)`, `FTEST(B10,B1)` (A30:A39) and gen-m9 bbdfc06cae0e0d71 A34 `F.TEST(Data!B9:B9,<number>)`, while a
 blank two-cell range is `#DIV/0!` (`FTEST(B10:B11,{1;2;3})`, A33).
-Ours: since T-2455 (`fn_f_test`, `f_test_sample`, `is_blank_one_cell` in functions/statistical/fisher.rs); the blank-cell check comes
-before either sample's error, per the next entry. The paired functions' blank-cell `#VALUE!` stays with T-2426.
+F.TEST checks its samples in order, each one's error or blank one-cell reference before the next: `FTEST(1/0,B10)` is
+`#DIV/0!` and `FTEST(NA(),B10:B10)` `#N/A` (A77, A78), so for F.TEST the blank does not beat an earlier sample's error; a
+computed blank (`FTEST(IF(TRUE,B10),{1;2;3})`) is `#VALUE!` too (A79).
+Ours: since T-2455 (`fn_f_test`, `f_test_sample`, `is_blank_one_cell` in functions/statistical/fisher.rs). The paired
+functions' blank-cell `#VALUE!` stays with T-2426.
 Status: VERIFIED (excel-graph)
 Tasks: T-2455, T-2426
 
@@ -2495,9 +2499,11 @@ A178), while an error const or stats beats the size and point checks: `LINEST(Da
 `#N/A` (A50), `LINEST(<TRUE cell>,0.5,"FALSE",NA())` `#N/A` (c6cfda6bd10cae93 A110), and an error element of x comes after
 them (`LOGEST(Data!E$11,IF(MAP(..)),(MODE.MULT(..)<"1.5"))` is the const's `#N/A`, 35e8168aae2b00f8 A400). A text const or
 stats is `#VALUE!`: `LINEST({1;2},{1;3},"x")` (A7), `LINEST({1;2},{1;3},TRUE,"x")` (A26), and `UNIQUE(1,"1")` as const (A5).
-A computed blank known_y is `#VALUE!` before known_x's error (`LINEST(IFERROR(B10,1),1/0)` with B10 blank, A68;
-`LOGEST(IFERROR(B10,1),PEARSON(..)<#N/A>)` A66, gen-m9 623663cacea53bbc A144), while a blank reference waits for it
-(`LINEST(B10,1/0)` is `#DIV/0!`, A67; `LINEST(5,1/0)` `#DIV/0!`, A62).
+A computed blank known_y is `#VALUE!` before known_x's and const's errors (`LINEST(IFERROR(B10,1),1/0)` and
+`LINEST(IFERROR(B10,1),{1;2},NA())` with B10 blank, A68, A84; `LOGEST(IFERROR(B10,1),PEARSON(..)<#N/A>)` A66, gen-m9
+623663cacea53bbc A144), while a blank reference and a computed text or boolean y wait (`LINEST(B10,1/0)`, `LINEST(5,1/0)`,
+`LINEST("abc",1/0)`, `LINEST("5",1/0)` and `LINEST(IF(TRUE,"abc"),1/0)` are `#DIV/0!`, `LINEST(TRUE,{1;2},NA())` `#N/A`;
+A62, A67, A73:A76).
 Ours: the order since T-2455 (`read_regression_inputs`, `validate_regression_inputs`, `read_matrix` in
 functions/statistical/linest.rs); TREND and GROWTH keep reading their data whole before new_x and const (unprobed). A text
 const or stats is read as a boolean (0.5 for A7, A26), T-2556.

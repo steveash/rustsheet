@@ -251,11 +251,16 @@ impl Model {
         x_arg: Option<&Node>,
         cell: CellReferenceIndex,
     ) -> Result<RegressionInputs, CalcResult> {
-        // A computed blank y is `#VALUE!` at once, before x's error: `LINEST(IFERROR(B10,1),1/0)`
-        // with B10 blank is `#VALUE!`, while the blank reference itself waits (`LINEST(B10,1/0)` is
-        // `#DIV/0!`; probes/t2455-transpose-single-value A62:A68).
+        // A computed blank y is `#VALUE!` at once, before x's and const's errors:
+        // `LINEST(IFERROR(B10,1),1/0)` and `LINEST(IFERROR(B10,1),{1;2},NA())` with B10 blank are
+        // `#VALUE!`, while the blank reference itself and a computed text or boolean y wait
+        // (`LINEST(B10,1/0)`, `LINEST("abc",1/0)` and `LINEST(IF(TRUE,"abc"),1/0)` are `#DIV/0!`;
+        // probes/t2455-transpose-single-value A62:A84).
         let y = self.read_matrix(y_arg, cell)?;
-        if y.values.is_empty() && !matches!(y_arg, Node::ReferenceKind { .. }) {
+        if y.values.is_empty()
+            && y.early_error.is_none()
+            && !matches!(y_arg, Node::ReferenceKind { .. })
+        {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,

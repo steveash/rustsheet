@@ -1015,7 +1015,7 @@ C	probes/t2364-regex-dollar-final-cr.case.json	5
 C	probes/t2365-wrap-expand-tocol-error-lift.case.json	13
 C	probes/t2413-blank-in-stacked-arrays.case.json	45
 C	probes/t2414-gen-m7-unexplained.case.json	70
-C	probes/t2455-transpose-single-value.case.json	69
+C	probes/t2455-transpose-single-value.case.json	84
 C	probes/table-edits/table-convert-to-range.case.json	0
 C	probes/table-edits/table-delete-column-before.case.json	12
 C	probes/table-edits/table-delete-column-qty.case.json	12

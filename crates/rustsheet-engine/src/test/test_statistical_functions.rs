@@ -528,12 +528,14 @@ fn linest_reports_error_values_first() {
     model._set("A3", "=LINEST(B10,1/0)");
     model._set("A4", r#"=LINEST({1;2},1/0,UNIQUE(1,"1"))"#);
     model._set("A5", r#"=LOGEST(1/0,{1;3},"x")"#);
+    model._set("A6", r#"=LINEST("abc",1/0)"#);
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#N/A");
     assert_eq!(model._get_text("A2"), "#VALUE!");
     assert_eq!(model._get_text("A3"), "#DIV/0!");
     assert_eq!(model._get_text("A4"), "#DIV/0!");
     assert_eq!(model._get_text("A5"), "#DIV/0!");
+    assert_eq!(model._get_text("A6"), "#DIV/0!");
 }
 
 // quart's error comes before the empty-data `#NUM!` (probes/t2455-transpose-single-value A59, A60).

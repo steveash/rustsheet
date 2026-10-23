@@ -1527,9 +1527,9 @@ Rule: DISC and RECEIVED read the basis before their other arguments, so an inval
 argument's error: `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and `DISC(37025,2.5,1/0,100,"abc")` are `#VALUE!`, and
 `RECEIVED(37025,2.5,1E+300,NA(),1/0)` is `#DIV/0!` (probes/t2455-transpose-single-value A21, A64, A65, excel-graph,
 2026-10-23); gen-m9 ba4ddb817a8e700e A345 has the same shape.
-Ours: since T-2455 (`discount_args`, shared by DISC, INTRATE, PRICEDISC, YIELDDISC and RECEIVED; INTRATE, PRICEDISC and
-YIELDDISC are unprobed and follow their siblings).
-Status: VERIFIED (excel-graph) for DISC and RECEIVED
+INTRATE, PRICEDISC and YIELDDISC are the same (`..(37025,2.5,1/0,100,"abc")` is `#VALUE!`, A80:A82).
+Ours: since T-2455 (`discount_args`, shared by the five).
+Status: VERIFIED (excel-graph)
 Tasks: T-2455
 
 ## Booleans in ACCRINT, ACCRINTM, AMORLINC and AMORDEGRC (T-2455)

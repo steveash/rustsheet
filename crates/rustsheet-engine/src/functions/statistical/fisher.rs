@@ -321,14 +321,22 @@ impl Model {
     /// them, and a single value as a sample of at most one, so F.TEST is `#DIV/0!` whatever its
     /// type (`FTEST(5,{1;2;3})`, `FTEST("abc",..)`, `FTEST(TRUE,..)`, `FTEST({1;2;3},SUM(4))`;
     /// probes/t2455-transpose-single-value A8:A40, docs/excel-semantics/statistics.md "F.TEST of a
-    /// single value"). A one-cell reference to a blank cell is `#VALUE!` instead, checked by the
-    /// caller on both samples first.
+    /// single value"). A one-cell reference to a blank cell, or a computed blank
+    /// (`FTEST(IF(TRUE,B10),..)`, A79), is `#VALUE!` instead.
     fn f_test_sample(
         &mut self,
-        sample: CalcResult,
+        node: &Node,
         cell: CellReferenceIndex,
         which: &str,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
+        let sample = self.evaluate_node_in_context(node, cell);
+        if self.is_blank_one_cell(&sample) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("F.TEST: the {which} sample is a blank cell"),
+            ));
+        }
         match sample {
             CalcResult::Range { left, right } => self.values_from_range(left, right),
             CalcResult::Array(a) => self.values_from_array(a).map_err(|error| {
@@ -361,24 +369,16 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let first = self.evaluate_node_in_context(&args[0], cell);
-        let second = self.evaluate_node_in_context(&args[1], cell);
-        // A one-cell reference to a blank cell is `#VALUE!` before the other sample's error and
-        // before the one-value `#DIV/0!`: `FTEST(B10,{1;2;3})`, `FTEST(5,B10)` (probes/t2455-
-        // transpose-single-value A30:A39), `F.TEST(Data!C8:C8,Data!Z1:Z3)` (gen-m9 b4173fe25109a238
-        // A348); a blank two-cell range is `#DIV/0!` (A33). statistics.md, T-2255.
-        if self.is_blank_one_cell(&first) || self.is_blank_one_cell(&second) {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "F.TEST: a sample is a blank cell".to_string(),
-            );
-        }
-        let values1_opts = match self.f_test_sample(first, cell, "first") {
+        // The samples are read in order, each one's error or blank one-cell reference (`#VALUE!`)
+        // before the next: `FTEST(5,B10)` and `F.TEST(Data!C8:C8,Data!Z1:Z3)` are `#VALUE!`
+        // (probes/t2455-transpose-single-value A35; gen-m9 b4173fe25109a238 A348), while
+        // `FTEST(1/0,B10)` is `#DIV/0!` and `FTEST(NA(),B10:B10)` `#N/A` (A77, A78); a blank
+        // two-cell range is `#DIV/0!` (A33). statistics.md, T-2255.
+        let values1_opts = match self.f_test_sample(&args[0], cell, "first") {
             Ok(v) => v,
             Err(error) => return error,
         };
-        let values2_opts = match self.f_test_sample(second, cell, "second") {
+        let values2_opts = match self.f_test_sample(&args[1], cell, "second") {
             Ok(v) => v,
             Err(error) => return error,
         };

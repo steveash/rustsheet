@@ -35,8 +35,8 @@ fn test_fn_f_test_sanity() {
 }
 
 // A single value is a sample of one (`#DIV/0!`) whatever its type, but a one-cell reference to a
-// blank cell is `#VALUE!`, ahead of the other sample's error (probes/t2455-transpose-single-value
-// A8:A40, T-2455).
+// blank cell is `#VALUE!`; the samples are checked in order (probes/t2455-transpose-single-value
+// A8:A79, T-2455).
 #[test]
 fn f_test_of_a_single_value() {
     let mut model = new_empty_model();
@@ -46,12 +46,14 @@ fn f_test_of_a_single_value() {
     model._set("A3", "=FTEST({1;2;3},B1)");
     model._set("A4", "=FTEST(B10,{1;2;3})");
     model._set("A5", "=FTEST(1/0,B10:B10)");
+    model._set("A7", "=FTEST(5,B10)");
     model._set("A6", "=FTEST(B10:B11,{1;2;3})");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#DIV/0!");
     assert_eq!(model._get_text("A2"), "#DIV/0!");
     assert_eq!(model._get_text("A3"), "#DIV/0!");
     assert_eq!(model._get_text("A4"), "#VALUE!");
-    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#DIV/0!");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
     assert_eq!(model._get_text("A6"), "#DIV/0!");
 }
