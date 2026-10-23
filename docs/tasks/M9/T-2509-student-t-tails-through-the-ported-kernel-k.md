@@ -32,7 +32,8 @@ fall from about 1,286 (the CR level) to about 7.
 - Scores:
   - T bgrat cells: `bgrat_half_ld` gets 1,545/1,562/1,563 of 1,564; the ideal form gets 1,560. CR gets 48 and r2-bratio's
     kernel 35.
-  - Probe t2464-r2-tdist-p1 part C: 4,895 of 4,915.
+  - Probe t2464-r2-tdist-p1 part C: 4,895 of 4,915 with the implementable `bgrat_half_ld` (4,906 for the ideal
+    form `bgrat_half_ideal` in statistics.md).
   - All T tails (FINAL): 3,383/5,126/5,145 of 5,152 lower-side cells; visibly off 7, against CR 1,286.
   - Non-T bgrat cells at b = 1/2: 365 of 387.
 - The other T branches come from T-2505 and T-2506:

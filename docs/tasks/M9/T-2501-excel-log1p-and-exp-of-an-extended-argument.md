@@ -39,6 +39,8 @@ BINOM.DIST(0,n,p) uses them:
 - Code must not read docs/ (decision 0066). Copy the pinned rows the tests need into a fixture under the engine crate.
 
 ## Acceptance criteria
+- [ ] Pin BINOM.DIST(0,n,p)'s `#NUM!` limit in (2^30, 2^31] with a probe (statistics.md "BINOM.DIST(0,n,p) is #NUM!
+      somewhere in (2^30, 2^31]") and match it.
 - [ ] `excel_log1p` matches r2-log1p's pinned l on at least 15,764 of the 15,791 pinned rows (pilot, runs, grid,
       hold), and every miss is exactly 1 ulp off (verify-r2-log1p/vscore.out).
 - [ ] For a in [-0.375, 0) it is bit-identical to `excel_log1p.log1p_series` on a committed fixture of at least 5,000

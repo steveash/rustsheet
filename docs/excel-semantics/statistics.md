@@ -1793,7 +1793,8 @@ bratio's dispatch picks and returns the other as `(0.5 - w) + 0.5`, x87 stored.
   Then bpser, w1 = bpser(b0, a0, y0) at x0 >= 0.3, bup + bgrat, bgrat (b0 > 15), L140 (b0 < 40), bfrac or basym
   (b0 >= 40). `r2-bratio/bratio_excel.py` is the line-by-line model.
 - **x0 >= 0.3, not R's 0.29**: on the 434 cells of t2464-r2-bratio-x29 in [0.29, 0.3) where the two dispatches give
-  different doubles, Excel equals the 0.3 dispatch on 284 and the 0.29 dispatch on 87 (verifier).
+  different doubles, Excel equals the 0.3 dispatch on 284 and the 0.29 dispatch on 87 (verifier). This is bit-level
+  evidence only: both dispatches are within 15 digits on 434 of 434, and 63 cells match neither.
 - One evaluation, bratio's tail: F.DIST and F.DIST.RT at one point fit one evaluation on 1,578 of 1,578 pairs; where a
   pair shows the computed tail (1,208), bratio predicts it every time and a mean switch misses 8 (e.g. F(1,1,100)).
   NEGBINOM.DIST(f,r,p,TRUE) and BINOM.DIST(r-1,f+r,p,TRUE) are exact complements on 441 of 460 pairs (the rest are
@@ -1850,13 +1851,20 @@ Above x = 0.375 it is LN(fl(1 - x)); at 0.375 both give the same double and the 
   first (15,723), an IEEE quotient (15,762), 11 terms (15,691; 12 and up are identical); any piece held extended (25-35
   rows fewer).
 - Not this function: algdiv's alnrel of a positive argument (the series there drops the density from 2,314 to 1,086
-  of 3,200), and the density's ln x at x > 0.625 (LN(x)). BINOM.DIST(0,n,p) is #NUM! from n = 2^31.
+  of 3,200), and the density's ln x at x > 0.625 (LN(x)).
 Evidence: probes-numeric t2464-r2-log1p-pilot, -runs, -grid, -hold, -hix; docs/research/t2464/r2-log1p
 (`excel_log1p.py`, `pin.py`, `control.py`, `final_score.py`, `algdiv_try.py`); verify-r2-log1p/vscore.out.
 Ours: BINOM.DIST walks the pmf; the beta density uses powf.
 Status: VERIFIED (excel-graph) for -0.375 <= a < 0 (27 of 15,791 rows 1 ulp off); a > 0 UNVERIFIED
 Tasks: T-2501
 
+
+## BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31] (T-2464)
+Rule: BINOM.DIST(0,n,p,FALSE) with n = 2^30 returns a number; n = 2^31, 2^32 and 2^33 return `#NUM!`. The probes only
+use powers of two, so the exact limit (2^31 - 1, as PERMUT's, is the natural guess) is not measured.
+Evidence: probes-numeric t2464-r2-log1p-hold (rows with n = 2^30 .. 2^33); docs/research/t2464/verify-r2-log1p/vscore.out.
+Status: UNVERIFIED (bracket only)
+Tasks: T-2464, T-2501
 ## Beta density for min(a,b) <= 1: TOMS betaln and an extended exponent (T-2464)
 Rule: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 is Excel's EXP (model V6) of an extended (64-bit) E = tx + (ty - lnB),
 never stored, except at b = 1, where E = fl(tx - lnB) is stored. Here:
@@ -1997,7 +2005,7 @@ with F(a, lnx) the exact I at ln x = lnx and an exact erfc below: TOMS bgrat is 
 doubles, lnx, z = fl(-ν·lnx) and Excel's ERFC of fl(sqrt(z)). The implementable form is TOMS bgrat in x87 extended with
 those three pieces (`r2-tdist/xlk.py` `bgrat_half_ld`).
 - bgrat at b = 1/2: T bgrat cells 1,560/1,562/1,563 of 1,564 (hold-out 780 of 783; `bgrat_half_ld` 1,545); probe
-  t2464-r2-tdist-p1 part C, out of sample, 4,906 of 4,915; non-T bgrat cells at b = 1/2 (r2-bratio's data, never used
+  t2464-r2-tdist-p1 part C, out of sample, 4,906 of 4,915 (`bgrat_half_ld` 4,895); non-T bgrat cells at b = 1/2 (r2-bratio's data, never used
   here) 365 of 387, against 277 for r2-bratio's kernel. One piece removed: CR erfc 395, z unrounded 1,370, no ERFC
   ratio 291; TOMS bgrat in doubles with Excel's pieces 308. The z = 0.01 cut holds on 1,999 of 2,000 straddling cells
   (part B).
