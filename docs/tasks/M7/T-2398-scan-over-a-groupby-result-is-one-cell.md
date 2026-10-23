@@ -3,11 +3,11 @@ id: T-2398
 title: "SCAN over a GROUPBY result is one cell (#N/A, 0 or the error), not a scan of its cells"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: blocked
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2439]
 campaign: visible
 ---
 
@@ -48,3 +48,8 @@ Probe committed: probes/scan-over-groupby (69 formulas, excel-graph, 2026-10-23)
   from SCAN itself.
 Next: decide whether fixing A36 needs GROUPBY to keep nested arrays in its cells (listed as out of scope here). If so,
 split that into its own task and make this one depend on it. Then fix A36, A153, A161, A169 and the gen-m7 cell.
+
+## Blocked because
+Blocked because: the remaining cells (probes/groupby-lifted-args A153 and I153, scan-over-groupby A36, gen-m7/b24ce74f08d3f91a
+A1850) all need a GROUPBY value cell that holds an array (A68:A72), which the engine cannot represent (`ArrayNode` has no
+nested array). That needs a spec first: T-2439. A161 and A169 already pass on main.
