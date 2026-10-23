@@ -17,6 +17,7 @@ A legacy cell's automatic `@` matches Excel for a LET returning a range, a defin
 T-2387 probes (probes/legacy-at-let-lambda-dynamic-funcs P, S, BI; probes/legacy-at-defined-name-dynamic-funcs A, D, G, J, M, P, V) and docs/excel-semantics/references.md "Dynamic-array-only functions and LET, LAMBDA and names" list the cells still failing; code in `static_analysis/legacy.rs`. Names are M8 scope, so land the LET and LAMBDA part first.
 
 ## Acceptance criteria
+- [ ] A LET returning a range takes the `@` itself (probes/legacy-at-let-lambda-dynamic-funcs P, S); a defined-name operand takes it (probes/legacy-at-defined-name-dynamic-funcs); a LAMBDA call removes every `@` (BI).
 - [ ] The other dynamic-array-only functions (SORTBY, XMATCH, VSTACK, DROP, TEXTSPLIT, ...) are probed and added to `NO_AUTOMATIC_AT` where they remove the `@`.
 - [ ] Those probe cells pass (`make eval-show`), or the unmatchable ones are recorded as deviations.
 - [ ] `make check` green; reviewers approve.

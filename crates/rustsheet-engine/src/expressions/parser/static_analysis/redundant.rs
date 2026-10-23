@@ -31,7 +31,8 @@ use super::{
 /// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
 /// (a formula is evaluated in a scalar context).
 pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
-    // The import adds no `@` to a formula holding a SWITCH or another `NO_AUTOMATIC_AT` function, so every `@` in it is meaningful
+    // The import adds no `@` to a formula holding a SWITCH or another `NO_AUTOMATIC_AT`
+    // function, so every `@` in it is meaningful
     // (`add_root_legacy_intersection`, probes/legacy-switch-callers).
     if add && node.contains_function(&NO_AUTOMATIC_AT) {
         return;
