@@ -3,7 +3,7 @@ id: T-1849
 title: "BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as 1 in their numeric arguments"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
