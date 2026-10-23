@@ -3,7 +3,7 @@ id: T-2216
 title: "Oracle sweep: RRI where exp(ln(fv/pv)/nper)-1 and (fv/pv)^(1/nper)-1 differ (RRI.xlsx D12)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
