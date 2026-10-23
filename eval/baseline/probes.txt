@@ -391,6 +391,7 @@ C	probes/formulatext-written-groups-shapes.case.json	12
 C	probes/fraction-format-features.case.json	128
 C	probes/fraction-numerator-overflow.case.json	76
 C	probes/fraction-numerator-overflow2.case.json	69
+C	probes/fraction-placeholder-past-2-30.case.json	75
 C	probes/ftest-decomposition.case.json	91
 C	probes/gamma-x87-edges.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
@@ -1623,10 +1624,6 @@ F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O9
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A10
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A11
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A13
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A16
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A22
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A23
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A24
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A6
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A7
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A9
@@ -3284,3 +3281,4 @@ F	probes/yield-start-sweep.case.json	S!F9
 TC	probes/displayed-text-formats.case.json	28
 TC	probes/fraction-numerator-overflow.case.json	76
 TC	probes/fraction-numerator-overflow2.case.json	69
+TC	probes/fraction-placeholder-past-2-30.case.json	75
