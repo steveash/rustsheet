@@ -386,10 +386,12 @@ INDEX/MATCH return the reference, so a blank there is skipped (`COUNT(INDEX(B1:B
 `AVERAGE(VLOOKUP(2,..,{2},FALSE),4)` 4, `COUNT(HLOOKUP(2,D1:F2,{2}))` 0.
 So `ASC(IFS(..,VLOOKUP(123456789.123,D3:E7,2),..))` landing on blank E6 is "0" (through IFS), and
 `SEC(AVERAGE(HLOOKUP(2.5,B8:D11,4),-2.5,B7:B9))` averages the blank result as 0, 1.2724471433871758 = SEC(-2/3).
-XLOOKUP already returns a blank return cell as 0 (below). Excel for the web refuses a workbook holding
-`IFS(TRUE,)` (createSession 501), and one of `AVERAGEA`, `PRODUCT`, `COUNTBLANK`, `SUMSQ`, `STDEV.P` over
-`VLOOKUP(..)` (most likely COUNTBLANK, which takes only a reference); those are unprobed. An omitted value argument
-is the same empty value in the engine, so ours gives 0 for `IFS(TRUE,)` and `SWITCH(1,1,)` too (unprobed, T-2189).
+XLOOKUP already returns a blank return cell as 0 (below). An omitted value argument is the same empty value
+(probes/t2189-*, excel-graph, T-2189, each formula its own case): `IFS(TRUE,)&""` and `SWITCH(1,1,)&""` are "0",
+`ISBLANK(IFS(TRUE,))` is FALSE and `COUNT(SWITCH(1,1,))` is 1; the engine agrees on all four. (An earlier attempt to put
+`IFS(TRUE,)` in a larger workbook got a createSession 501; it is not refused alone.) Excel for the web refuses a workbook holding
+one of `AVERAGEA`, `PRODUCT`, `COUNTBLANK`, `SUMSQ`, `STDEV.P` over
+`VLOOKUP(..)` (most likely COUNTBLANK, which takes only a reference); those are unprobed.
 Evidence: gen-m5/49bfbf67a1409563 Calc!A103, gen-m5/aac6230c2fb40e1e Calc!A334 (excel-graph, 2026-10-20);
 probes/lookup-blank-result-to-caller H1:O20 and probes/lookup-vector-blank-result-to-caller H1:I19 (excel-graph,
 2026-10-20, T-2168).
