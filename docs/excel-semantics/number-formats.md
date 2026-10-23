@@ -627,8 +627,9 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   4294967293/2 shows; then 2 x 4294967293 stops. 2147483646.5: 2 x 2147483646 stops. If that stop comes before any
   fractional term (the last convergent still has denominator 1), the value is rounded half away from zero to an
   integer over 1: 1073741824.5 "1073741825/1", 1073741824.25 "1073741824/1". At the bound: 1073741823.5 "2147483647/2"
-  (2 x 1073741823 = 2^31 - 2 is taken), 715827882+1/3 "2147483647/3" (3 x 715827882), 715827883+1/3 "715827883/1";
-  the sum alone passing 2^31: 1500000000.6 "3000000001/2". UNVERIFIED: the bound under `%` and `,` scaling.
+  (2 x 1073741823 = 2^31 - 2 is taken). The sum alone passing 2^31 is taken: 1500000000.6 "3000000001/2", and
+  715827883+1/3 (the double 715827883.3333334, partial quotients 2 then 1) "2147483650/3", where 1 x 1431655767 is under
+  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". UNVERIFIED: the bound under `%` and `,` scaling.
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
