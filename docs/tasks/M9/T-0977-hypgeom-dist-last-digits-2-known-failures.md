@@ -3,7 +3,7 @@ id: T-0977
 title: "HYPGEOM.DIST last digits (2 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
