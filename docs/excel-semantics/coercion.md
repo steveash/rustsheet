@@ -267,7 +267,9 @@ is a shape mismatch). A blank plus a shape mismatch is `#VALUE!` in every positi
 (`SUMPRODUCT(NA(),blank)`, `SUMPRODUCT(NA(),R,blank)` are `#N/A`); the blank ahead of the error gives `#VALUE!`.
 Status: VERIFIED (excel-graph); implemented in `fn_sumproduct` / `sumproduct_array` (T-2150).
 Open: whether an error element inside a range (not a whole-argument error) beats an earlier shape mismatch is
-unprobed; ours keeps the pre-T-2150 order, where the first mismatched argument wins (T-2296).
+unprobed; ours keeps the pre-T-2150 order, where the first mismatched argument wins (T-2296). gen-m7 points one way: in
+`BYROW({1,#N/A,3},LAMBDA(acc,SUMPRODUCT(Data!B1:C4,acc)))` the 4x2 range and the 1x3 slice {1,#N/A,3} mismatch and Excel gives `#N/A`, the
+later argument's error element, where ours gives `#VALUE!` (gen-m7/f7e94a817e5385ac Calc!A50, excel-graph, 2026-10-22).
 Tasks: T-0944, T-2150, T-2296
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!

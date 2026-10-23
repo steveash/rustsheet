@@ -258,10 +258,10 @@ Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more cells (A7 A28 A
 gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED. Implementation: `number_to_text` (T-0107).
 ACOT shows no negative zero either: `ACOT(CEILING.PRECISE(Data!C9))` with C9 = -0.0001 is 1.5707963267948966 (PI()/2), the
-value of `ACOT(0)` (gen-m5/6efa59fc1257c475 Calc!A7, excel-graph, 2026-10-22, T-2252 triage). Ours is -1.5707963267948966:
+value of `ACOT(0)` (gen-m5/6efa59fc1257c475 Calc!A7, excel-graph, 2026-10-22, T-2252 triage). Before T-2376 ours was -1.5707963267948966:
 CEILING.PRECISE (and CEILING, CEILING.MATH, ISO.CEILING, ECMA.CEILING, unary minus `-(0)` and `INT(-0)`) yields the double -0.0,
-and `fn_acot` tests `f >= 0.0` (true for -0.0) and returns `atan(1/-0.0)` = -PI()/2. Whether Excel's CEILING.PRECISE yields
-+0 or ACOT ignores the sign of zero cannot be told from the cell; both give PI()/2. Task: T-2376.
+and `fn_acot` tested `f >= 0.0` (true for -0.0) and returned `atan(1/-0.0)` = -PI()/2. Implementation: the zero branch of `fn_acot` (T-2376). Whether Excel's CEILING.PRECISE yields
++0 or ACOT ignores the sign of zero cannot be told from the cell; both give PI()/2.
 
 ## Overflow in `+ - * /` is #NUM! where it happens
 Rule: a sum, difference, product or quotient beyond the double range is the error `#NUM!` at that
@@ -1507,7 +1507,8 @@ Tasks: T-0239
 ## CHISQ.DIST degrees of freedom and BITAND operands are bounded
 Rule: CHISQ.DIST with degrees of freedom above 10^10 is `#NUM!` (10^10 itself is accepted;
 CHISQ.DIST.RT/CHISQ.INV/CHISQ.INV.RT share the constant but are unprobed), and BITAND is `#NUM!` for an operand of
-2^48 or more (2^48-1 is accepted; the other BIT functions share the constant but are unprobed).
+2^48 or more (2^48-1 is accepted). BITOR and BITLSHIFT agree (engineering.md "Engineering edge-pool smoke check
+(T-2249)", UNVERIFIED until T-2421 commits the probe).
 These are Excel's own limits, not deviations.
 Evidence: probes/resource-limits C5, C6 (CHISQ.DIST), C7, C8 (BITAND) (excel-graph, 2026-10-05).
 Status: VERIFIED
@@ -1785,7 +1786,8 @@ gives "9007199254740990" (15 significant digits, below 2^53); whether the cut ha
 Evidence (excel-graph, 2026-10-22): probes/base-number-upper-bound (T-2289); T-2252 triage: gen-m5/dde5ea295a38fb16 Calc!A254 (zero, min_length 0.3);
 gen-m5/55afc805e00a1509 Calc!A101, gen-m5/08eafc9e61602bcb Calc!A98 (past 2^53); the "0" and zero-padded cells, which pass:
 gen-m5/cd883013bea3b305 Calc!A22, gen-m5/9a7a94353845ea12 Calc!A45, gen-m5/90bf45bea539723d Calc!A251.
-Status: VERIFIED (excel-graph) for the cells above; the past-2^53 half is implemented (T-2373), the zero half is DIVERGENT until T-2374 lands.
+Unprobed: zero with a written-empty or blank-cell `min_length` (`BASE(0,2,)`, `BASE(0,2,Z99)`, `BASE(0,2,"")`); the engine reads them as 0, so they give empty text.
+Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374).
 Tasks: T-2289, T-2373, T-2374
 
 ## RANDBETWEEN and RANDARRAY argument checks
@@ -1910,6 +1912,11 @@ Evidence (excel-graph, 2026-10-20): gen-m5/49bfbf67a1409563 Calc!A179, gen-m5/03
 gen-m5/a6fec430ac350c1a Calc!A31, gen-m5/c0651f0e0fb544d0 Calc!A253, gen-m5/d1b251fd6e9c4b4b Calc!A24.
 Unprobed: which error wins when both the number and the form are bad (`ROMAN(-5,NA())`, `ROMAN(4000,9)`); the engine
 reports the number's.
+ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)` is five "DLXI" (forms
+1, 2, 0.5, 3, 4; the 123456789.123 element is `#VALUE!` and the HSTACK pads `#N/A`, both dropped by ignore 2: gen-m7/f7e94a817e5385ac
+Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. Only the array form is evidenced; the array number and a multi-cell range follow the same table entry unprobed. Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
+Unexplained (T-2414): `VSTACK(COMBINA(WRAPROWS(Data!E6:E12,1,Data!$B1),4),CHOOSE(3,..))` is one `#VALUE!` with nothing spilled
+(gen-m7/f19581ac44da1653 A3357), not the 8x1 stack a lifting COMBINA would give; ours `#N/IMPL!`.
 Status: VERIFIED (excel-graph); implemented (T-2154).
 
 ## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes

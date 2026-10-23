@@ -56,6 +56,14 @@ evaluated with 64-bit intermediates and exp (idealized or fldl2e/f2xm1/fscale) g
 cells, the same as a 128-bit evaluation and the engine, while the same fraction in doubles gets 58.
 A 64-bit evaluation does not help; the best fit so far is in doubles (statistics.md "ERFC core factor").
 
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: LOGNORM.DIST and LOGNORMDIST cumulative last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 3 known-failure lines in eval/baseline/gen-m9.txt, 3 formulas.
+Examples:
+- gen-m9/85f48d5cdfb24555 Calc!A188 `=LOGNORM.DIST(SUM(Data!C7,Data!C4:C10),Data!C$5,(Data!B5-PPMT(100,11,60,443614,184)),(REPT("1",5)<=TAN(Data!E5)))`: Excel 0.04144471788305167, ours 0.041444717883051686
+Cells:
+- gen-m9/85f48d5cdfb24555.case.json (1): Calc!A188
+- gen-m9/a61e547a1cab994c.case.json (1): Calc!A293
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A65
+
 ## Acceptance criteria
 - [ ] At least 40 of the 59 lines leave `eval/baseline/ironcalc-calc.txt`, including every NumericClose
       line, and no new lines appear in any baseline (the T-0924 fixes and T-0925's cells must not

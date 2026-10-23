@@ -32,7 +32,86 @@ HYPGEOM.DIST evidence in T-1049 and HYPGEOMDIST evidence in T-1048, never blind.
 via the binomial recurrence starting from the mode, pmf via `exp` of a Stirling-series / lgamma
 difference, CDF as ascending vs descending sums, CDF via the complement when k is above the mean.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). HYPGEOM.DIST and HYPGEOMDIST values visibly off (22 cells, e.g. `HYPGEOMDIST(0,3,3.14159,
+202769)` Excel 0.9999556149548074, ours 0.9999556141511747, the large-population cdf T-1896 also touches).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 22 known-failure lines in eval/baseline/gen-m9.txt, 22 formulas.
+Examples:
+- gen-m9/0a9226016e8f5f33 Calc!A93 `=HYPGEOM.DIST(0,4,1,14,OR(CELL("row",Data!D2)))`: Excel 0.7142857142857143, ours 0.7142857142857174
+Cells:
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A93
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A87
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A374
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A140
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A258
+- gen-m9/7674c89c824aca43.case.json (1): Calc!A140
+- gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A297
+- gen-m9/899f9555e67da2d6.case.json (1): Calc!A161
+- gen-m9/8d3588d8df0812df.case.json (1): Calc!A20
+- gen-m9/8f2ac25945af87da.case.json (1): Calc!A373
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A49
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A377
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A290
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A394
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A385
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A392
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A66
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A198
+- gen-m9/ee2497a5e683c5d9.case.json (2): Calc!A267, A310
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A202
+- gen-m9/fec39efaba9284c3.case.json (1): Calc!A320
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: HYPGEOMDIST and HYPGEOM.DIST last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 65 known-failure lines in eval/baseline/gen-m9.txt, 65 formulas.
+Examples:
+- gen-m9/05d44f6dd6cfc567 Calc!A359 `=HYPGEOMDIST(4,5,4,13)`: Excel 0.00699300699300699, ours 0.006993006993006993
+Cells:
+- gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A359
+- gen-m9/06b4e8f5de409d5e.case.json (2): Calc!A64, A308
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A168
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A349
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A234
+- gen-m9/165db58d1540f014.case.json (1): Calc!A176
+- gen-m9/27601819397dd56e.case.json (1): Calc!A134
+- gen-m9/2801c1c11c21e134.case.json (2): Calc!A86, A147
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A373
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A164
+- gen-m9/320d51765af9b6b7.case.json (2): Calc!A133, A344
+- gen-m9/3a25a03eb94fcfbd.case.json (2): Calc!A309, A370
+- gen-m9/40425341c5034eed.case.json (2): Calc!A44, A366
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A34
+- gen-m9/4ab2ba98d26c8a5e.case.json (3): Calc!A41, A94, A140
+- gen-m9/530c636749a85209.case.json (1): Calc!A65
+- gen-m9/589f42e67f4b4b8d.case.json (2): Calc!A183, A324
+- gen-m9/58e3253bbd3a7a82.case.json (3): Calc!A205, A297, A389
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A31
+- gen-m9/7674c89c824aca43.case.json (2): Calc!A18, A340
+- gen-m9/7bd219ec0c0c5e22.case.json (2): Calc!A202, A386
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A281
+- gen-m9/85f48d5cdfb24555.case.json (2): Calc!A331, A391
+- gen-m9/899f9555e67da2d6.case.json (1): Calc!A82
+- gen-m9/8dd2312c96effb1b.case.json (1): Calc!A363
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A383
+- gen-m9/a5828d3925575713.case.json (1): Calc!A65
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A119
+- gen-m9/abc2939ebd1e2365.case.json (2): Calc!A94, A278
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A11
+- gen-m9/b8ee55934c5b824c.case.json (2): Calc!A274, A320
+- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A109
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A17
+- gen-m9/c2974c061384fdd9.case.json (2): Calc!A20, A142
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A207
+- gen-m9/c6cfda6bd10cae93.case.json (2): Calc!A153, A275
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A146
+- gen-m9/cde551ea787f713a.case.json (2): Calc!A132, A193
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A363
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A160
+- gen-m9/f2bd5f380ec002bf.case.json (2): Calc!A52, A374
+- gen-m9/f34f66fb7f81e673.case.json (2): Calc!A37, A267
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A39
+- gen-m9/fec39efaba9284c3.case.json (2): Calc!A85, A177
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 22 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Both lines leave `eval/baseline/ironcalc-calc.txt`, the T-1049 HYPGEOM.DIST probe cells pass, no
       new lines in any baseline.
 - [ ] Bounded loops for huge populations (no unbounded allocation or iteration on untrusted input).

@@ -48,5 +48,5 @@ criteria above are already the visible-parity stage.
 Probed (probes/numbervalue-separator-edges A1:A20, excel-graph): a separator over 255 characters is `#VALUE!`, which the
 engine now applies (`numbervalue_of`, reusing `number_text_too_long`); separators differing only in case do not clash, and a
 letter decimal separator leaves "0.2" readable (both already matched). text.md states the rules. Found on the way:
-`NUMBERVALUE("1.5",",")` is 15 (an omitted group separator is not "," then), filed as T-2406, 1 new known failure (A8).
-Eval delta: gen-m5 fixed 1 (9a7a94353845ea12 Calc!A162), probes new case 19/20, new-coverage failures 1 (T-2406), regressions 0.
+`NUMBERVALUE("1.5",",")` is 15 (an omitted group separator is not "," then), filed as T-2441, 1 new known failure (A8).
+Eval delta: gen-m5 fixed 1 (9a7a94353845ea12 Calc!A162), probes new case 19/20, new-coverage failures 1 (T-2441), regressions 0.

@@ -1,5 +1,5 @@
 ---
-id: T-2406
+id: T-2441
 title: "NUMBERVALUE with a comma decimal separator and no group separator reads the text 1.5 as 15"
 milestone: M5
 lane: functions-text

@@ -65,6 +65,17 @@ t1042-gamma-int-91-171 Calc!A77). GAMMALN at integers: ln of that product 82/171
 rounded and 64-bit 45, engine 0. The x87 64-bit-intermediate model only ties correctly rounded, so it is not
 Excel's gamma. Details: statistics.md "GAMMA and GAMMALN sweep (T-1042)".
 
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: GAMMALN.PRECISE last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 formulas.
+Examples:
+- gen-m9/40425341c5034eed Calc!A115 `=GAMMALN.PRECISE((WRAPCOLS(1.005,2,7)^0.3))`: Excel -0.0008624698309035655, ours -0.0008624698309035657
+Cells:
+- gen-m9/40425341c5034eed.case.json (1): Calc!A115
+- gen-m9/8f2ac25945af87da.case.json (1): Calc!A97
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A124
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A153
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A294
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A241
+
 ## Acceptance criteria
 - [ ] GAMMA(n) for integers 1 <= n <= 88 is the downward product (n-1)*(n-2)*...*2, each product rounded
       to a double: all 88 such cells of `probes-numeric/t1042-gamma-int-1-90` pass (92 of the 171 integer
