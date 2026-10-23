@@ -20,5 +20,7 @@ Evidence: probes/t2454-offset-one-cell-array-args A5:D5, A9:D9 and probes/t2454-
 - [ ] The cells listed above pass and leave eval/baseline/probes.txt; `{3}+0` and SEQUENCE rows keep passing.
 - [ ] `make check` green; reviewers approve.
 
+Also probe `CHOOSE(1,DROP(H2:H4,-2,0))` and `LET(x,DROP(H2:H4,-2,0),x)` as OFFSET's height, and find the mechanism of the scalar height 1E-15 giving 2 rows (lookup.md, probes/t2454-offset-array-height A1).
+
 ## Out of scope
 - Arguments the probes did not cover.
