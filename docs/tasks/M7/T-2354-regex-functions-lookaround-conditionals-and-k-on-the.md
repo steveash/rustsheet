@@ -63,4 +63,4 @@ Excel says (ERROR.TYPE 3). No recursion. The release-mode test `nested_lookaroun
 patterns on 32,767 characters to `#ERROR!` or FALSE within 10 s (120 s in a debug build).
 New probe probes/regex-lookaround-keepout-conditionals (excel-graph, 19 cells, all pass). Eval delta: probes known
 failures 2042 -> 2035 (regex-pcre2-features C7-C10, C13, C14, D12 fixed), 1 new case, 0 regressions in every suite.
-Follow-up: T-2477 (probe a quantified assertion condition, `(?x)` space in a condition, a conditional in a lookbehind).
+Follow-up: T-2478 (probe a quantified assertion condition, `(?x)` space in a condition, a conditional in a lookbehind).
