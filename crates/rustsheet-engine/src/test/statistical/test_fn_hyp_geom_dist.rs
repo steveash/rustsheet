@@ -63,7 +63,8 @@ fn hyp_geom_dist_domain_edges_and_boolean_sample() {
         ("A5", "#NUM!"),
         ("A6", "0.465428277"),
         ("A7", "0.363261094"),
-        ("A8", "#VALUE!"),
+        // A TRUE count reads as 1 (probes-numeric/t1049-hypgeomdist A53, T-1849).
+        ("A8", "1"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");
