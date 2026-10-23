@@ -1159,6 +1159,11 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   A111, acdfeaf6e6eadd4e A83). A holiday cell holding number text is accepted: `WORKDAY(18260,-30,Data!C4)` with C4 `"1"` = 18218,
   `WORKDAY(58719,5,Data!D5:D7)` over 1.005, `"1.5"`, 0.3 = 58726 (1aa50086e42bff9a A67, 752959b8d3db0285 A393). (Ours was `#VALUE!` for both before T-2270.)
   (Non-number text is still `#VALUE!`: "WORKDAY and NETWORKDAYS from serial 0" F56.)
+  Number text inside a holidays *array* is a holiday too: `WORKDAY.INTL(26624,-19,5,{"1.5"})` = 26599, `WORKDAY(26624,-19,{"1.5"})`
+  = 26597, `NETWORKDAYS.INTL(26600,26624,5,{"1.5"})` = 19, while `{"a"}`, `{"ü"}`, `{""}`, `{TRUE}` and `{FALSE}` are `#VALUE!`
+  (probes/t2360-array-lambda-holidays W1-W15, excel-graph, 2026-10-23, T-2360). So a GROUPBY or PIVOTBY whose LAMBDA passes a group's
+  values to WORKDAY.INTL errs only in the groups holding non-number text, a boolean or a number off the calendar (G!A1:H13; the
+  t2311-pivotby-value-cause D46 and D51 counts 13 and 27). Ours since T-2360 (`collect_serial_numbers`); before, `{"1.5"}` was `#VALUE!`.
 - Blanks inside a holidays array are no error either: with Data!Z1:Z2 blank, `NETWORKDAYS(8812,58239,HSTACK(Data!Z1:Z2,{1;2}))` = 35306,
   `WORKDAY(46645,26,HSTACK(Data!Z1:Z2,{1;2}))` = 46681 and `WORKDAY.INTL(47074,-9,3,HSTACK(..))` = 47061 (gen-m6/3eef60b5dc0145e9 A73,
   449aebbde77d8ce1 A30, A306; excel-graph, 2026-10-22, T-2253). Whether a blank element is skipped or read as serial 0 does not change

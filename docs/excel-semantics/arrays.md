@@ -1,6 +1,6 @@
 # Arrays
 
-## Cached rich errors (`#CALC!`, `#SPILL!`, `#BLOCKED!`, ...) are stored as `#VALUE!` plus a `vm` attribute
+## Cached rich errors (`#CALC!`, `#SPILL!`, `#BLOCKED!`, ...) are stored as `#VALUE!` (or `#N/A`) plus a `vm` attribute
 Rule: Excel writes a dynamic-array `#CALC!` (e.g. DROP/TAKE to nothing, `SEQUENCE(0,0)`, FILTER with no
 match) or `#SPILL!` into the sheet XML as `t="e"` with `<v>#VALUE!</v>` and a `vm="N"` attribute. `vm`
 is 1-based into the `<bk>` blocks of `xl/metadata.xml` `<valueMetadata>`; a block's `<rc t=T v=K>` names
@@ -13,12 +13,13 @@ structure (`xl/richData/rdrichvaluestructure.xml`): desktop files put it first, 
 writes the `_error` keys alphabetically (`colOffset, errorType, rwOffset, subType`), so there the
 first field is `colOffset`. (The earlier "first field is the errorType" was wrong for those files;
 T-0208, gen-m2/78bc88199fc96650 Calc!A61 rv `0 8 5 1` is `#SPILL!`.) A reader that ignores `vm`
-sees `#VALUE!`. Every rich error is stored this way, not only the dynamic-array ones; errorType is
+sees `#VALUE!`, except for errorType 6, whose cells cache `<v>#N/A</v>` (see below). Every rich error is stored this way, not only the dynamic-array ones; errorType is
 always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 
 | errorType | error | ERROR.TYPE | produced by (probe cell) |
 |---|---|---|---|
 | 2 | `#VALUE!` | 3 | REGEXEXTRACT's invalid return_mode spilled by MAP, GROUPBY or EXPAND (rich-errors-spilled-lambda A16, B51, B66; T-2417) |
+| 6 | `#N/A` | 7 | REGEXEXTRACT with no match (subType 7) or a capture group that took no part (subType 9), with an `<fb t="e">#N/A</fb>` fallback (rich-errors-regex-group A4:A6; T-2442) |
 | 8 | `#SPILL!` | 9 | `SEQUENCE(2)` blocked by a value (rich-errors-calc A1) |
 | 9 | `#CONNECT!` | 10 | `STOCKHISTORY` of an unknown ticker (rich-errors-stockhistory A1, subType 4) |
 | 10 | `#BLOCKED!` | 11 | `IMAGE` of an unreachable URL (rich-errors-image A1, subType 12); an uncached external reference (poi/link-external-workbook-b A1, subType 2) |
@@ -66,19 +67,33 @@ in every spilled cell of MAP (A16:A17), GROUPBY (B51:B53) and EXPAND (B66, A67:B
 VALUETOTEXT through INDEX are 3 and `#VALUE!` (E16, F16, E51, E66). `#DIV/0!`, `#N/A`, `#NUM!`, `#REF!`, `#NULL!` and the
 `#VALUE!` of `"a"+x` in the same positions are plain `t="e"` literals. The cached excel-graph recalcs also store
 errorType 2 in `errorType, iftab[, ptg], subType` structures (subType 0, 33, 39, 40, 59, 133); the reader finds
-errorType by key name and subType does not change the error, so all of them decode to `#VALUE!`. Only subType 0 has direct ERROR.TYPE
-evidence; the others rest on the T-0030 rule (their cached `<v>#VALUE!</v>` is no evidence: every rich error caches
-`#VALUE!`). A non-zero subType probe is part of T-2442.
+errorType by key name and subType does not change the error, so all of them decode to `#VALUE!`. subTypes 0 and 133 have direct ERROR.TYPE
+evidence; the others rest on the T-0030 rule (their cached `<v>#VALUE!</v>` is no evidence: every rich error but errorType 6
+caches `#VALUE!`). subType 133 is the `#VALUE!` of REGEXEXTRACT's return_mode 2 with a pattern without
+capture groups (`REGEXEXTRACT("abc","b",2)`, matching or not): it is stored as (2, 133) when scalar, spilled by MAP or
+padded by EXPAND, and as (errorType 2, ptg 3, subType 133) when padded as `REGEXEXTRACT(..)+1` (A14:B15); ERROR.TYPE is 3 directly and through INDEX (probes/rich-errors-regex-group
+A1:A3, A8:A9, A11:B12, A14:B15, H/K columns; excel-graph, 2026-10-23, T-2442). In a lifted return_mode, an invalid
+number element (`{0,5}`'s 5, `{-1;0}`'s -1, TOROW's 7) is stored as (2, 0), anchor (A30) or spilled member (B19, B21,
+B23:B24), a valid mode 2 beside the pattern without groups as (2, 133) (B25, group "b"'s 2, and B26, the total row), and a text element (`"x"`,
+a GROUPBY header) as a plain `#VALUE!` literal (A17:B17, A19, A23:A26).
+
+errorType 6 is `#N/A` (ERROR.TYPE 7): REGEXEXTRACT's no-match `#N/A` (return_mode 0 and 2 probed; mode 1 not) is stored as the
+rich error (6, 7) and a capture group that took no part in the match (`REGEXEXTRACT("b","(a)?(b)",2)`'s first element) as (6, 9).
+Both carry Excel's own fallback `<fb t="e">#N/A</fb>` ahead of their fields, and their ERROR.TYPE is 7 and VALUETOTEXT
+`#N/A`, directly and through INDEX, with ISNA TRUE (probes/rich-errors-regex-group A4:A6; excel-graph, 2026-10-23, T-2442).
+Unlike every other rich error, their sheet cells cache `<v>#N/A</v>`, not `#VALUE!` (A4:A6 in the cached
+recalc), so for errorType 6 the cached value agrees with ERROR.TYPE and a reader that ignores `vm` already sees `#N/A`.
+The `<fb>` element is not a field, so the reader's errorType position is unchanged.
 Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
 `GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
 2026-10-22, T-2397; recalc input_sha256 e07a9239… and 7cf52886…). That scratch recalc reported all four spilled value cells, so no case of a
 spilled rich error missing from the workbook was reproduced. The T-2254 triage's 28 "unreported" spill cells
 (gen-m7/0624b684889e9228 A612, 21b4eef18424ce94 A1504, 9bb61f6ae34c7e20 A136) were also in the workbook: the fill
 had dropped them as undecoded (re-filled 2026-10-22, T-2397). Those cases store errorType 2 (subType 0, 39, 59 or 133;
-some with `ptg` and `iftab` fields) and errorType 6 (subType 7) rich errors; errorType 2 is decoded since T-2417, errorType 6 has no ERROR.TYPE evidence yet (T-2442). `rustsheet-oracle fill` keeps such cells in
+some with `ptg` and `iftab` fields) and errorType 6 (subType 7) rich errors; errorType 2 is decoded since T-2417 and errorType 6 since T-2442. gen-m7/0624b684889e9228's sidecar still holds the 22 `#UNDECODED!` (errorType 2) cells of its pre-T-2417 fill; a re-fill decodes them all to `#VALUE!` (checked 2026-10-23, T-2442) and also scores the spill members of A2004, so it lands with T-2415. `rustsheet-oracle fill` keeps such cells in
 the sidecar as `#UNDECODED!` instead of dropping them, because a spill member missing from the sidecar
 is scored as an expected blank (T-2397).
-Status: confirmed (storage; errorType 2 = `#VALUE!`, excel-graph); errorType 6 UNVERIFIED (T-2442).
+Status: confirmed (storage; errorType 2 = `#VALUE!`, errorType 6 = `#N/A`, excel-graph).
 
 ## MOD lifts over array arguments
 Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The
@@ -751,6 +766,14 @@ T-1322 follow-up (probes/groupby-lambda-forms and probes/groupby-blank-values, e
 of the sheet G anchors give the eta forms' results. The function gets each group's values as an array, not a reference
 (`LAMBDA(x,ISREF(x))` is FALSE), with blank cells as true blanks: `ISBLANK(INDEX(x,1,1))` is TRUE, TYPE 1, LEN 0, and
 COUNTA counts them (the blank-value group's COUNTA is 1), ARRAYTOTEXT shows them as nothing (`"2, b, TRUE, 1, a, FALSE, 2, , 1.5, B"`).
+A LAMBDA array result is shown as `#VALUE!`, but the cell holds the array itself, a nested array (probes/t2360-array-lambda-holidays
+P, excel-graph, 2026-10-23, T-2360): with `LAMBDA(v,v)`, `TYPE(INDEX(GROUPBY(..),r,c))` is 64 and INDEX returns the group's values
+(`ROWS`x`COLUMNS` 2x1 for a two-record group, 4x1 for the total), even a 1x1 array for a one-record PIVOTBY cell (P!B3). One LAMBDA
+over several value columns gives each column its own array. A consumer that lifts over the result reads each cell's top-left, so
+`SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a nested array's top-left is one (`{#N/A;3}`, P!C33 = 1),
+and the gen-m7 REGEXEXTRACT whose return_mode is such a GROUPBY gets a valid mode, not `#VALUE!` (gen-m7/21b4eef18424ce94 A1504),
+while MAP over the result is an error (t2311-pivotby-value-columns-error P!D12). Blank keys show as true blanks in INDEX (`TYPE` 1,
+`&""` is "", G!A12, B3), not 0. Ours: `#VALUE!` per cell and 0 for a blank key (the engine has no nested arrays; follow-ups T-2459, T-2460).
 A LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`) is `#VALUE!` in every cell, like an array result; so is a
 two-parameter LAMBDA (each cell, not the whole result). `field_headers` 2 over two keys and two values generates
 "Row Field 1", "Row Field 2", "Value 1", "Value 2"; `field_headers` 3 with `total_depth` -1 puts the header row first, then
@@ -786,7 +809,7 @@ T-1326 follow-up (probes/pivotby-followup, 63 PIVOTBY questions over the same Da
   `{TRUE;FALSE}` (P!A1581) is `#VALUE!`, and so is an error or other text in it, not the error (P!A1481, P!A1601). With a
   header row, the filter may be as tall as the fields or as the records, aligned with them (P!A1501, P!A1521, P!A1541,
   P!A1561), as in GROUPBY. Short col_fields are `#VALUE!` (P!A301). An error function is passed on (`NA()`, P!A1281); `5` is `#VALUE!` (P!A761).
-- Cells: errors in values make their cells and totals that error (P!A321); a LAMBDA array result is `#VALUE!` per cell, `""`
+- Cells: errors in values make their cells and totals that error (P!A321); a LAMBDA array result is `#VALUE!` per cell (shown; the cell holds a nested array, see the T-2360 paragraph above), `""`
   where there are no records (P!A341); text results show as text (P!A541). An array relative_to (here a filter column put one
   argument too far) is lifted per element: a 10x1 array (P!A681).
 Unprobed: whether one row of text values with no rows below is a header (the engine takes it as data), and where
