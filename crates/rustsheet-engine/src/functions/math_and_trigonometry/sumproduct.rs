@@ -30,7 +30,8 @@ impl Model {
         // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150). An error element
         // of any argument beats a shape mismatch in either order, but not a whole-argument
         // error of a later argument (`SUMPRODUCT(R,X,NA())` is `#N/A`); the first element error
-        // in argument then element order is kept (probes/t2296-sumproduct-error-element, T-2450).
+        // in argument then element order is kept (probes/t2296-sumproduct-error-element, T-2450). A blank
+        // one-cell argument after an element error also wins, inferred and unprobed.
         let mut arrays: Vec<Vec<Vec<f64>>> = Vec::with_capacity(args.len());
         let mut shape: Option<(usize, usize)> = None;
         let mut mismatch = false;
@@ -64,11 +65,7 @@ impl Model {
         }
 
         if let Some(error) = element_error {
-            return CalcResult::Error {
-                error,
-                origin: cell,
-                message: String::new(),
-            };
+            return CalcResult::new_error(error, cell, String::new());
         }
         if mismatch {
             return CalcResult::new_error(

@@ -254,7 +254,7 @@ An error argument beats a shape mismatch earlier in the list: `SUMPRODUCT(TYPE(B
 (ours was `#VALUE!` before T-2150, as was `SUMPRODUCT(1,B9:E10,NA())`).
 Ours (since T-2150): every argument is read in order, and the first whole-argument error or blank one-cell reference
 (a cell or a one-cell range such as `D4:D4`) decides the result, even after a shape mismatch; an error element inside a
-range wins only ahead of the first mismatched argument.
+range does not decide it before a later whole-argument error or blank (see the T-2296 paragraph below, T-2450).
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1b30e4d075b252ea Calc!A365, gen-m5/6a8bb7cd6d7769ad Calc!A79,
 gen-m5/aac6230c2fb40e1e Calc!A79, gen-m5/fc81c2f704bef138 Calc!A165, gen-m5/c688ca172fe533dc Calc!A183, gen-m5/7d1a5d223624fc70 Calc!A33,
 gen-m5/aac6230c2fb40e1e Calc!A64, gen-m5/f0f205865a3a4328 Calc!A396, gen-m5/399071ff6782ab16 Calc!A145.
@@ -273,7 +273,7 @@ beats a shape mismatch wherever it sits: `SUMPRODUCT(X,R)` and `SUMPRODUCT(R,X)`
 anywhere is `#VALUE!` (`SUMPRODUCT(B1:C4,{1,2,3})`). A whole-argument error beats an error element: `SUMPRODUCT(R,X,NA())`
 and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Implemented in
 `fn_sumproduct` (T-2450): every argument is read, a whole-argument error returns at once, and the first element error in argument then element
-order beats a mismatch (which of several element errors wins is unprobed).
+order beats a mismatch (which of several element errors wins is unprobed). A blank one-cell argument also returns at once, so it beats an earlier element error (`SUMPRODUCT(R,blank)` is `#VALUE!`): INFERRED from the blank acting as a whole-argument error in t2200 A20/A21, UNPROBED.
 Tasks: T-0944, T-2150, T-2296, T-2450
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
