@@ -100,7 +100,9 @@ Fitting points (66 values 2^52 .. 1E+300, ODD and EVEN, excel-graph, T-2172): pr
 EVEN matches Excel on all 66 cells. ODD misses 11: every miss is an even double strictly above 2^53 and up to about 1E+16 (2^53+2,
 2^53+6, ..., 9999999999999990 .. 1.000000000000001E+16, and -(2^53+2)), where Excel returns the next double away from zero (x+2) and
 ours the one toward zero (e.g. G10 `ODD(9007199254740994)` is 9007199254740996, ours 9007199254740992; G30 `ODD(9999999999999998)` is
-1E+16, an even result). `ODD(2^53)`, `ODD(2^54)` and larger values return the input unchanged (F9, F20 onwards). T-2173 fits this.
+1E+16, an even result). Between 2^53 and about 1E+16 the rule is by residue: x = 2 (mod 4) gives x+2 (away from zero), x = 0 (mod 4) returns x unchanged, an even result
+(G11, G13, G15, G17, G27, G29, G31, G33, G35, G63). `ODD(2^53)` and values from 2^54 up return the input unchanged (F9, F20 onwards).
+`EVEN(6.223015277861143E+37)` with the stored double returns its input (H60); the gen-m5 ...144 came from a computed, 1-ulp-low input, not EVEN. T-2173 fits this.
 Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224 (gen-m5/38b1b8e51dbad326 Calc!A10 fixed by T-2163).
 `ODD(EVEN(9999999999999999))` is 9999999999999992 as well (ours 9999999999999988): gen-m5/d88d12a62b726a0a Calc!A232 (excel-graph,
 2026-10-22, T-2252 triage).
@@ -1985,7 +1987,7 @@ Tasks: T-1282, T-1785
 SIN, COS, TAN, COT, SEC and CSC return `#NUM!` when |x| >= 2^27 (134217728); 2^27-1 still gives a
 number, and the cut is the same for negative arguments and for 1E+300. The error is a real error
 (`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). T-1201 probed only the integers 2^27-1 and 2^27 (and their negatives) at the cut; T-2172 adds fractions: the
-cut for fractional arguments is also |x| >= 2^27: 134217727.25, .5, .75 and 2^27-2^-26 give numbers, 134217728.25 is `#NUM!`, same for negatives (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A131:D142, T-2172). COSH(1E+15) is also
+cut for fractional arguments is also |x| >= 2^27: 134217727.25, .5, .75 and 2^27-2^-26 give numbers, 134217728.25 and -2^27 are `#NUM!`, negative fractions below 2^27 in magnitude give numbers (-134217728.25 itself unprobed) (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A131:D142, T-2172). COSH(1E+15) is also
 `#NUM!` (probe cell A85).
 Excel reduces every trig argument by multiples of `π₆₄/2`, where `π₆₄` is π rounded to a 64-bit
 significand (the x87 `FLDPI` constant `0xC90FDAA22168C235·2^-62`, π₆₄ − π ≈ 5.0166e-20), and
