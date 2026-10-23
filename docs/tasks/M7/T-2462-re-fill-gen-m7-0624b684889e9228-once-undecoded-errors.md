@@ -3,11 +3,11 @@ id: T-2462
 title: "Re-fill gen-m7/0624b684889e9228 now that undecoded errors decode (T-2417)"
 milestone: M7
 lane: harness
-status: in-progress
+status: todo
 priority: P2
 size: S
 tier: sonnet
-depends_on: [T-2417]
+depends_on: [T-2417, T-2415]
 ---
 
 ## Goal
@@ -28,3 +28,10 @@ Also see T-2415 (arrays.md says this re-fill lands with it).
 
 ## Out of scope
 - Engine fixes for any mismatch the decoded values expose (file a task).
+
+## Attempt notes (2026-10-23, sonnet run)
+Re-filled the sidecar: only the 22 `#UNDECODED!` (errorType 2) cells became `#VALUE!` (A1211 A2089 A2835 A3067 A3995 A51
+A515 A614 B614 C614 D612-D614 E612-E614 F612-F614 G612-G614) plus `source`; `input_sha256` unchanged. But the fill also scores the
+spill members of EXPAND at A2004 (Excel: one `#VALUE!`, nothing spilled) as expected blanks, and our engine still spills them
+(T-2415): `make eval-baseline` then adds 336 new `F` lines in this case and fails the visible-parity gate. So this task
+cannot land before T-2415; re-run the fill and `make eval-baseline` after it merges.
