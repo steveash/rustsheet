@@ -1285,26 +1285,32 @@ Tasks: T-1975, T-2185
 Rule: DURATION discounts each cash flow with Excel's `^` (not libm `pow`) and weights it as `(t·cf)/v^t`, then
 `num/den/frequency`; MDURATION is exactly the worksheet `DURATION(...)/(1+yld/frequency)`. A zero-coupon
 `DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)` is 5.541666666666668, one ulp above `t/2`, because `(t·cf)/v^t`
-divided by `cf/v^t` is not exactly `t`. On the excel-graph evidence RRI is exactly the worksheet `(fv/pv)^(1/nper)-1`
-(but see Open below: Mac D12 differs): `RRI(10,1,200)` is 0.6986464646342472, where libm `pow` gives ...474.
+divided by `cf/v^t` is not exactly `t`. RRI is `EXP(LN(fv/pv)*(1/nper))-1` (T-2216 sweep below; the worksheet `^` form fits only 112 of 136
+numeric points): `RRI(10,1,200)` is 0.6986464646342472, where libm `pow` gives ...474.
 A negative `fv/pv` is always `#NUM!` for RRI, even where the worksheet form is a number: `RRI(1,-100,200)`,
 `RRI(0.5,-100,200)` and `RRI(1/3,-1,8)` are `#NUM!`, while `(200/-100)^(1/1)-1` is -3 and `(8/-1)^3-1` is -513
 (probes/fin-rri-vdb-edges A1-A16).
 Evidence: probes/fin-mduration-rri-fit (60 cells: 12 DURATION/MDURATION/quotient triples, 12 RRI/`^` pairs),
 fin-mduration, fin-rri (excel-graph, 2026-10-20, T-1975).
-Open point (2026-10-21 gap triage): the web probes above have an integer nper or an exact `fv/pv`.
+Earlier open point (2026-10-21 gap triage, settled by the T-2216 sweep below): the web probes above have an integer nper or an exact `fv/pv`.
 The one fractional-nper, inexact-ratio cell in the repo is Mac desktop: ironcalc-calc
 FINANCIAL/RRI.xlsx Sheet1!D12, `RRI(0.5,3,4)` = 0.7777777777777775 ("Microsoft Macintosh Excel"
 16.0300). The worksheet form `(4/3)^2-1` gives 0.7777777777777777, the engine's value. So either Mac
 desktop differs from the web here, as for SIN(4) and ATAN2 (decision 0074), or RRI is not the
-worksheet form when nper is fractional. T-2216 probes it on excel-graph.
+worksheet form when nper is fractional. T-2216 probed it on excel-graph (below).
+T-2216 sweep (probes-numeric/m9-fin-rri-sweep, excel-graph, 143 rows: the web agrees with the Mac value, `RRI(0.5,3,4)` is
+0.7777777777777775, so RRI.xlsx D12 is not Mac-only). Of the 136 numeric RRI results, the worksheet forms match
+`EXP(LN(fv/pv)*(1/nper))-1` 134 times (the two misses are `RRI(1,3,0)` = -1 and `RRI(1,0,0)` = 0, where that form is `#NUM!` / `#DIV/0!`),
+`(fv/pv)^(1/nper)-1` and `POWER(fv/pv,1/nper)-1` 112 times each, and `EXP(LN(fv/pv)/nper)-1` 87 times. So RRI is
+`EXP(LN(fv/pv)*(1/nper))-1`, with the reciprocal taken first; the `/nper` candidate is refuted (it misses 49 of 136).
+RRI is no worksheet form at the edges (rows 131-139): fv=0 is -1 and pv=fv=0 is 0; pv=0 with fv<>0 is `#NUM!`; nper <= 0 is
+`#NUM!` even where the worksheet forms are numbers (nper -1 and -0.5 give -0.25 and -0.4375); `RRI(1E-5,1,2)` is `#NUM!`
+(overflow) while `RRI(0.001,1,2)` is 1.0715086071861939e+301. Fix: T-2217.
 Status: VERIFIED (excel-graph)
 Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
-Open (gap triage 2026-10-21): RRI is not always the worksheet POWER/`^`. `ironcalc-calc/FINANCIAL/RRI.xlsx` Sheet1!D12
-`RRI(0.5,3,4)` is 0.7777777777777775 (Mac Excel 16.x cached; ours 0.7777777777777777). E12 in the same sheet,
-`POWER(4/3,1/0.5)-1`, is 0.7777777777777777. `EXP(LN(fv/pv)/nper)-1` with Excel's EXP and LN fits D12, RRI.xlsx D3-D6 and every
-excel-graph RRI cell above (the special-case cells fin-rri A5/A6 and RRI.xlsx D2/D8 aside; libm exp/log fits them too). D12 is the only point we have
-where it and `^` differ, so it is a candidate, not a rule, until the T-2216 sweep (which supersedes T-2222). Fix: T-2217.
+Resolved by the T-2216 sweep above: RRI.xlsx Sheet1!D12 `RRI(0.5,3,4)` is 0.7777777777777775 (Mac cached, and the web), ours
+0.7777777777777777; E12 `POWER(4/3,1/0.5)-1` is 0.7777777777777777, so RRI is not POWER/`^`. The engine's `excel_exp`/`excel_ln`
+form with `*(1/nper)` fits D12, RRI.xlsx D3-D6 and every excel-graph RRI cell above. Fix: T-2217 (supersedes T-2222).
 Tasks: T-1975, T-2216, T-2217
 
 ## NPV and FVSCHEDULE arguments
