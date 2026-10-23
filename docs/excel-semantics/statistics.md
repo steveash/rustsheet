@@ -133,9 +133,10 @@ form reproduces both cells (checked during T-0903), so the formulation is open.
 - The cdf is the sum of Excel's own pmf terms from the lowest: `HYPGEOM.DIST(1,4,8,20,TRUE)` = 0.46542827657378727 is
   0.10216718266253864 + 0.3632610939112486 in doubles, Excel's two pmfs (t1049-hypgeomdist A1, A31, A2), where the
   exact cdf rounds to 0.46542827657378744.
-- Excel takes a population of `ROUND(2^53+1,8)` (just below 2^53) as `#NUM!`: `HYPGEOMDIST(1,25,3,ROUND(2^53+1,8))`
-  (gen-m9/35e8168aae2b00f8 A128), while a population of 2E9 is a number (t1049-hypgeomdist A51). The limit between
-  is unprobed.
+- A huge population is `#NUM!` in Excel from somewhere between 2E9 (a number, t1049-hypgeomdist A51) and 1E10
+  (`HYPGEOM.DIST(1,4,8,1E10,FALSE)`, A50): also `HYPGEOMDIST(2,3,8,1000000000000017.1)` (gen-m9/ee2497a5e683c5d9 A264),
+  `HYPGEOM.DIST(3,4,1,753749999999999.8,FALSE)` (a013a45a8fbcab4f A352) and `HYPGEOMDIST(1,25,3,ROUND(2^53+1,8))`
+  (35e8168aae2b00f8 A128); T-2429 owns the limit. The walk below stops at 2^52 only to choose a kernel.
 Evidence: `ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx` Sheet1!F2, F3; probes-numeric/t1048-hypgeomdist,
 t1049-hypgeomdist (excel-graph).
 Ours: the exact value rounded once, from a double-double walk (`discrete.rs` `hypergeometric_walk`, up to 2^12 steps and

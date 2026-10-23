@@ -219,8 +219,9 @@ fn hypergeometric_walk(
     lo: u64,
     hi: u64,
 ) -> Option<Walk> {
-    // Above 2^52 the caller keeps statrs: Excel's `HYPGEOMDIST(1,25,3,ROUND(2^53+1,8))` is #NUM!
-    // (gen-m9/35e8168aae2b00f8 A128), as statrs' is, where a walk would give 8.3E-15.
+    // Above 2^52 the caller keeps statrs, which is #NUM! near 2^53 as Excel is
+    // (`HYPGEOMDIST(1,25,3,ROUND(2^53+1,8))`, gen-m9/35e8168aae2b00f8 A128) where a walk would give
+    // 8.3E-15. Excel's own limit is far lower, between 2E9 and 1E10 (statistics.md, T-2429).
     if population > 1 << 52 || draws > population || successes > population {
         return None;
     }

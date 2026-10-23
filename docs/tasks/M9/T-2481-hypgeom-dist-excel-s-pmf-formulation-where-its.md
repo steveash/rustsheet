@@ -30,9 +30,14 @@ pmf terms, so the pmf formulation fixes the cdf's last digits too.
 **Needs evidence beyond the sweeps (excel-probe skill):** e.g. a grid at a fixed small N (N = 6 to 12, every n, K,
 x) to pin the formulation from exactly representable cases such as `HYPGEOMDIST(0,3,1,6)` = 0.5000000000000001.
 
+Bit-level scope left by T-0977 (decision 0083), which the same formulation should settle: ironcalc-calc
+STATISTICAL/HYPERGEOM_DIST.xlsx F2, F3; the 65 last-digit HYPGEOM gen-m9 lines in T-0977's task file; and
+t1049-hypgeomdist A5 `HYPGEOM.DIST(0,3,5,12,TRUE)` (Excel 0.15909090909090923, now the exact 7/44, 5 ulp off; it was 2
+ulp off under statrs).
+
 ## Acceptance criteria
 - [ ] The six cells above are within half a unit of the 15th digit of Excel's value, no new known-failure lines.
-- [ ] statistics.md records the matched formulation.
+- [ ] statistics.md records the matched formulation; the bit-level cells above pass or are listed with Excel vs ours.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

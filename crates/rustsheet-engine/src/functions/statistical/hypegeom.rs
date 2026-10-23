@@ -243,7 +243,8 @@ impl Model {
 
     /// `HYPGEOMDIST(sample_s, number_sample, population_s, number_pop)`, HYPGEOM.DIST's pmf: every
     /// argument lifts over an array and a range (probes/stat-argument-modes H337-H342,
-    /// probes/stat-quantile-lift H53-H54). The pmf is closed form.
+    /// probes/stat-quantile-lift H53-H54). The pmf is the double-double walk, statrs' closed form past
+    /// its budget.
     pub(crate) fn fn_hypgeomdist_compat(
         &mut self,
         args: &[Node],
