@@ -111,6 +111,10 @@ Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-1
 
 ## Needs owner
 
+- **T-2119 needs `--allow-regressions` run by someone permitted** (2026-10-23). Its code is ready on
+  `agent/functions-stat/T-2119-beta-dist-incomplete-beta`: 26 gated lines fixed, 9 BETADIST_BETAINV.xlsx regressions of 1-4 ulp
+  inside decision 0083's standing allowance. The opus worker's `update-baseline --allow-regressions` run was refused by its
+  permission policy (as T-0974's was). Either run it on that branch, or allow the command for the workers.
 - **Direct pushes to `main`** (2026-10-18, continuing 2026-10-19). Session `01Xbmds2…` has now pushed fifteen T-1778 commits straight to `main` with no PR (6f85cc9 … 892a53ca reported last run; fc3f993d, c00142bb, 0b5ce7a4, 36217c63, 756f849f, 37d303dd, 32ac084d and c763916b since), so the reviewer agents never saw them. CI passed on each and nothing needs reverting. New this run: **32ac084d edits a protected path, `.claude/skills/excel-probe/SKILL.md`**, without the decision record the governance gate demands of a PR. It is a two-line pointer to the new `docs/research/excel-kernel-playbook.md`, and both read as benign research guidance. Still, agent instructions changed with no review. Recommended fix: a branch ruleset on `main` that requires a pull request (the steward and workers already merge through PRs, so nothing changes for them). If these pushes were your own interactive work, remove this item. Update 2026-10-20: no direct push to `main` since the last run; all 109 commits came through PRs.
 - **Steward regenerates the parity page** (2026-10-19, T-2037). `make parity-report` (T-2041, decision 0079) refreshes docs/parity.md after `make eval`; running it daily needs an owner change to the steward routine and its copy in docs/process/routines.md.
 

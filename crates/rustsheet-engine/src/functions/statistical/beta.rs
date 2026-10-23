@@ -1,30 +1,55 @@
-use statrs::distribution::{Beta, Continuous, ContinuousCDF};
+use statrs::distribution::{Beta, Continuous};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
-use crate::functions::statistical::incomplete_beta::beta_density;
+use crate::functions::statistical::incomplete_beta::{
+    beta_density, beta_reg_complement, beta_reg_upper,
+};
 use crate::functions::statistical::inverse_beta::beta_inverse_cdf;
-use crate::functions::statistical::special::bisect_unit_interval;
+use crate::functions::statistical::special::refine_increasing;
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// `statrs`' `inverse_cdf` panics from p about 1E-200, does not finish for BETA.INV(1E-100,1000,1)
 /// nor for a shape of 1E8 or more, and for the rest of the sweep (T-1543, 9x9 shapes up to 1E15 by
 /// 8 probabilities) is bounded and last-digit exact for shapes up to 1E5 and p of 1E-15 or more.
-/// Outside that range the quantile comes from bisection on the cdf (at most 1100 evaluations).
-/// statrs' search is the capped port of `inverse_beta.rs` (T-1848), which also ends the one hang
-/// found inside the range (`BETA.INV(1-2^-53,1.0024,12177)`, `#NUM!`).
+/// Inside that range its search (the capped port of `inverse_beta.rs`, T-1848, which also ends the
+/// one hang found there, `BETA.INV(1-2^-53,1.0024,12177)`) is the start of the refinement.
 const BETA_QUANTILE_STATRS_SHAPE_MAX: f64 = 1e5;
 const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 
-fn beta_quantile(dist: &Beta, alpha: f64, beta: f64, p: f64) -> f64 {
-    if alpha <= BETA_QUANTILE_STATRS_SHAPE_MAX
+/// The quantile of `p` in (0, 1): the crossing of BETA.DIST's cdf (`special::refine_increasing`
+/// on the T-0970 incomplete beta), from statrs' search as a start where it is reliable. Excel's
+/// BETA.INV solves its own cdf to the crossing (docs/excel-semantics/statistics.md "BETA.INV solves
+/// Excel's own CDF to the crossing (T-1745)"), so the inverse uses the same cdf as BETA.DIST (T-2119).
+/// Above p = 0.5 the target is the exact complement 1 - p on the upper tail, as for F.INV (T-0974).
+/// At most 512 Newton steps and 129 cdfs, or 65 cdfs without a start.
+fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
+    let estimate = if alpha <= BETA_QUANTILE_STATRS_SHAPE_MAX
         && beta <= BETA_QUANTILE_STATRS_SHAPE_MAX
         && p >= BETA_QUANTILE_STATRS_P_MIN
     {
-        return beta_inverse_cdf(alpha, beta, p);
+        beta_inverse_cdf(alpha, beta, p)
+    } else {
+        f64::NAN
+    };
+    if p > 0.5 {
+        refine_increasing(
+            |t| -beta_reg_upper(t, 1.0 - t, alpha, beta),
+            -(1.0 - p),
+            estimate,
+            0.0,
+            1.0,
+        )
+    } else {
+        refine_increasing(
+            |t| beta_reg_complement(t, 1.0 - t, alpha, beta),
+            p,
+            estimate,
+            0.0,
+            1.0,
+        )
     }
-    bisect_unit_interval(|x| dist.cdf(x), p)
 }
 
 /// BETA.DIST's `cumulative`: a boolean, a number (TRUE unless 0), "TRUE" or "FALSE" in any case,
@@ -50,8 +75,8 @@ fn beta_cumulative(value: &CalcResult, cell: CellReferenceIndex) -> Result<bool,
 impl Model {
     /// `BETA.DIST(x, alpha, beta, cumulative, [A], [B])`: every argument lifts over an array and
     /// a range (SPEC-0011; probes/stat-argument-modes H84-H89, probes/stat-later-argument-lift
-    /// H1-H5, K3-K6). The cdf is statrs' incomplete beta, a continued fraction of at most 140
-    /// steps; the density is `incomplete_beta::beta_density` where it applies.
+    /// H1-H5, K3-K6). The cdf is the T-0970 incomplete beta (`incomplete_beta::beta_reg_complement`,
+    /// T-2119); the density is `incomplete_beta::beta_density` where it applies.
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaDist, args, cell, &mut |model, values| {
             let [x, alpha, beta, cumulative, bounds @ ..] = values else {
@@ -102,10 +127,8 @@ impl Model {
         }
         let t = (x - a) / width;
         let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
-        // TODO(T-2119): the cdf moves to `incomplete_beta::beta_reg` (bit-exact on more of
-        // BETADIST_BETAINV.xlsx), once the chained BETA.INV cells it moves are decided.
         let result = if cumulative {
-            dist.cdf(t)
+            beta_reg_complement(t, 1.0 - t, alpha, beta_param)
         } else {
             // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A)
             beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width
@@ -118,8 +141,7 @@ impl Model {
 
     /// `BETA.INV(probability, alpha, beta, [A], [B])`, and BETAINV: every argument lifts over an
     /// array and a range (SPEC-0011; probes/stat-argument-modes H90-H99,
-    /// probes/stat-quantile-lift). The quantile is the capped port of statrs' inversion or a
-    /// bisection of at most 1,100 cdfs (`beta_quantile`), which the lifting table charges
+    /// probes/stat-quantile-lift). The quantile is the crossing of BETA.DIST's cdf (`beta_quantile`), which the lifting table charges
     /// (lift/kinds/statistical.rs `QUANTILE_WEIGHT`).
     pub(crate) fn fn_beta_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaInv, args, cell, &mut |model, values| {
@@ -144,8 +166,7 @@ impl Model {
         if alpha <= 0.0 || beta_param <= 0.0 || p <= 0.0 || p >= 1.0 || b <= a {
             return Err(num_error(cell));
         }
-        let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
-        let t = beta_quantile(&dist, alpha, beta_param, p);
+        let t = beta_quantile(alpha, beta_param, p);
         if t.is_nan() || t.is_infinite() {
             return Err(num_error(cell));
         }
