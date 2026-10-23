@@ -34,8 +34,8 @@ each one with `cd tools && uv run rustsheet-oracle fill -b excel-graph --suite <
 ## Outcome
 Found by scanning every gen-/probes case with baseline failures for cells where Excel is `<empty>`, ours is an
 error (`rustsheet-eval show`): 13 cases (12 gen-m7 + probes/t2414-gen-m7-unexplained). Re-filled all with
-`rustsheet-oracle fill -b excel-graph --force`. Result: 10 sidecars gained cells (all `#VALUE!` spill members that the
-old fill had dropped; 21b4eef1 gained none), `eval/baseline` lost 1 failure (gen-m7/7307132b Calc!A587) and gained 0;
+`rustsheet-oracle fill -b excel-graph --force`. Result: 10 sidecars gained cells (60 cells in all, each a `#VALUE!` spill anchor or member that the
+old fill had dropped, decoded by the T-2417 decoder rather than left `#UNDECODED!`; 21b4eef1 gained none), `eval/baseline` lost 1 failure (gen-m7/7307132b Calc!A587) and gained 0;
 checked-cell counts rose for 10 cases.
 Not committed, because they changed more than added cells: gen-m7/0624b684889e9228 (the re-fill replaced 40+
 `#UNDECODED!` cells with decoded `#VALUE!`, i.e. T-2417 territory) and probes/t2414-gen-m7-unexplained (input hash

@@ -24,5 +24,7 @@ probes/t2414-gen-m7-unexplained (input hash changed on re-fill). Re-fill with
 - [ ] `make eval-baseline` shows 0 regressions.
 - [ ] `make check` green; reviewers approve.
 
+Also see T-2415 (arrays.md says this re-fill lands with it).
+
 ## Out of scope
 - Engine fixes for any mismatch the decoded values expose (file a task).
