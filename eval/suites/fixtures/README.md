@@ -56,6 +56,10 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   `1990-01-01T12:00:00Z`, `1990-01-01T12:00:00.5`, `1900-02-29`, `1899-12-31` and `12:00:00`; B1 = `A1`,
   C1 = `ISNUMBER(A1)`. One form per workbook because Excel for the web rejects unparsable text. Excel gives
   32874.5, 32874.500005787035, 60, `#VALUE!` (ISNUMBER FALSE) and 0.5.
+- `t-d-1904.xlsx`, `t-d-1904-epoch.xlsx`, `t-d-1904-time-only.xlsx`, `t-d-1904-pre-epoch.xlsx`,
+  `t-d-1904-1900-01-01.xlsx` (T-2515): `t-d-pre-1900.xlsx` with `<workbookPr date1904="1">`, A1 a `t="d"` cell
+  `2024-01-01T00:00:00`, `1904-01-01`, `12:00:00`, `1903-12-31` and `1900-01-01`, and D1 =
+  `TEXT(A1,"yyyy-mm-dd hh:mm:ss")`. Excel gives B1 43830, 0, 0.5, `#VALUE!` and `#VALUE!`.
 - `external-link-cached-text.xlsx` (T-1550): `external-link-cached-ranges.xlsx` with sheet `Refs`
   rewritten (one legacy formula per row in column B, placeholder cached 0) and the cached `Uses`
   sheet replaced: A1 the empty string (`t="str"`, `<v></v>`), B1 18, A2 12, B2 TRUE, A3 the text
