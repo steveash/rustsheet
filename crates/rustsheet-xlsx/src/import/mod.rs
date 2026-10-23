@@ -131,7 +131,8 @@ fn load_package<R: Read + Seek>(
     tz: &str,
 ) -> Result<Workbook, XlsxError> {
     let mut shared_strings = read_shared_strings(archive)?;
-    let (mut workbook, date_system) = load_workbook(archive)?;
+    let mut workbook = load_workbook(archive)?;
+    let date_system = workbook.date_system;
     let rels = load_relationships(archive)?;
     let theme_path = resolve_theme_path(&rels);
     let theme = theme::load(archive, theme_path.as_deref());
@@ -148,7 +149,6 @@ fn load_package<R: Read + Seek>(
         &mut shared_strings,
         &theme,
         &mut styles.dxfs,
-        date_system,
     )?;
     let pivot_sheets: Vec<PivotSheet> = workbook
         .worksheets

@@ -882,7 +882,6 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     shared_strings: &mut SharedStringTable,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
-    date_system: DateSystem,
 ) -> Result<(Vec<Worksheet>, u32), XlsxError> {
     // load comments, tables and hyperlink relationships
     let mut sheet_rels = HashMap::new();
@@ -922,7 +921,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 state: state.clone(),
                 comments: comments.to_vec(),
                 hyperlink_rels: hyperlink_rels.clone(),
-                date_system,
+                date_system: workbook.date_system,
             };
             let (s, is_selected) = load_sheet(
                 archive,
