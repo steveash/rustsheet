@@ -76,7 +76,9 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
 Worksheet cells K3 owns (moved from T-0973, 2026-10-23; known failures in `eval/baseline/gen-m9.txt`, ulp-level): gen-m9
 `GAMMALN.PRECISE` at 40425341c5034eed Calc!A115 (x = 1.0014973824124909), 8f2ac25945af87da A97 (0.8172501166257935),
 b6593d7dd13f2dac A124 (0.9999943310657596), b8ee55934c5b824c A153 (0.8708129562778496), f2bd5f380ec002bf A241
-(0.8447659700885523). They are test points for the engine swap of `gamma_kernels.rs`.
+(0.8447659700885523). K1 owns probes-numeric/t1042-gamma-negatives-edges A5 `GAMMA(-0.1)` (Excel -10.686287021193195, ours
+-10.686287021193193) and A7 `GAMMA(-1.1)` (Excel 9.714806382902898, ours 9.714806382902896); that case is ungated.
+They are test points for the engine swap of `gamma_kernels.rs`.
 
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses
