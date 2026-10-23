@@ -1015,6 +1015,7 @@ C	probes/t2364-regex-dollar-final-cr.case.json	5
 C	probes/t2365-wrap-expand-tocol-error-lift.case.json	13
 C	probes/t2413-blank-in-stacked-arrays.case.json	45
 C	probes/t2414-gen-m7-unexplained.case.json	70
+C	probes/t2455-transpose-single-value.case.json	69
 C	probes/table-edits/table-convert-to-range.case.json	0
 C	probes/table-edits/table-delete-column-before.case.json	12
 C	probes/table-edits/table-delete-column-qty.case.json	12
@@ -2678,10 +2679,12 @@ F	probes/t2414-gen-m7-unexplained.case.json	Calc!A141
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!A151
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!A162
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!A171
-F	probes/t2414-gen-m7-unexplained.case.json	Calc!A291
-F	probes/t2414-gen-m7-unexplained.case.json	Calc!A301
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!B161
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!B162
+F	probes/t2455-transpose-single-value.case.json	Calc!A26
+F	probes/t2455-transpose-single-value.case.json	Calc!A7
+F	probes/t2455-transpose-single-value.case.json	Calc!B26
+F	probes/t2455-transpose-single-value.case.json	Calc!B7
 F	probes/table-edits/table-convert-to-range.case.json	!EngineError
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5

@@ -3,7 +3,7 @@ id: T-2455
 title: "TRANSPOSE of a single value returns that value (not a 1x1 array)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -21,9 +21,9 @@ Owned gen-m7 cells (T-2414):
 - f7e94a817e5385ac A2882 `=TEXTSPLIT(TRANSPOSE(SUM(Data!B6,Data!A9:A9)),Data!A3:C7)`: B2882 Excel "", ours <empty>
 
 ## Acceptance criteria
-- [ ] probes/t2414-gen-m7-unexplained cells A291 and A301 pass; lines leave eval/baseline/probes.txt.
-- [ ] Visible parity: gen-m7/f7e94a817e5385ac B2882 (Excel "", ours empty) passes and its line leaves eval/baseline/gen-m7.txt.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/t2414-gen-m7-unexplained cells A291 and A301 pass; lines leave eval/baseline/probes.txt.
+- [x] Visible parity: gen-m7/f7e94a817e5385ac B2882 (Excel "", ours empty) passes and its line leaves eval/baseline/gen-m7.txt.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Arguments the probe did not cover.
@@ -36,3 +36,19 @@ Tried: `fn_transpose` (functions/lookup_and_reference/transpose.rs) now returns 
 - 320d51765af9b6b7 A376 `FTEST(TRANSPOSE(SUM(Data!D12)),range)` expected `#DIV/0!`, ours `#VALUE!`: fixed in `fn_f_test` (fisher.rs) by taking a computed `CalcResult::Number` (not a one-cell reference, which stays `#VALUE!`, ba4ddb817a8e700e A345) as a sample of one. That alone fixed 284 gen-m9 cells; the last full run (before the reference guard) showed A345 regressing, the guard is built into the tree but its eval was not re-run to completion (build timed out).
 - 4e55500bb8ad3cd8 A178 `LINEST(Data!C8:C9,<num>,UNIQUE(<num>,TRANSPOSE("1")))` expected `#DIV/0!`, ours `#VALUE!`: `fn_unique` casts the scalar text "1" by_col with `cast_bool_ref` and gives `#VALUE!`. Unknown whether Excel's UNIQUE accepts "1" or LINEST reports `#DIV/0!` ahead of the UNIQUE error; needs an `excel-probe` (`UNIQUE(1,"1")`, `UNIQUE(1,{"1"})`, `LINEST` with an error x).
 Next: re-run `make eval-baseline` (must show REGRESSIONS 0), resolve A178 with a probe, add a unit test in test_fn_transpose.rs, update docs/excel-semantics (text.md line ~1024 "Ours lifts" is now stale; add the F.TEST scalar quirk to statistics.md), `make check`, review.
+
+## Outcome
+`fn_transpose` returns the element itself for a 1x1 result unless the argument is an array constant. That removed accidental
+matches through the 1x1 array, and probes/t2455-transpose-single-value (69 cells, excel-graph) showed what Excel does with
+those cells' real shapes, so this task also fixed them:
+- F.TEST takes a single value as a sample of one (`#DIV/0!`) and a one-cell reference to a blank cell is `#VALUE!` ahead of
+  the other sample's error (`f_test_sample`, `is_blank_one_cell`).
+- LINEST and LOGEST report an argument that is itself an error value first, in argument order, and only then the data checks
+  (error elements, too few points, sizes, text); a computed blank known_y is `#VALUE!` at once (`read_regression_inputs`,
+  `validate_regression_inputs`, `read_matrix`).
+- QUARTILE reports quart's error before the empty-data `#NUM!`.
+- DISC/RECEIVED (the shared `discount_args`) read basis first; a boolean ACCRINTM par, ACCRINT issue or rate, and
+  AMORLINC/AMORDEGRC salvage or rate is `#VALUE!`, after a date past the calendar's `#NUM!`.
+Quirks recorded in docs/excel-semantics/text.md, statistics.md and financial.md.
+Eval delta: gen-m9 known failures 8693 -> 8199 (494 fixed), gen-m7 45 -> 44, probes 2 fixed (+4 new-coverage cells of the
+new probe, LINEST text const, follow-up T-2556); 0 regressions; visible parity 8139 off (lock 8632).

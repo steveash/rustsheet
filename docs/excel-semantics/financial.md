@@ -1521,3 +1521,25 @@ Ours: see each task; the triage (T-2257 Outcome) lists every family.
 Status: VERIFIED (excel-graph; the argument-order rules inferred through nested calls)
 Tasks: T-2482, T-2483, T-2484, T-2485, T-2486, T-2487, T-2488, T-2489, T-2490, T-2491, T-2492, T-2493, T-2494, T-2495, T-2496,
 T-2428, T-2241, T-2391
+
+## The discount securities read basis first (T-2455)
+Rule: DISC and RECEIVED read the basis before their other arguments, so an invalid basis or a basis error beats an earlier
+argument's error: `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and `DISC(37025,2.5,1/0,100,"abc")` are `#VALUE!`, and
+`RECEIVED(37025,2.5,1E+300,NA(),1/0)` is `#DIV/0!` (probes/t2455-transpose-single-value A21, A64, A65, excel-graph,
+2026-10-23); gen-m9 ba4ddb817a8e700e A345 has the same shape.
+Ours: since T-2455 (`discount_args`, shared by DISC, INTRATE, PRICEDISC, YIELDDISC and RECEIVED; INTRATE, PRICEDISC and
+YIELDDISC are unprobed and follow their siblings).
+Status: VERIFIED (excel-graph) for DISC and RECEIVED
+Tasks: T-2455
+
+## Booleans in ACCRINT, ACCRINTM, AMORLINC and AMORDEGRC (T-2455)
+Rule: a boolean is `#VALUE!`, typed or from a cell, in ACCRINTM's par (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, A41, A54; text "2"
+is 2, A55), ACCRINT's issue, also before first_interest's error (`ACCRINT(TRUE,39500,..)`, `ACCRINT(TRUE,SQRT(-1),..)`, A52,
+A53), ACCRINT's rate (`ACCRINT(39000,39500,0.1,TRUE,40000,2,0)`, A56, before the settlement's `#NUM!`) and AMORDEGRC's rate
+(`AMORDEGRC(90812,36624,38707,453,3,TRUE,4)`, A51, A57): probes/t2455-transpose-single-value, excel-graph, 2026-10-23. gen-m9
+165db58d1540f014 A141, 0a614cfe974b59c3 A265 and 7c20351562a2d71d A212 show it through F.TEST.
+Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which also
+refuses a boolean salvage per "Argument order of the Analysis ToolPak securities functions"). ACCRINT's other dates and numbers
+still take booleans (unprobed).
+Status: VERIFIED (excel-graph)
+Tasks: T-2455
