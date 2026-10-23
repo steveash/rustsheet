@@ -1,7 +1,8 @@
 //! The `_xlpm.` form of LAMBDA/LET bound names: Excel's, on export, and the R1C1 storage form's.
 
 use super::super::{for_each_chain_operand_mut, Node};
-use crate::expressions::{types::CellReferenceRC, utils::reads_as_r1c1_cell};
+use crate::expressions::types::CellReferenceRC;
+use crate::expressions::utils::{parse_reference_a1, reads_as_r1c1_cell};
 use crate::functions::logical::same_variable;
 use crate::functions::Function;
 use crate::language::get_default_language;
@@ -127,12 +128,20 @@ pub(super) fn prefix_bound_variables(node: &mut Node) {
     });
 }
 
+/// Whether a stored (R1C1) formula would read `name` back as a cell, or refuse it: an R1C1 cell
+/// (`R1C1`, T-1658), or a name spelled like an A1 cell (`f1`, T-2040), which the R1C1 lexer
+/// refuses as an identifier.
+fn reads_back_as_cell(name: &str) -> bool {
+    reads_as_r1c1_cell(name) || parse_reference_a1(&name.to_ascii_uppercase()).is_some()
+}
+
 /// A LET or LAMBDA name (or any unresolved name). In the R1C1 storage form (no `context`), one
-/// the R1C1 lexer would read back as a cell gets the `_xlpm.` prefix the parser drops, as on
-/// xlsx import: Excel takes `LET(R1C1,5,R1C1*2)` (10, probes/r1c1-let-name-r1c1, T-1658).
+/// the stored formula would read back as a cell gets the `_xlpm.` prefix the parser drops, as on
+/// xlsx import: Excel takes `LET(R1C1,5,R1C1*2)` (10, probes/r1c1-let-name-r1c1, T-1658) and,
+/// stored as `_xlpm.f1`, `LET(f1,1,f1+1)` (2, probes/let-cell-shaped-name-stored, T-2040).
 pub(super) fn variable_text(name: &str, context: Option<&CellReferenceRC>) -> String {
     // No `context` is the R1C1 storage form (`to_rc_format`); a context is A1 output.
-    if context.is_none() && reads_as_r1c1_cell(name) {
+    if context.is_none() && reads_back_as_cell(name) {
         format!("_xlpm.{name}")
     } else {
         name.to_string()
@@ -150,7 +159,7 @@ pub(super) fn callee_text(name: &str, context: Option<&CellReferenceRC>) -> Stri
             || name.eq_ignore_ascii_case(&english.booleans.r#true)
             || name.eq_ignore_ascii_case(&english.booleans.r#false)
     };
-    if context.is_none() && (reads_as_r1c1_cell(name) || reads_as_function()) {
+    if context.is_none() && (reads_back_as_cell(name) || reads_as_function()) {
         format!("_xlpm.{name}")
     } else {
         name.to_string()
