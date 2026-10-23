@@ -751,6 +751,14 @@ T-1322 follow-up (probes/groupby-lambda-forms and probes/groupby-blank-values, e
 of the sheet G anchors give the eta forms' results. The function gets each group's values as an array, not a reference
 (`LAMBDA(x,ISREF(x))` is FALSE), with blank cells as true blanks: `ISBLANK(INDEX(x,1,1))` is TRUE, TYPE 1, LEN 0, and
 COUNTA counts them (the blank-value group's COUNTA is 1), ARRAYTOTEXT shows them as nothing (`"2, b, TRUE, 1, a, FALSE, 2, , 1.5, B"`).
+A LAMBDA array result is shown as `#VALUE!`, but the cell holds the array itself, a nested array (probes/t2360-array-lambda-holidays
+P, excel-graph, 2026-10-23, T-2360): with `LAMBDA(v,v)`, `TYPE(INDEX(GROUPBY(..),r,c))` is 64 and INDEX returns the group's values
+(`ROWS`x`COLUMNS` 2x1 for a two-record group, 4x1 for the total), even a 1x1 array for a one-record PIVOTBY cell (P!B3). One LAMBDA
+over several value columns gives each column its own array. A consumer that lifts over the result reads each cell's top-left, so
+`SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a nested array's top-left is one (`{#N/A;3}`, P!C33 = 1),
+and the gen-m7 REGEXEXTRACT whose return_mode is such a GROUPBY gets a valid mode, not `#VALUE!` (gen-m7/21b4eef18424ce94 A1504),
+while MAP over the result is an error (t2311-pivotby-value-columns-error P!D12). Blank keys show as true blanks in INDEX (`TYPE` 1,
+`&""` is "", G!A12, B3), not 0. Ours: `#VALUE!` per cell and 0 for a blank key (the engine has no nested arrays; follow-ups T-2459, T-2460).
 A LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`) is `#VALUE!` in every cell, like an array result; so is a
 two-parameter LAMBDA (each cell, not the whole result). `field_headers` 2 over two keys and two values generates
 "Row Field 1", "Row Field 2", "Value 1", "Value 2"; `field_headers` 3 with `total_depth` -1 puts the header row first, then
