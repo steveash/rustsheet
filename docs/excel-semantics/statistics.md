@@ -2505,8 +2505,11 @@ A computed blank known_y is `#VALUE!` before known_x's and const's errors (`LINE
 `LINEST("abc",1/0)`, `LINEST("5",1/0)` and `LINEST(IF(TRUE,"abc"),1/0)` are `#DIV/0!`, `LINEST(TRUE,{1;2},NA())` `#N/A`;
 A62, A67, A73:A76).
 Ours: the order since T-2455 (`read_regression_inputs`, `validate_regression_inputs`, `read_matrix` in
-functions/statistical/linest.rs); TREND and GROWTH keep reading their data whole before new_x and const (unprobed). A text
-const or stats is read as a boolean (0.5 for A7, A26), T-2556.
+functions/statistical/linest.rs). An error cell in known_y waits too (`LINEST(B20:B21,1/0)` with B20 `#N/A` is `#DIV/0!`,
+`LOGEST(B20:B21,{1;2},NA())` `#N/A`, A89, A94), an omitted known_y is `#VALUE!` (`LINEST(,1/0)`, A90), and TREND and GROWTH,
+which share the reader, follow the same y-then-x order (`TREND(B20:B21,1/0)`, `TREND("abc",1/0)`, `GROWTH(B20:B21,1/0)` and
+`GROWTH("abc",1/0)` are `#DIV/0!`, A85:A88). A defined name for a blank cell as known_y is unprobed (ours: the computed-blank
+`#VALUE!`). A text const or stats is read as a boolean (0.5 for A7, A26), T-2556.
 Status: VERIFIED (excel-graph)
 Tasks: T-2455, T-2556
 

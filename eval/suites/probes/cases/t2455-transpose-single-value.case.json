@@ -93,11 +93,23 @@
         "A82": "=YIELDDISC(37025,2.5,1/0,100,\"abc\")",
         "A83": "=QUARTILE.INC(B5:B6,SUMIFS(C1:E1,B11:D12,1))",
         "A84": "=LINEST(IFERROR(B10,1),{1;2},NA())",
+        "A85": "=TREND(B20:B21,1/0)",
+        "A86": "=TREND(\"abc\",1/0)",
+        "A87": "=GROWTH(B20:B21,1/0)",
+        "A88": "=GROWTH(\"abc\",1/0)",
+        "A89": "=LINEST(B20:B21,1/0)",
+        "A90": "=LINEST(,1/0)",
+        "A91": "=DISC(1/0,2.5,1,100,\"abc\")",
+        "A92": "=ISBLANK(TRANSPOSE(B10))",
+        "A93": "=FTEST(TRANSPOSE(B10),{1;2;3})",
+        "A94": "=LOGEST(B20:B21,{1;2},NA())",
         "B1": 5,
         "B2": "a,b",
         "B3": 0.2,
         "B4": true,
-        "B5": " x "
+        "B5": " x ",
+        "B20": "=NA()",
+        "B21": 2
       }
     }
   ],

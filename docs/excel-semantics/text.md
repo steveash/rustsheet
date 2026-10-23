@@ -1027,6 +1027,8 @@ A one-cell range `TRANSPOSE(B2:B2)` is the value too, while a 1x1 array stays an
 `TRANSPOSE(UNIQUE({"a,b"}))` split to 1 column (probes/t2455-transpose-single-value A12:A16, A70:A72, excel-graph, 2026-10-23); a numeric argument follows from F.TEST
 (`FTEST(TRANSPOSE(5),{1;2;3})` is the one-value `#DIV/0!`, A10, statistics.md "F.TEST of a single value") and from UNIQUE
 (`UNIQUE(1,TRANSPOSE("1"))` is `#VALUE!` like `UNIQUE(1,"1")` and `UNIQUE(1,{"1"})`, A1:A3).
+A blank cell transposes to a blank value: `ISBLANK(TRANSPOSE(B10))` is FALSE and `FTEST(TRANSPOSE(B10),{1;2;3})` is the
+one-value `#DIV/0!`, not the blank-cell `#VALUE!` (A92, A93).
 Ours: since T-2455 (`fn_transpose`: a 1x1 result of an argument that did not evaluate to an array is its element).
 Unprobed: an array pad_with against an error element of a delimiter list (ours: the pad_with `#VALUE!`), and a one-cell reference to an
 error cell as the delimiter, which ours reads as a list, so `TEXTSPLIT("abc",B1,,1/0)` with B1 `#N/A` is ours `#DIV/0!`.

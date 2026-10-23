@@ -1524,7 +1524,7 @@ T-2428, T-2241, T-2391
 
 ## The discount securities read basis first (T-2455)
 Rule: DISC and RECEIVED read the basis before their other arguments, so an invalid basis or a basis error beats an earlier
-argument's error: `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and `DISC(37025,2.5,1/0,100,"abc")` are `#VALUE!`, and
+argument's error, a settlement error too (`DISC(1/0,2.5,1,100,"abc")` is `#VALUE!`, A91): `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and `DISC(37025,2.5,1/0,100,"abc")` are `#VALUE!`, and
 `RECEIVED(37025,2.5,1E+300,NA(),1/0)` is `#DIV/0!` (probes/t2455-transpose-single-value A21, A64, A65, excel-graph,
 2026-10-23); gen-m9 ba4ddb817a8e700e A345 has the same shape.
 INTRATE, PRICEDISC and YIELDDISC are the same (`..(37025,2.5,1/0,100,"abc")` is `#VALUE!`, A80:A82).
