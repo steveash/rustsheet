@@ -83,10 +83,15 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// and COS reduced as Excel's own (`trig_sin_cos`): all 69 finite cells of probes-numeric
 /// im-last-digit-sweep (T-2044). Writing sinh²y as `(cosh 2y - 1)/2` is what loses Excel's digits
 /// for tiny arguments: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (exact
-/// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i. UNVERIFIED (T-2531): below |y| ≈ 1.05E-8
+/// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i. A real number is `1/sin x`
+/// (gen-m9/2f0d384b8ed0d392 A109, `IMCSC(0.2)` 5.03348954767234; the kernel gives ...235), as
+/// IMSEC's is `1/cos x` and IMSECH's `1/cosh x` (gen-m9/01810fc89c5ec2c0 A318). UNVERIFIED (T-2531): below |y| ≈ 1.05E-8
 /// `cosh 2y` rounds to 1, `t` is 0 and the result is `#NUM!`.
 pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (x_sin, x_cos) = trig_sin_cos(x);
+    if y == 0.0 {
+        return finite_complex_result(1.0 / x_sin, 0.0, suffix, cell);
+    }
     let y_cosh = y.cosh();
     let y_sinh = y.sinh();
 
@@ -115,6 +120,9 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Cal
 /// `IMSECH("3+4i")` -0.065294027857947 (G23, K58).
 pub(super) fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let (x_sin, x_cos) = trig_sin_cos(x);
+    if y == 0.0 {
+        return complex_result(1.0 / x_cos, 0.0, suffix);
+    }
     let y_cosh = y.cosh();
     let y_sinh = y.sinh();
 
@@ -126,6 +134,9 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Calc
 /// probes-numeric im-last-digit-sweep (T-2044; the miss is K34:L34, `1.34384-77.6742i`).
 pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let x_cosh = x.cosh();
+    if y == 0.0 {
+        return complex_result(1.0 / x_cosh, 0.0, suffix);
+    }
     let x_sinh = x.sinh();
     let (y_sin, y_cos) = trig_sin_cos(y);
 
