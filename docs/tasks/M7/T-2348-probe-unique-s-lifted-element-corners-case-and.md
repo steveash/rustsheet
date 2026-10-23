@@ -3,7 +3,7 @@ id: T-2348
 title: "Probe UNIQUE's lifted-element corners: case and -0 entries, call errors, INDEX of other empty values"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
