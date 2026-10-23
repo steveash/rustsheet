@@ -3,7 +3,7 @@ id: T-2423
 title: "Probe ROMAN over an array number, a range and boolean form elements (T-2410 unprobed)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
