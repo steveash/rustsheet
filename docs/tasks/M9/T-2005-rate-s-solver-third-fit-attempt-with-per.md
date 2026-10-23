@@ -59,7 +59,17 @@ Examples:
 Cells:
 - gen-m9/eefcc3989f31de76.case.json (1): Calc!A5
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): `SLN(RATE(105,-788,80075),1.005,12)` is -0.08369822820750211 in Excel, ours -0.08369822820750304: the inner RATE differs (SLN is exact).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 visibly off.
+Examples:
+- gen-m9/a91bad4e84f49739 Calc!A69 `=SLN(RATE(105,-788,80075),(AVERAGE(Data!E5:E5)+(100*Data!$E7)),12)`: Excel -0.08369822820750211, ours -0.08369822820750304
+Cells:
+- gen-m9/a91bad4e84f49739.case.json (1): Calc!A69
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 1 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The lab parses the nested `RATE(n,PMT(..),..)` cells and scores every candidate on all RATE cells of

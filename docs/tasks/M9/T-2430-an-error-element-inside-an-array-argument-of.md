@@ -117,7 +117,24 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (1): Calc!A265
 - gen-m9/eedd629f3d69fdda.case.json (3): Calc!A26, A361, A378
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): An error element in an array argument of SMALL, LARGE, QUARTILE.INC or VARP nested in the financial functions (`PRICE(..,SMALL({1,#N/A,3},2),..)` `#NUM!`, `PPMT(LARGE({1,#N/A,3},1)*..,..)` `#N/A`; ours `#VALUE!`).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 visibly off.
+Examples:
+- gen-m9/1cd3096e3e87c965 Calc!A209 `=PRICE(39950,46912,100,(100/COUNTA(Data!$D$5)),SMALL({1,#N/A,3},2),4,PV((2*0.2),15,(0.1*Data!A6)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/31474c20fc1dafd6 Calc!A342 `=DURATION(ATANH((-0.9999999999999999)),44811,(-1),0.1,VARP({1,#N/A,3},{100000000.1,100000000.2,100000000.3},Data!D6:D10))`: Excel #NUM!, ours #N/A
+- gen-m9/79d87fc527927626 Calc!A284 `=MDURATION(36896,(((-2.5)+0.3)+Data!B1),(CHOOSECOLS(Data!D1:D10,Data!B2)/Data!D8),SMALL({1,#N/A,3},3),2)`: Excel #NUM!, ours #VALUE!
+- gen-m9/79d87fc527927626 Calc!A340 `=PPMT((LARGE({1,#N/A,3},1)*(Data!A10+Data!B10)),HOUR((-0.5)),WEIBULL((-38.5),ROUNDDOWN(9999999999999999,4),3,"true"),61333,890,2.5)`: Excel #N/A, ours #VALUE!
+- gen-m9/e168be7f6d3f84c2 Calc!A201 `=FVSCHEDULE((MONTH(43522)*0.1),(QUARTILE.INC({1,#N/A,3},1)+ACOTH(Data!E2)))`: Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/1cd3096e3e87c965.case.json (1): Calc!A209
+- gen-m9/31474c20fc1dafd6.case.json (1): Calc!A342
+- gen-m9/79d87fc527927626.case.json (2): Calc!A284, A340
+- gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A201
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 5 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 124 known-failure lines (19 from T-2255, 105 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `LARGE({1,#N/A,3},1)`, `SMALL({1,#N/A,3},3)`, `COVARIANCE.S({1,#N/A,3},{1,2,3})` are `#N/A`.
