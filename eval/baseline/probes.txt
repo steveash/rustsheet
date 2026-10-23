@@ -1955,14 +1955,6 @@ F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!P20
 F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!V11
 F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!V12
 F	probes/legacy-at-defined-name-dynamic-funcs.case.json	S!V20
-F	probes/legacy-at-let-lambda-dynamic-funcs.case.json	S!BI10
-F	probes/legacy-at-let-lambda-dynamic-funcs.case.json	S!BI11
-F	probes/legacy-at-let-lambda-dynamic-funcs.case.json	S!BI12
-F	probes/legacy-at-let-lambda-dynamic-funcs.case.json	S!BI20
-F	probes/legacy-at-let-lambda-dynamic-funcs.case.json	S!P10
-F	probes/legacy-at-let-lambda-dynamic-funcs.case.json	S!P20
-F	probes/legacy-at-let-lambda-dynamic-funcs.case.json	S!S10
-F	probes/legacy-at-let-lambda-dynamic-funcs.case.json	S!S20
 F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
