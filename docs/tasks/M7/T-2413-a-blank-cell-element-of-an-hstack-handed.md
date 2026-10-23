@@ -3,7 +3,7 @@ id: T-2413
 title: "A blank-cell element of an HSTACK handed to a REDUCE LAMBDA counts as 0 in AVERAGE (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
