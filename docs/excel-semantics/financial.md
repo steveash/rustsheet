@@ -749,6 +749,11 @@ Ours since T-2192: over up to 32 periods of type 0, the principal is that per-pe
 interest the balance form (the closed form where it overflows), and type 1's principal takes the
 `r/(1+r)` payment where `pv·r` overflows. Type 1's interest keeps the IPMT sum, and its principal
 the closed form: the per-period form misses H22 and H25, which pass.
+Past 2^53 Excel stays accurate: `CUMPRINC(1E-15,2E16,1,1E16,1E16+8,0)` (A6) is within an ulp of
+the correctly rounded -4.0859936870455272E-19, and A5's CUMIPMT equals that value's
+`-pmt·9 - P` to the bit, so its sums keep digits that a double `n·L` exponent with n near 1E16
+loses (60-digit reference, T-2363 notes). Type 1's G2 is `-pmt·10 - H2` to the bit, with
+`pmt = pv·r/(-expm1(-nper·L))/(1+r)` and Excel's own H2.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A5, A6, A7 (= G2), A9-A11 and K3 near
 period 1E15, fin-cumipmt-period-bound A18 and H26: T-2363; the short sums' last digits in T-1374)
 Tasks: T-1845, T-1890, T-2192, T-2363, T-1374
