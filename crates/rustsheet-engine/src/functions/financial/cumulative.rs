@@ -31,6 +31,13 @@ const CUMULATIVE_LOOP_PERIODS: f64 = 32.0;
 /// 2^53: below it every period is an exact integer, so `start + offset` is a distinct period.
 const EXACT_INTEGER_LIMIT: f64 = 9_007_199_254_740_992.0;
 
+/// The growth `(1+r)^(end-1) - 1` over which type 0's short interest keeps the balance form
+/// ([`Periods::short_interest`]): from 2^-10 (below it `q - 1` cancels, `CUMIPMT(1E-9,55,157761,1,18,0)`)
+/// to 2^10 (above it `pv·q·r` swamps the interest, `CUMIPMT(0.5,96,265678,1,23,0)` is 80 ulps off).
+const BALANCE_GROWTH_MIN: f64 = 1.0 / 1024.0;
+/// See [`BALANCE_GROWTH_MIN`].
+const BALANCE_GROWTH_MAX: f64 = 1024.0;
+
 /// Which sum the kernel returns.
 #[derive(Clone, Copy)]
 enum Paid {
@@ -101,10 +108,14 @@ impl Model {
         // it is taken from (H5 had 8 right digits, H7 7; T-1890), and the per-period `exp` form misses H22
         // and H25 by an ulp or two.
         let short = end - start < CUMULATIVE_LOOP_PERIODS && end < EXACT_INTEGER_LIMIT;
-        if short && !period_start {
-            let sum = match paid {
-                Paid::Interest => periods.balance_interest(),
-                Paid::Principal => periods.discounted_principal(),
+        if !period_start {
+            let sum = match (paid, short) {
+                (Paid::Interest, true) => periods.short_interest(),
+                (Paid::Interest, false) => {
+                    periods.payments_less_principal(periods.remaining_principal())
+                }
+                (Paid::Principal, true) => periods.discounted_principal(),
+                (Paid::Principal, false) => None,
             };
             if let Some(sum) = sum {
                 return Ok(sum);
@@ -170,13 +181,71 @@ impl Periods {
         -(-self.nper * log_growth).exp_m1()
     }
 
+    /// Type 0's interest over a short range. Excel's interest is the payments less the principal,
+    /// `-pmt·m - CUMPRINC` in doubles, with the cancellation that brings: `CUMIPMT(1E-9,55,157761,1,18,0)`
+    /// is -0.002400835590378847 to the bit where the exact sum is -0.0024008355913268677, and
+    /// `CUMIPMT(10,89,267388,3,13,0)` is -29412680 where the balance form loses its digits to
+    /// `pv·q·r` (gen-m9 5c6a23c4f6597f1c A392, 1cd3096e3e87c965 A316; T-2363). Its digits are then
+    /// the principal's, and where ours is an ulp off Excel's (`CUMPRINC_CUMIPMT.xlsx` H29 3 ulps,
+    /// the one-period principal of probes/fin-cumipmt-overflow-and-forms A12) the difference is
+    /// visibly off. The balance form is bit-exact there (A12, A14, G21), so it is kept while the
+    /// growth `q - 1` over the range stays within [2^-10, 2^10], where it neither cancels in
+    /// `q - 1` nor in `pv·q·r - pmt·(q-1)`; the payments less the principal take the rest (T-2363).
+    fn short_interest(&self) -> Option<f64> {
+        let growth = ((self.end - 1.0) * self.rate.ln_1p()).exp_m1();
+        if (BALANCE_GROWTH_MIN..=BALANCE_GROWTH_MAX).contains(&growth) {
+            if let Some(sum) = self.balance_interest() {
+                return Some(sum);
+            }
+        }
+        // A rate lost in `1 + rate` (1E-300) has the remaining-balance principal: Excel's
+        // `CUMIPMT(1E-300,243,80923,12,22,0)` is -4.547473508864641E-13 and `(1E-300,83,156759,5,17,0)`
+        // 0 to the bit with it, where the per-period sum adds the payment m times (gen-m9
+        // 81bcdc0bec0c8e6b A274, abb7d565af89b849 A84).
+        let principal = if 1.0 + self.rate == 1.0 {
+            self.remaining_principal()
+        } else {
+            self.discounted_principal()
+        };
+        let principal = principal.or_else(|| self.closed_form(Paid::Principal))?;
+        self.payments_less_principal(Some(principal))
+    }
+
+    /// Type 0's interest from a principal: `-pmt·m - principal` with Excel's interest payment
+    /// `pmt = (pv/(1-v^nper))·r` (to the bit on all 13 type 0 cells probed with both functions,
+    /// T-2192). `None` without a principal or when the result is not finite.
+    fn payments_less_principal(&self, principal: Option<f64>) -> Option<f64> {
+        let log_growth = self.rate.ln_1p();
+        let payment = self.pv / self.unpaid_share(log_growth) * self.rate;
+        let sum = -payment * (self.end - self.start + 1.0) - principal?;
+        // `+ 0.0` turns a -0 into Excel's 0 (`CUMIPMT(1E-300,83,156759,5,17,0)`).
+        sum.is_finite().then_some(sum + 0.0)
+    }
+
+    /// Type 0's principal as the drop in the balance: `-(pv/(1-v^nper))·v^(nper-start+1)·expm1(m·L)`.
+    /// It is the principal of the interest's `-pmt·m - principal` past 32 periods and where `1 + rate`
+    /// is 1: `CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)` is -8.999591419181679E-15 to the bit with it, where
+    /// the closed form gave ...674757897966E-15 (probes/fin-cumipmt-overflow-and-forms A5), and the
+    /// long-range probe cells stay bit-exact (fin-cumipmt-period-bound A1, A9, A10, A16, A24, A26; K1).
+    /// `None` where the leading power is not normal (it has lost its digits) or the result is not
+    /// finite, which the closed form then takes.
+    fn remaining_principal(&self) -> Option<f64> {
+        let log_growth = self.rate.ln_1p();
+        let leading = ((self.start - 1.0 - self.nper) * log_growth).exp();
+        if !leading.is_normal() {
+            return None;
+        }
+        let drop = ((self.end - self.start + 1.0) * log_growth).exp_m1();
+        let principal = -(self.pv / self.unpaid_share(log_growth) * (leading * drop));
+        principal.is_finite().then_some(principal)
+    }
+
     /// Type 0's interest over a short range, period by period from the balance after `k-1`
-    /// payments: `-(pv·q·r - pmt·(q-1))` with `q = exp((k-1)·L)`. Excel's interest is this form,
-    /// not the exact sum: `CUMIPMT(0.01,100,100000,100,100,0)` is -15.708656559792416 to the bit
+    /// payments: `-(pv·q·r - pmt·(q-1))` with `q = exp((k-1)·L)`. Bit-exact where it is
+    /// well-conditioned: `CUMIPMT(0.01,100,100000,100,100,0)` is -15.708656559792416 to the bit
     /// where the IPMT sum gives ...592 (probes/fin-cumipmt-overflow-and-forms A12, A14;
     /// fin-argument-modes H72 and `CUMPRINC_CUMIPMT.xlsx` G29 within 4 ulps, T-2192). `None` where
-    /// `q` overflows (a rate of 1E10, A18, A19; periods near 1E15, A9-A11), which the other forms
-    /// take.
+    /// the sum is not finite.
     fn balance_interest(&self) -> Option<f64> {
         let log_growth = self.rate.ln_1p();
         let payment = self.end_payment(log_growth);
@@ -225,7 +294,7 @@ impl Periods {
     /// This form matches 19 of the 28 probe cells over many periods or past an overflow (22 of the
     /// case's 30 cells pass overall) bit for
     /// bit and the others within 6 ulps, but for 48 to 64 near period 1E15 (fin-remaining-later-
-    /// argument-ranges K3, A18; TODO(T-2363)). `None` when the result is not finite.
+    /// argument-ranges K3, A18; TODO(T-2514)). `None` when the result is not finite.
     fn closed_form(&self, paid: Paid) -> Option<f64> {
         let log_growth = self.rate.ln_1p();
         let discount = |periods: f64| (periods * log_growth).exp();

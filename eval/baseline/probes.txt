@@ -1622,7 +1622,6 @@ F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A16
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A22
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A23
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A24
-F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A5
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A6
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A7
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A9
