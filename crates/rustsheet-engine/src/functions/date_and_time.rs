@@ -333,6 +333,12 @@ impl Model {
                             // serial 0 gives the same results (dates.md "WORKDAY and NETWORKDAYS
                             // holidays: blank and number-text cells", T-2395).
                             ArrayNode::Empty => {}
+                            // Number text in an array is a holiday too, as in a cell:
+                            // `WORKDAY.INTL(26624,-19,5,{"1.5"})` is 26599, `{""}` `#VALUE!`
+                            // (probes/t2360-array-lambda-holidays W4, W15, T-2360).
+                            ArrayNode::String(text) => {
+                                handle(self.holiday_text_serial(&text, cell)?)?;
+                            }
                             ArrayNode::Error(error) => {
                                 return Err(CalcResult::Error {
                                     error,
@@ -340,7 +346,7 @@ impl Model {
                                     message: "Error in array".to_string(),
                                 });
                             }
-                            _ => return Err(invalid_holiday(cell)),
+                            ArrayNode::Boolean(_) => return Err(invalid_holiday(cell)),
                         }
                     }
                 }
