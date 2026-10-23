@@ -373,6 +373,24 @@ fn duplicate_cache_ids_and_parts_reached_twice_are_skipped() {
         ("rIdP2", "pivotTable", "../PIVOTTABLES\\PivotTable1.xml"),
     ]);
     assert_no_pivot(&with(parts(), "xl/worksheets/_rels/sheet1.xml.rels", cased));
+    // Two cache definitions that differ only by case or separator are one part too.
+    let cased_caches = rels(&[
+        (
+            "rIdC1",
+            "pivotCacheDefinition",
+            "pivotCache/pivotCacheDefinition1.xml",
+        ),
+        (
+            "rIdC2",
+            "pivotCacheDefinition",
+            "PIVOTCACHE\\pivotCacheDefinition1.xml",
+        ),
+    ]);
+    let (caches, _) = load_with(
+        &with(parts(), "xl/_rels/workbook.xml.rels", cased_caches),
+        &[("1", "rIdC1"), ("2", "rIdC2")],
+    );
+    assert!(caches.is_empty());
     // A bad cacheId and an unknown relationship skip only their cache.
     let (caches, _) = load_with(&parts(), &[("x", "rIdC1"), ("2", "rIdNone")]);
     assert!(caches.is_empty());
@@ -541,4 +559,9 @@ fn pivots_past_the_workbook_cap_are_dropped() {
         DateSystem::Excel1900,
     );
     assert_eq!(pivots.len(), MAX_PIVOTS);
+    // In sheet order: sheets 0-14 keep all 64, sheet 15 the 40 that remain, sheet 16 none.
+    let on_sheet = |id| pivots.iter().filter(|p| p.sheet_id == id).count();
+    assert_eq!(on_sheet(14), MAX_PIVOTS_PER_SHEET);
+    assert_eq!(on_sheet(15), MAX_PIVOTS - 15 * MAX_PIVOTS_PER_SHEET);
+    assert_eq!(on_sheet(16), 0);
 }
