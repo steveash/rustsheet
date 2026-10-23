@@ -18,7 +18,10 @@
         "H1": "=ROMAN(4000,9)",
         "I1": "=ROMAN(Data!A1:A2,0)",
         "K1": "=ROMAN(4,TRUE)",
-        "L1": "=ROMAN(-5,\"x\")"
+        "L1": "=ROMAN(-5,\"x\")",
+        "M1": "=ROMAN(499,{TRUE,FALSE})",
+        "O1": "=ROMAN(499,Data!A1:A2)",
+        "Q1": "=ROMAN(499,{1,2,3,4})"
       }
     },
     {

@@ -862,7 +862,7 @@ C	probes/rich-errors-regex-group.case.json	103
 C	probes/rich-errors-shapes-urls.case.json	51
 C	probes/rich-errors-spilled-lambda.case.json	86
 C	probes/rich-errors-stockhistory.case.json	5
-C	probes/roman-lift-forms.case.json	12
+C	probes/roman-lift-forms.case.json	20
 C	probes/round-concat-array-edges.case.json	25
 C	probes/round-concat-array-lift.case.json	14
 C	probes/round-family.case.json	53
