@@ -3,7 +3,7 @@ id: T-2406
 title: "MAKEARRAY with an array step is one #CALC!; BYROW, BYCOL and MAP with a LAMBDA step are #CALC! per element (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
@@ -93,7 +93,7 @@ last-digit difference), so the task is in the campaign. Its target is that every
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
 
-## Handoff
+## Handoff (resumed)
 Done on the branch: MAKEARRAY with a multi-cell step is one `#CALC!` (`fn_makearray` uses `makes_calc_error`); 122 gen-m7 and
 2 gen-m9 cells fixed, 0 regressions, baseline recorded. Not done: BYROW/BYCOL/MAP with a LAMBDA step. Making the element a plain
 `#CALC!` error (in `lambda_result_to_array_node`/MAP) fixed the 42 cells but regressed gen-m7/23b5367c18059af2 A2578
