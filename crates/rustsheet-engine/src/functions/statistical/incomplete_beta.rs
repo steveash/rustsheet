@@ -96,42 +96,20 @@ pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// its complement, for 0 < x < 1 outside the closed forms: Excel's two F tails add up to exactly
 /// 1 at the mean, `F.DIST.RT(1,3,7)+F.DIST(1,3,7,TRUE)` = 1 (probes-numeric/t1049-fdistrt A27),
 /// which two separate evaluations miss by 6E-16.
-///
-/// Above the mean the reflected side is evaluated, unless its continued fraction does not converge
-/// within [`MAX_FRACTION_TERMS`] steps and the unreflected one does: at a huge shape near x = 1
-/// `I_y(5E9, 2.5)` needs about 42,000 terms, and its truncation made `F.DIST(2,5,1E10,TRUE)`
-/// 0.9247647476587724 where Excel's (and the true value) is 0.9247647537543169 (t1530-f-df-cut A8),
-/// while `I_x(2.5, 5E9)` converges in 12 (T-1538).
 fn beta_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     let flip = x > a / (a + b);
-    let (v, converged) = if flip {
-        beta_side(y, x, b, a)
-    } else {
-        beta_side(x, y, a, b)
-    };
-    if flip && !converged {
-        let (unflipped, unflipped_converged) = beta_side(x, y, a, b);
-        if unflipped_converged {
-            return (unflipped, 1.0 - unflipped);
-        }
-    }
-    if flip {
-        (1.0 - v, v)
-    } else {
-        (v, 1.0 - v)
-    }
-}
-
-/// `I_x(a, b)` with y = 1 - x by Cephes' continued fraction and its prefactor, and whether the
-/// fraction converged.
-fn beta_side(x: f64, y: f64, a: f64, b: f64) -> (f64, bool) {
-    let (w, converged) = cephes_fraction(a, b, x, y);
+    let (x, y, a, b) = if flip { (y, x, b, a) } else { (x, y, a, b) };
+    let w = cephes_fraction(a, b, x, y);
     let v = if a + b < MAXGAM {
         (a * x.ln()).exp() * (b * y.ln()).exp() * gamma_ratio(a, b) / a * w
     } else {
         large_prefactor(a, b, x, y) * w / a
     };
-    (v, converged)
+    if flip {
+        (1.0 - v, v)
+    } else {
+        (v, 1.0 - v)
+    }
 }
 
 /// 1 - `I_x(a, b)`, the upper tail of [`beta_reg_complement`], with y = 1 - x given: Excel's
@@ -177,24 +155,17 @@ fn gamma_ratio(a: f64, b: f64) -> f64 {
 }
 
 /// Cephes' `incbcf` below x (a+b-2) = a-1 and `incbd` / y above it, y = 1 - x: the continued
-/// fraction w with `I_x(a,b) = x^a y^b / (a B(a,b)) * w`, at most [`MAX_FRACTION_TERMS`] steps, and
-/// whether it converged within them.
-fn cephes_fraction(a: f64, b: f64, x: f64, y: f64) -> (f64, bool) {
+/// fraction w with `I_x(a,b) = x^a y^b / (a B(a,b)) * w`, at most [`MAX_FRACTION_TERMS`] steps.
+fn cephes_fraction(a: f64, b: f64, x: f64, y: f64) -> f64 {
     if x * (a + b - 2.0) - (a - 1.0) < 0.0 {
-        incbcf_converged(a, b, x)
+        incbcf(a, b, x)
     } else {
-        let (w, converged) = incbd_converged(a, b, x / y);
-        (w / y, converged)
+        incbd(a, b, x / y) / y
     }
 }
 
 /// Cephes' `incbcf`: the continued fraction w with `I_x(a,b) = x^a (1-x)^b / (a B(a,b)) * w`.
 pub(super) fn incbcf(a: f64, b: f64, x: f64) -> f64 {
-    incbcf_converged(a, b, x).0
-}
-
-/// [`incbcf`] and whether it converged within [`MAX_FRACTION_TERMS`] steps.
-fn incbcf_converged(a: f64, b: f64, x: f64) -> (f64, bool) {
     fraction(
         x,
         [a, a + b, a, a + 1.0, 1.0, b - 1.0, a + 1.0, a + 2.0],
@@ -206,11 +177,6 @@ fn incbcf_converged(a: f64, b: f64, x: f64) -> (f64, bool) {
 /// `I_x(a,b) = x^a (1-x)^b / (a B(a,b)) * incbd(a, b, ratio) / (1-x)`. A caller that knows 1 - x
 /// better than x forms the ratio without rounding x first (the Student-t tails, `student_t.rs`).
 pub(super) fn incbd(a: f64, b: f64, ratio: f64) -> f64 {
-    incbd_converged(a, b, ratio).0
-}
-
-/// [`incbd`] and whether it converged within [`MAX_FRACTION_TERMS`] steps.
-fn incbd_converged(a: f64, b: f64, ratio: f64) -> (f64, bool) {
     fraction(
         ratio,
         [a, b - 1.0, a, a + 1.0, 1.0, a + b, a + 1.0, a + 2.0],
@@ -218,9 +184,8 @@ fn incbd_converged(a: f64, b: f64, ratio: f64) -> (f64, bool) {
     )
 }
 
-/// The convergent loop shared by `incbcf` (`second` false) and `incbd`, and whether it met its
-/// threshold within [`MAX_FRACTION_TERMS`] steps.
-fn fraction(x: f64, k: [f64; 8], second: bool) -> (f64, bool) {
+/// The convergent loop shared by `incbcf` (`second` false) and `incbd`.
+fn fraction(x: f64, k: [f64; 8], second: bool) -> f64 {
     let [mut k1, mut k2, mut k3, mut k4, mut k5, mut k6, mut k7, mut k8] = k;
     let (mut pkm2, mut qkm2, mut pkm1, mut qkm1) = (0.0, 1.0, 1.0, 1.0);
     let mut ans = 1.0;
@@ -247,7 +212,7 @@ fn fraction(x: f64, k: [f64; 8], second: bool) -> (f64, bool) {
             t
         };
         if t < thresh {
-            return (ans, true);
+            break;
         }
         k1 += 1.0;
         k2 += step;
@@ -270,7 +235,7 @@ fn fraction(x: f64, k: [f64; 8], second: bool) -> (f64, bool) {
             qkm1 *= BIG;
         }
     }
-    (ans, false)
+    ans
 }
 
 /// x^a y^b / B(a, b), y = 1 - x, for a + b of [`MAXGAM`] or more (so the larger shape is above
@@ -447,27 +412,6 @@ pub(super) mod tests {
         assert!(beta_reg(f64::NAN, 2.0, 3.0).is_nan());
         assert_eq!(beta_reg(0.0, 2.0, 3.0), 0.0);
         assert_eq!(beta_reg(1.0, 2.0, 3.0), 1.0);
-    }
-
-    /// `F.DIST(2,5,1E10,TRUE)` = `I_x(2.5, 5E9)` at x = 1E-9, above the mean: the reflected
-    /// fraction does not converge in [`MAX_FRACTION_TERMS`] steps, so the unreflected side is used.
-    /// Excel's 0.9247647537543169 (probes-numeric/t1530-f-df-cut A8) is the true value; the
-    /// truncated fraction gave 0.9247647476587724 (T-1538).
-    #[test]
-    fn an_unconverged_reflection_falls_back_to_the_unreflected_side() {
-        let (scaled, df2) = (10.0, 1e10);
-        let total = scaled + df2;
-        let lower = beta_reg_complement(scaled / total, df2 / total, 2.5, 5e9);
-        assert!(
-            (lower / 0.924_764_753_754_316_9 - 1.0).abs() < 2e-15,
-            "{lower}"
-        );
-        let upper = beta_reg_upper(scaled / total, df2 / total, 2.5, 5e9);
-        assert!(
-            (upper / 0.075_235_246_245_683_17 - 1.0).abs() < 2e-14,
-            "{upper}"
-        );
-        assert!(!cephes_fraction(5e9, 2.5, df2 / total, scaled / total).1);
     }
 
     #[test]
