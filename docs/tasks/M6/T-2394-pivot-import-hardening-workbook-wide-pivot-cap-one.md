@@ -3,7 +3,7 @@ id: T-2394
 title: "Pivot import hardening: workbook-wide pivot cap, one log line per dropped batch, normalized part keys"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
