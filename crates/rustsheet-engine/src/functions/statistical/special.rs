@@ -50,14 +50,6 @@ pub(crate) fn bisect_increasing(f: impl Fn(f64) -> f64, target: f64, max_doublin
     halve_increasing(&f, target, 0.0, hi, 200)
 }
 
-/// Smallest `x` in [0, 1] with `f(x) >= target` for a non-decreasing `f` with `f(1) >= target`,
-/// halving down to the smallest subnormal (at most 1100 steps), so a quantile as small as 1E-300
-/// keeps its digits where [`bisect_increasing`]'s 200 steps stop near 1E-60. The time is bounded,
-/// unlike `statrs`' `inverse_cdf` (T-1543).
-pub(crate) fn bisect_unit_interval(f: impl Fn(f64) -> f64, target: f64) -> f64 {
-    halve_increasing(&f, target, 0.0, 1.0, 1100)
-}
-
 /// The most bracket expansions [`refine_increasing`] makes around an estimate; each multiplies the
 /// step by 4, so the last one reaches 2^98 times the first step of 2^-30 relative.
 const REFINE_MAX_EXPANSIONS: u32 = 64;
@@ -76,6 +68,32 @@ pub(crate) fn refine_increasing(
     min: f64,
     max: f64,
 ) -> f64 {
+    let (lo, hi) = crossing_bracket(&f, target, estimate, min, max);
+    0.5 * (lo + hi)
+}
+
+/// [`refine_increasing`] without an estimate, returning whichever end of the final bracket has
+/// `f` nearer `target` (the lower end on a tie): the correctly rounded crossing where `f` is
+/// accurate, as Excel's converged BETA.INV search returns it (docs/excel-semantics/statistics.md
+/// "BETA.INV at a huge shape is AS 109's Newton search (T-1538)"). At most 65 + 2 evaluations.
+pub(crate) fn nearest_crossing(f: impl Fn(f64) -> f64, target: f64, min: f64, max: f64) -> f64 {
+    let (lo, hi) = crossing_bracket(&f, target, f64::NAN, min, max);
+    if (f(hi) - target).abs() < (target - f(lo)).abs() {
+        hi
+    } else {
+        lo
+    }
+}
+
+/// The final bracket of [`refine_increasing`]: adjacent doubles `lo < hi` (or the interval's ends)
+/// with `f(lo) < target <= f(hi)`.
+fn crossing_bracket(
+    f: &impl Fn(f64) -> f64,
+    target: f64,
+    estimate: f64,
+    min: f64,
+    max: f64,
+) -> (f64, f64) {
     let (mut lo, mut hi) = (min, max);
     if estimate.is_finite() {
         // + 0.0 turns a -0.0 into +0.0, whose bit pattern orders with the non-negative doubles.
@@ -118,7 +136,7 @@ pub(crate) fn refine_increasing(
             hi_bits = mid_bits;
         }
     }
-    0.5 * (f64::from_bits(lo_bits) + f64::from_bits(hi_bits))
+    (f64::from_bits(lo_bits), f64::from_bits(hi_bits))
 }
 
 /// Halves `[lo, hi]` (at most `steps` times) around the point where `f` reaches `target`.
@@ -195,5 +213,16 @@ mod tests {
         }
         // A target the function never reaches ends at the upper bound.
         assert_eq!(refine_increasing(|x| x, 2.0, 0.5, 0.0, 1.0), 1.0);
+    }
+
+    #[test]
+    fn nearest_crossing_is_the_end_nearer_the_target() {
+        // 3 * (1/3 rounded) is exactly 1, so the upper end of the final bracket hits the target.
+        assert_eq!(nearest_crossing(|x| 3.0 * x, 1.0, 0.0, 1.0), 1.0 / 3.0);
+        // A jump at 1/2 from 1/2 to 3/2: 0.75 is nearer f just below the jump, so the lower end.
+        let below = f64::from_bits(0.5f64.to_bits() - 1);
+        let jump = |x: f64| if x < 0.5 { x } else { x + 1.0 };
+        assert_eq!(nearest_crossing(jump, 0.75, 0.0, 1.0), below);
+        assert_eq!(nearest_crossing(jump, 1.4, 0.0, 1.0), 0.5);
     }
 }

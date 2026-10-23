@@ -266,7 +266,7 @@ fn large_prefactor(a: f64, b: f64, x: f64, y: f64) -> f64 {
 /// the 1. A huge shape multiplies that error: `F.INV.RT(0.05,99999,9)` (`I_x(49999.5, 4.5)` with
 /// y = 3.3E-5) was 48 units of the 15th digit off Excel's 2.7067247920355353 with ln x, 1 with ln(1 - y)
 /// (gen-m9/27601819397dd56e A81, T-2465).
-fn ln_near_one(x: f64, y: f64) -> f64 {
+pub(crate) fn ln_near_one(x: f64, y: f64) -> f64 {
     if x > 0.5 {
         (-y).ln_1p()
     } else {

@@ -2113,8 +2113,40 @@ misses its own CDF's crossing by up to about 1E-16 in x (absolute), in either di
   last bracket, nor Newton from the mean reproduces it.
 Evidence: probes-numeric t1538-f-inv-huge-df (156 cells) and t1538-beta-dist-at-excel-inv (24 cells), excel-graph,
 2026-10-23.
-Status: VERIFIED for the values above; Excel's BETA.INV stop rule at a huge shape is UNVERIFIED (T-1538)
-Tasks: T-1538, T-1745
+- F.INV(p,d1,d2) at a df of 1E5 or more is (d2/d1) (y / (1 - y)) with y = Excel's BETA.INV(p,d1/2,d2/2), and
+  F.INV.RT(p,d1,d2) is 1/F.INV(p,d2,d1): with y from the entry below, `F.INV(0.5,1E10,5)` is 1.1490395521130337
+  bit for bit (A3; d2 y/(d1 (1 - y)) is 1 ulp below). This explains the 6E-7 paths above: at p > 1/2 the BETA.INV
+  flip moves the solve to the other side.
+Status: VERIFIED for the values above; Excel's BETA.INV stop where its quantile is tiny is UNVERIFIED (T-2555)
+Implemented in: functions/statistical/fisher.rs `f_quantile_through_beta`
+Tasks: T-1538, T-1745, T-2555
+
+## BETA.INV at a huge shape is AS 109's Newton search (T-1538)
+Rule: Excel's BETA.INV has the structure of AS 64/109 (the search statrs ports, `inverse_beta.rs`): for p above 1/2
+it is 1 - BETA.INV(1 - p, b, a), and otherwise a Newton search for the crossing of an accurate CDF. Where that
+quantile is near 1 (the first shape huge) the search converges: Excel's value is the double nearest the true root.
+Where it is tiny (the second shape huge, p <= 1/2) the search stops early, a Newton step or so short.
+- Flip, bit for bit: `BETA.INV(0.975,2.5,5E9)` = 1.2832501727899626E-09 = 1 - `BETA.INV(0.025,5E9,2.5)` (A141, A138);
+  likewise A143/A140, A149/A146, A151/A148. Such an x is on the 2^-53 grid near 1, hence its 21 to 25 significant bits.
+- Converged near 1: AS 109 run to convergence on an accurate CDF (no start clamp to [1E-4, 0.9999], acu 1E-40) is
+  bit-exact on 16 of the 24 BETA.INV cells of t1538-f-inv-huge-df (all 12 near-1 cells and the 4 flipped ones of
+  p = 0.999999 and 0.975 at shape 3), 1 ulp off at A142. With statrs' own acu (1E-14 here, a stop at a step below
+  1E-7) and its start clamp it overflows (the density at x = 1E-4 is exp(5E5)) or stops 1E-3 relative off.
+  `BETAINV(1E-20,1E10,0.5)` = 0.9999999956419133 is the true quantile rounded (gen-m9/0a9226016e8f5f33 A358).
+- Early stop where tiny: the cells A133, A135, A137, A139, A145, A153, A155 (x from 1.3E-12 to 5.3E-10) are 6E-16
+  to 9.3E-7 relative off the true root, near AS 109's second Newton iterate from its own start (1E-12 to 4E-8
+  relative), but no fixed acu, statrs' acu, or ln B from a double lgamma reproduces them (T-2555).
+- Ours: the crossing needs the CDF to about 1E-8 relative to pick Excel's neighbour near 1, and the T-0970 incomplete
+  beta is about 1E-7 off there (its fraction does not converge, T-2528): 1 ulp off at 4 of 12 near-1 cells. Where
+  b/a is at most 1E-7, I_x(a, b) is taken as its large-a limit Q(b, -nu ln x), nu = a + (b - 1)/2 (the leading term
+  of TOMS 708 `bgrat`, relative error about (b/a)^2 by mpmath: 1E-19 at a = 5E9), which is bit-exact on all of them.
+Consequence: F.INV at a huge df (T-1538 entry above) is exact wherever its beta variable is near 1.
+Evidence: probes-numeric t1538-f-inv-huge-df A133-A156 (excel-graph, 2026-10-23); AS 109 replayed with an
+mpmath CDF (T-1538 PR).
+Status: VERIFIED for the flip and the converged near-1 values; the early stop is UNVERIFIED (T-2555)
+Implemented in: functions/statistical/inverse_beta.rs `beta_quantile_crossing`, functions/statistical/special.rs
+`nearest_crossing`
+Tasks: T-1538, T-2555
 
 ## Student-t quantile at a tiny probability (T-1531)
 Rule: T.INV, T.INV.2T, TINV and CONFIDENCE.T never error for a tiny p or alpha: the quantile follows the power-law tail, so it is finite and huge for a small df (`T.INV(1E-300,1)` = -3.183098861837907E299, about 1/(pi p)) and about -79 for df = 99999.
@@ -2135,7 +2167,7 @@ Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and 
 
 Status: VERIFIED (excel-graph, 2026-10-15; probes-numeric case `t1543-inverse-cdf-tiny-p`, 102 cells, p in 1E-300, 1E-200, 1E-100, 1E-20, 1-1E-16, 1-1E-10)
 
-Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/special.rs `bisect_unit_interval` (BETA.INV only; the rest need no guard)
+Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/inverse_beta.rs `beta_quantile_crossing` (BETA.INV only; the rest need no guard)
 
 Tasks: T-1543
 

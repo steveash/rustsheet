@@ -41,6 +41,10 @@
 
 use statrs::function::beta::{checked_beta_reg, checked_ln_beta};
 
+use super::incomplete_beta::{beta_reg_complement, ln_near_one};
+use super::incomplete_gamma::gamma_ur;
+use super::special::nearest_crossing;
+
 /// The most Newton steps one inversion for BETA.INV or F.INV takes. The steps grow with -log10 of
 /// the probability, about 2.3 a decade, and stop at 377 where `x * x` underflows (p near 1E-162,
 /// below which the first estimate is NaN), so 512 keeps every result statrs reaches.
@@ -211,6 +215,52 @@ fn inv_beta_reg_within(
     }
 }
 
+/// BETA.INV's quantile where statrs has no reliable search (a huge shape or a tiny p): Excel's
+/// structure, AS 109's (the algorithm [`inv_beta_reg`] ports), with a converged search. For p above
+/// 1/2 the result is 1 - Q(1 - p, beta, alpha); otherwise Q(p, alpha, beta), Q the double nearest
+/// the crossing of the T-0970 incomplete beta (or of its large-shape limit, see
+/// [`GAMMA_LIMIT_SHAPE_RATIO`]). Excel's BETA.INV at a = 5E9 is that value where Q is near 1, and
+/// 1 minus it for p above 1/2, bit for bit on 16 of the 24 probed cells
+/// (`BETA.INV(0.975,2.5,5E9)` = 1 - `BETA.INV(0.025,5E9,2.5)` exactly); where Q itself is tiny
+/// Excel's search stops a Newton step or so early (up to 1E-6 relative, `BETA.INV(0.025,2.5,5E9)`),
+/// which is not reproduced (TODO(T-2555)). See docs/excel-semantics/statistics.md "BETA.INV at a
+/// huge shape is AS 109's Newton search (T-1538)". At most 67 cdf evaluations.
+pub(crate) fn beta_quantile_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
+    if p > 0.5 {
+        // 1 - p is exact for p in [1/2, 1].
+        return 1.0 - beta_lower_crossing(beta, alpha, 1.0 - p);
+    }
+    beta_lower_crossing(alpha, beta, p)
+}
+
+/// The double nearest the x with I_x(alpha, beta) = p, without [`beta_quantile_crossing`]'s flip:
+/// the root AS 109 solves for, which F.INV maps itself (`fisher.rs` `f_quantile_through_beta`).
+pub(crate) fn beta_lower_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
+    if beta / alpha <= GAMMA_LIMIT_SHAPE_RATIO {
+        let nu = alpha + 0.5 * (beta - 1.0);
+        return nearest_crossing(
+            |x| gamma_ur(beta, -nu * ln_near_one(x, 1.0 - x)),
+            p,
+            0.0,
+            1.0,
+        );
+    }
+    nearest_crossing(
+        |x| beta_reg_complement(x, 1.0 - x, alpha, beta),
+        p,
+        0.0,
+        1.0,
+    )
+}
+
+/// Where the second shape is at most this fraction of the first, [`beta_quantile_crossing`] takes
+/// I_x(a, b) as its large-a limit Q(b, -nu ln x), nu = a + (b - 1)/2 (the leading term of TOMS 708
+/// `bgrat`), whose relative error is about (b/a)^2 (mpmath: 1E-19 at a = 5E9, b = 2.5 or 3; 1.6E-14
+/// at a = 5E7, b = 5): the T-0970 incomplete beta's fraction does not converge there and is about
+/// 1E-7 off (T-2528), which picks the wrong neighbour of Excel's correctly rounded root
+/// (`BETA.INV(0.025,5E9,3)`, 0.9999999985550625).
+const GAMMA_LIMIT_SHAPE_RATIO: f64 = 1e-7;
+
 /// statrs' `Beta::inverse_cdf` with [`inv_beta_reg`]'s caps: the quantile of `p` in [0, 1].
 pub(crate) fn beta_inverse_cdf(alpha: f64, beta: f64, p: f64) -> f64 {
     inv_beta_reg(alpha, beta, p)
@@ -244,8 +294,8 @@ pub(crate) fn t_inverse_cdf(df: f64, p: f64) -> f64 {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::{
-        beta_inverse_cdf, f_inverse_cdf, inv_beta_reg, inv_beta_reg_within, t_inverse_cdf,
-        MAX_NEWTON_STEPS, MAX_STEP_ADJUSTMENTS,
+        beta_inverse_cdf, beta_quantile_crossing, f_inverse_cdf, inv_beta_reg, inv_beta_reg_within,
+        t_inverse_cdf, MAX_NEWTON_STEPS, MAX_STEP_ADJUSTMENTS,
     };
     use statrs::distribution::{Beta, ContinuousCDF, FisherSnedecor, StudentsT};
 
@@ -354,5 +404,27 @@ mod tests {
         // A short search fits Student's t caps.
         let mid = inv_beta_reg_within(2.5, 0.5, 0.8, 64, 512);
         assert_eq!(mid.to_bits(), inv_beta_reg(2.5, 0.5, 0.8).to_bits());
+    }
+
+    // Excel's BETA.INV at a huge shape (probes-numeric/t1538-f-inv-huge-df, excel-graph): the
+    // converged root where it is near 1, and the flip for p above 1/2, bit for bit.
+    #[test]
+    fn the_crossing_is_excels_beta_inv_near_1_and_flipped() {
+        for (p, a, b, excel) in [
+            (0.5, 5e9, 2.5, 0.999_999_999_564_854_f64),
+            (0.025, 5e9, 3.0, 0.999_999_998_555_062_5),
+            (1e-6, 5e9, 2.5, 0.999_999_996_411_181_3),
+            (0.975, 2.5, 5e9, 1.283_250_172_789_962_6e-9),
+            (0.999_999, 3.0, 5e9, 3.825_833_649_884_203e-9),
+            // gen-m9/0a9226016e8f5f33 A358, BETAINV(1E-20,1E10,0.5).
+            (1e-20, 1e10, 0.5, 0.999_999_995_641_913_3),
+        ] {
+            let ours = beta_quantile_crossing(a, b, p);
+            assert_eq!(
+                ours.to_bits(),
+                excel.to_bits(),
+                "BETA.INV({p},{a},{b}) = {ours}"
+            );
+        }
     }
 }
