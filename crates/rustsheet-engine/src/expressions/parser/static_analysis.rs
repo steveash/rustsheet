@@ -7,7 +7,8 @@ use broadcast::{broadcast_shapes, static_analysis_operator_chain};
 use if_arm::returns_range_arm;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
-    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
+    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, let_returns_range,
+    mark_legacy_reading,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
@@ -233,7 +234,12 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                 mark_legacy_reading(kind, args); // The legacy N/T marker (SPEC-0012).
             }
             // There are some function that will never add an automatic II:
-            let new_function = matches!(kind, Function::Let | Function::Lambda);
+            // A LET takes the `@` itself when it returns a range, none otherwise (T-2419).
+            let new_function = match kind {
+                Function::Lambda => true,
+                Function::Let => !(add && let_returns_range(args)),
+                _ => false,
+            };
             if !new_function
                 && (add || arrays)
                 && !legacy_call_reads_a_value(kind, args)
