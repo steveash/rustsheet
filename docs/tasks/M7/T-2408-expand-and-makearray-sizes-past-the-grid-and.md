@@ -3,7 +3,7 @@ id: T-2408
 title: "EXPAND and MAKEARRAY sizes past the grid, and MAKEARRAY argument errors before size validation (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -47,11 +47,11 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 5 known-failure lin
 - gen-m7/bc4a69b0b512bc04.case.json A1028 `=MAKEARRAY(SUM(((-0.5)*0),Data!C2:C6,PI()),(SUM(Data!D2:D5)*ACOS(1+2^-52)),_xleta.AVERAGE)`: A1028 Excel #NUM!, ours #VALUE!; cells (1): A1028
 
 ## Acceptance criteria
-- [ ] A probe case with the cells above, filled from excel-graph; arrays.md states the thresholds it shows.
-- [ ] Visible parity: these 5 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
+- [x] A probe case with the cells above, filled from excel-graph; arrays.md states the thresholds it shows.
+- [x] Visible parity: these 5 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline; every probe cell passes or has its own task.
-- [ ] Any size Excel builds but ours refuses for memory stays a documented DEVIATION; none is added for a size Excel itself refuses.
-- [ ] `make check` green; reviewers approve.
+- [x] Any size Excel builds but ours refuses for memory stays a documented DEVIATION; none is added for a size Excel itself refuses.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - EXPAND's pad_with (T-2415); MAKEARRAY sizes within an ulp of a whole number (T-2345).
@@ -61,3 +61,11 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probes expand-makearray-past-grid (29 cells) and -big (6 cells), excel-graph 2026-10-23: EXPAND rows or columns of 2^31 or more
+are `#VALUE!`, rows below 2^31 past the grid `#NUM!`; columns have an Excel cap of their own somewhere in 16,386..123,456,789
+(`#NUM!` even in one row), checked after the smaller-than-the-array `#VALUE!`. MAKEARRAY reads both sizes (errors first) before
+validating them, and builds columns past the grid under the cell bound (above it, `#VALUE!` as before). Larger builds hang
+excel-graph's workbook open, so the exact column cap is T-2452. Eval: gen-m7 known failures 637 -> 632 (the 5 owned cells),
+gen-m9 5147 -> 5146, 0 regressions; both probes pass in full.

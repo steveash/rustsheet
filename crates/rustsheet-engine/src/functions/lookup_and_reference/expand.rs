@@ -53,16 +53,26 @@ impl Model {
             cell,
             &mut |model, values| {
                 let target_rows = match model.cast_number_or(values.get(1), 0.0, cell) {
-                    Ok(n) => n as usize,
+                    Ok(n) => n,
                     Err(e) => return e,
                 };
                 let target_cols = match values.get(2) {
-                    None => src_cols,
+                    None => src_cols as f64,
                     Some(value) => match model.cast_number_ref(value, cell) {
-                        Ok(n) => n as usize,
+                        Ok(n) => n,
                         Err(e) => return e,
                     },
                 };
+                // A size of 2^31 or more is `#VALUE!`, while a smaller one past the grid is
+                // `#NUM!` (probes/expand-makearray-past-grid A1:A13, -big A1:B3).
+                if target_rows >= TOO_LARGE || target_cols >= TOO_LARGE {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "rows and columns must be less than 2^31".to_string(),
+                    );
+                }
+                let (target_rows, target_cols) = (target_rows as usize, target_cols as usize);
                 // An array pad_with is `#VALUE!` for the whole call, not a fill of `#VALUE!`s
                 // (probes/m7-lift-take-drop-sortby F21:H21: ROWS, COLUMNS and INDEX of it are
                 // `#VALUE!`).
@@ -91,6 +101,14 @@ impl Model {
     }
 }
 
+/// The least rows or columns EXPAND reads as `#VALUE!` rather than as a size past the grid
+/// (`#NUM!`): 2^31.
+const TOO_LARGE: f64 = 2_147_483_648.0;
+
+/// The least columns Excel is known to refuse with `#NUM!` (probes/expand-makearray-past-grid-big
+/// A1); its exact cap lies between 16,386 and this (T-2452).
+const COLUMNS_REFUSED: usize = 123_456_789;
+
 /// One EXPAND call: `data` padded with `pad` to `target_rows` x `target_cols`.
 fn expand_kernel(
     data: &[Vec<ArrayNode>],
@@ -113,6 +131,18 @@ fn expand_kernel(
             Error::VALUE,
             cell,
             "columns must be >= array column count".to_string(),
+        );
+    }
+
+    // Excel refuses columns past a cap of its own after the sizes above (16,385 are built,
+    // 123,456,789 are `#NUM!` even in one row: probes/expand-makearray-past-grid-big A1, B3; a
+    // negative rows is `#VALUE!` first: gen-m7/bc4a69b0b512bc04 A1430); ours refuses from the
+    // smallest refused size probed, and builds below it up to the cell bound.
+    if target_cols >= COLUMNS_REFUSED {
+        return CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "columns exceeds EXPAND's limit".to_string(),
         );
     }
 

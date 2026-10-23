@@ -1,0 +1,46 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2408: where EXPAND's error for a huge rows argument turns from #NUM! to #VALUE! (A), EXPAND and MAKEARRAY sizes past the grid that build little, and MAKEARRAY's argument errors against a fractional or invalid size (D). Larger builds are in expand-makearray-past-grid-mid and -big.",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2408"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=ROWS(_xlfn.EXPAND(1,2^31-1,1))",
+        "A2": "=ROWS(_xlfn.EXPAND(1,2^31,1))",
+        "A3": "=ROWS(_xlfn.EXPAND(1,2^32,1))",
+        "A4": "=ROWS(_xlfn.EXPAND(1,1E10,1))",
+        "A5": "=ROWS(_xlfn.EXPAND(1,1E12,1))",
+        "A6": "=ROWS(_xlfn.EXPAND(1,1E15,1))",
+        "A7": "=ROWS(_xlfn.EXPAND(1,2^53,1))",
+        "A8": "=ROWS(_xlfn.EXPAND(1,1E16,1))",
+        "A9": "=ROWS(_xlfn.EXPAND(1,1E18,1))",
+        "A10": "=ROWS(_xlfn.EXPAND(1,1E19,1))",
+        "A11": "=ROWS(_xlfn.EXPAND(1,2^63,1))",
+        "A12": "=ROWS(_xlfn.EXPAND(1,1E20,1))",
+        "A13": "=ROWS(_xlfn.EXPAND(1,1E21,1))",
+        "A14": "=ROWS(_xlfn.EXPAND(1,-1,1))",
+        "A15": "=ROWS(_xlfn.EXPAND(1,-1E21,1))",
+        "B1": "=COLUMNS(_xlfn.EXPAND(1,1,16385))",
+        "C1": "=COLUMNS(_xlfn.EXPAND(1,4,16385))",
+        "D1": "=COLUMNS(_xlfn.MAKEARRAY(1,16385,LAMBDA(r,c,1)))",
+        "D2": "=ROWS(_xlfn.MAKEARRAY(1,16385,LAMBDA(r,c,1)))",
+        "D9": "=_xlfn.MAKEARRAY(1.5,NA(),LAMBDA(r,c,1))",
+        "D10": "=_xlfn.MAKEARRAY(NA(),1.5,LAMBDA(r,c,1))",
+        "D11": "=_xlfn.MAKEARRAY(1.5,1/0,LAMBDA(r,c,1))",
+        "D12": "=_xlfn.MAKEARRAY(1/0,NA(),LAMBDA(r,c,1))",
+        "D13": "=_xlfn.MAKEARRAY(1.5,ACOS(2),LAMBDA(r,c,1))",
+        "D14": "=_xlfn.MAKEARRAY(-1,NA(),LAMBDA(r,c,1))",
+        "D15": "=_xlfn.MAKEARRAY(1.5,\"x\",LAMBDA(r,c,1))",
+        "D16": "=_xlfn.MAKEARRAY(0,NA(),LAMBDA(r,c,1))",
+        "D17": "=COLUMNS(_xlfn.MAKEARRAY(1,1.5,LAMBDA(r,c,1)))"
+      }
+    }
+  ],
+  "expected": {}
+}

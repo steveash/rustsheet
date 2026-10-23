@@ -225,9 +225,14 @@ Evidence: probes/expand-wrap-past-grid W1-W10 (excel-graph, 2026-10-19, T-1967).
 Far larger sizes give other errors (gen-m7, excel-graph, 2026-10-22, T-2254 triage): EXPAND with rows 1E+21
 (`EXPAND(1e-15,ROUND(1E+21,45),1)`, gen-m7/2d9b48c6363e7a16 Calc!A2454) or 1.83E+42 (8c4570978f18f4c2 A4006) is `#VALUE!`, not `#NUM!`
 (so the error changes somewhere between 1E+9 and 1E+21 rows); `EXPAND("a",4,123456789.123)` is `#NUM!` (4dac39f89709e2fc A2150), a size
-Excel refuses itself (ours `#ERROR!`, the cell bound below); and MAKEARRAY allows columns past the grid as HSTACK does:
-`MAKEARRAY(4,25000,_xleta.AVERAGE)` is `#SPILL!` (21b4eef18424ce94 A3348), the 4 x 25,000 result built and not spillable (ours `#VALUE!`).
-The thresholds are unprobed (T-2408).
+Excel refuses itself; and MAKEARRAY allows columns past the grid as HSTACK does:
+`MAKEARRAY(4,25000,_xleta.AVERAGE)` is `#SPILL!` (21b4eef18424ce94 A3348), the 4 x 25,000 result built and not spillable (ours was `#VALUE!` before T-2408).
+The thresholds (probes/expand-makearray-past-grid A1-A15 and -big, excel-graph, 2026-10-23, T-2408): EXPAND rows or columns of
+2^31 or more are `#VALUE!` (`ROWS(EXPAND(1,2^31,1))`, 1E10 through 1E21, `COLUMNS(EXPAND(1,1,2^31))`), and rows below 2^31 past
+the grid `#NUM!` (`2^31-1`); a negative rows is `#VALUE!` (smaller than the array). Columns past the grid have a cap of Excel's
+own: 16,385 are built with 1 and 4 rows, while 123,456,789 in one row and 2^27 in four are `#NUM!`, so the cap is a column count,
+not a cell count, somewhere in 16,386..123,456,789 (T-2452). Ours refuses from 123,456,789; below it, a result above 2^20 cells is
+`#ERROR!` (the DEVIATION below), and sizes Excel builds there hang excel-graph, so they are unprobed.
 VSTACK checks its rows before it reads a referenced cell, after it evaluates every other argument: a stack past the grid
 is `#NUM!` even when a reference argument holds the formula's own cell, so `ROWS(VSTACK(A:A,1:1))` in W1 (-c2),
 `ROWS(VSTACK(2:2,A:A))` in W2, `ROWS(VSTACK(A:A,W8))` in W8 and `COLUMNS(VSTACK(A:A,12:12))` in W12 are `#NUM!`, not a
@@ -1392,7 +1397,13 @@ element is 3.14159 (c36ff5f42a1a4d47 A1705) are all `#VALUE!`.
 Ours: `#VALUE!` for a fractional rows or columns (T-2308).
 Unverified: a size within one ulp of a whole number (`(0.1+0.2)*10`) is `#VALUE!` in ours (exact test); Excel may round to 15 digits first.
 An error in columns comes before a fractional rows: `MAKEARRAY(123456794.36459264,<#NUM!>,_xleta.AVERAGE)` (the columns an
-`ACOS(1+2^-52)` product) is `#NUM!` (gen-m7/bc4a69b0b512bc04 Calc!A1028, excel-graph, 2026-10-22); ours `#VALUE!` (T-2408).
+`ACOS(1+2^-52)` product) is `#NUM!` (gen-m7/bc4a69b0b512bc04 Calc!A1028, excel-graph, 2026-10-22). Both sizes are read, errors first
+in argument order, before either is validated: `MAKEARRAY(1.5,NA(),..)`, `(-1,NA(),..)` and `(0,NA(),..)` are `#N/A`,
+`(1.5,1/0,..)` `#DIV/0!`, `(1.5,ACOS(2),..)` `#NUM!`, `(NA(),1.5,..)` `#N/A` and `(1.5,"x",..)` `#VALUE!` (probes/expand-makearray-past-grid
+D9-D17, excel-graph, 2026-10-23). Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385 (D1,
+D2) and the bare `MAKEARRAY(4,25000,..)` is `#SPILL!` (gen-m7/21b4eef18424ce94 A3348); rows past the grid are unprobed (the
+probe's 1,048,577-row, 1E9 and 1E6-element cells hang excel-graph's workbook open) and stay `#VALUE!` in ours.
+Ours: both sizes read first, then validated; columns past the grid under the cell bound (T-2408).
 Status: VERIFIED (excel-graph)
 Tasks: T-2308, T-2408
 
