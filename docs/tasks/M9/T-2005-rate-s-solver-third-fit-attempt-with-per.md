@@ -106,7 +106,11 @@ of 172-200 steps converge and 201-216 are `#NUM!`. Guess 0 now converges.
   463/464 (Newton 446). Candidates and their counts, rejected ones included, are in financial.md.
 - Eval: known failures gen-m9 8185 -> 8182 (both visible-parity cells of this task, eefcc3989f31de76 A5 and
   a91bad4e84f49739 A69, pass), ironcalc-calc 801 -> 775, probes 1981 -> 1894 (rate-empty-arguments all pass), no
-  regressions; probes-numeric/m9-fin-irr-rate (ungated) 317 -> 481 passing cells. Its A583 `RATE(10,-1E6,1E7)` (root 0)
-  went from `#NUM!` to -2.6E-9: Excel is `#NUM!`; recorded as open.
+  regressions in the gated suites. probes-numeric/m9-fin-irr-rate (ungated) 317 -> 481 passing cells, but three cells
+  that passed on main now fail: A278 `RATE(3,PMT(0.05,3,10000,-500,1),10000,-500,1)` 68 ulp (Excel 0.04999999999999943,
+  ours 0.0499999999999999; visibly off, a regression past decision 0083's 4-ulp allowance), A245
+  `RATE(1,PMT(0.1,1,10000),10000)` 26 ulp (within 15 digits) and A367 `RATE(6,PMT(0.3,6,10000),10000)` 1 ulp; all
+  three go to T-2527. A583 `RATE(10,-1E6,1E7)` (root 0) is `#NUM!` in Excel and was already a number on main
+  (-4.5E-13); ours is now -2.6E-9, still open.
 - The lab criterion is met by the scratch harness, not by `rustsheet-fitlab`; the port, the 117 RATE cells still visibly
   off (mostly nested PMT cells) and A583 move to T-2527 (decision 0083's visible stage).

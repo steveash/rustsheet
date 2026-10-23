@@ -24,6 +24,9 @@ e.g. A218 `RATE(1,PMT(0.2,1,10000,-500,1),10000,-500,1)` Excel 0.199999999999991
 there depends on the inner PMT's bits and on f's rounding at the last secant step, so check first whether the inner
 PMT matches Excel (`PMT` cells of the same rows) and then which operation of f differs (the scratch harness scored
 the documented order 69/375 and FV's order 210/375; candidates in financial.md).
+- Regressed by T-2005 (passed under Newton): m9-fin-irr-rate A278 `RATE(3,PMT(0.05,3,10000,-500,1),10000,-500,1)`
+  68 ulp and visibly off (Excel 0.04999999999999943, ours 0.0499999999999999), A245 `RATE(1,PMT(0.1,1,10000),10000)`
+  26 ulp, A367 `RATE(6,PMT(0.3,6,10000),10000)` 1 ulp.
 - m9-fin-irr-rate A583 `RATE(10,-1E6,1E7)` (root exactly 0) is `#NUM!` in Excel; ours returns the 200th iterate
   (-2.6E-9): near 0 the residual is noise. Probe roots at 0 and cap-edge runs whose 200th residual is large to find
   Excel's rule (does the cap's return also test |f|?).
@@ -38,6 +41,8 @@ Code: `compute_rate`, `rate_residual` (functions/financial/financial_util.rs).
 - [ ] Visible parity: fewer visibly-off RATE cells than the 117 above, with no new known-failure lines in any
       baseline, or the unfitted ones documented in financial.md with the forms tried.
 - [ ] A583's rule probed and implemented or documented.
+- [ ] A278, A245 and A367 (regressed by T-2005) pass again or are documented with the forms tried.
+- [ ] Probe a guess whose residual is exactly 0 (ours runs the secant, the sign of the zero picking r1).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
