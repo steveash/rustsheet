@@ -39,6 +39,10 @@ has the fit. Left visibly off, by cause:
 - Periods near 1E15: probes fin-remaining-later-argument-ranges K3, fin-cumipmt-overflow-and-forms A9-A11,
   fin-cumipmt-period-bound A18 (type 1), and A6 (1E-15 past 2^53; see T-2363's notes on a double-double
   exponent).
+- T-2363 moved two of these slightly further from Excel without a new baseline line: probes A10 (main
+  ...8880, now ...8903, Excel ...835) and A352 (main -0.14573172, now -0.14581298828125).
+- T-2363's balance-form band [2^-10, 2^10] on the growth `(1+r)^(end-1) - 1` is a fit with no oracle cell near
+  either edge (nearest: A392 at 1.7E-8, A189 at 1.1E7): probe cells that bracket both edges.
 - 3c06f9298f65a3ba A91 is POISSON.DIST's (the rate is `1/POISSON.DIST(10,42,1)`, ours 1E-15 relative off);
   not CUMIPMT's.
 Code: functions/financial/cumulative.rs. Fit scaffolding: rebuild the arguments of every CUM cell
