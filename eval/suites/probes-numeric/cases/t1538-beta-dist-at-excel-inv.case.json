@@ -1,0 +1,68 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1538: BETA.DIST, F.DIST and F.DIST.RT at the quantiles Excel returns for b = 5E9 / df 1E10 (does BETA.INV stop at its own crossing?)",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1538"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=BETA.DIST(4.351460182692426e-10,2.5,5E9,TRUE)",
+    "A2": "=F.DIST(0.8702920369171896,5,1E10,TRUE)",
+    "A3": "=F.DIST.RT(0.8702920610183031,5,1E10)",
+    "A4": "=1-BETA.DIST(0.999999999564854,2.5,5E9,TRUE)",
+    "A5": "=BETA.DIST(8.312123853710714e-11,2.5,5E9,TRUE)",
+    "A6": "=F.DIST(0.16624247708803258,5,1E10,TRUE)",
+    "A7": "=F.DIST.RT(2.5665003488733857,5,1E10)",
+    "A8": "=1-BETA.DIST(0.9999999987167498,2.5,5E9,TRUE)",
+    "A9": "=BETA.DIST(1.2832501727899626e-09,2.5,5E9,TRUE)",
+    "A10": "=F.DIST(2.5665003488733857,5,1E10,TRUE)",
+    "A11": "=F.DIST.RT(0.16624247708803258,5,1E10)",
+    "A12": "=1-BETA.DIST(0.9999999999168787,2.5,5E9,TRUE)",
+    "A13": "=BETA.DIST(1.2896160204554348e-12,2.5,5E9,TRUE)",
+    "A14": "=F.DIST(0.0025792320409141934,5,1E10,TRUE)",
+    "A15": "=F.DIST.RT(7.177637399104892,5,1E10)",
+    "A16": "=1-BETA.DIST(0.9999999964111813,2.5,5E9,TRUE)",
+    "A17": "=BETA.DIST(3.5888186866728233e-09,2.5,5E9,TRUE)",
+    "A18": "=F.DIST(7.177637399104892,5,1E10,TRUE)",
+    "A19": "=F.DIST.RT(0.002579232040943919,5,1E10)",
+    "A20": "=1-BETA.DIST(0.9999999999987104,2.5,5E9,TRUE)",
+    "A21": "=BETA.DIST(2.9999080989808717e-10,2.5,5E9,TRUE)",
+    "A22": "=F.DIST(0.5999816199761643,5,1E10,TRUE)",
+    "A23": "=F.DIST.RT(1.2128860145816052,5,1E10)",
+    "A24": "=1-BETA.DIST(0.999999999393557,2.5,5E9,TRUE)"
+   }
+  }
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2",
+  "Calc!A3",
+  "Calc!A4",
+  "Calc!A5",
+  "Calc!A6",
+  "Calc!A7",
+  "Calc!A8",
+  "Calc!A9",
+  "Calc!A10",
+  "Calc!A11",
+  "Calc!A12",
+  "Calc!A13",
+  "Calc!A14",
+  "Calc!A15",
+  "Calc!A16",
+  "Calc!A17",
+  "Calc!A18",
+  "Calc!A19",
+  "Calc!A20",
+  "Calc!A21",
+  "Calc!A22",
+  "Calc!A23",
+  "Calc!A24"
+ ],
+ "expected": {}
+}
