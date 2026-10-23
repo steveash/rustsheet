@@ -20,6 +20,7 @@ use std::path::{Component, Path};
 use crate::case::{kept_nonzero_formulas, split_qualified, CaseSpec, OracleFile};
 use crate::cellref::Addr;
 use crate::value::Value;
+use crate::xlsx_snapshot::is_undecoded;
 
 /// Oracle sources that may replace a cached value: a live Excel, never cached values or an
 /// approximate backend.
@@ -116,6 +117,8 @@ pub fn evidence(o: &CachedOverride, suites_dir: &Path) -> Result<Evidence, Strin
         .sheets
         .get(&o.evidence_sheet)
         .and_then(|cells| cells.get(&o.evidence_addr.to_string()))
+        // An undecoded rich error says no more than a missing value (T-2397).
+        .filter(|v| !is_undecoded(v))
         .cloned()
         .ok_or_else(|| {
             format!(
@@ -185,8 +188,8 @@ mod tests {
         std::fs::create_dir_all(&dir).expect("dir");
         let sidecar = |kind: &str| {
             format!(
-                r#"{{"format":"rustsheet-oracle/v1","source":{{"kind":"{kind}"}},
-                "sheets":{{"Sheet1":{{"B1":{{"t":"n","v":30.0}}}}}}}}"#
+                r##"{{"format":"rustsheet-oracle/v1","source":{{"kind":"{kind}"}},
+                "sheets":{{"Sheet1":{{"B1":{{"t":"n","v":30.0}},"B2":{{"t":"e","v":"#UNDECODED!"}}}}}}}}"##
             )
         };
         let o = &parse("a.xlsx\tS!A1\tx.oracle.json\tSheet1!B1").expect("parse")[0];
@@ -198,6 +201,9 @@ mod tests {
         }
         let missing = &parse("a.xlsx\tS!A1\tx.oracle.json\tSheet1!C9").expect("parse")[0];
         assert!(evidence(missing, &dir).is_err());
+        // An undecoded rich error is no evidence (T-2397).
+        let undecoded = &parse("a.xlsx\tS!A1\tx.oracle.json\tSheet1!B2").expect("parse")[0];
+        assert!(evidence(undecoded, &dir).is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

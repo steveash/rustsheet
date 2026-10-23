@@ -86,6 +86,10 @@
     "t": "n",
     "v": 1e-15
    },
+   "A1036": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
    "A104": {
     "t": "n",
     "v": 123456789.123
@@ -597,6 +601,10 @@
    "A151": {
     "t": "n",
     "v": -0.0001
+   },
+   "A1519": {
+    "t": "e",
+    "v": "#UNDECODED!"
    },
    "A152": {
     "t": "n",
@@ -3118,6 +3126,54 @@
     "t": "e",
     "v": "#N/A"
    },
+   "C951": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C952": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C953": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C954": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C955": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C956": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C957": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C958": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C959": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C960": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C961": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "C962": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
    "C975": {
     "t": "e",
     "v": "#REF!"
@@ -3470,6 +3526,54 @@
     "t": "e",
     "v": "#N/A"
    },
+   "D951": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D952": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D953": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D954": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D955": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D956": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D957": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D958": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D959": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D960": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D961": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "D962": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
    "E1149": {
     "t": "n",
     "v": 123456789.123
@@ -3601,6 +3705,54 @@
    "E586": {
     "t": "n",
     "v": 42.0
+   },
+   "E951": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E952": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E953": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E954": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E955": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E956": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E957": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E958": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E959": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E960": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E961": {
+    "t": "e",
+    "v": "#UNDECODED!"
+   },
+   "E962": {
+    "t": "e",
+    "v": "#UNDECODED!"
    },
    "F13": {
     "t": "n",
@@ -4785,8 +4937,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "e07a9239d720d1517a6d47cab0b456a80d926e7cb8193ef2aec41d376687603b",
   "kind": "excel-graph",
-  "produced_at": "2026-10-21T16:19:50+00:00",
+  "produced_at": "2026-10-22T23:31:59+00:00",
   "version": null,
-  "workbook_name": "d6675bd23a683ca9c4ca67508442c9961d3f7ccdfb2ffb3c26fff5770173fa0e.xlsx"
+  "workbook_name": "2e21aebafbcf8ee140871cf951b3ec58201bd3908d58dd99d6236fe0254bb463.xlsx"
  }
 }
