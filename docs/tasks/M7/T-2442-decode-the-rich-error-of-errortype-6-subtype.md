@@ -3,7 +3,7 @@ id: T-2442
 title: "Decode the rich error of errorType 6 (subType 7) from ERROR.TYPE evidence"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
