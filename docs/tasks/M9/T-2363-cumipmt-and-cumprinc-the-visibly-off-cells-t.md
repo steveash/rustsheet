@@ -53,7 +53,44 @@ Examples:
 Cells:
 - gen-m9/6e18550e9fc9c1b9.case.json (1): Calc!A329
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): CUMIPMT and CUMPRINC values of the financial sweep: at huge rates ours is wildly off (`CUMIPMT(1E15,170,271151,8,16,0)` Excel -2.440359000000003E+21, ours -4.85E+229; `CUMIPMT(1E+10,235,99106,6,18,0)` -1.288378E+16, ours 1.39E+129; `CUMIPMT(100,167,7,6,16,0)` -7700, ours -1.1E15), at tiny rates ours misses Excel's rounding (`CUMIPMT(1E-300,243,80923,12,22,0)` -4.547473508864641E-13, ours -8.9E-295), and the type-1 and fractional-rate sums are off in the 12th to 15th digit; `DOLLARDE(CUMPRINC(1E-300,129,257125,1,17,0),16)` follows CUMPRINC.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 35 known-failure lines in eval/baseline/gen-m9.txt, 35 visibly off.
+Examples:
+- gen-m9/0a957119475760c5 Calc!A383 `=CUMPRINC(10,121,308352,2,16,1)`: Excel -1.263054652346343e-105, ours -1.2630546523463632e-105
+- gen-m9/1cd3096e3e87c965 Calc!A316 `=CUMIPMT(10,89,267388,3,13,0)`: Excel -29412680.0, ours -29413399.999991894
+- gen-m9/3c06f9298f65a3ba Calc!A189 `=CUMIPMT(0.5,96,265678,1,23,0)`: Excel -3055296.9999999627, ours -3055297.0
+- gen-m9/5c6a23c4f6597f1c Calc!A392 `=CUMIPMT(1E-9,55,157761,1,18,0)`: Excel -0.002400835590378847, ours -0.0024008355911119897
+- gen-m9/9a1fa5366bc50918 Calc!A361 `=CUMPRINC(10,261,484823,4,24,0)`: Excel -7.507871520276804e-242, ours -7.50787152027683e-242
+- gen-m9/a91bad4e84f49739 Calc!A193 `=CUMPRINC(1,331,199079,3,14,1)`: Excel -3.727183608915611e-91, ours -3.727183608915638e-91
+Cells:
+- gen-m9/01523d247594952e.case.json (1): Calc!A322
+- gen-m9/0a957119475760c5.case.json (1): Calc!A383
+- gen-m9/1cd3096e3e87c965.case.json (2): Calc!A147, A316
+- gen-m9/1dce4774f5c0e736.case.json (1): Calc!A81
+- gen-m9/3c06f9298f65a3ba.case.json (3): Calc!A91, A140, A189
+- gen-m9/5c6a23c4f6597f1c.case.json (3): Calc!A49, A343, A392
+- gen-m9/5ded7594e597e31e.case.json (3): Calc!A22, A81, A267
+- gen-m9/6376e27be7a05871.case.json (1): Calc!A365
+- gen-m9/67a4c03afd63f988.case.json (1): Calc!A110
+- gen-m9/79d87fc527927626.case.json (1): Calc!A352
+- gen-m9/81bcdc0bec0c8e6b.case.json (2): Calc!A274, A372
+- gen-m9/89f0aee953a55a45.case.json (1): Calc!A5
+- gen-m9/9a1fa5366bc50918.case.json (2): Calc!A18, A361
+- gen-m9/9d9ceba257f8001b.case.json (1): Calc!A372
+- gen-m9/a91bad4e84f49739.case.json (2): Calc!A83, A193
+- gen-m9/abb7d565af89b849.case.json (1): Calc!A84
+- gen-m9/b6a02893a8d6b151.case.json (2): Calc!A305, A398
+- gen-m9/b72d952c5f52cb4d.case.json (1): Calc!A257
+- gen-m9/b73c6cc96e093f03.case.json (1): Calc!A62
+- gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A162
+- gen-m9/d0854366830dcdee.case.json (1): Calc!A98
+- gen-m9/d912671baa1364aa.case.json (1): Calc!A169
+- gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A330, A379
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 35 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the nine cells above are within half a unit of the 15th significant digit
