@@ -81,3 +81,6 @@ type, error, text, or a value off by more than half a unit of the 15th significa
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Note from T-2216
+The sweep (financial.md "DURATION and RRI operation order") fits `EXP(LN(fv/pv)*(1/nper))-1` on 134 of 136 numeric points; `/nper` fits only 87. Implement the `*(1/nper)` form.

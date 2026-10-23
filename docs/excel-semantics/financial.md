@@ -1292,7 +1292,12 @@ The one fractional-nper, inexact-ratio cell in the repo is Mac desktop: ironcalc
 FINANCIAL/RRI.xlsx Sheet1!D12, `RRI(0.5,3,4)` = 0.7777777777777775 ("Microsoft Macintosh Excel"
 16.0300). The worksheet form `(4/3)^2-1` gives 0.7777777777777777, the engine's value. So either Mac
 desktop differs from the web here, as for SIN(4) and ATAN2 (decision 0074), or RRI is not the
-worksheet form when nper is fractional. T-2216 probes it on excel-graph.
+worksheet form when nper is fractional. T-2216 probed it on excel-graph (below).
+T-2216 sweep (probes-numeric/m9-fin-rri-sweep, excel-graph, 143 rows: the web agrees with the Mac value, `RRI(0.5,3,4)` is
+0.7777777777777775, so RRI.xlsx D12 is not Mac-only). Of the 136 numeric RRI results, the worksheet forms match
+`EXP(LN(fv/pv)*(1/nper))-1` 134 times (the other two are the pv=0 / fv=0 edge rows, whose worksheet forms are errors),
+`(fv/pv)^(1/nper)-1` and `POWER(fv/pv,1/nper)-1` 112 times each, and `EXP(LN(fv/pv)/nper)-1` 87 times. So RRI is
+`EXP(LN(fv/pv)*(1/nper))-1`, with the reciprocal taken first; `/nper` is the wrong operation order. Fix: T-2217.
 Status: VERIFIED (excel-graph)
 Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
 Open (gap triage 2026-10-21): RRI is not always the worksheet POWER/`^`. `ironcalc-calc/FINANCIAL/RRI.xlsx` Sheet1!D12

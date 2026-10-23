@@ -3,7 +3,7 @@ id: T-2216
 title: "Oracle sweep: RRI where exp(ln(fv/pv)/nper)-1 and (fv/pv)^(1/nper)-1 differ (RRI.xlsx D12)"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -41,11 +41,17 @@ they are included as they are.
   `(fv/pv)^(1/nper)-1`, `POWER(fv/pv,1/nper)-1`, `EXP(LN(fv/pv)/nper)-1` and `EXP(LN(fv/pv)*(1/nper))-1` in the next columns.
 
 ## Acceptance criteria
-- [ ] A probes-numeric case with an excel-graph oracle sidecar covers the list above, and financial.md's RRI
+- [x] A probes-numeric case with an excel-graph oracle sidecar covers the list above, and financial.md's RRI
       paragraph links it with the counts of points each candidate matches. If the web matches the worksheet form at
       `RRI(0.5,3,4)`, RRI.xlsx D12 is recorded as Mac-desktop-only and an M14 item is added to T-1075 (decision 0039).
-- [ ] If the oracle is unavailable, the task is `status: blocked` with the reason.
-- [ ] `make check` green; reviewers approve.
+- [x] If the oracle is unavailable, the task is `status: blocked` with the reason.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing `rri_of` (T-2217).
+
+## Outcome
+Added probes-numeric/m9-fin-rri-sweep (143 RRI rows, excel-graph sidecar). The web agrees with the Mac value at
+`RRI(0.5,3,4)`, so D12 is not Mac-only and no M14 item is needed. Over 136 numeric results `EXP(LN(r)*(1/n))-1` matches 134
+(all but the two zero-argument edge rows), `^`/POWER 112, `EXP(LN(r)/n)-1` 87. T-2217 should use the `*(1/nper)` form
+(financial.md "DURATION and RRI operation order" updated).
