@@ -111,8 +111,30 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (2): Calc!A138, A260
 - gen-m9/fec39efaba9284c3.case.json (4): Calc!A88, A180, A226, A272
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): LINEST nested in the statistical calls (a scalar known_y is one point, not `#VALUE!`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 11 known-failure lines in eval/baseline/gen-m9.txt, 11 visibly off.
+Examples:
+- gen-m9/09b47629f54b9817 Calc!A190 `=QUARTILE(Data!B8:B9,LINEST(Data!A2:D10,Data!B4:C6,Data!C11))`: Excel #REF!, ours #NUM!
+- gen-m9/329b177b5d5165ad Calc!A220 `=STDEV(Data!D2:D3,(Data!A$12*LINEST((-1))),Data!E6:E7)`: Excel 1.1304720261908296, ours #VALUE!
+- gen-m9/6e18550e9fc9c1b9 Calc!A190 `=T.INV.2T(LINEST((-0.0001)),5)`: Excel #NUM!, ours #VALUE!
+- gen-m9/7980ffb6095a340d Calc!A143 `=NEGBINOMDIST(1,LINEST(Data!D$10),((1e-15-Data!$E$7)*0.5))`: Excel #NUM!, ours #VALUE!
+- gen-m9/9e2225ead8a6a07b Calc!A12 `=SKEW(LINEST(1000000000000000.0))`: Excel #DIV/0!, ours #VALUE!
+Cells:
+- gen-m9/09b47629f54b9817.case.json (1): Calc!A190
+- gen-m9/139684e68fb2fc3b.case.json (1): Calc!A11
+- gen-m9/2138b909d8f810ea.case.json (1): Calc!A142
+- gen-m9/329b177b5d5165ad.case.json (1): Calc!A220
+- gen-m9/6e18550e9fc9c1b9.case.json (1): Calc!A190
+- gen-m9/7980ffb6095a340d.case.json (1): Calc!A143
+- gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A222
+- gen-m9/9e2225ead8a6a07b.case.json (1): Calc!A12
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A93
+- gen-m9/c7664e494e418395.case.json (1): Calc!A152
+- gen-m9/ce312817dc9c7f0b.case.json (1): Calc!A327
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 159 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 170 known-failure lines (159 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 13 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 13 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/linest-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.

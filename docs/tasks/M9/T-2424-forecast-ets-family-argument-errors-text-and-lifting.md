@@ -67,8 +67,36 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (2): Calc!A58, A222
 - gen-m9/fec39efaba9284c3.case.json (1): Calc!A213
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): FORECAST.ETS* calls nested in another function whose own argument error, text or lift decides the outer result (`STANDARDIZE(FORECAST.ETS.SEASONALITY(..,0.5),..)` is `#VALUE!`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 19 known-failure lines in eval/baseline/gen-m9.txt, 19 visibly off.
+Examples:
+- gen-m9/139684e68fb2fc3b Calc!A227 `=PEARSON(FORECAST.ETS.SEASONALITY(MATCH("#N/A",Data!B5:E6,-1),Data!$B6,1),Data!C7:D9)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/5389dd4d5b5739d2 Calc!A210 `=MINA(FORECAST.ETS.SEASONALITY(DATEDIF(23881,3410,"D"),Data!A11:B12),Data!A1:E1)`: Excel #NUM!, ours #N/IMPL!
+- gen-m9/607e85cfee83a689 Calc!A201 `=SMALL(FORECAST.ETS.STAT(Data!C1:E1,Data!A11:D11,(Data!E$11*Data!D6)),4)`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/eedd629f3d69fdda Calc!A374 `=NORMSDIST(FORECAST.ETS(Data!B2,(1-Data!$A1),(Data!E9-Data!D1),1,0))`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/f82473275380882e Calc!A393 `=PROB(Data!C3:C7,OFFSET(Data!B5:D11,2,2),FORECAST.ETS.STAT(2.5,Data!A4:A11,4,4,Data!$E$3,6))`: Excel #VALUE!, ours #N/IMPL!
+Cells:
+- gen-m9/09b47629f54b9817.case.json (1): Calc!A194
+- gen-m9/139684e68fb2fc3b.case.json (1): Calc!A227
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A200
+- gen-m9/1db18890916ee643.case.json (1): Calc!A312
+- gen-m9/44a8841352dc48e9.case.json (1): Calc!A400
+- gen-m9/5389dd4d5b5739d2.case.json (2): Calc!A89, A210
+- gen-m9/5919660b7bb4d195.case.json (1): Calc!A87
+- gen-m9/607e85cfee83a689.case.json (2): Calc!A201, A355
+- gen-m9/775d053de498b8c7.case.json (1): Calc!A51
+- gen-m9/7fd0a98183c6babf.case.json (1): Calc!A49
+- gen-m9/91e167cd8d7eb652.case.json (1): Calc!A248
+- gen-m9/9735c5ab72fa5ecf.case.json (1): Calc!A257
+- gen-m9/a4090567758520df.case.json (1): Calc!A5
+- gen-m9/bbab6562e88b70e8.case.json (1): Calc!A81
+- gen-m9/cb61169f4c033d4b.case.json (1): Calc!A145
+- gen-m9/eedd629f3d69fdda.case.json (1): Calc!A374
+- gen-m9/f82473275380882e.case.json (1): Calc!A393
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 1196 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 1215 known-failure lines (1196 from T-2255, 19 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: an error in each argument position (first one wins), a text target_date/seasonality/statistic_type
       before a later error, and a 2-row target_date that spills; a call with no error or text stays `#N/IMPL!`.

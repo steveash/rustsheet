@@ -2408,8 +2408,11 @@ B12 = TRUE is 562.0832962779946 (c6cfda6bd10cae93 A183), `HYPGEOMDIST(1,1,Data!D
 0.10000000000000002 (ee2497a5e683c5d9 A356), `HYPGEOMDIST(1,IFERROR(..,ISERROR(#N/A)),6,19)` 0.3157894736842105
 (b6593d7dd13f2dac A133), `CHISQ.INV(0.001,IFNA((Data!A9<>""),..))` 1.57079714926249E-06 (146b46e74f2dac3b A45). An error
 in a later argument then wins over the boolean (`BETAINV(Data!C$5,(1E15/Data!C1),1.999)` with C5 = TRUE and C1 empty is
-`#DIV/0!`, 165db58d1540f014 A257).
-Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 90 cells listed in T-1849.
+`#DIV/0!`, 165db58d1540f014 A257). The T-2256 sweep adds WEIBULL, WEIBULL.DIST and STANDARDIZE: `WEIBULL(38.5,44439,Data!C6,0.5)`
+with C6 = FALSE is `#NUM!` (beta 0; d37313406b9f6e55 A380), `WEIBULL.DIST(0.2,Data!B1,0.01,..)` with B1 = FALSE `#NUM!`
+(928d08e3e1eecb5f A303), `STANDARDIZE(-40,Data!E5,-1)` with E5 = FALSE `#NUM!` (sd -1; 334f3dc9ca937f10 A219) and
+`STANDARDIZE(-1E-15,1E-15,Data!A7)` with A7 = TRUE -2E-15 (928d08e3e1eecb5f A249).
+Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 90 cells listed in T-1849; T-2256 (2026-10-23), 28 more cells.
 Ours: `#VALUE!` (`cast_number_no_bools_ref`); T-1849.
 Status: VERIFIED (excel-graph)
 
@@ -2463,3 +2466,122 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-1741, T-1742, T-1
 Ours: `#VALUE!` for the scalar known_y and the sign/size checks above; T-1741, T-1742, T-1743.
 Status: VERIFIED (excel-graph)
 
+
+## PROB: an error data argument first, one value on each side is #DIV/0!, unequal counts #N/A (T-2256)
+Rule: PROB checks its data in this order, each step before the next: x_range given as an error value is that error,
+then prob_range given as an error value (`PROB(2,SINH(1E+8),DAY(..)<#VALUE!>)` is `#NUM!`, d8f44d556674c2fd A40;
+`PROB(<#CALC!>,Data!A4:A7,<#VALUE!>)` `#CALC!`, eccd03df42e40006 A16); a one-cell reference to an empty cell is `#VALUE!`
+(as in the paired functions, T-2426); then a single value on both sides (two scalars or single cells) is `#DIV/0!`, before
+an error lower_limit (`PROB((ERF(1E-10)+(-0.5)),EFFECT(10,11),PV(..)<#NUM!>)` is `#DIV/0!`, 6e18550e9fc9c1b9 A394); then
+x_range and prob_range of different counts are `#N/A`, before the sum check (`PROB(Data!C2:D11,Data!C5:E8,..)`, 20 against
+12 cells, is `#N/A`, 873f30d2bf76f8db A300; `PROB((7/-(-2.5)),Data!A8:D8,1.005)`, 1 against 4, 5be29fa316931f05 A215).
+These are direct error values; an error inside a range still loses to a lower/upper error (T-1813, section "RANK,
+FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments"). Equal counts in different shapes pair (`PROB(Data!B3:E3,
+Data!E7:E10,1,Data!E7)` is the sum check's `#NUM!`, 873f30d2bf76f8db A72). Whether a lower_limit error beats unequal counts
+rests on one cell whose lower_limit is an inner YIELD (d37313406b9f6e55 A142, `#NUM!`): UNVERIFIED.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256): 111 of the 118 top-level PROB cells of T-2468 and T-2426 follow these steps exactly; cells in T-2468.
+Ours: the limits first, then `#VALUE!` for a scalar data argument and `#NUM!` for unequal counts; T-2468.
+Status: VERIFIED (excel-graph) except the noted order
+
+## T.TEST: an error sample first, then tails and type errors, then their range check (T-2256)
+Rule: T.TEST and TTEST return array1's error when array1 is an error value, then array2's (`T.TEST({1,2},-CEILING(..)
+<#VALUE!>,Data!C10,1)` is `#VALUE!`, 73f053591a54bc43 A280; `T.TEST({1;2;"";4},STDEV(Data!C$10)<#DIV/0!>,2,0)` `#DIV/0!`
+before the type 0 `#NUM!`, bbab6562e88b70e8 A338; `TTEST(MATCH(..)<#N/A>,..,7,3)` `#N/A` before tails 7), then a one-cell
+reference to an empty cell `#VALUE!` (T-2426), then an error in tails or type (`TTEST(5,-0.005,Data!E$11,<#VALUE!>)` is
+`#VALUE!` with tails FALSE, b9a32ce9a1fd0d71 A274; `T.TEST(Data!A6:D11,Data!A1:A12,-2.5,<#VALUE!>)` `#VALUE!`, 80586b859b73c87d
+A32), and only then the tails/type range check (`#NUM!`). A typed empty text as a sample is no number (`TTEST(IFERROR(
+#VALUE!,""),Data!B11:E11,1,3)` is `#DIV/0!`, 46ac3ef5e61583ca A344). The data-error-first order holds for direct error values;
+an error inside a range still loses to a bad tails/type (T-1813). Unexplained: `TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`
+is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve is `#DIV/0!` in ours: UNVERIFIED.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2469.
+Ours: tails and type are checked first (`#NUM!`) and a typed text sample is `#VALUE!`; T-2469.
+Status: VERIFIED (excel-graph) except the noted cell
+
+## Z.TEST: an error array first; one data value is #DIV/0!; a lone non-number cell is #N/A (T-2256)
+Rule: Z.TEST and ZTEST return the array's error when the array argument is an error value, before x's and sigma's
+(`ZTEST(<#VALUE!>,STDEV.S((-0.0001))<#DIV/0!>)` is `#VALUE!`, 7fd0a98183c6babf A54; `ZTEST(BYCOL(..)<#CALC!>,2.5,<#VALUE!>)`
+`#CALC!`, 607e85cfee83a689 A73; `ZTEST(COS(1E+16)<#NUM!>,Data!E2)` `#NUM!`, 334f3dc9ca937f10 A282). An array of one number
+(a scalar, `{5}` or a one-cell reference holding a number) is `#DIV/0!`, before a sigma of 0 or below (`ZTEST({5},Data!$B6,
+-123456789.123)`, 38e4fc309fe199ea A87; `ZTEST(0.5,-1,-2.5)`, 9735c5ab72fa5ecf A158; `ZTEST(Data!C3,Data!C2,-16586.85..)`,
+0bbab6206b5c9a07 A231). An array argument with no number is `#N/A`, as "Test functions" says of an empty range, whether
+it is a range (`ZTEST(Data!C7:C7,..)` with "abc", 5919660b7bb4d195 A364; `ZTEST(Data!C2:C2,..)` with FALSE, 9e2225ead8a6a07b
+A75; `ZTEST(Data!Z1:Z3,TIMEVALUE("6:00"))`, 928d08e3e1eecb5f A159) or a single-cell reference without a colon holding text,
+a boolean or nothing (`ZTEST(Data!B11,Data!C2)` with "x~*" and "1", c2684066d8df263e A190; `ZTEST(Data!A$4,-1,1E-10)` with
+FALSE, 873f30d2bf76f8db A333; `ZTEST(Data!$A4,..)` with A4 empty, 201d67f1d59436ed A99). Two `#DIV/0!` cells over ranges with
+no number, `ZTEST(Data!B5:C5,0.04)` (B5 empty, C5 FALSE; its x is `SUMXMY2(UNIQUE(Data!D4),-0.2)`, 7980ffb6095a340d A294)
+and `ZTEST(Data!B10:B10,..)` (its sigma is `PV(-0.9999999999,167,-43,1E+300)`, a63d1c7d6f96c56d A324), are explained by
+their x or sigma argument, not by the range: UNVERIFIED, T-2470 (which owns them) traces them.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2470.
+Ours: x and sigma first, `#NUM!` for sigma before the one-value `#DIV/0!`, `#VALUE!` or `#DIV/0!` for the lone cells; T-2470.
+Status: VERIFIED (excel-graph)
+
+## MODE: a one-cell range reference to an empty cell is #VALUE! (T-2256)
+Rule: MODE, MODE.SNGL and MODE.MULT are `#VALUE!` for a one-cell range reference to an empty cell (`MODE(Data!C11:C11)`,
+775d053de498b8c7 A352; `MODE.SNGL(Data!B8:B8)`, a63d1c7d6f96c56d A381; `MODE.MULT(Data!A10:A10)`, 5cebac1f02bf30f2 A183), as
+for a blank single-cell reference ("Statistical function argument modes", A23), also beside other arguments that hold a mode
+(`MODE(Data!A10:A10,Data!A9:A12,Data!E10:E10)` with E10 empty is `#VALUE!`, 329b177b5d5165ad A172).
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 36 cells in T-2471.
+Ours: the `Data!X:X` form is read as a range (skipped blank, `#N/A` or the mode of the rest); T-2471.
+Status: VERIFIED (excel-graph)
+
+## Order statistics: the scalar argument's error before the no-number result; PERCENTRANK's #N/A before significance (T-2256)
+Rule: PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN and SMALL return an error k, quart, x or percent before the result of
+data with no number (`QUARTILE(Data!C10,IFNA(1/0,..))` with C10 empty is `#DIV/0!`, 41248d1cb153c66e A112;
+`PERCENTRANK.INC(Data!Z1:Z3,STDEVA(Data!A1))` `#DIV/0!`, c4635963fc926284 A103; `PERCENTILE.INC(Data!D10:D11,<#VALUE!>)` with
+text data `#VALUE!`, 41248d1cb153c66e A153; `TRIMMEAN(Data!C7:C7,<#DIV/0!>)` `#DIV/0!`, a63d1c7d6f96c56d A72), as PERCENTILE.EXC
+already did (T-1403). PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC check x against the data (`#N/A` outside it, or for no
+number) before significance (`PERCENTRANK(Data!E1:E5,1963,-2.5)` is `#N/A`, 139684e68fb2fc3b A324;
+`PERCENTRANK.EXC({1,..,10},-0.0001,0)` `#N/A`, 09b47629f54b9817 A58).
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 62 cells in T-2472.
+Ours: the data's `#NUM!`/`#N/A` first, and significance (`#NUM!`) before the range check; T-2472.
+Status: VERIFIED (excel-graph)
+
+## PERCENTRANK: a huge significance is #DIV/0!; truncation does not lose a digit at a cut (T-2256)
+Rule: a significance of about 2^31 or more makes PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC `#DIV/0!` (2147483648,
+7fd0a98183c6babf A202; 5616037595088.403, 941c409532603d32 A168; 1E+15, 91e167cd8d7eb652 A9; 9.18E+36, 2138b909d8f810ea A333),
+where a significance below 1 is `#NUM!`; the cut between 3 digits and 2^31 is UNVERIFIED. The truncation to significance
+digits does not drop a digit when the rank lies within rounding of a cut: `PERCENTRANK.EXC({1E+15,1,-1E+15},0.3)` is 0.5
+(c7664e494e418395 A252), `PERCENTRANK.INC(Data!D4:E12,0)` 0.5 (d37313406b9f6e55 A303), `PERCENTRANK.INC(Data!A1:C3,0.2,2)` 0.36
+(ede0323c389fc703 A43) and 0.603 at 3 digits (A157), where a plain floor of the double rank gives 0.499, 0.35 and 0.602.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2473.
+Ours: `#NUM!` for the huge significance and a plain floor; T-2473.
+Status: VERIFIED (excel-graph) for the cited cells
+
+## Scalar distributions at extreme arguments, part 2 (T-2256)
+Rule (gen-m9, excel-graph, 2026-10-23):
+- `TDIST` and `T.DIST.2T` of x = 1E+300 or 1E+307 are `#NUM!` (`TDIST(1E+300,8,1)`, 9735c5ab72fa5ecf A33; `T.DIST.2T(1E+307,3)`,
+  775d053de498b8c7 A26; 12 cells), not 0; `T.DIST.2T(1E+15,1)` is still a number (46ac3ef5e61583ca A236). The cut is UNVERIFIED.
+- POISSON and POISSON.DIST do not reject a negative mean when x truncates to 0: the result is EXP(-mean)
+  (`POISSON(0,-1,0)` = 2.718281828459045, 607e85cfee83a689 A189; `POISSON.DIST(0,-42,..)` = 1.739274941520501E+18,
+  c7664e494e418395 A189; `POISSON(0.3,-0.5,TRUE)` = 1.6487212707001282, b9a32ce9a1fd0d71 A221; 9 cells), and
+  `POISSON.DIST(2E+29,7,-1)` is 1 (5919660b7bb4d195 A88; owned by the residual probe T-2475).
+- NEGBINOMDIST and NEGBINOM.DIST: a number_f in (-1, 0) is `#NUM!` before truncation (`NEGBINOMDIST(-0.5,8,0.5)`,
+  d208bbafc3bc1997 A231; -1E-06, 3b7990bd4e3307ba A312), and a probability that underflows the result is 0, not `#NUM!`
+  (`NEGBINOMDIST(7,123456789.123,1E-200)`, 5919660b7bb4d195 A124; `NEGBINOM.DIST(9,4,1E-300,TRUE)`, bcb1105c61a2649d A24).
+- PERMUTATIONA truncates number_chosen toward 0 before its sign check (`PERMUTATIONA(10,-0.75)` and `(7,-0.1)` are 1,
+  0620505280d2ea6e A280, 5395b8a427764a3f A385), and a number of about 1E+15 or more is `#NUM!` even with number_chosen 0
+  (`PERMUTATIONA(1000000000000000,0)`, 775d053de498b8c7 A152; `PERMUTATIONA(FACT(18),2)`, b9a32ce9a1fd0d71 A378).
+Ours: 0 for the TDIST cells, `#NUM!` for the negative mean, the tiny-p NEGBINOMDIST and the PERMUTATIONA zeros, a value for
+the others; T-2474.
+Status: VERIFIED (excel-graph), the cuts UNVERIFIED
+
+## Student t quantile at p = 0 with df below 2 is #DIV/0! (T-2256)
+Rule: TINV, T.INV.2T and T.INV with p = 0 and a df that truncates to 1 are `#DIV/0!`, not `#NUM!`: `TINV(0,1)`
+(ede0323c389fc703 A338, 139684e68fb2fc3b A128), `T.INV.2T(Data!C1,1)` with C1 = 0 (607e85cfee83a689 A160), `T.INV(0,1)`
+(928d08e3e1eecb5f A271), `T.INV(0,1.999)` (0072265d385d8ab2 A341), `T.INV.2T(FALSE,1.005)` (9bc247733a1ca9fa A36),
+`TINV(0,COUNT(..))` (7f7ca726c3f68554 A280). From df 2 up, p = 0 is `#NUM!`: `T.INV(0,2)` (3fb9cecf2c23169f A120), `TINV(0,3)`
+(31f09e6c48ca245c A316), `T.INV.2T(0,3)` (9e2225ead8a6a07b A102), `T.INV(0,4)` (91e167cd8d7eb652 A324); the cut is between
+1.999 and 2.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2096.
+Ours: `#NUM!`; T-2096.
+Status: VERIFIED (excel-graph)
+
+## A lone text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN (T-2256)
+Rule: a single-cell reference (no colon) holding text, a boolean or (for TRIMMEAN) nothing is data with no number:
+QUARTILE*, PERCENTILE* and TRIMMEAN are `#NUM!` (`QUARTILE(Data!E2,3)` with E2 = "a", 7980ffb6095a340d A132;
+`QUARTILE(Data!C11,0)` with TRUE, 17c110a53924beb8 A234; `PERCENTILE(Data!D5,0)` with "1", 5cebac1f02bf30f2 A247;
+`TRIMMEAN(Data!B7,1.005)` with TRUE, 9735c5ab72fa5ecf A264) and PERCENTRANK* `#N/A` (`PERCENTRANK(Data!C11,1.005)` with "a",
+44a8841352dc48e9 A52). This answers T-2344's single-cell question and T-2066's (`QUARTILE` of one text cell).
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 72 cells in T-2344.
+Ours: `#VALUE!` (the cell read as a typed value); T-2344.
+Status: VERIFIED (excel-graph)

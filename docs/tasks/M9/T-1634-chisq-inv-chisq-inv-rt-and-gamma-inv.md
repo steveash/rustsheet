@@ -87,8 +87,23 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (2): Calc!A243, A304
 - gen-m9/fec39efaba9284c3.case.json (4): Calc!A107, A144, A236, A374
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): CHIINV, CHISQ.INV and GAMMA.INV tails at tiny p nested in other calls (`STANDARDIZE(7,CHIINV(1e-15,8),1E+5)`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 visibly off.
+Examples:
+- gen-m9/0620505280d2ea6e Calc!A292 `=STANDARDIZE(7,CHIINV(1e-15,8),1E+5)`: Excel -0.0008136100835821856, ours -0.000812715781421368
+- gen-m9/17c110a53924beb8 Calc!A228 `=TRIMMEAN({5},(CHIINV(1E-20,7)*(Data!B5*Data!$C10)))`: Excel 5.0, ours #NUM!
+- gen-m9/31f09e6c48ca245c Calc!A191 `=STDEVPA(Data!C5,(Data!B8/GAMMA.INV(1e-15,2.5,100)))`: Excel 3.0922108671216676e-12, ours 9.444314973097486e-13
+- gen-m9/a63d1c7d6f96c56d Calc!A145 `=MAXA(CHISQ.INV.RT(1E-10,8),Data!D$1,Data!C7:C8)`: Excel 63.3979644111356, ours 63.397964021600195
+- gen-m9/a63d1c7d6f96c56d Calc!A291 `=POISSON.DIST(0,CHISQ.INV(1E-16,COUNTIF(Data!C8:E11,"<>")),TRUE)`: Excel 0.9986596927837208, ours 0.9981518053624893
+Cells:
+- gen-m9/0620505280d2ea6e.case.json (1): Calc!A292
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A228
+- gen-m9/31f09e6c48ca245c.case.json (1): Calc!A191
+- gen-m9/a63d1c7d6f96c56d.case.json (2): Calc!A145, A291
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 136 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 141 known-failure lines (136 from T-2255, 5 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The listed cells of t1543-inverse-cdf-tiny-p pass (within the suite's numeric tolerance) and ordinary-p cases do not regress.
 - [ ] `make check` green; reviewers approve.
