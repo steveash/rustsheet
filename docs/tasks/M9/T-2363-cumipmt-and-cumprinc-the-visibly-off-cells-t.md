@@ -3,7 +3,7 @@ id: T-2363
 title: "CUMIPMT and CUMPRINC: the visibly-off cells T-2192 left (periods near 1E15, type 1 from period 1, past 2^53)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
