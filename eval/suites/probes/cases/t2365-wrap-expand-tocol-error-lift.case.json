@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "WRAPROWS/WRAPCOLS/EXPAND/TOCOL error and edge arguments beside a lifted argument (T-2365). Column G, one question per cell.",
+ "tags": [
+  "M7",
+  "probe",
+  "dynamic-arrays",
+  "T-2365"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "G1": "=ROWS(_xlfn.WRAPROWS(1/0,2,{0;1}))",
+    "G2": "=INDEX(_xlfn.WRAPROWS(1/0,-1,{0;1}),2,1)",
+    "G3": "=INDEX(_xlfn.WRAPROWS(A1:A3,-1,{#N/A;0}),1,1)",
+    "G4": "=INDEX(_xlfn.WRAPROWS(A1:A3,-1,{#N/A;0}),2,1)",
+    "G5": "=ROWS(_xlfn.WRAPCOLS(A1:C3,2,{0;1}))",
+    "G6": "=ROWS(_xlfn.EXPAND(1/0,{3;4}))",
+    "G7": "=ROWS(_xlfn.EXPAND(NA(),3,{1;2}))",
+    "G8": "=INDEX(_xlfn.EXPAND(A1:A2,3,1,{0}),3,1)",
+    "G10": "=ROWS(_xlfn.TOCOL(1/0,0,{0;1}))",
+    "G11": "=ROWS(_xlfn.TOCOL(1/0,{0;1}))",
+    "G12": "=INDEX(_xlfn.WRAPCOLS({1,2;3,4},NA()),1,1)",
+    "G13": "=INDEX(_xlfn.WRAPROWS({1,2;3,4},1/0,0),1,1)",
+    "G14": "=INDEX(_xlfn.WRAPCOLS(_xlfn.EXPAND({1},2,3),_xlfn.FILTER(D1:E12,B1:B12=0.1)),1,1)"
+   }
+  }
+ ]
+}
