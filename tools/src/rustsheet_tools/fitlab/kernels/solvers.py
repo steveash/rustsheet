@@ -14,7 +14,7 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
   (`yield-caret`, kernels/yield_caret.py: the same on PRICE discounted with Excel's `^`, T-2207).
 
 Findings: docs/excel-semantics/financial.md ("XIRR is a bracketing bisection", "IRR returns x - 1",
-"RATE iterates on the rate itself", "YIELD with one coupon period left is closed form"). The lab
+"RATE is a secant on the FV residual", "YIELD with one coupon period left is closed form"). The lab
 scores the `#NUM!` cells of the XIRR fits too (a model with no result is `ExcelError`), and reports
 which bisection iterate equals Excel's value (T-1534).
 """

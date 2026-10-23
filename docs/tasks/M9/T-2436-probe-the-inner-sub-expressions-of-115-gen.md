@@ -1,6 +1,6 @@
 ---
 id: T-2436
-title: "Probe the inner sub-expressions of 116 gen-m9 statistical cells whose divergence is not traced"
+title: "Probe the inner sub-expressions of 122 gen-m9 statistical, engineering and database cells whose divergence is not traced"
 milestone: M9
 lane: research
 status: todo
@@ -90,7 +90,25 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A131
 - gen-m9/fec39efaba9284c3.case.json (4): Calc!A37, A168, A242, A253
 
+gen-m9 engineering and database sweep (gap triage 2026-10-23, T-2258): 6 more cells whose inner divergence the engine cannot settle: `OCT2HEX(COVARIANCE.S(<-2.5 cell>,IF(..)<FALSE>),10)` `#DIV/0!` (COVARIANCE.S of a scalar and a boolean; ours `#VALUE!`), `BESSELJ(SEQUENCE(2,DAYS(24664,-0.5)),PIVOTBY(..))` `#SPILL!` (ours DAYS `#NUM!`), `BESSELJ(COUNT(PIVOTBY(..,LAMBDA(y,y)),..),0)` -0.06612330960046267 (Excel's COUNT is not ours 117), `IMSUM(DROP(Data!A1:C3,2,1E+15+..))` `#VALUE!` (ours DROP `#CALC!`), `IMSQRT(REDUCE(..,LAMBDA(y,z,TRIMRANGE(Data!A4:D10))))` `#VALUE!` (a LAMBDA result that is a multi-cell reference; ours lifts and spills) and `DELTA(SEQUENCE(DISC(..)<0.0123>,123456789.123,..),..)` `#VALUE!` (ours SEQUENCE `#CALC!`).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 formulas, 6 visibly off.
+Examples:
+- gen-m9/5b6cc12a94f7bf14 Calc!A90 `=BESSELJ(SEQUENCE(2,DAYS(24664,(-0.5))),_xlfn.PIVOTBY(Data!B1:B12,Data!B1:C12,Data!B1:C12,_xleta.AVERAGE,1))`: Excel #SPILL!, ours #NUM!
+- gen-m9/5b6cc12a94f7bf14 Calc!A165 `=IMSUM(DROP(Data!A1:C3,2,(Data!B2+Data!E10)))`: Excel #VALUE!, ours #CALC!
+- gen-m9/bf979a17ab5aafcb Calc!A353 `=OCT2HEX(COVARIANCE.S(Data!D10,IF(Data!D6,(-2.5))),10)`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/df083d85b436b49a Calc!A20 `=IMSQRT(REDUCE((Data!$A2+0.1),(Data!$A7-0.5),LAMBDA(y,z,TRIMRANGE(Data!A4:D10))))`: Excel #VALUE!, ours #SPILL!
+- gen-m9/e85daedce5c2675e Calc!A35 `=BESSELJ(COUNT(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)),Data!B3:B5,Data!D9:D10),0)`: Excel -0.06612330960046267, ours -0.0737403333859505
+- gen-m9/f280df8ba95f96b9 Calc!A222 `=DELTA(SEQUENCE(DISC(38193,44517,85,108),123456789.123,DAY(37033),SKEW(Data!D3:D12,{100000000.1,100000000.2,100000000.3})),SUM(Data!A2:A2,Data!B1:B4))`: Excel #VALUE!, ours #CALC!
+Cells:
+- gen-m9/5b6cc12a94f7bf14.case.json (2): Calc!A90, A165
+- gen-m9/bf979a17ab5aafcb.case.json (1): Calc!A353
+- gen-m9/df083d85b436b49a.case.json (1): Calc!A20
+- gen-m9/e85daedce5c2675e.case.json (1): Calc!A35
+- gen-m9/f280df8ba95f96b9.case.json (1): Calc!A222
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255): these 116 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Every cell above is listed in a fix task's Context (new or extended), or explained in statistics.md as a quirk

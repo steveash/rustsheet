@@ -73,7 +73,25 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (2): Calc!A123, A201
 - gen-m9/f82473275380882e.case.json (1): Calc!A278
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 6 more cells nest a lone text or boolean cell as the data: `DEC2HEX(97154,QUARTILE(<TRUE cell>,3.14159))`, `COMPLEX(QUARTILE.EXC(<TRUE cell>,0)/..,..)`, `BITAND(681,QUARTILE.INC(<"ü" cell>,5.4E+15))`, `BESSELI(7+QUARTILE.INC(<"Hello World" cell>,1),3)` and `IMSIN(TEXT(PERCENTILE.EXC(<"?b" cell>,1E-20),NA()))` are `#NUM!`, `IMSECH(IFERROR(VALUE("x"),PERCENTRANK(<"a*" cell>,3.14159,1.005)))` `#N/A`; ours `#VALUE!`.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 formulas, 6 visibly off.
+Examples:
+- gen-m9/2b0324e2de2e7b74 Calc!A98 `=BITAND(681,QUARTILE.INC(Data!A1,TAN(3*PI()/2)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/40fc68fccfaf9b76 Calc!A263 `=BESSELI((IF(TRUE,7)+QUARTILE.INC(Data!D$4,1)),3)`: Excel #NUM!, ours #VALUE!
+- gen-m9/65dc4e4da669f98a Calc!A153 `=IMSECH(IFERROR(VALUE("x"),PERCENTRANK(Data!D11,3.14159,1.005)))`: Excel #N/A, ours #VALUE!
+- gen-m9/65dc4e4da669f98a Calc!A223 `=COMPLEX((QUARTILE.EXC(Data!C1,Data!E6)/Data!B3),1e-15,"j")`: Excel #NUM!, ours #VALUE!
+- gen-m9/74779cff2810ccf4 Calc!A67 `=IMSIN(TEXT(PERCENTILE.EXC(Data!A8,1E-20),NA()))`: Excel #NUM!, ours #VALUE!
+- gen-m9/7820ebc42c7a56a6 Calc!A116 `=DEC2HEX(97154,QUARTILE(Data!E5,3.14159))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/2b0324e2de2e7b74.case.json (1): Calc!A98
+- gen-m9/40fc68fccfaf9b76.case.json (1): Calc!A263
+- gen-m9/65dc4e4da669f98a.case.json (2): Calc!A153, A223
+- gen-m9/74779cff2810ccf4.case.json (1): Calc!A67
+- gen-m9/7820ebc42c7a56a6.case.json (1): Calc!A116
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 72 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] A probes-numeric case with an oracle sidecar covers those forms; the engine matches, and the hand-written expectations in test_sorted_data_lift.rs (`typed_scalar_data_...`) cite it.
