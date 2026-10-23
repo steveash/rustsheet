@@ -3,7 +3,7 @@ id: T-2514
 title: "CUMIPMT and CUMPRINC: the visibly-off cells T-2363 left (Excel's power on integer rates, type 1 principal and tiny-rate interest, periods near 1E15)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
