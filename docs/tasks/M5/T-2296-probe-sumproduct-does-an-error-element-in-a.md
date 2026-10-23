@@ -3,7 +3,7 @@ id: T-2296
 title: "Probe SUMPRODUCT: does an error element in a range beat an earlier shape mismatch"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
