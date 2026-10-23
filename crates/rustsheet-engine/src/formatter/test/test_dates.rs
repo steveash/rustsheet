@@ -101,6 +101,17 @@ fn date_system_serial_conversion() {
     assert_eq!(Excel1904.serial_from_1900_serial(i64::MIN), None);
     assert_eq!(Excel1900.to_1900_serial(-5), Some(-5));
     assert_eq!(Excel1900.serial_from_1900_serial(-5), Some(-5));
+    // The imported (fractional) form keeps the time of day and drops a moment before the epoch.
+    assert_eq!(
+        Excel1904.serial_from_imported_1900_serial(1462.75),
+        Some(0.75)
+    );
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(1461.5), None);
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(f64::NAN), None);
+    assert_eq!(
+        Excel1900.serial_from_imported_1900_serial(45292.5),
+        Some(45292.5)
+    );
     // EDATE/EOMONTH keep a day before the 1904 epoch as a negative serial.
     assert_eq!(Excel1904.signed_serial_from_1900_serial(1431), -31);
     assert_eq!(Excel1900.signed_serial_from_1900_serial(1431), 1431);
