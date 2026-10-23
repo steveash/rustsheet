@@ -78,7 +78,8 @@ pub(crate) fn refine_increasing(
 ) -> f64 {
     let (mut lo, mut hi) = (min, max);
     if estimate.is_finite() {
-        let x0 = estimate.clamp(min, max);
+        // + 0.0 turns a -0.0 into +0.0, whose bit pattern orders with the non-negative doubles.
+        let x0 = estimate.clamp(min, max) + 0.0;
         let mut step = (x0 * 2f64.powi(-30)).max(f64::MIN_POSITIVE);
         (lo, hi) = (x0, x0);
         // An expansion that never brackets the crossing leaves the rest of the interval on its

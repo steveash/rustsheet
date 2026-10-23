@@ -3,7 +3,7 @@ id: T-0974
 title: "BETA.INV/F.INV/F.INV.RT: inverse incomplete beta parity (28 known failures)"
 milestone: M9
 lane: functions-stat
-status: done
+status: in-progress
 priority: P1
 size: S
 tier: opus
@@ -162,6 +162,19 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - FINV: 25 cells (13-14 digits right 14, 10-12 4, 6-9 4, fewer or 0 vs nonzero 3); most in `probes-numeric/m9-legacy-finv.case.json` 23; `probes-numeric/t1530-f-df-cut.case.json` 2. e.g. `FINV(0.5,2,5)` Excel 0.7987697769322353, ours 0.7987697769322422
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Review round 1 (2026-10-23): open findings
+Excel-fidelity reviewer REQUEST_CHANGES (security, architecture, quality APPROVE). To fix before round 2:
+1. statistics.md "Quantile searches: per-call cap and lifting" (about lines 787-822): F.INV E1-E3 and the lifted A7 are
+   numbers now, not #NUM!; the "Ours:" cost text (about 1,300 cdfs, 4.0 ms, 2.1 s) is stale; narrow the DEVIATION to
+   BETA.INV E9 and record E6 (F.INV(1E-50,6000,4), ours 0.0163 vs Excel 0.000492) as a plain mismatch.
+2. Qualify "the bisection of the cdf gives Excel's ..." in "F.INV is a crossing of F.DIST's tails": E6 contradicts it.
+3. `fisher.rs` `f_quantile`: for the right tail with p < 1E-15 the statrs estimate (from 1 - p) is returned unrefined, so
+   gen-m9/0a9226016e8f5f33 A45 `F.INV.RT(1E-16,9,3)` (cited as evidence) is still 56563672787.87 vs 60647458731.09812.
+   Keep statrs only when it estimated the solved tail itself; refine on `f_sf` against p otherwise, then re-measure
+   (watch probes/stat-quantile-lift E11, E12 for newly visibly-off cells).
+4. Minor: the a = 1 cut's direct evidence is the F-family cells now passing (gen-m9 05d44f6dd6cfc567 A356, 146b46e74f2dac3b
+   A109, 27601819397dd56e A56, 2801c1c11c21e134 A130); cite them in statistics.md.
 
 ## Outcome
 F.INV, F.INV.RT and FINV are the crossing of F.DIST's own tails (statistics.md "F.INV is a crossing of F.DIST's tails"):
