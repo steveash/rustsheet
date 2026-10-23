@@ -3,7 +3,7 @@ id: T-2419
 title: "Legacy @: LET result and defined-name operands take the automatic @, LAMBDA call removes all @"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
