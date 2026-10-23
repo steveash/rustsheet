@@ -72,3 +72,22 @@ fn reciprocals_divide_like_the_operator() {
     assert_eq!(bits("A3"), 1.999_999_999_999_999_6_f64.to_bits());
     assert_eq!(bits("A4"), (-0.999_999_999_999_999_8_f64).to_bits());
 }
+
+/// ACOT of a negative-zero double is PI()/2 like ACOT(0) (T-2376).
+#[test]
+fn acot_of_negative_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ACOT(-(0))");
+    model._set("A2", "=ACOT(CEILING.PRECISE(-0.0001))");
+    model._set("A3", "=ACOT(INT(-0.0))");
+    model._set("A4", "=ACOT(0)");
+    model.evaluate();
+    for c in ["A1", "A2", "A3", "A4"] {
+        match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+            Ok(CellValue::Number(n)) => {
+                assert_eq!(n.to_bits(), std::f64::consts::FRAC_PI_2.to_bits(), "{c}");
+            }
+            other => panic!("expected number, got {other:?}"),
+        }
+    }
+}

@@ -527,8 +527,13 @@ impl Model {
 
     pub(crate) fn fn_acot(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Acot, args, cell, |f| {
+            if f == 0.0 {
+                // Excel has no negative zero (numbers.md "Negative zero prints as 0"): ACOT of
+                // -0.0 (e.g. CEILING.PRECISE(-0.0001)) is PI()/2 like ACOT(0), T-2376.
+                return Ok(PI / 2.0);
+            }
             let v = f64::atan(1.0 / f);
-            if f >= 0.0 {
+            if f > 0.0 {
                 Ok(v)
             } else {
                 // To be compatible with Excel we need a different branch
