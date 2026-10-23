@@ -3,10 +3,10 @@ id: T-2406
 title: "MAKEARRAY with an array step is one #CALC!; BYROW, BYCOL and MAP with a LAMBDA step are #CALC! per element (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: todo
 priority: P1
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: visible
 ---
@@ -92,3 +92,11 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Handoff
+Done on the branch: MAKEARRAY with a multi-cell step is one `#CALC!` (`fn_makearray` uses `makes_calc_error`); 122 gen-m7 and
+2 gen-m9 cells fixed, 0 regressions, baseline recorded. Not done: BYROW/BYCOL/MAP with a LAMBDA step. Making the element a plain
+`#CALC!` error (in `lambda_result_to_array_node`/MAP) fixed the 42 cells but regressed gen-m7/23b5367c18059af2 A2578
+(`TEXTSPLIT(..&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`), gen-m7/f7e94a817e5385ac A942 and gen-m9/165db58d1540f014
+A273: the element is a LAMBDA value, `#CALC!` as a cell result but `#VALUE!`/other when consumed. Needs a LAMBDA-valued array
+element (T-2039) or a result-position-only rule. Keep this task open for that half (acceptance 1 is the 164 lines; 122 are fixed).
