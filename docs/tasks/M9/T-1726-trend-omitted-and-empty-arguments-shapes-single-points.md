@@ -40,8 +40,41 @@ Examples:
 Cells:
 - gen-m9/165db58d1540f014.case.json (2): Calc!A91, A371
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): TREND errors and shapes: a range known_y alone is `#VALUE!` where ours spills (`TREND(Data!D1:E2)`), a text known_x `#REF!` (`TREND(Data!C4,Data!A3:D12)`), and the first error among the arguments.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 47 known-failure lines in eval/baseline/gen-m9.txt, 47 visibly off.
+Examples:
+- gen-m9/46ac3ef5e61583ca Calc!A341 `=TREND(Data!A1:A2)`: Excel #VALUE!, ours #SPILL!
+Cells:
+- gen-m9/0620505280d2ea6e.case.json (1): Calc!A357
+- gen-m9/0bbab6206b5c9a07.case.json (1): Calc!A44
+- gen-m9/11eb3ab4f4f8104c.case.json (1): Calc!A326
+- gen-m9/329b177b5d5165ad.case.json (1): Calc!A350
+- gen-m9/3b7990bd4e3307ba.case.json (2): Calc!A97, A345
+- gen-m9/41248d1cb153c66e.case.json (2): Calc!A54, A116
+- gen-m9/46ac3ef5e61583ca.case.json (1): Calc!A341
+- gen-m9/5389dd4d5b5739d2.case.json (2): Calc!A61, A247
+- gen-m9/5395b8a427764a3f.case.json (1): Calc!A348
+- gen-m9/583ca2baea0bb30a.case.json (2): Calc!A25, A335
+- gen-m9/5be29fa316931f05.case.json (1): Calc!A399
+- gen-m9/6e18550e9fc9c1b9.case.json (1): Calc!A34
+- gen-m9/73f053591a54bc43.case.json (2): Calc!A53, A155
+- gen-m9/80586b859b73c87d.case.json (5): Calc!A61, A214, A265, A299, A384
+- gen-m9/91e167cd8d7eb652.case.json (1): Calc!A220
+- gen-m9/a2262ea466fcc142.case.json (1): Calc!A338
+- gen-m9/a4090567758520df.case.json (1): Calc!A333
+- gen-m9/acac71a65a5a1d1b.case.json (1): Calc!A257
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A277
+- gen-m9/bbab6562e88b70e8.case.json (6): Calc!A13, A47, A200, A336, A353, A387
+- gen-m9/bcb1105c61a2649d.case.json (3): Calc!A53, A239, A301
+- gen-m9/c2684066d8df263e.case.json (2): Calc!A62, A124
+- gen-m9/d5fd9e05e9e6f466.case.json (1): Calc!A223
+- gen-m9/d910f000b60e2eac.case.json (1): Calc!A60
+- gen-m9/eedd629f3d69fdda.case.json (5): Calc!A75, A92, A143, A177, A330
+- gen-m9/f82473275380882e.case.json (1): Calc!A224
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 49 known-failure lines (2 from T-2255, 47 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 78 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 78 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The mismatching non-ULP cells of probes/regression-trend pass (or the remaining ones are listed in an Outcome note) and the baseline shrinks.

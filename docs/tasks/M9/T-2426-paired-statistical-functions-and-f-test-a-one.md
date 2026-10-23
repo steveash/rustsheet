@@ -87,8 +87,63 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (3): Calc!A2, A212, A312
 - gen-m9/fec39efaba9284c3.case.json (3): Calc!A149, A241, A255
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): the same rule in PROB, T.TEST, TTEST, RSQ, SLOPE, PEARSON and STEYX and nested in other calls (`PERCENTRANK.INC(AVERAGE(FORECAST.LINEAR(Data!$B2,Data!B7,0.3)),..)` with B7 empty is `#VALUE!`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 81 known-failure lines in eval/baseline/gen-m9.txt, 81 visibly off.
+Examples:
+- gen-m9/0620505280d2ea6e Calc!A173 `=SLOPE(Data!$D11,Data!A9)`: Excel #VALUE!, ours #DIV/0!
+- gen-m9/5be29fa316931f05 Calc!A347 `=RSQ(Data!B11,Data!E$8)`: Excel #VALUE!, ours #DIV/0!
+- gen-m9/7f7ca726c3f68554 Calc!A44 `=RSQ(Data!D7:E7,Data!A$1)`: Excel #VALUE!, ours #N/A
+- gen-m9/a5342a7e24fd803e Calc!A132 `=PEARSON(Data!$B4,{1,2})`: Excel #VALUE!, ours #N/A
+- gen-m9/c4635963fc926284 Calc!A77 `=RSQ(Data!A10,Data!B7:E9)`: Excel #VALUE!, ours #N/A
+Cells:
+- gen-m9/0620505280d2ea6e.case.json (4): Calc!A139, A173, A183, A236
+- gen-m9/139684e68fb2fc3b.case.json (1): Calc!A353
+- gen-m9/17c110a53924beb8.case.json (2): Calc!A74, A286
+- gen-m9/1b31092a0d79e5f1.case.json (1): Calc!A278
+- gen-m9/201d67f1d59436ed.case.json (1): Calc!A309
+- gen-m9/2138b909d8f810ea.case.json (3): Calc!A26, A287, A332
+- gen-m9/329b177b5d5165ad.case.json (1): Calc!A46
+- gen-m9/334f3dc9ca937f10.case.json (1): Calc!A299
+- gen-m9/38e4fc309fe199ea.case.json (1): Calc!A2
+- gen-m9/3fb9cecf2c23169f.case.json (1): Calc!A226
+- gen-m9/41248d1cb153c66e.case.json (2): Calc!A36, A44
+- gen-m9/44a8841352dc48e9.case.json (2): Calc!A182, A341
+- gen-m9/46ac3ef5e61583ca.case.json (2): Calc!A269, A375
+- gen-m9/5395b8a427764a3f.case.json (1): Calc!A379
+- gen-m9/583ca2baea0bb30a.case.json (4): Calc!A58, A73, A197, A389
+- gen-m9/5919660b7bb4d195.case.json (2): Calc!A1, A230
+- gen-m9/5be29fa316931f05.case.json (2): Calc!A91, A347
+- gen-m9/5cebac1f02bf30f2.case.json (1): Calc!A62
+- gen-m9/607e85cfee83a689.case.json (1): Calc!A331
+- gen-m9/6e18550e9fc9c1b9.case.json (1): Calc!A131
+- gen-m9/775d053de498b8c7.case.json (1): Calc!A346
+- gen-m9/787ba8d801105a60.case.json (4): Calc!A89, A140, A214, A399
+- gen-m9/7980ffb6095a340d.case.json (3): Calc!A60, A162, A168
+- gen-m9/7f7ca726c3f68554.case.json (2): Calc!A22, A44
+- gen-m9/873f30d2bf76f8db.case.json (3): Calc!A197, A348, A384
+- gen-m9/91e167cd8d7eb652.case.json (1): Calc!A24
+- gen-m9/92d4fa29e5510f1e.case.json (2): Calc!A74, A224
+- gen-m9/9735c5ab72fa5ecf.case.json (3): Calc!A164, A189, A360
+- gen-m9/9bc247733a1ca9fa.case.json (1): Calc!A104
+- gen-m9/9e2225ead8a6a07b.case.json (3): Calc!A25, A134, A166
+- gen-m9/a2262ea466fcc142.case.json (1): Calc!A144
+- gen-m9/a5342a7e24fd803e.case.json (2): Calc!A132, A284
+- gen-m9/a63d1c7d6f96c56d.case.json (2): Calc!A57, A204
+- gen-m9/acac71a65a5a1d1b.case.json (1): Calc!A351
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A201
+- gen-m9/c2684066d8df263e.case.json (1): Calc!A90
+- gen-m9/c4635963fc926284.case.json (3): Calc!A77, A82, A120
+- gen-m9/cb61169f4c033d4b.case.json (1): Calc!A38
+- gen-m9/ce312817dc9c7f0b.case.json (1): Calc!A59
+- gen-m9/d37313406b9f6e55.case.json (2): Calc!A53, A377
+- gen-m9/d5fd9e05e9e6f466.case.json (3): Calc!A19, A211, A294
+- gen-m9/d8f44d556674c2fd.case.json (3): Calc!A192, A303, A329
+- gen-m9/eccd03df42e40006.case.json (1): Calc!A308
+- gen-m9/ede0323c389fc703.case.json (2): Calc!A227, A232
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 109 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 190 known-failure lines (109 from T-2255, 81 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `COVAR(A1:A3,Z1)`, `CORREL(Z1:Z1,{1,2,3})`, `F.TEST(Z1,A1:A3)` and `INTERCEPT(Z1,1/0)` with Z1 empty
       are `#VALUE!`; `COVAR(A1:A3,B1)` with B1 = 5 is still the one-value rule.

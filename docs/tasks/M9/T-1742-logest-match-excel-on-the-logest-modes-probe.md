@@ -103,8 +103,27 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (2): Calc!A323, A384
 - gen-m9/fec39efaba9284c3.case.json (1): Calc!A86
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): LOGEST nested in the statistical calls.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 9 known-failure lines in eval/baseline/gen-m9.txt, 9 visibly off.
+Examples:
+- gen-m9/0072265d385d8ab2 Calc!A56 `=TINV((Data!B$3/Data!A7),LOGEST(Data!D7))`: Excel 0.0, ours #VALUE!
+- gen-m9/139684e68fb2fc3b Calc!A265 `=PEARSON({1,"a",TRUE,3},LOGEST(ROWS(Data!B3:C4)))`: Excel #N/A, ours #VALUE!
+- gen-m9/3fb9cecf2c23169f Calc!A167 `=PERCENTRANK.INC(Data!B1:C4,(42/LOGEST(100)))`: Excel #N/A, ours #VALUE!
+- gen-m9/873f30d2bf76f8db Calc!A62 `=PERCENTRANK.EXC(Data!B9:E9,(LOGEST(42)/Data!C11))`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/d910f000b60e2eac Calc!A253 `=SLOPE(Data!B10:B10,LOGEST(Data!A1:D7,Data!$B10))`: Excel #REF!, ours #VALUE!
+Cells:
+- gen-m9/0072265d385d8ab2.case.json (1): Calc!A56
+- gen-m9/139684e68fb2fc3b.case.json (1): Calc!A265
+- gen-m9/3fb9cecf2c23169f.case.json (1): Calc!A167
+- gen-m9/7980ffb6095a340d.case.json (2): Calc!A72, A208
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A62
+- gen-m9/a5342a7e24fd803e.case.json (1): Calc!A288
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A189
+- gen-m9/d910f000b60e2eac.case.json (1): Calc!A253
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 167 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 176 known-failure lines (167 from T-2255, 9 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 8 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 8 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/logest-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.

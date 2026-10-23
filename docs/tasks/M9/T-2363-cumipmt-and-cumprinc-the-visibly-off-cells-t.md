@@ -45,7 +45,17 @@ Leads from T-2192's fit (float64 checks against the oracle values, no engine cha
   adds work.
 Code: functions/financial/cumulative.rs.
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): CUMIPMT passed through STDEVA (visibly off).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 visibly off.
+Examples:
+- gen-m9/6e18550e9fc9c1b9 Calc!A329 `=STDEVA(Data!C1:C4,CUMIPMT(1E-10,77,380096,1,18,1))`: Excel 0.8164966307790201, ours 0.8164966307790212
+Cells:
+- gen-m9/6e18550e9fc9c1b9.case.json (1): Calc!A329
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the nine cells above are within half a unit of the 15th significant digit
   of Excel's value, with no new known-failure lines in any baseline (`make eval-baseline`).
 - [ ] The financial.md entry's "Ours:" line names this task's change.
