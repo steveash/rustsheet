@@ -171,4 +171,4 @@ with Excel except `DGET(Data!A2:A4,GAMMA.DIST(...),Data!A7:D7)` (gen-m9/7bd219ec
 T-2516). The other 20 differ in the enclosing call (error precedence of BETADIST, PROB, LINEST, LOGEST, T.TEST,
 TTEST, FREQUENCY, PERCENTILE, BETAINV, F.TEST, ZTEST; DATE and GETPIVOTDATA arguments; two last-digit
 distribution values) and moved to T-2524. Fidelity-review minors done: the DEVIATION cites decision 0014 and says
-Excel's nested behavior is unprobed, the self-referencing test pins its value, duplication ratchet updated.
+Excel's nested behavior is unprobed, the self-referencing test pins its value, duplication fell 3121 -> 3083 (the protected quality/duplication.json is not updated here).
