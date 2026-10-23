@@ -18,6 +18,7 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 
 | errorType | error | ERROR.TYPE | produced by (probe cell) |
 |---|---|---|---|
+| 2 | `#VALUE!` | 3 | REGEXEXTRACT's invalid return_mode spilled by MAP, GROUPBY or EXPAND (rich-errors-spilled-lambda A16, B51, B66; T-2417) |
 | 8 | `#SPILL!` | 9 | `SEQUENCE(2)` blocked by a value (rich-errors-calc A1) |
 | 9 | `#CONNECT!` | 10 | `STOCKHISTORY` of an unknown ticker (rich-errors-stockhistory A1, subType 4) |
 | 10 | `#BLOCKED!` | 11 | `IMAGE` of an unreachable URL (rich-errors-image A1, subType 12); an uncached external reference (poi/link-external-workbook-b A1, subType 2) |
@@ -58,17 +59,24 @@ snapshot reader (expected values; T-0921).
 A `#VALUE!` from a GROUPBY function argument (`LAMBDA(w,REGEXEXTRACT(...,-1))`) is stored in every
 spilled value cell as a rich error of a third `_error` structure, `errorType, ptg, subType`, with
 values (2, 6, 0). Its real value is `#VALUE!` (ERROR.TYPE 3 through INDEX, probes/groupby-lifted-args
-A33 and B33). errorType 2 has no other evidence yet, so the harness leaves it undecoded.
+A33 and B33). errorType 2 is `#VALUE!`, as errorType = ERROR.TYPE − 1 says: probes/rich-errors-spilled-lambda
+(excel-graph, 2026-10-22, T-2417) spills one error kind per block from MAP, GROUPBY, EXPAND and plain array arithmetic.
+Only REGEXEXTRACT's `#VALUE!` (an invalid return_mode) is stored as a rich error, `_error(errorType, subType)` = (2, 0),
+in every spilled cell of MAP (A16:A17), GROUPBY (B51:B53) and EXPAND (B66, A67:B67), and its ERROR.TYPE and
+VALUETOTEXT through INDEX are 3 and `#VALUE!` (E16, F16, E51, E66). `#DIV/0!`, `#N/A`, `#NUM!`, `#REF!`, `#NULL!` and the
+`#VALUE!` of `"a"+x` in the same positions are plain `t="e"` literals. The cached excel-graph recalcs also store
+errorType 2 in `errorType, iftab[, ptg], subType` structures (subType 0, 33, 39, 40, 59, 133); the reader finds
+errorType by key name and subType does not change the error, so all of them decode to `#VALUE!`.
 Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
 `GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
 2026-10-22, T-2397; recalc input_sha256 e07a9239… and 7cf52886…). That scratch recalc reported all four spilled value cells, so no case of a
 spilled rich error missing from the workbook was reproduced. The T-2254 triage's 28 "unreported" spill cells
 (gen-m7/0624b684889e9228 A612, 21b4eef18424ce94 A1504, 9bb61f6ae34c7e20 A136) were also in the workbook: the fill
 had dropped them as undecoded (re-filled 2026-10-22, T-2397). Those cases store errorType 2 (subType 0, 39, 59 or 133;
-some with `ptg` and `iftab` fields) and errorType 6 (subType 7) rich errors, none mapped yet (T-2417). `rustsheet-oracle fill` keeps such cells in
+some with `ptg` and `iftab` fields) and errorType 6 (subType 7) rich errors; errorType 2 is decoded since T-2417, errorType 6 has no ERROR.TYPE evidence yet (T-2440). `rustsheet-oracle fill` keeps such cells in
 the sidecar as `#UNDECODED!` instead of dropping them, because a spill member missing from the sidecar
 is scored as an expected blank (T-2397).
-Status: confirmed (storage); the errorType 2 mapping is UNVERIFIED.
+Status: confirmed (storage; errorType 2 = `#VALUE!`, excel-graph); errorType 6 UNVERIFIED (T-2440).
 
 ## MOD lifts over array arguments
 Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The

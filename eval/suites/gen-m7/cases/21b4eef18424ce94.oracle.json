@@ -44,7 +44,7 @@
    },
    "A1040": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "A1052": {
     "t": "e",
@@ -192,7 +192,7 @@
    },
    "A1221": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "A1222": {
     "t": "e",
@@ -364,11 +364,11 @@
    },
    "A1507": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "A1508": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "A1509": {
     "t": "e",
@@ -2188,7 +2188,7 @@
    },
    "A3824": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "A3836": {
     "t": "e",
@@ -3068,11 +3068,11 @@
    },
    "B1507": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "B1508": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "B1509": {
     "t": "e",
@@ -3096,7 +3096,7 @@
    },
    "B1514": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "B1589": {
     "t": "n",
@@ -4060,7 +4060,7 @@
    },
    "C1504": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C1505": {
     "t": "s",
@@ -4068,7 +4068,7 @@
    },
    "C1506": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C1507": {
     "t": "s",
@@ -4096,7 +4096,7 @@
    },
    "C1513": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "C1514": {
     "t": "s",
@@ -4776,7 +4776,7 @@
    },
    "D1508": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D1509": {
     "t": "s",
@@ -4792,7 +4792,7 @@
    },
    "D1512": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D1513": {
     "t": "s",
@@ -4800,7 +4800,7 @@
    },
    "D1514": {
     "t": "e",
-    "v": "#UNDECODED!"
+    "v": "#VALUE!"
    },
    "D1613": {
     "t": "n",
@@ -5285,8 +5285,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "d7d6da7269e8a6ce102eec43d329c7c507f425f11b8ad5987ff94459fd2225f5",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:57:09+00:00",
+  "produced_at": "2026-10-23T01:02:00+00:00",
   "version": null,
-  "workbook_name": "59156331c619ad859931a5f62d6486de8ca8814ad271cd22c7390ab5b7ba1dad.xlsx"
+  "workbook_name": "1cd3b550705d335fa80f2ea81f636aefebf0516c07edd066320dbef623b0a3d6.xlsx"
  }
 }

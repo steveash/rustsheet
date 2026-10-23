@@ -1,6 +1,6 @@
 ---
 id: T-2415
-title: "EXPAND: a multi-cell range pad_with is one #VALUE!, as an array pad_with is (gen-m7, 312 cells)"
+title: "EXPAND: a multi-cell range pad_with is one #VALUE!, as an array pad_with is (gen-m7, 647 cells)"
 milestone: M7
 lane: functions-lookup
 status: todo
@@ -24,15 +24,16 @@ answer it: Excel gives one `#VALUE!` in the anchor and nothing spilled, for a ro
 (`EXPAND(TAN(-Data!A9),(Data!$B4+Data!B10),1,Data!B2:B6)` returns a 1x1 that pads nothing and is still `#VALUE!`, 2d9b48c6363e7a16 A830),
 and before a spill collision (`EXPAND(Data!$E8,YEAR(..),2,Data!C1:E3)` is `#VALUE!`, ours `#SPILL!`, gen-m7/2c156ba98ef0220a.case.json A1577).
 Ours reads the range by implicit intersection (or its top-left) and pads with that value, so the anchor holds the array's first
-value and the footprint spills (most of the 312 cells are footprint cells Excel leaves empty). Two formulas use the EXPAND under
+value and the footprint spills (most of the 647 cells are footprint cells Excel leaves empty). Two formulas use the EXPAND under
 another call whose own error rule then applies unchanged: `TEXTAFTER((VLOOKUP(..)&EXPAND("x~*",1,5,Data!D2:E2)),"-")`
 (4dac39f89709e2fc A2174) and TEXTSPLIT's ignore_empty `EXPAND(Data!A6:C10,5,3,Data!A4:B5)` (f7e94a817e5385ac A330).
 Code: `fn_expand` in crates/rustsheet-engine/src/functions/lookup_and_reference/expand.rs (and its lifting-table entry: pad_with's
 kind must refuse a multi-cell reference as it refuses a multi-cell array). Quirk entry: docs/excel-semantics/arrays.md (the EXPAND
 section, updated by this triage).
 
-Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 312 known-failure lines in eval/baseline/gen-m7.txt, 17 formulas.
-- gen-m7/0624b684889e9228.case.json A2004 `=EXPAND({1;2;3},5,100,Data!A7:D7)`: A2004 Excel #VALUE!, ours 1.0; cells (165): A2004:AG2004, A2005:AG2005, A2006:AG2006, A2007:AG2007, A2008:AG2008
+Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 312 known-failure lines in eval/baseline/gen-m7.txt, 17 formulas; T-2417 added 335 (647 in all): decoding the
+spilled REGEXEXTRACT `#VALUE!` made the rest of A2004's footprint (AH2004:CV2008, previously a T-2397 spill hole) scored.
+- gen-m7/0624b684889e9228.case.json A2004 `=EXPAND({1;2;3},5,100,Data!A7:D7)`: A2004 Excel #VALUE!, ours 1.0; cells (500): A2004:CV2004, A2005:CV2005, A2006:CV2006, A2007:CV2007, A2008:CV2008
 - gen-m7/2c156ba98ef0220a.case.json A185 `=EXPAND(Data!C11:D12,2,2,Data!E1:E3)`: A185 Excel #VALUE!, ours "x"; cells (4): A185:B185, A186:B186
 - gen-m7/2c156ba98ef0220a.case.json A1577 `=EXPAND(Data!$E8,YEAR(ABS(Data!B$4)),2,Data!C1:E3)`: A1577 Excel #VALUE!, ours #SPILL!; cells (1): A1577
 - gen-m7/2d9b48c6363e7a16.case.json A366 `=EXPAND("a",4,4,Data!C7:C11)`: A366 Excel #VALUE!, ours "a"; cells (16): A366:D366, A367:D367, A368:D368, A369:D369
@@ -51,7 +52,7 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 312 known-failure l
 - gen-m7/f7e94a817e5385ac.case.json A330 `=TEXTSPLIT((LEFT("1")&MAKEARRAY(Data!B12,1,LAMBDA(z,v,z*v))),"a",Data!D5:D12,EXPAND(Data!A6:C10,5,3,Data!A4:B5))`: B330 Excel <empty>, ours #VALUE!; cells (14): B330:C330, A331:C331, A332:C332, A333:C333, A334:C334
 
 ## Acceptance criteria
-- [ ] Visible parity: these 312 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
+- [ ] Visible parity: these 647 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
 - [ ] A unit test covers a multi-cell range pad_with (`#VALUE!`, one cell) and a one-cell range pad_with (its value pads).
 - [ ] arrays.md's EXPAND entry has an "Ours:" line naming this task.
