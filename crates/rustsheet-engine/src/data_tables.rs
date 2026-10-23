@@ -1,0 +1,241 @@
+//! What-if data tables (docs/excel-semantics/recalc.md, "Data tables (`TABLE()`) are recalculated").
+//!
+//! A table's result cells hold values, not formulas. After a pass has evaluated the workbook,
+//! each table is recomputed in storage order: for every result cell the input cell (or the two
+//! input cells) is replaced by the values from the table's header row and column, the table's
+//! formula is evaluated on demand, and the inputs are put back. The caller then evaluates the
+//! workbook again, so the cells that read the results see them.
+
+use crate::{
+    calc_result::CalcResult,
+    expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
+    model::Model,
+    types::{Cell, DataTable, DataTableInput},
+};
+
+/// Formula evaluations all the data tables of one recalculation may make together (CLAUDE.md
+/// directive 5). A table over a large model re-evaluates the model once per result cell; past
+/// the budget a result is `#NUM!` (recalc.md, DEVIATION).
+const MAX_DATA_TABLE_EVALUATIONS: usize = 1 << 25;
+
+impl Model {
+    /// Recomputes every data table, sheet by sheet in the order the sheets store them. Returns
+    /// whether there was any, in which case the readers of their results must be evaluated again.
+    pub(crate) fn evaluate_data_tables(&mut self) -> bool {
+        let tables: Vec<(u32, DataTable)> = (self.workbook.worksheets.iter().enumerate())
+            .flat_map(|(sheet, ws)| {
+                ws.data_tables
+                    .iter()
+                    .map(move |t| (sheet as u32, t.clone()))
+            })
+            .collect();
+        let mut budget = MAX_DATA_TABLE_EVALUATIONS;
+        for (sheet, table) in &tables {
+            self.evaluate_data_table(*sheet, table, &mut budget);
+        }
+        !tables.is_empty()
+    }
+
+    fn evaluate_data_table(&mut self, sheet: u32, table: &DataTable, budget: &mut usize) {
+        let (top, left, bottom, right) = table.range;
+        let at = |row, column| CellReferenceIndex { sheet, row, column };
+        // The header values as the workbook has them now: an earlier table's substitutions are
+        // undone, so its readers are evaluated afresh.
+        self.reset_on_demand_evaluation();
+        let row_values: Vec<ArrayNode> = (left..=right)
+            .map(|c| self.scalar_at(at(top - 1, c)))
+            .collect();
+        let column_values: Vec<ArrayNode> = (top..=bottom)
+            .map(|r| self.scalar_at(at(r, left - 1)))
+            .collect();
+        let mut results = Vec::new();
+        for (i, row) in (top..=bottom).enumerate() {
+            for (j, column) in (left..=right).enumerate() {
+                use DataTableInput::{Cell as Input, Deleted};
+                let value = match (table.row_input, table.column_input) {
+                    (Some(Deleted), _) | (_, Some(Deleted)) | (None, None) => {
+                        ArrayNode::Error(Error::REF)
+                    }
+                    _ if *budget == 0 => ArrayNode::Error(Error::NUM),
+                    (Some(Input(rr, rc)), Some(Input(cr, cc))) => {
+                        let inputs = [
+                            (at(rr, rc), row_values[j].clone()),
+                            (at(cr, cc), column_values[i].clone()),
+                        ];
+                        self.evaluate_substituted(at(top - 1, left - 1), &inputs, budget)
+                    }
+                    (Some(Input(r, c)), None) => {
+                        let inputs = [(at(r, c), row_values[j].clone())];
+                        self.evaluate_substituted(at(row, left - 1), &inputs, budget)
+                    }
+                    (None, Some(Input(r, c))) => {
+                        let inputs = [(at(r, c), column_values[i].clone())];
+                        self.evaluate_substituted(at(top - 1, column), &inputs, budget)
+                    }
+                };
+                results.push((at(row, column), value));
+            }
+        }
+        for (position, value) in &results {
+            self.write_constant(*position, value);
+        }
+    }
+
+    /// The value of `formula` with each input cell holding its value, the inputs restored after.
+    fn evaluate_substituted(
+        &mut self,
+        formula: CellReferenceIndex,
+        inputs: &[(CellReferenceIndex, ArrayNode)],
+        budget: &mut usize,
+    ) -> ArrayNode {
+        let saved: Vec<(CellReferenceIndex, Option<Cell>)> = inputs
+            .iter()
+            .map(|(at, _)| (*at, self.fetch_cell(*at).cloned()))
+            .collect();
+        for (at, value) in inputs {
+            self.write_constant(*at, value);
+        }
+        self.reset_on_demand_evaluation();
+        let value = self.scalar_at(formula);
+        *budget = budget.saturating_sub(self.evaluation.cells.len().max(1));
+        for (at, cell) in saved.into_iter().rev() {
+            if let Ok(ws) = self.workbook.worksheet_mut(at.sheet) {
+                match cell {
+                    Some(cell) => ws.sheet_data.set_cell(at.row, at.column, cell),
+                    None => ws.sheet_data.remove_cell(at.row, at.column),
+                };
+            }
+        }
+        value
+    }
+
+    /// Forgets which formulas have been evaluated, so the next read evaluates them on demand.
+    fn reset_on_demand_evaluation(&mut self) {
+        let state = &mut self.evaluation;
+        state.cells.clear();
+        state.stack.clear();
+        state.seen.clear();
+        state.seen_ranges.clear();
+        state.circular.clear();
+        state.restart = None;
+        state.root = None;
+        state.depth = 0;
+        state.unwinding = false;
+        state.in_pass = false;
+        self.clear_variable_stack();
+        self.clear_lambdas();
+    }
+
+    /// The single value at a position, evaluating it if it is a formula; a blank formula
+    /// result reads as 0, as in a cell.
+    fn scalar_at(&mut self, at: CellReferenceIndex) -> ArrayNode {
+        let value = match self.evaluate_cell(at) {
+            CalcResult::Range { left, .. } => self.evaluate_cell(left),
+            value => value,
+        };
+        match value {
+            CalcResult::Number(n) => ArrayNode::Number(n),
+            CalcResult::Boolean(b) => ArrayNode::Boolean(b),
+            CalcResult::String(s) => ArrayNode::String(s),
+            CalcResult::Error { error, .. } => ArrayNode::Error(error),
+            CalcResult::Array(rows) => rows
+                .into_iter()
+                .next()
+                .and_then(|row| row.into_iter().next())
+                .unwrap_or(ArrayNode::Empty),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                if matches!(self.fetch_cell(at), None | Some(Cell::EmptyCell { .. })) {
+                    ArrayNode::Empty
+                } else {
+                    ArrayNode::Number(0.0)
+                }
+            }
+            CalcResult::Range { .. } | CalcResult::Lambda(_) => ArrayNode::Error(Error::VALUE),
+        }
+    }
+
+    /// Stores `value` as a constant at `at`, keeping the cell's style.
+    fn write_constant(&mut self, at: CellReferenceIndex, value: &ArrayNode) {
+        let s = self.fetch_cell(at).map_or(0, Cell::get_style);
+        let cell = match value {
+            ArrayNode::Number(v) => Cell::NumberCell { v: *v, s },
+            ArrayNode::Boolean(v) => Cell::BooleanCell { v: *v, s },
+            ArrayNode::Error(ei) => Cell::ErrorCell { ei: ei.clone(), s },
+            ArrayNode::Empty => Cell::EmptyCell { s },
+            ArrayNode::String(text) => {
+                let _ =
+                    self.set_cell_with_string(at.sheet, at.row, at.column, &text.to_string(), s);
+                return;
+            }
+        };
+        if let Ok(ws) = self.workbook.worksheet_mut(at.sheet) {
+            ws.sheet_data.set_cell(at.row, at.column, cell);
+        }
+    }
+
+    /// Adds a data table to sheet `sheet`. Its result cells, which must lie below and right of
+    /// row and column 1 and outside every other table, are emptied of content; the table fills
+    /// them at the next evaluation. Inputs are cells of the same sheet outside the results.
+    ///
+    /// # Errors
+    /// A message when the range or an input is invalid or the range overlaps another table.
+    pub fn add_data_table(&mut self, sheet: u32, table: DataTable) -> Result<(), String> {
+        let (top, left, bottom, right) = table.range;
+        if top < 2
+            || left < 2
+            || bottom < top
+            || right < left
+            || bottom > crate::LAST_ROW
+            || right > crate::LAST_COLUMN
+        {
+            return Err("A data table needs a row above and a column left of its results".into());
+        }
+        if table.row_input.is_none() && table.column_input.is_none() {
+            return Err("A data table needs a row or a column input cell".into());
+        }
+        let inside = |r: i32, c: i32| (top..=bottom).contains(&r) && (left..=right).contains(&c);
+        for input in [table.row_input, table.column_input].into_iter().flatten() {
+            if let DataTableInput::Cell(r, c) = input {
+                if inside(r, c) || r < 1 || c < 1 || r > crate::LAST_ROW || c > crate::LAST_COLUMN {
+                    return Err("A data table's input cell must be outside its results".into());
+                }
+            }
+        }
+        let ws = self.workbook.worksheet_mut(sheet)?;
+        if ws.data_tables.iter().any(|t| {
+            let (t2, l2, b2, r2) = t.range;
+            t2 <= bottom && top <= b2 && l2 <= right && left <= r2
+        }) {
+            return Err("A data table cannot overlap another".into());
+        }
+        for row in top..=bottom {
+            for column in left..=right {
+                if let Some(s) = ws.sheet_data.cell(row, column).map(Cell::get_style) {
+                    ws.sheet_data.set_cell(row, column, Cell::EmptyCell { s });
+                }
+            }
+        }
+        ws.data_tables.push(table);
+        Ok(())
+    }
+
+    /// Removes the data table whose results are `range` from sheet `sheet`; its result cells
+    /// keep their values. Returns whether there was one.
+    pub fn remove_data_table(&mut self, sheet: u32, range: (i32, i32, i32, i32)) -> bool {
+        let Ok(ws) = self.workbook.worksheet_mut(sheet) else {
+            return false;
+        };
+        let before = ws.data_tables.len();
+        ws.data_tables.retain(|t| t.range != range);
+        ws.data_tables.len() != before
+    }
+
+    /// The data table whose result range holds `at`, if any.
+    pub(crate) fn data_table_at(&self, at: CellReferenceIndex) -> Option<&DataTable> {
+        let ws = self.workbook.worksheet(at.sheet).ok()?;
+        ws.data_tables.iter().find(|t| {
+            let (top, left, bottom, right) = t.range;
+            (top..=bottom).contains(&at.row) && (left..=right).contains(&at.column)
+        })
+    }
+}

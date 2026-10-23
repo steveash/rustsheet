@@ -51,11 +51,6 @@ owner's request.
 ## Out of scope
 - Iterative calculation and circular references (T-0401's implementation tasks).
 
-## Blocked because
-Needs the M3 dependency graph and its recalculation of a substituted input (SPEC-0002, T-0401); M3 tasks
-stay blocked until Phase 1 exits (docs/milestones.md). Unblocked when T-0401 is done and its implementation
-tasks provide a way to recalculate a formula with one cell's value substituted.
-
 ## Outcome
 Unblocked at the owner's request (2026-10-23): implemented without the dependency graph (T-0401),
 which decision 0027 defers to Phase 2.

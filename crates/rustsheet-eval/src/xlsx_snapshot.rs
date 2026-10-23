@@ -712,7 +712,14 @@ fn finish_cell(
                     }
                     (text, Some(FormulaKind::Array { range }))
                 }
-                // `dataTable` and plain formulas
+                // A data table's other result cells are plain values; scoring them as members
+                // checks every result (docs/excel-semantics/recalc.md, T-0441).
+                Some("dataTable") => {
+                    if let Some((tl, br)) = rf.as_deref().and_then(parse_range) {
+                        arrays.push((tl, br, addr));
+                    }
+                    (text, Some(FormulaKind::Normal))
+                }
                 _ => (text, Some(FormulaKind::Normal)),
             }
         }

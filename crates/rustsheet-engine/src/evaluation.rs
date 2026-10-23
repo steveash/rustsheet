@@ -348,10 +348,9 @@ impl RestartLog {
 
 /// Everything the evaluation needs besides the workbook itself.
 pub(crate) struct Evaluation {
-    /// The dynamic anchors, in the order in which they are evaluated. Kept
-    /// across evaluations: the order the restarts arrived at stays, so the
-    /// next evaluation needs no restart. New anchors are appended in natural
-    /// `(sheet, row, column)` order.
+    /// The dynamic anchors, in the order in which they are evaluated. Kept across evaluations:
+    /// the order the restarts arrived at stays, so the next evaluation needs no restart. New
+    /// anchors are appended in natural `(sheet, row, column)` order.
     pub(crate) anchor_order: Vec<CellReferenceIndex>,
     /// Formula cells touched in the current pass, and their state.
     pub(crate) cells: HashMap<CellKey, CellState, KeyBuild>,
@@ -364,9 +363,8 @@ pub(crate) struct Evaluation {
     /// loop, or by the driver when an anchor's spill contradicts its own inputs;
     /// the latter survive restarts within one evaluation.
     pub(crate) circular: HashSet<CellKey, KeyBuild>,
-    /// What formulas saw at the positions they read in the current pass, and
-    /// the root of the recursion the read was made in (the cell the driver was
-    /// evaluating at the time), one record per kind.
+    /// What formulas saw at the positions they read in the current pass, and the root of the
+    /// recursion the read was made in (the cell the driver was evaluating), one record per kind.
     pub(crate) seen: HashMap<CellKey, SeenRecord, KeyBuild>,
     /// Rectangles read as empty in one go, with their root (`SeenRange`).
     pub(crate) seen_ranges: crate::seen_ranges::SeenRanges,
@@ -457,21 +455,27 @@ impl Default for Evaluation {
 }
 
 impl Model {
-    /// Evaluates every formula in the workbook.
-    ///
-    /// Runs passes until one completes without a restart. `RestartLog` learns
-    /// from each restart, reorders the anchors and marks what it proves
-    /// circular; see there for why the loop ends. A marked anchor stores
-    /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
-    /// is marked, so there is nothing of it to read or to contradict.
+    /// Evaluates every formula in the workbook, then its data tables and, if there are any,
+    /// everything again so that their readers see the results (`data_tables.rs`).
     pub fn evaluate(&mut self) {
         self.evaluation.evaluations += 1;
+        self.evaluate_passes();
+        if self.evaluate_data_tables() {
+            self.evaluate_passes();
+        }
+        self.evaluate_conditional_formatting();
+    }
+
+    /// Runs passes until one completes without a restart. `RestartLog` learns from each restart,
+    /// reorders the anchors and marks what it proves circular; see there for why the loop ends.
+    /// A marked anchor stores `#CIRC!` and keeps no spill cells: its stale cells are dropped when
+    /// it is marked, so there is nothing of it to read or to contradict.
+    fn evaluate_passes(&mut self) {
         self.sync_anchor_order();
-        // Every pass starts from the same sheet: what an abandoned pass wrote
-        // is undone. This is what makes a pass a function of the anchor order.
-        // The only changes to that sheet within an evaluation are the dropping
-        // of stale spill cells: an anchor's own when it gave them up, a marked
-        // anchor's when it is marked.
+        // Every pass starts from the same sheet: what an abandoned pass wrote is undone. This is
+        // what makes a pass a function of the anchor order. The only changes to that sheet within
+        // an evaluation are the dropping of stale spill cells: an anchor's own when it gave them
+        // up, a marked anchor's when it is marked.
         let mut spills_before = self.dynamic_spills();
         let mut log = RestartLog::new();
         while let Some(restart) = self.run_pass(&log.circular) {
@@ -492,16 +496,14 @@ impl Model {
             self.restore_dynamic_spills(&spills_before);
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
-        self.evaluate_conditional_formatting();
     }
 
-    /// Sets how many formulas deep the evaluation may recurse. A formula that
-    /// reads a formula that reads a formula, and so on, uses the stack of the
-    /// thread for every step. Beyond this limit the evaluation unwinds and
-    /// carries on from where it stopped instead of going deeper, so the limit
-    /// bounds the stack used and never changes a result. Lower it where the
-    /// stack is small. The least it can be is 1. See also
-    /// `set_max_evaluation_stack`: whichever limit is reached first applies.
+    /// Sets how many formulas deep the evaluation may recurse. A formula that reads a formula
+    /// that reads a formula, and so on, uses the stack of the thread for every step. Beyond this
+    /// limit the evaluation unwinds and carries on from where it stopped instead of going deeper,
+    /// so the limit bounds the stack used and never changes a result. Lower it where the stack is
+    /// small. The least it can be is 1. See also `set_max_evaluation_stack`: whichever limit is
+    /// reached first applies.
     pub fn set_max_evaluation_depth(&mut self, max_depth: usize) {
         self.evaluation.max_depth = max_depth.max(1);
     }
@@ -511,10 +513,9 @@ impl Model {
         self.evaluation.max_depth
     }
 
-    /// Sets how many bytes of stack the evaluation may use before it unwinds,
-    /// counted from the first formula of the recursion. The evaluation can
-    /// overshoot by what one formula needs, so leave room: a quarter of the
-    /// stack is a reasonable value.
+    /// Sets how many bytes of stack the evaluation may use before it unwinds, counted from the
+    /// first formula of the recursion. The evaluation can overshoot by what one formula needs,
+    /// so leave room: a quarter of the stack is a reasonable value.
     pub fn set_max_evaluation_stack(&mut self, bytes: usize) {
         self.evaluation.max_stack = bytes;
     }
@@ -536,9 +537,8 @@ impl Model {
             .collect()
     }
 
-    /// Every dynamic anchor and every spill cell of a dynamic anchor, as they
-    /// are now, in natural order, which is the order the sheets give their
-    /// cells in.
+    /// Every dynamic anchor and every spill cell of a dynamic anchor, as they are now, in
+    /// natural order, which is the order the sheets give their cells in.
     fn dynamic_spills(&self) -> Vec<(CellReferenceIndex, Cell)> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
@@ -559,8 +559,8 @@ impl Model {
         found
     }
 
-    /// Puts the dynamic anchors and their spill cells back to `snapshot`,
-    /// removing the spill cells written since.
+    /// Puts the dynamic anchors and their spill cells back to `snapshot`, removing the spill
+    /// cells written since.
     fn restore_dynamic_spills(&mut self, snapshot: &[(CellReferenceIndex, Cell)]) {
         let written_since: Vec<CellReferenceIndex> = self
             .dynamic_spills()

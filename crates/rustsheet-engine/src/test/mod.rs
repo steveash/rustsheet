@@ -12,6 +12,7 @@ mod test_clipped_range_walks;
 mod test_clock;
 mod test_column_width;
 mod test_criteria;
+mod test_data_tables;
 mod test_database;
 mod test_date_and_time;
 mod test_date_huge_month_day;

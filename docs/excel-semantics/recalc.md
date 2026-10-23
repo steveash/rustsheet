@@ -130,8 +130,27 @@ input>`. These are the forms spec2xlsx writes. No vendored Excel-authored file h
 The fetched calipers suite has 21 workbooks saved by desktop Excel that do: 19 pv_goldens financial
 models, roundtrip/i18n_hebrew and roundtrip/lbo_model (T-0446).
 Evidence: probes/data-tables (excel-graph, 2026-10-16, T-0428).
-Ours: for a spec case the result cells are blank (the eval adapter ignores `data_tables`), so the
-reads are 0 or wrong. The table formulas themselves already match. An xlsx file with a data table
-does not load at all (`Not Implemented Error: data table formulas`), so none of its cells calculate.
+Ours: matches (probes/data-tables 20/20). Each table is the sheet's `DataTable` metadata (its
+results, row input and column input), and its result cells hold plain values. After an evaluation
+pass, the tables are recomputed in sheet order. For each result cell the input cells are replaced
+by the header values, the table's formula is evaluated on demand, and the inputs are put back. The
+workbook is then evaluated again, so readers see the results. ISFORMULA and FORMULATEXT of a result
+cell are TRUE and `{=TABLE(row,column)}`. The xlsx import reads `dt2D`, `dtr`, `r1`, `r2`, `del1`
+and `del2`, and the export writes them back on the first result cell. A deleted input makes every
+result `#REF!`.
 Status: VERIFIED (excel-graph)
+Implemented in: crates/rustsheet-engine/src/data_tables.rs, crates/rustsheet-xlsx/src/import/sheet_data.rs (`data_table`), crates/rustsheet-xlsx/src/export/data_tables.rs
 Tasks: T-0428, T-0441, T-0446
+
+## Data tables re-evaluate the workbook at most 2^25 formulas per recalculation
+Rule: Excel's limit on the work of data tables is unprobed; it is expected to compute every
+result cell of every table, however large the model.
+Evidence: none for Excel; this is a resource limit, not an Excel observation.
+Ours: every result cell re-evaluates the formulas its table's formula depends on. All the tables
+of one recalculation may evaluate at most 33,554,432 formulas together
+(`MAX_DATA_TABLE_EVALUATIONS`). The result cells computed after the budget is spent are `#NUM!`,
+so a large table over a large model cannot hold the evaluation without bound (CLAUDE.md
+directive 5).
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_EVALUATIONS`)
+Tasks: T-0441

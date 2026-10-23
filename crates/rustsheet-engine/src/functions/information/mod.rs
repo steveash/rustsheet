@@ -386,11 +386,13 @@ impl Model {
         CalcResult::Array(flags)
     }
 
+    /// A data table's result cells count as formulas (`{=TABLE(,A1)}`; recalc.md).
     fn cell_has_formula(&self, at: CellReferenceIndex) -> bool {
-        matches!(
-            self.get_cell_formula(at.sheet, at.row, at.column),
-            Ok(Some(_))
-        )
+        self.data_table_at(at).is_some()
+            || matches!(
+                self.get_cell_formula(at.sheet, at.row, at.column),
+                Ok(Some(_))
+            )
     }
 
     /// Lifts over a multi-cell range or array like the IS* tests (probes/rich-errors-arg-kinds

@@ -777,6 +777,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         mut sheet_data,
         rows,
         shared_formulas,
+        data_tables,
     } = read_sheet_data(
         file,
         sheet_name,
@@ -866,6 +867,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             views,
             conditional_formatting,
             links,
+            data_tables,
         },
         sheet_view.is_selected,
     ))

@@ -252,6 +252,22 @@ impl Engine for RustSheetEngine {
                     }
                 }
                 for (sheet, &id) in spec.sheets.iter().zip(&ids) {
+                    for table in &sheet.data_tables {
+                        let input = |a1: &Option<String>| -> Result<_, rustsheet::EditError> {
+                            let Some(a1) = a1.as_deref() else {
+                                return Ok(None);
+                            };
+                            let addr = Addr::parse(a1).ok_or_else(|| {
+                                rustsheet::EditError::Engine(format!("bad address {a1}"))
+                            })?;
+                            Ok(Some(CellRef::new(id, addr.row - 1, addr.col - 1)?))
+                        };
+                        tx.add_data_table(
+                            range_ref(id, &table.range)?,
+                            input(&table.row_input)?,
+                            input(&table.column_input)?,
+                        )?;
+                    }
                     for (a1, format) in &sheet.number_formats {
                         let addr = Addr::parse(a1).ok_or_else(|| {
                             rustsheet::EditError::Engine(format!("bad address {a1}"))

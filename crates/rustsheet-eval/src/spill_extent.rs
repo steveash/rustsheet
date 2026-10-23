@@ -8,7 +8,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use crate::case::{cell_key, CaseSpec};
-use crate::cellref::Addr;
+use crate::cellref::{parse_range, Addr};
 use crate::engine::Evaluated;
 use crate::runner::CellResult;
 use crate::value::{compare, Value};
@@ -46,13 +46,22 @@ impl SpillExtent {
                     // An input moved by a row insert is known at its new address (T-1933); a
                     // pivot's rendered cells are inputs of the engine case (T-2084).
                     let rendered = s.pivot_tables.iter().flat_map(|p| p.rendered.keys());
-                    s.cells.keys().chain(rendered).filter_map(|a1| {
+                    let inputs = s.cells.keys().chain(rendered).filter_map(|a1| {
                         let addr = spec
                             .sheet_ops
                             .iter()
                             .fold(Addr::parse(a1)?, |addr, op| op.moved(&s.name, addr));
                         Some(cell_key(&s.name, addr))
-                    })
+                    });
+                    // A data table's result cells are declared by the case; Excel saves all but
+                    // the first as plain values, which the oracle does not record (T-0441).
+                    let results = s.data_tables.iter().filter_map(|t| parse_range(&t.range));
+                    let results = results.flat_map(|(first, last)| {
+                        (first.row..=last.row).flat_map(move |row| {
+                            (first.col..=last.col).map(move |col| Addr { row, col })
+                        })
+                    });
+                    inputs.chain(results.map(|addr| cell_key(&s.name, addr)))
                 })
                 .chain(expected.keys().cloned())
                 .collect(),

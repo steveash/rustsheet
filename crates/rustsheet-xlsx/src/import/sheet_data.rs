@@ -12,7 +12,7 @@ use std::io::BufRead;
 use quick_xml::events::{BytesEnd, BytesStart, Event};
 use rustsheet_engine::expressions::parser::Parser;
 use rustsheet_engine::expressions::utils::{is_valid_row, number_to_column};
-use rustsheet_engine::types::{Cell, Row, SheetData};
+use rustsheet_engine::types::{Cell, DataTable, DataTableInput, Row, SheetData};
 
 use crate::error::XlsxError;
 
@@ -46,6 +46,7 @@ pub(super) struct SheetDataXml {
     /// The rows that carry a height, a style or a flag.
     pub(super) rows: Vec<Row>,
     pub(super) shared_formulas: Vec<String>,
+    pub(super) data_tables: Vec<DataTable>,
 }
 
 /// The elements inside `sheetData` the reader cares about.
@@ -104,9 +105,20 @@ struct FormulaXml {
     shared_index: Option<String>,
     /// The `ca` attribute is "1": calculate always.
     calculate_always: bool,
+    /// A data table's `dt2D`, `dtr`, `del1` and `del2` flags and its `r1` and `r2` input cells.
+    data_table: DataTableXml,
     /// None if the element has no text at all.
     text: Option<String>,
     has_elements: bool,
+}
+
+/// The data-table attributes of an `<f t="dataTable">` (ECMA-376 18.3.1.40).
+#[derive(Default)]
+struct DataTableXml {
+    two_dimensional: bool,
+    row: bool,
+    deleted: [bool; 2],
+    inputs: [Option<String>; 2],
 }
 
 /// A `<c>` element while its children are being read.
@@ -153,6 +165,8 @@ struct SheetDataReader<'a> {
     index_map: HashMap<i32, i32>,
     /// Cells covered by an array formula, with the anchor cell of the formula.
     array_cell: HashMap<(i32, i32), (i32, i32)>,
+    /// The sheet's what-if data tables; their result cells load as plain values.
+    data_tables: Vec<DataTable>,
 
     /// The open elements inside `sheetData`.
     stack: Vec<Tag>,
@@ -222,6 +236,12 @@ impl SheetDataReader<'_> {
                             "ref" => formula.reference = Some(value.into_owned()),
                             "si" => formula.shared_index = Some(value.into_owned()),
                             "ca" => formula.calculate_always = &*value == "1",
+                            "dt2D" => formula.data_table.two_dimensional = &*value == "1",
+                            "dtr" => formula.data_table.row = &*value == "1",
+                            "del1" => formula.data_table.deleted[0] = &*value == "1",
+                            "del2" => formula.data_table.deleted[1] = &*value == "1",
+                            "r1" => formula.data_table.inputs[0] = Some(value.into_owned()),
+                            "r2" => formula.data_table.inputs[1] = Some(value.into_owned()),
                             _ => {}
                         }
                     }
@@ -556,7 +576,9 @@ impl SheetDataReader<'_> {
                     }
                 }
                 "dataTable" => {
-                    return Err(XlsxError::NotImplemented("data table formulas".to_string()));
+                    let range = formula.reference.as_deref().unwrap_or(&cell.reference);
+                    self.data_tables
+                        .push(data_table(range, &formula.data_table)?);
                 }
                 "array" => {
                     let range = match formula.reference {
@@ -666,6 +688,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         formula_lookup: HashMap::new(),
         index_map: HashMap::new(),
         array_cell: HashMap::new(),
+        data_tables: Vec::new(),
         stack: Vec::new(),
         row: None,
         cell: None,
@@ -694,6 +717,40 @@ pub(super) fn read_sheet_data<R: BufRead>(
         sheet_data: state.sheet_data,
         rows: state.rows,
         shared_formulas: state.shared_formulas,
+        data_tables: state.data_tables,
+    })
+}
+
+/// The data table an `<f t="dataTable" ref=…>` describes. A two-variable table's `r1` is the row
+/// input and `r2` the column input; a one-variable table's `r1` is the row input when `dtr` is
+/// set and the column input otherwise (docs/excel-semantics/recalc.md).
+fn data_table(range: &str, xml: &DataTableXml) -> Result<DataTable, XlsxError> {
+    let (top, left, bottom, right) = parse_range(range)
+        .map_err(|_| XlsxError::Xml(format!("Invalid data table range: {range}")))?;
+    let input = |i: usize| -> Result<Option<DataTableInput>, XlsxError> {
+        if xml.deleted[i] {
+            return Ok(Some(DataTableInput::Deleted));
+        }
+        xml.inputs[i]
+            .as_deref()
+            .map(|r| match parse_range(r) {
+                Ok((row, column, ..)) => Ok(DataTableInput::Cell(row, column)),
+                Err(_) => Err(XlsxError::Xml(format!("Invalid data table input: {r}"))),
+            })
+            .transpose()
+    };
+    let (row_input, column_input) = match (xml.two_dimensional, xml.row) {
+        (true, _) => (input(0)?, input(1)?),
+        (false, true) => (input(0)?, None),
+        (false, false) => (None, input(0)?),
+    };
+    if top < 2 || left < 2 || bottom < top || right < left {
+        return Err(XlsxError::Xml(format!("Invalid data table range: {range}")));
+    }
+    Ok(DataTable {
+        range: (top, left, bottom, right),
+        row_input,
+        column_input,
     })
 }
 

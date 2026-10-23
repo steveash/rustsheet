@@ -61,6 +61,7 @@ mod cast;
 mod conditional_formatting;
 mod constants;
 mod cut_paste;
+mod data_tables;
 mod decimal_round;
 mod defined_names;
 mod evaluation;
