@@ -33,8 +33,12 @@
 # tools/src/rustsheet_tools/gen/pools.py (T-2109: number_edges, unit_interval, angle, code_point; T-2110: text_edges,
 # numeric_text, number_formats, errors; T-2179: date_serial, time_serial, date_text, time_text, weekend_mask,
 # weekday_return, weeknum_return, month_offset; T-2248, the M9 financial params: rate, nper, period,
-# cash_amount, price, annuity_type, security_date, basis, frequency, npery, cash_flows, cash_dates), after the `domain`
-# draw and never on a `hard` domain.
+# cash_amount, price, annuity_type, security_date, basis, frequency, npery, cash_flows, cash_dates; T-2249, the M9
+# engineering and database params: complex_text, complex_suffix, bin_digits, oct_digits, hex_digits, dec_number,
+# places, bessel_x, bessel_order, convert_unit, erf_x, bit_number, bit_shift, db_table, db_field, db_criteria), after
+# the `domain` draw and never on a `hard` domain. `pool_rate: <share>` replaces the 35% (the D* database and criteria
+# take 0.8: their pools point into the case's `Db` sheet, tools/src/rustsheet_tools/gen/database.py, and match only
+# each other).
 # `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
 # vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself; WRAPROWS/WRAPCOLS on an
 # `array` param). `full: true` makes every range span all data rows, so the arrays of one call are the same height
@@ -591,8 +595,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, lift: arrays, type: number }
-      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: x, mode: value, lift: arrays, type: number, pool: bessel_x }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 }, pool: bessel_order }
   - name: BESSELJ
     category: engineering
     milestone: M9
@@ -600,8 +604,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, lift: arrays, type: number }
-      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: x, mode: value, lift: arrays, type: number, pool: bessel_x }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 }, pool: bessel_order }
   - name: BESSELK
     category: engineering
     milestone: M9
@@ -609,8 +613,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 20 } }
-      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: x, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 20 }, pool: bessel_x }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 }, pool: bessel_order }
   - name: BESSELY
     category: engineering
     milestone: M9
@@ -618,8 +622,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 20 } }
-      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: x, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 20 }, pool: bessel_x }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 }, pool: bessel_order }
   - name: BETA.DIST
     category: statistical
     milestone: M9
@@ -676,7 +680,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] }, pool: bin_digits }
   - name: BIN2HEX
     category: engineering
     milestone: M9
@@ -684,8 +688,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] }, pool: bin_digits }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: BIN2OCT
     category: engineering
     milestone: M9
@@ -693,8 +697,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] }, pool: bin_digits }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: BINOM.DIST
     category: statistical
     milestone: M9
@@ -745,8 +749,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number1, mode: value, type: number, domain: { int: true, min: 0, max: 1000 } }
-      - { name: number2, mode: value, type: number, domain: { int: true, min: 0, max: 1000 } }
+      - { name: number1, mode: value, type: number, domain: { int: true, min: 0, max: 1000 }, pool: bit_number }
+      - { name: number2, mode: value, type: number, domain: { int: true, min: 0, max: 1000 }, pool: bit_number }
   - name: BITLSHIFT
     category: engineering
     milestone: M9
@@ -754,8 +758,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number, mode: value, type: number, domain: { int: true, min: 0, max: 1000 } }
-      - { name: shift_amount, mode: value, type: number, domain: { int: true, min: -8, max: 8 } }
+      - { name: number, mode: value, type: number, domain: { int: true, min: 0, max: 1000 }, pool: bit_number }
+      - { name: shift_amount, mode: value, type: number, domain: { int: true, min: -8, max: 8 }, pool: bit_shift }
   - name: BITOR
     category: engineering
     milestone: M9
@@ -763,8 +767,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number1, mode: value, type: number, domain: { int: true, min: 0, max: 1000 } }
-      - { name: number2, mode: value, type: number, domain: { int: true, min: 0, max: 1000 } }
+      - { name: number1, mode: value, type: number, domain: { int: true, min: 0, max: 1000 }, pool: bit_number }
+      - { name: number2, mode: value, type: number, domain: { int: true, min: 0, max: 1000 }, pool: bit_number }
   - name: BITRSHIFT
     category: engineering
     milestone: M9
@@ -772,8 +776,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number, mode: value, type: number, domain: { int: true, min: 0, max: 1000 } }
-      - { name: shift_amount, mode: value, type: number, domain: { int: true, min: -8, max: 8 } }
+      - { name: number, mode: value, type: number, domain: { int: true, min: 0, max: 1000 }, pool: bit_number }
+      - { name: shift_amount, mode: value, type: number, domain: { int: true, min: -8, max: 8 }, pool: bit_shift }
   - name: BITXOR
     category: engineering
     milestone: M9
@@ -781,8 +785,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number1, mode: value, type: number, domain: { int: true, min: 0, max: 1000 } }
-      - { name: number2, mode: value, type: number, domain: { int: true, min: 0, max: 1000 } }
+      - { name: number1, mode: value, type: number, domain: { int: true, min: 0, max: 1000 }, pool: bit_number }
+      - { name: number2, mode: value, type: number, domain: { int: true, min: 0, max: 1000 }, pool: bit_number }
   - name: BYCOL
     category: logical
     milestone: M7
@@ -1010,9 +1014,9 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: real_num, mode: value, lift: arrays, type: number }
-      - { name: i_num, mode: value, lift: arrays, type: number }
-      - { name: suffix, mode: value, lift: arrays, type: text, optional: true, domain: { enum: ["i", "j"] } }
+      - { name: real_num, mode: value, lift: arrays, type: number, pool: number_edges }
+      - { name: i_num, mode: value, lift: arrays, type: number, pool: number_edges }
+      - { name: suffix, mode: value, lift: arrays, type: text, optional: true, domain: { enum: ["i", "j"] }, pool: complex_suffix }
   - name: CONFIDENCE
     category: statistical
     milestone: M9
@@ -1050,9 +1054,9 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: number, mode: value, lift: arrays, type: number }
-      - { name: from_unit, mode: value, lift: arrays, type: text, domain: { enum: ["m", "ft", "in", "km", "mi", "yd", "kg", "lbm", "g", "C", "F", "K", "s", "hr", "day"] } }
-      - { name: to_unit, mode: value, lift: arrays, type: text, domain: { enum: ["m", "ft", "in", "km", "mi", "yd", "kg", "lbm", "g", "C", "F", "K", "s", "hr", "day"] } }
+      - { name: number, mode: value, lift: arrays, type: number, pool: number_edges }
+      - { name: from_unit, mode: value, lift: arrays, type: text, domain: { enum: ["m", "ft", "in", "km", "mi", "yd", "kg", "lbm", "g", "C", "F", "K", "s", "hr", "day"] }, pool: convert_unit }
+      - { name: to_unit, mode: value, lift: arrays, type: text, domain: { enum: ["m", "ft", "in", "km", "mi", "yd", "kg", "lbm", "g", "C", "F", "K", "s", "hr", "day"] }, pool: convert_unit }
   - { name: COPILOT, category: text, milestone: M5, scope: out, reason: "AI service (decision 0027); no longer available from 2026-09-14 per https://support.microsoft.com/en-us/excel/functions/copilot-function (fetched 2026-10-07)" }
   - name: CORREL
     category: statistical
@@ -1283,9 +1287,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DAYS
     category: date
     milestone: M6
@@ -1332,9 +1336,9 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DCOUNTA
     category: database
     milestone: M9
@@ -1342,9 +1346,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DDB
     category: financial
     milestone: M9
@@ -1364,8 +1368,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -512, max: 511 } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -512, max: 511 }, pool: dec_number }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: DEC2HEX
     category: engineering
     milestone: M9
@@ -1373,8 +1377,8 @@ functions:
     prior: 0.1
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -1000, max: 100000 } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -1000, max: 100000 }, pool: dec_number }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: DEC2OCT
     category: engineering
     milestone: M9
@@ -1382,8 +1386,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -1000, max: 100000 } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -1000, max: 100000 }, pool: dec_number }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: DECIMAL
     category: math
     milestone: M5
@@ -1407,8 +1411,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number1, mode: value, lift: arrays, type: number }
-      - { name: number2, mode: value, lift: arrays, type: number, optional: true }
+      - { name: number1, mode: value, lift: arrays, type: number, pool: number_edges }
+      - { name: number2, mode: value, lift: arrays, type: number, optional: true, pool: number_edges }
   - { name: DETECTLANGUAGE, category: text, milestone: M5, scope: out, reason: "Microsoft Translation Services (decision 0027)" }
   - name: DEVSQ
     category: statistical
@@ -1424,9 +1428,9 @@ functions:
     prior: 0.1
     returns: any
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DISC
     category: financial
     milestone: M9
@@ -1446,9 +1450,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DMIN
     category: database
     milestone: M9
@@ -1456,9 +1460,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DOLLAR
     category: text
     milestone: M5
@@ -1493,9 +1497,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DROP
     category: lookup
     milestone: M7
@@ -1514,9 +1518,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DSTDEVP
     category: database
     milestone: M9
@@ -1524,9 +1528,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DSUM
     category: database
     milestone: M9
@@ -1534,9 +1538,9 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DURATION
     category: financial
     milestone: M9
@@ -1557,9 +1561,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: DVARP
     category: database
     milestone: M9
@@ -1567,9 +1571,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: database, mode: range, type: any }
-      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, lift: arrays, type: any }
+      - { name: database, mode: range, type: any, pool: db_table, pool_rate: 0.8 }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 }, pool: db_field }
+      - { name: criteria, mode: range, lift: arrays, type: any, pool: db_criteria, pool_rate: 0.8 }
   - name: ECMA.CEILING
     category: math
     milestone: M5
@@ -1623,8 +1627,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: lower_limit, mode: value, lift: arrays, type: number }
-      - { name: upper_limit, mode: value, lift: arrays, type: number, optional: true }
+      - { name: lower_limit, mode: value, lift: arrays, type: number, pool: erf_x }
+      - { name: upper_limit, mode: value, lift: arrays, type: number, optional: true, pool: erf_x }
   - name: ERF.PRECISE
     category: engineering
     milestone: M9
@@ -1632,7 +1636,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, lift: arrays, type: number }
+      - { name: x, mode: value, lift: arrays, type: number, pool: erf_x }
   - name: ERFC
     category: engineering
     milestone: M9
@@ -1640,7 +1644,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, lift: arrays, type: number }
+      - { name: x, mode: value, lift: arrays, type: number, pool: erf_x }
   - name: ERFC.PRECISE
     category: engineering
     milestone: M9
@@ -1648,7 +1652,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, lift: arrays, type: number }
+      - { name: x, mode: value, lift: arrays, type: number, pool: erf_x }
   # Lifts over a range (probes/info-logic-argument-modes A8).
   - name: ERROR.TYPE
     category: information
@@ -2111,8 +2115,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number, mode: value, lift: arrays, type: number }
-      - { name: step, mode: value, lift: arrays, type: number, optional: true }
+      - { name: number, mode: value, lift: arrays, type: number, pool: number_edges }
+      - { name: step, mode: value, lift: arrays, type: number, optional: true, pool: number_edges }
   # `pivot: true`: a case calling GETPIVOTDATA gets a pivot on sheet `Pivot`, and the call's arguments are drawn
   # from it (tools/src/rustsheet_tools/gen/pivots.py, T-2396); the params below document the signature.
   - name: GETPIVOTDATA
@@ -2170,8 +2174,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] }, pool: hex_digits }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: HEX2DEC
     category: engineering
     milestone: M9
@@ -2179,7 +2183,7 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
+      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] }, pool: hex_digits }
   - name: HEX2OCT
     category: engineering
     milestone: M9
@@ -2187,8 +2191,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] }, pool: hex_digits }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: HOUR
     category: date
     milestone: M6
@@ -2265,7 +2269,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - { name: IMAGE, category: lookup, milestone: M6, scope: out, reason: "loads an image from the web (decision 0027)" }
   - name: IMAGINARY
     category: engineering
@@ -2274,7 +2278,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMARGUMENT
     category: engineering
     milestone: M9
@@ -2282,7 +2286,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMCONJUGATE
     category: engineering
     milestone: M9
@@ -2290,7 +2294,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMCOS
     category: engineering
     milestone: M9
@@ -2298,7 +2302,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMCOSH
     category: engineering
     milestone: M9
@@ -2306,7 +2310,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMCOT
     category: engineering
     milestone: M9
@@ -2314,7 +2318,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMCSC
     category: engineering
     milestone: M9
@@ -2322,7 +2326,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMCSCH
     category: engineering
     milestone: M9
@@ -2330,7 +2334,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMDIV
     category: engineering
     milestone: M9
@@ -2338,8 +2342,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber1, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
-      - { name: inumber2, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber1, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
+      - { name: inumber2, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMEXP
     category: engineering
     milestone: M9
@@ -2347,7 +2351,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMLN
     category: engineering
     milestone: M9
@@ -2355,7 +2359,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMLOG10
     category: engineering
     milestone: M9
@@ -2363,7 +2367,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMLOG2
     category: engineering
     milestone: M9
@@ -2371,7 +2375,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - { name: IMPORTCSV, category: lookup, milestone: M6, dynamic_array: true, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
   - { name: IMPORTTEXT, category: lookup, milestone: M6, dynamic_array: true, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
   - name: IMPOWER
@@ -2381,8 +2385,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
-      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -3, max: 4 } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -3, max: 4 }, pool: number_edges }
   - name: IMPRODUCT
     category: engineering
     milestone: M9
@@ -2390,7 +2394,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: array, type: text, repeat: true, min: 1, max: 255, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: array, type: text, repeat: true, min: 1, max: 255, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMREAL
     category: engineering
     milestone: M9
@@ -2398,7 +2402,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMSEC
     category: engineering
     milestone: M9
@@ -2406,7 +2410,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMSECH
     category: engineering
     milestone: M9
@@ -2414,7 +2418,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMSIN
     category: engineering
     milestone: M9
@@ -2422,7 +2426,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMSINH
     category: engineering
     milestone: M9
@@ -2430,7 +2434,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMSQRT
     category: engineering
     milestone: M9
@@ -2438,7 +2442,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMSUB
     category: engineering
     milestone: M9
@@ -2446,8 +2450,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber1, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
-      - { name: inumber2, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber1, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
+      - { name: inumber2, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMSUM
     category: engineering
     milestone: M9
@@ -2455,7 +2459,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: array, type: text, repeat: true, min: 1, max: 255, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: array, type: text, repeat: true, min: 1, max: 255, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   - name: IMTAN
     category: engineering
     milestone: M9
@@ -2463,7 +2467,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] }, pool: complex_text }
   # ref_text names Data cells only: a Calc reference could point the formula at itself (a circular reference).
   - name: INDIRECT
     category: lookup
@@ -3190,8 +3194,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] }, pool: oct_digits }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: OCT2DEC
     category: engineering
     milestone: M9
@@ -3199,7 +3203,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] }, pool: oct_digits }
   - name: OCT2HEX
     category: engineering
     milestone: M9
@@ -3207,8 +3211,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
-      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] }, pool: oct_digits }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 }, pool: places }
   - name: ODD
     category: math
     milestone: M5

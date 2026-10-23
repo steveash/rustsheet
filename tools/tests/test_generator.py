@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from rustsheet_tools import repo_root
+from rustsheet_tools.gen import database
 from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.generator import (
     NAME_POOL,
@@ -953,3 +954,72 @@ def test_m9_statistical_pools_keep_soft_domains_and_reach_their_edges() -> None:
         if "pool" in p
     }
     assert {"probability", "shape", "stat_x", "gamma_x", "flag", "stat_data"} <= used
+
+
+def test_m9_engineering_and_database_pools_keep_soft_domains_and_reach_their_edges() -> None:
+    # T-2249: a pooled engineering or database param with an int or enum domain (Bessel orders 0-5, the IM*
+    # inumbers, the D* field 1-4) still draws in-domain most of the time, and its pool adds the edges outside it.
+    g = Gen(random.Random(17), Catalog([], []), 12, 5, 3)
+    checked, used = 0, set()
+    for f in _loaded_catalog().functions:
+        if f.get("milestone") != "M9" or f.get("category") not in ("engineering", "database"):
+            continue
+        for p in f.get("params", []):
+            used.add(p.get("pool"))
+            dom = p.get("domain") or {}
+            if "pool" not in p or not (dom.get("int") or dom.get("enum")):
+                continue
+            if dom.get("int"):
+                inside = {str(v) for v in range(dom.get("min", 0), dom.get("max", 10) + 1)}
+            else:
+                inside = {str(v) if isinstance(v, int) else quoted(str(v)) for v in dom["enum"]}
+            draws = [g.argument_text(p, "value", 0) for _ in range(400)]
+            assert sum(d in inside for d in draws) / len(draws) >= 0.6, (f["name"], p["name"])
+            assert any(d in POOLS[p["pool"]] and d not in inside for d in draws), (f["name"], p["name"])
+            checked += 1
+    assert checked >= 60
+    assert {
+        "complex_text",
+        "complex_suffix",
+        "bin_digits",
+        "oct_digits",
+        "hex_digits",
+        "dec_number",
+        "places",
+        "bessel_x",
+        "bessel_order",
+        "convert_unit",
+        "erf_x",
+        "bit_number",
+        "bit_shift",
+        "db_table",
+        "db_field",
+        "db_criteria",
+    } <= used
+
+
+def test_database_calls_get_the_db_sheet_and_mostly_query_it() -> None:
+    # T-2249: the D* database and criteria pools point into sheet Db (gen/database.py) at pool_rate 0.8, so most
+    # calls pair a Db table with Db criteria, and a case gets the sheet only when a formula refers to it.
+    catalog = _loaded_catalog()
+    spec = generate_case(catalog, 11, milestone="M9", formulas=200, focus=True, category="database")
+    sheets = {s["name"]: s["cells"] for s in spec["sheets"]}
+    assert sheets["Db"] == database.cells()
+    calls = list(sheets["Calc"].values())
+    paired = [
+        c
+        for c in calls
+        if re.match(r"=D[A-Z]+\(Db!\$?A\$?\d+:\$?[A-D]\$?\d+,.*,Db!\$?[F-S]\$?\d+(:\$?[F-S]\$?\d+)?\)$", c)
+    ]
+    assert 0.5 <= len(paired) / len(calls) <= 0.8
+    assert all(re.fullmatch(r"Db![$A-Z0-9:]+", e) for e in POOLS["db_table"] + POOLS["db_criteria"])
+    assert "Db" not in {s["name"] for s in generate_case(catalog, 7, milestone="M5")["sheets"]}
+
+
+def test_db_sheet_keeps_criteria_text_as_text() -> None:
+    # A spec reads text starting with "=" as a formula: "=apple" is typed text, the computed criterion a formula.
+    cells = database.cells()
+    assert cells["I2"] == {"t": "s", "v": "=apple"}
+    assert cells["O2"] == "=B2>3"
+    assert cells["F2"] == ">2"
+    assert "K2" not in cells and "A6" not in cells
