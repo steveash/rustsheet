@@ -3,7 +3,7 @@ id: T-2119
 title: "BETA.DIST cdf on incomplete_beta::beta_reg; decide the nine chained BETA.INV cells it moves"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
