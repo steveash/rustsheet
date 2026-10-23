@@ -785,13 +785,14 @@ T-2514 (float64 fit against the CUMPRINC cells of the gen-m9 sweep, the probes a
     (T-2363). `CUMPRINC(10,261,484823,4,24,0)` is -7.507871520276804E-242 to the bit, 311 ulps from the exact
     sum (gen-m9 9a1fa5366bc50918 A361; A18, 67a4c03afd63f988 A110, 1cd3096e3e87c965 A147, d0854366830dcdee A98).
     So Excel's "power" is not a power at all: the one `exp` of the smallest discount carries the error.
-  - It is bit-exact on 9 of the 10 short type 1 principals probed, where the closed form was 11 to 104 ulps off:
+  - It is bit-exact on these short type 1 principals (every one probed but A372 below), where the closed form was 11 to 104 ulps off:
     `CUMPRINC(10,121,308352,2,16,1)` -1.263054652346343E-105 (0a957119475760c5 A383; 5ded7594e597e31e A22,
     A267, a91bad4e84f49739 A193, b6a02893a8d6b151 A398, CUMPRINC_CUMIPMT.xlsx H26 `CUMPRINC(7,36,8000,3,10,1)`).
 - At small discounts the other forms are closer. `CUMPRINC(1E-9,192,2707,8,24,0)` is -239.68227237224258 to the
   bit with the per-period sum and 2 ulps off with the geometric sum (gen-m9 d912671baa1364aa A300). H25
   (`0.1234` over 36 periods, discount exponent `(nper-first+1)·L` 3.96) is to the bit with the closed form and
-  3 ulps off with the geometric sum. At exponent 8.9 and above every probed cell is as close or closer with it.
+  3 ulps off with the geometric sum. At exponent 8.9 and above every probed cell is as close or closer with it;
+  between 3.96 and 8.9 nothing is probed.
 - Type 1's interest at a tiny rate is the payments less the principal, `-pmt·m - CUMPRINC` with
   `pmt = pv·r/(1-v^nper)/(1+r)`. `CUMIPMT(1E-10,296,197540,13,19,1)` is -1.3127066813467536E-4 to the bit
   (b72d952c5f52cb4d A257, and the STDEVA over one at 6e18550e9fc9c1b9 A329). At ordinary rates the IPMT sum stays
@@ -805,7 +806,8 @@ T-2514 (float64 fit against the CUMPRINC cells of the gen-m9 sweep, the probes a
     ulps off; it is to the bit only with `log1p(0.1)` one ulp low, which no log1p rewrite tried gives.
   - `CUMIPMT(1E-15,283,(1.005+3.14159+1E15)%,2,16,0)` -0.1456298828125 (79d87fc527927626 A352; ours
     -0.14581298828125, 3 ulps of `pmt·m`). No pairing of 10 payment forms with 5 principal forms gives it.
-  - e168be7f6d3f84c2 A379.
+  - `CUMIPMT(1E-9,235,379138,7,14,1)` -0.0029104891709721414 (e168be7f6d3f84c2 A379): neither the IPMT sum nor the
+    payments less the principal fits.
 Ours since T-2514: a short principal (CUMPRINC, and the principal of type 0's interest) is that geometric sum where
 the discount exponent is 8 or more and its power is normal (`GEOMETRIC_MIN_DISCOUNT`). Below that it is the
 per-period sum (type 0) or the closed form (type 1), and the balance drop where `1 + rate` is 1. Type 1's short

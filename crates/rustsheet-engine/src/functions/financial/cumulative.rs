@@ -45,6 +45,7 @@ const BALANCE_GROWTH_MAX: f64 = 1024.0;
 /// 2E-7, gen-m9 d912671baa1364aa A300), and `CUMPRINC_CUMIPMT.xlsx` H25 (`0.1234` over 36 periods,
 /// exponent 3.96) is to the bit with the closed form and 3 ulps off with the geometric form. From 8 up every probed
 /// cell is as close or closer with it (H4, exponent 8.9: 1 ulp where the closed form was 3; T-2514).
+/// Between 3.96 and 8.9 nothing is probed: the cut is a fit (TODO(T-2521): probe the edge).
 const GEOMETRIC_MIN_DISCOUNT: f64 = 8.0;
 
 /// The growth `nper·L` below which type 1's short interest is the payments less the principal
