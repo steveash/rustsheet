@@ -1918,7 +1918,7 @@ Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take
 COMBINA lifts over arrays (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COMBINA({7;1},4)` is the 2x1 209.99999999999997 (COMBIN(10,4), as above), 1; `COMBINA(Data!E7:E8,4)` and `COMBINA(4,{1;2})` are
 2 rows; `COMBINA(WRAPROWS(E6:E12,1,1),4)` is 7x1: #NUM! (blank is 0), 209.99999999999997, #NUM!, 5, #VALUE! ("abc"), #NUM!, #VALUE!. The gen-m7 `#VALUE!` of
 `VSTACK(COMBINA(..),CHOOSE(3,..))` (f19581ac44da1653 A3357) is the CHOOSE: a scalar-error argument makes VSTACK that error (probes/vstack-scalar-error, T-1695)
-(`VSTACK({1;2},CHOOSE(3,1,2))` is `#VALUE!`, ours agrees). Ours COMBINA is `#N/IMPL!` on arrays (T-2453).
+(`VSTACK({1;2},CHOOSE(3,1,2))` is `#VALUE!`, ours agrees). Implemented (T-2453): COMBINA lifts both arguments.
 Status: VERIFIED (excel-graph); implemented (T-2154).
 
 ## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes
