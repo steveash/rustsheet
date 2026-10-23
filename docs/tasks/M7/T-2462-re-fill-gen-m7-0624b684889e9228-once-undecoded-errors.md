@@ -3,7 +3,7 @@ id: T-2462
 title: "Re-fill gen-m7/0624b684889e9228 now that undecoded errors decode (T-2417)"
 milestone: M7
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ Also see T-2415 (arrays.md says this re-fill lands with it).
 
 ## Out of scope
 - Engine fixes for any mismatch the decoded values expose (file a task).
+
+## Outcome
+Done inside T-2415, which fixed EXPAND and re-filled this sidecar in one PR.
