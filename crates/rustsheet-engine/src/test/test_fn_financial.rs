@@ -1,6 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{cell::CellValue, test::util::new_empty_model};
+use crate::{
+    cell::CellValue,
+    test::util::{check_cells, new_empty_model},
+};
 
 #[test]
 fn fn_arguments() {
@@ -54,7 +57,7 @@ fn fn_rate_guess_argument() {
     let mut model = new_empty_model();
     model._set("A1", "=RATE(10,-100,800,0,0,0.1)");
     model._set("A2", "=RATE(10,-100,800)");
-    // A different guess still reaches the same root; Excel's exact digits are T-0916's job.
+    // A different guess reaches the same root to 1e-6 (bits: fn_rate_secant_excel_bits).
     model._set("A3", "=RATE(10,-100,800,0,0,0.5)");
     model.evaluate();
 
@@ -69,6 +72,41 @@ fn fn_rate_guess_argument() {
         panic!("RATE with another guess should be a number");
     };
     assert!((other_guess - without_guess).abs() < 1e-6);
+}
+
+/// RATE is a secant on the FV residual, capped at 200 steps (financial.md "RATE is a secant on
+/// the FV residual", T-2005): Excel's bits for guess 0 (Newton divides by 0 there), a guess
+/// sweep, the unconverged 200th iterate, `#NUM!` past the cap and for a root below -1.
+#[test]
+fn fn_rate_secant_excel_bits() {
+    check_cells(
+        &[],
+        &[
+            // probes/rate-empty-arguments A3, solver-iteration-traces R!C1, C8, C11, B15
+            ("A1", "=RATE(48,-200,8000,0,1,0)", "0.008052981923885287"),
+            (
+                "A2",
+                "=RATE(48,-200,8000,0,1,0.007)",
+                "0.008052981923729007",
+            ),
+            ("A3", "=RATE(48,-200,8000,0,1,0.01)", "0.008052981924068529"),
+            ("A4", "=RATE(15,0,-1,2)", "0.0472941228234414"),
+            // probes/rate-step-cap A29, A30 (the 200th iterate, unconverged), A31
+            (
+                "A5",
+                "=RATE(360,-599.55,100000,0,0,0.4558)",
+                "0.00499999319311924",
+            ),
+            (
+                "A6",
+                "=RATE(360,-599.55,100000,0,0,0.4587)",
+                "0.004999993194059272",
+            ),
+            ("A7", "=RATE(360,-599.55,100000,0,0,0.4615)", "#NUM!"),
+            // probes-numeric/m9-fin-irr-rate A371: the secant's root is below -1
+            ("A8", "=RATE(10,PMT(0.3,10,10000),10000)", "#NUM!"),
+        ],
+    );
 }
 
 #[test]
