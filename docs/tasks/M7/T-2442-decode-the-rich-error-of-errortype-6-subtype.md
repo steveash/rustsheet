@@ -1,5 +1,5 @@
 ---
-id: T-2440
+id: T-2442
 title: "Decode the rich error of errorType 6 (subType 7) from ERROR.TYPE evidence"
 milestone: M7
 lane: harness

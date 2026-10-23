@@ -68,17 +68,17 @@ VALUETOTEXT through INDEX are 3 and `#VALUE!` (E16, F16, E51, E66). `#DIV/0!`, `
 errorType 2 in `errorType, iftab[, ptg], subType` structures (subType 0, 33, 39, 40, 59, 133); the reader finds
 errorType by key name and subType does not change the error, so all of them decode to `#VALUE!`. Only subType 0 has direct ERROR.TYPE
 evidence; the others rest on the T-0030 rule (their cached `<v>#VALUE!</v>` is no evidence: every rich error caches
-`#VALUE!`). A non-zero subType probe is part of T-2440.
+`#VALUE!`). A non-zero subType probe is part of T-2442.
 Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
 `GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
 2026-10-22, T-2397; recalc input_sha256 e07a9239… and 7cf52886…). That scratch recalc reported all four spilled value cells, so no case of a
 spilled rich error missing from the workbook was reproduced. The T-2254 triage's 28 "unreported" spill cells
 (gen-m7/0624b684889e9228 A612, 21b4eef18424ce94 A1504, 9bb61f6ae34c7e20 A136) were also in the workbook: the fill
 had dropped them as undecoded (re-filled 2026-10-22, T-2397). Those cases store errorType 2 (subType 0, 39, 59 or 133;
-some with `ptg` and `iftab` fields) and errorType 6 (subType 7) rich errors; errorType 2 is decoded since T-2417, errorType 6 has no ERROR.TYPE evidence yet (T-2440). `rustsheet-oracle fill` keeps such cells in
+some with `ptg` and `iftab` fields) and errorType 6 (subType 7) rich errors; errorType 2 is decoded since T-2417, errorType 6 has no ERROR.TYPE evidence yet (T-2442). `rustsheet-oracle fill` keeps such cells in
 the sidecar as `#UNDECODED!` instead of dropping them, because a spill member missing from the sidecar
 is scored as an expected blank (T-2397).
-Status: confirmed (storage; errorType 2 = `#VALUE!`, excel-graph); errorType 6 UNVERIFIED (T-2440).
+Status: confirmed (storage; errorType 2 = `#VALUE!`, excel-graph); errorType 6 UNVERIFIED (T-2442).
 
 ## MOD lifts over array arguments
 Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The

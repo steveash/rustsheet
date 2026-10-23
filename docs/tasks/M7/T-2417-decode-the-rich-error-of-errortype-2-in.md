@@ -26,7 +26,7 @@ excel-probe skill.
 ## Acceptance criteria
 - [x] A probe records ERROR.TYPE and the stored (errorType, ptg, subType) for at least three error kinds raised in a spilled LAMBDA result.
 - [x] The mapping (or the reason none is possible) is in docs/excel-semantics/arrays.md with that evidence; the importer and the snapshot reader share it.
-- [ ] (three of four re-filled; 0624b684889e9228 deferred to T-2415; non-zero subTypes decoded by the T-0030 rule, their ERROR.TYPE probe moved to T-2440; see Outcome) gen-m7/18b80d3fd292d63a, 0624b684889e9228, 21b4eef18424ce94 and 9bb61f6ae34c7e20 are re-filled; any cell that now
+- [ ] (three of four re-filled; 0624b684889e9228 deferred to T-2415; non-zero subTypes decoded by the T-0030 rule, their ERROR.TYPE probe moved to T-2442; see Outcome) gen-m7/18b80d3fd292d63a, 0624b684889e9228, 21b4eef18424ce94 and 9bb61f6ae34c7e20 are re-filled; any cell that now
       decodes is scored. Their undecoded cells (T-2397) come from REGEXEXTRACT, EXPAND and GROUPBY. The cached
       excel-graph recalcs of 2026-10-22 store them as `_error` values with errorType 2 (subType 0, 39, 59 or 133,
       some with `ptg` 3, 6 or 8 and an `iftab` field) and errorType 6 (subType 7). Every combination needs evidence
@@ -52,4 +52,4 @@ re-fill it after its fix. Eval: gen-m7 637 known failures, unchanged (checked ce
 failures; visible parity unchanged.
 Every errorType 2 combination in the cached recalcs (structures with `iftab` and/or `ptg`; subType 0, 33, 39, 40, 59,
 133) decodes through the key-name lookup. No ERROR.TYPE was probed per subType: the T-0030 rule says subType does not
-change the error. errorType 6 (subType 7) has no ERROR.TYPE evidence yet and stays undecoded: T-2440.
+change the error. errorType 6 (subType 7) has no ERROR.TYPE evidence yet and stays undecoded: T-2442.
