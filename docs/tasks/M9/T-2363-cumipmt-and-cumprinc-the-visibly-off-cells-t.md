@@ -107,14 +107,14 @@ Cells:
   the bit, i.e. type 1's principal.
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): the 35 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+- [ ] (Partly met: 17 of the 35 right; the rest moved to T-2514.) Visible parity (gen-m9, T-2257): the 35 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
+- [ ] (Moved to T-2514.) Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity: the nine cells above are within half a unit of the 15th significant digit
+- [ ] (Partly met: A5 right; the rest moved to T-2514.) Visible parity: the nine cells above are within half a unit of the 15th significant digit
   of Excel's value, with no new known-failure lines in any baseline (`make eval-baseline`).
 - [x] The financial.md entry's "Ours:" line names this task's change.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit-exact fits once the cells are visibly right (T-1374).

@@ -239,6 +239,37 @@ fn type_0_short_interest_is_the_balance_form() {
 }
 
 #[test]
+fn type_0_interest_is_the_payments_less_the_principal() {
+    // T-2363 (excel-graph, gen-m9): outside the balance form's growth band [2^-10, 2^10] Excel's
+    // interest is `-pmt·m - principal`, cancellation included (A1 is 4E-10 relative off the exact
+    // sum; 5c6a23c4f6597f1c A392); at huge rates it is the payments (A2, A3: 1cd3096e3e87c965 A316,
+    // e168be7f6d3f84c2 A330); where `1 + rate` is 1 the principal is the balance drop (A4, A5:
+    // 81bcdc0bec0c8e6b A274, abb7d565af89b849 A84; A6: past 2^53, probes/fin-cumipmt-overflow-and-
+    // forms A5); inside the band the balance form stays (A7, probes A12).
+    check(&[
+        ("A1", "=CUMIPMT(1E-9,55,157761,1,18,0)", "-0.002400835590378847"),
+        ("A2", "=CUMIPMT(10,89,267388,3,13,0)", "-29412680"),
+        ("A3", "=CUMIPMT(100,167,7,6,16,0)", "-7700"),
+        (
+            "A4",
+            "=CUMIPMT(1E-300,243,80923,12,22,0)",
+            "-4.547473508864641E-13",
+        ),
+        ("A5", "=CUMIPMT(1E-300,83,156759,5,17,0)", "0"),
+        (
+            "A6",
+            "=CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)",
+            "-8.999591419181679E-15",
+        ),
+        (
+            "A7",
+            "=CUMIPMT(0.01,100,100000,100,100,0)",
+            "-15.708656559792416",
+        ),
+    ]);
+}
+
+#[test]
 fn every_argument_lifts_over_an_array() {
     // probes/fin-argument-modes H73, H75-H79, H81, H83-H87.
     let mut formulas = Vec::new();

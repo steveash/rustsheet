@@ -171,8 +171,16 @@ impl Periods {
 
     /// The payment at the end of each period as a positive amount, `pv·r/(1 - v^nper)` with
     /// `1 - v^nper = -expm1(-nper·L)` and `L = log1p(r)`, as [`Periods::closed_form`] has it.
+    /// The interest's `-pmt·m - principal` takes [`Periods::interest_payment`] instead.
     fn end_payment(&self, log_growth: f64) -> f64 {
         self.pv * self.rate / self.unpaid_share(log_growth)
+    }
+
+    /// The same payment rounded as Excel's type 0 interest has it, `(pv/(1 - v^nper))·r`: the
+    /// operation order is the fit, not a style choice. It is to the bit on all 13 type 0 cells
+    /// probed with both functions where [`Periods::end_payment`]'s order is not (T-2192, T-2363).
+    fn interest_payment(&self, log_growth: f64) -> f64 {
+        self.pv / self.unpaid_share(log_growth) * self.rate
     }
 
     /// `1 - v^nper = -expm1(-nper·L)`, the share of the loan the payments' discounted sum covers
@@ -211,12 +219,10 @@ impl Periods {
         self.payments_less_principal(Some(principal))
     }
 
-    /// Type 0's interest from a principal: `-pmt·m - principal` with Excel's interest payment
-    /// `pmt = (pv/(1-v^nper))·r` (to the bit on all 13 type 0 cells probed with both functions,
-    /// T-2192). `None` without a principal or when the result is not finite.
+    /// Type 0's interest from a principal: `-pmt·m - principal` with
+    /// [`Periods::interest_payment`]. `None` without a principal or when the result is not finite.
     fn payments_less_principal(&self, principal: Option<f64>) -> Option<f64> {
-        let log_growth = self.rate.ln_1p();
-        let payment = self.pv / self.unpaid_share(log_growth) * self.rate;
+        let payment = self.interest_payment(self.rate.ln_1p());
         let sum = -payment * (self.end - self.start + 1.0) - principal?;
         // `+ 0.0` turns a -0 into Excel's 0 (`CUMIPMT(1E-300,83,156759,5,17,0)`).
         sum.is_finite().then_some(sum + 0.0)

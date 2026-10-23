@@ -1458,5 +1458,5 @@ outer call is the function; "inferred" means the other arguments nest calls whos
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2257); the cells and the rest of each family are listed in the owning tasks.
 Ours: see each task; the triage (T-2257 Outcome) lists every family.
 Status: VERIFIED (excel-graph; the argument-order rules inferred through nested calls)
-Tasks: T-2482, T-2483, T-2484, T-2485, T-2486, T-2487, T-2488, T-2489, T-2490, T-2514, T-2492, T-2493, T-2494, T-2495, T-2496,
+Tasks: T-2482, T-2483, T-2484, T-2485, T-2486, T-2487, T-2488, T-2489, T-2490, T-2491, T-2492, T-2493, T-2494, T-2495, T-2496,
 T-2428, T-2241, T-2391
