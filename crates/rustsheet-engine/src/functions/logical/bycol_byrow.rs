@@ -9,7 +9,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::{check_array_size, check_range_size},
+    limits::{check_array_cells, check_array_size, check_range_size},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -379,8 +379,16 @@ impl Model {
         let [rows, cols, lambda_result] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let extent = |value: &CalcResult, name: &str| -> Result<usize, CalcResult> {
-            let x = self.cast_number_ref(value, cell)?;
+        // Both sizes are read, errors first in argument order, before either is validated:
+        // `MAKEARRAY(1.5,NA(),..)` is `#N/A` (probes/expand-makearray-past-grid D9-D16).
+        let sizes = self
+            .cast_number_ref(rows, cell)
+            .and_then(|rows| Ok((rows, self.cast_number_ref(cols, cell)?)));
+        let (rows, cols) = match sizes {
+            Ok(sizes) => sizes,
+            Err(error) => return error,
+        };
+        let extent = |x: f64, name: &str| -> Result<usize, CalcResult> {
             // Unlike SEQUENCE, a fractional size is #VALUE!, not truncated (arrays.md
             // "MAKEARRAY rows and columns must be whole numbers").
             if x.fract() != 0.0 || x < 1.0 {
@@ -402,7 +410,16 @@ impl Model {
             Err(error) => return error,
         };
 
-        if let Some((error, message)) = check_array_size(rows, cols) {
+        // Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is
+        // 16385 (probes/expand-makearray-past-grid D1); rows past it stay `#VALUE!`, and so do
+        // columns past it above the cell bound (`MAKEARRAY(3,1E15,..)` is `#VALUE!`,
+        // gen-m7/b2078b5d702c691a A2553).
+        let refused = if check_array_cells(rows, cols).is_some() {
+            check_array_size(rows, cols)
+        } else {
+            check_array_size(rows, 1)
+        };
+        if let Some((error, message)) = refused {
             return CalcResult::new_error(error, cell, message);
         }
 
