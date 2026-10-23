@@ -210,3 +210,35 @@ fn lambda_parameters_spelled_like_r1c1_cells_survive_a_reload() {
         "=LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)"
     );
 }
+
+// probes/let-name-shadows-defined-name: a LET name or LAMBDA parameter shadows a defined name of the
+// same name in any case; a closure keeps the defined name it was written against.
+#[test]
+fn let_names_and_lambda_parameters_shadow_defined_names() {
+    let mut model = new_empty_model();
+    model.define_name("Mk", None, "=LAMBDA(a,a+100)").unwrap();
+    model.define_name("Pv", None, "=7").unwrap();
+    let cases = [
+        ("=LET(mk,LAMBDA(a,a+1),mk(1))", "2"),
+        ("=LET(Mk,LAMBDA(a,a+1),Mk(1))", "2"),
+        ("=mk(1)", "101"),
+        ("=LET(pv,2,pv+1)", "3"),
+        ("=LET(PV,2,pv+1)", "3"),
+        ("=Pv+1", "8"),
+        ("=LAMBDA(pv,pv+1)(2)", "3"),
+        ("=LAMBDA(PV,Pv*10)(2)", "20"),
+        ("=LET(x,Pv,LET(pv,1,x+pv))", "8"),
+        ("=LET(f,LAMBDA(a,a+Pv),LET(pv,50,f(1)))", "8"),
+    ];
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

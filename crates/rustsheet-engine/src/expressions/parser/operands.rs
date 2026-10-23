@@ -313,7 +313,9 @@ impl Parser {
 
         // Could be a defined name or a table. A name spelled like an out-of-range R1C1 reference
         // is defined but never resolved (T-1657).
-        if !is_out_of_range_r1c1_name(&name) {
+        // A LET name or LAMBDA parameter shadows a defined name of the same name in any case
+        // (probes/let-name-shadows-defined-name, T-2057).
+        if !is_out_of_range_r1c1_name(&name) && !self.binds_reference_shaped_name(&name) {
             if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
                 return Node::DefinedNameKind((name, scope, formula));
             }
@@ -343,7 +345,8 @@ impl Parser {
     }
 
     /// Whether an enclosing LET or LAMBDA binds `name`, a name the A1 grammar would otherwise
-    /// read as a cell or a Lotus-style range ([`Parser::bind_reference_shaped_name`]).
+    /// read as a cell, a Lotus-style range or a defined name
+    /// ([`Parser::bind_reference_shaped_name`]).
     pub(super) fn binds_reference_shaped_name(&self, name: &str) -> bool {
         self.lexer.is_a1_mode()
             && self
@@ -370,6 +373,13 @@ impl Parser {
             return node;
         }
         let bound = match (token, &node) {
+            // A name that is also a defined name parsed as that defined name; it declares the
+            // variable instead, and shadows the defined name up to the end of the scope.
+            (TokenType::Ident(_), Node::DefinedNameKind((name, ..)))
+                if !name.contains(['!', '[']) =>
+            {
+                name.clone()
+            }
             (TokenType::Ident(name), Node::RangeKind { .. } | Node::WrongRangeKind { .. })
                 if parse_dotted_a1_range(name).is_some() =>
             {

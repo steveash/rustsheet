@@ -3,7 +3,7 @@ id: T-2057
 title: "A LET name shadows a defined name of the same name in any case"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -21,8 +21,14 @@ and a plain value) with `LET(mk,..,mk(1))`, `LET(Mk,..,Mk+1)` and a LAMBDA param
 record the rule in docs/excel-semantics/references.md, then fix name resolution in the parser/evaluator.
 
 ## Acceptance criteria
-- [ ] Probe case with oracle values; the engine matches it; unit tests.
-- [ ] `make check` green; reviewers approve.
+- [x] Probe case with oracle values; the engine matches it; unit tests.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Defined names spelled like cells.
+
+## Outcome
+Probe `probes/let-name-shadows-defined-name` (excel-graph, 2026-10-23): a LET name or LAMBDA parameter shadows a
+defined name of the same name in any case. The parser now declares the variable instead of resolving the defined
+name and skips the defined-name lookup for bound names (`bind_reference_shaped_name`, `name_operand`); unit test
+in `test_fn_let.rs`; entry in docs/excel-semantics/references.md. Eval: 10 new probe cells pass.

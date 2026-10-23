@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "A LET name or LAMBDA parameter spelled like a workbook defined name, in the same or another case, shadows the defined name (T-2057).",
+ "tags": ["M8", "references", "probe"],
+ "names": {
+  "Mk": "=LAMBDA(a,a+100)",
+  "Pv": "=7"
+ },
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=LET(mk,LAMBDA(a,a+1),mk(1))",
+    "A2": "=LET(Mk,LAMBDA(a,a+1),Mk(1))",
+    "A3": "=Mk(1)",
+    "A4": "=mk(1)",
+    "A5": "=LET(pv,2,pv+1)",
+    "A6": "=LET(Pv,2,Pv+1)",
+    "A7": "=LET(PV,2,pv+1)",
+    "A8": "=Pv+1",
+    "A9": "=LAMBDA(pv,pv+1)(2)",
+    "A10": "=LAMBDA(PV,Pv*10)(2)",
+    "A11": "=LET(x,Pv,LET(pv,1,x+pv))",
+    "A12": "=LET(pv,1,Pv)",
+    "A13": "=LET(f,LAMBDA(a,a+Pv),LET(pv,50,f(1)))"
+   }
+  }
+ ],
+ "expected": {}
+}
