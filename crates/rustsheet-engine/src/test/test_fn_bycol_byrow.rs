@@ -431,13 +431,9 @@ fn lambda_step_is_calc_per_element_only_where_shown() {
     model._set("A6", "=MAP({1,2;3,4},LAMBDA(x,LAMBDA(v,v)))");
     // Consumed, the element is `#VALUE!` (gen-m7 23b5367c18059af2 A2578).
     model._set("A9", "=\"a\"&MAP({1},LAMBDA(x,LAMBDA(v,v)))");
-    model._set("A10", "=ISERROR(BYROW({1;2},LAMBDA(x,LAMBDA(v,v))))");
-    model._set("A12", "=ERROR.TYPE(BYCOL({1},LAMBDA(x,LAMBDA(v,v))))");
     model.evaluate();
     for cell in ["A1", "B1", "C1", "A3", "A4", "A6", "B6", "A7", "B7"] {
         assert_eq!(model._get_text(cell), "#CALC!", "{cell}");
     }
     assert_eq!(model._get_text("A9"), "#VALUE!");
-    assert_eq!(model._get_text("A10"), "TRUE");
-    assert_eq!(model._get_text("A12"), "3");
 }

@@ -91,9 +91,9 @@ fn lambda_result_to_array_node(result: CalcResult, shown: bool) -> ArrayNode {
 
 /// A LAMBDA value as an element of BYROW, BYCOL or MAP: `#CALC!` when `shown`, the call being a
 /// cell formula's outermost node, so that the element is what a cell shows (`BYCOL(Data!A11:D11,
-/// LAMBDA(x,LAMBDA(v,v)))` is four `#CALC!`), and `#VALUE!` where anything consumes it (`TEXTSPLIT(
+/// LAMBDA(x,LAMBDA(v,v)))` is four `#CALC!`), and `#VALUE!` elsewhere, as `&` reads it (`TEXTSPLIT(
 /// ..&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`; gen-m7 23b5367c18059af2 A2578, arrays.md
-/// "MAKEARRAY with an array step; BYROW, BYCOL and MAP with a LAMBDA step", T-2406). An array element
+/// "MAKEARRAY with an array step; BYROW, BYCOL and MAP with a LAMBDA step", T-2406; other consumers unprobed, T-2463). An array element
 /// cannot hold the LAMBDA itself (T-2039).
 pub(super) fn lambda_element(shown: bool) -> ArrayNode {
     ArrayNode::Error(if shown { Error::CALC } else { Error::VALUE })

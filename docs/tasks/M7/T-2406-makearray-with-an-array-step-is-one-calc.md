@@ -94,6 +94,7 @@ or is within half a unit of the 15th significant digit of Excel's value; the vis
 states it.
 
 ## Handoff (resumed)
+Superseded by the Outcome below: the LAMBDA-element half is done.
 Done on the branch: MAKEARRAY with a multi-cell step is one `#CALC!` (`fn_makearray` uses `makes_calc_error`); 122 gen-m7 and
 2 gen-m9 cells fixed, 0 regressions, baseline recorded. Not done: BYROW/BYCOL/MAP with a LAMBDA step. Making the element a plain
 `#CALC!` error (in `lambda_result_to_array_node`/MAP) fixed the 42 cells but regressed gen-m7/23b5367c18059af2 A2578
@@ -105,4 +106,5 @@ element (T-2039) or a result-position-only rule. Keep this task open for that ha
 MAKEARRAY with a multi-cell LAMBDA step is one `#CALC!` (`makes_calc_error`, as BYROW/BYCOL). A LAMBDA element of BYROW, BYCOL and
 MAP is `#CALC!` when the call is the cell formula's outermost node (`Model::lambda_elements_shown`, set by `run_cell_formula`, taken by
 the call) and stays `#VALUE!` where consumed, which keeps the three cells the handoff found regressing. Eval: gen-m7 known failures
--164 (122 MAKEARRAY + 42 LAMBDA-element), gen-m9 -2, 0 regressions.
+-164 (122 MAKEARRAY + 42 LAMBDA-element), gen-m9 -2, 0 regressions. `tier: opus` is from the sonnet handoff.
+Follow-up: T-2463 (probe the element under ISERROR/IFERROR/ERROR.TYPE/TYPE, non-root positions, MAKEARRAY 1x1 and LAMBDA steps).
