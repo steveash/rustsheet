@@ -52,7 +52,9 @@ orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
   So the `#NUM!` is the overflow of the upward recurrence past the largest double, not an explicit order cap.
 - BESSELJ has an explicit order cap: `BESSELJ(10,n)` is 0 for n up to and including 10,000,000 and `#NUM!` from 10,000,001
   (also `BESSELJ(10,2^31-1)`, `(0,2^31-1)`, `(1E5,2^31-1)`). It is not an underflow: `BESSELJ(1E5,100001)` is 0.0094462635180178,
-  and `BESSELJ(1E-300,100001)` is `#NUM!`. `BESSELK(2.5,100001)` and `(2.5,2^31-1)` are `#NUM!` (K overflows).
+  `BESSELK(2.5,100001)` and `(2.5,2^31-1)` are `#NUM!` (K overflows).
+- Separate quirk, cause unknown: `BESSELJ(1E-300,100001)` is `#NUM!` although `BESSELJ(10,100001)` is 0 and the order is far below
+  the 10,000,000 cap (probably tiny-x underflow). The engine matches only because its own 100,000 cap applies; revisit if `MAX_ORDER` is raised.
 Status: VERIFIED for these cells; the algorithm is fitted (T-0908, above).
 
 Provenance: the coefficients are the published Numerical Recipes (2nd ed., §6.5) rational
