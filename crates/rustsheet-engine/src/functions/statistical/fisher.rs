@@ -42,8 +42,9 @@ fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
 /// same failure as Student-t), so from it the quantile is [`f_quantile_through_beta`]: Excel's
-/// BETA.INV mapped to F, which matches Excel to 15 digits on 17 of the 24 cells either side of it
-/// (df 99999, 1E5, 1E6 at p = 1E-12, 1 - 1E-12, probes-numeric/t1538-f-quantile-switchover).
+/// BETA.INV mapped to F. Either side of it the quantile is within 2E-13 relative of Excel's at
+/// df 99999, 1E5 and 1E6 with p = 1E-12 and 1 - 1E-12 (24 cells,
+/// probes-numeric/t1538-f-quantile-switchover).
 const F_QUANTILE_STATRS_DF_MAX: f64 = 1e5;
 
 /// Below this probability (of either tail) statrs' search panics (from p = 1.6E-162) or never
@@ -453,3 +454,24 @@ impl Model {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::f_quantile;
+
+    // Excel's F quantile at a huge df is its BETA.INV mapped to F (probes-numeric, excel-graph).
+    #[test]
+    fn huge_df_quantiles_go_through_excels_beta_inv() {
+        // t1538-f-inv-huge-df A3: y = BETA.INV(0.5,5E9,2.5) near 1, bit for bit.
+        assert_eq!(
+            f_quantile(1e10, 5.0, 0.5, false).to_bits(),
+            1.149_039_552_113_033_7_f64.to_bits()
+        );
+        // A48: F.INV.RT(0.975,1E10,5) = 1/F.INV(0.975,5,1E10), through the flipped root.
+        let rt = f_quantile(1e10, 5.0, 0.975, true);
+        assert!((rt - 0.389_635_637_664_716_87).abs() <= 4.0 * f64::EPSILON * rt, "{rt}");
+        // t1538-f-quantile-switchover A9: the flipped root mapped as it is.
+        let upper = f_quantile(100_000.0, 5.0, 1.0 - 1e-12, false);
+        assert!((upper - 97_570.089_441_084_84).abs() <= 1e-9, "{upper}");
+    }
+}

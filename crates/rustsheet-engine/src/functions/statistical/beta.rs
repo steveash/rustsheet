@@ -4,28 +4,35 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
 use crate::functions::statistical::incomplete_beta::beta_density;
 use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
+use crate::functions::statistical::special::bisect_unit_interval;
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// `statrs`' `inverse_cdf` panics from p about 1E-200, does not finish for BETA.INV(1E-100,1000,1)
 /// nor for a shape of 1E8 or more, and for the rest of the sweep (T-1543, 9x9 shapes up to 1E15 by
 /// 8 probabilities) is bounded and last-digit exact for shapes up to 1E5 and p of 1E-15 or more.
-/// Outside that range the quantile is the crossing of our own incomplete beta in Excel's AS 109
+/// Above that shape the quantile is the crossing of our own incomplete beta in Excel's AS 109
 /// structure (`inverse_beta::beta_quantile_crossing`, T-1538; statrs' cdf misses by 13 ulp at
-/// `BETAINV(1E-20,1E10,0.5)`, Excel 0.9999999956419133, gen-m9/0a9226016e8f5f33 A358).
+/// `BETAINV(1E-20,1E10,0.5)`, Excel 0.9999999956419133, gen-m9/0a9226016e8f5f33 A358). Below p =
+/// 1E-15 at a smaller shape it is a bisection on statrs' cdf (at most 1100 evaluations), which
+/// gives `BETA.INV(2.3817091316180232E-30,100,1,0.1,1)` = 0.555 (`BETADIST_BETAINV.xlsx` H30) where
+/// the crossing is 4 ulp off.
 /// statrs' search is the capped port of `inverse_beta.rs` (T-1848), which also ends the one hang
 /// found inside the range (`BETA.INV(1-2^-53,1.0024,12177)`, `#NUM!`).
 const BETA_QUANTILE_STATRS_SHAPE_MAX: f64 = 1e5;
 const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 
-fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
+fn beta_quantile(dist: &Beta, alpha: f64, beta: f64, p: f64) -> f64 {
     if alpha <= BETA_QUANTILE_STATRS_SHAPE_MAX
         && beta <= BETA_QUANTILE_STATRS_SHAPE_MAX
         && p >= BETA_QUANTILE_STATRS_P_MIN
     {
         return beta_inverse_cdf(alpha, beta, p);
     }
-    beta_quantile_crossing(alpha, beta, p)
+    if alpha > BETA_QUANTILE_STATRS_SHAPE_MAX || beta > BETA_QUANTILE_STATRS_SHAPE_MAX {
+        return beta_quantile_crossing(alpha, beta, p);
+    }
+    bisect_unit_interval(|x| dist.cdf(x), p)
 }
 
 /// BETA.DIST's `cumulative`: a boolean, a number (TRUE unless 0), "TRUE" or "FALSE" in any case,
@@ -145,7 +152,8 @@ impl Model {
         if alpha <= 0.0 || beta_param <= 0.0 || p <= 0.0 || p >= 1.0 || b <= a {
             return Err(num_error(cell));
         }
-        let t = beta_quantile(alpha, beta_param, p);
+        let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
+        let t = beta_quantile(&dist, alpha, beta_param, p);
         if t.is_nan() || t.is_infinite() {
             return Err(num_error(cell));
         }

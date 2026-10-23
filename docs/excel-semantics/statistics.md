@@ -2115,8 +2115,11 @@ Evidence: probes-numeric t1538-f-inv-huge-df (156 cells) and t1538-beta-dist-at-
 2026-10-23.
 - F.INV(p,d1,d2) at a df of 1E5 or more is (d2/d1) (y / (1 - y)) with y = Excel's BETA.INV(p,d1/2,d2/2), and
   F.INV.RT(p,d1,d2) is 1/F.INV(p,d2,d1): with y from the entry below, `F.INV(0.5,1E10,5)` is 1.1490395521130337
-  bit for bit (A3; d2 y/(d1 (1 - y)) is 1 ulp below). This explains the 6E-7 paths above: at p > 1/2 the BETA.INV
-  flip moves the solve to the other side.
+  bit for bit (A3; d2 y/(d1 (1 - y)) is 1 ulp below). For p above 1/2 the root BETA.INV's flip solves, s = 1 - y,
+  is mapped as it is, (d2/d1) ((1 - s)/s): `F.INV(1-1E-12,100000,5)` = 97570.08944108484 (probes-numeric
+  t1538-f-quantile-switchover A9), where forming 1 - y from the flipped y misses by 9E-8 relative. This explains the
+  6E-7 paths above: at p > 1/2 the flip moves the solve to the other side. Either side of df 1E5 (99999, 1E5, 1E6 at
+  p = 1E-12 and 1 - 1E-12) the engine is within 2E-13 relative of Excel on all 24 cells of that case.
 Status: VERIFIED for the values above; Excel's BETA.INV stop where its quantile is tiny is UNVERIFIED (T-2555)
 Implemented in: functions/statistical/fisher.rs `f_quantile_through_beta`
 Tasks: T-1538, T-1745, T-2555
