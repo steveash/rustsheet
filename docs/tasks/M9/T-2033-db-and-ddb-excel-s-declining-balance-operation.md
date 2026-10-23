@@ -3,7 +3,7 @@ id: T-2033
 title: "DB and DDB: Excel's declining-balance operation order (DB_DDB.xlsx, fin-argument-modes H88, H95)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
