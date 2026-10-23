@@ -3,7 +3,7 @@ id: T-2438
 title: "Generator edge pools for M9 integer counts, FORECAST.ETS options and a sorted timeline"
 milestone: M9
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,9 +32,16 @@ Template: T-2247 (tools/src/rustsheet_tools/gen/pools.py, the `pool:` keys in fu
 docs/excel-semantics/statistics.md, citing the entry in a pools.py comment as T-2247 did.
 
 ## Acceptance criteria
-- [ ] Every parameter listed above has a `pool:` in eval/catalog/functions.yaml backed by a pools.py pool with cited edges.
-- [ ] tools tests cover the new pools (ruff, mypy strict pass).
-- [ ] `make check` green; reviewers approve.
+- [x] Every parameter listed above has a `pool:` in eval/catalog/functions.yaml backed by a pools.py pool with cited edges.
+- [x] tools tests cover the new pools (ruff, mypy strict pass).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Running a sweep with them (T-2256 and later sweeps do that).
+
+## Outcome
+Added pools `count`, `ets_target`, `ets_seasonality`, `ets_completion`, `ets_aggregation`, `ets_confidence`, `ets_statistic`,
+`ets_timeline`, `ets_values`, `beta_bound`, `fisherinv_y`, `forecast_x` and `lognorm_mean` (tools/src/rustsheet_tools/gen/pools.py,
+edges cited from statistics.md) and put 58 listed params on them in eval/catalog/functions.yaml; test in tools/tests/test_generator.py.
+Generator-only change: no eval delta. The ETS timeline and values pools are array constants of equal length (24), plus longer
+mismatching ones.

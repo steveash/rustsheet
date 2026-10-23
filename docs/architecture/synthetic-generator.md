@@ -534,6 +534,10 @@ T-2247 added `probability`, `shape`, `stat_x`, `gamma_x`, `flag` and `stat_data`
 flags, and the data arrays of the aggregates, order statistics and paired functions) and put FISHER's x on
 `unit_interval`; no draw change was needed, as an `array` or `aggregate` parameter's non-range draw already reaches
 the pool.
+T-2438 added `count` (the integer counts of the binomial, hypergeometric, CONFIDENCE and LARGE functions, with their
+soft `int` domain kept), `ets_target`, `ets_seasonality`, `ets_completion`, `ets_aggregation`, `ets_confidence`,
+`ets_statistic`, the equal-length `ets_timeline` and `ets_values` array constants (24 sorted, evenly spaced points
+beside 24 values, plus longer ones that mismatch), `beta_bound`, `fisherinv_y`, `forecast_x` and `lognorm_mean`.
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),
