@@ -3,7 +3,7 @@ id: T-2315
 title: "TEXTSPLIT: argument errors before the empty-text and empty-delimiter #VALUE!, an all-empty result is #CALC!, lifted arguments (gen-m7)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
