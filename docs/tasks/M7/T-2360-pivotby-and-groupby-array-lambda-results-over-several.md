@@ -29,12 +29,15 @@ one-row group and a several-row group to pin it down. Owned: 26 known-failure li
 - gen-m7/21b4eef18424ce94.case.json A1504 `=REGEXEXTRACT((("#N/A"&"Hello World")&(Data!B5&"#N/A")),"x*",_xlfn.GROUPBY(Data!B1:B12,Data!B1:E12,LAMBDA(acc,acc),3),1)`: B1505 Excel "", ours #VALUE!; cells (26): B1505:E1505, B1506, E1506, C1507:E1507, C1508, C1509:E1509, B1510:E1510, C1511:E1511, B1512, E1512, B1513, D1513:E1513, C1514
 
 ## Acceptance criteria
-- [x] The four probe lines above disappear from eval/baseline/probes.txt, no new known failures. (P!D46 and P!D51 done; P!C12 and P!D12
-      need nested arrays: moved to T-2459, split 2026-10-23.)
-- [x] (Moved to T-2459, split 2026-10-23: they need nested arrays.) Visible parity: the 26 gen-m7 lines listed under Context (T-2254 triage) disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+Reduced scope (split 2026-10-23): the nested-array cells need a spec first (CLAUDE.md directive 4) and moved to T-2459, the
+blank-key cells to T-2460.
+- [x] P!D46 and P!D51 of probes/t2311-pivotby-value-cause pass (D51 leaves eval/baseline/probes.txt), no new known failures
+      outside the new probe case.
+- [ ] P!C12 and P!D12 of probes/t2311-pivotby-value-columns-error: moved to T-2459.
+- [ ] Visible parity: the 26 gen-m7 lines listed under Context: moved to T-2459.
 - [x] The rules are recorded in docs/excel-semantics (arrays.md, dates.md) with probe cells.
-- [x] Unit tests cover them.
-- [x] `make check` green; reviewers approve.
+- [x] Unit tests cover the WORKDAY rule (`number_text_in_a_holidays_array_is_a_holiday`).
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Pivot tables (SPEC-0015).
@@ -55,5 +58,7 @@ Probe probes/t2360-array-lambda-holidays (508 cells, excel-graph, 2026-10-23) an
   lifts over it; MAP over it an error), shown as `#VALUE!`. The engine has no nested arrays, so P!C12, P!D12 and the 26 gen-m7
   lines move to T-2459 (a spec first, CLAUDE.md directive 4). Blank keys stay true blanks in Excel (ours 0): T-2460. arrays.md
   records both.
-Eval delta: probes known failures: -1 (t2311-pivotby-value-cause P!D51) and +53 new-coverage lines in the new case (all
-nested-array or blank-key cells owned by T-2459 and T-2460); 0 regressions.
+Eval delta: probes known failures: -1 (t2311-pivotby-value-cause P!D51) and +53 new-coverage lines in the new case (47
+nested-array cells owned by T-2459, 6 blank-key cells owned by T-2460); 0 regressions. `make eval-baseline` recorded both and
+raised eval/baseline/visible-parity.json by the new case's 53 visibly-off cells less the fixed D51 (6853 -> 6854), the rise
+that new cases account for (quality-gates.md "Visible parity", decision 0093).
