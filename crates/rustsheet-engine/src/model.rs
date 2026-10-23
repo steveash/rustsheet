@@ -2282,7 +2282,7 @@ impl Model {
             Node::ParseErrorKind { message, .. } if is_limit_error(&message) => {
                 Err(format!("Formula: {message}"))
             }
-            node => Ok(node),
+            node => self.parser.typed_refusal().map_or(Ok(node), Err),
         }
     }
 
