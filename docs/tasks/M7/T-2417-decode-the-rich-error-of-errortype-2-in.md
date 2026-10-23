@@ -3,7 +3,7 @@ id: T-2417
 title: "Decode the rich error of errorType 2 in the errorType, ptg, subType structure (GROUPBY function-argument #VALUE!)"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
