@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2189: IFS(TRUE,)&\"\", one formula per case so an excel-graph refusal names it (IFS/SWITCH with an omitted value argument).",
+ "tags": [
+  "M5",
+  "lookup",
+  "probe",
+  "T-2189"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=IFS(TRUE,)&\"\""
+   }
+  }
+ ]
+}
