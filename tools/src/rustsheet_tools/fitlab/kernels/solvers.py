@@ -10,7 +10,8 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
   value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
 - `rate`: Newton candidates in r and IRR's secant applied to r (T-1533); none is Excel's method.
 - `yield-one-period`: the documented closed form with each day-count choice.
-- `yield`: basis-0 bonds with more than one coupon left: Newton, secant and regula falsi on PRICE.
+- `yield`: basis-0 bonds with more than one coupon left: Newton, secant and regula falsi on PRICE
+  (`yield-caret`, kernels/yield_caret.py: the same on PRICE discounted with Excel's `^`, T-2207).
 
 Findings: docs/excel-semantics/financial.md ("XIRR is a bracketing bisection", "IRR returns x - 1",
 "RATE iterates on the rate itself", "YIELD with one coupon period left is closed form"). The lab
@@ -25,6 +26,7 @@ import contextlib
 import datetime
 import math
 from collections.abc import Callable
+from contextvars import ContextVar
 from functools import partial
 from typing import NamedTuple
 
@@ -706,24 +708,28 @@ def _many_periods_basis0(cell: Cell) -> bool:
 Bond = tuple[float, float, int, float, float, float, int]  # rate, redemption, freq, A, E, DSC, N
 
 
+# The power `price` and `dprice` discount with: libm, or Excel's `^` under yield_caret.caret_priced (T-2207).
+PRICE_POWER: ContextVar[Callable[[float, float], float]] = ContextVar("price_power", default=rpow)
+
+
 def price(y: float, bond: Bond) -> float:
     """PRICE with N > 1 coupons left (documented form, DSC = E - A)."""
     rate, red, freq, a, e, dsc, n = bond
-    base = 1 + y / freq
-    coupons = sum(100 * rate / freq / rpow(base, k - 1 + dsc / e) for k in range(1, n + 1))
-    return red / rpow(base, n - 1 + dsc / e) + coupons - 100 * rate / freq * a / e
+    base, power = 1 + y / freq, PRICE_POWER.get()
+    coupons = sum(100 * rate / freq / power(base, k - 1 + dsc / e) for k in range(1, n + 1))
+    return red / power(base, n - 1 + dsc / e) + coupons - 100 * rate / freq * a / e
 
 
 def dprice(y: float, bond: Bond) -> float:
     """d/dy of `price`, analytic."""
     rate, red, freq, _, e, dsc, n = bond
-    base = 1 + y / freq
+    base, power = 1 + y / freq, PRICE_POWER.get()
     total = 0.0
     for k in range(1, n + 1):
         t = k - 1 + dsc / e
-        total -= t * 100 * rate / freq / rpow(base, t + 1) / freq
+        total -= t * 100 * rate / freq / power(base, t + 1) / freq
     t = n - 1 + dsc / e
-    return total - t * red / rpow(base, t + 1) / freq
+    return total - t * red / power(base, t + 1) / freq
 
 
 def _bond_price(args: tuple[Arg, ...]) -> tuple[Callable[[float], float], Bond, float]:

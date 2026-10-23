@@ -14,7 +14,9 @@ use regex_syntax::hir::{ClassUnicode, ClassUnicodeRange};
 
 use super::class::literal_class;
 
-use super::ast::{can_match_empty, Anchor, Ast, Reference, RepeatKind};
+use super::ast::{
+    can_match_empty, fixed_length, Anchor, Ast, Condition, LookKind, Reference, RepeatKind,
+};
 
 /// One instruction.
 #[derive(Debug, Clone)]
@@ -51,6 +53,15 @@ pub(super) enum Inst {
     /// Ends an iteration of unbounded loop `slot`: back to `back` for another unless the
     /// iteration matched the empty string, which ends the loop (PCRE2's empty-loop rule).
     LoopEnd { slot: usize, back: usize },
+    /// Opens a lookaround: a barrier recording the position, whose body runs up to the matching
+    /// [`Inst::LookEnd`] at `end`. A negative one continues after `end` when its body fails.
+    LookStart { negative: bool, end: usize },
+    /// Steps back `chars` characters: where a lookbehind alternative of that fixed length starts.
+    StepBack(u32),
+    /// Closes the innermost lookaround: its body matched.
+    LookEnd,
+    /// `(?(group)..)`: continues when group `group` is set, at `no` otherwise.
+    CondGroup { group: usize, no: usize },
     /// A match.
     Match,
 }
@@ -60,8 +71,8 @@ pub(super) enum Inst {
 pub(super) enum CompileError {
     /// The program passes its size limit.
     TooBig,
-    /// A construct the backtracker does not run yet: lookaround, conditionals and `\K`
-    /// (T-2354); `#VALUE!` until then.
+    /// A construct the backtracker does not run: `\K` inside a lookaround, which PCRE2 10.38
+    /// and later reject by default; `#VALUE!`.
     Unsupported,
 }
 
@@ -136,6 +147,7 @@ fn build(ast: &Ast, size_limit: usize, memoized: bool) -> Result<Program, Compil
         loops: 0,
         names: &names,
         memoized,
+        looks: 0,
     };
     compiler.push(Inst::Save(0))?;
     compiler.node(ast)?;
@@ -197,6 +209,8 @@ struct Compiler<'a> {
     names: &'a [Option<Box<str>>],
     /// Lays loops out guard-free for the memoized mode.
     memoized: bool,
+    /// Lookarounds open at the node being compiled.
+    looks: usize,
 }
 
 impl Compiler<'_> {
@@ -283,18 +297,7 @@ impl Compiler<'_> {
                 }
             }
             Ast::Backref { reference, fold } => {
-                let group = match reference {
-                    Reference::Number(number) => {
-                        usize::try_from(*number).map_err(|_| CompileError::Unsupported)?
-                    }
-                    Reference::Name(name) => {
-                        self.names
-                            .iter()
-                            .position(|group| group.as_deref() == Some(&**name))
-                            .ok_or(CompileError::Unsupported)?
-                            + 1
-                    }
-                };
+                let group = self.group(reference)?;
                 self.push(Inst::Backref { group, fold: *fold })?;
             }
             Ast::Atomic(ast) => {
@@ -305,9 +308,93 @@ impl Compiler<'_> {
             Ast::Grapheme => {
                 self.push(Inst::Grapheme)?;
             }
-            Ast::LookAround { .. } | Ast::Conditional { .. } | Ast::KeepOut => {
-                return Err(CompileError::Unsupported)
+            Ast::LookAround { kind, ast } => self.look_around(*kind, ast)?,
+            Ast::Conditional {
+                condition: Condition::Group(reference),
+                yes,
+                no,
+            } => {
+                // cond(no); yes; jump end; no: no; end:
+                let group = self.group(reference)?;
+                let cond = self.push(Inst::CondGroup { group, no: 0 })?;
+                self.node(yes)?;
+                let jump = self.push(Inst::Jump(0))?;
+                let no_at = self.next();
+                if let Some(Inst::CondGroup { no, .. }) = self.insts.get_mut(cond) {
+                    *no = no_at;
+                }
+                self.node(no)?;
+                let end = self.next();
+                self.patch(jump, end, false);
             }
+            Ast::Conditional {
+                condition: Condition::Assert(assertion),
+                yes,
+                no,
+            } => {
+                // The assertion is tested once (PCRE2): atomic; split(a, b);
+                // a: assertion; atomic-end; yes; jump end; b: atomic-end; no; end:
+                self.push(Inst::AtomicStart)?;
+                let split = self.push(Inst::Split(0, 0))?;
+                self.patch(split, split + 1, false);
+                self.node(assertion)?;
+                self.push(Inst::AtomicEnd)?;
+                self.node(yes)?;
+                let jump = self.push(Inst::Jump(0))?;
+                let other = self.next();
+                self.patch(split, other, true);
+                self.push(Inst::AtomicEnd)?;
+                self.node(no)?;
+                let end = self.next();
+                self.patch(jump, end, false);
+            }
+            // `\K` moves the match's start: group 0's first slot, restored on backtracking.
+            Ast::KeepOut if self.looks == 0 => {
+                self.push(Inst::Save(0))?;
+            }
+            Ast::KeepOut => return Err(CompileError::Unsupported),
+        }
+        Ok(())
+    }
+
+    /// The index of the group `reference` names.
+    fn group(&self, reference: &Reference) -> Result<usize, CompileError> {
+        match reference {
+            Reference::Number(number) => {
+                usize::try_from(*number).map_err(|_| CompileError::Unsupported)
+            }
+            Reference::Name(name) => Ok(self
+                .names
+                .iter()
+                .position(|group| group.as_deref() == Some(&**name))
+                .ok_or(CompileError::Unsupported)?
+                + 1),
+        }
+    }
+
+    /// `look: body; look-end`, a lookbehind's body as alternatives each behind a step back by its
+    /// fixed length (the parser checked each has one: `ast::fixed_length`).
+    fn look_around(&mut self, kind: LookKind, ast: &Ast) -> Result<(), CompileError> {
+        let negative = matches!(kind, LookKind::NotAhead | LookKind::NotBehind);
+        let start = self.push(Inst::LookStart { negative, end: 0 })?;
+        self.looks += 1;
+        if matches!(kind, LookKind::Behind | LookKind::NotBehind) {
+            let alternatives = match ast {
+                Ast::Alternation(asts) => asts.as_slice(),
+                one => std::slice::from_ref(one),
+            };
+            self.alternatives(alternatives, |compiler, ast| {
+                let chars = fixed_length(ast).ok_or(CompileError::Unsupported)?;
+                compiler.push(Inst::StepBack(chars))?;
+                compiler.node(ast)
+            })?;
+        } else {
+            self.node(ast)?;
+        }
+        self.looks -= 1;
+        let end = self.push(Inst::LookEnd)?;
+        if let Some(Inst::LookStart { end: at, .. }) = self.insts.get_mut(start) {
+            *at = end;
         }
         Ok(())
     }
@@ -319,15 +406,24 @@ impl Compiler<'_> {
 
     /// Alternatives in priority order: each but the last behind a split, all jumping to the end.
     fn alternation(&mut self, asts: &[Ast]) -> Result<(), CompileError> {
+        self.alternatives(asts, Self::node)
+    }
+
+    /// [`Compiler::alternation`] with each alternative compiled by `each`.
+    fn alternatives(
+        &mut self,
+        asts: &[Ast],
+        mut each: impl FnMut(&mut Self, &Ast) -> Result<(), CompileError>,
+    ) -> Result<(), CompileError> {
         let mut jumps = Vec::new();
         let last = asts.len().saturating_sub(1);
         for (i, ast) in asts.iter().enumerate() {
             if i == last {
-                self.node(ast)?;
+                each(self, ast)?;
             } else {
                 let split = self.push(Inst::Split(0, 0))?;
                 self.patch(split, split + 1, false);
-                self.node(ast)?;
+                each(self, ast)?;
                 jumps.push(self.push(Inst::Jump(0))?);
                 let next = self.next();
                 self.patch(split, next, true);

@@ -152,7 +152,7 @@
   {"name":"HOUR","required":1,"params":["Lift"],"repeat":[],"max":1,"work":"Constant"},
   {"name":"HYPERLINK","required":1,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
   {"name":"HYPGEOM.DIST","required":5,"params":["Lift","Lift","Lift","Lift","Lift"],"repeat":[],"max":5,"work":"Weighted(4194304)"},
-  {"name":"HYPGEOMDIST","required":4,"params":["Lift","Lift","Lift","Lift"],"repeat":[],"max":4,"work":"Constant"},
+  {"name":"HYPGEOMDIST","required":4,"params":["Lift","Lift","Lift","Lift"],"repeat":[],"max":4,"work":"Weighted(8192)"},
   {"name":"IMABS","required":1,"params":["LiftArrays"],"repeat":[],"max":1,"work":"Constant"},
   {"name":"IMAGINARY","required":1,"params":["LiftArrays"],"repeat":[],"max":1,"work":"Constant"},
   {"name":"IMARGUMENT","required":1,"params":["LiftArrays"],"repeat":[],"max":1,"work":"Constant"},
