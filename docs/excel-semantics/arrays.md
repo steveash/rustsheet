@@ -1495,12 +1495,16 @@ Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes
 and a range, one call per element whose value is its top-left (`ROWS(EXPAND(A1:A2,{3;4}))` is 2,
 `COLUMNS(WRAPCOLS(A1:A3,2,{0;1}))` is 1). EXPAND's pad_with does not lift: an array there makes the whole call `#VALUE!`
 (`ROWS(EXPAND(A1:A2,3,1,{0;1}))` is `#VALUE!`, not 3 rows padded with errors). Implemented through the lifting table.
-UNVERIFIED part: a WRAPROWS whose vector is an error (`..-SIGN("ABC")`), wrap_count -1 and pad_with a 6x4 array is a
-6x4 grid of `#VALUE!`s in Excel (gen-m7/90de8755a2e565e6 A889:D894), not one error. Ours makes the vector's error (and a
-not-a-vector `#VALUE!`) every lifted element's result, before wrap_count's `#NUM!`. That cell cannot tell this from "a
-lifted error element in pad_with is that element's result", since its pad_with is all `#VALUE!` too. EXPAND with an error
-array beside a lifted argument (ours: one error), a 1x1 array or multi-cell range pad_with, and an array pad_with with rows
-past the grid are not probed either; T-2365 probes them.
+VERIFIED (excel-graph, 2026-10-23, probes/t2365-wrap-expand-tocol-error-lift; T-2365): a WRAPROWS/WRAPCOLS vector that
+is an error comes before wrap_count (`INDEX(WRAPROWS(1/0,-1,{0;1}),2,1)` is `#DIV/0!`, `ROWS(WRAPROWS(1/0,2,{0;1}))` is 2)
+and before a lifted error in pad_with; a bad wrap_count comes before an error pad_with element (`WRAPROWS(A1:A3,-1,{#N/A;0})`
+is `#NUM!`). A not-a-vector `#VALUE!` (2-D array) comes AFTER an error wrap_count: `WRAPCOLS({1,2;3,4},NA())` is `#N/A`,
+`WRAPROWS({1,2;3,4},1/0,0)` is `#DIV/0!`, and `WRAPCOLS(EXPAND({1},2,3),FILTER(<empty>))` is `#CALC!` (gen-m7/f7e94a817e5385ac
+A3517); a 2-D vector beside a clean lifted argument fills the shape (`ROWS(WRAPCOLS(A1:C3,2,{0;1}))` is 2). EXPAND with an
+error array beside a lifted argument is one error per element (`ROWS(EXPAND(1/0,{3;4}))` and `ROWS(EXPAND(NA(),3,{1;2}))`
+are 2), and a 1x1 array pad_with is `#VALUE!` (`INDEX(EXPAND(A1:A2,3,1,{0}),3,1)`). TOCOL of an error array beside a lifted
+argument also fills the shape (`ROWS(TOCOL(1/0,0,{0;1}))`, `ROWS(TOCOL(1/0,{0;1}))` are 2). The multi-cell range pad_with
+is T-2415's; an array pad_with with rows past the grid hung the Graph workbook (unprobed).
 A multi-cell *range* pad_with is one `#VALUE!` too, with nothing spilled, whatever the range's shape and whether any cell is padded:
 `EXPAND({1;2;3},5,100,Data!A7:D7)` (gen-m7/0624b684889e9228 Calc!A2004), `EXPAND(Data!C11:D12,2,2,Data!E1:E3)` (gen-m7/2c156ba98ef0220a.case.json A185),
 `EXPAND("a",4,4,Data!C7:C11)` (2d9b48c6363e7a16 A366), `EXPAND({1,2,3},5,4,Data!B5:C11)` (A2686), a 1x1 result that pads nothing,
