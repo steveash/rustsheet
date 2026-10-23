@@ -272,8 +272,8 @@ beats a shape mismatch wherever it sits: `SUMPRODUCT(X,R)` and `SUMPRODUCT(R,X)`
 `SUMPRODUCT(B1:C4,{1,#N/A,3})` and `SUMPRODUCT({1,#N/A,3},B1:C4)` are `#N/A` (gen-m7/f7e94a817e5385ac Calc!A50 agrees). A mismatch with no error
 anywhere is `#VALUE!` (`SUMPRODUCT(B1:C4,{1,2,3})`). A whole-argument error beats an error element: `SUMPRODUCT(R,X,NA())`
 and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Ours differs
-(the first mismatched argument stops element reading, and `SUMPRODUCT(R,X,NA())` gives `#DIV/0!`): T-2441.
-Tasks: T-0944, T-2150, T-2296, T-2441
+(the first mismatched argument stops element reading, and `SUMPRODUCT(R,X,NA())` gives `#DIV/0!`): T-2442.
+Tasks: T-0944, T-2150, T-2296, T-2442
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
 Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =

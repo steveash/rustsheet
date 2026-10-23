@@ -135,7 +135,7 @@ fn test_sumproduct_first_error_beats_later_shape_mismatch() {
 
 #[test]
 fn test_sumproduct_error_element_after_shape_mismatch() {
-    // An error element is not read once the shapes disagree; unprobed (T-2441), kept as before
+    // An error element is not read once the shapes disagree; unprobed (T-2442), kept as before
     // T-2150. An error element ahead of the mismatch wins.
     let mut model = new_empty_model();
     model._set("D1", "1");
