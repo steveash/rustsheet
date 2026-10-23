@@ -3,7 +3,7 @@ id: T-2514
 title: "CUMIPMT and CUMPRINC: the visibly-off cells T-2363 left (Excel's power on integer rates, type 1 principal and tiny-rate interest, periods near 1E15)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -49,11 +49,24 @@ Code: functions/financial/cumulative.rs. Fit scaffolding: rebuild the arguments 
 (T-2363 used a scratch suite whose cells evaluate each argument) and score forms in float64.
 
 ## Acceptance criteria
-- [ ] Visible parity: the cells above (but A91) are within half a unit of the 15th significant digit of
+- [x] Visible parity: the cells above (but A91) are within half a unit of the 15th significant digit of
       Excel's value, with no new known-failure lines in any baseline (`make eval-baseline`), or the ones that
       cannot be fitted are documented in financial.md with the forms tried.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit-exact fits once the cells are visibly right (T-1374).
 - POISSON.DIST (A91).
+
+## Outcome
+Excel's short principal is one geometric sum from the last period back,
+`-((pmt·((1-v^m)/r·(1+r)))·v^(nper-end+1))` with `pmt = (pv/(1-v^nper))·r`, over `1+r` for type 1 (float64 fit
+against every literal CUMPRINC cell). With it the five integer-rate type 0 principals are within an ulp, and every short type 1 principal probed but A372 is bit-exact. Excel's "power" error was the one `exp` of the smallest discount. The kernel
+(`Periods::geometric_principal`) takes it where the discount exponent `(nper-first+1)·L` is 8 or more
+(`GEOMETRIC_MIN_DISCOUNT`): at 1E-9 (gen-m9 A300) and at H25 (exponent 3.96) the old forms are bit-exact and this
+one is not. Type 0's interest shares the principal (`short_principal`). Where `1 + rate` is 1 that principal is the
+balance drop, which fixes A322. Type 1's interest at `nper·L < 2^-10` is the payments less the principal
+(A257, A329). Not fitted, documented in financial.md with the forms tried, and moved to T-2521: A62 (40-period type 1),
+A372 (wants `log1p(0.1)` one ulp low), A352, A379, the periods near 1E15 (not reached) and the gate-edge probes.
+Eval delta: 19 known failures fixed (gen-m9 14, among them A104 and A7 of the geometric form too, probes 4: fin-cumipmt-overflow-and-forms A16, A22-A24;
+ironcalc-calc 1: CUMPRINC_CUMIPMT.xlsx H26), no regressions; visibly-off in-scope cells 8281 → 8267.
