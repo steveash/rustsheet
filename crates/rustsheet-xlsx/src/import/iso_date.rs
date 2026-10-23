@@ -2,6 +2,7 @@
 
 use chrono::{NaiveDate, NaiveTime, Timelike};
 use rustsheet_engine::formatter::dates::real_date_to_serial;
+use rustsheet_engine::types::DateSystem;
 
 const SECONDS_PER_DAY: f64 = 86_400.0;
 
@@ -34,6 +35,16 @@ pub fn iso8601_to_serial(text: &str) -> Option<f64> {
         return Some(serial);
     };
     Some(serial + time_fraction(time_text)?)
+}
+
+/// The serial a `t="d"` cell or a pivot cache `<d>` item holding `text` stands for in a workbook
+/// of `date_system`: `iso8601_to_serial` moved to that system. In a 1904 workbook `2024-01-01` is
+/// 43830, a time of day alone keeps its day fraction, and a date before 1904-01-01 has no serial,
+/// which a cell reads as `#VALUE!` (fixtures/t-d-1904, t-d-1904-epoch, t-d-1904-time-only,
+/// t-d-1904-pre-epoch, t-d-1904-1900-01-01; docs/excel-semantics/xlsx-storage.md).
+#[must_use]
+pub fn iso8601_to_date_system_serial(text: &str, date_system: DateSystem) -> Option<f64> {
+    iso8601_to_serial(text).and_then(|s| date_system.serial_from_imported_1900_serial(s))
 }
 
 /// `hh:mm:ss[.fff]` as a fraction of a day.

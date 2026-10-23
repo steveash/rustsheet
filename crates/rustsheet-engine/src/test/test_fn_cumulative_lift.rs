@@ -174,8 +174,9 @@ fn a_subnormal_or_underflowed_leading_power_keeps_its_digits() {
     // A rate of 1E10 over a short range: `v^(a-1-nper)` is subnormal (A20-A22) or underflows
     // (A23, A24), where the closed form's product `v^(a-1-nper)·expm1(..)` loses digits
     // (-9.999888696826292E-71 for A20) and its difference of powers is up to 343 ulps off. Type
-    // 0's short principal is the per-period sum of `pmt·exp((k-1-nper)·L)`, within an ulp of
-    // Excel's values, probes/fin-cumipmt-overflow-and-forms A20-A24 (excel-graph; T-2192).
+    // 0's short principal is one geometric sum from the last period back (T-2514; the per-period
+    // sum of `pmt·exp((k-1-nper)·L)` before, T-2192), within an ulp of Excel's values,
+    // probes/fin-cumipmt-overflow-and-forms A20-A24 (excel-graph).
     let cells = [
         (
             "A1",
@@ -215,6 +216,56 @@ fn a_subnormal_or_underflowed_leading_power_keeps_its_digits() {
             "{formula}: ours {ours:e}, Excel {excel:e}"
         );
     }
+}
+
+#[test]
+fn a_short_principal_at_a_large_rate_is_one_geometric_sum() {
+    // Excel's principal over a short range is `pmt·((1-v^m)/r·(1+r))·v^(nper-end+1)` (over `1+r`
+    // for type 1): to the bit on these gen-m9 cells, where the per-period powers (type 0) were
+    // 11 to 15 ulps off and the closed form (type 1) 16 to 104 (excel-graph; T-2514). A rate of
+    // 1E-10 keeps type 1's interest as the payments less that principal (b72d952c5f52cb4d A257).
+    check(&[
+        // 9a1fa5366bc50918 A361, 311 ulps from the exact sum.
+        (
+            "A1",
+            "=CUMPRINC(10,261,484823,4,24,0)",
+            "-7.507871520276804E-242",
+        ),
+        // 1cd3096e3e87c965 A147.
+        (
+            "A2",
+            "=CUMPRINC(1,200,480533,5,18,0)",
+            "-7.838581871529754E-50",
+        ),
+        // 0a957119475760c5 A383 and a91bad4e84f49739 A193 (type 1).
+        (
+            "A3",
+            "=CUMPRINC(10,121,308352,2,16,1)",
+            "-1.263054652346343E-105",
+        ),
+        (
+            "A4",
+            "=CUMPRINC(1,331,199079,3,14,1)",
+            "-3.727183608915611E-91",
+        ),
+        (
+            "A5",
+            "=CUMIPMT(1E-10,296,197540,13,19,1)",
+            "-0.00013127066813467536",
+        ),
+        // Below `GEOMETRIC_MIN_DISCOUNT` the old forms keep these to the bit: the per-period
+        // sum (gen-m9 d912671baa1364aa A300) and type 1's closed form (CUMPRINC_CUMIPMT.xlsx H25).
+        (
+            "A6",
+            "=CUMPRINC(1E-9,192,2707,8,24,0)",
+            "-239.68227237224258",
+        ),
+        (
+            "A7",
+            "=CUMPRINC(0.1234,36,8000,3,10,1)",
+            "-212.62776661477534",
+        ),
+    ]);
 }
 
 #[test]
