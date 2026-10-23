@@ -55,6 +55,21 @@ Implemented in: `value_metadata_errors` in `crates/rustsheet-xlsx/src/import/ric
 the importer (cached `#CALC!`/`#SPILL!`/`#CONNECT!`/`#BLOCKED!`/`#FIELD!`; unmapped errorTypes stay `#VALUE!`) and the eval
 snapshot reader (expected values; T-0921).
 
+A `#VALUE!` from a GROUPBY function argument (`LAMBDA(w,REGEXEXTRACT(...,-1))`) is stored in every
+spilled value cell as a rich error of a third `_error` structure, `errorType, ptg, subType`, with
+values (2, 6, 0). Its real value is `#VALUE!` (ERROR.TYPE 3 through INDEX, probes/groupby-lifted-args
+A33 and B33). errorType 2 has no other evidence yet, so the harness leaves it undecoded.
+Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
+`GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
+2026-10-22, T-2397; recalc input_sha256 e07a9239… and 7cf52886…). That scratch recalc reported all four spilled value cells, so no case of a
+spilled rich error missing from the workbook was reproduced. The T-2254 triage's 28 "unreported" spill cells
+(gen-m7/0624b684889e9228 A612, 21b4eef18424ce94 A1504, 9bb61f6ae34c7e20 A136) were also in the workbook: the fill
+had dropped them as undecoded (re-filled 2026-10-22, T-2397). Those cases store errorType 2 (subType 0, 39, 59 or 133;
+some with `ptg` and `iftab` fields) and errorType 6 (subType 7) rich errors, none mapped yet (T-2417). `rustsheet-oracle fill` keeps such cells in
+the sidecar as `#UNDECODED!` instead of dropping them, because a spill member missing from the sidecar
+is scored as an expected blank (T-2397).
+Status: confirmed (storage); the errorType 2 mapping is UNVERIFIED.
+
 ## MOD lifts over array arguments
 Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The
 two arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions past a
