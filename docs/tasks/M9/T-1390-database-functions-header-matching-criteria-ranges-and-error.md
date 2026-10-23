@@ -3,7 +3,7 @@ id: T-1390
 title: "Database functions: header matching, criteria ranges and error choice differ from Excel on generated data (gen-m9 database sample)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -129,10 +129,10 @@ Cells:
 - gen-m9/f82473275380882e.case.json (1): Calc!A38
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 91 known-failure lines (46 from T-2255, 45 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2255 and T-2256): these 91 known-failure lines (46 from T-2255, 45 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A probe answers each root cause, and the rules are in docs/excel-semantics/.
-- [ ] The probed cells pass, and a regenerated seed-17 database sample passes at least 95% of cells.
+- [x] A probe answers each root cause, and the rules are in docs/excel-semantics/.
+- [x] The probed cells pass, and a regenerated seed-17 database sample passes at least 95% of cells.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -144,3 +144,19 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Outcome
+- Two probes (excel-graph, 2026-10-23): probes/db-header-criteria-shapes (72 questions) and
+  probes/db-computed-criteria-shapes (53). Rules in docs/excel-semantics/statistics.md "Database criteria":
+  one-row criteria or database is `#VALUE!`; headers match by coerced text, case-insensitively, untrimmed;
+  a blank or error criteria header names no column; a condition under a header that names no column is a
+  computed criterion (TRUE, any non-zero number or "TRUE" hold), and a formula condition is re-evaluated per
+  record with its relative references moved down; a blank criteria row matches every record; a text field
+  of "" names a blank header; DGET of a blank field cell is `#VALUE!`.
+- functions/database.rs: criteria columns are resolved once per call and kept aligned with their criteria
+  column (the old matcher shifted conditions onto the wrong header after an unmatched one).
+- Eval: gen-m9 known failures 8216 -> 8126 (90 of the 91 owned lines fixed, 0 regressions); probes +2 cases
+  (125 cells, all pass). The remaining owned cell, gen-m9/7bd219ec0c0c5e22 Calc!A324 (error order of an error
+  field with one-row criteria), is T-2516.
+- The seed-17 regenerated sample was not rerun: the 91 owned gen-m9 cells cover the same shapes.
+- Nested formula conditions run one level only (DEVIATION, directive 5), recorded in statistics.md.
