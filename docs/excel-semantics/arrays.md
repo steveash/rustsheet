@@ -1383,7 +1383,7 @@ A 1x1 array step is its one value, as in BYROW: `MAP(Data!B5:E6,..,LAMBDA(w,x,TR
 Calc!A2162; f7e94a817e5385ac A842), `SCAN(..,LAMBDA(w,acc,HSTACK(PROPER(acc))))` "True", "0.3", "0" (7ea6ef6ceabacafd A87) and
 `SCAN(..,LAMBDA(w,x,BYROW(w,_xleta.COUNT)))` 0, 1, 1, 1 (2d9b48c6363e7a16 A2954); so is a 1x1 array initial_value of SCAN:
 `SCAN(MINVERSE(Data!C7),..)` (23b5367c18059af2 A74) and `SCAN(LEN(WRAPROWS("Hello World",4,0.3)),Data!A7:D7,LAMBDA(z,y,z*y))`, 22, 2.2E+16,
-6.6E+15, 0 (7ea6ef6ceabacafd A3615) (excel-graph, 2026-10-22, T-2254 triage). Ours `#VALUE!` for each (T-2407).
+6.6E+15, 0 (7ea6ef6ceabacafd A3615) (excel-graph, 2026-10-22, T-2254 triage). Ours: implemented (T-2407): `lambda_result_value` reads a 1x1 array as its one value.
 Tasks: T-2309, T-2306, T-2407
 
 ## SCAN and REDUCE keep errors in the LAMBDA
