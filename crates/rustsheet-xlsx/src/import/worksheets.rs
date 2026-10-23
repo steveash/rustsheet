@@ -17,8 +17,8 @@ use rustsheet_engine::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        ArrayKind, Cell, Color, Comment, Dxf, FormulaValue, Link, MergedCell, SheetState,
-        SpillValue, Table, Theme, Worksheet, WorksheetView,
+        ArrayKind, Cell, Color, Comment, DateSystem, Dxf, FormulaValue, Link, MergedCell,
+        SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
 use thiserror::Error;
@@ -28,7 +28,7 @@ use crate::error::XlsxError;
 use super::{
     columns::load_columns,
     conditional_formatting::load_conditional_formatting,
-    iso_date::iso8601_to_serial,
+    iso_date::iso8601_to_date_system_serial,
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
@@ -317,6 +317,7 @@ pub(super) fn get_cell_from_excel(
     rich_text_inline: Option<String>,
     anchor_cell: Option<(i32, i32)>,
     array_kind: CellArrayKind,
+    date_system: DateSystem,
 ) -> Cell {
     // Possible cell types:
     // 18.18.11 ST_CellType (Cell Type)
@@ -393,9 +394,10 @@ pub(super) fn get_cell_from_excel(
                     Cell::SharedString { si, s: cell_style }
                 }
             }
-            "d" => match cell_value.and_then(iso8601_to_serial) {
+            "d" => match cell_value.and_then(|v| iso8601_to_date_system_serial(v, date_system)) {
                 Some(v) => Cell::NumberCell { v, s: cell_style },
-                // A date before 1900-01-01 is `#VALUE!` in Excel (fixtures/t-d-pre-1900); Excel
+                // A date before 1900-01-01 is `#VALUE!` in Excel (fixtures/t-d-pre-1900), and so is
+                // one before 1904-01-01 in a 1904 workbook (fixtures/t-d-1904-pre-epoch); Excel
                 // refuses a workbook with other unparsable text (docs/excel-semantics/xlsx-storage.md).
                 None if cell_value.is_some() => Cell::ErrorCell {
                     ei: Error::VALUE,
@@ -467,7 +469,7 @@ pub(super) fn get_cell_from_excel(
                     decode_xlsx_escapes(cell_value.unwrap_or("")).into(),
                 ))
             }
-            "d" => match cell_value.and_then(iso8601_to_serial) {
+            "d" => match cell_value.and_then(|v| iso8601_to_date_system_serial(v, date_system)) {
                 Some(v) => make_cell(FormulaValue::Number(v)),
                 None => make_cell(FormulaValue::Unevaluated),
             },
@@ -742,6 +744,8 @@ pub(super) struct SheetSettings {
     pub comments: Vec<Comment>,
     /// hyperlink relationships in the sheet rels: relationship id -> target
     pub hyperlink_rels: HashMap<String, String>,
+    /// The workbook's date system, which `t="d"` cells take their serials in.
+    pub date_system: DateSystem,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -780,6 +784,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         shared_strings,
         &limits,
         rich_errors,
+        settings.date_system,
     )?;
     let ws = &worksheet;
 
@@ -877,6 +882,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     shared_strings: &mut SharedStringTable,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
+    date_system: DateSystem,
 ) -> Result<(Vec<Worksheet>, u32), XlsxError> {
     // load comments, tables and hyperlink relationships
     let mut sheet_rels = HashMap::new();
@@ -916,6 +922,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 state: state.clone(),
                 comments: comments.to_vec(),
                 hyperlink_rels: hyperlink_rels.clone(),
+                date_system,
             };
             let (s, is_selected) = load_sheet(
                 archive,
