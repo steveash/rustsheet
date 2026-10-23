@@ -76,7 +76,6 @@ NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
 ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
 # Share of a `pool` parameter's values drawn from its edge pool (synthetic-generator.md §3.2).
 POOL_RATE = 0.35
-
 MASK_OPS: list[str] = [">", "<", "=", "<>"]
 # `--spill` (synthetic-generator.md §5.2 shape 3): the largest footprint reserved under a spilling probe, and the
 # share of spilling probes given a blocker cell in it (edge class `spill_blocked`), so `#SPILL!` stays covered.
