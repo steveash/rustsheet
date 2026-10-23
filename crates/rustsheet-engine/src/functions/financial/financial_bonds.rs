@@ -28,7 +28,7 @@ use crate::{
 
 /// `v^t`, the growth a bond price divides a cash flow `t` periods out by, with Excel's `^`: with
 /// libm `powf`, PRICE misses Excel by ulps on every integer-exponent cell of ironcalc-calc
-/// FINANCIAL/PRICE_YIELD.xlsx (PRICE_YIELD!H2 108.22689722310892) and visibly on
+/// `FINANCIAL/PRICE_YIELD.xlsx` (`PRICE_YIELD!H2` 108.22689722310892) and visibly on
 /// probes/fin-coupon-walk-bounds-c C10, where `^` gives Excel's bits (T-2207). Where `^` is an
 /// error (an overflow, or a negative base under a fractional exponent) the value is libm's
 /// infinity or NaN, so those prices come out as before.
