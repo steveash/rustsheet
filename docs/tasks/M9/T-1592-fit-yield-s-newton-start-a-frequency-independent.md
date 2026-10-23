@@ -28,7 +28,7 @@ solver-iteration-traces Y!C2:E2 (price 50, ten years). The approximate-yield for
 rate, 0, 0.1 and the current yield do not give these values.
 
 T-2207 (2026-10-23): the engine's PRICE now discounts with Excel's `^`, but the YIELD lab's
-`^`-priced copy of each candidate (`uv run rustsheet-fitlab yield`, family names ending ", ^-priced") reaches at
+`^`-priced copy of each candidate (`uv run rustsheet-fitlab yield-caret`) reaches at
 most 4/178 bit-exact, as the libm-priced ones do (Newton from 0.1 to 1e-12: 4/178, 10 within 4 ulp, libm; 4/178, 7,
 `^`); the union of all candidates goes from 12/178 to 15/178. The price kernel is not the missing piece. The
 engine's YIELD solver still prices with libm (financial.md "PRICE and ODDFPRICE discount with Excel's `^`").

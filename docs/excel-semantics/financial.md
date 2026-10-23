@@ -974,11 +974,12 @@ fin-remaining-later-argument-ranges I105-I119 and I165-I171 (odd rows), fin-yiel
 YIELD's solver does not follow: priced with `^`, YIELD fixes 4 more cells but moves 2 that pass with libm prices,
 ironcalc-calc PRICE_YIELD!I27 by 4 ulp (Excel 0.07000000000000012, `^`-priced 0.07000000000000017, visibly
 0.0700000000000002) and probes/yield-start-rate-term S!B45 by 2 ulp, so the engine's YIELD solver keeps libm prices.
-ODDFYIELD passes the same cells on either kernel and uses ODDFPRICE's `^`. In the fit lab (`uv run rustsheet-fitlab
-yield`, 178 basis-0 cells with more than one coupon left), `^`-priced copies of every candidate reach at most 4/178
+ODDFYIELD passes the same cells on either kernel and uses ODDFPRICE's `^`. In the fit lab (178 basis-0 cells with more than one coupon left),
+`uv run rustsheet-fitlab yield-caret` (kernels/yield_caret.py) scores `^`-priced copies of every `yield` candidate:
+they reach at most 4/178
 bit-exact, as the libm-priced ones do: Newton from 0.1 to a 1e-12 step 4/178 (10 within 4 ulp) libm against
 4/178 (7) `^`; Newton from a continuous annuity root 3/178 (8) against 2/178 (7); from PRICE's root at frequency 2
-and redemption 100 0/178 (5) against 1/178 (14). The union of all candidates rises from 12/178 to 15/178. So the
+and redemption 100 0/178 (5) against 1/178 (14). The union of both fits' candidates is 15/178, against 12/178 for `yield` alone. So the
 PRICE kernel is not what keeps the YIELD fits (T-1592, T-2007) from Excel's bits.
 Ours: `discount_growth` in functions/financial/financial_bonds.rs (`arithmetic::power`, libm where `^` is an error);
 DURATION and MDURATION use it too (T-1975). YIELD's `compute_yield_from_price` prices with `f64::powf`.

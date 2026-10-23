@@ -8,7 +8,7 @@ import math
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import registry, solvers
+from rustsheet_tools.fitlab.kernels import registry, solvers, yield_caret
 from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
 
 
@@ -206,5 +206,5 @@ def test_caret_priced_prices_with_excels_power() -> None:
     # (ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!H2); libm `pow` gives ...889. The power
     # goes back to libm once the `^`-priced call returns.
     bond = (0.06, 130.0, 1, 0.0, 360.0, 360.0, 10)
-    assert solvers.caret_priced(lambda: solvers.price(0.07, bond))() == 108.22689722310892
+    assert yield_caret.caret_priced(lambda: solvers.price(0.07, bond))() == 108.22689722310892
     assert solvers.price(0.07, bond) == 108.22689722310889

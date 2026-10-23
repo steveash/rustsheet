@@ -91,6 +91,7 @@ Eval: 56 known failures fixed, 0 regressions: ironcalc-calc 831 -> 804, probes 2
 YIELD's solver keeps libm prices: on `^` prices it fixes 4 more YIELD cells but regresses PRICE_YIELD!I27 by
 4 ulp to a visibly different value (and yield-start-rate-term S!B45 by 2 ulp), outside decision 0083's
 allowance. ODDFYIELD passes the same cells on either kernel and walks ODDFPRICE's `^` price. The YIELD lab
-gained `^`-priced copies of every candidate (`caret_priced` in fitlab/kernels/solvers.py): best still 4/178
+gained fit `yield-caret` (fitlab/kernels/yield_caret.py), `^`-priced copies of every `yield` candidate: best still 4/178
 bit-exact, union 12/178 -> 15/178; recorded in financial.md "PRICE and ODDFPRICE discount with Excel's `^`"
-and in T-1592's and T-2007's Context. Nothing is left for T-1374 from PRICE/ODDFPRICE.
+and in T-1592's and T-2007's Context. Nothing is left for T-1374 from PRICE/ODDFPRICE. To keep the file-size gate, `solve_yield` moved to
+financial_bonds/yield_solver.rs unchanged.
