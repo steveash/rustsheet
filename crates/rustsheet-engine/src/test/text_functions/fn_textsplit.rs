@@ -337,10 +337,11 @@ fn lift_guesses_settled() {
 }
 
 // T-2315: an error ignore_empty or match_mode beats TEXTSPLIT's own #VALUE! for a blank delimiter
-// or empty text and an error element of a delimiter list, an array pad_with is #VALUE! per element after an error text, and a split
-// whose every piece ignore_empty drops is #CALC! (gen-m7 90de8755a2e565e6 A1643,
-// ac67253061bba16a A184, f7e94a817e5385ac A2186, 07d27aa0add0247f A768; docs/excel-semantics/
-// text.md "TEXTSPLIT: argument errors first, an all-empty result").
+// or empty text and an error element of a delimiter list; an array pad_with is #VALUE! per
+// element after an error text; a split whose every piece ignore_empty drops is #CALC!
+// (gen-m7 90de8755a2e565e6 A1643, ac67253061bba16a A184, f7e94a817e5385ac A2186,
+// 07d27aa0add0247f A768; probes/textsplit-error-order; docs/excel-semantics/text.md
+// "TEXTSPLIT: argument errors first, an all-empty result").
 #[test]
 fn argument_errors_first_and_an_all_empty_result() {
     let mut model = new_empty_model();
@@ -362,7 +363,8 @@ fn argument_errors_first_and_an_all_empty_result() {
     assert_eq!(model._get_text("A2"), *"#N/A");
     assert_eq!(model._get_text("A3"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#CALC!");
-    // The array pad_with does not lift: the 2x1 text lifts, each element #VALUE!.
+    // The array pad_with does not lift: the 2x1 text lifts, each element #VALUE! (A6 is A5's
+    // spill, B5 stays empty).
     assert_eq!(model._get_text("A5"), *"#VALUE!");
     assert_eq!(model._get_text("A6"), *"#VALUE!");
     assert_eq!(model._get_text("B5"), *"");

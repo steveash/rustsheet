@@ -301,7 +301,7 @@ impl Model {
 }
 
 /// What every element of one TEXTSPLIT call shares: the argument count, the delimiter lists
-/// (read once), the first delimiter that is itself an error, and whether pad_with is an array
+/// (read once), the first delimiter that is itself an error, and whether `pad_with` is an array
 /// (`#VALUE!`, but per element; it does not lift).
 struct SplitCall {
     arg_count: usize,

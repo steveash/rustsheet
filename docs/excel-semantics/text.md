@@ -1007,7 +1007,8 @@ past the shorter one (column 3 of bc4a69b0b512bc04 A538:C548); and a delimiter t
 (`VLOOKUP(..)` `#N/A` against `"a"`, c36ff5f42a1a4d47 A1409).
 Unexplained (T-2414): `TEXTSPLIT(TRANSPOSE(<0>),Data!A3:C7)` with a "0" delimiter is the 1x2 "", "" (f7e94a817e5385ac A2882:B2882), as if
 TRANSPOSE of a single value were that value: a 1x1 array text would lift to one element (`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1).
-Unprobed: an array pad_with against an error element of a delimiter list (ours: the pad_with `#VALUE!`).
+Unprobed: an array pad_with against an error element of a delimiter list (ours: the pad_with `#VALUE!`), and a one-cell reference to an
+error cell as the delimiter, which ours reads as a list, so `TEXTSPLIT("abc",B1,,1/0)` with B1 `#N/A` is ours `#DIV/0!`.
 Ours: this order and the `#CALC!` since T-2315 (`fn_textsplit`, `textsplit_element` in functions/text/textsplit.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2315
