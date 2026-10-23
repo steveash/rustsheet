@@ -387,7 +387,7 @@ C	probes/forecast-ets-longer-series.case.json	42
 C	probes/format-doubled-quotes.case.json	11
 C	probes/formula-length-nonbmp-33pieces.case.json	1
 C	probes/formula-length-nonbmp-8192u.case.json	1
-C	probes/formulatext-erroring-references.case.json	29
+C	probes/formulatext-erroring-references.case.json	28
 C	probes/formulatext-written-groups-shapes.case.json	12
 C	probes/fraction-format-features.case.json	128
 C	probes/fraction-numerator-overflow.case.json	76
@@ -1721,7 +1721,6 @@ F	probes/formulatext-erroring-references.case.json	Calc!A15
 F	probes/formulatext-erroring-references.case.json	Calc!A3
 F	probes/formulatext-erroring-references.case.json	Calc!A4
 F	probes/formulatext-erroring-references.case.json	Calc!A5
-F	probes/formulatext-erroring-references.case.json	Calc!A6
 F	probes/formulatext-erroring-references.case.json	Calc!A7
 F	probes/formulatext-erroring-references.case.json	Calc!A8
 F	probes/formulatext-erroring-references.case.json	Calc!A9
