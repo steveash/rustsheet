@@ -51,4 +51,4 @@ Cells:
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The other T-2258 triage families: each has its own task (T-2258 Outcome).
