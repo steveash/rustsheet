@@ -959,6 +959,33 @@ overflowing EFFECT (`EFFECT(1E300,2)`) keeps the `#DIV/0!` an infinite rate gave
 Status: VERIFIED (excel-graph)
 Tasks: T-2034
 
+## PRICE and ODDFPRICE discount with Excel's `^`
+Rule: PRICE and ODDFPRICE discount each coupon and the redemption by `(1 + yld/frequency)^t` with Excel's `^`
+operator (numbers.md "Integer exponents: right-to-left square-and-multiply" and "Non-integer exponents:
+exp(y·ln x)"), not libm `pow`. `PRICE(DATE(2020,3,1),DATE(2030,3,1),0.06,0.07,130,1,0)` is 108.22689722310892 (libm
+gives ...889), `PRICE(1,43831,0.05,0.06,100,2)` is 83.34716628375435 (240 coupons; libm ...423) and
+`ODDFPRICE(39448,43831,39083,39630,0.08,0.09,100,2,0)` is 92.4077632093273 (libm 92.40776320932721).
+Integer exponents (settlement on a coupon date) and the fractional ones of a mid-period settlement and of
+ODDFPRICE's offsets all come out bit-exact with `^`: every PRICE and ODDFPRICE cell in eval/ now passes.
+Evidence: ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!H2-H6, H8-H11, H28, ODDFPRICE_ODDFYIELD!J5, J8, J9,
+J11, J23, J25, J27, J29-J33, J44, J45 and ODDFPRICE_SHORT!J9, J10, J13 (Excel-cached); probes/fin-coupon-walk-bounds-c
+C10, C11, G10, G11, J10, J11, fin-argument-modes H189, H251, fin-bond-negative-basis E2, E9, G2, G9,
+fin-remaining-later-argument-ranges I105-I119 and I165-I171 (odd rows), fin-yield-odd-lift A3, I7 (excel-graph).
+YIELD's solver does not follow: priced with `^`, YIELD fixes 4 more cells but moves 2 that pass with libm prices,
+ironcalc-calc PRICE_YIELD!I27 by 4 ulp (Excel 0.07000000000000012, `^`-priced 0.07000000000000017, visibly
+0.0700000000000002) and probes/yield-start-rate-term S!B45 by 2 ulp, so the engine's YIELD solver keeps libm prices.
+ODDFYIELD passes the same cells on either kernel and uses ODDFPRICE's `^`. In the fit lab (178 basis-0 cells with more than one coupon left),
+`uv run rustsheet-fitlab yield-caret` (kernels/yield_caret.py) scores `^`-priced copies of every `yield` candidate:
+they reach at most 4/178
+bit-exact, as the libm-priced ones do: Newton from 0.1 to a 1e-12 step 4/178 (10 within 4 ulp) libm against
+4/178 (7) `^`; Newton from a continuous annuity root 3/178 (8) against 2/178 (7); from PRICE's root at frequency 2
+and redemption 100 0/178 (5) against 1/178 (14). The union of both fits' candidates is 15/178, against 12/178 for `yield` alone. So the
+PRICE kernel is not what keeps the YIELD fits (T-1592, T-2007) from Excel's bits.
+Ours: `discount_growth` in functions/financial/financial_bonds.rs (`arithmetic::power`, libm where `^` is an error);
+DURATION and MDURATION use it too (T-1975). YIELD's `compute_yield_from_price` prices with `f64::powf`.
+Status: VERIFIED (excel-graph)
+Tasks: T-2207
+
 ## PMT when (1+rate)^nper overflows or underflows
 Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient
 divided through by P, whose limit is `-pv*rate` at the end of the period and `-pv*rate/(1+rate)` at the start; the fv

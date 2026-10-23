@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 // ============================================================
@@ -664,4 +665,30 @@ fn coupon_walk_reads_dates_in_excels_1900_calendar() {
     assert_eq!(model._get_text("A7"), "0");
     assert_eq!(model._get_text("A8"), "90");
     assert_eq!(model._get_text("A9"), "90");
+}
+
+#[test]
+fn bond_prices_discount_with_excels_power() {
+    // T-2207: each coupon and the redemption are discounted with Excel's `^`, not libm `pow`
+    // (ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!H2, probes/fin-coupon-walk-bounds-c C10,
+    // probes/fin-yield-odd-lift I7; libm gave 108.22689722310889, 83.34716628375423 and
+    // 92.40776320932721).
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=PRICE(DATE(2020,3,1),DATE(2030,3,1),0.06,0.07,130,1,0)",
+    );
+    model._set("A2", "=PRICE(1,43831,0.05,0.06,100,2)");
+    model._set(
+        "A3",
+        "=ODDFPRICE(39448,43831,39083,39630,0.08,0.09,100,2,0)",
+    );
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 108.226_897_223_108_92_f64.to_bits());
+    assert_eq!(bits("A2"), 83.347_166_283_754_35_f64.to_bits());
+    assert_eq!(bits("A3"), 92.407_763_209_327_3_f64.to_bits());
 }
