@@ -3,7 +3,7 @@ id: T-2069
 title: "Sheets keep their load position in Excel's calc order after a move (SPEC-0017)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
