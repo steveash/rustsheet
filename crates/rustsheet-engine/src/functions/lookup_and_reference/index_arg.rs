@@ -70,7 +70,7 @@ impl Model {
     /// (probes/lookup-argument-edges H66-H123, T-2234). The `lookup_value`'s error beats
     /// `range_lookup`'s, lifted or not (H30-H51). A scalar `range_lookup` that is not a boolean
     /// beside a lifted `lookup_value` is kept as its error, so each element's scalar call gives it,
-    /// a not-found element included (probes/vlookup-scalar-range-lookup-lifted G1-G12, T-2411).
+    /// before any search (probes/vlookup-scalar-range-lookup-lifted G1-G12, T-2411).
     pub(super) fn lookup_head(
         &mut self,
         args: &[Node],
@@ -95,7 +95,7 @@ impl Model {
             Ok(index) => index,
             // A failed value index in a lifted call is that error in every element whose
             // lookup_value is not an error itself, ahead of range_lookup and of the search, a
-            // not-found element included (probes/vlookup-scalar-range-lookup-lifted G13-G32, T-2411;
+            // not-found element included (probes/vlookup-scalar-range-lookup-lifted G13-G39, T-2411;
             // gen-m2/942bdade381b7537 Calc!A381, T-1468).
             Err(error) if lifts || LiftedArg::is_grid(&lookup_value) => {
                 let sorted_grid = is_sorted.ok().filter(LiftedArg::is_grid);

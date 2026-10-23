@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "VLOOKUP/HLOOKUP with a lifted lookup_value beside a scalar range_lookup that is not a boolean (text \"1\", \"x\") or an error (NA(), 1/0): result shape and element errors through ROWS/COLUMNS, INDEX and ERROR.TYPE, with a not-found element, an error element, a range lookup_value, and a text or zero index next to the bad range_lookup ; and a text or error index with or without a bad range_lookup, for the element that wins ; G25-G32: a failed index beside an array range_lookup, scalar or lifted lookup_value, and index 0 against a not-found element (T-2411). A1:B2 = 1, one; 2, two. D1:E2 = 1, 2; a, b.",
+  "description": "VLOOKUP/HLOOKUP with a lifted lookup_value beside a scalar range_lookup that is not a boolean (text \"1\", \"x\") or an error (NA(), 1/0): result shape and element errors through ROWS/COLUMNS, INDEX and ERROR.TYPE, with a not-found element, an error element, a range lookup_value, and a text or zero index next to the bad range_lookup ; and a text or error index with or without a bad range_lookup, for the element that wins ; G25-G32: a failed index beside an array range_lookup, scalar or lifted lookup_value, and index 0 against a not-found element ; G33-G39: exact match, so 99 is not found (T-2411). A1:B2 = 1, one; 2, two. D1:E2 = 1, 2; a, b.",
   "tags": [
     "M2",
     "probe",
@@ -49,7 +49,14 @@
         "G29": "=ERROR.TYPE(INDEX(VLOOKUP({1;2},A1:B2,2,1/0),2))",
         "G30": "=ERROR.TYPE(INDEX(VLOOKUP({1;99},A1:B2,\"a\",{TRUE;TRUE}),1))",
         "G31": "=ERROR.TYPE(INDEX(VLOOKUP({1;99},A1:B2,0),2))",
-        "G32": "=ERROR.TYPE(INDEX(VLOOKUP(99,A1:B2,\"a\",{TRUE;\"x\"}),2))"
+        "G32": "=ERROR.TYPE(INDEX(VLOOKUP(99,A1:B2,\"a\",{TRUE;#N/A}),2))",
+        "G33": "=ERROR.TYPE(INDEX(VLOOKUP({1;99},A1:B2,\"a\",FALSE),2))",
+        "G34": "=ERROR.TYPE(INDEX(VLOOKUP(99,A1:B2,\"a\",{FALSE;FALSE}),1))",
+        "G35": "=ERROR.TYPE(INDEX(VLOOKUP({1;99},A1:B2,1/0,{FALSE;FALSE}),2))",
+        "G36": "=ERROR.TYPE(INDEX(VLOOKUP({1;99},A1:B2,2,{FALSE;FALSE}),2))",
+        "G37": "=ERROR.TYPE(INDEX(VLOOKUP({1;99},A1:B2,0,FALSE),2))",
+        "G38": "=ERROR.TYPE(VLOOKUP(99,A1:B2,\"a\",FALSE))",
+        "G39": "=ERROR.TYPE(INDEX(VLOOKUP({1;99},A1:B2,1/0,FALSE),2))"
       }
     }
   ],

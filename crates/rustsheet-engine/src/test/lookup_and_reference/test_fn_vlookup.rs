@@ -415,9 +415,12 @@ fn bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element() {
     model._set("F1", "=VLOOKUP({1;99},A1:B2,1/0,\"1\")");
     model._set("G1", "=VLOOKUP({1;#N/A},A1:B2,\"a\")");
     model._set("H1", "=VLOOKUP(1,A1:B2,\"a\",NA())");
-    // With an array range_lookup too, a not-found element included (G25-G27, G30).
-    model._set("I1", "=VLOOKUP({1;99},A1:B2,\"a\",{TRUE;TRUE})");
-    model._set("J1", "=VLOOKUP(99,A1:B2,\"a\",{TRUE;TRUE})");
+    // With an array range_lookup too (G26), and where an exact match does not find the value
+    // (G33-G35, G39); with approximate match 99 is found in the last row.
+    model._set("I1", "=VLOOKUP({1;99},A1:B2,\"a\",FALSE)");
+    model._set("J1", "=VLOOKUP(99,A1:B2,\"a\",{FALSE;FALSE})");
+    model._set("L1", "=VLOOKUP({1;99},A1:B2,1/0,{FALSE;FALSE})");
+    model._set("M1", "=VLOOKUP({1;99},A1:B2,2,{FALSE;FALSE})");
     model._set("K1", "=VLOOKUP({1;2},A1:B2,\"a\",{#N/A;TRUE})");
     model.evaluate();
     assert_eq!(model._get_text("D1"), *"#VALUE!");
@@ -432,4 +435,7 @@ fn bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element() {
     for cell in ["I1", "I2", "J1", "J2", "K1", "K2"] {
         assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
     }
+    assert_eq!(model._get_text("L2"), *"#DIV/0!");
+    // The control: no failed argument, so not found is #N/A.
+    assert_eq!(model._get_text("M2"), *"#N/A");
 }

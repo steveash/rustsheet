@@ -3,7 +3,7 @@ id: T-2411
 title: "VLOOKUP: an invalid scalar range_lookup beside a lifted lookup_value is #VALUE! per element, not one #VALUE! (gen-m7)"
 milestone: M2
 lane: functions-lookup
-status: done
+status: blocked
 priority: P2
 size: S
 tier: opus
@@ -37,7 +37,7 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 8 known-failure lin
       known-failure lines in any baseline.
 - [x] Unit tests: `ROWS(VLOOKUP({1;2},A1:B2,2,"1"))` is 2 with `#VALUE!` elements; the scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
 - [x] lookup.md's entry has an "Ours:" line naming this task.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - An array index (its own rule in lookup.md).
@@ -52,7 +52,7 @@ states it.
 `lookup_head` (functions/lookup_and_reference/index_arg.rs) now keeps a scalar `range_lookup`'s coercion error when
 `lookup_value` lifts. Each element's scalar call then gives that error, and an error element of `lookup_value`
 still wins. A scalar call is still one `#VALUE!`. This covers VLOOKUP and HLOOKUP, which share the path.
-Element values were probed in probes/vlookup-scalar-range-lookup-lifted (32 cells, excel-graph, 2026-10-23). The probe
+Element values were probed in probes/vlookup-scalar-range-lookup-lifted (39 cells, excel-graph, 2026-10-23). The probe
 found that a failed value index (text or error) in any lifted call (a lifted lookup_value, an array range_lookup, or
 both) is the index error in every element. It beats a bad range_lookup and a not-found element, and only an error
 lookup_value element keeps its own error. Before this task, ours gave one error beside a scalar range_lookup, and `#N/A`
@@ -60,4 +60,16 @@ for a not-found element beside an array range_lookup (`LookupIndexArg::Failed`).
 table-error path (`argument_error_each`), and `Failed` is removed.
 Tests: `bad_scalar_range_lookup_beside_a_lifted_lookup_value_is_an_error_per_element` and
 `bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element`. lookup.md's entry is rewritten from the probe.
-Eval delta: gen-m7 known failures 706 -> 698 (the 8 owned lines), 0 regressions; probes +1 case (32 cells, all pass).
+Eval delta: gen-m7 known failures 706 -> 698 (the 8 owned lines), 0 regressions; probes +1 case (39 cells, all pass).
+
+## Blocked because
+Blocked because: review-round limit
+The Excel-fidelity reviewer asked for changes in three rounds. Each round asked for evidence, and each was answered
+by adding probe cells and changing the code or docs to match Excel:
+- Round 1: element values unprobed. Added the probe.
+- Round 2: an array range_lookup with a failed index was unprobed. Added G25-G32, which also showed the old `Failed`
+  path was wrong.
+- Round 3: the approximate-match `{1;99}` cells do not test not-found. Added exact-match G33-G39, reworded lookup.md
+  and the test comments, and recorded the `"TRUE"` range_lookup quirk.
+All 39 probe cells pass. Security, architecture and quality approved. Next step (work-loop 5c): run `make check` and
+the full reviewer panel on the current head.
