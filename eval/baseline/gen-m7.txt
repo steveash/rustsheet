@@ -630,15 +630,6 @@ F	gen-m7/f7e94a817e5385ac.case.json	Calc!A2080
 F	gen-m7/f7e94a817e5385ac.case.json	Calc!A209
 F	gen-m7/f7e94a817e5385ac.case.json	Calc!A210
 F	gen-m7/f7e94a817e5385ac.case.json	Calc!A211
-<<<<<<< HEAD
-F	gen-m7/f7e94a817e5385ac.case.json	Calc!A2186
-=======
-F	gen-m7/f7e94a817e5385ac.case.json	Calc!A2431
-F	gen-m7/f7e94a817e5385ac.case.json	Calc!A2432
-F	gen-m7/f7e94a817e5385ac.case.json	Calc!A2433
-F	gen-m7/f7e94a817e5385ac.case.json	Calc!A2434
-F	gen-m7/f7e94a817e5385ac.case.json	Calc!A2435
->>>>>>> origin/main
 F	gen-m7/f7e94a817e5385ac.case.json	Calc!A2942
 F	gen-m7/f7e94a817e5385ac.case.json	Calc!A331
 F	gen-m7/f7e94a817e5385ac.case.json	Calc!A332
