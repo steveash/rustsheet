@@ -772,7 +772,7 @@ impl Model {
             captured_cells: 0,
             lambda_calls_base: None,
             last_lambda_id: 0,
-            db_condition_depth: 0,
+            db_condition_running: false,
             defined_names_running: Default::default(),
             area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),

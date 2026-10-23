@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use crate::arithmetic::{extended_sum, flush_subnormal};
 use crate::constants::LAST_ROW;
-use crate::evaluation::stack_address;
 use crate::types::Cell;
 use crate::{
     arithmetic::extended_quotient,
@@ -25,9 +24,6 @@ struct DbQuery {
     field: Option<i32>,
     criteria: (CellReferenceIndex, CellReferenceIndex),
 }
-
-/// How many formula conditions [`Model::db_computed_condition`] may evaluate inside one another.
-const MAX_DB_CONDITION_DEPTH: usize = 16;
 
 /// Whether a computed criterion (a criteria cell under a header that names no database column)
 /// holds: TRUE, a non-zero number and the text "TRUE" (any case) hold; FALSE, 0, an error and any
@@ -281,6 +277,11 @@ impl Model {
                 result = Some(value);
             });
             match (matches, result) {
+                // A blank field cell in the one matching record is `#VALUE!`, as if nothing
+                // matched (probes/db-computed-criteria-shapes AB51).
+                (1, Some(CalcResult::EmptyCell)) => {
+                    CalcResult::new_error(Error::VALUE, cell, "Blank field cell".to_string())
+                }
                 (1, Some(value)) => value,
                 (0, _) | (_, None) => {
                     CalcResult::new_error(Error::VALUE, cell, "No matching record".to_string())
@@ -491,39 +492,42 @@ impl Model {
     ) -> bool {
         let (c_left, c_right) = query.criteria;
         (c_left.row + 1..=c_right.row).any(|criteria_row| {
-            columns.iter().zip(c_left.column..).all(|(db_column, column)| {
-                let condition = self.evaluate_cell(CellReferenceIndex {
-                    sheet: c_left.sheet,
-                    row: criteria_row,
-                    column,
-                });
-                if matches!(condition, CalcResult::EmptyCell | CalcResult::EmptyArg) {
-                    return true;
-                }
-                match db_column {
-                    Some(db_column) => {
-                        let value = self.evaluate_cell(CellReferenceIndex {
-                            sheet: query.left.sheet,
-                            row,
-                            column: *db_column,
-                        });
-                        self.criteria_cell_matches(&value, &condition)
+            columns
+                .iter()
+                .zip(c_left.column..)
+                .all(|(db_column, column)| {
+                    let condition = self.evaluate_cell(CellReferenceIndex {
+                        sheet: c_left.sheet,
+                        row: criteria_row,
+                        column,
+                    });
+                    if matches!(condition, CalcResult::EmptyCell | CalcResult::EmptyArg) {
+                        return true;
                     }
-                    None => {
-                        let condition = self.db_computed_condition(
-                            query,
-                            row,
-                            CellReferenceIndex {
-                                sheet: c_left.sheet,
-                                row: criteria_row,
-                                column,
-                            },
-                            condition,
-                        );
-                        computed_criterion_holds(&condition)
+                    match db_column {
+                        Some(db_column) => {
+                            let value = self.evaluate_cell(CellReferenceIndex {
+                                sheet: query.left.sheet,
+                                row,
+                                column: *db_column,
+                            });
+                            self.criteria_cell_matches(&value, &condition)
+                        }
+                        None => {
+                            let condition = self.db_computed_condition(
+                                query,
+                                row,
+                                CellReferenceIndex {
+                                    sheet: c_left.sheet,
+                                    row: criteria_row,
+                                    column,
+                                },
+                                condition,
+                            );
+                            computed_criterion_holds(&condition)
+                        }
                     }
-                }
-            })
+                })
         })
     }
 
@@ -568,22 +572,20 @@ impl Model {
         else {
             return value;
         };
-        // A condition whose formula runs a D-function over its own criteria would evaluate
-        // itself again without passing through a cell (directive 5), so nesting is bounded by
-        // depth and by the evaluation's stack budget.
-        let stack_used = self.evaluation.stack_base.abs_diff(stack_address());
-        if self.db_condition_depth >= MAX_DB_CONDITION_DEPTH
-            || (self.evaluation.depth > 0 && stack_used >= self.evaluation.max_stack)
-        {
+        // A formula condition that itself runs a D-function with formula conditions would
+        // re-evaluate them without passing through a cell, its work growing as the records to the
+        // power of the nesting (directive 5). Only one level runs: a nested one is `#ERROR!`, so
+        // its condition fails (statistics.md "Database criteria", DEVIATION).
+        if self.db_condition_running {
             return CalcResult::new_error(
                 Error::ERROR,
                 criteria_cell,
-                "Criteria formula nested too deeply".to_string(),
+                "Nested criteria formula".to_string(),
             );
         }
-        self.db_condition_depth += 1;
+        self.db_condition_running = true;
         let result = self.evaluate_node_in_context(&node, context);
-        self.db_condition_depth -= 1;
+        self.db_condition_running = false;
         self.dereference(result, context)
     }
 

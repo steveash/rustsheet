@@ -1246,23 +1246,25 @@ every record (`H1:H3` with `H3` blank sums all records), as does a blank header 
   when the database has a blank header. The same text rule resolves a text `field`, and there `""`
   names a blank database header (`DSUM(A1:E6,"",H1:H2)` sums the blank-headed column).
 - **Computed criteria.** A condition under a header that names no column (blank, an error, or text that
-  is no database header) is a computed criterion: it holds when its value is TRUE, a non-zero number or
-  the text `"TRUE"`, and fails for FALSE, 0, an error and any other text, `">2"` included. So an
+  is no database header) is a computed criterion: it holds when its value is TRUE, a non-zero number
+  (-1, 0.3 and 2 all hold) or the text `"TRUE"`, and fails for FALSE, 0, an error and any other text,
+  `">2"` and `"1"` included. So an
   unknown header over `">2"` matches nothing, and over TRUE matches everything. A formula condition is
   evaluated again for each record with its relative references moved down to that record: a blank
   header over `=B2>2` (cached FALSE, the first record's Qty is 1) sums the records whose Qty is above 2.
+- **DGET** of the one matching record's blank field cell is `#VALUE!`, as when nothing matches.
 - **Matched conditions** use the shared criteria grammar (criteria.md); `Qty` over TRUE matches only
   the boolean TRUE record, over `=NA()` nothing.
 Evidence: probes/db-header-criteria-shapes (72 questions; database A1:E6 with headers Name, Qty, 0.5,
-TRUE and a blank) and probes/db-computed-criteria-shapes (45 questions; headers Name, Qty, 1E-15,
+TRUE and a blank) and probes/db-computed-criteria-shapes (53 questions; headers Name, Qty, 1E-15,
 123456789.123 and a blank), excel-graph, 2026-10-23, T-1390.
 Ours: `db_criteria_columns`, `db_row_matches_criteria` and `db_computed_condition` in
 functions/database.rs; a formula condition is evaluated in the context of the criteria cell moved
-down by the record's offset. A formula condition that runs a D-function over its own criteria
-would never pass through a cell, so nested re-evaluations stop at 16 levels or the evaluation's
-stack budget and the condition is `#ERROR!` there, i.e. fails (directive 5; such a workbook is
-circular in Excel).
-Status: VERIFIED (excel-graph)
+down by the record's offset. A formula condition that itself runs a D-function with formula
+conditions would re-evaluate them without passing through a cell, its work growing as the records to
+the power of the nesting, so only one level runs: a nested formula condition is `#ERROR!` and fails
+(directive 5; DEVIATION, decision 0014: Excel evaluates the nested condition).
+Status: VERIFIED (excel-graph); the one-level re-evaluation is DEVIATION
 Tasks: T-1390
 
 ## GAMMA and GAMMALN sweep (T-1042)

@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1390: database-function criteria conditions under blank and unmatched headers (computed-criteria shapes: TRUE, FALSE, numbers, errors, formulas), boolean and error conditions under a matched header, and number headers in scientific and long form. Database A1:E7 (headers Name, Qty, 1E-15, 123456789.123 and a blank E1; B7 is TRUE); criteria blocks H:Z; questions in AB, described in AC.",
+  "description": "T-1390: database-function criteria conditions under blank and unmatched headers (computed-criteria shapes: TRUE, FALSE, numbers, errors, formulas), boolean and error conditions under a matched header, and number headers in scientific and long form. Database A1:E7 (headers Name, Qty, 1E-15, 123456789.123 and a blank E1; B7 is TRUE); criteria blocks H:Z; questions in AB, described in AC. AE:AJ add computed conditions -1, 0.3, 2, \"1\" and \"abc\", and DGET of a matching record's blank cell.",
   "tags": [
     "M9",
     "database",
@@ -161,7 +161,30 @@
         "AB44": "=DGET(A1:E7,2,Q1:Q2)",
         "AC44": "DGET Qty=TRUE",
         "AB45": "=DCOUNT(A1:E7,,H1:H2)",
-        "AC45": "DCOUNT no field blank-header TRUE"
+        "AC45": "DCOUNT no field blank-header TRUE",
+        "AE2": -1,
+        "AF2": 0.3,
+        "AG2": 2,
+        "AH2": "1",
+        "AI2": "abc",
+        "AJ1": "Name",
+        "AJ2": "f",
+        "AB46": "=DCOUNTA(A1:E7,1,AE1:AE2)",
+        "AC46": "blank header, condition -1 (records counted)",
+        "AB47": "=DCOUNTA(A1:E7,1,AF1:AF2)",
+        "AC47": "blank header, condition 0.3 (records counted)",
+        "AB48": "=DCOUNTA(A1:E7,1,AG1:AG2)",
+        "AC48": "blank header, condition 2 (records counted)",
+        "AB49": "=DCOUNTA(A1:E7,1,AH1:AH2)",
+        "AC49": "blank header, condition \"'1\" (records counted)",
+        "AB50": "=DCOUNTA(A1:E7,1,AI1:AI2)",
+        "AC50": "blank header, condition 'abc' (records counted)",
+        "AB51": "=DGET(A1:E7,3,AJ1:AJ2)",
+        "AC51": "DGET of the one matching record's blank field cell",
+        "AB52": "=ISBLANK(DGET(A1:E7,3,AJ1:AJ2))",
+        "AC52": "is that DGET blank",
+        "AB53": "=DGET(A1:E7,2,AJ1:AJ2)",
+        "AC53": "DGET of the matching record's TRUE"
       }
     }
   ]

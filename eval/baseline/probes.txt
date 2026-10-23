@@ -266,6 +266,8 @@ C	probes/datevalue-comma-spaces.case.json	32
 C	probes/datevalue-separator-spaces-paths.case.json	15
 C	probes/datevalue-separator-spaces.case.json	32
 C	probes/db-argument-modes.case.json	121
+C	probes/db-computed-criteria-shapes.case.json	59
+C	probes/db-header-criteria-shapes.case.json	73
 C	probes/dbl-max-text-a.case.json	1
 C	probes/dbl-max-text-b.case.json	1
 C	probes/decimal-unreadable.case.json	84
