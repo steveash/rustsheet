@@ -576,16 +576,17 @@ impl Model {
         // re-evaluate them without passing through a cell, its work growing as the records to the
         // power of the nesting (directive 5). Only one level runs: a nested one is `#ERROR!`, so
         // its condition fails (statistics.md "Database criteria", DEVIATION).
-        if self.db_condition_running {
+        if self.defined_names_running.db_condition_running {
             return CalcResult::new_error(
                 Error::ERROR,
                 criteria_cell,
                 "Nested criteria formula".to_string(),
             );
         }
-        self.db_condition_running = true;
+        self.defined_names_running.db_condition_running = true;
         let result = self.evaluate_node_in_context(&node, context);
-        self.db_condition_running = false;
+        // Only reached when no condition was running (the guard above returns otherwise).
+        self.defined_names_running.db_condition_running = false;
         self.dereference(result, context)
     }
 

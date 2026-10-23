@@ -175,9 +175,6 @@ pub struct Model {
     pub(crate) lambda_calls_base: Option<usize>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
-    /// Whether a D-function formula condition is being evaluated again for a record
-    /// (`Model::db_computed_condition`), which does not nest.
-    pub(crate) db_condition_running: bool,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
     pub(crate) defined_names_running: crate::defined_names::DefinedNameRun,
     /// What the formula being evaluated has left of its area budgets (`with_area_budget`).
