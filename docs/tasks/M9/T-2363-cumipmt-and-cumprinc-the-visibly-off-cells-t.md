@@ -88,6 +88,24 @@ Cells:
 - gen-m9/d912671baa1364aa.case.json (1): Calc!A169
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A330, A379
 
+## Notes (opus run, 2026-10-23; measurements, no engine change)
+- A5/A6 (rate 1E-15, periods 1E16..1E16+8, past 2^53): Excel is within an ulp of the correctly
+  rounded sums. A 60-digit `decimal` reference gives P = -4.0859936870455272E-19 (Excel ...525)
+  and I = -8.9995914191816788E-15 (Excel ...679). The closed form's `v^(b-nper) - v^(a-1-nper)`
+  cancels (-3.25E-19). A per-period `exp((k-1-nper)·L)` sum over the nine distinct integers
+  `start + i` gives ...532 (7E-34 off, just past half a unit). Its error is the rounding of
+  `n·L` with n near 1E16, plus `log1p`'s own rounding times n: both are relative 1E-15. So an
+  accurate kernel needs the exponent in double-double: `n = (start - nper) + (i - 1)` split
+  hi/lo; `L_lo = (r - expm1(L_hi))/exp(L_hi)`; `e = n·L_hi` with its `mul_add` residual plus
+  `n·L_lo`; then `exp(e_hi)·(1 + e_lo)`. With that P, `I = -pmt·m - P` is already visibly
+  right on A5 (...677 with the naive P).
+- Type 1's interest as the closed form (`payment·m - principal`, the IPMT sum disabled): G2
+  becomes 1 ulp, but CUMPRINC_CUMIPMT.xlsx G3, G9, G15 and probes/fin-cumipmt-overflow-and-forms
+  A8 regress from bit-exact, and gen-m9 A329 does not change. Not that way.
+- G2 confirmed: `-pmt1·10 - H2` with `pmt1 = pv·r/(-expm1(-nper·L))/(1+r)` and Excel's H2 gives
+  G2 to the bit, while `pv·(r/(1+r))/...`, `pow` and the classic form do not. So G2 needs H2 to
+  the bit, i.e. type 1's principal.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 35 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
