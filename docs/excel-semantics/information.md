@@ -272,7 +272,7 @@ the referenced sheet; the rule stands, and a single conflicting cell is re-fille
 CELL("contents", ref) as a VSTACK argument is `#VALUE!` (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `VSTACK(CELL("contents",Data!C11),1)`,
 `VSTACK(CELL(..),Data!B7:E12)` and `ROWS(VSTACK(CELL(..),Data!B7:E12))` are all one `#VALUE!` (nothing spilled), while `CELL(..)` alone and
 `CELL(..)&"|"` give 0 and "|", and `VSTACK(0,Data!B7:E12)` is the 7x4 stack (`#N/A` padded). So the CELL result, not the blank cell, makes the
-VSTACK an error (gen-m7/8c4570978f18f4c2 Calc!A782). HSTACK and other stacking or array-shaping callers of CELL are unprobed. Ours stacks 0 (T-2452).
+VSTACK an error (gen-m7/8c4570978f18f4c2 Calc!A782). HSTACK and other stacking or array-shaping callers of CELL are unprobed. Ours stacks 0 (T-2457).
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
 Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name

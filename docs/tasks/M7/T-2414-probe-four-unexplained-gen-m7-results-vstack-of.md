@@ -63,7 +63,7 @@ or is within half a unit of the 15th significant digit of Excel's value; the vis
 states it.
 
 ## Outcome
-Probe `probes/t2414-gen-m7-unexplained` (excel-graph, 2026-10-23) explains all four: CELL result as a VSTACK argument is `#VALUE!` (T-2452);
+Probe `probes/t2414-gen-m7-unexplained` (excel-graph, 2026-10-23) explains all four: CELL result as a VSTACK argument is `#VALUE!` (T-2457);
 COMBINA lifts over arrays, the A3357 `#VALUE!` is the CHOOSE collapsing the stack, which ours already does (T-2453); OFFSET with a one-cell DROP height is one 2x2 reference
 (mechanism unverified, probe-first) so the TEXTAFTER is 2x2 and spills (T-2454); TRANSPOSE of one value is that value (T-2455). Quirks recorded in information.md,
-numbers.md and text.md; the 31 known-failure lines are owned by T-2452..T-2455. The probe's cells it fails today are new probes.txt lines.
+numbers.md and text.md; the 31 known-failure lines are owned by T-2453..T-2457. The probe's cells it fails today are new probes.txt lines.
