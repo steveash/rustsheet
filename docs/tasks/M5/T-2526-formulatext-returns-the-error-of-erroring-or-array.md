@@ -3,7 +3,7 @@ id: T-2526
 title: "FORMULATEXT returns the error of erroring or array-shaped reference calls"
 milestone: M5
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
