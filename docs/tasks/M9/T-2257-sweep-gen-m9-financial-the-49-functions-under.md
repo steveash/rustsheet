@@ -3,7 +3,7 @@ id: T-2257
 title: "Sweep gen-m9 financial: the 49 functions under 400 Excel cells to at least 500"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
