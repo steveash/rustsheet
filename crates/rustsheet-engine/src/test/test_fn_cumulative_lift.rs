@@ -247,7 +247,11 @@ fn type_0_interest_is_the_payments_less_the_principal() {
     // 81bcdc0bec0c8e6b A274, abb7d565af89b849 A84; A6: past 2^53, probes/fin-cumipmt-overflow-and-
     // forms A5); inside the band the balance form stays (A7, probes A12).
     check(&[
-        ("A1", "=CUMIPMT(1E-9,55,157761,1,18,0)", "-0.002400835590378847"),
+        (
+            "A1",
+            "=CUMIPMT(1E-9,55,157761,1,18,0)",
+            "-0.002400835590378847",
+        ),
         ("A2", "=CUMIPMT(10,89,267388,3,13,0)", "-29412680"),
         ("A3", "=CUMIPMT(100,167,7,6,16,0)", "-7700"),
         (
