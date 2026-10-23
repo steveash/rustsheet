@@ -160,8 +160,13 @@ fn load_package<R: Read + Seek>(
             })
         })
         .collect();
-    let (pivot_caches, pivot_tables) =
-        load_pivots(archive, &rels, &workbook.pivot_caches, &pivot_sheets);
+    let (pivot_caches, pivot_tables) = load_pivots(
+        archive,
+        &rels,
+        &workbook.pivot_caches,
+        &pivot_sheets,
+        date_system,
+    );
     // reparse formulas in defined names, since they may refer to sheets and tables that have been loaded
     let worksheet_names = worksheets
         .iter()

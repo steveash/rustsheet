@@ -99,8 +99,8 @@ includes time-only dates if Excel writes them so), and a pivot whose data field 
 no `location` or not one `pivotField` per cache field, or whose parts are reached outside the package (absolute,
 escaping or External targets), twice, or through a duplicate `cacheId`: GETPIVOTDATA against it is `#REF!`.
 UNVERIFIED: what Excel answers for each of these (presumably it computes them, refreshing a cache saved without
-records); a known gap, not a deviation. Cache `<d>` dates are read as 1900-system serials even in a `date1904`
-workbook, which no answer depends on yet (GETPIVOTDATA matches text items only; T-2393 before dates are matched).
+records); a known gap, not a deviation. A cache `<d>` date is converted to the workbook's date system (T-2393); one before
+the 1904 epoch in a `date1904` workbook has no serial there and skips the cache like a pre-1900 date (UNVERIFIED: Excel's answer). The 1904 serial is the 1900 sum minus 1462, so a timestamp's fraction can differ by one ulp from the 1904 sum's; compute the date part in the target system before pivot date items are matched (T-2085). The 1904 values are derived from the 1462-day epoch offset, not from a 1904 pivot workbook.
 GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
 pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
 Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or
