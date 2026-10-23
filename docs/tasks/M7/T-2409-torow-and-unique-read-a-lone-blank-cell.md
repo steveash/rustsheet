@@ -3,7 +3,7 @@ id: T-2409
 title: "TOROW and UNIQUE read a lone blank cell as a blank, not 0 (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,3 +49,8 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+TOROW, TOCOL and UNIQUE read a lone blank cell reference as blank (`Model::eval_to_array_keep_blank`), not 0. Unit test
+`torow_lone_blank_cell_is_ignored`. Eval: 5 known-failure lines removed (2 gen-m7 owned, 3 gen-m9), none added. SORT and TAKE
+untouched (unprobed).

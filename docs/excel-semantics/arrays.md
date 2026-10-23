@@ -1607,8 +1607,8 @@ Rule: a one-cell reference to a blank cell stays blank in TOROW and UNIQUE: `TOR
 left; gen-m7/9bb61f6ae34c7e20 Calc!A3029), and `UNIQUE(Data!Z1,TRUE)&..` joins as "" (`TEXTAFTER(UNIQUE(Data!Z1,Data!A$2)&IF(TRUE,
 Data!E5,"a"),"")` is "1000000000000000": gen-m7/f7e94a817e5385ac A2942), as a blank range cell would.
 Evidence: gen-m7 (excel-graph, 2026-10-22, T-2254 triage).
-Ours: the lone reference is read as the value 0 (`TOROW(Z1,3)` 0, `UNIQUE(Z1)&"x"` "0x"), while `Z1:Z1` and `Z1:Z2` already stay blank;
-TOCOL, SORT and TAKE read a lone blank the same way and are unprobed (T-2409).
+Ours (T-2409): TOROW, TOCOL and UNIQUE keep a lone blank reference blank (`Model::eval_to_array_keep_blank`); before, it was read as 0;
+TOCOL shares TOROW's code and now keeps a lone blank by analogy (UNVERIFIED); SORT and TAKE still read it as 0 and are unprobed (T-2409).
 Status: VERIFIED (excel-graph)
 Tasks: T-2409
 

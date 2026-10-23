@@ -97,3 +97,17 @@ fn torow_single_row_unchanged() {
     assert_eq!(model._get_text("B2"), "20");
     assert_eq!(model._get_text("C2"), "30");
 }
+
+// T-2409: a lone blank cell stays blank (docs/excel-semantics/arrays.md "TOROW and UNIQUE of a lone blank cell").
+#[test]
+fn torow_lone_blank_cell_is_ignored() {
+    let mut model = new_empty_model();
+    model._set("B1", "=TOROW(Z1,3)");
+    model._set("B2", "=UNIQUE(Z1)&\"x\"");
+    model._set("A1", "5");
+    model._set("B3", "=TOROW(A1,3)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#CALC!");
+    assert_eq!(model._get_text("B2"), "x");
+    assert_eq!(model._get_text("B3"), "5");
+}
