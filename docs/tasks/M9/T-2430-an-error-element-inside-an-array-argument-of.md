@@ -1,6 +1,6 @@
 ---
 id: T-2430
-title: "An error element inside an array argument of LARGE, SMALL, QUARTILE, COVARIANCE and the paired functions is that error, not #VALUE! (gen-m9, 19 cells)"
+title: "An error element inside an array argument of LARGE, SMALL, QUARTILE, COVARIANCE and the paired functions is that error, not #VALUE! (gen-m9, 20 cells)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -132,7 +132,16 @@ Cells:
 - gen-m9/79d87fc527927626.case.json (2): Calc!A284, A340
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A201
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `OCT2HEX(XLOOKUP(..,PERCENTILE.EXC({1,#N/A,3},<FALSE cell>)),9)` is `#N/A` (PERCENTILE.EXC's error element; ours `#VALUE!`; gen-m9/e707d43a891ba9b5 A35).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/e707d43a891ba9b5 Calc!A35 `=OCT2HEX(XLOOKUP(COUNT(Data!C6:C10),Data!C7:C10,Data!B6:E9,Data!B4,0,PERCENTILE.EXC({1,#N/A,3},Data!B$6)),9)`: Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/e707d43a891ba9b5.case.json (1): Calc!A35
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): the 5 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 124 known-failure lines (19 from T-2255, 105 from T-2256) disappear from eval/baseline/gen-m9.txt

@@ -119,7 +119,22 @@ Cells:
 - gen-m9/c0681a8b150ce301.case.json (1): Calc!A112
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A170
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 4 more cells nested in engineering calls where an argument error decides: `FORECAST.ETS.STAT(..,MONTH(1E+15)<#NUM!>,2)` `#NUM!`, `FORECAST.ETS.CONFINT(<#VALUE!>,..)` `#VALUE!`, `FORECAST.ETS.CONFINT(25,..,ACOS("Hello World")<#VALUE!>,..)` `#VALUE!`, `FORECAST.ETS.STAT(..,<#VALUE!>,..)` `#VALUE!`.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 4 known-failure lines in eval/baseline/gen-m9.txt, 4 formulas, 4 visibly off.
+Examples:
+- gen-m9/4e180f54ff140abc Calc!A103 `=COMPLEX(FORECAST.ETS.STAT(Data!A4:D5,MONTH(Data!C4),2),SUMPRODUCT(Data!C9:E11))`: Excel #NUM!, ours #N/IMPL!
+- gen-m9/5bdef392d16a5efb Calc!A18 `=DEC2HEX(71256,FORECAST.ETS.CONFINT((Data!B8*Data!B1),Data!B6:E12,Data!C8:E11,MATCH(Data!$E12,Data!C3:C12,1),0,0,2))`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/bf979a17ab5aafcb Calc!A266 `=DELTA(FORECAST.ETS.CONFINT(25,{1;4;9;16;25;36;49;64;81;100;121;144;169;196;225;256;289;324;361;400;441;484;529;576},ACOS(Data!C11),IFNA("1.5",Data!A7)),0)`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/f8bc18a0e45a0e1a Calc!A123 `=BITXOR(36,FORECAST.ETS.STAT(Data!B2:C4,(Data!B$8*0.5),1,4,0,(Data!C12-0.5)))`: Excel #VALUE!, ours #N/IMPL!
+Cells:
+- gen-m9/4e180f54ff140abc.case.json (1): Calc!A103
+- gen-m9/5bdef392d16a5efb.case.json (1): Calc!A18
+- gen-m9/bf979a17ab5aafcb.case.json (1): Calc!A266
+- gen-m9/f8bc18a0e45a0e1a.case.json (1): Calc!A123
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): the 15 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 1215 known-failure lines (1196 from T-2255, 19 from T-2256) disappear from eval/baseline/gen-m9.txt

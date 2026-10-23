@@ -1,6 +1,6 @@
 ---
 id: T-2426
-title: "Paired statistical functions and F.TEST: a one-cell reference to an empty cell is #VALUE! (gen-m9, 109 cells)"
+title: "Paired statistical functions and F.TEST: a one-cell reference to an empty cell is #VALUE! (gen-m9, 113 cells)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -142,7 +142,22 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (1): Calc!A308
 - gen-m9/ede0323c389fc703.case.json (2): Calc!A227, A232
 
+gen-m9 engineering and database sweep (gap triage 2026-10-23, T-2258): 4 more nested cells: `DEC2HEX(70662,FLOOR(..,RSQ(Data!D$1,<empty C8>)))`, `BESSELJ(714,CHITEST(Data!B2:E6,<empty D7>))`, `BESSELJ(0,CORREL(-0.5,<empty B4>))` and `DSUM(Db!B1:D9,CHISQ.TEST(<empty A1>,Data!C9:E9)>=..,..)` are `#VALUE!` (ours `#DIV/0!` or `#N/A`).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 4 known-failure lines in eval/baseline/gen-m9.txt, 4 formulas, 4 visibly off.
+Examples:
+- gen-m9/01810fc89c5ec2c0 Calc!A151 `=DEC2HEX(70662,FLOOR(TANH(Data!$C5),RSQ(Data!D$1,Data!C$8)))`: Excel #VALUE!, ours #DIV/0!
+- gen-m9/5b6cc12a94f7bf14 Calc!A278 `=BESSELJ(714,CHITEST(Data!B2:E6,Data!D7))`: Excel #VALUE!, ours #N/A
+- gen-m9/62c886e21a1042af Calc!A132 `=BESSELJ(0,CORREL((0.5/Data!E$6),Data!B$4))`: Excel #VALUE!, ours #DIV/0!
+- gen-m9/f066968376660329 Calc!A371 `=DSUM(Db!B1:D9,(CHISQ.TEST(Data!A$1,Data!C9:E9)>=(Data!$A1+Data!C2)),Db!$G$1:$G$2)`: Excel #VALUE!, ours #N/A
+Cells:
+- gen-m9/01810fc89c5ec2c0.case.json (1): Calc!A151
+- gen-m9/5b6cc12a94f7bf14.case.json (1): Calc!A278
+- gen-m9/62c886e21a1042af.case.json (1): Calc!A132
+- gen-m9/f066968376660329.case.json (1): Calc!A371
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 190 known-failure lines (109 from T-2255, 81 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `COVAR(A1:A3,Z1)`, `CORREL(Z1:Z1,{1,2,3})`, `F.TEST(Z1,A1:A3)` and `INTERCEPT(Z1,1/0)` with Z1 empty

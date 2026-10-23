@@ -140,7 +140,24 @@ Cells:
 - gen-m9/b73c6cc96e093f03.case.json (3): Calc!A108, A256, A293
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A75
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 5 more cells nest LOGEST: `HEX2DEC(TEXT(LOGEST(-2.5),"?/?"))` and `BITXOR(LOGEST(-0.5),736)` `#NUM!` (non-positive known_y), `HEX2OCT("1F",LOGEST(<text>,Data!C8:E11,..)+..)` and `IMPOWER("2i",LOGEST(Data!A1:B1,Data!B$8))` `#REF!`, `BESSELI(LOGEST(42.5,-0.4),0)` 1.2660658480342601 (LOGEST of one point is 1); ours `#VALUE!`.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 formulas, 5 visibly off.
+Examples:
+- gen-m9/2b0324e2de2e7b74 Calc!A267 `=BITXOR(LOGEST((Data!C4-Data!B7)),736)`: Excel #NUM!, ours #VALUE!
+- gen-m9/40fc68fccfaf9b76 Calc!A347 `=HEX2OCT("1F",(LOGEST(Data!D4,Data!C8:E11,Data!E2,FALSE)+Data!C8))`: Excel #REF!, ours #VALUE!
+- gen-m9/4fffa5addab1f8af Calc!A280 `=HEX2DEC(TEXT(LOGEST(Data!$C9),"?/?"))`: Excel #NUM!, ours #VALUE!
+- gen-m9/a1b4181c04804efc Calc!A263 `=IMPOWER("2i",LOGEST(Data!A1:B1,Data!B$8))`: Excel #REF!, ours #VALUE!
+- gen-m9/e85daedce5c2675e Calc!A315 `=BESSELI(LOGEST(SUM(42,0.5,Data!D12),(Data!C9+Data!E8)),FLOOR(DB(1E+300,100,19,5),COUNTIFS(Data!B6:D10,"=a")))`: Excel 1.2660658480342601, ours #VALUE!
+Cells:
+- gen-m9/2b0324e2de2e7b74.case.json (1): Calc!A267
+- gen-m9/40fc68fccfaf9b76.case.json (1): Calc!A347
+- gen-m9/4fffa5addab1f8af.case.json (1): Calc!A280
+- gen-m9/a1b4181c04804efc.case.json (1): Calc!A263
+- gen-m9/e85daedce5c2675e.case.json (1): Calc!A315
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): the 8 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 176 known-failure lines (167 from T-2255, 9 from T-2256) disappear from eval/baseline/gen-m9.txt
