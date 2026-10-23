@@ -4351,7 +4351,7 @@ functions:
     prior: 0.5
     returns: text
     params:
-      - { name: delimiter, mode: value, type: text }
+      - { name: delimiter, mode: array, type: text }
       - { name: ignore_empty, mode: value, type: bool }
       - { name: text, mode: array, type: any, repeat: true, min: 1, max: 252 }
   - name: TEXTSPLIT
