@@ -3,7 +3,7 @@ id: T-2393
 title: "Pivot cache dates follow the workbook's date system (1904 workbooks)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
