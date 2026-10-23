@@ -53,3 +53,21 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Resume notes (2026-10-23, opus run; session budget reached during research)
+No engine change yet. Findings (docs/excel-semantics/statistics.md "F quantile at a huge df goes through Excel's
+BETA.INV (T-1538)"; probes-numeric t1538-f-inv-huge-df and t1538-beta-dist-at-excel-inv, excel-graph):
+- Our F quantile at df 1E10 is the true quantile (`F.INV.RT(0.5,1E10,5)` ours 1.1490395821369899, true
+  1.14903958213698623). Excel's is not: its F.INV is Excel's BETA.INV mapped to F, and that BETA.INV stops short of
+  its own (accurate) CDF's crossing by up to about 1E-16 in x. So the owned cells need Excel's BETA.INV search
+  reproduced at a huge shape, not a better forward kernel. The F.DIST cdf cells (A7, A8, A11-A14) are a forward
+  question: Excel's F.DIST there is the true value, so check `beta_reg_complement`/`beta_reg_upper` accuracy at
+  b = 5E9 (ours 0.9247647476587724 vs true 0.9247647537543169 for `F.DIST(2,5,1E10,TRUE)`).
+- F.INV(p,d1,d2) = 1/F.INV.RT(p,d2,d1) within 2 ulps everywhere probed, so one search per (p, smaller-df-first)
+  pair serves both.
+- Search clue: for x above about 1E-9, Excel's BETA.INV lands on a 2^-52/2^-53 grid and plain bisection of [0, 1]
+  reproduces it (shape 2.5); below, it is off-grid and neither bisection, interpolation in the last bracket nor
+  Newton from the mean reproduces it. Next: probe BETA.INV on a sweep of p at b = 5E9 (and 5E5, 5E7) to find
+  where the grid behaviour stops, and test bisection in log x or a bracket that starts at the mean.
+- Out of reach for a quick fix: the `F.INV(1E-200,1E10,6)` cells (Excel 1.30E-7, whose true CDF is about
+  1E-9994283) are Excel's search failing outright.
