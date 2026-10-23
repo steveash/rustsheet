@@ -144,9 +144,19 @@ is a scalar call, so an error or text range_lookup element is that element's res
 (`VLOOKUP({2;3},A1:B4,2,{#DIV/0!;TRUE})` is `#DIV/0!`, "three"; `{"a";"b"}` is `#VALUE!` twice).
 A scalar text range_lookup beside a lifted lookup_value lifts the same way, one array of that error rather than one `#VALUE!`:
 `WRAPROWS(Data!E6:E11,1,VLOOKUP(OFFSET(Data!D6:E8,2,0),Data!B5:C5,3,"1"))` spills a 3x2 grid of E6's 3.14159, so the VLOOKUP there is a 3x2
-array that WRAPROWS's pad_with lifts over (gen-m7/f7e94a817e5385ac Calc!A2430, excel-graph, 2026-10-22; its elements are not visible
-there, `#VALUE!` each by the scalar rule, UNVERIFIED). Ours: matches since T-2411: `VLOOKUP({1;2},A1:B2,2,"1")` is
-`#VALUE!` twice (`ROWS` 2), an error lookup_value element is still itself, and the scalar call stays one `#VALUE!`.
+array that WRAPROWS's pad_with lifts over (gen-m7/f7e94a817e5385ac Calc!A2430, excel-graph, 2026-10-22). Every element is
+the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scalar-range-lookup-lifted, excel-graph,
+2026-10-23, T-2411):
+- `VLOOKUP({1;2},A1:B2,2,"1")` is `#VALUE!` twice, a not-found element included (`{1;99}`).
+- An error range_lookup is that error per element: `NA()` gives `#N/A` twice, `1/0` two rows.
+- An error lookup_value element keeps its own error (`{1;#DIV/0!}`).
+- A range lookup_value lifts the same way, and so does HLOOKUP (`HLOOKUP({1,2},D1:E2,2,"x")`, 2 columns of `#VALUE!`).
+- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's,
+  ahead of a bad range_lookup and of the search: `VLOOKUP({1;99},A1:B2,"a")` is `#VALUE!` twice,
+  `VLOOKUP({1;2},A1:B2,"a",NA())` is `#VALUE!` per element, and `VLOOKUP({1;99},A1:B2,1/0,"1")` is `#DIV/0!` per element.
+- An index of 0 is checked after the match, as in a scalar call (`#VALUE!` per found element).
+- The scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
+Ours: matches since T-2411.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
 search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is
 validated in reading order and the first bad one is the error of the whole call, with no spill

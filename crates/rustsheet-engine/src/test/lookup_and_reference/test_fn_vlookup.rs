@@ -373,9 +373,10 @@ fn index_floors_but_snaps_up_near_an_integer() {
 
 #[test]
 fn bad_scalar_range_lookup_beside_a_lifted_lookup_value_is_an_error_per_element() {
-    // gen-m7/f7e94a817e5385ac Calc!A2430 (excel-graph, T-2411): a scalar range_lookup that is not
-    // a boolean ("1") beside a lifted lookup_value is that error in every element, as each
-    // element's scalar call is, not one `#VALUE!`; an error lookup_value element still wins.
+    // gen-m7/f7e94a817e5385ac Calc!A2430 and probes/vlookup-scalar-range-lookup-lifted
+    // (excel-graph, T-2411): a scalar range_lookup that is not a boolean ("1") or is an error
+    // beside a lifted lookup_value is that error in every element, as each element's scalar call
+    // is, not one `#VALUE!`; an error lookup_value element still wins.
     let mut model = new_empty_model();
     for (cell, value) in [("A1", "1"), ("A2", "2"), ("B1", "one"), ("B2", "two")] {
         model._set(cell, value);
@@ -398,4 +399,30 @@ fn bad_scalar_range_lookup_beside_a_lifted_lookup_value_is_an_error_per_element(
     assert_eq!(model._get_text("I2"), *"#DIV/0!");
     // A scalar call is still one `#VALUE!`.
     assert_eq!(model._get_text("J1"), *"#VALUE!");
+}
+
+#[test]
+fn bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element() {
+    // probes/vlookup-scalar-range-lookup-lifted G13-G24 (excel-graph, T-2411): a text or error
+    // index lifts with the lookup_value, its error beating a bad range_lookup and a not-found
+    // element, as in each element's scalar call.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("B1", "one"), ("B2", "two")] {
+        model._set(cell, value);
+    }
+    model._set("D1", "=VLOOKUP({1;99},A1:B2,\"a\")");
+    model._set("E1", "=VLOOKUP({1;2},A1:B2,\"a\",NA())");
+    model._set("F1", "=VLOOKUP({1;99},A1:B2,1/0,\"1\")");
+    model._set("G1", "=VLOOKUP({1;#N/A},A1:B2,\"a\")");
+    model._set("H1", "=VLOOKUP(1,A1:B2,\"a\",NA())");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), *"#VALUE!");
+    assert_eq!(model._get_text("D2"), *"#VALUE!");
+    assert_eq!(model._get_text("E1"), *"#VALUE!");
+    assert_eq!(model._get_text("E2"), *"#VALUE!");
+    assert_eq!(model._get_text("F1"), *"#DIV/0!");
+    assert_eq!(model._get_text("F2"), *"#DIV/0!");
+    assert_eq!(model._get_text("G1"), *"#VALUE!");
+    assert_eq!(model._get_text("G2"), *"#N/A");
+    assert_eq!(model._get_text("H1"), *"#VALUE!");
 }

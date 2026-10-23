@@ -72,8 +72,8 @@ impl Model {
     /// and a lifted `lookup_value` gives each element the table error
     /// (probes/lookup-argument-edges H66-H123, T-2234). The `lookup_value`'s error beats
     /// `range_lookup`'s, lifted or not (H30-H51). A scalar `range_lookup` that is not a boolean
-    /// beside a lifted `lookup_value` is kept as its error, so each element's scalar call gives it
-    /// (gen-m7/f7e94a817e5385ac Calc!A2430, T-2411).
+    /// beside a lifted `lookup_value` is kept as its error, so each element's scalar call gives it,
+    /// a not-found element included (probes/vlookup-scalar-range-lookup-lifted G1-G12, T-2411).
     pub(super) fn lookup_head(
         &mut self,
         args: &[Node],
@@ -92,10 +92,17 @@ impl Model {
         }
         if let Some(error) = table_error {
             let sorted_grid = is_sorted.ok().filter(LiftedArg::is_grid);
-            return Err(self.table_error_each(lookup_value, sorted_grid, error, cell));
+            return Err(self.argument_error_each(lookup_value, sorted_grid, error, cell));
         }
         let index = match index {
             Ok(index) => index,
+            // A failed value index beside a lifted lookup_value is that error in every element
+            // that is not an error itself, ahead of range_lookup and of the search
+            // (probes/vlookup-scalar-range-lookup-lifted G13-G24, T-2411).
+            Err(error) if LiftedArg::is_grid(&lookup_value) => {
+                let sorted_grid = is_sorted.ok().filter(LiftedArg::is_grid);
+                return Err(self.argument_error_each(lookup_value, sorted_grid, error, cell));
+            }
             Err(error) if lifts => LookupIndexArg::Failed(error),
             Err(error) => return Err(error),
         };
@@ -107,12 +114,13 @@ impl Model {
         Ok((lookup_value, index, is_sorted))
     }
 
-    /// A failed `table_array` under `lookup_value`: the table's error, or, lifted over an array
-    /// or multi-cell range `lookup_value` or `range_lookup` (`sorted_grid`), that error in each
-    /// element whose `lookup_value` is not an error itself: `VLOOKUP({2;9},1/0,2)` and
+    /// A failed `table_array` or value index under `lookup_value`: the error, or, lifted over an
+    /// array or multi-cell range `lookup_value` or `range_lookup` (`sorted_grid`), that error in
+    /// each element whose `lookup_value` is not an error itself: `VLOOKUP({2;9},1/0,2)` and
     /// `VLOOKUP(2,1/0,2,{TRUE;FALSE})` spill `#DIV/0!` twice, `VLOOKUP(NA(),1/0,2,{TRUE;FALSE})`
-    /// `#N/A` twice (probes/lookup-argument-edges H120-H124, H336-H352).
-    fn table_error_each(
+    /// `#N/A` twice (probes/lookup-argument-edges H120-H124, H336-H352), and
+    /// `VLOOKUP({1;99},A1:B2,"a")` is `#VALUE!` twice (probes/vlookup-scalar-range-lookup-lifted).
+    fn argument_error_each(
         &mut self,
         lookup_value: CalcResult,
         sorted_grid: Option<CalcResult>,
