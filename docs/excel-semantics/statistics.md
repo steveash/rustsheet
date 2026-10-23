@@ -1477,20 +1477,21 @@ Tasks: T-0969
 ## The a = 1 closed form cancels only from x = 0.1 up (T-0974)
 Rule: I_x(1,b) is the cancelling 1 - exp(b*ln(1-x)) from x = 0.1 up (BETA.DIST(0.1,1,0.0001,TRUE) above) and keeps
 its digits below, -expm1(b*ln1p(-x)) as far as the cells tell, the same cut as T.DIST.RT at df 2 (below).
-- `BETA.DIST(1E-10,1,0.5,TRUE)` is 9.999999999999999E-11 and `BETA.DIST(1E-10,1,2.5,TRUE)` and `(..,1,10,..)` are within
-  an ulp of 1E-10 (probes-numeric/t1745-beta-inv-roundtrip G35, G48, G55), where 1 - exp misses by 8E-8 relative;
-  `BETA.DIST(0.001,1,2.5,TRUE)` (G49) is 11 units of the 15th digit from 1 - exp.
+- At BETA.INV's x (column D of probes-numeric/t1745-beta-inv-roundtrip), `BETA.DIST(1.9999999998999996E-10,1,0.5,TRUE)`
+  is 9.999999999999999E-11 (G35), and `BETA.DIST(4.000000000119999E-11,1,2.5,TRUE)` and
+  `BETA.DIST(1.0000000000449999E-11,1,10,TRUE)` are within an ulp of 1E-10 (G48, G55), where 1 - exp misses by 8E-8
+  relative; `BETA.DIST(0.0004001200640416299,1,2.5,TRUE)` (G49, about 0.001) is 112 ulp from 1 - exp.
 - The quantiles follow: `BETA.INV(1E-10,1,0.5)` = 1.9999999999E-10 (m9-beta-inv A36) and `F.INV.RT(1-1E-10,2,7)` =
   1.0000000828046573E-10 (gen-m9/4e55500bb8ad3cd8 A77), which a search on 1 - exp misses by 1E-6 relative.
-- The F family follows through F.DIST's a = df1/2 = 1 incomplete beta: with the cut in `beta_reg_complement`, gen-m9
-  05d44f6dd6cfc567 A356, 146b46e74f2dac3b A109, 27601819397dd56e A56 and 2801c1c11c21e134 A130 (F quantiles at df1 = 2)
-  pass, which failed with 1 - exp below x = 0.1.
+- The F family follows through the a = 1 incomplete beta of F.DIST.RT's tail at df2 = 2 (a = df2/2): with the cut in
+  `beta_reg_complement`, gen-m9 05d44f6dd6cfc567 A356, 146b46e74f2dac3b A109 (F.TEST), 27601819397dd56e A56
+  (`FINV(1E-10,6,2)`) and 2801c1c11c21e134 A130 (`FDIST(1E+10,4,2)`) pass, which failed with 1 - exp below x = 0.1.
 - At df 2, half the uncancelled tail is Excel's `T.DIST.RT(4.245,2)` = 0.025631992844658943 (t0969-t-df2-cut
   B450) bit for bit, 1 ulp from the closed form.
 Ours: `incomplete_beta.rs` `beta_reg_complement` (`A1_CLOSED_FORM_MIN_X`), so F.DIST, F.DIST.RT and the F quantiles take it;
 BETA.DIST's cdf is still statrs' (T-2119).
-Status: VERIFIED (excel-graph) at 1E-10 and 0.001 below the cut and at 0.1; the cut itself between 0.001 and 0.1 is
-UNVERIFIED (assumed T.DIST.RT's).
+Status: VERIFIED (excel-graph) at x from 1E-11 to 4E-4 below the cut and at 0.1; the cut itself between 4E-4 and 0.1
+is UNVERIFIED (assumed T.DIST.RT's).
 Tasks: T-0974, T-2119
 
 ## F.INV is a crossing of F.DIST's tails (T-0974)

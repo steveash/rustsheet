@@ -3,7 +3,7 @@ id: T-0974
 title: "BETA.INV/F.INV/F.INV.RT: inverse incomplete beta parity (28 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -185,6 +185,9 @@ Excel-fidelity reviewer REQUEST_CHANGES (security, architecture, quality APPROVE
    (watch probes/stat-quantile-lift E11, E12 for newly visibly-off cells).
 4. Minor: the a = 1 cut's direct evidence is the F-family cells now passing (gen-m9 05d44f6dd6cfc567 A356, 146b46e74f2dac3b
    A109, 27601819397dd56e A56, 2801c1c11c21e134 A130); cite them in statistics.md.
+
+Review round 2 (2026-10-23): Excel-fidelity APPROVE; its two MINOR wording findings (the t1745 G cells' x arguments, the
+df2 = 2 F cells) fixed in statistics.md and `incomplete_beta.rs`.
 
 ## Outcome
 F.INV, F.INV.RT and FINV are the crossing of F.DIST's own tails (statistics.md "F.INV is a crossing of F.DIST's tails"):

@@ -76,8 +76,8 @@ pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
     // From x, not from the given y: `F.DIST.RT(0.7,4,2.4)` = I_w(1,2) is Excel's
     // 0.6597222222222223 (`F_DIST.xlsx` H3) with ln(1 - w), 2 ulp off with the exact complement.
     // Below x = 0.1 Excel keeps the digits that subtraction cancels, -expm1(b ln1p(-x)):
-    // `BETA.DIST(1E-10,1,0.5,TRUE)` is 9.999999999999999E-11 (probes-numeric/t1745-beta-inv-roundtrip
-    // G35), which 1 - exp misses by 8E-8 relative; the cut is T.DIST.RT's at df 2 (T-0969), and
+    // `BETA.DIST(1.9999999998999996E-10,1,0.5,TRUE)` is 9.999999999999999E-11
+    // (probes-numeric/t1745-beta-inv-roundtrip G35), which 1 - exp misses by 8E-8 relative; the cut is T.DIST.RT's at df 2 (T-0969), and
     // `BETA.DIST(0.1,1,0.0001,TRUE)` still cancels (docs/excel-semantics/statistics.md "Incomplete
     // beta: Excel's closed forms").
     if a == 1.0 {
