@@ -17,9 +17,10 @@ before a bad sigma) and a lone single-cell reference holding text, a boolean or 
 
 ## Context
 Gap triage of the T-2256 gen-m9 sweep. statistics.md "Z.TEST: an error array first; one data value is #DIV/0!; a lone
-non-number cell is #N/A (T-2256)" records the rules from these cells. The `Data!X` form and the `Data!X:X` form differ: a
-one-cell range with no number is `#DIV/0!` like any range with no number, a plain single-cell reference holding a
-non-number `#N/A`. Seven cells nest Z.TEST in another call. Overflowing data (`{1E+200,1E+200,-1E+200}`) is T-2432's.
+non-number cell is #N/A (T-2256)" records the rules from these cells. Data with no number is `#N/A`, whether a range or a
+plain single-cell reference holding a non-number (several range cells already pass). Two owned `#DIV/0!` cells over
+ranges with no number (7980ffb6095a340d A294, a63d1c7d6f96c56d A324) come from their x or sigma argument, not the
+range: trace that sub-expression first (UNVERIFIED; T-2475 probes it). Seven cells nest Z.TEST in another call. Overflowing data (`{1E+200,1E+200,-1E+200}`) is T-2432's.
 Code: `fn_z_test` in crates/rustsheet-engine/src/functions/statistical/z_test.rs (x and sigma lift; the data is read once).
 
 Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 35 known-failure lines in eval/baseline/gen-m9.txt, 35 visibly off.

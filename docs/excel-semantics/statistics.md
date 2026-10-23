@@ -2472,7 +2472,7 @@ Rule: PROB checks its data in this order, each step before the next: x_range giv
 then prob_range given as an error value (`PROB(2,SINH(1E+8),DAY(..)<#VALUE!>)` is `#NUM!`, d8f44d556674c2fd A40;
 `PROB(<#CALC!>,Data!A4:A7,<#VALUE!>)` `#CALC!`, eccd03df42e40006 A16); a one-cell reference to an empty cell is `#VALUE!`
 (as in the paired functions, T-2426); then a single value on both sides (two scalars or single cells) is `#DIV/0!`, before
-an error lower_limit (`PROB((ERF(1E-10)+(-0.5)),EFFECT(10,11),PV(..)<#NUM!>)` is `#DIV/0!`, 6e18556c2e8d1f9e A394); then
+an error lower_limit (`PROB((ERF(1E-10)+(-0.5)),EFFECT(10,11),PV(..)<#NUM!>)` is `#DIV/0!`, 6e18550e9fc9c1b9 A394); then
 x_range and prob_range of different counts are `#N/A`, before the sum check (`PROB(Data!C2:D11,Data!C5:E8,..)`, 20 against
 12 cells, is `#N/A`, 873f30d2bf76f8db A300; `PROB((7/-(-2.5)),Data!A8:D8,1.005)`, 1 against 4, 5be29fa316931f05 A215).
 These are direct error values; an error inside a range still loses to a lower/upper error (T-1813, section "RANK,
@@ -2503,10 +2503,14 @@ Rule: Z.TEST and ZTEST return the array's error when the array argument is an er
 `#CALC!`, 607e85cfee83a689 A73; `ZTEST(COS(1E+16)<#NUM!>,Data!E2)` `#NUM!`, 334f3dc9ca937f10 A282). An array of one number
 (a scalar, `{5}` or a one-cell reference holding a number) is `#DIV/0!`, before a sigma of 0 or below (`ZTEST({5},Data!$B6,
 -123456789.123)`, 38e4fc309fe199ea A87; `ZTEST(0.5,-1,-2.5)`, 9735c5ab72fa5ecf A158; `ZTEST(Data!C3,Data!C2,-16586.85..)`,
-0bbab6206b5c9a07 A231), and so is a range with no number (`ZTEST(Data!B5:C5,0.04)` over two empty cells, 7980ffb6095a340d
-A294; `ZTEST(Data!B10:B10,..)` with B10 = "ü", a63d1c7d6f96c56d A324). A single-cell reference written without a colon that
-holds text, a boolean or nothing is `#N/A` instead (`ZTEST(Data!B11,Data!C2)` with "x~*" and "1", c2684066d8df263e A190;
-`ZTEST(Data!A$4,-1,1E-10)` with FALSE, 873f30d2bf76f8db A333; `ZTEST(Data!$A4,..)` with A4 empty, 201d67f1d59436ed A99).
+0bbab6206b5c9a07 A231). An array argument with no number is `#N/A`, as "Test functions" says of an empty range, whether
+it is a range (`ZTEST(Data!C7:C7,..)` with "abc", 5919660b7bb4d195 A364; `ZTEST(Data!C2:C2,..)` with FALSE, 9e2225ead8a6a07b
+A75; `ZTEST(Data!Z1:Z3,TIMEVALUE("6:00"))`, 928d08e3e1eecb5f A159) or a single-cell reference without a colon holding text,
+a boolean or nothing (`ZTEST(Data!B11,Data!C2)` with "x~*" and "1", c2684066d8df263e A190; `ZTEST(Data!A$4,-1,1E-10)` with
+FALSE, 873f30d2bf76f8db A333; `ZTEST(Data!$A4,..)` with A4 empty, 201d67f1d59436ed A99). Two `#DIV/0!` cells over ranges with
+no number, `ZTEST(Data!B5:C5,0.04)` (B5 empty, C5 FALSE; its x is `SUMXMY2(UNIQUE(Data!D4),-0.2)`, 7980ffb6095a340d A294)
+and `ZTEST(Data!B10:B10,..)` (its sigma is `PV(-0.9999999999,167,-43,1E+300)`, a63d1c7d6f96c56d A324), are explained by
+their x or sigma argument, not by the range: UNVERIFIED, T-2475 traces them.
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2470.
 Ours: x and sigma first, `#NUM!` for sigma before the one-value `#DIV/0!`, `#VALUE!` or `#DIV/0!` for the lone cells; T-2470.
 Status: VERIFIED (excel-graph)
@@ -2564,11 +2568,13 @@ Status: VERIFIED (excel-graph), the cuts UNVERIFIED
 ## Student t quantile at p = 0 with df below 2 is #DIV/0! (T-2256)
 Rule: TINV, T.INV.2T and T.INV with p = 0 and a df that truncates to 1 are `#DIV/0!`, not `#NUM!`: `TINV(0,1)`
 (ede0323c389fc703 A338, 139684e68fb2fc3b A128), `T.INV.2T(Data!C1,1)` with C1 = 0 (607e85cfee83a689 A160), `T.INV(0,1)`
-(928d08e3e1eecb5f A271), `T.INV(0,1.999)` (0072265d385d8ab2 A341), `T.INV.2T(FALSE,1.005)` (9bc247733a1ca9fa A36). The
-"Student t sweep" section's p = 0 `#NUM!` was probed at a larger df; whether df 2 and above stay `#NUM!` is UNVERIFIED here.
+(928d08e3e1eecb5f A271), `T.INV(0,1.999)` (0072265d385d8ab2 A341), `T.INV.2T(FALSE,1.005)` (9bc247733a1ca9fa A36),
+`TINV(0,COUNT(..))` (7f7ca726c3f68554 A280). From df 2 up, p = 0 is `#NUM!`: `T.INV(0,2)` (3fb9cecf2c23169f A120), `TINV(0,3)`
+(31f09e6c48ca245c A316), `T.INV.2T(0,3)` (9e2225ead8a6a07b A102), `T.INV(0,4)` (91e167cd8d7eb652 A324); the cut is between
+1.999 and 2.
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2096.
 Ours: `#NUM!`; T-2096.
-Status: VERIFIED (excel-graph) for df in [1, 2)
+Status: VERIFIED (excel-graph)
 
 ## A lone text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN (T-2256)
 Rule: a single-cell reference (no colon) holding text, a boolean or (for TRIMMEAN) nothing is data with no number:
