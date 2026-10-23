@@ -259,6 +259,8 @@ VERIFIED for a `t="d"` cell in a 1904 workbook (`<workbookPr date1904="1">`, T-2
 `#VALUE!` cell (`ISNUMBER` FALSE), as a date before 1900-01-01 is in a 1900 workbook. `TEXT(A1,"yyyy-mm-dd
 hh:mm:ss")` shows the written date (`2024-01-01 00:00:00`, `1904-01-01 12:00:00` for the time-only cell).
 Evidence: fixtures/t-d-1904, t-d-1904-epoch, t-d-1904-time-only, t-d-1904-pre-epoch, t-d-1904-1900-01-01.
+UNVERIFIED: `1900-02-29` (the 1900 system's phantom day) in a 1904 workbook; it is before the epoch, so
+the importer reads it as `#VALUE!` too.
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
 `iso8601_to_serial` and `iso8601_to_date_system_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs
 (shared with pivot cache `<d>` items and the eval snapshot reader)
