@@ -444,6 +444,9 @@ impl Model {
                     [CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
                     cell,
                 );
+                if makes_calc_error(&cell_result) {
+                    return Self::by_slices_calc_error(cell);
+                }
                 row.push(lambda_result_to_array_node(cell_result));
             }
             result.push(row);
