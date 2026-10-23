@@ -1515,11 +1515,18 @@ Rule: TOROW's and TOCOL's scan_by_column lift over an array, an error initial ar
 lifts over the 1x9 array: 7d67c559ce7536fa A619), and an error scan_by_column beats an invalid ignore (`TOCOL(Data!B1:B5,Data!B8,NA())`
 is `#N/A`: 8044dce50616cfe9 A1508). SORT lifts an array by_col (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`:
 7307132bb8820f17 A1076), and TEXTJOIN an array ignore_empty (`LAMBDA(y,RIGHT(TEXTJOIN(y,y,y),2))(UNIQUE(Data!C3:D4))` is `#SPILL!`:
-ac67253061bba16a A1137).
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
+ac67253061bba16a A1137). TEXTJOIN's ignore_empty lifts over an array and a range, one join per element read as a scalar
+ignore_empty is (probes/textjoin-ignore-empty-lift, excel-graph, 2026-10-23, T-2318): `TEXTJOIN(",",{TRUE;FALSE},"a","","b")`
+spills "a,b" and "a,,b", `{TRUE,FALSE;FALSE,TRUE}` is 2x2, a range (`C1:C2`, `C1:D1`, `IF(TRUE,C1:C2)`) lifts like an array, a
+number element is TRUE unless 0, a "TRUE" text element is TRUE, an "x" text element `#VALUE!` and an error element that error, each
+in its own place; the delimiter and the texts are read whole by every element, so a delimiter error (`TEXTJOIN(#N/A,{TRUE;FALSE},..)`),
+a text error and a join over 32,767 characters (`#CALC!`) fill every element, and an array delimiter still cycles
+(`TEXTJOIN({"-","+"},{TRUE;FALSE},"a","","b")` is "a-b", "a-+b"). The gen-m7 cell: `LAMBDA(y,TEXTJOIN(y,y,y))({TRUE;FALSE})` is
+"TRUETRUEFALSE" twice, so RIGHT of it spills and A1137's spill is blocked.
+Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
-(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; each element is its call's top-left, UNVERIFIED against SORTBY's and UNIQUE's first-element-only rule, and a range by_col lifts too, UNVERIFIED: T-2366 probes both); TEXTJOIN: one cell (T-2318).
+(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; each element is its call's top-left, UNVERIFIED against SORTBY's and UNIQUE's first-element-only rule, and a range by_col lifts too, UNVERIFIED: T-2366 probes both); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2313, T-2318, T-2319
 

@@ -280,38 +280,79 @@ impl Model {
 
     /// TEXTJOIN(delimiter, `ignore_empty`, text1, [text2], ...): joins text with a delimiter; over 32767
     /// characters is #CALC! (probes/text-result-limit C9).
+    ///
+    /// `ignore_empty` lifts over an array and a range, one join per element, while the delimiter
+    /// and the texts are read once and handed to every element whole (lifting table, T-2318):
+    /// `TEXTJOIN(",",{TRUE;FALSE},"a","","b")` spills "a,b" and "a,,b", and a delimiter error or a
+    /// join over the limit is every element's result (probes/textjoin-ignore-empty-lift;
+    /// docs/excel-semantics/arrays.md "TOROW, TOCOL, SORT and TEXTJOIN lifted arguments").
     pub(crate) fn fn_textjoin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if arg_count < 3 {
+        if !Function::Textjoin
+            .arg_kinds()
+            .is_some_and(|kinds| kinds.accepts(args.len()))
+        {
             return CalcResult::new_args_number_error(cell);
         }
-        let delimiters = match self.textjoin_delimiters(&args[0], cell) {
-            Ok(delimiters) => delimiters,
-            Err(error) => return error,
+        let delimiters = self.textjoin_delimiters(&args[0], cell);
+        // A delimiter error is the result, so the texts are not read then. A direct single-cell
+        // reference is flagged: its error past the limit is dropped (`textjoin_walk`).
+        let texts: Vec<(CalcResult, bool)> = if delimiters.is_ok() {
+            args[2..]
+                .iter()
+                .map(|arg| {
+                    let value = self
+                        .evaluate_reference_arg(arg, cell)
+                        .into_single_area(cell);
+                    (value, matches!(arg.ungrouped(), Node::ReferenceKind { .. }))
+                })
+                .collect()
+        } else {
+            Vec::new()
         };
-        let ignore_empty = match self.get_boolean(&args[1], cell) {
-            Ok(b) => b,
-            Err(error) => return error,
-        };
+        // An element reads only as TRUE or FALSE, so at most two joins are built, whatever the
+        // number of elements; the driver's text budget bounds their copies.
+        let mut joins: [Option<CalcResult>; 2] = [None, None];
+        self.lift_call(Function::Textjoin, args, cell, &mut |model, values| {
+            let delimiters = match &delimiters {
+                Ok(delimiters) => delimiters,
+                Err(error) => return error.clone(),
+            };
+            let ignore_empty = match values.get(1).map(|value| Self::cast_bool_ref(value, cell)) {
+                Some(Ok(ignore_empty)) => ignore_empty,
+                Some(Err(error)) => return error,
+                None => false,
+            };
+            joins[usize::from(ignore_empty)]
+                .get_or_insert_with(|| model.textjoin_walk(delimiters, ignore_empty, &texts, cell))
+                .clone()
+        })
+    }
+
+    /// One TEXTJOIN join of `texts` (each an argument's value, and whether it is a direct
+    /// single-cell reference) with `delimiters` cycling between the joined values.
+    fn textjoin_walk(
+        &mut self,
+        delimiters: &[String],
+        ignore_empty: bool,
+        texts: &[(CalcResult, bool)],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         let mut values: Vec<String> = Vec::new();
-        let mut size = JoinSize::new(&delimiters);
+        let mut size = JoinSize::new(delimiters);
         // Once over the limit the values are dropped, but arguments are still evaluated so an error
         // argument after the limit wins; a cell error read past it is dropped and evaluation goes on,
         // so the result is #CALC! unless a later error argument wins
         // (probes/text-result-limit C18-C20, -errors C2-C4).
         let mut over_limit = false;
-        for arg in &args[2..] {
+        for (text, direct_reference) in texts {
             over_limit = over_limit || size.exceeds(&values);
             if over_limit {
                 values.clear();
             }
             // A union stays `#VALUE!` here: TEXTJOIN is not probed with one (SPEC-0004).
-            match self
-                .evaluate_reference_arg(arg, cell)
-                .into_single_area(cell)
-            {
-                CalcResult::Number(value) => values.push(number_to_text(value)),
-                CalcResult::Range { left, right } => {
+            match text {
+                CalcResult::Number(value) => values.push(number_to_text(*value)),
+                &CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         // A 3-D reference is walked sheet by sheet; an error cell past the limit
                         // is dropped like a range cell's (probes/text-result-limit-errors-refs
@@ -385,16 +426,16 @@ impl Model {
                 // A direct single-cell reference is read like a range cell (probes/text-result-limit-errors
                 // C3).
                 CalcResult::Error { .. }
-                    if matches!(arg.ungrouped(), Node::ReferenceKind { .. })
+                    if *direct_reference
                         && (over_limit || size.exceeds_with_separator(&values)) =>
                 {
                     over_limit = true;
                 }
-                error @ CalcResult::Error { .. } => return error,
+                error @ CalcResult::Error { .. } => return error.clone(),
                 CalcResult::String(value) if ignore_empty && value.is_empty() => {}
-                CalcResult::String(value) => values.push(value.into_lossy_string()),
+                CalcResult::String(value) => values.push(value.clone().into_lossy_string()),
                 CalcResult::Boolean(value) => {
-                    if value {
+                    if *value {
                         values.push("TRUE".to_string());
                     } else {
                         values.push("FALSE".to_string());

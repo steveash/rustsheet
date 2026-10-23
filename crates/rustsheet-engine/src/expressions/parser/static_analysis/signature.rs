@@ -309,17 +309,6 @@ pub(super) fn args_signature_textafter(arg_count: usize) -> Vec<Signature> {
     }
 }
 
-pub(super) fn args_signature_textjoin(arg_count: usize) -> Vec<Signature> {
-    if arg_count >= 3 {
-        let mut result = vec![Signature::Vector; arg_count];
-        result[0] = Signature::Scalar;
-        result[1] = Signature::Scalar;
-        result
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
-
 pub(super) fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
     if arg_count < 2 {
         return vec![Signature::Error; arg_count];
