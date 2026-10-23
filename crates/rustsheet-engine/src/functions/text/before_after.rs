@@ -175,7 +175,8 @@ impl Model {
                 ))
             }
         };
-        let match_end = number_at(4)?.unwrap_or(0.0);
+        // Cut toward zero like match_mode, so -0.0001 is 0 (probes: gen-m7/2d9b48c6363e7a16 A660, T-2412).
+        let match_end = number_at(4)?.map_or(0.0, f64::trunc);
         if instance_num == 0 {
             return Err(CalcResult::new_error(
                 Error::VALUE,

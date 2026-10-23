@@ -3,7 +3,7 @@ id: T-2412
 title: "TEXTBEFORE and TEXTAFTER: match_end is cut toward zero, so -0.0001 is 0 (gen-m7)"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,11 +29,11 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 1 known-failure lin
 - gen-m7/2d9b48c6363e7a16.case.json A660 `=TEXTAFTER(LOWER("'a"),Data!A11:B12,1,1,Data!E2)`: A660 Excel #N/A, ours #VALUE!; cells (1): A660
 
 ## Acceptance criteria
-- [ ] Visible parity: this 1 known-failure line disappears from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
+- [x] Visible parity: this 1 known-failure line disappears from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
-- [ ] Unit tests: match_end -0.0001 and 0.5 behave as 0; 1 still matches the text's end.
-- [ ] text.md's entry has an "Ours:" line naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests: match_end -0.0001 and 0.5 behave as 0; 1 still matches the text's end.
+- [x] text.md's entry has an "Ours:" line naming this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - TEXTSPLIT (T-2315).
@@ -43,3 +43,6 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+`around_options` cuts match_end toward zero (like match_mode), so -0.0001 and 0.5 are 0. Eval: 1 known-failure line removed from gen-m7, none added. text.md "Ours:" line updated; 1.5 now reads as 1 (unprobed, noted).
