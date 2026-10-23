@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: sonnet
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -24,10 +25,24 @@ Excel checks the criteria shape before the field (`db_query` in functions/databa
 field first). Probe both with excel-probe: `GAMMA.DIST(<TRUE cell>,42,1E-15,"FALSE")` alone, and
 `DSUM(<db>,NA(),<one-row criteria>)`, `DSUM(<one-row db>,NA(),<criteria>)`, `DSUM(<db>,"Nope",<one-row criteria>)`.
 
+gen-m9 database sweep (gap triage 2026-10-23, T-2258): two more cells of the same question. `DPRODUCT(Data!B1:E7,VLOOKUP(..,NA())<#N/A>,Db!G1:H2)` is `#VALUE!` (ours the field's `#N/A`), and `DMAX(Data!E8:E12,REGEXEXTRACT(..,TINV(<"1.5">,7),0.1),Db!F1)` (a one-cell criteria range) is `#VALUE!` (ours the field's `#NUM!`): something about the database or criteria is checked before the field's error, or the inner VLOOKUP/REGEXEXTRACT gives `#VALUE!` in Excel. Probe both bare inner calls with the case's Data sheet before changing the order.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas, 2 visibly off.
+Examples:
+- gen-m9/88cabddc4935351c Calc!A14 `=DPRODUCT(Data!B1:E7,VLOOKUP(SIGN(Data!B11),Data!A9:A11,ACCRINTM(Data!C10,Data!D9,10,3761),NA()),Db!G1:H2)`: Excel #VALUE!, ours #N/A
+- gen-m9/c9d7659896d95368 Calc!A271 `=DMAX(Data!E8:E12,REGEXEXTRACT(LOWER(Data!D12),"[0-9]",TINV(Data!E12,7),0.1),Db!F1)`: Excel #VALUE!, ours #NUM!
+Cells:
+- gen-m9/88cabddc4935351c.case.json (1): Calc!A14
+- gen-m9/c9d7659896d95368.case.json (1): Calc!A271
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] A probe answers the order, recorded in docs/excel-semantics/statistics.md "Database criteria".
 - [ ] gen-m9/7bd219ec0c0c5e22 Calc!A324 leaves eval/baseline/gen-m9.txt (`make eval-baseline`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other D-function semantics (T-1390).
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.

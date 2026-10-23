@@ -102,7 +102,16 @@ Cells:
 - gen-m9/31f09e6c48ca245c.case.json (1): Calc!A191
 - gen-m9/a63d1c7d6f96c56d.case.json (2): Calc!A145, A291
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `GESTEP(CHISQ.INV(1E-300,2))` is 1 in Excel, so CHISQ.INV of 1E-300 is a number (ours `#NUM!`; gen-m9/e85daedce5c2675e A393).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/e85daedce5c2675e Calc!A393 `=GESTEP(CHISQ.INV(1E-300,2))`: Excel 1.0, ours #NUM!
+Cells:
+- gen-m9/e85daedce5c2675e.case.json (1): Calc!A393
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 141 known-failure lines (136 from T-2255, 5 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The listed cells of t1543-inverse-cdf-tiny-p pass (within the suite's numeric tolerance) and ordinary-p cases do not regress.
