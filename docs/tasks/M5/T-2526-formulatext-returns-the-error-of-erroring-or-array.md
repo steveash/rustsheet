@@ -24,4 +24,4 @@ Probed in T-2301; Excel values and the rules are in docs/excel-semantics/referen
 -
 
 ## Outcome
-`fn_formulatext` returns the own error of an erroring INDEX/OFFSET/INDIRECT/CHOOSE/IF call and spills `#VALUE!` over array-shaped results. All 28 cells of probes/formulatext-erroring-references pass (22 entries left eval/baseline).
+`fn_formulatext` returns the own error of an erroring INDEX/OFFSET/INDIRECT/CHOOSE/IF call and spills `#VALUE!` over array-shaped results. All 28 cells of probes/formulatext-erroring-references pass (21 entries left eval/baseline).

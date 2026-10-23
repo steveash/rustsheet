@@ -925,23 +925,17 @@ impl Model {
                         .map(|row| vec![ArrayNode::Error(Error::VALUE); row.len()])
                         .collect(),
                 ),
+                // INDEX of an array constant picks a value, not a cell
+                // (probes/index-reference-args Calc!A4, A5; T-2137).
                 _ if matches!(kind, Function::Index) => CalcResult::new_error(
                     Error::VALUE,
                     cell,
                     "Argument must be a reference".to_string(),
                 ),
-                _ => CalcResult::Error {
-                    error: Error::ERROR,
-                    origin: cell,
-                    message: "Argument must be a reference".to_string(),
-                },
+                _ => not_a_reference(cell),
             }
         } else {
-            CalcResult::Error {
-                error: Error::ERROR,
-                origin: cell,
-                message: "Argument must be a reference".to_string(),
-            }
+            not_a_reference(cell)
         }
     }
 
@@ -956,6 +950,15 @@ impl Model {
                 message: "Reference does not have a formula".to_string(),
             }
         }
+    }
+}
+
+/// FORMULATEXT's `#ERROR!` for an argument that is not a reference.
+fn not_a_reference(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::Error {
+        error: Error::ERROR,
+        origin: cell,
+        message: "Argument must be a reference".to_string(),
     }
 }
 

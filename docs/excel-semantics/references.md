@@ -447,7 +447,7 @@ constant `#VALUE!`. The engine matches, FORMULATEXT's `#REF!` and `#VALUE!` form
 `CHOOSE(9,..)` and `CHOOSE(0,..)` are `#VALUE!` and `CHOOSE(NA(),..)` `#N/A`; `IF(NA(),..)` is `#N/A`, `IF("x",..)` `#VALUE!`,
 `IF(1/0,..)` `#DIV/0!`, and an error in the arm taken, `IF(TRUE,NA(),..)`, is `#N/A`. An array-shaped result is not a reference:
 `INDEX({1,2;3,4},0,1)`, `INDEX({1,2;3,4},1,0)` and `INDEX({1,2;3,4},0,0)` spill `#VALUE!` over the shape of the result (2x1, 1x2, 2x2),
-`INDEX({1,2;3,4},2,2)` is one `#VALUE!`, and `IF({TRUE,FALSE},..)` and `CHOOSE({1,2},..)` spill a 1x2 of `#VALUE!`. The engine matches all 28 cells (`fn_formulatext`, T-2526).
+`INDEX({1,2;3,4},2,2)` is one `#VALUE!`, and `IF({TRUE,FALSE},..)` and `CHOOSE({1,2},..)` spill a 1x2 of `#VALUE!`. The engine matches all 28 cells (`fn_formulatext`, T-2526). Unprobed: FORMULATEXT of a pick call that returns a plain scalar (`IF(TRUE,5,A1)`, `CHOOSE(1,5,A1)`) and of XLOOKUP, TAKE, DROP, LET, SWITCH or IFS results still gives the engine's `#ERROR!` (open gap, no evidence yet).
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
 TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a range return); over an array
