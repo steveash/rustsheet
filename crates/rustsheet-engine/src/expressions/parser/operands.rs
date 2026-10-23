@@ -335,7 +335,7 @@ impl Parser {
     /// `utils::parse_dotted_a1_range`), in A1 mode and unless an enclosing LET or LAMBDA binds
     /// it. Stored formulas (R1C1 mode) already print such a range as a range.
     fn dotted_range_operand(&mut self, name: &str) -> Option<Node> {
-        if self.binds_reference_shaped_name(name) {
+        if !self.lexer.is_a1_mode() || self.binds_reference_shaped_name(name) {
             return None;
         }
         let (left, right) = parse_dotted_a1_range(name)?;
