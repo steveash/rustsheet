@@ -62,7 +62,8 @@ pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// Excel's own (`trig_sin_cos`): all 63 cells of probes-numeric im-last-digit-sweep with an
 /// imaginary part (T-2044), including the digits Excel loses for tiny arguments, where the
 /// denominator cancels (`IMCOT("1E-5+1E-5i")` real part 49999.9958596485, `IMCOT("0.00001i")`
-/// -99999.9917326303i; exact 50000 and 100000). Past `cosh 2y`'s range the value is `∓i` by the
+/// -99999.9917326303i; exact 50000 and 100000). UNVERIFIED (T-2531): below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1 and
+/// the result is `#NUM!`. Past `cosh 2y`'s range the value is `∓i` by the
 /// sign of y (Q27:R27, R55). A real number keeps `1/tan x` (`IMCOT("1E-20")` = 1E+20).
 pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
@@ -82,7 +83,8 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// and COS reduced as Excel's own (`trig_sin_cos`): all 69 finite cells of probes-numeric
 /// im-last-digit-sweep (T-2044). Writing sinh²y as `(cosh 2y - 1)/2` is what loses Excel's digits
 /// for tiny arguments: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (exact
-/// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i.
+/// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i. UNVERIFIED (T-2531): below |y| ≈ 1.05E-8
+/// `cosh 2y` rounds to 1, `t` is 0 and the result is `#NUM!`.
 pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (x_sin, x_cos) = trig_sin_cos(x);
     let y_cosh = y.cosh();
