@@ -3,7 +3,7 @@ id: T-2411
 title: "VLOOKUP: an invalid scalar range_lookup beside a lifted lookup_value is #VALUE! per element, not one #VALUE! (gen-m7)"
 milestone: M2
 lane: functions-lookup
-status: blocked
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -62,8 +62,8 @@ Tests: `bad_scalar_range_lookup_beside_a_lifted_lookup_value_is_an_error_per_ele
 `bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element`. lookup.md's entry is rewritten from the probe.
 Eval delta: gen-m7 known failures 706 -> 698 (the 8 owned lines), 0 regressions; probes +1 case (39 cells, all pass).
 
-## Blocked because
-Blocked because: review-round limit
+## Resumed
+Resumed after the review-round limit (step 5c).
 The Excel-fidelity reviewer asked for changes in three rounds. Each round asked for evidence, and each was answered
 by adding probe cells and changing the code or docs to match Excel:
 - Round 1: element values unprobed. Added the probe.

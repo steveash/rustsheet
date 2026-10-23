@@ -3,7 +3,7 @@ id: T-2296
 title: "Probe SUMPRODUCT: does an error element in a range beat an earlier shape mismatch"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -32,10 +32,10 @@ mismatches; the probe should still separate the orders listed above. Owned by th
 - gen-m7/f7e94a817e5385ac.case.json A50 `=BYROW({1,#N/A,3},LAMBDA(acc,SUMPRODUCT(Data!B1:C4,acc)))`: A50 Excel #N/A, ours #VALUE!; cells (1): A50
 
 ## Acceptance criteria
-- [ ] A probe case in eval/suites/probes with oracle values for the cells above.
-- [ ] Visible parity: the gen-m7 cell under Context (f7e94a817e5385ac A50) is owned by the implementation task this probe files (listed there, `campaign: visible`); its known-failure line leaves eval/baseline/gen-m7.txt when that task is done.
-- [ ] coercion.md entry's Open line replaced by the probed rule; an implementation task filed if ours differs.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case in eval/suites/probes with oracle values for the cells above.
+- [x] Visible parity: the gen-m7 cell under Context (f7e94a817e5385ac A50) is owned by T-2450 (`campaign: visible`); its known-failure line leaves eval/baseline/gen-m7.txt when that task is done.
+- [x] coercion.md entry's Open line replaced by the probed rule; an implementation task filed if ours differs.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing any change (file a functions-math task if needed).
@@ -45,3 +45,8 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed with excel-graph (2026-10-23): `eval/suites/probes/cases/t2296-sumproduct-error-element` (16 cells). An error element beats a shape
+mismatch in any argument order; a whole-argument error beats an element error. Rule recorded in coercion.md; implementation filed as T-2450
+(owns gen-m7/f7e94a817e5385ac A50; `TODO(T-2296)` markers retargeted). Eval: probe cells that ours fails are known failures in eval/baseline/probes.txt.

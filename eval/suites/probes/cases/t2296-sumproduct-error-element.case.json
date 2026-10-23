@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SUMPRODUCT: an error element inside a range or array versus an earlier or later shape mismatch (T-2296; feeds T-2150).",
+  "tags": ["M5", "probe", "coercion"],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUMPRODUCT(Data!X1:X2,Data!R1:S2)",
+        "A2": "=SUMPRODUCT(Data!R1:S2,Data!X1:X2)",
+        "A3": "=SUMPRODUCT(Data!X1:X2,Data!R1:S2,NA())",
+        "A4": "=SUMPRODUCT(Data!R1:S2,Data!X1:X2,NA())",
+        "A5": "=SUMPRODUCT(Data!X1:X2,{1,#N/A;2,3})",
+        "A6": "=SUMPRODUCT({1,#N/A;2,3},Data!X1:X2)",
+        "A7": "=SUMPRODUCT(Data!X1:X2,Data!U1:V2,Data!R1:S2)",
+        "A8": "=SUMPRODUCT(Data!R1:S2,Data!X1:X2,Data!U1:V2)",
+        "A9": "=SUMPRODUCT(Data!X1:X2,Data!U1:V2,Data!R1:S2,NA())",
+        "A10": "=SUMPRODUCT(Data!R1:S2,Data!U1:V2)",
+        "A11": "=SUMPRODUCT(Data!U1:V2,Data!R1:S2,Data!X1:X2)",
+        "A12": "=SUMPRODUCT(Data!B1:C4,{1,#N/A,3})",
+        "A13": "=SUMPRODUCT({1,#N/A,3},Data!B1:C4)",
+        "A14": "=SUMPRODUCT(Data!B1:C4,{1,2,3})",
+        "A15": "=SUMPRODUCT(Data!X1:X2,{#N/A,1;2,3})",
+        "A16": "=SUMPRODUCT(Data!X1:X2,{1,2;3,#N/A})"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "B1": 1, "C1": 2, "B2": 3, "C2": 4, "B3": 5, "C3": 6, "B4": 7, "C4": 8,
+        "R1": 1, "S1": "=1/0", "R2": 2, "S2": 3, "X1": 10, "X2": 20,
+        "U1": 4, "V1": 5, "U2": 6, "V2": 7
+      }
+    }
+  ]
+}

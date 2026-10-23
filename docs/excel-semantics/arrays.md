@@ -18,6 +18,7 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 
 | errorType | error | ERROR.TYPE | produced by (probe cell) |
 |---|---|---|---|
+| 2 | `#VALUE!` | 3 | REGEXEXTRACT's invalid return_mode spilled by MAP, GROUPBY or EXPAND (rich-errors-spilled-lambda A16, B51, B66; T-2417) |
 | 8 | `#SPILL!` | 9 | `SEQUENCE(2)` blocked by a value (rich-errors-calc A1) |
 | 9 | `#CONNECT!` | 10 | `STOCKHISTORY` of an unknown ticker (rich-errors-stockhistory A1, subType 4) |
 | 10 | `#BLOCKED!` | 11 | `IMAGE` of an unreachable URL (rich-errors-image A1, subType 12); an uncached external reference (poi/link-external-workbook-b A1, subType 2) |
@@ -54,6 +55,30 @@ wrong: the cells are `cm="1"` dynamic arrays and the engine's `#CALC!` was alrea
 Implemented in: `value_metadata_errors` in `crates/rustsheet-xlsx/src/import/rich_errors.rs`, shared by
 the importer (cached `#CALC!`/`#SPILL!`/`#CONNECT!`/`#BLOCKED!`/`#FIELD!`; unmapped errorTypes stay `#VALUE!`) and the eval
 snapshot reader (expected values; T-0921).
+
+A `#VALUE!` from a GROUPBY function argument (`LAMBDA(w,REGEXEXTRACT(...,-1))`) is stored in every
+spilled value cell as a rich error of a third `_error` structure, `errorType, ptg, subType`, with
+values (2, 6, 0). Its real value is `#VALUE!` (ERROR.TYPE 3 through INDEX, probes/groupby-lifted-args
+A33 and B33). errorType 2 is `#VALUE!`, as errorType = ERROR.TYPE − 1 says: probes/rich-errors-spilled-lambda
+(excel-graph, 2026-10-22, T-2417) spills one error kind per block from MAP, GROUPBY, EXPAND and plain array arithmetic.
+Only REGEXEXTRACT's `#VALUE!` (an invalid return_mode) is stored as a rich error, `_error(errorType, subType)` = (2, 0),
+in every spilled cell of MAP (A16:A17), GROUPBY (B51:B53) and EXPAND (B66, A67:B67), and its ERROR.TYPE and
+VALUETOTEXT through INDEX are 3 and `#VALUE!` (E16, F16, E51, E66). `#DIV/0!`, `#N/A`, `#NUM!`, `#REF!`, `#NULL!` and the
+`#VALUE!` of `"a"+x` in the same positions are plain `t="e"` literals. The cached excel-graph recalcs also store
+errorType 2 in `errorType, iftab[, ptg], subType` structures (subType 0, 33, 39, 40, 59, 133); the reader finds
+errorType by key name and subType does not change the error, so all of them decode to `#VALUE!`. Only subType 0 has direct ERROR.TYPE
+evidence; the others rest on the T-0030 rule (their cached `<v>#VALUE!</v>` is no evidence: every rich error caches
+`#VALUE!`). A non-zero subType probe is part of T-2442.
+Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
+`GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
+2026-10-22, T-2397; recalc input_sha256 e07a9239… and 7cf52886…). That scratch recalc reported all four spilled value cells, so no case of a
+spilled rich error missing from the workbook was reproduced. The T-2254 triage's 28 "unreported" spill cells
+(gen-m7/0624b684889e9228 A612, 21b4eef18424ce94 A1504, 9bb61f6ae34c7e20 A136) were also in the workbook: the fill
+had dropped them as undecoded (re-filled 2026-10-22, T-2397). Those cases store errorType 2 (subType 0, 39, 59 or 133;
+some with `ptg` and `iftab` fields) and errorType 6 (subType 7) rich errors; errorType 2 is decoded since T-2417, errorType 6 has no ERROR.TYPE evidence yet (T-2442). `rustsheet-oracle fill` keeps such cells in
+the sidecar as `#UNDECODED!` instead of dropping them, because a spill member missing from the sidecar
+is scored as an expected blank (T-2397).
+Status: confirmed (storage; errorType 2 = `#VALUE!`, excel-graph); errorType 6 UNVERIFIED (T-2442).
 
 ## MOD lifts over array arguments
 Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The
@@ -1512,17 +1537,26 @@ of the call with that element in the argument's place, or that call's error. A o
   `...,0,5,,,1/0)` are `#DIV/0!`: A193, A217), but text that is no number, typed or computed, comes before it,
   scalar or lifted (`GROUPBY(k,v,SUM,0,"x",,,1/0)` is `#VALUE!`: A201). Text read from a one-cell reference is unprobed (ours
   keeps the reference, so the later error wins).
-- Two array options broadcast: `GROUPBY(k,v,SUM,{0,1},{0;1})` is 2x2 (A209:B210; not yet matched, T-2399).
+- Two array options broadcast against each other as the element-wise operators do: `GROUPBY(k,v,SUM,{0,1},{0;1})` is 2x2
+  (A209:B210), a row against a column is a grid (`{0,2,3}` with `{0;-1}` is 2x3), and a position past a shorter array is `#N/A`
+  (`{0,2;3,0}` with `{0;-1;1}` is 3x2 with a row of `#N/A`; `{0,2,3}` with `{-1,1}` is `Total`, `Row Field 1`, `#N/A`;
+  args2 A1-A23, A56). A range broadcasts as an array does (A36), and so do PIVOTBY's options, `field_headers` with
+  `row_total_depth` and `row_total_depth` with `col_total_depth` (A41, A46). Each element is its own call, so of two invalid or
+  error elements the earlier argument's wins: `{#N/A,0}` with `{0;#DIV/0!}` is `#N/A`, `a`; `#N/A`, `#DIV/0!` (A31), and
+  `{0,"x"}` with `{0;5}` has `#VALUE!` wherever the text is (A26). A lifted `field_relationship` beside them is read per
+  element too (A51).
 - `sort_order` does not lift (it takes arrays of its own): `GROUPBY(k,v,SUM,0,1,{1,-1})` with one key is a single `#VALUE!` (A81).
 - REGEXEXTRACT with an invalid return mode (-1) is `#VALUE!`, inside a GROUPBY function too (K1-K10). excel-graph returns those
   spilled cells as rich errors it cannot decode, so the probe reads them through INDEX and ERROR.TYPE (A33, A41; T-2397).
 - Not yet matched: `SCAN(GROUPBY(..,LAMBDA(w,w)),0,MIN)` is a single `#N/A` and `SCAN(GROUPBY(..,SUM),0,MIN)` a single 0
   (A153, A161; T-2398).
-Evidence: probes/groupby-lifted-args (excel-graph, 2026-10-22, T-2359); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
+Evidence: probes/groupby-lifted-args (excel-graph, 2026-10-22, T-2359), probes/groupby-lifted-args2 (excel-graph, 2026-10-23,
+T-2399); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
 b24ce74f08d3f91a A1778.
-Ours: `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs) evaluates each option once and re-runs the call
-once per class of element (a whole number within the valid range, another number, a boolean, text that is no number, an error),
-with every other argument frozen to its value, so neither an array's size nor nesting multiplies the work.
+Ours: `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs) evaluates each option once, broadcasts the array
+options with the lifting driver's `broadcast_shape`, and re-runs the call once per class of the elements at a position (a
+whole number within the valid range, another number, a boolean, text that is no number, an error), with every other argument
+frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399

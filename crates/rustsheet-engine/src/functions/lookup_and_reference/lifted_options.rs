@@ -15,6 +15,8 @@ use crate::{
 };
 
 use super::grouping::at;
+use crate::arithmetic::MISSING;
+use crate::functions::lift::{broadcast_shape, LiftedArg};
 
 /// The calls an element can make: its result depends only on this class, so a call over an
 /// array of any size runs the function once per class. A number is its own class while it is a
@@ -45,11 +47,14 @@ pub(crate) enum Bound {
 
 impl Model {
     /// The arguments of a GROUPBY or PIVOTBY call with each of `options` (argument index, bound
-    /// of its valid whole numbers) evaluated once and put in as a literal, or, when one of them is
-    /// an array or a multi-cell range, `Err` with the call lifted over the first such option.
+    /// of its valid whole numbers) evaluated once and put in as a literal, or, when any of them is
+    /// an array or a multi-cell range, `Err` with the call lifted over all such options at once,
+    /// broadcast as the element-wise operators do: `{0,2}` against `{0;-1}` is 2x2, and a position
+    /// past a shorter array is `#N/A` (probes/groupby-lifted-args2 A1-A23, T-2399).
     /// Excel evaluates each element's call in full, so an element's own error or invalid value
     /// comes in its argument's place among the others: `GROUPBY(k,v,SUM,0,{1,"x",#N/A},,,1/0)` is
-    /// `#DIV/0!`, `#VALUE!`, `#N/A` (probes/groupby-lifted-args A97). No argument is evaluated
+    /// `#DIV/0!`, `#VALUE!`, `#N/A` (probes/groupby-lifted-args A97), and of two lifted options
+    /// the earlier one's error wins (probes/groupby-lifted-args2 A26-B32). No argument is evaluated
     /// twice: the lifted calls get every argument but `function` frozen ([`Model::frozen`]), so a
     /// GROUPBY nested in a GROUPBY is evaluated once per level, not once per element class.
     pub(crate) fn lift_options(
@@ -61,6 +66,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<Node>, CalcResult> {
         let mut args = args.to_vec();
+        // The lifted options: argument index, bound, elements.
+        let mut lifted: Vec<(usize, Bound, LiftedArg)> = Vec::new();
         for &(index, bound) in options {
             let Some(node) = args.get(index) else {
                 continue;
@@ -94,44 +101,73 @@ impl Model {
                     continue;
                 }
             };
-            let scalar_args: Vec<Node> = args
-                .iter()
-                .enumerate()
-                .map(|(i, node)| {
-                    if i == function || i == index {
-                        node.clone()
-                    } else {
-                        self.frozen(node, cell)
-                    }
-                })
-                .collect();
-            let bound = match bound {
+            lifted.push((index, bound, LiftedArg::Grid(elements)));
+        }
+        if lifted.is_empty() {
+            return Ok(args);
+        }
+        let mut scalar_args: Vec<Node> = args
+            .iter()
+            .enumerate()
+            .map(|(i, node)| {
+                if i == function || lifted.iter().any(|(index, ..)| *index == i) {
+                    node.clone()
+                } else {
+                    self.frozen(node, cell)
+                }
+            })
+            .collect();
+        let bounds: Vec<usize> = lifted
+            .iter()
+            .map(|&(_, bound, _)| match bound {
                 Bound::Fixed(bound) => bound,
                 Bound::KeyWidth(keys) => self.key_width(scalar_args.get(keys), cell),
-            };
-            let mut scalar_args = scalar_args;
-            return Err(self.lift_by_class(
-                &elements,
-                |model, element| model.element_class(element, bound, cell),
-                |model, element| {
-                    // Text that is no number is `#VALUE!` in its argument's place, ahead of a
-                    // later argument's error value (`{1,"x",#N/A}` over a `1/0` relationship: A97).
-                    let text = model.element_class(element, bound, cell) == Class::OtherText;
-                    if let Some(slot) = scalar_args.get_mut(index) {
-                        *slot = if text {
-                            Node::ErrorKind(Error::VALUE)
-                        } else {
-                            literal(element)
-                        };
-                    }
-                    match call(model, &scalar_args, cell) {
-                        CalcResult::Array(output) => at(&output, 0, 0),
-                        other => calc_result_to_array_node(other),
-                    }
-                },
-            ));
-        }
-        Ok(args)
+            })
+            .collect();
+        let (indices, grids): (Vec<usize>, Vec<LiftedArg>) = lifted
+            .into_iter()
+            .map(|(index, _, grid)| (index, grid))
+            .unzip();
+        let (rows, columns) = broadcast_shape(&grids, cell)?;
+        // Each output position's elements, one per lifted option, in argument order.
+        let positions: Vec<Vec<Vec<&ArrayNode>>> = (0..rows)
+            .map(|row| {
+                (0..columns)
+                    .map(|column| {
+                        grids
+                            .iter()
+                            .map(|grid| grid.element(row, column).unwrap_or(&MISSING))
+                            .collect()
+                    })
+                    .collect()
+            })
+            .collect();
+        let classify = |model: &mut Model, elements: &Vec<&ArrayNode>| -> Vec<Class> {
+            elements
+                .iter()
+                .zip(&bounds)
+                .map(|(element, &bound)| model.element_class(element, bound, cell))
+                .collect()
+        };
+        Err(self.lift_by_class(&positions, classify, |model, elements| {
+            for ((&index, element), class) in
+                indices.iter().zip(elements).zip(classify(model, elements))
+            {
+                // Text that is no number is `#VALUE!` in its argument's place, ahead of a later
+                // argument's error value (`{1,"x",#N/A}` over a `1/0` relationship: A97).
+                if let Some(slot) = scalar_args.get_mut(index) {
+                    *slot = if class == Class::OtherText {
+                        Node::ErrorKind(Error::VALUE)
+                    } else {
+                        literal(element)
+                    };
+                }
+            }
+            match call(model, &scalar_args, cell) {
+                CalcResult::Array(output) => at(&output, 0, 0),
+                other => calc_result_to_array_node(other),
+            }
+        }))
     }
 
     /// `node` evaluated and put back as a literal: a value, or an array as an array constant.
@@ -157,11 +193,11 @@ impl Model {
     /// `elements` lifted: each element's value is `run` of the first element of its class, so
     /// `run` is called once per class whatever the array's size (GROUPBY's `field_relationship`
     /// and the options of [`Model::lift_options`]).
-    pub(crate) fn lift_by_class<K: PartialEq>(
+    pub(crate) fn lift_by_class<E, K: PartialEq>(
         &mut self,
-        elements: &[Vec<ArrayNode>],
-        mut classify: impl FnMut(&mut Model, &ArrayNode) -> K,
-        mut run: impl FnMut(&mut Model, &ArrayNode) -> ArrayNode,
+        elements: &[Vec<E>],
+        mut classify: impl FnMut(&mut Model, &E) -> K,
+        mut run: impl FnMut(&mut Model, &E) -> ArrayNode,
     ) -> CalcResult {
         let mut known: Vec<(K, ArrayNode)> = Vec::new();
         let mut lifted = Vec::with_capacity(elements.len());

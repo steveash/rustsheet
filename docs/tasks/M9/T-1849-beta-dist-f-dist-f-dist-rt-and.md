@@ -8,6 +8,7 @@ priority: P2
 size: S
 tier: sonnet
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -29,7 +30,68 @@ function whose boolean read is unprobed (BETA.DIST's alpha, beta, A, B; F.DIST's
 BETA.INV, F.INV, F.INV.RT), probe it (excel-probe skill); docs/excel-semantics/statistics.md "Statistical function
 argument modes" records the rule.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). 90 cells where a TRUE or FALSE that comes from a cell or a formula
+reads as 1 or 0 in Excel and ours is `#VALUE!` (cast_number_no_bools_ref): BETAINV 16, BETADIST 15, FDIST 12, F.INV.RT 11,
+HYPGEOMDIST 9, FINV 7, F.INV 7, F.DIST.RT 6, HYPGEOM.DIST 5, and one each of GAMMADIST, F.DIST, EXPON.DIST, BETA.INV,
+BINOM.DIST, LOGNORM.DIST and BETA.DIST (the innermost such call; 7 are nested). Some then hit the value's own domain
+check (`F.INV(0.5,FALSE,1)` is `#NUM!`: df 0) or a later argument's error, which wins over the boolean
+(`BETAINV(TRUE,<#DIV/0!>,1.999)` is `#DIV/0!`). statistics.md "Booleans from a reference or a formula are numbers in the
+F, beta, chi-squared and hypergeometric functions (T-2255)" is the probe this task asked for, for these functions.
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 90 known-failure lines in eval/baseline/gen-m9.txt, 90 formulas.
+Examples:
+- gen-m9/0a614cfe974b59c3 Calc!A370 `=FINV(ROUNDUP(1E-307,(1/(-0.5))),Data!E7,8)`: Excel #NUM!, ours #VALUE!
+- gen-m9/0a9226016e8f5f33 Calc!A119 `=HYPGEOMDIST(5,4,Data!E$12,11)`: Excel 0.0, ours #VALUE!
+- gen-m9/165db58d1540f014 Calc!A257 `=BETAINV(Data!C$5,(1000000000000000.0/Data!C1),1.999)`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/4bad303d32cc3f46 Calc!A325 `=F.DIST(Data!E4,MIN(Data!B10:B10,(0.3+Data!B2)),2,OR(HLOOKUP("TRUE",Data!A5:D8,4,FALSE),(Data!A8<>Data!D2)))`: Excel #N/A, ours #VALUE!
+- gen-m9/589f42e67f4b4b8d Calc!A45 `=HYPGEOM.DIST(0,2,Data!D$5,14,TOROW(Data!C11:C11,1))`: Excel #CALC!, ours #VALUE!
+Cells:
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A370
+- gen-m9/0a9226016e8f5f33.case.json (2): Calc!A119, A325
+- gen-m9/165db58d1540f014.case.json (6): Calc!A4, A8, A52, A236, A257, A395
+- gen-m9/285d87cea1aaa73c.case.json (3): Calc!A1, A201, A324
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A331
+- gen-m9/320d51765af9b6b7.case.json (2): Calc!A137, A335
+- gen-m9/40425341c5034eed.case.json (1): Calc!A91
+- gen-m9/4bad303d32cc3f46.case.json (2): Calc!A92, A325
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A215
+- gen-m9/530c636749a85209.case.json (3): Calc!A40, A132, A157
+- gen-m9/589f42e67f4b4b8d.case.json (2): Calc!A45, A366
+- gen-m9/58e3253bbd3a7a82.case.json (4): Calc!A1, A109, A202, A264
+- gen-m9/68d8ffb69ff739d8.case.json (3): Calc!A159, A308, A348
+- gen-m9/7674c89c824aca43.case.json (3): Calc!A120, A161, A258
+- gen-m9/7bd219ec0c0c5e22.case.json (3): Calc!A93, A254, A268
+- gen-m9/7c20351562a2d71d.case.json (4): Calc!A140, A247, A278, A346
+- gen-m9/899f9555e67da2d6.case.json (2): Calc!A220, A377
+- gen-m9/8d3588d8df0812df.case.json (2): Calc!A286, A347
+- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A10, A47
+- gen-m9/8f2ac25945af87da.case.json (3): Calc!A39, A205, A214
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A186
+- gen-m9/a013a45a8fbcab4f.case.json (2): Calc!A211, A325
+- gen-m9/a54c738c697617c3.case.json (1): Calc!A340
+- gen-m9/a5828d3925575713.case.json (5): Calc!A12, A110, A281, A295, A361
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A205
+- gen-m9/a790a4d4a6a82756.case.json (3): Calc!A121, A223, A345
+- gen-m9/b4173fe25109a238.case.json (2): Calc!A5, A136
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A133
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A175
+- gen-m9/bbdfc06cae0e0d71.case.json (2): Calc!A60, A201
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A145
+- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A353
+- gen-m9/c2974c061384fdd9.case.json (1): Calc!A43
+- gen-m9/c6cfda6bd10cae93.case.json (2): Calc!A58, A183
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A93
+- gen-m9/cde551ea787f713a.case.json (2): Calc!A332, A361
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A301
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A96
+- gen-m9/ee2497a5e683c5d9.case.json (5): Calc!A157, A175, A242, A356, A394
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A196
+- gen-m9/f34f66fb7f81e673.case.json (3): Calc!A107, A156, A286
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A244
+- gen-m9/fec39efaba9284c3.case.json (1): Calc!A110
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 90 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/stat-later-argument-lift L1 and L13 and probes/stat-quantile-lift L2, L3 and L19 pass (their baseline lines
   removed), and the probes-numeric cells above.
 - [ ] Each changed argument cites its probe cell in a code comment; the rule is in docs/excel-semantics/statistics.md.
@@ -37,3 +99,10 @@ argument modes" records the rule.
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-23, T-2255): the gen-m9 cells listed under Context are visibly off (a wrong type, error or
+text, or a number further than half a unit in the 15th significant digit from Excel's), so the task is in the campaign. Its
+target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
+significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
+it. Bit-level criteria still unmet then move to a follow-up task without the key.

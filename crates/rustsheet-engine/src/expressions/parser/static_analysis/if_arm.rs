@@ -28,7 +28,7 @@ fn is_value_arm(kind: &Function, index: usize) -> bool {
 }
 
 /// Whether `arm` is a range, possibly in parentheses or under an explicit `@`, a `:` range operation,
-/// an OFFSET or INDEX of one (a defined name for a range is already a range), or an IF or IFS that
+/// an OFFSET or INDEX of one, a defined name, or an IF or IFS that
 /// returns one ([`returns_range_arm`]): `=MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)` shows no `@` and
 /// is 3 off the range's rows (probes/legacy-if-arm-range-argument T). An explicit stack keeps the
 /// walk off the call stack: a formula's tree is untrusted input. Unlike `is_plain_reference`
@@ -42,7 +42,12 @@ fn is_range_arm(arm: &Node) -> bool {
             other => other,
         };
         match node {
-            Node::RangeKind { .. } | Node::OpRangeKind { .. } => return true,
+            // A defined name is an arm like a range: `=SUM(IF(TRUE,Rng))` shows no `@` and
+            // `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (probes/legacy-if-arm-other-references D,
+            // R), although the name takes its own `@` elsewhere (T-2440).
+            Node::RangeKind { .. } | Node::OpRangeKind { .. } | Node::DefinedNameKind(_) => {
+                return true
+            }
             Node::FunctionKind {
                 kind: Function::If,
                 args,

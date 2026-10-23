@@ -134,3 +134,63 @@ fn simple_test() {
         assert_eq!(excel_formula, formula);
     }
 }
+
+// T-2440: a defined name and a defined-name lambda's call take the `@`, an IF arm of a name
+// stays whole, the dynamic-array-era functions and a LET-bound lambda's call remove every `@`,
+// and TEXTBEFORE over scalars takes none (probes/legacy-at-defined-name-dynamic-funcs,
+// legacy-at-dynamic-funcs-2).
+#[test]
+fn defined_names_and_dynamic_functions() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let names = [
+        ("swOne", "SWITCH(1,1,2)"),
+        ("rngZ", "Sheet1!$Z$30:$Z$32"),
+        ("myId", "LAMBDA(x,x)"),
+    ]
+    .map(|(name, body)| (name.to_string(), None, body.to_string()))
+    .to_vec();
+    let mut parser = new_parser(worksheets, names, HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let cases = [
+        ("ABS(swOne)", "ABS(@swOne)"),
+        ("ABS(rngZ)", "ABS(@rngZ)"),
+        ("ABS(A1:A10)+swOne", "ABS(@A1:A10)+@swOne"),
+        ("IF(TRUE,swOne)", "@IF(TRUE,swOne)"),
+        ("SUM(IF(TRUE,rngZ))", "SUM(IF(TRUE,rngZ))"),
+        ("ABS(A1:A10)+myId(1)", "ABS(@A1:A10)+@myId(1)"),
+        ("ABS(A1:A10)+VSTACK(1)", "ABS(A1:A10)+VSTACK(1)"),
+        (
+            "ABS(A1:A10)+MAP({1},LAMBDA(x,x))",
+            "ABS(A1:A10)+MAP({1},LAMBDA(x,x))",
+        ),
+        (
+            "ABS(A1:A10)+LET(f,LAMBDA(x,x),f(1))",
+            "ABS(A1:A10)+LET(f,LAMBDA(x,x),f(1))",
+        ),
+        (
+            "ABS(A1:A10)+XMATCH(2,A1:A10)",
+            "ABS(@A1:A10)+XMATCH(2,A1:A10)",
+        ),
+        (
+            "LEN(TEXTBEFORE(\"ab\",\"b\"))",
+            "LEN(TEXTBEFORE(\"ab\",\"b\"))",
+        ),
+        (
+            "LEN(REGEXEXTRACT(\"a1\",\"[0-9]\"))",
+            "LEN(@REGEXEXTRACT(\"a1\",\"[0-9]\"))",
+        ),
+    ];
+    for (formula, expected) in cases {
+        let mut t = parser.parse(formula, &cell_reference);
+        add_implicit_intersection(&mut t, true);
+        assert_eq!(
+            to_english_localized_string(&t, &cell_reference),
+            expected,
+            "{formula}"
+        );
+    }
+}

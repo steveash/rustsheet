@@ -303,7 +303,7 @@ VERIFIED (probes/textsplit-lift-guesses, excel-graph, 2026-10-19, T-1824):
 - Every list entry longer than the text gives the single-delimiter error: `#VALUE!` with more than two arguments, if_not_found included (`TEXTBEFORE("a","aa",1)`, `TEXTBEFORE("a",{"aa","bb"},1)`, `TEXTAFTER("a",{"aa","bb"},1,0,0,"nf")`), `#N/A` with two (A12-A14, A16, A17). If one entry fits the text the call simply finds nothing: `#N/A`, or if_not_found (`TEXTBEFORE("a",{"aa","b"},1,0,0,"nf")` is "nf"; A10, A11, A21; `#N/A` with 3 or more arguments and no if_not_found is inferred). `TEXTBEFORE("a",{"aa","a"},1)` is "" because "a" is found (A15). TEXTSPLIT returns the text when every entry is too long (A18, A19); `TEXTSPLIT("a",{"aa","a"})` splits into two empty pieces because "a" fits (A20).
 - A REGEX pattern that does not compile is `#VALUE!` in its own element only (`REGEXTEST("abc",{"a";"(";"b"})` is TRUE, `#VALUE!`, TRUE; REGEXEXTRACT and REGEXREPLACE alike; A22-A27).
 - if_not_found, match_end, match_mode, TEXTSPLIT's ignore_empty and REGEXEXTRACT's return_mode lift like the other scalars, and an array if_not_found lifts even when the delimiter is found (`TEXTBEFORE("a,b",",",1,,,{"x";"y"})` is 2x1 "a","a"); a scalar error as if_not_found is returned only when the delimiter is not found (`TEXTBEFORE("a,b",",",1,,,1/0)` is "a", with instance 3 `#DIV/0!`; A28-A34, A39-A48).
-- TEXTSPLIT's pad_with does NOT lift: an array of any size, a 1x1 one included, is `#VALUE!` (`TEXTSPLIT("a,b;c",",",";",,,{"x";"y"})`, `COLUMNS(TEXTSPLIT("a,b,c",",",,,,{"x"}))`; A35-A38, A65). A single-cell or multi-cell range as pad_with is UNVERIFIED (ours: a single cell is its value, a range `#VALUE!`), as is which error comes first when pad_with is an array and another argument is an error (ours: the pad_with `#VALUE!`).
+- TEXTSPLIT's pad_with does NOT lift: an array of any size, a 1x1 one included, is `#VALUE!` (`TEXTSPLIT("a,b;c",",",";",,,{"x";"y"})`, `COLUMNS(TEXTSPLIT("a,b,c",",",,,,{"x"}))`; A35-A38, A65). A single-cell or multi-cell range as pad_with is UNVERIFIED (ours: a single cell is its value, a range `#VALUE!`). An error argument comes before the array pad_with's `#VALUE!`, which is per element of a lifted call (see "TEXTSPLIT: argument errors first, an all-empty result").
 - REGEXEXTRACT in a lifted call keeps the first value of each element (`REGEXEXTRACT({"a1b2";"c3d4"},"[0-9]",1)` is 2x1 "1","3"; A47-A52).
 - A 1x1 array lifts the call: `COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(Data!A1:A2,Data!A1:A2="a,b"),","))` and `COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1, as is `ROWS(...)` (every lifted element keeps its first value, so `COLUMNS(TEXTSPLIT({"a,b";"c,d,e"},","))` is 1 and its ROWS 2); `COLUMNS(TEXTSPLIT(Data!A3,","))` over a single cell is 3, a non-lifting call (A56-A70).
 - A 1x1 array as the delimiter does not lift (`COLUMNS(TEXTSPLIT("a,b",{","}))` is 2, A64); as ignore_empty or a REGEX pattern it does (A66, A67). A one-cell range `Data!A3:A3` does not lift (A70). `INDEX(TEXTSPLIT({"a,b"},","),1,2)` is `#REF!` because the lifted call has one column (A68).
@@ -602,14 +602,18 @@ against gen-m5/49bfbf67a1409563 A217, 901e91c09b347914 A13; Microsoft's NUMBERVA
 middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
-Observation (T-2379): `NUMBERVALUE(0.2,PROPER(REPT("ab",300)),"a*2")` is `#VALUE!` (ours 0.2): the decimal separator is the
-600-character text "Abab...ab" and the group separator "a*2" (gen-m5/9a7a94353845ea12 Calc!A162, excel-graph, 2026-10-22). Three
-readings fit, none probed: a separator over 255 characters is `#VALUE!` (as REPT's, CODE's and UNICODE's text, "REPT, CODE, UNICODE and
-T refuse a text argument over 255 UTF-16 units" below); the first characters "A" and "a" clash case-insensitively; or "0.2"
-with "A" as the decimal separator no longer reads its "." as a decimal point (ours reads `NUMBERVALUE("0.2","A","b")` as 0.2).
-Status of this observation: OBSERVED (one excel-graph cell; T-2379 probes it).
-Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
-when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
+A separator over 255 characters is `#VALUE!`, though only its first character counts: `NUMBERVALUE(0.2,REPT("A",255),"b")` is 0.2
+and `NUMBERVALUE(0.2,REPT("A",256),"b")`, `NUMBERVALUE("2",REPT("A",256),"b")` and `NUMBERVALUE(0.2,"b",REPT("a",256))` are
+`#VALUE!` (and `NUMBERVALUE(0.2,PROPER(REPT("ab",300)),"a*2")`, gen-m5/9a7a94353845ea12 Calc!A162, while 200 characters give
+0.2). Separators differing only in case do not clash: `NUMBERVALUE(0.2,"A","a")` is 0.2, `NUMBERVALUE("1A5","A","a")` and
+`NUMBERVALUE("1x5","x","X")` are 1.5, but `NUMBERVALUE("1,5","A","a")` is `#VALUE!` (the "," is no separator) and the decimal
+separator matches case (`NUMBERVALUE("1a5","A","b")` is `#VALUE!`). A letter decimal separator leaves "0.2" readable
+(`NUMBERVALUE("0.2","A","b")` and `NUMBERVALUE("0.2","A")` are 0.2). With a "," decimal separator and no group separator,
+`NUMBERVALUE("1.5",",")` is 15: the default group separator is then not "," (ours `#VALUE!`, T-2441). Separators whose first characters agree clash even when
+the rest differs: `NUMBERVALUE("1A5","A","AB")` is `#VALUE!` (A20).
+Evidence: probes/numbervalue-separator-edges A1:A20 (excel-graph, 2026-10-22, T-2379). Whether the 255 counts characters or
+UTF-16 units is unprobed (the engine counts as for the text, `number_text_too_long`).
+Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
 after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
 colon after a bare hour (T-2352, in the shared clock parser).
@@ -982,21 +986,34 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2314, T-2412
 
 ## TEXTSPLIT: argument errors first, an all-empty result
-Rule: an error in match_mode or ignore_empty is the result before TEXTSPLIT's own `#VALUE!` for an empty text or a blank delimiter
-cell: `TEXTSPLIT("ABC",Data!D4:E7,Data!C5:E9,-1,<#DIV/0!>)` is `#DIV/0!` (gen-m7/90de8755a2e565e6 Calc!A1643) and
-`TEXTSPLIT("","-",Data!A11:D12,<#REF!>)` is `#REF!` (ac67253061bba16a A184). A split whose every piece is dropped by ignore_empty is
-`#CALC!`: `TEXTSPLIT(100,{1.005,100},"a",TRUE)` under LOWER and REGEXEXTRACT gives `#CALC!` (07d27aa0add0247f A768). An array
-ignore_empty lifts (`TEXTSPLIT("x~*",Data!C7:C11," ",UNIQUE(Data!C4:E8),1,..)` spills 15 `#VALUE!`: 8044dce50616cfe9 A1064).
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
+Rule: TEXTSPLIT checks its arguments in this order, the first failure being the result: the text (an error); a delimiter that is
+itself an error (col_delimiter, then row_delimiter); ignore_empty (an error, or a value that is not a boolean or number: `#VALUE!`);
+match_mode, alike; an array pad_with (`#VALUE!`); an error element of a delimiter list (an array holding an error, or an OFFSET array
+of references, which is `#VALUE!`); then TEXTSPLIT's own `#VALUE!` for an empty delimiter, no delimiter or empty text.
+So `TEXTSPLIT("abc",",",NA(),1/0)` is `#N/A` and `TEXTSPLIT("abc",",",NA(),"x")` `#N/A`, but `TEXTSPLIT("abc",{",",#N/A},,1/0)` is
+`#DIV/0!`; `TEXTSPLIT("abc",",",,1/0,NA())` is `#DIV/0!`, `TEXTSPLIT("abc",",",,"x",NA())` `#VALUE!`; `TEXTSPLIT("abc",",",,1/0,,{1,2})`
+is `#DIV/0!`, `TEXTSPLIT("abc",NA(),,,,{1,2})` and `TEXTSPLIT("abc",",",,,NA(),{1,2})` are `#N/A`; `TEXTSPLIT("abc",",",
+OFFSET(C1:C2,{0;1},0))` is `#VALUE!` but with ignore_empty `NA()` `#N/A` (probes/textsplit-error-order A1-A10, A13-A18). A split whose
+every piece ignore_empty drops is `#CALC!`, with or without a row delimiter (`TEXTSPLIT(",",",",,TRUE)`, `TEXTSPLIT(",;,",",",";",TRUE)`;
+A11, A12). The array pad_with does not lift, but its `#VALUE!` is per element: beside a lifted text or ignore_empty the call spills one
+`#VALUE!` per element, and an error element of the text stays that error.
+Evidence: probes/textsplit-error-order (excel-graph, 2026-10-23, T-2315). gen-m7 (excel-graph, 2026-10-21, T-2225):
+`TEXTSPLIT("ABC",Data!D4:E7,Data!C5:E9,-1,<#DIV/0!>)` is `#DIV/0!` (90de8755a2e565e6 Calc!A1643, the delimiter ranges hold blanks),
+`TEXTSPLIT("","-",Data!A11:D12,<#REF!>)` is `#REF!` (ac67253061bba16a A184), `TEXTSPLIT(100,{1.005,100},"a",TRUE)` under LOWER and
+REGEXEXTRACT gives `#CALC!` (07d27aa0add0247f A768), and an array ignore_empty lifts (`TEXTSPLIT("x~*",Data!C7:C11," ",UNIQUE(Data!C4:E8),1,..)`
+spills 15 `#VALUE!`: 8044dce50616cfe9 A1064).
 More of the same (gen-m7, excel-graph, 2026-10-22, T-2254 triage): an error ignore_empty beats the blank-delimiter `#VALUE!` for `#REF!`
-(`INDIRECT(..)`, 21b4eef18424ce94 A733), `#DIV/0!` (2d9b48c6363e7a16 A2333) and `#N/A` (b2078b5d702c691a A356; 4dac39f89709e2fc A3213 over
-a 2-row text); an error text beats an array pad_with's `#VALUE!` (`Data!D$12&BYCOL(Data!E5:E6,LAMBDA(x,x))` is `#CALC!`, f7e94a817e5385ac
-A2186, which settles the order the lift entry above left UNVERIFIED); an array match_mode lifts beside an array pad_with (`TOCOL(Data!A11:D12)`
-gives 8 rows of `#VALUE!`, 2d9b48c6363e7a16 A3261); and a 1x3 text against an 11x2 ignore_empty broadcasts with `#N/A` past the
-shorter one (column 3 of bc4a69b0b512bc04 A538:C548).
+(`INDIRECT(..)`, 21b4eef18424ce94 A733), `#DIV/0!` (2d9b48c6363e7a16 A2333) and `#N/A` (b2078b5d702c691a A356, beside an OFFSET array of
+references as the row delimiter; 4dac39f89709e2fc A3213 over a 2-row text); an error text beats an array pad_with's `#VALUE!`
+(`Data!D$12&BYCOL(Data!E5:E6,LAMBDA(x,x))` is `#CALC!`, f7e94a817e5385ac A2186); an array match_mode lifts beside an array pad_with
+(`TOCOL(Data!A11:D12)` gives 8 rows of `#VALUE!`, 2d9b48c6363e7a16 A3261); a 1x3 text against an 11x2 ignore_empty broadcasts with `#N/A`
+past the shorter one (column 3 of bc4a69b0b512bc04 A538:C548); and a delimiter that is an error beats a text ignore_empty
+(`VLOOKUP(..)` `#N/A` against `"a"`, c36ff5f42a1a4d47 A1409).
 Unexplained (T-2414): `TEXTSPLIT(TRANSPOSE(<0>),Data!A3:C7)` with a "0" delimiter is the 1x2 "", "" (f7e94a817e5385ac A2882:B2882), as if
 TRANSPOSE of a single value were that value: a 1x1 array text would lift to one element (`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1).
-Ours: `#VALUE!` (T-2315).
+Unprobed: an array pad_with against an error element of a delimiter list (ours: the pad_with `#VALUE!`), and a one-cell reference to an
+error cell as the delimiter, which ours reads as a list, so `TEXTSPLIT("abc",B1,,1/0)` with B1 `#N/A` is ours `#DIV/0!`.
+Ours: this order and the `#CALC!` since T-2315 (`fn_textsplit`, `textsplit_element` in functions/text/textsplit.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2315
 
