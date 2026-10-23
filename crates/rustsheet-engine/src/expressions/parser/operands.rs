@@ -476,7 +476,8 @@ impl Parser {
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel
             // refuses `SUM(1)(2)`, `ABS(1)(2)` and `IFERROR(LAMBDA(x,x*2),0)(3)`
-            // (probes/chained-calls-builtin-*, T-2405): the set `is_reference_operand` takes.
+            // (probes/chained-calls-builtin-*, T-2405): every built-in `is_reference_operand` takes was probed
+            // callable.
             if is_reference_operand(&node) {
                 return self.chain_calls(node);
             }

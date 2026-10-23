@@ -344,7 +344,7 @@ fn a_call_of_a_call_is_chained() {
 fn a_call_of_a_reference_function_result_is_chained() {
     // probes/chained-calls-builtin-* and chained-calls-ref-4, -6 (excel-graph, T-2405): the result
     // of a built-in that can return a reference (or a LAMBDA) may be called; Excel refuses the
-    // others (`SUM(1)(2)`, `ABS(1)(2)`, `IFERROR(LAMBDA(x,x*2),0)(3)`), which stay syntax errors.
+    // others (`SUM(1)(2)`, `ABS(1)(2)`, `IFERROR`, `IFNA`), which stay syntax errors.
     let mut model = new_empty_model();
     for (cell, value) in [("A1", "1"), ("A2", "2"), ("A3", "3")] {
         model._set(cell, value);
@@ -363,6 +363,7 @@ fn a_call_of_a_reference_function_result_is_chained() {
         ("=SUM(1)(2)", "#ERROR!"),
         ("=ABS(1)(2)", "#ERROR!"),
         ("=IFERROR(LAMBDA(x,x*2),0)(3)", "#ERROR!"),
+        ("=IFNA(LAMBDA(x,x*2),0)(3)", "#ERROR!"),
     ];
     for (row, (formula, _)) in cases.iter().enumerate() {
         model._set(&format!("C{}", row + 1), formula);

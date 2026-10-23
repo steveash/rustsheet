@@ -128,6 +128,7 @@ C	probes/cell-call-edges-f.case.json	2
 C	probes/cell-call-edges-g.case.json	2
 C	probes/chained-calls-builtin-choose-lambda.case.json	1
 C	probes/chained-calls-builtin-choose-ref.case.json	1
+C	probes/chained-calls-builtin-drop.case.json	1
 C	probes/chained-calls-builtin-if-text.case.json	2
 C	probes/chained-calls-builtin-ifs-lambda.case.json	1
 C	probes/chained-calls-builtin-index-array.case.json	1
@@ -137,6 +138,7 @@ C	probes/chained-calls-builtin-offset.case.json	1
 C	probes/chained-calls-builtin-paren-if-value.case.json	1
 C	probes/chained-calls-builtin-switch-lambda.case.json	1
 C	probes/chained-calls-builtin-take.case.json	1
+C	probes/chained-calls-builtin-trimrange.case.json	1
 C	probes/chained-calls-builtin-unknown-name.case.json	1
 C	probes/chained-calls-builtin-xlookup.case.json	1
 C	probes/chained-calls-lambda.case.json	9
@@ -1289,7 +1291,12 @@ C	probes/yield-solver-sweep.case.json	66
 C	probes/yield-start-rate-term.case.json	150
 C	probes/yield-start-sweep.case.json	100
 F	probes/3d-ref-one-sheet-span-lift.case.json	Calc!B6
+F	probes/chained-calls-builtin-drop.case.json	Sheet1!B1
+F	probes/chained-calls-builtin-drop.case.json	Sheet1!B2
 F	probes/chained-calls-builtin-take.case.json	Sheet1!B1
+F	probes/chained-calls-builtin-trimrange.case.json	Sheet1!B1
+F	probes/chained-calls-builtin-trimrange.case.json	Sheet1!B2
+F	probes/chained-calls-builtin-trimrange.case.json	Sheet1!B3
 F	probes/chained-calls-builtin-xlookup.case.json	Sheet1!B1
 F	probes/circular-iteration-delta-boundary.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!A1

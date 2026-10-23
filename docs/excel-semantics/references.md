@@ -670,7 +670,8 @@ as a LET-bound value is ("Calling a parenthesized operand" above): `=LAMBDA(x,x)
 0, `=LAMBDA(x,x)(1/0)(2)` is `#DIV/0!` and `=LAMBDA(x,x)(A1)(2)` is `#REF!` (an ordinary error: IFERROR catches it). A called
 reference called again stays `#REF!`: `=$A$1(1)(2)`, `=$A$1:A2(1)(2)`, `=(A1)(1)(2)`. A built-in's result may be called too,
 but only a built-in that can return a reference (or a LAMBDA): `=INDEX(A1:A3,1)(2)`, `=OFFSET(A1,0,0)(2)`,
-`=INDIRECT("A1")(2)`, `=CHOOSE(1,A1:A3)(2)`, `=TAKE(A1:A3,1)(2)` and `=XLOOKUP(1,A1:A3,A1:A3)(2)` are `#REF!`;
+`=INDIRECT("A1")(2)`, `=CHOOSE(1,A1:A3)(2)`, `=TAKE(A1:A3,1)(2)`, `=DROP(A1:A3,1)(2)`, `=TRIMRANGE(A1:A3)(2)` and
+`=XLOOKUP(1,A1:A3,A1:A3)(2)` are `#REF!`;
 `=IF(TRUE,LAMBDA(x,x*2))(3)`, `=CHOOSE(1,LAMBDA(x,x*2))(3)`, `=IFS(TRUE,LAMBDA(x,x*2))(3)`,
 `=SWITCH(1,1,LAMBDA(x,x*2))(3)` and `=LET(f,LAMBDA(x,x*2),f)(3)` are 6; a value such a built-in returns is called as a
 LET-bound value is, `=INDEX({1,2},1)(2)` `#NAME?`. FORMULATEXT prints the call bare, `=IF(TRUE,LAMBDA(x,x*2))(3)`.
@@ -680,15 +681,16 @@ passes a LAMBDA through, is not callable; the engine reads these as syntax error
 `=LAMBDA(a,LAMBDA(b,a*b))(3) (4)` is refused the same way (no intersection), and the engine reads it as a syntax error too.
 `LAMBDA(x,LAMBDA(y,x+y))(1)()` gives an error the oracle could not decode (unprobed). An unknown name's call chained,
 `=FOO(1)(2)`, is `#NAME?`, and a parenthesized value a function returned, `=(IF(TRUE,1))(2)`, is called like a LET-bound
-value, `#NAME?`. Unprobed: a chain after a defined-name LAMBDA (`=MYFN(1)(2)`; the engine chains any name call).
+value, `#NAME?`. These are exactly the built-ins an intersection accepts (`is_reference_operand`). Unprobed: a chain after a
+defined-name LAMBDA (`=MYFN(1)(2)`; the engine chains any name call; T-2501).
 Evidence: probes/lambda-escaping-closures H3, H8, H10; probes/chained-calls-lambda B1:B10; probes/chained-calls-ref-1..4, -6
 (oracle: excel-graph, 2026-10-22, T-2038); probes/chained-calls-builtin-* (excel-graph, 2026-10-23, T-2405); the refused
 forms were single-formula workbooks, not kept as cases (a refused workbook gives no values).
 Status: VERIFIED (Excel for the web)
 Implemented in: expressions/parser/lambda.rs (`Parser::chain_calls`, after a call and a name call), parser/operands.rs
 (`parse_named_call`, after a built-in `is_reference_operand` accepts), node_frames.rs (a called value,
-`Model::call_variable`). Open: ours gives `#NAME?` for the called TAKE and XLOOKUP results (T-2499).
-Tasks: T-2038, T-2405, T-2499
+`Model::call_variable`). Open: ours gives `#NAME?` for the called TAKE, DROP, TRIMRANGE and XLOOKUP results (T-2499).
+Tasks: T-2038, T-2405, T-2499, T-2501
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =

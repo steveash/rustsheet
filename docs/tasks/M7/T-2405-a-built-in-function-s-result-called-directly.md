@@ -40,11 +40,14 @@ Failing cells, in eval/baseline/probes.txt:
 - LAMBDA values in arrays (T-2039).
 
 ## Outcome
-- 16 single-formula probes (excel-graph, 2026-10-23). Callable: IF, IFS, SWITCH, CHOOSE, LET (a LAMBDA
-  result, 6), INDEX, OFFSET, INDIRECT, CHOOSE of a range, TAKE, XLOOKUP (`#REF!`). Refused at load:
-  SUM, ABS, IFERROR, IFNA. That is exactly the set `is_reference_operand` already accepts, so
+- 18 single-formula probes (excel-graph, 2026-10-23). Callable: IF, IFS, SWITCH, CHOOSE, LET (a LAMBDA
+  result, 6), INDEX, OFFSET, INDIRECT, CHOOSE of a range, TAKE, DROP, TRIMRANGE, XLOOKUP (`#REF!`).
+  Refused at load: SUM, ABS, IFERROR, IFNA. Every built-in `is_reference_operand` accepts is probed
+  callable, and the refused ones are outside it, so
   `parse_named_call` chains after those built-ins; FORMULATEXT prints the callee bare.
   Recorded in references.md "Calling a call's result".
-- Eval: probes 1997 -> 1996 known failures (chained-calls-ref-4, -6 and lambda-escaping-closures
-  H3 fixed); 13 new cases, 2 new-coverage failures (TAKE and XLOOKUP results called: ours
-  `#NAME?`, Excel `#REF!`), follow-up T-2499. No regressions.
+- Eval: probes 1997 -> 2001 known failures: chained-calls-ref-4, -6 and lambda-escaping-closures
+  H3 fixed; 15 new cases with 7 new-coverage failure cells (TAKE, DROP, TRIMRANGE and XLOOKUP
+  results called: ours `#NAME?`, DROP and TRIMRANGE spilled over B2:B3, Excel `#REF!`),
+  follow-up T-2499. No regressions. The defined-name
+  LAMBDA chain stays unprobed: T-2501.
