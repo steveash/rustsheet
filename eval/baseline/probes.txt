@@ -687,6 +687,7 @@ C	probes/npv-reference-forms.case.json	20
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
+C	probes/numbervalue-separator-edges.case.json	20
 C	probes/off-grid-corners.case.json	6
 C	probes/offset-negative-height-width.case.json	80
 C	probes/omitted-arg-compare.case.json	10
@@ -2354,6 +2355,7 @@ F	probes/npv-reference-forms.case.json	Sheet1!A5
 F	probes/npv-reference-forms.case.json	Sheet1!A6
 F	probes/npv-reference-forms.case.json	Sheet1!A8
 F	probes/npv-reference-forms.case.json	Sheet1!A9
+F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
 F	probes/rate-empty-arguments.case.json	Sheet1!A1
 F	probes/rate-empty-arguments.case.json	Sheet1!A10
 F	probes/rate-empty-arguments.case.json	Sheet1!A2
