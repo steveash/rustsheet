@@ -106,7 +106,9 @@ fn torow_lone_blank_cell_is_ignored() {
     model._set("B2", "=UNIQUE(Z1)&\"x\"");
     model._set("A1", "5");
     model._set("B3", "=TOROW(A1,3)");
+    model._set("B4", "=TOCOL(Z1,1)");
     model.evaluate();
+    assert_eq!(model._get_text("B4"), "#CALC!");
     assert_eq!(model._get_text("B1"), "#CALC!");
     assert_eq!(model._get_text("B2"), "x");
     assert_eq!(model._get_text("B3"), "5");
