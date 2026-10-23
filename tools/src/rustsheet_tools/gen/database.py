@@ -14,6 +14,7 @@ Each criteria block sits in its own column from F on (two adjacent blocks are an
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 SHEET = "Db"
@@ -32,6 +33,14 @@ TABLE: list[list[Any]] = [
     ["123", 5, -1, 45291],
 ]
 
+
+@dataclass(frozen=True)
+class Formula:
+    """A criteria cell that is a formula; any other text starting with "=" is a typed string."""
+
+    text: str
+
+
 # Criteria blocks, one per column from F; each is a header and its criteria rows. The quirk each one
 # reaches (docs/excel-semantics/criteria.md unless said otherwise):
 CRITERIA: dict[str, list[Any]] = {
@@ -44,7 +53,7 @@ CRITERIA: dict[str, list[Any]] = {
     "L": ["Qty", ">=4", "<1"],  # two criteria rows are an OR
     "M": ["Name", "a~**"],  # an escaped wildcard: names that start with "a*"
     "N": ["Nope", 1],  # a header the table does not have
-    "O": ["Calc", "=B2>3"],  # a computed criterion: a formula under a label that is not a header
+    "O": ["Calc", Formula("=B2>3")],  # a computed criterion: a formula under a label that is not a header
     "P": ["Date", ">45351"],  # a date column compared as a serial
     "Q": ["Qty", "<>4"],  # not equal
     "R": ["qty", 4],  # headers match case-insensitively; a number criterion
@@ -63,10 +72,13 @@ def cells() -> dict[str, Any]:
         for r, v in enumerate(block, 1):
             if v is None:
                 continue
-            # A spec reads text starting with "=" as a formula: "=apple" is a typed string, the computed
-            # criterion (block O) a formula.
-            typed = isinstance(v, str) and v.startswith("=") and col != "O"
-            out[f"{col}{r}"] = {"t": "s", "v": v} if typed else v
+            # A spec reads text starting with "=" as a formula, so "=apple" is written as a typed string.
+            if isinstance(v, Formula):
+                out[f"{col}{r}"] = v.text
+            elif isinstance(v, str) and v.startswith("="):
+                out[f"{col}{r}"] = {"t": "s", "v": v}
+            else:
+                out[f"{col}{r}"] = v
     return out
 
 
