@@ -134,10 +134,16 @@ const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
 
 // --- Hypergeometric (T-1873) ----------------------------------------------------------------
 /// One HYPGEOM.DIST element: its capped cdf's bound, (2^18 + 131) terms at 250 ns, about 66 ms, so
-/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`).
+/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`). A cdf
+/// or pmf takes either the double-double walk (at most 78 us, T-0977) or that sum, never both.
 const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
 const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_DIST_WEIGHT));
-const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Constant);
+/// One HYPGEOMDIST element: its pmf walk (`statistical/discrete.rs`, T-0977) of at most 2^12
+/// double-double steps, 78 us in release at 4,095 steps, twice BINOM.DIST's walk, so twice its
+/// weight: 16,384 elements a lifted call, about 1.3 s. Past the walk's budget the pmf is statrs'
+/// closed form.
+const HYPGEOMDIST_WEIGHT: u32 = 1 << 13;
+const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Weighted(HYPGEOMDIST_WEIGHT));
 // --- End hypergeometric (T-1873) ------------------------------------------------------------
 
 /// `DSUM(database, field, criteria)` and the other D-functions: the database is read whole, `field`
