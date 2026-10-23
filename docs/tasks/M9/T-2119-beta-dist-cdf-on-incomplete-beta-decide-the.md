@@ -50,6 +50,14 @@ Cells:
 - gen-m9/899f9555e67da2d6.case.json (1): Calc!A101
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A150
 
+T-0974 (2026-10-23) measured the switch together with BETA.INV refined to the crossing of `beta_reg`
+(`special::refine_increasing`, the upper tail I_y(b,a) = 1 - p in y = 1 - t above p = 0.5): 45 gated lines fixed, in-scope
+cells visibly off down by about 1,300, and nine BETADIST_BETAINV.xlsx regressions, all within 4 ulp (H2 2, H23 4, H42, H44,
+H46-H49 1, H67 2: decision 0083's allowance). Four ungated probes-numeric BETA.DIST cells go visibly off with the switch
+(t0969-beta-prefactor D85, D86, t0969-t-beta-link E56, F6; up to 3.5 units of the 15th digit, D86). The run could not
+record the regressions (`--allow-regressions` was refused to it), so it shipped only the F half. T-0974's BETAINV cells
+(gen-m9/589f42e67f4b4b8d A221, c18dbf21f11093f3 A400, eced4bb6a0234c9e A291) belong here.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
