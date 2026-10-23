@@ -78,14 +78,14 @@ fn is_range_arm(arm: &Node) -> bool {
 }
 
 /// Whether `arm` is a range arm that makes the IF itself a value to intersect: not `INDEX(range,row)`
-/// with a literal non-zero row, one cell, for which Excel shows no `@` at all (`=IF(TRUE,INDEX(B1:B6,3))`,
+/// with a literal row of 1 or more, one cell, for which Excel shows no `@` at all (`=IF(TRUE,INDEX(B1:B6,3))`,
 /// probes/legacy-if-arm-other-references M12, T-2326). The INDEX arm still counts as a reference arm
 /// ([`is_range_arm`]), so it gets no `@` of its own either.
 fn is_whole_range_arm(arm: &Node) -> bool {
     is_range_arm(arm) && !is_single_cell_index(arm)
 }
 
-/// Whether `arm` is `INDEX(range,row)` over a one-column range with a literal non-zero row,
+/// Whether `arm` is `INDEX(range,row)` over a one-column range with a literal row of 1 or more,
 /// possibly in parentheses. Only that shape is evidenced (M12); a 2-D range gives a whole row.
 fn is_single_cell_index(arm: &Node) -> bool {
     matches!(
@@ -93,7 +93,7 @@ fn is_single_cell_index(arm: &Node) -> bool {
         Node::FunctionKind { kind: Function::Index, args }
             if args.len() == 2
                 && matches!(args[0].ungrouped(), Node::RangeKind { column1, column2, .. } if column1 == column2)
-                && matches!(args[1].ungrouped(), Node::NumberKind(n) if *n != 0.0)
+                && matches!(args[1].ungrouped(), Node::NumberKind(n) if *n >= 1.0)
     )
 }
 
