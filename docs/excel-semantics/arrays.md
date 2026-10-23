@@ -1544,8 +1544,9 @@ Evidence: probes/groupby-lifted-args (excel-graph, 2026-10-22, T-2359), probes/g
 T-2399); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
 b24ce74f08d3f91a A1778.
 Ours: `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs) evaluates each option once, broadcasts the array
-options with the lifting driver's `broadcast_shape`, and re-runs the call once per class of the elements at a position (a whole number within the valid range, another number, a boolean, text that is no number, an error),
-with every other argument frozen to its value, so neither an array's size nor nesting multiplies the work.
+options with the lifting driver's `broadcast_shape`, and re-runs the call once per class of the elements at a position (a
+whole number within the valid range, another number, a boolean, text that is no number, an error), with every other argument
+frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399
