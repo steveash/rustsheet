@@ -10,7 +10,8 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
   value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
 - `rate`: Newton candidates in r and IRR's secant applied to r (T-1533); none is Excel's method.
 - `yield-one-period`: the documented closed form with each day-count choice.
-- `yield`: basis-0 bonds with more than one coupon left: Newton, secant and regula falsi on PRICE.
+- `yield`: basis-0 bonds with more than one coupon left: Newton, secant and regula falsi on PRICE,
+  each priced with libm `pow` and again with Excel's `^` (T-2207).
 
 Findings: docs/excel-semantics/financial.md ("XIRR is a bracketing bisection", "IRR returns x - 1",
 "RATE iterates on the rate itself", "YIELD with one coupon period left is closed form"). The lab
@@ -25,11 +26,14 @@ import contextlib
 import datetime
 import math
 from collections.abc import Callable
+from contextvars import ContextVar
+from fractions import Fraction
 from functools import partial
 from typing import NamedTuple
 
 from rustsheet_tools.fitlab.exact import X87
 from rustsheet_tools.fitlab.fit import Fit
+from rustsheet_tools.fitlab.kernels.power import excel_model
 from rustsheet_tools.fitlab.score import Candidate, ExcelError, candidate
 from rustsheet_tools.fitlab.sweep import (
     Arg,
@@ -706,24 +710,51 @@ def _many_periods_basis0(cell: Cell) -> bool:
 Bond = tuple[float, float, int, float, float, float, int]  # rate, redemption, freq, A, E, DSC, N
 
 
+def caret_pow(base: float, exponent: float) -> float:
+    """base ^ exponent with Excel's `^` (kernels/power.py `excel_model`, the engine's
+    `arithmetic::power`): PRICE discounts with it (T-2207). A power that is not real is NoResultError."""
+    if base <= 0 and not exponent.is_integer():
+        raise NoResultError(f"{base} ^ {exponent} is not real")
+    return excel_model(Fraction(base), exponent)
+
+
+# The power `price` and `dprice` discount with: libm, or `caret_pow` inside a `caret_priced` candidate.
+_PRICE_POWER: ContextVar[Callable[[float, float], float]] = ContextVar("price_power", default=rpow)
+
+
+def caret_priced(fn: Callable[..., float]) -> Callable[..., float]:
+    """`fn` with every PRICE (and PRICE') it takes discounted by Excel's `^` instead of libm (T-2207)."""
+
+    def call(*args: Arg) -> float:
+        token = _PRICE_POWER.set(caret_pow)
+        try:
+            return fn(*args)
+        finally:
+            _PRICE_POWER.reset(token)
+
+    return call
+
+
 def price(y: float, bond: Bond) -> float:
     """PRICE with N > 1 coupons left (documented form, DSC = E - A)."""
     rate, red, freq, a, e, dsc, n = bond
+    power = _PRICE_POWER.get()
     base = 1 + y / freq
-    coupons = sum(100 * rate / freq / rpow(base, k - 1 + dsc / e) for k in range(1, n + 1))
-    return red / rpow(base, n - 1 + dsc / e) + coupons - 100 * rate / freq * a / e
+    coupons = sum(100 * rate / freq / power(base, k - 1 + dsc / e) for k in range(1, n + 1))
+    return red / power(base, n - 1 + dsc / e) + coupons - 100 * rate / freq * a / e
 
 
 def dprice(y: float, bond: Bond) -> float:
     """d/dy of `price`, analytic."""
     rate, red, freq, _, e, dsc, n = bond
+    power = _PRICE_POWER.get()
     base = 1 + y / freq
     total = 0.0
     for k in range(1, n + 1):
         t = k - 1 + dsc / e
-        total -= t * 100 * rate / freq / rpow(base, t + 1) / freq
+        total -= t * 100 * rate / freq / power(base, t + 1) / freq
     t = n - 1 + dsc / e
-    return total - t * red / rpow(base, t + 1) / freq
+    return total - t * red / power(base, t + 1) / freq
 
 
 def _bond_price(args: tuple[Arg, ...]) -> tuple[Callable[[float], float], Bond, float]:
@@ -935,7 +966,13 @@ def yield_candidates() -> list[Candidate]:
         )
         for name, start in model_starts.items()
     ]
+    # T-2207: the engine's PRICE discounts with Excel's `^`; each solver again on that PRICE.
+    out += [Candidate(f"{c.name}, ^-priced", _caret_evaluate(c), f"{c.family}, ^-priced") for c in list(out)]
     return out
+
+
+def _caret_evaluate(c: Candidate) -> Callable[[Cell], float]:
+    return lambda cell: caret_priced(lambda *_args: c.evaluate(cell))()
 
 
 FITS = [

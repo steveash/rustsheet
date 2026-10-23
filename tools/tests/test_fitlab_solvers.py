@@ -199,3 +199,12 @@ def test_yield_start_moves_with_the_basis_days_over_its_year() -> None:
         model = solvers._annuity_model_root(m)
         moved = model(*by_key["S!D2"].args) - model(*by_key["S!D11"].args)
         assert abs(moved - (d2 - d11)) < 3e-8, m
+
+
+def test_caret_priced_prices_with_excels_power() -> None:
+    # T-2207: PRICE(DATE(2020,3,1),DATE(2030,3,1),0.06,0.07,130,1,0) is 108.22689722310892 in Excel
+    # (ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!H2); libm `pow` gives ...889. The power
+    # goes back to libm once the `^`-priced call returns.
+    bond = (0.06, 130.0, 1, 0.0, 360.0, 360.0, 10)
+    assert solvers.caret_priced(lambda: solvers.price(0.07, bond))() == 108.22689722310892
+    assert solvers.price(0.07, bond) == 108.22689722310889

@@ -3,7 +3,7 @@ id: T-2207
 title: "PRICE and ODDFPRICE to 15 significant digits: discount each coupon with Excel's ^ kernel, off powf"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -61,17 +61,17 @@ within 4 ulp of Excel and none becomes visibly off); if that does not hold, keep
 separate libm-priced function and say why in financial.md.
 
 ## Acceptance criteria
-- [ ] Every PRICE and ODDFPRICE cell listed above is within half a unit of Excel's 15th significant
+- [x] Every PRICE and ODDFPRICE cell listed above is within half a unit of Excel's 15th significant
       digit; the 9 integer-exponent PRICE cells (PRICE_YIELD!H2-H5, H8-H11, fin-coupon-walk-bounds-c C10)
       pass bit-exact. Their known-failure lines leave eval/baseline/ironcalc-calc.txt and
       eval/baseline/probes.txt.
-- [ ] No new line in any baseline, or each new YIELD/ODDFYIELD line is within decision 0083's
+- [x] No new line in any baseline, or each new YIELD/ODDFYIELD line is within decision 0083's
       allowance and listed in the Outcome with its ulp distance.
-- [ ] A unit test pins `PRICE(DATE(2020,3,1),DATE(2030,3,1),0.06,0.07,130,1,0)` = 108.22689722310892
+- [x] A unit test pins `PRICE(DATE(2020,3,1),DATE(2030,3,1),0.06,0.07,130,1,0)` = 108.22689722310892
       and fails on main.
-- [ ] docs/excel-semantics/financial.md records that PRICE and ODDFPRICE discount with Excel's `^`
+- [x] docs/excel-semantics/financial.md records that PRICE and ODDFPRICE discount with Excel's `^`
       (with the cells above as evidence), and how the fractional-exponent cells came out.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit parity of the YIELD and ODDFYIELD stopping points (T-1592, T-2187, T-2007).
@@ -81,3 +81,16 @@ separate libm-priced function and say why in financial.md.
 ## Visible-parity stage
 Decision 0083: wrong bond prices are visible in the 15th digit. The first acceptance criterion is the
 visible-parity stage; bit-level misses left on fractional-exponent cells go back to T-1374.
+
+## Outcome
+2026-10-23. PRICE and ODDFPRICE (and DURATION/MDURATION, which already did) discount through one
+helper, `discount_growth` in financial_bonds.rs: Excel's `^` (`arithmetic::power`), libm only where `^`
+is an error. Every listed PRICE and ODDFPRICE cell now passes bit-exact, the fractional-exponent ones too.
+Eval: 56 known failures fixed, 0 regressions: ironcalc-calc 831 -> 804, probes 2032 -> 2006, corpus-bench
+14 -> 13, poi 130 -> 129 (54436.xlsx Sheet1!A14), gen-m9 7083 -> 7082 (43c6227e0ff368c7 Calc!A35).
+YIELD's solver keeps libm prices: on `^` prices it fixes 4 more YIELD cells but regresses PRICE_YIELD!I27 by
+4 ulp to a visibly different value (and yield-start-rate-term S!B45 by 2 ulp), outside decision 0083's
+allowance. ODDFYIELD passes the same cells on either kernel and walks ODDFPRICE's `^` price. The YIELD lab
+gained `^`-priced copies of every candidate (`caret_priced` in fitlab/kernels/solvers.py): best still 4/178
+bit-exact, union 12/178 -> 15/178; recorded in financial.md "PRICE and ODDFPRICE discount with Excel's `^`"
+and in T-1592's and T-2007's Context. Nothing is left for T-1374 from PRICE/ODDFPRICE.

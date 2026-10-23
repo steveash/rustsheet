@@ -27,6 +27,12 @@ solver-iteration-traces Y!C2:E2 (price 50, ten years). The approximate-yield for
 (C + (100 - P)/n) / ((100 + P)/2), annual-coupon IRRs over whole or fractional years, the coupon
 rate, 0, 0.1 and the current yield do not give these values.
 
+T-2207 (2026-10-23): the engine's PRICE now discounts with Excel's `^`, but the YIELD lab's
+`^`-priced copy of each candidate (`uv run rustsheet-fitlab yield`, family names ending ", ^-priced") reaches at
+most 4/178 bit-exact, as the libm-priced ones do (Newton from 0.1 to 1e-12: 4/178, 10 within 4 ulp, libm; 4/178, 7,
+`^`); the union of all candidates goes from 12/178 to 15/178. The price kernel is not the missing piece. The
+engine's YIELD solver still prices with libm (financial.md "PRICE and ODDFPRICE discount with Excel's `^`").
+
 ## Acceptance criteria
 - [x] A backward-iterate report in the lab (or a test) that reproduces the starting values above.
 - [ ] Start formulas and stop rules tried, each with its bit-exact and within-4-ulp counts as lab fits
