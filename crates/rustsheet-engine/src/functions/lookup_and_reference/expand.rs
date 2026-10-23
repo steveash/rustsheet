@@ -82,10 +82,7 @@ impl Model {
                 // A2686; arrays.md "EXPAND, WRAPROWS and WRAPCOLS"; T-2415). A one-cell reference
                 // is its value.
                 let pad = values.get(3);
-                if pad.is_some_and(|pad| {
-                    matches!(pad, CalcResult::Array(_) | CalcResult::Range { .. })
-                        && pad.is_multi_value()
-                }) {
+                if pad.is_some_and(CalcResult::is_multi_value) {
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
