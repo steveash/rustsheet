@@ -3,7 +3,7 @@ id: T-2039
 title: "Arrays of LAMBDA values: SCAN with a LAMBDA accumulator spills LAMBDAs that MAP can call"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
