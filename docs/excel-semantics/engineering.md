@@ -66,7 +66,7 @@ untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0`
 Excel's own J cap is 10,000,000 (T-2139, above); between 100,001 and that the engine gives `#NUM!` where Excel gives the value (0, or a nonzero
 value when x is large: `BESSELJ(1E5,100001)`). Status: DEVIATION (decision 0014).
 BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's BESSELI above
-100,000 is 0 (`BESSELI(2.5,100001)`, `(2.5,1E+6)`; "Engineering edge-pool smoke check (T-2249)"); BESSELK's is `#NUM!` already at 100,001 (`BESSELK(2.5,100001)`, T-2139: overflow).
+100,000 is 0 (`BESSELI(2.5,100001)`, `(2.5,1E+6)`; "Engineering edge-pool smoke check (T-2249)"); BESSELK's is `#NUM!` already at 100,001 (`BESSELK(2.5,100001)`, T-2139; probably overflow, the first `#NUM!` order is not probed).
 A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
 (SPEC-0011 `ValueWork::Loop`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
 cap and 1 for n = 0; an order past the cap is refused (`#NUM!`) before the kernel loops and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
