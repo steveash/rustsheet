@@ -3,7 +3,7 @@ id: T-2406
 title: "MAKEARRAY with an array step is one #CALC!; BYROW, BYCOL and MAP with a LAMBDA step are #CALC! per element (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
