@@ -29,7 +29,7 @@ impl Model {
         // (`SUMPRODUCT(NA(),D1:E2,blank)` is `#N/A`, `SUMPRODUCT(blank,D1:E2,NA())` `#VALUE!`;
         // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150). Once the shapes
         // disagree, the elements of that and later arguments are not read, so an error element
-        // there does not win: unprobed, TODO(T-2442).
+        // there does not win: unprobed, TODO(T-2450).
         let mut arrays: Vec<Vec<Vec<f64>>> = Vec::with_capacity(args.len());
         let mut shape: Option<(usize, usize)> = None;
         let mut mismatch = false;

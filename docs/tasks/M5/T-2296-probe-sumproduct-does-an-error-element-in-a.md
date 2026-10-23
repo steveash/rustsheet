@@ -33,7 +33,7 @@ mismatches; the probe should still separate the orders listed above. Owned by th
 
 ## Acceptance criteria
 - [x] A probe case in eval/suites/probes with oracle values for the cells above.
-- [x] Visible parity: the gen-m7 cell under Context (f7e94a817e5385ac A50) is owned by T-2442 (`campaign: visible`); its known-failure line leaves eval/baseline/gen-m7.txt when that task is done.
+- [x] Visible parity: the gen-m7 cell under Context (f7e94a817e5385ac A50) is owned by T-2450 (`campaign: visible`); its known-failure line leaves eval/baseline/gen-m7.txt when that task is done.
 - [x] coercion.md entry's Open line replaced by the probed rule; an implementation task filed if ours differs.
 - [x] `make check` green; reviewers approve.
 
@@ -48,5 +48,5 @@ states it.
 
 ## Outcome
 Probed with excel-graph (2026-10-23): `eval/suites/probes/cases/t2296-sumproduct-error-element` (16 cells). An error element beats a shape
-mismatch in any argument order; a whole-argument error beats an element error. Rule recorded in coercion.md; implementation filed as T-2442
+mismatch in any argument order; a whole-argument error beats an element error. Rule recorded in coercion.md; implementation filed as T-2450
 (owns gen-m7/f7e94a817e5385ac A50; `TODO(T-2296)` markers retargeted). Eval: probe cells that ours fails are known failures in eval/baseline/probes.txt.
