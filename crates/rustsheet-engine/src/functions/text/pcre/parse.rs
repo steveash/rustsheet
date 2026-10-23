@@ -1009,7 +1009,7 @@ fn close(frame: Frame) -> Result<(Ast, u32), Invalid> {
                     let (assertion, yes) = leading_assertion(yes)?;
                     (Condition::Assert(Box::new(assertion)), yes)
                 }
-                group => (group, yes),
+                group @ Condition::Group(_) => (group, yes),
             };
             Ast::Conditional {
                 condition,
