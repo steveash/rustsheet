@@ -3,7 +3,7 @@ id: T-2353
 title: "gen-m5: Excel-backed generated cells with INFO and SHEETS as the outer call (M5 catalog coverage 135/135)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -33,16 +33,21 @@ gen-m5 gets a small, Excel-backed batch of generated formulas whose outer call i
   `make eval-baseline`.
 
 ## Acceptance criteria
-- [ ] gen-m5 has one new case (or two) in which INFO and SHEETS are each the outer call of at least 20 formulas, all
+- [x] gen-m5 has one new case (or two) in which INFO and SHEETS are each the outer call of at least 20 formulas, all
       Excel-backed (excel-graph sidecar, canary-verified; the fill reports 0 failures).
-- [ ] `make eval`: report.md's "Catalog coverage per milestone" M5 row shows covered 135/135, and "M5 missing" is
+- [x] `make eval`: report.md's "Catalog coverage per milestone" M5 row shows covered 135/135, and "M5 missing" is
       gone.
-- [ ] `make eval-baseline` shows 0 regressions. Any new gen-m5 known failure has an owner task (new or extended), named
+- [x] `make eval-baseline` shows 0 regressions. Any new gen-m5 known failure has an owner task (new or extended), named
       in the Outcome, and `make exit-owners MILESTONE=M5` reports no unowned cell from the new case. gen-m5's known
       failures stay within the exit allowance (floor(0.001 x scored)).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 400-cell evidence bar for SHEETS and the other T-2252 functions (T-2252).
 - Generating `SHEETS()` with no argument or `INFO("numfile")`. The canary refuses them (T-2113).
 - Desktop INFO values (T-2182, M14).
+
+## Outcome
+Added gen-m5/953b3efdd051f7de (`rustsheet-gen --milestone M5 --focus --functions INFO,SHEETS --count 1 --formulas 60 --seed 2353`),
+60 formulas, excel-graph sidecar filled with 0 failures. `make eval-baseline`: one new `C` line (60 checked cells), no new
+known failure, so no new owner needed (`make exit-owners MILESTONE=M5`: 0 unowned). `make eval`: M5 covered 135/135, "M5 missing" gone.
