@@ -1,0 +1,27 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Control for the typed cell-shaped LET name probes: a LET with an ordinary name entered as typed text through Excel's input parser (T-2040).",
+  "tags": [
+    "M7",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": {
+          "entered": "=LET(x,1,x+1)"
+        },
+        "B1": "=FORMULATEXT(A1)",
+        "C1": "=ISFORMULA(A1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!B1",
+    "Sheet1!C1"
+  ]
+}

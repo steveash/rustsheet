@@ -2063,10 +2063,41 @@ parser/stringify/bound_variables.rs) picks the names the R1C1 storage escapes;
 `is_out_of_range_r1c1_name` (names never resolved: `name_operand`, INDIRECT, the R1C1 lexer).
 Dotted ranges in formulas: `consume_dotted_corner` (lexer/ranges.rs; the forms with `$` or
 whitespace) and `parse_dotted_a1_range` through `dotted_range_operand` (parser/operands.rs; an
-identifier such as `A1.B2`, unless an enclosing LET or LAMBDA binds it: `bind_dotted_name`).
+identifier such as `A1.B2`, unless an enclosing LET or LAMBDA binds it: `bind_reference_shaped_name`).
 The unknown call `A1.INDEX(...)` keeps its spelling (spelling rule in "Unknown function call names", T-1719).
 Status: VERIFIED (excel-graph)
 Tasks: T-1652, T-1659
+
+## LET and LAMBDA names spelled like a cell
+Rule: a LET name or LAMBDA parameter spelled like a relative A1 cell (`f1`, `add5`, `c1`, `A1`),
+stored in Excel's `_xlpm.` form, binds like any other name within its call, and is the cell again
+outside it. Stored so (the case builder writes every bound name with `_xlpm.`):
+`LET(f1,1,f1+1)` 2, `LAMBDA(f1,f1*2)(3)` 6, `LET(c1,10,r1,2,c1*r1)` 20, `LET(A1,5,a1*2)` 10,
+`LET(x,LET(xy1,3,xy1+1),x)` 4, `LAMBDA(x,[f1],ISOMITTED(f1))(1)` TRUE, and with F1 holding 7,
+`LET(f1,1,LAMBDA(f1,f1*10)(2))+f1` 27 (the last `f1`, outside the LET, is stored bare and is the
+cell); a bound name may be called, `LET(mk,LAMBDA(a,LAMBDA(b,a+b)),add5,mk(5),add5(1))` 6 and the
+`f1`/`f2` twin 100001. FORMULATEXT prints the names without the prefix, each use in its
+declaration's spelling (`=LET(A1,5,A1*2)`) and the cell outside in uppercase (`...+F1`).
+Typed, Excel refuses the same formulas: entering `=LET(f1,1,f1+1)`, the `add5` formula or
+`=LAMBDA(f1,f1*2)(3)` through Excel for the web's input parser (Graph range `values` PATCH) is
+rejected with 400 `InvalidArgument`, while `=LET(x,1,x+1)` entered so gives 2. The refused
+entries cannot be committed as cases.
+Ours: the A1 parser reads a cell-shaped name in a LET or LAMBDA name position as the variable,
+and every later use within the call too (`bind_reference_shaped_name`, parser/operands.rs, the
+mechanism of the Lotus-style names above), so typed text means what its stored form means, as
+the harness feeds it; a use before the binding (`LET(x,F1,F1,2,...)`) stays the cell (its stored
+form would prefix it; unprobed). The R1C1 storage writes such a name as `_xlpm.f1` (the R1C1
+lexer refuses a cell-shaped identifier), and the xlsx export as `_xlpm.add5` like any bound
+name. Open: the API accepts the typed form Excel refuses (T-2497). `$F$1` or `Sheet1!F1` is
+never a name (`LET($F$1,1,F1+1)` is `#VALUE!`; unprobed). Unprobed too: a bound name as a
+range end, `LET(f1,1,f1:G2)` (ours reads the variable, T-2497).
+Evidence: probes/let-cell-shaped-name-stored, let-cell-shaped-name-typed-control, and
+lambda-escaping-closures H4, H5 (excel-graph, 2026-10-23); the refused typed entries were
+single-cell cases like -typed-control (`rustsheet-oracle fill`, 2026-10-23), not committed.
+Status: VERIFIED (excel-graph)
+Implemented in: `bind_reference_shaped_name`, `binds_reference_shaped_name` (parser/operands.rs),
+`Parser::parse_operand`, `reads_back_as_cell` (parser/stringify/bound_variables.rs).
+Tasks: T-0439, T-2040, T-2497
 
 ## Structured references: this row, totals and ranges
 Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
