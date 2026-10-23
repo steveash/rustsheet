@@ -392,19 +392,13 @@ fn format_number_locale(number: f64, locale: &Locale) -> String {
 /// The printed element `node` of an array constant.
 fn to_string_array_node(node: &ArrayNode, locale: &Locale, language: &Language) -> String {
     match node {
-        ArrayNode::Boolean(value) => {
-            if *value {
-                language.booleans.r#true.to_uppercase()
-            } else {
-                language.booleans.r#false.to_uppercase()
-            }
-        }
+        ArrayNode::Boolean(true) => language.booleans.r#true.to_uppercase(),
+        ArrayNode::Boolean(false) => language.booleans.r#false.to_uppercase(),
         ArrayNode::Number(number) => format_number_locale(*number, locale),
         ArrayNode::String(value) => format!("\"{value}\""),
         ArrayNode::Error(kind) => format!("{kind}"),
         ArrayNode::Empty => "0".to_string(),
-        // Never parsed; printed as what a cell shows for it.
-        ArrayNode::Lambda(_) => "#CALC!".to_string(),
+        ArrayNode::Lambda(_) => "#CALC!".to_string(), // never parsed: what a cell shows
     }
 }
 
