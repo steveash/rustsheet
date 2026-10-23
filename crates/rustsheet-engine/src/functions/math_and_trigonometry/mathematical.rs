@@ -825,24 +825,32 @@ impl Model {
     }
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        let k = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
+        self.lift_call(Function::Combina, args, cell, &mut |model, values| {
+            let [n, k] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let n = match model.kernel_number(n, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            let k = match model.kernel_number(k, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            Self::combina_of(n, k, cell)
+        })
+    }
+
+    /// COMBINA on a floored `n` and `k` (see `fn_combina`).
+    fn combina_of(n: f64, k: f64, cell: CellReferenceIndex) -> CalcResult {
         if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
             return num_error(cell);
         }
         // COMBINA(n, k) is Excel's COMBIN(n + k - 1, k), rounding included: `COMBINA(20,19)` is
         // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"), and so is its bound:
         // `COMBINA(2^31-2,1)` is 2147483646, `COMBINA(2^31-2,2)` and `COMBINA(2^31-1,1)` are #NUM!.
-        // That also caps `combin`'s loop below 2^31 steps; it runs min(k, n - 1) of them.
+        // That also caps `combin`'s loop below 2^31 steps (min(k, n - 1)), and it stops at the first
+        // infinity, within about 1,030 (the lifting table's weight, `lift/kinds/general.rs`).
         if n + k - 1.0 >= COMBIN_MAX_NUMBER {
             return num_error(cell);
         }
