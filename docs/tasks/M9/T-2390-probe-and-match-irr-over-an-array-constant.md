@@ -3,7 +3,7 @@ id: T-2390
 title: "Probe and match IRR over an array constant holding an error: #VALUE!, not the error"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
