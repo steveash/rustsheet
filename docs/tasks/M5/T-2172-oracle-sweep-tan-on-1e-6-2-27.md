@@ -3,7 +3,7 @@ id: T-2172
 title: "Oracle sweep: TAN on 1E+6 .. 2^27 and ODD/EVEN above 2^53"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
