@@ -119,7 +119,7 @@ impl PartNames {
 
 /// The part name an entry or a part reference stands for: `/` separators, no leading `/`,
 /// ASCII lowercase.
-fn part_key(name: &str) -> String {
+pub(super) fn part_key(name: &str) -> String {
     name.replace('\\', "/")
         .trim_start_matches('/')
         .to_ascii_lowercase()

@@ -19,9 +19,10 @@ use rustsheet_engine::pivot::{
     Aggregate, Axis, AxisField, CacheBuilder, CacheItem, CacheSource, CellArea, DataField,
     PivotCache, PivotCacheError, PivotField, PivotTable, RecordValue, MAX_RECORD_VALUES,
 };
+use rustsheet_engine::types::DateSystem;
 
 use super::iso_date::iso8601_to_serial;
-use super::package::{part_folder_and_rels, resolve_relative_target, Package};
+use super::package::{part_folder_and_rels, part_key, resolve_relative_target, Package};
 use super::worksheets::parse_range;
 use super::xml::{find_start_attribute, start_attribute, XmlNode};
 use super::{parse_relationships, Relationship};
@@ -33,6 +34,10 @@ const MAX_AXIS_FIELDS: usize = 256;
 const MAX_DATA_FIELDS: usize = 256;
 /// Most pivots on one sheet; the ones past it are dropped.
 const MAX_PIVOTS_PER_SHEET: usize = 64;
+/// Most pivots in a workbook; the ones past it are dropped. Every accepted pivot allocates a
+/// hidden-items bitset per field sized to its cache, so the per-sheet cap alone leaves the total
+/// to the file (T-2394, web.md "Pivot caches past the import limits are dropped").
+const MAX_PIVOTS: usize = 1_000;
 /// Deepest element nesting read in a pivot part: well-formed ones nest about six deep, and the
 /// open-element stack must not grow with the file.
 const MAX_DEPTH: usize = 32;
@@ -77,8 +82,10 @@ pub(super) fn load_pivots<R: Read + Seek>(
     rels: &HashMap<String, Relationship>,
     caches: &[(Option<String>, Option<String>)],
     sheets: &[PivotSheet],
+    date_system: DateSystem,
 ) -> (Vec<PivotCache>, Vec<PivotTable>) {
-    let (pivot_caches, cache_ids) = load_caches(archive, rels, caches, MAX_RECORD_VALUES);
+    let (pivot_caches, cache_ids) =
+        load_caches(archive, rels, caches, MAX_RECORD_VALUES, date_system);
     if pivot_caches.is_empty() {
         return (pivot_caches, Vec::new());
     }
@@ -86,25 +93,35 @@ pub(super) fn load_pivots<R: Read + Seek>(
     for sheet in sheets {
         match pivot_table_parts(archive, &sheet.path) {
             Ok(found) => {
+                // One log line per sheet for the pivots dropped, not one per pivot: a file can
+                // list millions.
+                let mut dropped = 0_usize;
                 for (n, part) in found.into_iter().enumerate() {
-                    if n < MAX_PIVOTS_PER_SHEET {
+                    if n < MAX_PIVOTS_PER_SHEET && parts.len() < MAX_PIVOTS {
                         parts.push((sheet.sheet_id, part));
                     } else {
-                        log_skip(
-                            "pivot table",
-                            &part,
-                            &Skip("too many pivots on a sheet".into()),
-                        );
+                        dropped += 1;
                     }
+                }
+                if dropped > 0 {
+                    log_skip(
+                        "pivot tables of",
+                        &sheet.path,
+                        &Skip(format!(
+                            "{dropped} dropped past the limits ({MAX_PIVOTS_PER_SHEET} on a sheet, {MAX_PIVOTS} in a workbook)"
+                        )),
+                    );
                 }
             }
             Err(reason) => log_skip("pivot tables of", &sheet.path, &reason),
         }
     }
-    let reached = occurrences(parts.iter().map(|(_, part)| part));
+    // Part names match case-insensitively with `\` as `/` (`part_key`), so count on that key.
+    let keys: Vec<String> = parts.iter().map(|(_, part)| part_key(part)).collect();
+    let reached = occurrences(keys.iter());
     let mut pivot_tables = Vec::new();
-    for (sheet_id, part) in &parts {
-        let result = if reached.get(part).is_some_and(|&n| n > 1) {
+    for ((sheet_id, part), key) in parts.iter().zip(&keys) {
+        let result = if reached.get(key).is_some_and(|&n| n > 1) {
             skip("the part is reached twice")
         } else {
             archive
@@ -149,6 +166,7 @@ fn load_caches<R: Read + Seek>(
     rels: &HashMap<String, Relationship>,
     caches: &[(Option<String>, Option<String>)],
     mut values_left: usize,
+    date_system: DateSystem,
 ) -> (Vec<PivotCache>, HashMap<u32, u32>) {
     let listed: Vec<(Option<u32>, Option<String>)> = caches
         .iter()
@@ -163,10 +181,14 @@ fn load_caches<R: Read + Seek>(
         })
         .collect();
     let id_counts = occurrences(listed.iter().filter_map(|(id, _)| id.as_ref()));
-    let part_counts = occurrences(listed.iter().filter_map(|(_, part)| part.as_ref()));
+    let part_keys: Vec<Option<String>> = listed
+        .iter()
+        .map(|(_, part)| part.as_deref().map(part_key))
+        .collect();
+    let part_counts = occurrences(part_keys.iter().flatten());
     let mut pivot_caches = Vec::new();
     let mut ids = HashMap::new();
-    for (id, part) in &listed {
+    for ((id, part), key) in listed.iter().zip(&part_keys) {
         let name = part.as_deref().unwrap_or("(no part)");
         let result = match (id, part) {
             (None, _) => skip("no valid cacheId"),
@@ -174,10 +196,16 @@ fn load_caches<R: Read + Seek>(
             (Some(id), _) if id_counts.get(id).is_some_and(|&n| n > 1) => {
                 skip(format!("cacheId {id} is listed twice"))
             }
-            (_, Some(part)) if part_counts.get(part).is_some_and(|&n| n > 1) => {
+            (_, Some(_))
+                if key
+                    .as_ref()
+                    .is_some_and(|key| part_counts.get(key).is_some_and(|&n| n > 1)) =>
+            {
                 skip("the part is reached twice")
             }
-            (Some(id), Some(part)) => load_cache(archive, part, values_left).map(|c| (*id, c)),
+            (Some(id), Some(part)) => {
+                load_cache(archive, part, values_left, date_system).map(|c| (*id, c))
+            }
         };
         match result {
             Ok((id, cache)) => {
@@ -198,10 +226,11 @@ fn load_cache<R: Read + Seek>(
     archive: &mut Package<R>,
     part: &str,
     values_left: usize,
+    date_system: DateSystem,
 ) -> Result<PivotCache, Skip> {
     let limits = *archive.limits();
     let (mut builder, field_count, records_id) =
-        read_definition(archive.open(part)?, values_left, &limits)?;
+        read_definition(archive.open(part)?, values_left, &limits, date_system)?;
     let Some(records_id) = records_id else {
         return skip("no records part (saveData=\"0\")");
     };
@@ -215,7 +244,13 @@ fn load_cache<R: Read + Seek>(
     let Some(records) = records else {
         return skip("no internal pivotCacheRecords relationship");
     };
-    read_records(archive.open(&records)?, &mut builder, field_count, &limits)?;
+    read_records(
+        archive.open(&records)?,
+        &mut builder,
+        field_count,
+        &limits,
+        date_system,
+    )?;
     Ok(builder.finish())
 }
 
@@ -328,6 +363,7 @@ fn index_attribute(element: &BytesStart, name: &str) -> Result<u32, Skip> {
 fn cache_item(
     element: &BytesStart,
     limits: &super::package::ImportLimits,
+    date_system: DateSystem,
 ) -> Result<Option<CacheItem>, Skip> {
     let tag = local_name(element);
     if tag == "m" {
@@ -357,7 +393,11 @@ fn cache_item(
             Some(error) => CacheItem::Error(error),
             None => return skip(format!("unknown error {v:?}")),
         },
-        _ => match iso8601_to_serial(&v) {
+        // `<d>` is an ISO 8601 text; the cell serial it stands for depends on the workbook's date
+        // system (1904 serials are 1462 days lower).
+        _ => match iso8601_to_serial(&v)
+            .and_then(|s| date_system.serial_from_imported_1900_serial(s))
+        {
             Some(serial) => CacheItem::Date(serial),
             None => return skip(format!("bad date {v:?}")),
         },
@@ -373,6 +413,7 @@ fn read_definition<B: BufRead>(
     part: B,
     values_left: usize,
     limits: &super::package::ImportLimits,
+    date_system: DateSystem,
 ) -> Result<(CacheBuilder, u32, Option<String>), Skip> {
     let mut records_id = None;
     let mut source: Option<Option<CacheSource>> = None;
@@ -435,7 +476,9 @@ fn read_definition<B: BufRead>(
             path,
             &[DEFINITION, "cacheFields", "cacheField", "sharedItems"],
         ) {
-            if let (Some(builder), Some(item)) = (builder.as_mut(), cache_item(element, limits)?) {
+            if let (Some(builder), Some(item)) =
+                (builder.as_mut(), cache_item(element, limits, date_system)?)
+            {
                 builder.add_shared_item(field_count - 1, item)?;
             }
         }
@@ -453,6 +496,7 @@ fn read_records<B: BufRead>(
     builder: &mut CacheBuilder,
     field_count: u32,
     limits: &super::package::ImportLimits,
+    date_system: DateSystem,
 ) -> Result<(), Skip> {
     let mut record: Vec<RecordValue> = Vec::new();
     walk(part, |path, tag| {
@@ -469,7 +513,7 @@ fn read_records<B: BufRead>(
                 }
                 let value = if local_name(element) == "x" {
                     RecordValue::Shared(index_attribute(element, "v")?)
-                } else if let Some(item) = cache_item(element, limits)? {
+                } else if let Some(item) = cache_item(element, limits, date_system)? {
                     RecordValue::Inline(item)
                 } else {
                     return skip("an unknown record value");
