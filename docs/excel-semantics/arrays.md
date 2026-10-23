@@ -66,7 +66,9 @@ in every spilled cell of MAP (A16:A17), GROUPBY (B51:B53) and EXPAND (B66, A67:B
 VALUETOTEXT through INDEX are 3 and `#VALUE!` (E16, F16, E51, E66). `#DIV/0!`, `#N/A`, `#NUM!`, `#REF!`, `#NULL!` and the
 `#VALUE!` of `"a"+x` in the same positions are plain `t="e"` literals. The cached excel-graph recalcs also store
 errorType 2 in `errorType, iftab[, ptg], subType` structures (subType 0, 33, 39, 40, 59, 133); the reader finds
-errorType by key name and subType does not change the error, so all of them decode to `#VALUE!`.
+errorType by key name and subType does not change the error, so all of them decode to `#VALUE!`. Each such cell also
+caches the literal `<v>#VALUE!</v>` (36 workbooks in eval/.cache/oracle/excel-graph, every subType, `ptg` 3-8 and
+`iftab` 4-635; checked by T-2417's fidelity review).
 Evidence: gen-m7/18b80d3fd292d63a C951:E962 (all `vm="10"`) and a scratch recalc of
 `GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,REGEXEXTRACT("a","[0-9]",-1)))` (excel-graph,
 2026-10-22, T-2397; recalc input_sha256 e07a9239… and 7cf52886…). That scratch recalc reported all four spilled value cells, so no case of a

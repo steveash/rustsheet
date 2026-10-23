@@ -20,7 +20,8 @@ excel-graph recalcs (eval/.cache/oracle/excel-graph, 2026-10-22) found `_error` 
 workbooks, gen-m9 and gen-m7 among them, but the scan did not tie them to a cell and formula. By the rule
 errorType = ERROR.TYPE − 1 it would be `#N/A` (ERROR.TYPE 7), but no cell shows that yet. docs/excel-semantics/arrays.md
 "Cached rich errors" has the structure notes. `rich_error_name` in crates/rustsheet-xlsx/src/import/rich_errors.rs
-maps it to nothing today.
+maps it to nothing today. Lead: every (6, 7) rv in the cached recalcs (e.g. 354adcd2…, e07a9239…,
+d7d6da72…, 652670ad…) carries a fallback `<fb t="e">#N/A</fb>`, Excel's own fallback value, which points to `#N/A`.
 
 ## Acceptance criteria
 - [ ] The formula and cell that store (6, 7) are identified, and a probe records ERROR.TYPE and VALUETOTEXT through
