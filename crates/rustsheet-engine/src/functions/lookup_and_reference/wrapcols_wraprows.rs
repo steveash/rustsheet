@@ -10,8 +10,7 @@ use crate::{
     model::Model,
 };
 
-/// The smallest `wrap_count` Excel refuses (`#NUM!`): 2^31.
-const MAX_WRAP_COUNT_EXCLUSIVE: f64 = 2_147_483_648.0;
+use super::SIZE_LIMIT_EXCLUSIVE;
 
 impl Model {
     // ── WRAPCOLS ──────────────────────────────────────────────────────────────
@@ -146,7 +145,7 @@ impl Model {
         // wraps, 2^31 does not (arrays.md "WRAPROWS and WRAPCOLS with a huge wrap_count";
         // probes/t2312-wrap-count-threshold).
         let wrap_count = self.cast_number_or(value, 0.0, cell)?;
-        if wrap_count.is_nan() || !(1.0..MAX_WRAP_COUNT_EXCLUSIVE).contains(&wrap_count) {
+        if wrap_count.is_nan() || !(1.0..SIZE_LIMIT_EXCLUSIVE).contains(&wrap_count) {
             return Err(CalcResult::new_error(
                 Error::NUM,
                 cell,
