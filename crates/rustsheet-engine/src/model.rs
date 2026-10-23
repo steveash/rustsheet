@@ -176,6 +176,9 @@ pub struct Model {
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
     pub(crate) defined_names_running: crate::defined_names::DefinedNameRun,
+    /// Set while a cell formula whose outermost node is BYROW, BYCOL or MAP is about to call
+    /// it; that call takes it at once (`std::mem::take`), so no nested call sees it (T-2406).
+    pub(crate) lambda_elements_shown: bool,
     /// What the formula being evaluated has left of its area budgets (`with_area_budget`).
     pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.

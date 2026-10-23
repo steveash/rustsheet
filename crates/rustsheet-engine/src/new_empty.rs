@@ -773,6 +773,7 @@ impl Model {
             lambda_calls_base: None,
             last_lambda_id: 0,
             defined_names_running: Default::default(),
+            lambda_elements_shown: false,
             area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
