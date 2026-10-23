@@ -1,0 +1,49 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "GROUPBY and PIVOTBY with two (or three) array options at once: the broadcast shape (a row against a column, mismatched lengths padded or not), each element's top-left, the error order between two lifted options, a range against an array, and field_relationship lifted alongside (T-2399).",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2399"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2},{0;-1})",
+        "A6": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2,3},{0;-1})",
+        "A11": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2;3,0},{0;-1;1})",
+        "A16": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2,3},{-1,1})",
+        "A21": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0;2;3},{-1;1})",
+        "A26": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,\"x\"},{0;5})",
+        "A31": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{#N/A,0},{0;#DIV/0!})",
+        "A36": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,Data!D1:E1,{0;-1})",
+        "A41": "=_xlfn.PIVOTBY(Data!A1:A4,Data!C1:C4,Data!B1:B4,_xleta.SUM,{0,2},{0;-1})",
+        "A46": "=_xlfn.PIVOTBY(Data!A1:A4,Data!C1:C4,Data!B1:B4,_xleta.SUM,0,{0,-1},,{0;-1})",
+        "A51": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2},{0;-1},,,{0,1;1,0})",
+        "A56": "=ROWS(_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2;3,0},{0;-1;1}))&\",\"&COLUMNS(_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2;3,0},{0;-1;1}))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "a",
+        "A4": "c",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4,
+        "C1": 10,
+        "C2": 20,
+        "C3": 30,
+        "C4": 40,
+        "D1": 0,
+        "E1": 1
+      }
+    }
+  ],
+  "expected": {}
+}
