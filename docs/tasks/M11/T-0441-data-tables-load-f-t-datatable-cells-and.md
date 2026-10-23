@@ -3,11 +3,11 @@ id: T-0441
 title: "Data tables: load <f t=dataTable> cells and compute TABLE() results (probes/data-tables)"
 milestone: M11
 lane: engine
-status: blocked
+status: done
 priority: P2
 size: M
 tier: opus
-depends_on: [T-0401, T-0446]
+depends_on: [T-0446]
 ---
 
 ## Goal
@@ -41,12 +41,12 @@ That would be a separate S task if the owner wants it before Phase 2. Priority r
 owner's request.
 
 ## Acceptance criteria
-- [ ] The 15 probes/data-tables lines leave eval/baseline/probes.txt (`make eval-baseline`) with no new F
+- [x] The 15 probes/data-tables lines leave eval/baseline/probes.txt (`make eval-baseline`) with no new F
       lines; a round-trip test keeps the `dataTable` formula on export.
-- [ ] recalc.md's data-table entry gains an "Ours" line; any work cap is a DEVIATION entry if Excel has none.
-- [ ] The calipers/pv_goldens cases that fail to load today load and calculate; their known failures in
+- [x] recalc.md's data-table entry gains an "Ours" line; any work cap is a DEVIATION entry if Excel has none.
+- [x] The calipers/pv_goldens cases that fail to load today load and calculate; their known failures in
       eval/baseline/calipers.txt drop (`rustsheet-eval update-baseline --suite calipers`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Iterative calculation and circular references (T-0401's implementation tasks).
@@ -55,3 +55,26 @@ owner's request.
 Needs the M3 dependency graph and its recalculation of a substituted input (SPEC-0002, T-0401); M3 tasks
 stay blocked until Phase 1 exits (docs/milestones.md). Unblocked when T-0401 is done and its implementation
 tasks provide a way to recalculate a formula with one cell's value substituted.
+
+## Outcome
+Unblocked at the owner's request (2026-10-23): implemented without the dependency graph (T-0401),
+which decision 0027 defers to Phase 2.
+- Engine: `Worksheet::data_tables` metadata (`DataTable`, `DataTableInput` in types.rs). Result cells
+  hold plain values. After each evaluation, `Model::evaluate_data_tables` (data_tables.rs) recomputes
+  every table in sheet order: for each result cell it puts the header values into the input cells,
+  evaluates the table's formula on demand, and restores the inputs. The workbook is then evaluated
+  again so readers see the results. ISFORMULA and FORMULATEXT treat result cells as
+  `{=TABLE(row,column)}`.
+- Directive 5: at most 2^25 formula evaluations per recalculation; later results are `#NUM!`
+  (recalc.md DEVIATION entry).
+- xlsx: the import reads `<f t="dataTable" ref dt2D dtr r1 r2 del1 del2>` instead of failing the
+  workbook; the export writes it back on the first result cell (round-trip test).
+- Facade `Txn::add_data_table` with undo. The eval adapter adds a spec case's `data_tables`, and the
+  spill-extent check knows their result cells. The eval snapshot reader scores every result cell
+  of an Excel-saved table, not only its first.
+- Eval: probes/data-tables passes 20/20. The 21 Calipers workbooks with data tables now load.
+  Baseline deltas are in the commit; pv23_019 and pv26_014 still fail on iterative calculation
+  (T-0447), not on their tables.
+- Follow-ups: T-0452 (structural edits and writes into result cells), T-0453 (recompute only when
+  needed).
+
