@@ -798,26 +798,28 @@ steps and 4,096 step adjustments (64 and 512 for Student's t). Where statrs fini
 (unit test `the_port_is_statrs_where_statrs_finishes`; probes-numeric is unchanged cell for cell), so the values
 probes-numeric checks are main's. statrs needs at most 377 steps where it finishes (13 million samples: F at p down to
 1E-162, Beta shapes 1E-5 to 1E5, Student t). Below the old thresholds the quantile is still a bisection on the cdf of at
-most 1,100 (BETA.INV) or about 1,300 (F.INV) or 264 (T.INV) evaluations. The lifting table charges BETA.INV, BETAINV,
-F.INV, F.INV.RT and FINV 2^18 units an element and T.INV, T.INV.2T, TINV and CONFIDENCE.T 2^16: the bound of each
-kernel's caps at a full-cost incomplete-beta cdf (140 continued-fraction steps, 3.1 to 3.4 us in release), about 4.0 ms
-(F.INV's 1,301-cdf bisection) and 0.82 ms (T.INV's 264-cdf bisection); the cases measured cost far less (167 us for
+most 1,100 (BETA.INV) or 264 (T.INV) evaluations; F.INV, F.INV.RT and FINV refine statrs' estimate to the crossing of the
+T-0970 incomplete beta (`special::refine_increasing`, at most 129 cdfs, 65 without a start; T-0974, "F.INV is a crossing of
+F.DIST's tails" below). The lifting table charges BETA.INV, BETAINV, F.INV, F.INV.RT and FINV 2^18 units an element and
+T.INV, T.INV.2T, TINV and CONFIDENCE.T 2^16: the bound of each kernel's caps at a full-cost incomplete-beta cdf (140
+continued-fraction steps, 3.1 to 3.4 us in release), about 3.4 ms (BETA.INV's 1,100-cdf bisection; F.INV's statrs search
+plus refinement is about 2.5 ms) and 0.82 ms (T.INV's 264-cdf bisection); the cases measured cost far less (167 us for
 `BETA.INV(1E-300,0.5,1E6)`, 17.5 us for `T.INV.2T(1E-9,99999)`); lift/kinds/statistical.rs has the measurements.
-`F.INV(1E-160,5,5)` and `F.INV(1E-100,5,5)` are 1.3470392369521052E-15 in statrs and here, as on main, where Excel follows
-the power law (E4, E5), and `F.INV(1E-50,2000,2)` is 0.008195481623831033 (statrs converges to a wrong root) where Excel
-gives 0.004452511009947361 (E7); E8 and E10-E12 miss by 4 to 357 ulp, as on main (all T-1871).
-DEVIATION (decision 0014, CLAUDE.md directive 5): where statrs' search panicked or never finished, the capped search is
-`#NUM!` and Excel gives a number. With both df below 1E5, statrs panics (a NaN first estimate, an unwrapped incomplete
-beta) for every F.INV below p = 1.6E-162, where `p * p` underflows (`F.INV(1E-300,5,5)`, `F.INV(1E-170,5,5)`: E1-E3), and
-its step loop never ends once a Newton step is infinite, which a 1-million-sample sweep found for about 7% of F.INV calls with
-p below 3.6E-27 (`F.INV(1E-50,6000,4)`, E6) and once for BETA.INV at p = 1-2^-53
+Since T-0974 the F quantiles below p = 1E-20, where statrs has no start, bisect the cdf: `F.INV(1E-300,5,5)` to
+`F.INV(1E-100,5,5)` (E1-E5) and the lifted A7 of the unit test are Excel's power-law values to 13 digits, no longer
+`#NUM!`. `F.INV(1E-50,6000,4)` is 0.016348827552952715 where Excel gives 0.0004924127886173762 (E6), and
+`F.INV(1E-50,2000,2)` 0.008195481623830967 where Excel gives 0.004452511009947361 (E7): our deep tail of the incomplete
+beta at these df is not Excel's (T-1871). E8, E11 and E12 are within the 15th digit and E10 is 25 units of it off (T-1871).
+DEVIATION (decision 0014, CLAUDE.md directive 5): where statrs' search never finished, the capped search is `#NUM!` and
+Excel gives a number. Its step loop never ends once a Newton step is infinite, found once for BETA.INV at p = 1-2^-53
 (`BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)`, E9). Unit test `quantile_searches_that_hung_or_panicked_are_bounded`;
-T-1871 gives Excel's values there.
+T-1871 gives Excel's value there. (statrs also panicked for every F.INV below p = 1.6E-162 and hung for about 7% of F.INV
+calls below p = 3.6E-27; since T-0974 those bisect the cdf without a start and give a number, see E6 above.)
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BETA.INV, BETAINV, F.INV, F.INV.RT or FINV of more than 512
 elements, and a lifted T.INV, T.INV.2T, TINV or CONFIDENCE.T of more than 2,048, is `#ERROR!` before it runs where Excel
 computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^18 and 2^16 an element;
 `ROWS(BETA.INV(SEQUENCE(513)/514,2,3))`, unit test `quantile_kernels_are_charged_their_weight`). At the bound of the caps,
-512 F.INV elements take about 2.1 s and 2,048 T.INV elements about 1.7 s, the 2 s budget of the Bessel entries
+512 BETA.INV elements take about 1.7 s and 2,048 T.INV elements about 1.7 s, the 2 s budget of the Bessel entries
 (engineering.md "BESSEL order cap"). Showing that a slow cdf and a long search never coincide would allow larger lifts.
 Status: VERIFIED (excel-graph)
 Tasks: T-1848, T-1849, T-1871
@@ -1480,6 +1482,9 @@ its digits below, -expm1(b*ln1p(-x)) as far as the cells tell, the same cut as T
   `BETA.DIST(0.001,1,2.5,TRUE)` (G49) is 11 units of the 15th digit from 1 - exp.
 - The quantiles follow: `BETA.INV(1E-10,1,0.5)` = 1.9999999999E-10 (m9-beta-inv A36) and `F.INV.RT(1-1E-10,2,7)` =
   1.0000000828046573E-10 (gen-m9/4e55500bb8ad3cd8 A77), which a search on 1 - exp misses by 1E-6 relative.
+- The F family follows through F.DIST's a = df1/2 = 1 incomplete beta: with the cut in `beta_reg_complement`, gen-m9
+  05d44f6dd6cfc567 A356, 146b46e74f2dac3b A109, 27601819397dd56e A56 and 2801c1c11c21e134 A130 (F quantiles at df1 = 2)
+  pass, which failed with 1 - exp below x = 0.1.
 - At df 2, half the uncancelled tail is Excel's `T.DIST.RT(4.245,2)` = 0.025631992844658943 (t0969-t-df2-cut
   B450) bit for bit, 1 ulp from the closed form.
 Ours: `incomplete_beta.rs` `beta_reg_complement` (`A1_CLOSED_FORM_MIN_X`), so F.DIST, F.DIST.RT and the F quantiles take it;
@@ -1496,8 +1501,11 @@ would lose). Refining statrs' Newton estimate to the crossing of the engine's in
 (more than half a unit in the 15th digit) from 422 to 229 and the T-0974 sweep cells from 51 to 12 of 96, with none newly
 visibly off. Below p = 1E-15 the deep tail of our cdf carries exp(a ln y)'s rounding, and its crossing is visibly off
 Excel's `F.INV(1E-20,5,5)` = 5.081599921802649E-09 (probes/stat-quantile-lift E12), which statrs' estimate matches, so
-statrs' value stays there. Where statrs has no estimate (below p = 1E-20) the bisection of the cdf gives Excel's
-`F.INV(1E-300,5,5)` = 5.081599884913164E-121 to 13 digits (E1), which was #NUM!.
+statrs' value stays there; a deep upper tail is refined all the same, since statrs solved the rounded 1 - p there
+(`F.INV.RT(1E-16,9,3)` was 7% off; `FINV(1E-16,1,7)` = 183379.00311608665, gen-m9/146b46e74f2dac3b A117, is now 15
+digits right). Where statrs has no estimate (below p = 1E-20) the bisection of the cdf gives Excel's
+`F.INV(1E-300,5,5)` = 5.081599884913164E-121 to 13 digits (E1), which was #NUM!, but not at every df:
+`F.INV(1E-50,6000,4)` is 0.0163 against Excel's 0.000492 (E6), so the deep tail of our cdf is not Excel's there (T-1871).
 Status: VERIFIED as a crossing to 15 digits on the cells above; the solver's start, stop and tie rule are UNVERIFIED.
 Tasks: T-0974, T-2465
 

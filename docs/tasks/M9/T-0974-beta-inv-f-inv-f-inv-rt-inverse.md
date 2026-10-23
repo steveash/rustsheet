@@ -173,8 +173,8 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
 
-## Review round 1 (2026-10-23): open findings
-Excel-fidelity reviewer REQUEST_CHANGES (security, architecture, quality APPROVE). To fix before round 2:
+## Review round 1 (2026-10-23): findings (addressed in round 2)
+Excel-fidelity reviewer REQUEST_CHANGES (security, architecture, quality APPROVE). All four fixed on resume (2026-10-23):
 1. statistics.md "Quantile searches: per-call cap and lifting" (about lines 787-822): F.INV E1-E3 and the lifted A7 are
    numbers now, not #NUM!; the "Ours:" cost text (about 1,300 cdfs, 4.0 ms, 2.1 s) is stale; narrow the DEVIATION to
    BETA.INV E9 and record E6 (F.INV(1E-50,6000,4), ours 0.0163 vs Excel 0.000492) as a plain mismatch.
@@ -190,14 +190,16 @@ Excel-fidelity reviewer REQUEST_CHANGES (security, architecture, quality APPROVE
 F.INV, F.INV.RT and FINV are the crossing of F.DIST's own tails (statistics.md "F.INV is a crossing of F.DIST's tails"):
 `fisher.rs` `f_quantile` refines statrs' estimate with the new `special::refine_increasing` (a bracket around the
 estimate, then halving over the doubles' bit patterns to adjacent doubles: at most 129 cdfs, 65 with no start), solving
-the smaller tail on `f_cdf` / `f_sf`. Below p = 1E-15 statrs' estimate stays; below 1E-20 (where statrs panicked or hung,
+the smaller tail on `f_cdf` / `f_sf`. Below a lower-tail p of 1E-15 statrs' estimate stays (a deep upper tail is refined on `f_sf`, since statrs solved the
+rounded 1 - p there: `F.INV.RT(1E-16,9,3)` went from 7% off to 60647458731.09802 against Excel's .09812, and 6 more
+gen-m9 cells such as `FINV(1E-16,1,7)` are no longer visibly off, none newly); below 1E-20 (where statrs panicked or hung,
 #NUM!) the bisection runs without a start. The df >= 1E5 statrs-cdf bisection is gone. `incomplete_beta.rs`'s a = 1 closed
 form keeps its digits below x = 0.1 (statistics.md "The a = 1 closed form cancels only from x = 0.1 up"), so F.DIST and
 F.DIST.RT take it too.
 
-Eval: gen-m9 known failures 5142 -> 5087, ironcalc-calc 831 -> 829 (F_DIST.xlsx J3, L3), probes 2073 -> 2071
-(ftest-decomposition B7, B13), 0 regressions. In-scope cells visibly off 6854 -> 6685. Of the 96 gen-m9 visible-parity
-cells above, 51 were visibly off on main and 12 are now. probes/stat-quantile-lift E1-E3 (F.INV at 1E-300 to 1E-170) give
+Eval (against main 2026-10-23): gen-m9 known failures 7083 -> 7028, ironcalc-calc 831 -> 829 (F_DIST.xlsx J3, L3),
+probes 2032 -> 2030 (ftest-decomposition B7, B13), 0 regressions. In-scope cells visibly off 7457 (lock 7703). Of the 96 gen-m9 visible-parity
+cells above, 51 were visibly off on main and at most 12 are now. probes/stat-quantile-lift E1-E3 (F.INV at 1E-300 to 1E-170) give
 values instead of #NUM!, 13 digits right.
 
 Not met here:

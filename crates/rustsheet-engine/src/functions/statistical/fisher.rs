@@ -49,7 +49,7 @@ const F_QUANTILE_BISECT_DF: f64 = 1e5;
 /// statrs start there.
 const F_QUANTILE_STATRS_P_MIN: f64 = 1e-20;
 
-/// Below this probability (of either tail) statrs' estimate, where it has one, is kept unrefined: the
+/// Below this lower-tail probability statrs' estimate, where it has one, is kept unrefined: the
 /// deep tail of [`f_cdf`] carries exp(a ln y)'s rounding, and refining to its crossing makes
 /// `F.INV(1E-20,5,5)` visibly off Excel's 5.081599921802649E-09 (probes/stat-quantile-lift E12),
 /// which statrs' search matches to 15 digits (T-0974: 0 cells newly visibly off at 1E-15, 4 at 0).
@@ -57,8 +57,8 @@ const F_QUANTILE_REFINE_P_MIN: f64 = 1e-15;
 
 /// Quantile of the F distribution for `p` (the right tail's when `right_tail`) in [0, 1]: statrs'
 /// search (the capped port of `inverse_beta.rs`, T-1848) as a start where it is reliable, refined to
-/// the crossing of [`f_cdf`] or [`f_sf`] (`special::refine_increasing`) from a probability of
-/// [`F_QUANTILE_REFINE_P_MIN`] up. At most 512 Newton steps and 129 cdfs, or 65 cdfs without a
+/// the crossing of [`f_cdf`] or [`f_sf`] (`special::refine_increasing`) in the upper tail and from a
+/// lower-tail probability of [`F_QUANTILE_REFINE_P_MIN`] up. At most 512 Newton steps and 129 cdfs, or 65 cdfs without a
 /// start.
 fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
     let lower = if right_tail { 1.0 - p } else { p };
@@ -80,8 +80,10 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
     };
     // Each tail's target is the given p or its exact complement 1 - p (p >= 0.5); the smaller one
     // is solved on the T-0970 incomplete beta, as for BETA.INV (T-0974), so a tiny right-tail p
-    // keeps the digits 1 - p loses.
-    if estimate.is_finite() && lower.min(1.0 - lower) < F_QUANTILE_REFINE_P_MIN {
+    // keeps the digits 1 - p loses. statrs' estimate is kept unrefined only for a deep lower tail,
+    // the tail it was given: for a deep upper tail it solved the rounded 1 - p, which
+    // `F.INV.RT(1E-16,9,3)` misses by 7% (Excel 60647458731.09812, gen-m9/0a9226016e8f5f33 A45).
+    if estimate.is_finite() && lower < F_QUANTILE_REFINE_P_MIN {
         return estimate;
     }
     if lower > 0.5 {
