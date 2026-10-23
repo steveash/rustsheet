@@ -3,7 +3,7 @@ id: T-2453
 title: "COMBINA lifts over array arguments"
 milestone: M7
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
