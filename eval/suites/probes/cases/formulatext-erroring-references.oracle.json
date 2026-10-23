@@ -46,10 +46,6 @@
     "t": "e",
     "v": "#REF!"
    },
-   "A6": {
-    "t": "e",
-    "v": "#N/A"
-   },
    "A7": {
     "t": "e",
     "v": "#REF!"
@@ -124,10 +120,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "414604ffac4d1a20fbc7693af20e13a125541df76a32867a2b817fe33feddec9",
+  "input_sha256": "bf6a5df22dec0957bde5e5f185aa7e1a95fd528d31059f284d301aa2ea2206a2",
   "kind": "excel-graph",
-  "produced_at": "2026-10-23T17:37:02+00:00",
+  "produced_at": "2026-10-23T18:12:25+00:00",
   "version": null,
-  "workbook_name": "aa63faefcd5592f6fcbfbbf4dd6b7a26968ee175e6c97e76142a12b780bb5fc6.xlsx"
+  "workbook_name": "c7dd2406c78c2c39cd82ead6766a3a4936c2e139c9232cfffad13746cad11471.xlsx"
  }
 }

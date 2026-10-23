@@ -443,13 +443,13 @@ constant `#VALUE!`. The engine matches, FORMULATEXT's `#REF!` and `#VALUE!` form
 `#VALUE!` when INDEX picks a value rather than a cell. FORMULATEXT of an erroring or array-shaped reference-returning call (probes/formulatext-erroring-references, excel-graph
 2026-10-23, T-2301): FORMULATEXT returns the call's own error, unchanged. `INDEX(A1:A3,NA())` is `#N/A`, `INDEX({1,2,3},9)`
 `#REF!`; `OFFSET(A1,NA(),0)` is `#N/A`, `OFFSET(A1,"x",0)` `#VALUE!`, `OFFSET(A1,-9,0)` `#REF!`; `INDIRECT(NA())` is `#N/A` and
-`INDIRECT("zz zz")` `#REF!`, but `INDIRECT("Nope!A1")` (a sheet that does not exist) is `#N/A`, not INDIRECT's `#REF!`;
+`INDIRECT("zz zz")` `#REF!` (a missing sheet, `INDIRECT("Nope!A1")`, is left out: the web oracle resolves it to an empty cell, lookup.md);
 `CHOOSE(9,..)` and `CHOOSE(0,..)` are `#VALUE!` and `CHOOSE(NA(),..)` `#N/A`; `IF(NA(),..)` is `#N/A`, `IF("x",..)` `#VALUE!`,
 `IF(1/0,..)` `#DIV/0!`, and an error in the arm taken, `IF(TRUE,NA(),..)`, is `#N/A`. An array-shaped result is not a reference:
 `INDEX({1,2;3,4},0,1)`, `INDEX({1,2;3,4},1,0)` and `INDEX({1,2;3,4},0,0)` spill `#VALUE!` over the shape of the result (2x1, 1x2, 2x2),
 `INDEX({1,2;3,4},2,2)` is one `#VALUE!`, and `IF({TRUE,FALSE},..)` and `CHOOSE({1,2},..)` spill a 1x2 of `#VALUE!`. The engine gives
-`#ERROR!` for every erroring OFFSET, INDIRECT, CHOOSE and IF form, a lone `#VALUE!` where Excel spills (INDEX array forms) and nothing
-for the IF and CHOOSE array forms (open gap: T-2523).
+`#ERROR!` for every erroring OFFSET, INDIRECT, CHOOSE and IF form, a lone `#VALUE!` where Excel spills (INDEX array forms) and one `#ERROR!`
+with no spill for the IF and CHOOSE array forms (open gap: T-2523).
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
 TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a range return); over an array

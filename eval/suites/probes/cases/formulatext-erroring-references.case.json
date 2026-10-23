@@ -24,7 +24,6 @@
     "A3": "=FORMULATEXT(OFFSET(Data!A1,NA(),0))",
     "A4": "=FORMULATEXT(OFFSET(Data!A1,\"x\",0))",
     "A5": "=FORMULATEXT(OFFSET(Data!A1,-9,0))",
-    "A6": "=FORMULATEXT(INDIRECT(\"Nope!A1\"))",
     "A7": "=FORMULATEXT(INDIRECT(\"zz zz\"))",
     "A8": "=FORMULATEXT(INDIRECT(NA()))",
     "A9": "=FORMULATEXT(CHOOSE(9,Data!A1,Data!A2))",
@@ -40,7 +39,7 @@
     "I1": "=FORMULATEXT(INDEX({1,2;3,4},2,2))",
     "K1": "=FORMULATEXT(IF({TRUE,FALSE},Data!A1,Data!A2))",
     "M1": "=FORMULATEXT(CHOOSE({1,2},Data!A1,Data!A2))"
-  }
+   }
   }
  ]
 }

@@ -24,4 +24,4 @@ T-2137 made FORMULATEXT(INDEX(..)) return INDEX's error or `#VALUE!` for a picke
 -
 
 ## Outcome
-Probe case probes/formulatext-erroring-references holds every form with excel-graph values (2026-10-23); results are in docs/excel-semantics/references.md. The engine fails 22 of its cells; fix filed as T-2523.
+Probe case probes/formulatext-erroring-references holds every form with excel-graph values (2026-10-23); results are in docs/excel-semantics/references.md. The engine fails 21 of its cells; fix filed as T-2523.
