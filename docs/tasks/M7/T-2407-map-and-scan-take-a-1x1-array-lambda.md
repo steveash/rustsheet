@@ -3,7 +3,7 @@ id: T-2407
 title: "MAP and SCAN take a 1x1 array LAMBDA result, and SCAN a 1x1 array initial_value, as its one value (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
