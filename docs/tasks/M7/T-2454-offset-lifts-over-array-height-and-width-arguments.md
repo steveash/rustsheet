@@ -3,7 +3,7 @@ id: T-2454
 title: "OFFSET with a one-cell DROP result as height gives one 2x2 reference, not a lifted 1x1"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
