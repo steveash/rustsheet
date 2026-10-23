@@ -1,16 +1,46 @@
-use crate::{arithmetic::extended_quotient, expressions::token::Error};
+use super::annuity::{annuity_factor, annuity_power};
+use crate::{
+    arithmetic::{extended_product, extended_quotient, extended_sum},
+    expressions::token::Error,
+};
 
 // The solvers behind RATE, IRR and XIRR. IRR (a secant in v = 1/(1+r)) and XIRR (a bracket walk
 // and bisection) follow models fitted to oracle sweeps in the fit lab (T-1525, T-1533; see their
-// doc comments). RATE is not fitted yet (financial.md "RATE iterates on the rate itself").
+// doc comments). RATE is a fitted secant too (T-2005, financial.md "RATE is a secant on the FV
+// residual").
 
-// From Microsoft docs:
-// https://support.microsoft.com/en-us/office/rate-function-9f665657-4a7e-4bb7-a030-83fc59e748ce
-// Returns the interest rate per period of an annuity.
-// RATE is calculated by iteration (using Newton-Raphson) and can have zero or more solutions.
-// If the successive results of RATE do not converge to within 0.0000001 after 20 iterations,
-// RATE returns the #NUM! error value.
-// NOTE: We need a better algorithm here
+/// RATE's residual f(r) = pv·P + pmt·k·((P-1)/r) + fv, P = (1+r)^n, with FV's power and
+/// annuity factor (`annuity_power`, `annuity_factor`) in that order; f(0) is the limit
+/// pv + pmt·n + fv. `None` where Excel's `^` errs (a power past the double range).
+fn rate_residual(
+    rate: f64,
+    (nper, pmt, pv, fv): (f64, f64, f64, f64),
+    period_start: bool,
+) -> Option<f64> {
+    if rate == 0.0 {
+        return Some(pv + pmt * nper + fv);
+    }
+    let p = annuity_power(rate, nper).ok()?;
+    let f = pv * p + pmt * annuity_factor(rate, p, period_start) + fv;
+    f.is_finite().then_some(f)
+}
+
+/// The most secant steps RATE takes, Excel's own cap: the probe guesses whose run needs 200
+/// steps converge and those that need 201 to 216 are `#NUM!` (probes/rate-step-cap).
+pub(crate) const RATE_MAX_STEPS: u32 = 200;
+
+/// RATE as Excel computes it: a secant on the residual [`rate_residual`] from r0 = guess and
+/// r1 = r0 - 0.001·sign(f(r0)), each step `r2 = r1 - f1·(r1-r0)/(f1-f0)` with Excel's
+/// twice-rounded `-`, `*` and `/`. It stops at the first iterate with |r2 - r1| < 1e-7 and
+/// |f(r2)| < 1e-7; the iterate of step [`RATE_MAX_STEPS`] needs only the step test (Excel returns
+/// it unconverged: probes/rate-step-cap A30 is 0.004999993194059272, the root ...3193119). An
+/// iterate at or below -1, a flat secant (f1 = f0), a residual Excel's `^` cannot form and a run
+/// that has not stopped by then are `#NUM!`. Microsoft documents Newton's method and 20 steps;
+/// neither fits. Scratch fit (T-2005): bit-exact on 240 of 421 numeric RATE cells of
+/// probes-numeric/m9-fin-irr-rate, probes/solver-iteration-traces sheet R and
+/// probes/rate-empty-arguments (Newton: 16), and Excel's value-or-`#NUM!` on 463 of 464; the
+/// other is a root of exactly 0, where f is rounding noise (financial.md "RATE is a secant on the
+/// FV residual").
 pub(crate) fn compute_rate(
     pv: f64,
     fv: f64,
@@ -19,28 +49,36 @@ pub(crate) fn compute_rate(
     annuity_type: i32,
     guess: f64,
 ) -> Result<f64, Error> {
-    let mut rate = guess;
-    // Excel _claims_ to do 20 iterations, but that will have tests failing
-    let max_iterations = 50;
-    let eps = 0.0000001;
-    let annuity_type = annuity_type as f64;
+    const OFFSET: f64 = 0.001;
+    const TOLERANCE: f64 = 1e-7;
     if guess <= -1.0 {
         return Err(Error::VALUE);
     }
-    for _ in 1..=max_iterations {
-        let t = (1.0 + rate).powf(nper - 1.0);
-        let tt = t * (1.0 + rate);
-        let f = pv * tt + pmt * (1.0 + rate * annuity_type) * (tt - 1.0) / rate + fv;
-        let f_prime = pv * nper * t - pmt * (tt - 1.0) / (rate * rate)
-            + pmt * (1.0 + rate * annuity_type) * t * nper / rate;
-        let new_rate = rate - f / f_prime;
-        if new_rate <= -1.0 {
+    let args = (nper, pmt, pv, fv);
+    let period_start = annuity_type != 0;
+    let residual = |rate: f64| rate_residual(rate, args, period_start).ok_or(Error::NUM);
+    let (mut r0, mut f0) = (guess, residual(guess)?);
+    let mut r1 = r0 - OFFSET.copysign(f0);
+    let mut f1 = residual(r1)?;
+    for step in 1..=RATE_MAX_STEPS {
+        if f1 == f0 {
             return Err(Error::NUM);
         }
-        if (new_rate - rate).abs() < eps {
-            return Ok(new_rate);
+        let r2 = extended_sum(
+            r1,
+            -extended_quotient(
+                extended_product(f1, extended_sum(r1, -r0)),
+                extended_sum(f1, -f0),
+            ),
+        );
+        if !r2.is_finite() || r2 <= -1.0 {
+            return Err(Error::NUM);
         }
-        rate = new_rate;
+        let f2 = residual(r2)?;
+        if (r2 - r1).abs() < TOLERANCE && (f2.abs() < TOLERANCE || step == RATE_MAX_STEPS) {
+            return Ok(r2);
+        }
+        (r0, f0, r1, f1) = (r1, f1, r2, f2);
     }
     Err(Error::NUM)
 }

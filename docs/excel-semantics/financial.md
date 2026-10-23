@@ -349,26 +349,39 @@ Implemented in: `xirr_bracket` (`WALK_CAP`), `compute_xirr` (`BISECTION_CAP`), `
 `irr_fallback` and `irr_newton_raphson` (functions/financial/financial_util.rs)
 Tasks: T-0916, T-1686
 
-## RATE iterates on the rate itself
-Rule: RATE's results are rates, not x - 1: only 7 of the 136 literal RATE cells pass the x - 1 test above
-(tools/tests/test_fitlab_solvers.py). The update rule and the stop test are not fitted. `RATE(1,0,-1,X)` cannot separate
-rules: f is linear in r, so every Newton step from the first on gives the same value, and 9 of the 10
-cells are that value; the informative cell is X = 1.37 (R!A4), where Excel gives 0.3700000000000002 and
-every Newton candidate 0.37. Plain Newton cannot be the method: from 0.1 it crawls on
-RATE(360,-599.55,100000) (about 0.003 per step), which Excel solves.
-Evidence: probes/solver-iteration-traces R!A1:A10, R!B1:B30 (RATE(n,0,-1,2)), R!C1:C31 (a guess sweep on
-RATE(48,-200,8000,0,1)), R!D:F (annuities with type 0/1 and fv); excel-graph, 2026-10-14, T-1525.
-`uv run rustsheet-fitlab rate` (136 literal cells; the 277 nested `RATE(n,PMT(...),...)` cells are not
-parsed): Newton in r on the documented f(r) = pv(1+r)^n + pmt(1+r*type)((1+r)^n - 1)/r + fv gives at most
-11/136 bit-exact (4 to 8 steps), FD Newton (h = 1e-8) 7/136; the engine gets 12/136.
-T-1533 tried IRR's secant on RATE's documented f(r) (lab `rate`, family "secant": second point
-r0 + 0.001, -0.001 or 0.0001 times the sign of f(r0); stop |dr| < 1e-7 or 1e-10, with and without
-|f| < 1e-7): at most 19/136 bit-exact (-0.001, |dr| < 1e-7, |f| < 1e-7), 40 within 4 ulp. Excel's
-errors on the guess sweep R!C1:C31 are not smooth in the guess (C8 -1.8e-13, C9 +2.6e-16, C11
-+1.6e-13), unlike IRR's; between 0.019 and 0.028 they are positive and grow as about (guess - root)^26
-(a secant's order 21 or 34; scratch analysis against a 60-digit root, not a lab fit, until T-1534's traces).
-Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
-Status: UNVERIFIED (the update rule and the stop test)
+## RATE is a secant on the FV residual
+Rule: RATE is a secant, not Newton's method, on the residual f(r) = pv·P + pmt·(k·((P-1)/r)) + fv with
+FV's own evaluation: P = (1+r)^n by Excel's `^` on Excel's `1+r`, k = 1+r for type 1, in exactly that
+parenthesization (FV's `annuity_factor`), and f(0) = pv + pmt·n + fv. It starts from r0 = guess and
+r1 = r0 - 0.001·sign(f(r0)), steps r2 = r1 - f1·(r1-r0)/(f1-f0) with Excel's twice-rounded `-`, `*` and `/`,
+and stops at the first iterate with |r2 - r1| < 1e-7 and |f(r2)| < 1e-7, returning r2. The cap is 200
+steps, not the documented 20: guesses whose run needs 172 to 200 steps converge, those needing 201 to 216 are
+`#NUM!`, and the 200th iterate is returned on the step test alone (probes/rate-step-cap A30 is
+0.004999993194059272, the root 0.0049999931931192...; A31, whose 200th step is 8E-7, is `#NUM!`). An
+iterate at or below -1 is `#NUM!` (m9-fin-irr-rate A236, A352, A371-A378: the secant's root is
+below -1 there). Guess 0 therefore converges (rate-empty-arguments A1, A3, A8), and Excel's guess-sweep
+errors on R!C1:C31 are the secant's last step, whose sign and size depend on where the run lands.
+Evidence: scratch fit harness (T-2005; the RATE arguments evaluated by the engine, nested
+`RATE(n,PMT(..),..)` cells included) over the 464 literal RATE cells of probes-numeric/m9-fin-irr-rate,
+probes/solver-iteration-traces sheet R, probes/rate-empty-arguments and probes/fin-argument-modes
+(421 numeric): the model is bit-exact on 240 and gives Excel's value-or-`#NUM!` on 463 of 464 with the
+200-step cap (not A583, below). Rejected candidates (bit-exact / numeric cells, cap 20 unless stated):
+the engine's Newton 16/405; the secant with the naive double f (`(1+r)^n` by `powf`, documented order)
+39/373; with `^` and `+` but the documented order `pmt·(1+r·t)·(P-1)/r` 69/375; with every operation
+twice-rounded in the documented order 71/375; FV's order 210/375, 212 with the twice-rounded step; stop
+tests |dr| < 1e-7 alone 166, |f| < 1e-6 188, < 1e-8 181, |dr| < 1e-6 191, < 1e-8 181; step forms
+`r1 - f1/((f1-f0)/(r1-r0))` 137, `(r0·f1 - r1·f0)/(f1-f0)` 29, `r0 - f0·(r1-r0)/(f1-f0)` 114; cap 50
+217/394, 100 232/414. In exact arithmetic Newton (in r, v = 1/(1+r), ln(1+r), on f, f/(1+r)^n,
+r·f and f·(1+r)^a for a in -100..100), Halley and finite-difference Newton (steps ±1E-5 to ±1E-10,
+absolute and relative) never reproduce R!C's large-error cells; the secant reproduces R!B's to a few ulps.
+The 181 numeric cells still off are mostly a few ulps (the last secant step amplifies f's rounding);
+which operation differs is open (follow-up in T-2005's Outcome). One cell disagrees on the value type:
+m9-fin-irr-rate A583 `RATE(10,-1E6,1E7)`, root exactly 0, is `#NUM!` in Excel; near 0 the residual is
+rounding noise (|f| about 0.1 to 0.4 against the 1E-7 test), the run wanders until the cap and the
+model returns its 200th iterate, -2.6E-9. Whether Excel's run goes flat or rejects earlier there, or
+its cap rule also tests |f| (A30's 200th residual is 7E-5), is unprobed.
+Ours: `compute_rate` (functions/financial/financial_util.rs), this model.
+Status: VERIFIED (method, stop rule, cap; excel-graph) / UNVERIFIED (f's last-ulp evaluation)
 Tasks: T-1525, T-0916, T-1533, T-2005
 
 ## YIELD with one coupon period left is closed form
@@ -406,11 +419,11 @@ guess 0, not the default 0.1: the result has the same bits as an explicit `0` (0
 and differs from the 0.1 result in the last digits (…906556). Omitting the guess altogether uses 0.1
 (A4 equals A2). An empty `fv` (`RATE(48,-200,8000,,1)`, A4) is 0 (the same bits as the explicit 0 and 0.1 guess
 row A2), and an empty `type` is 0 (same bits as `type` 0, A5 = A6). A text guess (`""`) is `#VALUE!` and
-`TRUE` is guess 1 (A9 = A10, same bits). Excel converges for guess 0 here; the engine's solver returns `#NUM!` (T-0916,
-iteration fit).
+`TRUE` is guess 1 (A9 = A10, same bits). Excel converges for guess 0 here: RATE is a secant, so no step divides
+by the guess ("RATE is a secant on the FV residual", T-2005).
 Evidence: probes/rate-empty-arguments A1-A10 (excel-graph, T-1128)
 Status: VERIFIED
-Implemented in: n/a (empty argument already reads as 0; convergence is T-0916)
+Implemented in: `compute_rate` (empty argument reads as 0; guess 0 converges, T-2005)
 
 ## XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells
 Rule: XIRR reads an empty value or date cell as 0. It does not skip it. A zero value adds nothing, so

@@ -19,6 +19,7 @@ mod discount;
 mod financial_bonds;
 mod financial_depreciation;
 pub(crate) use financial_depreciation::MAX_DEPRECIATION_PERIODS;
+pub(crate) use financial_util::RATE_MAX_STEPS;
 mod financial_util;
 mod mirr;
 mod rate_conversions;

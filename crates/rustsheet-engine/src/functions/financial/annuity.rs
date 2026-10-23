@@ -23,13 +23,13 @@ use crate::{
 /// (right-to-left square-and-multiply for an integer `n`). With [`annuity_factor`] this matches all
 /// 308 PV and 308 FV cells of probes-numeric/m9-fin-pv-fv (docs/excel-semantics/financial.md
 /// "Annuity evaluation order"; fit lab `annuity-pv`, `annuity-fv`, T-1524).
-fn annuity_power(rate: f64, nper: f64) -> Result<f64, Error> {
+pub(super) fn annuity_power(rate: f64, nper: f64) -> Result<f64, Error> {
     power(extended_sum(1.0, rate), nper)
 }
 
 /// The annuity factor `k*((P-1)/r)`, `k = 1+r*type`, evaluated in doubles in exactly this
 /// parenthesization: `(pmt*k)*((P-1)/r)` instead misses 38 of the 308 PV cells (financial.md).
-fn annuity_factor(rate: f64, p: f64, period_start: bool) -> f64 {
+pub(super) fn annuity_factor(rate: f64, p: f64, period_start: bool) -> f64 {
     let k = if period_start { 1.0 + rate } else { 1.0 };
     k * ((p - 1.0) / rate)
 }
