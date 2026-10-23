@@ -5,6 +5,7 @@ use crate::formatter::dates::real_date_to_serial;
 
 mod coupon_schedule;
 mod yield_closed;
+mod yield_solver;
 
 use super::dates::{
     basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, days_30_360_us_both,
@@ -14,6 +15,7 @@ use coupon_schedule::{
     change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, coupon_days_nc,
     find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
+use yield_solver::solve_yield;
 
 use super::number_or_error;
 use crate::{
@@ -25,6 +27,16 @@ use crate::{
     functions::Function,
     model::Model,
 };
+
+/// `v^t`, the growth a bond price divides a cash flow `t` periods out by, with Excel's `^`: with
+/// libm `powf`, PRICE misses Excel by ulps on every integer-exponent cell of ironcalc-calc
+/// `FINANCIAL/PRICE_YIELD.xlsx` (`PRICE_YIELD!H2` 108.22689722310892) and visibly on
+/// probes/fin-coupon-walk-bounds-c C10, where `^` gives Excel's bits (T-2207). Where `^` is an
+/// error (an overflow, or a negative base under a fractional exponent) the value is libm's
+/// infinity or NaN, so those prices come out as before.
+fn discount_growth(v: f64, t: f64) -> f64 {
+    power(v, t).unwrap_or_else(|_| v.powf(t))
+}
 
 // #NUM! unless ODDFPRICE and ODDFYIELD take this first coupon: it must be on the maturity's
 // coupon schedule (probes/date-system-1900-oddf-schedule; T-1457). A first period exactly one
@@ -87,7 +99,14 @@ impl CouponSchedule {
 
     /// The clean price (per `redemption` par) at the yield `yld`: a sum over every coupon, and no
     /// schedule walk, so YIELD's solver walks the schedule once, not on every step (T-1842).
-    fn price(&self, rate: f64, yld: f64, redemption: f64, frequency: u32) -> f64 {
+    fn price(
+        &self,
+        rate: f64,
+        yld: f64,
+        redemption: f64,
+        frequency: u32,
+        growth: fn(f64, f64) -> f64,
+    ) -> f64 {
         let CouponSchedule { n, e, a } = *self;
         let dsc_over_e = (e - a) / e;
 
@@ -100,12 +119,12 @@ impl CouponSchedule {
         }
 
         let v = 1.0 + yld / frequency as f64;
-        let first_term = redemption / v.powf(dsc_over_e + n - 1.0);
+        let first_term = redemption / growth(v, dsc_over_e + n - 1.0);
 
         let mut second_term = 0.0;
         for k in 1..=(n as u32) {
             let t = dsc_over_e + k as f64 - 1.0;
-            second_term += coupon / v.powf(t);
+            second_term += coupon / growth(v, t);
         }
 
         first_term + second_term - accrued
@@ -123,7 +142,7 @@ fn compute_price(
     basis: u32,
 ) -> Result<f64, String> {
     let schedule = CouponSchedule::new(settlement, maturity, frequency, basis)?;
-    Ok(schedule.price(rate, yld, redemption, frequency))
+    Ok(schedule.price(rate, yld, redemption, frequency, discount_growth))
 }
 
 // ============================================================
@@ -139,8 +158,12 @@ fn compute_yield_from_price(
     redemption: f64,
     frequency: u32,
 ) -> Result<f64, String> {
+    // The solver prices with libm `powf`, not PRICE's `^`: on `^` prices it fixes 4 more YIELD
+    // cells but moves 2 that pass today, ironcalc-calc PRICE_YIELD.xlsx PRICE_YIELD!I27 by 4 ulp to
+    // a visibly different 0.0700000000000002 (decision 0083; financial.md "PRICE and ODDFPRICE
+    // discount with Excel's ^", T-2207).
     solve_yield(target, rate, |y| {
-        Some(schedule.price(rate, y, redemption, frequency))
+        Some(schedule.price(rate, y, redemption, frequency, f64::powf))
     })
 }
 
@@ -337,13 +360,13 @@ impl OddFirstSchedule {
     }
 
     /// The clean price at the yield `yld`: a sum over the coupons after the first, no walk.
-    fn price(&self, yld: f64) -> f64 {
+    fn price(&self, yld: f64, growth: fn(f64, f64) -> f64) -> f64 {
         let x = yld / self.m + 1.0;
-        let term1 = self.redemption / x.powf(self.front_exponent);
-        let term2 = self.lead / x.powf(self.lead_exponent);
+        let term1 = self.redemption / growth(x, self.front_exponent);
+        let term2 = self.lead / growth(x, self.lead_exponent);
         let mut term3 = 0.0;
         for index in self.first_index..=self.last_index {
-            term3 += self.coupon / x.powf(index as f64 + self.offset + self.y);
+            term3 += self.coupon / growth(x, index as f64 + self.offset + self.y);
         }
         term1 + term2 + term3 - self.accrued
     }
@@ -422,67 +445,6 @@ fn odd_l_func(
         let term3 = m / dscnl;
         Ok((term1 - term2) / term2 * term3)
     }
-}
-
-// ============================================================
-// Generic yield solver (wraps any price function)
-// ============================================================
-
-fn solve_yield<F>(target_price: f64, rate: f64, price_fn: F) -> Result<f64, String>
-where
-    F: Fn(f64) -> Option<f64>,
-{
-    let obj = |y: f64| price_fn(y).map(|p| p - target_price);
-
-    let h = 1e-5;
-    let eps = 1e-8;
-
-    let mut y = rate;
-    for _ in 0..100 {
-        let fv = match obj(y) {
-            Some(v) if v.is_finite() => v,
-            _ => break,
-        };
-        let fp = match (obj(y + h), obj(y - h)) {
-            (Some(a), Some(b)) => (a - b) / (2.0 * h),
-            _ => break,
-        };
-        if !fp.is_finite() || fp.abs() < 1e-15 {
-            break;
-        }
-        let yn = y - fv / fp;
-        if yn <= -1.0 {
-            break;
-        }
-        if (yn - y).abs() < eps {
-            return Ok(yn);
-        }
-        y = yn;
-    }
-
-    // Bisection fallback
-    let (x1, x2) = (-0.9999_f64, 100.0_f64);
-    let f1 = obj(x1).ok_or("bisection failed")?;
-    let f2 = obj(x2).ok_or("bisection failed")?;
-    if f1 * f2 > 0.0 {
-        return Err("yield solver: failed to converge".to_string());
-    }
-    let (mut lo, mut hi) = if f1 < 0.0 { (x1, x2) } else { (x2, x1) };
-
-    for _ in 0..200 {
-        let mid = (lo + hi) / 2.0;
-        let fm = obj(mid).ok_or("bisection failed")?;
-        if fm.abs() < eps || (hi - lo).abs() < 1e-12 {
-            return Ok(mid);
-        }
-        let f_lo = obj(lo).ok_or("bisection failed")?;
-        if f_lo * fm < 0.0 {
-            hi = mid;
-        } else {
-            lo = mid;
-        }
-    }
-    Err("yield solver: failed to converge".to_string())
 }
 
 // ============================================================
@@ -682,8 +644,8 @@ impl Model {
         let mut den = 0.0; // dirty price (sum of PV(CF))
         let mut add_cash_flow = |t: f64, cash_flow: f64| {
             // `v` > 1 and `t` > 0 here, so `^` fails only by overflowing: the flow's present value
-            // is then 0, as `powf`'s infinity gave before.
-            let growth = power(v, t).unwrap_or(f64::INFINITY);
+            // is then 0.
+            let growth = discount_growth(v, t);
             num += t * cash_flow / growth;
             den += cash_flow / growth;
         };
@@ -882,7 +844,7 @@ impl Model {
             number_or_error(
                 model
                     .odd_first_of(values, false, cell)
-                    .map(|(odd, schedule)| schedule.price(odd.yld_or_pr)),
+                    .map(|(odd, schedule)| schedule.price(odd.yld_or_pr, discount_growth)),
             )
         })
     }
@@ -894,8 +856,10 @@ impl Model {
                 model
                     .odd_first_of(values, true, cell)
                     .and_then(|(odd, schedule)| {
-                        solve_yield(odd.yld_or_pr, odd.rate, |yld| Some(schedule.price(yld)))
-                            .map_err(|_| num_error(cell))
+                        solve_yield(odd.yld_or_pr, odd.rate, |yld| {
+                            Some(schedule.price(yld, discount_growth))
+                        })
+                        .map_err(|_| num_error(cell))
                     }),
             )
         })
