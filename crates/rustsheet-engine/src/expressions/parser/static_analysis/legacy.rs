@@ -10,10 +10,12 @@
 
 use super::if_arm::{is_reference_arm, returns_range_arm};
 use super::lifted::lifts_arrays_at;
+use super::reference_result::{is_let_call, let_result};
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
     run_static_analysis_on_node, static_analysis_on_function, Node, Signature, StaticResult,
 };
+use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
 /// Legacy formulas evaluate SUMPRODUCT's arguments as arrays, with no implicit intersection inside
@@ -248,6 +250,35 @@ pub(super) const NO_AUTOMATIC_AT: [Function; 7] = [
     Function::Take,
 ];
 
+/// Whether the LET call `args` returns a range: its result is a range or a variable bound to one.
+/// A legacy formula then puts the `@` on the LET call itself rather than on its caller:
+/// `=ABS(LET(x,Z30:Z32,x))` and `=ABS(LET(x,1,Z30:Z32))` are shown `=ABS(@LET(...))`, `#VALUE!`,
+/// while a scalar result takes none (`=ABS(Z30:Z32)+LET(x,1,x)` keeps `=ABS(@Z30:Z32)+LET(x,1,x)`;
+/// probes/legacy-at-let-lambda-dynamic-funcs P, S, T-2419).
+pub(super) fn let_returns_range(args: &[Node]) -> bool {
+    fn is_range<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
+        match node.ungrouped() {
+            Node::NamedVariableKind { name, .. } => bound
+                .iter()
+                .rfind(|(bound_name, _)| same_variable(bound_name, name))
+                .is_some_and(|(_, range)| *range),
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } if is_let_call(args) => let_result(args, bound, is_range),
+            node => matches!(run_static_analysis_on_node(node), StaticResult::Range(..)),
+        }
+    }
+    is_let_call(args) && let_result(args, &mut Vec::new(), is_range)
+}
+
+/// Whether a legacy formula holding `node` gets no automatic `@`: it holds a [`NO_AUTOMATIC_AT`]
+/// function or a LAMBDA call, which removes every `@` like SWITCH (`=ABS(Z30:Z32)+LAMBDA(x,x)(1)`
+/// shows no `@` and spills 2, 3, 4; probes/legacy-at-let-lambda-dynamic-funcs BI, T-2419).
+pub(super) fn removes_automatic_at(node: &Node) -> bool {
+    node.contains_function(&NO_AUTOMATIC_AT) || node.contains_lambda_call()
+}
+
 /// [`add_legacy_intersection`] on a whole formula. A legacy formula holding a SWITCH, or any other
 /// [`NO_AUTOMATIC_AT`] function, at any depth gets no automatic `@` anywhere, not on the SWITCH, its
 /// arguments or the rest of the formula, and the cell spills: `=SIN(SWITCH(1,1,{2;3}))`,
@@ -256,7 +287,7 @@ pub(super) const NO_AUTOMATIC_AT: [Function; 7] = [
 /// shapes; T-1964, T-2121). An `@` typed in such a formula is meaningful and stays; the export keeps
 /// it too (`remove_redundant_implicit_intersection`).
 pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
-    if add && node.contains_function(&NO_AUTOMATIC_AT) {
+    if add && removes_automatic_at(node) {
         return;
     }
     add_legacy_intersection(node, add, add);
