@@ -358,8 +358,8 @@ impl Parser {
     /// one for the rest of the call. Excel: `LET(R1.C1,5,R1.C1*2)` is 10
     /// (probes/r1c1-let-name-r1-c1, T-1659), and stored as `_xlpm.f1`, `LET(f1,1,f1+1)` is 2
     /// (probes/let-cell-shaped-name-stored, T-2040). Excel refuses the cell-shaped name typed
-    /// (probes/let-cell-shaped-name-typed-*); ours reads the typed text as its stored form, as
-    /// for every other LET name (docs/excel-semantics/references.md, T-2040).
+    /// (probes/let-cell-shaped-name-typed-*): it binds here too, and typed entry refuses the
+    /// formula afterwards ([`Parser::typed_refusal`], decision 0103).
     pub(super) fn bind_reference_shaped_name(
         &mut self,
         token: &TokenType,
@@ -383,7 +383,12 @@ impl Parser {
                     ..
                 },
                 Node::ReferenceKind { .. } | Node::WrongReferenceKind { .. },
-            ) if parse_reference_a1(&text.to_ascii_uppercase()).is_some() => text.to_string(),
+            ) if parse_reference_a1(&text.to_ascii_uppercase()).is_some() => {
+                if self.cell_shaped_binding.is_none() {
+                    self.cell_shaped_binding = Some(text.to_string());
+                }
+                text.to_string()
+            }
             _ => return node,
         };
         self.reference_shaped_names.push(bound.clone());

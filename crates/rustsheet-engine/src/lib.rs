@@ -83,6 +83,7 @@ mod restart_log;
 mod seen_ranges;
 mod styles;
 mod tables;
+mod typed_input;
 mod tz;
 mod units;
 mod used_area;
