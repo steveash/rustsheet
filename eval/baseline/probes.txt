@@ -612,6 +612,7 @@ C	probes/lotus-dot-range.case.json	6
 C	probes/m7-argument-modes.case.json	174
 C	probes/m7-lift-take-drop-sortby.case.json	934
 C	probes/m7-one-cell-operand-lift.case.json	18
+C	probes/m7-unique-lift-corners.case.json	686
 C	probes/m7-unique-lift-elements.case.json	350
 C	probes/map-scan-range-result.case.json	39
 C	probes/map-unequal-sizes.case.json	36
