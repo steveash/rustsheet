@@ -107,6 +107,7 @@ fn date_system_serial_conversion() {
         Some(0.75)
     );
     assert_eq!(Excel1904.serial_from_imported_1900_serial(1461.5), None);
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(0.5), Some(0.5));
     assert_eq!(Excel1904.serial_from_imported_1900_serial(f64::NAN), None);
     assert_eq!(
         Excel1900.serial_from_imported_1900_serial(45292.5),

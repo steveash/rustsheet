@@ -61,13 +61,17 @@ impl DateSystem {
     }
 
     /// This system's serial for an imported date or timestamp whose 1900-system serial is
-    /// `serial` (the xlsx importer's ISO 8601 reader gives those), keeping its time of day.
-    /// `None` for a moment before the 1904 epoch, which has no 1904 serial (what Excel does with
-    /// such a pivot cache date is unprobed, so the importer skips it, as for a pre-1900 date).
+    /// `serial` (the xlsx importer's ISO 8601 reader gives those), keeping its time of day. A
+    /// bare time of day (`serial < 1`, no date part) is a day fraction in both systems and passes
+    /// through. `None` for a moment before the 1904 epoch, which has no 1904 serial (what Excel
+    /// does with such a pivot cache date is unprobed, so the importer skips it, as for a pre-1900
+    /// date). The fraction is taken from the 1900 sum, so it can differ from the 1904 sum's by one
+    /// ulp (docs/excel-semantics/web.md).
     #[must_use]
     pub fn serial_from_imported_1900_serial(self, serial: f64) -> Option<f64> {
         match self {
             Self::Excel1900 => Some(serial),
+            Self::Excel1904 if (0.0..1.0).contains(&serial) => Some(serial),
             Self::Excel1904 => {
                 Some(serial - EPOCH_1904_IN_1900_SERIALS as f64).filter(|s| *s >= 0.0)
             }
