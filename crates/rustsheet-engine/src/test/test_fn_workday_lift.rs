@@ -173,3 +173,17 @@ fn large_steps_are_bounded() {
         ("C5", "=WORKDAY(1,2000000)", "2799999"),
     ]);
 }
+
+/// Number text in a holidays array is a holiday, as in a cell; other text, a boolean and `""`
+/// are `#VALUE!` (probes/t2360-array-lambda-holidays W1-W15, T-2360).
+#[test]
+fn number_text_in_a_holidays_array_is_a_holiday() {
+    check(&[
+        ("D1", "=WORKDAY.INTL(26624,-19,5,{\"1.5\"})", "26599"),
+        ("D2", "=WORKDAY(26624,-19,{\"1.5\"})", "26597"),
+        ("D3", "=NETWORKDAYS.INTL(26600,26624,5,{\"1.5\"})", "19"),
+        ("D4", "=WORKDAY.INTL(26624,-19,5,{\"a\"})", "#VALUE!"),
+        ("D5", "=WORKDAY.INTL(26624,-19,5,{\"\"})", "#VALUE!"),
+        ("D6", "=WORKDAY.INTL(26624,-19,5,{TRUE})", "#VALUE!"),
+    ]);
+}

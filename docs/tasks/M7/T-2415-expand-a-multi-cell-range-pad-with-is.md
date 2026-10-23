@@ -3,7 +3,7 @@ id: T-2415
 title: "EXPAND: a multi-cell range pad_with is one #VALUE!, as an array pad_with is (gen-m7, 312 cells)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -55,11 +55,11 @@ cells are visibly off until EXPAND is fixed and the visible-parity lock cannot t
 - gen-m7/f7e94a817e5385ac.case.json A330 `=TEXTSPLIT((LEFT("1")&MAKEARRAY(Data!B12,1,LAMBDA(z,v,z*v))),"a",Data!D5:D12,EXPAND(Data!A6:C10,5,3,Data!A4:B5))`: B330 Excel <empty>, ours #VALUE!; cells (14): B330:C330, A331:C331, A332:C332, A333:C333, A334:C334
 
 ## Acceptance criteria
-- [ ] Visible parity: these 312 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
+- [x] Visible parity: these 312 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
-- [ ] A unit test covers a multi-cell range pad_with (`#VALUE!`, one cell) and a one-cell range pad_with (its value pads).
-- [ ] arrays.md's EXPAND entry has an "Ours:" line naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] A unit test covers a multi-cell range pad_with (`#VALUE!`, one cell) and a one-cell range pad_with (its value pads).
+- [x] arrays.md's EXPAND entry has an "Ours:" line naming this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - EXPAND sizes past the grid (T-2408); the rest of T-2365's probe questions (an error array beside a lifted argument).
@@ -69,3 +69,9 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+`fn_expand` returns `#VALUE!` for a multi-cell range pad_with as for an array one (a one-cell range pads with its value);
+unit test `expand_range_pad_with`; arrays.md EXPAND entry says Ours: implemented. Re-filled gen-m7/0624b684889e9228 (22
+`#UNDECODED!` -> `#VALUE!` only, plus `source`): its A2004 footprint now scores. Baseline: 316 known-failure lines gone
+(312 owned in gen-m7 plus 4 in gen-m9), 0 added. Supersedes T-2462 (the same re-fill).

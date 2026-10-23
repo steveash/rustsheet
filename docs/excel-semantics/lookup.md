@@ -144,8 +144,28 @@ is a scalar call, so an error or text range_lookup element is that element's res
 (`VLOOKUP({2;3},A1:B4,2,{#DIV/0!;TRUE})` is `#DIV/0!`, "three"; `{"a";"b"}` is `#VALUE!` twice).
 A scalar text range_lookup beside a lifted lookup_value lifts the same way, one array of that error rather than one `#VALUE!`:
 `WRAPROWS(Data!E6:E11,1,VLOOKUP(OFFSET(Data!D6:E8,2,0),Data!B5:C5,3,"1"))` spills a 3x2 grid of E6's 3.14159, so the VLOOKUP there is a 3x2
-array that WRAPROWS's pad_with lifts over (gen-m7/f7e94a817e5385ac Calc!A2430, excel-graph, 2026-10-22; its elements are not visible
-there, `#VALUE!` each by the scalar rule, UNVERIFIED). Ours: one `#VALUE!` (`VLOOKUP({1,2},B5:C5,3,"1")`), T-2411.
+array that WRAPROWS's pad_with lifts over (gen-m7/f7e94a817e5385ac Calc!A2430, excel-graph, 2026-10-22). Every element is
+the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scalar-range-lookup-lifted, excel-graph,
+2026-10-23, T-2411):
+- `VLOOKUP({1;2},A1:B2,2,"1")` is `#VALUE!` twice (G1-G4). A bad range_lookup fails before any search.
+- An error range_lookup is that error per element: `NA()` gives `#N/A` and `1/0` gives `#DIV/0!` (G7, G29).
+- An error lookup_value element keeps its own error (`{1;#DIV/0!}`).
+- A range lookup_value lifts the same way, and so does HLOOKUP (`HLOOKUP({1,2},D1:E2,2,"x")`, 2 columns of `#VALUE!`).
+- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's,
+  ahead of a bad range_lookup and of the search:
+  - `VLOOKUP({1;2},A1:B2,"a",NA())` is `#VALUE!` per element (G20).
+  - `VLOOKUP({1;99},A1:B2,1/0,"1")` is `#DIV/0!` per element (G24).
+  - Under exact match 99 is not found, and the index error still wins: `VLOOKUP({1;99},A1:B2,"a",FALSE)` is `#VALUE!` and
+    `VLOOKUP({1;99},A1:B2,1/0,FALSE)` is `#DIV/0!` in the 99 element (G33, G39). The control
+    `VLOOKUP({1;99},A1:B2,2,{FALSE;FALSE})` is `#N/A` there (G36).
+  - The same holds beside an array range_lookup: `VLOOKUP({1;2},A1:B2,"a",{#N/A;TRUE})` is `#VALUE!` in every element
+    (G26), and so is `VLOOKUP({1;99},A1:B2,1/0,{FALSE;FALSE})` with `#DIV/0!` (G35).
+  - (With approximate match, 99 is found in the last row of A1:A2, so `{1;99}` cells G21, G25, G30 do not test not-found.)
+- An index of 0 is still checked after the search: `VLOOKUP({1;99},A1:B2,0,FALSE)` is `#N/A` in the 99 element (G37).
+  Beside a bad range_lookup, every element is that range_lookup's `#VALUE!` (`VLOOKUP({1;99},A1:B2,0,"1")`, G28).
+- Text range_lookup that reads as a boolean works: `VLOOKUP({1;2},A1:B2,2,"TRUE")` is "one", "two" (G18, G19).
+- The scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
+Ours: matches since T-2411.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
 search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is
 validated in reading order and the first bad one is the error of the whole call, with no spill
@@ -166,7 +186,10 @@ such a spill are the error itself, per row, with room to spill: an error lookup_
 index (`1/0`, `NA()`) and a text index (`"a"` is `#VALUE!`, not the `#REF!` of an array index element)
 each fill every row with that scalar error (VLOOKUP with a range or an array range_lookup; HLOOKUP and
 `NA()` probed with an array range_lookup only, the engine shares one path) (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
-Matches the engine (`LookupIndexArg::Failed`).
+The index error is every element's even where the value is not found: `VLOOKUP(99,A1:B2,"a",{FALSE;FALSE})` is `#VALUE!`
+per element (probes/vlookup-scalar-range-lookup-lifted G34), and it beats an error range_lookup element
+(`VLOOKUP(99,A1:B2,"a",{TRUE;#N/A})` is `#VALUE!` in the second, G32). Ours: matches since T-2411 (`argument_error_each`);
+before it, a not-found element was `#N/A`.
 A multi-cell range *index* lifts once the value is found, and `@` intersects it (T-1426; see "VLOOKUP / HLOOKUP search
 before validating the index"). With a table error, an array index gives one scalar error, not a spill
 (`VLOOKUP(2,1/0,{2,3})` is `#DIV/0!`, probes/lookup-argument-edges H372, H375).

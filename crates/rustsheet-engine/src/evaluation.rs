@@ -281,6 +281,10 @@ pub(crate) struct Evaluation {
     pub(crate) blocked_on: Option<CellReferenceIndex>,
     /// Number of passes the last `evaluate()` ran, restarted ones included. For tests.
     pub(crate) passes_in_last_evaluation: u32,
+    /// Set while a cell formula whose outermost node is BYROW, BYCOL or MAP is about to call it;
+    /// that call takes it at once, so no nested call sees it (`lambda_element`, T-2406). TODO(T-2039): drop it
+    /// once an array element can hold the LAMBDA.
+    pub(crate) lambda_elements_shown: bool,
 }
 
 /// How deep the recursion may go when nobody has said otherwise, in formulas
@@ -341,6 +345,7 @@ impl Default for Evaluation {
             blocking: false,
             blocked_on: None,
             passes_in_last_evaluation: 0,
+            lambda_elements_shown: false,
         }
     }
 }
