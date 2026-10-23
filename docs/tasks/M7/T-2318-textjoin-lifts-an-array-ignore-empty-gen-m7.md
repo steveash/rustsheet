@@ -3,7 +3,7 @@ id: T-2318
 title: "TEXTJOIN lifts an array ignore_empty (gen-m7 ac67253061bba16a A1137 is #SPILL!)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
