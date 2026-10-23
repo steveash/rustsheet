@@ -5,7 +5,7 @@ use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
-use crate::functions::statistical::inverse_beta::f_inverse_cdf;
+use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
 use crate::functions::statistical::special::{ln_gamma, refine_increasing};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
@@ -41,7 +41,10 @@ fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
 }
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
-/// same failure as Student-t), so the quantile has no statrs start there.
+/// same failure as Student-t), so from it the quantile is [`f_quantile_through_beta`]: Excel's
+/// BETA.INV mapped to F. Either side of it the quantile is within 2E-13 relative of Excel's at
+/// df 99999, 1E5 and 1E6 with p = 1E-12 and 1 - 1E-12 (24 cells,
+/// probes-numeric/t1538-f-quantile-switchover).
 const F_QUANTILE_STATRS_DF_MAX: f64 = 1e5;
 
 /// Below this probability (of either tail) statrs' search panics (from p = 1.6E-162) or never
@@ -59,7 +62,7 @@ const F_QUANTILE_REFINE_P_MIN: f64 = 1e-15;
 /// search (the capped port of `inverse_beta.rs`, T-1848) as a start where it is reliable, refined to
 /// the crossing of [`f_cdf`] or [`f_sf`] (`special::refine_increasing`) in the upper tail and from a
 /// lower-tail probability of [`F_QUANTILE_REFINE_P_MIN`] up. At most 512 Newton steps and 129 cdfs, or 65 cdfs without a
-/// start.
+/// start. From a df of [`F_QUANTILE_STATRS_DF_MAX`], Excel's BETA.INV mapped to F (T-1538).
 fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
     let lower = if right_tail { 1.0 - p } else { p };
     if lower <= 0.0 {
@@ -68,12 +71,16 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
     if lower >= 1.0 && !right_tail {
         return f64::INFINITY;
     }
+    if df1 >= F_QUANTILE_STATRS_DF_MAX || df2 >= F_QUANTILE_STATRS_DF_MAX {
+        return if right_tail {
+            1.0 / f_quantile_through_beta(df2, df1, p)
+        } else {
+            f_quantile_through_beta(df1, df2, p)
+        };
+    }
     // statrs' search is the start where it is reliable; elsewhere the refinement bisects the
     // whole range of doubles.
-    let estimate = if df1 < F_QUANTILE_STATRS_DF_MAX
-        && df2 < F_QUANTILE_STATRS_DF_MAX
-        && (F_QUANTILE_STATRS_P_MIN..=1.0 - F_QUANTILE_STATRS_P_MIN).contains(&lower)
-    {
+    let estimate = if (F_QUANTILE_STATRS_P_MIN..=1.0 - F_QUANTILE_STATRS_P_MIN).contains(&lower) {
         f_inverse_cdf(df1, df2, lower)
     } else {
         f64::NAN
@@ -92,6 +99,28 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
     } else {
         refine_increasing(|x| f_cdf(df1, df2, x), lower, estimate, 0.0, f64::MAX)
     }
+}
+
+/// The lower-tail F quantile as Excel forms it at a huge df, from its BETA.INV:
+/// (df2/df1) y/(1 - y) with y = BETA.INV(p, df1/2, df2/2) (`inverse_beta::beta_quantile_crossing`),
+/// its flipped root s = 1 - y taken as it is for p above 1/2. F.INV.RT is 1/F.INV(p, df2, df1).
+/// So y near 1 keeps only its distance from 1 on the 2^-53 grid, and `F.INV(0.5,1E10,5)` is
+/// Excel's 1.1490395521130337 (probes-numeric/t1538-f-inv-huge-df A3, from
+/// `BETA.INV(0.5,5E9,2.5)` = 0.999999999564854, A134) where the true quantile is
+/// 1.1490395821369862.
+/// See docs/excel-semantics/statistics.md "F quantile at a huge df goes through Excel's BETA.INV
+/// (T-1538)".
+fn f_quantile_through_beta(df1: f64, df2: f64, p: f64) -> f64 {
+    if p > 0.5 {
+        // BETA.INV's flip: s = 1 - y is the root solved, and mapped as it is, not as 1 - (1 - s):
+        // `F.INV(1-1E-12,100000,5)` is then within 1.6E-15 relative of Excel's 97570.08944108484
+        // (t1538-f-quantile-switchover A9); 1 - (1 - s) keeps only s's distance from 1 and misses by
+        // 9E-8 relative.
+        let s = beta_lower_crossing(df2 / 2.0, df1 / 2.0, 1.0 - p);
+        return (df2 / df1) * ((1.0 - s) / s);
+    }
+    let y = beta_lower_crossing(df1 / 2.0, df2 / 2.0, p);
+    (df2 / df1) * (y / (1.0 - y))
 }
 
 /// The F density. statrs' direct form raises `df1*x` and `df1*x + df2` to the power `df1` and
@@ -436,5 +465,33 @@ impl Model {
         }
 
         CalcResult::Number(p)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::f_quantile;
+
+    // Excel's F quantile at a huge df is its BETA.INV mapped to F (probes-numeric, excel-graph).
+    #[test]
+    fn huge_df_quantiles_go_through_excels_beta_inv() {
+        // t1538-f-inv-huge-df A3: y = BETA.INV(0.5,5E9,2.5) near 1, bit for bit.
+        assert_eq!(
+            f_quantile(1e10, 5.0, 0.5, false).to_bits(),
+            1.149_039_552_113_033_7_f64.to_bits()
+        );
+        // A48: F.INV.RT(0.975,1E10,5) = 1/F.INV(0.975,5,1E10), through the flipped root.
+        let rt = f_quantile(1e10, 5.0, 0.975, true);
+        assert!(
+            (rt - 0.389_635_637_664_716_87).abs() <= 4.0 * f64::EPSILON * rt,
+            "{rt}"
+        );
+        // t1538-f-quantile-switchover A9: the flipped root mapped as it is (2E-15 relative of Excel's;
+        // through 1 - (1 - s) it would be 9E-8 off).
+        let upper = f_quantile(100_000.0, 5.0, 1.0 - 1e-12, false);
+        assert!(
+            (upper - 97_570.089_441_084_84).abs() <= 2e-15 * upper,
+            "{upper}"
+        );
     }
 }

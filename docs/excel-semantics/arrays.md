@@ -539,8 +539,8 @@ top-left of its call.
     `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434).
   - Ours (T-2300): the driver option `CallResult::ArrayFirst` (SPEC-0011 rule 2, "As built (T-2300)"). INDEX of any empty
     value is `#VALUE!` there (`scalar_as_one_element_array`). Only the empty element is evidenced (m7-lift-take-drop-sortby
-    L25); other empty values in INDEX's first argument (`INDEX(IFERROR(B1,1),1,1)` with B1 blank) take the same rule by
-    analogy, UNVERIFIED.
+    L25); other empty values in INDEX's first argument (`INDEX(IFERROR(B1,1),1,1)` with B1 blank) are `#VALUE!` too
+    (probes/m7-unique-lift-corners, T-2348).
 - With A1:A3 = 3,1,2 and C1:C3 = 2,1,3: `SORTBY(A1:A3,C1:C3,{1;-1;1})` is 1, empty, empty (it spills {1;0;0}:
   probes/sort-error-args H97-H99); `{1;-1}` 1, empty; `{-1;1}` 2, empty; `{1;1;-1}` 1, empty, empty; E1:E3 = 1,-1,1
   the same as the literal; `{1;1}`, `{1;1}+0` 1, 1; `{1;1;1}` 1,1,1; `{-1;-1;-1}` 2,2,2. The same over B1:B3 =
@@ -554,10 +554,23 @@ top-left of its call.
   `{FALSE;FALSE;TRUE}` "x", empty, empty; `UNIQUE(D1:D3,{FALSE;TRUE})` and `{TRUE;FALSE}` "x", empty;
   `UNIQUE(D1:D3,{FALSE;FALSE})` "x", "x"; `UNIQUE(D1:D3,FALSE,{TRUE;TRUE})` "y", "y".
 - TOCOL's scan_by_column (`TOCOL(A1:B3,0,{FALSE;TRUE})`: element 2 is 1, ROWS 1) and the other M7 lifts do not show it.
-- A 2-D exactly_once whose entries are all equal does not give every element its call's top-left: `UNIQUE(Data!C2:E10,TRUE,
-  <3x3 of FALSE>)` spills the top-left 100 down the first column and 0 in the other two (whether those are blank elements is unprobed, T-2348) (gen-m7/2c156ba98ef0220a.case.json
-  Calc!A1284, excel-graph, 2026-10-22, T-2254 triage). Ours: 100 in all nine. Whether the rule is "first of each row" or follows
-  by_col is unprobed (T-2348).
+- Uniform entries spanning several columns keep the call's top-left only in the first column (probes/m7-unique-lift-corners,
+  excel-graph, 2026-10-23, T-2348; D1:D3 = x,y,x, A1:B3 = 1,2,3 / 10,20,30): the other columns' elements are empty (spill 0).
+  `UNIQUE(D1:D3,FALSE,{FALSE,FALSE;FALSE,FALSE})` is x, x in column one and 0, 0 in column two; a 2x3 and a 3x2 likewise
+  (`UNIQUE(A1:B3,FALSE,{FALSE,FALSE,FALSE;FALSE,FALSE,FALSE})`: 1, 1 then 0s; `{FALSE,FALSE;FALSE,FALSE;FALSE,FALSE}`: 1, 1, 1 then 0s),
+  and a 1x3 `UNIQUE(A1:B3,{FALSE,FALSE,FALSE})` is 1, 0, 0 while a 3x1 `{FALSE;FALSE;FALSE}` is 1, 1, 1. It does not depend
+  on by_col (TRUE, FALSE and the by_col-only form give the same cells). Entries that are not all equal keep only the top-left
+  (`{FALSE,TRUE;FALSE,FALSE;FALSE,FALSE}`: 1 then 0s). The same as gen-m7/2c156ba98ef0220a.case.json Calc!A1284 (3x3: 100
+  down column A, 0 in B:C; excel-graph, 2026-10-22, T-2254 triage). Ours: UNIQUE only (`CallResult::ArrayFirstColumn`,
+  `empty_past_first_column` in lift/driver.rs) since T-2348. UNVERIFIED: whether an error element past the first column stays
+  (ours: it does, `UNIQUE(D1:D3,FALSE,{"a","a"})` is unprobed), and SORTBY's uniform 1xN sort_order, which keeps every
+  element's top-left in ours (`CallResult::ArrayFirst`; with a second by_array/sort_order pair its emptied elements are `#VALUE!`);
+  both belong with T-2349's SORTBY probes.
+- Lifted-element corners (same probe): text entries are `#VALUE!` elements whatever their case (`UNIQUE(D1:D3,FALSE,{"a";"A"})`
+  and `{"a";"a"}` are `#VALUE!`, `#VALUE!`: exactly_once is not read as text), so the case question never arises; `{0;-0}` is
+  x, x (equal). A call error from a non-error entry stays and the first good element is kept: `{"abc";FALSE;TRUE}` is
+  `#VALUE!`, x, empty; `{FALSE;"abc";TRUE}` is x, `#VALUE!`, empty. INDEX of an empty value from IFERROR
+  (`INDEX(IFERROR(AZ1,1),1,1)`, `LET(x,IFERROR(AZ1,1),INDEX(x,1,1))`, AZ1 blank) is `#VALUE!`, as for UNIQUE's empty element.
 Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
 UNVERIFIED for SORTBY (taken from UNIQUE's rule, unprobed; T-2349):
 - a leading invalid entry (`{2;1}`): ours `#VALUE!`, then the next element's top-left;

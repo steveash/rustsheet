@@ -1426,6 +1426,19 @@ Status: VERIFIED (excel-graph)
 Implemented in: `fn_npv`, `fn_fvschedule` in functions/financial/mod.rs (T-1373)
 Tasks: T-1084, T-1373
 
+## IRR over an error element
+Rule: IRR (probes/fin-irr-error-array, T-2390, excel-graph) gives `#VALUE!`, whatever the kind, when its values hold an
+error: in an array constant (`IRR({-100,#N/A,60})`, also `#DIV/0!`, `#NUM!`, `#VALUE!`, `#REF!`, `#NAME?`, first, middle or last,
+and two errors), in a range (`IRR(A1:A3)` with `#N/A` or `#DIV/0!` in A2), in a single cell holding an error (`IRR(A2)`) and
+in an array computed from one (`IRR(A1:A3+1)`), with or without a guess. An error that is itself the argument passes through
+(`IRR(NA())` is `#N/A`, `IRR(1/0)` `#DIV/0!`), as does an error guess (`IRR(E1:E3,A2)` is `#N/A`). Text and TRUE in an array
+or range are skipped (-0.40000000000000013 for `{-100,"a",60}`, `{-100,TRUE,60}`, and cells C1:C3, D1:D3).
+The rest of the family is not like IRR: MIRR, NPV, XIRR and XNPV return the element's own error (`#N/A`) for an array
+constant or a range, and for an error in XIRR's/XNPV's dates.
+Ours: matches every probed cell (after T-2390).
+Status: VERIFIED
+Tasks: T-2390
+
 ## Financial edge-pool smoke check (T-2248)
 Rule: observed values at the edges of the M9 financial generator pools (tools/src/rustsheet_tools/gen/pools.py), one
 formula per pool entry:
@@ -1439,7 +1452,7 @@ formula per pool entry:
   1E+6, 1E+9 and 1E+300 give -50 (`-pv*rate`). IPMT per 0, 0.5, -1 and past nper (13 of 12) is `#NUM!`; per 1.5 computes.
 - IRR: no sign change, a single flow and all zeros are `#NUM!`; text and TRUE inside an array literal are skipped
   (`IRR({-100,"a",60})` = `IRR({-100,TRUE,60})` = -0.40000000000000013), and an error element makes it `#VALUE!`
-  (`IRR({-100,#N/A,60})`; ours `#N/A`, T-2390).
+  (`IRR({-100,#N/A,60})`; see "IRR over an error element").
 - XNPV: dates whose first is not the earliest, dates from serial 0 to 61, and fewer dates than values are `#NUM!`; equal
   dates give 0; fractional dates truncate.
 - YIELD: a price of 0 or -1 is `#NUM!`, and so are 1E+6 and 1E+300 (ours -0.6330938491144911 at 1E+6, T-2391); a price of
@@ -1449,7 +1462,7 @@ annuity_type, security_date, basis, frequency, npery, cash_flows and cash_dates)
 2026-10-22 and deleted afterwards, as the task asked; T-2390, T-2391 and T-2392 commit probes for the three mismatches.
 Ours: 127 of 169 cells match; the rest are the known PMT/IPMT last-digit misses ("PMT, IPMT and PPMT are the exact
 payment"), YIELD's ("YIELD stops short of PRICE's root"), two IRR last-digit misses and the three cells above.
-Status: UNVERIFIED (probe pending: T-2390, T-2391, T-2392 commit the probe cases)
+Status: UNVERIFIED (probe pending: T-2391, T-2392 commit the probe cases)
 Tasks: T-2248, T-2390, T-2391, T-2392
 
 ## XIRR and XNPV under the gen-m9 statistical cells: size and type checks (T-2255)

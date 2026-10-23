@@ -1,3 +1,4 @@
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -280,4 +281,69 @@ fn fn_imcsc_imlog2_imcot_of_zero_are_num() {
     assert_eq!(model._get_text("A1"), "#NUM!");
     assert_eq!(model._get_text("A2"), "#NUM!");
     assert_eq!(model._get_text("A3"), "#NUM!");
+}
+
+// Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044). The tiny-argument rows keep
+// the digits Excel loses (D65, D70, P65, P70), IMSEC and IMSECH differ in the last digit of the
+// same real part (G23, J58), and a large real part needs SIN's own reduction (D51).
+#[test]
+fn im_reciprocal_kernels_match_the_sweep() {
+    let cases = [
+        (
+            r#"=IMCSC("1E-5+1E-5i")"#,
+            "49999.9979339908-49999.9979306575i",
+        ),
+        (r#"=IMCSC("0.00001i")"#, "-99999.9917276303i"),
+        (
+            r#"=IMCSC("-9447.72-0.00486262i")"#,
+            "1.22857263522781-0.00426406656289288i",
+        ),
+        (
+            r#"=IMCOT("1E-5+1E-5i")"#,
+            "49999.9958596485-49999.9958663151i",
+        ),
+        (r#"=IMCOT("0.00001i")"#, "-99999.9917326303i"),
+        (r#"=IMCOT("219.098+3372.26i")"#, "-i"),
+        (r#"=IMCOT("-724.227-562.884i")"#, "i"),
+        (
+            r#"=IMSEC("4+3i")"#,
+            "-0.0652940278579471-0.0752249603027732i",
+        ),
+        (
+            r#"=IMSECH("3+4i")"#,
+            "-0.065294027857947+0.0752249603027732i",
+        ),
+        // A real argument is 1/sin x and 1/cosh x (gen-m9/2f0d384b8ed0d392 A109, 01810fc89c5ec2c0 A318).
+        (r#"=IMCSC("0.2")"#, "5.03348954767234"),
+        (r#"=IMSECH("1.5")"#, "0.42509603494228"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+// Excel: probes-numeric/im-last-digit-sweep B22, C22 (T-2044): IMABS scales by the larger part
+// (`hypot` gives 51.39464785909132) and IMARGUMENT is ATAN2's `atan(y/x) - π`
+// (libm `atan2` gives -2.0374703428717544).
+#[test]
+fn imabs_and_imargument_kernels() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMABS("-23.1234-45.899i")"#);
+    model._set("A2", r#"=IMARGUMENT("-23.1234-45.899i")"#);
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 51.394_647_859_091_315_f64.to_bits());
+    assert_eq!(bits("A2"), (-2.037_470_342_871_754_f64).to_bits());
 }

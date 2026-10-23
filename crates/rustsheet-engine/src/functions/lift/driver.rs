@@ -236,6 +236,9 @@ enum Later {
     /// [`CallResult::ArrayFirst`] over entries that are not all equal: an error result stays,
     /// the first other one is kept (`placed` once it is), and every later one is empty.
     EmptyAfterFirst { placed: bool },
+    /// [`CallResult::ArrayFirstColumn`] over entries that are all equal: every element runs, then the
+    /// non-error ones past the first column are emptied ([`empty_past_first_column`]).
+    EmptyPastFirstColumn,
 }
 
 impl Run<'_> {
@@ -264,6 +267,28 @@ impl Run<'_> {
 /// within the work the elements are charged.
 fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
     (0..rows).all(|row| (0..columns).all(|column| same_as(args, row, column, (0, 0))))
+}
+
+/// A [`CallResult::ArrayFirstColumn`] call over entries that are all equal and span several columns
+/// keeps its call's top-left only down the first column: the other columns' elements are empty,
+/// errors excepted (`UNIQUE(D1:D3,FALSE,{FALSE,FALSE;FALSE,FALSE})` is x, x in column one and
+/// empty in column two, `by_col` or not; a 1x3 `{FALSE,FALSE,FALSE}` is 1, empty, empty;
+/// probes/m7-unique-lift-corners, T-2348; docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's
+/// lifted elements").
+fn empty_past_first_column(result: CalcResult) -> CalcResult {
+    match result {
+        CalcResult::Array(mut rows) => {
+            for row in &mut rows {
+                for node in row.iter_mut().skip(1) {
+                    if !matches!(node, ArrayNode::Error(_)) {
+                        *node = ArrayNode::Empty;
+                    }
+                }
+            }
+            CalcResult::Array(rows)
+        }
+        other => other,
+    }
 }
 
 /// A per-element kernel: the scalar function over the argument values of one element.
@@ -552,13 +577,18 @@ impl Model {
             .then_some(index),
             _ => None,
         };
-        let later = if options.result == CallResult::ArrayFirst
-            && !all_elements_equal(&lifted, rows, columns)
-        {
+        let array_first = matches!(
+            options.result,
+            CallResult::ArrayFirst | CallResult::ArrayFirstColumn
+        );
+        let later = if array_first && !all_elements_equal(&lifted, rows, columns) {
             Later::EmptyAfterFirst { placed: false }
+        } else if options.result == CallResult::ArrayFirstColumn && columns > 1 {
+            Later::EmptyPastFirstColumn
         } else {
             Later::Kept
         };
+        let past_first_column = matches!(later, Later::EmptyPastFirstColumn);
         let mut visits = visits;
         let run = Run {
             options,
@@ -566,10 +596,14 @@ impl Model {
             cell,
             later,
         };
-        match in_place {
+        let result = match in_place {
             Some(index) => self.lift_in_place(lifted, index, run, kernel, numbers),
             None => self.lift_broadcast(&lifted, rows, columns, &plan, run, kernel),
+        };
+        if past_first_column {
+            return empty_past_first_column(result);
         }
+        result
     }
 
     /// The lift of a call whose result is a reference (SPEC-0014 "Producers"): `kernel` runs
