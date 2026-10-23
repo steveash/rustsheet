@@ -3,7 +3,7 @@ id: T-0974
 title: "BETA.INV/F.INV/F.INV.RT: inverse incomplete beta parity (28 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -162,3 +162,25 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - FINV: 25 cells (13-14 digits right 14, 10-12 4, 6-9 4, fewer or 0 vs nonzero 3); most in `probes-numeric/m9-legacy-finv.case.json` 23; `probes-numeric/t1530-f-df-cut.case.json` 2. e.g. `FINV(0.5,2,5)` Excel 0.7987697769322353, ours 0.7987697769322422
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Outcome
+F.INV, F.INV.RT and FINV are the crossing of F.DIST's own tails (statistics.md "F.INV is a crossing of F.DIST's tails"):
+`fisher.rs` `f_quantile` refines statrs' estimate with the new `special::refine_increasing` (a bracket around the
+estimate, then halving over the doubles' bit patterns to adjacent doubles: at most 129 cdfs, 65 with no start), solving
+the smaller tail on `f_cdf` / `f_sf`. Below p = 1E-15 statrs' estimate stays; below 1E-20 (where statrs panicked or hung,
+#NUM!) the bisection runs without a start. The df >= 1E5 statrs-cdf bisection is gone. `incomplete_beta.rs`'s a = 1 closed
+form keeps its digits below x = 0.1 (statistics.md "The a = 1 closed form cancels only from x = 0.1 up"), so F.DIST and
+F.DIST.RT take it too.
+
+Eval: gen-m9 known failures 5142 -> 5087, ironcalc-calc 831 -> 829 (F_DIST.xlsx J3, L3), probes 2073 -> 2071
+(ftest-decomposition B7, B13), 0 regressions. In-scope cells visibly off 6854 -> 6685. Of the 96 gen-m9 visible-parity
+cells above, 51 were visibly off on main and 12 are now. probes/stat-quantile-lift E1-E3 (F.INV at 1E-300 to 1E-170) give
+values instead of #NUM!, 13 digits right.
+
+Not met here:
+- BETA.INV is unchanged (statrs' `inverse_cdf` port remains): the same refinement on BETA.DIST's cdf only works with
+  BETA.DIST's cdf on `incomplete_beta` (T-2119). Measured on this branch, both together fix 45 gated lines and about 1,300
+  visibly-off cells but move nine BETADIST_BETAINV.xlsx cells by 1-4 ulp (H2, H23, H42, H44, H46-H49, H67). Recording those
+  needs `update-baseline --allow-regressions`, which this autonomous run was not permitted to run. Notes in T-2119.
+- The 12 cells still visibly off (9 F-family) and the ironcalc criterion (15 of 28 lines) are follow-ups: T-2465 (F family),
+  T-2119 (BETA.INV, BETAINV, the BETADIST_BETAINV.xlsx lines).

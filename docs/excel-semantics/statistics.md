@@ -1472,6 +1472,35 @@ Ours: `student_t.rs` `unflushed_upper_tail` (since T-0969 attempt 7).
 Status: VERIFIED (excel-graph) for df 2 to 1000; above df 1000, and the cut's exact position, UNVERIFIED
 Tasks: T-0969
 
+## The a = 1 closed form cancels only from x = 0.1 up (T-0974)
+Rule: I_x(1,b) is the cancelling 1 - exp(b*ln(1-x)) from x = 0.1 up (BETA.DIST(0.1,1,0.0001,TRUE) above) and keeps
+its digits below, -expm1(b*ln1p(-x)) as far as the cells tell, the same cut as T.DIST.RT at df 2 (below).
+- `BETA.DIST(1E-10,1,0.5,TRUE)` is 9.999999999999999E-11 and `BETA.DIST(1E-10,1,2.5,TRUE)` and `(..,1,10,..)` are within
+  an ulp of 1E-10 (probes-numeric/t1745-beta-inv-roundtrip G35, G48, G55), where 1 - exp misses by 8E-8 relative;
+  `BETA.DIST(0.001,1,2.5,TRUE)` (G49) is 11 units of the 15th digit from 1 - exp.
+- The quantiles follow: `BETA.INV(1E-10,1,0.5)` = 1.9999999999E-10 (m9-beta-inv A36) and `F.INV.RT(1-1E-10,2,7)` =
+  1.0000000828046573E-10 (gen-m9/4e55500bb8ad3cd8 A77), which a search on 1 - exp misses by 1E-6 relative.
+- At df 2, half the uncancelled tail is Excel's `T.DIST.RT(4.245,2)` = 0.025631992844658943 (t0969-t-df2-cut
+  B450) bit for bit, 1 ulp from the closed form.
+Ours: `incomplete_beta.rs` `beta_reg_complement` (`A1_CLOSED_FORM_MIN_X`), so F.DIST, F.DIST.RT and the F quantiles take it;
+BETA.DIST's cdf is still statrs' (T-2119).
+Status: VERIFIED (excel-graph) at 1E-10 and 0.001 below the cut and at 0.1; the cut itself between 0.001 and 0.1 is
+UNVERIFIED (assumed T.DIST.RT's).
+Tasks: T-0974, T-2119
+
+## F.INV is a crossing of F.DIST's tails (T-0974)
+Rule: as BETA.INV (T-1745), F.INV and F.INV.RT/FINV return a double where Excel's own cdf crosses p. The smaller tail is
+solved: F.INV at p > 0.5 crosses F.DIST.RT = 1 - p (exact there), and F.INV.RT at a small p crosses F.DIST.RT = p
+directly, not F.INV(1 - p) (`F.INV.RT(1E-16,9,3)` = 60647458731.09812, gen-m9/0a9226016e8f5f33 A45, keeps digits 1 - p
+would lose). Refining statrs' Newton estimate to the crossing of the engine's incomplete beta takes the F cells visibly off
+(more than half a unit in the 15th digit) from 422 to 229 and the T-0974 sweep cells from 51 to 12 of 96, with none newly
+visibly off. Below p = 1E-15 the deep tail of our cdf carries exp(a ln y)'s rounding, and its crossing is visibly off
+Excel's `F.INV(1E-20,5,5)` = 5.081599921802649E-09 (probes/stat-quantile-lift E12), which statrs' estimate matches, so
+statrs' value stays there. Where statrs has no estimate (below p = 1E-20) the bisection of the cdf gives Excel's
+`F.INV(1E-300,5,5)` = 5.081599884913164E-121 to 13 digits (E1), which was #NUM!.
+Status: VERIFIED as a crossing to 15 digits on the cells above; the solver's start, stop and tie rule are UNVERIFIED.
+Tasks: T-0974, T-2465
+
 ## T.DIST.RT at df 2 is BETA.DIST's closed form down to y = 0.1 (T-0969)
 Rule: at df 2 (after truncation), for y = 2/(2 + t^2) as the worksheet rounds it, fl(2 / fl(2 + fl(t*t))), from 0.1 up,
 the tail P(T > |t|) is half of BETA.DIST's a = 1 closed form, (1 - exp(ln(1 - y)/2))/2 (see "Incomplete beta:

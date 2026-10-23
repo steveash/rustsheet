@@ -571,12 +571,16 @@ mod tests {
         // T.TEST's y path takes it too.
         let y = 2.0 / (2.0 + 3.0 * 3.0);
         assert_eq!(student_t_tail_at(y, 2.0), 0.047_732_983_133_354_61);
-        // Below y = 0.1 (t = 4.245, B450) Excel leaves the closed form, which is 1 ulp off there.
+        // Below y = 0.1 (t = 4.245, B450) Excel leaves the closed form, which is 1 ulp off there;
+        // the incomplete beta's a = 1 tail is the uncancelled form there (T-0974) and gives
+        // Excel's value.
         let y = 2.0 / (2.0 + 4.245 * 4.245);
         assert!(y < CLOSED_FORM_MIN_Y);
         assert_eq!(closed_form_tail(y, 2.0), None);
-        let closed = 0.5 * beta_reg_complement(y, 1.0 - y, 1.0, 0.5);
+        let closed = 0.5 * (1.0 - (0.5 * (1.0 - y).ln()).exp());
         assert_eq!(ulps(closed, 0.025_631_992_844_658_943), 1);
+        let tail = 0.5 * beta_reg_complement(y, 1.0 - y, 1.0, 0.5);
+        assert_eq!(ulps(tail, 0.025_631_992_844_658_943), 0);
         assert_eq!(closed_form_tail(0.5, 3.0), None);
     }
 

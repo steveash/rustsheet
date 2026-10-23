@@ -1,4 +1,4 @@
-use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
+use statrs::distribution::{Continuous, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
@@ -6,7 +6,7 @@ use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
 use crate::functions::statistical::inverse_beta::f_inverse_cdf;
-use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
+use crate::functions::statistical::special::{ln_gamma, refine_increasing};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
 use crate::{
@@ -41,25 +41,55 @@ fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
 }
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
-/// same failure as Student-t), so the quantile is found by bisection on the cdf instead.
+/// same failure as Student-t), so the quantile has no statrs start there.
 const F_QUANTILE_BISECT_DF: f64 = 1e5;
 
-/// Quantile of the F distribution for `p` in [0,1]; the time is bounded for every df up to
-/// [`F_DF_MAX`] (at most ~1300 cdf evaluations). Below the threshold it is statrs' search as the
-/// capped port of `inverse_beta.rs` (T-1848), which is NaN (`#NUM!`) where statrs panics
-/// (`F.INV(1E-300,5,5)`) or never finishes (`F.INV(1E-50,6000,4)`).
-fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
-    if df1 < F_QUANTILE_BISECT_DF && df2 < F_QUANTILE_BISECT_DF {
-        return f_inverse_cdf(df1, df2, p);
-    }
-    if p <= 0.0 {
+/// Below this probability (of either tail) statrs' search panics (from p = 1.6E-162) or never
+/// finishes (about 7% of calls below 3.6E-27, `F.INV(1E-50,6000,4)`; T-1848), so the quantile has no
+/// statrs start there.
+const F_QUANTILE_STATRS_P_MIN: f64 = 1e-20;
+
+/// Below this probability (of either tail) statrs' estimate, where it has one, is kept unrefined: the
+/// deep tail of [`f_cdf`] carries exp(a ln y)'s rounding, and refining to its crossing makes
+/// `F.INV(1E-20,5,5)` visibly off Excel's 5.081599921802649E-09 (probes/stat-quantile-lift E12),
+/// which statrs' search matches to 15 digits (T-0974: 0 cells newly visibly off at 1E-15, 4 at 0).
+const F_QUANTILE_REFINE_P_MIN: f64 = 1e-15;
+
+/// Quantile of the F distribution for `p` (the right tail's when `right_tail`) in [0, 1]: statrs'
+/// search (the capped port of `inverse_beta.rs`, T-1848) as a start where it is reliable, refined to
+/// the crossing of [`f_cdf`] or [`f_sf`] (`special::refine_increasing`) from a probability of
+/// [`F_QUANTILE_REFINE_P_MIN`] up. At most 512 Newton steps and 129 cdfs, or 65 cdfs without a
+/// start.
+fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
+    let lower = if right_tail { 1.0 - p } else { p };
+    if lower <= 0.0 {
         return 0.0;
     }
-    if p >= 1.0 {
+    if lower >= 1.0 && !right_tail {
         return f64::INFINITY;
     }
-    // 2^1100 is past the f64 range, so a quantile not bracketed by then is infinite.
-    bisect_increasing(|x| dist.cdf(x), p, 1100)
+    // statrs' search is the start where it is reliable; elsewhere the refinement bisects the
+    // whole range of doubles.
+    let estimate = if df1 < F_QUANTILE_BISECT_DF
+        && df2 < F_QUANTILE_BISECT_DF
+        && (F_QUANTILE_STATRS_P_MIN..=1.0 - F_QUANTILE_STATRS_P_MIN).contains(&lower)
+    {
+        f_inverse_cdf(df1, df2, lower)
+    } else {
+        f64::NAN
+    };
+    // Each tail's target is the given p or its exact complement 1 - p (p >= 0.5); the smaller one
+    // is solved on the T-0970 incomplete beta, as for BETA.INV (T-0974), so a tiny right-tail p
+    // keeps the digits 1 - p loses.
+    if estimate.is_finite() && lower.min(1.0 - lower) < F_QUANTILE_REFINE_P_MIN {
+        return estimate;
+    }
+    if lower > 0.5 {
+        let upper = if right_tail { p } else { 1.0 - p };
+        refine_increasing(|x| -f_sf(df1, df2, x), -upper, estimate, 0.0, f64::MAX)
+    } else {
+        refine_increasing(|x| f_cdf(df1, df2, x), lower, estimate, 0.0, f64::MAX)
+    }
 }
 
 /// The F density. statrs' direct form raises `df1*x` and `df1*x + df2` to the power `df1` and
@@ -239,7 +269,7 @@ impl Model {
 
     /// `F.INV(probability, deg_freedom1, deg_freedom2)`: every argument lifts over an array and a
     /// range (SPEC-0011; probes/stat-argument-modes H231-H235, probes/stat-quantile-lift). The
-    /// quantile is the capped port of statrs' inversion or a bisection of at most about 1,300
+    /// quantile is the capped port of statrs' inversion refined to the cdf's crossing, at most 129
     /// cdfs (`f_quantile`), which the lifting table charges (lift/kinds/statistical.rs
     /// `QUANTILE_WEIGHT`).
     pub(crate) fn fn_f_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -278,8 +308,7 @@ impl Model {
         if p_out || !f_df_ok(df1) || !f_df_ok(df2) {
             return Err(num_error(cell));
         }
-        let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
-        let x = f_quantile(&dist, df1, df2, if right_tail { 1.0 - p } else { p });
+        let x = f_quantile(df1, df2, p, right_tail);
         if x.is_nan() || x.is_infinite() || x < 0.0 {
             return Err(num_error(cell));
         }
