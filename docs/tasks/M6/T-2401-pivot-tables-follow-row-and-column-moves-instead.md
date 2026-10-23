@@ -3,7 +3,7 @@ id: T-2401
 title: "Pivot tables follow row and column moves instead of being dropped (SPEC-0015)"
 milestone: M6
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -21,9 +21,12 @@ actions in actions.rs already have the interval arithmetic merged cells use (`in
 a move that splits a merged cell is (SPEC-0015; T-2402 records which edits Excel refuses).
 
 ## Acceptance criteria
-- [ ] Unit tests: moving lines above/left of a pivot past it shifts it, moving the pivot's whole span moves it, a move that splits it is refused and changes nothing; GETPIVOTDATA keeps answering after a whole move.
-- [ ] web.md drops the "row or column move still drops those pivots" gap.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests: moving lines above/left of a pivot past it shifts it, moving the pivot's whole span moves it, a move that splits it is refused and changes nothing; GETPIVOTDATA keeps answering after a whole move.
+- [x] web.md drops the "row or column move still drops those pivots" gap.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Confirming Excel's refusals (T-2402).
+
+## Outcome
+`Model::move_pivots` (pivot.rs) reuses `interval_survives_move` / `displace_interval_for_move` (now `pub(crate)` in actions.rs): a row or column move shifts every pivot on the sheet that lies wholly in the moved group, in the jumped-over zone, or outside both; a move that would split a pivot is refused before anything changes. The now-unused `drop_pivots_on` / `Workbook::drop_pivots_on_sheet` were removed. Tests in pivot.rs and test_fn_getpivotdata.rs; web.md gap sentence replaced. No eval change.
