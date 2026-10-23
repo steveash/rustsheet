@@ -906,23 +906,35 @@ impl Model {
                 rows.push(values);
             }
             CalcResult::Array(rows)
-        } else if matches!(
-            args[0].ungrouped(),
-            Node::FunctionKind {
-                kind: Function::Index,
-                ..
-            }
-        ) {
-            // An erroring INDEX is its own error (`FORMULATEXT(INDEX(A1:A3,9))` is `#REF!`) and an
-            // INDEX of an array constant picks a value, not a cell, so is `#VALUE!`
-            // (probes/index-reference-args Calc!A4, A5; T-2137).
+        } else if let Node::FunctionKind { kind, .. } = args[0].ungrouped() {
+            // A reference-returning call that fails is its own error, unchanged, and one that
+            // yields values rather than cells is `#VALUE!` over the shape of the result
+            // (probes/formulatext-erroring-references; docs/excel-semantics/references.md).
+            let is_pick = matches!(
+                kind,
+                Function::Index
+                    | Function::Offset
+                    | Function::Indirect
+                    | Function::Choose
+                    | Function::If
+            );
             match reference {
-                error @ CalcResult::Error { .. } => error,
-                _ => CalcResult::new_error(
+                error @ CalcResult::Error { .. } if is_pick => error,
+                CalcResult::Array(rows) if is_pick => CalcResult::Array(
+                    rows.iter()
+                        .map(|row| vec![ArrayNode::Error(Error::VALUE); row.len()])
+                        .collect(),
+                ),
+                _ if matches!(kind, Function::Index) => CalcResult::new_error(
                     Error::VALUE,
                     cell,
                     "Argument must be a reference".to_string(),
                 ),
+                _ => CalcResult::Error {
+                    error: Error::ERROR,
+                    origin: cell,
+                    message: "Argument must be a reference".to_string(),
+                },
             }
         } else {
             CalcResult::Error {

@@ -3,7 +3,7 @@ id: T-2526
 title: "FORMULATEXT returns the error of erroring or array-shaped reference calls"
 milestone: M5
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Probed in T-2301; Excel values and the rules are in docs/excel-semantics/referen
 
 ## Out of scope
 -
+
+## Outcome
+`fn_formulatext` returns the own error of an erroring INDEX/OFFSET/INDIRECT/CHOOSE/IF call and spills `#VALUE!` over array-shaped results. All 28 cells of probes/formulatext-erroring-references pass (22 entries left eval/baseline).
