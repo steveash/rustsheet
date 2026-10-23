@@ -3,7 +3,7 @@ id: T-2408
 title: "EXPAND and MAKEARRAY sizes past the grid, and MAKEARRAY argument errors before size validation (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
