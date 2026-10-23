@@ -3,7 +3,7 @@ id: T-2401
 title: "Pivot tables follow row and column moves instead of being dropped (SPEC-0015)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
