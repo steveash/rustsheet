@@ -46,8 +46,13 @@ orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
 - A fractional order truncates: `BESSELJ(8,9.99)` equals `BESSELJ(8,9)`, `BESSELY(30,1.99)` equals `BESSELY(30,1)`.
 - Large orders: `BESSELJ(x,n)` is `0` (not an error) for n = 1000, 10000, 100000 and 1000000 (x = 10, 50), and
   `BESSELY(x,n)` is `#NUM!` for those n. The engine matches this up to n = 100000 but gives `#NUM!` for
-  `BESSELJ(10,1000000)` (see "BESSEL order cap"). J underflows to 0, so no cap shows for J; Y is `#NUM!` from n = 1000 (where Y starts to give `#NUM!`
-  between 101 and 1000 is not probed).
+  `BESSELJ(10,1000000)` (see "BESSEL order cap"). J underflows to 0, so no cap shows for J; Y is `#NUM!` from n = 1000 (the first `#NUM!` order is below).
+- BESSELY's first `#NUM!` order (probes/m9-bessel-order-limits, T-2139): x = 1: n = 151 is -5.1999E+307, n = 152 is `#NUM!`;
+  x = 10: n = 246 is -1.3738E+308, n = 247 is `#NUM!`; x = 50: n = 400 is finite, n = 401 is `#NUM!`.
+  So the `#NUM!` is the overflow of the upward recurrence past the largest double, not an explicit order cap.
+- BESSELJ has an explicit order cap: `BESSELJ(10,n)` is 0 for n up to and including 10,000,000 and `#NUM!` from 10,000,001
+  (also `BESSELJ(10,2^31-1)`, `(0,2^31-1)`, `(1E5,2^31-1)`). It is not an underflow: `BESSELJ(1E5,100001)` is 0.0094462635180178,
+  and `BESSELJ(1E-300,100001)` is `#NUM!`. `BESSELK(2.5,100001)` and `(2.5,2^31-1)` are `#NUM!` (K overflows).
 Status: VERIFIED for these cells; the algorithm is fitted (T-0908, above).
 
 Provenance: the coefficients are the published Numerical Recipes (2nd ed., §6.5) rational
@@ -56,6 +61,8 @@ approximations, reproduced only because Excel's output matches them bit-for-bit.
 ## BESSEL order cap
 Rule: RustSheet returns `#NUM!` for BESSELI, BESSELJ, BESSELK and BESSELY orders above 100,000 to bound per-cell work on
 untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0` (probes-numeric/m9-bessel, T-1004), so the engine differs above 100,000 for J.
+Excel's own J cap is 10,000,000 (T-2139, above); between 100,001 and that the engine gives `#NUM!` where Excel gives the value (0, or a nonzero
+value when x is large: `BESSELJ(1E5,100001)`). Status: DEVIATION (decision 0014).
 BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's BESSELI above
 100,000 is 0 (`BESSELI(2.5,100001)`, `(2.5,1E+6)`; "Engineering edge-pool smoke check (T-2249)"); BESSELK's is unprobed.
 A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
