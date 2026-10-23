@@ -25,7 +25,7 @@ one ulp below ln 2 fits 75/77 sweep cells (misses O40, N48) but breaks A108, so 
 fits; next candidates: a different modulus for the log (`0.5·ln(x²+y²)` in extended precision, the
 x87 FYL2X of `x²+y²` with y = 0.5/ln 2), or a log of IMLN's 15-digit text. The overflow-edge cells
 A104, A107, A109 are also listed by T-2231 (same kernel; whichever lands first takes them).
-Code: `imlog2` in crates/rustsheet-engine/src/functions/engineering/complex.rs.
+Code: `imlog2` in crates/rustsheet-engine/src/functions/engineering/complex/mod.rs.
 
 ## Acceptance criteria
 - [ ] COMPLEXs.xlsx Sheet1!AH19 leaves eval/baseline/ironcalc-calc.txt (`make eval-baseline`), with
