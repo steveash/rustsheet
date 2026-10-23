@@ -3,7 +3,7 @@ id: T-2044
 title: "IM* last-digit residue: fit IMABS, IMARGUMENT, IMCSC, IMSEC, IMSECH, IMLOG2 and IMCOT (COMPLEXs.xlsx, IMSECH 3+4i)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
