@@ -53,9 +53,11 @@ A real pivot: see the next section (T-1705).
 Rule: Excel loads a pivot of any size its grid allows. The importer drops, never truncates, a pivot cache with more
 than 1,048,576 records, 16,384 fields, 1,000,000 shared items over its fields or 10,000,000 record values (records x
 fields), every cache once the workbook's caches together pass 10,000,000 record values (in workbook order), and a pivot
-with more than 256 fields on an axis (rows, columns or page) or 256 data fields, or past the 64th pivot of a sheet;
-the pivots on a dropped cache go with it. GETPIVOTDATA against a dropped pivot is `#REF!` rather than a wrong total.
+with more than 256 fields on an axis (rows, columns or page) or 256 data fields, past the 64th pivot of a sheet, or past the 1,000th pivot
+of the workbook (in sheet order; T-2394); the pivots on a dropped cache go with it. GETPIVOTDATA against a dropped pivot is `#REF!` rather than a wrong total.
 The limits are totals counted while parsing, before anything past them is allocated (CLAUDE.md directive 5).
+Part names that differ only by case or by `\` against `/` are one part, so a pivot or cache reached twice that way is skipped like any other. A
+sheet that loses pivots to a cap logs one line with the count, not one per pivot.
 Evidence: none for Excel; this is a resource limit (SPEC-0015 "Untrusted-input limits").
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/pivot.rs (`CacheBuilder`, `MAX_*`), crates/rustsheet-xlsx/src/import/pivots.rs

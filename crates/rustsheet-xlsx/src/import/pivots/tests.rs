@@ -367,6 +367,12 @@ fn duplicate_cache_ids_and_parts_reached_twice_are_skipped() {
         ("rIdP2", "pivotTable", "../pivotTables/./pivotTable1.xml"),
     ]);
     assert_no_pivot(&with(parts(), "xl/worksheets/_rels/sheet1.xml.rels", twice));
+    // Part names match case-insensitively, with `\\` as `/` (T-2394).
+    let cased = rels(&[
+        ("rIdP1", "pivotTable", "../pivotTables/pivotTable1.xml"),
+        ("rIdP2", "pivotTable", "../PIVOTTABLES\\PivotTable1.xml"),
+    ]);
+    assert_no_pivot(&with(parts(), "xl/worksheets/_rels/sheet1.xml.rels", cased));
     // A bad cacheId and an unknown relationship skip only their cache.
     let (caches, _) = load_with(&parts(), &[("x", "rIdC1"), ("2", "rIdNone")]);
     assert!(caches.is_empty());
@@ -498,4 +504,41 @@ fn the_pivot_limits_drop_the_pivot() {
         .collect();
     many = with(many, "xl/worksheets/_rels/sheet1.xml.rels", rels(&entries));
     assert_eq!(load(&many).1.len(), MAX_PIVOTS_PER_SHEET);
+}
+
+#[test]
+fn pivots_past_the_workbook_cap_are_dropped() {
+    // 17 sheets of 64 pivots each: 1,088 parts, the first MAX_PIVOTS load.
+    let sheets_count = MAX_PIVOTS / MAX_PIVOTS_PER_SHEET + 1;
+    let mut many = parts();
+    let mut sheets = Vec::new();
+    for sheet in 0..sheets_count {
+        let mut entries = Vec::new();
+        for n in 0..MAX_PIVOTS_PER_SHEET {
+            let part = format!("pivotTable{sheet}x{n}.xml");
+            many = with(many, &format!("xl/pivotTables/{part}"), table(TABLE_BODY));
+            entries.push((format!("rIdP{n}"), format!("../pivotTables/{part}")));
+        }
+        let entries: Vec<(&str, &str, &str)> = entries
+            .iter()
+            .map(|(id, target)| (id.as_str(), "pivotTable", target.as_str()))
+            .collect();
+        many = with(
+            many,
+            &format!("xl/worksheets/_rels/sheet{sheet}.xml.rels"),
+            rels(&entries),
+        );
+        sheets.push(PivotSheet {
+            sheet_id: sheet as u32,
+            path: format!("xl/worksheets/sheet{sheet}.xml"),
+        });
+    }
+    let (_, pivots) = load_pivots(
+        &mut package(&many),
+        &workbook_rels(&many),
+        &caches(&[("1", "rIdC1")]),
+        &sheets,
+        DateSystem::Excel1900,
+    );
+    assert_eq!(pivots.len(), MAX_PIVOTS);
 }
