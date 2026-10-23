@@ -1334,3 +1334,21 @@ Ours: 127 of 169 cells match; the rest are the known PMT/IPMT last-digit misses 
 payment"), YIELD's ("YIELD stops short of PRICE's root"), two IRR last-digit misses and the three cells above.
 Status: UNVERIFIED (probe pending: T-2390, T-2391, T-2392 commit the probe cases)
 Tasks: T-2248, T-2390, T-2391, T-2392
+
+## XIRR and XNPV under the gen-m9 statistical cells: size and type checks (T-2255)
+Rule (inferred through the enclosing call: each cell's value is that of a statistical function whose other arguments
+cannot give it): XIRR whose values and dates have different counts, or whose values are one number or one cell, is
+`#NUM!`, also when either range holds text or booleans: `F.INV(XIRR(Data!D11:D12,Data!C6:C9,-1),1,1)` (2 values, 4 dates,
+gen-m9/0a614cfe974b59c3 Calc!A390), `CHISQ.INV((XIRR(0.5,{0,1,59,60,61})/..),8)` (b8ee55934c5b824c A122),
+`F.TEST(XIRR(Data!D5,Data!D8:E9),1.005)` (4ab2ba98d26c8a5e A155), `GAMMAINV(XIRR(-2.5,Data!B8:C8),1.005,0.5)`
+(a790a4d4a6a82756 A379), `LARGE(XIRR(Data!C11:D12,Data!C10:C11),1)` (FALSE and "a*" cells, bbdfc06cae0e0d71 A44) are all
+`#NUM!`; an error guess is that error (`XIRR({0,0,-100,50,60},Data!A8:D11,(-0.0001/Data!B12))` with B12 empty gives
+`#DIV/0!`, 0a9226016e8f5f33 A373; `XIRR(Data!B3:D3,(Data!A2/Data!$C10))` `#DIV/0!`, 40425341c5034eed A216). XNPV is
+`#VALUE!` for a boolean or text one-cell dates or rate (`XNPV(0.05,Data!E4,Data!C2:E12)` with E4 = FALSE,
+320d51765af9b6b7 A346; `XNPV(Data!B$7,Data!E$2,..)` with text, 984cba67bbe6972b A323; `XNPV(Data!D2,Data!A10:A10,..)`
+with both TRUE, bc40d37cb4d8301d A392) and `#NUM!` for a number against a range of a different count
+(`XNPV(1,2.5,Data!A4:C12)`, ee2497a5e683c5d9 A107; `XNPV(0.5,-0.5,Data!B4:E8)`, bc40d37cb4d8301d A79).
+Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 51 cells listed in T-2428.
+Ours: `#VALUE!` for the XIRR cases, `#NUM!` for the XNPV ones; T-2428.
+Status: VERIFIED (excel-graph, inferred through the enclosing call)
+Tasks: T-2428

@@ -41,7 +41,104 @@ kernel (T-0970) and maps back with `A + (B-A) t`; F.INV.RT solves on the upper t
 **Needs an oracle sweep (T-0018):** the last digits depend on the solver, so fit against the
 T-1044 incomplete-beta sweep, never blind.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). F.INV, FINV, F.INV.RT and BETAINV at moderate probabilities (1E-8 < p < 1 - 1E-8,
+df below 1E6) where ours is more than half a unit in the 15th digit off (95 cells), plus one GAMMALN.PRECISE whose
+argument is such an F.INV.
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 96 known-failure lines in eval/baseline/gen-m9.txt, 96 formulas.
+Examples:
+- gen-m9/0a614cfe974b59c3 Calc!A355 `=F.INV.RT(CHOOSE(1,Data!B10,(Data!D6/Data!E6),"abc"),6,2.5)`: Excel 2.640308353392362, ours 2.64030835339234
+Cells:
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A355
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A183
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A192
+- gen-m9/165db58d1540f014.case.json (3): Calc!A50, A150, A196
+- gen-m9/27601819397dd56e.case.json (3): Calc!A10, A81, A148
+- gen-m9/2801c1c11c21e134.case.json (3): Calc!A10, A120, A321
+- gen-m9/2a18b2f5a4dc43ac.case.json (2): Calc!A44, A218
+- gen-m9/320d51765af9b6b7.case.json (3): Calc!A15, A199, A379
+- gen-m9/35e8168aae2b00f8.case.json (3): Calc!A56, A117, A369
+- gen-m9/3a25a03eb94fcfbd.case.json (3): Calc!A105, A151, A334
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A382
+- gen-m9/40425341c5034eed.case.json (3): Calc!A108, A246, A367
+- gen-m9/4ab2ba98d26c8a5e.case.json (2): Calc!A18, A390
+- gen-m9/4bad303d32cc3f46.case.json (1): Calc!A56
+- gen-m9/4e55500bb8ad3cd8.case.json (2): Calc!A148, A332
+- gen-m9/530c636749a85209.case.json (3): Calc!A63, A175, A316
+- gen-m9/589f42e67f4b4b8d.case.json (4): Calc!A120, A221, A231, A365
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A272
+- gen-m9/60b0b6e69ad35a45.case.json (3): Calc!A150, A197, A258
+- gen-m9/623663cacea53bbc.case.json (2): Calc!A70, A340
+- gen-m9/7674c89c824aca43.case.json (1): Calc!A212
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A392
+- gen-m9/899f9555e67da2d6.case.json (3): Calc!A49, A184, A249
+- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A283, A357
+- gen-m9/8f2ac25945af87da.case.json (2): Calc!A225, A283
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A341
+- gen-m9/a013a45a8fbcab4f.case.json (1): Calc!A37
+- gen-m9/a5828d3925575713.case.json (2): Calc!A164, A328
+- gen-m9/a61e547a1cab994c.case.json (3): Calc!A155, A268, A297
+- gen-m9/abc2939ebd1e2365.case.json (2): Calc!A191, A367
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A188
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A269
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A345
+- gen-m9/bcb24385baafb2f0.case.json (2): Calc!A169, A260
+- gen-m9/c18dbf21f11093f3.case.json (4): Calc!A92, A190, A213, A400
+- gen-m9/c2974c061384fdd9.case.json (2): Calc!A198, A267
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A359
+- gen-m9/d8266bc15533702a.case.json (3): Calc!A39, A272, A394
+- gen-m9/e6cf3b20a014e6a3.case.json (2): Calc!A135, A351
+- gen-m9/eced4bb6a0234c9e.case.json (6): Calc!A202, A289, A291, A295, A340, A381
+- gen-m9/ee2497a5e683c5d9.case.json (2): Calc!A12, A180
+- gen-m9/f2bd5f380ec002bf.case.json (3): Calc!A29, A56, A75
+- gen-m9/f34f66fb7f81e673.case.json (2): Calc!A249, A314
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A101
+- gen-m9/fec39efaba9284c3.case.json (2): Calc!A244, A336
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: F.INV, F.INV.RT, FINV and BETAINV last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 51 known-failure lines in eval/baseline/gen-m9.txt, 51 formulas.
+Examples:
+- gen-m9/06b4e8f5de409d5e Calc!A145 `=F.INV.RT(0.05,2.5,3)`: Excel 9.552094495921159, ours 9.552094495921166
+Cells:
+- gen-m9/06b4e8f5de409d5e.case.json (1): Calc!A145
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A72
+- gen-m9/0a9226016e8f5f33.case.json (2): Calc!A5, A51
+- gen-m9/27601819397dd56e.case.json (2): Calc!A376, A378
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A241
+- gen-m9/3a25a03eb94fcfbd.case.json (2): Calc!A327, A388
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A222
+- gen-m9/40425341c5034eed.case.json (3): Calc!A45, A205, A229
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A60
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A155
+- gen-m9/530c636749a85209.case.json (2): Calc!A270, A339
+- gen-m9/589f42e67f4b4b8d.case.json (2): Calc!A350, A396
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A80
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A35
+- gen-m9/68d8ffb69ff739d8.case.json (2): Calc!A1, A319
+- gen-m9/7674c89c824aca43.case.json (3): Calc!A166, A350, A375
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A221
+- gen-m9/899f9555e67da2d6.case.json (1): Calc!A230
+- gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A114
+- gen-m9/a54c738c697617c3.case.json (2): Calc!A216, A311
+- gen-m9/a5828d3925575713.case.json (1): Calc!A69
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A75
+- gen-m9/a7bf0d8d81d33ba6.case.json (1): Calc!A272
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A145
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A337
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A101
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A339
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A67
+- gen-m9/c18dbf21f11093f3.case.json (2): Calc!A167, A184
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A241
+- gen-m9/cde551ea787f713a.case.json (2): Calc!A123, A306
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A344
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A204
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A18
+- gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A318
+- gen-m9/f34f66fb7f81e673.case.json (1): Calc!A19
+- gen-m9/fec39efaba9284c3.case.json (2): Calc!A30, A106
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 96 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Both NumericMismatch lines (H11, H16) and all NumericClose lines above leave those classes, at
       least 15 of the 28 lines leave `eval/baseline/ironcalc-calc.txt`, no new lines in any baseline;
       remaining lines listed in the PR with expected/actual.
