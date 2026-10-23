@@ -2105,7 +2105,8 @@ lexer refuses a cell-shaped identifier), and the xlsx export as `_xlpm.add5` lik
 name. Typed entry refuses it, as Excel does: `Input::Formula` and `Input::Parse` (engine
 `set_typed_user_input`) answer `EditError::InvalidInput` for a formula that binds a cell-shaped
 name, while stored text (xlsx import, re-parses, `Input::StoredFormula`, which the harness uses)
-binds it (decision 0103, T-2497). Lotus-dot names typed are not refused (unprobed). `$F$1` or `Sheet1!F1` is
+binds it (decision 0103, T-2497). Lotus-dot names typed are not refused (unprobed).
+`$F$1` or `Sheet1!F1` is
 never a name (`LET($F$1,1,F1+1)` is `#VALUE!`; unprobed). Unprobed too: a bound name as a
 range end, `LET(f1,1,f1:G2)` (ours reads the variable, T-2497).
 Evidence: probes/let-cell-shaped-name-stored, let-cell-shaped-name-typed-control, and

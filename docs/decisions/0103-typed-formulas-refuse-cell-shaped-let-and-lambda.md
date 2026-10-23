@@ -15,5 +15,6 @@
   import does), and the harness sets case formulas with it; cases that model typing use
   `{"entered": ...}` (`Input::Parse`).
 - **Consequences:** API users typing such a formula get an error, as Excel's users do. Tools that
-  replay stored formulas through the API use `Input::StoredFormula` (or `LegacyFormula`). Other
-  typed-only refusals (T-1856) can reuse the same "typed" path.
+  replay stored formulas through the API use `Input::StoredFormula` (or `LegacyFormula`). The Python
+  bindings' formula input stays typed (`Input::Formula`); a stored-formula path is not mirrored there
+  until a caller needs it. Other typed-only refusals (T-1856) can reuse the same "typed" path.
