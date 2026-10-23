@@ -24,7 +24,7 @@ permissions:
 jobs:
   fill:
     environment: oracle
-    runs-on: ${{ inputs.backend == 'excel-desktop' && fromJSON('["self-hosted","excel-oracle"]') || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.backend == 'excel-desktop' && fromJSON('["self-hosted","excel-oracle"]') || 'ubuntu-24.04' }}
     env:
       RUSTSHEET_ORACLE_TENANT_ID: ${{ secrets.RUSTSHEET_ORACLE_TENANT_ID }}
       RUSTSHEET_ORACLE_CLIENT_ID: ${{ secrets.RUSTSHEET_ORACLE_CLIENT_ID }}
