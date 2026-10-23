@@ -78,14 +78,6 @@ pub(super) fn choose_static_result(args: &[Node]) -> StaticResult {
     }
 }
 
-/// Whether `node`, the first argument of TAKE, DROP or TRIMRANGE, evaluates to cells rather than
-/// a computed array. IF and LET pass on what their branch or body is, so `TAKE(IF(TRUE,A1:A4),2)`
-/// and `TAKE(LET(x,A1:A4,x),2)` pick cells while `TAKE(IF(TRUE,SEQUENCE(4)),2)` and
-/// `TAKE(LET(x,SEQUENCE(4),x),2)` pick values and spill like any array
-/// (probes/subtotal-reference-operands-e I2:J2, O2:P2, R2:U2, T-1365). `bound` holds the LET
-/// variables in scope with their answer, computed once when bound so a chain of variables costs
-/// linear time; a name not in it (a LAMBDA parameter) counts as cells, as before. A written group
-/// is its child: `IMABS((CHOOSE(1,{1,2,3})))` lifts like the bare call (T-1874).
 /// Whether `args` are the arguments of a well-formed LET: name/value pairs and a body.
 pub(super) fn is_let_call(args: &[Node]) -> bool {
     args.len() >= 3 && args.len() % 2 == 1
@@ -112,6 +104,14 @@ pub(super) fn let_result<'a>(
     result
 }
 
+/// Whether `node`, the first argument of TAKE, DROP or TRIMRANGE, evaluates to cells rather than
+/// a computed array. IF and LET pass on what their branch or body is, so `TAKE(IF(TRUE,A1:A4),2)`
+/// and `TAKE(LET(x,A1:A4,x),2)` pick cells while `TAKE(IF(TRUE,SEQUENCE(4)),2)` and
+/// `TAKE(LET(x,SEQUENCE(4),x),2)` pick values and spill like any array
+/// (probes/subtotal-reference-operands-e I2:J2, O2:P2, R2:U2, T-1365). `bound` holds the LET
+/// variables in scope with their answer, computed once when bound so a chain of variables costs
+/// linear time; a name not in it (a LAMBDA parameter) counts as cells, as before. A written group
+/// is its child: `IMABS((CHOOSE(1,{1,2,3})))` lifts like the bare call (T-1874).
 pub(super) fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
     let node = node.ungrouped();
     match node {
