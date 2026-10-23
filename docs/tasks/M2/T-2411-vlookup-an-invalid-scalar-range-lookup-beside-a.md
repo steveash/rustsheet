@@ -3,7 +3,7 @@ id: T-2411
 title: "VLOOKUP: an invalid scalar range_lookup beside a lifted lookup_value is #VALUE! per element, not one #VALUE! (gen-m7)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -37,7 +37,7 @@ Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 8 known-failure lin
       known-failure lines in any baseline.
 - [x] Unit tests: `ROWS(VLOOKUP({1;2},A1:B2,2,"1"))` is 2 with `#VALUE!` elements; the scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
 - [x] lookup.md's entry has an "Ours:" line naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - An array index (its own rule in lookup.md).
@@ -64,12 +64,5 @@ Eval delta: gen-m7 known failures 706 -> 698 (the 8 owned lines), 0 regressions;
 
 ## Resumed
 Resumed after the review-round limit (step 5c).
-The Excel-fidelity reviewer asked for changes in three rounds. Each round asked for evidence, and each was answered
-by adding probe cells and changing the code or docs to match Excel:
-- Round 1: element values unprobed. Added the probe.
-- Round 2: an array range_lookup with a failed index was unprobed. Added G25-G32, which also showed the old `Failed`
-  path was wrong.
-- Round 3: the approximate-match `{1;99}` cells do not test not-found. Added exact-match G33-G39, reworded lookup.md
-  and the test comments, and recorded the `"TRUE"` range_lookup quirk.
-All 39 probe cells pass. Security, architecture and quality approved. Next step (work-loop 5c): run `make check` and
-the full reviewer panel on the current head.
+Re-reviewed from round 1 on the merged head (2026-10-23): security, architecture, quality and Excel fidelity all APPROVE.
+The earlier rounds' findings were answered by the probe (39 cells, all pass).
