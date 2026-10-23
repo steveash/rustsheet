@@ -3,7 +3,7 @@ id: T-2390
 title: "Probe and match IRR over an array constant holding an error: #VALUE!, not the error"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -48,3 +48,6 @@ type, error, text, or a value off by more than half a unit of the 15th significa
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Outcome
+Probe `probes/fin-irr-error-array` (excel-graph): IRR gives `#VALUE!` for an error inside an array, range, single referenced cell or computed array; a direct error argument and an error guess pass through; MIRR, NPV, XIRR and XNPV keep the element's own error. `fn_irr` now maps array/reference errors to `#VALUE!`. The 2 gen-m9 known-failure lines are gone. Recorded in `docs/excel-semantics/financial.md`.
