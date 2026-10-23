@@ -32,6 +32,15 @@ branch these gen-m9 cells (excel-graph) stay visibly off (units of the 15th digi
 The BETAINV cells of T-0974's list (589f42e67f4b4b8d A221, c18dbf21f11093f3 A400, eced4bb6a0234c9e A291) are T-2119's:
 BETA.INV inverts BETA.DIST's cdf once that moves to `incomplete_beta`.
 
+Cleanups from the T-0974 review (MINOR, carried here because they touch this code):
+- `fisher.rs` `F_QUANTILE_BISECT_DF` only means "no statrs start" now; rename it (e.g. `F_QUANTILE_STATRS_DF_MAX`).
+- `incomplete_beta.rs` `A1_CLOSED_FORM_MIN_X` and `student_t.rs` `CLOSED_FORM_MIN_Y` are the same 0.1 cut: keep one
+  `pub(crate)` constant.
+- `special.rs` has three monotone-cdf bisections (`bisect_increasing`, `bisect_unit_interval`, `refine_increasing`):
+  delete the first two once T.INV (t_dist.rs) and BETA.INV (beta.rs, T-2119) call `refine_increasing`.
+- T-0974's unmet criteria: "15 of 28 ironcalc lines" and "no statrs inverse_cdf for Beta" moved here and to
+  T-2119.
+
 ## Acceptance criteria
 - [ ] The F-family cells above are within half a unit of the 15th significant digit of Excel's value.
 - [ ] No new known-failure lines in any `eval/baseline/` file.
