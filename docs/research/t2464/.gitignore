@@ -96,3 +96,8 @@ w5-triangulation/f_args2.py
 w5-triangulation/f_args3.py
 w5-triangulation/f_w3model.py
 w5-triangulation/f_w3model2.py
+# Round 2 derived tables (rebuilt by the scripts)
+r2-impact/cells_all.tsv
+r2-impact/offcells.tsv
+*.pyc
+*.log

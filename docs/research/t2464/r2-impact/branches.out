@@ -1,0 +1,76 @@
+
+== pre-T2464, model BEST+log1p: group x branch
+  group  branch                        n  eng_vis  fixed  broke   left  eng_ex  mod_ex lost_ex
+  BETA   L140 bup+bgrat               44       33     32      0      1       4      20       0
+  BETA   L140 bup+bpser              131       89     89      0      0      21      93       0
+  BETA   L140 bup+bup+bgrat            5        5      5      0      0       0       4       0
+  BETA   bfrac                        84       60     42      0     18      15      40       0
+  BETA   bgrat                        39       26     19      0      7       5      19       0
+  BETA   bpser(a,b>1)                209      139    126      0     13      38     125       0
+  BETA   bup+bgrat                    27       23     23      0      0       2      15       1
+  BETA   closed:a0=1                  48       29     29      0      0      11      48       0
+  BETA   closed:b0=1                  93       31     31      0      0      31      93       0
+  BETA   pdf:M1 b=1                   31        3      1      1      2       7      20       0
+  BETA   pdf:M1 min<=1              1076      152    148      0      4     127     546      69
+  BETA   pdf:min>1,max<8             345       37     19      4     18      16      50      10
+  BETA   pdf:min>1,max>=8            583      224    148      4     76      20      73      12
+  BETA   w1_bpser                     19        3      3      0      0      14      19       0
+  BETA   w_bpser                     319      158    150      1      8      69     180       4
+  BINOM  L140 bup+bgrat               45        3      3      0      0      11      15       7
+  BINOM  L140 bup+bpser              595       36     36      0      0     323     443      33
+  BINOM  L140 bup+bup+bgrat           13        0      0      0      0       2       6       1
+  BINOM  basym                         2        0      0      0      0       0       2       0
+  BINOM  bfrac                        34        7      0      0      7      15      16       2
+  BINOM  bgrat                         1        0      0      0      0       1       1       0
+  BINOM  bpser(a,b>1)                454      185    137      8     48     134     231       1
+  BINOM  closed:a0=1                  32        0      0      0      0      24      32       0
+  BINOM  closed:b0=1                  96        0      0      0      0      85      96       0
+  BINOM  w_bpser                      31        0      0      4      0      18       3      17
+  F      L140 bup+bgrat              143       43     37      1      6      29      70       1
+  F      L140 bup+bpser              571      102     93     11      9     147     339      29
+  F      L140 bup+bup+bgrat           27        3      3      1      0       8      10       6
+  F      bfrac                       180       61     42      1     19      39      64       3
+  F      bgrat                        94       39     25      7     14      13      22       3
+  F      bpser(a,b>1)                533       33     23      2     10     210     368       8
+  F      bup+bgrat                   118        9      7      8      2      22      29      15
+  F      closed:a0=1                 164        4      4      0      0     149     164       0
+  F      closed:b0=1                 203       18     18      0      0     143     203       0
+  F      w1_bpser                     62        4      3      2      1      26      40       6
+  F      w_bpser                    1338      129    122      2      7     506     872      74
+  NEGB   L140 bup+bpser              219       17     17      1      0      82     136      22
+  NEGB   L140 bup+bup+bgrat           10        0      0      0      0       3       8       1
+  NEGB   bpser(a,b>1)                172       12      9      0      3     109     143       2
+  NEGB   closed:a0=1                  68        0      0      0      0      45      68       0
+  NEGB   closed:b0=1                  74        1      1      0      0      46      74       0
+  NEGB   w_bpser                       8        0      0      0      0       8       5       3
+  T      bgrat                      1584      181     89    145     92     257     128     209
+  T      bup+bgrat                  1357       16      4      8     12     220     204     176
+  T      closed:a0=1                 484        0      0      0      0     484     484       0
+  T      closed:b0=1                  42        0      0      0      0      40      42       0
+  T      w1_bpser                    326       29     29      0      0      38     195      12
+  T      w_bpser                    1522       54     51      2      3     610     856     166
+
+== w2f-probes, model BEST+log1p: group x branch
+  group  branch                        n  eng_vis  fixed  broke   left  eng_ex  mod_ex lost_ex
+  BETA   L140 bup+bgrat             3072     2494   2290      0    204      17     203      17
+  BETA   L140 bup+bpser            10240     8944   8944      0      0      27    6519       6
+  BETA   bfrac                      1024     1024    438      0    586       0      32       0
+  BETA   bpser(a,b>1)                192       78     78      0      0      25     146       3
+  BETA   bup+bgrat                    48       32     29      0      3       1      11       1
+  BETA   closed:a0=1                   9        7      7      0      0       0       9       0
+  BETA   closed:b0=1                   9        7      7      0      0       0       9       0
+  BETA   pdf:M1 min<=1              6144      410    410      0      0     683    4562     138
+  BETA   pdf:min>1,max<8            7168      153     58     34     95    1222     378    1146
+  BETA   pdf:min>1,max>=8           7168     5305   3082     67   2223      18     387      13
+  BETA   w1_bpser                   1072       21     21      0      0       2    1062       0
+  BETA   w_bpser                    5408     5182   5182      0      0      31    3591       2
+
+== gated-suite cells whose bit-exact (baseline) or visible status the model (BEST+log1p) would regress
+  LOST-EXACT  F.DIST probes/stat-argument-modes.case.json Sheet1!H215 ('cdf', 2.5, 2.5, 0.6000000000000001, 0.4, 'lower') branch L140 bup+bpser/sw excel 0.6663904371708331 engine 0.6663904371708331 model 0.6663904371708333 (2 ulp)
+  LOST-EXACT  F.DIST.RT gen-m9/0a614cfe974b59c3.case.json Calc!A19 ('cdf', 1.5, 2.0, 0.8823529411764706, 0.11764705882352941, 'upper') branch bpser(a,b>1)/sw excel 0.024910273396826055 engine 0.024910273396826055 model 0.024910273396826058 (1 ulp)
+   VISIBLE  F.DIST.RT gen-m9/60b0b6e69ad35a45.case.json Calc!A151 ('cdf', 4.5, 4.5, 0.9999999999, 9.999999999e-11, 'upper') branch bpser(a,b>1)/sw excel 6.622462439866629e-44 engine 6.622462439866624e-44 model 6.622462439866635e-44 (6 ulp)
+  LOST-EXACT  F.DIST.RT probes/stat-argument-modes.case.json Sheet1!H221 ('cdf', 2.5, 2.5, 0.6000000000000001, 0.4, 'upper') branch L140 bup+bpser/sw excel 0.33360956282916693 engine 0.33360956282916693 model 0.3336095628291667 (4 ulp)
+  LOST-EXACT  FDIST gen-m9/05d44f6dd6cfc567.case.json Calc!A175 ('cdf', 50.0, 0.5, 1.0, 1e-302, 'upper') branch w_bpser/sw excel 7.958923738718048e-151 engine 7.958923738718048e-151 model 7.958923738718047e-151 (1 ulp)
+   VISIBLE  FDIST gen-m9/2801c1c11c21e134.case.json Calc!A374 ('cdf', 4.5, 3.0, 0.8249417712566643, 0.17505822874333574, 'upper') branch L140 bup+bpser/sw excel 0.0884857396733851 engine 0.08848573967338515 model 0.08848573967338502 (6 ulp)
+  LOST-EXACT  FDIST gen-m9/c18dbf21f11093f3.case.json Calc!A151 ('cdf', 0.5, 4.5, 0.18181818181818182, 0.8181818181818181, 'upper') branch bup+bgrat excel 0.190947117169724 engine 0.190947117169724 model 0.19094711716972382 (7 ulp)
+  LOST-EXACT  FDIST probes/stat-argument-modes.case.json Sheet1!H226 ('cdf', 2.5, 2.5, 0.6000000000000001, 0.4, 'upper') branch L140 bup+bpser/sw excel 0.33360956282916693 engine 0.33360956282916693 model 0.3336095628291667 (4 ulp)

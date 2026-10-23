@@ -1,0 +1,9 @@
+| block | n | BEST ex/u4/w15 | CR ex/u4/w15 | model-excel ulps |
+|---|---|---|---|---|
+| w4p1 (7.3, b) worker parse b=0.6 | 1023 | 0/0/0 | 0/2/274 | med +23.0 sd 1.0 |
+| w4p1 (7.3, b) truncated b=0.599999999999999 | 1023 | 59/1023/1023 | 40/340/937 | med -1.0 sd 0.5 |
+| w2f a-sweep (30.7,1.7,0.8117) worker parse | 1535 | 60/925/998 | 146/1025/1171 | med +1.0 sd 28.6 |
+| w2f a-sweep (30.7,1.7,0.8117) truncated | 514 | 3/186/231 | 42/402/453 | med -6.0 sd 2.9 |
+| w2f a-sweep x=0.8117 worker parse | 512 | 3/129/156 | 42/265/306 | med -7.0 sd 41.8 |
+|   worker, only the >15-digit literals | 493 | 3/123/148 | 42/250/289 | med -8.0 sd 42.3 |
+|   worker, <=15-digit literals | 19 | 0/6/8 | 0/15/17 | med -6.0 sd 3.3 |

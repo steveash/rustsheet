@@ -1,0 +1,40 @@
+|E| in [0,1) n=14105 excel err sd 2.02
+   h*LN(u)-               slope -0.000 corr -0.003 resid sd 2.02  sd(pred - excel) 20694.16
+   h*LN(1+q)              slope -0.000 corr -0.004 resid sd 2.02  sd(pred - excel) 4307.49
+   h*l1p(q)               slope +0.185 corr +0.074 resid sd 2.01  sd(pred - excel) 2.12
+   h*LN(y)                slope +0.000 corr +0.003 resid sd 2.02  sd(pred - excel) 2875.54
+   n/2*LN(1+q)+LN/2       slope -0.000 corr -0.004 resid sd 2.02  sd(pred - excel) 4307.50
+   h*(LN(u)-LN(n))        slope +0.000 corr +0.004 resid sd 2.02  sd(pred - excel) 40357.65
+   exactL_fl(h*L)         slope +0.452 corr +0.068 resid sd 2.01  sd(pred - excel) 2.02
+|E| in [1,3) n=876 excel err sd 2.64
+   h*LN(u)-               slope +0.000 corr +0.042 resid sd 2.63  sd(pred - excel) 90126.13
+   h*LN(1+q)              slope +0.000 corr +0.042 resid sd 2.63  sd(pred - excel) 23003.53
+   h*l1p(q)               slope +0.413 corr +0.304 resid sd 2.51  sd(pred - excel) 2.76
+   h*LN(y)                slope +0.000 corr +0.042 resid sd 2.63  sd(pred - excel) 8408.36
+   n/2*LN(1+q)+LN/2       slope +0.000 corr +0.042 resid sd 2.63  sd(pred - excel) 23003.62
+   h*(LN(u)-LN(n))        slope +0.000 corr +0.042 resid sd 2.63  sd(pred - excel) 37277.82
+   exactL_fl(h*L)         slope +0.291 corr +0.111 resid sd 2.62  sd(pred - excel) 2.71
+|E| in [3,6) n=3149 excel err sd 2.82
+   h*LN(u)-               slope +0.000 corr +0.036 resid sd 2.82  sd(pred - excel) 93177.34
+   h*LN(1+q)              slope -0.000 corr -0.036 resid sd 2.82  sd(pred - excel) 5959.38
+   h*l1p(q)               slope +0.564 corr +0.578 resid sd 2.30  sd(pred - excel) 2.62
+   h*LN(y)                slope -0.000 corr -0.036 resid sd 2.82  sd(pred - excel) 850.77
+   n/2*LN(1+q)+LN/2       slope -0.000 corr -0.036 resid sd 2.82  sd(pred - excel) 5959.38
+   h*(LN(u)-LN(n))        slope +0.000 corr +0.036 resid sd 2.82  sd(pred - excel) 77614.04
+   exactL_fl(h*L)         slope +0.324 corr +0.274 resid sd 2.71  sd(pred - excel) 3.15
+|E| in [6,12) n=1499 excel err sd 5.79
+   h*LN(u)-               slope -0.008 corr -0.040 resid sd 5.79  sd(pred - excel) 29.28
+   h*LN(1+q)              slope +0.411 corr +0.411 resid sd 5.28  sd(pred - excel) 6.28
+   h*l1p(q)               slope +0.538 corr +0.476 resid sd 5.09  sd(pred - excel) 5.61
+   h*LN(y)                slope +0.060 corr +0.075 resid sd 5.77  sd(pred - excel) 8.90
+   n/2*LN(1+q)+LN/2       slope +0.533 corr +0.563 resid sd 4.79  sd(pred - excel) 5.57
+   h*(LN(u)-LN(n))        slope +0.005 corr +0.048 resid sd 5.78  sd(pred - excel) 57.36
+   exactL_fl(h*L)         slope +0.323 corr +0.210 resid sd 5.66  sd(pred - excel) 6.21
+|E| in [12,1000000000.0) n=137 excel err sd 58.71
+   h*LN(u)-               slope +0.000 corr +0.284 resid sd 56.29  sd(pred - excel) 617210.66
+   h*LN(1+q)              slope -0.000 corr -0.280 resid sd 56.37  sd(pred - excel) 44249.21
+   h*l1p(q)               slope -0.118 corr -0.096 resid sd 58.44  sd(pred - excel) 79.29
+   h*LN(y)                slope -0.001 corr -0.323 resid sd 55.57  sd(pred - excel) 26026.49
+   n/2*LN(1+q)+LN/2       slope -0.000 corr -0.279 resid sd 56.38  sd(pred - excel) 44249.01
+   h*(LN(u)-LN(n))        slope +0.000 corr +0.238 resid sd 57.03  sd(pred - excel) 375758.91
+   exactL_fl(h*L)         slope -0.583 corr -0.306 resid sd 55.90  sd(pred - excel) 74.19
