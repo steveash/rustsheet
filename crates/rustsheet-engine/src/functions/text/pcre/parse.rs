@@ -455,9 +455,21 @@ impl Parser {
                 } else if self.eat('\'') {
                     Reference::Name(self.name('\'')?)
                 } else {
-                    // Assertion conditions are left to T-2354; recursion (`R`) and `DEFINE` stay
-                    // invalid (SPEC-0013 rollout step 6).
-                    return Err(Invalid);
+                    // An assertion condition is read as the group's first item, a lookaround
+                    // that `close` takes out again; recursion (`R`) and `DEFINE` stay invalid
+                    // (SPEC-0013 rollout step 6).
+                    let open = self.pos - 1;
+                    let assertion = self.eat('?')
+                        && (self.eat('=')
+                            || self.eat('!')
+                            || (self.eat('<') && (self.eat('=') || self.eat('!'))));
+                    if !assertion {
+                        return Err(Invalid);
+                    }
+                    self.pos = open;
+                    return Ok(frame(GroupKind::Conditional(Condition::Assert(Box::new(
+                        Ast::Empty,
+                    )))));
                 };
                 self.expect(')')?;
                 Ok(frame(GroupKind::Conditional(Condition::Group(reference))))
@@ -936,6 +948,23 @@ fn concat(mut items: Vec<(Ast, u32)>) -> (Ast, u32) {
     (ast, depth)
 }
 
+/// An assertion condition's lookaround, the first item of `yes`, and the rest of `yes`.
+fn leading_assertion(yes: Ast) -> Result<(Ast, Ast), Invalid> {
+    match yes {
+        Ast::LookAround { .. } => Ok((yes, Ast::Empty)),
+        Ast::Concat(mut asts) if matches!(asts.first(), Some(Ast::LookAround { .. })) => {
+            let assertion = asts.remove(0);
+            let rest = match asts.len() {
+                0 => Ast::Empty,
+                1 => asts.pop().ok_or(Invalid)?,
+                _ => Ast::Concat(asts),
+            };
+            Ok((assertion, rest))
+        }
+        _ => Err(Invalid),
+    }
+}
+
 /// The alternatives of a group, the last one's `items` included, as a node and its depth.
 fn alternation(mut alternatives: Vec<(Ast, u32)>, items: Vec<(Ast, u32)>) -> (Ast, u32) {
     let last = concat(items);
@@ -974,6 +1003,13 @@ fn close(frame: Frame) -> Result<(Ast, u32), Invalid> {
                     (yes, no)
                 }
                 yes => (yes, Ast::Empty),
+            };
+            let (condition, yes) = match condition {
+                Condition::Assert(_) => {
+                    let (assertion, yes) = leading_assertion(yes)?;
+                    (Condition::Assert(Box::new(assertion)), yes)
+                }
+                group => (group, yes),
             };
             Ast::Conditional {
                 condition,
