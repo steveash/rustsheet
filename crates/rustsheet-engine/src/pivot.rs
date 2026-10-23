@@ -21,7 +21,7 @@ use crate::actions::{displace_interval_for_move, interval_survives_move};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::model::Model;
-use crate::types::{sheet_names_match, Workbook};
+use crate::types::sheet_names_match;
 
 /// Most records in one cache (SPEC-0015 "Untrusted-input limits").
 pub const MAX_RECORDS: usize = 1_048_576;
