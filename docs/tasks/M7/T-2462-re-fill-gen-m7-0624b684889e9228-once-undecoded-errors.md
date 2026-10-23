@@ -3,7 +3,7 @@ id: T-2462
 title: "Re-fill gen-m7/0624b684889e9228 now that undecoded errors decode (T-2417)"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
