@@ -3,7 +3,7 @@ id: T-2040
 title: "LET names spelled like a cell (add5, f1) in the stored _xlpm. form bind like any name"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
