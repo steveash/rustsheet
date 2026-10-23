@@ -3,7 +3,7 @@ id: T-2457
 title: "CELL('contents', ref) as a VSTACK argument is #VALUE!"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Owned gen-m7 cells (T-2414):
 
 ## Visible-parity stage
 Decision 0083: every cell this task owns has the wrong type, error or value, so the task is in the campaign; done when they have Excel's.
+
+## Outcome
+`fn_vstack` returns `#VALUE!` for an argument that is a literal-info-type `CELL("contents", ref)` call. Probe cells A41/A61/A81 and gen-m7 8c4570978f18f4c2 A782:D788 now pass (59 known-failure lines left the baselines). HSTACK and non-literal info types remain unprobed.
