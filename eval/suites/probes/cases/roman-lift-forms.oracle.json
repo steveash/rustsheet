@@ -1,0 +1,96 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "s",
+    "v": "I"
+   },
+   "A2": {
+    "t": "s",
+    "v": "IV"
+   },
+   "C1": {
+    "t": "s",
+    "v": "IV"
+   },
+   "C2": {
+    "t": "s",
+    "v": "IV"
+   },
+   "E1": {
+    "t": "s",
+    "v": "IV"
+   },
+   "F1": {
+    "t": "s",
+    "v": "IV"
+   },
+   "G1": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "H1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "I1": {
+    "t": "s",
+    "v": ""
+   },
+   "I2": {
+    "t": "s",
+    "v": "IV"
+   },
+   "K1": {
+    "t": "s",
+    "v": "IV"
+   },
+   "L1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "M1": {
+    "t": "s",
+    "v": "CDXCIX"
+   },
+   "N1": {
+    "t": "s",
+    "v": "ID"
+   },
+   "O1": {
+    "t": "s",
+    "v": "CDXCIX"
+   },
+   "O2": {
+    "t": "s",
+    "v": "ID"
+   },
+   "Q1": {
+    "t": "s",
+    "v": "LDVLIV"
+   },
+   "R1": {
+    "t": "s",
+    "v": "XDIX"
+   },
+   "S1": {
+    "t": "s",
+    "v": "VDIV"
+   },
+   "T1": {
+    "t": "s",
+    "v": "ID"
+   }
+  },
+  "Data": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "9b549c2d979718e4b7dc3d78ce3c4185fffcc392db8c002ab4748aefd69357e7",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-23T17:33:48+00:00",
+  "version": null,
+  "workbook_name": "10e50ccea60809ea3f21f0548b70df497a1ddeb01b781ba43a472eb2ef1d151e.xlsx"
+ }
+}
