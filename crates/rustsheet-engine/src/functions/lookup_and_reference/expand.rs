@@ -35,8 +35,8 @@ impl Model {
         // an array and a range, one EXPAND per element whose value is that call's top-left
         // (`ROWS(EXPAND(A1:A2,{3;4}))` is 2, probes/m7-argument-modes F7:H7,
         // probes/m7-lift-take-drop-sortby row 20). pad_with does not lift: an array there is
-        // `#VALUE!` (`EXPAND(A1:A2,3,1,{0;1})`, same case row 21; T-1835), and a range is read as a
-        // value (a 1x1 array and a multi-cell range are unprobed, T-2365).
+        // `#VALUE!` (`EXPAND(A1:A2,3,1,{0;1})`, same case row 21; T-1835), and so is a multi-cell
+        // range (T-2415); a 1x1 array is unprobed (T-2365).
         let data = match self.eval_to_array(&args[0], cell) {
             Ok(d) => d,
             Err(e) => return e,
@@ -77,19 +77,25 @@ impl Model {
                 // An array pad_with is `#VALUE!` for the whole call, not a fill of `#VALUE!`s
                 // (probes/m7-lift-take-drop-sortby F21:H21: ROWS, COLUMNS and INDEX of it are
                 // `#VALUE!`).
-                // A reference is read as a value, as the scalar argument it was before the table
-                // (a one-cell `Data!E$11`; a larger range is intersected).
-                let pad = values.get(3).map(|pad| match pad {
-                    CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
-                    other => other.clone(),
-                });
-                if matches!(pad, Some(CalcResult::Array(_))) {
+                // A multi-cell range is `#VALUE!` for the whole call too, a row, a column or a 2-D
+                // one, whether or not any cell is padded (gen-m7/2d9b48c6363e7a16 A366, A830,
+                // A2686; arrays.md "EXPAND, WRAPROWS and WRAPCOLS"; T-2415). A one-cell reference
+                // is its value.
+                let pad = values.get(3);
+                if pad.is_some_and(|pad| {
+                    matches!(pad, CalcResult::Array(_) | CalcResult::Range { .. })
+                        && pad.is_multi_value()
+                }) {
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
                         "pad_with must be a single value".to_string(),
                     );
                 }
+                let pad = pad.map(|pad| match pad {
+                    CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
+                    other => other.clone(),
+                });
                 expand_kernel(
                     &data,
                     target_rows,

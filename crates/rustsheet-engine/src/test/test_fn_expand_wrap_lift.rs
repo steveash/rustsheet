@@ -31,6 +31,19 @@ fn expand_lifts_rows_and_columns_but_not_pad_with() {
     ]);
 }
 
+/// A multi-cell range pad_with is one `#VALUE!` with nothing spilled, as an array one is; a
+/// one-cell range pads with its value (gen-m7/2d9b48c6363e7a16 A366, A830, A2686; T-2415).
+#[test]
+fn expand_range_pad_with() {
+    check(&[
+        ("C1", "=INDEX(EXPAND(A1,2,1,A3:A3),2,1)", "3"),
+        ("E1", "=EXPAND(A1,2,1,A2:A3)", "#VALUE!"),
+        ("F1", "=EXPAND(A1,1,1,A1:B3)", "#VALUE!"),
+        ("G1", "=ROWS(EXPAND(A1:A2,3,2,A1:B1))", "#VALUE!"),
+        ("I2", "=INDEX(EXPAND(A1,2,2,A3:A3),2,2)", "3"),
+    ]);
+}
+
 #[test]
 fn wrap_functions_lift_wrap_count_and_pad_with() {
     check(&[

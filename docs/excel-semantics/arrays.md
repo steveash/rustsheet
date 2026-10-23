@@ -1500,8 +1500,8 @@ A multi-cell *range* pad_with is one `#VALUE!` too, with nothing spilled, whatev
 `EXPAND({1;2;3},5,100,Data!A7:D7)` (gen-m7/0624b684889e9228 Calc!A2004), `EXPAND(Data!C11:D12,2,2,Data!E1:E3)` (gen-m7/2c156ba98ef0220a.case.json A185),
 `EXPAND("a",4,4,Data!C7:C11)` (2d9b48c6363e7a16 A366), `EXPAND({1,2,3},5,4,Data!B5:C11)` (A2686), a 1x1 result that pads nothing,
 `EXPAND(TAN(-Data!A9),1.305,1,Data!B2:B6)` (A830), and one whose spill would collide, `EXPAND(Data!$E8,YEAR(..),2,Data!C1:E3)`
-(gen-m7/2c156ba98ef0220a.case.json A1577: `#VALUE!`, not `#SPILL!`); 17 formulas in all (excel-graph, 2026-10-22, T-2254 triage). Ours intersects the
-range and spills (T-2415).
+(gen-m7/2c156ba98ef0220a.case.json A1577: `#VALUE!`, not `#SPILL!`); 17 formulas in all (excel-graph, 2026-10-22, T-2254 triage). Ours: implemented, a multi-cell
+range is `#VALUE!` as an array is (`fn_expand`, T-2415).
 An error wrap_count beats WRAPCOLS's not-a-vector `#VALUE!`: `WRAPCOLS(EXPAND({1},2,3),FILTER(..))` with an empty FILTER is `#CALC!`
 (gen-m7/f7e94a817e5385ac A3517, excel-graph, 2026-10-22); ours `#VALUE!` (T-2365).
 Status: VERIFIED (excel-graph) for the lifts; UNVERIFIED for the vector-error part
