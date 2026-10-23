@@ -3,7 +3,7 @@ id: T-2438
 title: "Generator edge pools for M9 integer counts, FORECAST.ETS options and a sorted timeline"
 milestone: M9
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
