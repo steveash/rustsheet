@@ -335,6 +335,25 @@ pub(super) mod tests {
         ia.abs_diff(ib)
     }
 
+    // T-2465: with one shape below 8 and a huge other, ln x of a rounded x near 1 lost most of its
+    // digits; ln(1 - y) from the given y keeps them. References: 60-digit mpmath I_y(b, a) at the
+    // same doubles, the F.DIST.RT tails at Excel's F.INV.RT(0.05,99999,9) and
+    // F.INV.RT(0.001,99999,1) (gen-m9/27601819397dd56e A81, c18dbf21f11093f3 A190), which ln x
+    // missed by about 1E-12 relative.
+    #[test]
+    fn a_huge_shape_keeps_the_digits_of_a_small_complement() {
+        for (df1, df2, x, expected) in [
+            (99_999.0, 9.0, 2.706_724_792_035_535_3, 0.049_999_999_999_999_93),
+            (99_999.0, 1.0, 636_616.255_908_127_8, 0.000_999_999_999_999_999_4),
+        ] {
+            let total = df1 * x + df2;
+            let tail = beta_reg_upper(df1 * x / total, df2 / total, df1 / 2.0, df2 / 2.0);
+            // Within 1E-14 relative (about 2E-15 now; ln x was about 1E-12 off).
+            assert!((tail / expected - 1.0).abs() < 1e-14, "{df1} {df2}: {tail}");
+        }
+        assert_eq!(ln_near_one(1.0 - 3.3e-5, 3.3e-5), (-3.3e-5f64).ln_1p());
+    }
+
     #[test]
     fn closed_forms() {
         for &x in &[0.1, 0.5, 0.9] {

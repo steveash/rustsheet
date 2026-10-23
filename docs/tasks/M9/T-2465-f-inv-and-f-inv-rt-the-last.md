@@ -42,9 +42,10 @@ Cleanups from the T-0974 review (MINOR, carried here because they touch this cod
   T-2119.
 
 ## Acceptance criteria
-- [ ] The F-family cells above are within half a unit of the 15th significant digit of Excel's value.
-- [ ] No new known-failure lines in any `eval/baseline/` file.
-- [ ] `make check` green; reviewers approve.
+- [ ] The F-family cells above are within half a unit of the 15th significant digit of Excel's value. (Partly: A81 at
+      0.27 units; A190, the near-tie cells and E6 moved to T-2500.)
+- [x] No new known-failure lines in any `eval/baseline/` file.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - BETA.INV / BETAINV (T-2119); bit-exact F quantiles.
@@ -61,5 +62,8 @@ Cleanups from the T-0974 review (MINOR, carried here because they touch this cod
 - Cleanups from the T-0974 review: `F_QUANTILE_BISECT_DF` is renamed `F_QUANTILE_STATRS_DF_MAX`, and student_t.rs
   shares `incomplete_beta::A1_CLOSED_FORM_MIN_X` instead of its own copy of the 0.1 cut. `bisect_unit_interval` goes
   with T-2119 (its only caller). `bisect_increasing` stays until T.INV moves to `refine_increasing`.
-- Unmet: the near-tie cells (0.7 to 1.1 units, crossings of a cdf a few ulp from Excel's), A81 and A190's last unit,
-  and E6 move to **T-2500**.
+- Unmet: the near-tie cells (0.7 to 1.1 units, crossings of a cdf a few ulp from Excel's), A190's last unit and E6 move
+  to **T-2500**. A81 is within half a unit (0.27) but displays differently, as it sits on a rounding boundary; T-2500
+  keeps it for display parity.
+- Unit test `incomplete_beta::tests::a_huge_shape_keeps_the_digits_of_a_small_complement` pins the fix (ln x was 8.6E-13
+  relative off there).
