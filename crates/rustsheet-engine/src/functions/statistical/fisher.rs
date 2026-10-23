@@ -42,7 +42,7 @@ fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
 /// same failure as Student-t), so the quantile has no statrs start there.
-const F_QUANTILE_BISECT_DF: f64 = 1e5;
+const F_QUANTILE_STATRS_DF_MAX: f64 = 1e5;
 
 /// Below this probability (of either tail) statrs' search panics (from p = 1.6E-162) or never
 /// finishes (about 7% of calls below 3.6E-27, `F.INV(1E-50,6000,4)`; T-1848), so the quantile has no
@@ -70,8 +70,8 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
     }
     // statrs' search is the start where it is reliable; elsewhere the refinement bisects the
     // whole range of doubles.
-    let estimate = if df1 < F_QUANTILE_BISECT_DF
-        && df2 < F_QUANTILE_BISECT_DF
+    let estimate = if df1 < F_QUANTILE_STATRS_DF_MAX
+        && df2 < F_QUANTILE_STATRS_DF_MAX
         && (F_QUANTILE_STATRS_P_MIN..=1.0 - F_QUANTILE_STATRS_P_MIN).contains(&lower)
     {
         f_inverse_cdf(df1, df2, lower)

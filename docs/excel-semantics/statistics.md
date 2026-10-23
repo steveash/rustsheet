@@ -1531,8 +1531,13 @@ statrs' value stays there; a deep upper tail is refined all the same, since stat
 digits right). Where statrs has no estimate (below p = 1E-20) the bisection of the cdf gives Excel's
 `F.INV(1E-300,5,5)` = 5.081599884913164E-121 to 13 digits (E1), which was #NUM!, but not at every df:
 `F.INV(1E-50,6000,4)` is 0.0163 against Excel's 0.000492 (E6), so the deep tail of our cdf is not Excel's there (T-1871).
+At df1 near 1E5 the crossing was far off only because our forward tail lost digits: the large-shape prefactor took
+ln x of a rounded x near 1. With ln(1 - y) from the exact complement (T-2465), `F.INV.RT(0.05,99999,9)` is the true root
+2.7067247920355326, 5 ulp from Excel's 2.7067247920355353 (gen-m9/27601819397dd56e A81, 48 units of the 15th digit before),
+and `F.INV.RT(0.001,99999,1)` 4 ulp from the true 636616.25590812706 where Excel is 6 ulp above it (c18dbf21f11093f3
+A190, 345 units before). There Excel is the less accurate side, so its last digit is a kernel detail (T-2500).
 Status: VERIFIED as a crossing to 15 digits on the cells above; the solver's start, stop and tie rule are UNVERIFIED.
-Tasks: T-0974, T-2465
+Tasks: T-0974, T-2465, T-2500
 
 ## T.DIST.RT at df 2 is BETA.DIST's closed form down to y = 0.1 (T-0969)
 Rule: at df 2 (after truncation), for y = 2/(2 + t^2) as the worksheet rounds it, fl(2 / fl(2 + fl(t*t))), from 0.1 up,
