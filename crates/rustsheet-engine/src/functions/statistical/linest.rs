@@ -128,13 +128,18 @@ struct RegressionInputs {
     x: Option<MatrixRead>,
 }
 
-/// The checks after the read, in the order Excel makes them: y's error element, too few y values
-/// (`#VALUE!`), x's error element, unequal rows (`#REF!`), then a text cell. An error element
-/// comes after an error in const or stats: `LOGEST(Data!E$11,IF(MAP(..)),<#N/A>)` is `#N/A`
-/// (gen-m9 35e8168aae2b00f8 A400), and so does a boolean y (`LINEST(<TRUE>,0.5,"FALSE",NA())`,
-/// c6cfda6bd10cae93 A110). A text cell is reported only after the size check: GROWTH(B2:B3,<number>) with
-/// B2:B3 = "?b", 0 is `#REF!`, not `#VALUE!` (statistics.md "Array arguments given a scalar, a
-/// single cell or an error"; gen-m9/89693ab0cafc29df A24).
+/// The checks after the read, in the order Excel makes them (statistics.md "LINEST and LOGEST
+/// report error values first"):
+/// 1. y's error element, lambda or non-numeric single value;
+/// 2. too few y values (`#VALUE!`);
+/// 3. x's error element, lambda or non-numeric single value;
+/// 4. unequal rows (`#REF!`);
+/// 5. a text cell. It comes after the size check: GROWTH(B2:B3,<number>) with B2:B3 = "?b", 0
+///    is `#REF!`, not `#VALUE!` (gen-m9/89693ab0cafc29df A24).
+///
+/// LINEST and LOGEST report const's and stats' errors before all of these: a boolean y cell
+/// waits (`LINEST(Data!C8,PERCENTILE.INC(0.5,0.975),"FALSE",NA())`, C8 = TRUE, is `#N/A`, c6cfda6bd10cae93
+/// A110), and so does an error element of x (35e8168aae2b00f8 A400).
 fn validate_regression_inputs(
     inputs: RegressionInputs,
     min_points: usize,
@@ -594,30 +599,34 @@ fn build_output_array(reg: RegResult, stats: bool) -> CalcResult {
 // ─── Public function implementations ─────────────────────────────────────────
 
 impl Model {
+    /// LINEST's and LOGEST's arguments: the data, const and stats. Error values come first, in
+    /// argument order, then the data checks: `LINEST({1;2},1/0,"x")` and `LINEST(1/0,{1;3},"x")`
+    /// are `#DIV/0!` (probes/t2455-transpose-single-value A4:A27), while
+    /// `LINEST(Data!C3:C7,Data!B5:B10,NA(),"1")` is `#N/A`, not the size `#REF!` (gen-m9
+    /// 05d44f6dd6cfc567 A195; statistics.md "LINEST and LOGEST report error values first").
+    fn regression_fit_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(RegressionData, bool, bool), CalcResult> {
+        let inputs = self.read_regression_inputs(&args[0], args.get(1), cell)?;
+        let const_term = eval_optional_bool(self, args.get(2), cell, true)?;
+        let stats = eval_optional_bool(self, args.get(3), cell, false)?;
+        Ok((
+            validate_regression_inputs(inputs, 2, cell)?,
+            const_term,
+            stats,
+        ))
+    }
+
     // LINEST(known_y's, [known_x's], [const], [stats])
     pub(crate) fn fn_linest(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Error values first, in argument order, then the data checks: `LINEST({1;2},1/0,"x")` and
-        // `LINEST(1/0,{1;3},"x")` are `#DIV/0!` (probes/t2455-transpose-single-value A4:A27), while
-        // `LINEST(Data!C3:C7,Data!B5:B10,NA(),"1")` is `#N/A`, not the size `#REF!` (gen-m9
-        // 05d44f6dd6cfc567 A195; statistics.md "LINEST and LOGEST report error values first").
-        let inputs = match self.read_regression_inputs(&args[0], args.get(1), cell) {
-            Ok(inputs) => inputs,
-            Err(e) => return e,
-        };
-        let const_term = match eval_optional_bool(self, args.get(2), cell, true) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-        let stats = match eval_optional_bool(self, args.get(3), cell, false) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-        let data = match validate_regression_inputs(inputs, 2, cell) {
-            Ok(d) => d,
+        let (data, const_term, stats) = match self.regression_fit_args(args, cell) {
+            Ok(fit_args) => fit_args,
             Err(e) => return e,
         };
 
@@ -634,24 +643,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Error values first, in argument order, then the data checks: `LINEST({1;2},1/0,"x")` and
-        // `LINEST(1/0,{1;3},"x")` are `#DIV/0!` (probes/t2455-transpose-single-value A4:A27), while
-        // `LINEST(Data!C3:C7,Data!B5:B10,NA(),"1")` is `#N/A`, not the size `#REF!` (gen-m9
-        // 05d44f6dd6cfc567 A195; statistics.md "LINEST and LOGEST report error values first").
-        let inputs = match self.read_regression_inputs(&args[0], args.get(1), cell) {
-            Ok(inputs) => inputs,
-            Err(e) => return e,
-        };
-        let const_term = match eval_optional_bool(self, args.get(2), cell, true) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-        let stats = match eval_optional_bool(self, args.get(3), cell, false) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-        let mut data = match validate_regression_inputs(inputs, 2, cell) {
-            Ok(d) => d,
+        let (mut data, const_term, stats) = match self.regression_fit_args(args, cell) {
+            Ok(fit_args) => fit_args,
             Err(e) => return e,
         };
 

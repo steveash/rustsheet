@@ -5,7 +5,7 @@ milestone: M7
 lane: functions-lookup
 status: done
 priority: P2
-size: S
+size: M
 tier: opus
 depends_on: []
 campaign: visible
@@ -31,11 +31,13 @@ Owned gen-m7 cells (T-2414):
 ## Visible-parity stage
 Decision 0083: every cell this task owns has the wrong type, error or value, so the task is in the campaign; done when they have Excel's.
 
-## Handoff (resumed)
-Tried: `fn_transpose` (functions/lookup_and_reference/transpose.rs) now returns the element itself for a 1x1 result unless the argument is an array literal. `make eval-baseline` with that alone: probes A291/A301 and gen-m7 f7e94a817e5385ac B2882 pass, but two gen-m9 cells regress because they used to match by accident through the 1x1 array:
-- 320d51765af9b6b7 A376 `FTEST(TRANSPOSE(SUM(Data!D12)),range)` expected `#DIV/0!`, ours `#VALUE!`: fixed in `fn_f_test` (fisher.rs) by taking a computed `CalcResult::Number` (not a one-cell reference, which stays `#VALUE!`, ba4ddb817a8e700e A345) as a sample of one. That alone fixed 284 gen-m9 cells; the last full run (before the reference guard) showed A345 regressing, the guard is built into the tree but its eval was not re-run to completion (build timed out).
-- 4e55500bb8ad3cd8 A178 `LINEST(Data!C8:C9,<num>,UNIQUE(<num>,TRANSPOSE("1")))` expected `#DIV/0!`, ours `#VALUE!`: `fn_unique` casts the scalar text "1" by_col with `cast_bool_ref` and gives `#VALUE!`. Unknown whether Excel's UNIQUE accepts "1" or LINEST reports `#DIV/0!` ahead of the UNIQUE error; needs an `excel-probe` (`UNIQUE(1,"1")`, `UNIQUE(1,{"1"})`, `LINEST` with an error x).
-Next: re-run `make eval-baseline` (must show REGRESSIONS 0), resolve A178 with a probe, add a unit test in test_fn_transpose.rs, update docs/excel-semantics (text.md line ~1024 "Ours lifts" is now stale; add the F.TEST scalar quirk to statistics.md), `make check`, review.
+## Scope widened (T-2455 resume)
+Size S -> M, tier sonnet -> opus (handed off). Returning the element made gen-m9 cells that matched only through the 1x1
+array regress, and `make eval-baseline` refuses regressions, so each one was resolved here from probes/t2455-transpose-single-value
+rather than split out: F.TEST (320d51765af9b6b7 A376, bbdfc06cae0e0d71 A34), LINEST/LOGEST (4e55500bb8ad3cd8 A178 and the
+first-run order regressions, e.g. 05d44f6dd6cfc567 A195), QUARTILE (899f9555e67da2d6 A344), DISC/RECEIVED basis
+(ba4ddb817a8e700e A345), and the ACCRINT, ACCRINTM and AMORDEGRC booleans (0a614cfe974b59c3 A265, 165db58d1540f014 A141,
+7c20351562a2d71d A212). Each fix is limited to what its probe cells showed.
 
 ## Outcome
 `fn_transpose` returns the element itself for a 1x1 result unless the argument is an array constant. That removed accidental
