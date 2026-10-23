@@ -1252,6 +1252,9 @@ every record (`H1:H3` with `H3` blank sums all records), as does a blank header 
   unknown header over `">2"` matches nothing, and over TRUE matches everything. A formula condition is
   evaluated again for each record with its relative references moved down to that record: a blank
   header over `=B2>2` (cached FALSE, the first record's Qty is 1) sums the records whose Qty is above 2.
+  The probe puts the criteria row on the first record's row and sheet, so whether the references move by
+  the record's offset from the criteria cell (ours) or are rebased onto the first record is UNVERIFIED
+  for criteria on another row or sheet; only uppercase `"TRUE"` was probed.
 - **DGET** of the one matching record's blank field cell is `#VALUE!`, as when nothing matches.
 - **Matched conditions** use the shared criteria grammar (criteria.md); `Qty` over TRUE matches only
   the boolean TRUE record, over `=NA()` nothing.

@@ -26,7 +26,7 @@ struct DbQuery {
 }
 
 /// Whether a computed criterion (a criteria cell under a header that names no database column)
-/// holds: TRUE, a non-zero number and the text "TRUE" (any case) hold; FALSE, 0, an error and any
+/// holds: TRUE, a non-zero number and the text "TRUE" (probed in uppercase only) hold; FALSE, 0, an error and any
 /// other text (">2") do not (probes/db-computed-criteria-shapes AB1-AB18, statistics.md
 /// "Database criteria").
 fn computed_criterion_holds(condition: &CalcResult) -> bool {

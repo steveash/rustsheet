@@ -47,15 +47,15 @@ precedence (excel-probe, one question per cell) before changing it; split by fun
 bigger than M. Cells already owned elsewhere when you start move to that task.
 
 ## Acceptance criteria
-- [ ] Visible parity: the 18 error or type cells above leave eval/baseline/gen-m9.txt (`make eval-baseline`), or
+- [ ] Visible parity: the 18 error or type cells above, and CHISQ.DIST A217 (off in the 14th significant digit), leave eval/baseline/gen-m9.txt (`make eval-baseline`), or
       move to a task that owns their enclosing function, with no new known-failure lines.
-- [ ] The two numeric cells (A217, A358) match Excel or move to the task that owns that distribution's numerics.
+- [ ] TDIST A358 (1 ulp) matches Excel or moves to the task that owns that distribution's numerics.
 - [ ] Each error-precedence rule found is in docs/excel-semantics/.
 - [ ] `make check` green; reviewers approve.
 
 ## Visible-parity stage
-Decision 0083: the cells above are visibly off (a wrong error or type), so the task is in the campaign; the
-two last-digit cells are bit-level and may move to a follow-up without the key.
+Decision 0083: the cells above are visibly off (a wrong error or type), so the task is in the campaign; A217
+is visibly off too (14th digit); only A358 (1 ulp) is bit-level and may move to a follow-up without the key.
 
 ## Out of scope
 - Database-function semantics (T-1390, T-2516).
