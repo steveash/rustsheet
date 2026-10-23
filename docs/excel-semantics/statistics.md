@@ -2510,7 +2510,7 @@ a boolean or nothing (`ZTEST(Data!B11,Data!C2)` with "x~*" and "1", c2684066d8df
 FALSE, 873f30d2bf76f8db A333; `ZTEST(Data!$A4,..)` with A4 empty, 201d67f1d59436ed A99). Two `#DIV/0!` cells over ranges with
 no number, `ZTEST(Data!B5:C5,0.04)` (B5 empty, C5 FALSE; its x is `SUMXMY2(UNIQUE(Data!D4),-0.2)`, 7980ffb6095a340d A294)
 and `ZTEST(Data!B10:B10,..)` (its sigma is `PV(-0.9999999999,167,-43,1E+300)`, a63d1c7d6f96c56d A324), are explained by
-their x or sigma argument, not by the range: UNVERIFIED, T-2475 traces them.
+their x or sigma argument, not by the range: UNVERIFIED, T-2470 (which owns them) traces them.
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2470.
 Ours: x and sigma first, `#NUM!` for sigma before the one-value `#DIV/0!`, `#VALUE!` or `#DIV/0!` for the lone cells; T-2470.
 Status: VERIFIED (excel-graph)
