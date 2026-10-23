@@ -313,6 +313,9 @@ fn im_reciprocal_kernels_match_the_sweep() {
             r#"=IMSECH("3+4i")"#,
             "-0.065294027857947+0.0752249603027732i",
         ),
+        // A real argument is 1/sin x and 1/cosh x (gen-m9/2f0d384b8ed0d392 A109, 01810fc89c5ec2c0 A318).
+        (r#"=IMCSC("0.2")"#, "5.03348954767234"),
+        (r#"=IMSECH("1.5")"#, "0.42509603494228"),
     ];
     let mut model = new_empty_model();
     for (row, (formula, _)) in cases.iter().enumerate() {
