@@ -58,4 +58,3 @@ fn cell_shaped_names_print_in_their_declaration_spelling() {
     assert_eq!(model._get_formula("A1"), "=LET(f1,1,f1+1)");
     assert_eq!(model._get_text("A2"), "#VALUE!");
 }
-
