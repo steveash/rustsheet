@@ -45,4 +45,4 @@ or is within half a unit of the 15th significant digit of Excel's value; the vis
 states it.
 
 ## Outcome
-`around_options` cuts match_end toward zero (like match_mode), so -0.0001 and 0.5 are 0. Eval: 1 known-failure line removed from gen-m7, none added. text.md "Ours:" line updated; 1.5 now reads as 1 (unprobed, noted).
+`around_options` cuts match_end toward zero (like match_mode), so -0.0001 and 0.5 are 0. Eval: 1 known-failure line removed from gen-m7 and 1 bonus line (gen-m9/b9a32ce9a1fd0d71 A142) from gen-m9, none added. text.md "Ours:" line updated; 1.5 now reads as 1 (unprobed, noted).
