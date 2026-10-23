@@ -3,7 +3,7 @@ id: T-2291
 title: "Probe COMBINA with a small number and number_chosen past 2^31 (the n+k-1 bound is extrapolated there)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
