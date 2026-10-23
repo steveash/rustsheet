@@ -3,7 +3,7 @@ id: T-2399
 title: "GROUPBY and PIVOTBY with two array options at once broadcast them pairwise (field_headers {0,1} with total_depth {0;1} is 2x2)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
