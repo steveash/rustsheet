@@ -370,6 +370,10 @@ impl Model {
             {
                 return Err(Self::by_slices_calc_error(cell));
             }
+            // A 1x1 array is its one value, as BYROW and BYCOL take it (T-2407).
+            CalcResult::Array(rows) if rows.len() == 1 && rows[0].len() == 1 => {
+                array_element_value(&rows[0][0], cell)
+            }
             other => other,
         })
     }
