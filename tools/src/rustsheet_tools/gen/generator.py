@@ -21,6 +21,7 @@ from typing import Any
 
 import yaml
 
+from rustsheet_tools.gen import database
 from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.pivots import PivotSource, build_source, pivot_call
 from rustsheet_tools.gen.pools import POOLS, lambda_arity
@@ -75,6 +76,7 @@ NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
 ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
 # Share of a `pool` parameter's values drawn from its edge pool (synthetic-generator.md §3.2).
 POOL_RATE = 0.35
+
 MASK_OPS: list[str] = [">", "<", "=", "<>"]
 # `--spill` (synthetic-generator.md §5.2 shape 3): the largest footprint reserved under a spilling probe, and the
 # share of spilling probes given a blocker cell in it (edge class `spill_blocked`), so `#SPILL!` stays covered.
@@ -135,6 +137,12 @@ class Catalog:
 
         functions = [f for f in self.functions if "params" in f and not f.get("volatile") and ok(f)]
         return Catalog([o for o in self.operators if ok(o)], functions)
+
+
+def pool_rate(p: dict[str, Any]) -> float:
+    """Share of `p`'s values drawn from its pool: `pool_rate` when the catalog sets one (the D* database and
+    criteria, whose Db pools only work together, T-2249), else POOL_RATE."""
+    return float(p.get("pool_rate", POOL_RATE))
 
 
 @dataclass
@@ -309,7 +317,7 @@ class Gen:
         elif mode in ("array", "aggregate", "aggregate_a") and self.scope and self.rng.random() < 0.5:
             # A LAMBDA parameter or LET variable often holds the row, column or array (BYROW's SUM(x)).
             text = self.rng.choice(self.scope)
-        elif mode == "range" and p.get("pool") and self.rng.random() < POOL_RATE:
+        elif mode == "range" and p.get("pool") and self.rng.random() < pool_rate(p):
             # A pooled `range` param takes array constants too (LOOKUP's and XMATCH's lookup_table).
             text = self.rng.choice(POOLS[p["pool"]])
         else:
@@ -348,7 +356,7 @@ class Gen:
         if in_domain is not None:
             return in_domain
         # A `hard` domain is never overridden: outside it Excel refuses the workbook (MUNIT).
-        if p.get("pool") and not dom.get("hard") and self.rng.random() < POOL_RATE:
+        if p.get("pool") and not dom.get("hard") and self.rng.random() < pool_rate(p):
             return self.rng.choice(POOLS[p["pool"]])
         return self.value_expr(p, depth)
 
@@ -496,6 +504,7 @@ def generate_case(
             {"name": "Data", "cells": data},
             {"name": "Calc", "cells": calc},
             *([g.pivot.spec_sheet()] if g.pivot is not None else []),
+            *([database.spec_sheet()] if database.uses_db(texts) else []),
         ],
         "expected": {},
         "check": check,
