@@ -3,7 +3,7 @@ id: T-2457
 title: "CELL('contents', ref) as a VSTACK argument is #VALUE!"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
