@@ -37,7 +37,7 @@ blank-key cells to T-2460.
 - [ ] Visible parity: the 26 gen-m7 lines listed under Context: moved to T-2459.
 - [x] The rules are recorded in docs/excel-semantics (arrays.md, dates.md) with probe cells.
 - [x] Unit tests cover the WORKDAY rule (`number_text_in_a_holidays_array_is_a_holiday`).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Pivot tables (SPEC-0015).
@@ -60,5 +60,5 @@ Probe probes/t2360-array-lambda-holidays (508 cells, excel-graph, 2026-10-23) an
   records both.
 Eval delta: probes known failures: -1 (t2311-pivotby-value-cause P!D51) and +53 new-coverage lines in the new case (47
 nested-array cells owned by T-2459, 6 blank-key cells owned by T-2460); 0 regressions. `make eval-baseline` recorded both and
-raised eval/baseline/visible-parity.json by the new case's 53 visibly-off cells less the fixed D51 (6853 -> 6854), the rise
-that new cases account for (quality-gates.md "Visible parity", decision 0093).
+set eval/baseline/visible-parity.json to the new count, 6854 (lock 6853): the new case holds 53 visibly-off cells,
+and main's count was below its lock by more than 50; that rise is the one new cases account for (quality-gates.md "Visible parity", decision 0093).

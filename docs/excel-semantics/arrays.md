@@ -794,7 +794,7 @@ T-1326 follow-up (probes/pivotby-followup, 63 PIVOTBY questions over the same Da
   `{TRUE;FALSE}` (P!A1581) is `#VALUE!`, and so is an error or other text in it, not the error (P!A1481, P!A1601). With a
   header row, the filter may be as tall as the fields or as the records, aligned with them (P!A1501, P!A1521, P!A1541,
   P!A1561), as in GROUPBY. Short col_fields are `#VALUE!` (P!A301). An error function is passed on (`NA()`, P!A1281); `5` is `#VALUE!` (P!A761).
-- Cells: errors in values make their cells and totals that error (P!A321); a LAMBDA array result is `#VALUE!` per cell, `""`
+- Cells: errors in values make their cells and totals that error (P!A321); a LAMBDA array result is `#VALUE!` per cell (shown; the cell holds a nested array, see the T-2360 paragraph above), `""`
   where there are no records (P!A341); text results show as text (P!A541). An array relative_to (here a filter column put one
   argument too far) is lifted per element: a 10x1 array (P!A681).
 Unprobed: whether one row of text values with no rows below is a header (the engine takes it as data), and where
