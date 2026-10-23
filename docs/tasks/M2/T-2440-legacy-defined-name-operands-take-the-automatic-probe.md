@@ -3,7 +3,7 @@ id: T-2440
 title: "Legacy @: defined-name operands take the automatic @; probe the remaining dynamic-array-only functions"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
