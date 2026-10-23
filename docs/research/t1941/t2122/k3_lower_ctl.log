@@ -1,0 +1,34 @@
+stages N3+N5: 5/5 rows kept, rms 1.79e+03 cycles/x, moves N4 +3.6e+08 N5 +5.088e+09 N6 -4.881e+08
+   N3 x 0.8013 alias +0 residual        -1071 
+   N3 x 0.9517 alias +0 residual        -2481 
+   N3 x 1.1023 alias +0 residual         +163 
+   N3 x 0.8741 alias +0 residual        +2895 
+   N3 x 1.0309 alias +0 residual         +494 
+stages D6: 6/9 rows kept, rms 9.09e+05 cycles/x, moves D7 -1.311e+09 D8 +1.149e+09
+   D6 x 0.8013 alias +0 residual      +528087 
+   D6 x 0.9517 alias +0 residual     +7355977 DROPPED
+   D6 x 1.1023 alias +0 residual      -734178 
+   D6 x 1.2519 alias +0 residual     -1620462 
+   D6 x 1.3527 alias -1 residual      +987631 
+   D6 x 1.4531 alias +0 residual   -101288920 DROPPED
+   D6 x 1.0309 alias +0 residual    -15584855 DROPPED
+   D6 x 1.1789 alias +0 residual      +109934 
+   D6 x 1.3021 alias +0 residual      +728987 
+stages D5: 8/9 rows kept, rms 2.12e+05 cycles/x, moves D6 -1.277e+09
+   D5 x 0.8013 alias +0 residual      -146835 
+   D5 x 0.9517 alias +0 residual       -87285 
+   D5 x 1.1023 alias -1 residual       +58019 
+   D5 x 1.3527 alias +0 residual      +242829 
+   D5 x 1.4531 alias +0 residual      +362322 
+   D5 x 0.7311 alias +0 residual      -153732 
+   D5 x 0.8741 alias +0 residual      -128839 
+   D5 x 1.3021 alias +0 residual   -467497129 DROPPED
+   D5 x 1.4129 alias +0 residual      +312193 
+stages D4: 1/5 rows kept, rms 0 cycles/x, moves D5 +1.622e+09
+   D4 x 0.8013 alias +0 residual           +0 
+   D4 x 0.9517 alias +1 residual   -372508761 DROPPED
+   D4 x 0.7311 alias +1 residual   +203323969 DROPPED
+   D4 x 1.0309 alias +0 residual   +501856136 DROPPED
+   D4 x 1.4129 alias +0 residual   -155373603 DROPPED
+N moves (ulps): N4 +3.6e+08 N5 +5.088e+09 N6 -4.881e+08 N7 -1.344e+09 N8 -1.116e+09 N9 +7.96e+09
+D moves (ulps): D5 +1.622e+09 D6 -1.277e+09 D7 -1.311e+09 D8 +1.149e+09 D9 +0

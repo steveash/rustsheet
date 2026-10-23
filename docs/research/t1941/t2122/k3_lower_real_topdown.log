@@ -1,0 +1,17 @@
+stages N5: 1/3 rows kept, rms 0 cycles/x, moves N6 +3.98e+08
+   N5 x 0.8013 alias +0 residual           +0 
+   N5 x 0.9517 alias +0 residual   -169250997 DROPPED
+   N5 x 1.1023 alias +0 residual   +203643812 DROPPED
+stages N3: 7/10 rows kept, rms 1.97e+06 cycles/x, moves N4 -3.437e+08 N5 +9.028e+08
+   N3 x 0.8013 alias +0 residual    -22515843 DROPPED
+   N3 x 0.9517 alias +0 residual     -7914243 DROPPED
+   N3 x 1.1023 alias +0 residual      +316820 
+   N3 x 1.2519 alias +0 residual     +2155839 
+   N3 x 1.3527 alias +0 residual      -166209 
+   N3 x 0.8741 alias +0 residual    -14653051 DROPPED
+   N3 x 1.0309 alias +0 residual     -2787257 
+   N3 x 1.1789 alias +0 residual     +2046055 
+   N3 x 1.3021 alias +0 residual     +1358004 
+   N3 x 1.4129 alias +0 residual     -2923252 
+N moves (ulps): N4 -3.437e+08 N5 +9.028e+08 N6 +3.98e+08 N7 +4.007e+08 N8 -4.611e+10 N9 +3.503e+12
+D moves (ulps): D9 +0

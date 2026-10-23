@@ -563,3 +563,51 @@ on `w5/p4/ss_fc.txt`, then `w5/p5/refit_fn.py IN p4/ss_fc.txt OUT N 7 [EXCL]` re
 - Next: a refit that keeps the base's lower-chain bits where it can, for example the 15.2 step 3 conditional
   solves (N5 -> dN6, N3 -> dN4, dN5, then D) instead of a least-squares function refit. Score it against the zero-move
   control of the same protocol.
+
+## 16. T-2122 run 4 (2026-10-23, single opus worker, K3 steps 15.2.3 and 15.3)
+
+Script `t2122/k3_lower.py`: JOINTALL's search (all-row alias freedom, least-alias ranking) for any set of stages
+with the moves above them held fixed. `PLAN` lists the steps as `CH:stages:moves`; `DD9` pins D9 (default 0).
+`t2122/k3_move.py` now also takes `KEY=ulps` moves on any coefficient. Logs: `k3_lower_ctl.log`,
+`k3_lower_real.log`, `k3_lower_real_topdown.log`, `k3_refit_noise.log` (`k3_refit_noise.sh`). Needs numpy only, plus
+`w5/libsc.so` for scoring.
+
+### 16.1 Results
+- **Strict top-down fails its control.** On `ladder_ctl30_1e10_12a.log` N5 has no readable rows, so N3's solve
+  runs with dN6 missing and gives N4 +6.9e8, N5 +2.3e9 (truth +3.60e8, +5.09e9).
+- **Joint N3+N5 with the head fixed passes it.** With the run 3 control head (N7 -1.344e9, N8 -1.116e9, N9
+  +7.96e9), `PLAN=N:3,5:4,5,6` keeps 5/5 rows at rms 1.8e3 cycles/x and gives N4 +3.600e8, N5 +5.088e9, N6
+  -4.881e8. Truth is +3.598e8, +5.090e9, -4.889e8 (all within 0.2%).
+- **The D chain stays unidentified below D6, as in 13.1.** D6's rows give D7 and only a combination of D8 and D9.
+  D5's rows then fix D6 to 0.3% (-1.277e9, truth -1.281e9). D7 is 4% off with D9 pinned at 0 (truth -1e10). D8 is
+  wrong (+1.1e9 against -1.37e8). D4 keeps 1 row of 5, so D5 is unreadable. Joint D5+D6 with D9 free gives D9
+  -8e14: the direction is null.
+- **Real data with head A (N7 +4.007e8, N8 -4.611e10, N9 +3.503e12):**
+  - Joint N3+N5 keeps all 10 N3 rows and N5@0.9517 at alias 0, rms 4.45e5 cycles/x. Moves: **N4 +3.87e7, N5
+    -1.603e9, N6 +7.37e8**. N5@0.8013 and N5@1.1023 are dropped at +1.7e8 and +3.7e8.
+  - This agrees with ladder.py's 12-anchor joint consensus of 13.4 (N4 +7.2e7, N5 -1.85e9, N6 +7.74e8, N7
+    +4.02e8, N8 -4.616e10, N9 +3.5075e12). The whole N chain, N4 to N9, is now one consistent move.
+  - Top-down (N5 alone, then N3) keeps 1/3 N5 rows (N6 +3.98e8) and 7/10 N3 rows. That is the control's failure
+    mode, so do not use it.
+  - Real D6 keeps only 4/10 rows (D7 -6.3e9, D8 +1.7e11). D5 keeps 8/8 and gives D6 +4.5e8, but that is
+    conditional on the D6 solve.
+- **The 15.3 scoring protocol cannot rank moves this size (`k3_refit_noise.log`).** Refit N0-N3 + D1-D9 to ss_fc's
+  function and score on the 9.6 M rows. A one-ulp change in N6 then moves the exact rate by up to 10 points:
+  - with the head + N4-N6 move: 0.297 (+0 ulps), 0.290 (+1), 0.271 (+10), 0.244 (+100), 0.212 (+1e3), 0.242 (+1e4),
+    0.287 (+1e5);
+  - with the zero move: 0.268, 0.266, 0.235, 0.283, 0.271, 0.274, 0.177;
+  - the means are 0.263 against 0.253, inside the spread.
+  So run 3's "A beats the zero-move control by +3.9 points" is within the protocol's noise and is **not evidence for
+  A**. The scores of A + N6 only (0.210 against control 0.169) and A + N5 + N6 (0.231 against 0.243) are noise too.
+  The cause is that the least-squares refit sets the low bits of 13-16 coefficients to whatever restores the
+  function, and those bits decide the exact rate.
+
+### 16.2 Next steps (in order)
+1. Replace the refit-and-count score with one that is invariant to the lower chain's low bits. For example,
+   per-run caps (section 4, Fact 1) on the moved set, with only the head and N4-N6 fixed. Or re-read the per-stage
+   ladder slopes on the moved set: a right move leaves N3-N7 slopes at about 0 cycles/x. First calibrate the score
+   on the planted control: truth against the zero move against a 1-ulp perturbation.
+2. If you keep a refit score, use an ensemble: score each candidate over 20+ tiny perturbations (as in
+   `k3_refit_noise.sh`) and compare distributions, never single numbers.
+3. The D chain needs more readable stages before any D move counts. Add rungs or anchors where D4/D6 are unreadable
+   (0.9517, 1.0309, 1.1023, 1.4531), or use the per-run cap score to pick D moves along the null direction.

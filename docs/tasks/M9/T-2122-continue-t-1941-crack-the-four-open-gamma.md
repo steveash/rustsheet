@@ -3,7 +3,7 @@ id: T-2122
 title: "Continue T-1941: crack the four open gamma kernels to the bit"
 milestone: M9
 lane: research
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -66,6 +66,11 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
   rms 2.65e4 cycles/x): the a-f move. Run 2's g-l conflict was the missing N6 alias freedom. Scored after a full
   function refit (15.3), that move beats the zero-move refit control by 3.9 points (0.298 against 0.260) but not the base
   (0.322). The refit itself costs 6 points, so next is a bit-preserving conditional solve of the lower chain (15.3).
+- Run 4 (2026-10-23, one opus worker, K3): HANDOFF2 section 16, `t2122/k3_lower.py`. With the head fixed, a joint
+  N3+N5 solve recovers the control's N4-N6 to 0.2%. On real data it keeps all 10 N3 rows: N4 +3.9e7, N5 -1.6e9,
+  N6 +7.4e8, which agrees with ladder.py's joint consensus. The D chain is still unidentified below D6. The 15.3 refit
+  score swings up to 10 points on a 1-ulp change of N6, so run 3's +3.9 points for the head move is noise. Next: a
+  score that is invariant to the lower chain's low bits (HANDOFF2 16.2).
 
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses
