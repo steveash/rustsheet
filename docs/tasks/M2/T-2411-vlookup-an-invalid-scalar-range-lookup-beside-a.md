@@ -3,7 +3,7 @@ id: T-2411
 title: "VLOOKUP: an invalid scalar range_lookup beside a lifted lookup_value is #VALUE! per element, not one #VALUE! (gen-m7)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
