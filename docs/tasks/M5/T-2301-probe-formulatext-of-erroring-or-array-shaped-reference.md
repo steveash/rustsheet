@@ -3,7 +3,7 @@ id: T-2301
 title: "Probe FORMULATEXT of erroring or array-shaped reference-returning calls"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2137 made FORMULATEXT(INDEX(..)) return INDEX's error or `#VALUE!` for a picke
 
 ## Out of scope
 -
+
+## Outcome
+Probe case probes/formulatext-erroring-references holds every form with excel-graph values (2026-10-23); results are in docs/excel-semantics/references.md. The engine fails 22 of its cells; fix filed as T-2523.

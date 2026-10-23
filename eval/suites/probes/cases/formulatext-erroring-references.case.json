@@ -1,0 +1,46 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2301 probe: FORMULATEXT of erroring or array-shaped reference-returning calls (INDEX, OFFSET, INDIRECT, CHOOSE, IF). Data!A2 is a formula; one probe per column block so spills cannot collide.",
+ "tags": [
+  "M5",
+  "probe",
+  "references",
+  "information"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "A2": "=A1+1",
+    "A3": 3
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=FORMULATEXT(INDEX(Data!A1:A3,NA()))",
+    "A2": "=FORMULATEXT(INDEX({1,2,3},9))",
+    "A3": "=FORMULATEXT(OFFSET(Data!A1,NA(),0))",
+    "A4": "=FORMULATEXT(OFFSET(Data!A1,\"x\",0))",
+    "A5": "=FORMULATEXT(OFFSET(Data!A1,-9,0))",
+    "A6": "=FORMULATEXT(INDIRECT(\"Nope!A1\"))",
+    "A7": "=FORMULATEXT(INDIRECT(\"zz zz\"))",
+    "A8": "=FORMULATEXT(INDIRECT(NA()))",
+    "A9": "=FORMULATEXT(CHOOSE(9,Data!A1,Data!A2))",
+    "A10": "=FORMULATEXT(CHOOSE(NA(),Data!A1,Data!A2))",
+    "A11": "=FORMULATEXT(CHOOSE(0,Data!A1,Data!A2))",
+    "A12": "=FORMULATEXT(IF(NA(),Data!A1,Data!A2))",
+    "A13": "=FORMULATEXT(IF(\"x\",Data!A1,Data!A2))",
+    "A14": "=FORMULATEXT(IF(1/0,Data!A1,Data!A2))",
+    "A15": "=FORMULATEXT(IF(TRUE,NA(),Data!A2))",
+    "C1": "=FORMULATEXT(INDEX({1,2;3,4},0,1))",
+    "E1": "=FORMULATEXT(INDEX({1,2;3,4},1,0))",
+    "G1": "=FORMULATEXT(INDEX({1,2;3,4},0,0))",
+    "I1": "=FORMULATEXT(INDEX({1,2;3,4},2,2))",
+    "K1": "=FORMULATEXT(IF({TRUE,FALSE},Data!A1,Data!A2))",
+    "M1": "=FORMULATEXT(CHOOSE({1,2},Data!A1,Data!A2))"
+  }
+  }
+ ]
+}
