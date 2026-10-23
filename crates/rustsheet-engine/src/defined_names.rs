@@ -173,7 +173,7 @@ impl Model {
     /// inherit them.
     pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         let outer = std::mem::take(&mut self.defined_names_running);
-        self.lambda_elements_shown = matches!(
+        self.evaluation.lambda_elements_shown = matches!(
             node,
             Node::FunctionKind {
                 kind: Function::Byrow | Function::Bycol | Function::Map,
@@ -181,7 +181,7 @@ impl Model {
             }
         );
         let result = self.with_area_budget(cell, |model| model.evaluate_formula_root(node, cell));
-        self.lambda_elements_shown = false;
+        self.evaluation.lambda_elements_shown = false;
         self.defined_names_running = outer;
         result
     }

@@ -1253,9 +1253,11 @@ eight (A2102), `BYROW({"",0,FALSE},LAMBDA(acc,LAMBDA(x,x)))` one (21b4eef18424ce
 alike (18 formulas). This fits "An uncalled LAMBDA is one value" (a cell shows it as `#CALC!`).
 Evidence: gen-m7 (excel-graph, 2026-10-22, T-2254 triage; the cells are listed in T-2406).
 Ours (T-2406): MAKEARRAY with a multi-cell step is one `#CALC!` (a 1x1 array step is unwrapped as BYROW does; unprobed). A LAMBDA
-element of BYROW, BYCOL and MAP is still `#VALUE!`. A plain `#CALC!` element is wrong: that element is a LAMBDA value, `#CALC!` only as a
-cell result and `#VALUE!`/other where an operator or function consumes it (gen-m7/23b5367c18059af2 A2578 `TEXTSPLIT(.&MAP(Data!Z1,
-LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`; gen-m7/f7e94a817e5385ac A942, gen-m9/165db58d1540f014 A273 likewise): needs T-2039.
+element of BYROW, BYCOL and MAP is `#CALC!` only when that call is the cell formula's outermost node, where the element is what the cell
+shows; anywhere else it is `#VALUE!`, as Excel gives where an operator or function consumes it (gen-m7/23b5367c18059af2 A2578
+`TEXTSPLIT(.&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`; gen-m7/f7e94a817e5385ac A941 CELL, gen-m9/165db58d1540f014 A273
+CONFIDENCE.NORM likewise). Inside LET, a group or a defined name the outermost rule is unprobed (they stay `#VALUE!`); T-2039 holds the
+LAMBDA itself.
 Status: VERIFIED (excel-graph)
 Tasks: T-2406
 

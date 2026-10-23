@@ -13,7 +13,7 @@ impl Model {
     /// Applies the lambda element-wise across one or more arrays; smaller arrays pad with `#N/A`.
     /// The lambda receives one scalar value from each array per call.
     pub(crate) fn fn_map(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let shown = std::mem::take(&mut self.lambda_elements_shown);
+        let shown = std::mem::take(&mut self.evaluation.lambda_elements_shown);
         if args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }

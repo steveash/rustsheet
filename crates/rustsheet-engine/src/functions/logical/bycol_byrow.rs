@@ -112,7 +112,7 @@ impl Model {
     /// Applies a LAMBDA to each column of `array`, returning a 1-row array of results.
     /// The lambda receives each column of a range as a reference, of an array as an N×1 array.
     pub(crate) fn fn_bycol(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let shown = std::mem::take(&mut self.lambda_elements_shown);
+        let shown = std::mem::take(&mut self.evaluation.lambda_elements_shown);
         let (source, mut caller) = match self.by_slices_args(args, cell) {
             Ok(inputs) => inputs,
             Err(e) => return e,
@@ -150,7 +150,7 @@ impl Model {
     /// Applies a LAMBDA to each row of `array`, returning a 1-column array of results.
     /// The lambda receives each row of a range as a reference, of an array as a 1×M array.
     pub(crate) fn fn_byrow(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let shown = std::mem::take(&mut self.lambda_elements_shown);
+        let shown = std::mem::take(&mut self.evaluation.lambda_elements_shown);
         let (source, mut caller) = match self.by_slices_args(args, cell) {
             Ok(inputs) => inputs,
             Err(e) => return e,
