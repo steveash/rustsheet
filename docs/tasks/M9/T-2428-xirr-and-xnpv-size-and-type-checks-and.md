@@ -131,7 +131,54 @@ Cells:
 - gen-m9/d8f44d556674c2fd.case.json (1): Calc!A360
 - gen-m9/eedd629f3d69fdda.case.json (5): Calc!A15, A145, A159, A247, A394
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): XIRR and XNPV as the outer call of the financial sweep, XIRR/XNPV nested in the other financial functions, and FVSCHEDULE. Most cells are the rule above (XIRR `#NUM!` for different counts or one value, including text and booleans in the ranges; XNPV `#VALUE!` for a boolean or text one-cell rate or dates). New in these cells (docs/excel-semantics/financial.md "Financial functions in the gen-m9 financial sweep (T-2257)"): XIRR with one value and one date, both single cells or numbers, is `#N/A` (`XIRR(Data!A9:A9,Data!E9:E9)` gen-m9/30e20ba3302fea8b A110, ours `#NUM!`; `XIRR(1E15,Data!C2)` 9d9ceba257f8001b A309, ours `#VALUE!`; also with a FALSE date cell, bc04c1f478c9896c A24), while one value against several dates is `#NUM!`; an error dates or guess argument is that error before the count check (`XIRR({-100,-200,-300},PMT(..),XLOOKUP(..)<#N/A>)` is `#N/A`, 5c6a23c4f6597f1c A181); `XIRR({-100,#N/A,60},Data!$C$7)` with one FALSE date is `#VALUE!` (1cd3096e3e87c965 A48) but `#NUM!` against 5 dates (b72d952c5f52cb4d A1). FVSCHEDULE with an empty schedule cell returns the principal (`FVSCHEDULE(6527,<empty>)` = 6527, 30e20ba3302fea8b A250; ours `#VALUE!`) and `FVSCHEDULE(5916,{-1E+300,1E+300})` is 0 (89f0aee953a55a45 A349; ours `#DIV/0!`).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 246 known-failure lines in eval/baseline/gen-m9.txt, 246 visibly off.
+Examples:
+- gen-m9/1cd3096e3e87c965 Calc!A48 `=XIRR({-100,#N/A,60},Data!$C$7)`: Excel #VALUE!, ours #N/A
+- gen-m9/1cd3096e3e87c965 Calc!A217 `=XNPV(0.2,0.3,Data!C9:D12)`: Excel #NUM!, ours #VALUE!
+- gen-m9/30e20ba3302fea8b Calc!A110 `=XIRR(Data!A9:A9,Data!E9:E9)`: Excel #N/A, ours #NUM!
+- gen-m9/30e20ba3302fea8b Calc!A250 `=FVSCHEDULE(6527,Data!D1)`: Excel 6527.0, ours #VALUE!
+- gen-m9/31474c20fc1dafd6 Calc!A8 `=XIRR(100,Data!D3:E4)`: Excel #NUM!, ours #VALUE!
+- gen-m9/e8d55ec393460bb7 Calc!A3 `=FVSCHEDULE(2758,Data!C7)`: Excel 2758.0, ours #VALUE!
+Cells:
+- gen-m9/01523d247594952e.case.json (2): Calc!A36, A243
+- gen-m9/0a957119475760c5.case.json (8): Calc!A47, A96, A145, A243, A340, A341, A389, A390
+- gen-m9/1b60bf99d71424e7.case.json (10): Calc!A24, A29, A78, A127, A171, A176, A225, A274, A367, A372
+- gen-m9/1cd3096e3e87c965.case.json (9): Calc!A48, A97, A146, A168, A217, A244, A293, A315, A391
+- gen-m9/1dce4774f5c0e736.case.json (6): Calc!A22, A39, A91, A189, A238, A336
+- gen-m9/30e20ba3302fea8b.case.json (6): Calc!A110, A159, A208, A250, A257, A355
+- gen-m9/31474c20fc1dafd6.case.json (10): Calc!A8, A57, A106, A204, A246, A253, A295, A302, A351, A400
+- gen-m9/3aa168259335be54.case.json (9): Calc!A40, A48, A146, A195, A293, A334, A342, A381, A391
+- gen-m9/3c06f9298f65a3ba.case.json (5): Calc!A46, A144, A259, A291, A389
+- gen-m9/5422bdbf173fc233.case.json (6): Calc!A45, A143, A184, A192, A290, A388
+- gen-m9/5c6a23c4f6597f1c.case.json (9): Calc!A34, A83, A111, A132, A181, A230, A258, A328, A377
+- gen-m9/5ded7594e597e31e.case.json (8): Calc!A12, A26, A75, A124, A173, A257, A271, A320
+- gen-m9/6376e27be7a05871.case.json (8): Calc!A2, A51, A100, A140, A149, A198, A247, A296
+- gen-m9/67a4c03afd63f988.case.json (8): Calc!A45, A94, A98, A192, A241, A290, A339, A388
+- gen-m9/762cd0e4ec9a7aa9.case.json (10): Calc!A26, A75, A124, A139, A173, A222, A271, A278, A320, A369
+- gen-m9/79d87fc527927626.case.json (8): Calc!A32, A81, A130, A160, A177, A179, A326, A375
+- gen-m9/7d2979fba2c95d64.case.json (9): Calc!A26, A75, A173, A222, A271, A280, A320, A369, A399
+- gen-m9/81bcdc0bec0c8e6b.case.json (9): Calc!A11, A60, A73, A109, A158, A220, A256, A354, A367
+- gen-m9/89f0aee953a55a45.case.json (6): Calc!A36, A85, A232, A279, A330, A349
+- gen-m9/9a1fa5366bc50918.case.json (11): Calc!A6, A22, A45, A94, A143, A178, A192, A241, A290, A339, A388
+- gen-m9/9d9ceba257f8001b.case.json (9): Calc!A15, A64, A113, A162, A174, A211, A260, A309, A358
+- gen-m9/a91bad4e84f49739.case.json (7): Calc!A49, A88, A105, A110, A252, A301, A382
+- gen-m9/abb7d565af89b849.case.json (7): Calc!A39, A45, A137, A143, A241, A339, A388
+- gen-m9/b6a02893a8d6b151.case.json (5): Calc!A30, A44, A275, A303, A373
+- gen-m9/b72d952c5f52cb4d.case.json (7): Calc!A1, A38, A99, A148, A197, A246, A393
+- gen-m9/b73c6cc96e093f03.case.json (9): Calc!A5, A25, A74, A123, A221, A270, A271, A319, A369
+- gen-m9/ba4ddb817a8e700e.case.json (6): Calc!A74, A94, A143, A241, A290, A339
+- gen-m9/bc04c1f478c9896c.case.json (7): Calc!A6, A24, A73, A122, A171, A269, A313
+- gen-m9/c0681a8b150ce301.case.json (7): Calc!A70, A210, A217, A259, A266, A308, A315
+- gen-m9/d0854366830dcdee.case.json (8): Calc!A35, A84, A133, A182, A231, A274, A329, A378
+- gen-m9/d912671baa1364aa.case.json (6): Calc!A3, A37, A184, A233, A282, A380
+- gen-m9/e168be7f6d3f84c2.case.json (8): Calc!A27, A39, A76, A174, A267, A272, A355, A370
+- gen-m9/e8d55ec393460bb7.case.json (3): Calc!A3, A22, A185
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 246 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 122 known-failure lines (83 from T-2255, 39 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for the XIRR/XNPV shapes above (different counts, one value, an error guess, a boolean dates cell).

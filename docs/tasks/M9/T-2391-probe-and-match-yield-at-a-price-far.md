@@ -8,6 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -23,10 +24,42 @@ depends_on: []
   an iteration cap. financial.md "YIELD stops short of PRICE's root" and "Yield
   and odd-coupon work cap" describe the solver. Code: functions/financial/financial_bonds.
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): YIELD is `#NUM!` in Excel at a coupon rate far above the yield, where ours finds a root: `YIELD(38930,46538,1E+300,116,0.01,1,1)`, `YIELD(39779,45574,1E+10,86,101,1,3)`, `YIELD(38829,45714,100,0.25,2,4,4)`, `YIELD(36665,44491,42,106,42,4,0)`, `YIELD(59,45670,100,91,103,4,3)` (ours 8.65, 10.32, 19.18, 16.22, 17.12), 18 cells, and at a negative-yield end `YIELD(39572,45740,1E-10,97,1,4.9)` (ours -0.26). The reverse, Excel computing where ours is `#NUM!`: `YIELD(37341,45513,1E-9,105,1E+300,1)` = 78.13551092802992 and `YIELD(43831,45412,10,1E15+1,1E+300,2)` = 88233.09573268576. These widen the task's question from the price to the coupon and redemption; probe both.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 20 known-failure lines in eval/baseline/gen-m9.txt, 20 visibly off.
+Examples:
+- gen-m9/5c6a23c4f6597f1c Calc!A348 `=YIELD(59,45670,100,91,103,4,3)`: Excel #NUM!, ours 17.122634462637862
+- gen-m9/7d2979fba2c95d64 Calc!A352 `=YIELD(37341,45513,1E-9,105,1E+300,1)`: Excel 78.13551092802992, ours #NUM!
+- gen-m9/e168be7f6d3f84c2 Calc!A390 `=YIELD(43831,45412,10,MROUND(999999999999999,7),1E+300,2)`: Excel 88233.09573268576, ours #NUM!
+Cells:
+- gen-m9/1cd3096e3e87c965.case.json (3): Calc!A212, A261, A310
+- gen-m9/1dce4774f5c0e736.case.json (2): Calc!A256, A305
+- gen-m9/30e20ba3302fea8b.case.json (1): Calc!A255
+- gen-m9/31474c20fc1dafd6.case.json (1): Calc!A321
+- gen-m9/3aa168259335be54.case.json (1): Calc!A327
+- gen-m9/5c6a23c4f6597f1c.case.json (2): Calc!A152, A348
+- gen-m9/762cd0e4ec9a7aa9.case.json (1): Calc!A178
+- gen-m9/7d2979fba2c95d64.case.json (1): Calc!A352
+- gen-m9/9a1fa5366bc50918.case.json (1): Calc!A133
+- gen-m9/abb7d565af89b849.case.json (1): Calc!A25
+- gen-m9/b6a02893a8d6b151.case.json (1): Calc!A29
+- gen-m9/ba4ddb817a8e700e.case.json (2): Calc!A213, A262
+- gen-m9/bc04c1f478c9896c.case.json (1): Calc!A121
+- gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A145, A390
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 20 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] A probe case sweeps the price to locate the cut, filled through excel-graph.
 - [ ] YIELD matches Excel's `#NUM!` cells; the financial.md entry states the rule (VERIFIED).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - YIELD's last-digit misses ("YIELD stops short of PRICE's root").
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-23, T-2257): the gen-m9 cells listed under "T-2257 sweep" in Context are visibly off (wrong
+type, error, text, or a value off by more than half a unit of the 15th significant digit), so the task is in the campaign. Its
+target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
+Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
+to a follow-up task filed without the key.

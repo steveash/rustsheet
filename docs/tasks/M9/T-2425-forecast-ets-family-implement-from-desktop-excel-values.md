@@ -132,7 +132,45 @@ Cells:
 - gen-m9/eedd629f3d69fdda.case.json (1): Calc!A355
 - gen-m9/f82473275380882e.case.json (1): Calc!A20
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): FORECAST.ETS calls nested in the financial functions, `#N/A` on excel-graph with no argument that decides it (the enclosing financial function passes the `#N/A` on).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 40 known-failure lines in eval/baseline/gen-m9.txt, 40 visibly off.
+Examples:
+- gen-m9/3aa168259335be54 Calc!A200 `=COUPDAYS(0,45842,1,N(FORECAST.ETS.CONFINT(Data!C$8,Data!A3:A7,Data!B9:D10)))`: Excel #N/A, ours #N/IMPL!
+- gen-m9/5ded7594e597e31e Calc!A376 `=ISPMT(FORECAST.ETS(25,Data!A3:B9,Data!C9:C12,3),5,212,298422)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/67a4c03afd63f988 Calc!A49 `=XNPV(FORECAST.ETS.STAT(Data!D5:E5,Data!C9:C12,7),Data!$A$6,2.5)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/89f0aee953a55a45 Calc!A134 `=XIRR({0,0,0},FORECAST.ETS.CONFINT(MONTH(5006),Data!D8:D9,(Data!$C$9/Data!C$3)))`: Excel #N/A, ours #N/IMPL!
+- gen-m9/9a1fa5366bc50918 Calc!A36 `=NOMINAL(FORECAST.ETS.SEASONALITY(Data!C6:E8,F.INV(0.975,2.5,1),1,6),11)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/e8d55ec393460bb7 Calc!A24 `=AMORDEGRC(0.1,37368,39050,100,0,FORECAST.ETS.STAT(Data!E2:E4,Data!A9,1),3)`: Excel #N/A, ours #N/IMPL!
+Cells:
+- gen-m9/01523d247594952e.case.json (1): Calc!A201
+- gen-m9/0a957119475760c5.case.json (1): Calc!A239
+- gen-m9/1dce4774f5c0e736.case.json (1): Calc!A132
+- gen-m9/23d82b62e9a85bdd.case.json (2): Calc!A1, A262
+- gen-m9/30e20ba3302fea8b.case.json (2): Calc!A123, A349
+- gen-m9/3aa168259335be54.case.json (4): Calc!A200, A219, A285, A326
+- gen-m9/3c06f9298f65a3ba.case.json (1): Calc!A317
+- gen-m9/5422bdbf173fc233.case.json (2): Calc!A17, A235
+- gen-m9/5c6a23c4f6597f1c.case.json (2): Calc!A127, A266
+- gen-m9/5ded7594e597e31e.case.json (2): Calc!A98, A376
+- gen-m9/6376e27be7a05871.case.json (2): Calc!A243, A345
+- gen-m9/67a4c03afd63f988.case.json (2): Calc!A49, A239
+- gen-m9/79d87fc527927626.case.json (1): Calc!A303
+- gen-m9/7d2979fba2c95d64.case.json (2): Calc!A289, A338
+- gen-m9/81bcdc0bec0c8e6b.case.json (1): Calc!A10
+- gen-m9/89f0aee953a55a45.case.json (2): Calc!A98, A134
+- gen-m9/9a1fa5366bc50918.case.json (2): Calc!A36, A220
+- gen-m9/a91bad4e84f49739.case.json (2): Calc!A12, A141
+- gen-m9/b6a02893a8d6b151.case.json (1): Calc!A193
+- gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A223
+- gen-m9/bc04c1f478c9896c.case.json (1): Calc!A362
+- gen-m9/d0854366830dcdee.case.json (1): Calc!A80
+- gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A121, A341
+- gen-m9/e8d55ec393460bb7.case.json (2): Calc!A24, A110
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 40 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 940 known-failure lines (877 from T-2255, 63 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Desktop values for these cases exist (T-1553) and the cells are scored against them; the family's algorithm is
