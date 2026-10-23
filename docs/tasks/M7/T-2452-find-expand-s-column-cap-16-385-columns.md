@@ -22,6 +22,9 @@ so they were dropped), so probe only sizes expected to be refused, a few per cas
 123,456,789 (e.g. 2^24, 2^22, 2^20+1 in one row), or ask desktop Excel (M14).
 
 ## Acceptance criteria
+- [ ] MAKEARRAY's column cap is probed the same way: 16,385 columns are built, `MAKEARRAY(3,1E15,..)` is `#VALUE!`
+  (gen-m7/b2078b5d702c691a A2553), and ours is `#VALUE!` from 2^20 cells, unverified (arrays.md "MAKEARRAY rows and columns must
+  be whole numbers").
 - [ ] The cap is evidenced to one column (or to the bound below which ours is `#ERROR!` anyway); `COLUMNS_REFUSED` matches it and
   arrays.md "Stacked results past the grid" states it.
 - [ ] `make check` green; reviewers approve.

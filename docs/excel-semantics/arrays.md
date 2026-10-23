@@ -1403,6 +1403,8 @@ in argument order, before either is validated: `MAKEARRAY(1.5,NA(),..)`, `(-1,NA
 D9-D17, excel-graph, 2026-10-23). Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385 (D1,
 D2) and the bare `MAKEARRAY(4,25000,..)` is `#SPILL!` (gen-m7/21b4eef18424ce94 A3348); rows past the grid are unprobed (the
 probe's 1,048,577-row, 1E9 and 1E6-element cells hang excel-graph's workbook open) and stay `#VALUE!` in ours.
+Unverified: columns past the grid above the 2^20-cell bound (`MAKEARRAY(1,2^20+1,..)`) are `#VALUE!` in ours; Excel's only answer
+there is `MAKEARRAY(3,1E15,..)`, `#VALUE!` (gen-m7/b2078b5d702c691a A2553), so its column cap may lie anywhere above 16,385 (T-2452).
 Ours: both sizes read first, then validated; columns past the grid under the cell bound (T-2408).
 Status: VERIFIED (excel-graph)
 Tasks: T-2308, T-2408
