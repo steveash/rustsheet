@@ -133,6 +133,12 @@ pub enum ArrayNode {
     Error(token::Error),
     /// An empty (blank) cell from a range reference.
     Empty,
+    /// A LAMBDA value (its lambda id), as SCAN with a LAMBDA accumulator, MAKEARRAY or VSTACK
+    /// of LAMBDAs give: MAP, REDUCE and a LET name read through INDEX call it, a cell shows
+    /// `#CALC!`, and a function reading it as a value takes it as `#VALUE!`
+    /// (docs/excel-semantics/arrays.md "Arrays of LAMBDAs", probes/lambda-arrays, T-2039).
+    /// Never in a parsed array constant.
+    Lambda(usize),
 }
 
 #[derive(PartialEq, Clone, Debug)]

@@ -69,6 +69,8 @@ pub(crate) enum CellKey {
     Str(String),
     Error(u8),
     Empty,
+    /// A LAMBDA element, by its lambda id.
+    Lambda(usize),
 }
 
 pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
@@ -79,6 +81,7 @@ pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
         // ERROR.TYPE codes are distinct per kind, so they key errors exactly.
         ArrayNode::Error(e) => CellKey::Error(e.error_type_code()),
         ArrayNode::Empty => CellKey::Empty,
+        ArrayNode::Lambda(id) => CellKey::Lambda(*id),
     }
 }
 
@@ -219,11 +222,9 @@ impl Model {
             CalcResult::String(s) => Ok(vec![vec![ArrayNode::String(s)]]),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![vec![ArrayNode::Number(0.0)]]),
             err @ CalcResult::Error { .. } => Err(err),
-            CalcResult::Lambda(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "LAMBDA cannot be used as an array".to_string(),
-            )),
+            // A LAMBDA is a one-element array of it: `VSTACK(LAMBDA(x,x),LAMBDA(x,x*2))` is two
+            // LAMBDAs MAP can call (probes/lambda-arrays F1, F4, T-2039).
+            CalcResult::Lambda(id) => Ok(vec![vec![ArrayNode::Lambda(id)]]),
         }
     }
 
@@ -670,7 +671,7 @@ impl Model {
             for node in row {
                 match node {
                     ArrayNode::Boolean(_) | ArrayNode::Number(_) | ArrayNode::Empty => {}
-                    ArrayNode::String(_) => {
+                    ArrayNode::String(_) | ArrayNode::Lambda(_) => {
                         return CalcResult::new_error(
                             Error::VALUE,
                             cell,

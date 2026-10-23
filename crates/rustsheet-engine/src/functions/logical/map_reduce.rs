@@ -1,5 +1,5 @@
-use super::bycol_byrow::{lambda_element, LambdaGrid};
-use crate::cast::calc_result_to_array_node;
+use super::bycol_byrow::LambdaGrid;
+use crate::cast::calc_result_to_element;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
@@ -13,7 +13,6 @@ impl Model {
     /// Applies the lambda element-wise across one or more arrays; smaller arrays pad with `#N/A`.
     /// The lambda receives one scalar value from each array per call.
     pub(crate) fn fn_map(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let shown = std::mem::take(&mut self.evaluation.lambda_elements_shown);
         if args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -73,10 +72,7 @@ impl Model {
                     Ok(value) => value,
                     Err(error) => return error,
                 };
-                *slot = match cell_result {
-                    CalcResult::Lambda(_) => lambda_element(shown),
-                    value => calc_result_to_array_node(value),
-                };
+                *slot = calc_result_to_element(cell_result);
             }
         }
 

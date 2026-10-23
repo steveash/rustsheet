@@ -98,6 +98,7 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
             m: String::new(),
         },
         ArrayNode::Empty => FormulaValue::Number(0.0),
+        ArrayNode::Lambda(_) => array_node_to_formula_value(ArrayNode::Error(Error::CALC)),
     }
 }
 
@@ -854,7 +855,6 @@ impl Model {
                 }
             }
             CalcResult::Range { .. } => {
-                // This should never happen
                 debug_assert!(false, "Unexpected range result in non-array formula");
                 return Err("Cannot set a range as cell value".to_string());
             }

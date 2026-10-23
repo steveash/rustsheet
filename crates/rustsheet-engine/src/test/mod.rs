@@ -190,6 +190,7 @@ mod test_implicit_intersection;
 mod test_indirect_r1c1;
 mod test_issue_155;
 mod test_issue_483;
+mod test_lambda_arrays;
 mod test_language;
 mod test_language_switch;
 mod test_ln;
