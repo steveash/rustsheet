@@ -258,6 +258,9 @@ impl Model {
                             crate::expressions::parser::ArrayNode::Error(e) => {
                                 return Err(CalcResult::new_error(e, cell, "".to_string()))
                             }
+                            ArrayNode::Lambda(_) => {
+                                return Err(Model::lambda_as_number_error(cell))
+                            }
                             _ => mrow.push(0.0),
                         }
                     }

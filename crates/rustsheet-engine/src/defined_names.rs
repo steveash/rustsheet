@@ -14,7 +14,7 @@ use crate::{
         types::{CellReferenceIndex, CellReferenceRC},
         utils::{is_cell_spelled_name, is_valid_identifier},
     },
-    functions::{logical::SharedLambda, Function},
+    functions::logical::SharedLambda,
     model::Model,
     reference_operators::RefArg,
     types::DefinedName,
@@ -173,15 +173,7 @@ impl Model {
     /// inherit them.
     pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         let outer = std::mem::take(&mut self.defined_names_running);
-        self.evaluation.lambda_elements_shown = matches!(
-            node,
-            Node::FunctionKind {
-                kind: Function::Byrow | Function::Bycol | Function::Map,
-                ..
-            }
-        );
         let result = self.with_area_budget(cell, |model| model.evaluate_formula_root(node, cell));
-        self.evaluation.lambda_elements_shown = false;
         self.defined_names_running = outer;
         result
     }

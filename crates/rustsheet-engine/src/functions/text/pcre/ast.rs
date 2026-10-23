@@ -94,11 +94,12 @@ pub(super) enum Reference {
     Name(Box<str>),
 }
 
-/// What a conditional group tests: whether the group has matched. Assertion conditions
-/// (`(?(?=x)..)`) are left to T-2354 and are invalid until then.
+/// What a conditional group tests: whether the group has matched, or a lookaround
+/// (`(?(?=x)..)`, an [`Ast::LookAround`]; probes/regex-lookaround-keepout-conditionals A7-A8).
 #[derive(Debug, Clone)]
 pub(super) enum Condition {
     Group(Reference),
+    Assert(Box<Ast>),
 }
 
 /// Which lookaround.
@@ -173,7 +174,10 @@ impl Ast {
             | Ast::LookAround { ast, .. }
             | Ast::Atomic(ast) => stack.push(ast),
             Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
-            Ast::Conditional { yes, no, .. } => {
+            Ast::Conditional { condition, yes, no } => {
+                if let Condition::Assert(assertion) = condition {
+                    stack.push(assertion);
+                }
                 stack.push(yes);
                 stack.push(no);
             }

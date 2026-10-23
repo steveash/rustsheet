@@ -67,13 +67,14 @@ impl Model {
         fn coerce(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
             match node {
                 ArrayNode::Number(v) => Ok(*v),
-                ArrayNode::Boolean(_) | ArrayNode::Empty | ArrayNode::String(_) => {
-                    Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "MMULT requires numeric values".to_string(),
-                    ))
-                }
+                ArrayNode::Boolean(_)
+                | ArrayNode::Empty
+                | ArrayNode::String(_)
+                | ArrayNode::Lambda(_) => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "MMULT requires numeric values".to_string(),
+                )),
                 ArrayNode::Error(e) => Err(CalcResult::new_error(
                     e.clone(),
                     cell,

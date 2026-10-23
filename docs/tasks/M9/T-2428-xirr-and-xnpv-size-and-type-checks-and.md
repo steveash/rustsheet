@@ -90,8 +90,49 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A78
 - gen-m9/fec39efaba9284c3.case.json (2): Calc!A216, A285
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): XIRR and XNPV nested in the statistical calls, where Excel's `#NUM!` and ours `#VALUE!` differ.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 39 known-failure lines in eval/baseline/gen-m9.txt, 39 visibly off.
+Examples:
+- gen-m9/91e167cd8d7eb652 Calc!A261 `=ZTEST(Data!B2:C5,XIRR(Data!C9:E9,Data!B2:D6))`: Excel #NUM!, ours #VALUE!
+- gen-m9/928d08e3e1eecb5f Calc!A54 `=VAR(Data!A9:A11,(XIRR(Data!C7,Data!B9:C9,0)+MOD((-2.5),1)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/a4090567758520df Calc!A148 `=VARPA(Data!B8:B9,ROUND(XIRR(3.14159,Data!A9:D10),-2))`: Excel #NUM!, ours #VALUE!
+- gen-m9/afc00c8b70e78baf Calc!A160 `=SKEW.P({0,0,0},XIRR(Data!E1:E8,Data!B2:C10),Data!B7:B10)`: Excel #NUM!, ours #VALUE!
+- gen-m9/eedd629f3d69fdda Calc!A145 `=VARP(-XIRR(Data!A10:A12,1e-15,Data!$C$12),Data!D6:D8)`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/0072265d385d8ab2.case.json (1): Calc!A51
+- gen-m9/139684e68fb2fc3b.case.json (1): Calc!A364
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A47
+- gen-m9/201d67f1d59436ed.case.json (1): Calc!A391
+- gen-m9/334f3dc9ca937f10.case.json (1): Calc!A214
+- gen-m9/3fb9cecf2c23169f.case.json (1): Calc!A285
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A258
+- gen-m9/46ac3ef5e61583ca.case.json (2): Calc!A103, A369
+- gen-m9/5389dd4d5b5739d2.case.json (1): Calc!A355
+- gen-m9/5395b8a427764a3f.case.json (1): Calc!A106
+- gen-m9/583ca2baea0bb30a.case.json (1): Calc!A267
+- gen-m9/5919660b7bb4d195.case.json (1): Calc!A144
+- gen-m9/7980ffb6095a340d.case.json (1): Calc!A50
+- gen-m9/7fd0a98183c6babf.case.json (1): Calc!A386
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A148
+- gen-m9/91e167cd8d7eb652.case.json (2): Calc!A247, A261
+- gen-m9/928d08e3e1eecb5f.case.json (1): Calc!A54
+- gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A132
+- gen-m9/941c409532603d32.case.json (1): Calc!A328
+- gen-m9/9735c5ab72fa5ecf.case.json (1): Calc!A251
+- gen-m9/9e2225ead8a6a07b.case.json (1): Calc!A295
+- gen-m9/a4090567758520df.case.json (2): Calc!A148, A277
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A160
+- gen-m9/c2684066d8df263e.case.json (1): Calc!A289
+- gen-m9/c4635963fc926284.case.json (1): Calc!A71
+- gen-m9/c7664e494e418395.case.json (1): Calc!A63
+- gen-m9/ce312817dc9c7f0b.case.json (3): Calc!A100, A125, A267
+- gen-m9/d37313406b9f6e55.case.json (1): Calc!A292
+- gen-m9/d8f44d556674c2fd.case.json (1): Calc!A360
+- gen-m9/eedd629f3d69fdda.case.json (5): Calc!A15, A145, A159, A247, A394
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 83 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 122 known-failure lines (83 from T-2255, 39 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for the XIRR/XNPV shapes above (different counts, one value, an error guess, a boolean dates cell).
 - [ ] financial.md's entry gets an "Ours:" line naming this task; each of the 32 other cells is fixed or listed in the

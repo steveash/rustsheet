@@ -80,8 +80,56 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A313
 - gen-m9/fec39efaba9284c3.case.json (1): Calc!A288
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): database functions nested in the statistical calls (`TDIST(DCOUNTA(Db!A1:D5,4,Db!O1:O2),6,2)` Excel 0.09242631153167513 because DCOUNTA is not 0; `NORMSDIST(DCOUNTA(Db!A1:D5,3,Db!F1))` `#VALUE!`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 45 known-failure lines in eval/baseline/gen-m9.txt, 45 visibly off.
+Examples:
+- gen-m9/17c110a53924beb8 Calc!A334 `=TREND(DCOUNT(Db!A1:D5,4,Data!B3:D6))`: Excel 3.0, ours 0.0
+- gen-m9/6e18550e9fc9c1b9 Calc!A379 `=STEYX((-0.5),DGET(Db!A1:D12,3,Db!F1))`: Excel #VALUE!, ours #NUM!
+- gen-m9/a4090567758520df Calc!A82 `=NORMSDIST(DCOUNTA(Db!A1:D5,3,Db!F1))`: Excel #VALUE!, ours 0.9999683287581669
+- gen-m9/d910f000b60e2eac Calc!A358 `=TDIST(DCOUNTA(Db!A1:D5,4,Db!O1:O2),6,2)`: Excel 0.09242631153167513, ours 1.0
+- gen-m9/eedd629f3d69fdda Calc!A337 `=SMALL(DGET(Db!$A$1:$D$9,3,Db!F1),3)`: Excel #VALUE!, ours #NUM!
+Cells:
+- gen-m9/0072265d385d8ab2.case.json (1): Calc!A306
+- gen-m9/09b47629f54b9817.case.json (1): Calc!A29
+- gen-m9/0bbab6206b5c9a07.case.json (1): Calc!A301
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A334
+- gen-m9/1b31092a0d79e5f1.case.json (1): Calc!A238
+- gen-m9/2138b909d8f810ea.case.json (1): Calc!A108
+- gen-m9/31f09e6c48ca245c.case.json (2): Calc!A253, A287
+- gen-m9/329b177b5d5165ad.case.json (2): Calc!A139, A145
+- gen-m9/334f3dc9ca937f10.case.json (1): Calc!A111
+- gen-m9/3b7990bd4e3307ba.case.json (1): Calc!A286
+- gen-m9/3fb9cecf2c23169f.case.json (1): Calc!A129
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A387
+- gen-m9/43c6227e0ff368c7.case.json (1): Calc!A337
+- gen-m9/5389dd4d5b5739d2.case.json (1): Calc!A50
+- gen-m9/5919660b7bb4d195.case.json (1): Calc!A138
+- gen-m9/5be29fa316931f05.case.json (1): Calc!A299
+- gen-m9/607e85cfee83a689.case.json (1): Calc!A256
+- gen-m9/6e18550e9fc9c1b9.case.json (1): Calc!A379
+- gen-m9/787ba8d801105a60.case.json (1): Calc!A392
+- gen-m9/7fd0a98183c6babf.case.json (1): Calc!A24
+- gen-m9/80586b859b73c87d.case.json (2): Calc!A186, A289
+- gen-m9/91e167cd8d7eb652.case.json (2): Calc!A76, A148
+- gen-m9/928d08e3e1eecb5f.case.json (2): Calc!A272, A280
+- gen-m9/9bc247733a1ca9fa.case.json (1): Calc!A307
+- gen-m9/9e2225ead8a6a07b.case.json (1): Calc!A10
+- gen-m9/a4090567758520df.case.json (1): Calc!A82
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A113
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A11
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A256
+- gen-m9/bcb1105c61a2649d.case.json (1): Calc!A63
+- gen-m9/c7664e494e418395.case.json (1): Calc!A13
+- gen-m9/cb61169f4c033d4b.case.json (1): Calc!A130
+- gen-m9/d208bbafc3bc1997.case.json (1): Calc!A399
+- gen-m9/d910f000b60e2eac.case.json (4): Calc!A34, A259, A268, A358
+- gen-m9/eccd03df42e40006.case.json (1): Calc!A219
+- gen-m9/eedd629f3d69fdda.case.json (1): Calc!A337
+- gen-m9/f82473275380882e.case.json (1): Calc!A38
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 46 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 91 known-failure lines (46 from T-2255, 45 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] A probe answers each root cause, and the rules are in docs/excel-semantics/.
 - [ ] The probed cells pass, and a regenerated seed-17 database sample passes at least 95% of cells.

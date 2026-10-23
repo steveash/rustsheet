@@ -11,7 +11,7 @@ use crate::arithmetic::{bcast_get, MISSING};
 use crate::cast::calc_result_to_array_node;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
-use crate::functions::util::{array_node_to_calc_result, top_left_of_array};
+use crate::functions::util::{array_element_value, top_left_of_array};
 use crate::limits::{check_array_size, too_many_visits};
 use crate::reference_operators::{RefArg, RefElement, RefGrid};
 use crate::{
@@ -336,6 +336,7 @@ impl Hash for ElementKey<'_> {
                     view.hash(state);
                 }
                 ArrayNode::Error(error) => std::mem::discriminant(error).hash(state),
+                ArrayNode::Lambda(id) => id.hash(state),
                 ArrayNode::Empty => {}
             }
         }
@@ -450,11 +451,13 @@ fn scalar_numbers(values: &[CalcResult], grid_index: usize) -> Option<ArgBuf<f64
     Some(numbers)
 }
 
-/// An array element as a scalar value, by value: a string element moves, not copied.
+/// An array element as a scalar value, by value: a string element moves, not copied. A LAMBDA
+/// element reaches the kernel as that LAMBDA, so each kernel's rule for a LAMBDA value applies
+/// (`ISERROR(SCAN(..))` over LAMBDAs is FALSE per element, probes/lambda-arrays B8).
 fn array_node_into_calc_result(node: ArrayNode, cell: CellReferenceIndex) -> CalcResult {
     match node {
         ArrayNode::String(text) => CalcResult::String(text),
-        other => array_node_to_calc_result(&other, cell),
+        other => array_element_value(&other, cell),
     }
 }
 
@@ -601,7 +604,7 @@ impl Model {
             for column in 0..columns {
                 for (slot, arg) in values.iter_mut().zip(&lifted) {
                     if let Some(node) = arg.element(row, column) {
-                        *slot = array_node_to_calc_result(node, cell);
+                        *slot = array_element_value(node, cell);
                     }
                 }
                 output.push(match kernel(self, &values) {
@@ -739,7 +742,7 @@ impl Model {
                     (None, _) => {
                         for (slot, arg) in values.iter_mut().zip(lifted) {
                             if let Some(node) = arg.element(row, column) {
-                                *slot = array_node_to_calc_result(node, cell);
+                                *slot = array_element_value(node, cell);
                             }
                         }
                         let value = match run.element(kernel(self, &values)) {
