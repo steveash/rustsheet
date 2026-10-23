@@ -65,7 +65,8 @@ and at least 320 generated outer-call cells. gen-m9 is 82.19% bit-exact; eval/ba
 failures, all new coverage (the 25 earlier cases were never baselined), 0 regressions in every baseline. Visible
 parity: 4,291 of them are visibly off (lock 2,947 -> 6,851, new coverage only, decision 0088). The lock rose by 3,904,
 not 4,291: `make eval-baseline` counted 6,851 = 4,291 in the new cases + 2,560 in cases already baselined, which is 387
-below the old lock (fixes merged on main that no baseline update had recorded yet; a count below the lock passes). Evidence floor 3 -> 0
+below the old lock (fixes merged on main that no baseline update had recorded yet; a count below the lock passes). After merging main
+the count is 6,801; the steward's daily `make eval-lower-visible-lock` records that drop (decision 0093). Evidence floor 3 -> 0
 (the three FORECAST.ETS functions under 20 cells; decision 0010 entry).
 
 Mismatch families (gap-triager, traced to the innermost diverging sub-expression; visibly-off cells):

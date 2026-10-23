@@ -1121,6 +1121,8 @@ PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). `QUARTILE(D6,7)` with D6 = " 
 probability is also invalid, so UNVERIFIED; T-2066 probes it), and `PERCENTILE.EXC(A8:B8,<#VALUE!>)`
 with no number in A8:B8 is `#VALUE!` (k's error before the empty-data `#NUM!`). `PERCENTRANK.EXC(B11,1.005)` with B11 =
 1.005 is not 0.5 (inferred `#N/A` through `VLOOKUP(..)`; later probed: a single value equal to x is 1, probes/percentrank-single-value B6).
+A single cell holding nothing is not one value: in the paired functions and F.TEST it is `#VALUE!` (see "A one-cell
+reference to an empty cell is #VALUE! in the paired functions and F.TEST", T-2255), which supersedes the inference here.
 Evidence: gen-m9 (excel-graph, 2026-10-12, T-1289): 1782efcecd5d4b1b Calc!A10, A25, A38; 3462856259a37891 A22;
 50f10c4062fb2e98 A3, A17, A31; 696af2c8cee2f57e A9; 89693ab0cafc29df A24, A30; a2e51f48717af2a1 A34; adb3fd63c7368166 A26,
 A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, A21; eefcc3989f31de76 A22;
@@ -2391,8 +2393,9 @@ boolean data value still returns its bins-plus-one column, so in the generated l
 the anchor is `#SPILL!`: `FREQUENCY(Data!B11:C12,Data!B3:B3)` (0a614cfe974b59c3 A64), `FREQUENCY(Data!E5:E7,Data!D7:D7)`
 (589f42e67f4b4b8d A384), `FREQUENCY(-0.5,Data!A4)` with A4 = TRUE (8fec7b207f4dd753 A245), `FREQUENCY(Data!C$7,Data!A7)`
 with C7 = " x " (3e98b26cf6713e77 A249). The exact row count for a text or boolean bin is UNVERIFIED (the cells show
-only that it is at least two). An error argument is the result, data before bins: `FREQUENCY((0*CHITEST(..)),(-2.5))`
-`#N/A` (05d44f6dd6cfc567 A65), `FREQUENCY(Data!B6:D10,YEAR(VDB(..)))` `#NUM!` (b4173fe25109a238 A184).
+only that it is at least two). An error argument is the result: `FREQUENCY((0*CHITEST(..)),(-2.5))`
+`#N/A` (05d44f6dd6cfc567 A65), `FREQUENCY(Data!B6:D10,YEAR(VDB(..)))` `#NUM!` (b4173fe25109a238 A184); which wins when
+both data and bins are errors is UNVERIFIED (no cell has both).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 142 cells listed in T-2427.
 Ours: a single number for a single bin, `#VALUE!` for an error, text or boolean argument; T-2427.
 Status: VERIFIED (excel-graph) except the row count noted
@@ -2455,7 +2458,7 @@ too (`LOGEST(-SUBTOTAL(5,..))` = LOGEST(-0.1), c468f5046aadfbbc A282; `LOGEST(Da
 58e3253bbd3a7a82 A250), so the sign check comes before the text check; a scalar known_y with a multi-cell known_x is
 `#REF!` (`LINEST(CHISQ.DIST(..),Data!B5:C10)`, bcb24385baafb2f0 A284), and so is a range known_y with a one-cell text
 known_x (`LINEST(Data!B1:D11,Data!E10)` with E10 = "ü", c18dbf21f11093f3 A182), the size check before the text check;
-a range known_y with text is `#VALUE!` and spills nothing (`LINEST(Data!D4:D5)`, 2a18b2f5a4dc43ac A273/B273).
+a range known_y with text is `#VALUE!` (`LINEST(Data!D4:D5)`, 2a18b2f5a4dc43ac A273; whether it spills is not shown, B273 is unchecked).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-1741, T-1742, T-1743.
 Ours: `#VALUE!` for the scalar known_y and the sign/size checks above; T-1741, T-1742, T-1743.
 Status: VERIFIED (excel-graph)
