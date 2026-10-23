@@ -1116,7 +1116,7 @@ gen-m7 shows the same for a BASE `#NUM!` (gen-m7/4dac39f89709e2fc Calc!A137), a 
 `#DIV/0!` (21b4eef18424ce94 A1393), `DROP(Data!B5:B12,0,3)` `#CALC!` (a470dc9e165bdb20 A3360) and `SEQUENCE(1,SIN(Data!E9))` `#CALC!`
 (f19581ac44da1653 A2477) as MAP's second or third array: `#VALUE!` (excel-graph, 2026-10-22, T-2254 triage; also the three T-2225 cells).
 Status: VERIFIED (excel-graph)
-Tasks: T-1511, T-1946
+Tasks: T-1511, T-1946, T-2458
 
 ## An uncalled LAMBDA is one value
 Rule: an uncalled LAMBDA, or a function passed by name, is one value that is neither an error nor text. `ROWS` and `COLUMNS`
@@ -1128,9 +1128,9 @@ ISBLANK and ISREF are FALSE (also through `IF(1,..)`). `ISEVEN(LAMBDA(x,x))` is 
 Evidence: probes/lambda-value-arguments A1-A26 (excel-graph, 2026-10-19, T-1511); probes/m7-argument-modes F44:H44;
 probes/eta-reduced-names E93.
 Ours: `value_extent` (cast.rs), `is_predicate` and `parity_of` (information/mod.rs), `index_select` (index.rs) since T-1511.
-INDEX of a LAMBDA with an index of 2 is `#REF!` (`ERROR.TYPE` 4) and with -1 `#VALUE!` (3); INDEX(..,0) and INDEX(..,1) give the LAMBDA (probes/t1946-map-later-array-index-lambda, excel-graph, 2026-10-23); ours agrees.
+INDEX of a LAMBDA with an index of 2 is `#REF!` (`ERROR.TYPE` 4) and with -1 `#VALUE!` (3); INDEX(..,0) and INDEX(..,1) are not errors (`ERROR.TYPE` is `#N/A`; probes/t1946-map-later-array-index-lambda, excel-graph, 2026-10-23); ours agrees.
 Status: VERIFIED (excel-graph)
-Tasks: T-1511
+Tasks: T-1511, T-1946
 
 ## LAMBDAs that outlive their call
 Rule: a LAMBDA made inside a LET or a LAMBDA call is a lexical closure: called after that LET or call is over, it reads the
