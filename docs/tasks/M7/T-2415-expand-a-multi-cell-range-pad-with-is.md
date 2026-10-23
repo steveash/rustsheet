@@ -32,6 +32,10 @@ kind must refuse a multi-cell reference as it refuses a multi-cell array). Quirk
 section, updated by this triage).
 
 Owned gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): 312 known-failure lines in eval/baseline/gen-m7.txt, 17 formulas.
+After the fix, re-fill gen-m7/0624b684889e9228 (`rustsheet-oracle fill -b excel-graph --suite gen-m7 --force --case
+gen-m7/0624b684889e9228.case.json`): T-2417 decodes its A2004 anchor (a spilled REGEXEXTRACT `#VALUE!`), which makes
+the rest of A2004's footprint, AH2004:CV2008 (335 cells), scored; T-2417 left that re-fill to this task because those
+cells are visibly off until EXPAND is fixed and the visible-parity lock cannot take them as new coverage.
 - gen-m7/0624b684889e9228.case.json A2004 `=EXPAND({1;2;3},5,100,Data!A7:D7)`: A2004 Excel #VALUE!, ours 1.0; cells (165): A2004:AG2004, A2005:AG2005, A2006:AG2006, A2007:AG2007, A2008:AG2008
 - gen-m7/2c156ba98ef0220a.case.json A185 `=EXPAND(Data!C11:D12,2,2,Data!E1:E3)`: A185 Excel #VALUE!, ours "x"; cells (4): A185:B185, A186:B186
 - gen-m7/2c156ba98ef0220a.case.json A1577 `=EXPAND(Data!$E8,YEAR(ABS(Data!B$4)),2,Data!C1:E3)`: A1577 Excel #VALUE!, ours #SPILL!; cells (1): A1577
