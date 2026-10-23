@@ -3,7 +3,7 @@ id: T-2423
 title: "Probe ROMAN over an array number, a range and boolean form elements (T-2410 unprobed)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2410 lifted ROMAN (`LIFT_1_OF_2`); only the array form is oracle-evidenced (ge
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/roman-lift-forms` filled by excel-graph; results in numbers.md (ROMAN section). Array/range/boolean forms lift element-wise as implemented. Whether ours matches on `ROMAN(-5,NA())` (`#N/A`) is checked by `make check`'s eval run; the one mismatch is filed as T-2523.

@@ -1233,6 +1233,44 @@ over whole columns. A call that does not lift is not charged.
 Status: VERIFIED (excel-graph); the lifted-call bound is DEVIATION (decision 0014)
 Tasks: T-1086, T-1389, T-1390
 
+## Database criteria
+Rule: in every D-function a `database` or a `criteria` range of one row (headers only, `DSUM(A1:E6,2,H1)`,
+`DSUM(A1:E6,2,H1:I1)`, `DSUM(A1:E1,2,H1:H2)`) is `#VALUE!`. A record matches when any criteria row (OR)
+has every non-blank cell holding (AND); a criteria row that is blank under its headers therefore matches
+every record (`H1:H3` with `H3` blank sums all records), as does a blank header over a blank condition.
+- **Header matching.** A criteria header names the database column whose header has the same text,
+  ignoring case and not trimming (`" Qty"` names nothing). Numbers and booleans read as their coerced text
+  (numbers.md "Number → text conversion"): the number 0.5 and the text `"0.5"` name the number header
+  0.5, `"TRUE"` names the boolean header TRUE, and the header 1E-15 is named by the number 1E-15 and by
+  `"0.000000000000001"` but not by `"1E-15"`. A blank or error criteria header names no column, even
+  when the database has a blank header. The same text rule resolves a text `field`, and there `""`
+  names a blank database header (`DSUM(A1:E6,"",H1:H2)` sums the blank-headed column).
+- **Computed criteria.** A condition under a header that names no column (blank, an error, or text that
+  is no database header) is a computed criterion: it holds when its value is TRUE, a non-zero number
+  (-1, 0.3 and 2 all hold) or the text `"TRUE"`, and fails for FALSE, 0, an error and any other text,
+  `">2"` and `"1"` included. So an
+  unknown header over `">2"` matches nothing, and over TRUE matches everything. A formula condition is
+  evaluated again for each record with its relative references moved down to that record: a blank
+  header over `=B2>2` (cached FALSE, the first record's Qty is 1) sums the records whose Qty is above 2.
+  The probe puts the criteria row on the first record's row and sheet, so whether the references move by
+  the record's offset from the criteria cell (ours) or are rebased onto the first record is UNVERIFIED
+  for criteria on another row or sheet; only uppercase `"TRUE"` was probed.
+- **DGET** of the one matching record's blank field cell is `#VALUE!`, as when nothing matches.
+- **Matched conditions** use the shared criteria grammar (criteria.md); `Qty` over TRUE matches only
+  the boolean TRUE record, over `=NA()` nothing.
+Evidence: probes/db-header-criteria-shapes (72 questions; database A1:E6 with headers Name, Qty, 0.5,
+TRUE and a blank) and probes/db-computed-criteria-shapes (53 questions; headers Name, Qty, 1E-15,
+123456789.123 and a blank), excel-graph, 2026-10-23, T-1390.
+Ours: `db_criteria_columns`, `db_row_matches_criteria` and `db_computed_condition` in
+functions/database.rs; a formula condition is evaluated in the context of the criteria cell moved
+down by the record's offset. A formula condition that itself runs a D-function with formula
+conditions would re-evaluate them without passing through a cell, its work growing as the records to
+the power of the nesting, so only one level runs: a nested formula condition is `#ERROR!` and fails
+(directive 5; DEVIATION, decision 0014). What Excel does with a nested formula condition is unprobed.
+Status: VERIFIED (excel-graph); the one-level re-evaluation is DEVIATION (decision 0014), Excel's nested
+behavior UNVERIFIED
+Tasks: T-1390
+
 ## GAMMA and GAMMALN sweep (T-1042)
 Rule: Excel's GAMMA is exact only for small integers, GAMMALN is not correctly rounded at integers,
 and the two functions have different domains.
@@ -2052,6 +2090,31 @@ Tasks: T-1530, T-1538
 - Ours: the hang is gone (the quantile is a bisection on the `statrs` cdf from df 1E5), but the cdf and quantile are off in
   about the 6th digit at df 1E10 (`F.INV(0.5,1E10,1E10)` = 1.0000025, Excel 1) and `F.DIST(...,FALSE)` at df 1E10 is
   `#NUM!` (`statrs` pdf) where Excel gives a number. 16 of 58 cells of the case fail (A1-A14, A57, A58); T-1538 closes them.
+
+## F quantile at a huge df goes through Excel's BETA.INV (T-1538)
+Rule: at a huge df Excel's F.INV and F.INV.RT are Excel's BETA.INV mapped to the F scale, and that BETA.INV
+misses its own CDF's crossing by up to about 1E-16 in x (absolute), in either direction, so for an x near
+1E-10 it is off by up to about 1E-6 relative. The quantiles are therefore not the true ones: `F.INV(0.5,5,1E10)` =
+0.8702920369171896 while the true quantile is 0.87029203827791371 (ours 0.8702920382779133).
+- Reciprocal identity: F.INV(p,d1,d2) and 1/F.INV.RT(p,d2,d1) (computed in double) agree within 2 ulps at every
+  df probed (5/1E10, 1E10/5, 7/3, 3/7, 2/1E8, 1E8/2, 4/4, 6/1E10, 1E10/6, 1E6/5, 5/1E6; p = 0.5, 0.025, 0.975,
+  1E-6, 0.999999, 0.3; bit-equal at 38 of 66 pairs). So `F.INV(0.5,1E10,5)` = 1/`F.INV.RT(0.5,5,1E10)` exactly.
+- F.INV(p,5,1E10) is d2 y / (d1 (1 - y)) with y = Excel's `BETA.INV(p,2.5,5E9)`, to within about 10 ulps
+  (the mapping's rounding is not pinned). F.INV.RT(p,5,1E10) is 2E9 (1 - y') / y' with y' = `BETA.INV(p,5E9,2.5)`
+  within 3 ulps at p = 0.5, 0.025, 1E-6 and 0.3; at p = 0.975 and 0.999999 that is 6E-7 relative off, and
+  F.INV.RT(p,5,1E10) is instead bit-equal to F.INV(1-p,5,1E10). Which path Excel takes is not pinned.
+- Excel's BETA.DIST is accurate there (about 1E-15 relative; 8E-15 at x = 1.29E-12, p = 1E-6), so the miss is
+  in BETA.INV: `BETA.DIST(BETA.INV(0.025,2.5,5E9),2.5,5E9,TRUE)` is 0.025000051345569204, and `F.DIST(F.INV(0.025,5,1E10),5,1E10,TRUE)` is 0.02500005134556904.
+  `F.DIST(2,5,1E10,TRUE)` = 0.9247647537543169 is the true value (t1530-f-df-cut A8).
+- BETA.INV(p,2.5,5E9) and BETA.INV(p,3,5E9) miss the true quantile by about -2.9E-17 to +7.7E-17 in x. For x above
+  about 1E-9 (p = 0.975, 0.999999) x is a multiple of 2^-50 to 2^-53 with 21 to 25 significant bits; plain bisection
+  of [0, 1] on an accurate CDF reproduces it (shape 2.5: 52nd or 53rd halving; shape 3: 50th or 52nd; lower or
+  upper end). For smaller x the result is off that grid (denominators 2^81 to 2^92), and neither bisection, linear interpolation in the
+  last bracket, nor Newton from the mean reproduces it.
+Evidence: probes-numeric t1538-f-inv-huge-df (156 cells) and t1538-beta-dist-at-excel-inv (24 cells), excel-graph,
+2026-10-23.
+Status: VERIFIED for the values above; Excel's BETA.INV stop rule at a huge shape is UNVERIFIED (T-1538)
+Tasks: T-1538, T-1745
 
 ## Student-t quantile at a tiny probability (T-1531)
 Rule: T.INV, T.INV.2T, TINV and CONFIDENCE.T never error for a tiny p or alpha: the quantile follows the power-law tail, so it is finite and huge for a small df (`T.INV(1E-300,1)` = -3.183098861837907E299, about 1/(pi p)) and about -79 for df = 99999.

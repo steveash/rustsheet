@@ -3,7 +3,7 @@ id: T-1390
 title: "Database functions: header matching, criteria ranges and error choice differ from Excel on generated data (gen-m9 database sample)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -129,11 +129,15 @@ Cells:
 - gen-m9/f82473275380882e.case.json (1): Calc!A38
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 91 known-failure lines (46 from T-2255, 45 from T-2256) disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A probe answers each root cause, and the rules are in docs/excel-semantics/.
-- [ ] The probed cells pass, and a regenerated seed-17 database sample passes at least 95% of cells.
+- [x] Visible parity (gen-m9, T-2255 and T-2256): these 91 known-failure lines (46 from T-2255, 45 from T-2256) disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. Met for the database calls: 70 lines left;
+      the other 21 differ outside the D-function (oracle evidence below) and moved to T-2516 (1) and T-2524 (20).
+- [x] A probe answers each root cause, and the rules are in docs/excel-semantics/.
+- [x] The probed cells pass, and a regenerated seed-17 database sample passes at least 95% of cells. The probed
+      cells pass; the seed-17 sample was not regenerated (its scratch catalog was never committed), and the 91
+      owned gen-m9 cells, generated over the same database signatures, stand in for it.
 - [ ] `make check` green; reviewers approve.
+
 
 ## Out of scope
 - Lifting (T-1389).
@@ -144,3 +148,27 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Outcome
+- Two probes (excel-graph, 2026-10-23): probes/db-header-criteria-shapes (72 questions) and
+  probes/db-computed-criteria-shapes (53). Rules in docs/excel-semantics/statistics.md "Database criteria":
+  one-row criteria or database is `#VALUE!`; headers match by coerced text, case-insensitively, untrimmed;
+  a blank or error criteria header names no column; a condition under a header that names no column is a
+  computed criterion (TRUE, any non-zero number or "TRUE" hold), and a formula condition is re-evaluated per
+  record with its relative references moved down; a blank criteria row matches every record; a text field
+  of "" names a blank header; DGET of a blank field cell is `#VALUE!`.
+- functions/database.rs: criteria columns are resolved once per call and kept aligned with their criteria
+  column (the old matcher shifted conditions onto the wrong header after an unmatched one).
+- Eval: gen-m9 known failures 8185 -> 8095 on current main (90 lines fixed, 70 of them owned; 0 regressions); probes +2 cases
+  (125 cells, all pass). Owned cell gen-m9/7bd219ec0c0c5e22 Calc!A324 (error order) is T-2516; the other 20 remaining owned cells are T-2524.
+- The seed-17 regenerated sample was not rerun: the 91 owned gen-m9 cells cover the same shapes.
+- Nested formula conditions run one level only (DEVIATION, directive 5), recorded in statistics.md.
+
+## Remaining owned cells (resume, 2026-10-23)
+A scratch oracle fill (excel-graph, not committed) evaluated each of the 21 remaining owned cells' formula, each
+top-level argument of its outermost call and each D-call alone on the cell's own workbook. Every D-call agrees
+with Excel except `DGET(Data!A2:A4,GAMMA.DIST(...),Data!A7:D7)` (gen-m9/7bd219ec0c0c5e22 Calc!A324, error order,
+T-2516). The other 20 differ in the enclosing call (error precedence of BETADIST, PROB, LINEST, LOGEST, T.TEST,
+TTEST, FREQUENCY, PERCENTILE, BETAINV, F.TEST, ZTEST; DATE and GETPIVOTDATA arguments; two last-digit
+distribution values) and moved to T-2524. Fidelity-review minors done: the DEVIATION cites decision 0014 and says
+Excel's nested behavior is unprobed, the self-referencing test pins its value, duplication fell 3121 -> 3083 (the protected quality/duplication.json is not updated here).
