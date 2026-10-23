@@ -3,7 +3,7 @@ id: T-2291
 title: "Probe COMBINA with a small number and number_chosen past 2^31 (the n+k-1 bound is extrapolated there)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,8 @@ Excel's COMBINA for a small `number` with `number_chosen` at or past 2^31 is kno
 
 ## Out of scope
 - Changing COMBIN or COMBINA (the fix task's).
+
+## Outcome
+Probe case `probes/t2291-combina-small-n-huge-k` oracle-filled (excel-graph): all six COMBINA cells are `#NUM!` and
+`COMBIN(2^31-2,2^31-2)` is 1, so the n+k-1 bound of T-2162 is confirmed for small `n`; no fix task needed.
+numbers.md updated. Eval delta: none (probe cases only).
