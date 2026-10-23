@@ -272,7 +272,7 @@ fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
 /// A [`CallResult::ArrayFirst`] call over entries that are all equal and span several columns
 /// keeps its call's top-left only down the first column: the other columns' elements are empty,
 /// errors excepted (`UNIQUE(A1:B3,FALSE,{FALSE,FALSE;FALSE,FALSE})` is 1, 1 in column one and
-/// empty in column two, by_col or not; a 1x3 `{FALSE,FALSE,FALSE}` is 1, empty, empty;
+/// empty in column two, `by_col` or not; a 1x3 `{FALSE,FALSE,FALSE}` is 1, empty, empty;
 /// probes/m7-unique-lift-corners, T-2348; docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's
 /// lifted elements").
 fn empty_past_first_column(result: CalcResult) -> CalcResult {
