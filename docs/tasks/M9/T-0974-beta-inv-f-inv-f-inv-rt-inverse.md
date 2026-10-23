@@ -8,7 +8,7 @@ priority: P1
 size: S
 tier: opus
 campaign: visible
-depends_on: [T-0970, T-1044, T-1745]
+depends_on: [T-0970, T-1044, T-1745, T-2511]
 ---
 
 ## Goal
@@ -135,6 +135,7 @@ Cells:
 - gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A318
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A19
 - gen-m9/fec39efaba9284c3.case.json (2): Calc!A30, A106
+- T-2464 (2026-10-23): T-2511 rebuilds the inverses on the ported bratio CDF; re-triage this task's cells after it lands.
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 96 known-failure lines disappear from eval/baseline/gen-m9.txt

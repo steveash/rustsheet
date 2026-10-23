@@ -11,6 +11,43 @@ switched at the mean", "Student t prefactor per df" (B(a,b) = EXP(GAMMALN(a) + (
 a < 1, b <= 8: the TOMS 708 betaln structure), "T.DIST.RT's noise beyond t = 1 grows with a ln y", and
 "BETA.INV solves Excel's own CDF to the crossing".
 
+## Results (2026-10-23)
+The findings are in docs/excel-semantics/statistics.md, in nine "(T-2464)" entries. They start at "Incomplete beta is
+TOMS 708 `bratio`" and cover:
+- the dispatch and the callers' arguments;
+- the oriented closed forms;
+- Excel's log1p;
+- the density for min(a,b) <= 1 (M1) and for min(a,b) > 1 (Loader, PARTIAL);
+- bpser;
+- L140 and bfrac;
+- the Student t tails;
+- the integrated model, the open items and the rejected structures.
+
+Engine tasks: T-2501 to T-2511 (plan in r2-impact section 4, plus r2-tdist). Research follow-ups: T-2512 and T-2513.
+
+Each worker has a `RESULTS.md` in its directory. Its `verify-*` twin holds an independent re-score. Where the two
+disagree, the verifier wins.
+- Round 1:
+  - `w1-density`: density M1;
+  - `w2-forensics`: probes, tie response;
+  - `w3-series`: bpser;
+  - `w4-fractions`: L140, bfrac, Loader lead;
+  - `w5-triangulation`: one kernel, closed forms, argument forms, `ix_evidence.tsv`;
+  - `w6-literature`: source survey, lnB cut 8.
+- Round 2:
+  - `r2-bratio`: the integrated TOMS 708 port `bratio_excel.py`, x0 >= 0.3;
+  - `r2-log1p`: Excel's log1p;
+  - `r2-density-large`: Loader density;
+  - `r2-bpser-small`: GL53 lnB, no fpser or apser;
+  - `r2-tdist`: T call form, bgrat at b = 1/2;
+  - `r2-impact`: engine plan.
+- Verifier overrides:
+  - r2-bratio rounded formula literals to 15 digits where Excel truncates them. That refutes its "(7.3, 0.6) lnB +24
+    units" and "(30.7, 1.7) sd 47".
+  - r2-log1p's `hold` case was not untouched.
+  - r2-density-large's hold-out does not test bd0.
+  - r2-impact's hold-out is not a real one.
+
 ## Data (this directory)
 - `cells.tsv`: 39,065 oracle-filled cells (excel-graph) whose formula is exactly one call with arguments the fit
   lab resolves: fn, case, cell, args (`|`-joined Python reprs), excel (repr). BETA.DIST 3,046, F.DIST 3,234,

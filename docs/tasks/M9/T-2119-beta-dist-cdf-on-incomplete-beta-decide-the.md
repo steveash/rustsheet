@@ -8,7 +8,7 @@ priority: P1
 size: S
 tier: opus
 campaign: visible
-depends_on: [T-0970]
+depends_on: [T-0970, T-2505]
 ---
 
 ## Goal
@@ -49,6 +49,8 @@ Examples:
 Cells:
 - gen-m9/899f9555e67da2d6.case.json (1): Calc!A101
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A150
+- T-2464 (2026-10-23): Excel's kernel is TOMS 708 bratio. T-2505 moves BETA.DIST's cdf onto the bratio port, which
+  replaces the Cephes kernel this task targets; re-scope or close this task once T-2505 lands.
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
