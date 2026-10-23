@@ -1,6 +1,6 @@
 ---
 id: T-2470
-title: "Z.TEST and ZTEST: an error array is that error, one data value is #DIV/0! before sigma, a lone text or boolean cell is #N/A (gen-m9, 35 cells)"
+title: "Z.TEST and ZTEST: an error array is that error, one data value is #DIV/0! before sigma, a lone text or boolean cell is #N/A (gen-m9, 37 cells)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -59,7 +59,18 @@ Cells:
 - gen-m9/d37313406b9f6e55.case.json (1): Calc!A332
 - gen-m9/ede0323c389fc703.case.json (1): Calc!A307
 
+gen-m9 engineering and database sweep (gap triage 2026-10-23, T-2258): `BITOR(470,ZTEST(0.1,1,-0.0001)-..)` is `#DIV/0!` (one data value before sigma; ours `#NUM!`) and `DMAX(Db!A1:D5,NEGBINOM.DIST(1,7,Z.TEST(<empty cell>,3.14159,1E+8),TRUE),..)` `#N/A` (ours `#VALUE!`).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas, 2 visibly off.
+Examples:
+- gen-m9/1068c44afcd56d53 Calc!A259 `=BITOR(470,(ZTEST(0.1,1,(-0.0001))-AVERAGE(Data!$E4)))`: Excel #DIV/0!, ours #NUM!
+- gen-m9/d9d55972b50e55e8 Calc!A331 `=DMAX(Db!A1:D5,NEGBINOM.DIST(1,7,Z.TEST(Data!B7,Data!B10,1E+8),TRUE()),Db!F1:F3)`: Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/1068c44afcd56d53.case.json (1): Calc!A259
+- gen-m9/d9d55972b50e55e8.case.json (1): Calc!A331
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 35 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `Z.TEST(1/0,"x")` is `#DIV/0!`, `Z.TEST({5},3,-1)` `#DIV/0!`, `Z.TEST(A1,1)` with A1 = "x" `#N/A`,

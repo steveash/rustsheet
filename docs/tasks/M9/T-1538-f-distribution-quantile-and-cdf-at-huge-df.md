@@ -61,8 +61,10 @@ BETA.INV (T-1538)"; probes-numeric t1538-f-inv-huge-df and t1538-beta-dist-at-ex
   1.14903958213698623). Excel's is not: its F.INV is Excel's BETA.INV mapped to F, and that BETA.INV stops short of
   its own (accurate) CDF's crossing by up to about 1E-16 in x. So the owned cells need Excel's BETA.INV search
   reproduced at a huge shape, not a better forward kernel. The F.DIST cdf cells (A7, A8, A11-A14) are a forward
-  question: Excel's F.DIST there is the true value, so check `beta_reg_complement`/`beta_reg_upper` accuracy at
-  b = 5E9 (ours 0.9247647476587724 vs true 0.9247647537543169 for `F.DIST(2,5,1E10,TRUE)`).
+  question: Excel's F.DIST there is the true value. The 7E-9 miss of A8/A12/A14 is the reflected continued
+  fraction not converging at a huge shape (T-2528, split out and not blocking the quantile work; it records a
+  rejected first fix); A7/A11/A13 are about
+  10 ulp off (A7 0.7764950711139107 vs Excel ...097), the large-shape prefactor's precision.
 - F.INV(p,d1,d2) = 1/F.INV.RT(p,d2,d1) within 2 ulps everywhere probed, so one search per (p, smaller-df-first)
   pair serves both.
 - Search clue: for x above about 1E-9, Excel's BETA.INV lands on a 2^-52/2^-53 grid and plain bisection of [0, 1]
