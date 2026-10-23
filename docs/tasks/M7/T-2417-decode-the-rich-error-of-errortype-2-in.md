@@ -26,7 +26,7 @@ excel-probe skill.
 ## Acceptance criteria
 - [x] A probe records ERROR.TYPE and the stored (errorType, ptg, subType) for at least three error kinds raised in a spilled LAMBDA result.
 - [x] The mapping (or the reason none is possible) is in docs/excel-semantics/arrays.md with that evidence; the importer and the snapshot reader share it.
-- [x] (three of four; 0624b684889e9228 deferred to T-2415, see Outcome) gen-m7/18b80d3fd292d63a, 0624b684889e9228, 21b4eef18424ce94 and 9bb61f6ae34c7e20 are re-filled; any cell that now
+- [ ] (three of four re-filled; 0624b684889e9228 deferred to T-2415; non-zero subTypes decoded by the T-0030 rule, their ERROR.TYPE probe moved to T-2440; see Outcome) gen-m7/18b80d3fd292d63a, 0624b684889e9228, 21b4eef18424ce94 and 9bb61f6ae34c7e20 are re-filled; any cell that now
       decodes is scored. Their undecoded cells (T-2397) come from REGEXEXTRACT, EXPAND and GROUPBY. The cached
       excel-graph recalcs of 2026-10-22 store them as `_error` values with errorType 2 (subType 0, 39, 59 or 133,
       some with `ptg` 3, 6 or 8 and an `iftab` field) and errorType 6 (subType 7). Every combination needs evidence
@@ -44,7 +44,7 @@ subType 0)`, and its ERROR.TYPE and VALUETOTEXT through INDEX are 3 and `#VALUE!
 `#VALUE!`, as errorType = ERROR.TYPE - 1 predicts. `rich_error_name` maps it (one decoder for the importer and the
 snapshot reader), with unit tests for the code and for the `errorType, ptg, subType` structure.
 Three of the four gen-m7 cases (18b80d3fd292d63a, 21b4eef18424ce94, 9bb61f6ae34c7e20) were re-filled with `--force`
-from the cached recalcs: 81 cells went from `#UNDECODED!` to `#VALUE!` and all match ours. The fourth, 0624b684889e9228,
+from the cached recalcs: 75 cells went from `#UNDECODED!` to `#VALUE!` and all match ours. The fourth, 0624b684889e9228,
 is left to T-2415: decoding its A2004 anchor makes the rest of that EXPAND footprint (AH2004:CV2008, a T-2397 spill
 hole) scored, 335 visibly-off cells of T-2415's family in an existing case, which the visible-parity lock refuses
 (decision 0088: only new cases add visibly-off cells; CI caught it once main's lock tightened). T-2415 now says to

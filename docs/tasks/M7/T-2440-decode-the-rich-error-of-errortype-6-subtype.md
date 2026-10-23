@@ -28,6 +28,8 @@ d7d6da72…, 652670ad…) carries a fallback `<fb t="e">#N/A</fb>`, Excel's own 
       INDEX for it (excel-probe skill).
 - [ ] `rich_error_name` maps 6 if the evidence agrees, with a unit test; the affected cases are re-filled with
       `rustsheet-oracle fill --force` and `make eval-baseline` is run.
+- [ ] The same probe also reads ERROR.TYPE through INDEX for one errorType 2 rich error with a non-zero subType
+      (39 or 133, the EXPAND/GROUPBY cells in the cached gen-m7 recalcs), which T-2417 decoded by the T-0030 rule only.
 - [ ] arrays.md records the finding.
 - [ ] `make check` green; reviewers approve.
 
