@@ -381,7 +381,7 @@ the lexer rejects a `B1`/`B2` calendar prefix after any token that prints in its
 fine, probes/text-locale-calendars; a color, condition or currency bracket before it, and `0;b1`, are accepted too,
 UNVERIFIED, T-2303), so the 11 gen-m5 cells above and the rejected probe codes pass. A bad section a number would
 not use in a multi-section code (`TEXT("a","0;ab1")`) rejects a text value too: UNVERIFIED (T-2303). The fill characters of the
-accepted codes (`TEXT(2.5,"a*?")` "a", ours "a ") are T-1735's.
+accepted codes (`TEXT(2.5,"a*?")` "a") add nothing, see "Fill characters" below (T-1735).
 Status: VERIFIED (excel-graph); implemented (T-2157). Related: T-1130 (text values under 1-3 section codes).
 
 ## TEXT reads a number-like text value as its number; control characters are literals (T-2158)
@@ -683,3 +683,10 @@ Unprobed engine choices (T-2209): a mixed `0`/`?` denominator puts its zeros lef
 text around the `/` also make a fraction; a `/` with no denominator after its literals stays a literal.
 Status: VERIFIED (Excel for the web; desktop Mac Excel cached values for the literals between the parts)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074
+
+## Fill characters (`*x`) add nothing to the text
+A `*x` fill (repeat) character contributes nothing to the displayed text or to TEXT(): `TEXT(7,"0*""a")` is "7a",
+`TEXT(3,"*.0.00")` is "3.00", PI() under `0.00*-` is "3.14", and 1000 under `_(* #,##0_);...` is " 1,000 " (only the `_(`
+and `_)` skips add spaces). Evidence: gen-m10 accounting built-ins and `*.0.00`/`0.00*-` text cells (excel-graph,
+2026-10-16, T-1611), gen-m5/3e134e52393061b1 A240, probes/text-format-length-limit-o A37. Implemented in the number
+branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel-graph).
