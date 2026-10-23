@@ -202,3 +202,10 @@ w2/wa/).
      instead.
    - Grep for exact roots or "structural zeros" against the analytic continuation of the reference before believing
      them: Cody's rationals show the same 1e-12 near-zeros.
+9. **Ladders: keep adding finer rungs until the slopes stop moving** (T-2122). The K3 slopes moved by 2^21 multiples
+   when rungs 22-26 landed and again by 2^26-2^28 multiples with rungs 27-30. A slope read from rungs down to 2^-k is
+   only unaliased below about 2^(k-1) cycles per unit x. Before trusting a joint solve, run the planted control at the
+   scale the real slopes imply. At 1e10 ulps, 6 anchors failed and 12 anchors recovered N4-N9 within 0.2%.
+10. **Per-run argmax reads hide the zero class** (T-2122). Filtering runs to "informative" ones (best offset gains
+    something) drops every run whose offset is near 0, so the surviving reads look like noise. Pool runs into windows
+    and keep offset 0 in the grid. K2's c3 then reads as a sawtooth (ramp and partial reset), not as a winding law.

@@ -54,7 +54,43 @@ See docs/excel-semantics/statistics.md "Incomplete beta in the ironcalc-calc wor
 and densities (T-0970)" and its accuracy note (2026-10-21), and
 docs/research/excel-kernel-playbook.md before changing the kernel.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). FDIST, F.DIST and F.DIST.RT values visibly off (42 cells).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 42 known-failure lines in eval/baseline/gen-m9.txt, 42 formulas.
+Examples:
+- gen-m9/146b46e74f2dac3b Calc!A329 `=F.DIST.RT(10,6,2)`: Excel 0.09368601255412709, ours 0.09368601255412701
+Cells:
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A329
+- gen-m9/2801c1c11c21e134.case.json (3): Calc!A130, A219, A245
+- gen-m9/285d87cea1aaa73c.case.json (2): Calc!A34, A125
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A259
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A123
+- gen-m9/3a25a03eb94fcfbd.case.json (2): Calc!A49, A181
+- gen-m9/4bad303d32cc3f46.case.json (1): Calc!A141
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A124
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A365
+- gen-m9/68d8ffb69ff739d8.case.json (4): Calc!A3, A29, A64, A273
+- gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A349
+- gen-m9/7c20351562a2d71d.case.json (2): Calc!A251, A343
+- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A144, A395
+- gen-m9/8f2ac25945af87da.case.json (1): Calc!A92
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A127
+- gen-m9/9cca17438a7e6f8a.case.json (2): Calc!A220, A225
+- gen-m9/a5828d3925575713.case.json (1): Calc!A235
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A70
+- gen-m9/a61e547a1cab994c.case.json (1): Calc!A142
+- gen-m9/b6593d7dd13f2dac.case.json (2): Calc!A50, A91
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A22
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A344
+- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A297
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A289
+- gen-m9/cde551ea787f713a.case.json (2): Calc!A88, A359
+- gen-m9/d8266bc15533702a.case.json (3): Calc!A120, A337, A364
+- gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A118
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A250
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 42 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The 16 cells in the table agree with Excel to 15 significant digits. For A30 that means a
       number, not `#NUM!`.
 - [ ] No F.DIST, F.DIST.RT, FDIST, F.TEST, BETA.DIST, BETA.INV or F.INV cell in ironcalc-calc,

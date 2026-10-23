@@ -35,7 +35,17 @@ Needs the T-2043 oracle sweep (probes-numeric case `im-last-digit-sweep`); T-090
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 9 numeric past half a unit in the 15th digit and 2 with a wrong type, error or text, blamed on IMREAL 6, IMCSC 5, IMSECH 3, IMAGINARY 3, IMCOT 1, IMLOG2 1, IMSEC 1. Every one is listed above.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). `IMSECH("3+4i")` Excel "-0.065294027857947+0.0752249603027732i", ours
+"-0.0652940278579471+0.0752249603027732i" (1 cell; the same input as this task's COMPLEXs.xlsx cell).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas.
+Examples:
+- gen-m9/a2e51f48717af2a1 Calc!A24 `=IMSECH("3+4i")`: Excel "-0.065294027857947+0.0752249603027732i", ours "-0.0652940278579471+0.0752249603027732i"
+Cells:
+- gen-m9/a2e51f48717af2a1.case.json (1): Calc!A24
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 9 lines in eval/baseline/ironcalc-calc.txt disappear (`make eval-baseline`); the 1 line in eval/baseline/probes.txt disappears (`make eval-baseline`); the 1 cell of the ungated gen-m9 suite passes in `make eval`, with no new known-failure lines in any baseline.
 - [ ] These 15 COMPLEXs.xlsx known-failure lines leave eval/baseline/ironcalc-calc.txt (G7, G8, G14,
       G23, H14, H23, V4, W4, W7, V15, W21, Z25, AB7, AH19, T14),

@@ -25,7 +25,7 @@ from typing import Any
 from xlsxwriter.utility import xl_rowcol_to_cell
 
 from rustsheet_tools.fitlab.exact import DOUBLE, DOUBLE_MIN_EXP, X87, exact, round_to_bits
-from rustsheet_tools.snapshot import suite_cases
+from rustsheet_tools.snapshot import is_undecoded, suite_cases
 from rustsheet_tools.spec2xlsx import parse_a1
 
 # What a candidate receives for one argument: a number, a bool, a string, an empty cell (None)
@@ -385,7 +385,10 @@ def select(
             if not (isinstance(raw, str) and (m := pattern.match(raw))):
                 continue
             entry = book.oracle.get(sheet, {}).get(address)
-            is_error = errors and isinstance(entry, dict) and entry.get("t") == "e"
+            # An undecoded rich error is no evidence of which error Excel returned (T-2397).
+            is_error = (
+                errors and isinstance(entry, dict) and entry.get("t") == "e" and not is_undecoded(entry)
+            )
             if not isinstance(entry, dict) or (entry.get("t") != "n" and not is_error):
                 sweep.non_numeric += 1
                 continue

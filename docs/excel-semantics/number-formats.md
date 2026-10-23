@@ -61,6 +61,23 @@ any date or time token that prints is `#VALUE!` in the engine: the Hijri calenda
 the lone-`B` error is about the end of the code or of the section is inferred from `"B"` and `"dB"` only.
 Tasks: T-1262
 
+## Bare digits beside a date token
+Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`TEXT(5,"2")` = "2", `"4a"` = "4a",
+`"4 0"` = "4 3"). But a section holding one beside any date or time token, before or after it, makes the whole code
+`#VALUE!`. That holds for 3.14159, 100 and -3 alike, with `"42abc"`, `"4b"`, `"b4"`, `"4 b"`, `"1b"`, `"9b"`, `"4d"`, `"d4"`,
+`"4 d"`, `"d 4"`, `"dd 4"`, `"4yy"`, `"4mmm"`, `"4h"`, `"4s"`, `"4:mm"`, `"4e"`, `"4g"`, `"[h]4"`, `"4[h]"`, `"4/d"`, `"b.4"`,
+`"4%b"` and `"x4b"` (rows 1-6, 9-15, 22-24, 27-28, 30-34, 37-39; `"0b"` and `"#b"`, rows 7-8, are the digit-placeholder rule of T-2202). AM/PM alone does not count (`"4am/pm"` and `"4AM/PM"` are "4AM"), and
+a quoted or escaped digit prints (`"\4b"` and `"""4""b"` are "443"). The check covers every number section, also one the
+value does not use: `TEXT(3.14159,"0;4b")` is `#VALUE!`, while `"4;b"` gives "4" and `"b;4"` "43". A text or boolean value
+is rejected too (`TEXT("x","42abc")`, `TEXT(TRUE,"42abc")` and `TEXT("5","42abc")` are `#VALUE!`; `TEXT("x","4;b")` is "x";
+column D), as "TEXT checks the code before it looks at a text or boolean value" describes. `TEXT(-3,"b1")` is "-": a
+calendar prefix alone is no date token for a negative value. Ours is `#VALUE!` there (T-2388).
+Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
+Status: VERIFIED
+Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a
+code with any bad number section (formatter/format.rs).
+Tasks: T-2377, T-2388
+
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the
 value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@@\@` → "@jello@"
@@ -500,7 +517,9 @@ TEXT() with the same codes. Points the earlier probes did not show:
   `0.00*-` on PI() "3.14"; `_x` still adds one space (`_(* #,##0_)` on 1000 " 1,000 ").
 - A date or clock format over a serial it cannot show (negative, or 1234567890 past 9999-12-31) is
   255 `#`; 787 such cells. An elapsed code with a clock or fraction token joins them (`[h]:mm`,
-  `[m]:ss`, `[ss].00`, `[h]:mm:ss.0` on any negative, even -0.5, and on 1234567890), but a bare
+  `[m]:ss`, `[ss].00`, `[h]:mm:ss.0` on any negative, even -0.5, and on 1234567890; so do plain clock
+  codes `h:mm`, `h AM/PM` past 2958465.99999, gen-m5 6a511beadb56b932 Calc!A126, 6a8bb7cd6d7769ad
+  Calc!A299, a6fec430ac350c1a Calc!A356), but a bare
   elapsed code does not: `[s]` on -1.5 is "-129600" and on 1E15 "86400000000000000000" (see
   "Elapsed-time tokens"). TEXT() on the same codes is `#VALUE!` exactly where the display is 255 `#`;
   every other paired TEXT() result equals the displayed text.
@@ -509,6 +528,9 @@ TEXT() with the same codes. Points the earlier probes did not show:
   formats", "A numerator that overflows".
 - Clock and date fields come from the serial rounded to the shown second: 0.9999999999 is "0:00"
   under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
+  Also `[m]:ss` "1440:00", `d \d\a\y\s h:mm` "1 days 0:00", `dd/mm/yy` "01/01/00" (VERIFIED, gen-m10, T-1732). Implemented in
+  `DisplayClock` (formatter/elapsed.rs, rounded to whole seconds): clock fields and the day always
+  round; an elapsed count rounds only when a seconds token is in the section (`[h]`/`[m]` alone keep their truncation; unprobed).
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".
 - The text section formats booleans as well as text: `"pre "@` on TRUE is "pre TRUE", `;;;` shows
   nothing, `0.0;[Red]-0.0;0.0;"<"@">"` on an empty string "<>".
@@ -538,9 +560,10 @@ before the sign test, so a negative that rounds to one unit keeps its minus (-0.
 gen-m10 659cd5776d423ce3 F!F16, 8e073c5b2145567a F!C10). A tie at the 16th significant digit goes toward zero, as ROUND
 and General do (unprobed for displayed formats).
 Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
-rejects as a date (TEXT `#VALUE!`) displays 255 `#`.
+rejects as a date (TEXT `#VALUE!`) displays 255 `#`; formatter/format.rs (T-1731) rejects any date or
+clock token other than a lone elapsed token past serial 2958465.99999.
 Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
-clock and elapsed-with-clock codes past 2958465.99999, which still format (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
+fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[Cyan]` (T-1737; `[$USD]` currency text is implemented since T-2157, which needed it), `?.??`/`#%` (T-1738),
 scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)

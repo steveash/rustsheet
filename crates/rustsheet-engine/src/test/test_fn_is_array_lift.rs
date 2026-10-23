@@ -30,3 +30,20 @@ fn full_sheet_range_is_bounded() {
 
     assert_eq!(model._get_text("A1"), *"#ERROR!");
 }
+
+#[test]
+fn parity_counts_a_value_within_1e_10_below_an_integer_as_that_integer() {
+    // probes/iseven-isodd-rounding-threshold and -rounding-window (excel-graph, T-2382).
+    let mut model = new_empty_model();
+    model._set("A1", "=ISODD(7-1E-10)");
+    model._set("A2", "=ISODD(7-1.01E-10)");
+    model._set("A3", "=ISODD(-(7-1E-10))");
+    model._set("A4", "=ISEVEN(POWER(49,0.5-1E-15))");
+    model._set("A5", "=ISODD(1E+15-0.25)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+    assert_eq!(model._get_text("A3"), *"TRUE");
+    assert_eq!(model._get_text("A4"), *"FALSE");
+    assert_eq!(model._get_text("A5"), *"TRUE");
+}

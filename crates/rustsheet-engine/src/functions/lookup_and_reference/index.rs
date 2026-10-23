@@ -28,8 +28,8 @@ struct IndexNumbers {
 
 /// Validates INDEX's numbers, each cast already tried, in Excel's order: `area_num`'s cast error,
 /// then `area_num` below 1 (`#VALUE!`; past the last area, or NaN, is `#REF!` later, SPEC-0004), then
-/// `row_num`'s cast error and a negative `row_num` (`#VALUE!`, see [`index_number`]), then the same
-/// for `column_num`.
+/// the cast errors of `row_num` and `column_num`, then a negative `row_num` and a negative
+/// `column_num` (`#VALUE!`, see [`index_number`]).
 fn index_numbers<E>(
     area: Result<f64, E>,
     row: Result<f64, E>,
@@ -41,8 +41,11 @@ fn index_numbers<E>(
     if area < 1.0 {
         return Err(out_of_range());
     }
-    let row = index_number(row?).ok_or_else(&out_of_range)?;
-    let col = index_number(col?).ok_or_else(&out_of_range)?;
+    // A cast error in `column_num` beats a negative `row_num` (`INDEX(B2:E6,-0.5,NA())` is `#N/A`;
+    // gen-m5 372a676d47aa1427 Calc!A371, T-2375).
+    let (row, col) = (row?, col?);
+    let row = index_number(row).ok_or_else(&out_of_range)?;
+    let col = index_number(col).ok_or_else(&out_of_range)?;
     Ok(IndexNumbers { row, col, area })
 }
 
@@ -242,7 +245,7 @@ impl Model {
                     _ => None,
                 };
                 // `INDEX(XMATCH(2,{1,2,3}),{1,2})` is 2, #REF! (probes/index-literal-scalar A10).
-                let arg = scalar_as_one_element_array(arg);
+                let arg = scalar_as_one_element_array(arg, cell);
                 return self.index_lifted(row, col, area, cell, arg_error, |model, numbers| {
                     model.index_select(&arg, numbers, two_arg, cell, IndexForm::TopLeft)
                 });
@@ -267,10 +270,12 @@ impl Model {
             // and-array-constant-at H1, T-1643), `INDEX(XMATCH(2,{1,2,3}),1,1)` 2 and `INDEX(5,2)`
             // `#REF!` (probes/lookup-argument-modes, m7-argument-modes, index-literal-scalar; T-1645).
             PickedReference::Node(reference) => {
-                scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell))
+                scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell), cell)
             }
-            PickedReference::Read(read) => scalar_as_one_element_array(read),
-            PickedReference::Value(value) => RefArg::Value(scalar_as_array(value)),
+            PickedReference::Read(read) => scalar_as_one_element_array(read, cell),
+            PickedReference::Value(value) => {
+                scalar_as_one_element_array(RefArg::Value(value), cell)
+            }
         };
         self.index_select(&arg, numbers, two_arg, cell, form)
     }
@@ -608,9 +613,17 @@ fn external_index_area(
     })
 }
 
-/// INDEX's first argument with a scalar value read as a one-element array (T-1645).
-fn scalar_as_one_element_array(arg: RefArg) -> RefArg {
+/// INDEX's first argument with a scalar value read as a one-element array (T-1645). An empty
+/// value is `#VALUE!`: `INDEX(INDEX(UNIQUE(D1:D3,FALSE,{FALSE;TRUE}),2,1),1,1)`, whose inner
+/// INDEX is UNIQUE's empty element (probes/m7-lift-take-drop-sortby L25; arrays.md "UNIQUE's
+/// and SORTBY's lifted elements"; T-2300).
+fn scalar_as_one_element_array(arg: RefArg, cell: CellReferenceIndex) -> RefArg {
     match arg {
+        RefArg::Value(CalcResult::EmptyCell) => RefArg::Value(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "INDEX of an empty value".to_string(),
+        )),
         RefArg::Value(scalar) => RefArg::Value(scalar_as_array(scalar)),
         reference @ (RefArg::Ranges(_) | RefArg::Grid(_)) => reference,
     }

@@ -78,6 +78,7 @@ impl UserModel {
                     row,
                     column,
                     new_value: label.to_string(),
+                    legacy: false,
                     old_value: Box::new(old_value),
                 });
             }

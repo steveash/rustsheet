@@ -9,7 +9,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::{check_array_size, check_range_size},
+    limits::{check_array_cells, check_array_size, check_range_size},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -283,11 +283,18 @@ impl Model {
                 rows: usize::try_from(range.right.row - range.left.row + 1).unwrap_or(0),
                 columns: usize::try_from(range.right.column - range.left.column + 1).unwrap_or(0),
             },
+            // A blank element of an array value reaches the LAMBDA as the empty value IFERROR gives
+            // a blank cell: ISBLANK TRUE, yet COUNT and AVERAGE count it as 0
+            // (`MAP(HSTACK(Z1:Z2,{1;2}),_xleta.COUNT)` is 1,1,1,1, probes/t2413-blank-in-stacked-arrays
+            // A7:A11, T-2413). A range's blank cell stays a blank cell (A43:A47).
             Source::Values(data) => LambdaGrid::Values(
                 data.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|node| array_node_to_calc_result(node, cell))
+                            .map(|node| match node {
+                                ArrayNode::Empty => CalcResult::EmptyArg,
+                                node => array_node_to_calc_result(node, cell),
+                            })
                             .collect()
                     })
                     .collect(),
@@ -379,15 +386,26 @@ impl Model {
         let [rows, cols, lambda_result] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let extent = |value: &CalcResult, name: &str| -> Result<usize, CalcResult> {
-            let n = self.cast_number_ref(value, cell)?.floor() as i64;
-            if n < 1 {
+        // Both sizes are read, errors first in argument order, before either is validated:
+        // `MAKEARRAY(1.5,NA(),..)` is `#N/A` (probes/expand-makearray-past-grid D9-D16).
+        let sizes = self
+            .cast_number_ref(rows, cell)
+            .and_then(|rows| Ok((rows, self.cast_number_ref(cols, cell)?)));
+        let (rows, cols) = match sizes {
+            Ok(sizes) => sizes,
+            Err(error) => return error,
+        };
+        let extent = |x: f64, name: &str| -> Result<usize, CalcResult> {
+            // Unlike SEQUENCE, a fractional size is #VALUE!, not truncated (arrays.md
+            // "MAKEARRAY rows and columns must be whole numbers").
+            if x.fract() != 0.0 || x < 1.0 {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
                     cell,
-                    format!("{name} must be >= 1"),
+                    format!("{name} must be a whole number >= 1"),
                 ));
             }
+            let n = x as i64;
             Ok(usize::try_from(n).unwrap_or(usize::MAX))
         };
         let rows = match extent(rows, "rows") {
@@ -399,7 +417,16 @@ impl Model {
             Err(error) => return error,
         };
 
-        if let Some((error, message)) = check_array_size(rows, cols) {
+        // Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is
+        // 16385 (probes/expand-makearray-past-grid D1); rows past it stay `#VALUE!`, and so do
+        // columns past it above the cell bound (`MAKEARRAY(3,1E15,..)` is `#VALUE!`,
+        // gen-m7/b2078b5d702c691a A2553).
+        let refused = if check_array_cells(rows, cols).is_some() {
+            check_array_size(rows, cols)
+        } else {
+            check_array_size(rows, 1)
+        };
+        if let Some((error, message)) = refused {
             return CalcResult::new_error(error, cell, message);
         }
 

@@ -3,7 +3,7 @@
 //! value, errors included (an array-valued entry's: its top-left value). `WholeByCaller` arguments
 //! stay as written.
 
-use super::super::kinds::{ArgKind, ArgKinds, CallResult};
+use super::super::kinds::{ArgKind, ArgKinds};
 use crate::functions::Function;
 use crate::language::get_default_language;
 use crate::test::util::new_empty_model;
@@ -37,7 +37,8 @@ fn mismatches(function: &Function, kinds: &ArgKinds, checked: &mut Vec<usize>) -
     // A repeated parameter is checked up to one repeat past the listed ones.
     let last = kinds.max.min(kinds.params.len() + 1).min(SAMPLES[0].len());
     let mut calls = Vec::new();
-    for count in kinds.required.max(1)..=last {
+    // Only valid counts: a count that stops inside a repeat cycle is the count error.
+    for count in (kinds.required.max(1)..=last).filter(|&count| kinds.accepts(count)) {
         for sample in &SAMPLES {
             let scalar = &sample[..count];
             for index in (0..count).filter(|&index| lifts(kinds, index)) {
@@ -47,7 +48,7 @@ fn mismatches(function: &Function, kinds: &ArgKinds, checked: &mut Vec<usize>) -
                 // An array-valued entry's element is its scalar call's top-left value
                 // (SPEC-0011 "Array-valued functions" rule 2).
                 let scalar_call = format!("{name}({})", scalar.join(","));
-                let scalar_call = if kinds.result == CallResult::Array {
+                let scalar_call = if kinds.result.is_array() {
                     format!("=INDEX({scalar_call},1,1)")
                 } else {
                     format!("={scalar_call}")

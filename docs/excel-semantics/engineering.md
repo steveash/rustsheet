@@ -56,8 +56,8 @@ approximations, reproduced only because Excel's output matches them bit-for-bit.
 ## BESSEL order cap
 Rule: RustSheet returns `#NUM!` for BESSELI, BESSELJ, BESSELK and BESSELY orders above 100,000 to bound per-cell work on
 untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0` (probes-numeric/m9-bessel, T-1004), so the engine differs above 100,000 for J.
-BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's values above
-100,000 are unprobed for them.
+BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's BESSELI above
+100,000 is 0 (`BESSELI(2.5,100001)`, `(2.5,1E+6)`; "Engineering edge-pool smoke check (T-2249)"); BESSELK's is unprobed.
 A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
 (SPEC-0011 `ValueWork::Loop`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
 cap and 1 for n = 0; an order past the cap is refused (`#NUM!`) before the kernel loops and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
@@ -369,7 +369,7 @@ Status: VERIFIED (excel-graph, 2026-10-21, `im-last-digit-sweep`); the kernels a
 Also found by the sweep (same case; Ours is what RustSheet gives):
 - Tiny arguments lose about 8 digits in IMCSC and IMCOT: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (E70, F70; exact 50000.0000016667), `IMCSC("0.00001i")` imaginary part -99999.9917276303 (F65), IMCOT real 49999.9958596485 (Q70), imaginary -49999.9958663151 (R70) and -99999.9917326303 (R65). Ours gives the exact values (E70 50000.0000016667, F65 -99999.9999983333). Status: VERIFIED (excel-graph); T-2044 must reproduce this loss.
 - Excel keeps tiny results where the denominator is huge: `IMCSC("-724.227-562.884i")` is -6.94796703439417E-245-6.26263832046024E-246i (E55, F55; the IMSEC of it is -6.26263832046024E-246+6.94796703439417E-245i, G55:I55) and `IMSECH("-524.561+5.3113i")` is 1.73046857535442E-228-2.53533899849465E-228i (K42, L42). Ours: 0. Status: VERIFIED; T-2335.
-- `IMCSC("0")`, `IMLOG2("0")` and `IMCOT("0")` are `#NUM!` (D21, M21, P21), `IMARGUMENT("0")` is #DIV/0!. Ours: the text `NaNNaNi`, `-inf`, `inf`, so the "zero denominator stays #NUM!" note below is only true through IMREAL/IMAGINARY wrappers. Status: VERIFIED; T-2334.
+- `IMCSC("0")`, `IMLOG2("0")` and `IMCOT("0")` are `#NUM!` (D21, M21, P21), `IMARGUMENT("0")` is #DIV/0!. Implemented (T-2334); before it we answered the text `NaNNaNi`, `-inf`, `inf`. Status: VERIFIED.
 Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2 and IMCOT #NUM! (D21:F21, M21:R21).
 
 ## IMTAN and IMCOT use the double-angle form (T-0907)
@@ -503,8 +503,35 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
   (`IMCOSH("711+1.5i")`). A tiny nonzero imaginary part with a large real one is UNVERIFIED. Implemented.
 - IMSEC, IMCSC, IMSECH and IMCSCH answer `0` (both parts) where the denominator overflows
   (`IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`, `IMSEC("1.5+711i")`); a zero denominator stays
-  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented except IMCSC of 0 returning text (T-2334); plain IMCSCH("0") is UNVERIFIED.
+  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented (IMCSC of 0 since T-2334); plain IMCSCH("0") is UNVERIFIED. A denominator that underflows to 0 (`IMCSC("1E-200")`, `IMCOT("1E-310")`) is also `#NUM!` here: UNVERIFIED.
 - IMTAN and IMCOT near the edge answer `i` / `-i` (`IMTAN("1.5+710.4i")`); IMLN, IMLOG10, IMLOG2
   and IMSQRT do not overflow there. Already matched.
 - Last-digit differences remain as known failures (a kernel question, not a rule; T-2231): IMCOSH/IMSINH
   `710.4+1.5i` (several units in the 15th digit) and `1.5+710.4i`, IMSECH `1.5+711i`, IMCOT `711+1.5i`, IMLOG2 and IMLOG10 at 710-800.
+
+## Engineering edge-pool smoke check (T-2249)
+Rule: observed values at the edges of the M9 engineering generator pools (tools/src/rustsheet_tools/gen/pools.py):
+- COMPLEX's suffix: empty text is the default `i` (`COMPLEX(3,4,"")` is "3+4i"); "I", "J", "k", "ij", " i", 1 and TRUE
+  are `#VALUE!`.
+- An inumber may start with `+`: `IMABS("+i")` is 1 and `IMSUB("+i","1")` is "-1+i" (ours `#NUM!`, T-2420).
+- OCT2DEC of 11 octal digits given as a number (`OCT2DEC(77777777777)`) is `#NUM!` (ours 7516192767, T-2420); OCT2DEC,
+  OCT2BIN, HEX2DEC, HEX2BIN and HEX2OCT of TRUE are `#VALUE!` (ours `#NUM!`, T-2420).
+- HEX2BIN's negative range ends at FFFFFFFE00 ("1000000000"); FFFFFFFDFF and FFE0000000 are `#NUM!`.
+- `places`: a fraction truncates (`DEC2BIN(9,2.9)` is `#NUM!`, below the length; `DEC2BIN(9,10.5)` "0000001001"), "4"
+  is read, 0, -1 and 11 are `#NUM!`, "x" and TRUE `#VALUE!`; a negative result ignores places 1 to 10 and 2.9 alike.
+- `BESSELI(713,0)` and `(714,0)` are `#NUM!`; `BESSELK(713,1)` and `(714,1)` are 0 (ours a subnormal, T-2421).
+  BESSELI past our order cap is 0 (`BESSELI(2.5,100001)`, `(2.5,1E+6)`), as BESSELJ is ("BESSEL order cap").
+  BESSELJ and BESSELY at x = 1000 and 1E+5 miss by a few ulps (x above 100 is T-2140's).
+- `ERF(5.9)` is 0.9999999999999999 and `ERF(6)` 1; `ERFC(26.5)` is 2.2109076642637346E-307 and `ERFC(27)` 0.
+- BIT*: 2^48-1 is the largest number (2^48 is `#NUM!`), a fraction or a negative number is `#NUM!`, "13" is read
+  and TRUE is 1. BITLSHIFT past 2^48-1 is `#NUM!` (`BITLSHIFT(2^47,1)`); a fractional shift truncates
+  (`BITLSHIFT(1,1.5)` 2, `(1,-1.5)` 0). `BITLSHIFT(1,48)` and `(1,54)` are `#NUM!`, but `(1,53)` and `(1,-53)` are 0
+  (ours `#NUM!`, T-2421), and `(1,-54)` is `#NUM!`.
+Evidence: a scratch suite of 790 cells (one to four formulas per entry of the pools complex_text, complex_suffix,
+bin_digits, oct_digits, hex_digits, dec_number, places, bessel_x, bessel_order, convert_unit, erf_x, bit_number,
+bit_shift, db_table, db_field and db_criteria), filled through excel-graph on 2026-10-22 and deleted afterwards, as
+the task asked. Every cell had a value (none pending). Ours: 760 of 790 match. The rest are listed here, in
+criteria.md "Database edge-pool smoke check (T-2249)", and the known DEVIATION and last-digit families named above.
+Status: UNVERIFIED (probe pending: T-2420 and T-2421 commit probe cases for the mismatches and the BESSELI
+cap cells; the cells that match are regenerated by the gen-m9 sweep, T-2258)
+Tasks: T-2249, T-2420, T-2421, T-2258

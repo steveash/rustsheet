@@ -550,6 +550,11 @@ impl Model {
         }
     }
 
+    /// The value of `node` in the formula of `cell`. The nodes every nested call goes through
+    /// (operators, functions, calls of a name, references) are answered here and the rest by
+    /// [`Self::evaluate_cold_node`], out of line, so that this frame stays small: inlined, the
+    /// other arms made it 1.2 KB in a release build, and each LAMBDA calling itself through
+    /// `IF(n=0,0,g(g,n-1)+1)` nests three of them (T-0444).
     pub(crate) fn evaluate_node_in_context(
         &mut self,
         node: &Node,
@@ -564,7 +569,6 @@ impl Model {
             | OpConcatenateKind { .. }
             | CompareKind { .. } => self.evaluate_operator_chain(node, cell),
             NumberKind(value) => CalcResult::Number(*value),
-            StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#).into()),
             BooleanKind(value) => CalcResult::Boolean(*value),
             ReferenceKind {
                 sheet_name: _,
@@ -583,18 +587,6 @@ impl Model {
                     column: column1,
                 })
             }
-            WrongReferenceKind { .. } | WrongRangeKind { .. } => {
-                self.wrong_reference_value(node, cell)
-            }
-            OpRangeKind { left, right } => self.get_range(left, right, cell),
-            OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
-            SheetSpanKind {
-                first_index,
-                last_index,
-                reference,
-                ..
-            } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
-            OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
             RangeKind {
                 sheet_index,
                 row1,
@@ -627,72 +619,7 @@ impl Model {
             }
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             NamedFunctionKind { name, args, id } => {
-                let lambda_result = if let Some(var_id) = id {
-                    // Bound by LET or LAMBDA: what it holds is called, a value too.
-                    match self.variable_callee(*var_id, name, cell) {
-                        Ok(callee) => callee,
-                        Err(error) => return error,
-                    }
-                } else {
-                    // Not bound by LET — look up as a defined-name Lambda.
-                    // Prefer sheet-local (current sheet) over global (scope = None),
-                    // matching Excel's name resolution order.
-                    let name_lower = name.to_lowercase();
-                    let found = self
-                        .parsed_defined_names
-                        .get(&(Some(cell.sheet), name_lower.clone()))
-                        .or_else(|| self.parsed_defined_names.get(&(None, name_lower)))
-                        .cloned();
-                    match found {
-                        Some(ParsedDefinedName::LambdaDefinition(definition)) => {
-                            self.defined_name_lambda(definition)
-                        }
-                        _ => {
-                            return CalcResult::new_error(
-                                Error::NAME,
-                                cell,
-                                format!("Invalid function: {name}"),
-                            )
-                        }
-                    }
-                };
-                self.call_variable(lambda_result, args, cell)
-            }
-            ArrayKind(s) => CalcResult::Array(s.to_owned()),
-            DefinedNameKind((name, scope, _)) => {
-                if let Some(value) = self.evaluate_external_name(name, cell) {
-                    return value;
-                }
-                if let Some(parsed_defined_name) = self.parsed_defined_name(name, *scope).cloned() {
-                    match parsed_defined_name {
-                        ParsedDefinedName::CellReference(reference) => {
-                            self.evaluate_cell(reference.at(cell).left)
-                        }
-                        ParsedDefinedName::RangeReference(reference) => reference.range_at(cell),
-                        ParsedDefinedName::LambdaDefinition(definition) => {
-                            self.defined_name_lambda(definition)
-                        }
-                        ParsedDefinedName::ErrorLiteral(error) => CalcResult::new_error(
-                            error,
-                            cell,
-                            format!("Defined name \"{name}\" is an error."),
-                        ),
-                        ParsedDefinedName::Formula(body) => {
-                            self.evaluate_defined_name_formula(name, &body, cell)
-                        }
-                        ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
-                            Error::NAME,
-                            cell,
-                            format!("Defined name \"{name}\" does not parse."),
-                        ),
-                    }
-                } else {
-                    CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        format!("Defined name \"{name}\" not found."),
-                    )
-                }
+                self.evaluate_named_function_call(name, args, *id, cell)
             }
             // A variable bound to a single cell is that cell's value where a value is wanted, and
             // the reference itself where a reference is wanted (`evaluate_node_with_reference`).
@@ -700,94 +627,25 @@ impl Model {
                 CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
                 value => value,
             },
-            // Their operand is turned into a number, element by element on a range or an array.
-            UnaryKind { .. } => self.apply_unary_chain(node, cell),
-            ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
-            ParseErrorKind {
-                formula, message, ..
-            } => CalcResult::new_error(
-                Error::ERROR,
-                cell,
-                format!("Error parsing {formula}: {message}"),
-            ),
             EmptyArgKind => CalcResult::EmptyArg,
-            // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
-            // `ungrouped` above sees through both.
-            Group { .. } | StructuredReferenceKind { .. } => CalcResult::new_error(
-                Error::ERROR,
-                cell,
-                "Unpeeled group or structured reference".to_string(),
-            ),
-            SpillRangeOperator { child } => match self.spill_anchor_operand(child, cell) {
-                CalcResult::Range { left, right } => {
-                    if left != right {
-                        return Self::spill_anchor_range_error(cell);
-                    }
-                    // The spill range depends on the *shape* of the anchor, which is
-                    // only known once the anchor has been evaluated. Evaluating it here
-                    // also records the dependency in `readers`.
-                    if let CalcResult::Error {
-                        error: Error::CIRC, ..
-                    } = self.evaluate_cell(left)
-                    {
-                        return CalcResult::new_error(
-                            Error::CIRC,
-                            cell,
-                            "Circular reference detected".to_string(),
-                        );
-                    }
-                    let sheet = left.sheet;
-                    let row = left.row;
-                    let column = left.column;
-                    let worksheet = match self.workbook.worksheet(sheet) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            return CalcResult::new_error(
-                                Error::REF,
-                                cell,
-                                format!("Sheet index {sheet} not found: {e}"),
-                            );
-                        }
-                    };
-                    match worksheet.get_cell_spill(row, column) {
-                        Ok((width, height)) => CalcResult::Range {
-                            left: CellReferenceIndex { sheet, row, column },
-                            right: CellReferenceIndex {
-                                sheet,
-                                row: row + height - 1,
-                                column: column + width - 1,
-                            },
-                        },
-                        Err(e) => CalcResult::new_error(
-                            Error::REF,
-                            cell,
-                            format!("Cell {sheet}!{row},{column} not found: {e}"),
-                        ),
-                    }
-                }
-                // An `@` that finds no cell is `#VALUE!`, and ANCHORARRAY passes it on
-                // (`=ANCHORARRAY((@A1:B2))` in D20, probes/anchorarray-at-operand, T-1115).
-                error @ CalcResult::Error { .. }
-                    if matches!(child.ungrouped(), ImplicitIntersection { .. }) =>
-                {
-                    error
-                }
-                _ => Self::spill_anchor_error(child, cell),
-            },
-            ImplicitIntersection { child, .. } => {
-                let result = self.evaluate_implicit_intersection_operand(child, cell);
-                self.implicit_intersection_to_value(result, cell)
-            }
-            LambdaDefKind { parameters, body } => {
-                let definition = Arc::new((parameters.clone(), *body.clone()));
-                CalcResult::Lambda(self.store_lambda(definition))
-            }
-            LambdaCallKind { lambda, args } => {
-                // With a reference kept as one, a cell and an INDEX or IF that selects one
-                // included: a called reference is `#REF!` (`call_callee`).
-                let callee = self.evaluate_reference_arg(lambda, cell);
-                self.call_callee(callee.into_single_area(cell), args, cell)
-            }
+            StringKind(_)
+            | WrongReferenceKind { .. }
+            | WrongRangeKind { .. }
+            | OpRangeKind { .. }
+            | OpIntersectKind { .. }
+            | SheetSpanKind { .. }
+            | OpUnionKind { .. }
+            | ArrayKind(_)
+            | DefinedNameKind(_)
+            | UnaryKind { .. }
+            | ErrorKind(_)
+            | ParseErrorKind { .. }
+            | Group { .. }
+            | StructuredReferenceKind { .. }
+            | SpillRangeOperator { .. }
+            | ImplicitIntersection { .. }
+            | LambdaDefKind { .. }
+            | LambdaCallKind { .. } => self.evaluate_cold_node(node, cell),
         }
     }
 
@@ -2774,8 +2632,16 @@ impl Model {
     // false otherwise.
     pub(crate) fn can_clear_range(&self, range: &Area) -> Result<bool, String> {
         let sheet = range.sheet;
-        for row in range.row..range.row + range.height {
-            for column in range.column..range.column + range.width {
+        // Existing cells only: an absent one is a plain cell, and a table's range can span the sheet.
+        let sheet_data = &self.workbook.worksheet(sheet)?.sheet_data;
+        let rows = sheet_data
+            .rows()
+            .into_iter()
+            .filter(|row| (range.row..range.row + range.height).contains(row));
+        for row in rows {
+            let columns = sheet_data.columns_in_row(row).into_iter();
+            for column in columns.filter(|c| (range.column..range.column + range.width).contains(c))
+            {
                 match self.get_cell_structure(sheet, row, column)? {
                     CellStructure::ArrayFormula { range: r } => {
                         let (width, height) = r;

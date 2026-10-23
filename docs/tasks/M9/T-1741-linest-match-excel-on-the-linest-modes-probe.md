@@ -35,7 +35,85 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 13 cells, 1 numeric pa
 | probes/linest-modes Sheet1!K246 | `=LINEST({2,4,6},{1,2,3},TRUE,TRUE)` | 2 | #REF! |
 | probes/linest-modes Sheet1!K71 | `=LINEST(B2:B9,,TRUE,TRUE)` | 1.9976190476190474 | #REF! |
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). LINEST in 159 cells (8 of them spilled B cells whose anchor is `#VALUE!` in Excel):
+a scalar known_y with no known_x is one point (anchor 0; 42 cells), a scalar known_y beside a multi-cell known_x, or a
+range known_y beside a one-cell text known_x, is `#REF!` (size before text), error arguments in Excel's order, and a range
+known_y holding text is `#VALUE!` with nothing spilled. statistics.md "LINEST, LOGEST and GROWTH in the gen-m9 sweep
+(T-2255)".
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 159 known-failure lines in eval/baseline/gen-m9.txt, 151 formulas.
+Examples:
+- gen-m9/05d44f6dd6cfc567 Calc!A244 `=LOGNORM.INV((LINEST(2.5,Data!B6:D12)-CHISQ.TEST(Data!A10:A11,Data!A8:C10)),ROW(),SUMIFS(Data!B4:D6,Data!C1:E7,"<>"))`: Excel #REF!, ours #VALUE!
+- gen-m9/05d44f6dd6cfc567 Calc!A378 `=LINEST(2.5)`: Excel 0.0, ours #VALUE!
+- gen-m9/06b4e8f5de409d5e Calc!A121 `=LINEST(SUMPRODUCT(Data!C10:D12,0.5),GAMMADIST(VARA(0.2,Data!D8:D10,Data!E10:E10),0.999,((-2.5)-Data!B$4),""),((Data!D9&"a*")<=ROUNDDOWN(60,123456789.123)),VLOOKUP((Data!$A$10/100),Data!A11:D12,2,("a*">Data!$B10)))`: Excel #VALUE!, ours #N/A
+- gen-m9/06b4e8f5de409d5e Calc!A243 `=LINEST(Data!A1:C2,Data!A6:C7,Data!D$3)`: Excel #VALUE!, ours #REF!
+- gen-m9/0a9226016e8f5f33 Calc!A208 `=LINEST(GAMMA.INV((Data!A$9+Data!B2),BYCOL({1,#N/A,3},LAMBDA(w,w&"")),(Data!$B12*Data!A$8)),Data!C7:E7)`: Excel #VALUE!, ours #NUM!
+- gen-m9/0a9226016e8f5f33 Calc!A346 `=LINEST(SUM(COT(PI())),(((-0.0001)/Data!B10)*(Data!D4*1.005)))`: Excel #DIV/0!, ours #VALUE!
+Cells:
+- gen-m9/05d44f6dd6cfc567.case.json (3): Calc!A244, A317, A378
+- gen-m9/06b4e8f5de409d5e.case.json (3): Calc!A60, A121, A243
+- gen-m9/0a614cfe974b59c3.case.json (4): Calc!A90, A151, A212, A273
+- gen-m9/0a9226016e8f5f33.case.json (5): Calc!A24, A208, A300, A340, A346
+- gen-m9/146b46e74f2dac3b.case.json (3): Calc!A38, A99, A160
+- gen-m9/165db58d1540f014.case.json (4): Calc!A274, B274, A320, A366
+- gen-m9/27601819397dd56e.case.json (2): Calc!A151, A243
+- gen-m9/2801c1c11c21e134.case.json (2): Calc!A224, A285
+- gen-m9/285d87cea1aaa73c.case.json (3): Calc!A61, A122, A366
+- gen-m9/2a18b2f5a4dc43ac.case.json (2): Calc!A273, B273
+- gen-m9/320d51765af9b6b7.case.json (4): Calc!A63, A247, A253, A392
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A204
+- gen-m9/3a25a03eb94fcfbd.case.json (2): Calc!A76, A387
+- gen-m9/40425341c5034eed.case.json (3): Calc!A101, A147, A285
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A224
+- gen-m9/4ab2ba98d26c8a5e.case.json (2): Calc!A30, A76
+- gen-m9/4bad303d32cc3f46.case.json (2): Calc!A238, A299
+- gen-m9/4e55500bb8ad3cd8.case.json (3): Calc!A100, A316, B316
+- gen-m9/589f42e67f4b4b8d.case.json (3): Calc!A192, A284, B284
+- gen-m9/58e3253bbd3a7a82.case.json (5): Calc!A14, A60, A244, A290, A336
+- gen-m9/60b0b6e69ad35a45.case.json (2): Calc!A44, A166
+- gen-m9/623663cacea53bbc.case.json (2): Calc!A27, A393
+- gen-m9/68d8ffb69ff739d8.case.json (2): Calc!A222, A283
+- gen-m9/7674c89c824aca43.case.json (3): Calc!A170, A262, A292
+- gen-m9/7bd219ec0c0c5e22.case.json (2): Calc!A102, B102
+- gen-m9/7c20351562a2d71d.case.json (4): Calc!A124, A170, A216, A262
+- gen-m9/85f48d5cdfb24555.case.json (1): Calc!A290
+- gen-m9/899f9555e67da2d6.case.json (1): Calc!A68
+- gen-m9/8d3588d8df0812df.case.json (4): Calc!A3, A125, A186, A369
+- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A145, A206
+- gen-m9/8f2ac25945af87da.case.json (1): Calc!A5
+- gen-m9/8fec7b207f4dd753.case.json (4): Calc!A33, A155, A277, A338
+- gen-m9/984cba67bbe6972b.case.json (1): Calc!A265
+- gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A373
+- gen-m9/a54c738c697617c3.case.json (2): Calc!A120, A303
+- gen-m9/a5828d3925575713.case.json (4): Calc!A136, A182, A320, A366
+- gen-m9/a612e89321a6df9c.case.json (3): Calc!A76, A128, A266
+- gen-m9/a61e547a1cab994c.case.json (2): Calc!A60, A243
+- gen-m9/a790a4d4a6a82756.case.json (1): Calc!A298
+- gen-m9/a7bf0d8d81d33ba6.case.json (2): Calc!A5, A249
+- gen-m9/abc2939ebd1e2365.case.json (2): Calc!A35, A173
+- gen-m9/b4173fe25109a238.case.json (3): Calc!A217, A278, A400
+- gen-m9/b6593d7dd13f2dac.case.json (4): Calc!A29, A212, A334, A395
+- gen-m9/b8ee55934c5b824c.case.json (5): Calc!A98, A196, A201, A339, B339
+- gen-m9/bbdfc06cae0e0d71.case.json (4): Calc!A65, A111, A203, A295
+- gen-m9/bc40d37cb4d8301d.case.json (4): Calc!A95, A156, A217, A304
+- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A284
+- gen-m9/c18dbf21f11093f3.case.json (3): Calc!A44, A182, A274
+- gen-m9/c2974c061384fdd9.case.json (4): Calc!A89, A150, B150, A333
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A122
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A232
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A392
+- gen-m9/cde551ea787f713a.case.json (2): Calc!A90, A273
+- gen-m9/d8266bc15533702a.case.json (3): Calc!A73, A195, A256
+- gen-m9/e6cf3b20a014e6a3.case.json (2): Calc!A89, A333
+- gen-m9/eced4bb6a0234c9e.case.json (2): Calc!A235, A281
+- gen-m9/ee2497a5e683c5d9.case.json (4): Calc!A43, A227, B227, A319
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A262
+- gen-m9/f34f66fb7f81e673.case.json (5): Calc!A26, A72, A231, A256, A302
+- gen-m9/fd9fa22d212080d6.case.json (2): Calc!A138, A260
+- gen-m9/fec39efaba9284c3.case.json (4): Calc!A88, A180, A226, A272
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 159 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 13 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 13 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/linest-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.
 - [ ] `make check` green; reviewers approve.

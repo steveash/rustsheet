@@ -82,6 +82,30 @@ fn format_abs(abs_value: f64, decimals: i32, use_thousands: bool) -> String {
     }
 }
 
+/// Longest text DOLLAR and FIXED return: a longer result is `#VALUE!`, whatever the value's
+/// magnitude (`FIXED(1E+200,2,TRUE)` prints, `FIXED(1E+188,4)` at 256 characters does not).
+/// DOLLAR counts one more character for a value without parentheses, as if the `_)` padding of
+/// its positive format section were part of the text (docs/excel-semantics/text.md "FIXED and
+/// DOLLAR return at most 255 characters", probes/fixed-dollar-length-bound).
+const MAX_FORMATTED_LEN: usize = 255;
+
+/// `text` as DOLLAR or FIXED's result, or `#VALUE!` past [`MAX_FORMATTED_LEN`] with `padding`
+/// extra characters counted. The text is ASCII, so bytes are characters.
+fn formatted_result(
+    text: String,
+    padding: usize,
+    cell: CellReferenceIndex,
+) -> Result<CalcResult, CalcResult> {
+    if text.len() + padding > MAX_FORMATTED_LEN {
+        return Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "result longer than 255 characters".to_string(),
+        ));
+    }
+    Ok(CalcResult::String(text.into()))
+}
+
 impl Model {
     /// The `decimals` argument of DOLLAR and FIXED (default 2): truncated toward zero, and
     /// `#VALUE!` from 128 up (docs/excel-semantics/text.md#dollar-and-fixed-decimals).
@@ -128,12 +152,11 @@ impl Model {
         // (docs/excel-semantics/text.md "FIXED, DOLLAR and BAHTTEXT cut to 15 significant digits
         // first": `DOLLAR(-0.5,-1)` is "$0"), while `DOLLAR(-0.004)` keeps "($0.00)".
         let rounds_to_zero = !formatted.bytes().any(|b| matches!(b, b'1'..=b'9'));
-        let result = if value < 0.0 && !(decimals < 0 && rounds_to_zero) {
-            format!("(${formatted})")
+        if value < 0.0 && !(decimals < 0 && rounds_to_zero) {
+            formatted_result(format!("(${formatted})"), 0, cell)
         } else {
-            format!("${formatted}")
-        };
-        Ok(CalcResult::String(result.into()))
+            formatted_result(format!("${formatted}"), 1, cell)
+        }
     }
 
     /// FIXED(number, [decimals], [`no_commas`]) — Formats a number as text with fixed decimal places.
@@ -170,7 +193,7 @@ impl Model {
         } else {
             formatted
         };
-        Ok(CalcResult::String(result.into()))
+        formatted_result(result, 0, cell)
     }
 
     /// NUMBERVALUE(text, [`decimal_separator`], [`group_separator`])
@@ -200,6 +223,15 @@ impl Model {
         };
         let decimal_sep = separator(1, ".")?;
         let group_sep = separator(2, ",")?;
+        // A separator over 255 characters is #VALUE!, though only its first character is used
+        // (probes/numbervalue-separator-edges A1, A2, A10, A11, A17-A19; T-2379).
+        if number_text_too_long(&decimal_sep) || number_text_too_long(&group_sep) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Separator too long".to_string(),
+            ));
+        }
 
         // Only the first character of each separator counts, and an empty one is #VALUE!
         // (docs/excel-semantics/text.md "NUMBERVALUE reads text as VALUE does"; gen-m5/5704666097cbc5b2

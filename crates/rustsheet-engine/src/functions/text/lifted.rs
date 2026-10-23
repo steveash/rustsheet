@@ -58,8 +58,7 @@ impl Model {
             // Read once here: the cost of a lifted call depends on the text it holds.
             let value = self.collapse_single_cell(value);
             operands.push(match LiftedArg::read(self, value, cell) {
-                Ok(LiftedArg::Grid(grid)) => CalcResult::Array(grid),
-                Ok(LiftedArg::Scalar(value)) => value,
+                Ok(lifted) => lifted.into_value(),
                 Err(error) => error,
             });
         }

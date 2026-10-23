@@ -19,8 +19,8 @@ mod table_functions;
 mod tests;
 
 pub(crate) use arg_buf::ArgBuf;
-pub(crate) use driver::{grid_dims, Kernel, LiftCost, LiftOptions, LiftedArg};
-pub(crate) use kinds::{ArgKind, ArgKinds, CallResult};
+pub(crate) use driver::{broadcast_shape, grid_dims, Kernel, LiftCost, LiftOptions, LiftedArg};
+pub(crate) use kinds::{ArgKind, ArgKinds};
 pub(crate) use table_functions::lifting_table_functions;
 
 use crate::{

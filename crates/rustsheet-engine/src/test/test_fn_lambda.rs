@@ -289,3 +289,67 @@ fn calling_a_number_or_boolean_variable_is_name_with_a_message() {
         assert_eq!(model._get_error_message(cell), "A value cannot be called");
     }
 }
+
+#[test]
+fn a_call_of_a_call_is_chained() {
+    // probes/lambda-escaping-closures H8 and H10 (excel-graph): a LAMBDA returned by a call is
+    // called by the next `(...)` (T-2038).
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(a,LAMBDA(b,a*b))(3)(4)");
+    model._set("A2", "=LAMBDA(a,LAMBDA(b,LAMBDA(c,a*100+b*10+c)))(1)(2)(3)");
+    model._set("A4", "=(LAMBDA(a,LAMBDA(b,a&b)))(\"x\")(\"y\")");
+    model._set("A3", "=LET(f,LAMBDA(a,LAMBDA(b,a-b)),f(10)(4))");
+    model._set("A5", "=LAMBDA(x,x)(1)(2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "12");
+    assert_eq!(model._get_text("A2"), "123");
+    assert_eq!(model._get_text("A4"), "xy");
+    assert_eq!(model._get_text("A3"), "6");
+    // A returned value is called like a LET-bound one (probes/chained-calls-lambda B4).
+    assert_eq!(model._get_text("A5"), "#NAME?");
+    model._set("A6", "=SUM(LAMBDA(x,x)(1)(2))");
+    model._set("A7", "=LAMBDA(x,x)(\"a\")(2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A6"), "#NAME?");
+    assert_eq!(model._get_text("A7"), "0");
+    // Excel for the web refuses a workbook holding a call followed by a space and `(4)`, or a
+    // call of SUM's result (probes T-2038, docs/excel-semantics/references.md "Calling a call's
+    // result"): the engine reads them as syntax errors.
+    for (cell, formula) in [
+        ("B1", "=LAMBDA(a,LAMBDA(b,a*b))(3) (4)"),
+        ("B2", "=SUM(1)(2)"),
+    ] {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#ERROR!");
+    assert_eq!(model._get_text("B2"), "#ERROR!");
+    // The text round-trips.
+    assert_eq!(model._get_formula("A1"), "=LAMBDA(a,LAMBDA(b,a*b))(3)(4)");
+    assert_eq!(
+        model._get_formula("A2"),
+        "=LAMBDA(a,LAMBDA(b,LAMBDA(c,a*100+b*10+c)))(1)(2)(3)"
+    );
+    assert_eq!(
+        model._get_formula("A3"),
+        "=LET(f,LAMBDA(a,LAMBDA(b,a-b)),f(10)(4))"
+    );
+    assert_eq!(
+        model._get_formula("A4"),
+        "=(LAMBDA(a,LAMBDA(b,a&b)))(\"x\")(\"y\")"
+    );
+}
+
+#[test]
+fn a_long_call_chain_is_bounded_like_nesting() {
+    // Each chained call is a level of the tree, so a chain past the depth limit is refused
+    // rather than overflowing the stack (CLAUDE.md directive 5).
+    let mut model = new_empty_model();
+    let chain = "(1)".repeat(10_000);
+    let refused = model.set_user_input(0, 1, 1, format!("=LAMBDA(x,x){chain}"));
+    assert!(refused.unwrap_err().contains("nested too deeply"));
+    let short = "(1)".repeat(20);
+    model._set("A2", &format!("=LAMBDA(x,x){short}"));
+    model.evaluate();
+    assert_eq!(model._get_formula("A2"), format!("=LAMBDA(x,x){short}"));
+}

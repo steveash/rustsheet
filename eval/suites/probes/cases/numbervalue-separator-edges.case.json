@@ -1,0 +1,59 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "NUMBERVALUE separators (T-2379): a separator over 255 characters, separators differing only in case, a letter decimal separator against text holding '.', and the defaults.",
+  "tags": [
+    "M5",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=NUMBERVALUE(0.2,REPT(\"A\",255),\"b\")",
+        "A2": "=NUMBERVALUE(0.2,REPT(\"A\",256),\"b\")",
+        "A3": "=NUMBERVALUE(0.2,\"A\",\"a\")",
+        "A4": "=NUMBERVALUE(\"1,5\",\"A\",\"a\")",
+        "A5": "=NUMBERVALUE(\"1A5\",\"A\",\"a\")",
+        "A6": "=NUMBERVALUE(\"0.2\",\"A\",\"b\")",
+        "A7": "=NUMBERVALUE(\"0.2\",\"A\")",
+        "A8": "=NUMBERVALUE(\"1.5\",\",\")",
+        "A9": "=NUMBERVALUE(\"1,5\",\",\",\"x\")",
+        "A10": "=NUMBERVALUE(0.2,\"b\",REPT(\"a\",256))",
+        "A11": "=NUMBERVALUE(0.2,\"b\",REPT(\"a\",255))",
+        "A12": "=NUMBERVALUE(\"1A5\",\"A\",\"b\")",
+        "A13": "=NUMBERVALUE(\"1a5\",\"A\",\"b\")",
+        "A14": "=NUMBERVALUE(\"1x5\",\"x\",\"X\")",
+        "A15": "=NUMBERVALUE(\"1,000.5\",\".\",\",\")",
+        "A16": "=NUMBERVALUE(\"1.000,5\",\",\",\".\")",
+        "A17": "=NUMBERVALUE(0.2,PROPER(REPT(\"ab\",300)),\"a*2\")",
+        "A18": "=NUMBERVALUE(0.2,PROPER(REPT(\"ab\",100)),\"a*2\")",
+        "A19": "=NUMBERVALUE(\"2\",REPT(\"A\",256),\"b\")",
+        "A20": "=NUMBERVALUE(\"1A5\",\"A\",\"AB\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A12",
+    "Sheet1!A13",
+    "Sheet1!A14",
+    "Sheet1!A15",
+    "Sheet1!A16",
+    "Sheet1!A17",
+    "Sheet1!A18",
+    "Sheet1!A19",
+    "Sheet1!A20"
+  ]
+}

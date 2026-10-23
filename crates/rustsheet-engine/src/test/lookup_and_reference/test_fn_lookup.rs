@@ -181,7 +181,7 @@ fn test_lookup_result_vector_holding_the_formula_is_circular() {
         }
         model._set("E5", formula);
         model.evaluate();
-        assert_eq!(model._get_text("E5"), "#CIRC!", "{formula}");
+        assert!(model._is_circular("E5"), "{formula}");
     }
 }
 

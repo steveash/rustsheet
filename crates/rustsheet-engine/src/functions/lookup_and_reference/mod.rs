@@ -26,6 +26,11 @@ pub(crate) use ref_lift::lifts_into_references;
 
 pub(crate) use drop_take::Edge;
 
+/// 2^31, the least size Excel reads as no longer a size: EXPAND's rows or columns (`#VALUE!`) and
+/// WRAPROWS/WRAPCOLS's `wrap_count` (`#NUM!`) refuse it (arrays.md "Stacked results past the grid",
+/// "WRAPROWS and WRAPCOLS with a huge `wrap_count`").
+const SIZE_LIMIT_EXCLUSIVE: f64 = 2_147_483_648.0;
+
 mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
@@ -38,6 +43,7 @@ mod grouping;
 mod hstack_vstack;
 mod index;
 mod index_arg;
+mod lifted_options;
 mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
@@ -64,7 +70,7 @@ fn lookup_index(
     is_sorted: bool,
 ) -> Option<usize> {
     if is_sorted {
-        search_vector.approximate_search(lookup_value, false)
+        search_vector.approximate_search(lookup_value)
     } else if let CalcResult::String(s) = lookup_value {
         search_vector.position(wildcard_text_matcher(s))
     } else {
@@ -180,10 +186,12 @@ impl Model {
                 };
                 let found = if match_type == 0 {
                     lookup_index(target, values, false)
-                } else {
+                } else if match_type < 0 {
                     // Any negative match_type searches descending, any positive one
                     // ascending (probes/lookup-approximate-search N20, N21).
-                    values.approximate_search(target, match_type < 0)
+                    values.descending_search(target)
+                } else {
+                    values.approximate_search(target)
                 };
                 match found {
                     Some(l) => CalcResult::Number(l as f64 + 1.0),
@@ -199,7 +207,7 @@ impl Model {
 
     /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a
     /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
-    /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
+    /// descending search scans from the top", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         // A range of several cells is its top-left cell, plain or picked by IF, IFS, SWITCH or
         // LET (probes/match-type-nested-passthrough K2, K3, K7:K9, K14, K15, T-1452). An array
@@ -334,6 +342,9 @@ impl Model {
         .blank_as_empty_value()
     }
 
+    /// The longest `link_location` HYPERLINK accepts, in characters.
+    const HYPERLINK_MAX_LOCATION: usize = 255;
+
     // HYPERLINK(link_location, [friendly_name])
     // Attaches a link to the cell and returns friendly_name (or link_location
     // if friendly_name is missing). A link_location starting with "#" is an
@@ -343,11 +354,66 @@ impl Model {
     // Both arguments lift over an array and a multi-cell range (`ROWS(HYPERLINK(D1:D3))`,
     // `ROWS(HYPERLINK(D1,A1:A3))` are 3; probes/lookup-argument-modes F11:G13,
     // gen-m7/2bb922eef72e785e A22; docs/excel-semantics/lookup.md "Lookup and reference function
-    // argument modes"). A lifted call attaches the link of its last element.
+    // argument modes"). A lifted call attaches the link of its last element. An error link_location
+    // is the whole result, even over an array or range friendly_name (lookup.md "HYPERLINK: an
+    // error link_location is the result", T-2277).
     pub(crate) fn fn_hyperlink(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_call(Function::Hyperlink, args, cell, &mut |model, values| {
-            model.hyperlink_of(values, cell)
-        })
+        let Some(kinds) = Function::Hyperlink.arg_kinds() else {
+            // As in `lift_call_costed`: HYPERLINK always has its table entry.
+            debug_assert!(false, "HYPERLINK has no lifting table entry");
+            return CalcResult::new_args_number_error(cell);
+        };
+        let (location, friendly_name) = match args {
+            [location] => (location, None),
+            [location, friendly_name] => (location, Some(friendly_name)),
+            _ => return CalcResult::new_args_number_error(cell),
+        };
+        // Read here rather than in `lift_call`, so a scalar location's error comes before
+        // friendly_name is lifted: the lift driver never picks an error itself (SPEC-0011).
+        let location = match self.read_lift_arg(location, cell) {
+            Ok(location) => location,
+            Err(error) => return error,
+        };
+        if let LiftedArg::Scalar(value) = &location {
+            if let Err(error) = Self::hyperlink_location(value, cell) {
+                return error;
+            }
+        }
+        // Each read is bounded by `MAX_LIFTED_CELL_VISITS` on its own, so the two hold at most
+        // twice that many cells; `lift_values` then bounds the elements before any runs.
+        let mut values = vec![location.into_value()];
+        if let Some(friendly_name) = friendly_name {
+            values.push(match self.read_lift_arg(friendly_name, cell) {
+                Ok(friendly_name) => friendly_name.into_value(),
+                Err(error) => return error,
+            });
+        }
+        self.lift_values(
+            values,
+            LiftCost::Unit,
+            &LiftOptions::for_entry(kinds),
+            cell,
+            &mut |model, values| model.hyperlink_of(values, cell),
+        )
+    }
+
+    /// A `link_location` as HYPERLINK reads it, or the error it gives whatever `friendly_name`
+    /// is: the location's own error, or `#VALUE!` for more than 255 characters, a `#` of an
+    /// internal link included (probes/t2277-hyperlink-location-length A1-A15; lookup.md
+    /// "HYPERLINK: a `link_location` past 255 characters").
+    fn hyperlink_location(
+        location: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<String, CalcResult> {
+        let location = Self::cast_string_ref(location, cell)?;
+        if location.encode_utf16().count() > Self::HYPERLINK_MAX_LOCATION {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "HYPERLINK link_location is longer than 255 characters".to_string(),
+            ));
+        }
+        Ok(location)
     }
 
     /// HYPERLINK of one element.
@@ -357,7 +423,7 @@ impl Model {
             [location, friendly_name] => (location, Some(friendly_name)),
             _ => return CalcResult::new_args_number_error(cell),
         };
-        let location = match Self::cast_string_ref(location, cell) {
+        let location = match Self::hyperlink_location(location, cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
@@ -680,7 +746,7 @@ impl Model {
         if !values.as_slice().iter().any(lifts) {
             return RefArg::from(self.indirect_of(values.as_slice(), cell));
         }
-        match self.reference_lift_args(values, cell) {
+        match self.reference_lift_args(values, lifts, cell) {
             Ok(lifted) => self.lift_references(lifted, cell, &mut |model, values| {
                 model.indirect_of(values, cell)
             }),
@@ -792,8 +858,8 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        if let CalcResult::Range { left, right } = self.evaluate_node_with_reference(&args[0], cell)
-        {
+        let reference = self.evaluate_node_with_reference(&args[0], cell);
+        if let CalcResult::Range { left, right } = reference {
             if left.sheet != right.sheet {
                 return CalcResult::Error {
                     error: Error::ERROR,
@@ -840,6 +906,24 @@ impl Model {
                 rows.push(values);
             }
             CalcResult::Array(rows)
+        } else if matches!(
+            args[0].ungrouped(),
+            Node::FunctionKind {
+                kind: Function::Index,
+                ..
+            }
+        ) {
+            // An erroring INDEX is its own error (`FORMULATEXT(INDEX(A1:A3,9))` is `#REF!`) and an
+            // INDEX of an array constant picks a value, not a cell, so is `#VALUE!`
+            // (probes/index-reference-args Calc!A4, A5; T-2137).
+            match reference {
+                error @ CalcResult::Error { .. } => error,
+                _ => CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Argument must be a reference".to_string(),
+                ),
+            }
         } else {
             CalcResult::Error {
                 error: Error::ERROR,

@@ -15,7 +15,8 @@ extend-exclude = [
 
 [default]
 # C99 hex-float literals (0x1.79f85ba68804p-4) in comments citing research coefficients.
-extend-ignore-re = ["-?0x[0-9a-fA-F]\\.[0-9a-fA-F]+p[-+]?[0-9]+"]
+# Generated eval case ids (16 lowercase hex digits, e.g. 4ab2ba98d26c8a5e) cited as evidence.
+extend-ignore-re = ["-?0x[0-9a-fA-F]\\.[0-9a-fA-F]+p[-+]?[0-9]+", "\\b[0-9a-f]{16}\\b"]
 
 [default.extend-words]
 # Excel function names and spreadsheet jargon

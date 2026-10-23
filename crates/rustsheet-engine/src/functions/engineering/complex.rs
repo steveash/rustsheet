@@ -790,7 +790,7 @@ fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if x == 0.0 && y != 0.0 {
         return complex_result(0.0, -1.0 / y.tanh(), suffix);
     } else if y == 0.0 {
-        return complex_result(1.0 / x.tan(), 0.0, suffix);
+        return finite_complex_result(1.0 / x.tan(), 0.0, suffix, cell);
     }
 
     // The reciprocal of [`tan_parts`], `conj(t) / |t|²`: Excel's digits (COMPLEXs.xlsx T2, T7,
@@ -806,7 +806,7 @@ fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     complex_result(x, y, suffix)
 }
 
-fn imcsc((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let x_cos = x.cos();
     let x_sin = x.sin();
 
@@ -814,6 +814,9 @@ fn imcsc((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sinh = y.sinh();
 
     let t = x_sin * x_sin * y_cosh * y_cosh + x_cos * x_cos * y_sinh * y_sinh;
+    if t == 0.0 {
+        return num_error(cell);
+    }
     reciprocal_result(x_sin * y_cosh / t, -x_cos * y_sinh / t, t, suffix)
 }
 
@@ -879,10 +882,10 @@ fn imlog10((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     complex_result(r.log10(), a * f64::log10(f64::exp(1.0)), suffix)
 }
 
-fn imlog2((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+fn imlog2((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let r = f64::sqrt(x * x + y * y);
     let a = f64::atan2(y, x);
-    complex_result(r.log2(), a * f64::log2(f64::exp(1.0)), suffix)
+    finite_complex_result(r.log2(), a * f64::log2(f64::exp(1.0)), suffix, cell)
 }
 
 fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {

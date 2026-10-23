@@ -114,10 +114,10 @@ struct PreparedLambda {
 
 /// How many times the evaluation's stack budget (`Model::set_max_evaluation_stack`, a quarter of
 /// a 1 MB stack by default) nested LAMBDA calls may use. A call made by a call can nest without
-/// the formula's own depth bounding it (`Model::lambda_stack_base`), and each takes some 5 KB of
-/// stack in a release build and 20 KB in a debug build (a LAMBDA calling itself through a
+/// the formula's own depth bounding it (`Model::lambda_stack_base`), and each takes some 2.5 KB
+/// of stack in a release build and 9 KB in a debug build (a LAMBDA calling itself through a
 /// parameter), so the default, 1 MB, half the smallest common thread stack (2 MB), holds about
-/// 200 calls in a release build and 50 in a debug build.
+/// 400 calls in a release build and 116 in a debug build (T-0444, decision 0100).
 const LAMBDA_STACK_SHARE: usize = 4;
 
 /// Most cells the LAMBDAs that outlive their scope may capture while one root cell is evaluated
@@ -288,9 +288,10 @@ impl Model {
         let callee = self
             .evaluate_reference_arg(lambda, cell)
             .into_single_area(cell);
-        // The same guard as `call_callee`'s, kept in step with it.
-        if let CalcResult::Range { .. } = callee {
-            return RefArg::Value(reference_called(cell));
+        // Anything but a LAMBDA is called as `call_variable` calls it: a reference is `#REF!`
+        // (`call_callee`), a value gives Excel's odd results.
+        if !matches!(callee, CalcResult::Lambda(_)) {
+            return RefArg::Value(self.call_variable(callee, call_args, cell));
         }
         let mut caller = self
             .lambda_caller(&callee, call_args.len())
@@ -318,7 +319,7 @@ impl Model {
     }
 
     /// A LET variable or LAMBDA parameter called like a function, `f(2)` in `LET(f,..,f(2))` or
-    /// `LAMBDA(f,f(2))`.
+    /// `LAMBDA(f,f(2))`, or what a call returned, called again (`LAMBDA(x,x)(1)(2)`, T-2038).
     /// A LAMBDA is called and a reference is `#REF!` (`call_callee`); a value gives Excel's odd
     /// results without its arguments being read: a number or boolean is `#NAME?`, text is 0, an
     /// error is itself, and an array is called element by element
@@ -508,8 +509,8 @@ impl Model {
     /// [`LAMBDA_STACK_SHARE`] times [`Model::get_max_evaluation_stack`] bytes: a LAMBDA calling itself through a parameter,
     /// `LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,20000))`, or a chain of 20,000 closures made by
     /// REDUCE, would otherwise overflow the stack. Excel evaluates such calls 300 deep
-    /// (probes/lambda-call-depth); the budget stops them sooner, as `#NUM!` (DEVIATION, decision
-    /// 0014: docs/excel-semantics/arrays.md "How deep LAMBDA calls nest").
+    /// (probes/lambda-call-depth), and so does the default budget; deeper ones it stops as `#NUM!`
+    /// (DEVIATION, decision 0014: docs/excel-semantics/arrays.md "How deep LAMBDA calls nest").
     fn lambda_stack_base(&self) -> Option<usize> {
         let here = stack_address();
         let base = match self.lambda_calls_base {
