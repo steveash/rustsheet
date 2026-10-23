@@ -67,6 +67,7 @@ C	gen-m5/90bf45bea539723d.case.json	400
 C	gen-m5/923c2d21617d9db9.case.json	400
 C	gen-m5/9284730052aff46c.case.json	400
 C	gen-m5/94d60de00976f091.case.json	160
+C	gen-m5/953b3efdd051f7de.case.json	60
 C	gen-m5/97737fad5004ba83.case.json	400
 C	gen-m5/989a3d6036b5fef3.case.json	400
 C	gen-m5/98ed0b6354e3394a.case.json	40
