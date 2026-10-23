@@ -982,9 +982,10 @@ is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7
 Ours `#VALUE!` (T-2412). Other match_end values (2, -1, 1.5, TRUE) are unprobed.
 TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
 `ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
-`ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. In the gen-m7 cell the OFFSET height is a
-2-element array, so OFFSET lifts to a 2x2 reference array (`ROWS`/`COLUMNS` of it are 2, 2; ours 1, 1, T-2454) and the TEXTAFTER is a 2x2 of
-`#VALUE!` that collides: `#SPILL!` (4dac39f89709e2fc A2870).
+`ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. The OFFSET alone is a 2x2 reference
+(`ROWS`, `COLUMNS` 2, 2; `INDEX(..,1,1)` one 0, no spill), although `DROP(A3:A5,-2,0)` is the one cell A3 (1E-15): UNVERIFIED mechanism
+(Excel reads the one-cell DROP result as a height giving 2 rows, ours as a lifted 1x1). The gen-m7 `#SPILL!` (4dac39f89709e2fc A2870) is
+then consistent with a 2x2 TEXTAFTER of `#VALUE!` colliding; only ROWS = 2 of it is probed.
 Status: VERIFIED (excel-graph)
 Tasks: T-2314, T-2412
 
@@ -1003,8 +1004,8 @@ gives 8 rows of `#VALUE!`, 2d9b48c6363e7a16 A3261); and a 1x3 text against an 11
 shorter one (column 3 of bc4a69b0b512bc04 A538:C548).
 TRANSPOSE of a single value is that value, not a 1x1 array (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COLUMNS(TEXTSPLIT(TRANSPOSE("a,b"),","))`
 and `COLUMNS(TEXTSPLIT(TRANSPOSE(Data!G1),","))` (G1 = "a,b") are 2, so the text does not lift to one element as `{"a,b"}` does
-(`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1); `ISREF(TRANSPOSE(Data!G1))` is FALSE. Ours lifts (1 column, T-2455); explains
-f7e94a817e5385ac B2882.
+(`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1); `ISREF(TRANSPOSE(Data!G1))` is FALSE. Ours lifts (1 column, T-2455); is consistent
+with f7e94a817e5385ac B2882 (the probe covers a text literal and a text cell; a numeric TRANSPOSE argument is unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2315
 
