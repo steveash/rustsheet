@@ -31,7 +31,7 @@ fn expand_lifts_rows_and_columns_but_not_pad_with() {
     ]);
 }
 
-/// A multi-cell range pad_with is one `#VALUE!` with nothing spilled, as an array one is; a
+/// A multi-cell range `pad_with` is one `#VALUE!` with nothing spilled, as an array one is; a
 /// one-cell range pads with its value (gen-m7/2d9b48c6363e7a16 A366, A830, A2686; T-2415).
 #[test]
 fn expand_range_pad_with() {
