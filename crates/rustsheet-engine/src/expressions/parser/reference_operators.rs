@@ -373,7 +373,9 @@ fn has_negated_operand(node: &Node) -> bool {
 /// functions below (probes/intersection-function-operands; T-0161); value functions such as
 /// SUM, NA, ABS, ROW, ROWS, MATCH, VLOOKUP, HLOOKUP, LOOKUP, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
 /// SORT, UNIQUE and VSTACK are refused, even those that pass a range through; functions not
-/// probed are refused by inference.
+/// probed are refused by inference. The same built-ins are the ones whose result may be called,
+/// `INDEX(A1:A3,1)(2)` (`Parser::parse_named_call`, probes/chained-calls-builtin-*, T-2405), so
+/// widening this set widens that grammar too.
 pub(super) fn is_reference_operand(node: &Node) -> bool {
     match node.ungrouped() {
         Node::NumberKind(_)
