@@ -29,7 +29,17 @@ switch, end at life) should separate the hypotheses.
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 3 cells, 3 numeric past half a unit in the 15th digit and 0 with a wrong type, error or text, blamed on VDB 3. Every one is listed above.
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): VDB passed through SKEW (visibly off).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 visibly off.
+Examples:
+- gen-m9/873f30d2bf76f8db Calc!A360 `=SKEW(Data!C9:C12,(Data!B9+VDB(52287,815,17,Data!$A1,9)),((Data!$E6+Data!A9)/Data!B9))`: Excel 1.7320506771649753, ours 1.732050676707419
+Cells:
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A360
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 3 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/fin-vdb-schedule A42-A46 pass, with fin-vdb-modes still 20/20.
 - [ ] `make check` green; reviewers approve.

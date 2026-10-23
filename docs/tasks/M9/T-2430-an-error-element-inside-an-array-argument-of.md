@@ -50,8 +50,75 @@ Cells:
 - gen-m9/cde551ea787f713a.case.json (1): Calc!A351
 - gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A300
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): the same rule in MODE, MODE.SNGL, MODE.MULT, PERCENTILE*, PERCENTRANK*, QUARTILE*, TRIMMEAN, SMALL, T.TEST, TTEST, Z.TEST, PROB and PEARSON, for literal arrays (`{1,#N/A,3}`) and computed ones (`MODE(HSTACK(..))` whose padding is `#N/A`); a scalar argument's own error still comes first (`PERCENTILE({1,#N/A,3},<#NUM!>)` is `#NUM!`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 105 known-failure lines in eval/baseline/gen-m9.txt, 105 visibly off.
+Examples:
+- gen-m9/0620505280d2ea6e Calc!A293 `=SMALL({1,#N/A,3},3)`: Excel #N/A, ours #VALUE!
+- gen-m9/329b177b5d5165ad Calc!A5 `=QUARTILE({1,#N/A,3},0)`: Excel #N/A, ours #VALUE!
+- gen-m9/5cebac1f02bf30f2 Calc!A202 `=MODE.SNGL({1,#N/A,3})`: Excel #N/A, ours #VALUE!
+- gen-m9/d37313406b9f6e55 Calc!A29 `=MODE.SNGL({1,#N/A,3})`: Excel #N/A, ours #VALUE!
+- gen-m9/eedd629f3d69fdda Calc!A361 `=MODE({1,#N/A,3})`: Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/0072265d385d8ab2.case.json (2): Calc!A17, A249
+- gen-m9/0620505280d2ea6e.case.json (2): Calc!A293, A319
+- gen-m9/097af1ca33638670.case.json (1): Calc!A313
+- gen-m9/09b47629f54b9817.case.json (1): Calc!A157
+- gen-m9/0bbab6206b5c9a07.case.json (1): Calc!A220
+- gen-m9/11eb3ab4f4f8104c.case.json (1): Calc!A319
+- gen-m9/139684e68fb2fc3b.case.json (3): Calc!A51, A344, A398
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A379
+- gen-m9/1b31092a0d79e5f1.case.json (2): Calc!A363, A380
+- gen-m9/1db18890916ee643.case.json (1): Calc!A252
+- gen-m9/201d67f1d59436ed.case.json (2): Calc!A6, A102
+- gen-m9/2138b909d8f810ea.case.json (3): Calc!A39, A148, A226
+- gen-m9/31f09e6c48ca245c.case.json (2): Calc!A4, A128
+- gen-m9/329b177b5d5165ad.case.json (6): Calc!A5, A20, A22, A207, A269, A291
+- gen-m9/334f3dc9ca937f10.case.json (1): Calc!A253
+- gen-m9/38e4fc309fe199ea.case.json (2): Calc!A37, A254
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A339
+- gen-m9/43c6227e0ff368c7.case.json (1): Calc!A384
+- gen-m9/44a8841352dc48e9.case.json (2): Calc!A321, A328
+- gen-m9/46ac3ef5e61583ca.case.json (4): Calc!A255, A316, A325, A387
+- gen-m9/5389dd4d5b5739d2.case.json (3): Calc!A239, A251, A275
+- gen-m9/5395b8a427764a3f.case.json (1): Calc!A374
+- gen-m9/583ca2baea0bb30a.case.json (1): Calc!A206
+- gen-m9/5919660b7bb4d195.case.json (2): Calc!A36, A286
+- gen-m9/5be29fa316931f05.case.json (1): Calc!A135
+- gen-m9/5cebac1f02bf30f2.case.json (2): Calc!A202, A255
+- gen-m9/6e18550e9fc9c1b9.case.json (2): Calc!A55, A85
+- gen-m9/775d053de498b8c7.case.json (2): Calc!A89, A159
+- gen-m9/787ba8d801105a60.case.json (2): Calc!A68, A363
+- gen-m9/7980ffb6095a340d.case.json (2): Calc!A142, A279
+- gen-m9/7fd0a98183c6babf.case.json (1): Calc!A120
+- gen-m9/928d08e3e1eecb5f.case.json (2): Calc!A127, A374
+- gen-m9/92d4fa29e5510f1e.case.json (3): Calc!A246, A255, A376
+- gen-m9/9735c5ab72fa5ecf.case.json (2): Calc!A313, A347
+- gen-m9/9bc247733a1ca9fa.case.json (1): Calc!A133
+- gen-m9/9e2225ead8a6a07b.case.json (2): Calc!A16, A390
+- gen-m9/a4090567758520df.case.json (1): Calc!A116
+- gen-m9/a5342a7e24fd803e.case.json (2): Calc!A150, A347
+- gen-m9/a63d1c7d6f96c56d.case.json (2): Calc!A98, A286
+- gen-m9/acac71a65a5a1d1b.case.json (1): Calc!A22
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A88
+- gen-m9/b9a32ce9a1fd0d71.case.json (2): Calc!A133, A331
+- gen-m9/bbab6562e88b70e8.case.json (2): Calc!A219, A329
+- gen-m9/bcb1105c61a2649d.case.json (2): Calc!A94, A385
+- gen-m9/c2684066d8df263e.case.json (1): Calc!A318
+- gen-m9/c7664e494e418395.case.json (3): Calc!A55, A131, A286
+- gen-m9/cb61169f4c033d4b.case.json (2): Calc!A201, A384
+- gen-m9/ce312817dc9c7f0b.case.json (2): Calc!A88, A272
+- gen-m9/d208bbafc3bc1997.case.json (1): Calc!A241
+- gen-m9/d37313406b9f6e55.case.json (3): Calc!A29, A143, A270
+- gen-m9/d5fd9e05e9e6f466.case.json (2): Calc!A70, A222
+- gen-m9/d8f44d556674c2fd.case.json (3): Calc!A272, A310, A332
+- gen-m9/d910f000b60e2eac.case.json (1): Calc!A194
+- gen-m9/eccd03df42e40006.case.json (2): Calc!A111, A175
+- gen-m9/ede0323c389fc703.case.json (1): Calc!A265
+- gen-m9/eedd629f3d69fdda.case.json (3): Calc!A26, A361, A378
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 19 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 124 known-failure lines (19 from T-2255, 105 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `LARGE({1,#N/A,3},1)`, `SMALL({1,#N/A,3},3)`, `COVARIANCE.S({1,#N/A,3},{1,2,3})` are `#N/A`.
 - [ ] statistics.md's entry gets an "Ours:" line naming this task.

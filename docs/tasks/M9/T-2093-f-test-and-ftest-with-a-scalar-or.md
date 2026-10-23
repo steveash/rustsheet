@@ -117,8 +117,34 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (9): Calc!A35, A53, A96, A114, A157, A175, A297, A340, A358
 - gen-m9/fec39efaba9284c3.case.json (8): Calc!A28, A74, A82, A174, A220, A258, A304, A396
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): F.TEST and FTEST nested in the statistical calls with a scalar or text argument (`WEIBULL(-2,F.TEST(ASIN(0),Data!B3:E12),1,"TRUE")` is `#DIV/0!`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 17 known-failure lines in eval/baseline/gen-m9.txt, 17 visibly off.
+Examples:
+- gen-m9/41248d1cb153c66e Calc!A156 `=PERCENTILE.EXC(ROUND(FTEST(100,(-1)),0),1E-100)`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/873f30d2bf76f8db Calc!A79 `=NEGBINOMDIST(0,2,((-1)*FTEST(7,Data!A11)))`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/afc00c8b70e78baf Calc!A143 `=NORMINV(1E-300,F.TEST({0,0,0},2),Data!$E8)`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/ce312817dc9c7f0b Calc!A159 `=PEARSON(-FTEST(1,1e-15),{0.02,0.027})`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/d8f44d556674c2fd Calc!A242 `=WEIBULL((-2),F.TEST(ASIN(0),Data!B3:E12),1,"TRUE")`: Excel #DIV/0!, ours #VALUE!
+Cells:
+- gen-m9/097af1ca33638670.case.json (2): Calc!A52, A272
+- gen-m9/09b47629f54b9817.case.json (1): Calc!A182
+- gen-m9/2138b909d8f810ea.case.json (1): Calc!A105
+- gen-m9/31f09e6c48ca245c.case.json (1): Calc!A70
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A156
+- gen-m9/43c6227e0ff368c7.case.json (1): Calc!A154
+- gen-m9/5389dd4d5b5739d2.case.json (1): Calc!A243
+- gen-m9/873f30d2bf76f8db.case.json (2): Calc!A25, A79
+- gen-m9/9e2225ead8a6a07b.case.json (1): Calc!A30
+- gen-m9/a2262ea466fcc142.case.json (1): Calc!A277
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A143
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A292
+- gen-m9/ce312817dc9c7f0b.case.json (1): Calc!A159
+- gen-m9/d8f44d556674c2fd.case.json (1): Calc!A242
+- gen-m9/d910f000b60e2eac.case.json (1): Calc!A260
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 409 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 426 known-failure lines (409 from T-2255, 17 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the visibly-off cell listed under Context (2026-10-21) has Excel's value to 15 significant digits, or its type, error and text: the 1 cell of the ungated probes-numeric suite passes in `make eval`, with no new known-failure lines in any baseline.
 - [ ] The five cells above pass in `make eval`. t1049-ftest A15, A16 and A22 still pass, and no
