@@ -760,3 +760,16 @@ fn blank_element_of_an_array_value_is_the_empty_value_in_a_lambda() {
     assert_eq!(model._get_text("B3"), "1.125");
     assert_eq!(model._get_text("B4"), "0,0");
 }
+
+// A 1x1 array LAMBDA result is the element's one value; a multi-cell one stays one `#CALC!`
+// (arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range", T-2407).
+#[test]
+fn map_takes_a_1x1_array_step_as_its_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAP({1;2},LAMBDA(x,{5}))");
+    model._set("C1", "=MAP({1;2},LAMBDA(x,{5,6}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model._get_text("A2"), "5");
+    assert_eq!(model._get_text("C1"), "#CALC!");
+}

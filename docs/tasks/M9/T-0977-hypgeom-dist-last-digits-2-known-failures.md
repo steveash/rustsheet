@@ -3,7 +3,7 @@ id: T-0977
 title: "HYPGEOM.DIST last digits (2 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -129,3 +129,22 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - HYPGEOMDIST: 1 cells (13-14 digits right 1, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-hypgeomdist.case.json` 1. e.g. `HYPGEOMDIST(10,20,40,100)` Excel 0.11923605235455972, ours 0.1192360523545622
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Outcome
+HYPGEOM.DIST and HYPGEOMDIST are the exact value rounded once: `discrete.rs` `hypergeometric_walk` starts at the
+support's lowest term (a product of min(n, K) or N - max(n, K) ratios) and steps by the exact ratio of consecutive terms,
+in double-double with the binomial walk's scaling, up to 2^12 steps and a population of 2^52; statrs' pmf and the capped
+cdf port stay beyond. HYPGEOMDIST is now charged 2^13 an element (16,384 a lifted call, a DEVIATION in statistics.md).
+
+Eval (against main 2026-10-23): gen-m9 known failures 7028 -> 7017, probes 2026 -> 2025, 0 regressions. 42 cells are no
+longer visibly off and none newly are: 20 of the 22 gen-m9 visible-parity cells above are now within 15 digits (18 of
+them newly), and so are every HYPGEOM.DIST cdf
+in t1049-hypgeomdist (statrs was up to 1.5E-10 off at a population of 1E5) and `HYPGEOM.DIST(1,4,8,2E9,FALSE)` (statrs
+7 digits right). The ironcalc criterion (F2, F3) is not met: both are now within 15 digits but Excel's last bits are not
+the exact value's.
+
+Not met here, moved to T-2481: 2 of the 22 gen-m9 cells (ee2497a5e683c5d9 A310, 60b0b6e69ad35a45 A140), plus
+f2bd5f380ec002bf A52 and t1049-hypgeomdist A10, A14, A16, where Excel's own pmf is visibly off the exact value; Excel's pmf formulation
+is still open (statistics.md "HYPGEOM.DIST is not exact for small integer arguments" lists what was ruled out: 9!
+log-factorial summation orders, COMBIN ratios, products of ratios, Loader's dhyper). Excel's cdf is the sum of its own
+pmf terms, so that formulation also fixes the bit-level cells.

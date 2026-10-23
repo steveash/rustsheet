@@ -43,6 +43,10 @@ const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
 /// Terms of the atanh series in [`rlog1`]: |r| <= 1/3 there, so (1/9)^20 is far below 2^-53.
 const RLOG1_TERMS: u32 = 20;
 
+/// The smallest x at which `I_x(1, b)` is Excel's cancelling closed form 1 - exp(b ln(1 - x)); below
+/// it the tail is computed without the cancellation (T-0974).
+const A1_CLOSED_FORM_MIN_X: f64 = 0.1;
+
 /// `I_x(a, b)` for shapes a, b > 0; 0 at x <= 0 and 1 at x >= 1. NaN in, NaN out.
 #[cfg(test)]
 pub(crate) fn beta_reg(x: f64, a: f64, b: f64) -> f64 {
@@ -71,7 +75,15 @@ pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
     }
     // From x, not from the given y: `F.DIST.RT(0.7,4,2.4)` = I_w(1,2) is Excel's
     // 0.6597222222222223 (`F_DIST.xlsx` H3) with ln(1 - w), 2 ulp off with the exact complement.
+    // Below x = 0.1 Excel keeps the digits that subtraction cancels, -expm1(b ln1p(-x)):
+    // `BETA.DIST(1.9999999998999996E-10,1,0.5,TRUE)` is 9.999999999999999E-11
+    // (probes-numeric/t1745-beta-inv-roundtrip G35), which 1 - exp misses by 8E-8 relative; the cut is T.DIST.RT's at df 2 (T-0969), and
+    // `BETA.DIST(0.1,1,0.0001,TRUE)` still cancels (docs/excel-semantics/statistics.md "Incomplete
+    // beta: Excel's closed forms").
     if a == 1.0 {
+        if x < A1_CLOSED_FORM_MIN_X {
+            return -(b * (-x).ln_1p()).exp_m1();
+        }
         return 1.0 - (b * (1.0 - x).ln()).exp();
     }
     beta_tails(x, y, a, b).0

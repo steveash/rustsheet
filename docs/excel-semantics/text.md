@@ -844,8 +844,14 @@ backtracker (functions/text/pcre/backtrack.rs). Several PCRE2 behaviors it imple
 - `\G` stands at each iteration search's start;
 - the empty-loop rule;
 - captures made inside an atomic group are undone on backtracking.
-`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals parse but are
-`#VALUE!` until T-2354 (so `(?=b)|b`, D12, waits for it). Iteration is PCRE2's since T-1899
+`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals run on the backtracker
+since T-2354 (C7-C10, C13, C14, D12; probes/regex-lookaround-keepout-conditionals A1-A19, excel-graph, 2026-10-23): a positive
+lookaround keeps its captures but is atomic (`^(?=(a+))a*b\1` is FALSE on `aaab`, and `(?=(a+))a*b\1` extracts
+`aba` from `baaabac`), a negative one keeps none (`(?!(x))a(?(1)c|b)` on `ab` is `ab`), each top-level lookbehind
+alternative has its own fixed length (`(?<=a|bc)d` finds `d` in `xbcd`), a lookbehind over an astral character steps
+back one character (`(?<=.)b` on `😀b` is `b`), `\K` inside a lookaround is `#VALUE!` (ERROR.TYPE 3: PCRE2 10.38 and
+later reject it), `\K` moves each match's start in iteration (`REGEXREPLACE("aaa","a\K","-")` is `a-a-a-`), and an
+assertion condition is accepted and tested once (`(?(?=a)ab|c)` extracts `ab` from `ab` and `c` from `cd`). Iteration is PCRE2's since T-1899
 (functions/text/regex_search.rs `each_match`): the retry runs on the backtracker, a regular pattern's on its memoized
 mode, and an advance of one UTF-16 unit into a surrogate pair is `#VALUE!` (the cause, Excel iterating UTF-16
 units, is inferred; every regex-iteration-surrogates cell matches it). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
@@ -978,8 +984,8 @@ Evidence: probes/t2314-textbefore-instance-bound (excel-graph, 2026-10-22) and g
 Ours: matches (`text_around_element`, `around_options` and `around_not_found` in functions/text/before_after.rs, T-2314). The probe's
 `TEXTBEFORE("abc","b",1,-0.5)` is "a", not `#VALUE!`: flooring -0.5 would give the invalid -1 (A2), so match_mode is cut toward zero.
 match_end is read the same way: -0.0001 is 0, so `TEXTAFTER(LOWER("'a"),Data!A11:B12,1,1,<-0.0001>)`, where no delimiter is in the text,
-is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7/2d9b48c6363e7a16 Calc!A660 (excel-graph, 2026-10-22).
-Ours `#VALUE!` (T-2412). Other match_end values (2, -1, 1.5, TRUE) are unprobed.
+is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7/2d9b48c6363e7a16 Calc!A660 (excel-graph, 2026-10-22); 0.5 is 0 too: `TEXTAFTER("1.5","-",-1,1,0.5)` is `#N/A`, gen-m9/b9a32ce9a1fd0d71 Calc!A142.
+Ours: implemented (T-2412), `around_options` cuts match_end toward zero. Other match_end values (2, -1, TRUE) are unprobed, and 1.5 is cut to 1 by the same helper, also unprobed.
 TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
 `ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
 `ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. The OFFSET alone is a 2x2 reference

@@ -302,7 +302,7 @@ impl Model {
     }
 
     /// The rows and columns out of `num_rows` x `num_cols` that TAKE or DROP keeps, read from
-    /// the values of its count arguments (cols `None` when missing); an error for a zero TAKE
+    /// the values of its count arguments (an omitted one keeps all); an error for a zero TAKE
     /// count or a DROP that removes everything.
     fn edge_spans(
         &mut self,
@@ -315,16 +315,20 @@ impl Model {
         let count = |model: &mut Self, value: &CalcResult| {
             model.cast_to_number(value.clone(), cell).map(|n| n as i64)
         };
-        let rows_arg = count(self, counts.first().unwrap_or(&CalcResult::EmptyArg))?;
-        let cols_arg = match counts.get(1) {
-            Some(value) => Some(count(self, value)?),
-            None => None,
+        // An omitted count keeps every row or column, a blank cell is 0: `TAKE({1,2,3;4,5,6},,-1)`
+        // is the last column and `TAKE(..,D1,1)` over a blank D1 is `#CALC!`
+        // (probes/take-drop-omitted-rows; arrays.md "TAKE and DROP with an omitted count").
+        let count_arg = |model: &mut Self, index: usize| match counts.get(index) {
+            None | Some(CalcResult::EmptyArg) => Ok(None),
+            Some(value) => count(model, value).map(Some),
         };
+        let rows_arg = count_arg(self, 0)?;
+        let cols_arg = count_arg(self, 1)?;
         // A zero TAKE count is `#CALC!` only once both counts are read: an error in cols beats a
         // zero rows (`TAKE(Data!B9:C10,0,LN(..))` is `#VALUE!`, gen-m7/7d67c559ce7536fa A1296;
         // arrays.md "SEQUENCE and TAKE: an argument error before zero rows"; T-2316).
         if edge == Edge::Take {
-            let zero = if rows_arg == 0 {
+            let zero = if rows_arg == Some(0) {
                 Some("rows")
             } else if cols_arg == Some(0) {
                 Some("cols")
@@ -339,7 +343,10 @@ impl Model {
                 ));
             }
         }
-        let rows = edge_span(edge, num_rows, rows_arg);
+        let rows = match rows_arg {
+            Some(n) => edge_span(edge, num_rows, n),
+            None => 0..num_rows,
+        };
         let columns = match cols_arg {
             Some(n) => edge_span(edge, num_cols, n),
             None => 0..num_cols,

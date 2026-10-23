@@ -1167,7 +1167,7 @@ captured union keeps its areas (`AREAS` 2, `SUM` of `(A1,A3)` 4); a captured err
 `LAMBDA(a,LAMBDA(b,a*b))(3)(4)`, is 12 and three levels give 123; `MAP(SCAN(LAMBDA(z,z),{1,2,3},..),LAMBDA(g,g(0)))` spills the
 array of LAMBDAs SCAN makes as 1, 12, 123, and `INDEX` of that array called, `INDEX(s,1,3)(0)`, is 123. A cell holding the
 REDUCE result itself (a LAMBDA) is `#CALC!`, as for any uncalled LAMBDA. LET names spelled like cells (`add5`, `f1`), stored with
-their `_xlpm.` prefix, bind like any name (H4 6, H5 100001).
+their `_xlpm.` prefix, bind like any name (H4 6, H5 100001; references.md "LET and LAMBDA names spelled like a cell", T-2040).
 Evidence: probes/lambda-escaping-closures H1-H25, I2, J2, I14 (excel-graph, 2026-10-19, T-0439).
 Ours: when a LET or a LAMBDA call ends, `Model::close_over` gives the LAMBDAs reachable from its result (the only way one
 leaves it) the variables of that scope their bodies read (one shared copy per variable, `VariableStack::shared`), and
@@ -1175,9 +1175,9 @@ leaves it) the variables of that scope their bodies read (one shared copy per va
 captured union re-bound for a call counts toward the held-areas cap where it is called (references.md "Union area cap").
 A call binds what its closure captured shared, not copied (`Binding::Shared`), so MAP over an escaped closure that captured
 a large array costs no copy per call. How many cells closures may capture is capped ("LAMBDAs capture at most 4,194,304
-cells", DEVIATION). Open gaps: chained calls
-`f(..)(..)` are a parse error (H3, H8, H10: T-2038), an array element cannot hold a LAMBDA (H2:J2: T-2039), and cell-shaped
-LET names are read as cells (H4, H5: T-2040).
+cells", DEVIATION). An array of LAMBDAs leaving the scope ("Arrays of LAMBDAs") gives each of its elements made there the
+same captures (T-2039: `ScopeResult::lambdas`). Open gaps: chained calls
+`f(..)(..)` are a parse error (H3, H8, H10: T-2038), and cell-shaped LET names are read as cells (H4, H5: T-2040).
 Status: VERIFIED (excel-graph)
 Tasks: T-0439, T-2038, T-2039, T-2040
 
@@ -1252,10 +1252,17 @@ shape: `BYCOL(Data!A11:D11,LAMBDA(x,LAMBDA(v,v)))` is four `#CALC!` (bc4a69b0b51
 eight (A2102), `BYROW({"",0,FALSE},LAMBDA(acc,LAMBDA(x,x)))` one (21b4eef18424ce94 A3078), and over a one-cell range or an empty cell
 alike (18 formulas). This fits "An uncalled LAMBDA is one value" (a cell shows it as `#CALC!`).
 Evidence: gen-m7 (excel-graph, 2026-10-22, T-2254 triage; the cells are listed in T-2406).
-Ours: MAKEARRAY keeps the grid with `#VALUE!` per element, and a LAMBDA element is `#VALUE!` (an array element cannot hold a LAMBDA,
-T-2039); T-2406 fixes both. Whether MAKEARRAY unwraps a 1x1 array step, as BYROW does, is unprobed.
+Ours (T-2406): MAKEARRAY with a multi-cell step is one `#CALC!` (a 1x1 array step is unwrapped as BYROW does; unprobed, T-2463).
+Since T-2039 a LAMBDA step of MAKEARRAY, BYROW, BYCOL and MAP is a LAMBDA element ("Arrays of LAMBDAs"): a cell shows it as `#CALC!`,
+MAP can call it (`MAP(MAKEARRAY(1,2,LAMBDA(r,c,LAMBDA(x,x+c))),LAMBDA(g,g(10)))` is 11, 12, probes/lambda-arrays B22), and a
+function reading it as a value takes it as `#VALUE!`. Before T-2039 it was `#CALC!` when the call was the cell formula's outermost
+node and `#VALUE!` anywhere else. Both match the consumers probed:
+`&` (gen-m7/23b5367c18059af2 A2578 `TEXTSPLIT(.&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`), CELL (gen-m7/f7e94a817e5385ac
+A942, the CELL row of a VSTACK) and CONFIDENCE.NORM (gen-m9/165db58d1540f014 A273). The error-testing functions (ISERROR, IFERROR,
+ERROR.TYPE, TYPE) see a LAMBDA, not an error, as Excel does over SCAN's LAMBDAs (`ISERROR` FALSE, probes/lambda-arrays B8, B23);
+over BYROW, BYCOL and MAP elements that is unprobed (T-2463).
 Status: VERIFIED (excel-graph)
-Tasks: T-2406
+Tasks: T-2406, T-2463
 
 ## Functions passed by name (`_xleta.`)
 Rule: a function passed by name, stored `_xleta.NAME` (any case, `_xleta._xlfn.STDEV.S` and `_xleta.STDEV.S` alike), is a
@@ -1376,7 +1383,7 @@ A 1x1 array step is its one value, as in BYROW: `MAP(Data!B5:E6,..,LAMBDA(w,x,TR
 Calc!A2162; f7e94a817e5385ac A842), `SCAN(..,LAMBDA(w,acc,HSTACK(PROPER(acc))))` "True", "0.3", "0" (7ea6ef6ceabacafd A87) and
 `SCAN(..,LAMBDA(w,x,BYROW(w,_xleta.COUNT)))` 0, 1, 1, 1 (2d9b48c6363e7a16 A2954); so is a 1x1 array initial_value of SCAN:
 `SCAN(MINVERSE(Data!C7),..)` (23b5367c18059af2 A74) and `SCAN(LEN(WRAPROWS("Hello World",4,0.3)),Data!A7:D7,LAMBDA(z,y,z*y))`, 22, 2.2E+16,
-6.6E+15, 0 (7ea6ef6ceabacafd A3615) (excel-graph, 2026-10-22, T-2254 triage). Ours `#VALUE!` for each (T-2407).
+6.6E+15, 0 (7ea6ef6ceabacafd A3615) (excel-graph, 2026-10-22, T-2254 triage). Ours: implemented (T-2407): `lambda_result_value` reads a 1x1 array as its one value.
 Tasks: T-2309, T-2306, T-2407
 
 ## SCAN and REDUCE keep errors in the LAMBDA
@@ -1490,12 +1497,16 @@ Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes
 and a range, one call per element whose value is its top-left (`ROWS(EXPAND(A1:A2,{3;4}))` is 2,
 `COLUMNS(WRAPCOLS(A1:A3,2,{0;1}))` is 1). EXPAND's pad_with does not lift: an array there makes the whole call `#VALUE!`
 (`ROWS(EXPAND(A1:A2,3,1,{0;1}))` is `#VALUE!`, not 3 rows padded with errors). Implemented through the lifting table.
-UNVERIFIED part: a WRAPROWS whose vector is an error (`..-SIGN("ABC")`), wrap_count -1 and pad_with a 6x4 array is a
-6x4 grid of `#VALUE!`s in Excel (gen-m7/90de8755a2e565e6 A889:D894), not one error. Ours makes the vector's error (and a
-not-a-vector `#VALUE!`) every lifted element's result, before wrap_count's `#NUM!`. That cell cannot tell this from "a
-lifted error element in pad_with is that element's result", since its pad_with is all `#VALUE!` too. EXPAND with an error
-array beside a lifted argument (ours: one error), a 1x1 array or multi-cell range pad_with, and an array pad_with with rows
-past the grid are not probed either; T-2365 probes them.
+VERIFIED (excel-graph, 2026-10-23, probes/t2365-wrap-expand-tocol-error-lift; T-2365): a WRAPROWS/WRAPCOLS vector that
+is an error comes before wrap_count (`INDEX(WRAPROWS(1/0,-1,{0;1}),2,1)` is `#DIV/0!`, `ROWS(WRAPROWS(1/0,2,{0;1}))` is 2)
+and before a lifted error in pad_with; a bad wrap_count comes before an error pad_with element (`WRAPROWS(A1:A3,-1,{#N/A;0})`
+is `#NUM!`). A not-a-vector `#VALUE!` (2-D array) comes AFTER an error wrap_count: `WRAPCOLS({1,2;3,4},NA())` is `#N/A`,
+`WRAPROWS({1,2;3,4},1/0,0)` is `#DIV/0!`, and `WRAPCOLS(EXPAND({1},2,3),FILTER(<empty>))` is `#CALC!` (gen-m7/f7e94a817e5385ac
+A3517); a 2-D vector beside a clean lifted argument fills the shape (`ROWS(WRAPCOLS(A1:C3,2,{0;1}))` is 2). EXPAND with an
+error array beside a lifted argument is one error per element (`ROWS(EXPAND(1/0,{3;4}))` and `ROWS(EXPAND(NA(),3,{1;2}))`
+are 2), and a 1x1 array pad_with is `#VALUE!` (`INDEX(EXPAND(A1:A2,3,1,{0}),3,1)`). TOCOL of an error array beside a lifted
+argument also fills the shape (`ROWS(TOCOL(1/0,0,{0;1}))`, `ROWS(TOCOL(1/0,{0;1}))` are 2). The multi-cell range pad_with
+is T-2415's; an array pad_with with rows past the grid hung the Graph workbook (unprobed).
 A multi-cell *range* pad_with is one `#VALUE!` too, with nothing spilled, whatever the range's shape and whether any cell is padded:
 `EXPAND({1;2;3},5,100,Data!A7:D7)` (gen-m7/0624b684889e9228 Calc!A2004), `EXPAND(Data!C11:D12,2,2,Data!E1:E3)` (gen-m7/2c156ba98ef0220a.case.json A185),
 `EXPAND("a",4,4,Data!C7:C11)` (2d9b48c6363e7a16 A366), `EXPAND({1,2,3},5,4,Data!B5:C11)` (A2686), a 1x1 result that pads nothing,
@@ -1521,6 +1532,37 @@ Ours: matches (T-2312, `get_wrap_count` in functions/lookup_and_reference/wrapco
 Status: VERIFIED (excel-graph)
 Tasks: T-2312
 
+## Arrays of LAMBDAs
+Rule: an array element can be a LAMBDA. SCAN with a LAMBDA accumulator gives one per step, and so do MAKEARRAY, VSTACK of LAMBDAs
+and the array functions that pick elements (TAKE, CHOOSECOLS, TOCOL, HSTACK, XLOOKUP, INDEX): MAP and REDUCE call them,
+`MAP(SCAN(LAMBDA(z,z),{1,2,3},LAMBDA(f,x,LAMBDA(z,f(z)*10+x))),LAMBDA(g,g(0)))` is 1, 12, 123 (with a second array `{1,2,3}` passed
+on, 11, 212, 3123; REDUCE adding `g(1)`, 1246), `MAP(VSTACK(LAMBDA(x,x),LAMBDA(x,x*2)),LAMBDA(g,g(5)))` 5, 10, and a LET name bound
+to `INDEX(s,1,3)` or an XLOOKUP of the array calls (123, 12). MAP over a lone LAMBDA calls it (`MAP(LAMBDA(x,x*3),LAMBDA(g,g(5)))`
+15). A cell shows each element as `#CALC!` (the bare SCAN spills three; INDEX of one, TAKE, CHOOSECOLS, HSTACK, TOCOL and VSTACK
+of them likewise, and IFERROR keeps them). The array is an array: ROWS 1, COLUMNS 3, `TYPE` 64; an element is a LAMBDA, `TYPE` 128
+and `ISERROR` FALSE (also element-wise). Read as a value an element is `#VALUE!`: SUM is `#VALUE!`, COUNTA counts the three and
+COUNT none, `SCAN(..)=1` is three `#VALUE!`, and calling the array (`LET(s,SCAN(..),s(0))`) is three `#VALUE!`. ARRAYTOTEXT shows
+each as the letter lambda (`λ, λ, λ`). CHOOSE and IF over an array condition do not pick LAMBDAs: `CHOOSE({1,2},LAMBDA(x,x),
+LAMBDA(x,x*2))` and `IF({TRUE,FALSE},..)` are two `#VALUE!`, and MAP over them is two `#VALUE!` too.
+Evidence: probes/lambda-arrays B1:B43, F1:F9 (excel-graph, 2026-10-23, T-2039); probes/lambda-escaping-closures H2:J2.
+Ours: `ArrayNode::Lambda` holds the lambda id; SCAN, MAKEARRAY, BYROW, BYCOL and MAP keep a LAMBDA result as one
+(`calc_result_to_element`) and `result_to_array` makes a lone LAMBDA a one-element array of it; an element read as a value is
+`#VALUE!` and a cell shows `#CALC!`. A LET or LAMBDA call whose result is an array of LAMBDAs gives each of them its captures
+("LAMBDAs that outlive their call"; walked only when the scope made a LAMBDA). CHOOSE and IF keep the `#VALUE!` of
+`calc_result_to_array_node`. Not probed: UNIQUE, SORT or a comparison between two LAMBDA elements (ours: UNIQUE keys each LAMBDA
+by its id; T-2477).
+Status: VERIFIED (excel-graph)
+Tasks: T-2039, T-2477
+
+## TAKE and DROP with an omitted count
+Rule: an omitted rows or columns argument of TAKE and DROP keeps every row or column: `TAKE({1,2,3;4,5,6},,-1)` is the last column
+(3;6), `TAKE(A1:B3,,1)` the first, `DROP({1,2,3;4,5,6},,1)` the last two columns, and `TAKE(x,)`, `TAKE(x,,)` and `DROP(x,,)` the
+whole array. A blank cell is 0, not omitted: `TAKE(x,D1,1)` over a blank D1 is `#CALC!`.
+Evidence: probes/take-drop-omitted-rows F1:M6 (excel-graph, 2026-10-23, T-2039); probes/lambda-arrays B13.
+Ours: `edge_spans` reads an omitted count as "all" (before T-2039 an omitted rows was 0, so `TAKE(x,,-1)` was `#CALC!`).
+Status: VERIFIED (excel-graph)
+Tasks: T-2039
+
 ## SEQUENCE and TAKE: an argument error before zero rows
 Rule: SEQUENCE with 0 rows or columns, and TAKE with 0 rows, return an error in another argument rather than `#CALC!`:
 `SEQUENCE(0,4,<array start>,<step>)` is `#VALUE!` (gen-m7/07d27aa0add0247f Calc!A817), `SEQUENCE(0,1,LOOKUP(NETWORKDAYS(..),..),
@@ -1545,13 +1587,20 @@ Rule: TOROW's and TOCOL's scan_by_column lift over an array, an error initial ar
 lifts over the 1x9 array: 7d67c559ce7536fa A619), and an error scan_by_column beats an invalid ignore (`TOCOL(Data!B1:B5,Data!B8,NA())`
 is `#N/A`: 8044dce50616cfe9 A1508). SORT lifts an array by_col (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`:
 7307132bb8820f17 A1076), and TEXTJOIN an array ignore_empty (`LAMBDA(y,RIGHT(TEXTJOIN(y,y,y),2))(UNIQUE(Data!C3:D4))` is `#SPILL!`:
-ac67253061bba16a A1137).
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
+ac67253061bba16a A1137). TEXTJOIN's ignore_empty lifts over an array and a range, one join per element read as a scalar
+ignore_empty is (probes/textjoin-ignore-empty-lift, excel-graph, 2026-10-23, T-2318): `TEXTJOIN(",",{TRUE;FALSE},"a","","b")`
+spills "a,b" and "a,,b", `{TRUE,FALSE;FALSE,TRUE}` is 2x2, a range (`C1:C2`, `C1:D1`, `IF(TRUE,C1:C2)`) lifts like an array, a
+number element is TRUE unless 0, a "TRUE" text element is TRUE, an "x" text element `#VALUE!` and an error element that error, each
+in its own place; the delimiter and the texts are read whole by every element, so a delimiter error (`TEXTJOIN(#N/A,{TRUE;FALSE},..)`),
+a text error and a join over 32,767 characters (`#CALC!`) fill every element, and an array delimiter still cycles
+(`TEXTJOIN({"-","+"},{TRUE;FALSE},"a","","b")` is "a-b", "a-+b"). The gen-m7 cell: `LAMBDA(y,TEXTJOIN(y,y,y))({TRUE;FALSE})` is
+"TRUETRUEFALSE" twice, so RIGHT of it spills and A1137's spill is blocked.
+Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
-(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; each element is its call's top-left, UNVERIFIED against SORTBY's and UNIQUE's first-element-only rule, and a range by_col lifts too, UNVERIFIED: T-2366 probes both); TEXTJOIN: one cell (T-2318).
+(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; each element is its call's top-left, UNVERIFIED against SORTBY's and UNIQUE's first-element-only rule, and a range by_col lifts too, UNVERIFIED: T-2366 probes both); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
 Status: VERIFIED (excel-graph)
-Tasks: T-2313, T-2318, T-2319
+Tasks: T-2313, T-2318, T-2319, T-2467
 
 ## TOROW and UNIQUE of a lone blank cell
 Rule: a one-cell reference to a blank cell stays blank in TOROW and UNIQUE: `TOROW(Data!Z1,3)` drops it and is `#CALC!` (nothing

@@ -1,0 +1,71 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 6.0
+   },
+   "A3": {
+    "t": "n",
+    "v": 20.0
+   },
+   "A4": {
+    "t": "n",
+    "v": 10.0
+   },
+   "A5": {
+    "t": "n",
+    "v": 4.0
+   },
+   "A6": {
+    "t": "n",
+    "v": 27.0
+   },
+   "A7": {
+    "t": "b",
+    "v": true
+   },
+   "B1": {
+    "t": "s",
+    "v": "=LET(f1,1,f1+1)"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=LAMBDA(f1,f1*2)(3)"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=LET(c1,10,r1,2,c1*r1)"
+   },
+   "B4": {
+    "t": "s",
+    "v": "=LET(A1,5,A1*2)"
+   },
+   "B5": {
+    "t": "s",
+    "v": "=LET(x,LET(xy1,3,xy1+1),x)"
+   },
+   "B6": {
+    "t": "s",
+    "v": "=LET(f1,1,LAMBDA(f1,f1*10)(2))+F1"
+   },
+   "B7": {
+    "t": "s",
+    "v": "=LAMBDA(x,[f1],ISOMITTED(f1))(1)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d803e244e14dadbe8a091b9b5420f82b47b8ebba04ef37cfbb6b6608681c4ea0",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-23T11:31:01+00:00",
+  "version": null,
+  "workbook_name": "debfde5f6ba9ecb97f6b3ef306548269209a0c11408327f0ac7189ce1825a5a1.xlsx"
+ }
+}

@@ -44,34 +44,46 @@ pub(crate) struct NamedLambdas {
     prepared: HashMap<(usize, usize), PreparedLambda>,
 }
 
-/// What a LET or a LAMBDA call gives, for [`Model::close_over`]: the LAMBDA it is, if it is one.
+/// What a LET or a LAMBDA call gives, for [`Model::close_over`]: the LAMBDAs it holds, the one it
+/// is or the elements of an array of them (`LET(k,100,SCAN(..,LAMBDA(f,x,LAMBDA(z,f(z)*k+x))))`,
+/// T-2039).
 pub(crate) trait ScopeResult {
-    fn lambda(&self) -> Option<usize>;
+    fn lambdas(&self) -> Vec<usize>;
 }
 
 impl ScopeResult for CalcResult {
-    fn lambda(&self) -> Option<usize> {
+    fn lambdas(&self) -> Vec<usize> {
         match self {
-            CalcResult::Lambda(id) => Some(*id),
-            _ => None,
+            CalcResult::Lambda(id) => vec![*id],
+            CalcResult::Array(rows) => rows
+                .iter()
+                .flatten()
+                .filter_map(|node| match node {
+                    ArrayNode::Lambda(id) => Some(*id),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
         }
     }
 }
 
 impl ScopeResult for RefArg {
-    fn lambda(&self) -> Option<usize> {
+    fn lambdas(&self) -> Vec<usize> {
         match self {
-            RefArg::Value(value) => value.lambda(),
-            RefArg::Ranges(_) | RefArg::Grid(_) => None,
+            RefArg::Value(value) => value.lambdas(),
+            RefArg::Ranges(_) | RefArg::Grid(_) => Vec::new(),
         }
     }
 }
 
 impl ScopeResult for Binding {
-    fn lambda(&self) -> Option<usize> {
+    fn lambdas(&self) -> Vec<usize> {
         match self.resolved() {
-            Binding::Value(value) | Binding::ReadOnce(value) => value.lambda(),
-            Binding::Areas(_) | Binding::Span(_) | Binding::Grid(_) | Binding::Shared(_) => None,
+            Binding::Value(value) | Binding::ReadOnce(value) => value.lambdas(),
+            Binding::Areas(_) | Binding::Span(_) | Binding::Grid(_) | Binding::Shared(_) => {
+                Vec::new()
+            }
         }
     }
 }
@@ -554,14 +566,14 @@ impl Model {
                     RefArg::Value(self.evaluate_node_in_context(body, cell))
                 };
                 // A LAMBDA the body made may read the parameters and the captures bound here.
-                // Most calls give no LAMBDA, and they list no ids (a plain call allocates nothing).
-                if let Some(lambda) = result.lambda() {
+                // Most calls make no LAMBDA, and they list no ids (a plain call allocates nothing).
+                if self.last_lambda_id > mark {
                     let scope: Vec<usize> = ids
                         .iter()
                         .map(|&(raw_id, _)| raw_id)
                         .chain(captured.iter().copied())
                         .collect();
-                    self.close_over(Some(lambda), &scope, mark, cell);
+                    self.close_over(&result, &scope, mark, cell);
                 }
                 for &(raw_id, _) in ids {
                     self.variable_stack.remove(raw_id);
@@ -736,22 +748,24 @@ impl Model {
     /// nothing, so a LAMBDA made on each REDUCE step copies nothing.
     pub(crate) fn close_over(
         &mut self,
-        result: Option<usize>,
+        result: &impl ScopeResult,
         ids: &[usize],
         mark: usize,
         cell: CellReferenceIndex,
     ) {
-        let Some(result) = result.filter(|_| !ids.is_empty()) else {
+        // Nothing made since `mark` can capture: the result is not walked (a LET giving a large
+        // array of numbers costs nothing here).
+        if ids.is_empty() || self.last_lambda_id <= mark {
             return;
-        };
-        let mut pending = vec![result];
+        }
+        let mut pending = result.lambdas();
         let mut seen = HashSet::new();
         while let Some(lambda) = pending.pop() {
             if lambda < mark || !seen.insert(lambda) {
                 continue;
             }
             let held = self.lambda_captures.get(&lambda).into_iter().flatten();
-            pending.extend(held.filter_map(|(_, binding)| binding.lambda()));
+            pending.extend(held.flat_map(|(_, binding)| binding.lambdas()));
             let Some(definition) = self.lambdas.get(&lambda) else {
                 continue;
             };
@@ -778,7 +792,7 @@ impl Model {
                     self.variable_stack.shared(id)
                 };
                 if let Some(binding) = binding {
-                    pending.extend(binding.lambda());
+                    pending.extend(binding.lambdas());
                     self.lambda_captures
                         .entry(lambda)
                         .or_default()
@@ -890,6 +904,7 @@ fn called_value(value: &ArrayNode) -> ArrayNode {
     match value {
         ArrayNode::String(_) => ArrayNode::Number(0.0),
         ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
+        ArrayNode::Lambda(_) => ArrayNode::Error(Error::VALUE),
         // An empty element is taken as a number (not probed: `LET(f,"",f(2))` makes Excel refuse
         // the workbook).
         ArrayNode::Number(_) | ArrayNode::Boolean(_) | ArrayNode::Empty => {

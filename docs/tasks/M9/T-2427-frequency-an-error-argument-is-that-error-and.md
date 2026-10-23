@@ -98,8 +98,43 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (4): Calc!A32, A93, A100, A154
 - gen-m9/fec39efaba9284c3.case.json (3): Calc!A13, A59, A197
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): FREQUENCY nested in the statistical calls (a single bin spills, so the outer argument is an array or `#SPILL!`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 12 known-failure lines in eval/baseline/gen-m9.txt, 12 visibly off.
+Examples:
+- gen-m9/17c110a53924beb8 Calc!A348 `=STANDARDIZE(0,FREQUENCY(0.2,Data!C9),10000000001)`: Excel #SPILL!, ours -9.999999999e-11
+- gen-m9/5395b8a427764a3f Calc!A10 `=NORM.INV((F.INV(0.3,9,Data!$D$1)/Data!$C12),Data!E$8,(FREQUENCY(2.5,Data!E8)+Data!E9))`: Excel #SPILL!, ours #VALUE!
+- gen-m9/a2262ea466fcc142 Calc!A300 `=STANDARDIZE((FREQUENCY(Data!E9,Data!B1:E5)+1.005),YEAR(17910),(-Data!C11-VALUE("?b")))`: Excel #SPILL!, ours #VALUE!
+- gen-m9/cb61169f4c033d4b Calc!A137 `=VAR(Data!D8:D9,Data!B5,(FREQUENCY(Data!D6,Data!E8:E10)/(2.5*Data!E4)))`: Excel 12.25, ours #VALUE!
+- gen-m9/eedd629f3d69fdda Calc!A266 `=T.TEST(FREQUENCY(Data!C4:C6,T.DIST.2T((-1),1E-10)),{3,3,3,3},2,3)`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A348
+- gen-m9/44a8841352dc48e9.case.json (1): Calc!A312
+- gen-m9/5395b8a427764a3f.case.json (1): Calc!A10
+- gen-m9/787ba8d801105a60.case.json (1): Calc!A259
+- gen-m9/9e2225ead8a6a07b.case.json (1): Calc!A169
+- gen-m9/a2262ea466fcc142.case.json (1): Calc!A300
+- gen-m9/a5342a7e24fd803e.case.json (1): Calc!A229
+- gen-m9/bbab6562e88b70e8.case.json (1): Calc!A154
+- gen-m9/cb61169f4c033d4b.case.json (1): Calc!A137
+- gen-m9/d5fd9e05e9e6f466.case.json (2): Calc!A175, A312
+- gen-m9/eedd629f3d69fdda.case.json (1): Calc!A266
+
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): FREQUENCY nested in the financial functions (`AMORDEGRC(..,FREQUENCY(..),1)` `#NUM!`, `MDURATION(..,FREQUENCY(..)-SUM(..),1)` `#SPILL!`).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 3 known-failure lines in eval/baseline/gen-m9.txt, 3 visibly off.
+Examples:
+- gen-m9/23d82b62e9a85bdd Calc!A206 `=DOLLARDE(TTEST((Data!$C4/Data!E1),NORMSDIST(Data!D3),IF(TRUE,Data!$D10,Data!A12),3),((Data!C$7*2)+FREQUENCY(Data!C$5,Data!C10)))`: Excel #SPILL!, ours #DIV/0!
+- gen-m9/23d82b62e9a85bdd Calc!A258 `=AMORDEGRC(0.5,42,39112,571,4,FREQUENCY((Data!E9+Data!A8),(123456789.123^123456789.123)),1)`: Excel #NUM!, ours #VALUE!
+- gen-m9/d0854366830dcdee Calc!A349 `=MDURATION(36651,44354,INDEX(Data!D3:D11,5),(FREQUENCY(Data!A3:D11,Data!A$5)-SUM(Data!C8:C10,Data!$C8)),1)`: Excel #SPILL!, ours #VALUE!
+Cells:
+- gen-m9/23d82b62e9a85bdd.case.json (2): Calc!A206, A258
+- gen-m9/d0854366830dcdee.case.json (1): Calc!A349
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 139 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 151 known-failure lines (139 from T-2255, 12 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `ROWS(FREQUENCY({1;2;3},2))` is 2, `FREQUENCY(NA(),{1;2})` is `#N/A`, an error bins is its error.
 - [ ] statistics.md's entry gets an "Ours:" line naming this task.

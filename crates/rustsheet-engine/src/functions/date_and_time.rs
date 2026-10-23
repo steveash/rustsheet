@@ -346,7 +346,9 @@ impl Model {
                                     message: "Error in array".to_string(),
                                 });
                             }
-                            ArrayNode::Boolean(_) => return Err(invalid_holiday(cell)),
+                            ArrayNode::Boolean(_) | ArrayNode::Lambda(_) => {
+                                return Err(invalid_holiday(cell))
+                            }
                         }
                     }
                 }
