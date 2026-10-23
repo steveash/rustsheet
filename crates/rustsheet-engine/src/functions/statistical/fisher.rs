@@ -338,6 +338,12 @@ impl Model {
                     );
                 }
             },
+            // A computed number is a sample of one, so F.TEST is `#DIV/0!` (gen-m9 320d51765af9b6b7
+            // A376 `FTEST(TRANSPOSE(SUM(..)),range)`; T-2455); a one-cell reference stays `#VALUE!`
+            // (ba4ddb817a8e700e A345).
+            CalcResult::Number(n) if !matches!(args[0], Node::ReferenceKind { .. }) => {
+                vec![Some(n)]
+            }
             _ => {
                 return CalcResult::new_error(
                     Error::VALUE,
@@ -363,6 +369,10 @@ impl Model {
                     );
                 }
             },
+            // As the first sample: a computed number is a sample of one.
+            CalcResult::Number(n) if !matches!(args[1], Node::ReferenceKind { .. }) => {
+                vec![Some(n)]
+            }
             _ => {
                 return CalcResult::new_error(
                     Error::VALUE,
