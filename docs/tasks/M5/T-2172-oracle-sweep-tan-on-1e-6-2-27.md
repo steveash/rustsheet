@@ -44,3 +44,5 @@ Added `eval/suites/probes-numeric/cases/trig-odd-even-sumxmy2-sweep` (case + exc
 arguments (Calc!A1:D145), ODD/EVEN at 66 values (F1:H66), SUMXMY2/SUMX2MY2/SUMX2PY2 on 77 pair sets (J1:X77). Finding: the
 trig cut for fractions is |x| >= 2^27 (134217728.25 is `#NUM!`, 2^27-2^-26 is a number), recorded in numbers.md. No eval
 baseline change expected (new probe cells are oracle-only; checked by `make check`).
+Pass counts of the new case (`probes-numeric` is `gate = false`, so its 20 failing cells are neither baselined nor gated; 778 of 798 pass):
+TAN 4 misses (T-2147), SIN and COS none; ODD 11 misses, EVEN none (T-2173); SUMXMY2 5 misses, SUMX2MY2 and SUMX2PY2 none (T-2384).
