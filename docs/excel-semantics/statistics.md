@@ -2114,7 +2114,7 @@ misses its own CDF's crossing by up to about 1E-16 in x (absolute), in either di
 Evidence: probes-numeric t1538-f-inv-huge-df (156 cells) and t1538-beta-dist-at-excel-inv (24 cells), excel-graph,
 2026-10-23.
 - F.INV(p,d1,d2) at a df of 1E5 or more is (d2/d1) (y / (1 - y)) with y = Excel's BETA.INV(p,d1/2,d2/2), and
-  F.INV.RT(p,d1,d2) is 1/F.INV(p,d2,d1): with y from the entry below, `F.INV(0.5,1E10,5)` is 1.1490395521130337
+  F.INV.RT(p,d1,d2) is taken as 1/F.INV(p,d2,d1) (a chosen form: the evidence is agreement within 2 ulps): with y from the entry below, `F.INV(0.5,1E10,5)` is 1.1490395521130337
   bit for bit (A3; d2 y/(d1 (1 - y)) is 1 ulp below). For p above 1/2 the root BETA.INV's flip solves, s = 1 - y,
   is mapped as it is, (d2/d1) ((1 - s)/s): `F.INV(1-1E-12,100000,5)` = 97570.08944108484 (probes-numeric
   t1538-f-quantile-switchover A9), where forming 1 - y from the flipped y misses by 9E-8 relative. This explains the
@@ -2136,6 +2136,9 @@ Where it is tiny (the second shape huge, p <= 1/2) the search stops early, a New
   p = 0.999999 and 0.975 at shape 3), 1 ulp off at A142. With statrs' own acu (1E-14 here, a stop at a step below
   1E-7) and its start clamp it overflows (the density at x = 1E-4 is exp(5E5)) or stops 1E-3 relative off.
   `BETAINV(1E-20,1E10,0.5)` = 0.9999999956419133 is the true quantile rounded (gen-m9/0a9226016e8f5f33 A358).
+  Exception: `F.INV.RT(0.5,2,123456789.1229)` (gen-m9/f34f66fb7f81e673 A209, y = BETA.INV(0.5,61728394.5,1) near 1,
+  I_x = x^a) is one double from the nearest root, which lies almost halfway (0.50/0.50 ulp) between two doubles: a tie
+  Excel's own rounding decides, UNVERIFIED (T-2555).
 - Early stop where tiny: the cells A133, A135, A137, A139, A145, A153, A155 (x from 1.3E-12 to 5.3E-10) are 6E-16
   to 9.3E-7 relative off the true root, near AS 109's second Newton iterate from its own start (1E-12 to 4E-8
   relative), but no fixed acu, statrs' acu, or ln B from a double lgamma reproduces them (T-2555).
@@ -2143,6 +2146,10 @@ Where it is tiny (the second shape huge, p <= 1/2) the search stops early, a New
   beta is about 1E-7 off there (its fraction does not converge, T-2528): 1 ulp off at 4 of 12 near-1 cells. Where
   b/a is at most 1E-7, I_x(a, b) is taken as its large-a limit Q(b, -nu ln x), nu = a + (b - 1)/2 (the leading term
   of TOMS 708 `bgrat`, relative error about (b/a)^2 by mpmath: 1E-19 at a = 5E9), which is bit-exact on all of them.
+- Search failure at an extreme p: `F.INV(1E-200,1E10,6)` = 1.3006292404573862E-07 and
+  `BETAINV(1E-100,123456789.123,0.1,0.1)` = 0.9999919015105116 are not roots of the CDF (the root of the latter is
+  0.9999983733488269), so Excel's search ends somewhere else there (gen-m9/7c20351562a2d71d A37,
+  8dd2312c96effb1b A169; UNVERIFIED, T-2555).
 Consequence: F.INV at a huge df (T-1538 entry above) is exact wherever its beta variable is near 1.
 Evidence: probes-numeric t1538-f-inv-huge-df A133-A156 (excel-graph, 2026-10-23); AS 109 replayed with an
 mpmath CDF (T-1538 PR).

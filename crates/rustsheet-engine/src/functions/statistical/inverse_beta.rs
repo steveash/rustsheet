@@ -233,7 +233,7 @@ pub(crate) fn beta_quantile_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
     beta_lower_crossing(alpha, beta, p)
 }
 
-/// The double nearest the x with I_x(alpha, beta) = p, without [`beta_quantile_crossing`]'s flip:
+/// The double nearest the x with `I_x(alpha, beta)` = p, without [`beta_quantile_crossing`]'s flip:
 /// the root AS 109 solves for, which F.INV maps itself (`fisher.rs` `f_quantile_through_beta`).
 pub(crate) fn beta_lower_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
     if beta / alpha <= GAMMA_LIMIT_SHAPE_RATIO {
@@ -254,7 +254,7 @@ pub(crate) fn beta_lower_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
 }
 
 /// Where the second shape is at most this fraction of the first, [`beta_quantile_crossing`] takes
-/// I_x(a, b) as its large-a limit Q(b, -nu ln x), nu = a + (b - 1)/2 (the leading term of TOMS 708
+/// `I_x(a, b)` as its large-a limit `Q(b, -nu ln x)`, nu = a + (b - 1)/2 (the leading term of TOMS 708
 /// `bgrat`), whose relative error is about (b/a)^2 (mpmath: 1E-19 at a = 5E9, b = 2.5 or 3; 1.6E-14
 /// at a = 5E7, b = 5): the T-0970 incomplete beta's fraction does not converge there and is about
 /// 1E-7 off (T-2528), which picks the wrong neighbour of Excel's correctly rounded root

@@ -103,16 +103,17 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
 
 /// The lower-tail F quantile as Excel forms it at a huge df, from its BETA.INV:
 /// (df2/df1) y/(1 - y) with y = BETA.INV(p, df1/2, df2/2) (`inverse_beta::beta_quantile_crossing`),
-/// its flipped root s = 1 - y taken as it is for p above 1/2. F.INV.RT is 1/F.INV(p, df2, df1). So y near 1 keeps only its distance from 1 on the 2^-53 grid, and
-/// `F.INV(0.5,1E10,5)` is Excel's 1.1490395521130337 (probes-numeric/t1538-f-inv-huge-df A3, from
+/// its flipped root s = 1 - y taken as it is for p above 1/2. F.INV.RT is 1/F.INV(p, df2, df1).
+/// So y near 1 keeps only its distance from 1 on the 2^-53 grid, and `F.INV(0.5,1E10,5)` is Excel's 1.1490395521130337 (probes-numeric/t1538-f-inv-huge-df A3, from
 /// `BETA.INV(0.5,5E9,2.5)` = 0.999999999564854, A134) where the true quantile is 1.1490395821369862.
 /// See docs/excel-semantics/statistics.md "F quantile at a huge df goes through Excel's BETA.INV
 /// (T-1538)".
 fn f_quantile_through_beta(df1: f64, df2: f64, p: f64) -> f64 {
     if p > 0.5 {
         // BETA.INV's flip: s = 1 - y is the root solved, and mapped as it is, not as 1 - (1 - s):
-        // `F.INV(1-1E-12,100000,5)` is Excel's 97570.08944108484 (t1538-f-quantile-switchover A9),
-        // 1 - (1 - s) keeps only s's distance from 1 and misses by 9E-8 relative.
+        // `F.INV(1-1E-12,100000,5)` is then within 1.6E-15 relative of Excel's 97570.08944108484
+        // (t1538-f-quantile-switchover A9); 1 - (1 - s) keeps only s's distance from 1 and misses by
+        // 9E-8 relative.
         let s = beta_lower_crossing(df2 / 2.0, df1 / 2.0, 1.0 - p);
         return (df2 / df1) * ((1.0 - s) / s);
     }
@@ -454,7 +455,6 @@ impl Model {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::f_quantile;
@@ -469,9 +469,16 @@ mod tests {
         );
         // A48: F.INV.RT(0.975,1E10,5) = 1/F.INV(0.975,5,1E10), through the flipped root.
         let rt = f_quantile(1e10, 5.0, 0.975, true);
-        assert!((rt - 0.389_635_637_664_716_87).abs() <= 4.0 * f64::EPSILON * rt, "{rt}");
-        // t1538-f-quantile-switchover A9: the flipped root mapped as it is.
+        assert!(
+            (rt - 0.389_635_637_664_716_87).abs() <= 4.0 * f64::EPSILON * rt,
+            "{rt}"
+        );
+        // t1538-f-quantile-switchover A9: the flipped root mapped as it is (2E-15 relative of Excel's;
+        // through 1 - (1 - s) it would be 9E-8 off).
         let upper = f_quantile(100_000.0, 5.0, 1.0 - 1e-12, false);
-        assert!((upper - 97_570.089_441_084_84).abs() <= 1e-9, "{upper}");
+        assert!(
+            (upper - 97_570.089_441_084_84).abs() <= 2e-15 * upper,
+            "{upper}"
+        );
     }
 }

@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -26,10 +27,23 @@ ln B from double lgamma reproduces it; the start formula, the density in the New
 need fitting (scratch analysis in the T-1538 PR). Owned visibly-off gen-m9 cells that stay after T-1538
 are listed in its Outcome (those whose beta variable is tiny, e.g. gen-m9/146b46e74f2dac3b A131).
 
+Owned gen-m9 cells (moved from T-1538, still visibly off after it): gen-m9/146b46e74f2dac3b A131,
+7c20351562a2d71d A254 and A37, 85f48d5cdfb24555 A315, 589f42e67f4b4b8d A319, 8dd2312c96effb1b A169,
+f34f66fb7f81e673 A209. A37, A319 (`F.INV(1E-200,...)` at a huge df) and A169 (`BETAINV(1E-100,123456789.123,0.1,...)`)
+are where Excel's search fails and its value is not the root (statistics.md, UNVERIFIED); A209 has b = 1 and a root
+almost halfway between two doubles, Excel taking the far one (a tie its own exp/ln rounding decides?). Also watch:
+probes-numeric t1538-f-inv-huge-df A86 (0.53 units, just past 15 digits after T-1538) and
+t1538-f-quantile-switchover (all 24 cells within 2E-13 relative, none bit-exact, either side of df 1E5).
+
+## Visible-parity stage
+Decision 0083: the cells above are visibly off; the target is that each is within half a unit of the 15th
+significant digit of Excel's value, or recorded as a DEVIATION where Excel's value cannot be derived.
+
 ## Acceptance criteria
+- [ ] Visible parity: the 7 owned cells above reach 15-digit parity or are DEVIATION/UNVERIFIED entries with evidence.
 - [ ] The 8 small-x BETA.INV cells of t1538-f-inv-huge-df are within half a unit of the 15th digit, or the
       stop rule is recorded as UNVERIFIED with the hypotheses ruled out.
 - [ ] No regressions in any baseline; `make check` green; reviewers approve.
 
 ## Out of scope
-- `F.INV(1E-200,...)` at a huge df (Excel's search fails outright there; T-1538 notes).
+-

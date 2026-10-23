@@ -38,11 +38,11 @@ Cells:
 - gen-m9/f34f66fb7f81e673.case.json (2): Calc!A117, A209
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 16 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] (moved to T-2555) Visible parity (gen-m9, T-2255): these 16 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `t1530-f-df-cut` cells A1-A14 and A57-A58 pass bit-exact or the residual is recorded as a DEVIATION.
-- [ ] Cells at df 99999, 1E5 and 1E6 with extreme p (1E-12, 1-1E-12) are probed, to justify the bisection switch-over (`F_QUANTILE_BISECT_DF`).
-- [ ] `make check` green; reviewers approve.
+- [ ] (moved to T-2555 and T-2528) `t1530-f-df-cut` cells A1-A14 and A57-A58 pass bit-exact or the residual is recorded as a DEVIATION.
+- [x] Cells at df 99999, 1E5 and 1E6 with extreme p (1E-12, 1-1E-12) are probed, to justify the bisection switch-over (`F_QUANTILE_BISECT_DF`).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -94,6 +94,8 @@ mapped as solved, and F.INV.RT is 1/F.INV(p, d2, d1).
   cells off either way (the tiny-quantile side, where ours is now the true root).
 - New probe probes-numeric/t1538-f-quantile-switchover (24 cells, excel-graph): either side of df 1E5 the engine is
   within 2E-13 relative of Excel at p = 1E-12 and 1 - 1E-12, which justifies the switch at `F_QUANTILE_STATRS_DF_MAX`.
+- Criteria not met here move per decision 0083: the 7 owned cells still visibly off are owned by T-2555
+  (`campaign: visible`); the forward-kernel cells by T-2528.
 - Not met: t1530-f-df-cut A1-A14 bit-exact (A8, A12, A14 are T-2528's forward kernel; the quantile cells on the tiny
   side are T-2555). Follow-up: T-2555.
 
