@@ -1,6 +1,6 @@
 ---
 id: T-2217
-title: "RRI matches Excel's last ulp at RRI(0.5,3,4) (candidate: exp(ln(fv/pv)/nper)-1, not ^)"
+title: "RRI matches Excel's last ulp at RRI(0.5,3,4) (exp(ln(fv/pv)*(1/nper))-1, not ^)"
 milestone: M9
 lane: functions-financial
 status: todo
@@ -24,7 +24,7 @@ Gap triage 2026-10-21 (`make eval` on main d48456cd; `make eval-show CASE=ironca
   `extended_sum(power(extended_quotient(fv, pv), extended_quotient(1.0, nper)), -1.0)` (T-1975), and its comment
   says Excel uses its own `^`. That fits the 12 excel-graph RRI cells of probes/fin-mduration-rri-fit A37-A59 and
   probes/fin-rri, but not D12.
-- Candidate (triage check in a scratch case): `EXP(LN(fv/pv)/nper)-1` and `EXP(LN(fv/pv)*(1/nper))-1`, with the
+- Candidate (triage check; T-2216 sweep settled it for the second form: `/nper` misses 49 of 136 web points, `*(1/nper)` misses none): `EXP(LN(fv/pv)/nper)-1` and `EXP(LN(fv/pv)*(1/nper))-1`, with the
   engine's `excel_exp` (x87_exp.rs) and `excel_ln` (x87_log10.rs), match all
   25 numeric Excel RRI cells: the 12 excel-graph cells of probes/fin-mduration-rri-fit, the 8 numeric cells of probes/fin-rri
   (A1, A9-A14, A16), and the Mac cells RRI.xlsx D3-D6 and D12; the special-case cells (fin-rri A5/A6, RRI.xlsx D2/D8)
@@ -81,3 +81,6 @@ type, error, text, or a value off by more than half a unit of the 15th significa
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Note from T-2216
+The sweep (financial.md "DURATION and RRI operation order") fits `EXP(LN(fv/pv)*(1/nper))-1` on 134 of 136 numeric points; `/nper` fits only 87. Implement the `*(1/nper)` form.

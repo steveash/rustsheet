@@ -472,7 +472,16 @@ impl Parser {
         }
         // We should do this *only* importing functions from xlsx
         if let Some(function_kind) = self.language.functions.lookup_stored(&name) {
-            return self.function_call(function_kind, args);
+            let node = self.function_call(function_kind, args);
+            // The result of a function that can return a reference (or a LAMBDA) may be called:
+            // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel
+            // refuses `SUM(1)(2)`, `ABS(1)(2)` and `IFERROR(LAMBDA(x,x*2),0)(3)`
+            // (probes/chained-calls-builtin-*, T-2405): every built-in `is_reference_operand` takes was probed
+            // callable.
+            if is_reference_operand(&node) {
+                return self.chain_calls(node);
+            }
+            return node;
         }
         // A callee spelled like a cell, and no function (`LOG10` stays one), is a call of that cell:
         // `#REF!` like any called reference (probes/unknown-function-name-spelling A8, T-1758).
