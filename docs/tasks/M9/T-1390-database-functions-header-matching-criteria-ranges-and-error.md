@@ -183,4 +183,5 @@ Review round 1: security, architecture and quality APPROVE; Excel fidelity REQUE
   behavior of Excel is unprobed; pin the value in `self_referencing_formula_condition_is_bounded`; run
   `scripts/check_duplication.py --update` (3121 -> 3083).
 - `probes/union-walk-repeated-in-lambda` timed out under load in a local `make eval-check`; it is unrelated
-  (no D-functions). Confirm on main before you baseline.
+  (no D-functions). Confirm on main before you baseline. A full `make check` on ffb2cf31 (before the guard fix)
+  passed fmt, clippy and tests and failed only at eval-check, on that one timeout.
