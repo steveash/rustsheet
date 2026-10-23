@@ -3,7 +3,7 @@ id: T-2005
 title: "RATE's solver: third fit attempt with per-iterate traces, the nested RATE(n,PMT(..)) cells and Excel's #NUM! failure rule"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
