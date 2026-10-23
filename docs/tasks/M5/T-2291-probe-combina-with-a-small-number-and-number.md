@@ -33,3 +33,4 @@ Excel's COMBINA for a small `number` with `number_chosen` at or past 2^31 is kno
 Probe case `probes/t2291-combina-small-n-huge-k` oracle-filled (excel-graph): all six COMBINA cells are `#NUM!` and
 `COMBIN(2^31-2,2^31-2)` is 1, so the n+k-1 bound of T-2162 is confirmed for small `n`; no fix task needed.
 numbers.md updated. Eval delta: none (probe cases only).
+Follow-up: T-2517 (probe just under the cut).
