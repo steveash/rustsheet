@@ -3,7 +3,7 @@ id: T-2515
 title: "Worksheet t=d cells follow the workbook date system (1904 workbooks)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
