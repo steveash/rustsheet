@@ -48,6 +48,8 @@ Coverage half of decision 0094's checkpoint: this task is done when its function
 400-cell bar and their visibly-off cells all have tasks.
 
 ## Handoff (resumed)
+Superseded by the Outcome: the numbers below predate the merge of `main`, and the "Left to do" items are done.
+
 2026-10-23, opus worker, stopped at the session budget. Done on this branch:
 - 34 new gen-m9 cases (seeds 2257 and 22572; 31 cases x 400 formulas over the 49 functions, then
   3 x 400 over the 14 still under 400 cells), filled through excel-graph: 34 sidecars, 0 failures.
