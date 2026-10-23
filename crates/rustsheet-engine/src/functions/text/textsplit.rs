@@ -37,42 +37,48 @@ impl Model {
         }
         // The delimiters are lists taken whole; the text and the scalar arguments lift over a
         // range or an array (probes/m7-argument-modes F13, F14).
-        let (operands, lists) = self.lift_text_operands(args, &[1, 2], cell);
+        let (mut operands, lists) = self.lift_text_operands(args, &[1, 2], cell);
         // pad_with does not lift: an array of any size, a 1x1 one included, is #VALUE! (probes/
-        // textsplit-lift-guesses A35-A38, A65).
-        if let Some(CalcResult::Array(_)) = operands.get(5) {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "pad_with must be a single value".to_string(),
-            );
+        // textsplit-lift-guesses A35-A38, A65), but per element, after an error argument and
+        // beside lifted ones (gen-m7 f7e94a817e5385ac A2186, 2d9b48c6363e7a16 A3261; text.md
+        // "TEXTSPLIT: argument errors first, an all-empty result"), so it is taken out of the lift.
+        let pad_is_array = matches!(operands.get(5), Some(CalcResult::Array(_)));
+        if pad_is_array {
+            operands[5] = CalcResult::EmptyArg;
         }
         let mut lists = lists.into_iter();
-        let col_delimiters = lists.next().map(|list| self.split_delimiters(list, cell));
+        // A delimiter that is itself an error is an argument error, the first after the text's;
+        // an error element of a list comes after ignore_empty and match_mode (probes/
+        // textsplit-error-order A1-A4, A13, A14).
+        let mut delimiter_error = None;
+        let mut split = |model: &mut Model, list: CalcResult| {
+            if delimiter_error.is_none() && matches!(list, CalcResult::Error { .. }) {
+                delimiter_error = Some(list.clone());
+            }
+            model.split_delimiters(list, cell)
+        };
+        let col_delimiters = lists.next().map(|list| split(self, list));
         // A bare empty-arg (omitted) row delimiter → no row splitting, which is the empty list.
-        let row_delimiters = lists.next().map(|list| self.split_delimiters(list, cell));
-        let arg_count = args.len();
+        let row_delimiters = lists.next().map(|list| split(self, list));
         let scanned: Vec<usize> = [&col_delimiters, &row_delimiters]
             .into_iter()
             .flatten()
             .flatten()
             .flat_map(|d| d.list.exact().iter().map(String::len))
             .collect();
+        let call = SplitCall {
+            arg_count: args.len(),
+            delimiter_error,
+            pad_is_array,
+            col_delimiters,
+            row_delimiters,
+        };
         self.lift_text_call(
             operands,
             cell,
             &scanned,
             SEARCHED_BYTES_PER_VISIT,
-            |model, values, first_only| {
-                model.textsplit_element(
-                    values,
-                    arg_count,
-                    col_delimiters.as_ref(),
-                    row_delimiters.as_ref(),
-                    first_only,
-                    cell,
-                )
-            },
+            |model, values, first_only| model.textsplit_element(values, &call, first_only, cell),
         )
     }
 
@@ -94,24 +100,58 @@ impl Model {
     fn textsplit_element(
         &mut self,
         values: &[CalcResult],
-        arg_count: usize,
-        col_delimiters: Option<&Result<SplitList, CalcResult>>,
-        row_delimiters: Option<&Result<SplitList, CalcResult>>,
+        call: &SplitCall,
         first_only: bool,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let arg_count = call.arg_count;
         let text = match Self::cast_string_ref(&values[0], cell) {
             Ok(s) => s,
             Err(e) => return e,
         };
+        if let Some(error) = &call.delimiter_error {
+            return error.clone();
+        }
+
+        // ignore_empty, then match_mode, each an error or not a boolean or number, is the result
+        // before an array pad_with's #VALUE!, an error element of a delimiter list and
+        // TEXTSPLIT's own #VALUE! for an empty delimiter, no delimiter or empty text (gen-m7
+        // 90de8755a2e565e6 A1643, ac67253061bba16a A184; probes/textsplit-error-order A5, A6,
+        // A8, A18; text.md "TEXTSPLIT: argument errors first, an all-empty result").
+        let ignore_empty = if arg_count >= 4 {
+            match Self::cast_bool_ref(&values[3], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+
+        let case_insensitive = if arg_count >= 5 {
+            match self.cast_number_ref(&values[4], cell) {
+                Ok(n) => n != 0.0,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+
+        if call.pad_is_array {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "pad_with must be a single value".to_string(),
+            );
+        }
+
         let no_delimiters = SplitList::new(Delimiters::new(vec![]));
-        let col_delims = match col_delimiters {
+        let col_delims = match &call.col_delimiters {
             Some(Ok(d)) => d,
             Some(Err(e)) => return e.clone(),
             None => &no_delimiters,
         };
 
-        let row_delims = match row_delimiters {
+        let row_delims = match &call.row_delimiters {
             Some(Ok(d)) => d,
             Some(Err(e)) => return e.clone(),
             None => &no_delimiters,
@@ -139,24 +179,6 @@ impl Model {
                 "TEXTSPLIT requires at least one delimiter".to_string(),
             );
         }
-
-        let ignore_empty = if arg_count >= 4 {
-            match Self::cast_bool_ref(&values[3], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-
-        let case_insensitive = if arg_count >= 5 {
-            match self.cast_number_ref(&values[4], cell) {
-                Ok(n) => n != 0.0,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
 
         let pad_with: Option<ArrayNode> = if arg_count >= 6 {
             match &values[5] {
@@ -227,9 +249,11 @@ impl Model {
             vec![cols]
         };
 
+        // ignore_empty dropped every piece: #CALC!, the empty-array error (probes/
+        // textsplit-error-order A11, A12; gen-m7 07d27aa0add0247f A768).
         if rows_of_cols.is_empty() || rows_of_cols.iter().all(|r| r.is_empty()) {
             return CalcResult::new_error(
-                Error::VALUE,
+                Error::CALC,
                 cell,
                 "TEXTSPLIT produced no output".to_string(),
             );
@@ -274,6 +298,17 @@ impl Model {
 
         CalcResult::Array(result)
     }
+}
+
+/// What every element of one TEXTSPLIT call shares: the argument count, the delimiter lists
+/// (read once), the first delimiter that is itself an error, and whether `pad_with` is an array
+/// (`#VALUE!`, but per element; it does not lift).
+struct SplitCall {
+    arg_count: usize,
+    delimiter_error: Option<CalcResult>,
+    pad_is_array: bool,
+    col_delimiters: Option<Result<SplitList, CalcResult>>,
+    row_delimiters: Option<Result<SplitList, CalcResult>>,
 }
 
 /// A TEXTSPLIT delimiter list with one substring searcher per non-empty delimiter and case,

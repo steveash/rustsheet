@@ -1550,17 +1550,26 @@ of the call with that element in the argument's place, or that call's error. A o
   `...,0,5,,,1/0)` are `#DIV/0!`: A193, A217), but text that is no number, typed or computed, comes before it,
   scalar or lifted (`GROUPBY(k,v,SUM,0,"x",,,1/0)` is `#VALUE!`: A201). Text read from a one-cell reference is unprobed (ours
   keeps the reference, so the later error wins).
-- Two array options broadcast: `GROUPBY(k,v,SUM,{0,1},{0;1})` is 2x2 (A209:B210; not yet matched, T-2399).
+- Two array options broadcast against each other as the element-wise operators do: `GROUPBY(k,v,SUM,{0,1},{0;1})` is 2x2
+  (A209:B210), a row against a column is a grid (`{0,2,3}` with `{0;-1}` is 2x3), and a position past a shorter array is `#N/A`
+  (`{0,2;3,0}` with `{0;-1;1}` is 3x2 with a row of `#N/A`; `{0,2,3}` with `{-1,1}` is `Total`, `Row Field 1`, `#N/A`;
+  args2 A1-A23, A56). A range broadcasts as an array does (A36), and so do PIVOTBY's options, `field_headers` with
+  `row_total_depth` and `row_total_depth` with `col_total_depth` (A41, A46). Each element is its own call, so of two invalid or
+  error elements the earlier argument's wins: `{#N/A,0}` with `{0;#DIV/0!}` is `#N/A`, `a`; `#N/A`, `#DIV/0!` (A31), and
+  `{0,"x"}` with `{0;5}` has `#VALUE!` wherever the text is (A26). A lifted `field_relationship` beside them is read per
+  element too (A51).
 - `sort_order` does not lift (it takes arrays of its own): `GROUPBY(k,v,SUM,0,1,{1,-1})` with one key is a single `#VALUE!` (A81).
 - REGEXEXTRACT with an invalid return mode (-1) is `#VALUE!`, inside a GROUPBY function too (K1-K10). excel-graph returns those
   spilled cells as rich errors it cannot decode, so the probe reads them through INDEX and ERROR.TYPE (A33, A41; T-2397).
 - Not yet matched: `SCAN(GROUPBY(..,LAMBDA(w,w)),0,MIN)` is a single `#N/A` and `SCAN(GROUPBY(..,SUM),0,MIN)` a single 0
   (A153, A161; T-2398).
-Evidence: probes/groupby-lifted-args (excel-graph, 2026-10-22, T-2359); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
+Evidence: probes/groupby-lifted-args (excel-graph, 2026-10-22, T-2359), probes/groupby-lifted-args2 (excel-graph, 2026-10-23,
+T-2399); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
 b24ce74f08d3f91a A1778.
-Ours: `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs) evaluates each option once and re-runs the call
-once per class of element (a whole number within the valid range, another number, a boolean, text that is no number, an error),
-with every other argument frozen to its value, so neither an array's size nor nesting multiplies the work.
+Ours: `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs) evaluates each option once, broadcasts the array
+options with the lifting driver's `broadcast_shape`, and re-runs the call once per class of the elements at a position (a
+whole number within the valid range, another number, a boolean, text that is no number, an error), with every other argument
+frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399
