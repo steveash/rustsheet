@@ -126,3 +126,7 @@ the 15th digit, as `closeness.rs`):
   and EXP(-n*LN(1.1)). With Excel's own PMT cell, `PMT*exp(-n*log1p r)` is bit-exact on only 38/400 (r 0.1) and
   43/400 (0.05), `PMT/exp(n*log1p r)` 31 and 46, `PMT*EXP(-n*LN(1.1))` 2: misses are 1-3 ulp either way, so the
   last bits come from somewhere else (a 64-bit intermediate?). The sweep is the data to fit the form on.
+- On the sweep, Excel/exact - 1 drifts linearly in n: about +1.5e-17*n at r = 0.1 (6.5e-15 at n = 360) and about
+  -1e-17*n at r = 0.05, i.e. as if the log of 1+r were off by about one ulp (low at 0.1, high at 0.05). It is not
+  the double 1+r (wrong sign and size), and not 2^(-n*log2(1+r)) with log2 rounded to 53 or 64 bits (27/800
+  bit-exact); `PMT*exp(-n*log1p r)` variants with 53/64-bit/exact steps reach 81/800.
