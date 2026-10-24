@@ -121,6 +121,12 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   suite's. Read it from the "Probe milestones (decision 0051)" section of
   `eval/runs/latest/report.md` after `make eval` (report.json: `probe_milestones`; the M0–M2 row
   is also printed by `make eval-check`); the other rows are M5–M11's probe criteria.
+- **Exit owners** (decision 0096): after `make eval`, run `make exit-owners MILESTONE=<current
+  milestone>` (docs/milestones.md) instead of searching `docs/tasks/` by hand. Each listed line is a
+  failing exit cell that no open task of that milestone owns: add the cell (its case file stem and
+  A1 name, as the line prints them) to the open task of that milestone that should fix it, or, when
+  none fits, file one with `make new-task MILESTONE=<current> ..` that names it. Put the new
+  owners in the daily steward PR, and rerun `make exit-owners` until it reports 0.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
