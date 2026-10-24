@@ -53,9 +53,10 @@ const F_TEST_SERIES_TERMS: u32 = 100_000;
 /// pi as a double-double (hi + lo).
 const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
 
-/// F.TEST's upper tail `I_x(a, b)` for x = df_small/(df_big f + df_small) <= a/(a+b), y = 1 - x,
-/// a = df_small/2, b = df_big/2 (f the larger variance over the smaller):
-/// exp(a ln x) exp(b ln y) R with the remainder R = I_x(a,b)/(x^a y^b) close to correctly rounded.
+/// F.TEST's upper tail `I_x(a, b)` for `x = df_small/(df_big f + df_small) <= a/(a+b)`,
+/// `y = 1 - x`, `a = df_small/2`, `b = df_big/2` (f the larger variance over the smaller):
+/// `exp(a ln x) exp(b ln y) R` with the remainder `R = I_x(a,b)/(x^a y^b)` close to correctly
+/// rounded.
 /// Excel's F.TEST carries the rounding of the two powers (tens of ulps in a deep tail, where
 /// a ln x is about -100) but not a continued fraction's: over the 188 distinct F.TEST inputs on
 /// file this form is bit-exact on 90 against 53 for the correctly rounded p and visibly off on 6
@@ -72,10 +73,10 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
 }
 
-/// I_x(a,b)/(x^a (1-x)^b) = 2F1(a+b, 1; a+1; x) / (a B(a,b)) for half-integer shapes, in
-/// double-double: B(a,b) by B(a+1,b) = B(a,b) a/(a+b) and B(a,b+1) = B(a,b) b/(a+b) from B(1,1) = 1,
-/// B(1/2,1) = B(1,1/2) = 2 or B(1/2,1/2) = pi, and the series of positive terms
-/// t_(n+1) = t_n (a+b+n) x/(a+1+n), which nothing cancels.
+/// `I_x(a,b)/(x^a (1-x)^b) = 2F1(a+b, 1; a+1; x) / (a B(a,b))` for half-integer shapes, in
+/// double-double: `B(a,b)` by `B(a+1,b) = B(a,b) a/(a+b)` and `B(a,b+1) = B(a,b) b/(a+b)` from
+/// `B(1,1) = 1`, `B(1/2,1) = B(1,1/2) = 2` or `B(1/2,1/2) = pi`, and the series of positive terms
+/// `t_(n+1) = t_n (a+b+n) x/(a+1+n)`, which nothing cancels.
 fn f_test_remainder(x: f64, a: f64, b: f64) -> f64 {
     let a0 = if a.fract() == 0.0 { 1.0 } else { 0.5 };
     let b0 = if b.fract() == 0.0 { 1.0 } else { 0.5 };
