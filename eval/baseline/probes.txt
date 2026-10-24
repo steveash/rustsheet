@@ -1413,13 +1413,6 @@ F	probes/bessel-large-x.case.json	Sheet1!A71
 F	probes/bessel-large-x.case.json	Sheet1!A72
 F	probes/bessel-large-x.case.json	Sheet1!A73
 F	probes/bessel-large-x.case.json	Sheet1!A74
-F	probes/chained-calls-builtin-drop.case.json	Sheet1!B1
-F	probes/chained-calls-builtin-drop.case.json	Sheet1!B2
-F	probes/chained-calls-builtin-take.case.json	Sheet1!B1
-F	probes/chained-calls-builtin-trimrange.case.json	Sheet1!B1
-F	probes/chained-calls-builtin-trimrange.case.json	Sheet1!B2
-F	probes/chained-calls-builtin-trimrange.case.json	Sheet1!B3
-F	probes/chained-calls-builtin-xlookup.case.json	Sheet1!B1
 F	probes/circular-iteration-delta-boundary.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!B1
