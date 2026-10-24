@@ -33,6 +33,10 @@ excel-probe skill before changing an order). Groups seen while splitting:
   `#NUM!`, `PRICEMAT(..,TRUE,3)` `#NUM!`, `DB(-1E-6,286,11,1,FALSE)` `#NUM!`, `EFFECT(0,9)`, `ACCRINT(..,"TRUE")` `#VALUE!`),
   `PV(-1+2^-52,30,-750)` `#DIV/0!` (ours `#NUM!`), `FVSCHEDULE(5916,{-1E+300,1E+300})` 0 (ours `#DIV/0!`), FREQUENCY over a
   scalar error bins argument (`#NUM!`, ours `#SPILL!`).
+Unprobed corners T-2428's review raised (probe each, then follow or record): whether the size checks compare a whole
+column's full count or its used area (`XIRR(A:A,B1:B10)`, `XNPV(r,Sheet1!A:A,Sheet2!B:B)`; ours trims to the used area,
+`flow_range_end`); a literal boolean rate `XNPV(TRUE,..)` (ours `#VALUE!` as for a cell); and whether XIRR puts an error
+dates argument before the values' cells as XNPV does (ours reads the values first).
 Some cells may be decided by an enclosing function instead (FORECAST.ETS is `#N/IMPL!`, TRIMMEAN); move those to their
 owners.
 Code: `fn_xirr`, `xirr_size_error`, `fn_xnpv`, `xnpv_size_error` in crates/rustsheet-engine/src/functions/financial/mod.rs
