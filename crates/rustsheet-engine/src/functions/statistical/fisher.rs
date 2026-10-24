@@ -6,6 +6,7 @@ use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
+use crate::functions::statistical::loader::dbinom_raw_dev;
 use crate::functions::statistical::special::{ln_gamma, refine_increasing};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
@@ -196,17 +197,14 @@ fn f_quantile_through_beta(df1: f64, df2: f64, p: f64) -> f64 {
 }
 
 /// The F density. statrs' direct form raises `df1*x` and `df1*x + df2` to the power `df1` and
-/// `df1 + df2`, which overflows to inf/inf (NaN) for a huge x although the density is tiny:
-/// Excel's `F.DIST(1E308,1,3,FALSE)` is 0 (probes/stat-overflow-arguments E11, -b A6). Only in
-/// that case, where the overflow comes from x alone (`df1^df1`, `df2^df2` and
-/// `(df1+df2)^(df1+df2)` are finite, so the direct form does not overflow at x near 1), is the
-/// density evaluated in logarithms, and only an underflow to 0 is taken from it: a density that
-/// is a positive double stays `#NUM!` as before, because no oracle cell covers it (moderate x
-/// with df1 near 30-140, e.g. `F.DIST(20,100,3,FALSE)`) and the logarithmic form misses there by
-/// up to about 300 ulp (TODO(T-1864)). Degrees of freedom large enough to overflow those powers
-/// (`F.DIST(3,50,100,FALSE)`, `F.DIST(2,5,1E10,FALSE)`) overflow the direct form too; they stay
-/// `#NUM!` as before, because the logarithmic form is not accurate enough there (Excel's
-/// `F.DIST(2,5,1E10,FALSE)` is 0.14167277676179968, probes-numeric/t1530-f-df-cut; TODO(T-1864)).
+/// `df1 + df2`, which overflows to inf/inf (NaN) for a huge x or a degrees of freedom above about
+/// 143 although the density is an ordinary number. Where the direct form is finite the beta
+/// density times the Jacobian is kept (every value that passed before T-1864 is unchanged).
+/// Where it is not finite: an overflow from x alone (`df1^df1`, `df2^df2` and
+/// `(df1+df2)^(df1+df2)` finite) that the logarithmic form takes to 0 is 0 (Excel's
+/// `F.DIST(1E308,1,3,FALSE)`, probes/stat-overflow-arguments E11, -b A6); every other positive x
+/// is [`f_pdf_loader`], which a plain logarithmic form is not accurate enough to replace (T-1290:
+/// `F.DIST(1,1000,1000,FALSE)` 6.306254544584165 against the true 6.3062545445902005).
 fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
     let direct = dist.pdf(x);
     // Where the direct form is finite: the beta density at y = df1 x / (df1 x + df2) times
@@ -218,24 +216,49 @@ fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
         return beta_density(y, df1 / 2.0, df2 / 2.0)
             .map_or(direct, |density| density * y * (1.0 - y) / x);
     }
+    if x <= 0.0 {
+        return direct;
+    }
     let total = df1 + df2;
     let small_powers =
         df1.powf(df1).is_finite() && df2.powf(df2).is_finite() && total.powf(total).is_finite();
-    if x <= 0.0 || !small_powers {
-        return direct;
+    if small_powers {
+        let scaled = df1 * x;
+        let ln_beta = ln_gamma(df1 / 2.0) + ln_gamma(df2 / 2.0) - ln_gamma((df1 + df2) / 2.0);
+        let ln_density = 0.5
+            * (df1 * scaled.ln() + df2 * df2.ln() - (df1 + df2) * (scaled + df2).ln())
+            - x.ln()
+            - ln_beta;
+        // Only the evidence-backed underflow: ln of the smallest positive double is about -744.44.
+        if ln_density.exp() == 0.0 {
+            return 0.0;
+        }
     }
-    let scaled = df1 * x;
-    let ln_beta = ln_gamma(df1 / 2.0) + ln_gamma(df2 / 2.0) - ln_gamma((df1 + df2) / 2.0);
-    let ln_density = 0.5 * (df1 * scaled.ln() + df2 * df2.ln() - (df1 + df2) * (scaled + df2).ln())
-        - x.ln()
-        - ln_beta;
-    // Only the evidence-backed underflow: ln of the smallest positive double is about -744.44.
-    let density = ln_density.exp();
-    if density == 0.0 {
-        0.0
+    f_pdf_loader(df1, df2, x)
+}
+
+/// The F density for x > 0 by Loader's saddle-point binomial form (R's `df`): with
+/// q = n/(n + x m) and p = x m/(n + x m), the density is (m q / 2)
+/// `dbinom_raw((m-2)/2, (m+n-2)/2, p, q)` for m >= 2 and m^2 q / (2 p (m + n))
+/// `dbinom_raw(m/2, (m+n)/2, p, q)` for m < 2 (m = df1, n = df2). The binomial's deviation
+/// k - N p, k = (m-2)/2 or m/2, is formed without cancellation as n (2k - x m) / (2 (n + x m)),
+/// with x m's rounding error (an fma) included, so the bd0 terms keep their digits. It is an
+/// accurate form, not Excel's (docs/excel-semantics/statistics.md, "F density at large degrees
+/// of freedom (T-1864)"): within a few ulp of the exact density on the probes-numeric cells,
+/// more in a deep tail, where the error grows with |ln density| (about 100 ulp at 1E-67).
+fn f_pdf_loader(m: f64, n: f64, x: f64) -> f64 {
+    let scaled = x * m;
+    let scaled_err = x.mul_add(m, -scaled);
+    let total = n + scaled;
+    let q = n / total;
+    let p = scaled / total;
+    let (k, size, factor) = if m >= 2.0 {
+        ((m - 2.0) / 2.0, (m + n - 2.0) / 2.0, m * q / 2.0)
     } else {
-        direct
-    }
+        (m / 2.0, (m + n) / 2.0, m * m * q / (2.0 * p * (m + n)))
+    };
+    let diff = n * ((2.0 * k - scaled) - scaled_err) / (2.0 * total);
+    factor * dbinom_raw_dev(k, size, p, q, diff)
 }
 
 impl Model {

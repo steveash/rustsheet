@@ -1053,13 +1053,12 @@ Ours: matches (T-1290). Before, the overflowing F.DIST and BETA.DIST calls panic
 of 2^31 - 1 and more, and TDIST checked x before reading deg_freedom (`TDIST(-1,NA(),1)` was `#NUM!`). The F pdf falls
 back to logarithms only when the overflow comes from x alone: `df1^df1`, `df2^df2` and `(df1+df2)^(df1+df2)` finite,
 and only a result that underflows to 0 is taken from it, so `F.DIST(1E308,1,3,FALSE)` and `F.DIST(8E307,2,3,FALSE)`
-are 0; a positive density there (moderate x with df1 near 30-140, `F.DIST(20,100,3,FALSE)`) keeps main's `#NUM!`,
-unprobed (T-1865). Degrees of freedom large enough to overflow those
-powers keep main's `#NUM!` (`F.DIST(3,50,100,FALSE)`; probes-numeric/t1530-f-df-cut `F.DIST(2,5,1E10,FALSE)`, where
-Excel gives 0.14167277676179968), because the logarithmic form is not accurate enough there (T-1865); no
-probes-numeric cell covers the moderate-x region, and every one is unchanged from main.
+are 0. A positive density there (moderate x with df1 near 30-140, `F.DIST(20,100,3,FALSE)`) and degrees of freedom
+large enough to overflow those powers (`F.DIST(3,50,100,FALSE)`, `F.DIST(2,5,1E10,FALSE)`) were `#NUM!` until T-1864,
+because the logarithmic form is not accurate enough there; they are now Loader's form ("F density at large degrees of
+freedom (T-1864)").
 Status: VERIFIED (excel-graph)
-Tasks: T-1290, T-1865
+Tasks: T-1290, T-1864
 
 ## RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments
 Rule: RANK `number`/`order`, FORECAST `x`, PROB `lower_limit`/`upper_limit`, Z.TEST `x`/`sigma` and T.TEST
@@ -2093,6 +2092,31 @@ Tasks: T-1530, T-1538
 - Ours: the hang is gone (the quantile is a bisection on the `statrs` cdf from df 1E5), but the cdf and quantile are off in
   about the 6th digit at df 1E10 (`F.INV(0.5,1E10,1E10)` = 1.0000025, Excel 1) and `F.DIST(...,FALSE)` at df 1E10 is
   `#NUM!` (`statrs` pdf) where Excel gives a number. 16 of 58 cells of the case fail (A1-A14, A57, A58); T-1538 closes them.
+
+## F density at large degrees of freedom (T-1864)
+Rule: F.DIST(x,d1,d2,FALSE) is an ordinary number wherever the density is a positive double, however large the degrees
+of freedom (up to the 1E10 cut, "F-distribution df limit (T-1530)"): `F.DIST(1,100,100,FALSE)` 1.9897309346794694,
+`F.DIST(3,50,100,FALSE)` 1.05292998522241E-05, `F.DIST(28.1,100,1,FALSE)` 0.0026239848297062718,
+`F.DIST(2,5,1E10,FALSE)` 0.14167277676179968, `F.DIST(2,1E10,5,FALSE)` 0.18825249234504016, and at moderate x with one
+df above about 143 (probes-numeric t1864-f-pdf-moderate-x, 10 cells, e.g. `F.DIST(20,100,3,FALSE)`
+0.0010807581083264...). Excel's value is its own formula (T-2586), not the exact density: it is up to about 6.5E-14
+relative off the exact density (mpmath), so even the exact density is within 15 digits of Excel on only 26 of the 44
+literal-argument cells of t2220-f-dist-sweep-pdf/-d2-1, m9-f-dist and t1530-f-df-cut.
+Evidence: probes-numeric t2220-f-dist-sweep-pdf (A897, A994), t2220-f-dist-sweep-d2-1 (A710, A776), t1530-f-df-cut
+A9-A10, m9-f-dist A30, t1864-f-pdf-moderate-x; gen-m9 285d87cea1aaa73c A64 (`F.DIST(0.1,123456792,1,FALSE)`
+0.085003679623665).
+Ours: an accurate form, not Excel's algorithm. Where statrs' direct form overflows (a df above about 143, or a huge x
+that does not underflow), `fisher.rs` `f_pdf_loader` is Loader's saddle-point binomial form as in R's `df`: with
+q = n/(n + x m), p = x m/(n + x m), (m q/2)·dbinom_raw((m-2)/2, (m+n-2)/2, p, q) for m >= 2 and
+m² q/(2p(m+n))·dbinom_raw(m/2, (m+n)/2, p, q) for m = 1 (`loader.rs`: stirlerr, bd0, dbinom_raw_dev). Two departures
+from R keep digits: the binomial deviation k - N p is formed without cancellation as n(2k - x m)/(2(n + x m)), with x m's
+rounding error, and passed to bd0 (whose closed form becomes x ln(x/np) - diff); and ln(2πx(1 - x/n)) is one logarithm,
+with 1 - x/n from the exact n - x past n/2 (R's log1p(-x/n) is 4E-8 relative off at `F.DIST(2,1E10,5,FALSE)`, R's bd0
+up to 9,000 ulp at `F.DIST(57400,50,1,FALSE)`). A plain log-space form misses by up to about 300 ulp (T-1290). The
+error grows with |ln density| (about 100 ulp at `F.DIST(100,50,100,FALSE)` = 2.2E-67). Every value that passed before is
+unchanged: the form only replaces a non-finite statrs result, and x <= 0 keeps its value.
+Status: VERIFIED (excel-graph) for the values; the form is ours
+Tasks: T-1864, T-1290, T-2586
 
 ## F quantile at a huge df goes through Excel's BETA.INV (T-1538)
 Rule: at a huge df Excel's F.INV and F.INV.RT are Excel's BETA.INV mapped to the F scale, and that BETA.INV
