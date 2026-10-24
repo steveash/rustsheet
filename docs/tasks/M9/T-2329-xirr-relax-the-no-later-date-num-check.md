@@ -3,7 +3,7 @@ id: T-2329
 title: "XIRR: relax the no-later-date #NUM! check for a zero first value, apply T-2328's stop bound"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
