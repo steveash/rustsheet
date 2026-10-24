@@ -2177,12 +2177,30 @@ Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and 
 
 Status: VERIFIED (excel-graph, 2026-10-15; probes-numeric case `t1543-inverse-cdf-tiny-p`, 102 cells, p in 1E-300, 1E-200, 1E-100, 1E-20, 1-1E-16, 1-1E-10)
 
-Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/inverse_beta.rs `beta_quantile_crossing` (BETA.INV only; the rest need no guard)
+Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/inverse_beta.rs `beta_quantile_crossing` (BETA.INV); functions/statistical/incomplete_gamma.rs `gamma_quantile` and chisq.rs `chisq_inv_of` (CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.INV, GAMMAINV; T-1634)
 
-Tasks: T-1543
+Tasks: T-1543, T-1634
+
+- CHISQ.INV.RT and CHIINV quirks (T-1634; gen-m9 and this probe, all literal-argument cells in the eval suites):
+  - At one degree of freedom (df is truncated, so 1.5 too) the right-tail quantile is the left one of 1 - p:
+    `CHISQ.INV.RT(1E-10,1)` = 41.82145620298276 = `CHISQ.INV(0.9999999999,1)`, and every p below 1.1E-16
+    (where 1 - p rounds to 1) is `#NUM!` (`CHISQ.INV.RT(1E-20,1)`).
+  - With 3 to 10 degrees of freedom a right-tail p of 1E-100, 1E-200 or 1E-300 is `#NUM!` (19 gen-m9 cells:
+    `CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `CHISQ.INV.RT(1E-300,10)`), though the quantile exists, while
+    1E-20 is a value for every df probed (`CHIINV(1E-20,5)` = 103.42897723775795). df 2 (`CHISQ.INV.RT(1E-300,2)` =
+    1381.5510557964274, -2 ln p) and df 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946) are values at every p.
+    The boundary p between 1E-20 and 1E-100 is unprobed; the engine takes `#NUM!` below 1E-20
+    for df 3 to 10 (df 22 at `CHISQ.INV.RT(1E-100,...)` is 542.4417060011164 in Excel, gen-m9; df 11 to 21 unprobed, UNVERIFIED).
+  - A quantile below the smallest normal double is 0 (`CHISQ.INV(1E-200,1)`, crossing about 1.6E-400).
+- Ours (T-1634): the quantile is statrs' search where its result solves the smaller tail to 1E-13 relative, else the
+  crossing of that tail's capped incomplete gamma (the lower tail with `x^a` by `powf`, so `GAMMA.INV(1E-300,1,1)` is
+  1E-300). Above shape 1E9 it stays statrs' search alone: Excel is `#NUM!` for `GAMMAINV(0.999999,10000000000.5,1E+10)`.
+  The cells still off are Excel's own last digits: `CHISQ.INV(1E-300,50)` is 2.0354283669760313E-11 in Excel while the
+  correctly rounded quantile (ours) is 2.035428366976834E-11, and `GAMMAINV(0.5,0.01,100)` is 4.4655350189103716E-29
+  in Excel against the true 4.46553501891034868E-29 (ours ...0346E-29): Excel's tail kernel is not fitted (follow-up).
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
-- Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Ours give `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380): see the follow-up task.
+- Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. `BETA.INV` uses it for shapes up to 1E5 and p of 1E-15 or more (bit-exact with Excel in ironcalc-calc BETADIST_BETAINV.xlsx) and bisects on the cdf otherwise. A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 

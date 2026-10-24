@@ -39,11 +39,15 @@
 //! > DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 //! > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use std::cell::RefCell;
+
 use statrs::distribution::{Continuous, ContinuousCDF, Gamma};
 // statrs' own `ln_gamma`, not `super::special::ln_gamma`: bit-for-bit parity with statrs needs
 // the same function.
 use statrs::function::gamma::ln_gamma;
 use statrs::prec;
+
+use super::special::{ln_gamma as fdlibm_ln_gamma, refine_increasing};
 
 /// The most series or continued-fraction terms one cdf, or one whole inversion, may take. The
 /// series needs about 6.8 * sqrt(a) terms at its slowest, x = a (it is used for x <= a, and needs
@@ -97,6 +101,12 @@ fn lower_within(a: f64, x: f64, terms: &mut Terms) -> f64 {
         return 0.0;
     }
 
+    lower_core(a, x, terms)
+}
+
+/// [`lower_within`] past statrs' shortcuts for a shape or an x below 1.1E-15 (`a, x > 0` finite):
+/// the series keeps its relative precision at a tiny x, where statrs' shortcut gives 0.
+fn lower_core(a: f64, x: f64, terms: &mut Terms) -> f64 {
     let ax = a * x.ln() - x - ln_gamma(a);
     if ax < MIN_LN {
         if a < x {
@@ -105,23 +115,7 @@ fn lower_within(a: f64, x: f64, terms: &mut Terms) -> f64 {
         return 0.0;
     }
     if x <= 1.0 || x <= a {
-        let mut r2 = a;
-        let mut c2 = 1.0;
-        let mut ans2 = 1.0;
-        loop {
-            // statrs' series never ends once `r2 + 1 == r2` (a of 2^53 or more).
-            if !terms.take() {
-                return f64::NAN;
-            }
-            r2 += 1.0;
-            c2 *= x / r2;
-            ans2 += c2;
-
-            if c2 / ans2 <= EPS {
-                break;
-            }
-        }
-        return ax.exp() * ans2 / a;
+        return ax.exp() * lower_series(a, x, terms) / a;
     }
 
     let mut y = 1.0 - a;
@@ -171,6 +165,28 @@ fn lower_within(a: f64, x: f64, terms: &mut Terms) -> f64 {
         }
     }
     1.0 - ax.exp() * ans
+}
+
+/// statrs' series sum for P(a, x) (x at most 1 or a): P is `x^a e^-x / Gamma(a + 1)` times it.
+/// NaN past `terms`.
+fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
+    let mut r2 = a;
+    let mut c2 = 1.0;
+    let mut ans2 = 1.0;
+    loop {
+        // statrs' series never ends once `r2 + 1 == r2` (a of 2^53 or more).
+        if !terms.take() {
+            return f64::NAN;
+        }
+        r2 += 1.0;
+        c2 *= x / r2;
+        ans2 += c2;
+
+        if c2 / ans2 <= EPS {
+            break;
+        }
+    }
+    ans2
 }
 
 /// statrs' `checked_gamma_ur`: Q(a, x) for `a, x > 0`, NaN where statrs errs (and its
@@ -289,11 +305,12 @@ pub(crate) fn gamma_sf(dist: &Gamma, x: f64) -> f64 {
 /// or NaN where statrs panics, would not finish, or its cdfs together pass [`MAX_TERMS`] terms.
 /// It evaluates at most about 2,120 cdfs (about 1,075 halvings, 1,025 doublings, 8 bisections,
 /// 4 Newton steps), all of them sharing the one budget.
-pub(crate) fn gamma_inverse_cdf(dist: &Gamma, p: f64) -> f64 {
-    inverse_cdf_within(dist, p, MAX_TERMS)
+#[cfg(test)]
+fn gamma_inverse_cdf(dist: &Gamma, p: f64) -> f64 {
+    inverse_cdf_within(dist, p, &mut Terms(MAX_TERMS))
 }
 
-fn inverse_cdf_within(dist: &Gamma, p: f64, max_terms: u32) -> f64 {
+fn inverse_cdf_within(dist: &Gamma, p: f64, terms: &mut Terms) -> f64 {
     // statrs panics outside [0, 1]; its callers never pass such a p.
     if !(0.0..=1.0).contains(&p) {
         return f64::NAN;
@@ -304,10 +321,9 @@ fn inverse_cdf_within(dist: &Gamma, p: f64, max_terms: u32) -> f64 {
     if p == 1.0 {
         return f64::INFINITY;
     }
-    let mut terms = Terms(max_terms);
     // A NaN cdf is where statrs panicked or the budget ran out: the search ends there.
     let mut cdf = |x: f64| -> Option<f64> {
-        let value = cdf_within(dist, x, &mut terms);
+        let value = cdf_within(dist, x, terms);
         (!value.is_nan()).then_some(value)
     };
 
@@ -362,12 +378,136 @@ fn inverse_cdf_within(dist: &Gamma, p: f64, max_terms: u32) -> f64 {
     x_0
 }
 
+/// Which tail's probability a quantile is given: CHISQ.INV and GAMMA.INV the lower,
+/// CHISQ.INV.RT (and CHIINV) the upper.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Tail {
+    Lower,
+    Upper,
+}
+
+/// statrs' quantile is kept where the smaller tail's probability at it is within this relative
+/// distance of the target; elsewhere it is refined. Kept quantiles are statrs' doubles, which match
+/// Excel's at ordinary probabilities (T-1045's m9-chisq-inv and m9-gamma-inv sweeps); statrs misses
+/// in the tails, where its search works on the lower cdf only: `CHISQ.INV(1-1E-10,10)` is
+/// 68.16761840669743, 2E-7 relative off its upper tail, where Excel's 68.16761795190413 is the
+/// crossing (T-1634).
+const STATRS_QUANTILE_RESIDUAL: f64 = 1e-13;
+
+/// Above this shape the quantile is statrs' search alone, its NaN included: Excel is `#NUM!` for
+/// `GAMMAINV(0.999999,10000000000.5,1E+10)` and for a CHISQ.INV.RT of 10000000000.5 degrees of
+/// freedom (gen-m9), where statrs' search ends as NaN and a refinement would find the quantile
+/// (T-1634).
+const REFINE_SHAPE_MAX: f64 = 1e9;
+
+/// The quantile of `dist` where the probability of `tail` is `p` (in [0, 1], else NaN): statrs'
+/// search ([`inverse_cdf_within`]) where its result solves the smaller tail to
+/// [`STATRS_QUANTILE_RESIDUAL`], else the crossing of that tail (`special::refine_increasing`,
+/// at most 129 cdfs, from statrs' result when it has one). The smaller tail is `p` or its exact
+/// complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in F.INV
+/// (T-0974), and the lower tail is the series even below statrs' x shortcut, so
+/// `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200 (T-1543, T-1634). All cdfs share one
+/// budget of [`MAX_TERMS`] terms; NaN once it is spent.
+pub(crate) fn gamma_quantile(dist: &Gamma, p: f64, tail: Tail) -> f64 {
+    if !(0.0..=1.0).contains(&p) {
+        return f64::NAN;
+    }
+    let lower = match tail {
+        Tail::Lower => p,
+        Tail::Upper => 1.0 - p,
+    };
+    if lower == 0.0 && tail == Tail::Lower || p == 1.0 && tail == Tail::Upper {
+        return 0.0;
+    }
+    if p == 1.0 && tail == Tail::Lower || p == 0.0 && tail == Tail::Upper {
+        return f64::INFINITY;
+    }
+    // 1 - p is exact for p of 0.5 or more.
+    let (small, target) = match (tail, p <= 0.5) {
+        (_, true) => (tail, p),
+        (Tail::Lower, false) => (Tail::Upper, 1.0 - p),
+        (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
+    };
+    let terms = RefCell::new(Terms(MAX_TERMS));
+    let probability = |x: f64| {
+        let terms = &mut terms.borrow_mut();
+        match small {
+            Tail::Lower => quantile_lower(dist, x, terms),
+            Tail::Upper => quantile_upper(dist, x, terms),
+        }
+    };
+    let estimate = inverse_cdf_within(dist, lower, &mut terms.borrow_mut());
+    if dist.shape() > REFINE_SHAPE_MAX
+        || estimate.is_finite()
+            && (probability(estimate) - target).abs() <= STATRS_QUANTILE_RESIDUAL * target
+    {
+        return estimate;
+    }
+    let x = match small {
+        Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
+        Tail::Upper => refine_increasing(|x| -probability(x), -target, estimate, 0.0, f64::MAX),
+    };
+    if terms.borrow().0 == 0 {
+        return f64::NAN;
+    }
+    // A quantile below the smallest normal double is 0, as Excel's `CHISQ.INV(1E-200,1)` and
+    // `(1E-300,1)` are (the crossings are about 1.6E-400 and 1.6E-600; T-1543 probe A25, A26).
+    if x < f64::MIN_POSITIVE {
+        return 0.0;
+    }
+    x
+}
+
+/// P(shape, x * rate) for [`gamma_quantile`]: [`lower_core`], so a tiny x keeps its digits.
+fn quantile_lower(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
+    let scaled = x * dist.rate();
+    if scaled.is_nan() {
+        return f64::NAN;
+    }
+    if scaled <= 0.0 {
+        return 0.0;
+    }
+    if scaled == f64::INFINITY {
+        return 1.0;
+    }
+    let a = dist.shape();
+    if prec::almost_eq(a, 0.0, prec::DEFAULT_F64_ACC) {
+        return 1.0;
+    }
+    // In the series' range `x^a` (powf) keeps the digits that statrs' exp(a ln x - ...) loses to
+    // the rounding of a large logarithm: `GAMMA.INV(1E-300,1,1)` is exactly Excel's 1E-300.
+    // Both factors must be normal doubles: at a large shape `x^a` overflows or exp(...) underflows.
+    if scaled <= 1.0 || scaled <= a {
+        let power = scaled.powf(a);
+        let rest = (-scaled - fdlibm_ln_gamma(a + 1.0)).exp();
+        if power.is_finite() && power >= f64::MIN_POSITIVE && rest >= f64::MIN_POSITIVE {
+            return power * rest * lower_series(a, scaled, terms);
+        }
+    }
+    lower_core(a, scaled, terms)
+}
+
+/// Q(shape, x * rate) for [`gamma_quantile`].
+fn quantile_upper(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
+    let scaled = x * dist.rate();
+    if scaled.is_nan() {
+        return f64::NAN;
+    }
+    if scaled <= 0.0 {
+        return 1.0;
+    }
+    if scaled == f64::INFINITY {
+        return 0.0;
+    }
+    upper_within(dist.shape(), scaled, terms)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::{
-        gamma_cdf, gamma_inverse_cdf, gamma_sf, gamma_ur, inverse_cdf_within, lower_within,
-        upper_within, Terms, MAX_TERMS,
+        gamma_cdf, gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur, inverse_cdf_within,
+        lower_within, upper_within, Tail, Terms, MAX_TERMS,
     };
     use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
     use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -514,9 +654,48 @@ mod tests {
         let dist = Gamma::new(7.943_282_347_242_821e8, 1e6).unwrap();
         let full = dist.inverse_cdf(1e-5);
         assert_eq!(
-            inverse_cdf_within(&dist, 1e-5, 476_534).to_bits(),
+            inverse_cdf_within(&dist, 1e-5, &mut Terms(476_534)).to_bits(),
             full.to_bits()
         );
-        assert!(inverse_cdf_within(&dist, 1e-5, 476_533).is_nan());
+        assert!(inverse_cdf_within(&dist, 1e-5, &mut Terms(476_533)).is_nan());
+    }
+
+    // Excel's quantiles in the tails and at a small shape, where statrs' search is off or NaN
+    // (T-1543 probes-numeric/t1543-inverse-cdf-tiny-p; T-2255 gen-m9 triage). Each is within
+    // half a unit of Excel's 15th significant digit.
+    #[test]
+    fn quantiles_in_the_tails_are_excel_s() {
+        let chi = |df: f64| Gamma::new(df / 2.0, 0.5).unwrap();
+        let cases = [
+            (chi(1.0), 1e-100, Tail::Lower, 1.570_796_326_794_896_6e-200),
+            (chi(10.0), 1.0 - 1e-10, Tail::Lower, 68.167_617_951_904_13),
+            (
+                chi(4.0),
+                1.0 - 1e-16,
+                Tail::Upper,
+                2.980_232_253_572_505_4e-8,
+            ),
+            (chi(1.0), 0.025, Tail::Lower, 0.000_982_069_117_175_256_4),
+            (chi(9.0), 1.0 - 1e-16, Tail::Lower, 95.798_170_395_038_67),
+            (chi(8.0), 1e-10, Tail::Upper, 63.397_964_411_135_6),
+            (Gamma::new(1.0, 1.0).unwrap(), 1e-300, Tail::Lower, 1e-300),
+            (chi(1.0), 1e-200, Tail::Lower, 0.0),
+        ];
+        for (dist, p, tail, excel) in cases {
+            let ours = gamma_quantile(&dist, p, tail);
+            assert!(
+                (ours - excel).abs() <= 5e-15 * excel,
+                "{p} at shape {}: {ours:e}, Excel {excel:e}",
+                dist.shape()
+            );
+        }
+        // At a large shape `x^a` overflows and the series' prefactor is statrs' again: the
+        // quantile is within 1E-13 of `GAMMAINV(1E-10,99999,2)`, Excel's 196001.02844708483
+        // (gen-m9 165db58d1540f014; before T-1634's overflow guard it was 2.01).
+        let ours = gamma_quantile(&Gamma::new(99_999.0, 0.5).unwrap(), 1e-10, Tail::Lower);
+        assert!(
+            (ours - 196_001.028_447_084_83).abs() < 1e-13 * ours,
+            "{ours}"
+        );
     }
 }
