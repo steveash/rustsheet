@@ -328,18 +328,21 @@ impl Model {
         })
     }
 
-    /// ACCRINT's kernel: every argument is read, in order, before any value is checked. Its
-    /// dates and numbers take booleans (as `get_number` did), `calc_method` reads as a boolean.
+    /// ACCRINT's kernel: every argument is read, in order, before any value is checked. A boolean
+    /// issue or rate is `#VALUE!`, also before a later argument's error (`ACCRINT(TRUE,39500,..)`,
+    /// `ACCRINT(TRUE,SQRT(-1),..)`, `ACCRINT(39000,39500,0.1,TRUE,..)`: probes/t2455-transpose-
+    /// single-value A52, A53, A56); the other dates and numbers take booleans (as `get_number`
+    /// did; unprobed), and `calc_method` reads as a boolean.
     fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
             return CalcResult::new_args_number_error(cell);
         };
         let read = || -> Result<_, CalcResult> {
             Ok((
-                self.financial_date(self.cast_number_ref(issue, cell)?),
+                self.financial_date(self.cast_number_no_bools_ref(issue, cell)?),
                 self.financial_date(self.cast_number_ref(first_interest, cell)?),
                 self.financial_date(self.cast_number_ref(settlement, cell)?),
-                self.cast_number_ref(rate, cell)?,
+                self.cast_number_no_bools_ref(rate, cell)?,
                 self.cast_number_ref(par, cell)?,
                 self.cast_number_ref(frequency, cell)?.floor() as i32,
                 day_count_basis(self.cast_number_or(rest.first(), 0.0, cell)?)
