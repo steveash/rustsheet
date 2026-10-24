@@ -132,6 +132,8 @@ impl Model {
             .iter()
             .map(|d| d.encode_utf16().count())
             .min()
+            // The list is never empty (the delimiter is required and a list has an entry); were
+            // it, 1 keeps the text-length bound.
             .unwrap_or(1);
         let positions = (text.encode_utf16().count() + 1).saturating_sub(shortest);
         if usize::try_from(options.instance_num.unsigned_abs()).map_or(true, |n| n > positions) {
@@ -166,20 +168,9 @@ impl Model {
             }
         };
         let instance_num = number_at(2)?.map_or(1, |f| f.floor() as i32);
-        // Excel: see docs/excel-semantics/text.md "TEXTBEFORE and TEXTAFTER: instance_num past the
-        // text, a number if_not_found": match_mode is cut toward zero, and anything but 0 or 1 is
-        // `#VALUE!` (probes/t2314-textbefore-instance-bound A1-A12).
-        let case = match number_at(3)?.map(f64::trunc) {
+        let case = match number_at(3)? {
             None => Case::Sensitive,
-            Some(0.0) => Case::Sensitive,
-            Some(1.0) => Case::Insensitive,
-            Some(_) => {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "match_mode must be 0 or 1".to_string(),
-                ))
-            }
+            Some(mode) => Case::from_match_mode(mode, cell)?,
         };
         // Also cut toward zero: -0.0001 is 0, not `#VALUE!` (gen-m7/2d9b48c6363e7a16 A660,
         // T-2412).

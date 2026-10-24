@@ -129,7 +129,7 @@ impl Model {
 
         let match_mode = if arg_count >= 5 {
             match self.cast_number_ref(&values[4], cell) {
-                Ok(n) => n.trunc(),
+                Ok(n) => n,
                 Err(e) => return e,
             }
         } else {
@@ -160,16 +160,9 @@ impl Model {
         // match_mode is cut toward zero and must then be 0 or 1, as in TEXTBEFORE, but checked
         // only after an error element of a delimiter list (probes/t2581-textsplit-textbefore
         // A17-A23, A29; text.md "TEXTSPLIT: column delimiters first, match_mode 0 or 1").
-        let case_insensitive = match match_mode {
-            0.0 => false,
-            1.0 => true,
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "match_mode must be 0 or 1".to_string(),
-                )
-            }
+        let case = match Case::from_match_mode(match_mode, cell) {
+            Ok(case) => case,
+            Err(e) => return e,
         };
 
         // An empty delimiter (a "" string, a blank cell or an empty element of a list) is
@@ -224,10 +217,10 @@ impl Model {
         // `fold_for_split` maps every char to exactly one char (TEXTSPLIT's folding, probes/
         // textsplit-casefold-length), so char positions in `cmp_text` are char positions in
         // `text`; `split_grid` converts them to byte offsets of the original (T-1794).
-        let (cmp_text, case) = if case_insensitive {
-            (Cow::Owned(fold_for_split(&text)), Case::Insensitive)
+        let cmp_text = if matches!(case, Case::Insensitive) {
+            Cow::Owned(fold_for_split(&text))
         } else {
-            (Cow::Borrowed(text.as_str()), Case::Sensitive)
+            Cow::Borrowed(text.as_str())
         };
         let cmp_col_delims = col_delims.for_case(case);
         let cmp_row_delims = row_delims.for_case(case);
