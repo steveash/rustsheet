@@ -254,7 +254,7 @@ So the result lies on the binary lattice of the bracket (for the default guess a
 it is 3355443/2^25 = 0.09999999403953552), which explains why XIRR is scale- and sign-invariant,
 converged only to about 1e-8, and why guess -0.5 or 1 gives `#NUM!` on one side.
 Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitlab xirr` and `xirr-oos`,
-`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`):
+`tools/src/rustsheet_tools/fitlab/kernels/xirr.py`):
 - Fit set: probes/solver-iteration-traces sheet X (155 cells: two-flow roots 0.013 to 0.94 and -0.013 to
   -0.918 at guesses 1, 0.1, -0.5 and 0, one- and ten-year spans, three-flow roots to 2.0) and the 72 XIRR
   cells of probes-numeric/m9-fin-irr-rate. The model is bit-exact on all 208 numeric cells, and it gives
@@ -313,17 +313,29 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   T = 20, 40 and 120 and the model's value at T = 2, 5, 10 and 80. So the T-1583 span factor
   max(1, years) is NOT confirmed: the bound is not monotone in the span (80 years stops where 40 and 120 do not),
   and |XNPV(m)| / max|value| at the model's stop is 1.6e-8 (T=20), 4.8e-9 (40), 7.0e-12 (120) for the cells Excel
-  continued past, against 2.1e-10 (80) and up to 7e-8 (r = 0.013, T >= 40) for cells where it stopped. The normaliser
-  or the bound's form for spans over ten years is open (T-2328). Counts on `xirr-oos` (52 cells with
+  continued past, against 2.1e-10 (80) and up to 7e-8 (r = 0.013, T >= 40) for cells where it stopped. Resolved
+  by T-2328 (next bullet): the stop bound is not at fault. Counts on `xirr-oos` (52 cells with
   the probe): T-1583 candidate 48/52 (misses: xirr-early-dates A7 input check, and span-zero-first A11, A14, A20),
   engine (Newton) 46/52, "bisect, span-scaled |f| bound" alone 35/52, first-value sign with the bound skipped for a
   zero first value 41/52, fitted stop 28/52.
+- T-2328 (probes/xirr-exact-root-sign, excel-graph, 2026-10-24): the three misses are the bracket, not the stop.
+  The flows of those cells make 0.1, the first point of the default chain, an exact root, so the sign of
+  XNPV(0.1) picks the bracket: [0, 0.1] (Excel's value 0.09999999403953552) or [0.1, 0.2] (0.10000000596046449).
+  Excel's XNPV(0.1) is negative at T = 2, 5, 10 and 80 and positive at 20, 40 and 120 (A1:A7, B1:B7), and its XIRR
+  lands on the matching side every time (G1:G7). The lab's XNPV gave the wrong signs because it discounted with
+  libm's `pow` and read the 16- and 17-digit literals in full. Excel's XNPV divides each value by Excel's own `^`
+  (see "XNPV discounts with Excel's `^`" below), and Excel cuts the literals to 15 digits. With both, T-1583's
+  rule is bit-exact on every numeric cell: candidate "bisect, first-value sign, span-scaled |f| bound, Excel ^
+  (T-2328)" scores 227/227 on the fit set and 51/52 on `xirr-oos`, where the one miss is the A7 input check
+  (`xirr-early-dates`). The span factor stays: with Excel's `^`, the unscaled fitted stop scores 33/52 and the
+  step test alone 48/52. The A8 124-year cell still needs the scaled bound.
 Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
 T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells. The walk
 cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
 caps" below). A trial rate where a power overflows or underflows to 0 has no XNPV, as in the lab model.
-Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
-test is UNVERIFIED beyond the fit set (T-1533; refined by T-1583; T-1591 shows the span factor misses 3 of 21 long-span cells)
+Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. The XNPV part of the stop test
+(T-1583's span-scaled form) fits every numeric cell probed once XNPV uses Excel's `^` (T-2328). Its form rests on the
+fit set, `xirr-oos` and A8 alone, so it is a fitted rule, not a known mechanism.
 Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328
 
 ## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
@@ -950,6 +962,25 @@ Implemented in: functions/lift/kinds/financial.rs (`NPV`, `IRR_WEIGHT`, `IRR`, `
 (`flow_count`)
 Tasks: T-1821
 
+## XNPV discounts with Excel's `^`
+Rule: XNPV(r, values, dates) is the sum of value_i / (1 + r)^((date_i - date_0) / 365). The power is Excel's own `^`
+(numbers.md): right-to-left square-and-multiply for a whole number of years, and exp(y·ln x) otherwise. It is
+not libm's `pow`. `XNPV(r,{0,1},{45000,45000+365T})` equals `1/(1+r)^T` with Excel's `^` for all 390 cells
+with r = 0.1, 0.5 and 0.013 and T = 1 to 130, where libm misses 120, 8 and 128 of them. It also holds for
+130 cells 100 days past each year (t not an integer). On two-flow cells at an exact root the result is a few
+ulps from 0, and its sign is Excel's: `XNPV(0.1,{-1,6.727499949325611},{45000,52300})` is 2.220446049250313E-16,
+from the literal cut to 6.72749994932561 (numbers.md, "Formula number literals are read at 15 significant
+digits"). That sign decides XIRR's bracket (see "XIRR is a bracketing bisection"). The division is the
+quotient `/`. Twice-rounded and plain division both fit, and multiplying by (1+r)^-t misses 7 of the 21 cells
+with nontrivial values. A date at serial 0 makes XNPV `#NUM!` (J1:J5), although XIRR accepts it
+(xirr-early-dates A8).
+Evidence: probes/xirr-exact-root-sign: 541 numeric cells, all matched by the lab's `xirr.xnpv` (tools/.../kernels/xirr.py) with
+`caret_pow` and 15-digit literals (excel-graph, 2026-10-24, T-2328).
+Ours: `compute_xnpv` and XIRR's `xirr_xnpv` (functions/financial/financial_util.rs) use `powf`, so they miss
+these cells. This is the follow-up task filed with T-2328.
+Status: VERIFIED (excel-graph)
+Tasks: T-2328
+
 ## XNPV, XIRR and FVSCHEDULE beside their whole data
 Rule: XNPV's rate, XIRR's guess and FVSCHEDULE's principal lift over an array and refuse a multi-cell range, as the other
 Analysis ToolPak scalars ("Financial function argument modes"); each element is the scalar call over the same values,
@@ -1120,11 +1151,14 @@ square root, and every other n is `exp(ln(1+e) * (1/n))` (numbers.md "Non-intege
 function's result back, match once C and D do.
 Evidence: ironcalc-calc FINANCIAL/NOMINAL_EFFECT.xlsx C8, D2 and the 11 other cells of its baseline lines (Excel-cached;
 all 90 cells now pass), probes/fin-argument-modes H125 (excel-graph).
-Ours: `rate_power` in functions/financial/rate_conversions.rs calls `arithmetic::power`. Not probed (T-2241): an
-overflowing EFFECT (`EFFECT(1E300,2)`) keeps the `#DIV/0!` an infinite rate gave before, where Excel's `^` itself is
-`#NUM!`; and `power`'s exact powers of ten now apply when 1 + r/n is exactly 10 (`EFFECT(270,30)` = 1E30 - 1).
+Overflow (T-2241): an overflowing power is `#NUM!`, not `#DIV/0!`: `EFFECT(1E300,2)`, `EFFECT(1E200,3)`,
+`EFFECT(1E10,100)`, `EFFECT(1E300,11)`, `EFFECT(1E13,365)`, `EFFECT(1E15,1E15)`, `EFFECT(123456789.123,365)` and
+`NOMINAL(1E300,0.5)` are all `#NUM!`. Exact power of ten: `EFFECT(270,30)` is 1E30 (1 + r/n = 10), as are `EFFECT(9,1)` = 9,
+`EFFECT(18,2)` = 99 and `EFFECT(990,99)` = 1.2527829399838425E+103. `NOMINAL(1E300,2)` is 2E+150 and `NOMINAL(1E300,1)` 1E+300.
+Evidence: probes/effect-overflow-power-of-ten A1-A14 (excel-graph).
+Ours: `rate_power` in functions/financial/rate_conversions.rs calls `arithmetic::power` and maps its overflow to `#NUM!`.
 Status: VERIFIED (excel-graph)
-Tasks: T-2034
+Tasks: T-2034, T-2241
 
 ## PRICE and ODDFPRICE discount with Excel's `^`
 Rule: PRICE and ODDFPRICE discount each coupon and the redemption by `(1 + yld/frequency)^t` with Excel's `^`

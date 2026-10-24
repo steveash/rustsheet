@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2117: modulus used by IMLN, IMLOG10, IMLOG2 and IMSQRT (hypot vs sqrt(x*x+y*y)): 16-digit 1/sqrt2 literal, overflow and underflow of x*x.",
+  "tags": [
+    "M9",
+    "probe",
+    "engineering",
+    "T-2117"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=IMLN(\"0.7071067811865476+0.7071067811865476i\")",
+        "A2": "=IMLN(\"3E200+4E200i\")",
+        "A3": "=IMLN(\"3E-200+4E-200i\")",
+        "A4": "=IMLN(\"0.6+0.8i\")",
+        "A5": "=IMLN(\"1E-170+1E-170i\")",
+        "A6": "=IMLOG10(\"0.7071067811865476+0.7071067811865476i\")",
+        "A7": "=IMLOG10(\"3E200+4E200i\")",
+        "A8": "=IMLOG10(\"3E-200+4E-200i\")",
+        "A9": "=IMLOG10(\"0.6+0.8i\")",
+        "A10": "=IMLOG10(\"1E-170+1E-170i\")",
+        "A11": "=IMLOG2(\"0.7071067811865476+0.7071067811865476i\")",
+        "A12": "=IMLOG2(\"3E200+4E200i\")",
+        "A13": "=IMLOG2(\"3E-200+4E-200i\")",
+        "A14": "=IMLOG2(\"0.6+0.8i\")",
+        "A15": "=IMLOG2(\"1E-170+1E-170i\")",
+        "A16": "=IMSQRT(\"0.7071067811865476+0.7071067811865476i\")",
+        "A17": "=IMSQRT(\"3E200+4E200i\")",
+        "A18": "=IMSQRT(\"3E-200+4E-200i\")",
+        "A19": "=IMSQRT(\"0.6+0.8i\")",
+        "A20": "=IMSQRT(\"1E-170+1E-170i\")"
+      }
+    }
+  ],
+  "expected": {}
+}
