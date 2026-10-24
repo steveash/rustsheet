@@ -18,9 +18,7 @@ impl Model {
         self.parser.set_typed(false);
         result
     }
-}
 
-impl Model {
     /// [`Model::set_user_input`] for a formula as a file stores it: one naming a table or column
     /// the workbook lacks is `#REF!` instead of a parse error (T-2322).
     pub fn set_loaded_user_input(
