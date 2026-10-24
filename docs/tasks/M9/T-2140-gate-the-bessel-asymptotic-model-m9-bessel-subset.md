@@ -3,7 +3,7 @@ id: T-2140
 title: "Gate the BESSEL asymptotic model: m9-bessel subset in probes, plus x above 100"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-0908's fidelity review: the 362 m9-bessel cells that model makes bit-exact sit
 
 ## Out of scope
 - The order cap (T-2139).
+
+## Outcome
+Added probe cases `bessel-asymptotic` (50 cells, x 8..100, all bit-exact, gated via the probes baseline) and `bessel-large-x` (24 cells; 11 pass, 13 are known failures). Excel returns `#NUM!` at x = 2^27 (orders 0, 3) and 1e10 (all orders) and the engine does not; x = 1e3..1e6 drift by up to ~1e-14 relative. Recorded in docs/excel-semantics/engineering.md; fix filed as T-2563. Eval delta: +61 passing probes cells, 0 regressions.
