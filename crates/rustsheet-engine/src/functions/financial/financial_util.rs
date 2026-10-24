@@ -286,8 +286,14 @@ fn xirr_xnpv(rate: f64, values: &[f64], dates: &[f64]) -> Option<f64> {
 /// p → (p - 1)/2 toward -1; a negative guess walks only 0, g, (g - 1)/2, ...
 /// (docs/excel-semantics/financial.md "XIRR is a bracketing bisection, not Newton"; fit lab `xirr`, T-1525).
 /// Excel's cap on the walk is unprobed: 100 points per walk is enough on every oracle cell.
+/// A zero first value skips the walk: the bracket is [0, s] whatever the flows, even where XNPV is
+/// flat or has no root there, and a negative guess has no bracket (probes/xirr-zero-first-bracket, T-2329).
 fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)> {
     const WALK_CAP: usize = 100;
+    let step = if guess == 0.0 { 1e-5 } else { guess };
+    if values.first() == Some(&0.0) {
+        return (guess >= 0.0).then_some((0.0, step));
+    }
     let f0 = xirr_xnpv(0.0, values, dates)?;
     let walk = |first: f64, next: &dyn Fn(f64) -> f64| -> Option<(f64, f64)> {
         let (mut previous, mut point) = (0.0, first);
@@ -302,7 +308,6 @@ fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)>
     };
     let toward_minus_one = |p: f64| (p - 1.0) / 2.0;
     if guess >= 0.0 {
-        let step = if guess == 0.0 { 1e-5 } else { guess };
         walk(step, &|p| p * 2.0).or_else(|| {
             if step < 1.0 {
                 walk(-step, &toward_minus_one)
