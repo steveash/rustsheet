@@ -153,8 +153,8 @@ fn test_sequence_accumulates_its_step() {
 
 #[test]
 fn test_sequence_argument_error_beats_zero_extent() {
-    // gen-m7 (T-2316): an error in any argument beats an invalid extent; then rows is checked
-    // before columns (a rows past the grid beats a zero columns); alone, 0 stays `#CALC!`.
+    // gen-m7 (T-2316): an error in any argument beats an invalid extent; then an invalid extent
+    // beats a zero one (a rows past the grid beats a zero columns); alone, 0 stays `#CALC!`.
     let mut model = new_empty_model();
     model._set("A1", "=SEQUENCE(0,1,1/0)");
     model._set("A2", "=SEQUENCE(1,0,1,NA())");
@@ -162,8 +162,10 @@ fn test_sequence_argument_error_beats_zero_extent() {
     model._set("A4", "=SEQUENCE(0)");
     model._set("A5", "=SEQUENCE(0,4,1,2)");
     model._set("A6", "=SEQUENCE(-1,0)");
-    // Rows is checked before columns (gen-m7/c36ff5f42a1a4d47 A359).
+    // A negative columns beats a zero rows, but one within 2^-23 of 0 is a zero columns
+    // (gen-m7/c36ff5f42a1a4d47 A359, probes/empty-array-args-sequence A100:A134).
     model._set("A7", "=SEQUENCE(0,-1)");
+    model._set("A8", "=SEQUENCE(0,-1E-8)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#DIV/0!");
     assert_eq!(model._get_text("A2"), "#N/A");
@@ -171,5 +173,6 @@ fn test_sequence_argument_error_beats_zero_extent() {
     assert_eq!(model._get_text("A4"), "#CALC!");
     assert_eq!(model._get_text("A5"), "#CALC!");
     assert_eq!(model._get_text("A6"), "#VALUE!");
-    assert_eq!(model._get_text("A7"), "#CALC!");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
+    assert_eq!(model._get_text("A8"), "#CALC!");
 }
