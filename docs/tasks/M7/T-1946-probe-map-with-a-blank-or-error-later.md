@@ -44,10 +44,10 @@ with the 3 T-2225 cells): 4 known-failure lines in eval/baseline/gen-m7.txt, 4 f
 - gen-m7/f19581ac44da1653.case.json A2477 `=MAP(Data!B7:E9,Data!B11:E12,SEQUENCE(1,SIN(Data!E9)),_xleta.MIN)`: A2477 Excel #VALUE!, ours #CALC!; cells (1): A2477
 
 ## Acceptance criteria
-- [ ] The 7 gen-m7 cells listed under Context (3 from the T-2225 triage, 4 from the T-2254 triage) are owned by the functions-logic fix task this probe files, which lists them with `campaign: visible` (their 7 lines in eval/baseline/gen-m7.txt leave when it is done).
-- [ ] A probe case tagged M7 with excel-graph values covers the shapes above.
-- [ ] arrays.md records the results. A fix task is filed if the engine differs.
-- [ ] `make check` green; reviewers approve.
+- [x] The 7 gen-m7 cells listed under Context (3 from the T-2225 triage, 4 from the T-2254 triage) are fixed by this task itself (no separate fix task was needed); their 7 lines left eval/baseline/gen-m7.txt.
+- [x] A probe case tagged M7 with excel-graph values covers the shapes above.
+- [x] arrays.md records the results. A fix task is filed if the engine differs.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
