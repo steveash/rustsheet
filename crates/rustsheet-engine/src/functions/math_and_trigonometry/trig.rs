@@ -31,6 +31,13 @@ const X87_HALF_PI_TAIL: f64 = 565.0 / 9_223_372_036_854_775_808.0;
 /// numbers (SIN(2^27) is `#NUM!`; probes/trig-huge-argument).
 pub(crate) const EXCEL_TRIG_LIMIT: f64 = 134_217_728.0;
 
+/// The angle from which the sine and cosine inside IMPOWER, BESSELJ and BESSELY stop answering,
+/// below SIN's own [`EXCEL_TRIG_LIMIT`] (SIN(134217727.99) is a number). Bracketed by probe, not
+/// derived: `IMPOWER("i",85445658)` (angle 134217725.7) answers and `IMPOWER("i",85445659)`
+/// (134217727.3) is `#NUM!`; BESSELJ and BESSELY answer at the phase 134217726.9999998 and are
+/// `#NUM!` at 134217727.001 (probes/t2547-bessel-phase-cut A9:A12, A27:A30).
+pub(crate) const EXCEL_INNER_TRIG_LIMIT: f64 = 134_217_727.0;
+
 /// Horner divisors are j(j+1): step k of the sine divides by (2k)(2k+1) (even j), of the cosine
 /// by (2k-1)(2k) (odd j). Up to j = 28, |r| <= π/4 leaves the next term below 2^-106 of the sum.
 const SERIES_DIVISORS: usize = 28;
