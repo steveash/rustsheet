@@ -3,7 +3,7 @@ id: T-2057
 title: "A LET name shadows a defined name of the same name in any case"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -33,7 +33,7 @@ defined name of the same name in any case. The parser now declares the variable 
 name and skips the defined-name lookup for bound names (`bind_reference_shaped_name`, `name_operand`); unit test
 in `test_fn_let.rs`; entry in docs/excel-semantics/references.md. Eval: 15 of the 16 cells of the new probe case pass; B2 `LET(Pv,LAMBDA(a,Pv),Pv(1))` (`#NAME?` in Excel, `#ERROR!` here) is a baselined known failure, T-2558.
 
-## Handoff
+## Handoff (resumed)
 Escalated per work-loop step 5b: the Excel-fidelity reviewer requested changes twice (round 1: shadowing lost
 after a save and reload because stored formulas parse in R1C1 mode; round 2: the semantics entry omitted the
 own-value rule B1 and the B2 oracle cell was dropped). Both are fixed and pushed; `make check` was green
