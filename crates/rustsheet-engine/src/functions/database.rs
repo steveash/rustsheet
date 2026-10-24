@@ -64,16 +64,17 @@ fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> b
                 column,
                 ..
             } => reads(*sheet_index, *row, *column, *absolute_column),
+            // Each corner in `reads`'s argument order, its absolute row flag first.
             Node::RangeKind {
-                sheet_index,
                 absolute_row1,
-                absolute_column1,
+                sheet_index,
                 row1,
                 column1,
+                absolute_column1,
                 absolute_row2,
-                absolute_column2,
                 row2,
                 column2,
+                absolute_column2,
                 ..
             } => {
                 (*absolute_row1 || reads(*sheet_index, *row1, *column1, *absolute_column1))

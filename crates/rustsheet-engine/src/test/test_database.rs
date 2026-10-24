@@ -565,6 +565,7 @@ fn one_row_criteria_or_database_is_value_error() {
     assert_eq!(model._get_text("F2"), *"#VALUE!");
     assert_eq!(model._get_text("F3"), *"#VALUE!");
     assert_eq!(model._get_text("F4"), *"4");
+    assert_eq!(model._get_text("F5"), *"7");
 }
 
 /// Criteria headers name database columns by their text (a number by its coerced text), each
@@ -684,10 +685,15 @@ fn formula_condition_on_the_header_row_fails() {
     model._set("F3", "=DCOUNTA(B2:C9,2,O1:O2)");
     // The same condition over B1:C9 starts at its first record: rows 2, 3, 8 and 9 match.
     model._set("F4", "=DCOUNTA(B1:C9,2,O1:O2)");
+    // An absolute row stays put and is not checked: every record reads B2 = 4 and matches.
+    model._set("P1", "Calc");
+    model._set("P2", "=B$2>3");
+    model._set("F5", "=DCOUNTA(B2:C9,2,P1:P2)");
     model.evaluate();
     // Rows 4 (B3 = 10) and 9 (B8 = 7) match; row 3 (B2 = 4, the header row) does not.
     assert_eq!(model._get_text("F1"), *"-4");
     assert_eq!(model._get_text("F2"), *"4");
     assert_eq!(model._get_text("F3"), *"2");
     assert_eq!(model._get_text("F4"), *"4");
+    assert_eq!(model._get_text("F5"), *"7");
 }
