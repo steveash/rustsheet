@@ -3,7 +3,7 @@ id: T-2539
 title: "IMLN, IMLOG10 and IMLOG2 at 1E+200 and 1E-200+1E-200i after T-2117, and IMPOWER of a base whose squares overflow (gen-m9, 10 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
