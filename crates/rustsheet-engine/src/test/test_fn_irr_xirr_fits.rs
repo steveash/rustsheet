@@ -44,3 +44,27 @@ fn xirr_bisects_the_walked_bracket() {
     let expected = [0.013_000_000_268_220_901_f64, 0.361_299_999_058_246_6];
     assert_eq!(got, expected.map(f64::to_bits));
 }
+
+#[test]
+fn xirr_with_a_zero_first_value_needs_no_later_date() {
+    // probes/xirr-span-zero-first A28-A30 (first date after the others); gen-m9/e168be7f6d3f84c2
+    // A125 (all dates equal); T-2329
+    let got = results(&[
+        "=XIRR({0,-1000,1100},{46000,45000,45365})",
+        "=XIRR({0,0,-100,50,60},{39448,39448,39448,39448,39448})",
+    ]);
+    let expected = [2.980_232_238_769_531_4e-9_f64, 2.584_904_351_243_779_6e-9];
+    assert_eq!(got, expected.map(f64::to_bits));
+}
+
+#[test]
+fn xirr_with_a_nonzero_first_value_still_needs_a_later_date() {
+    // probes/xirr-mismatched-empties X9
+    let mut model = new_empty_model();
+    model._set("A1", "=XIRR({-1000,1100},{45365,45000})");
+    model.evaluate();
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A1"),
+        Ok(CellValue::String("#NUM!".to_string()))
+    );
+}

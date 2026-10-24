@@ -626,10 +626,14 @@ fn xirr_dates(values: &[f64], dates: &[f64]) -> Result<Vec<f64>, Error> {
     // {-1000,1100,-1000} on {45000,45365,44000} is -0.2467, and {-1000,1100} on
     // {45365,45000} is #NUM! although it has a root (financial.md, "XIRR reads empty cells as
     // 0 and accepts earlier dates"; probes/xirr-mismatched-empties, xirr-early-dates; T-1124).
+    // A zero first value skips the later-date check: `{0,-1000,1100}` on 46000, 45000, 45365 is
+    // 2.98e-9, and so are equal dates (probes/xirr-span-zero-first A28-A30; gen-m9/e168be7f6d3f84c2
+    // A125; T-2329).
+    let first_value_is_zero = values.first() == Some(&0.0);
     if dates
         .iter()
         .any(|date| *date < 0.0 || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64)
-        || !dates.iter().any(|date| *date > first_date)
+        || (!first_value_is_zero && !dates.iter().any(|date| *date > first_date))
     {
         return Err(Error::NUM);
     }
