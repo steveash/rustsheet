@@ -619,14 +619,36 @@ from 1 March 1900 on counts Excel's fictitious 1900-02-29, and a coupon date bef
 Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A13 (excel-graph, 2026-10-17, T-1822), fin-coupon-walk-bounds-c
 A1-L14 (excel-graph, 2026-10-20, T-1844).
 Ours: matches (functions/financial/financial_bonds/coupon_schedule.rs: `coupon_period`, `coupon_count`,
-`coupdays_actual`, `coupon_days_nc`). Open: ACCRINT with calc_method TRUE whose issue's previous coupon date is serial 0
-is `#NUM!` (fin-coupon-walk-bounds-c O1-O13) but 0 with a settlement in 9990
-(`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`, -b A9), and ACCRINT's day counts before
-1900-03-01 miss the fictitious 1900-02-29 (-c O10, O14; ours compute them; T-2124). In a 1904 workbook
+`coupdays_actual`, `coupon_days_nc`). In a 1904 workbook
 `COUPNUM(0,400,2)` and `COUPNUM(1,400,2)` are `#NUM!` (previous coupon 1903-08-04, before the 1904 calendar) while
 `COUPPCD(1,400,2)` is -150 (-1904 A5-A7); see "COUPNUM in a 1904 workbook".
 Status: VERIFIED (excel-graph)
 Tasks: T-1822, T-1844, T-2124, T-2125
+
+## ACCRINT at the calendar's start
+Rule: ACCRINT reads its dates as Excel 1900 serials too, and is `#NUM!` when a coupon date it accrues over falls before
+1900-01-01 (serial 0): the coupon date before settlement (the regular one, `first_interest` less a period, when
+settlement is not past `first_interest` or calc_method is FALSE) or any period start on the walk back to the issue.
+- `ACCRINT(DATE(1900,3,1),DATE(1900,6,30),S,0.05,1000,4,0,TRUE)` is `#NUM!` for every settlement S from 1900-05-01 to
+  9999-12-31 (the issue's period starts 1899-12-31), with calc_method FALSE, on bases 0, 1, 3 and 4 and with semiannual
+  or annual coupons; `ACCRINT(DATE(1900,3,1),DATE(1900,3,31),DATE(1900,3,15),...)` too (the regular period starts
+  1899-12-31). `ACCRINT(DATE(1900,4,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 404512.3611111111.
+- A regular period that starts before 1900 does not matter when the settlement's period is later:
+  `ACCRINT(33448,1,37714,1E+300,0.3,1,2,TRUE)` is a number (gen-m9 3b7990bd4e3307ba Calc!A317).
+- The day counts read the serials as Excel shows them: the actual bases count serials, so the fictitious 1900-02-29
+  counts, and the 30/360 bases read serial 1 as 1900-01-01: `ACCRINT(DATE(1900,2,15),DATE(1900,5,10),DATE(1900,4,1),
+  0.05,1000,4,0,TRUE)` is 6.388888888888888 (46/90) on bases 0, 1, 2 and 4, and 6.301369863013699 on basis 3;
+  `ACCRINT(1,DATE(1900,7,1),DATE(1950,6,30),0.05,1000,2,0,TRUE)` is 2524.861111111111. On basis 0 serial 60
+  (1900-02-29) is not February's last day (1900 is not a leap year there): `ACCRINT(60,DATE(1900,5,10),DATE(1900,4,1),
+  0.05,1000,4,0,TRUE)` is 4.444444444444445 (32 days), while 1900-02-28 is (`ACCRINT(DATE(1900,2,28),DATE(1900,5,31),
+  DATE(1900,4,1),...)` 4.305555555555555, 31 days).
+- Excel for the web returned 0 for `ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`
+  (fin-coupon-walk-bounds-b A9) on 2026-10-17 and `#NUM!` on 2026-10-24, in a re-fill of -b and in
+  fin-accrint-1900-calendar D1; the oracle now records `#NUM!`.
+Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24).
+Status: VERIFIED (excel-graph)
+Implemented (T-2124): `compute_accrint` in functions/financial/accrint.rs.
+Tasks: T-2124
 
 ## COUPNUM in a 1904 workbook
 Rule: in a 1904 workbook COUPNUM is `#NUM!` exactly when the previous coupon date is before 1904-01-01 (a negative
