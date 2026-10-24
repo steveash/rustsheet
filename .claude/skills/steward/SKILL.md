@@ -126,7 +126,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   failing exit cell that no open task of that milestone owns: add the cell (its case file stem and
   A1 name, as the line prints them) to the open task of that milestone that should fix it, or, when
   none fits, file one with `make new-task MILESTONE=<current> ..` that names it. Put the new
-  owners in the daily steward PR, and rerun `make exit-owners` until it reports 0.
+  owners in the daily steward PR, and rerun `make exit-owners` until it reports 0. A line that an
+  open task already means to own (a false "unowned", decision 0096 Consequences) is fixed by naming
+  the cell, or only the case, in that task.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
