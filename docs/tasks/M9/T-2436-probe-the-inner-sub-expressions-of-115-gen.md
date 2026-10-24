@@ -127,7 +127,7 @@ states it.
 ## Outcome
 Probe `probes/t2436/<case>` (57 cases, one per owning gen-m9 case, its Data sheet copied; every call and non-trivial argument
 of each owned cell in its own row block with ROWS and COLUMNS beside it; excel-graph, 2026-10-24) plus
-`probes/t2436/computed-scalar` (50 follow-up questions). 28 of the 122 cells already pass on main (fixed by later merges); the
+`probes/t2436/computed-scalar` (50 follow-up questions). 28 of the 122 cells already pass on main and have left the baseline (fixed by later merges); the
 innermost diverging sub-expression of each of the other 94 is in its owner's Context, under a "T-2436 probe" block with an
 own visible-parity criterion, so the two visible-parity criteria above move to those tasks (as T-2414 did):
 - existing tasks: T-2429 (2), T-2435 (8), T-2474 (2), T-2432 (2), T-2437 (1), T-2468 (6), T-2469 (1), T-2470 (4), T-2471 (2),
