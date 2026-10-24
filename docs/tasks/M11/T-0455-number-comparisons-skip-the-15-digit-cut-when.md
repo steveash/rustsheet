@@ -50,3 +50,6 @@ Release build on a 4-core Linux box:
   eval/baseline/corpus-bench.txt through `make eval-baseline`. It has no oracle values yet, so it
   is pending.
 - No suite's known failures grew.
+- Follow-ups: T-0456 (spec, whole-column arrays, 59932's remaining time) and T-0457 (probe, 59932's
+  `#ERROR!` lookups into uncached linked sheets). T-0448's context no longer blames 59932 on its
+  VLOOKUPs.

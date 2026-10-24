@@ -22,8 +22,11 @@ shuffled keys.
 - rustsheet: 43.4 s, of which recalculation is 42.8 s.
 - mog: 1.2 s end to end, the same values.
 
-Real files: corpus-bench 59932 (VLOOKUP-heavy) takes 241 s against mog's 2.0 s, and is one of T-0430's
-five timeouts.
+Real files: corpus-bench 59932 was first blamed on its VLOOKUPs, but profiling (T-0455) shows they
+barely register. Its time goes to 150 whole-column `MIN`/`MAX(IF($D:$D=K2,$F:$F))` formulas: first
+the 15-digit number comparison, which T-0455 made cheap, and now the million-row arrays (T-0456).
+Its `#ERROR!` VLOOKUPs read linked-workbook sheets the file holds no cache for (T-0457). So 59932
+is not this task's measure.
 
 Every call walks the lookup range linearly: `SearchVector::linear_candidates` and the VLOOKUP/MATCH
 paths in crates/rustsheet-engine/src/functions/lookup_and_reference/. The sheet's column index
@@ -53,8 +56,6 @@ Shared constraints:
 - [ ] A bench in crates/rustsheet/benches (an `aggregate.rs` case, or a new `lookup.rs`) reproduces the
       synthetic workload above at no less than 5,000 lookups into 20,000 rows. Its recalc is at least
       10x faster than on `main` before this task, and both timings are in the Outcome.
-- [ ] corpus-bench 59932's release-build calculation time is in the Outcome; its timeout leaves
-      eval/baseline/corpus-bench.txt if it now runs under 60 s.
 - [ ] Unit tests cover cache invalidation (a lookup range holding formulas recalculated in the same
       pass), case-insensitive text, mixed types, duplicate keys with first and last match, and the
       wildcard fallback.

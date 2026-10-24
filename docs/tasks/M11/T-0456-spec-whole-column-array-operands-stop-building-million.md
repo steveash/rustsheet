@@ -1,0 +1,38 @@
+---
+id: T-0456
+title: "Spec: whole-column array operands stop building million-row arrays"
+milestone: M11
+lane: perf
+status: todo
+priority: P2
+size: M
+tier: opus
+depends_on: []
+---
+
+## Goal
+A spec in docs/specs/ for evaluating element-wise operations over whole-column or whole-row
+ranges (`$D:$D=K2`, `IF(D:D=x,F:F)`, `MAX(IF(...))`) without building a 1,048,576-row array per
+operand. Results stay bit-identical. The spec is reviewed and splits the work into S/M tasks.
+
+## Context
+Profiling corpus-bench 59932 after T-0455: its 150 CSE formulas such as
+`MIN(IF($D:$D=K2,$F:$F))` still take about 55 s, roughly 0.37 s each. Each one builds several
+`Vec<Vec<ArrayNode>>` of 1,048,576 one-element rows: the range (`Model::evaluate_range`,
+cast.rs), the comparison (`handle_comparison`, arithmetic.rs), and IF's result (`if_array`,
+functions/logical). Nearly all rows lie past the sheet's used area and are `Empty`.
+
+`SearchVector` (lookup_table.rs) already keeps an evaluated prefix plus a virtual empty tail for
+lookups. The spec should decide whether arrays get a similar representation (a used prefix plus
+one repeated tail row), how element-wise operators, IF, aggregates and spills consume it, and how
+the 2^20-cell bound (docs/excel-semantics/arrays.md) and seen-empty records still apply.
+
+## Acceptance criteria
+- [ ] docs/specs/SPEC-XXXX covers the representation, every consumer it must handle, the
+      invariants that keep results identical, and the directive 5 limits.
+- [ ] Implementation tasks are filed, each S/M, with corpus-bench 59932 (55 s eval, 78 s through the
+      harness) as the measure: under 60 s through the harness leaves its `!Timeout` baseline line.
+- [ ] Reviewers approve the spec.
+
+## Out of scope
+- The implementation itself (the follow-up tasks).
