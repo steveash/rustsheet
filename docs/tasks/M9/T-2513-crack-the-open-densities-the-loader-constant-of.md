@@ -3,7 +3,7 @@ id: T-2513
 title: "Crack the open densities: the Loader constant of BETA.DIST(.,FALSE) for a, b > 1 and the Student t density (T-2464 follow-up)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
@@ -16,7 +16,8 @@ Bit-level models, scored on held-out probes, for two pieces:
 - T.DIST(t,n,FALSE).
 
 ## Context
-- docs/excel-semantics/statistics.md "Beta density for min(a,b) > 1 is Loader's saddle point (T-2464)" (PARTIAL) and
+- docs/excel-semantics/statistics.md "Beta density for min(a,b) > 1 is Loader's saddle point (T-2464)" (PARTIAL; now
+  "(T-2464, T-2513)") and
   "Student t tails are one kernel call" (its T density paragraph). Work in docs/research/t2464/ (a new `r3-*`
   directory).
 - Loader constant:
@@ -38,14 +39,41 @@ Bit-level models, scored on held-out probes, for two pieces:
 - T-0969 (blocked) waits on the T density part.
 
 ## Acceptance criteria
-- [ ] Both items have a RESULTS.md with a model scored on a held-out probe, or the negatives tried with their counts
+- [x] Both items have a RESULTS.md with a model scored on a held-out probe, or the negatives tried with their counts
       (decision 0056).
-- [ ] New probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
-- [ ] statistics.md's entries are updated.
-- [ ] If the T density is solved, T-0969's "Blocked because" section is updated with the new hypothesis.
-- [ ] Engine follow-ups are filed for any solved piece (T-2507 owns the Loader structure).
+- [x] New probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
+- [x] statistics.md's entries are updated.
+- [x] If the T density is solved, T-0969's "Blocked because" section is updated with the new hypothesis.
+- [x] Engine follow-ups are filed for any solved piece (T-2507 owns the Loader structure).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes.
 - The cdf pieces (T-2512).
+
+## Outcome
+Round 3 (2026-10-24): six workers in docs/research/t2464/r3-*, each re-scored by a verifier in `verify-r3-*` (verifier
+counts below; worker claims the verifier refuted are dropped). Probes: 21 cases t2513-r3-* and 6 t2513-verify-r3-*
+(probes-numeric, excel-graph); every hold-out was filled before tuning and read once.
+- Beta density min(a,b) <= 1, model M2 (CONFIRMED): exponent split hi = fl(fl(tx + ty) - lnB), exact remainder lo,
+  density fl(EXP(hi)·fl(1 + lo)); lnB = -LN(the other shape) at a = 1 or b = 1, the GL form to max = 8 with Excel's
+  measured GAMMALN. probe1 12,796/12,799/12,799 of 12,800 (M1 10,375); old min <= 1 cells 815/1,101/1,103 of 1,107
+  (M1 566); hold-outs 3,106/3,991/4,062 of 4,096 and 649/816/846 of 864. algdiv (max > 8) still misses (66 of 270).
+- Loader density a, b > 1 (structure CONFIRMED, PARTIAL): E extended into EXP, k, n, nk stored in R's form, bd0's x87
+  log form with M - k stored, bd0 probably a double on return, cut 0.2, accurate stirlerr, (4, 4) no exception. M3 on
+  the hold-out 952/2,990/3,176 of 3,296 (LDe 685, CR 251 exact); verifier hold-out 133/1,035/1,351 of 1,600 (CR
+  66/533/909).
+  A 2-4 unit constant residual and the series branch (+δ(2kv) term, mechanism unknown) remain.
+- T density (PARTLY REFUTED): Loader's dt for df >= 3 (log branch at x² > n, two-step denominator, E stored); df 1 and 2
+  closed forms (27/27, 1,050/1,050). Exact constant: hold2 573/960/960 of 960, verifier hold-out 505/918/977 of 1,000
+  (CR 93/555/787: 213 visibly off against 23). Refuted: that the per-df constant is r3-loader-const's stirlerr table.
+- BINOM pmf: k = n EXP(fl(n·LN p)) 172/172 (new), k = 0 173/173; BINOM and BETA(p,k+1,n-k+1) share one kernel.
+  NEGBINOM sits on dbinom_raw(r-1, f+r-1, p, q); the fl(p·B) final step is refuted. Interior pmf unsolved.
+- F density: not beta × Jacobian, not R's df, not GAMMALN; swap-symmetric constant (585/585), Excel's log1p switch
+  on r = min(mx/n, n/mx). Unsolved (ratio model 161 against CR 114 of 1,440 exact on the hold-out).
+- GAMMALN: the engine model is off on 14 of 47 arguments below 1 (verifier 24 of 66); evidence added to T-2122.
+Filed: T-2585 (engine, T density, campaign visible, depends on T-2501 and T-2507), T-2586 (research: Loader constant,
+bd0 series, T constant, BINOM interior, NEGBINOM final step, F density). Amended: T-2503 (M2), T-2507 (round-3
+structure, still PARTIAL), T-2501 (BINOM k = n), T-2512 (algdiv pins), T-2122 (GAMMALN points), T-0969 (Blocked
+because). statistics.md: four T-2464 entries and the T-0969 density entry updated, four new T-2513 entries, a
+GAMMALN note.

@@ -13,7 +13,7 @@ depends_on: []
 
 ## Goal
 The engine has the two elementary pieces that Excel's incomplete-beta and beta-density code build on, and
-BINOM.DIST(0,n,p) uses them:
+BINOM.DIST(0,n,p) uses them; BINOM.DIST(n,n,p,FALSE) takes its own closed form:
 - Excel's log1p, for ln(1 + a) with -0.375 <= a < 0;
 - Excel's EXP of an extended (64-bit, `x87_register::Register`) argument.
 
@@ -27,6 +27,10 @@ BINOM.DIST(0,n,p) uses them:
     `r2-log1p/{pilot,runs,grid,hold,tiny}.pins.tsv`.
 - BINOM.DIST(0,n,p,·) = EXP(fl(n·l)), with l from the log1p above for p <= 0.375 and LN(fl(1 - p)) above (w5, r2-log1p).
   It is BINOM's own shortcut, not the kernel's b0 = 1 closed form. It is #NUM! from n = 2^31.
+- BINOM.DIST(n,n,p,FALSE) = EXP(fl(n·LN(p))), Loader's (2000) other end branch (T-2513, statistics.md "BINOM.DIST pmf:
+  closed forms at k = 0 and k = n"): 172 of 172 cells.tsv cells (CR 70) and 320 of 320 on
+  t2513-verify-r3-binom-pmf-h. The pmf at k = 0 is the same rule as above (173 of 173 pmf cells; verifier 318 of 320).
+  The k = n rule is measured on the pmf only.
 - EXP of an extended argument is needed by the M1 density (T-2503) and by bpser's z64 prefactor (T-2505).
   - The mpmath model of Excel's EXP V6 that accepts an extended input is `docs/research/t2464/w1-density/lib.py`
     (`exp_v6`).
@@ -49,7 +53,9 @@ BINOM.DIST(0,n,p) uses them:
 - [ ] On every double input, EXP of an extended argument is bit-identical to `excel_exp`.
 - [ ] BINOM.DIST(0,n,p,TRUE|FALSE) and BINOMDIST(0,…) are EXP(fl(n·l)). That is 345 of 345 bit-exact on the cells.tsv
       rows, and the 68 visibly-off pre-T2464 cells are fixed, with no new known-failure lines.
-- [ ] statistics.md's log1p entry gains an "Implemented in" line.
+- [ ] BINOM.DIST(n,n,p,FALSE) and BINOMDIST(n,n,p,FALSE) are EXP(fl(n·LN(p))): 172 of 172 bit-exact on the cells.tsv
+      rows, with no new known-failure lines.
+- [ ] statistics.md's log1p and BINOM pmf entries gain an "Implemented in" line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

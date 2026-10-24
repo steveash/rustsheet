@@ -29,6 +29,15 @@ reach.
   2. **algdiv for b0 >= 8**, in bpser's L and in the density's lnB. It is about 1 unit off TOMS's: implied L is -1.88,
      +1.65 and +6.05 units on r2-bpser-small's runs, and w1 measured ±2 units per b. The positive-argument alnrel
      inside it is not r2-log1p's series. Probe it through a = 1, b > 8 densities with a/b sweeping (0, 0.375].
+     - T-2513 round 3 (r3-m1-residual, verifier-confirmed) pinned the density's lnB for min < 1 < 8 < max: under model
+       M2 every shape has a unique lnB fitting all its rows, -8 to +6 ulps from TOMS algdiv in doubles (52 shapes in
+       `r3-m1-residual/lnbfit.py`, which rebuilds the git-ignored `lnbfit_tab.pkl`; the verifier's hold-out adds 10 shapes, 66 of 270 rows
+       bit-exact, each shape fitting with a shift of -8 to +1 ulp, `verify-r3-m1-residual/vshape_vhold.out`). Excel's
+       algdiv is within about ±1.7 ulp(algdiv) of the exact ln(Γ(b)/Γ(a+b)). 3,072 x87 storage variants, accurate,
+       extended and series-alnrel forms are rejected (`lnbcands.out`, `algsearch.out`). Next: b sweeps at fixed a (one
+       a, 40 b, 40 x each) to tell an approximation from a storage pattern.
+     - At a = 1 or b = 1 the density's lnB is -LN(the other shape) at any size, not algdiv (statistics.md "Beta density
+       for min(a,b) <= 1").
   3. **lnΓ(a0 < 1) inside bpser's L** depends on the shape: GL below 0.3, fl(gamln1(v) - LN v) at w2's (0.5, 6.25). On
      the old 1 < b0 < 8 cells GL53 gets 3,365 against r2-bratio's 4,038 of 7,455. Probe bpser at fixed b0 with a0
      stepping by single ulps around 0.3, 0.5 and 0.7.

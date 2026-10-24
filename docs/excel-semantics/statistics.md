@@ -1312,6 +1312,11 @@ two models, not Excel's switch. Exact rates on the T-1941 GAMMALN.PRECISE cells 
 The four x >= 8 misses are LN's FYL2X near-ties, where Excel's own LN column took the other neighbour in the same run, so
 the series is bit-exact given Excel's LN. The misses elsewhere are a few ulps (at most 7, in K3, on the committed 10,500-point sample), never visible
 at 15 digits; a correctly rounded lgamma (the fdlibm `lgamma` the engine used before) matches K2's data at 0.29-0.35 (HANDOFF2 §3).
+Below 1 the K3 and (1.5, 2] gaps reach the beta density (T-2513). On probe t2513-r3-m1-residual-gl (Excel's GAMMALN at
+569 shape arguments) the engine model differs from Excel on 14 of 47 arguments below 1 (0.71: -2 ulps, 0.77: +2, 0.99:
++2); the verifier, with its hold-out's 54 more, counts 24 of 66 below 1 and 19 of 541 from 1 on (verify-r3-m1-residual
+`vchecks.out`). With the engine model in place of Excel's values, the M2 density's GL branch on probe a drops from 1,648
+to 1,410 bit-exact of 1,648, so density research uses measured GAMMALN until T-2122 lands.
 Evidence: `docs/research/t1941/` and the `kmyst-gam-*` cases on branch `agent/research/T-1941-crack-gammaln-gamma-ln` (HANDOFF2.md
 §2, §3, §12; `gammaln_big_check.c`, `k2_ref.py`, `review3/final/cand9.py`, `w5/p4/ss_fc.txt`, `w6/data/xl_chain_d3ls.txt`);
 ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx (desktop cache) now passes all 91 cells, and probes/stat-argument-modes
@@ -1321,7 +1326,7 @@ head). `test/fixtures/gammaln_kernel.fixture` (1,500 random points per region) p
 every point; `gammaln_matches_the_t1941_runs` reruns the table above from `RUSTSHEET_T1941_ROWS`.
 Status: VERIFIED (excel-graph and desktop) for the structure and the bit-exact pieces; the four rationals are best known
 models (T-2122)
-Tasks: T-1941, T-2128, T-2122
+Tasks: T-1941, T-2128, T-2122, T-2513
 
 ## GAMMA is Excel's own x87 routine (T-1941, T-2129)
 Rule: GAMMA is its own routine (not EXP(GAMMALN)), x87 ops each stored to a double (fl53(fl64(.))), LN the FYL2X model,
@@ -1679,6 +1684,9 @@ Status: VERIFIED (excel-graph) as an observation; the algorithm is UNVERIFIED
 Tasks: T-0969
 
 ## Student t density noise is not input rounding (T-0969)
+Superseded in part (T-2513): the algorithm is Loader's `dt` in Excel's x87 pieces, with the log branch at x² > n, a
+two-step denominator and its own per-df constant ("Student t density is Loader's dt"). That explains the noise left
+with exact inputs below. The R `dt` rejected below is R 2.x as written (0.2n cut, one sqrt(2π·w) denominator).
 Rule: Excel's `T.DIST(t,n,FALSE)` for n >= 3 carries 1 to 2 ulp of noise of its own, not explained by the
 rounding of t*t, n + t^2 or 1 + t^2/n. With those inputs exact, the best model is the exact density
 times a fitted constant.
@@ -1693,6 +1701,48 @@ times a fitted constant.
   853 of 4,826 at df 3, 2,049 of 4,826 at df 4 and about a third elsewhere.
 Status: VERIFIED (excel-graph) as an observation; the algorithm is UNVERIFIED
 Tasks: T-0969
+
+## Student t density is Loader's dt (T-2513)
+Rule: for df >= 3, T.DIST(t,n,FALSE) is Loader's saddle-point `dt` (R 2.x structure) in Excel's x87 pieces, every op
+stored to a double; df 1 and df 2 are closed forms:
+```
+xx = fl(t·t);  q = fl(xx/n);  w = fl(1 + q)
+xx > n:   u = fl(fl(LN(w)·n)/2)                                    (not R's x² > 0.2n)
+else:     u = fl(-bd0(n/2, fl(fl(n + xx)/2)) + fl(xx/2))          the beta density's Excel bd0 (cut 0.2, v stored)
+E = fl(C - u);   T = fl( fl(EXP(E) / fl(sqrt(w))) · fl(1/sqrt(2π)) )
+C ≈ -bd0(n/2, (n+1)/2) + stirlerr((n+1)/2) - stirlerr(n/2)        exact Loader constant; Excel is ±1-2 units off it
+df 1: fl(1/fl(π·fl(1 + fl(t·t))))         df 2: EXP(fl(-1.5·LN(fl(2 + fl(t·t)))))
+```
+- Scores with the exact constant, exact / 4 ulp / 15 digits (verifier): hold-out t2513-r3-tdensity-hold2 (960, df 9-53)
+  573/960/960 (CR 266/776/839); the verifier's t2513-verify-r3-tdensity-hold (1,000, df 13-50) 505/918/977 (CR
+  93/555/787), so 23 visibly off against CR's 213. On cells.tsv df >= 3 (18,699): 5,956/18,383/18,631 (CR
+  3,788/18,075/18,472). df 1: 27 of 27 (1/(π + π·t·t) also 27, not separated; CR 18); df 2: 1,050 of 1,050 (CR 452).
+- The log branch starts at x² > n: on the verifier's hold-out 505 exact against 391 for R's 0.2n and 417 for no log
+  branch (hold2: 573, 480, 520); its bands q ≈ 0.5-0.9 (bd0 path) and q ≈ 1.1 (log path) carry the difference.
+- The denominator: at t ≈ 4.3, 38-45 of every 48 Excel values are not EXP of any double, so a value-space factor follows
+  EXP. Rounding regressions select fl((n/2)·LN(w)), t·t, q and fl(sqrt(w)) at coefficients 0.85-1.35 (x² > n) and y,
+  LN(y) of bd0's log form (x² < n). Free-constant scan, 2,112 cells: this structure 1,257; denominator
+  fl(EXP/fl(sqrt(fl(2π·w)))) 1,051; E extended 890; R 3.x's form 812-949; R 2.x as written 1,011; 18 generic exp-of-log
+  forms at most 754.
+- The constant: per-df offsets of +2.5 to -1.6 units from the exact constant, shared by every t of a df (fitting C per
+  block gives the same counts). Per-df constants fitted on the in-sample probes raise cells.tsv df >= 3 to
+  11,517/18,684/18,697. REFUTED (verifier): that they are r3-loader-const's stirlerr table e(v) plus a gauge (model
+  LT1e, hold2 501 against 573 for the exact constant; distance to each df's plateau rms 0.80 against 0.37). Also
+  rejected: GAMMALN differences (-29 units at df 20 against a needed -0.11), 768 bd0 arithmetics for bd0(n/2, (n+1)/2),
+  and every GAMMALN/GAMMA/EXP/SQRT chain for T.DIST(0,3,FALSE) (+3 ulp from CR).
+- Rejected as the density: one stored product K·POWER(1 + t·t/n, -h), K·POWER(n + t·t, -h) or K·|t|·F.DIST(t·t,1,n)
+  (at most 133 of 355 per df); BETA.DIST(y,n/2,1/2) or BETA.DIST(z,1/2,n/2) times the Jacobian (at most 109 of 355);
+  TOMS brcomp(n/2, 1/2, y, z)/|t| (at most 302 of 2,112).
+- Open: the constant's ±1-2 units; the bd0 series (most cells with x² < n/2); sw3 against sw2 (the 1/sqrt(2π) product
+  first) near the mode (no variant above 444 of 576); `T.DIST(±10,1E6,FALSE)` -46 ulp.
+Evidence: probes-numeric t2513-r3-tdensity-a1, -a2, -hold, -hold2, t2513-verify-r3-tdensity-hold, t0969-t-pdf-runs,
+m9-t-dist-pdf; docs/research/t2464/r3-tdensity (`tdlib.py`, `s10_eset.py`, `s11_fsel.py`, `s12_logbr.py`,
+`s17_final.py`, `s21_small.py`), verify-r3-tdensity (`vhold.out`, `hold2.out`, `vconst.out`, `vband.out`, `vsmall.out`,
+`vold_perdf.out`).
+Ours: `student_t.rs` `student_t_density`, a double-double cos^(n+1) times a gamma ratio.
+Status: PARTIAL (excel-graph): the structure VERIFIED on two hold-outs for df >= 3, df 1 and df 2 VERIFIED; the per-df
+constant UNVERIFIED
+Tasks: T-2585, T-2586, T-0969
 
 ## Incomplete beta sweep (T-1044)
 Rule: Excel's incomplete-beta values are not the correctly rounded ones, are not exactly symmetric, and saturate to exactly 1.
@@ -1865,64 +1915,149 @@ use powers of two, so the exact limit (2^31 - 1, as PERMUT's, is the natural gue
 Evidence: probes-numeric t2464-r2-log1p-hold (rows with n = 2^30 .. 2^33); docs/research/t2464/verify-r2-log1p/vscore.out.
 Status: UNVERIFIED (bracket only)
 Tasks: T-2464, T-2501
-## Beta density for min(a,b) <= 1: TOMS betaln and an extended exponent (T-2464)
-Rule: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 is Excel's EXP (model V6) of an extended (64-bit) E = tx + (ty - lnB),
-never stored, except at b = 1, where E = fl(tx - lnB) is stored. Here:
-- tx = fl(fl(a-1)·LN(x)) and ty = fl(fl(b-1)·ly), with ly = Excel's log1p(-x) for x <= 0.375 and LN(fl(1 - x)) above
-  (TOMS brcomp's switch);
-- lnB = TOMS 708 betaln from Excel's GAMMALN and LN: for min < 1 and max <= 8 (8 inclusive; TOMS has < 8),
-  fl(GAMMALN(min) + fl(GAMMALN(max) - GAMMALN(a+b))), smaller shape first; for max > 8, GAMMALN(min) + algdiv(min, max);
-  for a = 1 and 2 < b < 8, -LN(b).
-- Scores (w1's M1): old pdf cells 685 of 2,035 bit-exact (CR 337); w1's probe1 (16,000 cells, 10 shapes) 10,301; its
-  modelled shapes with Excel's log1p 10,375/12,799/12,799 of 12,800 (exact/4 ulp/15 digits). b = 1: 3,184 of 3,200
-  with E stored, 2,904 extended; (1, 7) at x >= 0.5: 680 of 800 extended, 0 stored.
-- The algdiv lnB was predicted, not fitted: TOMS betaln differs from the GAMMALN form by 12.00 and 4.00 units at
-  (0.5, 20) and (1, 20), where an even-half offset scan found 12.0 and 3.8; on the odd half it gets 509 and 561 of 800
-  (the GAMMALN form 0 and 3). The cut is TOMS's 8, not R's or NSWC's 10: at 8 < max < 10, 102 of 306 against 3 for
-  the GAMMALN form and 55 for R lbeta.
-- Open: max > 8 (algdiv internals, ±2 units per b; a < 1, b > 8 is 207 of 562), and a per-cell plateau of 63-80%
-  bit-exact (97-100% within 4 ulp) elsewhere that no exponent order, storage pattern or EXP variant closes.
-- Rejected: a cdf prefactor over x or x·y (b = 1: 931 against 1,591 of 1,600); stored E outside b = 1; x87 base-2 pow
-  forms (FYL2X/F2XM1, at most 131 of 386); GAMMA-ratio B (at most 235); R lbeta, NSWC/Apache logBeta; TOMS
-  gamln/gamln1 or LN(GAMMA) for lnΓ(v < 1) (the density inherits Excel's GAMMALN(0.0001), 8 units below CR).
-Evidence: probes-numeric m9-beta-dist-a*, t0969-beta-switch, t0969-beta-density-b, t2464-w2f-xruns-2 ((0.5, 0.7),
-x > 0.375: 2,048 of 2,048), column C of t2464-r2-log1p-*; w1's probe1 (w1-density/probe, not in eval/suites);
-docs/research/t2464/w1-density (`model_final.py`, `tomscmp.py`), r2-log1p `dens_m1.py`, w6-literature `h1_lnb.py`,
-`h3_gamln.py`, verify-w1-density.
-Ours: `incomplete_beta::beta_density`, powf(x,a-1)·powf(1-x,b-1)·tgamma ratio.
-Status: PARTIAL (excel-graph): within 15 digits on 12,799 of 12,800 modelled probe1 cells; bit-exact on 63-99% by
-region; max > 8 open
-Tasks: T-2503, T-2512
 
-## Beta density for min(a,b) > 1 is Loader's saddle point (T-2464)
+## BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST (T-2513)
+Rule: BINOM.DIST(k,n,p,FALSE) takes Loader's (2000) own end branches, `if (x==0) return exp(n*log(1-p)); if (x==n)
+return exp(n*log(p));`, not R's dbinom_raw (which takes bd0 forms there), and in between shares one dbinom_raw with
+BETA.DIST(p,k+1,n-k+1,FALSE):
+- k = n: EXP(fl(n·LN(p))), 172 of 172 cells.tsv cells (CR 70), p = 0.99 and 0.999 included; 320 of 320 on the
+  verifier's probe.
+- k = 0: EXP(fl(n·l)) with Excel's log1p ("Excel's log1p is a 14-term atanh series"): 173 of 173 pmf cells (CR 54);
+  318 of 320 on the verifier's probe.
+- Interior: on 56 runs of consecutive p, BINOM's and BETA's exponent errors differ by sd 0.38-1.13 units (the
+  output-rounding floor) while each alone reaches 195 (verifier: 0.47-0.89 on 10 new runs, each alone up to 50). Only a
+  per-shape constant differs (LN(n+1), the final rounding). So the pmf is a window on the beta density's Loader pieces
+  at integer shapes: bd0's log form (stored ratio, LN, product; M - k stored beyond ratio 2) has coefficients 0.95-1.10,
+  and runs where n·p is exact sit at the floor ((100,256): 0.41 units, from sd 142).
+- The interior exponent is extended and EXP is applied once: nearly no cell with |E| >= 4 is EXP of a double (verifier:
+  29 of 112), and Loader's non-log exp(lc)·sqrt(n/(2πk(n-k))) is 0 of 96 on every run with |lc| >= 16. lf/2 and the
+  stored chain are not identified: best hold-out (t2513-r3-binom-pmf-hold, BINOM + BETA + NEGBINOM, 10,368)
+  2,006/8,234/8,917 against CR 2,021/6,951/8,031. Large n (1,000 to 10^7) about 48% within 15 digits.
+- Rejected: EXP of GAMMALN sums in any store pattern (rms 156-231 units, Loader with exact pieces 35); R's
+  nq = n - n·p; other ratio formations (fl(k/np) extended, fl(fl(k/n)/p)); 120 summation trees of C, h, b1, b2 (best
+  47%); stored E.
+Evidence: probes-numeric t2513-r3-binom-pmf-a, -n, -hold, t2513-verify-r3-binom-pmf-h; BINOM cells of
+docs/research/t2464/cells.tsv; docs/research/t2464/r3-binom-pmf (`a1_survey.out`, `b2_share_a.out`, `b3_reg_a.out`,
+`b19_cfit_mul.out`, `c1_hold.out`), verify-r3-binom-pmf (`vscore_v.out`, `vstruct_v.out`).
+Ours: `discrete.rs` `binomial_pmf`, a double-double walk.
+Status: VERIFIED (excel-graph) for k = 0, k = n and the shared kernel; the interior pmf UNVERIFIED
+Tasks: T-2501, T-2146, T-2586
+
+## NEGBINOM.DIST pmf sits on the shifted binomial kernel (T-2513)
+Rule: NEGBINOM.DIST(f,r,p,FALSE) is built on dbinom_raw(r-1, f+r-1, p, q), the binomial kernel shifted by one, not R's
+dnbinom (r/(f+r))·dbinom_raw(r, f+r, p, q).
+- Regressed on the shifted kernel's bd0 roundings the coefficients are about 1 and the sd drops: (30,100) 44.2 → 0.62
+  units, (3,8) 4.49 → 0.52, (7,20) 8.91 → 0.87. With the unshifted kernel nothing drops, and NEGBINOM.DIST(n-k,k,p)
+  shares no rounding with BINOM.DIST(k,n,p) (sd of the difference is the quadrature sum).
+- The final step is not identified. fl(p·BINOM(r-1, f+r-1)) is not bit-exact (verifier): at r = 1, where the kernel is
+  q^f, 168 of 384 on the hold-out and 74 of 240 on the verifier's probe; p·EXP(E0) extended, EXP(fl(E0 + LN p)) and
+  EXP(E0 + LN p) are not bit-exact either (at most 172 of 384 and 69 of 240). For r > 1 the shifted product still
+  beats R's two forms (hold-out 328/2,316/2,541 against 233-275/1,775-1,779/2,203-2,211 of 3,072).
+Evidence: probes-numeric t2513-r3-binom-pmf-n, -hold, t2513-verify-r3-binom-pmf-h; docs/research/t2464/r3-binom-pmf
+(`b21_neg.out`, `b3_reg_neg_shift.out`, `b3_reg_neg.out`), verify-r3-binom-pmf (`vneg1.out`, `vneg2.out`).
+Ours: `discrete.rs`, a double-double walk.
+Status: VERIFIED (excel-graph) for the shifted kernel; the final step UNVERIFIED
+Tasks: T-2146, T-2586
+
+## Beta density for min(a,b) <= 1: lnB and a double-double exponent split (T-2464, T-2513)
+Rule: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 is model M2 (r3-m1-residual, verifier-confirmed), for every b, b = 1
+included. Every op is an x87 op stored to a double, double-rounded (on the worker's hold-out that gains 3 cells over
+pure double ops):
+```
+tx = fl(fl(a-1)·LN(x));  ty = fl(fl(b-1)·ly)     ly = Excel's log1p(-x) for x <= 0.375, else LN(fl(1 - x))
+lnB: a = 1 or b = 1     -> -LN(the other shape), whatever its size
+     min < 1, max <= 8  -> fl(GL(min) + fl(GL(max) - GL(a+b)))     GL = Excel's GAMMALN; 8 inclusive (TOMS has < 8)
+     min < 1, max > 8   -> fl(GL(min) + algdiv(min, max))          algdiv OPEN; TOMS algdiv in doubles is the best tried
+hi = fl(fl(tx + ty) - lnB);   lo = (tx + ty - lnB) - hi, exactly (the two additions' rounding errors)
+density = fl(EXP(hi)·fl(1 + lo))                    EXP = Excel's EXP (model V6) of the double hi
+```
+The products' rounding errors are not carried. EXP(hi)·EXP(lo) and EXP(hi)·(1 + lo) give the same double on every row.
+- Scores, exact / 4 ulp / 15 digits (verifier): w1's probe1 12,796/12,799/12,799 of 12,800 (M1 10,375); the old pdf
+  cells with min <= 1 815/1,101/1,103 of 1,107 (M1 566); the worker's hold-out 3,106/3,991/4,062 of 4,096 (M1 2,318);
+  the verifier's hold-out 649/816/846 of 864. The GL branch is 960 of 960 (and the w4 block 159 of 160) on the worker's
+  hold-out and 394 of 405 on the verifier's, all 11 misses at (0.37, 1) below. The rest of the misses are the algdiv
+  branch: 66 of 270 on the verifier's hold-out, where each shape fits all its rows with a free lnB shifted -8 to +1 ulp.
+  An accurate algdiv does better on both hold-outs (3,466 and 724 exact) but loses probe1's (0.5, 20) (682 against
+  1,599 of 1,600).
+- The min = 1 rule: -LN(max) fits all 32 shapes with min(a,b) = 1 in the worker's data (hold-out a = 1 block
+  957 of 960, b from 8.25 to 1.1e9), including (1, 9), where TOMS algdiv is 1 ulp low, and (1, 2), where the GL form
+  misses. The verifier's 7 such shapes are 189 of 189. For a < 1 with b = 1 it rests on one shape: (0.37, 1) needs lnB
+  1 ulp below the GL form (16 of 27), which is -LN(0.37). UNVERIFIED beyond that shape.
+- GL must be Excel's measured GAMMALN: with the engine's GAMMALN model the GL block of probe a drops from 1,648 to 1,410
+  of 1,648, and the hold-outs from 3,106 and 649 to 2,804 and 562 exact, with the same 15-digit counts ("GAMMALN is
+  Excel's own x87 routine").
+- History: M1 (T-2464, w1) fed an extended E = tx + (ty - lnB) to EXP, stored at b = 1, with -LN(b) only for a = 1,
+  2 < b < 8. It left a run-constant exponent offset of ±(1-4)·2^-55 that no EXP variant, table-driven exp, E rounding or
+  product form closes (`expvar.out`, `tbin.out`, `cprod.out`). M2's lo term is that offset. Rejected for lo: only one
+  addition's error (8,867 and 6,467 of 12,800 on probe1), the products' errors added (7,783-11,172), an unrounded
+  1 + lo (11,437).
+- Also seen, UNVERIFIED: where M2 gives a subnormal at a = 1, b = 9.1e6 and 4e8, Excel returns 0 (3 cells).
+- Rejected (T-2464): a cdf prefactor over x or x·y; x87 base-2 pow forms; GAMMA-ratio B; R lbeta, NSWC/Apache logBeta;
+  TOMS gamln/gamln1 or LN(GAMMA) for lnΓ(v < 1) (GL beats them in every combination, `lgam_*.out`). For algdiv
+  (`lnbcands.out`, `algsearch.out`): accurate algdiv, TOMS fully extended, correctly rounded or series alnrel, and
+  3,072 x87 storage variants, none reproducing both the probe a pins and probe1's (0.5, 20).
+Evidence: probes-numeric t2513-r3-m1-residual-a, -hold, -gl, t2513-verify-r3-m1-residual-hold, and the T-2464 cases
+m9-beta-dist-a*, t0969-beta-switch, t0969-beta-density-b, t2464-w2f-xruns-2, t2464-r2-log1p-*; w1's probe1
+(w1-density/probe, not in eval/suites); docs/research/t2464/r3-m1-residual (`final_score.py`, `m1score.out`,
+`hivar.out`, `lnbshape_a.out`, `lnbfit.py`), verify-r3-m1-residual (`vscore_all.out`, `vshape_vhold.out`,
+`vchecks.out`); w1-density, r2-log1p `dens_m1.py`, w6-literature `h1_lnb.py`.
+Ours: `incomplete_beta::beta_density`, powf(x,a-1)·powf(1-x,b-1)·tgamma ratio.
+Status: PARTIAL (excel-graph): VERIFIED for max <= 8 and a = 1 or b = 1 with max > 1 (a < 1 with b = 1 on one shape);
+algdiv (min < 1 < 8 < max) open
+Tasks: T-2503, T-2512, T-2122, T-2513
+
+## Beta density for min(a,b) > 1 is Loader's saddle point (T-2464, T-2513)
 Rule: BETA.DIST(x,a,b,FALSE) with both shapes > 1 (min >= 8 too: no a0 = 8 switch, no TOMS brcomp) is R dbeta's
-(a+b-1)·dbinom_raw(a-1, a+b-2, x, q) (Loader 2000), with q = fl(1 - x) a separate input and Excel's LN in bd0.
-- k = a - 1, n = fl(a+b) - 2, M = fl(n·x) and fl(n·q). bd0(k, M) takes its log form when |k - M| >= 0.2·(k + M) (R:
-  0.1; Excel's cut lies in (0.1837, 0.2000001]): t = fl(k·LN(fl(k/M))), then bd0 = t + (M - k) unrounded (R's
-  fl(fl(t + M) - k) is rejected). Below the cut an accurate series, arithmetic not identified.
-- Constant: LN(fl(a+b) - 1) + stirlerr terms - lf/2, lf = R <= 2.7.1's ln 2π + LN(k) + LN(n-k) - LN(n). stirlerr is
-  accurate, not built from GAMMALN (GAMMALN forms miss by rms 36-63 units, exact stirlerr by 3.0).
-- Tie response to the rounding of fl(1-x), predicted (b-1) - (a+b-2)y: Excel -0.66, -0.19, -0.37, +0.16, -1.62, -11.37
-  on six w2 runs against -0.65, -0.17, -0.36, +0.17, -1.68, -11.52. The log form predicts b - 1 (+2.5 to +119) and
-  brcomp/(x·y) -1. (4, 4) is the exception: +0.15 against -1.61.
-- The per-shape constant is unexplained: the needed offset runs from +8.5 units at (1.03, 40) to -24.4 at (40, 1.03),
-  +2.9 to +3.4 on all 22 (2.5, 3.5) blocks, and is not minus TOMS betaln, the GAMMALN form of B or a GAMMALN stirlerr.
-- Scores: model LDe (exact stirlerr) 5,765/25,254/31,385 of 32,264, against CR 3,573/26,024/29,280 (fewer within 4 ulp:
-  the constant). With a free constant per shape, the x87 bd0 is 80-96% bit-exact on held-out halves of runs where it
-  takes its log form ((7.3, 11.6) x 0.61: 494 of 518; exact Loader 35).
-- Caveats (verifier): the log-form evidence is round-1 runs; the blocks of the worker's probe t2464-r2-density-large-p1
-  sit near the mode, where both bd0 sides take the series, so that hold-out does not test bd0. On pre-T2464 eval cells
-  LDe is no better than CR (fixes 149, breaks 17, against 148 and 4; r2-impact).
-- Rejected: R dbeta's log form, brcomp/(x·y) and TOMS's a0 >= 8 Stirling brcomp (tie response); Loader on (a, b); R's
-  bd0 order and 0.1 cut; an |e| <= 0.375 cut; GAMMALN stirlerr; R >= 2.7.2 and R 2.0 lf forms (w6: at most 395 of
-  4,800, CR 367); TOMS or R decimal constants as the offsets.
-Evidence: probes-numeric t2464-r2-density-large-p1, t2464-w2f-xruns-1, -xruns-2, -absweep; docs/research/t2464/
-r2-density-large (`model.py`, `d5_yresp.py`, `d6_bd0reg.py`, `c2_const.py`, `s2_scan.py`), w4-fractions section 5,
-w2-forensics 2.3, w6-literature H2, verify-r2-density-large.
+(a+b-1)·dbinom_raw(a-1, a+b-2, x, q) (Loader 2000), with q = fl(1 - x) a separate input, in x87 ops on Excel's LN:
+```
+k = a - 1;  n = fl(a+b) - 2;  nk = fl(n - k)            stored, R's form; M = fl(n·x), fl(n·q)
+bd0(k, M), log form when |k - M| >= 0.2·(k + M):  t = fl(k·LN(fl(k/M))), bd0 = t + (M - k), M - k stored
+           series below the cut: arithmetic not identified (see below)
+E = L5 + Cs - lf/2 - bd0_p - bd0_q    held extended into EXP (V6), never stored; each bd0 probably returned as a double
+L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk);  lf = ln 2π + LN(k) + LN(nk) - LN(n)
+```
+- Extended E: at (45.2, 60.9) (E from -8.5 to -13.6) none of 112 Excel values is EXP of any double, and over 14,319
+  cells with |E| >= 8 only 615 are, chance level (verifier). Free-constant consistency: extended 8,596 of 11,264 sweep
+  cells against stored 7,724 (diverse 5,990 against 4,379); r2's stored chain, the value-space p·f and a stored lc
+  are rejected.
+- Stored k, n, nk: single-ulp neighbours of a shape jump by up to ±20 units, and the jump is ε = n - k - nk (regression
+  coefficient 1.13 on the sweep, 1.01 diverse). Within-shape sd 1.33 units for R's form against 7.4-11.4 for nk = b - 1,
+  n = fl(k + b - 1), n - k unrounded or extended.
+- bd0's log form is r2's x87 form at the bit level (each modelled rounding has coefficient -0.03 to +0.02; a bd0 store
+  0.81-1.12). Beyond ratio 2 (|v| > 1/3), M - k is stored (Sterbenz covers it inside). The cut is 0.2: 0.25 drops
+  (5.5, 12.5) from 113 to 13 of 120 and the verifier's hold-out from 4,535 to 3,534 of 11,776.
+- The series branch carries +1 × the rounding error of fl(2k·v), v = fl(d/(k + M)) stored (verifier: median ρ +0.54 on
+  10 of 10 hold-out blocks, 0 for M's rounding), the opposite sign of every natural formula that stores 2kv. After it,
+  3-41 units of structured noise remain even with n·x exact; no R or Loader loop in any storage pattern fits (section
+  3.1 of r3-loader-bd0). The series and log-form branches also differ in value by a shape-dependent offset (+10.5
+  units at (40.25, 89.75)).
+- (4, 4) is not an exception: the x87 model reproduces its q-tie response (+0.14 against Excel's +0.15; r2's -1.61 was
+  the series linearisation). Integer shapes take no table path.
+- The constant: stirlerr is accurate (every GAMMALN or double-rounded lgamma form misses by rms 15-26 units, exact 3.2);
+  R's half-integer table is right to about a unit; L5 and lf's pieces are Excel's stored LN. A residual of 2-4 units sd
+  is unexplained: sd 1.7 on the half-integer grid with an n trend from +1.7 (n < 8) to -0.4 (n 22-31), -10 to -14
+  units at n 70-105, and noise at min(k, nk) < 3. Bit-exact counts are very sensitive to the ln 2π constant.
+- Scores, exact / 4 ulp / 15 digits. Model M3 (structure above, exact stirlerr) and M4 (M3 with bd0 stored):
+  - worker hold-out t2513-r3-loader-const-hold1 (log form, 3,296): M3 952/2,990/3,176, M4 960/2,996/3,172; r2's LDe
+    685/2,675/3,029; exact constant 658/2,987/3,161; CR 251/1,738/2,435;
+  - verifier hold-out (1,600): M3 133/1,035/1,351, exact constant 98/1,043/1,350, CR 66/533/909;
+  - r2's 32,264 cells: M3 6,312/25,807/31,461, LDe 5,765/25,254/31,385, CR 3,573/26,024/29,280.
+- With one free constant per block (a structure test, not a model), on the verifier's bd0 hold-out (1,920 cells):
+  r3's knobs 668/1,501/1,732, r2's 568/1,337/1,678, CR 163/940/1,407, a free-constant null 202/912/1,413. Both-log
+  blocks are 387/474/474 of 640: the worker's 656 of 770 was a favourable subset.
+- Rejected: R dbeta's log form, brcomp/(x·y) and TOMS's a0 >= 8 Stirling brcomp; Loader on (a, b); R's bd0 order
+  fl(fl(t + M) - k) and 0.1 cut; cuts 0.25, 0.3; t, LN or the ratio kept extended; R >= 2.7.2 and R 2.0 lf forms; GAMMALN
+  stirlerr; M2 = fl(n - M1) and nq = n - fl(n·x) for (4, 4); 896 lf / L5 / chain compositions (all within 0.1 rms).
+Evidence: probes-numeric t2513-r3-loader-const-sweep1, -diverse1, -grid1, -hold1, t2513-r3-loader-bd0-a, -b, -hold,
+t2513-verify-r3-loader-const-hold, t2513-verify-r3-loader-bd0-hold, and T-2464's t2464-r2-density-large-p1,
+t2464-w2f-xruns-*, -absweep; docs/research/t2464/r3-loader-const (`m1_model.py`, `a2_forms.py`, `a5_xreg.py`,
+`a6_struct.py`, `a10_grid.py`), r3-loader-bd0 (`final_score.py`, `phase.py`, `tie44.py`), verify-r3-loader-const
+(`vscore.out`, `vimage.out`), verify-r3-loader-bd0 (`vhold_par.out`, `vhold_ph.out`, `cut_hold.out`); r2-density-large,
+w4-fractions section 5, w6-literature H2.
 Ours: powf × tgamma below a + b = 171.6, statrs above.
-Status: PARTIAL (excel-graph): the x-dependent structure VERIFIED on round-1 runs; the shape constant, the series branch
-and (4, 4) UNVERIFIED
-Tasks: T-2507, T-2513
+Status: PARTIAL (excel-graph): the structure (extended E, stored k/n/nk, bd0's log form, the 0.2 cut) VERIFIED on
+hold-outs; the constant's residual and the series branch UNVERIFIED
+Tasks: T-2507, T-2585, T-2586
 
 ## Incomplete beta bpser: a forward series times EXP(fl(a LN x) - lnB) (T-2464)
 Rule: every bratio bpser call (min(a,b) <= 1 direct, w1 = bpser(b0, a0, y0), a, b > 1 with b0 < 40 and b0·x0 <= 0.7,
@@ -2012,14 +2147,42 @@ those three pieces (`r2-tdist/xlk.py` `bgrat_half_ld`).
 - The whole family on the 5,152 lower-side tails of cells.tsv: 3,383/5,126/5,145, against CR 798/2,947/3,866; visibly
   off 7 against 1,286. Upper side 141 of 153 (CR 133).
 - Open: bup+bgrat for n <= 30 is within 15 digits on 1,343 of 1,344 but bit-exact on 356 (bup arithmetic). The T
-  density, T.DIST(.,FALSE) (19,776 cells): no composition beats CR's 4,258 bit-exact (best 4,132), Excel LN or log1p
-  exponents, brcomp/|t| and w1's beta density included.
+  density, T.DIST(.,FALSE), is not a kernel call: it is Loader's `dt` ("Student t density is Loader's dt (T-2513)").
 Evidence: probes-numeric t2464-r2-tdist-p1 (parts A-D), t0969-t-tail-grid, t0969-t-beta-link, t0969-t-df2-cut,
 m9-t-dist-*; docs/research/t2464/r2-tdist (`hx.py`, `hx_ctl.py`, `xlk.py`, `tscore.py`, `oos_bgrat.py`, `p1.py`,
 `pdf_*.py`), w5-triangulation `t_link2.py`, `t_pairs.py`.
 Ours: `student_t.rs`'s own composite (a double-double series, a Cephes deep tail, incbcf/incbd from z).
 Status: VERIFIED (excel-graph) for the call form and bgrat at b = 1/2; the bup arithmetic and the T density UNVERIFIED
 Tasks: T-2509, T-2513, T-0969
+
+## F density is not the beta density, R's df or a GAMMALN formula (T-2513)
+Rule (PARTIAL): F.DIST(x,d1,d2,FALSE) is its own formula. With m = d1, n = d2, a = m/2, b = n/2, h = a + b and
+mx = fl(m·x):
+- Not BETA.DIST's density times a Jacobian: at y = 1/(1 + d2/(d1·x)) and at d1·x/(d1·x + d2), Excel's F error is
+  uncorrelated with the worksheet BETA.DIST's (|corr| <= 0.49 over 66 runs) and larger (sd 105 against 57 at (50,100),
+  x ≈ 13). Not R's df through dbinom_raw (free constant per run: 600-653 consistent, the wrong-structure level;
+  whole model 293 of 4,005 bit-exact, CR 292). Not a GAMMALN formula (40 compositions all below CR; best 114/832/1,133
+  of 1,599 cells.tsv cells).
+- The shape constant is accurate and swap-symmetric: F.DIST(1,m,n,FALSE) = F.DIST(1,n,m,FALSE) bit for bit on 585 of
+  585 pairs; at x = 1 the error has sd 0.6-0.9 units and is uncorrelated with Excel's GAMMALN errors (|r| <= 0.11).
+- The x-dependence goes through ln(1 + r), r = min(mx/n, n/mx), with Excel's log1p switch (series to 0.375, then
+  LN(fl(1 + r))): Excel's error responds to the rounding of s = fl(1 + r) with slope about -h on 12 of 12 hold-out runs
+  with 0.375 < r <= 1, and |slope| <= 0.61h on all 24 below (the verifier confirms the switch).
+- The best model scored (K exact, a ln(m/n) + (a-1) ln x - h·L(r) on the smaller ratio) only beats CR modestly:
+  hold-out 161/776/1,091 of 1,440 (CR 114/733/1,060); the verifier's hold-out 63/435/621 of 960 (CR 47/337/568);
+  cells.tsv 172/1,052/1,297 of 1,599, below CR's 1,308 within 15 digits.
+- Not established: that ln x enters as a stored Excel LN product (that product gets coefficient 0). Open: the x-power
+  term's form, large-shape noise (sd 20-200 units on a lattice of a [32, 64) stored term at (100,100)), a +3 to +5 unit
+  offset at d1 = 1, the d <= 2 cells, non-integer df.
+- The engine's beta density × y(1-y)/x form is not Excel's.
+Evidence: probes-numeric t2513-r3-fdensity-a, -sw, -hold, -holdsw, t2513-verify-r3-fdensity-hold; F.DIST cells of
+docs/research/t2464/cells.tsv; docs/research/t2464/r3-fdensity (`a8_pair.out`, `a3_score.out`, `b1_sweep.out`,
+`b6_hold.out`, `c1_hold.out`), verify-r3-fdensity (`vcheck.out`, `vscore_vhold.out`, `vswitch_vhold.out`,
+`vpair.out`).
+Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite.
+Status: UNVERIFIED (excel-graph): the negatives, the swap symmetry and the ratio switch are measured; the formula is
+unsolved
+Tasks: T-2586, T-2219
 
 ## Incomplete beta: the integrated model, what is open and what is rejected (T-2464)
 Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN; x0 >= 0.3), r2-bratio's
@@ -2038,7 +2201,9 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   from Excel's incomplete gamma; algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
   a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio);
-  Loader's constant and the T density.
+  the densities after T-2513's round 3 (each in its entry): Loader's constant residual of 2-4 units and bd0's series,
+  the T density's per-df constant, BINOM's interior pmf, NEGBINOM's final step, the F density, and the density's
+  algdiv lnB for min < 1 < 8 < max (min(a,b) <= 1 is otherwise model M2).
 - Rejected (decision 0056; each scored on the same data): Cephes incbet/incbcf/incbd, NR betacf/betai, LibreOffice
   GetBetaDist, A&S 26.5.8, statrs, Boost's ibeta_series prefix and the T-1744 best combination (w2's tie response:
   their c >= -1 where Excel's is -1.4 to -10.6; every CF × prefactor at or below CR on 15,657 cells); R's toms708.c as
@@ -2057,7 +2222,7 @@ Evidence: probes-numeric t2464-*; docs/research/t2464/README.md, r2-bratio (`sco
 `tie_response.py`, w4-fractions `t1_pdfshare.py`, w6-literature (source survey), verify-r2-bratio/analyze.out,
 verify-r2-impact/v2_plan.out.
 Status: PARTIAL (excel-graph)
-Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513
+Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586
 
 ## Incomplete beta in the ironcalc-calc workbooks: F tails and densities (T-0970)
 Rule (VERIFIED on the cells named): Excel's F.DIST.RT is the upper tail of the incomplete beta,
