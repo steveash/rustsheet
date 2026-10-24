@@ -25,8 +25,8 @@ Goals: represent a nested array where Excel makes one (GROUPBY and PIVOTBY cells
 top-left when lifted, the shown `#VALUE!`), bounded in memory (CLAUDE.md directive 5).
 
 Non-goals: nested arrays anywhere Excel gives `#CALC!` instead (BYROW, BYCOL, MAP, MAKEARRAY and SCAN whose LAMBDA returns an
-array: arrays.md "BYROW and BYCOL: a LAMBDA result that is an array" and "MAKEARRAY with an array step"); a nested array that survives into a cell's stored value (Excel stores the shown
-`#VALUE!`, so `=A1#` over the spill reads errors; unprobed, T-2592); arrays nested more than one level.
+array: arrays.md "BYROW and BYCOL: a LAMBDA result that is an array" and "MAKEARRAY with an array step"); a nested array that survives into a cell's stored value (assumed: the cell stores
+the shown `#VALUE!`, so `=A1#` over the spill reads errors; T-2592 probes it); arrays nested more than one level.
 
 ## Excel behavior to match
 Evidence: probes/t2360-array-lambda-holidays P (excel-graph, 2026-10-23, T-2360); probes/t2311-pivotby-value-columns-error
@@ -36,11 +36,14 @@ paragraph starting "A LAMBDA array result is shown as `#VALUE!`, but the cell ho
 1. **Which cells are nested.** A value cell of GROUPBY or PIVOTBY (group, subtotal and Total cells alike) whose function
    returns an array holds that array, whatever its size: a one-record group is a 1x1 array (P!B3 `64|1x1|1`), a two-record
    group 2x1, the Total 4x1 (P!B21 `64|4x1|1`). One LAMBDA over several value columns gives each column its own array
-   (P!B3 vs C3). Key, header and blank-padding cells are scalars (P!A3 `2|a`, P!D21 `16|#4`).
+   (P!B3 vs C3). Key, header and empty filler cells are scalars (P!A3 `2|a`, P!F2 `2|Total`, the corner P!A2 `""`). One exception:
+   PIVOTBY's Total columns over several value columns stay `""`, not nested (P!F3:G5 `2||#3`; arrays.md "PIVOTBY's Total
+   columns are `""` only for one function over several value columns", P!Y97), while with one value column the Total
+   column is nested (P!D11:D13 `64|2x1|1`, `64|4x1|1`).
 2. **Shown value.** The cell displays `#VALUE!`; a spilled grid shows `#VALUE!` in each nested cell.
 3. **INDEX.** `INDEX(result,r,c)` that selects a nested cell returns its array: TYPE 64, ROWS/COLUMNS its shape,
-   `INDEX(x,1,1)` its first value (P!B3..E37); `INDEX(GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,w)),4,2)` spills the Total's
-   `{1;2;3;4}` (T-2398 Context).
+   `INDEX(x,1,1)` its first value (P!B3..E37). `INDEX(GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,w)),4,2)` spilling the Total's
+   `{1;2;3;4}` is probes/scan-over-groupby A68:A72, on the unmerged T-2398 branch (draft #1583); it lands with T-2398.
 4. **Lifted reads take the top-left.** A function that lifts over the result reads each nested cell as its array's
    top-left value: `SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a top-left is one
    (`{#N/A;3}`: P!C33 = 1); `SUM(--ISERROR(PIVOTBY(..)))` is 0 (t2311 P!C12); REGEXEXTRACT reads a valid return mode
@@ -96,8 +99,9 @@ producer: BYROW/MAP/MAKEARRAY keep `#CALC!`.
   becomes `CalcResult::Array`, so INDEX, LET and a LAMBDA parameter all hand the array on.
 - Display and storage: `array_node_to_formula_value` (model.rs) and stringify show `#VALUE!` (rule 2); a spill stores the
   error, so no nested array outlives the formula's evaluation.
-- MAP, SCAN, REDUCE and the aggregates follow T-2592's evidence (T-2594); until then they take `node.scalar()` like any
-  lifted read.
+- MAP, SCAN, REDUCE, the aggregates and every other unprobed read follow T-2592's evidence; T-2593 waits for it, so
+  `scalar()` replaces today's `#VALUE!` only where the probe shows a top-left read (rule 4 and T-2592's answers), and the
+  rest is T-2594.
 
 **Bound (directive 5).** Each GROUPBY/PIVOTBY call counts the cells of the nested arrays it keeps against
 `limits::MAX_SIZE` (1,048,576, the bound on any array the engine builds), together with the result's own cells. Past it the
@@ -125,11 +129,12 @@ results must be charged against a shared per-evaluation budget, as `MAX_CAPTURED
   cells keeps one level, each inner nested cell its top-left).
 - Eval: the 47 t2360 P! cells, t2311 P!C12, gen-m7/21b4eef18424ce94 A1504 (T-2593); t2311 P!D12 and T-2592's new cells
   (T-2594); groupby-lifted-args A153 and gen-m7/b24ce74f08d3f91a A1850 through T-2398.
-- No regressions in probes/groupby-*, pivotby-* and gen-m7 (the existing `#VALUE!` cells of rule 7 stay).
+- No regressions in probes/groupby-*, pivotby-* and gen-m7 (the existing `#VALUE!` cells of rule 7 stay, and so do the `""`
+  Total columns of rule 1's exception, t2360 P!F3:G5, which pass today).
 
 ## Rollout
 1. T-2592 (research, S): probe the unknowns above; record them in arrays.md.
-2. T-2593 (engine, M): `ArrayNode::Nested`, `scalar()`, the producer, INDEX/TYPE, display, the cap. Owns rules 1-4.
+2. T-2593 (engine, M, after 1): `ArrayNode::Nested`, `scalar()`, the producer, INDEX/TYPE, display, the cap. Owns rules 1-4.
 3. T-2594 (engine, S, after 1 and 2): MAP, SCAN, REDUCE and the aggregates over a nested cell per T-2592; rule 7 if the
    probe shows nested cells there.
 4. T-2398 (SCAN over a GROUPBY result) depends on T-2593 for its `LAMBDA(w,w)` cells.

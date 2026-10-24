@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-2592]
 ---
 
 ## Goal
@@ -23,7 +23,9 @@ matches in 25 files are the inventory of non-scalar reads. Owned known failures:
 - probes/t2311-pivotby-value-columns-error P!C12.
 - gen-m7/21b4eef18424ce94, 26 cells of the A1504 spill: Calc!B1505, B1506, B1510, B1512, B1513, C1505, C1507:C1511, C1514,
   D1505, D1507, D1509:D1511, D1513, E1505:E1507, E1509:E1513.
-The G! cells of t2360 are blank keys (T-2460), not this task's.
+The G! cells of t2360 are blank keys (T-2460), not this task's. PIVOTBY's `""` Total columns over several value
+columns stay as they are (SPEC-0018 rule 1's exception; t2360 P!F3:G5 pass today). Reads T-2592 has not shown to take
+the top-left keep today's result (SPEC-0018 "Consumers with their own rule").
 
 ## Acceptance criteria
 - [ ] The owned cells above pass and leave eval/baseline (`make eval-baseline`), with no new known-failure lines.
