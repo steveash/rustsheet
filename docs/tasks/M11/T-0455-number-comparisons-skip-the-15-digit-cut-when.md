@@ -40,3 +40,13 @@ sheets that the file has no cache for, which hit the array-size bound.
 ## Out of scope
 - Building million-row arrays for whole-column operands (needs a spec; file a follow-up).
 - The value of a lookup into an uncached linked-workbook sheet (file a probe follow-up).
+
+## Outcome
+Release build on a 4-core Linux box:
+- corpus-bench 59932 now evaluates in 55 s, down from 221 s (load is 0.27 s either way). Through
+  the harness it takes 78 s, still over the 60 s case timeout. What remains is building
+  1,048,576-row arrays for its 150 `MIN`/`MAX(IF($D:$D=K2,$F:$F))` formulas.
+- corpus-bench 524-2 runs in 44 s, where it used to exceed the 60 s timeout. Its `!Timeout` left
+  eval/baseline/corpus-bench.txt through `make eval-baseline`. It has no oracle values yet, so it
+  is pending.
+- No suite's known failures grew.
