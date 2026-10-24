@@ -34,3 +34,8 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Update (T-2550)
+The sweep is done: 12 cells differ (n = 2 to 5 at x = 700, 702, 705), not only `BESSELK(700,3)`. At 702 and 705 Excel's
+K2 = K4 = K0 and K3 = K5 = K1. See docs/excel-semantics/engineering.md "BESSELK near the bottom of the double range,
+BESSELI overflow point (T-2550)" and probes-numeric/m9-besselk-underflow.

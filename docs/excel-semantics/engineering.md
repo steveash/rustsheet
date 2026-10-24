@@ -738,7 +738,7 @@ Evidence: probes-numeric/m9-besselk-underflow (147 cells, excel-graph): BESSELK(
 Rule: ours is bit-exact for BESSELK at every n probed up to x = 695, and at x = 700, 702 and 705 for n = 0 and 1; BESSELK is 0 for n = 0 to 5 from x = 707 on (T-2421 puts the flush between 705 and 705.5), as ours.
 Rule: from x = 700 Excel's upward recurrence for n >= 2 departs from the exact one. At x = 702 and 705 K2 = K4 = K0 and K3 = K5 = K1 exactly, as if the `2n/x * K(n)` term were lost (`BESSELK(702,4)` 6.310849433265845E-307, `(702,5)` 6.315342484400538E-307; `(705,4)` 3.135297088468052E-308); at 700 only K2 = K0 (4.669776528722504E-306) while K3 (4.69979514014056E-306), K4 (4.710060487066566E-306) and K5 (4.753624402849892E-306) differ from K1 and K0. Ours adds the term and misses these 12 cells (n = 2 to 5 at x = 700, 702 and 705) by 1.6E-5 (`BESSELK(700,3)`) to 1.6% relative (`BESSELK(702,5)` ours 6.4241464536256334E-307).
 Rule: BESSELI(x,0) is finite up to x = 709.5 (2.02976276636543E+306) and `#NUM!` at 709.78 and from there to 713; ours is finite at 709.78 (2.685109662266049E+306), so the overflow cut lies in (709.5, 709.78], below the true overflow of I0 near 713.98 (T-2421 has 710 on).
-Not fixed here: the kernel change is T-2549.
+Not fixed here: the kernel change is T-2549; the BESSELI cut is T-2613.
 
 ## BESSELJ and BIN2* cells of the T-2436 sub-expression probe
 Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; matched since T-2547, the phase cut), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (ours `#VALUE!`, T-2544); an `IMSUM` of
