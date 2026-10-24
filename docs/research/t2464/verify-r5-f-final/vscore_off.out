@@ -1,0 +1,24 @@
+visibly off (not within 15 digits): 18932
+  large                    15147
+  large/s1/r<=.375         3226
+  large/s1/r>.375          3156
+  large/s2/r<=.375         5693
+  large/s2/r>.375          3072
+  mid                      795
+  mid/s1/r<=.375           301
+  mid/s1/r>.375            148
+  mid/s2/r<=.375           196
+  mid/s2/r>.375            150
+  side1/r<=.375            4651
+  side1/r>.375             3714
+  side2/r<=.375            6762
+  side2/r>.375             3805
+  small                    2990
+  small/s1/r<=.375         1124
+  small/s1/r>.375          410
+  small/s2/r<=.375         873
+  small/s2/r>.375          583
+  |P|32-256                11433
+  |P|4-32                  2581
+  |P|<4                    233
+  |P|>=256                 4685
