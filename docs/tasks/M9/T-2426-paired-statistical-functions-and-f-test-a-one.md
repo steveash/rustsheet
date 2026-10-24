@@ -3,7 +3,7 @@ id: T-2426
 title: "Paired statistical functions and F.TEST: a one-cell reference to an empty cell is #VALUE! (gen-m9, 113 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -156,14 +156,14 @@ Cells:
 - gen-m9/f066968376660329.case.json (1): Calc!A371
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] (met for 180 cells; 12 rescoped, see Outcome) Visible parity (gen-m9, T-2258): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 190 known-failure lines (109 from T-2255, 81 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [x] (met for 180 cells; 12 rescoped, see Outcome) Visible parity (gen-m9, T-2255 and T-2256): these 190 known-failure lines (109 from T-2255, 81 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `COVAR(A1:A3,Z1)`, `CORREL(Z1:Z1,{1,2,3})`, `F.TEST(Z1,A1:A3)` and `INTERCEPT(Z1,1/0)` with Z1 empty
+- [x] Unit tests: `COVAR(A1:A3,Z1)`, `CORREL(Z1:Z1,{1,2,3})`, `F.TEST(Z1,A1:A3)` and `INTERCEPT(Z1,1/0)` with Z1 empty
       are `#VALUE!`; `COVAR(A1:A3,B1)` with B1 = 5 is still the one-value rule.
-- [ ] statistics.md's entry gets an "Ours:" line naming this task; T-2051 is closed or rescoped with a pointer here.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's entry gets an "Ours:" line naming this task; T-2051 is closed or rescoped with a pointer here.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A one-cell reference that holds a value (unchanged).
@@ -173,3 +173,19 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+`blank_one_cell_as_error` (paired.rs) turns a one-cell reference to an empty cell into `#VALUE!` where `fn_get_two_matrices`
+(COVAR, CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, FORECAST*, CHISQ.TEST) and `paired_samples` (COVARIANCE.*, T.TEST)
+read their arguments, in argument order. Eval: 203 known-failure lines left eval/baseline/gen-m9.txt, none added; 180 are
+cells this task owned, 23 belonged to other tasks. Unit test `test_paired_blank_one_cell_reference_is_value_error`.
+
+Rescoped: 12 owned cells still fail because the blank check must come before another check in the same function, which is
+the argument-order work of the tasks below, so the "190 and 4 lines disappear" criteria are met for the 180 above only:
+- T.TEST (`fn_t_test` checks tails and type before the samples), moved to T-2469: 583ca2baea0bb30a A389,
+  c2684066d8df263e A90, 0620505280d2ea6e A139, 91e167cd8d7eb652 A24, d8f44d556674c2fd A329.
+- PROB (its reader is not the shared one), moved to T-2468: 583ca2baea0bb30a A58, 9735c5ab72fa5ecf A164,
+  139684e68fb2fc3b A353, 46ac3ef5e61583ca A269, 5919660b7bb4d195 A1, d8f44d556674c2fd A192.
+- 4250f880ab640c49 A258 (FORECAST nested in GAMMA.INV, ours `#DIV/0!`): ours is now `#VALUE!` against Excel's `#NUM!`, moved to T-2616.
+gen-m9 58e3253bbd3a7a82 A9 and b4173fe25109a238 A348 were already off the baseline on main (T-2455).
+A computed blank (`CORREL(IF(TRUE,Z1),..)`) also gives `#VALUE!` by analogy with F.TEST; UNVERIFIED for the paired functions.

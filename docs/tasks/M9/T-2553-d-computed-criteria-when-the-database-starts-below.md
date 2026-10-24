@@ -1,9 +1,9 @@
 ---
 id: T-2553
-title: "D* computed criteria when the database starts below the criteria row or sits on another sheet: Excel's records (gen-m9, 16 cells)"
+title: "D* computed criteria when the database starts below the criteria row or sits on another sheet: Excel's records (gen-m9, 8 of 16 cells; rest T-2617)"
 milestone: M9
 lane: functions-criteria
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -42,12 +42,25 @@ Cells:
 - gen-m9/fa8ee59f2f1be7e0.case.json (1): Calc!A332
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 16 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] criteria.md's T-2258 entry gets the confirmed rule and an "Ours" line.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2258): these 16 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline: the 8 same-sheet lines did; the 8 over a
+      database on another sheet moved to T-2617 (the evidence fits no single rule yet, Outcome).
+- [x] criteria.md's T-2258 entry gets the confirmed rule and an "Ours" line.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+- A computed criterion's record fails when its moved relative reference into the database's columns lands on the
+  database's header row or above (`reads_records` in functions/database.rs, also for the first record, whose stored
+  value was used before): over Db!A2:D9, `=B2>3` now matches rows 4 and 9 only, as in Excel. Unit test
+  `formula_condition_on_the_header_row_fails`.
+- A first attempt that also failed every record whose reference is on another sheet than the database regressed
+  02b7cfabebd2cc0a A231 and d193e8b4ab820f52 A114, where Excel follows the plain shift. The 8 other-sheet cells (Excel
+  matches nothing there) went to the new probe task T-2617, with the evidence.
+- Eval delta: gen-m9 known failures 6089 -> 6081 (8 fixed: 4dc761698ca23149 A129, 5bdef392d16a5efb A161, 74779cff2810ccf4
+  A52, 7a819ffbbeff8fcc A303, d193e8b4ab820f52 A375, f066968376660329 A292, f61a73cd9af21e6d A289, fa8ee59f2f1be7e0 A332),
+  no regressions; visibly off 6512 (lock 8632).

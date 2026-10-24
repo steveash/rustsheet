@@ -68,6 +68,7 @@ C	probes/base-min-length.case.json	14
 C	probes/base-number-upper-bound.case.json	50
 C	probes/bessel-asymptotic.case.json	50
 C	probes/bessel-large-x.case.json	24
+C	probes/bond-argument-check-order.case.json	298
 C	probes/bond-one-period-bases.case.json	80
 C	probes/byrow-bycol-array-results.case.json	32
 C	probes/callee-unparenthesized-lower-row-over.case.json	2
@@ -2643,19 +2644,13 @@ F	probes/t2436/589f42e67f4b4b8d.case.json	Calc!T166
 F	probes/t2436/589f42e67f4b4b8d.case.json	Calc!T181
 F	probes/t2436/589f42e67f4b4b8d.case.json	Calc!U166
 F	probes/t2436/589f42e67f4b4b8d.case.json	Calc!U181
-F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!A151
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!A16
-F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!A166
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!A31
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!A61
-F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!T151
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!T16
-F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!T166
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!T31
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!T61
-F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!U151
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!U16
-F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!U166
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!U31
 F	probes/t2436/58e3253bbd3a7a82.case.json	Calc!U61
 F	probes/t2436/60b0b6e69ad35a45.case.json	Calc!A16
