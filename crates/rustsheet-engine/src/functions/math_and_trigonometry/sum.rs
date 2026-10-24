@@ -2,7 +2,7 @@ use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::paired::PairedArg;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
 
 use crate::{
@@ -239,6 +239,7 @@ const SUM_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
     grids: GridReading::TopLeft,
+    nested: NestedReading::Flatten,
 };
 
 impl Model {

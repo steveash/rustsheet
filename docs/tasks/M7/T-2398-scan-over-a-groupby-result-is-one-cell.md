@@ -21,6 +21,8 @@ Re-split from T-2359. probes/groupby-lifted-args (excel-graph, 2026-10-22):
 - `SCAN(GROUPBY(..,LAMBDA(w,1/0)),0,MIN)` is one cell `#DIV/0!` (A169).
 - Owned gen-m7 cell (1 line in eval/baseline/gen-m7.txt): gen-m7/b24ce74f08d3f91a.case.json A1850,
   `=SCAN(_xlfn.GROUPBY(Data!C1:D12,Data!B1:D12,LAMBDA(y,y)),Data!E3,_xleta.MIN)`. Excel `#N/A`, ours `#VALUE!`.
+  Passes since T-2594 (2026-10-24): SCAN now hands MIN the nested cell as an array, and MIN of one is `#N/A` (arrays.md
+  "Aggregates over nested GROUPBY and PIVOTBY cells"); the line left the baseline, the one-cell shape is still this task's.
 - The 1x1 shape suggests SCAN does not receive the GROUPBY's array. Probe what it does receive: compare SCAN over
   `GROUPBY(...)` with SCAN over `INDEX(GROUPBY(...),1,2)`, `TAKE(GROUPBY(...),1)` and `LET(g,GROUPBY(...),g)`, and REDUCE and MAP
   over the same. Code: functions/logical (SCAN), functions/lookup_and_reference/groupby.rs.

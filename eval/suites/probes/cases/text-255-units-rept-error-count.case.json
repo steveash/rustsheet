@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2305 probe: REPT of text over 255 units with an error or negative count.",
+ "tags": [
+  "M5",
+  "probe",
+  "text",
+  "T-2305"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=REPT(REPT(\"x\",256),#N/A)",
+    "A2": "=REPT(REPT(\"x\",256),-1)",
+    "A3": "=REPT(\"x\",#N/A)",
+    "A4": "=REPT(REPT(\"x\",256),#DIV/0!)",
+    "A5": "=REPT(#N/A,REPT(\"x\",256))"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -6,7 +6,7 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
 use crate::functions::statistical::IfsShape;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
@@ -57,6 +57,7 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
     grids: GridReading::TopLeft,
+    nested: NestedReading::NotAvailable,
 };
 
 /// LOG of `x` in `base`, or LOG10 with the base omitted: not ln(x)/ln(10), as `LOG(1000)` is 3
