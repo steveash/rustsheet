@@ -59,7 +59,9 @@ impl Model {
         let issue_serial = self.cast_number_ref(issue, cell)?.floor() as i64;
         let settlement_serial = self.cast_number_ref(settlement, cell)?.floor() as i64;
         let rate = self.cast_number_ref(rate, cell)?;
-        let par = self.cast_number_or(rest.first(), 1000.0, cell)?;
+        // A boolean par is `#VALUE!` (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, a TRUE cell too:
+        // probes/t2455-transpose-single-value A41, A54); text "2" is 2 (A55).
+        let par = self.cast_number_no_bools_or(rest.first(), 1000.0, cell)?;
         // A boolean basis is #VALUE!, text "1" is 1, 1.9 truncates to 1, 5 and -1 are #NUM!
         // (fin-later-argument-ranges J1-J11), and it is read before any value is checked (J20).
         let basis = self.cast_number_no_bools_or(rest.get(1), 0.0, cell)?;
@@ -79,12 +81,17 @@ impl Model {
         let [settlement, maturity, first, second, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        // The basis is read first: `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and
+        // `DISC(37025,2.5,1/0,100,"abc")` are `#VALUE!`, `RECEIVED(..,NA(),1/0)` `#DIV/0!`
+        // (probes/t2455-transpose-single-value A21, A64, A65; financial.md "The discount
+        // securities read basis first").
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         Ok(DiscountArgs {
             settlement: self.cast_number_no_bools_ref(settlement, cell)?.floor() as i64,
             maturity: self.cast_number_no_bools_ref(maturity, cell)?.floor() as i64,
             first: self.cast_number_no_bools_ref(first, cell)?,
             second: self.cast_number_no_bools_ref(second, cell)?,
-            basis: self.cast_number_no_bools_or(rest.first(), 0.0, cell)?,
+            basis,
         })
     }
 

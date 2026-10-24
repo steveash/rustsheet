@@ -294,6 +294,10 @@
     "t": "e",
     "v": "#VALUE!"
    },
+   "A13": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A1309": {
     "t": "n",
     "v": 1.0
@@ -1725,6 +1729,10 @@
    "A315": {
     "t": "n",
     "v": 123456789.123
+   },
+   "A3153": {
+    "t": "e",
+    "v": "#VALUE!"
    },
    "A316": {
     "t": "s",
@@ -5773,8 +5781,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "3b8e8f2661b0a0dff3e38fdcb71ad8ac5195d03cbe4408c75bd3a3f2713335ef",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T22:13:33+00:00",
+  "produced_at": "2026-10-23T04:47:27+00:00",
   "version": null,
-  "workbook_name": "888902ce79cfd70796a1dfc56a58aa72e1468638744b091e3b13d26dd2f43c16.xlsx"
+  "workbook_name": "ce9763dc426d0dd117d40fc4958a50aea637d2ec1fda527eaaa041da3ba0841d.xlsx"
  }
 }

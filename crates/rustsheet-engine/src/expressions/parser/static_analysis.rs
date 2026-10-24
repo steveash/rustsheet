@@ -30,9 +30,8 @@ use signature::{
     args_signature_let, args_signature_lookup, args_signature_map, args_signature_match,
     args_signature_npv, args_signature_offset, args_signature_one_vector, args_signature_pivotby,
     args_signature_randarray, args_signature_reduce, args_signature_row, args_signature_scalars,
-    args_signature_scan, args_signature_sumif, args_signature_textafter, args_signature_textjoin,
-    args_signature_textsplit, args_signature_trimrange, args_signature_xlookup,
-    args_signature_xmatch, Signature,
+    args_signature_scan, args_signature_sumif, args_signature_textafter, args_signature_textsplit,
+    args_signature_trimrange, args_signature_xlookup, args_signature_xmatch, Signature,
 };
 
 /*
@@ -499,7 +498,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::T | Function::TLegacy => args_signature_scalars(arg_count, 1, 0),
         Function::Textafter => args_signature_textafter(arg_count),
         Function::Textbefore => args_signature_textafter(arg_count),
-        Function::Textjoin => args_signature_textjoin(arg_count),
         Function::Trim => args_signature_scalars(arg_count, 1, 0),
         Function::Upper => args_signature_scalars(arg_count, 1, 0),
         Function::Average => vec![Signature::Vector; arg_count],
@@ -532,7 +530,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Gcd => vec![Signature::Vector; arg_count],
         Function::Lcm => vec![Signature::Vector; arg_count],
         Function::Combin => args_signature_scalars(arg_count, 2, 0),
-        Function::Combina => args_signature_scalars(arg_count, 2, 0),
         Function::Sumsq => vec![Signature::Vector; arg_count],
         Function::Mdeterm => args_signature_one_vector(arg_count),
         Function::Minverse => args_signature_one_vector(arg_count),
@@ -754,7 +751,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
             }
         }
         Function::T => scalar_arguments(args),
-        Function::Textjoin => not_implemented(args),
         Function::Trim => scalar_arguments(args),
         Function::Char => not_implemented(args),
         Function::Clean => scalar_arguments(args),
@@ -789,7 +785,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Gcd => StaticResult::Scalar,
         Function::Lcm => StaticResult::Scalar,
         Function::Combin => scalar_arguments(args),
-        Function::Combina => scalar_arguments(args),
         Function::Sumsq => StaticResult::Scalar,
         Function::Mdeterm => StaticResult::Scalar,
         Function::Minverse => StaticResult::Unknown,

@@ -11,6 +11,7 @@ use crate::{
 };
 
 use super::wrapcols_wraprows::pad_with_of;
+use super::SIZE_LIMIT_EXCLUSIVE;
 
 impl Model {
     // ── EXPAND ────────────────────────────────────────────────────────────────
@@ -34,14 +35,14 @@ impl Model {
         // an array and a range, one EXPAND per element whose value is that call's top-left
         // (`ROWS(EXPAND(A1:A2,{3;4}))` is 2, probes/m7-argument-modes F7:H7,
         // probes/m7-lift-take-drop-sortby row 20). pad_with does not lift: an array there is
-        // `#VALUE!` (`EXPAND(A1:A2,3,1,{0;1})`, same case row 21; T-1835), and a range is read as a
-        // value (a 1x1 array and a multi-cell range are unprobed, T-2365).
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let src_rows = data.len();
-        let src_cols = data.first().map(|r| r.len()).unwrap_or(0);
+        // `#VALUE!` (`EXPAND(A1:A2,3,1,{0;1})`, same case row 21; T-1835), and so is a multi-cell
+        // range (T-2415); a 1x1 array is `#VALUE!` too (probes/t2365-wrap-expand-tocol-error-lift
+        // G8). An array that is an error is every element's result, as for TOROW:
+        // `ROWS(EXPAND(1/0,{3;4}))` and `ROWS(EXPAND(NA(),3,{1;2}))` are 2 (same case G6, G7).
+        let data = self.eval_to_array(&args[0], cell);
+        let (src_rows, src_cols) = data.as_ref().map_or((1, 1), |data| {
+            (data.len(), data.first().map_or(0, Vec::len))
+        });
         let cells = u64::try_from(src_rows.saturating_mul(src_cols))
             .unwrap_or(u64::MAX)
             .max(1);
@@ -52,35 +53,52 @@ impl Model {
             LiftCost::Cells(cells),
             cell,
             &mut |model, values| {
+                let data = match &data {
+                    Ok(data) => data,
+                    Err(error) => return error.clone(),
+                };
                 let target_rows = match model.cast_number_or(values.get(1), 0.0, cell) {
-                    Ok(n) => n as usize,
+                    Ok(n) => n,
                     Err(e) => return e,
                 };
                 let target_cols = match values.get(2) {
-                    None => src_cols,
+                    None => src_cols as f64,
                     Some(value) => match model.cast_number_ref(value, cell) {
-                        Ok(n) => n as usize,
+                        Ok(n) => n,
                         Err(e) => return e,
                     },
                 };
+                // A size of 2^31 or more is `#VALUE!`, while a smaller one past the grid is
+                // `#NUM!` (probes/expand-makearray-past-grid A1:A13, -big A1:B3).
+                if target_rows >= SIZE_LIMIT_EXCLUSIVE || target_cols >= SIZE_LIMIT_EXCLUSIVE {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "rows and columns must be less than 2^31".to_string(),
+                    );
+                }
+                let (target_rows, target_cols) = (target_rows as usize, target_cols as usize);
                 // An array pad_with is `#VALUE!` for the whole call, not a fill of `#VALUE!`s
                 // (probes/m7-lift-take-drop-sortby F21:H21: ROWS, COLUMNS and INDEX of it are
                 // `#VALUE!`).
-                // A reference is read as a value, as the scalar argument it was before the table
-                // (a one-cell `Data!E$11`; a larger range is intersected).
-                let pad = values.get(3).map(|pad| match pad {
-                    CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
-                    other => other.clone(),
-                });
-                if matches!(pad, Some(CalcResult::Array(_))) {
+                // A multi-cell range is `#VALUE!` for the whole call too, a row, a column or a 2-D
+                // one, whether or not any cell is padded (gen-m7/2d9b48c6363e7a16 A366, A830,
+                // A2686; arrays.md "EXPAND, WRAPROWS and WRAPCOLS"; T-2415). A one-cell reference
+                // is its value.
+                let pad = values.get(3);
+                if pad.is_some_and(CalcResult::is_multi_value) {
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
                         "pad_with must be a single value".to_string(),
                     );
                 }
+                let pad = pad.map(|pad| match pad {
+                    CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
+                    other => other.clone(),
+                });
                 expand_kernel(
-                    &data,
+                    data,
                     target_rows,
                     target_cols,
                     pad_with_of(pad.as_ref()),
@@ -90,6 +108,10 @@ impl Model {
         )
     }
 }
+
+/// The least columns Excel is known to refuse with `#NUM!` (probes/expand-makearray-past-grid-big
+/// A1); its exact cap lies between 16,386 and this (T-2452).
+const COLUMNS_REFUSED: usize = 123_456_789;
 
 /// One EXPAND call: `data` padded with `pad` to `target_rows` x `target_cols`.
 fn expand_kernel(
@@ -113,6 +135,18 @@ fn expand_kernel(
             Error::VALUE,
             cell,
             "columns must be >= array column count".to_string(),
+        );
+    }
+
+    // Excel refuses columns past a cap of its own after the sizes above (16,385 are built,
+    // 123,456,789 are `#NUM!` even in one row: probes/expand-makearray-past-grid-big A1, B3; a
+    // negative rows is `#VALUE!` first: gen-m7/bc4a69b0b512bc04 A1430); ours refuses from the
+    // smallest refused size probed, and builds below it up to the cell bound.
+    if target_cols >= COLUMNS_REFUSED {
+        return CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "columns exceeds EXPAND's limit".to_string(),
         );
     }
 

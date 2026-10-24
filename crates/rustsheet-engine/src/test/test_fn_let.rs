@@ -210,3 +210,100 @@ fn lambda_parameters_spelled_like_r1c1_cells_survive_a_reload() {
         "=LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)"
     );
 }
+
+// probes/let-name-shadows-defined-name: a LET name or LAMBDA parameter shadows a defined name
+// of the same name in any case; a closure keeps the defined name it was written against.
+#[test]
+fn let_names_and_lambda_parameters_shadow_defined_names() {
+    let mut model = new_empty_model();
+    model.define_name("Mk", None, "=LAMBDA(a,a+100)").unwrap();
+    model.define_name("Pv", None, "=7").unwrap();
+    let cases = [
+        ("=LET(mk,LAMBDA(a,a+1),mk(1))", "2"),
+        ("=LET(Mk,LAMBDA(a,a+1),Mk(1))", "2"),
+        ("=mk(1)", "101"),
+        ("=LET(pv,2,pv+1)", "3"),
+        ("=LET(PV,2,pv+1)", "3"),
+        ("=Pv+1", "8"),
+        ("=LAMBDA(pv,pv+1)(2)", "3"),
+        ("=LAMBDA(PV,Pv*10)(2)", "20"),
+        ("=LET(x,Pv,LET(pv,1,x+pv))", "8"),
+        ("=LET(f,LAMBDA(a,a+Pv),LET(pv,50,f(1)))", "8"),
+    ];
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    // The stored form (R1C1 grammar) prints the names without `_xlpm.`: a reload keeps the shadowing.
+    let mut reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    for m in [&model, &reloaded] {
+        for (row, (formula, expected)) in cases.iter().enumerate() {
+            assert_eq!(
+                m._get_text(&format!("A{}", row + 1)),
+                *expected,
+                "{formula}"
+            );
+        }
+    }
+}
+
+// probes/let-lambda-body-own-name (excel-graph, T-2558): a LAMBDA body naming its own LET name
+// is #NAME?, with or without a defined name of that name. (A LET name spelled like a function,
+// `Pv`, called by name is a separate gap: T-2567.)
+#[test]
+fn lambda_body_naming_its_own_let_name_is_name_error() {
+    let mut model = new_empty_model();
+    model.define_name("Qv", None, "=7").unwrap();
+    let cases = [
+        ("=LET(y,LAMBDA(a,y),y(1))", "#NAME?"),
+        ("=LET(Y,LAMBDA(a,y),y(1))", "#NAME?"),
+        ("=LET(y,LAMBDA(a,a+1),y(1))", "2"),
+        ("=LET(y,y+1,y)", "#NAME?"),
+        ("=LET(f,LAMBDA(a,g(a)),g,LAMBDA(a,a+1),f(1))", "#NAME?"),
+        ("=LET(Qv,LAMBDA(a,Qv),Qv(1))", "#NAME?"),
+    ];
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn test_let_name_spelled_like_function_called() {
+    // A bound name spelled like a function is the variable when called, in any case
+    // (probes/let-name-function-spelled-call, let-lambda-body-own-name, T-2567). `_set` reads
+    // the formula as stored A1 text; typed, the function wins (crates/rustsheet/src/edit/tests.rs).
+    let mut model = new_empty_model();
+    let cases = [
+        ("=LET(Pv,LAMBDA(a,a),Pv(1))", "1"),
+        ("=LET(Pv,LAMBDA(a,Pv),Pv(1))", "#NAME?"),
+        ("=LET(Sum,LAMBDA(a,a*2),Sum(3))", "6"),
+        ("=LET(abs,LAMBDA(a,a*2),ABS(-3))", "-6"),
+        ("=LAMBDA(Pv,Pv(2))(LAMBDA(a,a+1))", "3"),
+        ("=LET(Pv,2,Pv(1))", "#NAME?"),
+        ("=LET(Pv,LAMBDA(a,a),PV(1,2,3))", "#VALUE!"),
+        ("=LET(Pv,LAMBDA(a,a),LET(x,1,Pv(5)))", "5"),
+        ("=LET(If,LAMBDA(a,a+1),If(1))", "2"),
+        ("=LET(Sum,LAMBDA(a,a*2),SUM(1,2))", "#VALUE!"),
+        ("=LET(Today,LAMBDA(a,a),Today(4))", "4"),
+        ("=LET(Pv,LAMBDA(a,a),Pv())", "#VALUE!"),
+        // Out of the LET's scope the function is back.
+        ("=LET(x,LET(Sum,LAMBDA(a,a*2),Sum(1)),SUM(x,1))", "3"),
+    ];
+    for (row, (formula, _)) in (1..).zip(cases) {
+        model._set(&format!("A{row}"), formula);
+    }
+    // All cells are set before one evaluation, then checked.
+    model.evaluate();
+    for (row, (formula, expected)) in (1..).zip(cases) {
+        assert_eq!(model._get_text(&format!("A{row}")), expected, "{formula}");
+    }
+}

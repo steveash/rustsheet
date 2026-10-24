@@ -9,6 +9,8 @@
 
 use std::collections::HashSet;
 
+use crate::functions::util::array_node_to_calc_result;
+
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -225,7 +227,11 @@ impl Model {
                 match cells {
                     Ok(cells) => {
                         for value in &cells {
-                            collect_value(value_of(value, cell), ignore, &mut collected);
+                            collect_value(
+                                array_node_to_calc_result(value, cell),
+                                ignore,
+                                &mut collected,
+                            );
                         }
                     }
                     Err(error) => return error,
@@ -313,7 +319,11 @@ impl Model {
             Err(value) => match value {
                 CalcResult::Array(rows) => {
                     for value in rows.iter().flatten() {
-                        collect_value(value_of(value, cell), ignore, &mut collected);
+                        collect_value(
+                            array_node_to_calc_result(value, cell),
+                            ignore,
+                            &mut collected,
+                        );
                     }
                     Ok(Vec::new())
                 }
@@ -432,17 +442,6 @@ fn collect_value(value: CalcResult, ignore: Ignore, collected: &mut Collected) {
         }
         CalcResult::EmptyCell | CalcResult::EmptyArg => {}
         _ => collected.non_empty += 1,
-    }
-}
-
-/// An element of a computed array as a value.
-fn value_of(value: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
-    match value {
-        ArrayNode::Number(number) => CalcResult::Number(*number),
-        ArrayNode::Boolean(boolean) => CalcResult::Boolean(*boolean),
-        ArrayNode::String(text) => CalcResult::String(text.clone()),
-        ArrayNode::Error(error) => CalcResult::new_error(error.clone(), cell, String::new()),
-        ArrayNode::Empty => CalcResult::EmptyCell,
     }
 }
 

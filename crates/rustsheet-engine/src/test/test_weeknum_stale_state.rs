@@ -81,6 +81,28 @@ fn the_last_sheet_runs_first() {
 }
 
 #[test]
+fn a_moved_sheet_keeps_its_load_position() {
+    // Excel runs the sheets in reverse load order, not reverse tab order
+    // (probes/weeknum-stale-sheet-moved): Second, loaded last, still runs first after a move.
+    let mut model = new_empty_model();
+    model.add_sheet("Second").unwrap();
+    model._set("A1", READER);
+    model._set("Second!A1", "=ISOWEEKNUM(1)");
+    model.move_sheet(1, 0).unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet1!A1"), MONDAY);
+    // A sheet added after the move takes the next rank, so it runs before both.
+    model.add_sheet("Third").unwrap();
+    model._set("Third!A1", "=WEEKNUM(1,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet1!A1"), MONDAY);
+    model._set("Third!A1", "=WEEKNUM(1,12)");
+    model._set("Second!A1", "=1");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet1!A1"), EMPTY);
+}
+
+#[test]
 fn which_calls_set_empty_or_leave_the_state() {
     let sunday = sunday();
     // (call under test, the marker that runs before it, what the reader above them reads)

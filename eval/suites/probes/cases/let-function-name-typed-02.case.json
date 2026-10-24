@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A LET name or LAMBDA parameter spelled like a built-in function, entered as typed text (2/13): =LET(abs,LAMBDA(a,a*2),ABS(-3)) (T-2567).",
+  "tags": [
+    "M8",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": {
+          "entered": "=LET(abs,LAMBDA(a,a*2),ABS(-3))"
+        },
+        "B1": "=FORMULATEXT(A1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!B1"
+  ]
+}

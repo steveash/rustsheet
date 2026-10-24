@@ -90,8 +90,27 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A91
 - gen-m9/fec39efaba9284c3.case.json (1): Calc!A356
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): NORMINV, NORM.INV and NORMSINV last digits, none visibly off.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 11 known-failure lines in eval/baseline/gen-m9.txt, 0 visibly off.
+Examples:
+- gen-m9/097af1ca33638670 Calc!A283 `=NORM.INV(0.1,SEQUENCE(1),2.5)`: Excel -2.2038789138615016, ours -2.203878913861501
+- gen-m9/17c110a53924beb8 Calc!A190 `=NORMSINV(0.2)`: Excel -0.8416212335729145, ours -0.8416212335729143
+- gen-m9/cb61169f4c033d4b Calc!A22 `=NORMINV(Data!A12,1e-15,1.5)`: Excel -1.9223273483168997, ours -1.9223273483168999
+- gen-m9/cb61169f4c033d4b Calc!A193 `=NORMSINV((Data!E6*MONTH(28931)))`: Excel -0.5244005127080408, ours -0.5244005127080407
+- gen-m9/d8f44d556674c2fd Calc!A9 `=NORMINV(Data!A6,Data!E4,Data!B4)`: Excel -103903855.15465043, ours -103903855.15465039
+Cells:
+- gen-m9/097af1ca33638670.case.json (1): Calc!A283
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A190
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A6
+- gen-m9/5be29fa316931f05.case.json (1): Calc!A231
+- gen-m9/607e85cfee83a689.case.json (2): Calc!A236, A397
+- gen-m9/a4090567758520df.case.json (1): Calc!A336
+- gen-m9/cb61169f4c033d4b.case.json (3): Calc!A22, A193, A321
+- gen-m9/d8f44d556674c2fd.case.json (1): Calc!A9
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 14 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 25 known-failure lines (14 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] All NumericClose/NumericMismatch lines for NORM.S.INV, NORM.INV, LOGNORM.INV disappear from `eval/baseline/ironcalc-calc.txt`; the CONFIDENCE.NORM ulp lines disappear or the PR documents which remain and why. Exact before/after counts in the PR; no new lines.
 - [ ] No other call sites of statrs `inverse_cdf` for Normal (rg).

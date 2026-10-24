@@ -69,6 +69,8 @@ pub(crate) enum CellKey {
     Str(String),
     Error(u8),
     Empty,
+    /// A LAMBDA element, by its lambda id.
+    Lambda(usize),
 }
 
 pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
@@ -79,6 +81,7 @@ pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
         // ERROR.TYPE codes are distinct per kind, so they key errors exactly.
         ArrayNode::Error(e) => CellKey::Error(e.error_type_code()),
         ArrayNode::Empty => CellKey::Empty,
+        ArrayNode::Lambda(id) => CellKey::Lambda(*id),
     }
 }
 
@@ -205,6 +208,20 @@ impl Model {
         self.result_to_array(result, cell)
     }
 
+    /// [`Model::eval_to_array`] that keeps a lone blank cell blank, as a blank cell of a range is:
+    /// `TOROW(Z1,3)` is `#CALC!` and `UNIQUE(Z1)&"x"` is "x" (docs/excel-semantics/arrays.md
+    /// "TOROW and UNIQUE of a lone blank cell", T-2409).
+    pub(crate) fn eval_to_array_keep_blank(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
+            result => self.result_to_array(result, cell),
+        }
+    }
+
     /// [`Model::eval_to_array`] for an already evaluated `result`.
     pub(crate) fn result_to_array(
         &mut self,
@@ -219,11 +236,9 @@ impl Model {
             CalcResult::String(s) => Ok(vec![vec![ArrayNode::String(s)]]),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![vec![ArrayNode::Number(0.0)]]),
             err @ CalcResult::Error { .. } => Err(err),
-            CalcResult::Lambda(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "LAMBDA cannot be used as an array".to_string(),
-            )),
+            // A LAMBDA is a one-element array of it: `VSTACK(LAMBDA(x,x),LAMBDA(x,x*2))` is two
+            // LAMBDAs MAP can call (probes/lambda-arrays F1, F4, T-2039).
+            CalcResult::Lambda(id) => Ok(vec![vec![ArrayNode::Lambda(id)]]),
         }
     }
 
@@ -602,7 +617,7 @@ impl Model {
         // walks the array, so the call is charged its cells per element.
         // An error array is every element's result: `UNIQUE(<#VALUE!>,HSTACK(0.2,1E+15))` is two
         // `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434; T-2300).
-        let data = self.eval_to_array(&args[0], cell);
+        let data = self.eval_to_array_keep_blank(&args[0], cell);
         let cells = match &data {
             Ok(d) if d.is_empty() || d[0].is_empty() => return CalcResult::Array(vec![]),
             Ok(d) => d.iter().map(Vec::len).sum::<usize>(),
@@ -670,7 +685,7 @@ impl Model {
             for node in row {
                 match node {
                     ArrayNode::Boolean(_) | ArrayNode::Number(_) | ArrayNode::Empty => {}
-                    ArrayNode::String(_) => {
+                    ArrayNode::String(_) | ArrayNode::Lambda(_) => {
                         return CalcResult::new_error(
                             Error::VALUE,
                             cell,

@@ -160,8 +160,16 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (2): Calc!A249, A359
 - gen-m9/fec39efaba9284c3.case.json (1): Calc!A61
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): CHISQ.INV.RT passed through NORMSDIST (visibly off).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 visibly off.
+Examples:
+- gen-m9/73f053591a54bc43 Calc!A108 `=NORMSDIST(MOD(SUMIF(Data!A10:D12,"",Data!B4:E12),CHISQ.INV.RT(0.975,5)))`: Excel 0.6004864351048662, ours 0.6004864351048611
+Cells:
+- gen-m9/73f053591a54bc43.case.json (1): Calc!A108
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 64 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 65 known-failure lines (64 from T-2255, 1 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] All 11 NumericClose lines above leave that class, at least 20 of the 39 lines leave
       `eval/baseline/ironcalc-calc.txt`, no new lines in any baseline; remaining lines listed in the PR.

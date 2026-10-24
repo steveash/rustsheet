@@ -1,0 +1,67 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "BESSELJ/BESSELY at x = 1e3, 1e6, 2^27, 1e10, orders 0,1,3 (T-2140).",
+  "tags": [
+    "M9",
+    "bessel",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A51": "=BESSELJ(1000,0)",
+        "A52": "=BESSELJ(1000,1)",
+        "A53": "=BESSELJ(1000,3)",
+        "A54": "=BESSELJ(1000000,0)",
+        "A55": "=BESSELJ(1000000,1)",
+        "A56": "=BESSELJ(1000000,3)",
+        "A57": "=BESSELJ(134217728,0)",
+        "A58": "=BESSELJ(134217728,1)",
+        "A59": "=BESSELJ(134217728,3)",
+        "A60": "=BESSELJ(10000000000,0)",
+        "A61": "=BESSELJ(10000000000,1)",
+        "A62": "=BESSELJ(10000000000,3)",
+        "A63": "=BESSELY(1000,0)",
+        "A64": "=BESSELY(1000,1)",
+        "A65": "=BESSELY(1000,3)",
+        "A66": "=BESSELY(1000000,0)",
+        "A67": "=BESSELY(1000000,1)",
+        "A68": "=BESSELY(1000000,3)",
+        "A69": "=BESSELY(134217728,0)",
+        "A70": "=BESSELY(134217728,1)",
+        "A71": "=BESSELY(134217728,3)",
+        "A72": "=BESSELY(10000000000,0)",
+        "A73": "=BESSELY(10000000000,1)",
+        "A74": "=BESSELY(10000000000,3)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A51",
+    "Sheet1!A52",
+    "Sheet1!A53",
+    "Sheet1!A54",
+    "Sheet1!A55",
+    "Sheet1!A56",
+    "Sheet1!A57",
+    "Sheet1!A58",
+    "Sheet1!A59",
+    "Sheet1!A60",
+    "Sheet1!A61",
+    "Sheet1!A62",
+    "Sheet1!A63",
+    "Sheet1!A64",
+    "Sheet1!A65",
+    "Sheet1!A66",
+    "Sheet1!A67",
+    "Sheet1!A68",
+    "Sheet1!A69",
+    "Sheet1!A70",
+    "Sheet1!A71",
+    "Sheet1!A72",
+    "Sheet1!A73",
+    "Sheet1!A74"
+  ]
+}

@@ -48,6 +48,7 @@ fn n_of(value: &ArrayNode) -> ArrayNode {
         ArrayNode::Boolean(b) => ArrayNode::Number(f64::from(u8::from(*b))),
         ArrayNode::String(_) | ArrayNode::Empty => ArrayNode::Number(0.0),
         ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
+        ArrayNode::Lambda(_) => ArrayNode::Error(Error::VALUE),
     }
 }
 

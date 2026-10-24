@@ -21,25 +21,29 @@ use super::super::dates::{
 // ============================================================
 
 /// The Excel serial of a coupon date: 0 or below before 1900-01-01.
-fn coupon_serial(d: NaiveDate) -> i64 {
+pub(in crate::functions::financial) fn coupon_serial(d: NaiveDate) -> i64 {
     i64::from(convert_to_serial_number(d))
 }
 
 /// The real calendar date of a maturity serial (serial 60, Excel's fictitious 1900-02-29, reads
 /// as 1900-02-28).
-fn coupon_date(serial: i64) -> Result<NaiveDate, String> {
+pub(in crate::functions::financial) fn coupon_date(serial: i64) -> Result<NaiveDate, String> {
     month_arithmetic_date(serial).ok_or_else(|| "Date out of range".to_string())
 }
 
 /// The `(year, month, day)` Excel shows for a serial the 30/360 day counts read: serial 0 is
 /// 1900-01-00 and serial 60 is 1900-02-29.
-fn serial_ymd(serial: i64) -> Result<(i32, u32, u32), String> {
+pub(in crate::functions::financial) fn serial_ymd(serial: i64) -> Result<(i32, u32, u32), String> {
     excel_serial_to_ymd(serial).ok_or_else(|| "Date out of range".to_string())
 }
 
 /// Days from serial `from` to serial `to` on `basis`: the serial difference on the actual bases
 /// 1-3, so Excel's fictitious 1900-02-29 counts.
-fn serial_basis_days(from: i64, to: i64, basis: u32) -> Result<f64, String> {
+pub(in crate::functions::financial) fn serial_basis_days(
+    from: i64,
+    to: i64,
+    basis: u32,
+) -> Result<f64, String> {
     match basis {
         0 => Ok(days_30_360_us_ymd(serial_ymd(from)?, serial_ymd(to)?)),
         1..=3 => Ok((to - from) as f64),

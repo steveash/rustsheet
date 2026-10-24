@@ -89,8 +89,58 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A244
 - gen-m9/fec39efaba9284c3.case.json (1): Calc!A110
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): WEIBULL, WEIBULL.DIST and STANDARDIZE read a boolean from a cell or formula as a number too (statistics.md entry updated), and the beta/F inversions nested in other calls.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 28 known-failure lines in eval/baseline/gen-m9.txt, 28 visibly off.
+Examples:
+- gen-m9/334f3dc9ca937f10 Calc!A219 `=STANDARDIZE((-40),Data!E5,(-1))`: Excel #NUM!, ours #VALUE!
+- gen-m9/928d08e3e1eecb5f Calc!A84 `=SLOPE(-BETA.INV(0.999999,1,Data!E2),Data!C12)`: Excel #NUM!, ours #VALUE!
+- gen-m9/928d08e3e1eecb5f Calc!A303 `=WEIBULL.DIST(0.2,Data!B1,0.01,Data!A$10)`: Excel #NUM!, ours #VALUE!
+- gen-m9/a5342a7e24fd803e Calc!A334 `=SLOPE(FINV(Data!C12,3,8),(ROUND(2^32,8)-0))`: Excel #NUM!, ours #VALUE!
+- gen-m9/d37313406b9f6e55 Calc!A380 `=WEIBULL(38.5,EOMONTH(43906,17),Data!C6,0.5)`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/1b31092a0d79e5f1.case.json (1): Calc!A342
+- gen-m9/31f09e6c48ca245c.case.json (2): Calc!A30, A296
+- gen-m9/334f3dc9ca937f10.case.json (1): Calc!A219
+- gen-m9/38e4fc309fe199ea.case.json (1): Calc!A344
+- gen-m9/3b7990bd4e3307ba.case.json (1): Calc!A314
+- gen-m9/5389dd4d5b5739d2.case.json (1): Calc!A15
+- gen-m9/583ca2baea0bb30a.case.json (1): Calc!A211
+- gen-m9/5919660b7bb4d195.case.json (1): Calc!A367
+- gen-m9/5be29fa316931f05.case.json (1): Calc!A32
+- gen-m9/5cebac1f02bf30f2.case.json (1): Calc!A78
+- gen-m9/775d053de498b8c7.case.json (1): Calc!A102
+- gen-m9/928d08e3e1eecb5f.case.json (5): Calc!A29, A84, A157, A249, A303
+- gen-m9/a5342a7e24fd803e.case.json (2): Calc!A101, A334
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A322
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A397
+- gen-m9/d37313406b9f6e55.case.json (2): Calc!A320, A380
+- gen-m9/d5fd9e05e9e6f466.case.json (1): Calc!A299
+- gen-m9/eccd03df42e40006.case.json (1): Calc!A172
+- gen-m9/ede0323c389fc703.case.json (1): Calc!A382
+- gen-m9/eedd629f3d69fdda.case.json (1): Calc!A287
+- gen-m9/f82473275380882e.case.json (1): Calc!A297
+
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 6 more cells where a boolean from a cell or formula is a number in Excel: `BESSELK(18,FDIST(<FALSE cell>,8,9))` 4.591249233416482E-09 (FDIST(0,8,9) = 1, so BESSELK(18,1)), `BITOR(NETWORKDAYS(30210,F.INV.RT(<TRUE cell>,7,10)),440)` `#NUM!` (TRUE is p = 1), `DEC2HEX(87074,BINOM.INV(6,5.64159,BETA.DIST(2,<TRUE cell>,1E+5,..)))` and `DEC2OCT(11350,BETA.DIST(..,IF(..)<FALSE>,-1,..))` `#NUM!`, `DELTA(HYPGEOMDIST(2.9,5,IF(..)<FALSE>,-0.5))` `#NUM!`, and `BITXOR(-1,..STANDARDIZE(0,<FALSE cell>,0)..)` `#NUM!`; ours `#VALUE!`. The outer engineering call only passes the value or error on.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 formulas, 6 visibly off.
+Examples:
+- gen-m9/09e6a8028f5acfae Calc!A260 `=DEC2HEX(87074,BINOM.INV(6,(2.5+3.14159),BETA.DIST(2,Data!C4,1E+5,FALSE,1,Data!B12)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/62c886e21a1042af Calc!A115 `=BITOR(NETWORKDAYS(30210,F.INV.RT(Data!D10,7,10)),440)`: Excel #NUM!, ours #VALUE!
+- gen-m9/76b07b57099ccc8d Calc!A251 `=BITXOR((-1),(Data!E10^STANDARDIZE(0,Data!A5,Data!$E11)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/76b07b57099ccc8d Calc!A284 `=DEC2OCT(11350,BETA.DIST((Data!$A3+1e-15),IF(Data!C$5,"1"),(-1),ISNUMBER(#DIV/0!),(42-Data!E3),Data!E12))`: Excel #NUM!, ours #VALUE!
+- gen-m9/7dc52cfcbc8b4448 Calc!A5 `=BESSELK(18,FDIST(Data!$E8,8,9))`: Excel 4.591249233416482e-09, ours #VALUE!
+- gen-m9/9fa170a9f17624fd Calc!A104 `=DELTA(HYPGEOMDIST(2.9,5,IF(Data!D6,Data!A5),(Data!A11-2.5)))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/09e6a8028f5acfae.case.json (1): Calc!A260
+- gen-m9/62c886e21a1042af.case.json (1): Calc!A115
+- gen-m9/76b07b57099ccc8d.case.json (2): Calc!A251, A284
+- gen-m9/7dc52cfcbc8b4448.case.json (1): Calc!A5
+- gen-m9/9fa170a9f17624fd.case.json (1): Calc!A104
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 90 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 118 known-failure lines (90 from T-2255, 28 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/stat-later-argument-lift L1 and L13 and probes/stat-quantile-lift L2, L3 and L19 pass (their baseline lines
   removed), and the probes-numeric cells above.

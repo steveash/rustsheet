@@ -139,11 +139,12 @@ Excel's order (crates/rustsheet-engine/src/excel_order.rs), whose values are kep
 evaluations start in that order until a pass has no reader. Dynamic anchors still run first in
 that pass, with their recursion, and empty the state when the order reaches their position.
 Known gaps: the WEEKNUM calls inside a spilling formula, or inside a cell it reads, run when the
-anchor runs, not at their place in the order (T-2070), and a moved sheet is ranked by its
-current index (T-2069, probes/weeknum-stale-sheet-moved Second!A1). Outside a recalc
-(conditional formats, `evaluate_formula`) the state lives for one formula.
+anchor runs, not at their place in the order (T-2070). Sheets are ordered by their load rank
+(`Worksheet::load_rank`), so a moved sheet keeps its load position (T-2069,
+probes/weeknum-stale-sheet-moved). Outside a recalc (conditional formats, `evaluate_formula`) the
+state lives for one formula.
 Status: VERIFIED
-Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
+Unprobed: the rank of a sheet added or duplicated after load (we give the next free rank), a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
 lifts over one (we leave the state as it is), where a spilling formula sits
 in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
 a return_type in (-1, 0) (truncates to 0, so presumably empties), and whether a reference to an
@@ -588,13 +589,13 @@ probes/date-math-lift-driver-edges G42, G43; a reversed or out-of-calendar eleme
 cell's value (1 row), and a one-cell or 3-D `weekend` is answered in "An error-valued or 3-D weekend, 3-D date text
 and holidays" (probes/date-text-weekend-3d, T-1428). DATEDIF's unit and DAYS360's method over an array are answered
 in "Date function argument modes" (they lift).
-A well-ordered, in-calendar pair with an unknown unit is `#NUM!` too, whatever makes the unit unknown: text (`"x~*"`, `""`, `" x "`, `"ü"`, `"Hello World"`), a number (`DATEDIF(16934,34631,IFERROR(1/0,AVERAGE(..)))`) or a boolean (gen-m6/3e51213f35889d06 Calc!A322, 4ca39e0876796fa5 A172, c96ac1ada46179c4 A198/A236, 9e6a1b733ee1e1e0 A12, 121a7c17092038d9 A114; all 40 cells are listed in T-2288; excel-graph 2026-10-21). Ours: `#VALUE!` (`datedif_value`'s last match arm), T-2288.
+A well-ordered, in-calendar pair with an unknown unit is `#NUM!` too, whatever makes the unit unknown: text (`"x~*"`, `""`, `" x "`, `"ü"`, `"Hello World"`), a number (`DATEDIF(16934,34631,IFERROR(1/0,AVERAGE(..)))`) or a boolean (gen-m6/3e51213f35889d06 Calc!A322, 4ca39e0876796fa5 A172, c96ac1ada46179c4 A198/A236, 9e6a1b733ee1e1e0 A12, 121a7c17092038d9 A114; all 40 cells are listed in T-2288; excel-graph 2026-10-21). Ours: implemented (T-2288).
 Also under other calls in gen-m7 (excel-graph, 2026-10-22): `TOROW(DATEDIF(..,(Data!C8&Data!D$8)),..)` (gen-m7/2d9b48c6363e7a16 A1306), a
 FILTER unit array lifting DATEDIF into TOCOL's ignore (8 `#NUM!`, 7ea6ef6ceabacafd A1875) and `DATEDIF(17490,55420,"?b")` in a SCAN step
 (9bb61f6ae34c7e20 A2505) are `#NUM!`.
 Status: VERIFIED (excel-graph). Before T-1430 the engine checked DATEDIF's reversed pair before the unit's error.
 Implemented in: `datedif_value` (crates/rustsheet-engine/src/functions/date_and_time.rs).
-Tasks: T-1355, T-1430
+Tasks: T-1355, T-1430, T-2288
 
 ## An error-valued or 3-D weekend, 3-D date text and holidays
 Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
@@ -1050,7 +1051,7 @@ of January 1900, not on the weekday-faithful stand-in (serial 1 = 1899-12-31) th
   ee56a4ed5a612a0d A185, b54448af3fde07ca A55; 26 cells). Probe A50-A98: `DATEDIF(59,61,"MD")` = 2 and `DATEDIF(60,61,"MD")` = 1
   (February 1900 lends 29 days), `DATEDIF(0,61,"MD")` = 1, `DATEDIF(0,60,"YD")` = 60, `DATEDIF(0,366,"YD")` = 366,
   `DATEDIF(0,367,"YD")` = 1, `DATEDIF(60,1520,"Y")` = 3, `DATEDIF(60,1521,"Y")` = 4, `DATEDIF(60,426,"M")` = 12,
-  `DATEDIF(60,1520,"YM")` = 11, `DATEDIF(0,0,"D")` = 0; a negative date is `#NUM!` (`DATEDIF(-1E-15,10,"D")`). An unknown unit is `#NUM!` rather than `#VALUE!` when a date is day 0:
+  `DATEDIF(60,1520,"YM")` = 11, `DATEDIF(0,0,"D")` = 0; a negative date is `#NUM!` (`DATEDIF(-1E-15,10,"D")`). An unknown unit is `#NUM!` for any pair, day 0 included ("DATEDIF and DAYS360 error order with a bad unit or method", T-2288):
   `DATEDIF(0.1,874,"1a*")`, `DATEDIF(<blank>,0,<bad unit>)` (gen-m6/03333cc38ec06a14 A269, 3a26794015dfbe9d A225, 4ca39e0876796fa5 A362,
   60bcd25271767317 A272, 9130ade4b1924cc8 A137, d0c30225243fde60 A129, gen-m7/44ef4f5638e25bcd A18).
 - EDATE reads the displayed day and clamps on the real calendar: serial 60 is 29 February, so `EDATE(60,1)` = 89 (29 March),
@@ -1159,6 +1160,11 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   A111, acdfeaf6e6eadd4e A83). A holiday cell holding number text is accepted: `WORKDAY(18260,-30,Data!C4)` with C4 `"1"` = 18218,
   `WORKDAY(58719,5,Data!D5:D7)` over 1.005, `"1.5"`, 0.3 = 58726 (1aa50086e42bff9a A67, 752959b8d3db0285 A393). (Ours was `#VALUE!` for both before T-2270.)
   (Non-number text is still `#VALUE!`: "WORKDAY and NETWORKDAYS from serial 0" F56.)
+  Number text inside a holidays *array* is a holiday too: `WORKDAY.INTL(26624,-19,5,{"1.5"})` = 26599, `WORKDAY(26624,-19,{"1.5"})`
+  = 26597, `NETWORKDAYS.INTL(26600,26624,5,{"1.5"})` = 19, while `{"a"}`, `{"ü"}`, `{""}`, `{TRUE}` and `{FALSE}` are `#VALUE!`
+  (probes/t2360-array-lambda-holidays W1-W15, excel-graph, 2026-10-23, T-2360). So a GROUPBY or PIVOTBY whose LAMBDA passes a group's
+  values to WORKDAY.INTL errs only in the groups holding non-number text, a boolean or a number off the calendar (G!A1:H13; the
+  t2311-pivotby-value-cause D46 and D51 counts 13 and 27). Ours since T-2360 (`collect_serial_numbers`); before, `{"1.5"}` was `#VALUE!`.
 - Blanks inside a holidays array are no error either: with Data!Z1:Z2 blank, `NETWORKDAYS(8812,58239,HSTACK(Data!Z1:Z2,{1;2}))` = 35306,
   `WORKDAY(46645,26,HSTACK(Data!Z1:Z2,{1;2}))` = 46681 and `WORKDAY.INTL(47074,-9,3,HSTACK(..))` = 47061 (gen-m6/3eef60b5dc0145e9 A73,
   449aebbde77d8ce1 A30, A306; excel-graph, 2026-10-22, T-2253). Whether a blank element is skipped or read as serial 0 does not change

@@ -44,8 +44,8 @@ fn simple_test() {
         ("ATAN2(A1:A10,A1)", "ATAN2(@A1:A10,A1)"),
         ("SQRT(A1:A10)", "SQRT(@A1:A10)"),
         // A one-sheet span is that sheet's reference: its range gets the `@` (T-2351).
-        ("SIN(Sheet1:Sheet1!A1:A10)", "SIN(@Sheet1:Sheet1!A1:A10)"),
-        ("SIN(Sheet1:Sheet1!A1)", "SIN(Sheet1:Sheet1!A1)"),
+        ("SIN(Sheet1:Sheet1!A1:A10)", "SIN(@Sheet1!A1:A10)"),
+        ("SIN(Sheet1:Sheet1!A1)", "SIN(Sheet1!A1)"),
         // An Analysis ToolPak argument's bare range takes no `@`: legacy `SQRTPI(E1:E3)` and
         // `MROUND(E1:E3,2)` are #VALUE! on the range's rows (probes/date-math-lift-driver-edges K2-K3).
         ("SQRTPI(A1:A10)", "SQRTPI(A1:A10)"),
@@ -141,7 +141,8 @@ fn simple_test() {
         let r = to_english_localized_string(&t, &cell_reference);
         assert_eq!(r, expected);
         let excel_formula = to_excel_string(&t, &cell_reference);
-        assert_eq!(excel_formula, formula);
+        // A one-sheet span is written as the plain reference (T-2357).
+        assert_eq!(excel_formula, formula.replace("Sheet1:Sheet1!", "Sheet1!"));
     }
 }
 

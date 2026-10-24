@@ -73,3 +73,16 @@ fn test_fn_f_inv_rt_sanity() {
     assert_eq!(model._get_text("A2"), *"#ERROR!");
     assert_eq!(model._get_text("A3"), *"#ERROR!");
 }
+
+#[test]
+fn f_inv_rt_deep_upper_tail_is_solved_on_its_own_tail() {
+    // statrs' estimate solves the rounded 1 - p, 7% off for F.INV.RT(1E-16,9,3); the refinement on
+    // F.DIST.RT gives Excel's 60647458731.09812 and FINV(1E-16,1,7) = 183379.00311608665 (gen-m9
+    // 0a9226016e8f5f33 A45, 146b46e74f2dac3b A117; T-0974).
+    let mut model = new_empty_model();
+    model._set("A1", "=F.INV.RT(1E-16,9,3)");
+    model._set("A2", "=FINV(1E-16,1,7)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"60647458731");
+    assert_eq!(model._get_text("A2"), *"183379.0031");
+}

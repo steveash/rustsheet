@@ -844,8 +844,14 @@ backtracker (functions/text/pcre/backtrack.rs). Several PCRE2 behaviors it imple
 - `\G` stands at each iteration search's start;
 - the empty-loop rule;
 - captures made inside an atomic group are undone on backtracking.
-`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals parse but are
-`#VALUE!` until T-2354 (so `(?=b)|b`, D12, waits for it). Iteration is PCRE2's since T-1899
+`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals run on the backtracker
+since T-2354 (C7-C10, C13, C14, D12; probes/regex-lookaround-keepout-conditionals A1-A19, excel-graph, 2026-10-23): a positive
+lookaround keeps its captures but is atomic (`^(?=(a+))a*b\1` is FALSE on `aaab`, and `(?=(a+))a*b\1` extracts
+`aba` from `baaabac`), a negative one keeps none (`(?!(x))a(?(1)c|b)` on `ab` is `ab`), each top-level lookbehind
+alternative has its own fixed length (`(?<=a|bc)d` finds `d` in `xbcd`), a lookbehind over an astral character steps
+back one character (`(?<=.)b` on `😀b` is `b`), `\K` inside a lookaround is `#VALUE!` (ERROR.TYPE 3: PCRE2 10.38 and
+later reject it), `\K` moves each match's start in iteration (`REGEXREPLACE("aaa","a\K","-")` is `a-a-a-`), and an
+assertion condition is accepted and tested once (`(?(?=a)ab|c)` extracts `ab` from `ab` and `c` from `cd`). Iteration is PCRE2's since T-1899
 (functions/text/regex_search.rs `each_match`): the retry runs on the backtracker, a regular pattern's on its memoized
 mode, and an advance of one UTF-16 unit into a surrogate pair is `#VALUE!` (the cause, Excel iterating UTF-16
 units, is inferred; every regex-iteration-surrogates cell matches it). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
@@ -978,10 +984,14 @@ Evidence: probes/t2314-textbefore-instance-bound (excel-graph, 2026-10-22) and g
 Ours: matches (`text_around_element`, `around_options` and `around_not_found` in functions/text/before_after.rs, T-2314). The probe's
 `TEXTBEFORE("abc","b",1,-0.5)` is "a", not `#VALUE!`: flooring -0.5 would give the invalid -1 (A2), so match_mode is cut toward zero.
 match_end is read the same way: -0.0001 is 0, so `TEXTAFTER(LOWER("'a"),Data!A11:B12,1,1,<-0.0001>)`, where no delimiter is in the text,
-is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7/2d9b48c6363e7a16 Calc!A660 (excel-graph, 2026-10-22).
-Ours `#VALUE!` (T-2412). Other match_end values (2, -1, 1.5, TRUE) are unprobed.
-Unexplained (T-2414): `TEXTAFTER(<#VALUE!>,"",1,-INT(2^53),0,OFFSET(Data!B9:C12,5,1,DROP(Data!A3:A5,-2,0),2))` is `#SPILL!`
-(gen-m7/4dac39f89709e2fc A2870), so it is an array of more than one cell in Excel; ours is one `#VALUE!`.
+is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7/2d9b48c6363e7a16 Calc!A660 (excel-graph, 2026-10-22); 0.5 is 0 too: `TEXTAFTER("1.5","-",-1,1,0.5)` is `#N/A`, gen-m9/b9a32ce9a1fd0d71 Calc!A142.
+Ours: implemented (T-2412), `around_options` cuts match_end toward zero. Other match_end values (2, -1, TRUE) are unprobed, and 1.5 is cut to 1 by the same helper, also unprobed.
+TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
+`ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
+`ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. The OFFSET alone is a 2x2 reference
+(`ROWS`, `COLUMNS` 2, 2; `INDEX(..,1,1)` one 0, no spill), although `DROP(A3:A5,-2,0)` is the one cell A3 (1E-15): UNVERIFIED mechanism
+(Excel reads the one-cell DROP result as a height giving 2 rows, ours as a lifted 1x1). The gen-m7 `#SPILL!` (4dac39f89709e2fc A2870) is
+then consistent with a 2x2 TEXTAFTER of `#VALUE!` colliding; only ROWS = 2 of it is probed.
 Status: VERIFIED (excel-graph)
 Tasks: T-2314, T-2412
 
@@ -1009,8 +1019,17 @@ references as the row delimiter; 4dac39f89709e2fc A3213 over a 2-row text); an e
 (`TOCOL(Data!A11:D12)` gives 8 rows of `#VALUE!`, 2d9b48c6363e7a16 A3261); a 1x3 text against an 11x2 ignore_empty broadcasts with `#N/A`
 past the shorter one (column 3 of bc4a69b0b512bc04 A538:C548); and a delimiter that is an error beats a text ignore_empty
 (`VLOOKUP(..)` `#N/A` against `"a"`, c36ff5f42a1a4d47 A1409).
-Unexplained (T-2414): `TEXTSPLIT(TRANSPOSE(<0>),Data!A3:C7)` with a "0" delimiter is the 1x2 "", "" (f7e94a817e5385ac A2882:B2882), as if
-TRANSPOSE of a single value were that value: a 1x1 array text would lift to one element (`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1).
+TRANSPOSE of a single value is that value, not a 1x1 array (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COLUMNS(TEXTSPLIT(TRANSPOSE("a,b"),","))`
+and `COLUMNS(TEXTSPLIT(TRANSPOSE(Data!G1),","))` (G1 = "a,b") are 2, so the text does not lift to one element as `{"a,b"}` does
+(`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1); `ISREF(TRANSPOSE(Data!G1))` is FALSE; consistent with f7e94a817e5385ac B2882.
+A one-cell range `TRANSPOSE(B2:B2)` is the value too, while a 1x1 array stays an array, a constant or computed:
+`COLUMNS(TEXTSPLIT(TRANSPOSE({"a,b"}),","))`, `TRANSPOSE(IF(TRUE,{"a,b"}))`, `TRANSPOSE(SEQUENCE(1)&"a,b")` and
+`TRANSPOSE(UNIQUE({"a,b"}))` split to 1 column (probes/t2455-transpose-single-value A12:A16, A70:A72, excel-graph, 2026-10-23); a numeric argument follows from F.TEST
+(`FTEST(TRANSPOSE(5),{1;2;3})` is the one-value `#DIV/0!`, A10, statistics.md "F.TEST of a single value") and from UNIQUE
+(`UNIQUE(1,TRANSPOSE("1"))` is `#VALUE!` like `UNIQUE(1,"1")` and `UNIQUE(1,{"1"})`, A1:A3).
+A blank cell transposes to a blank value: `ISBLANK(TRANSPOSE(B10))` is FALSE and `FTEST(TRANSPOSE(B10),{1;2;3})` is the
+one-value `#DIV/0!`, not the blank-cell `#VALUE!` (A92, A93).
+Ours: since T-2455 (`fn_transpose`: a 1x1 result of an argument that did not evaluate to an array is its element).
 Unprobed: an array pad_with against an error element of a delimiter list (ours: the pad_with `#VALUE!`), and a one-cell reference to an
 error cell as the delimiter, which ours reads as a list, so `TEXTSPLIT("abc",B1,,1/0)` with B1 `#N/A` is ours `#DIV/0!`.
 Ours: this order and the `#CALC!` since T-2315 (`fn_textsplit`, `textsplit_element` in functions/text/textsplit.rs).

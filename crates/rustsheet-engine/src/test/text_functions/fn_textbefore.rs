@@ -404,3 +404,19 @@ fn test_textbefore_textafter_number_if_not_found_is_text() {
     assert_eq!(model._get_text("A3"), *"TRUE");
     assert_eq!(model._get_text("A4"), *"TRUE");
 }
+
+// match_end is cut toward zero like match_mode: -0.0001 and 0.5 are 0, 1 matches the end of the
+// text (gen-m7/2d9b48c6363e7a16 A660, T-2412).
+#[test]
+fn test_textafter_match_end_is_cut_toward_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTAFTER(\"'a\",\"zz\",1,1,-0.0001)");
+    model._set("A2", "=TEXTAFTER(\"'a\",\"zz\",1,1,0.5)");
+    model._set("A3", "=TEXTAFTER(\"'a\",\"zz\",1,1,1)");
+    model._set("A4", "=TEXTBEFORE(\"'a\",\"zz\",1,1,-0.0001)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+}

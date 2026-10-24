@@ -14,6 +14,11 @@ C	fixtures/rich-error-export.xlsx	15
 C	fixtures/shared-string-phonetic-runs.xlsx	3
 C	fixtures/strict-date-compatibility-0.xlsx	8
 C	fixtures/t-d-1900-02-29.xlsx	2
+C	fixtures/t-d-1904-1900-01-01.xlsx	3
+C	fixtures/t-d-1904-epoch.xlsx	3
+C	fixtures/t-d-1904-pre-epoch.xlsx	3
+C	fixtures/t-d-1904-time-only.xlsx	3
+C	fixtures/t-d-1904.xlsx	3
 C	fixtures/t-d-fractional-seconds.xlsx	2
 C	fixtures/t-d-iso-date-cells.xlsx	8
 C	fixtures/t-d-pre-1900.xlsx	2
