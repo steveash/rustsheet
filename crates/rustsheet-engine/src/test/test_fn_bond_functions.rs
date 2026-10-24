@@ -621,9 +621,9 @@ fn fn_oddlprice_oddlyield_roundtrip() {
 
 #[test]
 fn fn_oddlprice_long_last_period_basis1_settlement_before_li() {
-    // Settlement before last_interest: regular coupons remain plus an odd final
-    // payment. Long last period (Oct-2024 to Aug-2025 > 6 months), actual/actual
-    // basis exercises the per-quasi-period day-count weighting.
+    // Settlement before last_interest is #NUM! in Excel for both functions, whatever the
+    // period length or basis (probes/odd-bond-argument-check-order A909:A922, excel-graph,
+    // T-2483); this test once priced it as regular coupons plus an odd final payment.
     let mut model = new_empty_model();
     model._set(
         "A1",
@@ -631,14 +631,11 @@ fn fn_oddlprice_long_last_period_basis1_settlement_before_li() {
     );
     model._set(
         "A2",
-        "=ODDLYIELD(DATE(2023,3,1),DATE(2025,8,15),DATE(2024,10,15),0.06,A1,100,2,1)",
+        "=ODDLYIELD(DATE(2023,3,1),DATE(2025,8,15),DATE(2024,10,15),0.06,101,100,2,1)",
     );
     model.evaluate();
-    let p: f64 = model._get_text("A1").parse().unwrap();
-    let y: f64 = model._get_text("A2").parse().unwrap();
-    // Above-coupon-rate context: price above par, yield recovered.
-    assert!(p > 100.0, "ODDLPRICE long last period = {p}");
-    assert!((y - 0.05).abs() < 1e-6, "ODDLYIELD roundtrip = {y}");
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
 }
 
 #[test]
