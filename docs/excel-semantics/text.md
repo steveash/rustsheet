@@ -618,7 +618,7 @@ Status: VERIFIED (excel-graph); implemented: first-character separators and empt
 after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
 colon after a bare hour (T-2352, in the shared clock parser).
 
-## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
+## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155; T of a cell reference gives "", T-2305)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
 count: `REPT(REPT("ab",300),0)`, `REPT(REPT("ab",300),3)`, `REPT(REPT("ab",300),5)`, `CODE(REPT("ab",300))` and
 `UNICODE(REPT("ab",300))` are `#VALUE!` (ours: the repeated text, "", 97, 97), while `REPT(REPT("x",255),3)` works
@@ -635,9 +635,9 @@ from a numeral-length limit. From a cell, as an array element and with an error 
 -rept-error-count, excel-graph 2026-10-24): a cell holding 256 "x" (typed, D1, or a formula result, D3) is `#VALUE!` in
 `REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!` (ours `#VALUE!`); 255 from a cell works in all
 four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!` (ours keeps T's element);
-255 works. A formula text literal over 255 characters cannot be entered, so the probe builds it with REPT. REPT with a
+255 works. excel-graph refused to open a workbook whose array constants held 256-character literals (cause not isolated), so the probe builds the long text with REPT. REPT with a
 long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!` (ours
-`#VALUE!`); `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`.
+`#VALUE!`); `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. Unprobed: `T` of a multi-cell range whose top-left cell holds long text.
 Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count differences are T-2627.
 
 ## UNICHAR code point bounds
