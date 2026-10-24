@@ -1,0 +1,54 @@
+---
+id: T-2587
+title: "IPMT's long-term and fractional-period cells off in the 13th to 15th digit"
+milestone: M9
+lane: functions-financial
+status: todo
+priority: P2
+size: M
+tier: opus
+depends_on: []
+campaign: visible
+---
+
+## Goal
+The nine gen-m9 IPMT cells below have Excel's value to 15 significant digits, with no PMT, IPMT or PPMT
+cell of m9-fin-pmt, IPMT_PPMT.xlsx or gen-m9 made visibly off.
+
+## Context
+- Split from T-2242. T-2242 found that Excel's PPMT is not the exact closed form but
+  `-(pv+fv)*rate*Q(per-1-n)/(1-Q(-n))` with `Q(x) = EXP(x*L)` and its own `L = ln(1+rate)` (an x87 atanh
+  series below 0.375, Excel's LN above), financial.md "PPMT discounts with an atanh-series log". IPMT still
+  uses the exact balance form (`accurate_period_split` in functions/financial/annuity.rs), and these cells
+  are 2E-15 to 1E-13 relative off it: long terms, fractional periods, huge nper and type 1.
+- First hypotheses to test in the lab (exact args are in the cases): IPMT = PMT - PPMT with T-2242's PPMT,
+  IPMT as `-rate*B` with the balance's powers from the same Q, and for fractional periods Excel's own `^`.
+- Owned gen-m9 cells (T-2257 triage, moved here from T-2242; excel-graph, 2026-10-23), 9 visibly off:
+  - gen-m9/0a957119475760c5 Calc!A202 `=IPMT(1,6,50,272273,AVERAGE(..))`: Excel -272272.99996209145, ours -272272.9999622236
+  - gen-m9/1cd3096e3e87c965 Calc!A227 `=IPMT(Data!A$6,1.999,167,..)`: Excel -1.1780962499999998, ours -1.1780962500000083
+  - gen-m9/5ded7594e597e31e Calc!A177 `=IPMT(BETAINV(..),1.5,77,75622)`: Excel -75621.97390807692, ours -75621.97388109102
+  - gen-m9/6376e27be7a05871 Calc!A158 `=IPMT(..,3,209,Data!A3,667,1)`: Excel -1.0471966666666503, ours -1.0471966666666666
+  - gen-m9/6376e27be7a05871 Calc!A207 `=IPMT(0.1,8,291,1,638)`: Excel -0.09999999994538485, ours -0.09999999994537818
+  - gen-m9/b72d952c5f52cb4d Calc!A364 `=IPMT(10,4,1E+300,..)`: Excel -10.001, ours -10.000999999999749
+  - gen-m9/b73c6cc96e093f03 Calc!A268 `=IPMT(TOROW(..),8,290,392736,(-0.5),..)`: Excel -383602.6046511628, ours -383602.60465116205
+  - gen-m9/c0681a8b150ce301 Calc!A104 `=IPMT(Data!A6,3,232,259859,333,..)`: Excel 64714.99999999975, ours 64715.0
+  - gen-m9/e168be7f6d3f84c2 Calc!A385 `=IPMT((-0.05),10,336,ROWS(Data!B1:C1))`: Excel 0.03151246988087522, ours 0.03151246988087528
+Cells:
+- gen-m9/0a957119475760c5.case.json (1): Calc!A202
+- gen-m9/1cd3096e3e87c965.case.json (1): Calc!A227
+- gen-m9/5ded7594e597e31e.case.json (1): Calc!A177
+- gen-m9/6376e27be7a05871.case.json (2): Calc!A158, A207
+- gen-m9/b72d952c5f52cb4d.case.json (1): Calc!A364
+- gen-m9/b73c6cc96e093f03.case.json (1): Calc!A268
+- gen-m9/c0681a8b150ce301.case.json (1): Calc!A104
+- gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A385
+
+## Acceptance criteria
+- [ ] Visible parity (gen-m9): these 9 cells are within half a unit of the 15th significant digit of Excel's
+      value (their lines leave eval/baseline/gen-m9.txt, or stay only as last-digit NumericUlp lines), with
+      no new known-failure lines in any baseline.
+- [ ] financial.md records IPMT's formulation and its evidence.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Bit parity (T-2243, T-1528).

@@ -10,7 +10,9 @@
 use super::financial_util::compute_rate;
 use super::{formula_error, number_or_error};
 use crate::functions::lift::{div_error, num_error};
-use crate::x87_exp::{dd_add, dd_div, dd_mul, two_sum};
+use crate::x87_exp::{dd_add, dd_div, dd_mul, excel_exp, excel_expm1, two_sum};
+use crate::x87_log10::excel_ln;
+use crate::x87_register::Register;
 use crate::{
     arithmetic::{extended_quotient, extended_sum, power},
     calc_result::CalcResult,
@@ -164,6 +166,80 @@ fn accurate_period_split(
     (interest.0.is_finite() && principal.0.is_finite()).then_some((interest, principal))
 }
 
+/// Below this |rate| PPMT's `ln(1+rate)` is the atanh series, from it on Excel's LN of `1+rate`:
+/// probes-numeric/ppmt-log-rate-sweep has the series through 0.37 and the log from 0.38 on (0.375
+/// is a round point between them, not pinned).
+const GROWTH_LOG_SERIES_TO: f64 = 0.375;
+
+/// The series stops once a term leaves the sum unchanged; for |rate| < 0.375 each term is under
+/// 0.025 of the one before, so about 11 terms. This only bounds the loop.
+const GROWTH_LOG_TERMS: u32 = 64;
+
+/// The `L = ln(1+rate)` of Excel's PPMT discount: for |rate| < [`GROWTH_LOG_SERIES_TO`],
+/// `2*(s + s^3/3 + s^5/5 + ...)` with `s = rate/(2+rate)` a double and `s^2`, the running power,
+/// each term and each partial sum kept in an x87 register, until a term leaves the sum unchanged;
+/// above it, Excel's LN of the double `1+rate`. Either way L is often an ulp or two from the
+/// correctly rounded `ln(1+rate)` (-1 at 0.1, +1 at 0.05, +2 at 0.6), and the discount follows it
+/// (docs/excel-semantics/financial.md "PPMT discounts with an atanh-series log", T-2242).
+fn growth_log(rate: f64) -> f64 {
+    if rate.abs() >= GROWTH_LOG_SERIES_TO {
+        return excel_ln(1.0 + rate);
+    }
+    let s = Register::load(rate / (2.0 + rate));
+    let square = s.mul(s);
+    let mut power = s;
+    let mut sum = s;
+    for k in 1..=GROWTH_LOG_TERMS {
+        power = power.mul(square);
+        let next = sum.add(power.div(Register::load(f64::from(2 * k + 1))));
+        if next == sum {
+            break;
+        }
+        sum = next;
+    }
+    2.0 * sum.store()
+}
+
+/// Below this |nper*L| PPMT keeps the exact form: L's ulp-level error moves the power by under an
+/// ulp there, and the exact form matches Excel's last bit where the discounted one does not
+/// (`PPMT(1E-10,2,124,191996,822,1)` is -1554.9838614045912, gen-m9 5ded7594e597e31e A49).
+const SHORT_GROWTH: f64 = 1e-6;
+
+/// PPMT (financial.md "PPMT discounts with an atanh-series log"): with `Q(x) = EXP(x*L)` (Excel's
+/// EXP, [`growth_log`]'s L), `-(pv+fv)*rate*Q(period-1-nper)/(1-Q(-nper))`, the denominator
+/// Excel's expm1 of `-nper*L` and the whole divided by `1+rate` for type 1, rounded once. It is the
+/// exact `-(pv+fv)*rate*P_e/(P-1)` with Excel's own power, several ulp off the exact one for long
+/// terms (`PPMT(0.1,1,360,10000)` is -1.2549699967849914E-12, the exact value
+/// -1.254969996784983E-12). `None` for a rate at or below -[`GROWTH_LOG_SERIES_TO`], where Excel is
+/// the exact form instead (`PPMT(-0.5,1,277,73630,609)` is -37119.5, gen-m9 762cd0e4ec9a7aa9 A5),
+/// below [`SHORT_GROWTH`], and where a factor or the result is not finite and normal.
+fn discounted_principal(
+    rate: f64,
+    nper: f64,
+    period: f64,
+    (pv, fv): (f64, f64),
+    period_start: bool,
+) -> Option<f64> {
+    if rate <= -GROWTH_LOG_SERIES_TO {
+        return None;
+    }
+    let log = growth_log(rate);
+    if (nper * log).abs() < SHORT_GROWTH {
+        return None;
+    }
+    let discount = excel_exp((period - 1.0 - nper) * log);
+    let periods = -excel_expm1(-nper * log);
+    if !discount.is_normal() || !periods.is_normal() {
+        return None;
+    }
+    let owed = dd_mul(dd_mul(two_sum(pv, fv), (rate, 0.0)), (discount, 0.0));
+    let mut principal = negated(dd_div(owed, (periods, 0.0)));
+    if period_start {
+        principal = dd_div(principal, two_sum(1.0, rate));
+    }
+    principal.0.is_normal().then_some(principal.0)
+}
+
 /// PMT's fitted quotient for `P = rate_nper`; not finite when `pv*P` overflows.
 fn fitted_payment(rate: f64, rate_nper: f64, pv: f64, fv: f64, period_start: bool) -> f64 {
     if period_start {
@@ -303,7 +379,15 @@ pub(super) fn period_payments(
             payment,
             period_start,
         ) {
-            return Ok((interest.0, principal.0));
+            let principal = discounted_principal(
+                rate,
+                period_count,
+                period,
+                (present_value, future_value),
+                period_start,
+            )
+            .unwrap_or(principal.0);
+            return Ok((interest.0, principal));
         }
     }
     let c = if period_start { -payment.0 } else { 0.0 };
@@ -609,5 +693,22 @@ impl Model {
             return Err(num_error(cell));
         }
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::growth_log;
+
+    /// PPMT's log is the series below 0.375 and Excel's LN above it, an ulp or two from
+    /// `ln_1p` in places (probes-numeric/ppmt-first-period-sweep, ppmt-log-rate-sweep).
+    #[test]
+    fn growth_log_is_excels() {
+        assert_eq!(growth_log(0.1), 0.095_310_179_804_324_85); // ln_1p: ...87
+        assert_eq!(growth_log(0.05), 0.048_790_164_169_432_014); // ln_1p: ...01
+        assert_eq!(growth_log(-0.02), -0.020_202_707_317_519_45);
+        assert_eq!(growth_log(0.37), 0.314_810_739_840_033_5);
+        assert_eq!(growth_log(0.38), 0.322_083_499_169_113_2); // LN(1.38)
+        assert_eq!(growth_log(0.6), 0.470_003_629_245_735_63);
     }
 }

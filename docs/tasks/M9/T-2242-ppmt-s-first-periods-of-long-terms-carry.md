@@ -3,7 +3,7 @@ id: T-2242
 title: "PPMT's first periods of long terms carry Excel's error in (1+r)^-n"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -131,3 +131,22 @@ the 15th digit, as `closeness.rs`):
   the double 1+r (wrong sign and size), and not 2^(-n*log2(1+r)) with log2 rounded to 53 or 64 bits (27/800
   bit-exact); `PMT*exp(-n*log1p r)` variants with 53/64-bit/exact steps reach 81/800.
 - Resumed by an opus run at 2026-10-24 07:45 UTC (stale branch, routine step 2).
+
+## Outcome
+- Excel's PPMT is not the exact closed form: it discounts with Excel's EXP and its own `L = ln(1+rate)`,
+  an x87 atanh series `2*(s + s^3/3 + ...)`, `s = rate/(2+rate)`, for |rate| < 0.375 and Excel's LN of
+  `1+rate` above, an ulp or two off the correctly rounded log; PPMT = `-(pv+fv)*rate*Q(per-1-n)/(1-Q(-n))`,
+  `Q(x) = EXP(x*L)`, the denominator Excel's (Kahan) expm1, divided by `1+rate` for type 1. New probe
+  probes-numeric/ppmt-log-rate-sweep (756 cells, 126 rates, excel-graph) pins L at every rate;
+  financial.md "PPMT discounts with an atanh-series log".
+- Engine: `growth_log` and `discounted_principal` (functions/financial/annuity.rs), `Register::div`
+  (x87_register.rs); `excel_expm1` moved from hyperbolic.rs to x87_exp.rs to be shared.
+- m9-fin-pmt A82, A166, A412, A418 now match Excel (A166 bit-exact); every PPMT cell of m9-fin-pmt and
+  IPMT_PPMT.xlsx is within 15 digits.
+- Eval delta: known failures gen-m9 7519 -> 7489 (30 fixed), ironcalc-calc 748 -> 736 (12), probes 1803 -> 1802
+  (1); 0 regressions; visibly off 7362 -> 7355.
+- Owned gen-m9 cells: 22 of 46 fixed. The rest moved: 9 IPMT cells to T-2587, 5 PPMT cells (rates at or below
+  -0.375, pv 1E+300, period 1.999) to T-2588; 10 PPMT lines are now last-digit only (NumericUlp, bit parity:
+  T-2243): 1dce4774f5c0e736 A112, 3c06f9298f65a3ba A256, 5c6a23c4f6597f1c A29, 79d87fc527927626 A291,
+  9a1fa5366bc50918 A374, a91bad4e84f49739 A305, b6a02893a8d6b151 A35 and A152, b72d952c5f52cb4d A41,
+  ba4ddb817a8e700e A69.
