@@ -3,7 +3,7 @@ id: T-2231
 title: "IM* hyperbolic and log kernel digits near the overflow edge (710-800)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
