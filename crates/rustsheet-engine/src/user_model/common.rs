@@ -618,9 +618,9 @@ impl UserModel {
         let worksheet = self.model.workbook.worksheet(sheet)?;
         let old_data = Box::new(worksheet.clone());
         let tables = self.model.tables_on_sheet(&worksheet.name);
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
         let rewritten = self.model.take_sheet(sheet)?.into_rewritten();
 
-        let sheet_count = self.model.workbook.worksheets.len() as u32 + 1;
         // If we are deleting the last sheet we need to change the selected sheet
         if sheet == sheet_count - 1 && sheet_count > 1 {
             if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {

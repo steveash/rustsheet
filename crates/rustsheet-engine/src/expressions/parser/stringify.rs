@@ -86,21 +86,16 @@ const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
 /// probes/table-edits/table-delete-sheet); the lexer reads that text back as `#REF!`. The stored
 /// R1C1 text and the export keep the name, so an undo that restores the sheet restores the
 /// reference. An external reference (`[1]Uses!A1`) is not a missing sheet.
-fn missing_sheet_prefix<'a>(
-    sheet_name: &'a Option<String>,
+fn is_missing_sheet(
+    sheet_name: Option<&str>,
     context: Option<&CellReferenceRC>,
     export_to_excel: bool,
-) -> (&'static str, &'a Option<String>) {
-    const NO_SHEET: &Option<String> = &None;
-    let missing = sheet_name
-        .as_deref()
-        .is_some_and(|name| !name.starts_with('['));
-    if missing && context.is_some() && !export_to_excel {
-        ("#REF!", NO_SHEET)
-    } else {
-        ("", sheet_name)
-    }
+) -> bool {
+    sheet_name.is_some_and(|name| !name.starts_with('[')) && context.is_some() && !export_to_excel
 }
+
+/// The sheet printed in place of a missing one: none, after a `#REF!` prefix.
+const NO_SHEET: &Option<String> = &None;
 
 /// This is the internal mode in IronCalc
 /// Formulas internally are stored in R1C1 format, the locale and language are always "en"
@@ -525,7 +520,12 @@ fn stringify(
             absolute_row,
             absolute_column,
         } => {
-            let (prefix, sheet_name) = missing_sheet_prefix(sheet_name, context, export_to_excel);
+            let missing = is_missing_sheet(sheet_name.as_deref(), context, export_to_excel);
+            let (prefix, sheet_name) = if missing {
+                ("#REF!", NO_SHEET)
+            } else {
+                ("", sheet_name)
+            };
             let text = stringify_reference(
                 context,
                 &DisplaceData::None,
@@ -652,7 +652,12 @@ fn stringify(
                 && *absolute_column2
                 && (*column1 == 1)
                 && (*column2 == LAST_COLUMN);
-            let (prefix, sheet_name) = missing_sheet_prefix(sheet_name, context, export_to_excel);
+            let missing = is_missing_sheet(sheet_name.as_deref(), context, export_to_excel);
+            let (prefix, sheet_name) = if missing {
+                ("#REF!", NO_SHEET)
+            } else {
+                ("", sheet_name)
+            };
             let s1 = stringify_reference(
                 context,
                 &DisplaceData::None,
