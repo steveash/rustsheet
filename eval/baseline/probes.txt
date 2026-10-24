@@ -623,6 +623,7 @@ C	probes/m7-one-cell-operand-lift.case.json	18
 C	probes/m7-unique-lift-corners.case.json	686
 C	probes/m7-unique-lift-elements.case.json	350
 C	probes/m9-bessel-order-limits.case.json	341
+C	probes/map-later-array-error-blank.case.json	23
 C	probes/map-scan-range-result.case.json	39
 C	probes/map-unequal-sizes.case.json	36
 C	probes/match-descending-argcheck.case.json	20

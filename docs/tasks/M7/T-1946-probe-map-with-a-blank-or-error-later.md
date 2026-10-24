@@ -3,7 +3,7 @@ id: T-1946
 title: "Probe MAP with a blank or error later array and INDEX of a LAMBDA out of range"
 milestone: M7
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -57,3 +57,6 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probe map-later-array-error-blank (23 cells, excel-graph) answers the open shapes; arrays.md records them. The engine differed only for an error value as a later MAP array, which this task fixed (`is_scalar_value` now includes errors, so no separate fix task was filed). INDEX of a LAMBDA out of range already matched. gen-m7 known failures 38 -> 31 (all 7 owned cells), gen-m9 7719 -> 7716 (3 more), 0 regressions.
