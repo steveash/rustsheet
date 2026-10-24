@@ -3,7 +3,7 @@ id: T-2564
 title: "Probe the automatic @ on a one-sheet span range in a legacy-import workbook"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,8 @@ Split from T-2357: the engine puts `@` on a one-sheet span range (T-2351; test_a
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/3d-ref-one-sheet-span-legacy-at with the excel-graph oracle fill. Excel puts the automatic `@` on a legacy-import
+one-sheet span range (`=SIN(@Data1!A1:A10)`) and stores `=@Data1:Data1!A1` as `=@Data1!A1`; the engine already matched
+(all 8 cells pass), so no code change. Recorded in docs/excel-semantics/references.md. Eval delta: +8 passing cells (new probe).

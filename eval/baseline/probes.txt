@@ -9,6 +9,7 @@ C	probes/3d-ref-functions.case.json	22
 C	probes/3d-ref-let-bound-span-readers.case.json	13
 C	probes/3d-ref-let-bound-span.case.json	16
 C	probes/3d-ref-let-values.case.json	11
+C	probes/3d-ref-one-sheet-span-legacy-at.case.json	8
 C	probes/3d-ref-one-sheet-span-lift.case.json	12
 C	probes/3d-ref-span-edges.case.json	13
 C	probes/3d-ref-span-missing-ends.case.json	12
