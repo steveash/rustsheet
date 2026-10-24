@@ -936,6 +936,9 @@ impl Model {
 
     /// FORMULATEXT of the one cell `at`: its formula, or `#N/A` when it holds none.
     fn formula_text_of(&self, at: CellReferenceIndex, cell: CellReferenceIndex) -> CalcResult {
+        if let Some(table) = self.data_table_at(at) {
+            return CalcResult::String(table.formula_text().into());
+        }
         if let Ok(Some(f)) = self.get_english_cell_formula(at.sheet, at.row, at.column) {
             CalcResult::String(f.into())
         } else {

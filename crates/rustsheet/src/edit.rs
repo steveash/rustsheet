@@ -15,7 +15,9 @@ mod pivot;
 pub use self::pivot::{PivotError, PivotFunction, PivotTableInput};
 
 use rustsheet_engine::clock::Clock;
-use rustsheet_engine::types::{Cell, Link, Worksheet};
+use rustsheet_engine::types::{
+    Cell, DataTable, DataTableInput, Link, Worksheet, MAX_DATA_TABLE_CELLS,
+};
 use rustsheet_engine::Model;
 use rustsheet_engine::TakenSheet;
 
@@ -181,6 +183,11 @@ enum Undo {
     },
     /// A table added by `add_table`.
     Table(String),
+    /// A data table added by `add_data_table`: its sheet and result range.
+    DataTable {
+        sheet_id: u32,
+        range: (i32, i32, i32, i32),
+    },
     /// The lengths of the workbook's pivot caches and tables before `add_pivot_table`.
     Pivot {
         caches: usize,
@@ -640,6 +647,82 @@ impl Txn<'_> {
         self.undo.push(Undo::Table(name.to_string()));
         Ok(())
     }
+
+    /// Adds a what-if data table whose result cells are `range` (docs/excel-semantics/recalc.md,
+    /// "Data tables"). With a `column_input` the values in the column left of `range` replace that
+    /// cell and each result column has its formula in the row above; with a `row_input` the
+    /// values in the row above replace it and each result row has its formula in the column to
+    /// the left; with both, the one formula is at the corner above and left of `range`. The
+    /// result cells are emptied, and the next evaluation fills them.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet, an input on another sheet or out of bounds;
+    /// [`EditError::InvalidInput`] when the range has no row above or column left of it, has no
+    /// input, holds an input or overlaps another data table.
+    pub fn add_data_table(
+        &mut self,
+        range: RangeRef,
+        row_input: Option<CellRef>,
+        column_input: Option<CellRef>,
+    ) -> Result<(), EditError> {
+        let sheet = sheet_index(self.model, range.sheet)?;
+        let (top, left) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
+        let (bottom, right) = engine_rc(range.bottom, range.right).ok_or(RefError::OutOfBounds)?;
+        let input = |cell: Option<CellRef>| -> Result<Option<DataTableInput>, EditError> {
+            let Some(cell) = cell else { return Ok(None) };
+            if cell.sheet != range.sheet {
+                return Err(RefError::Unsupported.into());
+            }
+            let (r, c) = engine_rc(cell.row, cell.col).ok_or(RefError::OutOfBounds)?;
+            Ok(Some(DataTableInput::Cell(r, c)))
+        };
+        let table = DataTable {
+            range: (top, left, bottom, right),
+            row_input: input(row_input)?,
+            column_input: input(column_input)?,
+        };
+        let area = u64::from(range.bottom.saturating_sub(range.top) + 1)
+            * u64::from(range.right.saturating_sub(range.left) + 1);
+        // Checked before the cells are logged; the engine checks the same bound.
+        if area > MAX_DATA_TABLE_CELLS {
+            return Err(EditError::InvalidInput {
+                cell: CellRef {
+                    sheet: range.sheet,
+                    row: range.top,
+                    col: range.left,
+                },
+                message: "data table too large to edit".to_string(),
+            });
+        }
+        for row in range.top..=range.bottom {
+            for col in range.left..=range.right {
+                let cell = CellRef {
+                    sheet: range.sheet,
+                    row,
+                    col,
+                };
+                let (r, c) = engine_rc(row, col).ok_or(RefError::OutOfBounds)?;
+                self.log_cell(sheet, (range.sheet.get(), r, c), cell)?;
+            }
+        }
+        self.model
+            .add_data_table(sheet, table)
+            .map_err(|error| EditError::InvalidInput {
+                cell: CellRef {
+                    sheet: range.sheet,
+                    row: range.top,
+                    col: range.left,
+                },
+                message: error.to_string(),
+            })?;
+        // Rollback must re-evaluate: the table filled its results when the edit evaluated.
+        self.sheet_op = true;
+        self.undo.push(Undo::DataTable {
+            sheet_id: range.sheet.get(),
+            range: (top, left, bottom, right),
+        });
+        Ok(())
+    }
 }
 
 fn sheet_name(model: &Model, index: u32) -> String {
@@ -743,6 +826,13 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
             Undo::Table(name) => {
                 let undone = model.remove_table(&name);
                 debug_assert!(undone.is_ok(), "undo of add_table failed: {undone:?}");
+            }
+            Undo::DataTable { sheet_id, range } => {
+                let sheet = (model.workbook.worksheets.iter())
+                    .position(|ws| ws.get_sheet_id() == sheet_id)
+                    .and_then(|i| u32::try_from(i).ok());
+                let undone = sheet.is_some_and(|i| model.remove_data_table(i, range));
+                debug_assert!(undone, "undo of add_data_table failed");
             }
             Undo::RowHidden {
                 sheet_id,
