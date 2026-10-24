@@ -124,11 +124,17 @@ impl Model {
             return Self::around_empty_delimiter(text, options.instance_num, side);
         }
         // Excel: see docs/excel-semantics/text.md "TEXTBEFORE and TEXTAFTER: instance_num past the
-        // text, a number if_not_found": the size of instance_num is bounded by the text's length in
-        // UTF-16 units, whatever match_end and if_not_found (probes/t2314-textbefore-instance-bound).
-        if usize::try_from(options.instance_num.unsigned_abs())
-            .map_or(true, |n| n > text.encode_utf16().count())
-        {
+        // text, a number if_not_found": the size of instance_num is bounded by the number of
+        // positions the shortest delimiter can start at, the text's length less the delimiter's
+        // plus one in UTF-16 units, whatever match_end and if_not_found (probes/
+        // t2314-textbefore-instance-bound, t2581-textsplit-textbefore A30-A50).
+        let shortest = exact
+            .iter()
+            .map(|d| d.encode_utf16().count())
+            .min()
+            .unwrap_or(1);
+        let positions = (text.encode_utf16().count() + 1).saturating_sub(shortest);
+        if usize::try_from(options.instance_num.unsigned_abs()).map_or(true, |n| n > positions) {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,

@@ -971,8 +971,12 @@ Status: VERIFIED (excel-graph); not implemented (T-2250).
 Tasks: T-2169, T-2250
 
 ## TEXTBEFORE and TEXTAFTER: instance_num past the text, a number if_not_found
-Rule: an instance_num whose size is greater than the text's length, counted in UTF-16 units, is `#VALUE!`, whatever the delimiter,
-match_end and if_not_found (the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
+Rule: an instance_num whose size is greater than the number of positions the shortest delimiter could start at (the text's length
+less that delimiter's, plus one, counted in UTF-16 units) is `#VALUE!`, whatever match_end and if_not_found (the empty delimiter
+excepted, see above). `TEXTBEFORE("abcde","xyz",3)` and `-3` are `#N/A`, `4` and `-4` `#VALUE!`; `TEXTBEFORE("abcde",{"xyz","qq"},4)`
+is `#N/A`, `5` `#VALUE!`; `TEXTBEFORE("ab","xyz",1)` is `#VALUE!`; a number delimiter is its text, so `TEXTBEFORE("42ABC",1.005,-2)`,
+also from a cell, is `#VALUE!` (gen-m9 8d3588d8df0812df A313) but `-1` `#N/A`; `TEXTAFTER("😀b","😀😀",2)` is `#VALUE!` (probes/
+t2581-textsplit-textbefore A30-A50, excel-graph, 2026-10-24; T-2581). With a one-unit delimiter this is the text's length: `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
 `TEXTBEFORE("ab","a",3,0,0,"nf")` are `#VALUE!`, while `TEXTBEFORE("ab","a",2)` is the usual `#N/A`. `TEXTAFTER("😀","a",2)` is `#N/A`
 and `TEXTAFTER("😀","a",3)` `#VALUE!` (two units), `TEXTAFTER("é","a",2)` `#VALUE!` (one). Gen-m7 shows it on `TEXTBEFORE("x~*","1",
 WORKDAY(..))` (611ce3bbfab27cef A336) and `TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767).
@@ -993,7 +997,7 @@ TEXTAFTER's result takes the shape of an array if_not_found even when the text i
 (Excel reads the one-cell DROP result as a height giving 2 rows, ours as a lifted 1x1). The gen-m7 `#SPILL!` (4dac39f89709e2fc A2870) is
 then consistent with a 2x2 TEXTAFTER of `#VALUE!` colliding; only ROWS = 2 of it is probed.
 Status: VERIFIED (excel-graph)
-Tasks: T-2314, T-2412
+Tasks: T-2314, T-2412, T-2581
 
 ## TEXTSPLIT: argument errors first, an all-empty result
 Rule: TEXTSPLIT checks its arguments in this order, the first failure being the result: the text (an error); a delimiter that is
@@ -1037,11 +1041,19 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2315
 
 
-## TEXTSPLIT and TEXTBEFORE in the gen-m9 sweep (T-2436)
-Rule (one gen-m9 cell each, excel-graph, 2026-10-24): `TEXTSPLIT("a*","a",Data!A6:B12,FALSE,0)` is the 1x2 {"","*"}
-(3e98b26cf6713e77 A383); `TEXTSPLIT(2,"a",Data!B5:D6,2.5,2,"a*")` (match_mode 2) is `#VALUE!` (984cba67bbe6972b A160);
-`TEXTBEFORE("42ABC",Data!E9:E9,-2)` with E9 = 1.005 (a delimiter that does not occur) is `#VALUE!`, not the not-found `#N/A` (8d3588d8df0812df A313). Which argument decides each is UNVERIFIED.
-Evidence: probes/t2436 (the three cases).
-Ours: 2x1, "2" and `#N/A`; T-2581.
-Status: VERIFIED (excel-graph) for the values
+## TEXTSPLIT: column delimiters first, match_mode 0 or 1
+Rule: TEXTSPLIT scans the text once, left to right, for both delimiter lists: the earliest match ends a piece, and a row delimiter
+also ends the row. At one position a column delimiter beats a row delimiter whatever their lengths (within one list the longest
+wins, see "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"). So it is not a split into rows and
+then of each row into columns: `TEXTSPLIT("abcd","bc","cd")` is {"a","d"} (the column match at 1 consumes the c of "cd"), while
+`TEXTSPLIT("abcd","cd","bc")` is {"a";"d"}; `TEXTSPLIT("a*","a","a*")` is {"","*"}, `TEXTSPLIT("ab|c","b","b|")` {"a","|c"},
+`TEXTSPLIT("a*","a*","a")` {"",""}, `TEXTSPLIT("a1b2c","1","b")` {"a","";"2c",#N/A} and `TEXTSPLIT("aXbc","b","aXb")` {"";"c"}.
+match_mode is cut toward zero and must then be 0 or 1, else `#VALUE!` (as in TEXTBEFORE): 2, -1 and 255 are `#VALUE!`, 0.5 and -0.5 are
+0, 1.5 and TRUE are 1. That check comes after an error element of a delimiter list (`TEXTSPLIT("aBc",{"b",#N/A},,,2)` is `#N/A`);
+beside an invalid ignore_empty, an array pad_with, an empty delimiter or empty text the result is `#VALUE!` either way (A24-A28).
+Evidence: probes/t2581-textsplit-textbefore A1-A29 (excel-graph, 2026-10-24). The gen-m9 cells it explains (T-2436 probe):
+`TEXTSPLIT("a*","a",Data!A6:B12,FALSE,0)` is the 1x2 {"","*"} (3e98b26cf6713e77 A383, "a*" is also a row delimiter) and
+`TEXTSPLIT(2,"a",Data!B5:D6,2.5,2,"a*")` `#VALUE!` (984cba67bbe6972b A160, match_mode 2).
+Ours: since T-2581 (`split_grid`, `textsplit_element` in functions/text/textsplit.rs).
+Status: VERIFIED (excel-graph)
 Tasks: T-2581
