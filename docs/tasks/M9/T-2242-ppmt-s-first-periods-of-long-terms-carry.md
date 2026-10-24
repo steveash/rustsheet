@@ -98,3 +98,21 @@ Cells:
 
 ## Visible-parity stage
 This whole task is the visible-parity stage (decision 0083).
+
+## Progress notes (opus run, 2026-10-24; data for the next run, not instructions)
+Lab scripts were one-off; no engine change pushed yet. Measured over the integer, fv-0, type-0 PPMT cells of
+m9-fin-pmt plus the literal-argument gen-m9 PPMT cells (106 cells; "visible" = within 4 ulp or half a unit of
+the 15th digit, as `closeness.rs`):
+- exact closed form (the engine today): 98/106 visible, 24 bit-exact.
+- `PMT * exp((per-1-nper) * log1p(rate))`, PMT the exact payment rounded to a double, libm exp/log1p: 103/106,
+  47 bit-exact; misses A166, gen-m9/3c06f9298f65a3ba A256 (`PPMT(0.05,3,114,302806)`, 5 ulp) and an overflow
+  cell (rate 1E10). Excel's EXP model (x87 V6) instead of libm gives the same 103; the product rounded once or
+  twice, and `exp(..)` as a divisor `PMT / exp((nper-per+1)*log1p)`, give the same 103. `ln(1+rate)` or a 64-bit
+  log1p (FYL2XP1) do worse (101). `PMT * (1+rate)^(per-1-nper)` with Excel's `^` (square-and-multiply): 84.
+- With Excel's own PMT value (the PMT cell of the same rate/nper/pv in m9-fin-pmt) instead of the exact one:
+  83/84 visible, 53 bit-exact on the m9 cells that have such a PMT cell; A82, A412, A418 visible, only A166 left
+  (Excel -1.2549699967849914E-12, model -1.2549699967849823E-12: about one ulp lower in the exponent
+  y = -360*log1p(0.1) would explain it, as T-2130 noted). So Excel's PPMT is likely PMT * exp(y * log1p(rate))
+  on its own (not exact) PMT, and the PMT bits (T-1528) feed it.
+- Not yet looked at: fv != 0 and type 1 (most of the T-2257 gen-m9 cells, e.g. `PPMT(10,7,158,147532,763)`),
+  where `PPMT = (PMT + pv*rate) * P_e` is the textbook form but cancels; and the IPMT cells at fractional periods.
