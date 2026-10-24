@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2580: SEQUENCE with a tiny negative extent beside a zero one (gen-m7 c36ff5f42a1a4d47 A359 is #CALC!).",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SEQUENCE(0,-1E-15)",
+        "A2": "=SEQUENCE(1,-1E-15)",
+        "A3": "=SEQUENCE(0,-1E-9)",
+        "A4": "=SEQUENCE(1,-1E-9)",
+        "A5": "=SEQUENCE(0,-8.1E-10)",
+        "A6": "=SEQUENCE(1,-8.1E-10)",
+        "A7": "=SEQUENCE(0,-1E-6)",
+        "A8": "=SEQUENCE(1,-1E-6)",
+        "A9": "=SEQUENCE(0,-0.001)",
+        "A10": "=SEQUENCE(1,-0.001)",
+        "A11": "=SEQUENCE(0,-0.1)",
+        "A12": "=SEQUENCE(1,-0.1)",
+        "A13": "=SEQUENCE(0,-0.9999999)",
+        "A14": "=SEQUENCE(1,-0.9999999)",
+        "A15": "=SEQUENCE(0,-0.999999999999)",
+        "A16": "=SEQUENCE(1,-0.999999999999)",
+        "A17": "=SEQUENCE(0,(0.1*(-1))/FLOOR(123456789.123,0.3))",
+        "A18": "=SEQUENCE(1,(0.1*(-1))/FLOOR(123456789.123,0.3))"
+      }
+    }
+  ]
+}

@@ -112,6 +112,24 @@ impl CalcResult {
         }
     }
 
+    /// An empty array's `#CALC!` as the `#VALUE!` that SWITCH's expression and cases, IMSUM,
+    /// IMPRODUCT and the holidays of the WORKDAY and NETWORKDAYS family make of it, anything else
+    /// unchanged (docs/excel-semantics/arrays.md "An empty array as a function argument").
+    pub(crate) fn empty_array_as_value_error(self) -> CalcResult {
+        match self {
+            CalcResult::Error {
+                error: Error::CALC,
+                origin,
+                message,
+            } => CalcResult::Error {
+                error: Error::VALUE,
+                origin,
+                message,
+            },
+            other => other,
+        }
+    }
+
     /// The empty value as the number 0, anything else unchanged: what IFS and SWITCH give for
     /// it (`IFS(TRUE,VLOOKUP(..))&""` is "0" when the lookup lands on a blank, while a blank
     /// reference stays blank; lookup.md "VLOOKUP and HLOOKUP hand a blank result cell to their

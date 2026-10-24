@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2580: where a tiny negative SEQUENCE extent stops counting as 0 (between -1E-7 and -2E-7).",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SEQUENCE(0,-1.1E-7)",
+        "A2": "=SEQUENCE(0,-1.19E-7)",
+        "A3": "=SEQUENCE(0,-1.2E-7)",
+        "A4": "=SEQUENCE(0,-1.25E-7)",
+        "A5": "=SEQUENCE(0,-1.3E-7)",
+        "A6": "=SEQUENCE(0,-1.4E-7)",
+        "A7": "=SEQUENCE(0,-1.5E-7)",
+        "A8": "=SEQUENCE(0,-1.75E-7)",
+        "A9": "=SEQUENCE(0,-1.9E-7)",
+        "A10": "=SEQUENCE(0,-0.00000011920929)",
+        "A11": "=SEQUENCE(0,-0.00000011920930)"
+      }
+    }
+  ]
+}

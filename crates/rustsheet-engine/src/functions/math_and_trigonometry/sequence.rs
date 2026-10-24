@@ -1,11 +1,18 @@
 use crate::constants::LAST_ROW;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::{near_integer_count, near_integer_floor};
 use crate::functions::Function;
 use crate::limits::check_built_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+
+/// How close below the next integer a negative extent counts as that integer: about 2^-23, half
+/// the positive side's `near_integer_count` tolerance, bracketed by probes (`SEQUENCE(0,-1.19E-7)` is `#CALC!`, `-1.2E-7`
+/// `#VALUE!`; probes/t2580-sequence-negative-tolerance). The exact bound is UNVERIFIED past
+/// those two cells; only extents in (-1, 0) are probed.
+const NEGATIVE_EXTENT_TOLERANCE: f64 = 1.192_092_895_507_812_5e-7 + 1.164_153_218_269_348_1e-10;
 
 impl Model {
     /// `=SEQUENCE(rows, [cols], [start], [step])`
@@ -43,32 +50,41 @@ impl Model {
             }
         }
         let [rows, columns, start, step] = read;
-        let extent = |n: f64, last: usize, name: &str| -> Result<usize, CalcResult> {
-            let n = n.floor() as i64;
-            let error = match n {
-                0 => Error::CALC,
-                n if n < 0 => Error::VALUE,
-                n => match usize::try_from(n) {
-                    Ok(n) if n <= last => return Ok(n),
-                    _ => Error::VALUE,
-                },
-            };
-            Err(CalcResult::new_error(
-                error,
-                cell,
-                format!("{name} must be between 1 and {last}"),
-            ))
+        // A negative extent or one past 1048576 (rows and columns alike, though the grid has 16384
+        // columns) is `#VALUE!` and beats the `#CALC!` of a zero one: `SEQUENCE(0.0123,
+        // 123456789.123)` and `SEQUENCE(0,-1)` are `#VALUE!`, `SEQUENCE(0,1048576)` is `#CALC!`.
+        // An extent within the count tolerance of the next integer is that integer (`near_integer_count`
+        // above 0, `NEGATIVE_EXTENT_TOLERANCE` below): `SEQUENCE(1,3-2E-7)` has 3 columns, `3-3E-7` 2,
+        // `SEQUENCE(1,-1E-7)` is `#CALC!`, `SEQUENCE(1,-1.2E-7)` `#VALUE!`.
+        // Evidence: probes/t2580-sequence-zero-extent, t2580-sequence-column-cap and
+        // t2580-sequence-tiny-negative, t2580-sequence-extent-snap and t2580-sequence-negative-tolerance; arrays.md "An empty array as a function argument" (T-2580).
+        let extent = |n: f64| -> Result<usize, Error> {
+            let n = if n < 0.0 {
+                near_integer_floor(n, NEGATIVE_EXTENT_TOLERANCE)
+            } else {
+                near_integer_count(n)
+            } as i64;
+            match usize::try_from(n) {
+                Ok(n) if n <= LAST_ROW as usize => Ok(n),
+                _ => Err(Error::VALUE),
+            }
         };
-        let rows = match extent(rows, LAST_ROW as usize, "rows") {
-            Ok(rows) => rows,
-            Err(error) => return error,
-        };
-        // Rows past the grid are `#VALUE!` (`ROWS(SEQUENCE(1048577))`, probes/resource-limits
-        // C13), columns past it are built (`COLUMNS(SEQUENCE(1,16385))` is 16385,
-        // probes/t2579-array-value-edges B24) under `check_built_array_size`.
-        let columns = match extent(columns, usize::MAX, "columns") {
-            Ok(columns) => columns,
-            Err(error) => return error,
+        let (rows, columns) = match (extent(rows), extent(columns)) {
+            (Err(error), _) | (_, Err(error)) => {
+                return CalcResult::new_error(
+                    error,
+                    cell,
+                    format!("rows and columns must be between 1 and {LAST_ROW}"),
+                );
+            }
+            (Ok(0), _) | (_, Ok(0)) => {
+                return CalcResult::new_error(
+                    Error::CALC,
+                    cell,
+                    "rows or columns cannot be 0".to_string(),
+                );
+            }
+            (Ok(rows), Ok(columns)) => (rows, columns),
         };
         if let Some((error, message)) = check_built_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);

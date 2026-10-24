@@ -3,7 +3,7 @@ id: T-2580
 title: "An empty array (#CALC!) given to SWITCH, IMSUM or WORKDAY's holidays is #VALUE!, and SEQUENCE(0.0123,123456789.123,..) is #VALUE!, not zero rows' #CALC! (gen-m9, 4 cells)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -38,3 +38,8 @@ Cells:
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
+
+## Outcome
+`CalcResult::empty_array_as_value_error` makes an empty array's `#CALC!` a `#VALUE!` in SWITCH's expression and cases, IMSUM, IMPRODUCT and the holidays of WORKDAY(.INTL) and NETWORKDAYS(.INTL) (not SWITCH's result or default, SUM, CHOOSE, IFS, XLOOKUP's if_not_found: probes/t2580-empty-array-args). SEQUENCE: both extents stop at 1048576, a negative or oversized extent is `#VALUE!` before a zero one's `#CALC!`, and an extent within the count tolerance of 0 is 0 (probes/t2580-sequence-*). Unit tests in test_empty_array_args.rs.
+
+Eval delta: gen-m9 5 known failures removed (the 4 listed plus one more); probes 25 removed, none added (the column-cap cells pass with T-2600's wide arrays merged); no regressions.

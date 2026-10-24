@@ -353,7 +353,9 @@ impl Model {
                     }
                 }
             }
-            e @ CalcResult::Error { .. } => return Err(e),
+            // An empty array is `#VALUE!` here, not `#CALC!` (arrays.md "An empty array as a
+            // function argument", probes/t2436/computed-scalar A47).
+            e @ CalcResult::Error { .. } => return Err(e.empty_array_as_value_error()),
             // A one-cell reference to a blank cell is no holiday.
             CalcResult::EmptyCell => {}
             CalcResult::String(text) => handle(self.holiday_text_serial(&text, cell)?)?,

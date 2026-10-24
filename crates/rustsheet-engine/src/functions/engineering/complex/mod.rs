@@ -600,7 +600,11 @@ impl Model {
         let mut visits: u64 = 0;
         let mut walk = AggregateWalk::new(COMPLEX_FOLD_POLICY);
         for arg in args {
-            let read = self.evaluate_picked_reference_arg(arg, cell);
+            let read = match self.evaluate_picked_reference_arg(arg, cell) {
+                // An empty array is `#VALUE!` (arrays.md "An empty array as a function argument").
+                RefArg::Value(value) => RefArg::Value(value.empty_array_as_value_error()),
+                read => read,
+            };
             // The cells of the range (blank cells included), and the cells its walk visits.
             let (cells, walked) = match &read {
                 RefArg::Ranges(ranges) => match &ranges[..] {
