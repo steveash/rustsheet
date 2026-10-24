@@ -101,3 +101,4 @@ T-1743), gen-m9 7821 -> 7696 (48 of the 49 owned lines plus 77 other TREND/GROWT
 7562 off (lock 8632). Left: gen-m9 bcb1105c61a2649d A301 (`BESSELI(1E+15,5)` is 0 in ours, `#NUM!` in Excel;
 engineering.md, T-2547/T-2548's sweep), the 23 last-digit regression-trend cells (T-2006), and
 abc2939ebd1e2365 A187 (a 0 GROWTH y against a 2x2 x is `#NUM!`, unexplained; recorded in statistics.md).
+Follow-up: T-2569 probes the lifted const element values, the near-collinear cut-off and A187.

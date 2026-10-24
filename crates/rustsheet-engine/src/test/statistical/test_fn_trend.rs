@@ -119,6 +119,8 @@ fn argument_errors_come_first_in_order() {
 
 #[test]
 fn an_array_const_lifts() {
+    // That it spills is evidence (gen-m9 80586b85 A61); each element's top-left value is
+    // UNVERIFIED, TODO(T-2569).
     let mut model = trend_model();
     model._set("Z1", "=TREND(A1:A6,B1:B6,K1,{TRUE,FALSE})");
     model.evaluate();

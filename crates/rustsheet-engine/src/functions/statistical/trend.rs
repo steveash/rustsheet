@@ -108,7 +108,8 @@ fn layout(y: &Grid, x: &Grid) -> Option<Layout> {
 /// The x columns kept when the normal equations are singular: a column that is, to rounding, a
 /// combination of the intercept and the columns kept before it is dropped with coefficient 0, as
 /// Excel's LINEST drops a collinear column (statistics.md "LINEST": `LINEST(B2:B9,A2:E9,TRUE,TRUE)`
-/// drops A). So a zero-variance x gives the mean of y (`TREND(A1:A6,G1:G6)` is 4.5, trend O20).
+/// drops A). So a zero-variance x gives the mean of y (`TREND(A1:A6,G1:G6)` is 4.5, trend O20). The
+/// cut-off and the column order are ours, unprobed: TODO(T-2569).
 fn independent_columns(x: &[Vec<f64>], p: usize, const_term: bool) -> Vec<usize> {
     let n = x.len();
     let mut basis: Vec<Vec<f64>> = Vec::new();

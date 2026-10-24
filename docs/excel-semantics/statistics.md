@@ -2413,7 +2413,9 @@ any shape, the result taking it (2-D y included); else a column y takes one vari
 many columns; the result is a column), a row y one per row (the result is a row); anything else is `#REF!`. A single y
 is both, so `TREND(-1,Data!D8:D9)` is one point of two variables, -1 (gen-m9 0bbab6206b5c9a07 A44), while
 `TREND(Data!C4,Data!A3:D12)` is `#REF!` (41248d1cb153c66e A54). A singular fit drops the collinear x columns, as LINEST
-does ("LINEST, LOGEST, GROWTH: probe findings"), so a zero-variance x gives the mean of y (`TREND(A1:A6,G1:G6)` 4.5, trend O20).
+does ("LINEST, LOGEST, GROWTH: probe findings"), so a zero-variance x gives the mean of y (`TREND(A1:A6,G1:G6)` 4.5, trend O20);
+which near-collinear columns are dropped (ours: a Gram-Schmidt residual under 1E-10 of the column, only once the plain
+solve fails) is UNVERIFIED (T-2569).
 Order of the checks (gen-m9 T-2256 cells): (1) an argument that is an error value, in argument order, const included
 (`TREND(<#NUM!>,Data!B8,Data!A5:C11,NA())` `#NUM!`, 3b7990bd4e3307ba A345; `TREND(Data!B4:C10,Data!A11:B12,<#VALUE!>)`
 with unequal shapes `#VALUE!`, 11eb3ab4f4f8104c A326; `TREND(Data!C7:D12,0.2,<#N/A>,<bool>)` `#N/A`, c2684066d8df263e
@@ -2432,15 +2434,15 @@ holding 1.005, 0, a blank `#NUM!`, 58e3253bbd3a7a82 A291; `GROWTH(Data!A2:A12)` 
 40425341c5034eed A158; `GROWTH(Data!D8:E9)` holding a blank, 1, -0.5 `#VALUE!`, A383; `GROWTH(0,Data!A7)` with A7 = "abc"
 `#VALUE!`, fec39efaba9284c3 A35), before new_x's text (`GROWTH(Data!A2:A4,Data!A2:A4,<text cells>)` `#NUM!`,
 d8266bc15533702a A396). (`GROWTH(PHI(-1E+300),Data!C11:D12,..)`, a 0 y against a 2x2 x, is `#NUM!`, not the size `#REF!`,
-abc2939ebd1e2365 A187: unexplained, ours `#REF!`.)
+abc2939ebd1e2365 A187: unexplained, ours `#REF!`, T-2569.)
 An array const lifts, before the other arguments' errors: each element is the call with that const (its top-left value),
 so `TREND(..,SORTBY(Data!A1:D12,..))` and `GROWTH(LOOKUP(NA(),..),..,GROUPBY(..))` spill (gen-m9 80586b85 A61,
 165db58d1540f014 A239), while a multi-cell range const does not (`TREND(..,OFFSET(Data!B6:C12,-1,3))` `#VALUE!`,
-43c6227e0ff368c7 A165). The values of the lifted elements are unprobed.
+43c6227e0ff368c7 A165). The values of the lifted elements (ours: each element's top-left value) are UNVERIFIED (T-2569).
 Evidence: probes/regression-trend (excel-graph, 2026-10-16, T-1620); gen-m9 (excel-graph, 2026-10-22/23, T-2255, T-2256).
 Ours: matches since T-1726 (`trend_or_growth` in functions/statistical/trend.rs), but for the last-digit differences of the
 shared least-squares solve (T-2006) and A187 above. A single point without a constant term (`TREND(5,2,4,FALSE)`) is a fit
-through the origin, UNVERIFIED. LINEST and LOGEST of one point are accepted by Excel (linest-modes K141, logest-modes
+through the origin, UNVERIFIED (T-2569). LINEST and LOGEST of one point are accepted by Excel (linest-modes K141, logest-modes
 K162); ours still rejects them (T-1741, T-1742).
 Status: VERIFIED (excel-graph)
 Tasks: T-1726 (overlaps T-1402, T-1743)
