@@ -8,14 +8,21 @@
 //! Each value is the oracle's; the guess changes Excel's last digits, so each one pins the path.
 
 use crate::cell::CellValue;
+use crate::model::Model;
 use crate::test::util::new_empty_model;
 
-fn results(formulas: &[&str]) -> Vec<u64> {
+/// A model with `formulas` in A1, A2, ... of Sheet1, evaluated.
+fn evaluated(formulas: &[&str]) -> Model {
     let mut model = new_empty_model();
     for (i, formula) in formulas.iter().enumerate() {
         model._set(&format!("A{}", i + 1), formula);
     }
     model.evaluate();
+    model
+}
+
+fn results(formulas: &[&str]) -> Vec<u64> {
+    let model = evaluated(formulas);
     (1..=formulas.len())
         .map(
             |row| match model.get_cell_value_by_ref(&format!("Sheet1!A{row}")) {
@@ -43,4 +50,59 @@ fn xirr_bisects_the_walked_bracket() {
     ]);
     let expected = [0.013_000_000_268_220_901_f64, 0.361_299_999_058_246_6];
     assert_eq!(got, expected.map(f64::to_bits));
+}
+
+#[test]
+fn xirr_with_a_zero_first_value_needs_no_later_date() {
+    // probes/xirr-span-zero-first A28 (first date after the others); T-2329
+    let got = results(&["=XIRR({0,-1000,1100},{46000,45000,45365})"]);
+    let expected = [2.980_232_238_769_531_4e-9_f64];
+    assert_eq!(got, expected.map(f64::to_bits));
+}
+
+#[test]
+fn xirr_with_a_zero_first_value_brackets_at_the_first_chain_point() {
+    // probes/xirr-zero-first-bracket A1, A3, A8, A9, A10: the flows do not matter, the guess does
+    let got = results(&[
+        "=XIRR({0,-1000,2000},{45000,45000,45365})",
+        "=XIRR({0,-1000,2000},{45000,45000,45365},0.3)",
+        "=XIRR({0,-100,110},{45000,45000,45000})",
+        "=XIRR({0,-100,110},{45000,45000,45000},0)",
+        "=XIRR({0,-100,110},{45000,45000,45000},2)",
+    ]);
+    let expected = [
+        2.980_232_238_769_531_4e-9_f64,
+        4.470_348_358_154_297e-9,
+        2.980_232_238_769_531_4e-9,
+        4.882_812_5e-9,
+        3.725_290_298_461_914e-9,
+    ];
+    assert_eq!(got, expected.map(f64::to_bits));
+}
+
+fn assert_num_errors(formulas: &[&str]) {
+    let model = evaluated(formulas);
+    for row in 1..=formulas.len() {
+        assert_eq!(
+            model.get_cell_value_by_ref(&format!("Sheet1!A{row}")),
+            Ok(CellValue::String("#NUM!".to_string())),
+            "A{row}"
+        );
+    }
+}
+
+#[test]
+fn xirr_with_a_zero_first_value_and_a_negative_guess_is_num() {
+    // probes/xirr-zero-first-bracket A6, A7, A11 (A6 has a root on the downward chain)
+    assert_num_errors(&[
+        "=XIRR({0,-1000,900},{45000,45000,45365},-0.2)",
+        "=XIRR({0,-1000,1100},{45000,45000,45365},-0.5)",
+        "=XIRR({0,-100,110},{45000,45000,45000},-0.5)",
+    ]);
+}
+
+#[test]
+fn xirr_with_a_nonzero_first_value_still_needs_a_later_date() {
+    // probes/xirr-mismatched-empties X9
+    assert_num_errors(&["=XIRR({-1000,1100},{45365,45000})"]);
 }
