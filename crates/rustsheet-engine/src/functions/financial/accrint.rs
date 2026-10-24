@@ -1,9 +1,6 @@
 use chrono::NaiveDate;
 
-use super::dates::{
-    actual_days, broken_schedule_error, day_count_basis, days_30_360_eu, days_30_360_us,
-    days_30_360_us_both_ymd,
-};
+use super::dates::{broken_schedule_error, day_count_basis, days_30_360_us_both_ymd};
 use super::financial_bonds::coupon_schedule::{
     change_month, coupon_date, coupon_serial, is_last_day_of_month, serial_basis_days, serial_ymd,
 };
@@ -18,16 +15,6 @@ use crate::{
     functions::Function,
     model::Model,
 };
-
-// EFF `DaysBetween` in the numerator position for a given basis: 30/360 on bases 0 and 4, the
-// actual days otherwise. AMORLINC and AMORDEGRC count their first period with it.
-pub(super) fn acc_days_between(start: NaiveDate, end: NaiveDate, basis: i32) -> f64 {
-    match basis {
-        0 => days_30_360_us(start, end),
-        4 => days_30_360_eu(start, end),
-        _ => actual_days(start, end),
-    }
-}
 
 /// The serial of an ACCRINT coupon date. Excel reads the schedule in its 1900 calendar, where a
 /// coupon date before 1900-01-01 is serial 0, and ACCRINT is `#NUM!` for it: an issue whose
@@ -51,6 +38,7 @@ fn stub_denominator(start: i64, end: i64, basis: u32) -> Result<f64, String> {
             serial_ymd(start)?,
             serial_ymd(end)?,
         )),
+        // Actual/360 counts its numerator in actual days but its denominator in 30/360 days.
         2 => serial_basis_days(start, end, 0),
         _ => serial_basis_days(start, end, basis),
     }
