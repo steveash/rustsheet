@@ -3,7 +3,7 @@ id: T-2550
 title: "Oracle sweep of BESSELK for x from 500 to 713 at orders 0 to 5 (for the BESSELK near-underflow kernel)"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,10 @@ Coordinate with T-2421, which probes 713 and 714 and the flush point: one case m
 
 ## Out of scope
 - Changing the kernel (T-2549).
+
+## Outcome
+Added probes-numeric/m9-besselk-underflow (147 cells), oracle-filled through excel-graph; findings in
+docs/excel-semantics/engineering.md "BESSELK near the bottom of the double range, BESSELI overflow point (T-2550)".
+Ours matches 134 of 147: 12 BESSELK cells (n = 2 to 5 at x = 700, 702, 705) and `BESSELI(709.78,0)`
+(Excel `#NUM!`, ours finite) differ. The `#NUM!` point of BESSELI lies in (709.5, 709.78]. Kernel work stays with
+T-2549 (and the BESSELI cut is a new follow-up if T-2421 does not cover it).
