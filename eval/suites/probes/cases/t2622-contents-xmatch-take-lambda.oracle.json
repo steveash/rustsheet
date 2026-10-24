@@ -134,6 +134,10 @@
     "t": "n",
     "v": 0.0
    },
+   "A18": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A19": {
     "t": "e",
     "v": "#VALUE!"
@@ -313,6 +317,10 @@
    "A59": {
     "t": "n",
     "v": 64.0
+   },
+   "A6": {
+    "t": "n",
+    "v": 1.0
    },
    "A60": {
     "t": "n",
@@ -497,7 +505,7 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "f60b986ee6e0bcda3c200e5d731e9d733ef22724b90aa4de2fba803a4d0a1baa",
   "kind": "excel-graph",
-  "produced_at": "2026-10-24T22:20:04+00:00",
+  "produced_at": "2026-10-24T23:05:01+00:00",
   "version": null,
   "workbook_name": "43270ba4c4e7bb3ca6ef269835de5c0dc329233d1106f8dc7772ebf71339ed65.xlsx"
  }

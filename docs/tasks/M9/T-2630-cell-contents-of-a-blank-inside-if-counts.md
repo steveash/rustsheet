@@ -14,10 +14,10 @@ depends_on: []
 `COUNT(IF(TRUE,CELL("contents",C5)))` is 1 and `MODE.SNGL(IF(TRUE,CELL("contents",C5)))` is `#VALUE!` with C5 blank, as the written-out call is.
 
 ## Context
-T-2622 implemented the written-out call only (`is_cell_contents_of_blank`, `statistical/count.rs`, `mode_functions.rs`) because a blank value of any other kind (a REDUCE result, gen-m9/d0854366830dcdee Calc!A40) is not counted. Excel gives 1 and `#VALUE!` through IF (oracle T-2622 probe, cells A6 and A18 of the removed probe rows; re-add them to probes/t2622-contents-xmatch-take-lambda and refill with the oracle). Find what value CELL returns that IF passes on but REDUCE does not.
+T-2622 implemented the written-out call only (`is_cell_contents_of_blank`, `statistical/count.rs`, `mode_functions.rs`) because a blank value of any other kind (a REDUCE result, gen-m9/d0854366830dcdee Calc!A40) is not counted. Excel gives 1 and `#VALUE!` through IF (oracle T-2622 probe, probes/t2622-contents-xmatch-take-lambda A6 and A18, baselined as known failures). Find what value CELL returns that IF passes on but REDUCE does not.
 
 ## Acceptance criteria
-- [ ] The two IF forms match Excel; re-added probe cells pass; nothing regresses (baseline only shrinks).
+- [ ] The two IF forms match Excel; probe cells A6 and A18 leave the baseline; nothing regresses (baseline only shrinks).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

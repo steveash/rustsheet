@@ -130,7 +130,9 @@
         "A121": "=CORREL(Data!F2,Data!C2:D4)",
         "A122": "=SLOPE(Data!F2,Data!C2:D4)",
         "A123": "=CORREL(TAKE(Data!F2,1,1),Data!C2:D4)",
-        "A112": "=PERCENTILE({1,#N/A,3},1/0)"
+        "A112": "=PERCENTILE({1,#N/A,3},1/0)",
+        "A6": "=COUNT(IF(TRUE,CELL(\"contents\",C5)))",
+        "A18": "=MODE.SNGL(IF(TRUE,CELL(\"contents\",C5)))"
       }
     },
     {
