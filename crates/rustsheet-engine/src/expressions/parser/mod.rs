@@ -426,6 +426,18 @@ impl Node {
     /// `#VALUE!`); `None` for any other node. A plain comparison: the bounds were computed with
     /// checked arithmetic when the formula was parsed.
     pub(crate) fn this_row_at(&self, row: i32) -> Option<Node> {
+        self.this_row_on(Some(row))
+    }
+
+    /// A `#This Row` area with no row to resolve it at (a shared formula printed in R1C1): the
+    /// same columns on the formula's own row, `RC1` or `RC1:RC2`. Its cells are the ones
+    /// [`Node::this_row_at`] gives on every data row.
+    pub(crate) fn this_row_relative(&self) -> Option<Node> {
+        self.this_row_on(None)
+    }
+
+    /// [`Node::this_row_at`] on `Some(row)`, [`Node::this_row_relative`] on `None`.
+    fn this_row_on(&self, row: Option<i32>) -> Option<Node> {
         let Node::ThisRowKind {
             sheet_name,
             sheet_index,
@@ -438,37 +450,18 @@ impl Node {
         else {
             return None;
         };
-        if row < *data_start || row > *data_end {
-            return Some(Node::ErrorKind(token::Error::VALUE));
-        }
-        Some(Node::this_row_reference(
-            sheet_name.clone(),
-            *sheet_index,
-            (*column1, *column2, *cell),
-            (true, row),
-        ))
-    }
-
-    /// A `#This Row` area with no row to resolve it at (a shared formula printed in R1C1): the
-    /// same columns on the formula's own row, `RC1` or `RC1:RC2`. Its cells are the ones
-    /// [`Node::this_row_at`] gives on every data row.
-    pub(crate) fn this_row_relative(&self) -> Option<Node> {
-        let Node::ThisRowKind {
-            sheet_name,
-            sheet_index,
-            column1,
-            column2,
-            cell,
-            ..
-        } = self
-        else {
-            return None;
+        let at = match row {
+            Some(row) if row < *data_start || row > *data_end => {
+                return Some(Node::ErrorKind(token::Error::VALUE));
+            }
+            Some(row) => (true, row),
+            None => (false, 0),
         };
         Some(Node::this_row_reference(
             sheet_name.clone(),
             *sheet_index,
             (*column1, *column2, *cell),
-            (false, 0),
+            at,
         ))
     }
 

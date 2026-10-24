@@ -205,7 +205,9 @@ fn a_grown_table_reads_its_new_data_row() {
     model.evaluate();
     assert_eq!(value(&model, 1, 6, 1), "#VALUE!");
     assert_eq!(value(&model, 1, 5, 1), "6");
-    // There is no resize API: grow the table by adding it again over A1:B6.
+    // There is no resize API: grow the table by adding it again over A1:B6. That the formula then
+    // reads its new data row is a hand expectation (SPEC-0016 goal 2): Excel's rule when a table
+    // grows is probed for inserts only (references.md, T-2197).
     model.remove_table("Sales").unwrap();
     model.add_table(0, "Sales", (1, 1, 6, 2), false).unwrap();
     model.evaluate();
@@ -334,8 +336,9 @@ fn cut_and_paste_of_the_formula() {
     }
 }
 
-/// A sheet rename keeps the text and the values; a delete of the table's sheet is `#REF!`, as
-/// the twin is.
+/// A sheet rename keeps the text and the values; a delete of the table's sheet is `#REF!` on
+/// every row, off the data rows too, as every structured reference to it is in Excel
+/// (references.md "Delete the table's sheet", table-delete-sheet).
 #[test]
 fn sheet_rename_and_delete() {
     let mut model = model();
@@ -344,6 +347,9 @@ fn sheet_rename_and_delete() {
         .unwrap();
     model
         .set_user_input(1, 5, 2, "=T!$A$5".to_string())
+        .unwrap();
+    model
+        .set_user_input(1, 8, 1, "=Sales[@Qty]".to_string())
         .unwrap();
     model.rename_sheet("T", "Facts").unwrap();
     model.evaluate();
@@ -354,28 +360,72 @@ fn sheet_rename_and_delete() {
     model.evaluate();
     assert_eq!(value(&model, 0, 5, 1), "#REF!");
     assert_eq!(value(&model, 0, 5, 1), value(&model, 0, 5, 2));
+    assert_eq!(value(&model, 0, 8, 1), "#REF!");
 }
 
-/// A duplicated sheet gets no table (as before SPEC-0016): its `#This Row` formulas read the
-/// copy's cells on the rows that were data rows.
+/// A duplicated sheet gets no table (as before SPEC-0016): each `#This Row` formula on the copy
+/// reads what it read on the source, the copy's cell on a data row and `#VALUE!` off them.
 #[test]
 fn a_duplicated_sheet_reads_its_own_row() {
     let mut model = parity_model();
     let (_, copy) = model.duplicate_sheet(0).unwrap();
     model.set_user_input(copy, 5, 1, "100".to_string()).unwrap();
     model.evaluate();
-    for row in 2..=5 {
-        for i in 0..TEMPLATES.len() {
-            let column = 5 + 2 * i as i32;
-            assert_eq!(
-                value(&model, copy, row, column),
-                value(&model, copy, row, column + 1),
-                "{} against {}",
-                formula(&model, copy, row, column),
-                formula(&model, copy, row, column + 1),
-            );
-        }
-    }
+    let mut found = mismatches(&model, copy, 5, true);
+    found.extend(mismatches(&model, 0, 5, false));
+    assert!(found.is_empty(), "{}", found.join("\n"));
     assert_eq!(value(&model, copy, 5, 5), "100");
+    assert_eq!(value(&model, copy, 6, 5), "#VALUE!");
+    assert_eq!(value(&model, copy, 1, 5), "#VALUE!");
     assert_eq!(value(&model, 0, 5, 5), "3");
+}
+
+/// A copy and paste (not a cut) keeps the reference as written, which reads the row it is pasted
+/// on, `#VALUE!` off the data rows. Hand expectation, unprobed: Excel copies `Sales[@Qty]`
+/// unchanged, as filling a table column does (references.md, T-2297). Before SPEC-0016 step 2 the
+/// copy held `T!$A$3` and read row 3 wherever it went.
+#[test]
+fn copy_and_paste_of_the_formula() {
+    let mut user = crate::UserModel::from_model(model());
+    user.set_user_input(1, 3, 1, "=Sales[@Qty]&\"!\"").unwrap();
+    user.set_selected_sheet(1).unwrap();
+    user.set_selected_cell(3, 1).unwrap();
+    user.set_selected_range(3, 1, 3, 1).unwrap();
+    let clipboard = user.copy_to_clipboard().unwrap();
+    for (row, column, expected) in [(5, 1, "3!"), (9, 1, "#VALUE!"), (3, 4, "5!")] {
+        user.set_selected_cell(row, column).unwrap();
+        user.paste_from_clipboard(1, (3, 1, 3, 1), &clipboard.data, false)
+            .unwrap();
+        let model = user.get_model();
+        assert_eq!(
+            formula(model, 1, row, column),
+            "=Sales[[#This Row],[Qty]]&\"!\""
+        );
+        assert_eq!(value(model, 1, row, column), expected, "to {row},{column}");
+    }
+}
+
+/// A defined name has no cell: its `#This Row` area is resolved at the row its body is parsed at
+/// (row 1, the header here), so it is `#VALUE!` wherever it is used, as before SPEC-0016 step 2.
+/// Hand-flagged: Excel's rule is unprobed (T-2595).
+#[test]
+fn a_defined_name_resolves_at_row_one() {
+    let mut model = model();
+    model.define_name("ThisQty", None, "Sales[@Qty]").unwrap();
+    model
+        .define_name("ThisQtyTwice", None, "Sales[@Qty]*2")
+        .unwrap();
+    for row in [1, 3, 5, 8] {
+        model
+            .set_user_input(1, row, 1, "=ThisQty".to_string())
+            .unwrap();
+        model
+            .set_user_input(1, row, 2, "=ThisQtyTwice".to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    for row in [1, 3, 5, 8] {
+        assert_eq!(value(&model, 1, row, 1), "#VALUE!", "row {row}");
+        assert_eq!(value(&model, 1, row, 2), "#VALUE!", "row {row}");
+    }
 }

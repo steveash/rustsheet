@@ -20,7 +20,9 @@ use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
-pub(crate) use structured::{to_localized_string_this_row_lowered, to_string_lowering};
+pub(crate) use structured::{
+    to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
+};
 
 pub enum DisplaceData {
     Column {
@@ -66,9 +68,11 @@ enum Rewrite<'a> {
     Move(&'a MoveContext<'a>),
     /// Prints the area of every structured reference to one of these tables (lowercase names)
     /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
-    /// and restore").
-    Lower(&'a [String]),
-    LowerThisRow, // Prints every `#This Row` as its area on the printing cell's row (T-1699).
+    /// and restore"). A `#This Row` area is resolved at the cell's row, or at the given row when
+    /// the formula is printed in R1C1 for one cell (T-1699).
+    Lower(&'a [String], Option<i32>),
+    /// Prints every `#This Row` as its area on the printing cell's row (T-1699).
+    LowerThisRow,
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
@@ -476,7 +480,7 @@ fn stringify(
             }
             &DisplaceData::None
         }
-        Rewrite::Lower(_) | Rewrite::LowerThisRow => &DisplaceData::None,
+        Rewrite::Lower(..) | Rewrite::LowerThisRow => &DisplaceData::None,
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
@@ -745,7 +749,7 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
-        ThisRowKind { .. } => structured::this_row_text(node, context, sub),
+        ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
             lowered,

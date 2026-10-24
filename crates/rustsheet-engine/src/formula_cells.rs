@@ -3,11 +3,67 @@
 //! it was rewritten, its N/T markers included (SPEC-0012), not re-read from its display text.
 
 use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+use crate::expressions::parser::stringify::{
+    to_localized_string, to_localized_string_this_row_lowered,
+};
 use crate::expressions::parser::Node;
-use crate::expressions::types::CellReferenceIndex;
+use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
+use crate::language::Language;
+use crate::locale::Locale;
 use crate::model::Model;
 
+/// A printer of a parsed formula in the active locale and language, at a cell.
+type FormulaPrinter = fn(&Node, &CellReferenceRC, &Locale, &Language) -> String;
+
 impl Model {
+    /// The formula in (`sheet`, `row`, `column`), `=` first, as `printer` prints it at the cell;
+    /// `None` for a cell without a formula. [`Model::get_cell_formula`] and
+    /// [`Model::moved_text`] differ only in their printer.
+    pub(crate) fn formula_text_with(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        printer: FormulaPrinter,
+    ) -> Result<Option<String>, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let Some(formula_index) = worksheet.cell(row, column).and_then(|c| c.get_formula()) else {
+            return Ok(None);
+        };
+        let (formula, _static_result) = &self
+            .parsed_formulas
+            .get(sheet as usize)
+            .ok_or("missing sheet")?
+            .get(formula_index as usize)
+            .ok_or("missing formula")?;
+        let cell_ref = CellReferenceRC {
+            sheet: worksheet.get_name(),
+            row,
+            column,
+        };
+        let text = printer(formula, &cell_ref, self.locale, self.language);
+        Ok(Some(format!("={text}")))
+    }
+
+    /// [`Model::get_cell_formula`] for a formula a structural edit moves `row_delta` rows; to
+    /// another row, every `#This Row` reference in it is printed as the area it is on the
+    /// cell's row (`$A$3`, or `#VALUE!` off the data rows), so the moved formula keeps reading the
+    /// row it read, as before SPEC-0016 step 2 (T-1699).
+    pub(crate) fn moved_text(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        row_delta: i32,
+    ) -> Result<Option<String>, String> {
+        let printer: FormulaPrinter = if row_delta == 0 {
+            to_localized_string
+        } else {
+            to_localized_string_this_row_lowered
+        };
+        self.formula_text_with(sheet, row, column, printer)
+    }
+
     /// The style a formula written into the cell gets: the cell's, without a quote prefix.
     pub(crate) fn formula_style_index(
         &mut self,

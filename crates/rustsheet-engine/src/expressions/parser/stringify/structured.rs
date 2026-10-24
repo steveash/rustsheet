@@ -22,12 +22,21 @@ pub(crate) fn to_string_lowering(
             stringify(
                 node,
                 context,
-                &Rewrite::Lower(tables),
+                &Rewrite::Lower(tables, None),
                 false,
                 locale,
                 language,
             )
         })
+}
+
+/// [`to_string_lowering`] in R1C1 for the formula of one cell on `row`: a `#This Row` area to
+/// one of `tables` is printed as the area it is on that row (`R3C1`, or `#VALUE!` off the data
+/// rows), the text its parse-time lowering had (T-1699).
+pub(crate) fn to_rc_lowering_at(node: &Node, row: i32, tables: &[String]) -> String {
+    let (locale, language) = (get_default_locale(), get_default_language());
+    let rewrite = Rewrite::Lower(tables, Some(row));
+    stringify(node, None, &rewrite, false, locale, language)
 }
 
 /// [`super::to_localized_string`] with every `#This Row` structured reference printed as the
@@ -57,10 +66,16 @@ pub(crate) fn to_localized_string_this_row_lowered(
 pub(super) fn this_row_text(
     node: &Node,
     context: Option<&CellReferenceRC>,
+    rewrite: &Rewrite,
     sub: impl Fn(&Node) -> String,
 ) -> String {
-    let area = match context {
-        Some(context) => node.this_row_at(context.row),
+    let row = match (context, rewrite) {
+        (Some(context), _) => Some(context.row),
+        (None, Rewrite::Lower(_, row)) => *row,
+        (None, _) => None,
+    };
+    let area = match row {
+        Some(row) => node.this_row_at(row),
         None => node.this_row_relative(),
     };
     area.map_or_else(String::new, |area| sub(&area))
@@ -85,7 +100,7 @@ pub(super) fn reference_text(
     }
     match rewrite {
         Rewrite::Displace(DisplaceData::None) => return reference.text(),
-        Rewrite::Lower(tables) => {
+        Rewrite::Lower(tables, _) => {
             let name = reference.table_name.to_lowercase();
             return if tables.contains(&name) {
                 print(lowered, rewrite)
@@ -119,7 +134,7 @@ pub(super) fn reference_text(
 /// Whether the cut and paste `rewrite` moves the formula cell `context` to another row, for a
 /// `#This Row` area `lowered` (false for any other node and any other rewrite: a structural edit
 /// re-enters the formulas it moves to another row with their `#This Row` areas lowered first,
-/// `Model::cell_formula_text`). The cell's sheet is the area's when the area names no sheet; when
+/// `Model::moved_text`). The cell's sheet is the area's when the area names no sheet; when
 /// it names one, the cell is on another sheet, which may be the cut one.
 fn row_may_move(lowered: &Node, context: Option<&CellReferenceRC>, rewrite: &Rewrite) -> bool {
     let (

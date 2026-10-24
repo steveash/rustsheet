@@ -7,16 +7,62 @@ use crate::{
         lexer::LexerMode,
         parser::{
             parse_range,
-            stringify::{
-                to_english_string, to_localized_string_this_row_lowered, to_string_lowering,
-            },
+            stringify::{to_english_string, to_rc_lowering_at, to_string_lowering},
+            Node,
         },
         types::{Area, CellReferenceRC},
         utils::{is_valid_identifier, number_to_column},
     },
     model::Model,
-    types::{Table, TableColumn, TableStyleInfo},
+    types::{Cell, Table, TableColumn, TableStyleInfo, Worksheet},
 };
+
+/// Gives every formula cell of `worksheet` whose shared formula is one of `by_row` (index, parsed
+/// formula holding a `#This Row` reference to one of `tables`) the text that formula lowers to on
+/// the cell's own row, a shared formula of its own: a duplicated sheet, which gets no table, then
+/// reads what each cell read before, `#VALUE!` off the data rows (T-1699). Rows whose text is the
+/// same share one formula.
+pub(crate) fn lower_this_row_cells(
+    worksheet: &mut Worksheet,
+    by_row: &[(usize, Node)],
+    tables: &[String],
+) {
+    if by_row.is_empty() {
+        return;
+    }
+    let cells: Vec<(i32, i32, usize)> = worksheet
+        .sheet_data
+        .cells()
+        .filter_map(|(row, column, cell)| {
+            let index = usize::try_from(cell.get_formula()?).ok()?;
+            Some((row, column, index))
+        })
+        .collect();
+    let mut known: std::collections::HashMap<String, i32> = worksheet
+        .shared_formulas
+        .iter()
+        .enumerate()
+        .filter_map(|(index, text)| Some((text.clone(), i32::try_from(index).ok()?)))
+        .collect();
+    for (row, column, index) in cells {
+        let Some((_, node)) = by_row.iter().find(|(i, _)| *i == index) else {
+            continue;
+        };
+        let text = to_rc_lowering_at(node, row, tables);
+        let Ok(next) = i32::try_from(worksheet.shared_formulas.len()) else {
+            return;
+        };
+        let new_index = *known.entry(text.clone()).or_insert_with(|| {
+            worksheet.shared_formulas.push(text);
+            next
+        });
+        if let Some(Cell::CellFormula { f, .. } | Cell::ArrayFormula { f, .. }) =
+            worksheet.cell_mut(row, column)
+        {
+            *f = new_index;
+        }
+    }
+}
 
 impl Model {
     /// Adds a table on sheet `sheet` over rows `top..=bottom` and columns `left..=right`
@@ -193,42 +239,6 @@ impl Model {
             self.workbook.tables.entry(name).or_insert(table);
         }
         self.reset_tables();
-    }
-
-    /// [`Model::get_cell_formula`] for a formula a structural edit moves `row_delta` rows; to
-    /// another row, every `#This Row` reference in it is printed as the area it is on the
-    /// cell's row (`$A$3`, or `#VALUE!` off the data rows), so the moved formula keeps reading the
-    /// row it read, as before SPEC-0016 step 2 (T-1699).
-    pub(crate) fn moved_text(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        row_delta: i32,
-    ) -> Result<Option<String>, String> {
-        let worksheet = self.workbook.worksheet(sheet)?;
-        let Some(index) = worksheet
-            .cell(row, column)
-            .and_then(|cell| cell.get_formula())
-        else {
-            return Ok(None);
-        };
-        if row_delta == 0 {
-            return self.get_cell_formula(sheet, row, column);
-        }
-        let (formula, _) = self
-            .parsed_formulas
-            .get(sheet as usize)
-            .and_then(|formulas| formulas.get(index as usize))
-            .ok_or("missing formula")?;
-        let context = CellReferenceRC {
-            sheet: worksheet.get_name(),
-            row,
-            column,
-        };
-        let text =
-            to_localized_string_this_row_lowered(formula, &context, self.locale, self.language);
-        Ok(Some(format!("={text}")))
     }
 
     /// The lowercase names of the tables on the sheet `sheet_name`, for [`to_string_lowering`].

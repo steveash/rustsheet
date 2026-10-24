@@ -158,9 +158,11 @@ on the kind of an argument call `Node::ungrouped_at(row)` (or `Node::resolved_at
 ungroup), so each sees exactly the node it saw before step 2, and evaluation (`evaluate_node_in_context`,
 `evaluate_node_with_reference`) resolves it the same way. Static analysis, which has no row, reads it as it
 is on a data row (`Node::ungrouped_static`). A structural edit that moves a formula to another row
-re-enters it with its `#This Row` areas lowered at the old row (`Model::cell_formula_text`), and a cut and
+re-enters it with its `#This Row` areas lowered at the old row (`Model::moved_text`), and a cut and
 paste to another row prints the lowered area, so the moved formula reads what it read; a formula that keeps
-its row keeps its text.
+its row keeps its text. A duplicated sheet lowers each `#This Row` cell on its own row
+(`lower_this_row_cells`, tables.rs), and a defined name, which has no cell, resolves its `#This Row` at row 1,
+where its body is parsed (`Node::lower_this_rows_at`), both as before step 2.
 
 ### Printing
 The storage and in-engine printers print a `StructuredReferenceKind` from `reference`, in the

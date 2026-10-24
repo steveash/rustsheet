@@ -615,7 +615,8 @@ impl Model {
             // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So are a
             // range operator over function operands (`A1:OFFSET(..)`) and a cross-sheet one
             // other than [`joins_a_cell_to_a_sheet_qualified_one`] (`Alpha!A1:Beta!B1`).
-            let argument: &Node = &args[0].ungrouped_at(cell.row); // `#This Row`: SPEC-0016
+            // A `#This Row` area is its cell or range on the formula's row (SPEC-0016 step 2).
+            let argument: &Node = &args[0].ungrouped_at(cell.row);
             if matches!(
                 argument,
                 Node::ReferenceKind { .. }

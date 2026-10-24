@@ -266,7 +266,9 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let node: &Node = &node.ungrouped_at(cell.row); // `ROWS((A1))` is `ROWS(A1)` (SPEC-0007)
+        // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007), and a `#This Row` area is its cell or range
+        // on the formula's row (SPEC-0016 step 2).
+        let node: &Node = &node.ungrouped_at(cell.row);
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -1651,30 +1653,7 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<Option<String>, String> {
-        let worksheet = self.workbook.worksheet(sheet)?;
-        match worksheet.cell(row, column) {
-            Some(cell) => match cell.get_formula() {
-                Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
-                        .ok_or("missing formula")?;
-                    let cell_ref = CellReferenceRC {
-                        sheet: worksheet.get_name(),
-                        row,
-                        column,
-                    };
-                    Ok(Some(format!(
-                        "={}",
-                        to_localized_string(formula, &cell_ref, self.locale, self.language)
-                    )))
-                }
-                None => Ok(None),
-            },
-            None => Ok(None),
-        }
+        self.formula_text_with(sheet, row, column, to_localized_string)
     }
 
     /// Returns the text for the formula in (`sheet`, `row`, `column`) in English if any

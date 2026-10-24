@@ -206,8 +206,7 @@ impl Model {
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
             Node::SpillRangeOperator { .. } => None,
-            // Unreachable: peeled above.
-            // Unreachable: resolved above.
+            // Unreachable: peeled and resolved above.
             Node::Group { .. }
             | Node::StructuredReferenceKind { .. }
             | Node::ThisRowKind { .. } => None,

@@ -2220,11 +2220,14 @@ canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The ev
 table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
-its value before step 2. Not as before step 2 (a change from the engine's old values; Excel itself copies
-the table with the sheet): on a duplicated sheet, a `#This Row` formula off the source table's data rows reads the copy's cell on
-its row instead of `#VALUE!`, and one on another sheet off the data rows of a deleted sheet's table is `#REF!` instead of
-`#VALUE!` (the shared formula is lowered with no row; T-2589).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2589
+its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2297, T-2325).
+A copy and paste (not a cut) keeps the text, so the copy reads the row it lands on (hand expectation, unprobed; before step 2 it
+kept reading the old row). A duplicated sheet, which gets no table, lowers each `#This Row` cell on its own row, so it reads
+what it read (`#VALUE!` off the data rows). A formula on another sheet that refers to a deleted sheet's table is `#REF!` on
+every row, off the data rows too (before step 2 those were `#VALUE!`), which matches "Delete the table's sheet" below
+(table-delete-sheet: every structured reference becomes `#REF!`). A defined name has no cell, so its `#This Row` is resolved
+at row 1, where its body is parsed, as before step 2 (unprobed, hand: Excel may resolve it at the calling cell's row; T-2595).
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595
 
 ## Structured references under row deletes, column edits, convert, table and sheet delete
 Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases
