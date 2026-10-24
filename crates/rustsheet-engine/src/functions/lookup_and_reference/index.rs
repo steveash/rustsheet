@@ -6,6 +6,7 @@ use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{array_element_value, near_integer_count, NEAR_INTEGER_TOLERANCE};
 use crate::limits::check_array_size;
+use crate::nested_array::NestedBudget;
 use crate::reference_operators::{three_d_needs_one_sheet, RefArg, RefElement, RefGrid};
 use crate::{
     calc_result::{CalcResult, Range},
@@ -117,12 +118,15 @@ fn index_window(
 /// cell (`INDEX({2;3},1)` and `INDEX({2;3},1,0)` are 1x1 arrays, `TYPE` 64; `INDEX({2,3},1)` is
 /// 2, `TYPE` 1: probes/index-one-index-array-shape, docs/excel-semantics/lookup.md "INDEX of an
 /// array: a whole row stays an array"), unless `top_left` asks for its first value only (a lifted
-/// element, which must not copy the selection).
+/// element, which must not copy the selection). One nested GROUPBY or PIVOTBY cell is the array it
+/// holds, charged to `budget` (SPEC-0018 rule 3, `NestedArray::value`); a lifted element keeps the
+/// `#VALUE!` it shows (unprobed). A row or column keeps its nested cells (rule 5).
 fn index_from_array(
     arr: &[Vec<ArrayNode>],
     row_eff: usize,
     col_eff: usize,
     top_left: bool,
+    budget: &mut NestedBudget,
     cell: CellReferenceIndex,
 ) -> CalcResult {
     let num_rows = arr.len();
@@ -142,6 +146,7 @@ fn index_from_array(
     };
     if top_left || (row_eff != 0 && col_eff != 0) {
         return match arr.get(row_start - 1).and_then(|r| r.get(col_start - 1)) {
+            Some(ArrayNode::Nested(nested)) if !top_left => nested.value(budget, cell),
             // A LAMBDA element is that LAMBDA: `TYPE(INDEX(SCAN(..),1,1))` is 128 and a LET name
             // bound to it calls (probes/lambda-arrays B5, B6).
             Some(node) => array_element_value(node, cell),
@@ -496,7 +501,15 @@ impl Model {
                 }
                 let (row_eff, col_eff) =
                     index_effective_indices(arr.len(), row_num, col_num, two_arg);
-                index_from_array(arr, row_eff, col_eff, form == IndexForm::TopLeft, cell)
+                let top_left = form == IndexForm::TopLeft;
+                index_from_array(
+                    arr,
+                    row_eff,
+                    col_eff,
+                    top_left,
+                    &mut self.nested_budget,
+                    cell,
+                )
             }
             error @ CalcResult::Error { .. } => error.clone(),
             // An uncalled LAMBDA is one value, a 1x1 area: row and column 0 or 1 give it back,
@@ -553,7 +566,8 @@ impl Model {
                 return wrong_reference(cell);
             };
             let top_left = form == IndexForm::TopLeft;
-            return index_from_array(&values, numbers.row, numbers.col, top_left, cell);
+            let budget = &mut self.nested_budget;
+            return index_from_array(&values, numbers.row, numbers.col, top_left, budget, cell);
         }
         match grid.get(numbers.row - 1, numbers.col - 1) {
             Some(RefElement::Reference(range)) => {

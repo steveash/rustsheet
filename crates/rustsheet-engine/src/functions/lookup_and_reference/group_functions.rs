@@ -5,6 +5,7 @@
 //! (excel-graph, 2026-10-16, T-1325).
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::{
     calc_result::CalcResult,
@@ -18,8 +19,9 @@ use crate::{
     functions::math_and_trigonometry::percent_of,
     functions::Function,
     language::get_default_language,
-    limits::{check_array_size, too_many_visits},
+    limits::{check_array_size, too_many_visits, MAX_SIZE},
     model::Model,
+    nested_array::{NestedArray, NestedKind},
 };
 
 use super::eta_min_args;
@@ -83,6 +85,9 @@ pub(crate) struct Functions {
     visits: u64,
     /// The cap error once the charges passed the cap: the result is that error.
     refused: Option<CalcResult>,
+    /// The cells of the nested arrays kept so far, inner levels included, against `MAX_SIZE`
+    /// ([`Model::nest`]).
+    kept: usize,
 }
 
 /// One element of the `function` argument ([`Model::function_elements`]).
@@ -469,6 +474,7 @@ impl Model {
             pairs: Vec::new(),
             visits: 0,
             refused: None,
+            kept: 0,
         })
     }
 
@@ -510,10 +516,11 @@ impl Model {
     /// Apple", G!AB97), as values, not a reference (ISREF is FALSE), with blank cells as blanks
     /// (ISBLANK is TRUE, COUNTA counts them: probes/groupby-lambda-forms G!S217, G!A241,
     /// probes/groupby-blank-values). A two-argument function also gets the relative set's values
-    /// that way (ISREF FALSE, source order: G!A341, G!A441). An array result is `#VALUE!`, a 1x1
-    /// array too (G!J121, one-record groups included), and so is a reference, also one picked by IF
-    /// or INDEX (`LAMBDA(x,Data!D2)`: groupby-lambda-forms G!J193; G!A541-A581): each cell on its
-    /// own, not the whole result.
+    /// that way (ISREF FALSE, source order: G!A341, G!A441). An array result, a 1x1 array too, and
+    /// a one-cell reference result are kept as a nested cell ([`Model::nest`]), which shows
+    /// `#VALUE!` (G!J121, one-record groups included; `LAMBDA(x,Data!D2)`: groupby-lambda-forms
+    /// G!J193; G!A541-A581), each cell on its own, not the whole result; a larger reference is
+    /// `#VALUE!`.
     ///
     /// Every call is charged the cells it is given (the cell's rows, and the relative set a
     /// two-parameter LAMBDA gets or PERCENTOF sums) before anything is built; past the cap no
@@ -528,12 +535,46 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> ArrayNode {
         match self.aggregate_result(functions, pair, values, cell_rows, cell) {
+            Ok(CalcResult::Array(rows)) => self.nest(functions, rows, NestedKind::Array, cell),
+            Ok(CalcResult::Range { left, right }) if left == right => {
+                let value = self.dereference(CalcResult::Range { left, right }, cell);
+                let rows = vec![vec![calc_result_to_array_node(value)]];
+                self.nest(functions, rows, NestedKind::Reference, cell)
+            }
             Ok(result) => calc_result_to_array_node(result),
             Err(error) => error,
         }
     }
 
-    /// [`Model::aggregate`] before an array or reference result becomes `#VALUE!`: the function's
+    /// `rows` kept as a nested cell (SPEC-0018 rules 1, 7, 8): an array result's cells (a 1x1
+    /// one, a computed one and one whose elements are nested again included) or a one-cell
+    /// reference's value, which INDEX hands back (`TYPE(INDEX(GROUPBY(..,LAMBDA(v,v)),2,2))` is
+    /// 64, probes/t2360-array-lambda-holidays P!B3:E37, probes/t2592-nested-groupby-cells
+    /// A16:A41; `LAMBDA(x,D!D2)` gives `TYPE` 1, A21). The cells this call keeps, inner levels
+    /// included, are capped at `MAX_SIZE`, past which the whole result is `#ERROR!`
+    /// ([`Functions::refused`]), and so are an evaluation's (`MAX_NESTED_KEPT_CELLS`) and a
+    /// nested cell's depth (`MAX_NESTED_DEPTH`) (directive 5, DEVIATION in arrays.md).
+    fn nest(
+        &mut self,
+        functions: &mut Functions,
+        rows: Vec<Vec<ArrayNode>>,
+        kind: NestedKind,
+        cell: CellReferenceIndex,
+    ) -> ArrayNode {
+        let Some(nested) = NestedArray::new(rows, kind) else {
+            functions.refused = Some(nested_cap_error(cell));
+            return ArrayNode::Error(Error::ERROR);
+        };
+        let kept = functions.kept.saturating_add(nested.cells());
+        if kept > MAX_SIZE || !self.nested_budget.keep(nested.grid_cells()) {
+            functions.refused = Some(nested_cap_error(cell));
+            return ArrayNode::Error(Error::ERROR);
+        }
+        functions.kept = kept;
+        ArrayNode::Nested(Arc::new(nested))
+    }
+
+    /// [`Model::aggregate`] before an array or reference result becomes a nested cell: the function's
     /// own result, or `Err` with the cell when there is no call (an unknown pair, the cap).
     pub(crate) fn aggregate_result(
         &mut self,
@@ -605,6 +646,15 @@ impl Model {
             }
         })
     }
+}
+
+/// The `#ERROR!` of a GROUPBY or PIVOTBY result whose nested cells pass a bound ([`Model::nest`]).
+fn nested_cap_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::ERROR,
+        cell,
+        "nested array results exceed the size or depth limit".to_string(),
+    )
 }
 
 /// `#N/A`, the padding of a shorter part of a stacked array.

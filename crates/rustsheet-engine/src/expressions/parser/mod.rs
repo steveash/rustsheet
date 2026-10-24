@@ -33,6 +33,7 @@ f_args  => e (',' e)*
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::functions::Function;
 use crate::language::get_default_language;
@@ -41,6 +42,7 @@ use crate::language::Language;
 use crate::locale::get_default_locale;
 use crate::locale::get_locale;
 use crate::locale::Locale;
+use crate::nested_array::NestedArray;
 use crate::text::Text;
 use crate::types::Table;
 
@@ -140,6 +142,11 @@ pub enum ArrayNode {
     /// (docs/excel-semantics/arrays.md "Arrays of LAMBDAs", probes/lambda-arrays, T-2039).
     /// Never in a parsed array constant.
     Lambda(usize),
+    /// A cell of a GROUPBY or PIVOTBY result that holds its function's array result, or the
+    /// value of a one-cell reference result (SPEC-0018 rules 1, 7, 8): a cell shows `#VALUE!`,
+    /// INDEX returns the array, an element-wise lift reads its top-left ([`ArrayNode::scalar`]).
+    /// Never in a parsed array constant.
+    Nested(Arc<NestedArray>),
 }
 
 #[derive(PartialEq, Clone, Debug)]

@@ -801,6 +801,7 @@ impl Model {
             named_lambdas: NamedLambdas::default(),
             lambda_captures: HashMap::new(),
             captured_cells: 0,
+            nested_budget: crate::nested_array::NestedBudget::default(),
             lambda_calls_base: None,
             last_lambda_id: 0,
             defined_names_running: Default::default(),

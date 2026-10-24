@@ -128,5 +128,8 @@ fn format_array_value(node: &ArrayNode, strict: bool) -> String {
         ArrayNode::Empty => String::new(),
         // Excel: a LAMBDA element is the letter lambda (probes/lambda-arrays B28).
         ArrayNode::Lambda(_) => "\u{3bb}".to_string(),
+        // Read as the `#VALUE!` it shows until T-2594 gives ARRAYTOTEXT Excel's `#CALC!`
+        // (SPEC-0018 rule 4, probes/t2592-nested-groupby-cells A10).
+        ArrayNode::Nested(_) => format!("{}", Error::VALUE),
     }
 }
