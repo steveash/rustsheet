@@ -21,7 +21,10 @@ Neither is probed. Probe with the t2592 data sheet D (`GROUPBY(D!A1:A5,D!C1:D5,.
 - `SUM(--ISERROR(GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(x,D!D2))))`, `SUM(--ISNUMBER(..))` and `ROWS(..)`;
 - the same over the A23 two-level formula, a LAMBDA returning a GROUPBY whose inner top-left is an error;
 - `REGEXEXTRACT("a1",GROUPBY(..,LAMBDA(x,D!D2)))`;
-- SUM, COUNT and COUNTA over the reference-body result.
+- SUM, COUNT and COUNTA over the reference-body result;
+- INDEX of a reference-body cell whose referenced cell is blank or an error (T-2593 holds the blank or the error, unprobed);
+- an operator over the whole result read element by element (`SUM(GROUPBY(..,LAMBDA(v,v))+0)`, `ISERROR(GROUPBY(..)+0)`) and a
+  lifted INDEX element of a nested cell (`TYPE(INDEX(GROUPBY(..,LAMBDA(v,v)),{2;3},2))`): T-2593 reads both as `#VALUE!`.
 
 Record the answers in arrays.md (the T-2592 paragraph) and update SPEC-0018's "One reader" and rule 7. If the evidence changes
 what T-2593 or T-2594 must build, update those task bodies too.

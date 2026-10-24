@@ -809,7 +809,9 @@ over several value columns gives each column its own array. A consumer that lift
 `SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a nested array's top-left is one (`{#N/A;3}`, P!C33 = 1),
 and the gen-m7 REGEXEXTRACT whose return_mode is such a GROUPBY gets a valid mode, not `#VALUE!` (gen-m7/21b4eef18424ce94 A1504),
 while MAP over the result is not an error (T-2592 below). Blank keys show as true blanks in INDEX (`TYPE` 1,
-`&""` is "", G!A12, B3), not 0. Ours: `#VALUE!` per cell and 0 for a blank key (the engine has no nested arrays: SPEC-0018, T-2593; blank keys T-2460).
+`&""` is "", G!A12, B3), not 0. Ours since T-2593: each such cell is a nested array (`ArrayNode::Nested`), shown as `#VALUE!`, which
+INDEX returns (TYPE 64) and an element-wise lift reads as its top-left (P!B3:E37, C1:C33 and gen-m7/21b4eef18424ce94 A1504 pass);
+0 for a blank key (T-2460).
 T-2592 (probes/t2592-nested-groupby-cells, excel-graph, 2026-10-24; `GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))` is 3x3: keys a, b, Total by
 key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown headers are off). Nested cells in practice:
 - A LAMBDA whose body is a one-cell reference (`LAMBDA(x,D!D2)`) still displays `#VALUE!` in every spilled cell (probes/groupby-lambda-forms
@@ -832,7 +834,15 @@ key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown 
 - Two levels: a LAMBDA returning a GROUPBY gives a nested cell that is the inner 3x3 result, whose own cells are nested again
   (`64|3x3|a`, inner INDEX(..,2,2) `64|2x1`, A23, A24); so one level is not the limit in Excel.
 - TAKE, CHOOSECOLS, VSTACK, SORT, FILTER and an INDEX of a whole row or column all keep the nested cells (A26:A32).
-Ours: not implemented (no nested arrays; SPEC-0018, T-2593, T-2594).
+Ours since T-2593 (SPEC-0018): the nested cells of rules 1, 3 and 8 (A16:A18, A22:A41), the one-cell reference body read by INDEX
+as its value (A21), and BYROW's row and BYCOL's column holding nested cells (A106, A107). MAP, BYROW and BYCOL steps, REDUCE and
+the aggregates (A1:A15, A100:A105, A108, A109) still read a nested cell as the `#VALUE!` it shows (T-2594); an element-wise lift
+of a two-level cell reads the inner top-left (assumed, T-2609), of a reference cell `#VALUE!` (unprobed, T-2609); a lifted INDEX
+element and an operator over the whole result read a nested cell as `#VALUE!` (unprobed, T-2609).
+Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
+crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
+crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),
+crates/rustsheet-engine/src/functions/lift/driver.rs (`LiftedArg::element`)
 `field_headers` 2 over two keys and two values generates
 "Row Field 1", "Row Field 2", "Value 1", "Value 2"; `field_headers` 3 with `total_depth` -1 puts the header row first, then
 Total. A header row over no records (`GROUPBY(A1,D1,f,1)`), a non-function (`5`) and fractional options (`total_depth`
@@ -1145,6 +1155,25 @@ Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/group
 crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISITS`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/relative_to.rs (`RelativeSets::new`, `MAX_SET_ENTRIES`)
 Tasks: T-1325, T-1327
+
+## Nested GROUPBY and PIVOTBY cells: bounds
+Rule: Excel keeps a GROUPBY or PIVOTBY function's array result in its cell, at any size and depth (SPEC-0018 rules 1, 8;
+"A LAMBDA array result is shown as `#VALUE!`" above). RustSheet bounds them (CLAUDE.md directive 5): one call keeps at most
+1,048,576 nested cells, inner levels included (a LAMBDA returning `SEQUENCE(1048576)` for two groups is `#ERROR!`, and so is a
+GROUPBY whose LAMBDA returns a GROUPBY of three 300,000-cell cells, twice); one evaluation keeps at most 2^22 cells in nested
+grids (`MAX_NESTED_KEPT_CELLS`, as a LAMBDA's captures; a loop of GROUPBY calls no array size check sees); a nested cell has at
+most 64 levels (`MAX_NESTED_DEPTH`); past any of them the whole result is `#ERROR!`. Copies of a nested cell share it, so
+`CHOOSEROWS(r,SEQUENCE(200)^0)` copies one for free; reading one's contents (INDEX of the cell) charges its cells to a
+per-evaluation walk budget of 2^27 cells (`MAX_NESTED_WALK_CELLS`), past which the read is `#ERROR!` (200 INDEX reads of a
+1,048,512-cell nested cell fail at the 129th). Equality of two nested cells is by content but O(1) for copies of one and for
+cells of different sizes, so it is not charged.
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5), SPEC-0018 "Bound". Unit tests in
+crates/rustsheet-engine/src/nested_array.rs and test/test_nested_groupby_cells.rs.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray::new`, `NestedBudget`),
+crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
+crates/rustsheet-engine/src/limits.rs (`MAX_NESTED_DEPTH`, `MAX_NESTED_WALK_CELLS`, `MAX_NESTED_KEPT_CELLS`)
+Tasks: T-2593
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!; an empty single cell is #VALUE!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
@@ -1760,11 +1789,11 @@ several value columns"), and `AVERAGEA(GROUPBY(Data!B1:E12,Data!B1:D12,_xleta.PR
 true blanks that COUNT and AVERAGEA skip (COUNT 91, ours 100 with 0 for each; probes/t2578-groupby-product-subtotals), the
 "Blank keys show as true blanks" rule above (T-2460). Over a LAMBDA(x,x) function the results' elements make MAX, HARMEAN and
 AVERAGE `#N/A` and COUNT 142 (gen-m9 06b4e8f5de409d5e A366, 68d8ffb69ff739d8 A285, 7c20351562a2d71d A381, e85daedce5c2675e
-A35), which the nested-array model decides (SPEC-0018, T-2593).
+A35), which the aggregates' reads of nested cells decide (SPEC-0018 rule 4; T-2594, since T-2593 made the cells nested).
 Evidence: probes/t2436 (excel-graph, 2026-10-24), the cases named in T-2578; probes/t2578-* (excel-graph, 2026-10-24).
-Ours: the PIVOTBY shapes since T-2578; the GROUPBY blank keys are T-2460's, the LAMBDA(x,x) cells T-2593's.
+Ours: the PIVOTBY shapes since T-2578; the GROUPBY blank keys are T-2460's, the LAMBDA(x,x) cells T-2594's.
 Status: VERIFIED (excel-graph)
-Tasks: T-2578, T-2460, T-2593
+Tasks: T-2578, T-2460, T-2593, T-2594
 
 ## Array-value edges in the gen-m9 sweep (T-2436)
 Rule (one gen-m9 cell each, probes/t2436, excel-graph, 2026-10-24; mechanisms probed in probes/t2579-array-value-edges,

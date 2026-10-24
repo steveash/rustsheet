@@ -122,7 +122,8 @@ impl Model {
                 ArrayNode::Boolean(_)
                 | ArrayNode::String(_)
                 | ArrayNode::Empty
-                | ArrayNode::Lambda(_) => return value_error(cell),
+                | ArrayNode::Lambda(_)
+                | ArrayNode::Nested(_) => return value_error(cell),
                 ArrayNode::Error(e) => {
                     return CalcResult::new_error(e.clone(), cell, String::new())
                 }

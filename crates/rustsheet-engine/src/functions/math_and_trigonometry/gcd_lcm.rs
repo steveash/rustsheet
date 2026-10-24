@@ -237,7 +237,9 @@ impl Model {
                                         };
                                     }
                                 }
-                                ArrayNode::Boolean(_) | ArrayNode::Lambda(_) => {
+                                ArrayNode::Boolean(_)
+                                | ArrayNode::Lambda(_)
+                                | ArrayNode::Nested(_) => {
                                     return CalcResult::Error {
                                         error: Error::VALUE,
                                         origin: cell,
