@@ -28,7 +28,13 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   - `BESSELJ(0,n)` is 0 for n >= 2; `BESSELY` of x <= 0 is `#NUM!`.
   Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
   the fdlibm port is gone.
-  The asymptotic branch is evidenced only for 8 <= x <= 100; larger x is unprobed (T-2140).
+  The asymptotic branch for 8 <= x <= 100 is gated by probe case `bessel-asymptotic` (T-2140).
+  Above 100 (probe case `bessel-large-x`, excel-graph): x = 1e3 is within 1 ulp and x = 1e6 within ~1e-14
+  relative (the phase `x - 0.785398164` loses precision differently from the engine's SIN), but Excel returns
+  `#NUM!` for `BESSELJ(x,n)` and `BESSELY(x,n)` at x = 134217728 (2^27) and 1e10 for orders 0 and 3 (and
+  `BESSELJ(1e10,1)`, `BESSELY(1e10,1)`), while `BESSELJ(2^27,1)` and `BESSELY(2^27,1)` still return a
+  value (~1e-13 relative off). The `#NUM!` is Excel's own SIN/COS argument limit; the engine still returns
+  numbers there (known failures in `bessel-large-x`).
 
 Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
