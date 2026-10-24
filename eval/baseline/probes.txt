@@ -287,6 +287,7 @@ C	probes/dynamic-array-reshape-reprobe.case.json	20
 C	probes/ecma-ceiling-formulatext.case.json	2
 C	probes/ecma-ceiling.case.json	12
 C	probes/edate-serial-0-months.case.json	12
+C	probes/effect-overflow-power-of-ten.case.json	14
 C	probes/elapsed-fractions-1900.case.json	14
 C	probes/elapsed-fractions-1904.case.json	14
 C	probes/elapsed-huge-a-1900.case.json	12

@@ -3,7 +3,7 @@ id: T-2241
 title: "Probe EFFECT overflow error and the exact-power-of-ten base (EFFECT(1E300,2), EFFECT(270,30))"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -58,3 +58,8 @@ type, error, text, or a value off by more than half a unit of the 15th significa
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Outcome
+Probe `probes/effect-overflow-power-of-ten` (excel-graph): an overflowing EFFECT/NOMINAL power is `#NUM!`; `EFFECT(270,30)` is 1E30,
+so the exact-power-of-ten path matches. `rate_power` now maps overflow to `#NUM!` (unit test added); financial.md entry updated.
+Eval delta: gen-m9 known failures -8 (the 8 visibly-off lines), probes +1 passing case (14 cells), no regressions.
