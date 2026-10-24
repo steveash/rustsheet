@@ -121,7 +121,25 @@ Cells:
 - gen-m9/eedd629f3d69fdda.case.json (1): Calc!A287
 - gen-m9/f82473275380882e.case.json (1): Calc!A297
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 6 more cells where a boolean from a cell or formula is a number in Excel: `BESSELK(18,FDIST(<FALSE cell>,8,9))` 4.591249233416482E-09 (FDIST(0,8,9) = 1, so BESSELK(18,1)), `BITOR(NETWORKDAYS(30210,F.INV.RT(<TRUE cell>,7,10)),440)` `#NUM!` (TRUE is p = 1), `DEC2HEX(87074,BINOM.INV(6,5.64159,BETA.DIST(2,<TRUE cell>,1E+5,..)))` and `DEC2OCT(11350,BETA.DIST(..,IF(..)<FALSE>,-1,..))` `#NUM!`, `DELTA(HYPGEOMDIST(2.9,5,IF(..)<FALSE>,-0.5))` `#NUM!`, and `BITXOR(-1,..STANDARDIZE(0,<FALSE cell>,0)..)` `#NUM!`; ours `#VALUE!`. The outer engineering call only passes the value or error on.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 formulas, 6 visibly off.
+Examples:
+- gen-m9/09e6a8028f5acfae Calc!A260 `=DEC2HEX(87074,BINOM.INV(6,(2.5+3.14159),BETA.DIST(2,Data!C4,1E+5,FALSE,1,Data!B12)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/62c886e21a1042af Calc!A115 `=BITOR(NETWORKDAYS(30210,F.INV.RT(Data!D10,7,10)),440)`: Excel #NUM!, ours #VALUE!
+- gen-m9/76b07b57099ccc8d Calc!A251 `=BITXOR((-1),(Data!E10^STANDARDIZE(0,Data!A5,Data!$E11)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/76b07b57099ccc8d Calc!A284 `=DEC2OCT(11350,BETA.DIST((Data!$A3+1e-15),IF(Data!C$5,"1"),(-1),ISNUMBER(#DIV/0!),(42-Data!E3),Data!E12))`: Excel #NUM!, ours #VALUE!
+- gen-m9/7dc52cfcbc8b4448 Calc!A5 `=BESSELK(18,FDIST(Data!$E8,8,9))`: Excel 4.591249233416482e-09, ours #VALUE!
+- gen-m9/9fa170a9f17624fd Calc!A104 `=DELTA(HYPGEOMDIST(2.9,5,IF(Data!D6,Data!A5),(Data!A11-2.5)))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/09e6a8028f5acfae.case.json (1): Calc!A260
+- gen-m9/62c886e21a1042af.case.json (1): Calc!A115
+- gen-m9/76b07b57099ccc8d.case.json (2): Calc!A251, A284
+- gen-m9/7dc52cfcbc8b4448.case.json (1): Calc!A5
+- gen-m9/9fa170a9f17624fd.case.json (1): Calc!A104
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 118 known-failure lines (90 from T-2255, 28 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/stat-later-argument-lift L1 and L13 and probes/stat-quantile-lift L2, L3 and L19 pass (their baseline lines

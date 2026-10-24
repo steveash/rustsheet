@@ -409,8 +409,15 @@ pub struct Parser {
     /// Names the enclosing LET and LAMBDA calls bind so far, kept only when spelled like a
     /// Lotus-style range or a cell: such a name is the variable where bound and the range or
     /// cell elsewhere (`LET(R1.C1,5,R1.C1*2)` is 10, probes/r1c1-let-name-r1-c1,
-    /// lotus-dot-range, T-1659; `LET(f1,1,f1+1)` is 2, probes/let-cell-shaped-name-stored, T-2040).
+    /// lotus-dot-range, T-1659; `LET(f1,1,f1+1)` is 2, probes/let-cell-shaped-name-stored, T-2040),
+    /// or spelled like a defined name, which the variable shadows (T-2057).
     reference_shaped_names: Vec<String>,
+    /// The formula is being typed (API `Input::Formula`/`Parse`), not read as stored: a LET name
+    /// or LAMBDA parameter spelled like a cell then refuses the formula, as Excel refuses it
+    /// typed (decision 0103, T-2497). Stored text (xlsx import, re-parses) keeps binding it.
+    typed: bool,
+    /// The first cell-shaped name the last parse bound (see `typed`).
+    cell_shaped_binding: Option<String>,
 }
 
 pub fn new_parser_english(
@@ -453,8 +460,26 @@ impl Parser {
             inner_depth: 0,
             value_operators: 0,
             reference_shaped_names: Vec::new(),
+            typed: false,
+            cell_shaped_binding: None,
         }
     }
+    /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see
+    /// [`Parser::typed_refusal`].
+    pub(crate) fn set_typed(&mut self, typed: bool) {
+        self.typed = typed;
+    }
+
+    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
+    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103).
+    /// `None` when parsing stored text or nothing is refused.
+    pub(crate) fn typed_refusal(&self) -> Option<String> {
+        let name = self.cell_shaped_binding.as_ref().filter(|_| self.typed)?;
+        Some(format!(
+            "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
+        ))
+    }
+
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
         self.lexer.set_lexer_mode(mode);
     }
@@ -499,6 +524,7 @@ impl Parser {
         self.inner_depth = 0;
         self.value_operators = 0;
         self.reference_shaped_names.clear();
+        self.cell_shaped_binding = None;
         self.top_level = true;
         let node = self.parse_expr();
         self.top_level = false;

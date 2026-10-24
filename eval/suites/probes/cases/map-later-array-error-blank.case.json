@@ -1,0 +1,43 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1946: MAP with an error, blank or empty later array, and INDEX of a LAMBDA out of range.",
+ "tags": [
+  "M7",
+  "probe",
+  "T-1946"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=MAP({1},NA(),LAMBDA(x,y,x))",
+    "A2": "=MAP({1},1/0,LAMBDA(x,y,x))",
+    "A3": "=MAP({1,2},{3,4},NA(),LAMBDA(x,y,z,x))",
+    "A4": "=MAP({1},B1,LAMBDA(x,y,x))",
+    "A5": "=MAP({1},B2,LAMBDA(x,y,ISBLANK(y)))",
+    "A6": "=MAP({1},,LAMBDA(x,y,x))",
+    "A7": "=MAP({1},B3,LAMBDA(x,y,x))",
+    "A8": "=MAP({1},{#N/A},LAMBDA(x,y,x))",
+    "A9": "=MAP({1},B4:B5,LAMBDA(x,y,y))",
+    "A10": "=MAP(NA(),LAMBDA(x,x))",
+    "A11": "=MAP(NA(),{1},LAMBDA(x,y,y))",
+    "A12": "=MAP({1},LEFT(NA(),2),LAMBDA(x,y,x))",
+    "A13": "=MAP({1},SEQUENCE(1,0),LAMBDA(x,y,x))",
+    "A14": "=ERROR.TYPE(MAP(1,LAMBDA(x,y,x)))",
+    "A15": "=ERROR.TYPE(MAP(1,2,LAMBDA(x,y,x)))",
+    "A16": "=INDEX(LAMBDA(x,x),1)(5)",
+    "A17": "=INDEX(LAMBDA(x,x),2)",
+    "A18": "=INDEX(LAMBDA(x,x),-1)",
+    "A19": "=INDEX(LAMBDA(x,x),0)",
+    "A20": "=ERROR.TYPE(INDEX(LAMBDA(x,x),2))",
+    "A21": "=ERROR.TYPE(INDEX(LAMBDA(x,x),-1))",
+    "A22": "=ERROR.TYPE(INDEX(LAMBDA(x,x),0))",
+    "A23": "=ERROR.TYPE(INDEX(LAMBDA(x,x),1,2))",
+    "B3": "a",
+    "B4": 1,
+    "B5": 2
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -1233,6 +1233,44 @@ over whole columns. A call that does not lift is not charged.
 Status: VERIFIED (excel-graph); the lifted-call bound is DEVIATION (decision 0014)
 Tasks: T-1086, T-1389, T-1390
 
+## Database criteria
+Rule: in every D-function a `database` or a `criteria` range of one row (headers only, `DSUM(A1:E6,2,H1)`,
+`DSUM(A1:E6,2,H1:I1)`, `DSUM(A1:E1,2,H1:H2)`) is `#VALUE!`. A record matches when any criteria row (OR)
+has every non-blank cell holding (AND); a criteria row that is blank under its headers therefore matches
+every record (`H1:H3` with `H3` blank sums all records), as does a blank header over a blank condition.
+- **Header matching.** A criteria header names the database column whose header has the same text,
+  ignoring case and not trimming (`" Qty"` names nothing). Numbers and booleans read as their coerced text
+  (numbers.md "Number → text conversion"): the number 0.5 and the text `"0.5"` name the number header
+  0.5, `"TRUE"` names the boolean header TRUE, and the header 1E-15 is named by the number 1E-15 and by
+  `"0.000000000000001"` but not by `"1E-15"`. A blank or error criteria header names no column, even
+  when the database has a blank header. The same text rule resolves a text `field`, and there `""`
+  names a blank database header (`DSUM(A1:E6,"",H1:H2)` sums the blank-headed column).
+- **Computed criteria.** A condition under a header that names no column (blank, an error, or text that
+  is no database header) is a computed criterion: it holds when its value is TRUE, a non-zero number
+  (-1, 0.3 and 2 all hold) or the text `"TRUE"`, and fails for FALSE, 0, an error and any other text,
+  `">2"` and `"1"` included. So an
+  unknown header over `">2"` matches nothing, and over TRUE matches everything. A formula condition is
+  evaluated again for each record with its relative references moved down to that record: a blank
+  header over `=B2>2` (cached FALSE, the first record's Qty is 1) sums the records whose Qty is above 2.
+  The probe puts the criteria row on the first record's row and sheet, so whether the references move by
+  the record's offset from the criteria cell (ours) or are rebased onto the first record is UNVERIFIED
+  for criteria on another row or sheet; only uppercase `"TRUE"` was probed.
+- **DGET** of the one matching record's blank field cell is `#VALUE!`, as when nothing matches.
+- **Matched conditions** use the shared criteria grammar (criteria.md); `Qty` over TRUE matches only
+  the boolean TRUE record, over `=NA()` nothing.
+Evidence: probes/db-header-criteria-shapes (72 questions; database A1:E6 with headers Name, Qty, 0.5,
+TRUE and a blank) and probes/db-computed-criteria-shapes (53 questions; headers Name, Qty, 1E-15,
+123456789.123 and a blank), excel-graph, 2026-10-23, T-1390.
+Ours: `db_criteria_columns`, `db_row_matches_criteria` and `db_computed_condition` in
+functions/database.rs; a formula condition is evaluated in the context of the criteria cell moved
+down by the record's offset. A formula condition that itself runs a D-function with formula
+conditions would re-evaluate them without passing through a cell, its work growing as the records to
+the power of the nesting, so only one level runs: a nested formula condition is `#ERROR!` and fails
+(directive 5; DEVIATION, decision 0014). What Excel does with a nested formula condition is unprobed.
+Status: VERIFIED (excel-graph); the one-level re-evaluation is DEVIATION (decision 0014), Excel's nested
+behavior UNVERIFIED
+Tasks: T-1390
+
 ## GAMMA and GAMMALN sweep (T-1042)
 Rule: Excel's GAMMA is exact only for small integers, GAMMALN is not correctly rounded at integers,
 and the two functions have different domains.
@@ -2053,6 +2091,73 @@ Tasks: T-1530, T-1538
   about the 6th digit at df 1E10 (`F.INV(0.5,1E10,1E10)` = 1.0000025, Excel 1) and `F.DIST(...,FALSE)` at df 1E10 is
   `#NUM!` (`statrs` pdf) where Excel gives a number. 16 of 58 cells of the case fail (A1-A14, A57, A58); T-1538 closes them.
 
+## F quantile at a huge df goes through Excel's BETA.INV (T-1538)
+Rule: at a huge df Excel's F.INV and F.INV.RT are Excel's BETA.INV mapped to the F scale, and that BETA.INV
+misses its own CDF's crossing by up to about 1E-16 in x (absolute), in either direction, so for an x near
+1E-10 it is off by up to about 1E-6 relative. The quantiles are therefore not the true ones: `F.INV(0.5,5,1E10)` =
+0.8702920369171896 while the true quantile is 0.87029203827791371 (ours 0.8702920382779133).
+- Reciprocal identity: F.INV(p,d1,d2) and 1/F.INV.RT(p,d2,d1) (computed in double) agree within 2 ulps at every
+  df probed (5/1E10, 1E10/5, 7/3, 3/7, 2/1E8, 1E8/2, 4/4, 6/1E10, 1E10/6, 1E6/5, 5/1E6; p = 0.5, 0.025, 0.975,
+  1E-6, 0.999999, 0.3; bit-equal at 38 of 66 pairs). So `F.INV(0.5,1E10,5)` = 1/`F.INV.RT(0.5,5,1E10)` exactly.
+- F.INV(p,5,1E10) is d2 y / (d1 (1 - y)) with y = Excel's `BETA.INV(p,2.5,5E9)`, to within about 10 ulps
+  (the mapping's rounding is not pinned). F.INV.RT(p,5,1E10) is 2E9 (1 - y') / y' with y' = `BETA.INV(p,5E9,2.5)`
+  within 3 ulps at p = 0.5, 0.025, 1E-6 and 0.3; at p = 0.975 and 0.999999 that is 6E-7 relative off, and
+  F.INV.RT(p,5,1E10) is instead bit-equal to F.INV(1-p,5,1E10). Which path Excel takes is not pinned.
+- Excel's BETA.DIST is accurate there (about 1E-15 relative; 8E-15 at x = 1.29E-12, p = 1E-6), so the miss is
+  in BETA.INV: `BETA.DIST(BETA.INV(0.025,2.5,5E9),2.5,5E9,TRUE)` is 0.025000051345569204, and `F.DIST(F.INV(0.025,5,1E10),5,1E10,TRUE)` is 0.02500005134556904.
+  `F.DIST(2,5,1E10,TRUE)` = 0.9247647537543169 is the true value (t1530-f-df-cut A8).
+- BETA.INV(p,2.5,5E9) and BETA.INV(p,3,5E9) miss the true quantile by about -2.9E-17 to +7.7E-17 in x. For x above
+  about 1E-9 (p = 0.975, 0.999999) x is a multiple of 2^-50 to 2^-53 with 21 to 25 significant bits; plain bisection
+  of [0, 1] on an accurate CDF reproduces it (shape 2.5: 52nd or 53rd halving; shape 3: 50th or 52nd; lower or
+  upper end). For smaller x the result is off that grid (denominators 2^81 to 2^92), and neither bisection, linear interpolation in the
+  last bracket, nor Newton from the mean reproduces it.
+Evidence: probes-numeric t1538-f-inv-huge-df (156 cells) and t1538-beta-dist-at-excel-inv (24 cells), excel-graph,
+2026-10-23.
+- F.INV(p,d1,d2) at a df of 1E5 or more is (d2/d1) (y / (1 - y)) with y = Excel's BETA.INV(p,d1/2,d2/2), and
+  F.INV.RT(p,d1,d2) is taken as 1/F.INV(p,d2,d1) (a chosen form: the evidence is agreement within 2 ulps): with y from the entry below, `F.INV(0.5,1E10,5)` is 1.1490395521130337
+  bit for bit (A3; d2 y/(d1 (1 - y)) is 1 ulp below). For p above 1/2 the root BETA.INV's flip solves, s = 1 - y,
+  is mapped as it is, (d2/d1) ((1 - s)/s): `F.INV(1-1E-12,100000,5)` = 97570.08944108484 (probes-numeric
+  t1538-f-quantile-switchover A9), where forming 1 - y from the flipped y misses by 9E-8 relative. This explains the
+  6E-7 paths above: at p > 1/2 the flip moves the solve to the other side. Either side of df 1E5 (99999, 1E5, 1E6 at
+  p = 1E-12 and 1 - 1E-12) the engine is within 2E-13 relative of Excel on all 24 cells of that case.
+Status: VERIFIED for the values above; Excel's BETA.INV stop where its quantile is tiny is UNVERIFIED (T-2555)
+Implemented in: functions/statistical/fisher.rs `f_quantile_through_beta`
+Tasks: T-1538, T-1745, T-2555
+
+## BETA.INV at a huge shape is AS 109's Newton search (T-1538)
+Rule: Excel's BETA.INV has the structure of AS 64/109 (the search statrs ports, `inverse_beta.rs`): for p above 1/2
+it is 1 - BETA.INV(1 - p, b, a), and otherwise a Newton search for the crossing of an accurate CDF. Where that
+quantile is near 1 (the first shape huge) the search converges: Excel's value is the double nearest the true root.
+Where it is tiny (the second shape huge, p <= 1/2) the search stops early, a Newton step or so short.
+- Flip, bit for bit: `BETA.INV(0.975,2.5,5E9)` = 1.2832501727899626E-09 = 1 - `BETA.INV(0.025,5E9,2.5)` (A141, A138);
+  likewise A143/A140, A149/A146, A151/A148. Such an x is on the 2^-53 grid near 1, hence its 21 to 25 significant bits.
+- Converged near 1: AS 109 run to convergence on an accurate CDF (no start clamp to [1E-4, 0.9999], acu 1E-40) is
+  bit-exact on 16 of the 24 BETA.INV cells of t1538-f-inv-huge-df (all 12 near-1 cells and the 4 flipped ones of
+  p = 0.999999 and 0.975 at shape 3), 1 ulp off at A142. With statrs' own acu (1E-14 here, a stop at a step below
+  1E-7) and its start clamp it overflows (the density at x = 1E-4 is exp(5E5)) or stops 1E-3 relative off.
+  `BETAINV(1E-20,1E10,0.5)` = 0.9999999956419133 is the true quantile rounded (gen-m9/0a9226016e8f5f33 A358).
+  Exception: `F.INV.RT(0.5,2,123456789.1229)` (gen-m9/f34f66fb7f81e673 A209, y = BETA.INV(0.5,61728394.5,1) near 1,
+  I_x = x^a) is one double from the nearest root, which lies almost halfway (0.50/0.50 ulp) between two doubles: a tie
+  Excel's own rounding decides, UNVERIFIED (T-2555).
+- Early stop where tiny: the cells A133, A135, A137, A139, A145, A153, A155 (x from 1.3E-12 to 5.3E-10) are 6E-16
+  to 9.3E-7 relative off the true root, near AS 109's second Newton iterate from its own start (1E-12 to 4E-8
+  relative), but no fixed acu, statrs' acu, or ln B from a double lgamma reproduces them (T-2555).
+- Ours: the crossing needs the CDF to about 1E-8 relative to pick Excel's neighbour near 1, and the T-0970 incomplete
+  beta is about 1E-7 off there (its fraction does not converge, T-2528): 1 ulp off at 4 of 12 near-1 cells. Where
+  b/a is at most 1E-7, I_x(a, b) is taken as its large-a limit Q(b, -nu ln x), nu = a + (b - 1)/2 (the leading term
+  of TOMS 708 `bgrat`, relative error about (b/a)^2 by mpmath: 1E-19 at a = 5E9), which is bit-exact on all of them.
+- Search failure at an extreme p: `F.INV(1E-200,1E10,6)` = 1.3006292404573862E-07 and
+  `BETAINV(1E-100,123456789.123,0.1,0.1)` = 0.9999919015105116 are not roots of the CDF (the root of the latter is
+  0.9999983733488269), so Excel's search ends somewhere else there (gen-m9/7c20351562a2d71d A37,
+  8dd2312c96effb1b A169; UNVERIFIED, T-2555).
+Consequence: F.INV at a huge df (T-1538 entry above) is exact wherever its beta variable is near 1.
+Evidence: probes-numeric t1538-f-inv-huge-df A133-A156 (excel-graph, 2026-10-23); AS 109 replayed with an
+mpmath CDF (T-1538 PR).
+Status: VERIFIED for the flip and the converged near-1 values; the early stop is UNVERIFIED (T-2555)
+Implemented in: functions/statistical/inverse_beta.rs `beta_quantile_crossing`, functions/statistical/special.rs
+`nearest_crossing`
+Tasks: T-1538, T-2555
+
 ## Student-t quantile at a tiny probability (T-1531)
 Rule: T.INV, T.INV.2T, TINV and CONFIDENCE.T never error for a tiny p or alpha: the quantile follows the power-law tail, so it is finite and huge for a small df (`T.INV(1E-300,1)` = -3.183098861837907E299, about 1/(pi p)) and about -79 for df = 99999.
 
@@ -2072,12 +2177,35 @@ Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and 
 
 Status: VERIFIED (excel-graph, 2026-10-15; probes-numeric case `t1543-inverse-cdf-tiny-p`, 102 cells, p in 1E-300, 1E-200, 1E-100, 1E-20, 1-1E-16, 1-1E-10)
 
-Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/special.rs `bisect_unit_interval` (BETA.INV only; the rest need no guard)
+Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/inverse_beta.rs `beta_quantile_crossing` (BETA.INV); functions/statistical/incomplete_gamma.rs `gamma_quantile` and chisq.rs `chisq_inv_of` (CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.INV, GAMMAINV; T-1634)
 
-Tasks: T-1543
+Tasks: T-1543, T-1634
+
+- CHISQ.INV.RT and CHIINV quirks (T-1634; the literal-argument cells of gen-m9, this probe and m9-legacy-chiinv):
+  - At one degree of freedom (df is truncated, so 1.5 too) the right-tail quantile is the left one of 1 - p:
+    `CHISQ.INV.RT(1E-10,1)` = 41.82145620298276 = `CHISQ.INV(0.9999999999,1)` (the true right-tail quantile is
+    41.82145636476129), and a p of 2^-54 (about 5.55E-17) or less, where 1 - p rounds to 1, is `#NUM!`
+    (`CHISQ.INV.RT(1E-20,1)`; p between 5.55E-17 and 1E-16 is unprobed). The rule is exact only to Excel's search
+    on its double-valued lower cdf: `CHIINV(1E-9,1)` (probes-numeric/m9-legacy-chiinv A1, A2) is 37.324892889999234
+    in Excel, about 2.2E-7 (one step of the cdf's resolution near 1) below the complement crossing
+    37.324893106518715 (ours) and the true quantile 37.32489305136234 (T-2561).
+  - With 3 to 10 degrees of freedom a right-tail p of 1E-100, 1E-200 or 1E-300 is `#NUM!` (21 literal gen-m9 cells:
+    `CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `CHISQ.INV.RT(1E-300,10)`), though the quantile exists, while
+    1E-20 is a value for every df probed (`CHIINV(1E-20,5)` = 103.42897723775795). df 2 (`CHISQ.INV.RT(1E-300,2)` =
+    1381.5510557964274, -2 ln p) and df 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946) are values at every p.
+    The boundary p between 1E-20 and 1E-100 is unprobed; the engine takes `#NUM!` below 1E-20
+    for df 3 to 10 (df 22 at `CHISQ.INV.RT(1E-100,...)` is 542.4417060011164 in Excel, gen-m9; df 11 to 21 unprobed, UNVERIFIED).
+  - A quantile below the smallest normal double is 0 (`CHISQ.INV(1E-200,1)`, crossing about 1.6E-400).
+- Ours (T-1634): the quantile is statrs' search where its result solves the smaller tail to 1E-13 relative, else the
+  crossing of that tail's capped incomplete gamma (the lower tail with `x^a` by `powf`, so `GAMMA.INV(1E-300,1,1)` is
+  9.999999999999999E-301, one ulp under Excel's 1E-300: the crossing is exact, and the ulp is lost to
+  `refine_increasing`'s midpoint; `special::nearest_crossing` would return 1E-300, a lead for T-2561). Above shape 1E9 it stays statrs' search alone: Excel is `#NUM!` for `GAMMAINV(0.999999,10000000000.5,1E+10)`.
+  The cells still off are Excel's own last digits: `CHISQ.INV(1E-300,50)` is 2.0354283669760313E-11 in Excel while the
+  correctly rounded quantile (ours) is 2.035428366976834E-11, and `GAMMAINV(0.5,0.01,100)` is 4.4655350189103716E-29
+  in Excel against the true 4.46553501891034868E-29 (ours ...0346E-29): Excel's tail kernel is not fitted (T-2561 for the visibly-off cells, T-0972 for the last digits).
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
-- Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Ours give `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380): see the follow-up task.
+- Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. `BETA.INV` uses it for shapes up to 1E5 and p of 1E-15 or more (bit-exact with Excel in ironcalc-calc BETADIST_BETAINV.xlsx) and bisects on the cdf otherwise. A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 
@@ -2402,6 +2530,55 @@ Ours: `#N/IMPL!` for every call (T-2424 implements the argument step; T-2425 the
 Status: VERIFIED (excel-graph) for the argument step
 Tasks: T-2028, T-2424, T-2425, T-1553
 
+## QUARTILE reports quart's error before empty data (T-2455)
+Rule: `QUARTILE(B5:B6,SUMIFS(C1:E1,B11:D12,1))` with no number in B5:B6 is the quart's `#VALUE!` (the SUMIFS of mismatched
+ranges, A58), not the empty-data `#NUM!`; with a valid quart it is `#NUM!` (`QUARTILE(B5:B6,1)`)
+(probes/t2455-transpose-single-value A59, A60, excel-graph, 2026-10-23; gen-m9 899f9555e67da2d6 A344 through LINEST).
+QUARTILE.INC is the same (A83).
+Ours: since T-2455 (`fn_quartile_inc`, QUARTILE and QUARTILE.INC); QUARTILE.EXC keeps the empty-data check first (unprobed).
+Status: VERIFIED (excel-graph)
+Tasks: T-2455
+
+## F.TEST of a single value (T-2455)
+Rule: F.TEST takes any single value as a sample of at most one, so it is `#DIV/0!` whatever the value's type: `FTEST(5,{1;2;3})`,
+`FTEST({1;2;3},SUM(4))`, `FTEST(TRANSPOSE(5),{1;2;3})`, `FTEST(B1,{1;2;3})` with B1 = 5, `FTEST("5",..)`, `FTEST("abc",..)`,
+`FTEST(TRUE,..)`, `FTEST(5,6)` and `FTEST({1;2},5)` (probes/t2455-transpose-single-value A8:A36, excel-graph, 2026-10-23); a direct
+error is that error (`FTEST(1/0,..)` `#DIV/0!`, A29). A one-cell reference to a blank cell is `#VALUE!` (next entry): `FTEST(B10,{1;2;3})`,
+`FTEST(5,B10)`, `FTEST(B1,B10)`, `FTEST(B10,B1)` (A30:A39) and gen-m9 bbdfc06cae0e0d71 A34 `F.TEST(Data!B9:B9,<number>)`, while a
+blank two-cell range is `#DIV/0!` (`FTEST(B10:B11,{1;2;3})`, A33).
+F.TEST checks its samples in order, each one's error or blank one-cell reference before the next: `FTEST(1/0,B10)` is
+`#DIV/0!` and `FTEST(NA(),B10:B10)` `#N/A` (A77, A78), so for F.TEST the blank does not beat an earlier sample's error; a
+computed blank (`FTEST(IF(TRUE,B10),{1;2;3})`) is `#VALUE!` too (A79). An omitted sample (`FTEST(,{1;2;3})`) is unprobed
+(ours: the one-value `#DIV/0!`).
+Ours: since T-2455 (`fn_f_test`, `f_test_sample`, `is_blank_one_cell` in functions/statistical/fisher.rs). The paired
+functions' blank-cell `#VALUE!` stays with T-2426.
+Status: VERIFIED (excel-graph)
+Tasks: T-2455, T-2426
+
+## LINEST and LOGEST report error values first (T-2455)
+Rule: LINEST and LOGEST first report an argument that is itself an error value, in argument order (known_y, known_x, const,
+stats), and only then check the data: an error element of a range or array, a single value that is no number, too few points,
+unequal rows (`#REF!`) and text. So `LINEST({1;2},1/0,"x")`, `LINEST(1/0,{1;3},"x")`, `LOGEST({1;2},1/0,"x")` and
+`LINEST({1;2},1/0,UNIQUE(1,"1"))` are `#DIV/0!` (probes/t2455-transpose-single-value A4, A6, A25, A27; gen-m9 4e55500bb8ad3cd8
+A178), while an error const or stats beats the size and point checks: `LINEST(Data!C3:C7,Data!B5:B10,NA(),"1")` is `#N/A`, not
+`#REF!` (gen-m9 05d44f6dd6cfc567 A195), `LINEST(5,{1;2},NA())` and `LINEST(INT(999999999999999),42,NA(),TRUE)`
+`#N/A` (A50), `LINEST(<TRUE cell>,0.5,"FALSE",NA())` `#N/A` (c6cfda6bd10cae93 A110), and an error element of x comes after
+them (`LOGEST(Data!E$11,IF(MAP(..)),(MODE.MULT(..)<"1.5"))` is the const's `#N/A`, 35e8168aae2b00f8 A400). A text const or
+stats is `#VALUE!`: `LINEST({1;2},{1;3},"x")` (A7), `LINEST({1;2},{1;3},TRUE,"x")` (A26), and `UNIQUE(1,"1")` as const (A5).
+A computed blank known_y is `#VALUE!` before known_x's and const's errors (`LINEST(IFERROR(B10,1),1/0)` and
+`LINEST(IFERROR(B10,1),{1;2},NA())` with B10 blank, A68, A84; `LOGEST(IFERROR(B10,1),PEARSON(..)<#N/A>)` A66, gen-m9
+623663cacea53bbc A144), while a blank reference and a computed text or boolean y wait (`LINEST(B10,1/0)`, `LINEST(5,1/0)`,
+`LINEST("abc",1/0)`, `LINEST("5",1/0)` and `LINEST(IF(TRUE,"abc"),1/0)` are `#DIV/0!`, `LINEST(TRUE,{1;2},NA())` `#N/A`;
+A62, A67, A73:A76).
+Ours: the order since T-2455 (`read_regression_inputs`, `validate_regression_inputs`, `read_matrix` in
+functions/statistical/linest.rs). An error cell in known_y waits too (`LINEST(B20:B21,1/0)` with B20 `#N/A` is `#DIV/0!`,
+`LOGEST(B20:B21,{1;2},NA())` `#N/A`, A89, A94), an omitted known_y is `#VALUE!` (`LINEST(,1/0)`, A90), and TREND and GROWTH,
+which share the reader, follow the same y-then-x order (`TREND(B20:B21,1/0)`, `TREND("abc",1/0)`, `GROWTH(B20:B21,1/0)` and
+`GROWTH("abc",1/0)` are `#DIV/0!`, A85:A88). A defined name for a blank cell as known_y is unprobed (ours: the computed-blank
+`#VALUE!`). A text const or stats is read as a boolean (0.5 for A7, A26), T-2556.
+Status: VERIFIED (excel-graph)
+Tasks: T-2455, T-2556
+
 ## A one-cell reference to an empty cell is #VALUE! in the paired functions and F.TEST (T-2255)
 Rule: COVAR, COVARIANCE.P, COVARIANCE.S, CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, FORECAST, FORECAST.LINEAR,
 CHISQ.TEST, CHITEST, T.TEST, TTEST, F.TEST and FTEST are `#VALUE!` when an array argument is a one-cell reference to an
@@ -2414,7 +2591,7 @@ fcf11f2ec6f7a59d A9, the T-2051 question). A one-cell reference holding a number
 ("Array arguments given a scalar, a single cell or an error" above; `FTEST(6,Data!A$11)` with A11 = "x" is `#DIV/0!`,
 35e8168aae2b00f8 A253). This contradicts the earlier inference that an empty cell is one value with no number.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 109 cells listed in T-2426.
-Ours: `#N/A` (size) or `#DIV/0!` (one point); T-2426.
+Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions `#N/A` (size) or `#DIV/0!` (one point), T-2426.
 Status: VERIFIED (excel-graph)
 Tasks: T-2426, T-2051
 

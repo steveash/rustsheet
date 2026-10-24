@@ -155,13 +155,16 @@ pub(crate) fn to_string_moved(
 }
 
 /// The sheet prefix of a 3-D reference, `First:Last`, quoted as one name when either sheet
-/// needs quotes (Excel writes `'Data2:Q 4'!A1`).
-pub(crate) fn sheet_span_text(first: &str, last: &str) -> String {
+/// needs quotes (`'Data2:Q 4'!A1`); a one-sheet span is the plain name (probes/3d-ref-one-sheet-span-lift B6).
+pub(crate) fn sheet_span_text(first: &str, last: &str, one_sheet: bool) -> String {
     let span = format!("{first}:{last}");
-    if !name_needs_quoting(first) && !name_needs_quoting(last) {
-        span
-    } else {
-        format!("'{}'", span.replace('\'', "''"))
+    match (
+        one_sheet,
+        name_needs_quoting(first) || name_needs_quoting(last),
+    ) {
+        (true, _) => quote_name(first),
+        (false, false) => span,
+        (false, true) => format!("'{}'", span.replace('\'', "''")),
     }
 }
 
@@ -581,11 +584,12 @@ fn stringify(
         SheetSpanKind {
             first_sheet,
             last_sheet,
+            first_index,
+            last_index,
             reference,
-            ..
         } => format!(
             "{}!{}",
-            sheet_span_text(first_sheet, last_sheet),
+            sheet_span_text(first_sheet, last_sheet, first_index == last_index),
             stringify(
                 reference,
                 context,

@@ -6,6 +6,7 @@
 use crate::functions::lift::num_error;
 use crate::{
     calc_result::CalcResult,
+    expressions::token::Error,
     expressions::{parser::Node, types::CellReferenceIndex},
     functions::Function,
     model::Model,
@@ -60,7 +61,17 @@ impl Model {
 
     /// The digit text of a HEX/OCT `number`. Excel reads a blank cell and empty text as 0 in every
     /// base conversion (probes/eng-base-conv-blank, docs/excel-semantics/engineering.md).
+    ///
+    /// A boolean is `#VALUE!`, as in `BIN2DEC(TRUE)` (T-2420; engineering.md "Engineering function
+    /// argument modes").
     fn base_digits(value: &CalcResult, cell: CellReferenceIndex) -> Result<String, CalcResult> {
+        if matches!(value, CalcResult::Boolean(_)) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expecting number".to_string(),
+            ));
+        }
         let text = Self::cast_string_ref(value, cell)?;
         Ok(if text.is_empty() {
             "0".to_owned()
@@ -511,6 +522,10 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
+        // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A28).
+        if value.len() > 10 {
+            return num_error(cell);
+        }
         let mut value = match i64::from_str_radix(&value, 8) {
             Ok(f) => f,
             Err(_) => {
@@ -548,6 +563,10 @@ impl Model {
             if p <= 0 || p > 10 {
                 return num_error(cell);
             }
+        }
+        // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A33).
+        if value.len() > 10 {
+            return num_error(cell);
         }
         let mut value = match i64::from_str_radix(&value, 8) {
             Ok(f) => f,

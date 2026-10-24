@@ -1,6 +1,6 @@
 ---
 id: T-2483
-title: "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD: argument check order, and ODDLPRICE before the last coupon is #NUM! (gen-m9, 68 cells)"
+title: "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD: argument check order, and ODDLPRICE before the last coupon is #NUM! (gen-m9, 70 cells)"
 milestone: M9
 lane: functions-financial
 status: todo
@@ -63,7 +63,18 @@ Cells:
 - gen-m9/c0681a8b150ce301.case.json (2): Calc!A19, A54
 - gen-m9/d912671baa1364aa.case.json (2): Calc!A94, A257
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `IMCOT(MAKEARRAY(1,ODDLPRICE(35184,39240,-0.5,1.005,<" x ">,109,42),..))` and `OCT2DEC(ODDFYIELD(35376,59,..,RANK.AVG(<"ABC">,..)<#VALUE!>,0))` are `#NUM!` (the domain before the text or error; ours `#VALUE!`).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas, 2 visibly off.
+Examples:
+- gen-m9/62c886e21a1042af Calc!A88 `=IMCOT(MAKEARRAY(1,ODDLPRICE(35184,39240,Data!C8,1.005,Data!C10,109,42),_xleta.MAX))`: Excel #NUM!, ours #VALUE!
+- gen-m9/7dc52cfcbc8b4448 Calc!A133 `=OCT2DEC(ODDFYIELD(35376,59,VAR.P(Data!D2:D12,Data!$A8,Data!A2),38745,3.14159,80,Data!E$8,RANK.AVG(Data!A9,Data!E6:E7),0))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/62c886e21a1042af.case.json (1): Calc!A88
+- gen-m9/7dc52cfcbc8b4448.case.json (1): Calc!A133
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 68 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for ODDLPRICE with the settlement before, on and after `last_interest`, and for the argument order of each function.

@@ -12,7 +12,7 @@ use std::io::BufRead;
 use quick_xml::events::{BytesEnd, BytesStart, Event};
 use rustsheet_engine::expressions::parser::Parser;
 use rustsheet_engine::expressions::utils::{is_valid_row, number_to_column};
-use rustsheet_engine::types::{Cell, Row, SheetData};
+use rustsheet_engine::types::{Cell, DateSystem, Row, SheetData};
 
 use crate::error::XlsxError;
 
@@ -143,6 +143,8 @@ struct SheetDataReader<'a> {
     limits: &'a ImportLimits,
     /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
     rich_errors: &'a [Option<&'static str>],
+    /// The workbook's date system, for `t="d"` cells.
+    date_system: DateSystem,
 
     sheet_data: SheetData,
     rows: Vec<Row>,
@@ -634,6 +636,7 @@ impl SheetDataReader<'_> {
             cell.rich_text,
             anchor_cell,
             array_kind,
+            self.date_system,
         );
         row.cells.insert(column_index, cell);
         Ok(())
@@ -649,6 +652,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     shared_strings: &mut SharedStringTable,
     limits: &ImportLimits,
     rich_errors: &[Option<&'static str>],
+    date_system: DateSystem,
 ) -> Result<SheetDataXml, XlsxError> {
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();
@@ -660,6 +664,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         shared_strings,
         limits,
         rich_errors,
+        date_system,
         sheet_data: SheetData::new(),
         rows: Vec::new(),
         shared_formulas: Vec::new(),
@@ -742,6 +747,7 @@ mod tests {
             &mut SharedStringTable::default(),
             &ImportLimits::default(),
             &[],
+            DateSystem::Excel1900,
         )?;
         let mut positions: Vec<(i32, i32)> = read
             .sheet_data
@@ -750,6 +756,63 @@ mod tests {
             .collect();
         positions.sort_unstable();
         Ok(positions)
+    }
+
+    /// The cell a lone `<c r="A1" t="d">` holding `text` reads as in `date_system`.
+    fn read_date_cell(text: &str, date_system: DateSystem) -> Result<Cell, XlsxError> {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="d"><v>{text}</v></c></row></sheetData></worksheet>"#
+        );
+        let mut parser = new_parser_english(vec!["Sheet1".to_string()], vec![], HashMap::new());
+        let read = read_sheet_data(
+            xml.as_bytes(),
+            "Sheet1",
+            &mut parser,
+            &mut SharedStringTable::default(),
+            &ImportLimits::default(),
+            &[],
+            date_system,
+        )?;
+        let cell = read
+            .sheet_data
+            .cells()
+            .next()
+            .map(|(_, _, cell)| cell.clone());
+        cell.ok_or_else(|| XlsxError::Xml("no cell".to_string()))
+    }
+
+    // docs/excel-semantics/xlsx-storage.md "`t="d"` cells in a 1904 workbook" (T-2515):
+    // fixtures/t-d-1904, t-d-1904-epoch, t-d-1904-time-only, t-d-1904-pre-epoch.
+    #[test]
+    fn t_d_cells_take_their_serial_in_the_workbook_date_system() -> Result<(), XlsxError> {
+        use rustsheet_engine::expressions::token::Error;
+        let number = |v| Cell::NumberCell { v, s: 0 };
+        for (text, system, expected) in [
+            (
+                "2024-01-01T00:00:00",
+                DateSystem::Excel1900,
+                number(45292.0),
+            ),
+            (
+                "2024-01-01T00:00:00",
+                DateSystem::Excel1904,
+                number(43830.0),
+            ),
+            ("1904-01-01", DateSystem::Excel1904, number(0.0)),
+            ("12:00:00", DateSystem::Excel1904, number(0.5)),
+            (
+                "1903-12-31",
+                DateSystem::Excel1904,
+                Cell::ErrorCell {
+                    ei: Error::VALUE,
+                    s: 0,
+                },
+            ),
+            ("1903-12-31", DateSystem::Excel1900, number(1461.0)),
+        ] {
+            assert_eq!(read_date_cell(text, system)?, expected, "{text} {system:?}");
+        }
+        Ok(())
     }
 
     // docs/excel-semantics/xlsx-storage.md "Cells and rows without r are positional" (T-0181).
