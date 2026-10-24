@@ -1,0 +1,4 @@
+myhold div misses by ulp: {'1': 356, '2-4': 249, '>4': 425} | matched at x +- 1 ulp: 135
+myhold mulr misses by ulp: {'1': 332, '2-4': 251, '>4': 426} | matched at x +- 1 ulp: 143
+mya div misses by ulp: {'1': 1973, '2-4': 955, '>4': 1393} | matched at x +- 1 ulp: 789
+mya mulr misses by ulp: {'1': 1800, '2-4': 959, '>4': 1392} | matched at x +- 1 ulp: 751

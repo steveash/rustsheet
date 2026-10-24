@@ -81,15 +81,16 @@ def build(name):
     cells = {}
     for r, (_, d1, d2, x) in enumerate(PROBES[name](), 1):
         cells.update(row_cells(r, d1, d2, x, name))
+    return case_doc(cells, f"T-2513 r3-fdensity probe {name}: F.DIST(x,d1,d2,FALSE) on exact-input x runs "
+                    "(with BETA.DIST at 1/(1+d2/(d1 x)) and d1 x/(d1 x+d2) beside it) or df sweeps at fixed x.", "T-2513")
+
+
+def case_doc(cells, description, task):
+    """A probes-numeric case document around one sheet of cells (also used by r4-f-brcomp)."""
     assert len(cells) <= 16384, len(cells)
-    return {
-        "format": "rustsheet-case/v1",
-        "description": f"T-2513 r3-fdensity probe {name}: F.DIST(x,d1,d2,FALSE) on exact-input x runs "
-        "(with BETA.DIST at 1/(1+d2/(d1 x)) and d1 x/(d1 x+d2) beside it) or df sweeps at fixed x.",
-        "tags": ["M9", "probe", "statistics", "f-dist", "T-2513"],
-        "sheets": [{"name": "Calc", "cells": cells}],
-        "expected": {},
-    }
+    return {"format": "rustsheet-case/v1", "description": description,
+            "tags": ["M9", "probe", "statistics", "f-dist", task],
+            "sheets": [{"name": "Calc", "cells": cells}], "expected": {}}
 
 
 def rows(name):
