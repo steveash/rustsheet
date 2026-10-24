@@ -3,7 +3,7 @@ id: T-2525
 title: "Probe where a D-function formula condition's references point when the criteria sit on another row or sheet"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
