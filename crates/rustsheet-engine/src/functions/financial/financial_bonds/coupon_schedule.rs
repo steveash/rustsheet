@@ -39,7 +39,11 @@ pub(in crate::functions::financial) fn serial_ymd(serial: i64) -> Result<(i32, u
 
 /// Days from serial `from` to serial `to` on `basis`: the serial difference on the actual bases
 /// 1-3, so Excel's fictitious 1900-02-29 counts.
-pub(in crate::functions::financial) fn serial_basis_days(from: i64, to: i64, basis: u32) -> Result<f64, String> {
+pub(in crate::functions::financial) fn serial_basis_days(
+    from: i64,
+    to: i64,
+    basis: u32,
+) -> Result<f64, String> {
     match basis {
         0 => Ok(days_30_360_us_ymd(serial_ymd(from)?, serial_ymd(to)?)),
         1..=3 => Ok((to - from) as f64),

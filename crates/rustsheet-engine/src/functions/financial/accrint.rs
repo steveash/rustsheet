@@ -47,7 +47,10 @@ fn accrint_coupon_serial(date: NaiveDate) -> Result<i64, String> {
 /// European one on basis 4 and the serial difference on basis 1 (basis 3 is `365/frequency`).
 fn stub_denominator(start: i64, end: i64, basis: u32) -> Result<f64, String> {
     match basis {
-        0 => Ok(days_30_360_us_both_ymd(serial_ymd(start)?, serial_ymd(end)?)),
+        0 => Ok(days_30_360_us_both_ymd(
+            serial_ymd(start)?,
+            serial_ymd(end)?,
+        )),
         2 => serial_basis_days(start, end, 0),
         _ => serial_basis_days(start, end, basis),
     }
