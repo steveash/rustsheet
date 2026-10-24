@@ -204,7 +204,8 @@ fn makearray_past_the_grid() {
     // Excel builds MAKEARRAY results past the grid, and lifts a function over them: a cell of one
     // is #SPILL! (probes/t2579-array-value-edges B20, B23, B26; T-2600). Rows past the grid are
     // above our cell bound, #ERROR! (DEVIATION, decision 0014), before any LAMBDA runs; columns
-    // past the grid above it are #VALUE! (gen-m7/b2078b5d702c691a A2553).
+    // past the grid above it are #VALUE! (gen-m7/b2078b5d702c691a A2553), and so are rows of
+    // 2^31 or more (gen-m7/8c4570978f18f4c2 A2736).
     let mut model = new_empty_model();
     model._set("A1", "=COLUMNS(MAKEARRAY(1,20000,LAMBDA(r,c,c)))");
     model._set("A2", "=ROWS(MAKEARRAY(1048577,1,LAMBDA(r,c,1)))");
@@ -212,6 +213,9 @@ fn makearray_past_the_grid() {
     model._set("A4", "=COLUMNS(ABS(MAKEARRAY(1,16385,LAMBDA(r,c,c))))");
     model._set("A5", "=MAKEARRAY(3,1E15,LAMBDA(r,c,1))");
     model._set("A6", "=MAKEARRAY(2,1048576,LAMBDA(r,c,1))");
+    model._set("A7", "=MAKEARRAY(1E15,4,LAMBDA(r,c,1))");
+    model._set("A8", "=MAKEARRAY(2^31,1,LAMBDA(r,c,1))");
+    model._set("A9", "=MAKEARRAY(2^31-1,1,LAMBDA(r,c,1))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "20000");
     assert_eq!(model._get_text("A2"), "#ERROR!");
@@ -219,6 +223,9 @@ fn makearray_past_the_grid() {
     assert_eq!(model._get_text("A4"), "16385");
     assert_eq!(model._get_text("A5"), "#VALUE!");
     assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
+    assert_eq!(model._get_text("A8"), "#VALUE!");
+    assert_eq!(model._get_text("A9"), "#ERROR!");
 }
 
 #[test]
