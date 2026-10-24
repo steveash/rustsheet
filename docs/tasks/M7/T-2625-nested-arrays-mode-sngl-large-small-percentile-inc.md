@@ -30,7 +30,8 @@ and PIVOTBY cells"). These consumers read their arrays through other collectors 
   their `NestedReading` if Excel differs.
 
 ## Acceptance criteria
-- [ ] The six cells above (five done; gen-m9 A35 handed to T-2460: its COUNT differs only in blank keys) leave eval/baseline/probes.txt and gen-m9.txt (`make eval-baseline`), no new known-failure lines.
+- [x] The six cells above: five left the baseline. gen-m9 A35 is handed to T-2460, because its COUNT differs only in
+      blank keys. The new probe t2625-nested-consumers adds 10 baselined lines, all blank-key cells owned by T-2460 (listed there). leave eval/baseline/probes.txt and gen-m9.txt (`make eval-baseline`), no new known-failure lines.
 - [x] Each flatten charges SPEC-0018's walk budget; arrays.md records the rules.
 - [x] `make check` green; reviewers approve.
 
