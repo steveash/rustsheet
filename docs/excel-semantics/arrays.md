@@ -1830,3 +1830,5 @@ Tasks: T-2579, T-2600, T-2596
 ## An uncalled LAMBDA joined as text or compared is #VALUE! (T-2622)
 Rule (excel-graph, 2026-10-24): `LAMBDA(x,x)&""`, `LET(v,LAMBDA(x,x),v&"")`, `LET(t,"a",v,LAMBDA(x,x),t&"|"&v)`, `LAMBDA(x,x)+1`, `LAMBDA(x,x)=1` and `LEN(LAMBDA(x,x))` are `#VALUE!`; `TYPE(LAMBDA(x,x))` is 128 and a bare `LET(v,LAMBDA(x,x),v)` is `#CALC!`. Ours gave `#N/IMPL!` for the text join and FALSE for the comparison. Unprobed: a LAMBDA compared with an array, and which of an error and a LAMBDA wins.
 Evidence: probes/t2622-contents-xmatch-take-lambda A49-A58.
+Status: VERIFIED (excel-graph)
+Implemented in: `cast_string_ref`, `handle_comparison`
