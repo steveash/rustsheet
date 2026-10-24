@@ -1742,7 +1742,7 @@ value is `#NUM!` (`XNPV(1,A2,B12)`, B12 = 0). `XNPV(1,A2:A3,B11:B12)` with both 
 `#NUM!` (known failure, unexplained: an empty range seems to be refused by a different check than the whole-column one).
 Evidence: probes/xnpv-empty-values-cell C1-C8 (excel-graph, 2026-10-24); it surfaced through gen-m9/eccd03df42e40006 A24
 (`PERCENTRANK(<no numbers>, XNPV(..))` is `#N/A`, so the XNPV is no error).
-Status: VERIFIED (web)
+Status: VERIFIED (excel-graph)
 Tasks: T-2066
 
 ## Financial cells of the T-2436 sub-expression probe

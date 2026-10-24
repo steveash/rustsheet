@@ -42,3 +42,4 @@ it. Bit-level criteria still unmet then move to a follow-up task without the key
 
 ## Outcome
 A single cell holding text is now empty data for PERCENTILE*/QUARTILE*/PERCENTRANK* (`#NUM!`, not `#VALUE!`); probe quartile-single-text-cell added with excel-graph values; gen-m9/288b99797f58f149 A3 passes.
+PERCENTRANK reports an error x before its empty-data `#N/A`, QUARTILE.EXC reports quart's error before empty data, and XNPV reads one empty values cell as a 0 cash flow (all three surfaced as gen-m9 regressions once text cells became empty data; probes/xnpv-empty-values-cell). gen-m9 baseline: 94 known failures fixed.
