@@ -357,7 +357,7 @@ same reference. `ThisRowKind` evaluation is O(1).
    parse-time lowering, so its text is still lost. Export is unchanged. This step is complete on
    its own. If the diff gets too large, the printer escapes and their property test can be split
    into a second PR.
-2. **T-1699 (S): `#This Row` at evaluation.** Add `ThisRowKind` and `Model::this_row_area`, and
+2. **T-1699 (S): `#This Row` at evaluation.** Add `ThisRowKind` and its resolver (built as `Node::this_row_at`, see "Step 2 as built"), and
    emit the wrapper for `#This Row` too. Re-audit the reference sites for `ThisRowKind`. Add the
    grow-the-table test and tests for `ISREF(Sales[@Qty])` and `SUM(Sales[@[A]:[B]])`.
 3. **T-2196 (M): table parts in the export.** Write `<tableParts>` and `xl/tables/tableN.xml`,

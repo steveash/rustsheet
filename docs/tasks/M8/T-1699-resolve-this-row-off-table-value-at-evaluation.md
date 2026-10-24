@@ -26,7 +26,7 @@ Re-scoped as SPEC-0016 rollout step 2 (T-1699's first attempt, 2026-10-20). Ever
 - [x] A `ThisRowKind` printed as a lowered area (structural-edit fallback, `to_excel_string`) is first resolved at the printing cell's row (SPEC-0016 "Structural edits"); tests: export of `Sales[@Qty]` on and off the data rows gives today's `$A$3` / `#VALUE!`.
 - [x] The bounds are computed with checked arithmetic (overflow is `#REF!`); evaluation is a plain comparison with no unchecked arithmetic.
 - [x] Unit test: grow the table so a former off-table row becomes a data row and the formula reads it, and `get_cell_formula` keeps the structured reference (export stays lowered until T-2196).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
