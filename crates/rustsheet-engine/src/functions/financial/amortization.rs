@@ -211,7 +211,7 @@ impl Asset {
         let days_in_yr = amor_days_in_year(self.purchased, self.basis);
         let purchased = amor_fix_29_february(self.purchased, self.basis);
         let first_period = amor_fix_29_february(self.first_period, self.basis);
-        let first_len = acc_days_between(purchased, first_period, true, self.basis)?;
+        let first_len = acc_days_between(purchased, first_period, self.basis);
         let first_depr_temp = first_len / days_in_yr * rate * self.cost;
         let first_depr = if first_depr_temp == 0.0 {
             self.cost * rate
