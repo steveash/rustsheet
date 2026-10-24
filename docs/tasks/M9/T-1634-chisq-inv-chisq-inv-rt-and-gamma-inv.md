@@ -140,7 +140,7 @@ lower tail's prefactor by `powf` so a tiny quantile keeps its digits (`GAMMA.INV
 within an ulp of Excel's 1E-300) and a subnormal crossing flushed to 0 (`CHISQ.INV(1E-200,1)`). Above shape
 1E9 statrs' search stands alone, including its NaN, as Excel is `#NUM!` there. Two Excel quirks of
 CHISQ.INV.RT and CHIINV are now matched and recorded in docs/excel-semantics/statistics.md: at
-df 1 the right tail is the left tail of 1 - p (`#NUM!` below 1.1E-16), and for df 3 to 10 a p below
+df 1 the right tail is the left tail of 1 - p (`#NUM!` at p of 2^-54 or less), and for df 3 to 10 a p below
 about 1E-20 is `#NUM!` though the quantile exists.
 
 Eval delta: gen-m9 known failures 8550 -> 8483 (67 baseline lines removed, 0 regressions, no other
