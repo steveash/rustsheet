@@ -80,6 +80,21 @@ enum Rewrite<'a> {
     RefError(&'a [String]),
 }
 
+/// Whether an R1C1 range is a whole row (`1:1`, absolute rows 1 to the last) and a whole column
+/// (`A:A`): open ranges such as SUM(A:A) are stored as normal ranges (`R1C[0]:R1048576C[0]`), so
+/// the A1 text strips the corners they do not print.
+pub(crate) fn open_range_flags(
+    rows: (bool, i32, bool, i32),
+    columns: (bool, i32, bool, i32),
+) -> (bool, bool) {
+    let (absolute_row1, row1, absolute_row2, row2) = rows;
+    let (absolute_column1, column1, absolute_column2, column2) = columns;
+    (
+        absolute_row1 && absolute_row2 && row1 == 1 && row2 == LAST_ROW,
+        absolute_column1 && absolute_column2 && column1 == 1 && column2 == LAST_COLUMN,
+    )
+}
+
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
 
 /// This is the internal mode in IronCalc
@@ -534,14 +549,10 @@ fn stringify(
             row2,
             column2,
         } => {
-            // Note that open ranges SUM(A:A) or SUM(1:1) will be treated as normal ranges in the R1C1 (internal) representation
-            // A:A will be R1C[0]:R1048576C[0]
-            // So when we are forming the A1 range we need to strip the irrelevant information
-            let full_row = *absolute_row1 && *absolute_row2 && (*row1 == 1) && (*row2 == LAST_ROW);
-            let full_column = *absolute_column1
-                && *absolute_column2
-                && (*column1 == 1)
-                && (*column2 == LAST_COLUMN);
+            let (full_row, full_column) = open_range_flags(
+                (*absolute_row1, *row1, *absolute_row2, *row2),
+                (*absolute_column1, *column1, *absolute_column2, *column2),
+            );
             let s1 = stringify_reference(
                 context,
                 displace_data,

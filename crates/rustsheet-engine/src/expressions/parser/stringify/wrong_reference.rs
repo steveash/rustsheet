@@ -1,8 +1,7 @@
 //! Printing a reference whose sheet the parser did not find (`WrongReferenceKind`,
 //! `WrongRangeKind`): a deleted sheet, or an external one.
 
-use super::{stringify_reference, DisplaceData};
-use crate::constants::{LAST_COLUMN, LAST_ROW};
+use super::{open_range_flags, stringify_reference, DisplaceData};
 use crate::expressions::parser::{Node, Reference};
 use crate::expressions::types::CellReferenceRC;
 
@@ -73,23 +72,19 @@ pub(super) fn text(
         }
         Node::WrongRangeKind {
             sheet_name,
-            absolute_row1,
-            absolute_column1,
             row1,
             column1,
-            absolute_row2,
-            absolute_column2,
+            absolute_row1,
+            absolute_column1,
             row2,
             column2,
+            absolute_row2,
+            absolute_column2,
         } => {
-            // Note that open ranges SUM(A:A) or SUM(1:1) will be treated as normal ranges in the R1C1 (internal) representation
-            // A:A will be R1C[0]:R1048576C[0]
-            // So when we are forming the A1 range we need to strip the irrelevant information
-            let full_row = *absolute_row1 && *absolute_row2 && (*row1 == 1) && (*row2 == LAST_ROW);
-            let full_column = *absolute_column1
-                && *absolute_column2
-                && (*column1 == 1)
-                && (*column2 == LAST_COLUMN);
+            let (full_row, full_column) = open_range_flags(
+                (*absolute_row1, *row1, *absolute_row2, *row2),
+                (*absolute_column1, *column1, *absolute_column2, *column2),
+            );
             let (prefix, sheet_name) = if missing(sheet_name) {
                 ("#REF!", NO_SHEET)
             } else {
