@@ -3,7 +3,7 @@ id: T-2579
 title: "Probe-first: MAKEARRAY wider than the grid, a REDUCE whose LAMBDA returns a multi-cell reference, COMBIN over FILTER and AVEDEV over IFERROR(TRIMRANGE) (gen-m9, 4 cells)"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -33,8 +33,19 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
-- [ ] `make check` green; reviewers approve.
+- [x] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
+
+## Outcome
+Probed all four edges (probes/t2579-array-value-edges, 52 cells, excel-graph, 2026-10-24) and recorded them in arrays.md
+"Array-value edges in the gen-m9 sweep (T-2436)" and logic.md. Fixed here: COMBIN lifts over arrays and ranges like
+COMBINA (`fn_combin`, lift/kinds/general.rs `COMBIN_FAMILY`); IFERROR and IFNA read a multi-cell range's blank cells, and
+those of the range a direct TRIMRANGE keeps, as 0 (`if_error_like`, `blanks_as_zero`; a one-cell range keeps the empty
+value). gen-m9 c18dbf21f11093f3 A174 and fec39efaba9284c3 A253 leave the baseline. Filed with the probe's evidence, as
+the Goal allows: arrays wider/taller than the grid, T-2595 (owns gen-m9 4250f880ab640c49 A237 and t2579 B23, B24, B26);
+IMSQRT over a REDUCE returning TRIMRANGE, T-2596 (owns gen-m9 df083d85b436b49a A20 and t2579 B49); wrapped IFERROR range
+forms, T-2597 (probe). Eval: gen-m9 known failures -2, probes -24 fixed (t2436 sub-expressions) with the new case's 4
+cells baselined for T-2595/T-2596, no regressions.
