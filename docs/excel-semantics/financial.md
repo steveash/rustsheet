@@ -1253,6 +1253,32 @@ Ours: matches since T-1406 (`coupon_args` in financial_bonds.rs, `tbill_argument
 Status: VERIFIED (web)
 Tasks: T-1406
 
+## PRICE, YIELD, DURATION and MDURATION check order
+Rule: these four do not read their arguments as the COUP* functions do, and PRICE and YIELD differ from DURATION and
+MDURATION:
+1. PRICE and YIELD read the basis first: its error or text is returned, and a basis outside 0-4 is `#NUM!`, before
+   anything else (`PRICE(-1,43831,0.0575,0.065,100,2,NA())` is `#N/A`, `PRICE(NA(),43831,0.0575,0.065,100,2,5)` and
+   `YIELD(39448,43831,0.0575,95.04,100,"x",5)` are `#NUM!`). DURATION and MDURATION read it last (step 4).
+2. settlement, then maturity: an error or text is returned, and a serial that does not floor to 0-2958465 is `#NUM!`
+   as it is read (`PRICE(-1,NA(),..)`, `PRICE(2958466,"x",..)`, `DURATION(39448,-1,NA(),..)` are `#NUM!`,
+   `DURATION(NA(),-1,..)` is `#N/A`). Serial 0, 0.5 and 2958465 pass this read (`PRICE(0,43831,NA(),..)` is `#N/A`),
+   though a settlement below 1 is `#NUM!` later (step 5).
+3. rate, yld (YIELD's price), PRICE's and YIELD's redemption, then frequency: an error, text or boolean is returned.
+4. DURATION and MDURATION check the frequency as they read it, then read the basis: `DURATION(39448,43831,0.08,0.09,3,NA())`
+   is `#NUM!`, `DURATION(39448,43831,0.08,"x",3,1)` `#VALUE!`. PRICE and YIELD check the frequency after every read
+   (`PRICE(..,100,3,NA())` is `#N/A`, but step 1 already read the basis).
+5. Only then the value checks, all `#NUM!`: settlement below 1 or not before the maturity, a negative rate, a negative
+   yld (YIELD: a price of 0 or less), a redemption of 0 or less. So `PRICE(39448,39000,"x",..)` and
+   `DURATION(39448,43831,-0.05,NA(),2,1)` are the later argument's `#VALUE!` and `#N/A`.
+The reason the basis comes first only for PRICE and YIELD is unknown; it holds for every position probed.
+Evidence: probes/bond-argument-check-order (298 cells: each out-of-domain argument against an error, and text next to
+it, in every other position; excel-graph, 2026-10-24, T-2482).
+Unprobed: a maturity past 9999-12-31 against a later error (the read check is taken from the settlement's and the
+T-bills'); a negative fraction such as -0.5 as a date (floored to -1 like the T-bills').
+Ours: matches since T-2482 (`bond_args` in financial_bonds.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2482
+
 ## ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule
 
 ODDFPRICE and ODDFYIELD are #NUM! unless the first coupon is one of the maturity's coupon dates (stepping back from
@@ -1713,7 +1739,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   discount securities, AMORLINC, AMORDEGRC; inferred): an earlier out-of-range date, a settlement after the maturity, or a
   negative rate is `#NUM!` before a later argument's error, text or boolean is looked at. `PRICE(36917,-0.5,HOUR(..)<#VALUE!>,..)`
   (81bcdc0bec0c8e6b A7), `ODDLYIELD(-0.0001,39378,-2.5," x ",92,106,0)` (67a4c03afd63f988 A341), `DURATION(2958466,46410,..,
-  <#VALUE!>,4,0)` (b6a02893a8d6b151 A213) and `PRICEDISC(39668,-1,<text>%,106)` (abb7d565af89b849 A294) are `#NUM!`. AMORLINC and
+  <#VALUE!>,4,0)` (b6a02893a8d6b151 A213) and `PRICEDISC(39668,-1,<text>%,106)` (abb7d565af89b849 A294) are `#NUM!`. For PRICE,
+  YIELD, DURATION and MDURATION the order is now probed ("PRICE, YIELD, DURATION and MDURATION check order", T-2482). AMORLINC and
   AMORDEGRC give a boolean rate or salvage `#VALUE!` before a negative cost or a salvage above the cost
   (`AMORLINC(-439103,37926,39037,412,7,FALSE,..)` b73c6cc96e093f03 A360, `AMORDEGRC(27029,37050,39005,789,1E15-0.1,TRUE)`
   1b60bf99d71424e7 A298 are `#VALUE!`).

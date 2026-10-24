@@ -41,7 +41,15 @@ Cells:
 - gen-m9/c0681a8b150ce301.case.json (1): Calc!A248
 - gen-m9/d0854366830dcdee.case.json (1): Calc!A153
 
+Moved from T-2482 (2026-10-24): two more cells at a huge yield, `#NUM!` in Excel where ours divides by a zero price
+(`#DIV/0!`); T-2482 fixed their argument order, so the yield is all that is left (probes/bond-argument-check-order).
+Owned gen-m9 cells (T-2482, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 visibly off.
+- gen-m9/3c06f9298f65a3ba Calc!A130 `=DURATION((EOMONTH(0.1,16)/1),45668,COUNTIF(Data!B6:C7,"*c"),100,2)`: Excel #NUM!, ours #DIV/0!
+- gen-m9/ba4ddb817a8e700e Calc!A8 `=MDURATION(39783,45383,ROUND((Data!E1-Data!$C$12),-3),1E+300,4,Data!$D12)`: Excel #NUM!, ours #DIV/0!
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2482): the 2 known-failure lines listed under "Moved from T-2482" disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 10 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The probe case is in eval/suites/probes with excel-graph values and its rule is in financial.md.
