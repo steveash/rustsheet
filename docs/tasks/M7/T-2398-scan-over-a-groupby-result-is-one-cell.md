@@ -7,7 +7,7 @@ status: blocked
 priority: P2
 size: S
 tier: opus
-depends_on: [T-2439]
+depends_on: [T-2459]
 campaign: visible
 ---
 
@@ -52,4 +52,4 @@ split that into its own task and make this one depend on it. Then fix A36, A153,
 ## Blocked because
 Blocked because: the remaining cells (probes/groupby-lifted-args A153 and I153, scan-over-groupby A36, gen-m7/b24ce74f08d3f91a
 A1850) all need a GROUPBY value cell that holds an array (A68:A72), which the engine cannot represent (`ArrayNode` has no
-nested array). That needs a spec first: T-2439. A161 and A169 already pass on main.
+nested array). That needs a spec first: T-2459 (main's nested-array spec task; the duplicate T-2439 filed here was dropped). A161 and A169 already pass on main.
