@@ -3,7 +3,7 @@ id: T-2226
 title: "Scientific formats: engineering mantissa rounding after the exponent shift (##0.0E+0 on 1/3 is 333.3E-3)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
