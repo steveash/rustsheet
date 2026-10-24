@@ -7,8 +7,10 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-2592]
+depends_on: [T-2592, T-2602]
 ---
+
+> Do not start before T-2602: SPEC-0018 rules 4, 5 and 7 and its one-level design are stale against T-2592's probe (arrays.md).
 
 ## Goal
 A GROUPBY or PIVOTBY cell whose function returns an array holds that array (SPEC-0018 rules 1-4): it shows `#VALUE!`, INDEX returns the array (TYPE 64), and a lifted read takes its top-left.
@@ -27,7 +29,12 @@ The G! cells of t2360 are blank keys (T-2460), not this task's. PIVOTBY's `""` T
 columns stay as they are (SPEC-0018 rule 1's exception; t2360 P!F3:G5 pass today). Reads T-2592 has not shown to take
 the top-left keep today's result (SPEC-0018 "Consumers with their own rule").
 
+Handed over from T-2578 (excel-graph, 2026-10-24): four gen-m9 cells over a LAMBDA(x,x)-style function decided by the nested
+arrays: gen-m9/06b4e8f5de409d5e Calc!A366 (MAX over PIVOTBY(..,LAMBDA(z,z)) `#N/A`), 68d8ffb69ff739d8 Calc!A285, 7c20351562a2d71d
+Calc!A381, e85daedce5c2675e Calc!A35 (HARMEAN, AVERAGE `#N/A`, COUNT 142; arrays.md "GROUPBY and PIVOTBY in the gen-m9 sweep").
+
 ## Acceptance criteria
+- [ ] The four gen-m9 cells handed over from T-2578 disappear from eval/baseline/gen-m9.txt (or are explained by a remaining cause).
 - [ ] The owned cells above pass and leave eval/baseline (`make eval-baseline`), with no new known-failure lines.
 - [ ] Unit tests: `NestedArray::new` invariants, `scalar()`, two levels per T-2592's evidence, and the cap (`#ERROR!` past 1,048,576 kept cells; DEVIATION
       entry in arrays.md).

@@ -46,18 +46,20 @@ paragraph starting "A LAMBDA array result is shown as `#VALUE!`, but the cell ho
 3. **INDEX.** `INDEX(result,r,c)` that selects a nested cell returns its array: TYPE 64, ROWS/COLUMNS its shape,
    `INDEX(x,1,1)` its first value (P!B3..E37). `INDEX(GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,w)),4,2)` spilling the Total's
    `{1;2;3;4}` is probes/scan-over-groupby A69:A72 (and `INDEX(..,1,2)`, group a's `{1;3}`, is `#SPILL!` at A68), on the unmerged T-2398 branch (draft #1583); it lands with T-2398.
-4. **Lifted reads take the top-left.** A function that lifts over the result reads each nested cell as its array's
+4. **STALE, see T-2602 (T-2592 probe).** **Lifted reads take the top-left.** A function that lifts over the result reads each nested cell as its array's
    top-left value: `SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a top-left is one
    (`{#N/A;3}`: P!C33 = 1); `SUM(--ISERROR(PIVOTBY(..)))` is 0 (t2311 P!C12); REGEXEXTRACT reads a valid return mode
    (gen-m7/21b4eef18424ce94 A1504).
-5. **MAP over the result is an error** (t2311 P!D12 is IFERROR's "E"); which error is unprobed (T-2592).
+5. **STALE, see T-2602 (T-2592 probe).** **MAP over the result is an error** (t2311 P!D12 is IFERROR's "E"); which error is unprobed (T-2592).
 6. **SCAN** over a GROUPBY result is one cell (`#N/A` for `LAMBDA(w,w)`, 0 for SUM, the error for `LAMBDA(w,1/0)`:
    groupby-lifted-args A153, A161, A169). T-2398 owns that rule; this spec only supplies the nested cell it reads.
-7. **Not nested:** a LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`) and a two-parameter LAMBDA show
+7. **STALE, see T-2602 (T-2592 probe).** **Not nested:** a LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`) and a two-parameter LAMBDA show
    `#VALUE!` in every cell too; whether those cells hold a nested array (TYPE 64 through INDEX) or the error is unprobed
    (T-2592). Until then they stay the error `#VALUE!`, as today.
 
-Unknowns, all in T-2592's probe: the error MAP gives (and BYROW, BYCOL); SUM, COUNT, COUNTA, AVERAGE, ARRAYTOTEXT, TEXTJOIN,
+T-2592 answered the unknowns below, see docs/excel-semantics/arrays.md ("T-2592 (probes/t2592-nested-groupby-cells"); notably MAP, BYROW, BYCOL are not errors, a reference body displays `#VALUE!` but INDEX reads its value, a two-parameter LAMBDA and subtotal cells are nested, and nested cells nest again. Rules 4 (SUM, COUNT and COUNTA flatten the nested cells, not just the top-left), 5, 7 and the one-level design need revising from it (T-2602).
+
+The original unknowns were: the error MAP gives (and BYROW, BYCOL); SUM, COUNT, COUNTA, AVERAGE, ARRAYTOTEXT, TEXTJOIN,
 CONCAT and `&` over the result; REDUCE over it; `+0` and `--` on one INDEXed nested cell (top-left or the array);
 `A1#` over a spilled result; TYPE of the whole result (64 anyway); rule 7's two cases; a LAMBDA returning a GROUPBY that
 itself holds nested cells (two levels); a nested array of more than 1,048,576 cells.
