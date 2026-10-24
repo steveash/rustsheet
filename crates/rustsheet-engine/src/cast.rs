@@ -373,6 +373,15 @@ impl Model {
         }
     }
 
+    /// `#VALUE!` for a LAMBDA value joined as text.
+    pub(crate) fn lambda_as_text_error(cell: CellReferenceIndex) -> CalcResult {
+        CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "LAMBDA cannot be used as text".to_string(),
+        )
+    }
+
     /// `#VALUE!` for a LAMBDA value used where a number is read.
     pub(crate) fn lambda_as_number_error(cell: CellReferenceIndex) -> CalcResult {
         CalcResult::new_error(
@@ -725,6 +734,9 @@ impl Model {
     ) -> Result<String, CalcResult> {
         match value {
             error @ CalcResult::Error { .. } => Err(error.clone()),
+            // An uncalled LAMBDA joined as text is #VALUE!, as it is as a number
+            // (`LAMBDA(x,x)&""`, probes/t2622-contents-xmatch-take-lambda A49-A53, excel-graph).
+            CalcResult::Lambda(_) => Err(Self::lambda_as_text_error(cell)),
             other => calc_scalar_to_string(other).ok_or_else(|| not_a_scalar(cell)),
         }
     }

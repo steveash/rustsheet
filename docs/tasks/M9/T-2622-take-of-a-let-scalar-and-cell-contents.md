@@ -3,7 +3,7 @@ id: T-2622
 title: "TAKE of a LET scalar, CELL(contents) in COUNT and MODE.SNGL, XMATCH, and a LAMBDA joined as text is #VALUE! (T-2475 probe)"
 milestone: M9
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,8 +30,12 @@ The LAMBDA-as-text rule is inferred from the wrapper (`t&"|"&v` with TYPE 128); 
 before implementing it.
 
 ## Acceptance criteria
-- [ ] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Outcome
+Probe `probes/t2622-contents-xmatch-take-lambda` (excel-graph) found five separate rules, all recorded in docs/excel-semantics (information.md, lookup.md, statistics.md, arrays.md): CELL("contents") of a blank counts in COUNT/COUNTA and is `#VALUE!` in MODE; XMATCH match_mode 3 takes a number as its text; TAKE/DROP of a one-cell reference stays a reference (TYPE 1, `#VALUE!` for a blank in PEARSON-family); an error inside an array data argument of PERCENTILE/QUARTILE/PERCENTRANK is that error, after the scalar arguments' errors; an uncalled LAMBDA joined as text or compared is `#VALUE!`. Eval: gen-m9 -60 known failures (all five owned cells), probes -14, no regressions.
+Not done: CELL("contents") wrapped in IF counted in COUNT / MODE (Excel does; follow-up).

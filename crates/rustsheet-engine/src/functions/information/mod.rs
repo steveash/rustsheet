@@ -52,6 +52,38 @@ fn n_of(value: &ArrayNode) -> ArrayNode {
     }
 }
 
+/// `CELL("contents", ref)` written out as a call with a literal info type.
+pub(crate) fn is_cell_contents_call(arg: &Node) -> bool {
+    match arg.ungrouped() {
+        Node::FunctionKind {
+            kind: Function::Cell,
+            args,
+        } => matches!(
+            (args.first().map(Node::ungrouped), args.len()),
+            (Some(Node::StringKind(info)), 2) if info.eq_ignore_ascii_case("contents")
+        ),
+        _ => false,
+    }
+}
+
+impl Model {
+    /// Whether `arg` is the call `CELL("contents", ref)` written out, on a blank cell. Excel
+    /// counts it in COUNT and COUNTA, where a blank reference is skipped, and MODE gives
+    /// `#VALUE!` for it; a call wrapped in IF behaves alike, other wrappers are unprobed
+    /// (probes/t2622-contents-xmatch-take-lambda A1-A3, A5, A6, A9, A11, A18; T-2622).
+    pub(crate) fn is_cell_contents_of_blank(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> bool {
+        is_cell_contents_call(arg)
+            && matches!(
+                self.evaluate_node_in_context(arg, cell),
+                CalcResult::EmptyCell
+            )
+    }
+}
+
 impl Model {
     /// Shared body of the IS* type tests (ISNUMBER, ISERROR, ...).
     ///
@@ -436,7 +468,7 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut value = self.evaluate_node_in_context(&args[0], cell);
+        let mut value = self.evaluate_cut_reference(&args[0], cell);
         // Excel: a one-cell range is its cell's type, `TYPE(D7:D7)` is 1 (docs/excel-semantics/information.md
         // "TYPE of a one-cell range", gen-m5/2abdc1524e5aa685 Calc!A371).
         if let CalcResult::Range { left, right } = &value {

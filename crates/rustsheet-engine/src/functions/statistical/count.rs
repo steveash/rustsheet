@@ -76,6 +76,12 @@ impl Model {
         {
             return error;
         }
+        // The blank cells `CELL("contents", ..)` reads are counted as the empty value (T-2622).
+        for arg in args {
+            if self.is_cell_contents_of_blank(arg, cell) {
+                result += 1.0;
+            }
+        }
         CalcResult::Number(result)
     }
 
@@ -145,6 +151,12 @@ impl Model {
             };
             if let Err(error) = self.walk_aggregate_read(read, false, cell, &mut walk, &mut visit) {
                 return error;
+            }
+        }
+        // The blank cells `CELL("contents", ..)` reads count as the empty value (T-2622).
+        for arg in args {
+            if self.is_cell_contents_of_blank(arg, cell) {
+                result += 1.0;
             }
         }
         CalcResult::Number(result + external)

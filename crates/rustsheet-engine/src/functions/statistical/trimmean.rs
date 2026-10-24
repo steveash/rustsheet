@@ -3,7 +3,7 @@
 //! W35-W37).
 
 use super::percentile::{num_error, value_at};
-use super::sorted_data::{DataArg, DataOrder};
+use super::sorted_data::{DataArg, DataError, DataOrder};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
@@ -15,8 +15,8 @@ const TRIMMEAN_DATA: DataArg = DataArg {
     // An error value is that error, not `#VALUE!`: `TRIMMEAN(NA(),2)` is `#N/A`, the data's
     // error before the bad `percent` (probes/stat-test-lift P82, T-1982).
     read: |model, node, cell| match model.evaluate_node_in_context(node, cell) {
-        error @ CalcResult::Error { .. } => Err(error),
-        value => model.numeric_flat_of(value, cell),
+        error @ CalcResult::Error { .. } => Err(error.into()),
+        value => model.numeric_flat_of(value, cell).map_err(DataError::from),
     },
     order: DataOrder::Ascending,
     cost: LiftCost::Cells,

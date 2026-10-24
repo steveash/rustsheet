@@ -117,7 +117,9 @@ impl Model {
                 other => other.into_single_area(cell),
             }
         } else {
-            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
+            // A one-cell reference is the reference, not its value, so TAKE of it is a reference
+            // too (`TYPE(TAKE(Data!B2,1,1))` is 1; probes/t2622-contents-xmatch-take-lambda A60).
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_with_reference)
         };
         let counts = self.reference_lift_values(&args[1..], cell);
         if counts.as_slice().iter().any(lifts_one_by_one) {
@@ -291,13 +293,36 @@ impl Model {
         match kind {
             Function::Let => self
                 .let_scope(args, cell, |model, body| {
-                    model.evaluate_picked_source(body, cell, Self::evaluate_node_in_context)
+                    model.evaluate_picked_source(body, cell, read)
                 })
                 .unwrap_or_else(|error| error),
             _ if kind.picks_reference() => self
                 .evaluate_reference_form(kind, args, cell)
                 .unwrap_or_else(|| read(self, node, cell)),
             _ => read(self, node, cell),
+        }
+    }
+
+    /// `node` evaluated as a function argument that tells a reference from a value: a TAKE or
+    /// DROP call hands on the reference it cuts (a one-cell cut of a cell is that cell), any
+    /// other node is read as [`Self::evaluate_node_in_context`] reads it
+    /// (`TYPE(TAKE(Data!B2,1,1))` is 1, `PEARSON(TAKE(<blank>,1,1),..)` is `#VALUE!` as the
+    /// blank cell is; probes/t2622-contents-xmatch-take-lambda A60, A114, excel-graph, T-2622).
+    pub(crate) fn evaluate_cut_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if matches!(
+            node.ungrouped(),
+            Node::FunctionKind {
+                kind: Function::Take | Function::Drop,
+                ..
+            }
+        ) {
+            self.evaluate_picked_source(node, cell, Self::evaluate_node_in_context)
+        } else {
+            self.evaluate_node_in_context(node, cell)
         }
     }
 

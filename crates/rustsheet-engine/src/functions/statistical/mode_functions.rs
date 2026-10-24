@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::information::is_cell_contents_call;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -40,8 +41,11 @@ impl Model {
                 // coerced and not `#VALUE!` (probes/mode-typed-arguments A1-A20, T-1291), and
                 // text inside ranges is skipped too. A blank single-cell reference is `#VALUE!`
                 // (coercion.md, MODE; T-0947).
+                // The blank cell `CELL("contents", ..)` reads is as blank
+                // (probes/t2622-contents-xmatch-take-lambda A11, A12, A19, excel-graph, T-2622).
                 CalcResult::EmptyCell
-                    if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
+                    if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. })
+                        || is_cell_contents_call(arg) =>
                 {
                     return Err(CalcResult::new_error(
                         Error::VALUE,

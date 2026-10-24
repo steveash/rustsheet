@@ -3,7 +3,8 @@
 //! `significance` lift over arrays and ranges (probes/stat-argument-modes,
 //! probes/stat-whole-lift W21-W47).
 
-use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
+use super::sorted_data::{DataArg, DataError, DataOrder, SortedNumbers};
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 pub(super) use crate::functions::lift::num_error;
 use crate::functions::lift::LiftCost;
@@ -21,24 +22,44 @@ fn percentile_numbers(
     model: &mut Model,
     arg: &Node,
     cell: CellReferenceIndex,
-) -> Result<Vec<f64>, CalcResult> {
+) -> Result<Vec<f64>, DataError> {
     let typed_in_place = !matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
     match model.evaluate_node_in_context(arg, cell) {
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
-        error @ CalcResult::Error { .. } => Err(error),
+        error @ CalcResult::Error { .. } => Err(error.into()),
         // A typed boolean is a one-element array (`QUARTILE(TRUE,1)` is 1, probes-numeric/t1748-
         // typed-boolean-data A1-A8 for the whole family, probes/stat-order-floor-batch A102, A128),
         // and typed text a number (A11). A single cell holding a boolean is unprobed and keeps the
         // old reading below.
         CalcResult::Boolean(b) if typed_in_place => Ok(vec![f64::from(u8::from(b))]),
-        text @ CalcResult::String(_) if typed_in_place => {
-            model.cast_number_ref(&text, cell).map(|n| vec![n])
-        }
+        text @ CalcResult::String(_) if typed_in_place => model
+            .cast_number_ref(&text, cell)
+            .map(|n| vec![n])
+            .map_err(DataError::from),
         // A single cell holding text (a cell reference, not the typed text above) is no number,
         // like text inside a range: the data is empty and every function reports `#NUM!`, not
         // `#VALUE!` (probes/quartile-single-text-cell B1-B11, quartile-numeric-text-cell C2-C5).
         CalcResult::String(_) => Ok(vec![]),
-        value => model.numeric_flat_of(value, cell),
+        // An error inside an array is the first one in row order, as an error cell of a range is
+        // (`PERCENTRANK({#N/A,#DIV/0!,1},1)` is `#N/A`, `{#DIV/0!,#N/A,1}` `#DIV/0!`;
+        // probes/t2622-contents-xmatch-take-lambda A89-A96, A104-A111, excel-graph, T-2622).
+        CalcResult::Array(rows) => {
+            let first_error = rows.iter().flatten().find_map(|node| match node {
+                ArrayNode::Error(error) => Some(error.clone()),
+                _ => None,
+            });
+            match first_error {
+                Some(error) => Err(DataError::AfterScalars(CalcResult::new_error(
+                    error,
+                    cell,
+                    String::new(),
+                ))),
+                None => model
+                    .numeric_flat_of(CalcResult::Array(rows), cell)
+                    .map_err(DataError::from),
+            }
+        }
+        value => model.numeric_flat_of(value, cell).map_err(DataError::from),
     }
 }
 

@@ -1045,3 +1045,7 @@ So are the other empty values: an omitted argument (`MMULT(,2)`), IFERROR of a b
 Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as blank, as a blank cell.
 Status: VERIFIED (excel-graph)
 Tasks: T-2278
+
+## XMATCH match_mode 3 is the regex mode, and a number looks for its text (T-2622)
+Rule (excel-graph, 2026-10-24): `XMATCH(1,{3;1;4;1;5},3)` is 2 and `XMATCH(2,{3;1;4;1;5},3)` is `#N/A`: a number lookup_value in match_mode 3 is the pattern of its text, matched against the text of the cells. match_mode 4, -2 and 100 are `#VALUE!`; 2.9 finds position 2 (match_mode floors to 2, wildcard) and a text match_mode "x" is `#VALUE!`.
+Evidence: probes/t2622-contents-xmatch-take-lambda A20-A28; gen-m9/eccd03df42e40006 Calc!A21.

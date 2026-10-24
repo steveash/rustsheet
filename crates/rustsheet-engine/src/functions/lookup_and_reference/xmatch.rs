@@ -263,8 +263,15 @@ impl Model {
 
         match search_mode {
             SearchMode::FirstToLast | SearchMode::LastToFirst => {
-                let regex = match (match_mode, lookup_value) {
-                    (MatchMode::Regex, CalcResult::String(pat)) => match Regex::new(pat) {
+                // A number is the pattern of its text: `XMATCH(1,{3;1;4;1;5},3)` is 2
+                // (probes/t2622-contents-xmatch-take-lambda A20, A25, A28, excel-graph, T-2622).
+                let pattern = match (match_mode, lookup_value) {
+                    (MatchMode::Regex, CalcResult::String(pat)) => Some(pat.to_string()),
+                    (MatchMode::Regex, CalcResult::Number(n)) => Some(number_to_text(*n)),
+                    _ => None,
+                };
+                let regex = match pattern {
+                    Some(pat) => match Regex::new(&pat) {
                         Ok(regex) => Some(regex),
                         Err(_) => {
                             return CalcResult::new_error(
@@ -274,7 +281,7 @@ impl Model {
                             )
                         }
                     },
-                    _ => None,
+                    None => None,
                 };
                 match linear_search(
                     lookup_value,

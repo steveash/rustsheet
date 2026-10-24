@@ -193,3 +193,60 @@ fn cell_contents_as_vstack_argument() {
     assert_eq!(model._get_text("B2"), *"0");
     assert_eq!(model._get_text("C3"), *"0");
 }
+
+/// COUNT and COUNTA count `CELL("contents", blank)` as the empty value and MODE.SNGL gives
+/// `#VALUE!` (probes/t2622-contents-xmatch-take-lambda A1-A3, A9, A11, T-2622).
+#[test]
+fn cell_contents_of_a_blank_is_the_empty_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=COUNT(CELL(\"contents\",C5))");
+    model._set("A2", "=COUNTA(CELL(\"contents\",C5))");
+    model._set("A3", "=MODE.SNGL(CELL(\"contents\",C5))");
+    model._set("A4", "=CELL(\"contents\",C5)");
+    model._set("A5", "=COUNT(C5)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"1");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"0");
+    assert_eq!(model._get_text("A5"), *"0");
+}
+
+/// TAKE of a one-cell reference, bare or bound by LET, is a reference (TYPE 1); a cut of an
+/// array value is an array (64) (probes/t2622-contents-xmatch-take-lambda A29, A30, A59, A60).
+#[test]
+fn take_of_a_one_cell_reference_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("B2", "2.5");
+    model._set("A1", "=TYPE(TAKE(B2,1,1))");
+    model._set("A2", "=TYPE(TAKE(LET(v,B2,v),-1,-1))");
+    model._set("A3", "=TYPE(TAKE(5,1,1))");
+    model._set("A4", "=TYPE(TAKE(LET(v,5,v),1,1))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"1");
+    assert_eq!(model._get_text("A3"), *"64");
+    assert_eq!(model._get_text("A4"), *"64");
+}
+
+/// An uncalled LAMBDA joined as text or compared is `#VALUE!`, and a number match_mode of 3 is
+/// XMATCH's regex mode on the number's text (probes/t2622-contents-xmatch-take-lambda A20,
+/// A49, A50, A57).
+#[test]
+fn uncalled_lambda_text_and_xmatch_regex_number() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(x,x)&\"\"");
+    model._set("A2", "=LET(t,\"a\",v,LAMBDA(x,x),t&\"|\"&v)");
+    model._set("A3", "=LAMBDA(x,x)=1");
+    model._set("A4", "=XMATCH(1,{3;1;4;1;5},3)");
+    model._set("A5", "=XMATCH(2,{3;1;4;1;5},3)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"2");
+    assert_eq!(model._get_text("A5"), *"#N/A");
+}

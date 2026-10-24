@@ -914,6 +914,12 @@ impl Model {
         };
 
         match (l, r) {
+            // An uncalled LAMBDA compared with anything is #VALUE! (`LAMBDA(x,x)=1`,
+            // probes/t2622-contents-xmatch-take-lambda A57, excel-graph).
+            (ValueOrArray::Value(CalcResult::Lambda(_)), ValueOrArray::Value(_))
+            | (ValueOrArray::Value(_), ValueOrArray::Value(CalcResult::Lambda(_))) => {
+                Self::lambda_as_number_error(cell)
+            }
             (ValueOrArray::Value(lv), ValueOrArray::Value(rv)) => {
                 CalcResult::Boolean(apply(&lv, &rv))
             }

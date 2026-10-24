@@ -424,3 +424,12 @@ Phases 1-3 (decision 0039): the engine follows it in T-2190, which is expected t
 non-literal INFO, T-2113), and `INFO("numfile")` (canary-dependent). The engine also returns `#VALUE!` for `"numfile"` and its
 engine-only `"timezone"`/`"timezones"` (T-2190), unprobed and awaiting oracle confirmation (T-2182).
 Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).
+
+## CELL("contents") of a blank cell is a blank value that COUNT and COUNTA count (T-2622)
+Rule (excel-graph, 2026-10-24): `CELL("contents", ref)` of a blank cell, written out as an argument, counts as a value: `COUNT(CELL("contents",C5))` and `COUNTA(CELL("contents",C5))` are 1, and `COUNT(Data!B2:B4,CELL("contents",Data!C5))` adds 1 to the range's count, although `COUNT(C5)` of the blank cell itself is 0. MODE.SNGL of it is `#VALUE!` like a blank cell (`MODE.SNGL(C5)` is `#VALUE!`, `MODE.SNGL(0)` `#N/A`). `SUM(CELL("contents",C5))` is 0 and `CELL("contents",C5)` shows 0. Inside TEXTAFTER's instance_num the blank is 0 (`#VALUE!`), not an omitted argument (gen-m7/9359f03972e94026 Calc!A1420).
+Ours: COUNT, COUNTA and MODE test for the call as written (`is_cell_contents_of_blank`). Excel gives the same through IF (`COUNT(IF(TRUE,CELL("contents",C5)))` is 1, `MODE.SNGL(IF(TRUE,CELL("contents",C5)))` is `#VALUE!`; the cells were left out of the probe), which ours does not (follow-up).
+Evidence: probes/t2622-contents-xmatch-take-lambda A1-A3, A5, A9-A13; gen-m9/c2684066d8df263e Calc!A201, gen-m9/92d4fa29e5510f1e Calc!A98.
+
+## TYPE of TAKE or DROP of a one-cell reference (T-2622)
+Rule (excel-graph, 2026-10-24): TAKE and DROP hand on the reference they cut, so `TYPE(TAKE(Data!B2,1,1))` and `TYPE(TAKE(LET(v,Data!B2,v),-1,-1))` are 1 (a number), while a cut of an array value is 64 (`TYPE(TAKE(5,1,1))`, `TYPE(TAKE({1,2},1,1))`, `TYPE(TAKE(LET(v,5,v),1,1))`), and so is a multi-cell cut of a range. The cut of a blank cell is `#VALUE!` as the blank cell is in PEARSON, CORREL and SLOPE (`PEARSON(TAKE(Data!F2,1,1),Data!C2:D4)`, F2 blank); a nonblank one-cell reference against a longer range is `#N/A`.
+Evidence: probes/t2622-contents-xmatch-take-lambda A29-A31, A59-A68, A113-A123; gen-m9/1b31092a0d79e5f1 Calc!A143.

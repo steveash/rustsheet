@@ -3085,3 +3085,7 @@ Evidence: probes/t2475-stat-subexpressions (excel-graph, 2026-10-24, T-2475); th
 Ours: as given per cell (T-2619 IRR, T-2620 financial, T-2621 statistical, T-2622 TAKE, CELL, XMATCH).
 Status: VERIFIED (excel-graph; the per-cell values, not yet the rules behind them)
 Tasks: T-2475, T-2619, T-2620, T-2621, T-2622
+
+## PERCENTILE, QUARTILE and PERCENTRANK: an error inside an array argument (T-2622)
+Rule (excel-graph, 2026-10-24): an error element of an array data argument is that error, the first in row-major order, for PERCENTILE, PERCENTILE.EXC, QUARTILE, QUARTILE.EXC, PERCENTRANK and PERCENTRANK.EXC (`PERCENTRANK({#N/A,#DIV/0!,1},1)` is `#N/A`, `{#DIV/0!,#N/A,1}` `#DIV/0!`; `PERCENTRANK(Data!C2:C4-(1/0),1)` is `#DIV/0!`), but an error among the other arguments comes before it (`PERCENTILE({1,#N/A,3},1/0)` is `#DIV/0!`; the gen-m9 cells with a `#VALUE!` k). That order is for arrays; for a scalar or range error the data's error stays first (gen-m9 evidence of 89 cells). `DataError::AfterScalars` carries the rule. An array of errors cut from a range by TAKE is the same (`PERCENTRANK(TAKE(Data!C2:E4,3,1)-(1/0),1)`).
+Evidence: probes/t2622-contents-xmatch-take-lambda A73, A89-A96, A103-A112; gen-m9/775d053de498b8c7 Calc!A235.
