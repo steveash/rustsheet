@@ -20,7 +20,7 @@ T-2077 baselined 10 cells (A6, A9, A14, A17, A47, A58, A95, A104, A107, A109): I
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 10 cells, 0 numeric past half a unit in the 15th digit and 10 with a wrong type, error or text, blamed on IMLOG2 3, IMSINH 2, IMCOSH 2, IMCOT 1, IMSECH 1, IMLOG10 1. Every one is listed above.
 
 ## Acceptance criteria
-- [x] Visible parity (6 of the 9 remaining cells; A47 had already passed; A9, A17, A58 moved to T-2629): the 10 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 10 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity: partial (6 of the 9 remaining cells; A47 had already passed; A9, A17, A58 moved to T-2629): the 10 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 10 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] the 10 cells pass (but A9, A17, A58: T-2629) and leave eval/baseline; the unprobed edges above are evidenced
 - [x] `make check` green; reviewers approve.
 

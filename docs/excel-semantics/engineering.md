@@ -769,8 +769,9 @@ Rule: for |x| > 709 and a nonzero imaginary part, IMCOSH and IMSINH compute `exp
   `6.77493159657316E+307`; the candidates `exp(x - ln 2 + ln t)`, `exp(x + ln t)/2` and `exp(x/2)·exp(x/2)·t/2` all miss.
 - A zero imaginary part keeps the real path (`cosh x`, `sinh x`; `#NUM!` once `exp |x|` overflows): `IMCOSH("709.5")`,
   `"709.5+0i"`, `IMCOSH(709.5)` are `6.77493159657316E+307`, `IMSINH("-709.5")` its negative.
-- The cut lies in (709, 709.0000000001]; implemented as `|x| > 709`. A large y with |x| > 709 (where SIN's own reduction
-  could matter) is unprobed.
+- The cut lies in (709, 709.0000000001]; implemented as `|x| > 709`. UNVERIFIED: a large y with |x| > 709 (ours takes
+  libm sin and cos; SIN's own reduction could matter), and whether IMSIN/IMCOS and IMSECH/IMCSCH share the
+  negative-factor `#NUM!` (T-2631).
 - IMSIN and IMCOS with 709.78 < |y| < 710.4 are `#NUM!` as for larger |y| (`IMSIN("1.5+709.9i")`, `"0+709.9i"`,
   `IMCOS("-2-709.9i")`; A25-A34), and `IMSIN("1.5+709.7i")` answers: `exp |y|` overflowing is the cut, as implemented.
 - IMPRODUCT of a range holding a blank, and of a blank alone, is "0" (`IMPRODUCT(C1:C3)` with C2 blank, `IMPRODUCT(C2:C3)`,
