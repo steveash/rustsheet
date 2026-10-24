@@ -175,8 +175,8 @@ PERCENTRANK(.INC/.EXC), TRIMMEAN, XMATCH (one or two cells each); PERMUTATIONA a
 in COUNT and MODE.SNGL; MODE.MULT, STDEV.P, SKEW, F.INV.RT, NEGBINOMDIST, PMT, PPMT, BINOM.DIST, NORMDIST, WEIBULL(.DIST), BETA.INV
 and YIELD values; TAKE of a LET scalar is a scalar (`TAKE(LET(..),-1,-1)`), and TAKE minus a scalar a scalar error.
 Owners: T-2618 (NPV, 6 cells), T-2619 (IRR, 4), T-2620 (financial domain errors and digits, 12), T-2621 (statistical domain
-errors and extreme values, 23), T-2622 (TAKE, CELL("contents"), XMATCH, a LAMBDA joined as text, 5), T-2623 (the 31 cells whose
-probed sub-expressions all match Excel and the 2 GETPIVOTDATA cells, 33). Quirks recorded: financial.md "NPV with a rate of -1 or
+errors and extreme values, 23), T-2622 (TAKE, CELL("contents"), XMATCH, a LAMBDA joined as text, 5), T-2623 (33: the 31 cells whose
+probed sub-expressions all match Excel and the 2 GETPIVOTDATA cells). Quirks recorded: financial.md "NPV with a rate of -1 or
 1E+300 is #DIV/0!", arrays.md "An uncalled LAMBDA is one value" (joined as text), and every other family's per-cell Excel
 values in statistics.md "Inner sub-expressions of the T-2256 gen-m9 statistical cells (T-2475)"; the rules behind them are the
 follow-ups' to state.
