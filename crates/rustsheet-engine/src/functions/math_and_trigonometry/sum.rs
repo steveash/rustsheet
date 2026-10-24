@@ -132,6 +132,8 @@ impl Model {
         }
         let x_range = self.evaluate_node_in_context(&args[0], cell);
         let y_range = self.evaluate_node_in_context(&args[1], cell);
+        let x_range = self.blank_one_cell_as_error(x_range, cell);
+        let y_range = self.blank_one_cell_as_error(y_range, cell);
         if let (CalcResult::Range { left: l1, .. }, CalcResult::Range { left: l2, .. }) =
             (&x_range, &y_range)
         {

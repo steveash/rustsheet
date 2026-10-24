@@ -2606,7 +2606,7 @@ F.TEST checks its samples in order, each one's error or blank one-cell reference
 computed blank (`FTEST(IF(TRUE,B10),{1;2;3})`) is `#VALUE!` too (A79). An omitted sample (`FTEST(,{1;2;3})`) is unprobed
 (ours: the one-value `#DIV/0!`).
 Ours: since T-2455 (`fn_f_test`, `f_test_sample`, `is_blank_one_cell` in functions/statistical/fisher.rs). The paired
-functions' blank-cell `#VALUE!` stays with T-2426.
+functions' blank-cell `#VALUE!` followed in T-2426.
 Status: VERIFIED (excel-graph)
 Tasks: T-2455, T-2426
 
@@ -2646,7 +2646,10 @@ fcf11f2ec6f7a59d A9, the T-2051 question). A one-cell reference holding a number
 ("Array arguments given a scalar, a single cell or an error" above; `FTEST(6,Data!A$11)` with A11 = "x" is `#DIV/0!`,
 35e8168aae2b00f8 A253). This contradicts the earlier inference that an empty cell is one value with no number.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 109 cells listed in T-2426.
-Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions `#N/A` (size) or `#DIV/0!` (one point), T-2426.
+A reference returned by IF is `#VALUE!` too (`FORECAST(Data!$D2,IF(ISNUMBER(Data!E2),Data!A10,Data!D$5),LEN("ß"))`, 4250f880ab640c49 A294); a blank
+from IFERROR or LET is UNVERIFIED for the paired functions (F.TEST: `#VALUE!`, A79). PROB follows the same rule (see its entry, T-2468).
+Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions since T-2426 (`blank_one_cell_as_error` in
+functions/statistical/paired.rs, called by `fn_get_two_matrices` and `paired_samples`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2426, T-2051
 
@@ -2807,6 +2810,40 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-1741, T-1742, T-1
 Ours: matches since T-1741 (section "LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order").
 Status: VERIFIED (excel-graph)
 
+
+## LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)
+Rule: of the 189 gen-m9 LOGEST cells of T-1742, T-1741's shared shape and check-order code fixes 184; the other five are
+decided elsewhere. `LOGEST(T.DIST.2T(Data!B3,6),Data!C9:C12,<FALSE>)` (the const is an IF that is FALSE; one point of four variables, x = 0, -1, -2.5, 0.2,
+no constant) is 1 in Excel (285d87cea1aaa73c A293), so Excel drops the last column (0.2) where ours keeps it and fits
+m = 2.7E-40. Together with linest-modes K106 (E = 2A keeps E) this fits a solve that keeps the column of largest norm
+first (pivoted QR), which is UNVERIFIED (T-2569). `LOGEST(Data!A10:B11)` 2.220601291150046, ours ...0514, is the solve's
+digits (589f42e67f4b4b8d A193, T-2006), as are logest-modes K85 and the exact-fit stats K169:L173 and K197:L201 (Excel's
+residual is exactly 0, so se is 0 and F `#NUM!`). The remaining three are other functions: TRIMMEAN's order (a5342a7e24fd803e
+A288, the next entry), and PRICEMAT with an error yld beside a LOGEST basis (bc04c1f478c9896c A75, Excel `#VALUE!`, ours
+`#NUM!`) and LOGEST over an HLOOKUP whose range_lookup refers to a text "TRUE" cell (b8ee55934c5b824c A161, Excel `#VALUE!`,
+ours the size `#REF!`), both UNVERIFIED (T-2615). A blank one-cell known_x reference beside a range known_y is the size
+`#REF!` in Excel, as in ours (`LOGEST(Data!B9:D12,Data!A$9)`, 05d44f6dd6cfc567 A30; `LINEST(Data!C6:E12,Data!A11)`,
+623663cacea53bbc A210; `GROWTH(Data!A11:D12,Data!C12)`, fec39efaba9284c3 A265).
+GROWTH (T-1743): of its 75 gen-m9 cells, T-1726's and T-1741's shared code fixes 71. The other four are decided
+elsewhere. `GROWTH(DISC(39060,Data!A$4,Data!C6,(Data!D$7/1E-15)),..)` is `#NUM!` (05d44f6dd6cfc567 A34): GROWTH reports
+its known_y's error first, so Excel's DISC there, with maturity 1E+15, a text price and an error redemption, is
+`#NUM!` (inferred: no other argument can give `#NUM!`; T-2484's probe confirms it), where ours is `#VALUE!` (T-2484). `WEIBULL(PROB(-42,GROWTH(Data!B10:C11,Data!B$3),..),..)` is `#REF!` (41248d1cb153c66e
+A12): the GROWTH is the size `#REF!` in both, and Excel's PROB returns that prob_range error before the scalar x_range's
+`#VALUE!` (T-2468). A 0 y against a 2x2 x is abc2939ebd1e2365 A187 (T-2569), and `GROWTH(Data!D10:E10)`
+0.19999999999999996, ours 0.2000000000000001, is the solve (8fec7b207f4dd753 A75, T-2006), as are the growth-modes
+numerics past the 15th digit (K145:K152, K157 and K169 with a multi-column x; K3, K15, K27, K123 and K219).
+Evidence: gen-m9 (excel-graph, 2026-10-22); probes/logest-modes and probes/growth-modes (excel-graph).
+Ours: as described; T-2006, T-2468, T-2484, T-2569, T-2614, T-2615.
+Status: VERIFIED (excel-graph) for the values; the pivot and the four cross-function causes (PRICEMAT, HLOOKUP, DISC, PROB) UNVERIFIED
+Tasks: T-2006, T-2468, T-2484, T-2569, T-2614, T-2615
+
+## TRIMMEAN: an error percent before data with no number (T-1742)
+Rule: TRIMMEAN returns an error-valued percent before it reports data with no number: `TRIMMEAN(Data!E11:E11,<#N/A>)`
+with E11 = TRUE is `#N/A`, not `#NUM!` (a5342a7e24fd803e A288, the percent `COVARIANCE.P(8 cells,3 cells)-LOGEST(..)`).
+Evidence: gen-m9 (excel-graph, 2026-10-22).
+Ours: `#NUM!` (the data first); `TRIMMEAN(1,NA())` is already `#N/A`; T-2614.
+Status: VERIFIED (excel-graph), one cell
+Tasks: T-2614
 
 ## PROB: an error data argument first, one value on each side is #DIV/0!, unequal counts #N/A (T-2256)
 Rule: PROB checks its data in this order, each step before the next: x_range given as an error value is that error,
