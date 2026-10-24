@@ -75,7 +75,7 @@ pub(crate) fn value_operands(node: &Node) -> Option<(&Node, &Node)> {
 
 /// The `(left, right)` operands of `node` if it is a value operator, else
 /// `node` itself back.
-fn value_operands_mut(node: &mut Node) -> Result<(&mut Node, &mut Node), &mut Node> {
+pub(crate) fn value_operands_mut(node: &mut Node) -> Result<(&mut Node, &mut Node), &mut Node> {
     match node {
         Node::OpSumKind { left, right, .. }
         | Node::OpProductKind { left, right, .. }

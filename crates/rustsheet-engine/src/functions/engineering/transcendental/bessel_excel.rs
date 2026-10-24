@@ -9,6 +9,7 @@
 //! `probes-numeric/m9-bessel` sweep (T-1004), every cell of which these formulas reproduce exactly
 //! (`docs/excel-semantics/engineering.md`, T-0908).
 
+use crate::functions::math_and_trigonometry::{excel_sin_cos, EXCEL_INNER_TRIG_LIMIT};
 use crate::functions::util::poly;
 
 /// `|x|` from which J0, J1, Y0 and Y1 switch from the rational to the asymptotic form.
@@ -108,7 +109,13 @@ fn asymptotic(table: &Asymptotic, x: f64, is_y: bool) -> f64 {
     let xx = x - table.shift;
     let p = 1.0 + y * poly(table.p, y);
     let zq = z * poly(table.q, y);
-    let (sin, cos) = xx.sin_cos();
+    // Past the inner trig cut the sine and cosine do not answer and the result is `#NUM!`
+    // (`BESSELJ(1E+15,0)`, `BESSELJ(134217728,0)`, whose phase is 134217727.2, while the order-1
+    // phase 134217725.6 answers; probes/t2547-bessel-phase-cut, docs/excel-semantics/engineering.md).
+    if xx.is_nan() || xx.abs() >= EXCEL_INNER_TRIG_LIMIT {
+        return f64::NAN;
+    }
+    let (sin, cos) = excel_sin_cos(xx);
     let sum = if is_y {
         sin * p + zq * cos
     } else {

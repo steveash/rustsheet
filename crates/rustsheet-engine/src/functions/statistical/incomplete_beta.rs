@@ -44,8 +44,11 @@ const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
 const RLOG1_TERMS: u32 = 20;
 
 /// The smallest x at which `I_x(1, b)` is Excel's cancelling closed form 1 - exp(b ln(1 - x)); below
-/// it the tail is computed without the cancellation (T-0974).
-const A1_CLOSED_FORM_MIN_X: f64 = 0.1;
+/// it the tail is computed without the cancellation (T-0974). It is also the smallest y = n/(n+t^2)
+/// at which T.DIST.RT's df-2 tail is the closed form (`student_t.rs`): Excel takes it at
+/// `T.DIST.RT(4.24,2)` (y = 0.100112) and not at `T.DIST.RT(4.245,2)` (y = 0.099900), probes-numeric
+/// t0969-t-df2-cut.
+pub(crate) const A1_CLOSED_FORM_MIN_X: f64 = 0.1;
 
 /// `I_x(a, b)` for shapes a, b > 0; 0 at x <= 0 and 1 at x >= 1. NaN in, NaN out.
 #[cfg(test)]
@@ -255,7 +258,20 @@ fn large_prefactor(a: f64, b: f64, x: f64, y: f64) -> f64 {
     // One shape below 8: ln B(a,b) = ln Gamma(small) - (ln Gamma(small + large) - ln Gamma(large)).
     let (small, large) = if a < b { (a, b) } else { (b, a) };
     let ln_beta = ln_gamma(small) - gamma_ln_shift(small, large);
-    (a * x.ln() + b * y.ln() - ln_beta).exp()
+    (a * ln_near_one(x, y) + b * ln_near_one(y, x) - ln_beta).exp()
+}
+
+/// ln x for x in (0, 1) with its complement y = 1 - x: ln(1 - y) from y above x = 1/2, as TOMS 708
+/// `brcmp1` (`alnrel(-y)`), because a rounded x near 1 keeps only the digits of y that fit next to
+/// the 1. A huge shape multiplies that error: `F.INV.RT(0.05,99999,9)` (`I_x(49999.5, 4.5)` with
+/// y = 3.3E-5) was 48 units of the 15th digit off Excel's 2.7067247920355353 with ln x, 1 with ln(1 - y)
+/// (gen-m9/27601819397dd56e A81, T-2465).
+pub(crate) fn ln_near_one(x: f64, y: f64) -> f64 {
+    if x > 0.5 {
+        (-y).ln_1p()
+    } else {
+        x.ln()
+    }
 }
 
 /// ln Gamma(b + a) - ln Gamma(b) for b of [`STIRLING_MIN`] or more (TOMS 708 `algdiv`):
@@ -317,6 +333,35 @@ pub(super) mod tests {
     pub(in crate::functions::statistical) fn ulps(a: f64, b: f64) -> u64 {
         let (ia, ib) = (a.to_bits() as i64, b.to_bits() as i64);
         ia.abs_diff(ib)
+    }
+
+    // T-2465: with one shape below 8 and a huge other, ln x of a rounded x near 1 lost most of its
+    // digits; ln(1 - y) from the given y keeps them. References: 60-digit mpmath I_y(b, a) at the
+    // same doubles, the F.DIST.RT tails at Excel's F.INV.RT(0.05,99999,9) and
+    // F.INV.RT(0.001,99999,1) (gen-m9/27601819397dd56e A81, c18dbf21f11093f3 A190), which ln x
+    // missed by about 1E-12 relative.
+    #[test]
+    fn a_huge_shape_keeps_the_digits_of_a_small_complement() {
+        for (df1, df2, x, expected) in [
+            (
+                99_999.0,
+                9.0,
+                2.706_724_792_035_535_3,
+                0.049_999_999_999_999_93,
+            ),
+            (
+                99_999.0,
+                1.0,
+                636_616.255_908_127_8,
+                0.000_999_999_999_999_999_4,
+            ),
+        ] {
+            let total = df1 * x + df2;
+            let tail = beta_reg_upper(df1 * x / total, df2 / total, df1 / 2.0, df2 / 2.0);
+            // Within 1E-14 relative (about 2E-15 now; ln x was about 1E-12 off).
+            assert!((tail / expected - 1.0).abs() < 1e-14, "{df1} {df2}: {tail}");
+        }
+        assert_eq!(ln_near_one(1.0 - 3.3e-5, 3.3e-5), (-3.3e-5f64).ln_1p());
     }
 
     #[test]

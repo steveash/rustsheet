@@ -302,6 +302,17 @@ time of day).
 Status: VERIFIED
 Tasks: T-0954
 
+## `m`/`mm` directly before `:ss` is minutes, with no hour
+Rule: `m` or `mm` followed by `:` and a plain `s`/`ss` is a minute even when the code has no hour
+token (otherwise it is a month): `mm:ss` shows 1000 as "00:00", 123456.789 as "56:10" and 1.5 as
+"00:00". After an hour it was already minutes (`h:mm`).
+Evidence: suite gen-m10 displayed-text cells (excel-graph, 2026-10-16, T-1611), 71 of 80 `mm:ss` cells
+failed before the fix. Status: VERIFIED (excel-graph).
+Implemented in: `minute_before_seconds` (formatter/parser.rs). Probed: `mm:ss`, `mm:ss.0`, `mm:ss.00`. Unprobed
+(implemented by the same rule): single `m:ss`, `:s`, `[m]`/`[s]` forms, `mmss` with no colon, and any other
+separator or literal between the `m` and the seconds (those still read as months).
+Tasks: T-1733
+
 ## Fractional seconds in clock formats
 Rule: `.0`, `.00` or `.000` after a plain `s`/`ss` prints the fraction of the second, rounded to that
 many digits: on 36191.1702084375 (04:05:06.009) `hh:mm:ss.000 am/pm` → "04:05:06.009 AM" (A32),
@@ -543,11 +554,15 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - `[$USD]` is currency text ("-1.50 USD") and `[Cyan]` a color.
 - Engineering and padded mantissas: `##0.0E+0` on 123456.789 is "123.5E+3", `00.0E+0` on 36.5
   "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
-- Rule (T-1730, implemented for the exponent only): the exponent is the decimal exponent rounded down to a
+- Rule (T-1730, T-2226): the exponent is the decimal exponent rounded down to a
   multiple of the integer-placeholder count (`##0.0E+0` on 61 "61.0E+0"); a zero exponent prints `E+00`
   (never `E-00`) and `E00` under `E-`. The group size for grouped codes (`#,##0.0E+0`) is unprobed.
-- Not implemented (VERIFIED, gen-m10): the mantissa is rounded after the shift (`##0.0E+0` on 1/3
-  "333.3E-3", `##0.00E+00` "333.33E-03"; T-2226); zero prints all integer placeholders (`##0.0E+0` on 0
+- Implemented (VERIFIED, gen-m10, T-2226): an engineering mantissa (two or more integer placeholders) rounds after
+  the shift, to its own integer digits plus the decimals (`##0.0E+0` on 1/3 "333.3E-3", on -1/7 "-142.9E-3",
+  `##0.00E+00` on 1/3 "333.33E-03", `00.0E+0` on 0.125 "12.5E-2"; 28 gen-m10 text cells). Ours: a rounding carry
+  into the next power of ten moves the exponent to the next multiple (`##0.0E+0` on 999.96 "1.0E+3"), which is
+  unprobed for engineering codes.
+- Not implemented (VERIFIED, gen-m10): zero prints all integer placeholders (`##0.0E+0` on 0
   "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
   "1.0E+02") (T-2227).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
@@ -620,8 +635,16 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   1E9+0.25 "1000000000/1", 2147483646.4 "2147483646/1", yet 2147483646.6 "4294967293/2" (not 10737418233/5)
   and 715827882.5 "1431655765/2", 5E8+0.25 "2000000001/4"; `??/??` on 2147483646.5 "2147483647/1 " and on
   1073741824.5 "1073741825/1 ". No bound on the numerator or on the denominator times the value fits every
-  cell (4294967293/2 is refused for 2147483646.5 and taken for 2147483646.6). The engine prints the
-  convergent.
+  cell (4294967293/2 is refused for 2147483646.5 and taken for 2147483646.6).
+  Rule (fitted, T-2233, probes/fraction-placeholder-past-2-30, 75/75 cells, excel-graph 2026-10-23): the
+  continued fraction stops where a partial quotient `a` times the last numerator `p1` passes 2^31 - 1, while the new
+  numerator `a*p1 + p0` may pass it (only the product is checked). 2147483646.6: 1 x 2147483647 is taken, so
+  4294967293/2 shows; then 2 x 4294967293 stops. 2147483646.5: 2 x 2147483646 stops. If that stop comes before any
+  fractional term (the last convergent still has denominator 1), the value is rounded half away from zero to an
+  integer over 1: 1073741824.5 "1073741825/1", 1073741824.25 "1073741824/1". At the bound: 1073741823.5 "2147483647/2"
+  (2 x 1073741823 = 2^31 - 2 is taken). The sum alone passing 2^31 is taken: 1500000000.6 "3000000001/2", and
+  715827883+1/3 (the double 715827883.3333334, partial quotients 2 then 1) "2147483650/3", where 1 x 1431655767 is under
+  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". UNVERIFIED: the bound under `%` and `,` scaling.
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)

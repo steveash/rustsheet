@@ -135,9 +135,10 @@ or before its first line (an insert) or wholly before it (a delete), drop the pi
 takes every one of its lines, and otherwise, when the edit meets the pivot's lines, refuse the edit
 before changing anything, as Excel refuses an edit that would change part of a pivot (UNVERIFIED
 which edits exactly; T-2402). Sheet deletion takes the sheet's pivots into `TakenSheet` so an undo
-restores them, and a sheet rename rewrites `CacheSource::sheet_name`. A row or column move still
-drops the sheet's pivots (GETPIVOTDATA `#REF!`), a known gap listed in the web.md entry "Pivot
-tables and structural edits" (T-2401), not a silent wrong answer.
+restores them, and a sheet rename rewrites `CacheSource::sheet_name`. A row or column move shifts a
+pivot with its cells (`Model::move_pivots`, T-2401) and is refused when it would split one; which
+moves Excel refuses is UNVERIFIED (T-2402), see the web.md entry "Pivot tables and structural
+edits".
 
 ### xlsx import (T-2082)
 `crates/rustsheet-xlsx/src/import/pivots.rs`, next to `tables.rs`:

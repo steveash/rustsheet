@@ -20,7 +20,9 @@ use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
-pub(crate) use structured::to_string_lowering;
+pub(crate) use structured::{
+    to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
+};
 
 pub enum DisplaceData {
     Column {
@@ -66,8 +68,11 @@ enum Rewrite<'a> {
     Move(&'a MoveContext<'a>),
     /// Prints the area of every structured reference to one of these tables (lowercase names)
     /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
-    /// and restore").
-    Lower(&'a [String]),
+    /// and restore"). A `#This Row` area is resolved at the cell's row, or at the given row when
+    /// the formula is printed in R1C1 for one cell (T-1699).
+    Lower(&'a [String], Option<i32>),
+    /// Prints every `#This Row` as its area on the printing cell's row (T-1699).
+    LowerThisRow,
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
@@ -155,13 +160,16 @@ pub(crate) fn to_string_moved(
 }
 
 /// The sheet prefix of a 3-D reference, `First:Last`, quoted as one name when either sheet
-/// needs quotes (Excel writes `'Data2:Q 4'!A1`).
-pub(crate) fn sheet_span_text(first: &str, last: &str) -> String {
+/// needs quotes (`'Data2:Q 4'!A1`); a one-sheet span is the plain name (probes/3d-ref-one-sheet-span-lift B6).
+pub(crate) fn sheet_span_text(first: &str, last: &str, one_sheet: bool) -> String {
     let span = format!("{first}:{last}");
-    if !name_needs_quoting(first) && !name_needs_quoting(last) {
-        span
-    } else {
-        format!("'{}'", span.replace('\'', "''"))
+    match (
+        one_sheet,
+        name_needs_quoting(first) || name_needs_quoting(last),
+    ) {
+        (true, _) => quote_name(first),
+        (false, false) => span,
+        (false, true) => format!("'{}'", span.replace('\'', "''")),
     }
 }
 
@@ -472,7 +480,7 @@ fn stringify(
             }
             &DisplaceData::None
         }
-        Rewrite::Lower(_) => &DisplaceData::None,
+        Rewrite::Lower(..) | Rewrite::LowerThisRow => &DisplaceData::None,
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
@@ -581,11 +589,12 @@ fn stringify(
         SheetSpanKind {
             first_sheet,
             last_sheet,
+            first_index,
+            last_index,
             reference,
-            ..
         } => format!(
             "{}!{}",
-            sheet_span_text(first_sheet, last_sheet),
+            sheet_span_text(first_sheet, last_sheet, first_index == last_index),
             stringify(
                 reference,
                 context,
@@ -740,6 +749,7 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
+        ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
             lowered,
@@ -889,23 +899,8 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
 pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: &str) {
     match node {
         // Rename
-        Node::ReferenceKind {
-            sheet_name,
-            sheet_index: index,
-            ..
-        } => {
-            if *index == sheet_index && sheet_name.is_some() {
-                *sheet_name = Some(new_name.to_owned());
-            }
-        }
-        Node::RangeKind {
-            sheet_name,
-            sheet_index: index,
-            ..
-        } => {
-            if *index == sheet_index && sheet_name.is_some() {
-                *sheet_name = Some(new_name.to_owned());
-            }
+        Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::ThisRowKind { .. } => {
+            node.rename_reference_sheet(sheet_index, new_name);
         }
         Node::SheetSpanKind {
             first_sheet,

@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Chained call after a built-in (T-2405): `=IF(TRUE,LAMBDA(x,x*2))(3)`. Sheet1 A1:A3 = 1,2,3.",
+  "tags": [
+    "M7",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "=IF(TRUE,LAMBDA(x,x*2))(3)",
+        "C1": "=FORMULATEXT(B1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!B1",
+    "Sheet1!C1"
+  ]
+}

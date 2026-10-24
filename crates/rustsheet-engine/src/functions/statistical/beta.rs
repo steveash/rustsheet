@@ -5,7 +5,7 @@ use crate::functions::lift::{div_error, num_error, number_or_error, value_error}
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
-use crate::functions::statistical::inverse_beta::beta_inverse_cdf;
+use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
 use crate::functions::statistical::special::refine_increasing;
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
@@ -14,7 +14,10 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// nor for a shape of 1E8 or more, and for the rest of the sweep (T-1543, 9x9 shapes up to 1E15 by
 /// 8 probabilities) is bounded and last-digit exact for shapes up to 1E5 and p of 1E-15 or more.
 /// Inside that range its search (the capped port of `inverse_beta.rs`, T-1848, which also ends the
-/// one hang found there, `BETA.INV(1-2^-53,1.0024,12177)`) is the start of the refinement.
+/// one hang found there, `BETA.INV(1-2^-53,1.0024,12177)`) is the start of the refinement. Above
+/// that shape the quantile is the crossing of our own incomplete beta in Excel's AS 109 structure
+/// (`inverse_beta::beta_quantile_crossing`, T-1538; statrs' cdf misses by 13 ulp at
+/// `BETAINV(1E-20,1E10,0.5)`, Excel 0.9999999956419133, gen-m9/0a9226016e8f5f33 A358).
 const BETA_QUANTILE_STATRS_SHAPE_MAX: f64 = 1e5;
 const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 
@@ -23,8 +26,12 @@ const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 /// BETA.INV solves its own cdf to the crossing (docs/excel-semantics/statistics.md "BETA.INV solves
 /// Excel's own CDF to the crossing (T-1745)"), so the inverse uses the same cdf as BETA.DIST (T-2119).
 /// Above p = 0.5 the target is the exact complement 1 - p on the upper tail, as for F.INV (T-0974).
-/// At most 512 Newton steps and 129 cdfs, or 65 cdfs without a start.
+/// At most 512 Newton steps and 129 cdfs, or 65 cdfs without a start. A shape above 1E5 takes
+/// T-1538's crossing instead (above).
 fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
+    if alpha > BETA_QUANTILE_STATRS_SHAPE_MAX || beta > BETA_QUANTILE_STATRS_SHAPE_MAX {
+        return beta_quantile_crossing(alpha, beta, p);
+    }
     let estimate = if alpha <= BETA_QUANTILE_STATRS_SHAPE_MAX
         && beta <= BETA_QUANTILE_STATRS_SHAPE_MAX
         && p >= BETA_QUANTILE_STATRS_P_MIN
@@ -97,16 +104,16 @@ impl Model {
         bounds: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        // TODO(T-1849): Excel reads a TRUE as 1 in x (probes/stat-later-argument-lift L1).
-        let x = self.cast_number_no_bools_ref(x, cell)?;
-        let alpha = self.cast_number_no_bools_ref(alpha, cell)?;
-        let beta_param = self.cast_number_no_bools_ref(beta, cell)?;
+        // Excel reads a TRUE as 1 in x (probes/stat-later-argument-lift L1).
+        let x = self.cast_number_ref(x, cell)?;
+        let alpha = self.cast_number_ref(alpha, cell)?;
+        let beta_param = self.cast_number_ref(beta, cell)?;
         let cumulative = match cumulative {
             Some(value) => beta_cumulative(value, cell)?,
             None => true,
         };
-        let a = self.cast_number_no_bools_or(bounds.first(), 0.0, cell)?;
-        let b = self.cast_number_no_bools_or(bounds.get(1), 1.0, cell)?;
+        let a = self.cast_number_or(bounds.first(), 0.0, cell)?;
+        let b = self.cast_number_or(bounds.get(1), 1.0, cell)?;
 
         // Excel: alpha <= 0 or beta <= 0 → #NUM!; x < A, x > B, or A = B → #NUM!
         if alpha <= 0.0 || beta_param <= 0.0 || b == a || x < a || x > b {
@@ -157,11 +164,12 @@ impl Model {
         let [p, alpha, beta, bounds @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let p = self.cast_number_no_bools_ref(p, cell)?;
-        let alpha = self.cast_number_no_bools_ref(alpha, cell)?;
-        let beta_param = self.cast_number_no_bools_ref(beta, cell)?;
-        let a = self.cast_number_no_bools_or(bounds.first(), 0.0, cell)?;
-        let b = self.cast_number_no_bools_or(bounds.get(1), 1.0, cell)?;
+        // A boolean reads as 1 or 0 in every argument (probes/stat-quantile-lift L3, gen-m9/165db58d1540f014 A257).
+        let p = self.cast_number_ref(p, cell)?;
+        let alpha = self.cast_number_ref(alpha, cell)?;
+        let beta_param = self.cast_number_ref(beta, cell)?;
+        let a = self.cast_number_or(bounds.first(), 0.0, cell)?;
+        let b = self.cast_number_or(bounds.get(1), 1.0, cell)?;
         // alpha or beta <= 0, probability outside (0, 1) and A >= B are #NUM!.
         if alpha <= 0.0 || beta_param <= 0.0 || p <= 0.0 || p >= 1.0 || b <= a {
             return Err(num_error(cell));

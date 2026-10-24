@@ -286,6 +286,21 @@ impl Model {
         self.call_lambda(callee, call_args, cell)
     }
 
+    /// What the callee of a call written in the formula, `callee(args)`, evaluates to, a
+    /// reference kept as one: a cell, an INDEX or IF that selects one, and the range a TAKE, DROP,
+    /// TRIMRANGE or XLOOKUP over a range picks, so `TAKE(A1:A3,1)(2)` and
+    /// `XLOOKUP(1,A1:A3,A1:A3)(2)` are `#REF!` (probes/chained-calls-builtin-take, -drop,
+    /// -trimrange, -xlookup, excel-graph; T-2499). These are read as SUBTOTAL reads them
+    /// ([`Self::evaluate_picked_reference_arg`]); what SUM(TAKE(..)) reads is unchanged.
+    pub(crate) fn evaluate_callee(
+        &mut self,
+        lambda: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.evaluate_picked_reference_arg(lambda, cell)
+            .into_single_area(cell)
+    }
+
     /// [`Self::call_callee`] of a call written where a reference is wanted (an aggregate's
     /// argument, ISREF): a body that gives a reference keeps it, a single cell too, so
     /// `SUM(LAMBDA(x,x)(K1))` and `MAX(LAMBDA(x,x)(K1))` skip the text in K1 (0) and
@@ -297,9 +312,7 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> RefArg {
-        let callee = self
-            .evaluate_reference_arg(lambda, cell)
-            .into_single_area(cell);
+        let callee = self.evaluate_callee(lambda, cell);
         // Anything but a LAMBDA is called as `call_variable` calls it: a reference is `#REF!`
         // (`call_callee`), a value gives Excel's odd results.
         if !matches!(callee, CalcResult::Lambda(_)) {

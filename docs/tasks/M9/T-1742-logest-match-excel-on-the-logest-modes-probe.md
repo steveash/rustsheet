@@ -122,7 +122,44 @@ Cells:
 - gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A189
 - gen-m9/d910f000b60e2eac.case.json (1): Calc!A253
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): LOGEST nested in the financial functions (`AMORDEGRC(3818,37026,39052,8,LOGEST(BITAND(281474976710655,986)),0.0314159,0)` = 169 in Excel, ours `#VALUE!`; `YIELDDISC(LOGEST(..),PI(),-1,108,1)` `#NUM!`): Excel's inner LOGEST is not ours `#VALUE!`.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 8 known-failure lines in eval/baseline/gen-m9.txt, 8 visibly off.
+Examples:
+- gen-m9/1b60bf99d71424e7 Calc!A2 `=DURATION(LOGEST(Data!C11:E11,Data!A10:B12),Data!D11,AVERAGE(Data!C8:C9),1E-300,0)`: Excel #REF!, ours #NUM!
+- gen-m9/31474c20fc1dafd6 Calc!A206 `=DOLLARDE(ASIN(LOGEST(Data!D12,123456789.123,Data!C1,TRUE)),10)`: Excel #NUM!, ours #VALUE!
+- gen-m9/3c06f9298f65a3ba Calc!A335 `=AMORDEGRC(3818,37026,39052,8,LOGEST(BITAND(281474976710655,986)),Data!B3%,0)`: Excel 169.0, ours #VALUE!
+- gen-m9/9d9ceba257f8001b Calc!A176 `=CUMPRINC((Data!D12-Data!D9),LOGEST(BITRSHIFT(566,Data!A$5)),19144,11,21,0)`: Excel #NUM!, ours #VALUE!
+- gen-m9/b73c6cc96e093f03 Calc!A108 `=TBILLEQ(45657,LOGEST((Data!$E11-1.005),(Data!C11+2),BYROW(Data!B6,_xleta.SUM)),0)`: Excel #NUM!, ours #VALUE!
+- gen-m9/b73c6cc96e093f03 Calc!A293 `=YIELDDISC(LOGEST((Data!E11*1e-15),3.14159),PI(),(-1),108,1)`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/1b60bf99d71424e7.case.json (1): Calc!A2
+- gen-m9/31474c20fc1dafd6.case.json (1): Calc!A206
+- gen-m9/3c06f9298f65a3ba.case.json (1): Calc!A335
+- gen-m9/9d9ceba257f8001b.case.json (1): Calc!A176
+- gen-m9/b73c6cc96e093f03.case.json (3): Calc!A108, A256, A293
+- gen-m9/bc04c1f478c9896c.case.json (1): Calc!A75
+
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 5 more cells nest LOGEST: `HEX2DEC(TEXT(LOGEST(-2.5),"?/?"))` and `BITXOR(LOGEST(-0.5),736)` `#NUM!` (non-positive known_y), `HEX2OCT("1F",LOGEST(<text>,Data!C8:E11,..)+..)` and `IMPOWER("2i",LOGEST(Data!A1:B1,Data!B$8))` `#REF!`, `BESSELI(LOGEST(42.5,-0.4),0)` 1.2660658480342601 (LOGEST of one point is 1); ours `#VALUE!`.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 formulas, 5 visibly off.
+Examples:
+- gen-m9/2b0324e2de2e7b74 Calc!A267 `=BITXOR(LOGEST((Data!C4-Data!B7)),736)`: Excel #NUM!, ours #VALUE!
+- gen-m9/40fc68fccfaf9b76 Calc!A347 `=HEX2OCT("1F",(LOGEST(Data!D4,Data!C8:E11,Data!E2,FALSE)+Data!C8))`: Excel #REF!, ours #VALUE!
+- gen-m9/4fffa5addab1f8af Calc!A280 `=HEX2DEC(TEXT(LOGEST(Data!$C9),"?/?"))`: Excel #NUM!, ours #VALUE!
+- gen-m9/a1b4181c04804efc Calc!A263 `=IMPOWER("2i",LOGEST(Data!A1:B1,Data!B$8))`: Excel #REF!, ours #VALUE!
+- gen-m9/e85daedce5c2675e Calc!A315 `=BESSELI(LOGEST(SUM(42,0.5,Data!D12),(Data!C9+Data!E8)),FLOOR(DB(1E+300,100,19,5),COUNTIFS(Data!B6:D10,"=a")))`: Excel 1.2660658480342601, ours #VALUE!
+Cells:
+- gen-m9/2b0324e2de2e7b74.case.json (1): Calc!A267
+- gen-m9/40fc68fccfaf9b76.case.json (1): Calc!A347
+- gen-m9/4fffa5addab1f8af.case.json (1): Calc!A280
+- gen-m9/a1b4181c04804efc.case.json (1): Calc!A263
+- gen-m9/e85daedce5c2675e.case.json (1): Calc!A315
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2257): the 8 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 176 known-failure lines (167 from T-2255, 9 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 8 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 8 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.

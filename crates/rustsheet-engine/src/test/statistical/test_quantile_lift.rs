@@ -214,8 +214,8 @@ fn unlifted_calls_are_the_scalar_calls() {
         ("A7", "0.448261562"),
         ("A8", "#ERROR!"),
         ("A9", "#NUM!"),
-        // TODO(T-1849): Excel reads the TRUE as 1 (probes/stat-quantile-lift L2, L19).
-        ("A10", "#VALUE!"),
+        // A TRUE reads as 1 (probes/stat-quantile-lift L2, L19): p = 1 is #NUM!.
+        ("A10", "#NUM!"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");

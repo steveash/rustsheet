@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use crate::expressions::parser::stringify::{to_excel_string, to_rc_format};
 use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
+use crate::expressions::parser::Node;
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils::{number_to_column, parse_reference_a1};
 use crate::types::{Table, TableColumn, TableStyleInfo};
@@ -70,12 +71,14 @@ fn simple_table() {
         column: 6,
     };
 
+    // `#This Row` keeps its text, and the export prints the area on the cell's row (T-1699).
     let formula = "SUM(tblIncome[[#This Row],[Jan]:[Dec]])";
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUM($A$2:$E$2)"
+        "SUM(tblIncome[[#This Row],[Jan]:[Dec]])"
     );
+    assert_eq!(to_excel_string(&t, &cell_reference), "SUM($A$2:$E$2)");
 
     // Cell A3
     let cell_reference = CellReferenceRC {
@@ -202,7 +205,21 @@ fn this_row_outside_the_data_rows_is_value_error() {
             column: 9,
         };
         let t = parser.parse("tblIncome[[#This Row],[Jan]]", &cell_reference);
-        assert_eq!(to_english_localized_string(&t, &cell_reference), expected);
+        assert_eq!(to_excel_string(&t, &cell_reference), expected);
+        assert_eq!(
+            to_english_localized_string(&t, &cell_reference),
+            "tblIncome[[#This Row],[Jan]]"
+        );
+        // The parsed area does not depend on the row it was parsed at (SPEC-0016 step 2).
+        assert!(matches!(
+            t.ungrouped(),
+            Node::ThisRowKind {
+                data_start: 2,
+                data_end: 3,
+                cell: true,
+                ..
+            }
+        ));
     }
 }
 
@@ -276,6 +293,7 @@ fn every_form_round_trips_through_the_printer() {
         Some(TableSpecifier::Totals),
         Some(TableSpecifier::HeadersData),
         Some(TableSpecifier::DataTotals),
+        Some(TableSpecifier::ThisRow),
     ];
     let mut references = vec![StructuredReference {
         table_name: "T".to_string(),

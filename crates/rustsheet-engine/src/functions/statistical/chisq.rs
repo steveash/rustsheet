@@ -3,7 +3,7 @@ use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{Continuous, Gamma};
 
 use super::erf::{gamma_half_lower, gamma_half_upper};
-use super::incomplete_gamma::{gamma_cdf, gamma_inverse_cdf, gamma_sf};
+use super::incomplete_gamma::{gamma_cdf, gamma_quantile, gamma_sf, Tail};
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
 
@@ -40,6 +40,21 @@ fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
         gamma_sf(dist, x)
     }
 }
+
+/// Below this right-tail probability Excel's CHISQ.INV.RT and CHIINV are `#NUM!` for 3 to 10
+/// degrees of freedom (`CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `(1E-300,10)`: 21 literal gen-m9
+/// cells, T-1634), though the quantile exists, while `CHISQ.INV.RT(1E-20,n)` is a value for every
+/// n probed. Two degrees of freedom (a closed form, `CHISQ.INV.RT(1E-300,2)` = 1381.5510557964274),
+/// 22 (`CHISQ.INV.RT(1E-100,AVERAGE((Data!E10*7),42))` = 542.4417060011164, gen-m9) and 50
+/// (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946, T-1543) have values. The boundary p between
+/// 1E-20 and 1E-100, and the degrees of freedom from 11 to 21, are not probed
+/// (docs/excel-semantics/statistics.md, T-1634).
+// TODO(T-2561): the exact boundary is unprobed; T-2561 probes and pins it.
+const RIGHT_TAIL_P_MIN: f64 = 1e-20;
+
+/// From this shape (11 degrees of freedom) a right-tail quantile below [`RIGHT_TAIL_P_MIN`] is a
+/// value, as at 22 and 50 in Excel.
+const RIGHT_TAIL_SHAPE_ALL_P: f64 = 5.5;
 
 /// A distribution value as a cell value: `#NUM!` unless finite and not negative.
 fn non_negative(value: f64, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
@@ -157,9 +172,19 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = chi_squared(df, cell)?;
-        // The right tail: p = P(X > x) = 1 - CDF(x), so x = inverse_cdf(1 - p).
-        let p = if right_tail { 1.0 - p } else { p };
-        non_negative(gamma_inverse_cdf(&dist, p), cell)
+        if !right_tail {
+            return non_negative(gamma_quantile(&dist, p, Tail::Lower), cell);
+        }
+        // At one degree of freedom Excel's right-tail quantile is the left one of 1 - p:
+        // `CHISQ.INV.RT(1E-10,1)` is `CHISQ.INV(0.9999999999,1)`, 41.82145620298276, and below
+        // 1.1E-16 (1 - p rounds to 1) it is `#NUM!` (T-1543 probe, T-1634).
+        if is_one_degree(&dist) {
+            return non_negative(gamma_quantile(&dist, 1.0 - p, Tail::Lower), cell);
+        }
+        if p < RIGHT_TAIL_P_MIN && dist.shape() != 1.0 && dist.shape() < RIGHT_TAIL_SHAPE_ALL_P {
+            return Err(num_error(cell));
+        }
+        non_negative(gamma_quantile(&dist, p, Tail::Upper), cell)
     }
 
     /// The values of a range, row-major, for a caller that keeps the numbers: a number is `Some`,
@@ -230,7 +255,7 @@ impl Model {
         cell: CellReferenceIndex,
         arrays_are_value_errors: bool,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
-        let by_reference = matches!(node.ungrouped(), Node::ReferenceKind { .. });
+        let by_reference = matches!(*node.ungrouped_at(cell.row), Node::ReferenceKind { .. });
         // The `@` of a non-reference array is its top-left value, which the RANK family takes as
         // it takes the whole array: `#VALUE!`, or the element's error, in one cell
         // (`RANK(5,@IF(A1:B2>0,A1:B2))`, `RANK(5,@{3,4})`; probes/rank-at-if-ref H1, H31, K28).

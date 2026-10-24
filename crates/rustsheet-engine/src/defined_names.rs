@@ -123,7 +123,8 @@ const MAX_DEFINED_NAME_DEPTH: usize = 64;
 /// `#NAME?` (same DEVIATION).
 const MAX_DEFINED_NAME_EVALUATIONS: usize = 10_000;
 
-/// The state of the defined-name bodies being evaluated right now (`Model::within_defined_name`).
+/// The state of one run of a cell's formula (`Model::run_cell_formula`): the defined-name bodies
+/// being evaluated right now (`Model::within_defined_name`) and the D-function formula condition.
 #[derive(Default)]
 pub(crate) struct DefinedNameRun {
     /// Bodies evaluated inside one another.
@@ -132,6 +133,10 @@ pub(crate) struct DefinedNameRun {
     evaluations: usize,
     /// Where the stack was when the outermost one started.
     stack_base: usize,
+    /// Whether a D-function formula condition is being evaluated again for a record
+    /// (`Model::db_computed_condition`), which does not nest. A cell first computed inside one
+    /// is its own run, so its D-functions re-evaluate their own conditions.
+    pub(crate) db_condition_running: bool,
 }
 
 impl Model {

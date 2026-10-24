@@ -296,6 +296,10 @@ pub struct Worksheet {
     pub sheet_data: SheetData,
     pub shared_formulas: Vec<String>,
     pub sheet_id: u32,
+    /// Position among the sheets when the workbook was read; a sheet added later takes the next
+    /// free rank. Moves and renames keep it. Excel calculates a freshly loaded workbook in the
+    /// reverse of this order, not of the tab order (SPEC-0017).
+    pub load_rank: u32,
     pub state: SheetState,
     pub color: Color,
     pub merged_cells: Vec<MergedCell>,

@@ -95,7 +95,48 @@ Cells:
 - gen-m9/eedd629f3d69fdda.case.json (1): Calc!A374
 - gen-m9/f82473275380882e.case.json (1): Calc!A393
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): FORECAST.ETS calls nested in the financial functions whose Excel error comes from an ETS argument (`#VALUE!`, `#NUM!`, `#DIV/0!`), where ours is `#N/IMPL!`.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 15 known-failure lines in eval/baseline/gen-m9.txt, 15 visibly off.
+Examples:
+- gen-m9/1cd3096e3e87c965 Calc!A109 `=MDURATION(37604,45422,FORECAST.ETS(2958465,MONTH(Data!B1),Data!B2,2,(Data!B6/Data!E4),5),1E+300,2,2)`: Excel #NUM!, ours #N/IMPL!
+- gen-m9/3aa168259335be54 Calc!A82 `=YIELD(36857,LET(v,JIS("1"),y,MOD(v,v),acc,-Data!A9,(0.1-v)),1E+10,110,108,2,Data!B$11)`: Excel #NUM!, ours #NAME?
+- gen-m9/67a4c03afd63f988 Calc!A150 `=IRR(FORECAST.ETS.SEASONALITY(SUMIFS(Data!B4:E10,Data!B8:E12,"=a",Data!D4:E7,"<5",Data!E4:E11,"<5"),Data!A11:C11),1)`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/81bcdc0bec0c8e6b Calc!A371 `=COUPNCD(39641,44319,FORECAST.ETS(24,(Data!C2^Data!B8),Data!D8:E12,1,0),1)`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/9d9ceba257f8001b Calc!A66 `=DURATION(39458,46437,FORECAST.ETS.CONFINT((Data!$E7-Data!A2),Data!C3:D12,Data!A2:D6,Data!E3),1E-9,3)`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/e168be7f6d3f84c2 Calc!A170 `=MDURATION(38966,46752,7,FORECAST.ETS.CONFINT((Data!A9+Data!$B$6),Data!B6:D12,(-1),EVEN(2.675)),4,2)`: Excel #VALUE!, ours #N/IMPL!
+Cells:
+- gen-m9/1cd3096e3e87c965.case.json (1): Calc!A109
+- gen-m9/23d82b62e9a85bdd.case.json (1): Calc!A334
+- gen-m9/30e20ba3302fea8b.case.json (1): Calc!A194
+- gen-m9/3aa168259335be54.case.json (1): Calc!A82
+- gen-m9/5c6a23c4f6597f1c.case.json (1): Calc!A299
+- gen-m9/67a4c03afd63f988.case.json (1): Calc!A150
+- gen-m9/81bcdc0bec0c8e6b.case.json (1): Calc!A371
+- gen-m9/89f0aee953a55a45.case.json (1): Calc!A247
+- gen-m9/9d9ceba257f8001b.case.json (2): Calc!A66, A71
+- gen-m9/a91bad4e84f49739.case.json (3): Calc!A190, A326, A400
+- gen-m9/c0681a8b150ce301.case.json (1): Calc!A112
+- gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A170
+
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 4 more cells nested in engineering calls where an argument error decides: `FORECAST.ETS.STAT(..,MONTH(1E+15)<#NUM!>,2)` `#NUM!`, `FORECAST.ETS.CONFINT(<#VALUE!>,..)` `#VALUE!`, `FORECAST.ETS.CONFINT(25,..,ACOS("Hello World")<#VALUE!>,..)` `#VALUE!`, `FORECAST.ETS.STAT(..,<#VALUE!>,..)` `#VALUE!`.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 4 known-failure lines in eval/baseline/gen-m9.txt, 4 formulas, 4 visibly off.
+Examples:
+- gen-m9/4e180f54ff140abc Calc!A103 `=COMPLEX(FORECAST.ETS.STAT(Data!A4:D5,MONTH(Data!C4),2),SUMPRODUCT(Data!C9:E11))`: Excel #NUM!, ours #N/IMPL!
+- gen-m9/5bdef392d16a5efb Calc!A18 `=DEC2HEX(71256,FORECAST.ETS.CONFINT((Data!B8*Data!B1),Data!B6:E12,Data!C8:E11,MATCH(Data!$E12,Data!C3:C12,1),0,0,2))`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/bf979a17ab5aafcb Calc!A266 `=DELTA(FORECAST.ETS.CONFINT(25,{1;4;9;16;25;36;49;64;81;100;121;144;169;196;225;256;289;324;361;400;441;484;529;576},ACOS(Data!C11),IFNA("1.5",Data!A7)),0)`: Excel #VALUE!, ours #N/IMPL!
+- gen-m9/f8bc18a0e45a0e1a Calc!A123 `=BITXOR(36,FORECAST.ETS.STAT(Data!B2:C4,(Data!B$8*0.5),1,4,0,(Data!C12-0.5)))`: Excel #VALUE!, ours #N/IMPL!
+Cells:
+- gen-m9/4e180f54ff140abc.case.json (1): Calc!A103
+- gen-m9/5bdef392d16a5efb.case.json (1): Calc!A18
+- gen-m9/bf979a17ab5aafcb.case.json (1): Calc!A266
+- gen-m9/f8bc18a0e45a0e1a.case.json (1): Calc!A123
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2257): the 15 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 1215 known-failure lines (1196 from T-2255, 19 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: an error in each argument position (first one wins), a text target_date/seasonality/statistic_type

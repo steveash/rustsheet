@@ -1,6 +1,6 @@
 ---
 id: T-2430
-title: "An error element inside an array argument of LARGE, SMALL, QUARTILE, COVARIANCE and the paired functions is that error, not #VALUE! (gen-m9, 19 cells)"
+title: "An error element inside an array argument of LARGE, SMALL, QUARTILE, COVARIANCE and the paired functions is that error, not #VALUE! (gen-m9, 20 cells)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -117,7 +117,49 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (1): Calc!A265
 - gen-m9/eedd629f3d69fdda.case.json (3): Calc!A26, A361, A378
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): An error element in an array argument of SMALL, LARGE, QUARTILE.INC or VARP nested in the financial functions (`PRICE(..,SMALL({1,#N/A,3},2),..)` `#NUM!`, `PPMT(LARGE({1,#N/A,3},1)*..,..)` `#N/A`; ours `#VALUE!`).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 visibly off.
+Examples:
+- gen-m9/1cd3096e3e87c965 Calc!A209 `=PRICE(39950,46912,100,(100/COUNTA(Data!$D$5)),SMALL({1,#N/A,3},2),4,PV((2*0.2),15,(0.1*Data!A6)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/31474c20fc1dafd6 Calc!A342 `=DURATION(ATANH((-0.9999999999999999)),44811,(-1),0.1,VARP({1,#N/A,3},{100000000.1,100000000.2,100000000.3},Data!D6:D10))`: Excel #NUM!, ours #N/A
+- gen-m9/79d87fc527927626 Calc!A284 `=MDURATION(36896,(((-2.5)+0.3)+Data!B1),(CHOOSECOLS(Data!D1:D10,Data!B2)/Data!D8),SMALL({1,#N/A,3},3),2)`: Excel #NUM!, ours #VALUE!
+- gen-m9/79d87fc527927626 Calc!A340 `=PPMT((LARGE({1,#N/A,3},1)*(Data!A10+Data!B10)),HOUR((-0.5)),WEIBULL((-38.5),ROUNDDOWN(9999999999999999,4),3,"true"),61333,890,2.5)`: Excel #N/A, ours #VALUE!
+- gen-m9/e168be7f6d3f84c2 Calc!A201 `=FVSCHEDULE((MONTH(43522)*0.1),(QUARTILE.INC({1,#N/A,3},1)+ACOTH(Data!E2)))`: Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/1cd3096e3e87c965.case.json (1): Calc!A209
+- gen-m9/31474c20fc1dafd6.case.json (1): Calc!A342
+- gen-m9/79d87fc527927626.case.json (2): Calc!A284, A340
+- gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A201
+
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `OCT2HEX(XLOOKUP(..,PERCENTILE.EXC({1,#N/A,3},<FALSE cell>)),9)` is `#N/A` (PERCENTILE.EXC's error element; ours `#VALUE!`; gen-m9/e707d43a891ba9b5 A35).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/e707d43a891ba9b5 Calc!A35 `=OCT2HEX(XLOOKUP(COUNT(Data!C6:C10),Data!C7:C10,Data!B6:E9,Data!B4,0,PERCENTILE.EXC({1,#N/A,3},Data!B$6)),9)`: Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/e707d43a891ba9b5.case.json (1): Calc!A35
+
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): the error element also comes from a lifted or padded array: `COVAR(RANK(HSTACK(<blank>),..)<{#N/A}>,5)` and `COVARIANCE.P(SCAN(..)<{#N/A}>,Data!E6)` are `#N/A`, as are `MODE(0,TRANSPOSE(VSTACK({1,2},{3})))`, `LARGE(EXPAND(TRUE,5,3),3)` and `LARGE(HSTACK({1,2,3},Data!A5:C11),1)` (the `#N/A` pads; ours `#VALUE!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 formulas.
+Examples:
+- gen-m9/05d44f6dd6cfc567 Calc!A196 `=COVAR(RANK(HSTACK(Data!A5),Data!A11:D12),5)`: Excel #N/A, ours #VALUE!
+- gen-m9/285d87cea1aaa73c Calc!A154 `=COVARIANCE.P(SCAN(INTERCEPT(Data!A7,Data!D7:D10),MEDIAN(Data!E3:E6,Data!A3:A12,Data!D9:D11),LAMBDA(acc,v,acc*v)),Data!E6)`: Excel #N/A, ours #VALUE!
+- gen-m9/589f42e67f4b4b8d Calc!A185 `=FINV(MODE((Data!E9/0.1),TRANSPOSE(VSTACK({1,2},{3}))),3,6)`: Excel #N/A, ours #VALUE!; inner `MODE((Data!E9/0.1),TRANSPOSE(VSTACK({1,2},{3})))` Excel #N/A, ours #VALUE!
+- gen-m9/c2974c061384fdd9 Calc!A157 `=LARGE(EXPAND((100<>"Hello World"),5,3),3)`: Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A196
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A154
+- gen-m9/589f42e67f4b4b8d.case.json (1): Calc!A185
+- gen-m9/c2974c061384fdd9.case.json (1): Calc!A157
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A14
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2257): the 5 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 124 known-failure lines (19 from T-2255, 105 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `LARGE({1,#N/A,3},1)`, `SMALL({1,#N/A,3},3)`, `COVARIANCE.S({1,#N/A,3},{1,2,3})` are `#N/A`.

@@ -139,11 +139,12 @@ Excel's order (crates/rustsheet-engine/src/excel_order.rs), whose values are kep
 evaluations start in that order until a pass has no reader. Dynamic anchors still run first in
 that pass, with their recursion, and empty the state when the order reaches their position.
 Known gaps: the WEEKNUM calls inside a spilling formula, or inside a cell it reads, run when the
-anchor runs, not at their place in the order (T-2070), and a moved sheet is ranked by its
-current index (T-2069, probes/weeknum-stale-sheet-moved Second!A1). Outside a recalc
-(conditional formats, `evaluate_formula`) the state lives for one formula.
+anchor runs, not at their place in the order (T-2070). Sheets are ordered by their load rank
+(`Worksheet::load_rank`), so a moved sheet keeps its load position (T-2069,
+probes/weeknum-stale-sheet-moved). Outside a recalc (conditional formats, `evaluate_formula`) the
+state lives for one formula.
 Status: VERIFIED
-Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
+Unprobed: the rank of a sheet added or duplicated after load (we give the next free rank), a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
 lifts over one (we leave the state as it is), where a spilling formula sits
 in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
 a return_type in (-1, 0) (truncates to 0, so presumably empties), and whether a reference to an
@@ -1207,10 +1208,11 @@ start's, and a blank weekend cell is weekend 0 (`#NUM!`), not the default: `NETW
 = 32394, `WORKDAY.INTL(45351,10,1.005)` = 45365, `NETWORKDAYS.INTL(44926," x ",3.14159)` is the end's `#VALUE!` (not the weekend's `#NUM!`),
 `NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`, and so is `NETWORKDAYS.INTL(13803,28521,<blank>)` (gen-m6/afe9267df3df26a8 A47, T-2253)
 (gen-m6/c93ea588c271840e Calc!A31, 1a404a0379a1372c A62, ee56a4ed5a612a0d A186, c96ac1ada46179c4 A287, ee56a4ed5a612a0d A387,
-fde83d52a9d1fc63 A219). Ours: a fractional weekend truncates (folded into T-2272, whose order otherwise let gen-m6/e3a562557696e2fc A385 `WORKDAY.INTL(11303,-4,1.25,..)` reach it), `#VALUE!` for TRUE, the default weekend for a blank cell.
+fde83d52a9d1fc63 A219). A boolean weekend is its number: TRUE acts as weekend 1 (`WORKDAY.INTL(45000,5,TRUE)` = 45007, `NETWORKDAYS.INTL(45000,45030,TRUE)` = 23, as weekend 1; on these dates weekends 2 and 3 give the same, so the probe shows TRUE is one of 1-3) and FALSE is weekend 0 (`#NUM!`), both as a literal and read from a cell; 3.9 is weekend 3 and 0.5 is 0 (`#NUM!`), so a number truncates (11.5 and 1.5 match truncation, but there 11 and 12 agree) and a blank cell is `#NUM!` (probes/weekend-number-coercion A1:A26, excel-graph, 2026-10-21). An omitted weekend is still weekend 1; an empty argument (`WORKDAY.INTL(x,5,)`) is unprobed (the engine keeps the default). T-2591 probes these gaps.
 A FALSE weekend cell raises no `#VALUE!` ahead of a negative holiday's `#NUM!`: `NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`
-with C5 FALSE and -1 among the holidays (B7) is `#NUM!` (gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253; ours `#VALUE!`).
-Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates and whether a fraction of .5 or more truncates or rounds (every cited fraction is below .5): UNVERIFIED (no cell shows them; T-2271 probes them).
+with C5 FALSE and -1 among the holidays (B7) is `#NUM!` (gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253), as FALSE is weekend 0.
+Ours: implemented (T-2271; the fraction truncation first landed with T-2272).
+Status: VERIFIED
 Tasks: T-2271
 
 ## WEEKNUM of a boolean serial is `#VALUE!` (T-2276)
@@ -1228,3 +1230,10 @@ Rule (excel-graph, gen-m6, 2026-10-21): a start date out of the calendar is `#NU
 d0c30225243fde60 A266). Ours: implemented (T-2266).
 Status: VERIFIED for these two cells; an error start against an error end keeps the start's error (VERIFIED: probes/scalar-lift-open-d W2 `YEARFRAC(NA(),1/0,1)` and W5 `YEARFRAC(1/0,NA(),1)`). An out-of-calendar start against a text or multi-cell-range end (`YEARFRAC(-1,"x")`, now #NUM!) is UNVERIFIED.
 Tasks: T-2266
+
+## NETWORKDAYS.INTL: the blank weekend's #NUM! before the holidays' error (T-2436)
+Rule: `NETWORKDAYS.INTL(31,4886,<blank>,{1,2;#N/A,""})` is `#NUM!`, the blank weekend cell's error (T-2271) before the holidays'
+`#N/A` (gen-m9 c2974c061384fdd9 A149, probes/t2436/c2974c061384fdd9, excel-graph, 2026-10-24).
+Ours: implemented (T-2271's weekend read comes before the holidays' error; T-2583 pins it with a unit test).
+Status: VERIFIED (excel-graph), one cell
+Tasks: T-2583

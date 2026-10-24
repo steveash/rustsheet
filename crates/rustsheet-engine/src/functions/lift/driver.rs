@@ -12,7 +12,7 @@ use crate::cast::calc_result_to_array_node;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
 use crate::functions::util::{array_element_value, top_left_of_array};
-use crate::limits::{check_array_size, too_many_visits};
+use crate::limits::{check_array_cells, too_many_visits};
 use crate::reference_operators::{RefArg, RefElement, RefGrid};
 use crate::{
     calc_result::{CalcResult, Range},
@@ -93,7 +93,10 @@ pub(crate) fn grid_dims(grid: &[Vec<ArrayNode>]) -> (usize, usize) {
     (grid.len(), grid.first().map_or(0, Vec::len))
 }
 
-/// The broadcast shape of `lifted`, or `#ERROR!` past the array bound (`check_array_size`).
+/// The broadcast shape of `lifted`, or `#ERROR!` past the cell bound (`check_array_cells`). Its
+/// arrays are built already, so one wider or taller than the grid lifts like any other:
+/// `ERROR.TYPE(MAKEARRAY(1,16385,..))` is a 1 x 16385 array, `#SPILL!` in a cell
+/// (probes/t2579-array-value-edges B26; arrays.md "Arrays past the grid"; T-2600).
 pub(crate) fn broadcast_shape(
     lifted: &[LiftedArg],
     cell: CellReferenceIndex,
@@ -102,7 +105,7 @@ pub(crate) fn broadcast_shape(
         .iter()
         .map(LiftedArg::dims)
         .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
-    match check_array_size(rows, columns) {
+    match check_array_cells(rows, columns) {
         Some((error, message)) => Err(CalcResult::new_error(error, cell, message)),
         None => Ok((rows, columns)),
     }
@@ -210,6 +213,16 @@ impl LiftOptions {
         later_error: false,
     };
 
+    /// TREND's and GROWTH's `const` (T-1726): as [`LiftOptions::REUSE_ANY_EQUAL`], the kernel
+    /// reading only its argument and the data read before the lift, and an element is the top-left
+    /// value of its call's array.
+    pub(crate) const REUSE_ANY_EQUAL_TOP_LEFT: Self = Self {
+        reuse: Reuse::AnyEqual,
+        work: KernelWork::Constant,
+        result: CallResult::Array,
+        later_error: false,
+    };
+
     /// Every element runs, and the caller's [`LiftCost`] already counts its work: the lifted
     /// text functions (TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEX*; T-1272).
     pub(crate) const EVERY_ELEMENT: Self = Self {
@@ -236,6 +249,9 @@ enum Later {
     /// [`CallResult::ArrayFirst`] over entries that are not all equal: an error result stays,
     /// the first other one is kept (`placed` once it is), and every later one is empty.
     EmptyAfterFirst { placed: bool },
+    /// [`CallResult::ArrayFirstColumn`] over entries that are all equal: every element runs, then the
+    /// non-error ones past the first column are emptied ([`empty_past_first_column`]).
+    EmptyPastFirstColumn,
 }
 
 impl Run<'_> {
@@ -264,6 +280,28 @@ impl Run<'_> {
 /// within the work the elements are charged.
 fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
     (0..rows).all(|row| (0..columns).all(|column| same_as(args, row, column, (0, 0))))
+}
+
+/// A [`CallResult::ArrayFirstColumn`] call over entries that are all equal and span several columns
+/// keeps its call's top-left only down the first column: the other columns' elements are empty,
+/// errors excepted (`UNIQUE(D1:D3,FALSE,{FALSE,FALSE;FALSE,FALSE})` is x, x in column one and
+/// empty in column two, `by_col` or not; a 1x3 `{FALSE,FALSE,FALSE}` is 1, empty, empty;
+/// probes/m7-unique-lift-corners, T-2348; docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's
+/// lifted elements").
+fn empty_past_first_column(result: CalcResult) -> CalcResult {
+    match result {
+        CalcResult::Array(mut rows) => {
+            for row in &mut rows {
+                for node in row.iter_mut().skip(1) {
+                    if !matches!(node, ArrayNode::Error(_)) {
+                        *node = ArrayNode::Empty;
+                    }
+                }
+            }
+            CalcResult::Array(rows)
+        }
+        other => other,
+    }
 }
 
 /// A per-element kernel: the scalar function over the argument values of one element.
@@ -493,7 +531,7 @@ impl Model {
     }
 
     /// The broadcast over arguments already read, at least one of them a grid (SPEC-0011
-    /// `lift_values` steps 3-7): the output bound (`check_array_size`, `#ERROR!` past it) and the
+    /// `lift_values` steps 3-7): the output bound (`check_array_cells`, `#ERROR!` past it) and the
     /// work bound (`cost`, `too_many_visits`) are checked before any element is computed; then
     /// the elements run in row-major order, in place when one grid is the only lifted argument.
     /// There, an element whose arguments are all numbers runs `numbers` instead of `kernel`. A
@@ -552,13 +590,18 @@ impl Model {
             .then_some(index),
             _ => None,
         };
-        let later = if options.result == CallResult::ArrayFirst
-            && !all_elements_equal(&lifted, rows, columns)
-        {
+        let array_first = matches!(
+            options.result,
+            CallResult::ArrayFirst | CallResult::ArrayFirstColumn
+        );
+        let later = if array_first && !all_elements_equal(&lifted, rows, columns) {
             Later::EmptyAfterFirst { placed: false }
+        } else if options.result == CallResult::ArrayFirstColumn && columns > 1 {
+            Later::EmptyPastFirstColumn
         } else {
             Later::Kept
         };
+        let past_first_column = matches!(later, Later::EmptyPastFirstColumn);
         let mut visits = visits;
         let run = Run {
             options,
@@ -566,10 +609,14 @@ impl Model {
             cell,
             later,
         };
-        match in_place {
+        let result = match in_place {
             Some(index) => self.lift_in_place(lifted, index, run, kernel, numbers),
             None => self.lift_broadcast(&lifted, rows, columns, &plan, run, kernel),
+        };
+        if past_first_column {
+            return empty_past_first_column(result);
         }
+        result
     }
 
     /// The lift of a call whose result is a reference (SPEC-0014 "Producers"): `kernel` runs

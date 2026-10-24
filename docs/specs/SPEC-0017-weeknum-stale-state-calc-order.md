@@ -134,10 +134,9 @@ and unwinding on ordinary workbooks, for a function almost no workbook uses this
   positions collected once per pass in natural order (`formula_positions`), walked from the last;
   the links index that list, and a precedent is found in it by binary search.
 
-T-2069 replaces "sheet index" in the reversed order with the sheet's load rank. This is a
+T-2069 replaced "sheet index" in the reversed order with the sheet's load rank. This is a
 `load_rank: u32` per worksheet, set from the sheet's position when the workbook is read, and set to
-the next free rank for sheets added later. It keeps probes/weeknum-stale-sheet-moved passing. Until
-then, a moved sheet is ranked by its current index.
+the next free rank for sheets added later. It keeps probes/weeknum-stale-sheet-moved passing.
 
 ### Depth limit
 The `max_depth`/`max_stack` unwind is documented as never changing a result (`set_max_evaluation_depth`).

@@ -1,0 +1,48 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "LET names and LAMBDA parameters spelled like cells, in the stored form the case builder writes (_xlpm.), and their FORMULATEXT (T-2040). F1 holds 7: A6 adds the cell F1 outside the LET.",
+  "tags": [
+    "M7",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(f1,1,f1+1)",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "=LAMBDA(f1,f1*2)(3)",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "=LET(c1,10,r1,2,c1*r1)",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "=LET(A1,5,a1*2)",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "=LET(x,LET(xy1,3,xy1+1),x)",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "=LET(f1,1,LAMBDA(f1,f1*10)(2))+f1",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "=LAMBDA(x,[f1],ISOMITTED(f1))(1)",
+        "B7": "=FORMULATEXT(A7)",
+        "F1": 7
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!B1",
+    "Sheet1!A2",
+    "Sheet1!B2",
+    "Sheet1!A3",
+    "Sheet1!B3",
+    "Sheet1!A4",
+    "Sheet1!B4",
+    "Sheet1!A5",
+    "Sheet1!B5",
+    "Sheet1!A6",
+    "Sheet1!B6",
+    "Sheet1!A7",
+    "Sheet1!B7"
+  ]
+}

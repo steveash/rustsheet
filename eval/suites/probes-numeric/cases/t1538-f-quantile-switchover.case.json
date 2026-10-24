@@ -1,0 +1,68 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1538: F.INV and F.INV.RT at df 99999, 1E5 and 1E6 (either side) with p = 1E-12 and 1-1E-12, around the switch to the BETA.INV crossing at df 1E5",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1538"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=F.INV(1E-12,99999,5)",
+    "A2": "=F.INV(1E-12,5,99999)",
+    "A3": "=F.INV(1E-12,100000,5)",
+    "A4": "=F.INV(1E-12,5,100000)",
+    "A5": "=F.INV(1E-12,1000000,5)",
+    "A6": "=F.INV(1E-12,5,1000000)",
+    "A7": "=F.INV(1-1E-12,99999,5)",
+    "A8": "=F.INV(1-1E-12,5,99999)",
+    "A9": "=F.INV(1-1E-12,100000,5)",
+    "A10": "=F.INV(1-1E-12,5,100000)",
+    "A11": "=F.INV(1-1E-12,1000000,5)",
+    "A12": "=F.INV(1-1E-12,5,1000000)",
+    "A13": "=F.INV.RT(1E-12,99999,5)",
+    "A14": "=F.INV.RT(1E-12,5,99999)",
+    "A15": "=F.INV.RT(1E-12,100000,5)",
+    "A16": "=F.INV.RT(1E-12,5,100000)",
+    "A17": "=F.INV.RT(1E-12,1000000,5)",
+    "A18": "=F.INV.RT(1E-12,5,1000000)",
+    "A19": "=F.INV.RT(1-1E-12,99999,5)",
+    "A20": "=F.INV.RT(1-1E-12,5,99999)",
+    "A21": "=F.INV.RT(1-1E-12,100000,5)",
+    "A22": "=F.INV.RT(1-1E-12,5,100000)",
+    "A23": "=F.INV.RT(1-1E-12,1000000,5)",
+    "A24": "=F.INV.RT(1-1E-12,5,1000000)"
+   }
+  }
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2",
+  "Calc!A3",
+  "Calc!A4",
+  "Calc!A5",
+  "Calc!A6",
+  "Calc!A7",
+  "Calc!A8",
+  "Calc!A9",
+  "Calc!A10",
+  "Calc!A11",
+  "Calc!A12",
+  "Calc!A13",
+  "Calc!A14",
+  "Calc!A15",
+  "Calc!A16",
+  "Calc!A17",
+  "Calc!A18",
+  "Calc!A19",
+  "Calc!A20",
+  "Calc!A21",
+  "Calc!A22",
+  "Calc!A23",
+  "Calc!A24"
+ ],
+ "expected": {}
+}

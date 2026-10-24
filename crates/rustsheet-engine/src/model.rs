@@ -266,7 +266,9 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let node = node.ungrouped(); // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007)
+        // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007), and a `#This Row` area is its cell or range
+        // on the formula's row (SPEC-0016 step 2).
+        let node: &Node = &node.ungrouped_at(cell.row);
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -279,17 +281,14 @@ impl Model {
                 // Relative coordinates are offsets from the formula's cell.
                 let row1 = *row + if *absolute_row { 0 } else { cell.row };
                 let column1 = *column + if *absolute_column { 0 } else { cell.column };
+                let at = CellReferenceIndex {
+                    sheet: *sheet_index,
+                    row: row1,
+                    column: column1,
+                };
                 CalcResult::Range {
-                    left: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: row1,
-                        column: column1,
-                    },
-                    right: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: row1,
-                        column: column1,
-                    },
+                    left: at,
+                    right: at,
                 }
             }
             Node::RangeKind {
@@ -643,6 +642,7 @@ impl Model {
             | ParseErrorKind { .. }
             | Group { .. }
             | StructuredReferenceKind { .. }
+            | ThisRowKind { .. }
             | SpillRangeOperator { .. }
             | ImplicitIntersection { .. }
             | LambdaDefKind { .. }
@@ -1653,30 +1653,7 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<Option<String>, String> {
-        let worksheet = self.workbook.worksheet(sheet)?;
-        match worksheet.cell(row, column) {
-            Some(cell) => match cell.get_formula() {
-                Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
-                        .ok_or("missing formula")?;
-                    let cell_ref = CellReferenceRC {
-                        sheet: worksheet.get_name(),
-                        row,
-                        column,
-                    };
-                    Ok(Some(format!(
-                        "={}",
-                        to_localized_string(formula, &cell_ref, self.locale, self.language)
-                    )))
-                }
-                None => Ok(None),
-            },
-            None => Ok(None),
-        }
+        self.formula_text_with(sheet, row, column, to_localized_string)
     }
 
     /// Returns the text for the formula in (`sheet`, `row`, `column`) in English if any
@@ -2282,7 +2259,7 @@ impl Model {
             Node::ParseErrorKind { message, .. } if is_limit_error(&message) => {
                 Err(format!("Formula: {message}"))
             }
-            node => Ok(node),
+            node => self.parser.typed_refusal().map_or(Ok(node), Err),
         }
     }
 
