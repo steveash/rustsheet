@@ -3,7 +3,7 @@ id: T-2533
 title: "IM* text writes 1i when a part is not exactly 1: COMPLEX, IMDIV and IMPOWER (gen-m9, 10 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
