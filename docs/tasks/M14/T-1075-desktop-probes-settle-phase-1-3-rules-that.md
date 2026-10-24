@@ -70,6 +70,11 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    1.2626272556789115 and 1.1071487177940906; the web and the engine give the correctly rounded ...118 and ...904. Does Windows
    desktop give the Mac values? If it does, sweep desktop ATAN near rounding midpoints to find the kernel (fdlibm `atan` gives D14
    but not D26). The engine follows the web, and the two cells stay known failures.
+15. **BESSELJ/BESSELY sine at x = 1e5** (T-2547, decision 0109; engineering.md "BESSELJ / BESSELY").
+   ironcalc-calc/ENGINEERING/BESSEL.xlsx All!D18 `BESSELJ(100000,5)` and F18 `BESSELY(100000,5)` cache Mac 16.0300's
+   0.001846551246313725 and 0.001719431947654535; the web and the engine (Excel's x87-reduced sine of the phase) give
+   0.0018465512463137278 and 0.0017194319476545319 (probes/t2547-bessel-phase-cut A85, A86). Does Windows desktop give the
+   web values? The engine follows the web, and the two cells stay known failures.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook
