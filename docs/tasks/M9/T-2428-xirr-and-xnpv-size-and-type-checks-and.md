@@ -233,3 +233,13 @@ states it.
 financial.md "XIRR and XNPV under the gen-m9 statistical cells"). Eval: gen-m9 known failures -192, probes -6,
 0 regressions. Still open: the XNPV rules (boolean or text one-cell rate or dates `#VALUE!`, a number against a range of a
 different count `#NUM!`), FVSCHEDULE's empty schedule cell, and the other financial functions' domain-before-text orders.
+
+2026-10-24, later (same run, out of session budget; work in progress, not mergeable yet). Round-1 reviews: security
+REQUEST_CHANGES (the old `holds_text_or_boolean_cell` scanned an untrimmed whole-column range); quality REQUEST_CHANGES
+(duplicated used-area trimming, now one helper `xirr_range_end`; add exact-value unit tests in
+test/test_fn_financial_lift.rs); excel-fidelity REQUEST_CHANGES ("fewer values than dates with a text value is `#VALUE!`"
+is contradicted by ~15 direct cells, e.g. gen-m9/0a957119475760c5 A47; narrowed to a single value cell, which removed the
+scan); architecture APPROVE. The narrowed rule fixes 31 more gen-m9 cells but regresses 4 against the committed
+baseline: gen-m9/1dce4774f5c0e736 A91, 89f0aee953a55a45 A36, ba4ddb817a8e700e A339, c7664e494e418395 A204 (the last is
+masked by LCM's `#VALUE!` inside ZTEST, per the fidelity review). Next: trace those 4 (`rustsheet-eval show`), fix,
+`make eval-baseline`, add the unit tests, re-run all four reviewers.

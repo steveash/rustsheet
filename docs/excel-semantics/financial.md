@@ -1658,8 +1658,10 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 51 cells listed in T-2428.
 Order (XIRR, T-2428, from 198 gen-m9 cells now passing): an error dates argument, then (beside a number or omitted guess;
 a text, boolean or error guess keeps the element reading's `#VALUE!` or that error) one value with one date is `#N/A`
 unless either is a text, boolean or empty cell (`#VALUE!`; an array element such as BYROW's `{FALSE}` is not a cell, so
-`#N/A`); a single date that is a text, boolean or empty cell is `#VALUE!`; fewer values than dates with a text or boolean
-value is `#VALUE!`; then different counts are `#NUM!` (more values than dates whatever they hold); then the element reading.
+`#N/A`); a single date that is a text, boolean or empty cell is `#VALUE!`; a single text or boolean value cell against
+several dates is `#VALUE!`; then different counts are `#NUM!` whatever a larger range holds (gen-m9/0a957119475760c5 A47);
+then the element reading. Open (T-2428): an error guess beside numeric values is the guess's error in Excel
+(1b60bf99d71424e7 A29, 67a4c03afd63f988 A388) but text values beside an error guess are `#VALUE!` (b72d952c5f52cb4d A50).
 Ours: XIRR follows this order (`xirr_size_error`, T-2428); the XNPV cases are still `#NUM!` where Excel is `#VALUE!` (T-2428).
 Status: VERIFIED (excel-graph, inferred through the enclosing call)
 Tasks: T-2428

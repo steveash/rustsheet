@@ -294,10 +294,10 @@ impl Model {
         } else if date_count == 1 && self.non_number_cell(dates) {
             // gen-m9/1cd3096e3e87c965 A48, 1db18890916ee643 A108 (an empty date cell).
             Error::VALUE
-        } else if value_count < date_count && self.holds_text_or_boolean_cell(values) {
-            // Fewer values than dates: a text or boolean value cell is read first, `#VALUE!`
-            // (gen-m9/c7664e494e418395 A204, 6376e27be7a05871 A67), while more values than dates
-            // is `#NUM!` whatever they hold (bbdfc06cae0e0d71 A44).
+        } else if value_count == 1 && self.non_number_cell(values) {
+            // One text or boolean value cell against several dates is read first, `#VALUE!`
+            // (gen-m9/6376e27be7a05871 A67); a larger values range of another count is `#NUM!`
+            // whatever it holds (0a957119475760c5 A47, bbdfc06cae0e0d71 A44).
             return None;
         } else if value_count != date_count {
             Error::NUM
@@ -313,18 +313,7 @@ impl Model {
     fn xirr_element_count(&self, arg: &CalcResult) -> Option<usize> {
         match arg {
             CalcResult::Range { left, right } if left.sheet == right.sheet => {
-                let (used_row, used_column) =
-                    self.workbook.worksheet(left.sheet).ok()?.used_area_end();
-                let row2 = if left.row == 1 && right.row == LAST_ROW {
-                    used_row
-                } else {
-                    right.row
-                };
-                let column2 = if left.column == 1 && right.column == LAST_COLUMN {
-                    used_column
-                } else {
-                    right.column
-                };
+                let (row2, column2) = self.xirr_range_end(left, right)?;
                 let rows = usize::try_from(row2 - left.row + 1).ok()?;
                 let columns = usize::try_from(column2 - left.column + 1).ok()?;
                 Some(rows.saturating_mul(columns))
@@ -342,6 +331,27 @@ impl Model {
         }
     }
 
+    /// A range's last row and column with a whole column or row trimmed to the used area, as
+    /// [`Self::array_of_numbers_from`] reads it.
+    fn xirr_range_end(
+        &self,
+        left: &CellReferenceIndex,
+        right: &CellReferenceIndex,
+    ) -> Option<(i32, i32)> {
+        let (used_row, used_column) = self.workbook.worksheet(left.sheet).ok()?.used_area_end();
+        let row2 = if left.row == 1 && right.row == LAST_ROW {
+            used_row
+        } else {
+            right.row
+        };
+        let column2 = if left.column == 1 && right.column == LAST_COLUMN {
+            used_column
+        } else {
+            right.column
+        };
+        Some((row2, column2))
+    }
+
     /// Whether a one-cell range or scalar is text, a boolean or nothing (an array element is not: `XIRR(D2,BYROW(D9,LAMBDA(x,ISBLANK(x))))` is `#N/A`,
     /// gen-m9/bc04c1f478c9896c A24).
     fn non_number_cell(&mut self, arg: &CalcResult) -> bool {
@@ -354,30 +364,6 @@ impl Model {
             CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell => true,
             _ => false,
         }
-    }
-
-    /// Whether a range or scalar holds text or a boolean; called only once its size is known to
-    /// be below the dates' count.
-    fn holds_text_or_boolean_cell(&mut self, arg: &CalcResult) -> bool {
-        let CalcResult::Range { left, right } = arg else {
-            return matches!(arg, CalcResult::String(_) | CalcResult::Boolean(_));
-        };
-        for row in left.row..=right.row {
-            for column in left.column..=right.column {
-                let cell = CellReferenceIndex {
-                    sheet: left.sheet,
-                    row,
-                    column,
-                };
-                if matches!(
-                    self.evaluate_cell(cell),
-                    CalcResult::String(_) | CalcResult::Boolean(_)
-                ) {
-                    return true;
-                }
-            }
-        }
-        false
     }
 
     /// `NPV(rate, value1, [value2], ...)`: `Sum[value[i]/(1+rate)^i, {i, 1, n}]`. The rate lifts
