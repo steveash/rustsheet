@@ -201,7 +201,13 @@ impl Model {
                 height: bottom - top + 1,
             })?;
         }
-        self.remove_table(name)
+        // Excel rewrites the references to a deleted table to `#REF!` (FORMULATEXT
+        // `=SUM(#REF!)`, T-2340, docs/excel-semantics/references.md), as a file loader does for an
+        // unknown table; `remove_table` keeps them as parse errors.
+        self.parser.set_loaded(true);
+        let removed = self.remove_table(name);
+        self.parser.set_loaded(false);
+        removed
     }
 
     /// Hands the table list to the parser and reparses every formula against it.
