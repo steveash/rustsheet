@@ -3,7 +3,7 @@ id: T-2581
 title: "TEXTSPLIT with a range row delimiter and an invalid match_mode, and TEXTBEFORE with a number delimiter from a reference and a negative instance (gen-m9, 3 cells)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
