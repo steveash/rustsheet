@@ -1,12 +1,18 @@
 use crate::constants::LAST_ROW;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::near_integer_count;
+use crate::functions::util::{near_integer_count, near_integer_floor};
 use crate::functions::Function;
 use crate::limits::check_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+
+/// How close below the next integer a negative extent counts as that integer: half the positive
+/// side's `near_integer_count` tolerance (`SEQUENCE(0,-1.19E-7)` is `#CALC!`, `-1.2E-7`
+/// `#VALUE!`; probes/t2580-sequence-negative-tolerance). The exact bound is UNVERIFIED past
+/// those two cells; only extents in (-1, 0) are probed.
+const NEGATIVE_EXTENT_TOLERANCE: f64 = 1.192_092_895_507_812_5e-7 + 1.164_153_218_269_348_1e-10;
 
 impl Model {
     /// `=SEQUENCE(rows, [cols], [start], [step])`
@@ -47,12 +53,17 @@ impl Model {
         // A negative extent or one past 1048576 (rows and columns alike, though the grid has 16384
         // columns) is `#VALUE!` and beats the `#CALC!` of a zero one: `SEQUENCE(0.0123,
         // 123456789.123)` and `SEQUENCE(0,-1)` are `#VALUE!`, `SEQUENCE(0,1048576)` is `#CALC!`.
-        // An extent within the count tolerance of 0 is 0: `SEQUENCE(1,-1E-9)` is `#CALC!`,
-        // `SEQUENCE(1,-1E-6)` `#VALUE!`.
+        // An extent within the count tolerance of the next integer is that integer (`near_integer_count`
+        // above 0, `NEGATIVE_EXTENT_TOLERANCE` below): `SEQUENCE(1,3-2E-7)` has 3 columns, `3-3E-7` 2,
+        // `SEQUENCE(1,-1E-7)` is `#CALC!`, `SEQUENCE(1,-1.2E-7)` `#VALUE!`.
         // Evidence: probes/t2580-sequence-zero-extent, t2580-sequence-column-cap and
-        // t2580-sequence-tiny-negative; arrays.md "An empty array as a function argument" (T-2580).
+        // t2580-sequence-tiny-negative, t2580-sequence-extent-snap and t2580-sequence-negative-tolerance; arrays.md "An empty array as a function argument" (T-2580).
         let extent = |n: f64| -> Result<usize, Error> {
-            let n = near_integer_count(n) as i64;
+            let n = if n < 0.0 {
+                near_integer_floor(n, NEGATIVE_EXTENT_TOLERANCE)
+            } else {
+                near_integer_count(n)
+            } as i64;
             match usize::try_from(n) {
                 Ok(n) if n <= LAST_ROW as usize => Ok(n),
                 _ => Err(Error::VALUE),

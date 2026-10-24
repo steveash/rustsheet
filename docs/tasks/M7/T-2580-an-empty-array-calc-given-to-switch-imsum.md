@@ -42,4 +42,4 @@ Cells:
 ## Outcome
 `CalcResult::empty_array_as_value_error` makes an empty array's `#CALC!` a `#VALUE!` in SWITCH's expression and cases, IMSUM, IMPRODUCT and the holidays of WORKDAY(.INTL) and NETWORKDAYS(.INTL) (not SWITCH's result or default, SUM, CHOOSE, IFS, XLOOKUP's if_not_found: probes/t2580-empty-array-args). SEQUENCE: both extents stop at 1048576, a negative or oversized extent is `#VALUE!` before a zero one's `#CALC!`, and an extent within the count tolerance of 0 is 0 (probes/t2580-sequence-*). Unit tests in test_empty_array_args.rs.
 
-Eval delta: gen-m9 5 known failures removed (the 4 listed plus one more); probes: 25 removed, 5 new-coverage failures added in probes/t2580-sequence-column-cap (`COLUMNS(SEQUENCE(1,n))` for n from 20000 to 1048576, T-2600's wide-array rule); no regressions.
+Eval delta: gen-m9 5 known failures removed (the 4 listed plus one more); probes: 25 removed, new-coverage failures added in probes/t2580-sequence-column-cap and t2580-sequence-extent-snap (`COLUMNS(SEQUENCE(1,n))` for n from 20000 to 1048576, T-2600's wide-array rule); no regressions.

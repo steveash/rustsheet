@@ -1114,6 +1114,8 @@ C	probes/t2578-pivotby-total-error-scope.case.json	445
 C	probes/t2579-array-value-edges.case.json	52
 C	probes/t2580-empty-array-args.case.json	23
 C	probes/t2580-sequence-column-cap.case.json	12
+C	probes/t2580-sequence-extent-snap.case.json	16
+C	probes/t2580-sequence-negative-tolerance.case.json	11
 C	probes/t2580-sequence-tiny-negative.case.json	18
 C	probes/t2580-sequence-zero-extent.case.json	24
 C	probes/t2581-textsplit-textbefore.case.json	50

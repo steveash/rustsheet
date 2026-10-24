@@ -49,6 +49,11 @@ fn sequence_zero_extent_beside_an_oversized_or_negative_one() {
         ("=SEQUENCE(1,-1E-9)", "#CALC!"),
         ("=SEQUENCE(0,-8.1E-10)", "#CALC!"),
         ("=SEQUENCE(1,-1E-6)", "#VALUE!"),
+        ("=SEQUENCE(0,-1.19E-7)", "#CALC!"),
+        ("=SEQUENCE(0,-1.2E-7)", "#VALUE!"),
+        ("=SEQUENCE(0,-2E-7)", "#VALUE!"),
+        ("=COLUMNS(SEQUENCE(1,3-2E-7))", "3"),
+        ("=COLUMNS(SEQUENCE(1,3-3E-7))", "2"),
     ];
     let mut model = new_empty_model();
     for (row, (formula, _)) in (1..).zip(cases) {
