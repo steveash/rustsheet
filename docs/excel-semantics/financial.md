@@ -213,7 +213,7 @@ So the result lies on the binary lattice of the bracket (for the default guess a
 it is 3355443/2^25 = 0.09999999403953552), which explains why XIRR is scale- and sign-invariant,
 converged only to about 1e-8, and why guess -0.5 or 1 gives `#NUM!` on one side.
 Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitlab xirr` and `xirr-oos`,
-`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`):
+`tools/src/rustsheet_tools/fitlab/kernels/xirr.py`):
 - Fit set: probes/solver-iteration-traces sheet X (155 cells: two-flow roots 0.013 to 0.94 and -0.013 to
   -0.918 at guesses 1, 0.1, -0.5 and 0, one- and ten-year spans, three-flow roots to 2.0) and the 72 XIRR
   cells of probes-numeric/m9-fin-irr-rate. The model is bit-exact on all 208 numeric cells, and it gives
@@ -891,7 +891,7 @@ digits"). That sign decides XIRR's bracket (see "XIRR is a bracketing bisection"
 quotient `/`. Twice-rounded and plain division both fit, and multiplying by (1+r)^-t misses 7 of the 21 cells
 with nontrivial values. A date at serial 0 makes XNPV `#NUM!` (J1:J5), although XIRR accepts it
 (xirr-early-dates A8).
-Evidence: probes/xirr-exact-root-sign: 541 numeric cells, all matched by the lab's `solvers.xnpv` with
+Evidence: probes/xirr-exact-root-sign: 541 numeric cells, all matched by the lab's `xirr.xnpv` (tools/.../kernels/xirr.py) with
 `caret_pow` and 15-digit literals (excel-graph, 2026-10-24, T-2328).
 Ours: `compute_xnpv` and XIRR's `xirr_xnpv` (functions/financial/financial_util.rs) use `powf`, so they miss
 these cells. This is the follow-up task filed with T-2328.

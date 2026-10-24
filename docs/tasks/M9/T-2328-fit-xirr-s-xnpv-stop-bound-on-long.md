@@ -28,8 +28,8 @@ The stop bound was not the problem. The T-1591 misses (xirr-span-zero-first A11,
 Their root 0.1 is exactly the first chain point, so the sign of XNPV(0.1) picks the side, and Excel's XNPV gives
 that sign by discounting with its own `^` (square-and-multiply, or exp(y·ln x)) and cutting literals to 15 digits.
 New probe probes/xirr-exact-root-sign (excel-graph, 574 cells): Excel's sign matches its XIRR side on all 7
-cells, and the lab XNPV (`solvers.xnpv` with `caret_pow`) fits all 541 numeric cells. The lab sweep parser now
-cuts number literals to 15 digits (`sweep.number_literal`); `caret_pow` moved from yield_caret into solvers.
+cells, and the lab XNPV (`xirr.xnpv` with `solvers.caret_pow`) fits all 541 numeric cells. The lab sweep parser now
+cuts number literals to 15 digits (`sweep.number_literal`); `caret_pow` moved from yield_caret into solvers, and the XIRR model moved from solvers.py into its own kernels/xirr.py (solvers.py was past the 1000-line limit).
 Candidate "bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)": 227/227 on `xirr` and 51/52 on
 `xirr-oos`, where the one miss is A7, the input check. So T-1583's span-scaled bound stands. Recorded in
 financial.md ("XNPV discounts with Excel's `^`" and the T-2328 bullet under "XIRR is a bracketing bisection").

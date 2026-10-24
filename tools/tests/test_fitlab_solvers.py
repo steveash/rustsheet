@@ -8,7 +8,7 @@ import math
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import registry, solvers, yield_caret
+from rustsheet_tools.fitlab.kernels import registry, solvers, xirr, yield_caret
 from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
 
 
@@ -33,19 +33,19 @@ def test_day_counts_and_schedule() -> None:
 
 def test_xirr_model_on_a_known_root() -> None:
     # Default guess, root exactly 0.1: the bracket [0, 0.1] bisected to 3355443 / 2^25.
-    got = solvers.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], 0.1, solvers.fitted_stop())
+    got = xirr.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], 0.1, xirr.fitted_stop())
     assert got == 3355443 / 2**25
     with pytest.raises(solvers.NoResultError):  # guess -0.5 walks only toward -1
-        solvers.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], -0.5, solvers.fitted_stop())
+        xirr.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], -0.5, xirr.fitted_stop())
 
 
 def test_xirr_first_value_sign_with_a_zero_first_value() -> None:
     # T-1583: a zero first value replaces the upper end every step, so the bracket [0, 0.1] is bisected
     # down to 0.1 / 2^25 (xirr-early-dates A10), where the first-value-blind rule converges to 0.1.
     values, dates = [0.0, -1000.0, 1100.0], [45000.0, 45000.0, 45365.0]
-    got = solvers.xirr_model(values, dates, 0.1, solvers.span_stop(), first_value_sign=True)
+    got = xirr.xirr_model(values, dates, 0.1, xirr.span_stop(), first_value_sign=True)
     assert got == 0.1 / 2**25
-    assert solvers.xirr_model(values, dates, 0.1, solvers.h_test()) == 3355443 / 2**25
+    assert xirr.xirr_model(values, dates, 0.1, xirr.h_test()) == 3355443 / 2**25
 
 
 def test_rpow_rejects_a_complex_power() -> None:
@@ -87,10 +87,10 @@ def test_xnpv_with_excels_power_at_an_exact_root() -> None:
     flows = parse_arg("{-1,6.727499949325611}", "S", Workbook({}, {}))
     assert flows == [-1.0, 6.72749994932561]
     values = solvers.floats(flows)
-    assert solvers.xnpv(0.1, values, [45000.0, 52300.0], solvers.caret_pow) == 2.220446049250313e-16
-    assert solvers.xnpv(0.1, values, [45000.0, 52300.0]) == -1.1102230246251565e-16
+    assert xirr.xnpv(0.1, values, [45000.0, 52300.0], solvers.caret_pow) == 2.220446049250313e-16
+    assert xirr.xnpv(0.1, values, [45000.0, 52300.0]) == -1.1102230246251565e-16
     long = [-1.0, 2048.40021458547]  # 2048.4002145854793, cut
-    assert solvers.xnpv(0.1, long, [45000.0, 74200.0], solvers.caret_pow) == -3.3306690738754696e-15
+    assert xirr.xnpv(0.1, long, [45000.0, 74200.0], solvers.caret_pow) == -3.3306690738754696e-15
 
 
 @pytest.mark.usefixtures("real_cases")
