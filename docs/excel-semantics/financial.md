@@ -1735,6 +1735,18 @@ still take booleans (unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2455
 
+## XNPV reads one empty values cell as a single 0 cash flow
+Rule: `XNPV(1,A2,B11)` and `XNPV(1,A2,B11:B11)` with A2 empty and B11 = 100 are the number 0 (not `#NUM!`); an empty cell
+in a multi-cell values range stays `#NUM!` (whole-column probe xirr-xnpv-whole-column-nogaps A1). The one-cell range
+`A2:A2` reads the same (`XNPV(1,A2:A2,B11)` and `XNPV(1,A2:A2,B11:B11)` are 0), but an empty dates cell is no date:
+`XNPV(1,B11,A2)`, `XNPV(1,B11,A2:A2)` and `XNPV(1,A2,A2)` are `#NUM!` (probes/xnpv-empty-cell-forms C1-C5). A date of 0
+after a value is `#NUM!` (`XNPV(1,A2,B12)`, B12 = 0). `XNPV(1,A2:A3,B11:B12)` with both values empty is `#VALUE!` in Excel; ours is
+`#NUM!` (known failure, unexplained: an empty range seems to be refused by a different check than the whole-column one).
+Evidence: probes/xnpv-empty-values-cell C1-C8 and xnpv-empty-cell-forms C1-C5 (excel-graph, 2026-10-24); it surfaced through gen-m9/eccd03df42e40006 A24
+(`PERCENTRANK(<no numbers>, XNPV(..))` is `#N/A`, so the XNPV is no error).
+Status: VERIFIED (excel-graph)
+Tasks: T-2066, T-2599
+
 ## Financial cells of the T-2436 sub-expression probe
 Rule (excel-graph, 2026-10-24, probes/t2436): `YIELD(36563,45559,999999999999995,107,107,2,1)` (a huge rate) is `#NUM!`;
 `MDURATION(-1.5,46394,<#N/A>,100,2)`, `ODDFPRICE(2958466,46506,33984,39398,-1,<#N/A>,104,4,2)`,
