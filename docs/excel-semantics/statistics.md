@@ -2352,7 +2352,8 @@ Rule (excel-graph, 2026-10-16, T-1621; spilled cells are evidence too; cell ids 
 - Dynamic arrays: GROWTH with `new_x's` omitted or equal to known_x's returns an array of y's size, also with const FALSE and no new_x's; a scalar new_x gives a scalar; the result shape follows new_x's. A new_x with the wrong number of columns is `#REF!`; boolean or text new_x is `#VALUE!`. `#SPILL!` for a blocked spill is unprobed here.
 - Exactly representable fits come out inexact: LOGEST({1,2,4,8},{1,2,3,4}) gives 1.9999999999999998 and 0.5000000000000001, GROWTH({1,2,4,8},{1,2,3,4},{5,6}) gives 15.999999999999996 and 31.999999999999968, GROWTH(5,5,5) is 4.999999999999999: the oracle's evaluation order is evidence for T-1741, T-1742, T-1743.
 Evidence: probes/linest-modes, logest-modes, growth-modes.
-Ours: GROWTH spills collapse to the first cell, the LINEST stats block is short or `#N/A`, many last-digit differences (T-1741, T-1742, T-1743).
+Ours: the LINEST and LOGEST shapes, stats block and check order match since T-1741 (section "LINEST and LOGEST: shapes,
+one point, collinear columns, exact fits and check order"); the last-digit differences remain (T-2006).
 FORECAST.ETS.SEASONALITY/STAT/CONFINT could not be lifted: excel-graph is `#N/A` for every valid call (section above), so cases would be junk evidence; the three stay below the floor until desktop values exist (T-1553).
 Status: VERIFIED (excel-graph) for the stated cases; the unprobed items are marked
 Tasks: T-1621, T-1741, T-1742, T-1743, T-2006 (shared least-squares kernel)
@@ -2749,21 +2750,28 @@ Order of the checks (gen-m9 cells): (1) an argument that is an error value, in a
 LOGEST report error values first"), and a typed or computed const or stats text that is no boolean, `#VALUE!`
 (`LINEST(UNIQUE(Data!D9:E9),Data!B7,TRUE,"1")`, `LOGEST(Data!C6:E9,Data!D$6,1,"")` against unequal shapes,
 a013a45a8fbcab4f A276, fd9fa22d212080d6 A201), while a text cell waits for the shapes (`LINEST(Data!D10:E10,Data!B1:B7,
-<"x~*" cell>,<#N/A>)` is `#N/A`, bcb24385baafb2f0 A40); (2) an error element of known_y or known_x, `#VALUE!`, before the
-shapes (`LINEST(Data!A1:C6,ROUND(GROUPBY(..)),..)`, 589f42e67f4b4b8d A100; `LOGEST(<number>,IF(SORT(IF({1,0,1},1,NA())),..),..)`
-d8266bc15533702a A117), unlike TREND; (3) the shapes, `#REF!`; (4) a const or stats cell, or a LAMBDA result that is a
-reference to one, holding text that is no boolean, `#VALUE!` (`LOGEST(Data!A10:B10,Data!B8:B8,-1,<"a" cell>)` and
-`LOGEST(Data!A10:A11,-0,LAMBDA(acc,Data!B3)(..))` with B3 = " x " are `#REF!`, f34f66fb7f81e673 A179,
-bbdfc06cae0e0d71 A324); (5) a blank, text or boolean element, `#VALUE!` (`LINEST(B2:B9,A2:A9&"")`, K113), LOGEST's
-non-positive y `#NUM!` as GROWTH's. An array const lifts after the data arguments' errors: `LOGEST(Data!C$10,0.1,
-EXPAND(Data!A10:C11,2,4))` is `#SPILL!` (165db58d1540f014 A327), while `LOGEST(Data!C6:E12,<#NUM!>,TRIMRANGE(..),TRUE)`
-is the x's `#NUM!` (0a614cfe974b59c3 A342). Whether an array stats lifts is unprobed (ours: it reads as FALSE).
+<"x~*" cell>,<#N/A>)` is `#N/A`, bcb24385baafb2f0 A40); (2) the shapes, `#REF!`, as TREND (`LINEST(Data!B11:E12,
+(BYROW(..)+HOUR(0.5)),2,-1)` is `#REF!` though its x holds errors, 05d44f6dd6cfc567 A317, and six more cells); (3) an
+error element of known_y or known_x, `#VALUE!` (`LINEST(Data!A1:C6,ROUND(GROUPBY(..)),..)`, 589f42e67f4b4b8d A100;
+`LOGEST(<number>,IF(SORT(IF({1,0,1},1,NA())),..),..)`, a scalar y against a 1x3 x holding `#N/A`, d8266bc15533702a A117);
+(4) a const or stats cell, or a LAMBDA result that is a reference to one, holding text that is no boolean, `#VALUE!`
+(`LOGEST(Data!A10:B10,Data!B8:B8,-1,<"a" cell>)` and `LOGEST(Data!A10:A11,-0,LAMBDA(acc,Data!B3)(..))` with B3 = " x "
+are `#REF!`, f34f66fb7f81e673 A179, bbdfc06cae0e0d71 A324); (5) a blank, text or boolean element, `#VALUE!`
+(`LINEST(B2:B9,A2:A9&"")`, K113), LOGEST's non-positive y `#NUM!` as GROWTH's. An array const or stats lifts:
+`LOGEST(Data!C$10,0.1,EXPAND(Data!A10:C11,2,4))` (165db58d1540f014 A327) and `LINEST(..,..,..,HSTACK(..))` as stats
+(165db58d1540f014 A366, e6cf3b20a014e6a3 A89) are `#SPILL!`. Excel lifts before the data arguments' error values
+(`LINEST(<#DIV/0!>,..,..,MAKEARRAY(2,3,..))` is `#SPILL!`, c2974c061384fdd9 A89), while
+`LOGEST(Data!C6:E12,<#NUM!>,TRIMRANGE(..),TRUE)` is `#NUM!` (0a614cfe974b59c3 A342), presumably because TRIMRANGE is a
+reference there; ours reports the data error first (T-2574).
+The collinear drop rests on one probe, K106 (A's se exactly 0 there): which column of another collinear pair is kept,
+with y not in x, is unprobed (T-2569).
 Evidence: probes/linest-modes (excel-graph, 2026-10-16, T-1621); gen-m9 (excel-graph, 2026-10-22/23).
 Ours: since T-1741 (`linest_or_logest` in functions/statistical/linest.rs, shared readers in regression.rs). The
 noise digits of exact and collinear fits (K106, K190, K197: Excel 1.4e-16 where ours is 0, F 1.4e32 where ours is
-`#NUM!`) and the two-point K134 (Excel exactly 0.5 and -1.5) come from Excel's solve and stay with T-2006.
+`#NUM!`) and the two-point K134 (Excel exactly 0.5 and -1.5) come from Excel's solve and stay with T-2006; the other
+leftover gen-m9 cells are T-2574's.
 Status: VERIFIED (excel-graph)
-Tasks: T-1741, T-2006, T-2556
+Tasks: T-1741, T-2006, T-2556, T-2574
 
 ## LINEST, LOGEST and GROWTH in the gen-m9 sweep (T-2255)
 Rule: confirmations and additions to "LINEST, LOGEST, GROWTH: probe findings": a scalar known_y with no known_x is one

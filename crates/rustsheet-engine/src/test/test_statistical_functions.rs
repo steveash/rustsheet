@@ -375,8 +375,9 @@ fn test_linest_one_point_shapes_and_flags() {
 
 #[test]
 fn test_linest_drops_a_collinear_column() {
-    // probes/linest-modes K106: E = 2A, so A is dropped with coefficient and se 0, and df counts
-    // only the kept columns.
+    // C = 2A with y not in x: A is dropped with coefficient and se 0, and df counts only the
+    // kept columns. Generalised from probes/linest-modes K106 (E = 2A, y in x, A dropped); this
+    // exact setup is unprobed (T-2569).
     let mut model = new_empty_model();
     for (i, (y, c)) in [(2.1, 2.0), (3.9, 1.0), (6.2, 4.0), (7.8, 3.0), (10.1, 6.0)]
         .iter()

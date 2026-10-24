@@ -169,10 +169,9 @@ impl Grid {
     }
 
     /// Whether an element is an error (or a lambda). LINEST and LOGEST report it as `#VALUE!`
-    /// before the shapes (`LINEST(Data!A1:C6,ROUND(GROUPBY(..)),..)`, an x holding `#VALUE!`
-    /// elements against a y of another shape, gen-m9 589f42e67f4b4b8d A100;
-    /// `LOGEST(<number>,IF(SORT(IF({1,0,1},1,NA())),..),..)`, an x holding `#N/A` against a scalar
-    /// y, d8266bc15533702a A117), TREND and GROWTH after them.
+    /// right after the shapes, before a text const or stats cell (`LINEST(Data!A1:C6,
+    /// ROUND(GROUPBY(..)),..)`, gen-m9 589f42e67f4b4b8d A100; `LOGEST(<number>,IF(SORT(IF({1,0,1},
+    /// 1,NA())),..),..)`, a scalar y against an x holding `#N/A`, d8266bc15533702a A117).
     pub(super) fn has_error(&self) -> bool {
         self.elements
             .iter()

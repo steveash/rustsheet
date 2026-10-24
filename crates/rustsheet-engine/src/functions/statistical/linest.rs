@@ -380,16 +380,18 @@ impl Model {
     ///    `LINEST(Data!C3:C7,Data!B5:B10,NA(),"1")` is `#N/A`, not the size `#REF!` (gen-m9
     ///    05d44f6dd6cfc567 A195), and so is `LINEST(Data!D10:E10,Data!B1:B7,<text cell>,<#N/A>)`
     ///    (bcb24385baafb2f0 A40; statistics.md "LINEST and LOGEST report error values first");
-    /// 2. an error element of `known_y`, then of `known_x` ([`Grid::has_error`]);
-    /// 3. the shapes (`#REF!`, [`layout`]);
+    /// 2. the shapes (`#REF!`, [`layout`]): `LINEST(Data!B11:E12,(BYROW(..)+HOUR(0.5)),2,-1)` is
+    ///    `#REF!` though its x holds errors (gen-m9 05d44f6dd6cfc567 A317);
+    /// 3. an error element of `known_y` or `known_x` (`#VALUE!`, [`Grid::has_error`]);
     /// 4. a const or stats that is text and no boolean (`#VALUE!`; after the shapes:
     ///    `LOGEST(Data!A10:B10,Data!B8:B8,-1,<"a" cell>)` and `LOGEST(Data!A10:A11,-0,
     ///    LAMBDA(acc,Data!B3)(..))` with B3 = " x " are `#REF!`, f34f66fb7f81e673 A179,
     ///    bbdfc06cae0e0d71 A324);
     /// 5. the data ([`known_points`]).
     ///
-    /// An array const lifts, as TREND's: each element is the top-left value of the call with that
-    /// const, so `LOGEST(Data!C$10,0.1,EXPAND(Data!A10:C11,2,4))` spills 2x4 (`#SPILL!` there,
+    /// An array const or stats lifts, as TREND's const: each element is the top-left value of the
+    /// call with those flags (`MAKEARRAY(2,3,..)` as stats is `#SPILL!`, gen-m9 c2974c061384fdd9
+    /// A89), so `LOGEST(Data!C$10,0.1,EXPAND(Data!A10:C11,2,4))` spills 2x4 (`#SPILL!` there,
     /// gen-m9 165db58d1540f014 A327).
     fn linest_or_logest(
         &mut self,
@@ -404,28 +406,31 @@ impl Model {
             Ok(data) => data,
             Err(error) => return error,
         };
-        let stats = read_flag(self, args.get(3), cell, false);
-        let kernel =
-            |const_flag: Flag| regression_output(&data, const_flag, stats.clone(), log, cell);
-        let Some(const_node) = args.get(2) else {
-            return kernel(Ok(Ok(true)));
+        // An omitted flag is an empty argument: its default.
+        let mut flag_arg = |index: usize| match args.get(index) {
+            Some(node) => flag_input(self, node, cell),
+            None => (CalcResult::EmptyArg, true),
         };
-        let (const_value, typed) = flag_input(self, const_node, cell);
-        if !matches!(const_value, CalcResult::Array(_)) {
-            let flag = flag_value(self, const_value, true, typed, cell);
-            return kernel(flag);
+        let (const_value, const_typed) = flag_arg(2);
+        let (stats_value, stats_typed) = flag_arg(3);
+        let is_array = |value: &CalcResult| matches!(value, CalcResult::Array(_));
+        if !is_array(&const_value) && !is_array(&stats_value) {
+            let const_flag = flag_value(self, const_value, true, const_typed, cell);
+            let stats_flag = flag_value(self, stats_value, false, stats_typed, cell);
+            return regression_output(&data, const_flag, stats_flag, log, cell);
         }
         let (y, x) = &data;
         let cost =
             u64::try_from(y.elements.len().saturating_add(x.elements.len())).unwrap_or(u64::MAX);
         self.lift_values(
-            vec![const_value],
+            vec![const_value, stats_value],
             LiftCost::Cells(cost),
             &LiftOptions::REUSE_ANY_EQUAL_TOP_LEFT,
             cell,
             &mut |model, values| {
-                let flag = flag_value(model, values[0].clone(), true, true, cell);
-                kernel(flag)
+                let const_flag = flag_value(model, values[0].clone(), true, true, cell);
+                let stats_flag = flag_value(model, values[1].clone(), false, true, cell);
+                regression_output(&data, const_flag, stats_flag, log, cell)
             },
         )
     }
@@ -473,6 +478,7 @@ fn regression_output(
         let (y, x) = data;
         let const_term = const_term?;
         let stats = stats?;
+        let layout = layout(y, x, cell)?;
         if y.has_error() || x.has_error() {
             return Err(CalcResult::new_error(
                 Error::VALUE,
@@ -480,7 +486,6 @@ fn regression_output(
                 "Regression: error value in known_y or known_x".to_string(),
             ));
         }
-        let layout = layout(y, x, cell)?;
         let (const_term, stats) = (const_term?, stats?);
         let known = known_points(y, x, layout, log, cell)?;
         let Some(mut reg) = linear_regression(&known.ys, &known.points, known.p, const_term, stats)
@@ -499,23 +504,6 @@ fn regression_output(
         Ok(build_output_array(reg, stats))
     };
     run().unwrap_or_else(|error| error)
-}
-
-/// Reads an optional const or stats argument as a [`Flag`], `default` when it is absent or an
-/// empty cell or argument (which Excel treats as omitted).
-fn read_flag(
-    model: &mut Model,
-    arg: Option<&Node>,
-    cell: CellReferenceIndex,
-    default: bool,
-) -> Flag {
-    match arg {
-        None => Ok(Ok(default)),
-        Some(node) => {
-            let (value, typed) = flag_input(model, node, cell);
-            flag_value(model, value, default, typed, cell)
-        }
-    }
 }
 
 /// The value of a const or stats argument, and whether it is typed (true) or the value of one

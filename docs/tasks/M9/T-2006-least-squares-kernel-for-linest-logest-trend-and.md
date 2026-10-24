@@ -45,6 +45,12 @@ Cells:
 - gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A178
 - gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A341
 
+Also from T-1741 (visibly off, the solve's noise digits): probes/linest-modes K106:P110 (collinear `LINEST(B2:B9,
+A2:E9,TRUE,TRUE)`: Excel 1.4e-16-sized coefficients and se, F 3.1e34 at K109 where ours is exactly 0 and `#NUM!`),
+K190:L194 and K197:L201 (y in x: F 1.36e32 at K193, K200, ours `#NUM!`), and K134:L138 (two points: Excel exactly 0.5,
+-1.5 and ss_resid 0; ours 0.49999999999999867 and 3.6e-30). Excel's exact or collinear fits carry its solve's residual
+noise, so F is a number there; ours is exact, so F is `#NUM!`.
+
 ## Acceptance criteria
 - [ ] A fit-lab kernel (tools/src/rustsheet_tools/fitlab/kernels/, a new `regression` fit) scores named candidates
       on the cells above. Candidates: normal equations (today's), Householder QR, modified and classical Gram-Schmidt,

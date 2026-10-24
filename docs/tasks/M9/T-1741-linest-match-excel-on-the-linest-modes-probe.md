@@ -188,8 +188,8 @@ Decision 0083: the cells listed under Context are visibly off (wrong LINEST shap
 
 ## Blocked because
 Blocked because: the baseline cannot be recorded in an agent run. The fix on branch
-agent/functions-stat/T-1741-linest-modes clears 313 gen-m9 and 98 probes known-failure lines (visibly-off cells
-8632 lock, 6988 after) but unmasks one cell, gen-m9/c468f5046aadfbbc Calc!B122, whose root cause is BESSELJ(1e15,1)
+agent/functions-stat/T-1741-linest-modes clears 327 gen-m9 and 98 probes known-failure lines (visibly-off cells
+8632 lock, 6974 after) but unmasks one cell, gen-m9/c468f5046aadfbbc Calc!B122, whose root cause is BESSELJ(1e15,1)
 (T-2563). Decision 0107 (in this branch) allows exactly that line via `rustsheet-eval update-baseline
 --allow-regressions`; the opus run's permission layer refused that command, so the owner (or a run allowed to)
 must run it once on this branch, confirm the baseline diff adds only that line, then `make check` and merge.
@@ -199,5 +199,6 @@ must run it once on this branch, confirm the baseline diff adds only that line, 
   shape element by element, column/row y with one variable per x column/row, empty known_x the default, one point
   accepted; a singular fit drops collinear columns (last column first, coefficient and se 0, df and F over the
   kept ones), exact fits give se 0 and F `#NUM!`; text const/stats is `#VALUE!` (typed at once, a cell after the
-  shapes; also T-2556's cells); error elements are `#VALUE!` before the shapes; an array const lifts.
-- Remaining linest-modes cells are the solve's noise digits (K106, K190, K197) and K134's two-point values: T-2006.
+  shapes; also T-2556's cells); error elements are `#VALUE!` after the shapes; an array const or stats lifts.
+- Left: linest-modes K106:P110, K134:L138, K190:L194, K197:L201 (the solve's noise digits and F; added to T-2006);
+  gen-m9 c468f5046aadfbbc A122/B122 (T-2563); 13 other gen-m9 cells, listed in T-2574.
