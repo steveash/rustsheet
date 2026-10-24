@@ -3,7 +3,7 @@ id: T-2357
 title: "A one-sheet 3-D span is written as the plain reference (FORMULATEXT of =ABS(Data1:Data1!A1:A3) is =ABS(Data1!A1:A3))"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
