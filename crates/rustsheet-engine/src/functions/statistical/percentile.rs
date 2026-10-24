@@ -89,10 +89,10 @@ impl Model {
             &PERCENTILE_DATA,
             cell,
             &mut |model, data, values| {
-                if data.is_empty() {
-                    return num_error(cell);
-                }
+                // k's error comes before the empty-data `#NUM!`, as PERCENTILE.EXC's:
+                // `PERCENTILE(<no number>,1/0)` is `#DIV/0!` (probes/quartile-numeric-text-cell C9).
                 match model.cast_number_ref(value_at(values, 1), cell) {
+                    Ok(_) if data.is_empty() => num_error(cell),
                     Ok(k) if (0.0..=1.0).contains(&k) => {
                         CalcResult::Number(percentile_inc_impl(data.sorted(), k))
                     }
