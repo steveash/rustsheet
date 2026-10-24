@@ -327,3 +327,27 @@ fn effect_and_nominal_use_excels_power() {
         );
     }
 }
+
+// =============================================================================
+// Argument order and booleans (T-2455, probes/t2455-transpose-single-value)
+// =============================================================================
+
+// The discount securities read basis first (A21, A64, A65); a boolean ACCRINTM par, ACCRINT issue
+// and AMORDEGRC rate are `#VALUE!` (A41, A52, A51), after an out-of-range earlier date's `#NUM!`.
+#[test]
+fn financial_argument_order_and_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=RECEIVED(37025,2.5,1E+300,1/0,"abc")"#);
+    model._set("A2", r#"=DISC(37025,2.5,1/0,100,"abc")"#);
+    model._set("A3", "=ACCRINTM(34825,37622,1E-9,TRUE,4)");
+    model._set("A4", "=ACCRINT(TRUE,SQRT(-1),1e-15,100,9984,2,1.9)");
+    model._set("A5", "=AMORDEGRC(90812,36624,38707,453,3,TRUE,4)");
+    model._set("A6", "=AMORDEGRC(70537,36888,7E13,46,12,TRUE,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#NUM!");
+}

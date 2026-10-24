@@ -346,59 +346,70 @@ impl Model {
         Ok(x)
     }
 
+    /// One F.TEST sample: a range or an array as `values_from_range` / `values_from_array` read
+    /// them, and a single value as a sample of at most one, so F.TEST is `#DIV/0!` whatever its
+    /// type (`FTEST(5,{1;2;3})`, `FTEST("abc",..)`, `FTEST(TRUE,..)`, `FTEST({1;2;3},SUM(4))`;
+    /// probes/t2455-transpose-single-value A8:A40, docs/excel-semantics/statistics.md "F.TEST of a
+    /// single value"). A one-cell reference to a blank cell, or a computed blank
+    /// (`FTEST(IF(TRUE,B10),..)`, A79), is `#VALUE!` instead.
+    fn f_test_sample(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        which: &str,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        let sample = self.evaluate_node_in_context(node, cell);
+        if self.is_blank_one_cell(&sample) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("F.TEST: the {which} sample is a blank cell"),
+            ));
+        }
+        match sample {
+            CalcResult::Range { left, right } => self.values_from_range(left, right),
+            CalcResult::Array(a) => self.values_from_array(a).map_err(|error| {
+                CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("Error in {which} array: {error:?}"),
+                )
+            }),
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => Ok(Vec::new()),
+        }
+    }
+
+    /// Whether `sample` is a one-cell reference to a blank cell: `B9:B9` arrives as a range, `B10`
+    /// as the cell's blank value.
+    fn is_blank_one_cell(&mut self, sample: &CalcResult) -> bool {
+        match sample {
+            CalcResult::EmptyCell => true,
+            CalcResult::Range { left, right } if left == right => {
+                matches!(self.evaluate_cell(*left), CalcResult::EmptyCell)
+            }
+            _ => false,
+        }
+    }
+
     // F.TEST(array1, array2)
     pub(crate) fn fn_f_test(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in first array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "First argument must be a range or array".to_string(),
-                );
-            }
+        // The samples are read in order, each one's error or blank one-cell reference (`#VALUE!`)
+        // before the next: `FTEST(5,B10)` and `F.TEST(Data!C8:C8,Data!Z1:Z3)` are `#VALUE!`
+        // (probes/t2455-transpose-single-value A35; gen-m9 b4173fe25109a238 A348), while
+        // `FTEST(1/0,B10)` is `#DIV/0!` and `FTEST(NA(),B10:B10)` `#N/A` (A77, A78); a blank
+        // two-cell range is `#DIV/0!` (A33). statistics.md, T-2255.
+        let values1_opts = match self.f_test_sample(&args[0], cell, "first") {
+            Ok(v) => v,
+            Err(error) => return error,
         };
-
-        // Get second sample as Vec<Option<f64>>
-        let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in second array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Second argument must be a range or array".to_string(),
-                );
-            }
+        let values2_opts = match self.f_test_sample(&args[1], cell, "second") {
+            Ok(v) => v,
+            Err(error) => return error,
         };
 
         let values1: Vec<f64> = values1_opts.into_iter().flatten().collect();

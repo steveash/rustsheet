@@ -2507,6 +2507,55 @@ Ours: `#N/IMPL!` for every call (T-2424 implements the argument step; T-2425 the
 Status: VERIFIED (excel-graph) for the argument step
 Tasks: T-2028, T-2424, T-2425, T-1553
 
+## QUARTILE reports quart's error before empty data (T-2455)
+Rule: `QUARTILE(B5:B6,SUMIFS(C1:E1,B11:D12,1))` with no number in B5:B6 is the quart's `#VALUE!` (the SUMIFS of mismatched
+ranges, A58), not the empty-data `#NUM!`; with a valid quart it is `#NUM!` (`QUARTILE(B5:B6,1)`)
+(probes/t2455-transpose-single-value A59, A60, excel-graph, 2026-10-23; gen-m9 899f9555e67da2d6 A344 through LINEST).
+QUARTILE.INC is the same (A83).
+Ours: since T-2455 (`fn_quartile_inc`, QUARTILE and QUARTILE.INC); QUARTILE.EXC keeps the empty-data check first (unprobed).
+Status: VERIFIED (excel-graph)
+Tasks: T-2455
+
+## F.TEST of a single value (T-2455)
+Rule: F.TEST takes any single value as a sample of at most one, so it is `#DIV/0!` whatever the value's type: `FTEST(5,{1;2;3})`,
+`FTEST({1;2;3},SUM(4))`, `FTEST(TRANSPOSE(5),{1;2;3})`, `FTEST(B1,{1;2;3})` with B1 = 5, `FTEST("5",..)`, `FTEST("abc",..)`,
+`FTEST(TRUE,..)`, `FTEST(5,6)` and `FTEST({1;2},5)` (probes/t2455-transpose-single-value A8:A36, excel-graph, 2026-10-23); a direct
+error is that error (`FTEST(1/0,..)` `#DIV/0!`, A29). A one-cell reference to a blank cell is `#VALUE!` (next entry): `FTEST(B10,{1;2;3})`,
+`FTEST(5,B10)`, `FTEST(B1,B10)`, `FTEST(B10,B1)` (A30:A39) and gen-m9 bbdfc06cae0e0d71 A34 `F.TEST(Data!B9:B9,<number>)`, while a
+blank two-cell range is `#DIV/0!` (`FTEST(B10:B11,{1;2;3})`, A33).
+F.TEST checks its samples in order, each one's error or blank one-cell reference before the next: `FTEST(1/0,B10)` is
+`#DIV/0!` and `FTEST(NA(),B10:B10)` `#N/A` (A77, A78), so for F.TEST the blank does not beat an earlier sample's error; a
+computed blank (`FTEST(IF(TRUE,B10),{1;2;3})`) is `#VALUE!` too (A79). An omitted sample (`FTEST(,{1;2;3})`) is unprobed
+(ours: the one-value `#DIV/0!`).
+Ours: since T-2455 (`fn_f_test`, `f_test_sample`, `is_blank_one_cell` in functions/statistical/fisher.rs). The paired
+functions' blank-cell `#VALUE!` stays with T-2426.
+Status: VERIFIED (excel-graph)
+Tasks: T-2455, T-2426
+
+## LINEST and LOGEST report error values first (T-2455)
+Rule: LINEST and LOGEST first report an argument that is itself an error value, in argument order (known_y, known_x, const,
+stats), and only then check the data: an error element of a range or array, a single value that is no number, too few points,
+unequal rows (`#REF!`) and text. So `LINEST({1;2},1/0,"x")`, `LINEST(1/0,{1;3},"x")`, `LOGEST({1;2},1/0,"x")` and
+`LINEST({1;2},1/0,UNIQUE(1,"1"))` are `#DIV/0!` (probes/t2455-transpose-single-value A4, A6, A25, A27; gen-m9 4e55500bb8ad3cd8
+A178), while an error const or stats beats the size and point checks: `LINEST(Data!C3:C7,Data!B5:B10,NA(),"1")` is `#N/A`, not
+`#REF!` (gen-m9 05d44f6dd6cfc567 A195), `LINEST(5,{1;2},NA())` and `LINEST(INT(999999999999999),42,NA(),TRUE)`
+`#N/A` (A50), `LINEST(<TRUE cell>,0.5,"FALSE",NA())` `#N/A` (c6cfda6bd10cae93 A110), and an error element of x comes after
+them (`LOGEST(Data!E$11,IF(MAP(..)),(MODE.MULT(..)<"1.5"))` is the const's `#N/A`, 35e8168aae2b00f8 A400). A text const or
+stats is `#VALUE!`: `LINEST({1;2},{1;3},"x")` (A7), `LINEST({1;2},{1;3},TRUE,"x")` (A26), and `UNIQUE(1,"1")` as const (A5).
+A computed blank known_y is `#VALUE!` before known_x's and const's errors (`LINEST(IFERROR(B10,1),1/0)` and
+`LINEST(IFERROR(B10,1),{1;2},NA())` with B10 blank, A68, A84; `LOGEST(IFERROR(B10,1),PEARSON(..)<#N/A>)` A66, gen-m9
+623663cacea53bbc A144), while a blank reference and a computed text or boolean y wait (`LINEST(B10,1/0)`, `LINEST(5,1/0)`,
+`LINEST("abc",1/0)`, `LINEST("5",1/0)` and `LINEST(IF(TRUE,"abc"),1/0)` are `#DIV/0!`, `LINEST(TRUE,{1;2},NA())` `#N/A`;
+A62, A67, A73:A76).
+Ours: the order since T-2455 (`read_regression_inputs`, `validate_regression_inputs`, `read_matrix` in
+functions/statistical/linest.rs). An error cell in known_y waits too (`LINEST(B20:B21,1/0)` with B20 `#N/A` is `#DIV/0!`,
+`LOGEST(B20:B21,{1;2},NA())` `#N/A`, A89, A94), an omitted known_y is `#VALUE!` (`LINEST(,1/0)`, A90), and TREND and GROWTH,
+which share the reader, follow the same y-then-x order (`TREND(B20:B21,1/0)`, `TREND("abc",1/0)`, `GROWTH(B20:B21,1/0)` and
+`GROWTH("abc",1/0)` are `#DIV/0!`, A85:A88). A defined name for a blank cell as known_y is unprobed (ours: the computed-blank
+`#VALUE!`). A text const or stats is read as a boolean (0.5 for A7, A26), T-2556.
+Status: VERIFIED (excel-graph)
+Tasks: T-2455, T-2556
+
 ## A one-cell reference to an empty cell is #VALUE! in the paired functions and F.TEST (T-2255)
 Rule: COVAR, COVARIANCE.P, COVARIANCE.S, CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, FORECAST, FORECAST.LINEAR,
 CHISQ.TEST, CHITEST, T.TEST, TTEST, F.TEST and FTEST are `#VALUE!` when an array argument is a one-cell reference to an
@@ -2519,7 +2568,7 @@ fcf11f2ec6f7a59d A9, the T-2051 question). A one-cell reference holding a number
 ("Array arguments given a scalar, a single cell or an error" above; `FTEST(6,Data!A$11)` with A11 = "x" is `#DIV/0!`,
 35e8168aae2b00f8 A253). This contradicts the earlier inference that an empty cell is one value with no number.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 109 cells listed in T-2426.
-Ours: `#N/A` (size) or `#DIV/0!` (one point); T-2426.
+Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions `#N/A` (size) or `#DIV/0!` (one point), T-2426.
 Status: VERIFIED (excel-graph)
 Tasks: T-2426, T-2051
 
