@@ -98,6 +98,11 @@ impl NestedArray {
         })
     }
 
+    /// What it holds: an array, or a reference result's value.
+    pub(crate) fn kind(&self) -> NestedKind {
+        self.kind
+    }
+
     /// Its cells plus those of every nested element, what reading its contents costs.
     pub(crate) fn cells(&self) -> usize {
         self.cells

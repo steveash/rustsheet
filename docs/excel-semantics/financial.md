@@ -594,7 +594,8 @@ PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB and PMT). ACCRINTM's basis lifts elem
 `{0;1;2;3;4}` gives 100, 100, 101.38888888888889, 100, 100; 5 and -1 are `#NUM!`, `TRUE` is `#VALUE!`, `"1"` is
 100, 1.9 truncates to 1 and `"x"` is `#VALUE!`; beside `{39083;39100}` in the issue it broadcasts to a 2x2 result
 (J1-J15). ACCRINTM reads every argument before it checks a value: `ACCRINTM(39083,39448,-0.1,1000,NA())` is `#N/A`,
-not the rate's `#NUM!`, and the same per element (J17, J20).
+not the rate's `#NUM!`, and the same per element (J17, J20); a date off the calendar is the exception, `#NUM!` as it
+is read ("Discount securities check order").
 Every other later argument of ACCRINT, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DURATION, MDURATION,
 ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE and YIELD is refused too, over a two-cell range on the formula's own
 rows (93 cells, each with its intersected control giving the base value: probes/fin-remaining-later-argument-ranges
@@ -1140,7 +1141,7 @@ take YEARFRAC's two parts, the basis day count D (30/360 for bases 0 and 4, actu
 length B (360, 365, or basis 1's YEARFRAC year), and round in this order, with `b/d` computed first where it appears:
 - DISC = `(1 - pr/redemption) * (B/DSM)`; INTRATE = `(redemption - investment)/investment * (B/DIM)`;
   YIELDDISC = `(redemption - pr)/pr * (B/DSM)`; PRICEDISC = `redemption - discount*redemption*DSM/B`;
-  RECEIVED = `investment / (1 - discount*(DIM/B))`.
+  RECEIVED = `investment / (1 - discount*DIM/B)`, left to right (T-2484: "Discount securities check order").
 - PRICEMAT and YIELDMAT read one B, that of issue to settlement, with A = days(issue, settlement), DIM =
   days(issue, maturity) and DSM = DIM - A: PRICEMAT = `(100 + DIM/B*rate*100) / (1 + DSM/B*yld) - A/B*rate*100`;
   YIELDMAT = `((1 + DIM/B*rate) - T) / T * (B/DSM)` with T = `pr/100 + A/B*rate`.
@@ -1149,8 +1150,8 @@ exactly 0.08 (the year-fraction form gives 0.08000000000000007), `INTRATE(43159,
 1.2000000000000002 = 0.1*(360/30), not 1.2, and `YIELDMAT(43101,43466,42736,0.06,98,0)` is 0.07692307692307698 (the
 expanded numerator `DIM/B*rate + 1 - pr/100 - A/B*rate` gives ...704). The grouping `x*(B/D)` is the only one of ten
 candidates matching all eight distinct DISC.xlsx cells (F2:F5 and F15:F18, bases 0-3 on two spans; F6:F10 and F19
-repeat them with basis 4, 2.4 or omitted). RECEIVED's form is the year
-fraction it always used (`DIM/B` is YEARFRAC); no cell separates it from the alternatives.
+repeat them with basis 4, 2.4 or omitted). RECEIVED's form was the year
+fraction (`DIM/B` is YEARFRAC) until probes/discount-argument-check-order A758 separated it (T-2484).
 Evidence: ironcalc-calc DISC.xlsx F2:F19 and INTRATE.xlsx F2:F6 (Excel-cached); probes/discount-security-modes,
 probes/date-system-1900-financial-daycount, probes/date-system-1904-financial-daycount,
 probes/date-system-1904-financial A25, A27, probes/fin-argument-modes H139, H352 (excel-graph). 73 cells, all now bit-exact.
@@ -1835,9 +1836,37 @@ argument's error, a settlement error too (`DISC(1/0,2.5,1,100,"abc")` is `#VALUE
 `RECEIVED(37025,2.5,1E+300,NA(),1/0)` is `#DIV/0!` (probes/t2455-transpose-single-value A21, A64, A65, excel-graph,
 2026-10-23); gen-m9 ba4ddb817a8e700e A345 has the same shape.
 INTRATE, PRICEDISC and YIELDDISC are the same (`..(37025,2.5,1/0,100,"abc")` is `#VALUE!`, A80:A82).
-Ours: since T-2455 (`discount_args`, shared by the five).
+Ours: since T-2455 (`discount_args`, shared by the five); the full order, PRICEMAT and YIELDMAT included, is in
+"Discount securities check order" (T-2484).
 Status: VERIFIED (excel-graph)
-Tasks: T-2455
+Tasks: T-2455, T-2484
+
+## Discount securities check order
+Rule: DISC, INTRATE, PRICEDISC, RECEIVED, YIELDDISC, PRICEMAT and YIELDMAT read their arguments in this order and check
+only the basis and the dates as they read them:
+1. basis: an error, text or boolean is returned, and a basis outside 0-4 (5, -1) is `#NUM!`, before anything else
+   (`DISC(NA(),43831,95,100,5)` and `YIELDMAT(NA(),..,-1)` are `#NUM!`, `DISC(NA(),43831,95,100,1/0)` `#DIV/0!`);
+2. settlement, maturity, then PRICEMAT's and YIELDMAT's issue: an error, text or boolean is returned, and a serial that
+   does not floor to 0-2958465 (9999-12-31) is `#NUM!` as it is read (`DISC(-1,NA(),..)`, `DISC(39448,2958466,"x",..)`,
+   `PRICEMAT(39448,43831,-1,NA(),..)` are `#NUM!`; `DISC(NA(),-1,..)` is `#N/A`). Serial 0.5 passes the read
+   (`DISC(0.5,NA(),..)` is `#N/A`);
+3. the amounts (price, investment, discount, redemption, rate, yld): an error, text or boolean is returned;
+4. only then the date order and the amount checks, `#NUM!` (`DISC(39448,39000,NA(),..)` is `#N/A`,
+   `DISC(39448,43831,0,"x",0)` `#VALUE!`).
+ACCRINTM reads in its own order, issue, settlement, rate, par, basis, with the same checks as it reads (both dates
+on the calendar, the basis in 0-4), so its basis comes last (`ACCRINTM(-1,39448,0.1,1000,NA())` is `#NUM!`,
+`ACCRINTM(NA(),39448,0.1,1000,5)` `#N/A`). A boolean is `#VALUE!` in every position of all eight, text "1" is 1.
+`RECEIVED` divides as `investment / (1 - discount*DIM/B)` left to right: `RECEIVED(39448,43831,"1",0.05,0)` is 2.5, where
+`discount*(DIM/B)` gives 2.5000000000000004 (A758; the "Discount securities: day count and year length" form left this
+open).
+Evidence: probes/discount-argument-check-order (1707 cells: each function with one argument out of its domain against
+`NA()`, text and `TRUE` in every other position, `NA()` and `1/0` in every pair of positions, and `TRUE`, text and "1"
+alone in each position; excel-graph, 2026-10-24, T-2484). Every cell fits the rule above.
+Unprobed: a 1904 workbook (the read checks the date after the 1904 shift, as for the T-bills).
+Ours: matches since T-2484 (`discount_args`, `maturity_args`, `accrintm_of` and `discount_date_of` in
+functions/financial/discount.rs; `day_count_basis_of` in financial/dates.rs, shared with `bond_args`).
+Status: VERIFIED (excel-graph)
+Tasks: T-2484
 
 ## Booleans in ACCRINT, ACCRINTM, AMORLINC and AMORDEGRC (T-2455)
 Rule: a boolean is `#VALUE!`, typed or from a cell, in ACCRINTM's par (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, A41, A54; text "2"
