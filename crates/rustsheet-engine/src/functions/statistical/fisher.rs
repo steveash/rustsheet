@@ -301,11 +301,11 @@ impl Model {
         let [x, df1, df2, cumulative] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // TODO(T-1849): Excel reads a TRUE as 1 in x and the degrees of freedom
+        // Excel reads a TRUE as 1 in x and the degrees of freedom
         // (probes/stat-later-argument-lift L13, probes-numeric/t1049-fdistrt A19, A26).
-        let x = self.cast_number_no_bools_ref(x, cell)?;
-        let df1 = self.cast_number_no_bools_ref(df1, cell)?.trunc();
-        let df2 = self.cast_number_no_bools_ref(df2, cell)?.trunc();
+        let x = self.cast_number_ref(x, cell)?;
+        let df1 = self.cast_number_ref(df1, cell)?.trunc();
+        let df2 = self.cast_number_ref(df2, cell)?.trunc();
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
         // Excel domain checks
         if x < 0.0 || !f_df_ok(df1) || !f_df_ok(df2) {
@@ -351,10 +351,10 @@ impl Model {
         let [x, df1, df2] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // TODO(T-1849): a TRUE reads as 1 in Excel, as in F.DIST.
-        let x = self.cast_number_no_bools_ref(x, cell)?;
-        let df1 = self.cast_number_no_bools_ref(df1, cell)?.trunc();
-        let df2 = self.cast_number_no_bools_ref(df2, cell)?.trunc();
+        // A TRUE reads as 1, as in F.DIST (probes-numeric/m9-legacy-fdist A90).
+        let x = self.cast_number_ref(x, cell)?;
+        let df1 = self.cast_number_ref(df1, cell)?.trunc();
+        let df2 = self.cast_number_ref(df2, cell)?.trunc();
         if x < 0.0 || !f_df_ok(df1) || !f_df_ok(df2) {
             return Err(num_error(cell));
         }
@@ -399,9 +399,10 @@ impl Model {
         let [p, df1, df2] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let p = self.cast_number_no_bools_ref(p, cell)?;
-        let df1 = self.cast_number_no_bools_ref(df1, cell)?.trunc();
-        let df2 = self.cast_number_no_bools_ref(df2, cell)?.trunc();
+        // A boolean reads as 1 or 0 (probes/stat-quantile-lift L2, L19).
+        let p = self.cast_number_ref(p, cell)?;
+        let df1 = self.cast_number_ref(df1, cell)?.trunc();
+        let df2 = self.cast_number_ref(df2, cell)?.trunc();
         // F.INV takes p in [0, 1], the right tail p in (0, 1]; outside is #NUM!.
         let p_out = if right_tail {
             p <= 0.0 || p > 1.0
