@@ -3,7 +3,7 @@ id: T-2459
 title: "Spec: nested arrays for GROUPBY/PIVOTBY LAMBDA array results (TYPE 64 cells, top-left when lifted)"
 milestone: M7
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -30,9 +30,17 @@ INDEX, TYPE and MAP, and bounds the memory a nested array may take (CLAUDE.md di
 implementation task that makes those cells pass.
 
 ## Acceptance criteria
-- [ ] docs/specs/ has the spec, with the probe evidence above and any new probe it needs.
-- [ ] Implementation tasks (size S/M) are filed from it, owning the cells above, T-2398's SCAN cells included; T-2398 depends on the one that makes them pass.
-- [ ] `make check` green; reviewers approve.
+- [x] docs/specs/ has the spec, with the probe evidence above and any new probe it needs.
+- [x] Implementation tasks (size S/M) are filed from it, owning the cells above, T-2398's SCAN cells included; T-2398 depends on the one that makes them pass.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing it (the tasks the spec cuts).
+
+## Outcome
+docs/specs/SPEC-0018-nested-arrays-in-groupby-pivotby-results.md: an `ArrayNode::Nested(Arc<NestedArray>)` value (one
+level, beside `ArrayNode::Lambda`), produced only by GROUPBY/PIVOTBY's `Model::aggregate`, read through one `scalar()`
+(top-left) at every lifted read, INDEX/TYPE seeing the array, shown and stored as `#VALUE!`, and charged against
+`limits::MAX_SIZE` (DEVIATION past it). Tasks cut: T-2592 (probe the unknowns, sonnet), T-2593 (representation, INDEX,
+TYPE, top-left reads; owns the 47 t2360 P! cells, t2311 P!C12, 26 gen-m7/21b4eef18424ce94 cells), T-2594 (MAP, REDUCE,
+aggregates; P!D12); T-2398 now depends on T-2593. No eval change (docs only).
