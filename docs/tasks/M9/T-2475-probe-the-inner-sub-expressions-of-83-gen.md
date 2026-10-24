@@ -3,7 +3,7 @@ id: T-2475
 title: "Probe the inner sub-expressions of 83 gen-m9 statistical cells of the T-2256 sweep whose divergence is not traced"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
