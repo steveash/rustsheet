@@ -2217,7 +2217,8 @@ values match Excel except where the table grows (`ROWS(Sales)` stays 4, `ROWS(Sa
 range; the plain-range quirk is not implemented. The move and grow classes are T-2297, the two edge rows
 and the quirk T-2321. With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
-is a parse error too (`#ERROR!`, FORMULATEXT the original text; T-2322). FORMULATEXT shows the stored
+(xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
+(`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
 canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
 table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste

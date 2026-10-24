@@ -1143,8 +1143,9 @@ are `#N/A` and one point is `#DIV/0!` (COVAR of one pair is 0): `TTEST(A7:C7,<nu
 the paired unequal-size `#N/A`; whether an error array argument beats a bad tails/type is unprobed). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
 9.332621544394404E+155), `TREND(#NUM!)` is `#NUM!`, and `GROWTH(B2:B3,<number>,..)` with B2:B3 = "?b", 0 is `#REF!` (the size
 check before the text check). LARGE of an error is that error (`LARGE(<#VALUE!>,k)`, `LARGE(<#REF!>,0.1)`), and so is
-PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). `QUARTILE(D6,7)` with D6 = " x " is inferred `#NUM!` (inside a BETAINV whose
-probability is also invalid, so UNVERIFIED; T-2066 probes it), and `PERCENTILE.EXC(A8:B8,<#VALUE!>)`
+PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). A single cell holding text is no number, like text inside a range: `QUARTILE(A1,1)`, `QUARTILE(A1,7)`, `QUARTILE.INC/.EXC`,
+`PERCENTILE.INC(A1,1)` and `PERCENTILE.EXC(A1:A3,0/1)` with A1 = " x " are all `#NUM!` (empty data), as is `QUARTILE(A3,1)` of an empty
+cell and `BETAINV(2,QUARTILE(A1,7),1)` (probes/quartile-single-text-cell B1-B11, excel-graph 2026-10-24, T-2066). Numeric-looking text is no number either: with A1 = the text "5", `QUARTILE(A1,1)`, `PERCENTILE.INC(A1,0)` and `QUARTILE.EXC(A1,1)` are `#NUM!` and `PERCENTRANK(A1,5)` is `#N/A`; k's error comes before the empty data in every one, `PERCENTILE(<no number>,1/0)`, `PERCENTILE.EXC(..,1/0)` and `QUARTILE.EXC(..,1/0)` being `#DIV/0!` (probes/quartile-numeric-text-cell C1-C9). PERCENTRANK of that text cell or an empty cell is `#N/A` for a number x, but an error x (`1/0` `#DIV/0!`) or text x (`#VALUE!`) comes first, EXC too, with or without a significance (B12-B28), and `PERCENTILE.EXC(A8:B8,<#VALUE!>)`
 with no number in A8:B8 is `#VALUE!` (k's error before the empty-data `#NUM!`). `PERCENTRANK.EXC(B11,1.005)` with B11 =
 1.005 is not 0.5 (inferred `#N/A` through `VLOOKUP(..)`; later probed: a single value equal to x is 1, probes/percentrank-single-value B6).
 A single cell holding nothing is not one value: in the paired functions and F.TEST it is `#VALUE!` (see "A one-cell
@@ -1252,9 +1253,11 @@ every record (`H1:H3` with `H3` blank sums all records), as does a blank header 
   unknown header over `">2"` matches nothing, and over TRUE matches everything. A formula condition is
   evaluated again for each record with its relative references moved down to that record: a blank
   header over `=B2>2` (cached FALSE, the first record's Qty is 1) sums the records whose Qty is above 2.
-  The probe puts the criteria row on the first record's row and sheet, so whether the references move by
-  the record's offset from the criteria cell (ours) or are rebased onto the first record is UNVERIFIED
-  for criteria on another row or sheet; only uppercase `"TRUE"` was probed.
+  The references are rebased onto the first record wherever the criteria block sits: below or above the
+  database, or on another sheet, `=B6>2` (first record on row 6) sums the records from the third on (12),
+  `=B9>2` tests each record's B cell three rows down (sum 3), and the absolute `=$B$6>2` stays on the
+  first record and matches nothing (0). VERIFIED (probes/db-criteria-formula-placement H1-H12, excel-graph;
+  ours already agrees). The text `"true"`, `"True"` and `"TRUE"` all hold under a blank header (H13-H15).
 - **DGET** of the one matching record's blank field cell is `#VALUE!`, as when nothing matches.
 - **Matched conditions** use the shared criteria grammar (criteria.md); `Qty` over TRUE matches only
   the boolean TRUE record, over `=NA()` nothing.

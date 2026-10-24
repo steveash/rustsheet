@@ -234,6 +234,8 @@ financial.md "XIRR and XNPV under the gen-m9 statistical cells"). Eval: gen-m9 k
 0 regressions. Still open: the XNPV rules (boolean or text one-cell rate or dates `#VALUE!`, a number against a range of a
 different count `#NUM!`), FVSCHEDULE's empty schedule cell, and the other financial functions' domain-before-text orders.
 
+2026-10-24 15:35 (opus run): resumed after 2 h idle (routine step 2); merged origin/main, baselines taken from main to be regenerated.
+
 2026-10-24, later (same run, out of session budget; work in progress, not mergeable yet). Round-1 reviews: security
 REQUEST_CHANGES (the old `holds_text_or_boolean_cell` scanned an untrimmed whole-column range); quality REQUEST_CHANGES
 (duplicated used-area trimming, now one helper `xirr_range_end`; add exact-value unit tests in

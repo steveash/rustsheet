@@ -1,0 +1,34 @@
+---
+id: T-2609
+title: "Probe element-wise lifts over two-level and reference-body GROUPBY cells (SPEC-0018 rules 4, 7, 8)"
+milestone: M7
+lane: research
+status: todo
+priority: P2
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+arrays.md and SPEC-0018 state, from oracle values, what an element-wise lift reads from a two-level nested GROUPBY cell and from a
+reference-body cell.
+
+## Context
+SPEC-0018 (revised by T-2602) assumes that `ArrayNode::scalar()` reads a two-level nested cell's top-left recursively and that a
+reference-body cell (`LAMBDA(x,D!D2)`) is `#VALUE!` to every read but INDEX (rule 7, probes/t2592-nested-groupby-cells A21).
+Neither is probed. Probe with the t2592 data sheet D (`GROUPBY(D!A1:A5,D!C1:D5,..)`):
+- `SUM(--ISERROR(GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(x,D!D2))))`, `SUM(--ISNUMBER(..))` and `ROWS(..)`;
+- the same over the A23 two-level formula, a LAMBDA returning a GROUPBY whose inner top-left is an error;
+- `REGEXEXTRACT("a1",GROUPBY(..,LAMBDA(x,D!D2)))`;
+- SUM, COUNT and COUNTA over the reference-body result.
+
+Record the answers in arrays.md (the T-2592 paragraph) and update SPEC-0018's "One reader" and rule 7. If the evidence changes
+what T-2593 or T-2594 must build, update those task bodies too.
+
+## Acceptance criteria
+- [ ] A probe case with oracle values for the formulas above, cited in arrays.md and SPEC-0018.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Engine changes (T-2593, T-2594).

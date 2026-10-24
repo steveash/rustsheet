@@ -3,7 +3,8 @@ use std::fmt;
 use crate::arithmetic::power;
 use crate::functions::lift::{num_error, value_error};
 use crate::functions::math_and_trigonometry::{
-    excel_atan2, excel_quarter_turn_remainder, excel_sin_cos, EXCEL_TRIG_LIMIT,
+    excel_atan2, excel_quarter_turn_remainder, excel_sin_cos, EXCEL_INNER_TRIG_LIMIT,
+    EXCEL_TRIG_LIMIT,
 };
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
@@ -25,11 +26,6 @@ use crate::{
 
 mod trig;
 use trig::{imcos, imcosh, imcot, imcsc, imcsch, imsec, imsech, imsin, imsinh, imtan};
-
-/// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
-/// `IMPOWER("i",85445658)` (angle 134217725.7) answers and `IMPOWER("i",85445659)` (134217727.3)
-/// is `#NUM!`; SIN's own cut is 2^27 (`EXCEL_TRIG_LIMIT`), which is not this one for a fractional angle.
-const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
 
 /// This implements all functions with complex arguments in the standard
 /// NOTE: If performance is ever needed we should have a new entry in `CalcResult`,
@@ -87,9 +83,12 @@ impl fmt::Display for Complex {
         // Each part is written as Excel's number-to-text writes it: plain up to 20 characters,
         // then E notation (`1.22514845490862E-16`, probes/eng-impower A9; `1E+200`,
         // probes/eng-imdiv A19).
-        let y_str = if y == 1.0 {
+        // The coefficient 1 is dropped only for an imaginary part that is exactly ±1: Excel writes
+        // `0.1+1i` for `COMPLEX(0.1,1+2^-52,"i")` (gen-m9/62c886e21a1042af A243), so compare the
+        // unrounded part.
+        let y_str = if self.y == 1.0 {
             String::new()
-        } else if y == -1.0 {
+        } else if self.y == -1.0 {
             "-".to_string()
         } else {
             complex_part_to_text(y)
@@ -488,7 +487,7 @@ impl Model {
             if radius == 0.0 {
                 return complex_result(0.0, 0.0, suffix);
             }
-            if angle.abs() < IMPOWER_ANGLE_LIMIT {
+            if angle.abs() < EXCEL_INNER_TRIG_LIMIT {
                 let (sin, cos) = excel_sin_cos(angle);
                 return finite_complex_result(radius * cos, radius * sin, suffix, cell);
             }
@@ -849,6 +848,24 @@ mod tests {
     use crate::functions::engineering::complex::Suffix;
 
     use super::parse_complex_number as parse;
+
+    #[test]
+    fn coefficient_one_written_unless_exactly_one() {
+        let text = |x: f64, y: f64| {
+            super::Complex {
+                x,
+                y,
+                suffix: Suffix::I,
+            }
+            .to_string()
+        };
+        assert_eq!(text(0.1, 1.0 + 2f64.powi(-52)), "0.1+1i");
+        assert_eq!(text(0.5, 1.0 - 2f64.powi(-53)), "0.5+1i");
+        assert_eq!(text(0.5, -1.0 - 2f64.powi(-52)), "0.5-1i");
+        assert_eq!(text(0.5, 1.0), "0.5+i");
+        assert_eq!(text(0.5, -1.0), "0.5-i");
+        assert_eq!(text(0.0, 1.0), "i");
+    }
 
     #[test]
     fn suffix_join() {
