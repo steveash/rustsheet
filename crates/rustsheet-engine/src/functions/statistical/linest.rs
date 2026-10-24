@@ -380,7 +380,7 @@ impl Model {
     ///    `LINEST(Data!C3:C7,Data!B5:B10,NA(),"1")` is `#N/A`, not the size `#REF!` (gen-m9
     ///    05d44f6dd6cfc567 A195), and so is `LINEST(Data!D10:E10,Data!B1:B7,<text cell>,<#N/A>)`
     ///    (bcb24385baafb2f0 A40; statistics.md "LINEST and LOGEST report error values first");
-    /// 2. an error element of `known_y`, then of `known_x` ([`Grid::first_error`]);
+    /// 2. an error element of `known_y`, then of `known_x` ([`Grid::has_error`]);
     /// 3. the shapes (`#REF!`, [`layout`]);
     /// 4. a const or stats that is text and no boolean (`#VALUE!`; after the shapes:
     ///    `LOGEST(Data!A10:B10,Data!B8:B8,-1,<"a" cell>)` and `LOGEST(Data!A10:A11,-0,
