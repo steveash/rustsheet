@@ -3,7 +3,7 @@ id: T-2581
 title: "TEXTSPLIT with a range row delimiter and an invalid match_mode, and TEXTBEFORE with a number delimiter from a reference and a negative instance (gen-m9, 3 cells)"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,10 +29,19 @@ Cells:
 - gen-m9/984cba67bbe6972b.case.json (1): Calc!A160
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
-- [ ] `make check` green; reviewers approve.
+- [x] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
+
+## Outcome
+Probed (probes/t2581-textsplit-textbefore, 50 cells, excel-graph 2026-10-24) and matched three rules, recorded in text.md:
+TEXTSPLIT scans once for both delimiter lists with a column delimiter beating a row delimiter at one position (`split_grid`
+replaces the rows-then-columns split); TEXTSPLIT's match_mode is cut toward zero and must be 0 or 1, checked after an error
+element of a delimiter list; TEXTBEFORE/TEXTAFTER's instance_num is bounded by the positions the shortest delimiter can start at
+(text length less delimiter length plus one, UTF-16 units), not the text length.
+Eval delta: gen-m9 known failures 6865 -> 6861 (the 3 owned cells, plus 41248d1cb153c66e A258 of T-2428, whose inner
+TEXTAFTER hits the new instance bound); probes 2819 -> 2792 (27 t2436 cells; the new 50-cell probe passes in full); no regressions.
