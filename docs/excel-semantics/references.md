@@ -2325,3 +2325,18 @@ union returned by `LAMBDA(x,x)((A1,B1))` or `LET(x,(A1,B1),x)` (single-area and 
 Evidence: probes/lambda-union-reference-callers C1-C7, D1-D11; probes/lambda-union-offset-countif C1-C10 (excel-graph, 2026-10-19)
 Status: VERIFIED (excel-graph)
 Tasks: T-1951, T-1993
+
+## A LET name or LAMBDA parameter shadows a defined name of the same name, in any case
+
+`LET(mk,LAMBDA(a,a+1),mk(1))` is 2 with a workbook name `Mk` = `LAMBDA(a,a+100)` (the unshadowed `Mk(1)`
+and `mk(1)` are 101). A LET name or LAMBDA parameter spelled like a defined name, in the same or another
+case, is the variable up to the end of its scope: `LET(pv,2,pv+1)`, `LET(Pv,2,Pv+1)` and `LET(PV,2,pv+1)` are 3
+with `Pv` = 7 (`=Pv+1` is 8), `LAMBDA(pv,pv+1)(2)` is 3, `LAMBDA(PV,Pv*10)(2)` is 20. A LAMBDA closure keeps the
+defined name it was written against: `LET(f,LAMBDA(a,a+Pv),LET(pv,50,f(1)))` is 8, not 51.
+The name is bound inside its own value expression too, so it hides the defined name there: `LET(pv,pv+1,pv)` is
+`#NAME?` (not 8), and `LET(pv,2,x,Pv,x)` is 2. A LAMBDA body that names its own LET name is `#NAME?` as well:
+`LET(Pv,LAMBDA(a,Pv),Pv(1))` (B2). The engine gives `#ERROR!` for that last form: open, T-2558.
+Evidence: probes/let-name-shadows-defined-name A1-A13, B1-B3 (excel-graph, 2026-10-23 and 2026-10-24). Implemented in the parser
+(`bind_reference_shaped_name`, which also skips the defined-name lookup for bound names).
+Status: VERIFIED (excel-graph)
+Tasks: T-2057
