@@ -130,3 +130,4 @@ the 15th digit, as `closeness.rs`):
   -1e-17*n at r = 0.05, i.e. as if the log of 1+r were off by about one ulp (low at 0.1, high at 0.05). It is not
   the double 1+r (wrong sign and size), and not 2^(-n*log2(1+r)) with log2 rounded to 53 or 64 bits (27/800
   bit-exact); `PMT*exp(-n*log1p r)` variants with 53/64-bit/exact steps reach 81/800.
+- Resumed by an opus run at 2026-10-24 07:45 UTC (stale branch, routine step 2).
