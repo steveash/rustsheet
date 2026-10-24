@@ -7,8 +7,10 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: [T-2592, T-2593]
+depends_on: [T-2592, T-2593, T-2602]
 ---
+
+> Do not start before T-2602: SPEC-0018 rules 4, 5 and 7 and its one-level design are stale against T-2592's probe (arrays.md).
 
 ## Goal
 MAP, REDUCE and the aggregates read a nested GROUPBY/PIVOTBY cell as Excel does (SPEC-0018 rules 5 and 7, T-2592's evidence).

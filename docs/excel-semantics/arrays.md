@@ -785,10 +785,32 @@ P, excel-graph, 2026-10-23, T-2360): with `LAMBDA(v,v)`, `TYPE(INDEX(GROUPBY(..)
 over several value columns gives each column its own array. A consumer that lifts over the result reads each cell's top-left, so
 `SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a nested array's top-left is one (`{#N/A;3}`, P!C33 = 1),
 and the gen-m7 REGEXEXTRACT whose return_mode is such a GROUPBY gets a valid mode, not `#VALUE!` (gen-m7/21b4eef18424ce94 A1504),
-while MAP over the result is an error (t2311-pivotby-value-columns-error P!D12). Blank keys show as true blanks in INDEX (`TYPE` 1,
+while MAP over the result is not an error (T-2592 below). Blank keys show as true blanks in INDEX (`TYPE` 1,
 `&""` is "", G!A12, B3), not 0. Ours: `#VALUE!` per cell and 0 for a blank key (the engine has no nested arrays: SPEC-0018, T-2593; blank keys T-2460).
-A LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`) is `#VALUE!` in every cell, like an array result; so is a
-two-parameter LAMBDA (each cell, not the whole result). `field_headers` 2 over two keys and two values generates
+T-2592 (probes/t2592-nested-groupby-cells, excel-graph, 2026-10-24; `GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))` is 3x3: keys a, b, Total by
+key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown headers are off). Nested cells in practice:
+- A LAMBDA whose body is a one-cell reference (`LAMBDA(x,D!D2)`) still displays `#VALUE!` in every spilled cell (probes/groupby-lambda-forms
+  G!K193:K198, excel-graph, 2026-10-16), but INDEX reads such a cell as its value, not an error (`TYPE` 1, 10; A21): the cell is
+  reference-like, shown as `#VALUE!` and read as the referenced value, never a nested array. A two-parameter `LAMBDA(x,y,x)` also displays
+  `#VALUE!` (G!K217:K222) but holds a nested array like `LAMBDA(v,v)` (`64|2x1|3`, A22). A computed 1x1 result is nested too
+  (`LAMBDA(v,{7})` and `LAMBDA(v,SEQUENCE(1))` `64|1x1`, A33, A34), and subtotal cells (two row fields, `total_depth` 2) are: a
+  one-record group `64|1x1`, a two-record subtotal `64|2x1`, the Total `64|4x1` (A35:A41).
+- MAP, BYROW and BYCOL over the result are not errors: a scalar step returns an array of the result's shape (3x3, 3x1, 1x3; A1:A5) and the
+  LAMBDA is handed each nested cell whole: `MAP(..,LAMBDA(x,ROWS(x)))` is 1 for a key, 2 for group b's C cell, 4 for the Total's
+  (A100:A102), `TYPE(x)` is 64 for a nested cell (A103) and `SUM(x)` its sum (7 for `{3;4}`, A105); BYROW's row and BYCOL's column
+  hold the nested cells too (`TYPE(INDEX(r,1,2))` 64, A106, A107). A LAMBDA that returns `x` itself gives `#CALC!` (ERROR.TYPE 14, A104).
+  MAP over a PIVOTBY result with a scalar step is fine as well (A108, A109), so t2311 P!D12's "E" is not MAP itself: its step is `IFERROR(x&"",..)`, and `&""` on a nested cell is still an array (A18), which a MAP step cannot return (`#CALC!`, A104).
+- REDUCE visits every one of the 9 cells with the nested array as `x` (a count 9; `a+ROWS(x)` 19, A14, A15).
+- Aggregates read through the nested cells, flattening them: SUM 220, COUNT 16, COUNTA 19 (keys count; A6:A8); AVERAGE is `#N/A`
+  (ERROR.TYPE 7, A9), ARRAYTOTEXT `#CALC!` (14, A10), TEXTJOIN and CONCAT `#VALUE!` (3, A11, A12). `&""` over the whole result keeps
+  the 3x3 shape (A13).
+- `+0`, `--` and `&""` on one INDEXed nested cell leave it an array (`64|2x1|3`, A16:A18).
+- `ZZ1#` over a spilled result reads every nested cell as `#VALUE!` (`SUM(ZZ1#)` and `INDEX(ZZ1#,2,2)` ERROR.TYPE 3, A19, A20).
+- Two levels: a LAMBDA returning a GROUPBY gives a nested cell that is the inner 3x3 result, whose own cells are nested again
+  (`64|3x3|a`, inner INDEX(..,2,2) `64|2x1`, A23, A24); so one level is not the limit in Excel.
+- TAKE, CHOOSECOLS, VSTACK, SORT, FILTER and an INDEX of a whole row or column all keep the nested cells (A26:A32).
+Ours: not implemented (no nested arrays; SPEC-0018, T-2593, T-2594).
+`field_headers` 2 over two keys and two values generates
 "Row Field 1", "Row Field 2", "Value 1", "Value 2"; `field_headers` 3 with `total_depth` -1 puts the header row first, then
 Total. A header row over no records (`GROUPBY(A1,D1,f,1)`), a non-function (`5`) and fractional options (`total_depth`
 0.5, `field_headers` 2.5) are `#VALUE!` (ERROR.TYPE 3). An empty-text key (`=""`) is its own group, separate from the blank
