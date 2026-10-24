@@ -85,8 +85,9 @@ pub(crate) struct Functions {
     visits: u64,
     /// The cap error once the charges passed the cap: the result is that error.
     refused: Option<CalcResult>,
-    /// The cells of the nested arrays kept so far, inner levels included, against `MAX_SIZE`
-    /// ([`Model::nest`]).
+    /// The cells of the nested arrays this call kept so far, inner levels included, against
+    /// `MAX_SIZE` ([`Model::nest`]); separate from the evaluation's `NestedBudget`, which bounds
+    /// a loop of calls.
     kept: usize,
 }
 

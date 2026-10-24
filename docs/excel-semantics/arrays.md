@@ -837,7 +837,8 @@ key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown 
 Ours since T-2593 (SPEC-0018): the nested cells of rules 1, 3 and 8 (A16:A18, A22:A41), the one-cell reference body read by INDEX
 as its value (A21), and BYROW's row and BYCOL's column holding nested cells (A106, A107). MAP, BYROW and BYCOL steps, REDUCE and
 the aggregates (A1:A15, A100:A105, A108, A109) still read a nested cell as the `#VALUE!` it shows (T-2594); an element-wise lift
-of a two-level cell reads the inner top-left (assumed, T-2609), of a reference cell `#VALUE!` (unprobed, T-2609).
+of a two-level cell reads the inner top-left (assumed, T-2609), of a reference cell `#VALUE!` (unprobed, T-2609); a lifted INDEX
+element and an operator over the whole result read a nested cell as `#VALUE!` (unprobed, T-2609).
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),
