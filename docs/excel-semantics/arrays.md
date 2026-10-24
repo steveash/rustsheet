@@ -1702,7 +1702,7 @@ excel-graph, 2026-10-24, T-2579; there D!A1:A6 = 1, blank, TRUE, "x", 5, =1/0 an
   SUM and `+1` of it work, B21, B22, B30), `ROWS(MAKEARRAY(1048577,1,..))` 1048577 (B23), `COLUMNS(SEQUENCE(1,16385))`
   16385 (B24), HSTACK and TRANSPOSE build 20000 columns (B28, B29), and only a spill of one is `#SPILL!` (B26:
   `ERROR.TYPE(MAKEARRAY(1,16385,..))` in a cell). `MAKEARRAY(4,DATE(1952,-2.5,123456789.123),..)` has COLUMNS 51638
-  (B25; gen-m9 4250f880ab640c49 A237 is `#SPILL!`). Ours: `#VALUE!` for B23, B24, B26 (`limits::check_array_size`; T-2595).
+  (B25; gen-m9 4250f880ab640c49 A237 is `#SPILL!`). Ours: `#VALUE!` for B23, B24, B26 (`limits::check_array_size`; T-2600).
 - IMSQRT, IMABS and the other IM functions do not lift over a multi-cell reference (`ROWS(IMSQRT(D!B1:B2))` off its rows is
   `#VALUE!`, B44; through LET too, B48, B50), but lift over an array (`IMSQRT(REDUCE(0,1,LAMBDA(a,b,{2;8})))` has 2 rows,
   B46), while SQRT and ABS lift over both (B42, B51). A REDUCE whose LAMBDA returns a range gives that reference
@@ -1721,6 +1721,6 @@ Evidence: probes/t2436 (excel-graph, 2026-10-24); probes/t2579-array-value-edges
 Ours: COMBIN lifts (`fn_combin`, lift/kinds/general.rs) and `if_error_like` reads a multi-cell range's blanks, and those
 of the range a direct TRIMRANGE keeps, as 0 (`blanks_as_zero`); wrapped forms (LET, IF, TAKE, DROP, a lifted TRIMRANGE)
 and IFNA through TRIMRANGE are unprobed (T-2597)
-since T-2579; wide arrays T-2595, the REDUCE/TRIMRANGE reference T-2596.
+since T-2579; wide arrays T-2600, the REDUCE/TRIMRANGE reference T-2596.
 Status: VERIFIED (excel-graph)
-Tasks: T-2579, T-2595, T-2596
+Tasks: T-2579, T-2600, T-2596
