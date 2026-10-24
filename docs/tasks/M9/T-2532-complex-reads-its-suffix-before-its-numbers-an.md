@@ -3,7 +3,7 @@ id: T-2532
 title: "COMPLEX reads its suffix before its numbers: an invalid or error suffix wins (gen-m9, 17 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
