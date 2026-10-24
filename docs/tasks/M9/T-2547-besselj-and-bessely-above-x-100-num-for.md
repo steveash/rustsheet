@@ -33,7 +33,16 @@ Cells:
 - gen-m9/7820ebc42c7a56a6.case.json (1): Calc!A316
 - gen-m9/f8bc18a0e45a0e1a.case.json (1): Calc!A202
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `BESSELJ(1E+15,100)` is `#NUM!` (ours 5.286816888554611E-09).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/caa1eed48b1883fe Calc!A399 `=GAUSS((MIN(Data!A11:A12,Data!D4:D7)/BESSELJ(1000000000000000.0,100)))`: Excel #NUM!, ours -0.5; inner `BESSELJ(1000000000000000.0,100)` Excel #NUM!, ours 5.286816888554611e-9
+Cells:
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A399
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] engineering.md records Excel's x limit and the kernel change with the sweep cells.

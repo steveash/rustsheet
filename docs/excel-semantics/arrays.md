@@ -1669,3 +1669,39 @@ frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399
+
+## An empty array as a function argument (T-2436)
+Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH (as the value
+or a case), IMSUM and WORKDAY's holidays, while ABS and N keep the `#CALC!`, ERROR.TYPE gives 14 and IFERROR catches it:
+`SWITCH(1,TAKE(0.2,0,3),5,6)`, `SWITCH(DROP({1},1),1,2,3)`, `IMSUM(DROP({1},1))` and `WORKDAY(1,1,DROP({1},1))` are `#VALUE!`,
+`ABS(DROP({1},1))` and `N(DROP({1},1))` `#CALC!` (probes/t2436/computed-scalar A43:A50). Which other functions turn it into
+`#VALUE!` is unprobed. Separately, `SEQUENCE(0.0123,123456789.123,..)` is `#VALUE!`, not the zero rows'
+`#CALC!` (the oversized columns as the cause is UNVERIFIED) (gen-m9 f280df8ba95f96b9 A222).
+Evidence: probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9 (excel-graph, 2026-10-24).
+Ours: `#CALC!` for all of them; T-2580.
+Status: VERIFIED (excel-graph) for the listed calls
+Tasks: T-2580
+
+## GROUPBY and PIVOTBY in the gen-m9 sweep (T-2436)
+Rule: Excel computes these calls that ours rejects or computes differently: `PIVOTBY(Data!B1:E12,Data!B1:D12,Data!D1:E12,
+_xleta.AVERAGE)` is a 16x30 array and `PIVOTBY(Data!B1:B12,Data!B1:C12,Data!B1:C12,_xleta.AVERAGE,1)` 13x25 (ROWS and COLUMNS
+of them; ours `#VALUE!`), and `AVERAGEA(GROUPBY(Data!B1:E12,Data!B1:D12,_xleta.PRODUCT,0,2),{0.02,0.027},Data!B7:B7)` is
+-4.454221888962187E+22 (GROUPBY 20x7; ours -4.161608772169051E+22). Over a LAMBDA(x,x) function the results' elements make
+MAX, HARMEAN and AVERAGE `#N/A` and COUNT 142 (gen-m9 06b4e8f5de409d5e A366, 68d8ffb69ff739d8 A285, 7c20351562a2d71d A381,
+e85daedce5c2675e A35), which T-2459's nested-array model decides. Which elements differ is not shown: the spills are blocked
+in the sweep layout.
+Evidence: probes/t2436 (excel-graph, 2026-10-24), the cases named in T-2578.
+Ours: `#VALUE!` for the PIVOTBY calls, other values for the rest; T-2578.
+Status: VERIFIED (excel-graph) for the shapes and enclosing values
+Tasks: T-2578, T-2459
+
+## Array-value edges in the gen-m9 sweep (T-2436)
+Rule (one gen-m9 cell each, probes/t2436, excel-graph, 2026-10-24): an array value may be wider than the grid:
+`MAKEARRAY(4,DATE(1952,-2.5,123456789.123),LAMBDA(acc,y,y-y))` has COLUMNS 51638 (4250f880ab640c49 A237; as a cell it is
+`#SPILL!`); a REDUCE whose LAMBDA returns a multi-cell reference, given to IMSQRT, is `#VALUE!` (df083d85b436b49a A20);
+`COMBIN(18,FILTER(..))` is 1 (c18dbf21f11093f3 A174); `AVEDEV(Data!C1:C11,Data!A11:A12,IFERROR(TRIMRANGE(Data!D1:E9),..))`
+is 23255018.338958457 (fec39efaba9284c3 A253). The mechanisms are UNVERIFIED.
+Evidence: probes/t2436 (excel-graph, 2026-10-24).
+Ours: `#VALUE!`, a lifted value, `#N/IMPL!` and 32142595.747999992; T-2579.
+Status: VERIFIED (excel-graph) for the values; mechanisms UNVERIFIED
+Tasks: T-2579

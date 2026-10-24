@@ -1,0 +1,81 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2436: sub-expressions of the untraced gen-m9 cells of gen-m9/60b0b6e69ad35a45 (A69), on that case's Data sheet; one sub-expression per row block (column A, with its ROWS in T and COLUMNS in U).",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=(-1)",
+        "T1": "=ROWS((-1))",
+        "U1": "=COLUMNS((-1))",
+        "A16": "=NPV((-1),{-100,10,20,30,40},Data!C1)",
+        "T16": "=ROWS(NPV((-1),{-100,10,20,30,40},Data!C1))",
+        "U16": "=COLUMNS(NPV((-1),{-100,10,20,30,40},Data!C1))",
+        "A31": "=MEDIAN(Data!E4:E5,(-1))",
+        "T31": "=ROWS(MEDIAN(Data!E4:E5,(-1)))",
+        "U31": "=COLUMNS(MEDIAN(Data!E4:E5,(-1)))",
+        "A46": "=(NPV((-1),{-100,10,20,30,40},Data!C1)+MEDIAN(Data!E4:E5,(-1)))",
+        "T46": "=ROWS((NPV((-1),{-100,10,20,30,40},Data!C1)+MEDIAN(Data!E4:E5,(-1))))",
+        "U46": "=COLUMNS((NPV((-1),{-100,10,20,30,40},Data!C1)+MEDIAN(Data!E4:E5,(-1))))",
+        "A61": "=BETADIST(100,(NPV((-1),{-100,10,20,30,40},Data!C1)+MEDIAN(Data!E4:E5,(-1))),0.999)",
+        "T61": "=ROWS(BETADIST(100,(NPV((-1),{-100,10,20,30,40},Data!C1)+MEDIAN(Data!E4:E5,(-1))),0.999))",
+        "U61": "=COLUMNS(BETADIST(100,(NPV((-1),{-100,10,20,30,40},Data!C1)+MEDIAN(Data!E4:E5,(-1))),0.999))"
+      }
+    },
+    {
+      "cells": {
+        "A1": false,
+        "A10": 3.14159,
+        "A11": -0.5,
+        "A2": 0.5,
+        "A5": -1,
+        "A6": "ü",
+        "A7": "Hello World",
+        "A8": true,
+        "A9": 42,
+        "B1": "TRUE",
+        "B10": -1,
+        "B11": 0,
+        "B2": 7,
+        "B3": 100,
+        "B5": 42,
+        "B6": -2.5,
+        "B8": "x",
+        "B9": 1e-15,
+        "C10": "x",
+        "C11": "?b",
+        "C2": "a*",
+        "C3": 100,
+        "C4": false,
+        "C5": 0.1,
+        "C6": 123456789.123,
+        "C7": 3.14159,
+        "C9": "1",
+        "D1": "a*",
+        "D10": 2,
+        "D12": false,
+        "D2": -2.5,
+        "D3": 3.14159,
+        "D4": 0,
+        "D5": "abc",
+        "D6": 0.2,
+        "D8": false,
+        "E1": 1000000000000000.0,
+        "E10": "ABC",
+        "E11": 42,
+        "E12": 0.1,
+        "E2": 0.1,
+        "E4": 100,
+        "E5": 123456789.123,
+        "E7": 7,
+        "E9": 1
+      },
+      "name": "Data"
+    }
+  ],
+  "expected": {}
+}

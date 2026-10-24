@@ -1,0 +1,88 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A16": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A31": {
+    "t": "n",
+    "v": -0.0001
+   },
+   "A46": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A61": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A76": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "T1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "T16": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "T31": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T46": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "T61": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "T76": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "U1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "U16": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "U31": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U46": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "U61": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "U76": {
+    "t": "e",
+    "v": "#NUM!"
+   }
+  },
+  "Data": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "41e37e227d9e4e807c1a4b3dd7a2ec8c58a27e0e75be7576202e638b2d3b3116",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-24T08:06:47+00:00",
+  "version": null,
+  "workbook_name": "b215a8219dc804eedb64486e79549d85670ea1d6644fba564d50a178e16c03fd.xlsx"
+ }
+}

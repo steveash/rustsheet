@@ -87,7 +87,7 @@ values of ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx), each model computed exactly i
   type-0 PPMT cells, `PMT*exp((per-1-nper)*log1p(rate))` (the exact PMT rounded to a double, libm
   `exp` and `log1p`) is within 15 digits on 153, all but A166 (Excel -1.2549699967849914E-12,
   that model -1.254969996784983E-12), and bit-exact on 63; with `ln` of the double `1+rate` it is
-  131. Not yet explained (T-2242).
+  131. Explained by Excel's own log and EXP ("PPMT discounts with an atanh-series log", T-2242).
 - Not probed: whether the exact form also holds where P_n leaves about 1E±270 (the engine falls
   back to its double forms there; probes/pmt-overflow covers the overflow edges), and for |nper|
   above 2^32.
@@ -95,6 +95,47 @@ Status: VERIFIED to 15 digits (m9-fin-pmt and IPMT_PPMT.xlsx), except the four P
 bits open (T-1528, T-2243)
 Implemented in: `accurate_growth`, `accurate_payment` and `accurate_period_split`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2130).
+
+## PPMT discounts with an atanh-series log
+Rule: Excel's PPMT is its PMT discounted with Excel's EXP and its own `L = ln(1+rate)`:
+`PPMT(rate, 1, n, pv)` = `PMT(rate, n, pv) * EXP(-n*L)`, the product `-n*L` a double and the
+multiplication rounded once. L is not `log1p`: for |rate| up to at least 0.37 it is
+`2*(s + s^3/3 + s^5/5 + ...)` with `s = rate/(2+rate)` a double and `s^2`, the running power, each
+term `power/(2k+1)` and each partial sum held at 64 bits (x87 registers) until a term leaves the
+sum unchanged, then stored and doubled; from 0.38 on it is Excel's LN of the double `1+rate`
+(FLDLN2/FYL2X, numbers.md "LN is FLDLN2 then FYL2X"). Either way L is up to two ulp from the
+correctly rounded ln(1+rate) (-1 at 0.1, +1 at 0.05, -2 at 0.38, +2 at 0.6), and for long terms
+`n*L` carries that into PPMT: `PPMT(0.1,1,360,10000)` = -1.2549699967849914E-12, 6.5E-15
+relative from the exact -1.254969996784983E-12 (m9-fin-pmt A166).
+- Evidence: probes-numeric/ppmt-first-period-sweep (n = 1..400 at 0.1 and 0.05 with the PMT of
+  each term, excel-graph, 2026-10-24): with Excel's own PMT cell, this L is bit-exact on 282/400
+  (0.1) and 271/400 (0.05) and within 2 ulp on all 800; `log1p` is bit-exact on 38 and 44 and up
+  to 64 ulp off. probes-numeric/ppmt-log-rate-sweep (126 rates from 0.001 to 2, six terms each
+  with `n*L` near 30, excel-graph, 2026-10-24, T-2242): at every rate one double L puts all six
+  cells within 2 ulp, and this rule gives that L at all 126 (the series alone 113, all misses at
+  0.38 and above; LN(1+rate) alone fits every rate from 0.38 on; `log1p` 69; `2*atanh(s)` in
+  libm 85; Goldberg's `ln(u)*rate/(u-1)` 53 or 56 by the order of its operations).
+- Other periods, fv and type 1: PPMT = `-(pv+fv)*rate*Q(per-1-n)/(1-Q(-n))` with
+  `Q(x) = EXP(x*L)`, `1-Q(-n)` Excel's expm1 of `-n*L` (Kahan's formula, numbers.md "Excel's expm1 is
+  Kahan's formula") and the whole divided by `1+rate` for type 1, rounded once: within 15 digits on
+  316 of 318 cells (all 308 PPMT cells of m9-fin-pmt and 8 gen-m9 fv and type-1 cells; 192
+  bit-exact) where the PMT-based form above with an exact fv share gives 308 on m9 but misses the
+  large-rate fv cells by 10 to 94 ulp (`PPMT(10,2,85,-1,733)` = -2.440762531497786E-84), `1-Q(-n)`
+  taken directly misses short terms (279; it cancels), and `Q(per-2-n)` for type 1 instead of the
+  division misses `PPMT(2.5,5,214,1E-300,589,1)` by 108 ulp. In period 1 of type 1 PPMT is PMT.
+- Where it does not apply: rates at or below -0.375 are the exact form (`PPMT(-0.5,1,277,73630,609)`
+  = -37119.5, gen-m9 762cd0e4ec9a7aa9 A5; this model is 25 ulp off), yet `PPMT(-0.5,12,158,1.9)` is
+  -0.00046386718749999705, 6.4E-15 relative from the exact value and 33 ulp from this model
+  (gen-m9 38e4fc309fe199ea A73): unexplained (T-2242 follow-up). Where |n*L| < 1E-6 L's error
+  cannot move the power by an ulp, and the exact form matches Excel's last bit where this one is an
+  ulp off (`PPMT(1E-10,2,124,191996,822,1)` = -1554.9838614045912).
+- Open: the switch between 0.37 and 0.38 is not pinned (the engine takes 0.375), nor whether it is
+  on |rate| or on rate for negative rates; the last-bit misses of the sweeps (a 64-bit `-n*L`, the
+  x87 EXP on it, and a divided form were each worse).
+Status: VERIFIED to 15 digits (excel-graph); bits open.
+Implemented in: `growth_log` and `discounted_principal`, on `x87_exp::excel_expm1`
+(crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2242).
+Tasks: T-2242
 
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
@@ -1658,3 +1699,14 @@ refuses a boolean salvage per "Argument order of the Analysis ToolPak securities
 still take booleans (unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2455
+
+## Financial cells of the T-2436 sub-expression probe
+Rule (excel-graph, 2026-10-24, probes/t2436): `YIELD(36563,45559,999999999999995,107,107,2,1)` (a huge rate) is `#NUM!`;
+`MDURATION(-1.5,46394,<#N/A>,100,2)`, `ODDFPRICE(2958466,46506,33984,39398,-1,<#N/A>,104,4,2)`,
+`YIELDDISC(9.33,1E+15,0,<#VALUE!>,5)` and `ACCRINT(39448,..,100,<#REF!>,836,4,2,2)` are `#NUM!`, consistent with a range
+check before the other argument's error (the order is inferred, UNVERIFIED); `XIRR({-100,TRUE,60},<two dates>,1E-9)` is `#NUM!`; `NPV(-1,..)` is `#DIV/0!` and so is
+`NPV(1E+300,{0,0,-100,50,60})`; `IRR(Data!C10:D12,<blank>)` is `#NUM!`; SYD with a negative salvage is `#NUM!`.
+Evidence: probes/t2436; cells in T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491.
+Ours: values or the other argument's error; those tasks.
+Status: VERIFIED (excel-graph), one or two cells each
+Tasks: T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491
