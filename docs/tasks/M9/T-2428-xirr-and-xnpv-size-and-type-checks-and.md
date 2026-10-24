@@ -215,7 +215,7 @@ below moved to T-2611 with their list; each criterion counts the cells this task
       No new known-failure lines in any baseline.
 - [x] Unit tests for the XIRR/XNPV shapes above (different counts, one value, a boolean dates cell; the error guess is T-2611's).
 - [x] financial.md's entry gets an "Ours:" line naming this task; the 32 other cells are listed in T-2611.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - XIRR/XNPV values (their solver tasks).
@@ -225,24 +225,6 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
-
-## Progress
-2026-10-24 (opus run): XIRR's size checks landed on this branch (`xirr_size_error` in functions/financial/mod.rs; order in
-financial.md "XIRR and XNPV under the gen-m9 statistical cells"). Eval: gen-m9 known failures -192, probes -6,
-0 regressions. Still open: the XNPV rules (boolean or text one-cell rate or dates `#VALUE!`, a number against a range of a
-different count `#NUM!`), FVSCHEDULE's empty schedule cell, and the other financial functions' domain-before-text orders.
-
-2026-10-24 15:35 (opus run): resumed after 2 h idle (routine step 2); merged origin/main, baselines taken from main to be regenerated.
-
-2026-10-24, later (same run, out of session budget; work in progress, not mergeable yet). Round-1 reviews: security
-REQUEST_CHANGES (the old `holds_text_or_boolean_cell` scanned an untrimmed whole-column range); quality REQUEST_CHANGES
-(duplicated used-area trimming, now one helper `xirr_range_end`; add exact-value unit tests in
-test/test_fn_financial_lift.rs); excel-fidelity REQUEST_CHANGES ("fewer values than dates with a text value is `#VALUE!`"
-is contradicted by ~15 direct cells, e.g. gen-m9/0a957119475760c5 A47; narrowed to a single value cell, which removed the
-scan); architecture APPROVE. The narrowed rule fixes 31 more gen-m9 cells but regresses 4 against the committed
-baseline: gen-m9/1dce4774f5c0e736 A91, 89f0aee953a55a45 A36, ba4ddb817a8e700e A339, c7664e494e418395 A204 (the last is
-masked by LCM's `#VALUE!` inside ZTEST, per the fidelity review). Next: trace those 4 (`rustsheet-eval show`), fix,
-`make eval-baseline`, add the unit tests, re-run all four reviewers.
 
 ## Outcome
 2026-10-24 (opus): XIRR checks the sizes before it reads a number (`xirr_size_error`); XNPV refuses a boolean rate, then a

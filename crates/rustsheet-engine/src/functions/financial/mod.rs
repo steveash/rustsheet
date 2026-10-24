@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::{
     calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
@@ -101,26 +103,14 @@ impl Model {
                 }
                 let sheet = left.sheet;
                 let row1 = left.row;
-                let mut row2 = right.row;
                 let column1 = left.column;
-                let mut column2 = right.column;
-                let (used_row, used_column) = self
-                    .workbook
-                    .worksheet(sheet)
-                    .map_err(|_| {
-                        CalcResult::new_error(
-                            Error::ERROR,
-                            *cell,
-                            format!("Invalid worksheet index: '{sheet}'"),
-                        )
-                    })?
-                    .used_area_end();
-                if row1 == 1 && row2 == LAST_ROW {
-                    row2 = used_row;
-                }
-                if column1 == 1 && column2 == LAST_COLUMN {
-                    column2 = used_column;
-                }
+                let (row2, column2) = self.flow_range_end(&left, &right).ok_or_else(|| {
+                    CalcResult::new_error(
+                        Error::ERROR,
+                        *cell,
+                        format!("Invalid worksheet index: '{sheet}'"),
+                    )
+                })?;
                 for row in row1..=row2 {
                     for column in column1..=column2 {
                         let cell_ref = CellReferenceIndex { sheet, row, column };
@@ -299,43 +289,34 @@ impl Model {
         Some(CalcResult::new_error(error, cell, String::new()))
     }
 
-    /// XNPV's checks before it reads a number (T-2428), after the rate's: one values cell that is
-    /// non-numeric text or a boolean is `#VALUE!`, before an error dates argument (`XNPV(-1,<FALSE>,<#N/A>)`,
-    /// gen-m9/3aa168259335be54 A334); then an error dates argument is that error, before the
-    /// values' cells (`XNPV(0.05,Data!B1:E2,<#N/A>)`, 5c6a23c4f6597f1c A111); then one dates cell
-    /// that is non-numeric text or a boolean is `#VALUE!` (d0854366830dcdee A274); then values and dates of
-    /// different counts are `#NUM!` whatever they hold (`XNPV(0.1,{-100,#N/A,60},<5 dates>)`,
-    /// bc04c1f478c9896c A313; `XNPV(0.2,0.3,Data!C9:D12)`, 1cd3096e3e87c965 A217). An empty cell
-    /// is left to the reading: one empty values cell is a 0 cash flow (T-2599).
+    /// XNPV's checks before it reads a number (T-2428), after the rate's, in Excel's order:
+    ///
+    /// 1. One values cell that is non-numeric text or a boolean is `#VALUE!`, before an error
+    ///    dates argument (`XNPV(-1,<FALSE>,<#N/A>)`, gen-m9/3aa168259335be54 A334). Numeric text
+    ///    is not refused: `XNPV(0.1,<"1.5">,Data!C5:C6)` is the count's `#NUM!` (81bcdc0bec0c8e6b
+    ///    A37, through DB).
+    /// 2. An error dates argument is that error, before the values' cells
+    ///    (`XNPV(0.05,Data!B1:E2,<#N/A>)`, 5c6a23c4f6597f1c A111).
+    /// 3. One dates cell that is non-numeric text or a boolean is `#VALUE!`
+    ///    (d0854366830dcdee A274).
+    /// 4. Values and dates of different counts are `#NUM!` whatever they hold
+    ///    (`XNPV(0.1,{-100,#N/A,60},<5 dates>)`, bc04c1f478c9896c A313;
+    ///    `XNPV(0.2,0.3,Data!C9:D12)`, 1cd3096e3e87c965 A217).
+    ///
+    /// An empty cell is left to the reading: one empty values cell is a 0 cash flow (T-2599).
     fn xnpv_size_error(
         &mut self,
         values: &CalcResult,
         dates: &CalcResult,
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
-        // Text that reads as a number is not refused here: `XNPV(0.1,<"1.5">,Data!C5:C6)` is the
-        // count's `#NUM!` (gen-m9/81bcdc0bec0c8e6b A37, through DB).
-        let text_or_boolean = |model: &mut Self, arg: &CalcResult| {
-            let refused = |model: &Self, value: &CalcResult| match value {
-                CalcResult::String(text) => model.cast_number(text).is_none(),
-                CalcResult::Boolean(_) => true,
-                _ => false,
-            };
-            match arg {
-                CalcResult::Range { left, right } if left == right => {
-                    let value = model.evaluate_cell(*left);
-                    refused(model, &value)
-                }
-                other => refused(model, other),
-            }
-        };
-        if text_or_boolean(self, values) {
+        if self.non_numeric_text_or_boolean_cell(values) {
             return Some(CalcResult::new_error(Error::VALUE, cell, String::new()));
         }
         if matches!(dates, CalcResult::Error { .. }) {
             return (!matches!(values, CalcResult::Error { .. })).then(|| dates.clone());
         }
-        if text_or_boolean(self, dates) {
+        if self.non_numeric_text_or_boolean_cell(dates) {
             return Some(CalcResult::new_error(Error::VALUE, cell, String::new()));
         }
         let value_count = self.flow_element_count(values)?;
@@ -343,9 +324,9 @@ impl Model {
         (value_count != date_count).then(|| CalcResult::new_error(Error::NUM, cell, String::new()))
     }
 
-    /// The number of elements XIRR and XNPV read from an evaluated argument: a range's cells (a whole
-    /// column or row trimmed to the used area, as [`Self::array_of_numbers_from`]), an array's
-    /// elements, 1 for a scalar; `None` for an error or anything else.
+    /// The number of elements XIRR and XNPV read from an evaluated argument: a range's cells (a
+    /// whole column or row trimmed to the used area, as [`Self::array_of_numbers_from`]), an
+    /// array's elements, 1 for a scalar; `None` for an error or anything else.
     fn flow_element_count(&self, arg: &CalcResult) -> Option<usize> {
         match arg {
             CalcResult::Range { left, right } if left.sheet == right.sheet => {
@@ -368,7 +349,8 @@ impl Model {
     }
 
     /// A range's last row and column with a whole column or row trimmed to the used area, as
-    /// [`Self::array_of_numbers_from`] reads it.
+    /// [`Self::array_of_numbers_from`] and the XIRR and XNPV size checks read it; `None` for a
+    /// missing sheet.
     fn flow_range_end(
         &self,
         left: &CellReferenceIndex,
@@ -388,27 +370,38 @@ impl Model {
         Some((row2, column2))
     }
 
-    /// Whether a one-cell range or scalar is text, a boolean or nothing (an array element is not: `XIRR(D2,BYROW(D9,LAMBDA(x,ISBLANK(x))))` is `#N/A`,
-    /// gen-m9/bc04c1f478c9896c A24).
-    fn non_number_cell(&mut self, arg: &CalcResult) -> bool {
+    /// The value XIRR's and XNPV's one-cell checks look at: a one-cell range's cell, else the
+    /// argument itself (a single cell reference already arrives as its value).
+    fn one_cell_value<'a>(&mut self, arg: &'a CalcResult) -> Cow<'a, CalcResult> {
         match arg {
-            CalcResult::Range { left, right } if left == right => matches!(
-                self.evaluate_cell(*left),
-                CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell
-            ),
-            // A single cell reference arrives as its value.
-            CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell => true,
-            _ => false,
+            CalcResult::Range { left, right } if left == right => {
+                Cow::Owned(self.evaluate_cell(*left))
+            }
+            other => Cow::Borrowed(other),
         }
+    }
+
+    /// Whether a one-cell range or scalar is text, a boolean or nothing.
+    ///
+    /// An array element is not a cell: `XIRR(D2,BYROW(D9,LAMBDA(x,ISBLANK(x))))` is `#N/A`
+    /// (gen-m9/bc04c1f478c9896c A24).
+    fn non_number_cell(&mut self, arg: &CalcResult) -> bool {
+        matches!(
+            *self.one_cell_value(arg),
+            CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell
+        )
     }
 
     /// Whether a one-cell range or scalar is empty.
     fn empty_cell(&mut self, arg: &CalcResult) -> bool {
-        match arg {
-            CalcResult::Range { left, right } if left == right => {
-                matches!(self.evaluate_cell(*left), CalcResult::EmptyCell)
-            }
-            CalcResult::EmptyCell => true,
+        matches!(*self.one_cell_value(arg), CalcResult::EmptyCell)
+    }
+
+    /// Whether a one-cell range or scalar is a boolean or text that does not read as a number.
+    fn non_numeric_text_or_boolean_cell(&mut self, arg: &CalcResult) -> bool {
+        match &*self.one_cell_value(arg) {
+            CalcResult::String(text) => self.cast_number(text).is_none(),
+            CalcResult::Boolean(_) => true,
             _ => false,
         }
     }

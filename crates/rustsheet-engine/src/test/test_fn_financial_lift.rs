@@ -572,6 +572,10 @@ fn xirr_checks_sizes_before_reading_numbers() {
         ("A4", "=XIRR({-100,#N/A,60},H3)", "#VALUE!"),
         // An error dates argument is that error before the sizes.
         ("A5", "=XIRR({-100,50,60},1/0)", "#DIV/0!"),
+        // A boolean guess keeps the element reading's #VALUE! over a size error
+        // (`XIRR(<6 cells, text among them>,{3 dates},<TRUE>)`, gen-m9/b6a02893a8d6b151 A226);
+        // the error-guess order is T-2611's.
+        ("A7", "=XIRR(K1:K2,G1:G3,H2)", "#VALUE!"),
         // Matching counts still solve.
         // 1.1^(365/60) - 1.
         ("A6", "=ROUND(XIRR({-100,110},G1:G2),6)", "0.785688"),
