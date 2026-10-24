@@ -698,7 +698,9 @@ forms were single-formula workbooks, not kept as cases (a refused workbook gives
 Status: VERIFIED (Excel for the web)
 Implemented in: expressions/parser/lambda.rs (`Parser::chain_calls`, after a call and a name call), parser/operands.rs
 (`parse_named_call`, after a built-in `is_reference_operand` accepts), node_frames.rs (a called value,
-`Model::call_variable`). Open: ours gives `#NAME?` for the called TAKE, DROP, TRIMRANGE and XLOOKUP results (T-2499).
+`Model::call_variable`), functions/logical/lambda.rs (`Model::evaluate_callee`: a called TAKE, DROP, TRIMRANGE or
+XLOOKUP over a range is the range it picks, `#REF!`; probes/chained-calls-builtin-take, -drop, -trimrange, -xlookup,
+T-2499).
 Tasks: T-2038, T-2405, T-2499, T-2501
 
 ## A defined name may be an intersection
