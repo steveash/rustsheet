@@ -23,7 +23,8 @@ fit the departure instead of guessing at it.
   The model's result is insensitive to rounding (a 1e6-ulp change of v1 does not move it) but
   moves continuously with the v offset, so Excel's early (far-from-root) steps differ from the
   model's. No NPV evaluation order, step form, offset in r or relative offset reproduces them
-  (T-2131 "Blocked because").
+  (T-2131 "Blocked because", on branch agent/functions-financial/T-2131-irr-15-digits, draft PR
+  #1658).
 - Excel shows no iterates, but a guess places the run's start: with the guess set to the model's
   k-th iterate (g_k = 1/v_k - 1), each run is shorter and starts nearer the root. Comparing
   Excel's `IRR(flows, g_k)` with the model's own run from g_k, k = 0, 1, ..., shows from which
