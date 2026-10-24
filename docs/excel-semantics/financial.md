@@ -1060,10 +1060,36 @@ finishes in closed form, `remain * exp(n * log1p(-rate))` ("AMORDEGRC past 2^20 
 `counted += 1.0` stopped moving past 2^53, so main never finished there; where Excel did not finish within the
 excel-graph timeout, the kernel returns the value the walk reaches (a DEVIATION: `AMORLINC(2400,39679,39813,300,1E15,
 1E-300,1)` is 2.4E-297, the charge, and `AMORDEGRC(1E300,39679,39813,300,1E15,1E-300,1)` is 3, the charge 2.5 rounded).
-AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0) and at a cost of 1E308 (-b B2) are base values, T-1895.
+AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0: a value left over from another evaluation, "AMORLINC and AMORDEGRC check order") and at a cost of 1E308 (-b B2) are base values, T-1895.
 Status: VERIFIED (excel-graph) for AMORLINC's walks and AMORDEGRC's up to 2^20 periods; DEVIATION (decision 0014) past
 2^20 AMORDEGRC periods and where Excel did not finish
 Tasks: T-1841, T-1895
+
+## AMORLINC and AMORDEGRC check order
+Rule: AMORLINC and AMORDEGRC read cost, date_purchased, first_period, salvage, period and rate in order, each a number (an
+error, text or boolean is returned; text "1" is 1), and a date that does not floor to 0-2958465 (9999-12-31) is `#NUM!` as it
+is read (`AMORLINC(2400,-1,NA(),..)` and `AMORLINC(2400,39679,2958466,NA(),..)` are `#NUM!`, `AMORLINC(NA(),-1,..)` `#N/A`;
+dates 0 and 0.5 pass, `AMORLINC(2400,0.5,NA(),..)` is `#N/A`). Then the values are checked, all `#NUM!`: a negative cost or
+salvage, a salvage not below the cost, a negative period, a rate of 0 or less, a purchase after the first period (one on
+it is valid: `AMORLINC(2400,1,1,300,1,0.15,1)` is 360). Only then the basis is read: its error, text or boolean, then
+`#NUM!` for any basis but 0, 1, 3 or 4 (`AMORLINC(-1,39679,39813,300,1,0.15,NA())` is `#NUM!`). AMORDEGRC's asset-life check
+comes last (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is `#N/A`). A purchase date below 1 is serial 0, the day before
+serial 1: `AMORDEGRC(2400,0,366,300,1,0.15,1)` is 562 (366 days), `AMORDEGRC(2400,0,1,..)` 899, `AMORDEGRC(2400,1,366,..)` 563,
+`AMORLINC(46557,0,39881,440,0,0.1)` 46117.
+AMORDEGRC with a period strictly between 0 and 1 returns a value left over from another AMORDEGRC evaluation, not its own:
+`AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)` and `(..,0.5,..)` are 1693, the value of the AMORDEGRC evaluated just before
+them (another asset's period 1), while the same asset's period 1 is 2284; on the 2400 asset periods 0.001 to 0.9999 are
+776 (period 1, also the value before them) but 0.0001 is 0 after a run of `#NUM!` cells (probes/amordegrc-fractional-period
+A1-A11, A23-A26; amor-argument-check-order A846-A851). It depends on the calculation order, so it is not reproducible
+from the formula alone (T-1895). From 1 on a fractional period truncates (1.5 is period 1, 2.9 period 2), and AMORLINC
+reads any period above 0 and up to the full periods as a full charge (`AMORLINC(..,0.0001,0.15,1)` is 360).
+Evidence: probes/amor-argument-check-order (866 cells: each out-of-domain argument against `NA()`, text and `TRUE` in every
+other position, `NA()` and `1/0` in every pair, booleans and text alone, purchase dates below 1, fractional periods;
+excel-graph, 2026-10-24, T-2485) and probes/amordegrc-fractional-period (32 cells). Every order cell fits the rule.
+Ours: since T-2485 (`amortization_of` and `amor_date` in functions/financial/amortization.rs). AMORDEGRC below period 1
+stays 0 (known failures, T-1895).
+Status: VERIFIED (excel-graph)
+Tasks: T-2485, T-1895
 
 ## AMORDEGRC past 2^20 periods
 Rule: past 2^20 periods RustSheet computes AMORDEGRC's decay in closed form, `remain * exp(n * log1p(-rate))` from the

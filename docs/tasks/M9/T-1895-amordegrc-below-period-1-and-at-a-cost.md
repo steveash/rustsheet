@@ -42,6 +42,16 @@ Probe more points first (periods 0.1, 0.9, 1.5, 3.5 at rate 0.15; costs 1E290 to
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 6 cells, 6 numeric past half a unit in the 15th digit and 0 with a wrong type, error or text, blamed on AMORDEGRC 6. Every one is listed above.
 
+From T-2485 (2026-10-24): AMORDEGRC with 0 < period < 1 returns a value left over from another AMORDEGRC evaluation
+(probes/amordegrc-fractional-period A1-A11, A23-A26: `AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)` is 1693, the previous
+cell's value, its own period 1 being 2284; financial.md "AMORLINC and AMORDEGRC check order"). Matching it needs Excel's
+evaluation state, so decide (decision record) between a DEVIATION and modelling it. These cells go with this task:
+probes/amor-argument-check-order A846-A851 and probes/amordegrc-fractional-period's failing lines, and
+gen-m9/d912671baa1364aa Calc!A76 `=AMORDEGRC(98882,37287,38647,SUMPRODUCT((1e-15*Data!A10)),TIMEVALUE("1:30 PM"),0.1,1)`
+(Excel 1, ours 0; period 0.5625).
+Cells:
+- gen-m9/d912671baa1364aa.case.json (1): Calc!A76
+
 ## Acceptance criteria
 - [ ] Visible parity: the 6 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] fin-amor-period-bound B17, fin-amor-period-bound-b B2 and fin-amor-period-bound-c A1, A3-A5 pass (baseline lines removed), with no new failures.

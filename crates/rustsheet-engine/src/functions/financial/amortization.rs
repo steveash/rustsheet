@@ -18,9 +18,8 @@
 
 use chrono::{Datelike, NaiveDate};
 
-use super::dates::{actual_days, day_count_basis, days_30_360_eu, days_30_360_us};
+use super::dates::{actual_days, days_30_360_eu, days_30_360_us};
 use super::number_or_error;
-use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
     calc_result::CalcResult,
@@ -82,8 +81,11 @@ impl Model {
         })
     }
 
-    /// Reads every argument in order (the basis refuses a boolean), then checks them as main did.
-    /// The checks are written as the valid ranges, so a NaN argument fails them too.
+    /// Reads the arguments in Excel's order (probes/amor-argument-check-order, T-2485; financial.md
+    /// "AMORLINC and AMORDEGRC check order"): cost to rate left to right, each a number (an error,
+    /// text or boolean is returned) and each date #NUM! off the calendar as it is read; then the
+    /// value checks; then the basis; then AMORDEGRC's asset life. The checks are written as the
+    /// valid ranges, so a NaN argument fails them too.
     fn amortization_of(
         &self,
         values: &[CalcResult],
@@ -93,39 +95,38 @@ impl Model {
         let [cost, purchased, first_period, salvage, period, rate, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let cost = self.cast_number_ref(cost, cell)?;
-        let purchased = self.financial_date(self.cast_number_ref(purchased, cell)?);
-        let first_period = self.financial_date(self.cast_number_ref(first_period, cell)?);
-        // A date past the calendar is `#NUM!` as it is read, and a boolean salvage or rate is
-        // `#VALUE!` after that but before the value checks (financial.md "Argument order of the
-        // Analysis ToolPak securities functions": `AMORDEGRC(70537,36888,7E13,46,12,TRUE,0)` is
-        // `#NUM!`, gen-m9 e8d55ec393460bb7 A374; `AMORDEGRC(90812,36624,38707,453,3,TRUE,4)` and a
-        // TRUE cell rate are `#VALUE!`, probes/t2455-transpose-single-value A51, A57). A date of
-        // 0 or below waits for the value checks (`AMORDEGRC(-1,<blank>,..,<#VALUE!>)` is `#VALUE!`,
-        // gen-m9 1dce4774f5c0e736 A199).
-        let past_calendar = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
-        if purchased > past_calendar || first_period > past_calendar {
-            return Err(num_error(cell));
-        }
+        let cost = self.cast_number_no_bools_ref(cost, cell)?;
+        // `AMORLINC(2400,-1,NA(),..)` and `AMORLINC(2400,39679,2958466,NA(),..)` are #NUM!, while a
+        // date of 0 or 0.5 passes (`AMORLINC(2400,0.5,NA(),..)` is #N/A).
+        let purchased = self.financial_calendar_date_of(purchased, cell)?;
+        let first_period = self.financial_calendar_date_of(first_period, cell)?;
         let salvage = self.cast_number_no_bools_ref(salvage, cell)?;
-        let period = self.cast_number_ref(period, cell)?;
+        let period = self.cast_number_no_bools_ref(period, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
-        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
-        let basis = day_count_basis(basis).and_then(|basis| i32::try_from(basis).ok());
+        let (purchased, first_period) = (
+            self.financial_date(purchased),
+            self.financial_date(first_period),
+        );
+        // The purchase may fall on the first period's end (`AMORLINC(2400,1,1,300,1,0.15,1)` is
+        // 360), and every value is checked before the basis is read
+        // (`AMORLINC(-1,39679,39813,300,1,0.15,NA())` is #NUM!).
         let valid = cost >= 0.0
             && salvage >= 0.0
             && salvage < cost
             && period >= 0.0
             && rate > 0.0
-            && purchased < first_period
-            && matches!(basis, Some(0 | 1 | 3 | 4));
-        let Some(basis) = basis.filter(|_| valid) else {
+            && purchased <= first_period;
+        if !valid {
+            return Err(num_error(cell));
+        }
+        let basis = self.day_count_basis_of(rest.first(), cell)?;
+        let Some(basis) = i32::try_from(basis).ok().filter(|basis| *basis != 2) else {
             return Err(num_error(cell));
         };
         let asset = Asset {
             cost,
-            purchased: from_excel_date(purchased).map_err(|_| num_error(cell))?,
-            first_period: from_excel_date(first_period).map_err(|_| num_error(cell))?,
+            purchased: amor_date(purchased).ok_or_else(|| num_error(cell))?,
+            first_period: amor_date(first_period).ok_or_else(|| num_error(cell))?,
             salvage,
             rate,
             basis,
@@ -133,6 +134,7 @@ impl Model {
         match kind {
             Amortization::Linear => asset.linear(period),
             Amortization::Degressive => {
+                // Checked after the basis (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is #N/A).
                 // The asset life must not fall in [0, 3] or strictly between 4 and 5: Excel
                 // accepts a life of exactly 4 and 5 (rates 0.25, 0.2; probes/fin-amordegrc
                 // A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
@@ -147,8 +149,20 @@ impl Model {
     }
 }
 
-/// Validated arguments: `0 <= salvage < cost`, a positive rate, the purchase before the first
-/// period, a basis of 0, 1, 3 or 4.
+/// The stand-in date of a 1900 serial from 0 to 9999-12-31 (`from_excel_date`, whose serial 1 is
+/// 1899-12-31): serial 0 is the day before, so a purchase on it counts one day more than on serial
+/// 1 and its basis-1 year has 365 days (`AMORDEGRC(2400,0,366,300,1,0.15,1)` is 562,
+/// `AMORDEGRC(2400,0,1,..)` 899, `AMORDEGRC(2400,1,366,..)` 563; probes/amor-argument-check-order).
+fn amor_date(serial: i64) -> Option<NaiveDate> {
+    if serial == 0 {
+        NaiveDate::from_ymd_opt(1899, 12, 30)
+    } else {
+        from_excel_date(serial).ok()
+    }
+}
+
+/// Validated arguments: `0 <= salvage < cost`, a positive rate, the purchase on or before the
+/// first period, a basis of 0, 1, 3 or 4.
 struct Asset {
     cost: f64,
     purchased: NaiveDate,
