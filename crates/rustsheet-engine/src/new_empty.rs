@@ -88,6 +88,7 @@ impl Model {
             views,
             conditional_formatting: vec![],
             links: HashMap::new(),
+            data_tables: Vec::new(),
         }
     }
 
