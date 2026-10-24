@@ -29,6 +29,13 @@ Also (T-1741): probe LINEST's collinear column choice with y not in x (`LINEST(y
 A, keeping the last column first (from linest-modes K106 alone); `test_linest_drops_a_collinear_column` pins that
 and must follow the probe.
 
+From T-1742 (2026-10-24): gen-m9 285d87cea1aaa73c Calc!A293 `LOGEST(T.DIST.2T(Data!B3,6),Data!C9:C12,<FALSE>)`, one point
+of four variables (x = 0, -1, -2.5, 0.2) without a constant, is 1 in Excel (excel-graph), so Excel drops the last column;
+ours keeps it (m = 2.7E-40). With linest-modes K106 (E = 2A keeps E) this suggests the column of largest norm is kept
+first (pivoted QR). Probe one point of several variables with and without a constant, with the largest |x| first, last
+and in the middle, and E = 2A against A = 2E, so the functions-stat follow-up can fix `independent_columns`; its line in
+eval/baseline/gen-m9.txt goes with that follow-up.
+
 ## Acceptance criteria
 - [ ] A probe case (excel-probe skill) with oracle values for each bullet under Context is committed under eval/suites/probes.
 - [ ] statistics.md records the findings; the UNVERIFIED clauses of the TREND entry are resolved or kept with the task id.

@@ -135,7 +135,13 @@ relative from the exact -1.254969996784983E-12 (m9-fin-pmt A166).
 Status: VERIFIED to 15 digits (excel-graph); bits open.
 Implemented in: `growth_log` and `discounted_principal`, on `x87_exp::excel_expm1`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2242).
-Tasks: T-2242
+Conflicting evidence: 35 cells of desktop-Excel-saved Calipers models fed by PPMT and IPMT
+matched Excel bit for bit before T-2242 and are now off by a few ulps. They are in pv_goldens
+pv23_007 ("Pro Forma Cash Flow Statement" AF13, AV13, BG15, G15, G24, N13, …), pv23_008 ("Debt
+Financing"!E231, "Est Property Value"!B47:C47, IRR!B26), pv23_009 and pv23_056 (found merging
+T-0455, 2026-10-24). Until T-0458 settles which form Excel uses for their arguments, the calipers
+baseline cannot record its fixes.
+Tasks: T-2242, T-0458
 
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
