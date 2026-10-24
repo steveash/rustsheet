@@ -639,7 +639,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   (2 of 2); IMCSC is conj(s)/|s|² of sin z built from SIN, COS and the exp-based sinh/cosh (both IMCSC inputs; a Smith
   reciprocal gives ...112). IMCOT("-1.5+0.5i") is not the double-angle form with Excel's kernels.
 - **IM* log and power modulus.** `IMLN("1E+200")` is 460.517018598809, `IMLOG10("1E+200")` "200", `IMLOG2("1E+200")`
-  664.385618977473 (ours "inf", "inf", `#NUM!`), while `IMLOG10("1E-200+1E-200i")` and `IMLOG10("1E+300+1E+300i")` are
+  664.385618977473 (ours `#NUM!` for all three since T-2389: the squared modulus overflows), while `IMLOG10("1E-200+1E-200i")` and `IMLOG10("1E+300+1E+300i")` are
   `#NUM!`: T-2117's rule (on its branch) of a `hypot` modulus that is `#NUM!` when both parts are nonzero and x²+y² overflows
   or is subnormal. `IMPOWER("1E+300+1E+300i",-0.5)` is `#NUM!` too although the result would be tiny (ours
   7.77E-151-3.22E-151i; 1068c44afcd56d53 A136). T-2539.
