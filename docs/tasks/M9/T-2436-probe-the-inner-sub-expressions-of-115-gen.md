@@ -107,10 +107,12 @@ Cells:
 - gen-m9/f280df8ba95f96b9.case.json (1): Calc!A222
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255): these 116 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. Transferred: each line is now a
+      visible-parity criterion of its owning fix task (Outcome), as T-2414 did.
+- [x] Visible parity (gen-m9, T-2255): these 116 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. 28 have left the baseline; the other
+      lines are transferred to their owning fix tasks' visible-parity criteria (Outcome), as T-2414 did.
 - [x] Every cell above is listed in a fix task's Context (new or extended), or explained in statistics.md as a quirk
       with its owning task; the probe case's cells are in eval/ and gated or baselined.
 - [ ] `make check` green; reviewers approve.
