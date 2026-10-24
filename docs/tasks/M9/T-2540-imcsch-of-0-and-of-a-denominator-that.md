@@ -3,7 +3,7 @@ id: T-2540
 title: "IMCSCH of 0 and of a denominator that underflows is #NUM!, not NaN or inf text (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
