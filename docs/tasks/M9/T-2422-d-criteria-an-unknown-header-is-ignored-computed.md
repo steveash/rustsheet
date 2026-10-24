@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: sonnet
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -22,10 +23,22 @@ The data is Db!A1:D9 (Name, Qty, Price, Date over eight records; Qty 4, 10, 0, 2
 - Wholly blank rows at the end of the database are not records: `DCOUNTA(Db!A1:D12,,Db!K1:K2)` is 8, as for Db!A1:D9. Ours 11.
 Code: functions/database.rs (criteria_cell_matches and the criteria reader). See docs/excel-semantics/statistics.md "Database function argument modes" and criteria.md.
 
+gen-m9 database sweep (gap triage 2026-10-23, T-2258): the unknown header is ignored over a database on another sheet too, `DGET(Data!B6:E8,4,Db!N1:N2)` is -0.5 (ours `#NUM!`). The computed-criterion cells of the sweep (criterion Db!O1:O2 over Db!A2:D9 or a Data range) are T-2553's (criteria.md "D* computed criteria and an unknown header in the gen-m9 database sweep (T-2258)").
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/c9d7659896d95368 Calc!A1 `=DGET(Data!B6:E8,4,Db!N1:N2)`: Excel -0.5, ours #NUM!
+Cells:
+- gen-m9/c9d7659896d95368.case.json (1): Calc!A1
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] A probe case holds the cells above, plus a computed criterion with a relative and an absolute reference, a computed criterion next to a header criterion, and DGET and DAVERAGE over the same ranges.
 - [ ] Ours matches every probe cell; criteria.md is updated.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other criteria grammar.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.

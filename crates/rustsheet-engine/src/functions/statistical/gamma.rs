@@ -3,7 +3,7 @@ use statrs::distribution::{Continuous, Gamma};
 use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
-use super::incomplete_gamma::{gamma_cdf, gamma_inverse_cdf};
+use super::incomplete_gamma::{gamma_cdf, gamma_quantile, Tail};
 
 use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
@@ -118,7 +118,7 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
-        let x = gamma_inverse_cdf(&dist, p);
+        let x = gamma_quantile(&dist, p, Tail::Lower);
         if !x.is_finite() || x < 0.0 {
             return Err(num_error(cell));
         }

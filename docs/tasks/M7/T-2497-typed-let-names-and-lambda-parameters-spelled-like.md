@@ -3,7 +3,7 @@ id: T-2497
 title: "Typed LET names and LAMBDA parameters spelled like a cell are refused, as Excel refuses them"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -42,3 +42,12 @@ unprobed hand expectations (test_let_cell_shaped_names.rs).
 
 ## Out of scope
 - Lotus-dot names (`LET(R1.C1,...)`): typed entry unprobed.
+
+## Outcome
+Decision 0103: the parser still binds a cell-shaped LET/LAMBDA name everywhere and records it;
+typed entry (`Input::Formula`, `Input::Parse` → engine `Model::set_typed_user_input`) refuses
+such a formula with `EditError::InvalidInput`, and the new `Input::StoredFormula` keeps the
+stored reading, which the eval harness now uses for case formulas. Test:
+`typed_cell_shaped_let_and_lambda_names_are_refused` (rustsheet edit tests). Eval delta: none
+(0 fixed, 0 regressions; probes/let-cell-shaped-name-stored and lambda-escaping-closures still
+pass). The "Also probe" stored-form edges stay unprobed (references.md notes them).

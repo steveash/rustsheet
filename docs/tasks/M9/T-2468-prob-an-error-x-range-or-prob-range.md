@@ -1,6 +1,6 @@
 ---
 id: T-2468
-title: "PROB: an error x_range or prob_range is that error, one value on each side is #DIV/0!, unequal counts #N/A (gen-m9, 115 cells)"
+title: "PROB: an error x_range or prob_range is that error, one value on each side is #DIV/0!, unequal counts #N/A (gen-m9, 116 cells)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -91,7 +91,16 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (1): Calc!A240
 - gen-m9/f82473275380882e.case.json (1): Calc!A21
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `OCT2DEC(ROUNDUP(PROB(<TRUE cell>,-0.0001,2,<empty>),3))` is `#DIV/0!` (one value on each side; ours `#VALUE!`; gen-m9/ee70a5515d004a66 A145).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/ee70a5515d004a66 Calc!A145 `=OCT2DEC(ROUNDUP(PROB(Data!C8,(-0.0001),Data!B9,Data!D10),3))`: Excel #DIV/0!, ours #VALUE!
+Cells:
+- gen-m9/ee70a5515d004a66.case.json (1): Calc!A145
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 115 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `PROB(1/0,{0.5;0.5},1)` is `#DIV/0!` and `PROB({1;2},NA(),"a")` `#N/A` (data errors before the limits);

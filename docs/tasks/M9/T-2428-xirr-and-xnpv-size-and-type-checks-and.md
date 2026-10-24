@@ -1,6 +1,6 @@
 ---
 id: T-2428
-title: "XIRR and XNPV size and type checks, and financial domain-before-text order, under the gen-m9 statistical cells (83 cells)"
+title: "XIRR and XNPV size and type checks, and financial domain-before-text order, under the gen-m9 statistical cells (93 cells)"
 milestone: M9
 lane: functions-financial
 status: todo
@@ -176,7 +176,29 @@ Cells:
 - gen-m9/e168be7f6d3f84c2.case.json (8): Calc!A27, A39, A76, A174, A267, A272, A355, A370
 - gen-m9/e8d55ec393460bb7.case.json (3): Calc!A3, A22, A185
 
+gen-m9 engineering and database sweep (gap triage 2026-10-23, T-2258): 10 more cells nest XIRR, XNPV or PV in an engineering or database call: XIRR (`DEC2HEX(298,XIRR(Data!A9:C11,Data!A10:C11))`, `OCT2DEC(XIRR(<"?b">,..)/..)`, `BESSELJ(XIRR(..),3)`, `DELTA(..,XIRR(0,Data!C11:D12,1E-300))`) and XNPV (`DEC2OCT(DATE(..)-XNPV(2.5,{100,200,300},<empty>))`, `BESSELJ(0.5,XNPV(-2.5E+15,..))`, `GESTEP(XNPV(100,{..},<empty>)+..)`) are `#NUM!`; `HEX2BIN(HLOOKUP(XNPV(-1+2^-52,<"#N/A" text>,{..}),..),1)` and `COMPLEX(XNPV(7,<TRUE cell>,..)/..,..)` `#VALUE!`; `DSTDEVP(Db!A1:D1,PV(-1+2^-52,340,-186,643),Data!A9:A9)` `#DIV/0!` (PV's `#DIV/0!`, as this task's `PV(-1+2^-52,30,-750)`).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 10 known-failure lines in eval/baseline/gen-m9.txt, 10 formulas, 10 visibly off.
+Examples:
+- gen-m9/4fffa5addab1f8af Calc!A325 `=BESSELJ(0.5,XNPV(((-2.5)*1000000000000000.0),Data!D5:D7,Data!A5:D6))`: Excel #NUM!, ours #VALUE!
+- gen-m9/5bdef392d16a5efb Calc!A67 `=DEC2HEX(298,XIRR(Data!A9:C11,Data!A10:C11))`: Excel #NUM!, ours #VALUE!
+- gen-m9/7820ebc42c7a56a6 Calc!A85 `=COMPLEX((XNPV(7,Data!E5,Data!A3:D10)/Data!$C9),(IF(TRUE,Data!B$8,Data!B$8)/RECEIVED((-1),44734,832748,1E-300,3)))`: Excel #VALUE!, ours #NUM!
+- gen-m9/7820ebc42c7a56a6 Calc!A249 `=OCT2DEC((XIRR(Data!A10:B10,{39448;39508;39859;39904;40000},2)/(2.5/Data!D8)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/8cbfd5e99d2e82da Calc!A140 `=BESSELJ(XIRR(SUM(Data!E7:E7,Data!C6:C7),{39448;39508;39859;39904;40000},(0.2^Data!D9)),3)`: Excel #NUM!, ours #VALUE!
+- gen-m9/8fa8b572ebc1f001 Calc!A4 `=DEC2OCT((DATE(1908,Data!E8,22)-XNPV(2.5,{100,200,300},Data!A2)))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/4fffa5addab1f8af.case.json (1): Calc!A325
+- gen-m9/5bdef392d16a5efb.case.json (1): Calc!A67
+- gen-m9/7820ebc42c7a56a6.case.json (2): Calc!A85, A249
+- gen-m9/8cbfd5e99d2e82da.case.json (1): Calc!A140
+- gen-m9/8fa8b572ebc1f001.case.json (1): Calc!A4
+- gen-m9/c2d778463fe008ed.case.json (1): Calc!A208
+- gen-m9/d9d55972b50e55e8.case.json (1): Calc!A21
+- gen-m9/e882060cf4613302.case.json (1): Calc!A257
+- gen-m9/f61a73cd9af21e6d.case.json (1): Calc!A275
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 10 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): the 246 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 122 known-failure lines (83 from T-2255, 39 from T-2256) disappear from eval/baseline/gen-m9.txt

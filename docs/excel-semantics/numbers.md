@@ -1076,7 +1076,7 @@ quirk. The ATAN kernel is the engine's `f64::atan`, as in `fn_atan`; ulp parity 
 Evidence: probes/atan2-quadrants (all 123 numeric cells equal this model; libm `atan2` misses 25 by one ulp, as does
 the 34-cell G column of probes/asin-atan-sign-source), probes/atan2-error-edges, probes/atan2-kept-subnormal (with `=0`
 companions, decision 0042); excel-graph, 2026-10-19, T-1930.
-Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT may share the kernel (not probed).
+Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT is the same kernel (77 of 77 cells of probes-numeric im-last-digit-sweep; engineering.md "IM* reciprocal kernels, IMABS and IMARGUMENT", T-2044).
 Status: VERIFIED
 Tasks: T-1930, T-1797
 
@@ -1910,11 +1910,11 @@ above 4) is `#VALUE!`. BASE does the opposite: a negative number is `#NUM!` befo
 "0000000000", "0".
 Evidence (excel-graph, 2026-10-20): gen-m5/49bfbf67a1409563 Calc!A179, gen-m5/0362d48f56108faa Calc!A39, gen-m5/1962de140dae0111 Calc!A206,
 gen-m5/a6fec430ac350c1a Calc!A31, gen-m5/c0651f0e0fb544d0 Calc!A253, gen-m5/d1b251fd6e9c4b4b Calc!A24.
-Unprobed: which error wins when both the number and the form are bad (`ROMAN(-5,NA())`, `ROMAN(4000,9)`); the engine
-reports the number's.
+Which error wins when both are bad: see the T-2423 probe below.
 ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)` is five "DLXI" (forms
 1, 2, 0.5, 3, 4; the 123456789.123 element is `#VALUE!` and the HSTACK pads `#N/A`, both dropped by ignore 2: gen-m7/f7e94a817e5385ac
-Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. Only the array form is evidenced; the array number and a multi-cell range follow the same table entry unprobed. Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
+Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. The array number, a multi-cell range and an array of booleans as the form are evidenced below (T-2423). Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
+ROMAN probed (T-2423, probes/roman-lift-forms, excel-graph, 2026-10-23): `ROMAN({1;4},0)` is the 2x1 "I", "IV"; `ROMAN(4,Data!A1:A2)` (forms 0, 4) is "IV", "IV"; `ROMAN(Data!A1:A2,0)` (numbers 0, 4) is "", "IV"; `ROMAN(4,{TRUE,FALSE})` is "IV", "IV" and `ROMAN(4,TRUE)` is "IV". `ROMAN(499,{TRUE,FALSE})` is "CDXCIX", "ID" (TRUE is form 0, FALSE is form 4) and `ROMAN(499,Data!A1:A2)` (forms 0, 4) is "CDXCIX", "ID"; `ROMAN(499,{1,2,3,4})` is "LDVLIV", "XDIX", "VDIV", "ID" (the 4-based results above cannot tell the forms apart). When both are bad the form's error wins over a negative number for `ROMAN(-5,NA())` (`#N/A`; ours `#VALUE!`, T-2523), and the text form `ROMAN(-5,"x")` is `#VALUE!`; `ROMAN(4000,9)` is `#VALUE!`.
 COMBINA lifts over arrays (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COMBINA({7;1},4)` is the 2x1 209.99999999999997 (COMBIN(10,4), as above), 1; `COMBINA(Data!E7:E8,4)` and `COMBINA(4,{1;2})` are
 2 rows; `COMBINA(WRAPROWS(E6:E12,1,1),4)` is 7x1: #NUM! (blank is 0), 209.99999999999997, #NUM!, 5, #VALUE! ("abc"), #NUM!, #VALUE!. The gen-m7 `#VALUE!` of
 `VSTACK(COMBINA(..),CHOOSE(3,..))` (f19581ac44da1653 A3357) is the CHOOSE: a scalar-error argument makes VSTACK that error (probes/vstack-scalar-error, T-1695)

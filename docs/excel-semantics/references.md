@@ -440,9 +440,14 @@ constant `#VALUE!`; `INDEX(Data!A1:B3,0,2)` gives the address of its top-left ce
 picked cell has 2 rows, `OFFSET(INDEX(Data!A1:B3,0,2),1,0)` spills B2:B4 (20, 30, 0), `INDEX(..,9)` is `#REF!` and an array
 constant `#VALUE!`. The engine matches, FORMULATEXT's `#REF!` and `#VALUE!` forms
 (`FORMULATEXT(INDEX(Data!A1:A3,9))`, `FORMULATEXT(INDEX({1,2,3},2))`) since T-2137. `fn_formulatext` returns INDEX's own error, and
-`#VALUE!` when INDEX picks a value rather than a cell. UNVERIFIED against Excel: an error argument inside INDEX
-(`INDEX(A1:A3,NA())`), an out-of-range index on an array constant, an array-shaped INDEX result (`INDEX({1,2;3,4},0,1)`), and an erroring OFFSET, INDIRECT, CHOOSE or IF
-argument (the last still give `#ERROR!`).
+`#VALUE!` when INDEX picks a value rather than a cell. FORMULATEXT of an erroring or array-shaped reference-returning call (probes/formulatext-erroring-references, excel-graph
+2026-10-23, T-2301): FORMULATEXT returns the call's own error, unchanged. `INDEX(A1:A3,NA())` is `#N/A`, `INDEX({1,2,3},9)`
+`#REF!`; `OFFSET(A1,NA(),0)` is `#N/A`, `OFFSET(A1,"x",0)` `#VALUE!`, `OFFSET(A1,-9,0)` `#REF!`; `INDIRECT(NA())` is `#N/A` and
+`INDIRECT("zz zz")` `#REF!` (a missing sheet, `INDIRECT("Nope!A1")`, is left out: the web oracle resolves it to an empty cell, lookup.md, decision 0030);
+`CHOOSE(9,..)` and `CHOOSE(0,..)` are `#VALUE!` and `CHOOSE(NA(),..)` `#N/A`; `IF(NA(),..)` is `#N/A`, `IF("x",..)` `#VALUE!`,
+`IF(1/0,..)` `#DIV/0!`, and an error in the arm taken, `IF(TRUE,NA(),..)`, is `#N/A`. An array-shaped result is not a reference:
+`INDEX({1,2;3,4},0,1)`, `INDEX({1,2;3,4},1,0)` and `INDEX({1,2;3,4},0,0)` spill `#VALUE!` over the shape of the result (2x1, 1x2, 2x2),
+`INDEX({1,2;3,4},2,2)` is one `#VALUE!`, and `IF({TRUE,FALSE},..)` and `CHOOSE({1,2},..)` spill a 1x2 of `#VALUE!`. The engine matches all 28 cells (`fn_formulatext`, T-2526). Unprobed: FORMULATEXT of a pick call that returns a plain scalar (`IF(TRUE,5,A1)`, `CHOOSE(1,5,A1)`) and of XLOOKUP, TAKE, DROP, LET, SWITCH or IFS results still gives the engine's `#ERROR!` (open gap; probe task T-2529; also unprobed: array elements that are errors, `INDIRECT` of an array).
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
 TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a range return); over an array
@@ -2093,11 +2098,16 @@ rejected with 400 `InvalidArgument`, while `=LET(x,1,x+1)` entered so gives 2. T
 entries cannot be committed as cases.
 Ours: the A1 parser reads a cell-shaped name in a LET or LAMBDA name position as the variable,
 and every later use within the call too (`bind_reference_shaped_name`, parser/operands.rs, the
-mechanism of the Lotus-style names above), so typed text means what its stored form means, as
-the harness feeds it; a use before the binding (`LET(x,F1,F1,2,...)`) stays the cell (its stored
+mechanism of the Lotus-style names above), whether the text is typed or stored; a use before the binding (`LET(x,F1,F1,2,...)`) stays the cell (its stored
 form would prefix it; unprobed). The R1C1 storage writes such a name as `_xlpm.f1` (the R1C1
 lexer refuses a cell-shaped identifier), and the xlsx export as `_xlpm.add5` like any bound
-name. Open: the API accepts the typed form Excel refuses (T-2497). `$F$1` or `Sheet1!F1` is
+name. Typed entry refuses it, as Excel does: `Input::Formula` and `Input::Parse` (engine
+`set_typed_user_input`) answer `EditError::InvalidInput` for a formula that binds a cell-shaped
+name, while stored text (xlsx import, re-parses, `Input::StoredFormula`, which the harness uses)
+binds it (decision 0103, T-2497). The refusal extends past the three probed formulas (UNVERIFIED):
+an uppercase name (`LET(A1,...)`), an optional `[f1]` parameter, nested bindings, and desktop
+Excel (the evidence is Excel for the web's input parser). Lotus-dot names typed are not refused
+(unprobed). `$F$1` or `Sheet1!F1` is
 never a name (`LET($F$1,1,F1+1)` is `#VALUE!`; unprobed). Unprobed too: a bound name as a
 range end, `LET(f1,1,f1:G2)` (ours reads the variable, T-2497).
 Evidence: probes/let-cell-shaped-name-stored, let-cell-shaped-name-typed-control, and
@@ -2105,7 +2115,9 @@ lambda-escaping-closures H4, H5 (excel-graph, 2026-10-23); the refused typed ent
 single-cell cases like -typed-control (`rustsheet-oracle fill`, 2026-10-23), not committed.
 Status: VERIFIED (excel-graph)
 Implemented in: `bind_reference_shaped_name`, `binds_reference_shaped_name` (parser/operands.rs),
-`Parser::parse_operand`, `reads_back_as_cell` (parser/stringify/bound_variables.rs).
+`Parser::parse_operand`, `reads_back_as_cell` (parser/stringify/bound_variables.rs); the typed
+refusal: `Parser::set_typed`, `Parser::typed_refusal` (parser/mod.rs), `Model::set_typed_user_input`
+(typed_input.rs), `Input::StoredFormula` (crates/rustsheet edit.rs).
 Tasks: T-0439, T-2040, T-2497
 
 ## Structured references: this row, totals and ranges
@@ -2313,3 +2325,21 @@ union returned by `LAMBDA(x,x)((A1,B1))` or `LET(x,(A1,B1),x)` (single-area and 
 Evidence: probes/lambda-union-reference-callers C1-C7, D1-D11; probes/lambda-union-offset-countif C1-C10 (excel-graph, 2026-10-19)
 Status: VERIFIED (excel-graph)
 Tasks: T-1951, T-1993
+
+## A LET name or LAMBDA parameter shadows a defined name of the same name, in any case
+
+`LET(mk,LAMBDA(a,a+1),mk(1))` is 2 with a workbook name `Mk` = `LAMBDA(a,a+100)` (the unshadowed `Mk(1)`
+and `mk(1)` are 101). A LET name or LAMBDA parameter spelled like a defined name, in the same or another
+case, is the variable up to the end of its scope: `LET(pv,2,pv+1)`, `LET(Pv,2,Pv+1)` and `LET(PV,2,pv+1)` are 3
+with `Pv` = 7 (`=Pv+1` is 8), `LAMBDA(pv,pv+1)(2)` is 3, `LAMBDA(PV,Pv*10)(2)` is 20. A LAMBDA closure keeps the
+defined name it was written against: `LET(f,LAMBDA(a,a+Pv),LET(pv,50,f(1)))` is 8, not 51.
+The name is bound inside its own value expression too, so it hides the defined name there: `LET(pv,pv+1,pv)` is
+`#NAME?` (not 8), and `LET(pv,2,x,Pv,x)` is 2. A LAMBDA body that names its own LET name is `#NAME?` as well:
+`LET(Pv,LAMBDA(a,Pv),Pv(1))` (B2). It does without a defined name too: `LET(y,LAMBDA(a,y),y(1))` and
+`LET(Y,LAMBDA(a,y),y(1))` are `#NAME?` (probes/let-lambda-body-own-name A1:A2, excel-graph, 2026-10-24), as are
+`LET(y,y+1,y)` and a forward use, `LET(f,LAMBDA(a,g(a)),g,LAMBDA(a,a+1),f(1))`; `LET(y,LAMBDA(a,a+1),y(1))` is 2.
+A LET name spelled like a built-in function wins in call position: `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Pv,LAMBDA(a,Pv),Pv(1))` `#NAME?` (probes/let-lambda-body-own-name A6:A7); the engine reads `Pv(1)` as the function PV and gives `#ERROR!` (open, T-2567). In the engine the parser binds a LET name in its own value (so the defined name stays hidden there), but the evaluator gives it no value there: `let_scope` patches ids only into the later pairs and the body (T-2558).
+Evidence: probes/let-name-shadows-defined-name A1-A13, B1-B3 (excel-graph, 2026-10-23 and 2026-10-24). Implemented in the parser
+(`bind_reference_shaped_name`, which also skips the defined-name lookup for bound names).
+Status: VERIFIED (excel-graph)
+Tasks: T-2057

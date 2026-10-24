@@ -72,7 +72,7 @@ const TOCOL: ArgKinds =
 /// 25-26). Its later elements are empty unless every entry is equal (`CallResult::ArrayFirst`,
 /// probes/m7-unique-lift-elements; T-2300). Read and charged as [`TOCOL`].
 const UNIQUE: ArgKinds =
-    ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first();
+    ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first_column();
 // --- End M7 (T-1836) ---
 // --- M7 (T-1839) ---
 /// `SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`: each sort order lifts
@@ -96,7 +96,7 @@ const SORTBY: ArgKinds = ArgKinds {
 /// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
 /// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
 /// sorts the whole array: read and charged as [`TOCOL`]. Whether a later non-error element is its
-/// call's top-left (`.array()`) or empty (SORTBY's `.array_first()`) is UNVERIFIED (T-2366).
+/// call's top-left (`.array()`) or empty (SORTBY's `CallResult::ArrayFirst`) is UNVERIFIED (T-2366).
 const SORT: ArgKinds = ArgKinds::fixed(
     1,
     &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],
