@@ -96,3 +96,7 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2256): every cell it owns has the wrong type, error or text (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Also owns (from T-2426)
+Blank one-cell reference cells that need this function's argument order, left failing by T-2426 (which made the blank
+`#VALUE!` in the shared readers): 583ca2baea0bb30a A389, c2684066d8df263e A90, 0620505280d2ea6e A139, 91e167cd8d7eb652 A24, d8f44d556674c2fd A329.
