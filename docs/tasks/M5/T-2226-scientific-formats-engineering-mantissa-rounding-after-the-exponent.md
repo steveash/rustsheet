@@ -27,6 +27,6 @@ A first attempt (round the mantissa after the shift: skip the early rounding for
 ## Outcome
 An engineering mantissa (two or more integer placeholders) now rounds after the exponent shift: it keeps its own integer
 digits plus the decimals, capped at 15 significant digits, and a rounding carry moves to the next exponent multiple
-(`round_engineering` in formatter/format.rs). Codes with one integer placeholder keep the old path. That limit is why
+(`round_engineering` in decimal_round.rs). Codes with one integer placeholder keep the old path. That limit is why
 the first attempt's regressions did not come back. Eval: gen-m10 text known failures 434 -> 406 (28 fixed), 0
 regressions. number-formats.md is updated. The carry case (`##0.0E+0` on 999.96, ours "1.0E+3") is unprobed.

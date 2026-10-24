@@ -164,7 +164,7 @@ pub(crate) fn round_engineering(value: f64, group: f64, precision: i32) -> (f64,
     let digits_of = |v: f64, exponent: f64| {
         let integer_digits = v.abs().log10().floor() - exponent + 1.0;
         // At most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text").
-        (integer_digits + f64::from(precision)).clamp(1.0, 15.0) as usize
+        (integer_digits + f64::from(precision)).clamp(1.0, EXCEL_PRECISION as f64) as usize
     };
     let exponent = exponent_of(value);
     let rounded = to_precision(value, digits_of(value, exponent));

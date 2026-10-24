@@ -750,11 +750,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     // `00.0E+0` on 36.5 "36.5E+0"; eval/suites/gen-m10, T-1730). A zero
                     // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
                     let group = f64::from(p.digit_count.max(1));
-                    let mut exponent = (value_abs.log10().floor() / group).floor() * group;
+                    let exponent;
                     if group > 1.0 {
-                        // The mantissa rounds after the shift (`##0.0E+0` on 1/3 is "333.3E-3",
-                        // not "330.0E-3"; gen-m10, T-2226), so round the unrounded value again.
+                        // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
                         (value, exponent) = round_engineering(scaled, group, p.precision);
+                    } else {
+                        exponent = value_abs.log10().floor();
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
