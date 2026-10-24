@@ -3,7 +3,7 @@ id: T-2389
 title: "Probe IMLN and IMLOG10 of 0 (may leak -inf text)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
