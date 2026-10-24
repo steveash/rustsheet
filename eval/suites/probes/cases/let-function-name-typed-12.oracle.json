@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=LET(Sum,LAMBDA(a,a*2),SUM(3))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "e705c8555adbd410bd01dff72028d7f85db07f11242e3a59bf2e67a0c24df4fa",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-24T04:27:46+00:00",
+  "version": null,
+  "workbook_name": "b6c244f4bcaef5ba13e70926c3a71b8d4a0fc5fb53494114e2f9a7d25f9e3367.xlsx"
+ }
+}

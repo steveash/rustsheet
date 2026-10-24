@@ -208,6 +208,20 @@ impl Model {
         self.result_to_array(result, cell)
     }
 
+    /// [`Model::eval_to_array`] that keeps a lone blank cell blank, as a blank cell of a range is:
+    /// `TOROW(Z1,3)` is `#CALC!` and `UNIQUE(Z1)&"x"` is "x" (docs/excel-semantics/arrays.md
+    /// "TOROW and UNIQUE of a lone blank cell", T-2409).
+    pub(crate) fn eval_to_array_keep_blank(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
+            result => self.result_to_array(result, cell),
+        }
+    }
+
     /// [`Model::eval_to_array`] for an already evaluated `result`.
     pub(crate) fn result_to_array(
         &mut self,
@@ -603,7 +617,7 @@ impl Model {
         // walks the array, so the call is charged its cells per element.
         // An error array is every element's result: `UNIQUE(<#VALUE!>,HSTACK(0.2,1E+15))` is two
         // `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434; T-2300).
-        let data = self.eval_to_array(&args[0], cell);
+        let data = self.eval_to_array_keep_blank(&args[0], cell);
         let cells = match &data {
             Ok(d) if d.is_empty() || d[0].is_empty() => return CalcResult::Array(vec![]),
             Ok(d) => d.iter().map(Vec::len).sum::<usize>(),
