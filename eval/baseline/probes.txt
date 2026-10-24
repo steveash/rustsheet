@@ -1954,7 +1954,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
-F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
