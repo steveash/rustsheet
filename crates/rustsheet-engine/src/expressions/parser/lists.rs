@@ -79,7 +79,7 @@ impl Parser {
         match token {
             Some(token) if self.lexer.peek_token() == self.get_argument_separator_token() => {
                 let text = self.lexer.source_since(start);
-                self.bind_reference_shaped_name(&token, &text, node)
+                self.bind_name(&token, &text, node)
             }
             _ => node,
         }

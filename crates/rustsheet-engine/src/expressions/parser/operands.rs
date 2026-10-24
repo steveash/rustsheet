@@ -344,7 +344,7 @@ impl Parser {
         Some(self.range_operand(None, left, right))
     }
 
-    /// Whether an enclosing LET or LAMBDA binds `name` ([`Parser::bind_reference_shaped_name`]),
+    /// Whether an enclosing LET or LAMBDA binds `name` ([`Parser::bind_name`]),
     /// in any grammar mode.
     fn binds_name(&self, name: &str) -> bool {
         self.bound_names
@@ -367,13 +367,9 @@ impl Parser {
     /// (probes/let-cell-shaped-name-typed-*): it binds here too, and typed entry refuses the
     /// formula afterwards ([`Parser::typed_refusal`], decision 0103). A name that was read as a
     /// defined name becomes the variable in any grammar mode, shadowing the defined name
-    /// (probes/let-name-shadows-defined-name, T-2057).
-    pub(super) fn bind_reference_shaped_name(
-        &mut self,
-        token: &TokenType,
-        text: &str,
-        node: Node,
-    ) -> Node {
+    /// (probes/let-name-shadows-defined-name, T-2057). Any other plain name is recorded as bound
+    /// too, so a call of it is the variable, not a function of its name (T-2567).
+    pub(super) fn bind_name(&mut self, token: &TokenType, text: &str, node: Node) -> Node {
         // A name that is also a defined name parsed as that defined name; it declares the
         // variable instead, and shadows the defined name up to the end of the scope. In any
         // grammar mode: a stored formula (R1C1 mode) prints the name without `_xlpm.`.

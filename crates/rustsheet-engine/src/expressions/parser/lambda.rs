@@ -177,7 +177,7 @@ impl Parser {
                 // This item must be a parameter name.
                 self.lexer.advance_token();
                 arg_index += 1;
-                expr = self.bind_reference_shaped_name(&token, &text, expr);
+                expr = self.bind_name(&token, &text, expr);
                 match expr {
                     Node::NamedVariableKind { name, id } => {
                         // xlop: Excel Optional Parameter.
