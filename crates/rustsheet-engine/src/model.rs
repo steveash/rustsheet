@@ -16,10 +16,7 @@ use crate::{
             move_formula::{move_formula, MoveContext},
             new_parser_english,
             static_analysis::StaticResult,
-            stringify::{
-                to_english_string, to_localized_string, to_localized_string_this_row_lowered,
-                to_rc_format,
-            },
+            stringify::{to_english_string, to_localized_string, to_rc_format},
             ArrayNode, CallNameSpellings, CompletionContext, Node, Parser,
         },
         token::{get_error_by_name, Error},
@@ -269,11 +266,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let node = node.ungrouped(); // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007)
-                                     // A `#This Row` area is the reference it is on the cell's row (SPEC-0016 step 2).
-        if let Some(area) = node.this_row_at(cell.row) {
-            return self.evaluate_node_with_reference(&area, cell);
-        }
+        let node: &Node = &node.ungrouped_at(cell.row); // `ROWS((A1))` is `ROWS(A1)` (SPEC-0007)
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -286,17 +279,14 @@ impl Model {
                 // Relative coordinates are offsets from the formula's cell.
                 let row1 = *row + if *absolute_row { 0 } else { cell.row };
                 let column1 = *column + if *absolute_column { 0 } else { cell.column };
+                let at = CellReferenceIndex {
+                    sheet: *sheet_index,
+                    row: row1,
+                    column: column1,
+                };
                 CalcResult::Range {
-                    left: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: row1,
-                        column: column1,
-                    },
-                    right: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: row1,
-                        column: column1,
-                    },
+                    left: at,
+                    right: at,
                 }
             }
             Node::RangeKind {
@@ -1661,19 +1651,6 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<Option<String>, String> {
-        self.cell_formula_text(sheet, row, column, false)
-    }
-
-    /// [`Model::get_cell_formula`], with every `#This Row` structured reference printed as the
-    /// area it is on the cell's row when `this_row_lowered`: the text of a formula a structural
-    /// edit moves to another row (T-1699).
-    pub(crate) fn cell_formula_text(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        this_row_lowered: bool,
-    ) -> Result<Option<String>, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
@@ -1689,17 +1666,10 @@ impl Model {
                         row,
                         column,
                     };
-                    let text = if this_row_lowered {
-                        to_localized_string_this_row_lowered(
-                            formula,
-                            &cell_ref,
-                            self.locale,
-                            self.language,
-                        )
-                    } else {
+                    Ok(Some(format!(
+                        "={}",
                         to_localized_string(formula, &cell_ref, self.locale, self.language)
-                    };
-                    Ok(Some(format!("={text}")))
+                    )))
                 }
                 None => Ok(None),
             },

@@ -68,9 +68,7 @@ enum Rewrite<'a> {
     /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
     /// and restore").
     Lower(&'a [String]),
-    /// Prints every `#This Row` structured reference as the area it is on the printing cell's
-    /// row: the text a formula moved to another row keeps (T-1699).
-    LowerThisRow,
+    LowerThisRow, // Prints every `#This Row` as its area on the printing cell's row (T-1699).
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
@@ -747,17 +745,7 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
-        // Printed only as a lowered area (a structural-edit fallback, the export): first resolved
-        // at the printing cell's row, which is the text its parse-time lowering had (`$A$3` or
-        // `#VALUE!`), then rewritten; with no cell, as the columns on the formula's own row
-        // (SPEC-0016 "Structural edits", T-1699).
-        ThisRowKind { .. } => {
-            let area = match context {
-                Some(context) => node.this_row_at(context.row),
-                None => node.this_row_relative(),
-            };
-            area.map_or_else(String::new, |area| sub(&area))
-        }
+        ThisRowKind { .. } => structured::this_row_text(node, context, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
             lowered,
@@ -907,28 +895,8 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
 pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: &str) {
     match node {
         // Rename
-        Node::ReferenceKind {
-            sheet_name,
-            sheet_index: index,
-            ..
-        } => {
-            if *index == sheet_index && sheet_name.is_some() {
-                *sheet_name = Some(new_name.to_owned());
-            }
-        }
-        Node::RangeKind {
-            sheet_name,
-            sheet_index: index,
-            ..
-        }
-        | Node::ThisRowKind {
-            sheet_name,
-            sheet_index: index,
-            ..
-        } => {
-            if *index == sheet_index && sheet_name.is_some() {
-                *sheet_name = Some(new_name.to_owned());
-            }
+        Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::ThisRowKind { .. } => {
+            node.rename_reference_sheet(sheet_index, new_name);
         }
         Node::SheetSpanKind {
             first_sheet,

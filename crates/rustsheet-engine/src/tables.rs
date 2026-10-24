@@ -7,7 +7,9 @@ use crate::{
         lexer::LexerMode,
         parser::{
             parse_range,
-            stringify::{to_english_string, to_string_lowering},
+            stringify::{
+                to_english_string, to_localized_string_this_row_lowered, to_string_lowering,
+            },
         },
         types::{Area, CellReferenceRC},
         utils::{is_valid_identifier, number_to_column},
@@ -191,6 +193,42 @@ impl Model {
             self.workbook.tables.entry(name).or_insert(table);
         }
         self.reset_tables();
+    }
+
+    /// [`Model::get_cell_formula`] for a formula a structural edit moves `row_delta` rows; to
+    /// another row, every `#This Row` reference in it is printed as the area it is on the
+    /// cell's row (`$A$3`, or `#VALUE!` off the data rows), so the moved formula keeps reading the
+    /// row it read, as before SPEC-0016 step 2 (T-1699).
+    pub(crate) fn moved_text(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        row_delta: i32,
+    ) -> Result<Option<String>, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let Some(index) = worksheet
+            .cell(row, column)
+            .and_then(|cell| cell.get_formula())
+        else {
+            return Ok(None);
+        };
+        if row_delta == 0 {
+            return self.get_cell_formula(sheet, row, column);
+        }
+        let (formula, _) = self
+            .parsed_formulas
+            .get(sheet as usize)
+            .and_then(|formulas| formulas.get(index as usize))
+            .ok_or("missing formula")?;
+        let context = CellReferenceRC {
+            sheet: worksheet.get_name(),
+            row,
+            column,
+        };
+        let text =
+            to_localized_string_this_row_lowered(formula, &context, self.locale, self.language);
+        Ok(Some(format!("={text}")))
     }
 
     /// The lowercase names of the tables on the sheet `sheet_name`, for [`to_string_lowering`].

@@ -504,6 +504,31 @@ impl Node {
         }
     }
 
+    /// Names the sheet `sheet_index` `new_name` in a cell, range or `#This Row` reference that
+    /// names its sheet (one on the formula's own sheet names none).
+    pub(crate) fn rename_reference_sheet(&mut self, sheet_index: u32, new_name: &str) {
+        if let Node::ReferenceKind {
+            sheet_name: Some(name),
+            sheet_index: index,
+            ..
+        }
+        | Node::RangeKind {
+            sheet_name: Some(name),
+            sheet_index: index,
+            ..
+        }
+        | Node::ThisRowKind {
+            sheet_name: Some(name),
+            sheet_index: index,
+            ..
+        } = self
+        {
+            if *index == sheet_index {
+                new_name.clone_into(name);
+            }
+        }
+    }
+
     /// The `@` an xlsx import adds around a range-valued operand.
     pub(crate) fn automatic_at(child: Node) -> Node {
         Node::at(child, true)

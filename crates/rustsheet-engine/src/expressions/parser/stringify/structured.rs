@@ -50,6 +50,22 @@ pub(crate) fn to_localized_string_this_row_lowered(
     )
 }
 
+/// The printed `Node::ThisRowKind`, which is printed only as a lowered area (a structural-edit
+/// fallback, the export): first resolved at the printing cell's row, which gives the text its
+/// parse-time lowering had (`$A$3` or `#VALUE!`), then rewritten by `sub`; with no cell, as the
+/// columns on the formula's own row (SPEC-0016 "Structural edits", T-1699).
+pub(super) fn this_row_text(
+    node: &Node,
+    context: Option<&CellReferenceRC>,
+    sub: impl Fn(&Node) -> String,
+) -> String {
+    let area = match context {
+        Some(context) => node.this_row_at(context.row),
+        None => node.this_row_relative(),
+    };
+    area.map_or_else(String::new, |area| sub(&area))
+}
+
 /// The printed `Node::StructuredReferenceKind`: its text as written, or the area it resolves to
 /// in the export and where an edit changes that area.
 pub(super) fn reference_text(

@@ -542,9 +542,8 @@ impl Model {
             }
         }
         let legacy = self.cell_has_legacy_marker(sheet, source_row, source_column)?;
-        // A `#This Row` reference moved to another row keeps reading the row it read (T-1699).
         let formula_or_value = self
-            .cell_formula_text(sheet, source_row, source_column, source_row != target_row)?
+            .moved_text(sheet, source_row, source_column, target_row - source_row)?
             .unwrap_or_else(|| {
                 source_cell.get_localized_text(
                     &self.workbook.shared_strings,
@@ -1390,16 +1389,9 @@ impl Model {
                 .cell(row, *c)
                 .ok_or("Expected Cell to exist")?;
             let style_idx = cell.get_style();
-            // A `#This Row` reference moved to another row keeps reading the row it read (T-1699).
-            let formula_or_value = self
-                .cell_formula_text(sheet, row, *c, delta != 0)?
-                .unwrap_or_else(|| {
-                    cell.get_localized_text(
-                        &self.workbook.shared_strings,
-                        self.locale,
-                        self.language,
-                    )
-                });
+            let formula_or_value = self.moved_text(sheet, row, *c, delta)?.unwrap_or_else(|| {
+                cell.get_localized_text(&self.workbook.shared_strings, self.locale, self.language)
+            });
             let mut array = None;
 
             match cell {
