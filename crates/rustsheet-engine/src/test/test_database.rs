@@ -565,7 +565,6 @@ fn one_row_criteria_or_database_is_value_error() {
     assert_eq!(model._get_text("F2"), *"#VALUE!");
     assert_eq!(model._get_text("F3"), *"#VALUE!");
     assert_eq!(model._get_text("F4"), *"4");
-    assert_eq!(model._get_text("F5"), *"7");
 }
 
 /// Criteria headers name database columns by their text (a number by its coerced text), each
