@@ -1722,7 +1722,7 @@ df 1: fl(1/fl(π·fl(1 + fl(t·t))))         df 2: EXP(fl(-1.5·LN(fl(2 + fl(t·
 - The denominator: at t ≈ 4.3, 38-45 of every 48 Excel values are not EXP of any double, so a value-space factor follows
   EXP. Rounding regressions select fl((n/2)·LN(w)), t·t, q and fl(sqrt(w)) at coefficients 0.85-1.35 (x² > n) and y,
   LN(y) of bd0's log form (x² < n). Free-constant scan, 2,112 cells: this structure 1,257; denominator
-  fl(EXP/fl(sqrt(fl(2π·w)))) 1,051; E extended 890; R 3.x's form 812-949; R 2.x as written 1,011; 18 generic exp-of-log
+  fl(EXP/fl(sqrt(fl(2π·w)))) 1,051; E extended 890; R 3.x's form 812-949; R 2.x's 0.2n cut 1,011; 18 generic exp-of-log
   forms at most 754.
 - The constant: per-df offsets of +2.5 to -1.6 units from the exact constant, shared by every t of a df (fitting C per
   block gives the same counts). Per-df constants fitted on the in-sample probes raise cells.tsv df >= 3 to
@@ -2046,8 +2046,8 @@ L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk
   r3's knobs 668/1,501/1,732, r2's 568/1,337/1,678, CR 163/940/1,407, a free-constant null 202/912/1,413. Both-log
   blocks are 387/474/474 of 640: the worker's 656 of 770 was a favourable subset.
 - Rejected: R dbeta's log form, brcomp/(x·y) and TOMS's a0 >= 8 Stirling brcomp; Loader on (a, b); R's bd0 order
-  fl(fl(t + M) - k) and 0.1 cut; cuts 0.25, 0.3; t, LN or the ratio kept extended; R >= 2.7.2 and R 2.0 lf forms; GAMMALN
-  stirlerr; M2 = fl(n - M1) and nq = n - fl(n·x) for (4, 4); 896 lf / L5 / chain compositions (all within 0.1 rms).
+  fl(fl(t + M) - k) and 0.1 cut; cuts 0.25, 0.3; t, LN or the ratio kept extended; R >= 2.7.2 and R 2.0 lf forms;
+  GAMMALN stirlerr; M2 = fl(n - M1) and nq = n - fl(n·x) for (4, 4); 896 lf / L5 / chain compositions (all within 0.1 rms).
 Evidence: probes-numeric t2513-r3-loader-const-sweep1, -diverse1, -grid1, -hold1, t2513-r3-loader-bd0-a, -b, -hold,
 t2513-verify-r3-loader-const-hold, t2513-verify-r3-loader-bd0-hold, and T-2464's t2464-r2-density-large-p1,
 t2464-w2f-xruns-*, -absweep; docs/research/t2464/r3-loader-const (`m1_model.py`, `a2_forms.py`, `a5_xreg.py`,

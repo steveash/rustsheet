@@ -29,8 +29,8 @@ BETA.DIST(x,a,b,FALSE) with both shapes > 1 follows Excel's Loader (2000) saddle
   - E = LN(n + 1) + stirlerr terms - lf/2 - bd0_p - bd0_q, held extended into Excel's EXP (T-2501's EXP of an extended
     argument), never stored; lf = ln 2π + LN(k) + LN(nk) - LN(n) with Excel's LN; stirlerr accurate (a table plus a
     Stirling series), not GAMMALN-based.
-- Models (T-2513 round 3, verifier-confirmed): `docs/research/t2464/r3-loader-const/m1_model.py` M3 (the structure above)
-  and M4 (bd0 stored); r3-loader-bd0's `r3lib.py` for bd0's knobs. Scores, exact / 4 ulp / 15 digits:
+- Models (T-2513 round 3, verifier-confirmed): `docs/research/t2464/r3-loader-const/m1_model.py` M3 (the structure
+  above) and M4 (bd0 stored); r3-loader-bd0's `r3lib.py` for bd0's knobs. Scores, exact / 4 ulp / 15 digits:
   - r2-density-large's 32,264 cells: M3 6,312/25,807/31,461, r2's LDe 5,765/25,254/31,385, CR 3,573/26,024/29,280;
   - hold-out t2513-r3-loader-const-hold1 (3,296, log form): M3 952/2,990/3,176, M4 960/2,996/3,172, LDe 685/2,675/3,029,
     CR 251/1,738/2,435;

@@ -11,7 +11,7 @@ switched at the mean", "Student t prefactor per df" (B(a,b) = EXP(GAMMALN(a) + (
 a < 1, b <= 8: the TOMS 708 betaln structure), "T.DIST.RT's noise beyond t = 1 grows with a ln y", and
 "BETA.INV solves Excel's own CDF to the crossing".
 
-## Results (2026-10-23)
+## Results (2026-10-23, round 3 2026-10-24)
 The findings are in docs/excel-semantics/statistics.md, in nine "(T-2464)" entries. They start at "Incomplete beta is
 TOMS 708 `bratio`" and cover:
 - the dispatch and the callers' arguments;
@@ -47,6 +47,25 @@ disagree, the verifier wins.
   - r2-log1p's `hold` case was not untouched.
   - r2-density-large's hold-out does not test bd0.
   - r2-impact's hold-out is not a real one.
+- Round 3 (T-2513, 2026-10-24; the densities), recorded in statistics.md's density entries and four new "(T-2513)"
+  entries (T density, BINOM pmf, NEGBINOM pmf, F density):
+  - `r3-m1-residual`: density M2 for min(a,b) <= 1 (exponent split EXP(hi)·fl(1 + lo), lnB = -LN(the other shape) at
+    a = 1 or b = 1, Excel's measured GAMMALN); algdiv for max > 8 still open;
+  - `r3-loader-const`: Loader's constant for a, b > 1 (extended E, stored k, n, nk, accurate stirlerr; 2-4 units left);
+  - `r3-loader-bd0`: bd0 branches (M - k stored in the log form, cut 0.2, a +δ(fl(2kv)) series term; series open);
+  - `r3-tdensity`: T.DIST(.,FALSE) is Loader's dt for df >= 3, closed forms at df 1 and 2;
+  - `r3-binom-pmf`: BINOM k = 0 and k = n closed forms, one kernel with BETA.DIST, NEGBINOM on the shifted kernel;
+  - `r3-fdensity`: F density negatives and its ratio switch (unsolved).
+  - Engine tasks T-2585 (T density) and amended T-2501, T-2503, T-2507; research follow-up T-2586.
+- Round 3 verifier overrides:
+  - r3-tdensity's per-df constant is not r3-loader-const's stirlerr table: the exact Loader constant does as well or
+    better on both hold-outs.
+  - r3-loader-bd0's "log-form blocks 656 of 770" was a favourable subset (387 of 640 on a new hold-out), and its CR
+    baseline is not comparable with a free-constant fit.
+  - r3-binom-pmf's NEGBINOM final step fl(p·B) is not bit-exact.
+  - r3-m1-residual's min = 1 rule extends to a < 1 with b = 1 on one shape, (0.37, 1); the engine's GAMMALN is off on
+    24 of 66 arguments below 1.
+  - r3-fdensity: "ln x is a stored Excel LN product" is not established.
 
 ## Data (this directory)
 - `cells.tsv`: 39,065 oracle-filled cells (excel-graph) whose formula is exactly one call with arguments the fit
