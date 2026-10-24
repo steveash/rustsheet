@@ -2605,7 +2605,7 @@ F.TEST checks its samples in order, each one's error or blank one-cell reference
 computed blank (`FTEST(IF(TRUE,B10),{1;2;3})`) is `#VALUE!` too (A79). An omitted sample (`FTEST(,{1;2;3})`) is unprobed
 (ours: the one-value `#DIV/0!`).
 Ours: since T-2455 (`fn_f_test`, `f_test_sample`, `is_blank_one_cell` in functions/statistical/fisher.rs). The paired
-functions' blank-cell `#VALUE!` stays with T-2426.
+functions' blank-cell `#VALUE!` followed in T-2426.
 Status: VERIFIED (excel-graph)
 Tasks: T-2455, T-2426
 
@@ -2645,7 +2645,8 @@ fcf11f2ec6f7a59d A9, the T-2051 question). A one-cell reference holding a number
 ("Array arguments given a scalar, a single cell or an error" above; `FTEST(6,Data!A$11)` with A11 = "x" is `#DIV/0!`,
 35e8168aae2b00f8 A253). This contradicts the earlier inference that an empty cell is one value with no number.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 109 cells listed in T-2426.
-Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions `#N/A` (size) or `#DIV/0!` (one point), T-2426.
+Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions since T-2426 (`blank_one_cell_as_error` in
+functions/statistical/paired.rs, called by `fn_get_two_matrices` and `paired_samples`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2426, T-2051
 

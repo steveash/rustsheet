@@ -3,7 +3,7 @@ id: T-2426
 title: "Paired statistical functions and F.TEST: a one-cell reference to an empty cell is #VALUE! (gen-m9, 113 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -173,3 +173,9 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+`blank_one_cell_as_error` (paired.rs) turns a one-cell reference to an empty cell into `#VALUE!` where `fn_get_two_matrices`
+(COVAR, CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, FORECAST*, CHISQ.TEST) and `paired_samples` (COVARIANCE.*, T.TEST)
+read their arguments, in argument order. Eval: 203 known-failure lines left eval/baseline/gen-m9.txt (194 owned), none added.
+Unit test `test_paired_blank_one_cell_reference_is_value_error`.
