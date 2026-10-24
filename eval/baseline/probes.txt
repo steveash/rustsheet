@@ -616,6 +616,7 @@ C	probes/m7-lift-take-drop-sortby.case.json	934
 C	probes/m7-one-cell-operand-lift.case.json	18
 C	probes/m7-unique-lift-corners.case.json	686
 C	probes/m7-unique-lift-elements.case.json	350
+C	probes/m9-bessel-order-limits.case.json	341
 C	probes/map-scan-range-result.case.json	39
 C	probes/map-unequal-sizes.case.json	36
 C	probes/match-descending-argcheck.case.json	20
@@ -1495,8 +1496,6 @@ F	probes/fin-argument-modes.case.json	Sheet1!H374
 F	probes/fin-argument-modes.case.json	Sheet1!H375
 F	probes/fin-argument-modes.case.json	Sheet1!H72
 F	probes/fin-argument-modes.case.json	Sheet1!H80
-F	probes/fin-argument-modes.case.json	Sheet1!H88
-F	probes/fin-argument-modes.case.json	Sheet1!H95
 F	probes/fin-bond-negative-basis.case.json	Sheet1!E1
 F	probes/fin-bond-negative-basis.case.json	Sheet1!E17
 F	probes/fin-bond-negative-basis.case.json	Sheet1!G1
