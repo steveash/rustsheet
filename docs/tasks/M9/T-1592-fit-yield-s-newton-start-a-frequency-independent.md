@@ -3,7 +3,7 @@ id: T-1592
 title: "Fit YIELD's Newton start: a frequency-independent first iterate"
 milestone: M9
 lane: research
-status: blocked
+status: todo
 priority: P2
 size: M
 tier: opus
@@ -99,12 +99,12 @@ financial.md "YIELD stops short of PRICE's root" has the T-2187 paragraph. Next 
 function of rate, price and the basis's time to maturity (it moves with price, column E, and with basis 1/3 against
 0/4, column D, but not with redemption or frequency), then this step-size stop.
 
-## Blocked because
-Blocked because: needs T-2304 (YIELD probe cells across coupon rate and term). Second round (2026-10-21): the basis
-moves the start as days over 360 or 365 do (lab test), but none of six frequency-free start models raises the lab
-fit past the best candidate (Newton from 0.1 to 1e-12, 4/178 bit-exact), and every probe so far fixes the rate at
-0.05 and one set of dates, so a start formula in rate and term cannot be tested. Candidates and counts:
-financial.md "YIELD stops short of PRICE's root", T-1592 second round. Unblock when T-2304 is done.
+## New evidence (T-2391)
+probes/yield-newton-domain column C (redemptions 1E+50 to 1E+300) gives YIELD values where Newton stops at what looks like
+a 100-step cap far from the root. In that regime each step is about (1 + y/f) * f / T, so the final value shows the start.
+Back-chaining 100 analytic steps from C1 lands at -0.002179, the redemption-100 root (100/105)^(1/22.4) - 1. Forward from
+that root, C1, C6 and C7 come within 8e-7, but rates 0.01 to 0.5 and price 1 are off by 1e-5 to 1e-2. Fitting S there
+also decides T-2391's `#NUM!` cells (financial.md "YIELD's #NUM! cells and its suspected 100-step cap").
 
 ## Visible-parity stage
 Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.

@@ -3,7 +3,7 @@ id: T-2499
 title: "A called TAKE, DROP, TRIMRANGE or XLOOKUP result is a reference: TAKE(A1:A3,1)(2) is #REF!"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,8 +26,16 @@ value and calls it like a LET-bound value. Read them as references in the callee
 reads. docs/excel-semantics/references.md "Calling a call's result".
 
 ## Acceptance criteria
-- [ ] probes/chained-calls-builtin-take, -drop, -trimrange and -xlookup pass and leave eval/baseline/probes.txt.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/chained-calls-builtin-take, -drop, -trimrange and -xlookup pass and leave eval/baseline/probes.txt.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+A called result's callee is now read by `Model::evaluate_callee` (functions/logical/lambda.rs), which
+reads it as SUBTOTAL does (`evaluate_picked_reference_arg`): a TAKE, DROP, TRIMRANGE or XLOOKUP over a
+range is the range it picks, so `TAKE(A1:A3,1)(2)` and the others are `#REF!`. Both callee sites
+(node_frames.rs `LambdaCallKind`, `call_callee_as_reference`) use it; SUM(TAKE(..)) is unchanged.
+Eval: probes known failures 2167 -> 2160 (fixed 7: chained-calls-builtin-take B1, -drop B1:B2,
+-trimrange B1:B3, -xlookup B1), no regressions.
