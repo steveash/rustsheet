@@ -3,7 +3,7 @@ id: T-1726
 title: "TREND: omitted and empty arguments, shapes, single points, text and error inputs as Excel (T-1620 probes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
