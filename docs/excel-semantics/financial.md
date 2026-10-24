@@ -1620,10 +1620,11 @@ Tasks: T-1975, T-2216, T-2217
 
 ## NPV with a rate of -1 or 1E+300 is #DIV/0!
 Rule: NPV whose rate is -1 is `#DIV/0!` (`NPV((-1),(-0.5),D06!A$9,D06!B8:B11)`, `NPV((-1),D17!B7:B11)`, `NPV(D22!$B4,..)` with
-B4 = -1, `NPV(((-1)-D12!$C4),..)` with C4 empty), and so is NPV whose rate is 1E+300 (`NPV(1E+300,(D34!E3+0.5),{-100,-200,-300})`,
-where each discount factor overflows). The `#DIV/0!` carries through the enclosing calls (`MODE.SNGL(D06!B11:B12,(NPV(..)+..))`).
+B4 = -1, `NPV(((-1)-D12!$C4),..)` with C4 empty), and so is NPV whose rate is 1E+300 (`NPV(1E+300,(D34!E3+0.5),{-100,-200,-300})`; that an overflowing discount factor
+causes it is a hypothesis, and the threshold between rates that give a value and rates that give `#DIV/0!` is unprobed). The `#DIV/0!` carries through the enclosing calls (`MODE.SNGL(D06!B11:B12,(NPV(..)+..))`).
 Evidence: probes/t2475-stat-subexpressions P!A116, A148, A177, A236, A297, A429 (excel-graph, 2026-10-24, T-2475); the gen-m9 cells listed in T-2618.
-Ours: `#NUM!` at -1 and 8E-301 at 1E+300 (T-2618).
+Ours: at -1 a non-finite number that leaks out of NPV (TYPE reads it as a number; the cell shows `#NUM!`, and `NPV(..)+..`
+gives `#NUM!`), and 8E-301 at 1E+300 (T-2618).
 Status: VERIFIED (excel-graph)
 Tasks: T-2475, T-2618
 

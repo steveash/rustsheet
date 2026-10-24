@@ -26,6 +26,9 @@ Owned gen-m9 cells (5; known failures in eval/baseline/gen-m9.txt, and the probe
 
 Also: a LET-bound uncalled LAMBDA joined as text (`t&"|"&v`) is `#VALUE!` in Excel, ours `#N/IMPL!` (the probe's bare `LAMBDA(..)` rows, e.g. P!A1 of each LAMBDA cell; arrays.md "An uncalled LAMBDA is one value").
 
+The LAMBDA-as-text rule is inferred from the wrapper (`t&"|"&v` with TYPE 128); add a direct probe cell (`LAMBDA(x,x)&""`)
+before implementing it.
+
 ## Acceptance criteria
 - [ ] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
 - [ ] `make check` green; reviewers approve.

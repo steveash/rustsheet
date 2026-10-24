@@ -25,6 +25,10 @@ Owned gen-m9 cells (6; known failures in eval/baseline/gen-m9.txt, and the probe
 - gen-m9/7fd0a98183c6babf.case.json Calc!A240: probe P!A297 `NPV(D22!$B4,D22!D8,D22!A5:A5,D22!C6:C9)`: Excel "#2", ours #NUM!
 - gen-m9/acac71a65a5a1d1b.case.json Calc!A27: probe P!A429 `NPV(1E+300,(D34!E3+0.5),{-100,-200,-300})`: Excel "#2", ours 8e-301
 
+Ours at a rate of -1 is not an error but a non-finite number that leaks out of NPV (TYPE reads 1; the probe's bare cells
+P!A116 and the others show `#NUM!` as the whole summary), so the fix returns `#DIV/0!` instead of the leak. The 1E+300 threshold
+is unprobed: probe a few rates (1E+100, 1E+200, 1E+307) before building a rule.
+
 ## Acceptance criteria
 - [ ] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
 - [ ] `make check` green; reviewers approve.
