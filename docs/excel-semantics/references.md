@@ -67,8 +67,8 @@ exactly as `=ABS(Data1!A1:A3)`, `ROWS(ABS(..))` is 3 and `SUM(ABS(Data1:Data1!A1
 `=ABS(Data1:Data1!A1:A3)` is `=ABS(Data1!A1:A3)`.
 In a legacy-import workbook (formula stored without the dynamic-array flag) the span takes the automatic `@` exactly as the plain
 range does (probes/3d-ref-one-sheet-span-legacy-at, excel-graph, 2026-10-24, T-2564): `SIN(Data1:Data1!A1:A10)` is 0.8414709848078965
-with `FORMULATEXT` `=SIN(@Data1!A1:A10)`, identical to `SIN(Data1!A1:A10)`; `FORMULATEXT` of `=@Data1:Data1!A1` is `=@Data1!A1`, the
-same as `=@Data1!A1` (value 1).
+with `FORMULATEXT` `=SIN(@Data1!A1:A10)`, identical to `SIN(Data1!A1:A10)`; and (dynamic-array formulas, explicit `@`) `FORMULATEXT` of
+`=@Data1:Data1!A1` is `=@Data1!A1`, the same as `=@Data1!A1` (value 1).
 COUNTBLANK of an error (probes/countblank-choose-errors, excel-graph, 2026-10-10, T-1181): an argument that evaluates to an error,
 not a reference, gives that error: `COUNTBLANK(Data1:Nope!A1:B3)` and its IF and CHOOSE forms `#NAME?`, `COUNTBLANK(CHOOSE(1,#N/A))`,
 `CHOOSE(1,NA())` and `IF(TRUE,NA())` `#N/A`, an empty intersection in CHOOSE `#NULL!`; also (probes/countblank-error-forms-b,
