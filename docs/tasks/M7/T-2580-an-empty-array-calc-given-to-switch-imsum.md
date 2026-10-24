@@ -3,7 +3,7 @@ id: T-2580
 title: "An empty array (#CALC!) given to SWITCH, IMSUM or WORKDAY's holidays is #VALUE!, and SEQUENCE(0.0123,123456789.123,..) is #VALUE!, not zero rows' #CALC! (gen-m9, 4 cells)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
