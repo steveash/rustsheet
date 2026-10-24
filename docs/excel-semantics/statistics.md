@@ -2192,12 +2192,33 @@ mx = fl(m·x):
     bit-exact / within 4 ulp / within 15 digits 314/919/1,029 of 1,344 on its hold-out (CR 104/688/882), 287/1,048/
     1,198 of 1,536 on another worker's (CR 111/646/904), 337/1,119/1,255 of 1,440 on round 3's (CR 114/733/1,060).
     Not bit-exact (about 35%) and not at visible parity; the large-shape class stays poor.
+- Round 5 (T-2586, verified):
+  - Argument and range rules, exact on an untouched hold-out (52 of 58 rule cells there are bit-exact and all 58
+    within 15 digits; 1,606 of 1,606 rule cells over every earlier set): d1 and d2 truncate toward zero; a truncated df
+    below 1 or above 1E10 is `#NUM!`; x < 0 is `#NUM!`; at x = 0 the result depends on trunc(d1) only (1 → `#NUM!`,
+    2 → exactly 1, 3 or more → 0); a subnormal x (such as EXP(-720)) is `#DIV/0!`; the result is `#NUM!` exactly when
+    fl(trunc(d1)·x) overflows; otherwise Y = EXP(E) is stored (a subnormal Y keeps its lost bits), F = fl(Y/x), and an
+    F below 2^-1022 is 0.
+  - At x = 1 Excel's value is the exact density to about one ulp (361 shapes with d1, d2 in [16, 1000]: 152 equal the
+    correctly rounded value, all 361 within -3..+2 ulp). Round 4's large-shape "constant offset" was the model's own
+    H rounding being absorbed.
+  - What blocks parity is the size of the power term P = c·ln x: within 15 digits on 99% of cells with |P| < 4, 87%
+    for |P| in [4, 32), 36% for [32, 256) and 10% at 256 or more. The stored-sum order S2 = fl(fl(K_hi + H) + P) is
+    rejected (0 of 330 runs fit even with a free K_hi), and so is a "two stored H pieces" reading of round 4's double
+    jumps (an artefact of a non-dyadic constant lattice). At power-of-two shapes such as (2,2) and (8,8), where every
+    product is exact, Excel still scatters about ±1.5 units, which points at the exponential step itself (an exp2
+    split or a value-space x87 pow per factor), not at the exponent's pieces.
+  - Integrated model M-final (docs/research/t2464/r5-f-final/fdensity_excel.py: the rules, M-sd's exponent, the
+    large-shape constant, F = fl(fl(EXP(E))/x)), frozen before its hold-outs were filled: 126/522/722 of 1,584 value
+    cells on t2586-r5-f-final-hold (CR 63/269/444; M-sd with the rules 123/525/721); on the verifier's fresh hold-out
+    no better than M-sd with the rules; 72% within 15 digits over 66,191 F cells. Not bit-exact, not at visible parity.
 Evidence: probes-numeric t2513-r3-fdensity-a, -sw, -hold, -holdsw, t2513-verify-r3-fdensity-hold; F.DIST cells of
 docs/research/t2464/cells.tsv; docs/research/t2464/r3-fdensity (`a8_pair.out`, `a3_score.out`, `b1_sweep.out`,
 `b6_hold.out`, `c1_hold.out`), verify-r3-fdensity (`vcheck.out`, `vscore_vhold.out`, `vswitch_vhold.out`,
 `vpair.out`); round 4: probes-numeric t2586-r4-f-brcomp-hold, -big, t2586-r4-f-power-a, -hold, t2586-r4-f-small-df-a,
 -hold and the verifiers' t2586-verify-* cases; docs/research/t2464/r4-f-brcomp, r4-f-power, r4-f-small-df and
-verify-r4-*.
+verify-r4-*; round 5: probes-numeric t2586-r5-f-*, t2586-verify-r5-*; docs/research/t2464/r5-f-combine, r5-f-smallr,
+r5-f-bigconst, r5-f-edges, r5-f-final and verify-r5-*.
 Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite, Loader's
 binomial form where it overflows ("F density at large degrees of freedom (T-1864)").
 Status: UNVERIFIED (excel-graph): the negatives, the swap symmetry and the ratio switch are measured; the formula is

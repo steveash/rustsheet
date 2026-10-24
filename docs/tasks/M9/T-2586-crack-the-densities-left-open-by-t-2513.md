@@ -65,3 +65,9 @@ T-2585 and T-2146 then have targets for the cells they cannot reach.
   not at visible parity. statistics.md "F density is not the beta density, R's df or a GAMMALN formula" has the
   details. Next: combine M-sd's constant with r4-f-power's stored sum S2, pin the -h·L(r) term for r <= 0.375, and
   the large-shape constant (probe x = 1 ± k ulp on a dense min(d) >= 16 grid).
+- 2026-10-24, round 5 (r5-f-combine, r5-f-smallr, r5-f-bigconst, r5-f-edges, r5-f-final, verify-r5-*): the argument
+  and range rules are solved (handed to T-2095); M-final is the best model (126/522/722 of 1,584 on its untouched
+  hold-out, CR 63/269/444) but not at visible parity. The blocker is the power term P = c·ln x (10% within 15 digits
+  at |P| >= 256) and a ±1.5-unit scatter at exact-product shapes. Next: Excel's exponential step for this density
+  (exp2 split, x87 F2XM1/FSCALE, value-space x^(a-1)·(1+r)^-h with per-factor pow roundings), probed at (2,2) side 1
+  where E = LN(x) - 2·LN(fl(1+x)) has no other rounding.
