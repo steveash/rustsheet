@@ -133,6 +133,12 @@ pub enum ArrayNode {
     Error(token::Error),
     /// An empty (blank) cell from a range reference.
     Empty,
+    /// A LAMBDA value (its lambda id), as SCAN with a LAMBDA accumulator, MAKEARRAY or VSTACK
+    /// of LAMBDAs give: MAP, REDUCE and a LET name read through INDEX call it, a cell shows
+    /// `#CALC!`, and a function reading it as a value takes it as `#VALUE!`
+    /// (docs/excel-semantics/arrays.md "Arrays of LAMBDAs", probes/lambda-arrays, T-2039).
+    /// Never in a parsed array constant.
+    Lambda(usize),
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -401,9 +407,17 @@ pub struct Parser {
     /// union operator (`=A1,B2`, T-1073).
     top_level: bool,
     /// Names the enclosing LET and LAMBDA calls bind so far, kept only when spelled like a
-    /// Lotus-style range: such a name is the variable where bound and the range elsewhere
-    /// (`LET(R1.C1,5,R1.C1*2)` is 10; probes/r1c1-let-name-r1-c1, lotus-dot-range, T-1659).
-    dotted_bound_names: Vec<String>,
+    /// Lotus-style range or a cell: such a name is the variable where bound and the range or
+    /// cell elsewhere (`LET(R1.C1,5,R1.C1*2)` is 10, probes/r1c1-let-name-r1-c1,
+    /// lotus-dot-range, T-1659; `LET(f1,1,f1+1)` is 2, probes/let-cell-shaped-name-stored, T-2040),
+    /// or spelled like a defined name, which the variable shadows (T-2057).
+    reference_shaped_names: Vec<String>,
+    /// The formula is being typed (API `Input::Formula`/`Parse`), not read as stored: a LET name
+    /// or LAMBDA parameter spelled like a cell then refuses the formula, as Excel refuses it
+    /// typed (decision 0103, T-2497). Stored text (xlsx import, re-parses) keeps binding it.
+    typed: bool,
+    /// The first cell-shaped name the last parse bound (see `typed`).
+    cell_shaped_binding: Option<String>,
 }
 
 pub fn new_parser_english(
@@ -445,9 +459,27 @@ impl Parser {
             depth: 0,
             inner_depth: 0,
             value_operators: 0,
-            dotted_bound_names: Vec::new(),
+            reference_shaped_names: Vec::new(),
+            typed: false,
+            cell_shaped_binding: None,
         }
     }
+    /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see
+    /// [`Parser::typed_refusal`].
+    pub(crate) fn set_typed(&mut self, typed: bool) {
+        self.typed = typed;
+    }
+
+    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
+    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103).
+    /// `None` when parsing stored text or nothing is refused.
+    pub(crate) fn typed_refusal(&self) -> Option<String> {
+        let name = self.cell_shaped_binding.as_ref().filter(|_| self.typed)?;
+        Some(format!(
+            "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
+        ))
+    }
+
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
         self.lexer.set_lexer_mode(mode);
     }
@@ -491,7 +523,8 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.value_operators = 0;
-        self.dotted_bound_names.clear();
+        self.reference_shaped_names.clear();
+        self.cell_shaped_binding = None;
         self.top_level = true;
         let node = self.parse_expr();
         self.top_level = false;
@@ -631,6 +664,7 @@ impl Parser {
     }
 
     fn parse_operand(&mut self) -> Node {
+        let start = self.lexer.get_position_index();
         let next_token = self.lexer.next_token();
         match next_token {
             TokenType::LeftParenthesis => self.parse_parenthesized_call(),
@@ -643,7 +677,13 @@ impl Parser {
                 column,
                 absolute_column,
                 absolute_row,
-            } => self.reference_or_call_operand(sheet, row, column, absolute_column, absolute_row),
+            } => {
+                let text = self.lexer.source_since(start);
+                if sheet.is_none() && self.binds_reference_shaped_name(&text) {
+                    return self.parse_identifier(text);
+                }
+                self.reference_or_call_operand(sheet, row, column, absolute_column, absolute_row)
+            }
             TokenType::Range { sheet, left, right } => {
                 self.range_or_call_operand(sheet, left, right)
             }

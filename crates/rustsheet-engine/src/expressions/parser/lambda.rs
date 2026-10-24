@@ -24,9 +24,9 @@ impl Parser {
 
         let mut parameters = Vec::new();
         // The parameters are in scope up to the LAMBDA's `)`.
-        let scope = self.dotted_bound_names.len();
+        let scope = self.reference_shaped_names.len();
         let def = self.parse_lambda_items(&arg_separator, &mut parameters);
-        self.dotted_bound_names.truncate(scope);
+        self.reference_shaped_names.truncate(scope);
         let body = match def {
             Ok(body) => body,
             Err(error) => return error,
@@ -154,7 +154,9 @@ impl Parser {
             }
 
             let token = self.lexer.peek_token();
+            let start = self.lexer.get_position_index();
             let mut expr = self.parse_enclosed_expr();
+            let text = self.lexer.source_since(start);
             if let Node::ParseErrorKind { .. } = expr {
                 return Err(expr);
             }
@@ -175,7 +177,7 @@ impl Parser {
                 // This item must be a parameter name.
                 self.lexer.advance_token();
                 arg_index += 1;
-                expr = self.bind_dotted_name(&token, expr);
+                expr = self.bind_reference_shaped_name(&token, &text, expr);
                 match expr {
                     Node::NamedVariableKind { name, id } => {
                         // xlop: Excel Optional Parameter.

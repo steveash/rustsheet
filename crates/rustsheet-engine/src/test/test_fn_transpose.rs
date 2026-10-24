@@ -64,3 +64,29 @@ fn transpose_wrong_arg_count() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+// A single value transposes to that value, not a 1x1 array, so a lifting function over it does
+// not lift; a 1x1 array, constant or computed, stays an array (probes/t2455-transpose-single-value
+// A12:A16, A70:A72, docs/excel-semantics/text.md, T-2455).
+#[test]
+fn transpose_of_a_single_value_is_that_value() {
+    let mut model = new_empty_model();
+    model._set("B1", "5");
+    model._set("B2", "a,b");
+    model._set("A1", r#"=COLUMNS(TEXTSPLIT(TRANSPOSE("a,b"),","))"#);
+    model._set("A2", r#"=COLUMNS(TEXTSPLIT(TRANSPOSE(B2),","))"#);
+    model._set("A3", r#"=COLUMNS(TEXTSPLIT(TRANSPOSE(B2:B2),","))"#);
+    model._set("A4", "=ISREF(TRANSPOSE(B1))");
+    model._set("A5", r#"=COLUMNS(TEXTSPLIT(TRANSPOSE({"a,b"}),","))"#);
+    model._set(
+        "A6",
+        r#"=COLUMNS(TEXTSPLIT(TRANSPOSE(IF(TRUE,{"a,b"})),","))"#,
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("A3"), "2");
+    assert_eq!(model._get_text("A4"), "FALSE");
+    assert_eq!(model._get_text("A5"), "1");
+    assert_eq!(model._get_text("A6"), "1");
+}

@@ -27,7 +27,7 @@ jobs:
   # from the PR's base commit, so a PR cannot change how its own files are classified.
   changes:
     name: changes (docs-only?)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       # The heavy jobs run unless this is exactly 'false': a failed or skipped classification step
       # gives 'true', and a job that never ran leaves it empty.
@@ -60,7 +60,7 @@ jobs:
     name: rust (fmt, clippy, test)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.run_heavy != 'false' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.97
@@ -75,7 +75,7 @@ jobs:
     name: eval (Excel-compatibility gate)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.run_heavy != 'false' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.97
@@ -98,7 +98,7 @@ jobs:
     name: python (tools + bindings)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.run_heavy != 'false' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.97
@@ -109,7 +109,7 @@ jobs:
 
   hygiene:
     name: hygiene (ratchets, deny, machete, typos, governance)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:

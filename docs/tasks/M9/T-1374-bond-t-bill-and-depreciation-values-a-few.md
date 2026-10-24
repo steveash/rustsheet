@@ -8,6 +8,7 @@ priority: P3
 size: M
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -50,10 +51,71 @@ cells; this task keeps whatever PRICE/ODDFPRICE residue T-2207 leaves.
 One probe point per function is not enough to fit a formulation: first add an oracle sweep per function family
 (excel-probe skill; probes-numeric like T-0942), then fit. Split per family if larger than M.
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): PRICE, DURATION, MDURATION and PRICEMAT values of the financial sweep visibly off (`DURATION(36678,44307,46.05170259237739,0.2,4)` Excel 4.785592595796413, ours 4.785592595773397; `PRICE(43830,45293,100,278,50,4,1)` -133.76680342333566, ours ...657; `PRICEMAT(38879,45322,33651,2,2.14379,..)` -2696.0973159209293, ours ...5355), and last-digit cells of the bond, CUMIPMT, CUMPRINC, YIELD, SLN, DOLLARDE, DOLLARFR, FVSCHEDULE, INTRATE and PRICEMAT calls.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 visibly off.
+Examples:
+- gen-m9/0a957119475760c5 Calc!A279 `=PRICE(38136,44737,1E+300,7,100,2)`: Excel 8.95449454935698e+300, ours 8.95449454935699e+300
+- gen-m9/30e20ba3302fea8b Calc!A90 `=MDURATION(39697,44449,CHOOSE(3,Data!D3,-Data!$E10,EDATE(58318,22)),DATEVALUE("15-Mar-2021"),2,Data!$A8)`: Excel 5.029680055838246e-07, ours 5.029680055838228e-07
+- gen-m9/30e20ba3302fea8b Calc!A310 `=PRICEMAT(39955,45657,34754,FINV(1E-100,2,3),0.05,1)`: Excel 1.7583339520153275e+69, ours 1.7583339520153015e+69
+- gen-m9/3c06f9298f65a3ba Calc!A326 `=DURATION(36678,44307,CHISQ.INV(1-1E-10,2),Data!E5,4)`: Excel 4.785592595796413, ours 4.785592595773397
+- gen-m9/a91bad4e84f49739 Calc!A142 `=PRICE(43830,45293,100,CEILING.MATH(PERCENTILE.INC(Data!C2:D11,Data!C11),DATEDIF(100,8589,"M")),50,4,1)`: Excel -133.76680342333566, ours -133.76680342333657
+- gen-m9/b6a02893a8d6b151 Calc!A260 `=PRICEMAT(38879,45322,33651,2,YIELD(39824,45657,SUM(Data!B$3,0.1),96,106,2,4))`: Excel -2696.0973159209293, ours -2696.0973159215355
+Cells:
+- gen-m9/0a957119475760c5.case.json (1): Calc!A279
+- gen-m9/30e20ba3302fea8b.case.json (2): Calc!A90, A310
+- gen-m9/3c06f9298f65a3ba.case.json (1): Calc!A326
+- gen-m9/a91bad4e84f49739.case.json (1): Calc!A142
+- gen-m9/b6a02893a8d6b151.case.json (1): Calc!A260
+
+Last-digit cells of the same sweep (not visibly off; re-check them after the fix):
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 53 known-failure lines in eval/baseline/gen-m9.txt, 53 last-digit (not visibly off).
+Examples:
+- gen-m9/0a957119475760c5 Calc!A265 `=CUMIPMT(0.05/12,334,1,12,22,1)`: Excel -0.044598593849635604, ours -0.0445985938496356
+- gen-m9/67a4c03afd63f988 Calc!A91 `=DOLLARFR(BESSELJ(700,2),28)`: Excel 0.0017843081440053886, ours 0.001784308144005389
+- gen-m9/7d2979fba2c95d64 Calc!A318 `=DOLLARFR(T.DIST.RT(0.5,9),25)`: Excel 0.07863391247825333, ours 0.07863391247825331
+Cells:
+- gen-m9/01523d247594952e.case.json (1): Calc!A225
+- gen-m9/0a957119475760c5.case.json (2): Calc!A19, A265
+- gen-m9/1b60bf99d71424e7.case.json (3): Calc!A112, A181, A381
+- gen-m9/1cd3096e3e87c965.case.json (1): Calc!A359
+- gen-m9/31474c20fc1dafd6.case.json (4): Calc!A61, A201, A311, A319
+- gen-m9/3aa168259335be54.case.json (4): Calc!A70, A119, A153, A348
+- gen-m9/3c06f9298f65a3ba.case.json (2): Calc!A175, A211
+- gen-m9/5c6a23c4f6597f1c.case.json (2): Calc!A7, A150
+- gen-m9/6376e27be7a05871.case.json (1): Calc!A120
+- gen-m9/67a4c03afd63f988.case.json (4): Calc!A91, A208, A332, A355
+- gen-m9/762cd0e4ec9a7aa9.case.json (1): Calc!A64
+- gen-m9/79d87fc527927626.case.json (3): Calc!A156, A163, A254
+- gen-m9/7d2979fba2c95d64.case.json (2): Calc!A190, A318
+- gen-m9/81bcdc0bec0c8e6b.case.json (1): Calc!A59
+- gen-m9/89f0aee953a55a45.case.json (1): Calc!A152
+- gen-m9/9a1fa5366bc50918.case.json (3): Calc!A165, A228, A312
+- gen-m9/9d9ceba257f8001b.case.json (2): Calc!A262, A395
+- gen-m9/a91bad4e84f49739.case.json (2): Calc!A28, A389
+- gen-m9/abb7d565af89b849.case.json (1): Calc!A73
+- gen-m9/b6a02893a8d6b151.case.json (1): Calc!A274
+- gen-m9/b72d952c5f52cb4d.case.json (2): Calc!A159, A179
+- gen-m9/b73c6cc96e093f03.case.json (4): Calc!A12, A41, A111, A306
+- gen-m9/ba4ddb817a8e700e.case.json (2): Calc!A116, A227
+- gen-m9/bc04c1f478c9896c.case.json (1): Calc!A292
+- gen-m9/d912671baa1364aa.case.json (1): Calc!A104
+- gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A23, A317
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 6 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] The 53 T-2257 last-digit lines in Context are re-checked after the fix; the Outcome says how many pass.
 - [ ] A probes-numeric sweep for the bond and depreciation families is oracle-filled.
 - [ ] The base rows above pass, or the Outcome records which formulation was ruled out.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - FV, PMT, PPMT, NPV (T-0901); IRR, RATE, XIRR, MIRR (T-0916).
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-23, T-2257): the gen-m9 cells listed under "T-2257 sweep" in Context are visibly off (wrong
+type, error, text, or a value off by more than half a unit of the 15th significant digit), so the task is in the campaign. Its
+target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
+Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
+to a follow-up task filed without the key.

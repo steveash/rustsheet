@@ -405,3 +405,35 @@ fn byrow_bycol_of_a_single_value_call_the_lambda_once() {
     assert_eq!(model._get_text("A6"), "x!");
     assert_eq!(model._get_text("A7"), "ü2");
 }
+
+#[test]
+fn makearray_array_step_is_one_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAKEARRAY(2,2,LAMBDA(r,c,{1,2}))");
+    model._set("A5", "=MAKEARRAY(1,1,LAMBDA(r,c,{1,2}))");
+    model._set("A7", "=MAKEARRAY(1,2,LAMBDA(r,c,r+c))");
+    model._set("A9", "=ROWS(MAKEARRAY(2,2,LAMBDA(r,c,VSTACK(r,c))))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+    assert_eq!(model._get_text("A2"), "");
+    assert_eq!(model._get_text("B1"), "");
+    assert_eq!(model._get_text("A5"), "#CALC!");
+    assert_eq!(model._get_text("A7"), "2");
+    assert_eq!(model._get_text("B7"), "3");
+    assert_eq!(model._get_text("A9"), "#CALC!");
+}
+
+#[test]
+fn lambda_step_is_calc_per_element_only_where_shown() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYCOL({1,2,3},LAMBDA(x,LAMBDA(v,v)))");
+    model._set("A3", "=BYROW({1;2},LAMBDA(x,LAMBDA(v,v)))");
+    model._set("A6", "=MAP({1,2;3,4},LAMBDA(x,LAMBDA(v,v)))");
+    // Consumed, the element is `#VALUE!` (gen-m7 23b5367c18059af2 A2578).
+    model._set("A9", "=\"a\"&MAP({1},LAMBDA(x,LAMBDA(v,v)))");
+    model.evaluate();
+    for cell in ["A1", "B1", "C1", "A3", "A4", "A6", "B6", "A7", "B7"] {
+        assert_eq!(model._get_text(cell), "#CALC!", "{cell}");
+    }
+    assert_eq!(model._get_text("A9"), "#VALUE!");
+}

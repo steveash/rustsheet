@@ -27,6 +27,11 @@ Triage lead (two cells only, so not a fit): for E2, `-expm1(-exp(k*(ln x - ln l)
 form (`k/l (x/l)^(k-1) exp(-(x/l)^k)`, `exp(-t)/l`, the log-space form) gives E3.
 **Needs an oracle sweep (T-0018):** fit against the T-1046 Weibull sweep, never blind.
 
+Moved from T-0973 (2026-10-23): gen-m9/c468f5046aadfbbc Calc!A294
+`=GAMMALN.PRECISE(WEIBULL.DIST((1000000000000000.0/Data!B2),30,10000000001,FALSE))`: Excel 226.06046631490682, ours
+226.0604663149069. The density is 6.6555952475332895e-99 here, so GAMMALN returns -LN(density) exactly, and the 3-ulp miss is
+the density's (statrs `pdf`, see T-2239's exp(k*ln(x/l)) lead).
+
 ## Acceptance criteria
 - [ ] Both lines leave `eval/baseline/ironcalc-calc.txt`, the T-1046 Weibull probe cells pass (or the
       PR lists the residue), no new lines in any baseline.

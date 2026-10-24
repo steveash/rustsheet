@@ -31,8 +31,14 @@ use crate::workbook::{engine_rc, resolve_range, sheet_index, sheet_metas, Workbo
 pub enum Input {
     /// A typed value, stored as is (text is never reinterpreted as a number or formula).
     Value(Value),
-    /// A formula; must start with `=`.
+    /// A formula as a user types it; must start with `=`. Excel refuses some typed formulas it
+    /// reads when stored, and so does this: a LET name or LAMBDA parameter spelled like a cell
+    /// (`=LET(f1,1,f1+1)`) is [`EditError::InvalidInput`] (decision 0103).
     Formula(String),
+    /// A formula as an xlsx file stores it, read as xlsx import reads a dynamic-array `<f>`; must
+    /// start with `=`. LET names and LAMBDA parameters spelled like a cell bind, as Excel binds
+    /// them stored as `_xlpm.f1` (decision 0103). Use it to replay stored formulas.
+    StoredFormula(String),
     /// A formula as a pre-dynamic-array workbook stores it; must start with `=`. Functions
     /// that expect a scalar implicitly intersect a range, so `=A1:A2` is stored as `=@A1:A2`,
     /// exactly as xlsx import reads a plain `<f>`.
@@ -314,15 +320,18 @@ impl Txn<'_> {
             Input::Clear | Input::Value(Value::Empty) => {
                 model.set_user_input(sheet, row, col, String::new())
             }
-            Input::Formula(text) | Input::LegacyFormula(text) if !text.starts_with('=') => {
+            Input::Formula(text) | Input::StoredFormula(text) | Input::LegacyFormula(text)
+                if !text.starts_with('=') =>
+            {
                 return Err(EditError::InvalidInput {
                     cell,
                     message: format!("\"{text}\" is not a valid formula"),
                 });
             }
             Input::Parse(text) | Input::Formula(text) => {
-                model.set_user_input(sheet, row, col, text)
+                model.set_typed_user_input(sheet, row, col, text)
             }
+            Input::StoredFormula(text) => model.set_user_input(sheet, row, col, text),
             Input::LegacyFormula(text) => {
                 model.set_cell_with_legacy_formula(sheet, row, col, &text)
             }

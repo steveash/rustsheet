@@ -104,7 +104,7 @@ fn shared_member_before_master_is_shifted_with_absolute_refs() {
 <row r="2"><c r="A2"><f t="shared" si="3"/><v>0</v></c></row>
 <row r="1"><c r="A1"><f t="shared" ref="A1:A2" si="3">$B1+C$1+ SUM(D1:E2)</f><v>0</v></c></row>
 </sheetData></worksheet>"#;
-    let cells = parse_sheet(xml, "s.xml", &[], &[]).unwrap_or_default();
+    let cells = parse_sheet(xml, "s.xml", &[], &[], DateSystem::Excel1900).unwrap_or_default();
     let a2 = Addr::parse("A2")
         .and_then(|a| cells.get(&a))
         .and_then(|c| c.formula.clone());
@@ -113,7 +113,14 @@ fn shared_member_before_master_is_shifted_with_absolute_refs() {
 
 #[test]
 fn parses_values_formulas_shared_and_arrays() {
-    let cells = parse_sheet(SHEET, "sheet1.xml", &["hi".to_string()], &[]).unwrap_or_default();
+    let cells = parse_sheet(
+        SHEET,
+        "sheet1.xml",
+        &["hi".to_string()],
+        &[],
+        DateSystem::Excel1900,
+    )
+    .unwrap_or_default();
     let get = |s: &str| Addr::parse(s).and_then(|a| cells.get(&a)).cloned();
     assert_eq!(get("A1").map(|c| c.value), Some(Value::Number(1.5)));
     assert_eq!(get("B1").map(|c| c.value), Some(Value::Text("hi".into())));
@@ -147,7 +154,8 @@ fn rich_value_errors_replace_the_cached_value_error() {
     let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="e" vm="1"><f>1</f><v>#VALUE!</v></c><c r="B1" t="e" vm="2"><f>1</f><v>#VALUE!</v></c><c r="C1" t="e"><f>1</f><v>#VALUE!</v></c></row></sheetData></worksheet>"#;
     // errorType 13 = #CALC!, 8 = #SPILL! (ERROR.TYPE.xlsx)
     let rich = [Some("#CALC!"), Some("#SPILL!")];
-    let cells = parse_sheet(sheet, "sheet1.xml", &[], &rich).unwrap_or_default();
+    let cells =
+        parse_sheet(sheet, "sheet1.xml", &[], &rich, DateSystem::Excel1900).unwrap_or_default();
     let get = |s: &str| {
         Addr::parse(s)
             .and_then(|a| cells.get(&a))
@@ -163,7 +171,8 @@ fn rich_value_errors_replace_the_cached_value_error() {
 fn unresolved_rich_value_error_is_undecoded() {
     let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="e" vm="3"><f>1</f><v>#VALUE!</v></c><c r="B1" t="e" vm="1"><f>1</f><v>#VALUE!</v></c><c r="C1" t="e" vm="1"><f>1</f><v>#N/A</v></c></row></sheetData></worksheet>"#;
     let rich = [None, Some("#CALC!")];
-    let cells = parse_sheet(sheet, "sheet1.xml", &[], &rich).unwrap_or_default();
+    let cells =
+        parse_sheet(sheet, "sheet1.xml", &[], &rich, DateSystem::Excel1900).unwrap_or_default();
     let get = |s: &str| {
         Addr::parse(s)
             .and_then(|a| cells.get(&a))
@@ -178,7 +187,8 @@ fn unresolved_rich_value_error_is_undecoded() {
 fn decodes_xlsx_control_char_escapes_in_text_values() {
     // CHAR.xlsx stores CHAR(1) as `_x0001_`.
     let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="str"><f>CHAR(1)</f><v>_x0001_</v></c></row></sheetData></worksheet>"#;
-    let cells = parse_sheet(sheet, "sheet1.xml", &[], &[]).unwrap_or_default();
+    let cells =
+        parse_sheet(sheet, "sheet1.xml", &[], &[], DateSystem::Excel1900).unwrap_or_default();
     let get = |s: &str| {
         Addr::parse(s)
             .and_then(|a| cells.get(&a))
@@ -240,4 +250,33 @@ mod anchor_formula_tests {
         assert_eq!(member.anchor_formula(&sheets, "Other"), None);
         assert_eq!(cell(None, None).anchor_formula(&sheets, "S"), None);
     }
+}
+
+/// A `t="d"` cell's cached value is its date's serial in the workbook's date system (T-2515,
+/// fixtures/t-d-1904, t-d-1904-pre-epoch).
+#[test]
+fn t_d_values_follow_the_date_system() {
+    let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="d"><v>2024-01-01T00:00:00</v></c><c r="B1" t="d"><v>1903-12-31</v></c></row></sheetData></worksheet>"#;
+    let value = |system, s: &str| {
+        let cells = parse_sheet(sheet, "sheet1.xml", &[], &[], system).unwrap_or_default();
+        Addr::parse(s)
+            .and_then(|a| cells.get(&a))
+            .map(|c| c.value.clone())
+    };
+    assert_eq!(
+        value(DateSystem::Excel1900, "A1"),
+        Some(Value::Number(45292.0))
+    );
+    assert_eq!(
+        value(DateSystem::Excel1904, "A1"),
+        Some(Value::Number(43830.0))
+    );
+    assert_eq!(
+        value(DateSystem::Excel1900, "B1"),
+        Some(Value::Number(1461.0))
+    );
+    assert_eq!(
+        value(DateSystem::Excel1904, "B1"),
+        Some(Value::Error("#VALUE!".into()))
+    );
 }

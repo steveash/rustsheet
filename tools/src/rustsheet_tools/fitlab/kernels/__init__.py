@@ -14,9 +14,10 @@ from rustsheet_tools.fitlab.kernels import (
     norm_inv,
     power,
     solvers,
+    yield_caret,
 )
 
-MODULES = [erfc, annuity, power, gamma, solvers, beta, norm_inv, beta_inv, mirr, asin]
+MODULES = [erfc, annuity, power, gamma, solvers, beta, norm_inv, beta_inv, mirr, asin, yield_caret]
 
 
 def registry() -> dict[str, Fit]:

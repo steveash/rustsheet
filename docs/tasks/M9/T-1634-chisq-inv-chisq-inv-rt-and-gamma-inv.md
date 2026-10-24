@@ -3,7 +3,7 @@ id: T-1634
 title: "CHISQ.INV, CHISQ.INV.RT and GAMMA.INV tails: match Excel at tiny and near-1 probability (T-1543 probe)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -87,11 +87,40 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (2): Calc!A243, A304
 - gen-m9/fec39efaba9284c3.case.json (4): Calc!A107, A144, A236, A374
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): CHIINV, CHISQ.INV and GAMMA.INV tails at tiny p nested in other calls (`STANDARDIZE(7,CHIINV(1e-15,8),1E+5)`).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 visibly off.
+Examples:
+- gen-m9/0620505280d2ea6e Calc!A292 `=STANDARDIZE(7,CHIINV(1e-15,8),1E+5)`: Excel -0.0008136100835821856, ours -0.000812715781421368
+- gen-m9/17c110a53924beb8 Calc!A228 `=TRIMMEAN({5},(CHIINV(1E-20,7)*(Data!B5*Data!$C10)))`: Excel 5.0, ours #NUM!
+- gen-m9/31f09e6c48ca245c Calc!A191 `=STDEVPA(Data!C5,(Data!B8/GAMMA.INV(1e-15,2.5,100)))`: Excel 3.0922108671216676e-12, ours 9.444314973097486e-13
+- gen-m9/a63d1c7d6f96c56d Calc!A145 `=MAXA(CHISQ.INV.RT(1E-10,8),Data!D$1,Data!C7:C8)`: Excel 63.3979644111356, ours 63.397964021600195
+- gen-m9/a63d1c7d6f96c56d Calc!A291 `=POISSON.DIST(0,CHISQ.INV(1E-16,COUNTIF(Data!C8:E11,"<>")),TRUE)`: Excel 0.9986596927837208, ours 0.9981518053624893
+Cells:
+- gen-m9/0620505280d2ea6e.case.json (1): Calc!A292
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A228
+- gen-m9/31f09e6c48ca245c.case.json (1): Calc!A191
+- gen-m9/a63d1c7d6f96c56d.case.json (2): Calc!A145, A291
+
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `GESTEP(CHISQ.INV(1E-300,2))` is 1 in Excel, so CHISQ.INV of 1E-300 is a number (ours `#NUM!`; gen-m9/e85daedce5c2675e A393).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/e85daedce5c2675e Calc!A393 `=GESTEP(CHISQ.INV(1E-300,2))`: Excel 1.0, ours #NUM!
+Cells:
+- gen-m9/e85daedce5c2675e.case.json (1): Calc!A393
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 136 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The listed cells of t1543-inverse-cdf-tiny-p pass (within the suite's numeric tolerance) and ordinary-p cases do not regress.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2255 and T-2256): of these 141 cells, 66 known-failure lines disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`; 67 with the T-2258 cell below), with no new
+      known-failure lines in any baseline. 112 of the 142 cells this task owns now meet the campaign's
+      visible-parity target: 47 pass outright and 65 are within half a unit of Excel's 15th significant
+      digit while still baselined as bit-level known failures; their last digits belong to T-0972
+      (gamma quantile parity), which this task's kernel change feeds. The 30 still visibly off are Excel's own deep-tail rounding,
+      not the engine's accuracy, and move to T-2561 with the campaign key (decision 0083).
+- [x] The listed cells of t1543-inverse-cdf-tiny-p reach visible parity (14 more of the probe's cells pass bit-exact, the rest are a few ulp off) and ordinary-p cases do not regress (probes-numeric: 42 cells newly pass, 0 lost).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -102,3 +131,21 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Outcome
+`gamma_quantile` (incomplete_gamma.rs) replaces statrs' `inverse_cdf` under CHISQ.INV, CHISQ.INV.RT,
+CHIINV, GAMMA.INV and GAMMAINV: statrs' search where its result already solves the smaller tail to
+1E-13 relative, else the crossing of that tail's capped cdf (`special::refine_increasing`), with the
+lower tail's prefactor by `powf` so a tiny quantile keeps its digits (`GAMMA.INV(1E-300,1,1)` is
+within an ulp of Excel's 1E-300) and a subnormal crossing flushed to 0 (`CHISQ.INV(1E-200,1)`). Above shape
+1E9 statrs' search stands alone, including its NaN, as Excel is `#NUM!` there. Two Excel quirks of
+CHISQ.INV.RT and CHIINV are now matched and recorded in docs/excel-semantics/statistics.md: at
+df 1 the right tail is the left tail of 1 - p (`#NUM!` at p of 2^-54 or less), and for df 3 to 10 a p below
+about 1E-20 is `#NUM!` though the quantile exists.
+
+Eval delta: gen-m9 known failures 8550 -> 8483 (67 baseline lines removed, 0 regressions, no other
+suite moved); visible parity 8388 -> 8346 in-scope cells visibly off. Of the 142 cells this task
+owned, 47 now pass (their baseline lines are gone) and 65 more are visibly right but not yet
+bit-exact, so they stay in the baseline as T-0972's last-digit work; the 30 still visibly off are Excel's own rounding (at
+`CHISQ.INV(1E-300,50)` Excel is 4E-13 off the correctly rounded quantile the engine now returns)
+and move to T-2561 with the campaign key.

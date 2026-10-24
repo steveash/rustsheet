@@ -1286,6 +1286,10 @@
     "t": "e",
     "v": "#VALUE!"
    },
+   "A2834": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A284": {
     "t": "e",
     "v": "#N/A"
@@ -1825,6 +1829,14 @@
    "A3288": {
     "t": "n",
     "v": -2.5
+   },
+   "A3298": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3299": {
+    "t": "e",
+    "v": "#VALUE!"
    },
    "A3310": {
     "t": "e",
@@ -2409,6 +2421,26 @@
    "A3984": {
     "t": "s",
     "v": "x~*"
+   },
+   "A3994": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3995": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3996": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3997": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3998": {
+    "t": "e",
+    "v": "#VALUE!"
    },
    "A4006": {
     "t": "n",
@@ -3769,6 +3801,14 @@
    "B3273": {
     "t": "s",
     "v": "1FALSE"
+   },
+   "B3298": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B3299": {
+    "t": "e",
+    "v": "#VALUE!"
    },
    "B3384": {
     "t": "n",
@@ -6265,8 +6305,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "5aadca15cc4ccf585e2f3ae33021c2aedaf9b7ef059f8c1fc84624005e9603ae",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T22:13:07+00:00",
+  "produced_at": "2026-10-23T04:46:55+00:00",
   "version": null,
-  "workbook_name": "be9938ed9d5ca711e891bb0d97aa1cb5665da5f1df2bff60e1ec61e0116f2765.xlsx"
+  "workbook_name": "65202b4e6662f25ca53612e69442ec1711e860df943d38665fd13406b6bfaa7d.xlsx"
  }
 }

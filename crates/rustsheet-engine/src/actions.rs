@@ -57,7 +57,7 @@ where
 // Returns whether the interval [start, end] survives the move without being
 // split: it must be fully inside the moved group, fully inside the displaced
 // zone or fully outside both.
-fn interval_survives_move(
+pub(crate) fn interval_survives_move(
     start: i32,
     end: i32,
     group_start: i32,
@@ -78,7 +78,7 @@ fn interval_survives_move(
 // Returns the new position of the interval [start, end] after moving the group
 // [group_start, group_end] by `delta` (`count` is the size of the group).
 // Assumes `interval_survives_move` holds.
-fn displace_interval_for_move(
+pub(crate) fn displace_interval_for_move(
     start: i32,
     end: i32,
     group_start: i32,
@@ -1703,8 +1703,8 @@ impl Model {
         {
             return Err("Cannot move columns because that would split a merged cell".to_string());
         }
+        self.move_pivots(sheet, PivotLines::Columns, column, group_end, delta)?;
         self.reset_dynamic_array_spills(sheet)?;
-        self.drop_pivots_on(sheet)?;
 
         // Merged ranges are remapped wholesale at the end; take them out so the
         // per-column rebuild (which goes through `set_user_input`) does not trip
@@ -1779,8 +1779,8 @@ impl Model {
         {
             return Err("Cannot move rows because that would split a merged cell".to_string());
         }
+        self.move_pivots(sheet, PivotLines::Rows, row, group_end, delta)?;
         self.reset_dynamic_array_spills(sheet)?;
-        self.drop_pivots_on(sheet)?;
 
         // Merged ranges are remapped wholesale at the end; take them out so the
         // per-row rebuild (which goes through `set_user_input`) does not trip

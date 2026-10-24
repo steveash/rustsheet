@@ -3,7 +3,7 @@ id: T-2360
 title: "PIVOTBY and GROUPBY: array LAMBDA results over several value columns and WORKDAY.INTL holiday errors (t2311 probe cells)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -29,11 +29,15 @@ one-row group and a several-row group to pin it down. Owned: 26 known-failure li
 - gen-m7/21b4eef18424ce94.case.json A1504 `=REGEXEXTRACT((("#N/A"&"Hello World")&(Data!B5&"#N/A")),"x*",_xlfn.GROUPBY(Data!B1:B12,Data!B1:E12,LAMBDA(acc,acc),3),1)`: B1505 Excel "", ours #VALUE!; cells (26): B1505:E1505, B1506, E1506, C1507:E1507, C1508, C1509:E1509, B1510:E1510, C1511:E1511, B1512, E1512, B1513, D1513:E1513, C1514
 
 ## Acceptance criteria
-- [ ] The four probe lines above disappear from eval/baseline/probes.txt, no new known failures.
-- [ ] Visible parity: the 26 gen-m7 lines listed under Context (T-2254 triage) disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The rules are recorded in docs/excel-semantics (arrays.md, dates.md) with probe cells.
-- [ ] Unit tests cover them.
-- [ ] `make check` green; reviewers approve.
+Reduced scope (split 2026-10-23): the nested-array cells need a spec first (CLAUDE.md directive 4) and moved to T-2459, the
+blank-key cells to T-2460.
+- [x] P!D46 and P!D51 of probes/t2311-pivotby-value-cause pass (D51 leaves eval/baseline/probes.txt), no new known failures
+      outside the new probe case.
+- [ ] P!C12 and P!D12 of probes/t2311-pivotby-value-columns-error: moved to T-2459.
+- [ ] Visible parity: the 26 gen-m7 lines listed under Context: moved to T-2459.
+- [x] The rules are recorded in docs/excel-semantics (arrays.md, dates.md) with probe cells.
+- [x] Unit tests cover the WORKDAY rule (`number_text_in_a_holidays_array_is_a_holiday`).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Pivot tables (SPEC-0015).
@@ -43,3 +47,18 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probe probes/t2360-array-lambda-holidays (508 cells, excel-graph, 2026-10-23) answers both questions.
+- WORKDAY.INTL holidays: number text inside an array is a holiday (`{"1.5"}`), as it already was in a cell; other text, booleans
+  and `""` are `#VALUE!`. `collect_serial_numbers` now reads `ArrayNode::String` like a text cell (unit test
+  `number_text_in_a_holidays_array_is_a_holiday`). That alone fixes t2311-pivotby-value-cause P!D51 (27) and keeps P!D46 (13);
+  every WORKDAY cell of the probe (W, and the G grid's results) matches. dates.md records it.
+- A GROUPBY/PIVOTBY LAMBDA array result is a nested array in Excel (TYPE 64 through INDEX, even 1x1; top-left when a consumer
+  lifts over it; MAP over it an error), shown as `#VALUE!`. The engine has no nested arrays, so P!C12, P!D12 and the 26 gen-m7
+  lines move to T-2459 (a spec first, CLAUDE.md directive 4). Blank keys stay true blanks in Excel (ours 0): T-2460. arrays.md
+  records both.
+Eval delta: probes known failures: -1 (t2311-pivotby-value-cause P!D51) and +53 new-coverage lines in the new case (47
+nested-array cells owned by T-2459, 6 blank-key cells owned by T-2460); 0 regressions. `make eval-baseline` recorded both and
+set eval/baseline/visible-parity.json to the new count, 6854 (lock 6853): the new case holds 53 visibly-off cells,
+and main's count was below its lock by more than 50; that rise is the one new cases account for (quality-gates.md "Visible parity", decision 0093).

@@ -81,8 +81,31 @@ Cells:
 - gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A2
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A74
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): GROWTH nested in the statistical calls.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 10 known-failure lines in eval/baseline/gen-m9.txt, 10 visibly off.
+Examples:
+- gen-m9/7980ffb6095a340d Calc!A126 `=STDEVPA(MAX(GROWTH(Data!A10:A10,Data!A9:A10,Data!$D5,(-1))),Data!E8:E11)`: Excel #VALUE!, ours #REF!
+- gen-m9/873f30d2bf76f8db Calc!A231 `=NEGBINOMDIST((GROWTH(Data!B11:C12)-0.1),1,0.975)`: Excel #VALUE!, ours #NUM!
+- gen-m9/928d08e3e1eecb5f Calc!A1 `=STANDARDIZE(38.5,POISSON(6,GROWTH(Data!E8,Data!D5:E6),"x"),42)`: Excel #REF!, ours #VALUE!
+- gen-m9/92d4fa29e5510f1e Calc!A341 `=POISSON.DIST(0,(GROWTH(Data!A11:D12)*QUARTILE(Data!B8,42)),1)`: Excel #VALUE!, ours #NUM!
+- gen-m9/a2262ea466fcc142 Calc!A145 `=STDEVP(0.3,GROWTH(Data!C10:D11),SQRT(XLOOKUP(Data!B2,Data!A8:A12,Data!A4:D6)))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/139684e68fb2fc3b.case.json (2): Calc!A296, A317
+- gen-m9/329b177b5d5165ad.case.json (1): Calc!A250
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A12
+- gen-m9/5cebac1f02bf30f2.case.json (1): Calc!A179
+- gen-m9/7980ffb6095a340d.case.json (1): Calc!A126
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A231
+- gen-m9/928d08e3e1eecb5f.case.json (1): Calc!A1
+- gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A341
+- gen-m9/a2262ea466fcc142.case.json (1): Calc!A145
+
+T-1726 (2026-10-24) moved GROWTH onto TREND's shared path (functions/statistical/trend.rs): 26 growth-modes lines and
+the gen-m9 GROWTH order cells went with it; 63 growth-modes lines remain.
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 65 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 75 known-failure lines (65 from T-2255, 10 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the visibly-off cell listed under Context (2026-10-21) has Excel's value to 15 significant digits, or its type, error and text: the 1 line in eval/baseline/probes.txt disappears (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/growth-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.
