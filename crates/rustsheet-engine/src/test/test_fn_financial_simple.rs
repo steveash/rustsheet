@@ -409,6 +409,10 @@ fn discount_securities_check_order() {
     }
     model.evaluate();
     for (row, (formula, expected)) in cases.iter().enumerate() {
-        assert_eq!(model._get_text(&format!("A{}", row + 1)), *expected, "{formula}");
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
     }
 }
