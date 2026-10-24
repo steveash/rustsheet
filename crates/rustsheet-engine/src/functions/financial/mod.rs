@@ -190,30 +190,34 @@ impl Model {
         )
     }
 
+    /// XNPV's values (`error` is #NUM!) or dates (#VALUE!). A values argument that is one empty
+    /// cell is a single cash flow of 0, `XNPV(1,A2,B11)` is 0 (probes/xnpv-empty-values-cell
+    /// C1-C4, T-2066); empty cells in a range stay refused.
     fn get_array_of_numbers_xpnv(
         &mut self,
         arg: &Node,
         cell: &CellReferenceIndex,
         error: Error,
     ) -> Result<Vec<f64>, CalcResult> {
-        self.get_array_of_numbers_generic(
-            arg,
-            cell,
-            true, // accept_number_node
-            || {
-                Err(CalcResult::new_error(
-                    Error::NUM,
-                    *cell,
-                    "Expected number".to_string(),
-                ))
-            },
-            || {
+        let result = self.evaluate_node_in_context(arg, *cell);
+        if error == Error::NUM && matches!(result, CalcResult::EmptyCell) {
+            return Ok(vec![0.0]);
+        }
+        let refuse = |error: Error| {
+            move || {
                 Err(CalcResult::new_error(
                     error.clone(),
                     *cell,
                     "Expected number".to_string(),
                 ))
-            },
+            }
+        };
+        self.array_of_numbers_from(
+            result,
+            cell,
+            true, // accept_number_node
+            refuse(Error::NUM),
+            refuse(error),
         )
     }
 
