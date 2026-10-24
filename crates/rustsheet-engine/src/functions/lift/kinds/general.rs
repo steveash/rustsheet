@@ -9,10 +9,10 @@ use super::{
 };
 use crate::functions::Function;
 
-/// `COMBINA(number, number_chosen)`: both arguments lift. `combin`'s loop multiplies factors of at
-/// least 1 and stops at the first infinity, so it runs at most about 1,030 steps (T-2453); each
-/// element is charged 2^10.
-const COMBINA: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(1 << 10));
+/// `COMBIN(number, number_chosen)` and `COMBINA(number, number_chosen)`: both arguments lift
+/// (T-2579). `combin`'s loop multiplies factors of at least 1 and stops at the first infinity, so
+/// it runs at most about 1,030 steps (T-2453); each element is charged 2^10.
+const COMBIN_FAMILY: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(1 << 10));
 /// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
 /// `WORKDAY(start_date, days, [holidays])` and `NETWORKDAYS(start_date, end_date, [holidays])`:
@@ -282,7 +282,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // over its text (`lift/tests/kernel_work.rs`).
         Function::Log => Some(&LIFT_1_OF_2),
         Function::Decimal | Function::Atan2 => Some(&LIFT_2),
-        Function::Combina => Some(&COMBINA),
+        Function::Combin | Function::Combina => Some(&COMBIN_FAMILY),
         Function::Base => Some(&LIFT_2_OF_3),
         Function::Arabic => Some(&LIFT_1),
         Function::Roman => Some(&LIFT_1_OF_2),
