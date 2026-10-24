@@ -3,7 +3,7 @@ id: T-2131
 title: "IRR's returned iterate to 15 significant digits (50 cells right to only 13-14 digits)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
