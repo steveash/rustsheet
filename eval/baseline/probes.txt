@@ -548,6 +548,7 @@ C	probes/let-bind-implicit-index.case.json	10
 C	probes/let-bind-reference-forms.case.json	11
 C	probes/let-cell-shaped-name-stored.case.json	14
 C	probes/let-cell-shaped-name-typed-control.case.json	3
+C	probes/let-lambda-body-own-name.case.json	7
 C	probes/let-lambda-name-case.case.json	14
 C	probes/let-lambda-reference-results.case.json	18
 C	probes/let-name-call-arrays.case.json	4
@@ -1965,6 +1966,8 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
+F	probes/let-lambda-body-own-name.case.json	Sheet1!A6
+F	probes/let-lambda-body-own-name.case.json	Sheet1!A7
 F	probes/let-name-shadows-defined-name.case.json	Sheet1!B2
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
