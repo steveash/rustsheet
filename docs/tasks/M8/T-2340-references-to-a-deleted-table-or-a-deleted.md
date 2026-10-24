@@ -3,7 +3,7 @@ id: T-2340
 title: "References to a deleted table or a deleted sheet's table are #REF! and FORMULATEXT prints #REF! as Excel does (T-2324)"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -25,25 +25,21 @@ unknown table `#REF!`; share its rewrite. A6 of table-delete-table (`SUM(S!C4:C7
 cells) is T-2341's.
 
 ## Acceptance criteria
-- [ ] Every cell of table-delete-table and table-delete-sheet passes and leaves eval/baseline/probes.txt,
+- [x] Every cell of table-delete-table and table-delete-sheet passes and leaves eval/baseline/probes.txt,
       with no new known failure.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cut and paste, row and column moves, undo and duplicated sheets (desktop, T-2325).
 
-## Handoff (resumed)
-Tried (sonnet run). Table-delete half works on the branch (pushed, `make check` NOT yet run, baseline NOT updated,
-no unit test yet):
-- `Model::delete_table` (tables.rs) reparses with `Parser::set_loaded(true)` plus the new
-  `Parser::set_deleted_table(Some(name))` (parser/mod.rs, operands.rs `name_operand`), so structured references and
-  the bare name (`ROWS(Sales)`) become `#REF!`. `rustsheet-eval show probes/table-edits/table-delete-table.case.json`
-  now passes 12/12.
-Left: table-delete-sheet F!A5, A7, A9, A12 (FORMULATEXT only; values match). Expected `=SUM(#REF!)`,
-`=SUM(#REF!C4:C7)`, `=COUNTA(#REF!)`, `=COLUMN(#REF!)`; ours prints the lowered `S!$C$4:$C$7` and `S!C4:C7`.
-Why I stopped: `take_sheet` (sheet_undo.rs) lowers the other sheets' structured references to plain ranges
-(`take_tables_of_sheet`, tables.rs) so `restore_sheet` can put the tables back; the fix needs a rewrite on a real
-delete (`Model::delete_sheet`, not the undo path) that turns structured references into `#REF!` and plain
-`S!C4:C7` into `#REF!C4:C7` without breaking undo. That is a design call (WrongRangeKind printing/`stringify.rs`,
-or a rewrite pass after `take_sheet`). Next: decide that, then `make eval-baseline`, a unit test for both deletes,
-excel-semantics entry in references.md "Implemented in", `make check`, review, PR.
+## Outcome
+A table delete and a sheet delete now rewrite the stored text of every structured reference to the removed
+tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs, through a new
+`Rewrite::RefError` printer), instead of the handoff's parse-time flag, which a later reparse would have
+lost. The sheet delete records what it rewrote (`TakenSheet`, `Diff::DeleteSheet`), so `restore_sheet` and
+`UserModel` undo put the structured text back (they used to leave lowered plain ranges). A reference to a
+missing sheet is displayed as `#REF!C4:C7` (`missing_sheet_prefix`, stringify.rs; stored text and export keep
+the name), and the lexer reads `#REF!C4:C7` back as `#REF!`, so autofill of such a formula is not a parse
+error. Three upstream move-formula expectations now print `#REF!AB31` for a missing sheet.
+Eval: probes known failures -14 (table-delete-table and table-delete-sheet now pass 12/12 each); 0
+regressions.

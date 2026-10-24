@@ -2282,8 +2282,13 @@ Implemented in: partly. The engine treats every table as SPEC-0016's fallback (a
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
 move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339),
-the `#REF!` spelling of a deleted table or sheet (T-2340), and convert to range (T-2342; the adapter refuses
-`convert_table`) do not. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
+and convert to range (T-2342; the adapter refuses `convert_table`) do not. A deleted table or sheet matches
+(T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
+removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
+undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a
+missing sheet is displayed with `#REF!` for its sheet (`missing_sheet_prefix`, stringify.rs) while its stored
+text keeps the name, and the lexer reads `#REF!C4:C7` back as `#REF!` (engine choice: whether Excel accepts
+that text typed in is unprobed). The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
 Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342

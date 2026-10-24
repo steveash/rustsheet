@@ -3,6 +3,7 @@
 use crate::{
     model::Model,
     pivot::PivotTable,
+    tables::RewrittenFormula,
     types::{Table, Worksheet},
 };
 
@@ -16,6 +17,17 @@ pub struct TakenSheet {
     tables: Vec<(String, Table)>,
     /// Its pivot tables; [`Model::restore_sheet`] puts them back (SPEC-0015, T-2086).
     pivots: Vec<PivotTable>,
+    /// The other formulas whose references to its tables became `#REF!`; [`Model::restore_sheet`]
+    /// puts their text back (T-2340).
+    rewritten: Vec<RewrittenFormula>,
+}
+
+impl TakenSheet {
+    /// The other formulas the delete rewrote, for an undo that does not restore the
+    /// [`TakenSheet`] itself ([`crate::UserModel`]'s history).
+    pub(crate) fn into_rewritten(self) -> Vec<RewrittenFormula> {
+        self.rewritten
+    }
 }
 
 impl Model {
@@ -36,13 +48,14 @@ impl Model {
             return Err("Sheet index too large".to_string());
         }
         let pivots = self.take_pivots_on(sheet_index)?;
-        let tables = self.take_tables_of_sheet(sheet_index);
+        let (tables, rewritten) = self.take_tables_of_sheet(sheet_index);
         let worksheet = self.workbook.worksheets.remove(sheet_index as usize);
         self.reset_tables();
         Ok(TakenSheet {
             worksheet,
             tables,
             pivots,
+            rewritten,
         })
     }
 
@@ -53,6 +66,7 @@ impl Model {
             worksheet: sheet,
             tables,
             pivots,
+            rewritten,
         } = sheet;
         if sheet_index as usize > self.workbook.worksheets.len() {
             return Err("Sheet index out of range".to_string());
@@ -67,6 +81,7 @@ impl Model {
             return Err("A worksheet already exists with that name".to_string());
         }
         self.workbook.worksheets.insert(sheet_index as usize, sheet);
+        self.restore_table_references(rewritten);
         self.restore_tables(tables);
         self.restore_pivots(pivots);
         Ok(())

@@ -22,6 +22,7 @@ use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
 pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
+    to_string_with_ref_errors,
 };
 
 pub enum DisplaceData {
@@ -73,9 +74,33 @@ enum Rewrite<'a> {
     Lower(&'a [String], Option<i32>),
     /// Prints every `#This Row` as its area on the printing cell's row (T-1699).
     LowerThisRow,
+    /// Prints `#REF!` for every structured reference to one of these tables (lowercase names):
+    /// the tables a table or sheet delete removes, as Excel rewrites them (T-2340).
+    RefError(&'a [String]),
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
+
+/// A reference to a sheet that does not exist (a deleted one) is displayed as `#REF!` before the
+/// cell or range, as Excel prints `=SUM(#REF!C4:C7)` for `S!C4:C7` once S is deleted (T-2340,
+/// probes/table-edits/table-delete-sheet); the lexer reads that text back as `#REF!`. The stored
+/// R1C1 text and the export keep the name, so an undo that restores the sheet restores the
+/// reference. An external reference (`[1]Uses!A1`) is not a missing sheet.
+fn missing_sheet_prefix<'a>(
+    sheet_name: &'a Option<String>,
+    context: Option<&CellReferenceRC>,
+    export_to_excel: bool,
+) -> (&'static str, &'a Option<String>) {
+    const NO_SHEET: &Option<String> = &None;
+    let missing = sheet_name
+        .as_deref()
+        .is_some_and(|name| !name.starts_with('['));
+    if missing && context.is_some() && !export_to_excel {
+        ("#REF!", NO_SHEET)
+    } else {
+        ("", sheet_name)
+    }
+}
 
 /// This is the internal mode in IronCalc
 /// Formulas internally are stored in R1C1 format, the locale and language are always "en"
@@ -480,7 +505,7 @@ fn stringify(
             }
             &DisplaceData::None
         }
-        Rewrite::Lower(..) | Rewrite::LowerThisRow => &DisplaceData::None,
+        Rewrite::Lower(..) | Rewrite::LowerThisRow | Rewrite::RefError(_) => &DisplaceData::None,
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
@@ -499,20 +524,24 @@ fn stringify(
             row,
             absolute_row,
             absolute_column,
-        } => stringify_reference(
-            context,
-            &DisplaceData::None,
-            &Reference {
-                sheet_name,
-                sheet_index: 0,
-                row: *row,
-                column: *column,
-                absolute_row: *absolute_row,
-                absolute_column: *absolute_column,
-            },
-            false,
-            false,
-        ),
+        } => {
+            let (prefix, sheet_name) = missing_sheet_prefix(sheet_name, context, export_to_excel);
+            let text = stringify_reference(
+                context,
+                &DisplaceData::None,
+                &Reference {
+                    sheet_name,
+                    sheet_index: 0,
+                    row: *row,
+                    column: *column,
+                    absolute_row: *absolute_row,
+                    absolute_column: *absolute_column,
+                },
+                false,
+                false,
+            );
+            format!("{prefix}{text}")
+        }
         ReferenceKind {
             sheet_name,
             sheet_index,
@@ -623,6 +652,7 @@ fn stringify(
                 && *absolute_column2
                 && (*column1 == 1)
                 && (*column2 == LAST_COLUMN);
+            let (prefix, sheet_name) = missing_sheet_prefix(sheet_name, context, export_to_excel);
             let s1 = stringify_reference(
                 context,
                 &DisplaceData::None,
@@ -651,7 +681,7 @@ fn stringify(
                 full_row,
                 full_column,
             );
-            format!("{s1}:{s2}")
+            format!("{prefix}{s1}:{s2}")
         }
         OpRangeKind { left, right } => {
             let operand = |n: &Node| tight_operand(sub(n), n);

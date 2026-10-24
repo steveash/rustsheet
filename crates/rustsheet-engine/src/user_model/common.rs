@@ -616,13 +616,11 @@ impl UserModel {
     /// * [`Model::delete_sheet`]
     pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        self.push_diff_list(vec![Diff::DeleteSheet {
-            sheet,
-            old_data: Box::new(worksheet.clone()),
-            tables: self.model.tables_on_sheet(&worksheet.name),
-        }]);
+        let old_data = Box::new(worksheet.clone());
+        let tables = self.model.tables_on_sheet(&worksheet.name);
+        let rewritten = self.model.take_sheet(sheet)?.into_rewritten();
 
-        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        let sheet_count = self.model.workbook.worksheets.len() as u32 + 1;
         // If we are deleting the last sheet we need to change the selected sheet
         if sheet == sheet_count - 1 && sheet_count > 1 {
             if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
@@ -630,7 +628,12 @@ impl UserModel {
             };
         }
 
-        self.model.delete_sheet(sheet)?;
+        self.push_diff_list(vec![Diff::DeleteSheet {
+            sheet,
+            old_data,
+            tables,
+            rewritten,
+        }]);
         Ok(())
     }
 
