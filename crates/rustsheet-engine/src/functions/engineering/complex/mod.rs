@@ -604,6 +604,18 @@ impl Model {
         let mut walk = AggregateWalk::new(COMPLEX_FOLD_POLICY);
         for arg in args {
             let read = self.evaluate_picked_reference_arg(arg, cell);
+            // An empty array's `#CALC!` is `#VALUE!` (probes/empty-array-args-sequence A5:A7).
+            if let RefArg::Value(value) = &read {
+                if value.is_empty_array() {
+                    // An earlier referenced error still wins (`IMSUM(<#DIV/0! cell>,DROP({1},1))`
+                    // is `#DIV/0!`, a later one does not: probes/empty-array-args-sequence A170:A172).
+                    return walk
+                        .finish()
+                        .err()
+                        .unwrap_or_else(|| value.clone())
+                        .empty_array_as_value_error(cell);
+                }
+            }
             // The cells of the range (blank cells included), and the cells its walk visits.
             let (cells, walked) = match &read {
                 RefArg::Ranges(ranges) => match &ranges[..] {
@@ -700,14 +712,15 @@ impl Model {
                 },
             );
             if let Err(error) = walked {
-                return error;
+                return error.empty_array_as_value_error(cell);
             }
             if referenced < cells {
                 has_blank = true;
             }
         }
+        // A referenced cell holding an empty array's `#CALC!` is `#VALUE!` too (A140..A147).
         if let Err(error) = walk.finish() {
-            return error;
+            return error.empty_array_as_value_error(cell);
         }
         let (x, y, suffix) = total.unwrap_or((0.0, 0.0, Suffix::I));
         if fold == ComplexFold::Product && has_blank {
