@@ -113,6 +113,13 @@ Cells:
 - gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A116
 - gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A73
 
+From T-1743 (2026-10-24): gen-m9 41248d1cb153c66e Calc!A12 `=WEIBULL(PROB((Data!C$2-Data!C3),GROWTH(Data!B10:C11,
+Data!B$3),IF(..)),..)` is `#REF!` in Excel, `#VALUE!` in ours. Its GROWTH is the size `#REF!` in both; ours PROB gives
+the scalar x_range's `#VALUE!` (`PROB(-42,#REF!,2)`) where Excel returns the prob_range's error, as this task's order says.
+This cell's line goes with this task.
+Cells:
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A12
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
