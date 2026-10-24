@@ -3,7 +3,7 @@ id: T-2066
 title: "Probe QUARTILE of a single text cell with quart 7 and 1 (gen-m9 288b99797f58f149 A3)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -44,7 +44,7 @@ it. Bit-level criteria still unmet then move to a follow-up task without the key
 A single cell holding text is now empty data for PERCENTILE*/QUARTILE*/PERCENTRANK* (`#NUM!`, not `#VALUE!`); probe quartile-single-text-cell added with excel-graph values; gen-m9/288b99797f58f149 A3 passes.
 PERCENTRANK reports an error x before its empty-data `#N/A`, QUARTILE.EXC reports quart's error before empty data, and XNPV reads one empty values cell as a 0 cash flow (all three surfaced as gen-m9 regressions once text cells became empty data; probes/xnpv-empty-values-cell). gen-m9 baseline: 94 known failures fixed.
 
-## Handoff
+## Handoff (resumed)
 Done and pushed on this branch: PERCENTILE/QUARTILE/PERCENTRANK single-text-cell fix, PERCENTRANK error-x-first, QUARTILE.EXC quart-first, probes (oracle values filled), docs, baseline (94 gen-m9 fixed, 0 regressions). `make check` passes except eval-check's 60 s timeout of probes/union-walk-repeated-in-lambda on this box (use `scripts/eval_guard.sh target/release/rustsheet-eval update-baseline --timeout 400`).
 Reviews: security APPROVE, quality APPROVE (minors fixed), architecture REQUEST_CHANGES: the XNPV fix (financial lane) must be its own task. Filed as T-2599. Next: land T-2599 first (cherry-pick the xnpv hunk, probe, financial.md entry, matching baseline), then drop those pieces from this branch, merge main, re-run `update-baseline`, `make check`, reviewers, and confirm PERCENTILE.EXC(<no-number range>,1/0) is probed (the third architecture note).
 Excel-fidelity review: APPROVE. Unprobed variants to add to the probes (minor, non-blocking): a single cell of numeric-looking text (`QUARTILE(A1,1)`, `PERCENTRANK(A1,5)` with A1 = "5"); for T-2599, `XNPV(1,A2:A2,B11)` (one-cell values range, still `#NUM!` here) and an empty single dates cell `XNPV(1,B11,A2)`; and replace the `error == Error::NUM` values/dates flag in `get_array_of_numbers_xpnv` with an explicit parameter.
