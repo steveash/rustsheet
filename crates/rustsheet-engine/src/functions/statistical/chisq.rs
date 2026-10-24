@@ -307,12 +307,14 @@ impl Model {
                     })
                     .collect(),
             )),
+            // An error element is the result, whichever element it is (statistics.md "An error
+            // element of an array argument is that error"; gen-m9, T-2255).
             CalcResult::Array(array) => {
                 self.values_from_array(array)
-                    .map_err(|e| CalcResult::Error {
-                        error: Error::VALUE,
+                    .map_err(|error| CalcResult::Error {
+                        error,
                         origin: cell,
-                        message: format!("Unsupported array argument: {e}"),
+                        message: "Error in array argument".to_string(),
                     })
             }
             CalcResult::Range { left, right } => self.values_from_range(left, right),

@@ -91,7 +91,11 @@ impl Model {
             },
             CalcResult::Array(arr) => match self.values_from_array(arr) {
                 Ok(v) => Ok(v.into_iter().flatten().collect()),
-                Err(e) => Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}"))),
+                Err(error) => Err(CalcResult::new_error(
+                    error,
+                    cell,
+                    "Error in array argument".to_string(),
+                )),
             },
             CalcResult::Number(n) => Ok(vec![n]),
             _ => Err(CalcResult::new_error(

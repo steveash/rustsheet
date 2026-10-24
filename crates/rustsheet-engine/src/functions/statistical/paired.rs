@@ -117,11 +117,7 @@ impl Model {
         );
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
-            CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("Error in {which} array: {error:?}"),
-            )
+            CalcResult::new_error(error, cell, format!("Error in {which} array"))
         })
         .map_err(|error| PairedSamplesError {
             error,

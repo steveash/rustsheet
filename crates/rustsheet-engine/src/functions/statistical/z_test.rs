@@ -41,7 +41,7 @@ impl Model {
             CalcResult::Range { left, right } => self.values_from_range(left, right)?,
             CalcResult::Array(array) => self
                 .values_from_array(array)
-                .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new()))?,
+                .map_err(|error| CalcResult::new_error(error, cell, String::new()))?,
             CalcResult::Number(v) => vec![Some(v)],
             // A direct boolean is one value like a number (probes-numeric/t1049-ztest A51).
             CalcResult::Boolean(b) => vec![Some(f64::from(u8::from(b)))],

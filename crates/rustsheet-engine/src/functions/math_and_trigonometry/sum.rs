@@ -163,14 +163,8 @@ impl Model {
                 "Arguments must be of the same shape".to_string(),
             ));
         }
-        let array_error = |index, error| {
-            let which = if index == 0 { "first" } else { "second" };
-            CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("Error in {which} array: {error:?}"),
-            )
-        };
+        let array_error =
+            |_, error| CalcResult::new_error(error, cell, "Error in array".to_string());
         let paired = self.paired_values(first, second, cell, array_error)?;
         Ok((rows1, cols1, paired.first, paired.second))
     }

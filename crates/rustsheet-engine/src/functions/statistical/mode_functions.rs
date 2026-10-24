@@ -24,8 +24,12 @@ impl Model {
                 }
                 CalcResult::Array(arr) => match self.values_from_array(arr) {
                     Ok(v) => values.extend(v.into_iter().flatten()),
-                    Err(e) => {
-                        return Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}")))
+                    Err(error) => {
+                        return Err(CalcResult::new_error(
+                            error,
+                            cell,
+                            "Error in array argument".to_string(),
+                        ))
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
