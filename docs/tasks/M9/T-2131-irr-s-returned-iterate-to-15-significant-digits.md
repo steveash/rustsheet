@@ -3,12 +3,12 @@ id: T-2131
 title: "IRR's returned iterate to 15 significant digits (50 cells right to only 13-14 digits)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: blocked
 priority: P2
 size: M
 tier: opus
 campaign: visible
-depends_on: []
+depends_on: [T-2565]
 ---
 
 ## Goal
@@ -93,3 +93,12 @@ Cells:
 ## Visible-parity stage
 This whole task is the visible-parity stage (decision 0083). Bit-exact iterates are a follow-up
 if the stage-1 fit does not reach them.
+
+## Blocked because
+The fit needs evidence the oracle sets do not hold yet. A re-fit over every IRR cell of the
+eval (388 cells with distinct flows and guess; the engine's flows traced from a full run) found
+that no arithmetic variant of the fitted secant (NPV evaluation order and precision, step form,
+twice-rounded operators) moves the visibly-off cells: they come from a different rule far from
+the root and from Excel's unexplained fallback path. Findings are in financial.md, "IRR is a
+secant in v", the 2026-10-24 Open note. Next: T-2565 probes the far-from-root steps (guess
+sweeps on the model's own iterates); T-1686 probes the fallback path. Resume once T-2565 is done.
