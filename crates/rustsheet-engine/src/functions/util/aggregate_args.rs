@@ -210,7 +210,10 @@ fn array_item(node: ArrayNode) -> Result<CalcResult, Error> {
         ArrayNode::Number(n) => CalcResult::Number(n),
         ArrayNode::Boolean(b) => CalcResult::Boolean(b),
         ArrayNode::String(s) => CalcResult::String(s),
+        // A LAMBDA element is read as `#VALUE!`: SUM is `#VALUE!`, COUNT skips it and COUNTA
+        // counts it (probes/lambda-arrays B9-B11).
         ArrayNode::Error(error) => return Err(error),
+        ArrayNode::Lambda(_) => return Err(Error::VALUE),
         ArrayNode::Empty => CalcResult::EmptyCell,
     })
 }

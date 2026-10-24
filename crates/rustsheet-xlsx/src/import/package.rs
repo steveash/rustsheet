@@ -119,7 +119,7 @@ impl PartNames {
 
 /// The part name an entry or a part reference stands for: `/` separators, no leading `/`,
 /// ASCII lowercase.
-fn part_key(name: &str) -> String {
+pub(super) fn part_key(name: &str) -> String {
     name.replace('\\', "/")
         .trim_start_matches('/')
         .to_ascii_lowercase()
@@ -216,6 +216,26 @@ pub(crate) fn resolve_target(base: &str, target: &str) -> String {
         }
     }
     segments.join("/")
+}
+
+/// The part a relationship `target` from a part in the folder `base` points to, for parts the
+/// importer reads only when they sit where a well-formed package puts them (pivot caches and pivot
+/// tables, SPEC-0015 "xlsx import"): `None` for an absolute target and for one whose `..` segments
+/// climb above the package root, where [`resolve_target`] would quietly stop at the root and read
+/// some other part.
+pub(crate) fn resolve_relative_target(base: &str, target: &str) -> Option<String> {
+    if target.starts_with('/') || target.starts_with('\\') {
+        return None;
+    }
+    let mut depth = base.split('/').filter(|s| !s.is_empty()).count();
+    for segment in target.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => depth = depth.checked_sub(1)?,
+            _ => depth += 1,
+        }
+    }
+    Some(resolve_target(base, target))
 }
 
 /// The folder a part is in, and the relationships part that belongs to it:
@@ -378,6 +398,31 @@ mod tests {
             part_folder_and_rels("sheet.xml"),
             ("", "_rels/sheet.xml.rels".to_string())
         );
+    }
+
+    #[test]
+    fn relative_targets_refuse_absolute_paths_and_escapes() {
+        assert_eq!(
+            resolve_relative_target("xl/worksheets", "../pivotTables/pivotTable1.xml"),
+            Some("xl/pivotTables/pivotTable1.xml".to_string())
+        );
+        assert_eq!(
+            resolve_relative_target("xl", "pivotCache/./d.xml"),
+            Some("xl/pivotCache/d.xml".to_string())
+        );
+        // Climbing to the root is inside the package; past it is not.
+        assert_eq!(
+            resolve_relative_target("xl", "../a.xml"),
+            Some("a.xml".to_string())
+        );
+        assert_eq!(resolve_relative_target("xl", "../../a.xml"), None);
+        assert_eq!(
+            resolve_relative_target("xl/worksheets", "../../../xl/a.xml"),
+            None
+        );
+        assert_eq!(resolve_relative_target("xl", "a/../../../b.xml"), None);
+        assert_eq!(resolve_relative_target("xl", "/xl/pivotCache/d.xml"), None);
+        assert_eq!(resolve_relative_target("xl", "\\xl\\d.xml"), None);
     }
 
     #[test]

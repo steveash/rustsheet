@@ -142,6 +142,30 @@ Rule: lookup_value and range_lookup lift together, broadcast like any two arrays
 against a 2x1 range_lookup gives `#N/A` in the third row; a column against a row gives 2-D). Each pair
 is a scalar call, so an error or text range_lookup element is that element's result
 (`VLOOKUP({2;3},A1:B4,2,{#DIV/0!;TRUE})` is `#DIV/0!`, "three"; `{"a";"b"}` is `#VALUE!` twice).
+A scalar text range_lookup beside a lifted lookup_value lifts the same way, one array of that error rather than one `#VALUE!`:
+`WRAPROWS(Data!E6:E11,1,VLOOKUP(OFFSET(Data!D6:E8,2,0),Data!B5:C5,3,"1"))` spills a 3x2 grid of E6's 3.14159, so the VLOOKUP there is a 3x2
+array that WRAPROWS's pad_with lifts over (gen-m7/f7e94a817e5385ac Calc!A2430, excel-graph, 2026-10-22). Every element is
+the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scalar-range-lookup-lifted, excel-graph,
+2026-10-23, T-2411):
+- `VLOOKUP({1;2},A1:B2,2,"1")` is `#VALUE!` twice (G1-G4). A bad range_lookup fails before any search.
+- An error range_lookup is that error per element: `NA()` gives `#N/A` and `1/0` gives `#DIV/0!` (G7, G29).
+- An error lookup_value element keeps its own error (`{1;#DIV/0!}`).
+- A range lookup_value lifts the same way, and so does HLOOKUP (`HLOOKUP({1,2},D1:E2,2,"x")`, 2 columns of `#VALUE!`).
+- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's,
+  ahead of a bad range_lookup and of the search:
+  - `VLOOKUP({1;2},A1:B2,"a",NA())` is `#VALUE!` per element (G20).
+  - `VLOOKUP({1;99},A1:B2,1/0,"1")` is `#DIV/0!` per element (G24).
+  - Under exact match 99 is not found, and the index error still wins: `VLOOKUP({1;99},A1:B2,"a",FALSE)` is `#VALUE!` and
+    `VLOOKUP({1;99},A1:B2,1/0,FALSE)` is `#DIV/0!` in the 99 element (G33, G39). The control
+    `VLOOKUP({1;99},A1:B2,2,{FALSE;FALSE})` is `#N/A` there (G36).
+  - The same holds beside an array range_lookup: `VLOOKUP({1;2},A1:B2,"a",{#N/A;TRUE})` is `#VALUE!` in every element
+    (G26), and so is `VLOOKUP({1;99},A1:B2,1/0,{FALSE;FALSE})` with `#DIV/0!` (G35).
+  - (With approximate match, 99 is found in the last row of A1:A2, so `{1;99}` cells G21, G25, G30 do not test not-found.)
+- An index of 0 is still checked after the search: `VLOOKUP({1;99},A1:B2,0,FALSE)` is `#N/A` in the 99 element (G37).
+  Beside a bad range_lookup, every element is that range_lookup's `#VALUE!` (`VLOOKUP({1;99},A1:B2,0,"1")`, G28).
+- Text range_lookup that reads as a boolean works: `VLOOKUP({1;2},A1:B2,2,"TRUE")` is "one", "two" (G18, G19).
+- The scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
+Ours: matches since T-2411.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
 search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is
 validated in reading order and the first bad one is the error of the whole call, with no spill
@@ -162,7 +186,10 @@ such a spill are the error itself, per row, with room to spill: an error lookup_
 index (`1/0`, `NA()`) and a text index (`"a"` is `#VALUE!`, not the `#REF!` of an array index element)
 each fill every row with that scalar error (VLOOKUP with a range or an array range_lookup; HLOOKUP and
 `NA()` probed with an array range_lookup only, the engine shares one path) (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
-Matches the engine (`LookupIndexArg::Failed`).
+The index error is every element's even where the value is not found: `VLOOKUP(99,A1:B2,"a",{FALSE;FALSE})` is `#VALUE!`
+per element (probes/vlookup-scalar-range-lookup-lifted G34), and it beats an error range_lookup element
+(`VLOOKUP(99,A1:B2,"a",{TRUE;#N/A})` is `#VALUE!` in the second, G32). Ours: matches since T-2411 (`argument_error_each`);
+before it, a not-found element was `#N/A`.
 A multi-cell range *index* lifts once the value is found, and `@` intersects it (T-1426; see "VLOOKUP / HLOOKUP search
 before validating the index"). With a table error, an array index gives one scalar error, not a spill
 (`VLOOKUP(2,1/0,{2,3})` is `#DIV/0!`, probes/lookup-argument-edges H372, H375).
@@ -313,6 +340,10 @@ lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and 
 `INDEX` returns that `#REF!` (`INDEX(A5:B7,MATCH(1,A5:A6,D1),3)` and `,1`), while a literal-text
 match_type inside it is `#VALUE!` and `INDEX(A5:B7,NA(),3)` is `#N/A` (the row error wins over the
 out-of-range column, which alone is `#REF!`).
+An error column beats a row index below 1 as well: `INDEX(Data!B2:E6,TAN(-0.5),MATCH("1",Data!B5:C8,1))` (row -0.546, column
+`#N/A` from MATCH over a 2-D range) is `#N/A` (VERIFIED, gen-m5/372a676d47aa1427 Calc!A371 inside `MMULT(Data!A1,..)`, excel-graph, 2026-10-22, T-2252 triage).
+Implemented (T-2375) in `index_numbers` (functions/lookup_and_reference/index.rs): the cast errors of row and column come
+before a negative row or column; `INDEX(range,-0.5,1)` stays `#VALUE!`.
 Rule 3: the cell stays a reference through IF, IFS, CHOOSE, SWITCH and LET, so `MATCH(2,A5:A7,IFS(TRUE,D1))`
 with D1 = "x" is `#REF!` too (as are the same with IF, CHOOSE, SWITCH, `LET(a,D1,a)`); D2 = 1
 gives 2. IFERROR returns the value, so `IFERROR(D1,0)` is `#VALUE!`, like literal text
@@ -355,10 +386,12 @@ INDEX/MATCH return the reference, so a blank there is skipped (`COUNT(INDEX(B1:B
 `AVERAGE(VLOOKUP(2,..,{2},FALSE),4)` 4, `COUNT(HLOOKUP(2,D1:F2,{2}))` 0.
 So `ASC(IFS(..,VLOOKUP(123456789.123,D3:E7,2),..))` landing on blank E6 is "0" (through IFS), and
 `SEC(AVERAGE(HLOOKUP(2.5,B8:D11,4),-2.5,B7:B9))` averages the blank result as 0, 1.2724471433871758 = SEC(-2/3).
-XLOOKUP already returns a blank return cell as 0 (below). Excel for the web refuses a workbook holding
-`IFS(TRUE,)` (createSession 501), and one of `AVERAGEA`, `PRODUCT`, `COUNTBLANK`, `SUMSQ`, `STDEV.P` over
-`VLOOKUP(..)` (most likely COUNTBLANK, which takes only a reference); those are unprobed. An omitted value argument
-is the same empty value in the engine, so ours gives 0 for `IFS(TRUE,)` and `SWITCH(1,1,)` too (unprobed, T-2189).
+XLOOKUP already returns a blank return cell as 0 (below). An omitted value argument is the same empty value
+(probes/t2189-*, excel-graph, T-2189, each formula its own case): `IFS(TRUE,)&""` and `SWITCH(1,1,)&""` are "0",
+`ISBLANK(IFS(TRUE,))` is FALSE and `COUNT(SWITCH(1,1,))` is 1; the engine agrees on all four. (An earlier attempt to put
+`IFS(TRUE,)` in a larger workbook got a createSession 501; it is not refused alone.) Excel for the web refuses a workbook holding
+one of `AVERAGEA`, `PRODUCT`, `COUNTBLANK`, `SUMSQ`, `STDEV.P` over
+`VLOOKUP(..)` (most likely COUNTBLANK, which takes only a reference); those are unprobed.
 Evidence: gen-m5/49bfbf67a1409563 Calc!A103, gen-m5/aac6230c2fb40e1e Calc!A334 (excel-graph, 2026-10-20);
 probes/lookup-blank-result-to-caller H1:O20 and probes/lookup-vector-blank-result-to-caller H1:I19 (excel-graph,
 2026-10-20, T-2168).
@@ -510,7 +543,8 @@ array literal whole: `LOOKUP(2,{1,2,3},{4,5,6})` = 5, `LOOKUP(2,{1,2,3})` = 2, `
 `TRANSPOSE({1,2,3})` is 3x1. INDEX of a single value is that value (`INDEX(LOOKUP(2,{1,2,3},{4,5,6}),1,1)` = 5,
 `INDEX(AREAS(A1:B3),1,1)` = 1). UNVERIFIED (not probed): OFFSET's cols, height and width, XLOOKUP/XMATCH search_mode,
 XLOOKUP's if_not_found, ADDRESS's sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols; which problem wins inside a
-CHOOSECOLS/CHOOSEROWS index list (ours: the first error, out-of-range index or uncoercible text in row-major order).
+CHOOSECOLS/CHOOSEROWS index list between uncoercible text and a later error, or between two errors (an error beats an
+out-of-range index: VERIFIED, see the T-2273 entry; ours returns uncoercible text's `#VALUE!` or the first error found at once).
 Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238); ADDRESS's a1 and HYPERLINK's
 friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
 Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
@@ -922,7 +956,8 @@ earlier index is 0 or out of range: `CHOOSECOLS(Data!A1,1E+15,ACOSH(-0.3))` is `
 `#DIV/0!`, `CHOOSEROWS(Data!B11:E11,2,-1,..SUMX2MY2(<mismatched>))` `#N/A` (gen-m6/121a7c17092038d9 Calc!A298, 07171fa3f7493f51 A333,
 ee56a4ed5a612a0d A19, 535caabe1e635e2d A136, 7ac4ea222977f3b4 A391; 26 cells in T-2273). This answers the UNVERIFIED "which problem
 wins inside a CHOOSECOLS/CHOOSEROWS index list" above for errors against bad indexes; which of two errors wins is still unprobed.
-Ours: the first problem in argument order, so an out-of-range index's `#VALUE!` wins.
+Ours: implemented (T-2273): an out-of-range index is remembered and the scan goes on, so an error in any later argument wins and
+the `#VALUE!` is returned only if none is found. Between two errors, ours keeps the first in argument order (UNVERIFIED).
 Status: VERIFIED
 Tasks: T-2273
 

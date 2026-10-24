@@ -26,6 +26,7 @@ use rustsheet_engine::expressions::token::get_error_by_english_name;
 use crate::error::XlsxError;
 
 use super::package::Package;
+use super::xml::start_attribute;
 
 /// The value-metadata part (`<valueMetadata>`, `<futureMetadata>`).
 pub const METADATA_PART: &str = "xl/metadata.xml";
@@ -41,11 +42,21 @@ const RICH_VALUE_TYPE: &str = "XLRICHVALUE";
 /// the `subType` (the reason) does not change the error. Evidence: probes/rich-errors-*
 /// (excel-graph, 2026-10-05, T-0030): each cell's errorType from the cached oracle workbook, its
 /// ERROR.TYPE and its VALUETOTEXT text; ironcalc-calc/ERROR.TYPE.xlsx for 8 and 13.
+/// errorType 2 (`#VALUE!`): probes/rich-errors-spilled-lambda (excel-graph, 2026-10-22, T-2417);
+/// errorType 6 (`#N/A`) and errorType 2 with subType 133: probes/rich-errors-regex-group
+/// (excel-graph, 2026-10-23, T-2442).
 /// Codes Excel was not seen to write (`#BUSY!`, `#UNKNOWN!`, ...) are never guessed: they are
 /// `None`, so callers cannot mistake them for the cached `#VALUE!`.
 #[must_use]
 pub fn rich_error_name(error_type: &str) -> Option<&'static str> {
     match error_type {
+        // REGEXEXTRACT's #VALUE! spilled by MAP, GROUPBY or EXPAND (probes/rich-errors-spilled-lambda,
+        // T-2417); the other #VALUE!s and the classic errors there are plain literals.
+        "2" => Some("#VALUE!"),
+        // REGEXEXTRACT's no-match #N/A (subType 7) and a capture group that took no part (subType
+        // 9), stored with Excel's own `<fb t="e">#N/A</fb>` fallback (probes/rich-errors-regex-group
+        // A4:A6, ERROR.TYPE 7 through INDEX, T-2442).
+        "6" => Some("#N/A"),
         "8" => Some("#SPILL!"),    // SEQUENCE blocked by a value
         "9" => Some("#CONNECT!"),  // STOCKHISTORY of an unknown ticker
         "10" => Some("#BLOCKED!"), // IMAGE of an unreachable URL; uncached external reference
@@ -129,15 +140,7 @@ fn xml_error(part: &str, error: impl std::fmt::Display) -> XlsxError {
 }
 
 fn attribute(element: &BytesStart<'_>, key: &str) -> Option<String> {
-    element.attributes().flatten().find_map(|a| {
-        (a.key.local_name().as_ref() == key)
-            .then(|| {
-                a.normalized_value(XmlVersion::Implicit1_0)
-                    .ok()
-                    .map(std::borrow::Cow::into_owned)
-            })
-            .flatten()
-    })
+    start_attribute(element, key).ok().flatten()
 }
 
 fn index_attribute(element: &BytesStart<'_>, key: &str) -> Option<usize> {
@@ -350,7 +353,7 @@ mod tests {
     #[test]
     fn error_type_is_read_by_key_name() {
         let structures = r#"<rvStructures><s t="_error"><k n="colOffset" t="i"/><k n="errorType" t="i"/><k n="rwOffset" t="i"/><k n="subType" t="i"/></s><s t="_error"><k n="errorType" t="i"/></s></rvStructures>"#;
-        let rich = r#"<rvData><rv s="0"><v>0</v><v>8</v><v>5</v><v>1</v></rv><rv s="1"><v>13</v></rv><rv s="0"><v>8</v><v>2</v><v>0</v><v>0</v></rv><rv s="1"><v>10</v></rv><rv s="0"><v>0</v></rv></rvData>"#;
+        let rich = r#"<rvData><rv s="0"><v>0</v><v>8</v><v>5</v><v>1</v></rv><rv s="1"><v>13</v></rv><rv s="0"><v>8</v><v>11</v><v>0</v><v>0</v></rv><rv s="1"><v>10</v></rv><rv s="0"><v>0</v></rv></rvData>"#;
         let positions = error_type_positions(structures).unwrap_or_default();
         let got = rich_value_errors(rich, Some(&positions)).unwrap_or_default();
         assert_eq!(
@@ -368,13 +371,15 @@ mod tests {
     /// probes/rich-errors-* (T-0030): errorType = ERROR.TYPE - 1, whatever the subType.
     #[test]
     fn error_codes_follow_the_probes() {
-        let got: Vec<_> = ["8", "9", "10", "12", "13", "11", "x"]
+        let got: Vec<_> = ["2", "6", "8", "9", "10", "12", "13", "11", "x"]
             .into_iter()
             .map(rich_error_name)
             .collect();
         assert_eq!(
             got,
             [
+                Some("#VALUE!"),
+                Some("#N/A"),
                 Some("#SPILL!"),
                 Some("#CONNECT!"),
                 Some("#BLOCKED!"),
@@ -384,6 +389,28 @@ mod tests {
                 None
             ]
         );
+    }
+
+    /// The `errorType, ptg, subType` structure of a spilled REGEXEXTRACT `#VALUE!`
+    /// (gen-m7/18b80d3fd292d63a C951; probes/rich-errors-spilled-lambda, T-2417).
+    #[test]
+    fn spilled_lambda_value_error_is_decoded() {
+        let structures = r#"<rvStructures><s t="_error"><k n="errorType" t="i"/><k n="ptg" t="i"/><k n="subType" t="i"/></s></rvStructures>"#;
+        let rich = r#"<rvData><rv s="0"><v>2</v><v>6</v><v>0</v></rv></rvData>"#;
+        let positions = error_type_positions(structures).unwrap_or_default();
+        let got = rich_value_errors(rich, Some(&positions)).unwrap_or_default();
+        assert_eq!(got, vec![Some("#VALUE!")]);
+    }
+
+    /// REGEXEXTRACT's rich `#N/A`s carry a `<fb>` fallback ahead of their fields, which is not a
+    /// field; errorType 2 with subType 133 is `#VALUE!` (probes/rich-errors-regex-group, T-2442).
+    #[test]
+    fn regex_group_errors_are_decoded() {
+        let structures = r#"<rvStructures><s t="_error"><k n="errorType" t="i"/><k n="subType" t="i"/></s></rvStructures>"#;
+        let rich = r#"<rvData><rv s="0"><v>2</v><v>133</v></rv><rv s="0"><fb t="e">#N/A</fb><v>6</v><v>7</v></rv><rv s="0"><fb t="e">#N/A</fb><v>6</v><v>9</v></rv></rvData>"#;
+        let positions = error_type_positions(structures).unwrap_or_default();
+        let got = rich_value_errors(rich, Some(&positions)).unwrap_or_default();
+        assert_eq!(got, vec![Some("#VALUE!"), Some("#N/A"), Some("#N/A")]);
     }
 
     #[test]

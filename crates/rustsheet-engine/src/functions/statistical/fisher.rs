@@ -1,12 +1,12 @@
-use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
+use statrs::distribution::{Continuous, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
-use crate::functions::statistical::inverse_beta::f_inverse_cdf;
-use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
+use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
+use crate::functions::statistical::special::{ln_gamma, refine_increasing};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
 use crate::{
@@ -41,25 +41,86 @@ fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
 }
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
-/// same failure as Student-t), so the quantile is found by bisection on the cdf instead.
-const F_QUANTILE_BISECT_DF: f64 = 1e5;
+/// same failure as Student-t), so from it the quantile is [`f_quantile_through_beta`]: Excel's
+/// BETA.INV mapped to F. Either side of it the quantile is within 2E-13 relative of Excel's at
+/// df 99999, 1E5 and 1E6 with p = 1E-12 and 1 - 1E-12 (24 cells,
+/// probes-numeric/t1538-f-quantile-switchover).
+const F_QUANTILE_STATRS_DF_MAX: f64 = 1e5;
 
-/// Quantile of the F distribution for `p` in [0,1]; the time is bounded for every df up to
-/// [`F_DF_MAX`] (at most ~1300 cdf evaluations). Below the threshold it is statrs' search as the
-/// capped port of `inverse_beta.rs` (T-1848), which is NaN (`#NUM!`) where statrs panics
-/// (`F.INV(1E-300,5,5)`) or never finishes (`F.INV(1E-50,6000,4)`).
-fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
-    if df1 < F_QUANTILE_BISECT_DF && df2 < F_QUANTILE_BISECT_DF {
-        return f_inverse_cdf(df1, df2, p);
-    }
-    if p <= 0.0 {
+/// Below this probability (of either tail) statrs' search panics (from p = 1.6E-162) or never
+/// finishes (about 7% of calls below 3.6E-27, `F.INV(1E-50,6000,4)`; T-1848), so the quantile has no
+/// statrs start there.
+const F_QUANTILE_STATRS_P_MIN: f64 = 1e-20;
+
+/// Below this lower-tail probability statrs' estimate, where it has one, is kept unrefined: the
+/// deep tail of [`f_cdf`] carries exp(a ln y)'s rounding, and refining to its crossing makes
+/// `F.INV(1E-20,5,5)` visibly off Excel's 5.081599921802649E-09 (probes/stat-quantile-lift E12),
+/// which statrs' search matches to 15 digits (T-0974: 0 cells newly visibly off at 1E-15, 4 at 0).
+const F_QUANTILE_REFINE_P_MIN: f64 = 1e-15;
+
+/// Quantile of the F distribution for `p` (the right tail's when `right_tail`) in [0, 1]: statrs'
+/// search (the capped port of `inverse_beta.rs`, T-1848) as a start where it is reliable, refined to
+/// the crossing of [`f_cdf`] or [`f_sf`] (`special::refine_increasing`) in the upper tail and from a
+/// lower-tail probability of [`F_QUANTILE_REFINE_P_MIN`] up. At most 512 Newton steps and 129 cdfs, or 65 cdfs without a
+/// start. From a df of [`F_QUANTILE_STATRS_DF_MAX`], Excel's BETA.INV mapped to F (T-1538).
+fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
+    let lower = if right_tail { 1.0 - p } else { p };
+    if lower <= 0.0 {
         return 0.0;
     }
-    if p >= 1.0 {
+    if lower >= 1.0 && !right_tail {
         return f64::INFINITY;
     }
-    // 2^1100 is past the f64 range, so a quantile not bracketed by then is infinite.
-    bisect_increasing(|x| dist.cdf(x), p, 1100)
+    if df1 >= F_QUANTILE_STATRS_DF_MAX || df2 >= F_QUANTILE_STATRS_DF_MAX {
+        return if right_tail {
+            1.0 / f_quantile_through_beta(df2, df1, p)
+        } else {
+            f_quantile_through_beta(df1, df2, p)
+        };
+    }
+    // statrs' search is the start where it is reliable; elsewhere the refinement bisects the
+    // whole range of doubles.
+    let estimate = if (F_QUANTILE_STATRS_P_MIN..=1.0 - F_QUANTILE_STATRS_P_MIN).contains(&lower) {
+        f_inverse_cdf(df1, df2, lower)
+    } else {
+        f64::NAN
+    };
+    // Each tail's target is the given p or its exact complement 1 - p (p >= 0.5); the smaller one
+    // is solved on the T-0970 incomplete beta, as for BETA.INV (T-0974), so a tiny right-tail p
+    // keeps the digits 1 - p loses. statrs' estimate is kept unrefined only for a deep lower tail,
+    // the tail it was given: for a deep upper tail it solved the rounded 1 - p, which
+    // `F.INV.RT(1E-16,9,3)` misses by 7% (Excel 60647458731.09812, gen-m9/0a9226016e8f5f33 A45).
+    if estimate.is_finite() && lower < F_QUANTILE_REFINE_P_MIN {
+        return estimate;
+    }
+    if lower > 0.5 {
+        let upper = if right_tail { p } else { 1.0 - p };
+        refine_increasing(|x| -f_sf(df1, df2, x), -upper, estimate, 0.0, f64::MAX)
+    } else {
+        refine_increasing(|x| f_cdf(df1, df2, x), lower, estimate, 0.0, f64::MAX)
+    }
+}
+
+/// The lower-tail F quantile as Excel forms it at a huge df, from its BETA.INV:
+/// (df2/df1) y/(1 - y) with y = BETA.INV(p, df1/2, df2/2) (`inverse_beta::beta_quantile_crossing`),
+/// its flipped root s = 1 - y taken as it is for p above 1/2. F.INV.RT is 1/F.INV(p, df2, df1).
+/// So y near 1 keeps only its distance from 1 on the 2^-53 grid, and `F.INV(0.5,1E10,5)` is
+/// Excel's 1.1490395521130337 (probes-numeric/t1538-f-inv-huge-df A3, from
+/// `BETA.INV(0.5,5E9,2.5)` = 0.999999999564854, A134) where the true quantile is
+/// 1.1490395821369862.
+/// See docs/excel-semantics/statistics.md "F quantile at a huge df goes through Excel's BETA.INV
+/// (T-1538)".
+fn f_quantile_through_beta(df1: f64, df2: f64, p: f64) -> f64 {
+    if p > 0.5 {
+        // BETA.INV's flip: s = 1 - y is the root solved, and mapped as it is, not as 1 - (1 - s):
+        // `F.INV(1-1E-12,100000,5)` is then within 1.6E-15 relative of Excel's 97570.08944108484
+        // (t1538-f-quantile-switchover A9); 1 - (1 - s) keeps only s's distance from 1 and misses by
+        // 9E-8 relative.
+        let s = beta_lower_crossing(df2 / 2.0, df1 / 2.0, 1.0 - p);
+        return (df2 / df1) * ((1.0 - s) / s);
+    }
+    let y = beta_lower_crossing(df1 / 2.0, df2 / 2.0, p);
+    (df2 / df1) * (y / (1.0 - y))
 }
 
 /// The F density. statrs' direct form raises `df1*x` and `df1*x + df2` to the power `df1` and
@@ -239,7 +300,7 @@ impl Model {
 
     /// `F.INV(probability, deg_freedom1, deg_freedom2)`: every argument lifts over an array and a
     /// range (SPEC-0011; probes/stat-argument-modes H231-H235, probes/stat-quantile-lift). The
-    /// quantile is the capped port of statrs' inversion or a bisection of at most about 1,300
+    /// quantile is the capped port of statrs' inversion refined to the cdf's crossing, at most 129
     /// cdfs (`f_quantile`), which the lifting table charges (lift/kinds/statistical.rs
     /// `QUANTILE_WEIGHT`).
     pub(crate) fn fn_f_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -278,12 +339,57 @@ impl Model {
         if p_out || !f_df_ok(df1) || !f_df_ok(df2) {
             return Err(num_error(cell));
         }
-        let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
-        let x = f_quantile(&dist, df1, df2, if right_tail { 1.0 - p } else { p });
+        let x = f_quantile(df1, df2, p, right_tail);
         if x.is_nan() || x.is_infinite() || x < 0.0 {
             return Err(num_error(cell));
         }
         Ok(x)
+    }
+
+    /// One F.TEST sample: a range or an array as `values_from_range` / `values_from_array` read
+    /// them, and a single value as a sample of at most one, so F.TEST is `#DIV/0!` whatever its
+    /// type (`FTEST(5,{1;2;3})`, `FTEST("abc",..)`, `FTEST(TRUE,..)`, `FTEST({1;2;3},SUM(4))`;
+    /// probes/t2455-transpose-single-value A8:A40, docs/excel-semantics/statistics.md "F.TEST of a
+    /// single value"). A one-cell reference to a blank cell, or a computed blank
+    /// (`FTEST(IF(TRUE,B10),..)`, A79), is `#VALUE!` instead.
+    fn f_test_sample(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        which: &str,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        let sample = self.evaluate_node_in_context(node, cell);
+        if self.is_blank_one_cell(&sample) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("F.TEST: the {which} sample is a blank cell"),
+            ));
+        }
+        match sample {
+            CalcResult::Range { left, right } => self.values_from_range(left, right),
+            CalcResult::Array(a) => self.values_from_array(a).map_err(|error| {
+                CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("Error in {which} array: {error:?}"),
+                )
+            }),
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => Ok(Vec::new()),
+        }
+    }
+
+    /// Whether `sample` is a one-cell reference to a blank cell: `B9:B9` arrives as a range, `B10`
+    /// as the cell's blank value.
+    fn is_blank_one_cell(&mut self, sample: &CalcResult) -> bool {
+        match sample {
+            CalcResult::EmptyCell => true,
+            CalcResult::Range { left, right } if left == right => {
+                matches!(self.evaluate_cell(*left), CalcResult::EmptyCell)
+            }
+            _ => false,
+        }
     }
 
     // F.TEST(array1, array2)
@@ -292,53 +398,18 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in first array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "First argument must be a range or array".to_string(),
-                );
-            }
+        // The samples are read in order, each one's error or blank one-cell reference (`#VALUE!`)
+        // before the next: `FTEST(5,B10)` and `F.TEST(Data!C8:C8,Data!Z1:Z3)` are `#VALUE!`
+        // (probes/t2455-transpose-single-value A35; gen-m9 b4173fe25109a238 A348), while
+        // `FTEST(1/0,B10)` is `#DIV/0!` and `FTEST(NA(),B10:B10)` `#N/A` (A77, A78); a blank
+        // two-cell range is `#DIV/0!` (A33). statistics.md, T-2255.
+        let values1_opts = match self.f_test_sample(&args[0], cell, "first") {
+            Ok(v) => v,
+            Err(error) => return error,
         };
-
-        // Get second sample as Vec<Option<f64>>
-        let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in second array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Second argument must be a range or array".to_string(),
-                );
-            }
+        let values2_opts = match self.f_test_sample(&args[1], cell, "second") {
+            Ok(v) => v,
+            Err(error) => return error,
         };
 
         let values1: Vec<f64> = values1_opts.into_iter().flatten().collect();
@@ -394,5 +465,33 @@ impl Model {
         }
 
         CalcResult::Number(p)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::f_quantile;
+
+    // Excel's F quantile at a huge df is its BETA.INV mapped to F (probes-numeric, excel-graph).
+    #[test]
+    fn huge_df_quantiles_go_through_excels_beta_inv() {
+        // t1538-f-inv-huge-df A3: y = BETA.INV(0.5,5E9,2.5) near 1, bit for bit.
+        assert_eq!(
+            f_quantile(1e10, 5.0, 0.5, false).to_bits(),
+            1.149_039_552_113_033_7_f64.to_bits()
+        );
+        // A48: F.INV.RT(0.975,1E10,5) = 1/F.INV(0.975,5,1E10), through the flipped root.
+        let rt = f_quantile(1e10, 5.0, 0.975, true);
+        assert!(
+            (rt - 0.389_635_637_664_716_87).abs() <= 4.0 * f64::EPSILON * rt,
+            "{rt}"
+        );
+        // t1538-f-quantile-switchover A9: the flipped root mapped as it is (2E-15 relative of Excel's;
+        // through 1 - (1 - s) it would be 9E-8 off).
+        let upper = f_quantile(100_000.0, 5.0, 1.0 - 1e-12, false);
+        assert!(
+            (upper - 97_570.089_441_084_84).abs() <= 2e-15 * upper,
+            "{upper}"
+        );
     }
 }

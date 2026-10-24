@@ -542,6 +542,8 @@ pub(crate) static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
 pub(crate) fn own_error(node: &ArrayNode) -> Option<Error> {
     match node {
         ArrayNode::Error(error) => Some(error.clone()),
+        // A LAMBDA element read as a value (docs/excel-semantics/arrays.md "Arrays of LAMBDAs").
+        ArrayNode::Lambda(_) => Some(Error::VALUE),
         _ => None,
     }
 }
@@ -902,6 +904,12 @@ impl Model {
                     message: String::new(),
                 },
                 ArrayNode::Empty => CalcResult::EmptyCell,
+                // `SCAN(..)=1` over LAMBDAs is `#VALUE!` per element (probes/lambda-arrays B20).
+                ArrayNode::Lambda(_) => CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: String::new(),
+                },
             }
         };
 

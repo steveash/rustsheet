@@ -35,7 +35,32 @@ F.INV and F.INV.RT have the same mismatch: they still invert statrs' F cdf while
 `incomplete_beta` (`F_DIST.xlsx` J2, J3, L2, L3 stay NumericClose). Move them in the same
 change, or measure them and file a separate task.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). `BETADIST(1E-10,0.5,10000000000.5)` Excel 0.8427007929652814, ours 0.8427190549884069
+(1 cell).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas.
+Examples:
+- gen-m9/35e8168aae2b00f8 Calc!A159 `=BETADIST(1E-10,0.5,10000000000.5)`: Excel 0.8427007929652814, ours 0.8427190549884069
+Cells:
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A159
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: BETADIST last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/899f9555e67da2d6 Calc!A101 `=BETADIST(Data!A9,0.5,1.5,Data!$A8,(123456789.123^(Data!B11-Data!D4)))`: Excel 0.939680733981541, ours 0.9396807339815411
+Cells:
+- gen-m9/899f9555e67da2d6.case.json (1): Calc!A101
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A150
+
+T-0974 (2026-10-23) measured the switch together with BETA.INV refined to the crossing of `beta_reg`
+(`special::refine_increasing`, the upper tail I_y(b,a) = 1 - p in y = 1 - t above p = 0.5): 45 gated lines fixed, in-scope
+cells visibly off down by about 1,300, and nine BETADIST_BETAINV.xlsx regressions, all within 4 ulp (H2 2, H23 4, H42, H44,
+H46-H49 1, H67 2: decision 0083's allowance). Four ungated probes-numeric BETA.DIST cells go visibly off with the switch
+(t0969-beta-prefactor D85, D86, t0969-t-beta-link E56, F6; up to 3.5 units of the 15th digit, D86). The run could not
+record the regressions (`--allow-regressions` was refused to it), so it shipped only the F half. T-0974's BETAINV cells
+(gen-m9/589f42e67f4b4b8d A221, c18dbf21f11093f3 A400, eced4bb6a0234c9e A291) belong here.
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] A decision record allows exactly the chained BETA.INV lines (or they are avoided), and the
       baseline diff adds no other line.
 - [ ] BETA.DIST's cdf is `incomplete_beta`'s; BETA.INV (and F.INV, or a filed task) inverts the same cdf.

@@ -126,11 +126,17 @@ and unwinding on ordinary workbooks, for a function almost no workbook uses this
 - The links are a `Vec<u32>` indexed by position in the reversed position list, not a hash map.
 - Where Excel puts a spilling formula is unknown (T-2070). Keeping anchors first is the existing
   behavior, so a reader inside a spilling formula is the one documented gap.
+- *As built (T-2068).* The anchors run first with the default pass's recursion, and only the
+  cells after them form the chain. The anchor part of the pass is then the default pass's, so its
+  restarts are too, and `RestartLog`'s proof that restarts end still holds; after the anchors no
+  cell can restart the pass. gen-m6 showed that a spilling formula empties the state at its place
+  in the order (dates.md), so the chain empties it when it reaches an anchor's position. The chain's cells are the formula
+  positions collected once per pass in natural order (`formula_positions`), walked from the last;
+  the links index that list, and a precedent is found in it by binary search.
 
-T-2069 replaces "sheet index" in the reversed order with the sheet's load rank. This is a
+T-2069 replaced "sheet index" in the reversed order with the sheet's load rank. This is a
 `load_rank: u32` per worksheet, set from the sheet's position when the workbook is read, and set to
-the next free rank for sheets added later. It keeps probes/weeknum-stale-sheet-moved passing. Until
-then, a moved sheet is ranked by its current index.
+the next free rank for sheets added later. It keeps probes/weeknum-stale-sheet-moved passing.
 
 ### Depth limit
 The `max_depth`/`max_stack` unwind is documented as never changing a result (`set_max_evaluation_depth`).

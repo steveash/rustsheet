@@ -213,8 +213,11 @@ impl Model {
             let id = raw_id as u32;
             bound_ids.push(raw_id);
 
-            // Patch the variable's id into all subsequent nodes (value expr + body and later pairs).
-            for item in cloned.iter_mut().skip(2 * i + 1) {
+            // Patch the variable's id into all later nodes (later pairs and the body), not its own
+            // value: a name is not in scope in its own value expression, and a LAMBDA there that
+            // names it is `#NAME?` when called, not the LAMBDA itself
+            // (probes/let-lambda-body-own-name, T-2558).
+            for item in cloned.iter_mut().skip(2 * i + 2) {
                 assign_variable_ids(item, &name, id);
             }
 
@@ -227,7 +230,7 @@ impl Model {
 
         // Evaluate the body with all bindings in scope.
         let result = read_body(self, &cloned[args.len() - 1]);
-        self.close_over(result.lambda(), &bound_ids, mark, cell);
+        self.close_over(&result, &bound_ids, mark, cell);
 
         // Remove only the ids introduced by this LET frame.
         for id in bound_ids {

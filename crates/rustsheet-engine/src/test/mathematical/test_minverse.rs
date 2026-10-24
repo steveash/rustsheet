@@ -73,3 +73,23 @@ fn test_minverse_blank_cell_is_value_error() {
     model.evaluate();
     assert_eq!(model._get_text("D1"), "#VALUE!");
 }
+
+#[test]
+fn test_minverse_tiny_pivot_is_inverted() {
+    let mut model = new_empty_model();
+    // Only an exactly-zero pivot is singular (probes/minverse-singular-near-singular, T-2362).
+    model._set("A1", "=INDEX(MINVERSE({1,2,3;4,5,6;7,8,9}),3,3)");
+    model._set("A2", "=MINVERSE(1E-300)");
+    model._set("A3", "=MINVERSE(1E-300*1E-10)");
+    model.evaluate();
+    assert_eq!(
+        model.get_cell_value_by_index(0, 1, 1),
+        Ok(crate::cell::CellValue::Number(-4_503_599_627_370_495.5))
+    );
+    assert_eq!(
+        model.get_cell_value_by_index(0, 2, 1),
+        Ok(crate::cell::CellValue::Number(1.0 / 1E-300))
+    );
+    // A reciprocal past the double range is #NUM! (unprobed).
+    assert_eq!(model._get_text("A3"), "#NUM!");
+}

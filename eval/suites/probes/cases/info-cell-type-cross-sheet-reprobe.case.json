@@ -1,0 +1,52 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2383 re-probe of CELL(\"type\",Data!C$9) (gen-m5/74b183ca6fc1d190 Calc!A347 read the referenced sheet once): bare, under RIGHTB/LEFT/&\"\", $ forms, rows 8-10, Calc!C9 blank vs Calc!E9/G9 filled; A14:A23 and A347 repeat the gen formula to catch run-to-run variation.",
+ "tags": [
+  "M5",
+  "probe",
+  "information"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "C8": 5,
+    "C9": "abc",
+    "E8": "t",
+    "A1": 1
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "E9": "txt",
+    "G9": 7,
+    "A1": "=CELL(\"type\",Data!C$9)",
+    "A2": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A3": "=LEFT(CELL(\"type\",Data!C$9))",
+    "A4": "=CELL(\"type\",Data!C$9)&\"\"",
+    "A5": "=CELL(\"type\",Data!C9)",
+    "A6": "=CELL(\"type\",Data!$C9)",
+    "A7": "=CELL(\"type\",Data!$C$9)",
+    "A8": "=CELL(\"type\",Data!C$8)",
+    "A9": "=CELL(\"type\",Data!C$10)",
+    "A10": "=CELL(\"type\",Data!E$9)",
+    "A11": "=RIGHTB(CELL(\"type\",Data!E$9),3)",
+    "A12": "=CELL(\"type\",Data!G$9)",
+    "A13": "=CELL(\"type\",Data!E$8)",
+    "A14": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A15": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A16": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A17": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A18": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A19": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A20": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A21": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A22": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A23": "=RIGHTB(CELL(\"type\",Data!C$9),3)",
+    "A347": "=RIGHTB(CELL(\"type\",Data!C$9),3)"
+   }
+  }
+ ],
+ "expected": {}
+}

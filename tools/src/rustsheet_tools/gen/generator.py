@@ -21,8 +21,10 @@ from typing import Any
 
 import yaml
 
+from rustsheet_tools.gen import database
 from rustsheet_tools.gen.common import quoted
-from rustsheet_tools.gen.pools import POOLS
+from rustsheet_tools.gen.pivots import PivotSource, build_source, pivot_call
+from rustsheet_tools.gen.pools import POOLS, lambda_arity
 
 MILESTONES = ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"]
 
@@ -136,6 +138,12 @@ class Catalog:
         return Catalog([o for o in self.operators if ok(o)], functions)
 
 
+def pool_rate(p: dict[str, Any]) -> float:
+    """Share of `p`'s values drawn from its pool: `pool_rate` when the catalog sets one (the D* database and
+    criteria, whose Db pools only work together, T-2249), else POOL_RATE."""
+    return float(p.get("pool_rate", POOL_RATE))
+
+
 @dataclass
 class Gen:
     rng: random.Random
@@ -148,6 +156,9 @@ class Gen:
     # visible (a LET variable is visible after its value, a LAMBDA parameter in the body).
     scope: list[str] = field(default_factory=list)
     pending: list[str] = field(default_factory=list)
+    # The case's pivot (sheet `Pivot`), built from its own seeded stream at the first `pivot: true` call (T-2396).
+    pivot_seed: int = 0
+    pivot: PivotSource | None = None
 
     # -- references into the data sheet --------------------------------------------------
     def cell_ref(self) -> str:
@@ -208,6 +219,11 @@ class Gen:
     def call_fn(self, fn: dict[str, Any], depth: int) -> str:
         """A call to `fn` with generated arguments."""
         self.used.add(fn["name"])
+        if fn.get("pivot"):
+            # GETPIVOTDATA queries the case's pivot: its arguments are names from it, not free expressions.
+            if self.pivot is None:
+                self.pivot = build_source(random.Random(f"pivot-{self.pivot_seed}"))
+            return pivot_call(self.rng, self.pivot, fn.get("spelled", fn["name"]))
         args: list[str] = []
         params: list[dict[str, Any]] = fn["params"]
         outer, outer_pending = len(self.scope), self.pending
@@ -271,6 +287,19 @@ class Gen:
         del self.scope[outer:]
         return f"LAMBDA({','.join(names)},{body})"
 
+    def pooled_lambda(self, p: dict[str, Any], arity: int) -> str | None:
+        """A `lambda_body` pool entry of `arity` parameters (POOL_RATE of the time), with x and y renamed to
+        free names so an outer LAMBDA or LET name is never shadowed; None to build one."""
+        fitting = [t for t in POOLS.get(p.get("pool", ""), []) if lambda_arity(t) == arity]
+        if not fitting or self.rng.random() >= POOL_RATE:
+            return None
+        text = self.rng.choice(fitting)
+        names = {"x": self.fresh_name()}
+        self.scope.append(names["x"])
+        names["y"] = self.fresh_name()
+        self.scope.pop()
+        return re.sub(r"\b[xy]\b", lambda m: names[m.group(0)], text)
+
     def argument(self, p: dict[str, Any], depth: int, arity: int = 1) -> str:
         mode = p.get("mode", "value")
         if mode == "name":
@@ -279,13 +308,17 @@ class Gen:
             return name
         if mode == "lambda":
             n = p.get("arity", 1)
-            return self.lambda_arg(arity if n == "repeat" else int(n), depth)
+            want = arity if n == "repeat" else int(n)
+            return self.pooled_lambda(p, want) or self.lambda_arg(want, depth)
         if mode == "array" and p.get("mask"):
             # FILTER's include: one TRUE/FALSE per data row, so it fits a `full` array.
             text = f"({self.range_ref(full=True)}{self.rng.choice(MASK_OPS)}{self.literal('number')})"
         elif mode in ("array", "aggregate", "aggregate_a") and self.scope and self.rng.random() < 0.5:
             # A LAMBDA parameter or LET variable often holds the row, column or array (BYROW's SUM(x)).
             text = self.rng.choice(self.scope)
+        elif mode == "range" and p.get("pool") and self.rng.random() < pool_rate(p):
+            # A pooled `range` param takes array constants too (LOOKUP's and XMATCH's lookup_table).
+            text = self.rng.choice(POOLS[p["pool"]])
         else:
             text = self.argument_text(p, mode, depth)
         # A LET variable is visible from the argument after its value on.
@@ -322,7 +355,7 @@ class Gen:
         if in_domain is not None:
             return in_domain
         # A `hard` domain is never overridden: outside it Excel refuses the workbook (MUNIT).
-        if p.get("pool") and not dom.get("hard") and self.rng.random() < POOL_RATE:
+        if p.get("pool") and not dom.get("hard") and self.rng.random() < pool_rate(p):
             return self.rng.choice(POOLS[p["pool"]])
         return self.value_expr(p, depth)
 
@@ -421,7 +454,7 @@ def generate_case(
     themselves are the same as without it. `functions` (catalog names) and `category` narrow the `focus`
     targets; an unknown name, an empty selection or a function outside `milestone` is a ValueError."""
     rng = random.Random(seed)
-    g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
+    g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth, pivot_seed=seed)
     targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
     if (functions or category is not None) and not focus:
         msg = "--functions and --category narrow --focus; pass --focus too"
@@ -466,7 +499,12 @@ def generate_case(
         "format": "rustsheet-case/v1",
         "description": f"generated P0 seed={seed} milestone={milestone}" + (" spill" if spill else ""),
         "tags": tags,
-        "sheets": [{"name": "Data", "cells": data}, {"name": "Calc", "cells": calc}],
+        "sheets": [
+            {"name": "Data", "cells": data},
+            {"name": "Calc", "cells": calc},
+            *([g.pivot.spec_sheet()] if g.pivot is not None else []),
+            *([database.spec_sheet()] if database.uses_db(texts) else []),
+        ],
         "expected": {},
         "check": check,
     }

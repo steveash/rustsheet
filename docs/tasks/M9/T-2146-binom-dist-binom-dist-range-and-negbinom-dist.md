@@ -59,7 +59,108 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 14 cells, 14 numeric p
 | probes-numeric/t1048-negbinomdist Calc!B4 | `=NEGBINOM.DIST(10,2,0.9,FALSE)` | 8.909999999999952e-10 | 8.909999999999981e-10 |
 | probes-numeric/t1048-negbinomdist Calc!B5 | `=NEGBINOM.DIST(1,10,0.1,FALSE)` | 8.999999999999998e-10 | 9.000000000000005e-10 |
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE values visibly off (8 cells, tails near
+1E-100).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 8 known-failure lines in eval/baseline/gen-m9.txt, 8 formulas.
+Examples:
+- gen-m9/0a614cfe974b59c3 Calc!A170 `=BINOM.DIST(Data!D$10,1,1E-100,FALSE)`: Excel 9.99999999999989e-101, ours 1e-100
+Cells:
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A170
+- gen-m9/27601819397dd56e.case.json (1): Calc!A280
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A174
+- gen-m9/8d3588d8df0812df.case.json (1): Calc!A276
+- gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A360
+- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A380
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A397
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A113
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: BINOMDIST, BINOM.DIST and BINOM.DIST.RANGE last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 21 known-failure lines in eval/baseline/gen-m9.txt, 21 formulas.
+Examples:
+- gen-m9/146b46e74f2dac3b Calc!A346 `=BINOMDIST(3,10,0.05,ISLOGICAL(Data!B$8))`: Excel 0.010475059441406248, ours 0.010475059441406252
+Cells:
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A346
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A164
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A88
+- gen-m9/4bad303d32cc3f46.case.json (1): Calc!A382
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A167
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A357
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A199
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A38
+- gen-m9/8d3588d8df0812df.case.json (1): Calc!A303
+- gen-m9/8f2ac25945af87da.case.json (1): Calc!A41
+- gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A323
+- gen-m9/a013a45a8fbcab4f.case.json (3): Calc!A145, A250, A366
+- gen-m9/a790a4d4a6a82756.case.json (1): Calc!A366
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A37
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A52
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A45
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A289
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A287
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A32
+
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): NEGBINOMDIST and NEGBINOM.DIST values off Excel's, mostly at tiny or near-1 probabilities where Excel's formulation carries error the exact value does not (`NEGBINOMDIST(5,3,1E-20)` Excel 2.1000000000000084E-59, exact 2.1E-59; `NEGBINOMDIST(0,1,1E-200)` 9.99999999999978E-201). Domain edges are T-2474's.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 85 known-failure lines in eval/baseline/gen-m9.txt, 40 visibly off.
+Examples:
+- gen-m9/329b177b5d5165ad Calc!A329 `=NEGBINOMDIST((Data!D11/AVERAGEA(Data!E1:E5,Data!B9:B9,Data!D9:D11)),6,1e-15)`: Excel 1.0000000000000072e-90, ours 1.0000000000000004e-90
+- gen-m9/44a8841352dc48e9 Calc!A157 `=STANDARDIZE((IFNA(0.1,Data!$D12)/YEAR(1)),Data!B8,NEGBINOMDIST(7,9,0.025))`: Excel -2042715136323.223, ours -2042715136323.2314
+- gen-m9/583ca2baea0bb30a Calc!A123 `=NEGBINOM.DIST(7,2.5,1-1E-10,(ISNUMBER(Data!D10)=(Data!$B7<>1000000000000000.0)))`: Excel 8.000004631861894e-70, ours 8.000004631861925e-70
+- gen-m9/787ba8d801105a60 Calc!A71 `=NEGBINOMDIST(2,3,0.05)`: Excel 0.0006768749999999995, ours 0.0006768750000000001
+- gen-m9/c2684066d8df263e Calc!A1 `=NEGBINOM.DIST(4,3,1E-20,0)`: Excel 1.4999999999999724e-59, ours 1.4999999999999998e-59
+Cells:
+- gen-m9/097af1ca33638670.case.json (1): Calc!A177
+- gen-m9/09b47629f54b9817.case.json (1): Calc!A322
+- gen-m9/0bbab6206b5c9a07.case.json (2): Calc!A25, A87
+- gen-m9/11eb3ab4f4f8104c.case.json (3): Calc!A188, A312, A374
+- gen-m9/139684e68fb2fc3b.case.json (2): Calc!A228, A380
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A11
+- gen-m9/1b31092a0d79e5f1.case.json (1): Calc!A197
+- gen-m9/1db18890916ee643.case.json (1): Calc!A86
+- gen-m9/2138b909d8f810ea.case.json (1): Calc!A45
+- gen-m9/329b177b5d5165ad.case.json (1): Calc!A329
+- gen-m9/38e4fc309fe199ea.case.json (1): Calc!A325
+- gen-m9/3b7990bd4e3307ba.case.json (1): Calc!A250
+- gen-m9/3fb9cecf2c23169f.case.json (1): Calc!A100
+- gen-m9/43c6227e0ff368c7.case.json (2): Calc!A203, A327
+- gen-m9/44a8841352dc48e9.case.json (3): Calc!A157, A325, A363
+- gen-m9/46ac3ef5e61583ca.case.json (2): Calc!A305, A347
+- gen-m9/583ca2baea0bb30a.case.json (2): Calc!A30, A123
+- gen-m9/5919660b7bb4d195.case.json (2): Calc!A10, A276
+- gen-m9/5cebac1f02bf30f2.case.json (2): Calc!A241, A317
+- gen-m9/607e85cfee83a689.case.json (5): Calc!A22, A196, A258, A270, A394
+- gen-m9/6e18550e9fc9c1b9.case.json (2): Calc!A5, A160
+- gen-m9/775d053de498b8c7.case.json (2): Calc!A204, A390
+- gen-m9/787ba8d801105a60.case.json (1): Calc!A71
+- gen-m9/7980ffb6095a340d.case.json (2): Calc!A181, A257
+- gen-m9/7f7ca726c3f68554.case.json (1): Calc!A124
+- gen-m9/7fd0a98183c6babf.case.json (2): Calc!A37, A379
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A155
+- gen-m9/91e167cd8d7eb652.case.json (1): Calc!A183
+- gen-m9/941c409532603d32.case.json (2): Calc!A25, A273
+- gen-m9/9735c5ab72fa5ecf.case.json (1): Calc!A368
+- gen-m9/9bc247733a1ca9fa.case.json (1): Calc!A340
+- gen-m9/9e2225ead8a6a07b.case.json (3): Calc!A238, A275, A362
+- gen-m9/a5342a7e24fd803e.case.json (3): Calc!A71, A109, A375
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A259
+- gen-m9/afc00c8b70e78baf.case.json (2): Calc!A43, A353
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A43
+- gen-m9/bcb1105c61a2649d.case.json (1): Calc!A48
+- gen-m9/c2684066d8df263e.case.json (4): Calc!A1, A149, A273, A335
+- gen-m9/c4635963fc926284.case.json (1): Calc!A148
+- gen-m9/c7664e494e418395.case.json (3): Calc!A110, A262, A300
+- gen-m9/ce312817dc9c7f0b.case.json (1): Calc!A143
+- gen-m9/d208bbafc3bc1997.case.json (2): Calc!A117, A307
+- gen-m9/d37313406b9f6e55.case.json (1): Calc!A27
+- gen-m9/d5fd9e05e9e6f466.case.json (2): Calc!A49, A202
+- gen-m9/d8f44d556674c2fd.case.json (3): Calc!A167, A281, A395
+- gen-m9/d910f000b60e2eac.case.json (1): Calc!A15
+- gen-m9/eccd03df42e40006.case.json (1): Calc!A169
+- gen-m9/ede0323c389fc703.case.json (3): Calc!A173, A287, A363
+- gen-m9/f82473275380882e.case.json (1): Calc!A392
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 93 known-failure lines (8 from T-2255, 85 from T-2256) disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the 14 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/ironcalc-calc.txt disappear (`make eval-baseline`); the 8 cells of the ungated probes-numeric suite pass in `make eval`, with no new known-failure lines in any baseline.
 - [ ] statistics.md "Discrete distributions" records the fit: each candidate's count on BINOM.xlsx's 148 numeric
       cells, on T-2145's sweep and on the two probes-numeric cases, including the candidates that lost.

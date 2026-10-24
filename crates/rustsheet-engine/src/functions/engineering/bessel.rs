@@ -41,7 +41,9 @@ impl Model {
     /// `BESSELK(x, n)`.
     pub(crate) fn fn_besselk(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Besselk, args, cell, &mut |model, values| {
-            model.bessel_of(values, bessel_k, cell)
+            // K_n(x) below the normal range is 0: BESSELK(705.5,0) and everything past it, the
+            // subnormals included (probes/eng-besselk-underflow-bit-shift; 705 keeps 3.1E-308).
+            model.bessel_of(values, |n, x| flush_subnormal(bessel_k(n, x)), cell)
         })
     }
 

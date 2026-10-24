@@ -1,0 +1,66 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2387: legacy @ with a SWITCH or other dynamic-array-only function reached through a defined name; dynamic twins in row 1, legacy in row 10, FORMULATEXT in row 20.",
+ "tags": [
+  "M8",
+  "names",
+  "arrays",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "legacy_formulas": [
+    "A10",
+    "D10",
+    "G10",
+    "J10",
+    "M10",
+    "P10",
+    "S10",
+    "V10"
+   ],
+   "cells": {
+    "Z29": 2,
+    "Z30": 1,
+    "Z31": 2,
+    "Z32": 3,
+    "AA30": 4,
+    "AA31": 5,
+    "A1": "=ABS(swArr)",
+    "A10": "=ABS(swArr)",
+    "A20": "=FORMULATEXT(A10)",
+    "D1": "=ABS(Z30:Z32)+swOne",
+    "D10": "=ABS(Z30:Z32)+swOne",
+    "D20": "=FORMULATEXT(D10)",
+    "G1": "=ABS(Z30:Z32)+rngZ",
+    "G10": "=ABS(Z30:Z32)+rngZ",
+    "G20": "=FORMULATEXT(G10)",
+    "J1": "=ABS(rngZ)",
+    "J10": "=ABS(rngZ)",
+    "J20": "=FORMULATEXT(J10)",
+    "M1": "=ABS(Z30:Z32)+letOne",
+    "M10": "=ABS(Z30:Z32)+letOne",
+    "M20": "=FORMULATEXT(M10)",
+    "P1": "=ABS(Z30:Z32)+xlk",
+    "P10": "=ABS(Z30:Z32)+xlk",
+    "P20": "=FORMULATEXT(P10)",
+    "S1": "=SUM(swArr)",
+    "S10": "=SUM(swArr)",
+    "S20": "=FORMULATEXT(S10)",
+    "V1": "=ABS(Z30:Z32)+absRng",
+    "V10": "=ABS(Z30:Z32)+absRng",
+    "V20": "=FORMULATEXT(V10)"
+   }
+  }
+ ],
+ "expected": {},
+ "names": {
+  "swArr": "=SWITCH(1,1,{2;3})",
+  "swOne": "=SWITCH(1,1,2)",
+  "rngZ": "=S!$Z$30:$Z$32",
+  "letOne": "=LET(x,1,x)",
+  "xlk": "=XLOOKUP(2,S!$Z$30:$Z$32,S!$Z$30:$Z$32)",
+  "absRng": "=ABS(S!$Z$30:$Z$32)"
+ }
+}

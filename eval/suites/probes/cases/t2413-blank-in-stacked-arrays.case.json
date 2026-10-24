@@ -1,0 +1,69 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2413: how a blank cell inside an HSTACK, VSTACK, EXPAND pad or IF array reaches functions and LAMBDAs: ISBLANK, COUNT, COUNTA, &, TYPE and AVERAGE of the INDEX element; MAP with COUNT, ISBLANK and AVERAGE; REDUCE with COUNT and with eta AVERAGE (the gen-m7/f19581ac44da1653 A2088 form, last row).",
+ "tags": [
+  "M7",
+  "probe",
+  "dynamic-arrays",
+  "T-2413"
+ ],
+ "sheets": [
+  {
+   "name": "P",
+   "cells": {
+    "A1": "=ISBLANK(INDEX(HSTACK(D!Z1:Z2,{1;2}),1,1))",
+    "A2": "=COUNT(INDEX(HSTACK(D!Z1:Z2,{1;2}),1,1))",
+    "A3": "=COUNTA(INDEX(HSTACK(D!Z1:Z2,{1;2}),1,1))",
+    "A4": "=INDEX(HSTACK(D!Z1:Z2,{1;2}),1,1)&\"|\"",
+    "A5": "=TYPE(INDEX(HSTACK(D!Z1:Z2,{1;2}),1,1))",
+    "A6": "=AVERAGE(INDEX(HSTACK(D!Z1:Z2,{1;2}),1,1),1)",
+    "A7": "=TEXTJOIN(\",\",FALSE,MAP(HSTACK(D!Z1:Z2,{1;2}),_xleta.COUNT))",
+    "A8": "=TEXTJOIN(\",\",FALSE,MAP(HSTACK(D!Z1:Z2,{1;2}),LAMBDA(v,ISBLANK(v))))",
+    "A9": "=REDUCE(0,HSTACK(D!Z1:Z2,{1;2}),LAMBDA(a,v,a+COUNT(v)))",
+    "A10": "=REDUCE(\"t\",HSTACK(D!Z1:Z2,{1;2}),_xleta.AVERAGE)",
+    "A11": "=TEXTJOIN(\",\",FALSE,MAP(HSTACK(D!Z1:Z2,{1;2}),LAMBDA(v,AVERAGE(v,1))))",
+    "A13": "=ISBLANK(INDEX(VSTACK(D!Z1,1,D!Z2,2),1,1))",
+    "A14": "=COUNT(INDEX(VSTACK(D!Z1,1,D!Z2,2),1,1))",
+    "A15": "=COUNTA(INDEX(VSTACK(D!Z1,1,D!Z2,2),1,1))",
+    "A16": "=INDEX(VSTACK(D!Z1,1,D!Z2,2),1,1)&\"|\"",
+    "A17": "=TYPE(INDEX(VSTACK(D!Z1,1,D!Z2,2),1,1))",
+    "A18": "=AVERAGE(INDEX(VSTACK(D!Z1,1,D!Z2,2),1,1),1)",
+    "A19": "=TEXTJOIN(\",\",FALSE,MAP(VSTACK(D!Z1,1,D!Z2,2),_xleta.COUNT))",
+    "A20": "=TEXTJOIN(\",\",FALSE,MAP(VSTACK(D!Z1,1,D!Z2,2),LAMBDA(v,ISBLANK(v))))",
+    "A21": "=REDUCE(0,VSTACK(D!Z1,1,D!Z2,2),LAMBDA(a,v,a+COUNT(v)))",
+    "A22": "=REDUCE(\"t\",VSTACK(D!Z1,1,D!Z2,2),_xleta.AVERAGE)",
+    "A23": "=TEXTJOIN(\",\",FALSE,MAP(VSTACK(D!Z1,1,D!Z2,2),LAMBDA(v,AVERAGE(v,1))))",
+    "A25": "=ISBLANK(INDEX(EXPAND(1,2,2,D!Z1),1,1))",
+    "A26": "=COUNT(INDEX(EXPAND(1,2,2,D!Z1),1,1))",
+    "A27": "=COUNTA(INDEX(EXPAND(1,2,2,D!Z1),1,1))",
+    "A28": "=INDEX(EXPAND(1,2,2,D!Z1),1,1)&\"|\"",
+    "A29": "=TYPE(INDEX(EXPAND(1,2,2,D!Z1),1,1))",
+    "A30": "=AVERAGE(INDEX(EXPAND(1,2,2,D!Z1),1,1),1)",
+    "A31": "=TEXTJOIN(\",\",FALSE,MAP(EXPAND(1,2,2,D!Z1),_xleta.COUNT))",
+    "A32": "=TEXTJOIN(\",\",FALSE,MAP(EXPAND(1,2,2,D!Z1),LAMBDA(v,ISBLANK(v))))",
+    "A33": "=REDUCE(0,EXPAND(1,2,2,D!Z1),LAMBDA(a,v,a+COUNT(v)))",
+    "A34": "=REDUCE(\"t\",EXPAND(1,2,2,D!Z1),_xleta.AVERAGE)",
+    "A35": "=TEXTJOIN(\",\",FALSE,MAP(EXPAND(1,2,2,D!Z1),LAMBDA(v,AVERAGE(v,1))))",
+    "A37": "=ISBLANK(INDEX(IF(TRUE,D!Z1:Z2),1,1))",
+    "A38": "=COUNT(INDEX(IF(TRUE,D!Z1:Z2),1,1))",
+    "A39": "=COUNTA(INDEX(IF(TRUE,D!Z1:Z2),1,1))",
+    "A40": "=INDEX(IF(TRUE,D!Z1:Z2),1,1)&\"|\"",
+    "A41": "=TYPE(INDEX(IF(TRUE,D!Z1:Z2),1,1))",
+    "A42": "=AVERAGE(INDEX(IF(TRUE,D!Z1:Z2),1,1),1)",
+    "A43": "=TEXTJOIN(\",\",FALSE,MAP(IF(TRUE,D!Z1:Z2),_xleta.COUNT))",
+    "A44": "=TEXTJOIN(\",\",FALSE,MAP(IF(TRUE,D!Z1:Z2),LAMBDA(v,ISBLANK(v))))",
+    "A45": "=REDUCE(0,IF(TRUE,D!Z1:Z2),LAMBDA(a,v,a+COUNT(v)))",
+    "A46": "=REDUCE(\"t\",IF(TRUE,D!Z1:Z2),_xleta.AVERAGE)",
+    "A47": "=TEXTJOIN(\",\",FALSE,MAP(IF(TRUE,D!Z1:Z2),LAMBDA(v,AVERAGE(v,1))))",
+    "A49": "=REDUCE(REPLACE({\"ab\";\"cd\";\"ef\"},3,2,\"x\"),HSTACK(D!Z1:Z2,{1;2}),_xleta.AVERAGE)"
+   }
+  },
+  {
+   "name": "D",
+   "cells": {
+    "A1": "x"
+   }
+  }
+ ],
+ "expected": {}
+}

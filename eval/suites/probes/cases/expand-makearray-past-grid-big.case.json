@@ -1,0 +1,24 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2408: EXPAND columns far past the grid with 1 row (A) and 4 rows (B): where Excel refuses the size itself, and whether that is a columns limit or a cell count.",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2408"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=COLUMNS(_xlfn.EXPAND(1,1,123456789))",
+        "A2": "=COLUMNS(_xlfn.EXPAND(1,1,2^31))",
+        "A3": "=COLUMNS(_xlfn.EXPAND(1,1,1E10))",
+        "B1": "=COLUMNS(_xlfn.EXPAND(1,4,2^27))",
+        "B2": "=COLUMNS(_xlfn.EXPAND(1,4,2^31))",
+        "B3": "=COLUMNS(_xlfn.EXPAND(1,4,123456789))"
+      }
+    }
+  ],
+  "expected": {}
+}

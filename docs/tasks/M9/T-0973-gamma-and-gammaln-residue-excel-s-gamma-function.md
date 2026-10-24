@@ -3,7 +3,7 @@ id: T-0973
 title: "GAMMA and GAMMALN residue: Excel's gamma-function kernel (39 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -65,18 +65,29 @@ t1042-gamma-int-91-171 Calc!A77). GAMMALN at integers: ln of that product 82/171
 rounded and 64-bit 45, engine 0. The x87 64-bit-intermediate model only ties correctly rounded, so it is not
 Excel's gamma. Details: statistics.md "GAMMA and GAMMALN sweep (T-1042)".
 
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: GAMMALN.PRECISE last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 formulas.
+Examples:
+- gen-m9/40425341c5034eed Calc!A115 `=GAMMALN.PRECISE((WRAPCOLS(1.005,2,7)^0.3))`: Excel -0.0008624698309035655, ours -0.0008624698309035657
+Cells:
+- gen-m9/40425341c5034eed.case.json (1): Calc!A115
+- gen-m9/8f2ac25945af87da.case.json (1): Calc!A97
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A124
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A153
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A294
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A241
+
 ## Acceptance criteria
-- [ ] GAMMA(n) for integers 1 <= n <= 88 is the downward product (n-1)*(n-2)*...*2, each product rounded
+- [x] GAMMA(n) for integers 1 <= n <= 88 is the downward product (n-1)*(n-2)*...*2, each product rounded
       to a double: all 88 such cells of `probes-numeric/t1042-gamma-int-1-90` pass (92 of the 171 integer
       cells in the two t1042 integer cases at least; the fit lab's `gamma-int` scores this rule 92/171).
-- [ ] GAMMA(n) for integers n >= 89 (83 cells of `t1042-gamma-int-1-90` and `-91-171`): open item.
+- [x] GAMMA(n) for integers n >= 89 (83 cells of `t1042-gamma-int-1-90` and `-91-171`): open item.
       Either a fitted routine passes them, or the PR leaves them in the baseline and lists the
       candidates tried in statistics.md "GAMMA and GAMMALN sweep (T-1042)".
-- [ ] `GAMMA(171.5)` and `GAMMA(171.6)` are finite (9.483367566824801e+307, 1.5858969096672508e+308) and
+- [x] `GAMMA(171.5)` and `GAMMA(171.6)` are finite (9.483367566824801e+307, 1.5858969096672508e+308) and
       `GAMMA(171.7)` is `#NUM!` (T-1042, `t1042-gamma-negatives-edges`).
-- [ ] No new lines in any `eval/baseline/` file: the GAMMALN lines T-0926 fixed stay fixed, and
+- [x] No new lines in any `eval/baseline/` file: the GAMMALN lines T-0926 fixed stay fixed, and
       non-integer GAMMA cells do not regress (their fit is T-1529).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 GAMMALN and GAMMA at non-integers (T-1529, time-boxed); incomplete gamma (T-0971); GAMMA.INV (T-0972).
@@ -95,3 +106,23 @@ Integer arguments only (non-integers and the T-1941 model are T-2129). Excel is 
 GAMMALN and GAMMA are mapped to Excel's own x87 routines (T-1941; `docs/research/t1941/HANDOFF2.md`). T-2128 and
 T-2129 ship them; the four open kernels' remaining coefficient bits are T-2122. This supersedes the hypotheses above
 (named library routines, Lanczos, ln of the product).
+
+## Outcome
+Closed with no engine change: T-2129 (GAMMA) and T-2128 (GAMMALN, GAMMALN.PRECISE) shipped Excel's own x87 routines
+(T-1941), which meet every criterion here. Checked on `main` 47a2e53 with `rustsheet-eval show`:
+`probes-numeric/t1042-gamma-int-1-90`, `t1042-gamma-int-91-171` and `t1042-gamma-half-int` have no failing cells (the
+n <= 88 downward product and the n >= 89 item both pass); in `t1042-gamma-negatives-edges` GAMMA(171.5) and GAMMA(171.6)
+are finite and GAMMA(171.7) is #NUM!; the two misses left there, GAMMA(-0.1) and GAMMA(-1.1), are an ulp through K1
+(T-2122). No GAMMA, GAMMALN or GAMMALN.PRECISE cell of ironcalc-calc GAMMA.xlsx, BETA_GAMMA.xlsx or
+GAMMALN_GAMMALNPRECISE.xlsx is in `eval/baseline/` any more (what is left there is GAMMA.DIST / GAMMA.INV / BETA.DIST,
+T-0971, T-0972, T-0970). gen-m9 d244411dd90f7fbd A17 (GAMMA(100)) passes.
+
+The six gen-m9 GAMMALN.PRECISE cells, each a few ulp, are not visibly off and now belong elsewhere. Evaluating the
+argument on its own shows where each one falls:
+- Five fall in K3 on [0.7, 1.5): 40425341c5034eed A115 (x = 1.0015), 8f2ac25945af87da A97 (0.817), b6593d7dd13f2dac
+  A124 (0.999994), b8ee55934c5b824c A153 (0.871), f2bd5f380ec002bf A241 (0.845). K3's coefficients are the open
+  kernel with a 0.32 exact rate. These cells move to T-2122.
+- c468f5046aadfbbc A294 `GAMMALN.PRECISE(WEIBULL.DIST(..))`: the argument is 6.66e-99, so fl(x+1) = 1 and the
+  routine returns -LN(x). Our value equals our `-LN(x)` bit for bit, and LN matches Excel's FYL2X model, so the 3-ulp
+  miss comes from the WEIBULL.DIST density's last bits. This cell moves to T-0978.
+Eval delta: none (no code change).

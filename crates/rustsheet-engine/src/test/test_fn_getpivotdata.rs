@@ -410,3 +410,79 @@ fn many_calls_build_one_index_per_pivot_and_evaluation() {
     model.evaluate();
     assert_eq!(model.evaluation.pivot_indexes.builds(), builds + 2);
 }
+
+#[test]
+fn getpivotdata_follows_the_pivot_through_structural_edits() {
+    // SPEC-0015 "Data model" (T-2086): the pivot moves with its cells, so a formula whose
+    // reference moved with them keeps answering; an edit through the pivot is refused.
+    let mut model = model();
+    model._set(
+        "Sheet2!A1",
+        r#"=GETPIVOTDATA("Sales",Sheet1!$A$3,"Region","East")"#,
+    );
+    model._set("Sheet2!A2", r#"=GETPIVOTDATA("Sales",Sheet1!$E$7)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!A1"), "22");
+    model.insert_rows(0, 1, 2).unwrap();
+    model.delete_columns(0, 6, 2).unwrap();
+    model.rename_sheet_by_index(0, "Moved").unwrap();
+    assert!(model.insert_rows(0, 7, 1).is_err());
+    model.evaluate();
+    assert_eq!(
+        model._get_formula("Sheet2!A1"),
+        r#"=GETPIVOTDATA("Sales",Moved!$A$5,"Region","East")"#
+    );
+    assert_eq!(model._get_text("Sheet2!A1"), "22");
+    assert_eq!(model._get_text("Sheet2!A2"), "49");
+    // Deleting every row of the second pivot (A22:B25 now) drops it with its cells.
+    model._set("Sheet2!A3", r#"=GETPIVOTDATA("Sales",Moved!$A$22)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!A3"), "8.166666667");
+    model.delete_rows(0, 21, 6).unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!A3"), "#REF!");
+    assert_eq!(model._get_text("Sheet2!A1"), "22");
+}
+
+#[test]
+fn getpivotdata_follows_the_pivot_through_moves() {
+    // T-2401: a move shifts a pivot like the cells it covers; a move that splits one is refused.
+    let mut model = model();
+    model._set(
+        "Sheet2!A1",
+        r#"=GETPIVOTDATA("Sales",Sheet1!$A$3,"Region","East")"#,
+    );
+    model.evaluate();
+    // Row 1 jumps over rows 2..=11, so the pivots (A3:E7, A20:B23) move up by one or stay.
+    model.move_rows_action(0, 1, 1, 10).unwrap();
+    // Row 3 and column B lie inside the first pivot (now rows 2-6): moving them splits it.
+    assert!(model.move_rows_action(0, 3, 1, 1).is_err());
+    assert!(model.move_columns_action(0, 2, 1, 1).is_err());
+    let areas = |model: &Model| -> Vec<(u32, u32, u32, u32)> {
+        let tables = &model.workbook.pivot_tables;
+        tables
+            .iter()
+            .map(|p| {
+                (
+                    p.location.top,
+                    p.location.left,
+                    p.location.bottom,
+                    p.location.right,
+                )
+            })
+            .collect()
+    };
+    assert_eq!(areas(&model), vec![(1, 0, 5, 4), (19, 0, 22, 1)]);
+    // The pivot's whole span moves down by two.
+    model.move_rows_action(0, 2, 5, 2).unwrap();
+    assert_eq!(areas(&model), vec![(3, 0, 7, 4), (19, 0, 22, 1)]);
+    // Column F jumps back over A:E, so the pivots shift right by one.
+    model.move_columns_action(0, 6, 1, -5).unwrap();
+    assert_eq!(areas(&model), vec![(3, 1, 7, 5), (19, 1, 22, 2)]);
+    model.evaluate();
+    assert_eq!(
+        model._get_formula("Sheet2!A1"),
+        r#"=GETPIVOTDATA("Sales",Sheet1!$B$4,"Region","East")"#
+    );
+    assert_eq!(model._get_text("Sheet2!A1"), "22");
+}

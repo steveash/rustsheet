@@ -36,7 +36,8 @@
 //! needed restarts once evaluates in a single pass afterwards.
 //!
 //! Nothing here depends on the order in which cells are visited, only the
-//! amount of work does.
+//! amount of work does, but for WEEKNUM's stale `return_type` state: a pass in
+//! which a WEEKNUM read it is followed by one in Excel's order (`excel_order.rs`).
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -46,7 +47,9 @@ use crate::circular::circular_reference;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::date_and_time::weeknum::WeeknumStart;
 use crate::model::Model;
+use crate::restart_log::RestartLog;
 use crate::seen_ranges::SeenRange;
 use crate::types::{ArrayKind, Cell};
 
@@ -193,157 +196,13 @@ pub(crate) enum Restart {
 }
 
 impl Restart {
-    fn anchor(&self) -> CellReferenceIndex {
+    pub(crate) fn anchor(&self) -> CellReferenceIndex {
         match self {
             Restart::StaleRead { anchor, .. }
             | Restart::Conflict { anchor, .. }
             | Restart::SelfContradiction(anchor)
             | Restart::StaleCells(anchor, _) => *anchor,
         }
-    }
-}
-
-/// The driver's memory of one evaluation: the facts learned about the order,
-/// and the anchors marked circular.
-///
-/// Every pass starts from the same sheet, so a pass is a function of the
-/// anchor order and of the circular set. A restart says that some readers
-/// read an anchor's area before it ran: a fact, "the anchor runs before each
-/// of them", that the current order breaks. The driver records the fact and
-/// repairs the order so that every fact holds, moving the anchor and what
-/// must precede it to just before the reader (`learn`). Since the order
-/// always respects the known facts, every restart adds a fact that was not
-/// known; there are at most `n(n-1)` of them. When a fact would close a
-/// cycle, the anchors on the cycle read each other's areas and no order can
-/// serve them: they are marked circular, at most `n` times.
-/// A marked anchor runs no formula and, its stale cells dropped, writes and
-/// blocks nothing, so it never restarts again. Stale-cell restarts drop at
-/// least one cell each. Hence the loop ends, with no cap needed.
-struct RestartLog {
-    /// Anchors marked circular so far; passed to every pass.
-    circular: Vec<CellKey>,
-    /// `(a, r)`: `a` runs before `r`. Learned from restarts; never broken by
-    /// the order; acyclic.
-    facts: Vec<(CellReferenceIndex, CellReferenceIndex)>,
-    /// Every restart of this evaluation.
-    restarts: u32,
-}
-
-impl RestartLog {
-    fn new() -> Self {
-        RestartLog {
-            circular: Vec::new(),
-            facts: Vec::new(),
-            restarts: 0,
-        }
-    }
-
-    /// Records a restart: learns its facts, marks what it proves circular and
-    /// reorders `order` to respect the facts. Returns the anchors newly
-    /// marked circular.
-    fn record(
-        &mut self,
-        restart: &Restart,
-        order: &mut Vec<CellReferenceIndex>,
-    ) -> Vec<CellReferenceIndex> {
-        self.restarts += 1;
-        let anchor = restart.anchor();
-        let readers: Vec<CellReferenceIndex> = match restart {
-            Restart::StaleRead { reader, .. } => vec![*reader],
-            Restart::Conflict { readers, .. } => readers.clone(),
-            Restart::SelfContradiction(_) => vec![],
-            Restart::StaleCells(..) => return Vec::new(),
-        };
-        let mut newly_circular: Vec<CellReferenceIndex> = Vec::new();
-        if let Restart::SelfContradiction(_) = restart {
-            self.mark(anchor, &mut newly_circular);
-        }
-        for reader in readers {
-            if self.circular.contains(&key(anchor)) {
-                break;
-            }
-            if self.circular.contains(&key(reader)) {
-                // Marked while an earlier reader was learned: on a loop,
-                // nothing to order it against.
-                continue;
-            }
-            self.learn(anchor, reader, order, &mut newly_circular);
-        }
-        newly_circular
-    }
-
-    /// Learns that `anchor` runs before `reader`, one restart's fact. If the
-    /// facts already place `reader` before `anchor`, the two are on a loop of
-    /// anchors reading each other's areas, with everything the facts place
-    /// between them: all of it is marked. Otherwise the fact is kept and the
-    /// order repaired: `anchor`, and whatever the facts place before it, move
-    /// from behind `reader` to just before it, in their present order.
-    fn learn(
-        &mut self,
-        anchor: CellReferenceIndex,
-        reader: CellReferenceIndex,
-        order: &mut Vec<CellReferenceIndex>,
-        newly_circular: &mut Vec<CellReferenceIndex>,
-    ) {
-        if reader == anchor {
-            return;
-        }
-        let before_anchor = self.reachable(anchor, |a, r| (r, a));
-        if before_anchor.contains(&reader) {
-            let after_reader = self.reachable(reader, |a, r| (a, r));
-            for cell in before_anchor {
-                if after_reader.contains(&cell) {
-                    self.mark(cell, newly_circular);
-                }
-            }
-            return;
-        }
-        self.facts.push((anchor, reader));
-        let Some(reader_position) = order.iter().position(|c| *c == reader) else {
-            return;
-        };
-        let moved: Vec<CellReferenceIndex> = order[reader_position + 1..]
-            .iter()
-            .copied()
-            .filter(|cell| before_anchor.contains(cell))
-            .collect();
-        order.retain(|cell| !moved.contains(cell));
-        order.splice(reader_position..reader_position, moved);
-    }
-
-    /// Marks an anchor circular. A marked anchor neither writes nor reads:
-    /// its facts are spent.
-    fn mark(&mut self, cell: CellReferenceIndex, newly_circular: &mut Vec<CellReferenceIndex>) {
-        if self.circular.contains(&key(cell)) {
-            return;
-        }
-        self.circular.push(key(cell));
-        newly_circular.push(cell);
-        self.facts.retain(|(a, r)| *a != cell && *r != cell);
-    }
-
-    /// Everything reachable from `start` along the facts, `start` included,
-    /// with `edge` giving the direction to follow.
-    fn reachable(
-        &self,
-        start: CellReferenceIndex,
-        edge: fn(
-            CellReferenceIndex,
-            CellReferenceIndex,
-        ) -> (CellReferenceIndex, CellReferenceIndex),
-    ) -> Vec<CellReferenceIndex> {
-        let mut seen = vec![start];
-        let mut todo = vec![start];
-        while let Some(cell) = todo.pop() {
-            for (a, r) in &self.facts {
-                let (from, to) = edge(*a, *r);
-                if from == cell && !seen.contains(&to) {
-                    seen.push(to);
-                    todo.push(to);
-                }
-            }
-        }
-        seen
     }
 }
 
@@ -410,6 +269,18 @@ pub(crate) struct Evaluation {
     pub(crate) unwinding: bool,
     /// GETPIVOTDATA's per-pivot indices and memo, dropped at each `evaluate()` (`pivot_index.rs`).
     pub(crate) pivot_indexes: crate::functions::lookup_and_reference::pivot_index::PivotIndexes,
+    /// WEEKNUM's stale `return_type` state (SPEC-0017).
+    pub(crate) weeknum_start: Option<WeeknumStart>,
+    /// Whether a WEEKNUM read that state in this pass.
+    pub(crate) weeknum_read: bool,
+    /// Passes run in Excel's fresh-load order (`excel_order.rs`): set once a pass had a reader.
+    pub(crate) excel_order: bool,
+    /// In that order's chain, a read of a formula cell not yet evaluated stops the root's run and
+    /// is recorded in `blocked_on`, instead of evaluating the cell.
+    pub(crate) blocking: bool,
+    pub(crate) blocked_on: Option<CellReferenceIndex>,
+    /// Number of passes the last `evaluate()` ran, restarted ones included. For tests.
+    pub(crate) passes_in_last_evaluation: u32,
 }
 
 /// How deep the recursion may go when nobody has said otherwise, in formulas
@@ -464,6 +335,12 @@ impl Default for Evaluation {
             stack_base: 0,
             unwinding: false,
             pivot_indexes: Default::default(),
+            weeknum_start: None,
+            weeknum_read: false,
+            excel_order: false,
+            blocking: false,
+            blocked_on: None,
+            passes_in_last_evaluation: 0,
         }
     }
 }
@@ -486,7 +363,22 @@ impl Model {
         // anchor's when it is marked.
         let mut spills_before = self.dynamic_spills();
         let mut log = RestartLog::new();
-        while let Some(restart) = self.run_pass(&log.circular) {
+        self.evaluation.passes_in_last_evaluation = 0;
+        loop {
+            self.evaluation.passes_in_last_evaluation += 1;
+            let Some(restart) = self.run_pass(&log.circular) else {
+                // A WEEKNUM read the stale return_type state: its value depends on the order, so
+                // the pass that counts is one in Excel's order (SPEC-0017). It starts from the
+                // same sheet as any other pass. Without a reader the order is not observable.
+                let read = self.evaluation.weeknum_read;
+                if read && !self.evaluation.excel_order {
+                    self.evaluation.excel_order = true;
+                    self.restore_dynamic_spills(&spills_before);
+                    continue;
+                }
+                self.evaluation.excel_order = read;
+                break;
+            };
             let marked = log.record(&restart, &mut self.evaluation.anchor_order);
             spills_before.retain(|(position, cell)| {
                 let dropped = match &restart {
@@ -504,6 +396,7 @@ impl Model {
             self.restore_dynamic_spills(&spills_before);
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
+        self.evaluation.weeknum_start = None;
         self.evaluate_conditional_formatting();
     }
 
@@ -626,14 +519,23 @@ impl Model {
     }
 
     fn dynamic_anchors_in_natural_order(&self) -> Vec<CellReferenceIndex> {
+        self.positions_where(|cell| {
+            matches!(
+                cell,
+                Cell::ArrayFormula {
+                    kind: ArrayKind::Dynamic,
+                    ..
+                }
+            )
+        })
+    }
+
+    /// The positions of the cells that `keep` accepts, in natural `(sheet, row, column)` order.
+    pub(crate) fn positions_where(&self, keep: impl Fn(&Cell) -> bool) -> Vec<CellReferenceIndex> {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
-                if let Cell::ArrayFormula {
-                    kind: ArrayKind::Dynamic,
-                    ..
-                } = cell
-                {
+                if keep(cell) {
                     found.push(CellReferenceIndex {
                         sheet: sheet as u32,
                         row,
@@ -660,14 +562,20 @@ impl Model {
         state.circular_anchors = circular_anchors.iter().copied().collect();
         state.circular_below = 0;
         state.in_pass = true;
+        state.weeknum_start = None;
+        state.weeknum_read = false;
         // dynamic links (HYPERLINK) are rebuilt on every evaluation
         self.links.clear();
         self.clear_variable_stack();
         self.clear_lambdas();
 
         let anchors = self.evaluation.anchor_order.clone();
-        let everything = self.all_positions();
         let mut restart = None;
+        let everything = if self.evaluation.excel_order {
+            Vec::new()
+        } else {
+            self.all_positions()
+        };
         for cell in anchors.into_iter().chain(everything) {
             self.evaluation.root = Some(cell);
             self.evaluate_root_cell(cell);
@@ -675,6 +583,9 @@ impl Model {
                 restart = self.evaluation.restart.take();
                 break;
             }
+        }
+        if restart.is_none() && self.evaluation.excel_order {
+            restart = self.run_excel_order();
         }
         self.evaluation.in_pass = false;
         self.evaluation.root = None;
@@ -789,6 +700,12 @@ impl Model {
                 self.mark_readers_of(key);
                 return self.stored_value(cell_reference);
             }
+            None if self.evaluation.blocking && !self.evaluation.stack.is_empty() => {
+                // Excel order: the root stops at this read, with no effect (`excel_order.rs`).
+                self.evaluation.blocked_on = Some(cell_reference);
+                self.evaluation.unwinding = true;
+                return CalcResult::EmptyCell;
+            }
             None => {}
         }
         self.evaluation.cells.insert(key, CellState::Evaluating);
@@ -803,6 +720,14 @@ impl Model {
             return CalcResult::EmptyCell;
         }
         let result = self.run_top(cell_reference, cell);
+        if self.evaluation.depth == 0 && self.evaluation.blocked_on.is_some() {
+            // The root stopped at a read (Excel order): it is not evaluated in this pass yet.
+            self.evaluation.unwinding = false;
+            self.evaluation.stack.truncate(base);
+            self.evaluation.circular_below = self.evaluation.circular_below.min(base);
+            self.evaluation.cells.remove(&key);
+            return CalcResult::EmptyCell;
+        }
         if self.evaluation.depth > 0 || !self.evaluation.unwinding {
             self.mark_readers_of(key);
             return result;
