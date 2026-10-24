@@ -156,14 +156,14 @@ Cells:
 - gen-m9/f066968376660329.case.json (1): Calc!A371
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] (met for 180 cells; 12 rescoped, see Outcome) Visible parity (gen-m9, T-2258): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 190 known-failure lines (109 from T-2255, 81 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [x] (met for 180 cells; 12 rescoped, see Outcome) Visible parity (gen-m9, T-2255 and T-2256): these 190 known-failure lines (109 from T-2255, 81 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `COVAR(A1:A3,Z1)`, `CORREL(Z1:Z1,{1,2,3})`, `F.TEST(Z1,A1:A3)` and `INTERCEPT(Z1,1/0)` with Z1 empty
+- [x] Unit tests: `COVAR(A1:A3,Z1)`, `CORREL(Z1:Z1,{1,2,3})`, `F.TEST(Z1,A1:A3)` and `INTERCEPT(Z1,1/0)` with Z1 empty
       are `#VALUE!`; `COVAR(A1:A3,B1)` with B1 = 5 is still the one-value rule.
-- [ ] statistics.md's entry gets an "Ours:" line naming this task; T-2051 is closed or rescoped with a pointer here.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's entry gets an "Ours:" line naming this task; T-2051 is closed or rescoped with a pointer here.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A one-cell reference that holds a value (unchanged).
@@ -187,4 +187,5 @@ the argument-order work of the tasks below, so the "190 and 4 lines disappear" c
 - PROB (its reader is not the shared one), moved to T-2468: 583ca2baea0bb30a A58, 9735c5ab72fa5ecf A164,
   139684e68fb2fc3b A353, 46ac3ef5e61583ca A269, 5919660b7bb4d195 A1, d8f44d556674c2fd A192.
 - 4250f880ab640c49 A258 (FORECAST nested in GAMMA.INV, ours `#DIV/0!`): ours is now `#VALUE!` against Excel's `#NUM!`, moved to T-2616.
+gen-m9 58e3253bbd3a7a82 A9 and b4173fe25109a238 A348 were already off the baseline on main (T-2455).
 A computed blank (`CORREL(IF(TRUE,Z1),..)`) also gives `#VALUE!` by analogy with F.TEST; UNVERIFIED for the paired functions.
