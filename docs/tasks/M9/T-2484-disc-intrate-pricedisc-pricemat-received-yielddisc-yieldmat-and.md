@@ -3,7 +3,7 @@ id: T-2484
 title: "DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and ACCRINTM: argument check order (gen-m9, 87 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
