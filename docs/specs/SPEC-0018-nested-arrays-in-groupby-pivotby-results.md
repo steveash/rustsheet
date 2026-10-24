@@ -57,7 +57,7 @@ paragraph starting "A LAMBDA array result is shown as `#VALUE!`, but the cell ho
    `#VALUE!` in every cell too; whether those cells hold a nested array (TYPE 64 through INDEX) or the error is unprobed
    (T-2592). Until then they stay the error `#VALUE!`, as today.
 
-Unknowns, all in T-2592's probe: the error MAP gives (and BYROW, BYCOL); SUM, COUNT, COUNTA, AVERAGE, ARRAYTOTEXT, TEXTJOIN,
+T-2592 answered the unknowns below, see docs/excel-semantics/arrays.md ("T-2592 (probes/t2592-nested-groupby-cells"); notably MAP, BYROW, BYCOL are not errors, a reference body is a scalar, a two-parameter LAMBDA and subtotal cells are nested, and nested cells nest again. Rules 5 and 7 and the design below need revising from it (follow-up). The original unknowns were: the error MAP gives (and BYROW, BYCOL); SUM, COUNT, COUNTA, AVERAGE, ARRAYTOTEXT, TEXTJOIN,
 CONCAT and `&` over the result; REDUCE over it; `+0` and `--` on one INDEXed nested cell (top-left or the array);
 `A1#` over a spilled result; TYPE of the whole result (64 anyway); rule 7's two cases; a LAMBDA returning a GROUPBY that
 itself holds nested cells (two levels); a nested array of more than 1,048,576 cells.
