@@ -222,18 +222,6 @@
     "t": "e",
     "v": "#VALUE!"
    },
-   "A155": {
-    "t": "n",
-    "v": 20000.0
-   },
-   "A156": {
-    "t": "n",
-    "v": 1048576.0
-   },
-   "A157": {
-    "t": "e",
-    "v": "#SPILL!"
-   },
    "A158": {
     "t": "e",
     "v": "#VALUE!"
@@ -474,10 +462,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "aedb26274df093cfe8fc03de320494496e5150e341377d8384f04d1b3aadab0e",
+  "input_sha256": "9557c1c5558ceac84e1ae8d7bbc85ad01eecd36a44f626beb860d1a680f783fd",
   "kind": "excel-graph",
-  "produced_at": "2026-10-24T15:02:51+00:00",
+  "produced_at": "2026-10-24T15:09:15+00:00",
   "version": null,
-  "workbook_name": "f07c50244520624f2bddf5007099c90c77d6669739ccfb4cfbf4b5d0bc4aef4a.xlsx"
+  "workbook_name": "f4330a358a07bbbfcb1eca087641fbcd32fca77db3b740c672c3178eb9d40747.xlsx"
  }
 }
