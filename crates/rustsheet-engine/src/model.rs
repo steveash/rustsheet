@@ -99,6 +99,8 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
         },
         ArrayNode::Empty => FormulaValue::Number(0.0),
         ArrayNode::Lambda(_) => array_node_to_formula_value(ArrayNode::Error(Error::CALC)),
+        // A nested GROUPBY or PIVOTBY cell shows `#VALUE!` (SPEC-0018 rule 2).
+        ArrayNode::Nested(_) => array_node_to_formula_value(ArrayNode::Error(Error::VALUE)),
     }
 }
 
@@ -170,6 +172,8 @@ pub struct Model {
     pub(crate) lambda_captures: HashMap<usize, Captures>,
     /// The cells `lambda_captures` holds copies of, against `MAX_CAPTURED_CELLS`.
     pub(crate) captured_cells: usize,
+    /// What this evaluation spent of its nested-array budgets (SPEC-0018 "Bound").
+    pub(crate) nested_budget: crate::nested_array::NestedBudget,
     /// Where the stack was when the outermost LAMBDA call running now started
     /// (`Model::lambda_stack_base`), `None` while no call runs.
     pub(crate) lambda_calls_base: Option<usize>,
@@ -252,6 +256,7 @@ impl Model {
         self.evaluate_cell(cell);
         self.lambda_captures.clear();
         self.captured_cells = 0;
+        self.nested_budget = crate::nested_array::NestedBudget::default();
     }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
@@ -259,6 +264,7 @@ impl Model {
         self.named_lambdas = NamedLambdas::default();
         self.lambda_captures.clear();
         self.captured_cells = 0;
+        self.nested_budget = crate::nested_array::NestedBudget::default();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(

@@ -79,6 +79,7 @@ mod legacy_formula;
 pub mod links;
 mod merged_cells;
 mod model;
+mod nested_array;
 mod node_frames;
 mod outside_cell;
 mod positions;

@@ -7,6 +7,7 @@
 //! probes/fin-coupon-walk-bounds (docs/excel-semantics/financial.md "Financial function argument
 //! modes", "Coupon settlement before the calendar").
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 /// Evaluates `cells` on a sheet whose G1:G2 is 43831 (a maturity), G3:G4 is 2 (a frequency) and
@@ -177,6 +178,114 @@ fn bond_functions_check_their_arguments_in_excel_order() {
         ("C1", "=PRICE(0,43831,NA(),0.065,100,2,0)", "#N/A"),
         ("C2", "=DURATION(0,43831,0.08,0.09,2,1)", "#NUM!"),
     ]);
+}
+
+#[test]
+fn odd_coupon_functions_check_their_arguments_in_excel_order() {
+    // probes/odd-bond-argument-check-order (excel-graph, T-2483): a date below 0 or past
+    // 9999-12-31 is #NUM! as it is read, and the frequency before the basis is read; the date
+    // order and the value checks come after every read.
+    check(&[
+        // An out-of-domain argument before an error one.
+        (
+            "A1",
+            "=ODDFPRICE(2958466,NA(),39300,39630,0.0575,0.065,100,2,0)",
+            "#NUM!",
+        ),
+        (
+            "A2",
+            "=ODDFYIELD(39448,43831,39300,-1,0.0575,\"x\",100,2,0)",
+            "#NUM!",
+        ),
+        (
+            "A3",
+            "=ODDLPRICE(43000,43200,2958466,0.0575,0.065,100,2,NA())",
+            "#NUM!",
+        ),
+        (
+            "A4",
+            "=ODDLYIELD(43000,43200,42917,0.0575,99,100,3,NA())",
+            "#NUM!",
+        ),
+        // An error argument before an out-of-domain one.
+        (
+            "B1",
+            "=ODDFPRICE(43832,43831,39300,39630,0.0575,0.065,NA(),2,0)",
+            "#N/A",
+        ),
+        (
+            "B2",
+            "=ODDFYIELD(39448,43831,39700,39630,0.0575,95,100,2,\"x\")",
+            "#VALUE!",
+        ),
+        (
+            "B3",
+            "=ODDLPRICE(43000,43200,42917,-0.05,0.065,100,2,TRUE)",
+            "#VALUE!",
+        ),
+        (
+            "B4",
+            "=ODDLYIELD(NA(),43200,42917,0.0575,99,100,2,5)",
+            "#N/A",
+        ),
+        // A date of 0, 0.5 or 2958465 passes the read.
+        (
+            "C1",
+            "=ODDLPRICE(43000,2958465,42917,NA(),0.065,100,2,0)",
+            "#N/A",
+        ),
+        (
+            "C2",
+            "=ODDFPRICE(0.5,43831,39300,39630,NA(),0.065,100,2,0)",
+            "#N/A",
+        ),
+    ]);
+}
+
+#[test]
+fn oddl_settlement_must_follow_the_last_coupon() {
+    // probes/odd-bond-argument-check-order A909:A922 (excel-graph, T-2483): a settlement before
+    // or on the last coupon is #NUM!, a day after it is priced; its error comes after the reads.
+    check(&[
+        (
+            "A1",
+            "=ODDLPRICE(42800,43200,42917,0.0575,0.065,100,2,0)",
+            "#NUM!",
+        ),
+        (
+            "A2",
+            "=ODDLPRICE(42917,43200,42917,0.0575,0.065,100,2,0)",
+            "#NUM!",
+        ),
+        (
+            "A3",
+            "=ODDLYIELD(42916,43200,42917,0.0575,99,100,2,0)",
+            "#NUM!",
+        ),
+        (
+            "A4",
+            "=ODDLYIELD(42917,43200,42917,0.0575,99,100,2,0)",
+            "#NUM!",
+        ),
+        (
+            "A5",
+            "=ODDLPRICE(42800,43200,42917,0.0575,0.065,NA(),2,0)",
+            "#N/A",
+        ),
+    ]);
+    let mut model = new_empty_model();
+    model._set("A1", "=ODDLPRICE(42918,43200,42917,0.0575,0.065,100,2,0)");
+    model._set("A2", "=ODDLYIELD(42918,43200,42917,0.0575,99,100,2,0)");
+    model.evaluate();
+    // Excel's values, to the bit (A912, A919).
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A1"),
+        Ok(CellValue::Number(99.447_751_426_837_48))
+    );
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A2"),
+        Ok(CellValue::Number(0.071_149_773_826_044_15))
+    );
 }
 
 #[test]

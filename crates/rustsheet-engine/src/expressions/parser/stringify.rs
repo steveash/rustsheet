@@ -1,6 +1,7 @@
 pub(super) mod bound_variables;
 mod rename_defined_name;
 mod structured;
+mod wrong_reference;
 use super::reference_operators::{
     at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
     union_text,
@@ -22,6 +23,7 @@ use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
 pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
+    to_string_with_ref_errors,
 };
 
 pub enum DisplaceData {
@@ -73,6 +75,24 @@ enum Rewrite<'a> {
     Lower(&'a [String], Option<i32>),
     /// Prints every `#This Row` as its area on the printing cell's row (T-1699).
     LowerThisRow,
+    /// Prints `#REF!` for every structured reference to one of these tables (lowercase names):
+    /// the tables a table or sheet delete removes, as Excel rewrites them (T-2340).
+    RefError(&'a [String]),
+}
+
+/// Whether an R1C1 range is a whole row (`1:1`, absolute rows 1 to the last) and a whole column
+/// (`A:A`): open ranges such as SUM(A:A) are stored as normal ranges (`R1C[0]:R1048576C[0]`), so
+/// the A1 text strips the corners they do not print.
+pub(crate) fn open_range_flags(
+    rows: (bool, i32, bool, i32),
+    columns: (bool, i32, bool, i32),
+) -> (bool, bool) {
+    let (absolute_row1, row1, absolute_row2, row2) = rows;
+    let (absolute_column1, column1, absolute_column2, column2) = columns;
+    (
+        absolute_row1 && absolute_row2 && row1 == 1 && row2 == LAST_ROW,
+        absolute_column1 && absolute_column2 && column1 == 1 && column2 == LAST_COLUMN,
+    )
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
@@ -407,6 +427,7 @@ fn to_string_array_node(node: &ArrayNode, locale: &Locale, language: &Language) 
         ArrayNode::Error(kind) => format!("{kind}"),
         ArrayNode::Empty => "0".to_string(),
         ArrayNode::Lambda(_) => "#CALC!".to_string(), // never parsed: what a cell shows
+        ArrayNode::Nested(_) => "#VALUE!".to_string(), // never parsed: what a cell shows
     }
 }
 
@@ -480,7 +501,7 @@ fn stringify(
             }
             &DisplaceData::None
         }
-        Rewrite::Lower(..) | Rewrite::LowerThisRow => &DisplaceData::None,
+        Rewrite::Lower(..) | Rewrite::LowerThisRow | Rewrite::RefError(_) => &DisplaceData::None,
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
@@ -493,26 +514,9 @@ fn stringify(
         }
         NumberKind(number) => format_number_locale(*number, locale),
         StringKind(value) => format!("\"{value}\""),
-        WrongReferenceKind {
-            sheet_name,
-            column,
-            row,
-            absolute_row,
-            absolute_column,
-        } => stringify_reference(
-            context,
-            &DisplaceData::None,
-            &Reference {
-                sheet_name,
-                sheet_index: 0,
-                row: *row,
-                column: *column,
-                absolute_row: *absolute_row,
-                absolute_column: *absolute_column,
-            },
-            false,
-            false,
-        ),
+        WrongReferenceKind { .. } | WrongRangeKind { .. } => {
+            wrong_reference::text(node, context, export_to_excel)
+        }
         ReferenceKind {
             sheet_name,
             sheet_index,
@@ -546,14 +550,10 @@ fn stringify(
             row2,
             column2,
         } => {
-            // Note that open ranges SUM(A:A) or SUM(1:1) will be treated as normal ranges in the R1C1 (internal) representation
-            // A:A will be R1C[0]:R1048576C[0]
-            // So when we are forming the A1 range we need to strip the irrelevant information
-            let full_row = *absolute_row1 && *absolute_row2 && (*row1 == 1) && (*row2 == LAST_ROW);
-            let full_column = *absolute_column1
-                && *absolute_column2
-                && (*column1 == 1)
-                && (*column2 == LAST_COLUMN);
+            let (full_row, full_column) = open_range_flags(
+                (*absolute_row1, *row1, *absolute_row2, *row2),
+                (*absolute_column1, *column1, *absolute_column2, *column2),
+            );
             let s1 = stringify_reference(
                 context,
                 displace_data,
@@ -604,55 +604,6 @@ fn stringify(
                 language
             )
         ),
-        WrongRangeKind {
-            sheet_name,
-            absolute_row1,
-            absolute_column1,
-            row1,
-            column1,
-            absolute_row2,
-            absolute_column2,
-            row2,
-            column2,
-        } => {
-            // Note that open ranges SUM(A:A) or SUM(1:1) will be treated as normal ranges in the R1C1 (internal) representation
-            // A:A will be R1C[0]:R1048576C[0]
-            // So when we are forming the A1 range we need to strip the irrelevant information
-            let full_row = *absolute_row1 && *absolute_row2 && (*row1 == 1) && (*row2 == LAST_ROW);
-            let full_column = *absolute_column1
-                && *absolute_column2
-                && (*column1 == 1)
-                && (*column2 == LAST_COLUMN);
-            let s1 = stringify_reference(
-                context,
-                &DisplaceData::None,
-                &Reference {
-                    sheet_name,
-                    sheet_index: 0, // HACK
-                    row: *row1,
-                    column: *column1,
-                    absolute_row: *absolute_row1,
-                    absolute_column: *absolute_column1,
-                },
-                full_row,
-                full_column,
-            );
-            let s2 = stringify_reference(
-                context,
-                &DisplaceData::None,
-                &Reference {
-                    sheet_name: &None,
-                    sheet_index: 0, // HACK
-                    row: *row2,
-                    column: *column2,
-                    absolute_row: *absolute_row2,
-                    absolute_column: *absolute_column2,
-                },
-                full_row,
-                full_column,
-            );
-            format!("{s1}:{s2}")
-        }
         OpRangeKind { left, right } => {
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))

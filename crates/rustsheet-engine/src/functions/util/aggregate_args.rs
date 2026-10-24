@@ -213,7 +213,7 @@ fn array_item(node: ArrayNode) -> Result<CalcResult, Error> {
         // A LAMBDA element is read as `#VALUE!`: SUM is `#VALUE!`, COUNT skips it and COUNTA
         // counts it (probes/lambda-arrays B9-B11).
         ArrayNode::Error(error) => return Err(error),
-        ArrayNode::Lambda(_) => return Err(Error::VALUE),
+        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => return Err(Error::VALUE),
         ArrayNode::Empty => CalcResult::EmptyCell,
     })
 }
