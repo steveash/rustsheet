@@ -1,6 +1,6 @@
 ---
 id: T-2563
-title: "BESSELJ/BESSELY large x: #NUM! at x >= 2^27 and last-digit drift at 1e3..1e6"
+title: "BESSELJ/BESSELY large x: #NUM! at x = 2^27 (orders 0, 3) and 1e10, last-digit drift at 1e3..1e6"
 milestone: M9
 lane: functions-engineering
 status: todo
