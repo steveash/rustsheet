@@ -2285,9 +2285,10 @@ Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `A
 Tasks: T-1551, T-1555, T-1559
 
 ## Thin distribution functions: argument coercion, truncation and error edges (T-1049)
-Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by T-1049):
-Implemented in: `functions/statistical/hypegeom.rs`, `weibull.rs`, `phi.rs` (the HYPGEOM.DIST sample_s, zero-count, negative-fraction and TRUE-sample_s rules, the WEIBULL.DIST x = 0 density and TRUE x, PHI of a boolean)
-Tasks: T-2035 (partial)
+Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; F.TEST scalars implemented by T-2093):
+Implemented in: `functions/statistical/hypegeom.rs`, `weibull.rs`, `phi.rs`, `fisher.rs::fn_f_test` (F.TEST/FTEST number or text argument, T-2093) (the HYPGEOM.DIST sample_s, zero-count, negative-fraction and TRUE-sample_s rules, the WEIBULL.DIST x = 0 density and TRUE x, PHI of a boolean)
+Tasks: T-2035 (partial), T-2093
+- **F.TEST scalars:** F.TEST and FTEST with a number or text argument are `#DIV/0!` (T-2093; fisher.rs).
 - **Truncation:** HYPGEOM.DIST truncates all four counts toward zero (`HYPGEOM.DIST(1.9,4,8,20,TRUE)`
   = `(1,4,8,20)`, and `(0.9,...)` = `(0,...)`; `hypgeomdist`), and a negative fraction (-0.5) is
   `#NUM!`. T.TEST truncates `tails` and `type` (`T.TEST(...,1.9,2.9)` = tails 1, type 2; `ttest`).
@@ -2408,10 +2409,44 @@ keeps the shape (`TREND(A1:A6,B1:B6,F1:F2)`: 2 rows, first 3.3428571428571425, S
 makes the whole result `#VALUE!` (`TREND(A1:A6,B1:B6,D1:D2)`, trend L39-O39). With column-shaped known data a row-shaped new_x
 gives a row result (`TREND(A1:A6,B1:B6,{7,8})` is 1x2, SUM 15.17142857142857, trend L6-N6; ours 1 column, SUM 7.2). The multi-column known_x cases of the probe (L32, L33) hit text and blank cells, so the
 plain multi-column shape is unprobed.
-Evidence: probes/regression-trend (excel-graph, 2026-10-16, T-1620).
-Ours: differs for the empty arguments, array constants, zero-variance x and the text/error inputs. A single point with a constant term matches (T-1402: TREND is that value whatever new_x is, GROWTH its ln/exp round trip); a single point without one (`TREND(5,2,4,FALSE)`) is a fit through the origin, UNVERIFIED. The error-before-text and size-before-text order also applies to TREND, LINEST and LOGEST here, inferred from GROWTH/TREND cells and unprobed for them; a range that holds text and then an error cell gives that error, where probes/regression-trend says `#VALUE!` (T-1726). LINEST and LOGEST of one point are accepted by Excel (linest-modes K141, logest-modes K162); ours still rejects them (T-1741, T-1742).
-Status: VERIFIED (web)
-Tasks: T-1726 (overlaps T-1402)
+Shapes (Excel's LINEST rules): known_x of known_y's shape is one variable read element by element, and new_x may then have
+any shape, the result taking it (2-D y included); else a column y takes one variable per column of x (new_x needs that
+many columns; the result is a column), a row y one per row (the result is a row); anything else is `#REF!`. A single y
+is both, so `TREND(-1,Data!D8:D9)` is one point of two variables, -1 (gen-m9 0bbab6206b5c9a07 A44), while
+`TREND(Data!C4,Data!A3:D12)` is `#REF!` (41248d1cb153c66e A54). A singular fit drops the collinear x columns, as LINEST
+does ("LINEST, LOGEST, GROWTH: probe findings"), so a zero-variance x gives the mean of y (`TREND(A1:A6,G1:G6)` 4.5, trend O20);
+which near-collinear columns are dropped (ours: a Gram-Schmidt residual under 1E-10 of the column, only once the plain
+solve fails) is UNVERIFIED (T-2569).
+Order of the checks (gen-m9 T-2256 cells): (1) an argument that is an error value, in argument order, const included
+(`TREND(<#NUM!>,Data!B8,Data!A5:C11,NA())` `#NUM!`, 3b7990bd4e3307ba A345; `TREND(Data!B4:C10,Data!A11:B12,<#VALUE!>)`
+with unequal shapes `#VALUE!`, 11eb3ab4f4f8104c A326; `TREND(Data!C7:D12,0.2,<#N/A>,<bool>)` `#N/A`, c2684066d8df263e
+A124), then a typed or computed text const that is no boolean (`TREND(Data!A2:D6,Data!C2:E4,Data!E2:E6,"x")` `#VALUE!`,
+f82473275380882e A100; `GROWTH(..,"1")`, `GROWTH(..,"")`); (2) the shapes (`#REF!`): a text scalar known_x is one value
+(`TREND(Data!B2:E10,Data!$B8)` `#REF!`, 73f053591a54bc43 A53), and an error *element* waits (`TREND(Data!D8:D12,
+BESSELY(MUNIT(1),<negative>))` `#REF!`, a4090567758520df A333; a 1x3 array of `#N/A` against a scalar x `#REF!`,
+3b7990bd4e3307ba A97); (3) a const cell that is no boolean (`TREND(Data!C10:E11,..,Data!$A12)` with A12 = "abc" is `#REF!`,
+bbab6562e88b70e8 A13); (4) a blank, text, boolean or error element of known_y or known_x, `#VALUE!` (`TREND(-1,Data!E11:E12)`
+with a blank and "1.5" `#VALUE!`, 0620505280d2ea6e A357; `TREND(Data!A1:A2)` with A1 blank `#VALUE!`, 46ac3ef5e61583ca A341;
+a one-cell blank known_x too, 165db58d1540f014 A91); (5) new_x's shape, after the data (`TREND(N(0.3),Data!C3:C9,
+Data!B8:D10)` is `#VALUE!` from C3:C9's text, 80586b85 A265), then new_x's blank or text cells.
+GROWTH reads known_y in row-major order and its first element that is no positive number decides: a blank, text, boolean or
+error is `#VALUE!` at the data step, a non-positive number `#NUM!` once known_x's cells are checked (`GROWTH(Data!D6:D10)`
+holding 1.005, 0, a blank `#NUM!`, 58e3253bbd3a7a82 A291; `GROWTH(Data!A2:A12)` holding "1.5", .., -0.0001 `#VALUE!`,
+40425341c5034eed A158; `GROWTH(Data!D8:E9)` holding a blank, 1, -0.5 `#VALUE!`, A383; `GROWTH(0,Data!A7)` with A7 = "abc"
+`#VALUE!`, fec39efaba9284c3 A35), before new_x's text (`GROWTH(Data!A2:A4,Data!A2:A4,<text cells>)` `#NUM!`,
+d8266bc15533702a A396). (`GROWTH(PHI(-1E+300),Data!C11:D12,..)`, a 0 y against a 2x2 x, is `#NUM!`, not the size `#REF!`,
+abc2939ebd1e2365 A187: unexplained, ours `#REF!`, T-2569.)
+An array const lifts, before the other arguments' errors: each element is the call with that const (its top-left value),
+so `TREND(..,SORTBY(Data!A1:D12,..))` and `GROWTH(LOOKUP(NA(),..),..,GROUPBY(..))` spill (gen-m9 80586b85 A61,
+165db58d1540f014 A239), while a multi-cell range const does not (`TREND(..,OFFSET(Data!B6:C12,-1,3))` `#VALUE!`,
+43c6227e0ff368c7 A165). The values of the lifted elements (ours: each element's top-left value) are UNVERIFIED (T-2569).
+Evidence: probes/regression-trend (excel-graph, 2026-10-16, T-1620); gen-m9 (excel-graph, 2026-10-22/23, T-2255, T-2256).
+Ours: matches since T-1726 (`trend_or_growth` in functions/statistical/trend.rs), but for the last-digit differences of the
+shared least-squares solve (T-2006) and A187 above. A single point without a constant term (`TREND(5,2,4,FALSE)`) is a fit
+through the origin, UNVERIFIED (T-2569). LINEST and LOGEST of one point are accepted by Excel (linest-modes K141, logest-modes
+K162); ours still rejects them (T-1741, T-1742).
+Status: VERIFIED (excel-graph)
+Tasks: T-1726 (overlaps T-1402, T-1743)
 
 ## Order-statistic and deviation functions: edge behaviour (T-1622)
 Rule: `AVEDEV(1,)` and `DEVSQ(1,)` are 0.5, so an empty argument counts as 0 in both. `QUARTILE(TRUE,1)` and
@@ -2479,23 +2514,39 @@ Engine: `Model::aggregate_k` (crates/rustsheet-engine/src/functions/aggregate.rs
 keeps a fourth argument IF or CHOOSE picks a reference for as that reference.
 Status: implemented (T-2281)
 
-## F.TEST / FTEST is not correctly rounded (T-1927)
-Excel's F.TEST is not the correctly rounded value of `2*min(lower, upper)` tail: with the f
-our two-pass variance gives, the exact p of `F.TEST({1,2,3,4},{5,6,7,2.4})` is 0.5023992107800743
-but Excel returns 0.5023992107800741, and `F.TEST(C1:C6,B1:B8)` of probes/stat-argument-modes
-(df 1,7) is 0.91959790471759887 exactly against Excel's 0.9195979047175995, while
-`F.TEST(A1:A8,B1:B8)` (df 7,7) and `FTEST(B1:C5,B1:B5)` (df 9,4) are Excel's correctly rounded
-values. An exact incomplete beta therefore fixes some cells and regresses others; matching all
-needs Excel's own algorithm (see the F.DIST/BETA.DIST fit notes).
-F.TEST is not built on Excel's own F.DIST either (probes/ftest-decomposition, excel-graph,
-2026-10-22, T-1927): `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` with f = `VAR.S(x)/VAR.S(y)` is
-0.7947858780819459 and 0.5236816407506065 where F.TEST is 0.7947858780819458 and
-0.5236816407506063 (A8/A7, B8/B7), and F.TEST is exactly symmetric in its arguments (A7 = E7,
-C7 = F7). Over the 33 distinct F.TEST inputs on file (probes stat-argument-modes,
-ftest-decomposition; probes-numeric m9-legacy-ftest, t1049-ftest) Excel is within -6..+4 ulps of
-the exact two-tailed p, on both sides; neither the exact p (12 of 33 bit-exact) nor the A&S
-26.6.4-26.6.8 finite series in doubles (11 of 33), with a two-pass, textbook or corrected
-variance, or with f taken as larger over smaller, reproduces it. Open: T-2361.
+## F.TEST / FTEST: larger variance on top, Excel's rounded powers, an accurate remainder (T-1927, T-2361)
+Rule (fit, UNVERIFIED as Excel's algorithm): F.TEST takes f = the larger two-pass sample variance
+over the smaller (df_big, df_small its and the other sample's n - 1), so it is exactly symmetric
+in its arguments, and its two-tailed p is `2*MIN(u, 1-u)` for the upper tail
+u = I_x(df_small/2, df_big/2), x = df_small/(df_big*f + df_small), y = df_big*f/(df_big*f + df_small).
+x never exceeds the mean a/(a+b) there, so the tail is computed without a reflection, as
+`exp(a*ln x) * exp(b*ln y) * R` with R = I_x(a,b)/(x^a y^b): the two powers carry Excel's
+exp-of-a-product rounding (where a ln x is near -100 to -300 the exact p is tens of ulps, up to
+179, from Excel's, and the model is within a few), while R itself is close to correctly rounded. The closed forms
+of the incomplete beta hold: b = 1 is exp(a ln x) and a = 1 (df_small = 2) is -expm1(b ln1p(-x))
+below x = 0.1, which is why the a = 1 deep tails are the correctly rounded value.
+A variance that overflows is `#NUM!`: `F.TEST({1E+200,1E+200,-1E+200},Data!A11:B12)` (gen-m9/
+7674c89c824aca43 A39, f2bd5f380ec002bf A210); the engine also returns `#NUM!` for two finite
+variances whose ratio overflows, `FTEST({1E-160,2E-160},{1E+150,2E+150})` (unprobed, T-2571).
+Not the model: VAR.S's one-pass switch for the variances, f = v1/v2 with the minimum of both tails,
+and a single exp(a ln x + b ln y + ln G).
+Fit (T-2361, 188 distinct inputs from the cells on file: gen-m9 cells whose arguments are plain
+ranges, probes stat-argument-modes and ftest-decomposition, probes-numeric m9-legacy-ftest and
+t1049-ftest; bit-exact / within 4 ulp / visibly off):
+- exact p, two-pass f: 53 / 128 / 40; exact p with VAR.S's one-pass switch: 30 / 124 / 46;
+- Cephes-style double kernel (exp-log powers), f = v1/v2, smaller of the two tails: 44 / 146 / 24;
+- larger variance on top, R as Gamma ratio times Cephes' double continued fraction: 63 / 156 / 17;
+- the same with R = Gamma ratio times the double power series 2F1(a+b,1;a+1;x): 74 / 161 / 11;
+- the same with R correctly rounded (the model above): 90 / 170 / 6.
+Excel's residual to the model runs from -12 to +14 ulps, mostly within 2, on both sides, so
+Excel's own R is a double computation that is not identified yet (open: T-2571).
+Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
+H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
+Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
+F.DIST (probes/ftest-decomposition A8 0.7947858780819459 against F.TEST's 0.7947858780819458).
+Engine: `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
+`beta_reg_complement` above) in crates/rustsheet-engine/src/functions/statistical/fisher.rs.
+Status: implemented as a fit (T-2361); Excel's algorithm for R is UNVERIFIED.
 
 ## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
 COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell

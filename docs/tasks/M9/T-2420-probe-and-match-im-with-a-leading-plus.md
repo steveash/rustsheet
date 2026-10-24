@@ -3,7 +3,7 @@ id: T-2420
 title: "Probe and match IM* with a leading plus, OCT2DEC of 11 digits and OCT/HEX conversions of TRUE"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -81,3 +81,6 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Leading `+` is read by the IM* parser; OCT2DEC/OCT2HEX reject 11 digits; OCT2*/HEX2* reject booleans with `#VALUE!`; the odd-period bond functions fail a negative date before reading later arguments (found when the boolean fix exposed gen-m9/30e20ba3302fea8b A226). Probes: eng-leading-plus-oct-bool, fin-odd-date-before-error-arg. gen-m9 known failures 7821 -> 7719 (102 fixed, 0 regressions).

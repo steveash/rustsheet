@@ -3,7 +3,7 @@ id: T-2361
 title: "Fit Excel's F.TEST kernel: bit-exact two-tailed p (not 2*MIN of its F.DIST)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -146,11 +146,11 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 66 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity: the 4 cells above have Excel's value to 15 significant digits, with no new
+- [x] Visible parity: the 4 cells above have Excel's value to 15 significant digits, with no new
   known-failure lines in any baseline (`make eval-baseline` accepts).
-- [ ] Either a bit-exact F.TEST kernel (H248/H251 exact), or the fit result written in
+- [x] Either a bit-exact F.TEST kernel (H248/H251 exact), or the fit result written in
   docs/excel-semantics/statistics.md with the best candidate's score.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -161,3 +161,33 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Outcome
+Fit found and implemented (2026-10-24): F.TEST divides the larger two-pass variance by the smaller
+(exact symmetry), takes the upper tail u = I_x(df_small/2, df_big/2) at x = df_small/(df_big f +
+df_small) without a reflection and returns 2*MIN(u, 1-u), with u = exp(a ln x)*exp(b ln y)*R: the
+two powers carry Excel's exp-of-a-product rounding, the remainder R is summed in double-double
+(`f_test_upper_tail`, `f_test_remainder` in functions/statistical/fisher.rs; closed forms a = 1,
+b = 1 and a + b > 200 stay on `beta_reg_complement`). Candidate scores over 188 distinct inputs are
+in docs/excel-semantics/statistics.md "F.TEST / FTEST: larger variance on top": this model 90
+bit-exact / 170 within 4 ulp / 6 visibly off, against 53 / 128 / 40 for the exact p and 44 / 146 /
+24 for the F.DIST-style kernel. Excel's own R is not identified (residual -12..+14 ulps).
+
+Eval delta (gated): 61 known failures fixed (gen-m9 55, probes 4, ironcalc-calc 2), 17 added under
+decision 0083's ulp allowance and decision 0106 (the 5-ulp cell); numerically visibly-off F.TEST
+cells 37 -> 10; probes/stat-argument-modes H248:H251 now within 2 ulp (15 digits). Of the 66 owned
+gen-m9 cells, 26 already passed before this change, 11 more pass now, 21 visibly off become 8.
+The first criterion is not met; its 10 remaining visibly-off cells (8 owned, 2 not) moved to
+follow-up T-2571 (campaign: visible), as T-1927's did to this task.
+
+Regressed cells (were bit-exact, none visibly off):
+- `gen-m9/320d51765af9b6b7` Calc!A192 -2 ulp; `gen-m9/35e8168aae2b00f8` Calc!A192 -2, A297 +2;
+  `gen-m9/3e98b26cf6713e77` Calc!A8 +5 (decision 0106); `gen-m9/40425341c5034eed` Calc!A194 +2;
+  `gen-m9/4e55500bb8ad3cd8` Calc!A335 +1; `gen-m9/85f48d5cdfb24555` Calc!A398 +1;
+  `gen-m9/8d3588d8df0812df` Calc!A359 -1; `gen-m9/a54c738c697617c3` Calc!A400 +1;
+  `gen-m9/a61e547a1cab994c` Calc!A302 +1; `gen-m9/a790a4d4a6a82756` Calc!A289 +1;
+  `gen-m9/c2974c061384fdd9` Calc!A19 -2; `gen-m9/c6cfda6bd10cae93` Calc!A105 +2;
+  `gen-m9/f2bd5f380ec002bf` Calc!A59 +2;
+- `ironcalc-calc/STATISTICAL/F_TEST.xlsx` Sheet1!F1 +1 ulp;
+- `probes/ftest-decomposition` Calc!D7 and D13 +1 ulp.
+Follow-up: T-2571 (Excel's remainder R; the 10 visibly-off cells and these 17 bit-level targets).
