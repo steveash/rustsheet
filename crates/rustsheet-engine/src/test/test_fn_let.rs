@@ -259,6 +259,8 @@ fn lambda_body_naming_its_own_let_name_is_name_error() {
         ("=LET(y,LAMBDA(a,y),y(1))", "#NAME?"),
         ("=LET(Y,LAMBDA(a,y),y(1))", "#NAME?"),
         ("=LET(y,LAMBDA(a,a+1),y(1))", "2"),
+        ("=LET(y,y+1,y)", "#NAME?"),
+        ("=LET(f,LAMBDA(a,g(a)),g,LAMBDA(a,a+1),f(1))", "#NAME?"),
         ("=LET(Qv,LAMBDA(a,Qv),Qv(1))", "#NAME?"),
     ];
     for (row, (formula, _)) in cases.iter().enumerate() {
