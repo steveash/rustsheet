@@ -34,10 +34,17 @@ check order") left these owned cells failing (excel-graph, 2026-10-22/23):
 Find which inner call diverges first (`make eval-show`), fix the LINEST rule where it is LINEST's, and hand the rest
 to the inner function's task.
 
+T-1741 review notes (2026-10-24, minor, for this task): the "typed text const is `#VALUE!` at once, a text cell waits"
+rule is written twice (LINEST's `flag_input`/`flag_value` in linest.rs and TREND's inline `typed` in trend.rs): move it into
+regression.rs when touching either. A multi-cell range as const or stats falls back to the default (as before T-1741):
+probe `LINEST(y,x,A1:A2)` and `LINEST(y,x,TRUE,A1:B1)`. The collinear fallback (`independent_columns`, O(p·n·kept)) and the
+range read have no work budget beyond the normal equations' O(n·p²); consider a cell budget (directive 5) when the kernel
+is revisited.
+
 ## Acceptance criteria
 - [ ] The cells listed above pass or name another open task that owns their root cause; their lines leave
       eval/baseline/gen-m9.txt.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The solve's last digits (T-2006) and gen-m9/c468f5046aadfbbc A122/B122 (T-2563).
+- The solve's last digits (T-2006). (gen-m9/c468f5046aadfbbc A122/B122 pass since T-2547.)
