@@ -24,9 +24,11 @@ crates/rustsheet-engine/src/functions/financial/financial_util.rs use `powf`. Re
 `xirr_xnpv`'s rule that a power which overflows or underflows to 0 has no value.
 
 ## Acceptance criteria
-- [ ] probes/xirr-exact-root-sign's XNPV cells pass, and its XIRR cells keep passing; the
-      xirr-span-zero-first A11, A14 and A20 known failures are fixed (`make eval-baseline`).
-- [ ] No regression across the XNPV and XIRR eval cases. Unit test on one exact-root cell.
+- [ ] probes/xirr-exact-root-sign's XNPV cells pass, and its XIRR cells G4, G5 and G7 pass (the
+      same flows as xirr-span-zero-first A11, A14 and A20, also fixed; `make eval-baseline`). Its column J
+      only shows that XNPV is `#NUM!` for a date at serial 0, unlike XIRR (financial.md).
+- [ ] No regression across the XNPV and XIRR eval cases. Unit test on one exact-root cell. Optionally, register an
+      `xnpv` fitlab target over the probe so the lab's 541/541 is rechecked by a command.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
