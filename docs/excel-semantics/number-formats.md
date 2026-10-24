@@ -308,8 +308,9 @@ token (otherwise it is a month): `mm:ss` shows 1000 as "00:00", 123456.789 as "5
 "00:00". After an hour it was already minutes (`h:mm`).
 Evidence: suite gen-m10 displayed-text cells (excel-graph, 2026-10-16, T-1611), 71 of 80 `mm:ss` cells
 failed before the fix. Status: VERIFIED (excel-graph).
-Implemented in: `minute_before_seconds` (formatter/parser.rs). `[m]`/`[s]` forms and a literal between
-the colon and the seconds are unprobed.
+Implemented in: `minute_before_seconds` (formatter/parser.rs). Probed: `mm:ss`, `mm:ss.0`, `mm:ss.00`. Unprobed
+(implemented by the same rule): single `m:ss`, `:s`, `[m]`/`[s]` forms, `mmss` with no colon, and any other
+separator or literal between the `m` and the seconds (those still read as months).
 Tasks: T-1733
 
 ## Fractional seconds in clock formats

@@ -94,6 +94,7 @@ fn minutes_before_seconds_without_hour() {
         (1000.0, "mm:ss", "00:00"),
         (123_456.789, "mm:ss", "56:10"),
         (1.5, "mm:ss", "00:00"),
+        // Unprobed in Excel, same rule.
         (123_456.789, "m:ss", "56:10"),
     ] {
         assert_eq!(
