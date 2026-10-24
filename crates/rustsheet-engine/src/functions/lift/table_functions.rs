@@ -45,6 +45,9 @@ macro_rules! lifting_table_functions {
             | Function::Prob
             | Function::Forecast
             | Function::ForecastLinear
+            | Function::ForecastEts
+            | Function::ForecastEtsConfint
+            | Function::ForecastEtsStat
             | Function::TTest
             | Function::TTestCompat
             | Function::RankCompat

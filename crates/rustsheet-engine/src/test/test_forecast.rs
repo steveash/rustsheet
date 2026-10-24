@@ -86,3 +86,28 @@ fn test_forecast_wrong_arg_count() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+/// T-2028: the FORECAST.ETS family stays `#N/IMPL!`, but `target_date` and `statistic_type`
+/// read as numbers first (text is `#VALUE!`) and lift over a two-cell range.
+#[test]
+fn forecast_ets_family_reads_lifted_argument_then_is_not_implemented() {
+    let mut model = new_empty_model();
+    for row in 1..=8 {
+        model._set(&format!("A{row}"), &format!("{}", row * 2));
+        model._set(&format!("B{row}"), &format!("{row}"));
+    }
+    model._set("D1", "=FORECAST.ETS(9,A1:A8,B1:B8)");
+    model._set("D2", "=FORECAST.ETS(\"x\",A1:A8,B1:B8)");
+    model._set("D3", "=FORECAST.ETS.CONFINT(9,A1:A8,B1:B8)");
+    model._set("D4", "=FORECAST.ETS.CONFINT(\"x\",A1:A8,B1:B8)");
+    model._set("D5", "=FORECAST.ETS.STAT(A1:A8,B1:B8,1)");
+    model._set("D6", "=FORECAST.ETS.STAT(A1:A8,B1:B8,\"x\")");
+    model._set("D7", "=ROWS(FORECAST.ETS({9;9},A1:A8,B1:B8))");
+    model._set("D8", "=ROWS(FORECAST.ETS.STAT(A1:A8,B1:B8,B1:B2))");
+    model.evaluate();
+    let got: Vec<String> = (1..=8).map(|r| model._get_text(&format!("D{r}"))).collect();
+    assert_eq!(
+        got,
+        ["#N/IMPL!", "#VALUE!", "#N/IMPL!", "#VALUE!", "#N/IMPL!", "#VALUE!", "2", "2"]
+    );
+}
