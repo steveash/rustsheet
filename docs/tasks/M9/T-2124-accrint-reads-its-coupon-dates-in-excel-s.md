@@ -3,7 +3,7 @@ id: T-2124
 title: "ACCRINT reads its coupon dates in Excel's 1900 calendar (probes/fin-coupon-walk-bounds-c O)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -47,12 +47,25 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 13 cells, 3 numeric pa
 | probes/fin-coupon-walk-bounds-c Sheet1!O9 | `=ACCRINT(1,DATE(1900,6,30),DATE(1950,6,30),0.05,1000,2,0,TRUE)` | #NUM! | 2525 |
 
 ## Acceptance criteria
-- [ ] Visible parity: the 13 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 13 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] probes/fin-coupon-walk-bounds-c O1-O14 and -b A9 pass, or financial.md records the rule that was ruled out.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 13 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 13 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] probes/fin-coupon-walk-bounds-c O1-O14 and -b A9 pass, or financial.md records the rule that was ruled out.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The COUP* functions (T-1844).
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (ACCRINT computes a value where Excel is `#NUM!`, or a visibly different one), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083).
+
+## Outcome
+`compute_accrint` now works on Excel 1900 serials. It reuses coupon_schedule.rs's `coupon_serial`, `coupon_date`,
+`serial_ymd`, `serial_basis_days` and `change_month` in place of ACCRINT's own chrono calendar helpers, which are
+deleted; `acc_days_between` keeps only the numerator form that AMORLINC/AMORDEGRC use. ACCRINT is `#NUM!` when the
+coupon date before settlement, or a period start on the walk back to the issue, is before 1900-01-01. The day counts
+read the serials as Excel shows them, so the fictitious 1900-02-29 counts.
+New probe probes/fin-accrint-1900-calendar (52 cells, excel-graph): the settlement sweep the task asked for shows
+`#NUM!` for every settlement from 1900 to 9999. A re-fill of fin-coupon-walk-bounds-b now gives `#NUM!` for A9 too,
+where the 2026-10-17 run gave 0; the oracle sidecar now records the new value (financial.md "ACCRINT at the
+calendar's start").
+Eval delta: probes 1895 -> 1882 (all 13 listed visibly-off lines: -b A9, -c O1-O4, O6, O8-O14); the new case
+passes all 52 cells; no new failure lines. Follow-up: T-2562 (1904 workbooks and a February-1900 first interest, unprobed).
