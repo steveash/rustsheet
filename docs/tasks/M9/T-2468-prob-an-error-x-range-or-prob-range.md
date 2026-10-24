@@ -98,7 +98,24 @@ Examples:
 Cells:
 - gen-m9/ee70a5515d004a66.case.json (1): Calc!A145
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): PROB's rule decides each: unequal counts `#N/A` (`PROB(Data!$B$4,Data!D10:E11,1)`, `PROB(<"#N/A" text cell>,Data!B4:E10,0,-2.5)`; ours `#VALUE!`), one value on each side `#DIV/0!` (`PROB(<"TRUE" text>,<"x">,123456789.123,7)`, `PROB(2.5,<TRUE cell>,100,123456789.123)`; ours `#VALUE!`), the data's error first (`PROB(INDEX(Data!A7:B11,4),..)` `#REF!`, ours `#N/A`), and `PROB(Data!D3:D8,Data!C5:C10,0.3,0.3)` over pairs with text and blanks is 0 (ours `#N/A`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 formulas.
+Examples:
+- gen-m9/2801c1c11c21e134 Calc!A132 `=FINV(PROB(Data!$B$4,Data!D10:E11,1),2.5,9)`: Excel #N/A, ours #VALUE!; inner `PROB(Data!$B$4,Data!D10:E11,1)` Excel #N/A, ours #VALUE!
+- gen-m9/abc2939ebd1e2365 Calc!A44 `=BETADIST(Data!E1,(-1),PROB(INDEX(Data!A7:B11,4),(Data!C6*(-1)),VLOOKUP("1",Data!B2:C6,Data!$E$7)))`: Excel #REF!, ours #N/A; inner `PROB(INDEX(Data!A7:B11,4),(Data!C6*(-1)),VLOOKUP("1",Data!B2:C6,Data!$E$7))` Excel #REF!, ours #N/A
+- gen-m9/c468f5046aadfbbc Calc!A162 `=LOGNORM.DIST(STDEV.P(PROB(Data!B11,Data!B6,Data!$C$9,7),Data!A9:A10),((1000000000000000.0*123456789.123)-NA()),0,FALSE)`: Excel #DIV/0!, ours #VALUE!; inner `PROB(Data!B11,Data!B6,Data!$C$9,7)` Excel #DIV/0!, ours #VALUE!
+- gen-m9/e6cf3b20a014e6a3 Calc!A229 `=FINV(1-1E-16,(TRANSPOSE(Data!$B9)*PROB(Data!D3:D8,Data!C5:C10,Data!$C$12,Data!C12)),3)`: Excel #NUM!, ours #N/A; inner `PROB(Data!D3:D8,Data!C5:C10,Data!$C$12,Data!C12)` Excel 0.0, ours #N/A
+Cells:
+- gen-m9/2801c1c11c21e134.case.json (1): Calc!A132
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A44
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A162
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A229
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A116
+- gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A73
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 115 known-failure lines disappear from eval/baseline/gen-m9.txt

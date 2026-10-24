@@ -68,7 +68,22 @@ Cells:
 - gen-m9/1068c44afcd56d53.case.json (1): Calc!A259
 - gen-m9/d9d55972b50e55e8.case.json (1): Calc!A331
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `Z.TEST(1E+15,Data!$B$3,<blank>)` and `ZTEST(Data!B9:B12,42,<0>)` are `#DIV/0!` (ours `#NUM!`), `ZTEST(<blank>,<blank>,1.5E+10)` and `ZTEST(<"x" cell>,100)` `#N/A` (ours `#VALUE!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 4 known-failure lines in eval/baseline/gen-m9.txt, 4 formulas.
+Examples:
+- gen-m9/58e3253bbd3a7a82 Calc!A46 `=LOGINV(1E-16,INDEX(Data!B10:E12,CEILING.PRECISE(Data!E$7),Z.TEST(1000000000000000.0,Data!$B$3,Data!C4)),INDEX(Data!A8:C8,2,2))`: Excel #DIV/0!, ours #NUM!; inner `Z.TEST(1000000000000000.0,Data!$B$3,Data!C4)` Excel #DIV/0!, ours #NUM!
+- gen-m9/a612e89321a6df9c Calc!A241 `=COVAR((ZTEST(Data!D9,Data!$C11,1.5E+10)/2),Data!C1:C12)`: Excel #N/A, ours #VALUE!; inner `ZTEST(Data!D9,Data!$C11,1.5E+10)` Excel #N/A, ours #VALUE!
+- gen-m9/a790a4d4a6a82756 Calc!A308 `=CRITBINOM((ZTEST(Data!B9:B12,42,Data!D8)/(0*Data!$C8)),0.05,0.975)`: Excel #DIV/0!, ours #NUM!; inner `ZTEST(Data!B9:B12,42,Data!D8)` Excel #DIV/0!, ours #NUM!
+- gen-m9/eced4bb6a0234c9e Calc!A34 `=CONFIDENCE.NORM((ZTEST(Data!$B$2,100)/(Data!D7*1)),99999,14)`: Excel #N/A, ours #VALUE!; inner `ZTEST(Data!$B$2,100)` Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A46
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A241
+- gen-m9/a790a4d4a6a82756.case.json (1): Calc!A308
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A34
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 35 known-failure lines disappear from eval/baseline/gen-m9.txt

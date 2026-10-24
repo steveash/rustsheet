@@ -1734,3 +1734,14 @@ refuses a boolean salvage per "Argument order of the Analysis ToolPak securities
 still take booleans (unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2455
+
+## Financial cells of the T-2436 sub-expression probe
+Rule (excel-graph, 2026-10-24, probes/t2436): `YIELD(36563,45559,999999999999995,107,107,2,1)` (a huge rate) is `#NUM!`;
+`MDURATION(-1.5,46394,<#N/A>,100,2)`, `ODDFPRICE(2958466,46506,33984,39398,-1,<#N/A>,104,4,2)`,
+`YIELDDISC(9.33,1E+15,0,<#VALUE!>,5)` and `ACCRINT(39448,..,100,<#REF!>,836,4,2,2)` are `#NUM!`, consistent with a range
+check before the other argument's error (the order is inferred, UNVERIFIED); `XIRR({-100,TRUE,60},<two dates>,1E-9)` is `#NUM!`; `NPV(-1,..)` is `#DIV/0!` and so is
+`NPV(1E+300,{0,0,-100,50,60})`; `IRR(Data!C10:D12,<blank>)` is `#NUM!`; SYD with a negative salvage is `#NUM!`.
+Evidence: probes/t2436; cells in T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491.
+Ours: values or the other argument's error; those tasks.
+Status: VERIFIED (excel-graph), one or two cells each
+Tasks: T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491
