@@ -26,7 +26,16 @@ external ranges (probes/textjoin-array-arguments A10, A18, A22; fixtures/externa
 probes/dynamic-array-reshape-and-isomitted S!B24:B25, so the fix belongs at INDEX's array read and in VSTACK/EXPAND's blank copy. T-2413's `ArrayNode::Empty => CalcResult::EmptyArg` arm in `lambda_cells`
 (functions/logical/bycol_byrow.rs) goes if the fix moves into a shared read.
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `SEARCH(HSTACK(<blank>),"Hello World",8)` is 8: HSTACK of a blank cell is the empty value, read as "" (ours 0, so `#VALUE!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/2a18b2f5a4dc43ac Calc!A79 `=EXPONDIST(Data!C12,SEARCH(HSTACK(Data!B$5),"Hello World",8),BYCOL(Data!A11:D11,LAMBDA(w,REDUCE(w,w,LAMBDA(x,v,1)))))`: Excel 0.9816843611112658, ours #VALUE!; inner `SEARCH(HSTACK(Data!B$5),"Hello World",8)` Excel 8.0, ours #VALUE!
+Cells:
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A79
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The seven t2413-blank-in-stacked-arrays lines above leave eval/baseline/probes.txt, no new known failures.
 - [ ] arrays.md's T-2413 paragraph says "Ours" for each.
 - [ ] The probe also reads (cells added to probes/t2413-blank-in-stacked-arrays or a new case): MAP/REDUCE COUNT over blanks

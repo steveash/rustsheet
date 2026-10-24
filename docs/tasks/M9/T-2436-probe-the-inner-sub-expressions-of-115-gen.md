@@ -3,7 +3,7 @@ id: T-2436
 title: "Probe the inner sub-expressions of 122 gen-m9 statistical, engineering and database cells whose divergence is not traced"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -107,11 +107,13 @@ Cells:
 - gen-m9/f280df8ba95f96b9.case.json (1): Calc!A222
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255): these 116 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Every cell above is listed in a fix task's Context (new or extended), or explained in statistics.md as a quirk
+- [x] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. Transferred: each line is now a
+      visible-parity criterion of its owning fix task (Outcome), as T-2414 did.
+- [x] Visible parity (gen-m9, T-2255): these 116 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. 28 have left the baseline; the other
+      lines are transferred to their owning fix tasks' visible-parity criteria (Outcome), as T-2414 did.
+- [x] Every cell above is listed in a fix task's Context (new or extended), or explained in statistics.md as a quirk
       with its owning task; the probe case's cells are in eval/ and gated or baselined.
 - [ ] `make check` green; reviewers approve.
 
@@ -123,3 +125,22 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probe `probes/t2436/<case>` (57 cases, one per owning gen-m9 case, its Data sheet copied; every call and non-trivial argument
+of each owned cell in its own row block with ROWS and COLUMNS beside it; excel-graph, 2026-10-24) plus
+`probes/t2436/computed-scalar` (50 follow-up questions). 28 of the 122 cells already pass on main and have left the baseline (fixed by later merges); the
+innermost diverging sub-expression of each of the other 94 is in its owner's Context, under a "T-2436 probe" block with an
+own visible-parity criterion, so the two visible-parity criteria above move to those tasks (as T-2414 did):
+- existing tasks: T-2429 (2), T-2435 (8), T-2474 (2), T-2432 (2), T-2437 (1), T-2468 (6), T-2469 (1), T-2470 (4), T-2471 (2),
+  T-2472 (2), T-2344 (6), T-2430 (5), T-2431 (2), T-2491 (2), T-2544 (2), T-2547 (1), T-2482 (2), T-2483 (1), T-2484 (1),
+  T-2428 (2), T-2493 (3), T-2494 (1), T-2461 (1), T-2519 (3);
+- new tasks: T-2575 COVARIANCE boolean scalar (4), T-2576 ERROR.TYPE/CELL results `#NUM!` in F.TEST/FORECAST/INTERCEPT/
+  COVARIANCE.P (3), T-2577 INDIRECT 1x1 array a1 (2), T-2578 GROUPBY/PIVOTBY (7), T-2579 array-value edges (4), T-2580 empty
+  array as an argument (4), T-2581 TEXTSPLIT/TEXTBEFORE (3), T-2582 STANDARDIZE/HYPGEOM.DIST booleans (3; already fixed by T-1849 before this merged, so T-2582 is closed),
+  T-2583 NETWORKDAYS.INTL (1), T-2584 LINEST with empty known_y cells (1).
+New quirks: statistics.md "COVARIANCE: a boolean scalar is one value", "ERROR.TYPE and CELL results are #NUM! in the paired
+functions" (explains the three UNVERIFIED F.TEST cells), "LINEST: a known_y range with empty cells is #VALUE!" and the probe
+summary; references.md "INDIRECT: a 1x1 array a1 argument is #VALUE!"; arrays.md "An empty array as a function argument",
+"GROUPBY and PIVOTBY in the gen-m9 sweep", "Array-value edges in the gen-m9 sweep"; text.md, financial.md, dates.md and
+engineering.md entries. The probe's cells ours fails today are new probes.txt lines.
