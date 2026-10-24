@@ -3,7 +3,7 @@ id: T-2271
 title: "WORKDAY.INTL/NETWORKDAYS.INTL weekend number: a fraction truncates, a blank weekend cell is #NUM!; probe a boolean weekend"
 milestone: M6
 lane: functions-date
-status: blocked
+status: done
 priority: P2
 size: S
 tier: opus
@@ -44,10 +44,10 @@ C5 FALSE, B7 -1 among the holidays: Excel `#NUM!`, ours `#VALUE!`; gen-m6/f93597
 valid dates with valid holidays is still this task's probe.
 
 ## Acceptance criteria
-- [ ] These 9 known-failure lines, and the 2 cells of the T-2253 paragraph above, disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A probe case (excel-graph) gives TRUE and FALSE weekends on valid dates for both functions; dates.md records it.
-- [ ] Unit tests cover weekend 3.9, 11.5, TRUE, FALSE (as probed) and a blank cell for both functions; probes/date-text-weekend-3d still passes.
-- [ ] dates.md's entry says Ours: implemented (T-2271).
+- [x] These 9 known-failure lines, and the 2 cells of the T-2253 paragraph above, disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A probe case (excel-graph) gives TRUE and FALSE weekends on valid dates for both functions; dates.md records it.
+- [x] Unit tests cover weekend 3.9, 11.5, TRUE, FALSE (as probed) and a blank cell for both functions; probes/date-text-weekend-3d still passes.
+- [x] dates.md's entry says Ours: implemented (T-2271).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -55,3 +55,13 @@ valid dates with valid holidays is still this task's probe.
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`Model::weekend_mask` reads a weekend number as Excel does: a number truncates (3.9 is 3, 11.5 is 11; the fraction rule
+itself first landed with T-2272), TRUE is weekend 1, FALSE and a blank weekend cell are weekend 0 (`#NUM!`); an omitted
+weekend stays weekend 1. New probe probes/weekend-number-coercion (excel-graph, A1:A26, both functions, literal and cell
+booleans) and a unit test (test_fn_weekend_lift.rs); dates.md "weekend number coercion" is VERIFIED and implemented.
+The holiday regression the handoff reported (gen-m6/ef10bf3afb9658f6 Calc!A302) is gone now that T-2270 accepts
+number-text holidays. Eval delta (`make eval-baseline`, 0 regressions): gen-m6 known failures 6 -> 2 (A47, A387, A252,
+A219: the 7 other owned cells were already fixed on main by T-2272), gen-m9 7505 (c2974c061384fdd9 A149 fixed), probes
++1 case (26 cells, all pass).
