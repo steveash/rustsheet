@@ -19,6 +19,7 @@ import json
 import math
 import re
 from dataclasses import dataclass, field
+from decimal import ROUND_DOWN, Decimal
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,16 @@ def numeric_arg(a: Arg) -> float:
         msg = f"non-numeric argument {a!r}"
         raise TypeError(msg)
     return a
+
+
+def number_literal(text: str) -> float:
+    """A formula's number literal as Excel reads it: cut (not rounded) to 15 significant digits,
+    so `6.727499949325611` is 6.72749994932561 (numbers.md, "Formula number literals are read at
+    15 significant digits"; probes/xirr-exact-root-sign, T-2328)."""
+    value = Decimal(text)
+    if value.is_finite() and value != 0:
+        value = value.quantize(Decimal(1).scaleb(value.adjusted() - 14), rounding=ROUND_DOWN)
+    return float(value)
 
 
 _UNSIGNED = r"(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
@@ -223,7 +234,7 @@ class _Arithmetic:
             return value
         if not _NUMBER.fullmatch(tok):
             raise self.fail(f"unexpected {tok!r}")
-        literal = float(tok)
+        literal = number_literal(tok)
         if not math.isfinite(literal):
             raise self.fail(f"non-finite literal {tok}")
         return literal
@@ -274,7 +285,7 @@ def _literal(text: str) -> float | bool | str | None:
     """A number, TRUE/FALSE or string literal, or None when `text` is none of those."""
     if _NUMBER.fullmatch(text):
         # Excel has no negative zero: `-0` is 0.
-        return float(text) + 0.0
+        return number_literal(text) + 0.0
     if text.upper() in ("TRUE", "FALSE"):
         return text.upper() == "TRUE"
     if len(text) >= 2 and text[0] == text[-1] == '"' and '"' not in text[1:-1].replace('""', ""):
