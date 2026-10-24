@@ -549,6 +549,16 @@ C	probes/let-bind-implicit-index.case.json	10
 C	probes/let-bind-reference-forms.case.json	11
 C	probes/let-cell-shaped-name-stored.case.json	14
 C	probes/let-cell-shaped-name-typed-control.case.json	3
+C	probes/let-function-name-typed-02.case.json	2
+C	probes/let-function-name-typed-04.case.json	2
+C	probes/let-function-name-typed-05.case.json	2
+C	probes/let-function-name-typed-06.case.json	2
+C	probes/let-function-name-typed-07.case.json	2
+C	probes/let-function-name-typed-08.case.json	2
+C	probes/let-function-name-typed-09.case.json	2
+C	probes/let-function-name-typed-10.case.json	2
+C	probes/let-function-name-typed-12.case.json	2
+C	probes/let-function-name-typed-13.case.json	2
 C	probes/let-lambda-body-own-name.case.json	7
 C	probes/let-lambda-name-case.case.json	14
 C	probes/let-lambda-reference-results.case.json	18
@@ -562,6 +572,7 @@ C	probes/let-name-call-text-noargs.case.json	1
 C	probes/let-name-call-text-plus.case.json	1
 C	probes/let-name-call-text-type.case.json	1
 C	probes/let-name-call.case.json	14
+C	probes/let-name-function-spelled-call.case.json	15
 C	probes/let-name-non-ascii-scripts.case.json	6
 C	probes/let-name-non-ascii.case.json	10
 C	probes/let-name-shadows-defined-name.case.json	16
@@ -1014,6 +1025,7 @@ C	probes/t2275-address-bounds.case.json	298
 C	probes/t2277-hyperlink-location-length.case.json	15
 C	probes/t2280-ifs-one-cell-range-condition.case.json	82
 C	probes/t2287-regex-r-x-spans.case.json	83
+C	probes/t2291-combina-small-n-huge-k.case.json	7
 C	probes/t2296-sumproduct-error-element.case.json	17
 C	probes/t2310-sortby-single-by-array.case.json	90
 C	probes/t2311-pivotby-value-cause.case.json	195
@@ -1942,9 +1954,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
-F	probes/let-lambda-body-own-name.case.json	Sheet1!A6
-F	probes/let-lambda-body-own-name.case.json	Sheet1!A7
-F	probes/let-name-shadows-defined-name.case.json	Sheet1!B2
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
