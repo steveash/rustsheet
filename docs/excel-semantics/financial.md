@@ -1360,6 +1360,27 @@ Status: VERIFIED (excel-graph)
 Implemented (T-1975): `vdb_no_switch_between` and `vdb_switching_between` in functions/financial/financial_depreciation.rs.
 Tasks: T-1975, T-2185
 
+## DB and DDB operation order
+Rule: DB and DDB compute each period's charge in a fixed operation order, and the last bits depend on it.
+- DB: `rate = ROUND(1 - (salvage/cost)^(1/life), 3)`; the first period is `cost * rate * (month/12)` (month over 12
+  first, not `cost*rate*month/12`). Later periods keep the remaining *balance* (`balance = cost - first`, then
+  `balance -= balance*rate` per period), not the accumulated depreciation; a middle period charges `balance*rate` and
+  the last one (period = TRUNC(life)+1) `balance * (rate*(12-month)/12)` (rate times the months first).
+  `DB(100,10,4,1,2)` is 7.299999999999999 (not 7.3), `DB(23,10,4,5,2)` is 1.8687313963962309 and
+  `DB(10000,1000,6,2,7)` is 2596.3941666666665. `month` is truncated before use and cost 0 returns 0.
+- DDB: `rate = factor/life` (1 once it reaches 1), the book value `old = cost*(1-rate)^(period-1)` raised with the
+  operator `^` (square-and-multiply for a whole period, numbers.md "Integer exponents"), not libm `pow`
+  (`DDB(9695,282,20,8,1)` is 338.5190042814453, `pow` gives ...452; gen-m9 6376e27be7a05871 Calc!A141), and the charge
+  `MIN(old*rate, old - salvage)`, floored at 0, rather than the difference of two book values
+  `old - cost*(1-rate)^period`: `DDB(10000,1000,6,2,2)` is 2222.222222222222 (not ...2217),
+  `DDB(100,10,4,3,1.3334)` is 14.814814787037497 and `DDB(5832,692,25,1)` is 466.56 (not 466.5599999999995).
+Evidence: ironcalc-calc FINANCIAL/DB_DDB.xlsx Sheet1 (Excel-cached; every numeric DB and DDB cell, incl. G4, G5, G7,
+G10, G20, G31, G35-G37, G39, G42, H10), probes/fin-argument-modes H88, H95 and the gen-m9 financial sweep
+(excel-graph, T-2257 triage, 2026-10-23).
+Status: VERIFIED (excel-graph)
+Implemented (T-2033): `db_depreciation` and `ddb_depreciation` in functions/financial/financial_depreciation.rs.
+Tasks: T-2033
+
 ## DURATION and RRI operation order
 Rule: DURATION discounts each cash flow with Excel's `^` (not libm `pow`) and weights it as `(t·cf)/v^t`, then
 `num/den/frequency`; MDURATION is exactly the worksheet `DURATION(...)/(1+yld/frequency)`. A zero-coupon

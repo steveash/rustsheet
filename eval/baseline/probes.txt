@@ -1494,8 +1494,6 @@ F	probes/fin-argument-modes.case.json	Sheet1!H374
 F	probes/fin-argument-modes.case.json	Sheet1!H375
 F	probes/fin-argument-modes.case.json	Sheet1!H72
 F	probes/fin-argument-modes.case.json	Sheet1!H80
-F	probes/fin-argument-modes.case.json	Sheet1!H88
-F	probes/fin-argument-modes.case.json	Sheet1!H95
 F	probes/fin-bond-negative-basis.case.json	Sheet1!E1
 F	probes/fin-bond-negative-basis.case.json	Sheet1!E17
 F	probes/fin-bond-negative-basis.case.json	Sheet1!G1
