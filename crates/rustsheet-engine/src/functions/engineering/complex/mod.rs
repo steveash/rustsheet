@@ -7,7 +7,7 @@ use crate::functions::math_and_trigonometry::{
     EXCEL_TRIG_LIMIT,
 };
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource, NestedReading,
 };
 use crate::limits::too_many_visits;
 use crate::reference_operators::RefArg;
@@ -269,6 +269,7 @@ const COMPLEX_FOLD_POLICY: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::First,
     skip_empty_args: false,
     grids: GridReading::Values,
+    nested: NestedReading::Value,
 };
 
 /// The cells of the rectangle `rows` x `columns`, 0 when either is not positive.
@@ -472,6 +473,12 @@ impl Model {
             };
             if n == 0.0 && x == 0.0 && y == 0.0 {
                 return num_error(cell); // probes/eng-impower A6
+            }
+            // A base with both parts nonzero whose x²+y² overflows is `#NUM!` even when the result
+            // is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `("1E+154+1E+154i",2)`; a pure real
+            // `IMPOWER("1E+300",-0.5)` is 1E-150 (probes/eng-impower-overflow A1-A12; T-2539).
+            if x != 0.0 && y != 0.0 && (x * x + y * y).is_infinite() {
+                return num_error(cell);
             }
             let r = modulus(x, y);
             // Excel's `^` (square-and-multiply for an integer power) and its x87-reduced sine

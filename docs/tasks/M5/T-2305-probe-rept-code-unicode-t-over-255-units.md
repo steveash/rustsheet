@@ -3,7 +3,7 @@ id: T-2305
 title: "Probe REPT/CODE/UNICODE/T over 255 units from a cell, an array element, and with an error count"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ Code: `reject_over_short_limit` (functions/text/common.rs).
 
 ## Out of scope
 -
+
+## Outcome
+Three probe cases (text-255-units-from-cell, -array-element, -rept-error-count; 26 cells, excel-graph) filled and recorded in text.md. Ours differs on 5 cells (T of a long cell is "", T of a long array element is #VALUE!, REPT's count error wins); fix task T-2627 filed and the 5 lines are in eval/baseline/probes.txt as known failures.

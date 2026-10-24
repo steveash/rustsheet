@@ -158,14 +158,6 @@ fn text_value_node(value: &CalcResult, format: &str) -> ArrayNode {
     }
 }
 
-/// Whether `format` may have a text section (an `@`, or a fourth section). Number-like text takes
-/// the number path only for codes without one, the shape the oracle cells cover; with a text
-/// section it stays text (UNVERIFIED, number-formats.md, T-2158). A `;` inside quotes counts, which
-/// errs towards the text path.
-fn has_text_section(format: &str) -> bool {
-    format.contains('@') || format.matches(';').count() >= 3
-}
-
 /// The TEXT element for one value: numbers and blanks by the number sections, text and booleans
 /// by the text section. An omitted value is 0, not a blank (`TEXT(,"General")`).
 fn text_element(value: &CalcResult, format: &str, ctx: &FormatContext) -> ArrayNode {
@@ -208,12 +200,12 @@ impl Model {
             if rejects_format_code(&format_code) {
                 return CalcResult::new_error(Error::VALUE, cell, String::new());
             }
-            // A text value that reads as a number is formatted as that number (number-formats.md,
-            // T-2158), read the way VALUE reads it.
+            // A text value that reads as a number is formatted as that number, read the way VALUE
+            // reads it, whatever the code's sections: `TEXT("001","@")` is "1", and a quoted or
+            // escaped `@` is a literal (`TEXT("1","\"@\"0")` is "@1"); number-formats.md, T-2158,
+            // probes/text-number-like-text-and-control-chars (T-2332).
             let number_text = match value {
-                CalcResult::String(text) if !has_text_section(&format_code) => {
-                    model.value_text_number(text).map(CalcResult::Number)
-                }
+                CalcResult::String(text) => model.value_text_number(text).map(CalcResult::Number),
                 _ => None,
             };
             let value = number_text.as_ref().unwrap_or(value);

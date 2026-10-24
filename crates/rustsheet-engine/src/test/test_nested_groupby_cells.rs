@@ -170,3 +170,84 @@ fn reading_copies_of_a_nested_cell_is_bounded() {
     assert_eq!(model._get_text("F1"), "#ERROR!");
     assert_eq!(model._get_text("G1"), "200000");
 }
+
+#[test]
+fn map_and_reduce_hand_the_lambda_each_nested_cell() {
+    // probes/t2592-nested-groupby-cells A100:A105, A15 (T-2594): ROWS 1 for a key, 2 for group
+    // b's cell, 4 for the Total's; SUM 7 for `{3;4}`; a step returning `x` is `#CALC!`.
+    let mut model = groups();
+    model._set(
+        "F1",
+        &format!("=INDEX(MAP({NESTED},LAMBDA(x,ROWS(x))),1,1)"),
+    );
+    model._set(
+        "F2",
+        &format!("=INDEX(MAP({NESTED},LAMBDA(x,ROWS(x))),2,2)"),
+    );
+    model._set(
+        "F3",
+        &format!("=INDEX(MAP({NESTED},LAMBDA(x,ROWS(x))),3,3)"),
+    );
+    model._set(
+        "F4",
+        &format!("=INDEX(MAP({NESTED},LAMBDA(x,TYPE(x))),2,2)"),
+    );
+    model._set("F5", &format!("=INDEX(MAP({NESTED},LAMBDA(x,SUM(x))),2,2)"));
+    model._set("F6", &format!("=MAP({NESTED},LAMBDA(x,x))"));
+    model._set("F7", &format!("=REDUCE(0,{NESTED},LAMBDA(a,x,a+ROWS(x)))"));
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), "1");
+    assert_eq!(model._get_text("F2"), "2");
+    assert_eq!(model._get_text("F3"), "4");
+    assert_eq!(model._get_text("F4"), "64");
+    assert_eq!(model._get_text("F5"), "7");
+    assert_eq!(model._get_text("F6"), "#CALC!");
+    assert_eq!(model._get_text("F7"), "19");
+}
+
+#[test]
+fn aggregates_flatten_or_are_not_available() {
+    // probes/t2592-nested-groupby-cells A6:A10, probes/t2594-nested-aggregates (T-2594): SUM,
+    // COUNT and COUNTA flatten the nested cells; AVERAGE, MIN, MAX and PRODUCT are `#N/A`;
+    // ARRAYTOTEXT is `#CALC!`.
+    let mut model = groups();
+    model._set("F1", &format!("=SUM({NESTED})"));
+    model._set("F2", &format!("=COUNT({NESTED})"));
+    model._set("F3", &format!("=COUNTA({NESTED})"));
+    model._set("F4", &format!("=AVERAGE({NESTED})"));
+    model._set("F5", &format!("=MAX({NESTED})"));
+    model._set("F6", &format!("=PRODUCT({NESTED})"));
+    model._set("F7", &format!("=ARRAYTOTEXT({NESTED})"));
+    model._set("F8", &format!("=SUM(1,{NESTED},2)"));
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), "220");
+    assert_eq!(model._get_text("F2"), "16");
+    assert_eq!(model._get_text("F3"), "19");
+    assert_eq!(model._get_text("F4"), "#N/A");
+    assert_eq!(model._get_text("F5"), "#N/A");
+    assert_eq!(model._get_text("F6"), "#N/A");
+    assert_eq!(model._get_text("F7"), "#CALC!");
+    assert_eq!(model._get_text("F8"), "223");
+}
+
+#[test]
+fn flattening_and_handing_over_copies_is_bounded() {
+    // SUM over 200 free copies of a 1,048,512-cell nested cell, and REDUCE handing each copy to
+    // its LAMBDA, pass the walk budget (2^27 cells) at the 129th copy: `#ERROR!`, in time bounded
+    // by the budget (DEVIATION, arrays.md "Nested GROUPBY and PIVOTBY cells: bounds").
+    let mut model = groups();
+    let copies = "LET(r,GROUPBY(A2,C2,LAMBDA(v,SEQUENCE(64,16383)),0,0),\
+                  CHOOSECOLS(CHOOSEROWS(r,SEQUENCE(200)^0),2))";
+    model._set("F1", &format!("=SUM({copies})"));
+    model._set("G1", &format!("=REDUCE(0,{copies},LAMBDA(a,x,a+1))"));
+    // Within the budget, every copy is read in full.
+    model._set(
+        "H1",
+        "=SUM(CHOOSECOLS(CHOOSEROWS(GROUPBY(A2,C2,LAMBDA(v,SEQUENCE(1000)),0,0),\
+         SEQUENCE(200)^0),2))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), "#ERROR!");
+    assert_eq!(model._get_text("G1"), "#ERROR!");
+    assert_eq!(model._get_text("H1"), "100100000");
+}

@@ -4,7 +4,7 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::external_reference::PickedReference;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource, NestedReading,
 };
 use crate::reference_operators::{not_a_reference_array, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
@@ -33,6 +33,7 @@ const COUNT_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Items,
     skip_empty_args: false,
     grids: GridReading::Values,
+    nested: NestedReading::Flatten,
 };
 
 /// COUNTA counts errors; it reads a picked reference keeping the cached blanks of a linked
@@ -42,6 +43,7 @@ const COUNTA_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Items,
     skip_empty_args: false,
     grids: GridReading::Values,
+    nested: NestedReading::Flatten,
 };
 
 impl Model {
