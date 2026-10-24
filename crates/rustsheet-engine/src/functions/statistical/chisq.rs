@@ -42,7 +42,7 @@ fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
 }
 
 /// Below this right-tail probability Excel's CHISQ.INV.RT and CHIINV are `#NUM!` for 3 to 10
-/// degrees of freedom (`CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `(1E-300,10)`: 19 gen-m9
+/// degrees of freedom (`CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `(1E-300,10)`: 21 literal gen-m9
 /// cells, T-1634), though the quantile exists, while `CHISQ.INV.RT(1E-20,n)` is a value for every
 /// n probed. Two degrees of freedom (a closed form, `CHISQ.INV.RT(1E-300,2)` = 1381.5510557964274),
 /// 22 (`CHISQ.INV.RT(1E-100,AVERAGE((Data!E10*7),42))` = 542.4417060011164, gen-m9) and 50

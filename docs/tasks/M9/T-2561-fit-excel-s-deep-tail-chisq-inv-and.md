@@ -29,6 +29,11 @@ Leads from T-1634:
   shape of 50,000: the upper-tail and large-shape paths may need their own fit.
 - `CHIINV(NPV((7*1E-15),{-100,300,-300,101}),3)` (4e55500bb8ad3cd8 A111) is 7.5% off: its p comes
   from NPV, so check NPV's last digits before the quantile.
+- df-1 right tail: `CHIINV(1E-9,1)` is 37.324892889999234 in Excel, one step of the double lower cdf's
+  resolution near 1 below the engine's complement crossing 37.324893106518715 (probes-numeric/m9-legacy-chiinv
+  A1, A2): Excel searches its own double-valued cdf.
+- Crossing convention: `refine_increasing`'s midpoint loses an ulp at `GAMMA.INV(1E-300,1,1)`
+  (9.999999999999999E-301); `special::nearest_crossing` gives Excel's 1E-300.
 Also in scope: the CHISQ.INV.RT `#NUM!` boundary that chisq.rs `RIGHT_TAIL_P_MIN` and
 `RIGHT_TAIL_SHAPE_ALL_P` currently guess (the p between 1E-20 and 1E-100, and df 11 to 21;
 `TODO(T-2561)` there), since the fit needs those cells anyway.

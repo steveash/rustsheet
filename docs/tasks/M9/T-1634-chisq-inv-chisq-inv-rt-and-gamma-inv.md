@@ -119,7 +119,7 @@ Cells:
       digit while still baselined as bit-level known failures; their last digits belong to T-0972
       (gamma quantile parity), which this task's kernel change feeds. The 30 still visibly off are Excel's own deep-tail rounding,
       not the engine's accuracy, and move to T-2561 with the campaign key (decision 0083).
-- [x] The listed cells of t1543-inverse-cdf-tiny-p pass (within the suite's numeric tolerance) and ordinary-p cases do not regress.
+- [x] The listed cells of t1543-inverse-cdf-tiny-p reach visible parity (14 more of the probe's cells pass bit-exact, the rest are a few ulp off) and ordinary-p cases do not regress (probes-numeric: 42 cells newly pass, 0 lost).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -137,7 +137,7 @@ it. Bit-level criteria still unmet then move to a follow-up task without the key
 CHIINV, GAMMA.INV and GAMMAINV: statrs' search where its result already solves the smaller tail to
 1E-13 relative, else the crossing of that tail's capped cdf (`special::refine_increasing`), with the
 lower tail's prefactor by `powf` so a tiny quantile keeps its digits (`GAMMA.INV(1E-300,1,1)` is
-Excel's 1E-300 exactly) and a subnormal crossing flushed to 0 (`CHISQ.INV(1E-200,1)`). Above shape
+within an ulp of Excel's 1E-300) and a subnormal crossing flushed to 0 (`CHISQ.INV(1E-200,1)`). Above shape
 1E9 statrs' search stands alone, including its NaN, as Excel is `#NUM!` there. Two Excel quirks of
 CHISQ.INV.RT and CHIINV are now matched and recorded in docs/excel-semantics/statistics.md: at
 df 1 the right tail is the left tail of 1 - p (`#NUM!` below 1.1E-16), and for df 3 to 10 a p below

@@ -400,6 +400,9 @@ const STATRS_QUANTILE_RESIDUAL: f64 = 1e-13;
 /// `GAMMAINV(0.999999,10000000000.5,1E+10)` and for a CHISQ.INV.RT of 10000000000.5 degrees of
 /// freedom (gen-m9), where statrs' search ends as NaN and a refinement would find the quantile
 /// (T-1634).
+/// Excel also has values above this shape (`CHISQ.INV(1E-16,10000000000.5)` = 9998837266.383266,
+/// gen-m9; `CHISQ.INV(5.6221E-26,4715100000)` = 4714082845.627977, probes/incomplete-gamma-cap),
+/// which rest on statrs' search alone, so moving the cut needs both kinds of cell checked.
 const REFINE_SHAPE_MAX: f64 = 1e9;
 
 /// The quantile of `dist` where the probability of `tail` is `p` (in [0, 1], else NaN): statrs'
@@ -430,6 +433,8 @@ pub(crate) fn gamma_quantile(dist: &Gamma, p: f64, tail: Tail) -> f64 {
         (Tail::Lower, false) => (Tail::Upper, 1.0 - p),
         (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
     };
+    // One budget for every cdf below. Each `borrow_mut` lasts one cdf call and none nests
+    // (`probability` calls no cdf of its own), so no borrow can overlap.
     let terms = RefCell::new(Terms(MAX_TERMS));
     let probability = |x: f64| {
         let terms = &mut terms.borrow_mut();
@@ -477,7 +482,7 @@ fn quantile_lower(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
         return 1.0;
     }
     // In the series' range `x^a` (powf) keeps the digits that statrs' exp(a ln x - ...) loses to
-    // the rounding of a large logarithm: `GAMMA.INV(1E-300,1,1)` is exactly Excel's 1E-300.
+    // the rounding of a large logarithm: `GAMMA.INV(1E-300,1,1)` is within an ulp of Excel's 1E-300.
     // Both factors must be normal doubles: at a large shape `x^a` overflows or exp(...) underflows.
     if scaled <= 1.0 || scaled <= a {
         let power = scaled.powf(a);
