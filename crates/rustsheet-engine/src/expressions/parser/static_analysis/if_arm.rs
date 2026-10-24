@@ -45,9 +45,10 @@ fn is_range_arm(arm: &Node) -> bool {
             // A defined name is an arm like a range: `=SUM(IF(TRUE,Rng))` shows no `@` and
             // `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (probes/legacy-if-arm-other-references D,
             // R), although the name takes its own `@` elsewhere (T-2440).
-            Node::RangeKind { .. } | Node::OpRangeKind { .. } | Node::DefinedNameKind(_) => {
-                return true
-            }
+            Node::RangeKind { .. }
+            | Node::ThisRowKind { cell: false, .. }
+            | Node::OpRangeKind { .. }
+            | Node::DefinedNameKind(_) => return true,
             Node::FunctionKind {
                 kind: Function::If,
                 args,
@@ -62,7 +63,7 @@ fn is_range_arm(arm: &Node) -> bool {
                 kind: Function::Offset,
                 args,
             } if !args.is_empty() => {
-                if matches!(args[0].ungrouped(), Node::ReferenceKind { .. }) {
+                if matches!(*args[0].ungrouped_static(), Node::ReferenceKind { .. }) {
                     return true;
                 }
                 pending.push(&args[0]);
@@ -92,7 +93,7 @@ fn is_single_cell_index(arm: &Node) -> bool {
         arm.ungrouped(),
         Node::FunctionKind { kind: Function::Index, args }
             if args.len() == 2
-                && matches!(args[0].ungrouped(), Node::RangeKind { column1, column2, .. } if column1 == column2)
+                && matches!(&*args[0].ungrouped_static(), Node::RangeKind { column1, column2, .. } if column1 == column2)
                 && matches!(args[1].ungrouped(), Node::NumberKind(n) if *n >= 1.0)
     )
 }

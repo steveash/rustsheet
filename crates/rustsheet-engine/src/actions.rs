@@ -543,7 +543,7 @@ impl Model {
         }
         let legacy = self.cell_has_legacy_marker(sheet, source_row, source_column)?;
         let formula_or_value = self
-            .get_cell_formula(sheet, source_row, source_column)?
+            .moved_text(sheet, source_row, source_column, target_row - source_row)?
             .unwrap_or_else(|| {
                 source_cell.get_localized_text(
                     &self.workbook.shared_strings,
@@ -1389,7 +1389,7 @@ impl Model {
                 .cell(row, *c)
                 .ok_or("Expected Cell to exist")?;
             let style_idx = cell.get_style();
-            let formula_or_value = self.get_cell_formula(sheet, row, *c)?.unwrap_or_else(|| {
+            let formula_or_value = self.moved_text(sheet, row, *c, delta)?.unwrap_or_else(|| {
                 cell.get_localized_text(&self.workbook.shared_strings, self.locale, self.language)
             });
             let mut array = None;

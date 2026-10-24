@@ -22,6 +22,7 @@ use crate::{
     language::{get_default_language, get_language, Language},
     locale::{get_default_locale, get_locale, Locale},
     model::Model,
+    tables::lower_this_row_cells,
     types::{
         DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
         WorksheetView,
@@ -203,7 +204,11 @@ impl Model {
                 // Defined-name formulas are stored internally in English, so
                 // they must be parsed with the English parser regardless of the
                 // user's active language.
-                match self.parse_internal_formula(formula_body, &dummy_ref) {
+                let mut body = self.parse_internal_formula(formula_body, &dummy_ref);
+                // A name has no cell: its `#This Row` areas are resolved at the row it is parsed
+                // at, as before SPEC-0016 step 2. Excel's rule is unprobed (T-1699, T-2595).
+                body.lower_this_rows_at(dummy_ref.row);
+                match body {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(Arc::new((parameters, *body)))
                     }
@@ -422,12 +427,17 @@ impl Model {
         // written as the retargeted area, which reads the copy's cells, as before SPEC-0016.
         let source_tables = self.table_names_on_sheet(&source_name);
         let mut shared_formulas = Vec::with_capacity(new_worksheet.shared_formulas.len());
-        for formula in &new_worksheet.shared_formulas {
+        let mut by_row = Vec::new();
+        for (index, formula) in new_worksheet.shared_formulas.iter().enumerate() {
             let mut t = self.parser.parse(formula, &cell_reference);
             rename_sheet_in_node(&mut t, source_index, &new_name);
             shared_formulas.push(to_string_lowering(&t, None, &source_tables));
+            if t.has_this_row_to(&source_tables) {
+                by_row.push((index, t));
+            }
         }
         new_worksheet.shared_formulas = shared_formulas;
+        lower_this_row_cells(&mut new_worksheet, &by_row, &source_tables);
         self.parser.set_lexer_mode(LexerMode::A1);
 
         // Insert the copy right after the source sheet.
