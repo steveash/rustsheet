@@ -3,7 +3,7 @@ id: T-2140
 title: "Gate the BESSEL asymptotic model: m9-bessel subset in probes, plus x above 100"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
