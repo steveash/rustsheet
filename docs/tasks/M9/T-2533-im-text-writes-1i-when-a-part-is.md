@@ -3,7 +3,7 @@ id: T-2533
 title: "IM* text writes 1i when a part is not exactly 1: COMPLEX, IMDIV and IMPOWER (gen-m9, 10 cells)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,3 +46,6 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`impl Display for Complex` now compares the unrounded imaginary part with ±1, with a unit test. 9 of the task's 10 gen-m9 known-failure lines cleared (COMPLEX and IMDIV cells, and A70 of 74779cff2810ccf4). `IMPOWER("1000+1i",1)` (A379) still fails: ours computes an imaginary part of exactly 1, so the polar-form kernel differs from Excel's; filed as T-2610.
