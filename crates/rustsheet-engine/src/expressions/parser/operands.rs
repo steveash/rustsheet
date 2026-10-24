@@ -313,7 +313,9 @@ impl Parser {
 
         // Could be a defined name or a table. A name spelled like an out-of-range R1C1 reference
         // is defined but never resolved (T-1657).
-        if !is_out_of_range_r1c1_name(&name) {
+        // A LET name or LAMBDA parameter shadows a defined name of the same name in any case
+        // (probes/let-name-shadows-defined-name, T-2057).
+        if !is_out_of_range_r1c1_name(&name) && !self.binds_name(&name) {
             if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
                 return Node::DefinedNameKind((name, scope, formula));
             }
@@ -342,14 +344,18 @@ impl Parser {
         Some(self.range_operand(None, left, right))
     }
 
-    /// Whether an enclosing LET or LAMBDA binds `name`, a name the A1 grammar would otherwise
-    /// read as a cell or a Lotus-style range ([`Parser::bind_reference_shaped_name`]).
+    /// Whether an enclosing LET or LAMBDA binds `name`, a name that would otherwise read as a
+    /// defined name ([`Parser::bind_reference_shaped_name`]), in any grammar mode.
+    fn binds_name(&self, name: &str) -> bool {
+        self.reference_shaped_names
+            .iter()
+            .any(|bound| bound.eq_ignore_ascii_case(name))
+    }
+
+    /// [`Parser::binds_name`] for a name the A1 grammar would otherwise read as a cell or a
+    /// Lotus-style range.
     pub(super) fn binds_reference_shaped_name(&self, name: &str) -> bool {
-        self.lexer.is_a1_mode()
-            && self
-                .reference_shaped_names
-                .iter()
-                .any(|bound| bound.eq_ignore_ascii_case(name))
+        self.lexer.is_a1_mode() && self.binds_name(name)
     }
 
     /// `node`, parsed from the argument `text` starting at `token`, where a LET or LAMBDA
@@ -358,14 +364,26 @@ impl Parser {
     /// one for the rest of the call. Excel: `LET(R1.C1,5,R1.C1*2)` is 10
     /// (probes/r1c1-let-name-r1-c1, T-1659), and stored as `_xlpm.f1`, `LET(f1,1,f1+1)` is 2
     /// (probes/let-cell-shaped-name-stored, T-2040). Excel refuses the cell-shaped name typed
-    /// (probes/let-cell-shaped-name-typed-*); ours reads the typed text as its stored form, as
-    /// for every other LET name (docs/excel-semantics/references.md, T-2040).
+    /// (probes/let-cell-shaped-name-typed-*): it binds here too, and typed entry refuses the
+    /// formula afterwards ([`Parser::typed_refusal`], decision 0103). A name that was read as a
+    /// defined name becomes the variable in any grammar mode, shadowing the defined name
+    /// (probes/let-name-shadows-defined-name, T-2057).
     pub(super) fn bind_reference_shaped_name(
         &mut self,
         token: &TokenType,
         text: &str,
         node: Node,
     ) -> Node {
+        // A name that is also a defined name parsed as that defined name; it declares the
+        // variable instead, and shadows the defined name up to the end of the scope. In any
+        // grammar mode: a stored formula (R1C1 mode) prints the name without `_xlpm.`.
+        if let (TokenType::Ident(_), Node::DefinedNameKind((name, ..))) = (token, &node) {
+            if !name.contains(['!', '[']) {
+                let name = name.clone();
+                self.reference_shaped_names.push(name.clone());
+                return Node::NamedVariableKind { name, id: None };
+            }
+        }
         if !self.lexer.is_a1_mode() {
             return node;
         }
@@ -383,7 +401,12 @@ impl Parser {
                     ..
                 },
                 Node::ReferenceKind { .. } | Node::WrongReferenceKind { .. },
-            ) if parse_reference_a1(&text.to_ascii_uppercase()).is_some() => text.to_string(),
+            ) if parse_reference_a1(&text.to_ascii_uppercase()).is_some() => {
+                if self.cell_shaped_binding.is_none() {
+                    self.cell_shaped_binding = Some(text.to_string());
+                }
+                text.to_string()
+            }
             _ => return node,
         };
         self.reference_shaped_names.push(bound.clone());

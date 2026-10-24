@@ -1,6 +1,6 @@
 ---
 id: T-2487
-title: "TBILLEQ, TBILLPRICE and TBILLYIELD: a settlement below serial 1 is valid, and their error order (gen-m9, 13 cells)"
+title: "TBILLEQ, TBILLPRICE and TBILLYIELD: a settlement below serial 1 is valid, and their error order (gen-m9, 14 cells)"
 milestone: M9
 lane: functions-financial
 status: todo
@@ -46,7 +46,16 @@ Cells:
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A11
 - gen-m9/e8d55ec393460bb7.case.json (2): Calc!A91, A287
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `IMSIN(DROP(SEQUENCE(1,1),TBILLYIELD(1e-15,100,1E+300),0))` is `#CALC!`, so `TBILLYIELD(1E-15,100,1E+300)` is a number (ours `#NUM!`; gen-m9/bf979a17ab5aafcb A52).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/bf979a17ab5aafcb Calc!A52 `=IMSIN(DROP(SEQUENCE(1,1),TBILLYIELD(1e-15,Data!$C$6,1E+300),0))`: Excel #CALC!, ours #NUM!
+Cells:
+- gen-m9/bf979a17ab5aafcb.case.json (1): Calc!A52
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 13 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for a settlement of 1E-15, 0.3 and 0.5 in each of the three functions.

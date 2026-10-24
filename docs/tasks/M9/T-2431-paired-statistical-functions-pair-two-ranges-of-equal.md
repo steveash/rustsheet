@@ -1,6 +1,6 @@
 ---
 id: T-2431
-title: "Paired statistical functions pair two ranges of equal count but different shape instead of #N/A (gen-m9, 17 cells)"
+title: "Paired statistical functions pair two ranges of equal count but different shape instead of #N/A (gen-m9, 18 cells)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -69,7 +69,16 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (1): Calc!A295
 - gen-m9/ede0323c389fc703.case.json (1): Calc!A75
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `BIN2HEX(1010101,SLOPE(Data!B7:D8,Data!C5:C10))` (6 cells each) is `#DIV/0!` (ours `#N/A`; gen-m9/76551d6fbafc7007 A174).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/76551d6fbafc7007 Calc!A174 `=BIN2HEX(1010101,SLOPE(Data!B7:D8,Data!C5:C10))`: Excel #DIV/0!, ours #N/A
+Cells:
+- gen-m9/76551d6fbafc7007.case.json (1): Calc!A174
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 34 known-failure lines (17 from T-2255, 17 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `CORREL({1,2;3,4},{1;2;3;4})` and `INTERCEPT({1;2;3;4},{1,2;3,5})` give the paired values.

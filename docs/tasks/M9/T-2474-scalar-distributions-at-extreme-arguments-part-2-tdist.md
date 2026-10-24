@@ -1,6 +1,6 @@
 ---
 id: T-2474
-title: "Scalar distributions at extreme arguments, part 2: TDIST of 1E+300, POISSON with a negative mean, NEGBINOMDIST and PERMUTATIONA limits (gen-m9, 42 cells)"
+title: "Scalar distributions at extreme arguments, part 2: TDIST of 1E+300, POISSON with a negative mean, NEGBINOMDIST and PERMUTATIONA limits (gen-m9, 44 cells)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -68,7 +68,18 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (1): Calc!A183
 - gen-m9/eedd629f3d69fdda.case.json (1): Calc!A40
 
+gen-m9 engineering and database sweep (gap triage 2026-10-23, T-2258): T.DIST of 1E+307 is `#NUM!` too: `BITRSHIFT(T.DIST(1E+307,9,"TRUE")/0,-2)` and `DPRODUCT(Db!B1:D9,T.DIST(1E+307,2,TRUE)-1,Db!F1:F2)` are `#NUM!` (ours T.DIST is 1, so `#DIV/0!` and a bad field `#VALUE!`).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas, 2 visibly off.
+Examples:
+- gen-m9/8fa8b572ebc1f001 Calc!A382 `=BITRSHIFT((T.DIST(1E+307,9,"TRUE")/0),-2)`: Excel #NUM!, ours #DIV/0!
+- gen-m9/e707d43a891ba9b5 Calc!A391 `=DPRODUCT(Db!B1:D9,(T.DIST(1E+307,2,TRUE)-(2*0.5)),Db!F1:F2)`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/8fa8b572ebc1f001.case.json (1): Calc!A382
+- gen-m9/e707d43a891ba9b5.case.json (1): Calc!A391
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 42 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for each rule at the cited arguments.

@@ -3,7 +3,7 @@ id: T-2033
 title: "DB and DDB: Excel's declining-balance operation order (DB_DDB.xlsx, fin-argument-modes H88, H95)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -117,14 +117,14 @@ Cells:
 - gen-m9/e168be7f6d3f84c2.case.json (3): Calc!A68, A119, A362
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): the 36 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+- [x] Visible parity (gen-m9, T-2257): the 36 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The 102 T-2257 last-digit lines in Context are re-checked after the fix; the Outcome says how many pass.
-- [ ] The 12 DB_DDB.xlsx lines leave eval/baseline/ironcalc-calc.txt and fin-argument-modes H88 and H95
+- [x] The 102 T-2257 last-digit lines in Context are re-checked after the fix; the Outcome says how many pass.
+- [x] The 12 DB_DDB.xlsx lines leave eval/baseline/ironcalc-calc.txt and fin-argument-modes H88 and H95
       leave eval/baseline/probes.txt (`make eval-baseline`), with no new F lines in any baseline.
-- [ ] Unit tests for G20, G42 (`DB(23,10,4,5,2)` = 1.8687313963962309, the last-period branch), H10
+- [x] Unit tests for G20, G42 (`DB(23,10,4,5,2)` = 1.8687313963962309, the last-period branch), H10
       (`DDB(100,10,4,3,1.3334)` = 14.814814787037497) and H95.
-- [ ] The financial.md entry cites the cells; `make check` green; reviewers approve.
+- [x] The financial.md entry cites the cells; `make check` green; reviewers approve.
 
 ## Out of scope
 - VDB (T-1975, T-1977, T-1978); lifting and the period-loop bound (T-1820).
@@ -137,3 +137,19 @@ type, error, text, or a value off by more than half a unit of the 15th significa
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Outcome
+DB now keeps the remaining balance (`cost*rate*(month/12)` first, `balance*(rate*(12-month)/12)` last) and
+DDB charges `min(old*rate, old - salvage)` with the book value raised by the operator `^`
+(`arithmetic::power`, square-and-multiply) instead of libm `pow`: the `pow` form fixed 103 gen-m9 lines and left
+13 of the 36 visibly-off cells, and `^` fixed those 12 and 25 more lines. The libm-`pow` fit in Context
+was over DB_DDB.xlsx only; `^` reproduces those cells too. Recorded in docs/excel-semantics/financial.md
+"DB and DDB operation order".
+Eval delta: gen-m9 known failures 8056 -> 7916 (-140), ironcalc-calc 761 -> 749 (the 12 DB_DDB.xlsx lines),
+probes 1895 -> 1893 (fin-argument-modes H88, H95); no new failure lines.
+Visible parity: 35 of the 36 listed cells pass. The one left, gen-m9/1dce4774f5c0e736 Calc!A366
+`DDB(46469,651,FV(100,42,-935),9,2)`, is one ulp off (Excel 6.544613631714984e-81, ours ...983), no longer
+visibly off. Its life is an FV of about 1E86 and the charge is just `cost*(factor/life)` (the book value
+rounds to `cost`), so the ulp most likely comes from the FV argument, not from DDB (unverified;
+follow-up T-2560).
+Last-digit re-check: all 102 listed last-digit lines pass.
