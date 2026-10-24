@@ -223,7 +223,7 @@ impl Model {
         // Normalize to comparison strings for optional case-insensitive matching.
         // `fold_for_split` maps every char to exactly one char (TEXTSPLIT's folding, probes/
         // textsplit-casefold-length), so char positions in `cmp_text` are char positions in
-        // `text`; `split_by_any` converts them to byte offsets of the original (T-1794).
+        // `text`; `split_grid` converts them to byte offsets of the original (T-1794).
         let (cmp_text, case) = if case_insensitive {
             (Cow::Owned(fold_for_split(&text)), Case::Insensitive)
         } else {
