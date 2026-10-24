@@ -3,10 +3,10 @@ id: T-2340
 title: "References to a deleted table or a deleted sheet's table are #REF! and FORMULATEXT prints #REF! as Excel does (T-2324)"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: [T-2322, T-2341]
 ---
 
@@ -25,9 +25,22 @@ unknown table `#REF!`; share its rewrite. A6 of table-delete-table (`SUM(S!C4:C7
 cells) is T-2341's.
 
 ## Acceptance criteria
-- [ ] Every cell of table-delete-table and table-delete-sheet passes and leaves eval/baseline/probes.txt,
+- [x] Every cell of table-delete-table and table-delete-sheet passes and leaves eval/baseline/probes.txt,
       with no new known failure.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cut and paste, row and column moves, undo and duplicated sheets (desktop, T-2325).
+
+## Outcome
+A table delete and a sheet delete now rewrite the stored text of every structured reference to the removed
+tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs, through a new
+`Rewrite::RefError` printer), instead of the handoff's parse-time flag, which a later reparse would have
+lost. The sheet delete records what it rewrote (`TakenSheet`, `Diff::DeleteSheet`), so `restore_sheet` and
+`UserModel` undo put the structured text back (they used to leave lowered plain ranges). A reference to a
+missing sheet is displayed as `#REF!C4:C7` (`is_missing_sheet`, stringify/wrong_reference.rs; stored text and export keep
+the name), and the lexer reads `#REF!C4:C7` back as `#REF!`, so autofill of such a formula is not a parse
+error. Three upstream move-formula expectations now print `#REF!AB31` for a missing sheet.
+Follow-up: T-2612 (the stored text and export of a plain reference to a deleted sheet).
+Eval: probes known failures -14 (table-delete-table and table-delete-sheet now pass 12/12 each); 0
+regressions.

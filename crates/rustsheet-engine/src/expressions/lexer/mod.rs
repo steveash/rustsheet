@@ -311,7 +311,13 @@ impl Lexer {
                             TokenType::Compare(OpCompare::GreaterThan)
                         }
                     }
-                    '#' => self.consume_error(),
+                    '#' => {
+                        let error = self.consume_error();
+                        if error == TokenType::Error(Error::REF) {
+                            self.consume_deleted_sheet_reference();
+                        }
+                        error
+                    }
                     '"' => match self.consume_string() {
                         Ok(s) => TokenType::String(s),
                         Err(error) => TokenType::Illegal(error),
@@ -894,6 +900,21 @@ impl Lexer {
             return TokenType::Illegal(self.set_error("Expected '!'", self.position));
         }
         self.consume_range(Some(sheet_name))
+    }
+
+    /// Skips the cell or range after a `#REF!` in A1 (`#REF!C4:C7`): Excel displays a reference
+    /// to a deleted sheet that way, and the whole is the #REF! error (T-2340,
+    /// probes/table-edits/table-delete-sheet), so the displayed text reads back as what it was.
+    fn consume_deleted_sheet_reference(&mut self) {
+        if self.mode != LexerMode::A1
+            || !matches!(self.peek_char(), Some(c) if c.is_ascii_alphabetic() || c == '$')
+        {
+            return;
+        }
+        let start = self.position;
+        if self.consume_range_a1().is_err() {
+            self.position = start;
+        }
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
