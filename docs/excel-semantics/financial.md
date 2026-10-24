@@ -330,9 +330,29 @@ Where both secant runs fail the engine falls back to the earlier Newton/bisectio
 fact). Excel returns `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17),
 where the fitted secant does not stop, and raising its step cap does not explain it (1,000 steps give
 -0.6737366751808431). Probing it is T-1686.
+Open, the 2026-10-24 re-fit over every IRR cell of the eval (T-2131; 388 numeric cells with
+distinct flows and guess, gen-m9 included, of which the model matches 219): no variant of the
+arithmetic closes the gap. NPV as c_i/x^i, Horner in v or c_i*v^i, each with double or 64-bit
+terms and sums in either order, and the step anchored on v0 or v1 with or without twice-rounded
+operators score 194 to 222 bit-exact and move only last-bit cells. The visibly-off cells are of
+two other kinds:
+- Roots far above the guess. Excel returns the model's stopping step but with its error 0.1 to
+  0.4 % different: `IRR({-0.0001,2,42})` is 20019.97799564059 (gen-m9/c0681a8b150ce301
+  Calc!A218; the model 20019.977995638386, the root 20019.9779961838) and
+  `IRR({-2.5,-1,123456789.123})` 7026.083662734896 (gen-m9/67a4c03afd63f988 Calc!A346; the model
+  7026.0836627358585), likewise A3, A199, A285 and the gen-m9 cells of T-2131. The model's value
+  does not move under a 1e6-ulp change of v1 but moves continuously with the offset, which would
+  have to be 0.00079 to 0.00124 depending on the cell. Neither a constant offset, an offset of
+  0.001 in r, nor a relative offset v0(1 +- 0.001) fits, and neither does a Newton first step. So
+  Excel's steps far from the root differ from the secant's, by a rule not yet identified (T-2565
+  probes it).
+- Runs where both secant runs fail. For `{-400,1,1,1,1,1}` (IRR.xlsx L17), `{42,1,1,-1}`
+  (gen-m9/31474c20fc1dafd6 A271) and `{0.3,-2.5,1.005}` (gen-m9/a91bad4e84f49739 A369), no
+  secant run from any guess in -0.99 to 100 gives Excel's bits (the nearest is 2.6e-15 off), so
+  Excel's fallback is not a retry of the same secant from another fixed guess (T-1686).
 Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
 for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
-Tasks: T-1525, T-1533, T-0916
+Tasks: T-1525, T-1533, T-0916, T-2131, T-2565
 
 ## The IRR and XIRR solver caps
 Rule: Excel's caps on its IRR secant, XIRR's bracket walk and XIRR's bisection are unknown: no probe
