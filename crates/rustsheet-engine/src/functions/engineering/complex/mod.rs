@@ -3,7 +3,8 @@ use std::fmt;
 use crate::arithmetic::power;
 use crate::functions::lift::{num_error, value_error};
 use crate::functions::math_and_trigonometry::{
-    excel_atan2, excel_quarter_turn_remainder, excel_sin_cos, EXCEL_TRIG_LIMIT,
+    excel_atan2, excel_quarter_turn_remainder, excel_sin_cos, EXCEL_INNER_TRIG_LIMIT,
+    EXCEL_TRIG_LIMIT,
 };
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
@@ -25,11 +26,6 @@ use crate::{
 
 mod trig;
 use trig::{imcos, imcosh, imcot, imcsc, imcsch, imsec, imsech, imsin, imsinh, imtan};
-
-/// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
-/// `IMPOWER("i",85445658)` (angle 134217725.7) answers and `IMPOWER("i",85445659)` (134217727.3)
-/// is `#NUM!`; SIN's own cut is 2^27 (`EXCEL_TRIG_LIMIT`), which is not this one for a fractional angle.
-const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
 
 /// This implements all functions with complex arguments in the standard
 /// NOTE: If performance is ever needed we should have a new entry in `CalcResult`,
@@ -488,7 +484,7 @@ impl Model {
             if radius == 0.0 {
                 return complex_result(0.0, 0.0, suffix);
             }
-            if angle.abs() < IMPOWER_ANGLE_LIMIT {
+            if angle.abs() < EXCEL_INNER_TRIG_LIMIT {
                 let (sin, cos) = excel_sin_cos(angle);
                 return finite_complex_result(radius * cos, radius * sin, suffix, cell);
             }

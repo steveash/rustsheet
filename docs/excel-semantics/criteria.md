@@ -351,6 +351,7 @@ Evidence: gen-m9 4dc761698ca23149 A129, 74779cff2810ccf4 A52, fa8ee59f2f1be7e0 A
 5bdef392d16a5efb A161, f066968376660329 A292, A205, A313, d193e8b4ab820f52 A375, A260, f61a73cd9af21e6d A289,
 c9d7659896d95368 A82, A1, 6d16afd40600302b A365, cb80ca09be0e12bc A52, d9d55972b50e55e8 A106, 88cabddc4935351c A255
 (excel-graph, 2026-10-22/23, T-2258).
-Status: VERIFIED (excel-graph) for the values; the reference rule for a criterion away from the database is open
-(T-2525 probes it, T-2553 matches it).
+Status: VERIFIED (excel-graph) for the values; the reference rule for a criterion away from the database is VERIFIED
+(T-2525, probes/db-criteria-formula-placement: relative references rebase onto the first record, absolute ones
+stay put; ours agrees), T-2553 matches the remaining cells.
 Tasks: T-2258, T-2422, T-2525, T-2553

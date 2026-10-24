@@ -3,7 +3,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::{near_integer_count, near_integer_floor};
 use crate::functions::Function;
-use crate::limits::check_array_size;
+use crate::limits::check_built_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -86,7 +86,7 @@ impl Model {
             }
             (Ok(rows), Ok(columns)) => (rows, columns),
         };
-        if let Some((error, message)) = check_array_size(rows, columns) {
+        if let Some((error, message)) = check_built_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);
         }
 
