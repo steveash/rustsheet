@@ -231,7 +231,7 @@ fn take_of_a_one_cell_reference_is_a_reference() {
     assert_eq!(model._get_text("A4"), *"64");
 }
 
-/// An uncalled LAMBDA joined as text or compared is `#VALUE!`, and a number match_mode of 3 is
+/// An uncalled LAMBDA joined as text or compared is `#VALUE!`, and a number `match_mode` of 3 is
 /// XMATCH's regex mode on the number's text (probes/t2622-contents-xmatch-take-lambda A20,
 /// A49, A50, A57).
 #[test]
