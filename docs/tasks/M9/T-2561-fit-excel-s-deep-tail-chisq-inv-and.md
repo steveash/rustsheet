@@ -64,6 +64,12 @@ Cells:
 
 ## Out of scope
 - The t1543-inverse-cdf-tiny-p BETA.INV cells (T-1634's Context lists them; they are BETA.INV's).
+- The 65 cells T-1634 brought to visible parity but not to bit-exactness: they stay in
+  eval/baseline/gen-m9.txt as bit-level known failures with no owner, for the ulp and bit stages of
+  decision 0083. Fix them here only if the same kernel fit happens to cover them.
+- Pinning the unprobed CHISQ.INV.RT `#NUM!` boundary itself (the p between 1E-20 and 1E-100, and
+  df 11 to 21, that chisq.rs `RIGHT_TAIL_P_MIN` and `RIGHT_TAIL_SHAPE_ALL_P` guess): probe it here
+  if the fit needs it, else it is its own probe task.
 
 ## Visible-parity stage
 Decision 0083: the cells above are visibly off, so the task is in the campaign. Its target is that

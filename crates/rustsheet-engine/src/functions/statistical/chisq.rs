@@ -49,6 +49,7 @@ fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
 /// (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946, T-1543) have values. The boundary p between
 /// 1E-20 and 1E-100, and the degrees of freedom from 11 to 21, are not probed
 /// (docs/excel-semantics/statistics.md, T-1634).
+// TODO(T-2561): the exact boundary is unprobed; T-2561 pins it if its fit needs it.
 const RIGHT_TAIL_P_MIN: f64 = 1e-20;
 
 /// From this shape (11 degrees of freedom) a right-tail quantile below [`RIGHT_TAIL_P_MIN`] is a

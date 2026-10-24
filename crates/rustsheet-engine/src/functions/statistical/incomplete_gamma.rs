@@ -5,8 +5,9 @@
 //!
 //! `lower_within` and [`gamma_ur`] are statrs 0.18.0's `function::gamma::checked_gamma_lr` and
 //! `checked_gamma_ur` (a power series and a continued fraction run to a relative tolerance of
-//! 1E-15), and [`gamma_inverse_cdf`] is its `Gamma::inverse_cdf` (halve and double a bracket,
-//! then 8 bisections and 4 Newton steps), ported line for line so that every call that ends in
+//! 1E-15), and `inverse_cdf_within` is its `Gamma::inverse_cdf` (halve and double a bracket,
+//! then 8 bisections and 4 Newton steps; the quantile the functions call is [`gamma_quantile`],
+//! which refines it to the crossing in the tails, T-1634), ported line for line so that every call that ends in
 //! statrs ends here with the same double. statrs' loops are open: the series needs about
 //! 6.8 * sqrt(a) terms where x is near a (6.4 million at a = 1E12, 17 ms in release), never
 //! converges once `a + 1 == a` (a of 2^53 or more: `GAMMA.DIST(1E16,1E16,1,TRUE)` never
@@ -304,7 +305,8 @@ pub(crate) fn gamma_sf(dist: &Gamma, x: f64) -> f64 {
 /// statrs' `Gamma::inverse_cdf` (and `ChiSquared::inverse_cdf`) for `p` in [0, 1]: the quantile,
 /// or NaN where statrs panics, would not finish, or its cdfs together pass [`MAX_TERMS`] terms.
 /// It evaluates at most about 2,120 cdfs (about 1,075 halvings, 1,025 doublings, 8 bisections,
-/// 4 Newton steps), all of them sharing the one budget.
+/// 4 Newton steps), all of them sharing the one budget. The functions call [`gamma_quantile`],
+/// which adds at most 130 more cdfs of refinement to that same budget; this is its test shim.
 #[cfg(test)]
 fn gamma_inverse_cdf(dist: &Gamma, p: f64) -> f64 {
     inverse_cdf_within(dist, p, &mut Terms(MAX_TERMS))
