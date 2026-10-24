@@ -3,7 +3,7 @@ id: T-2242
 title: "PPMT's first periods of long terms carry Excel's error in (1+r)^-n"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
