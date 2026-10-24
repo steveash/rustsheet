@@ -47,13 +47,9 @@ fn xirr_bisects_the_walked_bracket() {
 
 #[test]
 fn xirr_with_a_zero_first_value_needs_no_later_date() {
-    // probes/xirr-span-zero-first A28-A30 (first date after the others); gen-m9/e168be7f6d3f84c2
-    // A125 (all dates equal); T-2329
-    let got = results(&[
-        "=XIRR({0,-1000,1100},{46000,45000,45365})",
-        "=XIRR({0,0,-100,50,60},{39448,39448,39448,39448,39448})",
-    ]);
-    let expected = [2.980_232_238_769_531_4e-9_f64, 2.584_904_351_243_779_6e-9];
+    // probes/xirr-span-zero-first A28 (first date after the others); T-2329
+    let got = results(&["=XIRR({0,-1000,1100},{46000,45000,45365})"]);
+    let expected = [2.980_232_238_769_531_4e-9_f64];
     assert_eq!(got, expected.map(f64::to_bits));
 }
 

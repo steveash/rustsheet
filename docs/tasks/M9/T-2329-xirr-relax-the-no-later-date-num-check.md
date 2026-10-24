@@ -3,10 +3,10 @@ id: T-2329
 title: "XIRR: relax the no-later-date #NUM! check for a zero first value, apply T-2328's stop bound"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: [T-2328]
 campaign: visible
 ---
@@ -28,7 +28,7 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 1 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A28-A30 pass; the nonzero-first-value no-later-date cases (xirr-mismatched-empties X9, X12, X13) stay `#NUM!`.
+- [ ] A28-A30 pass (done, branch); the nonzero-first-value no-later-date cases (xirr-mismatched-empties X9, X12, X13) stay `#NUM!`.
 - [ ] A11, A14, A20 pass once T-2328 has fitted the bound.
 - [ ] `make check` green; reviewers approve.
 
@@ -41,3 +41,7 @@ type, error, text, or a value off by more than half a unit of the 15th significa
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Handoff
+Tried: skipped `xirr_dates`' no-later-date `#NUM!` when the first value is 0 (functions/financial/mod.rs), with a unit test. Result: probes/xirr-span-zero-first A28-A30 now pass (3 baseline lines removed from eval/baseline/probes.txt). Still failing: gen-m9/e168be7f6d3f84c2 A125 stays `#NUM!` (Excel 2.5849043512437796e-09), and A11, A14, A20 still fail (expected values were not checked against T-2328's Outcome).
+Why A125 fails: all five dates are equal, so XNPV is constant (sum of values) at every rate and `xirr_bracket` never sees a sign change, so it returns `None`. Excel returns a tiny value that looks guess-dependent (2.5849e-9 * 2^25 is about 0.0867; the other zero-first cells give guess-bracket/2^25, financial.md). Next: read the guess value of A125 (`make eval-show`, Data!D8/B7/B8), then probe equal-date zero-first cells at several guesses (excel-probe skill) to find the rule for a flat XNPV, then implement it in `xirr_bracket`/`compute_xirr`. Check A11, A14, A20 against T-2328's Outcome.

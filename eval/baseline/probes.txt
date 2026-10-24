@@ -3780,9 +3780,6 @@ F	probes/xirr-exact-root-sign.case.json	Sheet1!P99
 F	probes/xirr-span-zero-first.case.json	Sheet1!A11
 F	probes/xirr-span-zero-first.case.json	Sheet1!A14
 F	probes/xirr-span-zero-first.case.json	Sheet1!A20
-F	probes/xirr-span-zero-first.case.json	Sheet1!A28
-F	probes/xirr-span-zero-first.case.json	Sheet1!A29
-F	probes/xirr-span-zero-first.case.json	Sheet1!A30
 F	probes/xnpv-empty-values-cell.case.json	Sheet1!C8
 F	probes/yield-newton-domain.case.json	P!A1
 F	probes/yield-newton-domain.case.json	P!A10
