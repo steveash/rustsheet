@@ -9,6 +9,7 @@ use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse
 use crate::functions::statistical::special::{ln_gamma, refine_increasing};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
+use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -38,6 +39,76 @@ fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
     let scaled = df1 * x;
     let total = scaled + df2;
     beta_reg_upper(scaled / total, df2 / total, df1 / 2.0, df2 / 2.0)
+}
+
+/// Above this a + b (half the two df summed) F.TEST's tail is [`beta_reg_complement`]'s; below
+/// it the remainder of [`f_test_upper_tail`] is summed in double-double, at most about 30,000
+/// terms (x <= 0.9975 there).
+const F_TEST_SERIES_SHAPE_MAX: f64 = 200.0;
+
+/// Bound on the terms of [`f_test_remainder`]'s series (it converges well before it below
+/// [`F_TEST_SERIES_SHAPE_MAX`]).
+const F_TEST_SERIES_TERMS: u32 = 100_000;
+
+/// pi as a double-double (hi + lo).
+const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
+
+/// F.TEST's upper tail `I_x(a, b)` for x = df_small/(df_big f + df_small) <= a/(a+b), y = 1 - x,
+/// a = df_small/2, b = df_big/2 (f the larger variance over the smaller):
+/// exp(a ln x) exp(b ln y) R with the remainder R = I_x(a,b)/(x^a y^b) close to correctly rounded.
+/// Excel's F.TEST carries the rounding of the two powers (tens of ulps in a deep tail, where
+/// a ln x is about -100) but not a continued fraction's: over the 188 distinct F.TEST inputs on
+/// file this form is bit-exact on 90 against 53 for the correctly rounded p and visibly off on 6
+/// against 40 (docs/excel-semantics/statistics.md "F.TEST / FTEST: larger variance on top").
+/// The closed forms a = 1 or b = 1 and large shapes are [`beta_reg_complement`]'s.
+fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
+    let half_integers = (2.0 * a).fract() == 0.0 && (2.0 * b).fract() == 0.0;
+    if !(x > 0.0 && y > 0.0 && half_integers && a + b <= F_TEST_SERIES_SHAPE_MAX)
+        || a == 1.0
+        || b == 1.0
+    {
+        return beta_reg_complement(x, y, a, b);
+    }
+    (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
+}
+
+/// I_x(a,b)/(x^a (1-x)^b) = 2F1(a+b, 1; a+1; x) / (a B(a,b)) for half-integer shapes, in
+/// double-double: B(a,b) by B(a+1,b) = B(a,b) a/(a+b) and B(a,b+1) = B(a,b) b/(a+b) from B(1,1) = 1,
+/// B(1/2,1) = B(1,1/2) = 2 or B(1/2,1/2) = pi, and the series of positive terms
+/// t_(n+1) = t_n (a+b+n) x/(a+1+n), which nothing cancels.
+fn f_test_remainder(x: f64, a: f64, b: f64) -> f64 {
+    let a0 = if a.fract() == 0.0 { 1.0 } else { 0.5 };
+    let b0 = if b.fract() == 0.0 { 1.0 } else { 0.5 };
+    let mut beta = match (a0 == 1.0, b0 == 1.0) {
+        (true, true) => (1.0, 0.0),
+        (true, false) | (false, true) => (2.0, 0.0),
+        (false, false) => PI_DD,
+    };
+    let (mut p, mut q) = (a0, b0);
+    while p < a {
+        beta = dd_div_small(dd_mul(beta, (p, 0.0)), p + q);
+        p += 1.0;
+    }
+    while q < b {
+        beta = dd_div_small(dd_mul(beta, (q, 0.0)), p + q);
+        q += 1.0;
+    }
+    let mut term = (1.0, 0.0);
+    let mut sum = (1.0, 0.0);
+    let mut n = 0.0;
+    for _ in 0..F_TEST_SERIES_TERMS {
+        term = dd_div_small(
+            dd_mul(dd_mul(term, (a + b + n, 0.0)), (x, 0.0)),
+            a + 1.0 + n,
+        );
+        sum = dd_add(sum, term);
+        n += 1.0;
+        // 2^-110 of the sum: past double-double precision.
+        if term.0 < sum.0 * 7.7e-34 {
+            break;
+        }
+    }
+    dd_div(sum, dd_mul(beta, (a, 0.0))).0
 }
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
@@ -438,7 +509,6 @@ impl Model {
             );
         }
 
-        let f = v1 / v2;
         let df1 = (n1 - 1) as f64;
         let df2 = (n2 - 1) as f64;
 
@@ -450,11 +520,25 @@ impl Model {
             );
         }
 
-        // Two-tailed: twice the smaller tail. The smaller tail is not always the one a variance
-        // ratio above 1 picks (F(df1, df2) has its median away from 1), so take the minimum
-        // (F.TEST(C1:C6,B1:B8) of probes/stat-argument-modes is 0.9196, not 2 - 0.9196; T-1292).
-        let lower = f_cdf(df1, df2, f);
-        let mut p = 2.0 * lower.min(f_sf(df1, df2, f));
+        // Excel divides the larger variance by the smaller (F.TEST is exactly symmetric in its
+        // samples, probes/ftest-decomposition A7 = E7) and doubles the smaller of the upper tail
+        // and its complement: the upper tail of an f above 1 is not always the smaller, as F's
+        // median is away from 1 (F.TEST(C1:C6,B1:B8) of probes/stat-argument-modes is 0.9196,
+        // T-1292). statistics.md "F.TEST / FTEST: larger variance on top", T-2361.
+        let (v_big, v_small, df_big, df_small) = if v1 >= v2 {
+            (v1, v2, df1, df2)
+        } else {
+            (v2, v1, df2, df1)
+        };
+        let f = v_big / v_small;
+        let total = df_big * f + df_small;
+        let upper = f_test_upper_tail(
+            df_small / total,
+            df_big * f / total,
+            df_small / 2.0,
+            df_big / 2.0,
+        );
+        let mut p = 2.0 * upper.min(1.0 - upper);
 
         // Clamp tiny FP noise
         if p < 0.0 && p > -1e-15 {

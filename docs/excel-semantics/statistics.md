@@ -2479,23 +2479,36 @@ Engine: `Model::aggregate_k` (crates/rustsheet-engine/src/functions/aggregate.rs
 keeps a fourth argument IF or CHOOSE picks a reference for as that reference.
 Status: implemented (T-2281)
 
-## F.TEST / FTEST is not correctly rounded (T-1927)
-Excel's F.TEST is not the correctly rounded value of `2*min(lower, upper)` tail: with the f
-our two-pass variance gives, the exact p of `F.TEST({1,2,3,4},{5,6,7,2.4})` is 0.5023992107800743
-but Excel returns 0.5023992107800741, and `F.TEST(C1:C6,B1:B8)` of probes/stat-argument-modes
-(df 1,7) is 0.91959790471759887 exactly against Excel's 0.9195979047175995, while
-`F.TEST(A1:A8,B1:B8)` (df 7,7) and `FTEST(B1:C5,B1:B5)` (df 9,4) are Excel's correctly rounded
-values. An exact incomplete beta therefore fixes some cells and regresses others; matching all
-needs Excel's own algorithm (see the F.DIST/BETA.DIST fit notes).
-F.TEST is not built on Excel's own F.DIST either (probes/ftest-decomposition, excel-graph,
-2026-10-22, T-1927): `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` with f = `VAR.S(x)/VAR.S(y)` is
-0.7947858780819459 and 0.5236816407506065 where F.TEST is 0.7947858780819458 and
-0.5236816407506063 (A8/A7, B8/B7), and F.TEST is exactly symmetric in its arguments (A7 = E7,
-C7 = F7). Over the 33 distinct F.TEST inputs on file (probes stat-argument-modes,
-ftest-decomposition; probes-numeric m9-legacy-ftest, t1049-ftest) Excel is within -6..+4 ulps of
-the exact two-tailed p, on both sides; neither the exact p (12 of 33 bit-exact) nor the A&S
-26.6.4-26.6.8 finite series in doubles (11 of 33), with a two-pass, textbook or corrected
-variance, or with f taken as larger over smaller, reproduces it. Open: T-2361.
+## F.TEST / FTEST: larger variance on top, Excel's rounded powers, an accurate remainder (T-1927, T-2361)
+Rule (fit, UNVERIFIED as Excel's algorithm): F.TEST takes f = the larger two-pass sample variance
+over the smaller (df_big, df_small its and the other sample's n - 1), so it is exactly symmetric
+in its arguments, and its two-tailed p is `2*MIN(u, 1-u)` for the upper tail
+u = I_x(df_small/2, df_big/2), x = df_small/(df_big*f + df_small), y = df_big*f/(df_big*f + df_small).
+x never exceeds the mean a/(a+b) there, so the tail is computed without a reflection, as
+`exp(a*ln x) * exp(b*ln y) * R` with R = I_x(a,b)/(x^a y^b): the two powers carry Excel's
+exp-of-a-product rounding (where a ln x is near -100 to -300 the exact p is tens of ulps, up to
+179, from Excel's, and the model is within a few), while R itself is close to correctly rounded. The closed forms
+of the incomplete beta hold: b = 1 is exp(a ln x) and a = 1 (df_small = 2) is -expm1(b ln1p(-x))
+below x = 0.1, which is why the a = 1 deep tails are the correctly rounded value.
+Not the model: VAR.S's one-pass switch for the variances, f = v1/v2 with the minimum of both tails,
+and a single exp(a ln x + b ln y + ln G).
+Fit (T-2361, 188 distinct inputs from the cells on file: gen-m9 cells whose arguments are plain
+ranges, probes stat-argument-modes and ftest-decomposition, probes-numeric m9-legacy-ftest and
+t1049-ftest; bit-exact / within 4 ulp / visibly off):
+- exact p, two-pass f: 53 / 128 / 40; exact p with VAR.S's one-pass switch: 30 / 124 / 46;
+- Cephes-style double kernel (exp-log powers), f = v1/v2, smaller of the two tails: 44 / 146 / 24;
+- larger variance on top, R as Gamma ratio times Cephes' double continued fraction: 63 / 156 / 17;
+- the same with R = Gamma ratio times the double power series 2F1(a+b,1;a+1;x): 74 / 161 / 11;
+- the same with R correctly rounded (the model above): 90 / 170 / 6.
+Excel's residual to the model runs from -12 to +14 ulps, mostly within 2, on both sides, so
+Excel's own R is a double computation that is not identified yet (open: T-2571).
+Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
+H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
+Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
+F.DIST (probes/ftest-decomposition A8 0.7947858780819459 against F.TEST's 0.7947858780819458).
+Engine: `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
+`beta_reg_complement` above) in crates/rustsheet-engine/src/functions/statistical/fisher.rs.
+Status: implemented as a fit (T-2361); Excel's algorithm for R is UNVERIFIED.
 
 ## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
 COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell
