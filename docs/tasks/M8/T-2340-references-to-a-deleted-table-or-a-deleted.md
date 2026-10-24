@@ -32,7 +32,7 @@ cells) is T-2341's.
 ## Out of scope
 - Cut and paste, row and column moves, undo and duplicated sheets (desktop, T-2325).
 
-## Handoff
+## Handoff (resumed)
 Tried (sonnet run). Table-delete half works on the branch (pushed, `make check` NOT yet run, baseline NOT updated,
 no unit test yet):
 - `Model::delete_table` (tables.rs) reparses with `Parser::set_loaded(true)` plus the new
