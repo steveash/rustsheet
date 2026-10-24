@@ -3,7 +3,7 @@ id: T-2294
 title: "GCD, LCM and MULTINOMIAL are #VALUE! when every argument is a lone blank cell (MULTINOMIAL(Z200), GCD(Z200))"
 milestone: M6
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -38,3 +38,6 @@ GCD and LCM share code in the same directory; find the common helper before addi
 
 ## Out of scope
 - ADDRESS (T-2275).
+
+## Outcome
+GCD, LCM and MULTINOMIAL are `#VALUE!` when every argument is a lone blank cell (a blank reference or a one-cell range over one): shared helper `Model::is_lone_blank_cell` (gcd_lcm.rs) used by `gcd_lcm_impl` and `fn_multinomial`. A blank beside any other argument or in a multi-cell range still reads as 0. Eval delta: 6 known failures fixed (gen-m6/be0e3a1b0fc3f7a0 A167; probes/t2275-address-bounds J1, J15, J20, J25, J28), 0 new. The T-0438 tall-block test compared against one-cell `A4:A4`, which is now `#VALUE!` by the oracle; it compares against the two-cell `A4:A5` instead.

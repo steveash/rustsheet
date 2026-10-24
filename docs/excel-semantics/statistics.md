@@ -773,8 +773,8 @@ the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(
 0.5 rounded), STANDARDIZE's x (L14: 0) and NORM.S.DIST's z (L15), as a direct TRUE does in F.DIST.RT, FDIST
 and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SKEW, SKEW.P, KURT, ..." below).
 Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
-Ours: matches (T-1290), except that BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as `#VALUE!`, as their scalar
-calls always did (L1, L13: T-1849; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
+Ours: matches (T-1290); BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as 1 since T-1849 (L1, L13;
+PHI's read is probed separately). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order; T.DIST.2T and TDIST read every argument
 before they check any ("Overflowing arguments, PERMUT's limit and argument error order" below). One scalar change
 here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
@@ -810,8 +810,8 @@ from the true quantile (about 0.003), as Excel's BETA.INV is erratic where a sha
 a tiny or near-1 probability" below). A cell holding `=1-2^-53` is a number that `=C1=1` calls equal to 1 (E13, E14).
 Evidence: probes/stat-quantile-lift (124 formula cells, excel-graph, 2026-10-18, T-1848); probes/stat-argument-modes
 H90-H99, H173-H177, H231-H245, H518-H529.
-Ours: matches the lift cells (T-1848). The kernels keep their scalar reads, so a TRUE element is `#VALUE!` in BETA.INV,
-F.INV and F.INV.RT, which read numbers without booleans (L2, L3, L19: T-1849). Their quantile comes from statrs 0.18's
+Ours: matches the lift cells (T-1848). A TRUE element reads as 1 in BETA.INV, F.INV and F.INV.RT
+since T-1849 (L2, L3, L19). Their quantile comes from statrs 0.18's
 `inv_beta_reg`, ported line for line to `statistical/inverse_beta.rs` with a per-call cap of its own: at most 512 Newton
 steps and 4,096 step adjustments (64 and 512 for Student's t). Where statrs finishes, the port returns its double bit for bit
 (unit test `the_port_is_statrs_where_statrs_finishes`; probes-numeric is unchanged cell for cell), so the values
@@ -2285,9 +2285,10 @@ Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `A
 Tasks: T-1551, T-1555, T-1559
 
 ## Thin distribution functions: argument coercion, truncation and error edges (T-1049)
-Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by T-1049):
-Implemented in: `functions/statistical/hypegeom.rs`, `weibull.rs`, `phi.rs` (the HYPGEOM.DIST sample_s, zero-count, negative-fraction and TRUE-sample_s rules, the WEIBULL.DIST x = 0 density and TRUE x, PHI of a boolean)
-Tasks: T-2035 (partial)
+Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; F.TEST scalars implemented by T-2093):
+Implemented in: `functions/statistical/hypegeom.rs`, `weibull.rs`, `phi.rs`, `fisher.rs::fn_f_test` (F.TEST/FTEST number or text argument, T-2093) (the HYPGEOM.DIST sample_s, zero-count, negative-fraction and TRUE-sample_s rules, the WEIBULL.DIST x = 0 density and TRUE x, PHI of a boolean)
+Tasks: T-2035 (partial), T-2093
+- **F.TEST scalars:** F.TEST and FTEST with a number or text argument are `#DIV/0!` (T-2093; fisher.rs).
 - **Truncation:** HYPGEOM.DIST truncates all four counts toward zero (`HYPGEOM.DIST(1.9,4,8,20,TRUE)`
   = `(1,4,8,20)`, and `(0.9,...)` = `(0,...)`; `hypgeomdist`), and a negative fraction (-0.5) is
   `#NUM!`. T.TEST truncates `tails` and `type` (`T.TEST(...,1.9,2.9)` = tails 1, type 2; `ttest`).
@@ -2513,23 +2514,39 @@ Engine: `Model::aggregate_k` (crates/rustsheet-engine/src/functions/aggregate.rs
 keeps a fourth argument IF or CHOOSE picks a reference for as that reference.
 Status: implemented (T-2281)
 
-## F.TEST / FTEST is not correctly rounded (T-1927)
-Excel's F.TEST is not the correctly rounded value of `2*min(lower, upper)` tail: with the f
-our two-pass variance gives, the exact p of `F.TEST({1,2,3,4},{5,6,7,2.4})` is 0.5023992107800743
-but Excel returns 0.5023992107800741, and `F.TEST(C1:C6,B1:B8)` of probes/stat-argument-modes
-(df 1,7) is 0.91959790471759887 exactly against Excel's 0.9195979047175995, while
-`F.TEST(A1:A8,B1:B8)` (df 7,7) and `FTEST(B1:C5,B1:B5)` (df 9,4) are Excel's correctly rounded
-values. An exact incomplete beta therefore fixes some cells and regresses others; matching all
-needs Excel's own algorithm (see the F.DIST/BETA.DIST fit notes).
-F.TEST is not built on Excel's own F.DIST either (probes/ftest-decomposition, excel-graph,
-2026-10-22, T-1927): `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` with f = `VAR.S(x)/VAR.S(y)` is
-0.7947858780819459 and 0.5236816407506065 where F.TEST is 0.7947858780819458 and
-0.5236816407506063 (A8/A7, B8/B7), and F.TEST is exactly symmetric in its arguments (A7 = E7,
-C7 = F7). Over the 33 distinct F.TEST inputs on file (probes stat-argument-modes,
-ftest-decomposition; probes-numeric m9-legacy-ftest, t1049-ftest) Excel is within -6..+4 ulps of
-the exact two-tailed p, on both sides; neither the exact p (12 of 33 bit-exact) nor the A&S
-26.6.4-26.6.8 finite series in doubles (11 of 33), with a two-pass, textbook or corrected
-variance, or with f taken as larger over smaller, reproduces it. Open: T-2361.
+## F.TEST / FTEST: larger variance on top, Excel's rounded powers, an accurate remainder (T-1927, T-2361)
+Rule (fit, UNVERIFIED as Excel's algorithm): F.TEST takes f = the larger two-pass sample variance
+over the smaller (df_big, df_small its and the other sample's n - 1), so it is exactly symmetric
+in its arguments, and its two-tailed p is `2*MIN(u, 1-u)` for the upper tail
+u = I_x(df_small/2, df_big/2), x = df_small/(df_big*f + df_small), y = df_big*f/(df_big*f + df_small).
+x never exceeds the mean a/(a+b) there, so the tail is computed without a reflection, as
+`exp(a*ln x) * exp(b*ln y) * R` with R = I_x(a,b)/(x^a y^b): the two powers carry Excel's
+exp-of-a-product rounding (where a ln x is near -100 to -300 the exact p is tens of ulps, up to
+179, from Excel's, and the model is within a few), while R itself is close to correctly rounded. The closed forms
+of the incomplete beta hold: b = 1 is exp(a ln x) and a = 1 (df_small = 2) is -expm1(b ln1p(-x))
+below x = 0.1, which is why the a = 1 deep tails are the correctly rounded value.
+A variance that overflows is `#NUM!`: `F.TEST({1E+200,1E+200,-1E+200},Data!A11:B12)` (gen-m9/
+7674c89c824aca43 A39, f2bd5f380ec002bf A210); the engine also returns `#NUM!` for two finite
+variances whose ratio overflows, `FTEST({1E-160,2E-160},{1E+150,2E+150})` (unprobed, T-2571).
+Not the model: VAR.S's one-pass switch for the variances, f = v1/v2 with the minimum of both tails,
+and a single exp(a ln x + b ln y + ln G).
+Fit (T-2361, 188 distinct inputs from the cells on file: gen-m9 cells whose arguments are plain
+ranges, probes stat-argument-modes and ftest-decomposition, probes-numeric m9-legacy-ftest and
+t1049-ftest; bit-exact / within 4 ulp / visibly off):
+- exact p, two-pass f: 53 / 128 / 40; exact p with VAR.S's one-pass switch: 30 / 124 / 46;
+- Cephes-style double kernel (exp-log powers), f = v1/v2, smaller of the two tails: 44 / 146 / 24;
+- larger variance on top, R as Gamma ratio times Cephes' double continued fraction: 63 / 156 / 17;
+- the same with R = Gamma ratio times the double power series 2F1(a+b,1;a+1;x): 74 / 161 / 11;
+- the same with R correctly rounded (the model above): 90 / 170 / 6.
+Excel's residual to the model runs from -12 to +14 ulps, mostly within 2, on both sides, so
+Excel's own R is a double computation that is not identified yet (open: T-2571).
+Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
+H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
+Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
+F.DIST (probes/ftest-decomposition A8 0.7947858780819459 against F.TEST's 0.7947858780819458).
+Engine: `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
+`beta_reg_complement` above) in crates/rustsheet-engine/src/functions/statistical/fisher.rs.
+Status: implemented as a fit (T-2361); Excel's algorithm for R is UNVERIFIED.
 
 ## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
 COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell
@@ -2692,8 +2709,9 @@ with C6 = FALSE is `#NUM!` (beta 0; d37313406b9f6e55 A380), `WEIBULL.DIST(0.2,Da
 (928d08e3e1eecb5f A303), `STANDARDIZE(-40,Data!E5,-1)` with E5 = FALSE `#NUM!` (sd -1; 334f3dc9ca937f10 A219) and
 `STANDARDIZE(-1E-15,1E-15,Data!A7)` with A7 = TRUE -2E-15 (928d08e3e1eecb5f A249).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 90 cells listed in T-1849; T-2256 (2026-10-23), 28 more cells.
-Ours: `#VALUE!` (`cast_number_no_bools_ref`); T-1849.
-Status: VERIFIED (excel-graph)
+The BETA.DIST/BETA.INV bounds A and B read a boolean the same way (`BETADIST(1E+10,Data!A2,0.5,0.2,Data!A2)` with A2 = TRUE is `#NUM!`, 165db58d1540f014 A52; `BETAINV(1-1E-10,1E+10,1E-10,Data!D2)` with D2 = TRUE `#NUM!`, bc40d37cb4d8301d A145). A TRUE typed directly in alpha, beta, the HYPGEOM counts, WEIBULL and the STANDARDIZE mean and standard_dev has no oracle cell: UNVERIFIED (T-2559 probes it).
+Ours: matches since T-1849 (the kernels use `cast_number_ref`, so a boolean reads as 1 or 0).
+Status: VERIFIED (excel-graph) except the typed-direct reads named above
 
 ## HYPGEOMDIST: a sample below the possible range is 0; a negative or huge count is #NUM! (T-2255)
 Rule: HYPGEOMDIST and HYPGEOM.DIST return 0 when sample_s is below number_sample - (number_pop - population_s), the

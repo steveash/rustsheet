@@ -96,9 +96,10 @@ impl Model {
 /// square root or `exp(ln(1+e)·(1/n))` for NOMINAL's `1/n`. libm `powf` misses ironcalc-calc
 /// `FINANCIAL/NOMINAL_EFFECT.xlsx` D2 `EFFECT(0.5,10)`, C8 `NOMINAL(0.5,4.5)` and probes/fin-argument-modes
 /// H125 `EFFECT(0.05,4)` by an ulp or more (docs/excel-semantics/financial.md). The base is above
-/// 1, so an error is an overflow, the `#DIV/0!` of [`rate_result`]'s infinite rate.
+/// 1, so an error is an overflow, which Excel reports as `#NUM!` (probes/effect-overflow-power-of-ten
+/// A1 `EFFECT(1E300,2)`, A8 `NOMINAL(1E300,0.5)`; docs/excel-semantics/financial.md).
 fn rate_power(base: f64, exponent: f64, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
-    power(base, exponent).map_err(|_| div_error(cell))
+    power(base, exponent).map_err(|_| num_error(cell))
 }
 
 /// A converted rate, `#DIV/0!` when infinite and `#NUM!` when NaN.

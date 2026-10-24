@@ -158,3 +158,40 @@ fn multinomial_has_excels_rounding_and_reads_numeric_text() {
     assert_eq!(model._get_text("B1"), "#VALUE!");
     assert_eq!(model._get_text("B2"), "#VALUE!");
 }
+
+// T-2294: every argument a lone blank cell is #VALUE!; a blank beside anything else, or in a
+// multi-cell range, reads as 0 (probes/t2275-address-bounds column J).
+#[test]
+fn test_gcd_lcm_multinomial_lone_blank_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("B1", "=MULTINOMIAL(Z200)");
+    model._set("B2", "=MULTINOMIAL(Z200:Z200)");
+    model._set("B3", "=MULTINOMIAL(Z200,Z201)");
+    model._set("B4", "=GCD(Z200)");
+    model._set("B5", "=GCD(Z200:Z200)");
+    model._set("B6", "=LCM(Z200)");
+    model._set("B7", "=LCM(Z200:Z200)");
+    model._set("B8", "=MULTINOMIAL(IF(TRUE,Z200))");
+    model.evaluate();
+    for row in 1..=8 {
+        assert_eq!(model._get_text(&format!("B{row}")), "#VALUE!", "B{row}");
+    }
+}
+
+#[test]
+fn test_gcd_lcm_multinomial_blank_beside_others_is_zero() {
+    let mut model = new_empty_model();
+    model._set("Z210", "0");
+    model._set("B1", "=MULTINOMIAL(Z200,2)");
+    model._set("B2", "=MULTINOMIAL(2,Z200)");
+    model._set("B3", "=MULTINOMIAL(Z200:Z201)");
+    model._set("B4", "=MULTINOMIAL(Z200:Z201,2)");
+    model._set("B5", "=GCD(Z200,4)");
+    model._set("B6", "=LCM(Z200,4)");
+    model._set("B7", "=MULTINOMIAL(Z210)");
+    model.evaluate();
+    let expected = ["1", "1", "1", "1", "4", "4", "1"];
+    for (i, want) in expected.iter().enumerate() {
+        assert_eq!(model._get_text(&format!("B{}", i + 1)), *want, "B{}", i + 1);
+    }
+}
