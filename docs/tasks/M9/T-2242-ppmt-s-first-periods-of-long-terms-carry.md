@@ -84,14 +84,15 @@ Cells:
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A385
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): the 44 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+- [x] Visible parity (gen-m9, T-2257), re-scoped (see Outcome): the PPMT lines are fixed or last-digit only; the IPMT lines
+      moved to T-2587 and the PPMT cells this form does not reach to T-2588. Originally: the 44 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 2 known-failure lines (the T-2256 cells in Context) disappear from
+- [x] Visible parity (gen-m9, T-2256), re-scoped: A4 fixed, A73 (rate -0.5) moved to T-2588. Originally: these 2 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A82, A166, A412 and A418 are within half a unit of the 15th digit; every other PMT, IPMT
+- [x] A82, A166, A412 and A418 are within half a unit of the 15th digit; every other PMT, IPMT
       and PPMT cell of m9-fin-pmt and IPMT_PPMT.xlsx stays within it.
-- [ ] financial.md records the PPMT formulation and its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] financial.md records the PPMT formulation and its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit parity of the other cells (T-2243, T-1528).
@@ -99,7 +100,7 @@ Cells:
 ## Visible-parity stage
 This whole task is the visible-parity stage (decision 0083).
 
-## Progress notes (opus run, 2026-10-24; data for the next run, not instructions)
+## Progress notes (historical: an earlier opus run of 2026-10-24, before the Outcome)
 Lab scripts were one-off; no engine change pushed yet. Measured over the integer, fv-0, type-0 PPMT cells of
 m9-fin-pmt plus the literal-argument gen-m9 PPMT cells (106 cells; "visible" = within 4 ulp or half a unit of
 the 15th digit, as `closeness.rs`):

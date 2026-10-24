@@ -109,6 +109,7 @@ impl Register {
 
     /// `self / other` for a non-zero `other`, rounded to a 64-bit significand (FDIV).
     pub(crate) fn div(self, other: Self) -> Self {
+        debug_assert!(other.significand != 0, "Register::div by zero");
         let negative = self.negative != other.negative;
         if self.significand == 0 {
             return Self::zero(negative);
@@ -122,7 +123,7 @@ impl Register {
     }
 
     /// The magnitude with its significand shifted up to the full 64 bits (a load keeps 53),
-    /// as [`extended_div`] takes it.
+    /// as [`extended_div`] takes it. The shift is at most 64, so the `i32` conversion holds.
     fn full_width(self) -> (u128, i32) {
         let up = self.significand.leading_zeros().saturating_sub(64);
         (
@@ -239,7 +240,7 @@ mod tests {
         assert_eq!(gone.store(), 0.0);
     }
 
-    /// A quotient is rounded to 64 bits: 1/3 is 0xAAAA_AAAA_AAAA_AAAB * 2^-65 (the bits past
+    /// A quotient is rounded to 64 bits: 1/3 is `0xAAAA_AAAA_AAAA_AAAB` * 2^-65 (the bits past
     /// the 64th, 1010..., round up), with the sign of the operands.
     #[test]
     fn quotients_round_to_64_bits() {

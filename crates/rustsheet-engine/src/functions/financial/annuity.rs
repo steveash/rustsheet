@@ -171,6 +171,10 @@ fn accurate_period_split(
 /// is a round point between them, not pinned).
 const GROWTH_LOG_SERIES_TO: f64 = 0.375;
 
+/// At or below this rate PPMT keeps the exact form, which matches `PPMT(-0.5,1,277,73630,609)`
+/// (-37119.5) where the discounted one is 25 ulp off; other -0.5 cells fit neither (T-2588).
+const DISCOUNTED_RATE_FROM: f64 = -0.375;
+
 /// The series stops once a term leaves the sum unchanged; for |rate| < 0.375 each term is under
 /// 0.025 of the one before, so about 11 terms. This only bounds the loop.
 const GROWTH_LOG_TERMS: u32 = 64;
@@ -180,7 +184,9 @@ const GROWTH_LOG_TERMS: u32 = 64;
 /// each term and each partial sum kept in an x87 register, until a term leaves the sum unchanged;
 /// above it, Excel's LN of the double `1+rate`. Either way L is often an ulp or two from the
 /// correctly rounded `ln(1+rate)` (-1 at 0.1, +1 at 0.05, +2 at 0.6), and the discount follows it
-/// (docs/excel-semantics/financial.md "PPMT discounts with an atanh-series log", T-2242).
+/// (docs/excel-semantics/financial.md "PPMT discounts with an atanh-series log", T-2242). ATANH's
+/// own series (`hyperbolic::atanh_series`) stores each term and partial sum to a double instead,
+/// which misses this L, so the two loops stay separate.
 fn growth_log(rate: f64) -> f64 {
     if rate.abs() >= GROWTH_LOG_SERIES_TO {
         return excel_ln(1.0 + rate);
@@ -210,7 +216,7 @@ const SHORT_GROWTH: f64 = 1e-6;
 /// Excel's expm1 of `-nper*L` and the whole divided by `1+rate` for type 1, rounded once. It is the
 /// exact `-(pv+fv)*rate*P_e/(P-1)` with Excel's own power, several ulp off the exact one for long
 /// terms (`PPMT(0.1,1,360,10000)` is -1.2549699967849914E-12, the exact value
-/// -1.254969996784983E-12). `None` for a rate at or below -[`GROWTH_LOG_SERIES_TO`], where Excel is
+/// -1.254969996784983E-12). `None` for a rate at or below [`DISCOUNTED_RATE_FROM`], where Excel is
 /// the exact form instead (`PPMT(-0.5,1,277,73630,609)` is -37119.5, gen-m9 762cd0e4ec9a7aa9 A5),
 /// below [`SHORT_GROWTH`], and where a factor or the result is not finite and normal.
 fn discounted_principal(
@@ -220,7 +226,7 @@ fn discounted_principal(
     (pv, fv): (f64, f64),
     period_start: bool,
 ) -> Option<f64> {
-    if rate <= -GROWTH_LOG_SERIES_TO {
+    if rate <= DISCOUNTED_RATE_FROM {
         return None;
     }
     let log = growth_log(rate);

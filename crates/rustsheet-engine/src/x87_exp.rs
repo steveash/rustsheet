@@ -13,10 +13,10 @@
 //! F2XM1 is faithful but not correctly rounded (T-1940). The worksheet EXP (T-1931) and the ERFC
 //! kernel use it.
 
-use crate::x87_log10::excel_ln;
 use crate::arithmetic::{
     round_extended_to_double, round_extended_to_subnormal, round_to_bits, significand_and_exponent,
 };
+use crate::x87_log10::excel_ln;
 
 /// RN64(log2 e), the 64-bit significand FLDL2E loads, with the value `LOG2_E_64 * 2^-63`
 /// (`round8/exp_v6.py` `_L2E64`; log2 e = 1.442695040888963407359924681001892137..., whose
@@ -41,9 +41,9 @@ pub(crate) fn excel_exp(a: f64) -> f64 {
 }
 
 /// Excel's expm1, under SINH, TANH and PPMT: Kahan's `(u - 1) * x / ln(u)` with `u` Excel's own
-/// EXP and the log Excel's LN, each step a double (T-2240, docs/excel-semantics/numbers.md "Excel's expm1 is Kahan's
-/// formula"). It fits all 1015 SINH and TANH cells of probes-numeric t2178-hyperbolic-unit-sweep,
-/// where libm's expm1 fits 773 and 781. `u == 1` (|x| tiny) gives `x`.
+/// EXP and the log Excel's LN, each step a double (T-2240, docs/excel-semantics/numbers.md
+/// "Excel's expm1 is Kahan's formula"). It fits all 1015 SINH and TANH cells of probes-numeric
+/// t2178-hyperbolic-unit-sweep, where libm's expm1 fits 773 and 781. `u == 1` (|x| tiny) gives `x`.
 pub(crate) fn excel_expm1(x: f64) -> f64 {
     let u = excel_exp(x);
     if u == 1.0 {
