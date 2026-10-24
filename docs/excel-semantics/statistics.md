@@ -2808,6 +2808,32 @@ Ours: matches since T-1741 (section "LINEST and LOGEST: shapes, one point, colli
 Status: VERIFIED (excel-graph)
 
 
+## LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)
+Rule: of the 189 gen-m9 LOGEST cells of T-1742, T-1741's shared shape and check-order code fixes 184; the other five are
+decided elsewhere. `LOGEST(T.DIST.2T(Data!B3,6),Data!C9:C12,FALSE)` (one point of four variables, x = 0, -1, -2.5, 0.2,
+no constant) is 1 in Excel (285d87cea1aaa73c A293), so Excel drops the last column (0.2) where ours keeps it and fits
+m = 2.7E-40. Together with linest-modes K106 (E = 2A keeps E) this fits a solve that keeps the column of largest norm
+first (pivoted QR), which is UNVERIFIED (T-2569). `LOGEST(Data!A10:B11)` 2.220601291150046, ours ...0514, is the solve's
+digits (589f42e67f4b4b8d A193, T-2006), as are logest-modes K85 and the exact-fit stats K169:L173 and K197:L201 (Excel's
+residual is exactly 0, so se is 0 and F `#NUM!`). The remaining three are other functions: TRIMMEAN's order (a5342a7e24fd803e
+A288, the next entry), and PRICEMAT with an error yld beside a LOGEST basis (bc04c1f478c9896c A75, Excel `#VALUE!`, ours
+`#NUM!`) and LOGEST over an HLOOKUP whose range_lookup refers to a text "TRUE" cell (b8ee55934c5b824c A161, Excel `#VALUE!`,
+ours the size `#REF!`), both UNVERIFIED (T-2615). A blank one-cell known_x reference beside a range known_y is the size
+`#REF!` in Excel, as in ours (`LOGEST(Data!B9:D12,Data!A$9)`, 05d44f6dd6cfc567 A30; `LINEST(Data!C6:E12,Data!A11)`,
+623663cacea53bbc A210; `GROWTH(Data!A11:D12,Data!C12)`, fec39efaba9284c3 A265).
+Evidence: gen-m9 (excel-graph, 2026-10-22); probes/logest-modes (excel-graph).
+Ours: as described; T-2006, T-2569, T-2614, T-2615.
+Status: VERIFIED (excel-graph) for the values; the pivot and the two cross-function causes UNVERIFIED
+Tasks: T-2006, T-2569, T-2614, T-2615
+
+## TRIMMEAN: an error percent before data with no number (T-1742)
+Rule: TRIMMEAN returns an error-valued percent before it reports data with no number: `TRIMMEAN(Data!E11:E11,<#N/A>)`
+with E11 = TRUE is `#N/A`, not `#NUM!` (a5342a7e24fd803e A288, the percent `COVARIANCE.P(8 cells,3 cells)-LOGEST(..)`).
+Evidence: gen-m9 (excel-graph, 2026-10-22).
+Ours: `#NUM!` (the data first); `TRIMMEAN(1,NA())` is already `#N/A`; T-2614.
+Status: VERIFIED (excel-graph), one cell
+Tasks: T-2614
+
 ## PROB: an error data argument first, one value on each side is #DIV/0!, unequal counts #N/A (T-2256)
 Rule: PROB checks its data in this order, each step before the next: x_range given as an error value is that error,
 then prob_range given as an error value (`PROB(2,SINH(1E+8),DAY(..)<#VALUE!>)` is `#NUM!`, d8f44d556674c2fd A40;

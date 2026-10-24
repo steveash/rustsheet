@@ -54,6 +54,13 @@ The singular test is an absolute pivot under 1e-12 (`solve_system`, `invert_matr
 drops on a relative 1e-10, so a badly scaled x (values near 1e-7) can fail the solve with nothing to drop and give
 `#NUM!` where Excel would fit: the new kernel should test singularity relative to scale.
 
+Also from T-1742 (visibly off, the solve): probes/logest-modes K85 `LOGEST(D2:D9,A2:C9,TRUE,TRUE)` (Excel
+0.982454941667086, ours 0.9824549416670796, past the 15th digit), the exact-fit stats K169:L173 and K197:L201
+(`LOGEST({1,2,4,8},{1,2,3,4},TRUE,TRUE)`, `LOGEST({0.5,0.25,0.125},{1,2,3},TRUE,TRUE)`: Excel's se and ss_resid are
+exactly 0 and F `#NUM!`; ours carry 2E-16 and 1E-31 of noise and F 1E+31), and gen-m9 589f42e67f4b4b8d Calc!A193
+`LOGEST(Data!A10:B11)` (Excel 2.220601291150046, ours 2.2206012911500514). Unlike LINEST's exact fits, LOGEST's ln(y)
+is exactly linear here only to rounding, so a kernel that gets these to exactly 0 is a strong lead.
+
 ## Acceptance criteria
 - [ ] A fit-lab kernel (tools/src/rustsheet_tools/fitlab/kernels/, a new `regression` fit) scores named candidates
       on the cells above. Candidates: normal equations (today's), Householder QR, modified and classical Gram-Schmidt,
