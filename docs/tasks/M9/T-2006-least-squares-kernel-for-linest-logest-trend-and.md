@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 

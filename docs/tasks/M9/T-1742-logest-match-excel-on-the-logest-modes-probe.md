@@ -194,7 +194,8 @@ Decision 0083: the cells listed under Context are visibly off (wrong LOGEST shap
 - The five cells left are decided outside LOGEST's shapes and checks, and went to their owners with the evidence
   (statistics.md "LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)"):
   - 285d87cea1aaa73c A293, which column a singular fit drops: added to T-2569, a probe of the pivoted-QR hypothesis;
-  - 589f42e67f4b4b8d A193 and logest-modes K85, K169:L173, K197:L201, the solve: added to T-2006;
+  - 589f42e67f4b4b8d A193 and logest-modes K85, K169:L173, K197:L201, the solve: added to T-2006, which now carries
+    `campaign: visible` (decision 0083) since it holds visibly-off cells from T-1741 and this task;
   - a5342a7e24fd803e A288, TRIMMEAN's error order: new T-2614 (statistics.md "TRIMMEAN: an error percent before data with
     no number (T-1742)");
   - bc04c1f478c9896c A75 (PRICEMAT, error yld beside a LOGEST basis) and b8ee55934c5b824c A161 (HLOOKUP with a text-cell

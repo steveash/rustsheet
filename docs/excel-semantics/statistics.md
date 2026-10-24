@@ -2810,7 +2810,7 @@ Status: VERIFIED (excel-graph)
 
 ## LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)
 Rule: of the 189 gen-m9 LOGEST cells of T-1742, T-1741's shared shape and check-order code fixes 184; the other five are
-decided elsewhere. `LOGEST(T.DIST.2T(Data!B3,6),Data!C9:C12,FALSE)` (one point of four variables, x = 0, -1, -2.5, 0.2,
+decided elsewhere. `LOGEST(T.DIST.2T(Data!B3,6),Data!C9:C12,<FALSE>)` (the const is an IF that is FALSE; one point of four variables, x = 0, -1, -2.5, 0.2,
 no constant) is 1 in Excel (285d87cea1aaa73c A293), so Excel drops the last column (0.2) where ours keeps it and fits
 m = 2.7E-40. Together with linest-modes K106 (E = 2A keeps E) this fits a solve that keeps the column of largest norm
 first (pivoted QR), which is UNVERIFIED (T-2569). `LOGEST(Data!A10:B11)` 2.220601291150046, ours ...0514, is the solve's
