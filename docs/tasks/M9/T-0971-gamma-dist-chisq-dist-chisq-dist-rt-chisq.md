@@ -3,7 +3,7 @@ id: T-0971
 title: "GAMMA.DIST/CHISQ.DIST/CHISQ.DIST.RT/CHISQ.TEST: accurate regularized incomplete gamma (43 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -181,3 +181,39 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - POISSON: 10 cells (13-14 digits right 9, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-poisson.case.json` 10; `probes/incomplete-gamma-cap.case.json` 0. e.g. `POISSON(2,3,TRUE)` Excel 0.4231900811268434, ours 0.4231900811268454
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Blocked because
+Blocked because: the baseline step needs `rustsheet-eval update-baseline --allow-regressions` (decision 0083's
+standing ulp allowance), and the 2026-10-22 opus run's permission layer refused that command. The code is done and
+`rustsheet-eval check` shows fixed 61 (ironcalc-calc 49, probes 12) and 2 one-ulp regressions; an owner (or a run
+whose permissions allow the allowance) runs `make eval-baseline`-equivalent with `--allow-regressions`, commits
+`eval/baseline/` and `quality/evidence-floor.json`, then `make check`, the review panel, and merge.
+Regressed cells (decision 0083 conditions 1-4: numeric, 1 ulp, not visibly off; fixes 61 > 2; follow-up T-2367):
+- `ironcalc-calc/STATISTICAL/GAMMA.xlsx` `GAMMA.DIST GAMMA.INV!F38` (GAMMA.INV): Excel 1, ours 0.9999999999999999.
+- `ironcalc-calc/STATISTICAL/POISSON.xlsx` `POISSON.DIST!D16`: Excel 0.9863047314016171, ours 0.986304731401617.
+- gen-m9 (after the merge with main's T-1634 `gamma_quantile`; all numeric, within 15 significant digits):
+  `CHIINV(0.95,7)` (146b46e74f2dac3b A307) Excel 2.167349909298057, ours 2.167349909298058 (2 ulps);
+  `GAMMA.INV(0.05,2,30)` (2801c1c11c21e134 A332) 10.660845320959863 vs 10.660845320959861 (1);
+  `POISSON(3,1.5,-1)` (38e4fc309fe199ea A57, c7664e494e418395 A256) and `CHIDIST(3,8)` (f2bd5f380ec002bf A174)
+  0.9343575456215498 vs 0.9343575456215499 (1); `CHIDIST(3,4)` (530c636749a85209 A242, a612e89321a6df9c A273)
+  0.5578254003710746 vs 0.5578254003710748 (1); `CHIINV(Data!B4,4)` (899f9555e67da2d6 A5) 4.878432966560409 vs
+  4.8784329665604105 (2); `CHISQ.INV.RT(0.1,7)` (984cba67bbe6972b A216) 12.01703662378053 vs 12.017036623780527 (2);
+  `CHISQ.INV(Data!E1,...)` (a61e547a1cab994c A1) 0.015790774093431225 vs 0.015790774093431232 (2);
+  `CHIDIST(LN(7),9)` (a7bf0d8d81d33ba6 A121) 0.9922943358901939 vs 0.9922943358901938 (1); the `CHISQ.INV.RT` in
+  d0854366830dcdee A238 5.4441969945493144E-15 vs 5.444196994549313E-15 (2); `CHIDIST(...,10)`
+  (fd9fa22d212080d6 A123) 0.9908757207816048 vs 0.9908757207816047 (1).
+After merging main (2026-10-24; T-1634's `gamma_quantile` rebuilt on the accurate pair, its lower tail keeping
+T-1634's `powf` prefactor over the accurate series, and a zero prefactor returning its tail at once), `check` shows
+gen-m9 fixed 133 / 13 regressions, ironcalc-calc fixed 49 / 2, probes fixed 12 / 0; none of T-1634's 67 gen-m9 fixes
+regress.
+
+## Progress (state of the pushed branch, 2026-10-22 15:10 UTC; data, not instructions)
+- `incomplete_gamma_pair` (functions/statistical/incomplete_gamma.rs) replaces the statrs port, which is deleted
+  (`gamma_ur` on invalid arguments is now NaN directly): direct small-shape Q (TOMS 654's small-shape Q, ln Gamma(1 + a) from
+  its zeta series) below a = 1/2 and x = 1; the series' geometric tail added (7E-15 of P(1E6, 1E6) was missing);
+  `rcomp`'s rlog from one rounding of x / a far from a (2.5E-12 of P(93.4, 0.18) was lost); the a < 20 prefactor
+  only when each factor is normal.
+- Unit tests rewritten: mpmath references (within 8 units of 2^-52, P + Q = 1 within 2), a = 1 identity, b = 1E6
+  scale, a statrs sweep within statrs' own error, cap boundaries both sides (`terms_needed`). All pass.
+- statistics.md: new "Incomplete gamma: accurate kernel (T-0971)" section; the T-1872 cap section updated.
+- Not done: the baseline update (above), `make check`, review panel, PR ready.

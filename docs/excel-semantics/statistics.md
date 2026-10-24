@@ -866,12 +866,11 @@ E18), while `GAMMA.DIST(1E-300,2,1E100,TRUE)` is 0 (x / beta underflows; E7).
 Evidence: probes/incomplete-gamma-cap (38 formula cells, excel-graph, 2026-10-18, T-1872); probes/stat-quantile-lift
 H27-H50; probes/stat-argument-modes H132-H156, H293-H314, H476-H485.
 Ours: matches the lift and element cells (T-1872), each kernel reading its arguments in its scalar order. The
-incomplete gamma is statrs 0.18's `gamma_lr` and `gamma_ur` (a series and a continued fraction run to a 1E-15
-tolerance) and its quantile statrs' `Gamma::inverse_cdf` (halve and double a bracket, 8 bisections, 4 Newton steps),
-ported line for line to `statistical/incomplete_gamma.rs` with a per-call cap of its own: at most 2^19 terms in one
-cdf, and in one whole inversion over all its cdfs. Where statrs finishes within the cap the port returns its double bit
-for bit (unit test `the_port_is_statrs_where_statrs_finishes`; probes-numeric and ironcalc-calc are unchanged cell for
-cell), so the values those suites check are main's. The series needs about 6.8 * sqrt(a) terms at x = a: 481,117 at
+incomplete gamma is the accurate pair of T-0971 ("Incomplete gamma: accurate kernel" below; it replaced the port of
+statrs 0.18's `gamma_lr` and `gamma_ur` that T-1872 capped) and its quantile statrs' `Gamma::inverse_cdf` (halve and
+double a bracket, 8 bisections, 4 Newton steps), ported line for line to `statistical/incomplete_gamma.rs`, with a
+per-call cap of its own: at most 2^19 terms in one cdf, and in one whole inversion over all its cdfs (unit test
+`a_call_past_its_cap_is_nan`). The series needs about 6.8 * sqrt(a) terms at x = a: 481,117 at
 the largest chi-squared shape (df 1E10, a = 5E9), so every chi-squared cdf is kept. CHISQ.TEST uses the same capped
 cdf (a sheet's cell count keeps its shape under 2^33, where the series can need about 630,000 terms: past the cap, see
 the DEVIATION below). The lifting table charges every entry 2^18 units an element: the bound of the cap at the slowest
@@ -909,6 +908,35 @@ units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^18 an element; `ROWS(POISSON(SEQ
 2 s budget of the Bessel entries (engineering.md "BESSEL order cap").
 Status: VERIFIED (excel-graph)
 Tasks: T-1872, T-1891, T-0971, T-0972
+
+## Incomplete gamma: accurate kernel (T-0971)
+Rule: Excel's regularized incomplete gamma (GAMMA.DIST, GAMMADIST, CHISQ.DIST, CHISQ.DIST.RT, CHIDIST, CHISQ.TEST,
+CHITEST, POISSON.DIST and POISSON cdfs) is close to correctly rounded against a 50-digit reference, in both tails:
+the upper tail is not 1 - P. A shape of 1 is the exponential distribution in doubles: `GAMMA.DIST(1,1,1,TRUE)` =
+0.6321205588285577 = `-EXPM1(-1)` (BETA_GAMMA.xlsx L2, GAMMA.xlsx E4, E6). At a huge shape Excel keeps its digits
+where statrs lost them: `CHISQ.DIST(1E10,1E10,TRUE)` = 0.5000018806319452 (probes/incomplete-gamma-cap E16; statrs
+0.4999982128217492), and `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)` is 1 (E4), where statrs' continued fraction never
+ended.
+Evidence: ironcalc-calc STATISTICAL/GAMMA.xlsx, CHISQ.xlsx, CHISQ_TEST.xlsx, BETA_GAMMA.xlsx, POISSON.xlsx (Excel-authored
+cached values); probes-numeric `m9-gamma-dist-a*`, `m9-chisq-dist`, `m9-chisq-dist-rt`, `t1048-*`, `t1049-*` (T-1045);
+probes/incomplete-gamma-cap (T-1872).
+Ours: `statistical/incomplete_gamma.rs` `incomplete_gamma_pair`, replacing statrs' `gamma_lr`/`gamma_ur` (whose
+prefactor exp(a ln x - x - ln Gamma(a)) carries an ulp of that exponent into the result, and whose Q is 1 - P below
+x = a). The prefactor x^a e^-x / Gamma(a) is `powf * exp / tgamma` below a = 20 (each factor normal) and DiDonato and
+Morris' `rcomp` above it (sqrt(a / 2 pi) exp(-a rlog(x/a) - Stirling correction)); P is the power series below
+x = a + 1, with the geometric sum of the terms it leaves (near x = a they add up to thousands of times the last one:
+7E-15 of P(1E6, 1E6)), and Q the modified-Lentz continued fraction above it; below a shape of 1/2 and x of 1 Q is formed
+directly (TOMS 654's small-shape Q, with ln Gamma(1 + a) from its zeta series); a = 1 is (-expm1(-x), exp(-x)).
+Unit tests (`incomplete_gamma.rs`): within 8 units of 2^-52 of mpmath at a in {0.001, 0.01, 0.3, 0.5, 9, 500}, P + Q = 1
+within 2 of them, the a = 1 identity, the b = 1E6 scale. The 2^19-term cap (section above) is unchanged; the series now
+runs to 2^-54 instead of 1E-15, about 8% more terms near x = a, so an inversion's budget runs out at a somewhat smaller
+shape than statrs' (`GAMMA.INV(1E-5,7.9E8,1E-6)` is now `#NUM!`; 3E8 still finishes; follow-up T-0971's Outcome).
+Where the prefactor underflows to 0 the tail it multiplies is 0 at once, as statrs' `ax < MIN_LN` shortcut had it:
+past x = 2^54 the continued fraction's `b += 2` leaves b unchanged and its delta stays an ulp below 1, so without the
+shortcut `CHISQ.DIST(1E30,10,TRUE)`, `GAMMADIST(1E300,123456789.123,1E5,TRUE)` and
+`GAMMA.DIST(0.5,123456789.123,1E-300,TRUE)` spent the cap and were `#NUM!` where Excel is 1 (gen-m9).
+Status: VERIFIED (excel-graph)
+Tasks: T-0971, T-0972
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
@@ -2206,6 +2234,13 @@ Tasks: T-1543, T-1634
   The cells still off are Excel's own last digits: `CHISQ.INV(1E-300,50)` is 2.0354283669760313E-11 in Excel while the
   correctly rounded quantile (ours) is 2.035428366976834E-11, and `GAMMAINV(0.5,0.01,100)` is 4.4655350189103716E-29
   in Excel against the true 4.46553501891034868E-29 (ours ...0346E-29): Excel's tail kernel is not fitted (T-2561 for the visibly-off cells, T-0972 for the last digits).
+  Since T-0971 the search and the refinement run on the accurate incomplete gamma pair (section "Incomplete gamma:
+  accurate kernel"), except the lower tail in the series' range, which keeps T-1634's `powf * exp(-x - ln Gamma(a + 1))`
+  prefactor over the accurate series: with the pair's `x^a e^-x / Gamma(a)` there `CHISQ.INV(1E-16,1)` and
+  `CHISQ.INV(0.001,1)` are 2 ulps off Excel's 1.5707963267948967E-32 and 1.57079714926249E-6 (gen-m9), with this
+  prefactor they are Excel's doubles. The kept-search quantiles moved by 1 to 2 ulps with the cdf under them: the
+  merge fixed 56 more quantile cells (gen-m9) and left 6 at 1 to 2 ulps (`CHIINV(0.95,7)` Excel 2.167349909298057,
+  ours 2.167349909298058; `CHISQ.INV.RT(0.1,7)`, `GAMMA.INV(0.05,2,30)`; T-2367).
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
