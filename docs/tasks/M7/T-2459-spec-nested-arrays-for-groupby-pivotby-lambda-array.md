@@ -31,7 +31,7 @@ implementation task that makes those cells pass.
 
 ## Acceptance criteria
 - [ ] docs/specs/ has the spec, with the probe evidence above and any new probe it needs.
-- [ ] Implementation tasks (size S/M) are filed from it, owning the cells above.
+- [ ] Implementation tasks (size S/M) are filed from it, owning the cells above, T-2398's SCAN cells included; T-2398 depends on the one that makes them pass.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
