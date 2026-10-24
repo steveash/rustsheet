@@ -3,7 +3,7 @@ id: T-2594
 title: "Nested arrays: MAP, BYROW, BYCOL, REDUCE, the aggregates and reference cells over a GROUPBY/PIVOTBY result (SPEC-0018)"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -33,12 +33,23 @@ A21 passes) and INDEX's reads, which already make A106 and A107 pass; the walk b
 by `NestedArray::value`. If the aggregates grow the task past size S, split it (planner) first.
 
 ## Acceptance criteria
-- [ ] P!D12 and T-2592's remaining cells pass and leave eval/baseline, with no new known-failure lines.
-- [ ] Every flatten and every MAP/BYROW/BYCOL/REDUCE hand-over charges SPEC-0018's walk budget: `SUM(VSTACK(r,r,..))` and a REDUCE
+- [x] P!D12 and T-2592's remaining cells pass and leave eval/baseline, with no new known-failure lines.
+- [x] Every flatten and every MAP/BYROW/BYCOL/REDUCE hand-over charges SPEC-0018's walk budget: `SUM(VSTACK(r,r,..))` and a REDUCE
       over a fan-out of a ~2^20-cell nested cell are `#ERROR!` in bounded time (unit tests).
-- [ ] arrays.md records each rule with its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] arrays.md records each rule with its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SCAN over a GROUPBY result (T-2398).
 - An operator over the whole result (`&""` keeps the shape, A13; what each cell holds is unprobed).
+
+## Outcome
+MAP and REDUCE (through `lambda_cells`) hand the LAMBDA each nested array cell as its array, charged to the walk budget, and
+past the budget the whole call is `#ERROR!`. The aggregate walker gained `NestedReading`: SUM, COUNT and COUNTA flatten nested
+cells (charged), the AVERAGE family, MIN, MAX, PRODUCT, SUMSQ and the A-variants give `#N/A`, AND/OR/XOR and IMSUM/IMPRODUCT
+keep `#VALUE!`; a `Reference` cell stays `#VALUE!` everywhere (gen-m7/bcad709c30cfdf64 A13, gen-m9/2a18b2f5a4dc43ac A371).
+ARRAYTOTEXT over a result holding a nested cell is `#CALC!`. New probe probes/t2594-nested-aggregates (32 excel-graph cells)
+settles the other aggregates; arrays.md "Aggregates over nested GROUPBY and PIVOTBY cells".
+Eval: probes −30 (all of t2592's remaining cells and t2311 P!D12) +5 new-case lines (t2594 A15, A19:A22), gen-m9 −3, gen-m7 −1,
+0 regressions. Follow-up T-2625: MODE.SNGL, LARGE, SMALL, PERCENTILE.INC, SUMPRODUCT and gen-m9/e85daedce5c2675e A35 (COUNT
+over a wide PIVOTBY).

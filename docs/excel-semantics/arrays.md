@@ -835,10 +835,23 @@ key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown 
   (`64|3x3|a`, inner INDEX(..,2,2) `64|2x1`, A23, A24); so one level is not the limit in Excel.
 - TAKE, CHOOSECOLS, VSTACK, SORT, FILTER and an INDEX of a whole row or column all keep the nested cells (A26:A32).
 Ours since T-2593 (SPEC-0018): the nested cells of rules 1, 3 and 8 (A16:A18, A22:A41), the one-cell reference body read by INDEX
-as its value (A21), and BYROW's row and BYCOL's column holding nested cells (A106, A107). MAP, BYROW and BYCOL steps, REDUCE and
-the aggregates (A1:A15, A100:A105, A108, A109) still read a nested cell as the `#VALUE!` it shows (T-2594); an element-wise lift
+as its value (A21), and BYROW's row and BYCOL's column holding nested cells (A106, A107). Since T-2594: MAP and REDUCE hand
+the LAMBDA each nested cell as its array (A100:A105, A109, A15), and t2311 P!D12 is `#CALC!`; ARRAYTOTEXT over a result
+holding one is `#CALC!` (A10); and the aggregates follow "Aggregates over nested GROUPBY and PIVOTBY cells" below. An element-wise lift
 of a two-level cell reads the inner top-left (assumed, T-2609), of a reference cell `#VALUE!` (unprobed, T-2609); a lifted INDEX
 element and an operator over the whole result read a nested cell as `#VALUE!` (unprobed, T-2609).
+Aggregates over nested GROUPBY and PIVOTBY cells (probes/t2594-nested-aggregates, excel-graph, 2026-10-24, T-2594, over the T-2592
+data): SUM, COUNT and COUNTA flatten a nested cell (SUM 220, COUNT 16, COUNTA 19 over GROUPBY; over PIVOTBY SUM 220, COUNT 16,
+COUNTA 32; `SUM(1,GROUPBY(..),2)` 223; A26:A29). Every other aggregate tried is `#N/A`: MIN, MAX, MINA, MAXA, AVERAGEA, PRODUCT,
+SUMSQ, MEDIAN, STDEV.S, VAR.P, HARMEAN, GEOMEAN, DEVSQ, AVEDEV, MODE.SNGL, KURT, SKEW, LARGE, SMALL, PERCENTILE.INC (A1:A21),
+`AVERAGE(1,GROUPBY(..))` (A25), AVERAGE and MIN/MAX over PIVOTBY (A30:A32); gen-m9 MAX, HARMEAN and AVERAGE over a
+`LAMBDA(z,z)` result agree (06b4e8f5de409d5e A366, 68d8ffb69ff739d8 A285, 7c20351562a2d71d A381). CONCAT is `#VALUE!` (A18),
+SUMPRODUCT 0 (A22), ROWS and COLUMNS the outer shape (A23, A24). A one-cell reference body's cell is `#VALUE!` to PRODUCT and MIN
+(gen-m7/bcad709c30cfdf64 A13, gen-m9/2a18b2f5a4dc43ac A371). Range-only functions (MAXIFS, RANK.EQ, COUNTBLANK, SUBTOTAL,
+AGGREGATE 1-13) cannot take the result. Ours since T-2594: the walker's `NestedReading` (functions/util/aggregate_args.rs):
+SUM, COUNT and COUNTA flatten, charging the walk budget; the AVERAGE family, MIN, MAX, PRODUCT, SUMSQ and the A-variants give
+`#N/A` (VARA and its siblings inferred from VAR.P); AND, OR, XOR, IMSUM and IMPRODUCT keep `#VALUE!` (unprobed). MODE.SNGL, LARGE,
+SMALL, PERCENTILE.INC and SUMPRODUCT read through other collectors and are still `#VALUE!` (T-2625).
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),

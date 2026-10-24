@@ -13,6 +13,7 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::{cell_number, coerced_cell_number};
 use crate::model::Model;
+use crate::nested_array::NestedKind;
 use crate::reference_operators::{RefArg, RefElement, RefGrid};
 
 /// Where an item the walker hands on came from. The coercion rules depend on it.
@@ -74,6 +75,21 @@ pub(crate) enum GridReading {
     TopLeft,
 }
 
+/// How the walker reads a nested cell of a GROUPBY or PIVOTBY result in an array argument
+/// (SPEC-0018 rule 4; probes/t2592-nested-groupby-cells A6:A12, probes/t2594-nested-aggregates).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NestedReading {
+    /// Its array's elements are walked as array elements, nested cells in them too: SUM 220,
+    /// COUNT 16 and COUNTA 19 over a 3x3 GROUPBY whose six value cells hold 16 numbers (A6:A8).
+    Flatten,
+    /// The cell is an array error `#N/A` (AVERAGE, MIN, MAX, PRODUCT, SUMSQ, MEDIAN, the A-variants,
+    /// the variance and deviation family: t2594-nested-aggregates A1:A21, A25). VARA and its
+    /// siblings are inferred from VAR.P and STDEV.S.
+    NotAvailable,
+    /// Unprobed consumers (AND, OR, XOR, IMSUM, IMPRODUCT): `#VALUE!`, as a LAMBDA element.
+    Value,
+}
+
 /// What sets one consumer's argument walk apart (SPEC-0009, "Consumer mapping").
 #[derive(Clone, Copy)]
 pub(crate) struct AggregatePolicy {
@@ -85,6 +101,8 @@ pub(crate) struct AggregatePolicy {
     pub(crate) skip_empty_args: bool,
     /// How an array of references is read.
     pub(crate) grids: GridReading,
+    /// How a nested GROUPBY or PIVOTBY cell in an array is read.
+    pub(crate) nested: NestedReading,
 }
 
 /// How a direct value (and, under `Cast`, a [`ItemSource::ReferenceValue`]) becomes a number.
@@ -289,21 +307,7 @@ impl Model {
         };
         match read {
             Ok(areas) => self.walk_areas(&areas, cell, walk, visit),
-            Err(CalcResult::Array(array)) => {
-                for node in array.into_iter().flatten() {
-                    match array_item(node) {
-                        Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
-                        // Only the first array or referenced error is held (`Ranked`).
-                        Err(error) if items => visit(
-                            self,
-                            ItemSource::ArrayElement,
-                            CalcResult::new_error(error, cell, String::new()),
-                        )?,
-                        Err(error) => walk.array_error(error, cell)?,
-                    }
-                }
-                Ok(())
-            }
+            Err(CalcResult::Array(array)) => self.walk_array_items(array, cell, walk, visit),
             Err(error @ CalcResult::Error { .. }) if !items => Err(error),
             Err(value) => {
                 let source = if is_reference {
@@ -321,6 +325,59 @@ impl Model {
                 }
             }
         }
+    }
+
+    /// The elements of an array argument as [`ItemSource::ArrayElement`] items: an error is held
+    /// (`Ranked`) or handed on (`Items`), and a nested GROUPBY or PIVOTBY cell is read as the
+    /// policy's [`NestedReading`] says. A flattened nested cell's cells are charged to the walk
+    /// budget first (`#ERROR!` past it; SPEC-0018 "Bound"); its own nested cells recurse, at most
+    /// `MAX_NESTED_DEPTH` deep (`NestedArray::new`).
+    fn walk_array_items<F>(
+        &mut self,
+        array: Vec<Vec<ArrayNode>>,
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        let items = walk.policy.errors == ErrorRule::Items;
+        for node in array.into_iter().flatten() {
+            let item = match node {
+                // A `Reference` cell is `#VALUE!` to every policy: `PRODUCT(..,PIVOTBY(..,
+                // LAMBDA(v,Data!E6)))` and `MIN(GROUPBY(..,LAMBDA(v,Data!A12),..),..)` are `#VALUE!`
+                // (gen-m7/bcad709c30cfdf64 A13, gen-m9/2a18b2f5a4dc43ac A371); SUM and COUNT are
+                // unprobed (T-2609).
+                ArrayNode::Nested(nested) if nested.kind() == NestedKind::Reference => {
+                    Err(Error::VALUE)
+                }
+                ArrayNode::Nested(nested) => match walk.policy.nested {
+                    NestedReading::Flatten => match nested.value(&mut self.nested_budget, cell) {
+                        CalcResult::Array(inner) => {
+                            self.walk_array_items(inner, cell, walk, visit)?;
+                            continue;
+                        }
+                        // Past the walk budget.
+                        error => return Err(error),
+                    },
+                    NestedReading::NotAvailable => Err(Error::NA),
+                    NestedReading::Value => Err(Error::VALUE),
+                },
+                node => array_item(node),
+            };
+            match item {
+                Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
+                // Only the first array or referenced error is held (`Ranked`).
+                Err(error) if items => visit(
+                    self,
+                    ItemSource::ArrayElement,
+                    CalcResult::new_error(error, cell, String::new()),
+                )?,
+                Err(error) => walk.array_error(error, cell)?,
+            }
+        }
+        Ok(())
     }
 
     /// The cells of `areas`, walked as referenced cells: blanks skipped, the first error cell
@@ -509,6 +566,7 @@ mod tests {
         errors: ErrorRule::Ranked,
         skip_empty_args: false,
         grids: GridReading::Values,
+        nested: NestedReading::Value,
     };
 
     /// Z1, where every test formula sits.
@@ -601,6 +659,7 @@ mod tests {
             errors: ErrorRule::First,
             skip_empty_args: true,
             grids: GridReading::Values,
+            nested: NestedReading::Value,
         };
         assert_eq!(items(&cells, "=SUM(A1,1/0)", first), err("#N/A"));
         assert_eq!(items(&[], "=SUM(5,)", first).map(|v| v.len()), Ok(1));
@@ -632,6 +691,7 @@ mod tests {
             errors: ErrorRule::Items,
             skip_empty_args: false,
             grids: GridReading::Values,
+            nested: NestedReading::Value,
         };
         let cells = [("A1", "=NA()"), ("A2", "3")];
         assert_eq!(
@@ -655,6 +715,7 @@ mod tests {
             errors: ErrorRule::Ranked,
             skip_empty_args: false,
             grids: GridReading::Values,
+            nested: NestedReading::Value,
         };
         let rules = NumberRules {
             direct: DirectNumbers::CastA,
