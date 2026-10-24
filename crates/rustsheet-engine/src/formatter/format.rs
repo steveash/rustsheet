@@ -3,7 +3,7 @@ use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
-    decimal_round::round_shown_place,
+    decimal_round::{round_engineering, round_shown_place},
     locale::Locale,
     number_format::{cut_15_digits, to_precision},
     text::Text,
@@ -732,7 +732,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let tokens = &p.tokens;
             // `General` among literals shows the value itself, with its sign
             let general_value = value;
-            value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
+            let scaled = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
+            value = scaled;
             // p.precision is the number of significant digits _after_ the decimal point
             // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
             // probes-numeric/4f413cc257ce15c4 A23)
@@ -751,15 +752,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     let group = f64::from(p.digit_count.max(1));
                     let mut exponent = (value_abs.log10().floor() / group).floor() * group;
                     if group > 1.0 {
-                        // The mantissa rounds to the digits it shows after the shift, its integer
-                        // digits plus the decimals, not to the value's own integer digits
-                        // (`##0.0E+0` on 1/3 is "333.3E-3", not "330.0E-3"; gen-m10, T-2226). A
-                        // carry into a new power of ten moves the exponent.
-                        let unrounded =
-                            general_value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
-                        let (rounded, shifted) = round_engineering(unrounded, group, p.precision);
-                        value = rounded;
-                        exponent = shifted;
+                        // The mantissa rounds after the shift (`##0.0E+0` on 1/3 is "333.3E-3",
+                        // not "330.0E-3"; gen-m10, T-2226), so round the unrounded value again.
+                        (value, exponent) = round_engineering(scaled, group, p.precision);
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
@@ -1000,24 +995,5 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 unshowable: false,
             }
         }
-    }
-}
-
-/// `value` rounded to the digits an engineering mantissa of `group` integer placeholders and
-/// `precision` decimals shows, and the exponent (a multiple of `group`) it is shown with.
-fn round_engineering(value: f64, group: f64, precision: i32) -> (f64, f64) {
-    let exponent_of = |v: f64| (v.abs().log10().floor() / group).floor() * group;
-    let digits_of = |v: f64, exponent: f64| {
-        let integer_digits = v.abs().log10().floor() - exponent + 1.0;
-        // At most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text").
-        (integer_digits + f64::from(precision)).clamp(1.0, 15.0) as usize
-    };
-    let exponent = exponent_of(value);
-    let rounded = to_precision(value, digits_of(value, exponent));
-    let carried = exponent_of(rounded);
-    if carried == exponent {
-        (rounded, exponent)
-    } else {
-        (to_precision(value, digits_of(rounded, carried)), carried)
     }
 }
