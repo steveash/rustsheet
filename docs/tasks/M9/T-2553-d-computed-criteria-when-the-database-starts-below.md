@@ -3,7 +3,7 @@ id: T-2553
 title: "D* computed criteria when the database starts below the criteria row or sits on another sheet: Excel's records (gen-m9, 16 cells)"
 milestone: M9
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
