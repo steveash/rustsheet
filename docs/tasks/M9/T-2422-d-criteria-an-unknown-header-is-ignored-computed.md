@@ -3,7 +3,7 @@ id: T-2422
 title: "D* criteria: an unknown header is ignored, computed criteria, a header-only range is #VALUE!, blank trailing records"
 milestone: M9
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: sonnet
@@ -42,3 +42,6 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Cases 1, 3 and 4 of the Goal (unknown header, computed criterion, header-only range, trailing blank rows) were already fixed by T-1390 (#1638). The remaining difference was DGET: it now counts only matching records whose field cell is non-empty (probes/db-get-blank-field, 11 Excel cells, all pass), which fixes gen-m9/c9d7659896d95368 Calc!A1. Eval delta: gen-m9 known failures 7719 -> 7718, probes +1 case, no regressions. criteria.md updated. gen-m9 A82 and A271 stay with T-2553.
