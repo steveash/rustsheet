@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=LET(Sum,SUM(1,2),Sum)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "e3e009ddac986c6b33fb6d4cf774f6474031b474168676335b29bc2684c76a70",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-24T04:26:37+00:00",
+  "version": null,
+  "workbook_name": "d28a2c7333e50bd6a56ed5771ad4d9efcb46289c9867741a45d12a455e695425.xlsx"
+ }
+}
