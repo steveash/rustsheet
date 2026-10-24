@@ -87,13 +87,22 @@ fn fn_bitrshift() {
     assert_eq!(model._get_text("B2"), *"#ERROR!");
 }
 
-// Excel does not pass this test (g sheets does)
+// A left shift of 49 to 53 places is 0 in Excel, 48 and 54 are #NUM!
+// (probes/eng-besselk-underflow-bit-shift).
 #[test]
 fn fn_bitshift_overflow() {
     let mut model = new_empty_model();
     model._set("A1", "=BITRSHIFT(12, -53)");
     model._set("A2", "=BITLSHIFT(12, 53)");
+    model._set("A3", "=BITLSHIFT(12, 54)");
+    model._set("A4", "=BITLSHIFT(1, 48)");
+    model._set("A5", "=BITLSHIFT(1, 53.5)");
+    model._set("A6", "=BITLSHIFT(0, 100)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"0");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"0");
+    assert_eq!(model._get_text("A6"), *"0");
 }

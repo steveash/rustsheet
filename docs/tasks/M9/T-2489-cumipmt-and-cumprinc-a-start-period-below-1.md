@@ -3,7 +3,7 @@ id: T-2489
 title: "CUMIPMT and CUMPRINC: a start period below 1 is #NUM! (gen-m9, 4 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,10 +33,10 @@ Cells:
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A260
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for a start of 0.3, 0.5, 1E-15 and 1 (1 still computes).
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for a start of 0.3, 0.5, 1E-15 and 1 (1 still computes).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CUMIPMT/CUMPRINC values (T-2363).
@@ -46,3 +46,6 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+CUMIPMT and CUMPRINC compare the given start period with 1 before it rounds up, so 0.3, 0.5 and 1E-15 are `#NUM!` (unit test `cumulative_start_period_below_one_is_num`; a start of 1 still computes). gen-m9 known failures 7569 -> 7565 (4 fixed, all owned cells), 0 regressions.
