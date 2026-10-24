@@ -28,7 +28,17 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   - `BESSELJ(0,n)` is 0 for n >= 2; `BESSELY` of x <= 0 is `#NUM!`.
   Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
   the fdlibm port is gone.
-  The asymptotic branch is evidenced only for 8 <= x <= 100; larger x is unprobed (T-2140).
+  The asymptotic branch for 8 <= x <= 100 is gated by probe case `bessel-asymptotic` (T-2140).
+  Above 100 (probe case `bessel-large-x`, excel-graph): x = 1e3 differs from the engine by at most 1 ulp (3 of 6 cells
+  match) and x = 1e6 by up to ~1e-14 relative (the phase `x - 0.785398164` loses precision differently from the engine's SIN), but Excel returns
+  `#NUM!` for `BESSELJ(x,n)` and `BESSELY(x,n)` at x = 134217728 (2^27) and 1e10 for orders 0 and 3 (and
+  `BESSELJ(1e10,1)`, `BESSELY(1e10,1)`), while `BESSELJ(2^27,1)` and `BESSELY(2^27,1)` still return a
+  value (BESSELJ ~1.8e-13 relative off, BESSELY ~2.6e-11). The cause of the `#NUM!` is not established: it is
+  not simply numbers.md's trig cut at |x| >= 2^27, because the order-0 phase `2^27 - 0.785398164` =
+  134217727.21 is below 2^27 (the order-1 phase 134217725.64 does return a value). Hypotheses (unprobed;
+  T-2563 to decide): a cut on the fractional phase in (134217725.64, 134217727.21], a check on x itself, or
+  error spreading through the recurrence. The engine still returns numbers there (known failures in
+  `bessel-large-x`).
 
 Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
@@ -639,14 +649,14 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   (2 of 2); IMCSC is conj(s)/|s|² of sin z built from SIN, COS and the exp-based sinh/cosh (both IMCSC inputs; a Smith
   reciprocal gives ...112). IMCOT("-1.5+0.5i") is not the double-angle form with Excel's kernels.
 - **IM* log and power modulus.** `IMLN("1E+200")` is 460.517018598809, `IMLOG10("1E+200")` "200", `IMLOG2("1E+200")`
-  664.385618977473 (ours "inf", "inf", `#NUM!`), while `IMLOG10("1E-200+1E-200i")` and `IMLOG10("1E+300+1E+300i")` are
+  664.385618977473 (ours `#NUM!` for all three since T-2389; the overflow is still wrong), while `IMLOG10("1E-200+1E-200i")` and `IMLOG10("1E+300+1E+300i")` are
   `#NUM!`: T-2117's rule (on its branch) of a `hypot` modulus that is `#NUM!` when both parts are nonzero and x²+y² overflows
   or is subnormal. `IMPOWER("1E+300+1E+300i",-0.5)` is `#NUM!` too although the result would be tiny (ours
   7.77E-151-3.22E-151i; 1068c44afcd56d53 A136). T-2539.
 - **IMCSCH of 0 is `#NUM!`**, as IMCSC of 0: `IMCSCH("0")`, a 0 cell, an empty cell (`IMCSCH(Data!Z1)`), and a denominator
   that underflows, `IMCSCH("1E-200+1E-200i")` (ours `NaNNaNi`, `inf-infi`). This settles the two IMCSCH UNVERIFIED notes in
   "IM* results that overflow (T-1827)". T-2540.
-- **IMLN and IMLOG10 of 0 are `#NUM!`** ("0", "0i", an empty or 0 cell; ours "-inf"). T-2389.
+- **IMLN and IMLOG10 of 0 are `#NUM!`** ("0", "0i", an empty or 0 cell; ours was "-inf" until T-2389, which also made the four `1E-200+1E-200i` / `1E+300+1E+300i` IMLOG10 cells match).
 - **Tiny results.** `IMSEC`/`IMCSC("-724.227-562.884i")` keep their 1E-245 parts (as the T-2043 sweep found), while
   `IMEXP("-724.227-562.884i")` is "0": e^-724.227 is subnormal and both parts flush (ours "0+0i"). T-2335.
 - **How an inumber is read.** Text that VALUE reads is a real number: `IMPOWER("$4.00",1)` "4", `IMSEC("$3.14")`
