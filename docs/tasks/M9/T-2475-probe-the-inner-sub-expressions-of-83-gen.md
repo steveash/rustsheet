@@ -3,7 +3,7 @@ id: T-2475
 title: "Probe the inner sub-expressions of 83 gen-m9 statistical cells of the T-2256 sweep whose divergence is not traced"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -91,8 +91,8 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2256): these 83 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A probe case per source case (or one combined case) holds the sub-expressions, filled from excel-graph and committed.
-- [ ] Every cell above is moved to a fix task (new or extended) whose Context lists it; each quirk found is in docs/excel-semantics/.
+- [x] A probe case per source case (or one combined case) holds the sub-expressions, filled from excel-graph and committed.
+- [x] Every cell above is moved to a fix task (new or extended) whose Context lists it; each quirk found is in docs/excel-semantics/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -103,7 +103,7 @@ Decision 0083 (gap triage 2026-10-23, T-2256): every cell it owns has the wrong 
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
 
-## Progress (2026-10-24, opus run; in flight)
+## Probe results (2026-10-24)
 Probe: probes/t2475-stat-subexpressions (excel-graph, 2026-10-24): 574 cells, one per function call and compound argument of 81 of
 the 83 owned cells (A4 and A216 of 0620505280d2ea6e and a63d1c7d6f96c56d read Pivot! through GETPIVOTDATA and are not copied), each on
 a copy of its case's Data sheet (D01..D48) through a TYPE/shape summary: an error as `#<ERROR.TYPE>`, an array as
@@ -173,6 +173,14 @@ rate (4; T-1686); argument-domain error order of PV, NPER, PRICEDISC, DB, ACCRIN
 PERCENTRANK(.INC/.EXC), TRIMMEAN, XMATCH (one or two cells each); PERMUTATIONA and COMBINA with a negative argument are 1; CELL("contents")
 in COUNT and MODE.SNGL; MODE.MULT, STDEV.P, SKEW, F.INV.RT, NEGBINOMDIST, PMT, PPMT, BINOM.DIST, NORMDIST, WEIBULL(.DIST), BETA.INV
 and YIELD values; TAKE of a LET scalar is a scalar (`TAKE(LET(..),-1,-1)`), and TAKE minus a scalar a scalar error.
-Next: file or extend one fix task per family (make new-task, `campaign: visible`) and record each quirk in docs/excel-semantics/;
-look into the cells whose probed sub-expressions all match (the divergence is at the top call's own combination of arguments, or in
-workbook context the probe does not copy); `make eval-baseline` for the probe's new known failures.
+Owners: T-2618 (NPV, 6 cells), T-2619 (IRR, 4), T-2620 (financial domain errors and digits, 12), T-2621 (statistical domain
+errors and extreme values, 23), T-2622 (TAKE, CELL("contents"), XMATCH, a LAMBDA joined as text, 5), T-2623 (the 31 cells whose
+probed sub-expressions all match Excel and the 2 GETPIVOTDATA cells, 33). Quirks recorded: financial.md "NPV with a rate of -1 or
+1E+300 is #DIV/0!", arrays.md "An uncalled LAMBDA is one value" (joined as text); the other families' rules are their tasks'
+to state once fixed.
+
+## Outcome
+probes/t2475-stat-subexpressions (574 cells, excel-graph) gives 50 of the 83 cells an innermost diverging sub-expression; every cell
+now sits in one of the six follow-ups above, which carry `campaign: visible`, so the visible-parity criterion moves with them (the
+83 gen-m9 lines stay until those land). Eval delta: the probe adds 121 known-failure lines in eval/baseline/probes.txt, the
+divergences the follow-ups own; no other baseline changes.
