@@ -210,6 +210,16 @@ impl LiftOptions {
         later_error: false,
     };
 
+    /// TREND's and GROWTH's `const` (T-1726): as [`LiftOptions::REUSE_ANY_EQUAL`], the kernel
+    /// reading only its argument and the data read before the lift, and an element is the top-left
+    /// value of its call's array.
+    pub(crate) const REUSE_ANY_EQUAL_TOP_LEFT: Self = Self {
+        reuse: Reuse::AnyEqual,
+        work: KernelWork::Constant,
+        result: CallResult::Array,
+        later_error: false,
+    };
+
     /// Every element runs, and the caller's [`LiftCost`] already counts its work: the lifted
     /// text functions (TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEX*; T-1272).
     pub(crate) const EVERY_ELEMENT: Self = Self {

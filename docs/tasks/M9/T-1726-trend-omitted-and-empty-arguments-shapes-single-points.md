@@ -3,7 +3,7 @@ id: T-1726
 title: "TREND: omitted and empty arguments, shapes, single points, text and error inputs as Excel (T-1620 probes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -87,3 +87,18 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (wrong TREND shapes, errors and sums), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+TREND and GROWTH now share `trend_or_growth` (functions/statistical/trend.rs) on top of a new element-wise reader
+(`read_data`, functions/statistical/linest.rs; LINEST and LOGEST read through it unchanged): empty known_x/new_x are the
+defaults, Excel's three shape layouts (same shape element-wise, column y, row y) with new_x's shape deciding the result,
+collinear x columns dropped on a singular fit (zero-variance x gives the mean), blank/text/boolean/error cells `#VALUE!`
+(an error in new_x only for its own element), the argument-error, typed-text-const, shape, data, new_x order from the
+gen-m9 cells, GROWTH's row-major first-offender sign rule, and lifting over an array const (`LiftOptions::
+REUSE_ANY_EQUAL_TOP_LEFT`). Rules in statistics.md "TREND: defaults, shapes, single points and error inputs".
+Eval delta: probes 1901 -> 1805 known failures (all 78 listed regression-trend lines, plus 26 growth-modes lines of
+T-1743), gen-m9 7821 -> 7696 (48 of the 49 owned lines plus 77 other TREND/GROWTH cells), no regressions; visible parity
+7562 off (lock 8632). Left: gen-m9 bcb1105c61a2649d A301 (`BESSELI(1E+15,5)` is 0 in ours, `#NUM!` in Excel;
+engineering.md, T-2547/T-2548's sweep), the 23 last-digit regression-trend cells (T-2006), and
+abc2939ebd1e2365 A187 (a 0 GROWTH y against a 2x2 x is `#NUM!`, unexplained; recorded in statistics.md).
+Follow-up: T-2569 probes the lifted const element values, the near-collinear cut-off and A187.
