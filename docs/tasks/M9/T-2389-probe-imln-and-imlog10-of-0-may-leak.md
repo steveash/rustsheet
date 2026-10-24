@@ -61,4 +61,4 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
 
 ## Outcome
-IMLN and IMLOG10 return through `finite_complex_result` like IMLOG2, so 0 or 0i is `#NUM!`. Unit test added. Eval: 28 gen-m9 known-failure lines left the baseline (the 24 owned cells plus 4 more IMLN/IMLOG10 cells), 0 regressions. The quirk is already in docs/excel-semantics/engineering.md ("IMLN and IMLOG10 of 0 are `#NUM!`").
+IMLN and IMLOG10 return through `finite_complex_result` like IMLOG2, so 0 or 0i is `#NUM!`. Unit test added. Eval: 28 gen-m9 known-failure lines left the baseline (the 24 owned cells plus 4 IMLOG10 cells of T-2539, which now pass as a side effect), 0 regressions. The quirk is already in docs/excel-semantics/engineering.md ("IMLN and IMLOG10 of 0 are `#NUM!`").

@@ -47,3 +47,6 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Note (T-2389)
+T-2389 routed IMLN/IMLOG10 through `finite_complex_result`, which already fixed 4 of this task's cells (the IMLOG10 `1E-200+1E-200i` and `1E+300+1E+300i` ones: 40fc68fccfaf9b76 A212, 76b07b57099ccc8d A64, 895a33aa8352864a A226, 9fa170a9f17624fd A29). Re-triage the rest.
