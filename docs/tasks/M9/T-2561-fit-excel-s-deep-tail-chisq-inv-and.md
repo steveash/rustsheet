@@ -29,6 +29,9 @@ Leads from T-1634:
   shape of 50,000: the upper-tail and large-shape paths may need their own fit.
 - `CHIINV(NPV((7*1E-15),{-100,300,-300,101}),3)` (4e55500bb8ad3cd8 A111) is 7.5% off: its p comes
   from NPV, so check NPV's last digits before the quantile.
+Also in scope: the CHISQ.INV.RT `#NUM!` boundary that chisq.rs `RIGHT_TAIL_P_MIN` and
+`RIGHT_TAIL_SHAPE_ALL_P` currently guess (the p between 1E-20 and 1E-100, and df 11 to 21;
+`TODO(T-2561)` there), since the fit needs those cells anyway.
 Run the fit lab on the T-1522 kernel map (decision 0056: two attempts, then time-box).
 
 Owned gen-m9 cells (T-1634 residue, 2026-10-24): 30 visibly-off cells.
@@ -69,9 +72,6 @@ Cells:
 - The 65 cells T-1634 brought to visible parity but not to bit-exactness: they stay in
   eval/baseline/gen-m9.txt as bit-level known failures and belong to T-0972 (gamma quantile
   parity, the last-digit task for this kernel). Fix them here only if the same fit covers them.
-- Nothing else: this task also probes the CHISQ.INV.RT `#NUM!` boundary that chisq.rs
-  `RIGHT_TAIL_P_MIN` and `RIGHT_TAIL_SHAPE_ALL_P` currently guess (the p between 1E-20 and 1E-100,
-  and df 11 to 21; `TODO(T-2561)` there), since the fit needs those cells anyway.
 
 ## Visible-parity stage
 Decision 0083: the cells above are visibly off, so the task is in the campaign. Its target is that
