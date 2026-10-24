@@ -3196,9 +3196,6 @@ F	probes/t2455-transpose-single-value.case.json	Calc!A26
 F	probes/t2455-transpose-single-value.case.json	Calc!A7
 F	probes/t2455-transpose-single-value.case.json	Calc!B26
 F	probes/t2455-transpose-single-value.case.json	Calc!B7
-F	probes/t2579-array-value-edges.case.json	P!B23
-F	probes/t2579-array-value-edges.case.json	P!B24
-F	probes/t2579-array-value-edges.case.json	P!B26
 F	probes/t2579-array-value-edges.case.json	P!B49
 F	probes/t2592-nested-groupby-cells.case.json	P!A10
 F	probes/t2592-nested-groupby-cells.case.json	P!A101
