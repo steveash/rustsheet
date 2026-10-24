@@ -7,8 +7,10 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-2592]
+depends_on: [T-2592, T-2602]
 ---
+
+> Do not start before T-2602: SPEC-0018 rules 4, 5 and 7 and its one-level design are stale against T-2592's probe (arrays.md).
 
 ## Goal
 A GROUPBY or PIVOTBY cell whose function returns an array holds that array (SPEC-0018 rules 1-4): it shows `#VALUE!`, INDEX returns the array (TYPE 64), and a lifted read takes its top-left.
