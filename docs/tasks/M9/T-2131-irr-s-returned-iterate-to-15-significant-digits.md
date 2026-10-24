@@ -102,3 +102,15 @@ twice-rounded operators) moves the visibly-off cells: they come from a different
 the root and from Excel's unexplained fallback path. Findings are in financial.md, "IRR is a
 secant in v", the 2026-10-24 Open note. Next: T-2565 probes the far-from-root steps (guess
 sweeps on the model's own iterates); T-1686 probes the fallback path. Resume once T-2565 is done.
+
+Attempt 1 (2026-10-24, decision 0056), bit-exact of 388 cells (distinct flows and guess; the
+current model 219):
+- NPV c_i/x^i (current): 219; Horner in v: 222; c_i*pow(v,i): 211; c_i*v^i by repeated
+  multiply: 217; through r = 1/v - 1: 213; 64-bit accumulation of c_i/x^i: 203.
+- 36 combinations of x (double, 64-bit, none), powers (pow, double or 64-bit repeated multiply),
+  term and sum precision and summation order: 194 to 220.
+- Step anchored on v1 instead of v0: 188 to 209; twice-rounded step operators: no change.
+- State kept as r (v recomputed from r each step): 200.
+- Secant on NPV·v^k (k = -3 to 2) or on FV: 25 to 29.
+- Start variants on the large-root cells (offset 0.001 in r, v0(1 +- 0.001), a Newton first
+  step, offsets 1e-4 to 1e-2): none reproduces a cell.
