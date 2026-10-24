@@ -97,10 +97,11 @@ impl Model {
         Ok(())
     }
 
-    /// A date argument of the TBILL, discount-security and AMOR* functions as read: its number, #NUM! unless it floors to a
-    /// serial from 0 to 9999-12-31, checked before the next argument is read (`TBILLEQ(-1,1/0,0.05)`
-    /// and `TBILLEQ(39000,2958466,1/0)` are #NUM!, `TBILLEQ(0,39100,1/0)` #DIV/0!;
-    /// probes/securities-argument-error-order C1:F16; financial.md, T-1406).
+    /// A date argument of the TBILL, discount-security, AMORLINC and AMORDEGRC functions as read:
+    /// its number, #NUM! unless it floors to a serial from 0 to 9999-12-31, checked before the next
+    /// argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)` are #NUM!,
+    /// `TBILLEQ(0,39100,1/0)` #DIV/0!; probes/securities-argument-error-order C1:F16; financial.md,
+    /// T-1406).
     pub(super) fn financial_calendar_date_of(
         &self,
         value: &CalcResult,
