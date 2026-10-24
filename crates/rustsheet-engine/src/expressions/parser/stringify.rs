@@ -427,6 +427,7 @@ fn to_string_array_node(node: &ArrayNode, locale: &Locale, language: &Language) 
         ArrayNode::Error(kind) => format!("{kind}"),
         ArrayNode::Empty => "0".to_string(),
         ArrayNode::Lambda(_) => "#CALC!".to_string(), // never parsed: what a cell shows
+        ArrayNode::Nested(_) => "#VALUE!".to_string(), // never parsed: what a cell shows
     }
 }
 

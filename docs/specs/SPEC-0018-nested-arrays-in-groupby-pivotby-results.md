@@ -1,6 +1,6 @@
 # SPEC-0018 — Nested arrays: GROUPBY and PIVOTBY cells that hold a LAMBDA's array result
 
-- **Status:** draft (accepted on merge of T-2459)
+- **Status:** accepted (implemented by T-2593; T-2594 follows)
 - **Milestone / lane:** M7 / engine (implementation), research (probes)
 - **Tasks:** T-2459 (this spec), T-2592 (probes), T-2602 (revision from the probe), T-2593 (representation, INDEX, TYPE,
   top-left reads), T-2594 (MAP, BYROW, BYCOL, REDUCE, the aggregates and reference cells over a nested result)
@@ -119,7 +119,8 @@ before adding `scalar()` (CLAUDE.md directive 3). The compiler finds every exhau
 - `Model::aggregate` (group_functions.rs) turns an array result into `ArrayNode::Nested` (kind `Array`) instead of `#VALUE!`.
   This covers a 1x1 array, a computed one, a two-parameter LAMBDA's result and a subtotal cell (rule 1). An array that
   already holds `Nested` elements is kept as it is (rule 8).
-- A one-cell reference result becomes kind `Reference` (rule 7, T-2594). Until T-2594 lands it stays `#VALUE!`, as today.
+- A one-cell reference result becomes kind `Reference` (rule 7), holding the referenced value (T-2593, so that INDEX reads it:
+  A21). Its other reads keep `#VALUE!` until T-2594.
 - No other producer: BYROW, MAP and MAKEARRAY keep `#CALC!` for an array step.
 
 **Consumers with their own rule.**
@@ -158,7 +159,13 @@ nested element's contents charges that element's `cells` to one per-evaluation b
 - comparing it by content (`PartialEq`).
 
 The budget is kept beside the evaluation's other per-evaluation counters, as `MAX_CAPTURED_CELLS` is for LAMBDA captures. A
-charge past it makes the reading call `#ERROR!` (DEVIATION, decision 0014). The charge is made per occurrence, so
+charge past it makes the reading call `#ERROR!` (DEVIATION, decision 0014). As built (T-2593) the only reader is INDEX
+(`NestedArray::value`); `PartialEq` is not charged: it is O(1) for copies of one nested cell (pointer equality) and for cells
+of different `cells`, and no evaluation path compares nested cells by content (the lifting driver compares `scalar()`s,
+UNIQUE keys a nested cell as `#VALUE!`). **Kept budget.** The per-call cap does not bound a loop of calls whose results no
+array size check sees (`REDUCE(..,LAMBDA(a,i,VSTACK(a,GROUPBY(..))))`), so each evaluation also charges the cells of every
+nested cell's own grid (`grid_cells`: an inner level was charged when its own call kept it) against
+`MAX_NESTED_KEPT_CELLS` (2^22, as `MAX_CAPTURED_CELLS`); past it the result is `#ERROR!` (DEVIATION). The charge is made per occurrence, so
 `SUM(VSTACK(r,r,..))` over a nested cell of 2^20 cells is `#ERROR!` after 128 copies are read, not after 2^40 steps. Reads
 that never look inside a nested element cost nothing extra: `scalar()`, TYPE, ROWS and COLUMNS of the outer array, a copy.
 Nesting depth is bounded too. Each level needs one more GROUPBY call evaluated inside a LAMBDA, so the evaluator's

@@ -146,7 +146,7 @@ impl Model {
                                     "Error in array".to_string(),
                                 ));
                             }
-                            ArrayNode::Lambda(_) => {
+                            ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
                                 return Err(Model::lambda_as_number_error(*cell))
                             }
                             ArrayNode::Empty => {

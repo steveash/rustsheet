@@ -177,6 +177,11 @@ impl Model {
             ArrayNode::Error(ei) => Cell::ErrorCell { ei: ei.clone(), s },
             // A lambda a cell would hold shows `#CALC!`, as a formula cell's does (`model.rs`).
             ArrayNode::Lambda(_) => Cell::ErrorCell { ei: Error::CALC, s },
+            // A nested GROUPBY cell shows `#VALUE!` (SPEC-0018 rule 2).
+            ArrayNode::Nested(_) => Cell::ErrorCell {
+                ei: Error::VALUE,
+                s,
+            },
             ArrayNode::Empty => Cell::EmptyCell { s },
             ArrayNode::String(text) => {
                 let _ =
