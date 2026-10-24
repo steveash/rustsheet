@@ -279,7 +279,8 @@ fn lambda_body_naming_its_own_let_name_is_name_error() {
 #[test]
 fn test_let_name_spelled_like_function_called() {
     // A bound name spelled like a function is the variable when called, in any case
-    // (probes/let-name-function-spelled-call, let-lambda-body-own-name, T-2567).
+    // (probes/let-name-function-spelled-call, let-lambda-body-own-name, T-2567). `_set` reads
+    // the formula as stored A1 text; typed, the function wins (crates/rustsheet/src/edit/tests.rs).
     let mut model = new_empty_model();
     let cases = [
         ("=LET(Pv,LAMBDA(a,a),Pv(1))", "1"),
@@ -300,6 +301,7 @@ fn test_let_name_spelled_like_function_called() {
     for (row, (formula, _)) in (1..).zip(cases) {
         model._set(&format!("A{row}"), formula);
     }
+    // All cells are set before one evaluation, then checked.
     model.evaluate();
     for (row, (formula, expected)) in (1..).zip(cases) {
         assert_eq!(model._get_text(&format!("A{row}")), expected, "{formula}");

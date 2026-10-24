@@ -353,7 +353,8 @@ impl Parser {
     }
 
     /// Whether a call of `name`, spelled like a function, is a call of the LET name or LAMBDA
-    /// parameter of that name instead. Only in unprefixed stored text: A1 grammar, not typed.
+    /// parameter of that name instead. Only in unprefixed stored text: A1 grammar, not typed
+    /// (the `typed` split of decision 0103).
     /// There a bound name stands for the `_xlpm.` form the file holds, and Excel calls the
     /// variable: stored as `_xlpm.Pv(1)`, `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and
     /// `LET(Sum,LAMBDA(a,a*2),SUM(1,2))` `#VALUE!` (probes/let-name-function-spelled-call,
