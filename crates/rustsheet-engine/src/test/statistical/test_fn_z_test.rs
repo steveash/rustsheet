@@ -48,3 +48,30 @@ fn overflowing_data_is_an_error() {
 
     assert_eq!(model._get_text("D1"), *"#NUM!");
 }
+
+/// A data argument that is an error value comes first in every element; an error inside a range
+/// or array comes after `x` (probes/t2428-ztest-error-data).
+#[test]
+fn an_error_data_value_comes_before_x() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "=NA()");
+    for (cell, formula) in [
+        ("D1", "=Z.TEST(NA(),1/0)"),
+        ("D2", "=Z.TEST(NA(),\"a\")"),
+        ("D3", "=Z.TEST(A1:A2,1/0)"),
+        ("D4", "=Z.TEST({1,2,#N/A},1/0)"),
+        ("D5", "=COLUMNS(Z.TEST(NA(),{1,2}))"),
+        ("D6", "=INDEX(Z.TEST(NA(),{1,2}),1,2)"),
+    ] {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"#N/A");
+    assert_eq!(model._get_text("D2"), *"#N/A");
+    assert_eq!(model._get_text("D3"), *"#DIV/0!");
+    assert_eq!(model._get_text("D4"), *"#DIV/0!");
+    assert_eq!(model._get_text("D5"), *"2");
+    assert_eq!(model._get_text("D6"), *"#N/A");
+}
