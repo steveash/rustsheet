@@ -1,0 +1,74 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2436 follow-up: F.TEST, FORECAST, INTERCEPT and COVARIANCE of a one-value argument computed by ERROR.TYPE, CELL, INDIRECT or a plain function; COVARIANCE of scalar arguments; INDIRECT of a 1x1 array a1; an empty array (#CALC!) as a scalar argument.",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=FTEST({1;2;3},4)",
+        "A2": "=FTEST({1;2;3},SUM(4))",
+        "A3": "=FTEST({1;2;3},ERROR.TYPE(#REF!))",
+        "A4": "=FTEST({1;2;3},CELL(\"col\",B12))",
+        "A5": "=FTEST({1;2;3},INDIRECT(\"B1\"))",
+        "A6": "=FTEST({1;2;3},ERROR.TYPE(NA()))",
+        "A7": "=FTEST({1;2;3},N(ERROR.TYPE(#REF!)))",
+        "A8": "=FTEST({1;2;3},ERROR.TYPE(#REF!)+0)",
+        "A9": "=FTEST({1;2;3},VALUE(\"4\"))",
+        "A10": "=FTEST({1;2;3},NOW())",
+        "A11": "=FTEST({1;2;3},ROW(B4))",
+        "A12": "=FTEST({1;2;3},COLUMN(D1))",
+        "A13": "=FTEST({1;2;3},INDEX({4,5},1))",
+        "A14": "=FTEST({1;2;3},IF(TRUE,4))",
+        "A15": "=FTEST({1;2;3},TYPE(4))",
+        "A16": "=FTEST({1;2;3},CELL(\"col\",B12)+0)",
+        "A17": "=FTEST(ERROR.TYPE(#REF!),{1;2;3})",
+        "A18": "=FTEST({1;2;3},{4})",
+        "A19": "=FTEST(B1,{1;2;3})",
+        "A20": "=FTEST({1;2;3},ERROR.TYPE(1/0))",
+        "A21": "=FTEST({1;2;3},ISERROR(#REF!)*4)",
+        "A22": "=FORECAST(1,4,5)",
+        "A23": "=FORECAST(1,SUM(4),5)",
+        "A24": "=FORECAST(1,ERROR.TYPE(#REF!),5)",
+        "A25": "=FORECAST(1,CELL(\"col\",B12),5)",
+        "A26": "=INTERCEPT(ERROR.TYPE(#REF!),5)",
+        "A27": "=INTERCEPT(4,5)",
+        "A28": "=COVARIANCE.P(ERROR.TYPE(#REF!),5)",
+        "A29": "=COVARIANCE.P(4,5)",
+        "A30": "=COVARIANCE.S(4,5)",
+        "A31": "=COVAR(4,5)",
+        "A32": "=COVARIANCE.P({1,2,3},5)",
+        "A33": "=COVARIANCE.S({1,2,3},5)",
+        "A34": "=COVAR({1},5)",
+        "A35": "=COVARIANCE.P({1,2,3},TRUE)",
+        "A36": "=COVARIANCE.S(-2.5,FALSE)",
+        "A37": "=COVARIANCE.S(B1,FALSE)",
+        "A38": "=COVARIANCE.P({1,2,3},INDIRECT(\"B1\"))",
+        "A39": "=INDIRECT(\"B1\",{1})",
+        "A40": "=INDIRECT(\"B1\",{TRUE})",
+        "A41": "=ROWS(INDIRECT(\"B1\",{1;1}))",
+        "A42": "=INDIRECT(\"B1\",TRUE)",
+        "A43": "=SWITCH(1,TAKE(0.2,0,3),5,6)",
+        "A44": "=SWITCH(DROP({1},1),1,2,3)",
+        "A45": "=IMSUM(DROP({1},1))",
+        "A46": "=ABS(DROP({1},1))",
+        "A47": "=WORKDAY(1,1,DROP({1},1))",
+        "A48": "=N(DROP({1},1))",
+        "A49": "=IFERROR(DROP({1},1),\"e\")",
+        "A50": "=ERROR.TYPE(DROP({1},1))",
+        "B1": 5,
+        "B12": 2.5
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1
+      }
+    }
+  ],
+  "expected": {}
+}

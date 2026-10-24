@@ -66,7 +66,16 @@ Cells:
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A216, A372
 - gen-m9/e8d55ec393460bb7.case.json (6): Calc!A11, A239, A277, A317, A347, A365
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `YIELDDISC(9.33,1E+15,N("1.5")<0>,INDEX(Data!B9:C12,-0.0001)<#VALUE!>,5)` is `#NUM!`, the zero price or basis 5 before the redemption's error (ours `#VALUE!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/2a18b2f5a4dc43ac Calc!A236 `=HYPGEOM.DIST(YIELDDISC(LOG10(2^31-1),MAX(Data!C11,Data!E5:E6,Data!C9:C10),N(Data!B10),INDEX(Data!B9:C12,(-0.0001)),5),AVERAGE(Data!B6:B8),4,15,((Data!D$12>Data!C1)=IMCSC(" x ")))`: Excel #NUM!, ours #VALUE!; inner `YIELDDISC(LOG10(2^31-1),MAX(Data!C11,Data!E5:E6,Data!C9:C10),N(Data!B10),INDEX(Data!B9:C12,(-0.0001)),5)` Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A236
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 87 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for the order between a date error, a domain error and a text argument in each function.

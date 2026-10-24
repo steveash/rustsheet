@@ -952,7 +952,9 @@ as a guard of ours; it cannot occur below |x| = 1 and no cell probes it.)
   alone, 486 / 484. Rounding the product and quotient to 64 bits before the double (x87 double rounding) also fits all
   1015, so the sweep does not tell the two apart; the engine keeps plain doubles. Earlier negative results (x87 F2XM1,
   64-bit expm1) are in the entry above.
-Ours: `excel_expm1` in `functions/math_and_trigonometry/hyperbolic.rs`.
+Ours: `excel_expm1` in `x87_exp.rs` (moved from hyperbolic.rs by T-2242). PPMT also uses it, for `1-EXP(-n*L)` with |x| = n*L up to
+hundreds (financial.md "PPMT discounts with an atanh-series log", probes-numeric/ppmt-log-rate-sweep), where the u - 1 = -1 guard
+is reachable (n*L above about 36.7).
 Status: VERIFIED (excel-graph).
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)

@@ -16,6 +16,7 @@
 use crate::arithmetic::{
     round_extended_to_double, round_extended_to_subnormal, round_to_bits, significand_and_exponent,
 };
+use crate::x87_log10::excel_ln;
 
 /// RN64(log2 e), the 64-bit significand FLDL2E loads, with the value `LOG2_E_64 * 2^-63`
 /// (`round8/exp_v6.py` `_L2E64`; log2 e = 1.442695040888963407359924681001892137..., whose
@@ -37,6 +38,22 @@ const T_LIMIT: f64 = 2000.0;
 /// past the double range gives 0 or infinity.
 pub(crate) fn excel_exp(a: f64) -> f64 {
     exp_with(a, two_to_the_minus_one)
+}
+
+/// Excel's expm1, under SINH, TANH and PPMT: Kahan's `(u - 1) * x / ln(u)` with `u` Excel's own
+/// EXP and the log Excel's LN, each step a double (T-2240, docs/excel-semantics/numbers.md
+/// "Excel's expm1 is Kahan's formula"). It fits all 1015 SINH and TANH cells of probes-numeric
+/// t2178-hyperbolic-unit-sweep, where libm's expm1 fits 773 and 781. `u == 1` (|x| tiny) gives `x`.
+pub(crate) fn excel_expm1(x: f64) -> f64 {
+    let u = excel_exp(x);
+    if u == 1.0 {
+        return x;
+    }
+    let u_minus_1 = u - 1.0;
+    if u_minus_1 == -1.0 {
+        return -1.0;
+    }
+    u_minus_1 * x / excel_ln(u)
 }
 
 /// [`excel_exp`] with step 3's RN64(2^f - 1) taken from `two_to_the_minus_one`, so the tests can

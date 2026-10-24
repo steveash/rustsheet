@@ -1230,3 +1230,10 @@ Rule (excel-graph, gen-m6, 2026-10-21): a start date out of the calendar is `#NU
 d0c30225243fde60 A266). Ours: implemented (T-2266).
 Status: VERIFIED for these two cells; an error start against an error end keeps the start's error (VERIFIED: probes/scalar-lift-open-d W2 `YEARFRAC(NA(),1/0,1)` and W5 `YEARFRAC(1/0,NA(),1)`). An out-of-calendar start against a text or multi-cell-range end (`YEARFRAC(-1,"x")`, now #NUM!) is UNVERIFIED.
 Tasks: T-2266
+
+## NETWORKDAYS.INTL: the blank weekend's #NUM! before the holidays' error (T-2436)
+Rule: `NETWORKDAYS.INTL(31,4886,<blank>,{1,2;#N/A,""})` is `#NUM!`, the blank weekend cell's error (T-2271) before the holidays'
+`#N/A` (gen-m9 c2974c061384fdd9 A149, probes/t2436/c2974c061384fdd9, excel-graph, 2026-10-24).
+Ours: `#N/A`; T-2583.
+Status: VERIFIED (excel-graph), one cell
+Tasks: T-2583
