@@ -749,7 +749,18 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     // `00.0E+0` on 36.5 "36.5E+0"; eval/suites/gen-m10, T-1730). A zero
                     // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
                     let group = f64::from(p.digit_count.max(1));
-                    let exponent = (value_abs.log10().floor() / group).floor() * group;
+                    let mut exponent = (value_abs.log10().floor() / group).floor() * group;
+                    if group > 1.0 {
+                        // The mantissa rounds to the digits it shows after the shift, its integer
+                        // digits plus the decimals, not to the value's own integer digits
+                        // (`##0.0E+0` on 1/3 is "333.3E-3", not "330.0E-3"; gen-m10, T-2226). A
+                        // carry into a new power of ten moves the exponent.
+                        let unrounded =
+                            general_value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
+                        let (rounded, shifted) = round_engineering(unrounded, group, p.precision);
+                        value = rounded;
+                        exponent = shifted;
+                    }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
                     value /= 10.0_f64.powf(exponent);
@@ -989,5 +1000,24 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 unshowable: false,
             }
         }
+    }
+}
+
+/// `value` rounded to the digits an engineering mantissa of `group` integer placeholders and
+/// `precision` decimals shows, and the exponent (a multiple of `group`) it is shown with.
+fn round_engineering(value: f64, group: f64, precision: i32) -> (f64, f64) {
+    let exponent_of = |v: f64| (v.abs().log10().floor() / group).floor() * group;
+    let digits_of = |v: f64, exponent: f64| {
+        let integer_digits = v.abs().log10().floor() - exponent + 1.0;
+        // At most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text").
+        (integer_digits + f64::from(precision)).clamp(1.0, 15.0) as usize
+    };
+    let exponent = exponent_of(value);
+    let rounded = to_precision(value, digits_of(value, exponent));
+    let carried = exponent_of(rounded);
+    if carried == exponent {
+        (rounded, exponent)
+    } else {
+        (to_precision(value, digits_of(rounded, carried)), carried)
     }
 }
