@@ -933,7 +933,8 @@ fn typed_cell_shaped_let_and_lambda_names_are_refused() {
 
 /// A LET name spelled like a function: typed, a call of it is the function (`=LET(Sum,..,Sum(3))`
 /// is `SUM(3)`, probes/let-function-name-typed-12); stored as `_xlpm.Sum(3)`, the variable
-/// (probes/let-name-function-spelled-call A1). T-2567.
+/// (probes/let-name-function-spelled-call A1). Excel's own stored text declares `_xlpm.Sum`, and a
+/// bare `SUM(` there is the function (typed-12, typed-05 as Excel saves them). T-2567.
 #[test]
 fn let_name_spelled_like_function_typed_and_stored() {
     let mut wb = book();
@@ -945,4 +946,20 @@ fn let_name_spelled_like_function_typed_and_stored() {
     assert_eq!(wb.value("A1").unwrap(), Value::Number(3.0));
     assert_eq!(wb.value("A2").unwrap(), Value::Number(6.0));
     assert_eq!(wb.value("A3").unwrap(), Value::Number(6.0));
+    for (a1, text, expected) in [
+        (
+            "B1",
+            "=_xlfn.LET(_xlpm.Sum,_xlfn.LAMBDA(_xlpm.a,_xlpm.a*2),SUM(3))",
+            3.0,
+        ),
+        ("B2", "=_xlfn.LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)", 6.0),
+        (
+            "B3",
+            "=_xlfn.LET(_xlpm.Sum,_xlfn.LAMBDA(_xlpm.a,_xlpm.a*2),_xlpm.Sum(3))",
+            6.0,
+        ),
+    ] {
+        wb.set(a1, Input::StoredFormula(text.into())).unwrap();
+        assert_eq!(wb.value(a1).unwrap(), Value::Number(expected), "{text}");
+    }
 }

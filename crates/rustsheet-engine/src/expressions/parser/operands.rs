@@ -353,16 +353,17 @@ impl Parser {
     }
 
     /// Whether a call of `name`, spelled like a function, is a call of the LET name or LAMBDA
-    /// parameter of that name instead. Only in unprefixed stored text: A1 grammar, not typed
-    /// (the `typed` split of decision 0103).
-    /// There a bound name stands for the `_xlpm.` form the file holds, and Excel calls the
-    /// variable: stored as `_xlpm.Pv(1)`, `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and
-    /// `LET(Sum,LAMBDA(a,a*2),SUM(1,2))` `#VALUE!` (probes/let-name-function-spelled-call,
-    /// let-lambda-body-own-name, T-2567). Typed, the function wins in any case:
-    /// `=LET(Sum,LAMBDA(a,a*2),Sum(3))` is `SUM(3)`, 3, and `=LET(Pv,LAMBDA(a,a),Pv(1))` is
-    /// refused (probes/let-function-name-typed-*). Stored R1C1 text needs no rule: Excel and the
-    /// storage form (`callee_text`) write every call of a bound name with its `_xlpm.` prefix,
-    /// so a bare `SUM(` there is the function (`LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)`).
+    /// parameter of that name instead: only in unprefixed stored text (A1 grammar, not typed, the
+    /// `typed` split of decision 0103), where the name was declared bare ([`Parser::bind_name`]).
+    /// Such text (`Input::StoredFormula`, the harness's case formulas) stands for the `_xlpm.`
+    /// form the file holds, and there Excel calls the variable: stored as `_xlpm.Pv(1)`,
+    /// `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Sum,LAMBDA(a,a*2),SUM(1,2))` `#VALUE!`
+    /// (probes/let-name-function-spelled-call, let-lambda-body-own-name, T-2567). Typed, the
+    /// function wins in any case: `=LET(Sum,LAMBDA(a,a*2),Sum(3))` is `SUM(3)`, 3, and
+    /// `=LET(Pv,LAMBDA(a,a),Pv(1))` is refused (probes/let-function-name-typed-*). Excel's files
+    /// (xlsx import, also A1 grammar) declare the name `_xlpm.Sum` and call it `_xlpm.Sum(`, so
+    /// a bare `SUM(` there is the function (`LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)` is 6); the R1C1
+    /// storage form writes such a call `_xlpm.Sum(` too (`callee_text`).
     fn calls_bound_name(&self, name: &str) -> bool {
         self.lexer.is_a1_mode() && !self.typed && self.binds_name(name)
     }
@@ -383,7 +384,7 @@ impl Parser {
     /// formula afterwards ([`Parser::typed_refusal`], decision 0103). A name that was read as a
     /// defined name becomes the variable in any grammar mode, shadowing the defined name
     /// (probes/let-name-shadows-defined-name, T-2057). Any other plain name is recorded as bound
-    /// too, for [`Parser::calls_bound_name`] (T-2567).
+    /// too when declared bare, for [`Parser::calls_bound_name`] (T-2567).
     pub(super) fn bind_name(&mut self, token: &TokenType, text: &str, node: Node) -> Node {
         // A name that is also a defined name parsed as that defined name; it declares the
         // variable instead, and shadows the defined name up to the end of the scope. In any
@@ -395,10 +396,14 @@ impl Parser {
                 return Node::NamedVariableKind { name, id: None };
             }
         }
-        // Any other plain name is bound too: called in stored text, it is the variable, not a
-        // function of its name (`calls_bound_name`, T-2567).
+        // Any other plain name declared bare is bound too: called in unprefixed stored text, it
+        // is the variable, not a function of its name (`calls_bound_name`, T-2567). A name
+        // declared `_xlpm.Sum`, as Excel and the export write it, is not: there every call of
+        // the variable is `_xlpm.Sum(` too, and a bare `SUM(` is the function.
         if let (TokenType::Ident(_), Node::NamedVariableKind { name, .. }) = (token, &node) {
-            self.bound_names.push(name.clone());
+            if !text.trim_start().starts_with("_xlpm.") {
+                self.bound_names.push(name.clone());
+            }
             return node;
         }
         if !self.lexer.is_a1_mode() {
