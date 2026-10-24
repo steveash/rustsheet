@@ -3,7 +3,7 @@ id: T-2066
 title: "Probe QUARTILE of a single text cell with quart 7 and 1 (gen-m9 288b99797f58f149 A3)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -39,3 +39,6 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Outcome
+A single cell holding text is now empty data for PERCENTILE*/QUARTILE*/PERCENTRANK* (`#NUM!`, not `#VALUE!`); probe quartile-single-text-cell added with excel-graph values; gen-m9/288b99797f58f149 A3 passes.

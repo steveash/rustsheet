@@ -28,12 +28,16 @@ fn percentile_numbers(
         error @ CalcResult::Error { .. } => Err(error),
         // A typed boolean is a one-element array (`QUARTILE(TRUE,1)` is 1, probes-numeric/t1748-
         // typed-boolean-data A1-A8 for the whole family, probes/stat-order-floor-batch A102, A128),
-        // and typed text a number (A11). A single cell holding either is unprobed and keeps the
+        // and typed text a number (A11). A single cell holding a boolean is unprobed and keeps the
         // old reading below.
         CalcResult::Boolean(b) if typed_in_place => Ok(vec![f64::from(u8::from(b))]),
         text @ CalcResult::String(_) if typed_in_place => {
             model.cast_number_ref(&text, cell).map(|n| vec![n])
         }
+        // A single cell holding text is no number, like text inside a range: the data is empty
+        // and every function reports `#NUM!`, not `#VALUE!` (probes/quartile-single-text-cell
+        // B1-B11, T-2066).
+        CalcResult::String(_) => Ok(vec![]),
         value => model.numeric_flat_of(value, cell),
     }
 }
