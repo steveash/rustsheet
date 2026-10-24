@@ -353,6 +353,15 @@ impl Model {
                 [x, y, suffix] => (x, y, Some(suffix)),
                 _ => return CalcResult::new_args_number_error(cell),
             };
+            // Excel reads the suffix before the numbers, so a bad or error suffix wins over an
+            // error in real_num or i_num (T-2532; engineering.md, gen-m9 COMPLEX cells).
+            let suffix = match suffix.map(|suffix| Self::cast_string_ref(suffix, cell)) {
+                None => Suffix::I,
+                Some(Ok(s)) if s == "i" || s.is_empty() => Suffix::I,
+                Some(Ok(s)) if s == "j" => Suffix::J,
+                Some(Ok(_)) => return value_error(cell),
+                Some(Err(s)) => return s,
+            };
             // A boolean is `#VALUE!`: `COMPLEX(TRUE,1)` (probes/eng-imsum-improduct-whole C12).
             let x = match model.cast_number_no_bools_ref(x, cell) {
                 Ok(s) => s,
@@ -361,13 +370,6 @@ impl Model {
             let y = match model.cast_number_no_bools_ref(y, cell) {
                 Ok(s) => s,
                 Err(s) => return s,
-            };
-            let suffix = match suffix.map(|suffix| Self::cast_string_ref(suffix, cell)) {
-                None => Suffix::I,
-                Some(Ok(s)) if s == "i" || s.is_empty() => Suffix::I,
-                Some(Ok(s)) if s == "j" => Suffix::J,
-                Some(Ok(_)) => return value_error(cell),
-                Some(Err(s)) => return s,
             };
             complex_result(x, y, suffix)
         })

@@ -22,6 +22,18 @@ fn fn_complex() {
 }
 
 #[test]
+fn complex_suffix_error_wins_over_number_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=COMPLEX(1/0,1,"x")"#);
+    model._set("A2", "=COMPLEX(NA(),1,1/0)");
+    model._set("A3", r#"=COMPLEX(1/0,1,"j")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+}
+
+#[test]
 fn fn_imabs() {
     let mut model = new_empty_model();
     model._set("A1", r#"=IMABS("3+4i")"#);
