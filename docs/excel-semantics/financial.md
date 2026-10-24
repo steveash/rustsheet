@@ -1279,6 +1279,30 @@ Ours: matches since T-2482 (`bond_args` in financial_bonds.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2482
 
+## ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order
+Rule: the four odd-coupon functions read their arguments in order and check few of them as they read:
+1. The dates (settlement, maturity, then issue and first_coupon, or last_interest): an error or text is returned, and a
+   serial below 0 (-0.5 too) or past 2958465 (9999-12-31) is `#NUM!` as it is read
+   (`ODDFPRICE(2958466,NA(),..)`, `ODDLYIELD(43000,43200,-1,NA(),..)` are `#NUM!`, `ODDFPRICE(NA(),-1,..)` is `#N/A`). Serial
+   0, 0.5 and 2958465 pass this read (`ODDFPRICE(0.5,43831,39300,39630,NA(),..)` is `#N/A`).
+2. rate, yld or pr, redemption, then frequency: an error, text or boolean is returned; the frequency is `#NUM!` unless 1, 2
+   or 4 as it is read (`ODDLPRICE(..,100,3,NA())` is `#NUM!`).
+3. basis: an error, text or boolean is returned, then outside 0-4 `#NUM!`.
+4. Only then the date order and value checks, all `#NUM!`: a settlement not before the maturity, an issue not before the
+   first coupon, a coupon date not before the maturity, ODDLPRICE's and ODDLYIELD's settlement on or before `last_interest`
+   (`ODDLPRICE(42917,43200,42917,..)` is `#NUM!`, `ODDLPRICE(42918,43200,42917,0.0575,0.065,100,2,0)` = 99.44775142683748),
+   a negative rate, a negative yld (ODDFYIELD and ODDLYIELD: a price of 0 or less), a redemption of 0 or less. So
+   `ODDFPRICE(43832,43831,..,NA(),2,0)` is `#N/A` and `ODDLPRICE(43000,43200,42917,-0.05,..,TRUE)` `#VALUE!`.
+Unlike PRICE and YIELD, the basis is read last (step 3).
+Evidence: probes/odd-bond-argument-check-order (1091 cells: each out-of-domain argument against `NA()`, text and `TRUE` in
+every other position, the ODDL* settlement around `last_interest`, dates 0, 0.5 and 2958465; excel-graph, 2026-10-24,
+T-2483); probes/fin-odd-date-before-error-arg for the negative dates.
+Unprobed: a 1904 workbook, whose reading moves a date 2 * 1462 days on (`DateSystem::odd_period_1900_serial`): a 1904 serial
+that only the move takes past 9999-12-31 is `#NUM!` after the reads, as before T-2483.
+Ours: matches since T-2483 (`odd_args` and `odd_last_of` in financial_bonds.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2483
+
 ## ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule
 
 ODDFPRICE and ODDFYIELD are #NUM! unless the first coupon is one of the maturity's coupon dates (stepping back from
@@ -1758,7 +1782,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   negative rate is `#NUM!` before a later argument's error, text or boolean is looked at. `PRICE(36917,-0.5,HOUR(..)<#VALUE!>,..)`
   (81bcdc0bec0c8e6b A7), `ODDLYIELD(-0.0001,39378,-2.5," x ",92,106,0)` (67a4c03afd63f988 A341), `DURATION(2958466,46410,..,
   <#VALUE!>,4,0)` (b6a02893a8d6b151 A213) and `PRICEDISC(39668,-1,<text>%,106)` (abb7d565af89b849 A294) are `#NUM!`. For PRICE,
-  YIELD, DURATION and MDURATION the order is now probed ("PRICE, YIELD, DURATION and MDURATION check order", T-2482). AMORLINC and
+  YIELD, DURATION and MDURATION the order is now probed ("PRICE, YIELD, DURATION and MDURATION check order", T-2482), and for
+  the ODD* four ("ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order", T-2483). AMORLINC and
   AMORDEGRC give a boolean rate or salvage `#VALUE!` before a negative cost or a salvage above the cost
   (`AMORLINC(-439103,37926,39037,412,7,FALSE,..)` b73c6cc96e093f03 A360, `AMORDEGRC(27029,37050,39005,789,1E15-0.1,TRUE)`
   1b60bf99d71424e7 A298 are `#VALUE!`).
@@ -1767,7 +1792,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   `COUPDAYS(39123,2958466,1,0)` is `#NUM!` (a91bad4e84f49739 A153). `COUPDAYBS(37913,46720,4,4)` = 50 (7d2979fba2c95d64 A304) and
   `COUPDAYS(5E-05,2958465,2.5,1)` = 184 (b72d952c5f52cb4d A88).
 - ODDLPRICE with the settlement before `last_interest` is `#NUM!`: `ODDLPRICE(59,38163,33447,0,10,110,1,4)` (0a957119475760c5 A351),
-  `ODDLPRICE(36111,38608,36584,..)` (89f0aee953a55a45 A8).
+  `ODDLPRICE(36111,38608,36584,..)` (89f0aee953a55a45 A8); probed, with ODDLYIELD and a settlement on `last_interest`, in
+  "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order" (T-2483).
 - A settlement serial below 1 is valid for the T-bills: `TBILLPRICE(1e-15,1,100)` = 72.22222222222221 (0a957119475760c5 A309),
   `TBILLYIELD(0.3,1,98)` = 7.346938775510203 (e8d55ec393460bb7 A287); and AMORLINC's purchase date may be below 1:
   `AMORLINC(46557,0,39881,440,0,0.1)` = 46117 (1b60bf99d71424e7 A368).
