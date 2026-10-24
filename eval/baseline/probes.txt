@@ -308,7 +308,7 @@ C	probes/elapsed-positive-large-1900.case.json	17
 C	probes/elapsed-positive-large-1904.case.json	17
 C	probes/elapsed-tiny-negatives-1900.case.json	11
 C	probes/elapsed-tiny-negatives-1904.case.json	11
-C	probes/empty-array-args-sequence.case.json	114
+C	probes/empty-array-args-sequence.case.json	117
 C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
