@@ -1718,7 +1718,9 @@ excel-graph, 2026-10-24, T-2579; there D!A1:A6 = 1, blank, TRUE, "x", 5, =1/0 an
   blank's empty value, not 0 (`ISBLANK(IFERROR(D!A2:A2,1))` TRUE, `&"|"` "|": B87, B88; logic.md "IFERROR / IFNA of a blank
   cell").
 Evidence: probes/t2436 (excel-graph, 2026-10-24); probes/t2579-array-value-edges (excel-graph, 2026-10-24).
-Ours: COMBIN lifts (`fn_combin`, lift/kinds/general.rs) and `if_error_like` reads a range's blanks as 0 (`blanks_as_zero`)
+Ours: COMBIN lifts (`fn_combin`, lift/kinds/general.rs) and `if_error_like` reads a multi-cell range's blanks, and those
+of the range a direct TRIMRANGE keeps, as 0 (`blanks_as_zero`); wrapped forms (LET, IF, TAKE, DROP, a lifted TRIMRANGE)
+and IFNA through TRIMRANGE are unprobed (T-2597)
 since T-2579; wide arrays T-2595, the REDUCE/TRIMRANGE reference T-2596.
 Status: VERIFIED (excel-graph)
 Tasks: T-2579, T-2595, T-2596
