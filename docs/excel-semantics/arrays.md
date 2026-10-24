@@ -1625,9 +1625,9 @@ LN(ROUND(..)))` is `#VALUE!` (7d67c559ce7536fa A1296). `SEQUENCE(0)` alone stays
 an array (WRAPROWS pads with a blank) of about 1E+15, past the grid, which is `#VALUE!` as `SEQUENCE(1048577)` is, and that also
 beats the zero columns; the reading fits the cell but is not isolated by a probe.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-A zero rows beats an invalid columns: `SEQUENCE(0,<negative>)` is `#CALC!` (c36ff5f42a1a4d47 A359). So SEQUENCE reads all four
-arguments, an error value in any of them winning, and only then checks rows (negative or past the grid `#VALUE!`, 0 `#CALC!`), then
-columns.
+A zero rows does not beat an invalid columns: `SEQUENCE(0,-1)` is `#VALUE!` (probes/t2580-sequence-zero-extent A19, T-2580); c36ff5f42a1a4d47
+A359's `#CALC!` is a tiny negative columns that counts as 0 ("An empty array as a function argument"). So SEQUENCE reads all four
+arguments, an error value in any of them winning, and only then checks the extents (negative or past the limit `#VALUE!` in either, then 0 `#CALC!`).
 Ours: `sequence_kernel` in that order; TAKE reads both counts before a zero one is `#CALC!` (`edge_spans`; T-2316).
 Unprobed: whether an error start beats a negative extent (ours: it does, by the reading above).
 Status: VERIFIED (excel-graph)
