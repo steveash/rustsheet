@@ -3,7 +3,7 @@ id: T-2564
 title: "Probe the automatic @ on a one-sheet span range in a legacy-import workbook"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
