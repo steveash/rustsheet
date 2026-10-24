@@ -410,6 +410,7 @@ C	probes/fraction-format-features.case.json	128
 C	probes/fraction-numerator-overflow.case.json	76
 C	probes/fraction-numerator-overflow2.case.json	69
 C	probes/fraction-placeholder-past-2-30.case.json	75
+C	probes/frequency-bins.case.json	38
 C	probes/ftest-decomposition.case.json	91
 C	probes/gamma-x87-edges.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
@@ -2689,8 +2690,6 @@ F	probes/t2436/a612e89321a6df9c.case.json	Calc!A121
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A136
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A151
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A166
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!A46
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!A61
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A76
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A91
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!T106
@@ -2698,15 +2697,11 @@ F	probes/t2436/a612e89321a6df9c.case.json	Calc!T121
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!T136
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!T151
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!T166
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!T46
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!T61
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U106
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U121
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U136
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U151
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U166
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!U46
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!U61
 F	probes/t2436/a790a4d4a6a82756.case.json	Calc!A1
 F	probes/t2436/a790a4d4a6a82756.case.json	Calc!A31
 F	probes/t2436/a790a4d4a6a82756.case.json	Calc!A46
