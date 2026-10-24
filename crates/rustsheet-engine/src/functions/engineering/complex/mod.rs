@@ -606,8 +606,10 @@ impl Model {
         for arg in args {
             let read = self.evaluate_picked_reference_arg(arg, cell);
             // An empty array's `#CALC!` is `#VALUE!` (probes/empty-array-args-sequence A5:A7).
-            if matches!(&read, RefArg::Value(value) if value.is_empty_array()) {
-                return value_error(cell);
+            if let RefArg::Value(value) = &read {
+                if value.is_empty_array() {
+                    return value.clone().empty_array_as_value_error(cell);
+                }
             }
             // The cells of the range (blank cells included), and the cells its walk visits.
             let (cells, walked) = match &read {

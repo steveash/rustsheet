@@ -7,6 +7,9 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+/// What Excel adds to a SEQUENCE extent before flooring it: 2^-23, the single-precision epsilon.
+const EXTENT_EPSILON: f64 = f32::EPSILON as f64;
+
 impl Model {
     /// `=SEQUENCE(rows, [cols], [start], [step])`
     ///
@@ -26,11 +29,10 @@ impl Model {
     /// One SEQUENCE call over argument values. A missing or empty argument takes its default.
     fn sequence_kernel(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         // Every argument is read first, so an error value in any of them beats an invalid extent
-        // (`SEQUENCE(0,1,<#NUM!>,..)` is `#NUM!`, gen-m7 36809e9faa59553f A334); then rows is
-        // checked, then columns: negative or past the grid `#VALUE!`, 0 `#CALC!` (probes/
-        // m7-argument-modes F53), so `SEQUENCE(0,<negative>)` is `#CALC!` (c36ff5f42a1a4d47 A359)
-        // and a rows of 1E+15 beats a zero columns (611ce3bbfab27cef A1065); arrays.md "SEQUENCE
-        // and TAKE: an argument error before zero rows"; T-2316.
+        // (`SEQUENCE(0,1,<#NUM!>,..)` is `#NUM!`, gen-m7 36809e9faa59553f A334); then each extent
+        // is checked, an invalid one (negative or past 1048576) `#VALUE!` and beating a zero one,
+        // and only then a zero rows or columns is `#CALC!` (probes/empty-array-args-sequence;
+        // arrays.md "SEQUENCE and TAKE: an argument error before zero rows"; T-2316, T-2580).
         let number = |value: Option<&CalcResult>| match value {
             None | Some(CalcResult::EmptyArg) => Ok(1.0),
             Some(value) => self.cast_number_ref(value, cell),
@@ -52,7 +54,7 @@ impl Model {
             // `0.99999999` are 0 and 1, `-1.2E-7` and `0.999999` -1 and 0 (probes/
             // empty-array-args-sequence A120:A134; `SEQUENCE(0,-1E-8)` is `#CALC!`, gen-m7
             // c36ff5f42a1a4d47 A359).
-            let n = (n + f64::from(f32::EPSILON)).floor() as i64;
+            let n = (n + EXTENT_EPSILON).floor() as i64;
             match usize::try_from(n) {
                 Ok(n) if n <= LAST_ROW as usize => Ok(n),
                 _ => Err(CalcResult::new_error(
