@@ -43,7 +43,20 @@ Cells:
 - gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A43
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A41, A283
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `NPV(-1,{-100,10,20,30,40},<blank>)` and `NPV(-1,Data!E10:E11,..)` are `#DIV/0!` (ours `#NUM!`), and `NPV(1E+300,{0,0,-100,50,60})` is `#DIV/0!` too (ours 0).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 3 known-failure lines in eval/baseline/gen-m9.txt, 3 formulas.
+Examples:
+- gen-m9/60b0b6e69ad35a45 Calc!A69 `=BETADIST(100,(NPV((-1),{-100,10,20,30,40},Data!C1)+MEDIAN(Data!E4:E5,(-1))),0.999)`: Excel #DIV/0!, ours #NUM!; inner `NPV((-1),{-100,10,20,30,40},Data!C1)` Excel #DIV/0!, ours #NUM!
+- gen-m9/f2bd5f380ec002bf Calc!A398 `=HYPGEOM.DIST(3,3,(NPV((-1),Data!E10:E11,Data!A7:A8,Data!A$9)^(Data!B7*Data!C8)),19,(LOOKUP(Data!A12,Data!B2:B2)<LOGNORM.DIST(Data!B9,Data!C12,Data!A12,"x")))`: Excel #DIV/0!, ours #NUM!; inner `NPV((-1),Data!E10:E11,Data!A7:A8,Data!A$9)` Excel #DIV/0!, ours #NUM!
+- gen-m9/c468f5046aadfbbc Calc!A378 `=GAMMAINV(Data!D$9%,GAMMALN(ROWS(Data!B10:E12)),NPV(1E+300,{0,0,-100,50,60})%)`: Excel #DIV/0!, ours #NUM!; inner `NPV(1E+300,{0,0,-100,50,60})` Excel #DIV/0!, ours 0.0
+Cells:
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A69
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A398
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A378
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 14 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for NPER at 1E-300 and -1, and NPV at -1.

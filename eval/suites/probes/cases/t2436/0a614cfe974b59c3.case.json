@@ -1,0 +1,81 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2436: sub-expressions of the untraced gen-m9 cells of gen-m9/0a614cfe974b59c3 (A356), on that case's Data sheet; one sub-expression per row block (column A, with its ROWS in T and COLUMNS in U).",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=(3.14159>Data!D11)",
+        "T1": "=ROWS((3.14159>Data!D11))",
+        "U1": "=COLUMNS((3.14159>Data!D11))",
+        "A16": "=IF(Data!C9,(3.14159>Data!D11))",
+        "T16": "=ROWS(IF(Data!C9,(3.14159>Data!D11)))",
+        "U16": "=COLUMNS(IF(Data!C9,(3.14159>Data!D11)))",
+        "A31": "=COVARIANCE.P({1E+15,1,-1E+15},IF(Data!C9,(3.14159>Data!D11)))",
+        "T31": "=ROWS(COVARIANCE.P({1E+15,1,-1E+15},IF(Data!C9,(3.14159>Data!D11))))",
+        "U31": "=COLUMNS(COVARIANCE.P({1E+15,1,-1E+15},IF(Data!C9,(3.14159>Data!D11))))"
+      }
+    },
+    {
+      "cells": {
+        "A1": 0.3,
+        "A12": "ü",
+        "A2": 1e-15,
+        "A3": -0.0001,
+        "A4": "a*",
+        "A5": 0.2,
+        "A6": "a*",
+        "A7": 100,
+        "A8": 3.14159,
+        "A9": false,
+        "B1": -0.5,
+        "B10": 0.3,
+        "B11": "Hello World",
+        "B12": "Hello World",
+        "B2": 123456789.123,
+        "B5": 0.3,
+        "B6": false,
+        "B7": 0.1,
+        "B9": -1,
+        "C1": " x ",
+        "C10": -0.5,
+        "C11": -0.5,
+        "C12": true,
+        "C2": true,
+        "C3": -0.0001,
+        "C5": 1e-15,
+        "C6": 2,
+        "C7": 1000000000000000.0,
+        "C8": false,
+        "C9": 0.1,
+        "D1": 0.2,
+        "D10": 1.005,
+        "D11": 1,
+        "D2": -2.5,
+        "D3": "Hello World",
+        "D4": 42,
+        "D6": "x~*",
+        "D7": 3.14159,
+        "D9": 123456789.123,
+        "E1": 1e-15,
+        "E10": "x~*",
+        "E11": true,
+        "E12": "abc",
+        "E2": 100,
+        "E3": 1,
+        "E4": 123456789.123,
+        "E5": 1e-15,
+        "E6": false,
+        "E7": false,
+        "E8": true,
+        "E9": true
+      },
+      "name": "Data"
+    }
+  ],
+  "expected": {}
+}

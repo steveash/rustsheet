@@ -72,7 +72,16 @@ Cells:
 - gen-m9/62c886e21a1042af.case.json (1): Calc!A88
 - gen-m9/7dc52cfcbc8b4448.case.json (1): Calc!A133
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `ODDFPRICE(2958466,46506,33984,39398,-1,CONVERT(42,"F","yd")<#N/A>,104,4,2)` is `#NUM!`, a range check before the yld's error (ours `#N/A`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/623663cacea53bbc Calc!A256 `=AVERAGEA(Data!E10:E11,FIXED(COUNTA(Data!A$2),3,(Data!D$3>(-0.5))),ODDFPRICE(2958466,46506,33984,39398,Data!C6,CONVERT(42,"F","yd"),104,4,2))`: Excel #NUM!, ours #N/A; inner `ODDFPRICE(2958466,46506,33984,39398,Data!C6,CONVERT(42,"F","yd"),104,4,2)` Excel #NUM!, ours #N/A
+Cells:
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A256
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 68 known-failure lines disappear from eval/baseline/gen-m9.txt

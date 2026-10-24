@@ -342,9 +342,9 @@ fn a_call_of_a_call_is_chained() {
 
 #[test]
 fn a_call_of_a_reference_function_result_is_chained() {
-    // probes/chained-calls-builtin-* and chained-calls-ref-4, -6 (excel-graph, T-2405): the result
-    // of a built-in that can return a reference (or a LAMBDA) may be called; Excel refuses the
-    // others (`SUM(1)(2)`, `ABS(1)(2)`, `IFERROR`, `IFNA`), which stay syntax errors.
+    // probes/chained-calls-builtin-* and chained-calls-ref-4, -6 (excel-graph, T-2405, T-2499):
+    // the result of a built-in that can return a reference (or a LAMBDA) may be called; Excel
+    // refuses the others (`SUM(1)(2)`, `ABS(1)(2)`, `IFERROR`, `IFNA`), which stay syntax errors.
     let mut model = new_empty_model();
     for (cell, value) in [("A1", "1"), ("A2", "2"), ("A3", "3")] {
         model._set(cell, value);
@@ -359,6 +359,11 @@ fn a_call_of_a_reference_function_result_is_chained() {
         ("=OFFSET(A1,0,0)(2)", "#REF!"),
         ("=INDIRECT(\"A1\")(2)", "#REF!"),
         ("=CHOOSE(1,A1:A3)(2)", "#REF!"),
+        // A called TAKE, DROP, TRIMRANGE or XLOOKUP over a range is the range it picks (T-2499).
+        ("=TAKE(A1:A3,1)(2)", "#REF!"),
+        ("=DROP(A1:A3,1)(2)", "#REF!"),
+        ("=TRIMRANGE(A1:A3)(2)", "#REF!"),
+        ("=XLOOKUP(1,A1:A3,A1:A3)(2)", "#REF!"),
         ("=INDEX({1,2},1)(2)", "#NAME?"),
         ("=SUM(1)(2)", "#ERROR!"),
         ("=ABS(1)(2)", "#ERROR!"),
