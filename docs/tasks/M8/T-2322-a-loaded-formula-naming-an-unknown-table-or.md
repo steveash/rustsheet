@@ -3,7 +3,7 @@ id: T-2322
 title: "A loaded formula naming an unknown table or column is #REF! and prints #REF! (T-2197)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
