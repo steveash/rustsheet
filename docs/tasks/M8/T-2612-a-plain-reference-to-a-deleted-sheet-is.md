@@ -26,7 +26,9 @@ the other sheets' formulas reviving; a fix rewrites them on delete (as T-2340 do
 references, `Model::rewrite_table_references`) and records them for the undo (`TakenSheet`,
 `Diff::DeleteSheet`). Probe first: does Excel revive nothing when a same-name sheet is added after a delete
 (excel-graph `worksheets/add` after `DELETE worksheets`)? Also unprobed: a reference to a sheet that never
-existed (a loaded `Nope!A1`), which the engine now displays as `#REF!A1`.
+existed (a loaded `Nope!A1`), which the engine now displays as `#REF!A1`; and whether Excel accepts
+`#REF!C4:C7` typed in (the lexer reads a cell-shaped tail after `#REF!` as part of it, so `#REF!LOG10(1)` lexes
+as `#REF!` then `(1)`).
 
 ## Acceptance criteria
 - [ ] A probe (excel-graph) of delete sheet S, then add sheet S: the plain `S!C4:C7` value and FORMULATEXT.
