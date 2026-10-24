@@ -1048,6 +1048,7 @@ C	probes/t2364-regex-dollar-final-cr.case.json	5
 C	probes/t2365-wrap-expand-tocol-error-lift.case.json	13
 C	probes/t2413-blank-in-stacked-arrays.case.json	45
 C	probes/t2414-gen-m7-unexplained.case.json	70
+C	probes/t2428-ztest-error-data.case.json	16
 C	probes/t2436/05d44f6dd6cfc567.case.json	27
 C	probes/t2436/06b4e8f5de409d5e.case.json	30
 C	probes/t2436/0a614cfe974b59c3.case.json	9
@@ -2862,18 +2863,12 @@ F	probes/t2436/8d3588d8df0812df.case.json	Calc!A61
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!A181
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!A226
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!A241
-F	probes/t2436/8dd2312c96effb1b.case.json	Calc!A256
-F	probes/t2436/8dd2312c96effb1b.case.json	Calc!A316
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!T181
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!T226
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!T241
-F	probes/t2436/8dd2312c96effb1b.case.json	Calc!T256
-F	probes/t2436/8dd2312c96effb1b.case.json	Calc!T316
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!U181
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!U226
 F	probes/t2436/8dd2312c96effb1b.case.json	Calc!U241
-F	probes/t2436/8dd2312c96effb1b.case.json	Calc!U256
-F	probes/t2436/8dd2312c96effb1b.case.json	Calc!U316
 F	probes/t2436/984cba67bbe6972b.case.json	Calc!A106
 F	probes/t2436/984cba67bbe6972b.case.json	Calc!A121
 F	probes/t2436/984cba67bbe6972b.case.json	Calc!T106

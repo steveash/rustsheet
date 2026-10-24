@@ -3,7 +3,7 @@ id: T-2428
 title: "XIRR and XNPV size and type checks, and financial domain-before-text order, under the gen-m9 statistical cells (93 cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -206,17 +206,15 @@ Cells:
 - gen-m9/ecc87f80077959e0.case.json (1): Calc!A234
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2258): these 10 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): the 246 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
-      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 122 known-failure lines (83 from T-2255, 39 from T-2256) disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for the XIRR/XNPV shapes above (different counts, one value, an error guess, a boolean dates cell).
-- [ ] financial.md's entry gets an "Ours:" line naming this task; each of the 32 other cells is fixed or listed in the
-      Outcome with its probe result.
+Split on 2026-10-24 (task larger than its size): the cells still open after the XIRR, XNPV, FVSCHEDULE and Z.TEST orders
+below moved to T-2611 with their list; each criterion counts the cells this task keeps.
+- [x] Visible parity (gen-m9, T-2436): 1 of these 2 known-failure lines disappears; ecc87f80077959e0 A234 (ACCRINT) moved to T-2611.
+- [x] Visible parity (gen-m9, T-2258): 9 of these 10 disappear; f61a73cd9af21e6d A275 (PV's `#DIV/0!`) moved to T-2611.
+- [x] Visible parity (gen-m9, T-2257): 201 of the 246 disappear; 45 moved to T-2611.
+- [x] Visible parity (gen-m9, T-2255 and T-2256): 83 of the 122 disappear (52 of 83, 31 of 39); 39 moved to T-2611.
+      No new known-failure lines in any baseline.
+- [x] Unit tests for the XIRR/XNPV shapes above (different counts, one value, a boolean dates cell; the error guess is T-2611's).
+- [x] financial.md's entry gets an "Ours:" line naming this task; the 32 other cells are listed in T-2611.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -245,3 +243,14 @@ scan); architecture APPROVE. The narrowed rule fixes 31 more gen-m9 cells but re
 baseline: gen-m9/1dce4774f5c0e736 A91, 89f0aee953a55a45 A36, ba4ddb817a8e700e A339, c7664e494e418395 A204 (the last is
 masked by LCM's `#VALUE!` inside ZTEST, per the fidelity review). Next: trace those 4 (`rustsheet-eval show`), fix,
 `make eval-baseline`, add the unit tests, re-run all four reviewers.
+
+## Outcome
+2026-10-24 (opus): XIRR checks the sizes before it reads a number (`xirr_size_error`); XNPV refuses a boolean rate, then a
+non-numeric text or boolean one-cell values argument, an error dates argument, a text or boolean one-cell dates argument and
+different counts, in that order (`xnpv_size_error`); FVSCHEDULE reads one empty schedule cell as an empty schedule; Z.TEST
+returns an error data value before x and sigma, per element (probes/t2428-ztest-error-data, new, 16 cells, excel-graph;
+it fixed the one regression the XIRR change caused, gen-m9/c7664e494e418395 A204). Eval: gen-m9 known failures
+6723 -> 6423 (-300), probes 2742 -> 2736 (-6), 0 regressions. 294 of the 380 owned cells pass; the other 86 moved to
+T-2611 (XIRR's error guess, the other financial functions' domain-before-text orders, a few decided by an enclosing call).
+docs: financial.md "XIRR and XNPV under the gen-m9 statistical cells" (XNPV order), "FVSCHEDULE with one empty schedule cell
+is the principal"; statistics.md "Z.TEST: an error array first ...".
