@@ -697,3 +697,9 @@ Excel cell of eval/suites/gen-m9 with its case id in the owning task. The engine
 COS(ATAN2(-1,0)/2), ln|z|/0.693147180559945) were evaluated in RustSheet's own worksheet functions, which match Excel.
 Status: VERIFIED (excel-graph) for the observed values. The mechanisms (IM trig of a real as SIN/COS/TAN, exp-based sinh/cosh, IMSQRT through COS and ATAN2) are fitted against RustSheet's own kernels and reproduce every cited cell; T-2534, T-2535 and T-2536 re-confirm them on the cells. The IMLOG2 and IMCSC formulations are UNVERIFIED candidates.
 Tasks: T-2258, T-2532 to T-2551, T-2420, T-2421, T-2335, T-2389, T-2044, T-2117, T-1966
+
+## Leading plus in IM*, 11-digit OCT/HEX text and booleans in OCT2*/HEX2* (T-2420)
+Rule: IM* read one leading `+` like a leading `-`: `IMABS("+i")` 1, `IMABS("+3+4i")` 5, `IMABS("+4i")` 4, `IMSUB("+i","1")` "-1+i", `IMDIV("2i","+i")` "2"; a second sign (`"++i"`, `"+-i"`, `"-+i"`, `"1++i"`) is `#NUM!` (probes/eng-leading-plus-oct-bool A1:A26).
+Rule: a boolean is `#VALUE!` in every OCT2* and HEX2* argument, typed, from a cell, from `IF`/`INDEX`, in an array literal or a MAP result, with or without places; the same as BIN2DEC (A35:A62). A boolean inside arithmetic is a number (`OCT2DEC(7+B1:B2)` is `#NUM!`, A62).
+Rule: OCT2DEC, OCT2BIN and OCT2HEX of 11 digits, number or text, are `#NUM!` (`OCT2DEC(7777777777)` is -1; A27:A33).
+Rule: ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD read the date arguments first and a negative date (-0.5 too) is `#NUM!` at once, ahead of an error in a later argument (`ODDFPRICE(39000,-1,..,NA(),..)` is `#NUM!`); a date of 0 is not, and an out-of-order date pair still lets the later error win (`#N/A`) (probes/fin-odd-date-before-error-arg).
