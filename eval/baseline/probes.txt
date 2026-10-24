@@ -666,6 +666,7 @@ C	probes/math-atp-array-lift.case.json	44
 C	probes/matrix-boolean-elements.case.json	14
 C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
+C	probes/minverse-overflow-computed-pivot.case.json	36
 C	probes/minverse-singular-near-singular.case.json	46
 C	probes/mod-array-lift.case.json	25
 C	probes/mod-huge-quotient.case.json	83
