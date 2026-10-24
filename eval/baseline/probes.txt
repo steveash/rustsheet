@@ -1523,13 +1523,6 @@ F	probes/eng-imln-modulus-range.case.json	S!A52
 F	probes/eng-imln-modulus-range.case.json	S!A53
 F	probes/eng-imln-modulus-range.case.json	S!A54
 F	probes/eng-imln-modulus-range.case.json	S!A56
-F	probes/eng-imln-modulus-range.case.json	S!A57
-F	probes/eng-imln-modulus-range.case.json	S!A58
-F	probes/eng-imln-modulus-range.case.json	S!A59
-F	probes/eng-imln-modulus-range.case.json	S!A60
-F	probes/eng-imln-modulus-range.case.json	S!A63
-F	probes/eng-imln-modulus-range.case.json	S!A65
-F	probes/eng-imln-modulus-range.case.json	S!A66
 F	probes/eng-imln-modulus-range.case.json	S!A79
 F	probes/eng-imln-modulus-range.case.json	S!A80
 F	probes/fin-amor-period-bound-b.case.json	Sheet1!B2
