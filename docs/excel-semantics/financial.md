@@ -1360,6 +1360,29 @@ Status: VERIFIED (excel-graph)
 Implemented (T-1975): `vdb_no_switch_between` and `vdb_switching_between` in functions/financial/financial_depreciation.rs.
 Tasks: T-1975, T-2185
 
+## DB and DDB operation order
+Rule: DB and DDB compute each period's charge in a fixed operation order, and the last bits depend on it.
+- DB: `rate = ROUND(1 - (salvage/cost)^(1/life), 3)`; the first period is `cost * rate * (month/12)` (month over 12
+  first, not `cost*rate*month/12`). Later periods keep the remaining *balance* (`balance = cost - first`, then
+  `balance -= balance*rate` per period), not the accumulated depreciation; a middle period charges `balance*rate` and
+  the last one (period = TRUNC(life)+1) `balance * (rate*(12-month)/12)` (rate times the months first).
+  `DB(100,10,4,1,2)` is 7.299999999999999 (not 7.3), `DB(23,10,4,5,2)` is 1.8687313963962309 and
+  `DB(10000,1000,6,2,7)` is 2596.3941666666665. `month` is truncated before use and cost 0 returns 0.
+- DDB: `rate = factor/life` (1 once it reaches 1), the book value `old = cost*(1-rate)^(period-1)` raised with the
+  operator `^` (square-and-multiply for a whole period, numbers.md "Integer exponents"), not libm `pow`
+  (`DDB(9695,282,20,8,1)` is 338.5190042814453, `pow` gives ...452; gen-m9 6376e27be7a05871 Calc!A141); a fractional
+  period takes `^`'s non-integer path too (`DDB(1E+300,872,39,1.005,1)` is 2.563769566671006E+298, gen-m9
+  79d87fc527927626 Calc!A98), and the charge
+  `MIN(old*rate, old - salvage)`, floored at 0, rather than the difference of two book values
+  `old - cost*(1-rate)^period`: `DDB(10000,1000,6,2,2)` is 2222.222222222222 (not ...2217),
+  `DDB(100,10,4,3,1.3334)` is 14.814814787037497 and `DDB(5832,692,25,1)` is 466.56 (not 466.5599999999995).
+Evidence: ironcalc-calc FINANCIAL/DB_DDB.xlsx Sheet1 (Excel-cached; every numeric DB and DDB cell, incl. G4, G5, G7,
+G10, G20, G31, G35-G37, G39, G42, H10), probes/fin-argument-modes H88, H95 and the gen-m9 financial sweep
+(excel-graph, T-2257 triage, 2026-10-23).
+Status: VERIFIED (excel-graph)
+Implemented (T-2033): `db_depreciation` and `ddb_depreciation` in functions/financial/financial_depreciation.rs.
+Tasks: T-2033
+
 ## DURATION and RRI operation order
 Rule: DURATION discounts each cash flow with Excel's `^` (not libm `pow`) and weights it as `(t·cf)/v^t`, then
 `num/den/frequency`; MDURATION is exactly the worksheet `DURATION(...)/(1+yld/frequency)`. A zero-coupon
@@ -1426,6 +1449,19 @@ Status: VERIFIED (excel-graph)
 Implemented in: `fn_npv`, `fn_fvschedule` in functions/financial/mod.rs (T-1373)
 Tasks: T-1084, T-1373
 
+## IRR over an error element
+Rule: IRR (probes/fin-irr-error-array, T-2390, excel-graph) gives `#VALUE!`, whatever the kind, when its values hold an
+error: in an array constant (`IRR({-100,#N/A,60})`, also `#DIV/0!`, `#NUM!`, `#VALUE!`, `#REF!`, `#NAME?`, first, middle or last,
+and two errors), in a range (`IRR(A1:A3)` with `#N/A` or `#DIV/0!` in A2), in a single cell holding an error (`IRR(A2)`) and
+in an array computed from one (`IRR(A1:A3+1)`), with or without a guess. An error that is itself the argument passes through
+(`IRR(NA())` is `#N/A`, `IRR(1/0)` `#DIV/0!`), as does an error guess (`IRR(E1:E3,A2)` is `#N/A`). Text and TRUE in an array
+or range are skipped (-0.40000000000000013 for `{-100,"a",60}`, `{-100,TRUE,60}`, and cells C1:C3, D1:D3).
+The rest of the family is not like IRR: MIRR, NPV, XIRR and XNPV return the element's own error (`#N/A`) for an array
+constant or a range, and for an error in XIRR's/XNPV's dates.
+Ours: matches every probed cell (after T-2390).
+Status: VERIFIED
+Tasks: T-2390
+
 ## Financial edge-pool smoke check (T-2248)
 Rule: observed values at the edges of the M9 financial generator pools (tools/src/rustsheet_tools/gen/pools.py), one
 formula per pool entry:
@@ -1439,7 +1475,7 @@ formula per pool entry:
   1E+6, 1E+9 and 1E+300 give -50 (`-pv*rate`). IPMT per 0, 0.5, -1 and past nper (13 of 12) is `#NUM!`; per 1.5 computes.
 - IRR: no sign change, a single flow and all zeros are `#NUM!`; text and TRUE inside an array literal are skipped
   (`IRR({-100,"a",60})` = `IRR({-100,TRUE,60})` = -0.40000000000000013), and an error element makes it `#VALUE!`
-  (`IRR({-100,#N/A,60})`; ours `#N/A`, T-2390).
+  (`IRR({-100,#N/A,60})`; see "IRR over an error element").
 - XNPV: dates whose first is not the earliest, dates from serial 0 to 61, and fewer dates than values are `#NUM!`; equal
   dates give 0; fractional dates truncate.
 - YIELD: a price of 0 or -1 is `#NUM!`, and so are 1E+6 and 1E+300 (ours -0.6330938491144911 at 1E+6, T-2391); a price of
@@ -1449,7 +1485,7 @@ annuity_type, security_date, basis, frequency, npery, cash_flows and cash_dates)
 2026-10-22 and deleted afterwards, as the task asked; T-2390, T-2391 and T-2392 commit probes for the three mismatches.
 Ours: 127 of 169 cells match; the rest are the known PMT/IPMT last-digit misses ("PMT, IPMT and PPMT are the exact
 payment"), YIELD's ("YIELD stops short of PRICE's root"), two IRR last-digit misses and the three cells above.
-Status: UNVERIFIED (probe pending: T-2390, T-2391, T-2392 commit the probe cases)
+Status: UNVERIFIED (probe pending: T-2391, T-2392 commit the probe cases)
 Tasks: T-2248, T-2390, T-2391, T-2392
 
 ## XIRR and XNPV under the gen-m9 statistical cells: size and type checks (T-2255)
@@ -1521,3 +1557,28 @@ Ours: see each task; the triage (T-2257 Outcome) lists every family.
 Status: VERIFIED (excel-graph; the argument-order rules inferred through nested calls)
 Tasks: T-2482, T-2483, T-2484, T-2485, T-2486, T-2487, T-2488, T-2489, T-2490, T-2491, T-2492, T-2493, T-2494, T-2495, T-2496,
 T-2428, T-2241, T-2391
+
+## The discount securities read basis first (T-2455)
+Rule: DISC and RECEIVED read the basis before their other arguments, so an invalid basis or a basis error beats an earlier
+argument's error, a settlement error too (`DISC(1/0,2.5,1,100,"abc")` is `#VALUE!`, A91): `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and `DISC(37025,2.5,1/0,100,"abc")` are `#VALUE!`, and
+`RECEIVED(37025,2.5,1E+300,NA(),1/0)` is `#DIV/0!` (probes/t2455-transpose-single-value A21, A64, A65, excel-graph,
+2026-10-23); gen-m9 ba4ddb817a8e700e A345 has the same shape.
+INTRATE, PRICEDISC and YIELDDISC are the same (`..(37025,2.5,1/0,100,"abc")` is `#VALUE!`, A80:A82).
+Ours: since T-2455 (`discount_args`, shared by the five).
+Status: VERIFIED (excel-graph)
+Tasks: T-2455
+
+## Booleans in ACCRINT, ACCRINTM, AMORLINC and AMORDEGRC (T-2455)
+Rule: a boolean is `#VALUE!`, typed or from a cell, in ACCRINTM's par (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, A41, A54; text "2"
+is 2, A55), ACCRINT's issue, also before first_interest's error (`ACCRINT(TRUE,39500,..)`, `ACCRINT(TRUE,SQRT(-1),..)`, A52,
+A53), ACCRINT's rate (`ACCRINT(39000,39500,0.1,TRUE,40000,2,0)`, A56, before the settlement's `#NUM!`) and AMORDEGRC's rate
+(`AMORDEGRC(90812,36624,38707,453,3,TRUE,4)`, A51, A57): probes/t2455-transpose-single-value, excel-graph, 2026-10-23. gen-m9
+165db58d1540f014 A141, 0a614cfe974b59c3 A265 and 7c20351562a2d71d A212 show it through F.TEST. A purchase or first_period
+date past the calendar is `#NUM!` before AMORDEGRC's boolean rate (`AMORDEGRC(70537,36888,7E13%,46,12,<TRUE>,0)`, gen-m9
+e8d55ec393460bb7 A374), while a date of 0 or below waits for the value checks (`AMORDEGRC(-1,<blank>,38872,265,0,<#VALUE!>,0)`
+is `#VALUE!`, 1dce4774f5c0e736 A199).
+Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which also
+refuses a boolean salvage per "Argument order of the Analysis ToolPak securities functions"). ACCRINT's other dates and numbers
+still take booleans (unprobed).
+Status: VERIFIED (excel-graph)
+Tasks: T-2455

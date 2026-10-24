@@ -371,6 +371,7 @@ C	probes/fin-cumipmt-overflow-and-forms.case.json	25
 C	probes/fin-cumipmt-period-bound.case.json	30
 C	probes/fin-fvschedule-bool-ref.case.json	6
 C	probes/fin-fvschedule.case.json	20
+C	probes/fin-irr-error-array.case.json	38
 C	probes/fin-ispmt-order.case.json	24
 C	probes/fin-later-argument-ranges.case.json	115
 C	probes/fin-mduration-rri-fit.case.json	60
@@ -615,6 +616,7 @@ C	probes/m7-lift-take-drop-sortby.case.json	934
 C	probes/m7-one-cell-operand-lift.case.json	18
 C	probes/m7-unique-lift-corners.case.json	686
 C	probes/m7-unique-lift-elements.case.json	350
+C	probes/m9-bessel-order-limits.case.json	341
 C	probes/map-scan-range-result.case.json	39
 C	probes/map-unequal-sizes.case.json	36
 C	probes/match-descending-argcheck.case.json	20
@@ -1017,6 +1019,7 @@ C	probes/t2364-regex-dollar-final-cr.case.json	5
 C	probes/t2365-wrap-expand-tocol-error-lift.case.json	13
 C	probes/t2413-blank-in-stacked-arrays.case.json	45
 C	probes/t2414-gen-m7-unexplained.case.json	70
+C	probes/t2455-transpose-single-value.case.json	95
 C	probes/table-edits/table-convert-to-range.case.json	0
 C	probes/table-edits/table-delete-column-before.case.json	12
 C	probes/table-edits/table-delete-column-qty.case.json	12
@@ -1493,8 +1496,6 @@ F	probes/fin-argument-modes.case.json	Sheet1!H374
 F	probes/fin-argument-modes.case.json	Sheet1!H375
 F	probes/fin-argument-modes.case.json	Sheet1!H72
 F	probes/fin-argument-modes.case.json	Sheet1!H80
-F	probes/fin-argument-modes.case.json	Sheet1!H88
-F	probes/fin-argument-modes.case.json	Sheet1!H95
 F	probes/fin-bond-negative-basis.case.json	Sheet1!E1
 F	probes/fin-bond-negative-basis.case.json	Sheet1!E17
 F	probes/fin-bond-negative-basis.case.json	Sheet1!G1
@@ -2679,10 +2680,12 @@ F	probes/t2414-gen-m7-unexplained.case.json	Calc!A141
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!A151
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!A162
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!A171
-F	probes/t2414-gen-m7-unexplained.case.json	Calc!A291
-F	probes/t2414-gen-m7-unexplained.case.json	Calc!A301
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!B161
 F	probes/t2414-gen-m7-unexplained.case.json	Calc!B162
+F	probes/t2455-transpose-single-value.case.json	Calc!A26
+F	probes/t2455-transpose-single-value.case.json	Calc!A7
+F	probes/t2455-transpose-single-value.case.json	Calc!B26
+F	probes/t2455-transpose-single-value.case.json	Calc!B7
 F	probes/table-edits/table-convert-to-range.case.json	!EngineError
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
