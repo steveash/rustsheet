@@ -368,8 +368,8 @@ impl Parser {
         self.lexer.is_a1_mode() && !self.typed && self.binds_name(name)
     }
 
-    /// [`Parser::binds_name`] for a name the A1 grammar would otherwise read as a cell or a
-    /// Lotus-style range.
+    /// [`Parser::binds_name`] in the A1 grammar, asked for a name it would otherwise read as a
+    /// cell or a Lotus-style range.
     pub(super) fn binds_reference_shaped_name(&self, name: &str) -> bool {
         self.lexer.is_a1_mode() && self.binds_name(name)
     }
