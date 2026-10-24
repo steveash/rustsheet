@@ -161,7 +161,7 @@ states it.
 ## Outcome
 FREQUENCY skips text/booleans/blanks, returns two rows when no bin is numeric, and an error argument is the result
 (scalar errors before array errors, data before bins); T.TEST lets an error `type` beat a bad `tails` when the samples are
-good. Probe: probes/frequency-bins. Eval: gen-m9 known failures 5755 -> 5657 (98 fixed, none new), probes baseline
+good. Probe: probes/frequency-bins. Eval: gen-m9 known failures 5755 -> 5657 (98 net; 162 baseline lines removed, including cells of other functions that now pass; none new), probes baseline
 unchanged apart from its new case. 19 FREQUENCY cells stay off because their other arguments are other functions' gaps
 (ODDFYIELD/ODDLYIELD, FORECAST.ETS*, EXPAND, DB, NPER, WRAPCOLS, FILTER, INDIRECT/MAP); the acceptance lines for those are
 not met; they move to T-2624 and the remaining gen-m9 lines stay in the baseline.
