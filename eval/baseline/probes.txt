@@ -556,7 +556,7 @@ C	probes/let-name-call-text-type.case.json	1
 C	probes/let-name-call.case.json	14
 C	probes/let-name-non-ascii-scripts.case.json	6
 C	probes/let-name-non-ascii.case.json	10
-C	probes/let-name-shadows-defined-name.case.json	15
+C	probes/let-name-shadows-defined-name.case.json	16
 C	probes/let-name-sharp-s.case.json	2
 C	probes/let-name-uncalled-picked-refs.case.json	41
 C	probes/let-name-use-spelling.case.json	12
@@ -1952,6 +1952,7 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
+F	probes/let-name-shadows-defined-name.case.json	Sheet1!B2
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100

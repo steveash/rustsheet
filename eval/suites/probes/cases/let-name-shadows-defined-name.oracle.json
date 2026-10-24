@@ -58,6 +58,10 @@
     "t": "e",
     "v": "#NAME?"
    },
+   "B2": {
+    "t": "e",
+    "v": "#NAME?"
+   },
    "B3": {
     "t": "n",
     "v": 2.0
@@ -66,10 +70,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "e7741ecdf5d16dd888b6e02d224f5e274b8e57afcc18b2b13f1d6cfb6e09c332",
+  "input_sha256": "01280b829e8d73e41cb3de1bf6d45795ccf28c05376723cdef344db0d09350c6",
   "kind": "excel-graph",
-  "produced_at": "2026-10-24T00:04:22+00:00",
+  "produced_at": "2026-10-24T00:26:32+00:00",
   "version": null,
-  "workbook_name": "b95ca81446fcfadacd924f5030e6cd6477b7370696a78d661c3622d7f20215c6.xlsx"
+  "workbook_name": "103716c0d3b67273498cb427ef8c04e32443caa2b0bd05adb7a658f1d941b110.xlsx"
  }
 }

@@ -31,4 +31,4 @@ record the rule in docs/excel-semantics/references.md, then fix name resolution 
 Probe `probes/let-name-shadows-defined-name` (excel-graph, 2026-10-23): a LET name or LAMBDA parameter shadows a
 defined name of the same name in any case. The parser now declares the variable instead of resolving the defined
 name and skips the defined-name lookup for bound names (`bind_reference_shaped_name`, `name_operand`); unit test
-in `test_fn_let.rs`; entry in docs/excel-semantics/references.md. Eval: the 15 cells of the new probe case pass; the `LET(Pv,LAMBDA(a,Pv),Pv(1))` cell (`#NAME?` in Excel, `#ERROR!` here) is T-2558.
+in `test_fn_let.rs`; entry in docs/excel-semantics/references.md. Eval: 15 of the 16 cells of the new probe case pass; B2 `LET(Pv,LAMBDA(a,Pv),Pv(1))` (`#NAME?` in Excel, `#ERROR!` here) is a baselined known failure, T-2558.
