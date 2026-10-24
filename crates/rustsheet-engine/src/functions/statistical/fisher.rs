@@ -533,18 +533,21 @@ impl Model {
         };
         let f = v_big / v_small;
         let total = df_big * f + df_small;
-        // A ratio that overflows has no tail left: 0, as `FTEST({1E-160,2E-160},{1E150,2E150})`
-        // was before T-2361 (inf/inf would make y NaN). Excel's value is unprobed (T-2571).
-        let upper = if f.is_finite() {
-            f_test_upper_tail(
-                df_small / total,
-                df_big * f / total,
-                df_small / 2.0,
-                df_big / 2.0,
-            )
-        } else {
-            0.0
-        };
+        // A variance or ratio that overflows is `#NUM!`: `F.TEST({1E+200,1E+200,-1E+200},..)` is
+        // (gen-m9/7674c89c824aca43 A39, f2bd5f380ec002bf A210; numbers.md "Overflow").
+        if !f.is_finite() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "The variance ratio overflows in F.TEST".to_string(),
+            );
+        }
+        let upper = f_test_upper_tail(
+            df_small / total,
+            df_big * f / total,
+            df_small / 2.0,
+            df_big / 2.0,
+        );
         let mut p = 2.0 * upper.min(1.0 - upper);
 
         // Clamp tiny FP noise

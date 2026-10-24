@@ -72,12 +72,15 @@ fn f_test_is_symmetric_and_keeps_the_rounded_powers() {
         "B1",
         "=FTEST({123456789.123,1E+15,1.005,0.1,2,7,1.005,1,1,123456789.123,1E-15},{0.1,2,7,7,1.005})",
     );
-    // An overflowing variance ratio is 0 in either order (unprobed; T-2571).
+    // An overflowing variance is `#NUM!` (gen-m9/7674c89c824aca43 A39), and so, in either order,
+    // is a ratio that overflows (unprobed; T-2571).
     model._set("C1", "=FTEST({1E-160,2E-160},{1E+150,2E+150})");
     model._set("C2", "=FTEST({1E+150,2E+150},{1E-160,2E-160})");
+    model._set("C3", "=F.TEST({1E+200,1E+200,-1E+200},{1,2,4})");
     model.evaluate();
-    assert_eq!(round_trip_value(&model, "C1"), "0.0");
-    assert_eq!(round_trip_value(&model, "C2"), "0.0");
+    assert_eq!(model._get_text("C1"), "#NUM!");
+    assert_eq!(model._get_text("C2"), "#NUM!");
+    assert_eq!(model._get_text("C3"), "#NUM!");
     let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
     assert_eq!(number("A1").to_bits(), number("A2").to_bits());
     assert!((number("A1") / 0.794_785_878_081_945_8 - 1.0).abs() < 5e-16);

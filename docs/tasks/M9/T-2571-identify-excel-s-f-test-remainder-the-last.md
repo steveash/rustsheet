@@ -45,7 +45,8 @@ the A&S 26.6.4-26.6.8 finite series (df even or odd) divided by its own powers; 
 switch"). Score each over the F.TEST cells on file, extracted from the case files as (x, y, Excel p) rows the way T-2361 did.
 
 Unprobed corners (T-2361 review): an overflowing variance ratio, `FTEST({1E-160,2E-160},{1E150,2E150})`
-in both orders (the engine says 0); large df where the double-double remainder hands over to
+in both orders (the engine says `#NUM!`, as Excel does for an overflowing variance,
+gen-m9/7674c89c824aca43 A39); large df where the double-double remainder hands over to
 `beta_reg_complement` at a + b = 200 (e.g. df 1 against df 249 or 400). Probe both before fitting.
 The T-2361 fit rows were extracted ad hoc and not committed: commit the extraction (tools/fitlab)
 with this task so the scores are reproducible.
