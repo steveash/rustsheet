@@ -15,3 +15,5 @@ m9-bessel-order-limits.case.json	Calc!B278	decision 0014	docs/excel-semantics/en
 m9-bessel-order-limits.case.json	Calc!D427	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
 m9-bessel-order-limits.case.json	Calc!D428	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
 m9-bessel-order-limits.case.json	Calc!D433	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+eng-besselk-underflow-bit-shift.case.json	S!A179	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+eng-besselk-underflow-bit-shift.case.json	S!A180	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
