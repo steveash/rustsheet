@@ -3,7 +3,7 @@ id: T-2357
 title: "A one-sheet 3-D span is written as the plain reference (FORMULATEXT of =ABS(Data1:Data1!A1:A3) is =ABS(Data1!A1:A3))"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -34,3 +34,9 @@ export of such a formula still opens.
 
 ## Out of scope
 -
+
+## Outcome
+`sheet_span_text` (stringify.rs) writes a one-sheet span as the plain quoted sheet name, so FORMULATEXT and
+the exported formula read `=ABS(Data1!A1:A3)`; multi-sheet spans and evaluation are unchanged. Unit tests pin a
+range and a quoted cell; the implicit-intersection test now expects the plain text. Eval: probes/3d-ref-one-sheet-span-lift
+Calc!B6 passes and left the baseline. The legacy-import `@` probe needs the oracle and is split to T-2564.
