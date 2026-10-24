@@ -8,7 +8,7 @@ import math
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import registry, solvers, yield_caret
+from rustsheet_tools.fitlab.kernels import registry, solvers, xirr, yield_caret
 from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
 
 
@@ -33,19 +33,19 @@ def test_day_counts_and_schedule() -> None:
 
 def test_xirr_model_on_a_known_root() -> None:
     # Default guess, root exactly 0.1: the bracket [0, 0.1] bisected to 3355443 / 2^25.
-    got = solvers.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], 0.1, solvers.fitted_stop())
+    got = xirr.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], 0.1, xirr.fitted_stop())
     assert got == 3355443 / 2**25
     with pytest.raises(solvers.NoResultError):  # guess -0.5 walks only toward -1
-        solvers.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], -0.5, solvers.fitted_stop())
+        xirr.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], -0.5, xirr.fitted_stop())
 
 
 def test_xirr_first_value_sign_with_a_zero_first_value() -> None:
     # T-1583: a zero first value replaces the upper end every step, so the bracket [0, 0.1] is bisected
     # down to 0.1 / 2^25 (xirr-early-dates A10), where the first-value-blind rule converges to 0.1.
     values, dates = [0.0, -1000.0, 1100.0], [45000.0, 45000.0, 45365.0]
-    got = solvers.xirr_model(values, dates, 0.1, solvers.span_stop(), first_value_sign=True)
+    got = xirr.xirr_model(values, dates, 0.1, xirr.span_stop(), first_value_sign=True)
     assert got == 0.1 / 2**25
-    assert solvers.xirr_model(values, dates, 0.1, solvers.h_test()) == 3355443 / 2**25
+    assert xirr.xirr_model(values, dates, 0.1, xirr.h_test()) == 3355443 / 2**25
 
 
 def test_rpow_rejects_a_complex_power() -> None:
@@ -72,6 +72,25 @@ def test_xirr_fit_scores() -> None:
     # T-1583 misses xirr-early-dates A7 (input check) and the root-0.1 cells at 20, 40 and 120 years (T-1591)
     assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 48
     assert oos["bisect, first-value sign, fitted stop"] == 30
+    # T-2328: XNPV discounted with Excel's `^` puts the root-0.1 cells on Excel's side of the exact root;
+    # only A7 (input check) is left. The span factor is still needed (A8, 124 years), the step test too.
+    assert s["bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)"] == 227
+    assert oos["bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)"] == 51
+    assert oos["bisect, first-value sign, fitted stop, Excel ^"] == 33
+    assert oos["bisect, first-value sign, step test only, Excel ^"] == 48
+
+
+def test_xnpv_with_excels_power_at_an_exact_root() -> None:
+    # probes/xirr-exact-root-sign A4 and A6: XNPV at XIRR's chain point 0.1, the exact root of the
+    # literal flows (cut to 15 digits), is 2.22e-16 at 20 years and -3.33e-15 at 80 in Excel. The sign
+    # picks the bracket [0.1, 0.2] or [0, 0.1]; libm's power gives -1.1e-16 at 20 years, the lower one.
+    flows = parse_arg("{-1,6.727499949325611}", "S", Workbook({}, {}))
+    assert flows == [-1.0, 6.72749994932561]
+    values = solvers.floats(flows)
+    assert xirr.xnpv(0.1, values, [45000.0, 52300.0], solvers.caret_pow) == 2.220446049250313e-16
+    assert xirr.xnpv(0.1, values, [45000.0, 52300.0]) == -1.1102230246251565e-16
+    long = [-1.0, 2048.40021458547]  # 2048.4002145854793, cut
+    assert xirr.xnpv(0.1, long, [45000.0, 74200.0], solvers.caret_pow) == -3.3306690738754696e-15
 
 
 @pytest.mark.usefixtures("real_cases")
