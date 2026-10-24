@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
 use crate::arithmetic::{extended_sum, flush_subnormal};
+use crate::constants::LAST_ROW;
+use crate::types::Cell;
 use crate::{
     arithmetic::extended_quotient,
     calc_result::CalcResult,
@@ -19,6 +23,19 @@ struct DbQuery {
     /// which DCOUNT and DCOUNTA read as "the matching records".
     field: Option<i32>,
     criteria: (CellReferenceIndex, CellReferenceIndex),
+}
+
+/// Whether a computed criterion (a criteria cell under a header that names no database column)
+/// holds: TRUE, a non-zero number and the text "TRUE" (probed in uppercase only) hold; FALSE, 0, an error and any
+/// other text (">2") do not (probes/db-computed-criteria-shapes AB1-AB18, statistics.md
+/// "Database criteria").
+fn computed_criterion_holds(condition: &CalcResult) -> bool {
+    match condition {
+        CalcResult::Boolean(value) => *value,
+        CalcResult::Number(value) => *value != 0.0,
+        CalcResult::String(text) => text.eq_ignore_ascii_case("TRUE"),
+        _ => false,
+    }
 }
 
 /// The corners of a reference argument; an error passes through, anything else is `#VALUE!`
@@ -123,7 +140,9 @@ impl Model {
             Some(self.resolve_db_field_column(left, right, field, cell)?)
         };
         let criteria = reference_corners(criteria, cell)?;
-        if right.row <= left.row {
+        // A database or a criteria range of one row (headers only) is `#VALUE!` in every
+        // D-function (probes/db-header-criteria-shapes AB2-AB37).
+        if right.row <= left.row || criteria.1.row <= criteria.0.row {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -147,8 +166,9 @@ impl Model {
         mut step: impl FnMut(T, CalcResult) -> T,
     ) -> T {
         let mut acc = init;
+        let columns = self.db_criteria_columns(query);
         for row in (query.left.row + 1)..=query.right.row {
-            if !self.db_row_matches_criteria(query.left, query.right, row, query.criteria) {
+            if !self.db_row_matches_criteria(query, row, &columns) {
                 continue;
             }
             let value = match query.field {
@@ -250,13 +270,19 @@ impl Model {
     // Returns the (single) field value for the unique matching row
     pub(crate) fn fn_dget(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dget, args, cell, false, |model, query, cell| {
-            let mut matches = 0usize;
+            // Only a record with a non-empty field counts: two matching records of which one has a
+            // blank field give the other's value (gen-m9 c9d7659896d95368 A1, criteria.md "D*
+            // computed criteria"), and none with a field is `#VALUE!` as if nothing matched
+            // (probes/db-computed-criteria-shapes AB51).
+            let mut filled = 0usize;
             let mut result = None;
             model.db_fold(query, (), |(), value| {
-                matches += 1;
-                result = Some(value);
+                if !matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg) {
+                    filled += 1;
+                    result = Some(value);
+                }
             });
-            match (matches, result) {
+            match (filled, result) {
                 (1, Some(value)) => value,
                 (0, _) | (_, None) => {
                     CalcResult::new_error(Error::VALUE, cell, "No matching record".to_string())
@@ -398,35 +424,19 @@ impl Model {
             }
         };
 
-        // We search in the database a column whose header matches field_column_name
+        // Headers read as text as in `db_criteria_columns`, except that a field of "" (or a
+        // blank cell) names a blank header (probes/db-header-criteria-shapes AB58-AB60,
+        // probes/db-computed-criteria-shapes AB40-AB42).
         for column in db_left.column..=db_right.column {
-            let v = self.evaluate_cell(CellReferenceIndex {
+            let header = self.evaluate_cell(CellReferenceIndex {
                 sheet: db_left.sheet,
                 row: db_left.row,
                 column,
             });
-            match &v {
-                CalcResult::String(s) => {
-                    if s.to_lowercase() == field_column_name {
-                        return Ok(column);
-                    }
+            if let Ok(text) = Self::cast_string_ref(&header, cell) {
+                if text.to_lowercase() == field_column_name {
+                    return Ok(column);
                 }
-                CalcResult::Number(n) => {
-                    if field_column_name == n.to_string() {
-                        return Ok(column);
-                    }
-                }
-                CalcResult::Boolean(b) => {
-                    if field_column_name == b.to_string() {
-                        return Ok(column);
-                    }
-                }
-                CalcResult::Error { .. }
-                | CalcResult::Range { .. }
-                | CalcResult::EmptyCell
-                | CalcResult::EmptyArg
-                | CalcResult::Array(_)
-                | CalcResult::Lambda(_) => {}
             }
         }
 
@@ -437,130 +447,148 @@ impl Model {
         })
     }
 
-    /// Check whether a database row matches the criteria range.
-    /// Criteria logic: OR across criteria rows; AND across columns within a row.
+    /// The database column each criteria column's header names, `None` when it names none.
+    /// Headers compare as text, ignoring case: a number header reads as its coerced text, so the
+    /// number 0.5 and the text "0.5" match each other (and 1E-15 matches "0.000000000000001", not
+    /// "1E-15"), TRUE matches "TRUE", and " Qty" does not match "Qty". A blank or error criteria
+    /// header names no column, even over a blank database header (probes/db-header-criteria-shapes
+    /// AB38-AB54, probes/db-computed-criteria-shapes AB29-AB34; statistics.md "Database criteria").
+    fn db_criteria_columns(&mut self, query: &DbQuery) -> Vec<Option<i32>> {
+        let (c_left, c_right) = query.criteria;
+        let header_text = |model: &mut Model, row: i32, sheet: u32, column: i32| {
+            let value = model.evaluate_cell(CellReferenceIndex { sheet, row, column });
+            match value {
+                CalcResult::EmptyCell | CalcResult::EmptyArg => None,
+                value => Model::cast_string_ref(&value, query.left)
+                    .ok()
+                    .map(|text| text.to_lowercase()),
+            }
+        };
+        let db_headers: Vec<(i32, Option<String>)> = (query.left.column..=query.right.column)
+            .map(|column| {
+                let text = header_text(self, query.left.row, query.left.sheet, column);
+                (column, text)
+            })
+            .collect();
+        (c_left.column..=c_right.column)
+            .map(|column| {
+                let wanted = header_text(self, c_left.row, c_left.sheet, column)?;
+                db_headers
+                    .iter()
+                    .find(|(_, text)| text.as_deref() == Some(wanted.as_str()))
+                    .map(|(db_column, _)| *db_column)
+            })
+            .collect()
+    }
+
+    /// Whether database `row` matches the criteria: any criteria row (OR) whose every non-blank
+    /// cell holds (AND), so a blank criteria row matches every record. A cell under a header that
+    /// names a database column tests that column; a cell under any other header is a computed
+    /// criterion that holds when its value is true (statistics.md "Database criteria").
     fn db_row_matches_criteria(
         &mut self,
-        db_left: CellReferenceIndex,
-        db_right: CellReferenceIndex,
+        query: &DbQuery,
         row: i32,
-        criteria: (CellReferenceIndex, CellReferenceIndex),
+        columns: &[Option<i32>],
     ) -> bool {
-        let (c_left, c_right) = criteria;
-
-        // Read criteria headers (first row of criteria range)
-        // Map header name (lowercased) -> db column (if exists)
-        let mut crit_cols: Vec<i32> = Vec::new();
-        let mut header_count = 0;
-        // We cover the criteria table:
-        //  headerA | headerB | ...
-        //  critA1  | critA2  | ...
-        //  critB1  | critB2  | ...
-        //  ...
-        for column in c_left.column..=c_right.column {
-            let cell = CellReferenceIndex {
-                sheet: c_left.sheet,
-                row: c_left.row,
-                column,
-            };
-            let criteria_header = self.evaluate_cell(cell);
-            if let Ok(s) = self.cast_to_string(criteria_header, cell) {
-                // Non-empty string header. If the header is non string we skip it
-                header_count += 1;
-                let wanted = s.to_lowercase();
-
-                // Find corresponding Database column
-                let mut found = false;
-                for db_column in db_left.column..=db_right.column {
-                    let db_header = self.evaluate_cell(CellReferenceIndex {
-                        sheet: db_left.sheet,
-                        row: db_left.row,
-                        column: db_column,
+        let (c_left, c_right) = query.criteria;
+        (c_left.row + 1..=c_right.row).any(|criteria_row| {
+            columns
+                .iter()
+                .zip(c_left.column..)
+                .all(|(db_column, column)| {
+                    let condition = self.evaluate_cell(CellReferenceIndex {
+                        sheet: c_left.sheet,
+                        row: criteria_row,
+                        column,
                     });
-                    if let Ok(hs) = self.cast_to_string(db_header, cell) {
-                        if hs.to_lowercase() == wanted {
-                            crit_cols.push(db_column);
-                            found = true;
-                            break;
+                    if matches!(condition, CalcResult::EmptyCell | CalcResult::EmptyArg) {
+                        return true;
+                    }
+                    match db_column {
+                        Some(db_column) => {
+                            let value = self.evaluate_cell(CellReferenceIndex {
+                                sheet: query.left.sheet,
+                                row,
+                                column: *db_column,
+                            });
+                            self.criteria_cell_matches(&value, &condition)
+                        }
+                        None => {
+                            let condition = self.db_computed_condition(
+                                query,
+                                row,
+                                CellReferenceIndex {
+                                    sheet: c_left.sheet,
+                                    row: criteria_row,
+                                    column,
+                                },
+                                condition,
+                            );
+                            computed_criterion_holds(&condition)
                         }
                     }
-                }
-                if !found {
-                    // that means the criteria column has no matching DB column
-                    // If the criteria condition is empty then we remove this condition
-                    // otherwise this condition can never be satisfied
-                    // We evaluate all criteria rows to see if any is non-empty
-                    let mut has_non_empty = false;
-                    for r in (c_left.row + 1)..=c_right.row {
-                        let ccell = self.evaluate_cell(CellReferenceIndex {
-                            sheet: c_left.sheet,
-                            row: r,
-                            column,
-                        });
-                        if !matches!(ccell, CalcResult::EmptyCell | CalcResult::EmptyArg) {
-                            has_non_empty = true;
-                            break;
-                        }
-                    }
-                    if has_non_empty {
-                        // This criteria column can never be satisfied
-                        header_count -= 1;
-                    }
-                }
-            };
+                })
+        })
+    }
+
+    /// A computed criterion's value for database `row`. A formula condition is evaluated again
+    /// as if it sat as many rows lower as the record is below the first record, so its relative
+    /// references follow the record (a blank header over `=B2>2` tests each record's B cell);
+    /// a constant is its own value (probes/db-computed-criteria-shapes AB23-AB26).
+    fn db_computed_condition(
+        &mut self,
+        query: &DbQuery,
+        row: i32,
+        criteria_cell: CellReferenceIndex,
+        value: CalcResult,
+    ) -> CalcResult {
+        let offset = row - query.left.row - 1;
+        if offset == 0 {
+            return value;
         }
-
-        if c_right.row <= c_left.row {
-            // If no criteria rows (only headers), everything matches
-            return true;
+        let formula = self
+            .workbook
+            .worksheet(criteria_cell.sheet)
+            .ok()
+            .and_then(|sheet| sheet.cell(criteria_cell.row, criteria_cell.column))
+            .and_then(Cell::get_formula);
+        let Some(formula) = formula else {
+            return value;
+        };
+        // The shifted cell stays on the grid: the criteria row plus the record offset can pass
+        // the last row only when the criteria range sits below the database's records.
+        let context = CellReferenceIndex {
+            row: criteria_cell.row + offset,
+            ..criteria_cell
+        };
+        if context.row > LAST_ROW {
+            return CalcResult::new_error(Error::REF, criteria_cell, "Off the grid".to_string());
         }
-
-        if header_count == 0 {
-            // If there are not "String" headers, nothing matches
-            // NB: There might be String headers that do not match any DB columns,
-            // in that case everything matches.
-            return false;
+        let Some(node) = self
+            .parsed_formulas
+            .get(criteria_cell.sheet as usize)
+            .and_then(|formulas| formulas.get(usize::try_from(formula).ok()?))
+            .map(|(node, _)| Arc::clone(node))
+        else {
+            return value;
+        };
+        // A formula condition that itself runs a D-function with formula conditions would
+        // re-evaluate them without passing through a cell, its work growing as the records to the
+        // power of the nesting (directive 5). Only one level runs: a nested one is `#ERROR!`, so
+        // its condition fails (statistics.md "Database criteria", DEVIATION).
+        if self.defined_names_running.db_condition_running {
+            return CalcResult::new_error(
+                Error::ERROR,
+                criteria_cell,
+                "Nested criteria formula".to_string(),
+            );
         }
-
-        // Evaluate each criteria row (OR)
-        for r in (c_left.row + 1)..=c_right.row {
-            // AND across columns for this criteria row
-            let mut and_ok = true;
-
-            for (offset, db_col) in crit_cols.iter().enumerate() {
-                // Criteria cell
-                let ccell = self.evaluate_cell(CellReferenceIndex {
-                    sheet: c_left.sheet,
-                    row: r,
-                    column: c_left.column + offset as i32,
-                });
-
-                // Empty criteria cell -> ignored
-                if matches!(ccell, CalcResult::EmptyCell | CalcResult::EmptyArg) {
-                    continue;
-                }
-
-                // Database value for this row/column
-                let db_val = self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: *db_col,
-                });
-
-                if !self.criteria_cell_matches(&db_val, &ccell) {
-                    and_ok = false;
-                    break;
-                }
-            }
-
-            if and_ok {
-                // This criteria row satisfied (OR)
-                return true;
-            }
-        }
-
-        // none matched
-        false
+        self.defined_names_running.db_condition_running = true;
+        let result = self.evaluate_node_in_context(&node, context);
+        // Only reached when no condition was running (the guard above returns otherwise).
+        self.defined_names_running.db_condition_running = false;
+        self.dereference(result, context)
     }
 
     /// Whether a database value satisfies one criteria cell (shared grammar, D-function flavor).

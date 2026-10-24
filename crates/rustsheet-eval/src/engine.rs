@@ -237,13 +237,13 @@ impl Engine for RustSheetEngine {
                                 continue;
                             };
                             // spec2xlsx writes these as plain `<f>` formulas (T-1077).
-                            if let Input::Formula(text) = &input {
+                            if let Input::StoredFormula(text) = &input {
                                 if sheet.legacy_formulas.contains(a1) {
                                     input = Input::LegacyFormula(text.clone());
                                 }
                             }
                             let is_formula =
-                                matches!(input, Input::Formula(_) | Input::LegacyFormula(_));
+                                matches!(input, Input::StoredFormula(_) | Input::LegacyFormula(_));
                             if is_formula != formulas {
                                 continue;
                             }
@@ -330,7 +330,7 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
             // feature-gated ones (decisions 0076, 0098). Rows and columns are 1-based in the case
             // file. A `Txn` edit recalculates on commit; these do not.
             SheetOp::DeleteTable { table, .. } => workbook
-                .remove_table(table)
+                .delete_table(table)
                 .map(|()| workbook.recalculate()),
             SheetOp::InsertRow { sheet, row } | SheetOp::DeleteRow { sheet, row } => {
                 let id = sheet_id_of(workbook, sheet)?;
@@ -417,10 +417,11 @@ fn spec_input(input: &CellInput) -> Option<Input> {
             Input::from(rustsheet_engine::flush_subnormal(*n))
         }
         CellInput::Bool(b) | CellInput::Typed(Value::Bool(b)) => Input::from(*b),
-        CellInput::Str(s) if s.starts_with('=') => Input::Formula(s.clone()),
+        // The formula as spec2xlsx stores it (decision 0103: LET names spelled like a cell bind).
+        CellInput::Str(s) if s.starts_with('=') => Input::StoredFormula(s.clone()),
         // Mirrors tools/src/rustsheet_tools/spec2xlsx.py: "" is materialized as ="".
         CellInput::Str(s) | CellInput::Typed(Value::Text(s)) if s.is_empty() => {
-            Input::Formula("=\"\"".to_string())
+            Input::StoredFormula("=\"\"".to_string())
         }
         CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
             Input::Value(ApiValue::Text(s.as_str().into()))
@@ -548,6 +549,11 @@ mod tests {
         assert_eq!(
             evaluated.value("Calc", Addr { row: 1, col: 2 }),
             Some(Value::Number(5.0))
+        );
+        // T-2341: the table's cells are cleared, so D1 is empty (table-delete-table F!A6).
+        assert_eq!(
+            evaluated.value("Calc", Addr { row: 1, col: 4 }),
+            Some(Value::Empty)
         );
     }
 

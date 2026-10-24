@@ -8,6 +8,7 @@ use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
+use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -35,8 +36,7 @@ const AVERAGE_TOP_LEFT_ARGS: AggregatePolicy = AggregatePolicy {
     ..AVERAGE_ARGS
 };
 
-/// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped (TODO(T-1748): Excel counts it as 0, probes/stat-order-floor-batch
-/// A274, A299), and errors rank as in
+/// SUMSQ: an empty argument is skipped (unprobed: `SUMSQ(1,)`, T-1748 left it), and errors rank as in
 /// the AVERAGE family: a direct error beats a referenced or array error whichever comes first
 /// (probes/aggregate-error-precedence-stat-family rows 10-12, T-1439).
 const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
@@ -77,11 +77,10 @@ impl Model {
         self.for_each_aggregate_number(args, cell, AVERAGE_ARGS, AVERAGE_NUMBERS, f)
     }
 
-    /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0;
-    /// errors rank as in `for_each_value` (T-1439). DEVSQ, AVEDEV and SUMSQ ignored them before they
-    /// moved onto `for_each_value`. Excel counts the empty argument of AVEDEV and DEVSQ as 0
-    /// (probes/stat-order-floor-batch A274, A299; SUMSQ is unprobed), so the skip is wrong.
-    /// TODO(T-1748): implement that and fold this into `for_each_value`.
+    /// `for_each_value` that skips empty arguments (`SUMSQ(1, )`) instead of counting them as 0;
+    /// errors rank as in `for_each_value` (T-1439). Excel counts the empty argument of AVEDEV and
+    /// DEVSQ as 0 (probes/stat-order-floor-batch A274, A299, T-1748), so those use
+    /// `for_each_value`; SUMSQ is unprobed and keeps the skip.
     pub(crate) fn for_each_value_skip_empty<F>(
         &mut self,
         args: &[Node],
@@ -140,6 +139,8 @@ impl Model {
                         ArrayNode::Number(value) => CalcResult::Number(value),
                         ArrayNode::Boolean(b) => CalcResult::Boolean(b),
                         ArrayNode::String(s) => CalcResult::String(s),
+                        // Cached cells hold no LAMBDA; read as a value it would be `#VALUE!`.
+                        node @ ArrayNode::Lambda(_) => array_node_to_calc_result(&node, cell),
                     };
                     visit(self, ItemSource::ReferencedCell, value)?;
                 }
@@ -226,7 +227,7 @@ impl Model {
             *count += 1;
         }
 
-        if let Err(error) = self.for_each_value_skip_empty(args, cell, |value| {
+        if let Err(error) = self.for_each_value(args, cell, |value| {
             accumulate(&mut values, &mut sum, &mut count, value);
         }) {
             return error;
@@ -304,11 +305,13 @@ impl Model {
             return e;
         }
 
+        // No numbers is #N/A, unlike SKEW and KURT (#DIV/0!): probes/stats-evidence-floor-t1623
+        // S!Q50 (statistics.md "SKEW, SKEW.P, KURT, HARMEAN ... edge pools").
         if values.is_empty() {
             return CalcResult::Error {
-                error: Error::DIV,
+                error: Error::NA,
                 origin: cell,
-                message: "Division by Zero".to_string(),
+                message: "HARMEAN needs at least one number".to_string(),
             };
         }
 

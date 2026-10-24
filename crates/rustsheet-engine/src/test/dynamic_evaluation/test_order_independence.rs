@@ -20,7 +20,7 @@
 // contention for the same cells meet. Whether the anchor is reported circular
 // or blocked then depends on which array got there first, which is history
 // by design. When the states differ and one of them
-// shows a #CIRC! or a #SPILL!, only 3 and 4 are required.
+// shows a #SPILL! or has a circular cell, only 3 and 4 are required.
 
 use crate::test::util::{new_empty_model, Rng};
 use crate::types::{Cell, FormulaValue};
@@ -168,7 +168,9 @@ fn random_sheets_are_order_independent_fixed_points() {
             .iter()
             .chain(second.iter())
             .chain(other_first.iter())
-            .any(|l| l.ends_with("#SPILL!") || l.ends_with("#CIRC!"));
+            .any(|l| l.ends_with("#SPILL!"))
+            || !model.evaluation.circular.is_empty()
+            || !other.evaluation.circular.is_empty();
         let same_state = history_dependent || (first == second && first == other_first);
         if !same_state || unevaluated || !inconsistencies.is_empty() {
             failures.push(format!(

@@ -136,7 +136,7 @@ impl ArgValue {
             ArrayNode::Boolean(b) => ArgValue::Boolean(*b),
             ArrayNode::String(_) => ArgValue::Text,
             ArrayNode::Empty => ArgValue::Blank,
-            ArrayNode::Error(_) => ArgValue::Error,
+            ArrayNode::Error(_) | ArrayNode::Lambda(_) => ArgValue::Error,
         }
     }
 }
@@ -255,7 +255,8 @@ impl KernelWork {
     }
 }
 
-/// What one unlifted call returns (SPEC-0011 "Array-valued functions" rule 1).
+/// What one unlifted call returns (SPEC-0011 "Array-valued functions" rule 1), and so what a
+/// lifted element keeps (rule 2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum CallResult {
     /// One value: every entry before T-1834.
@@ -263,14 +264,38 @@ pub(crate) enum CallResult {
     /// An array (SEQUENCE, MAKEARRAY): unlifted, the static shape is `Unknown`, and a lifted
     /// element is the top-left value of its call.
     Array,
+    /// An array as [`CallResult::Array`], but unless every element's lifted entries are equal,
+    /// only the first element whose call is not an error keeps its top-left value: an error
+    /// stays, and every other element is empty (UNIQUE; probes/m7-unique-lift-elements,
+    /// docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's lifted elements"; T-2300). The
+    /// driver applies it to computed elements only, so it needs `Reuse::Never`, which every
+    /// table entry's options have (`LiftOptions::for_entry`).
+    ArrayFirst,
+    /// As [`CallResult::ArrayFirst`], and when every entry is equal and spans several columns the
+    /// elements past the first column are empty too (UNIQUE; probes/m7-unique-lift-corners,
+    /// T-2348). SORTBY's uniform 1xN `sort_order` is unprobed, so it stays on `ArrayFirst`.
+    ArrayFirstColumn,
+}
+
+impl CallResult {
+    /// Whether one unlifted call returns an array.
+    pub(crate) fn is_array(self) -> bool {
+        matches!(
+            self,
+            CallResult::Array | CallResult::ArrayFirst | CallResult::ArrayFirstColumn
+        )
+    }
 }
 
 /// The parameters of one function: `params[i]` is the kind of argument `i`. Arguments past
-/// `params` take `repeat`, and the call is valid with `required..=max` arguments.
+/// `params` take the kinds of `repeat` in turn, a cycle (SORTBY's `by_array`, `sort_order` pairs;
+/// SPEC-0011 "Array-valued functions" rule 4), and the call is valid with `required..=max`
+/// arguments that end on a whole cycle.
 pub(crate) struct ArgKinds {
     pub(crate) required: usize,
     pub(crate) params: &'static [ArgKind],
-    pub(crate) repeat: Option<ArgKind>,
+    /// Empty when nothing repeats.
+    pub(crate) repeat: &'static [ArgKind],
     pub(crate) max: usize,
     pub(crate) work: KernelWork,
     pub(crate) result: CallResult,
@@ -286,7 +311,7 @@ impl ArgKinds {
         Self {
             required,
             params,
-            repeat: None,
+            repeat: &[],
             max: params.len(),
             work,
             result: CallResult::Value,
@@ -301,17 +326,34 @@ impl ArgKinds {
         }
     }
 
+    /// The same kinds for a function whose lifted elements follow [`CallResult::ArrayFirstColumn`].
+    pub(crate) const fn array_first_column(self) -> Self {
+        Self {
+            result: CallResult::ArrayFirstColumn,
+            ..self
+        }
+    }
+
     /// The kind of argument `index`, `None` past the last valid argument.
     pub(crate) fn kind(&self, index: usize) -> Option<ArgKind> {
         if index >= self.max {
             return None;
         }
-        self.params.get(index).copied().or(self.repeat)
+        match index.checked_sub(self.params.len()) {
+            None => self.params.get(index).copied(),
+            Some(past) => self.repeat.get(past % self.repeat.len().max(1)).copied(),
+        }
     }
 
-    /// Whether a call with `count` arguments is valid.
+    /// Whether a call with `count` arguments is valid: past `params` only whole cycles of
+    /// `repeat` (`SORTBY` takes 2, 3, 5, 7, ... arguments).
     pub(crate) fn accepts(&self, count: usize) -> bool {
-        (self.required..=self.max).contains(&count)
+        let whole_cycles = match count.checked_sub(self.params.len()) {
+            None | Some(0) => true,
+            // An empty `repeat` takes no argument past `params`.
+            Some(past) => !self.repeat.is_empty() && past % self.repeat.len() == 0,
+        };
+        (self.required..=self.max).contains(&count) && whole_cycles
     }
 }
 

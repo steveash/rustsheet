@@ -21,6 +21,18 @@ impl Node {
         false
     }
 
+    /// Whether the tree holds a LAMBDA call, written out as `LAMBDA(x,x)(1)`.
+    pub(crate) fn contains_lambda_call(&self) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if matches!(node, Node::LambdaCallKind { .. }) {
+                return true;
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
     /// Whether the tree holds a legacy N or T (SPEC-0012), the one fact of a legacy formula its
     /// display text does not show, so an edit that re-enters the text must keep it (T-1852).
     pub(crate) fn has_legacy_marker(&self) -> bool {

@@ -28,8 +28,16 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 3 in eval/baselin
 | gen-m5/6b831f5e2a20bc34 Calc!A283 | `=ODD(9999999999999999)` | 9999999999999992.0 | 9999999999999988.0 |
 | gen-m5/bbbd316c346ce645 Calc!A224 | `=RADIANS((ODD(9999999999999999)*((-1)-Data!B11)))` | -209439510239319.38 | -209439510239319.3 |
 
+gen-m5 round-2 triage (T-2252, excel-graph oracle, 2026-10-22): one more ODD cell. Ours computes EVEN of the literal (which reads
+9999999999999990) as 9999999999999990, so the ODD is the same call as Calc!A283 above and the innermost divergence, unless
+Excel's EVEN differs there too (the T-2172 sweep's EVEN points tell).
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m5/d88d12a62b726a0a Calc!A232 | `=ODD(EVEN(9999999999999999))` | 9999999999999992.0 | 9999999999999988.0 |
+
 ## Acceptance criteria
-- [ ] These 3 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [ ] These 4 known-failure lines (3 from T-2114, 1 from T-2252) disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] Every ODD/EVEN cell of the T-2172 sweep passes, or the remaining ones are listed residuals in numbers.md.
 - [ ] `make check` green; reviewers approve.
 

@@ -261,6 +261,19 @@ Evidence: probes/info-cell-legacy-range (40 cells; oracle: excel-graph, 2026-10-
 Status: VERIFIED (excel-graph); desktop UNVERIFIED (same caveat as "contents", T-1075 item 9).
 Ours: matches (`cell_info` "TYPE" reads `cell.sheet` since T-1433). Cross-sheet "address": next entry.
 Tasks: T-1230, T-1433
+Conflicting cell (T-2383), an oracle artefact: `RIGHTB(CELL("type",Data!C$9),3)` was "l" in gen-m5/74b183ca6fc1d190 Calc!A347
+(excel-graph, 2026-10-22 16:40), where Data!C9 is the text "abc" and Calc!C9 is blank, as if this one cell read the referenced
+sheet. Re-filling the same workbook (identical input_sha256) at 18:17 gave "b", the own-sheet answer, and no other cell of the
+case changed. The re-probe probes/info-cell-type-cross-sheet-reprobe (excel-graph, 2026-10-22, T-2383) fits the own-sheet rule
+in all 24 cells: `CELL("type",Data!C$9)` bare, under RIGHTB, LEFT and `&""`, as `Data!C9`, `Data!$C9` and `Data!$C$9`, eleven
+repeats of the gen formula (A14:A23, A347) all "b"; rows 8 and 10 "b"; Calc!E9 text gives "l" and Calc!G9 a number "v" for
+`Data!E$9` / `Data!G$9` with Data blank there. So excel-graph can, rarely and not repeatably (one observation, T-2383), answer a cross-sheet "type" from
+the referenced sheet; the rule stands, and a single conflicting cell is re-filled before it is believed.
+CELL("contents", ref) as a VSTACK argument is `#VALUE!` (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `VSTACK(CELL("contents",Data!C11),1)`,
+`VSTACK(CELL(..),Data!B7:E12)` and `ROWS(VSTACK(CELL(..),Data!B7:E12))` are all one `#VALUE!` (nothing spilled), while `CELL(..)` alone and
+`CELL(..)&"|"` give 0 and "|", and `VSTACK(0,Data!B7:E12)` is the 7x4 stack (`#N/A` padded). So the CELL result, not the blank cell, makes the
+VSTACK an error (gen-m7/8c4570978f18f4c2 Calc!A782). HSTACK and other stacking or array-shaping callers of CELL are unprobed. Ours matches for a
+`VSTACK` argument written as `CELL("contents", ref)` with a literal info type (T-2457); other ways of reaching the same value are unprobed. The cause in Excel is unknown: ours matches the formula's syntax, regardless of the target cell (every probed target is blank) and before any other VSTACK argument is evaluated, so do not generalise it to `LET`, `IF` or names wrapping CELL without a probe.
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
 Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name
@@ -282,15 +295,39 @@ Tasks: T-2042, T-2052
 ## TYPE of a one-cell range, ISEVEN/ISODD past 2^63, CELL over a range info_type (T-2156, T-2165, T-2161)
 - `TYPE` of a one-cell range is its cell's type, not 64: `TYPE(D7:D7)` and `TYPE(B3:B3)` are 1 (ours 64). Multi-cell ranges
   stay 64 (above). Evidence: gen-m5/2abdc1524e5aa685 Calc!A371, gen-m5/c0651f0e0fb544d0 Calc!A203 (excel-graph, 2026-10-20).
+  The cell's kind decides: blank 1, number 1, text 2, boolean 4, error 16, text over 255 units 64, a blocked spill anchor
+  (`#SPILL!`) 16 and a working numeric one 1; one-cell `OFFSET(A2,0,0,1,1)` and `INDIRECT("A2:A2")` results classify the same way (probed: OFFSET over text, blank and error; INDIRECT over text, boolean, error and blank).
+  Evidence: probes/type-one-cell-range-kinds (T-2262, excel-graph).
 - ISEVEN and ISODD of a value at or above 2^63 read it as even (every double from 2^53 up is an even integer):
   `ISODD(INT(1E+21))` is FALSE, `ISEVEN(3.333333333333325E+29)` and `ISEVEN(8.999999753086524E+28)` TRUE. Implemented in `Model::parity_of`
   (functions/information/mod.rs) with an f64 remainder (an i64 cast saturated to i64::MAX, which is odd). This settles the ">= 2^63" line of "ISEVEN/ISODD over a range". Evidence: gen-m5/ee1667411bbe2ccc
   Calc!A159, gen-m5/1315170eef6c413e Calc!A396, gen-m5/50d8a085335c05e6 Calc!A92.
 - CELL lifts over a multi-cell range given as info_type, as over an array: `CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
   filled column (ours was `#VALUE!` before T-2161). Evidence: gen-m5/c0651f0e0fb544d0 Calc!A293.
-Status: VERIFIED (excel-graph) for the cells cited; TYPE of a one-cell range over a text, boolean, error or blank cell, or
-an OFFSET/INDIRECT result, is UNVERIFIED (every cited cell is numeric; T-2262 probes it). ISEVEN/ISODD implemented (T-2165);
+- An error element of a CELL info_type grid passes through as that error, per element; any other non-text element (number,
+  blank) is `#VALUE!`. `CELL({#N/A,"row"},B2)` spills #N/A, 2; `CELL({"row",#N/A},B2)` spills 2, #N/A; `CELL(D1:D2,B2)` with
+  D1=#DIV/0!, D2="row" spills #DIV/0!, 2; a range `{"row","col"}` at B3 spills 3, 2; `{"row",5}` spills 3, #VALUE!; `{"row",blank,"col"}`
+  spills 3, #VALUE!, 2. Scalar `CELL(A1,B1)` with A1=#N/A is #N/A. Evidence: probes/info-cell-info-type-grid-errors (excel-graph,
+  T-2232); implemented in `lifted_cell`.
+Status: VERIFIED (excel-graph, desktop Excel not checked) for the cells cited, including TYPE of a one-cell range over a
+text, boolean, error or blank cell and over an OFFSET/INDIRECT result (T-2262). ISEVEN/ISODD implemented (T-2165);
 CELL's range info_type implemented (T-2161, `fn_cell`); TYPE of a one-cell range implemented (T-2156, `fn_type`).
+
+## ISEVEN of a value just below an integer (T-2382)
+Rule: ISEVEN and ISODD take the parity of `TRUNC(ABS(x) + 1E-10)`: a value no more than 1E-10 below an integer counts as that
+integer, whatever its size, with the same window for negatives (on the absolute value). `ISODD(7-1E-10)`,
+`ISODD(1001-1E-10)`, `ISODD(1000001-1E-10)`, `ISODD(0.9999999999)` and `ISODD(-(7-1E-10))` are TRUE; `ISODD(7-1.01E-10)`,
+`ISODD(1001-1.01E-10)`, `ISODD(7-2E-10)`, `ISODD(1-2^-33)` and `ISODD(6.9999999)` are FALSE. It is an absolute window, not a
+15-digit cut: `ISODD(1E+15-0.25)` is TRUE (999999999999999), and values just above an integer stay put (`ISODD(6+1E-9)` FALSE).
+So `ISEVEN(POWER(49,0.5-1E-15))` is FALSE: Excel's POWER is the same 6.999999999999972 as ours (the cell itself; INT and TRUNC
+of it are 6), and the 1E-10 window lifts it to 7 (gen-m5/bf8903e05ec369ca Calc!A392).
+The fit: `TRUNC(ABS(x)+1E-10)` in IEEE doubles matches all 128 ISEVEN/ISODD cells of the three probes. The candidates
+"round to 10 decimals", "fraction ≥ 1-1E-10" and windows of 1.009E-10 or more each miss cells.
+Evidence: probes/iseven-isodd-below-integer, probes/iseven-isodd-rounding-threshold, probes/iseven-isodd-rounding-window
+(excel-graph, 2026-10-22, T-2382).
+Implemented in: `Model::parity_of` (crates/rustsheet-engine/src/functions/information/mod.rs, T-2382)
+Status: VERIFIED (excel-graph)
+Tasks: T-2382
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`

@@ -202,5 +202,7 @@
   range arms share one sheet lookup, and `Range::between` replaces the corner min/max of `single_sheet_area`.
   T-1991: duplicated lines 3176 -> 3147 (`check_duplication.py --update`): the nine base conversions in
   `number_basis.rs` coerce `places` through one shared helper instead of nine copies of the block.
+  T-2255: functions below the evidence floor 3 -> 0 (FORECAST.ETS.CONFINT, FORECAST.ETS.SEASONALITY and
+  FORECAST.ETS.STAT, each now over 500 excel-graph cells from the gen-m9 statistical sweep; `make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

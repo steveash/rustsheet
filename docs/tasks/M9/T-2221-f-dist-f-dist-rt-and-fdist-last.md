@@ -13,7 +13,7 @@ depends_on: [T-2219, T-2220]
 
 ## Goal
 F.DIST (cdf and density), F.DIST.RT and FDIST give Excel's double bit for bit on the F-distribution
-probes, including where Excel is not correctly rounded. Needs an oracle sweep: T-2220 provides it.
+probes, including where Excel is not correctly rounded. Needs an oracle sweep: T-2220 provides it (`probes-numeric/t2220-f-dist-sweep-*.case.json`, findings in statistics.md "Dense F sweep (T-2220)").
 
 ## Context
 Gap triage 2026-10-21 (`make eval` on `main` fce6020d). After T-0970, 107 F-distribution cells
@@ -44,6 +44,62 @@ two PARTIAL rules (exact complement, one-evaluation tails) that the oracle contr
 t1049-fdistrt A2, A8. Fit lab precedent: T-1744 (`uv run rustsheet-fitlab`) and
 docs/research/excel-kernel-playbook.md. Code: `functions/statistical/incomplete_beta.rs` and the F
 callers in `functions/statistical/`.
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: FDIST, F.DIST.RT and F.DIST last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 137 known-failure lines in eval/baseline/gen-m9.txt, 137 formulas.
+Examples:
+- gen-m9/05d44f6dd6cfc567 Calc!A114 `=FDIST(2,3,1)`: Excel 0.4695222290670432, ours 0.4695222290670429
+Cells:
+- gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A114
+- gen-m9/06b4e8f5de409d5e.case.json (3): Calc!A91, A111, A213
+- gen-m9/0a614cfe974b59c3.case.json (2): Calc!A202, A230
+- gen-m9/146b46e74f2dac3b.case.json (2): Calc!A169, A291
+- gen-m9/165db58d1540f014.case.json (1): Calc!A238
+- gen-m9/2801c1c11c21e134.case.json (4): Calc!A69, A184, A191, A374
+- gen-m9/285d87cea1aaa73c.case.json (3): Calc!A50, A233, A355
+- gen-m9/320d51765af9b6b7.case.json (1): Calc!A106
+- gen-m9/35e8168aae2b00f8.case.json (4): Calc!A104, A287, A348, A367
+- gen-m9/3a25a03eb94fcfbd.case.json (3): Calc!A59, A171, A354
+- gen-m9/3e98b26cf6713e77.case.json (2): Calc!A28, A272
+- gen-m9/40425341c5034eed.case.json (2): Calc!A111, A203
+- gen-m9/4250f880ab640c49.case.json (4): Calc!A12, A157, A162, A223
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A111
+- gen-m9/4bad303d32cc3f46.case.json (5): Calc!A20, A80, A263, A272, A324
+- gen-m9/4e55500bb8ad3cd8.case.json (3): Calc!A89, A273, A319
+- gen-m9/530c636749a85209.case.json (2): Calc!A202, A248
+- gen-m9/58e3253bbd3a7a82.case.json (2): Calc!A135, A273
+- gen-m9/60b0b6e69ad35a45.case.json (3): Calc!A151, A326, A334
+- gen-m9/623663cacea53bbc.case.json (3): Calc!A120, A121, A304
+- gen-m9/68d8ffb69ff739d8.case.json (4): Calc!A90, A110, A125, A247
+- gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A395
+- gen-m9/899f9555e67da2d6.case.json (2): Calc!A43, A89
+- gen-m9/8d3588d8df0812df.case.json (2): Calc!A103, A164
+- gen-m9/8dd2312c96effb1b.case.json (3): Calc!A239, A300, A388
+- gen-m9/8f2ac25945af87da.case.json (4): Calc!A83, A266, A336, A358
+- gen-m9/8fec7b207f4dd753.case.json (3): Calc!A249, A309, A370
+- gen-m9/9cca17438a7e6f8a.case.json (4): Calc!A50, A164, A286, A294
+- gen-m9/a013a45a8fbcab4f.case.json (5): Calc!A71, A179, A252, A254, A376
+- gen-m9/a54c738c697617c3.case.json (4): Calc!A18, A117, A176, A262
+- gen-m9/a5828d3925575713.case.json (1): Calc!A51
+- gen-m9/a612e89321a6df9c.case.json (3): Calc!A116, A162, A392
+- gen-m9/a61e547a1cab994c.case.json (2): Calc!A167, A279
+- gen-m9/a790a4d4a6a82756.case.json (2): Calc!A60, A243
+- gen-m9/a7bf0d8d81d33ba6.case.json (4): Calc!A108, A291, A311, A352
+- gen-m9/abc2939ebd1e2365.case.json (2): Calc!A42, A318
+- gen-m9/b4173fe25109a238.case.json (4): Calc!A180, A236, A363, A380
+- gen-m9/b8ee55934c5b824c.case.json (4): Calc!A160, A206, A252, A344
+- gen-m9/bbdfc06cae0e0d71.case.json (2): Calc!A35, A81
+- gen-m9/bc40d37cb4d8301d.case.json (2): Calc!A9, A375
+- gen-m9/bcb24385baafb2f0.case.json (3): Calc!A1, A123, A184
+- gen-m9/c18dbf21f11093f3.case.json (2): Calc!A59, A105
+- gen-m9/c2974c061384fdd9.case.json (3): Calc!A27, A147, A165
+- gen-m9/c468f5046aadfbbc.case.json (3): Calc!A15, A98, A320
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A188
+- gen-m9/cde551ea787f713a.case.json (3): Calc!A59, A149, A364
+- gen-m9/d8266bc15533702a.case.json (2): Calc!A215, A259
+- gen-m9/e6cf3b20a014e6a3.case.json (3): Calc!A111, A146, A207
+- gen-m9/f2bd5f380ec002bf.case.json (3): Calc!A49, A95, A187
+- gen-m9/fd9fa22d212080d6.case.json (3): Calc!A6, A183, A366
+- gen-m9/fec39efaba9284c3.case.json (2): Calc!A184, A322
 
 ## Acceptance criteria
 - [ ] The F_DIST.xlsx Sheet1!F3 line disappears from eval/baseline/ironcalc-calc.txt

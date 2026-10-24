@@ -3,11 +3,12 @@ id: T-1946
 title: "Probe MAP with a blank or error later array and INDEX of a LAMBDA out of range"
 milestone: M7
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -31,11 +32,31 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 3 known-failure lin
 - gen-m7/b24ce74f08d3f91a.case.json A237 `=MAP(Data!B7:B10,Data!C2:D2,(LOOKUP(Data!E7,Data!B4:B4,Data!E4:E7)+Data!C11),LAMBDA(x,y,w,Data!D10))`: A237 Excel #VALUE!, ours #N/A; cells (1): A237
 - gen-m7/b24ce74f08d3f91a.case.json A1089 `=MAP(0.5,Data!C2:C12,SWITCH(IFNA("#N/A",Data!E6),ISBLANK(Data!$B11),MIN(Data!D4:D5,Data!C6:C10,Data!A$4),123456789.123,Data!E10,Data!E6,"?b"),_xleta.AVERAGE)`: A1089 Excel #VALUE!, ours #N/A; cells (1): A1089
 
+More gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22), four more error values as MAP's later array, all `#VALUE!` in Excel: a BASE
+`#NUM!` (4dac39f89709e2fc A137, ours `#NUM!`), a MOD `#DIV/0!` (21b4eef18424ce94 A1393, ours `#DIV/0!`), `DROP(Data!B5:B12,0,3)` `#CALC!`
+(a470dc9e165bdb20 A3360, ours `#CALC!`) and `SEQUENCE(1,SIN(Data!E9))` `#CALC!` (f19581ac44da1653 A2477, ours `#CALC!`). The other arrays
+of these MAPs differ in size, so this is not a size check (MAP pads unequal sizes, arrays.md "MAP over arrays of different sizes"): an
+error value as a later array is refused with `#VALUE!` whatever the error, like a single number. Owned (by the fix task this probe files,
+with the 3 T-2225 cells): 4 known-failure lines in eval/baseline/gen-m7.txt, 4 formulas.
+- gen-m7/21b4eef18424ce94.case.json A1393 `=MAP({1,2;#N/A,""},Data!A6:A10,MOD(Data!E5,((-0.5)*Data!$E7)),LAMBDA(w,x,y,SUM(Data!A6:A12,y)))`: A1393 Excel #VALUE!, ours #DIV/0!; cells (1): A1393
+- gen-m7/4dac39f89709e2fc.case.json A137 `=MAP(Data!A2:C4,BASE(874,3,((-0.5)-Data!$E7)),LAMBDA(w,x,CHOOSE(3,(123456789.123-x),(Data!E5^Data!B$8))))`: A137 Excel #VALUE!, ours #NUM!; cells (1): A137
+- gen-m7/a470dc9e165bdb20.case.json A3360 `=MAP(Data!B4:E9,Data!B4:C5,DROP(Data!B5:B12,0,3),_xleta.AVERAGE)`: A3360 Excel #VALUE!, ours #CALC!; cells (1): A3360
+- gen-m7/f19581ac44da1653.case.json A2477 `=MAP(Data!B7:E9,Data!B11:E12,SEQUENCE(1,SIN(Data!E9)),_xleta.MIN)`: A2477 Excel #VALUE!, ours #CALC!; cells (1): A2477
+
 ## Acceptance criteria
-- [ ] The 3 gen-m7 cells listed under Context (T-2225 triage) are owned by the functions-logic fix task this probe files, which lists them (their 3 lines in eval/baseline/gen-m7.txt leave when it is done).
-- [ ] A probe case tagged M7 with excel-graph values covers the shapes above.
-- [ ] arrays.md records the results. A fix task is filed if the engine differs.
-- [ ] `make check` green; reviewers approve.
+- [x] The 7 gen-m7 cells listed under Context (3 from the T-2225 triage, 4 from the T-2254 triage) are fixed by this task itself (no separate fix task was needed); their 7 lines left eval/baseline/gen-m7.txt.
+- [x] A probe case tagged M7 with excel-graph values covers the shapes above.
+- [x] arrays.md records the results. A fix task is filed if the engine differs.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the wrong type, error, text or value (none is a
+last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
+or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
+states it.
+
+## Outcome
+Probe map-later-array-error-blank (23 cells, excel-graph) answers the open shapes; arrays.md records them. The engine differed only for an error value as a later MAP array, which this task fixed (`is_scalar_value` now includes errors, so no separate fix task was filed). INDEX of a LAMBDA out of range already matched. gen-m7 known failures 38 -> 31 (all 7 owned cells), gen-m9 7719 -> 7716 (3 more), 0 regressions.

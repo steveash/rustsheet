@@ -68,7 +68,7 @@ are in `eval/runs/latest/report.json` (`functions[].verdicts`).
 | 15 | bond pricing | `financial/financial_bonds.rs` (its `powf` calls depend on rank 13), TBILL*, DB | T-1475, T-1406 | |
 | 16 | normal PDF | `special.rs` `normal_pdf`, `standard_normal_pdf` | T-0975 | All ≤ 4 ulp. |
 | 17 | hypergeometric / combinatorial | statrs `Hypergeometric`; MULTINOMIAL | T-0977, T-0927 | |
-| 18 | complex | `functions/engineering/complex.rs` | T-0907 | |
+| 18 | complex | `functions/engineering/complex/mod.rs`, `complex/trig.rs` | T-0907, T-2044 | |
 | 19 | inverse trig | ASIN/ACOS/ATAN | T-1259 | |
 
 The "(no numeric kernel)" row covers non-kernel numeric misses: array-context SUMPRODUCT

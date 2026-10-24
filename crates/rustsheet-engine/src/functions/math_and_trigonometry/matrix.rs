@@ -27,7 +27,7 @@ fn coerce_to_f64(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, Calc
         // Excel: a blank cell anywhere in the matrix is #VALUE! (poi/MatrixFormulaEvalTestData.xlsx),
         // and so is a boolean, as a cell, a literal or an element
         // (probes/matrix-boolean-elements, docs/excel-semantics/arrays.md).
-        ArrayNode::Boolean(_) | ArrayNode::Empty | ArrayNode::String(_) => {
+        ArrayNode::Boolean(_) | ArrayNode::Empty | ArrayNode::String(_) | ArrayNode::Lambda(_) => {
             Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -77,9 +77,8 @@ fn to_square_matrix(
 /// LU decomposition with partial pivoting (in-place).
 /// Returns (sign, swaps) where swaps[k] is the row swapped with row k at step k.
 /// After the call `mat` holds the LU factors (L below diagonal, U on/above diagonal).
-/// The matrix counts as singular (`Err`) when a column's largest remaining entry is 0 or below
-/// `min_pivot`.
-fn lu_decompose(mat: &mut [f64], n: usize, min_pivot: f64) -> Result<(f64, Vec<usize>), ()> {
+/// The matrix counts as singular (`Err`) only when a column's largest remaining entry is exactly 0.
+fn lu_decompose(mat: &mut [f64], n: usize) -> Result<(f64, Vec<usize>), ()> {
     let mut swaps: Vec<usize> = vec![0; n];
     let mut sign = 1.0f64;
 
@@ -93,7 +92,7 @@ fn lu_decompose(mat: &mut [f64], n: usize, min_pivot: f64) -> Result<(f64, Vec<u
                 max_row = row;
             }
         }
-        if max_val == 0.0 || max_val < min_pivot {
+        if max_val == 0.0 {
             return Err(());
         }
         swaps[col] = max_row;
@@ -120,13 +119,15 @@ impl Model {
     /// blank cell stays blank (so `#VALUE!`) rather than becoming a scalar 0
     /// (gen-m5 `MINVERSE(Data!$B4)`, `MDETERM(Data!D$1)`, `MMULT(Data!A5,Data!B11)`:
     /// docs/excel-semantics/arrays.md "MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!").
+    /// The empty value a lookup gives for a blank result cell is blank too:
+    /// `MMULT(LOOKUP(TRUE,B2:B10,E11:E11),2.5)` is `#VALUE!` (probes/lookup-short-result-vector A20).
     pub(crate) fn eval_matrix_arg(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
-            CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![vec![ArrayNode::Empty]]),
             other => self.result_to_array(other, cell),
         }
     }
@@ -154,7 +155,7 @@ impl Model {
         // exactly-zero pivot column gives 0. MDETERM({1,2,3;4,5,6;7,8,9}) = 6.661338147750939E-16 and
         // MDETERM({1,2,3;4,5,6;7,8,10}) = -2.9999999999999982 (probes/stats-evidence-floor-t1623
         // S!Q107, S!Q120, excel-graph; docs/excel-semantics/arrays.md, T-1751).
-        match lu_decompose(&mut mat, n, 0.0) {
+        match lu_decompose(&mut mat, n) {
             Err(()) => CalcResult::Number(0.0),
             Ok((sign, _)) => {
                 let mut det = sign;
@@ -172,7 +173,7 @@ impl Model {
     /// `=MINVERSE(array)`
     ///
     /// Returns the inverse of a square matrix via LU decomposition.
-    /// Returns `#VALUE!` for a singular matrix.
+    /// Returns `#NUM!` for a matrix with an exactly-zero pivot.
     pub(crate) fn fn_minverse(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -186,7 +187,12 @@ impl Model {
             Err(e) => return e,
         };
 
-        let (_, swaps) = match lu_decompose(&mut mat, n, f64::EPSILON) {
+        // Only an exactly-zero pivot is singular: Excel inverts a tiny residual pivot and returns
+        // the huge residual inverse, MINVERSE({1,2,3;4,5,6;7,8,9}) = {-4503599627370498, ...}, bit
+        // for bit this elimination and substitution, and MINVERSE(9.313225746154786E-25) is the
+        // IEEE reciprocal (probes/minverse-singular-near-singular, gen-m5/12a3d13f2a5aa246 A258,
+        // excel-graph; docs/excel-semantics/arrays.md "MINVERSE: singularity rule", T-2362).
+        let (_, swaps) = match lu_decompose(&mut mat, n) {
             Ok(v) => v,
             Err(()) => {
                 return CalcResult::new_error(Error::NUM, cell, "matrix is singular".to_string())
@@ -221,6 +227,11 @@ impl Model {
             }
         }
 
+        // An element past the double range is not a number Excel can hold (unprobed: no probed
+        // inverse overflows), so the whole result is #NUM! as for MDETERM's overflowing product.
+        if inv.iter().any(|v| !v.is_finite()) {
+            return CalcResult::new_error(Error::NUM, cell, "inverse overflows".to_string());
+        }
         let result: Vec<Vec<ArrayNode>> = (0..n)
             .map(|i| (0..n).map(|j| ArrayNode::Number(inv[i * n + j])).collect())
             .collect();

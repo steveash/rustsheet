@@ -3,7 +3,7 @@ id: T-0063
 title: "rustsheet-gen --functions and --category narrow --focus to named functions or a catalog category"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -40,3 +40,10 @@ time.
 
 ## Visible-parity stage
 Prerequisite for decision 0094's sweeps; its acceptance criteria are the whole stage.
+
+## Outcome
+`--category` and `--functions` (comma-separated catalog names) narrow `--focus` in `rustsheet-gen`
+(`narrow_targets` in `gen/generator.py`). Unknown names or categories, functions outside
+`--milestone` or not generator-ready, an empty selection, and use without `--focus` exit non-zero
+with a message. Tools tests cover even cycling (exactly even within one case) and each error.
+Eval delta: none (tools only).

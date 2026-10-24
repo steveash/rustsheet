@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -34,7 +35,57 @@ shipped. Since T-2130 PMT, IPMT and PPMT are the exact payment (double-double, 1
 sweep; financial.md "PMT, IPMT and PPMT are the exact payment"), and T-2243 lists the 13 cells it
 moved by 1 to 4 ulp.
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): NPV values of the financial sweep off in the 15th digit (`NPV(0.05,..,{-100,50,60,0,0})` Excel 0.7710730536356959, ours ...682), and the last-digit NPV, PPMT, IPMT and ISPMT cells.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 3 known-failure lines in eval/baseline/gen-m9.txt, 3 visibly off.
+Examples:
+- gen-m9/1cd3096e3e87c965 Calc!A345 `=NPV(0.05,Data!A7:A12,Data!A4:A11,{-100,50,60,0,0})`: Excel 0.7710730536356959, ours 0.771073053635682
+- gen-m9/3aa168259335be54 Calc!A214 `=NPV((-0.05),{-100,300,-300,101},Data!E9:E11)`: Excel 2.671477233044049, ours 2.671477233044019
+- gen-m9/abb7d565af89b849 Calc!A387 `=NPV(IRR(Data!B9:E10,(-0.5)),Data!C2:C8,Data!E10:E11,Data!E8:E9)`: Excel 0.00020006599755898017, ours 0.00020006599755891932
+Cells:
+- gen-m9/1cd3096e3e87c965.case.json (1): Calc!A345
+- gen-m9/3aa168259335be54.case.json (1): Calc!A214
+- gen-m9/abb7d565af89b849.case.json (1): Calc!A387
+
+Last-digit cells of the same sweep (not visibly off; re-check them after the fix):
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 65 known-failure lines in eval/baseline/gen-m9.txt, 65 last-digit (not visibly off).
+Examples:
+- gen-m9/1cd3096e3e87c965 Calc!A82 `=PPMT(0.1,7,95,234838)`: Excel -4.862617984267317, ours -4.862617984267313
+- gen-m9/b6a02893a8d6b151 Calc!A133 `=IPMT(42,42,42,41647)`: Excel -1708495.5348837208, ours -1708495.534883721
+- gen-m9/ba4ddb817a8e700e Calc!A42 `=NPV(0.5,Data!C9:C11)`: Excel 44.44444444444445, ours 44.44444444444444
+Cells:
+- gen-m9/0a957119475760c5.case.json (1): Calc!A59
+- gen-m9/1b60bf99d71424e7.case.json (3): Calc!A108, A119, A168
+- gen-m9/1cd3096e3e87c965.case.json (6): Calc!A51, A82, A100, A247, A278, A296
+- gen-m9/1dce4774f5c0e736.case.json (2): Calc!A245, A343
+- gen-m9/30e20ba3302fea8b.case.json (3): Calc!A146, A242, A342
+- gen-m9/31474c20fc1dafd6.case.json (1): Calc!A203
+- gen-m9/3aa168259335be54.case.json (1): Calc!A71
+- gen-m9/3c06f9298f65a3ba.case.json (1): Calc!A305
+- gen-m9/5422bdbf173fc233.case.json (3): Calc!A138, A152, A334
+- gen-m9/5c6a23c4f6597f1c.case.json (4): Calc!A106, A204, A225, A351
+- gen-m9/5ded7594e597e31e.case.json (1): Calc!A128
+- gen-m9/6376e27be7a05871.case.json (3): Calc!A80, A277, A325
+- gen-m9/67a4c03afd63f988.case.json (2): Calc!A128, A177
+- gen-m9/762cd0e4ec9a7aa9.case.json (4): Calc!A96, A103, A163, A341
+- gen-m9/79d87fc527927626.case.json (3): Calc!A50, A99, A150
+- gen-m9/81bcdc0bec0c8e6b.case.json (2): Calc!A246, A344
+- gen-m9/89f0aee953a55a45.case.json (2): Calc!A257, A278
+- gen-m9/9a1fa5366bc50918.case.json (3): Calc!A27, A89, A383
+- gen-m9/9d9ceba257f8001b.case.json (4): Calc!A32, A36, A85, A290
+- gen-m9/a91bad4e84f49739.case.json (1): Calc!A11
+- gen-m9/abb7d565af89b849.case.json (2): Calc!A261, A289
+- gen-m9/b6a02893a8d6b151.case.json (1): Calc!A133
+- gen-m9/b72d952c5f52cb4d.case.json (3): Calc!A13, A21, A258
+- gen-m9/b73c6cc96e093f03.case.json (3): Calc!A143, A339, A366
+- gen-m9/ba4ddb817a8e700e.case.json (3): Calc!A20, A42, A216
+- gen-m9/bc04c1f478c9896c.case.json (1): Calc!A392
+- gen-m9/c0681a8b150ce301.case.json (2): Calc!A57, A351
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] The 65 T-2257 last-digit lines in Context are re-checked after the fix; the Outcome says how many pass.
 - [ ] A PMT formulation matches >= 99.9% of m9-fin-pmt PMT cells bit for bit (today's best: 132/308).
 - [ ] IPMT and PPMT built on it match >= 99.9% of their m9-fin-pmt cells (best: 219/308, 94/308).
 - [ ] An NPV formulation matches >= 99.9% of m9-fin-nper-npv NPV cells (best: 27/88).
@@ -82,3 +133,10 @@ so the candidate orders differ).
 `PPMT(1,1,60,1)` is -8.67361737988405E-19 = -2^-60 in Excel (probes/pmt-overflow B8, excel-graph, unscored there),
 where `pmt - ipmt` gives 0 (PMT -1, IPMT -1). That is exactly `-pv*rate/(P-1)` with P = 2^60, so Excel's first-period
 PPMT is not `PMT - IPMT` but a closed form of its own; PPMT's last digits may follow from that form.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-23, T-2257): the gen-m9 cells listed under "T-2257 sweep" in Context are visibly off (wrong
+type, error, text, or a value off by more than half a unit of the 15th significant digit), so the task is in the campaign. Its
+target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
+Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
+to a follow-up task filed without the key.

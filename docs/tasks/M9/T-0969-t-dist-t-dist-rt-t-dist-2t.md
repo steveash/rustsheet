@@ -3,7 +3,7 @@ id: T-0969
 title: "T.DIST/T.DIST.RT/T.DIST.2T/T.TEST: accurate Student-t CDF with direct upper tail (55 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -289,7 +289,115 @@ coarse grid for df 2 to 10; and `t0969-t-tail-grid`, 3,232 T.DIST.RT cells on a 
   columns E, H and I; (2) bratio's `bgrat`/`bup` against the df 50 to 1000 rounded-y cells. That is the region of the
   tail grid's 175 noise cells, where TOMS 708's asymptotic expansion for large a would run.
 
+## Attempt 12 (2026-10-22, opus run; findings only)
+- Eval delta: no engine change, no baseline line moved. On `main` (this run's `make eval`) the family has 522
+  visibly-off cells, all in ungated probes-numeric cases: `t0969-t-tail-grid` 245, `t0969-t-pdf-runs` 186,
+  `t0969-t-beta-link` 40, `m9-t-dist-pdf` 26, and 25 in six other cases. None is in a gated suite.
+- **TOMS 708 with Excel's GAMMALN, rejected.** Attempt 11's next step (1): R's `toms708.c` `bratio`, compiled
+  standalone, with `gamln` looked up from `excel_gammaln` (no miss), is bit-exact on 29 of 184 `t0969-t-beta-link`
+  column-E cells, the same as with its own `gamln`: `betaln` is never reached for (n/2, 1/2). H and I: 129 and 136.
+- **Rejected on column E** (exact I_y: 39 bit-exact, 145 within 4 ulp):
+  - Cephes `incbet` with Excel's B, prefactor exp-log, pow or one exp: 35 to 36.
+  - Cephes `incbet` with the exact B: 31.
+  - NR `betai`: 25 or 26.
+- **Rejected on 700 rounded-y tail-grid cells** (exact: 92 bit-exact, 589 within 4 ulp, 53 visibly off): Cephes
+  exp-log 52, Cephes pow 60, each about 175 visibly off.
+- **Finding:** Excel's tail error grows about linearly with |(n/2) ln y|. Its standard deviation is 3 x 2^-53 at
+  |E| < 2 and 24 at |E| >= 20, with no bias. (n/2) times the rounding error of ln y explains part of it
+  (correlation 0.38), whether ln y is Excel's LN or libm's. No double form of E tried
+  explains more (statistics.md "T.DIST.RT's noise beyond t = 1 grows with a ln y").
+
+## Blocked because: time-boxed (decision 0056)
+Attempts 11 and 12 did not raise the bit-exact count, which is decision 0056's bar. What is left is Excel's own
+noise. Every one of the 522 visibly-off cells is in an ungated probes-numeric case, and the engine's kernel is
+within a few ulp of the exact value there. Excel is not. Reaching the visible-parity stage needs Excel's algorithm
+reproduced, not more accuracy. Candidates tried, with their counts:
+- tails: attempts 2 to 12, ending in the list in statistics.md "T.DIST.RT's noise beyond t = 1 grows with a ln y";
+- B: "Student t prefactor per df";
+- densities: "Student t density noise is not input rounding" and attempts 6 to 8.
+Reopen when a new hypothesis is recorded here, for example:
+- a reconstruction of Excel's BETA.DIST cdf kernel that reproduces column E of `t0969-t-beta-link`;
+- the second component of the a ln y noise;
+- a density kernel for df >= 3.
+A dependency landing (T-2119 included) does not reopen it.
+
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): TDIST, T.DIST.2T, TTEST and T.TEST values off Excel's (the Student t tail and T.TEST's rounded-y path this task fits), from the last digit to the 13th (`T.DIST.2T(ODD(7),1E+10)` Excel 2.5596252476292973E-12, ours 2.5596252476292783E-12; `TDIST(DCOUNTA(..),6,2)` is T-1390's). x of 1E+300 is T-2474's.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 247 known-failure lines in eval/baseline/gen-m9.txt, 19 visibly off.
+Examples:
+- gen-m9/17c110a53924beb8 Calc!A159 `=T.DIST.2T(ODD(7),1E+10)`: Excel 2.5596252476292973e-12, ours 2.5596252476292783e-12
+- gen-m9/928d08e3e1eecb5f Calc!A393 `=T.TEST(Data!B3:C11,Data!B4:E6,2,2)`: Excel 0.7772031601919551, ours 0.7772031601919531
+- gen-m9/9bc247733a1ca9fa Calc!A139 `=TTEST(Data!B9:E9,Data!A4:D7,1,3)`: Excel 0.08451014632899068, ours 0.08451014632899077
+- gen-m9/a5342a7e24fd803e Calc!A230 `=TDIST(EOMONTH(24332,-7),2,Data!A6)`: Excel 8.581583593277439e-10, ours 8.581583593277429e-10
+- gen-m9/afc00c8b70e78baf Calc!A238 `=T.TEST(Data!B8:E12,Data!A8:B8,2,2)`: Excel 0.725939456341534, ours 0.7259394563415346
+Cells:
+- gen-m9/0072265d385d8ab2.case.json (3): Calc!A60, A63, A184
+- gen-m9/0620505280d2ea6e.case.json (1): Calc!A34
+- gen-m9/097af1ca33638670.case.json (1): Calc!A228
+- gen-m9/09b47629f54b9817.case.json (1): Calc!A144
+- gen-m9/0bbab6206b5c9a07.case.json (8): Calc!A23, A65, A82, A85, A99, A161, A209, A313
+- gen-m9/11eb3ab4f4f8104c.case.json (4): Calc!A174, A272, A321, A360
+- gen-m9/139684e68fb2fc3b.case.json (5): Calc!A63, A139, A177, A215, A224
+- gen-m9/17c110a53924beb8.case.json (2): Calc!A71, A159
+- gen-m9/1b31092a0d79e5f1.case.json (7): Calc!A34, A96, A111, A158, A340, A344, A359
+- gen-m9/1db18890916ee643.case.json (1): Calc!A133
+- gen-m9/201d67f1d59436ed.case.json (4): Calc!A34, A72, A82, A282
+- gen-m9/2138b909d8f810ea.case.json (2): Calc!A161, A351
+- gen-m9/31f09e6c48ca245c.case.json (2): Calc!A107, A173
+- gen-m9/334f3dc9ca937f10.case.json (3): Calc!A308, A324, A357
+- gen-m9/38e4fc309fe199ea.case.json (1): Calc!A181
+- gen-m9/3fb9cecf2c23169f.case.json (2): Calc!A34, A344
+- gen-m9/41248d1cb153c66e.case.json (3): Calc!A22, A235, A362
+- gen-m9/43c6227e0ff368c7.case.json (3): Calc!A204, A306, A310
+- gen-m9/44a8841352dc48e9.case.json (3): Calc!A44, A196, A289
+- gen-m9/46ac3ef5e61583ca.case.json (6): Calc!A50, A96, A100, A224, A236, A298
+- gen-m9/5389dd4d5b5739d2.case.json (4): Calc!A79, A92, A278, A302
+- gen-m9/5395b8a427764a3f.case.json (4): Calc!A1, A35, A125, A373
+- gen-m9/583ca2baea0bb30a.case.json (5): Calc!A75, A161, A199, A203, A285
+- gen-m9/5919660b7bb4d195.case.json (3): Calc!A38, A70, A298
+- gen-m9/5be29fa316931f05.case.json (5): Calc!A31, A114, A176, A279, A300
+- gen-m9/5cebac1f02bf30f2.case.json (3): Calc!A7, A83, A337
+- gen-m9/607e85cfee83a689.case.json (3): Calc!A53, A64, A115
+- gen-m9/6e18550e9fc9c1b9.case.json (3): Calc!A104, A290, A319
+- gen-m9/73f053591a54bc43.case.json (11): Calc!A3, A20, A88, A105, A122, A127, A173, A195, A207, A224, A343
+- gen-m9/775d053de498b8c7.case.json (2): Calc!A91, A274
+- gen-m9/787ba8d801105a60.case.json (6): Calc!A29, A52, A91, A153, A240, A277
+- gen-m9/7980ffb6095a340d.case.json (1): Calc!A102
+- gen-m9/7fd0a98183c6babf.case.json (4): Calc!A2, A138, A192, A230
+- gen-m9/80586b859b73c87d.case.json (4): Calc!A164, A283, A317, A351
+- gen-m9/873f30d2bf76f8db.case.json (2): Calc!A37, A151
+- gen-m9/91e167cd8d7eb652.case.json (2): Calc!A8, A292
+- gen-m9/928d08e3e1eecb5f.case.json (5): Calc!A107, A160, A169, A231, A393
+- gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A157
+- gen-m9/941c409532603d32.case.json (3): Calc!A7, A13, A329
+- gen-m9/9735c5ab72fa5ecf.case.json (2): Calc!A185, A298
+- gen-m9/9bc247733a1ca9fa.case.json (4): Calc!A24, A139, A196, A254
+- gen-m9/9e2225ead8a6a07b.case.json (4): Calc!A143, A267, A329, A387
+- gen-m9/a2262ea466fcc142.case.json (4): Calc!A120, A197, A306, A368
+- gen-m9/a4090567758520df.case.json (7): Calc!A63, A100, A115, A239, A286, A311, A373
+- gen-m9/a5342a7e24fd803e.case.json (3): Calc!A53, A192, A230
+- gen-m9/a63d1c7d6f96c56d.case.json (4): Calc!A150, A157, A274, A344
+- gen-m9/acac71a65a5a1d1b.case.json (7): Calc!A6, A8, A23, A57, A176, A363, A365
+- gen-m9/afc00c8b70e78baf.case.json (2): Calc!A85, A238
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A304
+- gen-m9/bbab6562e88b70e8.case.json (6): Calc!A83, A168, A181, A266, A304, A355
+- gen-m9/bcb1105c61a2649d.case.json (8): Calc!A23, A25, A209, A226, A273, A335, A350, A400
+- gen-m9/c2684066d8df263e.case.json (7): Calc!A58, A59, A152, A276, A307, A368, A400
+- gen-m9/c4635963fc926284.case.json (3): Calc!A180, A199, A275
+- gen-m9/c7664e494e418395.case.json (5): Calc!A12, A126, A219, A316, A392
+- gen-m9/cb61169f4c033d4b.case.json (2): Calc!A4, A346
+- gen-m9/ce312817dc9c7f0b.case.json (7): Calc!A90, A190, A204, A228, A318, A356, A394
+- gen-m9/d208bbafc3bc1997.case.json (4): Calc!A108, A146, A260, A298
+- gen-m9/d37313406b9f6e55.case.json (2): Calc!A170, A360
+- gen-m9/d5fd9e05e9e6f466.case.json (4): Calc!A77, A166, A246, A250
+- gen-m9/d8f44d556674c2fd.case.json (5): Calc!A20, A58, A139, A248, A286
+- gen-m9/d910f000b60e2eac.case.json (4): Calc!A48, A106, A217, A234
+- gen-m9/eedd629f3d69fdda.case.json (11): Calc!A23, A28, A108, A176, A193, A210, A227, A244, A278, A295, A329
+- gen-m9/f82473275380882e.case.json (8): Calc!A60, A142, A178, A199, A204, A308, A328, A390
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2256): these 247 known-failure lines (the T-2256 cells in Context) disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines
       leave `eval/baseline/ironcalc-calc.txt`, and no new lines appear in any baseline.

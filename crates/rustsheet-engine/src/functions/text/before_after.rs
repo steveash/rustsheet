@@ -123,6 +123,18 @@ impl Model {
         if exact.iter().any(String::is_empty) {
             return Self::around_empty_delimiter(text, options.instance_num, side);
         }
+        // Excel: see docs/excel-semantics/text.md "TEXTBEFORE and TEXTAFTER: instance_num past the
+        // text, a number if_not_found": the size of instance_num is bounded by the text's length in
+        // UTF-16 units, whatever match_end and if_not_found (probes/t2314-textbefore-instance-bound).
+        if usize::try_from(options.instance_num.unsigned_abs())
+            .map_or(true, |n| n > text.encode_utf16().count())
+        {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "instance_num is larger than the text".to_string(),
+            );
+        }
         let found = match side {
             Side::Before => text_before(&text, delimiters, options.instance_num, options.case),
             Side::After => text_after(&text, delimiters, options.instance_num, options.case),
@@ -148,11 +160,24 @@ impl Model {
             }
         };
         let instance_num = number_at(2)?.map_or(1, |f| f.floor() as i32);
-        let case = match number_at(3)? {
-            Some(f) if f != 0.0 => Case::Insensitive,
-            _ => Case::Sensitive,
+        // Excel: see docs/excel-semantics/text.md "TEXTBEFORE and TEXTAFTER: instance_num past the
+        // text, a number if_not_found": match_mode is cut toward zero, and anything but 0 or 1 is
+        // `#VALUE!` (probes/t2314-textbefore-instance-bound A1-A12).
+        let case = match number_at(3)?.map(f64::trunc) {
+            None => Case::Sensitive,
+            Some(0.0) => Case::Sensitive,
+            Some(1.0) => Case::Insensitive,
+            Some(_) => {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "match_mode must be 0 or 1".to_string(),
+                ))
+            }
         };
-        let match_end = number_at(4)?.unwrap_or(0.0);
+        // Also cut toward zero: -0.0001 is 0, not `#VALUE!` (gen-m7/2d9b48c6363e7a16 A660,
+        // T-2412).
+        let match_end = number_at(4)?.map_or(0.0, f64::trunc);
         if instance_num == 0 {
             return Err(CalcResult::new_error(
                 Error::VALUE,
@@ -206,9 +231,16 @@ impl Model {
             }
         }
         if arg_count == 6 {
-            // An empty cell is converted to empty string (not 0)
+            // An empty cell is converted to empty string (not 0), a number or a boolean comes back
+            // as its text (probes/t2314-textbefore-instance-bound A27-A29).
             match &values[5] {
                 CalcResult::EmptyCell => CalcResult::String("".into()),
+                number @ (CalcResult::Number(_) | CalcResult::Boolean(_)) => {
+                    match Self::cast_string_ref(number, cell) {
+                        Ok(text) => CalcResult::String(text.into()),
+                        Err(error) => error,
+                    }
+                }
                 result => result.clone(),
             }
         } else {

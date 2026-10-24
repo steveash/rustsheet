@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2352 probe: time text that ends in a bare colon (\"25:\", \"12:\", \"12:30:\") or starts with one (\":30\") in VALUE, + coercion, TIMEVALUE and NUMBERVALUE.",
+ "tags": [
+  "M6",
+  "probe",
+  "text",
+  "T-2352"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=VALUE(\"25:\")",
+    "A2": "=VALUE(\"12:\")",
+    "A3": "=\"12:\"+0",
+    "A4": "=TIMEVALUE(\"12:\")",
+    "A5": "=NUMBERVALUE(\"25:\")",
+    "A6": "=NUMBERVALUE(\"12:30:\")",
+    "A7": "=VALUE(\"12:30:\")",
+    "A8": "=VALUE(\":30\")",
+    "A9": "=NUMBERVALUE(\"1:\",\"F\",\"0\")",
+    "A10": "=NUMBERVALUE(\"25:00\",\".\",\"0\")",
+    "A11": "=\"25:\"+0",
+    "A12": "=VALUE(\"1:\")",
+    "A13": "=VALUE(\"0:\")",
+    "A14": "=VALUE(\"12: \")",
+    "A15": "=VALUE(\"12::\")",
+    "A16": "=VALUE(\"12: PM\")",
+    "A17": "=VALUE(\"12:PM\")",
+    "A18": "=VALUE(\"1.5:\")",
+    "A19": "=TIMEVALUE(\"25:\")",
+    "A20": "=VALUE(\"9999:\")",
+    "A21": "=VALUE(\"10000:\")",
+    "A22": "=VALUE(\"12:30:45:\")",
+    "A23": "=NUMBERVALUE(\":30\")",
+    "A24": "=VALUE(\"-12:\")",
+    "A25": "=VALUE(\"2024-01-01 12:\")",
+    "A26": "=ISNUMBER(\"12:\"*1)"
+   }
+  }
+ ],
+ "expected": {}
+}

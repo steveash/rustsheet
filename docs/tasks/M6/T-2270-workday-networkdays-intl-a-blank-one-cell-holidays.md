@@ -3,7 +3,7 @@ id: T-2270
 title: "WORKDAY/NETWORKDAYS(.INTL): a blank one-cell holidays reference and numeric-text holiday cells are accepted (ours #VALUE!)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,3 +49,8 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 11 in eval/baseli
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`collect_serial_numbers` (date_and_time.rs) treats a blank scalar as no holiday and number text (cell or one-cell reference) as a holiday; unit test `holidays_blank_cell_and_number_text_cell_for_all_four_functions`. gen-m6: the 11 listed known failures pass.
+
+Eval delta: 20 gen-m6 known failures removed, not 11. The 9 extra are Excel `#NUM!` cells that pass now that number text no longer returns `#VALUE!` before a later negative holiday's `#NUM!`: 216e3c05f407ca79 A108/A312, 36d5ce763ea63631 A392, 38d4bcdafaed1275 A275/A48, 3e51213f35889d06 A138, 4ca39e0876796fa5 A166/A66, 50f0dd9a8ee2cb57 A68. T-2272 (error order) must keep them passing. Unverified (dates.md): literal or formula number text and date text as scalar holidays, and count-vs-skip; follow-up probe task filed.

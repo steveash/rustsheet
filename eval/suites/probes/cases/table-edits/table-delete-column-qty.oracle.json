@@ -1,0 +1,64 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "F": {
+   "A1": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A10": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A11": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A12": {
+    "t": "s",
+    "v": "=COLUMN(#REF!)"
+   },
+   "A2": {
+    "t": "n",
+    "v": 4.0
+   },
+   "A3": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A4": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A5": {
+    "t": "s",
+    "v": "=SUM(#REF!)"
+   },
+   "A6": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A7": {
+    "t": "s",
+    "v": "=SUM(S!#REF!)"
+   },
+   "A8": {
+    "t": "n",
+    "v": 4.0
+   },
+   "A9": {
+    "t": "s",
+    "v": "=COUNTA(Sales[Region])"
+   }
+  },
+  "S": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "6069f058289cdfa87d5f3422dda19e8cbc2321ec42261df33ece618e6b119d13",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-22T00:00:14+00:00",
+  "version": null,
+  "workbook_name": "598a2cff95b3087af4888a7dde8db04c668ecc94bdf0d5b3e3669338c928d687.xlsx"
+ }
+}

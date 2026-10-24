@@ -26,8 +26,8 @@ pub struct LiftKinds {
     pub required: usize,
     /// The kind of each listed parameter, in order.
     pub params: Vec<String>,
-    /// The kind of every argument past `params`, when the last parameter repeats.
-    pub repeat: Option<String>,
+    /// The kinds the arguments past `params` take in turn (a cycle), empty when nothing repeats.
+    pub repeat: Vec<String>,
     /// The most arguments a valid call takes.
     pub max: usize,
     /// `Constant`, or `Weighted(n)` for a value-dependent kernel.
@@ -51,7 +51,11 @@ pub fn lift_kinds_table() -> Vec<LiftKinds> {
                     .iter()
                     .map(|kind| format!("{kind:?}"))
                     .collect(),
-                repeat: kinds.repeat.map(|kind| format!("{kind:?}")),
+                repeat: kinds
+                    .repeat
+                    .iter()
+                    .map(|kind| format!("{kind:?}"))
+                    .collect(),
                 max: kinds.max,
                 work: format!("{:?}", kinds.work),
             })

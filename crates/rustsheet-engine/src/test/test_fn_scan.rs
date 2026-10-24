@@ -112,3 +112,58 @@ fn scan_moves_the_accumulator_through_many_steps() {
     assert_eq!(model._get_text("A1000"), "500500");
     assert_eq!(model._get_text("B1"), "167167000");
 }
+
+// ── errors reach the LAMBDA (T-2306) ─────────────────────────────────────────
+
+#[test]
+fn scan_error_initial_value_is_passed_to_the_lambda() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    // COUNT skips the error accumulator: 1, then 2 (gen-m7/90de8755a2e565e6 A1223)
+    model._set("B1", "=SCAN(NA(), A1:A2, LAMBDA(acc, x, COUNT(acc, x)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "2");
+}
+
+#[test]
+fn scan_error_step_fills_its_slot_and_the_scan_goes_on() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "0");
+    model._set("A3", "2");
+    model._set("B1", "=SCAN(5, A1:A3, LAMBDA(acc, x, 1 / x))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "#DIV/0!");
+    assert_eq!(model._get_text("B3"), "0.5");
+}
+
+#[test]
+fn scan_multi_cell_array_step_is_one_calc_error() {
+    let mut model = new_empty_model();
+    for (c, v) in [("C1", "1"), ("D1", "2"), ("C2", "3"), ("D2", "4")] {
+        model._set(c, v);
+    }
+    model._set("F1", "=SCAN(1, A1:B2, LAMBDA(y, acc, TRIMRANGE(C1:D2)))");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), "#CALC!");
+    assert_eq!(model._get_text("G1"), "");
+    assert_eq!(model._get_text("F2"), "");
+}
+
+// A 1x1 array step or initial_value is its one value (T-2407).
+#[test]
+fn scan_takes_1x1_arrays_as_one_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SCAN({3},{1;2},LAMBDA(a,x,a+x))");
+    model._set("C1", "=SCAN(0,{1;2},LAMBDA(a,x,{5}))");
+    model._set("E1", "=SCAN(0,{1;2},LAMBDA(a,x,{5,6}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "4");
+    assert_eq!(model._get_text("A2"), "6");
+    assert_eq!(model._get_text("C1"), "5");
+    assert_eq!(model._get_text("C2"), "5");
+    assert_eq!(model._get_text("E1"), "#CALC!");
+}

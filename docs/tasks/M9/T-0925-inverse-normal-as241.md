@@ -30,7 +30,88 @@ LOGNORM.INV 31 (all NORM_DIST.xlsx / LOGNORM.xlsx `*.INV` cells) and CONFIDENCE.
 CDF it inverts is not correctly rounded (`docs/excel-semantics/statistics.md`); its last digits are
 T-0968, so an iteration against Excel's CDF needs T-0968 first.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). LOGNORM.INV, LOGINV, CONFIDENCE.NORM and CONFIDENCE, whose normal quantile is visibly off
+(14 cells).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 14 known-failure lines in eval/baseline/gen-m9.txt, 14 formulas.
+Examples:
+- gen-m9/06b4e8f5de409d5e Calc!A343 `=LOGNORM.INV(1E-16,MAX(LN(1E+21),Data!A2:A7,Data!C8:C11),30)`: Excel 7.513666478165065e-87, ours 7.513666478164852e-87
+Cells:
+- gen-m9/06b4e8f5de409d5e.case.json (1): Calc!A343
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A362
+- gen-m9/4250f880ab640c49.case.json (2): Calc!A185, A232
+- gen-m9/4e55500bb8ad3cd8.case.json (2): Calc!A75, A213
+- gen-m9/530c636749a85209.case.json (1): Calc!A268
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A230
+- gen-m9/7674c89c824aca43.case.json (1): Calc!A73
+- gen-m9/8d3588d8df0812df.case.json (1): Calc!A28
+- gen-m9/8f2ac25945af87da.case.json (1): Calc!A63
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A55
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A342
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A36
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: CONFIDENCE.NORM, CONFIDENCE, LOGINV and LOGNORM.INV last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 47 known-failure lines in eval/baseline/gen-m9.txt, 47 formulas.
+Examples:
+- gen-m9/05d44f6dd6cfc567 Calc!A169 `=CONFIDENCE((MAX(Data!$B11,Data!E6:E8)^Data!$E10%),AGGREGATE(10,4,Data!B9:E9,Data!B4:D9),3)`: Excel 1020801326659.5261, ours 1020801326659.5262
+Cells:
+- gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A169
+- gen-m9/06b4e8f5de409d5e.case.json (2): Calc!A199, A373
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A53
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A140
+- gen-m9/27601819397dd56e.case.json (2): Calc!A70, A164
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A20
+- gen-m9/2a18b2f5a4dc43ac.case.json (3): Calc!A156, A253, A278
+- gen-m9/320d51765af9b6b7.case.json (1): Calc!A49
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A4
+- gen-m9/40425341c5034eed.case.json (1): Calc!A260
+- gen-m9/530c636749a85209.case.json (1): Calc!A324
+- gen-m9/589f42e67f4b4b8d.case.json (1): Calc!A143
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A353
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A58
+- gen-m9/68d8ffb69ff739d8.case.json (1): Calc!A230
+- gen-m9/7674c89c824aca43.case.json (1): Calc!A215
+- gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A296
+- gen-m9/85f48d5cdfb24555.case.json (1): Calc!A373
+- gen-m9/899f9555e67da2d6.case.json (2): Calc!A213, A386
+- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A224, A251
+- gen-m9/9cca17438a7e6f8a.case.json (2): Calc!A48, A231
+- gen-m9/a013a45a8fbcab4f.case.json (2): Calc!A176, A190
+- gen-m9/a54c738c697617c3.case.json (2): Calc!A180, A228
+- gen-m9/a7bf0d8d81d33ba6.case.json (1): Calc!A170
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A395
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A181
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A105
+- gen-m9/bc40d37cb4d8301d.case.json (2): Calc!A107, A204
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A117
+- gen-m9/c6cfda6bd10cae93.case.json (2): Calc!A84, A317
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A123
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A308
+- gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A321
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A246
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A91
+- gen-m9/fec39efaba9284c3.case.json (1): Calc!A356
+
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): NORMINV, NORM.INV and NORMSINV last digits, none visibly off.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 11 known-failure lines in eval/baseline/gen-m9.txt, 0 visibly off.
+Examples:
+- gen-m9/097af1ca33638670 Calc!A283 `=NORM.INV(0.1,SEQUENCE(1),2.5)`: Excel -2.2038789138615016, ours -2.203878913861501
+- gen-m9/17c110a53924beb8 Calc!A190 `=NORMSINV(0.2)`: Excel -0.8416212335729145, ours -0.8416212335729143
+- gen-m9/cb61169f4c033d4b Calc!A22 `=NORMINV(Data!A12,1e-15,1.5)`: Excel -1.9223273483168997, ours -1.9223273483168999
+- gen-m9/cb61169f4c033d4b Calc!A193 `=NORMSINV((Data!E6*MONTH(28931)))`: Excel -0.5244005127080408, ours -0.5244005127080407
+- gen-m9/d8f44d556674c2fd Calc!A9 `=NORMINV(Data!A6,Data!E4,Data!B4)`: Excel -103903855.15465043, ours -103903855.15465039
+Cells:
+- gen-m9/097af1ca33638670.case.json (1): Calc!A283
+- gen-m9/17c110a53924beb8.case.json (1): Calc!A190
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A6
+- gen-m9/5be29fa316931f05.case.json (1): Calc!A231
+- gen-m9/607e85cfee83a689.case.json (2): Calc!A236, A397
+- gen-m9/a4090567758520df.case.json (1): Calc!A336
+- gen-m9/cb61169f4c033d4b.case.json (3): Calc!A22, A193, A321
+- gen-m9/d8f44d556674c2fd.case.json (1): Calc!A9
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 25 known-failure lines (14 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] All NumericClose/NumericMismatch lines for NORM.S.INV, NORM.INV, LOGNORM.INV disappear from `eval/baseline/ironcalc-calc.txt`; the CONFIDENCE.NORM ulp lines disappear or the PR documents which remain and why. Exact before/after counts in the PR; no new lines.
 - [ ] No other call sites of statrs `inverse_cdf` for Normal (rg).
 - [ ] Unit tests incl. p near 0/1 and p = 0.5; `make check` green.

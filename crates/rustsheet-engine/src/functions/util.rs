@@ -40,14 +40,26 @@ pub(crate) fn coerced_cell_number(value: &CalcResult) -> Option<f64> {
     }
 }
 
-/// Converts a single array element into a scalar [`CalcResult`].
+/// Converts a single array element into a scalar [`CalcResult`]. A LAMBDA element is read as a
+/// value, `#VALUE!` (docs/excel-semantics/arrays.md "Arrays of LAMBDAs");
+/// [`array_element_value`] keeps it.
 pub(crate) fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
+    match node {
+        ArrayNode::Lambda(_) => CalcResult::new_error(Error::VALUE, cell, String::new()),
+        other => array_element_value(other, cell),
+    }
+}
+
+/// [`array_node_to_calc_result`] for a caller that can take a LAMBDA, MAP's and REDUCE's
+/// arguments and the element INDEX picks: a LAMBDA element is that LAMBDA (T-2039).
+pub(crate) fn array_element_value(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
     match node {
         ArrayNode::Number(n) => CalcResult::Number(*n),
         ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
         ArrayNode::String(s) => CalcResult::String(s.clone()),
         ArrayNode::Error(e) => CalcResult::new_error(e.clone(), cell, String::new()),
         ArrayNode::Empty => CalcResult::EmptyCell,
+        ArrayNode::Lambda(id) => CalcResult::Lambda(*id),
     }
 }
 
@@ -345,6 +357,7 @@ impl Model {
         let node = match self.pick_reference(node, cell) {
             PickedReference::Node(node) => node,
             PickedReference::Value(value) => return RefArg::Value(value),
+            PickedReference::Read(read) => return read,
             PickedReference::External(areas) => {
                 return RefArg::Value(match areas {
                     Ok(areas) => self.external_aggregate_value(&areas, blanks, cell),

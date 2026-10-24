@@ -3,7 +3,7 @@ id: T-1753
 title: "HARMEAN of a range with no numbers is #N/A, not #DIV/0!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 1 cell, 0 numeric past
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#DIV/0!` where Excel is `#N/A`), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`fn_harmean` returns `#N/A` when no numbers remain (was `#DIV/0!`). probes known failures -1 (stats-evidence-floor-t1623 S!Q50), 0 regressions. Unit test `test_fn_harmean_no_numbers_is_na`; statistics.md Ours line updated.

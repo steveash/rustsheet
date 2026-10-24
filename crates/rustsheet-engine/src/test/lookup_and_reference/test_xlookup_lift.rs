@@ -92,3 +92,22 @@ fn row_lookup_with_a_taller_return_range_gives_the_matched_column() {
     assert_eq!(model._get_text("E1"), *"20");
     assert_eq!(model._get_text("E2"), *"10");
 }
+
+#[test]
+fn an_error_mode_wins_over_an_unknown_mode_and_a_mismatched_return_array() {
+    // probes/xlookup-array-search-mode-indirect A6-A8 (excel-graph, T-2278): INDEX of a 2-D
+    // range with one index is #REF!, and that search_mode beats match_mode 101 and a return
+    // array one row longer than the lookup array, each of which is #VALUE! alone.
+    let mut model = new_empty_model();
+    model._set("A1", "=XLOOKUP(1,B1:B5,C1:C6,0,101,INDEX(D1:E8,0))");
+    model._set("A2", "=XLOOKUP(1,B1:B5,C1:C6,0,101)");
+    // A text or error match_mode is read first, so it beats an error search_mode
+    // (probes/lookup-t2278-followups A6, A7).
+    model._set("A3", "=XLOOKUP(1,B1:B5,C1:C5,0,\"x\",1/0)");
+    model._set("A4", "=XLOOKUP(1,B1:B5,C1:C5,0,NA(),1/0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#REF!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+}

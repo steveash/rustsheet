@@ -81,7 +81,7 @@ pub(crate) struct AggregatePolicy {
     pub(crate) reading: ArgReading,
     /// How errors are ordered.
     pub(crate) errors: ErrorRule,
-    /// DEVSQ, AVEDEV, SUMSQ: an empty argument is not an item (TODO(T-1748): Excel counts it as 0 for AVEDEV and DEVSQ).
+    /// SUMSQ: an empty argument is not an item (DEVSQ and AVEDEV count it as 0, T-1748).
     pub(crate) skip_empty_args: bool,
     /// How an array of references is read.
     pub(crate) grids: GridReading,
@@ -210,7 +210,10 @@ fn array_item(node: ArrayNode) -> Result<CalcResult, Error> {
         ArrayNode::Number(n) => CalcResult::Number(n),
         ArrayNode::Boolean(b) => CalcResult::Boolean(b),
         ArrayNode::String(s) => CalcResult::String(s),
+        // A LAMBDA element is read as `#VALUE!`: SUM is `#VALUE!`, COUNT skips it and COUNTA
+        // counts it (probes/lambda-arrays B9-B11).
         ArrayNode::Error(error) => return Err(error),
+        ArrayNode::Lambda(_) => return Err(Error::VALUE),
         ArrayNode::Empty => CalcResult::EmptyCell,
     })
 }

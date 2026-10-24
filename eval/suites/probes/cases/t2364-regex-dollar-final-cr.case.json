@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2364 probe (found by T-2287): `$` before a final CR, a final CRLF and the LF of a final CRLF.",
+ "tags": [
+  "M7",
+  "probe",
+  "text",
+  "T-2364"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=IFERROR(LEN(REGEXEXTRACT(\"ab\"&CHAR(13)&CHAR(10),\"\\X$\")),\"E\"&ERROR.TYPE(LEN(REGEXEXTRACT(\"ab\"&CHAR(13)&CHAR(10),\"\\X$\"))))",
+    "A2": "=IFERROR(CODE(REGEXEXTRACT(\"ab\"&CHAR(13)&CHAR(10),\"\\X$\")),\"E\"&ERROR.TYPE(CODE(REGEXEXTRACT(\"ab\"&CHAR(13)&CHAR(10),\"\\X$\"))))",
+    "A3": "=IFERROR(REGEXTEST(\"a\"&CHAR(13),\"a$\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&CHAR(13),\"a$\")))",
+    "A4": "=IFERROR(REGEXTEST(\"a\"&CHAR(13)&CHAR(10),\"a$\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&CHAR(13)&CHAR(10),\"a$\")))",
+    "A5": "=IFERROR(REGEXTEST(\"a\"&CHAR(13)&CHAR(10),\"a\\r$\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&CHAR(13)&CHAR(10),\"a\\r$\")))"
+   }
+  }
+ ],
+ "expected": {}
+}

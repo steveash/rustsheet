@@ -9,6 +9,8 @@
 
 use std::collections::HashSet;
 
+use crate::functions::util::array_node_to_calc_result;
+
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -21,6 +23,7 @@ use crate::{
         Function,
     },
     model::Model,
+    reference_operators::{Ranges, RefArg},
 };
 
 /// What an option (0-7) leaves out.
@@ -61,7 +64,11 @@ impl Model {
         // lifts like an array, a single cell is a scalar (probes/aggregate-range-args).
         let function = self.evaluate_node_in_context(&args[0], cell);
         let option = self.evaluate_node_in_context(&args[1], cell);
-        let fourth = (args.len() == 4).then(|| self.evaluate_node_with_reference(&args[3], cell));
+        // A fourth argument IF or CHOOSE picks a reference for stays that reference.
+        let fourth = (args.len() == 4).then(|| {
+            self.evaluate_picked_reference_arg(&args[3], cell)
+                .into_single_area(cell)
+        });
         let lifts = |value: &CalcResult| matches!(value, CalcResult::Array(_));
         let lifts_head = |value: &CalcResult| match value {
             CalcResult::Range { left, right } => is_multi_cell(left, right),
@@ -142,12 +149,16 @@ impl Model {
         rest: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        // Both are truncated: AGGREGATE(9.9,7.9,..) is AGGREGATE(9,7,..) (probes/aggregate-args).
+        // Both are truncated: AGGREGATE(9.9,7.9,..) is AGGREGATE(9,7,..) (probes/aggregate-args),
+        // and AGGREGATE(14.5,..) is AGGREGATE(14,..). An `options` value below 0 is refused before
+        // it is truncated: AGGREGATE(15,-0.0001,..) is #VALUE!, not option 0
+        // (probes/aggregate-negative-option-range-k). It maps to -1, which the range check rejects.
         let function = match self.cast_to_number(function, cell) {
             Ok(f) => f.trunc(),
             Err(error) => return error,
         };
         let option = match self.cast_to_number(option, cell) {
+            Ok(f) if f < 0.0 => -1.0,
             Ok(f) => f.trunc(),
             Err(error) => return error,
         };
@@ -171,20 +182,32 @@ impl Model {
         }
     }
 
-    /// A multi-cell range k reads its top-left cell (probes/aggregate-range-args A31, A61-A71).
-    /// Any other k, or a top-left cell that is not a plain value, is passed on unchanged.
-    fn top_left_k(&mut self, k: &Node, cell: CellReferenceIndex) -> Node {
-        if !matches!(k.ungrouped(), Node::RangeKind { .. }) {
-            return k.clone();
-        }
-        match self.evaluate_node_with_reference(k, cell) {
-            CalcResult::Range { left, right }
-                if left.sheet == right.sheet && is_multi_cell(&left, &right) =>
-            {
-                value_node(&self.evaluate_cell(left)).unwrap_or_else(|| k.clone())
+    /// k as a number, read before the array (`AGGREGATE(14,4,E1:E2,"x")` is `#VALUE!` with E1
+    /// `#N/A`), or the result to give instead. A reference k, written or returned by OFFSET,
+    /// INDIRECT or IF, reads its top-left cell, a multi-cell range too (`AGGREGATE(16,6,A1:A5,
+    /// B3:B4)` reads B3), and a referenced error cell is `#VALUE!`, not its error (options 0, 4
+    /// and 6 probed). A text k is `#VALUE!` and an error k its error, while TRUE and "2" coerce
+    /// (probes/aggregate-range-args A31, A61-A71; aggregate-range-k-first-cell).
+    fn aggregate_k(&mut self, k: &Node, cell: CellReferenceIndex) -> Result<Node, CalcResult> {
+        let value = match self.evaluate_picked_reference_arg(k, cell) {
+            RefArg::Ranges(Ranges::One(Range { left, right })) if left.sheet == right.sheet => {
+                match self.evaluate_cell(left) {
+                    CalcResult::Error { .. } => {
+                        return Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "k is an error cell".to_string(),
+                        ))
+                    }
+                    value => value,
+                }
             }
-            _ => k.clone(),
-        }
+            read => read.into_single_area(cell),
+        };
+        let number = self.cast_to_number(value.clone(), cell)?;
+        // A scalar that reads as a number keeps its own type for LARGE and the like; only a
+        // value `value_node` cannot spell is passed as the number it read as.
+        Ok(value_node(&value).unwrap_or(Node::NumberKind(number)))
     }
 
     /// Functions 1-13: every argument must be a reference. A value, an array or a nested
@@ -204,7 +227,11 @@ impl Model {
                 match cells {
                     Ok(cells) => {
                         for value in &cells {
-                            collect_value(value_of(value, cell), ignore, &mut collected);
+                            collect_value(
+                                array_node_to_calc_result(value, cell),
+                                ignore,
+                                &mut collected,
+                            );
                         }
                     }
                     Err(error) => return error,
@@ -278,6 +305,10 @@ impl Model {
                 "Expected an array and k".to_string(),
             );
         };
+        let k = match self.aggregate_k(k, cell) {
+            Ok(k) => k,
+            Err(error) => return error,
+        };
         let mut collected = Collected::default();
         // A union reaches it behind a name, a LET variable, IF or CHOOSE too (SPEC-0004).
         let result = match self
@@ -288,7 +319,11 @@ impl Model {
             Err(value) => match value {
                 CalcResult::Array(rows) => {
                     for value in rows.iter().flatten() {
-                        collect_value(value_of(value, cell), ignore, &mut collected);
+                        collect_value(
+                            array_node_to_calc_result(value, cell),
+                            ignore,
+                            &mut collected,
+                        );
                     }
                     Ok(Vec::new())
                 }
@@ -323,7 +358,6 @@ impl Model {
             // probes/aggregate-grid I41:I46 (an empty range).
             return CalcResult::new_error(Error::NUM, cell, "No numbers".to_string());
         }
-        let k = self.top_left_k(k, cell);
         let values = [numbers_array(collected.numbers), k];
         match function {
             14 => self.fn_large(&values, cell),
@@ -408,17 +442,6 @@ fn collect_value(value: CalcResult, ignore: Ignore, collected: &mut Collected) {
         }
         CalcResult::EmptyCell | CalcResult::EmptyArg => {}
         _ => collected.non_empty += 1,
-    }
-}
-
-/// An element of a computed array as a value.
-fn value_of(value: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
-    match value {
-        ArrayNode::Number(number) => CalcResult::Number(*number),
-        ArrayNode::Boolean(boolean) => CalcResult::Boolean(*boolean),
-        ArrayNode::String(text) => CalcResult::String(text.clone()),
-        ArrayNode::Error(error) => CalcResult::new_error(error.clone(), cell, String::new()),
-        ArrayNode::Empty => CalcResult::EmptyCell,
     }
 }
 

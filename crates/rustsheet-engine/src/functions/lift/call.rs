@@ -149,7 +149,11 @@ impl Model {
         if !kinds.accepts(args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let options = LiftOptions::for_entry(kinds);
+        let mut options = LiftOptions::for_entry(kinds);
+        // SORTBY's emptied elements are `#VALUE!` once the call has a second by_array, sort_order
+        // pair (probes/m7-lift-take-drop-sortby sheet Sort; arrays.md "UNIQUE's and SORTBY's
+        // lifted elements"; T-1839).
+        options.later_error = args.len() > kinds.params.len();
         // Calls of up to three arguments (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
         // most of the per-call overhead over the old math macros (T-1773 bench).

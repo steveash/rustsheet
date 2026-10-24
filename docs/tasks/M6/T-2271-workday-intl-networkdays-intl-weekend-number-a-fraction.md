@@ -37,8 +37,14 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 9 in eval/baselin
 | gen-m6/ee56a4ed5a612a0d Calc!A387 | `=NETWORKDAYS.INTL(((Data!D$12/Data!D7)^SUMIFS(Data!C10:C11,Data!A2:D9,"",Data!A6:C8,"<5",Data!B4:C6,1)),406...` | "#DIV/0!" | "#VALUE!" |
 | gen-m6/fde83d52a9d1fc63 Calc!A219 | `=WORKDAY.INTL(16895,22,Data!B$8,COUNTA(Data!A4:A6,EDATE(23398,8),Data!B1:B3))` | "#NUM!" | 16925.0 |
 
+Also (T-2253 top-up sweep, excel-graph, 2026-10-22; recorded in eval/baseline/gen-m6.txt): a blank weekend cell is `#NUM!`
+(`NETWORKDAYS.INTL(13803,28521,Data!E1)`, E1 blank: Excel `#NUM!`, ours 10513; gen-m6/afe9267df3df26a8 Calc!A47), and a FALSE weekend
+cell raises no `#VALUE!` ahead of a negative holiday's `#NUM!` (`NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`,
+C5 FALSE, B7 -1 among the holidays: Excel `#NUM!`, ours `#VALUE!`; gen-m6/f93597dff1cfa5b6 Calc!A252). What a boolean weekend gives on
+valid dates with valid holidays is still this task's probe.
+
 ## Acceptance criteria
-- [ ] These 9 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [ ] These 9 known-failure lines, and the 2 cells of the T-2253 paragraph above, disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] A probe case (excel-graph) gives TRUE and FALSE weekends on valid dates for both functions; dates.md records it.
 - [ ] Unit tests cover weekend 3.9, 11.5, TRUE, FALSE (as probed) and a blank cell for both functions; probes/date-text-weekend-3d still passes.
 - [ ] dates.md's entry says Ours: implemented (T-2271).
@@ -49,20 +55,3 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 9 in eval/baselin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
-
-## Handoff (resumed)
-Done on this branch: probe probes/weekend-number-coercion (excel-graph values filled, A1:A26: a number weekend truncates, TRUE is 1, FALSE and a blank cell are 0 = `#NUM!`, for both functions), `weekend_mask` rewritten to match (crates/rustsheet-engine/src/functions/date_and_time.rs), a unit test in test/test_fn_weekend_lift.rs, the dates.md entry updated. The engine tests pass.
-
-Blocker: `make eval-baseline` fixes the 9 owned cells but reports 1 REGRESSION, gen-m6/ef10bf3afb9658f6 Calc!A302 `=NETWORKDAYS.INTL(0,10485,2.5,Data!B3:E12)`: Excel `#NUM!`, ours `#VALUE!`. It passed before only because the fractional weekend 2.5 gave `#NUM!` at once; with weekend 2 valid, the holidays (text "1.5", " x ", "ü", TRUE and negative numbers -1, -2.5) decide, and the error order among them is Excel's, not ours. I tried "a numeric holiday out of the calendar beats a text holiday anywhere in the range" in `collect_serial_numbers`: 130 regressions (e.g. gen-m6/121a7c17092038d9 A171 `WORKDAY(16968,-2,Data!B5:D12)` is `#VALUE!` in Excel), so that was reverted. The holiday error order is T-2272's open question (dates.md "WORKDAY and NETWORKDAYS holidays ... the error order", UNVERIFIED). Next: probe the holiday scan order (text, boolean and negative-number holidays in different positions, NETWORKDAYS.INTL vs WORKDAY.INTL, weekend valid) with excel-probe, implement it in `collect_serial_numbers`/`holiday_serials`, then `make eval-baseline` (needs 0 regressions), `make check`, review.
-
-## Blocked because
-Waiting on T-2270 (PR #1448, green, unmerged). The one regression in the handoff (gen-m6/ef10bf3afb9658f6
-Calc!A302, `NETWORKDAYS.INTL(0,10485,2.5,Data!B3:E12)`, Excel `#NUM!`) is not a holiday error-order question: the
-first holiday, B3, is the number text `"1.5"`, which Excel accepts as a holiday (dates.md "WORKDAY and NETWORKDAYS
-holidays: blank and number-text cells", T-2270), so the scan reaches E3 (-0.0001) and gives `#NUM!`. With T-2270's
-branch merged into this one locally, `rustsheet-eval check` reports 0 regressions in every suite (opus run,
-2026-10-21). A text-defers-`#VALUE!` rule was also tried: 69 regressions (text before a negative number is `#VALUE!`
-in Excel, e.g. gen-m6/04fdc9a67474aab9 A227), so it is not the rule. Next: once #1448 merges, merge origin/main in,
-`make eval-baseline` (expect the 9 owned cells fixed, 0 regressions), `make check`, review, PR. Back to `tier: sonnet`
-is fine then; the remaining work is mechanical.
-

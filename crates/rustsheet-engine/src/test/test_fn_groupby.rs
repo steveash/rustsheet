@@ -1008,3 +1008,69 @@ fn two_parameter_lambdas_are_charged_against_the_visit_cap() {
     assert_eq!(model._get_text("C1"), "20000");
     assert_eq!(model._get_text("D1"), "2000");
 }
+
+#[test]
+fn array_field_headers_and_total_depth_lift_to_top_left_cells() {
+    // probes/groupby-lifted-args A57, A65, A73, A89, A97, A113 (T-2359): an array field_headers
+    // or total_depth lifts the call; each element is the top-left cell of its call or its error,
+    // in its argument's place (text before a later error value, an error element itself).
+    let mut model = region_sales();
+    model._set("D1", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),{0,1})");
+    model._set("D3", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),0,{1;5})");
+    model._set("D6", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),{\"x\",3})");
+    model._set(
+        "D8",
+        "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),0,{1,\"x\",#N/A},,,1/0)",
+    );
+    model._set("D10", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),{3})");
+    model.evaluate();
+    assert_eq!(
+        [
+            model._get_text("D1"),
+            model._get_text("E1"),
+            model._get_text("F1")
+        ],
+        ["East", "East", ""]
+    );
+    assert_eq!(
+        [
+            model._get_text("D3"),
+            model._get_text("D4"),
+            model._get_text("E3")
+        ],
+        ["East", "#VALUE!", ""]
+    );
+    assert_eq!(
+        [model._get_text("D6"), model._get_text("E6")],
+        ["#VALUE!", "East"]
+    );
+    assert_eq!(
+        [
+            model._get_text("D8"),
+            model._get_text("E8"),
+            model._get_text("F8")
+        ],
+        ["#DIV/0!", "#VALUE!", "#N/A"]
+    );
+    assert_eq!(
+        [model._get_text("D10"), model._get_text("D11")],
+        ["East", ""]
+    );
+}
+
+#[test]
+fn nested_groupby_evaluates_each_level_once() {
+    // T-2359 review: the lift check must not evaluate the arguments again, or a GROUPBY nested
+    // in the keys of GROUPBY 24 deep, lifted at every level, would take 2^24 evaluations (the
+    // value, an error from the shrinking keys, does not matter here).
+    let mut model = region_sales();
+    let mut formula = "A2:A11".to_string();
+    for _ in 0..24 {
+        formula = format!("TAKE(GROUPBY({formula},B2:B11,LAMBDA(x,SUM(x)),{{0,1}}),,1)");
+    }
+    model._set("D1", &format!("=ROWS({formula})"));
+    let start = std::time::Instant::now();
+    model.evaluate();
+    assert!(start.elapsed().as_secs() < 5, "{:?}", start.elapsed());
+    assert!(!model._get_text("D1").is_empty());
+}

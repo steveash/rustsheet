@@ -50,8 +50,8 @@ fn span_order_and_quoting() {
     // Written backwards it is the same span (3d-ref-aggregates C2).
     assert_eq!(eval(&mut model, "=SUM(Data3:Data1!A1)"), "111");
     assert_eq!(eval(&mut model, "=SUM('Data2:Q 4'!A1)"), "1110");
-    // The formula's own sheet may be in the span.
-    assert_eq!(eval(&mut model, "=SUM(Sheet1:Data2!A1)"), "#CIRC!");
+    // The formula's own sheet may be in the span: a loop, so 0 (recalc.md).
+    assert_eq!(eval(&mut model, "=SUM(Sheet1:Data2!A1)"), "0");
     model._set("B1", "=SUM(Sheet1:Data2!A1)");
     model._set("A1", "7");
     model.evaluate();
@@ -67,6 +67,15 @@ fn formula_text_round_trips() {
     assert_eq!(model._get_formula("A2"), "=SUM('Data2:Q 4'!$A$1)");
     model.rename_sheet("Data3", "Last").unwrap();
     assert_eq!(model._get_formula("A1"), "=SUM(Data1:Last!A1:B2)");
+}
+
+#[test]
+fn a_one_sheet_span_reads_back_as_the_plain_reference() {
+    let mut model = sample();
+    model._set("A1", "=ABS(Data1:Data1!A1:A3)");
+    model._set("A2", "=SUM('Q 4:Q 4'!$A$1)");
+    assert_eq!(model._get_formula("A1"), "=ABS(Data1!A1:A3)");
+    assert_eq!(model._get_formula("A2"), "=SUM('Q 4'!$A$1)");
 }
 
 #[test]
@@ -303,4 +312,39 @@ fn a_name_bound_to_a_span_reads_like_the_span() {
     }
     assert_eq!(eval(&mut model, "=ISREF(span3)"), "FALSE");
     assert_eq!(eval(&mut model, "=ISERROR(span3)"), "TRUE");
+}
+
+// A one-sheet span is that sheet's reference, so a scalar function over its range lifts and
+// spills like the plain range (fuzz reproducer `DATEVALUE(Sheet1:Sheet1!B1:BM1)`, T-2351); this
+// tripped the scalar-cell debug_assert in `Model` when static analysis called every span scalar.
+#[test]
+fn a_one_sheet_span_range_lifts_like_the_plain_range() {
+    for (span, plain) in [
+        (
+            "=DATEVALUE(Sheet1:Sheet1!B1:BM1)",
+            "=DATEVALUE(Sheet1!B1:BM1)",
+        ),
+        ("=LEN(Sheet1:Sheet1!B1:BM1)", "=LEN(Sheet1!B1:BM1)"),
+        ("=ABS(Sheet1:Sheet1!B1:C1)", "=ABS(Sheet1!B1:C1)"),
+        ("=ABS(Data1:Data1!A1:A3)", "=ABS(Data1!A1:A3)"),
+        ("=LEN(Data1:Data1!A1:A3)", "=LEN(Data1!A1:A3)"),
+        ("=DATEVALUE(Data1:Data1!A1:A3)", "=DATEVALUE(Data1!A1:A3)"),
+    ] {
+        let mut model = sample();
+        model._set("D4", span);
+        model._set("D8", plain);
+        model.evaluate();
+        let spilled = model._get_text("D4");
+        let expected = model._get_text("D8");
+        assert_eq!(spilled, expected, "{span}");
+        assert_eq!(model._get_text("E4"), model._get_text("E8"), "{span}");
+        assert_eq!(model._get_text("D5"), model._get_text("D9"), "{span}");
+    }
+    // The values themselves (probes/3d-ref-one-sheet-span-lift A1:A3 holds 1, 5, #VALUE! over
+    // other data; here Data1!A1:A3 is 1, "5x", TRUE).
+    let mut model = sample();
+    model._set("D4", "=ABS(Data1:Data1!A1:A3)");
+    model.evaluate();
+    assert_eq!(model._get_text("D4"), "1");
+    assert_eq!(model._get_text("D5"), "#VALUE!");
 }

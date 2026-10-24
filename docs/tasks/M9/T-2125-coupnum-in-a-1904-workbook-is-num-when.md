@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2337]
 ---
 
 ## Goal
@@ -22,6 +22,13 @@ T-1844 (a previous coupon before the calendar is #NUM! for COUPNUM, `coupon_coun
 carry over as is. Probe a sweep first (excel-probe skill): COUPNUM/PRICE/DURATION with settlements 0-400 and
 maturities whose previous coupon is just before or after 1904-01-01, and remember 1904 dates read as 1900 serial
 s + 2 * 1462 (`DateSystem::financial_1900_serial`; dates.md "The 1904 date system").
+
+## Probed 2026-10-21 (waits on T-2337)
+probes/fin-coupnum-1904-epoch and fin-coupnum-1904-maturity-sweep (excel-graph, 2026-10-21) give a clean rule:
+COUPNUM is `#NUM!` exactly when the previous coupon is before 1904-01-01 (financial.md "COUPNUM in a 1904 workbook").
+The fix is drafted in docs/research/excel-1904-drift-2026-10.md. It is parked because the same oracle gave 25 for
+`COUPNUM(0,DATE(1910,3,31),4)` on 2026-10-12 (date-system-1904-financial S!A38), and a re-fill of the 1904 cases
+changed 111 cells. T-2337 settles the 1904 financial rules first.
 
 ## Acceptance criteria
 - [ ] probes/fin-coupon-walk-bounds-1904 A5 and A6 pass, with a probe sweep backing the rule in financial.md.
