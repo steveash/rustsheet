@@ -3,7 +3,7 @@ id: T-2550
 title: "Oracle sweep of BESSELK for x from 500 to 713 at orders 0 to 5 (for the BESSELK near-underflow kernel)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
