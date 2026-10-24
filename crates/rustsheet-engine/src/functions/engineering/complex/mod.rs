@@ -712,14 +712,15 @@ impl Model {
                 },
             );
             if let Err(error) = walked {
-                return error;
+                return error.empty_array_as_value_error(cell);
             }
             if referenced < cells {
                 has_blank = true;
             }
         }
+        // A referenced cell holding an empty array's `#CALC!` is `#VALUE!` too (A140..A147).
         if let Err(error) = walk.finish() {
-            return error;
+            return error.empty_array_as_value_error(cell);
         }
         let (x, y, suffix) = total.unwrap_or((0.0, 0.0, Suffix::I));
         if fold == ComplexFold::Product && has_blank {
