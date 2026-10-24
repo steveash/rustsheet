@@ -393,8 +393,11 @@ An inverse element past the double range makes the whole result `#NUM!`, not jus
 non-overflowing `MINVERSE({1E-200,0;0,1E-200})` is {1E+200,0;0,1E+200}, although both matrices have the same underflowing determinant
 (1E-400), so it is the overflowing inverse element, not determinant underflow, that gives `#NUM!`. Evidence: probes/minverse-overflow-computed-pivot Calc!I2:I8
 (excel-graph, 2026-10-24, T-2386).
-`MINVERSE(A1)` with A1 = `=1E-300*1E-10` is `#NUM!` but not through overflow: Excel flushes the subnormal product 1E-310 to 0
-(A1 reads 0, numbers.md "A subnormal divisor is zero"), so the 1x1 matrix is exactly singular (Calc!I1).
+A 1x1 inverse past the double range is `#NUM!` too: A3 = `=3E-308-2.5E-308` is a kept subnormal (about 5E-309; `(3E-308-2.5E-308)=0` is FALSE,
+numbers.md "Subnormal results become 0"), `MDETERM(A3)` keeps it (`(MDETERM(A3))=0` is FALSE) and `MINVERSE(A3)` / `MINVERSE(3E-308-2.5E-308)`
+are `#NUM!`, its inverse being about 2E+308 (Calc!P1:P4, A3:A4; graph reports the subnormal cells as 0, decision 0042).
+`MINVERSE(A1)` with A1 = `=1E-300*1E-10` is `#NUM!` for a different reason: `*` flushes 1E-310 to a true 0 (Calc!A5 `A1=0` is TRUE;
+numbers.md "Subnormal results become 0"), so the 1x1 matrix is exactly singular (Calc!I1).
 A near-singular pivot computed from cells is inverted: B1:C2 = 1, 1, 1, `=1+2^-52` (the cell holds 1+2^-52 exactly, unlike the
 literal) gives `MDETERM` 2.220446049250313E-16 and `MINVERSE` {4503599627370497,-4503599627370496;-4503599627370496,4503599627370496}
 (Calc!I4, J1:J4). That is consistent with the 15-digit literal explanation above for `{1,1;1,1.0000000000000002}` (the cell-held value is invertible, the literal is not; the literal's stored value was not probed separately). The 3x3

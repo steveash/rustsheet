@@ -29,8 +29,7 @@ and the 3x3 `{1,2,3;4,5,6;7,8,9}` from cells.
 - Engine changes (file them as a follow-up).
 
 ## Outcome
-Probe `probes/minverse-overflow-computed-pivot` oracle-filled (excel-graph); all 36 cells already match the engine, so no
+Probe `probes/minverse-overflow-computed-pivot` oracle-filled (excel-graph); all 43 cells match the engine, so no
 functions-math follow-up. Findings in arrays.md "MINVERSE: singularity rule": a 2x2 overflowing inverse is `#NUM!` for the whole
-result; a computed near-singular pivot is inverted; `1E-300*1E-10` is flushed to 0 by Excel, so I1 shows the singular case only
-(a 1x1 overflowing inverse is unreachable: every nonzero 1x1 value is at least the smallest normal, whose inverse is finite).
-Eval delta: +36 bit-exact probe cells, 0 known failures.
+result; a 1x1 kept-subnormal (3E-308-2.5E-308) overflowing inverse is `#NUM!`; `1E-300*1E-10` is flushed to 0 by `*`, so that
+1x1 is the singular case; a computed near-singular pivot is inverted. Eval delta: +43 bit-exact probe cells, 0 known failures.
