@@ -321,3 +321,121 @@ fn text_index_with_a_range_range_lookup_is_value_per_element() {
     assert_eq!(model._get_text("D1"), *"#VALUE!");
     assert_eq!(model._get_text("D2"), *"#VALUE!");
 }
+
+#[test]
+fn table_error_comes_after_lookup_value_and_before_index() {
+    // probes/lookup-argument-edges (excel-graph, T-2234): lookup_value, then table_array, then
+    // the index and range_lookup; a lifted lookup_value spills the table error.
+    let mut model = new_empty_model();
+    model._set("A1", "=VLOOKUP(NA(),1/0,2)");
+    model._set("A2", "=VLOOKUP(2,1/0,NA())");
+    model._set("A3", "=HLOOKUP(2,1/0,2,NA())");
+    model._set("A4", "=VLOOKUP(2,#REF!,\"a\")");
+    model._set("B1", "=VLOOKUP({2;9},1/0,2)");
+    model._set("C1", "=VLOOKUP(NA(),1/0,2,{TRUE;FALSE})");
+    model._set("D1", "=VLOOKUP(2,1/0,2,{TRUE;FALSE})");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#N/A");
+    assert_eq!(model._get_text("C2"), *"#N/A");
+    assert_eq!(model._get_text("D1"), *"#DIV/0!");
+    assert_eq!(model._get_text("D2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"#REF!");
+    assert_eq!(model._get_text("B1"), *"#DIV/0!");
+    assert_eq!(model._get_text("B2"), *"#DIV/0!");
+}
+
+#[test]
+fn index_floors_but_snaps_up_near_an_integer() {
+    // probes/lookup-index-near-integer and lookup-argument-edges (excel-graph, T-2234): 3.5 is
+    // column 3, 3.9999999 is column 4 (past the table), and the -2^31 cut-off is tested after
+    // flooring.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("C1", "3");
+    model._set("D1", "=VLOOKUP(1,A1:C1,3.5)");
+    model._set("D2", "=VLOOKUP(1,A1:C1,3.9999999)");
+    model._set("D3", "=VLOOKUP(1,A1:C1,2-2^-22)");
+    model._set("D4", "=VLOOKUP(1,A1:C1,2-2^-22*(1+3*2^-12))");
+    model._set("D5", "=VLOOKUP(1,A1:C1,-2147483647.5)");
+    model._set("D6", "=VLOOKUP(1,A1:C1,-2147483646.5)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "3");
+    assert_eq!(model._get_text("D2"), *"#REF!");
+    assert_eq!(model._get_text("D3"), "2");
+    assert_eq!(model._get_text("D4"), "1");
+    assert_eq!(model._get_text("D5"), *"#REF!");
+    assert_eq!(model._get_text("D6"), *"#VALUE!");
+}
+
+#[test]
+fn bad_scalar_range_lookup_beside_a_lifted_lookup_value_is_an_error_per_element() {
+    // gen-m7/f7e94a817e5385ac Calc!A2430 and probes/vlookup-scalar-range-lookup-lifted
+    // (excel-graph, T-2411): a scalar range_lookup that is not a boolean ("1") or is an error
+    // beside a lifted lookup_value is that error in every element, as each element's scalar call
+    // is, not one `#VALUE!`; an error lookup_value element still wins.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("B1", "one"), ("B2", "two")] {
+        model._set(cell, value);
+    }
+    model._set("D1", "=VLOOKUP({1;2},A1:B2,2,\"1\")");
+    model._set("E1", "=ROWS(VLOOKUP({1;2},A1:B2,2,\"1\"))");
+    model._set("F1", "=HLOOKUP({1,2},A1:B2,2,\"x\")");
+    model._set("H1", "=VLOOKUP(A1:A2,A1:B2,2,NA())");
+    model._set("I1", "=VLOOKUP({1;#DIV/0!},A1:B2,2,\"1\")");
+    model._set("J1", "=VLOOKUP(1,A1:B2,2,\"1\")");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), *"#VALUE!");
+    assert_eq!(model._get_text("D2"), *"#VALUE!");
+    assert_eq!(model._get_text("E1"), *"2");
+    assert_eq!(model._get_text("F1"), *"#VALUE!");
+    assert_eq!(model._get_text("G1"), *"#VALUE!");
+    assert_eq!(model._get_text("H1"), *"#N/A");
+    assert_eq!(model._get_text("H2"), *"#N/A");
+    assert_eq!(model._get_text("I1"), *"#VALUE!");
+    assert_eq!(model._get_text("I2"), *"#DIV/0!");
+    // A scalar call is still one `#VALUE!`.
+    assert_eq!(model._get_text("J1"), *"#VALUE!");
+}
+
+#[test]
+fn bad_value_index_beside_a_lifted_lookup_value_is_an_error_per_element() {
+    // probes/vlookup-scalar-range-lookup-lifted G13-G24 (excel-graph, T-2411): a text or error
+    // index lifts with the lookup_value, its error beating a bad range_lookup and a not-found
+    // element, as in each element's scalar call.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("B1", "one"), ("B2", "two")] {
+        model._set(cell, value);
+    }
+    model._set("D1", "=VLOOKUP({1;99},A1:B2,\"a\")");
+    model._set("E1", "=VLOOKUP({1;2},A1:B2,\"a\",NA())");
+    model._set("F1", "=VLOOKUP({1;99},A1:B2,1/0,\"1\")");
+    model._set("G1", "=VLOOKUP({1;#N/A},A1:B2,\"a\")");
+    model._set("H1", "=VLOOKUP(1,A1:B2,\"a\",NA())");
+    // With an array range_lookup too (G26), and where an exact match does not find the value
+    // (G33-G35, G39); with approximate match 99 is found in the last row.
+    model._set("I1", "=VLOOKUP({1;99},A1:B2,\"a\",FALSE)");
+    model._set("J1", "=VLOOKUP(99,A1:B2,\"a\",{FALSE;FALSE})");
+    model._set("L1", "=VLOOKUP({1;99},A1:B2,1/0,{FALSE;FALSE})");
+    model._set("M1", "=VLOOKUP({1;99},A1:B2,2,{FALSE;FALSE})");
+    model._set("K1", "=VLOOKUP({1;2},A1:B2,\"a\",{#N/A;TRUE})");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), *"#VALUE!");
+    assert_eq!(model._get_text("D2"), *"#VALUE!");
+    assert_eq!(model._get_text("E1"), *"#VALUE!");
+    assert_eq!(model._get_text("E2"), *"#VALUE!");
+    assert_eq!(model._get_text("F1"), *"#DIV/0!");
+    assert_eq!(model._get_text("F2"), *"#DIV/0!");
+    assert_eq!(model._get_text("G1"), *"#VALUE!");
+    assert_eq!(model._get_text("G2"), *"#N/A");
+    assert_eq!(model._get_text("H1"), *"#VALUE!");
+    for cell in ["I1", "I2", "J1", "J2", "K1", "K2"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+    assert_eq!(model._get_text("L2"), *"#DIV/0!");
+    // The control: no failed argument, so not found is #N/A.
+    assert_eq!(model._get_text("M2"), *"#N/A");
+}

@@ -32,11 +32,11 @@ impl Model {
             );
         }
 
-        let a = match self.eval_to_array(&args[0], cell) {
+        let a = match self.eval_matrix_arg(&args[0], cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
-        let b = match self.eval_to_array(&args[1], cell) {
+        let b = match self.eval_matrix_arg(&args[1], cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -67,13 +67,14 @@ impl Model {
         fn coerce(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
             match node {
                 ArrayNode::Number(v) => Ok(*v),
-                ArrayNode::Boolean(_) | ArrayNode::Empty | ArrayNode::String(_) => {
-                    Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "MMULT requires numeric values".to_string(),
-                    ))
-                }
+                ArrayNode::Boolean(_)
+                | ArrayNode::Empty
+                | ArrayNode::String(_)
+                | ArrayNode::Lambda(_) => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "MMULT requires numeric values".to_string(),
+                )),
                 ArrayNode::Error(e) => Err(CalcResult::new_error(
                     e.clone(),
                     cell,

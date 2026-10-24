@@ -22,7 +22,12 @@ Before any other character, `~` is a literal tilde: `"a~c"` matches "a~c", and a
 is literal (`"abc~"` matches "abc~", not "abc"). `~~` is **not** an escape for one tilde: `"~~"`
 does not match the text "~" and `"a~~c"` does not match "a~c". Matching, with or without
 wildcards, is case-insensitive (`"ABC"` → abc and ABC; `"A?C"`, `"*C"` → 5).
-Verified with COUNTIF only, for patterns without `*`/`?`; inside wildcard patterns and in MATCH/XMATCH see "Tildes inside wildcard patterns and wildcard-mode lookups" below. D-functions are unprobed for `~~`.
+Verified with COUNTIF, for patterns without `*`/`?`; inside wildcard patterns and in MATCH/XMATCH see "Tildes inside wildcard patterns and wildcard-mode lookups" below.
+D-functions follow the same plain-text tilde rule inside their prefix match (`~` before a non-wildcard and a trailing `~` stay
+literal): over Data!A2:A9 = a~c, ac, abc~, abc, ~, a~~c, a~b, a~bx (v = 1..128), DSUM with criterion `a~c` 1, `a~~c` 32,
+`abc~` 4 (not abc), `~` 16, `~~` 0 (not 16: `~~` is not an escape for the cell "~"), `a~` 225 (a~c, a~~c, a~b, a~bx: prefix "a~", not "a"), `=a~c` 1, `=abc~` 4, `=~` 16, and the
+wildcard pattern `a~*` 0 (an escaped `*`; a literal `~` before a live `*` would give 225); DCOUNTA counts agree (`a~` 4).
+Evidence: probes/criteria-tilde-blank-single-cell-edges Calc!A1:B10 (excel-graph, 2026-10-21, T-2235).
 Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, abc~, a*c, a?c, a~c,
 *, ~: 1, 1, 1, 0, 0, 1, 2, 5, 10, 5, 1; probes/criteria-grammar C8. Oracle: excel-graph, 2026-10-05 (T-0011).
 Status: VERIFIED
@@ -199,7 +204,12 @@ fixtures/external-link-cached-ranges Refs!B89:B92 (`SUM`, `ROWS`, `ISREF` and `I
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
-give 0 and AVERAGEIFS `#DIV/0!` at that position, and the COUNTIF result keeps its 3x1 shape (ROWS = 3; the others were probed only at INDEX(...,3,1); unprobed: blank, `""` or 0 cells in the searched range);
+give 0 and AVERAGEIFS `#DIV/0!` at that position, and the COUNTIF result keeps its 3x1 shape (ROWS = 3; the others were probed only at INDEX(...,3,1));
+over a searched range A1:A4 = blank, `=""`, 0, "0" (weights 1, 2, 4, 8) the array criterion `{"","=","<>",0,"0","=0"}` gives, per element,
+exactly the scalar criterion's result, in a 1x6 array for COUNTIF, SUMIF, SUMIFS, AVERAGEIFS and MAXIFS alike: COUNTIF 2, 1, 3, 2, 2, 2
+(`""` the blank and the `""` cell, `"="` the blank only, `"<>"` all but the blank, and `0`, `"0"`, `"=0"` each the number 0 and the text "0"),
+SUMIF/SUMIFS 3, 1, 14, 12, 12, 12, AVERAGEIFS 1.5, 1, 14/3, 6, 6, 6, MAXIFS 2, 1, 8, 8, 8, 8
+(probes/criteria-tilde-blank-single-cell-edges Arr!D1:K8, excel-graph 2026-10-21, T-2235);
 for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria positions whose rows select it
 (`SUMIFS(E1:E3,A1:A3,{"a","b"})` with E1 = #N/A is #N/A, 5; AVERAGEIFS and MAXIFS probed only at position 1: `#N/A`);
 `COUNTIFS(E1:E3,{"a","b"})` ignores it (0 at position 1). A `NA()`/non-range first argument with an array criterion
@@ -258,10 +268,15 @@ Tasks: T-0214
 ### SUMIF/AVERAGEIF resize clamps at the sheet edge; single-cell ranges are 1x1
 Rule: when the resized sum_range would run past XFD1048576 Excel clamps it to the sheet edge (no `#REF!`):
 `SUMIF(A1:B2,">0",XFD1)` sums XFD1:XFD2. After clamping, AVERAGEIF averages only the cells inside the clamped range (`AVERAGEIF(A1:B2,">0",XFD1048576)` = 30/1, not 30/4).
-A single-cell range is a 1x1 range (probed for SUMIF, SUMIFS, MINIFS, MAXIFS, COUNTIF; AVERAGEIF/COUNTIFS/MAXIFS share the code paths but are not probed): as the first range of
+A single-cell range is a 1x1 range (probed for SUMIF, SUMIFS, MINIFS, MAXIFS, COUNTIF, AVERAGEIF, COUNTIFS and AVERAGEIFS): as the first range of
 SUMIFS/MINIFS/MAXIFS (`SUMIFS(D1,A1:A1,">0")`) and as a criteria range (`=SUMIF(A1,">0",D1)`,
 `SUMIFS(D1:D1,A1,">0")`, `COUNTIF(A1,">0")`, `SUMIF(A1,{">0"},D1)`), none of them `#VALUE!`.
-Evidence: probes/sumif-edge-single-cell F1-F15 (oracle: excel-graph)
+With bare cells (A1 = 1, B1 = 2, D1 = 7, D2 = -1): `AVERAGEIF(A1,">0",D1)` 7, `AVERAGEIF(A1,">0")` 1, `AVERAGEIF(A1,"<0",D1)`
+`#DIV/0!`, `COUNTIFS(A1,">0",B1,"<5")` 1, `COUNTIFS(A1:A1,">0")` 1, `COUNTIFS(A1,">0",B1,">5")` 0, `MAXIFS(D1,A1,">0")` 7,
+`MAXIFS(D2,A1,">0")` -1, `MINIFS(D1:D1,A1,">0")` 7, `MINIFS(D1,A1,"<0")` 0, `AVERAGEIFS(D1,A1,">0")` 7,
+`AVERAGEIFS(D1:D1,A1,">0",B1,"<5")` 7.
+Evidence: probes/sumif-edge-single-cell F1-F15 (oracle: excel-graph); probes/criteria-tilde-blank-single-cell-edges One!F1:F12
+(excel-graph, 2026-10-21, T-2235)
 Status: VERIFIED
 Implemented in: `resize_to`, `apply_ifs`, `fn_countifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0234
@@ -290,3 +305,52 @@ Rule: `?` and `*` in a text criterion match by character (case-insensitive per "
 Evidence: probes/text-collation-ifs Calc!A7:D14 (excel-graph, 2026-10-15). Status: VERIFIED
 Implemented in: `wildcard_text_matcher` (functions/criteria.rs); the engine already passes all 56 cells of the case.
 Tasks: T-1597
+
+## Database edge-pool smoke check (T-2249)
+Rule: observed D* values over the generator's database sheet (tools/src/rustsheet_tools/gen/database.py: Db!A1:D9,
+headers Name, Qty, Price, Date; Qty 4, 10, 0, 2, 1, -4, 7, 5, so every record sums to 25 and Qty > 2 to 26):
+- A criteria header the database does not have is ignored, so every record matches: `DSUM(Db!A1:D9,"Qty",Db!N1:N2)`
+  (N1 "Nope", N2 1) is 25 and `DCOUNTA(Db!A1:D9,1,Db!N1:N2)` 7 (ours 0, T-2422).
+- A computed criterion works: a label that is not a header over a formula about the first record (O1 "Calc", O2
+  `=B2>3`) gives `DSUM(...,"Qty",Db!O1:O2)` 26 and `DCOUNTA(...,1,Db!O1:O2)` 4 (ours 0, T-2422).
+- A criteria range of only the header row is `#VALUE!` (`Db!F1:G1`, `Db!F1`; ours matches every record, T-2422), while
+  a header with a blank row under it matches every record (`Db!K1:K2`, and `Db!F1:F3`, whose third row is blank).
+- Wholly blank rows at the end of the database are not records: `DCOUNTA(Db!A1:D12,,Db!K1:K2)` is 8, as over
+  Db!A1:D9 (ours 11, T-2422).
+- A database of the header row alone is `#VALUE!`; without its header row the first record is read as the headers
+  (`DSUM(Db!A2:D9,2,Db!F1:F2)` 0).
+- Field: 5, 0, -1, " Qty", "" and "Nope" are `#VALUE!`; 2.9 is column 2; "qty" matches the header; a header cell
+  reference works. The plain-text, `=`, wildcard, escaped-wildcard (`a~**`), `<>`, `<>4`, date (`>45351`), OR-row and
+  AND-column criteria all match ours.
+Evidence: the scratch suite of engineering.md "Engineering edge-pool smoke check (T-2249)" (excel-graph, 2026-10-22,
+deleted afterwards).
+Status: UNVERIFIED (probe pending: T-2422 commits the probe case; the cells that match are regenerated by the
+gen-m9 sweep, T-2258)
+Tasks: T-2249, T-2422, T-2258
+
+## D* computed criteria and an unknown header in the gen-m9 database sweep (T-2258)
+Rule: observed D* values over the same Db sheet (Db!A1:D9 as in "Database edge-pool smoke check (T-2249)"; rows 2-9 hold
+Qty 4, 10, 0, 2, 1, -4, 7, 5, Price 2.5, "x", 4, TRUE, 10, 0.5, 100, -1 and Date 45351, 45000, empty, 45657, 45322,
+45412, 45535, 45291) with the computed criterion Db!O1:O2 (O1 "Calc", O2 `=B2>3`):
+- Database Db!A2:D9 (its header row is the first record, row 2; records are rows 3-9): exactly the records of rows 4
+  (Qty 0) and 9 (Qty 5) match. `DVAR(Db!A2:D9,2,Db!O1:O2)` is 12.5 and `DSTDEVP(..,2,..)` 2.5 (Qty 0 and 5),
+  `DCOUNTA(Db!A2:D9,3,Db!O1:O2)` 2, `DAVERAGE(Db!A2:D9,4,..)` 45291, `DSTDEVP(..,4,..)` 0 and `DVAR(..,4,..)` `#DIV/0!`
+  (row 4's date is empty, so one date). That is the reference moved one row up per record (row 4 reads B3 = 10, row 9
+  reads B8 = 7) except for the first record, row 3, whose moved reference B2 (= 4, the header row) would also pass but
+  does not match. Ours matches rows 3, 4 and 9 (`DVAR` 25, `DSTDEVP` 4.08248290463863, `DCOUNTA` 3, `DAVERAGE` 45145.5).
+- `DGET(Db!A2:D9,4,Db!O1:O2)` is 45291 although two records match: the other one's date (row 4) is empty. DGET counts
+  only matching records whose field cell is non-empty: one such record gives its value, none `#VALUE!`, more than one
+  `#NUM!` (probes/db-get-blank-field N1-N8, excel-graph 2026-10-24, T-2422; implemented in `fn_dget`).
+- A database on another sheet (Data) with the criterion on Db matches no record: `DCOUNTA(Data!B4:B6,1,Db!O1:O2)`,
+  `DMAX(Data!B2:E4,4,..)`, `DPRODUCT(Data!B11:E12,3,..)`, `DPRODUCT(Data!C10:E12,3,..)`, `DPRODUCT(Data!C6:D10,2,..)` are
+  0, `DAVERAGE(Data!A10:C12,2,..)` and `DVAR(Data!D2:E12,1,..)` `#DIV/0!` and `DGET(Data!A7:D11,2,..)` `#VALUE!` (ours
+  finds records: 1, 1, 1, -0.0042, 123456789.123, 3.14159, 549.25, `#NUM!`).
+- An unknown criteria header is ignored over a Data database too: `DGET(Data!B6:E8,4,Db!N1:N2)` (N1 "Nope") is -0.5
+  (DGET skips the blank E8, above).
+Evidence: gen-m9 4dc761698ca23149 A129, 74779cff2810ccf4 A52, fa8ee59f2f1be7e0 A332, 7a819ffbbeff8fcc A303,
+5bdef392d16a5efb A161, f066968376660329 A292, A205, A313, d193e8b4ab820f52 A375, A260, f61a73cd9af21e6d A289,
+c9d7659896d95368 A82, A1, 6d16afd40600302b A365, cb80ca09be0e12bc A52, d9d55972b50e55e8 A106, 88cabddc4935351c A255
+(excel-graph, 2026-10-22/23, T-2258).
+Status: VERIFIED (excel-graph) for the values; the reference rule for a criterion away from the database is open
+(T-2525 probes it, T-2553 matches it).
+Tasks: T-2258, T-2422, T-2525, T-2553

@@ -10,6 +10,7 @@
 use super::financial_util::compute_rate;
 use super::{formula_error, number_or_error};
 use crate::functions::lift::{div_error, num_error};
+use crate::x87_exp::{dd_add, dd_div, dd_mul, two_sum};
 use crate::{
     arithmetic::{extended_quotient, extended_sum, power},
     calc_result::CalcResult,
@@ -22,24 +23,145 @@ use crate::{
 /// (right-to-left square-and-multiply for an integer `n`). With [`annuity_factor`] this matches all
 /// 308 PV and 308 FV cells of probes-numeric/m9-fin-pv-fv (docs/excel-semantics/financial.md
 /// "Annuity evaluation order"; fit lab `annuity-pv`, `annuity-fv`, T-1524).
-fn annuity_power(rate: f64, nper: f64) -> Result<f64, Error> {
+pub(super) fn annuity_power(rate: f64, nper: f64) -> Result<f64, Error> {
     power(extended_sum(1.0, rate), nper)
 }
 
 /// The annuity factor `k*((P-1)/r)`, `k = 1+r*type`, evaluated in doubles in exactly this
 /// parenthesization: `(pmt*k)*((P-1)/r)` instead misses 38 of the 308 PV cells (financial.md).
-fn annuity_factor(rate: f64, p: f64, period_start: bool) -> f64 {
+pub(super) fn annuity_factor(rate: f64, p: f64, period_start: bool) -> f64 {
     let k = if period_start { 1.0 + rate } else { 1.0 };
     k * ((p - 1.0) / rate)
 }
 
-/// PMT's `P = (1+rate)^nper` (1 for no periods).
+/// PMT's `P = (1+rate)^nper` (1 for no periods) for its overflow guards and fallback forms:
+/// Excel's `^` on Excel's `1+rate`, infinite where `^` errs (it errs only past the double range
+/// for a positive base).
 fn payment_growth(rate: f64, nper: f64) -> f64 {
     if nper == 0.0 {
         1.0
     } else {
-        (1.0 + rate).powf(nper)
+        annuity_power(rate, nper).unwrap_or(f64::INFINITY)
     }
+}
+
+/// A double-double, `hi + lo` with `hi` the rounded sum (as the `x87_exp` helpers return it).
+type Pair = (f64, f64);
+
+/// The largest |exponent| [`accurate_growth`] takes: 32 squarings.
+const ACCURATE_EXPONENT_LIMIT: f64 = 4_294_967_296.0; // 2^32
+
+/// |P| bounds for [`accurate_growth`]: far enough inside the double range that the products and
+/// quotients PMT, IPMT and PPMT build on P keep their low parts normal.
+const ACCURATE_GROWTH_MIN: f64 = 1e-270;
+const ACCURATE_GROWTH_MAX: f64 = 1e270;
+
+/// `(1+rate)^n` in double-double arithmetic, for |n| up to [`ACCURATE_EXPONENT_LIMIT`]: the
+/// integer part of `n` by right-to-left square-and-multiply from the exact `1+rate` (relative
+/// error about n·2^-104), times `1 + expm1(f·ln(1+rate))` for its fraction `f`, whose error is
+/// a few ulp of the expm1 term, not of 1. `None` past the limit or when P leaves the bounds above.
+/// Excel's PMT, IPMT and PPMT are within a few ulp of the exact payment on the double arguments,
+/// for integer and fractional periods alike, which the double forms miss for long terms and
+/// fractional periods (financial.md "PMT, IPMT and PPMT are the exact payment", T-2130).
+fn accurate_growth(rate: f64, n: f64) -> Option<Pair> {
+    if n.is_nan() || n.abs() > ACCURATE_EXPONENT_LIMIT {
+        return None;
+    }
+    let whole = n.trunc();
+    let mut base = two_sum(1.0, rate);
+    let mut result = (1.0, 0.0);
+    let mut exponent = whole.abs();
+    while exponent > 0.0 {
+        if exponent % 2.0 == 1.0 {
+            result = dd_mul(result, base);
+        }
+        exponent = (exponent / 2.0).floor();
+        if exponent > 0.0 {
+            base = dd_mul(base, base);
+        }
+    }
+    if whole < 0.0 {
+        result = dd_div((1.0, 0.0), result);
+    }
+    let fraction = n - whole;
+    if fraction != 0.0 {
+        result = dd_mul(result, two_sum(1.0, (fraction * rate.ln_1p()).exp_m1()));
+    }
+    (ACCURATE_GROWTH_MIN..=ACCURATE_GROWTH_MAX)
+        .contains(&result.0.abs())
+        .then_some(result)
+}
+
+/// `k = 1+rate*type` as a double-double.
+fn accurate_type_factor(rate: f64, period_start: bool) -> Pair {
+    if period_start {
+        two_sum(1.0, rate)
+    } else {
+        (1.0, 0.0)
+    }
+}
+
+fn negated((hi, lo): Pair) -> Pair {
+    (-hi, -lo)
+}
+
+/// PMT `-(fv + pv*P)*rate / (k*(P-1))` in double-double arithmetic, or `None` where
+/// [`accurate_growth`] declines or the payment is not finite (the double forms then decide).
+fn accurate_payment(rate: f64, nper: f64, pv: f64, fv: f64, period_start: bool) -> Option<Pair> {
+    let p = accurate_growth(rate, nper)?;
+    let numerator = dd_mul(dd_add((fv, 0.0), dd_mul((pv, 0.0), p)), (rate, 0.0));
+    let denominator = dd_mul(
+        accurate_type_factor(rate, period_start),
+        dd_add(p, (-1.0, 0.0)),
+    );
+    if denominator.0 == 0.0 {
+        return None;
+    }
+    let payment = negated(dd_div(numerator, denominator));
+    payment.0.is_finite().then_some(payment)
+}
+
+/// IPMT and PPMT of the period after `e` whole periods (e = period-1, or period-2 for type 1) as
+/// double-doubles, from closed forms that do not cancel: with the balance
+/// `B = (pv*P_e*(P_(n-e)-1) - fv*(P_e-1))/(P-1)`, IPMT is `-rate*B` (`-rate*(B+pmt)` for type 1)
+/// and PPMT `-(pv+fv)*rate*P_e/(P-1)`. IPMT's FV recurrence and PMT - IPMT are the same values,
+/// but they cancel to nothing for long terms even in double-double (`PPMT(0.2,1,360,10000)` is
+/// -6.248581209907205E-26, `PPMT(0.3,360,360,10000,-500)` -2192.3076923076924;
+/// probes-numeric/m9-fin-pmt A82, A504). `None` where [`accurate_growth`] declines.
+fn accurate_period_split(
+    rate: f64,
+    nper: f64,
+    e: f64,
+    (pv, fv): (f64, f64),
+    payment: Pair,
+    period_start: bool,
+) -> Option<(Pair, Pair)> {
+    let p = accurate_growth(rate, nper)?;
+    let p_e = accurate_growth(rate, e)?;
+    let p_rest = accurate_growth(rate, nper - e)?;
+    let one_less = |x: Pair| dd_add(x, (-1.0, 0.0));
+    let periods = one_less(p);
+    if periods.0 == 0.0 {
+        return None;
+    }
+    let balance = dd_div(
+        dd_add(
+            dd_mul(dd_mul((pv, 0.0), p_e), one_less(p_rest)),
+            negated(dd_mul((fv, 0.0), one_less(p_e))),
+        ),
+        periods,
+    );
+    let owed = if period_start {
+        dd_add(balance, payment)
+    } else {
+        balance
+    };
+    let interest = negated(dd_mul(owed, (rate, 0.0)));
+    let principal = negated(dd_div(
+        dd_mul(dd_mul(two_sum(pv, fv), (rate, 0.0)), p_e),
+        periods,
+    ));
+    (interest.0.is_finite() && principal.0.is_finite()).then_some((interest, principal))
 }
 
 /// PMT's fitted quotient for `P = rate_nper`; not finite when `pv*P` overflows.
@@ -67,11 +189,16 @@ fn compute_payment(
     fv: f64,
     period_start: bool,
 ) -> Result<f64, Error> {
+    payment_pair(rate, nper, pv, fv, period_start).map(|payment| payment.0)
+}
+
+/// PMT as a double-double: [`accurate_payment`] where it applies, else a double form (low part 0).
+fn payment_pair(rate: f64, nper: f64, pv: f64, fv: f64, period_start: bool) -> Result<Pair, Error> {
     if rate == 0.0 {
         if nper == 0.0 {
             return Err(Error::NUM);
         }
-        return Ok(-(pv + fv) / nper);
+        return Ok((-(pv + fv) / nper, 0.0));
     }
     if rate <= -1.0 {
         return Err(Error::NUM);
@@ -84,9 +211,12 @@ fn compute_payment(
     if !inverse.is_finite() {
         return Err(Error::NUM);
     }
+    if let Some(payment) = accurate_payment(rate, nper, pv, fv, period_start) {
+        return Ok(payment);
+    }
     let result = fitted_payment(rate, rate_nper, pv, fv, period_start);
     if result.is_finite() {
-        return Ok(result);
+        return Ok((result, 0.0));
     }
     // When `pv*P` overflows (P itself infinite or not), Excel gives the same quotient divided
     // through by P, whose limit is `-pv*rate` (`/(1+rate)` for type 1) and in which fv vanishes:
@@ -98,22 +228,10 @@ fn compute_payment(
         (fv * rate * inverse + pv * rate) / (inverse - 1.0)
     };
     if result.is_finite() {
-        Ok(result)
+        Ok((result, 0.0))
     } else {
         Err(Error::NUM)
     }
-}
-
-/// Which formulation [`compute_future_value`] uses.
-#[derive(Clone, Copy)]
-enum FutureValueForm {
-    /// FV itself: financial.md's fitted `-(pv*P + pmt*(k*((P-1)/r)))`.
-    Fitted,
-    /// IPMT's FV recurrence keeps the earlier `powf` form: the fitted form alone regresses 4
-    /// Excel-cached IPMT/CUMIPMT cells (ironcalc-calc `IPMT_PPMT.xlsx` H4, H31, G24 and
-    /// `CUMPRINC_CUMIPMT.xlsx` G9), because IPMT's own last digits are still unexplained.
-    // TODO(T-1528): fold `IpmtRecurrence` into `Fitted` once IPMT is fitted.
-    IpmtRecurrence,
 }
 
 fn compute_future_value(
@@ -122,7 +240,6 @@ fn compute_future_value(
     pmt: f64,
     pv: f64,
     period_start: bool,
-    form: FutureValueForm,
 ) -> Result<f64, Error> {
     if rate == 0.0 {
         return Ok(-pv - pmt * nper);
@@ -131,21 +248,9 @@ fn compute_future_value(
         return Err(Error::DIV);
     }
 
-    let fv = match form {
-        // FV = -(pv*P + pmt*(k*((P-1)/r))), every operation in doubles (financial.md)
-        FutureValueForm::Fitted => {
-            let p = annuity_power(rate, nper)?;
-            -(pv * p + pmt * annuity_factor(rate, p, period_start))
-        }
-        FutureValueForm::IpmtRecurrence => {
-            let rate_nper = (1.0 + rate).powf(nper);
-            if period_start {
-                -pv * rate_nper - pmt * (1.0 + rate) * (rate_nper - 1.0) / rate
-            } else {
-                -pv * rate_nper - pmt * (rate_nper - 1.0) / rate
-            }
-        }
-    };
+    // FV = -(pv*P + pmt*(k*((P-1)/r))), every operation in doubles (financial.md)
+    let p = annuity_power(rate, nper)?;
+    let fv = -(pv * p + pmt * annuity_factor(rate, p, period_start));
     if fv.is_nan() {
         return Err(Error::NUM);
     }
@@ -155,14 +260,15 @@ fn compute_future_value(
     Ok(fv)
 }
 
-pub(super) fn compute_ipmt(
+/// `(IPMT, PPMT)` of one period, for IPMT, PPMT, CUMIPMT and CUMPRINC.
+pub(super) fn period_payments(
     rate: f64,
     period: f64,
     period_count: f64,
     present_value: f64,
     future_value: f64,
     period_start: bool,
-) -> Result<f64, Error> {
+) -> Result<(f64, f64), Error> {
     // http://www.staff.city.ac.uk/o.s.kerr/CompMaths/WSheet4.pdf
     // https://www.experts-exchange.com/articles/1948/A-Guide-to-the-PMT-FV-IPMT-and-PPMT-Functions.html
     // type = 0 (end of period)
@@ -170,7 +276,7 @@ pub(super) fn compute_ipmt(
     // ipmt = FV(rate, period-1, payment, pv, type) * rate
     // type = 1 (beginning of period)
     // ipmt = (FV(rate, period-2, payment, pv, type) - payment) * rate
-    let payment = compute_payment(
+    let payment = payment_pair(
         rate,
         period_count,
         present_value,
@@ -181,51 +287,29 @@ pub(super) fn compute_ipmt(
         return Err(Error::NUM);
     }
     if period == 1.0 && period_start {
-        Ok(0.0)
-    } else {
-        let p = if period_start {
-            period - 2.0
-        } else {
-            period - 1.0
-        };
-        let c = if period_start { -payment } else { 0.0 };
-        let fv = compute_future_value(
-            rate,
-            p,
-            payment,
-            present_value,
-            period_start,
-            FutureValueForm::IpmtRecurrence,
-        )?;
-        Ok((fv + c) * rate)
+        return Ok((0.0, payment.0));
     }
-}
-
-pub(super) fn compute_ppmt(
-    rate: f64,
-    period: f64,
-    period_count: f64,
-    present_value: f64,
-    future_value: f64,
-    period_start: bool,
-) -> Result<f64, Error> {
-    let payment = compute_payment(
-        rate,
-        period_count,
-        present_value,
-        future_value,
-        period_start,
-    )?;
-    // It's a bit unfortunate that the first thing compute_ipmt does is compute_payment again
-    let ipmt = compute_ipmt(
-        rate,
-        period,
-        period_count,
-        present_value,
-        future_value,
-        period_start,
-    )?;
-    Ok(payment - ipmt)
+    let p = if period_start {
+        period - 2.0
+    } else {
+        period - 1.0
+    };
+    if rate != 0.0 {
+        if let Some((interest, principal)) = accurate_period_split(
+            rate,
+            period_count,
+            p,
+            (present_value, future_value),
+            payment,
+            period_start,
+        ) {
+            return Ok((interest.0, principal.0));
+        }
+    }
+    let c = if period_start { -payment.0 } else { 0.0 };
+    let fv = compute_future_value(rate, p, payment.0, present_value, period_start)?;
+    let interest = (fv + c) * rate;
+    Ok((interest, payment.0 - interest))
 }
 
 // These formulas revolve around compound interest and annuities.
@@ -298,8 +382,9 @@ impl Model {
         Ok(result)
     }
 
-    /// `RATE(nper, pmt, pv, [fv], [type], [guess])`. The solver stops after 50 steps, so the
-    /// table charges each element that weight (`KernelWork::Weighted`, SPEC-0011 security rule).
+    /// `RATE(nper, pmt, pv, [fv], [type], [guess])`. The secant stops after `RATE_MAX_STEPS`
+    /// (200) steps, so the table charges each element that weight (`KernelWork::Weighted`,
+    /// SPEC-0011 security rule).
     pub(crate) fn fn_rate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Rate, args, cell, &mut |model, values| {
             number_or_error(model.rate_of(values, cell))
@@ -377,15 +462,16 @@ impl Model {
         let pmt = self.cast_number_ref(pmt, cell)?;
         let pv = self.cast_number_or(rest.first(), 0.0, cell)?;
         let period_start = self.cast_number_or(rest.get(1), 0.0, cell)? != 0.0;
-        compute_future_value(rate, nper, pmt, pv, period_start, FutureValueForm::Fitted)
-            .map_err(formula_error(cell))
+        compute_future_value(rate, nper, pmt, pv, period_start).map_err(formula_error(cell))
     }
 
     /// `IPMT(rate, per, nper, pv, [fv], [type])`.
     pub(crate) fn fn_ipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ipmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
-                compute_ipmt(a.0, a.1, a.2, a.3, a.4, a.5).map_err(formula_error(cell))
+                period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
+                    .map(|(interest, _)| interest)
+                    .map_err(formula_error(cell))
             }))
         })
     }
@@ -394,7 +480,9 @@ impl Model {
     pub(crate) fn fn_ppmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ppmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
-                compute_ppmt(a.0, a.1, a.2, a.3, a.4, a.5).map_err(formula_error(cell))
+                period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
+                    .map(|(_, principal)| principal)
+                    .map_err(formula_error(cell))
             }))
         })
     }

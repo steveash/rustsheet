@@ -7,6 +7,7 @@
 //! argument modes"). Moved out of `financial/mod.rs` (T-1372).
 
 use super::number_or_error;
+use crate::arithmetic::power;
 use crate::functions::lift::{div_error, num_error};
 use crate::{
     calc_result::CalcResult,
@@ -27,7 +28,10 @@ impl Model {
                         if effect_rate <= 0.0 || npery < 1.0 {
                             return Err(num_error(cell));
                         }
-                        rate_result(((1.0 + effect_rate).powf(1.0 / npery) - 1.0) * npery, cell)
+                        rate_result(
+                            (rate_power(1.0 + effect_rate, 1.0 / npery, cell)? - 1.0) * npery,
+                            cell,
+                        )
                     }),
             )
         })
@@ -44,7 +48,10 @@ impl Model {
                         if nominal_rate <= 0.0 || npery < 1.0 {
                             return Err(num_error(cell));
                         }
-                        rate_result((1.0 + nominal_rate / npery).powf(npery) - 1.0, cell)
+                        rate_result(
+                            rate_power(1.0 + nominal_rate / npery, npery, cell)? - 1.0,
+                            cell,
+                        )
                     }),
             )
         })
@@ -83,6 +90,16 @@ impl Model {
             ))
         })
     }
+}
+
+/// `base^exponent` by Excel's `^` ([`power`]): square-and-multiply for EFFECT's integer `n`, the
+/// square root or `exp(ln(1+e)·(1/n))` for NOMINAL's `1/n`. libm `powf` misses ironcalc-calc
+/// `FINANCIAL/NOMINAL_EFFECT.xlsx` D2 `EFFECT(0.5,10)`, C8 `NOMINAL(0.5,4.5)` and probes/fin-argument-modes
+/// H125 `EFFECT(0.05,4)` by an ulp or more (docs/excel-semantics/financial.md). The base is above
+/// 1, so an error is an overflow, which Excel reports as `#NUM!` (probes/effect-overflow-power-of-ten
+/// A1 `EFFECT(1E300,2)`, A8 `NOMINAL(1E300,0.5)`; docs/excel-semantics/financial.md).
+fn rate_power(base: f64, exponent: f64, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+    power(base, exponent).map_err(|_| num_error(cell))
 }
 
 /// A converted rate, `#DIV/0!` when infinite and `#NUM!` when NaN.

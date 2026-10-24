@@ -20,12 +20,13 @@ mod financial_bonds;
 mod financial_depreciation;
 pub(crate) use financial_depreciation::MAX_DEPRECIATION_PERIODS;
 mod financial_util;
+pub(crate) use financial_util::RATE_MAX_STEPS;
 mod mirr;
 mod rate_conversions;
 
 use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 
-use crate::functions::lift::{number_or_error, number_result, LiftCost};
+use crate::functions::lift::{num_error, number_or_error, number_result, LiftCost};
 use crate::functions::Function;
 
 /// The cash flows (or FVSCHEDULE's rates) a lifted NPV, IRR, MIRR, XNPV, XIRR or FVSCHEDULE
@@ -149,6 +150,9 @@ impl Model {
                                     *cell,
                                     "Error in array".to_string(),
                                 ));
+                            }
+                            ArrayNode::Lambda(_) => {
+                                return Err(Model::lambda_as_number_error(*cell))
                             }
                             ArrayNode::Empty => {
                                 if let Some(value) = handle_empty_cell()? {
@@ -325,9 +329,21 @@ impl Model {
         let (Some(values), 1..=2) = (args.first(), args.len()) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let flows = self
-            .get_array_of_numbers(values, &cell)
-            .map_err(CalcResult::without_message);
+        // Excel: an error inside an array or a referenced range is #VALUE!, whatever its kind,
+        // so the original error is dropped. An error argument that is not a single cell
+        // passes through (docs/excel-semantics/financial.md, "IRR over an error element";
+        // probes/fin-irr-error-array).
+        let flows = match self.evaluate_node_in_context(values, cell) {
+            error @ CalcResult::Error { .. }
+                if !matches!(values.ungrouped(), Node::ReferenceKind { .. }) =>
+            {
+                Err(error)
+            }
+            result => self
+                .array_of_numbers_from(result, &cell, true, || Ok(None), || Ok(None))
+                .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new())),
+        }
+        .map_err(CalcResult::without_message);
         self.lift_call_costed(
             Function::Irr,
             args,
@@ -446,56 +462,44 @@ impl Model {
         basis: f64,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let args = [
-            Node::NumberKind(start as f64),
-            Node::NumberKind(end as f64),
-            Node::NumberKind(basis),
-        ];
-        match self.fn_yearfrac(&args, cell) {
-            CalcResult::Number(yf) => Ok(yf),
-            error => Err(error),
-        }
+        let (days, year) = self.year_parts(start, end, basis, cell)?;
+        // Signed: basis 0 counts 1900-02-28 to the fictitious 1900-02-29 as -1 day, so
+        // `ACCRINTM(59,60,0.1,1000,0)` is negative (probes/discount-serial-zero).
+        Ok(days / year)
     }
 
-    // Day-count factors shared by PRICEMAT and YIELDMAT, mirroring
-    // `getMatFactors` in ExcelFinancialFunctions: all three terms share a single
-    // denominator `b = DaysInYear(issue, settlement)`, and the settlement→maturity
-    // span is `dim - a` (issue-anchored), not an independent year fraction.
-    //
-    // Returns `(a, dim, dsm)` already divided by `b`, i.e. in year units:
-    //   a   = DaysBetween(issue, settlement) / b   (= YEARFRAC(issue, settlement))
-    //   dim = DaysBetween(issue, maturity)   / b
-    //   dsm = dim - a
+    /// YEARFRAC's `(day count, year length)` from `start` to `end` (`Model::year_fraction_parts`),
+    /// `#NUM!` for a basis outside 0-4 or a date outside the calendar.
+    fn year_parts(
+        &self,
+        start: i64,
+        end: i64,
+        basis: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64), CalcResult> {
+        day_count_basis(basis)
+            .and_then(|basis| self.year_fraction_parts(start as f64, end as f64, basis))
+            .ok_or_else(|| num_error(cell))
+    }
+
+    /// Day-count parts shared by PRICEMAT and YIELDMAT, as Excel's `getMatFactors`: one year
+    /// length `b`, the year of issue to settlement (so basis 1 reads the year length of that
+    /// span), and the issue-to-maturity and issue-to-settlement day counts, with
+    /// settlement-to-maturity their difference (financial.md "PRICEMAT and YIELDMAT count the
+    /// settlement-to-maturity days").
+    ///
+    /// Returns `(b, dim, a, dsm)` in days.
     fn get_mat_factors(
-        &mut self,
+        &self,
         issue: i64,
         settlement: i64,
         maturity: i64,
         basis: f64,
         cell: CellReferenceIndex,
-    ) -> Result<(f64, f64, f64), CalcResult> {
-        let a = self.get_yearfrac(issue, settlement, basis, cell)?;
-        let dim = if basis == 1.0 {
-            // Actual/Actual has a date-dependent DaysInYear, so YEARFRAC(issue,
-            // maturity) would use a different denominator. Re-base onto `b` via
-            // the actual day counts: dim = dim_days * a / a_days = dim_days / b.
-            let a_days = (settlement - issue) as f64;
-            let dim_days = (maturity - issue) as f64;
-            // Callers guarantee `issue < settlement`, so `a_days > 0`; this guard
-            // is defensive only.
-            if a_days == 0.0 {
-                return Err(CalcResult::new_error(
-                    Error::DIV,
-                    cell,
-                    "Division by zero".to_string(),
-                ));
-            }
-            dim_days * a / a_days
-        } else {
-            // Constant DaysInYear, so the common denominator is automatic.
-            self.get_yearfrac(issue, maturity, basis, cell)?
-        };
-        Ok((a, dim, dim - a))
+    ) -> Result<(f64, f64, f64, f64), CalcResult> {
+        let (a, b) = self.year_parts(issue, settlement, basis, cell)?;
+        let (dim, _) = self.year_parts(issue, maturity, basis, cell)?;
+        Ok((b, dim, a, dim - a))
     }
 
     /// `FVSCHEDULE(principal, schedule)`: the principal lifts over arrays (a multi-cell range is

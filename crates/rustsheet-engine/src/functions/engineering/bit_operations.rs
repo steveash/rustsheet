@@ -120,19 +120,30 @@ impl Model {
         if number.trunc() != number || !(0.0..=MAX).contains(&number) {
             return num_error(cell);
         }
-        if shift.abs() > 53.0 {
+        // Excel truncates the shift before limiting it (`BITLSHIFT(1,53.5)` is 0), and a number 0
+        // shifts to 0 by any amount (probes/eng-besselk-underflow-bit-shift).
+        let shift = shift.trunc();
+        if number == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+        if shift.abs() >= 54.0 {
             return num_error(cell);
         }
-        let number = number.trunc() as i64;
-        let shift = shift.trunc() as i64;
+        let number = number as i64;
+        let shift = shift as i64;
         let left = match direction {
             Shift::Left => shift > 0,
             Shift::Right => shift <= 0,
         };
+        // A left shift of 49 to 53 places is 0 where one of 48 is `#NUM!` (A15, A22 there).
+        if left && shift.abs() >= 49 {
+            return CalcResult::Number(0.0);
+        }
+        // Widened so that a 48-place shift of a large number overflows `MAX` instead of the i64.
         let result = if left {
-            number << shift.abs()
+            i128::from(number) << shift.abs()
         } else {
-            number >> shift.abs()
+            i128::from(number) >> shift.abs()
         };
         let result = result as f64;
         if result.abs() > MAX {

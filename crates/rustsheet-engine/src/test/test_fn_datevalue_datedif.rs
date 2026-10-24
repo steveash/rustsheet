@@ -181,7 +181,7 @@ fn test_datedif_ym() {
 
 #[test]
 fn test_datedif_yd() {
-    assert_eq!(eval_datedif("YD"), *"165");
+    assert_eq!(eval_datedif("YD"), *"166");
 }
 
 #[test]
@@ -196,18 +196,18 @@ fn test_datedif_edge_and_error_cases() {
     model._set("A1", "=DATEDIF(\"2/28/2020\", \"3/1/2020\", \"D\")");
     // End date before start date => #NUM!
     model._set("A2", "=DATEDIF(\"2/1/2021\", \"1/1/2021\", \"D\")");
-    // Invalid unit => #VALUE!
+    // Invalid unit => #NUM! (T-2288)
     model._set("A3", "=DATEDIF(\"1/1/2020\", \"1/1/2021\", \"Z\")");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"2");
     assert_eq!(model._get_text("A2"), *"#NUM!");
-    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
 }
 
 #[test]
 fn test_datedif_mixed_case_unit() {
-    assert_eq!(eval_datedif("yD"), *"165"); // mixed-case should work
+    assert_eq!(eval_datedif("yD"), *"166"); // mixed-case should work
 }
 
 #[test]
@@ -217,4 +217,17 @@ fn test_datedif_error_propagation() {
     model._set("A1", "=DATEDIF(\"bad\", \"bad\", \"Y\")");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#VALUE!");
+}
+
+// An unknown unit is #NUM! for a well-ordered in-calendar pair, whatever the unit's type
+// (gen-m6/03333cc38ec06a14 A318, 4ca39e0876796fa5 A172, 9e6a1b733ee1e1e0 A12; T-2288).
+#[test]
+fn datedif_unknown_unit_is_num() {
+    for unit in ["\"x\"", "\"\"", "1", "TRUE"] {
+        assert_eq!(
+            eval_formula(&format!("=DATEDIF(22476,23757,{unit})")),
+            "#NUM!",
+            "unit {unit}"
+        );
+    }
 }

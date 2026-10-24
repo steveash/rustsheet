@@ -1,6 +1,22 @@
 //! Taking a sheet out of a model and putting it back, so a caller can undo a delete.
 
-use crate::{model::Model, types::Worksheet};
+use crate::{
+    model::Model,
+    pivot::PivotTable,
+    types::{Table, Worksheet},
+};
+
+/// A sheet taken out of a model by [`Model::take_sheet`], with the tables and pivots that were on
+/// it.
+#[derive(Debug, Clone)]
+pub struct TakenSheet {
+    /// The sheet.
+    pub worksheet: Worksheet,
+    /// Its tables, by name; [`Model::restore_sheet`] puts them back (SPEC-0016).
+    tables: Vec<(String, Table)>,
+    /// Its pivot tables; [`Model::restore_sheet`] puts them back (SPEC-0015, T-2086).
+    pivots: Vec<PivotTable>,
+}
 
 impl Model {
     /// How many times [`Model::evaluate`] has run on this model. Lets a caller (the facade's
@@ -12,21 +28,32 @@ impl Model {
 
     /// Removes the sheet at `sheet_index` and hands it back, so a caller can undo the delete
     /// with [`Model::restore_sheet`]. Fails like [`Model::delete_sheet`].
-    pub fn take_sheet(&mut self, sheet_index: u32) -> Result<Worksheet, String> {
+    pub fn take_sheet(&mut self, sheet_index: u32) -> Result<TakenSheet, String> {
         if self.workbook.worksheets.len() == 1 {
             return Err("Cannot delete only sheet".to_string());
         }
         if sheet_index as usize >= self.workbook.worksheets.len() {
             return Err("Sheet index too large".to_string());
         }
-        let sheet = self.workbook.worksheets.remove(sheet_index as usize);
-        self.reset_parsed_structures();
-        Ok(sheet)
+        let pivots = self.take_pivots_on(sheet_index)?;
+        let tables = self.take_tables_of_sheet(sheet_index);
+        let worksheet = self.workbook.worksheets.remove(sheet_index as usize);
+        self.reset_tables();
+        Ok(TakenSheet {
+            worksheet,
+            tables,
+            pivots,
+        })
     }
 
     /// Puts a sheet obtained from [`Model::take_sheet`] back at `sheet_index`.
     /// Fails if the index is out of range or the name/id is already in use.
-    pub fn restore_sheet(&mut self, sheet_index: u32, sheet: Worksheet) -> Result<(), String> {
+    pub fn restore_sheet(&mut self, sheet_index: u32, sheet: TakenSheet) -> Result<(), String> {
+        let TakenSheet {
+            worksheet: sheet,
+            tables,
+            pivots,
+        } = sheet;
         if sheet_index as usize > self.workbook.worksheets.len() {
             return Err("Sheet index out of range".to_string());
         }
@@ -40,7 +67,8 @@ impl Model {
             return Err("A worksheet already exists with that name".to_string());
         }
         self.workbook.worksheets.insert(sheet_index as usize, sheet);
-        self.reset_parsed_structures();
+        self.restore_tables(tables);
+        self.restore_pivots(pivots);
         Ok(())
     }
 }

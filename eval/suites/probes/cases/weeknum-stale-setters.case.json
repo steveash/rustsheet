@@ -1,0 +1,322 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM stale return_type: which calls set, clear or leave the state. Each sheet is A1 reader, A2 the call under test, A3 a marker (type 1 Sun or 2 Mon, the other start day from the one the call would set); evaluation is bottom to top, so A1 shows the call's start day if it sets the state, the marker's if it leaves it, and - if it clears it. Readers decode the reused start weekday: WEEKNUM(2..7,99) joined gives 111111 Sun, 222222 Mon, 122222 Tue, 112222 Wed, 111222 Thu, 111122 Fri, 111112 Sat; markers WEEKNUM(100,t) with t 1 Sun, 2 Mon, 12 Tue, 13 Wed, 14 Thu (T-1484)",
+  "tags": [
+    "M6",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "T11",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,11)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "T17",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,17)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "T12",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,12)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "T16",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,16)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "Frac",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,2.9)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "Text",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,\"2\")",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "T21",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,21)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "ErrSer",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(-1,2)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "Bool",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,TRUE)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "BadText",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,\"x\")",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "Zero",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(0,2)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "Neg",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,-5)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "WD2",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKDAY(100,2)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "WD1",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKDAY(100,1)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "WD11",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKDAY(100,11)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "WD99",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKDAY(100,99)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "Iso0",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=ISOWEEKNUM(0)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "IsoErr",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=ISOWEEKNUM(-1)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "T13",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,13)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "T14",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,14)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "T15",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,15)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "ErrSer0",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(-1,0)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "IfSkip",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=IF(FALSE,WEEKNUM(100,2),0)",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "Arr21",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=SUM(WEEKNUM(100,{2,1}))",
+        "A3": "=WEEKNUM(100,12)"
+      }
+    },
+    {
+      "name": "Arr12",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=SUM(WEEKNUM(100,{1,2}))",
+        "A3": "=WEEKNUM(100,12)"
+      }
+    },
+    {
+      "name": "ArrCol",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=SUM(WEEKNUM(100,{1;2}))",
+        "A3": "=WEEKNUM(100,12)"
+      }
+    },
+    {
+      "name": "ArrMon",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=SUM(WEEKNUM(100,{2,2}))",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "ArrSerial",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=SUM(WEEKNUM({100,101},2))",
+        "A3": "=WEEKNUM(100,1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "T11!A1",
+    "T11!A2",
+    "T11!A3",
+    "T17!A1",
+    "T17!A2",
+    "T17!A3",
+    "T12!A1",
+    "T12!A2",
+    "T12!A3",
+    "T16!A1",
+    "T16!A2",
+    "T16!A3",
+    "Frac!A1",
+    "Frac!A2",
+    "Frac!A3",
+    "Text!A1",
+    "Text!A2",
+    "Text!A3",
+    "T21!A1",
+    "T21!A2",
+    "T21!A3",
+    "ErrSer!A1",
+    "ErrSer!A2",
+    "ErrSer!A3",
+    "Bool!A1",
+    "Bool!A2",
+    "Bool!A3",
+    "BadText!A1",
+    "BadText!A2",
+    "BadText!A3",
+    "Zero!A1",
+    "Zero!A2",
+    "Zero!A3",
+    "Neg!A1",
+    "Neg!A2",
+    "Neg!A3",
+    "WD2!A1",
+    "WD2!A2",
+    "WD2!A3",
+    "WD1!A1",
+    "WD1!A2",
+    "WD1!A3",
+    "WD11!A1",
+    "WD11!A2",
+    "WD11!A3",
+    "WD99!A1",
+    "WD99!A2",
+    "WD99!A3",
+    "Iso0!A1",
+    "Iso0!A2",
+    "Iso0!A3",
+    "IsoErr!A1",
+    "IsoErr!A2",
+    "IsoErr!A3",
+    "T13!A1",
+    "T13!A2",
+    "T13!A3",
+    "T14!A1",
+    "T14!A2",
+    "T14!A3",
+    "T15!A1",
+    "T15!A2",
+    "T15!A3",
+    "ErrSer0!A1",
+    "ErrSer0!A2",
+    "ErrSer0!A3",
+    "IfSkip!A1",
+    "IfSkip!A2",
+    "IfSkip!A3",
+    "Arr21!A1",
+    "Arr21!A2",
+    "Arr21!A3",
+    "Arr12!A1",
+    "Arr12!A2",
+    "Arr12!A3",
+    "ArrCol!A1",
+    "ArrCol!A2",
+    "ArrCol!A3",
+    "ArrMon!A1",
+    "ArrMon!A2",
+    "ArrMon!A3",
+    "ArrSerial!A1",
+    "ArrSerial!A2",
+    "ArrSerial!A3"
+  ]
+}

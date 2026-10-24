@@ -12,6 +12,7 @@ use crate::{
             static_analysis::run_static_analysis_on_node,
             stringify::{
                 rename_sheet_in_node, to_english_string, to_localized_string, to_rc_format,
+                to_string_lowering,
             },
             CallNameSpellings, Node, Parser,
         },
@@ -46,7 +47,12 @@ fn is_valid_sheet_name(name: &str) -> bool {
 
 impl Model {
     /// Creates a new worksheet. Note that it does not check if the name or the `sheet_id` exists
-    fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
+    fn new_empty_worksheet(
+        name: &str,
+        sheet_id: u32,
+        load_rank: u32,
+        view_ids: &[&u32],
+    ) -> Worksheet {
         let mut views = HashMap::new();
         for id in view_ids {
             views.insert(
@@ -72,6 +78,7 @@ impl Model {
             shared_formulas: vec![],
             sheet_data: Default::default(),
             sheet_id,
+            load_rank,
             state: SheetState::Visible,
             color: Default::default(),
             frozen_columns: 0,
@@ -81,6 +88,17 @@ impl Model {
             conditional_formatting: vec![],
             links: HashMap::new(),
         }
+    }
+
+    /// The load rank a sheet added now gets: one past the highest in the workbook, so it
+    /// runs before every sheet loaded earlier in Excel's calc order (SPEC-0017).
+    fn get_new_load_rank(&self) -> u32 {
+        self.workbook
+            .worksheets
+            .iter()
+            .map(|worksheet| worksheet.load_rank.saturating_add(1))
+            .max()
+            .unwrap_or(0)
     }
 
     pub fn get_new_sheet_id(&self) -> u32 {
@@ -261,7 +279,8 @@ impl Model {
         // Now we need a sheet_id
         let sheet_id = self.get_new_sheet_id();
         let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
-        let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id, &view_ids);
+        let worksheet =
+            Model::new_empty_worksheet(&sheet_name, sheet_id, self.get_new_load_rank(), &view_ids);
         self.workbook.worksheets.push(worksheet);
         self.reset_parsed_structures();
         (sheet_name, self.workbook.worksheets.len() as u32 - 1)
@@ -293,7 +312,8 @@ impl Model {
             None => self.get_new_sheet_id(),
         };
         let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
-        let worksheet = Model::new_empty_worksheet(sheet_name, sheet_id, &view_ids);
+        let worksheet =
+            Model::new_empty_worksheet(sheet_name, sheet_id, self.get_new_load_rank(), &view_ids);
         if sheet_index as usize > self.workbook.worksheets.len() {
             return Err("Sheet index out of range".to_string());
         }
@@ -382,6 +402,7 @@ impl Model {
         let mut new_worksheet = self.workbook.worksheet(source_index)?.clone();
         new_worksheet.name = new_name.clone();
         new_worksheet.sheet_id = new_sheet_id;
+        new_worksheet.load_rank = self.get_new_load_rank();
 
         // Retarget the copied formulas: references to the source sheet become
         // references to the new sheet, everything else is left as-is. Implicit
@@ -397,11 +418,14 @@ impl Model {
             row: 1,
             column: 1,
         };
+        // The copy gets no tables: a structured reference to a table on the source sheet is
+        // written as the retargeted area, which reads the copy's cells, as before SPEC-0016.
+        let source_tables = self.table_names_on_sheet(&source_name);
         let mut shared_formulas = Vec::with_capacity(new_worksheet.shared_formulas.len());
         for formula in &new_worksheet.shared_formulas {
             let mut t = self.parser.parse(formula, &cell_reference);
             rename_sheet_in_node(&mut t, source_index, &new_name);
-            shared_formulas.push(to_rc_format(&t));
+            shared_formulas.push(to_string_lowering(&t, None, &source_tables));
         }
         new_worksheet.shared_formulas = shared_formulas;
         self.parser.set_lexer_mode(LexerMode::A1);
@@ -560,6 +584,10 @@ impl Model {
 
         // Update the name of the worksheet
         self.workbook.worksheet_mut(sheet_index)?.set_name(new_name);
+        // The tables follow their sheet, so their structured references still resolve.
+        self.rename_tables_sheet(&old_name, new_name);
+        // Pivots are keyed by `sheet_id` and stay; the cache sources name the sheet.
+        self.rename_pivot_sources(&old_name, new_name);
         self.reset_parsed_structures();
         Ok(())
     }
@@ -693,7 +721,7 @@ impl Model {
         let workbook = Workbook {
             shared_strings: vec![],
             defined_names: vec![],
-            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, &[&0])],
+            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, 0, &[&0])],
             styles: Default::default(),
             name: name.to_string(),
             settings: WorkbookSettings::new(timezone, locale_id),
@@ -709,6 +737,8 @@ impl Model {
             views,
             theme: Default::default(),
             external_books: Vec::new(),
+            pivot_caches: Vec::new(),
+            pivot_tables: Vec::new(),
         };
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
@@ -758,6 +788,9 @@ impl Model {
             lambdas: HashMap::new(),
             eta_lambdas: HashMap::new(),
             named_lambdas: NamedLambdas::default(),
+            lambda_captures: HashMap::new(),
+            captured_cells: 0,
+            lambda_calls_base: None,
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),

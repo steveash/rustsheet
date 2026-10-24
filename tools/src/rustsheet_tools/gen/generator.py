@@ -13,14 +13,18 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from rustsheet_tools.gen import database
 from rustsheet_tools.gen.common import quoted
-from rustsheet_tools.gen.pools import POOLS
+from rustsheet_tools.gen.pivots import PivotSource, build_source, pivot_call
+from rustsheet_tools.gen.pools import POOLS, lambda_arity
 
 MILESTONES = ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"]
 
@@ -73,6 +77,14 @@ ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
 # Share of a `pool` parameter's values drawn from its edge pool (synthetic-generator.md §3.2).
 POOL_RATE = 0.35
 MASK_OPS: list[str] = [">", "<", "=", "<>"]
+# `--spill` (synthetic-generator.md §5.2 shape 3): the largest footprint reserved under a spilling probe, and the
+# share of spilling probes given a blocker cell in it (edge class `spill_blocked`), so `#SPILL!` stays covered.
+SPILL_ROWS = 12
+SPILL_COLS = 6
+SPILL_BLOCKED_RATE = 0.05
+SPILL_BLOCKER = "x"
+# The outer call of a generated formula: `=NAME(`, after any `_xlfn.`/`_xlws.` prefixes (`spelled`).
+OUTER_CALL = re.compile(r"=(?:_xl[a-z]+\.)*([A-Z][A-Z0-9.]*)\(")
 
 
 def col_letter(index: int) -> str:
@@ -107,6 +119,10 @@ class Catalog:
         data = yaml.safe_load(path.read_text())
         return Catalog(operators=data.get("operators", []), functions=data.get("functions", []))
 
+    def dynamic_array_names(self) -> set[str]:
+        """Functions marked `dynamic_array: true`: their result can be a multi-cell array by design."""
+        return {f["name"] for f in self.functions if f.get("dynamic_array")}
+
     def scoped(self, milestone: str) -> Catalog:
         """Operators and generator-ready functions in scope at `milestone`.
 
@@ -122,6 +138,12 @@ class Catalog:
         return Catalog([o for o in self.operators if ok(o)], functions)
 
 
+def pool_rate(p: dict[str, Any]) -> float:
+    """Share of `p`'s values drawn from its pool: `pool_rate` when the catalog sets one (the D* database and
+    criteria, whose Db pools only work together, T-2249), else POOL_RATE."""
+    return float(p.get("pool_rate", POOL_RATE))
+
+
 @dataclass
 class Gen:
     rng: random.Random
@@ -134,6 +156,9 @@ class Gen:
     # visible (a LET variable is visible after its value, a LAMBDA parameter in the body).
     scope: list[str] = field(default_factory=list)
     pending: list[str] = field(default_factory=list)
+    # The case's pivot (sheet `Pivot`), built from its own seeded stream at the first `pivot: true` call (T-2396).
+    pivot_seed: int = 0
+    pivot: PivotSource | None = None
 
     # -- references into the data sheet --------------------------------------------------
     def cell_ref(self) -> str:
@@ -194,6 +219,11 @@ class Gen:
     def call_fn(self, fn: dict[str, Any], depth: int) -> str:
         """A call to `fn` with generated arguments."""
         self.used.add(fn["name"])
+        if fn.get("pivot"):
+            # GETPIVOTDATA queries the case's pivot: its arguments are names from it, not free expressions.
+            if self.pivot is None:
+                self.pivot = build_source(random.Random(f"pivot-{self.pivot_seed}"))
+            return pivot_call(self.rng, self.pivot, fn.get("spelled", fn["name"]))
         args: list[str] = []
         params: list[dict[str, Any]] = fn["params"]
         outer, outer_pending = len(self.scope), self.pending
@@ -257,6 +287,19 @@ class Gen:
         del self.scope[outer:]
         return f"LAMBDA({','.join(names)},{body})"
 
+    def pooled_lambda(self, p: dict[str, Any], arity: int) -> str | None:
+        """A `lambda_body` pool entry of `arity` parameters (POOL_RATE of the time), with x and y renamed to
+        free names so an outer LAMBDA or LET name is never shadowed; None to build one."""
+        fitting = [t for t in POOLS.get(p.get("pool", ""), []) if lambda_arity(t) == arity]
+        if not fitting or self.rng.random() >= POOL_RATE:
+            return None
+        text = self.rng.choice(fitting)
+        names = {"x": self.fresh_name()}
+        self.scope.append(names["x"])
+        names["y"] = self.fresh_name()
+        self.scope.pop()
+        return re.sub(r"\b[xy]\b", lambda m: names[m.group(0)], text)
+
     def argument(self, p: dict[str, Any], depth: int, arity: int = 1) -> str:
         mode = p.get("mode", "value")
         if mode == "name":
@@ -265,13 +308,17 @@ class Gen:
             return name
         if mode == "lambda":
             n = p.get("arity", 1)
-            return self.lambda_arg(arity if n == "repeat" else int(n), depth)
+            want = arity if n == "repeat" else int(n)
+            return self.pooled_lambda(p, want) or self.lambda_arg(want, depth)
         if mode == "array" and p.get("mask"):
             # FILTER's include: one TRUE/FALSE per data row, so it fits a `full` array.
             text = f"({self.range_ref(full=True)}{self.rng.choice(MASK_OPS)}{self.literal('number')})"
         elif mode in ("array", "aggregate", "aggregate_a") and self.scope and self.rng.random() < 0.5:
             # A LAMBDA parameter or LET variable often holds the row, column or array (BYROW's SUM(x)).
             text = self.rng.choice(self.scope)
+        elif mode == "range" and p.get("pool") and self.rng.random() < pool_rate(p):
+            # A pooled `range` param takes array constants too (LOOKUP's and XMATCH's lookup_table).
+            text = self.rng.choice(POOLS[p["pool"]])
         else:
             text = self.argument_text(p, mode, depth)
         # A LET variable is visible from the argument after its value on.
@@ -308,7 +355,7 @@ class Gen:
         if in_domain is not None:
             return in_domain
         # A `hard` domain is never overridden: outside it Excel refuses the workbook (MUNIT).
-        if p.get("pool") and not dom.get("hard") and self.rng.random() < POOL_RATE:
+        if p.get("pool") and not dom.get("hard") and self.rng.random() < pool_rate(p):
             return self.rng.choice(POOLS[p["pool"]])
         return self.value_expr(p, depth)
 
@@ -352,6 +399,39 @@ class Gen:
         return None  # blank
 
 
+def narrow_targets(
+    catalog: Catalog,
+    targets: list[dict[str, Any]],
+    milestone: str,
+    functions: Sequence[str],
+    category: str | None,
+) -> list[dict[str, Any]]:
+    """The `--focus` targets of `milestone` narrowed to the named `functions` and/or catalog `category`."""
+    if functions:
+        by_name = {str(f["name"]).upper(): f for f in catalog.functions}
+        wanted = [n.strip().upper() for n in functions if n.strip()]
+        unknown = [n for n in wanted if n not in by_name]
+        if unknown:
+            msg = f"unknown function(s) not in the catalog: {', '.join(unknown)}"
+            raise ValueError(msg)
+        elsewhere = [n for n in wanted if by_name[n].get("milestone") != milestone]
+        if elsewhere:
+            msg = f"function(s) outside milestone {milestone}: {', '.join(elsewhere)}"
+            raise ValueError(msg)
+        keep = set(wanted)
+        missing = sorted(keep - {str(f["name"]).upper() for f in targets})
+        if missing:
+            msg = f"function(s) not generator-ready: {', '.join(missing)}"
+            raise ValueError(msg)
+        targets = [f for f in targets if str(f["name"]).upper() in keep]
+    if category is not None:
+        if not any(f.get("category") == category for f in catalog.functions):
+            msg = f"unknown category: {category}"
+            raise ValueError(msg)
+        targets = [f for f in targets if f.get("category") == category]
+    return targets
+
+
 def generate_case(
     catalog: Catalog,
     seed: int,
@@ -363,14 +443,24 @@ def generate_case(
     max_depth: int = 3,
     focus: bool = False,
     case_index: int = 0,
+    spill: bool = False,
+    functions: Sequence[str] = (),
+    category: str | None = None,
 ) -> dict[str, Any]:
     """One case. With `focus`, every formula's outer call is a function whose own milestone is `milestone`,
     taking turns through a seeded shuffle (each case reshuffles from its own seed; `case_index` offsets the
-    position, so counts are exactly even within a case and roughly even across a run)."""
+    position, so counts are exactly even within a case and roughly even across a run). With `spill`, a formula
+    whose outer call is `dynamic_array` gets an empty footprint to spill into (`spill_layout`); the formulas
+    themselves are the same as without it. `functions` (catalog names) and `category` narrow the `focus`
+    targets; an unknown name, an empty selection or a function outside `milestone` is a ValueError."""
     rng = random.Random(seed)
-    g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
+    g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth, pivot_seed=seed)
     targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
+    if (functions or category is not None) and not focus:
+        msg = "--functions and --category narrow --focus; pass --focus too"
+        raise ValueError(msg)
     if focus:
+        targets = narrow_targets(catalog, targets, milestone, functions, category)
         if not targets:
             msg = f"no generator-ready functions at milestone {milestone} to focus on"
             raise ValueError(msg)
@@ -383,21 +473,84 @@ def generate_case(
                 if isinstance(v, str) and v.startswith("="):
                     v = {"t": "s", "v": v}
                 data[f"{chr(ord('A') + c)}{r}"] = v
-    calc: dict[str, Any] = {}
+    texts: list[str] = []
     for i in range(1, formulas + 1):
         if focus:
-            calc[f"A{i}"] = "=" + g.call_fn(targets[(case_index * formulas + i - 1) % len(targets)], 0)
+            texts.append("=" + g.call_fn(targets[(case_index * formulas + i - 1) % len(targets)], 0))
             continue
         typ = rng.choice(["number", "number", "any", "text", "bool"])
-        calc[f"A{i}"] = "=" + g.expr(typ, 0)
+        texts.append("=" + g.expr(typ, 0))
+    tags = ["generated", milestone, *sorted(g.used)]
+    if spill:
+        # Its own stream: the layout never shifts the formulas' draws.
+        layout = spill_layout(
+            texts,
+            catalog.dynamic_array_names(),
+            rows=min(SPILL_ROWS, data_rows),
+            cols=min(SPILL_COLS, data_cols),
+            rng=random.Random(f"spill-{seed}"),
+        )
+        calc, check = layout.cells, layout.check
+        tags += ["spill", *(["spill_blocked"] if layout.blocked else [])]
+    else:
+        calc = {f"A{i}": text for i, text in enumerate(texts, 1)}
+        check = [f"Calc!A{i}" for i in range(1, formulas + 1)]
     return {
         "format": "rustsheet-case/v1",
-        "description": f"generated P0 seed={seed} milestone={milestone}",
-        "tags": ["generated", milestone, *sorted(g.used)],
-        "sheets": [{"name": "Data", "cells": data}, {"name": "Calc", "cells": calc}],
+        "description": f"generated P0 seed={seed} milestone={milestone}" + (" spill" if spill else ""),
+        "tags": tags,
+        "sheets": [
+            {"name": "Data", "cells": data},
+            {"name": "Calc", "cells": calc},
+            *([g.pivot.spec_sheet()] if g.pivot is not None else []),
+            *([database.spec_sheet()] if database.uses_db(texts) else []),
+        ],
         "expected": {},
-        "check": [f"Calc!A{i}" for i in range(1, formulas + 1)],
+        "check": check,
     }
+
+
+@dataclass
+class SpillLayout:
+    """The Calc sheet of a `--spill` case: its cells (formulas and blockers), the cells to check, and how
+    many footprints have a blocker."""
+
+    cells: dict[str, Any]
+    check: list[str]
+    blocked: int
+
+
+def spill_layout(
+    texts: list[str], dynamic: set[str], *, rows: int, cols: int, rng: random.Random
+) -> SpillLayout:
+    """Formulas down column A, each spilling one (outer call in `dynamic`) followed by the empty `rows` x `cols`
+    footprint it anchors (A..). Nothing else is in a footprint's rows, so footprints never overlap a formula or
+    each other. Every footprint cell is checked, so a cell Excel leaves empty is scored as empty. A result
+    taller than the footprint is `#SPILL!` against the next formula below. A wider one spills right into
+    unchecked cells, where the harness's spill-extent check fails an engine value Excel left empty.
+    `SPILL_BLOCKED_RATE` of the footprints get a blocker constant just below or right of the anchor
+    (`spill_blocked`): an input, not checked."""
+    cells: dict[str, Any] = {}
+    check: list[str] = []
+    blocked = 0
+    row = 1
+    for text in texts:
+        cells[f"A{row}"] = text
+        m = OUTER_CALL.match(text)
+        if not (m and m.group(1) in dynamic):
+            check.append(f"Calc!A{row}")
+            row += 1
+            continue
+        footprint = [f"{col_letter(c)}{r}" for r in range(row, row + rows) for c in range(cols)]
+        blocker = None
+        if rng.random() < SPILL_BLOCKED_RATE and len(footprint) > 1:
+            below, right = f"A{row + 1}", f"B{row}"
+            blocker = rng.choice([a for a in (below, right) if a in footprint])
+            cells[blocker] = SPILL_BLOCKER
+            blocked += 1
+        check += [f"Calc!{a1}" for a1 in footprint if a1 != blocker]
+        row += rows
+    return SpillLayout(cells, check, blocked)
 
 
 def write_case(spec: dict[str, Any], out_dir: Path) -> Path:

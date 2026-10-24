@@ -26,7 +26,11 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     {"op": "move", "sheet": "Inputs", "to": 0}]` at the top level are sheet edits made after the
     workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames
     one (Excel rewrites the formulas that refer to it), `move` puts one at a 0-based position,
-    `{"op": "insert_row", "sheet": "S", "row": 1}` inserts a blank row above row 1 (T-1933). The
+    `{"op": "insert_row", "sheet": "S", "row": 1}` inserts a blank row above row 1 (T-1933),
+    `delete_row` (same keys) deletes row 1, `{"op": "insert_column", "sheet": "S", "column": "B"}`
+    inserts a blank column left of B and `delete_column` deletes it, `{"op": "delete_sheet",
+    "sheet": "S"}` deletes a sheet, and `{"op": "convert_table", "sheet": "S", "table": "T1"}` /
+    `delete_table` turn a table into a range / delete it (T-2323). The
     docProps custom properties `rustsheet.sheetop.<n>` hold them as JSON, n from 1 in order, and the
     oracle backend replays them in Excel; the engine adapter applies them through its edit API.
   * A sheet may list `"hidden_rows": [3, 5]` (1-based rows written with `hidden="1"`) and
@@ -51,7 +55,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     T-0428).
   * A sheet's `"pivot_tables": [{"name": "Pv", "source": "Data!A1:C7", "location": "E3", "row": "Region",
     "column": "Product", "value": "Sales", "function": "sum"}]` writes pivot tables, rendered cells
-    included (rustsheet_tools/pivot.py, T-1705). The engine adapter ignores them.
+    included (rustsheet_tools/pivot.py, T-1705). An optional `"rendered"` map of the layout (filled by
+    `rustsheet-spec bake-pivots`) must equal it; the engine adapter writes it and registers the pivot (T-2084).
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
@@ -84,6 +89,7 @@ import xlsxwriter
 
 from rustsheet_tools.oracle.package import patch_parts, read_parts
 from rustsheet_tools.pivot import PivotParts, pivot_tables, relationships_xml
+from rustsheet_tools.sheetop import column_number, sheet_op
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
@@ -92,7 +98,6 @@ _FIXED_CREATED = datetime(2000, 1, 1)
 ENTERED_PROPERTY = "rustsheet.entered"
 SHEET_OP_PROPERTY = "rustsheet.sheetop"
 TEXT_PROPERTY = "rustsheet.text"
-SHEET_OPS = ("add", "rename", "move", "insert_row")
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
 
@@ -324,10 +329,7 @@ def parse_a1(a1: str) -> tuple[int, int]:
     if not m:
         msg = f"bad cell address {a1!r}"
         raise ValueError(msg)
-    col = 0
-    for ch in m.group(1).upper():
-        col = col * 26 + (ord(ch) - ord("A") + 1)
-    return int(m.group(2)) - 1, col - 1
+    return int(m.group(2)) - 1, column_number(m.group(1)) - 1
 
 
 def build_xlsx(spec: dict[str, Any]) -> bytes:
@@ -802,41 +804,6 @@ def text_cells(xlsx: bytes) -> list[tuple[str, str]]:
     except (TypeError, ValueError) as e:
         msg = f"malformed {TEXT_PROPERTY} property: {e}"
         raise ValueError(msg) from e
-
-
-def _op_key(kind: object) -> str:
-    """The spec key of a sheet op's argument: `row` for insert_row, `to` for the others."""
-    return "row" if kind == "insert_row" else "to"
-
-
-def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
-    """A spec's sheet op as `(op, sheet, to)`: `to` is the new name of a rename, the 0-based
-    position of a move, the 1-based row of an insert_row (spec key `row`; one blank row goes
-    above it, T-1933) and None for an add. Raises ValueError for an unknown or malformed op."""
-    if isinstance(op, (list, tuple)) and len(op) == 3:
-        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None else {_op_key(op[0]): op[2]})}
-    if not isinstance(op, dict) or op.get("op") not in SHEET_OPS or not isinstance(op.get("sheet"), str):
-        msg = f"unknown sheet op {op!r}: expected op {'/'.join(SHEET_OPS)} with a sheet name"
-        raise ValueError(msg)
-    kind, sheet = op["op"], op["sheet"]
-    key = _op_key(kind)
-    to = op.get(key)
-    if set(op) - {"op", "sheet", key}:
-        msg = f"sheet op {op!r} has unknown keys"
-        raise ValueError(msg)
-    if kind == "add" and to is None:
-        return kind, sheet, None
-    if kind == "rename" and isinstance(to, str) and to:
-        return kind, sheet, to
-    if kind == "move" and isinstance(to, int) and not isinstance(to, bool) and to >= 0:
-        return kind, sheet, to
-    if kind == "insert_row" and isinstance(to, int) and not isinstance(to, bool) and to >= 1:
-        return kind, sheet, to
-    msg = (
-        f"sheet op {op!r}: `to` must be absent for add, a name for rename, a position >= 0 for move;"
-        " `row` a 1-based row for insert_row"
-    )
-    raise ValueError(msg)
 
 
 def sheet_ops(xlsx: bytes) -> list[tuple[str, str, str | int | None]]:

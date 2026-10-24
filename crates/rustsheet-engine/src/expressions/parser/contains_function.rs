@@ -21,6 +21,18 @@ impl Node {
         false
     }
 
+    /// Whether the tree holds a LAMBDA call, written out as `LAMBDA(x,x)(1)`.
+    pub(crate) fn contains_lambda_call(&self) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if matches!(node, Node::LambdaCallKind { .. }) {
+                return true;
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
     /// Whether the tree holds a legacy N or T (SPEC-0012), the one fact of a legacy formula its
     /// display text does not show, so an edit that re-enters the text must keep it (T-1852).
     pub(crate) fn has_legacy_marker(&self) -> bool {
@@ -30,7 +42,7 @@ impl Node {
     /// Whether the tree reads, at any depth, a variable (an id patched in by LET or LAMBDA) for
     /// which `is_target` holds, as a value or as a called function. Walked with an explicit stack
     /// like [`Node::contains_function`].
-    pub(crate) fn reads_variable(&self, is_target: impl Fn(usize) -> bool) -> bool {
+    pub(crate) fn reads_variable(&self, mut is_target: impl FnMut(usize) -> bool) -> bool {
         let mut pending = vec![self];
         while let Some(node) = pending.pop() {
             if let Node::NamedVariableKind { id: Some(id), .. }

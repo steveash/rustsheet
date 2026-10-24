@@ -16,53 +16,46 @@ impl Model {
     /// `=SUMPRODUCT(array1, [array2], ...)`
     ///
     /// Multiplies corresponding elements across all arrays and returns the sum.
-    /// Non-numeric values (text, booleans, empty) are treated as 0.
-    /// All arrays must have the same dimensions; a mismatch yields `#VALUE!`.
+    /// Non-numeric values (text, booleans, empty) are treated as 0, but a blank one-cell
+    /// reference is `#VALUE!`. All arrays must have the same dimensions; a mismatch yields
+    /// `#VALUE!` unless an argument holds an error element or a later one is itself an error or blank.
     pub(crate) fn fn_sumproduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Evaluate all arrays up front.
+        // Read every argument in order: a whole-argument error or a blank one-cell argument
+        // wins even over a shape mismatch between earlier arguments
+        // (`SUMPRODUCT(NA(),D1:E2,blank)` is `#N/A`, `SUMPRODUCT(blank,D1:E2,NA())` `#VALUE!`;
+        // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150). An error element
+        // of any argument beats a shape mismatch in either order, but not a whole-argument
+        // error of a later argument (`SUMPRODUCT(R,X,NA())` is `#N/A`); the first element error
+        // in argument then element order is kept (probes/t2296-sumproduct-error-element, T-2450). A blank
+        // one-cell argument after an element error also wins, inferred and unprobed.
         let mut arrays: Vec<Vec<Vec<f64>>> = Vec::with_capacity(args.len());
-        let mut ref_rows: Option<usize> = None;
-        let mut ref_cols: Option<usize> = None;
-
+        let mut shape: Option<(usize, usize)> = None;
+        let mut mismatch = false;
+        let mut element_error: Option<Error> = None;
         for arg in args {
             let arr = match self.sumproduct_array(arg, cell) {
                 Ok(a) => a,
                 Err(e) => return e,
             };
-            let rows = arr.len();
-            let cols = if rows == 0 { 0 } else { arr[0].len() };
+            let arg_shape = (arr.len(), arr.first().map_or(0, Vec::len));
+            mismatch = mismatch || *shape.get_or_insert(arg_shape) != arg_shape;
 
-            if let Some(r) = ref_rows {
-                if rows != r || cols != ref_cols.unwrap_or(0) {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "SUMPRODUCT: arrays must have the same dimensions".to_string(),
-                    );
-                }
-            } else {
-                ref_rows = Some(rows);
-                ref_cols = Some(cols);
-            }
-
-            // Coerce to f64: non-numeric → 0.0, errors propagate.
-            let mut num_arr: Vec<Vec<f64>> = Vec::with_capacity(rows);
+            // Coerce to f64: non-numeric → 0.0.
+            let mut num_arr: Vec<Vec<f64>> = Vec::with_capacity(arr.len());
             for row in &arr {
                 let mut num_row: Vec<f64> = Vec::with_capacity(row.len());
                 for node in row {
                     let v = match node {
                         ArrayNode::Number(v) => *v,
                         ArrayNode::Boolean(_) | ArrayNode::String(_) | ArrayNode::Empty => 0.0,
+                        ArrayNode::Lambda(_) => return Model::lambda_as_number_error(cell),
                         ArrayNode::Error(e) => {
-                            return CalcResult::Error {
-                                error: e.clone(),
-                                origin: cell,
-                                message: String::new(),
-                            }
+                            element_error.get_or_insert_with(|| e.clone());
+                            0.0
                         }
                     };
                     num_row.push(v);
@@ -72,8 +65,17 @@ impl Model {
             arrays.push(num_arr);
         }
 
-        let rows = ref_rows.unwrap_or(0);
-        let cols = ref_cols.unwrap_or(0);
+        if let Some(error) = element_error {
+            return CalcResult::new_error(error, cell, String::new());
+        }
+        if mismatch {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "SUMPRODUCT: arrays must have the same dimensions".to_string(),
+            );
+        }
+        let (rows, cols) = shape.unwrap_or((0, 0));
         let mut total = 0.0f64;
 
         for i in 0..rows {
@@ -92,8 +94,9 @@ impl Model {
         CalcResult::finite_number_or_num(flush_subnormal(total), cell)
     }
 
-    /// One SUMPRODUCT argument as an array. An array of references reads each reference
-    /// element as a non-number (0) and an error element as its error (SPEC-0014 rule 5:
+    /// One SUMPRODUCT argument as an array; a blank one-cell reference is `#VALUE!`. An array of
+    /// references reads each reference element as a non-number (0) and an error element as its
+    /// error (SPEC-0014 rule 5:
     /// `SUMPRODUCT(OFFSET(A1,{0;1},0))` is 0, `SUMPRODUCT(OFFSET(A1,{0;-1},0))` `#REF!`;
     /// probes/reference-lift-consumers E29, -b2 E189).
     fn sumproduct_array(
@@ -104,7 +107,17 @@ impl Model {
         match self.evaluate_value_or_grid(arg, cell) {
             RefArg::Grid(grid) => Ok(grid.to_array(ArrayNode::Empty)),
             read => {
-                let result = read.into_single_area(cell);
+                // A blank cell given as a cell or one-cell range reference is `#VALUE!`, alone or
+                // beside other arguments, while a one-cell text or boolean is a 0 factor
+                // (probes/t2200-blank-and-padded-m5-args A1-A19; coercion.md, T-2150).
+                let result = self.collapse_single_cell(read.into_single_area(cell));
+                if matches!(result, CalcResult::EmptyCell) {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "SUMPRODUCT: a one-cell argument is blank".to_string(),
+                    ));
+                }
                 self.result_to_array(result, cell)
             }
         }

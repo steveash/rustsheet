@@ -15,5 +15,5 @@ mod sum;
 pub(crate) use sum::SumParts;
 mod sumproduct;
 mod trig;
-pub(crate) use mathematical::percent_of;
+pub(crate) use mathematical::{excel_atan2, percent_of};
 pub(crate) use trig::{excel_fsin, excel_quarter_turn_remainder, excel_sin_cos, EXCEL_TRIG_LIMIT};

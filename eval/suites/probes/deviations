@@ -4,3 +4,16 @@ lifted-range-rows.case.json	Sheet1!C1	decision 0014	docs/excel-semantics/arrays.
 lifted-range-rows.case.json	Sheet1!C2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!C3	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!E1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+textsplit-padded-size.case.json	Calc!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+textsplit-padded-size.case.json	Calc!A2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+textsplit-padded-size.case.json	Calc!A3	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+textsplit-padded-size.case.json	Calc!A4	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+m9-bessel-order-limits.case.json	Calc!B270	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+m9-bessel-order-limits.case.json	Calc!B275	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+m9-bessel-order-limits.case.json	Calc!B277	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+m9-bessel-order-limits.case.json	Calc!B278	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+m9-bessel-order-limits.case.json	Calc!D427	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+m9-bessel-order-limits.case.json	Calc!D428	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+m9-bessel-order-limits.case.json	Calc!D433	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+eng-besselk-underflow-bit-shift.case.json	S!A179	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+eng-besselk-underflow-bit-shift.case.json	S!A180	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!

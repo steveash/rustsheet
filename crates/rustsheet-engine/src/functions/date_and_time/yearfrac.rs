@@ -10,7 +10,7 @@ use super::{
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
-    formatter::dates::{excel_serial_to_ymd, from_excel_date},
+    formatter::dates::{excel_serial_to_ymd, month_arithmetic_date},
     functions::Function,
     model::Model,
 };
@@ -53,56 +53,79 @@ impl Model {
         let Some(basis) = day_count_basis(basis) else {
             return num_error(cell);
         };
+        let start = match self.cast_number_no_bools_ref(start, cell) {
+            Ok(c) => c,
+            Err(s) => return s,
+        };
+        // A start outside the calendar is #NUM! before the end is read, so it beats an error end
+        // (gen-m6 excel-graph; dates.md "YEARFRAC reads its start's range before the end's
+        // error", T-2266). The range is the same on every basis and for either date order.
+        let start_serial = self
+            .workbook
+            .settings
+            .date_system
+            .financial_1900_serial(start)
+            .floor() as i64;
+        if excel_serial_to_ymd(start_serial).is_none() {
+            return num_error(cell);
+        }
+        let end = match self.cast_number_no_bools_ref(end, cell) {
+            Ok(c) => c,
+            Err(s) => return s,
+        };
+        match self.year_fraction_parts(start, end, basis) {
+            Some((days, year)) => CalcResult::Number(days / year),
+            None => num_error(cell),
+        }
+    }
+
+    /// The two parts of YEARFRAC's fraction under a checked `basis` (`day_count_basis`): the
+    /// basis day count from `start` to `end` and the basis year length, so YEARFRAC is
+    /// `days / year`. The discount securities divide by the parts in their own order rather than
+    /// by the fraction (financial.md "Discount securities: day count and year length"). `None`
+    /// is `#NUM!`, a date outside the calendar.
+    pub(crate) fn year_fraction_parts(
+        &self,
+        start: f64,
+        end: f64,
+        basis: u32,
+    ) -> Option<(f64, f64)> {
         // The dates as the 1900 serials the financial day counts read: 2 * 1462 days on in a 1904
         // workbook (`DateSystem::financial_1900_serial`).
         let date_system = self.workbook.settings.date_system;
-        let start_raw = match self.cast_number_no_bools_ref(start, cell) {
-            Ok(c) => date_system.financial_1900_serial(c),
-            Err(s) => return s,
-        };
-        let end_raw = match self.cast_number_no_bools_ref(end, cell) {
-            Ok(c) => date_system.financial_1900_serial(c),
-            Err(s) => return s,
-        };
+        let start_raw = date_system.financial_1900_serial(start);
+        let end_raw = date_system.financial_1900_serial(end);
         let (start_serial, end_serial) = (start_raw.floor() as i64, end_raw.floor() as i64);
-        // Serial 0 (1900-01-00, so any date in [0, 1)) is a date to the 30/360 day count of basis 0
-        // only, as day 0 of January 1900; other bases keep #NUM! until probed (gen-m9/a2e51f48717af2a1
-        // Calc!A32; dates.md "YEARFRAC accepts serial 0", T-1409).
-        if basis == 0 && (start_serial == 0 || end_serial == 0) {
-            // Excel swaps reversed dates for every basis (dates.md "YEARFRAC swaps reversed
-            // dates"); the asymmetric 30/360 count reads the ordered pair.
-            let (first, last) = (start_serial.min(end_serial), start_serial.max(end_serial));
-            let (Some(start), Some(end)) = (excel_serial_to_ymd(first), excel_serial_to_ymd(last))
-            else {
-                return num_error(cell);
-            };
-            return CalcResult::Number(days_30_360_us_ymd(start, end) / 360.0);
-        }
-        let (Ok(start_date), Ok(end_date)) =
-            (from_excel_date(start_serial), from_excel_date(end_serial))
-        else {
-            return num_error(cell);
-        };
         // Excel swaps reversed dates for every basis, so the asymmetric 30/360 counts read the
         // same pair either way (probes/yearfrac-reversed-bases; dates.md "YEARFRAC swaps
         // reversed dates").
-        let (start_raw, end_raw, start_date, end_date) = if start_date > end_date {
-            (end_raw, start_raw, end_date, start_date)
+        let (start_raw, end_raw, start_serial, end_serial) = if start_serial > end_serial {
+            (end_raw, start_raw, end_serial, start_serial)
         } else {
-            (start_raw, end_raw, start_date, end_date)
+            (start_raw, end_raw, start_serial, end_serial)
         };
-        let days = (end_date - start_date).num_days() as f64;
-        let result = match basis {
-            0 => {
-                days_30_360_us_ymd(
-                    (start_date.year(), start_date.month(), start_date.day()),
-                    (end_date.year(), end_date.month(), end_date.day()),
-                ) / 360.0
-            }
+        // Serial 0 (1900-01-00, so any date in [0, 1)) is a date on every basis
+        // (probes/yearfrac-serial-zero; dates.md "YEARFRAC accepts serial 0").
+        let start_ymd = excel_serial_to_ymd(start_serial)?;
+        let end_ymd = excel_serial_to_ymd(end_serial)?;
+        // Bases 1-3 count serials, so the fictitious 1900-02-29 is a day.
+        let days = (end_serial - start_serial) as f64;
+        Some(match basis {
+            // US 30/360 over Excel's own day, month and year, the fictitious 1900-02-29 included
+            // while 1900-02-28 is still February's last day: `YEARFRAC(59,60,0)` is -1/360.
+            0 => (days_30_360_us_ymd(start_ymd, end_ymd), 360.0),
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions
                 // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
-                // Actual/Actual reads the (already ordered) pair.
+                // Actual/Actual reads the (already ordered) pair on the real calendar: serial 0
+                // is a day of 1900 and 1900-02-29 is no leap day (`YEARFRAC(0,33752,1)` averages
+                // 1900-1992, `YEARFRAC(59,60,1)` is 1/365; probes/yearfrac-serial-zero).
+                let (Some(start_date), Some(end_date)) = (
+                    month_arithmetic_date(start_serial),
+                    month_arithmetic_date(end_serial),
+                ) else {
+                    return None;
+                };
                 let (y1, m1, d1) = (start_date.year(), start_date.month(), start_date.day());
                 let (y2, m2, d2) = (end_date.year(), end_date.month(), end_date.day());
 
@@ -129,21 +152,20 @@ impl Model {
                         365.0
                     }
                 };
-                days / days_in_year
+                (days, days_in_year)
             }
-            2 => days / 360.0,
-            3 => days / 365.0,
+            2 => (days, 360.0),
+            3 => (days, 365.0),
             // DAYS360(start, end, TRUE) over the same (shifted) dates.
-            4 => match (
-                excel_serial_to_ymd(days360_serial(start_raw)),
-                excel_serial_to_ymd(days360_serial(end_raw)),
-            ) {
-                (Some(start), Some(end)) => days360_eu(start, end) / 360.0,
-                _ => return num_error(cell),
-            },
-            // Range-checked before the dates were read.
-            _ => return num_error(cell),
-        };
-        CalcResult::Number(result.abs())
+            4 => (
+                days360_eu(
+                    excel_serial_to_ymd(days360_serial(start_raw))?,
+                    excel_serial_to_ymd(days360_serial(end_raw))?,
+                ),
+                360.0,
+            ),
+            // Range-checked by `day_count_basis`.
+            _ => return None,
+        })
     }
 }

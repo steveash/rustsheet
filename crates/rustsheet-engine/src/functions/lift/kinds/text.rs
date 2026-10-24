@@ -1,10 +1,11 @@
 //! The lifting table's text entries (SPEC-0011 "The argument-kind table"): the element-wise text
 //! functions, LEFT to VALUETOTEXT, and DATEVALUE and TIMEVALUE (T-1775).
 
-use super::ArgKind::Lift;
+use super::ArgKind::{Lift, WholeByCaller};
 use super::KernelWork::Constant;
 use super::{
-    ArgKinds, CallResult, LIFT_1, LIFT_1_OF_2, LIFT_2, LIFT_2_OF_3, LIFT_3, LIFT_3_OF_4, LIFT_4,
+    ArgKinds, CallResult, LIFT_1, LIFT_1_OF_2, LIFT_1_OF_3, LIFT_2, LIFT_2_OF_3, LIFT_3,
+    LIFT_3_OF_4, LIFT_4,
 };
 use crate::functions::Function;
 
@@ -12,7 +13,22 @@ use crate::functions::Function;
 const CONCATENATE: ArgKinds = ArgKinds {
     required: 1,
     params: &[],
-    repeat: Some(Lift),
+    repeat: &[Lift],
+    max: 255,
+    work: Constant,
+    result: CallResult::Value,
+};
+
+/// `TEXTJOIN(delimiter, ignore_empty, text1, [text2], ...)`: `ignore_empty` lifts over an array
+/// and a range (`TEXTJOIN(",",{TRUE;FALSE},"a","","b")` is 2x1, `TEXTJOIN(",",C1:D1,..)` 1x2,
+/// probes/textjoin-ignore-empty-lift; T-2318). The delimiter and the texts are read once by the
+/// function itself (`Model::fn_textjoin`), which builds at most two joins, one per value of
+/// `ignore_empty`, so an element costs O(1). The 255-argument cap is unprobed (Excel's
+/// documentation says 252 texts).
+const TEXTJOIN: ArgKinds = ArgKinds {
+    required: 3,
+    params: &[WholeByCaller, Lift],
+    repeat: &[WholeByCaller],
     max: 255,
     work: Constant,
     result: CallResult::Value,
@@ -44,7 +60,11 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         | Function::Leftb
         | Function::Right
         | Function::Rightb
-        | Function::Valuetotext => Some(&LIFT_1_OF_2),
+        | Function::Valuetotext
+        | Function::Dollar => Some(&LIFT_1_OF_2),
+        // Every argument of DOLLAR, FIXED and NUMBERVALUE lifts over a range and an array, and
+        // mixed shapes broadcast with #N/A fill (probes/t2198-m5-lift-argument-kinds rows 20-35).
+        Function::Fixed | Function::Numbervalue => Some(&LIFT_1_OF_3),
         Function::Rept | Function::Exact | Function::Text | Function::Filterxml => Some(&LIFT_2),
         Function::Find | Function::Findb | Function::Search | Function::Searchb => {
             Some(&LIFT_2_OF_3)
@@ -53,6 +73,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Substitute => Some(&LIFT_3_OF_4),
         Function::Replace | Function::Replaceb => Some(&LIFT_4),
         Function::Concatenate => Some(&CONCATENATE),
+        Function::Textjoin => Some(&TEXTJOIN),
         _ => None,
     }
 }

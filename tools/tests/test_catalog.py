@@ -44,6 +44,8 @@ def test_every_entry_has_category_milestone_and_scope() -> None:
         # absent = the oracle evaluates it; `none` = it cannot return any value (decision 0039:
         # web values, errors included, are goldens)
         assert f.get("oracle") in {None, "none"}, f["name"]
+        # decision 0094: an exemption from the 400-cell rule says why (T-0062)
+        assert f.get("v15") in {None, "exempt"} and bool(f.get("v15_reason")) == ("v15" in f), f["name"]
 
 
 def test_source_list_rows_are_well_formed() -> None:
@@ -53,7 +55,26 @@ def test_source_list_rows_are_well_formed() -> None:
         assert row["page"].startswith("https://support.microsoft.com/"), name
 
 
-def test_only_functions_the_web_oracle_cannot_evaluate_are_oracle_none() -> None:
-    # The oracle canary refuses SHEETS()/INFO() workbooks (oracle/canary.py). JIS (#NAME?) and
-    # FILTERXML (#VALUE!) do get web values, which are goldens (decision 0039, T-0040).
-    assert {f["name"] for f in _functions() if f.get("oracle") == "none"} == {"INFO", "SHEETS"}
+def test_no_function_is_oracle_none() -> None:
+    # INFO and SHEETS left `none` with T-2113: the canary refuses only SHEETS() and INFO("numfile"). JIS (#NAME?)
+    # and FILTERXML (#VALUE!) get web values, which are goldens (decision 0039, T-0040).
+    assert {f["name"] for f in _functions() if f.get("oracle") == "none"} == set()
+
+
+# Functions whose result can be a multi-cell array by design (T-2224): `rustsheet-gen --spill` reserves a
+# footprint under them. Scalar functions that only lift over an array argument are not listed.
+DYNAMIC_ARRAY = {
+    "BYCOL", "BYROW", "CHOOSECOLS", "CHOOSEROWS", "COLUMN", "DROP", "EXPAND", "FILTER", "FILTERXML",
+    "FREQUENCY", "GROUPBY", "GROWTH", "HSTACK", "IMPORTCSV", "IMPORTTEXT", "INDEX", "LINEST", "LOGEST",
+    "MAKEARRAY", "MAP", "MINVERSE", "MMULT", "MODE.MULT", "MUNIT", "OFFSET", "PIVOTBY", "RANDARRAY",
+    "REGEXEXTRACT", "ROW", "SCAN", "SEQUENCE", "SORT", "SORTBY", "STOCKHISTORY", "TAKE", "TEXTSPLIT",
+    "TOCOL", "TOROW", "TRANSPOSE", "TREND", "TRIMRANGE", "UNIQUE", "VSTACK", "WRAPCOLS", "WRAPROWS",
+    "XLOOKUP",
+}  # fmt: skip
+
+
+def test_dynamic_array_marks_exactly_the_array_returning_functions() -> None:
+    marked = {f["name"] for f in _functions() if "dynamic_array" in f}
+    # Only `true` is written: an unmarked function is not dynamic.
+    assert all(f["dynamic_array"] is True for f in _functions() if "dynamic_array" in f)
+    assert marked == DYNAMIC_ARRAY

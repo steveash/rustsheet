@@ -241,6 +241,26 @@ fn key_and_value_sorts() {
 }
 
 #[test]
+fn col_sort_order_counts_one_value_column() {
+    // probes/pivotby-sort-order-past-keys: past the column fields only the first value column
+    // may be named (S!A8-A9, A46), while row_sort_order counts every value column (S!A80-A82).
+    for (options, error) in [
+        (",,,,3", true),
+        (",,,,-3", true),
+        (",,3", false),
+        (",,4", true),
+    ] {
+        let formula = format!("=PIVOTBY(A2:A11,C2:C11,D2:E11,{SUM},{options})");
+        assert_eq!(pivot(&formula, 1, 1)[0][0] == "#VALUE!", error, "{formula}");
+    }
+    let formula = format!("=PIVOTBY(A2:A11,B2:C11,D2:E11,{SUM},,,,,4)");
+    assert_eq!(pivot(&formula, 1, 1)[0][0], "#VALUE!");
+    // With two column fields 3 is the first value column: Banana's Sales are the least.
+    let formula = format!("=PIVOTBY(A2:A11,B2:C11,D2:E11,{SUM},,,,,3)");
+    assert_eq!(pivot(&formula, 1, 2)[0], ["", "Banana"]);
+}
+
+#[test]
 fn filter_and_argument_errors() {
     // P!Y73: filtering out 2025 drops that column and South.
     let grid = pivot(
@@ -598,4 +618,61 @@ fn relative_sets_are_capped_before_they_are_built() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("B1"), "FALSE");
+}
+
+#[test]
+fn an_error_column_total_over_several_value_columns_is_value_error() {
+    // probes/t2311-pivotby-value-columns-error (T-2311): one function over two value columns
+    // whose Total column cells (shown as "") hold an error is #VALUE!, the grand total alone too.
+    let grand_error = "LAMBDA(x,IF(ROWS(x)=10,NA(),SUM(x)))";
+    let mut model = records();
+    model._set(
+        "G1",
+        &format!("=PIVOTBY(B2:B11,C2:C11,D2:E11,{grand_error})"),
+    );
+    // Without the Total column nothing computes it (P!A27).
+    model._set(
+        "G20",
+        &format!("=PIVOTBY(B2:B11,C2:C11,D2:E11,{grand_error},0,1,1,0)"),
+    );
+    // One value column shows the error in its cell (P!A3, P!A4).
+    model._set(
+        "G40",
+        &format!("=PIVOTBY(B2:B11,C2:C11,D2:D11,{grand_error})"),
+    );
+    // An array result is #VALUE! in its cells only (P!A12).
+    model._set("G60", "=PIVOTBY(B2:B11,C2:C11,D2:E11,LAMBDA(x,x))");
+    model.evaluate();
+    assert_eq!(model._get_text("G1"), "#VALUE!");
+    assert_eq!(model._get_text("H1"), "");
+    assert_eq!(model._get_text("G20"), "");
+    assert_eq!(model._get_text("H20"), "2023");
+    assert_eq!(model._get_text("G40"), "");
+    assert_eq!(model._get_text("K44"), "#N/A");
+    assert_eq!(model._get_text("G60"), "");
+    assert_eq!(model._get_text("H61"), "#VALUE!");
+}
+
+#[test]
+fn array_field_headers_and_depths_lift_to_top_left_cells() {
+    // probes/groupby-lifted-args A121, A129, A137 (T-2359): the top-left cell of a PIVOTBY is its
+    // empty corner, and an element whose call is invalid (a text row_sort_order) is #VALUE!.
+    let rows = pivot(
+        "=PIVOTBY(A2:A11,B2:B11,D2:D11,LAMBDA(x,SUM(x)),{0,1})",
+        1,
+        3,
+    );
+    assert_eq!(rows, [["", "", ""]]);
+    let rows = pivot(
+        "=PIVOTBY(A2:A11,B2:B11,D2:D11,LAMBDA(x,SUM(x)),0,1,,{1;0})",
+        2,
+        2,
+    );
+    assert_eq!(rows, [["", ""], ["", ""]]);
+    let rows = pivot(
+        "=PIVOTBY(A2:A11,B2:B11,D2:D11,LAMBDA(x,SUM(x)),{5,1},-1,A2:A2,2)",
+        1,
+        2,
+    );
+    assert_eq!(rows, [["#VALUE!", "#VALUE!"]]);
 }

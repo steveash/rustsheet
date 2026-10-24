@@ -29,6 +29,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
      do not merge, start again at 1), run check (c), merge with `expectedHeadSha`, then
      `make merge-lock-release`. Red, or any reason to stop
      (review changes, the session ending): release at once, then fix without the lock.
+  A lock whose PR is already merged or closed is never held (decision 0097): `acquire` for a finished
+  PR exits 3 (stop; the PR is done) and any acquirer takes over a finished PR's lock, whatever its age.
   A lock older than 30 minutes is stale and the next acquirer takes it over; renew yours by
   acquiring again if CI runs long. `make merge-lock-status` shows the holder. Orphaned-PR merges,
   the steward's PR and task-only PRs take the lock too.
@@ -88,6 +90,10 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Sonnet queue buffer** (decision 0021): in the steward's queue step, also run
   `make ready-tasks TIER=sonnet`; below 10 ready, run the gap-triager and/or planner to cut
   sonnet-sized tasks by the tier rubric (never relabel a task to reach the number).
+- **Visible-parity lock** (decision 0093): task PRs never lower `eval/baseline/visible-parity.json`.
+  In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and commit the lower
+  lock with the snapshot. When an open PR conflicts on the lock, take `main`'s side and re-run
+  `make eval-baseline`.
 - **Generated files**: never hand-edit `eval/baseline/*.txt` or `quality/*.json`; regenerate with
   `make eval-baseline` and the `scripts/check_*.py --update` commands. `docs/tasks/BOARD.md` is
   git-ignored and never committed (decision 0017).
@@ -115,10 +121,27 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   suite's. Read it from the "Probe milestones (decision 0051)" section of
   `eval/runs/latest/report.md` after `make eval` (report.json: `probe_milestones`; the M0–M2 row
   is also printed by `make eval-check`); the other rows are M5–M11's probe criteria.
+- **Exit owners** (decision 0096): after `make eval`, run `make exit-owners MILESTONE=<current
+  milestone>` (docs/milestones.md) instead of searching `docs/tasks/` by hand. Each listed line is a
+  failing exit cell that no open task of that milestone owns: add the cell (its case file stem and
+  A1 name, as the line prints them) to the open task of that milestone that should fix it, or, when
+  none fits, file one with `make new-task MILESTONE=<current> ..` that names it. Put the new
+  owners in the daily steward PR, and rerun `make exit-owners` until it reports 0. A line that an
+  open task already means to own (a false "unowned", decision 0096 Consequences) is fixed by naming
+  the cell, or only the case, in that task.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+- **Fifteen-digit parity checkpoint** (decision 0094, T-0062): after `make eval`, copy the bold
+  "Fifteen-digit parity: ..." line from the "Fifteen-digit parity checkpoint" section of
+  `eval/runs/latest/report.md` (report.json: `v15_checkpoint`) into the docs/status.md scoreboard,
+  and say whether the previous run's line also read "met". The checkpoint is reached only when two
+  consecutive runs are met.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.
+- **Review-round limit** (decision 0095): list every PR whose task is `Blocked because: review-round
+  limit` under open PRs in `docs/status.md` with its age; the opus worker re-reviews it once its
+  branch is idle 2 h, so do not merge or unblock it yourself. A task `Blocked because: review-round
+  limit, twice` goes under "Needs owner" with the PR link and the findings still open.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,
   leave the PR as draft, and move on. Do not leave `main` red: if a merge broke `main`, revert first.

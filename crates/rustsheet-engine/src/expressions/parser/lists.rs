@@ -64,9 +64,9 @@ impl Parser {
     /// (`IF(A1,,2)`) are `EmptyArgKind`.
     pub(super) fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
         // The names a LET binds are in scope up to its `)`.
-        let scope = self.dotted_bound_names.len();
+        let scope = self.bound_names.len();
         let args = self.parse_function_args_in_scope(fn_name);
-        self.dotted_bound_names.truncate(scope);
+        self.bound_names.truncate(scope);
         args
     }
 
@@ -74,10 +74,12 @@ impl Parser {
     /// separator follows it, so it is not the body).
     fn parse_argument(&mut self, binds_name: bool) -> Node {
         let token = binds_name.then(|| self.lexer.peek_token());
+        let start = self.lexer.get_position_index();
         let node = self.parse_enclosed_expr();
         match token {
             Some(token) if self.lexer.peek_token() == self.get_argument_separator_token() => {
-                self.bind_dotted_name(&token, node)
+                let text = self.lexer.source_since(start);
+                self.bind_name(&token, &text, node)
             }
             _ => node,
         }

@@ -25,6 +25,12 @@ def test_each_op_is_recorded_in_order() -> None:
         {"op": "add", "sheet": "New"},
         {"op": "move", "sheet": "Calc", "to": 0},
         {"op": "insert_row", "sheet": "Calc", "row": 1},
+        {"op": "delete_row", "sheet": "Calc", "row": 2},
+        {"op": "insert_column", "sheet": "Calc", "column": "b"},
+        {"op": "delete_column", "sheet": "Calc", "column": "XFD"},
+        {"op": "convert_table", "sheet": "Calc", "table": "Sales"},
+        {"op": "delete_table", "sheet": "Calc", "table": "Sales"},
+        {"op": "delete_sheet", "sheet": "New"},
     ]
     xlsx = build_xlsx(_spec(ops))
     expected = [
@@ -32,6 +38,12 @@ def test_each_op_is_recorded_in_order() -> None:
         ("add", "New", None),
         ("move", "Calc", 0),
         ("insert_row", "Calc", 1),
+        ("delete_row", "Calc", 2),
+        ("insert_column", "Calc", "b"),
+        ("delete_column", "Calc", "XFD"),
+        ("convert_table", "Calc", "Sales"),
+        ("delete_table", "Calc", "Sales"),
+        ("delete_sheet", "New", None),
     ]
     assert sheet_ops(xlsx) == expected
     assert recorded_sheet_ops(xlsx) == expected
@@ -54,6 +66,18 @@ def test_workbook_without_ops_lists_none() -> None:
         {"op": "insert_row", "sheet": "Data"},
         {"op": "insert_row", "sheet": "Data", "row": 0},
         {"op": "insert_row", "sheet": "Data", "to": 1},
+        {"op": "delete_row", "sheet": "Data"},
+        {"op": "delete_row", "sheet": "Data", "row": 0},
+        {"op": "delete_row", "sheet": "Data", "row": True},
+        {"op": "insert_column", "sheet": "Data"},
+        {"op": "insert_column", "sheet": "Data", "column": "XFE"},
+        {"op": "insert_column", "sheet": "Data", "column": "A1"},
+        {"op": "delete_column", "sheet": "Data", "column": 2},
+        {"op": "delete_column", "sheet": "Data", "row": 2},
+        {"op": "delete_sheet", "sheet": "Data", "to": 1},
+        {"op": "convert_table", "sheet": "Data"},
+        {"op": "delete_table", "sheet": "Data", "table": ""},
+        {"op": "delete_table", "sheet": "Data", "name": "T"},
         "add",
     ],
 )
@@ -115,3 +139,46 @@ def test_graph_replay_inserts_a_row_above_the_given_one() -> None:
         ("POST", "item/workbook/worksheets('S')/range(address='3:3')/insert", {"shift": "Down"})
     ]
     assert graph.order == ["S", CANARY]
+
+
+@pytest.mark.parametrize(
+    ("op", "to", "url", "body"),
+    [
+        ("delete_row", 3, "item/workbook/worksheets('S')/range(address='3:3')/delete", {"shift": "Up"}),
+        (
+            "insert_column",
+            "c",
+            "item/workbook/worksheets('S')/range(address='C:C')/insert",
+            {"shift": "Right"},
+        ),
+        (
+            "delete_column",
+            "C",
+            "item/workbook/worksheets('S')/range(address='C:C')/delete",
+            {"shift": "Left"},
+        ),
+    ],
+)
+def test_graph_replay_shifts_rows_and_columns(op: str, to: Any, url: str, body: dict[str, str]) -> None:
+    graph = _FakeGraph(["S", CANARY])
+    graph._replay_sheet_ops("item", {}, [(op, "S", to)])
+    assert graph.calls == [("POST", url, body)]
+
+
+def test_graph_replay_deletes_a_sheet_and_converts_or_deletes_a_table() -> None:
+    graph = _FakeGraph(["S", "Other", CANARY])
+    graph._replay_sheet_ops(
+        "item",
+        {},
+        [("delete_sheet", "Other", None), ("convert_table", "S", "Sa'les"), ("delete_table", "S", "T1")],
+    )
+    assert graph.calls == [
+        ("DELETE", "item/workbook/worksheets('Other')", None),
+        ("POST", "item/workbook/tables('Sa%27%27les')/convertToRange", None),
+        ("DELETE", "item/workbook/tables('T1')", None),
+    ]
+
+
+def test_graph_replay_never_deletes_the_canary_sheet() -> None:
+    with pytest.raises(OracleError, match="canary"):
+        _FakeGraph(["S", CANARY])._replay_sheet_ops("item", {}, [("delete_sheet", CANARY, None)])

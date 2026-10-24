@@ -3,10 +3,11 @@ id: T-2152
 title: "NUMBERVALUE: empty text is 0, a separator is its first character, an empty separator is #VALUE!"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -36,9 +37,26 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 12 in eval/baseli
 | gen-m5/ecd1b828aebad1e8 Calc!A60 | `=NUMBERVALUE(RIGHT("1.5",(Data!A$3/Data!B1)))` | 0.0 | "#VALUE!" |
 | gen-m5/ee1667411bbe2ccc Calc!A170 | `=DEGREES(SUMX2PY2(NUMBERVALUE(Data!$C1),Data!B4:B4))` | 8.73278137242291e+17 | "#VALUE!" |
 
+gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): One more cell, a friendly_name of HYPERLINK: `NUMBERVALUE("1,000",FALSE,2.5)` (decimal separator from a FALSE cell, group separator 2.5) is 1000 in Excel, ours `#VALUE!`. Check it after the first-character rule lands; if it still fails, the cause is T-2151's VALUE-like parsing of "1,000": move the cell there and say so in the Outcome.
+
+Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baseline/gen-m6.txt:
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m6/07171fa3f7493f51 Calc!A261 | `=HYPERLINK("#Data!A1",NUMBERVALUE("1,000",IFERROR(Data!D2,Data!D$5),Data!C2))` | 1000.0 | "#VALUE!" |
+
 ## Acceptance criteria
-- [ ] These 12 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
+- [x] These 12 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
 
 ## Out of scope
 - Currency, parentheses, dates and times (T-2151); array lifting (T-2160).
+
+## Outcome
+`fn_numbervalue` now uses the first character of each separator, is `#VALUE!` for an empty separator (or one equal to the other), removes every group character before parsing, and returns 0 for empty text. gen-m5: 12 known-failure lines removed, no regressions. The gen-m6 cell (07171fa3f7493f51 Calc!A261, `NUMBERVALUE("1,000",FALSE,2.5)` = 1000) still fails: the group separator is "2", so "1,000" keeps its comma and needs VALUE-like parsing; moved to T-2151.

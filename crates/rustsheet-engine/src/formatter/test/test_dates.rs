@@ -101,18 +101,29 @@ fn date_system_serial_conversion() {
     assert_eq!(Excel1904.serial_from_1900_serial(i64::MIN), None);
     assert_eq!(Excel1900.to_1900_serial(-5), Some(-5));
     assert_eq!(Excel1900.serial_from_1900_serial(-5), Some(-5));
+    // The imported (fractional) form keeps the time of day and drops a moment before the epoch.
+    assert_eq!(
+        Excel1904.serial_from_imported_1900_serial(1462.75),
+        Some(0.75)
+    );
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(1461.5), None);
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(0.5), Some(0.5));
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(f64::NAN), None);
+    assert_eq!(
+        Excel1900.serial_from_imported_1900_serial(45292.5),
+        Some(45292.5)
+    );
     // EDATE/EOMONTH keep a day before the 1904 epoch as a negative serial.
     assert_eq!(Excel1904.signed_serial_from_1900_serial(1431), -31);
     assert_eq!(Excel1900.signed_serial_from_1900_serial(1431), 1431);
     // 1904 serial 0 is Friday 1904-01-01; a negative 1904 serial is no date.
     assert_eq!(
-        Excel1904.date_of_serial(0),
+        Excel1904.date_of_serial_from_zero(0),
         chrono::NaiveDate::from_ymd_opt(1904, 1, 1)
     );
-    assert_eq!(Excel1904.date_of_serial(-1), None);
+    assert_eq!(Excel1904.date_of_serial_from_zero(-1), None);
     // WEEKDAY, WORKDAY and NETWORKDAYS also read 1900 serial 0, Saturday 1899-12-30 on the
     // weekday-faithful calendar (T-1254).
-    assert_eq!(Excel1900.date_of_serial(0), None);
     assert_eq!(
         Excel1900.date_of_serial_from_zero(0),
         chrono::NaiveDate::from_ymd_opt(1899, 12, 30)
@@ -230,4 +241,65 @@ fn fractional_and_repeated_elapsed_seconds() {
             "{value} {format}"
         );
     }
+}
+
+// A date Excel cannot show displays as 255 `#` while TEXT is #VALUE! (probes/displayed-text-formats
+// S!B4: `yyyy-mm-dd` on a negative serial; gen-m10 "Displayed text": dates past 9999-12-31 and
+// elapsed codes with a clock token on a negative). A bare elapsed code keeps its minus.
+#[test]
+fn unshowable_date_displays_hashes() {
+    let ctx = FormatContext::new(get_locale("en").unwrap());
+    let hashes = "#".repeat(255);
+    for (value, format) in [
+        (-1.0, "yyyy-mm-dd"),
+        (1_234_567_890.0, "m/d/yyyy"),
+        (-0.5, "[h]:mm"),
+        (1_234_567_890.0, "h:mm:ss.00"),
+    ] {
+        let formatted = format_number(value, format, &ctx);
+        assert_eq!(formatted.text, "#VALUE!", "{format} on {value}");
+        assert_eq!(formatted.displayed(), hashes, "{format} on {value}");
+    }
+    assert_eq!(format_number(-1.5, "[s]", &ctx).displayed(), "-129600");
+    assert_eq!(
+        format_number(45000.0, "yyyy-mm-dd", &ctx).displayed(),
+        "2023-03-15"
+    );
+}
+
+// gen-m10 displayed text (T-1732): fields come from the serial rounded to the shown second.
+#[test]
+fn fields_come_from_the_serial_rounded_to_the_second() {
+    let v = 0.999_999_999_9;
+    let cases = [
+        ("h:mm", "0:00"),
+        ("hh:mm:ss", "00:00:00"),
+        ("[h]:mm:ss", "24:00:00"),
+        ("h:mm:ss AM/PM", "12:00:00 AM"),
+        ("yyyy-mm-dd", "1900-01-01"),
+        ("dddd", "Sunday"),
+        ("d \\d\\a\\y\\s h:mm", "1 days 0:00"),
+        ("[m]:ss", "1440:00"),
+        ("dd/mm/yy", "01/01/00"),
+    ];
+    for (format, expected) in cases {
+        assert_eq!(
+            format_in(v, format, DateSystem::Excel1900),
+            expected,
+            "{format}"
+        );
+    }
+}
+
+#[test]
+fn fraction_digits_round_into_the_next_day() {
+    // 0.99999999999 is 23:59:59.999999; `.000` rounds it up to midnight of the next date.
+    assert_eq!(
+        format_in(
+            0.999_999_999_99,
+            "yyyy-mm-dd hh:mm:ss.000",
+            DateSystem::Excel1900
+        ),
+        "1900-01-01 00:00:00.000"
+    );
 }

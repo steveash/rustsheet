@@ -10,10 +10,14 @@
 //! the captured values are compared with the current ones (see `diff`).
 
 mod diff;
+mod pivot;
+
+pub use self::pivot::{PivotError, PivotFunction, PivotTableInput};
 
 use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::{Cell, Link, Worksheet};
 use rustsheet_engine::Model;
+use rustsheet_engine::TakenSheet;
 
 use self::diff::{capture_derived, input_changes, value_changes, Before, Key, KeySet};
 use crate::error::{EditError, RefError};
@@ -27,8 +31,14 @@ use crate::workbook::{engine_rc, resolve_range, sheet_index, sheet_metas, Workbo
 pub enum Input {
     /// A typed value, stored as is (text is never reinterpreted as a number or formula).
     Value(Value),
-    /// A formula; must start with `=`.
+    /// A formula as a user types it; must start with `=`. Excel refuses some typed formulas it
+    /// reads when stored, and so does this: a LET name or LAMBDA parameter spelled like a cell
+    /// (`=LET(f1,1,f1+1)`) is [`EditError::InvalidInput`] (decision 0103).
     Formula(String),
+    /// A formula as an xlsx file stores it, read as xlsx import reads a dynamic-array `<f>`; must
+    /// start with `=`. LET names and LAMBDA parameters spelled like a cell bind, as Excel binds
+    /// them stored as `_xlpm.f1` (decision 0103). Use it to replay stored formulas.
+    StoredFormula(String),
     /// A formula as a pre-dynamic-array workbook stores it; must start with `=`. Functions
     /// that expect a scalar implicitly intersect a range, so `=A1:A2` is stored as `=@A1:A2`,
     /// exactly as xlsx import reads a plain `<f>`.
@@ -157,7 +167,7 @@ enum Undo {
     },
     DeletedSheet {
         index: u32,
-        sheet: Box<Worksheet>,
+        sheet: Box<TakenSheet>,
     },
     /// A sheet moved by `move_sheet`, with its position before the move.
     Moved {
@@ -171,6 +181,11 @@ enum Undo {
     },
     /// A table added by `add_table`.
     Table(String),
+    /// The lengths of the workbook's pivot caches and tables before `add_pivot_table`.
+    Pivot {
+        caches: usize,
+        tables: usize,
+    },
     /// A row's hidden flag as it was before `set_row_hidden`.
     RowHidden {
         sheet_id: u32,
@@ -305,15 +320,18 @@ impl Txn<'_> {
             Input::Clear | Input::Value(Value::Empty) => {
                 model.set_user_input(sheet, row, col, String::new())
             }
-            Input::Formula(text) | Input::LegacyFormula(text) if !text.starts_with('=') => {
+            Input::Formula(text) | Input::StoredFormula(text) | Input::LegacyFormula(text)
+                if !text.starts_with('=') =>
+            {
                 return Err(EditError::InvalidInput {
                     cell,
                     message: format!("\"{text}\" is not a valid formula"),
                 });
             }
             Input::Parse(text) | Input::Formula(text) => {
-                model.set_user_input(sheet, row, col, text)
+                model.set_typed_user_input(sheet, row, col, text)
             }
+            Input::StoredFormula(text) => model.set_user_input(sheet, row, col, text),
             Input::LegacyFormula(text) => {
                 model.set_cell_with_legacy_formula(sheet, row, col, &text)
             }
@@ -717,6 +735,10 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                     .map_err(|e| e.to_string())
                     .and_then(|scope| model.delete_defined_name(&name, scope));
                 debug_assert!(undone.is_ok(), "undo of define_name failed: {undone:?}");
+            }
+            Undo::Pivot { caches, tables } => {
+                model.workbook.pivot_caches.truncate(caches);
+                model.workbook.pivot_tables.truncate(tables);
             }
             Undo::Table(name) => {
                 let undone = model.remove_table(&name);

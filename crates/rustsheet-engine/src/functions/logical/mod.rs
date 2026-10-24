@@ -7,7 +7,9 @@ mod scan;
 mod switch;
 
 pub(crate) use bycol_byrow::as_lambda;
-pub(crate) use lambda::{FunctionValue, LambdaCaller, NamedLambdas, SharedLambda};
+pub(crate) use lambda::{
+    Captures, FunctionValue, LambdaCaller, NamedLambdas, ScopeResult, SharedLambda,
+};
 pub(crate) use r#let::{has_duplicate_parameter, same_variable};
 
 use crate::cast::calc_result_to_array_node;
@@ -95,6 +97,7 @@ fn array_node_to_bool(node: &ArrayNode) -> Result<bool, ArrayNode> {
     match node {
         ArrayNode::Boolean(b) => Ok(*b),
         ArrayNode::Number(n) => Ok(*n != 0.0),
+        ArrayNode::Lambda(_) => Err(ArrayNode::Error(Error::VALUE)),
         ArrayNode::String(s) => {
             let lower = s.to_lowercase();
             if lower == "true" {
@@ -487,7 +490,10 @@ impl Model {
         }
         let case_count = args_count / 2;
         for case_index in 0..case_count {
+            // A one-cell range condition is a scalar, as IF's is: `ROWS(IFS(A3:A3,5))` with A3
+            // FALSE is `#N/A` (probes/t2280-ifs-one-cell-range-condition A30, T-2280).
             let condition = self.evaluate_node_in_context(&args[2 * case_index], cell);
+            let condition = self.collapse_single_cell(condition);
             if LiftedArg::is_grid(&condition) {
                 // The earlier conditions were all FALSE, so the result is decided element by
                 // element from here (`IFS({TRUE,FALSE},1,TRUE,2)` is {1,2}).
@@ -506,9 +512,19 @@ impl Model {
                     &mut |model, pairs| model.ifs_element(pairs, cell),
                 ));
             }
+            // A text condition that does not read as a boolean ends IFS in a 1x1 array of
+            // `#VALUE!`, not the scalar error IF gives: `TYPE(IFS("a*",5))` is 64 and
+            // `ROWS(IFS(A1,5)*2)` 1 with A1 = "a*", whereas `ROWS(IF(A1,5)*2)` is `#VALUE!`; an
+            // error condition stays a scalar error (probes/t2280-ifs-one-cell-range-condition, T-2280).
+            let is_text = matches!(condition, CalcResult::String(_));
             match self.cast_to_bool(condition, cell) {
                 Ok(true) => return Picked::Node(&args[2 * case_index + 1]),
                 Ok(false) => {}
+                Err(error) if is_text => {
+                    return Picked::Value(CalcResult::Array(vec![vec![calc_result_to_array_node(
+                        error,
+                    )]]))
+                }
                 Err(error) => return Picked::Value(error),
             }
         }

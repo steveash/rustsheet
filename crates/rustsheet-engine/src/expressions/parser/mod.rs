@@ -50,6 +50,7 @@ use super::token::TokenType;
 use super::types::*;
 
 use sheet_span::with_sheet_span;
+pub(crate) use sheet_span::{is_multi_sheet_span, is_span_or_if_of_span};
 use token::OpCompare;
 
 mod call_names;
@@ -64,6 +65,7 @@ mod reference_operators;
 mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
+mod structured_reference;
 mod unparsed;
 
 pub use chain::ChainLeft;
@@ -73,6 +75,7 @@ pub(crate) use depth::is_limit_error;
 pub use depth::{
     MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
+pub use structured_reference::StructuredReference;
 
 pub(crate) use call_names::CallNameSpellings;
 
@@ -130,6 +133,12 @@ pub enum ArrayNode {
     Error(token::Error),
     /// An empty (blank) cell from a range reference.
     Empty,
+    /// A LAMBDA value (its lambda id), as SCAN with a LAMBDA accumulator, MAKEARRAY or VSTACK
+    /// of LAMBDAs give: MAP, REDUCE and a LET name read through INDEX call it, a cell shows
+    /// `#CALC!`, and a function reading it as a value takes it as `#VALUE!`
+    /// (docs/excel-semantics/arrays.md "Arrays of LAMBDAs", probes/lambda-arrays, T-2039).
+    /// Never in a parsed array constant.
+    Lambda(usize),
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -295,6 +304,14 @@ pub enum Node {
         levels: u8,
         child: Box<Node>,
     },
+    /// A structured reference as written (`Sales[[#All],[Qty]]`), with the area it resolves to
+    /// for the table list the formula was parsed against: a `ReferenceKind`, a `RangeKind` or an
+    /// `ErrorKind`. Transparent to evaluation (see [`Node::ungrouped`]); the storage and in-engine
+    /// printers print `reference`, the xlsx export prints `lowered` (SPEC-0016).
+    StructuredReferenceKind {
+        reference: Box<StructuredReference>,
+        lowered: Box<Node>,
+    },
     CompareKind {
         kind: OpCompare,
         left: ChainLeft,
@@ -322,14 +339,28 @@ const _: () = assert!(std::mem::size_of::<Node>() <= NODE_SIZE);
 const NODE_SIZE: usize = 80;
 
 impl Node {
-    /// The node under any written parentheses: `((A1))` is `A1`. Loops, never recurses, so a
-    /// group adds no evaluator frame (SPEC-0007 "Seeing through groups").
+    /// The node under any written parentheses and structured references: `((A1))` is `A1`, and
+    /// `Sales[Qty]` is the area it resolves to (SPEC-0016 "Transparency"). Loops, never recurses,
+    /// so a group adds no evaluator frame (SPEC-0007 "Seeing through groups").
     pub(crate) fn ungrouped(&self) -> &Node {
         let mut node = self;
-        while let Node::Group { child, .. } = node {
-            node = child;
+        loop {
+            match node {
+                Node::Group { child, .. } => node = child,
+                Node::StructuredReferenceKind { lowered, .. } => node = lowered,
+                _ => return node,
+            }
         }
-        node
+    }
+
+    /// The area a structured reference resolves to; any other node is itself. For the sites
+    /// that see a structured reference as the reference it stood for before SPEC-0016 but treat
+    /// written parentheses apart, so they do not call [`Node::ungrouped`].
+    pub(crate) fn lowered(&self) -> &Node {
+        match self {
+            Node::StructuredReferenceKind { lowered, .. } => lowered,
+            node => node,
+        }
     }
 
     /// The `@` an xlsx import adds around a range-valued operand.
@@ -375,10 +406,18 @@ pub struct Parser {
     /// The parser is outside every parenthesis and argument list, where a comma is the bare
     /// union operator (`=A1,B2`, T-1073).
     top_level: bool,
-    /// Names the enclosing LET and LAMBDA calls bind so far, kept only when spelled like a
-    /// Lotus-style range: such a name is the variable where bound and the range elsewhere
-    /// (`LET(R1.C1,5,R1.C1*2)` is 10; probes/r1c1-let-name-r1-c1, lotus-dot-range, T-1659).
-    dotted_bound_names: Vec<String>,
+    /// Names the enclosing LET and LAMBDA calls bind so far. A name spelled like a Lotus-style
+    /// range or a cell is the variable where bound and the range or cell elsewhere
+    /// (`LET(R1.C1,5,R1.C1*2)` is 10, probes/r1c1-let-name-r1-c1, lotus-dot-range, T-1659;
+    /// `LET(f1,1,f1+1)` is 2, probes/let-cell-shaped-name-stored, T-2040); the variable shadows
+    /// a defined name (T-2057) and, called, a function of its name (T-2567).
+    bound_names: Vec<String>,
+    /// The formula is being typed (API `Input::Formula`/`Parse`), not read as stored: a LET name
+    /// or LAMBDA parameter spelled like a cell then refuses the formula, as Excel refuses it
+    /// typed (decision 0103, T-2497). Stored text (xlsx import, re-parses) keeps binding it.
+    typed: bool,
+    /// The first cell-shaped name the last parse bound (see `typed`).
+    cell_shaped_binding: Option<String>,
 }
 
 pub fn new_parser_english(
@@ -420,9 +459,27 @@ impl Parser {
             depth: 0,
             inner_depth: 0,
             value_operators: 0,
-            dotted_bound_names: Vec::new(),
+            bound_names: Vec::new(),
+            typed: false,
+            cell_shaped_binding: None,
         }
     }
+    /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see
+    /// [`Parser::typed_refusal`].
+    pub(crate) fn set_typed(&mut self, typed: bool) {
+        self.typed = typed;
+    }
+
+    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
+    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103).
+    /// `None` when parsing stored text or nothing is refused.
+    pub(crate) fn typed_refusal(&self) -> Option<String> {
+        let name = self.cell_shaped_binding.as_ref().filter(|_| self.typed)?;
+        Some(format!(
+            "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
+        ))
+    }
+
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
         self.lexer.set_lexer_mode(mode);
     }
@@ -466,7 +523,8 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.value_operators = 0;
-        self.dotted_bound_names.clear();
+        self.bound_names.clear();
+        self.cell_shaped_binding = None;
         self.top_level = true;
         let node = self.parse_expr();
         self.top_level = false;
@@ -606,6 +664,7 @@ impl Parser {
     }
 
     fn parse_operand(&mut self) -> Node {
+        let start = self.lexer.get_position_index();
         let next_token = self.lexer.next_token();
         match next_token {
             TokenType::LeftParenthesis => self.parse_parenthesized_call(),
@@ -618,8 +677,16 @@ impl Parser {
                 column,
                 absolute_column,
                 absolute_row,
-            } => self.reference_or_call_operand(sheet, row, column, absolute_column, absolute_row),
-            TokenType::Range { sheet, left, right } => self.range_operand(sheet, left, right),
+            } => {
+                let text = self.lexer.source_since(start);
+                if sheet.is_none() && self.binds_reference_shaped_name(&text) {
+                    return self.parse_identifier(text);
+                }
+                self.reference_or_call_operand(sheet, row, column, absolute_column, absolute_row)
+            }
+            TokenType::Range { sheet, left, right } => {
+                self.range_or_call_operand(sheet, left, right)
+            }
             TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {
@@ -665,7 +732,7 @@ impl Parser {
                 table_name,
                 specifier,
                 table_reference,
-            } => self.structured_reference_operand(table_name, specifier, table_reference),
+            } => self.structured_reference_operand(table_name, specifier, table_reference, false),
         }
     }
 }

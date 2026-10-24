@@ -5,8 +5,8 @@ use crate::{
         MAX_TEXT_UNITS,
     },
     expressions::{
-        parser::{left_chain, ArrayNode, Node},
-        token::{Error, OpCompare, OpProduct, OpSum},
+        parser::{ArrayNode, Node},
+        token::{Error, OpCompare, OpSum},
         types::CellReferenceIndex,
     },
     functions::util::compare_values,
@@ -337,8 +337,9 @@ fn finite_or_num(value: f64) -> Result<f64, Error> {
 /// 0 for a value below the smallest normal double, `value` otherwise. The postfix `%` and the
 /// multiplying and dividing functions (PRODUCT, SUMPRODUCT, SUMSQ, AVERAGE) flush their result
 /// like `*` and `/`; addition keeps subnormals (docs/excel-semantics/numbers.md "Subnormal results become 0",
-/// probes/subnormal-function-results, T-0189).
-pub(crate) fn flush_subnormal(value: f64) -> f64 {
+/// probes/subnormal-function-results, T-0189). A number cell constant is flushed as a workbook loads
+/// (xlsx import and the eval harness; numbers.md "A subnormal cell constant reads as 0", T-2228).
+pub fn flush_subnormal(value: f64) -> f64 {
     if value.abs() < f64::MIN_POSITIVE {
         0.0
     } else {
@@ -541,6 +542,8 @@ pub(crate) static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
 pub(crate) fn own_error(node: &ArrayNode) -> Option<Error> {
     match node {
         ArrayNode::Error(error) => Some(error.clone()),
+        // A LAMBDA element read as a value (docs/excel-semantics/arrays.md "Arrays of LAMBDAs").
+        ArrayNode::Lambda(_) => Some(Error::VALUE),
         _ => None,
     }
 }
@@ -655,44 +658,6 @@ impl Model {
             }
             (result, _) => result,
         }
-    }
-
-    /// Evaluates a chain of value operators (`=A1+A2*3&"x"`) in a loop down its
-    /// left operands (T-0128): the first operand, then each operator over the
-    /// result so far and its right operand, the same order and results as
-    /// recursing into each left operand, on one stack frame however long the
-    /// chain is.
-    pub(crate) fn evaluate_operator_chain(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        let (links, first) = left_chain(node);
-        let mut value = self.evaluate_node_in_context(first, cell);
-        for link in links {
-            value = match link {
-                Node::OpSumKind { kind, right, .. } => match kind {
-                    OpSum::Add => self.handle_arithmetic(value, right, cell, &plus),
-                    OpSum::Minus => self.handle_arithmetic(value, right, cell, &minus),
-                },
-                Node::OpProductKind { kind, right, .. } => match kind {
-                    OpProduct::Times => self.handle_arithmetic(value, right, cell, &times),
-                    OpProduct::Divide => self.handle_arithmetic(value, right, cell, &divide),
-                },
-                Node::OpPowerKind { right, .. } => {
-                    self.handle_arithmetic(value, right, cell, &power)
-                }
-                Node::OpConcatenateKind { right, .. } => {
-                    self.handle_concatenate(value, right, cell)
-                }
-                Node::CompareKind { kind, right, .. } => {
-                    self.handle_comparison(value, right, cell, kind)
-                }
-                // `left_chain` links are value operators only.
-                _ => value,
-            };
-        }
-        value
     }
 
     /// Applies `op` element‐wise for arrays/numbers to `left`, the evaluated left
@@ -939,6 +904,12 @@ impl Model {
                     message: String::new(),
                 },
                 ArrayNode::Empty => CalcResult::EmptyCell,
+                // `SCAN(..)=1` over LAMBDAs is `#VALUE!` per element (probes/lambda-arrays B20).
+                ArrayNode::Lambda(_) => CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: String::new(),
+                },
             }
         };
 

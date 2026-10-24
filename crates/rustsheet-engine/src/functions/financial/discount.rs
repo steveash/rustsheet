@@ -59,7 +59,9 @@ impl Model {
         let issue_serial = self.cast_number_ref(issue, cell)?.floor() as i64;
         let settlement_serial = self.cast_number_ref(settlement, cell)?.floor() as i64;
         let rate = self.cast_number_ref(rate, cell)?;
-        let par = self.cast_number_or(rest.first(), 1000.0, cell)?;
+        // A boolean par is `#VALUE!` (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, a TRUE cell too:
+        // probes/t2455-transpose-single-value A41, A54); text "2" is 2 (A55).
+        let par = self.cast_number_no_bools_or(rest.first(), 1000.0, cell)?;
         // A boolean basis is #VALUE!, text "1" is 1, 1.9 truncates to 1, 5 and -1 are #NUM!
         // (fin-later-argument-ranges J1-J11), and it is read before any value is checked (J20).
         let basis = self.cast_number_no_bools_or(rest.get(1), 0.0, cell)?;
@@ -79,26 +81,31 @@ impl Model {
         let [settlement, maturity, first, second, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        // The basis is read first: `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and
+        // `DISC(37025,2.5,1/0,100,"abc")` are `#VALUE!`, `RECEIVED(..,NA(),1/0)` `#DIV/0!`
+        // (probes/t2455-transpose-single-value A21, A64, A65; financial.md "The discount
+        // securities read basis first").
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         Ok(DiscountArgs {
             settlement: self.cast_number_no_bools_ref(settlement, cell)?.floor() as i64,
             maturity: self.cast_number_no_bools_ref(maturity, cell)?.floor() as i64,
             first: self.cast_number_no_bools_ref(first, cell)?,
             second: self.cast_number_no_bools_ref(second, cell)?,
-            basis: self.cast_number_no_bools_or(rest.first(), 0.0, cell)?,
+            basis,
         })
     }
 
-    /// The year fraction from settlement to maturity of [`DiscountArgs`] whose two amounts are
-    /// positive, `#NUM!` otherwise or when settlement is not before maturity.
-    fn discount_year_fraction(
-        &mut self,
+    /// The basis `(day count, year length)` from settlement to maturity of [`DiscountArgs`] whose
+    /// two amounts are positive, `#NUM!` otherwise or when settlement is not before maturity.
+    fn discount_days(
+        &self,
         args: &DiscountArgs,
         cell: CellReferenceIndex,
-    ) -> Result<f64, CalcResult> {
+    ) -> Result<(f64, f64), CalcResult> {
         if args.first <= 0.0 || args.second <= 0.0 || args.settlement >= args.maturity {
             return Err(num_error(cell));
         }
-        self.get_yearfrac(args.settlement, args.maturity, args.basis, cell)
+        self.year_parts(args.settlement, args.maturity, args.basis, cell)
     }
 
     /// `DISC(settlement, maturity, pr, redemption, [basis])`.
@@ -115,11 +122,11 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         let args = self.discount_args(values, cell)?;
         let (pr, redemption) = (args.first, args.second);
-        let yf = self.discount_year_fraction(&args, cell)?;
-        if yf == 0.0 {
+        let (dsm, b) = self.discount_days(&args, cell)?;
+        if dsm == 0.0 {
             return Err(div_error(cell));
         }
-        Ok((1.0 - pr / redemption) / yf)
+        Ok((1.0 - pr / redemption) * (b / dsm))
     }
 
     /// `INTRATE(settlement, maturity, investment, redemption, [basis])`.
@@ -136,11 +143,11 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         let args = self.discount_args(values, cell)?;
         let (investment, redemption) = (args.first, args.second);
-        let yf = self.discount_year_fraction(&args, cell)?;
-        if yf == 0.0 {
+        let (dim, b) = self.discount_days(&args, cell)?;
+        if dim == 0.0 {
             return Err(div_error(cell));
         }
-        Ok((redemption / investment - 1.0) / yf)
+        Ok((redemption - investment) / investment * (b / dim))
     }
 
     /// `PRICEDISC(settlement, maturity, discount, redemption, [basis])`.
@@ -157,8 +164,8 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         let args = self.discount_args(values, cell)?;
         let (discount, redemption) = (args.first, args.second);
-        let yf = self.discount_year_fraction(&args, cell)?;
-        Ok(redemption * (1.0 - discount * yf))
+        let (dsm, b) = self.discount_days(&args, cell)?;
+        Ok(redemption - discount * redemption * dsm / b)
     }
 
     /// `RECEIVED(settlement, maturity, investment, discount, [basis])`.
@@ -175,8 +182,8 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         let args = self.discount_args(values, cell)?;
         let (investment, discount) = (args.first, args.second);
-        let yf = self.discount_year_fraction(&args, cell)?;
-        let denom = 1.0 - discount * yf;
+        let (dim, b) = self.discount_days(&args, cell)?;
+        let denom = 1.0 - discount * (dim / b);
         if denom <= 0.0 {
             return Err(num_error(cell));
         }
@@ -197,11 +204,11 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         let args = self.discount_args(values, cell)?;
         let (pr, redemption) = (args.first, args.second);
-        let yf = self.discount_year_fraction(&args, cell)?;
-        if yf == 0.0 {
+        let (dsm, b) = self.discount_days(&args, cell)?;
+        if dsm == 0.0 {
             return Err(div_error(cell));
         }
-        Ok((redemption / pr - 1.0) / yf)
+        Ok((redemption - pr) / pr * (b / dsm))
     }
 
     /// Reads [`MaturityArgs`], each argument a number (a boolean is `#VALUE!`).
@@ -244,13 +251,13 @@ impl Model {
         {
             return Err(num_error(cell));
         }
-        let (a, dim, dsm) =
+        let (b, dim, a, dsm) =
             self.get_mat_factors(args.issue, args.settlement, args.maturity, args.basis, cell)?;
-        let denom = 1.0 + yld * dsm;
+        let denom = 1.0 + dsm / b * yld;
         if denom == 0.0 {
             return Err(div_error(cell));
         }
-        Ok(100.0 * ((1.0 + rate * dim) / denom - rate * a))
+        Ok((100.0 + dim / b * rate * 100.0) / denom - a / b * rate * 100.0)
     }
 
     /// `YIELDMAT(settlement, maturity, issue, rate, pr, [basis])`.
@@ -274,13 +281,13 @@ impl Model {
         {
             return Err(num_error(cell));
         }
-        let (a, dim, dsm) =
+        let (b, dim, a, dsm) =
             self.get_mat_factors(args.issue, args.settlement, args.maturity, args.basis, cell)?;
-        let denom = price / 100.0 + rate * a;
+        let denom = price / 100.0 + a / b * rate;
         if denom == 0.0 || dsm == 0.0 {
             return Err(div_error(cell));
         }
-        Ok(((1.0 + rate * dim) / denom - 1.0) / dsm)
+        Ok((1.0 + dim / b * rate - denom) / denom * (b / dsm))
     }
 
     // The next three functions deal with Treasury Bills, or T-Bills: zero-coupon bonds that

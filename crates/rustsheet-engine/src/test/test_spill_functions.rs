@@ -218,6 +218,58 @@ fn sortby_wrong_arg_count() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
 
+/// A `by_array` sorts rows when it is a column as tall as the array and columns when it is a row as
+/// wide as it, so one value leaves a one-column array as it is and is `#VALUE!` on a wider one
+/// (probes/t2310-sortby-single-by-array H1, H13, H69, H77, H89).
+#[test]
+fn sortby_by_array_direction() {
+    let mut model = new_empty_model();
+    model._set("A1", "3");
+    model._set("A2", "1");
+    model._set("A3", "2");
+    model._set("B1", "30");
+    model._set("B2", "10");
+    model._set("B3", "20");
+    model._set("D1", "=SORTBY(A1:A3,5)");
+    model._set("E1", "=SORTBY(A1:B3,5)");
+    model._set("F1", "=SORTBY(A1:B3,{2,1})");
+    model._set("H1", "=SORTBY(A1:A3,{3,1,2})");
+    model._set("I1", "=SORTBY(A1:A3,5,1,A1:A3,-1)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "3");
+    assert_eq!(model._get_text("D2"), "1");
+    assert_eq!(model._get_text("D3"), "2");
+    assert_eq!(model._get_text("E1"), "#VALUE!");
+    assert_eq!(model._get_text("F1"), "30");
+    assert_eq!(model._get_text("G1"), "3");
+    assert_eq!(model._get_text("F3"), "20");
+    assert_eq!(model._get_text("H1"), "#VALUE!");
+    assert_eq!(model._get_text("I1"), "#VALUE!");
+}
+
+/// A fractional `sort_order` reads as its floor, snapped up near an integer
+/// (probes/t2310-sortby-single-by-array H97-H165).
+#[test]
+fn sortby_fractional_sort_order() {
+    let mut model = new_empty_model();
+    model._set("A1", "3");
+    model._set("A2", "1");
+    model._set("A3", "2");
+    model._set("C1", "=SORTBY(A1:A3,A1:A3,-0.0001)");
+    model._set("D1", "=SORTBY(A1:A3,A1:A3,1.5)");
+    model._set("E1", "=SORTBY(A1:A3,A1:A3,0.5)");
+    model._set("F1", "=SORTBY(A1:A3,A1:A3,-1.5)");
+    model._set("G1", "=SORTBY(A1:A3,A1:A3,-1E-300)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "3");
+    assert_eq!(model._get_text("C3"), "1");
+    assert_eq!(model._get_text("D1"), "1");
+    assert_eq!(model._get_text("D3"), "3");
+    assert_eq!(model._get_text("E1"), "#VALUE!");
+    assert_eq!(model._get_text("F1"), "#VALUE!");
+    assert_eq!(model._get_text("G1"), "#VALUE!");
+}
+
 // ── UNIQUE ────────────────────────────────────────────────────────────────────
 
 #[test]

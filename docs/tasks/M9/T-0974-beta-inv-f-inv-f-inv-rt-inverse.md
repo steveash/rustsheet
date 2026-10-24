@@ -3,7 +3,7 @@ id: T-0974
 title: "BETA.INV/F.INV/F.INV.RT: inverse incomplete beta parity (28 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -41,7 +41,114 @@ kernel (T-0970) and maps back with `A + (B-A) t`; F.INV.RT solves on the upper t
 **Needs an oracle sweep (T-0018):** the last digits depend on the solver, so fit against the
 T-1044 incomplete-beta sweep, never blind.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). F.INV, FINV, F.INV.RT and BETAINV at moderate probabilities (1E-8 < p < 1 - 1E-8,
+df below 1E6) where ours is more than half a unit in the 15th digit off (95 cells), plus one GAMMALN.PRECISE whose
+argument is such an F.INV.
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 96 known-failure lines in eval/baseline/gen-m9.txt, 96 formulas.
+Examples:
+- gen-m9/0a614cfe974b59c3 Calc!A355 `=F.INV.RT(CHOOSE(1,Data!B10,(Data!D6/Data!E6),"abc"),6,2.5)`: Excel 2.640308353392362, ours 2.64030835339234
+Cells:
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A355
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A183
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A192
+- gen-m9/165db58d1540f014.case.json (3): Calc!A50, A150, A196
+- gen-m9/27601819397dd56e.case.json (3): Calc!A10, A81, A148
+- gen-m9/2801c1c11c21e134.case.json (3): Calc!A10, A120, A321
+- gen-m9/2a18b2f5a4dc43ac.case.json (2): Calc!A44, A218
+- gen-m9/320d51765af9b6b7.case.json (3): Calc!A15, A199, A379
+- gen-m9/35e8168aae2b00f8.case.json (3): Calc!A56, A117, A369
+- gen-m9/3a25a03eb94fcfbd.case.json (3): Calc!A105, A151, A334
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A382
+- gen-m9/40425341c5034eed.case.json (3): Calc!A108, A246, A367
+- gen-m9/4ab2ba98d26c8a5e.case.json (2): Calc!A18, A390
+- gen-m9/4bad303d32cc3f46.case.json (1): Calc!A56
+- gen-m9/4e55500bb8ad3cd8.case.json (2): Calc!A148, A332
+- gen-m9/530c636749a85209.case.json (3): Calc!A63, A175, A316
+- gen-m9/589f42e67f4b4b8d.case.json (4): Calc!A120, A221, A231, A365
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A272
+- gen-m9/60b0b6e69ad35a45.case.json (3): Calc!A150, A197, A258
+- gen-m9/623663cacea53bbc.case.json (2): Calc!A70, A340
+- gen-m9/7674c89c824aca43.case.json (1): Calc!A212
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A392
+- gen-m9/899f9555e67da2d6.case.json (3): Calc!A49, A184, A249
+- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A283, A357
+- gen-m9/8f2ac25945af87da.case.json (2): Calc!A225, A283
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A341
+- gen-m9/a013a45a8fbcab4f.case.json (1): Calc!A37
+- gen-m9/a5828d3925575713.case.json (2): Calc!A164, A328
+- gen-m9/a61e547a1cab994c.case.json (3): Calc!A155, A268, A297
+- gen-m9/abc2939ebd1e2365.case.json (2): Calc!A191, A367
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A188
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A269
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A345
+- gen-m9/bcb24385baafb2f0.case.json (2): Calc!A169, A260
+- gen-m9/c18dbf21f11093f3.case.json (4): Calc!A92, A190, A213, A400
+- gen-m9/c2974c061384fdd9.case.json (2): Calc!A198, A267
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A359
+- gen-m9/d8266bc15533702a.case.json (3): Calc!A39, A272, A394
+- gen-m9/e6cf3b20a014e6a3.case.json (2): Calc!A135, A351
+- gen-m9/eced4bb6a0234c9e.case.json (6): Calc!A202, A289, A291, A295, A340, A381
+- gen-m9/ee2497a5e683c5d9.case.json (2): Calc!A12, A180
+- gen-m9/f2bd5f380ec002bf.case.json (3): Calc!A29, A56, A75
+- gen-m9/f34f66fb7f81e673.case.json (2): Calc!A249, A314
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A101
+- gen-m9/fec39efaba9284c3.case.json (2): Calc!A244, A336
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: F.INV, F.INV.RT, FINV and BETAINV last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 51 known-failure lines in eval/baseline/gen-m9.txt, 51 formulas.
+Examples:
+- gen-m9/06b4e8f5de409d5e Calc!A145 `=F.INV.RT(0.05,2.5,3)`: Excel 9.552094495921159, ours 9.552094495921166
+Cells:
+- gen-m9/06b4e8f5de409d5e.case.json (1): Calc!A145
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A72
+- gen-m9/0a9226016e8f5f33.case.json (2): Calc!A5, A51
+- gen-m9/27601819397dd56e.case.json (2): Calc!A376, A378
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A241
+- gen-m9/3a25a03eb94fcfbd.case.json (2): Calc!A327, A388
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A222
+- gen-m9/40425341c5034eed.case.json (3): Calc!A45, A205, A229
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A60
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A155
+- gen-m9/530c636749a85209.case.json (2): Calc!A270, A339
+- gen-m9/589f42e67f4b4b8d.case.json (2): Calc!A350, A396
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A80
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A35
+- gen-m9/68d8ffb69ff739d8.case.json (2): Calc!A1, A319
+- gen-m9/7674c89c824aca43.case.json (3): Calc!A166, A350, A375
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A221
+- gen-m9/899f9555e67da2d6.case.json (1): Calc!A230
+- gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A114
+- gen-m9/a54c738c697617c3.case.json (2): Calc!A216, A311
+- gen-m9/a5828d3925575713.case.json (1): Calc!A69
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A75
+- gen-m9/a7bf0d8d81d33ba6.case.json (1): Calc!A272
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A145
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A337
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A101
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A339
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A67
+- gen-m9/c18dbf21f11093f3.case.json (2): Calc!A167, A184
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A241
+- gen-m9/cde551ea787f713a.case.json (2): Calc!A123, A306
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A344
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A204
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A18
+- gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A318
+- gen-m9/f34f66fb7f81e673.case.json (1): Calc!A19
+- gen-m9/fec39efaba9284c3.case.json (2): Calc!A30, A106
+
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): F.INV and F.INV.RT passed through TRIMMEAN and STDEVA (`TRIMMEAN(F.INV.RT(0.001,8,1),..)` Excel 598144.1562499531, ours 598144.1562336558).
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 visibly off.
+Examples:
+- gen-m9/91e167cd8d7eb652 Calc!A2 `=STDEVA({1,"a",TRUE,3},F.INV(0.999999,9,4))`: Excel 900.9607521555473, ours 900.9607521550595
+- gen-m9/a63d1c7d6f96c56d Calc!A320 `=TRIMMEAN(F.INV.RT(0.001,8,1),Data!C$5)`: Excel 598144.1562499531, ours 598144.1562336558
+Cells:
+- gen-m9/91e167cd8d7eb652.case.json (1): Calc!A2
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A320
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 98 known-failure lines (96 from T-2255, 2 from T-2256) disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Both NumericMismatch lines (H11, H16) and all NumericClose lines above leave those classes, at
       least 15 of the 28 lines leave `eval/baseline/ironcalc-calc.txt`, no new lines in any baseline;
       remaining lines listed in the PR with expected/actual.
@@ -65,3 +172,43 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - FINV: 25 cells (13-14 digits right 14, 10-12 4, 6-9 4, fewer or 0 vs nonzero 3); most in `probes-numeric/m9-legacy-finv.case.json` 23; `probes-numeric/t1530-f-df-cut.case.json` 2. e.g. `FINV(0.5,2,5)` Excel 0.7987697769322353, ours 0.7987697769322422
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Review round 1 (2026-10-23): findings (addressed in round 2)
+Excel-fidelity reviewer REQUEST_CHANGES (security, architecture, quality APPROVE). All four fixed on resume (2026-10-23):
+1. statistics.md "Quantile searches: per-call cap and lifting" (about lines 787-822): F.INV E1-E3 and the lifted A7 are
+   numbers now, not #NUM!; the "Ours:" cost text (about 1,300 cdfs, 4.0 ms, 2.1 s) is stale; narrow the DEVIATION to
+   BETA.INV E9 and record E6 (F.INV(1E-50,6000,4), ours 0.0163 vs Excel 0.000492) as a plain mismatch.
+2. Qualify "the bisection of the cdf gives Excel's ..." in "F.INV is a crossing of F.DIST's tails": E6 contradicts it.
+3. `fisher.rs` `f_quantile`: for the right tail with p < 1E-15 the statrs estimate (from 1 - p) is returned unrefined, so
+   gen-m9/0a9226016e8f5f33 A45 `F.INV.RT(1E-16,9,3)` (cited as evidence) is still 56563672787.87 vs 60647458731.09812.
+   Keep statrs only when it estimated the solved tail itself; refine on `f_sf` against p otherwise, then re-measure
+   (watch probes/stat-quantile-lift E11, E12 for newly visibly-off cells).
+4. Minor: the a = 1 cut's direct evidence is the F-family cells now passing (gen-m9 05d44f6dd6cfc567 A356, 146b46e74f2dac3b
+   A109, 27601819397dd56e A56, 2801c1c11c21e134 A130); cite them in statistics.md.
+
+Review round 2 (2026-10-23): Excel-fidelity APPROVE; its two MINOR wording findings (the t1745 G cells' x arguments, the
+df2 = 2 F cells) fixed in statistics.md and `incomplete_beta.rs`.
+
+## Outcome
+F.INV, F.INV.RT and FINV are the crossing of F.DIST's own tails (statistics.md "F.INV is a crossing of F.DIST's tails"):
+`fisher.rs` `f_quantile` refines statrs' estimate with the new `special::refine_increasing` (a bracket around the
+estimate, then halving over the doubles' bit patterns to adjacent doubles: at most 129 cdfs, 65 with no start), solving
+the smaller tail on `f_cdf` / `f_sf`. Below a lower-tail p of 1E-15 statrs' estimate stays (a deep upper tail is refined on `f_sf`, since statrs solved the
+rounded 1 - p there: `F.INV.RT(1E-16,9,3)` went from 7% off to 60647458731.09802 against Excel's .09812, and 6 more
+gen-m9 cells such as `FINV(1E-16,1,7)` are no longer visibly off, none newly); below 1E-20 (where statrs panicked or hung,
+#NUM!) the bisection runs without a start. The df >= 1E5 statrs-cdf bisection is gone. `incomplete_beta.rs`'s a = 1 closed
+form keeps its digits below x = 0.1 (statistics.md "The a = 1 closed form cancels only from x = 0.1 up"), so F.DIST and
+F.DIST.RT take it too.
+
+Eval (against main 2026-10-23): gen-m9 known failures 7083 -> 7028, ironcalc-calc 831 -> 829 (F_DIST.xlsx J3, L3),
+probes 2032 -> 2030 (ftest-decomposition B7, B13), 0 regressions. In-scope cells visibly off 7457 (lock 7703). Of the 96 gen-m9 visible-parity
+cells above, 51 were visibly off on main and at most 12 are now. probes/stat-quantile-lift E1-E3 (F.INV at 1E-300 to 1E-170) give
+values instead of #NUM!, 13 digits right.
+
+Not met here:
+- BETA.INV is unchanged (statrs' `inverse_cdf` port remains): the same refinement on BETA.DIST's cdf only works with
+  BETA.DIST's cdf on `incomplete_beta` (T-2119). Measured on this branch, both together fix 45 gated lines and about 1,300
+  visibly-off cells but move nine BETADIST_BETAINV.xlsx cells by 1-4 ulp (H2, H23, H42, H44, H46-H49, H67). Recording those
+  needs `update-baseline --allow-regressions`, which this autonomous run was not permitted to run. Notes in T-2119.
+- The 12 cells still visibly off (9 F-family) and the ironcalc criterion (15 of 28 lines) are follow-ups: T-2465 (F family),
+  T-2119 (BETA.INV, BETAINV, the BETADIST_BETAINV.xlsx lines).

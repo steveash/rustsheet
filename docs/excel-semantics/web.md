@@ -49,6 +49,19 @@ Evidence: probes/getpivotdata-evidence-floor (oracle: excel-graph, 2026-10-16, T
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081).
 A real pivot: see the next section (T-1705).
 
+## Pivot caches past the import limits are dropped
+Rule: Excel loads a pivot of any size its grid allows. The importer drops, never truncates, a pivot cache with more
+than 1,048,576 records, 16,384 fields, 1,000,000 shared items over its fields or 10,000,000 record values (records x
+fields), every cache once the workbook's caches together pass 10,000,000 record values (in workbook order), and a pivot
+with more than 256 fields on an axis (rows, columns or page) or 256 data fields, past the 64th pivot of a sheet, or past the 1,000th pivot
+of the workbook (in sheet order; T-2394); the pivots on a dropped cache go with it. GETPIVOTDATA against a dropped pivot is `#REF!` rather than a wrong total.
+The limits are totals counted while parsing, before anything past them is allocated (CLAUDE.md directive 5).
+Part names that differ only by case or by `\` against `/` are one part, so a pivot or cache reached twice that way is skipped like any other. A
+sheet that loses pivots to a cap logs one line with the count, not one per pivot.
+Evidence: none for Excel; this is a resource limit (SPEC-0015 "Untrusted-input limits").
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/pivot.rs (`CacheBuilder`, `MAX_*`), crates/rustsheet-xlsx/src/import/pivots.rs
+
 ## GETPIVOTDATA against a pivot table (T-1705)
 Rule: against a compact-form pivot (one row field, an optional column field, one data field), GETPIVOTDATA
 returns the value of the pivot cell the field/item pairs pick, including subtotal and grand-total cells:
@@ -63,13 +76,57 @@ returns the value of the pivot cell the field/item pairs pick, including subtota
   source field the pivot does not show), the same field twice with different items, and a field with no
   item (an odd argument count).
 - An intersection that has no source rows (shown blank) is **0**, not `#REF!` (West/C).
+  An Average pivot's empty intersection is 0 too (three cells of a T-2396 generator sample, excel-graph 2026-10-22,
+  not committed; ours `#REF!`, T-2404 probes it with count, max and min).
 - `pivot_table` may be any cell of the pivot (`$C$6`, inside the data area) or a range covering it
   (`$A$3:$E$7`); a cell outside every pivot (`$H$30`, or the source data `Data!$A$1`) is `#REF!`.
 - An array of items lifts: `"Region",{"East";"West"}` spills 22, 27 and `"Product",{"A","B","C"}` spills
   34, 12, 3.
 Evidence: probes/getpivotdata-real-pivot (oracle: excel-graph, 2026-10-16, T-1705). The pivots are written
 by the case builder (`pivot_tables`, tools/src/rustsheet_tools/pivot.py); excel-graph rendered them cell for
-cell as the builder does (a one-off check of the label, value, blank and grand-total cells, not committed).
+cell as the builder does (the builder also writes the rendered cells into the sheet). probes/pivot-rendered-cells
+(T-2084) reads every cell of both pivots through `=P!A3` and `ISBLANK`; excel-graph opens the workbook and agrees with
+the layout (caption, `Row Labels`/`Column Labels`, items, aggregates, grand totals, West/C blank: `ISBLANK` true,
+reference 0). UNVERIFIED: whether Excel re-rendered the pivot under `refreshOnLoad` or kept the builder's cells, since
+the probe cannot tell the two apart (T-2327 adds a control with stale rendered cells).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Not probed: several data fields (the
 `Values` field), two row fields and their subtotals, filters, hidden items, dates and numbers as items, and
 pivots in tabular or outline form.
+Engine (SPEC-0015): the workbook model holds pivot caches and pivot tables (`pivot.rs`, T-2081), read from xlsx by
+`crates/rustsheet-xlsx/src/import/pivots.rs` (T-2082). The importer skips, whole and logged, a cache with an OLAP,
+external, consolidation or scenario source, a grouped (`fieldGroup`) or calculated field, no records part
+(`saveData="0"`), a bad index, or a value it cannot read (an unknown error name, a `<d>` date before 1900, which
+includes time-only dates if Excel writes them so), and a pivot whose data field is shown as a calculation
+(`showDataAs`, such as % of total), whose index points past its cache, whose `axis` or `subtotal` is unknown, which has
+no `location` or not one `pivotField` per cache field, or whose parts are reached outside the package (absolute,
+escaping or External targets), twice, or through a duplicate `cacheId`: GETPIVOTDATA against it is `#REF!`.
+UNVERIFIED: what Excel answers for each of these (presumably it computes them, refreshing a cache saved without
+records); a known gap, not a deviation. A cache `<d>` date is converted to the workbook's date system (T-2393); one before
+the 1904 epoch in a `date1904` workbook has no serial there and skips the cache like a pre-1900 date (UNVERIFIED: Excel's answer). The 1904 serial is the 1900 sum minus 1462, so a timestamp's fraction can differ by one ulp from the 1904 sum's; compute the date part in the target system before pivot date items are matched (T-2085). The 1904 values are derived from the 1462-day epoch offset, not from a 1904 pivot workbook.
+GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
+pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
+Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or
+hidden items, two fields on one axis, a reference meeting two pivots, `""` or an omitted data_field, a number, date or
+boolean as an item (or an item that matches two cache items differing only in case), the same field twice with the same
+item, an error in a field/item pair, an empty intersection of any aggregate but Sum, a picked record whose data-field value
+is not a number, a number or boolean data_field, and an array data_field, pivot_table or field name (an array of items
+lifts). An error in a single-cell pivot_table propagates even inside a pivot, and an overflowing aggregate is `#NUM!`
+(both unprobed, SPEC-0015 unknowns 13 and 16). Count, Max, Min, Product,
+Var and StdDev pivots are unprobed (UNVERIFIED: the worksheet functions' algorithms over the picked numbers).
+Structural edits: see "Pivot tables and structural edits" below. xlsx export drops pivots.
+
+## Pivot tables and structural edits
+Rule (engine; Excel UNVERIFIED): a whole-row or whole-column insert at or before a pivot's first line, or a delete wholly
+before it, shifts the pivot with its cells; an insert or delete after its last line leaves it; a delete of every one of its
+lines drops it with its cells (GETPIVOTDATA against it is then `#REF!`). Any other insert or delete that meets its lines (an
+insert inside it, a delete of its first line, an inner line or its last line) is refused with an error and changes nothing:
+SPEC-0015 states that Excel refuses an edit that would change part of a pivot, and refusing is the engine's way of matching
+that (as for an edit that would break an array formula), never a silently cut pivot. A sheet rename keeps the sheet's pivots
+(they are keyed by sheet id) and rewrites the cache sources naming that sheet; a sheet deletion removes its pivots and undoing
+it brings them back. A row or column move shifts a pivot that lies wholly inside the moved lines, or wholly inside the zone they jump over, with its cells; a pivot wholly outside the moved group and the zone it jumps over stays where it is; a move that would split it (some lines in the moved group or zone, some not) is refused with an error and changes nothing, as a move that splits a merged cell is (T-2401).
+Evidence: none from Excel yet. The formula oracle cannot make structural edits; T-2402 records which inserts, deletes and moves
+Excel refuses (Graph range insert/delete or a desktop observation), including whether deleting every line of a pivot deletes it.
+Status: UNVERIFIED
+Implemented in: crates/rustsheet-engine/src/pivot.rs (`Model::displace_pivots`, `move_pivots`, `take_pivots_on`, `restore_pivots`,
+`rename_pivot_sources`), called from the insert/delete/move actions in actions.rs and from sheet_undo.rs and new_empty.rs (T-2086).
+Tasks: T-2086, T-2401, T-2402

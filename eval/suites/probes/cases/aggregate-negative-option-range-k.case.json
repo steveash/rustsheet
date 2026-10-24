@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2381: AGGREGATE with a negative fractional options and with a multi-cell range k for functions 14-19 (gen-m5/c634f6ec7b14fe08 A322). E1:E6 holds 3,1,4,1,5,9 and G1:G2 holds 1,2; column A and C1:C5 hold the probes (C1:C2 sit in rows of G1:G2).",
+  "tags": [
+    "M5",
+    "probe",
+    "aggregate"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "E1": 3,
+        "E2": 1,
+        "E3": 4,
+        "E4": 1,
+        "E5": 5,
+        "E6": 9,
+        "G1": 1,
+        "G2": 2,
+        "A1": "=AGGREGATE(15,-0.0001,E1:E6,1)",
+        "A2": "=AGGREGATE(15,-0.5,E1:E6,1)",
+        "A3": "=AGGREGATE(15,-1,E1:E6,1)",
+        "A4": "=AGGREGATE(9,-0.0001,E1:E6)",
+        "A5": "=AGGREGATE(-0.5+15,0,E1:E6,1)",
+        "A6": "=AGGREGATE(15,0,E1:E6,G1:G2)",
+        "A7": "=ROWS(AGGREGATE(15,0,E1:E6,G1:G2))",
+        "A8": "=AGGREGATE(14,6,E1:E6,G1:G2)",
+        "A9": "=AGGREGATE(15,0,E1:E6,{1;2})",
+        "A10": "=ROWS(AGGREGATE(15,0,E1:E6,{1;2}))",
+        "A11": "=AGGREGATE(15,0,E1:E6,G1:H1)",
+        "A12": "=AGGREGATE(15,0,E1:E6,G2:G2)",
+        "A13": "=AGGREGATE(15,-0.0001,E1:E6,G1:G2)",
+        "A14": "=AGGREGATE(15,7.9,E1:E6,1)",
+        "A15": "=AGGREGATE(15,8,E1:E6,1)",
+        "A16": "=AGGREGATE(9,-1,E1:E6)",
+        "A17": "=AGGREGATE(9,-0.5,E1:E6)",
+        "A18": "=AGGREGATE(15,-0.0001,A30:C36,B26:E36)",
+        "A19": "=AGGREGATE(15,0,E1:E6,G1:G3)",
+        "A20": "=AGGREGATE(9,0,E1:E6,G1:G2)",
+        "C1": "=AGGREGATE(15,0,E1:E6,G1:G2)",
+        "C2": "=AGGREGATE(15,0,E1:E6,G1:G2)",
+        "C3": "=AGGREGATE(14,6,E1:E6,G1:G2)",
+        "C4": "=AGGREGATE(15,-0.0001,E1:E6,G1:G2)",
+        "C5": "=@AGGREGATE(15,0,E1:E6,G1:G2)"
+      }
+    }
+  ]
+}

@@ -5,7 +5,9 @@
   scripts/tasks.py next --lane L [--tier T] [--no-fetch]  # best ready, unclaimed task in a lane
                                          # that is not busy; handoffs (also on pushed agent/*
                                          # branches) count as opus, come first; --lane functions
-                                         # means any functions-* lane (decision 0022)
+                                         # means any functions-* lane (decision 0022); a task
+                                         # blocked at the review-round limit on an idle branch
+                                         # comes next for opus, with its branch (decision 0095)
   scripts/tasks.py ready [--lane L] [--tier T] [--no-fetch]  # every task `next` could pick, in its
                                          # order, then "N ready" (queue health, decision 0021)
   scripts/tasks.py validate              # schema + dependency checks, and every TODO(T-XXXX) in
@@ -129,7 +131,7 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
         if t.get("size") == "L" and t.get("status") in ACTIVE:
             errors.append(f"{where}: size L tasks must be split before work starts")
     for t in tasks:
-        for dep in t.get("depends_on", []) or []:  # type: ignore[union-attr]
+        for dep in deps_of(t):
             if dep not in ids:
                 errors.append(f"{t['id']}: unknown dependency {dep}")
     return errors
@@ -167,9 +169,14 @@ def code_files() -> dict[str, str]:
     return files
 
 
+def deps_of(t: dict[str, object]) -> list[str]:
+    """The task ids in `t`'s `depends_on` list (empty when the key is missing or empty)."""
+    deps = t.get("depends_on") or []
+    return [str(d) for d in deps] if isinstance(deps, list) else []
+
+
 def ready(t: dict[str, object], by_id: dict[str, dict[str, object]]) -> bool:
-    deps = t.get("depends_on", []) or []
-    return t.get("status") == "todo" and all(by_id.get(d, {}).get("status") == "done" for d in deps)  # type: ignore[union-attr]
+    return t.get("status") == "todo" and all(by_id.get(d, {}).get("status") == "done" for d in deps_of(t))
 
 
 def git_branch_names(directory: str, pattern: re.Pattern[str], fetch: bool = True) -> set[str]:
@@ -278,11 +285,18 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
 AGENT_BRANCH = re.compile(r"^refs/remotes/origin/agent/([^/]+)/(T-\d{4})(?:-|$)")
 # An unresumed handoff; the opus run that picks it up renames it "## Handoff (resumed)".
 HANDOFF = re.compile(r"^## Handoff\s*$", re.M)
+# Work-loop step 5's marker for a task blocked only because its review rounds ran out; a second
+# block writes "review-round limit, twice", which this does not match (decision 0095).
+REVIEW_LIMIT = re.compile(r"^Blocked because: review-round limit\s*$", re.M)
+# `next` prints a re-review's branch for an agent to check out, so only plain names qualify.
+SAFE_BRANCH = re.compile(r"^agent/[a-z0-9-]+/T-\d{4}[A-Za-z0-9._-]*$")
 CLAIM_TTL_SECONDS = 24 * 3600  # a pushed agent/* branch younger than this claims its task
 
 
-def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str, str]]]:
-    """(claimed, handed_off, active) from pushed `agent/<lane>/T-XXXX-*` branches.
+def branch_claims(
+    fetch: bool = True,
+) -> tuple[set[str], set[str], set[tuple[str, str]], dict[str, str]]:
+    """(claimed, handed_off, active, review_limited) from pushed `agent/<lane>/T-XXXX-*` branches.
 
     A pushed branch with a commit in the last 24 h is a claim: another worker must not start the
     same task (work-loop step 2). A branch whose task is `status: blocked` on the branch is a claim
@@ -292,7 +306,9 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
     `active` holds (lane, task id) for branches with a commit in the last 2 h that are not
     unresumed handoffs (those wait for the opus worker) and whose task is not `status: blocked`
     on the branch (it cannot progress, but stays claimed); `available` turns them into busy lanes
-    (decision 0022). Best effort, like `git_task_ids`.
+    (decision 0022). `review_limited` maps task id -> branch for tasks blocked on their branch with
+    the review-round-limit marker and no commit for 2 h: the opus worker re-reviews them
+    (decision 0095). Best effort, like `git_task_ids`.
     """
 
     def git(*args: str) -> str:
@@ -305,6 +321,7 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
         handed: set[str] = set()
         blocked: set[str] = set()
         recent: dict[str, str] = {}  # task id -> lane, for branches younger than BUSY_SECONDS
+        limited: dict[str, str] = {}
         now = time.time()
         refs = git("for-each-ref", "--format=%(refname) %(committerdate:unix)", "refs/remotes/origin/agent")
         for line in refs.splitlines():
@@ -329,14 +346,17 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
                 try:
                     if front_matter(text, Path(name)).get("status") == "blocked":
                         blocked.add(tid)
+                        branch = ref.removeprefix("refs/remotes/origin/")
+                        if age >= BUSY_SECONDS and REVIEW_LIMIT.search(text) and SAFE_BRANCH.match(branch):
+                            limited[tid] = branch
                 except ValueError:  # malformed front matter on a branch: not known to be blocked
                     pass
         active = {(lane, tid) for tid, lane in recent.items() if tid not in handed | blocked}
-        return claimed | blocked, handed, active
+        return claimed | blocked, handed, active, limited
     except (OSError, subprocess.CalledProcessError) as e:
         print(f"warning: could not read agent branches ({e}); claims and handoffs on branches not seen",
               file=sys.stderr)
-        return set(), set(), set()
+        return set(), set(), set(), {}
 
 
 def handed_off(t: dict[str, object], on_branches: set[str]) -> bool:
@@ -344,9 +364,9 @@ def handed_off(t: dict[str, object], on_branches: set[str]) -> bool:
     return str(t["id"]) in on_branches or bool(HANDOFF.search(path_of(t).read_text()))
 
 
-def effective_tier(t: dict[str, object], on_branches: set[str]) -> object:
-    """A handed-off task belongs to opus even while main still says `tier: sonnet`."""
-    return "opus" if handed_off(t, on_branches) else t.get("tier")
+def effective_tier(t: dict[str, object], on_branches: set[str], limited: dict[str, str]) -> object:
+    """A handed-off or review-limited task belongs to opus even while main says `tier: sonnet`."""
+    return "opus" if handed_off(t, on_branches) or str(t["id"]) in limited else t.get("tier")
 
 
 def in_lane(t: dict[str, object], lane: str | None) -> bool:
@@ -358,17 +378,40 @@ def in_lane(t: dict[str, object], lane: str | None) -> bool:
     return t.get("lane") == lane
 
 
+def in_campaign(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -> set[str]:
+    """Ids `next` orders as campaign tasks: those with a known `campaign:` and every open task an
+    open campaign task depends on, directly or not (decision 0094). A probe or sweep a campaign
+    fix waits on would otherwise wait behind the milestone order and stall the fix."""
+    tagged = [t for t in tasks if t.get("campaign") in CAMPAIGNS and t.get("status") in OPEN]
+    ids = {str(t["id"]) for t in tagged}
+    stack = [d for t in tagged for d in deps_of(t)]
+    while stack:
+        tid = stack.pop()
+        dep = by_id.get(tid)
+        if dep is None or tid in ids or dep.get("status") not in OPEN:
+            continue
+        ids.add(tid)
+        stack.extend(deps_of(dep))
+    return ids
+
+
 def available(
     tasks: list[dict[str, object]],
     by_id: dict[str, dict[str, object]],
     lane: str | None,
     tier: str | None,
     fetch: bool = True,
-) -> list[dict[str, object]]:
-    """Ready tasks a worker of `tier` may start in `lane`, best first: P0, then handoffs, then
-    campaign tasks (decision 0083), then milestone and priority (a P0 never waits behind an
-    escalated lower-priority task; decision 0023)."""
-    claimed, on_branches, active = branch_claims(fetch=fetch)
+) -> tuple[list[dict[str, object]], dict[str, str]]:
+    """(ready tasks a worker of `tier` may start in `lane`, branches to resume): best first: P0, then handoffs, then
+    tasks to re-review after the review-round limit (decision 0095), then campaign tasks and their
+    open dependencies (decisions 0083, 0094), then milestone and priority (a P0 never waits behind
+    an escalated lower-priority task; decision 0023). The map gives the branch of each re-review."""
+    claimed, on_branches, active, limited = branch_claims(fetch=fetch)
+
+    def resumable(t: dict[str, object]) -> bool:
+        """An opus run resumes this task's branch: a handoff, or a re-review (decision 0095)."""
+        return tier != "sonnet" and (handed_off(t, on_branches) or str(t["id"]) in limited)
+
     # One task in flight per lane. A branch whose task is already done on main (merged, branch not
     # yet deleted) leaves its lane free, so a looping worker can take the next task at once.
     # The task's own `lane:` decides (the branch name is only a fallback for tasks not on main).
@@ -382,23 +425,32 @@ def available(
         for t in tasks
         if ready(t, by_id)
         and in_lane(t, lane)
-        and (tier is None or effective_tier(t, on_branches) == tier)
-        # Someone else's pushed claim; a handoff is the opus worker's to resume (decision 0018).
-        and (str(t["id"]) not in claimed or (handed_off(t, on_branches) and tier != "sonnet"))
-        # One task in flight per lane; a handoff is resumed whatever its lane is doing.
-        and (t.get("lane") not in busy or (handed_off(t, on_branches) and tier != "sonnet"))
+        and (tier is None or effective_tier(t, on_branches, limited) == tier)
+        # Someone else's pushed claim; a handoff or a re-review is the opus worker's to resume
+        # (decisions 0018, 0095).
+        and (str(t["id"]) not in claimed or resumable(t))
+        # One task in flight per lane; a handoff or a re-review is resumed whatever its lane is doing.
+        and (t.get("lane") not in busy or resumable(t))
     ]
+    campaign = in_campaign(tasks, by_id)
     cands.sort(
         key=lambda t: (
             str(t.get("priority")) != "P0",
             not handed_off(t, on_branches),
-            t.get("campaign") not in CAMPAIGNS,
+            str(t["id"]) not in limited,
+            str(t["id"]) not in campaign,
             str(t.get("milestone"))[1:].zfill(3),
             str(t.get("priority")),
             str(t["id"]),
         )
     )
-    return cands
+    return cands, limited
+
+
+def resume_note(t: dict[str, object], limited: dict[str, str]) -> str:
+    """How `next`/`ready` tell the opus worker to resume a branch instead of starting one."""
+    branch = limited.get(str(t["id"]))
+    return f"  resume {branch}: blocked at the review-round limit (work-loop step 5c)" if branch else ""
 
 
 def arg(name: str) -> str | None:
@@ -418,17 +470,17 @@ def main() -> int:
     if cmd == "new":
         return new_task(tasks, fetch="--no-fetch" not in sys.argv)
     if cmd in ("next", "ready"):
-        cands = available(tasks, by_id, arg("--lane"), arg("--tier"), fetch="--no-fetch" not in sys.argv)
+        cands, limited = available(tasks, by_id, arg("--lane"), arg("--tier"), fetch="--no-fetch" not in sys.argv)
         if cmd == "ready":
             for t in cands:
-                print(f"{t['id']}  {t.get('lane')!s:<9} {t['title']}")
+                print(f"{t['id']}  {t.get('lane')!s:<9} {t['title']}{resume_note(t, limited)}")
             print(f"{len(cands)} ready")
             return 0
         if not cands:
             print("no ready task")
             return 1
         t = cands[0]
-        print(f"{t['id']}  {t['title']}  ({t['path'].relative_to(ROOT)})")  # type: ignore[union-attr]
+        print(f"{t['id']}  {t['title']}  ({t['path'].relative_to(ROOT)}){resume_note(t, limited)}")  # type: ignore[union-attr]
         return 0
     if cmd == "board":
         lines = ["# Task board", "", "Generated by `make board` (git-ignored; decision 0017). Do not edit or commit it.", ""]

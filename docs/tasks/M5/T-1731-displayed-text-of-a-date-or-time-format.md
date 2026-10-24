@@ -3,7 +3,7 @@ id: T-1731
 title: "Displayed text of a date or time format over a serial outside 0..2958465.99999 is 255 #"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,6 +37,12 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 | gen-m5/6a8bb7cd6d7769ad Calc!A299 | `=TEXT(MAX((Data!B5/Data!E$3),COUNTIF(Data!D4:D6,">0"),Data!B9:B11),"h AM/PM")` | "#VALUE!" | "12 AM" |
 | gen-m5/a6fec430ac350c1a Calc!A356 | `=LEFTB(TEXT(SUM(42,Data!C9:C11),"h:mm:ss AM/PM"),4)` | "#VALUE!" | "10:0" |
 
+- T-1711 (2026-10-20): every serial the formatter already rejects as a date (`#VALUE!` from TEXT:
+  negatives under date and clock codes, date tokens past 9999-12-31, fractions of a second past it) now
+  displays 255 `#` (`Formatted::displayed`, formatted.rs; 699 gen-m10 text cells). What is left here: clock
+  and elapsed-with-clock codes past 2958465.99999 still format (`h:mm` of 1234567890 "0:00", `[h]:mm`
+  "29629629360:00"); make them rejected too (TEXT `#VALUE!`, display 255 `#` follows), plus the gen-m5 cells.
+
 ## Acceptance criteria
 - [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
 - [ ] number-formats.md updated.
@@ -47,3 +53,8 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+Any date or clock token other than a lone elapsed token over a serial past 9999-12-31 is now unshowable
+(`format.rs`, reusing `negative_serial_allowed`). gen-m10 known failures 54 -> 52 (63 text cells fixed),
+gen-m5 165 -> 162, no regressions.

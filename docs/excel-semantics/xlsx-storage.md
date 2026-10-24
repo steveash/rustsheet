@@ -252,9 +252,19 @@ is ignored), `1990-01-01T12:00:00.5` = 32874.500005787035 (fractional seconds co
 time-only `12:00:00` = 0.5, and `1899-12-31` (before 1900-01-01) is a `#VALUE!` cell
 (`ISNUMBER` FALSE). UNVERIFIED: dates after 9999-12-31, `24:00:00`, non-zero-padded dates (the importer
 maps these to `#VALUE!` too) and a `t="d"` cell with no `<v>` (imported empty). Probe run 2026-10-07 (plain forms), 2026-10-14 (the rest), Excel for the web.
+VERIFIED for a `t="d"` cell in a 1904 workbook (`<workbookPr date1904="1">`, T-2515, Excel for the web,
+2026-10-23): the text names a date, and the cell holds that date's serial in the 1904 system.
+`2024-01-01T00:00:00` = 43830 (45292 in a 1900 workbook), `1904-01-01` = 0, time-only `12:00:00` = 0.5
+(a day fraction in both systems), and a date before the 1904 epoch (`1903-12-31`, `1900-01-01`) is a
+`#VALUE!` cell (`ISNUMBER` FALSE), as a date before 1900-01-01 is in a 1900 workbook. `TEXT(A1,"yyyy-mm-dd
+hh:mm:ss")` shows the written date (`2024-01-01 00:00:00`, `1904-01-01 12:00:00` for the time-only cell).
+Evidence: fixtures/t-d-1904, t-d-1904-epoch, t-d-1904-time-only, t-d-1904-pre-epoch, t-d-1904-1900-01-01.
+UNVERIFIED: `1900-02-29` (the 1900 system's phantom day) in a 1904 workbook; it is before the epoch, so
+the importer reads it as `#VALUE!` too.
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
-`iso8601_to_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs (shared with the eval snapshot reader)
-Tasks: T-0112, T-0406, T-0407
+`iso8601_to_serial` and `iso8601_to_date_system_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs
+(shared with pivot cache `<d>` items and the eval snapshot reader)
+Tasks: T-0112, T-0406, T-0407, T-2515
 
 ## Structured references in the file
 Rule (excel-graph uploads of spec2xlsx files, 2026-10-16, T-1607): the file form of a structured reference
@@ -287,7 +297,8 @@ LibreOffice writes it), and its formulas reach the table by the displayName: `SU
 in the totals row of `<table displayName="Таблица1" ref="A2:E13" totalsRowCount="1">` computes.
 Evidence: poi/LIBRE_OFFICE-128382-0.xlsx Basic features!B13:E13 (19239.04, 25215.790000000005, 28393.92,
 27527.01; excel-graph, 2026-10-04, eval/suites/poi/oracle/LIBRE_OFFICE-128382-0.oracle.json).
-Ours: the import fails ("Corrupt XML structure: missing table name"), and `import/tables.rs` reads the display
-name from `name` too.
+Ours: IMPLEMENTED (T-2208): `import/tables.rs` takes each of `name`/`displayName` from the other when one is
+missing; a part with neither is still an import error. Tables stay keyed by `name`: which attribute resolves when
+they differ is unprobed (T-2320).
 Status: VERIFIED (web)
 Tasks: T-2208

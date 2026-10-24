@@ -1,6 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{cell::CellValue, test::util::new_empty_model};
+use crate::{
+    cell::CellValue,
+    test::util::{check_cells, new_empty_model},
+};
 
 #[test]
 fn fn_arguments() {
@@ -54,7 +57,7 @@ fn fn_rate_guess_argument() {
     let mut model = new_empty_model();
     model._set("A1", "=RATE(10,-100,800,0,0,0.1)");
     model._set("A2", "=RATE(10,-100,800)");
-    // A different guess still reaches the same root; Excel's exact digits are T-0916's job.
+    // A different guess reaches the same root to 1e-6 (bits: fn_rate_secant_excel_bits).
     model._set("A3", "=RATE(10,-100,800,0,0,0.5)");
     model.evaluate();
 
@@ -69,6 +72,41 @@ fn fn_rate_guess_argument() {
         panic!("RATE with another guess should be a number");
     };
     assert!((other_guess - without_guess).abs() < 1e-6);
+}
+
+/// RATE is a secant on the FV residual, capped at 200 steps (financial.md "RATE is a secant on
+/// the FV residual", T-2005): Excel's bits for guess 0 (Newton divides by 0 there), a guess
+/// sweep, the unconverged 200th iterate, `#NUM!` past the cap and for a root below -1.
+#[test]
+fn fn_rate_secant_excel_bits() {
+    check_cells(
+        &[],
+        &[
+            // probes/rate-empty-arguments A3, solver-iteration-traces R!C1, C8, C11, B15
+            ("A1", "=RATE(48,-200,8000,0,1,0)", "0.008052981923885287"),
+            (
+                "A2",
+                "=RATE(48,-200,8000,0,1,0.007)",
+                "0.008052981923729007",
+            ),
+            ("A3", "=RATE(48,-200,8000,0,1,0.01)", "0.008052981924068529"),
+            ("A4", "=RATE(15,0,-1,2)", "0.0472941228234414"),
+            // probes/rate-step-cap A29, A30 (the 200th iterate, unconverged), A31
+            (
+                "A5",
+                "=RATE(360,-599.55,100000,0,0,0.4558)",
+                "0.00499999319311924",
+            ),
+            (
+                "A6",
+                "=RATE(360,-599.55,100000,0,0,0.4587)",
+                "0.004999993194059272",
+            ),
+            ("A7", "=RATE(360,-599.55,100000,0,0,0.4615)", "#NUM!"),
+            // probes-numeric/m9-fin-irr-rate A371: the secant's root is below -1
+            ("A8", "=RATE(10,PMT(0.3,10,10000),10000)", "#NUM!"),
+        ],
+    );
 }
 
 #[test]
@@ -312,6 +350,18 @@ fn fn_nominal() {
     assert_eq!(model._get_text("B1"), "2");
     assert_eq!(model._get_text("B2"), *"#ERROR!");
     assert_eq!(model._get_text("B3"), *"#ERROR!");
+}
+
+// A life past i64 saturates the period count; the last-period check must not overflow (nightly
+// fuzz crash on `DB(6912,0,1E+300,2,6)`, T-2570).
+#[test]
+fn fn_db_huge_life_does_not_overflow() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DB(6912,0,1E+300,2,6)");
+    model._set("A2", "=DB(6912,1,1E+300,3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "$3,456.00");
+    assert_eq!(model._get_text("A2"), "$0.00");
 }
 
 #[test]
@@ -592,4 +642,59 @@ fn fn_pmt_when_the_power_overflows_or_underflows() {
     assert_eq!(number(6), Ok(CellValue::Number(-43_910_300.0)));
     assert_eq!(number(7), Ok(CellValue::Number(0.0)));
     assert_eq!(model._get_text("A8"), "#NUM!");
+}
+
+/// PMT, IPMT and PPMT are the exact payment on the double arguments to Excel's 15 digits, which
+/// the double forms miss where they cancel: long terms, type 1, the first periods of PPMT and
+/// fractional periods (probes-numeric/m9-fin-pmt A86, A91, A503, A504; ironcalc-calc
+/// `FINANCIAL/IPMT_PPMT.xlsx` G17, J13; T-2130).
+#[test]
+fn pmt_ipmt_and_ppmt_are_the_exact_payment() {
+    let cells: [(&str, f64); 6] = [
+        ("=PMT(0.1,2,10000)", -5_761.904_761_904_763),
+        ("=PMT(0.1,1,10000,-500,1)", -9_545.454_545_454_548),
+        ("=IPMT(0.3,180,360,10000,0,1)", -2_307.692_307_692_307),
+        ("=PPMT(0.3,360,360,10000,-500)", -2_192.307_692_307_692_4),
+        ("=IPMT(0.1,3.9,3,8000,10,1)", -26.866_364_667_656_377),
+        ("=PPMT(0.1,3.3,30,8000)", -60.554_028_580_337_764),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cells.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cells.iter().enumerate() {
+        let Ok(CellValue::Number(actual)) = model.get_cell_value_by_index(0, row as i32 + 1, 1)
+        else {
+            panic!("{formula} is not a number");
+        };
+        // Within half a unit of Excel's 15th significant digit (decision 0083).
+        let half_unit = 0.5 * 10f64.powi(expected.abs().log10().floor() as i32 - 14);
+        assert!(
+            (actual - expected).abs() <= half_unit,
+            "{formula}: {actual} vs Excel {expected}"
+        );
+    }
+}
+
+/// A start period below 1 is `#NUM!` as given, also when it would round up to 1 (T-2489; the
+/// gen-m9 cells 0a957119475760c5 A40, 3aa168259335be54 A10, 6376e27be7a05871 A306).
+#[test]
+fn cumulative_start_period_below_one_is_num() {
+    let mut model = new_empty_model();
+    for (cell, start) in [("A1", "0.3"), ("A2", "0.5"), ("A3", "1E-15"), ("A4", "0")] {
+        model._set(cell, &format!("=CUMIPMT(0.01,10,1000,{start},5,0)"));
+        model._set(
+            &cell.replace('A', "B"),
+            &format!("=CUMPRINC(0.01,10,1000,{start},5,0)"),
+        );
+    }
+    model._set("C1", "=CUMIPMT(0.01,10,1000,1,5,0)");
+    model._set("C2", "=CUMPRINC(0.01,10,1000,1,5,0)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+    assert_ne!(model._get_text("C1"), *"#NUM!");
+    assert_ne!(model._get_text("C2"), *"#NUM!");
 }

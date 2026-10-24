@@ -10,10 +10,10 @@ use crate::{
     functions::lift::{grid_dims, ArgBuf, LiftCost, LiftOptions},
     functions::Function,
     model::Model,
-    reference_operators::{Picked, RefArg},
+    reference_operators::{Picked, RefArg, RefGrid},
 };
 
-use super::ref_lift::lifts;
+use super::ref_lift::lifts_one_by_one;
 
 /// Whether a call keeps (TAKE) or removes (DROP) the rows and columns it counts.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -82,9 +82,9 @@ impl Model {
     /// element is the reference its call returns, in an array of references: ROWS of
     /// `TAKE(A1:B3,{1;2})` is 2, and `INDEX(..,1,1)` is A1:B1, so it spills 1, 10 and its
     /// COLUMNS is 2; `INDEX(DROP(A1:B3,{1;2}),1,1)` is the 2x2 A2:B3 (probes/m7-argument-modes
-    /// F4:I6, K1-K4). Over an array value each element is its call's top-left value (rule 2;
-    /// TODO(T-1960) whether Excel keeps the whole sub-array there). `array` is evaluated once
-    /// (`read_once` in functions/logical/lambda.rs relies on it).
+    /// F4:I6, K1-K4). Over an array value each element is its call's top-left value (rule 2:
+    /// `TAKE({1,10;2,20;3,30},{1;2})` is 1, 1, probes/m7-lift-take-drop-sortby). `array` is
+    /// evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn take_drop_reference(
         &mut self,
         args: &[Node],
@@ -95,14 +95,38 @@ impl Model {
         if args.len() < 2 || args.len() > 3 {
             return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
-        let source = if as_reference {
-            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
+        // An array of references keeps its elements (SPEC-0014 rule 7). As a reference argument
+        // (SUM's read) only a lifted OFFSET or INDIRECT is read for one, so the picked sources
+        // of `evaluate_picked_source` keep their reference reading.
+        let reads_grid = !as_reference
+            || matches!(
+                args[0].ungrouped(),
+                Node::FunctionKind {
+                    kind: Function::Offset | Function::Indirect,
+                    ..
+                }
+            );
+        let mut grid = None;
+        let source = if reads_grid {
+            match self.evaluate_value_or_grid(&args[0], cell) {
+                RefArg::Grid(elements) => {
+                    let values = elements.to_values();
+                    grid = Some(elements);
+                    values
+                }
+                other => other.into_single_area(cell),
+            }
         } else {
-            self.evaluate_node_in_context(&args[0], cell)
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
         };
         let counts = self.reference_lift_values(&args[1..], cell);
-        if counts.as_slice().iter().any(lifts) {
+        if counts.as_slice().iter().any(lifts_one_by_one) {
+            // TODO(T-2212) a lifted count over an array of references is unprobed; it reads the
+            // grid's value view.
             return self.take_drop_lifted(source, counts, edge, cell);
+        }
+        if let Some(grid) = grid {
+            return self.take_drop_of_grid(&grid, counts.as_slice(), edge, cell);
         }
         if let CalcResult::Range { left, right } = source {
             if as_reference && left.sheet == right.sheet {
@@ -136,7 +160,7 @@ impl Model {
         if let CalcResult::Range { left, right } = source {
             if left.sheet == right.sheet {
                 let (num_rows, num_cols) = range_dims(left, right);
-                let lifted = match self.reference_lift_args(counts, cell) {
+                let lifted = match self.reference_lift_args(counts, lifts_one_by_one, cell) {
                     Ok(lifted) => lifted,
                     Err(error) => return RefArg::Value(error),
                 };
@@ -172,6 +196,42 @@ impl Model {
             cell,
             &mut |model, values| model.take_drop_of_array(&data, values, edge, cell),
         ))
+    }
+
+    /// TAKE or DROP over an array of references (SPEC-0014 rule 7, "Pass-through"): the counted
+    /// elements, still references, so `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
+    /// `SUM(DROP(OFFSET(A1,{0;1;2},0),1))` 10100 (probes/reference-lift-consumers E101, -b2
+    /// E153). An error element stays itself; the result is never larger than `grid`.
+    fn take_drop_of_grid(
+        &mut self,
+        grid: &RefGrid,
+        counts: &[CalcResult],
+        edge: Edge,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        let (num_rows, num_cols) = grid.dims();
+        let (rows, columns) = match self.edge_spans(counts, cell, edge, num_rows, num_cols) {
+            Ok(spans) => spans,
+            Err(error) => return RefArg::Value(error),
+        };
+        let (kept_rows, kept_columns) = (rows.len(), columns.len());
+        let elements = rows
+            .flat_map(|row| {
+                columns
+                    .clone()
+                    .filter_map(move |column| grid.get(row, column).cloned())
+            })
+            .collect();
+        // `edge_spans` keeps the spans inside the grid, so the shape always holds; the error arm
+        // only keeps this panic-free.
+        match RefGrid::new(kept_rows, kept_columns, elements) {
+            Some(kept) => RefArg::Grid(kept),
+            None => RefArg::Value(CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "TAKE or DROP over an array of references lost its shape".to_string(),
+            )),
+        }
     }
 
     /// The scalar TAKE or DROP of `data` by the values of rows and the optional cols.
@@ -242,7 +302,7 @@ impl Model {
     }
 
     /// The rows and columns out of `num_rows` x `num_cols` that TAKE or DROP keeps, read from
-    /// the values of its count arguments (cols `None` when missing); an error for a zero TAKE
+    /// the values of its count arguments (an omitted one keeps all); an error for a zero TAKE
     /// count or a DROP that removes everything.
     fn edge_spans(
         &mut self,
@@ -252,25 +312,43 @@ impl Model {
         num_rows: usize,
         num_cols: usize,
     ) -> Result<(Range<usize>, Range<usize>), CalcResult> {
-        let count = |model: &mut Self, value: &CalcResult, name: &str| {
-            let n = model.cast_to_number(value.clone(), cell)? as i64;
-            if edge == Edge::Take && n == 0 {
+        let count = |model: &mut Self, value: &CalcResult| {
+            model.cast_to_number(value.clone(), cell).map(|n| n as i64)
+        };
+        // An omitted count keeps every row or column, a blank cell is 0: `TAKE({1,2,3;4,5,6},,-1)`
+        // is the last column and `TAKE(..,D1,1)` over a blank D1 is `#CALC!`
+        // (probes/take-drop-omitted-rows; arrays.md "TAKE and DROP with an omitted count").
+        let count_arg = |model: &mut Self, index: usize| match counts.get(index) {
+            None | Some(CalcResult::EmptyArg) => Ok(None),
+            Some(value) => count(model, value).map(Some),
+        };
+        let rows_arg = count_arg(self, 0)?;
+        let cols_arg = count_arg(self, 1)?;
+        // A zero TAKE count is `#CALC!` only once both counts are read: an error in cols beats a
+        // zero rows (`TAKE(Data!B9:C10,0,LN(..))` is `#VALUE!`, gen-m7/7d67c559ce7536fa A1296;
+        // arrays.md "SEQUENCE and TAKE: an argument error before zero rows"; T-2316).
+        if edge == Edge::Take {
+            let zero = if rows_arg == Some(0) {
+                Some("rows")
+            } else if cols_arg == Some(0) {
+                Some("cols")
+            } else {
+                None
+            };
+            if let Some(name) = zero {
                 return Err(CalcResult::new_error(
                     Error::CALC,
                     cell,
                     format!("{name} cannot be 0"),
                 ));
             }
-            Ok(n)
+        }
+        let rows = match rows_arg {
+            Some(n) => edge_span(edge, num_rows, n),
+            None => 0..num_rows,
         };
-        let rows_arg = count(
-            self,
-            counts.first().unwrap_or(&CalcResult::EmptyArg),
-            "rows",
-        )?;
-        let rows = edge_span(edge, num_rows, rows_arg);
-        let columns = match counts.get(1) {
-            Some(value) => edge_span(edge, num_cols, count(self, value, "cols")?),
+        let columns = match cols_arg {
+            Some(n) => edge_span(edge, num_cols, n),
             None => 0..num_cols,
         };
         if rows.is_empty() || columns.is_empty() {
@@ -285,7 +363,7 @@ impl Model {
 }
 
 /// Rows and columns of the range with corners `left` and `right`, in order.
-fn range_dims(left: CellReferenceIndex, right: CellReferenceIndex) -> (usize, usize) {
+pub(crate) fn range_dims(left: CellReferenceIndex, right: CellReferenceIndex) -> (usize, usize) {
     (
         usize::try_from(right.row - left.row + 1).unwrap_or(0),
         usize::try_from(right.column - left.column + 1).unwrap_or(0),

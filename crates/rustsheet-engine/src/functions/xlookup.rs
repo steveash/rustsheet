@@ -11,7 +11,7 @@ use super::{
     lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::SearchVector,
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
-    util::array_node_to_calc_result,
+    util::{array_element_value, array_node_to_calc_result},
 };
 
 #[derive(PartialEq)]
@@ -120,7 +120,13 @@ fn xlookup_modes(
     cell: CellReferenceIndex,
 ) -> Result<(MatchMode, SearchMode), CalcResult> {
     let unexpected = || CalcResult::new_error(Error::VALUE, cell, "Unexpected number".to_string());
-    let match_mode = match model.cast_to_number(match_mode.clone(), cell)?.floor() as i32 {
+    // Both modes are read as numbers, in argument order, before either is checked: a `#REF!`
+    // search_mode beats an unknown match_mode 101, while a text match_mode's `#VALUE!` and an
+    // error match_mode beat an error search_mode (probes/xlookup-array-search-mode-indirect A6,
+    // probes/lookup-t2278-followups A6, A7).
+    let match_number = model.cast_to_number(match_mode.clone(), cell)?;
+    let search_number = model.cast_to_number(search_mode.clone(), cell)?;
+    let match_mode = match match_number.floor() as i32 {
         -1 => MatchMode::ExactMatchSmaller,
         1 => MatchMode::ExactMatchLarger,
         0 => MatchMode::ExactMatch,
@@ -128,7 +134,7 @@ fn xlookup_modes(
         _ => return Err(unexpected()),
     };
     // An unknown search_mode is #VALUE! (probes/xlookup-array-lookup-value-args A9, A67).
-    let search_mode = match model.cast_to_number(search_mode.clone(), cell)?.floor() as i32 {
+    let search_mode = match search_number.floor() as i32 {
         1 => SearchMode::StartAtFirstItem,
         -1 => SearchMode::StartAtLastItem,
         -2 => SearchMode::BinarySearchDescending,
@@ -167,7 +173,9 @@ fn xlookup_pick_array(
     } else {
         returns.first().and_then(|row| row.get(index))
     };
-    node.map_or_else(out_of_range, |node| array_node_to_calc_result(node, cell))
+    // A LAMBDA element is that LAMBDA (`LET(g,XLOOKUP(2,{1,2,3},SCAN(..)),g(0))` is 12,
+    // probes/lambda-arrays B33).
+    node.map_or_else(out_of_range, |node| array_element_value(node, cell))
 }
 
 /// Rows and columns of a range or array result (1x1 for anything else).

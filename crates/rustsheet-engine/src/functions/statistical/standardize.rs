@@ -20,11 +20,12 @@ impl Model {
         let [x, mean, std_dev] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // TODO(T-1755): Excel reads a TRUE as 1 here (probes/stats-evidence-floor-t1623 Q58,
-        // probes/stat-later-argument-lift L14).
-        let x = self.cast_number_no_bools_ref(x, cell)?;
-        let mean = self.cast_number_no_bools_ref(mean, cell)?;
-        let std_dev = self.cast_number_no_bools_ref(std_dev, cell)?;
+        // Excel reads a TRUE as 1 for x (probes/stats-evidence-floor-t1623 Q58,
+        // probes/stat-later-argument-lift L14); a boolean mean or standard_dev reads as 1 or 0 too
+        // (gen-m9/928d08e3e1eecb5f A249, gen-m9/334f3dc9ca937f10 A219).
+        let x = self.cast_number_ref(x, cell)?;
+        let mean = self.cast_number_ref(mean, cell)?;
+        let std_dev = self.cast_number_ref(std_dev, cell)?;
         if std_dev <= 0.0 {
             return Err(num_error(cell));
         }

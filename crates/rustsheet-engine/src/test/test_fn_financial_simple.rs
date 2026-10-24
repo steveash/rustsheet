@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 // =============================================================================
@@ -249,4 +250,121 @@ fn fn_fvschedule_boolean_principal_is_value_error() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"1100");
+}
+
+#[test]
+fn discount_securities_divide_by_day_count_over_year_length() {
+    // Excel's bits (financial.md "Discount securities: day count and year length", T-2032):
+    // ironcalc-calc DISC.xlsx F2 and INTRATE.xlsx F2 (Excel-cached), probes/discount-security-modes
+    // A14, A80, A113, A126, A103 and A43 (excel-graph).
+    let cases: [(&str, &str, f64); 8] = [
+        (
+            "A1",
+            "=DISC(39472,39614,97.975,100,0)",
+            0.052_071_428_571_428_84,
+        ),
+        ("A2", "=INTRATE(46433,46522,2000000,2040000,0)", 0.08),
+        (
+            "A3",
+            "=INTRATE(43159,43189,1000,1100,0)",
+            1.200_000_000_000_000_2,
+        ),
+        (
+            "A4",
+            "=YIELDDISC(42400,42460,95,100,1)",
+            0.321_052_631_578_947_3,
+        ),
+        (
+            "A5",
+            "=YIELDMAT(43101,43466,42736,0.06,98,0)",
+            0.076_923_076_923_076_98,
+        ),
+        (
+            "A6",
+            "=YIELDMAT(43159,43189,42736,0.06,98,0)",
+            0.271_557_884_707_002,
+        ),
+        (
+            "A7",
+            "=PRICEMAT(43159,43189,42736,0.06,0.05,0)",
+            100.057_743_362_831_86,
+        ),
+        ("A8", "=PRICEDISC(0,43466,0.05,100)", -495.013_888_888_888_9),
+    ];
+    let mut model = new_empty_model();
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, excel) in cases {
+        match model.get_cell_value_by_ref(&format!("Sheet1!{cell}")) {
+            Ok(CellValue::Number(n)) => assert_eq!(n.to_bits(), excel.to_bits(), "{formula}: {n}"),
+            other => panic!("{formula}: expected a number, got {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn effect_and_nominal_use_excels_power() {
+    // Excel's `^` (square-and-multiply for EFFECT's integer n, exp(ln(1+e)*(1/n)) for NOMINAL's
+    // 1/n), not libm pow: ironcalc-calc FINANCIAL/NOMINAL_EFFECT.xlsx D2, C8 and
+    // probes/fin-argument-modes H125 (T-2034).
+    let mut model = new_empty_model();
+    let cases = [
+        ("A1", "=EFFECT(0.5,10)", 0.628_894_626_777_441_6),
+        ("A2", "=NOMINAL(0.5,4.5)", 0.426_727_678_801_286_8),
+        ("A3", "=EFFECT(0.05,4)", 0.050_945_336_914_062_445),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cases {
+        assert_eq!(
+            model.get_cell_value_by_ref(&format!("Sheet1!{cell}")),
+            Ok(CellValue::Number(expected)),
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn effect_and_nominal_overflow_is_num_error() {
+    // probes/effect-overflow-power-of-ten (excel-graph): an overflowing `^` is #NUM!, and
+    // EFFECT(270,30) is 1E30 (T-2241).
+    let mut model = new_empty_model();
+    model._set("A1", "=EFFECT(1E300,2)");
+    model._set("A2", "=NOMINAL(1E300,0.5)");
+    model._set("A3", "=EFFECT(270,30)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A3"),
+        Ok(CellValue::Number(1e30))
+    );
+}
+
+// =============================================================================
+// Argument order and booleans (T-2455, probes/t2455-transpose-single-value)
+// =============================================================================
+
+// The discount securities read basis first (A21, A64, A65); a boolean ACCRINTM par, ACCRINT issue
+// and AMORDEGRC rate are `#VALUE!` (A41, A52, A51), after an out-of-range earlier date's `#NUM!`.
+#[test]
+fn financial_argument_order_and_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=RECEIVED(37025,2.5,1E+300,1/0,"abc")"#);
+    model._set("A2", r#"=DISC(37025,2.5,1/0,100,"abc")"#);
+    model._set("A3", "=ACCRINTM(34825,37622,1E-9,TRUE,4)");
+    model._set("A4", "=ACCRINT(TRUE,SQRT(-1),1e-15,100,9984,2,1.9)");
+    model._set("A5", "=AMORDEGRC(90812,36624,38707,453,3,TRUE,4)");
+    model._set("A6", "=AMORDEGRC(70537,36888,7E13,46,12,TRUE,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#NUM!");
 }

@@ -1,11 +1,11 @@
 use crate::calc_result::Range;
+use crate::expressions::parser::is_span_or_if_of_span;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::external_reference::PickedReference;
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
 };
-use crate::functions::util::is_span_or_if_of_span;
 use crate::reference_operators::{not_a_reference_array, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -113,14 +113,24 @@ impl Model {
             // external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
             // reference is a value, counted. So for one IF or CHOOSE picks (`COUNTA(IF(TRUE,
             // …!A1:B2))` is 0; probes/external-ref-no-link-ifchoose A4, A18, A30).
-            match self.pick_reference(arg, cell) {
-                PickedReference::External(areas) => match areas {
-                    Ok(areas) => {
-                        external += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+            let read = match self.pick_reference(arg, cell) {
+                PickedReference::External(areas) => {
+                    match areas {
+                        Ok(areas) => {
+                            external += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+                        }
+                        Err(_) => external += 1.0,
                     }
-                    Err(_) => external += 1.0,
-                },
+                    continue;
+                }
                 PickedReference::Node(arg) => {
+                    // So do those of a 3-D span of its cached sheets, on each sheet
+                    // (`COUNTA([1]Uses:Defines!$A$1:$C$3)` is 9;
+                    // fixtures/external-link-cached-3d-span Refs!B5, T-1654).
+                    if let Some(rows) = self.cached_span_cells(arg, cell) {
+                        external += rows.iter().map(Vec::len).sum::<usize>() as f64;
+                        continue;
+                    }
                     // A reference, 3-D ones included, arrives as a Range: its non-empty cells
                     // count. TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference
                     // too, so `COUNTA(TAKE(B3:B3,1))` of a blank is 0
@@ -128,15 +138,13 @@ impl Model {
                     if let Err(error) = self.walk_aggregate_arg(arg, cell, &mut walk, &mut visit) {
                         return error;
                     }
+                    continue;
                 }
-                PickedReference::Value(value) => {
-                    let read = RefArg::Value(value);
-                    if let Err(error) =
-                        self.walk_aggregate_read(read, false, cell, &mut walk, &mut visit)
-                    {
-                        return error;
-                    }
-                }
+                PickedReference::Read(read) => read,
+                PickedReference::Value(value) => RefArg::Value(value),
+            };
+            if let Err(error) = self.walk_aggregate_read(read, false, cell, &mut walk, &mut visit) {
+                return error;
             }
         }
         CalcResult::Number(result + external)
@@ -156,6 +164,7 @@ impl Model {
             let (arg, picked_value) = match self.pick_reference(arg, cell) {
                 PickedReference::Node(node) => (node, None),
                 PickedReference::Value(value) => (arg, Some(value)),
+                PickedReference::Read(read) => (arg, Some(read.into_single_sheet_area(cell))),
                 PickedReference::External(areas) => {
                     return match areas {
                         Ok(_) => CalcResult::new_error(

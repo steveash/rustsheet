@@ -96,16 +96,16 @@ fn test_yearfrac_reversed_dates_swap_for_every_basis() {
 }
 
 // Serial 0 is day 0 of January 1900 to the 30/360 count of basis 0: gen-m9/a2e51f48717af2a1
-// Calc!A32 (Excel 0.9995471537332011 = (0.3 + 33268/360)^-0.0001), T-1409. Other bases stay #NUM!.
+// Calc!A32 (Excel 0.9995471537332011 = (0.3 + 33268/360)^-0.0001), T-1409.
 #[test]
-fn test_yearfrac_basis_0_accepts_serial_0() {
+fn test_yearfrac_basis_0_serial_0_and_negative_serial() {
     let mut model = new_empty_model();
     model._set("A1", "=YEARFRAC(33752,0)=33268/360");
     model._set("A2", "=YEARFRAC(0,33752)=33268/360");
     model._set("A3", "=YEARFRAC(33752,0.5)=33268/360");
     model._set("A4", "=YEARFRAC(0,0)");
     model._set("A5", "=((0.3+YEARFRAC(33752,0))^SUM((-0.0001)))");
-    model._set("A6", "=YEARFRAC(33752,0,1)");
+    model._set("A6", "=YEARFRAC(-0.5,33752)");
     model._set("B1", "=YEARFRAC(31,0)=YEARFRAC(0,31)");
     model._set("B2", "=YEARFRAC(59,0)=YEARFRAC(0,59)");
     model.evaluate();
@@ -117,6 +117,60 @@ fn test_yearfrac_basis_0_accepts_serial_0() {
     assert_eq!(model._get_text("A4"), *"0");
     assert_eq!(model._get_text("A5"), *"0.999547154");
     assert_eq!(model._get_text("A6"), *"#NUM!");
+}
+
+/// The numeric value of `cell`, panicking otherwise.
+fn number_at(model: &crate::Model, cell: &str) -> f64 {
+    match model.get_cell_value_by_ref(&format!("Sheet1!{cell}")) {
+        Ok(CellValue::Number(v)) => v,
+        other => panic!("{cell}: expected a number, got {other:?}"),
+    }
+}
+
+// Serial 0 is a date on every basis, and next to the fictitious 1900-02-29 each basis reads the
+// dates its own way (probes/yearfrac-serial-zero, excel-graph, T-2237; dates.md "YEARFRAC accepts
+// serial 0").
+#[test]
+fn test_yearfrac_serial_0_and_1900_02_29_on_every_basis() {
+    let mut model = new_empty_model();
+    let cells = [
+        // Basis 0: Excel's own calendar, 1900-02-28 is February's last day (day 30).
+        ("A1", "=YEARFRAC(60,59,0)", -1.0 / 360.0),
+        ("A2", "=YEARFRAC(60,61,0)", 2.0 / 360.0),
+        ("A3", "=YEARFRAC(0,60,0)", 59.0 / 360.0),
+        ("A4", "=YEARFRAC(0,366,0)", 1.002_777_777_777_777_8),
+        // Basis 1: serial days over the real calendar's average year, 1900-1992.
+        ("A5", "=YEARFRAC(0,33752,1)", 92.408_619_877_531_8),
+        ("A6", "=YEARFRAC(1,33752,1)", 92.405_882_006_594_4),
+        ("A7", "=YEARFRAC(59,60,1)", 1.0 / 365.0),
+        ("A8", "=YEARFRAC(0,60,1)", 60.0 / 365.0),
+        // Bases 2 and 3: serial days.
+        ("A9", "=YEARFRAC(0.5,33752,2)", 33752.0 / 360.0),
+        ("A10", "=YEARFRAC(0.9999,60,3)", 60.0 / 365.0),
+        // Basis 4: serial 0 is day 0, serial 60 day 29.
+        ("A11", "=YEARFRAC(0,31,4)", 30.0 / 360.0),
+        ("A12", "=YEARFRAC(0,366,4)", 1.0),
+        ("A13", "=YEARFRAC(60,61,4)", 2.0 / 360.0),
+        ("A14", "=YEARFRAC(0.5,0.25,4)", 0.0),
+        // The discount securities share the parts, sign included (probes/discount-serial-zero).
+        (
+            "A15",
+            "=ACCRINTM(59,60,0.1,1000,0)",
+            -0.277_777_777_777_777_8,
+        ),
+        ("A16", "=DISC(0,366,95,100,1)", 0.049_863_387_978_142_12),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        let actual = number_at(&model, cell);
+        assert!(
+            (actual - expected).abs() <= 1e-15 * expected.abs().max(1.0),
+            "{formula}: {actual} != {expected}"
+        );
+    }
 }
 
 #[test]
@@ -139,4 +193,36 @@ fn test_negative_basis_is_num_error() {
     }
     assert_eq!(model._get_text("A3"), *"1");
     assert_eq!(model._get_text("A7"), *"180");
+}
+
+// Serials 1-60 on bases 0 and 1: basis 0 reads the displayed date (serial 60 is 29 February, with
+// no end-of-February adjustment), basis 1 counts serial days over the real calendar's average year
+// (probes/yearfrac-early-1900 A1-A22, A61-A70, excel-graph, T-2265; dates.md "Serials below 61 in
+// DATEDIF, EDATE, DAYS360, WEEKNUM and YEARFRAC").
+#[test]
+fn test_yearfrac_serials_1_to_60_on_bases_0_and_1() {
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=YEARFRAC(1,45000,0)", 123.205_555_555_555_55),
+        ("A2", "=YEARFRAC(59,45000,0)", 123.041_666_666_666_67),
+        ("A3", "=YEARFRAC(60,45000,0)", 123.044_444_444_444_45),
+        ("A4", "=YEARFRAC(60.5,366,0)", 0.838_888_888_888_888_9),
+        ("A5", "=YEARFRAC(60,425,0)", 0.997_222_222_222_222_2),
+        ("A6", "=YEARFRAC(1,45000,1)", 123.203_267_829_542_94),
+        ("A7", "=YEARFRAC(59,366,1)", 0.841_095_890_410_958_9),
+        ("A8", "=YEARFRAC(60,45000,1)", 123.041_731_066_460_58),
+        ("A9", "=YEARFRAC(60.5,366,1)", 0.838_356_164_383_561_6),
+        ("A10", "=YEARFRAC(60,1520,1)", 3.997_809_419_496_166_4),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        let actual = number_at(&model, cell);
+        assert!(
+            (actual - expected).abs() <= 1e-15 * expected.abs().max(1.0),
+            "{formula}: {actual} != {expected}"
+        );
+    }
 }

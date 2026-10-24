@@ -65,6 +65,15 @@ T-1703 behavior where one exists), never a guessed value:
     non-representable decimals;
 12. grouped fields (`<fieldGroup>`, date grouping), calculated fields, and a cache saved without
     records (`saveData="0"`): skipped at import (`#REF!`), a non-parity gap T-2085 records.
+13. an error in a field or item argument (ours `#REF!`), an error held by a single-cell
+    `pivot_table` inside a pivot (ours: the error, as T-1703 does with no pivot), and an error
+    cell inside a multi-cell `pivot_table` range (ours: not looked at);
+14. an item that matches two cache items differing only in case (ours `#REF!`), a number or
+    boolean `data_field`, direct or referenced (ours `#REF!`), and non-ASCII case folding of
+    field, item and data-field names (ours: Unicode `to_lowercase`; only ASCII is probed);
+15. the values of Count, CountNums, Max, Min, Product, Var, VarP, StdDev and StdDevP pivots over
+    picked records (ours: plain left-to-right folds, `excel_variance` for the variances);
+16. an aggregate that overflows (ours `#NUM!`, the rule under "Untrusted-input limits").
 
 ## Design
 
@@ -119,13 +128,17 @@ in them (cache, field, shared item, data field) is validated at import (T-2082) 
 api-design convention (0-based `u32`, stable `sheet_id`, docs/architecture/api-design.md principle 3).
 
 Structural edits: tables have no such handling today (`workbook.tables` is only touched by
-tables.rs, the parser, SUBTOTAL and export), so this is new code, T-2086: the row/column
-insert/delete actions (`actions.rs` `insert_rows`, `delete_rows`, `insert_columns`,
-`delete_columns`) shift or shrink `location` like the cells they move, a deletion that removes a
-pivot's top-left cell drops the pivot (Excel refuses that edit; the engine cannot), sheet deletion
-drops the sheet's pivots, and a sheet rename rewrites `CacheSource::sheet_name`. Until T-2086
-lands, any of these edits on a sheet holding a pivot drops that sheet's pivots (GETPIVOTDATA
-`#REF!`), a known gap listed in the web.md section, not a silent wrong answer.
+tables.rs, the parser, SUBTOTAL and export), so this is new code, T-2086 (`Model::displace_pivots`
+in pivot.rs): the row/column insert/delete actions (`actions.rs` `insert_rows`, `delete_rows`,
+`insert_columns`, `delete_columns`) shift `location` like the cells they move when the edit is at
+or before its first line (an insert) or wholly before it (a delete), drop the pivot when a delete
+takes every one of its lines, and otherwise, when the edit meets the pivot's lines, refuse the edit
+before changing anything, as Excel refuses an edit that would change part of a pivot (UNVERIFIED
+which edits exactly; T-2402). Sheet deletion takes the sheet's pivots into `TakenSheet` so an undo
+restores them, and a sheet rename rewrites `CacheSource::sheet_name`. A row or column move shifts a
+pivot with its cells (`Model::move_pivots`, T-2401) and is refused when it would split one; which
+moves Excel refuses is UNVERIFIED (T-2402), see the web.md entry "Pivot tables and structural
+edits".
 
 ### xlsx import (T-2082)
 `crates/rustsheet-xlsx/src/import/pivots.rs`, next to `tables.rs`:
@@ -201,7 +214,11 @@ volatile.
   when that pivot or cache changes, not on other edits, since the cache never changes without a
   refresh. A call sums the accumulators of the tuples matching its pairs, and its answer is
   memoized in the index per (data field, pairs). So N calls cost O(records + N x tuples) at worst
-  and O(records + N) when calls repeat. A lifted call is bounded by SPEC-0011's output-cell limit
+  and O(records + N) when calls repeat. As built (T-2083), the index is dropped with the memo at each
+  `Model::evaluate` rather than kept across evaluations: pivots and caches are public fields with
+  no change signal, so one pass over the records per evaluation and used pivot is the price of
+  never answering from a stale index. Each tuple keeps its record list, so a call folds its records
+  in cache order whatever T-2085 finds about grouping. A lifted call is bounded by SPEC-0011's output-cell limit
   like every lifted function. The import never pre-sizes from a file's `count` attributes.
 - The same cache builder (columnar, interning, counting the limits) serves the xlsx importer and
   `Txn::add_pivot_table`: one definition (directive 3).

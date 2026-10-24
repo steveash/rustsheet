@@ -419,6 +419,22 @@ Each probe is a single formula cell, plus optional sidecar cells. Shapes:
 3. **Lifted probe** (dynamic arrays): `=f(range_or_array)` that spills. The probe region
    reserves a `rows×cols` empty footprint to avoid unintended `#SPILL!`. Spill
    collisions are generated on purpose under edge class `spill_blocked`.
+   *Implemented* (T-2224) as `rustsheet-gen --spill`, off by default, so existing suites
+   regenerate byte for byte. A formula whose outer call is `dynamic_array: true` in the
+   catalog gets its anchor in column A followed by an empty footprint of
+   `min(12, data rows) × min(6, data columns)` cells, starting at the anchor
+   (`SPILL_ROWS`, `SPILL_COLS` in `gen/generator.py`). Other formulas take one row, and no
+   formula sits to the right of column A, so no footprint overlaps a formula or another
+   footprint. The case's `check` lists the anchor and every footprint cell. The oracle records
+   the cells Excel fills, and those are scored. A footprint cell Excel leaves empty is not in
+   the sidecar, so the spill-extent check (T-1660) fails any engine value there against
+   empty. A result taller than its footprint is `#SPILL!` on the formula below it in both
+   Excel and the engine. A wider one spills right into unchecked cells: the extent check
+   fails an engine value where Excel left the cell empty, but Excel's values there are not
+   compared. `SPILL_BLOCKED_RATE` (5%) of footprints get a blocker constant just
+   below or just right of the anchor. The blocker is an input, so it is not checked, and the
+   case is tagged `spill_blocked`. The layout draws from its own seeded stream, so the
+   formulas are the same with and without `--spill`.
 4. **Implicit intersection probe**: `=@A1:A10` or legacy-style `=A1:A10` written as a
    non-DA formula on row k. Expected to return row k's value or `#VALUE!` outside the
    range.
@@ -508,7 +524,20 @@ Every pool entry has an `edge_class` id. A literal is drawn as
 `tools/src/rustsheet_tools/gen/pools.py` 35% of the time, after its `domain` draw and never on a `hard`
 domain; other parameters still build a free expression. The pools there are `number_edges`, `unit_interval`,
 `angle` and `code_point` (T-2109), and `text_edges`, `numeric_text`, `number_formats` (the codes of
-`number_formats.py`, quoted) and `errors` (T-2110).
+`number_formats.py`, quoted) and `errors` (T-2110). T-2286 added `array_shape`, `array_holes`, `lookup_value`,
+`lookup_table`, `regex_pattern` and `lambda_body` for the M6 and M7 lookup, array, REGEX and LAMBDA functions, with
+two draw extensions: a pooled `range` parameter (LOOKUP's lookup_vector, XMATCH's lookup_array) takes a pool entry
+35% of the time in place of a range, and a pooled `lambda` parameter takes an entry with the parameter count the call
+needs (MAP's one per array), its `x` and `y` renamed to free names.
+T-2247 added `probability`, `shape`, `stat_x`, `gamma_x`, `flag` and `stat_data` for the M9 statistical functions
+(probabilities and alphas, degrees of freedom and shapes, distribution x and z, GAMMA's x, the cumulative/const/stats
+flags, and the data arrays of the aggregates, order statistics and paired functions) and put FISHER's x on
+`unit_interval`; no draw change was needed, as an `array` or `aggregate` parameter's non-range draw already reaches
+the pool.
+T-2438 added `count` (the integer counts of the binomial, hypergeometric, CONFIDENCE and LARGE functions, with their
+soft `int` domain kept), `ets_target`, `ets_seasonality`, `ets_completion`, `ets_aggregation`, `ets_confidence`,
+`ets_statistic`, `ets_timeline` and `ets_values` array constants (the first entries are 24 sorted, evenly spaced points
+beside 24 values; the two are drawn independently, so a matching pair comes up by chance, the rest are mismatches), `beta_bound`, `fisherinv_y`, `forecast_x` and `lognorm_mean`.
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),
@@ -605,6 +634,10 @@ an optional `Probe` sheet for subexpression sidecars (§9.3), and an optional `L
 sheet. The sheet count is sampled from {1: 50%, 2–3: 40%, 4–8: 10%}, skewed to small,
 matching the corpus median of 1 worksheet. Sheet names include spaces, quotes, unicode and
 names that look like cell refs (`'A1'`, `'R1C1'`, `'TRUE'`) to exercise quoting.
+
+As built (T-2396): a case that calls GETPIVOTDATA (catalog `pivot: true`) gets a third sheet, `Pivot`, with a seeded
+source block and one compact-form pivot over it (spec `pivot_tables`); every GETPIVOTDATA call in the case queries
+that pivot, with deliberate `#REF!` misses (tools/src/rustsheet_tools/gen/pivots.py).
 
 ### 7.2 Realistic data tables
 

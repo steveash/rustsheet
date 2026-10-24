@@ -19,17 +19,45 @@ T-0428.
 Status: VERIFIED (excel-graph)
 Tasks: T-0428, T-0401, T-0429
 
+## The order Excel calculates a freshly loaded workbook in
+Rule: a full recalculation of a freshly loaded workbook runs the formula cells in the reverse of
+their load order: the last sheet first, and within a sheet the bottom row first, each row right to
+left. A cell that reads a formula cell not yet calculated is abandoned, moved to just after that
+precedent, and re-run from its start at its new place; the cells in between run first. A sheet moved after loading keeps its load position, and `calcChain.xml` does not change
+the order on a full-calc load. Formulas entered or edited in a live session leave this order and
+are not reproducible from the file. The order is visible only through WEEKNUM's stale return_type
+state, the one calc-order-dependent value known so far (dates.md, "WEEKNUM's stale return_type
+state"); iterative calculation sweeps a cycle in forward row-major order instead (below).
+Evidence: probes/weeknum-stale-grid, -order-row, -order-column, -order-column-40, -order-2x3,
+-order-3x2, -sheet-order, -sheet-moved, -dependency, -precedent-between and -precedent-restart (excel-graph, 2026-10-19, T-1484);
+calcChain.xml and session edits: docs/research/t1484-weeknum-calc-order-2026-10-19.md.
+Ours: `Model::run_pass` evaluates spill anchors first, then every cell in forward storage order
+(sheet, row, column ascending). SPEC-0017 reproduces Excel's order where WEEKNUM's state needs it.
+Status: VERIFIED (excel-graph)
+Tasks: T-1484, T-2068, T-2069, T-2070
+
 ## A circular reference without iteration is 0, and so is every cell that reads it
 Rule: with iterative calculation off, every cell of a cycle is 0, with no error value: a
 self-reference `=A1+1`, `=A2`, and the 2- and 3-cell cycles `B1=C1+1, C1=B1+1` and `D1=E1+1,
 E1=F1+1, F1=D1+1`. A cell outside the cycle that reads it is also 0, whatever it computes:
-`=A1+10` is 0 (not 10), `=SUM(B1:C1)+5` is 0, and `=ISNUMBER(A1)` is the number 0 (not FALSE).
+`=A1+10` is 0 (not 10), `=SUM(B1:C1)+5` is 0, and `=ISNUMBER(A1)` is the number 0 (not FALSE). So is a
+reader of a reader, at any depth (`=B1+1` reading `=A1+10`), and so are `=IFERROR(A1,5)`, `=ISERROR(A1)`,
+`=TYPE(A1)`, `=ISBLANK(A1)` and a formula that would give text (`=IF(A1=0,"zero","other")`).
 A reference IF does not evaluate is no cycle: `=IF(FALSE,B2,7)` in B2 and `=IF(TRUE,7,E2)` in E2 are
 7. `=ROW(D2)+COLUMN(D2)` in D2 is 6 (ROW and COLUMN do not read the cell).
-Evidence: probes/circular-iteration-off (excel-graph, 2026-10-16, T-0428).
-Ours: every cycle cell and every reader is an error; the IF and ROW/COLUMN cells already match.
+A formula that would spill does not spill when it reads a loop: `=SEQUENCE(3)+A1` (A1 `=A1+1`) is the single
+number 0 and B2 is blank (`ISBLANK(B2)` TRUE, `ISREF(B2)` TRUE, `=B3` 0); `=ROWS(B1#)` over it is 0 (not 1) and `=SUM(B1:B3)` is 0 (both read B1, which is circular, so they are circular and 0).
+Readers that take a reference without its value are not circular: `ISREF(A1)` TRUE, `CELL("row",A1)` 1,
+`ROWS(A1)` 1, `COLUMNS(A1:B1)` 2, `ISFORMULA(A1)` TRUE, `OFFSET(A1,1,0)` (target holds 7) 7,
+`INDEX(A1:A2,2)` 7, `ROWS(OFFSET(A1,0,0,2,1))` 2; `INDIRECT("A1")` reads the value, so it is 0.
+Evidence: probes/circular-iteration-off (excel-graph, 2026-10-16, T-0428); probes/t0445-circular-readers
+(excel-graph, 2026-10-22, T-0445); probes/t0451-circular-spill-and-ref-readers (excel-graph, 2026-10-22, T-0451).
+Ours: matches since T-0445, and the T-0451 probe passes in full (17/17). A read that closes a loop, or reads a cell
+already known to be circular, marks every cell on the evaluation stack circular, and a circular cell stores 0 and
+does not spill (`Model::mark_stack_circular`, crates/rustsheet-engine/src/circular.rs). An array anchor whose spill
+contradicts its own inputs, which the driver marks circular, is 0 the same way, and so are its readers.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401
+Tasks: T-0428, T-0401, T-0445, T-0451
 
 ## Iterative calculation sweeps the cycle in sheet order, in place
 Rule: with iteration on, each iteration recalculates the cycle's cells once in row-major sheet

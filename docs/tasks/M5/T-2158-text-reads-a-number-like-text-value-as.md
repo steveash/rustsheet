@@ -3,10 +3,11 @@ id: T-2158
 title: "TEXT reads a number-like text value as its number and prints control characters in the code"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -31,5 +32,15 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 4 in eval/baselin
 - [ ] These 4 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] `make check` green; reviewers approve.
 
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
+
 ## Out of scope
 - Date-like and percent text values (unprobed; note them in number-formats.md if the coercion covers them).
+
+## Outcome
+The format lexer prints control characters as literals and `fn_text` reads number-like text with VALUE's parser. gen-m5 known failures 16 -> 12 (the 4 owned cells fixed), no regressions elsewhere. Date and percent text now also coerce (VALUE's parser); still unprobed.
+
+Follow-up: T-2332 probes the unverified choices (text sections, date/percent text, trimming, other control characters).

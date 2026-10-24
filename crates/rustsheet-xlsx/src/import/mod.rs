@@ -4,6 +4,7 @@ mod external_links;
 mod iso_date;
 mod metadata;
 mod package;
+mod pivots;
 pub mod rich_errors;
 pub(crate) mod shared_strings;
 mod sheet_data;
@@ -34,7 +35,7 @@ use rustsheet_engine::{
 
 use crate::error::XlsxError;
 
-pub use iso_date::iso8601_to_serial;
+pub use iso_date::{iso8601_to_date_system_serial, iso8601_to_serial};
 pub use package::{ImportLimits, PartNames};
 pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
@@ -43,29 +44,41 @@ pub use workbook::date_system_from_attribute;
 use external_links::load_external_books;
 use metadata::load_metadata;
 use package::{resolve_target, Package};
+use pivots::{load_pivots, PivotSheet};
 use styles::load_styles;
 use util::get_attribute;
 use workbook::load_workbook;
-use worksheets::{load_sheets, Relationship};
+use worksheets::load_sheets;
+
+/// A `<Relationship>` of a relationships part.
+pub(crate) struct Relationship {
+    pub(crate) target: String,
+    pub(crate) rel_type: String,
+    /// `TargetMode="External"`: the target is outside the package.
+    pub(crate) external: bool,
+}
 
 fn load_relationships<R: Read + Seek>(
     archive: &mut Package<R>,
 ) -> Result<HashMap<String, Relationship>, XlsxError> {
     let file = archive.open("xl/_rels/workbook.xml.rels")?;
-    let doc = XmlNode::parse(file)?;
-    let nodes: Vec<&XmlNode> = doc
-        .descendants()
-        .filter(|n| n.has_tag_name("Relationship"))
-        .collect();
-    let mut rels = HashMap::new();
-    for node in nodes {
-        rels.insert(
+    Ok(parse_relationships(&XmlNode::parse(file)?)?
+        .into_iter()
+        .collect())
+}
+
+/// The `<Relationship>` elements of a relationships part with their `Id`s, in document order.
+fn parse_relationships(doc: &XmlNode) -> Result<Vec<(String, Relationship)>, XlsxError> {
+    let mut rels = Vec::new();
+    for node in doc.descendants().filter(|n| n.has_tag_name("Relationship")) {
+        rels.push((
             get_attribute(node, "Id")?.to_string(),
             Relationship {
                 rel_type: get_attribute(node, "Type")?.to_string(),
                 target: get_attribute(node, "Target")?.to_string(),
+                external: node.attribute("TargetMode") == Some("External"),
             },
-        );
+        ));
     }
     Ok(rels)
 }
@@ -118,7 +131,8 @@ fn load_package<R: Read + Seek>(
     tz: &str,
 ) -> Result<Workbook, XlsxError> {
     let mut shared_strings = read_shared_strings(archive)?;
-    let (mut workbook, date_system) = load_workbook(archive)?;
+    let mut workbook = load_workbook(archive)?;
+    let date_system = workbook.date_system;
     let rels = load_relationships(archive)?;
     let theme_path = resolve_theme_path(&rels);
     let theme = theme::load(archive, theme_path.as_deref());
@@ -136,6 +150,24 @@ fn load_package<R: Read + Seek>(
         &theme,
         &mut styles.dxfs,
     )?;
+    let pivot_sheets: Vec<PivotSheet> = workbook
+        .worksheets
+        .iter()
+        .filter_map(|sheet| {
+            let rel = rels.get(&sheet.id)?;
+            rel.rel_type.ends_with("worksheet").then(|| PivotSheet {
+                sheet_id: sheet.sheet_id,
+                path: resolve_target("xl", &rel.target),
+            })
+        })
+        .collect();
+    let (pivot_caches, pivot_tables) = load_pivots(
+        archive,
+        &rels,
+        &workbook.pivot_caches,
+        &pivot_sheets,
+        date_system,
+    );
     // reparse formulas in defined names, since they may refer to sheets and tables that have been loaded
     let worksheet_names = worksheets
         .iter()
@@ -184,6 +216,8 @@ fn load_package<R: Read + Seek>(
         views,
         theme,
         external_books,
+        pivot_caches,
+        pivot_tables,
     })
 }
 

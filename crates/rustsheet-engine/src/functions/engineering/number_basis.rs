@@ -6,6 +6,7 @@
 use crate::functions::lift::num_error;
 use crate::{
     calc_result::CalcResult,
+    expressions::token::Error,
     expressions::{parser::Node, types::CellReferenceIndex},
     functions::Function,
     model::Model,
@@ -35,22 +36,42 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, ()> {
     Ok(result)
 }
 
-/// The number and the optional `places` of one conversion element.
-///
-/// Callers coerce `places` before `number`: Excel reads
-/// the second argument first, so its error wins (probes/eng-first-vs-second-error).
-fn number_and_places(values: &[CalcResult]) -> Option<(&CalcResult, Option<&CalcResult>)> {
-    match values {
-        [number] => Some((number, None)),
-        [number, places] => Some((number, Some(places))),
-        _ => None,
-    }
-}
-
 impl Model {
+    /// The number and the truncated optional `places` of one conversion element.
+    ///
+    /// `places` is coerced before `number` is looked at: Excel reads the second argument first,
+    /// so its error wins (probes/eng-first-vs-second-error).
+    fn number_and_places<'a>(
+        &self,
+        values: &'a [CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<(&'a CalcResult, Option<i32>), CalcResult> {
+        let (number, places) = match values {
+            [number] => (number, None),
+            [number, places] => (number, Some(places)),
+            _ => return Err(CalcResult::new_args_number_error(cell)),
+        };
+        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
+            Some(Ok(f)) => Some(f.trunc() as i32),
+            Some(Err(e)) => return Err(e),
+            None => None,
+        };
+        Ok((number, places))
+    }
+
     /// The digit text of a HEX/OCT `number`. Excel reads a blank cell and empty text as 0 in every
     /// base conversion (probes/eng-base-conv-blank, docs/excel-semantics/engineering.md).
+    ///
+    /// A boolean is `#VALUE!`, as in `BIN2DEC(TRUE)` (T-2420; engineering.md "Engineering function
+    /// argument modes").
     fn base_digits(value: &CalcResult, cell: CellReferenceIndex) -> Result<String, CalcResult> {
+        if matches!(value, CalcResult::Boolean(_)) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expecting number".to_string(),
+            ));
+        }
         let text = Self::cast_string_ref(value, cell)?;
         Ok(if text.is_empty() {
             "0".to_owned()
@@ -101,13 +122,9 @@ impl Model {
     }
 
     fn bin2hex_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value = match self.binary_digits(number, cell) {
             Ok(f) => f,
@@ -146,13 +163,9 @@ impl Model {
     }
 
     fn bin2oct_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value = match self.binary_digits(number, cell) {
             Ok(f) => f,
@@ -190,13 +203,9 @@ impl Model {
     }
 
     fn dec2bin_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value_raw = match self.binary_digits(number, cell) {
             Ok(f) => f,
@@ -232,13 +241,9 @@ impl Model {
     }
 
     fn dec2hex_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value_raw = match self.binary_digits(number, cell) {
             Ok(f) => f.trunc(),
@@ -274,13 +279,9 @@ impl Model {
     }
 
     fn dec2oct_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value_raw = match self.binary_digits(number, cell) {
             Ok(f) => f,
@@ -318,13 +319,9 @@ impl Model {
     }
 
     fn hex2bin_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
@@ -412,13 +409,9 @@ impl Model {
     }
 
     fn hex2oct_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
@@ -472,13 +465,9 @@ impl Model {
     }
 
     fn oct2bin_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
@@ -533,6 +522,10 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
+        // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A28).
+        if value.len() > 10 {
+            return num_error(cell);
+        }
         let mut value = match i64::from_str_radix(&value, 8) {
             Ok(f) => f,
             Err(_) => {
@@ -556,13 +549,9 @@ impl Model {
     }
 
     fn oct2hex_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let Some((number, places)) = number_and_places(values) else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
-            Some(Ok(f)) => Some(f.trunc() as i32),
-            Some(Err(s)) => return s,
-            None => None,
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
         };
         let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
@@ -574,6 +563,10 @@ impl Model {
             if p <= 0 || p > 10 {
                 return num_error(cell);
             }
+        }
+        // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A33).
+        if value.len() > 10 {
+            return num_error(cell);
         }
         let mut value = match i64::from_str_radix(&value, 8) {
             Ok(f) => f,

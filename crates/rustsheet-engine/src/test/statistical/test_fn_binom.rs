@@ -84,6 +84,28 @@ fn test_fn_binom_inv_small_trials_and_probabilities() {
 }
 
 #[test]
+fn test_fn_binom_inv_probability_bounds_are_num_errors() {
+    let cases = [
+        ("=BINOM.INV(10, 0, 0.5)", "#NUM!"),
+        ("=CRITBINOM(10, 0, 0.5)", "#NUM!"),
+        ("=BINOM.INV(10, 1, 0.5)", "#NUM!"),
+        ("=BINOM.INV(50, 1E-06, 0.9)", "0"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+#[test]
 fn test_fn_negbinom_dist_smoke() {
     let mut model = new_empty_model();
 

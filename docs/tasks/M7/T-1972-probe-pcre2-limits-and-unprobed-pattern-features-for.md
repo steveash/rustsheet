@@ -38,6 +38,15 @@ A1-A42: `\d` on Arabic-Indic digits, `(*UCP)`, `\X`, `\h` and `\R` accepted, `$`
 matching LF, and an inner LF, CR or U+2028 not ending a line (text.md "REGEX* character classes are Unicode; `$` and
 `.` around line breaks (T-1829)").
 
+Added by T-1973 (its Excel-fidelity review): also probe the syntax the T-1973 parser fails closed on or reads
+without evidence (text.md "REGEX* character classes are Unicode"):
+- spaces in quantifier braces: `a{1, 2}`, `a{ 2}`, `a{2 }`;
+- bracket set operators: `[a--b]`, `[a~~b]`, `[a||b]`, `[[a-z]--[aeiou]]`, `[!-[]`;
+- escapes and flags: `\Z` before a final LF, `\v`, `\<`, `^*`, `(?n)`, `(?-)`, `\e`, `\cX`, `[\b]`, `\p{^Lu}`;
+- a lone `{` and `(?x)[ a]`;
+- a 33-character group name;
+- `(?m)^` after a final LF (`REGEXREPLACE("a"&CHAR(10),"(?m)^","x")`; ours gives "xa\nx").
+
 ## Acceptance criteria
 - [ ] probes/regex-pcre2-limits has excel-graph values for every question above. Record a question excel-graph
   cannot answer as an M14 desktop question (decision 0039).

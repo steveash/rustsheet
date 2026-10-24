@@ -43,8 +43,10 @@ impl SpillExtent {
                 .sheets
                 .iter()
                 .flat_map(|s| {
-                    // An input moved by a row insert is known at its new address (T-1933).
-                    s.cells.keys().filter_map(|a1| {
+                    // An input moved by a row insert is known at its new address (T-1933); a
+                    // pivot's rendered cells are inputs of the engine case (T-2084).
+                    let rendered = s.pivot_tables.iter().flat_map(|p| p.rendered.keys());
+                    s.cells.keys().chain(rendered).filter_map(|a1| {
                         let addr = spec
                             .sheet_ops
                             .iter()
@@ -189,6 +191,35 @@ mod tests {
     fn a_pending_formula_spill_is_not_checked() {
         let check = extent(&["A2"]);
         assert_eq!(check.pending.len(), 1);
+        assert!(check.unexpected_cells(&Spilled).is_empty());
+    }
+
+    /// Spill members Excel filled with rich errors the harness cannot decode stay in the sidecar
+    /// as `#UNDECODED!` (`rustsheet-oracle fill`, T-2397; gen-m7/18b80d3fd292d63a C951:E962):
+    /// they are known cells, so the engine's values there are not scored against a blank.
+    #[test]
+    fn undecoded_spill_members_are_not_expected_blanks() {
+        let json = format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=SEQUENCE(1,3)","A2":"x"}}}}]}}"#
+        );
+        let spec: CaseSpec = serde_json::from_str(&json).expect("spec");
+        let undecoded = Value::Error(crate::xlsx_snapshot::UNDECODED_RICH_ERROR.into());
+        let expected: BTreeMap<String, Value> = [
+            ("A1", Value::Number(1.0)),
+            ("B1", undecoded.clone()),
+            ("C1", undecoded),
+        ]
+        .into_iter()
+        .map(|(a1, v)| (cell_key("S", Addr::parse(a1).expect("addr")), v))
+        .collect();
+        let oracle_cells = expected.keys().cloned().collect();
+        let formulas = vec![(
+            "S".to_string(),
+            Addr::parse("A1").expect("addr"),
+            "SEQUENCE(1,3)".to_string(),
+        )];
+        let check = SpillExtent::new(&spec, &expected, &oracle_cells, &formulas);
+        assert!(check.pending.is_empty());
         assert!(check.unexpected_cells(&Spilled).is_empty());
     }
 }
