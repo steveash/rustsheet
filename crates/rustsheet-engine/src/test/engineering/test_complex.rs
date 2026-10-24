@@ -27,7 +27,11 @@ fn complex_suffix_error_wins_over_number_errors() {
     model._set("A1", r#"=COMPLEX(1/0,1,"x")"#);
     model._set("A2", "=COMPLEX(NA(),1,1/0)");
     model._set("A3", r#"=COMPLEX(1/0,1,"j")"#);
+    model._set("A4", "=COMPLEX(1/0,1,1)");
+    model._set("A5", r#"=COMPLEX(1/0,1,"J")"#);
     model.evaluate();
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"#DIV/0!");
     assert_eq!(model._get_text("A3"), *"#DIV/0!");
