@@ -210,6 +210,7 @@ fn load_package<R: Read + Seek>(
             tz: tz.to_string(),
             locale: locale.to_string(),
             date_system,
+            iteration: workbook.iteration,
         },
         metadata,
         tables,

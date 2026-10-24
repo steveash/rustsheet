@@ -15,6 +15,7 @@ use crate::refs::{
     parse_cell, parse_range, resolve_sheet_by_name, CellRef, RangeRef, SheetId, Target,
 };
 use crate::value::{lone_text, Array, Value};
+mod calculation;
 
 /// Options for [`Workbook::new`] and the limits shared by all reads.
 #[derive(Clone, Debug)]
