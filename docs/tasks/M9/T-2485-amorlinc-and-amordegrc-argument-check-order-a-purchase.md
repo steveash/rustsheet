@@ -3,7 +3,7 @@ id: T-2485
 title: "AMORLINC and AMORDEGRC: argument check order, a purchase date below 1 and fractional periods (gen-m9, 41 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
