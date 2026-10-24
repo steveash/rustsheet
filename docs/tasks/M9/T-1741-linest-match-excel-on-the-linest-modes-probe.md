@@ -3,7 +3,7 @@ id: T-1741
 title: "LINEST: match Excel on the linest-modes probe (spill shape, #N/A fill, collinear x, flags, 1e-16 residual stats)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
