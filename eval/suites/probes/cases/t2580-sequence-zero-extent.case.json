@@ -1,0 +1,39 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2580: SEQUENCE zero rows or columns against oversized extents (where the VALUE! cap on the other dimension starts).",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SEQUENCE(0,20000)",
+        "A2": "=SEQUENCE(0,65536)",
+        "A3": "=SEQUENCE(0,100000)",
+        "A4": "=SEQUENCE(0,1000000)",
+        "A5": "=SEQUENCE(0,10000000)",
+        "A6": "=SEQUENCE(0,50000000)",
+        "A7": "=SEQUENCE(0,67108864)",
+        "A8": "=SEQUENCE(0,100000000)",
+        "A9": "=SEQUENCE(0,123456789)",
+        "A10": "=SEQUENCE(0,134217728)",
+        "A11": "=SEQUENCE(0,2147483647)",
+        "A12": "=SEQUENCE(1048576,0)",
+        "A13": "=SEQUENCE(1048577,0)",
+        "A14": "=SEQUENCE(2000000,0)",
+        "A15": "=SEQUENCE(10000000,0)",
+        "A16": "=SEQUENCE(100000000,0)",
+        "A17": "=SEQUENCE(2147483647,0)",
+        "A18": "=SEQUENCE(0,-0.5)",
+        "A19": "=SEQUENCE(-0.5,0)",
+        "A20": "=SEQUENCE(0,-1.5)",
+        "A21": "=SEQUENCE(1,0.5)",
+        "A22": "=SEQUENCE(1,2000000)",
+        "A23": "=ROWS(SEQUENCE(1,2000000))",
+        "A24": "=COLUMNS(SEQUENCE(1,2000000))"
+      }
+    }
+  ]
+}

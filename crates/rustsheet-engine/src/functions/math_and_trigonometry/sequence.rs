@@ -1,6 +1,7 @@
-use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::constants::LAST_ROW;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::near_integer_count;
 use crate::functions::Function;
 use crate::limits::check_array_size;
 use crate::{
@@ -43,29 +44,36 @@ impl Model {
             }
         }
         let [rows, columns, start, step] = read;
-        let extent = |n: f64, last: usize, name: &str| -> Result<usize, CalcResult> {
-            let n = n.floor() as i64;
-            let error = match n {
-                0 => Error::CALC,
-                n if n < 0 => Error::VALUE,
-                n => match usize::try_from(n) {
-                    Ok(n) if n <= last => return Ok(n),
-                    _ => Error::VALUE,
-                },
-            };
-            Err(CalcResult::new_error(
-                error,
-                cell,
-                format!("{name} must be between 1 and {last}"),
-            ))
+        // A negative extent or one past 1048576 (rows and columns alike, though the grid has 16384
+        // columns) is `#VALUE!` and beats the `#CALC!` of a zero one: `SEQUENCE(0.0123,
+        // 123456789.123)` and `SEQUENCE(0,-1)` are `#VALUE!`, `SEQUENCE(0,1048576)` `#CALC!`
+        // A negative extent within the count tolerance of 0 is 0 (`SEQUENCE(1,-1E-9)` is `#CALC!`,
+        // `SEQUENCE(1,-1E-6)` `#VALUE!`; probes/t2580-sequence-tiny-negative). Evidence:
+        // (probes/t2580-sequence-zero-extent, t2580-sequence-column-cap; arrays.md "An empty array
+        // as a function argument", T-2580).
+        let extent = |n: f64| -> Result<usize, Error> {
+            let n = near_integer_count(n) as i64;
+            match usize::try_from(n) {
+                Ok(n) if n <= LAST_ROW as usize => Ok(n),
+                _ => Err(Error::VALUE),
+            }
         };
-        let rows = match extent(rows, LAST_ROW as usize, "rows") {
-            Ok(rows) => rows,
-            Err(error) => return error,
-        };
-        let columns = match extent(columns, LAST_COLUMN as usize, "columns") {
-            Ok(columns) => columns,
-            Err(error) => return error,
+        let (rows, columns) = match (extent(rows), extent(columns)) {
+            (Err(error), _) | (_, Err(error)) => {
+                return CalcResult::new_error(
+                    error,
+                    cell,
+                    format!("rows and columns must be between 1 and {LAST_ROW}"),
+                );
+            }
+            (Ok(0), _) | (_, Ok(0)) => {
+                return CalcResult::new_error(
+                    Error::CALC,
+                    cell,
+                    "rows or columns cannot be 0".to_string(),
+                );
+            }
+            (Ok(rows), Ok(columns)) => (rows, columns),
         };
         if let Some((error, message)) = check_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);

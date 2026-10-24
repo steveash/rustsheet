@@ -22,6 +22,7 @@ mod test_defined_name_formulas;
 mod test_defined_name_grouped;
 mod test_defined_name_relative;
 mod test_degrees_radians;
+mod test_empty_array_args;
 mod test_error_propagation;
 mod test_external_links;
 mod test_fact_factdouble;

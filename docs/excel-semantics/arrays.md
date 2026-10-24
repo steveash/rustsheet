@@ -1705,17 +1705,24 @@ frozen to its value, so neither an array's size nor nesting multiplies the work.
 Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399
 
-## An empty array as a function argument (T-2436)
-Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH (as the value
-or a case), IMSUM and WORKDAY's holidays, while ABS and N keep the `#CALC!`, ERROR.TYPE gives 14 and IFERROR catches it:
-`SWITCH(1,TAKE(0.2,0,3),5,6)`, `SWITCH(DROP({1},1),1,2,3)`, `IMSUM(DROP({1},1))` and `WORKDAY(1,1,DROP({1},1))` are `#VALUE!`,
-`ABS(DROP({1},1))` and `N(DROP({1},1))` `#CALC!` (probes/t2436/computed-scalar A43:A50). Which other functions turn it into
-`#VALUE!` is unprobed. Separately, `SEQUENCE(0.0123,123456789.123,..)` is `#VALUE!`, not the zero rows'
-`#CALC!` (the oversized columns as the cause is UNVERIFIED) (gen-m9 f280df8ba95f96b9 A222).
-Evidence: probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9 (excel-graph, 2026-10-24).
-Ours: `#CALC!` for all of them; T-2580.
-Status: VERIFIED (excel-graph) for the listed calls
-Tasks: T-2580
+## An empty array as a function argument (T-2436, T-2580)
+Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH (as the
+expression or a case), IMSUM, IMPRODUCT and the holidays of WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL, while
+ABS, N, SUM, CHOOSE (as the index or the result), IFS (as the condition or the result), XLOOKUP's if_not_found and SWITCH's
+result and default keep the `#CALC!`, ERROR.TYPE gives 14 and IFERROR catches it: `SWITCH(1,TAKE(0.2,0,3),5,6)`,
+`SWITCH(DROP({1},1),1,2,3)`, `IMSUM(DROP({1},1))`, `IMPRODUCT(DROP({1},1))` and `WORKDAY(1,1,DROP({1},1))` are `#VALUE!`,
+`ABS(DROP({1},1))`, `N(DROP({1},1))`, `SWITCH(1,1,DROP({1},1))` and `SWITCH(2,1,5,DROP({1},1))` `#CALC!`; a case after the match
+is not read (`SWITCH(1,1,2,DROP({1},1),3)` is 2) (probes/t2436/computed-scalar A43:A50, probes/t2580-empty-array-args).
+Separately, SEQUENCE's rows and columns both stop at 1048576 (not the grid's 16384 columns): a negative extent or one past it
+is `#VALUE!` and beats a zero one's `#CALC!` (`SEQUENCE(0.0123,123456789.123)`, `SEQUENCE(0,1048577)` and `SEQUENCE(0,-1)` are
+`#VALUE!`; `SEQUENCE(0,1048576)`, `SEQUENCE(1048576,0)` and `SEQUENCE(0,0)` `#CALC!`; `SEQUENCE(0,-0.5)` is `#VALUE!`, the
+extent floors, snapped up within the count tolerance of the next integer as LEFT's count is, `near_integer_count`: `SEQUENCE(1,-1E-9)` and the tiny negative column of gen-m7 c36ff5f42a1a4d47 A359 are `#CALC!`, `SEQUENCE(1,-1E-6)` `#VALUE!`; probes/t2580-sequence-tiny-negative), and `COLUMNS(SEQUENCE(1,1048576))` is 1048576 where `SEQUENCE(1,1048577)` is `#VALUE!`
+(gen-m9 f280df8ba95f96b9 A222, probes/t2580-sequence-zero-extent, t2580-sequence-column-cap).
+Evidence: probes/t2436/computed-scalar, probes/t2580-* (excel-graph, 2026-10-24).
+Ours: implemented (T-2580: `CalcResult::empty_array_as_value_error`, `sequence_kernel`); a SEQUENCE with 16385 to 1048576 columns and
+rows above 0 is still `#VALUE!` (T-2600).
+Status: VERIFIED (excel-graph)
+Tasks: T-2436, T-2580
 
 ## GROUPBY and PIVOTBY in the gen-m9 sweep (T-2436)
 Rule: Excel computes these calls that ours rejected or computes differently: `PIVOTBY(Data!B1:E12,Data!B1:D12,Data!D1:E12,

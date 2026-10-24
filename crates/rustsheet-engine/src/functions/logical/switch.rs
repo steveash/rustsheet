@@ -75,7 +75,9 @@ impl Model {
         if args_count < 3 {
             return Picked::Value(CalcResult::new_args_number_error(cell));
         }
-        let expr = self.evaluate_node_in_context(&args[0], cell);
+        let expr = self
+            .evaluate_node_in_context(&args[0], cell)
+            .empty_array_as_value_error();
         if LiftedArg::is_grid(&expr) {
             return Picked::Value(self.switch_lifted(expr, Vec::new(), args, cell));
         }
@@ -88,7 +90,9 @@ impl Model {
         let case_count = (args_count - 1) / 2;
         let mut cases = Vec::new();
         for case_index in 0..case_count {
-            let case = self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
+            let case = self
+                .evaluate_node_in_context(&args[2 * case_index + 1], cell)
+                .empty_array_as_value_error();
             // An array case value lifts the call like an array expression does, though the
             // expression is a scalar (`SUBTOTAL(9,TAKE(SWITCH(1,{1,2},H1:H2,I1:I2),2))` is a 2x2
             // of `#VALUE!`, probes/subtotal-take-array-selector-b A10, T-2012).

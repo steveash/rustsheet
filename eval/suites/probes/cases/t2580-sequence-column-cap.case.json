@@ -1,0 +1,27 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2580: where SEQUENCE's column cap lies (zero rows and one row).",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SEQUENCE(0,1048576)",
+        "A2": "=SEQUENCE(0,1048577)",
+        "A3": "=SEQUENCE(0,2000000)",
+        "A4": "=SEQUENCE(0,5000000)",
+        "A5": "=COLUMNS(SEQUENCE(1,20000))",
+        "A6": "=COLUMNS(SEQUENCE(1,100000))",
+        "A7": "=COLUMNS(SEQUENCE(1,500000))",
+        "A8": "=COLUMNS(SEQUENCE(1,1000000))",
+        "A9": "=COLUMNS(SEQUENCE(1,1048576))",
+        "A10": "=COLUMNS(SEQUENCE(1,1048577))",
+        "A11": "=SEQUENCE(0,-1)",
+        "A12": "=SEQUENCE(1048577,0.5)"
+      }
+    }
+  ]
+}
