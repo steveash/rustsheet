@@ -3,7 +3,7 @@ id: T-2602
 title: "Revise SPEC-0018 from the T-2592 probe: MAP and friends are not errors, nested cells nest again"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
