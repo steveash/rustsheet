@@ -3,7 +3,7 @@ id: T-2625
 title: "Nested arrays: MODE.SNGL, LARGE, SMALL, PERCENTILE.INC and SUMPRODUCT over a GROUPBY/PIVOTBY result, and COUNT over a wide PIVOTBY (SPEC-0018 rule 4)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
