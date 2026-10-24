@@ -18,8 +18,7 @@
 
 use chrono::{Datelike, NaiveDate};
 
-use super::accrint::acc_days_between;
-use super::dates::day_count_basis;
+use super::dates::{actual_days, day_count_basis, days_30_360_eu, days_30_360_us};
 use super::number_or_error;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::functions::date_and_time::is_leap_year;
@@ -31,6 +30,16 @@ use crate::{
     functions::Function,
     model::Model,
 };
+
+// EFF `DaysBetween` in the numerator position: 30/360 on bases 0 and 4, the actual days
+// otherwise. AMORLINC and AMORDEGRC count their first period with it.
+fn first_period_days(start: NaiveDate, end: NaiveDate, basis: i32) -> f64 {
+    match basis {
+        0 => days_30_360_us(start, end),
+        4 => days_30_360_eu(start, end),
+        _ => actual_days(start, end),
+    }
+}
 
 /// The most AMORDEGRC periods walked one by one. Up to here the kernel is main's walk
 /// (probes/fin-amor-period-bound B6-B14, up to 10^6 periods, are Excel's values); past it, where the
@@ -211,7 +220,7 @@ impl Asset {
         let days_in_yr = amor_days_in_year(self.purchased, self.basis);
         let purchased = amor_fix_29_february(self.purchased, self.basis);
         let first_period = amor_fix_29_february(self.first_period, self.basis);
-        let first_len = acc_days_between(purchased, first_period, true, self.basis)?;
+        let first_len = first_period_days(purchased, first_period, self.basis);
         let first_depr_temp = first_len / days_in_yr * rate * self.cost;
         let first_depr = if first_depr_temp == 0.0 {
             self.cost * rate

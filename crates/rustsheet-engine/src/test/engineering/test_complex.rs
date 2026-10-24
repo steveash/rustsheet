@@ -283,6 +283,27 @@ fn fn_imcsc_imlog2_imcot_of_zero_are_num() {
     assert_eq!(model._get_text("A3"), "#NUM!");
 }
 
+// Excel: gen-m9 (excel-graph, T-2258): IMLN and IMLOG10 of 0 or 0i are #NUM!, not "-inf" (T-2389).
+#[test]
+fn fn_imln_imlog10_of_zero_are_num() {
+    let mut model = new_empty_model();
+    for (i, f) in [
+        "IMLN(\"0\")",
+        "IMLN(\"0i\")",
+        "IMLOG10(\"0\")",
+        "IMLOG10(\"0i\")",
+    ]
+    .iter()
+    .enumerate()
+    {
+        model._set(&format!("A{}", i + 1), &format!("={f}"));
+    }
+    model.evaluate();
+    for i in 1..=4 {
+        assert_eq!(model._get_text(&format!("A{i}")), "#NUM!");
+    }
+}
+
 // Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044). The tiny-argument rows keep
 // the digits Excel loses (D65, D70, P65, P70), IMSEC and IMSECH differ in the last digit of the
 // same real part (G23, J58), and a large real part needs SIN's own reduction (D51).
