@@ -388,11 +388,12 @@ exactly 0, not 2.22E-16. The inverse is the MDETERM elimination above (multiplie
 with L and back substitution with U per identity column (subtract then divide by the pivot): in IEEE doubles that reproduces
 all nine 3x3 residual entries bit for bit (T-2362). Dividing each U entry by the pivot before subtracting, or multiplying by
 the pivot's reciprocal, misses some of them.
-An inverse element past the double range makes the whole result `#NUM!`, not just that element: `MINVERSE(A1)` with A1 = `=1E-300*1E-10`
-(subnormal 1E-310, inverse 1E+310) is `#NUM!`, and `MINVERSE({1E-200,1;0,1E-200})` (back substitution overflows to -1E+400 in the
-corner) is `#NUM!` in every cell: `INDEX(...,1,1)` and `INDEX(...,2,2)`, which are finite on their own, are `#NUM!` too; the
-non-overflowing `MINVERSE({1E-200,0;0,1E-200})` is {1E+200,0;0,1E+200}. Evidence: probes/minverse-overflow-computed-pivot Calc!I1:I9
+An inverse element past the double range makes the whole result `#NUM!`, not just that element: `MINVERSE({1E-200,1;0,1E-200})`
+(back substitution overflows to -1E+400 in the corner) is `#NUM!` in every cell: `INDEX(...,1,1)` and `INDEX(...,2,2)`, which are finite on their own, are `#NUM!` too; the
+non-overflowing `MINVERSE({1E-200,0;0,1E-200})` is {1E+200,0;0,1E+200}. Evidence: probes/minverse-overflow-computed-pivot Calc!I2:I8
 (excel-graph, 2026-10-24, T-2386).
+`MINVERSE(A1)` with A1 = `=1E-300*1E-10` is `#NUM!` but not through overflow: Excel flushes the subnormal product 1E-310 to 0
+(A1 reads 0, numbers.md "A subnormal divisor is zero"), so the 1x1 matrix is exactly singular (Calc!I1).
 A near-singular pivot computed from cells is inverted: B1:C2 = 1, 1, 1, `=1+2^-52` (the cell holds 1+2^-52 exactly, unlike the
 literal) gives `MDETERM` 2.220446049250313E-16 and `MINVERSE` {4503599627370497,-4503599627370496;-4503599627370496,4503599627370496}
 (Calc!I4, J1:J4). That confirms the 15-digit literal explanation above for `{1,1;1,1.0000000000000002}` directly. The 3x3

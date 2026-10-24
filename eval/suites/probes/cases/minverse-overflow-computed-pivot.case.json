@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2386 MINVERSE: overflowing inverse (I2, I5, I6, I8 vs the non-overflowing diagonal), subnormal 1x1 from a computed cell (I1), near-singular pivot computed from cells 1+2^-52 (B1:C2, I4, J1:J4) and the 3x3 {1,2,3;4,5,6;7,8,9} from cells (K1:K9, spill L1).",
+ "description": "T-2386 MINVERSE: overflowing inverse (I2, I5, I6, I8 vs the non-overflowing diagonal), a computed 1E-300*1E-10 that Excel flushes to 0 so the 1x1 is exactly singular (A1, I1, I7), near-singular pivot computed from cells 1+2^-52 (B1:C2, I4, J1:J4) and the 3x3 {1,2,3;4,5,6;7,8,9} from cells (K1:K9, spill L1).",
  "tags": [
   "M5",
   "probe",
