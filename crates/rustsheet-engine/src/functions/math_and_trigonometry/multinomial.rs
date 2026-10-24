@@ -104,9 +104,11 @@ impl Model {
         // (gen-m6/2c1a6e93a1974f48 Calc!A35, docs/excel-semantics/coercion.md), so a negative
         // only sets this flag and `#NUM!` is returned after the last argument.
         let negative_seen = std::cell::Cell::new(false);
+        let mut only_lone_blanks = true;
 
         for (index, arg) in args.iter().enumerate() {
             let evaluated = self.evaluate_node_in_context(arg, cell);
+            only_lone_blanks &= self.is_lone_blank_cell(&evaluated);
             let evaluated = numeric_text_as_number(self, evaluated);
             match evaluated {
                 CalcResult::Number(v) => {
@@ -198,6 +200,14 @@ impl Model {
             }
         }
 
+        // Every argument a lone blank cell is `#VALUE!` (T-2294; `is_lone_blank_cell`).
+        if only_lone_blanks {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "MULTINOMIAL requires numeric values".to_string(),
+            );
+        }
         if negative_seen.get() {
             return negative_error(cell);
         }
