@@ -10,7 +10,9 @@ use regex::Regex;
 use crate::case::split_qualified;
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
-use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot, TableDef, WorkbookSnapshot};
+use crate::xlsx_snapshot::{
+    CellSnapshot, DefinedName, FormulaKind, SheetSnapshot, TableDef, WorkbookSnapshot,
+};
 
 /// Functions that read the wall clock. Scorable when the workbook pins the clock (see
 /// [`pinned_clock_serial`]).
@@ -87,7 +89,13 @@ pub fn scorable_cells(
             if !cell.is_formula() {
                 continue;
             }
-            if volatile.contains(&(sheet.name.clone(), *addr)) {
+            // A spill member has no formula of its own: it is as volatile as its anchor.
+            let anchor = match &cell.formula_kind {
+                Some(FormulaKind::ArrayMember { anchor }) => Addr::parse(anchor),
+                _ => None,
+            };
+            let tainted = |at: Addr| volatile.contains(&(sheet.name.clone(), at));
+            if tainted(*addr) || anchor.is_some_and(tainted) {
                 skipped += 1;
             } else {
                 cells.push((sheet.name.as_str(), *addr, cell));
@@ -560,5 +568,47 @@ mod tests {
             ["S!B1", "S!B3", "S!C2"],
             "a listed cell is scored; its dependents are tainted only through unlisted cells"
         );
+    }
+
+    #[test]
+    fn members_of_a_volatile_spill_are_skipped() {
+        let snap = |a1: &str, formula: Option<&str>, kind: FormulaKind| {
+            let addr = Addr::parse(a1).expect("valid test address");
+            let cell = CellSnapshot {
+                formula: formula.map(str::to_string),
+                formula_kind: Some(kind),
+                value: Value::Number(1.0),
+            };
+            (addr, cell)
+        };
+        let member = |anchor: &str| FormulaKind::ArrayMember {
+            anchor: anchor.into(),
+        };
+        let array = |range: &str| FormulaKind::Array {
+            range: range.into(),
+        };
+        let snapshot = WorkbookSnapshot {
+            application: None,
+            app_version: None,
+            file_app_name: None,
+            date1904: false,
+            sheets: vec![SheetSnapshot {
+                name: "S".into(),
+                cells: [
+                    snap("A1", Some("_xlfn.RANDARRAY(2)"), array("A1:A2")),
+                    snap("A2", None, member("A1")),
+                    snap("B1", Some("_xlfn.SEQUENCE(2)"), array("B1:B2")),
+                    snap("B2", None, member("B1")),
+                ]
+                .into_iter()
+                .collect(),
+            }],
+            defined_names: Vec::new(),
+            tables: Vec::new(),
+        };
+        let (scored, skipped) = scorable_cells(&snapshot, false);
+        let scored: Vec<String> = scored.iter().map(|(_, a, _)| a.to_string()).collect();
+        assert_eq!(scored, ["B1", "B2"]);
+        assert_eq!(skipped, 2);
     }
 }

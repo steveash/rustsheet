@@ -181,6 +181,13 @@ impl Engine for RustSheetEngine {
         .map_err(|e| e.to_string())?;
         // The harness only reads final values: skip the per-edit value diff.
         workbook.set_track_changes(false);
+        if let Some(c) = spec.calculation.as_ref().filter(|c| c.iterate) {
+            let default = rustsheet::Iteration::default();
+            workbook.set_iteration(Some(rustsheet::Iteration {
+                max_iterations: c.iterate_count.unwrap_or(default.max_iterations),
+                max_change: c.iterate_delta.unwrap_or(default.max_change),
+            }));
+        }
         workbook
             .edit(|tx| {
                 let mut ids = Vec::with_capacity(spec.sheets.len());
@@ -252,6 +259,22 @@ impl Engine for RustSheetEngine {
                     }
                 }
                 for (sheet, &id) in spec.sheets.iter().zip(&ids) {
+                    for table in &sheet.data_tables {
+                        let input = |a1: &Option<String>| -> Result<_, rustsheet::EditError> {
+                            let Some(a1) = a1.as_deref() else {
+                                return Ok(None);
+                            };
+                            let addr = Addr::parse(a1).ok_or_else(|| {
+                                rustsheet::EditError::Engine(format!("bad address {a1}"))
+                            })?;
+                            Ok(Some(CellRef::new(id, addr.row - 1, addr.col - 1)?))
+                        };
+                        tx.add_data_table(
+                            range_ref(id, &table.range)?,
+                            input(&table.row_input)?,
+                            input(&table.column_input)?,
+                        )?;
+                    }
                     for (a1, format) in &sheet.number_formats {
                         let addr = Addr::parse(a1).ok_or_else(|| {
                             rustsheet::EditError::Engine(format!("bad address {a1}"))

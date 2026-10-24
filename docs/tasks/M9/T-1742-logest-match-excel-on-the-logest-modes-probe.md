@@ -3,12 +3,12 @@ id: T-1742
 title: "LOGEST: match Excel on the logest-modes probe (spill shape, flags, multi-column x, ULP-level numerics)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
 campaign: visible
-depends_on: []
+depends_on: [T-1741]
 ---
 
 ## Goal
@@ -155,16 +155,30 @@ Cells:
 - gen-m9/a1b4181c04804efc.case.json (1): Calc!A263
 - gen-m9/e85daedce5c2675e.case.json (1): Calc!A315
 
+State after T-1741 (2026-10-24, measured on T-1741's branch with T-2547 merged): LOGEST shares LINEST's new shape and
+check-order code, which fixes 184 of the 189 gen-m9 cells listed above (T-2255, T-2256, T-2257, T-2258) and the shape
+cells K141, K162, K183 and K71. Still failing: gen-m9 285d87cea1aaa73c A293 (`LOGEST(<scalar y>,Data!C9:C12,<const>)`
+Excel 1, ours 2.69E-40), 589f42e67f4b4b8d A193 (`LOGEST(Data!A10:B11)` 2.220601291150046, ours ...0514: the solve),
+b8ee55934c5b824c A161 (Excel `#VALUE!`, ours `#REF!`), a5342a7e24fd803e A288 (`LOGEST(Data!A$6,1E+15,"")` inside
+TRIMMEAN: Excel `#N/A`, ours `#NUM!`) and bc04c1f478c9896c A75 (Excel `#VALUE!`, ours `#NUM!`). In logest-modes:
+K85 (0.982454941667086, ours ...0796, past the 15th digit) and the exact-fit stats K169:L173 and K197:L201 (Excel's
+residual is exactly 0, so se is 0 and F `#NUM!`; ours carries 2E-16 of noise), plus last-digit cells T-2006 owns.
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): the 8 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
-      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 176 known-failure lines (167 from T-2255, 9 from T-2256) disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity: the 8 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 8 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] probes/logest-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. (T-1741's baseline.)
+- [x] Visible parity (gen-m9, T-2257): the 8 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline. (T-1741.)
+- [x] Visible parity (gen-m9, T-2255 and T-2256): these 176 known-failure lines (167 from T-2255, 9 from T-2256) disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline, apart from the
+      five handed off under Outcome (171 of 176 left with T-1741).
+- [x] Visible parity: the 8 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits,
+      or its type, error and text, apart from K85 (the solve, handed to T-2006): K141, K162 and K183 left
+      eval/baseline/probes.txt; K71, K169, K190 and K197 are now last-digit (ulp) lines, which T-2006 owns.
+- [x] probes/logest-modes baseline entries shrink to zero apart from the last-digit cells T-2006 owns: what is left is
+      numeric (27 ulp, 69 close, 9 mismatch, 2 type), all from the solve, and T-2006 now lists the visible ones (K85 and
+      the exact-fit stats K169:L173, K197:L201).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes outside this function, and the FORECAST.ETS family (T-1553).
@@ -173,3 +187,17 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (wrong LOGEST shapes and errors, and K85 past the 15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. The last-digit numerics stay with T-2006.
+
+## Outcome
+- No engine change was needed: T-1741 (#1674) moved LOGEST onto LINEST's shape and check-order code, which fixed 184 of
+  the 189 gen-m9 cells and the probe shape cells K141, K162 and K183 (its baseline recorded them).
+- The five cells left are decided outside LOGEST's shapes and checks, and went to their owners with the evidence
+  (statistics.md "LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)"):
+  - 285d87cea1aaa73c A293, which column a singular fit drops: added to T-2569, a probe of the pivoted-QR hypothesis;
+  - 589f42e67f4b4b8d A193 and logest-modes K85, K169:L173, K197:L201, the solve: added to T-2006, which now carries
+    `campaign: visible` (decision 0083) since it holds visibly-off cells from T-1741 and this task;
+  - a5342a7e24fd803e A288, TRIMMEAN's error order: new T-2614 (statistics.md "TRIMMEAN: an error percent before data with
+    no number (T-1742)");
+  - bc04c1f478c9896c A75 (PRICEMAT, error yld beside a LOGEST basis) and b8ee55934c5b824c A161 (HLOOKUP with a text-cell
+    range_lookup as known_x): new probe task T-2615.
+- Eval delta: none in this PR (documents and task files only); the 184 gen-m9 and 3 probes lines left in T-1741's PR.

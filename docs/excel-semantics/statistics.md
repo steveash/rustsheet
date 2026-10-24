@@ -2356,7 +2356,8 @@ Rule (excel-graph, 2026-10-16, T-1621; spilled cells are evidence too; cell ids 
 - Dynamic arrays: GROWTH with `new_x's` omitted or equal to known_x's returns an array of y's size, also with const FALSE and no new_x's; a scalar new_x gives a scalar; the result shape follows new_x's. A new_x with the wrong number of columns is `#REF!`; boolean or text new_x is `#VALUE!`. `#SPILL!` for a blocked spill is unprobed here.
 - Exactly representable fits come out inexact: LOGEST({1,2,4,8},{1,2,3,4}) gives 1.9999999999999998 and 0.5000000000000001, GROWTH({1,2,4,8},{1,2,3,4},{5,6}) gives 15.999999999999996 and 31.999999999999968, GROWTH(5,5,5) is 4.999999999999999: the oracle's evaluation order is evidence for T-1741, T-1742, T-1743.
 Evidence: probes/linest-modes, logest-modes, growth-modes.
-Ours: GROWTH spills collapse to the first cell, the LINEST stats block is short or `#N/A`, many last-digit differences (T-1741, T-1742, T-1743).
+Ours: the LINEST and LOGEST shapes, stats block and check order match since T-1741 (section "LINEST and LOGEST: shapes,
+one point, collinear columns, exact fits and check order"); the last-digit differences remain (T-2006).
 FORECAST.ETS.SEASONALITY/STAT/CONFINT could not be lifted: excel-graph is `#N/A` for every valid call (section above), so cases would be junk evidence; the three stay below the floor until desktop values exist (T-1553).
 Status: VERIFIED (excel-graph) for the stated cases; the unprobed items are marked
 Tasks: T-1621, T-1741, T-1742, T-1743, T-2006 (shared least-squares kernel)
@@ -2418,8 +2419,8 @@ many columns; the result is a column), a row y one per row (the result is a row)
 is both, so `TREND(-1,Data!D8:D9)` is one point of two variables, -1 (gen-m9 0bbab6206b5c9a07 A44), while
 `TREND(Data!C4,Data!A3:D12)` is `#REF!` (41248d1cb153c66e A54). A singular fit drops the collinear x columns, as LINEST
 does ("LINEST, LOGEST, GROWTH: probe findings"), so a zero-variance x gives the mean of y (`TREND(A1:A6,G1:G6)` 4.5, trend O20);
-which near-collinear columns are dropped (ours: a Gram-Schmidt residual under 1E-10 of the column, only once the plain
-solve fails) is UNVERIFIED (T-2569).
+which near-collinear columns are dropped (ours: a Gram-Schmidt residual under 1E-10 of the column, the last column
+first, only once the plain solve fails) is UNVERIFIED (T-2569); the last-first order is LINEST's (K106, T-1741).
 Order of the checks (gen-m9 T-2256 cells): (1) an argument that is an error value, in argument order, const included
 (`TREND(<#NUM!>,Data!B8,Data!A5:C11,NA())` `#NUM!`, 3b7990bd4e3307ba A345; `TREND(Data!B4:C10,Data!A11:B12,<#VALUE!>)`
 with unequal shapes `#VALUE!`, 11eb3ab4f4f8104c A326; `TREND(Data!C7:D12,0.2,<#N/A>,<bool>)` `#N/A`, c2684066d8df263e
@@ -2447,7 +2448,7 @@ Evidence: probes/regression-trend (excel-graph, 2026-10-16, T-1620); gen-m9 (exc
 Ours: matches since T-1726 (`trend_or_growth` in functions/statistical/trend.rs), but for the last-digit differences of the
 shared least-squares solve (T-2006) and A187 above. A single point without a constant term (`TREND(5,2,4,FALSE)`) is a fit
 through the origin, UNVERIFIED (T-2569). LINEST and LOGEST of one point are accepted by Excel (linest-modes K141, logest-modes
-K162); ours still rejects them (T-1741, T-1742).
+K162), and ours since T-1741.
 Status: VERIFIED (excel-graph)
 Tasks: T-1726 (overlaps T-1402, T-1743)
 
@@ -2756,6 +2757,46 @@ FALSE)` and `GAMMADIST(2,1.85E+76,1E+10,"TRUE")` are `#NUM!` (2801c1c11c21e134 A
 Ours: a number for each `#NUM!` above, `#NUM!` for the GAMMA.DIST zeros, the subnormal for EXPON.DIST; T-2435.
 Status: VERIFIED (excel-graph), one cell each
 
+## LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order (T-1741)
+Rule: LINEST and LOGEST line known_x up with known_y as TREND does ("TREND: defaults, shapes, single points and error
+inputs"): the same shape is one variable read element by element (row arrays and `TRANSPOSE` results included:
+`LINEST({2,4},{1,2})` is `{2,0}`, `LINEST(TRANSPOSE(B2:B9),TRANSPOSE(A2:A9),TRUE,TRUE)` the column fit), a column y takes
+one variable per column of x, a row y one per row, anything else is `#REF!` (`LINEST({1,2,3,5},{1;2;3;4})`); an empty
+known_x is the default 1, 2, 3, ... (`LINEST(B2:B9,,TRUE,TRUE)`). One point is accepted (K141, K204). A column that is,
+to rounding, a combination of the intercept and the later columns is dropped: coefficient 0, standard error 0, and the
+degrees of freedom and F count only the kept columns. The last column is kept first: with E = 2A,
+`LINEST(B2:B9,A2:E9,TRUE,TRUE)` drops A (its se is exactly 0, the others are noise), df 3, F 3.1e34 = (ss_reg/4)/(ss_resid/3).
+One point drops its x (`LINEST(B15,A15,TRUE,TRUE)` is `{0,9; 0,0; 1,0; #NUM!,0; 0,0}`), and one point of 8 variables
+drops them all (`LINEST(5,A2:A9)` is `{0,..,0,5}`). With no degree of freedom left, se_y and the standard errors are 0 and
+F is `#NUM!` (`LINEST(A12:A13,B12:B13,TRUE,TRUE)`, two points: `{0.5,-1.5; 0,0; 1,0; #NUM!,0; 0.5,0}`); an exact fit with
+degrees of freedom left has F `#NUM!` too (`LINEST({2,4,6},{1,2,3},TRUE,TRUE)`, K249).
+Order of the checks (gen-m9 cells): (1) an argument that is an error value, in argument order (section "LINEST and
+LOGEST report error values first"), and a typed or computed const or stats text that is no boolean, `#VALUE!`
+(`LINEST(UNIQUE(Data!D9:E9),Data!B7,TRUE,"1")`, `LOGEST(Data!C6:E9,Data!D$6,1,"")` against unequal shapes,
+a013a45a8fbcab4f A276, fd9fa22d212080d6 A201), while a text cell waits for the shapes (`LINEST(Data!D10:E10,Data!B1:B7,
+<"x~*" cell>,<#N/A>)` is `#N/A`, bcb24385baafb2f0 A40); (2) the shapes, `#REF!`, as TREND (`LINEST(Data!B11:E12,
+(BYROW(..)+HOUR(0.5)),2,-1)` is `#REF!` though its x holds errors, 05d44f6dd6cfc567 A317, and six more cells); (3) an
+error element of known_y or known_x, `#VALUE!` (`LINEST(Data!A1:C6,ROUND(GROUPBY(..)),..)`, 589f42e67f4b4b8d A100;
+`LOGEST(<number>,IF(SORT(IF({1,0,1},1,NA())),..),..)`, a scalar y against a 1x3 x holding `#N/A`, d8266bc15533702a A117);
+(4) a const or stats cell, or a LAMBDA result that is a reference to one, holding text that is no boolean, `#VALUE!`
+(`LOGEST(Data!A10:B10,Data!B8:B8,-1,<"a" cell>)` and `LOGEST(Data!A10:A11,-0,LAMBDA(acc,Data!B3)(..))` with B3 = " x "
+are `#REF!`, f34f66fb7f81e673 A179, bbdfc06cae0e0d71 A324); (5) a blank, text or boolean element, `#VALUE!`
+(`LINEST(B2:B9,A2:A9&"")`, K113), LOGEST's non-positive y `#NUM!` as GROWTH's. An array const or stats lifts:
+`LOGEST(Data!C$10,0.1,EXPAND(Data!A10:C11,2,4))` (165db58d1540f014 A327) and `LINEST(..,..,..,HSTACK(..))` as stats
+(165db58d1540f014 A366, e6cf3b20a014e6a3 A89) are `#SPILL!`. Excel lifts before the data arguments' error values
+(`LINEST(<#DIV/0!>,..,..,MAKEARRAY(2,3,..))` is `#SPILL!`, c2974c061384fdd9 A89), while
+`LOGEST(Data!C6:E12,<#NUM!>,TRIMRANGE(..),TRUE)` is `#NUM!` (0a614cfe974b59c3 A342), presumably because TRIMRANGE is a
+reference there; ours reports the data error first (T-2574).
+The collinear drop rests on one probe, K106 (A's se exactly 0 there): which column of another collinear pair is kept,
+with y not in x, is unprobed (T-2569).
+Evidence: probes/linest-modes (excel-graph, 2026-10-16, T-1621); gen-m9 (excel-graph, 2026-10-22/23).
+Ours: since T-1741 (`linest_or_logest` in functions/statistical/linest.rs, shared readers in regression.rs). The
+noise digits of exact and collinear fits (K106, K190, K197: Excel 1.4e-16 where ours is 0, F 1.4e32 where ours is
+`#NUM!`) and the two-point K134 (Excel exactly 0.5 and -1.5) come from Excel's solve and stay with T-2006; the other
+leftover gen-m9 cells are T-2574's.
+Status: VERIFIED (excel-graph)
+Tasks: T-1741, T-2006, T-2556, T-2574
+
 ## LINEST, LOGEST and GROWTH in the gen-m9 sweep (T-2255)
 Rule: confirmations and additions to "LINEST, LOGEST, GROWTH: probe findings": a scalar known_y with no known_x is one
 point, so LINEST's anchor is 0 and LOGEST's 1 (`LINEST(2)`, 8d3588d8df0812df A186; `LOGEST(0.3)`, 8dd2312c96effb1b A329;
@@ -2766,9 +2807,35 @@ too (`LOGEST(-SUBTOTAL(5,..))` = LOGEST(-0.1), c468f5046aadfbbc A282; `LOGEST(Da
 known_x (`LINEST(Data!B1:D11,Data!E10)` with E10 = "ü", c18dbf21f11093f3 A182), the size check before the text check;
 a range known_y with text is `#VALUE!` (`LINEST(Data!D4:D5)`, 2a18b2f5a4dc43ac A273; whether it spills is not shown, B273 is unchecked).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-1741, T-1742, T-1743.
-Ours: `#VALUE!` for the scalar known_y and the sign/size checks above; T-1741, T-1742, T-1743.
+Ours: matches since T-1741 (section "LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order").
 Status: VERIFIED (excel-graph)
 
+
+## LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)
+Rule: of the 189 gen-m9 LOGEST cells of T-1742, T-1741's shared shape and check-order code fixes 184; the other five are
+decided elsewhere. `LOGEST(T.DIST.2T(Data!B3,6),Data!C9:C12,<FALSE>)` (the const is an IF that is FALSE; one point of four variables, x = 0, -1, -2.5, 0.2,
+no constant) is 1 in Excel (285d87cea1aaa73c A293), so Excel drops the last column (0.2) where ours keeps it and fits
+m = 2.7E-40. Together with linest-modes K106 (E = 2A keeps E) this fits a solve that keeps the column of largest norm
+first (pivoted QR), which is UNVERIFIED (T-2569). `LOGEST(Data!A10:B11)` 2.220601291150046, ours ...0514, is the solve's
+digits (589f42e67f4b4b8d A193, T-2006), as are logest-modes K85 and the exact-fit stats K169:L173 and K197:L201 (Excel's
+residual is exactly 0, so se is 0 and F `#NUM!`). The remaining three are other functions: TRIMMEAN's order (a5342a7e24fd803e
+A288, the next entry), and PRICEMAT with an error yld beside a LOGEST basis (bc04c1f478c9896c A75, Excel `#VALUE!`, ours
+`#NUM!`) and LOGEST over an HLOOKUP whose range_lookup refers to a text "TRUE" cell (b8ee55934c5b824c A161, Excel `#VALUE!`,
+ours the size `#REF!`), both UNVERIFIED (T-2615). A blank one-cell known_x reference beside a range known_y is the size
+`#REF!` in Excel, as in ours (`LOGEST(Data!B9:D12,Data!A$9)`, 05d44f6dd6cfc567 A30; `LINEST(Data!C6:E12,Data!A11)`,
+623663cacea53bbc A210; `GROWTH(Data!A11:D12,Data!C12)`, fec39efaba9284c3 A265).
+Evidence: gen-m9 (excel-graph, 2026-10-22); probes/logest-modes (excel-graph).
+Ours: as described; T-2006, T-2569, T-2614, T-2615.
+Status: VERIFIED (excel-graph) for the values; the pivot and the two cross-function causes UNVERIFIED
+Tasks: T-2006, T-2569, T-2614, T-2615
+
+## TRIMMEAN: an error percent before data with no number (T-1742)
+Rule: TRIMMEAN returns an error-valued percent before it reports data with no number: `TRIMMEAN(Data!E11:E11,<#N/A>)`
+with E11 = TRUE is `#N/A`, not `#NUM!` (a5342a7e24fd803e A288, the percent `COVARIANCE.P(8 cells,3 cells)-LOGEST(..)`).
+Evidence: gen-m9 (excel-graph, 2026-10-22).
+Ours: `#NUM!` (the data first); `TRIMMEAN(1,NA())` is already `#N/A`; T-2614.
+Status: VERIFIED (excel-graph), one cell
+Tasks: T-2614
 
 ## PROB: an error data argument first, one value on each side is #DIV/0!, unequal counts #N/A (T-2256)
 Rule: PROB checks its data in this order, each step before the next: x_range given as an error value is that error,

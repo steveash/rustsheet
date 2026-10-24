@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -44,6 +45,22 @@ Cells:
 - gen-m9/285d87cea1aaa73c.case.json (1): Calc!A183
 - gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A178
 - gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A341
+
+Also from T-1741 (visibly off, the solve's noise digits): probes/linest-modes K106:P110 (collinear `LINEST(B2:B9,
+A2:E9,TRUE,TRUE)`: Excel 1.4e-16-sized coefficients and se, F 3.1e34 at K109 where ours is exactly 0 and `#NUM!`),
+K190:L194 and K197:L201 (y in x: F 1.36e32 at K193, K200, ours `#NUM!`), and K134:L138 (two points: Excel exactly 0.5,
+-1.5 and ss_resid 0; ours 0.49999999999999867 and 3.6e-30). Excel's exact or collinear fits carry its solve's residual
+noise, so F is a number there; ours is exact, so F is `#NUM!`.
+The singular test is an absolute pivot under 1e-12 (`solve_system`, `invert_matrix`) while `independent_columns`
+drops on a relative 1e-10, so a badly scaled x (values near 1e-7) can fail the solve with nothing to drop and give
+`#NUM!` where Excel would fit: the new kernel should test singularity relative to scale.
+
+Also from T-1742 (visibly off, the solve): probes/logest-modes K85 `LOGEST(D2:D9,A2:C9,TRUE,TRUE)` (Excel
+0.982454941667086, ours 0.9824549416670796, past the 15th digit), the exact-fit stats K169:L173 and K197:L201
+(`LOGEST({1,2,4,8},{1,2,3,4},TRUE,TRUE)`, `LOGEST({0.5,0.25,0.125},{1,2,3},TRUE,TRUE)`: Excel's se and ss_resid are
+exactly 0 and F `#NUM!`; ours carry 2E-16 and 1E-31 of noise and F 1E+31), and gen-m9 589f42e67f4b4b8d Calc!A193
+`LOGEST(Data!A10:B11)` (Excel 2.220601291150046, ours 2.2206012911500514). Unlike LINEST's exact fits, LOGEST's ln(y)
+is exactly linear here only to rounding, so a kernel that gets these to exactly 0 is a strong lead.
 
 ## Acceptance criteria
 - [ ] A fit-lab kernel (tools/src/rustsheet_tools/fitlab/kernels/, a new `regression` fit) scores named candidates
