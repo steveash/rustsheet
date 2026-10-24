@@ -3,7 +3,7 @@ id: T-1743
 title: "GROWTH: match Excel on the growth-modes probe (default new_x spill, const flag, new_x shapes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
