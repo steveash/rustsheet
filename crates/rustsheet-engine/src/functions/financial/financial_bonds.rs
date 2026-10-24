@@ -565,7 +565,12 @@ impl Model {
 
     /// Reads and checks `(settlement, maturity, rate, yld, frequency, basis)` of DURATION and
     /// MDURATION, and of PRICE and YIELD (`yld` is the price) with their redemption at
-    /// `values[4]`: every argument is read, in order, before any value is checked.
+    /// `values[4]`, in Excel's order (probes/bond-argument-check-order, T-2482; financial.md
+    /// "PRICE, YIELD, DURATION and MDURATION check order"). PRICE and YIELD read and check the
+    /// basis first, DURATION and MDURATION last. A settlement or maturity off the calendar is
+    /// #NUM! as it is read, and DURATION's frequency as it is read; the date order and the
+    /// rate, yld, price and redemption checks come after every argument is read, and settlement
+    /// 0 passes the read (`PRICE(0,43831,NA(),..)` is #N/A).
     fn bond_args(
         &self,
         values: &[CalcResult],
@@ -579,8 +584,15 @@ impl Model {
                 (false, [s, m, r, y, f, rest @ ..]) => (s, m, r, y, None, f, rest.first()),
                 _ => return Err(CalcResult::new_args_number_error(cell)),
             };
-        let settlement = self.financial_date_of(settlement, cell)?;
-        let maturity = self.financial_date_of(maturity, cell)?;
+        let read_basis = |basis| validate_basis(self.cast_number_no_bools_or(basis, 0.0, cell)?, cell);
+        // `PRICE(-1,..,NA())` is #N/A and `PRICE(NA(),..,5)` #NUM!; DURATION's basis comes last.
+        let early_basis = if with_redemption {
+            Some(read_basis(basis)?)
+        } else {
+            None
+        };
+        let settlement = self.financial_calendar_date_of(settlement, cell)?;
+        let maturity = self.financial_calendar_date_of(maturity, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let yld = self.cast_number_no_bools_ref(yld, cell)?;
         let redemption = match redemption {
@@ -588,9 +600,15 @@ impl Model {
             None => 100.0,
         };
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?;
         validate_frequency(frequency, cell)?;
-        let basis = validate_basis(basis, cell)?;
+        let basis = match early_basis {
+            Some(basis) => basis,
+            None => read_basis(basis)?,
+        };
+        let (settlement, maturity) = (
+            self.financial_date(settlement),
+            self.financial_date(maturity),
+        );
         // YIELD's price must be positive, a yield may be 0.
         let bad_fourth = match function {
             BondFunction::Yield => yld <= 0.0,

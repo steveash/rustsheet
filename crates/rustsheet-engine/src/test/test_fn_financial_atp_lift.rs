@@ -150,6 +150,36 @@ fn mduration_reads_its_arguments_in_order() {
 }
 
 #[test]
+fn bond_functions_check_their_arguments_in_excel_order() {
+    // probes/bond-argument-check-order (excel-graph, T-2482): PRICE and YIELD read the basis
+    // first; a date off the calendar is #NUM! as it is read; DURATION checks its frequency before
+    // it reads the basis; the date order and the value checks come after every read.
+    check(&[
+        // An out-of-domain argument before an error one.
+        ("A1", "=PRICE(-1,43831,NA(),0.065,100,2,0)", "#NUM!"),
+        ("A2", "=YIELD(2958466,\"x\",0.0575,95.04,100,2,0)", "#NUM!"),
+        ("A3", "=DURATION(39448,-1,0.08,NA(),2,1)", "#NUM!"),
+        ("A4", "=MDURATION(39448,43831,0.08,0.09,3,NA())", "#NUM!"),
+        ("A5", "=PRICE(NA(),43831,0.0575,0.065,100,2,5)", "#NUM!"),
+        (
+            "A6",
+            "=YIELD(39448,43831,0.0575,95.04,100,\"x\",5)",
+            "#NUM!",
+        ),
+        // An error argument before an out-of-domain one.
+        ("B1", "=PRICE(39448,39000,\"x\",0.065,100,2,0)", "#VALUE!"),
+        ("B2", "=YIELD(39448,43831,0.0575,0,100,2,NA())", "#N/A"),
+        ("B3", "=DURATION(39448,43831,-0.05,NA(),2,1)", "#N/A"),
+        ("B4", "=MDURATION(39448,43831,0.08,0.09,NA(),5)", "#N/A"),
+        ("B5", "=PRICE(-1,43831,0.0575,0.065,100,2,NA())", "#N/A"),
+        ("B6", "=YIELD(39448,43831,0.0575,95.04,100,3,NA())", "#N/A"),
+        // Settlement 0 passes the read; it is #NUM! only after the later arguments.
+        ("C1", "=PRICE(0,43831,NA(),0.065,100,2,0)", "#N/A"),
+        ("C2", "=DURATION(0,43831,0.08,0.09,2,1)", "#NUM!"),
+    ]);
+}
+
+#[test]
 fn a_settlement_before_the_calendar_is_num() {
     // probes/fin-coupon-walk-bounds A1-A13, A19, A20 and -b A11: a settlement below serial 1 is
     // #NUM! (below 0 for COUPPCD and the COUPDAYS functions, T-1844), so the schedule walk back from the maturity stays inside the calendar
