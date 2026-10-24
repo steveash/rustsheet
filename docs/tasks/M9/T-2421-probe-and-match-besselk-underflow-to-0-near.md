@@ -3,7 +3,7 @@ id: T-2421
 title: "Probe and match BESSELK underflow to 0 near x 713 and BITLSHIFT shifts of 53 and -53 giving 0"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -61,3 +61,6 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+BESSELK flushes results below the normal range to 0, BESSELI of a huge |x| is `#NUM!`, and BITLSHIFT/BITRSHIFT follow Excel's 48/49..53/54 shift limits, truncate the shift first and shift 0 to 0 by any amount. Probe eng-besselk-underflow-bit-shift (276 cells; the order-cap cells are pinned deviations). gen-m9 known failures 7719 -> 7697 (22 fixed, all 17 owned cells), 0 regressions.
