@@ -3,7 +3,7 @@ id: T-2293
 title: "Steward and planner run make exit-owners after make eval (decision 0096)"
 milestone: M5
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
