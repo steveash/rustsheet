@@ -3,7 +3,7 @@ id: T-2593
 title: "Nested arrays: a GROUPBY or PIVOTBY cell holds its LAMBDA's array result (INDEX, TYPE 64, top-left when lifted; SPEC-0018)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
