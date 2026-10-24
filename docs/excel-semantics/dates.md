@@ -1208,10 +1208,11 @@ start's, and a blank weekend cell is weekend 0 (`#NUM!`), not the default: `NETW
 = 32394, `WORKDAY.INTL(45351,10,1.005)` = 45365, `NETWORKDAYS.INTL(44926," x ",3.14159)` is the end's `#VALUE!` (not the weekend's `#NUM!`),
 `NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`, and so is `NETWORKDAYS.INTL(13803,28521,<blank>)` (gen-m6/afe9267df3df26a8 A47, T-2253)
 (gen-m6/c93ea588c271840e Calc!A31, 1a404a0379a1372c A62, ee56a4ed5a612a0d A186, c96ac1ada46179c4 A287, ee56a4ed5a612a0d A387,
-fde83d52a9d1fc63 A219). Ours: a fractional weekend truncates (folded into T-2272, whose order otherwise let gen-m6/e3a562557696e2fc A385 `WORKDAY.INTL(11303,-4,1.25,..)` reach it), `#VALUE!` for TRUE, the default weekend for a blank cell.
+fde83d52a9d1fc63 A219). A boolean weekend is its number: TRUE acts as weekend 1 (`WORKDAY.INTL(45000,5,TRUE)` = 45007, `NETWORKDAYS.INTL(45000,45030,TRUE)` = 23, as weekend 1; on these dates weekends 2 and 3 give the same, so the probe shows TRUE is one of 1-3) and FALSE is weekend 0 (`#NUM!`), both as a literal and read from a cell; 3.9 is weekend 3 and 0.5 is 0 (`#NUM!`), so a number truncates (11.5 and 1.5 match truncation, but there 11 and 12 agree) and a blank cell is `#NUM!` (probes/weekend-number-coercion A1:A26, excel-graph, 2026-10-21). An omitted weekend is still weekend 1; an empty argument (`WORKDAY.INTL(x,5,)`) is unprobed (the engine keeps the default). T-2591 probes these gaps.
 A FALSE weekend cell raises no `#VALUE!` ahead of a negative holiday's `#NUM!`: `NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`
-with C5 FALSE and -1 among the holidays (B7) is `#NUM!` (gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253; ours `#VALUE!`).
-Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates and whether a fraction of .5 or more truncates or rounds (every cited fraction is below .5): UNVERIFIED (no cell shows them; T-2271 probes them).
+with C5 FALSE and -1 among the holidays (B7) is `#NUM!` (gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253), as FALSE is weekend 0.
+Ours: implemented (T-2271; the fraction truncation first landed with T-2272).
+Status: VERIFIED
 Tasks: T-2271
 
 ## WEEKNUM of a boolean serial is `#VALUE!` (T-2276)
