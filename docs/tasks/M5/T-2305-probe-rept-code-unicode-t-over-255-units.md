@@ -3,7 +3,7 @@ id: T-2305
 title: "Probe REPT/CODE/UNICODE/T over 255 units from a cell, an array element, and with an error count"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
