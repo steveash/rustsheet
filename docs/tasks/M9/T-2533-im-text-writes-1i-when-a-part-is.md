@@ -37,10 +37,10 @@ Cells:
 - gen-m9/ee70a5515d004a66.case.json (1): Calc!A256
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 10 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258; 9 of 10, A379 moved to T-2610): these 10 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for 1+2^-52, 1-2^-53, -1-2^-52 and exactly ±1.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for 1+2^-52, 1-2^-53, -1-2^-52 and exactly ±1.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
