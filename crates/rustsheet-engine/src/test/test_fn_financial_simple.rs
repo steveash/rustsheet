@@ -328,6 +328,23 @@ fn effect_and_nominal_use_excels_power() {
     }
 }
 
+#[test]
+fn effect_and_nominal_overflow_is_num_error() {
+    // probes/effect-overflow-power-of-ten (excel-graph): an overflowing `^` is #NUM!, and
+    // EFFECT(270,30) is 1E30 (T-2241).
+    let mut model = new_empty_model();
+    model._set("A1", "=EFFECT(1E300,2)");
+    model._set("A2", "=NOMINAL(1E300,0.5)");
+    model._set("A3", "=EFFECT(270,30)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A3"),
+        Ok(CellValue::Number(1e30))
+    );
+}
+
 // =============================================================================
 // Argument order and booleans (T-2455, probes/t2455-transpose-single-value)
 // =============================================================================

@@ -62,6 +62,10 @@ def test_parse_arg_literals_and_references() -> None:
     book = _book()
     assert parse_arg("1E-10", "Calc", book) == 1e-10
     assert parse_arg("-.5", "Calc", book) == -0.5
+    # A literal is cut, not rounded, to 15 significant digits (numbers.md, T-2328).
+    assert parse_arg("1.0000000000000009", "Calc", book) == 1.0
+    assert parse_arg("0.10000000596046449", "Calc", book) == 0.100000005960464
+    assert parse_arg("1.7763568394002505E-12", "Calc", book) == 1.77635683940025e-12
     assert str(parse_arg("-0", "Calc", book)) == "0.0"  # Excel has no negative zero
     assert parse_arg("true", "Calc", book) is True
     assert parse_arg('"x""y"', "Calc", book) == 'x"y'
