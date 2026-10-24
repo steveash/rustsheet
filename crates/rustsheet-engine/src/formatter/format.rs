@@ -1,4 +1,4 @@
-use super::elapsed::{elapsed_text, ElapsedUnit, FractionalSeconds};
+use super::elapsed::{elapsed_text, DisplayClock, ElapsedUnit};
 use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
@@ -21,8 +21,8 @@ use super::{
     lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{
-        is_text_section, numeric_section_count, section_tokens, GeneralPart, ParsePart, Parser,
-        TextToken,
+        is_text_section, numeric_section_count, section_tokens, ErrorPart, GeneralPart, ParsePart,
+        Parser, TextToken,
     },
 };
 
@@ -307,10 +307,20 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     // When you skip code sections in your number format,
     // you must include a semicolon for each of the missing sections of code.
     // You can use the ampersand (&) text operator to join, or concatenate, two values.
+    // Excel: a bare digit beside a date token in any number section rejects the whole code, also
+    // for a number another section formats (`TEXT(3.14159,"0;4b")` is #VALUE!;
+    // probes/text-format-digits-date-token A42, B42).
+    let sections = numeric_section_count(&parts);
+    if parts[..sections]
+        .iter()
+        .any(|part| matches!(part, ParsePart::Error(ErrorPart { whole_code: true })))
+    {
+        return format_error();
+    }
     let mut value = value_original;
     let general = ParsePart::General(GeneralPart {});
     let part;
-    match numeric_section_count(&parts) {
+    match sections {
         // Excel: an empty format shows nothing but a negative's minus, also for a value that
         // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
         // A32-A35).
@@ -402,31 +412,24 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 TextToken::SecondFraction(digits) => Some(*digits),
                 _ => None,
             });
-            // Excel: a fraction of a second over a serial past 9999-12-31 is #VALUE!, elapsed
-            // tokens or not (`TEXT(1234567890,"[mm]:ss.0")`, `"h:mm:ss.00"`; gen-m10
-            // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20, fbdab487cb11409e T!A25). The
-            // same for the other clock tokens is T-1731.
-            if fraction_digits.is_some() && value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0 {
+            // Excel: any token but a lone elapsed one (`[s]`) over a serial past 9999-12-31 is
+            // #VALUE!: `TEXT(1234567890,"h:mm")`, `"[h]:mm"`, `"[mm]:ss.0"` (gen-m10
+            // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20; gen-m5 6a511beadb56b932 Calc!A126).
+            if value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0
+                && !negative_serial_allowed(tokens, DateSystem::Excel1900)
+            {
                 return invalid_date(value_original);
             }
-            let fraction = fraction_digits.and_then(|digits| FractionalSeconds::new(value, digits));
-            let fraction = fraction.as_ref();
-            let (hours, minutes, seconds) = match fraction {
-                Some(fraction) => fraction.clock(),
-                None => {
-                    let time_fract = value.fract();
-                    let hours = (time_fract * 24.0).floor();
-                    let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
-                    let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-                    (hours, minutes, seconds)
-                }
-            };
+            let clock = DisplayClock::new(value, fraction_digits, tokens);
+            let (hours, minutes, seconds) = clock.hms;
+            let elapsed_fraction = clock.elapsed.as_ref();
+            let day_serial = clock.days;
             // Day/month/year and weekday tokens show Excel's exact components (including the
             // fictitious 1900-02-29) and "1900-01-00" (serial 0). In a 1904 workbook they read the
             // 1904 epoch (`TEXT(0,"yyyy-mm-dd")` is "1904-01-01"; dates.md "The 1904 date system");
             // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
             // `date_valid` is false.
-            let serial_1900 = ctx.date_system.to_1900_serial(value as i64).unwrap_or(-1);
+            let serial_1900 = ctx.date_system.to_1900_serial(day_serial).unwrap_or(-1);
             let ymd = excel_serial_to_ymd(serial_1900);
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
@@ -447,11 +450,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         // This is what the TEXT function does
                         text = format!("{text} ");
                     }
-                    TextToken::Spacer(_) => {
-                        // we just leave a whitespace
-                        // This is what the TEXT function does
-                        text = format!("{text} ");
-                    }
+                    // A `*x` fill adds nothing to the text, as Range.text and TEXT show it:
+                    // `TEXT(7,"0*""a")` is "7a", `TEXT(3,"*.0.00")` is "3.00"
+                    // (docs/excel-semantics/number-formats.md; T-1735).
+                    TextToken::Spacer(_) => {}
                     TextToken::Raw => {
                         text = format!("{text}{value}");
                     }
@@ -661,32 +663,36 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = elapsed_text(value, false, ElapsedUnit::Hour, fraction);
+                        let hour = elapsed_text(value, false, ElapsedUnit::Hour, elapsed_fraction);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = elapsed_text(value, true, ElapsedUnit::Hour, fraction);
+                        let hour = elapsed_text(value, true, ElapsedUnit::Hour, elapsed_fraction);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = elapsed_text(value, false, ElapsedUnit::Minute, fraction);
+                        let minute =
+                            elapsed_text(value, false, ElapsedUnit::Minute, elapsed_fraction);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = elapsed_text(value, true, ElapsedUnit::Minute, fraction);
+                        let minute =
+                            elapsed_text(value, true, ElapsedUnit::Minute, elapsed_fraction);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = elapsed_text(value, false, ElapsedUnit::Second, fraction);
+                        let second =
+                            elapsed_text(value, false, ElapsedUnit::Second, elapsed_fraction);
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = elapsed_text(value, true, ElapsedUnit::Second, fraction);
+                        let second =
+                            elapsed_text(value, true, ElapsedUnit::Second, elapsed_fraction);
                         text = format!("{text}{second}");
                     }
                     TextToken::SecondFraction(digits) => {
                         text.push('.');
-                        match fraction {
+                        match elapsed_fraction {
                             Some(fraction) => text.push_str(&fraction.digits_text()),
                             None => text.extend(std::iter::repeat_n('0', *digits)),
                         }
@@ -798,11 +804,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         // This is what the TEXT function does
                         text = format!("{text} ");
                     }
-                    TextToken::Spacer(_) => {
-                        // we just leave a whitespace
-                        // This is what the TEXT function does
-                        text = format!("{text} ");
-                    }
+                    // A `*x` fill adds nothing to the text, as Range.text and TEXT show it:
+                    // `TEXT(7,"0*""a")` is "7a", `TEXT(3,"*.0.00")` is "3.00"
+                    // (docs/excel-semantics/number-formats.md; T-1735).
+                    TextToken::Spacer(_) => {}
                     TextToken::Raw => {
                         text = format!("{text}{value}");
                     }

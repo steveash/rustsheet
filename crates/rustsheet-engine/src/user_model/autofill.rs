@@ -258,6 +258,7 @@ impl UserModel {
                 row,
                 column,
                 new_value: "".to_string(),
+                legacy: false,
                 old_value: Box::new(old_value),
             });
         }
@@ -501,6 +502,7 @@ impl UserModel {
                     row,
                     column,
                     new_value: target_value.to_string(),
+                    legacy: self.model.cell_has_legacy_marker(sheet, row, column)?,
                     old_value: Box::new(old_value),
                 });
 
@@ -676,6 +678,7 @@ impl UserModel {
                     row,
                     column,
                     new_value: target_value.to_string(),
+                    legacy: self.model.cell_has_legacy_marker(sheet, row, column)?,
                     old_value: Box::new(old_value),
                 });
 

@@ -39,3 +39,18 @@ fn test_fn_weibull_dist_smoke() {
     assert_eq!(model._get_text("A8"), *"#NUM!");
     assert_eq!(model._get_text("A9"), *"#NUM!");
 }
+
+#[test]
+fn weibull_density_at_zero_and_boolean_x() {
+    let mut model = new_empty_model();
+    // probes-numeric/t1048-weibull A16, A17, A25 and t1049-weibulldist A27, A33.
+    model._set("A1", "=WEIBULL.DIST(0,1,1,FALSE)");
+    model._set("A2", "=WEIBULL.DIST(0,0.5,1,FALSE)");
+    model._set("A3", "=WEIBULL.DIST(0,1,3,FALSE)");
+    model._set("A4", "=WEIBULL(TRUE,1,1,TRUE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"0");
+    assert_eq!(model._get_text("A4"), *"0.632120559");
+}

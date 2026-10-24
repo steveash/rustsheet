@@ -3,7 +3,7 @@ id: T-2272
 title: "WORKDAY/NETWORKDAYS(.INTL) error order: a date, result or numeric-holiday #NUM! beats a text or boolean holiday's #VALUE!"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -93,10 +93,10 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 58 in eval/baseli
 | gen-m6/fde83d52a9d1fc63 Calc!A181 | `=WORKDAY.INTL(LOOKUP(NETWORKDAYS((-1),45351,Data!B10:D11),Data!E6:E8,Data!B7:B11),INDEX(Data!B1:D9,AVERAGE(...` | "#NUM!" | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] These 58 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite (gen-m6/9615a6de0f3ac417 A188 may wait for T-2273; say so in the Outcome).
-- [ ] A new probes case (excel-graph) holds the order grid; every cell passes or is a filed task named in the Outcome.
-- [ ] dates.md states the order with cells; probes/workday-*, probes/date-text-weekend-3d and probes/workday-serial-zero still pass.
-- [ ] `make check` green; reviewers approve.
+- [x] These 58 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite (gen-m6/9615a6de0f3ac417 A188 may wait for T-2273; say so in the Outcome).
+- [x] A new probes case (excel-graph) holds the order grid; every cell passes or is a filed task named in the Outcome.
+- [x] dates.md states the order with cells; probes/workday-*, probes/date-text-weekend-3d and probes/workday-serial-zero still pass.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Blank and number-text holiday cells (T-2270).
@@ -104,3 +104,19 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 58 in eval/baseli
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+Probe probes/workday-holidays-error-order (excel-graph, 536 formula cells, 541 checked: twelve holidays shapes against 36 call shapes, plus
+column Q) fixed the order, recorded in dates.md "WORKDAY and NETWORKDAYS holidays: blank and number-text cells, and the
+error order". WORKDAY(.INTL): start (type, range), days (type), days 0 is the start, `#NUM!` when start + days is off the
+calendar, a single non-number holiday, the weekend, the other holidays errors (first bad one in reading order), then a walk
+off the calendar. NETWORKDAYS(.INTL): weekend, start (type, range), end (type, range), holidays. Implemented in
+`workday_of`, `networkdays_of` and `holiday_serials` (`HolidaysError::before_weekend`); the holidays' date-range check
+moved into `holiday_serials` so the first bad holiday decides. A fractional weekend number now truncates (dates.md
+"weekend number coercion"): without it gen-m6/e3a562557696e2fc A385 regressed, its 1.25 weekend no longer masked by the
+holidays' `#VALUE!`; that is T-2271's first criterion, its blank-cell and boolean parts stay open.
+T-1954's order question is answered (row 15, column E: `#N/A`); its legacy-control criterion stays open.
+Eval delta (after merging main, T-2273 included): gen-m6 known failures 102 -> 46, 56 fixed here. All 58 of this task's
+cells now pass (A188 since T-2273 landed; a few others were already fixed on main), plus T-2271's fraction cells
+121a7c17092038d9 A308, 1a404a0379a1372c A62, 870c5e38f51ce5d4 A125, c93ea588c271840e A31, c96ac1ada46179c4 A287,
+d1a403971712513c A217, ee56a4ed5a612a0d A186. The new probe passes in full; no regressions.

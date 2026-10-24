@@ -8,9 +8,9 @@
 //! (or quits, on a Unicode word boundary) runs on a `PikeVM` instead, over only the span a scan of
 //! the NFA's states shows it needs, charged the states that scan visits (`regex_reach`, T-1829).
 //! Capture groups are resolved by the `PikeVM` over the match alone, as the `regex` crate does.
-//! Patterns arrive as a `Hir` from our PCRE2 parser (`pcre`, SPEC-0013); matches follow the
-//! `regex` crate: leftmost-first semantics and UTF-8 empty-match rules (all from
-//! `regex_automata`, which `regex` is built on).
+//! Patterns arrive as a `Hir` from our PCRE2 parser (`pcre`, SPEC-0013); each search is
+//! leftmost-first, as the `regex` crate's (all from `regex_automata`, which `regex` is built
+//! on), and `regex_search` iterates them by PCRE2's rule.
 //!
 //! Costs are in units of about a nanosecond of a release build, measured for T-1272:
 //! `a[ab]{100}c|b[ab]{100}c` (210 states) on a `PikeVM` costs about 4.2 ns a state-byte; lazy DFA
@@ -30,8 +30,8 @@ use regex_automata::{
         pikevm::{Cache as PikeCache, PikeVM},
         WhichCaptures, NFA,
     },
-    util::{captures::Captures, iter::Searcher},
-    Anchored, Input, Match, MatchError, MatchKind, PatternID,
+    util::captures::{Captures, GroupInfo},
+    Anchored, Input, Match, MatchKind,
 };
 use regex_syntax::hir::Hir;
 
@@ -76,12 +76,37 @@ const SPARSE_TRANSITION: u64 = 3;
 /// search a character.
 const SEARCH: u64 = 64;
 
+/// The size limits a pattern is compiled under, smallest first. A pattern is compiled under the
+/// next one only when it is too big for the one before; the last is the regex crate's default,
+/// so every pattern that compiled before T-1272 still compiles. Compile time grows with the
+/// limit: in a release build the largest patterns the last admits take 70-90 ms to compile
+/// (`\w{200}`), a failed attempt about as long as its limit admits.
+const SIZE_LIMITS: [usize; 5] = [1 << 16, 1 << 18, 1 << 20, 4 << 20, 10 << 20];
+
 /// Why a pattern did not compile.
 pub(super) enum BuildFailure {
     /// Too big for the size limit it was compiled under.
     TooBig,
     /// Not a valid pattern.
     Invalid,
+}
+
+/// What `build` builds under the smallest of [`SIZE_LIMITS`] it fits, each attempt charged its
+/// limit from the call's compile `budget`: `None` when it is invalid or too big for every limit,
+/// spent once the budget is.
+pub(super) fn within_size_limits<T>(
+    budget: &mut usize,
+    mut build: impl FnMut(usize) -> Result<T, BuildFailure>,
+) -> Result<Option<T>, Spent> {
+    for limit in SIZE_LIMITS {
+        *budget = budget.checked_sub(limit).ok_or(Spent)?;
+        match build(limit) {
+            Ok(built) => return Ok(Some(built)),
+            Err(BuildFailure::TooBig) => {}
+            Err(BuildFailure::Invalid) => break,
+        }
+    }
+    Ok(None)
 }
 
 /// The work a call has left, in the units above; spent once a charge does not fit.
@@ -176,22 +201,9 @@ impl Engine {
         }
     }
 
-    /// Captures for one match of this pattern.
-    pub(super) fn create_captures(&self) -> Captures {
-        self.pike.create_captures()
-    }
-
-    /// The index of the capture group named `name`.
-    pub(super) fn group_index(&self, name: &str) -> Option<usize> {
-        self.pike
-            .get_nfa()
-            .group_info()
-            .to_index(PatternID::ZERO, name)
-    }
-
-    /// The number of capture groups of this pattern, the whole match (group 0) included.
-    pub(super) fn group_len(&self) -> usize {
-        self.pike.get_nfa().group_info().group_len(PatternID::ZERO)
+    /// The pattern's capture groups, the whole match (group 0) included.
+    pub(super) fn group_info(&self) -> &GroupInfo {
+        self.pike.get_nfa().group_info()
     }
 
     /// The heap memory the pattern and `caches` hold.
@@ -235,13 +247,13 @@ fn dfa_work(before: (usize, usize, usize), after: (usize, usize, usize)) -> u64 
 }
 
 /// Searches with one [`Engine`], charging each against the work left.
-pub(super) struct Search<'a> {
+pub(super) struct EngineSearch<'a> {
     pub(super) engine: &'a Engine,
     pub(super) caches: &'a mut Caches,
     pub(super) work: &'a mut u64,
 }
 
-impl Search<'_> {
+impl EngineSearch<'_> {
     /// Charges a `PikeVM` search over `len` bytes.
     fn charge_pike(&mut self, len: usize) -> Result<(), Spent> {
         let len = to_u64(len);
@@ -333,43 +345,9 @@ impl Search<'_> {
         self.capture(&Input::new(text), m, caps)
     }
 
-    /// Calls `each` with every successive non-overlapping match in `text`.
-    pub(super) fn for_each_match(
-        &mut self,
-        text: &str,
-        mut each: impl FnMut(Match),
-    ) -> Result<(), Spent> {
-        let mut searcher = Searcher::new(Input::new(text));
-        while let Some(m) = self.advance(&mut searcher)? {
-            each(m);
-        }
-        Ok(())
-    }
-
-    /// Calls `each` with the groups of every successive non-overlapping match in `text`.
-    pub(super) fn for_each_captures(
-        &mut self,
-        text: &str,
-        caps: &mut Captures,
-        mut each: impl FnMut(&Captures),
-    ) -> Result<(), Spent> {
-        let mut searcher = Searcher::new(Input::new(text));
-        while let Some(m) = self.advance(&mut searcher)? {
-            self.capture(searcher.input(), m, caps)?;
-            each(caps);
-        }
-        Ok(())
-    }
-
-    /// The next match of `searcher`, which keeps the `regex` crate's rule that an empty match
-    /// may not end where the previous match did.
-    fn advance(&mut self, searcher: &mut Searcher<'_>) -> Result<Option<Match>, Spent> {
-        // `find_in` fails only when the work is spent, which the closure's error stands for.
-        searcher
-            .try_advance(|input| {
-                self.find_in(input)
-                    .map_err(|Spent| MatchError::gave_up(input.start()))
-            })
-            .map_err(|_| Spent)
+    /// The leftmost-first match in `text` that starts at or after `from`, a character boundary;
+    /// the text before it still counts for look-behind assertions.
+    pub(super) fn find_from(&mut self, text: &str, from: usize) -> Result<Option<Match>, Spent> {
+        self.find_in(&Input::new(text).span(from..text.len()))
     }
 }

@@ -1,3 +1,4 @@
+use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
 use crate::expressions::parser::{ExpectedTokens, NamedVariable, Node, Parser};
 use crate::expressions::token::TokenType;
 use crate::functions::logical::has_duplicate_parameter;
@@ -23,9 +24,9 @@ impl Parser {
 
         let mut parameters = Vec::new();
         // The parameters are in scope up to the LAMBDA's `)`.
-        let scope = self.dotted_bound_names.len();
+        let scope = self.reference_shaped_names.len();
         let def = self.parse_lambda_items(&arg_separator, &mut parameters);
-        self.dotted_bound_names.truncate(scope);
+        self.reference_shaped_names.truncate(scope);
         let body = match def {
             Ok(body) => body,
             Err(error) => return error,
@@ -80,8 +81,35 @@ impl Parser {
     }
 
     /// `callee(args)`, at the `(` that opens the arguments: a call of whatever `callee`
-    /// evaluates to. Its depth is covered by the operand's own ([`Parser::parse_primary`]).
+    /// evaluates to, then of what it returns ([`Parser::chain_calls`]). Its depth is covered by
+    /// the operand's own ([`Parser::parse_primary`]).
     pub(super) fn parse_call(&mut self, callee: Node) -> Node {
+        let node = self.parse_one_call(callee);
+        self.chain_calls(node)
+    }
+
+    /// `call(args)...`: what the call `node` returns, called again while another `(` follows
+    /// with no space. `LAMBDA(a,LAMBDA(b,a*b))(3)(4)` and `LET(f,LAMBDA(a,LAMBDA(b,a*b)),f(3)(4))`
+    /// are 12, and a returned value is called like a LET-bound one (`LAMBDA(x,x)(1)(2)` is
+    /// `#NAME?`), probes/lambda-escaping-closures H8, H10 and probes/chained-calls-* (T-2038).
+    /// Each chained call adds a level to the operand's depth, so a chain is bounded like nesting.
+    pub(super) fn chain_calls(&mut self, mut node: Node) -> Node {
+        while !matches!(node, Node::ParseErrorKind { .. })
+            && !self.lexer.whitespace_follows()
+            && self.lexer.peek_token() == TokenType::LeftParenthesis
+        {
+            node = self.parse_one_call(node);
+            // The call sits over the previous one and its own arguments.
+            self.inner_depth += 1;
+            if self.inner_depth + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
+                return self.too_deep();
+            }
+        }
+        node
+    }
+
+    /// One `callee(args)`, at its `(`.
+    fn parse_one_call(&mut self, callee: Node) -> Node {
         self.lexer.advance_token(); // consume '('
         let call_args = match self.parse_function_args("LAMBDA") {
             Ok(args) => args,
@@ -126,7 +154,9 @@ impl Parser {
             }
 
             let token = self.lexer.peek_token();
+            let start = self.lexer.get_position_index();
             let mut expr = self.parse_enclosed_expr();
+            let text = self.lexer.source_since(start);
             if let Node::ParseErrorKind { .. } = expr {
                 return Err(expr);
             }
@@ -147,7 +177,7 @@ impl Parser {
                 // This item must be a parameter name.
                 self.lexer.advance_token();
                 arg_index += 1;
-                expr = self.bind_dotted_name(&token, expr);
+                expr = self.bind_reference_shaped_name(&token, &text, expr);
                 match expr {
                     Node::NamedVariableKind { name, id } => {
                         // xlop: Excel Optional Parameter.

@@ -9,6 +9,9 @@ use super::{
     class::{class_of, is_extended_space, posix_class_text, BLANK},
 };
 
+mod close;
+use close::{alternation, close, concat};
+
 /// The deepest a pattern may nest: groups, brackets and stacked quantifiers each count one
 /// level. PCRE2's default parentheses nest limit; T-1972 probes Excel's.
 pub(super) const NEST_LIMIT: u32 = 250;
@@ -273,7 +276,7 @@ impl Parser {
         let mut stack = vec![ast];
         while let Some(ast) = stack.pop() {
             let reference = match ast {
-                Ast::Backref(reference)
+                Ast::Backref { reference, .. }
                 | Ast::Conditional {
                     condition: Condition::Group(reference),
                     ..
@@ -304,25 +307,7 @@ impl Parser {
                     return Err(Invalid);
                 }
             }
-            match ast {
-                Ast::Capture { ast, .. }
-                | Ast::Repeat { ast, .. }
-                | Ast::LookAround { ast, .. }
-                | Ast::Atomic(ast) => stack.push(ast),
-                Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
-                Ast::Conditional { yes, no, .. } => {
-                    stack.push(yes);
-                    stack.push(no);
-                }
-                Ast::Empty
-                | Ast::Literal { .. }
-                | Ast::Class(_)
-                | Ast::Dot { .. }
-                | Ast::Anchor(_)
-                | Ast::Backref(_)
-                | Ast::KeepOut
-                | Ast::Unimplemented => {}
-            }
+            ast.push_children(&mut stack);
         }
         Ok(())
     }
@@ -473,8 +458,21 @@ impl Parser {
                 } else if self.eat('\'') {
                     Reference::Name(self.name('\'')?)
                 } else {
-                    // Assertion conditions, recursion (`R`) and `DEFINE` are left to T-1900.
-                    return Err(Invalid);
+                    // An assertion condition is read as the group's first item, a lookaround
+                    // that `close` takes out again; recursion (`R`) and `DEFINE` stay invalid
+                    // (SPEC-0013 rollout step 6).
+                    let open = self.pos - 1;
+                    let assertion = self.eat('?')
+                        && (self.eat('=')
+                            || self.eat('!')
+                            || (self.eat('<') && (self.eat('=') || self.eat('!'))));
+                    if !assertion {
+                        return Err(Invalid);
+                    }
+                    self.pos = open;
+                    return Ok(frame(GroupKind::Conditional(Condition::Assert(Box::new(
+                        Ast::Empty,
+                    )))));
                 };
                 self.expect(')')?;
                 Ok(frame(GroupKind::Conditional(Condition::Group(reference))))
@@ -587,10 +585,14 @@ impl Parser {
             'Z' => return node(Ast::Anchor(Anchor::EndOrFinalLf)),
             'G' => return node(Ast::Anchor(Anchor::SearchStart)),
             'K' => return node(Ast::KeepOut),
-            'R' | 'X' => return node(Ast::Unimplemented),
+            'R' => return node(Ast::line_break()),
+            'X' => return node(Ast::Grapheme),
             'Q' => Escape::Quote,
             'E' => Escape::Nothing,
-            'g' => return node(Ast::Backref(self.g_reference()?)),
+            'g' => {
+                let reference = self.g_reference()?;
+                return node(self.backref(reference));
+            }
             'k' => {
                 let close = match self.next()? {
                     '<' => '>',
@@ -598,14 +600,15 @@ impl Parser {
                     '{' => '}',
                     _ => return Err(Invalid),
                 };
-                return node(Ast::Backref(Reference::Name(self.name(close)?)));
+                let name = self.name(close)?;
+                return node(self.backref(Reference::Name(name)));
             }
             '1'..='9' => {
                 // A backreference (PCRE2 reads `\12` as octal when there are fewer groups; such
-                // a pattern stays #VALUE! until T-1900, as every backreference does).
+                // a pattern stays #VALUE!, as a reference to a missing group).
                 self.pos -= 1;
                 let number = self.number()?.ok_or(Invalid)?;
-                return node(Ast::Backref(Reference::Number(number)));
+                return node(self.backref(Reference::Number(number)));
             }
             'a' => Escape::Char('\u{7}'),
             'e' => Escape::Char('\u{1B}'),
@@ -682,6 +685,14 @@ impl Parser {
             return Err(Invalid);
         }
         char::from_u32(value).ok_or(Invalid)
+    }
+
+    /// A backreference to `reference`, ignoring case where the flags do.
+    fn backref(&self, reference: Reference) -> Ast {
+        Ast::Backref {
+            reference,
+            fold: self.flags.caseless,
+        }
     }
 
     /// `\g` followed by `n`, `{n}`, `{-n}`, `-n`, `+n` or `{name}`, after the `g`. Relative
@@ -927,64 +938,4 @@ impl Parser {
         }
         Ok(Some(class))
     }
-}
-
-/// The items of one alternative as a node, and its depth.
-fn concat(mut items: Vec<(Ast, u32)>) -> (Ast, u32) {
-    let depth = items.iter().map(|(_, d)| *d).max().unwrap_or(0);
-    let ast = match items.len() {
-        0 => Ast::Empty,
-        1 => items.pop().map_or(Ast::Empty, |(ast, _)| ast),
-        _ => Ast::Concat(items.into_iter().map(|(ast, _)| ast).collect()),
-    };
-    (ast, depth)
-}
-
-/// The alternatives of a group, the last one's `items` included, as a node and its depth.
-fn alternation(mut alternatives: Vec<(Ast, u32)>, items: Vec<(Ast, u32)>) -> (Ast, u32) {
-    let last = concat(items);
-    if alternatives.is_empty() {
-        return last;
-    }
-    alternatives.push(last);
-    let depth = alternatives.iter().map(|(_, d)| *d).max().unwrap_or(0);
-    let ast = Ast::Alternation(alternatives.into_iter().map(|(ast, _)| ast).collect());
-    (ast, depth)
-}
-
-/// The node a closed group becomes, one level deeper than its contents.
-fn close(frame: Frame) -> Result<(Ast, u32), Invalid> {
-    let alternatives = frame.alternatives.len() + 1;
-    let (ast, depth) = alternation(frame.alternatives, frame.items);
-    let depth = depth + 1;
-    if depth > NEST_LIMIT {
-        return Err(Invalid);
-    }
-    let ast = Box::new(ast);
-    let ast = match frame.kind {
-        GroupKind::Root => return Err(Invalid),
-        GroupKind::Capture { index, name } => Ast::Capture { index, name, ast },
-        GroupKind::NonCapture => *ast,
-        GroupKind::LookAround(kind) => Ast::LookAround { kind, ast },
-        GroupKind::Atomic => Ast::Atomic(ast),
-        GroupKind::Conditional(condition) => {
-            if alternatives > 2 {
-                return Err(Invalid);
-            }
-            let (yes, no) = match *ast {
-                Ast::Alternation(mut both) if alternatives == 2 => {
-                    let no = both.pop().ok_or(Invalid)?;
-                    let yes = both.pop().ok_or(Invalid)?;
-                    (yes, no)
-                }
-                yes => (yes, Ast::Empty),
-            };
-            Ast::Conditional {
-                condition,
-                yes: Box::new(yes),
-                no: Box::new(no),
-            }
-        }
-    };
-    Ok((ast, depth))
 }

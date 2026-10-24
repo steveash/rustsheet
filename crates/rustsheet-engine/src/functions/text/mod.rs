@@ -15,6 +15,7 @@ mod regex_engine;
 mod regex_functions;
 mod regex_reach;
 mod regex_replacement;
+mod regex_search;
 mod string_format;
 mod t_function;
 mod text_kernel;

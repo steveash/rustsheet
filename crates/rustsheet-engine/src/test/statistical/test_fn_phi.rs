@@ -24,3 +24,14 @@ fn test_fn_phi_smoke() {
     assert_eq!(model._get_text("A4"), *"#ERROR!");
     assert_eq!(model._get_text("A5"), *"#ERROR!");
 }
+
+#[test]
+fn phi_reads_a_boolean_as_a_number() {
+    let mut model = new_empty_model();
+    // probes-numeric/t1049-phi A32, A33.
+    model._set("A1", "=PHI(TRUE)");
+    model._set("A2", "=PHI(FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0.241970725");
+    assert_eq!(model._get_text("A2"), *"0.39894228");
+}

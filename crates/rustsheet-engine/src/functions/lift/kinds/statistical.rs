@@ -68,13 +68,16 @@ const BINOM_INV_WEIGHT: u32 = 1 << 12;
 ///
 /// What one BETA.INV or F.INV element is charged. Its quantile is the capped port of statrs'
 /// inversion (`statistical/inverse_beta.rs`: at most 512 Newton steps of one cdf and 4,096 step
-/// adjustments, its own per-call cap: 1.6 ms at full cost) or a bisection of at most 1,100 cdfs
-/// (BETA.INV, `special::bisect_unit_interval`: 3.4 ms) or 1,301 (F.INV at a df of 1E5 or more,
-/// `special::bisect_increasing`'s 1,100 doublings and 200 halvings: 4.0 ms, the bound). The weight
-/// caps a lifted call at 2^27 / 2^18 = 512 elements: 2.1 s at the bound (a DEVIATION,
+/// adjustments, its own per-call cap: 1.6 ms at full cost), for F.INV refined to the crossing of
+/// the T-0970 incomplete beta (`special::refine_increasing`: at most 129 of its cdfs, each at most
+/// two continued fractions of 300 steps, about twice statrs' cost: 0.9 ms more; T-0974), or, at a
+/// huge shape or df, a crossing of at most 67 of those cdfs (`inverse_beta::beta_quantile_crossing`,
+/// T-1538: 0.5 ms), so the full Newton search plus refinement (2.5 ms) is the bound.
+/// The weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.7 s at the bound (a DEVIATION,
 /// statistics.md). The cases measured cost much less (over 8,192 elements in release: 167 us for
 /// `BETA.INV(1E-300,0.5,1E6)`, a full bisection of fast cdfs; 105 us for the longest Newton search
-/// seen, 377 steps, `F.INV(3.718810279553989E-162,4532,43)`; 1 to 2 us for `BETA.INV(0.4,2,3)`).
+/// seen before T-0974, 377 steps, `F.INV(3.718810279553989E-162,4532,43)`; 1 to 2 us for
+/// `BETA.INV(0.4,2,3)`).
 const QUANTILE_WEIGHT: u32 = 1 << 18;
 /// `BETA.INV(probability, alpha, beta, [A], [B])` and BETAINV.
 const BETA_INV: ArgKinds = ArgKinds::fixed(
@@ -101,15 +104,16 @@ const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(
 // --- Incomplete gamma (T-1872) --------------------------------------------------------------
 /// What one GAMMA.DIST, GAMMA.INV, CHISQ.* or POISSON element is charged. Each runs one capped
 /// port of statrs' incomplete gamma (`statistical/incomplete_gamma.rs`): a cdf of at most 2^19
-/// series or continued-fraction terms, or an inversion whose cdfs (at most about 2,120 of them:
-/// 1,075 halvings, 1,025 doublings, 8 bisections, 4 Newton steps) share one budget of 2^19
+/// series or continued-fraction terms, or an inversion whose cdfs (at most about 2,250 of them:
+/// 1,075 halvings, 1,025 doublings, 8 bisections, 4 Newton steps, then for GAMMA.INV and
+/// CHISQ.INV* one check and at most 129 more of a refinement, T-1634) share one budget of 2^19
 /// terms. Measured in release (T-1872, load 2 to 5 on 4 cores) over 512 elements at the cap: a
 /// continued-fraction term costs 4.1 to 4.7 ns on its NaN path (2.4 ms for 2^19,
 /// `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, whose terms overflow at once) and 2.4 ns where it
 /// converges and rescales (1.3 ms, `GAMMA.DIST(1000000000000001,1E15,1,TRUE)`, which reaches the
 /// cap at a shape of 1E15 and rescales on about 65% of its terms), a series term 2.5 ns (1.3 ms,
 /// `GAMMA.DIST(1E12,1E12,1,TRUE)`), and a cdf's own work 49 ns (`GAMMA.INV(1E-300,0.001,1E-300)`,
-/// 1,060 cdfs: 52 us). The bound of an element is 2^19 terms at the slowest, 4.7 ns, plus 2,120 cdfs
+/// 1,060 cdfs: 52 us). The bound of an element is 2^19 terms at the slowest, 4.7 ns, plus 2,250 cdfs
 /// at 49 ns, about 2.6 ms, so the weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.3 s
 /// at the bound (a DEVIATION, statistics.md). Measured cases cost less: 2.4 ms for the
 /// continued fraction at the cap, 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)` (481,117 terms),
@@ -132,10 +136,16 @@ const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
 
 // --- Hypergeometric (T-1873) ----------------------------------------------------------------
 /// One HYPGEOM.DIST element: its capped cdf's bound, (2^18 + 131) terms at 250 ns, about 66 ms, so
-/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`).
+/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`). A cdf
+/// or pmf takes either the double-double walk (at most 78 us, T-0977) or that sum, never both.
 const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
 const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_DIST_WEIGHT));
-const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Constant);
+/// One HYPGEOMDIST element: its pmf walk (`statistical/discrete.rs`, T-0977) of at most 2^12
+/// double-double steps, 78 us in release at 4,095 steps, twice BINOM.DIST's walk, so twice its
+/// weight: 16,384 elements a lifted call, about 1.3 s. Past the walk's budget the pmf is statrs'
+/// closed form.
+const HYPGEOMDIST_WEIGHT: u32 = 1 << 13;
+const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Weighted(HYPGEOMDIST_WEIGHT));
 // --- End hypergeometric (T-1873) ------------------------------------------------------------
 
 /// `DSUM(database, field, criteria)` and the other D-functions: the database is read whole, `field`

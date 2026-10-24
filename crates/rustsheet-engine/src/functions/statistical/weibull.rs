@@ -27,12 +27,19 @@ impl Model {
         let [x, alpha, beta, cumulative] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let x = self.cast_number_no_bools_ref(x, cell)?;
+        // A TRUE x is 1: WEIBULL(TRUE,1,1,TRUE) = 0.6321205588285577 (probes-numeric/t1048-weibull
+        // A25, t1049-weibulldist A33).
+        let x = self.cast_number_ref(x, cell)?;
         let alpha = self.cast_number_no_bools_ref(alpha, cell)?;
         let beta = self.cast_number_no_bools_ref(beta, cell)?;
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
         if x < 0.0 || alpha <= 0.0 || beta <= 0.0 {
             return Err(num_error(cell));
+        }
+        // The density at x = 0 is 0 for every shape (t1048-weibull A16, A17; t1049-weibulldist
+        // A27, A28).
+        if x == 0.0 && !cumulative {
+            return Ok(0.0);
         }
         // statrs::Weibull: shape = k (alpha), scale = lambda (beta)
         let dist = Weibull::new(alpha, beta).map_err(|_| num_error(cell))?;

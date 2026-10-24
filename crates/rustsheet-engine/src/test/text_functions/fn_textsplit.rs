@@ -335,3 +335,43 @@ fn lift_guesses_settled() {
     assert_eq!(model._get_text("A6"), *"#VALUE!");
     assert_eq!(model._get_text("A7"), *"{\"a \",\" b\"}");
 }
+
+// T-2315: an error ignore_empty or match_mode beats TEXTSPLIT's own #VALUE! for a blank delimiter
+// or empty text and an error element of a delimiter list; an array pad_with is #VALUE! per
+// element after an error text; a split whose every piece ignore_empty drops is #CALC!
+// (gen-m7 90de8755a2e565e6 A1643, ac67253061bba16a A184, f7e94a817e5385ac A2186,
+// 07d27aa0add0247f A768; probes/textsplit-error-order; docs/excel-semantics/text.md
+// "TEXTSPLIT: argument errors first, an all-empty result").
+#[test]
+fn argument_errors_first_and_an_all_empty_result() {
+    let mut model = new_empty_model();
+    // Z1 is blank: an empty delimiter.
+    model._set("A1", "=TEXTSPLIT(\"ABC\",Z1,\",\",-1,1/0)");
+    model._set("A2", "=TEXTSPLIT(\"\",\"-\",Z1,NA())");
+    model._set("A3", "=TEXTSPLIT(\"ABC\",Z1)");
+    model._set("A4", "=TEXTSPLIT(\"100\",{\"1.005\",\"100\"},\"a\",TRUE)");
+    model._set("A5", "=TEXTSPLIT({\"x\";\"y,z\"},\",\",,,,{1,2})");
+    model._set("A7", "=TEXTSPLIT({\"a,b\"}&NA(),\",\",,,,{1,2})");
+    model._set("A8", "=TEXTSPLIT(\"a,,b\",\",\",,TRUE)");
+    // A delimiter that is an error comes first, an error element of a list after ignore_empty
+    // (probes/textsplit-error-order A1, A3).
+    model._set("A9", "=TEXTSPLIT(\"abc\",\",\",NA(),1/0)");
+    model._set("A10", "=TEXTSPLIT(\"abc\",{\",\",#N/A},,1/0)");
+    model._set("A11", "=TEXTSPLIT(\"abc\",\",\",,\"x\",NA())");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"#CALC!");
+    // The array pad_with does not lift: the 2x1 text lifts, each element #VALUE! (A6 is A5's
+    // spill, B5 stays empty).
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A6"), *"#VALUE!");
+    assert_eq!(model._get_text("B5"), *"");
+    assert_eq!(model._get_text("A7"), *"#N/A");
+    assert_eq!(model._get_text("A8"), *"a");
+    assert_eq!(model._get_text("B8"), *"b");
+    assert_eq!(model._get_text("A9"), *"#N/A");
+    assert_eq!(model._get_text("A10"), *"#DIV/0!");
+    assert_eq!(model._get_text("A11"), *"#VALUE!");
+}

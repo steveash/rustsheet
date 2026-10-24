@@ -1,0 +1,24 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Chained call probe 3 (T-2038): `=(A1)(1)(2)`, a call of a called reference or of a built-in function's result. Sheet1 A1:A3 = 1,2,3.",
+  "tags": [
+    "M7",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "=(A1)(1)(2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!B1"
+  ]
+}

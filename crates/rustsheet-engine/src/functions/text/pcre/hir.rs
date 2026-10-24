@@ -1,35 +1,36 @@
 //! A regular [`Ast`] as a `regex_syntax` [`Hir`], for the automata of `regex_engine`
 //! (SPEC-0013 section 2).
 
-use regex_syntax::hir::{
-    Capture, Class, ClassUnicode, ClassUnicodeRange, Dot, Hir, Look, Repetition,
-};
+use regex_syntax::hir::{Capture, Class, Dot, Hir, Look, Repetition};
 
 use super::{
     ast::{Anchor, Ast, RepeatKind},
+    class::literal_class,
     parse::Invalid,
 };
 
-/// How `$` and `\Z` translate: at the end, or also before a final `\n`.
+/// Which texts a pattern is compiled for, as `$` and `\Z` (at the end or before a final `\n`)
+/// read on them (SPEC-0013 section 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::functions::text) enum FinalLf {
-    /// `Look::End`: exact on a text with no `\n`, and today's gap on one holding a `\n` before
-    /// its last character (the backtracker's memoized mode closes it, T-1900).
+    /// Texts that hold a `\n` but do not end in one: `$` is `Look::End`, exact there.
     End,
-    /// `Look::EndLF`: exact on a text whose only `\n` is its last character.
+    /// Texts whose only `\n`, if any, is the last character: `$` is `Look::EndLF` (the end, or
+    /// before a `\n`), exact there.
     EndLf,
+    /// Texts with a `\n` before the last character, where no `Look` is exact: a regular pattern
+    /// with `$` or `\Z` runs on the backtracker's memoized mode (T-2355).
+    InnerLf,
 }
 
-/// `ast` as a `Hir`; `Invalid` for a construct only the backtracker runs. The recursion is
-/// bounded by the parser's nest limit.
+/// `ast` as a `Hir`, `$` and `\Z` read for `final_lf` texts ([`FinalLf::InnerLf`] reads as
+/// `EndLf`: `translate` sends a pattern holding them to the backtracker there); `Invalid` for a
+/// construct only the backtracker runs. The recursion is bounded by the parser's nest limit.
 pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
     Ok(match ast {
         Ast::Empty => Hir::empty(),
         Ast::Literal { c, fold } => {
-            let mut class = ClassUnicode::new([ClassUnicodeRange::new(*c, *c)]);
-            if *fold {
-                class.case_fold_simple();
-            }
+            let class = literal_class(*c, *fold);
             match class.literal() {
                 Some(bytes) => Hir::literal(bytes),
                 None => Hir::class(Class::Unicode(class)),
@@ -48,7 +49,7 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
             Anchor::End => Look::End,
             Anchor::EndOrFinalLf => match final_lf {
                 FinalLf::End => Look::End,
-                FinalLf::EndLf => Look::EndLF,
+                FinalLf::EndLf | FinalLf::InnerLf => Look::EndLF,
             },
             Anchor::WordBoundary => Look::WordUnicode,
             Anchor::NotWordBoundary => Look::WordUnicodeNegate,
@@ -87,11 +88,11 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
                 sub: Box::new(to_hir(ast, final_lf)?),
             })
         }
-        Ast::Backref(_)
+        Ast::Backref { .. }
         | Ast::LookAround { .. }
         | Ast::Atomic(_)
         | Ast::Conditional { .. }
         | Ast::KeepOut
-        | Ast::Unimplemented => return Err(Invalid),
+        | Ast::Grapheme => return Err(Invalid),
     })
 }

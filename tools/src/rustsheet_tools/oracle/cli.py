@@ -30,7 +30,7 @@ from rustsheet_tools import repo_root
 from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo
 from rustsheet_tools.oracle.calibrate import calibrate, to_markdown
 from rustsheet_tools.oracle.canary import checked_values, embed_canary
-from rustsheet_tools.snapshot import compare_workbooks, formula_values, snapshot, suite_cases
+from rustsheet_tools.snapshot import compare_workbooks, formula_values, is_undecoded, snapshot, suite_cases
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 GOLDEN_BACKENDS = {"excel-graph", "excel-desktop"}
@@ -157,7 +157,7 @@ def cmd_fill(args: argparse.Namespace) -> int:
         }
         if info.texts:  # displayed text of the cells the case lists in `text` (T-1610)
             oracle["text"] = info.texts
-        _drop_undecoded(case, values)
+        _report_undecoded(case, values)
         if spec:
             _report_hand_disagreements(case, spec, values)
         sidecar.parent.mkdir(parents=True, exist_ok=True)
@@ -202,7 +202,7 @@ def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[st
     for key, hand in spec.get("expected", {}).items():
         sheet, a1 = _split_cell_key(key)
         got = values.get(sheet, {}).get(a1)
-        if got is not None and got != hand:
+        if got is not None and not is_undecoded(got) and got != hand:
             print(f"NOTE {case.name} {key}: hand={hand} excel={got} (oracle wins)", file=sys.stderr)
 
 
@@ -231,20 +231,17 @@ def _drop_varying_invariants(
             del values[sheet][a1]
 
 
-# Same string as UNDECODED_RICH_ERROR in crates/rustsheet-eval/src/xlsx_snapshot.rs.
-UNDECODED = {"t": "e", "v": "#UNDECODED!"}
-
-
-def _drop_undecoded(case: Path, values: dict[str, dict[str, Any]]) -> None:
-    """Leaves pending the cells whose rich-value error the harness cannot decode yet: a golden
-    must hold the error Excel produced, never a guess (T-0203 review: errorType 10)."""
+def _report_undecoded(case: Path, values: dict[str, dict[str, Any]]) -> None:
+    """Names the cells whose rich-value error the harness cannot decode yet. They stay in the
+    sidecar as the `UNDECODED` marker, which the runner never scores: a golden must hold the error
+    Excel produced, never a guess (T-0203 review: errorType 10), and a spill member missing from
+    the sidecar would be scored as an expected blank (T-2397)."""
     for sheet, cells in values.items():
-        for a1 in [a for a, v in cells.items() if v == UNDECODED]:
+        for a1 in [a for a, v in cells.items() if is_undecoded(v)]:
             print(
                 f"UNDECODED {case.name} {sheet}!{a1}: rich-value error type unknown (left pending)",
                 file=sys.stderr,
             )
-            del cells[a1]
 
 
 def _materially_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:

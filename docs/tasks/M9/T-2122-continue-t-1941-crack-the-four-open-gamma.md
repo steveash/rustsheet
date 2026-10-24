@@ -61,6 +61,25 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
 > - when a kernel goes bit-exact (≥ 99.9% with only documented x87 near-ties), update `gamma_kernels.rs` (a new engine task) and
 >   `docs/excel-semantics/statistics.md`.
 
+## Progress
+- Run 1 (2026-10-22, one opus worker without sub-sessions): HANDOFF2 section 13. It filled every probe left from the
+  pause and added K2 micro-ladders (20 cases) and K3 rungs 27-30 (48 cases). K3's true offsets are ~1e10 ulps: the
+  slopes were aliased twice, the 12-anchor KMAX=30 ladder is validated by a 1e10 control, and the real joint solve
+  still needs the N6-first conditional solve (13.4). K2's per-run c3 is a sawtooth, and every single-op linear law is
+  refuted (13.3). K1 and (1.5,2] were not reached. Pick up from HANDOFF2 13.4 / 13.3 on the research branch.
+- Run 2 (2026-10-22, one opus worker, ~40 min, K3 only): HANDOFF2 section 14, `t2122/k3_n6first.py`. N6 is one
+  smooth law at 8 of 9 anchors (0.9517 aliased by about 2^28). Anchors a-f alone are fully consistent under a joint
+  N6+N7 fit: rms 2.4e4 cycles/x, head move N7 +4.0e8, N8 -4.61e10, N9 +3.50e12 ulps. The g-l anchors pull N7 by
+  about 2e8 ulps. The joint fit fails its planted control (no alias freedom on N6 rows), so fix it first (14.2 step
+  1), then score the a-f head move on rows6 (14.2 step 2). No oracle cases were added.
+
+Worksheet cells K3 owns (moved from T-0973, 2026-10-23; known failures in `eval/baseline/gen-m9.txt`, ulp-level): gen-m9
+`GAMMALN.PRECISE` at 40425341c5034eed Calc!A115 (x = 1.0014973824124909), 8f2ac25945af87da A97 (0.8172501166257935),
+b6593d7dd13f2dac A124 (0.9999943310657596), b8ee55934c5b824c A153 (0.8708129562778496), f2bd5f380ec002bf A241
+(0.8447659700885523). K1 owns probes-numeric/t1042-gamma-negatives-edges A5 `GAMMA(-0.1)` (Excel -10.686287021193195, ours
+-10.686287021193193) and A7 `GAMMA(-1.1)` (Excel 9.714806382902898, ours 9.714806382902896); that case is ungated.
+They are test points for the engine swap of `gamma_kernels.rs`.
+
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses
       only at documented x87 near-ties) committed with its verifier, or an updated best model plus a measured

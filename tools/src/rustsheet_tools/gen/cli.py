@@ -75,6 +75,12 @@ def main() -> None:
         action="store_true",
         help="every formula's outer call is a function of exactly --milestone, cycled evenly (arguments stay in scope)",
     )
+    ap.add_argument("--category", default=None, help="with --focus: only functions of this catalog category")
+    ap.add_argument(
+        "--functions",
+        default="",
+        help="with --focus: only these comma-separated catalog function names (all within --milestone)",
+    )
     ap.add_argument(
         "--spill",
         action="store_true",
@@ -130,6 +136,9 @@ def main() -> None:
         )
         return
     catalog = Catalog.load(args.catalog or root / "eval" / "catalog" / "functions.yaml")
+    names = [n for n in args.functions.split(",") if n.strip()]
+    if args.functions and not names:
+        raise SystemExit("rustsheet-gen: --functions names no function")
     try:
         specs = [
             generate_case(
@@ -141,6 +150,8 @@ def main() -> None:
                 focus=args.focus,
                 case_index=i,
                 spill=args.spill,
+                functions=names,
+                category=args.category,
             )
             for i in range(args.count)
         ]

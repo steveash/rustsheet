@@ -22,6 +22,8 @@ const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
 
 /// The largest `min_length` BASE accepts (probes/base-min-length).
 const BASE_MAX_MIN_LENGTH: f64 = 255.0;
+/// BASE refuses a `number` of 2^53 or more (2^53 - 1 is accepted).
+const BASE_NUMBER_LIMIT: f64 = 9_007_199_254_740_992.0;
 /// COMBIN's `number`, and COMBINA's `number + number_chosen - 1`, at or above which Excel gives
 /// `#NUM!`, whatever the coefficient: 2^31-1 (probes/t2199-text-length-and-combin-cuts A20-A37,
 /// B20-B34; numbers.md "COMBINA is COMBIN(n+k-1, k)", "Bound").
@@ -88,24 +90,54 @@ fn base_text(number: f64, radix: i64, min_length: f64) -> Result<String, Error> 
     if number < 0.0 {
         return Err(Error::NUM);
     }
+    // Excel: 2^53 - 1 is accepted, 2^53 and above are #NUM! in every radix, with or without
+    // `min_length` (probes/base-number-upper-bound; numbers.md "BASE past 2^53 is #NUM!").
+    if number >= BASE_NUMBER_LIMIT {
+        return Err(Error::NUM);
+    }
     let mut value = number.trunc() as i64;
+    // Excel: a zero has no digits of its own, only the padding to `min_length`, so an explicit
+    // `min_length` of 0 gives empty text (`BASE(0.2,29,0.3)`, `LENB` 0) while an omitted one
+    // defaults to 1 and gives "0" (numbers.md "BASE of zero with min_length 0 is empty").
     let mut digits = Vec::new();
-    loop {
+    while value > 0 {
         // `radix` is 2..=36, so the digit is below 36 and `from_digit` never fails: the `'0'`
         // fallback is unreachable.
         digits.push(
             char::from_digit((value % radix) as u32, 36).map_or('0', |c| c.to_ascii_uppercase()),
         );
         value /= radix;
-        if value == 0 {
-            break;
-        }
     }
     let padding = min_length.saturating_sub(digits.len());
     let mut text = String::with_capacity(padding + digits.len());
     text.extend(std::iter::repeat_n('0', padding));
     text.extend(digits.iter().rev());
     Ok(text)
+}
+
+/// Excel's ATAN2(x, y): `ATAN(y/x)` plus or minus π, not libm `atan2(y, x)`; see
+/// docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus π" (probes/atan2-*).
+/// IMARGUMENT is this kernel too (probes-numeric im-last-digit-sweep, T-2044).
+pub(crate) fn excel_atan2(x: f64, y: f64) -> Result<f64, Error> {
+    if x == 0.0 {
+        if y == 0.0 {
+            return Err(Error::DIV);
+        }
+        return Ok(FRAC_PI_2.copysign(y));
+    }
+    // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
+    let q = divide(y, x)?;
+    // `+ 0.0` turns -0 into +0, which Excel never returns.
+    let a = flush_subnormal(q.atan()) + 0.0;
+    Ok(if x < 0.0 {
+        if y >= 0.0 {
+            a + PI
+        } else {
+            a - PI
+        }
+    } else {
+        a
+    })
 }
 
 impl Model {
@@ -165,7 +197,7 @@ impl Model {
                 Ok(f) => f.trunc() as i64,
                 Err(error) => return error,
             };
-            let min_length = match model.kernel_number_or(min_length, 0.0, cell) {
+            let min_length = match model.kernel_number_or(min_length, 1.0, cell) {
                 Ok(f) => f,
                 Err(error) => return error,
             };
@@ -520,8 +552,13 @@ impl Model {
 
     pub(crate) fn fn_acot(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Acot, args, cell, |f| {
+            if f == 0.0 {
+                // Excel has no negative zero (numbers.md "Negative zero prints as 0"): ACOT of
+                // -0.0 (e.g. CEILING.PRECISE(-0.0001)) is PI()/2 like ACOT(0), T-2376.
+                return Ok(PI / 2.0);
+            }
             let v = f64::atan(1.0 / f);
-            if f >= 0.0 {
+            if f > 0.0 {
                 Ok(v)
             } else {
                 // To be compatible with Excel we need a different branch
@@ -666,7 +703,7 @@ impl Model {
         // Excel cuts to 15 significant digits first, then rounds down: INT(1-2^-53) = 1
         // (docs/excel-semantics/numbers.md "INT cuts to 15 significant digits first", T-2171).
         // On the cut value, down is toward zero for a positive number and away from zero for a
-        // negative one; the negative case is unprobed and follows the same cut.
+        // negative one; negatives and the 1E+15 boundary are probed (probes/t2215-int-negatives-boundary).
         // From 1E+15 up the cut would drop integer digits (`INT(2^53+1)` = 2^53, a sum of 1000000000000006
         // stays 1000000000000006: gen-m5/d586a1e0c9896942 Calc!A64, gen-m5/1315170eef6c413e Calc!A332),
         // so a value that large is floored as it is.
@@ -694,26 +731,7 @@ impl Model {
     /// (probes/t2198-m5-lift-argument-kinds; arrays.md).
     pub(crate) fn fn_atan2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.numbers_fn(Function::Atan2, args, [0.0, 0.0], cell, |[x, y]| {
-            // Excel: see docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus pi" (probes/atan2-*).
-            if x == 0.0 {
-                if y == 0.0 {
-                    return Err(Error::DIV);
-                }
-                return Ok(FRAC_PI_2.copysign(y));
-            }
-            // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
-            let q = divide(y, x)?;
-            // `+ 0.0` turns -0 into +0, which Excel never returns.
-            let a = flush_subnormal(q.atan()) + 0.0;
-            Ok(if x < 0.0 {
-                if y >= 0.0 {
-                    a + PI
-                } else {
-                    a - PI
-                }
-            } else {
-                a
-            })
+            excel_atan2(x, y)
         })
     }
 
@@ -813,24 +831,32 @@ impl Model {
     }
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        let k = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
+        self.lift_call(Function::Combina, args, cell, &mut |model, values| {
+            let [n, k] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let n = match model.kernel_number(n, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            let k = match model.kernel_number(k, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            Self::combina_of(n, k, cell)
+        })
+    }
+
+    /// COMBINA on a floored `n` and `k` (see `fn_combina`).
+    fn combina_of(n: f64, k: f64, cell: CellReferenceIndex) -> CalcResult {
         if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
             return num_error(cell);
         }
         // COMBINA(n, k) is Excel's COMBIN(n + k - 1, k), rounding included: `COMBINA(20,19)` is
         // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"), and so is its bound:
         // `COMBINA(2^31-2,1)` is 2147483646, `COMBINA(2^31-2,2)` and `COMBINA(2^31-1,1)` are #NUM!.
-        // That also caps `combin`'s loop below 2^31 steps; it runs min(k, n - 1) of them.
+        // That also caps `combin`'s loop below 2^31 steps (min(k, n - 1)), and it stops at the first
+        // infinity, within about 1,030 (the lifting table's weight, `lift/kinds/general.rs`).
         if n + k - 1.0 >= COMBIN_MAX_NUMBER {
             return num_error(cell);
         }

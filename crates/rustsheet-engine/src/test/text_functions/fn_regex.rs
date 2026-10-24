@@ -403,3 +403,28 @@ fn lazy_pike_iteration_reads_only_to_each_match() {
     assert_eq!(model._get_text("A2"), *"ab|abc|abé|ab");
     assert_eq!(model._get_text("A3"), *"aéz|az|a");
 }
+
+#[test]
+fn empty_match_iteration_over_long_text_stays_within_budget() {
+    // T-1899: PCRE2's retry after each empty match is one memoized attempt, so `a*?` and `|b`
+    // over 32,767 characters finish (about 4 ms each in a release build), and `(a|a)*b|` gives
+    // what it gave before the retry, its automata searches running out of work.
+    let mut model = new_empty_model();
+    model._set("A1", "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"a*?\",\"-\"))");
+    model._set("A2", "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"|b\",\"-\"))");
+    model._set(
+        "A3",
+        "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"(a|a)*b|\",\"-\"))",
+    );
+    model._set(
+        "A4",
+        "=LEN(REGEXREPLACE(REPT(\"a\",4000),\"(a|a)*b|\",\"-\"))",
+    );
+    model._set("A5", "=COLUMNS(REGEXEXTRACT(REPT(\"a\",20000),\"a*?\",1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "65535");
+    assert_eq!(model._get_text("A2"), "65535");
+    assert_eq!(model._get_text("A3"), "#ERROR!");
+    assert_eq!(model._get_text("A4"), "8001");
+    assert_eq!(model._get_text("A5"), "40001");
+}

@@ -3,7 +3,7 @@ id: T-2218
 title: "Probe SERIESSUM over all-blank coefficients and a negative power that underflows"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ Excel evidence (excel-graph) for two SERIESSUM edges T-2163 left unprobed, and t
 
 ## Out of scope
 - Non-integer power last digits.
+
+## Outcome
+Added probes/seriessum-blank-and-underflow (9 cells, excel-graph filled). Results: a two-cell all-blank range has no terms (0 for x = 0, n = 0 and for x = 2), while a blank one-cell reference gives #NUM! for SERIESSUM(0,0,1,F1) and 0 for x = 2; the mixed blank cases are #NUM! under either reading of the blank; a negative power whose reciprocal underflows is #NUM! (the ^ operator gives #DIV/0!). The engine already matched all 9 cells, so no engine change; the baseline only gains the new case line (9 checked cells, no failures). Recorded in numbers.md.

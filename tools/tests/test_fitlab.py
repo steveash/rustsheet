@@ -25,7 +25,7 @@ from rustsheet_tools.fitlab.score import (
     ulp_distance,
 )
 from rustsheet_tools.fitlab.sweep import Cell, Sweep, UnparsedError, Workbook, parse_arg, select, split_args
-from rustsheet_tools.snapshot import parse_show
+from rustsheet_tools.snapshot import UNDECODED, parse_show
 
 CASES = repo_root() / "eval" / "suites" / "probes-numeric" / "cases"
 
@@ -337,3 +337,10 @@ def test_select_keeps_error_cells_only_when_asked() -> None:
     select("s/c", book, pattern, on, errors=True)
     assert (len(off.cells), off.non_numeric) == (1, 1)
     assert [c.error for c in on.cells] == ["#NUM!", None]
+
+
+def test_select_never_keeps_an_undecoded_rich_error() -> None:
+    book = Workbook({"S": {"A1": "=F(1)"}}, {"S": {"A1": dict(UNDECODED)}})
+    sweep = Sweep()
+    select("s/c", book, re.compile(r"^=F\((.*)\)$"), sweep, errors=True)
+    assert (len(sweep.cells), sweep.non_numeric) == (0, 1)

@@ -9,6 +9,7 @@ use super::grouping::{
     at, effective_depth, empty_text, subtotal_levels, value_error, Axis, Grouping, ParentOrder,
     Relative, SetId, SortOrder,
 };
+use super::lifted_options::Bound;
 use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
@@ -286,6 +287,13 @@ impl Model {
     /// `=GROUPBY(row_fields, values, function, [field_headers], [total_depth], [sort_order],
     /// [filter_array], [field_relationship])`
     pub(crate) fn fn_groupby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // An array field_headers or total_depth lifts the call (probes/groupby-lifted-args).
+        let options = [(3, Bound::Fixed(3)), (4, Bound::KeyWidth(0))];
+        let args = match self.lift_options(args, &options, 2, Model::fn_groupby, cell) {
+            Ok(args) => args,
+            Err(lifted) => return lifted,
+        };
+        let args = args.as_slice();
         let inputs = match self.groupby_inputs(args, cell) {
             Ok(inputs) => inputs,
             Err(error) => return error,
@@ -347,37 +355,29 @@ impl Model {
             Ok(elements) => elements,
             Err(error) => return error,
         };
-        let mut results: [Option<ArrayNode>; 3] = [None, None, None];
-        let mut lifted = Vec::with_capacity(elements.len());
-        for row in &elements {
-            let mut cells = Vec::with_capacity(row.len());
-            for element in row {
+        self.lift_by_class(
+            &elements,
+            |model, element| match element {
+                ArrayNode::Error(_) => None,
+                _ => Some(
+                    match model.relationship(Some(array_node_to_calc_result(element, cell)), cell) {
+                        Ok(Relationship::Hierarchy) => 0,
+                        Ok(Relationship::Table) => 1,
+                        Err(_) => 2,
+                    },
+                ),
+            },
+            |model, element| {
                 if matches!(element, ArrayNode::Error(_)) {
-                    cells.push(element.clone());
-                    continue;
+                    return element.clone();
                 }
                 let scalar = array_node_to_calc_result(element, cell);
-                let kind = match self.relationship(Some(scalar.clone()), cell) {
-                    Ok(Relationship::Hierarchy) => 0,
-                    Ok(Relationship::Table) => 1,
-                    Err(_) => 2,
-                };
-                if let Some(Some(value)) = results.get(kind) {
-                    cells.push(value.clone());
-                    continue;
-                }
-                let value = match self.groupby_with(inputs, Some(scalar), cell) {
+                match model.groupby_with(inputs, Some(scalar), cell) {
                     Ok(output) => at(&output, 0, 0),
                     Err(error) => calc_result_to_array_node(error),
-                };
-                if let Some(result) = results.get_mut(kind) {
-                    *result = Some(value.clone());
                 }
-                cells.push(value);
-            }
-            lifted.push(cells);
-        }
-        CalcResult::Array(lifted)
+            },
+        )
     }
 
     /// The error value of an option before `field_relationship`, lifted over it when it is an

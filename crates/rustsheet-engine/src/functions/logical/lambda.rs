@@ -44,34 +44,46 @@ pub(crate) struct NamedLambdas {
     prepared: HashMap<(usize, usize), PreparedLambda>,
 }
 
-/// What a LET or a LAMBDA call gives, for [`Model::close_over`]: the LAMBDA it is, if it is one.
+/// What a LET or a LAMBDA call gives, for [`Model::close_over`]: the LAMBDAs it holds, the one it
+/// is or the elements of an array of them (`LET(k,100,SCAN(..,LAMBDA(f,x,LAMBDA(z,f(z)*k+x))))`,
+/// T-2039).
 pub(crate) trait ScopeResult {
-    fn lambda(&self) -> Option<usize>;
+    fn lambdas(&self) -> Vec<usize>;
 }
 
 impl ScopeResult for CalcResult {
-    fn lambda(&self) -> Option<usize> {
+    fn lambdas(&self) -> Vec<usize> {
         match self {
-            CalcResult::Lambda(id) => Some(*id),
-            _ => None,
+            CalcResult::Lambda(id) => vec![*id],
+            CalcResult::Array(rows) => rows
+                .iter()
+                .flatten()
+                .filter_map(|node| match node {
+                    ArrayNode::Lambda(id) => Some(*id),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
         }
     }
 }
 
 impl ScopeResult for RefArg {
-    fn lambda(&self) -> Option<usize> {
+    fn lambdas(&self) -> Vec<usize> {
         match self {
-            RefArg::Value(value) => value.lambda(),
-            RefArg::Ranges(_) | RefArg::Grid(_) => None,
+            RefArg::Value(value) => value.lambdas(),
+            RefArg::Ranges(_) | RefArg::Grid(_) => Vec::new(),
         }
     }
 }
 
 impl ScopeResult for Binding {
-    fn lambda(&self) -> Option<usize> {
+    fn lambdas(&self) -> Vec<usize> {
         match self.resolved() {
-            Binding::Value(value) | Binding::ReadOnce(value) => value.lambda(),
-            Binding::Areas(_) | Binding::Span(_) | Binding::Grid(_) | Binding::Shared(_) => None,
+            Binding::Value(value) | Binding::ReadOnce(value) => value.lambdas(),
+            Binding::Areas(_) | Binding::Span(_) | Binding::Grid(_) | Binding::Shared(_) => {
+                Vec::new()
+            }
         }
     }
 }
@@ -114,10 +126,10 @@ struct PreparedLambda {
 
 /// How many times the evaluation's stack budget (`Model::set_max_evaluation_stack`, a quarter of
 /// a 1 MB stack by default) nested LAMBDA calls may use. A call made by a call can nest without
-/// the formula's own depth bounding it (`Model::lambda_stack_base`), and each takes some 5 KB of
-/// stack in a release build and 20 KB in a debug build (a LAMBDA calling itself through a
+/// the formula's own depth bounding it (`Model::lambda_stack_base`), and each takes some 2.5 KB
+/// of stack in a release build and 9 KB in a debug build (a LAMBDA calling itself through a
 /// parameter), so the default, 1 MB, half the smallest common thread stack (2 MB), holds about
-/// 200 calls in a release build and 50 in a debug build.
+/// 400 calls in a release build and 116 in a debug build (T-0444, decision 0100).
 const LAMBDA_STACK_SHARE: usize = 4;
 
 /// Most cells the LAMBDAs that outlive their scope may capture while one root cell is evaluated
@@ -288,9 +300,10 @@ impl Model {
         let callee = self
             .evaluate_reference_arg(lambda, cell)
             .into_single_area(cell);
-        // The same guard as `call_callee`'s, kept in step with it.
-        if let CalcResult::Range { .. } = callee {
-            return RefArg::Value(reference_called(cell));
+        // Anything but a LAMBDA is called as `call_variable` calls it: a reference is `#REF!`
+        // (`call_callee`), a value gives Excel's odd results.
+        if !matches!(callee, CalcResult::Lambda(_)) {
+            return RefArg::Value(self.call_variable(callee, call_args, cell));
         }
         let mut caller = self
             .lambda_caller(&callee, call_args.len())
@@ -318,7 +331,7 @@ impl Model {
     }
 
     /// A LET variable or LAMBDA parameter called like a function, `f(2)` in `LET(f,..,f(2))` or
-    /// `LAMBDA(f,f(2))`.
+    /// `LAMBDA(f,f(2))`, or what a call returned, called again (`LAMBDA(x,x)(1)(2)`, T-2038).
     /// A LAMBDA is called and a reference is `#REF!` (`call_callee`); a value gives Excel's odd
     /// results without its arguments being read: a number or boolean is `#NAME?`, text is 0, an
     /// error is itself, and an array is called element by element
@@ -508,8 +521,8 @@ impl Model {
     /// [`LAMBDA_STACK_SHARE`] times [`Model::get_max_evaluation_stack`] bytes: a LAMBDA calling itself through a parameter,
     /// `LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,20000))`, or a chain of 20,000 closures made by
     /// REDUCE, would otherwise overflow the stack. Excel evaluates such calls 300 deep
-    /// (probes/lambda-call-depth); the budget stops them sooner, as `#NUM!` (DEVIATION, decision
-    /// 0014: docs/excel-semantics/arrays.md "How deep LAMBDA calls nest").
+    /// (probes/lambda-call-depth), and so does the default budget; deeper ones it stops as `#NUM!`
+    /// (DEVIATION, decision 0014: docs/excel-semantics/arrays.md "How deep LAMBDA calls nest").
     fn lambda_stack_base(&self) -> Option<usize> {
         let here = stack_address();
         let base = match self.lambda_calls_base {
@@ -553,14 +566,14 @@ impl Model {
                     RefArg::Value(self.evaluate_node_in_context(body, cell))
                 };
                 // A LAMBDA the body made may read the parameters and the captures bound here.
-                // Most calls give no LAMBDA, and they list no ids (a plain call allocates nothing).
-                if let Some(lambda) = result.lambda() {
+                // Most calls make no LAMBDA, and they list no ids (a plain call allocates nothing).
+                if self.last_lambda_id > mark {
                     let scope: Vec<usize> = ids
                         .iter()
                         .map(|&(raw_id, _)| raw_id)
                         .chain(captured.iter().copied())
                         .collect();
-                    self.close_over(Some(lambda), &scope, mark, cell);
+                    self.close_over(&result, &scope, mark, cell);
                 }
                 for &(raw_id, _) in ids {
                     self.variable_stack.remove(raw_id);
@@ -735,22 +748,24 @@ impl Model {
     /// nothing, so a LAMBDA made on each REDUCE step copies nothing.
     pub(crate) fn close_over(
         &mut self,
-        result: Option<usize>,
+        result: &impl ScopeResult,
         ids: &[usize],
         mark: usize,
         cell: CellReferenceIndex,
     ) {
-        let Some(result) = result.filter(|_| !ids.is_empty()) else {
+        // Nothing made since `mark` can capture: the result is not walked (a LET giving a large
+        // array of numbers costs nothing here).
+        if ids.is_empty() || self.last_lambda_id <= mark {
             return;
-        };
-        let mut pending = vec![result];
+        }
+        let mut pending = result.lambdas();
         let mut seen = HashSet::new();
         while let Some(lambda) = pending.pop() {
             if lambda < mark || !seen.insert(lambda) {
                 continue;
             }
             let held = self.lambda_captures.get(&lambda).into_iter().flatten();
-            pending.extend(held.filter_map(|(_, binding)| binding.lambda()));
+            pending.extend(held.flat_map(|(_, binding)| binding.lambdas()));
             let Some(definition) = self.lambdas.get(&lambda) else {
                 continue;
             };
@@ -777,7 +792,7 @@ impl Model {
                     self.variable_stack.shared(id)
                 };
                 if let Some(binding) = binding {
-                    pending.extend(binding.lambda());
+                    pending.extend(binding.lambdas());
                     self.lambda_captures
                         .entry(lambda)
                         .or_default()
@@ -889,6 +904,7 @@ fn called_value(value: &ArrayNode) -> ArrayNode {
     match value {
         ArrayNode::String(_) => ArrayNode::Number(0.0),
         ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
+        ArrayNode::Lambda(_) => ArrayNode::Error(Error::VALUE),
         // An empty element is taken as a number (not probed: `LET(f,"",f(2))` makes Excel refuse
         // the workbook).
         ArrayNode::Number(_) | ArrayNode::Boolean(_) | ArrayNode::Empty => {

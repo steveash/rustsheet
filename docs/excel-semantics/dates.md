@@ -87,6 +87,19 @@ it runs them, and a WEEKNUM with a return_type of 22 or more, or negative, reads
 - **Emptying:** a scalar WEEKNUM with return_type 12-16 (Tuesday to Saturday starts are never
   kept), one with an always-#NUM! return_type (0, 3-10, 18-20; probed 0, 3, 10, 18, 20), and any WEEKNUM that lifts over an
   array, valid types included (`SUM(WEEKNUM(100,{2,2}))`, `SUM(WEEKNUM({100,101},2))`).
+- **A dynamic-array formula empties it** (T-2068, gen-m6, excel-graph 2026-10-21): with a
+  dynamic-array formula between a reader and the setter that runs before it in the order, the
+  reader is `#NUM!` (OFFSET, TRANSPOSE, TRIMRANGE, CHOOSEROWS or CHOOSECOLS, none of them
+  calling WEEKNUM). In the evidence none of them spilled: each is `#SPILL!`, an error or a 1×1
+  result (A17 `#SPILL!`, 22ce5678fa646215 A237 `"a*"`). Whether a formula that does spill
+  empties it too is unprobed (T-2070); we treat every dynamic anchor alike. Eight readers show it, each with a
+  Monday setter after it and a spilling formula in between: gen-m6/9c615d338d990644 Calc!A16
+  (A17 `=OFFSET(Data!B11:E12,2,2,3)`), 07171fa3f7493f51 A246, 22ce5678fa646215 A236
+  (A237 `=TRIMRANGE(Data!A10:D10)`), a165b0a457367d4f A203, b54448af3fde07ca A243,
+  c4edd76f46980c5f A307 and fde83d52a9d1fc63 A131 and A359, all `#NUM!`; the four readers with no
+  dynamic-array formula in between read the setter (121a7c17092038d9 A238 = 33, 3e51213f35889d06 A74,
+  c96ac1ada46179c4 A219 and A295). Whether it is the spill itself or where Excel runs the anchor
+  that empties it is open (T-2070).
 - **No effect:** a call whose serial is an error (`WEEKNUM(-1,2)`, `WEEKNUM(-1,0)`,
   `ISOWEEKNUM(-1)`), a `#VALUE!` return_type (`TRUE`, `"x"`), a call IF does not run, and WEEKDAY of
   any return_type.
@@ -120,13 +133,38 @@ values twice. This corrects two earlier readings: ISOWEEKNUM does set the state 
 state is not "the last valid WEEKNUM": types 12-16 empty it. probes/weeknum-stale-return-type
 Down!A2 is `#NUM!` because Mixed!A1 (type 0) emptied the state just before it, not because the
 state resets per sheet.
-Ours: always `#NUM!` for 22+ and negatives, which matches only where the state is empty.
-SPEC-0017 specifies the state and the order; implementation tasks are listed there.
+Ours (T-2068): the state lives in `Evaluation::weeknum_start`, updated by `weeknum_of` and
+`fn_isoweeknum` and read by `weeknum_of`. A pass in which a reader ran is followed by one in
+Excel's order (crates/rustsheet-engine/src/excel_order.rs), whose values are kept; later
+evaluations start in that order until a pass has no reader. Dynamic anchors still run first in
+that pass, with their recursion, and empty the state when the order reaches their position.
+Known gaps: the WEEKNUM calls inside a spilling formula, or inside a cell it reads, run when the
+anchor runs, not at their place in the order (T-2070). Sheets are ordered by their load rank
+(`Worksheet::load_rank`), so a moved sheet keeps its load position (T-2069,
+probes/weeknum-stale-sheet-moved). Outside a recalc (conditional formats, `evaluate_formula`) the
+state lives for one formula.
 Status: VERIFIED
-Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), where a spilling formula sits
+Unprobed: the rank of a sheet added or duplicated after load (we give the next free rank), a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
+lifts over one (we leave the state as it is), where a spilling formula sits
 in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
 a return_type in (-1, 0) (truncates to 0, so presumably empties), and whether a reference to an
 uncalculated cell in an IF branch that is not taken also moves the cell.
+
+### WEEKNUM readers past the move budget of Excel's order (T-2068)
+Rule (Excel): the chain moves a cell that read an uncalculated formula cell to just after it, as
+often as it takes; a running total read in reverse needs `n(n-1)/2` moves.
+Ours: a pass in Excel's order makes at most `4 × formula cells + 2^24` moves
+(`excel_order::move_budget`); past that, the rest of the pass evaluates on demand, as the
+default pass does, and WEEKNUM readers can differ from Excel. A reverse chain of about 5,800
+cells fits the floor alone; a cycle of formulas ends there too. A workbook without a reader
+never runs this pass. The budget counts moves, not work: a cell runs again (up to its next
+blocking read) each time the precedent it waits on is calculated, so a layout of range reads
+such as `B_k = SUM(B$1:B_{k-1})+1` costs about n^1.3 to n^1.5 (420 ms at 8,000 rows, 1.5 s at
+20,000, security review of T-2068). Measured (release, 2026-10-22): a running total plus one reader takes
+34 ms at 10k rows and 75 ms at 100k rows, against 1.5 ms and 23 ms without the second pass.
+Evidence: directive 5 (CLAUDE.md), SPEC-0017 "Cost".
+Status: DEVIATION (decision 0014)
+Implemented in: `run_chain`, `move_budget` (crates/rustsheet-engine/src/excel_order.rs).
 
 ## DATE month and day bounds
 Rule: DATE floors its month and day, then a month outside -32767..=32766 is `#NUM!` even when the
@@ -253,7 +291,12 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   `MAX_NUMBER_TEXT_LEN` limit to date-clock text (T-1101, closing T-0273). Plain number text has the same limit (numbers.md "Number text of 1E+308 or more is not a number", T-1097).
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
-  Unprobed: a trailing `:` before an AM/PM suffix.
+  A bare hour with one trailing `:` is that hour: `VALUE("12:")`, `"12:"+0` and `TIMEVALUE("12:")` are 0.5,
+  `VALUE("25:")` is 1.0416666666666667 (TIMEVALUE 0.04166666666666674), `VALUE("0:")` is 0, `VALUE("9999:")` is
+  416.625, `VALUE("12: ")` is 0.5, `VALUE("12:30:45:")` is 0.5213541666666667 and `VALUE("2024-01-01 12:")` is
+  45292.5; `"10000:"`, `"12::"`, `"1.5:"`, `"-12:"`, `":30"`, `"12:PM"` and `"12: PM"` (a bare hour, `:`, then an
+  AM/PM suffix) are #VALUE! (probes/t2352-time-text-trailing-colon, excel-graph, 2026-10-22, T-2352;
+  implemented in `parse_clock_text`). Unprobed: `H:M:` before an AM/PM suffix (`"10:30: PM"`; the engine reads it as 10:30 PM).
   Evidence for these bullets: probes/clock-text-oddities, clock-text-oddities2 to -7 (excel-graph, 2026-10-06, T-0153), TIMEVALUE, `0+text` and VALUE agree.
 - **Clock text as a direct argument** is read as its coercion serial by SUM, AVERAGE, MAX, MIN,
   PRODUCT, LARGE, SMALL, ABS, INT, MOD, HOUR/MINUTE/SECOND, DAY and array math (`SUM("10:00","6 PM")`
@@ -546,10 +589,13 @@ probes/date-math-lift-driver-edges G42, G43; a reversed or out-of-calendar eleme
 cell's value (1 row), and a one-cell or 3-D `weekend` is answered in "An error-valued or 3-D weekend, 3-D date text
 and holidays" (probes/date-text-weekend-3d, T-1428). DATEDIF's unit and DAYS360's method over an array are answered
 in "Date function argument modes" (they lift).
-A well-ordered, in-calendar pair with an unknown unit is `#NUM!` too, whatever makes the unit unknown: text (`"x~*"`, `""`, `" x "`, `"ü"`, `"Hello World"`), a number (`DATEDIF(16934,34631,IFERROR(1/0,AVERAGE(..)))`) or a boolean (gen-m6/3e51213f35889d06 Calc!A322, 4ca39e0876796fa5 A172, c96ac1ada46179c4 A198/A236, 9e6a1b733ee1e1e0 A12, 121a7c17092038d9 A114; all 40 cells are listed in T-2288; excel-graph 2026-10-21). Ours: `#VALUE!` (`datedif_value`'s last match arm), T-2288.
+A well-ordered, in-calendar pair with an unknown unit is `#NUM!` too, whatever makes the unit unknown: text (`"x~*"`, `""`, `" x "`, `"ü"`, `"Hello World"`), a number (`DATEDIF(16934,34631,IFERROR(1/0,AVERAGE(..)))`) or a boolean (gen-m6/3e51213f35889d06 Calc!A322, 4ca39e0876796fa5 A172, c96ac1ada46179c4 A198/A236, 9e6a1b733ee1e1e0 A12, 121a7c17092038d9 A114; all 40 cells are listed in T-2288; excel-graph 2026-10-21). Ours: implemented (T-2288).
+Also under other calls in gen-m7 (excel-graph, 2026-10-22): `TOROW(DATEDIF(..,(Data!C8&Data!D$8)),..)` (gen-m7/2d9b48c6363e7a16 A1306), a
+FILTER unit array lifting DATEDIF into TOCOL's ignore (8 `#NUM!`, 7ea6ef6ceabacafd A1875) and `DATEDIF(17490,55420,"?b")` in a SCAN step
+(9bb61f6ae34c7e20 A2505) are `#NUM!`.
 Status: VERIFIED (excel-graph). Before T-1430 the engine checked DATEDIF's reversed pair before the unit's error.
 Implemented in: `datedif_value` (crates/rustsheet-engine/src/functions/date_and_time.rs).
-Tasks: T-1355, T-1430
+Tasks: T-1355, T-1430, T-2288
 
 ## An error-valued or 3-D weekend, 3-D date text and holidays
 Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
@@ -558,7 +604,7 @@ Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
   arguments; a one-sheet span `Sheet2:Sheet2!B1` is a plain reference (G6, H6).
 - WORKDAY.INTL never passes an error-valued `weekend` on: `NA()`, `1/0`, a cell holding `#REF!` or `#DIV/0!` and a 3-D
   reference (read as `#REF!`, one cell or several) are all `#NUM!`, the code of an invalid weekend number (P1-P25,
-  J1-J5, M7). It reads the start date, the day count and the holidays first: `WORKDAY.INTL(1/0,5,NA())` is `#DIV/0!`,
+  J1-J5, M7). It reads the start date, the day count and a single holiday first (an array or multi-cell range of holidays comes after the weekend, and start + days off the calendar before both; "WORKDAY and NETWORKDAYS holidays: blank and number-text cells, and the error order", T-2272): `WORKDAY.INTL(1/0,5,NA())` is `#DIV/0!`,
   `WORKDAY.INTL(45000,"x",NA())` and `WORKDAY.INTL(45000,5,NA(),"y")` `#VALUE!`, and the holidays' error beats an
   invalid weekend too: `WORKDAY.INTL(45000,5,99,NA())` and `WORKDAY.INTL(45000,5,"abc",NA())` are `#N/A` (P31, P33). A day
   count of 0 still skips the weekend (`WORKDAY.INTL(45000,0,Sheet1:Sheet2!W1)` = 45000, M5).
@@ -571,14 +617,28 @@ Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
   `INDEX(WORKDAY.INTL(1/0,5,{1;#N/A}),2)` `#DIV/0!`, while every `INDEX(NETWORKDAYS.INTL(..,{1;#N/A}),2)` is `#VALUE!`
   (P26-P30, Q26-Q30); `ROWS(WORKDAY.INTL({45000;45001},5,Sheet1:Sheet2!W1))` is 2 (M6, N6).
 - A 3-D `holidays` is `#VALUE!`, also as a branch of IF and in WORKDAY and NETWORKDAYS
-  (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`, `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; M9-N13). Unprobed: an IF whose 3-D branch is not taken
-  (`IF(FALSE,Sheet1:Sheet2!A1,A1)`, ours `#VALUE!`) and a 3-D holidays with a day count of 0 (ours the start date).
+  (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`, `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; M9-N13). Only the
+  branch IF or CHOOSE takes counts (probes/t2238-holidays-if-3d-branch, excel-graph 2026-10-22, T-2238):
+  `IF(FALSE,Sheet1:Sheet2!A1,A1)`, `IF(TRUE,A1,Sheet1:Sheet2!A1)`, `IF(A9,Sheet1:Sheet2!A1,A1)` with A9 FALSE and
+  `CHOOSE(2,Sheet1:Sheet2!A1,A1)` are A1 in all four functions (D1:G4), while a taken 3-D branch, `CHOOSE(1,..)` included,
+  is `#VALUE!` (D5:G7). Lifted, the error is per element: `ROWS(WORKDAY({45000;45001},5,IF(TRUE,Sheet1:Sheet2!A1,A1)))`
+  is 2 and its second element `#VALUE!` (H5, I5). `IF(FALSE,Sheet1:Sheet2!A1)` is FALSE as holidays, `#VALUE!` (row 9).
+  An array condition beside a 3-D branch: if any element takes it the call is one `#VALUE!`, no array
+  (`WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1))`, its ROWS too, ERROR.TYPE 3; NETWORKDAYS alike), and with
+  `{FALSE;FALSE}` A1 is read (45008, ROWS 1; NETWORKDAYS 22) (M1-M8). Unprobed: a real `#REF!` value in the
+  untaken branch under an array condition (ours `#VALUE!`, as any `#REF!` there is read as the 3-D one) and CHOOSE with
+  an array index beside a 3-D arm (`CHOOSE({1;2},Sheet1:Sheet2!A1,A1)`).
+  A day count of 0 (or 0.5) never reads the holidays: WORKDAY and WORKDAY.INTL give the start date, a weekend start
+  included, with a 3-D, `NA()` or `"x"` holidays (K1-K4, K8-K9, K11-K14), but 1 day is `#VALUE!` (K10); NETWORKDAYS
+  and NETWORKDAYS.INTL over one day still read them (`NETWORKDAYS(45000,45000,Sheet1:Sheet2!A1)` is `#VALUE!`, K5-K7).
 - A one-cell `weekend` range is that cell's value (`WORKDAY.INTL(45000,5,W1:W1)` = 45007, 1 row; J7-J9, K7-K9).
 Ours: `Model::weekend_mask` turns an error-valued weekend into the caller's error (`#NUM!` or `#VALUE!`);
 `workday_of` reads the holidays before the weekend and `networkdays_of` reads the weekend first; `holiday_serials`
-refuses a 3-D reference (`is_span_or_if_of_span`) with `#VALUE!` (crates/rustsheet-engine/src/functions/date_and_time/).
+follows the branch IF picks (`if_pick`) and refuses a 3-D reference there with `#VALUE!`, and an array condition
+whose result holds a 3-D branch's `#REF!` too (T-2238;
+crates/rustsheet-engine/src/functions/date_and_time/).
 Status: VERIFIED
-Tasks: T-1428
+Tasks: T-1428, T-2238
 
 ## TIMEVALUE of chrono-pattern date-time text in a 1904 workbook (T-1445)
 Rule: in a 1904 workbook `TIMEVALUE("7/7/2026 4:35 PM")` and `TIMEVALUE("2024-03-15 16:35")` both give
@@ -991,7 +1051,7 @@ of January 1900, not on the weekday-faithful stand-in (serial 1 = 1899-12-31) th
   ee56a4ed5a612a0d A185, b54448af3fde07ca A55; 26 cells). Probe A50-A98: `DATEDIF(59,61,"MD")` = 2 and `DATEDIF(60,61,"MD")` = 1
   (February 1900 lends 29 days), `DATEDIF(0,61,"MD")` = 1, `DATEDIF(0,60,"YD")` = 60, `DATEDIF(0,366,"YD")` = 366,
   `DATEDIF(0,367,"YD")` = 1, `DATEDIF(60,1520,"Y")` = 3, `DATEDIF(60,1521,"Y")` = 4, `DATEDIF(60,426,"M")` = 12,
-  `DATEDIF(60,1520,"YM")` = 11, `DATEDIF(0,0,"D")` = 0; a negative date is `#NUM!` (`DATEDIF(-1E-15,10,"D")`). An unknown unit is `#NUM!` rather than `#VALUE!` when a date is day 0:
+  `DATEDIF(60,1520,"YM")` = 11, `DATEDIF(0,0,"D")` = 0; a negative date is `#NUM!` (`DATEDIF(-1E-15,10,"D")`). An unknown unit is `#NUM!` for any pair, day 0 included ("DATEDIF and DAYS360 error order with a bad unit or method", T-2288):
   `DATEDIF(0.1,874,"1a*")`, `DATEDIF(<blank>,0,<bad unit>)` (gen-m6/03333cc38ec06a14 A269, 3a26794015dfbe9d A225, 4ca39e0876796fa5 A362,
   60bcd25271767317 A272, 9130ade4b1924cc8 A137, d0c30225243fde60 A129, gen-m7/44ef4f5638e25bcd A18).
 - EDATE reads the displayed day and clamps on the real calendar: serial 60 is 29 February, so `EDATE(60,1)` = 89 (29 March),
@@ -1098,8 +1158,17 @@ Rule (excel-graph, gen-m6, 2026-10-21):
 - A one-cell `holidays` reference to a blank cell is no holiday, not `#VALUE!`: `NETWORKDAYS(17247,33116,Data!E9)` = 11336,
   `NETWORKDAYS(59460,0,Data!C$3)` = -42471, `WORKDAY.INTL(60,PI(),4,Data!E5)` = 63 (gen-m6/3e51213f35889d06 Calc!A314, b62dd1ebd266b71c
   A111, acdfeaf6e6eadd4e A83). A holiday cell holding number text is accepted: `WORKDAY(18260,-30,Data!C4)` with C4 `"1"` = 18218,
-  `WORKDAY(58719,5,Data!D5:D7)` over 1.005, `"1.5"`, 0.3 = 58726 (1aa50086e42bff9a A67, 752959b8d3db0285 A393). Ours `#VALUE!` for both.
+  `WORKDAY(58719,5,Data!D5:D7)` over 1.005, `"1.5"`, 0.3 = 58726 (1aa50086e42bff9a A67, 752959b8d3db0285 A393). (Ours was `#VALUE!` for both before T-2270.)
   (Non-number text is still `#VALUE!`: "WORKDAY and NETWORKDAYS from serial 0" F56.)
+  Number text inside a holidays *array* is a holiday too: `WORKDAY.INTL(26624,-19,5,{"1.5"})` = 26599, `WORKDAY(26624,-19,{"1.5"})`
+  = 26597, `NETWORKDAYS.INTL(26600,26624,5,{"1.5"})` = 19, while `{"a"}`, `{"ü"}`, `{""}`, `{TRUE}` and `{FALSE}` are `#VALUE!`
+  (probes/t2360-array-lambda-holidays W1-W15, excel-graph, 2026-10-23, T-2360). So a GROUPBY or PIVOTBY whose LAMBDA passes a group's
+  values to WORKDAY.INTL errs only in the groups holding non-number text, a boolean or a number off the calendar (G!A1:H13; the
+  t2311-pivotby-value-cause D46 and D51 counts 13 and 27). Ours since T-2360 (`collect_serial_numbers`); before, `{"1.5"}` was `#VALUE!`.
+- Blanks inside a holidays array are no error either: with Data!Z1:Z2 blank, `NETWORKDAYS(8812,58239,HSTACK(Data!Z1:Z2,{1;2}))` = 35306,
+  `WORKDAY(46645,26,HSTACK(Data!Z1:Z2,{1;2}))` = 46681 and `WORKDAY.INTL(47074,-9,3,HSTACK(..))` = 47061 (gen-m6/3eef60b5dc0145e9 A73,
+  449aebbde77d8ce1 A30, A306; excel-graph, 2026-10-22, T-2253). Whether a blank element is skipped or read as serial 0 does not change
+  these results. Implemented (T-2395): `collect_serial_numbers` skips an `ArrayNode::Empty` element; serial 0 would give the same results.
 - `#NUM!` from the dates, the result or a numeric holiday beats a text or boolean holiday's `#VALUE!`: `WORKDAY(0,-23,Data!A5:A5)`
   ("ABC", the result would be before serial 0), `WORKDAY(2958465,18,..)` (past the calendar), `NETWORKDAYS(-1,3214,Data!B5)` ("abc"),
   `WORKDAY(10651,-7,Data!B8:D12)` (holidays "1.5", "ABC" and -1) are all `#NUM!`; and an invalid weekend's `#NUM!` beats a boolean holiday's `#VALUE!`: `WORKDAY.INTL(42,-10,18,Data!C9:E9)`
@@ -1109,18 +1178,40 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   `WORKDAY.INTL(1,-18,13,ERROR.TYPE("x~*"))` are `#NUM!` (d0c30225243fde60 A332, 9130ade4b1924cc8 A361), which "An error-valued or 3-D
   weekend" (holidays read first) does not cover. An all-weekend mask's `#VALUE!` beats a negative holiday's `#NUM!`:
   `WORKDAY.INTL(45382,10,"1111111",Data!B2:C5)` (holidays include -0.5 and " x ") is `#VALUE!` (ef10bf3afb9658f6 A346).
-Ours: `holiday_serials` rejects a blank or text cell at once, before the dates and the walk.
-Status: VERIFIED for the cells; the full order (which `#NUM!` sources beat which holiday problems) is UNVERIFIED until T-2272 probes it.
+- The full order (probes/workday-holidays-error-order, excel-graph, 2026-10-22, T-2272; 536 formula cells, 541 checked: twelve
+  holidays columns, A-M, against 36 call shapes, rows 1-36, plus column Q). WORKDAY and WORKDAY.INTL: (1) the start date, its type and then its
+  range (`WORKDAY(-1,"x")` and `WORKDAY(-1,TRUE)` are `#NUM!`, Q56:Q58); (2) the day count's type (`WORKDAY(45000,"x",..)`
+  `#VALUE!` over every holidays, row 6); a day count of 0 is the start date; (3) `#NUM!` when start + days is off the
+  calendar, before the holidays and the weekend, an invalid one, `"abc"` and an all-weekend mask included (rows 4, 5, 12, 13,
+  18, 19; `WORKDAY.INTL(1,-18,"abc")` `#NUM!`, Q29; `WORKDAY.INTL(5,-6,"1111111")` `#NUM!` but `(5,-5,"1111111")` `#VALUE!`,
+  Q30:Q36; `WORKDAY(0,-1,"a")` `#NUM!`, `WORKDAY(1,-1,"a")` `#VALUE!`, Q65:Q67); (4) a single holiday (a scalar or a one-cell
+  reference) that is no number: text and booleans `#VALUE!`, an error itself (`WORKDAY.INTL(45000,5,99,"a")` `#VALUE!`,
+  `(..,99,NA())` and `(..,"1111111",NA())` `#N/A`, `(..,99,H1:H1)` with H1 "a" `#VALUE!`; rows 14-17, Q37:Q48); (5) the weekend
+  (WORKDAY.INTL), an all-weekend mask included; (6) every other holidays error: a single number off the calendar
+  (`WORKDAY.INTL(45000,5,"1111111",-1)` `#VALUE!`, Q45), and anything in an array or a multi-cell range, a one-element array too
+  (`WORKDAY.INTL(45000,5,99,{"a"})` `#NUM!`, `(..,"1111111",{#N/A,1})` `#VALUE!`, Q42, Q49; rows 14-17 columns F-L); (7) a walk
+  that leaves the calendar although start + days does not (`WORKDAY(5,-5)` and `WORKDAY(10,-8)` `#NUM!`, Q26, Q27, but with
+  holidays "a", NA(), -1 those holidays' errors, Q1:Q25). NETWORKDAYS and NETWORKDAYS.INTL: the weekend first (any error,
+  rows 30-36), then the start date, its type and range, then the end date likewise (`NETWORKDAYS(-1,"x")` `#NUM!`,
+  `NETWORKDAYS("x",-1)` `#VALUE!`, `NETWORKDAYS(45000,-1,"x")` `#NUM!`; rows 23-26, Q50:Q55), then the holidays.
+  Within the holidays the first bad one in reading order decides: "a" then -1 is `#VALUE!`, -1 then "a" `#NUM!`, NA() then "a"
+  `#N/A` (columns F-L of rows 1, 22, 27-29; Q60:Q64).
+  T-1954's question: `WORKDAY.INTL(45000,5,"1111111",NA())` is `#N/A` (row 15 column E), and with the holidays in an array or a
+  range the all-weekend `#VALUE!` wins.
+Ours: implemented (T-2270, T-2272): a blank one-cell reference is no holiday; a cell holding number text is a holiday, counted rather than skipped (serial 1 in 1aa50086e42bff9a A67 and 752959b8d3db0285 A393 lies outside every range, so skip-vs-count is UNVERIFIED). Also UNVERIFIED: the scalar branch accepts any text `cast_number` reads (a literal `"45001"`, a formula's number text, date, currency or percent text) as a holiday; the cells only show holidays reached through a reference. Other text is `#VALUE!` as before. The order is `Model::workday_of` and `Model::networkdays_of`, with `HolidaysError::before_weekend` for step (4) (crates/rustsheet-engine/src/functions/date_and_time/). Unprobed: whether single number text off the calendar (a `"-1"` cell) is step (4) or (6); ours (6) (T-2271 probes it).
+Status: VERIFIED
 Tasks: T-2270, T-2272
 
 ## WORKDAY.INTL and NETWORKDAYS.INTL: weekend number coercion (T-2271)
 Rule (excel-graph, gen-m6, 2026-10-21): a weekend number truncates like the other integer arguments, a boolean weekend does not raise its own error before the
 start's, and a blank weekend cell is weekend 0 (`#NUM!`), not the default: `NETWORKDAYS.INTL(16492,11827,3.14159)` = -3334, `NETWORKDAYS.INTL(0.5,45351,2.5^0.3)`
 = 32394, `WORKDAY.INTL(45351,10,1.005)` = 45365, `NETWORKDAYS.INTL(44926," x ",3.14159)` is the end's `#VALUE!` (not the weekend's `#NUM!`),
-`NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`
+`NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`, and so is `NETWORKDAYS.INTL(13803,28521,<blank>)` (gen-m6/afe9267df3df26a8 A47, T-2253)
 (gen-m6/c93ea588c271840e Calc!A31, 1a404a0379a1372c A62, ee56a4ed5a612a0d A186, c96ac1ada46179c4 A287, ee56a4ed5a612a0d A387,
-fde83d52a9d1fc63 A219). Ours: `#NUM!` for a fractional weekend, `#VALUE!` for TRUE, the default weekend for a blank cell.
-Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates: UNVERIFIED (no cell shows it; T-2271 probes it).
+fde83d52a9d1fc63 A219). Ours: a fractional weekend truncates (folded into T-2272, whose order otherwise let gen-m6/e3a562557696e2fc A385 `WORKDAY.INTL(11303,-4,1.25,..)` reach it), `#VALUE!` for TRUE, the default weekend for a blank cell.
+A FALSE weekend cell raises no `#VALUE!` ahead of a negative holiday's `#NUM!`: `NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`
+with C5 FALSE and -1 among the holidays (B7) is `#NUM!` (gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253; ours `#VALUE!`).
+Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates and whether a fraction of .5 or more truncates or rounds (every cited fraction is below .5): UNVERIFIED (no cell shows them; T-2271 probes them).
 Tasks: T-2271
 
 ## WEEKNUM of a boolean serial is `#VALUE!` (T-2276)

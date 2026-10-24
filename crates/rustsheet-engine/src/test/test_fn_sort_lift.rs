@@ -1,0 +1,51 @@
+//! SORT's `by_col` lifts over an array, one call per element whose value is that call's top-left;
+//! the array and the `sort_index` and `sort_order` lists stay whole (SPEC-0011 "Array-valued
+//! functions", T-2319; gen-m7/7307132bb8820f17 A1076).
+
+use crate::test::util::new_empty_model;
+
+fn check(cells: &[(&str, &str, &str)]) {
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "3"), ("A2", "1"), ("A3", "2")] {
+        model._set(cell, value);
+    }
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), *expected, "{cell} {formula}");
+    }
+}
+
+#[test]
+fn by_col_lifts_over_an_array() {
+    check(&[
+        ("C1", "=COLUMNS(SORT(A1:A3,1,1,{FALSE,TRUE}))", "2"),
+        // By rows the sorted column starts at 1; by columns the one column is unchanged.
+        // Hand-written, UNVERIFIED: Excel may leave the second element empty as SORTBY does (T-2366).
+        ("C2", "=INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,1)", "1"),
+        ("C3", "=INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2)", "3"),
+    ]);
+}
+
+#[test]
+fn an_element_error_stays_in_its_position() {
+    // sort_index 3 is past the one column (`#VALUE!`) but not past the three rows.
+    check(&[
+        ("C1", "=INDEX(SORT(A1:A3,3,1,{FALSE,TRUE}),1,1)", "#VALUE!"),
+        // Hand-written, UNVERIFIED (T-2366).
+        ("C2", "=INDEX(SORT(A1:A3,3,1,{FALSE,TRUE}),1,2)", "3"),
+        ("C3", "=INDEX(SORT(A1:A3,1,1,{FALSE,\"x\"}),1,2)", "#VALUE!"),
+    ]);
+}
+
+#[test]
+fn unlifted_calls_are_unchanged() {
+    check(&[
+        ("C1", "=INDEX(SORT(A1:A3),2,1)", "2"),
+        ("C2", "=INDEX(SORT(A1:A3,1,-1),1,1)", "3"),
+        ("C3", "=ROWS(SORT(A1:A3,1,1,FALSE))", "3"),
+        ("C4", "=SORT(A1:A3,2)", "#VALUE!"),
+    ]);
+}
