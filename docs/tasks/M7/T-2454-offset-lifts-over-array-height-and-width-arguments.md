@@ -36,3 +36,4 @@ Decision 0083: every cell this task owns has the wrong type, error or value, so 
 
 ## Outcome
 OFFSET reads rows, cols, height and width through `evaluate_picked_source`, so a one-cell TAKE/DROP of a range is its reference (a scalar), not a lifted 1x1 array. Probe cells A141, A151, A161, A171 now pass. The `+0` and `N()` forms of a one-cell TAKE/DROP (my new probes t2454-*) still lift here; follow-up T-2519. lookup.md records the rule.
+Side effect: probes/union-walk-repeated-in-lambda no longer times out (all 15 cells pass), so its `!Timeout` baseline line is gone.
