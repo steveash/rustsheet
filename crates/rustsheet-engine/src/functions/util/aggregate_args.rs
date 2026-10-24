@@ -83,10 +83,10 @@ pub(crate) enum NestedReading {
     /// COUNT 16 and COUNTA 19 over a 3x3 GROUPBY whose six value cells hold 16 numbers (A6:A8).
     Flatten,
     /// The cell is an array error `#N/A` (AVERAGE, MIN, MAX, PRODUCT, SUMSQ, MEDIAN, the A-variants,
-    /// the variance and deviation family: t2594-nested-aggregates A1:A21, A25). VARA and its
-    /// siblings are inferred from VAR.P and STDEV.S.
+    /// the variance and deviation family: t2594-nested-aggregates A1:A21, A25; VARA, STDEVA,
+    /// VARPA, STDEVPA, AND, OR and XOR: t2625-nested-consumers A1:A7).
     NotAvailable,
-    /// Unprobed consumers (AND, OR, XOR, IMSUM, IMPRODUCT): `#VALUE!`, as a LAMBDA element.
+    /// `#VALUE!`, as a LAMBDA element: IMSUM and IMPRODUCT (t2625-nested-consumers A8, A9).
     Value,
 }
 

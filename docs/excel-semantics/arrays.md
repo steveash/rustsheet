@@ -863,8 +863,14 @@ SUMPRODUCT 0 (A22), ROWS and COLUMNS the outer shape (A23, A24). A one-cell refe
 (gen-m7/bcad709c30cfdf64 A13, gen-m9/2a18b2f5a4dc43ac A371). Range-only functions (MAXIFS, RANK.EQ, COUNTBLANK, SUBTOTAL,
 AGGREGATE 1-13) cannot take the result. Ours since T-2594: the walker's `NestedReading` (functions/util/aggregate_args.rs):
 SUM, COUNT and COUNTA flatten, charging the walk budget; the AVERAGE family, MIN, MAX, PRODUCT, SUMSQ and the A-variants give
-`#N/A` (VARA and its siblings inferred from VAR.P); AND, OR, XOR, IMSUM and IMPRODUCT keep `#VALUE!` (unprobed). MODE.SNGL, LARGE,
-SMALL, PERCENTILE.INC and SUMPRODUCT read through other collectors and are still `#VALUE!` (T-2625).
+`#N/A`. T-2625 (probes/t2625-nested-consumers, excel-graph, 2026-10-24): VARA, STDEVA, VARPA, STDEVPA, AND, OR and XOR are `#N/A`
+too (A1:A7), IMSUM and IMPRODUCT `#VALUE!` (A8, A9), MODE.MULT, QUARTILE.INC and PERCENTILE.EXC `#N/A` (A10:A12). MODE.SNGL,
+LARGE, SMALL and the PERCENTILE/QUARTILE family read their data outside the walker and give `#N/A` through `nested_array_error`
+(crates/rustsheet-engine/src/nested_array.rs); SUMPRODUCT reads a nested cell as 0. Inferred, unprobed: the `#N/A` beats an
+error element anywhere in the array (ours checks for a nested cell first), and the 0 holds for multi-argument SUMPRODUCT. COUNT over a PIVOTBY with several key and
+value columns (`COUNT(PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)))` 140, A13; gen-m9/e85daedce5c2675e A35's 142)
+differs from ours only in the blank keys, which Excel shows as true blanks in the row keys and in every column-key row
+(A28:A31; ours 0, so COUNT 165): T-2460.
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),
