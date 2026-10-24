@@ -25,6 +25,10 @@ three rules unprobed:
   `#NUM!` in Excel (ours the size `#REF!`); probe a non-positive single y against wrongly sized x for TREND and GROWTH,
   and `TREND(5,2,4,FALSE)` (one point without a constant term), plus GROWTH predictions that overflow `exp`.
 
+Also (T-1741): probe LINEST's collinear column choice with y not in x (`LINEST(y,A:C)` with C = 2A): ours drops
+A, keeping the last column first (from linest-modes K106 alone); `test_linest_drops_a_collinear_column` pins that
+and must follow the probe.
+
 ## Acceptance criteria
 - [ ] A probe case (excel-probe skill) with oracle values for each bullet under Context is committed under eval/suites/probes.
 - [ ] statistics.md records the findings; the UNVERIFIED clauses of the TREND entry are resolved or kept with the task id.
