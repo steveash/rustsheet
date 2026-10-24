@@ -3,7 +3,7 @@ id: T-1592
 title: "Fit YIELD's Newton start: a frequency-independent first iterate"
 milestone: M9
 lane: research
-status: in-progress
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -68,7 +68,7 @@ Cells:
 - [ ] Visible parity (gen-m9, T-2257): the 23 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] A backward-iterate report in the lab (or a test) that reproduces the starting values above.
-- [ ] Start formulas and stop rules tried, each with its bit-exact and within-4-ulp counts as lab fits
+- [x] Start formulas and stop rules tried, each with its bit-exact and within-4-ulp counts as lab fits
   (decision 0056); a model that raises the bit-exact count, or the task set `blocked` with the candidates
   tried. Findings in financial.md.
 - [ ] `make check` green; reviewers approve.
@@ -113,3 +113,13 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - YIELD: 139 cells (13-14 digits right 48, 10-12 66, 6-9 25, fewer or 0 vs nonzero 0); most in `probes/yield-solver-sweep.case.json` 60; `probes/solver-iteration-traces.case.json` 22. e.g. `YIELD(A3,B3,C3,H3,E3,F3,G3)` Excel 0.06499999999999766, ours 0.06499999999999986
 
 Excel stops below the root by up to ~1e-9 relative (financial.md "YIELD stops short of PRICE's root"); 15 digits means reproducing that stop.
+
+## Blocked because
+Blocked because: no candidate fits YIELD's hidden Newton start S, and the evidence at hand cannot pin it.
+Third round (2026-10-24, opus): finite-difference Newton, six variants in the lab's `yield` fit (family "Newton, finite
+difference", from a scratch grid of 560), reaches at most 5/178 bit-exact (analytic Newton from 0.1: 4/178), so the
+analytic back-chain's S is not an artefact of the derivative. S is not an iterate of Newton on the frequency-free annuity
+model at any compounding either (financial.md "YIELD stops short of PRICE's root", third-round paragraph). The 23 gen-m9
+visible-parity cells stay. Unblock with evidence that separates the start from the stop rule: T-2330's re-probe of the
+stop rule, or a probe that fixes everything but one input (price alone, rate alone, term alone) on the T-2304 grid so S
+can be fitted per input.
