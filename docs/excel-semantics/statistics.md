@@ -3085,3 +3085,14 @@ Evidence: probes/t2475-stat-subexpressions (excel-graph, 2026-10-24, T-2475); th
 Ours: as given per cell (T-2619 IRR, T-2620 financial, T-2621 statistical, T-2622 TAKE, CELL, XMATCH).
 Status: VERIFIED (excel-graph; the per-cell values, not yet the rules behind them)
 Tasks: T-2475, T-2619, T-2620, T-2621, T-2622
+
+## POISSON at x 0 with a negative mean
+Rule: POISSON and POISSON.DIST at x 0 with a negative mean are EXP(-mean), cumulative or not, not `#NUM!`:
+`POISSON(0,-1,2)`, `POISSON(0,-1,TRUE)`, `POISSON(0,-1,FALSE)` and `POISSON.DIST(0,-1,TRUE)` are 2.718281828459045,
+`POISSON.DIST(0,-0.5,FALSE)` is 1.6487212707001282; at x 1 a negative mean is `#NUM!` (`POISSON(1,-1,TRUE)`).
+Evidence: probes/poisson-negative-mean A1-A7 (excel-graph, 2026-10-24, T-2484); it surfaced through gen-m9
+23d82b62e9a85bdd A208 (a RECEIVED maturity of `0/POISSON(0,-1,2)` is 0, not an error).
+Unprobed: a fractional x in (0, 1), and a huge negative mean (EXP overflow).
+Ours: `#NUM!` (known failure, T-2628).
+Status: VERIFIED (excel-graph)
+Tasks: T-2628

@@ -7,7 +7,7 @@ use crate::functions::math_and_trigonometry::{
     EXCEL_TRIG_LIMIT,
 };
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource, NestedReading,
 };
 use crate::limits::too_many_visits;
 use crate::reference_operators::RefArg;
@@ -269,6 +269,7 @@ const COMPLEX_FOLD_POLICY: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::First,
     skip_empty_args: false,
     grids: GridReading::Values,
+    nested: NestedReading::Value,
 };
 
 /// The cells of the rectangle `rows` x `columns`, 0 when either is not positive.

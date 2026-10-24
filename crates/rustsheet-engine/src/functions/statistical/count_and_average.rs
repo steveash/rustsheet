@@ -1,6 +1,6 @@
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ArrayNumbers, CellNumbers, DirectNumbers,
-    ErrorRule, GridReading, ItemSource, NumberRules,
+    ErrorRule, GridReading, ItemSource, NestedReading, NumberRules,
 };
 
 use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
@@ -25,6 +25,7 @@ const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
     grids: GridReading::Values,
+    nested: NestedReading::NotAvailable,
 };
 
 /// AVERAGE itself: [`AVERAGE_ARGS`], but an array of references is read by its elements'
@@ -44,6 +45,7 @@ const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: true,
     grids: GridReading::Values,
+    nested: NestedReading::NotAvailable,
 };
 
 /// AVERAGEA, MAXA and MINA rank errors as the AVERAGE family does: a scalar direct error beats a

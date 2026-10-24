@@ -68,6 +68,19 @@ impl Model {
             }
         };
 
+        // A nested GROUPBY or PIVOTBY cell makes the whole call `#CALC!` (SPEC-0018 rule 4,
+        // probes/t2592-nested-groupby-cells A10).
+        if array
+            .iter()
+            .flatten()
+            .any(|v| matches!(v, ArrayNode::Nested(_)))
+        {
+            return CalcResult::new_error(
+                Error::CALC,
+                cell,
+                "ARRAYTOTEXT of a nested array".to_string(),
+            );
+        }
         let result = if strict {
             // Strict: {col1,col2;row2col1,row2col2}
             let rows: Vec<String> = array
@@ -128,8 +141,7 @@ fn format_array_value(node: &ArrayNode, strict: bool) -> String {
         ArrayNode::Empty => String::new(),
         // Excel: a LAMBDA element is the letter lambda (probes/lambda-arrays B28).
         ArrayNode::Lambda(_) => "\u{3bb}".to_string(),
-        // Read as the `#VALUE!` it shows until T-2594 gives ARRAYTOTEXT Excel's `#CALC!`
-        // (SPEC-0018 rule 4, probes/t2592-nested-groupby-cells A10).
-        ArrayNode::Nested(_) => format!("{}", Error::VALUE),
+        // Never reached: an array holding one is `#CALC!` (`fn_arraytotext`).
+        ArrayNode::Nested(_) => format!("{}", Error::CALC),
     }
 }
