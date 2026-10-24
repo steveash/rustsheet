@@ -3,7 +3,7 @@ id: T-2547
 title: "BESSELJ and BESSELY above x = 100: #NUM! for huge x and the 15-digit misses at 1E+5 and 1.2E+8 (gen-m9, 7 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
