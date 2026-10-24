@@ -67,20 +67,17 @@ pub(crate) fn is_cell_contents_call(arg: &Node) -> bool {
 }
 
 impl Model {
-    /// Whether `arg` is the call `CELL("contents", ref)` written out, on a blank cell. Excel
-    /// counts it in COUNT and COUNTA, where a blank reference is skipped, and MODE gives
-    /// `#VALUE!` for it; a call wrapped in IF behaves alike, other wrappers are unprobed
-    /// (probes/t2622-contents-xmatch-take-lambda A1-A3, A5, A6, A9, A11, A18; T-2622).
-    pub(crate) fn is_cell_contents_of_blank(
+    /// The value of `arg` when it is the call `CELL("contents", ref)` written out, evaluated
+    /// once. Excel counts such a call on a blank cell in COUNT and COUNTA, where a blank
+    /// reference is skipped, so they take it from here instead of the aggregate walk (the
+    /// IF form behaves alike in Excel and is not handled, T-2630; other wrappers are unprobed;
+    /// probes/t2622-contents-xmatch-take-lambda A1-A3, A5, A9, A11; T-2622).
+    pub(crate) fn cell_contents_call_value(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
-    ) -> bool {
-        is_cell_contents_call(arg)
-            && matches!(
-                self.evaluate_node_in_context(arg, cell),
-                CalcResult::EmptyCell
-            )
+    ) -> Option<CalcResult> {
+        is_cell_contents_call(arg).then(|| self.evaluate_node_in_context(arg, cell))
     }
 }
 

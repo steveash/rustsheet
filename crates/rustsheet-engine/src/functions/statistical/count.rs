@@ -50,38 +50,54 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut result = 0.0;
-        if let Err(error) =
-            self.walk_aggregate_args(args, cell, COUNT_ARGS, |model, source, value| {
-                let counts = match (source, &value) {
-                    // Only the numbers of a reference or an array count (probes/average-value-args
-                    // F32).
-                    (_, CalcResult::Number(_)) => true,
-                    // COUNT(5,) is 2 (probes/average-value-args F16).
-                    (ItemSource::Direct | ItemSource::ReferenceValue, CalcResult::EmptyArg) => true,
-                    (ItemSource::Direct, CalcResult::Boolean(_)) => true,
-                    // Direct text counts when it coerces to a number as SUM's does, clock, date,
-                    // currency and percent text included (probes/count-direct-text; T-0252). Only
-                    // number-ness matters, so the 15-digit cut cannot change the answer
-                    // (docs/excel-semantics/numbers.md "15-digit literal parsing").
-                    (ItemSource::Direct, CalcResult::String(text)) => {
-                        model.cast_number(text).is_some_and(f64::is_finite)
-                    }
-                    _ => false,
-                };
-                if counts {
-                    result += 1.0;
+        // The blank cells `CELL("contents", ..)` reads count as the empty value (T-2622).
+        let mut blank_contents = 0.0;
+        let mut walk = AggregateWalk::new(COUNT_ARGS);
+        let mut visit = |model: &mut Self, source: ItemSource, value: CalcResult| {
+            let counts = match (source, &value) {
+                // Only the numbers of a reference or an array count (probes/average-value-args
+                // F32).
+                (_, CalcResult::Number(_)) => true,
+                // COUNT(5,) is 2 (probes/average-value-args F16).
+                (ItemSource::Direct | ItemSource::ReferenceValue, CalcResult::EmptyArg) => true,
+                (ItemSource::Direct, CalcResult::Boolean(_)) => true,
+                // Direct text counts when it coerces to a number as SUM's does, clock, date,
+                // currency and percent text included (probes/count-direct-text; T-0252). Only
+                // number-ness matters, so the 15-digit cut cannot change the answer
+                // (docs/excel-semantics/numbers.md "15-digit literal parsing").
+                (ItemSource::Direct, CalcResult::String(text)) => {
+                    model.cast_number(text).is_some_and(f64::is_finite)
                 }
-                Ok(())
-            })
-        {
-            return error;
-        }
-        // The blank cells `CELL("contents", ..)` reads are counted as the empty value (T-2622).
-        for arg in args {
-            if self.is_cell_contents_of_blank(arg, cell) {
+                _ => false,
+            };
+            if counts {
                 result += 1.0;
             }
+            Ok(())
+        };
+        for arg in args {
+            let step = match self.cell_contents_call_value(arg, cell) {
+                Some(CalcResult::EmptyCell) => {
+                    blank_contents += 1.0;
+                    continue;
+                }
+                Some(value) => self.walk_aggregate_read(
+                    RefArg::Value(value),
+                    false,
+                    cell,
+                    &mut walk,
+                    &mut visit,
+                ),
+                None => self.walk_aggregate_arg(arg, cell, &mut walk, &mut visit),
+            };
+            if let Err(error) = step {
+                return error;
+            }
         }
+        if let Err(error) = walk.finish() {
+            return error;
+        }
+        let result = result + blank_contents;
         CalcResult::Number(result)
     }
 
@@ -92,6 +108,8 @@ impl Model {
         // The cells of another workbook, counted from the externalLink cache.
         let mut external = 0.0;
         let mut result = 0.0;
+        // The blank cells `CELL("contents", ..)` reads count as the empty value (T-2622).
+        let mut blank_contents = 0.0;
         let mut walk = AggregateWalk::new(COUNTA_ARGS);
         let mut visit = |_: &mut Self, source: ItemSource, value: CalcResult| {
             let counts = match (source, &value) {
@@ -111,6 +129,20 @@ impl Model {
             Ok(())
         };
         for arg in args {
+            if let Some(value) = self.cell_contents_call_value(arg, cell) {
+                if matches!(value, CalcResult::EmptyCell) {
+                    blank_contents += 1.0;
+                } else if let Err(error) = self.walk_aggregate_read(
+                    RefArg::Value(value),
+                    false,
+                    cell,
+                    &mut walk,
+                    &mut visit,
+                ) {
+                    return error;
+                }
+                continue;
+            }
             // The cells of another workbook count the cells its externalLink cache holds
             // (`COUNTA([1]Uses!$A$1:$B$3)` is 5; fixtures/external-link-cached-ranges), and none
             // without a cache, written or reached through INDEX, a union or an intersection,
@@ -153,13 +185,7 @@ impl Model {
                 return error;
             }
         }
-        // The blank cells `CELL("contents", ..)` reads count as the empty value (T-2622).
-        for arg in args {
-            if self.is_cell_contents_of_blank(arg, cell) {
-                result += 1.0;
-            }
-        }
-        CalcResult::Number(result + external)
+        CalcResult::Number(result + external + blank_contents)
     }
 
     pub(crate) fn fn_countblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

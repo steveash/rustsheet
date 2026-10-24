@@ -250,3 +250,18 @@ fn uncalled_lambda_text_and_xmatch_regex_number() {
     assert_eq!(model._get_text("A4"), *"2");
     assert_eq!(model._get_text("A5"), *"#N/A");
 }
+
+/// COUNT and COUNTA read a `CELL("contents", ..)` argument once, so nesting them stays linear
+/// (a second read doubled the work per level; T-2622 security review).
+#[test]
+fn nested_cell_contents_in_count_is_linear() {
+    let mut formula = String::from("0");
+    for _ in 0..18 {
+        formula = format!("COUNT(CELL(\"contents\",INDEX(A2:A10,1+0*{formula})))");
+    }
+    let mut model = new_empty_model();
+    model._set("A1", &format!("={formula}"));
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+}
