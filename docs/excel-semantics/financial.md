@@ -1060,7 +1060,7 @@ finishes in closed form, `remain * exp(n * log1p(-rate))` ("AMORDEGRC past 2^20 
 `counted += 1.0` stopped moving past 2^53, so main never finished there; where Excel did not finish within the
 excel-graph timeout, the kernel returns the value the walk reaches (a DEVIATION: `AMORLINC(2400,39679,39813,300,1E15,
 1E-300,1)` is 2.4E-297, the charge, and `AMORDEGRC(1E300,39679,39813,300,1E15,1E-300,1)` is 3, the charge 2.5 rounded).
-AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0: a value left over from another evaluation, "AMORLINC and AMORDEGRC check order") and at a cost of 1E308 (-b B2) are base values, T-1895.
+AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0: unexplained, "AMORLINC and AMORDEGRC check order") and at a cost of 1E308 (-b B2) are base values, T-1895.
 Status: VERIFIED (excel-graph) for AMORLINC's walks and AMORDEGRC's up to 2^20 periods; DEVIATION (decision 0014) past
 2^20 AMORDEGRC periods and where Excel did not finish
 Tasks: T-1841, T-1895
@@ -1076,19 +1076,24 @@ it is valid: `AMORLINC(2400,1,1,300,1,0.15,1)` is 360). Only then the basis is r
 comes last (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is `#N/A`). A purchase date below 1 is serial 0, the day before
 serial 1: `AMORDEGRC(2400,0,366,300,1,0.15,1)` is 562 (366 days), `AMORDEGRC(2400,0,1,..)` 899, `AMORDEGRC(2400,1,366,..)` 563,
 `AMORLINC(46557,0,39881,440,0,0.1)` 46117.
-AMORDEGRC with a period strictly between 0 and 1 returns a value left over from another AMORDEGRC evaluation, not its own:
-`AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)` and `(..,0.5,..)` are 1693, the value of the AMORDEGRC evaluated just before
-them (another asset's period 1), while the same asset's period 1 is 2284; on the 2400 asset periods 0.001 to 0.9999 are
-776 (period 1, also the value before them) but 0.0001 is 0 after a run of `#NUM!` cells (probes/amordegrc-fractional-period
-A1-A11, A23-A26; amor-argument-check-order A846-A851). It depends on the calculation order, so it is not reproducible
-from the formula alone (T-1895). From 1 on a fractional period truncates (1.5 is period 1, 2.9 period 2), and AMORLINC
-reads any period above 0 and up to the full periods as a full charge (`AMORLINC(..,0.0001,0.15,1)` is 360).
+AMORDEGRC with a period strictly between 0 and 1 is UNEXPLAINED. Mostly it is the asset's period-1 charge: on the 2400 asset
+periods 0.001 to 0.9999 are 776, period 1's value (probes/amordegrc-fractional-period A1-A11, the first cells of their
+workbook; amor-argument-check-order A846-A851), and `AMORDEGRC(98882,37287,38647,1E-13,0.3,0.1,1)` is 1693, its period 1
+(A23, A27). But `AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)` and `(..,0.5,..)` are 1693 where that asset's period 1 is 2284
+(A24, A26: 1693 is the value of the cell just before each), `AMORDEGRC(2400,..,0.0001,0.15,0)` and `(..,1)` are 0
+(amor-argument-check-order A862, A863), and `AMORDEGRC(98882,37287,38647,1E-13,0.5625,0.1,1)` is 0 in that probe (A864) but
+1 inside gen-m9 d912671baa1364aa A76. One hypothesis, untested, is a value left over from an earlier evaluation, which would depend on
+the calculation order; probing each formula alone in a fresh workbook would test it (T-1895). From 1 on a fractional period
+truncates (1.5 is period 1, 2.9 period 2), and AMORLINC reads any period above 0 and up to the full periods as a full charge
+(`AMORLINC(..,0.0001,0.15,1)` is 360).
 Evidence: probes/amor-argument-check-order (866 cells: each out-of-domain argument against `NA()`, text and `TRUE` in every
 other position, `NA()` and `1/0` in every pair, booleans and text alone, purchase dates below 1, fractional periods;
 excel-graph, 2026-10-24, T-2485) and probes/amordegrc-fractional-period (32 cells). Every order cell fits the rule.
+Inferred: a date of -0.5 or 2958465.5 (the floor is taken from the shared reader's other functions; only -1, 0, 1E-15, 0.5
+and 2958466 were probed here).
 Ours: since T-2485 (`amortization_of` and `amor_date` in functions/financial/amortization.rs). AMORDEGRC below period 1
 stays 0 (known failures, T-1895).
-Status: VERIFIED (excel-graph)
+Status: VERIFIED (excel-graph) for the order and the purchase date below 1; UNEXPLAINED for AMORDEGRC below period 1
 Tasks: T-2485, T-1895
 
 ## AMORDEGRC past 2^20 periods
@@ -1813,7 +1818,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   the ODD* four ("ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order", T-2483). AMORLINC and
   AMORDEGRC give a boolean rate or salvage `#VALUE!` before a negative cost or a salvage above the cost
   (`AMORLINC(-439103,37926,39037,412,7,FALSE,..)` b73c6cc96e093f03 A360, `AMORDEGRC(27029,37050,39005,789,1E15-0.1,TRUE)`
-  1b60bf99d71424e7 A298 are `#VALUE!`).
+  1b60bf99d71424e7 A298 are `#VALUE!`); now probed ("AMORLINC and AMORDEGRC check order", T-2485), as are the discount
+  securities ("Discount securities check order", T-2484).
 - COUP* functions: a settlement or maturity past 9999-12-31 is `#NUM!` as it is read, before a later error or text
   (`COUPDAYS(123456789.123,<FALSE>,4)` 89f0aee953a55a45 A363, `COUPNUM(37484,2958466,2,<#VALUE!>)` 1dce4774f5c0e736 A19), and
   `COUPDAYS(39123,2958466,1,0)` is `#NUM!` (a91bad4e84f49739 A153). `COUPDAYBS(37913,46720,4,4)` = 50 (7d2979fba2c95d64 A304) and
@@ -1901,10 +1907,10 @@ A53), ACCRINT's rate (`ACCRINT(39000,39500,0.1,TRUE,40000,2,0)`, A56, before the
 (`AMORDEGRC(90812,36624,38707,453,3,TRUE,4)`, A51, A57): probes/t2455-transpose-single-value, excel-graph, 2026-10-23. gen-m9
 165db58d1540f014 A141, 0a614cfe974b59c3 A265 and 7c20351562a2d71d A212 show it through F.TEST. A purchase or first_period
 date past the calendar is `#NUM!` before AMORDEGRC's boolean rate (`AMORDEGRC(70537,36888,7E13%,46,12,<TRUE>,0)`, gen-m9
-e8d55ec393460bb7 A374), while a date of 0 or below waits for the value checks (`AMORDEGRC(-1,<blank>,38872,265,0,<#VALUE!>,0)`
-is `#VALUE!`, 1dce4774f5c0e736 A199).
-Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which also
-refuses a boolean salvage per "Argument order of the Analysis ToolPak securities functions"). ACCRINT's other dates and numbers
+e8d55ec393460bb7 A374), while a date of 0 passes the read (`AMORDEGRC(-1,<blank>,38872,265,0,<#VALUE!>,0)` is `#VALUE!`,
+1dce4774f5c0e736 A199) and one below 0 is `#NUM!` as it is read ("AMORLINC and AMORDEGRC check order").
+Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which since
+T-2485 refuses a boolean in every argument, "AMORLINC and AMORDEGRC check order"). ACCRINT's other dates and numbers
 still take booleans (unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2455

@@ -42,10 +42,13 @@ Probe more points first (periods 0.1, 0.9, 1.5, 3.5 at rate 0.15; costs 1E290 to
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 6 cells, 6 numeric past half a unit in the 15th digit and 0 with a wrong type, error or text, blamed on AMORDEGRC 6. Every one is listed above.
 
-From T-2485 (2026-10-24): AMORDEGRC with 0 < period < 1 returns a value left over from another AMORDEGRC evaluation
-(probes/amordegrc-fractional-period A1-A11, A23-A26: `AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)` is 1693, the previous
-cell's value, its own period 1 being 2284; financial.md "AMORLINC and AMORDEGRC check order"). Matching it needs Excel's
-evaluation state, so decide (decision record) between a DEVIATION and modelling it. These cells go with this task:
+From T-2485 (2026-10-24): AMORDEGRC with 0 < period < 1 is unexplained (financial.md "AMORLINC and AMORDEGRC check
+order"): mostly the asset's own period-1 charge (probes/amordegrc-fractional-period A1-A11, A23), but
+`AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)` is 1693 where its period 1 is 2284 (A24, A26; 1693 is the previous cell's
+value), period 0.0001 is 0 (amor-argument-check-order A862, A863) and the 98882 asset at 0.5625 is 0 in a probe (A864) but 1
+in gen-m9. One untested hypothesis is a value left over from an earlier evaluation: first probe each formula alone in a
+fresh workbook (one formula per case) to test for calculation-order dependence; if it holds, decide (decision record)
+between a DEVIATION and modelling it. These cells go with this task:
 probes/amor-argument-check-order A846-A851 and probes/amordegrc-fractional-period's failing lines, and
 gen-m9/d912671baa1364aa Calc!A76 `=AMORDEGRC(98882,37287,38647,SUMPRODUCT((1e-15*Data!A10)),TIMEVALUE("1:30 PM"),0.1,1)`
 (Excel 1, ours 0; period 0.5625).
