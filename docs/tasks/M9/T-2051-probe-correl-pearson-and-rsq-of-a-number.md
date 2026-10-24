@@ -36,3 +36,6 @@ explained and fixed (or filed) instead of guessed.
 
 ## Out of scope
 - Engine changes.
+
+## Answered by T-2426
+gen-m9 fcf11f2ec6f7a59d A9 shows CORREL of a number cell against an empty cell is `#VALUE!` (statistics.md "A one-cell reference to an empty cell is #VALUE!"); implemented in T-2426. A probe is only needed for the computed-blank case.
