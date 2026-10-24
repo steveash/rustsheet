@@ -1370,7 +1370,9 @@ Rule: DB and DDB compute each period's charge in a fixed operation order, and th
   `DB(10000,1000,6,2,7)` is 2596.3941666666665. `month` is truncated before use and cost 0 returns 0.
 - DDB: `rate = factor/life` (1 once it reaches 1), the book value `old = cost*(1-rate)^(period-1)` raised with the
   operator `^` (square-and-multiply for a whole period, numbers.md "Integer exponents"), not libm `pow`
-  (`DDB(9695,282,20,8,1)` is 338.5190042814453, `pow` gives ...452; gen-m9 6376e27be7a05871 Calc!A141), and the charge
+  (`DDB(9695,282,20,8,1)` is 338.5190042814453, `pow` gives ...452; gen-m9 6376e27be7a05871 Calc!A141); a fractional
+  period takes `^`'s non-integer path too (`DDB(1E+300,872,39,1.005,1)` is 2.563769566671006E+298, gen-m9
+  79d87fc527927626 Calc!A98), and the charge
   `MIN(old*rate, old - salvage)`, floored at 0, rather than the difference of two book values
   `old - cost*(1-rate)^period`: `DDB(10000,1000,6,2,2)` is 2222.222222222222 (not ...2217),
   `DDB(100,10,4,3,1.3334)` is 14.814814787037497 and `DDB(5832,692,25,1)` is 466.56 (not 466.5599999999995).

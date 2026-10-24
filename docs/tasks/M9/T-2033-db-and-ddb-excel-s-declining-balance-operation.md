@@ -150,5 +150,6 @@ probes 1895 -> 1893 (fin-argument-modes H88, H95); no new failure lines.
 Visible parity: 35 of the 36 listed cells pass. The one left, gen-m9/1dce4774f5c0e736 Calc!A366
 `DDB(46469,651,FV(100,42,-935),9,2)`, is one ulp off (Excel 6.544613631714984e-81, ours ...983), no longer
 visibly off. Its life is an FV of about 1E86 and the charge is just `cost*(factor/life)` (the book value
-rounds to `cost`), so the ulp most likely comes from the FV argument, not from DDB (unverified).
+rounds to `cost`), so the ulp most likely comes from the FV argument, not from DDB (unverified;
+follow-up T-2560).
 Last-digit re-check: all 102 listed last-digit lines pass.
