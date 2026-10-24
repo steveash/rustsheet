@@ -799,16 +799,18 @@ fn imexp_cap_window(quarter_turns: i64) -> f64 {
     }
 }
 
-fn imln((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+/// `IMLN` and `IMLOG10` of 0 are `#NUM!`, not `-inf` text (gen-m9 cells, T-2389;
+/// engineering.md "Engineering functions in the gen-m9 engineering sweep (T-2258)").
+fn imln((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let r = f64::sqrt(x * x + y * y);
     let a = f64::atan2(y, x);
-    complex_result(r.ln(), a, suffix)
+    finite_complex_result(r.ln(), a, suffix, cell)
 }
 
-fn imlog10((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+fn imlog10((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let r = f64::sqrt(x * x + y * y);
     let a = f64::atan2(y, x);
-    complex_result(r.log10(), a * f64::log10(f64::exp(1.0)), suffix)
+    finite_complex_result(r.log10(), a * f64::log10(f64::exp(1.0)), suffix, cell)
 }
 
 fn imlog2((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {

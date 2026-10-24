@@ -283,6 +283,22 @@ fn fn_imcsc_imlog2_imcot_of_zero_are_num() {
     assert_eq!(model._get_text("A3"), "#NUM!");
 }
 
+// Excel: gen-m9 cells such as 060b18586fcff6e6 Calc!A29 and 2f0d384b8ed0d392 Calc!A271 (T-2389).
+#[test]
+fn fn_imln_imlog10_of_zero_are_num() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMLN("0")"#);
+    model._set("A2", r#"=IMLN("0i")"#);
+    model._set("A3", r#"=IMLOG10("0")"#);
+    model._set("A4", r#"=IMLOG10("0i")"#);
+
+    model.evaluate();
+
+    for cell in ["A1", "A2", "A3", "A4"] {
+        assert_eq!(model._get_text(cell), "#NUM!");
+    }
+}
+
 // Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044). The tiny-argument rows keep
 // the digits Excel loses (D65, D70, P65, P70), IMSEC and IMSECH differ in the last digit of the
 // same real part (G23, J58), and a large real part needs SIN's own reduction (D51).
