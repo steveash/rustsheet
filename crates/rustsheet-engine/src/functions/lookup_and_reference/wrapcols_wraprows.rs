@@ -10,7 +10,7 @@ use crate::{
     model::Model,
 };
 
-use crate::limits::SIZE_LIMIT_EXCLUSIVE;
+use super::SIZE_LIMIT_EXCLUSIVE;
 
 impl Model {
     // ── WRAPCOLS ──────────────────────────────────────────────────────────────

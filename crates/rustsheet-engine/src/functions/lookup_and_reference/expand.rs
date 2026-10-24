@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::wrapcols_wraprows::pad_with_of;
-use crate::limits::SIZE_LIMIT_EXCLUSIVE;
+use super::SIZE_LIMIT_EXCLUSIVE;
 
 impl Model {
     // ── EXPAND ────────────────────────────────────────────────────────────────

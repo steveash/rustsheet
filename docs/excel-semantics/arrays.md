@@ -274,10 +274,11 @@ a function lifted over such an array lifts it whole, so `ERROR.TYPE(MAKEARRAY(1,
 `#SPILL!` (B26), and `BETAINV(..,MAKEARRAY(4,51638,..),..)` is too (gen-m9/4250f880ab640c49 Calc!A237).
 `MAKEARRAY(3,1E15,..)` is `#VALUE!` (gen-m7/b2078b5d702c691a A2553).
 Evidence: probes/t2579-array-value-edges B20-B32 (excel-graph, 2026-10-24, T-2579); probes/resource-limits C13.
-Ours: `limits::check_built_array_size` in MAKEARRAY and SEQUENCE (after SEQUENCE's own rows check against the grid): a
-rows or columns of 2^31 or more is `#VALUE!`, EXPAND's threshold (`SIZE_LIMIT_EXCLUSIVE`, "Stacked results past the grid"),
-which is a hypothesis for these two (only 1E15 is measured); below it the cell bound of the next section holds, so
-`ROWS(MAKEARRAY(1048577,1,..))` (B23) is `#ERROR!` (DEVIATION, decision 0014, listed in probes/deviations). The lifting
+Ours: `limits::check_built_array_size` in MAKEARRAY and SEQUENCE (after SEQUENCE's own rows check against the grid): any
+shape within the cell bound of the next section is built; above it, columns past the grid are `#VALUE!`, as `SEQUENCE(3,123456789)`
+is in Excel (gen-m9/f2bd5f380ec002bf Calc!A177) and `MAKEARRAY(3,1E15,..)` (A2553), and any other shape is the bound's `#ERROR!`,
+so `ROWS(MAKEARRAY(1048577,1,..))` (B23) is `#ERROR!` (DEVIATION, decision 0014, listed in probes/deviations). Where between
+16,385 and 123,456,789 columns Excel's own `#VALUE!` starts is unprobed (EXPAND's column cap is another, T-2452). The lifting
 driver's broadcast (`lift::driver::broadcast_shape`) checks the cell count only (`check_array_cells`), so B26 is the
 spill's `#SPILL!`. A237 is `#ERROR!`: its 206,552 BETAINV elements pass the quantile's lift cost cap (statistics.md), T-2607.
 Status: VERIFIED (excel-graph)

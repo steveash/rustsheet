@@ -26,6 +26,11 @@ pub(crate) use ref_lift::lifts_into_references;
 
 pub(crate) use drop_take::Edge;
 
+/// 2^31, the least size Excel reads as no longer a size: EXPAND's rows or columns (`#VALUE!`) and
+/// WRAPROWS/WRAPCOLS's `wrap_count` (`#NUM!`) refuse it (arrays.md "Stacked results past the grid",
+/// "WRAPROWS and WRAPCOLS with a huge `wrap_count`").
+const SIZE_LIMIT_EXCLUSIVE: f64 = 2_147_483_648.0;
+
 mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
