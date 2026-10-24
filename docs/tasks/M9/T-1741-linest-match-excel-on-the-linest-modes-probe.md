@@ -3,7 +3,7 @@ id: T-1741
 title: "LINEST: match Excel on the linest-modes probe (spill shape, #N/A fill, collinear x, flags, 1e-16 residual stats)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -185,3 +185,19 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (wrong LINEST shapes and errors, and K134 past the 15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. The last-digit numerics stay with T-2006.
+
+## Blocked because
+Blocked because: the baseline cannot be recorded in an agent run. The fix on branch
+agent/functions-stat/T-1741-linest-modes clears 313 gen-m9 and 98 probes known-failure lines (visibly-off cells
+8632 lock, 6988 after) but unmasks one cell, gen-m9/c468f5046aadfbbc Calc!B122, whose root cause is BESSELJ(1e15,1)
+(T-2563). Decision 0107 (in this branch) allows exactly that line via `rustsheet-eval update-baseline
+--allow-regressions`; the opus run's permission layer refused that command, so the owner (or a run allowed to)
+must run it once on this branch, confirm the baseline diff adds only that line, then `make check` and merge.
+
+## Outcome (pending the baseline)
+- LINEST and LOGEST share TREND's shape rules and readers (new functions/statistical/regression.rs): the same
+  shape element by element, column/row y with one variable per x column/row, empty known_x the default, one point
+  accepted; a singular fit drops collinear columns (last column first, coefficient and se 0, df and F over the
+  kept ones), exact fits give se 0 and F `#NUM!`; text const/stats is `#VALUE!` (typed at once, a cell after the
+  shapes; also T-2556's cells); error elements are `#VALUE!` before the shapes; an array const lifts.
+- Remaining linest-modes cells are the solve's noise digits (K106, K190, K197) and K134's two-point values: T-2006.
