@@ -1,7 +1,11 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2066: QUARTILE and PERCENTILE.* of a single text cell and of a range with no number; quart/k 7, 1, 0. A1 = ' x ', A3 empty.",
- "tags": ["M2", "probe", "T-2066"],
+ "description": "T-2066: QUARTILE and PERCENTILE.* of a single text cell and of a range with no number; quart/k 7, 1, 0. A1 = ' x ', A3 empty. B12-B18: PERCENTRANK of a text cell / empty cell with a good, error and text x.",
+ "tags": [
+  "M2",
+  "probe",
+  "T-2066"
+ ],
  "expected": {},
  "sheets": [
   {
@@ -18,7 +22,14 @@
     "B8": "=PERCENTILE.INC(A1,1)",
     "B9": "=PERCENTILE.INC(A1,2)",
     "B10": "=QUARTILE(A3,1)",
-    "B11": "=BETAINV(2,QUARTILE(A1,7),1)"
+    "B11": "=BETAINV(2,QUARTILE(A1,7),1)",
+    "B12": "=PERCENTRANK(A1,2)",
+    "B13": "=PERCENTRANK(A1,1/0)",
+    "B14": "=PERCENTRANK(A3,1/0)",
+    "B15": "=PERCENTRANK(A1:A3,\"x\")",
+    "B16": "=PERCENTRANK(A1,\"x\")",
+    "B17": "=PERCENTRANK.EXC(A1,1/0)",
+    "B18": "=PERCENTRANK(A3,2)"
    }
   }
  ]
