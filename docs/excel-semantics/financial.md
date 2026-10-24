@@ -1110,11 +1110,14 @@ square root, and every other n is `exp(ln(1+e) * (1/n))` (numbers.md "Non-intege
 function's result back, match once C and D do.
 Evidence: ironcalc-calc FINANCIAL/NOMINAL_EFFECT.xlsx C8, D2 and the 11 other cells of its baseline lines (Excel-cached;
 all 90 cells now pass), probes/fin-argument-modes H125 (excel-graph).
-Ours: `rate_power` in functions/financial/rate_conversions.rs calls `arithmetic::power`. Not probed (T-2241): an
-overflowing EFFECT (`EFFECT(1E300,2)`) keeps the `#DIV/0!` an infinite rate gave before, where Excel's `^` itself is
-`#NUM!`; and `power`'s exact powers of ten now apply when 1 + r/n is exactly 10 (`EFFECT(270,30)` = 1E30 - 1).
+Overflow (T-2241): an overflowing power is `#NUM!`, not `#DIV/0!`: `EFFECT(1E300,2)`, `EFFECT(1E200,3)`,
+`EFFECT(1E10,100)`, `EFFECT(1E300,11)`, `EFFECT(1E13,365)`, `EFFECT(1E15,1E15)`, `EFFECT(123456789.123,365)` and
+`NOMINAL(1E300,0.5)` are all `#NUM!`. Exact power of ten: `EFFECT(270,30)` is 1E30 (1 + r/n = 10), as are `EFFECT(9,1)` = 9,
+`EFFECT(18,2)` = 99 and `EFFECT(990,99)` = 1.2527829399838425E+103. `NOMINAL(1E300,2)` is 2E+150 and `NOMINAL(1E300,1)` 1E+300.
+Evidence: probes/effect-overflow-power-of-ten A1-A14 (excel-graph).
+Ours: `rate_power` in functions/financial/rate_conversions.rs calls `arithmetic::power` and maps its overflow to `#NUM!`.
 Status: VERIFIED (excel-graph)
-Tasks: T-2034
+Tasks: T-2034, T-2241
 
 ## PRICE and ODDFPRICE discount with Excel's `^`
 Rule: PRICE and ODDFPRICE discount each coupon and the redemption by `(1 + yld/frequency)^t` with Excel's `^`

@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2241: EFFECT/NOMINAL overflow error and EFFECT with 1 + r/n exactly 10.",
+ "tags": [
+  "M9",
+  "probe",
+  "financial",
+  "T-2241"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=EFFECT(1E300,2)",
+    "A2": "=EFFECT(1E200,3)",
+    "A3": "=EFFECT(1E10,100)",
+    "A4": "=EFFECT(270,30)",
+    "A5": "=EFFECT(9,1)",
+    "A6": "=EFFECT(18,2)",
+    "A7": "=EFFECT(990,99)",
+    "A8": "=NOMINAL(1E300,0.5)",
+    "A9": "=EFFECT(1E300,11)",
+    "A10": "=EFFECT(1E13,365)",
+    "A11": "=EFFECT(1E15,1E15)",
+    "A12": "=EFFECT(123456789.123,365)",
+    "A13": "=NOMINAL(1E300,2)",
+    "A14": "=NOMINAL(1E300,1)"
+   }
+  }
+ ]
+}
