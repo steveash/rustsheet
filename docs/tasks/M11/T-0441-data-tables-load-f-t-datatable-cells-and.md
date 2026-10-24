@@ -73,3 +73,9 @@ which decision 0027 defers to Phase 2.
 - Follow-ups: T-0452 (structural edits and writes into result cells), T-0453 (recompute only when
   needed).
 
+- Review before merge (2026-10-24):
+  - A shared `DataTable::check` bounds each table to 2^20 result cells and a sheet to 1,024
+    tables, and refuses overlaps and inputs among the results. The engine's `add_data_table`, the
+    edit API and the xlsx import all use it, with a typed `DataTableError`.
+  - One recalculation fills at most 2^22 result cells across all tables (recalc.md DEVIATION).
+  - Unprobed choices are marked in recalc.md (T-0459), and the Python mirror is T-0460.

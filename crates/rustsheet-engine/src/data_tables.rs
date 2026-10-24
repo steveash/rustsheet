@@ -10,13 +10,18 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     model::Model,
-    types::{Cell, DataTable, DataTableInput},
+    types::{Cell, DataTable, DataTableError, DataTableInput},
 };
 
 /// Formula evaluations all the data tables of one recalculation may make together (CLAUDE.md
 /// directive 5). A table over a large model re-evaluates the model once per result cell; past
 /// the budget a result is `#NUM!` (recalc.md, DEVIATION).
 const MAX_DATA_TABLE_EVALUATIONS: usize = 1 << 25;
+
+/// Result cells all the data tables of one recalculation may fill together (directive 5). Each
+/// table is bounded on its own (`MAX_DATA_TABLE_CELLS`), but a sheet may hold many. A table past
+/// this budget is left as it is (recalc.md, DEVIATION).
+const MAX_DATA_TABLE_RESULTS: u64 = 1 << 22;
 
 impl Model {
     /// Recomputes every data table, sheet by sheet in the order the sheets store them. Returns
@@ -30,7 +35,12 @@ impl Model {
             })
             .collect();
         let mut budget = MAX_DATA_TABLE_EVALUATIONS;
+        let mut results_left = MAX_DATA_TABLE_RESULTS;
         for (sheet, table) in &tables {
+            let Some(left) = results_left.checked_sub(table.cell_count()) else {
+                continue;
+            };
+            results_left = left;
             self.evaluate_data_table(*sheet, table, &mut budget);
         }
         !tables.is_empty()
@@ -179,41 +189,18 @@ impl Model {
         }
     }
 
-    /// Adds a data table to sheet `sheet`. Its result cells, which must lie below and right of
-    /// row and column 1 and outside every other table, are emptied of content; the table fills
-    /// them at the next evaluation. Inputs are cells of the same sheet outside the results.
+    /// Adds a data table to sheet `sheet` ([`DataTable::check`] says which tables it accepts).
+    /// Its result cells are emptied of content; the table fills them at the next evaluation.
     ///
     /// # Errors
-    /// A message when the range or an input is invalid or the range overlaps another table.
-    pub fn add_data_table(&mut self, sheet: u32, table: DataTable) -> Result<(), String> {
+    /// The rule the table breaks, or [`DataTableError::NoSheet`].
+    pub fn add_data_table(&mut self, sheet: u32, table: DataTable) -> Result<(), DataTableError> {
+        let ws = self
+            .workbook
+            .worksheet_mut(sheet)
+            .map_err(|_| DataTableError::NoSheet)?;
+        table.check(&ws.data_tables)?;
         let (top, left, bottom, right) = table.range;
-        if top < 2
-            || left < 2
-            || bottom < top
-            || right < left
-            || bottom > crate::LAST_ROW
-            || right > crate::LAST_COLUMN
-        {
-            return Err("A data table needs a row above and a column left of its results".into());
-        }
-        if table.row_input.is_none() && table.column_input.is_none() {
-            return Err("A data table needs a row or a column input cell".into());
-        }
-        let inside = |r: i32, c: i32| (top..=bottom).contains(&r) && (left..=right).contains(&c);
-        for input in [table.row_input, table.column_input].into_iter().flatten() {
-            if let DataTableInput::Cell(r, c) = input {
-                if inside(r, c) || r < 1 || c < 1 || r > crate::LAST_ROW || c > crate::LAST_COLUMN {
-                    return Err("A data table's input cell must be outside its results".into());
-                }
-            }
-        }
-        let ws = self.workbook.worksheet_mut(sheet)?;
-        if ws.data_tables.iter().any(|t| {
-            let (t2, l2, b2, r2) = t.range;
-            t2 <= bottom && top <= b2 && l2 <= right && left <= r2
-        }) {
-            return Err("A data table cannot overlap another".into());
-        }
         for row in top..=bottom {
             for column in left..=right {
                 if let Some(s) = ws.sheet_data.cell(row, column).map(Cell::get_style) {

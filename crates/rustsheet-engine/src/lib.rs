@@ -81,6 +81,7 @@ mod merged_cells;
 mod model;
 mod node_frames;
 mod outside_cell;
+mod positions;
 mod reference_operators;
 mod restart_log;
 mod seen_ranges;

@@ -11,6 +11,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use bitcode::{Decode, Encode};
+
 use crate::{
     calc_result::CalcResult,
     evaluation::{key, CellKey as Key},
@@ -18,6 +20,26 @@ use crate::{
     model::Model,
     types::{Cell, FormulaValue},
 };
+
+/// Iterative calculation settings: a recalculation sweeps the circular references at most
+/// `max_iterations` times and stops at the first sweep whose largest change is below
+/// `max_change` (docs/excel-semantics/recalc.md, "Iterative calculation").
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Copy)]
+pub struct Iteration {
+    /// `calcPr@iterateCount`, 100 by default.
+    pub max_iterations: u32,
+    /// `calcPr@iterateDelta`, 0.001 by default.
+    pub max_change: f64,
+}
+
+impl Default for Iteration {
+    fn default() -> Self {
+        Self {
+            max_iterations: 100,
+            max_change: 0.001,
+        }
+    }
+}
 
 /// Member evaluations all the sweeps of one recalculation may make together (CLAUDE.md
 /// directive 5); past it the sweeps stop where they are (recalc.md, DEVIATION).

@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, reason = "tests")]
 
 //! What-if data tables (docs/excel-semantics/recalc.md "Data tables"; probes/data-tables, T-0441).
 
@@ -137,4 +137,39 @@ fn invalid_tables_are_refused_and_a_deleted_input_is_ref() {
         .add_data_table(0, table((5, 5, 5, 5), None, Some((5, 5))))
         .is_err());
     assert!(model.remove_data_table(0, (2, 2, 2, 2)));
+}
+
+/// Directive 5: a table is bounded in cells and per sheet, and the rules hold whoever adds it
+/// (the importer runs the same `DataTable::check`; recalc.md, DEVIATION).
+#[test]
+fn tables_are_bounded() {
+    use crate::types::{DataTableError, MAX_DATA_TABLES_PER_SHEET};
+    let mut model = new_empty_model();
+    let whole_sheet = table((2, 2, 1_048_576, 16_384), None, Some((1, 1)));
+    assert_eq!(
+        model.add_data_table(0, whole_sheet),
+        Err(DataTableError::TooLarge)
+    );
+    assert_eq!(
+        model.add_data_table(0, table((2, 2, 3, 3), None, Some((2, 2)))),
+        Err(DataTableError::BadInput)
+    );
+    assert_eq!(
+        model.add_data_table(7, table((2, 2, 2, 2), None, Some((1, 1)))),
+        Err(DataTableError::NoSheet)
+    );
+    for i in 0..MAX_DATA_TABLES_PER_SHEET {
+        let row = 2 + i32::try_from(i).unwrap();
+        model
+            .add_data_table(0, table((row, 2, row, 2), None, Some((1, 1))))
+            .unwrap();
+    }
+    assert_eq!(
+        model.add_data_table(0, table((2, 4, 2, 4), None, Some((1, 1)))),
+        Err(DataTableError::TooLarge)
+    );
+    assert_eq!(
+        model.add_data_table(0, table((2, 2, 2, 2), None, Some((1, 1)))),
+        Err(DataTableError::TooLarge)
+    );
 }

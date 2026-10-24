@@ -15,7 +15,9 @@ mod pivot;
 pub use self::pivot::{PivotError, PivotFunction, PivotTableInput};
 
 use rustsheet_engine::clock::Clock;
-use rustsheet_engine::types::{Cell, DataTable, DataTableInput, Link, Worksheet};
+use rustsheet_engine::types::{
+    Cell, DataTable, DataTableInput, Link, Worksheet, MAX_DATA_TABLE_CELLS,
+};
 use rustsheet_engine::Model;
 use rustsheet_engine::TakenSheet;
 
@@ -681,7 +683,8 @@ impl Txn<'_> {
         };
         let area = u64::from(range.bottom.saturating_sub(range.top) + 1)
             * u64::from(range.right.saturating_sub(range.left) + 1);
-        if area > MAX_FOOTPRINT_CELLS.unsigned_abs() {
+        // Checked before the cells are logged; the engine checks the same bound.
+        if area > MAX_DATA_TABLE_CELLS {
             return Err(EditError::InvalidInput {
                 cell: CellRef {
                     sheet: range.sheet,
@@ -704,13 +707,13 @@ impl Txn<'_> {
         }
         self.model
             .add_data_table(sheet, table)
-            .map_err(|message| EditError::InvalidInput {
+            .map_err(|error| EditError::InvalidInput {
                 cell: CellRef {
                     sheet: range.sheet,
                     row: range.top,
                     col: range.left,
                 },
-                message,
+                message: error.to_string(),
             })?;
         // Rollback must re-evaluate: the table filled its results when the edit evaluated.
         self.sheet_op = true;

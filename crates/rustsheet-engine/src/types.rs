@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 pub use crate::external_links::ExternalBook;
+pub use crate::iteration::Iteration;
 use crate::{
     cf_types::ConditionalFormatting,
     expressions::token::Error,
@@ -125,26 +126,6 @@ pub struct WorkbookSettings {
     pub date_system: DateSystem,
     /// Iterative calculation (`calcPr@iterate`); `None` when it is off.
     pub iteration: Option<Iteration>,
-}
-
-/// Iterative calculation settings: a recalculation sweeps the circular references at most
-/// `max_iterations` times and stops at the first sweep whose largest change is below
-/// `max_change` (docs/excel-semantics/recalc.md, "Iterative calculation").
-#[derive(Encode, Decode, Debug, PartialEq, Clone, Copy)]
-pub struct Iteration {
-    /// `calcPr@iterateCount`, 100 by default.
-    pub max_iterations: u32,
-    /// `calcPr@iterateDelta`, 0.001 by default.
-    pub max_change: f64,
-}
-
-impl Default for Iteration {
-    fn default() -> Self {
-        Self {
-            max_iterations: 100,
-            max_change: 0.001,
-        }
-    }
 }
 
 impl WorkbookSettings {
@@ -339,7 +320,9 @@ pub struct Worksheet {
     pub data_tables: Vec<DataTable>,
 }
 
-pub use crate::data_table_types::{DataTable, DataTableInput};
+pub use crate::data_table_types::{
+    DataTable, DataTableError, DataTableInput, MAX_DATA_TABLES_PER_SHEET, MAX_DATA_TABLE_CELLS,
+};
 
 /// Internal representation of Excel's `sheet_data`. It is row first and because of this all of our
 /// API's should be row first

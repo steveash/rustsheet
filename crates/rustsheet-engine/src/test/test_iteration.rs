@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, reason = "tests")]
 
 //! Iterative calculation (docs/excel-semantics/recalc.md; probes/circular-iteration-*, T-0447).
 //! The probes' values are for the oracle's three calculations; one `evaluate()` is one.

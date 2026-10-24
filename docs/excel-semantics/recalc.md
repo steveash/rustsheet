@@ -82,7 +82,9 @@ writes them back. The Calipers models saved with iteration on now match Excel (p
 pv23_019, pv23_027 and pv26_012 bit for bit).
 In a workbook with data tables, the substituted evaluations read a cycle's current values and do
 not iterate it. Four data-table results of calipers pv26_014 differ from Excel by up to 1e-3
-relative (T-0454).
+relative (T-0454). The reverse holds too: in the evaluation after the data tables, a cycle's members
+get the values the first sweeps settled on and are not swept again. So a cycle that reads a data
+table's results keeps the values it computed from the results before this recalculation (T-0454).
 Status: VERIFIED (excel-graph)
 Implemented in: crates/rustsheet-engine/src/iteration.rs
 Tasks: T-0428, T-0401, T-0429, T-0447, T-0454
@@ -128,7 +130,7 @@ probes/circular-iteration-delta-no-reader, probes/circular-iteration-delta-bound
 2026-10-16, T-0429).
 Ours: matches (the five probes above). A sweep's change is the largest absolute difference over all
 members, readers included. A member whose value changes type, text, boolean or error never counts
-as converged. Excel's rule for those is unprobed.
+as converged. Excel's rule for those is unprobed (T-0459).
 Status: VERIFIED (excel-graph)
 Implemented in: crates/rustsheet-engine/src/iteration.rs (`Model::sweep`)
 Tasks: T-0428, T-0401, T-0429, T-0447
@@ -171,9 +173,11 @@ pass, the tables are recomputed in sheet order. For each result cell the input c
 by the header values, the table's formula is evaluated on demand, and the inputs are put back. The
 workbook is then evaluated again, so readers see the results. ISFORMULA and FORMULATEXT of a result
 cell are TRUE and `{=TABLE(row,column)}`. The xlsx import reads `dt2D`, `dtr`, `r1`, `r2`, `del1`
-and `del2`, and the export writes them back on the first result cell. A deleted input makes every
-result `#REF!`.
-Status: VERIFIED (excel-graph)
+and `del2`, and the export writes them back on the first result cell.
+Unprobed, our choices: a deleted input (`del1`/`del2`), or a table with no input, makes every
+result `#REF!`. A header cell or formula that spills or gives a range is read as its top-left
+value (`scalar_at`). Neither is in probes/data-tables (T-0459).
+Status: VERIFIED (excel-graph) for the rules above; the unprobed choices are not
 Implemented in: crates/rustsheet-engine/src/data_tables.rs, crates/rustsheet-xlsx/src/import/sheet_data.rs (`data_table`), crates/rustsheet-xlsx/src/export/data_tables.rs
 Tasks: T-0428, T-0441, T-0446
 
@@ -188,4 +192,18 @@ so a large table over a large model cannot hold the evaluation without bound (CL
 directive 5).
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_EVALUATIONS`)
+Tasks: T-0441
+
+## A data table holds at most 2^20 result cells, and a sheet at most 1,024 tables
+Rule: Excel accepts a data table as large as the sheet; its limits are unprobed.
+Evidence: none for Excel; this is a resource limit, not an Excel observation.
+Ours: a table may have at most 1,048,576 result cells (`MAX_DATA_TABLE_CELLS`) and a sheet at
+most 1,024 tables (`MAX_DATA_TABLES_PER_SHEET`). A table past either bound, overlapping another,
+or with an input among its results is refused, by `Model::add_data_table` and the edit API and
+by the xlsx import, which then fails (`DataTable::check`). The tables of one recalculation fill at
+most 4,194,304 result cells together (`MAX_DATA_TABLE_RESULTS`). A table past that budget is left
+as it is. A crafted `ref="B2:XFD1048576"` can therefore not force billions of result cells
+(CLAUDE.md directive 5).
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/data_table_types.rs (`DataTable::check`), crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_RESULTS`), crates/rustsheet-xlsx/src/import/sheet_data.rs
 Tasks: T-0441

@@ -579,8 +579,13 @@ impl SheetDataReader<'_> {
                 }
                 "dataTable" => {
                     let range = formula.reference.as_deref().unwrap_or(&cell.reference);
-                    self.data_tables
-                        .push(data_table(range, &formula.data_table)?);
+                    let table = data_table(range, &formula.data_table)?;
+                    // Workbooks are untrusted: the same rules as `Model::add_data_table`, so a
+                    // table is bounded and never overlaps another (directive 5).
+                    table
+                        .check(&self.data_tables)
+                        .map_err(|e| XlsxError::Xml(format!("Invalid data table {range}: {e}")))?;
+                    self.data_tables.push(table);
                 }
                 "array" => {
                     let range = match formula.reference {
@@ -749,9 +754,6 @@ fn data_table(range: &str, xml: &DataTableXml) -> Result<DataTable, XlsxError> {
         (false, true) => (input(0)?, None),
         (false, false) => (None, input(0)?),
     };
-    if top < 2 || left < 2 || bottom < top || right < left {
-        return Err(XlsxError::Xml(format!("Invalid data table range: {range}")));
-    }
     Ok(DataTable {
         range: (top, left, bottom, right),
         row_input,

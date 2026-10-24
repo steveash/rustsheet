@@ -194,6 +194,21 @@ Status: VERIFIED (Excel-authored files)
 Implemented in: crates/rustsheet-eval/src/xlsx_snapshot.rs (`parse_sheet`), crates/rustsheet-eval/src/volatile.rs (`scorable_cells`).
 Tasks: T-0446
 
+## Iterative calculation is `calcPr@iterate`, with count and delta only when not the defaults
+Rule: desktop Excel saves iterative calculation as `<calcPr iterate="1"/>` in workbook.xml. It
+writes `iterateCount` and `iterateDelta` only when they differ from the defaults, 100 and 0.001:
+`<calcPr calcId="191029" iterate="1" iterateCount="200" iterateDelta="9.9999999999999995E-7"/>`.
+The delta is a shortest round-trip double with an upper-case exponent.
+Evidence: calipers pv_goldens (desktop Excel, Calipers 9e47ea4f). 68 workbooks store a bare
+`iterate="1"`, and pv26_007 and pv26_2_007 store the count and delta above (T-0447).
+Ours: the import reads all three. The export writes `iterate="1"`, and the count and delta only
+when they are not 100 and 0.001. Unprobed, a decision-0014 choice for untrusted input: an
+`iterateCount` outside 1 to 32,767 (Excel's dialog range), or a delta that is negative, NaN or
+unparsable, imports as the default.
+Status: VERIFIED (Excel-authored files) for the storage; the fallback is our choice
+Implemented in: crates/rustsheet-xlsx/src/import/workbook.rs (`iteration_from`), crates/rustsheet-xlsx/src/export/workbook.rs
+Tasks: T-0447
+
 ## LAMBDA optional parameters are stored `_xlop.`
 Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of
 it as `_xlpm.y` like any other parameter: `=LAMBDA(x,[y],ISOMITTED(y))(1)` is saved as
