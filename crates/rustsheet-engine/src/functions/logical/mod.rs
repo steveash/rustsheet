@@ -358,7 +358,18 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = self.evaluate_node_in_context(&args[0], cell);
+        // TRIMRANGE of a range is the range it keeps, so its blank cells are 0 as below
+        // (`AVEDEV(IFERROR(TRIMRANGE(D!A1:B6),-1))` is 3.5; probes/t2579-array-value-edges B74, B84).
+        let value = if let Node::FunctionKind {
+            kind: Function::Trimrange,
+            ..
+        } = args[0].ungrouped()
+        {
+            self.evaluate_picked_reference_arg(&args[0], cell)
+                .into_single_area(cell)
+        } else {
+            self.evaluate_node_in_context(&args[0], cell)
+        };
         // A name bound to a 3-D span is a reference, not an error, so the fallback is not taken,
         // and its value is `#VALUE!`: `IFERROR(span3,2)` is `#VALUE!` while `ISERROR(span3)` is
         // TRUE and the inline `IFERROR(Feb:Apr!A7:B12,0.5)` 0.5 (gen-m8a b221d72cc501675a; T-1640).

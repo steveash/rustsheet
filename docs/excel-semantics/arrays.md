@@ -1713,7 +1713,7 @@ excel-graph, 2026-10-24, T-2579; there D!A1:A6 = 1, blank, TRUE, "x", 5, =1/0 an
   `COMBIN(18,FILTER(..))` is 1).
 - IFERROR and IFNA over a multi-cell range give its values with each blank cell as 0: `COUNT(IFERROR(D!A1:A6,-1))` is 4
   (1, 0, 5, -1), AVERAGE 1.25, AVEDEV 1.875, DEVSQ 20.75, SUM 5, `INDEX(IFERROR(D!A1:A6,-1),2)&"|"` "0|" (B70-B84; gen-m9
-  fec39efaba9284c3 A253). TRUE and "x" stay a boolean and text, which AVEDEV skips in an array as in a range (B79, B80). IFNA alike
+  fec39efaba9284c3 A253; through TRIMRANGE of a range too, B74, B84). TRUE and "x" stay a boolean and text, which AVEDEV skips in an array as in a range (B79, B80). IFNA alike
   (`COUNT(IFNA(D!A1:A6,-1))` is 3, the `#DIV/0!` kept; `INDEX(IFNA(..),2)&"|"` "0|": B85, B86). A one-cell range is the
   blank's empty value, not 0 (`ISBLANK(IFERROR(D!A2:A2,1))` TRUE, `&"|"` "|": B87, B88; logic.md "IFERROR / IFNA of a blank
   cell").
