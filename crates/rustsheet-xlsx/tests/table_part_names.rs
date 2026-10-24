@@ -12,6 +12,11 @@ const TABLE_ATTRS: &str = r#"name="Table1" displayName="Table1""#;
 /// `tests/example.xlsx` with its table part's name attributes replaced by `attrs` and a
 /// `SUM(Table1[Year])` formula in `Table!H50`.
 fn workbook(attrs: &str) -> Vec<u8> {
+    workbook_with_formula(attrs, "SUM(Table1[Year])")
+}
+
+/// As [`workbook`], with `formula` in `Table!H50` and `FORMULATEXT(H50)` in `Table!H51`.
+fn workbook_with_formula(attrs: &str, formula: &str) -> Vec<u8> {
     let mut src =
         zip::ZipArchive::new(Cursor::new(std::fs::read("tests/example.xlsx").unwrap())).unwrap();
     let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
@@ -30,7 +35,9 @@ fn workbook(attrs: &str) -> Vec<u8> {
                 .unwrap()
                 .replace(
                     "</sheetData>",
-                    r#"<row r="50"><c r="H50"><f>SUM(Table1[Year])</f></c></row></sheetData>"#,
+                    &format!(
+                        r#"<row r="50"><c r="H50"><f>{formula}</f></c></row><row r="51"><c r="H51"><f>FORMULATEXT(H50)</f></c></row></sheetData>"#
+                    ),
                 )
                 .into_bytes();
         }
@@ -41,7 +48,7 @@ fn workbook(attrs: &str) -> Vec<u8> {
     out.finish().unwrap().into_inner()
 }
 
-fn h50(bytes: &[u8]) -> Result<String, String> {
+fn cell(bytes: &[u8], row: i32) -> Result<String, String> {
     let workbook = load_from_xlsx_bytes(bytes, "case", "en", "UTC").map_err(|e| e.to_string())?;
     let mut model = Model::from_workbook(workbook, "en").unwrap();
     model.evaluate();
@@ -51,27 +58,32 @@ fn h50(bytes: &[u8]) -> Result<String, String> {
         .iter()
         .position(|n| n == "Table")
         .unwrap();
-    Ok(model.get_formatted_cell_value(sheet as u32, 50, 8).unwrap())
+    Ok(model
+        .get_formatted_cell_value(sheet as u32, row, 8)
+        .unwrap())
 }
 
 #[test]
 fn both_attributes_resolve() {
-    assert_eq!(h50(&workbook(TABLE_ATTRS)).unwrap(), "5935");
+    assert_eq!(cell(&workbook(TABLE_ATTRS), 50).unwrap(), "5935");
 }
 
 #[test]
 fn display_name_alone_names_the_table() {
-    assert_eq!(h50(&workbook(r#"displayName="Table1""#)).unwrap(), "5935");
+    assert_eq!(
+        cell(&workbook(r#"displayName="Table1""#), 50).unwrap(),
+        "5935"
+    );
 }
 
 #[test]
 fn name_alone_names_the_table() {
-    assert_eq!(h50(&workbook(r#"name="Table1""#)).unwrap(), "5935");
+    assert_eq!(cell(&workbook(r#"name="Table1""#), 50).unwrap(), "5935");
 }
 
 #[test]
 fn neither_attribute_is_an_import_error() {
-    assert!(h50(&workbook(""))
+    assert!(cell(&workbook(""), 50)
         .unwrap_err()
         .contains("missing table name"));
 }
@@ -85,6 +97,17 @@ fn odd_display_names_never_panic() {
         r#"name="Table1" displayName="Таблица1""#,
         r#"name="Table1" displayName="Table1" displayName="Table1""#,
     ] {
-        let _ = h50(&workbook(attrs));
+        let _ = cell(&workbook(attrs), 50);
+    }
+}
+
+/// A loaded formula naming a table or column the file lacks is `#REF!` and prints `#REF!`
+/// (probes/table-edits/table-unknown-name-load and -column-load, T-2197, T-2322).
+#[test]
+fn unknown_table_or_column_loads_as_ref() {
+    for formula in ["SUM(Nope[Year])", "SUM(Table1[Nope])"] {
+        let bytes = workbook_with_formula(TABLE_ATTRS, formula);
+        assert_eq!(cell(&bytes, 50).unwrap(), "#REF!", "{formula}");
+        assert_eq!(cell(&bytes, 51).unwrap(), "=SUM(#REF!)", "{formula}");
     }
 }
