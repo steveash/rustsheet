@@ -3,7 +3,7 @@ id: T-2567
 title: "A LET name spelled like a function wins in call position (Pv(1))"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
