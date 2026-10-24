@@ -361,7 +361,7 @@ impl Model {
                     }
                     // A LAMBDA element read as a value: `INTERCEPT(..,BYCOL(..,LAMBDA(x,LAMBDA(w,w))))`
                     // is `#VALUE!` (gen-m9/ee2497a5e683c5d9 A124).
-                    ArrayNode::Lambda(_) => return Err(Error::VALUE),
+                    ArrayNode::Lambda(_) | ArrayNode::Nested(_) => return Err(Error::VALUE),
                     _ => {
                         values.push(None);
                     }

@@ -204,6 +204,7 @@ mod test_log10;
 mod test_mod_quotient;
 mod test_nan_inf;
 mod test_nested_formula_stack;
+mod test_nested_groupby_cells;
 mod test_networkdays;
 mod test_networkdays_closed_form;
 mod test_now;

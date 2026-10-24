@@ -87,7 +87,9 @@ impl Model {
                         row.into_iter()
                             .map(|item| match item {
                                 ArrayNode::Number(v) => Element::Number(v),
-                                ArrayNode::Error(_) | ArrayNode::Lambda(_) => Element::Error,
+                                ArrayNode::Error(_)
+                                | ArrayNode::Lambda(_)
+                                | ArrayNode::Nested(_) => Element::Error,
                                 ArrayNode::Empty => Element::Blank,
                                 _ => Element::NotNumber,
                             })

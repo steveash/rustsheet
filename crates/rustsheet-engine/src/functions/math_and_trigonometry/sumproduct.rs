@@ -52,7 +52,9 @@ impl Model {
                     let v = match node {
                         ArrayNode::Number(v) => *v,
                         ArrayNode::Boolean(_) | ArrayNode::String(_) | ArrayNode::Empty => 0.0,
-                        ArrayNode::Lambda(_) => return Model::lambda_as_number_error(cell),
+                        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
+                            return Model::lambda_as_number_error(cell)
+                        }
                         ArrayNode::Error(e) => {
                             element_error.get_or_insert_with(|| e.clone());
                             0.0

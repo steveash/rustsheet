@@ -113,3 +113,21 @@ pub(crate) fn too_many_visits(visits: u64, cell: CellReferenceIndex) -> Option<C
     (visits > MAX_LIFTED_CELL_VISITS)
         .then(|| CalcResult::new_error(Error::ERROR, cell, "Too many cells to visit".to_string()))
 }
+
+/// Most levels a nested GROUPBY or PIVOTBY cell may have (SPEC-0018 "Bound"): `NestedArray::new`
+/// refuses a deeper tree (`#ERROR!`), so `Drop` and equality, which recurse, stay this shallow
+/// whatever the evaluator's recursion guard allows. Excel has no such limit: DEVIATION
+/// (decision 0014; docs/excel-semantics/arrays.md "Nested GROUPBY and PIVOTBY cells: bounds").
+pub(crate) const MAX_NESTED_DEPTH: usize = 64;
+
+/// Most cells of nested arrays one evaluation may read the contents of (INDEX of a nested cell),
+/// as many as [`MAX_LIFTED_CELL_VISITS`]: copies of a nested cell share it, so a fan-out
+/// (`VSTACK(r,r,..)`) costs nothing until its copies are read, and this bounds the reads.
+/// Excel has no such limit: DEVIATION (decision 0014; docs/excel-semantics/arrays.md).
+pub(crate) const MAX_NESTED_WALK_CELLS: usize = 1 << 27;
+
+/// Most cells of nested arrays one evaluation may keep, summed over its GROUPBY and PIVOTBY
+/// calls, as many as a LAMBDA's captures (`MAX_CAPTURED_CELLS`): each call is capped at
+/// [`MAX_SIZE`], and this bounds a loop of them (`REDUCE(..,LAMBDA(a,i,VSTACK(a,GROUPBY(..))))`),
+/// whose results no array size check sees. Excel has no such limit: DEVIATION (decision 0014).
+pub(crate) const MAX_NESTED_KEPT_CELLS: usize = 1 << 22;

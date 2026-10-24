@@ -140,7 +140,9 @@ impl Model {
                         ArrayNode::Boolean(b) => CalcResult::Boolean(b),
                         ArrayNode::String(s) => CalcResult::String(s),
                         // Cached cells hold no LAMBDA; read as a value it would be `#VALUE!`.
-                        node @ ArrayNode::Lambda(_) => array_node_to_calc_result(&node, cell),
+                        node @ (ArrayNode::Lambda(_) | ArrayNode::Nested(_)) => {
+                            array_node_to_calc_result(&node, cell)
+                        }
                     };
                     visit(self, ItemSource::ReferencedCell, value)?;
                 }
