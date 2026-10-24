@@ -1,8 +1,8 @@
-use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::constants::LAST_ROW;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
-use crate::limits::check_array_size;
+use crate::limits::check_built_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -63,11 +63,14 @@ impl Model {
             Ok(rows) => rows,
             Err(error) => return error,
         };
-        let columns = match extent(columns, LAST_COLUMN as usize, "columns") {
+        // Rows past the grid are `#VALUE!` (`ROWS(SEQUENCE(1048577))`, probes/resource-limits
+        // C13), columns past it are built (`COLUMNS(SEQUENCE(1,16385))` is 16385,
+        // probes/t2579-array-value-edges B24) under `check_built_array_size`.
+        let columns = match extent(columns, usize::MAX, "columns") {
             Ok(columns) => columns,
             Err(error) => return error,
         };
-        if let Some((error, message)) = check_array_size(rows, columns) {
+        if let Some((error, message)) = check_built_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);
         }
 
