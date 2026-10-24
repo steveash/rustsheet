@@ -3,7 +3,7 @@ id: T-2459
 title: "Spec: nested arrays for GROUPBY/PIVOTBY LAMBDA array results (TYPE 64 cells, top-left when lifted)"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
