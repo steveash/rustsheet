@@ -24,9 +24,9 @@ impl Parser {
 
         let mut parameters = Vec::new();
         // The parameters are in scope up to the LAMBDA's `)`.
-        let scope = self.reference_shaped_names.len();
+        let scope = self.bound_names.len();
         let def = self.parse_lambda_items(&arg_separator, &mut parameters);
-        self.reference_shaped_names.truncate(scope);
+        self.bound_names.truncate(scope);
         let body = match def {
             Ok(body) => body,
             Err(error) => return error,

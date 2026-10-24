@@ -344,10 +344,10 @@ impl Parser {
         Some(self.range_operand(None, left, right))
     }
 
-    /// Whether an enclosing LET or LAMBDA binds `name`, a name that would otherwise read as a
-    /// defined name ([`Parser::bind_reference_shaped_name`]), in any grammar mode.
+    /// Whether an enclosing LET or LAMBDA binds `name` ([`Parser::bind_reference_shaped_name`]),
+    /// in any grammar mode.
     fn binds_name(&self, name: &str) -> bool {
-        self.reference_shaped_names
+        self.bound_names
             .iter()
             .any(|bound| bound.eq_ignore_ascii_case(name))
     }
@@ -380,9 +380,15 @@ impl Parser {
         if let (TokenType::Ident(_), Node::DefinedNameKind((name, ..))) = (token, &node) {
             if !name.contains(['!', '[']) {
                 let name = name.clone();
-                self.reference_shaped_names.push(name.clone());
+                self.bound_names.push(name.clone());
                 return Node::NamedVariableKind { name, id: None };
             }
+        }
+        // Any other plain name is bound too: called, it is the variable, not a function of its
+        // name (probes/let-name-function-spelled-call, T-2567).
+        if let (TokenType::Ident(_), Node::NamedVariableKind { name, .. }) = (token, &node) {
+            self.bound_names.push(name.clone());
+            return node;
         }
         if !self.lexer.is_a1_mode() {
             return node;
@@ -409,7 +415,7 @@ impl Parser {
             }
             _ => return node,
         };
-        self.reference_shaped_names.push(bound.clone());
+        self.bound_names.push(bound.clone());
         Node::NamedVariableKind {
             name: bound,
             id: None,
@@ -493,8 +499,16 @@ impl Parser {
         {
             return self.function_call(kind, args);
         }
+        // A LET name or LAMBDA parameter spelled like a function is the variable where bound, in
+        // any case: `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Sum,LAMBDA(a,a*2),SUM(1,2))`
+        // `#VALUE!` (probes/let-name-function-spelled-call, let-lambda-body-own-name, T-2567).
         // We should do this *only* importing functions from xlsx
-        if let Some(function_kind) = self.language.functions.lookup_stored(&name) {
+        if let Some(function_kind) = self
+            .language
+            .functions
+            .lookup_stored(&name)
+            .filter(|_| !self.binds_name(&name))
+        {
             let node = self.function_call(function_kind, args);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel

@@ -275,3 +275,33 @@ fn lambda_body_naming_its_own_let_name_is_name_error() {
         );
     }
 }
+
+#[test]
+fn test_let_name_spelled_like_function_called() {
+    // A bound name spelled like a function is the variable when called, in any case
+    // (probes/let-name-function-spelled-call, let-lambda-body-own-name, T-2567).
+    let mut model = new_empty_model();
+    let cases = [
+        ("=LET(Pv,LAMBDA(a,a),Pv(1))", "1"),
+        ("=LET(Pv,LAMBDA(a,Pv),Pv(1))", "#NAME?"),
+        ("=LET(Sum,LAMBDA(a,a*2),Sum(3))", "6"),
+        ("=LET(abs,LAMBDA(a,a*2),ABS(-3))", "-6"),
+        ("=LAMBDA(Pv,Pv(2))(LAMBDA(a,a+1))", "3"),
+        ("=LET(Pv,2,Pv(1))", "#NAME?"),
+        ("=LET(Pv,LAMBDA(a,a),PV(1,2,3))", "#VALUE!"),
+        ("=LET(Pv,LAMBDA(a,a),LET(x,1,Pv(5)))", "5"),
+        ("=LET(If,LAMBDA(a,a+1),If(1))", "2"),
+        ("=LET(Sum,LAMBDA(a,a*2),SUM(1,2))", "#VALUE!"),
+        ("=LET(Today,LAMBDA(a,a),Today(4))", "4"),
+        ("=LET(Pv,LAMBDA(a,a),Pv())", "#VALUE!"),
+        // Out of the LET's scope the function is back.
+        ("=LET(x,LET(Sum,LAMBDA(a,a*2),Sum(1)),SUM(x,1))", "3"),
+    ];
+    for (row, (formula, _)) in (1..).zip(cases) {
+        model._set(&format!("A{row}"), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in (1..).zip(cases) {
+        assert_eq!(model._get_text(&format!("A{row}")), expected, "{formula}");
+    }
+}
