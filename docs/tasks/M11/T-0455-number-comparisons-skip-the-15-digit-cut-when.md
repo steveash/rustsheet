@@ -3,7 +3,7 @@ id: T-0455
 title: "Number comparisons skip the 15-digit cut when it cannot change the answer"
 milestone: M11
 lane: perf
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -53,3 +53,15 @@ Release build on a 4-core Linux box:
 - Follow-ups: T-0456 (spec, whole-column arrays, 59932's remaining time) and T-0457 (probe, 59932's
   `#ERROR!` lookups into uncached linked sheets). T-0448's context no longer blames 59932 on its
   VLOOKUPs.
+
+Agent review:
+
+| reviewer | verdict | blocking findings |
+|---|---|---|
+| security | APPROVE | none |
+| architecture | APPROVE | none |
+| quality | APPROVE | none |
+| excel-fidelity | APPROVE | none |
+
+Their minor findings are fixed. The id-39 comment is back above its own test, the test now
+probes offsets around 1e-14 and 1e-13, and the status is done.

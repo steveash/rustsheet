@@ -666,7 +666,6 @@ mod tests {
         );
     }
 
-    // The specific regression: id 39 formats 175000 as a grouped 2-decimal number, not `#VALUE!`.
     // The shortcuts of `cmp_excel_precision` agree with the 15-digit cut everywhere: around
     // equality (neighbouring doubles, the 15th digit's rounding edge, decade boundaries), across
     // magnitudes and signs, and for zeros, subnormals, infinities and NaN (T-0455).
@@ -713,7 +712,8 @@ mod tests {
                 others.extend([up, down]);
             }
             for k in [
-                -2e-13, -1.5e-14, -1e-14, -5e-15, -4.9e-15, 4.9e-15, 5e-15, 1e-14, 2e-13,
+                -2e-13, -1.1e-13, -0.9e-13, -1.5e-14, -1e-14, -9.9e-15, -9e-15, -5e-15, -4.9e-15,
+                4.9e-15, 5e-15, 9e-15, 9.9e-15, 1e-14, 0.9e-13, 1.1e-13, 2e-13,
             ] {
                 others.push(a * (1.0 + k));
             }
@@ -730,6 +730,7 @@ mod tests {
         assert!(checked > 300_000);
     }
 
+    // The specific regression: id 39 formats 175000 as a grouped 2-decimal number, not `#VALUE!`.
     #[test]
     fn id_39_formats_currency_value() {
         let out = format_number(175000.0, &get_num_fmt(39, &[]), "en");
