@@ -264,6 +264,25 @@ row 1 `#NUM!`, follows from that order but is unprobed. W9 is 0 since T-0445 (re
 Status: VERIFIED (excel-graph)
 Tasks: T-1803, T-1967, T-1965, T-2408
 
+## Arrays past the grid: MAKEARRAY, SEQUENCE and the lifts over them
+Rule: an array value may be wider or taller than the grid; only a spill of it is `#SPILL!`. `COLUMNS(MAKEARRAY(1,20000,LAMBDA(r,c,c)))`
+is 20000 (B20), its `INDEX(..,1,19999)` 19999 (B21), its `SUM` of ones 20000 (B22) and `COLUMNS(MAKEARRAY(..)+1)` 20000 (B30);
+`ROWS(MAKEARRAY(1048577,1,LAMBDA(r,c,1)))` is 1048577 (B23); `COLUMNS(SEQUENCE(1,16385))` is 16385 (B24), while
+`ROWS(SEQUENCE(1048577))` is `#VALUE!` (probes/resource-limits C13), so SEQUENCE refuses rows past the grid but not columns;
+`COLUMNS(HSTACK(SEQUENCE(1,10000),SEQUENCE(1,10000)))` and `COLUMNS(TRANSPOSE(SEQUENCE(20000)))` are 20000 (B28, B29);
+a function lifted over such an array lifts it whole, so `ERROR.TYPE(MAKEARRAY(1,16385,LAMBDA(r,c,c)))` in a cell is
+`#SPILL!` (B26), and `BETAINV(..,MAKEARRAY(4,51638,..),..)` is too (gen-m9/4250f880ab640c49 Calc!A237).
+`MAKEARRAY(3,1E15,..)` is `#VALUE!` (gen-m7/b2078b5d702c691a A2553).
+Evidence: probes/t2579-array-value-edges B20-B32 (excel-graph, 2026-10-24, T-2579); probes/resource-limits C13.
+Ours: `limits::check_built_array_size` in MAKEARRAY and SEQUENCE (after SEQUENCE's own rows check against the grid): a
+rows or columns of 2^31 or more is `#VALUE!`, EXPAND's threshold (`SIZE_LIMIT_EXCLUSIVE`, "Stacked results past the grid"),
+which is a hypothesis for these two (only 1E15 is measured); below it the cell bound of the next section holds, so
+`ROWS(MAKEARRAY(1048577,1,..))` (B23) is `#ERROR!` (DEVIATION, decision 0014, listed in probes/deviations). The lifting
+driver's broadcast (`lift::driver::broadcast_shape`) checks the cell count only (`check_array_cells`), so B26 is the
+spill's `#SPILL!`. A237 is `#ERROR!`: its 206,552 BETAINV elements pass the quantile's lift cost cap (statistics.md), T-2607.
+Status: VERIFIED (excel-graph)
+Tasks: T-2579, T-2600
+
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
 `ROWS(SEQUENCE(1048576))` = 1048576, and a range lifted element-wise by a scalar function becomes
@@ -272,7 +291,7 @@ an array of the range's size however large: `ROWS(DATE(11:1899,12,1))` = 1889 an
 `=DATE(11:1899,12,1)` in C3 is `#SPILL!` (no room). A whole column lifts like any range:
 with A1 = -2, A2 = 3, `ROWS(ABS(A:A))` = `ROWS(A:A+0)` = 1048576, `SUM(ABS(A:A))` = 5,
 `INDEX(ABS(A:A),2)` = 3, `SUM(--ISNUMBER(A:A))` = 2, and `=ABS(A:A)` in C7 is `#SPILL!`.
-Only a dimension past the grid is `#VALUE!` (`SEQUENCE(1048577)`).
+Some functions refuse a dimension past the grid with `#VALUE!` (`SEQUENCE(1048577)`), others build it ("Arrays past the grid" above).
 RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 1,048,576 cells
 (one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, an *IF(S)
 criteria grid (broadcast criteria included), a GROUPBY result (groups x columns, checked while grouping, before any
@@ -299,7 +318,8 @@ Excel for the web refuses to open a workbook whose formula sums such a
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
 eval/suites/probes/deviations, decision 0036); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
-listed in eval/suites/probes/deviations, decision 0091, T-2223).
+listed in eval/suites/probes/deviations, decision 0091, T-2223); probes/t2579-array-value-edges B23 (`ROWS(MAKEARRAY(1048577,1,..))`,
+1048577 in Excel, excel-graph, 2026-10-24; listed in eval/suites/probes/deviations, decision 0108, T-2600).
 Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::chosen_indices` (CHOOSECOLS/CHOOSEROWS) and FORMULATEXT over a range in

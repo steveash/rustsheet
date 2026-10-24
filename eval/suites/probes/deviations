@@ -8,6 +8,7 @@ textsplit-padded-size.case.json	Calc!A1	decision 0014	docs/excel-semantics/array
 textsplit-padded-size.case.json	Calc!A2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 textsplit-padded-size.case.json	Calc!A3	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 textsplit-padded-size.case.json	Calc!A4	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+t2579-array-value-edges.case.json	P!B23	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 m9-bessel-order-limits.case.json	Calc!B270	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
 m9-bessel-order-limits.case.json	Calc!B275	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
 m9-bessel-order-limits.case.json	Calc!B277	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!

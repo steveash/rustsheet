@@ -12,7 +12,7 @@ use crate::cast::calc_result_to_array_node;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
 use crate::functions::util::{array_element_value, top_left_of_array};
-use crate::limits::{check_array_size, too_many_visits};
+use crate::limits::{check_array_cells, too_many_visits};
 use crate::reference_operators::{RefArg, RefElement, RefGrid};
 use crate::{
     calc_result::{CalcResult, Range},
@@ -93,7 +93,10 @@ pub(crate) fn grid_dims(grid: &[Vec<ArrayNode>]) -> (usize, usize) {
     (grid.len(), grid.first().map_or(0, Vec::len))
 }
 
-/// The broadcast shape of `lifted`, or `#ERROR!` past the array bound (`check_array_size`).
+/// The broadcast shape of `lifted`, or `#ERROR!` past the cell bound (`check_array_cells`). Its
+/// arrays are built already, so one wider or taller than the grid lifts like any other:
+/// `ERROR.TYPE(MAKEARRAY(1,16385,..))` is a 1 x 16385 array, `#SPILL!` in a cell
+/// (probes/t2579-array-value-edges B26; arrays.md "Arrays past the grid"; T-2600).
 pub(crate) fn broadcast_shape(
     lifted: &[LiftedArg],
     cell: CellReferenceIndex,
@@ -102,7 +105,7 @@ pub(crate) fn broadcast_shape(
         .iter()
         .map(LiftedArg::dims)
         .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
-    match check_array_size(rows, columns) {
+    match check_array_cells(rows, columns) {
         Some((error, message)) => Err(CalcResult::new_error(error, cell, message)),
         None => Ok((rows, columns)),
     }
@@ -528,7 +531,7 @@ impl Model {
     }
 
     /// The broadcast over arguments already read, at least one of them a grid (SPEC-0011
-    /// `lift_values` steps 3-7): the output bound (`check_array_size`, `#ERROR!` past it) and the
+    /// `lift_values` steps 3-7): the output bound (`check_array_cells`, `#ERROR!` past it) and the
     /// work bound (`cost`, `too_many_visits`) are checked before any element is computed; then
     /// the elements run in row-major order, in place when one grid is the only lifted argument.
     /// There, an element whose arguments are all numbers runs `numbers` instead of `kernel`. A

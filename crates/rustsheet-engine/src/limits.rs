@@ -45,6 +45,29 @@ pub fn check_array_cells(rows: usize, columns: usize) -> Option<(Error, String)>
     None
 }
 
+/// 2^31, the least size Excel reads as no longer a size: EXPAND's rows or columns (`#VALUE!`) and
+/// WRAPROWS/WRAPCOLS's `wrap_count` (`#NUM!`) refuse it (arrays.md "Stacked results past the grid",
+/// "WRAPROWS and WRAPCOLS with a huge `wrap_count`").
+pub(crate) const SIZE_LIMIT_EXCLUSIVE: f64 = 2_147_483_648.0;
+
+/// The bound of a MAKEARRAY or SEQUENCE result, which Excel builds past the grid:
+/// `COLUMNS(MAKEARRAY(1,20000,..))` is 20000, `ROWS(MAKEARRAY(1048577,1,..))` 1048577 and
+/// `COLUMNS(SEQUENCE(1,16385))` 16385 (probes/t2579-array-value-edges B20, B23, B24). A dimension
+/// of 2^31 or more is `#VALUE!` (`MAKEARRAY(3,1E15,..)`, gen-m7/b2078b5d702c691a A2553; the
+/// threshold is EXPAND's, [`SIZE_LIMIT_EXCLUSIVE`]); below it the cell bound of
+/// [`check_array_cells`] holds, `#ERROR!` where Excel builds the array (DEVIATION, arrays.md
+/// "Arrays past the grid"; T-2600). SEQUENCE checks its rows against the grid first.
+pub fn check_built_array_size(rows: usize, columns: usize) -> Option<(Error, String)> {
+    let limit = SIZE_LIMIT_EXCLUSIVE as usize;
+    if rows >= limit || columns >= limit {
+        return Some((
+            Error::VALUE,
+            "rows and columns must be less than 2^31".to_string(),
+        ));
+    }
+    check_array_cells(rows, columns)
+}
+
 /// The bound of a stacked result (HSTACK, VSTACK): more rows than the grid is `#NUM!`, while
 /// columns past the grid are allowed, under the cell-count limit of [`check_array_cells`]:
 /// `ROWS(VSTACK(A:A,B1))` is `#NUM!` and `COLUMNS(HSTACK(A1:XFD1,A1))` is 16385

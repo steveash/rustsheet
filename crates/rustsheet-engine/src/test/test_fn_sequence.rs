@@ -77,11 +77,23 @@ fn test_sequence_rows_exceeds_sheet_limit() {
 
 #[test]
 fn test_sequence_cols_exceeds_sheet_limit() {
-    // LAST_COLUMN is 16_384; one beyond that must return #VALUE!
+    // Columns past the grid are built, and only the spill of them fails: COLUMNS is 16385
+    // (probes/t2579-array-value-edges B24, T-2600). A dimension of 2^31 is refused, and one
+    // below it whose cells pass the cell bound is #ERROR!, before anything is allocated.
     let mut model = new_empty_model();
     model._set("A1", "=SEQUENCE(1,16385)");
+    model._set("A2", "=COLUMNS(SEQUENCE(1,16385))");
+    model._set("A3", "=COLUMNS(SEQUENCE(2,524288))");
+    model._set("A4", "=SEQUENCE(1,2^31)");
+    model._set("A5", "=SEQUENCE(1,2^31-1)");
+    model._set("A6", "=SEQUENCE(2,524289)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A1"), "#SPILL!");
+    assert_eq!(model._get_text("A2"), "16385");
+    assert_eq!(model._get_text("A3"), "524288");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#ERROR!");
+    assert_eq!(model._get_text("A6"), "#ERROR!");
 }
 
 #[test]
