@@ -3,7 +3,7 @@ id: T-2428
 title: "XIRR and XNPV size and type checks, and financial domain-before-text order, under the gen-m9 statistical cells (93 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
