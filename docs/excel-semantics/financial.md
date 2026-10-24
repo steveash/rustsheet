@@ -330,7 +330,7 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   (`xirr-early-dates`). The span factor stays: with Excel's `^`, the unscaled fitted stop scores 33/52 and the
   step test alone 48/52. The A8 124-year cell still needs the scaled bound.
 - T-2329 (probes/xirr-zero-first-bracket, excel-graph, 2026-10-24): with a zero first value the flows do
-  not matter. The bracket is [0, s] (s = the guess, 1e-5 for a guess of 0, also for a guess of 1 or more), and the
+  not matter. The bracket is [0, s] (s is the guess itself for any positive guess, 1 or more included, and 1e-5 for a guess of 0), and the
   bisection replaces the upper end every step (the first-value sign rule above), so XIRR is s/2^k at the first k
   with s/2^k < 5e-9 + 1e-8·s/2^k: 2.9802322387695314e-09 at the default guess for a root at 1.0 (A1), 3 (A4) or
   -0.1 (A5), on all-equal dates where XNPV is a flat 10 (A8) or a flat 0 (A12), and on a first date later than
