@@ -48,7 +48,7 @@ impl Model {
         // (probes/empty-array-args-sequence A22:A62). Columns reach 1048576 like rows, past the
         // 16384 of the grid (`SEQUENCE(0,1048576)` is `#CALC!`, `SEQUENCE(0,1048577)` `#VALUE!`).
         let extent = |n: f64, name: &str| -> Result<usize, CalcResult> {
-            let n = n.floor() as i64;
+            let n = n.trunc() as i64;
             match usize::try_from(n) {
                 Ok(n) if n <= LAST_ROW as usize => Ok(n),
                 _ => Err(CalcResult::new_error(
