@@ -9,7 +9,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::{check_array_cells, check_array_size, check_range_size},
+    limits::{check_built_array_size, check_range_size},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -426,16 +426,10 @@ impl Model {
             Err(error) => return error,
         };
 
-        // Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is
-        // 16385 (probes/expand-makearray-past-grid D1); rows past it stay `#VALUE!`, and so do
-        // columns past it above the cell bound (`MAKEARRAY(3,1E15,..)` is `#VALUE!`,
-        // gen-m7/b2078b5d702c691a A2553).
-        let refused = if check_array_cells(rows, cols).is_some() {
-            check_array_size(rows, cols)
-        } else {
-            check_array_size(rows, 1)
-        };
-        if let Some((error, message)) = refused {
+        // Rows and columns past the grid are built: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385
+        // (probes/expand-makearray-past-grid D1), `ROWS(MAKEARRAY(1048577,1,..))` 1048577
+        // (probes/t2579-array-value-edges B23, above our cell bound).
+        if let Some((error, message)) = check_built_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
 
