@@ -104,7 +104,7 @@ probes/yield-newton-domain column C (redemptions 1E+50 to 1E+300) gives YIELD va
 a 100-step cap far from the root. In that regime each step is about (1 + y/f) * f / T, so the final value shows the start.
 Back-chaining 100 analytic steps from C1 lands at -0.002179, the redemption-100 root (100/105)^(1/22.4) - 1. Forward from
 that root, C1, C6 and C7 come within 8e-7, but rates 0.01 to 0.5 and price 1 are off by 1e-5 to 1e-2. Fitting S there
-also decides T-2391's `#NUM!` cells (financial.md "YIELD's #NUM! cells and its 100-step cap").
+also decides T-2391's `#NUM!` cells (financial.md "YIELD's #NUM! cells and its suspected 100-step cap").
 
 ## Visible-parity stage
 Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.

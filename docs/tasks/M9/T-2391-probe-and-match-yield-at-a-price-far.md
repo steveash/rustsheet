@@ -52,7 +52,7 @@ probes/yield-newton-domain is committed and filled (excel-graph): the price swee
 and 1E5 (`#NUM!`), and the 100-step cap returns non-roots at very large redemptions. No solver model fitted all of it.
 Newton from the coupon rate with no fallback fixes the 18 `#NUM!` cells but breaks prices 1500 to 10000, which compute
 today through the bisection fallback. Step halving and fixed restarts fail the other way. Details and counts:
-financial.md "YIELD's #NUM! cells and its 100-step cap". Both groups seem to come from YIELD's unfitted start phase, so
+financial.md "YIELD's #NUM! cells and its suspected 100-step cap". Both groups seem to come from YIELD's unfitted start phase, so
 this task now waits on T-1592. Restart from the probe's C column, where about 100 analytic-Newton steps from near the
 redemption-100 root land within 1e-6 of Excel.
 

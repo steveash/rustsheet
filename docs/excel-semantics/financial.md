@@ -1406,7 +1406,7 @@ Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping
 Status: UNVERIFIED (the algorithm); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304
 
-## YIELD's #NUM! cells and its 100-step cap
+## YIELD's #NUM! cells and its suspected 100-step cap
 Rule: Excel's YIELD is `#NUM!` at some inputs where PRICE has a root, and returns a number that is not a root at others;
 neither follows from Newton on PRICE from the coupon rate alone:
 - A coupon rate far above the root is `#NUM!`: `YIELD(36665,44491,42,106,100,4,0)` and the gen-m9 cells
@@ -1414,11 +1414,12 @@ neither follows from Newton on PRICE from the coupon rate alone:
   15 more (roots 5 to 32, which our bisection finds), while `YIELD(36665,44491,R,106,100,4,0)` computes for R = 0.5 to 30
   (roots 0.47 to 14.3).
 - A price far above par computes up to 1E4 and is `#NUM!` from 1E5: `YIELD(39448,43831,0.05,P,100,2)` is -0.0222 at
-  P = 200, -0.165 at 1000, -0.220 at 2000, -0.340 at 10000, `#NUM!` at 1E5 and 1E6 (roots -0.494 and -0.633). The
-  gen-m9 cell `YIELD(39572,45740,1E-10,97,1,4)` (root -0.26) is `#NUM!` too.
+  P = 200, -0.165 at 1000, -0.220 at 2000, -0.340 at 10000, `#NUM!` at 1E5 and 1E6 (where our solver finds -0.494 and -0.633). The
+  gen-m9 cell `YIELD(39572,45740,1E-10,97,(FISHERINV(Data!$E1)+Data!A2),4.9)` (redemption 1, frequency 4.9 cut to 4;
+  ours -0.26) is `#NUM!` too.
 - With a redemption far above the price (1E+50 to 1E+300), YIELD returns a value below the root, where Newton has not
   converged: `YIELD(37341,45513,1E-9,105,1E+300,1)` is 78.13551092802992 (the root is above 1E+13), the same bits at
-  redemptions 1E+100 and 1E+200, 78.13550467139088 at 1E+50; a redemption of 1E+20 reaches its root. The value moves
+  redemptions 1E+100 and 1E+200, 78.13550467139088 at 1E+50; at a redemption of 1E+20 Excel and our solver agree (C11). The value moves
   with the rate (78.909 at 0.01, 116.80 at 0.5) and the price (85.41 at price 1, 71.37 at 1E+10), and
   `YIELD(43831,45412,10,999999999999998,1E+300,2)` is 88233.09573268576.
 Lab (T-2391, scratch scripts on the fitlab PRICE): the third group is what about 100 analytic-Newton steps from a start
@@ -1630,7 +1631,7 @@ formula per pool entry:
   dates give 0; fractional dates truncate.
 - YIELD: a price of 0 or -1 is `#NUM!`, and so are 1E+6 and 1E+300 (ours -0.6330938491144911 at 1E+6, T-2391); a price of
   200 computes (-0.02224401627496982). The price sweep in probes/yield-newton-domain locates the cut between 1E4 and 1E5
-  ("YIELD's #NUM! cells and its 100-step cap").
+  ("YIELD's #NUM! cells and its suspected 100-step cap").
 Evidence: a scratch suite of 169 cells (one formula per entry of the pools rate, nper, period, cash_amount, price,
 annuity_type, security_date, basis, frequency, npery, cash_flows and cash_dates), filled through excel-graph on
 2026-10-22 and deleted afterwards, as the task asked; T-2390, T-2391 and T-2392 commit probes for the three mismatches.
