@@ -88,8 +88,8 @@ impl Model {
             Some(value) => beta_cumulative(value, cell)?,
             None => true,
         };
-        let a = self.cast_number_no_bools_or(bounds.first(), 0.0, cell)?;
-        let b = self.cast_number_no_bools_or(bounds.get(1), 1.0, cell)?;
+        let a = self.cast_number_or(bounds.first(), 0.0, cell)?;
+        let b = self.cast_number_or(bounds.get(1), 1.0, cell)?;
 
         // Excel: alpha <= 0 or beta <= 0 → #NUM!; x < A, x > B, or A = B → #NUM!
         if alpha <= 0.0 || beta_param <= 0.0 || b == a || x < a || x > b {
@@ -143,11 +143,12 @@ impl Model {
         let [p, alpha, beta, bounds @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        // A boolean reads as 1 or 0 in every argument (probes/stat-quantile-lift L3, gen-m9/165db58d1540f014 A257).
         let p = self.cast_number_ref(p, cell)?;
         let alpha = self.cast_number_ref(alpha, cell)?;
         let beta_param = self.cast_number_ref(beta, cell)?;
-        let a = self.cast_number_no_bools_or(bounds.first(), 0.0, cell)?;
-        let b = self.cast_number_no_bools_or(bounds.get(1), 1.0, cell)?;
+        let a = self.cast_number_or(bounds.first(), 0.0, cell)?;
+        let b = self.cast_number_or(bounds.get(1), 1.0, cell)?;
         // alpha or beta <= 0, probability outside (0, 1) and A >= B are #NUM!.
         if alpha <= 0.0 || beta_param <= 0.0 || p <= 0.0 || p >= 1.0 || b <= a {
             return Err(num_error(cell));

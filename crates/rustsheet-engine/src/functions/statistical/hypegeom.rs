@@ -269,7 +269,7 @@ impl Model {
 
     /// The HYPGEOM.DIST kernel; `cumulative` is `None` for HYPGEOMDIST, always the pmf. The
     /// arguments are read in order (the first error wins), each count truncated, a boolean count
-    /// `#VALUE!`.
+    /// its 1 or 0.
     fn hyp_geom_dist_of(
         &self,
         counts: [&CalcResult; 4],

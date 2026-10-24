@@ -2586,6 +2586,7 @@ with C6 = FALSE is `#NUM!` (beta 0; d37313406b9f6e55 A380), `WEIBULL.DIST(0.2,Da
 (928d08e3e1eecb5f A303), `STANDARDIZE(-40,Data!E5,-1)` with E5 = FALSE `#NUM!` (sd -1; 334f3dc9ca937f10 A219) and
 `STANDARDIZE(-1E-15,1E-15,Data!A7)` with A7 = TRUE -2E-15 (928d08e3e1eecb5f A249).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 90 cells listed in T-1849; T-2256 (2026-10-23), 28 more cells.
+The BETA.DIST/BETA.INV bounds A and B read a boolean the same way (gen-m9 BETADIST/BETAINV cells). A TRUE typed directly in alpha, beta, the HYPGEOM counts, WEIBULL and the STANDARDIZE mean and standard_dev has no oracle cell: UNVERIFIED.
 Ours: matches since T-1849 (the kernels use `cast_number_ref`, so a boolean reads as 1 or 0).
 Status: VERIFIED (excel-graph)
 

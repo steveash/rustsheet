@@ -327,6 +327,7 @@ impl Model {
         let [p, df1, df2] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        // A boolean reads as 1 or 0 (probes/stat-quantile-lift L2, L19).
         let p = self.cast_number_ref(p, cell)?;
         let df1 = self.cast_number_ref(df1, cell)?.trunc();
         let df2 = self.cast_number_ref(df2, cell)?.trunc();

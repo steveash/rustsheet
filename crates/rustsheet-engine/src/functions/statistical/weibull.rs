@@ -30,6 +30,7 @@ impl Model {
         // A TRUE x is 1: WEIBULL(TRUE,1,1,TRUE) = 0.6321205588285577 (probes-numeric/t1048-weibull
         // A25, t1049-weibulldist A33).
         let x = self.cast_number_ref(x, cell)?;
+        // A boolean alpha or beta reads as 1 or 0 (gen-m9/d37313406b9f6e55 A380, 928d08e3e1eecb5f A303).
         let alpha = self.cast_number_ref(alpha, cell)?;
         let beta = self.cast_number_ref(beta, cell)?;
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
