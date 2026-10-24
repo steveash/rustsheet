@@ -3,7 +3,7 @@ id: T-2459
 title: "Spec: nested arrays for GROUPBY/PIVOTBY LAMBDA array results (TYPE 64 cells, top-left when lifted)"
 milestone: M7
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -19,7 +19,7 @@ it is an error, while the cell still displays `#VALUE!`; and implementation task
 Split from T-2360 (probes/t2360-array-lambda-holidays P, excel-graph, 2026-10-23; arrays.md, the paragraph starting
 "A LAMBDA array result is shown as `#VALUE!`, but the cell holds the array itself"). Excel keeps the array per cell (even 1x1);
 ours makes each such cell `#VALUE!`. The engine has no nested-array value (CalcResult::Array holds ArrayNode scalars), so this
-is architectural (CLAUDE.md directive 4). Cells it owns: probes/t2311-pivotby-value-columns-error P!C12, P!D12; the 53 P!
+is architectural (CLAUDE.md directive 4). Cells it owns: probes/t2311-pivotby-value-columns-error P!C12, P!D12; the 47 P!
 known failures of probes/t2360-array-lambda-holidays (P!B3.. P!E37, C1, C9, C17, C25, C33); gen-m7/21b4eef18424ce94 A1504's 26
 cells (T-2360's Context lists them). Open questions for the spec: what other functions keep nested arrays (BYROW/MAP give
 `#CALC!` instead, arrays.md), what ARRAYTOTEXT, TEXTJOIN, COUNT and arithmetic do with such a cell, how a spill stores it, and whether a LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`, also shown as `#VALUE!`) holds a nested array too (unprobed).
@@ -30,9 +30,17 @@ INDEX, TYPE and MAP, and bounds the memory a nested array may take (CLAUDE.md di
 implementation task that makes those cells pass.
 
 ## Acceptance criteria
-- [ ] docs/specs/ has the spec, with the probe evidence above and any new probe it needs.
-- [ ] Implementation tasks (size S/M) are filed from it, owning the cells above, T-2398's SCAN cells included; T-2398 depends on the one that makes them pass.
-- [ ] `make check` green; reviewers approve.
+- [x] docs/specs/ has the spec, with the probe evidence above and any new probe it needs.
+- [x] Implementation tasks (size S/M) are filed from it, owning the cells above, T-2398's SCAN cells included; T-2398 depends on the one that makes them pass.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing it (the tasks the spec cuts).
+
+## Outcome
+docs/specs/SPEC-0018-nested-arrays-in-groupby-pivotby-results.md: an `ArrayNode::Nested(Arc<NestedArray>)` value (one
+level, beside `ArrayNode::Lambda`), produced only by GROUPBY/PIVOTBY's `Model::aggregate`, read through one `scalar()`
+(top-left) where the probe evidence shows a top-left read, INDEX/TYPE seeing the array, shown and stored as `#VALUE!`, and charged against
+`limits::MAX_SIZE` (DEVIATION past it). Tasks cut: T-2592 (probe the unknowns, sonnet), T-2593 (representation, INDEX,
+TYPE, top-left reads; owns the 47 t2360 P! cells, t2311 P!C12, 26 gen-m7/21b4eef18424ce94 cells), T-2594 (MAP, REDUCE,
+aggregates; P!D12); T-2398 now depends on T-2593. No eval change (docs only).

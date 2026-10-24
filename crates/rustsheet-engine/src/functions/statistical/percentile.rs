@@ -22,7 +22,7 @@ fn percentile_numbers(
     arg: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
-    let typed_in_place = !matches!(arg.ungrouped(), Node::ReferenceKind { .. });
+    let typed_in_place = !matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
     match model.evaluate_node_in_context(arg, cell) {
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
         error @ CalcResult::Error { .. } => Err(error),

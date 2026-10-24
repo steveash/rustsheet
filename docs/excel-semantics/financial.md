@@ -504,6 +504,7 @@ Status: VERIFIED
 Implemented in: `compute_rate` (empty argument reads as 0; guess 0 converges, T-2005)
 
 ## XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells
+(One empty values cell on its own is the exception: see "XNPV reads one empty values cell as a single 0 cash flow".)
 Rule: XIRR reads an empty value or date cell as 0. It does not skip it. A zero value adds nothing, so
 `XIRR(A1:A3,B1:B3)` with A3 and B3 empty is the same 0.09999999403953552 as `XIRR(A1:A2,B1:B2)`. So
 are whole-column `XIRR(Data!A:A,Data!B:B)` on a sheet holding only A1:B2, whole-row
@@ -1737,13 +1738,15 @@ Tasks: T-2455
 
 ## XNPV reads one empty values cell as a single 0 cash flow
 Rule: `XNPV(1,A2,B11)` and `XNPV(1,A2,B11:B11)` with A2 empty and B11 = 100 are the number 0 (not `#NUM!`); an empty cell
-in a multi-cell values range stays `#NUM!` (whole-column probe xirr-xnpv-whole-column-nogaps A1). A date of 0 after a
-value is `#NUM!` (`XNPV(1,A2,B12)`, B12 = 0). `XNPV(1,A2:A3,B11:B12)` with both values empty is `#VALUE!` in Excel; ours is
+in a multi-cell values range stays `#NUM!` (whole-column probe xirr-xnpv-whole-column-nogaps A1). The one-cell range
+`A2:A2` reads the same (`XNPV(1,A2:A2,B11)` and `XNPV(1,A2:A2,B11:B11)` are 0), but an empty dates cell is no date:
+`XNPV(1,B11,A2)`, `XNPV(1,B11,A2:A2)` and `XNPV(1,A2,A2)` are `#NUM!` (probes/xnpv-empty-cell-forms C1-C5). A date of 0
+after a value is `#NUM!` (`XNPV(1,A2,B12)`, B12 = 0). Only direct references were probed: an expression that gives one empty cell (INDEX, OFFSET, a LET name) reads the same here, unprobed. This narrows "XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells" to ranges. `XNPV(1,A2:A3,B11:B12)` with both values empty is `#VALUE!` in Excel; ours is
 `#NUM!` (known failure, unexplained: an empty range seems to be refused by a different check than the whole-column one).
-Evidence: probes/xnpv-empty-values-cell C1-C8 (excel-graph, 2026-10-24); it surfaced through gen-m9/eccd03df42e40006 A24
+Evidence: probes/xnpv-empty-values-cell C1-C8 and xnpv-empty-cell-forms C1-C5 (excel-graph, 2026-10-24); it surfaced through gen-m9/eccd03df42e40006 A24
 (`PERCENTRANK(<no numbers>, XNPV(..))` is `#N/A`, so the XNPV is no error).
 Status: VERIFIED (excel-graph)
-Tasks: T-2066
+Tasks: T-2066, T-2599 (C8: T-2603)
 
 ## Financial cells of the T-2436 sub-expression probe
 Rule (excel-graph, 2026-10-24, probes/t2436): `YIELD(36563,45559,999999999999995,107,107,2,1)` (a huge rate) is `#NUM!`;
