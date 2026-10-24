@@ -546,6 +546,16 @@ C	probes/let-bind-implicit-index.case.json	10
 C	probes/let-bind-reference-forms.case.json	11
 C	probes/let-cell-shaped-name-stored.case.json	14
 C	probes/let-cell-shaped-name-typed-control.case.json	3
+C	probes/let-function-name-typed-02.case.json	2
+C	probes/let-function-name-typed-04.case.json	2
+C	probes/let-function-name-typed-05.case.json	2
+C	probes/let-function-name-typed-06.case.json	2
+C	probes/let-function-name-typed-07.case.json	2
+C	probes/let-function-name-typed-08.case.json	2
+C	probes/let-function-name-typed-09.case.json	2
+C	probes/let-function-name-typed-10.case.json	2
+C	probes/let-function-name-typed-12.case.json	2
+C	probes/let-function-name-typed-13.case.json	2
 C	probes/let-lambda-body-own-name.case.json	7
 C	probes/let-lambda-name-case.case.json	14
 C	probes/let-lambda-reference-results.case.json	18
