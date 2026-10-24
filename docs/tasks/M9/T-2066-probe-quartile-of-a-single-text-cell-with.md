@@ -45,8 +45,8 @@ A single cell holding text (numeric-looking text too) is now empty data for PERC
 not `#VALUE!`); probes quartile-single-text-cell (B1-B28) and quartile-numeric-text-cell (C1-C9) carry excel-graph values;
 gen-m9/288b99797f58f149 A3 passes. PERCENTRANK reports an error x before its empty-data `#N/A`, and QUARTILE.EXC and
 PERCENTILE/PERCENTILE.INC report k's error before the empty-data `#NUM!` (`PERCENTILE(<no number>,1/0)` is `#DIV/0!`, C9).
-The XNPV piece these surfaced was split into T-2599 (#1690) and lands first. Eval: see the PR (gen-m9 and probes known
-failures down, 0 regressions).
+The XNPV piece these surfaced was split into T-2599 (#1690) and lands first. Eval: gen-m9 known failures -103, probes -51
+(2 new cases, all cells passing), 0 regressions.
 
 ## Handoff (resumed)
 Done and pushed on this branch: PERCENTILE/QUARTILE/PERCENTRANK single-text-cell fix, PERCENTRANK error-x-first, QUARTILE.EXC quart-first, probes (oracle values filled), docs, baseline (94 gen-m9 fixed, 0 regressions). `make check` passes except eval-check's 60 s timeout of probes/union-walk-repeated-in-lambda on this box (use `scripts/eval_guard.sh target/release/rustsheet-eval update-baseline --timeout 400`).
