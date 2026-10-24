@@ -3,7 +3,7 @@ id: T-2436
 title: "Probe the inner sub-expressions of 122 gen-m9 statistical, engineering and database cells whose divergence is not traced"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
