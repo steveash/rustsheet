@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2564: legacy-import (no dynamic-array flag) scalar function over a one-sheet span range (Data1:Data1!A1:A10) next to the plain range, each with FORMULATEXT (A1-B4); FORMULATEXT of =@Data1:Data1!A1 and the plain =@Data1!A1 (C1-D2)",
+  "tags": [
+    "M8",
+    "references",
+    "probe",
+    "T-2564"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SIN(Data1:Data1!A1:A10)",
+        "A2": "=FORMULATEXT(A1)",
+        "B1": "=SIN(Data1!A1:A10)",
+        "B2": "=FORMULATEXT(B1)",
+        "C1": "=@Data1:Data1!A1",
+        "C2": "=FORMULATEXT(C1)",
+        "D1": "=@Data1!A1",
+        "D2": "=FORMULATEXT(D1)"
+      },
+      "legacy_formulas": [
+        "A1",
+        "B1"
+      ]
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1,
+        "A2": 2
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -3,7 +3,7 @@ id: T-1849
 title: "BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as 1 in their numeric arguments"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -138,14 +138,14 @@ Cells:
 - gen-m9/9fa170a9f17624fd.case.json (1): Calc!A104
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 118 known-failure lines (90 from T-2255, 28 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2255 and T-2256): these 118 known-failure lines (90 from T-2255, 28 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] probes/stat-later-argument-lift L1 and L13 and probes/stat-quantile-lift L2, L3 and L19 pass (their baseline lines
+- [x] probes/stat-later-argument-lift L1 and L13 and probes/stat-quantile-lift L2, L3 and L19 pass (their baseline lines
   removed), and the probes-numeric cells above.
-- [ ] Each changed argument cites its probe cell in a code comment; the rule is in docs/excel-semantics/statistics.md.
-- [ ] `make check` green; reviewers approve.
+- [x] Each changed argument cites its probe cell in a code comment; the rule is in docs/excel-semantics/statistics.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -156,3 +156,8 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Outcome
+BETA.DIST/BETA.INV (including bounds A and B), F.DIST/F.DIST.RT/F.INV/F.INV.RT, HYPGEOM.DIST, WEIBULL and STANDARDIZE
+kernels now read a boolean as 1/0 (`cast_number_ref`). Eval: 134 known-failure lines removed (129 gen-m9, 5 probes); none added.
+The 7 visibly-off residue cells moved to T-2559 (campaign: visible), with 3 cells within 4 ulp. Residue in T-2559: 7 visibly-off gen-m9 cells (4 wrong error, 3 numeric) and 3 cells within 4 ulp.
