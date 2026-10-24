@@ -3,7 +3,7 @@ id: T-2592
 title: "Probe nested GROUPBY/PIVOTBY cells: MAP, REDUCE, aggregates and text over them, reference LAMBDAs, two levels (SPEC-0018)"
 milestone: M7
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,10 +31,13 @@ returns rich errors it cannot decode):
 Use the excel-probe skill; one case file.
 
 ## Acceptance criteria
-- [ ] A probe case under eval/suites/probes with oracle values for each question above.
-- [ ] arrays.md (the "A LAMBDA array result is shown as `#VALUE!`" paragraph) records every answer; SPEC-0018's unknowns
+- [x] A probe case under eval/suites/probes with oracle values for each question above.
+- [x] arrays.md (the "A LAMBDA array result is shown as `#VALUE!`" paragraph) records every answer; SPEC-0018's unknowns
       list points at it.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes (T-2593, T-2594).
+
+## Outcome
+Probe `probes/t2592-nested-groupby-cells` (excel-graph, 42+10 cells) answers every SPEC-0018 unknown; recorded in arrays.md (it corrects the earlier claim that MAP over the result is an error and settles what reference-body and two-parameter LAMBDA cells hold: both still display `#VALUE!`, but the first reads as its value and the second as a nested array). SPEC-0018 points at it; revision filed as T-2602. No engine change; the probe's failing cells are baselined.

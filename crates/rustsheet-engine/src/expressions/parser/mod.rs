@@ -575,6 +575,9 @@ pub struct Parser {
     /// or LAMBDA parameter spelled like a cell then refuses the formula, as Excel refuses it
     /// typed (decision 0103, T-2497). Stored text (xlsx import, re-parses) keeps binding it.
     typed: bool,
+    /// The formula is read from a file (xlsx import, `Input::StoredFormula`): a structured
+    /// reference to an unknown table or column is `#REF!` (see [`Parser::set_loaded`]).
+    loaded: bool,
     /// The first cell-shaped name the last parse bound (see `typed`).
     cell_shaped_binding: Option<String>,
 }
@@ -620,9 +623,19 @@ impl Parser {
             value_operators: 0,
             bound_names: Vec::new(),
             typed: false,
+            loaded: false,
             cell_shaped_binding: None,
         }
     }
+    /// Reads the next formulas as a file loader does (`true`), or not (`false`, the default).
+    /// Excel loads a formula naming a table or column the file lacks with the reference rewritten
+    /// to `#REF!`, FORMULATEXT `=SUM(#REF!)` (docs/excel-semantics/references.md "Structured
+    /// references when the table changes", probes/table-edits/table-unknown-name-load, T-2197);
+    /// anywhere else (typed text, a re-parse after `remove_table`) it stays a parse error.
+    pub fn set_loaded(&mut self, loaded: bool) {
+        self.loaded = loaded;
+    }
+
     /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see
     /// [`Parser::typed_refusal`].
     pub(crate) fn set_typed(&mut self, typed: bool) {
