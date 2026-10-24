@@ -236,17 +236,18 @@ impl Model {
         // the row there, even inside what a rows-first split would have kept whole (probes/
         // t2581-textsplit-textbefore A6, A7). ignore_empty drops an empty piece, and an empty
         // row: one with no text between its row delimiters.
-        let rows_of_cols: Vec<Vec<&str>> = split_grid(&text, &cmp_text, cmp_col_delims, cmp_row_delims)
-            .into_iter()
-            .filter(|row| !(ignore_empty && matches!(row.as_slice(), [""])))
-            .map(|row| {
-                if ignore_empty {
-                    row.into_iter().filter(|s| !s.is_empty()).collect()
-                } else {
-                    row
-                }
-            })
-            .collect();
+        let rows_of_cols: Vec<Vec<&str>> =
+            split_grid(&text, &cmp_text, cmp_col_delims, cmp_row_delims)
+                .into_iter()
+                .filter(|row| !(ignore_empty && matches!(row.as_slice(), [""])))
+                .map(|row| {
+                    if ignore_empty {
+                        row.into_iter().filter(|s| !s.is_empty()).collect()
+                    } else {
+                        row
+                    }
+                })
+                .collect();
 
         // ignore_empty dropped every piece: #CALC!, the empty-array error (probes/
         // textsplit-error-order A11, A12; gen-m7 07d27aa0add0247f A768).
