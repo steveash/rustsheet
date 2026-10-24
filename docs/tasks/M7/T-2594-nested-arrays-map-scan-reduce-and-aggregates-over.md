@@ -28,6 +28,8 @@ If the aggregates and the `Reference` kind together grow the task past size S, s
 
 ## Acceptance criteria
 - [ ] P!D12 and T-2592's remaining cells pass and leave eval/baseline, with no new known-failure lines.
+- [ ] Every flatten and every MAP/BYROW/BYCOL/REDUCE hand-over charges SPEC-0018's walk budget: `SUM(VSTACK(r,r,..))` and a REDUCE
+      over a fan-out of a ~2^20-cell nested cell are `#ERROR!` in bounded time (unit tests).
 - [ ] arrays.md records each rule with its evidence.
 - [ ] `make check` green; reviewers approve.
 

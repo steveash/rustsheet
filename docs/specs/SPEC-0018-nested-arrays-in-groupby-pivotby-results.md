@@ -99,13 +99,16 @@ pub(crate) struct NestedArray {
 
 `Arc` keeps a clone O(1) (results are cloned through LET bindings and the lifting driver), and the variant adds no size to
 `ArrayNode` beyond one pointer. `NestedArray::new(rows, kind) -> Option<Self>` enforces the invariants: an empty or ragged
-grid is no nested array, a `Reference` holds exactly one scalar, and `cells` and `depth` are computed once from the elements.
+grid is no nested array, a `Reference` holds exactly one scalar, and `cells` and `depth` are computed once from the elements
+with saturating arithmetic. `new` refuses (returns `None`, and the caller gives `#ERROR!`) a grid whose `depth` would pass
+`MAX_NESTED_DEPTH` or whose `cells` would pass `limits::MAX_SIZE`, so no deeper or larger tree is ever built.
 They are never recomputed by walking the tree. Elements may themselves be `Nested`, since Excel nests again (rule 8).
 
 **One reader.** `ArrayNode::scalar(&self) -> &ArrayNode` returns, for `Nested`, its top-left element taken recursively
-(the top-left of a nested top-left), and otherwise the node itself. Every site that today matches `ArrayNode::Lambda` to
+(the top-left of a nested top-left, a loop of at most `MAX_NESTED_DEPTH` steps), and for a `Reference` its one value;
+otherwise the node itself. Every site that today matches `ArrayNode::Lambda` to
 place a non-scalar, and that rule 4 shows to read the top-left, goes through it: the element-wise lifts (ISERROR,
-REGEXEXTRACT's return_mode). Every other site keeps today's `#VALUE!` until a rule here covers it. The inventory is those sites (35 matches in 25 files: cast.rs, arithmetic.rs, functions/util.rs,
+REGEXEXTRACT's return_mode). Every other site keeps today's `#VALUE!` until a rule here covers it, for both kinds (a `Reference` cell included, until T-2594). The inventory is those sites (35 matches in 25 files: cast.rs, arithmetic.rs, functions/util.rs,
 aggregate_args.rs, lift/kinds, text_kernel.rs, spill_functions.rs, ...); each gets an explicit `Nested` arm, either
 `node.scalar()` or today's `#VALUE!`, so no site is left to a guess. Reuse an existing top-left helper of the lifting code if one fits
 before adding `scalar()` (CLAUDE.md directive 3). The compiler finds every exhaustive match; a wildcard arm is audited by
@@ -132,10 +135,11 @@ before adding `scalar()` (CLAUDE.md directive 3). The compiler finds every exhau
 - MAP, BYROW, BYCOL and REDUCE (rule 5) pass the nested cell to the LAMBDA through `array_node_to_calc_result`, as an
   array. A step whose result is still an array is `#CALC!` through the existing array-step check. T-2594 owns this.
 - SUM, COUNT and COUNTA flatten nested cells, and AVERAGE, ARRAYTOTEXT, TEXTJOIN and CONCAT give rule 4's errors. Each
-  aggregate gets an explicit `Nested` arm (T-2594). The flattening walk is bounded by the same `cells` count, so it costs
-  no more than the array's cells.
+  aggregate gets an explicit `Nested` arm (T-2594). Every flatten is charged to the walk budget below.
 - TAKE, CHOOSECOLS, VSTACK, SORT, FILTER and row or column INDEX copy `ArrayNode`s, so the nested cells ride along with no
-  new code (rule 5).
+  new code (rule 5). Because of the `Arc`, each copy is O(1), so one nested cell can appear in up to 1,048,576 outer cells
+  (`VSTACK(r,r,..)`, `CHOOSEROWS(r,SEQUENCE(1048576)^0)`). Copying is cheap; reading the copies is not, and the walk budget
+  bounds that.
 - An operator over the whole result keeps today's result until probed (rule 4).
 
 **Bound (directive 5).** Each GROUPBY or PIVOTBY call counts the cells it keeps against `limits::MAX_SIZE` (1,048,576, the
@@ -144,14 +148,23 @@ that element's own nested cells. A two-level result therefore pays for its inner
 whole result is `#ERROR!`, as an oversized array is today (DEVIATION, arrays.md "Array results above 1,048,576 cells";
 decision 0014). The check runs as each function result is kept, before the next call, so the work and memory stay within
 one bound. The existing per-call input cap (`Functions::refused`) is unchanged.
+The per-call cap does not bound reads, because copies share the nested array. **Walk budget.** Every operation that reads a
+nested element's contents charges that element's `cells` to one per-evaluation budget, `MAX_NESTED_WALK_CELLS` (2^27, as
+`limits::MAX_LIFTED_CELL_VISITS`), before it starts. The operations are:
+- materializing it as a `CalcResult::Array` (`array_node_to_calc_result`: INDEX, LET, a LAMBDA parameter, the MAP, BYROW,
+  BYCOL and REDUCE hand-over);
+- flattening it (SUM, COUNT, COUNTA);
+- comparing it by content (`PartialEq`).
+
+The budget is kept beside the evaluation's other per-evaluation counters, as `MAX_CAPTURED_CELLS` is for LAMBDA captures. A
+charge past it makes the reading call `#ERROR!` (DEVIATION, decision 0014). The charge is made per occurrence, so
+`SUM(VSTACK(r,r,..))` over a nested cell of 2^20 cells is `#ERROR!` after 128 copies are read, not after 2^40 steps. Reads
+that never look inside a nested element cost nothing extra: `scalar()`, TYPE, ROWS and COLUMNS of the outer array, a copy.
 Nesting depth is bounded too. Each level needs one more GROUPBY call evaluated inside a LAMBDA, so the evaluator's
 recursion guard (`evaluation.rs`, `DEFAULT_MAX_DEPTH` and the stack guard) already limits it. A result whose `depth` would
-pass a constant `MAX_NESTED_DEPTH` (64) is still `#ERROR!` (DEVIATION, decision 0014). That way `Drop`, `PartialEq`,
-`scalar()` and the hash, which recurse through nested elements, never recurse deeper than that constant, even when the
-recursion guard is configured differently. The cap is per call, not per
-evaluation: it bounds the whole formula only because nothing else keeps a nested result (BYROW, BYCOL, MAP, MAKEARRAY and
-SCAN turn an array step into `#CALC!`, and a spill stores `#VALUE!`), so a later producer or consumer that keeps nested
-results must be charged against a shared per-evaluation budget, as `MAX_CAPTURED_CELLS` is for LAMBDA captures.
+pass a constant `MAX_NESTED_DEPTH` (64) is `#ERROR!` anyway (DEVIATION, decision 0014), refused in `NestedArray::new`.
+That way `Drop`, `PartialEq` and the hash, which recurse through nested elements, never recurse deeper than that constant,
+even when the recursion guard is configured differently; `scalar()` is a loop. The cap is per call; the walk budget above is what bounds a whole evaluation once nested results are copied.
 
 **Hash and equality.** `ArrayNode` derives `PartialEq`; `Nested` compares by content, kind included, at most
 `MAX_NESTED_DEPTH` deep. The lifting driver's class hash (functions/lift/driver.rs) hashes the top-left (`scalar()`), the
@@ -168,7 +181,9 @@ value a lifted read sees.
 ## Test plan
 - Unit tests: `NestedArray::new` invariants (empty, ragged, `Reference` of one scalar, `cells` and `depth`); `scalar()` through
   two levels; the cap (a LAMBDA returning `SEQUENCE(1048576)` for two groups is `#ERROR!`, and so is a two-level result whose
-  inner cells pass it); the depth cap; two levels as in rule 8 (A23, A24).
+  inner cells pass it); the depth cap; two levels as in rule 8 (A23, A24); the walk budget (`SUM(VSTACK(r,r,..))` and
+  `REDUCE(0,VSTACK(r,..),LAMBDA(a,x,a+SUM(x)))` over a result `r` holding a ~2^20-cell nested cell are `#ERROR!` in bounded
+  time).
 - Eval for T-2593: the 47 t2360 P! cells, t2311 P!C12, gen-m7/21b4eef18424ce94 A1504, and the t2592 cells for rules 1, 3 and 8
   (A16:A18, A22:A24, A26:A41).
 - Eval for T-2594: t2311 P!D12 and the t2592 cells for rules 4, 5 and 7 (A1:A15, A21, A100:A109).
@@ -177,7 +192,7 @@ value a lifted read sees.
   Total columns of rule 1's exception, t2360 P!F3:G5, which pass today).
 
 ## Rollout
-1. T-2592 (research, S): probe the unknowns above; record them in arrays.md.
+1. T-2592 (research, S, done): the probe, probes/t2592-nested-groupby-cells, recorded in arrays.md.
 2. T-2602 (research, S): this revision from T-2592's probe.
 3. T-2593 (engine, M, after 2): `ArrayNode::Nested` (any depth), `scalar()`, the producer, INDEX/TYPE, display, the
    bounds. Owns rules 1-3, rule 4's top-left reads, and rule 8.
