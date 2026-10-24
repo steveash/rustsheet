@@ -3,7 +3,7 @@ id: T-2568
 title: "Typed entry refuses a call of a function-spelled LET name with the function's wrong arity (=LET(Pv,LAMBDA(a,a),Pv(1)))"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
