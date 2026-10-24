@@ -3,7 +3,7 @@ id: T-2486
 title: "COUP* functions: a settlement or maturity past 9999-12-31 is #NUM! as it is read, and the calendar-edge day counts (gen-m9, 20 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
