@@ -115,8 +115,10 @@ pub(crate) fn bessel_i(n: i32, x: f64) -> f64 {
         return bessel_i1(x);
     }
 
+    // I_n(x) overflows long before 1e10: Excel is `#NUM!` for every order from x = 710 on, such as
+    // `BESSELI(1E+15,2)` (probes/eng-besselk-underflow-bit-shift), so the overflow is returned.
     if x.abs() > large_number {
-        return 0.0;
+        return f64::INFINITY;
     };
 
     let tox = 2.0 / x.abs();

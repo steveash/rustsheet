@@ -1142,12 +1142,16 @@ makes the whole MAP `#VALUE!`. `MAP(1,LAMBDA(x,x))`, `MAP("a",LAMBDA(x,x))` and 
 3), and so do one-cell references (`MAP(Z1,Z2,LAMBDA(x,y,x+y))` is 11). `MAP({1},2,..)`, `MAP(1,2,..)`, `MAP(TRUE,FALSE,..)`,
 `MAP(1,1,1,..)` and `MAP(Z1:Z2,3,..)` are `#VALUE!`, and so is `SUM(MAP(scalar,scalar,scalar,_xleta.MAX))`.
 Evidence: probes/lambda-value-arguments A27-A32, B1-B10 (excel-graph, 2026-10-19, T-1511); gen-m7/44ef4f5638e25bcd Calc!A7.
-Ours: `fn_map` reads its second and later arrays with `refuse_scalar` (`by_slices_source`, bycol_byrow.rs) since T-1511. A blank or
-an error value as a later array is unprobed (ours: a blank is refused, an error passes), as is `MAP(1,LAMBDA(x,y,x))` (T-1946).
-gen-m7 shows an error value as a later array is `#VALUE!` whatever the error: a BASE `#NUM!` (gen-m7/4dac39f89709e2fc Calc!A137), a MOD
-`#DIV/0!` (21b4eef18424ce94 A1393), `DROP(Data!B5:B12,0,3)` `#CALC!` (a470dc9e165bdb20 A3360) and `SEQUENCE(1,SIN(Data!E9))` `#CALC!`
-(f19581ac44da1653 A2477) as MAP's second or third array are `#VALUE!` (excel-graph, 2026-10-22, T-2254 triage; also the three T-2225 cells
-in T-1946). Ours passes the error on (T-1946 files the fix).
+Ours: `fn_map` reads its second and later arrays with `refuse_scalar` (`by_slices_source`, bycol_byrow.rs) since T-1511, an error value
+included since T-1946. An error value as a later array is `#VALUE!` whatever the error (`MAP({1},NA(),..)`, `MAP({1},1/0,..)`,
+`MAP({1,2},{3,4},NA(),..)`, `LEFT(NA(),2)`, `SEQUENCE(1,0)` as the later array; gen-m7 shows the same for a BASE `#NUM!` (4dac39f89709e2fc
+A137), a MOD `#DIV/0!` (21b4eef18424ce94 A1393), `DROP(Data!B5:B12,0,3)` `#CALC!` (a470dc9e165bdb20 A3360) and `SEQUENCE(1,SIN(Data!E9))`
+(f19581ac44da1653 A2477)). An error inside an array literal is not refused (`MAP({1},{#N/A},LAMBDA(x,y,x))` is 1), a blank or text cell
+reference is an array of one (`MAP({1},B1,..)` is 1; `ISBLANK(y)` of an empty B2 is TRUE), a missing argument (`MAP({1},,..)`) is `#VALUE!`,
+and an error as the first array is that error (`MAP(NA(),LAMBDA(x,x))`, `MAP(NA(),{1},..)` are `#N/A`). `MAP(1,LAMBDA(x,y,x))` is
+`#VALUE!` (`ERROR.TYPE` 3, as `MAP(1,2,..)`).
+INDEX of a LAMBDA: `INDEX(LAMBDA(x,x),1)(5)` is 5, an index of 2 is `#REF!` (`ERROR.TYPE` 4, also `INDEX(..,1,2)`), -1 is `#VALUE!`, and 0 is
+`#CALC!` (its `ERROR.TYPE` is `#N/A`). Evidence: probes/map-later-array-error-blank (excel-graph, 2026-10-24, T-1946).
 Status: VERIFIED (excel-graph)
 Tasks: T-1511, T-1946
 
