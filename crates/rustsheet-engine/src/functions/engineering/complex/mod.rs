@@ -111,10 +111,15 @@ impl fmt::Display for Complex {
 
 fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     // Check for i, j, -i, -j
+    // One leading `+` is read like a leading `-`: `IMABS("+i")` 1, `IMABS("+3+4i")` 5, while a second
+    // sign (`"++i"`, `"+-i"`) is `#NUM!` (probes/eng-leading-plus-oct-bool A1:A8, A26).
     let (sign, s) = match s.strip_prefix('-') {
         Some(r) => (-1.0, r),
-        None => (1.0, s),
+        None => (1.0, s.strip_prefix('+').unwrap_or(s)),
     };
+    if s.starts_with(['+', '-']) {
+        return Err(format!("Not a complex number: {s}"));
+    }
     match s {
         "i" => return Ok((0.0, sign * 1.0, Suffix::I)),
         "j" => return Ok((0.0, sign * 1.0, Suffix::J)),

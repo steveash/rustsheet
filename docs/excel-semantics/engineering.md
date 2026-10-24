@@ -697,3 +697,15 @@ Excel cell of eval/suites/gen-m9 with its case id in the owning task. The engine
 COS(ATAN2(-1,0)/2), ln|z|/0.693147180559945) were evaluated in RustSheet's own worksheet functions, which match Excel.
 Status: VERIFIED (excel-graph) for the observed values. The mechanisms (IM trig of a real as SIN/COS/TAN, exp-based sinh/cosh, IMSQRT through COS and ATAN2) are fitted against RustSheet's own kernels and reproduce every cited cell; T-2534, T-2535 and T-2536 re-confirm them on the cells. The IMLOG2 and IMCSC formulations are UNVERIFIED candidates.
 Tasks: T-2258, T-2532 to T-2551, T-2420, T-2421, T-2335, T-2389, T-2044, T-2117, T-1966
+
+## Leading plus in IM*, 11-digit OCT/HEX text and booleans in OCT2*/HEX2* (T-2420)
+Rule: IM* read one leading `+` like a leading `-`: `IMABS("+i")` 1, `IMABS("+3+4i")` 5, `IMABS("+4i")` 4, `IMSUB("+i","1")` "-1+i", `IMDIV("2i","+i")` "2"; a second sign (`"++i"`, `"+-i"`, `"-+i"`, `"1++i"`) is `#NUM!` (probes/eng-leading-plus-oct-bool A1:A26).
+Rule: a boolean is `#VALUE!` in every OCT2* and HEX2* argument, typed, from a cell, from `IF`/`INDEX`, in an array literal or a MAP result, with or without places; the same as BIN2DEC (A35:A62). A boolean inside arithmetic is a number (`OCT2DEC(7+B1:B2)` is `#NUM!`, A62).
+Rule: OCT2DEC, OCT2BIN and OCT2HEX of 11 digits, number or text, are `#NUM!` (`OCT2DEC(7777777777)` is -1; A27:A33).
+Rule: ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD read the date arguments first and a negative date (-0.5 too) is `#NUM!` at once, ahead of an error in a later argument (`ODDFPRICE(39000,-1,..,NA(),..)` is `#NUM!`); a date of 0 is not, and an out-of-order date pair still lets the later error win (`#N/A`) (probes/fin-odd-date-before-error-arg).
+
+## BESSELK underflow, BESSELI overflow and BIT shifts of 49 to 53 (T-2421)
+Rule: BESSELK below the smallest normal double is 0: `BESSELK(705,0)` is 3.135297088468052E-308 but `BESSELK(705.5,n)` and every x past it (708, 713, 714, 1000, 1E5) are 0 for n = 0, 1 and 4 (probes/eng-besselk-underflow-bit-shift).
+Rule: BESSELI is `#NUM!` for every order from x = 710 on, however large (`BESSELI(1E+15,2)`, `(-1000000000000002,3)`); `BESSELI(705,0)` is 2.26205E+304 and 700 is finite.
+Rule: BITLSHIFT/BITRSHIFT truncate the shift amount first and limit it after (`BITLSHIFT(1,53.5)` and `(1,-53.5)` are 0; 54 is `#NUM!`, 54.x not probed). A number 0 shifts to 0 by any amount (`BITLSHIFT(0,1E+10)`). For a nonzero number an effective left shift of 48 is `#NUM!` (`BITLSHIFT(1,48)`, `BITRSHIFT(1,-48)`), of 49 to 53 places is 0 (not the overflow `#NUM!`), 54 and more is `#NUM!`; a right shift of 48 to 53 places is 0, 54 is `#NUM!`.
+Not fixed here: `BESSELK(700,4)` and `(705,4)` miss in the 15th digit (T-2549); `BESSELI(2.5,100001)` and `(2.5,1E+6)` are 0 in Excel and `#NUM!` here (BESSEL order cap DEVIATION, pinned in probes/deviations); `BESSELK(2.5,171)` onward overflows to `#NUM!` (170 is 7.09E+287, 200 and 1000 are `#NUM!`).
