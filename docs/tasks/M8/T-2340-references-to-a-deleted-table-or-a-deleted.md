@@ -3,7 +3,7 @@ id: T-2340
 title: "References to a deleted table or a deleted sheet's table are #REF! and FORMULATEXT prints #REF! as Excel does (T-2324)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
