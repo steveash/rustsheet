@@ -3,7 +3,7 @@ id: T-2389
 title: "Probe IMLN and IMLOG10 of 0 (may leak -inf text)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,13 +49,16 @@ Cells:
 - gen-m9/ee70a5515d004a66.case.json (1): Calc!A262
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 24 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 24 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Oracle values for IMLN("0") and IMLOG10("0") recorded; engine matches them, with a unit test.
-- [ ] `make check` green; reviewers approve.
+- [x] Oracle values for IMLN("0") and IMLOG10("0") recorded; engine matches them, with a unit test.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+IMLN and IMLOG10 return through `finite_complex_result` like IMLOG2, so 0 or 0i is `#NUM!`. Unit test added. Eval: 24 gen-m9 known-failure lines left the baseline, 0 regressions.
