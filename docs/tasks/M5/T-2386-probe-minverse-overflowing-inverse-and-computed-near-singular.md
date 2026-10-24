@@ -3,7 +3,7 @@ id: T-2386
 title: "Probe MINVERSE overflowing inverse and computed near-singular pivots"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,8 +22,12 @@ directly (reviewer-excel-fidelity, T-2362 review). Use the excel-probe skill: a 
 and the 3x3 `{1,2,3;4,5,6;7,8,9}` from cells.
 
 ## Acceptance criteria
-- [ ] The probe case is oracle-filled (excel-graph) and its findings are in docs/excel-semantics/arrays.md; any engine mismatch is filed as a functions-math task.
-- [ ] `make check` green; reviewers approve.
+- [x] The probe case is oracle-filled (excel-graph) and its findings are in docs/excel-semantics/arrays.md; any engine mismatch is filed as a functions-math task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes (file them as a follow-up).
+
+## Outcome
+Probe `probes/minverse-overflow-computed-pivot` oracle-filled (excel-graph); all 36 cells already match the engine, so no
+functions-math follow-up. Findings recorded in arrays.md "MINVERSE: singularity rule". Eval delta: +36 bit-exact probe cells, 0 known failures.
