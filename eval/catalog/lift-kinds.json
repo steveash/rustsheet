@@ -47,6 +47,7 @@
   {"name":"CHISQ.INV","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Weighted(262144)"},
   {"name":"CHISQ.INV.RT","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Weighted(262144)"},
   {"name":"CODE","required":1,"params":["Lift"],"repeat":[],"max":1,"work":"Constant"},
+  {"name":"COMBIN","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Weighted(1024)"},
   {"name":"COMBINA","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Weighted(1024)"},
   {"name":"COMPLEX","required":2,"params":["LiftArrays","LiftArrays","LiftArrays"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"CONCATENATE","required":1,"params":[],"repeat":["Lift"],"max":255,"work":"Constant"},
