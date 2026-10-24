@@ -1699,3 +1699,13 @@ refuses a boolean salvage per "Argument order of the Analysis ToolPak securities
 still take booleans (unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2455
+
+## XNPV reads one empty values cell as a single 0 cash flow
+Rule: `XNPV(1,A2,B11)` and `XNPV(1,A2,B11:B11)` with A2 empty and B11 = 100 are the number 0 (not `#NUM!`); an empty cell
+in a multi-cell values range stays `#NUM!` (whole-column probe xirr-xnpv-whole-column-nogaps A1). A date of 0 after a
+value is `#NUM!` (`XNPV(1,A2,B12)`, B12 = 0). `XNPV(1,A2:A3,B11:B12)` with both values empty is `#VALUE!` in Excel; ours is
+`#NUM!` (known failure, unexplained: an empty range seems to be refused by a different check than the whole-column one).
+Evidence: probes/xnpv-empty-values-cell C1-C8 (excel-graph, 2026-10-24); it surfaced through gen-m9/eccd03df42e40006 A24
+(`PERCENTRANK(<no numbers>, XNPV(..))` is `#N/A`, so the XNPV is no error).
+Status: VERIFIED (web)
+Tasks: T-2066
