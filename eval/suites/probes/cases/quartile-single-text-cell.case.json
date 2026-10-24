@@ -1,0 +1,25 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2066: QUARTILE and PERCENTILE.* of a single text cell and of a range with no number; quart/k 7, 1, 0. A1 = ' x ', A3 empty.",
+ "tags": ["M2", "probe", "T-2066"],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": " x ",
+    "B1": "=QUARTILE(A1,7)",
+    "B2": "=QUARTILE(A1,1)",
+    "B3": "=QUARTILE(A1,0)",
+    "B4": "=QUARTILE.INC(A1,7)",
+    "B5": "=QUARTILE.EXC(A1,1)",
+    "B6": "=PERCENTILE.EXC(A1:A3,1)",
+    "B7": "=PERCENTILE.EXC(A1:A3,0)",
+    "B8": "=PERCENTILE.INC(A1,1)",
+    "B9": "=PERCENTILE.INC(A1,2)",
+    "B10": "=QUARTILE(A3,1)",
+    "B11": "=BETAINV(2,QUARTILE(A1,7),1)"
+   }
+  }
+ ]
+}
