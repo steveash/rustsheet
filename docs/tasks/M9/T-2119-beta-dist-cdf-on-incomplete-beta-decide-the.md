@@ -3,7 +3,7 @@ id: T-2119
 title: "BETA.DIST cdf on incomplete_beta::beta_reg; decide the nine chained BETA.INV cells it moves"
 milestone: M9
 lane: functions-stat
-status: todo
+status: blocked
 priority: P1
 size: S
 tier: opus
@@ -57,6 +57,28 @@ H46-H49 1, H67 2: decision 0083's allowance). Four ungated probes-numeric BETA.D
 (t0969-beta-prefactor D85, D86, t0969-t-beta-link E56, F6; up to 3.5 units of the 15th digit, D86). The run could not
 record the regressions (`--allow-regressions` was refused to it), so it shipped only the F half. T-0974's BETAINV cells
 (gen-m9/589f42e67f4b4b8d A221, c18dbf21f11093f3 A400, eced4bb6a0234c9e A291) belong here.
+
+## Blocked because
+Blocked because: the `--allow-regressions` baseline run was refused by the session's permission policy.
+
+The code is done on branch `agent/functions-stat/T-2119-beta-dist-incomplete-beta` (2026-10-23, opus worker):
+BETA.DIST's cdf is `incomplete_beta::beta_reg_complement`, and BETA.INV refines statrs' estimate to the crossing of that
+cdf (`special::refine_increasing`, upper tail on 1 - p above p = 0.5, as `fisher.rs` `f_quantile`); the unused
+`special::bisect_unit_interval` is gone. `make eval-check` on that code:
+- fixed 26 gated lines: ironcalc-calc 18, probes 5, gen-m9 3 (including gen-m9/35e8168aae2b00f8 A159);
+- visibly off in gated suites: 7,326 (lock 7,703);
+- 9 regressions, all in `ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx`, all numeric and still equal to Excel at 15
+  significant digits: H2 2 ulp, H23 4, H42 1, H44 1, H46 1, H47 1, H48 1, H49 1, H67 2. Decision 0083's standing
+  allowance covers them (conditions 1, 3 and 4; condition 2 for gated cells).
+- Ungated probes-numeric: D85 and D86 of t0969-beta-prefactor and F6 of t0969-t-beta-link now differ from Excel in the
+  15th digit (against a 50-digit reference ours is 1.9E-15, 8.6E-16 and 8.8E-16 relative off, Excel 1.5E-15, 3.3E-15 and
+  1.9E-16, so on D85 and D86 ours is no worse). E56 stays within the 15th digit.
+- `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` is now 0.003013141..., the true quantile, instead of `#NUM!`
+  (Excel: 0.0691959487211844, probes/stat-quantile-lift E9, still a known failure). The unit test and statistics.md say so.
+`make clippy` is clean and `make test` passes on the branch.
+To finish: someone allowed to run it runs `scripts/eval_guard.sh target/release/rustsheet-eval update-baseline
+--allow-regressions` then `make eval-baseline`, checks that the baseline diff adds exactly the 9 lines above, lists them in
+the Outcome with a follow-up ulp task, and continues at the review step.
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
