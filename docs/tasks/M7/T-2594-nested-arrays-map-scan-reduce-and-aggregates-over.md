@@ -1,6 +1,6 @@
 ---
 id: T-2594
-title: "Nested arrays: MAP, SCAN, REDUCE and aggregates over a nested GROUPBY/PIVOTBY cell (SPEC-0018)"
+title: "Nested arrays: MAP, BYROW, BYCOL, REDUCE, the aggregates and reference cells over a GROUPBY/PIVOTBY result (SPEC-0018)"
 milestone: M7
 lane: engine
 status: todo
@@ -10,15 +10,21 @@ tier: opus
 depends_on: [T-2592, T-2593, T-2602]
 ---
 
-> Do not start before T-2602: SPEC-0018 rules 4, 5 and 7 and its one-level design are stale against T-2592's probe (arrays.md).
-
 ## Goal
-MAP, REDUCE and the aggregates read a nested GROUPBY/PIVOTBY cell as Excel does (SPEC-0018 rules 5 and 7, T-2592's evidence).
+MAP, BYROW, BYCOL, REDUCE and the aggregates read a nested GROUPBY/PIVOTBY cell as Excel does, and a one-cell reference body makes a reference cell (SPEC-0018 rules 4, 5 and 7).
 
 ## Context
-docs/specs/SPEC-0018-nested-arrays-in-groupby-pivotby-results.md rule 5 and T-2592's probe. Owned: probes/t2311-pivotby-value-columns-error P!D12
-(`MAP(PIVOTBY(..,LAMBDA(v,v)),..)` is an error, ours a value) and the cells T-2592's probe adds that T-2593 leaves failing.
-If T-2592 shows a reference LAMBDA body (rule 7) holds a nested array too, this task makes `Model::aggregate` keep it; if that grows the task past size S, split it (planner) first.
+docs/specs/SPEC-0018-nested-arrays-in-groupby-pivotby-results.md rules 4, 5 and 7 and Design "Consumers with their own rule".
+- MAP, BYROW, BYCOL and REDUCE hand the LAMBDA each nested cell whole. A step that returns an array is `#CALC!` (A104).
+- SUM, COUNT and COUNTA flatten nested cells. AVERAGE is `#N/A`, ARRAYTOTEXT `#CALC!`, and TEXTJOIN and CONCAT `#VALUE!`.
+- A one-cell reference body makes a `Reference` cell: it displays `#VALUE!`, and INDEX reads it as the referenced value (A21).
+
+Owned:
+- probes/t2311-pivotby-value-columns-error P!D12. Excel's error comes from its `IFERROR(x&"",..)` step, which stays an array, so
+  it is `#CALC!` (rule 5). Ours is a value.
+- probes/t2592-nested-groupby-cells A1:A15, A21 and A100:A109, whichever of them T-2593 leaves failing.
+
+If the aggregates and the `Reference` kind together grow the task past size S, split it (planner) first.
 
 ## Acceptance criteria
 - [ ] P!D12 and T-2592's remaining cells pass and leave eval/baseline, with no new known-failure lines.
@@ -27,3 +33,4 @@ If T-2592 shows a reference LAMBDA body (rule 7) holds a nested array too, this 
 
 ## Out of scope
 - SCAN over a GROUPBY result (T-2398).
+- An operator over the whole result (`&""` keeps the shape, A13; what each cell holds is unprobed).
