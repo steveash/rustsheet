@@ -29,7 +29,7 @@ the top-left keep today's result (SPEC-0018 "Consumers with their own rule").
 
 ## Acceptance criteria
 - [ ] The owned cells above pass and leave eval/baseline (`make eval-baseline`), with no new known-failure lines.
-- [ ] Unit tests: `NestedArray::new` invariants, `scalar()`, two levels flattened, and the cap (`#ERROR!` past 1,048,576 kept cells; DEVIATION
+- [ ] Unit tests: `NestedArray::new` invariants, `scalar()`, two levels per T-2592's evidence, and the cap (`#ERROR!` past 1,048,576 kept cells; DEVIATION
       entry in arrays.md).
 - [ ] arrays.md records the implementation (Ours/Status lines); SPEC-0018 status accepted.
 - [ ] `make check` green; reviewers approve.

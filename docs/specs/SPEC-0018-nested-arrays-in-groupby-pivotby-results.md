@@ -25,7 +25,8 @@ Goals: represent a nested array where Excel makes one (GROUPBY and PIVOTBY cells
 top-left when lifted, the shown `#VALUE!`), bounded in memory (CLAUDE.md directive 5).
 
 Non-goals: nested arrays anywhere Excel gives `#CALC!` instead (BYROW, BYCOL, MAP, MAKEARRAY and SCAN whose LAMBDA returns an
-array: arrays.md "BYROW and BYCOL: a LAMBDA result that is an array" and "MAKEARRAY with an array step"); a nested array that survives into a cell's stored value (assumed: the cell stores
+array: arrays.md "BYROW and BYCOL: a LAMBDA result that is an array", "MAKEARRAY with an array step" and "MAP and SCAN with a LAMBDA that
+returns a multi-cell range"); a nested array that survives into a cell's stored value (assumed: the cell stores
 the shown `#VALUE!`, so `=A1#` over the spill reads errors; T-2592 probes it); arrays nested more than one level.
 
 ## Excel behavior to match
@@ -33,17 +34,18 @@ Evidence: probes/t2360-array-lambda-holidays P (excel-graph, 2026-10-23, T-2360)
 P!C12, P!D12; probes/groupby-lifted-args A153, A161, A169 (excel-graph, 2026-10-22). docs/excel-semantics/arrays.md, the
 paragraph starting "A LAMBDA array result is shown as `#VALUE!`, but the cell holds the array itself".
 
-1. **Which cells are nested.** A value cell of GROUPBY or PIVOTBY (group, subtotal and Total cells alike) whose function
-   returns an array holds that array, whatever its size: a one-record group is a 1x1 array (P!B3 `64|1x1|1`), a two-record
+1. **Which cells are nested.** A value cell of GROUPBY or PIVOTBY (group and Total cells; subtotal cells assumed, T-2592) whose function
+   passes an array through holds that array, whatever its size (a computed 1x1 result, `LAMBDA(v,{7})`, is unprobed: T-2592): a one-record group is a 1x1 array (P!B3 `64|1x1|1`), a two-record
    group 2x1, the Total 4x1 (P!B21 `64|4x1|1`). One LAMBDA over several value columns gives each column its own array
    (P!B3 vs C3). Key, header and empty filler cells are scalars (P!A3 `2|a`, P!F2 `2|Total`, the corner P!A2 `""`). One exception:
    PIVOTBY's Total columns over several value columns stay `""`, not nested (P!F3:G5 `2||#3`; arrays.md "PIVOTBY's Total
    columns are `""` only for one function over several value columns", P!Y97), while with one value column the Total
    column is nested (P!D11:D13 `64|2x1|1`, `64|4x1|1`).
-2. **Shown value.** The cell displays `#VALUE!`; a spilled grid shows `#VALUE!` in each nested cell.
+2. **Shown value.** The cell displays `#VALUE!`; a spilled grid shows `#VALUE!` in each nested cell
+   (probes/groupby-lifted-args Calc!B49:B52, one-record groups included).
 3. **INDEX.** `INDEX(result,r,c)` that selects a nested cell returns its array: TYPE 64, ROWS/COLUMNS its shape,
    `INDEX(x,1,1)` its first value (P!B3..E37). `INDEX(GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,w)),4,2)` spilling the Total's
-   `{1;2;3;4}` is probes/scan-over-groupby A68:A72, on the unmerged T-2398 branch (draft #1583); it lands with T-2398.
+   `{1;2;3;4}` is probes/scan-over-groupby A69:A72 (and `INDEX(..,1,2)`, group a's `{1;3}`, is `#SPILL!` at A68), on the unmerged T-2398 branch (draft #1583); it lands with T-2398.
 4. **Lifted reads take the top-left.** A function that lifts over the result reads each nested cell as its array's
    top-left value: `SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a top-left is one
    (`{#N/A;3}`: P!C33 = 1); `SUM(--ISERROR(PIVOTBY(..)))` is 0 (t2311 P!C12); REGEXEXTRACT reads a valid return mode
@@ -80,9 +82,11 @@ array, and an element that is itself `Nested` is replaced by its top-left (rule 
 is the bounded choice until T-2592 says otherwise).
 
 **One reader.** `ArrayNode::scalar(&self) -> &ArrayNode`: for `Nested`, its top-left element, otherwise itself. Every site
-that today matches `ArrayNode::Lambda` to place a non-scalar (35 matches in 25 files: cast.rs, arithmetic.rs, functions/util.rs,
-aggregate_args.rs, lift/kinds, text_kernel.rs, spill_functions.rs, ...) reads `node.scalar()` first, so rule 4 holds at
-every lifted read without a per-function rule. Reuse an existing top-left helper of the lifting code if one fits
+that today matches `ArrayNode::Lambda` to place a non-scalar and that T-2592 shows to read the top-left (rule 4's ISERROR and
+REGEXEXTRACT return_mode, and whatever else the probe shows; every other site keeps today's `#VALUE!` until its evidence
+lands) goes through it. The inventory is those sites (35 matches in 25 files: cast.rs, arithmetic.rs, functions/util.rs,
+aggregate_args.rs, lift/kinds, text_kernel.rs, spill_functions.rs, ...); each gets an explicit `Nested` arm, either
+`node.scalar()` or today's `#VALUE!`, so no site is left to a guess. Reuse an existing top-left helper of the lifting code if one fits
 before adding `scalar()` (CLAUDE.md directive 3). The compiler finds every exhaustive match; a wildcard arm is audited by
 `rg 'ArrayNode::Lambda'` in the same PR.
 

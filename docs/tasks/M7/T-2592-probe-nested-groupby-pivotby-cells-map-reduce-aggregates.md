@@ -24,6 +24,10 @@ returns rich errors it cannot decode):
 - `A1#` over a spilled result (each nested cell read as `#VALUE!`?);
 - TYPE via INDEX for `LAMBDA(x,D!D2)` (a reference body) and a two-parameter LAMBDA (rule 7: nested or the error);
 - two levels: a LAMBDA whose result is itself a GROUPBY with `LAMBDA(v,v)`.
+- MAP with a scalar step (`MAP(..,LAMBDA(x,ROWS(x)))`, `TYPE(x)`): does MAP refuse a nested element or hand it the array?
+- shape functions over the result (TAKE, CHOOSECOLS, VSTACK, SORT, FILTER) and an INDEX selecting a whole row or column:
+  do they keep nested elements?
+- a subtotal cell (two row fields) and a computed 1x1 result (`LAMBDA(v,{7})`, `SEQUENCE(1)`): nested or unwrapped?
 Use the excel-probe skill; one case file.
 
 ## Acceptance criteria

@@ -40,7 +40,7 @@ implementation task that makes those cells pass.
 ## Outcome
 docs/specs/SPEC-0018-nested-arrays-in-groupby-pivotby-results.md: an `ArrayNode::Nested(Arc<NestedArray>)` value (one
 level, beside `ArrayNode::Lambda`), produced only by GROUPBY/PIVOTBY's `Model::aggregate`, read through one `scalar()`
-(top-left) at every lifted read, INDEX/TYPE seeing the array, shown and stored as `#VALUE!`, and charged against
+(top-left) where the probe evidence shows a top-left read, INDEX/TYPE seeing the array, shown and stored as `#VALUE!`, and charged against
 `limits::MAX_SIZE` (DEVIATION past it). Tasks cut: T-2592 (probe the unknowns, sonnet), T-2593 (representation, INDEX,
 TYPE, top-left reads; owns the 47 t2360 P! cells, t2311 P!C12, 26 gen-m7/21b4eef18424ce94 cells), T-2594 (MAP, REDUCE,
 aggregates; P!D12); T-2398 now depends on T-2593. No eval change (docs only).
