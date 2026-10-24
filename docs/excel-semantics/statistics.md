@@ -2162,8 +2162,9 @@ mx = fl(m·x):
   x ≈ 13). Not R's df through dbinom_raw (free constant per run: 600-653 consistent, the wrong-structure level;
   whole model 293 of 4,005 bit-exact, CR 292). Not a GAMMALN formula (40 compositions all below CR; best 114/832/1,133
   of 1,599 cells.tsv cells).
-- The shape constant is accurate and swap-symmetric: F.DIST(1,m,n,FALSE) = F.DIST(1,n,m,FALSE) bit for bit on 585 of
-  585 pairs; at x = 1 the error has sd 0.6-0.9 units and is uncorrelated with Excel's GAMMALN errors (|r| <= 0.11).
+- The shape constant is swap-symmetric: F.DIST(1,m,n,FALSE) = F.DIST(1,n,m,FALSE) bit for bit on 585 of 585 pairs.
+  It is close to exact only for min(d) <= 7 (sd 0.6-0.9 units at x = 1, uncorrelated with Excel's GAMMALN errors);
+  at large shapes it is off by -64 units at (300,300) and -35 at (160,160), and differs by side (T-2586, below).
 - The x-dependence goes through ln(1 + r), r = min(mx/n, n/mx), with Excel's log1p switch (series to 0.375, then
   LN(fl(1 + r))): Excel's error responds to the rounding of s = fl(1 + r) with slope about -h on 12 of 12 hold-out runs
   with 0.375 < r <= 1, and |slope| <= 0.61h on all 24 below (the verifier confirms the switch).
@@ -2174,10 +2175,29 @@ mx = fl(m·x):
   term's form, large-shape noise (sd 20-200 units on a lattice of a [32, 64) stored term at (100,100)), a +3 to +5 unit
   offset at d1 = 1, the d <= 2 cells, non-integer df.
 - The engine's beta density × y(1-y)/x form is not Excel's.
+- Round 4 (T-2586, verified on untouched hold-outs; still PARTIAL):
+  - Not TOMS 708 brcomp(a,b,y,q)/x in any branch: below CR on every set (hold-out 69/501/822 of 1,536, CR
+    111/646/904), and the s = fl(1+r) response appears at r > 0.375 in the Stirling region too (15 of 15 runs).
+  - Structure: ln F = T + P - ln x, with P = fl(c·LN(x)) a stored product (c = a when mx <= n, entering as +P;
+    c = b otherwise, entering as -P), 1/x applied accurately, and T one stored double holding the constant and
+    -h·L(r): Excel's ln F moves in whole quanta of ulp(T) on consecutive x (256-512 units at (300,300)). The terms
+    combine as S2 = fl(fl(K_hi + H) + P), H = -h·L(r), the remainder K' - K_hi added outside the rounding
+    (sd 0.7-0.8 units at (100,100) and (100,50) with a free K, against 80-172 for the raw error). For r <= 0.375 the
+    -h·L term is not identified (at least two stored pieces).
+  - Constant: K = (h - 1/2)·ln(h/o) + 1/2·ln(w/2π) + stirlerr(h) - stirlerr(a) - stirlerr(b) with (w, o) = (a, b) on
+    side 1 and (b, a) on side 2, (h - 1/2)·log1p(fl(w/o)) with Excel's log1p kept extended, and Excel's stirlerr
+    errors (r3-loader-const's half-integer table) plus a global +5.33 units: in-sample rms 0.52 units over 56
+    (shape, side) groups, about 1.6 units out of sample.
+  - Best model (M-sd: that constant with the stored-product structure, K and E extended into EXP, F = fl(EXP(E)/x)):
+    bit-exact / within 4 ulp / within 15 digits 314/919/1,029 of 1,344 on its hold-out (CR 104/688/882), 287/1,048/
+    1,198 of 1,536 on another worker's (CR 111/646/904), 337/1,119/1,255 of 1,440 on round 3's (CR 114/733/1,060).
+    Not bit-exact (about 35%) and not at visible parity; the large-shape class stays poor.
 Evidence: probes-numeric t2513-r3-fdensity-a, -sw, -hold, -holdsw, t2513-verify-r3-fdensity-hold; F.DIST cells of
 docs/research/t2464/cells.tsv; docs/research/t2464/r3-fdensity (`a8_pair.out`, `a3_score.out`, `b1_sweep.out`,
 `b6_hold.out`, `c1_hold.out`), verify-r3-fdensity (`vcheck.out`, `vscore_vhold.out`, `vswitch_vhold.out`,
-`vpair.out`).
+`vpair.out`); round 4: probes-numeric t2586-r4-f-brcomp-hold, -big, t2586-r4-f-power-a, -hold, t2586-r4-f-small-df-a,
+-hold and the verifiers' t2586-verify-* cases; docs/research/t2464/r4-f-brcomp, r4-f-power, r4-f-small-df and
+verify-r4-*.
 Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite, Loader's
 binomial form where it overflows ("F density at large degrees of freedom (T-1864)").
 Status: UNVERIFIED (excel-graph): the negatives, the swap symmetry and the ratio switch are measured; the formula is

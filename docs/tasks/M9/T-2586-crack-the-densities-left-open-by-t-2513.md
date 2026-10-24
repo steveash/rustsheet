@@ -57,3 +57,11 @@ T-2585 and T-2146 then have targets for the cells they cannot reach.
 ## Out of scope
 - Engine changes.
 - The cdf pieces (T-2512).
+
+## Progress
+- 2026-10-24, round 4 (F density only; docs/research/t2464/r4-f-brcomp, r4-f-power, r4-f-small-df, verify-r4-*):
+  TOMS brcomp rejected; the stored-product structure ln F = T + P - ln x and the side-dependent Stirling-form
+  constant found; best model M-sd 314/919/1,029 of 1,344 on an untouched hold-out (CR 104/688/882), not bit-exact and
+  not at visible parity. statistics.md "F density is not the beta density, R's df or a GAMMALN formula" has the
+  details. Next: combine M-sd's constant with r4-f-power's stored sum S2, pin the -h·L(r) term for r <= 0.375, and
+  the large-shape constant (probe x = 1 ± k ulp on a dense min(d) >= 16 grid).
