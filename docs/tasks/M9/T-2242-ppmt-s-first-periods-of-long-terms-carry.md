@@ -116,3 +116,8 @@ the 15th digit, as `closeness.rs`):
   on its own (not exact) PMT, and the PMT bits (T-1528) feed it.
 - Not yet looked at: fv != 0 and type 1 (most of the T-2257 gen-m9 cells, e.g. `PPMT(10,7,158,147532,763)`),
   where `PPMT = (PMT + pv*rate) * P_e` is the textbook form but cancels; and the IPMT cells at fractional periods.
+- Also rejected for A166: the x87 power `2^(x*log2(1+r))` (FYL2X/F2XM1, on the double, 64-bit or exact 1+r):
+  at most 94/98; and the closed form `-(pv+fv)*r*P_e/(P_n-1)` with P = exp(x*log1p r) (or `expm1` for
+  P_n - 1): 188-194/209 over all fv/type-0 cells. A166 needs y = RN(-360*log1p(0.1)) plus one ulp (the exact
+  product is 0.08 ulp above the double, the true -360*ln(1.1) 0.1 ulp), so it is not a rounding of y; an
+  ulp-level probe of Excel's PPMT at per=1 over nper (and of EXP(-360*LN(1.1))) is the next step.
