@@ -9,7 +9,9 @@ use super::super::utils::{
     is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
 };
 use super::reference_operators::is_reference_operand;
-use super::structured_reference::{COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND};
+use super::structured_reference::{
+    is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
+};
 use super::*;
 
 impl Parser {
@@ -612,7 +614,13 @@ impl Parser {
             bare,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
-        if matches!(lowered, Node::ParseErrorKind { .. }) {
+        if let Node::ParseErrorKind { message, .. } = &lowered {
+            if self.loaded
+                && !message.starts_with(TABLE_SHEET_NOT_FOUND)
+                && is_unresolved_structured_reference(message)
+            {
+                return Node::ErrorKind(token::Error::REF);
+            }
             return lowered;
         }
         Node::StructuredReferenceKind {
