@@ -1,6 +1,6 @@
 ---
 id: T-2581
-title: "TEXTSPLIT with a range row delimiter and an invalid match_mode, and TEXTBEFORE with an empty delimiter and a negative instance (gen-m9, 3 cells)"
+title: "TEXTSPLIT with a range row delimiter and an invalid match_mode, and TEXTBEFORE with a number delimiter from a reference and a negative instance (gen-m9, 3 cells)"
 milestone: M7
 lane: functions-text
 status: todo
@@ -15,9 +15,9 @@ campaign: visible
 TEXTSPLIT and TEXTBEFORE give Excel's results for these three calls.
 
 ## Context
-From T-2436's probe of the untraced gen-m9 cells. text.md "TEXTSPLIT and TEXTBEFORE in the gen-m9 sweep (T-2436)". Probe first which part decides each: a row delimiter given as a range holding text (the 1x2 result means the column split wins or the row delimiters are read differently), a match_mode of 2 (`#VALUE!`; is ignore_empty 2.5 read first?), and an empty delimiter from a blank one-cell range with instance -2. Code: functions/text textsplit, textbefore.
+From T-2436's probe of the untraced gen-m9 cells. text.md "TEXTSPLIT and TEXTBEFORE in the gen-m9 sweep (T-2436)". Probe first which part decides each: a row delimiter given as a range holding text (the 1x2 result means the column split wins or the row delimiters are read differently), a match_mode of 2 (`#VALUE!`; is ignore_empty 2.5 read first?), and a delimiter that does not occur, read from a one-cell range holding the number 1.005, with instance -2 (a number delimiter from a reference, or the negative instance with no match). Code: functions/text textsplit, textbefore.
 
-T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `TEXTSPLIT("a*","a",Data!A6:B12,FALSE,0)` is 1x2 {"","*"} (ours 2x1), `TEXTSPLIT(2,"a",Data!B5:D6,2.5,2,"a*")` with match_mode 2 is `#VALUE!` (ours "2"), and `TEXTBEFORE("42ABC",<blank one-cell range>,-2)` `#VALUE!` (ours `#N/A`).
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `TEXTSPLIT("a*","a",Data!A6:B12,FALSE,0)` is 1x2 {"","*"} (ours 2x1), `TEXTSPLIT(2,"a",Data!B5:D6,2.5,2,"a*")` with match_mode 2 is `#VALUE!` (ours "2"), and `TEXTBEFORE("42ABC",<one-cell range holding 1.005>,-2)` `#VALUE!` (ours `#N/A`).
 Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 3 known-failure lines in eval/baseline/gen-m9.txt, 3 formulas.
 Examples:
 - gen-m9/3e98b26cf6713e77 Calc!A383 `=FISHER((TEXTSPLIT("a*","a",Data!A6:B12,FALSE,0)^RECEIVED(38833,46585,439103,Data!$A11)))`: Excel #VALUE!, ours #VALUE!; inner `TEXTSPLIT("a*","a",Data!A6:B12,FALSE,0)` Excel "", ours ""

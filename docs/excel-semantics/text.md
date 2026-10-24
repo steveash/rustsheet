@@ -1040,7 +1040,7 @@ Tasks: T-2315
 ## TEXTSPLIT and TEXTBEFORE in the gen-m9 sweep (T-2436)
 Rule (one gen-m9 cell each, excel-graph, 2026-10-24): `TEXTSPLIT("a*","a",Data!A6:B12,FALSE,0)` is the 1x2 {"","*"}
 (3e98b26cf6713e77 A383); `TEXTSPLIT(2,"a",Data!B5:D6,2.5,2,"a*")` (match_mode 2) is `#VALUE!` (984cba67bbe6972b A160);
-`TEXTBEFORE("42ABC",<blank one-cell range>,-2)` is `#VALUE!` (8d3588d8df0812df A313). Which argument decides each is UNVERIFIED.
+`TEXTBEFORE("42ABC",Data!E9:E9,-2)` with E9 = 1.005 (a delimiter that does not occur) is `#VALUE!`, not the not-found `#N/A` (8d3588d8df0812df A313). Which argument decides each is UNVERIFIED.
 Evidence: probes/t2436 (the three cases).
 Ours: 2x1, "2" and `#N/A`; T-2581.
 Status: VERIFIED (excel-graph) for the values

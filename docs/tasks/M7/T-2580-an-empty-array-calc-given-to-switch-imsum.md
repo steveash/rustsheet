@@ -1,6 +1,6 @@
 ---
 id: T-2580
-title: "An empty array (#CALC!) given to SWITCH, IMSUM or WORKDAY's holidays is #VALUE!, and SEQUENCE's oversized columns are #VALUE! before zero rows (gen-m9, 4 cells)"
+title: "An empty array (#CALC!) given to SWITCH, IMSUM or WORKDAY's holidays is #VALUE!, and SEQUENCE(0.0123,123456789.123,..) is #VALUE!, not zero rows' #CALC! (gen-m9, 4 cells)"
 milestone: M7
 lane: functions-logic
 status: todo
@@ -12,7 +12,7 @@ campaign: visible
 ---
 
 ## Goal
-An empty array (`#CALC!`) passed as a value argument of SWITCH, IMSUM or WORKDAY's holidays is `#VALUE!`, and SEQUENCE reports oversized columns as `#VALUE!` before zero rows' `#CALC!`, as Excel does.
+An empty array (`#CALC!`) passed as a value argument of SWITCH, IMSUM or WORKDAY's holidays is `#VALUE!`, and `SEQUENCE(0.0123,123456789.123,..)` is `#VALUE!`, not zero rows' `#CALC!`, as Excel does (probe SEQUENCE(0.0123,1) against SEQUENCE(1,123456789.123) first: the oversized columns as the cause are UNVERIFIED).
 
 ## Context
 From T-2436's probe of the untraced gen-m9 cells. arrays.md "An empty array as a function argument (T-2436)". ABS, N and ERROR.TYPE keep `#CALC!`, IFERROR catches it, so the rule is per function: probe the other value-taking functions that accept arrays (CHOOSE value, IFS, XLOOKUP if_not_found, IMPRODUCT, NETWORKDAYS holidays, SUM) in the same PR. Code: SWITCH (functions/logic), IMSUM (functions/engineering/complex), WORKDAY holidays reader (functions/date), SEQUENCE (functions/lookup or array).

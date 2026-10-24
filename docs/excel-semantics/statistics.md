@@ -2681,7 +2681,7 @@ Explained since by T-2436 ("ERROR.TYPE and CELL results are #NUM! in the paired 
 T-2576 and T-2577.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255).
 Ours: `#VALUE!` for an error argument (T-2093), 0 or a number for the overflow (T-2432).
-Status: VERIFIED (excel-graph) except the three UNVERIFIED cells
+Status: VERIFIED (excel-graph); the INDIRECT cell's `#NUM!` (06b4e8f5de409d5e A261) stays UNVERIFIED (T-2577)
 
 ## FREQUENCY: one row per bin plus one, even for one bin or a text bin; an error argument is that error (T-2255)
 Rule: FREQUENCY with a single bin (a number, a one-cell reference, a cell holding text or a boolean) or a single text or
