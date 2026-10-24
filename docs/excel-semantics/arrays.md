@@ -1720,7 +1720,7 @@ extent floors, snapped up within the count tolerance of the next integer as LEFT
 (gen-m9 f280df8ba95f96b9 A222, probes/t2580-sequence-zero-extent, t2580-sequence-column-cap).
 Evidence: probes/t2436/computed-scalar, probes/t2580-* (excel-graph, 2026-10-24).
 Ours: implemented (T-2580: `CalcResult::empty_array_as_value_error`, `sequence_kernel`); a SEQUENCE with 16385 to 1048576 columns and
-rows above 0 is still `#VALUE!` (T-2600).
+rows above 0 is still `#VALUE!`: DEVIATION (directive 5, decision 0014), `check_array_size` caps the columns at the grid's 16384 until T-2600 lifts it.
 Status: VERIFIED (excel-graph)
 Tasks: T-2436, T-2580
 

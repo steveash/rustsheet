@@ -46,11 +46,11 @@ impl Model {
         let [rows, columns, start, step] = read;
         // A negative extent or one past 1048576 (rows and columns alike, though the grid has 16384
         // columns) is `#VALUE!` and beats the `#CALC!` of a zero one: `SEQUENCE(0.0123,
-        // 123456789.123)` and `SEQUENCE(0,-1)` are `#VALUE!`, `SEQUENCE(0,1048576)` `#CALC!`
-        // A negative extent within the count tolerance of 0 is 0 (`SEQUENCE(1,-1E-9)` is `#CALC!`,
-        // `SEQUENCE(1,-1E-6)` `#VALUE!`; probes/t2580-sequence-tiny-negative). Evidence:
-        // (probes/t2580-sequence-zero-extent, t2580-sequence-column-cap; arrays.md "An empty array
-        // as a function argument", T-2580).
+        // 123456789.123)` and `SEQUENCE(0,-1)` are `#VALUE!`, `SEQUENCE(0,1048576)` is `#CALC!`.
+        // An extent within the count tolerance of 0 is 0: `SEQUENCE(1,-1E-9)` is `#CALC!`,
+        // `SEQUENCE(1,-1E-6)` `#VALUE!`.
+        // Evidence: probes/t2580-sequence-zero-extent, t2580-sequence-column-cap and
+        // t2580-sequence-tiny-negative; arrays.md "An empty array as a function argument" (T-2580).
         let extent = |n: f64| -> Result<usize, Error> {
             let n = near_integer_count(n) as i64;
             match usize::try_from(n) {
