@@ -24,7 +24,13 @@ Owned:
   array, so `#CALC!` (rule 5; the oracle shows only "E"). Ours is a value.
 - probes/t2592-nested-groupby-cells A1:A15, A21 and A100:A109, whichever of them T-2593 leaves failing.
 
-If the aggregates and the `Reference` kind together grow the task past size S, split it (planner) first.
+- Handed over from T-2593 (2026-10-24): four gen-m9 aggregates over a LAMBDA(x,x)-style GROUPBY/PIVOTBY, decided by how the
+  aggregates read nested cells (rule 4): gen-m9/06b4e8f5de409d5e Calc!A366 (MAX `#N/A`), 68d8ffb69ff739d8 Calc!A285 (HARMEAN `#N/A`),
+  7c20351562a2d71d Calc!A381 (AVERAGE `#N/A`), e85daedce5c2675e Calc!A35 (COUNT 142).
+
+T-2593 landed the `Reference` kind with its producer (a one-cell reference result holds the referenced value, which INDEX returns:
+A21 passes) and INDEX's reads, which already make A106 and A107 pass; the walk budget is `NestedBudget` (nested_array.rs), charged
+by `NestedArray::value`. If the aggregates grow the task past size S, split it (planner) first.
 
 ## Acceptance criteria
 - [ ] P!D12 and T-2592's remaining cells pass and leave eval/baseline, with no new known-failure lines.

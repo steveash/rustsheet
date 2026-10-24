@@ -363,6 +363,7 @@ impl UserModel {
                     sheet,
                     old_data,
                     tables,
+                    rewritten,
                 } => {
                     needs_evaluation = true;
                     let (name, id) = (old_data.name.clone(), old_data.sheet_id);
@@ -380,6 +381,7 @@ impl UserModel {
                     worksheet.color = old_data.color.clone();
                     worksheet.merged_cells = old_data.merged_cells.clone();
                     worksheet.shared_formulas = old_data.shared_formulas.clone();
+                    self.model.restore_table_references(rewritten.clone());
                     self.model.restore_tables(tables.clone());
                     self.set_selected_sheet(*sheet)?;
                 }

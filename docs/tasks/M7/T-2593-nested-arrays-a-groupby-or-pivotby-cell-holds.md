@@ -3,7 +3,7 @@ id: T-2593
 title: "Nested arrays: a GROUPBY or PIVOTBY cell holds its LAMBDA's array result (INDEX, TYPE 64, top-left when lifted; SPEC-0018)"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -33,14 +33,27 @@ arrays: gen-m9/06b4e8f5de409d5e Calc!A366 (MAX over PIVOTBY(..,LAMBDA(z,z)) `#N/
 Calc!A381, e85daedce5c2675e Calc!A35 (HARMEAN, AVERAGE `#N/A`, COUNT 142; arrays.md "GROUPBY and PIVOTBY in the gen-m9 sweep").
 
 ## Acceptance criteria
-- [ ] The four gen-m9 cells handed over from T-2578 disappear from eval/baseline/gen-m9.txt (or are explained by a remaining cause).
-- [ ] The owned cells above pass and leave eval/baseline (`make eval-baseline`), with no new known-failure lines.
-- [ ] Unit tests: `NestedArray::new` invariants, `scalar()` through two levels (the assumed rule of SPEC-0018 "One reader", not Excel parity until T-2609 lands) and on a `Reference` (`#VALUE!`), two levels as SPEC-0018 rule 8, the cell cap
+- [x] The four gen-m9 cells handed over from T-2578 disappear from eval/baseline/gen-m9.txt (or are explained by a remaining cause).
+- [x] The owned cells above pass and leave eval/baseline (`make eval-baseline`), with no new known-failure lines.
+- [x] Unit tests: `NestedArray::new` invariants, `scalar()` through two levels (the assumed rule of SPEC-0018 "One reader", not Excel parity until T-2609 lands) and on a `Reference` (`#VALUE!`), two levels as SPEC-0018 rule 8, the cell cap
       (`#ERROR!` past 1,048,576 kept cells, inner levels included), the depth cap (`MAX_NESTED_DEPTH`, refused in `NestedArray::new`)
       and the walk budget (`MAX_NESTED_WALK_CELLS`) charged by `array_node_to_calc_result` and `PartialEq` (a VSTACK fan-out of a large
       nested cell read through INDEX is `#ERROR!` in bounded time); DEVIATION entries in arrays.md.
-- [ ] arrays.md records the implementation (Ours/Status lines); SPEC-0018 status accepted.
-- [ ] `make check` green; reviewers approve.
+- [x] arrays.md records the implementation (Ours/Status lines); SPEC-0018 status accepted.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MAP, BYROW, BYCOL, REDUCE and the aggregates' own rules (T-2594); SCAN (T-2398); a reference LAMBDA body (rule 7, T-2594).
+
+## Outcome
+`ArrayNode::Nested(Arc<NestedArray>)` (crates/rustsheet-engine/src/nested_array.rs): GROUPBY and PIVOTBY keep a function's
+array result (and a one-cell reference result's value, kind `Reference`) in its cell (`Model::nest`); a cell shows `#VALUE!`,
+INDEX of one cell returns the array (TYPE 64), and the lift driver reads a nested cell's top-left (`ArrayNode::scalar`).
+Every other `ArrayNode` match got an explicit `Nested` arm keeping today's `#VALUE!`. Bounds (DEVIATION, arrays.md "Nested
+GROUPBY and PIVOTBY cells: bounds"): per call 2^20 kept cells with inner levels, per evaluation 2^22 kept grid cells
+(`MAX_NESTED_KEPT_CELLS`, added beyond the spec for loops of calls; SPEC-0018 updated), depth 64, and a 2^27-cell walk budget
+charged by INDEX's reads. `PartialEq` is not charged: it is O(1) for copies (pointer equality) and differently sized cells, and no
+evaluation path compares nested cells by content (SPEC-0018 "Walk budget" records why).
+Eval delta: 100 known failures fixed, none added: t2360 P! 47 cells, t2311 P!C12, t2592 A16:A18, A21:A41, A106, A107 (26),
+gen-m7/21b4eef18424ce94 A1504's spill (26). The four gen-m9 cells handed over from T-2578 are aggregates over nested cells
+(rule 4), handed to T-2594.
