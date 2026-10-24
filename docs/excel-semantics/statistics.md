@@ -2934,7 +2934,7 @@ entries on new forms: HYPGEOM.DIST's impossible sample is 0 for the cumulative f
 cell as QUARTILE's data is `#NUM!` and as PERCENTRANK's `#N/A` (T-2344); PROB, Z.TEST, T.TEST, MODE and TRIMMEAN follow their
 T-2256 order rules (T-2468, T-2470, T-2469, T-2471, T-2472); the `#N/A` pads of EXPAND, HSTACK and VSTACK and a lifted `{#N/A}`
 are error elements (T-2430); FORECAST and CHITEST pair equal counts of different shape (T-2431). STANDARDIZE and HYPGEOM.DIST read a referenced FALSE as 0 (`STANDARDIZE(3,-1,<FALSE>)` and
-`STANDARDIZE(<"1.5" text>,-2.5,<FALSE>)` are `#NUM!`, standard_dev 0 before x's text; T-2582, after T-1849).
+`STANDARDIZE(<"1.5" text>,-2.5,<FALSE>)` are `#NUM!`, standard_dev 0 before x's text; matched since T-1849).
 Evidence: probes/t2436 (57 cases plus computed-scalar).
 Ours: see each owning task.
 Status: VERIFIED (excel-graph)

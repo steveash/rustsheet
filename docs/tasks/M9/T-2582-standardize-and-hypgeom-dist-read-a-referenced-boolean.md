@@ -3,7 +3,7 @@ id: T-2582
 title: "STANDARDIZE and HYPGEOM.DIST read a referenced boolean as a number after T-1849: sd 0 is #NUM! before x's text (gen-m9, 3 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,10 +29,14 @@ Cells:
 - gen-m9/d8266bc15533702a.case.json (1): Calc!A316
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
-- [ ] `make check` green; reviewers approve.
+- [x] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
+
+## Outcome
+No change needed: T-1849 (merged while T-2436 was in review) fixed all three cells; they left eval/baseline/gen-m9.txt
+and the matching probes/t2436 cells left probes.txt when T-2436 merged origin/main.

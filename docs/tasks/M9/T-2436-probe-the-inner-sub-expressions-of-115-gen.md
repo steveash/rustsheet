@@ -137,7 +137,7 @@ own visible-parity criterion, so the two visible-parity criteria above move to t
   T-2428 (2), T-2493 (3), T-2494 (1), T-2461 (1), T-2519 (3);
 - new tasks: T-2575 COVARIANCE boolean scalar (4), T-2576 ERROR.TYPE/CELL results `#NUM!` in F.TEST/FORECAST/INTERCEPT/
   COVARIANCE.P (3), T-2577 INDIRECT 1x1 array a1 (2), T-2578 GROUPBY/PIVOTBY (7), T-2579 array-value edges (4), T-2580 empty
-  array as an argument (4), T-2581 TEXTSPLIT/TEXTBEFORE (3), T-2582 STANDARDIZE/HYPGEOM.DIST booleans after T-1849 (3),
+  array as an argument (4), T-2581 TEXTSPLIT/TEXTBEFORE (3), T-2582 STANDARDIZE/HYPGEOM.DIST booleans (3; already fixed by T-1849 before this merged, so T-2582 is closed),
   T-2583 NETWORKDAYS.INTL (1), T-2584 LINEST with empty known_y cells (1).
 New quirks: statistics.md "COVARIANCE: a boolean scalar is one value", "ERROR.TYPE and CELL results are #NUM! in the paired
 functions" (explains the three UNVERIFIED F.TEST cells), "LINEST: a known_y range with empty cells is #VALUE!" and the probe
