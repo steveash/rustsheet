@@ -1276,7 +1276,7 @@ it, in every other position; excel-graph, 2026-10-24, T-2482).
 Unprobed: a maturity past 9999-12-31 against a later error (the read check is taken from the settlement's and the
 T-bills'); a negative fraction such as -0.5 as a date (floored to -1 like the T-bills').
 Ours: matches since T-2482 (`bond_args` in financial_bonds.rs).
-Status: VERIFIED (web)
+Status: VERIFIED (excel-graph)
 Tasks: T-2482
 
 ## ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule

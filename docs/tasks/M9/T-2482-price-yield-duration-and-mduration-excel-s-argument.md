@@ -72,9 +72,9 @@ Cells:
 - gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A143
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436; partly met: A143 fixed, A329 moved to T-2391, see Outcome): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): these 50 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257; partly met: 46 of 50 fixed, 4 moved to T-2488, T-2496 and T-2426, see Outcome): these 50 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] Unit tests: for each of the four functions, an out-of-domain argument before an error argument, and an error argument before an out-of-domain one.
 - [x] `make check` green; reviewers approve.
