@@ -3,7 +3,7 @@ id: T-2539
 title: "IMLN, IMLOG10 and IMLOG2 at 1E+200 and 1E-200+1E-200i after T-2117, and IMPOWER of a base whose squares overflow (gen-m9, 10 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -50,3 +50,6 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
 
 ## Note (T-2389)
 T-2389 routed IMLN/IMLOG10 through `finite_complex_result`, which already fixed 4 of this task's cells (the IMLOG10 `1E-200+1E-200i` and `1E+300+1E+300i` ones: 40fc68fccfaf9b76 A212, 76b07b57099ccc8d A64, 895a33aa8352864a A226, 9fa170a9f17624fd A29). Re-triage the rest.
+
+## Outcome
+Re-triage: after T-2117 and T-2389 the IMLN/IMLOG10/IMLOG2 cells already passed; only gen-m9/1068c44afcd56d53 Calc!A136 (IMPOWER) was left. Probe probes/eng-impower-overflow (excel-graph): IMPOWER is `#NUM!` for a base with both parts nonzero whose x²+y² overflows; a pure real base is not refused. Implemented in `fn_impower`; recorded in engineering.md. Eval delta: gen-m9 known failures -1 (A136); new probe case passes.

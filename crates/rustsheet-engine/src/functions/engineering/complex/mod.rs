@@ -474,6 +474,12 @@ impl Model {
             if n == 0.0 && x == 0.0 && y == 0.0 {
                 return num_error(cell); // probes/eng-impower A6
             }
+            // A base with both parts nonzero whose x²+y² overflows is `#NUM!` even when the result
+            // is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `("1E+154+1E+154i",2)`; a pure real
+            // `IMPOWER("1E+300",-0.5)` is 1E-150 (probes/eng-impower-overflow A1-A12; T-2539).
+            if x != 0.0 && y != 0.0 && (x * x + y * y).is_infinite() {
+                return num_error(cell);
+            }
             let r = modulus(x, y);
             // Excel's `^` (square-and-multiply for an integer power) and its x87-reduced sine
             // and cosine: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` and

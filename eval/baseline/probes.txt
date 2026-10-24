@@ -331,6 +331,7 @@ C	probes/eng-imln-modulus-range.case.json	84
 C	probes/eng-imln-modulus.case.json	20
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
+C	probes/eng-impower-overflow.case.json	12
 C	probes/eng-impower-past-cut.case.json	19
 C	probes/eng-impower.case.json	22
 C	probes/eng-imsqrt-large-b.case.json	12
@@ -1162,6 +1163,9 @@ C	probes/take-drop-trimrange-over-xlookup.case.json	23
 C	probes/tbill-equal-dates.case.json	11
 C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
+C	probes/text-255-units-array-element.case.json	8
+C	probes/text-255-units-from-cell.case.json	13
+C	probes/text-255-units-rept-error-count.case.json	5
 C	probes/text-ap-locale-bracket.case.json	28
 C	probes/text-ap-locale-inferences.case.json	81
 C	probes/text-argument-modes.case.json	47
@@ -3144,6 +3148,11 @@ F	probes/table-edits/table-insert-row-inside-data.case.json	F!A9
 F	probes/table-edits/table-totals-baseline.case.json	F!A10
 F	probes/table-edits/table-totals-baseline.case.json	F!A11
 F	probes/table-edits/table-totals-baseline.case.json	F!A3
+F	probes/text-255-units-array-element.case.json	S!A4
+F	probes/text-255-units-from-cell.case.json	S!A12
+F	probes/text-255-units-from-cell.case.json	S!A4
+F	probes/text-255-units-rept-error-count.case.json	S!A1
+F	probes/text-255-units-rept-error-count.case.json	S!A4
 F	probes/text-format-digits-date-token.case.json	Sheet1!C25
 F	probes/text-format-length-limit-n.case.json	Sheet1!A2
 F	probes/text-format-length-limit-n.case.json	Sheet1!A7
