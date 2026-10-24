@@ -22,4 +22,4 @@ Probe case `bessel-large-x` (T-2140, 24 cells, 21 failing) and docs/excel-semant
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Other Bessel functions (BESSELI, BESSELK).
