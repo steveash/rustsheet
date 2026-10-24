@@ -269,7 +269,7 @@ impl Model {
 
     /// The HYPGEOM.DIST kernel; `cumulative` is `None` for HYPGEOMDIST, always the pmf. The
     /// arguments are read in order (the first error wins), each count truncated, a boolean count
-    /// `#VALUE!`.
+    /// its 1 or 0.
     fn hyp_geom_dist_of(
         &self,
         counts: [&CalcResult; 4],
@@ -277,12 +277,12 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let [sample_s, number_sample, population_s, number_pop] = counts;
-        // A TRUE sample_s is 1 (probes-numeric/t1048-hypgeomdist A19, t1049-hypgeomdist A53); the
-        // other three counts stay `#VALUE!` for a boolean (unprobed).
+        // A TRUE sample_s is 1 (probes-numeric/t1048-hypgeomdist A19, t1049-hypgeomdist A53); so
+        // are the other counts from a cell or formula (gen-m9/ee2497a5e683c5d9 A356, statistics.md T-2255).
         let sample_s = self.cast_number_ref(sample_s, cell)?;
-        let number_sample = self.cast_number_no_bools_ref(number_sample, cell)?.trunc();
-        let population_s = self.cast_number_no_bools_ref(population_s, cell)?.trunc();
-        let number_pop = self.cast_number_no_bools_ref(number_pop, cell)?.trunc();
+        let number_sample = self.cast_number_ref(number_sample, cell)?.trunc();
+        let population_s = self.cast_number_ref(population_s, cell)?.trunc();
+        let number_pop = self.cast_number_ref(number_pop, cell)?.trunc();
         let cumulative = match cumulative {
             Some(value) => Self::cast_bool_ref(value, cell)?,
             None => false,
