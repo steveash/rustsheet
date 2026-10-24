@@ -207,6 +207,15 @@ impl Model {
         cell: &CellReferenceIndex,
         kind: XnpvArgument,
     ) -> Result<Vec<f64>, CalcResult> {
+        let refuse = |error: Error| {
+            move || {
+                Err(CalcResult::new_error(
+                    error.clone(),
+                    *cell,
+                    "Expected number".to_string(),
+                ))
+            }
+        };
         let result = self.evaluate_node_in_context(arg, *cell);
         let single_empty = match &result {
             CalcResult::EmptyCell => true,
@@ -230,15 +239,6 @@ impl Model {
         let non_number = match kind {
             XnpvArgument::Values => Error::NUM,
             XnpvArgument::Dates => Error::VALUE,
-        };
-        let refuse = |error: Error| {
-            move || {
-                Err(CalcResult::new_error(
-                    error.clone(),
-                    *cell,
-                    "Expected number".to_string(),
-                ))
-            }
         };
         self.array_of_numbers_from(
             result,
@@ -367,7 +367,7 @@ impl Model {
         // probes/fin-irr-error-array).
         let flows = match self.evaluate_node_in_context(values, cell) {
             error @ CalcResult::Error { .. }
-                if !matches!(values.ungrouped(), Node::ReferenceKind { .. }) =>
+                if !matches!(*values.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
             {
                 Err(error)
             }

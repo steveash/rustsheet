@@ -1,7 +1,7 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2066: XNPV with an empty single-cell values argument and a one-cell dates argument (gen-m9/eccd03df42e40006 A24: Excel's PERCENTRANK(..) of it is #N/A, so the XNPV is not an error). A2 empty, B11 = 100, B12 = 0.",
- "tags": ["M2", "probe", "T-2066"],
+ "description": "T-2599 (found by T-2066): XNPV with an empty single-cell values argument and a one-cell dates argument (gen-m9/eccd03df42e40006 A24: Excel's PERCENTRANK(..) of it is #N/A, so the XNPV is not an error). A2 empty, B11 = 100, B12 = 0.",
+ "tags": ["M2", "probe", "T-2599"],
  "expected": {},
  "sheets": [
   {

@@ -22,11 +22,11 @@ Split from T-2066 (reviewer-architecture: one task, one lane). Branch agent/func
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- C8 (`XNPV(1,A2:A3,B11:B12)`, Excel `#VALUE!`, ours `#NUM!`): T-2603.
 
 ## Outcome
 `get_array_of_numbers_xpnv` takes an explicit `XnpvArgument` (values or dates) instead of keying on the error. One empty
 cell, `A2` or the one-cell range `A2:A2`, is a single 0 cash flow as values and `#NUM!` as dates
 (probes/xnpv-empty-values-cell C1-C7, new probes/xnpv-empty-cell-forms C1-C5, excel-graph 2026-10-24). C8
-(`XNPV(1,A2:A3,B11:B12)`, Excel `#VALUE!`, ours `#NUM!`) stays a recorded known failure, unexplained (financial.md).
+(`XNPV(1,A2:A3,B11:B12)`, Excel `#VALUE!`, ours `#NUM!`) stays a recorded known failure, unexplained (financial.md); follow-up T-2603.
 Eval: gen-m9 known failures -3, probes +1 known failure (C8, new case), 0 regressions.
