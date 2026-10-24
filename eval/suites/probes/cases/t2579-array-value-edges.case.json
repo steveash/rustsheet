@@ -56,7 +56,11 @@
         "B81": "=TYPE(INDEX(IFERROR(D!A1:A6,-1),2))",
         "B82": "=INDEX(IFERROR(D!A1:A6,-1),2)&\"|\"",
         "B83": "=AVEDEV(IFERROR(D!A1:A6,-1),IFERROR(D!A1:A6,-1))",
-        "B84": "=AVEDEV(IFERROR(TRIMRANGE(D!A1:B6),-1),D!A1:A5)"
+        "B84": "=AVEDEV(IFERROR(TRIMRANGE(D!A1:B6),-1),D!A1:A5)",
+        "B85": "=COUNT(IFNA(D!A1:A6,-1))",
+        "B86": "=INDEX(IFNA(D!A1:A6,-1),2)&\"|\"",
+        "B87": "=ISBLANK(IFERROR(D!A2:A2,1))",
+        "B88": "=IFERROR(D!A2:A2,1)&\"|\""
       }
     },
     {
@@ -125,6 +129,10 @@
     "P!B81",
     "P!B82",
     "P!B83",
-    "P!B84"
+    "P!B84",
+    "P!B85",
+    "P!B86",
+    "P!B87",
+    "P!B88"
   ]
 }

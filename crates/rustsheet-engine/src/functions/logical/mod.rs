@@ -370,9 +370,11 @@ impl Model {
         let value_array: Vec<Vec<ArrayNode>> = match value {
             // A multi-cell range gives its values, and a blank cell's is 0: COUNT, AVERAGE and
             // AVEDEV count it as a number and `&` reads "0" (`COUNT(IFERROR(D!A1:A6,-1))` is 4 over
-            // 1, blank, TRUE, "x", 5, 1/0; probes/t2579-array-value-edges B70-B84, excel-graph; T-2579).
+            // 1, blank, TRUE, "x", 5, 1/0; IFNA alike; probes/t2579-array-value-edges B70-B88,
+            // excel-graph; T-2579).
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(array) => blanks_as_zero(array),
+                Ok(array) if left != right => blanks_as_zero(array),
+                Ok(array) => array,
                 Err(error) => return error,
             },
             CalcResult::Array(a) => a,
@@ -548,7 +550,8 @@ impl Model {
     }
 }
 
-/// The values of a range read by IFERROR or IFNA, each blank cell as 0 (see `if_error_like`).
+/// The values of a multi-cell range read by IFERROR or IFNA, each blank cell as 0 (see
+/// `if_error_like`).
 fn blanks_as_zero(rows: Vec<Vec<ArrayNode>>) -> Vec<Vec<ArrayNode>> {
     rows.into_iter()
         .map(|row| {
