@@ -1,4 +1,4 @@
-use crate::cast::calc_result_to_array_node;
+use crate::cast::calc_result_to_element;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
@@ -55,7 +55,7 @@ impl Model {
                 Ok(value) => value,
                 Err(error) => return error,
             };
-            result[0][0] = calc_result_to_array_node(seed);
+            result[0][0] = calc_result_to_element(seed);
             start_col = 1;
         }
 
@@ -69,7 +69,7 @@ impl Model {
                     Ok(value) => value,
                     Err(error) => return error,
                 };
-                *slot = calc_result_to_array_node(value);
+                *slot = calc_result_to_element(value);
             }
         }
 

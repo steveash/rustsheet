@@ -364,3 +364,57 @@ fn an_omitted_argument_compares_as_a_blank_cell() {
     assert_eq!(model._get_text("A2"), "TRUE");
     assert_eq!(model._get_text("A3"), "TRUE");
 }
+
+#[test]
+fn iferror_range_reads_a_blank_cell_as_zero() {
+    // probes/t2579-array-value-edges B70-B84 (excel-graph, T-2579): over 1, blank, TRUE, "x", 5,
+    // 1/0 the blank is 0, so COUNT is 4 and AVERAGE (1 + 0 + 5 - 1) / 4.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A3", "TRUE");
+    model._set("A4", "x");
+    model._set("A5", "5");
+    model._set("A6", "=1/0");
+    model._set("C1", "=COUNT(IFERROR(A1:A6,-1))");
+    model._set("C2", "=AVERAGE(IFERROR(A1:A6,-1))");
+    model._set("C3", "=AVEDEV(IFERROR(A1:A6,-1))");
+    model._set("C4", r#"=INDEX(IFERROR(A1:A6,-1),2)&"|""#);
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "4");
+    assert_eq!(model._get_text("C2"), "1.25");
+    assert_eq!(model._get_text("C3"), "1.875");
+    assert_eq!(model._get_text("C4"), "0|");
+}
+
+#[test]
+fn iferror_reads_trimrange_and_one_cell_ranges_as_excel() {
+    // probes/t2579-array-value-edges B74, B87, B88 (excel-graph, T-2579): TRIMRANGE keeps its
+    // blanks as 0 like a range, a one-cell range keeps the blank's empty value.
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("A3", "TRUE"),
+        ("A4", "x"),
+        ("A5", "5"),
+        ("A6", "=1/0"),
+    ] {
+        model._set(cell, value);
+    }
+    for (cell, value) in [
+        ("B1", "2"),
+        ("B2", "4"),
+        ("B3", "6"),
+        ("B4", "8"),
+        ("B5", "10"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("B6", "12");
+    model._set("C1", "=AVEDEV(IFERROR(TRIMRANGE(A1:B6),-1))");
+    model._set("C2", "=ISBLANK(IFERROR(A2:A2,1))");
+    model._set("C3", r#"=IFERROR(A2:A2,1)&"|""#);
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "3.5");
+    assert_eq!(model._get_text("C2"), "TRUE");
+    assert_eq!(model._get_text("C3"), "|");
+}

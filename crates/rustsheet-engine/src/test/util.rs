@@ -122,6 +122,18 @@ impl Model {
         let CellReferenceIndex { sheet, row, column } = self._parse_reference(cell);
         self._get_text_at(sheet, row, column)
     }
+    /// Whether `cell`, or the anchor of the array it is part of, is on a loop or reads one in
+    /// the last evaluation: it then holds 0 (recalc.md "A circular reference without
+    /// iteration is 0").
+    pub fn _is_circular(&self, cell: &str) -> bool {
+        let CellReferenceIndex { sheet, row, column } = self._parse_reference(cell);
+        let (row_a, column_a) = match self._get_cell(cell) {
+            Cell::SpillCell { a, .. } => *a,
+            _ => (row, column),
+        };
+        self._get_text_at(sheet, row, column) == "0"
+            && self.evaluation.circular.contains(&(sheet, row_a, column_a))
+    }
     /// The message of the error in formula cell `cell`, which tells the engine's caps apart
     /// from a plain error of the same kind.
     pub fn _get_error_message(&self, cell: &str) -> String {

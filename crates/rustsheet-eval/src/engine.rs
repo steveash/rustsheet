@@ -244,13 +244,13 @@ impl Engine for RustSheetEngine {
                                 continue;
                             };
                             // spec2xlsx writes these as plain `<f>` formulas (T-1077).
-                            if let Input::Formula(text) = &input {
+                            if let Input::StoredFormula(text) = &input {
                                 if sheet.legacy_formulas.contains(a1) {
                                     input = Input::LegacyFormula(text.clone());
                                 }
                             }
                             let is_formula =
-                                matches!(input, Input::Formula(_) | Input::LegacyFormula(_));
+                                matches!(input, Input::StoredFormula(_) | Input::LegacyFormula(_));
                             if is_formula != formulas {
                                 continue;
                             }
@@ -440,10 +440,11 @@ fn spec_input(input: &CellInput) -> Option<Input> {
             Input::from(rustsheet_engine::flush_subnormal(*n))
         }
         CellInput::Bool(b) | CellInput::Typed(Value::Bool(b)) => Input::from(*b),
-        CellInput::Str(s) if s.starts_with('=') => Input::Formula(s.clone()),
+        // The formula as spec2xlsx stores it (decision 0103: LET names spelled like a cell bind).
+        CellInput::Str(s) if s.starts_with('=') => Input::StoredFormula(s.clone()),
         // Mirrors tools/src/rustsheet_tools/spec2xlsx.py: "" is materialized as ="".
         CellInput::Str(s) | CellInput::Typed(Value::Text(s)) if s.is_empty() => {
-            Input::Formula("=\"\"".to_string())
+            Input::StoredFormula("=\"\"".to_string())
         }
         CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
             Input::Value(ApiValue::Text(s.as_str().into()))

@@ -16,7 +16,7 @@ engine gives Excel's last bit at FYL2X near-ties, or a decision record shows tha
 of x and says how the probe scores those cells.
 
 ## Context
-- Needs an oracle sweep (T-2143). The cached evidence is the T-1941 runs (30 misses in 2.9M cells) and the probe's
+- Needs an oracle sweep (T-2143, done: probes-numeric/t2143-ln-near-ties-fill1..3; the fills disagree at 23 of 380 points, so Excel's bit at a near-tie is not a fixed function of x, numbers.md). The cached evidence is the T-1941 runs (30 misses in 2.9M cells) and the probe's
   single fill, which disagree at 3 of the 30 points. That is too few points to fit a near-tie rule blind.
 - Failing cells: probes/ln-fyl2x-kernel Calc!B10, B107, B113 and 24 others (eval/baseline/probes.txt). Each is one
   ulp, for example `LN(A10)`: Excel -1.0685588514970168, engine -1.068558851497017. `make eval-show

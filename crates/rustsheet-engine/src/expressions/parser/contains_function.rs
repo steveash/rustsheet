@@ -21,6 +21,18 @@ impl Node {
         false
     }
 
+    /// Whether the tree holds a LAMBDA call, written out as `LAMBDA(x,x)(1)`.
+    pub(crate) fn contains_lambda_call(&self) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if matches!(node, Node::LambdaCallKind { .. }) {
+                return true;
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
     /// Whether the tree holds a legacy N or T (SPEC-0012), the one fact of a legacy formula its
     /// display text does not show, so an edit that re-enters the text must keep it (T-1852).
     pub(crate) fn has_legacy_marker(&self) -> bool {
@@ -43,6 +55,68 @@ impl Node {
             node.push_children(&mut pending);
         }
         false
+    }
+
+    /// Whether the tree holds, at any depth, a `#This Row` reference to one of `tables` (lowercase
+    /// names), whose printed area then depends on the row of the cell (T-1699).
+    pub(crate) fn has_this_row_to(&self, tables: &[String]) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if let Node::StructuredReferenceKind { reference, lowered } = node {
+                if matches!(**lowered, Node::ThisRowKind { .. })
+                    && tables.contains(&reference.table_name.to_lowercase())
+                {
+                    return true;
+                }
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
+    /// Replaces every `#This Row` structured reference in the tree by its area on `row` (the cell
+    /// or range, or `#VALUE!` off the data rows), as the parse-time lowering did before SPEC-0016
+    /// step 2 (T-1699). For a formula with no cell of its own, a defined name's body. An explicit
+    /// stack keeps the walk off the call stack.
+    pub(crate) fn lower_this_rows_at(&mut self, row: i32) {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            let area = match node {
+                Node::StructuredReferenceKind { lowered, .. } => lowered.this_row_at(row),
+                _ => None,
+            };
+            if let Some(area) = area {
+                *node = area;
+                continue;
+            }
+            match node {
+                Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
+                    pending.extend(args.iter_mut());
+                }
+                Node::SheetSpanKind {
+                    reference: child, ..
+                }
+                | Node::ImplicitIntersection { child, .. }
+                | Node::SpillRangeOperator { child }
+                | Node::Group { child, .. }
+                | Node::UnaryKind { right: child, .. }
+                | Node::LambdaDefKind { body: child, .. } => pending.push(child),
+                Node::OpRangeKind { left, right }
+                | Node::OpIntersectKind { left, right, .. }
+                | Node::OpUnionKind { left, right, .. } => {
+                    pending.extend([&mut **left, &mut **right]);
+                }
+                Node::LambdaCallKind { lambda, args } => {
+                    pending.push(lambda);
+                    pending.extend(args.iter_mut());
+                }
+                other => {
+                    if let Ok((left, right)) = chain::value_operands_mut(other) {
+                        pending.extend([left, right]);
+                    }
+                }
+            }
+        }
     }
 
     /// Pushes the nodes directly under this one, the operands of every operator and the arguments

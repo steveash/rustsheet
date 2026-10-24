@@ -3,7 +3,7 @@ id: T-2067
 title: "Probe MINVERSE of singular and near-singular matrices (cutoff or residual inverse)"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,15 +31,18 @@ pivot. Use the `excel-probe` skill.
 | gen-m5/9284730052aff46c Calc!A39 | `=MINVERSE((1e-15^(Data!$B7+Data!B12)))` | 9.999999999999914e+107 | "#NUM!" |
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values for MINVERSE (INDEX into each cell, or a spill) of {1,2,3;4,5,6;7,8,9},
+- [x] A probe case with oracle values for MINVERSE (INDEX into each cell, or a spill) of {1,2,3;4,5,6;7,8,9},
       {1,2;2,4}, {1E-20}, {1E-17,0;0,1}, {1,1;1,1.0000000000000002} and {1E-300}.
-- [ ] The same probe also covers MDETERM of a matrix whose pivot product overflows, e.g. {1E+200,0;0,1E+200}.
+- [x] The same probe also covers MDETERM of a matrix whose pivot product overflows, e.g. {1E+200,0;0,1E+200}.
       The engine gives `#NUM!` there (T-1751), but that is unprobed.
-- [ ] MDETERM of tiny-pivot matrices: {1E-20}, {1E-300}, {1E-17,0;0,1}, {1E-200,0;0,1E-200} (underflow). The engine
+- [x] MDETERM of tiny-pivot matrices: {1E-20}, {1E-300}, {1E-17,0;0,1}, {1E-200,0;0,1E-200} (underflow). The engine
       keeps any nonzero pivot (T-1751), which is evidenced only down to a 1E-16 residual.
-- [ ] arrays.md records the rule. A follow-up implementation task is filed if the engine differs, or the fix
+- [x] arrays.md records the rule. A follow-up implementation task is filed if the engine differs, or the fix
       goes in this PR when it is a one-line threshold change.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MDETERM (T-1751).
+
+## Outcome
+Probed with excel-graph (probes/minverse-singular-near-singular, 46 cells; MINVERSE by INDEX and by spill, MDETERM overflow/underflow). MDETERM cells already match; MINVERSE differs (Excel inverts residual-pivot matrices, `#NUM!` only for exact singular and one 2.2E-16 case), so the rule is recorded in arrays.md and the implementation is filed as T-2362 (opus; not a one-line threshold change). Baseline gains the probe's known failures.

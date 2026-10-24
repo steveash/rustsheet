@@ -47,6 +47,21 @@ fn negative_error(cell: CellReferenceIndex, fn_name: &str) -> CalcResult {
 }
 
 impl Model {
+    /// Whether an evaluated argument is a lone blank cell: a blank reference, or a one-cell range
+    /// over one. GCD, LCM and MULTINOMIAL read a blank as 0 beside any other argument or inside a
+    /// multi-cell range, but are `#VALUE!` when every argument is a lone blank, `MULTINOMIAL(Z200)`,
+    /// `GCD(Z200:Z200)` and `MULTINOMIAL(Z200,Z201)` (probes/t2275-address-bounds J1, J15, J20, J28;
+    /// docs/excel-semantics/coercion.md "GCD / LCM / MULTINOMIAL range cells", T-2294).
+    pub(super) fn is_lone_blank_cell(&mut self, value: &CalcResult) -> bool {
+        match value {
+            CalcResult::EmptyCell => true,
+            CalcResult::Range { left, right } if left == right => {
+                matches!(self.evaluate_cell(*left), CalcResult::EmptyCell)
+            }
+            _ => false,
+        }
+    }
+
     fn gcd_lcm_impl<F>(
         &mut self,
         args: &[Node],
@@ -64,6 +79,7 @@ impl Model {
         let mut acc: Option<i64> = None;
         let mut saw_number = false;
         let mut has_range = false;
+        let mut only_lone_blanks = true;
         // A negative number only sets this flag: the type check over every argument wins over
         // it whatever the order (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m7/4629e931955aa4b8
         // Calc!A7, docs/excel-semantics/coercion.md), so `#NUM!` is returned after the last one.
@@ -117,6 +133,7 @@ impl Model {
 
         for (index, arg) in args.iter().enumerate() {
             let evaluated = self.evaluate_node_in_context(arg, cell);
+            only_lone_blanks &= self.is_lone_blank_cell(&evaluated);
             match evaluated {
                 CalcResult::Number(value) => {
                     if let Some(res) = handle_number(value) {
@@ -220,7 +237,7 @@ impl Model {
                                         };
                                     }
                                 }
-                                ArrayNode::Boolean(_) => {
+                                ArrayNode::Boolean(_) | ArrayNode::Lambda(_) => {
                                     return CalcResult::Error {
                                         error: Error::VALUE,
                                         origin: cell,
@@ -261,7 +278,7 @@ impl Model {
             return negative_error(cell, fn_name);
         }
 
-        if !saw_number && !has_range {
+        if only_lone_blanks || (!saw_number && !has_range) {
             return CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,

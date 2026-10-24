@@ -15,6 +15,7 @@ use super::grouping::{
     at, effective_depth, empty_text, shown_key, subtotal_levels, value_error, Aggregates, Axis,
     Group, Grouping, Line, ParentOrder, Relative, SortOrder,
 };
+use super::lifted_options::Bound;
 use super::relative_to::{Item, RelativeSets, RelativeTo};
 use crate::{
     calc_result::CalcResult,
@@ -246,7 +247,18 @@ impl Model {
     /// `=PIVOTBY(row_fields, col_fields, values, function, [field_headers], [row_total_depth],
     /// [row_sort_order], [col_total_depth], [col_sort_order], [filter_array], [relative_to])`
     pub(crate) fn fn_pivotby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        match self.pivotby(args, cell) {
+        // An array field_headers, row_total_depth or col_total_depth lifts the call
+        // (probes/groupby-lifted-args A121-A137).
+        let options = [
+            (4, Bound::Fixed(3)),
+            (5, Bound::KeyWidth(0)),
+            (7, Bound::KeyWidth(1)),
+        ];
+        let args = match self.lift_options(args, &options, 3, Model::fn_pivotby, cell) {
+            Ok(args) => args,
+            Err(lifted) => return lifted,
+        };
+        match self.pivotby(&args, cell) {
             Ok(array) => CalcResult::Array(array),
             Err(error) => error,
         }
@@ -319,12 +331,8 @@ impl Model {
             None
         };
         let slots = slots(&col_lines, pivot.shape.columns, pivot.col_depth);
-        let checked_totals: Vec<Slot> = if placement.is_some() {
-            slots
-                .iter()
-                .copied()
-                .filter(|slot| matches!(slot, Slot::Total { .. }))
-                .collect()
+        let checked_totals = if placement.is_some() {
+            checked_totals(&col_lines, pivot.shape.columns)
         } else {
             Vec::new()
         };
@@ -370,7 +378,7 @@ impl Model {
         functions: &mut Functions,
         pivot: &Pivot,
         (rows, cols, lines): (&Grouping, &Grouping, &[Line]),
-        (shown, checked_totals, sets): (&[Shown], &[Slot], Option<&RelativeSets>),
+        (shown, checked_totals, sets): (&[Shown], &[CheckedTotal], Option<&RelativeSets>),
         totals: &Totals,
         cell: CellReferenceIndex,
     ) -> (Vec<Vec<ArrayNode>>, bool) {
@@ -493,9 +501,12 @@ impl Model {
         if records.is_empty() {
             return;
         }
-        for &slot in grid.checked_totals {
+        for &CheckedTotal { slot, gate } in grid.checked_totals {
             if grid.total_error {
                 return;
+            }
+            if !grid.has_records(gate) {
+                continue;
             }
             let relative = grid.relative_of(slot);
             let at = Aggregate {
@@ -845,6 +856,34 @@ fn slots(lines: &[Line], value_columns: usize, col_depth: isize) -> Vec<Slot> {
     }
 }
 
+/// A Total column slot whose cell [`Model::check_totals`] computes, and the column line `gate`
+/// under which a line needs a record for it to be computed.
+#[derive(Clone, Copy)]
+struct CheckedTotal {
+    slot: Slot,
+    gate: Line,
+}
+
+/// The Total column slots of one function over `value_columns` value columns, each gated by a
+/// column line. Excel computes the Total cell of value column `v` only in the lines with a record
+/// under the column line at value-column position `lines + v` of the grid, the line
+/// `(lines + v) / value_columns` (as if each line were one value column wide), and never when
+/// that is past the last line: so with one column group only the earlier value columns, whose
+/// Total cells are hidden, are computed. The Total row has records under every line. Excel: see
+/// docs/excel-semantics/arrays.md "PIVOTBY: an error column total over several value columns"
+/// (probes/t2578-pivotby-hidden-total-slot, t2578-pivotby-total-error-scope).
+fn checked_totals(lines: &[Line], value_columns: usize) -> Vec<CheckedTotal> {
+    (0..value_columns)
+        .filter_map(|value| {
+            let gate = lines.get((lines.len() + value) / value_columns.max(1))?;
+            Some(CheckedTotal {
+                slot: Slot::Total { value },
+                gate: *gate,
+            })
+        })
+        .collect()
+}
+
 /// The first header row of shown headers: the column field names, joined with ", " as text, above
 /// the first column group, also when the total or a subtotal column comes first; `""` elsewhere
 /// (P!M1; probes/pivotby-followup P!A61 "Product, Year", P!A421 "2023" as text, P!A1181;
@@ -920,15 +959,26 @@ struct Grid<'a> {
     /// for the Total row).
     sets: Option<&'a RelativeSets>,
     row: Item,
-    /// The Total column slots of one function over several value columns, whose every cell is
-    /// computed whether or not it is shown; one that is an error makes the whole result
+    /// The Total column slots of one function over several value columns, whose cells are
+    /// computed whether or not they are shown; one that is an error makes the whole result
     /// `#VALUE!` (`total_error`; arrays.md "PIVOTBY: an error column total over several value
     /// columns", T-2311). Empty otherwise.
-    checked_totals: &'a [Slot],
+    checked_totals: &'a [CheckedTotal],
     total_error: bool,
 }
 
 impl<'a> Grid<'a> {
+    /// Whether the line being laid out has a record under the column line `gate`.
+    fn has_records(&self, gate: Line) -> bool {
+        let (start, end) = match gate {
+            Line::Group(group) => (group, group + 1),
+            Line::Subtotal { start, end, .. } => (start, end),
+        };
+        self.buckets
+            .get(start..end)
+            .is_some_and(|buckets| buckets.iter().any(|bucket| !bucket.is_empty()))
+    }
+
     /// The relative set of `slot`'s cell in the row being laid out ([`RelativeSets::of_cell`]).
     fn relative_of(&self, slot: Slot) -> Relative<'a> {
         self.sets

@@ -68,6 +68,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
         Node::StructuredReferenceKind { .. } => {}
+        Node::ThisRowKind { .. } => {}
         Node::NamedVariableKind { .. } => {}
         Node::LambdaDefKind {
             parameters: _,

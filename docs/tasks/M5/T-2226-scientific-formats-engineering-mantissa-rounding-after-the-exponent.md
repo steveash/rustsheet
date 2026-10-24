@@ -3,7 +3,7 @@ id: T-2226
 title: "Scientific formats: engineering mantissa rounding after the exponent shift (##0.0E+0 on 1/3 is 333.3E-3)"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -18,8 +18,15 @@ Follow-up of T-1730. `format.rs` rounds the value to `precision + len(floor(valu
 A first attempt (round the mantissa after the shift: skip the early rounding for scientific codes) regressed ~15 gen-m10 text cells (e.g. 4c6a49fe4a6fa404 F!R15, 5255389143dbcef6 F!D16, 8e073c5b2145567a F!H14), so the exponent choice and the rounding interact; reproduce with `make eval` before changing. `digit_count` as the group size for codes with `,` grouping is unprobed.
 
 ## Acceptance criteria
-- [ ] The listed gen-m10 text cells pass, no regressions; number-formats.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] The listed gen-m10 text cells pass, no regressions; number-formats.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+An engineering mantissa (two or more integer placeholders) now rounds after the exponent shift: it keeps its own integer
+digits plus the decimals, capped at 15 significant digits, and a rounding carry moves to the next exponent multiple
+(`round_engineering` in decimal_round.rs). Codes with one integer placeholder keep the old path. That limit is why
+the first attempt's regressions did not come back. Eval: gen-m10 text known failures 434 -> 406 (28 fixed), 0
+regressions. number-formats.md is updated. The carry case (`##0.0E+0` on 999.96, ours "1.0E+3") is unprobed.

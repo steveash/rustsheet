@@ -3,7 +3,7 @@ id: T-0445
 title: "A circular reference without iteration is 0, not #CIRC!, for its cells and readers"
 milestone: M3
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -28,11 +28,25 @@ cell-count bound (arrays.md "Stacked results past the grid"). Cycle detection is
 may move it, so check that task's state first and coordinate rather than duplicate.
 
 ## Acceptance criteria
-- [ ] The probes/circular-iteration-off lines and probes/vstack-self-past-grid W9 leave
+- [x] The probes/circular-iteration-off lines and probes/vstack-self-past-grid W9 leave
       eval/baseline/probes.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] recalc.md's "Ours" line states the new behavior.
-- [ ] `make check` green; reviewers approve.
+- [x] recalc.md's "Ours" line states the new behavior.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Iterative calculation (recalc.md's other sections).
 - The 2^34-cell HSTACK result (-c3 W1).
+
+## Outcome
+- A read that closes a loop, or reads a cell already circular, marks every cell on the evaluation
+  stack circular (`Model::mark_stack_circular`, amortized by a watermark, skipped while the
+  recursion unwinds); a circular cell stores 0. Only driver-marked anchors skip their formula, so
+  a reader still makes (and records) its reads whatever the order.
+- New probe probes/t0445-circular-readers (excel-graph, 16 cells): readers of readers, IFERROR,
+  ISERROR, TYPE, ISBLANK and text formulas over a loop are all 0. Passes.
+- Eval: probes known failures 2097 -> 2084 (fixed 13: circular-iteration-off x10,
+  vstack-self-past-grid W9, circular-iteration-on B2, scalar-lift-open-c3 W1), 0 regressions.
+  circular-iteration-on B2 (`=B2`) passes only because its 0 is also the iteration-off value;
+  iterative calculation is still not implemented.
+- Tests: `Model::_is_circular` (stored 0 and in the circular set) replaces the `#CIRC!`
+  assertions; the consistency oracle skips circular cells.

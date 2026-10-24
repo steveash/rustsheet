@@ -1,5 +1,5 @@
 use super::bycol_byrow::LambdaGrid;
-use crate::cast::calc_result_to_array_node;
+use crate::cast::calc_result_to_element;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
@@ -72,7 +72,7 @@ impl Model {
                     Ok(value) => value,
                     Err(error) => return error,
                 };
-                *slot = calc_result_to_array_node(cell_result);
+                *slot = calc_result_to_element(cell_result);
             }
         }
 

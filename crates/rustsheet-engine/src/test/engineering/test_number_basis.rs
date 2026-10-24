@@ -305,11 +305,11 @@ fn fn_hex2whatever_misc() {
     model._set("A4", r#"=HEX2DEC(TRUE, 4)"#);
 
     model.evaluate();
-    // Note Excel here return #VALUE! instead
-    assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // A boolean is #VALUE! (probes/eng-leading-plus-oct-bool A35:A45)
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
-    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
 }
 
 #[test]
@@ -322,11 +322,11 @@ fn fn_oct2whatever_misc() {
     model._set("A4", r#"=OCT2DEC(TRUE, 4)"#);
 
     model.evaluate();
-    // Note Excel here return #VALUE! instead
-    assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    // A boolean is #VALUE! (probes/eng-leading-plus-oct-bool A35:A45)
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
-    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
 }
 
 #[test]
@@ -366,4 +366,20 @@ fn negative_hex_result_ignores_places() {
     assert_eq!(model._get_text("A3"), *"#NUM!");
     assert_eq!(model._get_text("A4"), *"#NUM!");
     assert_eq!(model._get_text("A5"), *"#NUM!");
+}
+
+#[test]
+fn oct2dec_of_eleven_digits_is_num() {
+    let mut model = new_empty_model();
+    model._set("A1", "=OCT2DEC(77777777777)");
+    model._set("A2", "=OCT2DEC(7777777777)");
+    model._set("A3", r#"=IMABS("+i")"#);
+    model._set("A4", r#"=IMABS("++i")"#);
+    model._set("A5", r#"=IMSUB("+i","1")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"-1");
+    assert_eq!(model._get_text("A3"), *"1");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"-1+i");
 }

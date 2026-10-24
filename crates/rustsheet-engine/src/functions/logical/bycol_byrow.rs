@@ -1,6 +1,6 @@
 use super::lambda::LambdaCaller;
-use crate::cast::calc_result_to_array_node;
-use crate::functions::util::array_node_to_calc_result;
+use crate::cast::calc_result_to_element;
+use crate::functions::util::{array_element_value, array_node_to_calc_result};
 use crate::functions::Function;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -9,7 +9,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::{check_array_size, check_range_size},
+    limits::{check_built_array_size, check_range_size},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -77,13 +77,18 @@ pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
 }
 
 /// A LAMBDA result as one BYROW/BYCOL/MAKEARRAY cell: a 1x1 array is its one value (probes/
-/// byrow-bycol-array-results, excel-graph 2026-10-16); otherwise the shared element mapping.
+/// byrow-bycol-array-results, excel-graph 2026-10-16), a LAMBDA value stays a LAMBDA element, which
+/// a cell shows as `#CALC!` (`BYCOL(Data!A11:D11,LAMBDA(x,LAMBDA(v,v)))` is four `#CALC!`) and `&`
+/// reads as `#VALUE!` (`TEXTSPLIT(..&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`; gen-m7
+/// 23b5367c18059af2 A2578, T-2406) and MAP can call (`MAP(MAKEARRAY(1,2,LAMBDA(r,c,LAMBDA(x,x+c))),
+/// LAMBDA(g,g(10)))` is 11, 12; probes/lambda-arrays B22, T-2039); otherwise the shared element
+/// mapping.
 fn lambda_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
         CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
             rows.remove(0).remove(0)
         }
-        other => calc_result_to_array_node(other),
+        other => calc_result_to_element(other),
     }
 }
 
@@ -283,11 +288,18 @@ impl Model {
                 rows: usize::try_from(range.right.row - range.left.row + 1).unwrap_or(0),
                 columns: usize::try_from(range.right.column - range.left.column + 1).unwrap_or(0),
             },
+            // A blank element of an array value reaches the LAMBDA as the empty value IFERROR gives
+            // a blank cell: ISBLANK TRUE, yet COUNT and AVERAGE count it as 0
+            // (`MAP(HSTACK(Z1:Z2,{1;2}),_xleta.COUNT)` is 1,1,1,1, probes/t2413-blank-in-stacked-arrays
+            // A7:A11, T-2413). A range's blank cell stays a blank cell (A43:A47).
             Source::Values(data) => LambdaGrid::Values(
                 data.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|node| array_node_to_calc_result(node, cell))
+                            .map(|node| match node {
+                                ArrayNode::Empty => CalcResult::EmptyArg,
+                                node => array_element_value(node, cell),
+                            })
                             .collect()
                     })
                     .collect(),
@@ -358,6 +370,10 @@ impl Model {
             {
                 return Err(Self::by_slices_calc_error(cell));
             }
+            // A 1x1 array is its one value, as BYROW and BYCOL take it (T-2407).
+            CalcResult::Array(rows) if rows.len() == 1 && rows[0].len() == 1 => {
+                array_element_value(&rows[0][0], cell)
+            }
             other => other,
         })
     }
@@ -379,8 +395,16 @@ impl Model {
         let [rows, cols, lambda_result] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let extent = |value: &CalcResult, name: &str| -> Result<usize, CalcResult> {
-            let x = self.cast_number_ref(value, cell)?;
+        // Both sizes are read, errors first in argument order, before either is validated:
+        // `MAKEARRAY(1.5,NA(),..)` is `#N/A` (probes/expand-makearray-past-grid D9-D16).
+        let sizes = self
+            .cast_number_ref(rows, cell)
+            .and_then(|rows| Ok((rows, self.cast_number_ref(cols, cell)?)));
+        let (rows, cols) = match sizes {
+            Ok(sizes) => sizes,
+            Err(error) => return error,
+        };
+        let extent = |x: f64, name: &str| -> Result<usize, CalcResult> {
             // Unlike SEQUENCE, a fractional size is #VALUE!, not truncated (arrays.md
             // "MAKEARRAY rows and columns must be whole numbers").
             if x.fract() != 0.0 || x < 1.0 {
@@ -402,7 +426,10 @@ impl Model {
             Err(error) => return error,
         };
 
-        if let Some((error, message)) = check_array_size(rows, cols) {
+        // Rows and columns past the grid are built: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385
+        // (probes/expand-makearray-past-grid D1), `ROWS(MAKEARRAY(1048577,1,..))` 1048577
+        // (probes/t2579-array-value-edges B23, above our cell bound).
+        if let Some((error, message)) = check_built_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
 
@@ -420,6 +447,9 @@ impl Model {
                     [CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
                     cell,
                 );
+                if makes_calc_error(&cell_result) {
+                    return Self::by_slices_calc_error(cell);
+                }
                 row.push(lambda_result_to_array_node(cell_result));
             }
             result.push(row);
@@ -429,11 +459,14 @@ impl Model {
     }
 }
 
-/// A number, text, boolean or blank: a value that is neither an array nor a reference.
+/// A number, text, boolean, blank or error value: a value that is neither an array nor a
+/// reference. An error value as a later array of MAP is `#VALUE!` whatever the error
+/// (probes/map-later-array-error-blank A1:A3, A12:A13, T-1946).
 fn is_scalar_value(value: &CalcResult) -> bool {
     matches!(
         value,
-        CalcResult::Number(_)
+        CalcResult::Error { .. }
+            | CalcResult::Number(_)
             | CalcResult::String(_)
             | CalcResult::Boolean(_)
             | CalcResult::EmptyCell

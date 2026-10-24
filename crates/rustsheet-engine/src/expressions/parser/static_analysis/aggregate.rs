@@ -2,7 +2,7 @@ use crate::expressions::utils::parse_reference_a1;
 use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
-use super::reference_result::yields_cells;
+use super::reference_result::{is_let_call, let_result, yields_cells};
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};
 
 /// AGGREGATE spills over an array `function_num`, options or fourth argument, broadcast against
@@ -47,7 +47,7 @@ pub(super) fn areas_static_result(args: &[Node]) -> StaticResult {
 /// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12, H15:H17).
 fn is_read_reference(arg: &Node) -> bool {
     // A written group is its child: `AREAS((A1,B1))` reads the union (T-1342).
-    match arg.ungrouped() {
+    match &*arg.ungrouped_static() {
         Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::OpRangeKind { .. }
@@ -148,18 +148,7 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
         // `Model::evaluate_picked_reference_arg`, T-2009); counting it as lifting there too leaves
         // the shape to run time, which is safe.
         Function::Xlookup => true,
-        Function::Let if args.len() >= 3 && args.len() % 2 == 1 => {
-            let scope = bound.len();
-            for pair in args[..args.len() - 1].chunks_exact(2) {
-                if let Node::NamedVariableKind { name, .. } = &pair[0] {
-                    let lifts = lifts_to_values(&pair[1], bound);
-                    bound.push((name, lifts));
-                }
-            }
-            let result = args.last().is_some_and(|body| lifts_to_values(body, bound));
-            bound.truncate(scope);
-            result
-        }
+        Function::Let if is_let_call(args) => let_result(args, bound, lifts_to_values),
         _ => matches!(run_static_analysis_on_node(node), StaticResult::Array(..)),
     }
 }

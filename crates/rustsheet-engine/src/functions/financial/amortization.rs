@@ -18,9 +18,9 @@
 
 use chrono::{Datelike, NaiveDate};
 
-use super::accrint::acc_days_between;
-use super::dates::day_count_basis;
+use super::dates::{actual_days, day_count_basis, days_30_360_eu, days_30_360_us};
 use super::number_or_error;
+use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
     calc_result::CalcResult,
@@ -30,6 +30,16 @@ use crate::{
     functions::Function,
     model::Model,
 };
+
+// EFF `DaysBetween` in the numerator position: 30/360 on bases 0 and 4, the actual days
+// otherwise. AMORLINC and AMORDEGRC count their first period with it.
+fn first_period_days(start: NaiveDate, end: NaiveDate, basis: i32) -> f64 {
+    match basis {
+        0 => days_30_360_us(start, end),
+        4 => days_30_360_eu(start, end),
+        _ => actual_days(start, end),
+    }
+}
 
 /// The most AMORDEGRC periods walked one by one. Up to here the kernel is main's walk
 /// (probes/fin-amor-period-bound B6-B14, up to 10^6 periods, are Excel's values); past it, where the
@@ -86,9 +96,20 @@ impl Model {
         let cost = self.cast_number_ref(cost, cell)?;
         let purchased = self.financial_date(self.cast_number_ref(purchased, cell)?);
         let first_period = self.financial_date(self.cast_number_ref(first_period, cell)?);
-        let salvage = self.cast_number_ref(salvage, cell)?;
+        // A date past the calendar is `#NUM!` as it is read, and a boolean salvage or rate is
+        // `#VALUE!` after that but before the value checks (financial.md "Argument order of the
+        // Analysis ToolPak securities functions": `AMORDEGRC(70537,36888,7E13,46,12,TRUE,0)` is
+        // `#NUM!`, gen-m9 e8d55ec393460bb7 A374; `AMORDEGRC(90812,36624,38707,453,3,TRUE,4)` and a
+        // TRUE cell rate are `#VALUE!`, probes/t2455-transpose-single-value A51, A57). A date of
+        // 0 or below waits for the value checks (`AMORDEGRC(-1,<blank>,..,<#VALUE!>)` is `#VALUE!`,
+        // gen-m9 1dce4774f5c0e736 A199).
+        let past_calendar = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        if purchased > past_calendar || first_period > past_calendar {
+            return Err(num_error(cell));
+        }
+        let salvage = self.cast_number_no_bools_ref(salvage, cell)?;
         let period = self.cast_number_ref(period, cell)?;
-        let rate = self.cast_number_ref(rate, cell)?;
+        let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         let basis = day_count_basis(basis).and_then(|basis| i32::try_from(basis).ok());
         let valid = cost >= 0.0
@@ -199,7 +220,7 @@ impl Asset {
         let days_in_yr = amor_days_in_year(self.purchased, self.basis);
         let purchased = amor_fix_29_february(self.purchased, self.basis);
         let first_period = amor_fix_29_february(self.first_period, self.basis);
-        let first_len = acc_days_between(purchased, first_period, true, self.basis)?;
+        let first_len = first_period_days(purchased, first_period, self.basis);
         let first_depr_temp = first_len / days_in_yr * rate * self.cost;
         let first_depr = if first_depr_temp == 0.0 {
             self.cost * rate

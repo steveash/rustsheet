@@ -4,6 +4,10 @@
 //! catastrophic pattern ends in `Spent` (`#ERROR!`) instead of running or allocating unboundedly
 //! (CLAUDE.md directive 5).
 //!
+//! A program compiled for the memoized mode ([`Program::memoized`]) also keeps a visited set of
+//! `(instruction, position)` states and never enters one twice, so it runs in time linear in the
+//! program times the text (SPEC-0013 section 3, T-2355).
+//!
 //! The costs are conservative placeholders in `regex_engine`'s units (about a nanosecond each);
 //! T-1974 fits them.
 
@@ -14,8 +18,12 @@ use regex_automata::{
 
 use super::ast::Anchor;
 use super::class::literal_class;
+use super::grapheme::cluster_end;
 use super::program::{Inst, Program};
-use crate::functions::text::regex_engine::{charge, Spent};
+use crate::functions::text::{
+    lifted::to_u64,
+    regex_engine::{charge, Spent},
+};
 
 /// Units charged per instruction executed.
 const STEP: u64 = 8;
@@ -26,8 +34,14 @@ const BACKREF_CHAR: u64 = 8;
 /// Units charged per character a case-insensitive backreference compares: folding one
 /// character builds and folds a one-character class.
 const BACKREF_FOLD_CHAR: u64 = 256;
+/// Units charged per character a lookbehind steps back.
+const STEP_BACK_CHAR: u64 = 8;
 /// Units charged per start position an unanchored search tries.
 const ATTEMPT: u64 = 64;
+/// Units charged per word of the visited set cleared: a word is 64 positions of one instruction.
+const VISITED_WORD: u64 = 1;
+/// Positions (bytes of the text) one chunk of the visited set covers: one bit of a word each.
+const CHUNK: usize = 64;
 
 /// One entry of the backtracking stack.
 #[derive(Debug, Clone, Copy)]
@@ -40,6 +54,13 @@ enum Frame {
     Loop { slot: usize, old: usize },
     /// Where an atomic group opened.
     Barrier,
+    /// Where a lookaround opened, at `pos`: a negative one resumes at `after` when its body
+    /// fails.
+    Look {
+        pos: usize,
+        negative: bool,
+        after: usize,
+    },
 }
 
 /// The search state of a [`Program`], reused across searches: cleared, not freed.
@@ -48,6 +69,7 @@ pub(in crate::functions::text) struct BacktrackCache {
     stack: Vec<Frame>,
     slots: Vec<Option<usize>>,
     loops: Vec<usize>,
+    visited: Visited,
 }
 
 impl BacktrackCache {
@@ -56,6 +78,74 @@ impl BacktrackCache {
         self.stack.capacity() * std::mem::size_of::<Frame>()
             + self.slots.capacity() * std::mem::size_of::<Option<usize>>()
             + self.loops.capacity() * std::mem::size_of::<usize>()
+            + self.visited.memory_usage()
+    }
+}
+
+/// The states the memoized mode has visited: one bit per instruction and byte position, in
+/// chunks of [`CHUNK`] positions allocated as the search reaches them. A chunk holds one word
+/// per instruction (bit `pos % CHUNK` of word `pc`) and counts only while its stamp is the
+/// current one, so a new text or operation clears the set by bumping the stamp, not by
+/// touching memory.
+#[derive(Debug, Default)]
+struct Visited {
+    chunks: Vec<Chunk>,
+    /// The stamp of the current operation; 0 is never current.
+    stamp: u32,
+    /// Bytes the chunks' words hold.
+    bytes: usize,
+}
+
+#[derive(Debug, Default)]
+struct Chunk {
+    stamp: u32,
+    words: Vec<u64>,
+}
+
+impl Visited {
+    fn memory_usage(&self) -> usize {
+        self.chunks.capacity() * std::mem::size_of::<Chunk>() + self.bytes
+    }
+
+    /// Starts a new operation: every state is unvisited again.
+    fn reset(&mut self) {
+        self.stamp = self.stamp.wrapping_add(1);
+        if self.stamp == 0 {
+            // Every chunk's stamp could now look current: make each stale for good.
+            for chunk in &mut self.chunks {
+                chunk.stamp = 0;
+            }
+            self.stamp = 1;
+        }
+    }
+
+    /// Marks unvisited again every position from `from` to `to`, both included: where a match
+    /// was found, so the next search of the same iteration may cross it again (SPEC-0013
+    /// section 3). Marks after `to` stay: they are states that failed before the match's path
+    /// was taken, and fail for every later start too.
+    fn forget(&mut self, from: usize, to: usize, work: &mut u64) -> Result<(), Spent> {
+        for index in from / CHUNK..=to / CHUNK {
+            let Some(chunk) = self.chunks.get_mut(index) else {
+                break;
+            };
+            if chunk.stamp != self.stamp {
+                continue;
+            }
+            if (index + 1) * CHUNK <= to + 1 {
+                chunk.stamp = 0;
+                continue;
+            }
+            // Keep the bits of the positions after `to` in this chunk: none when `to` is its last
+            // position, where the shift by 64 overflows to 0.
+            let keep = u64::MAX
+                .checked_shl(u32::try_from(to % CHUNK + 1).unwrap_or(u32::MAX))
+                .unwrap_or(0);
+            charge(work, to_u64(chunk.words.len()).saturating_mul(VISITED_WORD))?;
+            for word in &mut chunk.words {
+                *word &= keep;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -68,7 +158,35 @@ pub(in crate::functions::text) struct Backtracker<'a> {
     pub(in crate::functions::text) room: usize,
 }
 
-impl Backtracker<'_> {
+impl<'a> Backtracker<'a> {
+    /// A search of `program` with `cache` for one operation over one text: what the memoized
+    /// mode visited in another is forgotten.
+    pub(in crate::functions::text) fn new(
+        program: &'a Program,
+        cache: &'a mut BacktrackCache,
+        work: &'a mut u64,
+        room: usize,
+    ) -> Backtracker<'a> {
+        cache.visited.reset();
+        Backtracker::resume(program, cache, work, room)
+    }
+
+    /// A search of `program` with `cache` that continues the operation `cache` is in: what the
+    /// memoized mode visited stays visited (SPEC-0013 section 3).
+    pub(in crate::functions::text) fn resume(
+        program: &'a Program,
+        cache: &'a mut BacktrackCache,
+        work: &'a mut u64,
+        room: usize,
+    ) -> Backtracker<'a> {
+        Backtracker {
+            program,
+            cache,
+            work,
+            room,
+        }
+    }
+
     /// The leftmost match starting at or after `from` (a character boundary of `text`), with `\G`
     /// at `from`: its capture slots stay in the cache. `(start, end)` of the match.
     pub(in crate::functions::text) fn find_from(
@@ -79,9 +197,8 @@ impl Backtracker<'_> {
         let mut start = from;
         loop {
             charge(self.work, ATTEMPT)?;
-            if self.attempt(text, start, from)? {
-                let slot = |i: usize| self.cache.slots.get(i).copied().flatten();
-                return Ok(slot(0).zip(slot(1)));
+            if self.attempt(text, start, from, false)? {
+                return self.found(from);
             }
             if self.program.anchored {
                 return Ok(None);
@@ -93,7 +210,37 @@ impl Backtracker<'_> {
         }
     }
 
-    /// Fills `caps` from the slots of the last match [`Backtracker::find_from`] found.
+    /// One attempt anchored at `at` (a character boundary of `text`) that refuses an empty match,
+    /// with `\G` at `at`: PCRE2's `NOTEMPTY_ATSTART | ANCHORED`, the retry after an empty match
+    /// (SPEC-0013 section 4). Its capture slots stay in the cache. `(start, end)` of the match.
+    ///
+    /// In the memoized mode a refused match stays visited: only a match at `at` depends on the
+    /// attempt's start, and every later search of the iteration starts after `at`.
+    pub(in crate::functions::text) fn retry(
+        &mut self,
+        text: &str,
+        at: usize,
+    ) -> Result<Option<(usize, usize)>, Spent> {
+        charge(self.work, ATTEMPT)?;
+        if self.attempt(text, at, at, true)? {
+            return self.found(at);
+        }
+        Ok(None)
+    }
+
+    /// The match the last attempt found, searched for from `from`: in the memoized mode every
+    /// position up to its end is unvisited again, so the next search may cross them.
+    fn found(&mut self, from: usize) -> Result<Option<(usize, usize)>, Spent> {
+        let slot = |i: usize| self.cache.slots.get(i).copied().flatten();
+        let found = slot(0).zip(slot(1));
+        if let (true, Some((_, end))) = (self.program.memoized, found) {
+            self.cache.visited.forget(from, end, self.work)?;
+        }
+        Ok(found)
+    }
+
+    /// Fills `caps` from the slots of the last match [`Backtracker::find_from`] or
+    /// [`Backtracker::retry`] found.
     pub(in crate::functions::text) fn fill(&self, caps: &mut Captures) {
         caps.set_pattern(Some(PatternID::ZERO));
         for (out, slot) in caps.slots_mut().iter_mut().zip(&self.cache.slots) {
@@ -101,10 +248,13 @@ impl Backtracker<'_> {
         }
     }
 
-    /// Pushes `frame`, charged; spent once the stack would pass [`Backtracker::room`].
+    /// Pushes `frame`, charged; spent once the stack and the visited set would pass
+    /// [`Backtracker::room`].
     fn push(&mut self, frame: Frame) -> Result<(), Spent> {
         charge(self.work, FRAME)?;
-        let bytes = (self.cache.stack.len() + 1).saturating_mul(std::mem::size_of::<Frame>());
+        let bytes = (self.cache.stack.len() + 1)
+            .saturating_mul(std::mem::size_of::<Frame>())
+            .saturating_add(self.cache.visited.bytes);
         if bytes > self.room {
             return Err(Spent);
         }
@@ -112,8 +262,57 @@ impl Backtracker<'_> {
         Ok(())
     }
 
-    /// One anchored match attempt at `start`; whether it matched.
-    fn attempt(&mut self, text: &str, start: usize, search_start: usize) -> Result<bool, Spent> {
+    /// Marks state `(pc, pos)` visited; whether it already was. A chunk is allocated (or a stale
+    /// one cleared) when the search first reaches its positions, charged per word, and spent
+    /// once the stack and the visited set would pass [`Backtracker::room`].
+    fn visit(&mut self, pc: usize, pos: usize) -> Result<bool, Spent> {
+        let words = self.program.insts.len();
+        let index = pos / CHUNK;
+        let visited = &mut self.cache.visited;
+        if visited.chunks.len() <= index {
+            visited.chunks.resize_with(index + 1, Chunk::default);
+        }
+        let stamp = visited.stamp;
+        let table = visited.chunks.len() * std::mem::size_of::<Chunk>();
+        let Some(chunk) = visited.chunks.get_mut(index) else {
+            return Err(Spent);
+        };
+        if chunk.stamp != stamp {
+            charge(self.work, to_u64(words).saturating_mul(VISITED_WORD))?;
+            if chunk.words.len() != words {
+                let held = visited
+                    .bytes
+                    .saturating_sub(chunk.words.len() * std::mem::size_of::<u64>())
+                    .saturating_add(words.saturating_mul(std::mem::size_of::<u64>()));
+                let stack = self.cache.stack.len() * std::mem::size_of::<Frame>() + table;
+                if held.saturating_add(stack) > self.room {
+                    return Err(Spent);
+                }
+                visited.bytes = held;
+                chunk.words = vec![0; words];
+            } else {
+                chunk.words.fill(0);
+            }
+            chunk.stamp = stamp;
+        }
+        let bit = 1u64 << (pos % CHUNK);
+        let Some(word) = chunk.words.get_mut(pc) else {
+            return Err(Spent);
+        };
+        let seen = *word & bit != 0;
+        *word |= bit;
+        Ok(seen)
+    }
+
+    /// One anchored match attempt at `start`, refusing a match that ends there when
+    /// `not_empty`; whether it matched.
+    fn attempt(
+        &mut self,
+        text: &str,
+        start: usize,
+        search_start: usize,
+        not_empty: bool,
+    ) -> Result<bool, Spent> {
         let program = self.program;
         self.cache.stack.clear();
         self.cache.slots.clear();
@@ -123,8 +322,13 @@ impl Backtracker<'_> {
         let (mut pc, mut pos) = (0, start);
         loop {
             charge(self.work, STEP)?;
+            // A visited state already failed, or is a loop back to itself with nothing matched
+            // on the way, which the Thompson NFA's epsilon closure drops too.
+            let seen = program.memoized && self.visit(pc, pos)?;
             let matched = match program.insts.get(pc) {
+                _ if seen => false,
                 None => false,
+                Some(Inst::Match) if not_empty && pos == start => false,
                 Some(Inst::Match) => return Ok(true),
                 Some(Inst::Char(want)) => match char_at(text, pos) {
                     Some(c) if c == *want => {
@@ -146,6 +350,15 @@ impl Backtracker<'_> {
                         true
                     }
                     _ => false,
+                },
+                Some(Inst::Grapheme) => match cluster_end(text, pos) {
+                    Some((end, chars)) => {
+                        // Each character past the first is a step of its own.
+                        charge(self.work, STEP.saturating_mul(chars - 1))?;
+                        pos = end;
+                        true
+                    }
+                    None => false,
                 },
                 Some(Inst::Split(first, second)) => {
                     self.push(Frame::Retry { pc: *second, pos })?;
@@ -200,6 +413,42 @@ impl Backtracker<'_> {
                     }
                     true
                 }
+                Some(Inst::LookStart { negative, end }) => {
+                    self.push(Frame::Look {
+                        pos,
+                        negative: *negative,
+                        after: end.saturating_add(1),
+                    })?;
+                    true
+                }
+                Some(Inst::StepBack(chars)) => {
+                    charge(self.work, u64::from(*chars).saturating_mul(STEP_BACK_CHAR))?;
+                    match step_back(text, pos, *chars) {
+                        Some(at) => {
+                            pos = at;
+                            true
+                        }
+                        None => false,
+                    }
+                }
+                Some(Inst::LookEnd) => match self.close_look()? {
+                    // A positive lookaround holds: on at the position it opened at.
+                    Some(at) => {
+                        pos = at;
+                        true
+                    }
+                    // A negative one fails: its frames are undone.
+                    None => false,
+                },
+                Some(Inst::CondGroup { group, no }) => {
+                    let first = group.saturating_mul(2);
+                    let slot = |i: usize| self.cache.slots.get(i).copied().flatten();
+                    if slot(first).is_none() || slot(first.saturating_add(1)).is_none() {
+                        pc = *no;
+                        continue;
+                    }
+                    true
+                }
             };
             if matched {
                 pc += 1;
@@ -214,17 +463,20 @@ impl Backtracker<'_> {
                         pos = at;
                         break;
                     }
-                    Some(Frame::Slot { slot, old }) => {
-                        if let Some(entry) = self.cache.slots.get_mut(slot) {
-                            *entry = old;
-                        }
-                    }
-                    Some(Frame::Loop { slot, old }) => {
-                        if let Some(entry) = self.cache.loops.get_mut(slot) {
-                            *entry = old;
-                        }
-                    }
+                    Some(frame @ (Frame::Slot { .. } | Frame::Loop { .. })) => self.undo(frame),
                     Some(Frame::Barrier) => {}
+                    Some(Frame::Look {
+                        pos: at,
+                        negative,
+                        after,
+                    }) => {
+                        // A negative lookaround's body failed every way: it holds.
+                        if negative {
+                            pc = after;
+                            pos = at;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -244,18 +496,74 @@ impl Backtracker<'_> {
     /// the frames that restore slots and loop starts, so backtracking past the group still
     /// undoes what the group recorded.
     fn close_atomic(&mut self) -> Result<(), Spent> {
-        let stack = &mut self.cache.stack;
-        let barrier = stack
+        let barrier = self
+            .cache
+            .stack
             .iter()
             .rposition(|frame| matches!(frame, Frame::Barrier))
             .unwrap_or(0);
+        self.cut(barrier)
+    }
+
+    /// Closes the innermost lookaround, its body having matched. A positive one is atomic (PCRE2):
+    /// it drops its barrier and the choices above it as [`Backtracker::close_atomic`] does, and
+    /// is the position it opened at. A negative one fails: every frame down to its barrier is
+    /// undone, so captures set in its body are dropped, and it is `None`.
+    fn close_look(&mut self) -> Result<Option<usize>, Spent> {
+        let stack = &self.cache.stack;
+        let Some((barrier, pos, negative)) =
+            stack
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(i, frame)| match frame {
+                    Frame::Look { pos, negative, .. } => Some((i, *pos, *negative)),
+                    _ => None,
+                })
+        else {
+            // Unreachable: the compiler pairs every `LookEnd` with a `LookStart`. Failing is the
+            // safe answer.
+            return Ok(None);
+        };
+        if !negative {
+            self.cut(barrier)?;
+            return Ok(Some(pos));
+        }
         let scanned = stack.len().saturating_sub(barrier);
-        charge(
-            self.work,
-            u64::try_from(scanned)
-                .unwrap_or(u64::MAX)
-                .saturating_mul(FRAME),
-        )?;
+        charge(self.work, to_u64(scanned).saturating_mul(FRAME))?;
+        // Choices and barriers inside the body are dropped with it; only records are undone.
+        while self.cache.stack.len() > barrier {
+            if let Some(frame) = self.cache.stack.pop() {
+                self.undo(frame);
+            }
+        }
+        Ok(None)
+    }
+
+    /// Undoes what a popped frame recorded: a capture slot or a loop's iteration start. Choices
+    /// and barriers record nothing.
+    fn undo(&mut self, frame: Frame) {
+        match frame {
+            Frame::Slot { slot, old } => {
+                if let Some(entry) = self.cache.slots.get_mut(slot) {
+                    *entry = old;
+                }
+            }
+            Frame::Loop { slot, old } => {
+                if let Some(entry) = self.cache.loops.get_mut(slot) {
+                    *entry = old;
+                }
+            }
+            Frame::Retry { .. } | Frame::Barrier | Frame::Look { .. } => {}
+        }
+    }
+
+    /// Drops the frame at `barrier` and the choices above it, charged per frame scanned, keeping
+    /// the frames that restore slots and loop starts.
+    fn cut(&mut self, barrier: usize) -> Result<(), Spent> {
+        let stack = &mut self.cache.stack;
+        let scanned = stack.len().saturating_sub(barrier);
+        charge(self.work, to_u64(scanned).saturating_mul(FRAME))?;
         let mut kept = barrier;
         for i in barrier..stack.len() {
             if let Some(frame) = stack.get(i).copied() {
@@ -317,6 +625,16 @@ impl Backtracker<'_> {
 /// The character at byte `pos` of `text`.
 fn char_at(text: &str, pos: usize) -> Option<char> {
     text.get(pos..)?.chars().next()
+}
+
+/// The byte position `chars` characters before byte `pos` of `text`, `None` past its start.
+fn step_back(text: &str, pos: usize, chars: u32) -> Option<usize> {
+    let mut before = text.get(..pos)?.char_indices().rev();
+    let mut at = pos;
+    for _ in 0..chars {
+        at = before.next()?.0;
+    }
+    Some(at)
 }
 
 /// The character before byte `pos` of `text`.

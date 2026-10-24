@@ -55,9 +55,8 @@ fn ring_longer_than_the_limit() {
         model._set(&format!("A{n}"), "=A1+1");
         model.evaluate();
         for row in 1..=n {
-            assert_eq!(
-                model._get_text(&format!("A{row}")),
-                "#CIRC!",
+            assert!(
+                model._is_circular(&format!("A{row}")),
                 "A{row}, max_depth = {max_depth}"
             );
         }
@@ -132,7 +131,7 @@ fn chain_into_a_ring() {
         model._set("B3", "=B1+1");
         model.evaluate();
         for cell in ["B1", "B2", "B3", "A12", "A1"] {
-            assert_eq!(model._get_text(cell), "#CIRC!", "{cell}, {max_depth}");
+            assert!(model._is_circular(cell), "{cell}, {max_depth}");
         }
     }
 }

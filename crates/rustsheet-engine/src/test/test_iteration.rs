@@ -76,11 +76,12 @@ fn the_delta_stops_strictly_below() {
     assert_eq!(model._get_text("A1"), "1.96875");
 }
 
-/// Without iteration a cycle is still `#CIRC!` (T-0445 owns Excel's 0).
+/// Without iteration a cycle is 0, not iterated (recalc.md "A circular reference without
+/// iteration is 0", T-0445).
 #[test]
-fn without_iteration_a_cycle_is_circ() {
+fn without_iteration_a_cycle_is_zero() {
     let mut model = new_empty_model();
     model._set("A1", "=A1+1");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "#CIRC!");
+    assert_eq!(model._get_text("A1"), "0");
 }

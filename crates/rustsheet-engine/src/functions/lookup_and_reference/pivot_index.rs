@@ -22,7 +22,8 @@ use crate::pivot::{Aggregate, AxisField, CacheItem, PivotCache, PivotTable};
 #[derive(Default)]
 pub(crate) struct PivotIndexes {
     /// By position in `Workbook::pivot_tables`: code that removes or reorders pivots between
-    /// evaluations must call [`PivotIndexes::clear`] (`Model::drop_pivots_on` does).
+    /// evaluations must call [`PivotIndexes::clear`] (`Model::displace_pivots`,
+    /// `move_pivots`, `take_pivots_on` and `restore_pivots` do).
     pivots: HashMap<usize, PivotIndex>,
     /// The `Evaluation::evaluations` count the indices were built in: a new evaluation drops
     /// them (`Model::pivot_axis`).

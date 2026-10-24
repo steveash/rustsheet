@@ -3,7 +3,7 @@ id: T-2028
 title: "FORECAST.ETS family: lift target_date and statistic_type and coerce text target_date to #VALUE! before #N/IMPL!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -47,7 +47,11 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 7 cells, 0 numeric pas
 - Any validation whose web answer is `#N/A` (seasonality, data_completion, aggregation, confidence_level,
   sizes): it cannot be told apart from a valid call on the web (T-1553).
 - The gen-m9 cells whose FORECAST.ETS.CONFINT is `#VALUE!` on the web (gen-m9/1782efcecd5d4b1b A27,
-  3462856259a37891 A28): their cause is unknown; list it in the Outcome if found, else leave them.
+  3462856259a37891 A28): their cause is unknown; list it in the Outcome if found, else leave them. (T-2255 found it: the first error argument; T-2424 owns them.)
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#N/IMPL!` where Excel lifts or coerces first), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. The other FORECAST.ETS cells stay `#N/IMPL!` by statistics.md "FORECAST.ETS family: excel-graph never computes it" (T-1553) and are not this stage.
+
+## Outcome
+FORECAST.ETS, .CONFINT and .STAT now go through `lift_call` (kinds `ETS_TARGET`, `ETS_CONFINT_TARGET`, `ETS_STAT_TYPE`, lift/kinds/statistical.rs): the lifted argument is read as a number first (`#VALUE!` for text), every element is otherwise `#N/IMPL!`. The 7 listed probes cells leave eval/baseline/probes.txt (7 lines removed, nothing added). Unit test `forecast_ets_family_reads_lifted_argument_then_is_not_implemented`. The gen-m9 CONFINT `#VALUE!` cells were not investigated.
+The optional settings (seasonality, data_completion, aggregation, confidence_level) are `Lift` too, following the catalog's `value` mode; that is unverified (statistics.md) and probed by the follow-up task.

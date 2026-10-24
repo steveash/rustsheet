@@ -1,0 +1,20 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2008: a spill anchor written as a callee without parentheses: =A1#(2) over a real spill",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=SEQUENCE(3)",
+        "C1": "=A1#(2)",
+        "D1": "=FORMULATEXT(C1)"
+      }
+    }
+  ],
+  "expected": {}
+}

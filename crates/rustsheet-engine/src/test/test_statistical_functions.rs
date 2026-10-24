@@ -515,3 +515,51 @@ fn rank_of_at_prefixed_non_reference_array_is_one_cell() {
     assert_eq!(model._get_text("K7"), *"1");
     assert_eq!(model._get_text("K25"), *"3");
 }
+
+// A number or text argument of F.TEST/FTEST is a sample with no points: #DIV/0!, not #VALUE!
+// (probes-numeric/t1049-ftest Calc!A29:A32, m9-legacy-ftest Calc!A32; T-2093).
+#[test]
+fn test_f_test_scalar_argument_is_div0() {
+    let mut model = new_empty_model();
+    model._set("A1", "=F.TEST(3,4)");
+    model._set("A2", "=F.TEST(\"a\",{1,2,3})");
+    model._set("A3", "=FTEST(1,{1,2,3})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#DIV/0!");
+    assert_eq!(model._get_text("A2"), "#DIV/0!");
+    assert_eq!(model._get_text("A3"), "#DIV/0!");
+}
+
+// ── LINEST / LOGEST / QUARTILE argument order (T-2455) ─────────────────────
+
+// Error values first, in argument order, then the data checks; a computed blank y is `#VALUE!` at
+// once (probes/t2455-transpose-single-value A4:A68).
+#[test]
+fn linest_reports_error_values_first() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LINEST(5,{1;2},NA())");
+    model._set("A2", "=LINEST(IFERROR(B10,1),1/0)");
+    model._set("A3", "=LINEST(B10,1/0)");
+    model._set("A4", r#"=LINEST({1;2},1/0,UNIQUE(1,"1"))"#);
+    model._set("A5", r#"=LOGEST(1/0,{1;3},"x")"#);
+    model._set("A6", r#"=LINEST("abc",1/0)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#DIV/0!");
+    assert_eq!(model._get_text("A4"), "#DIV/0!");
+    assert_eq!(model._get_text("A5"), "#DIV/0!");
+    assert_eq!(model._get_text("A6"), "#DIV/0!");
+}
+
+// quart's error comes before the empty-data `#NUM!` (probes/t2455-transpose-single-value A59, A60).
+#[test]
+fn quartile_reports_quart_error_before_empty_data() {
+    let mut model = new_empty_model();
+    model._set("B5", " x ");
+    model._set("A1", "=QUARTILE(B5:B6,SUMIFS(C1:E1,B11:D12,1))");
+    model._set("A2", "=QUARTILE(B5:B6,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+}

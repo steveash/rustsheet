@@ -109,7 +109,14 @@ pub struct DatePart {
     pub japanese_lcid: bool,
 }
 
-pub struct ErrorPart {}
+#[derive(Default)]
+pub struct ErrorPart {
+    /// Whether the error rejects the whole code, also for a value another section formats: a bare
+    /// digit beside a date token does (`TEXT(3.14159,"0;4b")` is #VALUE!;
+    /// probes/text-format-digits-date-token A42). Other section errors are not probed that way,
+    /// and some come from tokens the engine does not implement (`[Cyan]`, T-1737).
+    pub whole_code: bool,
+}
 
 pub struct GeneralPart {}
 
@@ -188,6 +195,24 @@ fn fraction_literal(token: Token) -> Option<TextToken> {
     }
 }
 
+/// Whether `token` prints part of a date or a clock time: AM/PM alone does not count. A negative
+/// list on purpose: every `TextToken` outside it is a date or time token.
+fn is_calendar_or_clock(token: &TextToken) -> bool {
+    !matches!(
+        token,
+        TextToken::Literal(_)
+            | TextToken::Text(_)
+            | TextToken::Ghost(_)
+            | TextToken::Spacer(_)
+            | TextToken::Raw
+            | TextToken::General
+            | TextToken::Digit(_)
+            | TextToken::Period
+            | TextToken::AMPM
+            | TextToken::AP(..)
+    )
+}
+
 /// Whether `token` starts a fraction's denominator: a digit placeholder or a digit 1-9.
 fn starts_denominator(token: &Token) -> bool {
     token.is_digit() || matches!(token, Token::Literal('1'..='9'))
@@ -243,6 +268,14 @@ impl Parser {
         }
     }
 
+    /// Whether `m`/`mm` read just before `next_token` is a minute because `:ss` follows with no
+    /// hour ahead of it: `mm:ss` on 123456.789 is "56:10", not a month (gen-m10 text cells,
+    /// T-1733; number-formats.md).
+    fn minute_before_seconds(&mut self, next_token: &Token) -> bool {
+        *next_token == Token::Literal(':')
+            && matches!(self.lexer.peek_token(), Token::Second | Token::SecondPadded)
+    }
+
     fn parse_part(&mut self) -> ParsePart {
         let mut token = self.lexer.next_token();
         let mut digit_count = 0;
@@ -284,6 +317,9 @@ impl Parser {
         // minute.
         let mut elapsed_hour = false;
         let mut elapsed_second = false;
+        // Whether a bare (unquoted, unescaped) digit 1-9 was read: it is a literal, but not beside
+        // a date or time token (`is_calendar_or_clock`).
+        let mut bare_digit = false;
 
         while token != Token::EOF && token != Token::Separator {
             let mut next_token = self.lexer.next_token();
@@ -347,7 +383,7 @@ impl Parser {
                         next_token = self.lexer.next_token();
                     }
                     if digits > MAX_SECOND_FRACTION_DIGITS {
-                        return ParsePart::Error(ErrorPart {});
+                        return ParsePart::Error(ErrorPart::default());
                     }
                     tokens.push(TextToken::SecondFraction(digits));
                 }
@@ -468,6 +504,7 @@ impl Parser {
                     if value == ':' {
                         is_time = true;
                     }
+                    bare_digit |= value.is_ascii_digit();
                     // A run of colons prints as one ("0::a" → "1:a"; number-formats.md
                     // "Colon runs", probes/text-format-length-limit-f/g, T-1434).
                     if !(is_colon && after_colon) {
@@ -516,7 +553,7 @@ impl Parser {
                     tokens.push(TextToken::MonthName);
                 }
                 Token::Month => {
-                    if is_time {
+                    if is_time || self.minute_before_seconds(&next_token) {
                         // minute
                         tokens.push(TextToken::Minute);
                     } else {
@@ -525,7 +562,7 @@ impl Parser {
                     }
                 }
                 Token::MonthPadded => {
-                    if is_time {
+                    if is_time || self.minute_before_seconds(&next_token) {
                         // minute padded
                         tokens.push(TextToken::MinutePadded);
                     } else {
@@ -641,7 +678,7 @@ impl Parser {
                     tokens.push(TextToken::Raw);
                 }
                 Token::ILLEGAL => {
-                    return ParsePart::Error(ErrorPart {});
+                    return ParsePart::Error(ErrorPart::default());
                 }
                 Token::EOF => {}
                 Token::ElapsedHour => {
@@ -688,8 +725,15 @@ impl Parser {
             after_colon = is_colon;
             token = next_token;
         }
+        // Excel: a bare digit 1-9 is a literal (`TEXT(5,"2")` is "2", `"4am/pm"` "4AM"), but beside a
+        // date or time token anywhere in the section the code is #VALUE!: `"42abc"`, `"4b"`, `"b4"`,
+        // `"4 d"`, `"4:mm"`, `"[h]4"`, `"4g"`; quoted or escaped it prints (`"\4b"` is "443";
+        // probes/text-format-digits-date-token; number-formats.md "Bare digits beside a date token").
+        if bare_digit && tokens.iter().any(is_calendar_or_clock) {
+            return ParsePart::Error(ErrorPart { whole_code: true });
+        }
         if repeated_locale {
-            return ParsePart::Error(ErrorPart {});
+            return ParsePart::Error(ErrorPart::default());
         }
         let system_format = match locale {
             Some(LocaleTag::SystemDate) => Some(locale_tag::SYSTEM_LONG_DATE),
@@ -721,7 +765,7 @@ impl Parser {
                 )
             });
             if general_count > 1 || !only_literals || is_date || percent > 0 || comma > 0 {
-                return ParsePart::Error(ErrorPart {});
+                return ParsePart::Error(ErrorPart::default());
             }
         }
         if is_date {
@@ -735,7 +779,7 @@ impl Parser {
                 )
             });
             if is_number || (hijri && prints_date) {
-                return ParsePart::Error(ErrorPart {});
+                return ParsePart::Error(ErrorPart::default());
             }
             // Excel prints a currency symbol in a date section where it is written
             // (`[$€-40C]d mmmm` is "€15 mars", `mmmm[$€-40C]` "mars€"; number-formats.md).
@@ -804,7 +848,7 @@ impl Parser {
                 japanese_lcid: false,
                 ..part
             }),
-            _ => ParsePart::Error(ErrorPart {}),
+            _ => ParsePart::Error(ErrorPart::default()),
         }
     }
 }

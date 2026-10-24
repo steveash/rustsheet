@@ -117,6 +117,10 @@ impl Model {
         state.seen.clear();
         state.seen_ranges.clear();
         state.circular.clear();
+        state.circular_anchors.clear();
+        state.circular_below = 0;
+        state.blocking = false;
+        state.blocked_on = None;
         state.restart = None;
         state.root = None;
         state.depth = 0;
@@ -161,6 +165,8 @@ impl Model {
             ArrayNode::Number(v) => Cell::NumberCell { v: *v, s },
             ArrayNode::Boolean(v) => Cell::BooleanCell { v: *v, s },
             ArrayNode::Error(ei) => Cell::ErrorCell { ei: ei.clone(), s },
+            // A lambda a cell would hold shows `#CALC!`, as a formula cell's does (`model.rs`).
+            ArrayNode::Lambda(_) => Cell::ErrorCell { ei: Error::CALC, s },
             ArrayNode::Empty => Cell::EmptyCell { s },
             ArrayNode::String(text) => {
                 let _ =

@@ -1,7 +1,7 @@
 //! Iterative calculation (docs/excel-semantics/recalc.md, "Iterative calculation sweeps the cycle
 //! in sheet order, in place" and "iterateDelta stops the iterations for the whole workbook").
 //!
-//! With iteration on, a pass does not make a circular reference `#CIRC!`. A read that closes a
+//! With iteration on, a pass does not make a circular reference 0 (`circular.rs`). A read that closes a
 //! cycle returns the cell's value from before the recalculation, and every cell on the evaluation
 //! stack at that moment joins the recalculated set: the cycle and the cells that read it. So does
 //! every cell that later reads a member. After the pass, the members go back to their values from
@@ -57,7 +57,7 @@ impl Model {
     }
 
     /// Whether iterative calculation is on. Then no evaluation, on demand ones included (such as
-    /// conditional formatting at load), makes a cycle `#CIRC!`.
+    /// conditional formatting at load), marks a cycle circular.
     pub(crate) fn iterating(&self) -> bool {
         self.workbook.settings.iteration.is_some()
     }

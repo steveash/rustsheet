@@ -1,8 +1,8 @@
 # Calculation: circular references, iterative calculation, data tables
 
 Iterative calculation (T-0447) and data tables (T-0441) are implemented without the Phase 2
-dependency graph (M3, SPEC-0002 / T-0401); a circular reference without iteration is still
-T-0445's. A case sets iteration with the spec's top-level `"calculation"`
+dependency graph (M3, SPEC-0002 / T-0401); a circular reference without iteration is 0
+(T-0445, below). A case sets iteration with the spec's top-level `"calculation"`
 and data tables with a sheet's `"data_tables"`
 (tools/src/rustsheet_tools/spec2xlsx.py, T-0428).
 
@@ -41,13 +41,24 @@ Tasks: T-1484, T-2068, T-2069, T-2070
 Rule: with iterative calculation off, every cell of a cycle is 0, with no error value: a
 self-reference `=A1+1`, `=A2`, and the 2- and 3-cell cycles `B1=C1+1, C1=B1+1` and `D1=E1+1,
 E1=F1+1, F1=D1+1`. A cell outside the cycle that reads it is also 0, whatever it computes:
-`=A1+10` is 0 (not 10), `=SUM(B1:C1)+5` is 0, and `=ISNUMBER(A1)` is the number 0 (not FALSE).
+`=A1+10` is 0 (not 10), `=SUM(B1:C1)+5` is 0, and `=ISNUMBER(A1)` is the number 0 (not FALSE). So is a
+reader of a reader, at any depth (`=B1+1` reading `=A1+10`), and so are `=IFERROR(A1,5)`, `=ISERROR(A1)`,
+`=TYPE(A1)`, `=ISBLANK(A1)` and a formula that would give text (`=IF(A1=0,"zero","other")`).
 A reference IF does not evaluate is no cycle: `=IF(FALSE,B2,7)` in B2 and `=IF(TRUE,7,E2)` in E2 are
 7. `=ROW(D2)+COLUMN(D2)` in D2 is 6 (ROW and COLUMN do not read the cell).
-Evidence: probes/circular-iteration-off (excel-graph, 2026-10-16, T-0428).
-Ours: every cycle cell and every reader is an error; the IF and ROW/COLUMN cells already match.
+A formula that would spill does not spill when it reads a loop: `=SEQUENCE(3)+A1` (A1 `=A1+1`) is the single
+number 0 and B2 is blank (`ISBLANK(B2)` TRUE, `ISREF(B2)` TRUE, `=B3` 0); `=ROWS(B1#)` over it is 0 (not 1) and `=SUM(B1:B3)` is 0 (both read B1, which is circular, so they are circular and 0).
+Readers that take a reference without its value are not circular: `ISREF(A1)` TRUE, `CELL("row",A1)` 1,
+`ROWS(A1)` 1, `COLUMNS(A1:B1)` 2, `ISFORMULA(A1)` TRUE, `OFFSET(A1,1,0)` (target holds 7) 7,
+`INDEX(A1:A2,2)` 7, `ROWS(OFFSET(A1,0,0,2,1))` 2; `INDIRECT("A1")` reads the value, so it is 0.
+Evidence: probes/circular-iteration-off (excel-graph, 2026-10-16, T-0428); probes/t0445-circular-readers
+(excel-graph, 2026-10-22, T-0445); probes/t0451-circular-spill-and-ref-readers (excel-graph, 2026-10-22, T-0451).
+Ours: matches since T-0445, and the T-0451 probe passes in full (17/17). A read that closes a loop, or reads a cell
+already known to be circular, marks every cell on the evaluation stack circular, and a circular cell stores 0 and
+does not spill (`Model::mark_stack_circular`, crates/rustsheet-engine/src/circular.rs). An array anchor whose spill
+contradicts its own inputs, which the driver marks circular, is 0 the same way, and so are its readers.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401
+Tasks: T-0428, T-0401, T-0445, T-0451
 
 ## Iterative calculation sweeps the cycle in sheet order, in place
 Rule: with iteration on, each iteration recalculates the cycle's cells once in row-major sheet
@@ -61,8 +72,8 @@ Jacobi). With iterateCount 100 and the three oracle calculations (300 sweeps):
 - `=B2` stays 0.
 Evidence: probes/circular-iteration-on (iterate, iterateCount 100, iterateDelta 0.001;
 excel-graph, 2026-10-16, T-0428).
-Ours: matches (probes/circular-iteration-on 12/12). With iteration on, no evaluation makes a cycle
-`#CIRC!`; a read that closes one returns the cell's current value (0 for a formula never
+Ours: matches (probes/circular-iteration-on 12/12). With iteration on, no evaluation marks a cycle
+circular (0, as without iteration); a read that closes one returns the cell's current value (0 for a formula never
 evaluated). The cells on the stack at that moment join the recalculated set, and so does every
 cell that later reads a member. After the pass the members get back their values from before the
 recalculation. They are then swept in row-major order (sheet, row, column), each reading the values

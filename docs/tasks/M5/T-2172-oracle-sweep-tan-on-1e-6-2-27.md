@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-An excel-graph oracle sweep gives the fitting points T-2173 (ODD/EVEN above 2^53) and T-2147 (TAN near 1.2E+8) need.
+An excel-graph oracle sweep gives the fitting points T-2173 (ODD/EVEN above 2^53), T-2147 (TAN near 1.2E+8) and T-2384 (SUMXMY2 last digit) need.
 
 ## Context
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). Both functions show last-digit misses in gen-m5 that 2-3 cells cannot fit (docs/excel-semantics/numbers.md "ODD and EVEN above
@@ -26,10 +26,15 @@ Sweep, as stored inputs (probes-numeric case, `excel-probe` skill):
   only the integers 2^27-1 and 2^27 were probed, so the cut for fractions is assumed (gap triage 2026-10-20).
 - ODD and EVEN at ~100 values from 2^52 to 1E+300: consecutive doubles around 2^53, odd and even integers near 1E+16,
   9999999999999990 .. 10000000000000010, and powers of ten; negatives of a few.
+- SUMXMY2, SUMX2MY2 and SUMX2PY2 for T-2384 (gen-m5 round-2 triage, T-2252, 2026-10-22): `SUMXMY2(C10:E12,C6:E8)` in
+  gen-m5/bf8903e05ec369ca Calc!A248, pairs (-1, 123456789.123), (7, 1E-15), (-1, 0.3), is 1.5241579027474522E+16, 1 ulp above the
+  correctly rounded sum. About 60 cells: that cell's pairs in every order and alone, single pairs (x, y) with x - y near 1E+8,
+  1E+9 and 2^27 and a small second pair, pairs whose squares cancel (x close to y, both large), and 2- to 5-pair sums of mixed
+  magnitudes, each as the three functions.
 
 ## Acceptance criteria
 - [ ] A probes-numeric case with an excel-graph oracle sidecar covers both lists; numbers.md links it from both entries.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Fitting (T-2173, T-2147).
+- Fitting (T-2173, T-2147, T-2384).

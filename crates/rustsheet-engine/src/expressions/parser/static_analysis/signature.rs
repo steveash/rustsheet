@@ -209,15 +209,6 @@ pub(super) fn args_signature_xlookup(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_sort(arg_count: usize) -> Vec<Signature> {
-    if !(1..=4).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
-}
-
 pub(super) fn args_signature_filter(arg_count: usize) -> Vec<Signature> {
     if !(2..=3).contains(&arg_count) {
         return vec![Signature::Error; arg_count];
@@ -233,15 +224,6 @@ pub(super) fn args_signature_randarray(arg_count: usize) -> Vec<Signature> {
         return vec![Signature::Error; arg_count];
     }
     vec![Signature::Scalar; arg_count]
-}
-
-pub(super) fn args_signature_tocol(arg_count: usize) -> Vec<Signature> {
-    if !(1..=3).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
 }
 
 pub(super) fn args_signature_bycol_byrow(arg_count: usize) -> Vec<Signature> {
@@ -327,17 +309,6 @@ pub(super) fn args_signature_textafter(arg_count: usize) -> Vec<Signature> {
     }
 }
 
-pub(super) fn args_signature_textjoin(arg_count: usize) -> Vec<Signature> {
-    if arg_count >= 3 {
-        let mut result = vec![Signature::Vector; arg_count];
-        result[0] = Signature::Scalar;
-        result[1] = Signature::Scalar;
-        result
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
-
 pub(super) fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
     if arg_count < 2 {
         return vec![Signature::Error; arg_count];
@@ -390,22 +361,4 @@ pub(super) fn args_signature_choosecols(arg_count: usize) -> Vec<Signature> {
         return vec![Signature::Error; arg_count];
     }
     vec![Signature::Vector; arg_count]
-}
-
-pub(super) fn args_signature_expand(arg_count: usize) -> Vec<Signature> {
-    if !(2..=4).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
-}
-
-pub(super) fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
-    if !(2..=3).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
 }

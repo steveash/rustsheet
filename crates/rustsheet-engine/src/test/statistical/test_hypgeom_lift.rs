@@ -80,8 +80,8 @@ fn ranges_lift_on_their_own_rows() {
 #[test]
 fn each_element_is_the_scalar_call_with_its_own_error() {
     let mut model = new_empty_model();
-    // A boolean count other than sample_s is #VALUE!, as in the scalar call; an error element is
-    // its error.
+    // A boolean count reads as 1 (T-1849), as in the scalar call (hand-written value, no oracle cell);
+    // an error element is its error.
     model._set("A1", "=INDEX(HYPGEOMDIST(2,{3;TRUE},5,10),2)");
     model._set("A2", "=INDEX(HYPGEOM.DIST({2;#N/A},3,5,10,TRUE),2)");
     // Each element is checked alone: sample_s above number_sample is 1.
@@ -98,7 +98,7 @@ fn each_element_is_the_scalar_call_with_its_own_error() {
     model._set("A8", "=COLUMNS(HYPGEOMDIST({1;2;3},3,{5,6},10))");
     model.evaluate();
     let expected = [
-        ("A1", "#VALUE!"),
+        ("A1", "0"),
         ("A2", "#N/A"),
         ("A3", "1"),
         ("A4", "0.916666667"),
@@ -145,7 +145,8 @@ fn a_cdf_sum_is_bounded() {
 #[test]
 fn hypgeom_dist_is_charged_its_weight() {
     // HYPGEOM.DIST is charged 2^22 an element (the bound of one capped cdf): 2^27 / 2^22 = 32
-    // elements, so a lifted call of 33 is refused before it runs. HYPGEOMDIST is `Constant`.
+    // elements, so a lifted call of 33 is refused before it runs. HYPGEOMDIST is charged 2^13 (its
+    // pmf walk, T-0977): 16,384 elements.
     let mut model = new_empty_model();
     let calls = [
         "HYPGEOM.DIST(SEQUENCE(#)*0+2,3,5,10,TRUE)",
@@ -163,14 +164,16 @@ fn hypgeom_dist_is_charged_its_weight() {
             &format!("=ROWS({})", call.replace('#', "33")),
         );
     }
-    model._set("C1", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(100000)+19))");
+    model._set("C1", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16384)+19))");
+    model._set("C2", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16385)+19))");
     model.evaluate();
     for (row, call) in calls.iter().enumerate() {
         let row = row + 1;
         assert_eq!(model._get_text(&format!("A{row}")), *"32", "{call}");
         assert_eq!(model._get_text(&format!("B{row}")), *"#ERROR!", "{call}");
     }
-    assert_eq!(model._get_text("C1"), *"100000");
+    assert_eq!(model._get_text("C1"), *"16384");
+    assert_eq!(model._get_text("C2"), *"#ERROR!");
 }
 
 #[test]

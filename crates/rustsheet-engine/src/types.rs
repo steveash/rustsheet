@@ -319,6 +319,10 @@ pub struct Worksheet {
     pub sheet_data: SheetData,
     pub shared_formulas: Vec<String>,
     pub sheet_id: u32,
+    /// Position among the sheets when the workbook was read; a sheet added later takes the next
+    /// free rank. Moves and renames keep it. Excel calculates a freshly loaded workbook in the
+    /// reverse of this order, not of the tab order (SPEC-0017).
+    pub load_rank: u32,
     pub state: SheetState,
     pub color: Color,
     pub merged_cells: Vec<MergedCell>,
@@ -501,10 +505,15 @@ pub struct Table {
     pub has_filters: bool,
 }
 
+/// Whether two sheet names name the same sheet: sheet names match ignoring case.
+pub(crate) fn sheet_names_match(a: &str, b: &str) -> bool {
+    a.to_uppercase() == b.to_uppercase()
+}
+
 impl Table {
-    /// Whether the table is on the sheet `sheet_name`; sheet names match ignoring case.
+    /// Whether the table is on the sheet `sheet_name` ([`sheet_names_match`]).
     pub(crate) fn is_on_sheet(&self, sheet_name: &str) -> bool {
-        self.sheet_name.to_uppercase() == sheet_name.to_uppercase()
+        sheet_names_match(&self.sheet_name, sheet_name)
     }
 }
 

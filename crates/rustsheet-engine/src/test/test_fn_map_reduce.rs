@@ -476,8 +476,8 @@ fn map_and_scan_elements_that_are_ranges_still_read_their_cells() {
     model.evaluate();
     assert_eq!(model._get_text("C1"), "#CALC!");
     assert_eq!(model._get_text("E1"), "#CALC!");
-    assert_eq!(model._get_text("G1"), "#CIRC!");
-    assert_eq!(model._get_text("H1"), "#CIRC!");
+    assert!(model._is_circular("G1"));
+    assert!(model._is_circular("H1"));
 }
 
 // ── LAMBDAs that outlive their call (T-0439) ─────────────────────────────────
@@ -730,4 +730,46 @@ fn scan_reduce_initial_value_cell_is_a_reference() {
     assert_eq!(model._get_text("B3"), "TRUE");
     assert_eq!(model._get_text("B4"), "-2.5");
     assert_eq!(model._get_text("B5"), "1");
+}
+
+/// A blank cell taken into an array by HSTACK reaches a LAMBDA as the empty value: ISBLANK TRUE, but
+/// COUNT and AVERAGE count it as 0 (probes/t2413-blank-in-stacked-arrays A7:A11, A49; gen-m7/f19581ac44da1653
+/// A2088, T-2413). A range's blank cell stays a blank cell (A43).
+#[test]
+fn blank_element_of_an_array_value_is_the_empty_value_in_a_lambda() {
+    let mut model = new_empty_model();
+    model._set(
+        "B1",
+        "=TEXTJOIN(\",\",FALSE,MAP(HSTACK(Z1:Z2,{1;2}),_xleta.COUNT))",
+    );
+    model._set(
+        "B2",
+        "=TEXTJOIN(\",\",FALSE,MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,ISBLANK(v))))",
+    );
+    model._set(
+        "B3",
+        "=REDUCE(REPLACE({\"ab\";\"cd\";\"ef\"},3,2,\"x\"),HSTACK(Z1:Z2,{1;2}),_xleta.AVERAGE)",
+    );
+    model._set(
+        "B4",
+        "=TEXTJOIN(\",\",FALSE,MAP(IF(TRUE,Z1:Z2),_xleta.COUNT))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "1,1,1,1");
+    assert_eq!(model._get_text("B2"), "TRUE,FALSE,TRUE,FALSE");
+    assert_eq!(model._get_text("B3"), "1.125");
+    assert_eq!(model._get_text("B4"), "0,0");
+}
+
+// A 1x1 array LAMBDA result is the element's one value; a multi-cell one stays one `#CALC!`
+// (arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range", T-2407).
+#[test]
+fn map_takes_a_1x1_array_step_as_its_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAP({1;2},LAMBDA(x,{5}))");
+    model._set("C1", "=MAP({1;2},LAMBDA(x,{5,6}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model._get_text("A2"), "5");
+    assert_eq!(model._get_text("C1"), "#CALC!");
 }
