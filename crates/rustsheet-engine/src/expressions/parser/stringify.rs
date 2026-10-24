@@ -1,6 +1,7 @@
 pub(super) mod bound_variables;
 mod rename_defined_name;
 mod structured;
+mod wrong_reference;
 use super::reference_operators::{
     at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
     union_text,
@@ -80,22 +81,6 @@ enum Rewrite<'a> {
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
-
-/// A reference to a sheet that does not exist (a deleted one) is displayed as `#REF!` before the
-/// cell or range, as Excel prints `=SUM(#REF!C4:C7)` for `S!C4:C7` once S is deleted (T-2340,
-/// probes/table-edits/table-delete-sheet); the lexer reads that text back as `#REF!`. The stored
-/// R1C1 text and the export keep the name, so an undo that restores the sheet restores the
-/// reference. An external reference (`[1]Uses!A1`) is not a missing sheet.
-fn is_missing_sheet(
-    sheet_name: Option<&str>,
-    context: Option<&CellReferenceRC>,
-    export_to_excel: bool,
-) -> bool {
-    sheet_name.is_some_and(|name| !name.starts_with('[')) && context.is_some() && !export_to_excel
-}
-
-/// The sheet printed in place of a missing one: none, after a `#REF!` prefix.
-const NO_SHEET: &Option<String> = &None;
 
 /// This is the internal mode in IronCalc
 /// Formulas internally are stored in R1C1 format, the locale and language are always "en"
@@ -513,34 +498,8 @@ fn stringify(
         }
         NumberKind(number) => format_number_locale(*number, locale),
         StringKind(value) => format!("\"{value}\""),
-        WrongReferenceKind {
-            sheet_name,
-            column,
-            row,
-            absolute_row,
-            absolute_column,
-        } => {
-            let missing = is_missing_sheet(sheet_name.as_deref(), context, export_to_excel);
-            let (prefix, sheet_name) = if missing {
-                ("#REF!", NO_SHEET)
-            } else {
-                ("", sheet_name)
-            };
-            let text = stringify_reference(
-                context,
-                &DisplaceData::None,
-                &Reference {
-                    sheet_name,
-                    sheet_index: 0,
-                    row: *row,
-                    column: *column,
-                    absolute_row: *absolute_row,
-                    absolute_column: *absolute_column,
-                },
-                false,
-                false,
-            );
-            format!("{prefix}{text}")
+        WrongReferenceKind { .. } | WrongRangeKind { .. } => {
+            wrong_reference::text(node, context, export_to_excel)
         }
         ReferenceKind {
             sheet_name,
@@ -633,61 +592,6 @@ fn stringify(
                 language
             )
         ),
-        WrongRangeKind {
-            sheet_name,
-            absolute_row1,
-            absolute_column1,
-            row1,
-            column1,
-            absolute_row2,
-            absolute_column2,
-            row2,
-            column2,
-        } => {
-            // Note that open ranges SUM(A:A) or SUM(1:1) will be treated as normal ranges in the R1C1 (internal) representation
-            // A:A will be R1C[0]:R1048576C[0]
-            // So when we are forming the A1 range we need to strip the irrelevant information
-            let full_row = *absolute_row1 && *absolute_row2 && (*row1 == 1) && (*row2 == LAST_ROW);
-            let full_column = *absolute_column1
-                && *absolute_column2
-                && (*column1 == 1)
-                && (*column2 == LAST_COLUMN);
-            let missing = is_missing_sheet(sheet_name.as_deref(), context, export_to_excel);
-            let (prefix, sheet_name) = if missing {
-                ("#REF!", NO_SHEET)
-            } else {
-                ("", sheet_name)
-            };
-            let s1 = stringify_reference(
-                context,
-                &DisplaceData::None,
-                &Reference {
-                    sheet_name,
-                    sheet_index: 0, // HACK
-                    row: *row1,
-                    column: *column1,
-                    absolute_row: *absolute_row1,
-                    absolute_column: *absolute_column1,
-                },
-                full_row,
-                full_column,
-            );
-            let s2 = stringify_reference(
-                context,
-                &DisplaceData::None,
-                &Reference {
-                    sheet_name: &None,
-                    sheet_index: 0, // HACK
-                    row: *row2,
-                    column: *column2,
-                    absolute_row: *absolute_row2,
-                    absolute_column: *absolute_column2,
-                },
-                full_row,
-                full_column,
-            );
-            format!("{prefix}{s1}:{s2}")
-        }
         OpRangeKind { left, right } => {
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))

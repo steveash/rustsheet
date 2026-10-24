@@ -331,8 +331,8 @@ fn a_sheet_delete_is_a_ref_error_and_restore_brings_the_tables_back() {
     let names = model.workbook.defined_names.clone();
     assert_eq!(names[0].formula, "SUM(#REF!)");
     assert!(model.workbook.tables.is_empty());
-    // A new sheet with the old name does not bring the table back (the plain twin, whose stored
-    // text keeps the sheet name, reads the new sheet).
+    // A new sheet with the old name does not bring the table back. The plain twin, whose stored
+    // text keeps the sheet name, reads the new sheet: a known gap from Excel (T-2612).
     model.add_sheet("Data").unwrap();
     model.evaluate();
     assert_eq!(value(&model, 0, 1, 1), "#REF!");

@@ -38,8 +38,9 @@ tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, ta
 `Rewrite::RefError` printer), instead of the handoff's parse-time flag, which a later reparse would have
 lost. The sheet delete records what it rewrote (`TakenSheet`, `Diff::DeleteSheet`), so `restore_sheet` and
 `UserModel` undo put the structured text back (they used to leave lowered plain ranges). A reference to a
-missing sheet is displayed as `#REF!C4:C7` (`missing_sheet_prefix`, stringify.rs; stored text and export keep
+missing sheet is displayed as `#REF!C4:C7` (`is_missing_sheet`, stringify/wrong_reference.rs; stored text and export keep
 the name), and the lexer reads `#REF!C4:C7` back as `#REF!`, so autofill of such a formula is not a parse
 error. Three upstream move-formula expectations now print `#REF!AB31` for a missing sheet.
+Follow-up: T-2612 (the stored text and export of a plain reference to a deleted sheet).
 Eval: probes known failures -14 (table-delete-table and table-delete-sheet now pass 12/12 each); 0
 regressions.
