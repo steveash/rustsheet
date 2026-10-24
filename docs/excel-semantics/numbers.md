@@ -96,6 +96,13 @@ Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 999
 `EVEN((0.1/E5)*SERIESSUM(-2.5,B10,3,0.1))` (gen-m5/38b1b8e51dbad326 Calc!A10) was not an EVEN miss: the EVEN input was an
 ulp low through SERIESSUM's own power, and the cell passes since T-2163 raised with the `^` kernel. No formulation is fitted
 yet for the ODD cells.
+Fitting points (66 values 2^52 .. 1.8E+308, ODD and EVEN, excel-graph, T-2172): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66.
+EVEN matches Excel on all 66 cells. ODD misses 11: every miss is an even double strictly above 2^53 and up to about 1E+16 (2^53+2,
+2^53+6, ..., 9999999999999990 .. 1.000000000000001E+16, and -(2^53+2)), where Excel returns the next double away from zero (x+2) and
+ours the one toward zero (e.g. G10 `ODD(9007199254740994)` is 9007199254740996, ours 9007199254740992; G30 `ODD(9999999999999998)` is
+1E+16, an even result). Between 2^53 and at least 1.000000000000001E+16 (G36; where the band ends below 2^54 is unprobed) the rule is by residue: x = 2 (mod 4) gives x+2 (away from zero), x = 0 (mod 4) returns x unchanged, an even result
+(G11, G13, G15, G17, G27, G29, G31, G33, G35, G63). `ODD(2^53)` and values from 2^54 up return the input unchanged (F9, F20:F25, F37:F64, F66).
+`EVEN(6.223015277861143E+37)` with the stored double returns its input (H60); the gen-m5 ...144 came from a computed, 1-ulp-low input, not EVEN. T-2173 fits this.
 Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224 (gen-m5/38b1b8e51dbad326 Calc!A10 fixed by T-2163).
 `ODD(EVEN(9999999999999999))` is 9999999999999992 as well (ours 9999999999999988): gen-m5/d88d12a62b726a0a Calc!A232 (excel-graph,
 2026-10-22, T-2252 triage).
@@ -1890,7 +1897,13 @@ Observation: `SUMXMY2(C10:E12,C6:E8)`, whose numeric pairs are (-1, 123456789.12
 double sums of `(x-y)^2`, of `x^2-2xy+y^2` and of `x^2+y^2-2xy` (ours). `SUMX2-2SUMXY+SUMY2` gives ...518. So Excel's
 accumulation is none of these; one cell cannot fit it.
 Evidence: gen-m5/bf8903e05ec369ca Calc!A248 (excel-graph, 2026-10-22, T-2252 triage).
-Status: OBSERVED; the T-2172 oracle sweep collects the points, T-2384 fits them.
+Sweep points (77 rows x SUMXMY2, SUMX2MY2, SUMX2PY2, excel-graph, T-2172): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!J1:X77 (row 1 is the A248 pairs).
+SUMX2MY2 and SUMX2PY2 match on all 77 rows. SUMXMY2 misses only V1, V3, V10, V12 and V16 (ours 1 ulp low). Excel's SUMXMY2 is order-dependent: rows 1-6 are the three A248
+pairs in all six orders, and V1 and V3 are 1.5241579027474522E+16 while V2, V4, V5 and V6 are 1.524157902747452E+16 (row 16, x/y
+swapped, gives ...522 like row 1; row 17 gives ...520); a plain sequential sum gives ...520 in every order, so no order-independent
+accumulation fits. V10 and V12 (the big pair with (7,1E-15)) are ...520 where ours is ...518; V11 and V14 match. Every mixed,
+cancelling and large-difference sum matches.
+Status: OBSERVED; the T-2172 sweep holds the points, T-2384 fits them.
 
 ## ARABIC of a blank cell, and padded numerals (T-2153)
 Rule: ARABIC of a blank cell is 0, as `ARABIC("")` is, whether the blank comes as a reference (`ARABIC(C3)`), through
@@ -1980,8 +1993,8 @@ Tasks: T-1282, T-1785
 ## Trig of a huge angle
 SIN, COS, TAN, COT, SEC and CSC return `#NUM!` when |x| >= 2^27 (134217728); 2^27-1 still gives a
 number, and the cut is the same for negative arguments and for 1E+300. The error is a real error
-(`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). Only the integers 2^27-1 and 2^27 (and their negatives -2^27, -2^27-1) were probed at the cut; the
-exact cut for fractional arguments in between is unprobed (assumed |x| >= 2^27). COSH(1E+15) is also
+(`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). T-1201 probed only the integers 2^27-1 and 2^27 (and their negatives) at the cut; T-2172 adds fractions: the
+cut for fractional arguments is also |x| >= 2^27: 134217727.25, .5, .75 and 2^27-2^-26 give numbers, 134217728.25 and -2^27 are `#NUM!`, negative fractions below 2^27 in magnitude give numbers (-134217728.25 itself unprobed) (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A131:D142, T-2172). COSH(1E+15) is also
 `#NUM!` (probe cell A85).
 Excel reduces every trig argument by multiples of `π₆₄/2`, where `π₆₄` is π rounded to a 64-bit
 significand (the x87 `FLDPI` constant `0xC90FDAA22168C235·2^-62`, π₆₄ − π ≈ 5.0166e-20), and
@@ -1999,8 +2012,9 @@ near the cut the 10th-12th digit moves (SIN(2^27-1) is -0.9559933287726706, libm
 distinguished by any probed cell.
 TAN misses this model by 1 ulp at arguments near 1.2E+8: `TAN(123456789.123)` is 56.41575748007382 (model and ours
 56.415757480073815, also `SIN(x)/COS(x)`) and `TAN(123456788.123)` is 0.6173408433901317 (ours ...318). Evidence (excel-graph,
-2026-10-20): gen-m5/d0419fa09d6a756a Calc!A311, gen-m5/f0f205865a3a4328 Calc!A227, gen-m5/c688ca172fe533dc Calc!A284. SIN and COS at these
-arguments are unprobed (T-2172 sweeps them; T-2147 fits).
+2026-10-20): gen-m5/d0419fa09d6a756a Calc!A311, gen-m5/f0f205865a3a4328 Calc!A227, gen-m5/c688ca172fe533dc Calc!A284. T-2172 sweep (145 arguments over 1E+6 .. 2^27, probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A1:D145): SIN and COS match the
+pi64 model on all 145 cells; TAN misses only B121, B123, B126 and B130 (+-123456788.123 and +-123456789.123, 1 ulp), its other 141 cells
+pass. So the miss is TAN-only and confined to arguments near 1.2E+8 (T-2147 fits).
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 
