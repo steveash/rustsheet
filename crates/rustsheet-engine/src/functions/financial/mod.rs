@@ -249,12 +249,12 @@ impl Model {
         )
     }
 
-    fn get_array_of_numbers_xirr(
+    fn xirr_numbers(
         &mut self,
-        arg: &Node,
+        arg: CalcResult,
         cell: &CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        self.get_array_of_numbers_generic(
+        self.array_of_numbers_from(
             arg,
             cell,
             false,            // Do not accept a single number node
@@ -267,6 +267,117 @@ impl Model {
                 ))
             },
         )
+    }
+
+    /// XIRR's size checks (T-2428): one value and one date is `#N/A`
+    /// (`XIRR(Data!A9:A9,Data!E9:E9)`, gen-m9/30e20ba3302fea8b A110; also with a FALSE date,
+    /// bc04c1f478c9896c A24), a single date that is text or a boolean `#VALUE!`
+    /// (`XIRR({-100,#N/A,60},<FALSE>)`, 1cd3096e3e87c965 A48), then values and dates of
+    /// different counts `#NUM!`, whatever the cells hold (`XIRR({-100,#N/A,60},<5 dates>)`,
+    /// b72d952c5f52cb4d A1). An argument that is no range, array or scalar is left to the
+    /// number reading.
+    fn xirr_size_error(
+        &mut self,
+        values: &CalcResult,
+        dates: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        let value_count = self.xirr_element_count(values)?;
+        let date_count = self.xirr_element_count(dates)?;
+        let error = if value_count == 1 && date_count == 1 {
+            // A text, boolean or empty cell keeps the old `#VALUE!` (gen-m9/097af1ca33638670
+            // A255, a91bad4e84f49739 A203, bc04c1f478c9896c A318).
+            if self.non_number_cell(values) || self.non_number_cell(dates) {
+                return None;
+            }
+            Error::NA
+        } else if date_count == 1 && self.non_number_cell(dates) {
+            // gen-m9/1cd3096e3e87c965 A48, 1db18890916ee643 A108 (an empty date cell).
+            Error::VALUE
+        } else if value_count < date_count && self.holds_text_or_boolean_cell(values) {
+            // Fewer values than dates: a text or boolean value cell is read first, `#VALUE!`
+            // (gen-m9/c7664e494e418395 A204, 6376e27be7a05871 A67), while more values than dates
+            // is `#NUM!` whatever they hold (bbdfc06cae0e0d71 A44).
+            return None;
+        } else if value_count != date_count {
+            Error::NUM
+        } else {
+            return None;
+        };
+        Some(CalcResult::new_error(error, cell, String::new()))
+    }
+
+    /// The number of elements XIRR reads from an evaluated argument: a range's cells (a whole
+    /// column or row trimmed to the used area, as [`Self::array_of_numbers_from`]), an array's
+    /// elements, 1 for a scalar; `None` for an error or anything else.
+    fn xirr_element_count(&self, arg: &CalcResult) -> Option<usize> {
+        match arg {
+            CalcResult::Range { left, right } if left.sheet == right.sheet => {
+                let (used_row, used_column) =
+                    self.workbook.worksheet(left.sheet).ok()?.used_area_end();
+                let row2 = if left.row == 1 && right.row == LAST_ROW {
+                    used_row
+                } else {
+                    right.row
+                };
+                let column2 = if left.column == 1 && right.column == LAST_COLUMN {
+                    used_column
+                } else {
+                    right.column
+                };
+                let rows = usize::try_from(row2 - left.row + 1).ok()?;
+                let columns = usize::try_from(column2 - left.column + 1).ok()?;
+                Some(rows.saturating_mul(columns))
+            }
+            CalcResult::Array(array) => Some(
+                array
+                    .len()
+                    .saturating_mul(array.first().map_or(0, Vec::len)),
+            ),
+            CalcResult::Number(_)
+            | CalcResult::String(_)
+            | CalcResult::Boolean(_)
+            | CalcResult::EmptyCell => Some(1),
+            _ => None,
+        }
+    }
+
+    /// Whether a one-cell range or scalar is text, a boolean or nothing (an array element is not: `XIRR(D2,BYROW(D9,LAMBDA(x,ISBLANK(x))))` is `#N/A`,
+    /// gen-m9/bc04c1f478c9896c A24).
+    fn non_number_cell(&mut self, arg: &CalcResult) -> bool {
+        match arg {
+            CalcResult::Range { left, right } if left == right => matches!(
+                self.evaluate_cell(*left),
+                CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell
+            ),
+            // A single cell reference arrives as its value.
+            CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell => true,
+            _ => false,
+        }
+    }
+
+    /// Whether a range or scalar holds text or a boolean; called only once its size is known to
+    /// be below the dates' count.
+    fn holds_text_or_boolean_cell(&mut self, arg: &CalcResult) -> bool {
+        let CalcResult::Range { left, right } = arg else {
+            return matches!(arg, CalcResult::String(_) | CalcResult::Boolean(_));
+        };
+        for row in left.row..=right.row {
+            for column in left.column..=right.column {
+                let cell = CellReferenceIndex {
+                    sheet: left.sheet,
+                    row,
+                    column,
+                };
+                if matches!(
+                    self.evaluate_cell(cell),
+                    CalcResult::String(_) | CalcResult::Boolean(_)
+                ) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// `NPV(rate, value1, [value2], ...)`: `Sum[value[i]/(1+rate)^i, {i, 1, n}]`. The rate lifts
@@ -453,11 +564,21 @@ impl Model {
         let ([values, dates] | [values, dates, _]) = args else {
             return CalcResult::new_args_number_error(cell);
         };
+        let values = self.evaluate_node_in_context(values, cell);
+        let dates = self.evaluate_node_in_context(dates, cell);
+        // Excel checks the sizes before it reads a number, and only an error dates or guess
+        // comes first (financial.md "XIRR and XNPV under the gen-m9 statistical cells" and
+        // "Financial functions in the gen-m9 financial sweep (T-2257)", T-2428).
+        let size_error = if matches!(dates, CalcResult::Error { .. }) {
+            None
+        } else {
+            self.xirr_size_error(&values, &dates, cell)
+        };
         // The dates are truncated and checked once, not per element, as XNPV's.
         let flows = self
-            .get_array_of_numbers_xirr(values, &cell)
+            .xirr_numbers(values, &cell)
             .and_then(|values| {
-                let dates = self.get_array_of_numbers_xirr(dates, &cell)?;
+                let dates = self.xirr_numbers(dates, &cell)?;
                 let dates = xirr_dates(&values, &dates);
                 Ok((values, dates))
             })
@@ -470,6 +591,13 @@ impl Model {
             )),
             cell,
             &mut |model, arguments| {
+                // A size error stands only beside a number guess: a text, boolean or error guess
+                // leaves the old reading's `#VALUE!` (gen-m9/b6a02893a8d6b151 A226, b72d952c5f52cb4d
+                // A50).
+                let number_guess = matches!(arguments.get(2), None | Some(CalcResult::Number(_)));
+                if let (true, Some(size_error)) = (number_guess, &size_error) {
+                    return size_error.clone();
+                }
                 let (values, dates) = match &flows {
                     Ok(flows) => flows,
                     Err(error) => return error.clone(),

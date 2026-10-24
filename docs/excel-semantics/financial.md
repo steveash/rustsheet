@@ -1655,7 +1655,12 @@ gen-m9/0a614cfe974b59c3 Calc!A390), `CHISQ.INV((XIRR(0.5,{0,1,59,60,61})/..),8)`
 with both TRUE, bc40d37cb4d8301d A392) and `#NUM!` for a number against a range of a different count
 (`XNPV(1,2.5,Data!A4:C12)`, ee2497a5e683c5d9 A107; `XNPV(0.5,-0.5,Data!B4:E8)`, bc40d37cb4d8301d A79).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 51 cells listed in T-2428.
-Ours: `#VALUE!` for the XIRR cases, `#NUM!` for the XNPV ones; T-2428.
+Order (XIRR, T-2428, from 198 gen-m9 cells now passing): an error dates argument, then (beside a number or omitted guess;
+a text, boolean or error guess keeps the element reading's `#VALUE!` or that error) one value with one date is `#N/A`
+unless either is a text, boolean or empty cell (`#VALUE!`; an array element such as BYROW's `{FALSE}` is not a cell, so
+`#N/A`); a single date that is a text, boolean or empty cell is `#VALUE!`; fewer values than dates with a text or boolean
+value is `#VALUE!`; then different counts are `#NUM!` (more values than dates whatever they hold); then the element reading.
+Ours: XIRR follows this order (`xirr_size_error`, T-2428); the XNPV cases are still `#NUM!` where Excel is `#VALUE!` (T-2428).
 Status: VERIFIED (excel-graph, inferred through the enclosing call)
 Tasks: T-2428
 

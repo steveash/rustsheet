@@ -227,3 +227,9 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Progress
+2026-10-24 (opus run): XIRR's size checks landed on this branch (`xirr_size_error` in functions/financial/mod.rs; order in
+financial.md "XIRR and XNPV under the gen-m9 statistical cells"). Eval: gen-m9 known failures -192, probes -6,
+0 regressions. Still open: the XNPV rules (boolean or text one-cell rate or dates `#VALUE!`, a number against a range of a
+different count `#NUM!`), FVSCHEDULE's empty schedule cell, and the other financial functions' domain-before-text orders.
