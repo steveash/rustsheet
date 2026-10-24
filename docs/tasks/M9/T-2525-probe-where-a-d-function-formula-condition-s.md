@@ -3,7 +3,7 @@ id: T-2525
 title: "Probe where a D-function formula condition's references point when the criteria sit on another row or sheet"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ absolute `=$B$2>2`), plus a lowercase `"true"` under a blank header.
 
 ## Out of scope
 - Capping re-evaluation work (T-2518).
+
+## Outcome
+Probe `probes/db-criteria-formula-placement` (excel-graph): a formula condition's relative references are
+rebased onto the first record for criteria below, above or on another sheet; absolute references stay put;
+`"true"` in any case holds. Our `db_computed_condition` already agrees (27/27 cells pass), so no code change
+and no follow-up. Recorded VERIFIED in statistics.md. Eval baseline unchanged.

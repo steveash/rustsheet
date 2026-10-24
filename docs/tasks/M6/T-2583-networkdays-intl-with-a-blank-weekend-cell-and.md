@@ -3,7 +3,7 @@ id: T-2583
 title: "NETWORKDAYS.INTL with a blank weekend cell and an error in holidays is #NUM!, the weekend check first (gen-m9, 1 cell)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Cells:
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
+
+## Outcome
+Already passing on `origin/main`: gen-m9/c2974c061384fdd9 Calc!A149 is not in eval/baseline/gen-m9.txt (T-2271's weekend coercion landed after the T-2436 probe). Added unit test `networkdays_intl_blank_weekend_error_beats_the_holidays_error` and marked the dates.md entry implemented. Eval delta: none.

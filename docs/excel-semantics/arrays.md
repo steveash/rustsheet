@@ -264,6 +264,28 @@ row 1 `#NUM!`, follows from that order but is unprobed. W9 is 0 since T-0445 (re
 Status: VERIFIED (excel-graph)
 Tasks: T-1803, T-1967, T-1965, T-2408
 
+## Arrays past the grid: MAKEARRAY, SEQUENCE and the lifts over them
+Rule: an array value may be wider or taller than the grid; only a spill of it is `#SPILL!`. `COLUMNS(MAKEARRAY(1,20000,LAMBDA(r,c,c)))`
+is 20000 (B20), its `INDEX(..,1,19999)` 19999 (B21), its `SUM` of ones 20000 (B22) and `COLUMNS(MAKEARRAY(..)+1)` 20000 (B30);
+`ROWS(MAKEARRAY(1048577,1,LAMBDA(r,c,1)))` is 1048577 (B23); `COLUMNS(SEQUENCE(1,16385))` is 16385 (B24), while
+`ROWS(SEQUENCE(1048577))` is `#VALUE!` (probes/resource-limits C13), so SEQUENCE refuses rows past the grid but not columns;
+`COLUMNS(HSTACK(SEQUENCE(1,10000),SEQUENCE(1,10000)))` and `COLUMNS(TRANSPOSE(SEQUENCE(20000)))` are 20000 (B28, B29);
+a function lifted over such an array lifts it whole, so `ERROR.TYPE(MAKEARRAY(1,16385,LAMBDA(r,c,c)))` in a cell is
+`#SPILL!` (B26), and `BETAINV(..,MAKEARRAY(4,51638,..),..)` is too (gen-m9/4250f880ab640c49 Calc!A237).
+`MAKEARRAY(3,1E15,..)` is `#VALUE!` (gen-m7/b2078b5d702c691a A2553).
+Evidence: probes/t2579-array-value-edges B20-B32 (excel-graph, 2026-10-24, T-2579); probes/resource-limits C13.
+Ours: `limits::check_built_array_size` in MAKEARRAY and SEQUENCE (after SEQUENCE's own rows check against the grid): any
+shape within the cell bound of the next section is built; above it, columns past the grid are `#VALUE!`, as `SEQUENCE(3,123456789)`
+is in Excel (gen-m9/f2bd5f380ec002bf Calc!A177) and `MAKEARRAY(3,1E15,..)` (A2553), and so are rows of 2^31 or more, EXPAND's
+threshold (`SIZE_LIMIT_EXCLUSIVE`), as `MAKEARRAY(1E15,4,..)` is (gen-m7/8c4570978f18f4c2 A2736, gen-m9/895a33aa8352864a A238,
+gen-m9/f280df8ba95f96b9 A89); any other shape is the bound's `#ERROR!`, so `ROWS(MAKEARRAY(1048577,1,..))` (B23) is `#ERROR!`
+(DEVIATION, decision 0014, listed in probes/deviations). Unprobed: where between 16,385 and 123,456,789 columns Excel's own
+`#VALUE!` starts (EXPAND's column cap is another, T-2452), and where between 1,048,577 and 1E15 rows MAKEARRAY's does. The lifting
+driver's broadcast (`lift::driver::broadcast_shape`) checks the cell count only (`check_array_cells`), so B26 is the
+spill's `#SPILL!`. A237 is `#ERROR!`: its 206,552 BETAINV elements pass the quantile's lift cost cap (statistics.md), T-2607.
+Status: VERIFIED (excel-graph)
+Tasks: T-2579, T-2600
+
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
 `ROWS(SEQUENCE(1048576))` = 1048576, and a range lifted element-wise by a scalar function becomes
@@ -272,7 +294,7 @@ an array of the range's size however large: `ROWS(DATE(11:1899,12,1))` = 1889 an
 `=DATE(11:1899,12,1)` in C3 is `#SPILL!` (no room). A whole column lifts like any range:
 with A1 = -2, A2 = 3, `ROWS(ABS(A:A))` = `ROWS(A:A+0)` = 1048576, `SUM(ABS(A:A))` = 5,
 `INDEX(ABS(A:A),2)` = 3, `SUM(--ISNUMBER(A:A))` = 2, and `=ABS(A:A)` in C7 is `#SPILL!`.
-Only a dimension past the grid is `#VALUE!` (`SEQUENCE(1048577)`).
+Some functions refuse a dimension past the grid with `#VALUE!` (`SEQUENCE(1048577)`), others build it ("Arrays past the grid" above).
 RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 1,048,576 cells
 (one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, an *IF(S)
 criteria grid (broadcast criteria included), a GROUPBY result (groups x columns, checked while grouping, before any
@@ -299,7 +321,8 @@ Excel for the web refuses to open a workbook whose formula sums such a
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
 eval/suites/probes/deviations, decision 0036); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
-listed in eval/suites/probes/deviations, decision 0091, T-2223).
+listed in eval/suites/probes/deviations, decision 0091, T-2223); probes/t2579-array-value-edges B23 (`ROWS(MAKEARRAY(1048577,1,..))`,
+1048577 in Excel, excel-graph, 2026-10-24; listed in eval/suites/probes/deviations, decision 0108, T-2600).
 Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::chosen_indices` (CHOOSECOLS/CHOOSEROWS) and FORMULATEXT over a range in
@@ -1706,15 +1729,26 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399
 
 ## An empty array as a function argument (T-2436)
-Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH (as the value
-or a case), IMSUM and WORKDAY's holidays, while ABS and N keep the `#CALC!`, ERROR.TYPE gives 14 and IFERROR catches it:
-`SWITCH(1,TAKE(0.2,0,3),5,6)`, `SWITCH(DROP({1},1),1,2,3)`, `IMSUM(DROP({1},1))` and `WORKDAY(1,1,DROP({1},1))` are `#VALUE!`,
-`ABS(DROP({1},1))` and `N(DROP({1},1))` `#CALC!` (probes/t2436/computed-scalar A43:A50). Which other functions turn it into
-`#VALUE!` is unprobed. Separately, `SEQUENCE(0.0123,123456789.123,..)` is `#VALUE!`, not the zero rows'
-`#CALC!` (the oversized columns as the cause is UNVERIFIED) (gen-m9 f280df8ba95f96b9 A222).
-Evidence: probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9 (excel-graph, 2026-10-24).
-Ours: `#CALC!` for all of them; T-2580.
-Status: VERIFIED (excel-graph) for the listed calls
+Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH's
+expression and case values, IMSUM, IMPRODUCT, and the holidays of WORKDAY and NETWORKDAYS: `SWITCH(1,DROP({1},1),5,6)`,
+`SWITCH(DROP({1},1),1,2,3)`, `IMSUM(DROP({1},1))`, `IMSUM("1+i",DROP({1},1))`, `IMPRODUCT(DROP({1},1))`,
+`WORKDAY(1,1,DROP({1},1))` and `NETWORKDAYS(1,10,DROP({1},1))`. It stays `#CALC!` in SWITCH's result and default
+(`SWITCH(1,1,DROP({1},1),3)`), CHOOSE (index or value), IFS, IF, XLOOKUP's if_not_found, SUM, MAX, ABS, LEN and N; ERROR.TYPE
+gives 14 and IFERROR catches it (probes/empty-array-args-sequence A1:A21).
+It is any `#CALC!` value, not only an inline TAKE or DROP: a cell holding `=DROP({1},1)` (`SWITCH(Z1,1,2,3)`, `SWITCH(1,Z1,2,3)`,
+`WORKDAY(1,1,Z1)`, `IMSUM(Z1)`), FILTER with no match and `MAP({1},LAMBDA(x,{1,2}))` are `#VALUE!` too (A140:A148); `SWITCH(1,LAMBDA(x,x),2,3)`
+is 3. In IMSUM an error argument before the empty array wins (`IMSUM(1/0,DROP({1},1))` `#DIV/0!`, `IMSUM("x",DROP({1},1))`
+`#NUM!`, `IMSUM(<#DIV/0! cell>,DROP({1},1))` `#DIV/0!`), one after it does not (`IMSUM(DROP({1},1),1/0)` `#VALUE!`; A150:A154, A170:A172).
+SEQUENCE: rows and columns both reach 1048576, and an extent that is negative or past it is `#VALUE!` even next to a zero one:
+`SEQUENCE(0,1048576)` and `SEQUENCE(0.0123,16385)` are `#CALC!`, `SEQUENCE(0,1048577)`, `SEQUENCE(0,-1)` and
+`SEQUENCE(0.0123,123456789.123)` `#VALUE!` (so the oversized columns are the cause, gen-m9 f280df8ba95f96b9 A222); with a
+non-zero rows a columns past the grid's 16384 gives an array (A155:A157: `COLUMNS(SEQUENCE(1,20000))` is 20000, `COLUMNS(SEQUENCE(1,1048576))` 1048576, `ERROR.TYPE(SEQUENCE(1,1048576))`
+`#SPILL!`) up to 1048576, `#VALUE!` above (A158). Ours builds them since T-2600 within the cell bound. An extent is floored after adding 2^-23 (the single-precision epsilon, 1.1920929E-7): `SEQUENCE(4,-1.19E-7)` and
+`SEQUENCE(0,-1E-8)` are `#CALC!` (a zero extent; gen-m7 c36ff5f42a1a4d47 A359), `SEQUENCE(4,-1.2E-7)` and `SEQUENCE(0,-1)`
+`#VALUE!`, and `SEQUENCE(0.99999999,1)` is 1, `SEQUENCE(0.999999,1)` `#CALC!`. The epsilon is probed near 0, 1 and 1048577 only; for large extents a relative or float32 rounding is UNVERIFIED.
+Evidence: probes/empty-array-args-sequence (excel-graph, 2026-10-24), probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9.
+Ours: `CalcResult::is_empty_array` in those readers.
+Status: VERIFIED (excel-graph)
 Tasks: T-2580
 
 ## GROUPBY and PIVOTBY in the gen-m9 sweep (T-2436)

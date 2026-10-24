@@ -29,16 +29,25 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
   the fdlibm port is gone.
   The asymptotic branch for 8 <= x <= 100 is gated by probe case `bessel-asymptotic` (T-2140).
-  Above 100 (probe case `bessel-large-x`, excel-graph): x = 1e3 differs from the engine by at most 1 ulp (3 of 6 cells
-  match) and x = 1e6 by up to ~1e-14 relative (the phase `x - 0.785398164` loses precision differently from the engine's SIN), but Excel returns
-  `#NUM!` for `BESSELJ(x,n)` and `BESSELY(x,n)` at x = 134217728 (2^27) and 1e10 for orders 0 and 3 (and
-  `BESSELJ(1e10,1)`, `BESSELY(1e10,1)`), while `BESSELJ(2^27,1)` and `BESSELY(2^27,1)` still return a
-  value (BESSELJ ~1.8e-13 relative off, BESSELY ~2.6e-11). The cause of the `#NUM!` is not established: it is
-  not simply numbers.md's trig cut at |x| >= 2^27, because the order-0 phase `2^27 - 0.785398164` =
-  134217727.21 is below 2^27 (the order-1 phase 134217725.64 does return a value). Hypotheses (unprobed;
-  T-2563 to decide): a cut on the fractional phase in (134217725.64, 134217727.21], a check on x itself, or
-  error spreading through the recurrence. The engine still returns numbers there (known failures in
-  `bessel-large-x`).
+  The asymptotic form (x >= 8) takes Excel's own sine and cosine of the phase (reduced by the x87 64-bit pi, as
+  SIN and COS do; `excel_sin_cos`): the 8..100 sweep stays bit-exact, and so is every number cell of `bessel-large-x`
+  (x = 1e3, 1e6, 2^27, where libm's sine missed by 1 ulp to ~1e-13 relative) and of `t2547-bessel-phase-cut` (T-2547).
+  Past the phase 134217727 the sine and cosine do not answer and BESSELJ and BESSELY are `#NUM!`, the same cut as
+  IMPOWER's angle ("IMPOWER past the angle cut") and below SIN's own 2^27 (SIN(134217727.99) is a number, A67):
+  `BESSELJ(134217727.785398,0)` and `BESSELY(..,0)` (phase 134217726.9999998) answer and x + 0.001 is `#NUM!`; the
+  order-1 phase `x - 2.356194491` cuts at the same 134217727 (A27:A30). So `BESSELJ(2^27,0)` is `#NUM!` (phase
+  134217727.21) while `BESSELJ(2^27,1)` answers (134217725.64), and every order from 2 up, which recurs from J0 and
+  J1 (or Y0 and Y1), is `#NUM!` once order 0 is (`BESSELJ(134217728.5,1)` answers, `(..,2)` and `(..,4)` are
+  `#NUM!`). A negative x cuts on |x| (`BESSELJ(-134217728,0)` `#NUM!`, `(..,1)` 6.863275229685527E-05), and every x
+  further out is `#NUM!` for all orders (1E+14, 2E+14, 1E+15, 1E+10). Whether the phase 134217727 itself answers is
+  unprobed (ours `#NUM!`, as IMPOWER).
+  Evidence: probes/t2547-bessel-phase-cut A1:A74, bessel-large-x (excel-graph, 2026-10-24, T-2547).
+  Not fitted: `BESSELJ(1E+5,100000)` is 0.009636944011336267 in Excel, 0.00963694401133629 in Miller's recurrence
+  here (n = x); no association of the recurrence step nor NR's ACC 160 reproduces it (T-2548).
+  Web vs desktop: Mac Excel 16.0300's cached `BESSELJ(100000,5)` 0.001846551246313725 and `BESSELY(100000,5)`
+  0.001719431947654535 (ironcalc-calc/ENGINEERING/BESSEL.xlsx All!D18, F18) differ from the web's 0.0018465512463137278
+  and 0.0017194319476545319 (t2547-bessel-phase-cut A85, A86), which the engine gives; a Mac has no x87 sine. The engine
+  follows the web (decision 0109; Windows desktop is T-1075 item 15).
 
 Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
@@ -626,8 +635,10 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
 - **"1i" when a part is not exactly 1.** IM* text omits the coefficient only for an imaginary part of exactly ±1; a part
   that rounds to 1 at 15 digits keeps it: `COMPLEX(0.1,1+2^-52,"i")` is "0.1+1i", `COMPLEX(1/3,1-2^-53)`
   "0.333333333333333+1i", `COMPLEX(1+2^-52,1-2^-53,"j")` "1+1j", `IMDIV("5","-1.5+0.5i")` "-3-1i",
-  `IMPOWER("1000+1i",1)` "1000+1i" (493bb194c8e0b577 A331, 62c886e21a1042af A243, 7dc52cfcbc8b4448 A247, ...). Ours
-  compares the 15-digit-rounded part with ±1 and writes "i". T-2533.
+  `IMPOWER("1000+1i",1)` "1000+1i" (493bb194c8e0b577 A331, 62c886e21a1042af A243, 7dc52cfcbc8b4448 A247, ...). Implemented
+  for the text of COMPLEX and IMDIV (T-2533): the coefficient is compared unrounded.
+  After that fix `IMPOWER("1000+1i",1)` is still "1000+i": our polar form gives an imaginary part of exactly 1,
+  Excel's is not exactly 1 (gen-m9 74779cff2810ccf4 A379). T-2610.
 - **IM* trigonometry of a real number is SIN, COS and TAN.** With a zero imaginary part, IMSIN, IMCOS, IMTAN, IMSEC,
   IMCSC and IMCOT give exactly the worksheet functions' values (x87 reduction, numbers.md "Trig of a huge angle"), as the
   engine's own SIN/COS/TAN reproduce: `IMSIN(123456789.123)` 0.99984293955201 (= SIN; libm 0.999842939552045),
@@ -689,10 +700,10 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `OCT2HEX(<#DIV/0!>,-0.5)`, `DEC2OCT(" x ",-2.5)`; ours the number's error), T-2545. A boolean is `#VALUE!` in every
   OCT2*/HEX2* conversion, also OCT2HEX, as a FALSE or TRUE cell, an `IF(..)` FALSE or an `INDEX(..)` TRUE (ours `#NUM!`),
   T-2420.
-- **BESSEL.** `BESSELJ(1E+15,0)`, `BESSELJ(1E+15,5)` and `BESSELY(214285740740749.06,2)` are `#NUM!` (ours tiny numbers),
+- **BESSEL.** `BESSELJ(1E+15,0)`, `BESSELJ(1E+15,5)` and `BESSELY(214285740740749.06,2)` are `#NUM!`,
   while x = 123456789.123 (below 2^27) computes: `BESSELJ(..,1)` 4.9869177786549744E-05 and `BESSELY(..,3)`
-  5.1668995876750464E-05 (ours differ in the 12th digit); `BESSELJ(1E+5,100000)` is 0.009636944011336267 (ours ...629),
-  T-2547/T-2548 (T-2140's sweep). `BESSELI(1E+15,n)` is `#NUM!` (ours 0), and BESSELK at 713 and 714 is 0 for orders 0, 1
+  5.1668995876750464E-05 (matched since T-2547: the phase cut and Excel's sine, "BESSELJ / BESSELY" above);
+  `BESSELJ(1E+5,100000)` is 0.009636944011336267 (ours ...629, T-2548). `BESSELI(1E+15,n)` is `#NUM!` (ours 0), and BESSELK at 713 and 714 is 0 for orders 0, 1
   and 4, T-2421. Past the order cap Excel gives 0: `BESSELI(100,100001)`, `BESSELI(8,1E+6)`, `BESSELJ(0,1E+6)`,
   `BESSELK(25019,100001)` ("BESSEL order cap"; T-2546). `BESSELK(700,3)` is 4.69979514014056E-306 (ours
   4.699871435825504E-306, 1.6E-5 relative), T-2549.
@@ -723,8 +734,7 @@ Rule: BITLSHIFT/BITRSHIFT truncate the shift amount first and limit it after (`B
 Not fixed here: `BESSELK(700,4)` and `(705,4)` miss in the 15th digit (T-2549); `BESSELI(2.5,100001)` and `(2.5,1E+6)` are 0 in Excel and `#NUM!` here (BESSEL order cap DEVIATION, pinned in probes/deviations); `BESSELK(2.5,171)` onward overflows to `#NUM!` (170 is 7.09E+287, 200 and 1000 are `#NUM!`).
 
 ## BESSELJ and BIN2* cells of the T-2436 sub-expression probe
-Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; ours 5.29E-09,
-T-2547), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (ours `#VALUE!`, T-2544); an `IMSUM` of
+Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; matched since T-2547, the phase cut), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (ours `#VALUE!`, T-2544); an `IMSUM` of
 an empty array is `#VALUE!` (arrays.md "An empty array as a function argument").
 Status: VERIFIED (excel-graph), one cell each
 Tasks: T-2547, T-2544, T-2580
