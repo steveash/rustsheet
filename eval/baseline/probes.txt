@@ -355,6 +355,7 @@ C	probes/filter-if-empty-array.case.json	12
 C	probes/filterxml-array-forms.case.json	11
 C	probes/filterxml-error-arguments.case.json	6
 C	probes/filterxml-evidence-floor.case.json	28
+C	probes/fin-accrint-1900-calendar.case.json	52
 C	probes/fin-amor-period-bound-b.case.json	5
 C	probes/fin-amor-period-bound-c.case.json	6
 C	probes/fin-amor-period-bound.case.json	31
@@ -557,6 +558,7 @@ C	probes/let-name-call-text-type.case.json	1
 C	probes/let-name-call.case.json	14
 C	probes/let-name-non-ascii-scripts.case.json	6
 C	probes/let-name-non-ascii.case.json	10
+C	probes/let-name-shadows-defined-name.case.json	16
 C	probes/let-name-sharp-s.case.json	2
 C	probes/let-name-uncalled-picked-refs.case.json	41
 C	probes/let-name-use-spelling.case.json	12
@@ -1305,7 +1307,6 @@ C	probes/yield-one-period-dsr-zero.case.json	18
 C	probes/yield-solver-sweep.case.json	66
 C	probes/yield-start-rate-term.case.json	150
 C	probes/yield-start-sweep.case.json	100
-F	probes/3d-ref-one-sheet-span-lift.case.json	Calc!B6
 F	probes/chained-calls-builtin-drop.case.json	Sheet1!B1
 F	probes/chained-calls-builtin-drop.case.json	Sheet1!B2
 F	probes/chained-calls-builtin-take.case.json	Sheet1!B1
@@ -1600,7 +1601,6 @@ F	probes/fin-coupnum-1904-maturity-sweep.case.json	Sheet1!C8
 F	probes/fin-coupnum-1904-maturity-sweep.case.json	Sheet1!C9
 F	probes/fin-coupon-walk-bounds-1904.case.json	Sheet1!A5
 F	probes/fin-coupon-walk-bounds-1904.case.json	Sheet1!A6
-F	probes/fin-coupon-walk-bounds-b.case.json	Sheet1!A9
 F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!C12
 F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!D12
 F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!F12
@@ -1613,18 +1613,6 @@ F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!J12
 F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!K12
 F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!K13
 F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!K14
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O1
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O10
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O11
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O12
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O13
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O14
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O2
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O3
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O4
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O6
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O8
-F	probes/fin-coupon-walk-bounds-c.case.json	Sheet1!O9
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A10
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A11
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A13
@@ -1953,6 +1941,7 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
+F	probes/let-name-shadows-defined-name.case.json	Sheet1!B2
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100

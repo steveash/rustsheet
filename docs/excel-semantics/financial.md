@@ -342,9 +342,29 @@ Where both secant runs fail the engine falls back to the earlier Newton/bisectio
 fact). Excel returns `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17),
 where the fitted secant does not stop, and raising its step cap does not explain it (1,000 steps give
 -0.6737366751808431). Probing it is T-1686.
+Open, the 2026-10-24 re-fit over every IRR cell of the eval (T-2131; 388 numeric cells with
+distinct flows and guess, gen-m9 included, of which the model matches 219): no variant of the
+arithmetic closes the gap. NPV as c_i/x^i, Horner in v or c_i*v^i, each with double or 64-bit
+terms and sums in either order, and the step anchored on v0 or v1 with or without twice-rounded
+operators score 194 to 222 bit-exact and move only last-bit cells. The visibly-off cells are of
+two other kinds:
+- Roots far above the guess. Excel returns the model's stopping step but with its error 0.1 to
+  0.4 % different: `IRR({-0.0001,2,42})` is 20019.97799564059 (gen-m9/c0681a8b150ce301
+  Calc!A218; the model 20019.977995638386, the root 20019.9779961838) and
+  `IRR({-2.5,-1,123456789.123})` 7026.083662734896 (gen-m9/67a4c03afd63f988 Calc!A346; the model
+  7026.0836627358585), likewise A3, A199, A285 and the gen-m9 cells of T-2131. The model's value
+  does not move under a 1e6-ulp change of v1 but moves continuously with the offset, which would
+  have to be 0.00079 to 0.00124 depending on the cell. Neither a constant offset, an offset of
+  0.001 in r, nor a relative offset v0(1 +- 0.001) fits, and neither does a Newton first step. So
+  Excel's steps far from the root differ from the secant's, by a rule not yet identified (T-2565
+  probes it).
+- Runs where both secant runs fail. For `{-400,1,1,1,1,1}` (IRR.xlsx L17), `{42,1,1,-1}`
+  (gen-m9/31474c20fc1dafd6 A271) and `{0.3,-2.5,1.005}` (gen-m9/a91bad4e84f49739 A369), no
+  secant run from any guess in -0.99 to 100 gives Excel's bits (the nearest is 2.6e-15 off), so
+  Excel's fallback is not a retry of the same secant from another fixed guess (T-1686).
 Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
 for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
-Tasks: T-1525, T-1533, T-0916
+Tasks: T-1525, T-1533, T-0916, T-2131, T-2565
 
 ## The IRR and XIRR solver caps
 Rule: Excel's caps on its IRR secant, XIRR's bracket walk and XIRR's bisection are unknown: no probe
@@ -631,14 +651,36 @@ from 1 March 1900 on counts Excel's fictitious 1900-02-29, and a coupon date bef
 Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A13 (excel-graph, 2026-10-17, T-1822), fin-coupon-walk-bounds-c
 A1-L14 (excel-graph, 2026-10-20, T-1844).
 Ours: matches (functions/financial/financial_bonds/coupon_schedule.rs: `coupon_period`, `coupon_count`,
-`coupdays_actual`, `coupon_days_nc`). Open: ACCRINT with calc_method TRUE whose issue's previous coupon date is serial 0
-is `#NUM!` (fin-coupon-walk-bounds-c O1-O13) but 0 with a settlement in 9990
-(`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`, -b A9), and ACCRINT's day counts before
-1900-03-01 miss the fictitious 1900-02-29 (-c O10, O14; ours compute them; T-2124). In a 1904 workbook
+`coupdays_actual`, `coupon_days_nc`). In a 1904 workbook
 `COUPNUM(0,400,2)` and `COUPNUM(1,400,2)` are `#NUM!` (previous coupon 1903-08-04, before the 1904 calendar) while
 `COUPPCD(1,400,2)` is -150 (-1904 A5-A7); see "COUPNUM in a 1904 workbook".
 Status: VERIFIED (excel-graph)
 Tasks: T-1822, T-1844, T-2124, T-2125
+
+## ACCRINT at the calendar's start
+Rule: ACCRINT reads its dates as Excel 1900 serials too, and is `#NUM!` when a coupon date it accrues over falls before
+1900-01-01 (serial 0): the coupon date before settlement (the regular one, `first_interest` less a period, when
+settlement is not past `first_interest` or calc_method is FALSE) or any period start on the walk back to the issue.
+- `ACCRINT(DATE(1900,3,1),DATE(1900,6,30),S,0.05,1000,4,0,TRUE)` is `#NUM!` for every settlement S from 1900-05-01 to
+  9999-12-31 (the issue's period starts 1899-12-31), with calc_method FALSE, on bases 0, 1, 3 and 4 and with semiannual
+  or annual coupons; `ACCRINT(DATE(1900,3,1),DATE(1900,3,31),DATE(1900,3,15),...)` too (the regular period starts
+  1899-12-31). `ACCRINT(DATE(1900,4,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 404512.3611111111.
+- A regular period that starts before 1900 does not matter when the settlement's period is later:
+  `ACCRINT(33448,1,37714,1E+300,0.3,1,2,TRUE)` is a number (gen-m9 3b7990bd4e3307ba Calc!A317).
+- The day counts read the serials as Excel shows them: the actual bases count serials, so the fictitious 1900-02-29
+  counts, and the 30/360 bases read serial 1 as 1900-01-01: `ACCRINT(DATE(1900,2,15),DATE(1900,5,10),DATE(1900,4,1),
+  0.05,1000,4,0,TRUE)` is 6.388888888888888 (46/90) on bases 0, 1, 2 and 4, and 6.301369863013699 on basis 3;
+  `ACCRINT(1,DATE(1900,7,1),DATE(1950,6,30),0.05,1000,2,0,TRUE)` is 2524.861111111111. On basis 0 serial 60
+  (1900-02-29) is not February's last day (1900 is not a leap year there): `ACCRINT(60,DATE(1900,5,10),DATE(1900,4,1),
+  0.05,1000,4,0,TRUE)` is 4.444444444444445 (32 days), while 1900-02-28 is (`ACCRINT(DATE(1900,2,28),DATE(1900,5,31),
+  DATE(1900,4,1),...)` 4.305555555555555, 31 days).
+- Excel for the web returned 0 for `ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`
+  (fin-coupon-walk-bounds-b A9) on 2026-10-17 and `#NUM!` on 2026-10-24, in a re-fill of -b and in
+  fin-accrint-1900-calendar D1; the oracle now records `#NUM!`.
+Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24).
+Status: VERIFIED (excel-graph)
+Implemented (T-2124): `compute_accrint` in functions/financial/accrint.rs.
+Tasks: T-2124
 
 ## COUPNUM in a 1904 workbook
 Rule: in a 1904 workbook COUPNUM is `#NUM!` exactly when the previous coupon date is before 1904-01-01 (a negative

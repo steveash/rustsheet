@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 
 use crate::formatter::dates::real_date_to_serial;
 
-mod coupon_schedule;
+pub(super) mod coupon_schedule;
 mod yield_closed;
 mod yield_solver;
 
