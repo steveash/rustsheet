@@ -1,0 +1,15 @@
+hold#1   (17.5,33.5) ln y  -20.954  unreachable 128/128
+hold#2   (17.5,33.5) ln y   +0.925  unreachable 0/128
+hold#3   (17.5,33.5) ln y   +1.069  unreachable 26/128
+hold#4   (9.7,21.3) ln y  -14.565  unreachable 128/128
+hold#5   (9.7,21.3) ln y   +1.424  unreachable 2/128
+hold#6   (9.7,21.3) ln y   -1.351  unreachable 5/128
+hold#7   (45.5,30.5) ln y  -17.372  unreachable 128/128
+hold#8   (45.5,30.5) ln y   +0.789  unreachable 0/128
+hold#9   (45.5,30.5) ln y   -3.021  unreachable 11/128
+hold#10  (4.75,11.25) ln y   -4.496  unreachable 128/128
+hold#11  (4.75,11.25) ln y   +1.110  unreachable 8/128
+hold#12  (4.75,11.25) ln y   +1.084  unreachable 9/128
+hold#13  (70.3,50.9) ln y  -33.858  unreachable 128/128
+hold#14  (70.3,50.9) ln y   +0.455  unreachable 0/128
+hold#15  (70.3,50.9) ln y   -2.029  unreachable 11/128

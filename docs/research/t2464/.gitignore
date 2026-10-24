@@ -101,3 +101,4 @@ r2-impact/cells_all.tsv
 r2-impact/offcells.tsv
 *.pyc
 *.log
+r3-m1-residual/need_*.tsv

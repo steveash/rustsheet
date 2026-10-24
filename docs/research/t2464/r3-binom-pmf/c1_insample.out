@@ -1,0 +1,16 @@
+=== cells
+CR           BIN interior: 178/754/980 of 1300  BIN k=0: 53/116/140 of 172  BIN k=n: 70/132/143 of 172  NEG: 123/407/462 of 567  all: 424/1409/1725 of 2211
+L-ext/LF0    BIN interior: 188/925/1075 of 1300  BIN k=0: 172/172/172 of 172  BIN k=n: 172/172/172 of 172  NEG: 155/487/519 of 567  all: 687/1756/1938 of 2211
+L-ext/LF1    BIN interior: 211/917/1067 of 1300  BIN k=0: 172/172/172 of 172  BIN k=n: 172/172/172 of 172  NEG: 150/485/521 of 567  all: 705/1746/1932 of 2211
+L-Sx/LF0     BIN interior: 194/893/1068 of 1300  BIN k=0: 172/172/172 of 172  BIN k=n: 172/172/172 of 172  NEG: 130/473/503 of 567  all: 668/1710/1915 of 2211
+L-lcx/LF0    BIN interior: 299/1076/1154 of 1300  BIN k=0: 172/172/172 of 172  BIN k=n: 172/172/172 of 172  NEG: 144/507/524 of 567  all: 787/1927/2022 of 2211
+=== a
+CR           BETA interior: 697/3293/3985 of 5280  BIN interior: 915/3241/4017 of 5280  all: 1612/6534/8002 of 10560
+L-ext/LF0    BETA interior: 696/3821/4381 of 5280  BIN interior: 604/3777/4509 of 5280  all: 1300/7598/8890 of 10560
+L-ext/LF1    BETA interior: 957/3837/4415 of 5280  BIN interior: 940/3897/4493 of 5280  all: 1897/7734/8908 of 10560
+L-Sx/LF0     BETA interior: 656/3925/4510 of 5280  BIN interior: 572/3926/4575 of 5280  all: 1228/7851/9085 of 10560
+L-lcx/LF0    BETA interior: 1112/4200/4672 of 5280  BIN interior: 1132/4170/4668 of 5280  all: 2244/8370/9340 of 10560
+=== n
+Terminated
+
+[exited with code 143]

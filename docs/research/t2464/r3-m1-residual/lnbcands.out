@@ -1,0 +1,12 @@
+per-shape best (rows): {'a': 2446, 'old': 606, 'probe1': 3198} shapes: {'a': 52, 'old': 287, 'probe1': 2}
+TOMS doubles (frozen)        a: 1525 rows, 31 shapes  old: 314 rows, 128 shapes  probe1: 3198 rows, 2 shapes
+accurate algdiv              a: 1654 rows, 35 shapes  old: 358 rows, 148 shapes  probe1: 2281 rows, 1 shapes
+x87 stored ops               a: 1525 rows, 31 shapes  old: 314 rows, 128 shapes  probe1: 3198 rows, 2 shapes
+extended, toms alnrel        a: 1614 rows, 35 shapes  old: 303 rows, 120 shapes  probe1: 1663 rows, 1 shapes
+extended, cr alnrel          a: 1636 rows, 34 shapes  old: 294 rows, 115 shapes  probe1: 1663 rows, 1 shapes
+extended, series alnrel      a: 1677 rows, 35 shapes  old: 314 rows, 126 shapes  probe1: 2281 rows, 1 shapes
+extended, LN(1+q)            a: 1247 rows, 27 shapes  old: 65 rows, 24 shapes  probe1: 1599 rows, 1 shapes
+extended, log b extended     a: 1607 rows, 34 shapes  old: 351 rows, 144 shapes  probe1: 2281 rows, 1 shapes
+extended, sum extended       a: 1614 rows, 35 shapes  old: 303 rows, 120 shapes  probe1: 1663 rows, 1 shapes
+doubles, series alnrel       a: 1524 rows, 31 shapes  old: 292 rows, 116 shapes  probe1: 3198 rows, 2 shapes
+doubles, cr alnrel           a: 1403 rows, 29 shapes  old: 301 rows, 119 shapes  probe1: 1663 rows, 1 shapes
