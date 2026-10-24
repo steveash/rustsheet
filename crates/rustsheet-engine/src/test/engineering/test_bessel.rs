@@ -85,6 +85,7 @@ fn asymptotic_phase_past_the_inner_trig_cut_is_num_error() {
     model._set("A7", "=BESSELJ(-134217728,0)");
     model._set("A8", "=BESSELJ(-134217728,1)");
     model._set("A9", "=BESSELY(1E+15,1)");
+    model._set("A10", "=BESSELY(134217727.785398,0)");
     model.evaluate();
     for cell in ["A2", "A3", "A5", "A6", "A7", "A9"] {
         assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
@@ -96,4 +97,5 @@ fn asymptotic_phase_past_the_inner_trig_cut_is_num_error() {
     assert_eq!(bits("A4"), (-6.297_380_020_515_363e-5_f64).to_bits());
     assert_eq!(bits("A8"), 6.863_275_229_685_527e-5_f64.to_bits());
     assert_eq!(bits("A1"), (-2.020_590_456_739_121_3e-5_f64).to_bits());
+    assert_eq!(bits("A10"), (-6.584_002_087_696_111e-5_f64).to_bits());
 }

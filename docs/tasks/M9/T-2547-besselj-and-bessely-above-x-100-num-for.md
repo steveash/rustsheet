@@ -46,7 +46,7 @@ Cells:
 - [ ] (6 of 7; `BESSELJ(1E+5,100000)`, 2b0324e2de2e7b74 A295, Miller's recurrence, moved to T-2548) Visible parity (gen-m9, T-2258): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] engineering.md records Excel's x limit and the kernel change with the sweep cells.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).

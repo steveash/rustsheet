@@ -29,9 +29,9 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
   the fdlibm port is gone.
   The asymptotic branch for 8 <= x <= 100 is gated by probe case `bessel-asymptotic` (T-2140).
-  Above 100 the asymptotic form takes Excel's own sine and cosine of the phase (reduced by the x87 64-bit pi, as
-  SIN and COS do; `excel_sin_cos`): that is bit-exact on every number cell of `bessel-large-x` (x = 1e3, 1e6, 2^27,
-  where libm's sine missed by 1 ulp to ~1e-13 relative) and of `t2547-bessel-phase-cut` (T-2547).
+  The asymptotic form (x >= 8) takes Excel's own sine and cosine of the phase (reduced by the x87 64-bit pi, as
+  SIN and COS do; `excel_sin_cos`): the 8..100 sweep stays bit-exact, and so is every number cell of `bessel-large-x`
+  (x = 1e3, 1e6, 2^27, where libm's sine missed by 1 ulp to ~1e-13 relative) and of `t2547-bessel-phase-cut` (T-2547).
   Past the phase 134217727 the sine and cosine do not answer and BESSELJ and BESSELY are `#NUM!`, the same cut as
   IMPOWER's angle ("IMPOWER past the angle cut") and below SIN's own 2^27 (SIN(134217727.99) is a number, A67):
   `BESSELJ(134217727.785398,0)` and `BESSELY(..,0)` (phase 134217726.9999998) answer and x + 0.001 is `#NUM!`; the
@@ -39,7 +39,8 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   134217727.21) while `BESSELJ(2^27,1)` answers (134217725.64), and every order from 2 up, which recurs from J0 and
   J1 (or Y0 and Y1), is `#NUM!` once order 0 is (`BESSELJ(134217728.5,1)` answers, `(..,2)` and `(..,4)` are
   `#NUM!`). A negative x cuts on |x| (`BESSELJ(-134217728,0)` `#NUM!`, `(..,1)` 6.863275229685527E-05), and every x
-  further out is `#NUM!` for all orders (1E+14, 2E+14, 1E+15, 1E+10).
+  further out is `#NUM!` for all orders (1E+14, 2E+14, 1E+15, 1E+10). Whether the phase 134217727 itself answers is
+  unprobed (ours `#NUM!`, as IMPOWER).
   Evidence: probes/t2547-bessel-phase-cut A1:A74, bessel-large-x (excel-graph, 2026-10-24, T-2547).
   Not fitted: `BESSELJ(1E+5,100000)` is 0.009636944011336267 in Excel, 0.00963694401133629 in Miller's recurrence
   here (n = x); no association of the recurrence step nor NR's ACC 160 reproduces it (T-2548).
