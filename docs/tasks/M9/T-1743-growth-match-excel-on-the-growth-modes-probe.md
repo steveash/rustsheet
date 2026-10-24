@@ -101,6 +101,9 @@ Cells:
 - gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A341
 - gen-m9/a2262ea466fcc142.case.json (1): Calc!A145
 
+T-1726 (2026-10-24) moved GROWTH onto TREND's shared path (functions/statistical/trend.rs): 26 growth-modes lines and
+the gen-m9 GROWTH order cells went with it; 63 growth-modes lines remain.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 75 known-failure lines (65 from T-2255, 10 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

@@ -8,19 +8,20 @@
 //! pivot's location, drops the pivot or is refused when it cuts through one
 //! ([`Model::displace_pivots`]), a sheet rename rewrites the
 //! cache sources naming it, and a sheet deletion takes the sheet's pivots with it so an undo puts
-//! them back. A row or column move still drops the sheet's pivots
-//! ([`Workbook::drop_pivots_on_sheet`]; docs/excel-semantics/web.md "Pivot tables and structural
-//! edits").
+//! them back. A row or column move shifts a pivot with its cells, or is refused when it would
+//! split one ([`Model::move_pivots`]; T-2401; docs/excel-semantics/web.md "Pivot tables and
+//! structural edits").
 
 use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
 use thiserror::Error as ThisError;
 
+use crate::actions::{displace_interval_for_move, interval_survives_move};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::model::Model;
-use crate::types::{sheet_names_match, Workbook};
+use crate::types::sheet_names_match;
 
 /// Most records in one cache (SPEC-0015 "Untrusted-input limits").
 pub const MAX_RECORDS: usize = 1_048_576;
@@ -408,15 +409,6 @@ impl CacheBuilder {
     }
 }
 
-impl Workbook {
-    /// Drops every pivot table on the sheet with stable id `sheet_id`. A row or column move calls
-    /// it: a dropped pivot makes GETPIVOTDATA `#REF!` rather than a wrong answer. Caches stay, as
-    /// other pivots may use them.
-    pub fn drop_pivots_on_sheet(&mut self, sheet_id: u32) {
-        self.pivot_tables.retain(|p| p.sheet_id != sheet_id);
-    }
-}
-
 /// Which lines a structural edit inserts or deletes ([`Model::displace_pivots`]).
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum PivotLines {
@@ -470,15 +462,6 @@ fn displace_span(first: u32, last: u32, at: i64, delta: i64, max: u32) -> SpanEd
 }
 
 impl Model {
-    /// [`Workbook::drop_pivots_on_sheet`] for the sheet at index `sheet`.
-    pub(crate) fn drop_pivots_on(&mut self, sheet: u32) -> Result<(), String> {
-        let sheet_id = self.workbook.worksheet(sheet)?.sheet_id;
-        self.workbook.drop_pivots_on_sheet(sheet_id);
-        // The indices are keyed by position in `pivot_tables`, which dropping shifts.
-        self.evaluation.pivot_indexes.clear();
-        Ok(())
-    }
-
     /// Moves the pivots of the sheet at index `sheet` for an insert (`delta > 0`) or delete
     /// (`delta < 0`) of `|delta|` rows or columns at the 1-based line `at`, with their cells, or
     /// refuses the edit, leaving every pivot as it was, when it cuts through one
@@ -545,6 +528,72 @@ impl Model {
             })
             .collect();
         // The indices are keyed by position in `pivot_tables`, which dropping shifts.
+        self.evaluation.pivot_indexes.clear();
+        Ok(())
+    }
+
+    /// Moves the pivots of the sheet at index `sheet` with the 1-based lines `[group_start,
+    /// group_end]` that a row or column move shifts by `delta`, or refuses the move, changing
+    /// nothing, when it would split a pivot (as a move that splits a merged cell is refused;
+    /// SPEC-0015 "Data model", UNVERIFIED which moves Excel refuses, T-2402). Called before the
+    /// move changes anything.
+    pub(crate) fn move_pivots(
+        &mut self,
+        sheet: u32,
+        lines: PivotLines,
+        group_start: i32,
+        group_end: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        let rows = lines == PivotLines::Rows;
+        let sheet_id = self.workbook.worksheet(sheet)?.sheet_id;
+        // The 1-based span of a pivot's rows or columns, as a move sees it; spans are within the
+        // sheet, so the conversion cannot fail.
+        let span = |area: &CellArea| {
+            let (first, last) = if rows {
+                (area.top, area.bottom)
+            } else {
+                (area.left, area.right)
+            };
+            (
+                i32::try_from(first).unwrap_or(0) + 1,
+                i32::try_from(last).unwrap_or(0) + 1,
+            )
+        };
+        let on_sheet = |p: &&mut PivotTable| p.sheet_id == sheet_id;
+        if let Some(pivot) = self
+            .workbook
+            .pivot_tables
+            .iter()
+            .filter(|p| p.sheet_id == sheet_id)
+            .find(|p| {
+                let (first, last) = span(&p.location);
+                !interval_survives_move(first, last, group_start, group_end, delta)
+            })
+        {
+            return Err(format!(
+                "Cannot move {} because that would split the pivot table '{}'",
+                if rows { "rows" } else { "columns" },
+                pivot.name
+            ));
+        }
+        let count = group_end - group_start + 1;
+        for pivot in self.workbook.pivot_tables.iter_mut().filter(on_sheet) {
+            let (first, last) = span(&pivot.location);
+            let (first, last) =
+                displace_interval_for_move(first, last, group_start, group_end, delta, count);
+            // The moved span is within the sheet (the move was bounds-checked), so it is positive.
+            let (first, last) = (
+                u32::try_from(first - 1).unwrap_or(0),
+                u32::try_from(last - 1).unwrap_or(0),
+            );
+            let area = &mut pivot.location;
+            if rows {
+                (area.top, area.bottom) = (first, last);
+            } else {
+                (area.left, area.right) = (first, last);
+            }
+        }
         self.evaluation.pivot_indexes.clear();
         Ok(())
     }
@@ -775,7 +824,9 @@ mod tests {
     #[test]
     fn an_edit_through_a_pivot_is_refused_and_changes_nothing() {
         type Edit = fn(&mut Model) -> Result<(), String>;
-        let edits: [Edit; 5] = [
+        let edits: [Edit; 7] = [
+            |m| m.move_rows_action(0, 3, 1, 1),
+            |m| m.move_columns_action(0, 2, 1, 1),
             |m| m.insert_rows(0, 4, 1),
             |m| m.delete_rows(0, 3, 1),
             |m| m.delete_rows(0, 7, 1),
@@ -794,14 +845,9 @@ mod tests {
     }
 
     #[test]
-    fn deleting_every_line_of_a_pivot_or_moving_lines_drops_it() {
+    fn deleting_every_line_of_a_pivot_drops_it() {
         type Edit = fn(&mut Model) -> Result<(), String>;
-        let edits: [Edit; 4] = [
-            |m| m.delete_rows(0, 2, 6),
-            |m| m.delete_columns(0, 1, 5),
-            |m| m.move_rows_action(0, 1, 1, 1),
-            |m| m.move_columns_action(0, 1, 1, 1),
-        ];
+        let edits: [Edit; 2] = [|m| m.delete_rows(0, 2, 6), |m| m.delete_columns(0, 1, 5)];
         for edit in edits {
             let (mut model, _, second) = model_with_pivots();
             edit(&mut model).unwrap();
