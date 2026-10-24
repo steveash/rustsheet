@@ -3,6 +3,8 @@
 //! array, one call per element, while the list arguments are taken whole (docs/excel-semantics/
 //! arrays.md "Dynamic-array and LAMBDA function argument modes"; probes/m7-argument-modes).
 
+use std::borrow::Cow;
+
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -31,9 +33,21 @@ pub(super) const SEARCHED_BYTES_PER_VISIT: u64 = 8;
 impl Model {
     /// A one-cell reference as the value of its cell, any other value as it is.
     pub(crate) fn collapse_single_cell(&mut self, value: CalcResult) -> CalcResult {
+        let cell = match self.single_cell_value(&value) {
+            Cow::Owned(cell) => Some(cell),
+            Cow::Borrowed(_) => None,
+        };
+        cell.unwrap_or(value)
+    }
+
+    /// [`Self::collapse_single_cell`] on a borrowed value, which is not cloned: a one-cell
+    /// reference's cell value, owned, or the value itself, borrowed.
+    pub(crate) fn single_cell_value<'a>(&mut self, value: &'a CalcResult) -> Cow<'a, CalcResult> {
         match value {
-            CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
-            other => other,
+            CalcResult::Range { left, right } if left == right => {
+                Cow::Owned(self.evaluate_cell(*left))
+            }
+            other => Cow::Borrowed(other),
         }
     }
 

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::{
     calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
@@ -370,36 +368,25 @@ impl Model {
         Some((row2, column2))
     }
 
-    /// The value XIRR's and XNPV's one-cell checks look at: a one-cell range's cell, else the
-    /// argument itself (a single cell reference already arrives as its value).
-    fn one_cell_value<'a>(&mut self, arg: &'a CalcResult) -> Cow<'a, CalcResult> {
-        match arg {
-            CalcResult::Range { left, right } if left == right => {
-                Cow::Owned(self.evaluate_cell(*left))
-            }
-            other => Cow::Borrowed(other),
-        }
-    }
-
     /// Whether a one-cell range or scalar is text, a boolean or nothing.
     ///
     /// An array element is not a cell: `XIRR(D2,BYROW(D9,LAMBDA(x,ISBLANK(x))))` is `#N/A`
     /// (gen-m9/bc04c1f478c9896c A24).
     fn non_number_cell(&mut self, arg: &CalcResult) -> bool {
         matches!(
-            *self.one_cell_value(arg),
+            *self.single_cell_value(arg),
             CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell
         )
     }
 
     /// Whether a one-cell range or scalar is empty.
     fn empty_cell(&mut self, arg: &CalcResult) -> bool {
-        matches!(*self.one_cell_value(arg), CalcResult::EmptyCell)
+        matches!(*self.single_cell_value(arg), CalcResult::EmptyCell)
     }
 
     /// Whether a one-cell range or scalar is a boolean or text that does not read as a number.
     fn non_numeric_text_or_boolean_cell(&mut self, arg: &CalcResult) -> bool {
-        match &*self.one_cell_value(arg) {
+        match &*self.single_cell_value(arg) {
             CalcResult::String(text) => self.cast_number(text).is_none(),
             CalcResult::Boolean(_) => true,
             _ => false,
