@@ -28,7 +28,17 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   - `BESSELJ(0,n)` is 0 for n >= 2; `BESSELY` of x <= 0 is `#NUM!`.
   Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
   the fdlibm port is gone.
-  The asymptotic branch is evidenced only for 8 <= x <= 100; larger x is unprobed (T-2140).
+  The asymptotic branch for 8 <= x <= 100 is gated by probe case `bessel-asymptotic` (T-2140).
+  Above 100 (probe case `bessel-large-x`, excel-graph): x = 1e3 differs from the engine by at most 1 ulp (3 of 6 cells
+  match) and x = 1e6 by up to ~1e-14 relative (the phase `x - 0.785398164` loses precision differently from the engine's SIN), but Excel returns
+  `#NUM!` for `BESSELJ(x,n)` and `BESSELY(x,n)` at x = 134217728 (2^27) and 1e10 for orders 0 and 3 (and
+  `BESSELJ(1e10,1)`, `BESSELY(1e10,1)`), while `BESSELJ(2^27,1)` and `BESSELY(2^27,1)` still return a
+  value (BESSELJ ~1.8e-13 relative off, BESSELY ~2.6e-11). The cause of the `#NUM!` is not established: it is
+  not simply numbers.md's trig cut at |x| >= 2^27, because the order-0 phase `2^27 - 0.785398164` =
+  134217727.21 is below 2^27 (the order-1 phase 134217725.64 does return a value). Hypotheses (unprobed;
+  T-2563 to decide): a cut on the fractional phase in (134217725.64, 134217727.21], a check on x itself, or
+  error spreading through the recurrence. The engine still returns numbers there (known failures in
+  `bessel-large-x`).
 
 Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
