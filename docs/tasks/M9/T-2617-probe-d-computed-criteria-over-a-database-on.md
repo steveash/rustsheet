@@ -1,5 +1,5 @@
 ---
-id: T-2616
+id: T-2617
 title: "Probe D* computed criteria over a database on another sheet: which records match (gen-m9, T-2553 leftovers)"
 milestone: M9
 lane: research
@@ -43,7 +43,7 @@ Cells:
 - gen-m9/d193e8b4ab820f52.case.json (1): Calc!A260
 - gen-m9/d9d55972b50e55e8.case.json (1): Calc!A106
 - gen-m9/f066968376660329.case.json (2): Calc!A205, A313
-Code: `reads_records` and `db_computed_condition` in crates/rustsheet-engine/src/functions/database.rs (TODO(T-2616)).
+Code: `reads_records` and `db_computed_condition` in crates/rustsheet-engine/src/functions/database.rs (TODO(T-2617)).
 
 ## Acceptance criteria
 - [ ] A probe case (excel-probe skill) with oracle values for the placements under Context is committed under eval/suites/probes.

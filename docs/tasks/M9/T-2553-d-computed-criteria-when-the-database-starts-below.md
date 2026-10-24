@@ -1,6 +1,6 @@
 ---
 id: T-2553
-title: "D* computed criteria when the database starts below the criteria row or sits on another sheet: Excel's records (gen-m9, 8 of 16 cells; rest T-2616)"
+title: "D* computed criteria when the database starts below the criteria row or sits on another sheet: Excel's records (gen-m9, 8 of 16 cells; rest T-2617)"
 milestone: M9
 lane: functions-criteria
 status: done
@@ -44,7 +44,7 @@ Cells:
 ## Acceptance criteria
 - [x] Visible parity (gen-m9, T-2258): these 16 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline: the 8 same-sheet lines did; the 8 over a
-      database on another sheet moved to T-2616 (the evidence fits no single rule yet, Outcome).
+      database on another sheet moved to T-2617 (the evidence fits no single rule yet, Outcome).
 - [x] criteria.md's T-2258 entry gets the confirmed rule and an "Ours" line.
 - [x] `make check` green; reviewers approve.
 
@@ -60,7 +60,7 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
   `formula_condition_on_the_header_row_fails`.
 - A first attempt that also failed every record whose reference is on another sheet than the database regressed
   02b7cfabebd2cc0a A231 and d193e8b4ab820f52 A114, where Excel follows the plain shift. The 8 other-sheet cells (Excel
-  matches nothing there) went to the new probe task T-2616, with the evidence.
+  matches nothing there) went to the new probe task T-2617, with the evidence.
 - Eval delta: gen-m9 known failures 6089 -> 6081 (8 fixed: 4dc761698ca23149 A129, 5bdef392d16a5efb A161, 74779cff2810ccf4
   A52, 7a819ffbbeff8fcc A303, d193e8b4ab820f52 A375, f066968376660329 A292, f61a73cd9af21e6d A289, fa8ee59f2f1be7e0 A332),
   no regressions; visibly off 6512 (lock 8632).

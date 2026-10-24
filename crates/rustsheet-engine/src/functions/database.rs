@@ -45,7 +45,7 @@ fn computed_criterion_holds(condition: &CalcResult) -> bool {
 /// B3..B8 (`DVAR(Db!A2:D9,2,Db!O1:O2)` is 12.5 and `DCOUNTA(..,3,..)` 2, rows 4 and 9; criteria.md
 /// "D* computed criteria and an unknown header in the gen-m9 database sweep (T-2258)"). Absolute
 /// rows stay put and are not checked (probes/db-criteria-formula-placement F2, F14); a reference
-/// on another sheet, or outside the database's columns, is read as it is: TODO(T-2616).
+/// on another sheet, or outside the database's columns, is read as it is: TODO(T-2617).
 fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> bool {
     let first_record = query.left.row + 1;
     let columns = query.left.column..=query.right.column;
