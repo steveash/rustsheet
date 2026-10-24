@@ -3,7 +3,7 @@ id: T-2368
 title: "Probe legacy T and N over INDEX of a text, boolean or negative scalar with a 0 index"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
