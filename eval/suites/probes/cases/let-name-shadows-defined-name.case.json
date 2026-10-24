@@ -22,7 +22,10 @@
     "A10": "=LAMBDA(PV,Pv*10)(2)",
     "A11": "=LET(x,Pv,LET(pv,1,x+pv))",
     "A12": "=LET(pv,1,Pv)",
-    "A13": "=LET(f,LAMBDA(a,a+Pv),LET(pv,50,f(1)))"
+    "A13": "=LET(f,LAMBDA(a,a+Pv),LET(pv,50,f(1)))",
+    "B1": "=LET(pv,pv+1,pv)",
+    "B2": "=LET(Pv,LAMBDA(a,Pv),Pv(1))",
+    "B3": "=LET(pv,2,x,Pv,x)"
    }
   }
  ],

@@ -234,11 +234,16 @@ fn let_names_and_lambda_parameters_shadow_defined_names() {
         model._set(&format!("A{}", row + 1), formula);
     }
     model.evaluate();
-    for (row, (formula, expected)) in cases.iter().enumerate() {
-        assert_eq!(
-            model._get_text(&format!("A{}", row + 1)),
-            *expected,
-            "{formula}"
-        );
+    // The stored form (R1C1 grammar) prints the names without `_xlpm.`: a reload keeps the shadowing.
+    let mut reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    for m in [&model, &reloaded] {
+        for (row, (formula, expected)) in cases.iter().enumerate() {
+            assert_eq!(
+                m._get_text(&format!("A{}", row + 1)),
+                *expected,
+                "{formula}"
+            );
+        }
     }
 }
