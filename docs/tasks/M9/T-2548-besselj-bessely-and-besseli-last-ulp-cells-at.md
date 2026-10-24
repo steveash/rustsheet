@@ -37,8 +37,14 @@ Cells:
 - gen-m9/ca182d96dedee546.case.json (1): Calc!A126
 - gen-m9/df083d85b436b49a.case.json (1): Calc!A98
 
+T-2547 (2026-10-24) gave the asymptotic form Excel's own sine (`excel_sin_cos`): that fixed 5 of the 12 lines above
+(12e4aa13a20cc1f8 A257, 408aa11aa923a4d9 A268, 4e180f54ff140abc A236 and A377, 4fffa5addab1f8af A319). It also hands over
+`BESSELJ(1E+5,100000)` (gen-m9/2b0324e2de2e7b74 Calc!A295): Excel 0.009636944011336267, ours 0.00963694401133629 (Miller's
+recurrence, n = x; visibly off in the 15th digit). Tried without a match: the step as `j*tox*bj`, `bj*(j*tox)`,
+`bj*(2j*(1/x))`, `(2j/x)*bj`, `j*(tox*bj)`, and NR's ACC 160 and 100 for the starting order.
+
 ## Acceptance criteria
-- [ ] These 12 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new
+- [ ] These 12 known-failure lines and gen-m9/2b0324e2de2e7b74 Calc!A295 disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 

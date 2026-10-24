@@ -2,7 +2,7 @@ use crate::constants::LAST_ROW;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
-use crate::limits::check_array_size;
+use crate::limits::check_built_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -79,7 +79,9 @@ impl Model {
                 "rows and columns must be at least 1".to_string(),
             );
         }
-        if let Some((error, message)) = check_array_size(rows, columns) {
+        // Columns past the grid are built (`COLUMNS(SEQUENCE(1,16385))` is 16385,
+        // probes/t2579-array-value-edges B24) under `check_built_array_size`.
+        if let Some((error, message)) = check_built_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);
         }
 

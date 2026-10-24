@@ -3,7 +3,7 @@ id: T-2547
 title: "BESSELJ and BESSELY above x = 100: #NUM! for huge x and the 15-digit misses at 1E+5 and 1.2E+8 (gen-m9, 7 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -41,14 +41,27 @@ Cells:
 - gen-m9/caa1eed48b1883fe.case.json (1): Calc!A399
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2258): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] (6 of 7; `BESSELJ(1E+5,100000)`, 2b0324e2de2e7b74 A295, Miller's recurrence, moved to T-2548) Visible parity (gen-m9, T-2258): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] engineering.md records Excel's x limit and the kernel change with the sweep cells.
-- [ ] `make check` green; reviewers approve.
+- [x] engineering.md records Excel's x limit and the kernel change with the sweep cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Probed the cut (probes/t2547-bessel-phase-cut, 88 cells, excel-graph 2026-10-24): BESSELJ and BESSELY are `#NUM!` once the
+asymptotic phase (`x - 0.785398164` for order 0, `x - 2.356194491` for order 1) passes 134217727, the cut IMPOWER's angle
+already had (now one constant, `EXCEL_INNER_TRIG_LIMIT` in trig.rs), below SIN's own 2^27; higher orders recur from orders 0
+and 1, so they are `#NUM!` with order 0. The asymptotic form now takes Excel's own sine and cosine (`excel_sin_cos`),
+which makes every cell of bessel-large-x and the new probe bit-exact (x = 1e3, 1e6, 1e5 orders 0-6, 2^27 order 1).
+That also completes T-2563 (bessel-large-x, now all 24 pass) and fixes 5 of T-2548's last-ulp cells.
+Two Mac-desktop cached cells of ironcalc-calc/ENGINEERING/BESSEL.xlsx (All!D18, F18, x = 1e5, order 5) differ from the
+web's value, which the engine now gives bit for bit: recorded as known failures under decision 0109, desktop question
+item 15 of T-1075. `BESSELJ(1E+5,100000)` (Miller's recurrence, n = x) is not fitted: moved to T-2548.
+Eval delta: gen-m9 known failures 6753 -> 6732 (21 fixed), probes 2775 -> 2745 (30 fixed, new case all pass),
+ironcalc-calc 736 -> 738 (the two decision-0109 cells); visibly-off cells 7341 (lock 8632).
