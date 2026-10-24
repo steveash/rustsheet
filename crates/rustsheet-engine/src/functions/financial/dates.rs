@@ -114,6 +114,20 @@ impl Model {
         Ok(serial)
     }
 
+    /// A day-count basis argument as read: an error, text or boolean is returned, an omitted basis
+    /// is 0, and a number that is not a basis (5, -1) is #NUM! before the next argument is read
+    /// (`PRICE(NA(),..,5)` and `DISC(NA(),..,5)` are #NUM!; probes/bond-argument-check-order,
+    /// probes/discount-argument-check-order; financial.md "PRICE, YIELD, DURATION and MDURATION
+    /// check order", "Discount securities check order").
+    pub(super) fn day_count_basis_of(
+        &self,
+        basis: Option<&CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> Result<u32, CalcResult> {
+        day_count_basis(self.cast_number_no_bools_or(basis, 0.0, cell)?)
+            .ok_or_else(|| num_error(cell))
+    }
+
     /// The date checks PRICE, YIELD and DURATION make before computing: [`Model::check_settlement`]
     /// and a coupon schedule that does not break (`coupon_schedule_breaks`); #NUM! otherwise.
     pub(super) fn check_bond_dates(
