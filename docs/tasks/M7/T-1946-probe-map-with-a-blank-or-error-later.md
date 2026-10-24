@@ -3,7 +3,7 @@ id: T-1946
 title: "Probe MAP with a blank or error later array and INDEX of a LAMBDA out of range"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
