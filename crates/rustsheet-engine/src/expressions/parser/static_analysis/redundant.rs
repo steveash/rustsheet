@@ -59,6 +59,7 @@ pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, a
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::StructuredReferenceKind { .. }
+        | Node::ThisRowKind { .. }
         | Node::OpRangeKind { .. }
         | Node::OpIntersectKind { .. }
         | Node::OpUnionKind { .. }

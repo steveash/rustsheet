@@ -303,7 +303,10 @@ impl Model {
                     let value = self
                         .evaluate_reference_arg(arg, cell)
                         .into_single_area(cell);
-                    (value, matches!(arg.ungrouped(), Node::ReferenceKind { .. }))
+                    (
+                        value,
+                        matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }),
+                    )
                 })
                 .collect()
         } else {

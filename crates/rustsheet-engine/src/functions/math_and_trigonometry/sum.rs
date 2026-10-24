@@ -144,8 +144,8 @@ impl Model {
             }
         }
         // The first argument's error comes before anything about the second.
-        let first = matrix_arg(&args[0], x_range)?;
-        let second = matrix_arg(&args[1], y_range)?;
+        let first = matrix_arg(&args[0], x_range, cell.row)?;
+        let second = matrix_arg(&args[1], y_range, cell.row)?;
         let (Some((rows1, cols1, first)), Some((rows2, cols2, second))) = (first, second) else {
             return Err(CalcResult::new_error(
                 Error::VALUE,
@@ -176,8 +176,12 @@ impl Model {
 
 /// A range, array, number, text or boolean argument of [`Model::fn_get_two_matrices`] with its
 /// rows and columns; an error value is returned as the error, anything else is `None`.
-fn matrix_arg(node: &Node, value: CalcResult) -> Result<Option<(i64, i64, PairedArg)>, CalcResult> {
-    let arg = match PairedArg::from_node_result(node, value) {
+fn matrix_arg(
+    node: &Node,
+    value: CalcResult,
+    row: i32,
+) -> Result<Option<(i64, i64, PairedArg)>, CalcResult> {
+    let arg = match PairedArg::from_node_result(node, value, row) {
         Ok(arg) => arg,
         // Excel: a typed text or boolean is one value with no number,
         // like a single cell holding one: `CORREL("a",5)` is #DIV/0! and `CORREL(A1:A3,TRUE)`
