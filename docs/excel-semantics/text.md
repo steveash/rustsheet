@@ -976,7 +976,9 @@ less that delimiter's, plus one, counted in UTF-16 units) is `#VALUE!`, whatever
 excepted, see above). `TEXTBEFORE("abcde","xyz",3)` and `-3` are `#N/A`, `4` and `-4` `#VALUE!`; `TEXTBEFORE("abcde",{"xyz","qq"},4)`
 is `#N/A`, `5` `#VALUE!`; `TEXTBEFORE("ab","xyz",1)` is `#VALUE!`; a number delimiter is its text, so `TEXTBEFORE("42ABC",1.005,-2)`,
 also from a cell, is `#VALUE!` (gen-m9 8d3588d8df0812df A313) but `-1` `#N/A`; `TEXTAFTER("😀b","😀😀",2)` is `#VALUE!` (probes/
-t2581-textsplit-textbefore A30-A50, excel-graph, 2026-10-24; T-2581). With a one-unit delimiter this is the text's length: `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
+t2581-textsplit-textbefore A30-A50, excel-graph, 2026-10-24; T-2581). Unprobed: a delimiter whose case folding changes its UTF-16 length under
+match_mode 1 (ours measures the unfolded delimiter), and a delimiter that fits the text by UTF-8 bytes but not by UTF-16 positions
+(A50 is decided by ours' earlier every-delimiter-longer check). With a one-unit delimiter this is the text's length: `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
 `TEXTBEFORE("ab","a",3,0,0,"nf")` are `#VALUE!`, while `TEXTBEFORE("ab","a",2)` is the usual `#N/A`. `TEXTAFTER("😀","a",2)` is `#N/A`
 and `TEXTAFTER("😀","a",3)` `#VALUE!` (two units), `TEXTAFTER("é","a",2)` `#VALUE!` (one). Gen-m7 shows it on `TEXTBEFORE("x~*","1",
 WORKDAY(..))` (611ce3bbfab27cef A336) and `TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767).

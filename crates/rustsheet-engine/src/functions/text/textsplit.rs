@@ -117,7 +117,8 @@ impl Model {
         // before an array pad_with's #VALUE!, an error element of a delimiter list and
         // TEXTSPLIT's own #VALUE! for an empty delimiter, no delimiter or empty text (gen-m7
         // 90de8755a2e565e6 A1643, ac67253061bba16a A184; probes/textsplit-error-order A5, A6,
-        // A8, A18; text.md "TEXTSPLIT: argument errors first, an all-empty result").
+        // A8, A18; text.md "TEXTSPLIT: argument errors first, an all-empty result"). A
+        // match_mode number other than 0 or 1 is checked later, after the list errors.
         let ignore_empty = if arg_count >= 4 {
             match Self::cast_bool_ref(&values[3], cell) {
                 Ok(b) => b,
