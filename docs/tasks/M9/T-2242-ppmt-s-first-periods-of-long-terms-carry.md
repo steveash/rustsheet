@@ -151,3 +151,7 @@ the 15th digit, as `closeness.rs`):
   T-2243): 1dce4774f5c0e736 A112, 3c06f9298f65a3ba A256, 5c6a23c4f6597f1c A29, 79d87fc527927626 A291,
   9a1fa5366bc50918 A374, a91bad4e84f49739 A305, b6a02893a8d6b151 A35 and A152, b72d952c5f52cb4d A41,
   ba4ddb817a8e700e A69.
+- Bit level on the ungated probes-numeric suite (fidelity review): m9-fin-pmt +133 / -33 PPMT cells bit-exact
+  (e.g. `PPMT(0.05,1,2,10000)` now 1 ulp off; A390 and A466 from 1 to 2 ulp), ppmt-first-period-sweep +459 / -2,
+  ppmt-log-rate-sweep +451 / -6; the lost cells have no clean n*L cutoff. They are T-2243's (bit parity).
+

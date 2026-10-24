@@ -22,7 +22,9 @@ visibly off.
   `PPMT(-0.5,1,277,73630,609)` is exactly -37119.5 in Excel (gen-m9 762cd0e4ec9a7aa9 A5; the model is 25 ulp
   off). But other -0.5 cells are 2E-14 relative from the exact value and 33 ulp from the model, so neither
   form is Excel's there. A probe of PPMT(-0.5, per, n, pv, fv) over per, n and fv (and other rates
-  from -0.9 to -0.375) is the first step.
+  from -0.9 to -0.3, and a fine grid from -0.45 to -0.30 and 0.370 to 0.380 to pin both switches; no PPMT cell
+  in eval lies between -0.375 and -0.5) is the first step. Also commit the series and LN candidates to the fit lab
+  (`fitlab/kernels/annuity.py`): T-2242's fit counts came from one-off scripts.
 - Also here: `PPMT(r,4,230,1E+300)` (pv near the double range; Excel -6.249999999999966E+298, ours the exact
   -6.25E+298) and `PPMT(r,1.999,97,226365)` (a fractional period), both outside the T-2242 fit.
 - Owned gen-m9 cells (T-2256/T-2257 triage, moved here from T-2242; excel-graph, 2026-10-23), 5 visibly off:
