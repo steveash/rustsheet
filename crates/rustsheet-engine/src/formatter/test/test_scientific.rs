@@ -49,6 +49,13 @@ fn scientific_zero_exponent_and_engineering() {
         (61.0, "##0.0E+0", "61.0E+0"),
         (36.5, "00.0E+0", "36.5E+0"),
         (2_958_465.999_99, "00.0E+0", "03.0E+6"),
+        // The mantissa rounds after the shift (gen-m10 05c1c646c95a2d60 F!T12, 659cd5776d423ce3
+        // F!J7; T-2226).
+        (1.0 / 3.0, "##0.0E+0", "333.3E-3"),
+        (2.0 / 3.0, "##0.0E+0", "666.7E-3"),
+        (-1.0 / 7.0, "##0.0E+0", "-142.9E-3"),
+        (1.0 / 3.0, "##0.00E+00", "333.33E-03"),
+        (0.125, "00.0E+0", "12.5E-2"),
     ];
     for (value, code, expected) in cases {
         assert_eq!(format_number(value, code, &ctx).text, expected, "{code}");
