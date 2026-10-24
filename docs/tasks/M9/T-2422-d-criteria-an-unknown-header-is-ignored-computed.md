@@ -31,11 +31,11 @@ Cells:
 - gen-m9/c9d7659896d95368.case.json (1): Calc!A1
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A probe case holds the cells above, plus a computed criterion with a relative and an absolute reference, a computed criterion next to a header criterion, and DGET and DAVERAGE over the same ranges.
-- [ ] Ours matches every probe cell; criteria.md is updated.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case holds the cells above, plus a computed criterion with a relative and an absolute reference, a computed criterion next to a header criterion, and DGET and DAVERAGE over the same ranges.
+- [x] Ours matches every probe cell; criteria.md is updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other criteria grammar.
@@ -44,4 +44,4 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
 
 ## Outcome
-Cases 1, 3 and 4 of the Goal (unknown header, computed criterion, header-only range, trailing blank rows) were already fixed by T-1390 (#1638). The remaining difference was DGET: it now counts only matching records whose field cell is non-empty (probes/db-get-blank-field, 11 Excel cells, all pass), which fixes gen-m9/c9d7659896d95368 Calc!A1. Eval delta: gen-m9 known failures 7719 -> 7718, probes +1 case, no regressions. criteria.md updated. gen-m9 A82 and A271 stay with T-2553.
+The other probe items are covered by probes/db-computed-criteria-shapes and db-header-criteria-shapes (T-1390). Cases 1, 3 and 4 of the Goal (unknown header, computed criterion, header-only range, trailing blank rows) were already fixed by T-1390 (#1638). The remaining difference was DGET: it now counts only matching records whose field cell is non-empty (probes/db-get-blank-field, 11 Excel cells, all pass), which fixes gen-m9/c9d7659896d95368 Calc!A1. Eval delta: gen-m9 known failures 7719 -> 7718, probes +1 case, no regressions. criteria.md updated. gen-m9 A82 and A271 stay with T-2553.
