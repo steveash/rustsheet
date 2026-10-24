@@ -81,7 +81,8 @@ fn test_text_reads_number_like_text_and_prints_control_characters() {
 
 #[test]
 fn test_text_reads_number_like_text_whatever_the_sections() {
-    // probes/text-number-like-text-and-control-chars A1, A2, A9, A10, A12, A15 (excel-graph, T-2332).
+    // probes/text-number-like-text-and-control-chars (excel-graph, T-2332): probe A1, A2, A9, A10, A12 and A15 are
+    // this test's A1 to A6.
     let mut model = new_empty_model();
     model._set("A1", r#"=TEXT("001","@")"#);
     model._set("A2", r#"=TEXT("1","0;0;0;@")"#);
