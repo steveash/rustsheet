@@ -118,8 +118,8 @@ pub struct SheetSpec {
     /// Tables (`ListObject`s) on the sheet, header row first (T-1036).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tables: Vec<TableSpec>,
-    /// What-if data tables (`TABLE()`), written by spec2xlsx as `<f t="dataTable">` (T-0428). The
-    /// engine adapter ignores them until Phase 2 implements data tables.
+    /// What-if data tables (`TABLE()`), written by spec2xlsx as `<f t="dataTable">` (T-0428); the
+    /// engine adapter adds them with `Txn::add_data_table` (T-0441).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub data_tables: Vec<DataTableSpec>,
     /// Pivot tables, written by spec2xlsx with their rendered cells, cache and definition
