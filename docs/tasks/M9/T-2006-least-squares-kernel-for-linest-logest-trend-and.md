@@ -62,6 +62,11 @@ exactly 0 and F `#NUM!`; ours carry 2E-16 and 1E-31 of noise and F 1E+31), and g
 `LOGEST(Data!A10:B11)` (Excel 2.220601291150046, ours 2.2206012911500514). Unlike LINEST's exact fits, LOGEST's ln(y)
 is exactly linear here only to rounding, so a kernel that gets these to exactly 0 is a strong lead.
 
+Also from T-1743 (visibly off, the solve): probes/growth-modes K145:K152 (`GROWTH(D2:D9,A2:C9,A2:C9)`, e.g. K147 Excel
+9.034855848946608, ours 9.034855848947016), K157 and K169 (a multi-column x with `{1,2,3}` as new_x), and K3, K15, K27,
+K123, K219 (Excel 9.215274223288255, ours 9.21527422328826); gen-m9 8fec7b207f4dd753 Calc!A75 `GROWTH(Data!D10:E10)`
+(Excel 0.19999999999999996, ours 0.2000000000000001, a last-digit line).
+
 ## Acceptance criteria
 - [ ] A fit-lab kernel (tools/src/rustsheet_tools/fitlab/kernels/, a new `regression` fit) scores named candidates
       on the cells above. Candidates: normal equations (today's), Householder QR, modified and classical Gram-Schmidt,
