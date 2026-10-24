@@ -1178,15 +1178,18 @@ grids (`MAX_NESTED_KEPT_CELLS`, as a LAMBDA's captures; a loop of GROUPBY calls 
 most 64 levels (`MAX_NESTED_DEPTH`); past any of them the whole result is `#ERROR!`. Copies of a nested cell share it, so
 `CHOOSEROWS(r,SEQUENCE(200)^0)` copies one for free; reading one's contents (INDEX of the cell) charges its cells to a
 per-evaluation walk budget of 2^27 cells (`MAX_NESTED_WALK_CELLS`), past which the read is `#ERROR!` (200 INDEX reads of a
-1,048,512-cell nested cell fail at the 129th). Equality of two nested cells is by content but O(1) for copies of one and for
+1,048,512-cell nested cell fail at the 129th). Since T-2594 SUM, COUNT and COUNTA flattening a nested cell, and MAP, REDUCE and
+SCAN handing one to the LAMBDA, charge the same budget, and past it the whole call is `#ERROR!`. Equality of two nested cells is by content but O(1) for copies of one and for
 cells of different sizes, so it is not charged.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5), SPEC-0018 "Bound". Unit tests in
 crates/rustsheet-engine/src/nested_array.rs and test/test_nested_groupby_cells.rs.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray::new`, `NestedBudget`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
-crates/rustsheet-engine/src/limits.rs (`MAX_NESTED_DEPTH`, `MAX_NESTED_WALK_CELLS`, `MAX_NESTED_KEPT_CELLS`)
-Tasks: T-2593
+crates/rustsheet-engine/src/limits.rs (`MAX_NESTED_DEPTH`, `MAX_NESTED_WALK_CELLS`, `MAX_NESTED_KEPT_CELLS`),
+crates/rustsheet-engine/src/functions/util/aggregate_args.rs (`walk_array_items`),
+crates/rustsheet-engine/src/functions/logical/bycol_byrow.rs (`lambda_cells`)
+Tasks: T-2593, T-2594
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!; an empty single cell is #VALUE!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:

@@ -25,6 +25,9 @@ and PIVOTBY cells"). These consumers read their arrays through other collectors 
   Data!D9:D10),0)`: Excel -0.06612330960046267, ours -0.05915406669571728 since T-2594 (-0.0737 before). A PIVOTBY with
   several row and value columns; trace which cells Excel's COUNT sees (`rustsheet-eval show`, then a probe of the bare COUNT
   with the excel-probe skill).
+- Probe the consumers T-2594 left unprobed: VARA, STDEVA, VARPA and STDEVPA (`#N/A`, inferred from VAR.P and STDEV.S) and AND,
+  OR, XOR, IMSUM and IMPRODUCT (`#VALUE!`, `NestedReading::Value` in aggregate_args.rs) over a nested result, and change
+  their `NestedReading` if Excel differs.
 
 ## Acceptance criteria
 - [ ] The six cells above leave eval/baseline/probes.txt and gen-m9.txt (`make eval-baseline`), no new known-failure lines.

@@ -50,6 +50,7 @@ cells (charged), the AVERAGE family, MIN, MAX, PRODUCT, SUMSQ and the A-variants
 keep `#VALUE!`; a `Reference` cell stays `#VALUE!` everywhere (gen-m7/bcad709c30cfdf64 A13, gen-m9/2a18b2f5a4dc43ac A371).
 ARRAYTOTEXT over a result holding a nested cell is `#CALC!`. New probe probes/t2594-nested-aggregates (32 excel-graph cells)
 settles the other aggregates; arrays.md "Aggregates over nested GROUPBY and PIVOTBY cells".
-Eval: probes −30 (all of t2592's remaining cells and t2311 P!D12) +5 new-case lines (t2594 A15, A19:A22), gen-m9 −3, gen-m7 −1,
+Eval: probes −30 (t2592's 12 remaining cells, t2311 P!D12, groupby-lifted-args Calc!A153 and I153, and 15 t2436 cells:
+06b4e8f5 A/T/U76 and A/T/U136, 68d8ffb6 A/T/U61, 7c203515 A/T/U301 and A/T/U316) +5 new-case lines (t2594 A15, A19:A22), gen-m9 −3, gen-m7 −1,
 0 regressions. Follow-up T-2625: MODE.SNGL, LARGE, SMALL, PERCENTILE.INC, SUMPRODUCT and gen-m9/e85daedce5c2675e A35 (COUNT
 over a wide PIVOTBY).
