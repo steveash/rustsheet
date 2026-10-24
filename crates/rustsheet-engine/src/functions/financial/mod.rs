@@ -335,7 +335,7 @@ impl Model {
         // probes/fin-irr-error-array).
         let flows = match self.evaluate_node_in_context(values, cell) {
             error @ CalcResult::Error { .. }
-                if !matches!(values.ungrouped(), Node::ReferenceKind { .. }) =>
+                if !matches!(*values.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
             {
                 Err(error)
             }

@@ -96,6 +96,7 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         | Node::WrongReferenceKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
+        | Node::ThisRowKind { .. }
         | Node::OpUnionKind { .. }
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
@@ -156,9 +157,15 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         }
         Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
         // A structured reference is its area: a range gets the `@` a plain range gets, around
-        // the reference as written (SPEC-0016).
+        // the reference as written (SPEC-0016), and so does a `#This Row` range, which its
+        // lowering on a data row was (T-1699).
         Node::StructuredReferenceKind { lowered, .. } => {
-            if add && matches!(lowered.as_ref(), Node::RangeKind { .. }) {
+            if add
+                && matches!(
+                    lowered.as_ref(),
+                    Node::RangeKind { .. } | Node::ThisRowKind { cell: false, .. }
+                )
+            {
                 *node = Node::automatic_at(node.clone());
             }
         }
@@ -316,7 +323,11 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
             StaticResult::Unknown
         }
-        Node::ReferenceKind { .. } => StaticResult::Scalar,
+        Node::ReferenceKind { .. } | Node::ThisRowKind { cell: true, .. } => StaticResult::Scalar,
+        // The shape of the area on a data row (T-1699); off them it is one `#VALUE!`.
+        Node::ThisRowKind {
+            column1, column2, ..
+        } => StaticResult::Range(0, column2 - column1),
         // A span of one sheet evaluates as that sheet's reference, so it has its shape
         // (`Model::get_sheet_span_value`, T-2351); a wider 3-D reference is a value only as an
         // error (`#REF!`), so it never spills.
