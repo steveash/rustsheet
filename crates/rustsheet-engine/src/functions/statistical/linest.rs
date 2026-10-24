@@ -161,7 +161,6 @@ struct RegressionInputs {
 /// A110), and so does an error element of x (35e8168aae2b00f8 A400).
 fn validate_regression_inputs(
     inputs: RegressionInputs,
-    min_points: usize,
     cell: CellReferenceIndex,
 ) -> Result<RegressionData, CalcResult> {
     let MatrixRead {
@@ -175,11 +174,11 @@ fn validate_regression_inputs(
     let y: Vec<f64> = y_raw.into_iter().flatten().collect();
     let n = y.len();
 
-    if n < min_points {
+    if n < 2 {
         return Err(CalcResult::new_error(
             Error::VALUE,
             cell,
-            format!("Regression requires at least {min_points} data points"),
+            "Regression requires at least 2 data points".to_string(),
         ));
     }
 
@@ -633,11 +632,7 @@ impl Model {
         let inputs = self.read_regression_inputs(&args[0], args.get(1), cell)?;
         let const_term = eval_optional_bool(self, args.get(2), cell, true)?;
         let stats = eval_optional_bool(self, args.get(3), cell, false)?;
-        Ok((
-            validate_regression_inputs(inputs, 2, cell)?,
-            const_term,
-            stats,
-        ))
+        Ok((validate_regression_inputs(inputs, cell)?, const_term, stats))
     }
 
     // LINEST(known_y's, [known_x's], [const], [stats])

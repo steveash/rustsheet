@@ -34,11 +34,19 @@ impl Grid {
     fn from_data(data: DataRead) -> Grid {
         match data {
             DataRead::Range(rows) | DataRead::Array(rows) => {
+                // Rows are as wide as the first, so `point` stays in bounds: a short row of a
+                // ragged array (none is built today) reads as blanks, a long one is cut.
                 let cols = rows.first().map_or(0, Vec::len);
+                let n_rows = rows.len();
+                let mut elements = Vec::with_capacity(n_rows.saturating_mul(cols));
+                for row in rows {
+                    let mut row = row.into_iter();
+                    elements.extend((0..cols).map(|_| row.next().unwrap_or(Element::Blank)));
+                }
                 Grid {
-                    rows: rows.len(),
+                    rows: n_rows,
                     cols,
-                    elements: rows.into_iter().flatten().collect(),
+                    elements,
                 }
             }
             DataRead::Scalar(element) => Grid {
@@ -353,7 +361,8 @@ impl Model {
     ///    element of `new_x` (`#VALUE!`, trend L38, L39); an error element of `new_x` is `#VALUE!` for
     ///    its own prediction only (trend L37).
     ///
-    /// An array const lifts: each element is the top-left value of the call with that const (`TREND(..,SORTBY(Data!A1:D12,..))` spills, gen-m9 80586b85 A61).
+    /// An array const lifts: each element is the top-left value of the call with that const
+    /// (`TREND(..,SORTBY(Data!A1:D12,..))` spills, gen-m9 80586b85 A61).
     fn trend_or_growth(
         &mut self,
         args: &[Node],
