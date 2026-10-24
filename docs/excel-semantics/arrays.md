@@ -395,7 +395,7 @@ non-overflowing `MINVERSE({1E-200,0;0,1E-200})` is {1E+200,0;0,1E+200}, although
 (excel-graph, 2026-10-24, T-2386).
 A 1x1 inverse past the double range is `#NUM!` too: A3 = `=3E-308-2.5E-308` is a kept subnormal (about 5E-309; `(3E-308-2.5E-308)=0` is FALSE,
 numbers.md "Subnormal results become 0"), `MDETERM(A3)` keeps it (`(MDETERM(A3))=0` is FALSE) and `MINVERSE(A3)` / `MINVERSE(3E-308-2.5E-308)`
-are `#NUM!`, its inverse being about 2E+308 (Calc!P1:P4, A3:A4; graph reports the subnormal cells as 0, decision 0042).
+are `#NUM!`, consistent with its inverse (about 2E+308) overflowing; a kept subnormal with a finite inverse (just below 2.2E-308) was not probed (Calc!P1:P4, A3:A4; graph reports the subnormal cells as 0, decision 0042).
 `MINVERSE(A1)` with A1 = `=1E-300*1E-10` is `#NUM!` for a different reason: `*` flushes 1E-310 to a true 0 (Calc!A5 `A1=0` is TRUE;
 numbers.md "Subnormal results become 0"), so the 1x1 matrix is exactly singular (Calc!I1).
 A near-singular pivot computed from cells is inverted: B1:C2 = 1, 1, 1, `=1+2^-52` (the cell holds 1+2^-52 exactly, unlike the
