@@ -62,8 +62,9 @@ Cells:
 
 ## Acceptance criteria
 - [x] Visible parity (gen-m9, T-2257): these 41 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline. (40 of 41; d912671baa1364aa A76 moved to T-1895, see Outcome)
-- [x] Unit tests for a purchase date of 0 and 1E-15, a boolean rate beside a negative cost, and a period of 0.5625 (moved to T-1895, see Outcome).
+      (`make eval-baseline`), with no new known-failure lines in any baseline. (40 of 41; d912671baa1364aa A76 moved to T-1895, and the 21 new-coverage probe lines are T-1895's, see Outcome)
+- [x] Unit tests for a purchase date of 0 and 1E-15 and a boolean rate beside a negative cost.
+- [ ] A unit test for a period of 0.5625: moved to T-1895 (a stale value, see Outcome).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
