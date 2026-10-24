@@ -3,7 +3,7 @@ id: T-2579
 title: "Probe-first: MAKEARRAY wider than the grid, a REDUCE whose LAMBDA returns a multi-cell reference, COMBIN over FILTER and AVEDEV over IFERROR(TRIMRANGE) (gen-m9, 4 cells)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
