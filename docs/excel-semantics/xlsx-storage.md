@@ -201,8 +201,8 @@ writes `iterateCount` and `iterateDelta` only when they differ from the defaults
 The delta is a shortest round-trip double with an upper-case exponent.
 Evidence: calipers pv_goldens (desktop Excel, Calipers 9e47ea4f). 68 workbooks store a bare
 `iterate="1"`, and pv26_007 and pv26_2_007 store the count and delta above (T-0447).
-Ours: the import reads all three. The export writes `iterate="1"`, and the count and delta only
-when they are not 100 and 0.001. Unprobed, a decision-0014 choice for untrusted input: an
+Ours: the import reads all three. The export always writes `iterate="1"` with the count and delta,
+defaults included, which Excel reads the same and which keeps a round trip exact. Unprobed, a decision-0014 choice for untrusted input: an
 `iterateCount` outside 1 to 32,767 (Excel's dialog range), or a delta that is negative, NaN or
 unparsable, imports as the default.
 Status: VERIFIED (Excel-authored files) for the storage; the fallback is our choice
