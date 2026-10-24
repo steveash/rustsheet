@@ -352,6 +352,20 @@ impl Parser {
             .any(|bound| bound.eq_ignore_ascii_case(name))
     }
 
+    /// Whether a call of `name`, spelled like a function, is a call of the LET name or LAMBDA
+    /// parameter of that name instead. Only in unprefixed stored text: A1 grammar, not typed.
+    /// There a bound name stands for the `_xlpm.` form the file holds, and Excel calls the
+    /// variable: stored as `_xlpm.Pv(1)`, `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and
+    /// `LET(Sum,LAMBDA(a,a*2),SUM(1,2))` `#VALUE!` (probes/let-name-function-spelled-call,
+    /// let-lambda-body-own-name, T-2567). Typed, the function wins in any case:
+    /// `=LET(Sum,LAMBDA(a,a*2),Sum(3))` is `SUM(3)`, 3, and `=LET(Pv,LAMBDA(a,a),Pv(1))` is
+    /// refused (probes/let-function-name-typed-*). Stored R1C1 text needs no rule: Excel and the
+    /// storage form (`callee_text`) write every call of a bound name with its `_xlpm.` prefix,
+    /// so a bare `SUM(` there is the function (`LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)`).
+    fn calls_bound_name(&self, name: &str) -> bool {
+        self.lexer.is_a1_mode() && !self.typed && self.binds_name(name)
+    }
+
     /// [`Parser::binds_name`] for a name the A1 grammar would otherwise read as a cell or a
     /// Lotus-style range.
     pub(super) fn binds_reference_shaped_name(&self, name: &str) -> bool {
@@ -368,7 +382,7 @@ impl Parser {
     /// formula afterwards ([`Parser::typed_refusal`], decision 0103). A name that was read as a
     /// defined name becomes the variable in any grammar mode, shadowing the defined name
     /// (probes/let-name-shadows-defined-name, T-2057). Any other plain name is recorded as bound
-    /// too, so a call of it is the variable, not a function of its name (T-2567).
+    /// too, for [`Parser::calls_bound_name`] (T-2567).
     pub(super) fn bind_name(&mut self, token: &TokenType, text: &str, node: Node) -> Node {
         // A name that is also a defined name parsed as that defined name; it declares the
         // variable instead, and shadows the defined name up to the end of the scope. In any
@@ -380,8 +394,8 @@ impl Parser {
                 return Node::NamedVariableKind { name, id: None };
             }
         }
-        // Any other plain name is bound too: called, it is the variable, not a function of its
-        // name (probes/let-name-function-spelled-call, T-2567).
+        // Any other plain name is bound too: called in stored text, it is the variable, not a
+        // function of its name (`calls_bound_name`, T-2567).
         if let (TokenType::Ident(_), Node::NamedVariableKind { name, .. }) = (token, &node) {
             self.bound_names.push(name.clone());
             return node;
@@ -495,15 +509,12 @@ impl Parser {
         {
             return self.function_call(kind, args);
         }
-        // A LET name or LAMBDA parameter spelled like a function is the variable where bound, in
-        // any case: `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Sum,LAMBDA(a,a*2),SUM(1,2))`
-        // `#VALUE!` (probes/let-name-function-spelled-call, let-lambda-body-own-name, T-2567).
         // We should do this *only* importing functions from xlsx
         if let Some(function_kind) = self
             .language
             .functions
             .lookup_stored(&name)
-            .filter(|_| !self.binds_name(&name))
+            .filter(|_| !self.calls_bound_name(&name))
         {
             let node = self.function_call(function_kind, args);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
