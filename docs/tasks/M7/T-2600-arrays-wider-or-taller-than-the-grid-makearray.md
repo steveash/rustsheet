@@ -3,7 +3,7 @@ id: T-2600
 title: "Arrays wider or taller than the grid: MAKEARRAY(1,20000,..), SEQUENCE(1,16385) and HSTACK build them; a cell is #SPILL!"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
