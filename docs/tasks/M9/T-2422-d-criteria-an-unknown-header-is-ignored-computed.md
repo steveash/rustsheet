@@ -3,7 +3,7 @@ id: T-2422
 title: "D* criteria: an unknown header is ignored, computed criteria, a header-only range is #VALUE!, blank trailing records"
 milestone: M9
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
