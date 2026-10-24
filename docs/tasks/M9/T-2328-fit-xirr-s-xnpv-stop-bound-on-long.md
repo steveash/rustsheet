@@ -3,7 +3,7 @@ id: T-2328
 title: "Fit XIRR's XNPV stop bound on long spans (T-1591 misses at root 0.1, T=20/40/120)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
