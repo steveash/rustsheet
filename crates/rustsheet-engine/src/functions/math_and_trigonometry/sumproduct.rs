@@ -29,20 +29,23 @@ impl Model {
         // (`SUMPRODUCT(NA(),D1:E2,blank)` is `#N/A`, `SUMPRODUCT(blank,D1:E2,NA())` `#VALUE!`;
         // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150). Once the shapes
         // disagree, the elements of that and later arguments are not read, so an error element
-        // there does not win: unprobed, TODO(T-2450).
+        // there does not win. Then an error element of any argument beats a shape mismatch, in
+        // either order, while a whole-argument error beats an error element
+        // (probes/t2296-sumproduct-error-element; coercion.md, T-2296). Which element error wins
+        // among several is unprobed: the first in argument order, then element order.
+        let mut raw: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(args.len());
+        for arg in args {
+            match self.sumproduct_array(arg, cell) {
+                Ok(a) => raw.push(a),
+                Err(e) => return e,
+            }
+        }
         let mut arrays: Vec<Vec<Vec<f64>>> = Vec::with_capacity(args.len());
         let mut shape: Option<(usize, usize)> = None;
         let mut mismatch = false;
-        for arg in args {
-            let arr = match self.sumproduct_array(arg, cell) {
-                Ok(a) => a,
-                Err(e) => return e,
-            };
+        for arr in raw {
             let arg_shape = (arr.len(), arr.first().map_or(0, Vec::len));
             mismatch = mismatch || *shape.get_or_insert(arg_shape) != arg_shape;
-            if mismatch {
-                continue;
-            }
 
             // Coerce to f64: non-numeric → 0.0, errors propagate.
             let mut num_arr: Vec<Vec<f64>> = Vec::with_capacity(arr.len());
@@ -65,7 +68,9 @@ impl Model {
                 }
                 num_arr.push(num_row);
             }
-            arrays.push(num_arr);
+            if !mismatch {
+                arrays.push(num_arr);
+            }
         }
 
         if mismatch {

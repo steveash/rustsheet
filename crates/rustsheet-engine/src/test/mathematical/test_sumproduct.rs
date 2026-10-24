@@ -135,8 +135,8 @@ fn test_sumproduct_first_error_beats_later_shape_mismatch() {
 
 #[test]
 fn test_sumproduct_error_element_after_shape_mismatch() {
-    // An error element is not read once the shapes disagree; unprobed (T-2450), kept as before
-    // T-2150. An error element ahead of the mismatch wins.
+    // An error element beats a shape mismatch in either argument order
+    // (probes/t2296-sumproduct-error-element, T-2450).
     let mut model = new_empty_model();
     model._set("D1", "1");
     model._set("D2", "2");
@@ -144,6 +144,6 @@ fn test_sumproduct_error_element_after_shape_mismatch() {
     model._set("C1", "=SUMPRODUCT(D1:D2,D1:E2)");
     model._set("C2", "=SUMPRODUCT(D1:E2,D1:D2)");
     model.evaluate();
-    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C1"), "#DIV/0!");
     assert_eq!(model._get_text("C2"), "#DIV/0!");
 }

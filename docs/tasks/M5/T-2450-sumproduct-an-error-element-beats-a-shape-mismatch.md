@@ -3,7 +3,7 @@ id: T-2450
 title: "SUMPRODUCT: an error element beats a shape mismatch in any argument order"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -35,3 +35,6 @@ arguments hold one is not probed beyond the cells above; keep the first in argum
 
 ## Visible-parity stage
 Decision 0083: the gen-m7 cell above has the wrong error, so this task is in the campaign; done when it has Excel's error.
+
+## Outcome
+SUMPRODUCT now reads every argument before comparing shapes, so an error element beats a shape mismatch in any order and a whole-argument error beats an element error. probes/t2296 (6 cells) and gen-m7 f7e94a817e5385ac A50 now pass; known failures probes 1903 -> 1896, gen-m7 -1.
