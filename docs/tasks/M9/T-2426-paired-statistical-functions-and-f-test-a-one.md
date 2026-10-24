@@ -186,6 +186,5 @@ the argument-order work of the tasks below, so the "190 and 4 lines disappear" c
   c2684066d8df263e A90, 0620505280d2ea6e A139, 91e167cd8d7eb652 A24, d8f44d556674c2fd A329.
 - PROB (its reader is not the shared one), moved to T-2468: 583ca2baea0bb30a A58, 9735c5ab72fa5ecf A164,
   139684e68fb2fc3b A353, 46ac3ef5e61583ca A269, 5919660b7bb4d195 A1, d8f44d556674c2fd A192.
-- 4250f880ab640c49 A258 (FORECAST nested in GAMMA.INV, ours `#DIV/0!`): still failing, not diagnosed; stays open for the
-  next T-2426 follow-up (see `make eval-show CASE=gen-m9/4250f880ab640c49`).
+- 4250f880ab640c49 A258 (FORECAST nested in GAMMA.INV, ours `#DIV/0!`): ours is now `#VALUE!` against Excel's `#NUM!`, moved to T-2616.
 A computed blank (`CORREL(IF(TRUE,Z1),..)`) also gives `#VALUE!` by analogy with F.TEST; UNVERIFIED for the paired functions.

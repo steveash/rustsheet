@@ -2645,7 +2645,8 @@ fcf11f2ec6f7a59d A9, the T-2051 question). A one-cell reference holding a number
 ("Array arguments given a scalar, a single cell or an error" above; `FTEST(6,Data!A$11)` with A11 = "x" is `#DIV/0!`,
 35e8168aae2b00f8 A253). This contradicts the earlier inference that an empty cell is one value with no number.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 109 cells listed in T-2426.
-A computed blank (`CORREL(IF(TRUE,Z1),..)`) is UNVERIFIED for the paired functions (F.TEST: `#VALUE!`, A79).
+A reference returned by IF is `#VALUE!` too (`FORECAST(Data!$D2,IF(ISNUMBER(Data!E2),Data!A10,Data!D$5),LEN("ß"))`, 4250f880ab640c49 A294); a blank
+from IFERROR or LET is UNVERIFIED for the paired functions (F.TEST: `#VALUE!`, A79). PROB follows the same rule (see its entry, T-2468).
 Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions since T-2426 (`blank_one_cell_as_error` in
 functions/statistical/paired.rs, called by `fn_get_two_matrices` and `paired_samples`).
 Status: VERIFIED (excel-graph)
