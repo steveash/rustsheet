@@ -3,7 +3,7 @@ id: T-2332
 title: "Probe TEXT on number-like text with a text section, date/percent text, and other control characters"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
