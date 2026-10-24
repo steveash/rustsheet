@@ -664,3 +664,25 @@ fn pmt_ipmt_and_ppmt_are_the_exact_payment() {
         );
     }
 }
+
+/// A start period below 1 is `#NUM!` as given, also when it would round up to 1 (T-2489; the
+/// gen-m9 cells 0a957119475760c5 A40, 3aa168259335be54 A10, 6376e27be7a05871 A306).
+#[test]
+fn cumulative_start_period_below_one_is_num() {
+    let mut model = new_empty_model();
+    for (cell, start) in [("A1", "0.3"), ("A2", "0.5"), ("A3", "1E-15"), ("A4", "0")] {
+        model._set(cell, &format!("=CUMIPMT(0.01,10,1000,{start},5,0)"));
+        model._set(
+            &cell.replace('A', "B"),
+            &format!("=CUMPRINC(0.01,10,1000,{start},5,0)"),
+        );
+    }
+    model._set("C1", "=CUMIPMT(0.01,10,1000,1,5,0)");
+    model._set("C2", "=CUMPRINC(0.01,10,1000,1,5,0)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+    assert_ne!(model._get_text("C1"), *"#NUM!");
+    assert_ne!(model._get_text("C2"), *"#NUM!");
+}
