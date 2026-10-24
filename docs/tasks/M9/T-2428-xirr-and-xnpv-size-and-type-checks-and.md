@@ -196,7 +196,18 @@ Cells:
 - gen-m9/e882060cf4613302.case.json (1): Calc!A257
 - gen-m9/f61a73cd9af21e6d.case.json (1): Calc!A275
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `XIRR({-100,TRUE,60},Data!A7:A8,1E-9)` (three values, two dates) is `#NUM!` (ours `#VALUE!`) and `ACCRINT(39448,..,100,INDEX(Data!C2:E12,42,100)<#REF!>,836,4,2,2)` `#NUM!`, the date checks before the rate's error (ours `#REF!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/8dd2312c96effb1b Calc!A381 `=BINOM.DIST(XIRR({-100,TRUE,60},Data!A7:A8,1E-9),4,1E-300,ISBLANK(CEILING((-2.5),Data!B10)))`: Excel #NUM!, ours #VALUE!; inner `XIRR({-100,TRUE,60},Data!A7:A8,1E-9)` Excel #NUM!, ours #VALUE!
+- gen-m9/ecc87f80077959e0 Calc!A234 `=AVERAGEA(Data!C7:C9,Data!B2:B8,ACCRINT(39448,AVERAGE(Data!A2:A6,Data!B6),(Data!A7+100),INDEX(Data!C2:E12,Data!$E6,100),836,4,2,2))`: Excel #NUM!, ours #REF!; inner `ACCRINT(39448,AVERAGE(Data!A2:A6,Data!B6),(Data!A7+100),INDEX(Data!C2:E12,Data!$E6,100),836,4,2,2)` Excel #NUM!, ours #REF!
+Cells:
+- gen-m9/8dd2312c96effb1b.case.json (1): Calc!A381
+- gen-m9/ecc87f80077959e0.case.json (1): Calc!A234
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 10 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): the 246 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear

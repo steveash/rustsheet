@@ -2675,10 +2675,10 @@ Rule: F.TEST and FTEST return an error argument's error (`F.TEST(Data!B6:B11,IND
 -HOUR(123456789.123))` `#NUM!`, eced4bb6a0234c9e A258), the first argument's first. Data whose sum of squares overflows
 (`{1E+200,1E+200,-1E+200}`) make F.TEST `#NUM!` (`F.TEST(Data!A3:A10,{1E+200,1E+200,-1E+200})`, 2a18b2f5a4dc43ac A130;
 four more cells) and KURT `#DIV/0!` (`KURT({1E+200,1E+200,-1E+200},Data!E4:E12)`, a61e547a1cab994c A14; five more).
-UNVERIFIED (no explanation found): three cells are `#NUM!` where a number against a range gives `#DIV/0!` elsewhere:
+Explained since by T-2436 ("ERROR.TYPE and CELL results are #NUM! in the paired functions" below): three cells are `#NUM!` where a number against a range gives `#DIV/0!` elsewhere:
 `FTEST(Data!C3:C9,ERROR.TYPE(#REF!))` (4250f880ab640c49 A325), `F.TEST(CELL("col",Data!$B$12),(PI()+FILTER(..)))`
-(623663cacea53bbc A400), `F.TEST(INDIRECT("Data!B3",TOCOL(2,0,Data!A5)),{-1,0,1})` (06b4e8f5de409d5e A261); T-2436
-probes them.
+(623663cacea53bbc A400), `F.TEST(INDIRECT("Data!B3",TOCOL(2,0,Data!A5)),{-1,0,1})` (06b4e8f5de409d5e A261); owned by
+T-2576 and T-2577.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255).
 Ours: `#VALUE!` for an error argument (T-2093), 0 or a number for the overflow (T-2432).
 Status: VERIFIED (excel-graph) except the three UNVERIFIED cells
@@ -2881,3 +2881,60 @@ QUARTILE*, PERCENTILE* and TRIMMEAN are `#NUM!` (`QUARTILE(Data!E2,3)` with E2 =
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 72 cells in T-2344.
 Ours: `#VALUE!` (the cell read as a typed value); T-2344.
 Status: VERIFIED (excel-graph)
+
+## COVARIANCE: a boolean scalar is one value (T-2436)
+Rule: COVARIANCE.P and COVARIANCE.S take a TRUE or FALSE argument, typed or computed, as an array of one value like a number,
+so the size check and the one-point rule apply: `COVARIANCE.P({1,2,3},TRUE)` is `#N/A`, `COVARIANCE.S(-2.5,FALSE)` and
+`COVARIANCE.S(B1,FALSE)` with B1 = 5 are `#DIV/0!` (probes/t2436/computed-scalar A35:A37), as are the sweep's
+`COVARIANCE.P(Data!B3:E7,CHOOSE(1,("abc">Data!A4)))` `#N/A` (899f9555e67da2d6 A369) and
+`COVARIANCE.S(YEAR(20863),HYPERLINK(..,("x~*"=Data!C9)))` `#DIV/0!` (f34f66fb7f81e673 A127). With a number in place of the
+boolean ours already matches (A29:A34).
+Evidence: probes/t2436/computed-scalar (excel-graph, 2026-10-24); 4 gen-m9 cells listed in T-2575.
+Ours: `#VALUE!`; T-2575.
+Status: VERIFIED (excel-graph); COVAR with a boolean unprobed
+Tasks: T-2575
+
+## ERROR.TYPE and CELL results are #NUM! in the paired functions (T-2436)
+Rule: a number that ERROR.TYPE or CELL returns, passed straight on as a one-value argument, makes F.TEST, FTEST, FORECAST,
+INTERCEPT and COVARIANCE.P `#NUM!` where the same number from anywhere else gives the one-point `#DIV/0!` (or COVARIANCE.P's
+0): `FTEST({1;2;3},ERROR.TYPE(#REF!))`, `FTEST({1;2;3},ERROR.TYPE(NA()))`, `FTEST({1;2;3},CELL("col",B12))`,
+`FTEST(ERROR.TYPE(#REF!),{1;2;3})`, `FORECAST(1,ERROR.TYPE(#REF!),5)`, `FORECAST(1,CELL("col",B12),5)`,
+`INTERCEPT(ERROR.TYPE(#REF!),5)` and `COVARIANCE.P(ERROR.TYPE(#REF!),5)` are `#NUM!`, while `ERROR.TYPE(#REF!)+0`,
+`N(ERROR.TYPE(#REF!))`, `CELL("col",B12)+0`, `SUM(4)`, `VALUE("4")`, `ROW(B4)`, `COLUMN(D1)`, `TYPE(4)`, `INDEX({4,5},1)`,
+`IF(TRUE,4)` and `INDIRECT("B1")` give `#DIV/0!` (probes/t2436/computed-scalar A1:A29). This explains the three F.TEST cells
+the T-2255 entry above left UNVERIFIED (`FTEST(Data!C3:C9,ERROR.TYPE(#REF!))`, 4250f880ab640c49 A325; `F.TEST(CELL("col",..),..)`,
+623663cacea53bbc A400) and `FORECAST(Data!A10,ERROR.TYPE(..),STDEV.P(..))` (bcb24385baafb2f0 A252). Why Excel does this is
+unknown (perhaps these two functions return an internal integer type the array readers reject); which other functions'
+results do the same is unprobed. The third T-2255 cell, `F.TEST(INDIRECT("Data!B3",TOCOL(2,0,Data!A5)),{-1,0,1})`
+(06b4e8f5de409d5e A261), is `#NUM!` over an INDIRECT that is `#VALUE!` (references.md "INDIRECT: a 1x1 array a1 argument is
+#VALUE!"), as is `COVARIANCE.P(INDIRECT("Data!A1",FILTER(..)),Data!B11:D12)` (f2bd5f380ec002bf A383); that `#NUM!` is UNVERIFIED.
+Evidence: probes/t2436/computed-scalar (excel-graph, 2026-10-24); gen-m9 cells in T-2576 and T-2577.
+Ours: `#DIV/0!` (0 for COVARIANCE.P); T-2576, T-2577.
+Status: VERIFIED (excel-graph) for the listed calls; mechanism UNVERIFIED
+Tasks: T-2576, T-2577
+
+## LINEST: a known_y range with empty cells is #VALUE! (T-2436)
+Rule: LINEST of a known_y range that holds empty cells beside its numbers is `#VALUE!`, not a fit of the numbers:
+`LINEST(Data!E8:E12)` with E8:E10 = 1E-15, -2.5, -0.0001 and E11:E12 empty (gen-m9 b8ee55934c5b824c A394, probed alone in
+probes/t2436/b8ee55934c5b824c). LOGEST, TREND and GROWTH with the same known_y are unprobed.
+Evidence: probes/t2436/b8ee55934c5b824c (excel-graph, 2026-10-24).
+Ours: 0.25 (the empty cells skipped); T-2584.
+Status: VERIFIED (excel-graph), one cell
+Tasks: T-2584
+
+## Sub-expression probe of the untraced gen-m9 statistical cells (T-2436)
+Rule: probes/t2436/<case> evaluates every sub-expression of the 122 gen-m9 cells the T-2255 and T-2258 triage could not trace,
+on each case's own Data sheet (excel-graph, 2026-10-24); 28 of them already pass on main. For the other 94 the innermost
+call Excel computes differently is in the owning task's Context. Besides the entries above, the probe confirms existing
+entries on new forms: HYPGEOM.DIST's impossible sample is 0 for the cumulative form too (`HYPGEOM.DIST(1,3,6,7,TRUE)`, T-2429);
+`PHI(1E+300)`, `NORM.S.DIST(1E+300,FALSE)`, `BETA.DIST(0,0.5,1E+5,FALSE)` and `T.DIST.RT(1E+300,7)` are `#NUM!`,
+`WEIBULL(100,1E+8,99999,..)` is 0 and `WEIBULL(0.2,1E+15,0.2,"TRUE")` 0.6321205588285577, `F.INV.RT(1E-200,1,1.999)` is
+3.696066238512854E+150 (T-2435, T-2474); `FISHER(1E-15/3.14159)` is 2.2204460492503126E-16 (T-2437); a lone text or boolean
+cell as QUARTILE's data is `#NUM!` and as PERCENTRANK's `#N/A` (T-2344); PROB, Z.TEST, T.TEST, MODE and TRIMMEAN follow their
+T-2256 order rules (T-2468, T-2470, T-2469, T-2471, T-2472); the `#N/A` pads of EXPAND, HSTACK and VSTACK and a lifted `{#N/A}`
+are error elements (T-2430); FORECAST and CHITEST pair equal counts of different shape (T-2431). STANDARDIZE and HYPGEOM.DIST read a referenced FALSE as 0 (`STANDARDIZE(3,-1,<FALSE>)` and
+`STANDARDIZE(<"1.5" text>,-2.5,<FALSE>)` are `#NUM!`, standard_dev 0 before x's text; T-2582, after T-1849).
+Evidence: probes/t2436 (57 cases plus computed-scalar).
+Ours: see each owning task.
+Status: VERIFIED (excel-graph)
+Tasks: T-2436

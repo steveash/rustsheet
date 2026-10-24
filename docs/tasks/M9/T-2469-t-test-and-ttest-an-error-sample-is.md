@@ -72,7 +72,16 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (2): Calc!A136, A326
 - gen-m9/eedd629f3d69fdda.case.json (1): Calc!A79
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `TTEST(<0>,Data!A2:D5,ROUND(0.1,9),<#VALUE!>)` is `#VALUE!`: the type argument's error before the tails range check (ours `#NUM!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/a612e89321a6df9c Calc!A22 `=F.INV.RT(0.975,0,TTEST(CEILING.PRECISE(Data!D$9,0.1),Data!A2:D5,ROUND(0.1,9),(Data!C8/Data!D7)))`: Excel #VALUE!, ours #NUM!; inner `TTEST(CEILING.PRECISE(Data!D$9,0.1),Data!A2:D5,ROUND(0.1,9),(Data!C8/Data!D7))` Excel #VALUE!, ours #NUM!
+Cells:
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A22
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 64 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `T.TEST(1/0,A1:A3,3,2)` is `#DIV/0!`, `T.TEST(A1:A3,NA(),1,9)` `#N/A`, `T.TEST(A1:A3,B1:B3,-2.5,"a")`

@@ -35,7 +35,18 @@ Cells:
 - gen-m9/e882060cf4613302.case.json (1): Calc!A155
 - gen-m9/fb73d8163ad87fc6.case.json (1): Calc!A11
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (ours `#VALUE!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/35e8168aae2b00f8 Calc!A108 `=GAMMALN.PRECISE((BIN2DEC(Data!$D$6)*7))`: Excel #NUM!, ours #VALUE!; inner `BIN2DEC(Data!$D$6)` Excel #NUM!, ours #VALUE!
+- gen-m9/4ab2ba98d26c8a5e Calc!A116 `=HARMEAN(LET(w,RIGHT(Data!$E6,0),BIN2HEX(Data!C10,1)),Data!C2:C4,(PEARSON(Data!E3:E3,(-0.5))*DB(27087,739,39,Data!D$6,9)))`: Excel #NUM!, ours #VALUE!; inner `LET(w,RIGHT(Data!$E6,0),BIN2HEX(Data!C10,1))` Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A108
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A116
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for BIN2DEC, BIN2HEX and BIN2OCT of "abc" and " x ".
