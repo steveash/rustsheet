@@ -1,0 +1,127 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A11": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A12": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A13": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A14": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A8": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A9": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B1": {
+    "t": "s",
+    "v": "=T(INDEX(5,0,0))"
+   },
+   "B10": {
+    "t": "s",
+    "v": "=N(INDEX(\"a\",0))"
+   },
+   "B11": {
+    "t": "s",
+    "v": "=N(INDEX(TRUE,0,0))"
+   },
+   "B12": {
+    "t": "s",
+    "v": "=N(INDEX(-5,0))"
+   },
+   "B13": {
+    "t": "s",
+    "v": "=N(INDEX(5,0,0))"
+   },
+   "B14": {
+    "t": "s",
+    "v": "=T(INDEX({\"a\";\"b\"},1))"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=T(INDEX(\"a\",0,0))"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=N(INDEX(\"a\",0,0))"
+   },
+   "B4": {
+    "t": "s",
+    "v": "=N(INDEX(TRUE,0))"
+   },
+   "B5": {
+    "t": "s",
+    "v": "=T(INDEX(TRUE,0))"
+   },
+   "B6": {
+    "t": "s",
+    "v": "=N(INDEX(-5,0,0))"
+   },
+   "B7": {
+    "t": "s",
+    "v": "=T(INDEX(-5,0))"
+   },
+   "B8": {
+    "t": "s",
+    "v": "=N(INDEX(5,,0))"
+   },
+   "B9": {
+    "t": "s",
+    "v": "=T(INDEX(5,,0))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d944fd8f86243aad7a47ba1aec965e97021a6e1d424e87eb6dae025f59555805",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-24T10:51:00+00:00",
+  "version": null,
+  "workbook_name": "6a5105b89768638724390aa59635ad1576a8905b1d16141c8f34d326a70e7455.xlsx"
+ }
+}

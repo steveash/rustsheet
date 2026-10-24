@@ -788,25 +788,29 @@ impl Model {
         }
     }
 
+    /// COMBIN; both arguments lift over a range or an array, as COMBINA's do:
+    /// `SUM(COMBIN(18,FILTER(..)))` and `SUM(COMBIN(D1:D3,1))` add the elements' results
+    /// (probes/t2579-array-value-edges B60-B68, excel-graph; T-2579).
     pub(crate) fn fn_combin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        let k = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        if n < 0.0 || k < 0.0 {
-            return num_error(cell);
-        }
-        if k > n {
-            return num_error(cell);
-        }
-        if n >= COMBIN_MAX_NUMBER {
+        self.lift_call(Function::Combin, args, cell, &mut |model, values| {
+            let [n, k] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let n = match model.kernel_number(n, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            let k = match model.kernel_number(k, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            Self::combin_of(n, k, cell)
+        })
+    }
+
+    /// COMBIN on a floored `n` and `k` (see `fn_combin`).
+    fn combin_of(n: f64, k: f64, cell: CellReferenceIndex) -> CalcResult {
+        if n < 0.0 || k < 0.0 || k > n || n >= COMBIN_MAX_NUMBER {
             return num_error(cell);
         }
         match combin(n, k) {
