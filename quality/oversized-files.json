@@ -2,6 +2,7 @@
   "bindings/python/src/user_model.rs": 1049,
   "crates/rustsheet-engine/src/actions.rs": 1822,
   "crates/rustsheet-engine/src/conditional_formatting.rs": 1757,
+  "crates/rustsheet-engine/src/evaluation.rs": 1071,
   "crates/rustsheet-engine/src/expressions/parser/stringify.rs": 1007,
   "crates/rustsheet-engine/src/functions/financial/financial_bonds.rs": 1021,
   "crates/rustsheet-engine/src/functions/mod.rs": 2177,
