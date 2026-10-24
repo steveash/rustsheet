@@ -61,4 +61,4 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
 
 ## Outcome
-`IMLN` and `IMLOG10` of a zero argument now return `#NUM!` via `finite_complex_result` (as IMLOG2 does). Unit test `fn_imln_imlog10_of_zero_are_num`. Eval delta: 28 gen-m9 baseline known-failure lines removed (all the owned IMLN/IMLOG10 cells), regressions 0.
+`IMLN` and `IMLOG10` of a zero argument now return `#NUM!` via `finite_complex_result` (as IMLOG2 does). Unit test `fn_imln_imlog10_of_zero_are_num`. Eval delta: 28 gen-m9 baseline known-failure lines removed (the 24 owned cells plus 4 more that share the guard: IMLOG10 of `1E-200+1E-200i` (squares underflow to 0) in 76b07b57099ccc8d A64, 895a33aa8352864a A226, 9fa170a9f17624fd A29 and of `1E+300+1E+300i` (squares overflow) in 40fc68fccfaf9b76 A212; Excel gives #NUM! there too), regressions 0.
