@@ -3404,10 +3404,6 @@ F	probes/table-edits/table-insert-row-inside-data.case.json	F!A9
 F	probes/table-edits/table-totals-baseline.case.json	F!A10
 F	probes/table-edits/table-totals-baseline.case.json	F!A11
 F	probes/table-edits/table-totals-baseline.case.json	F!A3
-F	probes/table-edits/table-unknown-column-load.case.json	F!A1
-F	probes/table-edits/table-unknown-column-load.case.json	F!A2
-F	probes/table-edits/table-unknown-name-load.case.json	F!A1
-F	probes/table-edits/table-unknown-name-load.case.json	F!A2
 F	probes/text-format-digits-date-token.case.json	Sheet1!C25
 F	probes/text-format-length-limit-n.case.json	Sheet1!A2
 F	probes/text-format-length-limit-n.case.json	Sheet1!A7
