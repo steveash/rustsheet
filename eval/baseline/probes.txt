@@ -3198,9 +3198,6 @@ F	probes/t2578-pivotby-total-error-scope.case.json	P!D55
 F	probes/t2578-pivotby-total-error-scope.case.json	P!D62
 F	probes/t2578-pivotby-total-error-scope.case.json	P!D64
 F	probes/t2578-pivotby-total-error-scope.case.json	P!D65
-F	probes/t2579-array-value-edges.case.json	P!B23
-F	probes/t2579-array-value-edges.case.json	P!B24
-F	probes/t2579-array-value-edges.case.json	P!B26
 F	probes/t2579-array-value-edges.case.json	P!B49
 F	probes/t2592-nested-groupby-cells.case.json	P!A10
 F	probes/t2592-nested-groupby-cells.case.json	P!A101
