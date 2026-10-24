@@ -60,30 +60,46 @@ impl Model {
         })
     }
 
-    // The FORECAST.ETS family (exponential triple smoothing) is recognized but
-    // not yet implemented; it returns the #N/IMPL! error.
-    pub(crate) fn fn_forecast_ets(
+    /// FORECAST.ETS, FORECAST.ETS.CONFINT and FORECAST.ETS.STAT are recognized but not
+    /// implemented: every element is `#N/IMPL!`, after the lifted argument (`target_date`, or
+    /// `statistic_type` at `lifted`) is read as a number, so text there is `#VALUE!`
+    /// (probes/forecast-ets-longer-series K38; probes/stat-argument-modes H268-H280, T-2028).
+    fn forecast_ets_lifted(
         &mut self,
-        _args: &[Node],
+        kind: Function,
+        lifted: usize,
+        args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        CalcResult::new_error(
-            Error::NIMPL,
-            cell,
-            "FORECAST.ETS not implemented".to_string(),
-        )
+        self.lift_call(kind, args, cell, &mut |model, values| {
+            let read = values
+                .get(lifted)
+                .map_or(Ok(0.0), |value| model.kernel_number(value, cell));
+            match read {
+                Err(error) => error,
+                Ok(_) => CalcResult::new_error(
+                    Error::NIMPL,
+                    cell,
+                    "FORECAST.ETS family not implemented".to_string(),
+                ),
+            }
+        })
+    }
+
+    pub(crate) fn fn_forecast_ets(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.forecast_ets_lifted(Function::ForecastEts, 0, args, cell)
     }
 
     pub(crate) fn fn_forecast_ets_confint(
         &mut self,
-        _args: &[Node],
+        args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        CalcResult::new_error(
-            Error::NIMPL,
-            cell,
-            "FORECAST.ETS.CONFINT not implemented".to_string(),
-        )
+        self.forecast_ets_lifted(Function::ForecastEtsConfint, 0, args, cell)
     }
 
     pub(crate) fn fn_forecast_ets_seasonality(
@@ -100,13 +116,9 @@ impl Model {
 
     pub(crate) fn fn_forecast_ets_stat(
         &mut self,
-        _args: &[Node],
+        args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        CalcResult::new_error(
-            Error::NIMPL,
-            cell,
-            "FORECAST.ETS.STAT not implemented".to_string(),
-        )
+        self.forecast_ets_lifted(Function::ForecastEtsStat, 2, args, cell)
     }
 }
