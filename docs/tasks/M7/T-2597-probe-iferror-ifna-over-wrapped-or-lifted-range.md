@@ -19,7 +19,8 @@ direct TRIMRANGE of one, read each blank cell as 0 (a one-cell range keeps the b
 to a direct range or TRIMRANGE argument (`if_error_like`, functions/logical/mod.rs); wrapped forms keep blanks empty.
 Probe over the same D sheet (1, blank, TRUE, "x", 5, 1/0): COUNT and `INDEX(..,2)&"|"` of `IFERROR(LET(x,D!A1:A6,x),-1)`,
 `IFERROR(IF(TRUE,D!A1:A6),-1)`, `IFERROR(TAKE(D!A1:A6,5),-1)`, `IFERROR(DROP(D!A1:A6,1),-1)`,
-`IFERROR(TRIMRANGE(D!A1:A6,{0;1}),-1)` (lifted) and `IFNA(TRIMRANGE(D!A1:B6),-1)`. docs/excel-semantics/arrays.md
+`IFERROR(TRIMRANGE(D!A1:A6,{0;1}),-1)` (lifted), `IFNA(TRIMRANGE(D!A1:B6),-1)` and a TRIMRANGE that trims to one
+blank cell (ours keeps its empty value, as for a one-cell range). docs/excel-semantics/arrays.md
 "Array-value edges in the gen-m9 sweep (T-2436)".
 
 ## Acceptance criteria
