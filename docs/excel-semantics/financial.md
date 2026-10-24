@@ -763,7 +763,7 @@ is not lost) and does not add the periods one by one in doubles. Its form is clo
 `CUMPRINC(1E10,100,1,1,100,0)` is -1.0000000000000013, exactly `-1E10/expm1(log1p(1E10))` (A17), where the exact value is
 -1. An end period past nper is `#NUM!`, also below nper + 1 (`CUMIPMT(0.01,100.5,1000,1,101,0)`, A20-A22); the start
 rounds up and the end down (`CUMIPMT(0.001,2000,1000,1.5,1999.7,0)` sums periods 2 to 1999, A23; CUMPRINC_CUMIPMT.xlsx
-G6, G7). Lifted elements are the scalar calls (A29, A30).
+G6, G7), but a start below 1 is `#NUM!` as given, before it rounds up (0.3, 0.5, 1E-15; T-2489, gen-m9 sweep below). Lifted elements are the scalar calls (A29, A30).
 Evidence: probes/fin-cumipmt-period-bound A1-A30 (excel-graph, 2026-10-18, T-1845), probes/fin-remaining-later-argument-
 ranges K1-K3 (T-1822), `ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx`.
 Ours: since T-1845 (functions/financial/cumulative.rs) up to 32 periods are main's per-period IPMT/PPMT sum, which matches

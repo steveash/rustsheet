@@ -496,10 +496,20 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> ArgBuf<CalcResult> {
+        self.reference_lift_values_read(args, cell, Self::evaluate_node_in_context)
+    }
+
+    /// [`Self::reference_lift_values`] with each argument read by `read`.
+    pub(super) fn reference_lift_values_read(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        read: fn(&mut Self, &Node, CellReferenceIndex) -> CalcResult,
+    ) -> ArgBuf<CalcResult> {
         let mut values = ArgBuf::filled(args.len(), || CalcResult::EmptyArg);
         for (slot, arg) in values.as_mut_slice().iter_mut().zip(args) {
             if !matches!(arg, Node::EmptyArgKind) {
-                *slot = self.evaluate_node_in_context(arg, cell);
+                *slot = read(self, arg, cell);
             }
         }
         values
