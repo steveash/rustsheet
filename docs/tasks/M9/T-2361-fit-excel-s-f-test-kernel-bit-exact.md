@@ -150,7 +150,7 @@ Cells:
   known-failure lines in any baseline (`make eval-baseline` accepts).
 - [x] Either a bit-exact F.TEST kernel (H248/H251 exact), or the fit result written in
   docs/excel-semantics/statistics.md with the best candidate's score.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
