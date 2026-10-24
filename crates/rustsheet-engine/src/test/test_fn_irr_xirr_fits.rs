@@ -54,13 +54,52 @@ fn xirr_with_a_zero_first_value_needs_no_later_date() {
 }
 
 #[test]
+fn xirr_with_a_zero_first_value_brackets_at_the_first_chain_point() {
+    // probes/xirr-zero-first-bracket A1, A3, A8, A9, A10: the flows do not matter, the guess does
+    let got = results(&[
+        "=XIRR({0,-1000,2000},{45000,45000,45365})",
+        "=XIRR({0,-1000,2000},{45000,45000,45365},0.3)",
+        "=XIRR({0,-100,110},{45000,45000,45000})",
+        "=XIRR({0,-100,110},{45000,45000,45000},0)",
+        "=XIRR({0,-100,110},{45000,45000,45000},2)",
+    ]);
+    let expected = [
+        2.980_232_238_769_531_4e-9_f64,
+        4.470_348_358_154_297e-9,
+        2.980_232_238_769_531_4e-9,
+        4.882_812_5e-9,
+        3.725_290_298_461_914e-9,
+    ];
+    assert_eq!(got, expected.map(f64::to_bits));
+}
+
+fn assert_num_errors(formulas: &[&str]) {
+    let mut model = new_empty_model();
+    for (i, formula) in formulas.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for row in 1..=formulas.len() {
+        assert_eq!(
+            model.get_cell_value_by_ref(&format!("Sheet1!A{row}")),
+            Ok(CellValue::String("#NUM!".to_string())),
+            "A{row}"
+        );
+    }
+}
+
+#[test]
+fn xirr_with_a_zero_first_value_and_a_negative_guess_is_num() {
+    // probes/xirr-zero-first-bracket A6, A7, A11 (A6 has a root on the downward chain)
+    assert_num_errors(&[
+        "=XIRR({0,-1000,900},{45000,45000,45365},-0.2)",
+        "=XIRR({0,-1000,1100},{45000,45000,45365},-0.5)",
+        "=XIRR({0,-100,110},{45000,45000,45000},-0.5)",
+    ]);
+}
+
+#[test]
 fn xirr_with_a_nonzero_first_value_still_needs_a_later_date() {
     // probes/xirr-mismatched-empties X9
-    let mut model = new_empty_model();
-    model._set("A1", "=XIRR({-1000,1100},{45365,45000})");
-    model.evaluate();
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!A1"),
-        Ok(CellValue::String("#NUM!".to_string()))
-    );
+    assert_num_errors(&["=XIRR({-1000,1100},{45365,45000})"]);
 }

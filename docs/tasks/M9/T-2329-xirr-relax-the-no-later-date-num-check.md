@@ -29,7 +29,8 @@ Cells:
 - [ ] Visible parity (gen-m9, T-2257): the 1 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] A28-A30 pass (done, branch); the nonzero-first-value no-later-date cases (xirr-mismatched-empties X9, X12, X13) stay `#NUM!`.
-- [ ] A11, A14, A20 pass once T-2328 has fitted the bound.
+- [ ] ~~A11, A14, A20 pass once T-2328 has fitted the bound.~~ Moved to T-2566: T-2328 found they need XNPV to discount with Excel's `^`, which T-2566 owns.
+- [ ] probes/xirr-zero-first-bracket (new, excel-graph): a zero first value brackets at [0, first chain point] whatever the flows, and a negative guess is `#NUM!`; all 16 cells pass.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
