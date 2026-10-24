@@ -35,7 +35,11 @@ fn test_frequency_rows_and_errors() {
     model._set("B5", "=FREQUENCY({1;2},NA())");
     model._set("B6", "=FREQUENCY({1;#DIV/0!},NA())");
     model._set("B7", "=FREQUENCY(1/0,NA())");
+    model._set("B8", "=T.TEST({0.02,0.027},2,44,NA())");
+    model._set("B9", "=T.TEST({0.02,0.027},2,44,2)");
     model.evaluate();
+    assert_eq!(model._get_text("B8"), "#N/A");
+    assert_eq!(model._get_text("B9"), "#NUM!");
     assert_eq!(model._get_text("B1"), "2");
     assert_eq!(model._get_text("B2"), "2");
     assert_eq!(model._get_text("B3"), "3");

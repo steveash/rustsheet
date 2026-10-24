@@ -139,14 +139,14 @@ Cells:
 - gen-m9/b5aef3645cec1b95.case.json (1): Calc!A72
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+- [x] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 151 known-failure lines (139 from T-2255, 12 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [~] (partly; rest in T-2624) Visible parity (gen-m9, T-2255 and T-2256): these 151 known-failure lines (139 from T-2255, 12 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `ROWS(FREQUENCY({1;2;3},2))` is 2, `FREQUENCY(NA(),{1;2})` is `#N/A`, an error bins is its error.
-- [ ] statistics.md's entry gets an "Ours:" line naming this task.
+- [x] Unit tests: `ROWS(FREQUENCY({1;2;3},2))` is 2, `FREQUENCY(NA(),{1;2})` is `#N/A`, an error bins is its error.
+- [x] statistics.md's entry gets an "Ours:" line naming this task.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -164,4 +164,4 @@ FREQUENCY skips text/booleans/blanks, returns two rows when no bin is numeric, a
 good. Probe: probes/frequency-bins. Eval: gen-m9 known failures 5755 -> 5657 (98 fixed, none new), probes baseline
 unchanged apart from its new case. 19 FREQUENCY cells stay off because their other arguments are other functions' gaps
 (ODDFYIELD/ODDLYIELD, FORECAST.ETS*, EXPAND, DB, NPER, WRAPCOLS, FILTER, INDIRECT/MAP); the acceptance lines for those are
-not met and the remaining gen-m9 lines stay in the baseline.
+not met; they move to T-2624 and the remaining gen-m9 lines stay in the baseline.

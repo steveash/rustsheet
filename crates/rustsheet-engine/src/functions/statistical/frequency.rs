@@ -1,3 +1,4 @@
+use crate::arithmetic::own_error;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::reference_operators::RefArg;
@@ -53,10 +54,7 @@ impl Model {
             // The first error element is the result, not the `#VALUE!` the shared reader gives
             // (gen-m9/05d44f6dd6cfc567 A126: `{-1,TRUE,0}` through CHISQ.DIST.RT is `#NUM!`).
             CalcResult::Array(array) => {
-                let first_error = array.iter().flatten().find_map(|node| match node {
-                    ArrayNode::Error(error) => Some(error.clone()),
-                    _ => None,
-                });
+                let first_error = array.iter().flatten().find_map(own_error);
                 match first_error {
                     Some(error) => Err(FreqError::element(CalcResult::new_error(
                         error,
@@ -107,6 +105,7 @@ impl Model {
             (Ok(data), Ok(bins)) => (data, bins),
             (Err(e), _) if !e.in_array => return e.error,
             (_, Err(e)) if !e.in_array => return e.error,
+            // Array errors: the data's first, else the bins'.
             (Err(e), _) | (_, Err(e)) => return e.error,
         };
 
