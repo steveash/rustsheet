@@ -68,4 +68,4 @@ New probe probes/fin-accrint-1900-calendar (52 cells, excel-graph): the settleme
 where the 2026-10-17 run gave 0; the oracle sidecar now records the new value (financial.md "ACCRINT at the
 calendar's start").
 Eval delta: probes 1895 -> 1882 (all 13 listed visibly-off lines: -b A9, -c O1-O4, O6, O8-O14); the new case
-passes all 52 cells; no new failure lines. No follow-ups.
+passes all 52 cells; no new failure lines. Follow-up: T-2562 (1904 workbooks and a February-1900 first interest, unprobed).
