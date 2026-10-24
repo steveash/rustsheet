@@ -45,6 +45,10 @@ T-2207 (2026-10-23): ODDFPRICE, and the price ODDFYIELD's solver walks, now disc
 lab, `^`-priced solvers reach at most 4/178 bit-exact as the libm-priced ones do, so the price kernel does not
 explain the stopping point (financial.md "PRICE and ODDFPRICE discount with Excel's `^`").
 
+T-2483 probe (excel-graph, 2026-10-24): probes/odd-bond-argument-check-order A258
+`ODDFYIELD(39448,43831,39300,39630,0.0575,95,100,2,0)` is 0.06342868471015199 in Excel, ours 0.06342868470999918 (a
+known-failure line in eval/baseline/probes.txt; the rest of that case is argument order and passes).
+
 ## Acceptance criteria
 - [ ] An `oddfyield` lab fit over the cells above (Excel's cached J as the price input) scores named candidates:
       Newton with an analytic or finite-difference derivative, secant, starts at the coupon rate / 0 / 0.1 / the
