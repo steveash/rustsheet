@@ -3,7 +3,7 @@ id: T-2592
 title: "Probe nested GROUPBY/PIVOTBY cells: MAP, REDUCE, aggregates and text over them, reference LAMBDAs, two levels (SPEC-0018)"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
