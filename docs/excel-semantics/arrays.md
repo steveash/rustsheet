@@ -1706,15 +1706,20 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399
 
 ## An empty array as a function argument (T-2436)
-Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH (as the value
-or a case), IMSUM and WORKDAY's holidays, while ABS and N keep the `#CALC!`, ERROR.TYPE gives 14 and IFERROR catches it:
-`SWITCH(1,TAKE(0.2,0,3),5,6)`, `SWITCH(DROP({1},1),1,2,3)`, `IMSUM(DROP({1},1))` and `WORKDAY(1,1,DROP({1},1))` are `#VALUE!`,
-`ABS(DROP({1},1))` and `N(DROP({1},1))` `#CALC!` (probes/t2436/computed-scalar A43:A50). Which other functions turn it into
-`#VALUE!` is unprobed. Separately, `SEQUENCE(0.0123,123456789.123,..)` is `#VALUE!`, not the zero rows'
-`#CALC!` (the oversized columns as the cause is UNVERIFIED) (gen-m9 f280df8ba95f96b9 A222).
-Evidence: probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9 (excel-graph, 2026-10-24).
-Ours: `#CALC!` for all of them; T-2580.
-Status: VERIFIED (excel-graph) for the listed calls
+Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH's
+expression and case values, IMSUM, IMPRODUCT, and the holidays of WORKDAY and NETWORKDAYS: `SWITCH(1,DROP({1},1),5,6)`,
+`SWITCH(DROP({1},1),1,2,3)`, `IMSUM(DROP({1},1))`, `IMSUM("1+i",DROP({1},1))`, `IMPRODUCT(DROP({1},1))`,
+`WORKDAY(1,1,DROP({1},1))` and `NETWORKDAYS(1,10,DROP({1},1))`. It stays `#CALC!` in SWITCH's result and default
+(`SWITCH(1,1,DROP({1},1),3)`), CHOOSE (index or value), IFS, IF, XLOOKUP's if_not_found, SUM, MAX, ABS, LEN and N; ERROR.TYPE
+gives 14 and IFERROR catches it (probes/empty-array-args-sequence A1:A21).
+SEQUENCE: rows and columns both reach 1048576, and an extent that is negative or past it is `#VALUE!` even next to a zero one:
+`SEQUENCE(0,1048576)` and `SEQUENCE(0.0123,16385)` are `#CALC!`, `SEQUENCE(0,1048577)`, `SEQUENCE(0,-1)` and
+`SEQUENCE(0.0123,123456789.123)` `#VALUE!` (so the oversized columns are the cause, gen-m9 f280df8ba95f96b9 A222); with a
+non-zero rows a columns past the grid's 16384 gives an array (`#SPILL!` in a cell: `SEQUENCE(1,20000)`, `SEQUENCE(1,1048576)`)
+up to 1048576, `#VALUE!` above. Ours: the array case is `#VALUE!` (T-2600, not probed here).
+Evidence: probes/empty-array-args-sequence (excel-graph, 2026-10-24), probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9.
+Ours: `CalcResult::is_empty_array` in those readers.
+Status: VERIFIED (excel-graph)
 Tasks: T-2580
 
 ## GROUPBY and PIVOTBY in the gen-m9 sweep (T-2436)

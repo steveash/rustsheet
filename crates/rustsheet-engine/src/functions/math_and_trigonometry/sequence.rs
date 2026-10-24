@@ -1,4 +1,4 @@
-use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::constants::LAST_ROW;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
@@ -43,30 +43,36 @@ impl Model {
             }
         }
         let [rows, columns, start, step] = read;
-        let extent = |n: f64, last: usize, name: &str| -> Result<usize, CalcResult> {
+        // An extent past its limit or negative is `#VALUE!` and beats a zero in the other one
+        // (`SEQUENCE(0,-1)`, `SEQUENCE(0.0123,123456789.123)`); only then does a zero give `#CALC!`
+        // (probes/empty-array-args-sequence A22:A62). Columns reach 1048576 like rows, past the
+        // 16384 of the grid (`SEQUENCE(0,1048576)` is `#CALC!`, `SEQUENCE(0,1048577)` `#VALUE!`).
+        let extent = |n: f64, name: &str| -> Result<usize, CalcResult> {
             let n = n.floor() as i64;
-            let error = match n {
-                0 => Error::CALC,
-                n if n < 0 => Error::VALUE,
-                n => match usize::try_from(n) {
-                    Ok(n) if n <= last => return Ok(n),
-                    _ => Error::VALUE,
-                },
-            };
-            Err(CalcResult::new_error(
-                error,
-                cell,
-                format!("{name} must be between 1 and {last}"),
-            ))
+            match usize::try_from(n) {
+                Ok(n) if n <= LAST_ROW as usize => Ok(n),
+                _ => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("{name} must be between 1 and {LAST_ROW}"),
+                )),
+            }
         };
-        let rows = match extent(rows, LAST_ROW as usize, "rows") {
+        let rows = match extent(rows, "rows") {
             Ok(rows) => rows,
             Err(error) => return error,
         };
-        let columns = match extent(columns, LAST_COLUMN as usize, "columns") {
+        let columns = match extent(columns, "columns") {
             Ok(columns) => columns,
             Err(error) => return error,
         };
+        if rows == 0 || columns == 0 {
+            return CalcResult::new_error(
+                Error::CALC,
+                cell,
+                "rows and columns must be at least 1".to_string(),
+            );
+        }
         if let Some((error, message)) = check_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);
         }

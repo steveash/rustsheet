@@ -2,7 +2,7 @@ use super::no_match;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, types::CellReferenceIndex},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     functions::util::compare_values,
     model::Model,
     reference_operators::Picked,
@@ -80,7 +80,7 @@ impl Model {
             return Picked::Value(self.switch_lifted(expr, Vec::new(), args, cell));
         }
         if expr.is_error() {
-            return Picked::Value(expr);
+            return Picked::Value(empty_array_as_value_error(expr, cell));
         }
 
         // How many cases we have?
@@ -97,7 +97,7 @@ impl Model {
                 return Picked::Value(self.switch_lifted(expr, cases, args, cell));
             }
             if case.is_error() {
-                return Picked::Value(case);
+                return Picked::Value(empty_array_as_value_error(case, cell));
             }
             if switch_matches(&expr, &case) {
                 return Picked::Node(&args[2 * case_index + 2]);
@@ -111,6 +111,16 @@ impl Model {
         }
         Picked::Value(no_match(cell))
     }
+}
+
+/// SWITCH's expression or case error: an empty array's `#CALC!` is `#VALUE!` there, while a result
+/// argument keeps it (`SWITCH(1,DROP({1},1),5,6)` and `SWITCH(DROP({1},1),1,2,3)` are `#VALUE!`,
+/// `SWITCH(1,1,DROP({1},1),3)` `#CALC!`; probes/empty-array-args-sequence A1:A4).
+fn empty_array_as_value_error(error: CalcResult, cell: CellReferenceIndex) -> CalcResult {
+    if error.is_empty_array() {
+        return CalcResult::new_error(Error::VALUE, cell, "Empty array".to_string());
+    }
+    error
 }
 
 /// Whether SWITCH's expression value matches a case value. A blank cell on either side reads as

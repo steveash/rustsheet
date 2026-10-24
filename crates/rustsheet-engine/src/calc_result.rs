@@ -100,6 +100,19 @@ impl CalcResult {
         matches!(self, CalcResult::Error { .. })
     }
 
+    /// Whether this is the `#CALC!` of an empty array (TAKE or DROP of nothing), which SWITCH's
+    /// expression and cases, IMSUM, IMPRODUCT and the holidays of WORKDAY and NETWORKDAYS turn
+    /// into `#VALUE!` (docs/excel-semantics/arrays.md "An empty array as a function argument").
+    pub(crate) fn is_empty_array(&self) -> bool {
+        matches!(
+            self,
+            CalcResult::Error {
+                error: Error::CALC,
+                ..
+            }
+        )
+    }
+
     /// A blank cell's value as a function hands it on: the empty value, which COUNT, COUNTA and
     /// AVERAGE count as 0 while ISBLANK still sees it blank. IFERROR and IFNA give it for a blank
     /// value argument (docs/excel-semantics/logic.md "IFERROR / IFNA of a blank cell is an empty
