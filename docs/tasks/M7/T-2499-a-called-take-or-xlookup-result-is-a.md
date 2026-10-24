@@ -3,7 +3,7 @@ id: T-2499
 title: "A called TAKE, DROP, TRIMRANGE or XLOOKUP result is a reference: TAKE(A1:A3,1)(2) is #REF!"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
