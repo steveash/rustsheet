@@ -1625,7 +1625,7 @@ LN(ROUND(..)))` is `#VALUE!` (7d67c559ce7536fa A1296). `SEQUENCE(0)` alone stays
 an array (WRAPROWS pads with a blank) of about 1E+15, past the grid, which is `#VALUE!` as `SEQUENCE(1048577)` is, and that also
 beats the zero columns; the reading fits the cell but is not isolated by a probe.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-A zero rows does not beat an invalid columns: `SEQUENCE(0,-1)` is `#VALUE!` (probes/t2580-sequence-zero-extent A19, T-2580); c36ff5f42a1a4d47
+A zero rows does not beat an invalid columns: `SEQUENCE(0,-1)` is `#VALUE!` (probes/t2580-empty-array-args A19, T-2580); c36ff5f42a1a4d47
 A359's `#CALC!` is a tiny negative columns that counts as 0 ("An empty array as a function argument"). So SEQUENCE reads all four
 arguments, an error value in any of them winning, and only then checks the extents (negative or past the limit `#VALUE!` in either, then 0 `#CALC!`).
 Ours: `sequence_kernel` in that order; TAKE reads both counts before a zero one is `#CALC!` (`edge_spans`; T-2316).
@@ -1715,12 +1715,11 @@ result and default keep the `#CALC!`, ERROR.TYPE gives 14 and IFERROR catches it
 is not read (`SWITCH(1,1,2,DROP({1},1),3)` is 2) (probes/t2436/computed-scalar A43:A50, probes/t2580-empty-array-args).
 Separately, SEQUENCE's rows and columns both stop at 1048576 (not the grid's 16384 columns): a negative extent or one past it
 is `#VALUE!` and beats a zero one's `#CALC!` (`SEQUENCE(0.0123,123456789.123)`, `SEQUENCE(0,1048577)` and `SEQUENCE(0,-1)` are
-`#VALUE!`; `SEQUENCE(0,1048576)`, `SEQUENCE(1048576,0)` and `SEQUENCE(0,0)` `#CALC!`; `SEQUENCE(0,-0.5)` is `#VALUE!`, the
-the extent floors but snaps up to the next integer when within a tolerance of it, **different on each side**. Above 0 it is LEFT's count rule (`near_integer_count`, about 2^-22): `COLUMNS(SEQUENCE(1,3-2E-7))` is 3 and `3-3E-7` 2, `ROWS(SEQUENCE(3-1E-9))` 3 and `3-1E-6` 2, `SEQUENCE(1048577-1E-9,1)` `#VALUE!`. Below 0 it is about 2^-23: `SEQUENCE(0,-1.19E-7)` and `SEQUENCE(1,-1E-9)` (the tiny negative column of gen-m7 c36ff5f42a1a4d47 A359) are `#CALC!`, `SEQUENCE(0,-1.2E-7)`, `SEQUENCE(1,-1E-6)` and `SEQUENCE(0,-0.5)` `#VALUE!` (probes/t2580-sequence-extent-snap, t2580-sequence-negative-tolerance, t2580-sequence-tiny-negative). Mind `-2^-22`, which Excel reads as `(-2)^-22`, a positive number. Unprobed: the exact bounds, and the snap of a negative extent below -1. Also `COLUMNS(SEQUENCE(1,1048576))` is 1048576 where `SEQUENCE(1,1048577)` is `#VALUE!`
+`#VALUE!`; `SEQUENCE(0,1048576)`, `SEQUENCE(1048576,0)` and `SEQUENCE(0,0)` `#CALC!`; `SEQUENCE(0,-0.5)` is `#VALUE!`). The extent floors but snaps up to the next integer when within a tolerance of it, **different on each side**. Above 0 it is LEFT's count rule (`near_integer_count`, about 2^-22): `COLUMNS(SEQUENCE(1,3-2E-7))` is 3 and `3-3E-7` 2, `ROWS(SEQUENCE(3-1E-9))` 3 and `3-1E-6` 2, `SEQUENCE(1048577-1E-9,1)` `#VALUE!`. Below 0 it is about 2^-23: `SEQUENCE(0,-1.19E-7)` and `SEQUENCE(1,-1E-9)` (the tiny negative column of gen-m7 c36ff5f42a1a4d47 A359) are `#CALC!`, `SEQUENCE(0,-1.2E-7)`, `SEQUENCE(1,-1E-6)` and `SEQUENCE(0,-0.5)` `#VALUE!` (probes/t2580-sequence-extent-snap, t2580-sequence-negative-tolerance, t2580-sequence-tiny-negative). Mind `-2^-22`, which Excel reads as `(-2)^-22`, a positive number. Unprobed: the exact bounds, and the snap of a negative extent below -1. Also `COLUMNS(SEQUENCE(1,1048576))` is 1048576 where `SEQUENCE(1,1048577)` is `#VALUE!`
 (gen-m9 f280df8ba95f96b9 A222, probes/t2580-sequence-zero-extent, t2580-sequence-column-cap).
 Evidence: probes/t2436/computed-scalar, probes/t2580-* (excel-graph, 2026-10-24).
 Ours: implemented (T-2580: `CalcResult::empty_array_as_value_error`, `sequence_kernel`); a SEQUENCE with 16385 to 1048576 columns and
-rows above 0 is still `#VALUE!`: DEVIATION (directive 5, decision 0014), `check_array_size` caps the columns at the grid's 16384 until T-2600 lifts it.
+rows above 0 is still `#VALUE!`, a known gap: `check_array_size`'s per-dimension column check, which T-2600 owns.
 Status: VERIFIED (excel-graph) for the listed calls; the SEQUENCE snap tolerances are bracketed by probes, not exact (UNVERIFIED)
 Tasks: T-2436, T-2580
 

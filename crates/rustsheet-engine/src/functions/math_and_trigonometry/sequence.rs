@@ -8,8 +8,8 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-/// How close below the next integer a negative extent counts as that integer: half the positive
-/// side's `near_integer_count` tolerance (`SEQUENCE(0,-1.19E-7)` is `#CALC!`, `-1.2E-7`
+/// How close below the next integer a negative extent counts as that integer: about 2^-23, half
+/// the positive side's `near_integer_count` tolerance, bracketed by probes (`SEQUENCE(0,-1.19E-7)` is `#CALC!`, `-1.2E-7`
 /// `#VALUE!`; probes/t2580-sequence-negative-tolerance). The exact bound is UNVERIFIED past
 /// those two cells; only extents in (-1, 0) are probed.
 const NEGATIVE_EXTENT_TOLERANCE: f64 = 1.192_092_895_507_812_5e-7 + 1.164_153_218_269_348_1e-10;
