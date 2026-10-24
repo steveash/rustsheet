@@ -3,7 +3,7 @@ id: T-2066
 title: "Probe QUARTILE of a single text cell with quart 7 and 1 (gen-m9 288b99797f58f149 A3)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
