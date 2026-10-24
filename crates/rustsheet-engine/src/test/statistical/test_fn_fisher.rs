@@ -74,3 +74,16 @@ fn test_fn_fisherinv_bit_exact() {
     assert_eq!(value("Sheet1!A3"), -1.0);
     assert_eq!(value("Sheet1!A4"), 0.0);
 }
+
+#[test]
+fn f_distributions_read_a_true_as_one() {
+    let mut model = new_empty_model();
+    // Excel values: probes-numeric/t1049-fdistrt A19, A26 and m9-legacy-fdist A90 (T-1849).
+    model._set("A1", "=ROUND(F.DIST.RT(TRUE,3,7),12)");
+    model._set("A2", "=ROUND(F.DIST.RT(1,TRUE,TRUE),12)");
+    model._set("A3", "=ROUND(FDIST(TRUE,2,5),12)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0.447079613");
+    assert_eq!(model._get_text("A2"), "0.5");
+    assert_eq!(model._get_text("A3"), "0.43120115");
+}

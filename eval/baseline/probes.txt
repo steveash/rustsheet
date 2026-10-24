@@ -2507,8 +2507,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H542
 F	probes/stat-argument-modes.case.json	Sheet1!H8
 F	probes/stat-argument-modes.case.json	Sheet1!H90
 F	probes/stat-argument-modes.case.json	Sheet1!H95
-F	probes/stat-later-argument-lift.case.json	Sheet1!L1
-F	probes/stat-later-argument-lift.case.json	Sheet1!L13
 F	probes/stat-order-floor-batch.case.json	Sheet1!A277
 F	probes/stat-order-floor-batch.case.json	Sheet1!A278
 F	probes/stat-order-floor-batch.case.json	Sheet1!A280
@@ -2530,9 +2528,6 @@ F	probes/stat-quantile-lift.case.json	Sheet1!E8
 F	probes/stat-quantile-lift.case.json	Sheet1!E9
 F	probes/stat-quantile-lift.case.json	Sheet1!J35
 F	probes/stat-quantile-lift.case.json	Sheet1!J37
-F	probes/stat-quantile-lift.case.json	Sheet1!L19
-F	probes/stat-quantile-lift.case.json	Sheet1!L2
-F	probes/stat-quantile-lift.case.json	Sheet1!L3
 F	probes/stat-test-lift.case.json	Sheet1!P64
 F	probes/stat-test-lift.case.json	Sheet1!P65
 F	probes/stat-test-lift.case.json	Sheet1!P66
