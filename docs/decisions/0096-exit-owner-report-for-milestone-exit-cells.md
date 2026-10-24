@@ -30,7 +30,9 @@
     and others, but not C51 and C55).
 - **Consequences:**
   - The steward and the planner run `make exit-owners MILESTONE=<current>` after `make eval`
-    instead of a hand search. It is a report, not a gate: making it a CI or `make check` step needs
+    instead of a hand search (since T-2293 the `steward` skill and the `planner` agent say so,
+    and give each listed cell an owner: the open task of the milestone that should fix it, or a
+    new one). It is a report, not a gate: making it a CI or `make check` step needs
     its own decision.
   - A line that names a case beside any A1-shaped text (`M5`, `LOG10`) does not make the task
     own the whole case. That errs toward unowned: the report may list a cell a task means to own,
