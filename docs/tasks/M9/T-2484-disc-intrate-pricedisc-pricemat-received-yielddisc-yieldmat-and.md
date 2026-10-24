@@ -76,7 +76,7 @@ Cells:
 From T-1743 (2026-10-24): gen-m9 05d44f6dd6cfc567 Calc!A34 `=GROWTH(DISC(39060,Data!A$4,Data!C6,(Data!D$7/1e-15)),..)` is
 `#NUM!` in Excel, `#VALUE!` in ours. GROWTH reports its known_y's error first, so the inner DISC decides: maturity 1E+15
 (past 9999-12-31), price "a*" (text) and redemption `"#N/A"/1E-15` (`#VALUE!`); Excel's DISC is `#NUM!` there (the
-date first), ours `#VALUE!`. This cell's line goes with this task.
+date first; inferred from the outer `#NUM!`, so probe the DISC call alone), ours `#VALUE!`. This cell's line goes with this task.
 Cells:
 - gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A34
 

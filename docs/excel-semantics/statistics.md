@@ -2823,15 +2823,15 @@ ours the size `#REF!`), both UNVERIFIED (T-2615). A blank one-cell known_x refer
 623663cacea53bbc A210; `GROWTH(Data!A11:D12,Data!C12)`, fec39efaba9284c3 A265).
 GROWTH (T-1743): of its 75 gen-m9 cells, T-1726's and T-1741's shared code fixes 71. The other four are decided
 elsewhere. `GROWTH(DISC(39060,Data!A$4,Data!C6,(Data!D$7/1E-15)),..)` is `#NUM!` (05d44f6dd6cfc567 A34): GROWTH reports
-its known_y's error first, and Excel's DISC there, with maturity 1E+15, a text price and an error redemption, is `#NUM!`,
-where ours is `#VALUE!` (T-2484). `WEIBULL(PROB(-42,GROWTH(Data!B10:C11,Data!B$3),..),..)` is `#REF!` (41248d1cb153c66e
+its known_y's error first, so Excel's DISC there, with maturity 1E+15, a text price and an error redemption, is
+`#NUM!` (inferred: no other argument can give `#NUM!`; T-2484's probe confirms it), where ours is `#VALUE!` (T-2484). `WEIBULL(PROB(-42,GROWTH(Data!B10:C11,Data!B$3),..),..)` is `#REF!` (41248d1cb153c66e
 A12): the GROWTH is the size `#REF!` in both, and Excel's PROB returns that prob_range error before the scalar x_range's
 `#VALUE!` (T-2468). A 0 y against a 2x2 x is abc2939ebd1e2365 A187 (T-2569), and `GROWTH(Data!D10:E10)`
 0.19999999999999996, ours 0.2000000000000001, is the solve (8fec7b207f4dd753 A75, T-2006), as are the growth-modes
 numerics past the 15th digit (K145:K152, K157 and K169 with a multi-column x; K3, K15, K27, K123 and K219).
 Evidence: gen-m9 (excel-graph, 2026-10-22); probes/logest-modes and probes/growth-modes (excel-graph).
 Ours: as described; T-2006, T-2468, T-2484, T-2569, T-2614, T-2615.
-Status: VERIFIED (excel-graph) for the values; the pivot and the two cross-function causes UNVERIFIED
+Status: VERIFIED (excel-graph) for the values; the pivot and the four cross-function causes (PRICEMAT, HLOOKUP, DISC, PROB) UNVERIFIED
 Tasks: T-2006, T-2468, T-2484, T-2569, T-2614, T-2615
 
 ## TRIMMEAN: an error percent before data with no number (T-1742)
