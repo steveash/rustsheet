@@ -48,7 +48,11 @@ impl Model {
         // (probes/empty-array-args-sequence A22:A62). Columns reach 1048576 like rows, past the
         // 16384 of the grid (`SEQUENCE(0,1048576)` is `#CALC!`, `SEQUENCE(0,1048577)` `#VALUE!`).
         let extent = |n: f64, name: &str| -> Result<usize, CalcResult> {
-            let n = n.trunc() as i64;
+            // Excel floors an extent within 2^-23 of the next integer up to it: `-1.19E-7` and
+            // `0.99999999` are 0 and 1, `-1.2E-7` and `0.999999` -1 and 0 (probes/
+            // empty-array-args-sequence A120:A134; `SEQUENCE(0,-1E-8)` is `#CALC!`, gen-m7
+            // c36ff5f42a1a4d47 A359).
+            let n = (n + f64::from(f32::EPSILON)).floor() as i64;
             match usize::try_from(n) {
                 Ok(n) if n <= LAST_ROW as usize => Ok(n),
                 _ => Err(CalcResult::new_error(
