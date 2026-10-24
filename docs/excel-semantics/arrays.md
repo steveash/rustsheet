@@ -1505,8 +1505,9 @@ same functions over one value column, each gen-m7 call below is a pivot with err
 why five generated PIVOTBY calls are `#VALUE!` (gen-m7/18b80d3fd292d63a Calc!A913, 07d27aa0add0247f A708, A992, 90de8755a2e565e6
 A1, A285). Unprobed: an error only in a column subtotal.
 Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes the Total column cells of each line and the Total row.
-Which hidden Total cells count (T-2578, probes/t2578-pivotby-hidden-total-slot, all 256 layouts of four records over up to four
-column groups, and t2578-pivotby-total-error-scope, excel-graph, 2026-10-24): Excel computes the Total cell of value column `v`
+Which hidden Total cells count (T-2578, excel-graph, 2026-10-24: derived from a decode of all 256 layouts of four records over up to
+four column groups, run during T-2578 and not committed; checked by probes/t2578-pivotby-hidden-total-slot, 7 layouts with 2 and 3
+value columns and two column fields, 129 cells, and t2578-pivotby-total-error-scope): Excel computes the Total cell of value column `v`
 (0-based) in a row only when that row has a record under the column line at value-column position `G + v` of the grid, the
 line `(G + v) div V` with `G` column lines and `V` value columns (as if each line were one value column wide), and never when
 that is past the last line. So with `G` 2 and 2 values every row's Total cells count; with 3 column groups x, y, z and 2

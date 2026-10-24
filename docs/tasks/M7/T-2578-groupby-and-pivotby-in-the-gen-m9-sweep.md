@@ -34,7 +34,7 @@ Cells:
 - gen-m9/e85daedce5c2675e.case.json (1): Calc!A35
 
 ## Acceptance criteria
-- [x] (2 of 7; the other 5 re-homed with evidence to T-2460 and T-2593, see Outcome) Visible parity (gen-m9, T-2436): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Not met as written: 2 of 7 fixed; the other 5 handed over with evidence to T-2460 and T-2593 (see Outcome), and 11 blank-key probe lines of T-2460 baselined. Visible parity (gen-m9, T-2436): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
 - [x] `make check` green; reviewers approve.
@@ -43,7 +43,7 @@ Cells:
 - Cells of the same functions owned by other tasks.
 
 ## Outcome
-Probed which hidden PIVOTBY Total cells make the result `#VALUE!` (probes/t2578-pivotby-hidden-total-slot, a 256-layout decode
+Probed which hidden PIVOTBY Total cells make the result `#VALUE!` (probes/t2578-pivotby-hidden-total-slot, checking a 256-layout decode run but not committed,
 plus 3-value and two-field checks; t2578-pivotby-total-error-scope; excel-graph 2026-10-24): Excel computes the Total cell of
 value column `v` in a row only when the row has a record under the column line at value-column position `G + v`, line
 `(G + v) div V`. `check_totals` (pivotby.rs) now gates each checked Total slot by that line (`checked_totals`), so the two
