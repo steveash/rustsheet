@@ -2700,8 +2700,17 @@ only that it is at least two). An error argument is the result: `FREQUENCY((0*CH
 `#N/A` (05d44f6dd6cfc567 A65), `FREQUENCY(Data!B6:D10,YEAR(VDB(..)))` `#NUM!` (b4173fe25109a238 A184); which wins when
 both data and bins are errors is UNVERIFIED (no cell has both).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 142 cells listed in T-2427.
-Ours: a single number for a single bin, `#VALUE!` for an error, text or boolean argument; T-2427.
-Status: VERIFIED (excel-graph) except the row count noted
+Resolved by probes/frequency-bins (excel-graph, 2026-10-24): with no numeric bin (a text, boolean or blank cell or a
+typed text or boolean) the result is two rows, 0 then every numeric data value; text and booleans in data or bins are
+skipped (`{1;2}` against `"a"`, TRUE, a blank cell, `{"a";"b"}`; `FREQUENCY("a",{1;2})` is three rows of 0 counts). Error
+precedence: a scalar error argument (data, then bins) beats an error inside an array or range, and within arrays data
+comes first: `FREQUENCY({1;#DIV/0!},NA())` and `FREQUENCY(NA(),{1;#DIV/0!})` are `#N/A`, `FREQUENCY(1/0,NA())` is
+`#DIV/0!`, `FREQUENCY({#N/A;1},{#DIV/0!;1})` is `#N/A`.
+T.TEST: an error `type` beats a bad `tails` (`T.TEST({0.02,0.027},2,44,NA())` is `#N/A`, probes/frequency-bins B7) when
+the samples are good; with a samples error the bad `tails` stays first (gen-m9/9735c5ab72fa5ecf A336); the full
+interleaving is UNVERIFIED.
+Ours: implemented, T-2427. The cells still off are other functions' gaps (ODDFYIELD, FORECAST.ETS, EXPAND, DB, NPER, ...).
+Status: VERIFIED (excel-graph)
 
 ## Booleans from a reference or a formula are numbers in the F, beta, chi-squared and hypergeometric functions (T-2255)
 Rule: a TRUE or FALSE that comes from a cell or a formula (not typed in the call) reads as 1 or 0 in F.INV, FINV,

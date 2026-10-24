@@ -61,13 +61,24 @@ fn t_test_element(
     let [_, _, tails, test_type] = values else {
         return CalcResult::new_args_number_error(cell);
     };
-    let tails = match model.kernel_number(tails, cell).map(f64::trunc) {
+    // Both are read before either is checked: with good samples an error `type` beats a bad `tails`
+    // (`T.TEST({0.02,0.027},2,44,NA())` is `#N/A`; probes/frequency-bins B7, T-2427).
+    let tails = model.kernel_number(tails, cell).map(f64::trunc);
+    let test_type = model.kernel_number(test_type, cell).map(f64::trunc);
+    let tails = match tails {
         Ok(1.0) => TTestTails::OneTailed,
         Ok(2.0) => TTestTails::TwoTailed,
-        Ok(_) => return num_error(cell),
+        Ok(_) => {
+            // With a samples error the bad `tails` still comes first (gen-m9/9735c5ab72fa5ecf
+            // A336); how the three interleave is not probed.
+            return match test_type {
+                Err(error) if samples.is_ok() => error,
+                _ => num_error(cell),
+            };
+        }
         Err(error) => return error,
     };
-    let test_type = match model.kernel_number(test_type, cell).map(f64::trunc) {
+    let test_type = match test_type {
         Ok(1.0) => TTestType::Paired,
         Ok(2.0) => TTestType::TwoSampleEqualVar,
         Ok(3.0) => TTestType::TwoSampleUnequalVar,

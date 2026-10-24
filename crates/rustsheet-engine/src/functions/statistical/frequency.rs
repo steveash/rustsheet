@@ -3,12 +3,34 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::reference_operators::RefArg;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
+/// An error argument of FREQUENCY and whether it came from inside an array or range.
+struct FreqError {
+    error: CalcResult,
+    in_array: bool,
+}
+
+impl FreqError {
+    fn scalar(error: CalcResult) -> Self {
+        Self {
+            error,
+            in_array: false,
+        }
+    }
+
+    fn element(error: CalcResult) -> Self {
+        Self {
+            error,
+            in_array: true,
+        }
+    }
+}
+
 impl Model {
     fn collect_freq_values(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<f64>, CalcResult> {
+    ) -> Result<Vec<f64>, FreqError> {
         let value = self.evaluate_node_in_context(arg, cell);
         self.freq_values_of(value, cell)
     }
@@ -18,10 +40,37 @@ impl Model {
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<f64>, CalcResult> {
+    ) -> Result<Vec<f64>, FreqError> {
         match value {
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
-            value => self.numeric_flat_of(value, cell),
+            // An error argument is the result, data before bins (probes/frequency-bins A10-A12).
+            error @ CalcResult::Error { .. } => Err(FreqError::scalar(error)),
+            // A typed or referenced text, boolean or blank is skipped like the text in a range
+            // (probes/frequency-bins A9, A16-A25); only an error is the result.
+            CalcResult::EmptyCell
+            | CalcResult::EmptyArg
+            | CalcResult::String(_)
+            | CalcResult::Boolean(_) => Ok(vec![]),
+            // The first error element is the result, not the `#VALUE!` the shared reader gives
+            // (gen-m9/05d44f6dd6cfc567 A126: `{-1,TRUE,0}` through CHISQ.DIST.RT is `#NUM!`).
+            CalcResult::Array(array) => {
+                let first_error = array.iter().flatten().find_map(|node| match node {
+                    ArrayNode::Error(error) => Some(error.clone()),
+                    _ => None,
+                });
+                match first_error {
+                    Some(error) => Err(FreqError::element(CalcResult::new_error(
+                        error,
+                        cell,
+                        "Error in array".to_string(),
+                    ))),
+                    None => self
+                        .numeric_flat_of(CalcResult::Array(array), cell)
+                        .map_err(FreqError::element),
+                }
+            }
+            value => self
+                .numeric_flat_of(value, cell)
+                .map_err(FreqError::element),
         }
     }
 
@@ -39,28 +88,35 @@ impl Model {
             match self.evaluate_reference_arg(&args[0], cell) {
                 RefArg::Ranges(areas) => self
                     .values_from_areas(&areas, cell)
-                    .map(|v| v.into_iter().flatten().collect()),
+                    .map(|v| v.into_iter().flatten().collect())
+                    .map_err(FreqError::element),
                 // A LET variable, IF or name that holds an array or a number is counted like
                 // any other data_array; only an error is the result (T-1065 fidelity review).
-                RefArg::Value(error @ CalcResult::Error { .. }) => Err(error),
+                RefArg::Value(error @ CalcResult::Error { .. }) => Err(FreqError::scalar(error)),
                 RefArg::Value(value) => self.freq_values_of(value, cell),
                 RefArg::Grid(grid) => self.freq_values_of(grid.to_values(), cell),
             }
         } else {
             self.collect_freq_values(&args[0], cell)
         };
-        let data = match data {
-            Ok(v) => v,
-            Err(e) => return e,
+        let bins_raw = self.collect_freq_values(&args[1], cell);
+        // Excel: a scalar error argument is the result, data before bins, and beats an error
+        // inside an array (`FREQUENCY({1;#DIV/0!},NA())` is `#N/A`, `FREQUENCY(NA(),{1;#DIV/0!})`
+        // is `#N/A`; gen-m9/589f42e67f4b4b8d A338; probes/frequency-bins B1-B3, T-2427).
+        let (data, bins_raw) = match (data, bins_raw) {
+            (Ok(data), Ok(bins)) => (data, bins),
+            (Err(e), _) if !e.in_array => return e.error,
+            (_, Err(e)) if !e.in_array => return e.error,
+            (Err(e), _) | (_, Err(e)) => return e.error,
         };
 
-        let bins_raw = match self.collect_freq_values(&args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-
+        // Excel: with no numeric bin the result is still two rows, 0 then every data value
+        // (probes/frequency-bins A16-A25; docs/excel-semantics/statistics.md, T-2427).
         if bins_raw.is_empty() {
-            return CalcResult::Array(vec![vec![ArrayNode::Number(data.len() as f64)]]);
+            return CalcResult::Array(vec![
+                vec![ArrayNode::Number(0.0)],
+                vec![ArrayNode::Number(data.len() as f64)],
+            ]);
         }
 
         let n_bins = bins_raw.len();

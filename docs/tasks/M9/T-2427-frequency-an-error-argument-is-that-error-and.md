@@ -3,7 +3,7 @@ id: T-2427
 title: "FREQUENCY: an error argument is that error, and the result has one row per bin cell plus one even for a single or text bin (gen-m9, 140 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -157,3 +157,11 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+FREQUENCY skips text/booleans/blanks, returns two rows when no bin is numeric, and an error argument is the result
+(scalar errors before array errors, data before bins); T.TEST lets an error `type` beat a bad `tails` when the samples are
+good. Probe: probes/frequency-bins. Eval: gen-m9 known failures 5755 -> 5657 (98 fixed, none new), probes baseline
+unchanged apart from its new case. 19 FREQUENCY cells stay off because their other arguments are other functions' gaps
+(ODDFYIELD/ODDLYIELD, FORECAST.ETS*, EXPAND, DB, NPER, WRAPCOLS, FILTER, INDIRECT/MAP); the acceptance lines for those are
+not met and the remaining gen-m9 lines stay in the baseline.
