@@ -2354,3 +2354,14 @@ Evidence: probes/let-name-shadows-defined-name A1-A13, B1-B3 (excel-graph, 2026-
 (`bind_name`, which also skips the defined-name lookup for bound names).
 Status: VERIFIED (excel-graph)
 Tasks: T-2057, T-2558, T-2567
+
+## INDIRECT: a 1x1 array a1 argument is #VALUE! (T-2436)
+Rule: INDIRECT's a1 argument given as a one-element array is `#VALUE!`, while a scalar boolean is read as usual and a longer
+array lifts: `INDIRECT("B1",{1})` and `INDIRECT("B1",{TRUE})` are `#VALUE!`, `INDIRECT("B1",TRUE)` is B1's 5 and
+`ROWS(INDIRECT("B1",{1;1}))` 2 (probes/t2436/computed-scalar A39:A42); in the sweep `INDIRECT("Data!B3",TOCOL(2,0,Data!A5))`
+is `#VALUE!` (06b4e8f5de409d5e A261) and `INDIRECT("Data!A1",FILTER(..)<6 numbers>)` six `#VALUE!` elements
+(f2bd5f380ec002bf A383). This answers T-2347's question for INDIRECT's a1 argument (ref_text is still unprobed).
+Evidence: probes/t2436/computed-scalar, probes/t2436/06b4e8f5de409d5e, probes/t2436/f2bd5f380ec002bf (excel-graph, 2026-10-24).
+Ours: the 1x1 array read as its element (5); T-2577.
+Status: VERIFIED (excel-graph)
+Tasks: T-2577, T-2347

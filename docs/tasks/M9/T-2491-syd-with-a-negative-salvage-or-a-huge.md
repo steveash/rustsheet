@@ -48,7 +48,18 @@ Cells:
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A70
 - gen-m9/e8d55ec393460bb7.case.json (1): Calc!A338
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `SYD(10156,-439103,25,8)` and `SYD(20252,TRUNC(-0.0001,5),12.5,5)` (negative salvage) are `#NUM!` (ours a number).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/35e8168aae2b00f8 Calc!A162 `=LOGNORM.DIST(42,SYD(10156,(-439103),25,8),HSTACK((Data!A7-(-2.5)),TEXTJOIN("a",Data!B$7,Data!D8),FIXED(Data!B12,Data!D9,Data!$D2)),2)`: Excel #NUM!, ours #VALUE!; inner `SYD(10156,(-439103),25,8)` Excel #NUM!, ours 24882.036923076925
+- gen-m9/f2bd5f380ec002bf Calc!A254 `=GAMMADIST(37.5,SYD(20252,TRUNC(Data!E3,5),12.5,5),(EFFECT(1E+10,1)-(Data!D10-42)),INFO("origin"))`: Excel #NUM!, ours #VALUE!; inner `SYD(20252,TRUNC(Data!E3,5),12.5,5)` Excel #NUM!, ours 2040.2014915555558
+Cells:
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A162
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A254
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 18 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for SYD and DB with a negative salvage, a life of 1E+300 and 1E15, and the SYD value above.

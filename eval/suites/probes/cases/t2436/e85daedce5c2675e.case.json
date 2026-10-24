@@ -1,0 +1,81 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2436: sub-expressions of the untraced gen-m9 cells of gen-m9/e85daedce5c2675e (A35), on that case's Data sheet; one sub-expression per row block (column A, with its ROWS in T and COLUMNS in U).",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y))",
+        "T1": "=ROWS(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)))",
+        "U1": "=COLUMNS(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)))",
+        "A16": "=LAMBDA(y,y)",
+        "T16": "=ROWS(LAMBDA(y,y))",
+        "U16": "=COLUMNS(LAMBDA(y,y))",
+        "A31": "=COUNT(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)),Data!B3:B5,Data!D9:D10)",
+        "T31": "=ROWS(COUNT(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)),Data!B3:B5,Data!D9:D10))",
+        "U31": "=COLUMNS(COUNT(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)),Data!B3:B5,Data!D9:D10))",
+        "A46": "=BESSELJ(COUNT(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)),Data!B3:B5,Data!D9:D10),0)",
+        "T46": "=ROWS(BESSELJ(COUNT(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)),Data!B3:B5,Data!D9:D10),0))",
+        "U46": "=COLUMNS(BESSELJ(COUNT(_xlfn.PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)),Data!B3:B5,Data!D9:D10),0))"
+      }
+    },
+    {
+      "cells": {
+        "A1": "x",
+        "A10": "a*",
+        "A11": 100,
+        "A4": 100,
+        "A5": 2.5,
+        "A7": 1000000000000000.0,
+        "A8": 2.5,
+        "A9": -1,
+        "B1": 1.005,
+        "B10": 0.1,
+        "B11": "x",
+        "B12": 1.005,
+        "B3": "#N/A",
+        "B5": 2,
+        "B6": 1e-15,
+        "B7": 0.3,
+        "B8": 0.2,
+        "B9": 42,
+        "C1": 42,
+        "C11": 0.1,
+        "C2": 1e-15,
+        "C3": "abc",
+        "C4": 0,
+        "C5": 1.005,
+        "C6": false,
+        "C7": 42,
+        "C8": "ABC",
+        "C9": -0.5,
+        "D1": 42,
+        "D10": 42,
+        "D11": false,
+        "D12": "ABC",
+        "D2": 0.5,
+        "D3": -2.5,
+        "D4": "#N/A",
+        "D5": 100,
+        "D6": "Hello World",
+        "D7": 1000000000000000.0,
+        "E1": true,
+        "E10": "abc",
+        "E11": "1.5",
+        "E2": 3.14159,
+        "E3": "?b",
+        "E5": true,
+        "E6": 2.5,
+        "E7": 2.5,
+        "E8": 0.1,
+        "E9": "x~*"
+      },
+      "name": "Data"
+    }
+  ],
+  "expected": {}
+}

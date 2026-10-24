@@ -49,7 +49,25 @@ Cells:
 - gen-m9/caa1eed48b1883fe.case.json (1): Calc!A384
 - gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A345
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): more scalar distributions at extreme arguments: `PHI(1E+300)`, `NORM.S.DIST(1E+300,FALSE)` and `NORM.S.DIST(-1E+300,<FALSE from a formula>)` are `#NUM!` (ours 0), `BETA.DIST(0,0.5,1E+5,FALSE)` `#NUM!` (ours 0), `WEIBULL(100,1E+8,99999,..)` 0 and `WEIBULL(0.2,1E+15,0.2,"TRUE")` 0.6321205588285577 (ours `#NUM!` for the huge alpha), `F.INV.RT(1E-200,1,1.999)` 3.696066238512854E+150 (ours `#NUM!`) and `F.INV.RT(1E-20,3,9)` a value whose GAMMALN.PRECISE is 1087085.7102783846 (ours ...853, the 15th digit).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 8 known-failure lines in eval/baseline/gen-m9.txt, 8 formulas.
+Examples:
+- gen-m9/165db58d1540f014 Calc!A45 `=KURT(PHI(1E+300))`: Excel #NUM!, ours #DIV/0!; inner `PHI(1E+300)` Excel #NUM!, ours 0.0
+- gen-m9/35e8168aae2b00f8 Calc!A48 `=AVERAGEA(BETA.DIST(0,0.5,1E+5,FALSE))`: Excel #NUM!, ours 0.0; inner `BETA.DIST(0,0.5,1E+5,FALSE)` Excel #NUM!, ours 0.0
+- gen-m9/4ab2ba98d26c8a5e Calc!A341 `=FDIST(NORM.S.DIST((-1E+300),(Data!$D1=2)),2,COUNTIF(Data!C2:E4,""))`: Excel #NUM!, ours 1.0; inner `NORM.S.DIST((-1E+300),(Data!$D1=2))` Excel #NUM!, ours 0.0
+- gen-m9/8dd2312c96effb1b Calc!A228 `=LARGE((7-SUBTOTAL(2,Data!D5:E12)),(NORM.S.DIST(1E+300,FALSE)-IFNA(#NULL!,Data!$B$1)))`: Excel #NUM!, ours #NULL!; inner `NORM.S.DIST(1E+300,FALSE)` Excel #NUM!, ours 0.0
+Cells:
+- gen-m9/165db58d1540f014.case.json (1): Calc!A45
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A48
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A341
+- gen-m9/8dd2312c96effb1b.case.json (1): Calc!A228
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A276
+- gen-m9/abc2939ebd1e2365.case.json (2): Calc!A250, A11
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A23
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255): these 20 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Each rule's probe cells are in eval/, and statistics.md's entry gets an "Ours:" line naming this task.

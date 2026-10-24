@@ -14,7 +14,7 @@ use crate::arithmetic::{
     extended_div, extended_mul, extended_of, extended_quotient, extended_sum, store_extended,
     Extended,
 };
-use crate::x87_exp::excel_exp;
+use crate::x87_exp::excel_expm1;
 use crate::x87_log10::excel_ln;
 
 /// Below this |x| SINH and TANH are built from `expm1` ([`expm1_pair`]); from it on, from `exp`.
@@ -27,22 +27,6 @@ const TANH_SATURATION: f64 = 20.0;
 /// from expm1").
 fn expm1_pair(x: f64) -> (f64, f64) {
     (excel_expm1(x), excel_expm1(-x))
-}
-
-/// Excel's expm1: Kahan's `(u - 1) * x / ln(u)` with `u` Excel's own EXP and the log Excel's LN,
-/// each step a double (T-2240, docs/excel-semantics/numbers.md "Excel's expm1 is Kahan's
-/// formula"). It fits all 1015 SINH and TANH cells of probes-numeric t2178-hyperbolic-unit-sweep,
-/// where libm's expm1 fits 773 and 781. `u == 1` (|x| tiny) gives `x`.
-fn excel_expm1(x: f64) -> f64 {
-    let u = excel_exp(x);
-    if u == 1.0 {
-        return x;
-    }
-    let u_minus_1 = u - 1.0;
-    if u_minus_1 == -1.0 {
-        return -1.0;
-    }
-    u_minus_1 * x / excel_ln(u)
 }
 
 /// Overflows to infinity where `e^|x|` does (just above 709.78; Excel's exact cut is unprobed,
