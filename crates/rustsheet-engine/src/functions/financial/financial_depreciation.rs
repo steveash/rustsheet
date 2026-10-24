@@ -248,7 +248,9 @@ fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) 
     for _ in 2..int_period {
         balance -= balance * rate;
     }
-    if int_period == int_life + 1 {
+    // `int_period - 1`, not `int_life + 1`: `int_period` is in 2..=MAX_DEPRECIATION_PERIODS here,
+    // while a huge `life` saturates `int_life` to `i64::MAX` (`DB(6912,0,1E+300,2,6)`, T-2570).
+    if int_period - 1 == int_life {
         balance * (rate * (12.0 - month) / 12.0)
     } else {
         balance * rate
