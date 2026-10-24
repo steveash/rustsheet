@@ -77,9 +77,10 @@ array, and an element that is itself `Nested` is replaced by its top-left (rule 
 is the bounded choice until T-2592 says otherwise).
 
 **One reader.** `ArrayNode::scalar(&self) -> &ArrayNode`: for `Nested`, its top-left element, otherwise itself. Every site
-that today matches `ArrayNode::Lambda` to place a non-scalar (35 sites: cast.rs, arithmetic.rs, functions/util.rs,
+that today matches `ArrayNode::Lambda` to place a non-scalar (35 matches in 25 files: cast.rs, arithmetic.rs, functions/util.rs,
 aggregate_args.rs, lift/kinds, text_kernel.rs, spill_functions.rs, ...) reads `node.scalar()` first, so rule 4 holds at
-every lifted read without a per-function rule. The compiler finds every exhaustive match; a wildcard arm is audited by
+every lifted read without a per-function rule. Reuse an existing top-left helper of the lifting code if one fits
+before adding `scalar()` (CLAUDE.md directive 3). The compiler finds every exhaustive match; a wildcard arm is audited by
 `rg 'ArrayNode::Lambda'` in the same PR.
 
 **Producers.** `Model::aggregate` (group_functions.rs) turns an array result into `ArrayNode::Nested` instead of
@@ -87,8 +88,9 @@ every lifted read without a per-function rule. The compiler finds every exhausti
 producer: BYROW/MAP/MAKEARRAY keep `#CALC!`.
 
 **Consumers with their own rule.**
-- INDEX selecting one element (`index_impl` and the lifted INDEX) returns `CalcResult::Array(nested.rows.clone())` for a
-  `Nested` element (rule 3); an INDEX that selects a row or column of the result keeps the nested elements in it.
+- INDEX selecting one element (`index_impl` and the lifted INDEX) returns the `Nested` element's array (rule 3), a copy
+  of its rows (linear in its cells, within the cap; keeping the `Arc` until a consumer needs the rows is an optimization
+  for later); an INDEX that selects a row or column of the result keeps the nested elements in it.
 - TYPE of an argument that is a `Nested` element via `array_node_to_calc_result` sees an array: 64 (rule 3).
 - `array_node_to_calc_result` (functions/util.rs) is the one place a single element becomes a `CalcResult`; there `Nested`
   becomes `CalcResult::Array`, so INDEX, LET and a LAMBDA parameter all hand the array on.
@@ -101,7 +103,10 @@ producer: BYROW/MAP/MAKEARRAY keep `#CALC!`.
 `limits::MAX_SIZE` (1,048,576, the bound on any array the engine builds), together with the result's own cells. Past it the
 whole result is `#ERROR!`, as an oversized array is today (DEVIATION, arrays.md "Array results above 1,048,576 cells";
 decision 0014). The check runs as each function result is kept, before the next call, so the work and memory stay within
-one bound. The existing per-call input cap (`Functions::refused`) is unchanged.
+one bound. The existing per-call input cap (`Functions::refused`) is unchanged. The cap is per call, not per
+evaluation: it bounds the whole formula only because nothing else keeps a nested result (BYROW, BYCOL, MAP, MAKEARRAY and
+SCAN turn an array step into `#CALC!`, and a spill stores `#VALUE!`), so a later producer or consumer that keeps nested
+results must be charged against a shared per-evaluation budget, as `MAX_CAPTURED_CELLS` is for LAMBDA captures.
 
 **Hash and equality.** `ArrayNode` derives `PartialEq`; `Nested` compares by content. The lifting driver's class hash
 (functions/lift/driver.rs) hashes the top-left (`scalar()`), the value a lifted read sees.
@@ -116,7 +121,8 @@ one bound. The existing per-call input cap (`Functions::refused`) is unchanged.
 
 ## Test plan
 - Unit tests: `NestedArray::new` invariants (empty, ragged, nested elements flattened); `scalar()`; the cap (a LAMBDA
-  returning `SEQUENCE(1048576)` for two groups is `#ERROR!`).
+  returning `SEQUENCE(1048576)` for two groups is `#ERROR!`); two levels (a LAMBDA returning a GROUPBY that holds nested
+  cells keeps one level, each inner nested cell its top-left).
 - Eval: the 47 t2360 P! cells, t2311 P!C12, gen-m7/21b4eef18424ce94 A1504 (T-2593); t2311 P!D12 and T-2592's new cells
   (T-2594); groupby-lifted-args A153 and gen-m7/b24ce74f08d3f91a A1850 through T-2398.
 - No regressions in probes/groupby-*, pivotby-* and gen-m7 (the existing `#VALUE!` cells of rule 7 stay).
