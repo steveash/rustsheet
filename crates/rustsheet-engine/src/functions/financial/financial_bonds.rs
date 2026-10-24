@@ -585,11 +585,9 @@ impl Model {
                 (false, [s, m, r, y, f, rest @ ..]) => (s, m, r, y, None, f, rest.first()),
                 _ => return Err(CalcResult::new_args_number_error(cell)),
             };
-        let read_basis =
-            |basis| validate_basis(self.cast_number_no_bools_or(basis, 0.0, cell)?, cell);
         // `PRICE(-1,..,NA())` is #N/A and `PRICE(NA(),..,5)` #NUM!; DURATION's basis comes last.
         let early_basis = if with_redemption {
-            Some(read_basis(basis)?)
+            Some(self.day_count_basis_of(basis, cell)?)
         } else {
             None
         };
@@ -605,7 +603,7 @@ impl Model {
         validate_frequency(frequency, cell)?;
         let basis = match early_basis {
             Some(basis) => basis,
-            None => read_basis(basis)?,
+            None => self.day_count_basis_of(basis, cell)?,
         };
         let (settlement, maturity) = (
             self.financial_date(settlement),

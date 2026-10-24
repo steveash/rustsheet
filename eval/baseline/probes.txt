@@ -281,6 +281,7 @@ C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
 C	probes/defined-name-non-ascii.case.json	3
+C	probes/discount-argument-check-order.case.json	1707
 C	probes/discount-security-modes.case.json	135
 C	probes/discount-serial-zero.case.json	50
 C	probes/displayed-text-formats.case.json	10
@@ -778,6 +779,7 @@ C	probes/pivotby-moved-cells-relative-sets.case.json	1460
 C	probes/pivotby-sort-order-past-keys.case.json	167
 C	probes/pivotby-total-columns-one-group.case.json	172
 C	probes/pmt-overflow.case.json	40
+C	probes/poisson-negative-mean.case.json	8
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
@@ -2281,6 +2283,12 @@ F	probes/npv-reference-forms.case.json	Sheet1!A8
 F	probes/npv-reference-forms.case.json	Sheet1!A9
 F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
 F	probes/odd-bond-argument-check-order.case.json	Calc!A258
+F	probes/poisson-negative-mean.case.json	Calc!A1
+F	probes/poisson-negative-mean.case.json	Calc!A2
+F	probes/poisson-negative-mean.case.json	Calc!A3
+F	probes/poisson-negative-mean.case.json	Calc!A5
+F	probes/poisson-negative-mean.case.json	Calc!A6
+F	probes/poisson-negative-mean.case.json	Calc!A7
 F	probes/regression-trend.case.json	Sheet1!N10
 F	probes/regression-trend.case.json	Sheet1!N12
 F	probes/regression-trend.case.json	Sheet1!N3
@@ -2509,16 +2517,10 @@ F	probes/t2436/285d87cea1aaa73c.case.json	Calc!A61
 F	probes/t2436/285d87cea1aaa73c.case.json	Calc!T61
 F	probes/t2436/285d87cea1aaa73c.case.json	Calc!U61
 F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!A16
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!A166
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!A241
 F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!A61
 F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!B61
 F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!C61
 F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!D61
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!T166
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!T241
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!U166
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!U241
 F	probes/t2436/320d51765af9b6b7.case.json	Calc!A16
 F	probes/t2436/320d51765af9b6b7.case.json	Calc!A76
 F	probes/t2436/320d51765af9b6b7.case.json	Calc!T16
@@ -2934,8 +2936,6 @@ F	probes/t2475-stat-subexpressions.case.json	P!A177
 F	probes/t2475-stat-subexpressions.case.json	P!A197
 F	probes/t2475-stat-subexpressions.case.json	P!A198
 F	probes/t2475-stat-subexpressions.case.json	P!A2
-F	probes/t2475-stat-subexpressions.case.json	P!A204
-F	probes/t2475-stat-subexpressions.case.json	P!A207
 F	probes/t2475-stat-subexpressions.case.json	P!A212
 F	probes/t2475-stat-subexpressions.case.json	P!A214
 F	probes/t2475-stat-subexpressions.case.json	P!A216
@@ -2986,10 +2986,7 @@ F	probes/t2475-stat-subexpressions.case.json	P!A422
 F	probes/t2475-stat-subexpressions.case.json	P!A424
 F	probes/t2475-stat-subexpressions.case.json	P!A427
 F	probes/t2475-stat-subexpressions.case.json	P!A429
-F	probes/t2475-stat-subexpressions.case.json	P!A43
-F	probes/t2475-stat-subexpressions.case.json	P!A44
 F	probes/t2475-stat-subexpressions.case.json	P!A449
-F	probes/t2475-stat-subexpressions.case.json	P!A45
 F	probes/t2475-stat-subexpressions.case.json	P!A452
 F	probes/t2475-stat-subexpressions.case.json	P!A455
 F	probes/t2475-stat-subexpressions.case.json	P!A458
@@ -3012,9 +3009,6 @@ F	probes/t2475-stat-subexpressions.case.json	P!A559
 F	probes/t2475-stat-subexpressions.case.json	P!A56
 F	probes/t2475-stat-subexpressions.case.json	P!A560
 F	probes/t2475-stat-subexpressions.case.json	P!A563
-F	probes/t2475-stat-subexpressions.case.json	P!A565
-F	probes/t2475-stat-subexpressions.case.json	P!A566
-F	probes/t2475-stat-subexpressions.case.json	P!A567
 F	probes/t2475-stat-subexpressions.case.json	P!A57
 F	probes/t2475-stat-subexpressions.case.json	P!A572
 F	probes/t2475-stat-subexpressions.case.json	P!A58
