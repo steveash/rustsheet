@@ -653,3 +653,46 @@ fn cells_reached_from_a_formula_condition_evaluate_in_full() {
     assert_eq!(model._get_text("M1"), *"5");
     assert_eq!(model._get_text("N1"), *"3");
 }
+
+/// A record whose moved formula reference lands on the database's header row does not match:
+/// over A2:D9 (header row 2) `=B2>3` reads B2 for the first record, and that record fails
+/// (gen-m9 4dc761698ca23149 A129, f066968376660329 A292, f61a73cd9af21e6d A289; T-2553).
+#[test]
+fn formula_condition_on_the_header_row_fails() {
+    let mut model = new_empty_model();
+    for (row, (qty, price)) in [
+        ("Qty", "Price"),
+        ("4", "2.5"),
+        ("10", "x"),
+        ("0", "4"),
+        ("2", "TRUE"),
+        ("1", "10"),
+        ("-4", "0.5"),
+        ("7", "100"),
+        ("5", "-1"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        model._set(&format!("B{}", row + 1), qty);
+        model._set(&format!("C{}", row + 1), price);
+    }
+    model._set("O1", "Calc");
+    model._set("O2", "=B2>3");
+    model._set("F1", "=DPRODUCT(B2:C9,2,O1:O2)");
+    model._set("F2", "=DMAX(B2:C9,2,O1:O2)");
+    model._set("F3", "=DCOUNTA(B2:C9,2,O1:O2)");
+    // The same condition over B1:C9 starts at its first record: rows 2, 3, 8 and 9 match.
+    model._set("F4", "=DCOUNTA(B1:C9,2,O1:O2)");
+    // An absolute row stays put and is not checked: every record reads B2 = 4 and matches.
+    model._set("P1", "Calc");
+    model._set("P2", "=B$2>3");
+    model._set("F5", "=DCOUNTA(B2:C9,2,P1:P2)");
+    model.evaluate();
+    // Rows 4 (B3 = 10) and 9 (B8 = 7) match; row 3 (B2 = 4, the header row) does not.
+    assert_eq!(model._get_text("F1"), *"-4");
+    assert_eq!(model._get_text("F2"), *"4");
+    assert_eq!(model._get_text("F3"), *"2");
+    assert_eq!(model._get_text("F4"), *"4");
+    assert_eq!(model._get_text("F5"), *"7");
+}
