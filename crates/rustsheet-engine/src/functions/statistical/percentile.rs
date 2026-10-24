@@ -34,9 +34,9 @@ fn percentile_numbers(
         text @ CalcResult::String(_) if typed_in_place => {
             model.cast_number_ref(&text, cell).map(|n| vec![n])
         }
-        // A single cell holding text is no number, like text inside a range: the data is empty
-        // and every function reports `#NUM!`, not `#VALUE!` (probes/quartile-single-text-cell
-        // B1-B11, T-2066).
+        // A single cell holding text (a cell reference, not the typed text above) is no number,
+        // like text inside a range: the data is empty and every function reports `#NUM!`, not
+        // `#VALUE!` (probes/quartile-single-text-cell B1-B11, quartile-numeric-text-cell C2-C5).
         CalcResult::String(_) => Ok(vec![]),
         value => model.numeric_flat_of(value, cell),
     }
