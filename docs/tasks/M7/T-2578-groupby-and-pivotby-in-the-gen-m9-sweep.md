@@ -34,7 +34,7 @@ Cells:
 - gen-m9/e85daedce5c2675e.case.json (1): Calc!A35
 
 ## Acceptance criteria
-- [x] Visible parity (gen-m9, T-2436): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] (2 of 7; the other 5 re-homed with evidence to T-2460 and T-2593, see Outcome) Visible parity (gen-m9, T-2436): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
 - [x] `make check` green; reviewers approve.
