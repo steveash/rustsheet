@@ -3,7 +3,7 @@ id: T-1733
 title: "Displayed text: mm next to ss with no h is minutes, not months"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+`m`/`mm` followed by `:s`/`:ss` is now a minute without an hour (`minute_before_seconds`, parser.rs). gen-m10: 163 text/value baseline lines fixed (known failures 23 -> 15, text 589 -> 434), 0 regressions.
