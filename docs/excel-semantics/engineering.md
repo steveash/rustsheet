@@ -635,8 +635,10 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
 - **"1i" when a part is not exactly 1.** IM* text omits the coefficient only for an imaginary part of exactly ±1; a part
   that rounds to 1 at 15 digits keeps it: `COMPLEX(0.1,1+2^-52,"i")` is "0.1+1i", `COMPLEX(1/3,1-2^-53)`
   "0.333333333333333+1i", `COMPLEX(1+2^-52,1-2^-53,"j")` "1+1j", `IMDIV("5","-1.5+0.5i")` "-3-1i",
-  `IMPOWER("1000+1i",1)` "1000+1i" (493bb194c8e0b577 A331, 62c886e21a1042af A243, 7dc52cfcbc8b4448 A247, ...). Ours
-  compares the 15-digit-rounded part with ±1 and writes "i". T-2533.
+  `IMPOWER("1000+1i",1)` "1000+1i" (493bb194c8e0b577 A331, 62c886e21a1042af A243, 7dc52cfcbc8b4448 A247, ...). Implemented
+  for the text of COMPLEX and IMDIV (T-2533): the coefficient is compared unrounded.
+  After that fix `IMPOWER("1000+1i",1)` is still "1000+i": our polar form gives an imaginary part of exactly 1,
+  Excel's is not exactly 1 (gen-m9 74779cff2810ccf4 A379). T-2610.
 - **IM* trigonometry of a real number is SIN, COS and TAN.** With a zero imaginary part, IMSIN, IMCOS, IMTAN, IMSEC,
   IMCSC and IMCOT give exactly the worksheet functions' values (x87 reduction, numbers.md "Trig of a huge angle"), as the
   engine's own SIN/COS/TAN reproduce: `IMSIN(123456789.123)` 0.99984293955201 (= SIN; libm 0.999842939552045),

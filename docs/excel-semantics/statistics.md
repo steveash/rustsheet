@@ -2852,8 +2852,15 @@ FALSE, 873f30d2bf76f8db A333; `ZTEST(Data!$A4,..)` with A4 empty, 201d67f1d59436
 no number, `ZTEST(Data!B5:C5,0.04)` (B5 empty, C5 FALSE; its x is `SUMXMY2(UNIQUE(Data!D4),-0.2)`, 7980ffb6095a340d A294)
 and `ZTEST(Data!B10:B10,..)` (its sigma is `PV(-0.9999999999,167,-43,1E+300)`, a63d1c7d6f96c56d A324), are explained by
 their x or sigma argument, not by the range: UNVERIFIED, T-2470 (which owns them) traces them.
-Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2470.
-Ours: x and sigma first, `#NUM!` for sigma before the one-value `#DIV/0!`, `#VALUE!` or `#DIV/0!` for the lone cells; T-2470.
+The error array comes first in every element of a lifted call (`Z.TEST(NA(),{1,2})` spills two `#N/A`,
+`Z.TEST(NA(),Data!A1:A2)` too), and it is only an error *value*: an error inside a range or array, or in a one-cell
+reference, still comes after x (`Z.TEST(Data!B2,1/0)` and `Z.TEST(Data!B2:B3,1/0)` with B2 `#N/A`, and
+`Z.TEST({1,2,#N/A},1/0)`, are `#DIV/0!`; "RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments").
+`ZTEST(PERCENTRANK.EXC(..,LCM(<text>))<#VALUE!>,XIRR(..)<#NUM!>)` is `#VALUE!` (gen-m9/c7664e494e418395 A204).
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2470; probes/t2428-ztest-error-data A1-A14 (excel-graph,
+2026-10-24, direct).
+Ours: the error array value first, per element, since T-2428 (`statistical/z_test.rs`); otherwise x and sigma first,
+`#NUM!` for sigma before the one-value `#DIV/0!`, `#VALUE!` or `#DIV/0!` for the lone cells; T-2470.
 Status: VERIFIED (excel-graph)
 
 ## MODE: a one-cell range reference to an empty cell is #VALUE! (T-2256)

@@ -329,6 +329,15 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   (T-2328)" scores 227/227 on the fit set and 51/52 on `xirr-oos`, where the one miss is the A7 input check
   (`xirr-early-dates`). The span factor stays: with Excel's `^`, the unscaled fitted stop scores 33/52 and the
   step test alone 48/52. The A8 124-year cell still needs the scaled bound.
+- T-2329 (probes/xirr-zero-first-bracket, excel-graph, 2026-10-24): with a zero first value the flows do
+  not matter. The bracket is [0, s] (s is the guess itself for any positive guess, 1 or more included, and 1e-5 for a guess of 0), and the
+  bisection replaces the upper end every step (the first-value sign rule above), so XIRR is s/2^k at the first k
+  with s/2^k < 5e-9 + 1e-8·s/2^k: 2.9802322387695314e-09 at the default guess for a root at 1.0 (A1), 3 (A4) or
+  -0.1 (A5), on all-equal dates where XNPV is a flat 10 (A8) or a flat 0 (A12), and on a first date later than
+  equal others (A13); 4.470348358154297e-09 = 0.3/2^26 at guess 0.3 (A3), 4.8828125e-09 = 1e-5/2^11 at guess 0
+  (A9), 3.725290298461914e-09 = 2/2^29 at guess 2 (A10). A negative guess is `#NUM!` (A6, A7, A11), even
+  where the downward chain from the guess brackets the root (A6: root -0.1, guess -0.2). So no XNPV sign is
+  read on the walk; a NaN from normalising XNPV by the first value would explain it (unconfirmed).
 Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
 T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells. The walk
 cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
@@ -336,7 +345,7 @@ caps" below). A trial rate where a power overflows or underflows to 0 has no XNP
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. The XNPV part of the stop test
 (T-1583's span-scaled form) fits every numeric cell probed once XNPV uses Excel's `^` (T-2328). Its form rests on the
 fit set, `xirr-oos` and A8 alone, so it is a fitted rule, not a known mechanism.
-Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329
 
 ## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of v = 1/(1 + r):
@@ -516,8 +525,10 @@ and is `#NUM!` (X2). Text in either range is `#VALUE!` (X6, X7). Dates before th
 `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same flows is
 #NUM!), and -1000, 1100, -1000 on 45000, 45365, 44000 = -0.24668241366744048 (X8). But XIRR is `#NUM!`
 when no date is later than the first and the first value is nonzero, even where a root exists (with a zero first value
-it is not: probes/xirr-span-zero-first A28-A30, `{0,-1000,1100}` on 46000, 45000, 45365, give 2.98e-9 / 3.73e-9, T-1591; the exact
-condition is unprobed; T-2329 relaxes the engine check): -1000 on 45365 then 1100 on 45000 (X9,
+it is not: probes/xirr-span-zero-first A28-A30, `{0,-1000,1100}` on 46000, 45000, 45365, give 2.98e-9 / 3.73e-9, T-1591;
+T-2329 skips the engine's later-date check for a zero first value; equal dates with a zero first value are 2.5849043512437796E-09 in Excel
+(gen-m9/e168be7f6d3f84c2 A125, a computed guess), because a zero first value fixes the bracket whatever the dates, see the T-2329 bullet under
+"XIRR is a bracketing bisection"): -1000 on 45365 then 1100 on 45000 (X9,
 xirr-early-dates is the same as an array: X12), and 1100, -1000, -1000 on 45365, 45000, 44000 (X13).
 All dates equal is `#NUM!` (A3), while a repeat of the first date next to a later one is fine (A4,
 A5). Positive flows on earlier dates with no root are `#NUM!` (A1, A2, A14, A15). A negative date or
@@ -1655,9 +1666,39 @@ gen-m9/0a614cfe974b59c3 Calc!A390), `CHISQ.INV((XIRR(0.5,{0,1,59,60,61})/..),8)`
 with both TRUE, bc40d37cb4d8301d A392) and `#NUM!` for a number against a range of a different count
 (`XNPV(1,2.5,Data!A4:C12)`, ee2497a5e683c5d9 A107; `XNPV(0.5,-0.5,Data!B4:E8)`, bc40d37cb4d8301d A79).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 51 cells listed in T-2428.
-Ours: `#VALUE!` for the XIRR cases, `#NUM!` for the XNPV ones; T-2428.
-Status: VERIFIED (excel-graph, inferred through the enclosing call)
-Tasks: T-2428
+Order (XIRR, T-2428, from 198 gen-m9 cells now passing): an error dates argument, then (beside a number or omitted guess;
+a text, boolean or error guess keeps the element reading's `#VALUE!` or that error) one value with one date is `#N/A`
+unless either is a text, boolean or empty cell (`#VALUE!`; an array element such as BYROW's `{FALSE}` is not a cell, so
+`#N/A`); a single date that is a text, boolean or empty cell is `#VALUE!`; a single text or boolean value cell against
+several dates is `#VALUE!`; then different counts are `#NUM!` whatever a larger range holds (gen-m9/0a957119475760c5 A47);
+then the element reading. Open (T-2428): an error guess beside numeric values is the guess's error in Excel
+(1b60bf99d71424e7 A29, 67a4c03afd63f988 A388) but text values beside an error guess are `#VALUE!` (b72d952c5f52cb4d A50).
+Order (XNPV, T-2428): the rate first, per element, where a boolean is `#VALUE!` (a cell, `XNPV(<TRUE>,..)`,
+1dce4774f5c0e736 A22, or an array element, `XNPV(SORT(<FALSE>),..)`, 5c6a23c4f6597f1c A258); then one values cell that is
+non-numeric text or a boolean is `#VALUE!`, before an error dates argument (`XNPV(-1,<FALSE>,<#N/A>)`, 3aa168259335be54
+A334), while numeric text there is not refused (`DB(XNPV(0.1,<"1.5">,Data!C5:C6)*..)` is the count's `#NUM!`,
+81bcdc0bec0c8e6b A37); then an error dates argument is that error, before the values' cells (`XNPV(0.05,Data!B1:E2,<#N/A>)`,
+5c6a23c4f6597f1c A111; four cells with a `#VALUE!` dates expression beside a values range holding text); then one dates cell
+that is non-numeric text or a boolean is `#VALUE!` (d0854366830dcdee A274); then values and dates of different counts are
+`#NUM!` whatever they hold, an error value included (`XNPV(0.1,{-100,#N/A,60},<5 dates>)`, bc04c1f478c9896c A313;
+`XNPV(10,{100,200,300},<6 cells with text>)`, 1b60bf99d71424e7 A24); then the element reading. Open (T-2611): equal counts
+with text in both (1b60bf99d71424e7 A171 `#VALUE!`) and a boolean date inside a range (5ded7594e597e31e A12 `#NUM!`).
+Evidence: 38 of the 48 gen-m9 cells whose formula is a bare XNPV or FVSCHEDULE call (excel-graph, direct), and the
+nested cells listed in T-2428.
+Ours: XIRR follows its order (`xirr_size_error`) and XNPV its (`xnpv_size_error`, the rate read without booleans) since
+T-2428; the error-guess cells are T-2611's.
+Status: VERIFIED (excel-graph; direct for the bare XIRR and XNPV cells, inferred through the enclosing call otherwise)
+Tasks: T-2428, T-2611
+
+## FVSCHEDULE with one empty schedule cell is the principal
+Rule: a schedule that is one empty cell is an empty schedule, so FVSCHEDULE returns the principal: `FVSCHEDULE(6527,D1)`
+is 6527 and `FVSCHEDULE(2758,C7)` 2758 with the cell empty, also through a reference-returning IF
+(`FVSCHEDULE(1E+300,IF(Data!C7,Data!B$3,Data!B9))` is 1E+300), while text in the schedule stays `#VALUE!`.
+Evidence: gen-m9/30e20ba3302fea8b A250, e8d55ec393460bb7 A3, 6376e27be7a05871 A140 (excel-graph, 2026-10-23, direct).
+Ours: matches since T-2428 (`fn_fvschedule`). `FVSCHEDULE(5916,{-1E+300,1E+300})` is 0 in Excel (89f0aee953a55a45 A349),
+ours `#DIV/0!` (T-2611).
+Status: VERIFIED (excel-graph)
+Tasks: T-2428, T-2611
 
 ## Financial functions in the gen-m9 financial sweep (T-2257)
 Rule: the generated financial cells show these Excel rules that ours does not follow yet (each cell is a gen-m9 formula whose

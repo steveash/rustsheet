@@ -30,14 +30,14 @@ struct ZTestData {
 }
 
 impl Model {
-    /// Z.TEST's data: the numbers of a range or an array (text and booleans skipped), or a
-    /// number or boolean; anything else is `#VALUE!`.
+    /// Z.TEST's evaluated data: the numbers of a range or an array (text and booleans skipped),
+    /// or a number or boolean; anything else is `#VALUE!`.
     fn z_test_data(
         &mut self,
-        node: &Node,
+        data: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<ZTestData, CalcResult> {
-        let values = match self.evaluate_node_in_context(node, cell) {
+        let values = match data {
             CalcResult::Range { left, right } => self.values_from_range(left, right)?,
             CalcResult::Array(array) => self
                 .values_from_array(array)
@@ -85,13 +85,21 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let data = match args.first() {
-            Some(node) => self
-                .z_test_data(node, cell)
-                .map_err(CalcResult::without_message),
+            Some(node) => self.evaluate_node_in_context(node, cell),
             None => return CalcResult::new_args_number_error(cell),
         };
-        self.lift_call(kind, args, cell, &mut |model, values| {
-            z_test_element(model, &data, values, cell)
+        // A data argument that is itself an error value comes before `x` and `sigma` in every
+        // element, unlike an error inside a range or array: `Z.TEST(NA(),1/0)` and
+        // `Z.TEST(NA(),"a")` are `#N/A` and `Z.TEST(NA(),{1,2})` spills two, while
+        // `Z.TEST(Data!B2:B3,1/0)` and `Z.TEST({1,2,#N/A},1/0)` are `#DIV/0!`
+        // (probes/t2428-ztest-error-data).
+        let data_is_error = matches!(data, CalcResult::Error { .. });
+        let data = self
+            .z_test_data(data, cell)
+            .map_err(CalcResult::without_message);
+        self.lift_call(kind, args, cell, &mut |model, values| match &data {
+            Err(error) if data_is_error => error.clone(),
+            _ => z_test_element(model, &data, values, cell),
         })
     }
 }

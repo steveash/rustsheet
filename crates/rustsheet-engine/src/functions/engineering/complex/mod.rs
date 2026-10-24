@@ -83,9 +83,12 @@ impl fmt::Display for Complex {
         // Each part is written as Excel's number-to-text writes it: plain up to 20 characters,
         // then E notation (`1.22514845490862E-16`, probes/eng-impower A9; `1E+200`,
         // probes/eng-imdiv A19).
-        let y_str = if y == 1.0 {
+        // The coefficient 1 is dropped only for an imaginary part that is exactly ±1: Excel writes
+        // `0.1+1i` for `COMPLEX(0.1,1+2^-52,"i")` (gen-m9/62c886e21a1042af A243), so compare the
+        // unrounded part.
+        let y_str = if self.y == 1.0 {
             String::new()
-        } else if y == -1.0 {
+        } else if self.y == -1.0 {
             "-".to_string()
         } else {
             complex_part_to_text(y)
@@ -601,6 +604,18 @@ impl Model {
         let mut walk = AggregateWalk::new(COMPLEX_FOLD_POLICY);
         for arg in args {
             let read = self.evaluate_picked_reference_arg(arg, cell);
+            // An empty array's `#CALC!` is `#VALUE!` (probes/empty-array-args-sequence A5:A7).
+            if let RefArg::Value(value) = &read {
+                if value.is_empty_array() {
+                    // An earlier referenced error still wins (`IMSUM(<#DIV/0! cell>,DROP({1},1))`
+                    // is `#DIV/0!`, a later one does not: probes/empty-array-args-sequence A170:A172).
+                    return walk
+                        .finish()
+                        .err()
+                        .unwrap_or_else(|| value.clone())
+                        .empty_array_as_value_error(cell);
+                }
+            }
             // The cells of the range (blank cells included), and the cells its walk visits.
             let (cells, walked) = match &read {
                 RefArg::Ranges(ranges) => match &ranges[..] {
@@ -697,14 +712,15 @@ impl Model {
                 },
             );
             if let Err(error) = walked {
-                return error;
+                return error.empty_array_as_value_error(cell);
             }
             if referenced < cells {
                 has_blank = true;
             }
         }
+        // A referenced cell holding an empty array's `#CALC!` is `#VALUE!` too (A140..A147).
         if let Err(error) = walk.finish() {
-            return error;
+            return error.empty_array_as_value_error(cell);
         }
         let (x, y, suffix) = total.unwrap_or((0.0, 0.0, Suffix::I));
         if fold == ComplexFold::Product && has_blank {
@@ -845,6 +861,24 @@ mod tests {
     use crate::functions::engineering::complex::Suffix;
 
     use super::parse_complex_number as parse;
+
+    #[test]
+    fn coefficient_one_written_unless_exactly_one() {
+        let text = |x: f64, y: f64| {
+            super::Complex {
+                x,
+                y,
+                suffix: Suffix::I,
+            }
+            .to_string()
+        };
+        assert_eq!(text(0.1, 1.0 + 2f64.powi(-52)), "0.1+1i");
+        assert_eq!(text(0.5, 1.0 - 2f64.powi(-53)), "0.5+1i");
+        assert_eq!(text(0.5, -1.0 - 2f64.powi(-52)), "0.5-1i");
+        assert_eq!(text(0.5, 1.0), "0.5+i");
+        assert_eq!(text(0.5, -1.0), "0.5-i");
+        assert_eq!(text(0.0, 1.0), "i");
+    }
 
     #[test]
     fn suffix_join() {
