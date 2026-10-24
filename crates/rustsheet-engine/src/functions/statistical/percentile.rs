@@ -160,7 +160,7 @@ impl Model {
         )
     }
 
-    /// PERCENTRANK.INC or .EXC (`rank_of`) of one element: an empty array is `#N/A`, then x,
+    /// PERCENTRANK.INC or .EXC (`rank_of`) of one element: an error x, then an empty array `#N/A`,
     /// then the significance (3 digits when omitted; below 1 `#NUM!` unless the data is one
     /// value), then an x outside the data is `#N/A`.
     fn percentrank_of(
@@ -170,13 +170,15 @@ impl Model {
         rank_of: fn(&[f64], f64) -> f64,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if data.is_empty() {
-            return CalcResult::new_error(Error::NA, cell, String::new());
-        }
+        // An error or text x comes before the empty-data `#N/A` (probes/quartile-single-text-cell
+        // B12-B18, T-2066).
         let x = match self.cast_number_ref(value_at(values, 1), cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if data.is_empty() {
+            return CalcResult::new_error(Error::NA, cell, String::new());
+        }
         // No cell or coercion gives NaN; refuse one before it reaches the rank search.
         if x.is_nan() {
             return num_error(cell);
