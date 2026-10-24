@@ -1234,6 +1234,6 @@ Tasks: T-2266
 ## NETWORKDAYS.INTL: the blank weekend's #NUM! before the holidays' error (T-2436)
 Rule: `NETWORKDAYS.INTL(31,4886,<blank>,{1,2;#N/A,""})` is `#NUM!`, the blank weekend cell's error (T-2271) before the holidays'
 `#N/A` (gen-m9 c2974c061384fdd9 A149, probes/t2436/c2974c061384fdd9, excel-graph, 2026-10-24).
-Ours: `#N/A`; T-2583.
+Ours: implemented (T-2271's weekend read comes before the holidays' error; T-2583 pins it with a unit test).
 Status: VERIFIED (excel-graph), one cell
 Tasks: T-2583
