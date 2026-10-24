@@ -21,6 +21,7 @@ use super::number_or_error;
 use crate::{
     arithmetic::power,
     calc_result::CalcResult,
+    constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     functions::lift::{div_error, num_error},
@@ -758,10 +759,12 @@ impl Model {
 
     /// Reads and checks the arguments of ODDFPRICE and ODDFYIELD (`N` = 4 dates: settlement,
     /// maturity, issue, `first_coupon`) or ODDLPRICE and ODDLYIELD (`N` = 3: settlement, maturity,
-    /// `last_interest`), then rate, yld or pr (`price_given`), redemption, frequency and [basis].
-    /// Every argument is read, in order, before any value is checked; then a date off the
-    /// calendar, the frequency, the basis, `check_dates` (the dates' order) and the values are
-    /// #NUM! in that order.
+    /// `last_interest`), then rate, yld or pr (`price_given`), redemption, frequency and [basis],
+    /// in Excel's order (probes/odd-bond-argument-check-order, T-2483; financial.md "ODDFPRICE,
+    /// ODDFYIELD, ODDLPRICE and ODDLYIELD check order"). A date below 0 or past 9999-12-31 is
+    /// #NUM! as it is read, and so is the frequency, before the basis is read; then a date a 1904
+    /// workbook's reading moves off the calendar, the basis, `check_dates` (the dates' order) and
+    /// the values are #NUM! in that order.
     fn odd_args<const N: usize>(
         &self,
         values: &[CalcResult],
@@ -779,9 +782,11 @@ impl Model {
         let mut read = [None; N];
         for (date, value) in read.iter_mut().zip(date_values) {
             let serial = self.cast_number_no_bools_ref(value, cell)?;
-            // A negative date is `#NUM!` as it is read, ahead of an error in a later argument
-            // (probes/fin-odd-date-before-error-arg A1:A7, A11, A14:A16; a date of 0 is fine, A17).
-            if serial < 0.0 {
+            // A date off the calendar is `#NUM!` as it is read, ahead of an error in a later
+            // argument (probes/fin-odd-date-before-error-arg A1:A7, A11, A14:A16; a date of 0 is
+            // fine, A17; odd-bond-argument-check-order: -0.5 and 2958466 too, 2958465 is fine).
+            let calendar = 0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0;
+            if !calendar.contains(&serial) {
                 return Err(num_error(cell));
             }
             *date = date_system.odd_period_1900_serial(serial);
@@ -790,13 +795,14 @@ impl Model {
         let yld_or_pr = self.cast_number_no_bools_ref(yld_or_pr, cell)?;
         let redemption = self.cast_number_no_bools_ref(redemption, cell)?;
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
+        // `ODDFPRICE(..,100,3,NA())` is #NUM!: the frequency is checked before the basis is read.
+        validate_frequency(frequency, cell)?;
         let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         // A date Excel's reading moves off the calendar (`DateSystem::odd_period_1900_serial`).
         let mut dates = [0; N];
         for (date, read) in dates.iter_mut().zip(read) {
             *date = read.ok_or_else(|| num_error(cell))?;
         }
-        validate_frequency(frequency, cell)?;
         let basis = validate_basis(basis, cell)?;
         check_dates(&dates, frequency)?;
         let bad_fourth = if price_given {
@@ -847,7 +853,9 @@ impl Model {
         Ok((odd, schedule))
     }
 
-    /// The checked arguments of ODDLPRICE (`price_given` false) or ODDLYIELD.
+    /// The checked arguments of ODDLPRICE (`price_given` false) or ODDLYIELD. A settlement on or
+    /// before the last coupon is #NUM!, after every argument is read
+    /// (probes/odd-bond-argument-check-order A909:A925).
     fn odd_last_of(
         &self,
         values: &[CalcResult],
@@ -856,7 +864,7 @@ impl Model {
     ) -> Result<OddArgs<3>, CalcResult> {
         self.odd_args::<3>(values, price_given, cell, |dates, _| {
             let [settlement, maturity, last_interest] = *dates;
-            if last_interest >= maturity || settlement >= maturity {
+            if settlement <= last_interest || last_interest >= maturity || settlement >= maturity {
                 return Err(num_error(cell));
             }
             Ok(())
