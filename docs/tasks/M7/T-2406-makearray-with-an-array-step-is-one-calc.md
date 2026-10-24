@@ -104,7 +104,7 @@ element (T-2039) or a result-position-only rule. Keep this task open for that ha
 
 ## Outcome
 MAKEARRAY with a multi-cell LAMBDA step is one `#CALC!` (`makes_calc_error`, as BYROW/BYCOL). A LAMBDA element of BYROW, BYCOL and
-MAP is `#CALC!` when the call is the cell formula's outermost node (`Model::lambda_elements_shown`, set by `run_cell_formula`, taken by
+MAP is `#CALC!` when the call is the cell formula's outermost node (superseded by T-2039: the element now holds the LAMBDA itself; `Model::lambda_elements_shown`, set by `run_cell_formula`, taken by
 the call) and stays `#VALUE!` where consumed, which keeps the three cells the handoff found regressing. Eval: gen-m7 known failures
 -164 (122 MAKEARRAY + 42 LAMBDA-element), gen-m9 -2, 0 regressions. `tier: opus` is from the sonnet handoff.
 Follow-up: T-2463 (probe the element under ISERROR/IFERROR/ERROR.TYPE/TYPE, non-root positions, MAKEARRAY 1x1 and LAMBDA steps).

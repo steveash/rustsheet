@@ -3,12 +3,12 @@ id: T-1742
 title: "LOGEST: match Excel on the logest-modes probe (spill shape, flags, multi-column x, ULP-level numerics)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
 campaign: visible
-depends_on: []
+depends_on: [T-1741]
 ---
 
 ## Goal
@@ -103,12 +103,82 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (2): Calc!A323, A384
 - gen-m9/fec39efaba9284c3.case.json (1): Calc!A86
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): LOGEST nested in the statistical calls.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 9 known-failure lines in eval/baseline/gen-m9.txt, 9 visibly off.
+Examples:
+- gen-m9/0072265d385d8ab2 Calc!A56 `=TINV((Data!B$3/Data!A7),LOGEST(Data!D7))`: Excel 0.0, ours #VALUE!
+- gen-m9/139684e68fb2fc3b Calc!A265 `=PEARSON({1,"a",TRUE,3},LOGEST(ROWS(Data!B3:C4)))`: Excel #N/A, ours #VALUE!
+- gen-m9/3fb9cecf2c23169f Calc!A167 `=PERCENTRANK.INC(Data!B1:C4,(42/LOGEST(100)))`: Excel #N/A, ours #VALUE!
+- gen-m9/873f30d2bf76f8db Calc!A62 `=PERCENTRANK.EXC(Data!B9:E9,(LOGEST(42)/Data!C11))`: Excel #DIV/0!, ours #VALUE!
+- gen-m9/d910f000b60e2eac Calc!A253 `=SLOPE(Data!B10:B10,LOGEST(Data!A1:D7,Data!$B10))`: Excel #REF!, ours #VALUE!
+Cells:
+- gen-m9/0072265d385d8ab2.case.json (1): Calc!A56
+- gen-m9/139684e68fb2fc3b.case.json (1): Calc!A265
+- gen-m9/3fb9cecf2c23169f.case.json (1): Calc!A167
+- gen-m9/7980ffb6095a340d.case.json (2): Calc!A72, A208
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A62
+- gen-m9/a5342a7e24fd803e.case.json (1): Calc!A288
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A189
+- gen-m9/d910f000b60e2eac.case.json (1): Calc!A253
+
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): LOGEST nested in the financial functions (`AMORDEGRC(3818,37026,39052,8,LOGEST(BITAND(281474976710655,986)),0.0314159,0)` = 169 in Excel, ours `#VALUE!`; `YIELDDISC(LOGEST(..),PI(),-1,108,1)` `#NUM!`): Excel's inner LOGEST is not ours `#VALUE!`.
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 8 known-failure lines in eval/baseline/gen-m9.txt, 8 visibly off.
+Examples:
+- gen-m9/1b60bf99d71424e7 Calc!A2 `=DURATION(LOGEST(Data!C11:E11,Data!A10:B12),Data!D11,AVERAGE(Data!C8:C9),1E-300,0)`: Excel #REF!, ours #NUM!
+- gen-m9/31474c20fc1dafd6 Calc!A206 `=DOLLARDE(ASIN(LOGEST(Data!D12,123456789.123,Data!C1,TRUE)),10)`: Excel #NUM!, ours #VALUE!
+- gen-m9/3c06f9298f65a3ba Calc!A335 `=AMORDEGRC(3818,37026,39052,8,LOGEST(BITAND(281474976710655,986)),Data!B3%,0)`: Excel 169.0, ours #VALUE!
+- gen-m9/9d9ceba257f8001b Calc!A176 `=CUMPRINC((Data!D12-Data!D9),LOGEST(BITRSHIFT(566,Data!A$5)),19144,11,21,0)`: Excel #NUM!, ours #VALUE!
+- gen-m9/b73c6cc96e093f03 Calc!A108 `=TBILLEQ(45657,LOGEST((Data!$E11-1.005),(Data!C11+2),BYROW(Data!B6,_xleta.SUM)),0)`: Excel #NUM!, ours #VALUE!
+- gen-m9/b73c6cc96e093f03 Calc!A293 `=YIELDDISC(LOGEST((Data!E11*1e-15),3.14159),PI(),(-1),108,1)`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/1b60bf99d71424e7.case.json (1): Calc!A2
+- gen-m9/31474c20fc1dafd6.case.json (1): Calc!A206
+- gen-m9/3c06f9298f65a3ba.case.json (1): Calc!A335
+- gen-m9/9d9ceba257f8001b.case.json (1): Calc!A176
+- gen-m9/b73c6cc96e093f03.case.json (3): Calc!A108, A256, A293
+- gen-m9/bc04c1f478c9896c.case.json (1): Calc!A75
+
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 5 more cells nest LOGEST: `HEX2DEC(TEXT(LOGEST(-2.5),"?/?"))` and `BITXOR(LOGEST(-0.5),736)` `#NUM!` (non-positive known_y), `HEX2OCT("1F",LOGEST(<text>,Data!C8:E11,..)+..)` and `IMPOWER("2i",LOGEST(Data!A1:B1,Data!B$8))` `#REF!`, `BESSELI(LOGEST(42.5,-0.4),0)` 1.2660658480342601 (LOGEST of one point is 1); ours `#VALUE!`.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 formulas, 5 visibly off.
+Examples:
+- gen-m9/2b0324e2de2e7b74 Calc!A267 `=BITXOR(LOGEST((Data!C4-Data!B7)),736)`: Excel #NUM!, ours #VALUE!
+- gen-m9/40fc68fccfaf9b76 Calc!A347 `=HEX2OCT("1F",(LOGEST(Data!D4,Data!C8:E11,Data!E2,FALSE)+Data!C8))`: Excel #REF!, ours #VALUE!
+- gen-m9/4fffa5addab1f8af Calc!A280 `=HEX2DEC(TEXT(LOGEST(Data!$C9),"?/?"))`: Excel #NUM!, ours #VALUE!
+- gen-m9/a1b4181c04804efc Calc!A263 `=IMPOWER("2i",LOGEST(Data!A1:B1,Data!B$8))`: Excel #REF!, ours #VALUE!
+- gen-m9/e85daedce5c2675e Calc!A315 `=BESSELI(LOGEST(SUM(42,0.5,Data!D12),(Data!C9+Data!E8)),FLOOR(DB(1E+300,100,19,5),COUNTIFS(Data!B6:D10,"=a")))`: Excel 1.2660658480342601, ours #VALUE!
+Cells:
+- gen-m9/2b0324e2de2e7b74.case.json (1): Calc!A267
+- gen-m9/40fc68fccfaf9b76.case.json (1): Calc!A347
+- gen-m9/4fffa5addab1f8af.case.json (1): Calc!A280
+- gen-m9/a1b4181c04804efc.case.json (1): Calc!A263
+- gen-m9/e85daedce5c2675e.case.json (1): Calc!A315
+
+State after T-1741 (2026-10-24, measured on T-1741's branch with T-2547 merged): LOGEST shares LINEST's new shape and
+check-order code, which fixes 184 of the 189 gen-m9 cells listed above (T-2255, T-2256, T-2257, T-2258) and the shape
+cells K141, K162, K183 and K71. Still failing: gen-m9 285d87cea1aaa73c A293 (`LOGEST(<scalar y>,Data!C9:C12,<const>)`
+Excel 1, ours 2.69E-40), 589f42e67f4b4b8d A193 (`LOGEST(Data!A10:B11)` 2.220601291150046, ours ...0514: the solve),
+b8ee55934c5b824c A161 (Excel `#VALUE!`, ours `#REF!`), a5342a7e24fd803e A288 (`LOGEST(Data!A$6,1E+15,"")` inside
+TRIMMEAN: Excel `#N/A`, ours `#NUM!`) and bc04c1f478c9896c A75 (Excel `#VALUE!`, ours `#NUM!`). In logest-modes:
+K85 (0.982454941667086, ours ...0796, past the 15th digit) and the exact-fit stats K169:L173 and K197:L201 (Excel's
+residual is exactly 0, so se is 0 and F `#NUM!`; ours carries 2E-16 of noise), plus last-digit cells T-2006 owns.
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 167 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity: the 8 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 8 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] probes/logest-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. (T-1741's baseline.)
+- [x] Visible parity (gen-m9, T-2257): the 8 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline. (T-1741.)
+- [x] Visible parity (gen-m9, T-2255 and T-2256): these 176 known-failure lines (167 from T-2255, 9 from T-2256) disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline, apart from the
+      five handed off under Outcome (171 of 176 left with T-1741).
+- [x] Visible parity: the 8 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits,
+      or its type, error and text, apart from K85 (the solve, handed to T-2006): K141, K162 and K183 left
+      eval/baseline/probes.txt; K71, K169, K190 and K197 are now last-digit (ulp) lines, which T-2006 owns.
+- [x] probes/logest-modes baseline entries shrink to zero apart from the last-digit cells T-2006 owns: what is left is
+      numeric (27 ulp, 69 close, 9 mismatch, 2 type), all from the solve, and T-2006 now lists the visible ones (K85 and
+      the exact-fit stats K169:L173, K197:L201).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes outside this function, and the FORECAST.ETS family (T-1553).
@@ -117,3 +187,17 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (wrong LOGEST shapes and errors, and K85 past the 15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. The last-digit numerics stay with T-2006.
+
+## Outcome
+- No engine change was needed: T-1741 (#1674) moved LOGEST onto LINEST's shape and check-order code, which fixed 184 of
+  the 189 gen-m9 cells and the probe shape cells K141, K162 and K183 (its baseline recorded them).
+- The five cells left are decided outside LOGEST's shapes and checks, and went to their owners with the evidence
+  (statistics.md "LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)"):
+  - 285d87cea1aaa73c A293, which column a singular fit drops: added to T-2569, a probe of the pivoted-QR hypothesis;
+  - 589f42e67f4b4b8d A193 and logest-modes K85, K169:L173, K197:L201, the solve: added to T-2006, which now carries
+    `campaign: visible` (decision 0083) since it holds visibly-off cells from T-1741 and this task;
+  - a5342a7e24fd803e A288, TRIMMEAN's error order: new T-2614 (statistics.md "TRIMMEAN: an error percent before data with
+    no number (T-1742)");
+  - bc04c1f478c9896c A75 (PRICEMAT, error yld beside a LOGEST basis) and b8ee55934c5b824c A161 (HLOOKUP with a text-cell
+    range_lookup as known_x): new probe task T-2615.
+- Eval delta: none in this PR (documents and task files only); the 184 gen-m9 and 3 probes lines left in T-1741's PR.

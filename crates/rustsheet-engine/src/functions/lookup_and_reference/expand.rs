@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::wrapcols_wraprows::pad_with_of;
-use super::SIZE_LIMIT_EXCLUSIVE;
+use crate::limits::SIZE_LIMIT_EXCLUSIVE;
 
 impl Model {
     // ── EXPAND ────────────────────────────────────────────────────────────────
@@ -36,13 +36,13 @@ impl Model {
         // (`ROWS(EXPAND(A1:A2,{3;4}))` is 2, probes/m7-argument-modes F7:H7,
         // probes/m7-lift-take-drop-sortby row 20). pad_with does not lift: an array there is
         // `#VALUE!` (`EXPAND(A1:A2,3,1,{0;1})`, same case row 21; T-1835), and so is a multi-cell
-        // range (T-2415); a 1x1 array is unprobed (T-2365).
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let src_rows = data.len();
-        let src_cols = data.first().map(|r| r.len()).unwrap_or(0);
+        // range (T-2415); a 1x1 array is `#VALUE!` too (probes/t2365-wrap-expand-tocol-error-lift
+        // G8). An array that is an error is every element's result, as for TOROW:
+        // `ROWS(EXPAND(1/0,{3;4}))` and `ROWS(EXPAND(NA(),3,{1;2}))` are 2 (same case G6, G7).
+        let data = self.eval_to_array(&args[0], cell);
+        let (src_rows, src_cols) = data.as_ref().map_or((1, 1), |data| {
+            (data.len(), data.first().map_or(0, Vec::len))
+        });
         let cells = u64::try_from(src_rows.saturating_mul(src_cols))
             .unwrap_or(u64::MAX)
             .max(1);
@@ -53,6 +53,10 @@ impl Model {
             LiftCost::Cells(cells),
             cell,
             &mut |model, values| {
+                let data = match &data {
+                    Ok(data) => data,
+                    Err(error) => return error.clone(),
+                };
                 let target_rows = match model.cast_number_or(values.get(1), 0.0, cell) {
                     Ok(n) => n,
                     Err(e) => return e,
@@ -94,7 +98,7 @@ impl Model {
                     other => other.clone(),
                 });
                 expand_kernel(
-                    &data,
+                    data,
                     target_rows,
                     target_cols,
                     pad_with_of(pad.as_ref()),

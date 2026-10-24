@@ -281,10 +281,8 @@ pub(crate) struct Evaluation {
     pub(crate) blocked_on: Option<CellReferenceIndex>,
     /// Number of passes the last `evaluate()` ran, restarted ones included. For tests.
     pub(crate) passes_in_last_evaluation: u32,
-    /// Set while a cell formula whose outermost node is BYROW, BYCOL or MAP is about to call it;
-    /// that call takes it at once, so no nested call sees it (`lambda_element`, T-2406). TODO(T-2039): drop it
-    /// once an array element can hold the LAMBDA.
-    pub(crate) lambda_elements_shown: bool,
+    /// Circular references under iterative calculation (`iteration.rs`).
+    pub(crate) iteration: crate::iteration::IterationState,
 }
 
 /// How deep the recursion may go when nobody has said otherwise, in formulas
@@ -345,21 +343,36 @@ impl Default for Evaluation {
             blocking: false,
             blocked_on: None,
             passes_in_last_evaluation: 0,
-            lambda_elements_shown: false,
+            iteration: Default::default(),
         }
     }
 }
 
 impl Model {
-    /// Evaluates every formula in the workbook.
-    ///
+    /// Evaluates every formula in the workbook, then its data tables and, if there are any,
+    /// everything again so that their readers see the results (`data_tables.rs`). With
+    /// iterative calculation on, each round's circular references are then iterated
+    /// (`iteration.rs`).
+    pub fn evaluate(&mut self) {
+        self.evaluation.evaluations += 1;
+        self.begin_iteration();
+        self.evaluate_passes();
+        self.iterate_cycles(true);
+        if self.evaluate_data_tables() {
+            self.restart_iteration_round();
+            self.evaluate_passes();
+            self.iterate_cycles(false);
+        }
+        self.end_iteration();
+        self.evaluate_conditional_formatting();
+    }
+
     /// Runs passes until one completes without a restart. `RestartLog` learns
     /// from each restart, reorders the anchors and marks what it proves
     /// circular; see there for why the loop ends. A marked anchor stores
     /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
     /// is marked, so there is nothing of it to read or to contradict.
-    pub fn evaluate(&mut self) {
-        self.evaluation.evaluations += 1;
+    fn evaluate_passes(&mut self) {
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
@@ -402,7 +415,6 @@ impl Model {
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
         self.evaluation.weeknum_start = None;
-        self.evaluate_conditional_formatting();
     }
 
     /// Sets how many formulas deep the evaluation may recurse. A formula that
@@ -432,124 +444,6 @@ impl Model {
     /// The limit set by `set_max_evaluation_stack`.
     pub fn get_max_evaluation_stack(&self) -> usize {
         self.evaluation.max_stack
-    }
-
-    /// Every position that holds a cell, in natural `(sheet, row, column)` order.
-    fn all_positions(&self) -> Vec<CellReferenceIndex> {
-        self.get_all_cells()
-            .into_iter()
-            .map(|index| CellReferenceIndex {
-                sheet: index.index,
-                row: index.row,
-                column: index.column,
-            })
-            .collect()
-    }
-
-    /// Every dynamic anchor and every spill cell of a dynamic anchor, as they
-    /// are now, in natural order, which is the order the sheets give their
-    /// cells in.
-    fn dynamic_spills(&self) -> Vec<(CellReferenceIndex, Cell)> {
-        let mut found = Vec::new();
-        for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
-                if !matches!(cell, Cell::ArrayFormula { .. } | Cell::SpillCell { .. }) {
-                    continue;
-                }
-                let position = CellReferenceIndex {
-                    sheet: sheet as u32,
-                    row,
-                    column,
-                };
-                if self.belongs_to_a_dynamic_array(position, cell) {
-                    found.push((position, cell.clone()));
-                }
-            }
-        }
-        found
-    }
-
-    /// Puts the dynamic anchors and their spill cells back to `snapshot`,
-    /// removing the spill cells written since.
-    fn restore_dynamic_spills(&mut self, snapshot: &[(CellReferenceIndex, Cell)]) {
-        let written_since: Vec<CellReferenceIndex> = self
-            .dynamic_spills()
-            .into_iter()
-            .filter(|(_, cell)| matches!(cell, Cell::SpillCell { .. }))
-            .map(|(position, _)| position)
-            .collect();
-        for position in written_since {
-            if let Ok(worksheet) = self.workbook.worksheet_mut(position.sheet) {
-                let _ = worksheet.cell_clear_contents(position.row, position.column);
-            }
-        }
-        for (position, cell) in snapshot {
-            if let Ok(worksheet) = self.workbook.worksheet_mut(position.sheet) {
-                let _ = worksheet.update_cell(position.row, position.column, cell.clone());
-            }
-        }
-    }
-
-    fn belongs_to_a_dynamic_array(&self, position: CellReferenceIndex, cell: &Cell) -> bool {
-        match cell {
-            Cell::ArrayFormula {
-                kind: ArrayKind::Dynamic,
-                ..
-            } => true,
-            Cell::SpillCell { a, .. } => matches!(
-                self.fetch_cell(CellReferenceIndex {
-                    sheet: position.sheet,
-                    row: a.0,
-                    column: a.1,
-                }),
-                Some(Cell::ArrayFormula {
-                    kind: ArrayKind::Dynamic,
-                    ..
-                })
-            ),
-            _ => false,
-        }
-    }
-
-    /// Brings `anchor_order` in line with the dynamic anchors that exist now:
-    /// anchors that are gone are dropped, new ones are appended in natural
-    /// order, the rest keep their relative order.
-    fn sync_anchor_order(&mut self) {
-        let current = self.dynamic_anchors_in_natural_order();
-        let current_set: HashSet<CellReferenceIndex> = current.iter().copied().collect();
-        let order = &mut self.evaluation.anchor_order;
-        order.retain(|anchor| current_set.contains(anchor));
-        let known: HashSet<CellReferenceIndex> = order.iter().copied().collect();
-        order.extend(current.into_iter().filter(|a| !known.contains(a)));
-    }
-
-    fn dynamic_anchors_in_natural_order(&self) -> Vec<CellReferenceIndex> {
-        self.positions_where(|cell| {
-            matches!(
-                cell,
-                Cell::ArrayFormula {
-                    kind: ArrayKind::Dynamic,
-                    ..
-                }
-            )
-        })
-    }
-
-    /// The positions of the cells that `keep` accepts, in natural `(sheet, row, column)` order.
-    pub(crate) fn positions_where(&self, keep: impl Fn(&Cell) -> bool) -> Vec<CellReferenceIndex> {
-        let mut found = Vec::new();
-        for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
-                if keep(cell) {
-                    found.push(CellReferenceIndex {
-                        sheet: sheet as u32,
-                        row,
-                        column,
-                    });
-                }
-            }
-        }
-        found
     }
 
     /// One pass over the workbook: anchors first, then every cell. Returns the
@@ -697,12 +591,16 @@ impl Model {
     ) -> CalcResult {
         let key = key(cell_reference);
         match self.evaluation.cells.get(&key) {
+            Some(CellState::Evaluating) if self.iterating() => {
+                return self.read_into_cycle(cell_reference);
+            }
             Some(CellState::Evaluating) => {
                 self.mark_stack_circular();
                 return circular_reference();
             }
             Some(CellState::Evaluated) => {
                 self.mark_readers_of(key);
+                self.read_evaluated(cell_reference);
                 return self.stored_value(cell_reference);
             }
             None if self.evaluation.blocking && !self.evaluation.stack.is_empty() => {

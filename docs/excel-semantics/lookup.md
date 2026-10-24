@@ -386,10 +386,12 @@ INDEX/MATCH return the reference, so a blank there is skipped (`COUNT(INDEX(B1:B
 `AVERAGE(VLOOKUP(2,..,{2},FALSE),4)` 4, `COUNT(HLOOKUP(2,D1:F2,{2}))` 0.
 So `ASC(IFS(..,VLOOKUP(123456789.123,D3:E7,2),..))` landing on blank E6 is "0" (through IFS), and
 `SEC(AVERAGE(HLOOKUP(2.5,B8:D11,4),-2.5,B7:B9))` averages the blank result as 0, 1.2724471433871758 = SEC(-2/3).
-XLOOKUP already returns a blank return cell as 0 (below). Excel for the web refuses a workbook holding
-`IFS(TRUE,)` (createSession 501), and one of `AVERAGEA`, `PRODUCT`, `COUNTBLANK`, `SUMSQ`, `STDEV.P` over
-`VLOOKUP(..)` (most likely COUNTBLANK, which takes only a reference); those are unprobed. An omitted value argument
-is the same empty value in the engine, so ours gives 0 for `IFS(TRUE,)` and `SWITCH(1,1,)` too (unprobed, T-2189).
+XLOOKUP already returns a blank return cell as 0 (below). An omitted value argument is the same empty value
+(probes/t2189-*, excel-graph, T-2189, each formula its own case): `IFS(TRUE,)&""` and `SWITCH(1,1,)&""` are "0",
+`ISBLANK(IFS(TRUE,))` is FALSE and `COUNT(SWITCH(1,1,))` is 1; the engine agrees on all four. (An earlier attempt to put
+`IFS(TRUE,)` in a larger workbook got a createSession 501; it is not refused alone.) Excel for the web refuses a workbook holding
+one of `AVERAGEA`, `PRODUCT`, `COUNTBLANK`, `SUMSQ`, `STDEV.P` over
+`VLOOKUP(..)` (most likely COUNTBLANK, which takes only a reference); those are unprobed.
 Evidence: gen-m5/49bfbf67a1409563 Calc!A103, gen-m5/aac6230c2fb40e1e Calc!A334 (excel-graph, 2026-10-20);
 probes/lookup-blank-result-to-caller H1:O20 and probes/lookup-vector-blank-result-to-caller H1:I19 (excel-graph,
 2026-10-20, T-2168).
@@ -688,7 +690,11 @@ Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); 
 probes/index-zero-index-scalar-shape (excel-graph, 2026-10-20, T-1943).
 Status: VERIFIED (excel-graph)
 Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs); a legacy N over `INDEX(5,0,0)` or
-`INDEX(5,0)` (a scalar first argument) is `#VALUE!` with no `@` (T-2191, `indexes_a_number_whole` in static_analysis/legacy.rs).
+`INDEX(5,0)` (a scalar first argument) is `#VALUE!` with no `@` (T-2191, `indexes_a_scalar_whole` in static_analysis/legacy.rs).
+The same holds for T and for every scalar literal: a legacy `=T(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX("a",0,0))`,
+`=N(INDEX(TRUE,0))`, `=N(INDEX(-5,0,0))` (a negated number), `=N(INDEX(5,,0))` (an empty row reads as 0) and the one-index
+forms are all `#VALUE!`, and `FORMULATEXT` shows them with no `@`.
+Evidence: probes/index-zero-index-scalar-t-n (excel-graph, 2026-10-24, T-2368). Ours: implemented (T-2368).
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
@@ -776,6 +782,19 @@ A single-cell reference is a one-cell vector for XMATCH `lookup_array` and XLOOK
 Evidence: probes/xmatch-xlookup-reference-forms G1, H1-H16, probes/xmatch-xlookup-3d-lookup-array H1-H3 (excel-graph, 2026-10-16, T-1698).
 Status: VERIFIED (excel-graph); the engine already matches every cell.
 Tasks: T-1698
+
+## OFFSET height/width/rows from a one-cell TAKE or DROP of a range
+Rule: TAKE and DROP of a range return a reference, so a one-cell result is a scalar for OFFSET's rows, cols, height and width, not a lifting
+1x1 array: `ROWS(OFFSET(B9:C12,5,1,DROP(H2:H4,-2,0),2))` is 3 for H2 = 3 (1 for H3 = 1), `COLUMNS(..)` 2, `INDEX(..,1,1)` the cell. The same holds through
+`IF(TRUE,DROP(..))`, `MAX(..)` and `N(..)`, and with `+0` (`TAKE(H2:H4,1)+0` is 3 rows). An array constant `{3}` or `{1E-15}`, `SEQUENCE(1,1,3)`,
+`INDEX(H2:H4,{1})` and `CHOOSE({1},3)` lift: 1 row, `INDEX(..,1,1)` is `#SPILL!`. A two-cell `DROP(H1:H3,1,0)` lifts to a 2x1 array of references.
+A scalar height of 1E-15 (literal or cell) gives 2 rows (UNVERIFIED mechanism; `OFFSET(B9:C12,5,1,1E-15,2)` rows 2, `INDEX(..,1,1)` 0).
+Evidence: probes/t2454-offset-array-height, probes/t2454-offset-one-cell-array-args, probes/t2414-gen-m7-unexplained A141, A151, A161, A171
+(excel-graph, 2026-10-23, T-2454).
+Ours: `offset_values` reads each number through `evaluate_picked_source`, so a TAKE/DROP (or an IF picking one) is its reference; a CHOOSE or LET picking one is unprobed for OFFSET (T-2519). The `+0` and
+`N(..)` forms of a one-cell TAKE/DROP still lift here (T-2519).
+Status: VERIFIED (excel-graph); partly implemented (T-2454, T-2519)
+Tasks: T-2454, T-2519
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or

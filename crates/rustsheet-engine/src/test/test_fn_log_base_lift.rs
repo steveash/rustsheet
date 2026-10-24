@@ -112,3 +112,20 @@ fn roman_lifts_over_arrays() {
     assert_eq!(model._get_text("A5"), "2");
     assert_eq!(model._get_text("A6"), "IV");
 }
+
+/// COMBINA lifts over array arguments (numbers.md "COMBINA lifts over arrays", T-2453).
+#[test]
+fn combina_lifts_over_arrays() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(COMBINA({7;1},4))");
+    model._set("A2", "=INDEX(COMBINA({7;1},4),2)");
+    model._set("A3", "=INDEX(COMBINA(4,{1;2}),2)");
+    model._set("A4", "=INDEX(COMBINA({0;7},4),1)");
+    model._set("A5", "=COMBINA(7,4)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+    assert_eq!(model._get_text("A2"), "1");
+    assert_eq!(model._get_text("A3"), "10");
+    assert_eq!(model._get_text("A4"), "#NUM!");
+    assert_eq!(model._get_text("A5"), "210");
+}

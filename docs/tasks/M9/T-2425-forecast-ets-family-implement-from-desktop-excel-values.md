@@ -77,8 +77,129 @@ Cells:
 - gen-m9/f2bd5f380ec002bf.case.json (2): Calc!A214, A258
 - gen-m9/fa25422d6f18c157.case.json (145): Calc!A6, A8, A10, A11, A12, A14, A16, A20, A21, A22, A32, A35, A37, A38, A42, A44, A45, A53, A56, A60, A62, A65, A67, A68, A70, A71, A74, A79, A80, A88, A89, A90, A91, A96, A97, A98, A99, A102, A104, A106, A109, A114, A116, A119, A128, A130, A131, A137, A138, A142, A144, A146, A148, A149, A151, A156, A163, A165, A166, A172, A173, A176, A177, A183, A185, A186, A187, A188, A189, A192, A193, A199, A200, A202, A207, A213, A215, A216, A218, A224, A227, A228, A230, A235, A244, A246, A247, A248, A251, A252, A254, A255, A256, A257, A258, A264, A267, A268, A269, A272, A273, A275, A276, A277, A280, A282, A284, A285, A288, A297, A298, A299, A301, A304, A306, A308, A313, A316, A320, A325, A328, A332, A336, A337, A338, A340, A341, A342, A349, A353, A370, A371, A372, A376, A377, A378, A380, A381, A382, A384, A390, A394, A395, A399, A400
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): FORECAST.ETS* calls nested in another function with no error argument of their own; excel-graph's `#N/A` passes through the outer call.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 63 known-failure lines in eval/baseline/gen-m9.txt, 63 visibly off.
+Examples:
+- gen-m9/0bbab6206b5c9a07 Calc!A359 `=PERCENTRANK(5,FORECAST.ETS((-1),(-1),Data!D9:D11))`: Excel #N/A, ours #N/IMPL!
+- gen-m9/73f053591a54bc43 Calc!A30 `=STDEV.P(FORECAST.ETS.STAT((0.5+0.2),0.3,3),Data!D7:D8)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/7980ffb6095a340d Calc!A253 `=QUARTILE.INC((0/FORECAST.ETS.SEASONALITY(Data!B5,100)),Data!$C1)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/9bc247733a1ca9fa Calc!A10 `=T.DIST.2T(FORECAST.ETS(Data!C$3,LET(w,Data!D4,w),2.5,3,1,7),9)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/d37313406b9f6e55 Calc!A40 `=PERCENTRANK.EXC(Data!A7:D11,FORECAST.ETS.STAT(Data!A5:D6,7,5,2))`: Excel #N/A, ours #N/IMPL!
+Cells:
+- gen-m9/0072265d385d8ab2.case.json (1): Calc!A58
+- gen-m9/0bbab6206b5c9a07.case.json (1): Calc!A359
+- gen-m9/11eb3ab4f4f8104c.case.json (1): Calc!A249
+- gen-m9/139684e68fb2fc3b.case.json (1): Calc!A122
+- gen-m9/2138b909d8f810ea.case.json (3): Calc!A130, A184, A354
+- gen-m9/31f09e6c48ca245c.case.json (2): Calc!A230, A321
+- gen-m9/329b177b5d5165ad.case.json (3): Calc!A136, A148, A342
+- gen-m9/334f3dc9ca937f10.case.json (1): Calc!A384
+- gen-m9/3b7990bd4e3307ba.case.json (3): Calc!A252, A351, A385
+- gen-m9/3fb9cecf2c23169f.case.json (1): Calc!A335
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A60
+- gen-m9/43c6227e0ff368c7.case.json (1): Calc!A65
+- gen-m9/44a8841352dc48e9.case.json (1): Calc!A203
+- gen-m9/46ac3ef5e61583ca.case.json (2): Calc!A185, A291
+- gen-m9/5919660b7bb4d195.case.json (1): Calc!A41
+- gen-m9/5be29fa316931f05.case.json (1): Calc!A157
+- gen-m9/6e18550e9fc9c1b9.case.json (1): Calc!A368
+- gen-m9/73f053591a54bc43.case.json (1): Calc!A30
+- gen-m9/775d053de498b8c7.case.json (1): Calc!A297
+- gen-m9/7980ffb6095a340d.case.json (2): Calc!A253, A368
+- gen-m9/7f7ca726c3f68554.case.json (2): Calc!A146, A387
+- gen-m9/7fd0a98183c6babf.case.json (3): Calc!A164, A260, A358
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A54
+- gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A5
+- gen-m9/941c409532603d32.case.json (2): Calc!A227, A397
+- gen-m9/9735c5ab72fa5ecf.case.json (3): Calc!A102, A124, A358
+- gen-m9/9bc247733a1ca9fa.case.json (1): Calc!A10
+- gen-m9/9e2225ead8a6a07b.case.json (1): Calc!A235
+- gen-m9/a2262ea466fcc142.case.json (1): Calc!A259
+- gen-m9/a4090567758520df.case.json (1): Calc!A278
+- gen-m9/a5342a7e24fd803e.case.json (1): Calc!A332
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A96
+- gen-m9/afc00c8b70e78baf.case.json (2): Calc!A32, A299
+- gen-m9/bbab6562e88b70e8.case.json (1): Calc!A231
+- gen-m9/bcb1105c61a2649d.case.json (1): Calc!A29
+- gen-m9/c2684066d8df263e.case.json (1): Calc!A241
+- gen-m9/c7664e494e418395.case.json (1): Calc!A177
+- gen-m9/cb61169f4c033d4b.case.json (1): Calc!A163
+- gen-m9/ce312817dc9c7f0b.case.json (2): Calc!A138, A384
+- gen-m9/d208bbafc3bc1997.case.json (2): Calc!A243, A350
+- gen-m9/d37313406b9f6e55.case.json (1): Calc!A40
+- gen-m9/d5fd9e05e9e6f466.case.json (2): Calc!A129, A193
+- gen-m9/eedd629f3d69fdda.case.json (1): Calc!A355
+- gen-m9/f82473275380882e.case.json (1): Calc!A20
+
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): FORECAST.ETS calls nested in the financial functions, `#N/A` on excel-graph with no argument that decides it (the enclosing financial function passes the `#N/A` on).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 40 known-failure lines in eval/baseline/gen-m9.txt, 40 visibly off.
+Examples:
+- gen-m9/3aa168259335be54 Calc!A200 `=COUPDAYS(0,45842,1,N(FORECAST.ETS.CONFINT(Data!C$8,Data!A3:A7,Data!B9:D10)))`: Excel #N/A, ours #N/IMPL!
+- gen-m9/5ded7594e597e31e Calc!A376 `=ISPMT(FORECAST.ETS(25,Data!A3:B9,Data!C9:C12,3),5,212,298422)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/67a4c03afd63f988 Calc!A49 `=XNPV(FORECAST.ETS.STAT(Data!D5:E5,Data!C9:C12,7),Data!$A$6,2.5)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/89f0aee953a55a45 Calc!A134 `=XIRR({0,0,0},FORECAST.ETS.CONFINT(MONTH(5006),Data!D8:D9,(Data!$C$9/Data!C$3)))`: Excel #N/A, ours #N/IMPL!
+- gen-m9/9a1fa5366bc50918 Calc!A36 `=NOMINAL(FORECAST.ETS.SEASONALITY(Data!C6:E8,F.INV(0.975,2.5,1),1,6),11)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/e8d55ec393460bb7 Calc!A24 `=AMORDEGRC(0.1,37368,39050,100,0,FORECAST.ETS.STAT(Data!E2:E4,Data!A9,1),3)`: Excel #N/A, ours #N/IMPL!
+Cells:
+- gen-m9/01523d247594952e.case.json (1): Calc!A201
+- gen-m9/0a957119475760c5.case.json (1): Calc!A239
+- gen-m9/1dce4774f5c0e736.case.json (1): Calc!A132
+- gen-m9/23d82b62e9a85bdd.case.json (2): Calc!A1, A262
+- gen-m9/30e20ba3302fea8b.case.json (2): Calc!A123, A349
+- gen-m9/3aa168259335be54.case.json (4): Calc!A200, A219, A285, A326
+- gen-m9/3c06f9298f65a3ba.case.json (1): Calc!A317
+- gen-m9/5422bdbf173fc233.case.json (2): Calc!A17, A235
+- gen-m9/5c6a23c4f6597f1c.case.json (2): Calc!A127, A266
+- gen-m9/5ded7594e597e31e.case.json (2): Calc!A98, A376
+- gen-m9/6376e27be7a05871.case.json (2): Calc!A243, A345
+- gen-m9/67a4c03afd63f988.case.json (2): Calc!A49, A239
+- gen-m9/79d87fc527927626.case.json (1): Calc!A303
+- gen-m9/7d2979fba2c95d64.case.json (2): Calc!A289, A338
+- gen-m9/81bcdc0bec0c8e6b.case.json (1): Calc!A10
+- gen-m9/89f0aee953a55a45.case.json (2): Calc!A98, A134
+- gen-m9/9a1fa5366bc50918.case.json (2): Calc!A36, A220
+- gen-m9/a91bad4e84f49739.case.json (2): Calc!A12, A141
+- gen-m9/b6a02893a8d6b151.case.json (1): Calc!A193
+- gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A223
+- gen-m9/bc04c1f478c9896c.case.json (1): Calc!A362
+- gen-m9/d0854366830dcdee.case.json (1): Calc!A80
+- gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A121, A341
+- gen-m9/e8d55ec393460bb7.case.json (2): Calc!A24, A110
+
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 17 more cells, a FORECAST.ETS* call with no argument error nested in an engineering or database call (BESSELI, BESSELJ, BIN2OCT, BITRSHIFT, COMPLEX, DEC2BIN, DEC2HEX, DELTA, DVAR, GESTEP, IMSEC, OCT2BIN), `#N/A` on excel-graph.
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 17 known-failure lines in eval/baseline/gen-m9.txt, 17 formulas, 17 visibly off.
+Examples:
+- gen-m9/060b18586fcff6e6 Calc!A232 `=BESSELI(FORECAST.ETS(12,Data!A11:B12,{1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16;17;18;19;20;21;22;23;24},3,Data!D6,INDIRECT("Data!$C$5")),1)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/09e6a8028f5acfae Calc!A383 `=DEC2BIN((FORECAST.ETS(30,Data!E4,Data!$D$11)*FIND(Data!C9,Data!E3)))`: Excel #N/A, ours #N/IMPL!
+- gen-m9/1068c44afcd56d53 Calc!A207 `=DEC2HEX(96018,BETADIST(FORECAST.ETS.SEASONALITY(Data!B6:C8,Data!D$1),2,SUM(Data!E9:E10),(Data!D6-Data!A5)))`: Excel #N/A, ours #N/IMPL!
+- gen-m9/493bb194c8e0b577 Calc!A319 `=OCT2BIN((Data!D9^7),SUM(FORECAST.ETS.SEASONALITY(Data!B1:E3,Data!B6:B7,0,6),Data!B1:B2,SUM(Data!E9:E11,Data!E12)))`: Excel #N/A, ours #N/IMPL!
+- gen-m9/4fffa5addab1f8af Calc!A90 `=BESSELJ((FORECAST.ETS.SEASONALITY({-1;-2;-3;-4;-5;-6;-7;-8;-9;-10;-11;-12;-13;-14;-15;-16;-17;-18;-19;-20;-21;-22;-23;-24},Data!A11:C11)/(Data!A5-0.3)),3)`: Excel #N/A, ours #N/IMPL!
+- gen-m9/5b6cc12a94f7bf14 Calc!A77 `=DELTA(DATE(1972,8,4),(FORECAST.ETS.CONFINT(2,{1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16;17;18;19;20;21;22;23;24;25},Data!E$11,0,1.005,Data!A1,6)*MATCH(" x ",Data!D8:D12)))`: Excel #N/A, ours #N/IMPL!
+Cells:
+- gen-m9/060b18586fcff6e6.case.json (1): Calc!A232
+- gen-m9/09e6a8028f5acfae.case.json (1): Calc!A383
+- gen-m9/1068c44afcd56d53.case.json (1): Calc!A207
+- gen-m9/493bb194c8e0b577.case.json (1): Calc!A319
+- gen-m9/4fffa5addab1f8af.case.json (1): Calc!A90
+- gen-m9/5b6cc12a94f7bf14.case.json (2): Calc!A77, A229
+- gen-m9/76b07b57099ccc8d.case.json (1): Calc!A243
+- gen-m9/7a819ffbbeff8fcc.case.json (2): Calc!A174, A210
+- gen-m9/895a33aa8352864a.case.json (1): Calc!A158
+- gen-m9/8c018ae063ac131b.case.json (1): Calc!A21
+- gen-m9/8cbfd5e99d2e82da.case.json (1): Calc!A21
+- gen-m9/8fa8b572ebc1f001.case.json (1): Calc!A360
+- gen-m9/d193e8b4ab820f52.case.json (1): Calc!A285
+- gen-m9/e707d43a891ba9b5.case.json (1): Calc!A95
+- gen-m9/fb73d8163ad87fc6.case.json (1): Calc!A394
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 877 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2258): these 17 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2257): the 40 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 940 known-failure lines (877 from T-2255, 63 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Desktop values for these cases exist (T-1553) and the cells are scored against them; the family's algorithm is
       specified (docs/specs/) before it is implemented.

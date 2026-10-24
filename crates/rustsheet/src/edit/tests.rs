@@ -899,3 +899,67 @@ fn set_number_format_formats_a_cell_and_rolls_back() {
     ));
     assert_eq!(wb.formatted(cell(&wb, "A1")).unwrap(), "150.00%");
 }
+
+/// Excel refuses these typed (T-2040, Graph PATCH 400) and binds them stored as `_xlpm.f1`
+/// (probes/let-cell-shaped-name-stored): decision 0103.
+#[test]
+fn typed_cell_shaped_let_and_lambda_names_are_refused() {
+    let mut wb = book();
+    for (a1, text) in [
+        ("A1", "=LET(f1,1,f1+1)"),
+        ("A2", "=LAMBDA(f1,f1*2)(3)"),
+        ("A3", "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),add5,mk(5),add5(1))"),
+    ] {
+        let err = wb.set(a1, Input::Formula(text.into())).unwrap_err();
+        assert!(
+            matches!(err, EditError::InvalidInput { .. }),
+            "{text}: {err:?}"
+        );
+        let err = wb.set(a1, Input::Parse(text.into())).unwrap_err();
+        assert!(
+            matches!(err, EditError::InvalidInput { .. }),
+            "{text}: {err:?}"
+        );
+        assert_eq!(wb.value(a1).unwrap(), Value::Empty, "{text}");
+    }
+    // The control binds typed; the stored form binds the cell-shaped name.
+    wb.set("B1", Input::Formula("=LET(x,1,x+1)".into()))
+        .unwrap();
+    wb.set("B2", Input::StoredFormula("=LET(f1,1,f1+1)".into()))
+        .unwrap();
+    assert_eq!(wb.value("B1").unwrap(), Value::Number(2.0));
+    assert_eq!(wb.value("B2").unwrap(), Value::Number(2.0));
+}
+
+/// A LET name spelled like a function: typed, a call of it is the function (`=LET(Sum,..,Sum(3))`
+/// is `SUM(3)`, probes/let-function-name-typed-12); stored as `_xlpm.Sum(3)`, the variable
+/// (probes/let-name-function-spelled-call A1). Excel's own stored text declares `_xlpm.Sum`, and a
+/// bare `SUM(` there is the function (typed-12, typed-05 as Excel saves them). T-2567.
+#[test]
+fn let_name_spelled_like_function_typed_and_stored() {
+    let mut wb = book();
+    let text = "=LET(Sum,LAMBDA(a,a*2),Sum(3))";
+    wb.set("A1", Input::Formula(text.into())).unwrap();
+    wb.set("A2", Input::StoredFormula(text.into())).unwrap();
+    wb.set("A3", Input::Formula("=LET(sum,SUM(1,2),sum*2)".into()))
+        .unwrap();
+    assert_eq!(wb.value("A1").unwrap(), Value::Number(3.0));
+    assert_eq!(wb.value("A2").unwrap(), Value::Number(6.0));
+    assert_eq!(wb.value("A3").unwrap(), Value::Number(6.0));
+    for (a1, text, expected) in [
+        (
+            "B1",
+            "=_xlfn.LET(_xlpm.Sum,_xlfn.LAMBDA(_xlpm.a,_xlpm.a*2),SUM(3))",
+            3.0,
+        ),
+        ("B2", "=_xlfn.LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)", 6.0),
+        (
+            "B3",
+            "=_xlfn.LET(_xlpm.Sum,_xlfn.LAMBDA(_xlpm.a,_xlpm.a*2),_xlpm.Sum(3))",
+            6.0,
+        ),
+    ] {
+        wb.set(a1, Input::StoredFormula(text.into())).unwrap();
+        assert_eq!(wb.value(a1).unwrap(), Value::Number(expected), "{text}");
+    }
+}

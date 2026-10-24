@@ -210,7 +210,10 @@ fn array_item(node: ArrayNode) -> Result<CalcResult, Error> {
         ArrayNode::Number(n) => CalcResult::Number(n),
         ArrayNode::Boolean(b) => CalcResult::Boolean(b),
         ArrayNode::String(s) => CalcResult::String(s),
+        // A LAMBDA element is read as `#VALUE!`: SUM is `#VALUE!`, COUNT skips it and COUNTA
+        // counts it (probes/lambda-arrays B9-B11).
         ArrayNode::Error(error) => return Err(error),
+        ArrayNode::Lambda(_) => return Err(Error::VALUE),
         ArrayNode::Empty => CalcResult::EmptyCell,
     })
 }
@@ -259,7 +262,7 @@ impl Model {
             ArgReading::Aggregate => self.evaluate_aggregate_arg(arg, cell),
             ArgReading::PickedKeepingBlanks => self.evaluate_picked_reference_arg(arg, cell),
         };
-        let is_reference = matches!(arg.ungrouped(), Node::ReferenceKind { .. });
+        let is_reference = matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
         self.walk_aggregate_read(read, is_reference, cell, walk, visit)
     }
 

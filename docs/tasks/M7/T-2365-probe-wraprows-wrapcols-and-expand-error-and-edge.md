@@ -3,7 +3,7 @@ id: T-2365
 title: "Probe WRAPROWS, WRAPCOLS, EXPAND and TOCOL error and edge arguments beside a lifted argument"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -41,10 +41,10 @@ Owned: 1 known-failure lines in eval/baseline/gen-m7.txt, 1 formulas.
 - gen-m7/f7e94a817e5385ac.case.json A3517 `=WRAPCOLS(EXPAND({1},2,3),FILTER(Data!D1:E12,(Data!B1:B12=0.1)))`: A3517 Excel #CALC!, ours #VALUE!; cells (1): A3517
 
 ## Acceptance criteria
-- [ ] The probe case lands with oracle values; arrays.md's entry is VERIFIED or corrected with the evidence.
-- [ ] Every probed cell passes, or its known failure is owned by a follow-up task.
-- [ ] Visible parity: the gen-m7 line listed under Context (T-2254 triage) disappears from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] The probe case lands with oracle values; arrays.md's entry is VERIFIED or corrected with the evidence.
+- [x] Every probed cell passes, or its known failure is owned by a follow-up task.
+- [x] Visible parity: the gen-m7 line listed under Context (T-2254 triage) disappears from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Lifting changes to other functions (UNIQUE, TAKE/DROP).
@@ -54,3 +54,10 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probe `probes/t2365-wrap-expand-tocol-error-lift` (excel-graph, 2026-10-23, 13 cells) verified arrays.md's entry. Fixed:
+WRAPCOLS/WRAPROWS now return an error `wrap_count` before the not-a-vector `#VALUE!` (a vector error still comes first), and
+EXPAND with an error array beside a lifted argument gives one error per element. TOCOL, the vector-error order and the
+1x1 pad_with already matched. gen-m7 f7e94a817e5385ac A3517 is fixed (baseline line removed). Array pad_with with rows past
+the grid hung the Graph workbook and stays unprobed.

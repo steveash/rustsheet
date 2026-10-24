@@ -4,9 +4,7 @@
 use crate::arithmetic::bcast_get;
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::{ExternalArea, PickedReference};
-use crate::functions::util::{
-    array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
-};
+use crate::functions::util::{array_element_value, near_integer_count, NEAR_INTEGER_TOLERANCE};
 use crate::limits::check_array_size;
 use crate::reference_operators::{three_d_needs_one_sheet, RefArg, RefElement, RefGrid};
 use crate::{
@@ -144,7 +142,9 @@ fn index_from_array(
     };
     if top_left || (row_eff != 0 && col_eff != 0) {
         return match arr.get(row_start - 1).and_then(|r| r.get(col_start - 1)) {
-            Some(node) => array_node_to_calc_result(node, cell),
+            // A LAMBDA element is that LAMBDA: `TYPE(INDEX(SCAN(..),1,1))` is 128 and a LET name
+            // bound to it calls (probes/lambda-arrays B5, B6).
+            Some(node) => array_element_value(node, cell),
             None => wrong_reference(cell),
         };
     }

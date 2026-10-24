@@ -331,6 +331,90 @@ fn test_linest_stats_true() {
     );
 }
 
+#[test]
+fn test_linest_one_point_shapes_and_flags() {
+    // probes/linest-modes K141, K204, K239, K232, K155, K113 (excel-graph).
+    let mut model = new_empty_model();
+    model._set("A15", "3");
+    model._set("B15", "9");
+    model._set("A20", "1");
+    model._set("A21", "2");
+    model._set("C1", "=LINEST(B15,A15,TRUE,TRUE)");
+    model._set("C10", "=LINEST(5,A20:A21)");
+    model._set("C12", "=LINEST({2,4},{1,2})");
+    model._set("C14", "=LINEST({1,2,3,5},{1;2;3;4})");
+    model._set("C16", r#"=LINEST({1;2},{1;3},"x")"#);
+    model._set("C18", r#"=LINEST({1;2},{1;3}&"")"#);
+    model.evaluate();
+    // One point: its x is dropped (coefficient and se 0), exact fit, no degree of freedom.
+    let block = [
+        ["C1", "0"],
+        ["D1", "9"],
+        ["C2", "0"],
+        ["D2", "0"],
+        ["C3", "1"],
+        ["D3", "0"],
+        ["C4", "#NUM!"],
+        ["D4", "0"],
+        ["C5", "0"],
+        ["D5", "0"],
+    ];
+    for [cell, expected] in block {
+        assert_eq!(model._get_text(cell), expected, "{cell}");
+    }
+    // A single y against two cells is one point of two variables.
+    assert_eq!(model._get_text("C10"), "0");
+    assert_eq!(model._get_text("D10"), "0");
+    assert_eq!(model._get_text("E10"), "5");
+    // Row arrays are read element by element; a row y against a column x is #REF!.
+    assert_eq!(model._get_text("C12"), "2");
+    assert_eq!(model._get_text("C14"), "#REF!");
+    assert_eq!(model._get_text("C16"), "#VALUE!");
+    assert_eq!(model._get_text("C18"), "#VALUE!");
+}
+
+#[test]
+fn test_linest_drops_a_collinear_column() {
+    // C = 2A with y not in x: A is dropped with coefficient and se 0, and df counts only the
+    // kept columns. Generalised from probes/linest-modes K106 (E = 2A, y in x, A dropped); this
+    // exact setup is unprobed (T-2569).
+    let mut model = new_empty_model();
+    for (i, (y, c)) in [(2.1, 2.0), (3.9, 1.0), (6.2, 4.0), (7.8, 3.0), (10.1, 6.0)]
+        .iter()
+        .enumerate()
+    {
+        let row = i + 1;
+        model._set(&format!("A{row}"), &format!("{row}"));
+        model._set(&format!("B{row}"), &format!("{c}"));
+        model._set(&format!("C{row}"), &(2 * row).to_string());
+        model._set(&format!("D{row}"), &format!("{y}"));
+    }
+    model._set("F1", "=LINEST(D1:D5,A1:C5,TRUE,TRUE)");
+    model.evaluate();
+    // Output order: C, B, A, intercept.
+    assert_eq!(model._get_text("H1"), "0");
+    assert_eq!(model._get_text("H2"), "0");
+    // df = 5 points - 2 kept columns - intercept.
+    assert_eq!(model._get_text("G4"), "2");
+}
+
+#[test]
+fn test_linest_text_const_order() {
+    // A typed text const is #VALUE! before the shapes; a text cell waits for them (gen-m9
+    // a013a45a8fbcab4f A276, f34f66fb7f81e673 A179, bbdfc06cae0e0d71 A324).
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("C1", "a");
+    model._set("E1", r#"=LINEST(A1:B1,5,TRUE,"1")"#);
+    model._set("E2", "=LINEST(A1:B1,5,TRUE,C1)");
+    model._set("E3", "=LINEST(A1:B1,5,LAMBDA(v,C1)(0))");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "#VALUE!");
+    assert_eq!(model._get_text("E2"), "#REF!");
+    assert_eq!(model._get_text("E3"), "#REF!");
+}
+
 // ── TREND ────────────────────────────────────────────────────────────────────
 
 #[test]
@@ -514,4 +598,52 @@ fn rank_of_at_prefixed_non_reference_array_is_one_cell() {
     assert_eq!(model._get_text("K1"), *"7");
     assert_eq!(model._get_text("K7"), *"1");
     assert_eq!(model._get_text("K25"), *"3");
+}
+
+// A number or text argument of F.TEST/FTEST is a sample with no points: #DIV/0!, not #VALUE!
+// (probes-numeric/t1049-ftest Calc!A29:A32, m9-legacy-ftest Calc!A32; T-2093).
+#[test]
+fn test_f_test_scalar_argument_is_div0() {
+    let mut model = new_empty_model();
+    model._set("A1", "=F.TEST(3,4)");
+    model._set("A2", "=F.TEST(\"a\",{1,2,3})");
+    model._set("A3", "=FTEST(1,{1,2,3})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#DIV/0!");
+    assert_eq!(model._get_text("A2"), "#DIV/0!");
+    assert_eq!(model._get_text("A3"), "#DIV/0!");
+}
+
+// ── LINEST / LOGEST / QUARTILE argument order (T-2455) ─────────────────────
+
+// Error values first, in argument order, then the data checks; a computed blank y is `#VALUE!` at
+// once (probes/t2455-transpose-single-value A4:A68).
+#[test]
+fn linest_reports_error_values_first() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LINEST(5,{1;2},NA())");
+    model._set("A2", "=LINEST(IFERROR(B10,1),1/0)");
+    model._set("A3", "=LINEST(B10,1/0)");
+    model._set("A4", r#"=LINEST({1;2},1/0,UNIQUE(1,"1"))"#);
+    model._set("A5", r#"=LOGEST(1/0,{1;3},"x")"#);
+    model._set("A6", r#"=LINEST("abc",1/0)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#DIV/0!");
+    assert_eq!(model._get_text("A4"), "#DIV/0!");
+    assert_eq!(model._get_text("A5"), "#DIV/0!");
+    assert_eq!(model._get_text("A6"), "#DIV/0!");
+}
+
+// quart's error comes before the empty-data `#NUM!` (probes/t2455-transpose-single-value A59, A60).
+#[test]
+fn quartile_reports_quart_error_before_empty_data() {
+    let mut model = new_empty_model();
+    model._set("B5", " x ");
+    model._set("A1", "=QUARTILE(B5:B6,SUMIFS(C1:E1,B11:D12,1))");
+    model._set("A2", "=QUARTILE(B5:B6,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
 }

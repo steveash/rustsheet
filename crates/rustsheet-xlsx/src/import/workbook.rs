@@ -4,7 +4,7 @@ use super::package::Package;
 
 use super::sheet_data::{check_stored_length, MAX_NAME_BODY_UNITS};
 use super::xml::XmlNode;
-use rustsheet_engine::types::{DateSystem, DefinedName, SheetState};
+use rustsheet_engine::types::{DateSystem, DefinedName, Iteration, SheetState};
 
 use crate::error::XlsxError;
 use crate::util::name_from_xlsx;
@@ -26,6 +26,35 @@ pub(crate) struct WorkbookXML {
     /// The `cacheId` and `r:id` of each `<pivotCaches><pivotCache>`, in order; either is `None`
     /// when the element lacks it (the importer skips that cache).
     pub(crate) pivot_caches: Vec<(Option<String>, Option<String>)>,
+    /// The date system `<workbookPr date1904>` selects.
+    pub(crate) date_system: DateSystem,
+    /// `calcPr@iterate` and its count and delta.
+    pub(crate) iteration: Option<Iteration>,
+}
+
+/// The iteration settings of a `calcPr` element: on when `iterate` is `1` or `true`, with
+/// `iterateCount` (1 to 32,767, Excel's range) and a finite non-negative `iterateDelta`, each
+/// falling back to Excel's default when absent or out of range (workbooks are untrusted).
+fn iteration_from(calc_pr: Option<&XmlNode>) -> Option<Iteration> {
+    let node = calc_pr?;
+    if !matches!(node.attribute("iterate"), Some("1" | "true")) {
+        return None;
+    }
+    let default = Iteration::default();
+    let count = node
+        .attribute("iterateCount")
+        .and_then(|v| v.parse::<u32>().ok());
+    let delta = node
+        .attribute("iterateDelta")
+        .and_then(|v| v.parse::<f64>().ok());
+    Some(Iteration {
+        max_iterations: count
+            .filter(|c| (1..=32_767).contains(c))
+            .unwrap_or(default.max_iterations),
+        max_change: delta
+            .filter(|d| d.is_finite() && *d >= 0.0)
+            .unwrap_or(default.max_change),
+    })
 }
 
 /// The date system a `workbookPr@date1904` attribute selects: `1` and `true` are 1904; absent,
@@ -41,7 +70,7 @@ pub fn date_system_from_attribute(value: Option<&str>) -> DateSystem {
 
 pub(super) fn load_workbook<R: Read + std::io::Seek>(
     archive: &mut Package<R>,
-) -> Result<(WorkbookXML, DateSystem), XlsxError> {
+) -> Result<WorkbookXML, XlsxError> {
     let file = archive.open("xl/workbook.xml")?;
     let doc = XmlNode::parse(file)?;
     let mut defined_names = Vec::new();
@@ -131,13 +160,13 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
                 .collect()
         })
         .unwrap_or_default();
-    Ok((
-        WorkbookXML {
-            worksheets: sheets,
-            defined_names,
-            external_references,
-            pivot_caches,
-        },
+    let iteration = iteration_from(doc.descendants().find(|n| n.has_tag_name("calcPr")));
+    Ok(WorkbookXML {
+        worksheets: sheets,
+        defined_names,
+        external_references,
+        pivot_caches,
+        iteration,
         date_system,
-    ))
+    })
 }

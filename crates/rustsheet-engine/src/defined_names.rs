@@ -14,7 +14,7 @@ use crate::{
         types::{CellReferenceIndex, CellReferenceRC},
         utils::{is_cell_spelled_name, is_valid_identifier},
     },
-    functions::{logical::SharedLambda, Function},
+    functions::logical::SharedLambda,
     model::Model,
     reference_operators::RefArg,
     types::DefinedName,
@@ -123,7 +123,8 @@ const MAX_DEFINED_NAME_DEPTH: usize = 64;
 /// `#NAME?` (same DEVIATION).
 const MAX_DEFINED_NAME_EVALUATIONS: usize = 10_000;
 
-/// The state of the defined-name bodies being evaluated right now (`Model::within_defined_name`).
+/// The state of one run of a cell's formula (`Model::run_cell_formula`): the defined-name bodies
+/// being evaluated right now (`Model::within_defined_name`) and the D-function formula condition.
 #[derive(Default)]
 pub(crate) struct DefinedNameRun {
     /// Bodies evaluated inside one another.
@@ -132,6 +133,10 @@ pub(crate) struct DefinedNameRun {
     evaluations: usize,
     /// Where the stack was when the outermost one started.
     stack_base: usize,
+    /// Whether a D-function formula condition is being evaluated again for a record
+    /// (`Model::db_computed_condition`), which does not nest. A cell first computed inside one
+    /// is its own run, so its D-functions re-evaluate their own conditions.
+    pub(crate) db_condition_running: bool,
 }
 
 impl Model {
@@ -173,15 +178,7 @@ impl Model {
     /// inherit them.
     pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         let outer = std::mem::take(&mut self.defined_names_running);
-        self.evaluation.lambda_elements_shown = matches!(
-            node,
-            Node::FunctionKind {
-                kind: Function::Byrow | Function::Bycol | Function::Map,
-                ..
-            }
-        );
         let result = self.with_area_budget(cell, |model| model.evaluate_formula_root(node, cell));
-        self.evaluation.lambda_elements_shown = false;
         self.defined_names_running = outer;
         result
     }

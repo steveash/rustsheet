@@ -26,7 +26,7 @@ Look at where the legacy marker (SPEC-0012) decides a call is reference-returnin
 -
 
 ## Outcome
-`indexes_a_number_whole` (static_analysis/legacy.rs) treats `INDEX(<number>,0)` and `INDEX(<number>,0,0)` like an array-constant
+`indexes_a_scalar_whole` (static_analysis/legacy.rs) treats `INDEX(<number>,0)` and `INDEX(<number>,0,0)` like an array-constant
 return under legacy N and T: `#VALUE!` and no `@` in FORMULATEXT. Eval delta: probes/index-zero-index-scalar-shape E5, E6, F5, F6
 fixed (4 known-failure lines removed), no regressions.
 Follow-up: T-2368 (probe T and the text, boolean and negative scalar forms).

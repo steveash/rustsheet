@@ -27,7 +27,7 @@ fn coerce_to_f64(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, Calc
         // Excel: a blank cell anywhere in the matrix is #VALUE! (poi/MatrixFormulaEvalTestData.xlsx),
         // and so is a boolean, as a cell, a literal or an element
         // (probes/matrix-boolean-elements, docs/excel-semantics/arrays.md).
-        ArrayNode::Boolean(_) | ArrayNode::Empty | ArrayNode::String(_) => {
+        ArrayNode::Boolean(_) | ArrayNode::Empty | ArrayNode::String(_) | ArrayNode::Lambda(_) => {
             Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,

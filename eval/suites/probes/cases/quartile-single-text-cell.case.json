@@ -1,0 +1,46 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2066: QUARTILE and PERCENTILE.* of a single text cell and of a range with no number; quart/k 7, 1, 0. A1 = ' x ', A3 empty. B12-B18: PERCENTRANK of a text cell / empty cell with a good, error and text x. B19-B28: range vs single cell, #DIV/0!/#NUM!/#N/A/text x, with and without significance.",
+ "tags": [
+  "M2",
+  "probe",
+  "T-2066"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": " x ",
+    "B1": "=QUARTILE(A1,7)",
+    "B2": "=QUARTILE(A1,1)",
+    "B3": "=QUARTILE(A1,0)",
+    "B4": "=QUARTILE.INC(A1,7)",
+    "B5": "=QUARTILE.EXC(A1,1)",
+    "B6": "=PERCENTILE.EXC(A1:A3,1)",
+    "B7": "=PERCENTILE.EXC(A1:A3,0)",
+    "B8": "=PERCENTILE.INC(A1,1)",
+    "B9": "=PERCENTILE.INC(A1,2)",
+    "B10": "=QUARTILE(A3,1)",
+    "B11": "=BETAINV(2,QUARTILE(A1,7),1)",
+    "B12": "=PERCENTRANK(A1,2)",
+    "B13": "=PERCENTRANK(A1,1/0)",
+    "B14": "=PERCENTRANK(A3,1/0)",
+    "B15": "=PERCENTRANK(A1:A3,\"x\")",
+    "B16": "=PERCENTRANK(A1,\"x\")",
+    "B17": "=PERCENTRANK.EXC(A1,1/0)",
+    "B18": "=PERCENTRANK(A3,2)",
+    "B19": "=PERCENTRANK(A1:A3,1/0,5)",
+    "B20": "=PERCENTRANK(A1:A3,1/0)",
+    "B21": "=PERCENTRANK(A1:A3,SQRT(-1))",
+    "B22": "=PERCENTRANK(A1:A3,SQRT(-1),5)",
+    "B23": "=PERCENTRANK(A1,SQRT(-1))",
+    "B24": "=PERCENTRANK(A1,1/0,5)",
+    "B25": "=PERCENTRANK(A3,SQRT(-1))",
+    "B26": "=PERCENTRANK(A1:A3,NA())",
+    "B27": "=PERCENTRANK(A1:A3,\"x\",5)",
+    "B28": "=PERCENTRANK(A1,SQRT(-1),5)"
+   }
+  }
+ ]
+}

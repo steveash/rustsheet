@@ -174,6 +174,8 @@ impl Model {
     /// Omitted arguments, literals, references (cheap to read again, and a blank cell is not a
     /// literal) and anything that evaluates to a reference or a LAMBDA are kept as they are.
     fn frozen(&mut self, node: &Node, cell: CellReferenceIndex) -> Node {
+        // A `#This Row` area is the cell or range on the formula's row (SPEC-0016 step 2).
+        let node: &Node = &node.resolved_at(cell.row);
         if is_scalar_node(node) || matches!(node, Node::RangeKind { .. } | Node::ArrayKind(_)) {
             return node.clone();
         }
@@ -226,6 +228,7 @@ impl Model {
     ) -> Class {
         let number = match element {
             ArrayNode::Error(error) => return Class::Error(error.clone()),
+            ArrayNode::Lambda(_) => return Class::Error(Error::VALUE),
             ArrayNode::Boolean(value) => return Class::Boolean(*value),
             ArrayNode::Number(number) => *number,
             // A blank element is read as 0, as a blank one-cell reference is.
@@ -280,6 +283,7 @@ fn literal(element: &ArrayNode) -> Node {
         ArrayNode::Number(number) => Node::NumberKind(*number),
         ArrayNode::String(text) => Node::StringKind(text.to_string()),
         ArrayNode::Error(error) => Node::ErrorKind(error.clone()),
+        ArrayNode::Lambda(_) => Node::ErrorKind(Error::VALUE),
         ArrayNode::Empty => Node::NumberKind(0.0),
     }
 }

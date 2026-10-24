@@ -120,3 +120,21 @@ fn combin_and_combina_are_num_from_two_to_the_31_minus_one() {
         );
     }
 }
+
+#[test]
+fn combin_lifts_over_arrays_and_ranges() {
+    // probes/t2579-array-value-edges B60-B68 (excel-graph, T-2579): COMBIN lifts as COMBINA does.
+    let mut model = new_empty_model();
+    model._set("A1", "2");
+    model._set("A2", "4");
+    model._set("A3", "6");
+    model._set("C1", "=INDEX(COMBIN(18,{1,2;3,4}),2,2)");
+    model._set("C2", "=SUM(COMBIN(A1:A3,1))");
+    model._set("C3", "=INDEX(COMBIN({5;6},{2,3}),2,2)");
+    model._set("C4", r#"=SUM(COMBIN(18,{1,"x",TRUE}))"#);
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "3060");
+    assert_eq!(model._get_text("C2"), "12");
+    assert_eq!(model._get_text("C3"), "20");
+    assert_eq!(model._get_text("C4"), "#VALUE!");
+}

@@ -45,6 +45,9 @@ macro_rules! lifting_table_functions {
             | Function::Prob
             | Function::Forecast
             | Function::ForecastLinear
+            | Function::ForecastEts
+            | Function::ForecastEtsConfint
+            | Function::ForecastEtsStat
             | Function::TTest
             | Function::TTestCompat
             | Function::RankCompat
@@ -348,6 +351,8 @@ macro_rules! lifting_table_functions {
             | Function::Atan2
             | Function::Arabic
             | Function::Roman
+            | Function::Combin
+            | Function::Combina
             // --- End LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
             // --- Text lifts (T-1775) ---
             | Function::Len
@@ -378,6 +383,7 @@ macro_rules! lifting_table_functions {
             | Function::Replace
             | Function::Replaceb
             | Function::Concatenate
+            | Function::Textjoin
             | Function::Dollar
             | Function::Fixed
             | Function::Numbervalue

@@ -136,10 +136,12 @@ fn each_element_is_the_scalar_call_with_its_own_error() {
 #[test]
 fn quantile_searches_that_hung_or_panicked_are_bounded() {
     // statrs' inversion panicked for F.INV(1E-300,5,5) (a NaN first estimate) and never finished
-    // for F.INV(1E-50,6000,4) and BETA.INV at 1-2^-53 with these shapes (an infinite Newton step);
-    // the capped port is #NUM! there (a DEVIATION: Excel gives 5.081599884913164E-121, 0.000492...
-    // and 0.0692..., probes/stat-quantile-lift E1, E6, E9; TODO(T-1871)). The longest search
-    // seen, 377 Newton steps, still finishes with statrs' value (E8).
+    // for F.INV(1E-50,6000,4) and BETA.INV at 1-2^-53 with these shapes (an infinite Newton step).
+    // The capped port is NaN there. F.INV then bisects its cdf without a start (T-0974):
+    // F.INV(1E-300,5,5) and F.INV(1E-170,5,5) are Excel's 5.081599884913164E-121 and
+    // 5.081599884913239E-69 to 13 digits (probes/stat-quantile-lift E1, E3), while F.INV(1E-50,6000,4)
+    // is not Excel's 0.0004924127886173762 (E6). BETA.INV stays #NUM! (a DEVIATION: Excel gives
+    // 0.0692..., E9; TODO(T-1871)). The longest search seen, 377 Newton steps, still finishes (E8).
     let mut model = new_empty_model();
     model._set("C1", "=1-2^-53");
     model._set("A1", "=F.INV(1E-300,5,5)");
@@ -151,13 +153,13 @@ fn quantile_searches_that_hung_or_panicked_are_bounded() {
     model._set("A7", "=INDEX(F.INV({0.4;1E-300},5,5),2)");
     model.evaluate();
     let expected = [
-        ("A1", "#NUM!"),
-        ("A2", "#NUM!"),
-        ("A3", "#NUM!"),
+        ("A1", "5.0816E-121"),
+        ("A2", "5.0816E-69"),
+        ("A3", "0.016348828"),
         ("A4", "#NUM!"),
         ("A5", "0.043055298"),
         ("A6", "5.0816E-09"),
-        ("A7", "#NUM!"),
+        ("A7", "5.0816E-121"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");
@@ -211,8 +213,8 @@ fn unlifted_calls_are_the_scalar_calls() {
         ("A7", "0.448261562"),
         ("A8", "#ERROR!"),
         ("A9", "#NUM!"),
-        // TODO(T-1849): Excel reads the TRUE as 1 (probes/stat-quantile-lift L2, L19).
-        ("A10", "#VALUE!"),
+        // A TRUE reads as 1 (probes/stat-quantile-lift L2, L19): p = 1 is #NUM!.
+        ("A10", "#NUM!"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");

@@ -16,7 +16,10 @@ docs/excel-semantics/arrays.md "MAKEARRAY with an array step; BYROW, BYCOL and M
 every cell ours gets wrong.
 
 ## Context
-T-2406 makes such an element `#CALC!` only when the call is the cell formula's outermost node and `#VALUE!` anywhere else, which
+Since T-2039 the element holds the LAMBDA itself (`ArrayNode::Lambda`): a cell shows `#CALC!`, a value read is `#VALUE!`, ISERROR
+is FALSE over it and MAP can call it (arrays.md "Arrays of LAMBDAs", evidence from SCAN and MAKEARRAY). Probe that BYROW, BYCOL and
+MAP elements behave the same, including `MAP(BYROW({1;2},LAMBDA(x,LAMBDA(v,v+x))),LAMBDA(g,g(10)))`.
+Before T-2039, T-2406 made such an element `#CALC!` only when the call was the cell formula's outermost node and `#VALUE!` anywhere else, which
 matches `&`, CELL and CONFIDENCE.NORM consumers (gen-m7/23b5367c18059af2 A2578, gen-m7/f7e94a817e5385ac A942, gen-m9/165db58d1540f014
 A273). A bare LAMBDA value is not an error to ISERROR and is `#N/A` to ERROR.TYPE (arrays.md "An uncalled LAMBDA is one value"), so the
 error-testing functions likely differ over the element. Probe with the `excel-probe` skill:

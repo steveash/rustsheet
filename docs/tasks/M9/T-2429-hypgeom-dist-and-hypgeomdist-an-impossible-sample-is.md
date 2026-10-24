@@ -54,8 +54,40 @@ Cells:
 - gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A264
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A386
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): HYPGEOM.DIST and HYPGEOMDIST with huge or negative counts nested in the statistical calls.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 11 known-failure lines in eval/baseline/gen-m9.txt, 11 visibly off.
+Examples:
+- gen-m9/139684e68fb2fc3b Calc!A131 `=SLOPE(Data!B1:D11,(HYPGEOM.DIST(Data!A9,1,1,1E+15,Data!D2)*Data!B9))`: Excel #NUM!, ours #N/A
+- gen-m9/1db18890916ee643 Calc!A23 `=RSQ(HYPGEOM.DIST((Data!E2+(-1)),5,2,2^31,("ü">Data!C$6)),Data!A5:B9)`: Excel #NUM!, ours #N/A
+- gen-m9/38e4fc309fe199ea Calc!A5 `=QUARTILE.EXC(Data!D7,HYPGEOMDIST(2,3,7,2^32))`: Excel #NUM!, ours #VALUE!
+- gen-m9/38e4fc309fe199ea Calc!A376 `=SLOPE(Data!A7:D10,HYPGEOMDIST(1,1E+15,5,LAMBDA(acc,w,acc)(Data!D7,Data!$C$10)))`: Excel #NUM!, ours #VALUE!
+- gen-m9/44a8841352dc48e9 Calc!A146 `=PROB((STDEV(Data!A8:A11)^HYPGEOM.DIST(4,5,10,15,0.5)),Data!B11:B12,0.2)`: Excel #N/A, ours -0.0
+Cells:
+- gen-m9/11eb3ab4f4f8104c.case.json (1): Calc!A10
+- gen-m9/139684e68fb2fc3b.case.json (1): Calc!A131
+- gen-m9/1db18890916ee643.case.json (1): Calc!A23
+- gen-m9/38e4fc309fe199ea.case.json (2): Calc!A5, A376
+- gen-m9/44a8841352dc48e9.case.json (1): Calc!A146
+- gen-m9/5395b8a427764a3f.case.json (1): Calc!A302
+- gen-m9/73f053591a54bc43.case.json (1): Calc!A387
+- gen-m9/941c409532603d32.case.json (1): Calc!A138
+- gen-m9/a4090567758520df.case.json (1): Calc!A396
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A135
+
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): the impossible sample is 0 for the cumulative form too: `HYPGEOMDIST(2,5,9,11)` and `HYPGEOM.DIST(1,3,6,7,TRUE)` are 0 (ours `#NUM!`), so the enclosing CHIDIST and KURT/YEAR give Excel's values.
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/0a9226016e8f5f33 Calc!A26 `=CHIDIST(TIME(11,HYPGEOMDIST(2,5,9,11),1),9)`: Excel 0.9999790730352063, ours #NUM!; inner `HYPGEOMDIST(2,5,9,11)` Excel 0.0, ours #NUM!
+- gen-m9/35e8168aae2b00f8 Calc!A271 `=KURT(Data!D10:D11,YEAR(HYPGEOM.DIST(1,3,6,7,TRUE)))`: Excel #DIV/0!, ours #NUM!; inner `HYPGEOM.DIST(1,3,6,7,TRUE)` Excel 0.0, ours #NUM!
+Cells:
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A26
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A271
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 29 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 40 known-failure lines (29 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `HYPGEOMDIST(3,5,5,6)` is 0, `HYPGEOMDIST(3,-0.025,5,9)` and `HYPGEOMDIST(1E15,2,2,17)` are `#NUM!`.
 - [ ] statistics.md's entry gets an "Ours:" line and the probed threshold.

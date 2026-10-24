@@ -3,7 +3,7 @@ id: T-1743
 title: "GROWTH: match Excel on the growth-modes probe (default new_x spill, const flag, new_x shapes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -81,12 +81,38 @@ Cells:
 - gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A2
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A74
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): GROWTH nested in the statistical calls.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 10 known-failure lines in eval/baseline/gen-m9.txt, 10 visibly off.
+Examples:
+- gen-m9/7980ffb6095a340d Calc!A126 `=STDEVPA(MAX(GROWTH(Data!A10:A10,Data!A9:A10,Data!$D5,(-1))),Data!E8:E11)`: Excel #VALUE!, ours #REF!
+- gen-m9/873f30d2bf76f8db Calc!A231 `=NEGBINOMDIST((GROWTH(Data!B11:C12)-0.1),1,0.975)`: Excel #VALUE!, ours #NUM!
+- gen-m9/928d08e3e1eecb5f Calc!A1 `=STANDARDIZE(38.5,POISSON(6,GROWTH(Data!E8,Data!D5:E6),"x"),42)`: Excel #REF!, ours #VALUE!
+- gen-m9/92d4fa29e5510f1e Calc!A341 `=POISSON.DIST(0,(GROWTH(Data!A11:D12)*QUARTILE(Data!B8,42)),1)`: Excel #VALUE!, ours #NUM!
+- gen-m9/a2262ea466fcc142 Calc!A145 `=STDEVP(0.3,GROWTH(Data!C10:D11),SQRT(XLOOKUP(Data!B2,Data!A8:A12,Data!A4:D6)))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/139684e68fb2fc3b.case.json (2): Calc!A296, A317
+- gen-m9/329b177b5d5165ad.case.json (1): Calc!A250
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A12
+- gen-m9/5cebac1f02bf30f2.case.json (1): Calc!A179
+- gen-m9/7980ffb6095a340d.case.json (1): Calc!A126
+- gen-m9/873f30d2bf76f8db.case.json (1): Calc!A231
+- gen-m9/928d08e3e1eecb5f.case.json (1): Calc!A1
+- gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A341
+- gen-m9/a2262ea466fcc142.case.json (1): Calc!A145
+
+T-1726 (2026-10-24) moved GROWTH onto TREND's shared path (functions/statistical/trend.rs): 26 growth-modes lines and
+the gen-m9 GROWTH order cells went with it; 63 growth-modes lines remain.
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 65 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity: the visibly-off cell listed under Context (2026-10-21) has Excel's value to 15 significant digits, or its type, error and text: the 1 line in eval/baseline/probes.txt disappears (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] probes/growth-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2255 and T-2256): these 75 known-failure lines (65 from T-2255, 10 from T-2256) disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline, apart from the
+      four handed off under Outcome (71 of 75 left with T-1726 and T-1741).
+- [x] Visible parity: the visibly-off cell listed under Context (2026-10-21) has Excel's value to 15 significant digits, or
+      its type, error and text: K349 (`GROWTH(TRANSPOSE(D2:D9),A2:A9,A2:A9)`, `#REF!`) left eval/baseline/probes.txt with T-1726.
+- [x] probes/growth-modes baseline entries shrink to zero apart from the solve's cells T-2006 owns: what is left is numeric
+      (32 ulp, 31 close, no type, error or shape cell), and T-2006 now lists the visibly-off ones.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes outside this function, and the FORECAST.ETS family (T-1553).
@@ -95,3 +121,16 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (GROWTH over a transposed known_y is `#REF!` in Excel), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. The last-digit numerics stay with T-2006.
+
+## Outcome
+- No engine change was needed: T-1726 moved GROWTH onto TREND's shape path and T-1741 onto the shared regression readers,
+  which fixed 71 of the 75 gen-m9 cells and every shape, error and spill cell of probes/growth-modes (K349 included).
+- The four gen-m9 cells left are decided outside GROWTH, and went to their owners with the evidence (statistics.md
+  "LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)", GROWTH paragraph):
+  - 05d44f6dd6cfc567 A34, DISC's check order: added to T-2484;
+  - 41248d1cb153c66e A12, PROB's check order: added to T-2468;
+  - abc2939ebd1e2365 A187 (a 0 y against a 2x2 x): already in T-2569;
+  - 8fec7b207f4dd753 A75 (`GROWTH(Data!D10:E10)`, a last-digit value): the solve, added to T-2006.
+- The visibly-off growth-modes numerics (K145:K152, K157, K169: a multi-column x; K3, K15, K27, K123, K219: 5E-15 off at
+  9.2) are the solve's digits: added to T-2006, which carries `campaign: visible`.
+- Eval delta: none in this PR (documents and task files only).

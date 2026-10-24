@@ -1,6 +1,6 @@
 use super::lambda::LambdaCaller;
-use crate::cast::calc_result_to_array_node;
-use crate::functions::util::array_node_to_calc_result;
+use crate::cast::calc_result_to_element;
+use crate::functions::util::{array_element_value, array_node_to_calc_result};
 use crate::functions::Function;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -9,7 +9,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::{check_array_cells, check_array_size, check_range_size},
+    limits::{check_built_array_size, check_range_size},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -77,26 +77,19 @@ pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
 }
 
 /// A LAMBDA result as one BYROW/BYCOL/MAKEARRAY cell: a 1x1 array is its one value (probes/
-/// byrow-bycol-array-results, excel-graph 2026-10-16), a LAMBDA value is [`lambda_element`];
-/// otherwise the shared element mapping.
-fn lambda_result_to_array_node(result: CalcResult, shown: bool) -> ArrayNode {
+/// byrow-bycol-array-results, excel-graph 2026-10-16), a LAMBDA value stays a LAMBDA element, which
+/// a cell shows as `#CALC!` (`BYCOL(Data!A11:D11,LAMBDA(x,LAMBDA(v,v)))` is four `#CALC!`) and `&`
+/// reads as `#VALUE!` (`TEXTSPLIT(..&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`; gen-m7
+/// 23b5367c18059af2 A2578, T-2406) and MAP can call (`MAP(MAKEARRAY(1,2,LAMBDA(r,c,LAMBDA(x,x+c))),
+/// LAMBDA(g,g(10)))` is 11, 12; probes/lambda-arrays B22, T-2039); otherwise the shared element
+/// mapping.
+fn lambda_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
-        CalcResult::Lambda(_) => lambda_element(shown),
         CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
             rows.remove(0).remove(0)
         }
-        other => calc_result_to_array_node(other),
+        other => calc_result_to_element(other),
     }
-}
-
-/// A LAMBDA value as an element of BYROW, BYCOL or MAP: `#CALC!` when `shown`, the call being a
-/// cell formula's outermost node, so that the element is what a cell shows (`BYCOL(Data!A11:D11,
-/// LAMBDA(x,LAMBDA(v,v)))` is four `#CALC!`), and `#VALUE!` elsewhere, as `&` reads it (`TEXTSPLIT(
-/// ..&MAP(Data!Z1,LAMBDA(acc,LAMBDA(v,v))),..)` is `#VALUE!`; gen-m7 23b5367c18059af2 A2578, arrays.md
-/// "MAKEARRAY with an array step; BYROW, BYCOL and MAP with a LAMBDA step", T-2406; other consumers unprobed, T-2463). An array element
-/// cannot hold the LAMBDA itself (T-2039).
-pub(super) fn lambda_element(shown: bool) -> ArrayNode {
-    ArrayNode::Error(if shown { Error::CALC } else { Error::VALUE })
 }
 
 /// Whether a LAMBDA's result makes BYROW or BYCOL give one `#CALC!` cell: several values, but not
@@ -112,7 +105,6 @@ impl Model {
     /// Applies a LAMBDA to each column of `array`, returning a 1-row array of results.
     /// The lambda receives each column of a range as a reference, of an array as an N×1 array.
     pub(crate) fn fn_bycol(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let shown = std::mem::take(&mut self.evaluation.lambda_elements_shown);
         let (source, mut caller) = match self.by_slices_args(args, cell) {
             Ok(inputs) => inputs,
             Err(e) => return e,
@@ -123,7 +115,7 @@ impl Model {
                     let mut slice = range.clone();
                     slice.left.column = column;
                     slice.right.column = column;
-                    self.call_lambda_on_slice(&mut caller, slice, shown, cell)
+                    self.call_lambda_on_slice(&mut caller, slice, cell)
                 })
                 .collect::<Option<Vec<_>>>(),
             Source::Values(data) => (0..data[0].len())
@@ -134,7 +126,7 @@ impl Model {
                         &[Node::ArrayKind(column)],
                         cell,
                     );
-                    (!makes_calc_error(&result)).then(|| lambda_result_to_array_node(result, shown))
+                    (!makes_calc_error(&result)).then(|| lambda_result_to_array_node(result))
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -150,7 +142,6 @@ impl Model {
     /// Applies a LAMBDA to each row of `array`, returning a 1-column array of results.
     /// The lambda receives each row of a range as a reference, of an array as a 1×M array.
     pub(crate) fn fn_byrow(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let shown = std::mem::take(&mut self.evaluation.lambda_elements_shown);
         let (source, mut caller) = match self.by_slices_args(args, cell) {
             Ok(inputs) => inputs,
             Err(e) => return e,
@@ -161,7 +152,7 @@ impl Model {
                     let mut slice = range.clone();
                     slice.left.row = row;
                     slice.right.row = row;
-                    self.call_lambda_on_slice(&mut caller, slice, shown, cell)
+                    self.call_lambda_on_slice(&mut caller, slice, cell)
                         .map(|node| vec![node])
                 })
                 .collect::<Option<Vec<_>>>(),
@@ -173,8 +164,7 @@ impl Model {
                         &[Node::ArrayKind(vec![row])],
                         cell,
                     );
-                    (!makes_calc_error(&result))
-                        .then(|| vec![lambda_result_to_array_node(result, shown)])
+                    (!makes_calc_error(&result)).then(|| vec![lambda_result_to_array_node(result)])
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -218,13 +208,11 @@ impl Model {
         Ok((source, self.lambda_caller(&lambda_result, 1)))
     }
 
-    /// One BYROW or BYCOL call of `lambda` on the row or column `slice`, bound as a reference;
-    /// `shown` as in [`lambda_element`].
+    /// One BYROW or BYCOL call of `lambda` on the row or column `slice`, bound as a reference.
     fn call_lambda_on_slice(
         &mut self,
         caller: &mut LambdaCaller,
         slice: Range,
-        shown: bool,
         cell: CellReferenceIndex,
     ) -> Option<ArrayNode> {
         let reference = CalcResult::Range {
@@ -232,7 +220,7 @@ impl Model {
             right: slice.right,
         };
         let result = self.call_lambda_caller(caller, [reference], cell);
-        (!makes_calc_error(&result)).then(|| lambda_result_to_array_node(result, shown))
+        (!makes_calc_error(&result)).then(|| lambda_result_to_array_node(result))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
@@ -310,7 +298,7 @@ impl Model {
                         row.iter()
                             .map(|node| match node {
                                 ArrayNode::Empty => CalcResult::EmptyArg,
-                                node => array_node_to_calc_result(node, cell),
+                                node => array_element_value(node, cell),
                             })
                             .collect()
                     })
@@ -382,6 +370,10 @@ impl Model {
             {
                 return Err(Self::by_slices_calc_error(cell));
             }
+            // A 1x1 array is its one value, as BYROW and BYCOL take it (T-2407).
+            CalcResult::Array(rows) if rows.len() == 1 && rows[0].len() == 1 => {
+                array_element_value(&rows[0][0], cell)
+            }
             other => other,
         })
     }
@@ -434,16 +426,10 @@ impl Model {
             Err(error) => return error,
         };
 
-        // Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is
-        // 16385 (probes/expand-makearray-past-grid D1); rows past it stay `#VALUE!`, and so do
-        // columns past it above the cell bound (`MAKEARRAY(3,1E15,..)` is `#VALUE!`,
-        // gen-m7/b2078b5d702c691a A2553).
-        let refused = if check_array_cells(rows, cols).is_some() {
-            check_array_size(rows, cols)
-        } else {
-            check_array_size(rows, 1)
-        };
-        if let Some((error, message)) = refused {
+        // Rows and columns past the grid are built: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385
+        // (probes/expand-makearray-past-grid D1), `ROWS(MAKEARRAY(1048577,1,..))` 1048577
+        // (probes/t2579-array-value-edges B23, above our cell bound).
+        if let Some((error, message)) = check_built_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
 
@@ -464,7 +450,7 @@ impl Model {
                 if makes_calc_error(&cell_result) {
                     return Self::by_slices_calc_error(cell);
                 }
-                row.push(lambda_result_to_array_node(cell_result, false));
+                row.push(lambda_result_to_array_node(cell_result));
             }
             result.push(row);
         }
@@ -473,11 +459,14 @@ impl Model {
     }
 }
 
-/// A number, text, boolean or blank: a value that is neither an array nor a reference.
+/// A number, text, boolean, blank or error value: a value that is neither an array nor a
+/// reference. An error value as a later array of MAP is `#VALUE!` whatever the error
+/// (probes/map-later-array-error-blank A1:A3, A12:A13, T-1946).
 fn is_scalar_value(value: &CalcResult) -> bool {
     matches!(
         value,
-        CalcResult::Number(_)
+        CalcResult::Error { .. }
+            | CalcResult::Number(_)
             | CalcResult::String(_)
             | CalcResult::Boolean(_)
             | CalcResult::EmptyCell

@@ -2,6 +2,7 @@
 
 mod _rels;
 mod conditional_formatting;
+mod data_tables;
 mod doc_props;
 mod dxfs_styles;
 mod escape;

@@ -135,7 +135,6 @@ C	poi/test_conditional_formatting.xlsx	1
 C	poi/tile-range-test.xlsx	8
 C	poi/xlookup.xlsx	5
 F	poi/47889.xlsx	!EngineError
-F	poi/54436.xlsx	Sheet1!A14
 F	poi/54764-2.xlsx	!EngineError
 F	poi/54764.xlsx	!EngineError
 F	poi/56278.xlsx	!EngineError
@@ -146,7 +145,6 @@ F	poi/58616.xlsx	!InvalidCase
 F	poi/59021.xlsx	!EngineError
 F	poi/60825.xlsx	!EngineError
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!D1060
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!D1112
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1056
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1060
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E392
@@ -171,8 +169,6 @@ F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H124
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H128
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H132
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H136
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H47
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H48
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H55
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H56
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H59
@@ -193,9 +189,6 @@ F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I124
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I128
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I132
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I136
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I46
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I47
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I48
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I54
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I55
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I56
@@ -236,9 +229,6 @@ F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J132
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J134
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J135
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J136
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J46
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J47
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J48
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J54
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J55
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J56

@@ -10,7 +10,7 @@ use crate::{
     model::Model,
 };
 
-use super::SIZE_LIMIT_EXCLUSIVE;
+use crate::limits::SIZE_LIMIT_EXCLUSIVE;
 
 impl Model {
     // ── WRAPCOLS ──────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ impl Model {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-    ) -> Result<Vec<ArrayNode>, CalcResult> {
+    ) -> Result<Vec<ArrayNode>, VectorError> {
         let result = self.evaluate_node_in_context(&args[0], cell);
         // A single empty cell is not a vector: `WRAPCOLS(Z1:Z1,2)` and `WRAPCOLS(Z1,2)` are `#VALUE!`
         // whatever pad_with is, while two empty cells are two 0s (probes/wrapcols-wraprows-pad-with
@@ -58,21 +58,23 @@ impl Model {
             _ => false,
         };
         if empty {
-            return Err(CalcResult::new_error(
+            return Err(VectorError::NotVector(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "An empty cell is not a vector".to_string(),
-            ));
+            )));
         }
-        let data = self.result_to_array(result, cell)?;
+        let data = self
+            .result_to_array(result, cell)
+            .map_err(VectorError::Error)?;
         let is_row_vec = data.len() == 1;
         let is_col_vec = data.iter().all(|r| r.len() == 1);
         if !is_row_vec && !is_col_vec {
-            return Err(CalcResult::new_error(
+            return Err(VectorError::NotVector(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "First argument must be a 1-D vector".to_string(),
-            ));
+            )));
         }
         let flat: Vec<ArrayNode> = if is_row_vec {
             data.into_iter().next().unwrap_or_default()
@@ -104,8 +106,9 @@ impl Model {
         // wrap_count is read: it fills the lifted shape of the other arguments. A WRAPROWS whose
         // vector is `..-SIGN("ABC")`, wrap_count -1 and pad_with a 6x4 array is a 6x4 grid of
         // `#VALUE!`s in Excel, not one `#VALUE!` or `#NUM!` (gen-m7/90de8755a2e565e6 A889:D894);
-        // with nothing lifted it stays the single error. That cell's pad_with is all `#VALUE!`
-        // too, so this order is UNVERIFIED (arrays.md; T-2365 probes it).
+        // with nothing lifted it stays the single error. A vector that is an error comes before
+        // wrap_count, but a not-a-vector `#VALUE!` comes after an error wrap_count, which is the
+        // result instead (probes/t2365-wrap-expand-tocol-error-lift G2, G12-G14; arrays.md).
         let flat = self.flatten_vector(args, cell);
         let cells = flat.as_ref().map_or(1, |flat| {
             u64::try_from(flat.len()).unwrap_or(u64::MAX).max(1)
@@ -118,7 +121,13 @@ impl Model {
             &mut |model, values| {
                 let flat = match &flat {
                     Ok(flat) => flat,
-                    Err(error) => return error.clone(),
+                    Err(VectorError::Error(error)) => return error.clone(),
+                    Err(VectorError::NotVector(error)) => {
+                        return match values.get(1) {
+                            Some(count) if count.is_error() => count.clone(),
+                            _ => error.clone(),
+                        };
+                    }
                 };
                 let wrap_count = match model.wrap_count_of(values.get(1), flat.len(), cell) {
                     Ok(wrap_count) => wrap_count,
@@ -154,6 +163,14 @@ impl Model {
         }
         Ok((wrap_count as usize).min(len.max(1)))
     }
+}
+
+/// Why the vector argument of WRAPCOLS/WRAPROWS is not a flat vector.
+enum VectorError {
+    /// The argument is an error value, which is every element's result.
+    Error(CalcResult),
+    /// The `#VALUE!` for a 2-D array or a single empty cell, which an error `wrap_count` replaces.
+    NotVector(CalcResult),
 }
 
 /// The `pad_with` value (3rd arg of WRAPCOLS/WRAPROWS, 4th of EXPAND). An error `pad_with` is

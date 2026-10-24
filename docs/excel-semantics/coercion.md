@@ -254,7 +254,7 @@ An error argument beats a shape mismatch earlier in the list: `SUMPRODUCT(TYPE(B
 (ours was `#VALUE!` before T-2150, as was `SUMPRODUCT(1,B9:E10,NA())`).
 Ours (since T-2150): every argument is read in order, and the first whole-argument error or blank one-cell reference
 (a cell or a one-cell range such as `D4:D4`) decides the result, even after a shape mismatch; an error element inside a
-range wins only ahead of the first mismatched argument.
+range does not decide it before a later whole-argument error or blank (see the T-2296 paragraph below, T-2450).
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1b30e4d075b252ea Calc!A365, gen-m5/6a8bb7cd6d7769ad Calc!A79,
 gen-m5/aac6230c2fb40e1e Calc!A79, gen-m5/fc81c2f704bef138 Calc!A165, gen-m5/c688ca172fe533dc Calc!A183, gen-m5/7d1a5d223624fc70 Calc!A33,
 gen-m5/aac6230c2fb40e1e Calc!A64, gen-m5/f0f205865a3a4328 Calc!A396, gen-m5/399071ff6782ab16 Calc!A145.
@@ -271,8 +271,9 @@ beats a shape mismatch wherever it sits: `SUMPRODUCT(X,R)` and `SUMPRODUCT(R,X)`
 `SUMPRODUCT(X,{1,#N/A;2,3})` and `SUMPRODUCT({1,#N/A;2,3},X)` are `#N/A`, `SUMPRODUCT(X,N,R)` (N a 2x2 of numbers) is `#DIV/0!`, and
 `SUMPRODUCT(B1:C4,{1,#N/A,3})` and `SUMPRODUCT({1,#N/A,3},B1:C4)` are `#N/A` (gen-m7/f7e94a817e5385ac Calc!A50 agrees). A mismatch with no error
 anywhere is `#VALUE!` (`SUMPRODUCT(B1:C4,{1,2,3})`). A whole-argument error beats an error element: `SUMPRODUCT(R,X,NA())`
-and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Ours differs
-(the first mismatched argument stops element reading, and `SUMPRODUCT(R,X,NA())` gives `#DIV/0!`): T-2450.
+and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Implemented in
+`fn_sumproduct` (T-2450): every argument is read, a whole-argument error returns at once, and the first element error in argument then element
+order beats a mismatch (which of several element errors wins is unprobed). A blank one-cell argument also returns at once, so it beats an earlier element error (`SUMPRODUCT(R,blank)` is `#VALUE!`): INFERRED from the blank acting as a whole-argument error in t2200 A20/A21, UNPROBED.
 Tasks: T-0944, T-2150, T-2296, T-2450
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
@@ -427,8 +428,8 @@ A blank cell is 0 only beside another argument or inside a multi-cell range: whe
 LCM and MULTINOMIAL are `#VALUE!` (`MULTINOMIAL(Z200)`, `MULTINOMIAL(Z200:Z200)`, `MULTINOMIAL(Z200,Z201)`, `MULTINOMIAL(IF(TRUE,Z200))`,
 `GCD(Z200)`, `GCD(Z200:Z200)`, `LCM(Z200)` with Z200 and Z201 blank), while `MULTINOMIAL(Z200,2)`, `MULTINOMIAL(2,Z200)`,
 `MULTINOMIAL(Z200:Z201)` and `MULTINOMIAL(Z200:Z201,2)` are 1, `GCD(Z200,4)` and `LCM(Z200,4)` 4, and a cell holding 0 is 1
-(`MULTINOMIAL(Z210)`) (probes/t2275-address-bounds J1, J15:J30, excel-graph, 2026-10-21). Ours reads every blank as 0
-(MULTINOMIAL and `GCD(Z200:Z200)`; T-2294). Unprobed: how this `#VALUE!` ranks against a later negative or omitted argument.
+(`MULTINOMIAL(Z210)`) (probes/t2275-address-bounds J1, J15:J30, excel-graph, 2026-10-21). Ours: implemented by `Model::is_lone_blank_cell`
+(functions/math_and_trigonometry/gcd_lcm.rs), called from `gcd_lcm_impl` and `fn_multinomial` (T-2294). Unprobed: how this `#VALUE!` ranks against a later negative or omitted argument.
 The type check wins over a negative argument whatever the order: `GCD(-1,B1:B11)` with the text "TRUE" in B1 is
 `#VALUE!`, and `MULTINOMIAL(A6:D9)` whose first cell is -2.5 and later cells hold FALSE and text is `#VALUE!`
 (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m6/2c1a6e93a1974f48 Calc!A35, gen-m7/4629e931955aa4b8 Calc!A7, excel-graph; fixed in

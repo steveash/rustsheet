@@ -185,7 +185,6 @@ C	corpus-bench/52021/1_52021_input.xlsx	3
 C	corpus-bench/52216/1_52216_input.xlsx	85
 C	corpus-bench/52233/1_52233_input.xlsx	4
 C	corpus-bench/52292/1_52292_input.xlsx	36
-C	corpus-bench/524-2/1_524-2_input.xlsx	0
 C	corpus-bench/524-31/1_524-31_input.xlsx	106
 C	corpus-bench/52450/1_52450_input.xlsx	0
 C	corpus-bench/52541/1_52541_input.xlsx	10
@@ -329,9 +328,7 @@ F	corpus-bench/17049/1_17049_input.xlsx	!Timeout
 F	corpus-bench/1726/1_1726_input.xlsx	*
 F	corpus-bench/41978/1_41978_input.xlsx	!Timeout
 F	corpus-bench/48354/1_48354_input.xlsx	*
-F	corpus-bench/48982/1_48982_input.xlsx	*
 F	corpus-bench/50442/1_50442_input.xlsx	*
-F	corpus-bench/524-2/1_524-2_input.xlsx	!Timeout
 F	corpus-bench/52450/1_52450_input.xlsx	!Timeout
 F	corpus-bench/53062/1_53062_input.xlsx	*
 F	corpus-bench/55049/1_55049_input.xlsx	*

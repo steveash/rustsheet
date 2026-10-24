@@ -40,6 +40,11 @@ Lab: the solver kernels are in tools/src/rustsheet_tools/fitlab/kernels/solvers.
 candidates, T-1534's iterate traces). Add an `oddfyield` fit there.
 This needs numeric fitting against a solver trace, hence opus.
 
+T-2207 (2026-10-23): ODDFPRICE, and the price ODDFYIELD's solver walks, now discount with Excel's `^`
+(every ODDFPRICE cell in eval/ passes bit-exact); ODDFYIELD passes the same cells as on libm prices. In the YIELD
+lab, `^`-priced solvers reach at most 4/178 bit-exact as the libm-priced ones do, so the price kernel does not
+explain the stopping point (financial.md "PRICE and ODDFPRICE discount with Excel's `^`").
+
 ## Acceptance criteria
 - [ ] An `oddfyield` lab fit over the cells above (Excel's cached J as the price input) scores named candidates:
       Newton with an analytic or finite-difference derivative, secant, starts at the coupon rate / 0 / 0.1 / the

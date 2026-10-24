@@ -1,5 +1,6 @@
 use super::drop_take::range_dims;
 use super::ref_lift::{lifts_into_references, put_back};
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -11,6 +12,20 @@ use crate::{
     model::Model,
     reference_operators::{RefArg, RefElement, RefGrid},
 };
+
+/// `CELL("contents", ref)` written out as a call with a literal info type.
+fn is_cell_contents_call(arg: &Node) -> bool {
+    match arg.ungrouped() {
+        Node::FunctionKind {
+            kind: Function::Cell,
+            args,
+        } => matches!(
+            (args.first().map(Node::ungrouped), args.len()),
+            (Some(Node::StringKind(info)), 2) if info.eq_ignore_ascii_case("contents")
+        ),
+        _ => false,
+    }
+}
 
 impl Model {
     // ── HSTACK ────────────────────────────────────────────────────────────────
@@ -95,7 +110,16 @@ impl Model {
         let mut results: Vec<Option<CalcResult>> = Vec::with_capacity(args.len());
         let mut known_rows = 0_usize;
         for arg in args {
-            if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
+            // `VSTACK(CELL("contents",ref),..)` is one `#VALUE!`, though CELL alone is fine
+            // (probes/t2414-gen-m7-unexplained Calc!A41, A61, A81, excel-graph, T-2457).
+            if is_cell_contents_call(arg) {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "CELL(\"contents\", ref) is not stackable".to_string(),
+                );
+            }
+            if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) {
                 known_rows = known_rows.saturating_add(1);
                 results.push(None);
                 continue;

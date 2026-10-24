@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 pub use crate::external_links::ExternalBook;
+pub use crate::iteration::Iteration;
 use crate::{
     cf_types::ConditionalFormatting,
     expressions::token::Error,
@@ -118,11 +119,13 @@ pub enum DateSystem {
     Excel1904,
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct WorkbookSettings {
     pub tz: String,
     pub locale: String,
     pub date_system: DateSystem,
+    /// Iterative calculation (`calcPr@iterate`); `None` when it is off.
+    pub iteration: Option<Iteration>,
 }
 
 impl WorkbookSettings {
@@ -132,6 +135,7 @@ impl WorkbookSettings {
             tz: tz.to_string(),
             locale: locale.to_string(),
             date_system: DateSystem::default(),
+            iteration: None,
         }
     }
 }
@@ -296,6 +300,10 @@ pub struct Worksheet {
     pub sheet_data: SheetData,
     pub shared_formulas: Vec<String>,
     pub sheet_id: u32,
+    /// Position among the sheets when the workbook was read; a sheet added later takes the next
+    /// free rank. Moves and renames keep it. Excel calculates a freshly loaded workbook in the
+    /// reverse of this order, not of the tab order (SPEC-0017).
+    pub load_rank: u32,
     pub state: SheetState,
     pub color: Color,
     pub merged_cells: Vec<MergedCell>,
@@ -308,7 +316,13 @@ pub struct Worksheet {
     pub conditional_formatting: Vec<ConditionalFormatting>,
     /// Hyperlinks in the worksheet, keyed by (row, column) of the cell they are attached to
     pub links: HashMap<(i32, i32), Link>,
+    /// What-if data tables (`<f t="dataTable">`), in the order the sheet stores them.
+    pub data_tables: Vec<DataTable>,
 }
+
+pub use crate::data_table_types::{
+    DataTable, DataTableError, DataTableInput, MAX_DATA_TABLES_PER_SHEET, MAX_DATA_TABLE_CELLS,
+};
 
 /// Internal representation of Excel's `sheet_data`. It is row first and because of this all of our
 /// API's should be row first

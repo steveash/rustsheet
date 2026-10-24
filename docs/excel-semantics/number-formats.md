@@ -302,6 +302,17 @@ time of day).
 Status: VERIFIED
 Tasks: T-0954
 
+## `m`/`mm` directly before `:ss` is minutes, with no hour
+Rule: `m` or `mm` followed by `:` and a plain `s`/`ss` is a minute even when the code has no hour
+token (otherwise it is a month): `mm:ss` shows 1000 as "00:00", 123456.789 as "56:10" and 1.5 as
+"00:00". After an hour it was already minutes (`h:mm`).
+Evidence: suite gen-m10 displayed-text cells (excel-graph, 2026-10-16, T-1611), 71 of 80 `mm:ss` cells
+failed before the fix. Status: VERIFIED (excel-graph).
+Implemented in: `minute_before_seconds` (formatter/parser.rs). Probed: `mm:ss`, `mm:ss.0`, `mm:ss.00`. Unprobed
+(implemented by the same rule): single `m:ss`, `:s`, `[m]`/`[s]` forms, `mmss` with no colon, and any other
+separator or literal between the `m` and the seconds (those still read as months).
+Tasks: T-1733
+
 ## Fractional seconds in clock formats
 Rule: `.0`, `.00` or `.000` after a plain `s`/`ss` prints the fraction of the second, rounded to that
 many digits: on 36191.1702084375 (04:05:06.009) `hh:mm:ss.000 am/pm` → "04:05:06.009 AM" (A32),
@@ -342,7 +353,7 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
 
 Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g, -h, -i (T-1434), -j (T-1449), -k (T-1455), -l, -m (T-1481), -n to -s (T-1486), all excel-graph.
 Not explained or not implemented (known failures):
-- Unquoted letters after `_"` or `*"`: `_` and `*` take a following `"` as their character, so `@_"a` is "x a", `@_"aa` "x aa", `@_"a-"b"` "x a-b", `@*"a` "xa", `0_"a` on 7 "7 a" and `0*"a` "7a" (probes/text-format-length-limit-n A1, A6, -o A35, A37:A40; matched since T-1262 prints bare letters, except -o A37: `*` takes the `"` as its fill, which adds nothing in a number section, but we print a space for every fill, giving "7 a"; T-1735). `@_"aaa` is `#VALUE!`, and so are 20, 40 and 80 letters (n A2, A7:A9). We print the letters for those ("x aaa"). Unexplained: `aaa` may read as a weekday code, which T-1656's `@`-with-a-date-token rule would reject (T-1880).
+- Unquoted letters after `_"` or `*"`: `_` and `*` take a following `"` as their character, so `@_"a` is "x a", `@_"aa` "x aa", `@_"a-"b"` "x a-b", `@*"a` "xa", `0_"a` on 7 "7 a" and `0*"a` "7a" (probes/text-format-length-limit-n A1, A6, -o A35, A37:A40; matched since T-1262 prints bare letters, except -o A37: `*` takes the `"` as its fill, which adds nothing in a number section, matched since T-1735). `@_"aaa` is `#VALUE!`, and so are 20, 40 and 80 letters (n A2, A7:A9). We print the letters for those ("x aaa"). Unexplained: `aaa` may read as a weekday code, which T-1656's `@`-with-a-date-token rule would reject (T-1880).
 - `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43), and `TEXT(1,"d"&<119 quoted>&"[>5]d")` is "1" (-q A16). Implemented by T-0936 (see "Conditional sections").
 - `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted (-g A42, A43; -i A100:A104). T-1450; implemented T-1262.
 
@@ -381,7 +392,7 @@ the lexer rejects a `B1`/`B2` calendar prefix after any token that prints in its
 fine, probes/text-locale-calendars; a color, condition or currency bracket before it, and `0;b1`, are accepted too,
 UNVERIFIED, T-2303), so the 11 gen-m5 cells above and the rejected probe codes pass. A bad section a number would
 not use in a multi-section code (`TEXT("a","0;ab1")`) rejects a text value too: UNVERIFIED (T-2303). The fill characters of the
-accepted codes (`TEXT(2.5,"a*?")` "a", ours "a ") are T-1735's.
+accepted codes (`TEXT(2.5,"a*?")` "a") add nothing, see "Fill characters" below (T-1735).
 Status: VERIFIED (excel-graph); implemented (T-2157). Related: T-1130 (text values under 1-3 section codes).
 
 ## TEXT reads a number-like text value as its number; control characters are literals (T-2158)
@@ -543,11 +554,15 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - `[$USD]` is currency text ("-1.50 USD") and `[Cyan]` a color.
 - Engineering and padded mantissas: `##0.0E+0` on 123456.789 is "123.5E+3", `00.0E+0` on 36.5
   "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
-- Rule (T-1730, implemented for the exponent only): the exponent is the decimal exponent rounded down to a
+- Rule (T-1730, T-2226): the exponent is the decimal exponent rounded down to a
   multiple of the integer-placeholder count (`##0.0E+0` on 61 "61.0E+0"); a zero exponent prints `E+00`
   (never `E-00`) and `E00` under `E-`. The group size for grouped codes (`#,##0.0E+0`) is unprobed.
-- Not implemented (VERIFIED, gen-m10): the mantissa is rounded after the shift (`##0.0E+0` on 1/3
-  "333.3E-3", `##0.00E+00` "333.33E-03"; T-2226); zero prints all integer placeholders (`##0.0E+0` on 0
+- Implemented (VERIFIED, gen-m10, T-2226): an engineering mantissa (two or more integer placeholders) rounds after
+  the shift, to its own integer digits plus the decimals (`##0.0E+0` on 1/3 "333.3E-3", on -1/7 "-142.9E-3",
+  `##0.00E+00` on 1/3 "333.33E-03", `00.0E+0` on 0.125 "12.5E-2"; 28 gen-m10 text cells). Ours: a rounding carry
+  into the next power of ten moves the exponent to the next multiple (`##0.0E+0` on 999.96 "1.0E+3"), which is
+  unprobed for engineering codes.
+- Not implemented (VERIFIED, gen-m10): zero prints all integer placeholders (`##0.0E+0` on 0
   "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
   "1.0E+02") (T-2227).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
@@ -562,8 +577,7 @@ and General do (unprobed for displayed formats).
 Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
 rejects as a date (TEXT `#VALUE!`) displays 255 `#`; formatter/format.rs (T-1731) rejects any date or
 clock token other than a lone elapsed token past serial 2958465.99999.
-Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
-fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
+Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%). fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[Cyan]` (T-1737; `[$USD]` currency text is implemented since T-2157, which needed it), `?.??`/`#%` (T-1738),
 scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
@@ -621,8 +635,16 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   1E9+0.25 "1000000000/1", 2147483646.4 "2147483646/1", yet 2147483646.6 "4294967293/2" (not 10737418233/5)
   and 715827882.5 "1431655765/2", 5E8+0.25 "2000000001/4"; `??/??` on 2147483646.5 "2147483647/1 " and on
   1073741824.5 "1073741825/1 ". No bound on the numerator or on the denominator times the value fits every
-  cell (4294967293/2 is refused for 2147483646.5 and taken for 2147483646.6). The engine prints the
-  convergent.
+  cell (4294967293/2 is refused for 2147483646.5 and taken for 2147483646.6).
+  Rule (fitted, T-2233, probes/fraction-placeholder-past-2-30, 75/75 cells, excel-graph 2026-10-23): the
+  continued fraction stops where a partial quotient `a` times the last numerator `p1` passes 2^31 - 1, while the new
+  numerator `a*p1 + p0` may pass it (only the product is checked). 2147483646.6: 1 x 2147483647 is taken, so
+  4294967293/2 shows; then 2 x 4294967293 stops. 2147483646.5: 2 x 2147483646 stops. If that stop comes before any
+  fractional term (the last convergent still has denominator 1), the value is rounded half away from zero to an
+  integer over 1: 1073741824.5 "1073741825/1", 1073741824.25 "1073741824/1". At the bound: 1073741823.5 "2147483647/2"
+  (2 x 1073741823 = 2^31 - 2 is taken). The sum alone passing 2^31 is taken: 1500000000.6 "3000000001/2", and
+  715827883+1/3 (the double 715827883.3333334, partial quotients 2 then 1) "2147483650/3", where 1 x 1431655767 is under
+  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". UNVERIFIED: the bound under `%` and `,` scaling.
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
@@ -683,3 +705,10 @@ Unprobed engine choices (T-2209): a mixed `0`/`?` denominator puts its zeros lef
 text around the `/` also make a fraction; a `/` with no denominator after its literals stays a literal.
 Status: VERIFIED (Excel for the web; desktop Mac Excel cached values for the literals between the parts)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074
+
+## Fill characters (`*x`) add nothing to the text
+A `*x` fill (repeat) character contributes nothing to the displayed text or to TEXT(): `TEXT(7,"0*""a")` is "7a",
+`TEXT(3,"*.0.00")` is "3.00", PI() under `0.00*-` is "3.14", and 1000 under `_(* #,##0_);...` is " 1,000 " (only the `_(`
+and `_)` skips add spaces). Evidence: gen-m10 accounting built-ins and `*.0.00`/`0.00*-` text cells (excel-graph,
+2026-10-16, T-1611), gen-m5/3e134e52393061b1 A240, probes/text-format-length-limit-o A37. Implemented in both the number and the date
+branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel-graph) for number sections; a fill in a date or clock code (`TEXT(1,"d*x")`) and in a fraction code (fraction.rs still prints a space) is UNVERIFIED (T-2480).
