@@ -22,10 +22,11 @@ impl Model {
             &PERCENTILE_DATA,
             cell,
             &mut |model, data, values| {
-                if data.is_empty() {
-                    return num_error(cell);
-                }
+                // quart's error comes before the empty-data `#NUM!`: `QUARTILE(B5:B6,<#VALUE!>)`
+                // with no number in B5:B6 is `#VALUE!` (probes/t2455-transpose-single-value A59;
+                // A60 is the `#NUM!`).
                 match model.cast_number_ref(value_at(values, 1), cell) {
+                    Ok(_) if data.is_empty() => num_error(cell),
                     Ok(v) => {
                         let quart = v.floor() as i64;
                         if !(0..=4).contains(&quart) {

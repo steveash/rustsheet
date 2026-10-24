@@ -370,6 +370,10 @@ impl Model {
             {
                 return Err(Self::by_slices_calc_error(cell));
             }
+            // A 1x1 array is its one value, as BYROW and BYCOL take it (T-2407).
+            CalcResult::Array(rows) if rows.len() == 1 && rows[0].len() == 1 => {
+                array_element_value(&rows[0][0], cell)
+            }
             other => other,
         })
     }
@@ -461,11 +465,14 @@ impl Model {
     }
 }
 
-/// A number, text, boolean or blank: a value that is neither an array nor a reference.
+/// A number, text, boolean, blank or error value: a value that is neither an array nor a
+/// reference. An error value as a later array of MAP is `#VALUE!` whatever the error
+/// (probes/map-later-array-error-blank A1:A3, A12:A13, T-1946).
 fn is_scalar_value(value: &CalcResult) -> bool {
     matches!(
         value,
-        CalcResult::Number(_)
+        CalcResult::Error { .. }
+            | CalcResult::Number(_)
             | CalcResult::String(_)
             | CalcResult::Boolean(_)
             | CalcResult::EmptyCell

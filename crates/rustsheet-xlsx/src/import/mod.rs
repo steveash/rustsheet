@@ -35,7 +35,7 @@ use rustsheet_engine::{
 
 use crate::error::XlsxError;
 
-pub use iso_date::iso8601_to_serial;
+pub use iso_date::{iso8601_to_date_system_serial, iso8601_to_serial};
 pub use package::{ImportLimits, PartNames};
 pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
@@ -131,7 +131,8 @@ fn load_package<R: Read + Seek>(
     tz: &str,
 ) -> Result<Workbook, XlsxError> {
     let mut shared_strings = read_shared_strings(archive)?;
-    let (mut workbook, date_system) = load_workbook(archive)?;
+    let mut workbook = load_workbook(archive)?;
+    let date_system = workbook.date_system;
     let rels = load_relationships(archive)?;
     let theme_path = resolve_theme_path(&rels);
     let theme = theme::load(archive, theme_path.as_deref());
@@ -160,8 +161,13 @@ fn load_package<R: Read + Seek>(
             })
         })
         .collect();
-    let (pivot_caches, pivot_tables) =
-        load_pivots(archive, &rels, &workbook.pivot_caches, &pivot_sheets);
+    let (pivot_caches, pivot_tables) = load_pivots(
+        archive,
+        &rels,
+        &workbook.pivot_caches,
+        &pivot_sheets,
+        date_system,
+    );
     // reparse formulas in defined names, since they may refer to sheets and tables that have been loaded
     let worksheet_names = worksheets
         .iter()

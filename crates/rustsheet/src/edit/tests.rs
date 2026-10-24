@@ -899,3 +899,34 @@ fn set_number_format_formats_a_cell_and_rolls_back() {
     ));
     assert_eq!(wb.formatted(cell(&wb, "A1")).unwrap(), "150.00%");
 }
+
+/// Excel refuses these typed (T-2040, Graph PATCH 400) and binds them stored as `_xlpm.f1`
+/// (probes/let-cell-shaped-name-stored): decision 0103.
+#[test]
+fn typed_cell_shaped_let_and_lambda_names_are_refused() {
+    let mut wb = book();
+    for (a1, text) in [
+        ("A1", "=LET(f1,1,f1+1)"),
+        ("A2", "=LAMBDA(f1,f1*2)(3)"),
+        ("A3", "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),add5,mk(5),add5(1))"),
+    ] {
+        let err = wb.set(a1, Input::Formula(text.into())).unwrap_err();
+        assert!(
+            matches!(err, EditError::InvalidInput { .. }),
+            "{text}: {err:?}"
+        );
+        let err = wb.set(a1, Input::Parse(text.into())).unwrap_err();
+        assert!(
+            matches!(err, EditError::InvalidInput { .. }),
+            "{text}: {err:?}"
+        );
+        assert_eq!(wb.value(a1).unwrap(), Value::Empty, "{text}");
+    }
+    // The control binds typed; the stored form binds the cell-shaped name.
+    wb.set("B1", Input::Formula("=LET(x,1,x+1)".into()))
+        .unwrap();
+    wb.set("B2", Input::StoredFormula("=LET(f1,1,f1+1)".into()))
+        .unwrap();
+    assert_eq!(wb.value("B1").unwrap(), Value::Number(2.0));
+    assert_eq!(wb.value("B2").unwrap(), Value::Number(2.0));
+}

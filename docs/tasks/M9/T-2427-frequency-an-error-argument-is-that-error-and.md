@@ -1,6 +1,6 @@
 ---
 id: T-2427
-title: "FREQUENCY: an error argument is that error, and the result has one row per bin cell plus one even for a single or text bin (gen-m9, 139 cells)"
+title: "FREQUENCY: an error argument is that error, and the result has one row per bin cell plus one even for a single or text bin (gen-m9, 140 cells)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -120,7 +120,29 @@ Cells:
 - gen-m9/d5fd9e05e9e6f466.case.json (2): Calc!A175, A312
 - gen-m9/eedd629f3d69fdda.case.json (1): Calc!A266
 
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): FREQUENCY nested in the financial functions (`AMORDEGRC(..,FREQUENCY(..),1)` `#NUM!`, `MDURATION(..,FREQUENCY(..)-SUM(..),1)` `#SPILL!`).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 3 known-failure lines in eval/baseline/gen-m9.txt, 3 visibly off.
+Examples:
+- gen-m9/23d82b62e9a85bdd Calc!A206 `=DOLLARDE(TTEST((Data!$C4/Data!E1),NORMSDIST(Data!D3),IF(TRUE,Data!$D10,Data!A12),3),((Data!C$7*2)+FREQUENCY(Data!C$5,Data!C10)))`: Excel #SPILL!, ours #DIV/0!
+- gen-m9/23d82b62e9a85bdd Calc!A258 `=AMORDEGRC(0.5,42,39112,571,4,FREQUENCY((Data!E9+Data!A8),(123456789.123^123456789.123)),1)`: Excel #NUM!, ours #VALUE!
+- gen-m9/d0854366830dcdee Calc!A349 `=MDURATION(36651,44354,INDEX(Data!D3:D11,5),(FREQUENCY(Data!A3:D11,Data!A$5)-SUM(Data!C8:C10,Data!$C8)),1)`: Excel #SPILL!, ours #VALUE!
+Cells:
+- gen-m9/23d82b62e9a85bdd.case.json (2): Calc!A206, A258
+- gen-m9/d0854366830dcdee.case.json (1): Calc!A349
+
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): `BESSELI(-FREQUENCY(Data!A9:D9,<"abc" cell>),..)` is `#SPILL!` (a text bin, two rows; ours `#VALUE!`; gen-m9/b5aef3645cec1b95 A72).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas, 1 visibly off.
+Examples:
+- gen-m9/b5aef3645cec1b95 Calc!A72 `=BESSELI(-FREQUENCY(Data!A9:D9,Data!C$12),((Data!D11*0.1)^(Data!A3+1000000000000000.0)))`: Excel #SPILL!, ours #VALUE!
+Cells:
+- gen-m9/b5aef3645cec1b95.case.json (1): Calc!A72
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 151 known-failure lines (139 from T-2255, 12 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `ROWS(FREQUENCY({1;2;3},2))` is 2, `FREQUENCY(NA(),{1;2})` is `#N/A`, an error bins is its error.
