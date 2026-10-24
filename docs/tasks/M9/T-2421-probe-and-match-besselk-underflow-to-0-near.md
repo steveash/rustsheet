@@ -3,7 +3,7 @@ id: T-2421
 title: "Probe and match BESSELK underflow to 0 near x 713 and BITLSHIFT shifts of 53 and -53 giving 0"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
