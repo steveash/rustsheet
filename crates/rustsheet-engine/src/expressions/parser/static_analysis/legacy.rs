@@ -15,6 +15,7 @@ use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
     run_static_analysis_on_node, static_analysis_on_function, Node, Signature, StaticResult,
 };
+use crate::expressions::token::OpUnary;
 use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
@@ -409,20 +410,34 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
         && returns_only_array_constants(kind, args))
         || chooses_between_references_and_array_constants(kind, args)
         || chooses_references_by_an_array_index(kind, args)
-        || indexes_a_number_whole(kind, args)
+        || indexes_a_scalar_whole(kind, args)
 }
 
-/// Whether `kind(args)` is `INDEX(<number>,0)` or `INDEX(<number>,0,0)`: the whole of a scalar is
-/// an array, so it reads like an array constant under N, `#VALUE!`, and Excel shows no `@` (T shares the
-/// path and is inferred, unprobed)
-/// (`=N(INDEX(5,0,0))`, `=N(INDEX(5,0))`; probes/index-zero-index-scalar-shape E5, E6, F5, F6,
-/// T-2191). Other indices of a scalar are unprobed and keep their `@`.
-fn indexes_a_number_whole(kind: &Function, args: &[Node]) -> bool {
+/// Whether `kind(args)` is `INDEX(<scalar literal>,0)` or `INDEX(<scalar literal>,0,0)`: the whole of
+/// a scalar is an array, so it reads like an array constant under N or T, `#VALUE!`, and Excel shows
+/// no `@`. The scalar is a number, a negated number, text or a boolean, and an empty row argument
+/// reads as 0 (`=N(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX(TRUE,0))`, `=N(INDEX(-5,0))`,
+/// `=T(INDEX(5,,0))`; probes/index-zero-index-scalar-shape E5, E6, F5, F6, T-2191,
+/// probes/index-zero-index-scalar-t-n A1-A14, T-2368). Other indices of a scalar are unprobed and
+/// keep their `@`.
+fn indexes_a_scalar_whole(kind: &Function, args: &[Node]) -> bool {
     let is_zero = |arg: &Node| matches!(arg, Node::NumberKind(n) if *n == 0.0);
+    let is_scalar = |arg: &Node| match arg {
+        Node::NumberKind(_) | Node::StringKind(_) | Node::BooleanKind(_) => true,
+        Node::UnaryKind {
+            kind: OpUnary::Minus,
+            right,
+        } => matches!(**right, Node::NumberKind(_)),
+        _ => false,
+    };
     matches!(kind, Function::Index)
         && match args {
-            [Node::NumberKind(_), row] => is_zero(row),
-            [Node::NumberKind(_), row, column] => is_zero(row) && is_zero(column),
+            [scalar, row] => is_scalar(scalar) && is_zero(row),
+            [scalar, row, column] => {
+                is_scalar(scalar)
+                    && (is_zero(row) || matches!(row, Node::EmptyArgKind))
+                    && is_zero(column)
+            }
             _ => false,
         }
 }
