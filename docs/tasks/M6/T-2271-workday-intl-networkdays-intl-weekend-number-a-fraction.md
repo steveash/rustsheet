@@ -48,7 +48,7 @@ valid dates with valid holidays is still this task's probe.
 - [x] A probe case (excel-graph) gives TRUE and FALSE weekends on valid dates for both functions; dates.md records it.
 - [x] Unit tests cover weekend 3.9, 11.5, TRUE, FALSE (as probed) and a blank cell for both functions; probes/date-text-weekend-3d still passes.
 - [x] dates.md's entry says Ours: implemented (T-2271).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Weekend strings (unchanged).
@@ -65,3 +65,4 @@ The holiday regression the handoff reported (gen-m6/ef10bf3afb9658f6 Calc!A302) 
 number-text holidays. Eval delta (`make eval-baseline`, 0 regressions): gen-m6 known failures 6 -> 2 (A47, A387, A252,
 A219: the 7 other owned cells were already fixed on main by T-2272), gen-m9 7505 (c2974c061384fdd9 A149 fixed), probes
 +1 case (26 cells, all pass).
+The task moved to `tier: opus` when the sonnet run handed it off (the T-2270 holiday dependency), and `depends_on: [T-2270]` records that dependency. Review follow-up: T-2591 (probe TRUE vs weekends 2/3, 11.5 vs 12, and an empty weekend argument).
