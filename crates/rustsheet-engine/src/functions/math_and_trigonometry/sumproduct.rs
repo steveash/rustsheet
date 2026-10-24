@@ -18,21 +18,19 @@ impl Model {
     /// Multiplies corresponding elements across all arrays and returns the sum.
     /// Non-numeric values (text, booleans, empty) are treated as 0, but a blank one-cell
     /// reference is `#VALUE!`. All arrays must have the same dimensions; a mismatch yields
-    /// `#VALUE!` unless a later argument is itself an error or blank.
+    /// `#VALUE!` unless some argument is itself an error or blank, or holds an error element.
     pub(crate) fn fn_sumproduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Read every argument in order: a whole-argument error or a blank one-cell argument
-        // wins even over a shape mismatch between earlier arguments
-        // (`SUMPRODUCT(NA(),D1:E2,blank)` is `#N/A`, `SUMPRODUCT(blank,D1:E2,NA())` `#VALUE!`;
-        // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150). Once the shapes
-        // disagree, the elements of that and later arguments are not read, so an error element
-        // there does not win. Then an error element of any argument beats a shape mismatch, in
-        // either order, while a whole-argument error beats an error element
-        // (probes/t2296-sumproduct-error-element; coercion.md, T-2296). Which element error wins
-        // among several is unprobed: the first in argument order, then element order.
+        // Read every argument first: a whole-argument error or a blank one-cell argument wins
+        // even over a shape mismatch (`SUMPRODUCT(NA(),D1:E2,blank)` is `#N/A`,
+        // `SUMPRODUCT(blank,D1:E2,NA())` `#VALUE!`; probes/t2200-blank-and-padded-m5-args A22,
+        // A23; coercion.md, T-2150). Then an error element of any argument beats a shape
+        // mismatch, in either order, and a whole-argument error beats an error element
+        // (probes/t2296-sumproduct-error-element; coercion.md, T-2296). Which element error
+        // wins among several is unprobed: the first in argument order, then element order.
         let mut raw: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(args.len());
         for arg in args {
             match self.sumproduct_array(arg, cell) {
