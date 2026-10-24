@@ -179,6 +179,30 @@ pub(crate) fn attribute_value_of<'a>(attribute: &Attribute<'a>) -> Result<Cow<'a
     Ok(attribute.normalized_value(XmlVersion::Implicit1_0)?)
 }
 
+/// The value of the first attribute of a streamed element for which `matches` holds, normalized
+/// as [`attribute_value_of`] does.
+pub(crate) fn find_start_attribute(
+    element: &BytesStart,
+    matches: impl Fn(&quick_xml::name::QName) -> bool,
+) -> Result<Option<String>, XlsxError> {
+    for attribute in element.attributes() {
+        let attribute = attribute?;
+        if matches(&attribute.key) {
+            return Ok(Some(attribute_value_of(&attribute)?.into_owned()));
+        }
+    }
+    Ok(None)
+}
+
+/// The value of the attribute of a streamed element whose local name is `key`, whatever its
+/// prefix.
+pub(crate) fn start_attribute(
+    element: &BytesStart,
+    key: &str,
+) -> Result<Option<String>, XlsxError> {
+    find_start_attribute(element, |name| name.local_name().as_ref() == key)
+}
+
 /// Builds the tree from the events of a document, or of a part of one: the
 /// streamed sheet reader hands it every event outside `sheetData`.
 pub(crate) struct XmlTreeBuilder {

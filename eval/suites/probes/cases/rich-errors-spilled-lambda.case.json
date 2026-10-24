@@ -1,0 +1,75 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Spilled error results of LAMBDA helpers (MAP, GROUPBY), EXPAND padding and plain array arithmetic, one error kind per block: the stored rich-value _error structure (errorType, ptg, subType) of each spilled error cell, read from the cached excel-graph recalc, against its ERROR.TYPE and VALUETOTEXT through INDEX (T-2417).",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2417"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=MAP(SEQUENCE(2),LAMBDA(x,1/0))",
+        "E1": "=ERROR.TYPE(INDEX(MAP(SEQUENCE(2),LAMBDA(x,1/0)),1,1))",
+        "F1": "=_xlfn.VALUETOTEXT(INDEX(MAP(SEQUENCE(2),LAMBDA(x,1/0)),1,1))",
+        "A6": "=MAP(SEQUENCE(2),LAMBDA(x,NA()))",
+        "E6": "=ERROR.TYPE(INDEX(MAP(SEQUENCE(2),LAMBDA(x,NA())),1,1))",
+        "F6": "=_xlfn.VALUETOTEXT(INDEX(MAP(SEQUENCE(2),LAMBDA(x,NA())),1,1))",
+        "A11": "=MAP(SEQUENCE(2),LAMBDA(x,SQRT(-1)))",
+        "E11": "=ERROR.TYPE(INDEX(MAP(SEQUENCE(2),LAMBDA(x,SQRT(-1))),1,1))",
+        "F11": "=_xlfn.VALUETOTEXT(INDEX(MAP(SEQUENCE(2),LAMBDA(x,SQRT(-1))),1,1))",
+        "A16": "=MAP(SEQUENCE(2),LAMBDA(x,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1)))",
+        "E16": "=ERROR.TYPE(INDEX(MAP(SEQUENCE(2),LAMBDA(x,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1))),1,1))",
+        "F16": "=_xlfn.VALUETOTEXT(INDEX(MAP(SEQUENCE(2),LAMBDA(x,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1))),1,1))",
+        "A21": "=MAP(SEQUENCE(2),LAMBDA(x,\"a\"+x))",
+        "E21": "=ERROR.TYPE(INDEX(MAP(SEQUENCE(2),LAMBDA(x,\"a\"+x)),1,1))",
+        "F21": "=_xlfn.VALUETOTEXT(INDEX(MAP(SEQUENCE(2),LAMBDA(x,\"a\"+x)),1,1))",
+        "A26": "=MAP(SEQUENCE(2),LAMBDA(x,INDEX({1},3)))",
+        "E26": "=ERROR.TYPE(INDEX(MAP(SEQUENCE(2),LAMBDA(x,INDEX({1},3))),1,1))",
+        "F26": "=_xlfn.VALUETOTEXT(INDEX(MAP(SEQUENCE(2),LAMBDA(x,INDEX({1},3))),1,1))",
+        "A31": "=MAP(SEQUENCE(2),LAMBDA(x,Data!A1:A2 Data!B1:B2))",
+        "E31": "=ERROR.TYPE(INDEX(MAP(SEQUENCE(2),LAMBDA(x,Data!A1:A2 Data!B1:B2)),1,1))",
+        "F31": "=_xlfn.VALUETOTEXT(INDEX(MAP(SEQUENCE(2),LAMBDA(x,Data!A1:A2 Data!B1:B2)),1,1))",
+        "A36": "=_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,1/0))",
+        "E36": "=ERROR.TYPE(INDEX(_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,1/0)),1,2))",
+        "F36": "=_xlfn.VALUETOTEXT(INDEX(_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,1/0)),1,2))",
+        "A41": "=_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,NA()))",
+        "E41": "=ERROR.TYPE(INDEX(_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,NA())),1,2))",
+        "F41": "=_xlfn.VALUETOTEXT(INDEX(_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,NA())),1,2))",
+        "A46": "=_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,SQRT(-1)))",
+        "E46": "=ERROR.TYPE(INDEX(_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,SQRT(-1))),1,2))",
+        "F46": "=_xlfn.VALUETOTEXT(INDEX(_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,SQRT(-1))),1,2))",
+        "A51": "=_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1)))",
+        "E51": "=ERROR.TYPE(INDEX(_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1))),1,2))",
+        "F51": "=_xlfn.VALUETOTEXT(INDEX(_xlfn.GROUPBY({\"a\";\"b\"},{1;2},LAMBDA(w,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1))),1,2))",
+        "A56": "=EXPAND(1,2,2,1/0)",
+        "E56": "=ERROR.TYPE(INDEX(EXPAND(1,2,2,1/0),2,2))",
+        "F56": "=_xlfn.VALUETOTEXT(INDEX(EXPAND(1,2,2,1/0),2,2))",
+        "A61": "=EXPAND(1,2,2,NA())",
+        "E61": "=ERROR.TYPE(INDEX(EXPAND(1,2,2,NA()),2,2))",
+        "F61": "=_xlfn.VALUETOTEXT(INDEX(EXPAND(1,2,2,NA()),2,2))",
+        "A66": "=EXPAND(1,2,2,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1))",
+        "E66": "=ERROR.TYPE(INDEX(EXPAND(1,2,2,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1)),2,2))",
+        "F66": "=_xlfn.VALUETOTEXT(INDEX(EXPAND(1,2,2,_xlfn.REGEXEXTRACT(\"a\",\"[0-9]\",-1)),2,2))",
+        "A71": "=SEQUENCE(2)/0",
+        "E71": "=ERROR.TYPE(INDEX(SEQUENCE(2)/0,1,1))",
+        "F71": "=_xlfn.VALUETOTEXT(INDEX(SEQUENCE(2)/0,1,1))",
+        "A76": "={1;2}+\"a\"",
+        "E76": "=ERROR.TYPE(INDEX({1;2}+\"a\",1,1))",
+        "F76": "=_xlfn.VALUETOTEXT(INDEX({1;2}+\"a\",1,1))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 3,
+        "B2": 4
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -63,7 +63,8 @@ fn hyp_geom_dist_domain_edges_and_boolean_sample() {
         ("A5", "#NUM!"),
         ("A6", "0.465428277"),
         ("A7", "0.363261094"),
-        ("A8", "#VALUE!"),
+        // A TRUE count reads as 1 (statistics.md T-2255, gen-m9 ee2497a5e683c5d9 A356); the value is hand-written.
+        ("A8", "1"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");

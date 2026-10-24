@@ -1,0 +1,27 @@
+---
+id: T-2387
+title: "Probe legacy @ with SWITCH inside LET or LAMBDA, a defined name, and other dynamic-array-only functions"
+milestone: M2
+lane: engine
+status: done
+priority: P3
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+Excel's legacy `@` behavior is known for a SWITCH inside a LET or LAMBDA body, a SWITCH reached through a defined name, and for other dynamic-array-only functions (XLOOKUP, FILTER, LET), and ours matches.
+
+## Context
+T-2121 found that a SWITCH anywhere in a legacy formula removes every automatic `@` (`add_root_legacy_intersection`, `Node::contains_function`, so it also fires for a SWITCH inside a LET/LAMBDA body). Those shapes and other new functions are unprobed; see docs/excel-semantics/references.md "Generalised (probes/legacy-switch-callers ...)". Use the excel-probe skill with legacy cells and FORMULATEXT twins like legacy-switch-callers.
+
+## Acceptance criteria
+- [ ] A probes case covers the shapes with oracle values; the parser matches them or the findings are recorded in references.md.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-
+
+## Outcome
+Two probe cases (let-lambda-dynamic-funcs, 163 cells; defined-name-dynamic-funcs, 37 cells) filled from excel-graph. A SWITCH inside LET/LAMBDA bodies already matched. XLOOKUP, FILTER, SORT, SEQUENCE, UNIQUE and TAKE remove every legacy `@` like SWITCH; implemented (`NO_AUTOMATIC_AT`). IFS, MAXIFS, LET do not. Remaining gaps (LET result `@`, names, LAMBDA call) recorded in references.md and filed as T-2419. Probe cells passing in let-lambda: 155 of 163 (8 known failures, tracked in T-2419).

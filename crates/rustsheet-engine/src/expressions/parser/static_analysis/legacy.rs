@@ -10,11 +10,13 @@
 
 use super::if_arm::{is_reference_arm, returns_range_arm};
 use super::lifted::lifts_arrays_at;
+use super::reference_result::{is_let_call, let_result};
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
     run_static_analysis_on_node, static_analysis_on_function, Node, Signature, StaticResult,
 };
 use crate::expressions::token::OpUnary;
+use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
 /// Legacy formulas evaluate SUMPRODUCT's arguments as arrays, with no implicit intersection inside
@@ -236,117 +238,119 @@ pub(super) fn legacy_array_call_at(
         })
 }
 
-/// Whether `node` is a SWITCH whose results are each an array constant or, with `ranges`, a range,
-/// maybe under an `@`. A legacy cell spills such a SWITCH where
-/// [`spilling_switch_position`] finds it (probes/legacy-switch-at-shapes, T-1964).
-pub(super) fn is_spilling_switch(node: &Node, ranges: bool) -> bool {
-    matches!(node, Node::FunctionKind { kind: kind @ Function::Switch, args }
-    if returns_only(kind, args, |result| match under_at(result).lowered() {
-        Node::ArrayKind(_) => true,
-        Node::RangeKind { .. } => ranges,
-        _ => false,
-    }))
-}
+/// The functions that switch off every automatic `@` of a legacy formula holding one, as SWITCH
+/// does: XLOOKUP, FILTER, SORT, SEQUENCE, UNIQUE and TAKE (probes/legacy-at-let-lambda-dynamic-
+/// funcs, T-2387), and SORTBY, VSTACK, HSTACK, DROP, TEXTSPLIT, TOCOL, TOROW, WRAPROWS, WRAPCOLS,
+/// CHOOSEROWS, CHOOSECOLS, EXPAND, BYROW, BYCOL, MAP, REDUCE, SCAN and MAKEARRAY
+/// (`=ABS(Z30:Z32)+VSTACK(1)` shows no `@` and spills 2, 3, 4; probes/legacy-at-dynamic-funcs-2,
+/// T-2440). IFS, MAXIFS, LET, XMATCH, TEXTBEFORE, TEXTAFTER, ARRAYTOTEXT, VALUETOTEXT, GROUPBY,
+/// REGEXEXTRACT, REGEXTEST, TRIMRANGE, PERCENTOF, TEXTJOIN and CONCAT keep theirs.
+pub(super) const NO_AUTOMATIC_AT: [Function; 25] = [
+    Function::Switch,
+    Function::Xlookup,
+    Function::Filter,
+    Function::Sort,
+    Function::Sequence,
+    Function::Unique,
+    Function::Take,
+    Function::Sortby,
+    Function::Vstack,
+    Function::Hstack,
+    Function::Drop,
+    Function::Textsplit,
+    Function::Tocol,
+    Function::Torow,
+    Function::Wraprows,
+    Function::Wrapcols,
+    Function::Chooserows,
+    Function::Choosecols,
+    Function::Expand,
+    Function::Byrow,
+    Function::Bycol,
+    Function::Map,
+    Function::Reduce,
+    Function::Scan,
+    Function::Makearray,
+];
 
-/// Where a legacy formula `root` holds a SWITCH that takes no automatic `@`, nor do its results
-/// ([`is_spilling_switch`]): the root itself (results array constants or ranges,
-/// `=SWITCH(1,1,{2;3})`, `=SWITCH(1,1,Z30:AA31)`), or the argument of ABS or LEN or of a unary
-/// minus (array constants, `=ABS(SWITCH(1,1,{-2;3}))`, `=-SWITCH(1,1,{2;3})`); Excel shows no
-/// `@` and the cell spills (probes/legacy-switch-at-shapes A20, D20, G20, J20, M20, Y20;
-/// legacy-array-at-shapes C20, T-1910, T-1964). Only these shapes are probed: elsewhere (other
-/// callers, binary operators, a result that is an operation or a call) a SWITCH keeps its `@`.
-/// The position may hold an `@` over the SWITCH, typed on import (kept) or added by the pass.
-pub(super) fn spilling_switch_position(root: &mut Node) -> Option<&mut Node> {
-    let nested = matches!(root,
-        Node::FunctionKind { kind: Function::Abs | Function::Len, args } if args.len() == 1)
-        || matches!(
-            root,
-            Node::UnaryKind {
-                kind: OpUnary::Minus,
-                ..
-            }
-        );
-    let position = if nested {
-        match root {
-            Node::FunctionKind { args, .. } => args.first_mut()?,
-            Node::UnaryKind { right, .. } => right.as_mut(),
-            _ => return None,
+/// Whether the LET call `args` returns a range: its result is a range or a variable bound to one.
+/// A legacy formula then puts the `@` on the LET call itself rather than on its caller:
+/// `=ABS(LET(x,Z30:Z32,x))` and `=ABS(LET(x,1,Z30:Z32))` are shown `=ABS(@LET(...))`, `#VALUE!`,
+/// while a scalar result takes none (`=ABS(Z30:Z32)+LET(x,1,x)` keeps `=ABS(@Z30:Z32)+LET(x,1,x)`;
+/// probes/legacy-at-let-lambda-dynamic-funcs P, S, T-2419).
+pub(super) fn let_returns_range(args: &[Node]) -> bool {
+    fn is_range<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
+        match node.ungrouped() {
+            Node::NamedVariableKind { name, .. } => bound
+                .iter()
+                .rfind(|(bound_name, _)| same_variable(bound_name, name))
+                .is_some_and(|(_, range)| *range),
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } if is_let_call(args) => let_result(args, bound, is_range),
+            node => matches!(run_static_analysis_on_node(node), StaticResult::Range(..)),
         }
-    } else {
-        root
-    };
-    is_spilling_switch(under_at(position), !nested).then_some(position)
+    }
+    is_let_call(args) && let_result(args, &mut Vec::new(), is_range)
 }
 
-/// [`add_legacy_intersection`] on a whole formula: the automatic `@`s the pass puts on a spilling
-/// SWITCH and its results ([`spilling_switch_position`]) are taken off, while one typed there is
-/// meaningful and kept (the export keeps it too, `remove_redundant_implicit_intersection`).
+/// Whether a legacy formula holding `node` gets no automatic `@`: it holds a [`NO_AUTOMATIC_AT`]
+/// function or a LAMBDA call, which removes every `@` like SWITCH (`=ABS(Z30:Z32)+LAMBDA(x,x)(1)`
+/// shows no `@` and spills 2, 3, 4; probes/legacy-at-let-lambda-dynamic-funcs BI, T-2419), the
+/// call of a LET-bound lambda included (`=ABS(Z30:Z32)+LET(f,LAMBDA(x,x),f(1))`, probes/
+/// legacy-at-dynamic-funcs-2 AF, T-2440). A defined-name lambda's call does not: it takes the `@`
+/// itself (`=ABS(@Z30:Z32)+@myId(1)`, AE).
+pub(super) fn removes_automatic_at(node: &Node) -> bool {
+    node.contains_function(&NO_AUTOMATIC_AT)
+        || node.contains_lambda_call()
+        || calls_bound_variable(node)
+}
+
+/// Whether `node` calls by name a variable that a LET or a LAMBDA in it binds. Scopes are not
+/// tracked: a call of a name bound anywhere in the formula counts. An explicit stack keeps the walk
+/// off the call stack: a formula's tree is untrusted input.
+fn calls_bound_variable(node: &Node) -> bool {
+    let mut bound: Vec<&str> = Vec::new();
+    let mut called: Vec<&str> = Vec::new();
+    let mut pending = vec![node];
+    while let Some(node) = pending.pop() {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } if is_let_call(args) => {
+                for pair in args[..args.len() - 1].chunks_exact(2) {
+                    if let Node::NamedVariableKind { name, .. } = &pair[0] {
+                        bound.push(name);
+                    }
+                }
+            }
+            Node::LambdaDefKind { parameters, .. } => {
+                bound.extend(parameters.iter().map(|parameter| parameter.name.as_str()));
+            }
+            Node::NamedFunctionKind { name, .. } => called.push(name),
+            _ => {}
+        }
+        node.push_children(&mut pending);
+    }
+    called
+        .iter()
+        .any(|call| bound.iter().any(|name| same_variable(name, call)))
+}
+
+/// [`add_legacy_intersection`] on a whole formula. A legacy formula holding a SWITCH, or any other
+/// [`NO_AUTOMATIC_AT`] function, at any depth gets no automatic `@` anywhere, not on the SWITCH, its
+/// arguments or the rest of the formula, and the cell spills: `=SIN(SWITCH(1,1,{2;3}))`,
+/// `=SWITCH(1,1,2)+Z30:Z32`, `=SWITCH(1,1,2)`, `=IF(1,SWITCH(1,1,{2;3}))` all show no `@` in
+/// FORMULATEXT, while `=ABS(Z30:Z32)` keeps its (probes/legacy-switch-callers, legacy-switch-at-
+/// shapes; T-1964, T-2121). An `@` typed in such a formula is meaningful and stays; the export keeps
+/// it too (`remove_redundant_implicit_intersection`).
 pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
-    if add
-        && matches!(
-            node,
-            Node::ImplicitIntersection {
-                automatic: false,
-                ..
-            }
-        )
-        && spilling_switch_position(node).is_some()
-    {
-        return; // A typed `@` on a root SWITCH stays as it is.
-    }
-    let typed = if add {
-        typed_switch_results(node)
-    } else {
-        None
-    };
-    add_legacy_intersection(node, add, add);
-    let Some(typed) = typed else {
+    if add && removes_automatic_at(node) {
         return;
-    };
-    if let Some(position) = spilling_switch_position(node) {
-        take_automatic_at(position);
-        for_each_switch_result_mut(position, |index, result| {
-            if !typed.contains(&index) {
-                take_automatic_at(result);
-            }
-        });
     }
-}
-
-/// Before the pass, the results of the spilling SWITCH in `root` that have a typed `@`, which
-/// stays: the pass marks a typed `@` it would add anyway as automatic. `None` without such a
-/// SWITCH, or with an `@` typed over it, which then keeps all it holds as the pass leaves them.
-fn typed_switch_results(root: &mut Node) -> Option<Vec<usize>> {
-    let position = spilling_switch_position(root)?;
-    if matches!(position, Node::ImplicitIntersection { .. }) {
-        return None;
-    }
-    let mut typed = Vec::new();
-    for_each_switch_result_mut(position, |index, result| {
-        if matches!(result, Node::ImplicitIntersection { .. }) {
-            typed.push(index);
-        }
-    });
-    Some(typed)
-}
-
-/// Calls `each` with the index and node of every result of the SWITCH `switch`.
-pub(super) fn for_each_switch_result_mut(
-    switch: &mut Node,
-    mut each: impl FnMut(usize, &mut Node),
-) {
-    if let Node::FunctionKind {
-        kind: kind @ Function::Switch,
-        args,
-    } = switch
-    {
-        let count = args.len();
-        for (index, arg) in args.iter_mut().enumerate() {
-            if is_returned_argument(kind, index, count) {
-                each(index, arg);
-            }
-        }
-    }
+    add_legacy_intersection(node, add, add);
 }
 
 /// `node`, or the operand of an `@` over it.
@@ -406,6 +410,36 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
         && returns_only_array_constants(kind, args))
         || chooses_between_references_and_array_constants(kind, args)
         || chooses_references_by_an_array_index(kind, args)
+        || indexes_a_scalar_whole(kind, args)
+}
+
+/// Whether `kind(args)` is `INDEX(<scalar literal>,0)` or `INDEX(<scalar literal>,0,0)`: the whole of
+/// a scalar is an array, so it reads like an array constant under N or T, `#VALUE!`, and Excel shows
+/// no `@`. The scalar is a number, a negated number, text or a boolean, and an empty row argument
+/// reads as 0 (`=N(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX(TRUE,0))`, `=N(INDEX(-5,0))`,
+/// `=T(INDEX(5,,0))`; probes/index-zero-index-scalar-shape E5, E6, F5, F6, T-2191,
+/// probes/index-zero-index-scalar-t-n A1-A14, T-2368). Other indices of a scalar are unprobed and
+/// keep their `@`.
+fn indexes_a_scalar_whole(kind: &Function, args: &[Node]) -> bool {
+    let is_zero = |arg: &Node| matches!(arg, Node::NumberKind(n) if *n == 0.0);
+    let is_scalar = |arg: &Node| match arg {
+        Node::NumberKind(_) | Node::StringKind(_) | Node::BooleanKind(_) => true,
+        Node::UnaryKind {
+            kind: OpUnary::Minus,
+            right,
+        } => matches!(**right, Node::NumberKind(_)),
+        _ => false,
+    };
+    matches!(kind, Function::Index)
+        && match args {
+            [scalar, row] => is_scalar(scalar) && is_zero(row),
+            [scalar, row, column] => {
+                is_scalar(scalar)
+                    && (is_zero(row) || matches!(row, Node::EmptyArgKind))
+                    && is_zero(column)
+            }
+            _ => false,
+        }
 }
 
 /// Whether `kind(args)` is a CHOOSE with an array constant for its index over cell or range
@@ -434,7 +468,7 @@ fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool 
         && !arms.is_empty()
         && arms.iter().all(|arm| {
             matches!(
-                arm.lowered(),
+                *arm.lowered_static(),
                 Node::ReferenceKind { .. } | Node::RangeKind { .. }
             )
         })
@@ -651,6 +685,9 @@ fn is_plain_reference(node: &Node) -> bool {
     let is_literal = |node: &Node| matches!(node, Node::NumberKind(_) | Node::BooleanKind(_));
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
+        if matches!(node.lowered(), Node::ThisRowKind { .. }) {
+            continue; // A cell or a range on the formula's row (T-1699).
+        }
         match node.lowered() {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => {}
             Node::FunctionKind {

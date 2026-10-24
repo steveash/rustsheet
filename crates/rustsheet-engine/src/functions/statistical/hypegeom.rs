@@ -1,6 +1,10 @@
 //! HYPGEOM.DIST and HYPGEOMDIST, and HYPGEOM.DIST's cdf with a per-call cap of its own (SPEC-0011
 //! security rule, T-1873).
 //!
+//! Both are the exact value rounded once where `discrete.rs`' double-double walk reaches it (at most
+//! 2^12 steps and a population of 2^52, T-0977); statrs' pmf and the capped port of its cdf below
+//! are the fallback beyond.
+//!
 //! [`hypergeometric_cdf`] is statrs 0.18.0's `Hypergeometric::cdf`: the sum of the pmf from 0 to
 //! x, one `exp` of three `ln_binomial`s a term, in that order, so that every call that ends in
 //! statrs ends here with the same double. statrs' sum is open: it takes x + 1 terms whatever the
@@ -39,6 +43,7 @@ use statrs::distribution::{Discrete, Hypergeometric};
 // functions.
 use statrs::function::factorial::{ln_binomial, ln_factorial};
 
+use super::discrete::{hypergeometric_cdf_sum, hypergeometric_pmf};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -216,9 +221,9 @@ fn nonzero_terms(
 impl Model {
     /// `HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)`: every
     /// argument lifts over an array and a range (SPEC-0011; probes/stat-argument-modes
-    /// H330-H336, probes/stat-quantile-lift H51-H52). The cdf is the capped port of statrs' sum
-    /// (`hypergeometric_cdf`), which the lifting table charges (lift/kinds/statistical.rs
-    /// `HYPGEOM_DIST_WEIGHT`).
+    /// H330-H336, probes/stat-quantile-lift H51-H52). The cdf is the double-double walk's sum or,
+    /// past its budget, the capped port of statrs' sum (`hypergeometric_cdf`), which the lifting
+    /// table charges (lift/kinds/statistical.rs `HYPGEOM_DIST_WEIGHT`).
     pub(crate) fn fn_hyp_geom_dist(
         &mut self,
         args: &[Node],
@@ -238,7 +243,8 @@ impl Model {
 
     /// `HYPGEOMDIST(sample_s, number_sample, population_s, number_pop)`, HYPGEOM.DIST's pmf: every
     /// argument lifts over an array and a range (probes/stat-argument-modes H337-H342,
-    /// probes/stat-quantile-lift H53-H54). The pmf is closed form.
+    /// probes/stat-quantile-lift H53-H54). The pmf is the double-double walk, statrs' closed form past
+    /// its budget.
     pub(crate) fn fn_hypgeomdist_compat(
         &mut self,
         args: &[Node],
@@ -263,7 +269,7 @@ impl Model {
 
     /// The HYPGEOM.DIST kernel; `cumulative` is `None` for HYPGEOMDIST, always the pmf. The
     /// arguments are read in order (the first error wins), each count truncated, a boolean count
-    /// `#VALUE!`.
+    /// its 1 or 0.
     fn hyp_geom_dist_of(
         &self,
         counts: [&CalcResult; 4],
@@ -271,12 +277,12 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let [sample_s, number_sample, population_s, number_pop] = counts;
-        // A TRUE sample_s is 1 (probes-numeric/t1048-hypgeomdist A19, t1049-hypgeomdist A53); the
-        // other three counts stay `#VALUE!` for a boolean (unprobed).
+        // A TRUE sample_s is 1 (probes-numeric/t1048-hypgeomdist A19, t1049-hypgeomdist A53); so
+        // are the other counts from a cell or formula (gen-m9/ee2497a5e683c5d9 A356, statistics.md T-2255).
         let sample_s = self.cast_number_ref(sample_s, cell)?;
-        let number_sample = self.cast_number_no_bools_ref(number_sample, cell)?.trunc();
-        let population_s = self.cast_number_no_bools_ref(population_s, cell)?.trunc();
-        let number_pop = self.cast_number_no_bools_ref(number_pop, cell)?.trunc();
+        let number_sample = self.cast_number_ref(number_sample, cell)?.trunc();
+        let population_s = self.cast_number_ref(population_s, cell)?.trunc();
+        let number_pop = self.cast_number_ref(number_pop, cell)?.trunc();
         let cumulative = match cumulative {
             Some(value) => Self::cast_bool_ref(value, cell)?,
             None => false,
@@ -316,12 +322,21 @@ impl Model {
         let n_sample = number_sample as u64;
         let k = sample_s as u64;
 
+        // The exact value rounded once, from a double-double walk (T-0977): statrs' ln_binomial
+        // sums miss Excel's 15 digits (`HYPGEOM.DIST(1,4,8,20,TRUE)` is Excel's
+        // 0.46542827657378727, statrs' 0.46542827657378827). statrs stays past the walk's budget.
         let prob = if cumulative {
-            hypergeometric_cdf(n_pop, k_pop, n_sample, k)
+            match hypergeometric_cdf_sum(n_pop, k_pop, n_sample, k) {
+                Some(prob) => prob,
+                None => hypergeometric_cdf(n_pop, k_pop, n_sample, k),
+            }
         } else {
-            Hypergeometric::new(n_pop, k_pop, n_sample)
-                .map_err(|_| num_error(cell))?
-                .pmf(k)
+            match hypergeometric_pmf(n_pop, k_pop, n_sample, k) {
+                Some(prob) => prob,
+                None => Hypergeometric::new(n_pop, k_pop, n_sample)
+                    .map_err(|_| num_error(cell))?
+                    .pmf(k),
+            }
         };
         if !prob.is_finite() {
             return Err(num_error(cell));

@@ -5,7 +5,7 @@ use super::casefold::{char_offsets, fold_for_before_after};
 use crate::{
     calc_result::CalcResult,
     cast::{calc_result_to_text, MAX_TEXT_UNITS},
-    expressions::{parser::ArrayNode, token::Error},
+    expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     text::Text,
 };
 
@@ -60,6 +60,24 @@ pub(crate) fn unit_chars_to_units(text: &str) -> Vec<u16> {
 pub(crate) enum Case {
     Sensitive,
     Insensitive,
+}
+
+impl Case {
+    /// The `match_mode` of TEXTSPLIT, TEXTBEFORE and TEXTAFTER: cut toward zero, then 0 is
+    /// case-sensitive, 1 case-insensitive and anything else `#VALUE!` (probes/
+    /// t2314-textbefore-instance-bound A1-A12, t2581-textsplit-textbefore A17-A23; the text.md
+    /// entry on TEXTBEFORE and TEXTAFTER instance numbers past the text).
+    pub(crate) fn from_match_mode(mode: f64, cell: CellReferenceIndex) -> Result<Case, CalcResult> {
+        match mode.trunc() {
+            0.0 => Ok(Case::Sensitive),
+            1.0 => Ok(Case::Insensitive),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "match_mode must be 0 or 1".to_string(),
+            )),
+        }
+    }
 }
 
 /// The delimiter list of one TEXTSPLIT, TEXTBEFORE or TEXTAFTER call, folded for `match_mode` 1

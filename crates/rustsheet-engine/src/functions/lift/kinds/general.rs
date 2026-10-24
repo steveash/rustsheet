@@ -2,13 +2,17 @@
 //! table"): EDATE to YEARFRAC, the IS* tests, ADDRESS and HYPERLINK, and the math functions.
 
 use super::ArgKind::{Lift, LiftArrays, Whole, WholeByCaller};
-use super::KernelWork::{Constant, Output};
+use super::KernelWork::{Constant, Output, Weighted};
 use super::{
     ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2,
     LIFT_1_OF_3, LIFT_2, LIFT_2_OF_3, LIFT_3,
 };
 use crate::functions::Function;
 
+/// `COMBIN(number, number_chosen)` and `COMBINA(number, number_chosen)`: both arguments lift
+/// (T-2579). `combin`'s loop multiplies factors of at least 1 and stops at the first infinity, so
+/// it runs at most about 1,030 steps (T-2453); each element is charged 2^10.
+const COMBIN_FAMILY: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(1 << 10));
 /// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
 /// `WORKDAY(start_date, days, [holidays])` and `NETWORKDAYS(start_date, end_date, [holidays])`:
@@ -68,7 +72,7 @@ const TOCOL: ArgKinds =
 /// 25-26). Its later elements are empty unless every entry is equal (`CallResult::ArrayFirst`,
 /// probes/m7-unique-lift-elements; T-2300). Read and charged as [`TOCOL`].
 const UNIQUE: ArgKinds =
-    ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first();
+    ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first_column();
 // --- End M7 (T-1836) ---
 // --- M7 (T-1839) ---
 /// `SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`: each sort order lifts
@@ -92,7 +96,7 @@ const SORTBY: ArgKinds = ArgKinds {
 /// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
 /// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
 /// sorts the whole array: read and charged as [`TOCOL`]. Whether a later non-error element is its
-/// call's top-left (`.array()`) or empty (SORTBY's `.array_first()`) is UNVERIFIED (T-2366).
+/// call's top-left (`.array()`) or empty (SORTBY's `CallResult::ArrayFirst`) is UNVERIFIED (T-2366).
 const SORT: ArgKinds = ArgKinds::fixed(
     1,
     &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],
@@ -278,8 +282,10 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // over its text (`lift/tests/kernel_work.rs`).
         Function::Log => Some(&LIFT_1_OF_2),
         Function::Decimal | Function::Atan2 => Some(&LIFT_2),
+        Function::Combin | Function::Combina => Some(&COMBIN_FAMILY),
         Function::Base => Some(&LIFT_2_OF_3),
         Function::Arabic => Some(&LIFT_1),
+        Function::Roman => Some(&LIFT_1_OF_2),
         // --- End LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
         _ => None,
     }

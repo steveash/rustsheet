@@ -190,6 +190,32 @@ fn test_let_name_spelled_like_an_r1c1_cell_round_trips() {
     );
 }
 
+// Excel stores a LET name spelled like a cell as `_xlpm.add5` and binds it (probes/lambda-escaping-
+// closures H4, let-cell-shaped-name-stored, T-2040); the export writes it so and the import reads
+// it back as the name, not the cell ADD5.
+#[test]
+fn test_let_name_spelled_like_a_cell_round_trips() {
+    let mut model = new_empty_model();
+    let formula = "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),add5,mk(5),add5(1))";
+    model.set_user_input(0, 1, 1, formula.to_string()).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_let_cell_shaped_name.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let sheet_xml = part_text(temp_file_name, "xl/worksheets/sheet1.xml");
+    assert!(sheet_xml.contains("_xlpm.add5,"), "{sheet_xml}");
+    assert!(sheet_xml.contains("_xlpm.add5(1)"), "{sheet_xml}");
+
+    let mut model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "6");
+    assert_eq!(
+        model.get_cell_formula(0, 1, 1).unwrap(),
+        Some(formula.to_string())
+    );
+}
+
 #[test]
 fn test_array_formulas_keep_implicit_intersection() {
     // The `@` of an array formula is not put back when the file is read, so it

@@ -329,7 +329,6 @@ F	corpus-bench/17049/1_17049_input.xlsx	!Timeout
 F	corpus-bench/1726/1_1726_input.xlsx	*
 F	corpus-bench/41978/1_41978_input.xlsx	!Timeout
 F	corpus-bench/48354/1_48354_input.xlsx	*
-F	corpus-bench/48982/1_48982_input.xlsx	*
 F	corpus-bench/50442/1_50442_input.xlsx	*
 F	corpus-bench/524-2/1_524-2_input.xlsx	!Timeout
 F	corpus-bench/52450/1_52450_input.xlsx	!Timeout

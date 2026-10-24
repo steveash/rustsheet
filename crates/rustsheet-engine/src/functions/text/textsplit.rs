@@ -37,42 +37,48 @@ impl Model {
         }
         // The delimiters are lists taken whole; the text and the scalar arguments lift over a
         // range or an array (probes/m7-argument-modes F13, F14).
-        let (operands, lists) = self.lift_text_operands(args, &[1, 2], cell);
+        let (mut operands, lists) = self.lift_text_operands(args, &[1, 2], cell);
         // pad_with does not lift: an array of any size, a 1x1 one included, is #VALUE! (probes/
-        // textsplit-lift-guesses A35-A38, A65).
-        if let Some(CalcResult::Array(_)) = operands.get(5) {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "pad_with must be a single value".to_string(),
-            );
+        // textsplit-lift-guesses A35-A38, A65), but per element, after an error argument and
+        // beside lifted ones (gen-m7 f7e94a817e5385ac A2186, 2d9b48c6363e7a16 A3261; text.md
+        // "TEXTSPLIT: argument errors first, an all-empty result"), so it is taken out of the lift.
+        let pad_is_array = matches!(operands.get(5), Some(CalcResult::Array(_)));
+        if pad_is_array {
+            operands[5] = CalcResult::EmptyArg;
         }
         let mut lists = lists.into_iter();
-        let col_delimiters = lists.next().map(|list| self.split_delimiters(list, cell));
+        // A delimiter that is itself an error is an argument error, the first after the text's;
+        // an error element of a list comes after ignore_empty and match_mode (probes/
+        // textsplit-error-order A1-A4, A13, A14).
+        let mut delimiter_error = None;
+        let mut split = |model: &mut Model, list: CalcResult| {
+            if delimiter_error.is_none() && matches!(list, CalcResult::Error { .. }) {
+                delimiter_error = Some(list.clone());
+            }
+            model.split_delimiters(list, cell)
+        };
+        let col_delimiters = lists.next().map(|list| split(self, list));
         // A bare empty-arg (omitted) row delimiter → no row splitting, which is the empty list.
-        let row_delimiters = lists.next().map(|list| self.split_delimiters(list, cell));
-        let arg_count = args.len();
+        let row_delimiters = lists.next().map(|list| split(self, list));
         let scanned: Vec<usize> = [&col_delimiters, &row_delimiters]
             .into_iter()
             .flatten()
             .flatten()
             .flat_map(|d| d.list.exact().iter().map(String::len))
             .collect();
+        let call = SplitCall {
+            arg_count: args.len(),
+            delimiter_error,
+            pad_is_array,
+            col_delimiters,
+            row_delimiters,
+        };
         self.lift_text_call(
             operands,
             cell,
             &scanned,
             SEARCHED_BYTES_PER_VISIT,
-            |model, values, first_only| {
-                model.textsplit_element(
-                    values,
-                    arg_count,
-                    col_delimiters.as_ref(),
-                    row_delimiters.as_ref(),
-                    first_only,
-                    cell,
-                )
-            },
+            |model, values, first_only| model.textsplit_element(values, &call, first_only, cell),
         )
     }
 
@@ -94,27 +100,70 @@ impl Model {
     fn textsplit_element(
         &mut self,
         values: &[CalcResult],
-        arg_count: usize,
-        col_delimiters: Option<&Result<SplitList, CalcResult>>,
-        row_delimiters: Option<&Result<SplitList, CalcResult>>,
+        call: &SplitCall,
         first_only: bool,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let arg_count = call.arg_count;
         let text = match Self::cast_string_ref(&values[0], cell) {
             Ok(s) => s,
             Err(e) => return e,
         };
+        if let Some(error) = &call.delimiter_error {
+            return error.clone();
+        }
+
+        // ignore_empty, then match_mode, each an error or not a boolean or number, is the result
+        // before an array pad_with's #VALUE!, an error element of a delimiter list and
+        // TEXTSPLIT's own #VALUE! for an empty delimiter, no delimiter or empty text (gen-m7
+        // 90de8755a2e565e6 A1643, ac67253061bba16a A184; probes/textsplit-error-order A5, A6,
+        // A8, A18; text.md "TEXTSPLIT: argument errors first, an all-empty result"). A
+        // match_mode number other than 0 or 1 is checked later, after the list errors.
+        let ignore_empty = if arg_count >= 4 {
+            match Self::cast_bool_ref(&values[3], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+
+        let match_mode = if arg_count >= 5 {
+            match self.cast_number_ref(&values[4], cell) {
+                Ok(n) => n,
+                Err(e) => return e,
+            }
+        } else {
+            0.0
+        };
+
+        if call.pad_is_array {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "pad_with must be a single value".to_string(),
+            );
+        }
+
         let no_delimiters = SplitList::new(Delimiters::new(vec![]));
-        let col_delims = match col_delimiters {
+        let col_delims = match &call.col_delimiters {
             Some(Ok(d)) => d,
             Some(Err(e)) => return e.clone(),
             None => &no_delimiters,
         };
 
-        let row_delims = match row_delimiters {
+        let row_delims = match &call.row_delimiters {
             Some(Ok(d)) => d,
             Some(Err(e)) => return e.clone(),
             None => &no_delimiters,
+        };
+
+        // match_mode is cut toward zero and must then be 0 or 1, as in TEXTBEFORE, but checked
+        // only after an error element of a delimiter list (probes/t2581-textsplit-textbefore
+        // A17-A23, A29; text.md "TEXTSPLIT: column delimiters first, match_mode 0 or 1").
+        let case = match Case::from_match_mode(match_mode, cell) {
+            Ok(case) => case,
+            Err(e) => return e,
         };
 
         // An empty delimiter (a "" string, a blank cell or an empty element of a list) is
@@ -139,24 +188,6 @@ impl Model {
                 "TEXTSPLIT requires at least one delimiter".to_string(),
             );
         }
-
-        let ignore_empty = if arg_count >= 4 {
-            match Self::cast_bool_ref(&values[3], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-
-        let case_insensitive = if arg_count >= 5 {
-            match self.cast_number_ref(&values[4], cell) {
-                Ok(n) => n != 0.0,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
 
         let pad_with: Option<ArrayNode> = if arg_count >= 6 {
             match &values[5] {
@@ -186,50 +217,37 @@ impl Model {
         // Normalize to comparison strings for optional case-insensitive matching.
         // `fold_for_split` maps every char to exactly one char (TEXTSPLIT's folding, probes/
         // textsplit-casefold-length), so char positions in `cmp_text` are char positions in
-        // `text`; `split_by_any` converts them to byte offsets of the original (T-1794).
-        let (cmp_text, case) = if case_insensitive {
-            (Cow::Owned(fold_for_split(&text)), Case::Insensitive)
+        // `text`; `split_grid` converts them to byte offsets of the original (T-1794).
+        let cmp_text = if matches!(case, Case::Insensitive) {
+            Cow::Owned(fold_for_split(&text))
         } else {
-            (Cow::Borrowed(text.as_str()), Case::Sensitive)
+            Cow::Borrowed(text.as_str())
         };
         let cmp_col_delims = col_delims.for_case(case);
         let cmp_row_delims = row_delims.for_case(case);
 
-        let rows_of_cols: Vec<Vec<&str>> = if !cmp_row_delims.is_empty() {
-            // Split into rows first, then each row into columns.
-            let row_parts = split_by_any(&text, &cmp_text, cmp_row_delims);
-            let cmp_row_parts = split_by_any(&cmp_text, &cmp_text, cmp_row_delims);
-
-            row_parts
+        // One scan for both lists: a row delimiter that starts before a column delimiter ends
+        // the row there, even inside what a rows-first split would have kept whole (probes/
+        // t2581-textsplit-textbefore A6, A7). ignore_empty drops an empty piece, and an empty
+        // row: one with no text between its row delimiters.
+        let rows_of_cols: Vec<Vec<&str>> =
+            split_grid(&text, &cmp_text, cmp_col_delims, cmp_row_delims)
                 .into_iter()
-                .zip(cmp_row_parts)
-                .filter_map(|(orig_row, cmp_row_part)| {
-                    if ignore_empty && orig_row.is_empty() {
-                        return None;
-                    }
-                    let cols = split_by_any(orig_row, cmp_row_part, cmp_col_delims);
-                    let cols = if ignore_empty {
-                        cols.into_iter().filter(|s| !s.is_empty()).collect()
+                .filter(|row| !(ignore_empty && matches!(row.as_slice(), [""])))
+                .map(|row| {
+                    if ignore_empty {
+                        row.into_iter().filter(|s| !s.is_empty()).collect()
                     } else {
-                        cols
-                    };
-                    Some(cols)
+                        row
+                    }
                 })
-                .collect()
-        } else {
-            // No row delimiter — single row.
-            let cols = split_by_any(&text, &cmp_text, cmp_col_delims);
-            let cols = if ignore_empty {
-                cols.into_iter().filter(|s| !s.is_empty()).collect()
-            } else {
-                cols
-            };
-            vec![cols]
-        };
+                .collect();
 
+        // ignore_empty dropped every piece: #CALC!, the empty-array error (probes/
+        // textsplit-error-order A11, A12; gen-m7 07d27aa0add0247f A768).
         if rows_of_cols.is_empty() || rows_of_cols.iter().all(|r| r.is_empty()) {
             return CalcResult::new_error(
-                Error::VALUE,
+                Error::CALC,
                 cell,
                 "TEXTSPLIT produced no output".to_string(),
             );
@@ -276,6 +294,17 @@ impl Model {
     }
 }
 
+/// What every element of one TEXTSPLIT call shares: the argument count, the delimiter lists
+/// (read once), the first delimiter that is itself an error, and whether `pad_with` is an array
+/// (`#VALUE!`, but per element; it does not lift).
+struct SplitCall {
+    arg_count: usize,
+    delimiter_error: Option<CalcResult>,
+    pad_is_array: bool,
+    col_delimiters: Option<Result<SplitList, CalcResult>>,
+    row_delimiters: Option<Result<SplitList, CalcResult>>,
+}
+
 /// A TEXTSPLIT delimiter list with one substring searcher per non-empty delimiter and case,
 /// built once per call: `str::find` builds a searcher per piece, which costs as much as the
 /// delimiter is long each time (T-1272 performance review).
@@ -312,17 +341,24 @@ impl SplitList {
     }
 }
 
-/// Split `original` by the first (earliest) occurrence of any of the delimiters `delims`
-/// searches for, using `cmp` (a parallel, char-for-char comparison string, e.g. case-folded)
-/// to locate match positions.
+/// Split `original` into rows of pieces at the first (earliest) occurrence of any delimiter of
+/// `cols` or `rows`, using `cmp` (a parallel, char-for-char comparison string, e.g. case-folded)
+/// to locate match positions. At one position a column delimiter beats a row delimiter, whatever
+/// their lengths (probes/t2581-textsplit-textbefore A1, A4, A5, A13), and the longest delimiter
+/// of one list wins (probes/textsplit-lift-guesses A4, A6).
 ///
 /// `cmp` and `original` have the same number of chars but not necessarily the same byte layout
 /// (U+212A is 3 bytes, its fold `k` is 1), so a match is converted to a char index in `cmp` and
 /// then to a byte offset in `original`. If the two ever disagree the original is returned whole
 /// rather than sliced out of range.
-fn split_by_any<'a>(original: &'a str, cmp: &str, delims: &[Finder<'_>]) -> Vec<&'a str> {
-    if delims.is_empty() {
-        return vec![original];
+fn split_grid<'a>(
+    original: &'a str,
+    cmp: &str,
+    cols: &[Finder<'_>],
+    rows: &[Finder<'_>],
+) -> Vec<Vec<&'a str>> {
+    if cols.is_empty() && rows.is_empty() {
+        return vec![vec![original]];
     }
 
     // ASCII on both sides (the usual case) has the same byte layout: no offsets to map.
@@ -333,7 +369,7 @@ fn split_by_any<'a>(original: &'a str, cmp: &str, delims: &[Finder<'_>]) -> Vec<
         (char_offsets(cmp), char_offsets(original))
     };
     if cmp_offsets.len() != orig_offsets.len() {
-        return vec![original];
+        return vec![vec![original]];
     }
     // The byte offset in `original` of a byte offset in `cmp` that `find` returned (always a
     // char boundary).
@@ -345,19 +381,24 @@ fn split_by_any<'a>(original: &'a str, cmp: &str, delims: &[Finder<'_>]) -> Vec<
         orig_offsets.get(index).copied()
     };
 
+    // Each delimiter with whether it ends a row; column delimiters first.
+    let delims: Vec<(&Finder<'_>, bool)> = cols
+        .iter()
+        .map(|d| (d, false))
+        .chain(rows.iter().map(|d| (d, true)))
+        .collect();
     let mut result = Vec::new();
+    let mut row = Vec::new();
     let mut pos = 0usize; // byte offset in `cmp`
     let mut orig_pos = 0usize; // byte offset in `original`
 
     // The next match of each delimiter at or after `pos`, searched again only once `pos` has
     // passed it, so each delimiter's searches move forward through `cmp` instead of rescanning
     // the rest of it for every piece (T-1272 performance review).
-    let mut next: Vec<Option<usize>> = delims.iter().map(|d| d.find(cmp.as_bytes())).collect();
+    let mut next: Vec<Option<usize>> = delims.iter().map(|(d, _)| d.find(cmp.as_bytes())).collect();
 
     loop {
-        // Find the earliest match among all delimiters (the longest on a tie, probes/
-        // textsplit-lift-guesses A4, A6).
-        for (found, d) in next.iter_mut().zip(delims) {
+        for (found, (d, _)) in next.iter_mut().zip(&delims) {
             if found.is_some_and(|start| start < pos) {
                 *found = cmp
                     .as_bytes()
@@ -368,19 +409,26 @@ fn split_by_any<'a>(original: &'a str, cmp: &str, delims: &[Finder<'_>]) -> Vec<
         }
         let best = next
             .iter()
-            .zip(delims)
-            .filter_map(|(found, d)| found.map(|start| (start, start + d.needle().len())))
-            .min_by_key(|(start, end)| (*start, std::cmp::Reverse(*end)));
+            .zip(&delims)
+            .filter_map(|(found, (d, ends_row))| {
+                found.map(|start| (start, *ends_row, start + d.needle().len()))
+            })
+            .min_by_key(|(start, ends_row, end)| (*start, *ends_row, std::cmp::Reverse(*end)));
 
-        let matched = best
-            .and_then(|(start, end)| Some((start, end, to_original(start)?, to_original(end)?)));
+        let matched = best.and_then(|(start, ends_row, end)| {
+            Some((end, ends_row, to_original(start)?, to_original(end)?))
+        });
         match matched {
             None => {
-                result.push(original.get(orig_pos..).unwrap_or_default());
+                row.push(original.get(orig_pos..).unwrap_or_default());
+                result.push(row);
                 break;
             }
-            Some((_, cmp_end, orig_start, orig_end)) => {
-                result.push(original.get(orig_pos..orig_start).unwrap_or_default());
+            Some((cmp_end, ends_row, orig_start, orig_end)) => {
+                row.push(original.get(orig_pos..orig_start).unwrap_or_default());
+                if ends_row {
+                    result.push(std::mem::take(&mut row));
+                }
                 pos = cmp_end;
                 orig_pos = orig_end;
             }

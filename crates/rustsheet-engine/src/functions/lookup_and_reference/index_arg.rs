@@ -37,9 +37,6 @@ pub(super) enum LookupIndexArg {
         left: CellReferenceIndex,
         right: CellReferenceIndex,
     },
-    /// An index that is an error, kept only while `range_lookup` lifts: every found element is
-    /// that error (gen-m2/942bdade381b7537 Calc!A381, T-1468).
-    Failed(CalcResult),
 }
 
 impl LookupIndexArg {
@@ -71,7 +68,9 @@ impl Model {
     /// `lookup_value`, `table_array`, index, `range_lookup`, so a table error beats the last two,
     /// and a lifted `lookup_value` gives each element the table error
     /// (probes/lookup-argument-edges H66-H123, T-2234). The `lookup_value`'s error beats
-    /// `range_lookup`'s, lifted or not (H30-H51).
+    /// `range_lookup`'s, lifted or not (H30-H51). A scalar `range_lookup` that is not a boolean
+    /// beside a lifted `lookup_value` is kept as its error, so each element's scalar call gives it,
+    /// before any search (probes/vlookup-scalar-range-lookup-lifted G1-G12, T-2411).
     pub(super) fn lookup_head(
         &mut self,
         args: &[Node],
@@ -90,22 +89,35 @@ impl Model {
         }
         if let Some(error) = table_error {
             let sorted_grid = is_sorted.ok().filter(LiftedArg::is_grid);
-            return Err(self.table_error_each(lookup_value, sorted_grid, error, cell));
+            return Err(self.argument_error_each(lookup_value, sorted_grid, error, cell));
         }
         let index = match index {
             Ok(index) => index,
-            Err(error) if lifts => LookupIndexArg::Failed(error),
+            // A failed value index in a lifted call is that error in every element whose
+            // lookup_value is not an error itself, ahead of range_lookup and of the search, a
+            // not-found element included (probes/vlookup-scalar-range-lookup-lifted G13-G39, T-2411;
+            // gen-m2/942bdade381b7537 Calc!A381, T-1468).
+            Err(error) if lifts || LiftedArg::is_grid(&lookup_value) => {
+                let sorted_grid = is_sorted.ok().filter(LiftedArg::is_grid);
+                return Err(self.argument_error_each(lookup_value, sorted_grid, error, cell));
+            }
             Err(error) => return Err(error),
         };
-        Ok((lookup_value, index, is_sorted?))
+        let is_sorted = match is_sorted {
+            Ok(is_sorted) => is_sorted,
+            Err(error) if LiftedArg::is_grid(&lookup_value) => error,
+            Err(error) => return Err(error),
+        };
+        Ok((lookup_value, index, is_sorted))
     }
 
-    /// A failed `table_array` under `lookup_value`: the table's error, or, lifted over an array
-    /// or multi-cell range `lookup_value` or `range_lookup` (`sorted_grid`), that error in each
-    /// element whose `lookup_value` is not an error itself: `VLOOKUP({2;9},1/0,2)` and
+    /// A failed `table_array` or value index under `lookup_value`: the error, or, lifted over an
+    /// array or multi-cell range `lookup_value` or `range_lookup` (`sorted_grid`), that error in
+    /// each element whose `lookup_value` is not an error itself: `VLOOKUP({2;9},1/0,2)` and
     /// `VLOOKUP(2,1/0,2,{TRUE;FALSE})` spill `#DIV/0!` twice, `VLOOKUP(NA(),1/0,2,{TRUE;FALSE})`
-    /// `#N/A` twice (probes/lookup-argument-edges H120-H124, H336-H352).
-    fn table_error_each(
+    /// `#N/A` twice (probes/lookup-argument-edges H120-H124, H336-H352), and
+    /// `VLOOKUP({1;99},A1:B2,"a")` is `#VALUE!` twice (probes/vlookup-scalar-range-lookup-lifted).
+    fn argument_error_each(
         &mut self,
         lookup_value: CalcResult,
         sorted_grid: Option<CalcResult>,
@@ -223,7 +235,6 @@ impl Model {
             LookupIndexArg::Reference(range) => self
                 .cast_to_number(range, cell)
                 .map_err(|_| invalid_reference())?,
-            LookupIndexArg::Failed(error) => return Err(error),
             // Callers narrow an array or range with `first_element`; one that does not gets `#REF!`.
             LookupIndexArg::Array(_) | LookupIndexArg::Range { .. } => {
                 return Err(invalid_reference())

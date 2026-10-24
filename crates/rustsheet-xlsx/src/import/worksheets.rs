@@ -17,8 +17,8 @@ use rustsheet_engine::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        ArrayKind, Cell, Color, Comment, Dxf, FormulaValue, Link, MergedCell, SheetState,
-        SpillValue, Table, Theme, Worksheet, WorksheetView,
+        ArrayKind, Cell, Color, Comment, DateSystem, Dxf, FormulaValue, Link, MergedCell,
+        SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
 use thiserror::Error;
@@ -28,17 +28,13 @@ use crate::error::XlsxError;
 use super::{
     columns::load_columns,
     conditional_formatting::load_conditional_formatting,
-    iso_date::iso8601_to_serial,
+    iso_date::iso8601_to_date_system_serial,
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
     util::{get_attribute, get_color, get_number, get_relationship, parse_cell_number},
+    Relationship,
 };
-
-pub(crate) struct Relationship {
-    pub(crate) target: String,
-    pub(crate) rel_type: String,
-}
 
 impl WorkbookXML {
     fn get_defined_names_with_scope(&self) -> Vec<DefinedNameS> {
@@ -86,22 +82,6 @@ pub(super) fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
         }
     } else {
         Err(format!("Invalid range: '{range}'"))
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::import::worksheets::parse_range;
-
-    #[test]
-    fn test_parse_range() {
-        assert!(parse_range("3Aw").is_err());
-        assert_eq!(parse_range("A1"), Ok((1, 1, 1, 1)));
-        assert_eq!(parse_range("B5:C6"), Ok((5, 2, 6, 3)));
-        assert!(parse_range("A1:A2:A3").is_err());
-        assert!(parse_range("A1:34").is_err());
-        assert!(parse_range("A").is_err());
-        assert!(parse_range("12").is_err());
     }
 }
 
@@ -321,6 +301,7 @@ pub(super) fn get_cell_from_excel(
     rich_text_inline: Option<String>,
     anchor_cell: Option<(i32, i32)>,
     array_kind: CellArrayKind,
+    date_system: DateSystem,
 ) -> Cell {
     // Possible cell types:
     // 18.18.11 ST_CellType (Cell Type)
@@ -397,9 +378,10 @@ pub(super) fn get_cell_from_excel(
                     Cell::SharedString { si, s: cell_style }
                 }
             }
-            "d" => match cell_value.and_then(iso8601_to_serial) {
+            "d" => match cell_value.and_then(|v| iso8601_to_date_system_serial(v, date_system)) {
                 Some(v) => Cell::NumberCell { v, s: cell_style },
-                // A date before 1900-01-01 is `#VALUE!` in Excel (fixtures/t-d-pre-1900); Excel
+                // A date before 1900-01-01 is `#VALUE!` in Excel (fixtures/t-d-pre-1900), and so is
+                // one before 1904-01-01 in a 1904 workbook (fixtures/t-d-1904-pre-epoch); Excel
                 // refuses a workbook with other unparsable text (docs/excel-semantics/xlsx-storage.md).
                 None if cell_value.is_some() => Cell::ErrorCell {
                     ei: Error::VALUE,
@@ -471,7 +453,7 @@ pub(super) fn get_cell_from_excel(
                     decode_xlsx_escapes(cell_value.unwrap_or("")).into(),
                 ))
             }
-            "d" => match cell_value.and_then(iso8601_to_serial) {
+            "d" => match cell_value.and_then(|v| iso8601_to_date_system_serial(v, date_system)) {
                 Some(v) => make_cell(FormulaValue::Number(v)),
                 None => make_cell(FormulaValue::Unevaluated),
             },
@@ -746,6 +728,8 @@ pub(super) struct SheetSettings {
     pub comments: Vec<Comment>,
     /// hyperlink relationships in the sheet rels: relationship id -> target
     pub hyperlink_rels: HashMap<String, String>,
+    /// The workbook's date system, which `t="d"` cells take their serials in.
+    pub date_system: DateSystem,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -770,6 +754,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // One parser for the whole sheet: building one clones the defined names
     // and tables, which is far too much to do once per formula cell.
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
+    parser.set_loaded(true);
     // The cells are streamed; what is left of the worksheet is small and is
     // read as a tree.
     let SheetDataXml {
@@ -784,6 +769,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         shared_strings,
         &limits,
         rich_errors,
+        settings.date_system,
     )?;
     let ws = &worksheet;
 
@@ -856,6 +842,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             sheet_data,
             name: sheet_name.to_string(),
             sheet_id,
+            // Placeholder: `load_sheets` sets the rank from the sheet's position.
+            load_rank: 0,
             state: state.to_owned(),
             color,
             merged_cells,
@@ -918,6 +906,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 state: state.clone(),
                 comments: comments.to_vec(),
                 hyperlink_rels: hyperlink_rels.clone(),
+                date_system: workbook.date_system,
             };
             let (s, is_selected) = load_sheet(
                 archive,
@@ -934,6 +923,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
             if is_selected {
                 selected_sheet = sheet_index;
             }
+            let mut s = s;
+            s.load_rank = sheet_index;
             sheets.push(s);
             sheet_index += 1;
         }
@@ -942,59 +933,4 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
 }
 
 #[cfg(test)]
-mod tests {
-    use std::collections::HashMap;
-
-    use rustsheet_engine::types::Link;
-
-    use crate::import::xml::XmlNode;
-
-    use crate::import::worksheets::{load_hyperlinks, parse_reference};
-
-    #[test]
-    fn parse_reference_works() {
-        let cell_reference = parse_reference("📈 Overview!B2");
-        assert!(cell_reference.is_ok());
-        let cell_reference = cell_reference.unwrap();
-        assert_eq!(cell_reference.sheet, "📈 Overview");
-    }
-
-    #[test]
-    fn load_hyperlinks_skips_malformed_and_caps_huge_ranges() {
-        let xml = r#"<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-            <hyperlinks>
-                <hyperlink ref="B2" location="Target!A1"/>
-                <hyperlink ref="B3"/>
-                <hyperlink ref="B4" location=""/>
-                <hyperlink ref="D1:E2" location="Target!A1"/>
-                <hyperlink ref="G1:XFD1048576" location="Target!A1"/>
-                <hyperlink ref="F1" r:id="rId9"/>
-            </hyperlinks>
-        </worksheet>"#;
-        let doc = XmlNode::parse_str(xml).unwrap();
-        let ws = &doc;
-        // no relationships: the r:id hyperlink is dangling
-        let rels = HashMap::new();
-
-        let links = load_hyperlinks(ws, &rels).unwrap();
-
-        let internal = Link::Internal {
-            location: "Target!A1".to_string(),
-            tooltip: None,
-        };
-        // B2 plus the four cells of D1:E2 plus the top-left of the huge range.
-        // The hyperlinks with no location, an empty location or a dangling
-        // relationship are skipped.
-        assert_eq!(links.len(), 6);
-        assert_eq!(links.get(&(2, 2)), Some(&internal));
-        for (row, column) in [(1, 4), (1, 5), (2, 4), (2, 5)] {
-            assert_eq!(links.get(&(row, column)), Some(&internal));
-        }
-        // the huge range is not expanded: only its top-left cell gets the link
-        assert_eq!(links.get(&(1, 7)), Some(&internal));
-        assert_eq!(links.get(&(2, 7)), None);
-        assert_eq!(links.get(&(3, 2)), None);
-        assert_eq!(links.get(&(4, 2)), None);
-        assert_eq!(links.get(&(1, 6)), None);
-    }
-}
+mod tests;

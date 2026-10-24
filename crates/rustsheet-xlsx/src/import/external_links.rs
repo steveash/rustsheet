@@ -10,8 +10,9 @@ use rustsheet_engine::{
 use super::{
     package::{resolve_target, Package},
     util::parse_cell_number,
-    worksheets::{parse_cell_reference, Relationship},
+    worksheets::parse_cell_reference,
     xml::XmlNode,
+    Relationship,
 };
 
 /// One [`ExternalBook`] per `externalReference` of the workbook, in order, so `[n]` in a formula

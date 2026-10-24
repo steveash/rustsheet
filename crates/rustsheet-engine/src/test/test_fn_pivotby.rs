@@ -652,3 +652,27 @@ fn an_error_column_total_over_several_value_columns_is_value_error() {
     assert_eq!(model._get_text("G60"), "");
     assert_eq!(model._get_text("H61"), "#VALUE!");
 }
+
+#[test]
+fn array_field_headers_and_depths_lift_to_top_left_cells() {
+    // probes/groupby-lifted-args A121, A129, A137 (T-2359): the top-left cell of a PIVOTBY is its
+    // empty corner, and an element whose call is invalid (a text row_sort_order) is #VALUE!.
+    let rows = pivot(
+        "=PIVOTBY(A2:A11,B2:B11,D2:D11,LAMBDA(x,SUM(x)),{0,1})",
+        1,
+        3,
+    );
+    assert_eq!(rows, [["", "", ""]]);
+    let rows = pivot(
+        "=PIVOTBY(A2:A11,B2:B11,D2:D11,LAMBDA(x,SUM(x)),0,1,,{1;0})",
+        2,
+        2,
+    );
+    assert_eq!(rows, [["", ""], ["", ""]]);
+    let rows = pivot(
+        "=PIVOTBY(A2:A11,B2:B11,D2:D11,LAMBDA(x,SUM(x)),{5,1},-1,A2:A2,2)",
+        1,
+        2,
+    );
+    assert_eq!(rows, [["#VALUE!", "#VALUE!"]]);
+}

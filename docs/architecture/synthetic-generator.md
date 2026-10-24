@@ -524,7 +524,20 @@ Every pool entry has an `edge_class` id. A literal is drawn as
 `tools/src/rustsheet_tools/gen/pools.py` 35% of the time, after its `domain` draw and never on a `hard`
 domain; other parameters still build a free expression. The pools there are `number_edges`, `unit_interval`,
 `angle` and `code_point` (T-2109), and `text_edges`, `numeric_text`, `number_formats` (the codes of
-`number_formats.py`, quoted) and `errors` (T-2110).
+`number_formats.py`, quoted) and `errors` (T-2110). T-2286 added `array_shape`, `array_holes`, `lookup_value`,
+`lookup_table`, `regex_pattern` and `lambda_body` for the M6 and M7 lookup, array, REGEX and LAMBDA functions, with
+two draw extensions: a pooled `range` parameter (LOOKUP's lookup_vector, XMATCH's lookup_array) takes a pool entry
+35% of the time in place of a range, and a pooled `lambda` parameter takes an entry with the parameter count the call
+needs (MAP's one per array), its `x` and `y` renamed to free names.
+T-2247 added `probability`, `shape`, `stat_x`, `gamma_x`, `flag` and `stat_data` for the M9 statistical functions
+(probabilities and alphas, degrees of freedom and shapes, distribution x and z, GAMMA's x, the cumulative/const/stats
+flags, and the data arrays of the aggregates, order statistics and paired functions) and put FISHER's x on
+`unit_interval`; no draw change was needed, as an `array` or `aggregate` parameter's non-range draw already reaches
+the pool.
+T-2438 added `count` (the integer counts of the binomial, hypergeometric, CONFIDENCE and LARGE functions, with their
+soft `int` domain kept), `ets_target`, `ets_seasonality`, `ets_completion`, `ets_aggregation`, `ets_confidence`,
+`ets_statistic`, `ets_timeline` and `ets_values` array constants (the first entries are 24 sorted, evenly spaced points
+beside 24 values; the two are drawn independently, so a matching pair comes up by chance, the rest are mismatches), `beta_bound`, `fisherinv_y`, `forecast_x` and `lognorm_mean`.
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),
@@ -621,6 +634,10 @@ an optional `Probe` sheet for subexpression sidecars (§9.3), and an optional `L
 sheet. The sheet count is sampled from {1: 50%, 2–3: 40%, 4–8: 10%}, skewed to small,
 matching the corpus median of 1 worksheet. Sheet names include spaces, quotes, unicode and
 names that look like cell refs (`'A1'`, `'R1C1'`, `'TRUE'`) to exercise quoting.
+
+As built (T-2396): a case that calls GETPIVOTDATA (catalog `pivot: true`) gets a third sheet, `Pivot`, with a seeded
+source block and one compact-form pivot over it (spec `pivot_tables`); every GETPIVOTDATA call in the case queries
+that pivot, with deliberate `#REF!` misses (tools/src/rustsheet_tools/gen/pivots.py).
 
 ### 7.2 Realistic data tables
 

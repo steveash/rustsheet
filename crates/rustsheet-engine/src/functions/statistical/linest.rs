@@ -112,178 +112,282 @@ struct RegressionData {
     p: usize,
 }
 
-impl Model {
-    /// TREND or GROWTH of one `known_y`: every predicted value is that point (`TREND(5)` is 5), one
-    /// per row of `new_x`, or one in all when `new_x` is omitted (statistics.md "TREND: defaults,
-    /// shapes, single points and error inputs"). `new_x_args` is the arguments from `new_x` on.
-    fn single_point_prediction(
-        &mut self,
-        new_x_args: &[Node],
-        data: &RegressionData,
-        value: f64,
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        let rows = match new_x_args.first() {
-            // An empty `new_x` is the default, as in the general case.
-            Some(node) => self.collect_matrix_from_node(node, cell).map(|m| {
-                if m.is_empty() {
-                    data.x.len()
-                } else {
-                    m.len()
-                }
-            }),
-            None => Ok(data.x.len()),
-        };
-        match rows {
-            Ok(rows) => CalcResult::Array(vec![vec![ArrayNode::Number(value)]; rows]),
-            Err(e) => e,
-        }
+/// One element of a regression data argument as [`Model::read_data`] read it.
+pub(super) enum Element {
+    Number(f64),
+    /// An empty cell, or an empty argument or array element.
+    Blank,
+    /// An error cell or element, or a lambda in an array.
+    Error(CalcResult),
+    /// Text, a boolean or a lambda.
+    NotNumber,
+}
+
+/// A regression data argument, element by element, with where it came from: a blank cell of a
+/// range is not an empty element of an array to LINEST.
+pub(super) enum DataRead {
+    Range(Vec<Vec<Element>>),
+    Array(Vec<Vec<Element>>),
+    Scalar(Element),
+}
+
+/// A data argument as [`Model::read_matrix`] read it, with the errors it found kept for later.
+#[derive(Default)]
+struct MatrixRead {
+    values: Vec<Vec<f64>>,
+    /// The first error element, lambda or non-numeric single value: reported before the sizes.
+    early_error: Option<CalcResult>,
+    /// The first text or boolean cell of a range: reported after the sizes.
+    text_error: Option<CalcResult>,
+}
+
+/// `known_y` and `known_x` as read; `known_x` `None` if omitted.
+struct RegressionInputs {
+    y: MatrixRead,
+    x: Option<MatrixRead>,
+}
+
+/// The checks after the read, in the order Excel makes them (statistics.md "LINEST and LOGEST
+/// report error values first"):
+/// 1. y's error element, lambda or non-numeric single value;
+/// 2. too few y values (`#VALUE!`);
+/// 3. x's error element, lambda or non-numeric single value;
+/// 4. unequal rows (`#REF!`);
+/// 5. a text cell. It comes after the size check: GROWTH(B2:B3,<number>) with B2:B3 = "?b", 0
+///    is `#REF!`, not `#VALUE!` (gen-m9/89693ab0cafc29df A24).
+///
+/// LINEST and LOGEST report const's and stats' errors before all of these: a boolean y cell
+/// waits (`LINEST(Data!C8,PERCENTILE.INC(0.5,0.975),"FALSE",NA())`, C8 = TRUE, is `#N/A`, c6cfda6bd10cae93
+/// A110), and so does an error element of x (35e8168aae2b00f8 A400).
+fn validate_regression_inputs(
+    inputs: RegressionInputs,
+    cell: CellReferenceIndex,
+) -> Result<RegressionData, CalcResult> {
+    let MatrixRead {
+        values: y_raw,
+        early_error,
+        mut text_error,
+    } = inputs.y;
+    if let Some(error) = early_error {
+        return Err(error);
+    }
+    let y: Vec<f64> = y_raw.into_iter().flatten().collect();
+    let n = y.len();
+
+    if n < 2 {
+        return Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "Regression requires at least 2 data points".to_string(),
+        ));
     }
 
-    /// Collect Y and X data for regression functions.
-    /// `x_arg`: None → auto-generate x = 1, 2, ..., n. `min_points` is the fewest `known_y`
-    /// values the caller accepts (LINEST and LOGEST 2; TREND and GROWTH 1, a single value being
-    /// one point, statistics.md "Array arguments given a scalar, a single cell or an error").
-    fn collect_regression_data(
+    let (x, p) = match inputs.x {
+        None => {
+            // Auto-generate x = 1, 2, ..., n (single column)
+            let x_auto: Vec<Vec<f64>> = (1..=n).map(|i| vec![i as f64]).collect();
+            (x_auto, 1)
+        }
+        Some(MatrixRead {
+            values: x_mat,
+            early_error,
+            text_error: x_text_error,
+        }) => {
+            if let Some(error) = early_error {
+                return Err(error);
+            }
+            text_error = text_error.or(x_text_error);
+            let rows = x_mat.len();
+            let p = if rows > 0 { x_mat[0].len() } else { 0 };
+
+            if rows != n {
+                return Err(CalcResult::new_error(
+                    Error::REF,
+                    cell,
+                    "Regression: known_y and known_x must have the same number of rows".to_string(),
+                ));
+            }
+            (x_mat, p)
+        }
+    };
+    if let Some(e) = text_error {
+        return Err(e);
+    }
+
+    Ok(RegressionData { y, x, p })
+}
+
+impl Model {
+    /// Reads `known_y` and `known_x`, failing only when one is an error value itself, y's first:
+    /// [`validate_regression_inputs`] does every other check, so LINEST and LOGEST can report an
+    /// error in const or stats between the two.
+    fn read_regression_inputs(
         &mut self,
         y_arg: &Node,
         x_arg: Option<&Node>,
-        min_points: usize,
         cell: CellReferenceIndex,
-    ) -> Result<RegressionData, CalcResult> {
-        // Collect Y. A text cell is reported only after the size check below: GROWTH(B2:B3,<number>)
-        // with B2:B3 = "?b", 0 is `#REF!`, not `#VALUE!` (statistics.md "Array arguments given a
-        // scalar, a single cell or an error"; gen-m9/89693ab0cafc29df A24).
-        let (y_raw, mut text_error) = self.collect_matrix_deferring_text(y_arg, cell)?;
-        let y: Vec<f64> = y_raw.into_iter().flatten().collect();
-        let n = y.len();
+    ) -> Result<RegressionInputs, CalcResult> {
+        let y = self.read_known_y(y_arg, cell)?;
+        let y = matrix_from_data(y, cell);
+        let x = match x_arg {
+            Some(x_node) => Some(matrix_from_data(self.read_data(x_node, cell)?, cell)),
+            None => None,
+        };
+        Ok(RegressionInputs { y, x })
+    }
 
-        if n < min_points {
+    /// Reads `known_y` as [`Model::read_data`] does. A computed blank y is `#VALUE!` at once,
+    /// before x's and const's errors: `LINEST(IFERROR(B10,1),1/0)` and
+    /// `LINEST(IFERROR(B10,1),{1;2},NA())` with B10 blank are `#VALUE!`, while the blank reference
+    /// itself and a computed text or boolean y wait (`LINEST(B10,1/0)`, `LINEST("abc",1/0)` and
+    /// `LINEST(IF(TRUE,"abc"),1/0)` are `#DIV/0!`; probes/t2455-transpose-single-value A62:A84).
+    pub(super) fn read_known_y(
+        &mut self,
+        y_arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<DataRead, CalcResult> {
+        let y = self.read_data(y_arg, cell)?;
+        if matches!(y, DataRead::Scalar(Element::Blank))
+            && !matches!(*y_arg.resolved_at(cell.row), Node::ReferenceKind { .. })
+        {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
-                format!("Regression requires at least {min_points} data points"),
+                "Regression: known_y is blank".to_string(),
             ));
         }
-
-        let (x, p) = match x_arg {
-            None => {
-                // Auto-generate x = 1, 2, ..., n (single column)
-                let x_auto: Vec<Vec<f64>> = (1..=n).map(|i| vec![i as f64]).collect();
-                (x_auto, 1)
-            }
-            Some(x_node) => {
-                let (x_mat, x_text_error) = self.collect_matrix_deferring_text(x_node, cell)?;
-                text_error = text_error.or(x_text_error);
-                let rows = x_mat.len();
-                let p = if rows > 0 { x_mat[0].len() } else { 0 };
-
-                if rows != n {
-                    return Err(CalcResult::new_error(
-                        Error::REF,
-                        cell,
-                        "Regression: known_y and known_x must have the same number of rows"
-                            .to_string(),
-                    ));
-                }
-                (x_mat, p)
-            }
-        };
-        if let Some(e) = text_error {
-            return Err(e);
-        }
-
-        Ok(RegressionData { y, x, p })
+        Ok(y)
     }
 
-    /// Collect all values from a node as a 2D matrix (rows × cols).
-    fn collect_matrix_from_node(
+    /// Reads a data argument of the regression functions element by element, failing only when it
+    /// is an error value itself; each caller decides what a blank, a text or an error element is.
+    pub(super) fn read_data(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<Vec<f64>>, CalcResult> {
-        match self.collect_matrix_deferring_text(arg, cell)? {
-            (matrix, None) => Ok(matrix),
-            (_, Some(text_error)) => Err(text_error),
-        }
-    }
-
-    /// Like [`Self::collect_matrix_from_node`], but a text cell in a range is returned as the
-    /// second element (the `#VALUE!` to report) instead of failing, so the caller can check
-    /// sizes first. An error value, in a range or as the argument, is returned as that error.
-    fn collect_matrix_deferring_text(
-        &mut self,
-        arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<(Vec<Vec<f64>>, Option<CalcResult>), CalcResult> {
-        let mut text_error = None;
-        match self.evaluate_node_in_context(arg, cell) {
+    ) -> Result<DataRead, CalcResult> {
+        Ok(match self.evaluate_node_in_context(arg, cell) {
             CalcResult::Range { left, right } => {
                 let n_rows = (right.row - left.row + 1) as usize;
                 let n_cols = (right.column - left.column + 1) as usize;
-                let mut matrix = vec![vec![0.0_f64; n_cols]; n_rows];
-                for (r, row) in matrix.iter_mut().enumerate() {
-                    for (c, val) in row.iter_mut().enumerate() {
-                        let ref_idx = crate::expressions::types::CellReferenceIndex {
+                let mut rows = Vec::with_capacity(n_rows);
+                for r in 0..n_rows {
+                    let mut row = Vec::with_capacity(n_cols);
+                    for c in 0..n_cols {
+                        let ref_idx = CellReferenceIndex {
                             sheet: left.sheet,
                             row: left.row + r as i32,
                             column: left.column + c as i32,
                         };
-                        match self.evaluate_cell(ref_idx) {
-                            CalcResult::Number(v) => *val = v,
-                            CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                            err @ CalcResult::Error { .. } => return Err(err),
-                            _ => {
-                                text_error.get_or_insert_with(|| {
-                                    CalcResult::new_error(
-                                        Error::VALUE,
-                                        cell,
-                                        "Regression: non-numeric value in data range".to_string(),
-                                    )
-                                });
-                            }
-                        }
+                        row.push(match self.evaluate_cell(ref_idx) {
+                            CalcResult::Number(v) => Element::Number(v),
+                            CalcResult::EmptyCell | CalcResult::EmptyArg => Element::Blank,
+                            err @ CalcResult::Error { .. } => Element::Error(err),
+                            _ => Element::NotNumber,
+                        });
                     }
+                    rows.push(row);
                 }
-                Ok((matrix, text_error))
+                DataRead::Range(rows)
             }
-            CalcResult::Array(arr) => {
-                let mut matrix = Vec::new();
-                for row in arr {
-                    let mut mrow = Vec::new();
-                    for item in row {
-                        match item {
-                            crate::expressions::parser::ArrayNode::Number(v) => mrow.push(v),
-                            crate::expressions::parser::ArrayNode::Empty => mrow.push(0.0),
-                            crate::expressions::parser::ArrayNode::Error(e) => {
-                                return Err(CalcResult::new_error(e, cell, "".to_string()))
-                            }
-                            _ => mrow.push(0.0),
+            CalcResult::Array(arr) => DataRead::Array(
+                arr.into_iter()
+                    .map(|row| {
+                        row.into_iter()
+                            .map(|item| match item {
+                                ArrayNode::Number(v) => Element::Number(v),
+                                ArrayNode::Error(e) => {
+                                    Element::Error(CalcResult::new_error(e, cell, String::new()))
+                                }
+                                ArrayNode::Lambda(_) => {
+                                    Element::Error(Model::lambda_as_number_error(cell))
+                                }
+                                ArrayNode::Empty => Element::Blank,
+                                _ => Element::NotNumber,
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            CalcResult::Number(n) => DataRead::Scalar(Element::Number(n)),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => DataRead::Scalar(Element::Blank),
+            err @ CalcResult::Error { .. } => return Err(err),
+            _ => DataRead::Scalar(Element::NotNumber),
+        })
+    }
+}
+
+/// A data argument as [`Model::read_data`] read it, as a matrix for LINEST and LOGEST. What is
+/// wrong with it is kept for the caller to report in its own order: an error element of a range or
+/// array, a lambda, or a single value that is no number (`early_error`), and a text or boolean
+/// cell in a range (`text_error`, reported after the size checks). A blank cell of a range and
+/// a text or boolean element of an array read as 0.
+fn matrix_from_data(data: DataRead, cell: CellReferenceIndex) -> MatrixRead {
+    let mut read = MatrixRead::default();
+    match data {
+        DataRead::Range(rows) => {
+            for row in rows {
+                let mut mrow = Vec::with_capacity(row.len());
+                for element in row {
+                    mrow.push(match element {
+                        Element::Number(v) => v,
+                        Element::Blank => 0.0,
+                        Element::Error(err) => {
+                            read.early_error.get_or_insert(err);
+                            0.0
                         }
-                    }
-                    matrix.push(mrow);
+                        Element::NotNumber => {
+                            read.text_error.get_or_insert_with(|| {
+                                CalcResult::new_error(
+                                    Error::VALUE,
+                                    cell,
+                                    "Regression: non-numeric value in data range".to_string(),
+                                )
+                            });
+                            0.0
+                        }
+                    });
                 }
-                Ok((matrix, None))
+                read.values.push(mrow);
             }
-            CalcResult::Number(n) => Ok((vec![vec![n]], None)),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok((vec![], None)),
-            err @ CalcResult::Error { .. } => Err(err),
-            _ => Err(CalcResult::new_error(
+        }
+        DataRead::Array(rows) => {
+            for row in rows {
+                let mut mrow = Vec::with_capacity(row.len());
+                for element in row {
+                    mrow.push(match element {
+                        Element::Number(v) => v,
+                        Element::Error(err) => {
+                            read.early_error.get_or_insert(err);
+                            0.0
+                        }
+                        Element::Blank | Element::NotNumber => 0.0,
+                    });
+                }
+                read.values.push(mrow);
+            }
+        }
+        DataRead::Scalar(Element::Number(n)) => read.values = vec![vec![n]],
+        DataRead::Scalar(Element::Blank) => {}
+        DataRead::Scalar(Element::Error(err)) => read.early_error = Some(err),
+        DataRead::Scalar(Element::NotNumber) => {
+            read.early_error = Some(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "Expected numeric range or array".to_string(),
-            )),
+            ));
         }
     }
+    read
 }
 
 // ─── Regression core ─────────────────────────────────────────────────────────
 
 /// Result of the core linear regression.
-struct RegResult {
+pub(super) struct RegResult {
     /// Coefficients in Excel output order: [`β_p`, β_{p-1}, ..., `β_1`, `β_0`]
     /// (last x column first, intercept last, or omitted if const=FALSE)
-    coeffs: Vec<f64>,
+    pub(super) coeffs: Vec<f64>,
     /// Standard errors in the same order (only if stats=TRUE)
     std_errors: Option<Vec<f64>>,
     r_squared: Option<f64>,
@@ -297,7 +401,7 @@ struct RegResult {
 /// Core linear regression for any number of predictors.
 /// Design matrix columns: [1, `x_1`, `x_2`, ..., `x_p`] (or [`x_1`, ..., `x_p`] if !`const_term`).
 /// Returns coefficients in internal order: [`β_0`, `β_1`, ..., `β_p`] (intercept first if const).
-fn linear_regression(
+pub(super) fn linear_regression(
     y: &[f64],
     x: &[Vec<f64>],
     p: usize,
@@ -515,24 +619,30 @@ fn build_output_array(reg: RegResult, stats: bool) -> CalcResult {
 // ─── Public function implementations ─────────────────────────────────────────
 
 impl Model {
+    /// LINEST's and LOGEST's arguments: the data, const and stats. Error values come first, in
+    /// argument order, then the data checks: `LINEST({1;2},1/0,"x")` and `LINEST(1/0,{1;3},"x")`
+    /// are `#DIV/0!` (probes/t2455-transpose-single-value A4:A27), while
+    /// `LINEST(Data!C3:C7,Data!B5:B10,NA(),"1")` is `#N/A`, not the size `#REF!` (gen-m9
+    /// 05d44f6dd6cfc567 A195; statistics.md "LINEST and LOGEST report error values first").
+    fn regression_fit_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(RegressionData, bool, bool), CalcResult> {
+        let inputs = self.read_regression_inputs(&args[0], args.get(1), cell)?;
+        let const_term = eval_optional_bool(self, args.get(2), cell, true)?;
+        let stats = eval_optional_bool(self, args.get(3), cell, false)?;
+        Ok((validate_regression_inputs(inputs, cell)?, const_term, stats))
+    }
+
     // LINEST(known_y's, [known_x's], [const], [stats])
     pub(crate) fn fn_linest(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x_arg = args.get(1);
-        let const_term = match eval_optional_bool(self, args.get(2), cell, true) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-        let stats = match eval_optional_bool(self, args.get(3), cell, false) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-
-        let data = match self.collect_regression_data(&args[0], x_arg, 2, cell) {
-            Ok(d) => d,
+        let (data, const_term, stats) = match self.regression_fit_args(args, cell) {
+            Ok(fit_args) => fit_args,
             Err(e) => return e,
         };
 
@@ -549,18 +659,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x_arg = args.get(1);
-        let const_term = match eval_optional_bool(self, args.get(2), cell, true) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-        let stats = match eval_optional_bool(self, args.get(3), cell, false) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-
-        let mut data = match self.collect_regression_data(&args[0], x_arg, 2, cell) {
-            Ok(d) => d,
+        let (mut data, const_term, stats) = match self.regression_fit_args(args, cell) {
+            Ok(fit_args) => fit_args,
             Err(e) => return e,
         };
 
@@ -588,146 +688,6 @@ impl Model {
             None => CalcResult::new_error(Error::NUM, cell, "LOGEST: singular matrix".to_string()),
         }
     }
-
-    // TREND(known_y's, [known_x's], [new_x's], [const])
-    // Returns an array of predicted y values from linear regression.
-    pub(crate) fn fn_trend(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=4).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let x_arg = args.get(1);
-        let const_term = if args.len() >= 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            true
-        };
-
-        let data = match self.collect_regression_data(&args[0], x_arg, 1, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-
-        // Only with a constant term: LINEST of one point is slope 0, intercept y (linest-modes
-        // K141), so TREND is y whatever new_x is. Without one the fit through the origin is
-        // unprobed and left to the regression below.
-        if let (&[y], true) = (&data.y[..], const_term) {
-            return self.single_point_prediction(args.get(2..).unwrap_or_default(), &data, y, cell);
-        }
-
-        let reg = match linear_regression(&data.y, &data.x, data.p, const_term, false) {
-            Some(r) => r,
-            None => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "TREND: singular matrix".to_string(),
-                )
-            }
-        };
-
-        // Rebuild beta in internal order: [β_0, β_1, ..., β_p]
-        let beta = reconstruct_beta(&reg.coeffs, const_term, data.p);
-
-        // Collect new_x values (or use known_x if omitted)
-        let new_x_mat = if args.len() >= 3 {
-            match self.collect_matrix_from_node(&args[2], cell) {
-                Ok(m) => m,
-                Err(e) => return e,
-            }
-        } else {
-            data.x.clone()
-        };
-
-        let predicted: Vec<Vec<ArrayNode>> = new_x_mat
-            .iter()
-            .map(|row| {
-                let pred = predict(&beta, row, const_term);
-                vec![ArrayNode::Number(pred)]
-            })
-            .collect();
-
-        CalcResult::Array(predicted)
-    }
-
-    // GROWTH(known_y's, [known_x's], [new_x's], [const])
-    // Returns predicted values from exponential regression: y = b * m^x.
-    pub(crate) fn fn_growth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=4).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let x_arg = args.get(1);
-        let const_term = if args.len() >= 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            true
-        };
-
-        let mut data = match self.collect_regression_data(&args[0], x_arg, 1, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-
-        for yi in &data.y {
-            if *yi <= 0.0 {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "GROWTH: all known_y values must be positive".to_string(),
-                );
-            }
-        }
-        // As in TREND, constant term only. The fit goes through ln and exp; Excel's
-        // `GROWTH(5,5,5)` is 4.999999999999999 (growth-modes K385), exactly exp(ln 5).
-        if let (&[y], true) = (&data.y[..], const_term) {
-            return self.single_point_prediction(
-                args.get(2..).unwrap_or_default(),
-                &data,
-                y.ln().exp(),
-                cell,
-            );
-        }
-        data.y = data.y.iter().map(|&v| v.ln()).collect();
-
-        let reg = match linear_regression(&data.y, &data.x, data.p, const_term, false) {
-            Some(r) => r,
-            None => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "GROWTH: singular matrix".to_string(),
-                )
-            }
-        };
-
-        let beta_log = reconstruct_beta(&reg.coeffs, const_term, data.p);
-
-        let new_x_mat = if args.len() >= 3 {
-            match self.collect_matrix_from_node(&args[2], cell) {
-                Ok(m) => m,
-                Err(e) => return e,
-            }
-        } else {
-            data.x.clone()
-        };
-
-        let predicted: Vec<Vec<ArrayNode>> = new_x_mat
-            .iter()
-            .map(|row| {
-                let log_pred = predict(&beta_log, row, const_term);
-                vec![ArrayNode::Number(log_pred.exp())]
-            })
-            .collect();
-
-        CalcResult::Array(predicted)
-    }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -754,7 +714,7 @@ fn eval_optional_bool(
 }
 
 /// Reconstruct internal beta vector [`β_0`, `β_1`, ..., `β_p`] from Excel-order coefficients.
-fn reconstruct_beta(coeffs: &[f64], const_term: bool, p: usize) -> Vec<f64> {
+pub(super) fn reconstruct_beta(coeffs: &[f64], const_term: bool, p: usize) -> Vec<f64> {
     // coeffs is: [β_p, β_{p-1}, ..., β_1, β_0] (if const) or [β_p, ..., β_1]
     let mut beta = vec![0.0_f64; p + const_term as usize];
     if const_term {
@@ -773,7 +733,7 @@ fn reconstruct_beta(coeffs: &[f64], const_term: bool, p: usize) -> Vec<f64> {
 }
 
 /// Predict y for a single x row given beta in internal order.
-fn predict(beta: &[f64], x_row: &[f64], const_term: bool) -> f64 {
+pub(super) fn predict(beta: &[f64], x_row: &[f64], const_term: bool) -> f64 {
     let mut pred = if const_term { beta[0] } else { 0.0 };
     let x_start = const_term as usize;
     for (j, &xj) in x_row.iter().enumerate() {

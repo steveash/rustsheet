@@ -97,6 +97,7 @@ fn array_node_to_bool(node: &ArrayNode) -> Result<bool, ArrayNode> {
     match node {
         ArrayNode::Boolean(b) => Ok(*b),
         ArrayNode::Number(n) => Ok(*n != 0.0),
+        ArrayNode::Lambda(_) => Err(ArrayNode::Error(Error::VALUE)),
         ArrayNode::String(s) => {
             let lower = s.to_lowercase();
             if lower == "true" {
@@ -357,7 +358,18 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = self.evaluate_node_in_context(&args[0], cell);
+        // TRIMRANGE of a range is the range it keeps, so its blank cells are 0 as below
+        // (`AVEDEV(IFERROR(TRIMRANGE(D!A1:B6),-1))` is 3.5; probes/t2579-array-value-edges B74, B84).
+        let value = if let Node::FunctionKind {
+            kind: Function::Trimrange,
+            ..
+        } = args[0].ungrouped()
+        {
+            self.evaluate_picked_reference_arg(&args[0], cell)
+                .into_single_area(cell)
+        } else {
+            self.evaluate_node_in_context(&args[0], cell)
+        };
         // A name bound to a 3-D span is a reference, not an error, so the fallback is not taken,
         // and its value is `#VALUE!`: `IFERROR(span3,2)` is `#VALUE!` while `ISERROR(span3)` is
         // TRUE and the inline `IFERROR(Feb:Apr!A7:B12,0.5)` 0.5 (gen-m8a b221d72cc501675a; T-1640).
@@ -367,7 +379,12 @@ impl Model {
 
         // Normalize value to a 2-D array, or take the scalar early-return path.
         let value_array: Vec<Vec<ArrayNode>> = match value {
+            // A multi-cell range gives its values, and a blank cell's is 0: COUNT, AVERAGE and
+            // AVEDEV count it as a number and `&` reads "0" (`COUNT(IFERROR(D!A1:A6,-1))` is 4 over
+            // 1, blank, TRUE, "x", 5, 1/0; IFNA alike; probes/t2579-array-value-edges B70-B88,
+            // excel-graph; T-2579).
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
+                Ok(array) if left != right => blanks_as_zero(array),
                 Ok(array) => array,
                 Err(error) => return error,
             },
@@ -542,4 +559,19 @@ impl Model {
         }
         no_match(cell)
     }
+}
+
+/// The values of a multi-cell range read by IFERROR or IFNA, each blank cell as 0 (see
+/// `if_error_like`).
+fn blanks_as_zero(rows: Vec<Vec<ArrayNode>>) -> Vec<Vec<ArrayNode>> {
+    rows.into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|node| match node {
+                    ArrayNode::Empty => ArrayNode::Number(0.0),
+                    other => other,
+                })
+                .collect()
+        })
+        .collect()
 }

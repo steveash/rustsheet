@@ -31,7 +31,7 @@ struct ZTestData {
 
 impl Model {
     /// Z.TEST's data: the numbers of a range or an array (text and booleans skipped), or a
-    /// number; anything else is `#VALUE!`.
+    /// number or boolean; anything else is `#VALUE!`.
     fn z_test_data(
         &mut self,
         node: &Node,
@@ -43,6 +43,8 @@ impl Model {
                 .values_from_array(array)
                 .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new()))?,
             CalcResult::Number(v) => vec![Some(v)],
+            // A direct boolean is one value like a number (probes-numeric/t1049-ztest A51).
+            CalcResult::Boolean(b) => vec![Some(f64::from(u8::from(b)))],
             error @ CalcResult::Error { .. } => return Err(error),
             _ => return Err(CalcResult::new_error(Error::VALUE, cell, String::new())),
         };

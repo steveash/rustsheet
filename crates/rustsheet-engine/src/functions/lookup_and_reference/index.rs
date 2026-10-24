@@ -4,9 +4,7 @@
 use crate::arithmetic::bcast_get;
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::{ExternalArea, PickedReference};
-use crate::functions::util::{
-    array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
-};
+use crate::functions::util::{array_element_value, near_integer_count, NEAR_INTEGER_TOLERANCE};
 use crate::limits::check_array_size;
 use crate::reference_operators::{three_d_needs_one_sheet, RefArg, RefElement, RefGrid};
 use crate::{
@@ -28,8 +26,8 @@ struct IndexNumbers {
 
 /// Validates INDEX's numbers, each cast already tried, in Excel's order: `area_num`'s cast error,
 /// then `area_num` below 1 (`#VALUE!`; past the last area, or NaN, is `#REF!` later, SPEC-0004), then
-/// `row_num`'s cast error and a negative `row_num` (`#VALUE!`, see [`index_number`]), then the same
-/// for `column_num`.
+/// the cast errors of `row_num` and `column_num`, then a negative `row_num` and a negative
+/// `column_num` (`#VALUE!`, see [`index_number`]).
 fn index_numbers<E>(
     area: Result<f64, E>,
     row: Result<f64, E>,
@@ -41,8 +39,11 @@ fn index_numbers<E>(
     if area < 1.0 {
         return Err(out_of_range());
     }
-    let row = index_number(row?).ok_or_else(&out_of_range)?;
-    let col = index_number(col?).ok_or_else(&out_of_range)?;
+    // A cast error in `column_num` beats a negative `row_num` (`INDEX(B2:E6,-0.5,NA())` is `#N/A`;
+    // gen-m5 372a676d47aa1427 Calc!A371, T-2375).
+    let (row, col) = (row?, col?);
+    let row = index_number(row).ok_or_else(&out_of_range)?;
+    let col = index_number(col).ok_or_else(&out_of_range)?;
     Ok(IndexNumbers { row, col, area })
 }
 
@@ -141,7 +142,9 @@ fn index_from_array(
     };
     if top_left || (row_eff != 0 && col_eff != 0) {
         return match arr.get(row_start - 1).and_then(|r| r.get(col_start - 1)) {
-            Some(node) => array_node_to_calc_result(node, cell),
+            // A LAMBDA element is that LAMBDA: `TYPE(INDEX(SCAN(..),1,1))` is 128 and a LET name
+            // bound to it calls (probes/lambda-arrays B5, B6).
+            Some(node) => array_element_value(node, cell),
             None => wrong_reference(cell),
         };
     }

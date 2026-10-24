@@ -200,6 +200,35 @@ fn makearray_invalid_cols() {
 }
 
 #[test]
+fn makearray_past_the_grid() {
+    // Excel builds MAKEARRAY results past the grid, and lifts a function over them: a cell of one
+    // is #SPILL! (probes/t2579-array-value-edges B20, B23, B26; T-2600). Rows past the grid are
+    // above our cell bound, #ERROR! (DEVIATION, decision 0014), before any LAMBDA runs; columns
+    // past the grid above it are #VALUE! (gen-m7/b2078b5d702c691a A2553), and so are rows of
+    // 2^31 or more (gen-m7/8c4570978f18f4c2 A2736).
+    let mut model = new_empty_model();
+    model._set("A1", "=COLUMNS(MAKEARRAY(1,20000,LAMBDA(r,c,c)))");
+    model._set("A2", "=ROWS(MAKEARRAY(1048577,1,LAMBDA(r,c,1)))");
+    model._set("A3", "=ERROR.TYPE(MAKEARRAY(1,16385,LAMBDA(r,c,c)))");
+    model._set("A4", "=COLUMNS(ABS(MAKEARRAY(1,16385,LAMBDA(r,c,c))))");
+    model._set("A5", "=MAKEARRAY(3,1E15,LAMBDA(r,c,1))");
+    model._set("A6", "=MAKEARRAY(2,1048576,LAMBDA(r,c,1))");
+    model._set("A7", "=MAKEARRAY(1E15,4,LAMBDA(r,c,1))");
+    model._set("A8", "=MAKEARRAY(2^31,1,LAMBDA(r,c,1))");
+    model._set("A9", "=MAKEARRAY(2^31-1,1,LAMBDA(r,c,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "20000");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
+    assert_eq!(model._get_text("A3"), "#SPILL!");
+    assert_eq!(model._get_text("A4"), "16385");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
+    assert_eq!(model._get_text("A8"), "#VALUE!");
+    assert_eq!(model._get_text("A9"), "#ERROR!");
+}
+
+#[test]
 fn makearray_fractional_size_is_value_error() {
     let mut model = new_empty_model();
     model._set("A1", "=MAKEARRAY(2.5, 2, LAMBDA(x, y, x))");
@@ -404,4 +433,36 @@ fn byrow_bycol_of_a_single_value_call_the_lambda_once() {
     assert_eq!(model._get_text("A5"), "7");
     assert_eq!(model._get_text("A6"), "x!");
     assert_eq!(model._get_text("A7"), "ü2");
+}
+
+#[test]
+fn makearray_array_step_is_one_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAKEARRAY(2,2,LAMBDA(r,c,{1,2}))");
+    model._set("A5", "=MAKEARRAY(1,1,LAMBDA(r,c,{1,2}))");
+    model._set("A7", "=MAKEARRAY(1,2,LAMBDA(r,c,r+c))");
+    model._set("A9", "=ROWS(MAKEARRAY(2,2,LAMBDA(r,c,VSTACK(r,c))))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+    assert_eq!(model._get_text("A2"), "");
+    assert_eq!(model._get_text("B1"), "");
+    assert_eq!(model._get_text("A5"), "#CALC!");
+    assert_eq!(model._get_text("A7"), "2");
+    assert_eq!(model._get_text("B7"), "3");
+    assert_eq!(model._get_text("A9"), "#CALC!");
+}
+
+#[test]
+fn lambda_step_is_calc_per_element_only_where_shown() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYCOL({1,2,3},LAMBDA(x,LAMBDA(v,v)))");
+    model._set("A3", "=BYROW({1;2},LAMBDA(x,LAMBDA(v,v)))");
+    model._set("A6", "=MAP({1,2;3,4},LAMBDA(x,LAMBDA(v,v)))");
+    // Consumed, the element is `#VALUE!` (gen-m7 23b5367c18059af2 A2578).
+    model._set("A9", "=\"a\"&MAP({1},LAMBDA(x,LAMBDA(v,v)))");
+    model.evaluate();
+    for cell in ["A1", "B1", "C1", "A3", "A4", "A6", "B6", "A7", "B7"] {
+        assert_eq!(model._get_text(cell), "#CALC!", "{cell}");
+    }
+    assert_eq!(model._get_text("A9"), "#VALUE!");
 }

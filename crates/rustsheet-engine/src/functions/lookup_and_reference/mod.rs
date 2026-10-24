@@ -38,6 +38,7 @@ mod grouping;
 mod hstack_vstack;
 mod index;
 mod index_arg;
+mod lifted_options;
 mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
@@ -852,8 +853,8 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        if let CalcResult::Range { left, right } = self.evaluate_node_with_reference(&args[0], cell)
-        {
+        let reference = self.evaluate_node_with_reference(&args[0], cell);
+        if let CalcResult::Range { left, right } = reference {
             if left.sheet != right.sheet {
                 return CalcResult::Error {
                     error: Error::ERROR,
@@ -900,12 +901,36 @@ impl Model {
                 rows.push(values);
             }
             CalcResult::Array(rows)
-        } else {
-            CalcResult::Error {
-                error: Error::ERROR,
-                origin: cell,
-                message: "Argument must be a reference".to_string(),
+        } else if let Node::FunctionKind { kind, .. } = args[0].ungrouped() {
+            // A reference-returning call that fails is its own error, unchanged, and one that
+            // yields values rather than cells is `#VALUE!` over the shape of the result
+            // (probes/formulatext-erroring-references; docs/excel-semantics/references.md).
+            let is_pick = matches!(
+                kind,
+                Function::Index
+                    | Function::Offset
+                    | Function::Indirect
+                    | Function::Choose
+                    | Function::If
+            );
+            match reference {
+                error @ CalcResult::Error { .. } if is_pick => error,
+                CalcResult::Array(rows) if is_pick => CalcResult::Array(
+                    rows.iter()
+                        .map(|row| vec![ArrayNode::Error(Error::VALUE); row.len()])
+                        .collect(),
+                ),
+                // INDEX of an array constant picks a value, not a cell
+                // (probes/index-reference-args Calc!A4, A5; T-2137).
+                _ if matches!(kind, Function::Index) => CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Argument must be a reference".to_string(),
+                ),
+                _ => not_a_reference(cell),
             }
+        } else {
+            not_a_reference(cell)
         }
     }
 
@@ -920,6 +945,15 @@ impl Model {
                 message: "Reference does not have a formula".to_string(),
             }
         }
+    }
+}
+
+/// FORMULATEXT's `#ERROR!` for an argument that is not a reference.
+fn not_a_reference(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::Error {
+        error: Error::ERROR,
+        origin: cell,
+        message: "Argument must be a reference".to_string(),
     }
 }
 

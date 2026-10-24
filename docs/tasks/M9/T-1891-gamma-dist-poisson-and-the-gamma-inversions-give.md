@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -45,7 +46,38 @@ CHISQ.INV at df 1E8 or more is `#NUM!` for about 97% of probabilities on main al
 zero density), and `CHIINV(0.5,10000000000)` = 9999999999.333334 (probes-numeric m9-legacy-chiinv); T-0971 and T-0972
 own the last digits at ordinary shapes.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). CHISQ.INV, CHIINV, CHISQ.INV.RT, GAMMA.INV and GAMMAINV with a
+shape or df of 1E6 or more (25 cells; ours `#NUM!` in 19).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 25 known-failure lines in eval/baseline/gen-m9.txt, 25 formulas.
+Examples:
+- gen-m9/0a614cfe974b59c3 Calc!A327 `=GAMMAINV(1-1E-10,Data!C7,0.5)`: Excel 500133012372525.06, ours #NUM!
+- gen-m9/2801c1c11c21e134 Calc!A210 `=GAMMA.INV(TIMEVALUE("13:45:10"),3.14159,1.5E+10)`: Excel 46985158488.44183, ours 46985158488.44194
+Cells:
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A327
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A152
+- gen-m9/165db58d1540f014.case.json (1): Calc!A209
+- gen-m9/2801c1c11c21e134.case.json (2): Calc!A210, A397
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A341
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A210
+- gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A239
+- gen-m9/85f48d5cdfb24555.case.json (2): Calc!A248, A382
+- gen-m9/8f2ac25945af87da.case.json (1): Calc!A240
+- gen-m9/984cba67bbe6972b.case.json (1): Calc!A43
+- gen-m9/a013a45a8fbcab4f.case.json (1): Calc!A338
+- gen-m9/a5828d3925575713.case.json (1): Calc!A50
+- gen-m9/a7bf0d8d81d33ba6.case.json (1): Calc!A129
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A68
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A134
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A371
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A119
+- gen-m9/c2974c061384fdd9.case.json (1): Calc!A179
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A282
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A296
+- gen-m9/ecc87f80077959e0.case.json (3): Calc!A99, A141, A211
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 25 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/incomplete-gamma-cap E1-E5, E8-E20 pass (E16 and E17: Excel 0.5000018806319452, ours
   0.4999982128217492; E20: Excel 0.4999981193680548, ours 0.5000017871782507; E18: Excel `#NUM!`, ours 0) (or are named in the Outcome with their ulp), with
   no loop whose length depends on argument values beyond the T-1872 caps, and the kinds.rs `INCOMPLETE_GAMMA_WEIGHT`
@@ -57,3 +89,10 @@ own the last digits at ordinary shapes.
 
 ## Out of scope
 - The last digits at ordinary shapes (T-0971, T-0972, T-1634).
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-23, T-2255): the gen-m9 cells listed under Context are visibly off (a wrong type, error or
+text, or a number further than half a unit in the 15th significant digit from Excel's), so the task is in the campaign. Its
+target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
+significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
+it. Bit-level criteria still unmet then move to a follow-up task without the key.

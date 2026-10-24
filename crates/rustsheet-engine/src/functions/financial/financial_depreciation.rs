@@ -227,7 +227,11 @@ fn past_period_cap(period: f64) -> bool {
     period.trunc() > f64::from(MAX_DEPRECIATION_PERIODS)
 }
 
-// `db`: fixed-declining-balance depreciation for a single `period`.
+// `db`: fixed-declining-balance depreciation for a single `period`, in Excel's operation order
+// (docs/excel-semantics/financial.md "DB and DDB operation order", T-2033): the first period is
+// `cost * rate * (month/12)`, then the remaining balance steps down by `balance * rate` and the
+// last period charges `balance * (rate * (12 - month) / 12)`. `DB(100,10,4,1,2)` is
+// 7.299999999999999 and `DB(23,10,4,5,2)` 1.8687313963962309 (ironcalc-calc DB_DDB.xlsx G20, G42).
 fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) -> f64 {
     // The depreciation rate, rounded to three decimal places.
     let rate = ((1.0 - (salvage / cost).powf(1.0 / life)) * 1000.0).round() / 1000.0;
@@ -235,23 +239,26 @@ fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) 
     let int_life = life.trunc() as i64;
 
     // First period (also covers a fractional period below 1).
-    let mut accumulated = cost * rate * month / 12.0;
+    let first = cost * rate * (month / 12.0);
     if int_period <= 1 {
-        return accumulated;
+        return first;
     }
-    // Accumulate the declining balance through the period before the one asked.
+    // Step the remaining balance down through the period before the one asked.
+    let mut balance = cost - first;
     for _ in 2..int_period {
-        accumulated += (cost - accumulated) * rate;
+        balance -= balance * rate;
     }
-    if int_period == int_life + 1 {
-        (cost - accumulated) * rate * (12.0 - month) / 12.0
+    // `int_period - 1`, not `int_life + 1`: `int_period` is in 2..=MAX_DEPRECIATION_PERIODS here,
+    // while a huge `life` saturates `int_life` to `i64::MAX` (`DB(6912,0,1E+300,2,6)`, T-2570).
+    if int_period - 1 == int_life {
+        balance * (rate * (12.0 - month) / 12.0)
     } else {
-        (cost - accumulated) * rate
+        balance * rate
     }
 }
 
-// `ddb`: double-declining-balance depreciation for a single `period`.
-// (see LibreOffice's `ScGetDDB`)
+// `ddb`: double-declining-balance depreciation for a single `period`
+// (docs/excel-semantics/financial.md "DB and DDB operation order", T-2033).
 pub(super) fn ddb_depreciation(
     cost: f64,
     salvage: f64,
@@ -272,15 +279,15 @@ pub(super) fn ddb_depreciation(
             0.0
         }
     } else {
-        cost * (1.0 - rate).powf(period - 1.0)
+        // Excel raises the book value with its own `^` (square-and-multiply for a whole period),
+        // not libm `pow`: `DDB(9695,282,20,8,1)` is 338.5190042814453, where `pow` gives ...452
+        // (gen-m9 6376e27be7a05871 Calc!A141, T-2033). 0 < 1-rate < 1, so `^` cannot fail; 0 is
+        // its underflow limit.
+        cost * power(1.0 - rate, period - 1.0).unwrap_or(0.0)
     };
-    let new_value = cost * (1.0 - rate).powf(period);
-
-    let ddb = if new_value < salvage {
-        old_value - salvage
-    } else {
-        old_value - new_value
-    };
+    // Excel charges `min(old * rate, old - salvage)`, not the difference of two book values:
+    // `DDB(10000,1000,6,2,2)` is 2222.222222222222 (probes/fin-argument-modes H95, T-2033).
+    let ddb = (old_value * rate).min(old_value - salvage);
     ddb.max(0.0)
 }
 

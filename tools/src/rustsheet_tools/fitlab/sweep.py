@@ -19,13 +19,14 @@ import json
 import math
 import re
 from dataclasses import dataclass, field
+from decimal import ROUND_DOWN, Decimal
 from pathlib import Path
 from typing import Any
 
 from xlsxwriter.utility import xl_rowcol_to_cell
 
 from rustsheet_tools.fitlab.exact import DOUBLE, DOUBLE_MIN_EXP, X87, exact, round_to_bits
-from rustsheet_tools.snapshot import suite_cases
+from rustsheet_tools.snapshot import is_undecoded, suite_cases
 from rustsheet_tools.spec2xlsx import parse_a1
 
 # What a candidate receives for one argument: a number, a bool, a string, an empty cell (None)
@@ -40,6 +41,16 @@ def numeric_arg(a: Arg) -> float:
         msg = f"non-numeric argument {a!r}"
         raise TypeError(msg)
     return a
+
+
+def number_literal(text: str) -> float:
+    """A formula's number literal as Excel reads it: cut (not rounded) to 15 significant digits,
+    so `6.727499949325611` is 6.72749994932561 (numbers.md, "Formula number literals are read at
+    15 significant digits"; probes/xirr-exact-root-sign, T-2328)."""
+    value = Decimal(text)
+    if value.is_finite() and value != 0:
+        value = value.quantize(Decimal(1).scaleb(value.adjusted() - 14), rounding=ROUND_DOWN)
+    return float(value)
 
 
 _UNSIGNED = r"(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
@@ -223,7 +234,7 @@ class _Arithmetic:
             return value
         if not _NUMBER.fullmatch(tok):
             raise self.fail(f"unexpected {tok!r}")
-        literal = float(tok)
+        literal = number_literal(tok)
         if not math.isfinite(literal):
             raise self.fail(f"non-finite literal {tok}")
         return literal
@@ -274,7 +285,7 @@ def _literal(text: str) -> float | bool | str | None:
     """A number, TRUE/FALSE or string literal, or None when `text` is none of those."""
     if _NUMBER.fullmatch(text):
         # Excel has no negative zero: `-0` is 0.
-        return float(text) + 0.0
+        return number_literal(text) + 0.0
     if text.upper() in ("TRUE", "FALSE"):
         return text.upper() == "TRUE"
     if len(text) >= 2 and text[0] == text[-1] == '"' and '"' not in text[1:-1].replace('""', ""):
@@ -385,7 +396,10 @@ def select(
             if not (isinstance(raw, str) and (m := pattern.match(raw))):
                 continue
             entry = book.oracle.get(sheet, {}).get(address)
-            is_error = errors and isinstance(entry, dict) and entry.get("t") == "e"
+            # An undecoded rich error is no evidence of which error Excel returned (T-2397).
+            is_error = (
+                errors and isinstance(entry, dict) and entry.get("t") == "e" and not is_undecoded(entry)
+            )
             if not isinstance(entry, dict) or (entry.get("t") != "n" and not is_error):
                 sweep.non_numeric += 1
                 continue

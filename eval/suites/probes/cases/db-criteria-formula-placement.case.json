@@ -1,0 +1,78 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2525: where a D-function formula condition's references point when the criteria block sits below the database (rows 13-14), above it (rows 1-2), or on another sheet (Crit rows 1-2 and 5-6), each under a blank header with =B6>2, =B9>2 and =$B$6>2 (database A5:B10, Qty 1..5, first record on row 6); and text true in three cases under a blank header (D17:F18). Questions DSUM in H, described in I.",
+  "tags": [
+    "M9",
+    "database",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A5": "Name",
+        "B5": "Qty",
+        "A6": "a",
+        "B6": 1,
+        "A7": "b",
+        "B7": 2,
+        "A8": "c",
+        "B8": 3,
+        "A9": "d",
+        "B9": 4,
+        "A10": "e",
+        "B10": 5,
+        "D14": "=B6>2",
+        "H1": "=DSUM(A5:B10,2,D13:D14)",
+        "I1": "below =B6>2",
+        "E14": "=B9>2",
+        "H2": "=DSUM(A5:B10,2,E13:E14)",
+        "I2": "below =B9>2",
+        "F14": "=$B$6>2",
+        "H3": "=DSUM(A5:B10,2,F13:F14)",
+        "I3": "below =$B$6>2",
+        "D2": "=B6>2",
+        "H4": "=DSUM(A5:B10,2,D1:D2)",
+        "I4": "above =B6>2",
+        "E2": "=B9>2",
+        "H5": "=DSUM(A5:B10,2,E1:E2)",
+        "I5": "above =B9>2",
+        "F2": "=$B$6>2",
+        "H6": "=DSUM(A5:B10,2,F1:F2)",
+        "I6": "above =$B$6>2",
+        "H7": "=DSUM(A5:B10,2,Crit!D1:D2)",
+        "I7": "other1 =Calc!B6>2",
+        "H8": "=DSUM(A5:B10,2,Crit!E1:E2)",
+        "I8": "other1 =Calc!B9>2",
+        "H9": "=DSUM(A5:B10,2,Crit!F1:F2)",
+        "I9": "other1 =Calc!$B$6>2",
+        "H10": "=DSUM(A5:B10,2,Crit!D5:D6)",
+        "I10": "other5 =Calc!B6>2",
+        "H11": "=DSUM(A5:B10,2,Crit!E5:E6)",
+        "I11": "other5 =Calc!B9>2",
+        "H12": "=DSUM(A5:B10,2,Crit!F5:F6)",
+        "I12": "other5 =Calc!$B$6>2",
+        "D18": "true",
+        "H13": "=DSUM(A5:B10,2,D17:D18)",
+        "I13": "text true under blank header",
+        "E18": "True",
+        "H14": "=DSUM(A5:B10,2,E17:E18)",
+        "I14": "text True under blank header",
+        "F18": "TRUE",
+        "H15": "=DSUM(A5:B10,2,F17:F18)",
+        "I15": "text TRUE under blank header"
+      }
+    },
+    {
+      "name": "Crit",
+      "cells": {
+        "D2": "=Calc!B6>2",
+        "E2": "=Calc!B9>2",
+        "F2": "=Calc!$B$6>2",
+        "D6": "=Calc!B6>2",
+        "E6": "=Calc!B9>2",
+        "F6": "=Calc!$B$6>2"
+      }
+    }
+  ]
+}
