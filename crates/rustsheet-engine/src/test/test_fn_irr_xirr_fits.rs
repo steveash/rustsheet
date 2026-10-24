@@ -8,14 +8,21 @@
 //! Each value is the oracle's; the guess changes Excel's last digits, so each one pins the path.
 
 use crate::cell::CellValue;
+use crate::model::Model;
 use crate::test::util::new_empty_model;
 
-fn results(formulas: &[&str]) -> Vec<u64> {
+/// A model with `formulas` in A1, A2, ... of Sheet1, evaluated.
+fn evaluated(formulas: &[&str]) -> Model {
     let mut model = new_empty_model();
     for (i, formula) in formulas.iter().enumerate() {
         model._set(&format!("A{}", i + 1), formula);
     }
     model.evaluate();
+    model
+}
+
+fn results(formulas: &[&str]) -> Vec<u64> {
+    let model = evaluated(formulas);
     (1..=formulas.len())
         .map(
             |row| match model.get_cell_value_by_ref(&format!("Sheet1!A{row}")) {
@@ -74,11 +81,7 @@ fn xirr_with_a_zero_first_value_brackets_at_the_first_chain_point() {
 }
 
 fn assert_num_errors(formulas: &[&str]) {
-    let mut model = new_empty_model();
-    for (i, formula) in formulas.iter().enumerate() {
-        model._set(&format!("A{}", i + 1), formula);
-    }
-    model.evaluate();
+    let model = evaluated(formulas);
     for row in 1..=formulas.len() {
         assert_eq!(
             model.get_cell_value_by_ref(&format!("Sheet1!A{row}")),
