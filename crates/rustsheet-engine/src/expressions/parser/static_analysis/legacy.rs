@@ -453,7 +453,7 @@ fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool 
         && !arms.is_empty()
         && arms.iter().all(|arm| {
             matches!(
-                arm.lowered(),
+                *arm.lowered_static(),
                 Node::ReferenceKind { .. } | Node::RangeKind { .. }
             )
         })
@@ -670,6 +670,9 @@ fn is_plain_reference(node: &Node) -> bool {
     let is_literal = |node: &Node| matches!(node, Node::NumberKind(_) | Node::BooleanKind(_));
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
+        if matches!(node.lowered(), Node::ThisRowKind { .. }) {
+            continue; // A cell or a range on the formula's row (T-1699).
+        }
         match node.lowered() {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => {}
             Node::FunctionKind {

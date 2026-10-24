@@ -40,7 +40,9 @@ impl Model {
                 // coerced and not `#VALUE!` (probes/mode-typed-arguments A1-A20, T-1291), and
                 // text inside ranges is skipped too. A blank single-cell reference is `#VALUE!`
                 // (coercion.md, MODE; T-0947).
-                CalcResult::EmptyCell if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) => {
+                CalcResult::EmptyCell
+                    if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
+                {
                     return Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
