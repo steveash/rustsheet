@@ -2335,7 +2335,10 @@ with `Pv` = 7 (`=Pv+1` is 8), `LAMBDA(pv,pv+1)(2)` is 3, `LAMBDA(PV,Pv*10)(2)` i
 defined name it was written against: `LET(f,LAMBDA(a,a+Pv),LET(pv,50,f(1)))` is 8, not 51.
 The name is bound inside its own value expression too, so it hides the defined name there: `LET(pv,pv+1,pv)` is
 `#NAME?` (not 8), and `LET(pv,2,x,Pv,x)` is 2. A LAMBDA body that names its own LET name is `#NAME?` as well:
-`LET(Pv,LAMBDA(a,Pv),Pv(1))` (B2). The engine gives `#ERROR!` for that last form: open, T-2558.
+`LET(Pv,LAMBDA(a,Pv),Pv(1))` (B2). It does without a defined name too: `LET(y,LAMBDA(a,y),y(1))` and
+`LET(Y,LAMBDA(a,y),y(1))` are `#NAME?` (probes/let-lambda-body-own-name A1:A2, excel-graph, 2026-10-24), as are
+`LET(y,y+1,y)` and a forward use, `LET(f,LAMBDA(a,g(a)),g,LAMBDA(a,a+1),f(1))`; `LET(y,LAMBDA(a,a+1),y(1))` is 2.
+A LET name spelled like a built-in function wins in call position: `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Pv,LAMBDA(a,Pv),Pv(1))` `#NAME?` (probes/let-lambda-body-own-name A6:A7); the engine reads `Pv(1)` as the function PV and gives `#ERROR!` (open, T-2567). In the engine the parser binds a LET name in its own value (so the defined name stays hidden there), but the evaluator gives it no value there: `let_scope` patches ids only into the later pairs and the body (T-2558).
 Evidence: probes/let-name-shadows-defined-name A1-A13, B1-B3 (excel-graph, 2026-10-23 and 2026-10-24). Implemented in the parser
 (`bind_reference_shaped_name`, which also skips the defined-name lookup for bound names).
 Status: VERIFIED (excel-graph)
