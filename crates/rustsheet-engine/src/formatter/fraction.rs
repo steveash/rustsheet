@@ -202,6 +202,13 @@ fn push_spaces(text: &mut String, token: &TextToken) {
 /// The last continued-fraction convergent `(p, q)` of `x >= 0` whose denominator is at most
 /// `max_denominator`, which is Excel's choice for a placeholder denominator (not the closest
 /// fraction: `# ??/??` on `PI()` is "3  1/7 "; number-formats.md "Fraction formats").
+///
+/// Excel also stops where a partial quotient times the last numerator passes 2^31 - 1, although
+/// the numerator itself (that product plus the one before) may pass it: `?/?` on 2147483646.6 is
+/// "4294967293/2" (1 x 2147483647, then 2 x 4294967293 stops). When that stop comes before any
+/// fractional term, the value is rounded to an integer: 1073741824.5 is "1073741825/1" (2 x
+/// 1073741824 stops), 1073741823.5 "2147483647/2" (probes/fraction-placeholder-past-2-30;
+/// number-formats.md "Placeholder fractions past 2^30").
 fn last_convergent(x: f64, max_denominator: f64) -> (f64, f64) {
     // Cell values are finite; this only keeps a NaN out of the loop.
     if !x.is_finite() {
@@ -212,6 +219,12 @@ fn last_convergent(x: f64, max_denominator: f64) -> (f64, f64) {
     // A double's continued fraction ends within ~45 terms; the bound only guards the loop.
     for _ in 0..64 {
         let a = rest.floor();
+        if a * p1 > MAX_PLACEHOLDER_VALUE {
+            if q1 <= 1.0 {
+                return (x.round(), 1.0);
+            }
+            break;
+        }
         let (p, q) = (a * p1 + p0, a * q1 + q0);
         if q > max_denominator {
             break;

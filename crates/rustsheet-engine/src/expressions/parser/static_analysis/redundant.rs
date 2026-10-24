@@ -4,8 +4,8 @@
 #[cfg(doc)]
 use super::add_implicit_intersection;
 use super::legacy::{
-    for_each_switch_result_mut, leaves_call_whole, legacy_array_context, legacy_context_intersects,
-    remove_array_at, remove_in_array_context, spilling_switch_position,
+    leaves_call_whole, legacy_array_context, legacy_context_intersects, remove_array_at,
+    remove_in_array_context, removes_automatic_at,
 };
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, get_function_args_signature,
@@ -31,37 +31,13 @@ use super::{
 /// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
 /// (a formula is evaluated in a scalar context).
 pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
-    if add {
-        // The import leaves a spilling SWITCH and its results unmarked, so an `@` there is
-        // meaningful (`spilling_switch_position`, T-1964).
-        if let Some(position) = spilling_switch_position(node) {
-            match position {
-                Node::ImplicitIntersection { child, .. } => {
-                    remove_redundant_legacy_intersection(child, false, false);
-                }
-                switch => remove_redundant_keeping_results(switch),
-            }
-            return;
-        }
+    // The import adds no `@` to a formula holding a SWITCH or another `NO_AUTOMATIC_AT`
+    // function, so every `@` in it is meaningful
+    // (`add_root_legacy_intersection`, probes/legacy-switch-callers).
+    if add && removes_automatic_at(node) {
+        return;
     }
     remove_redundant_legacy_intersection(node, add, add);
-}
-
-/// [`remove_redundant_legacy_intersection`] on a spilling SWITCH, its results left as they are:
-/// each is a range or an array constant, maybe under an `@` that is typed (the import adds none
-/// there). They are set aside while the pass cleans the other arguments as in any call.
-fn remove_redundant_keeping_results(switch: &mut Node) {
-    let mut results = Vec::new();
-    for_each_switch_result_mut(switch, |_, result| {
-        results.push(std::mem::replace(result, Node::EmptyArgKind));
-    });
-    remove_redundant_legacy_intersection(switch, true, true);
-    let mut results = results.into_iter();
-    for_each_switch_result_mut(switch, |_, result| {
-        if let Some(kept) = results.next() {
-            *result = kept;
-        }
-    });
 }
 
 /// [`remove_redundant_implicit_intersection`] with the `arrays` flag of

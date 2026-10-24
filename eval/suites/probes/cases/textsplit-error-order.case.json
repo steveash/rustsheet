@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2315 TEXTSPLIT error order: a delimiter-list error against an error or invalid ignore_empty/match_mode, an array pad_with against error arguments, an all-empty result, an OFFSET array of references as a delimiter list",
+  "tags": [
+    "M7",
+    "text",
+    "dynamic-arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",NA(),1/0),1)",
+        "A2": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",NA(),,1/0),1)",
+        "A3": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",{\",\",#N/A},,1/0),1)",
+        "A4": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",NA(),\"x\"),1)",
+        "A5": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",,1/0,NA()),1)",
+        "A6": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",,\"x\",NA()),1)",
+        "A7": "=ARRAYTOTEXT(TEXTSPLIT(1/0,\",\",NA()),1)",
+        "A8": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",,1/0,,{1,2}),1)",
+        "A9": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",NA(),,,,{1,2}),1)",
+        "A10": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",B1,,1/0),1)",
+        "A11": "=ARRAYTOTEXT(TEXTSPLIT(\",\",\",\",,TRUE),1)",
+        "A12": "=ARRAYTOTEXT(TEXTSPLIT(\",;,\",\",\",\";\",TRUE),1)",
+        "A13": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",OFFSET(C1:C2,{0;1},0)),1)",
+        "A14": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",OFFSET(C1:C2,{0;1},0),NA()),1)",
+        "A15": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",OFFSET(C1:C2,{0;1},0)),1)",
+        "A16": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",OFFSET(C1:C2,{0;1},0),\"x\"),1)",
+        "A17": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",NA(),,\"x\",,{1,2}),1)",
+        "A18": "=ARRAYTOTEXT(TEXTSPLIT(\"abc\",\",\",,,NA(),{1,2}),1)",
+        "C1": "b",
+        "C2": "c"
+      }
+    }
+  ],
+  "expected": {}
+}

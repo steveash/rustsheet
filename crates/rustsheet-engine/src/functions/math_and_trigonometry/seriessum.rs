@@ -119,9 +119,10 @@ impl Model {
                 // Excel: a boolean coefficient is `#VALUE!` in every form (cell, typed, array
                 // literal); probes/seriessum-boolean-coefficients, math-argument-modes C44. `Empty`
                 // never gets here: the filter above drops blank cells.
-                ArrayNode::Boolean(_) | ArrayNode::String(_) | ArrayNode::Empty => {
-                    return value_error(cell)
-                }
+                ArrayNode::Boolean(_)
+                | ArrayNode::String(_)
+                | ArrayNode::Empty
+                | ArrayNode::Lambda(_) => return value_error(cell),
                 ArrayNode::Error(e) => {
                     return CalcResult::new_error(e.clone(), cell, String::new())
                 }
@@ -136,9 +137,19 @@ impl Model {
             // `C5*(1.005/42)^3` bit for bit), and a term that overflows is #NUM! at once, before a
             // text or boolean coefficient later in the range is read (gen-m5/6b831f5e2a20bc34
             // Calc!A130, gen-m5/461d1c8dbb044769 Calc!A47).
-            let term = match power(x, exponent) {
-                Ok(p) => coeff * p,
-                Err(_) => return num_error(cell),
+            // A negative x to a non-integer power is a term of 0, not #NUM!, and the read goes on:
+            // `SERIESSUM(-2,0.5,1,{1,2})` is 0, `SERIESSUM(-2,1,0.5,{1,1,1})` is 2 and
+            // `SERIESSUM(-2,0.5,1,{1,"a"})` is #VALUE!. Odd roots too: `SERIESSUM(-8,1/3,1,{1})` is 0
+            // where `(-8)^(1/3)` is -2 (probes/seriessum-negative-x-fractional-power, excel-graph;
+            // docs/excel-semantics/numbers.md "SERIESSUM: a negative x to a non-integer power is a
+            // term of 0", T-2380).
+            let term = if x < 0.0 && exponent.is_finite() && exponent.fract() != 0.0 {
+                0.0
+            } else {
+                match power(x, exponent) {
+                    Ok(p) => coeff * p,
+                    Err(_) => return num_error(cell),
+                }
             };
             if !term.is_finite() {
                 return num_error(cell);

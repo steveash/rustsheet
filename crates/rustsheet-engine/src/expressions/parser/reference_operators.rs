@@ -373,7 +373,9 @@ fn has_negated_operand(node: &Node) -> bool {
 /// functions below (probes/intersection-function-operands; T-0161); value functions such as
 /// SUM, NA, ABS, ROW, ROWS, MATCH, VLOOKUP, HLOOKUP, LOOKUP, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
 /// SORT, UNIQUE and VSTACK are refused, even those that pass a range through; functions not
-/// probed are refused by inference.
+/// probed are refused by inference. The same built-ins are the ones whose result may be called,
+/// `INDEX(A1:A3,1)(2)` (`Parser::parse_named_call`, probes/chained-calls-builtin-*, T-2405), so
+/// widening this set widens that grammar too.
 pub(super) fn is_reference_operand(node: &Node) -> bool {
     match node.ungrouped() {
         Node::NumberKind(_)
@@ -516,14 +518,20 @@ pub(crate) fn at_text(child: &Node, sub: &dyn Fn(&Node) -> String) -> String {
 /// cell and prints bare, `AB1(1)` (probes/unknown-function-name-spelling B8, T-1758;
 /// probes/cell-call-edges-a B5-B7, T-1806). So do a range and a spill written without parentheses,
 /// `$A$1:A2(2)`, `A1#(2)`: a parenthesized one is a `Group` (probes/callee-unparenthesized-*, T-2008).
+/// A call, or a call of a name, prints bare too: `f(3)(4)` chains (T-2038), and so does a built-in
+/// whose result may be called, `IF(TRUE,LAMBDA(x,x*2))(3)` (probes/chained-calls-builtin-if-text,
+/// T-2405); a built-in that may not is only ever called in its own `Group`.
 pub(crate) fn callee_operand(text: String, node: &Node) -> String {
     if matches!(
         node,
-        Node::ReferenceKind { .. }
+        Node::FunctionKind { .. }
+            | Node::ReferenceKind { .. }
             | Node::RangeKind { .. }
             | Node::SpillRangeOperator { .. }
             | Node::LambdaDefKind { .. }
             | Node::Group { .. }
+            | Node::LambdaCallKind { .. }
+            | Node::NamedFunctionKind { .. }
     ) {
         text
     } else {

@@ -64,6 +64,24 @@ T-0147) for the accepted forms; each rejected form was sent as a single-cell wor
 RustSheet today: all of these forms are rejected (`parse_array_item` takes one sign directly attached to a number token; T-0156).
 Status: VERIFIED
 
+## GETPIVOTDATA with an odd count of five or more arguments refuses the workbook
+Rule: Excel for the web refuses a whole workbook holding `GETPIVOTDATA(data_field, pivot_table, field1, item1,
+field2)` (5 arguments) or `(..., field1, item1, field2, item2, field3)` (7), with or without a pivot table at the
+reference and inside `IFERROR` too. Three arguments (`data_field, pivot_table, field1`, the item missing) load and
+are `#REF!` (web.md "GETPIVOTDATA against a pivot table"), and even counts load. So the field/item pairs are checked
+when the formula is read, but only past the first pair. RustSheet loads such a formula and gives `#REF!`
+(`fn_getpivotdata` takes `chunks_exact(2)` and refuses a leftover field); with no Excel value to match, a known gap,
+not a deviation (T-2403 aligns it with the other refused argument counts, which give `#ERROR!`). The generator draws
+only the three-argument odd call (tools/src/rustsheet_tools/gen/pivots.py).
+Evidence: single-formula workbooks over a generated pivot (`Pivot!H3`, a Count of Units pivot, rows Product,
+columns Rep) sent with `rustsheet-oracle fill -b excel-graph` on 2026-10-22 (T-2396): `=GETPIVOTDATA("Units",Pivot!$H$3,"Product","C","Rep")`,
+the same against `Pivot!$Z$40` (outside the pivot), wrapped in `IFERROR(...,-1)`, and
+`=GETPIVOTDATA("Units",Pivot!$H$3,"Product","C","Rep","Bo","Region")` → createSession 501 `FileCorruptTryRepair` /
+`unsupportedWorkbook`; `=GETPIVOTDATA("Units",Pivot!$H$3,"Product")` loads (`#REF!`) and
+`=GETPIVOTDATA("Units",Pivot!$H$3,"Product","C","Rep","Bo")` loads (3). Rejected inputs cannot be committed; the
+loading three-argument shape is probes/getpivotdata-real-pivot H15.
+Status: VERIFIED (excel-graph); desktop unprobed.
+
 ## Formulas over 8,192 characters refuse the workbook
 Rule: Excel for the web refuses a whole workbook holding a formula of more than 8,192 stored characters (ASCII; non-BMP text below; the
 `<f>` text without the leading `=`; createSession 501 `FileCorruptTryRepair`). A formula of 8,192 characters loads.

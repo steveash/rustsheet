@@ -66,6 +66,9 @@ fn log_decimal_base_atan2_arabic_keep_their_scalar_rules() {
         ("=BASE(-0.0001,5,4)", "#NUM!"),
         ("=BASE(10,37)", "#NUM!"),
         ("=BASE(0,2)", "0"),
+        ("=LEN(BASE(0,2,0))", "0"),
+        ("=LEN(BASE(0.2,29,0.3))", "0"),
+        ("=BASE(5,2,0)", "101"),
         ("=BASE(255,16,4)", "00FF"),
         ("=DECIMAL(\"ff\",16)", "255"),
         ("=DECIMAL(\"12\",37)", "#NUM!"),
@@ -86,4 +89,43 @@ fn log_decimal_base_atan2_arabic_keep_their_scalar_rules() {
             "{formula}"
         );
     }
+}
+
+/// ROMAN lifts over an array number and an array form (numbers.md, T-2410).
+#[test]
+fn roman_lifts_over_arrays() {
+    let mut model = new_empty_model();
+    model._set("A1", "=CONCAT(ROMAN(561,{0,1,4}))");
+    model._set(
+        "A2",
+        "=ROWS(ROMAN(561,{0,1,4,5}))&COLUMNS(ROMAN(561,{0,1,4,5}))",
+    );
+    model._set("A3", "=INDEX(ROMAN(561,{0,1,4,5}),1,4)");
+    model._set("A4", "=CONCAT(ROMAN({1;4},0))");
+    model._set("A5", "=ROWS(ROMAN({1;4},0))");
+    model._set("A6", "=ROMAN(4,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "DLXIDLXIDLXI");
+    assert_eq!(model._get_text("A2"), "14");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "IIV");
+    assert_eq!(model._get_text("A5"), "2");
+    assert_eq!(model._get_text("A6"), "IV");
+}
+
+/// COMBINA lifts over array arguments (numbers.md "COMBINA lifts over arrays", T-2453).
+#[test]
+fn combina_lifts_over_arrays() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(COMBINA({7;1},4))");
+    model._set("A2", "=INDEX(COMBINA({7;1},4),2)");
+    model._set("A3", "=INDEX(COMBINA(4,{1;2}),2)");
+    model._set("A4", "=INDEX(COMBINA({0;7},4),1)");
+    model._set("A5", "=COMBINA(7,4)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+    assert_eq!(model._get_text("A2"), "1");
+    assert_eq!(model._get_text("A3"), "10");
+    assert_eq!(model._get_text("A4"), "#NUM!");
+    assert_eq!(model._get_text("A5"), "210");
 }

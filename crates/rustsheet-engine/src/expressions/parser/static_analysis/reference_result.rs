@@ -78,6 +78,32 @@ pub(super) fn choose_static_result(args: &[Node]) -> StaticResult {
     }
 }
 
+/// Whether `args` are the arguments of a well-formed LET: name/value pairs and a body.
+pub(super) fn is_let_call(args: &[Node]) -> bool {
+    args.len() >= 3 && args.len() % 2 == 1
+}
+
+/// What `classify` says of the body of the LET call `args` (see [`is_let_call`]), with `bound`
+/// holding the variables in scope and their answer, computed once when bound: a variable sees only
+/// the variables bound before it. The one LET scope walk of `yields_cells`, `lifts_to_values` and
+/// `let_returns_range`.
+pub(super) fn let_result<'a>(
+    args: &'a [Node],
+    bound: &mut Vec<(&'a str, bool)>,
+    classify: fn(&'a Node, &mut Vec<(&'a str, bool)>) -> bool,
+) -> bool {
+    let scope = bound.len();
+    for pair in args[..args.len() - 1].chunks_exact(2) {
+        if let Node::NamedVariableKind { name, .. } = &pair[0] {
+            let answer = classify(&pair[1], bound);
+            bound.push((name, answer));
+        }
+    }
+    let result = args.last().is_some_and(|body| classify(body, bound));
+    bound.truncate(scope);
+    result
+}
+
 /// Whether `node`, the first argument of TAKE, DROP or TRIMRANGE, evaluates to cells rather than
 /// a computed array. IF and LET pass on what their branch or body is, so `TAKE(IF(TRUE,A1:A4),2)`
 /// and `TAKE(LET(x,A1:A4,x),2)` pick cells while `TAKE(IF(TRUE,SEQUENCE(4)),2)` and
@@ -125,19 +151,7 @@ pub(super) fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>)
         Node::FunctionKind {
             kind: Function::Let,
             args,
-        } if args.len() >= 3 && args.len() % 2 == 1 => {
-            let scope = bound.len();
-            for pair in args[..args.len() - 1].chunks_exact(2) {
-                if let Node::NamedVariableKind { name, .. } = &pair[0] {
-                    // A variable sees only the variables bound before it.
-                    let cells = yields_cells(&pair[1], bound);
-                    bound.push((name, cells));
-                }
-            }
-            let result = args.last().is_some_and(|body| yields_cells(body, bound));
-            bound.truncate(scope);
-            result
-        }
+        } if is_let_call(args) => let_result(args, bound, yields_cells),
         Node::NamedVariableKind { name, .. } => bound
             .iter()
             .rfind(|(bound_name, _)| same_variable(bound_name, name))

@@ -84,5 +84,6 @@ pub(crate) fn text_result(
         Ok(ArrayNode::Boolean(b)) => CalcResult::Boolean(b),
         Ok(ArrayNode::Empty) => CalcResult::String(String::new().into()),
         Ok(ArrayNode::Error(e)) | Err(e) => CalcResult::new_error(e, cell, String::new()),
+        Ok(ArrayNode::Lambda(_)) => CalcResult::new_error(Error::VALUE, cell, String::new()),
     }
 }

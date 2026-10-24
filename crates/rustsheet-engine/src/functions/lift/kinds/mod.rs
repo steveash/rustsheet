@@ -136,7 +136,7 @@ impl ArgValue {
             ArrayNode::Boolean(b) => ArgValue::Boolean(*b),
             ArrayNode::String(_) => ArgValue::Text,
             ArrayNode::Empty => ArgValue::Blank,
-            ArrayNode::Error(_) => ArgValue::Error,
+            ArrayNode::Error(_) | ArrayNode::Lambda(_) => ArgValue::Error,
         }
     }
 }
@@ -271,12 +271,19 @@ pub(crate) enum CallResult {
     /// driver applies it to computed elements only, so it needs `Reuse::Never`, which every
     /// table entry's options have (`LiftOptions::for_entry`).
     ArrayFirst,
+    /// As [`CallResult::ArrayFirst`], and when every entry is equal and spans several columns the
+    /// elements past the first column are empty too (UNIQUE; probes/m7-unique-lift-corners,
+    /// T-2348). SORTBY's uniform 1xN `sort_order` is unprobed, so it stays on `ArrayFirst`.
+    ArrayFirstColumn,
 }
 
 impl CallResult {
     /// Whether one unlifted call returns an array.
     pub(crate) fn is_array(self) -> bool {
-        matches!(self, CallResult::Array | CallResult::ArrayFirst)
+        matches!(
+            self,
+            CallResult::Array | CallResult::ArrayFirst | CallResult::ArrayFirstColumn
+        )
     }
 }
 
@@ -319,11 +326,10 @@ impl ArgKinds {
         }
     }
 
-    /// The same kinds for a function whose unlifted call returns an array and whose lifted
-    /// elements follow [`CallResult::ArrayFirst`].
-    pub(crate) const fn array_first(self) -> Self {
+    /// The same kinds for a function whose lifted elements follow [`CallResult::ArrayFirstColumn`].
+    pub(crate) const fn array_first_column(self) -> Self {
         Self {
-            result: CallResult::ArrayFirst,
+            result: CallResult::ArrayFirstColumn,
             ..self
         }
     }

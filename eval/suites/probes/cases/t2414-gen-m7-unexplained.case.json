@@ -1,0 +1,67 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2414: four unexplained gen-m7 results (CELL contents in VSTACK, TEXTAFTER #SPILL!, lifted COMBINA, TRANSPOSE of a value into TEXTSPLIT).",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=CELL(\"contents\",C11)",
+        "A11": "=CELL(\"contents\",C11)&\"|\"",
+        "A21": "=CELL(\"contents\",Data!C11)",
+        "A31": "=CELL(\"contents\",Data!C11)&\"|\"",
+        "A41": "=VSTACK(CELL(\"contents\",Data!C11),1)",
+        "A51": "=VSTACK(0,Data!B7:E12)",
+        "A61": "=ROWS(VSTACK(CELL(\"contents\",Data!C11),Data!B7:E12))",
+        "A71": "=ROWS(VSTACK(0,Data!B7:E12))",
+        "A81": "=VSTACK(CELL(\"contents\",Data!C11),Data!B7:E12)",
+        "A91": "=ROWS(TEXTAFTER(\"abc\",\"\",1,-9007199254740992,0,{1;2}))",
+        "A101": "=COLUMNS(TEXTAFTER(\"abc\",\"\",1,-9007199254740992,0,{1;2}))",
+        "A111": "=TEXTAFTER(\"abc\",\"\",1,-9007199254740992,0,{1;2})",
+        "A121": "=TEXTAFTER(\"abc\",\"b\",1,0,0,{1;2})",
+        "A131": "=ROWS(TEXTAFTER(\"abc\",\"b\",1,0,0,{1;2}))",
+        "A141": "=ROWS(OFFSET(Data!B9:C12,5,1,DROP(Data!A3:A5,-2,0),2))",
+        "A151": "=COLUMNS(OFFSET(Data!B9:C12,5,1,DROP(Data!A3:A5,-2,0),2))",
+        "A161": "=INDEX(OFFSET(Data!B9:C12,5,1,DROP(Data!A3:A5,-2,0),2),1,1)",
+        "A171": "=ROWS(TEXTAFTER(CHOOSE(FLOOR.PRECISE(Data!C4,0.1),1),\"\",1,-9007199254740992,0,OFFSET(Data!B9:C12,5,1,DROP(Data!A3:A5,-2,0),2)))",
+        "A181": "=TEXTAFTER(\"abc\",\"\",1,-9007199254740992,0,5)",
+        "A191": "=ROWS(COMBINA({7;1},4))",
+        "A201": "=ROWS(COMBINA(Data!E7:E8,4))",
+        "A211": "=ROWS(COMBINA(4,{1;2}))",
+        "A221": "=COMBINA({7;1},4)",
+        "A231": "=VSTACK({1;2},CHOOSE(3,1,2))",
+        "A241": "=ROWS(VSTACK({1;2},CHOOSE(3,1,2)))",
+        "A251": "=VSTACK(COMBINA(WRAPROWS(Data!E6:E12,1,Data!$B1),4),CHOOSE(3,VALUE(Data!B3),DAYS(41658,47244)))",
+        "A261": "=COMBINA(WRAPROWS(Data!E6:E12,1,Data!$B1),4)",
+        "A271": "=ROWS(COMBINA(WRAPROWS(Data!E6:E12,1,Data!$B1),4))",
+        "A281": "=ROWS(TEXTSPLIT(TRANSPOSE(\"a,b\"),\",\"))",
+        "A291": "=COLUMNS(TEXTSPLIT(TRANSPOSE(\"a,b\"),\",\"))",
+        "A301": "=COLUMNS(TEXTSPLIT(TRANSPOSE(Data!G1),\",\"))",
+        "A311": "=ROWS(TEXTSPLIT(TRANSPOSE(Data!G1),\",\"))",
+        "A321": "=ISREF(TRANSPOSE(Data!G1))",
+        "A331": "=COLUMNS(TEXTSPLIT({\"a,b\"},\",\"))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A3": 1e-15,
+        "A4": 0,
+        "A5": 123456789.123,
+        "B1": 1,
+        "E7": 7,
+        "E8": 1e-15,
+        "E9": 2.5,
+        "E10": "abc",
+        "E12": "?b",
+        "G1": "a,b",
+        "B3": "x",
+        "A10": 3
+      }
+    }
+  ],
+  "expected": {}
+}

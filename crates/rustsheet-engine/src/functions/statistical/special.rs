@@ -58,6 +58,95 @@ pub(crate) fn bisect_unit_interval(f: impl Fn(f64) -> f64, target: f64) -> f64 {
     halve_increasing(&f, target, 0.0, 1.0, 1100)
 }
 
+/// The most bracket expansions [`refine_increasing`] makes around an estimate; each multiplies the
+/// step by 4, so the last one reaches 2^98 times the first step of 2^-30 relative.
+const REFINE_MAX_EXPANSIONS: u32 = 64;
+
+/// The crossing of a non-decreasing `f` with `target` within `[min, max]` (`0 <= min < max`): a
+/// bracket `f(lo) < target <= f(hi)`, grown around `estimate` when it is finite and otherwise the
+/// whole interval, is halved over the doubles' bit patterns (ordered like the values for
+/// non-negative doubles) down to adjacent doubles, whose arithmetic mean (the even-significand end)
+/// it returns, as T-1745 found Excel's quantiles to be crossings of the cdf (docs/excel-semantics/
+/// statistics.md "BETA.INV solves Excel's own CDF to the crossing"). At most
+/// [`REFINE_MAX_EXPANSIONS`] + 65 evaluations of `f`, whatever the interval.
+pub(crate) fn refine_increasing(
+    f: impl Fn(f64) -> f64,
+    target: f64,
+    estimate: f64,
+    min: f64,
+    max: f64,
+) -> f64 {
+    let (lo, hi) = crossing_bracket(&f, target, estimate, min, max);
+    0.5 * (lo + hi)
+}
+
+/// [`refine_increasing`] without an estimate, returning whichever end of the final bracket has
+/// `f` nearer `target` (the lower end on a tie): the correctly rounded crossing where `f` is
+/// accurate, as Excel's converged BETA.INV search returns it (docs/excel-semantics/statistics.md
+/// "BETA.INV at a huge shape is AS 109's Newton search (T-1538)"). At most 65 + 2 evaluations.
+pub(crate) fn nearest_crossing(f: impl Fn(f64) -> f64, target: f64, min: f64, max: f64) -> f64 {
+    let (lo, hi) = crossing_bracket(&f, target, f64::NAN, min, max);
+    if (f(hi) - target).abs() < (target - f(lo)).abs() {
+        hi
+    } else {
+        lo
+    }
+}
+
+/// The final bracket of [`refine_increasing`]: adjacent doubles `lo < hi` (or the interval's ends)
+/// with `f(lo) < target <= f(hi)`.
+fn crossing_bracket(
+    f: &impl Fn(f64) -> f64,
+    target: f64,
+    estimate: f64,
+    min: f64,
+    max: f64,
+) -> (f64, f64) {
+    let (mut lo, mut hi) = (min, max);
+    if estimate.is_finite() {
+        // + 0.0 turns a -0.0 into +0.0, whose bit pattern orders with the non-negative doubles.
+        let x0 = estimate.clamp(min, max) + 0.0;
+        let mut step = (x0 * 2f64.powi(-30)).max(f64::MIN_POSITIVE);
+        (lo, hi) = (x0, x0);
+        // An expansion that never brackets the crossing leaves the rest of the interval on its
+        // side to the halving.
+        if f(x0) < target {
+            hi = max;
+            for _ in 0..REFINE_MAX_EXPANSIONS {
+                let next = (lo + step).min(max);
+                if next >= max || f(next) >= target {
+                    hi = next;
+                    break;
+                }
+                lo = next;
+                step *= 4.0;
+            }
+        } else {
+            lo = min;
+            for _ in 0..REFINE_MAX_EXPANSIONS {
+                let next = (hi - step).max(min);
+                if next <= min || f(next) < target {
+                    lo = next;
+                    break;
+                }
+                hi = next;
+                step *= 4.0;
+            }
+        }
+    }
+    // Each halving at least halves the bit-pattern gap of at most 2^63, so this ends in 64 steps.
+    let (mut lo_bits, mut hi_bits) = (lo.to_bits(), hi.to_bits());
+    while hi_bits - lo_bits > 1 {
+        let mid_bits = lo_bits + (hi_bits - lo_bits) / 2;
+        if f(f64::from_bits(mid_bits)) < target {
+            lo_bits = mid_bits;
+        } else {
+            hi_bits = mid_bits;
+        }
+    }
+    (f64::from_bits(lo_bits), f64::from_bits(hi_bits))
+}
+
 /// Halves `[lo, hi]` (at most `steps` times) around the point where `f` reaches `target`.
 fn halve_increasing(
     f: &impl Fn(f64) -> f64,
@@ -112,5 +201,36 @@ mod tests {
         close(ln_gamma(0.5), 0.572_364_942_924_700_1);
         // ln(170!) = ln Gamma(171), a large argument
         close(ln_gamma(171.0), 706.573_062_245_787_5);
+    }
+
+    #[test]
+    fn refine_increasing_ends_at_adjacent_doubles_of_the_crossing() {
+        use std::cell::Cell;
+        // x^3 crosses 2 at the cube root of 2; the result is one of the two doubles around it,
+        // from a far estimate, a close one, or none (the whole range), in at most 129 evaluations.
+        let root = 2f64.cbrt();
+        for estimate in [1e-300, 1.25, root, 1e300, f64::NAN] {
+            let calls = Cell::new(0);
+            let f = |x: f64| {
+                calls.set(calls.get() + 1);
+                x * x * x
+            };
+            let x = refine_increasing(f, 2.0, estimate, 0.0, f64::MAX);
+            assert!(x.to_bits().abs_diff(root.to_bits()) <= 1, "{estimate}: {x}");
+            assert!(calls.get() <= 129, "{estimate}: {}", calls.get());
+        }
+        // A target the function never reaches ends at the upper bound.
+        assert_eq!(refine_increasing(|x| x, 2.0, 0.5, 0.0, 1.0), 1.0);
+    }
+
+    #[test]
+    fn nearest_crossing_is_the_end_nearer_the_target() {
+        // 3 * (1/3 rounded) is exactly 1, so the upper end of the final bracket hits the target.
+        assert_eq!(nearest_crossing(|x| 3.0 * x, 1.0, 0.0, 1.0), 1.0 / 3.0);
+        // A jump at 1/2 from 1/2 to 3/2: 0.75 is nearer f just below the jump, so the lower end.
+        let below = f64::from_bits(0.5f64.to_bits() - 1);
+        let jump = |x: f64| if x < 0.5 { x } else { x + 1.0 };
+        assert_eq!(nearest_crossing(jump, 0.75, 0.0, 1.0), below);
+        assert_eq!(nearest_crossing(jump, 1.4, 0.0, 1.0), 0.5);
     }
 }

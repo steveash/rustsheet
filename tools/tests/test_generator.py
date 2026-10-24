@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from rustsheet_tools import repo_root
+from rustsheet_tools.gen import database
 from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.generator import (
     NAME_POOL,
@@ -33,7 +34,7 @@ from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
-from rustsheet_tools.gen.pools import MAX_STRING_LITERAL, POOLS
+from rustsheet_tools.gen.pools import MAX_STRING_LITERAL, POOLS, lambda_arity
 from rustsheet_tools.gen.tables import CATEGORIES as TABLES_CATEGORIES
 from rustsheet_tools.gen.tables import FORMULA_HEADERS, escape_column, generate_tables, this_row
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1, prefix_bound_names
@@ -215,15 +216,15 @@ def test_generator_emits_every_m6_date_function() -> None:
     assert not sorted(m6_date - emitted("M6"))
 
 
-def test_generator_emits_every_m6_lookup_function_but_getpivotdata() -> None:
-    # T-1238: every in-scope M6 lookup entry is generator-ready but GETPIVOTDATA (no pivot table to read).
+def test_generator_emits_every_m6_lookup_function() -> None:
+    # T-1238: every in-scope M6 lookup entry is generator-ready; GETPIVOTDATA reads the case's own pivot (T-2396).
     m6_lookup = {
         f["name"]
         for f in catalog().functions
         if "params" in f and f["milestone"] == "M6" and f["category"] == "lookup"
     }
-    assert len(m6_lookup) == 18
-    assert "GETPIVOTDATA" not in m6_lookup
+    assert len(m6_lookup) == 19
+    assert "GETPIVOTDATA" in m6_lookup
     assert not sorted(m6_lookup - emitted("M6"))
 
 
@@ -292,7 +293,8 @@ def test_number_enums_are_number_literals() -> None:
         for formula in spec["sheets"][1]["cells"].values():
             freqs += re.findall(r"COUP(?:DAYBS|DAYS|DAYSNC|NCD|NUM|PCD)\(\d+,\d+,([^,()]*)", formula)
     assert freqs and {"1", "2", "4"} & set(freqs), freqs
-    assert not any(f.startswith('"') for f in freqs), freqs
+    # The frequency pool's "2" is the one deliberate text frequency (T-2248).
+    assert not any(f.startswith('"') and f != '"2"' for f in freqs), freqs
 
 
 def m7_formulas() -> list[str]:
@@ -339,7 +341,8 @@ def test_lambdas_get_as_many_parameters_as_values() -> None:
         )
     ]
     assert mapped and all(a.count(",") == b.count(",") for a, b in mapped)
-    made = re.findall(r"MAKEARRAY\([^,()]*,[^,()]*,LAMBDA\(((?:[a-z_]+,)+)", " ".join(formulas))
+    # A pooled LAMBDA may mark its last parameter optional (`LAMBDA(w,[y],ISOMITTED(y))`).
+    made = re.findall(r"MAKEARRAY\([^,()]*,[^,()]*,LAMBDA\(((?:\[?[a-z_]+\]?,)+)", " ".join(formulas))
     assert made and all(names.count(",") == 2 for names in made), made
 
 
@@ -654,7 +657,7 @@ def _outer_function(formula: str) -> str:
 
 def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
-    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures).
+    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures) and T-2318 (TEXTJOIN's delimiter is an array parameter).
     catalog = copy.deepcopy(_loaded_catalog())
     for f in catalog.functions:
         for p in f.get("params", []):
@@ -662,7 +665,7 @@ def test_unfocused_output_is_unchanged() -> None:
     body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
     assert (
         hashlib.sha256(body.encode()).hexdigest()
-        == "e8451736288c9469b1e6765e45893f3218f803430abb6e01ae2cd7494392bd29"
+        == "505d7bc2688c30017ec88bafbf7512ef881ad1606a3cce3d4cfa30195cad721c"
     )
 
 
@@ -776,9 +779,86 @@ def test_pool_param_draws_from_its_pool_about_35_percent_of_the_time() -> None:
     assert not any(g.argument_text(hard, "value", 0) in POOLS["angle"] for _ in range(500))
 
 
+def test_pooled_range_param_draws_array_constants_about_35_percent_of_the_time() -> None:
+    # T-2286: LOOKUP's lookup_vector and XMATCH's lookup_array take array constants from `lookup_table`.
+    g = Gen(random.Random(3), Catalog([], []), 12, 5, 3)
+    pooled = {"name": "lookup_array", "mode": "range", "type": "any", "vector": True, "pool": "lookup_table"}
+    draws = [g.argument(pooled, 0) for _ in range(2000)]
+    share = sum(d in POOLS["lookup_table"] for d in draws) / len(draws)
+    assert 0.25 <= share <= 0.45
+    assert all(d in POOLS["lookup_table"] or re.fullmatch(r"Data!([A-Z])\d+:\1\d+", d) for d in draws)
+
+
+def test_pooled_lambdas_have_the_arity_the_call_needs_and_free_names() -> None:
+    # T-2286: MAP's LAMBDA takes one parameter per array, REDUCE's and SCAN's two; an outer name is never reused.
+    assert {lambda_arity(t) for t in POOLS["lambda_body"]} == {1, 2}
+    for arity in (1, 2, 3):
+        g = Gen(random.Random(arity), Catalog([], []), 12, 5, 3)
+        g.scope = ["x"]
+        p = {"name": "function", "mode": "lambda", "arity": arity, "pool": "lambda_body"}
+        draws = [g.pooled_lambda(p, arity) for _ in range(400)]
+        pooled = [d for d in draws if d is not None]
+        if arity == 3:
+            assert not pooled
+            continue
+        assert 0.25 <= len(pooled) / len(draws) <= 0.45
+        for text in pooled:
+            assert lambda_arity(text) == arity, text
+            params = re.match(r"LAMBDA\(((?:\[?[a-z_0-9]+\]?,)+)", text)
+            assert params and "x" not in params.group(1).strip(",[]").replace("[", "").split(","), text
+        assert g.scope == ["x"]
+
+
+def test_pooled_catalog_params_keep_their_domain() -> None:
+    # T-2286: a pool never overrides a hard domain, and a soft enum (the REGEX patterns) still draws in-domain
+    # values most of the time.
+    pooled = [
+        p
+        for f in _loaded_catalog().functions
+        for p in f.get("params", [])
+        if isinstance(p, dict) and "pool" in p
+    ]
+    assert not [p for p in pooled if (p.get("domain") or {}).get("hard")]
+    pattern = next(
+        p
+        for f in _loaded_catalog().functions
+        if f["name"] == "REGEXTEST"
+        for p in f["params"]
+        if p["name"] == "pattern"
+    )
+    g = Gen(random.Random(11), Catalog([], []), 12, 5, 3)
+    draws = [g.argument_text(pattern, "value", 0) for _ in range(2000)]
+    enum = {'"' + v + '"' for v in pattern["domain"]["enum"]}
+    assert sum(d in enum for d in draws) / len(draws) >= 0.6
+    assert any(d in POOLS["regex_pattern"] and d not in enum for d in draws)
+
+
+def test_pooled_financial_params_keep_their_soft_domain() -> None:
+    # T-2248: a financial param with an int or enum domain (a bond's settlement serials, frequency 1, 2 or 4) still
+    # draws in-domain most of the time, and its pool adds the edges outside it.
+    g = Gen(random.Random(13), Catalog([], []), 12, 5, 3)
+    checked = 0
+    for f in _loaded_catalog().functions:
+        if f.get("category") != "financial":
+            continue
+        for p in f.get("params", []):
+            dom = p.get("domain") or {}
+            if "pool" not in p or not (dom.get("int") or dom.get("enum")):
+                continue
+            if dom.get("int"):
+                inside = {str(v) for v in range(dom.get("min", 0), dom.get("max", 10) + 1)}
+            else:
+                inside = {str(v) for v in dom["enum"]}
+            draws = [g.argument_text(p, "value", 0) for _ in range(400)]
+            assert sum(d in inside for d in draws) / len(draws) >= 0.6, (f["name"], p["name"])
+            assert any(d in POOLS[p["pool"]] and d not in inside for d in draws), (f["name"], p["name"])
+            checked += 1
+    assert checked >= 100
+
+
 def test_text_pools_respect_the_string_literal_limit_and_clock_free_values() -> None:
-    for name in ("text_edges", "numeric_text", "number_formats", "date_text", "time_text", "weekend_mask"):
-        for text in POOLS[name]:
+    for name, pool in POOLS.items():
+        for text in pool:
             for literal in re.findall(r'"((?:[^"]|"")*)"', text):
                 assert len(literal.replace('""', '"')) <= MAX_STRING_LITERAL, (name, text)
     # A year-less date such as "1/2" reads as a date in the current year, so its value depends on the clock.
@@ -851,3 +931,125 @@ def test_spill_is_off_by_default() -> None:
     spec = generate_case(catalog(), 3, milestone="M7", focus=True, formulas=10)
     assert spec["check"] == [f"Calc!A{i}" for i in range(1, 11)]
     assert "spill" not in spec["tags"]
+
+
+def test_m9_statistical_pools_keep_soft_domains_and_reach_their_edges() -> None:
+    # T-2247: a pooled df keeps drawing in-domain integers most of the time, and the pool adds its edges
+    # (the 1E10 df cut, values below 1 that truncate) the rest; every M9 statistical pool is used.
+    catalog = _loaded_catalog()
+    by_name = {f["name"]: f for f in catalog.functions}
+    df = next(p for p in by_name["T.DIST"]["params"] if p["name"] == "deg_freedom")
+    assert df["pool"] == "shape" and df.get("domain", {}).get("int")
+    g = Gen(random.Random(9), Catalog([], []), 12, 5, 3)
+    draws = [g.argument_text(df, "value", 0) for _ in range(2000)]
+    dom = df["domain"]
+    in_domain = [d for d in draws if d.isdigit() and dom.get("min", 0) <= int(d) <= dom.get("max", 10)]
+    assert len(in_domain) / len(draws) >= 0.6
+    assert any(d in POOLS["shape"] and d not in in_domain for d in draws)
+    used = {
+        p["pool"]
+        for f in catalog.functions
+        if f.get("milestone") == "M9" and f.get("category") == "statistical"
+        for p in f.get("params", [])
+        if "pool" in p
+    }
+    assert {"probability", "shape", "stat_x", "gamma_x", "flag", "stat_data"} <= used
+
+
+def test_m9_engineering_and_database_pools_keep_soft_domains_and_reach_their_edges() -> None:
+    # T-2249: a pooled engineering or database param with an int or enum domain (Bessel orders 0-5, the IM*
+    # inumbers, the D* field 1-4) still draws in-domain most of the time, and its pool adds the edges outside it.
+    g = Gen(random.Random(17), Catalog([], []), 12, 5, 3)
+    checked, used = 0, set()
+    for f in _loaded_catalog().functions:
+        if f.get("milestone") != "M9" or f.get("category") not in ("engineering", "database"):
+            continue
+        for p in f.get("params", []):
+            used.add(p.get("pool"))
+            dom = p.get("domain") or {}
+            if "pool" not in p or not (dom.get("int") or dom.get("enum")):
+                continue
+            if dom.get("int"):
+                inside = {str(v) for v in range(dom.get("min", 0), dom.get("max", 10) + 1)}
+            else:
+                inside = {str(v) if isinstance(v, int) else quoted(str(v)) for v in dom["enum"]}
+            draws = [g.argument_text(p, "value", 0) for _ in range(400)]
+            assert sum(d in inside for d in draws) / len(draws) >= 0.6, (f["name"], p["name"])
+            assert any(d in POOLS[p["pool"]] and d not in inside for d in draws), (f["name"], p["name"])
+            checked += 1
+    assert checked >= 60
+    assert {
+        "complex_text",
+        "complex_suffix",
+        "bin_digits",
+        "oct_digits",
+        "hex_digits",
+        "dec_number",
+        "places",
+        "bessel_x",
+        "bessel_order",
+        "convert_unit",
+        "erf_x",
+        "bit_number",
+        "bit_shift",
+        "db_table",
+        "db_field",
+        "db_criteria",
+    } <= used
+
+
+def test_database_calls_get_the_db_sheet_and_mostly_query_it() -> None:
+    # T-2249: the D* database and criteria pools point into sheet Db (gen/database.py) at pool_rate 0.8, so most
+    # calls pair a Db table with Db criteria, and a case gets the sheet only when a formula refers to it.
+    catalog = _loaded_catalog()
+    spec = generate_case(catalog, 11, milestone="M9", formulas=200, focus=True, category="database")
+    sheets = {s["name"]: s["cells"] for s in spec["sheets"]}
+    assert sheets["Db"] == database.cells()
+    calls = list(sheets["Calc"].values())
+    paired = [
+        c
+        for c in calls
+        if re.match(r"=D[A-Z]+\(Db!\$?A\$?\d+:\$?[A-D]\$?\d+,.*,Db!\$?[F-S]\$?\d+(:\$?[F-S]\$?\d+)?\)$", c)
+    ]
+    assert 0.5 <= len(paired) / len(calls) <= 0.8
+    assert all(re.fullmatch(r"Db![$A-Z0-9:]+", e) for e in POOLS["db_table"] + POOLS["db_criteria"])
+    assert "Db" not in {s["name"] for s in generate_case(catalog, 7, milestone="M5")["sheets"]}
+
+
+def test_db_sheet_keeps_criteria_text_as_text() -> None:
+    # A spec reads text starting with "=" as a formula: "=apple" is typed text, the computed criterion a formula.
+    cells = database.cells()
+    assert cells["I2"] == {"t": "s", "v": "=apple"}
+    assert cells["O2"] == "=B2>3"
+    assert cells["F2"] == ">2"
+    assert "K2" not in cells and "A6" not in cells
+
+
+def test_m9_count_and_ets_pools_reach_their_edges() -> None:
+    # T-2438: integer counts keep their small-integer domain most of the time and add the edges (a truncating
+    # fraction, 2^31, 1E15, text); the FORECAST.ETS options and arrays draw from pools, and the timeline and
+    # values pools are long and equal in count so a valid call reaches the algorithm.
+    catalog = _loaded_catalog()
+    by_name = {f["name"]: f for f in catalog.functions}
+    trials = next(p for p in by_name["BINOM.INV"]["params"] if p["name"] == "trials")
+    assert trials["pool"] == "count" and trials.get("domain", {}).get("int")
+    g = Gen(random.Random(11), Catalog([], []), 12, 5, 3)
+    draws = [g.argument_text(trials, "value", 0) for _ in range(2000)]
+    assert sum(d.isdigit() and int(d) <= 10 for d in draws) / len(draws) >= 0.6
+    assert any(d in POOLS["count"] and not d.isdigit() for d in draws)
+    ets = {p["name"]: p["pool"] for p in by_name["FORECAST.ETS.CONFINT"]["params"] if "pool" in p}
+    assert ets == {
+        "target_date": "ets_target",
+        "values": "ets_values",
+        "timeline": "ets_timeline",
+        "confidence_level": "ets_confidence",
+        "seasonality": "ets_seasonality",
+        "data_completion": "ets_completion",
+        "aggregation": "ets_aggregation",
+    }
+    assert any(p.get("pool") == "ets_statistic" for p in by_name["FORECAST.ETS.STAT"]["params"])
+    for pool in ("ets_timeline", "ets_values"):
+        assert len(POOLS[pool][0].split(";")) == 24
+    assert all(p.startswith("{") and p.endswith("}") for p in POOLS["ets_timeline"] + POOLS["ets_values"])
+    used = {p["pool"] for f in catalog.functions for p in f.get("params", []) if "pool" in p}
+    assert {"beta_bound", "fisherinv_y", "forecast_x", "lognorm_mean"} <= used

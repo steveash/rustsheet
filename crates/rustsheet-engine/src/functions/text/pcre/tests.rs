@@ -352,8 +352,8 @@ fn posix_syntax_pcre2_rejects_is_invalid() {
 
 #[test]
 fn backtracking_constructs_go_to_the_backtracker() {
-    // Each parses and is not regular. T-1900 runs the first four, T-2287 `\R` and `\X`; the
-    // rest wait for T-2354 (lookaround, `\K`, conditionals).
+    // Each parses and is not regular. T-1900 runs the first four, T-2287 `\R` and `\X`, T-2354
+    // lookaround, `\K` and conditionals; `\K` inside a lookaround is refused (PCRE2 10.38).
     let program = |pattern: &str| match translate(pattern, false, FinalLf::EndLf, usize::MAX)
         .unwrap()
         .form
@@ -361,10 +361,21 @@ fn backtracking_constructs_go_to_the_backtracker() {
         Form::Backtrack(backtrack) => backtrack.compile(usize::MAX),
         Form::Automata { .. } => panic!("{pattern} is regular"),
     };
-    for pattern in ["a++", "(?>a)", r"(a)\1", r"\Ga", r"\R", r"\X"] {
+    for pattern in [
+        "a++",
+        "(?>a)",
+        r"(a)\1",
+        r"\Ga",
+        r"\R",
+        r"\X",
+        "(?=a)",
+        "(?<!a)b",
+        r"a\Kb",
+        "(a)(?(1)b|c)",
+    ] {
         assert!(program(pattern).is_ok(), "{pattern}");
     }
-    for pattern in ["(?=a)", "(?<!a)b", r"a\Kb", "(a)(?(1)b|c)"] {
+    for pattern in [r"(?=a\K)", r"(?<=\Ka)b"] {
         assert!(
             matches!(program(pattern), Err(ProgramFailure::Unsupported)),
             "{pattern}"

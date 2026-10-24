@@ -101,6 +101,18 @@ fn date_system_serial_conversion() {
     assert_eq!(Excel1904.serial_from_1900_serial(i64::MIN), None);
     assert_eq!(Excel1900.to_1900_serial(-5), Some(-5));
     assert_eq!(Excel1900.serial_from_1900_serial(-5), Some(-5));
+    // The imported (fractional) form keeps the time of day and drops a moment before the epoch.
+    assert_eq!(
+        Excel1904.serial_from_imported_1900_serial(1462.75),
+        Some(0.75)
+    );
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(1461.5), None);
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(0.5), Some(0.5));
+    assert_eq!(Excel1904.serial_from_imported_1900_serial(f64::NAN), None);
+    assert_eq!(
+        Excel1900.serial_from_imported_1900_serial(45292.5),
+        Some(45292.5)
+    );
     // EDATE/EOMONTH keep a day before the 1904 epoch as a negative serial.
     assert_eq!(Excel1904.signed_serial_from_1900_serial(1431), -31);
     assert_eq!(Excel1900.signed_serial_from_1900_serial(1431), 1431);
@@ -252,5 +264,42 @@ fn unshowable_date_displays_hashes() {
     assert_eq!(
         format_number(45000.0, "yyyy-mm-dd", &ctx).displayed(),
         "2023-03-15"
+    );
+}
+
+// gen-m10 displayed text (T-1732): fields come from the serial rounded to the shown second.
+#[test]
+fn fields_come_from_the_serial_rounded_to_the_second() {
+    let v = 0.999_999_999_9;
+    let cases = [
+        ("h:mm", "0:00"),
+        ("hh:mm:ss", "00:00:00"),
+        ("[h]:mm:ss", "24:00:00"),
+        ("h:mm:ss AM/PM", "12:00:00 AM"),
+        ("yyyy-mm-dd", "1900-01-01"),
+        ("dddd", "Sunday"),
+        ("d \\d\\a\\y\\s h:mm", "1 days 0:00"),
+        ("[m]:ss", "1440:00"),
+        ("dd/mm/yy", "01/01/00"),
+    ];
+    for (format, expected) in cases {
+        assert_eq!(
+            format_in(v, format, DateSystem::Excel1900),
+            expected,
+            "{format}"
+        );
+    }
+}
+
+#[test]
+fn fraction_digits_round_into_the_next_day() {
+    // 0.99999999999 is 23:59:59.999999; `.000` rounds it up to midnight of the next date.
+    assert_eq!(
+        format_in(
+            0.999_999_999_99,
+            "yyyy-mm-dd hh:mm:ss.000",
+            DateSystem::Excel1900
+        ),
+        "1900-01-01 00:00:00.000"
     );
 }

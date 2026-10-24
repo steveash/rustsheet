@@ -3,7 +3,7 @@ id: T-2288
 title: "DATEDIF: an unknown unit is #NUM!, not #VALUE!, whatever the dates"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -74,15 +74,26 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 2 known-failure lin
 - gen-m7/2c5ea078f25443a2.case.json A1226 `=MAP(DATEDIF(1720,27965,"ABC"),MATCH(0.1,Data!B4:B6,(100^123456789.123)),Data!B3:B4,LAMBDA(v,w,x,Data!E8))`: A1226 Excel #NUM!, ours #VALUE!; cells (1): A1226
 - gen-m7/c36ff5f42a1a4d47.case.json A1051 `=DROP(WORKDAY(DATEDIF(1077,5272,Data!A4),-4),-2)`: A1051 Excel #NUM!, ours #VALUE!; cells (1): A1051
 
+More gen-m7 cells (T-2254 triage, excel-graph, 2026-10-22): an unknown unit under TOROW, TOCOL and SCAN. `DATEDIF(..,(Data!C8&Data!D$8))`
+as TOROW's array (2d9b48c6363e7a16 A1306), `DATEDIF(3621,58245,FILTER(..))` (a unit array that lifts DATEDIF, then TOCOL's ignore, to 8
+`#NUM!`: 7ea6ef6ceabacafd A1875) and `DATEDIF(17490,55420,"?b")` inside a SCAN LAMBDA (three `#NUM!` steps: 9bb61f6ae34c7e20 A2505) are
+`#NUM!` in Excel, ours `#VALUE!` (the DATEDIF alone is `#VALUE!` in ours; checked 2026-10-22). Owned: 12 known-failure lines in eval/baseline/gen-m7.txt, 3 formulas.
+- gen-m7/2d9b48c6363e7a16.case.json A1306 `=TOROW(DATEDIF(COUNTIFS(Data!B8:D12,"<>1"),33890,(Data!C8&Data!D$8)),MAX(Data!B5:B12))`: A1306 Excel #NUM!, ours #VALUE!; cells (1): A1306
+- gen-m7/7ea6ef6ceabacafd.case.json A1875 `=TOCOL(Data!A5:C5,DATEDIF(3621,58245,FILTER(Data!A1:D12,(Data!B1:B12=0.2),Data!C9:D10)),IF(LET(v,1,w,(-1),acc,Data!$E6,acc),"1",ISNUMBER(#NULL!)))`: A1875 Excel #NUM!, ours #VALUE!; cells (8): A1875:D1875, A1876:D1876
+- gen-m7/9bb61f6ae34c7e20.case.json A2505 `=SCAN(FLOOR.PRECISE(TIME(Data!$C6,2,4),ROUNDUP(0.5,-2)),Data!Z1:Z3,LAMBDA(y,w,(PRODUCT(w,w,Data!C4:C5)>=DATEDIF(17490,55420,"?b"))))`: A2505 Excel #NUM!, ours #VALUE!; cells (3): A2505, A2506, A2507
+
 ## Acceptance criteria
-- [ ] The 2 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 2 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
-- [ ] These 40 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] probes/datedif-days360-error-order and probes/date-math-lift-driver-edges still pass; a unit test covers a well-ordered pair with "x", "", a number and TRUE as unit.
-- [ ] dates.md's new sentence says Ours: implemented (T-2288).
-- [ ] `make check` green; reviewers approve.
+- [x] The 14 gen-m7 cells listed under Context (2 from the T-2225 triage, 12 from the T-2254 triage) match Excel: their 14 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
+- [x] These 40 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] probes/datedif-days360-error-order and probes/date-math-lift-driver-edges still pass; a unit test covers a well-ordered pair with "x", "", a number and TRUE as unit.
+- [x] dates.md's new sentence says Ours: implemented (T-2288).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - DATEDIF's day counts (T-2263, T-2264).
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`datedif_value`'s fallback arm is now `#NUM!` (the day-0 special case folded in). 40 gen-m6, 14 gen-m7 and 4 gen-m9 known failures removed from the baseline (after merging main, which added the 12 T-2254 cells); no new failures. Unit test `datedif_unknown_unit_is_num`; dates.md updated.

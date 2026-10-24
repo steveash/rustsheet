@@ -52,7 +52,108 @@ tail directly for CHISQ.DIST.RT/CHISQ.TEST. a = 1 must reduce to -expm1(-x). The
 Implement once in `functions/statistical/special.rs`; T-0972 (GAMMA.INV) and possibly T-0927
 (POISSON.DIST CDF) reuse it.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). CHIDIST, CHISQ.DIST, GAMMADIST and GAMMA.DIST values visibly off (68 cells).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 68 known-failure lines in eval/baseline/gen-m9.txt, 68 formulas.
+Examples:
+- gen-m9/05d44f6dd6cfc567 Calc!A178 `=CHISQ.DIST(CHISQ.DIST.RT(1.5,7)%,8,(PI()=(Data!$B9+1)))`: Excel 9.825189899531443e-09, ours 9.825189899531451e-09
+Cells:
+- gen-m9/05d44f6dd6cfc567.case.json (2): Calc!A178, A231
+- gen-m9/0a614cfe974b59c3.case.json (2): Calc!A253, A300
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A87
+- gen-m9/165db58d1540f014.case.json (1): Calc!A66
+- gen-m9/2a18b2f5a4dc43ac.case.json (2): Calc!A324, A383
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A119
+- gen-m9/3a25a03eb94fcfbd.case.json (3): Calc!A158, A255, A341
+- gen-m9/3e98b26cf6713e77.case.json (2): Calc!A268, A329
+- gen-m9/40425341c5034eed.case.json (1): Calc!A224
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A331
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A224
+- gen-m9/4bad303d32cc3f46.case.json (4): Calc!A38, A279, A293, A340
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A97
+- gen-m9/530c636749a85209.case.json (2): Calc!A12, A150
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A382
+- gen-m9/68d8ffb69ff739d8.case.json (4): Calc!A65, A325, A341, A386
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A270
+- gen-m9/85f48d5cdfb24555.case.json (1): Calc!A23
+- gen-m9/899f9555e67da2d6.case.json (1): Calc!A72
+- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A319, A333
+- gen-m9/8f2ac25945af87da.case.json (2): Calc!A108, A352
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A349
+- gen-m9/984cba67bbe6972b.case.json (5): Calc!A42, A91, A140, A175, A252
+- gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A255
+- gen-m9/a013a45a8fbcab4f.case.json (2): Calc!A209, A257
+- gen-m9/a54c738c697617c3.case.json (3): Calc!A29, A49, A212
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A57
+- gen-m9/b8ee55934c5b824c.case.json (2): Calc!A216, A400
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A125
+- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A388
+- gen-m9/c2974c061384fdd9.case.json (2): Calc!A13, A30
+- gen-m9/caa1eed48b1883fe.case.json (2): Calc!A2, A59
+- gen-m9/cde551ea787f713a.case.json (1): Calc!A390
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A17
+- gen-m9/e6cf3b20a014e6a3.case.json (3): Calc!A162, A223, A345
+- gen-m9/ecc87f80077959e0.case.json (3): Calc!A2, A170, A212
+- gen-m9/f34f66fb7f81e673.case.json (1): Calc!A49
+- gen-m9/fec39efaba9284c3.case.json (2): Calc!A104, A249
+
+gen-m9 sweep (T-2255 triage), last digits only, not visibly off: CHIDIST, CHISQ.DIST, GAMMADIST and GAMMA.DIST last digits. Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 82 known-failure lines in eval/baseline/gen-m9.txt, 82 formulas.
+Examples:
+- gen-m9/0a614cfe974b59c3 Calc!A178 `=CHISQ.DIST(AGGREGATE(5,(Data!A1*7),Data!A2:B2),(Data!D10^STDEV.P({0.02,0.027},Data!A2:A6,Data!D10:D11)),AND(Data!E7:E10,(Data!B9=1.005)))`: Excel 12615662.610100787, ours 12615662.610100795
+Cells:
+- gen-m9/0a614cfe974b59c3.case.json (2): Calc!A178, A367
+- gen-m9/146b46e74f2dac3b.case.json (3): Calc!A60, A148, A172
+- gen-m9/27601819397dd56e.case.json (1): Calc!A7
+- gen-m9/2801c1c11c21e134.case.json (1): Calc!A53
+- gen-m9/285d87cea1aaa73c.case.json (3): Calc!A51, A86, A295
+- gen-m9/2a18b2f5a4dc43ac.case.json (2): Calc!A308, A333
+- gen-m9/320d51765af9b6b7.case.json (2): Calc!A157, A249
+- gen-m9/3a25a03eb94fcfbd.case.json (2): Calc!A97, A133
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A220
+- gen-m9/40425341c5034eed.case.json (2): Calc!A132, A316
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A125
+- gen-m9/4bad303d32cc3f46.case.json (1): Calc!A354
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A386
+- gen-m9/530c636749a85209.case.json (1): Calc!A79
+- gen-m9/60b0b6e69ad35a45.case.json (3): Calc!A138, A209, A251
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A282
+- gen-m9/7674c89c824aca43.case.json (2): Calc!A102, A332
+- gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A259
+- gen-m9/7c20351562a2d71d.case.json (1): Calc!A316
+- gen-m9/85f48d5cdfb24555.case.json (1): Calc!A84
+- gen-m9/899f9555e67da2d6.case.json (2): Calc!A118, A394
+- gen-m9/8d3588d8df0812df.case.json (1): Calc!A302
+- gen-m9/8dd2312c96effb1b.case.json (1): Calc!A150
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A105
+- gen-m9/984cba67bbe6972b.case.json (2): Calc!A28, A49
+- gen-m9/9cca17438a7e6f8a.case.json (4): Calc!A133, A150, A332, A377
+- gen-m9/a013a45a8fbcab4f.case.json (3): Calc!A26, A91, A274
+- gen-m9/a54c738c697617c3.case.json (1): Calc!A354
+- gen-m9/a612e89321a6df9c.case.json (2): Calc!A181, A227
+- gen-m9/a61e547a1cab994c.case.json (3): Calc!A117, A239, A362
+- gen-m9/a790a4d4a6a82756.case.json (3): Calc!A6, A118, A189
+- gen-m9/a7bf0d8d81d33ba6.case.json (1): Calc!A152
+- gen-m9/b4173fe25109a238.case.json (1): Calc!A366
+- gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A253
+- gen-m9/b8ee55934c5b824c.case.json (2): Calc!A32, A262
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A217
+- gen-m9/bc40d37cb4d8301d.case.json (2): Calc!A35, A165
+- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A272
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A290
+- gen-m9/c2974c061384fdd9.case.json (2): Calc!A318, A361
+- gen-m9/c468f5046aadfbbc.case.json (2): Calc!A171, A216
+- gen-m9/c6cfda6bd10cae93.case.json (2): Calc!A86, A330
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A124
+- gen-m9/cde551ea787f713a.case.json (2): Calc!A24, A240
+- gen-m9/d8266bc15533702a.case.json (2): Calc!A230, A291
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A92
+- gen-m9/ecc87f80077959e0.case.json (2): Calc!A23, A205
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A63
+- gen-m9/f34f66fb7f81e673.case.json (1): Calc!A3
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A1
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2255): these 68 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] No line listed above remains NumericClose (`rustsheet-eval show`), at least 25 of the 43 lines
       leave `eval/baseline/ironcalc-calc.txt`, no new lines in any baseline (POISSON.DIST must not
       regress if it switches kernel; EXPON.DIST stays fixed).

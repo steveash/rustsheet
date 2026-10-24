@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=LET(abs,LAMBDA(a,a*2),ABS(-3))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "734d65cd0085c683fa9e7ed78a1db8e5f8a7364c715f4d96546bb72b3c417d49",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-24T04:26:23+00:00",
+  "version": null,
+  "workbook_name": "6d41bbda23a3c4f732c53c51864e6c3c10f614ceb5a4ad2974ad2bdb32a938ba.xlsx"
+ }
+}

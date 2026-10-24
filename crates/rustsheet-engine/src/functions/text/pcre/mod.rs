@@ -1,10 +1,10 @@
 //! The PCRE2 dialect of the REGEX* functions (SPEC-0013): one parser for every pattern, regular
 //! patterns translated to a `Hir` for the automata of `regex_engine`, the others (backreferences,
-//! atomic and possessive groups, `\G`, `\R`, `\X`) compiled to a [`Program`] for the
-//! backtracker ([`Backtracker`], T-1900, T-2287). A regular pattern with `$` or `\Z` over a
-//! text the automata cannot read it on runs on the backtracker's memoized mode (T-2355), as do
-//! the retries after an empty match of every regular pattern (T-1899).
-//! Lookaround, conditionals and `\K` parse and are `#VALUE!` until T-2354.
+//! atomic and possessive groups, `\G`, `\R`, `\X`, lookaround, conditionals and `\K`) compiled
+//! to a [`Program`] for the backtracker ([`Backtracker`], T-1900, T-2287, T-2354). A regular
+//! pattern with `$` or `\Z` over a text the automata cannot read it on runs on the backtracker's
+//! memoized mode (T-2355), as do the retries after an empty match of every regular pattern
+//! (T-1899).
 
 mod ast;
 mod backtrack;
@@ -54,7 +54,7 @@ pub(super) struct Backtrack {
 pub(super) enum ProgramFailure {
     /// The program passes the size limit.
     TooBig,
-    /// It holds a construct the backtracker does not run yet.
+    /// It holds a construct the backtracker does not run (`\K` in a lookaround).
     Unsupported,
 }
 
