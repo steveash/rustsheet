@@ -211,8 +211,8 @@ fn lambda_parameters_spelled_like_r1c1_cells_survive_a_reload() {
     );
 }
 
-// probes/let-name-shadows-defined-name: a LET name or LAMBDA parameter shadows a defined name of the
-// same name in any case; a closure keeps the defined name it was written against.
+// probes/let-name-shadows-defined-name: a LET name or LAMBDA parameter shadows a defined name
+// of the same name in any case; a closure keeps the defined name it was written against.
 #[test]
 fn let_names_and_lambda_parameters_shadow_defined_names() {
     let mut model = new_empty_model();

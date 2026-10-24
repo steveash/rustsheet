@@ -365,7 +365,9 @@ impl Parser {
     /// (probes/r1c1-let-name-r1-c1, T-1659), and stored as `_xlpm.f1`, `LET(f1,1,f1+1)` is 2
     /// (probes/let-cell-shaped-name-stored, T-2040). Excel refuses the cell-shaped name typed
     /// (probes/let-cell-shaped-name-typed-*): it binds here too, and typed entry refuses the
-    /// formula afterwards ([`Parser::typed_refusal`], decision 0103).
+    /// formula afterwards ([`Parser::typed_refusal`], decision 0103). A name that was read as a
+    /// defined name becomes the variable in any grammar mode, shadowing the defined name
+    /// (probes/let-name-shadows-defined-name, T-2057).
     pub(super) fn bind_reference_shaped_name(
         &mut self,
         token: &TokenType,

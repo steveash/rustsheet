@@ -3,7 +3,7 @@ id: T-2057
 title: "A LET name shadows a defined name of the same name in any case"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
