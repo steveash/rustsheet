@@ -320,6 +320,7 @@ C	probes/eng-besselk-underflow-bit-shift.case.json	276
 C	probes/eng-complex-overflow.case.json	21
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
+C	probes/eng-im-overflow-edges-2.case.json	114
 C	probes/eng-im-overflow-edges.case.json	116
 C	probes/eng-im-overflow.case.json	48
 C	probes/eng-im-small-part.case.json	28
@@ -1556,15 +1557,9 @@ F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
-F	probes/eng-im-overflow-edges.case.json	S!A104
-F	probes/eng-im-overflow-edges.case.json	S!A107
-F	probes/eng-im-overflow-edges.case.json	S!A109
-F	probes/eng-im-overflow-edges.case.json	S!A14
 F	probes/eng-im-overflow-edges.case.json	S!A17
 F	probes/eng-im-overflow-edges.case.json	S!A58
-F	probes/eng-im-overflow-edges.case.json	S!A6
 F	probes/eng-im-overflow-edges.case.json	S!A9
-F	probes/eng-im-overflow-edges.case.json	S!A95
 F	probes/eng-imln-modulus-range.case.json	S!A51
 F	probes/eng-imln-modulus-range.case.json	S!A52
 F	probes/eng-imln-modulus-range.case.json	S!A53

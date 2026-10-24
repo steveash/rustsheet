@@ -81,6 +81,11 @@ Cells:
 - gen-m9/f8bc18a0e45a0e1a.case.json (1): Calc!A154
 - gen-m9/fb73d8163ad87fc6.case.json (3): Calc!A184, A241, A380
 
+Update (T-2231): IMLOG2's 7 cells (01810fc89c5ec2c0 A218, 3cf48801617a72ad A285, 4fffa5addab1f8af A177,
+5b6cc12a94f7bf14 A183, 76b07b57099ccc8d A363, 7c7e5bff12d93365 A207, cb80ca09be0e12bc A274) now pass. They
+left the baseline in T-2231, so 147 lines remain. IMLOG2 is not the ln 2 to 15 digits candidate above: the kernel
+is in engineering.md.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 154 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
