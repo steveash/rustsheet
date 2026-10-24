@@ -3,7 +3,7 @@ id: T-2482
 title: "PRICE, YIELD, DURATION and MDURATION: Excel's argument check order under error and text arguments (gen-m9, 50 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
