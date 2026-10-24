@@ -323,6 +323,8 @@ C	probes/eng-imexp-overflow-cutoff-pi.case.json	24
 C	probes/eng-imexp-overflow-cutoff-pi2.case.json	29
 C	probes/eng-imexp-overflow-cutoff.case.json	26
 C	probes/eng-imexp-overflow-imag.case.json	31
+C	probes/eng-imln-modulus-range.case.json	84
+C	probes/eng-imln-modulus.case.json	20
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
 C	probes/eng-impower-past-cut.case.json	19
@@ -1521,6 +1523,13 @@ F	probes/eng-im-overflow-edges.case.json	S!A58
 F	probes/eng-im-overflow-edges.case.json	S!A6
 F	probes/eng-im-overflow-edges.case.json	S!A9
 F	probes/eng-im-overflow-edges.case.json	S!A95
+F	probes/eng-imln-modulus-range.case.json	S!A51
+F	probes/eng-imln-modulus-range.case.json	S!A52
+F	probes/eng-imln-modulus-range.case.json	S!A53
+F	probes/eng-imln-modulus-range.case.json	S!A54
+F	probes/eng-imln-modulus-range.case.json	S!A56
+F	probes/eng-imln-modulus-range.case.json	S!A79
+F	probes/eng-imln-modulus-range.case.json	S!A80
 F	probes/fin-amor-period-bound-b.case.json	Sheet1!B2
 F	probes/fin-amor-period-bound-c.case.json	Sheet1!A1
 F	probes/fin-amor-period-bound-c.case.json	Sheet1!A3
