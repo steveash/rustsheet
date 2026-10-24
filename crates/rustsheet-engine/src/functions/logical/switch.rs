@@ -61,10 +61,11 @@ impl Model {
         )
     }
 
-    /// What SWITCH's scalar expression picks (an empty array's `#CALC!` in the expression or a case
-    /// is `#VALUE!`, a result keeps it: probes/empty-array-args-sequence A1:A4): the value of the first matching case or the
+    /// What SWITCH's scalar expression picks: the value of the first matching case or the
     /// default, unevaluated; otherwise the value SWITCH gives (an argument-count error, the
-    /// expression's or a case's error, `#N/A`, or SWITCH lifted over an array expression).
+    /// expression's or a case's error, `#N/A`, or SWITCH lifted over an array expression). An
+    /// empty array's `#CALC!` in the expression or a case is `#VALUE!`, in a result it stays
+    /// (probes/empty-array-args-sequence A1:A4).
     /// Reference context follows the picked value as it follows IF's branch:
     /// `SUBTOTAL(9,SWITCH(1,1,(H1,I2)))` is 11 (probes/subtotal-ifs-switch-reference-picks, T-2014).
     pub(crate) fn switch_pick<'a>(

@@ -609,7 +609,8 @@ impl Model {
                     return walk
                         .finish()
                         .err()
-                        .unwrap_or_else(|| value.clone().empty_array_as_value_error(cell));
+                        .unwrap_or_else(|| value.clone())
+                        .empty_array_as_value_error(cell);
                 }
             }
             // The cells of the range (blank cells included), and the cells its walk visits.

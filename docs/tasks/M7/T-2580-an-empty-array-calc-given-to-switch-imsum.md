@@ -44,4 +44,4 @@ Probe `probes/empty-array-args-sequence` (excel-graph): an empty array's `#CALC!
 cases, IMSUM, IMPRODUCT and WORKDAY/NETWORKDAYS holidays, and stays `#CALC!` in CHOOSE, IFS, IF, XLOOKUP if_not_found, SUM, MAX,
 ABS, LEN and SWITCH's results. SEQUENCE extents reach 1048576 on both sides, an invalid extent beats a zero one, and an extent
 floors after adding 2^-23. Eval delta: gen-m9 known failures 6753 -> 6748 (fixed 5, the 4 owned cells and one more), probes
-2775 -> 2750 (fixed 25, +1 case), no regressions. `SEQUENCE(1,N)` for 16384 < N <= 1048576 is `#SPILL!` in Excel and `#VALUE!` here (T-2600).
+2775 -> 2750 (fixed 25, +1 case) at first push (since merges with main: gen-m9 6727, probes 2717), no regressions.

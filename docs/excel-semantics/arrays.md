@@ -1745,7 +1745,7 @@ SEQUENCE: rows and columns both reach 1048576, and an extent that is negative or
 non-zero rows a columns past the grid's 16384 gives an array (A155:A157: `COLUMNS(SEQUENCE(1,20000))` is 20000, `COLUMNS(SEQUENCE(1,1048576))` 1048576, `ERROR.TYPE(SEQUENCE(1,1048576))`
 `#SPILL!`) up to 1048576, `#VALUE!` above (A158). Ours builds them since T-2600 within the cell bound. An extent is floored after adding 2^-23 (the single-precision epsilon, 1.1920929E-7): `SEQUENCE(4,-1.19E-7)` and
 `SEQUENCE(0,-1E-8)` are `#CALC!` (a zero extent; gen-m7 c36ff5f42a1a4d47 A359), `SEQUENCE(4,-1.2E-7)` and `SEQUENCE(0,-1)`
-`#VALUE!`, and `SEQUENCE(0.99999999,1)` is 1, `SEQUENCE(0.999999,1)` `#CALC!`. Ours: the array case is `#VALUE!` (T-2600, not probed here).
+`#VALUE!`, and `SEQUENCE(0.99999999,1)` is 1, `SEQUENCE(0.999999,1)` `#CALC!`. The epsilon is probed near 0, 1 and 1048577 only; for large extents a relative or float32 rounding is UNVERIFIED.
 Evidence: probes/empty-array-args-sequence (excel-graph, 2026-10-24), probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9.
 Ours: `CalcResult::is_empty_array` in those readers.
 Status: VERIFIED (excel-graph)

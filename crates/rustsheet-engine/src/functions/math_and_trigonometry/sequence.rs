@@ -7,7 +7,9 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-/// What Excel adds to a SEQUENCE extent before flooring it: 2^-23, the single-precision epsilon.
+/// What Excel adds to a SEQUENCE extent before flooring it: 2^-23, the single-precision epsilon,
+/// symmetric about 0 (probes/empty-array-args-sequence A120:A134), unlike `near_integer_floor`'s
+/// window. Probed near 0, 1 and 1048577 only (arrays.md).
 const EXTENT_EPSILON: f64 = f32::EPSILON as f64;
 
 impl Model {
