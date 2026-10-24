@@ -3,11 +3,11 @@ id: T-0441
 title: "Data tables: load <f t=dataTable> cells and compute TABLE() results (probes/data-tables)"
 milestone: M11
 lane: engine
-status: blocked
-priority: P3
+status: done
+priority: P2
 size: M
 tier: opus
-depends_on: [T-0401]
+depends_on: [T-0446]
 ---
 
 ## Goal
@@ -31,16 +31,51 @@ which needs the dependency graph's recalculation of a substituted cell (SPEC-000
 blocked on it. Directive 5: the number of substitutions is rows x columns of the table; it needs a
 work bound like the other walkers.
 
+Real-world evidence (mog head-to-head, docs/research/mog-head-to-head-2026-10-22.md, 2026-10-22): 19 of
+the 107 Excel-saved financial models in the Calipers corpus (calipers/pv_goldens, T-0446), and 2 of its
+round-trip workbooks (roundtrip/i18n_hebrew, roundtrip/lbo_model), contain data tables. Rustsheet
+refuses to load every one of them (`Not Implemented Error: data table formulas`),
+so none of their cells are scored. Mog loads them. Before the full calculation, the import could keep
+the data-table cells as stored constants (Excel's cached results) instead of failing the whole workbook.
+That would be a separate S task if the owner wants it before Phase 2. Priority raised P3 to P2 at the
+owner's request.
+
 ## Acceptance criteria
-- [ ] The 15 probes/data-tables lines leave eval/baseline/probes.txt (`make eval-baseline`) with no new F
+- [x] The 15 probes/data-tables lines leave eval/baseline/probes.txt (`make eval-baseline`) with no new F
       lines; a round-trip test keeps the `dataTable` formula on export.
-- [ ] recalc.md's data-table entry gains an "Ours" line; any work cap is a DEVIATION entry if Excel has none.
-- [ ] `make check` green; reviewers approve.
+- [x] recalc.md's data-table entry gains an "Ours" line; any work cap is a DEVIATION entry if Excel has none.
+- [x] The calipers/pv_goldens cases that fail to load today load and calculate; their known failures in
+      eval/baseline/calipers.txt drop (`rustsheet-eval update-baseline --suite calipers`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Iterative calculation and circular references (T-0401's implementation tasks).
 
-## Blocked because
-Needs the M3 dependency graph and its recalculation of a substituted input (SPEC-0002, T-0401); M3 tasks
-stay blocked until Phase 1 exits (docs/milestones.md). Unblocked when T-0401 is done and its implementation
-tasks provide a way to recalculate a formula with one cell's value substituted.
+## Outcome
+Unblocked at the owner's request (2026-10-23): implemented without the dependency graph (T-0401),
+which decision 0027 defers to Phase 2.
+- Engine: `Worksheet::data_tables` metadata (`DataTable`, `DataTableInput` in types.rs). Result cells
+  hold plain values. After each evaluation, `Model::evaluate_data_tables` (data_tables.rs) recomputes
+  every table in sheet order: for each result cell it puts the header values into the input cells,
+  evaluates the table's formula on demand, and restores the inputs. The workbook is then evaluated
+  again so readers see the results. ISFORMULA and FORMULATEXT treat result cells as
+  `{=TABLE(row,column)}`.
+- Directive 5: at most 2^25 formula evaluations per recalculation; later results are `#NUM!`
+  (recalc.md DEVIATION entry).
+- xlsx: the import reads `<f t="dataTable" ref dt2D dtr r1 r2 del1 del2>` instead of failing the
+  workbook; the export writes it back on the first result cell (round-trip test).
+- Facade `Txn::add_data_table` with undo. The eval adapter adds a spec case's `data_tables`, and the
+  spill-extent check knows their result cells. The eval snapshot reader scores every result cell
+  of an Excel-saved table, not only its first.
+- Eval: probes/data-tables passes 20/20. The 21 Calipers workbooks with data tables now load.
+  Baseline deltas are in the commit; pv23_019 and pv26_014 still fail on iterative calculation
+  (T-0447), not on their tables.
+- Follow-ups: T-0452 (structural edits and writes into result cells), T-0453 (recompute only when
+  needed).
+
+- Review before merge (2026-10-24):
+  - A shared `DataTable::check` bounds each table to 2^20 result cells and a sheet to 1,024
+    tables, and refuses overlaps and inputs among the results. The engine's `add_data_table`, the
+    edit API and the xlsx import all use it, with a typed `DataTableError`.
+  - One recalculation fills at most 2^22 result cells across all tables (recalc.md DEVIATION).
+  - Unprobed choices are marked in recalc.md (T-0459), and the Python mirror is T-0460.
