@@ -3027,3 +3027,61 @@ Evidence: probes/t2436 (57 cases plus computed-scalar).
 Ours: see each owning task.
 Status: VERIFIED (excel-graph)
 Tasks: T-2436
+
+## Inner sub-expressions of the T-2256 gen-m9 statistical cells (T-2475)
+Rule: Excel gives these values for the innermost sub-expressions where the T-2475 probe found ours diverging, each read on a copy
+of its gen-m9 case's Data sheet (the probe's D01..D48 sheets; errors are named, numbers are the full doubles). They are observed
+values, one cell each, recorded so the fix tasks can state the rule behind each: PERMUTATIONA and COMBINA give 1 for the probed
+negative argument; IRR is `#NUM!` on four flow sets where ours converges; PV, NPER, PRICEDISC, DB, ACCRINT, ACCRINTM, YIELDDISC,
+YIELD, T.TEST, T.INV.2T, PERCENTRANK(.INC/.EXC), TRIMMEAN, XMATCH, STEYX and SLOPE give a different error from ours (the
+argument-domain order); TAKE of a LET-bound scalar is that scalar, not a 1x1 array; CELL("contents") is read differently inside
+COUNT and MODE.SNGL; and BINOM.DIST, NORMDIST, WEIBULL(.DIST), BETA.INV, POISSON.DIST, F.INV.RT, NEGBINOMDIST, STDEV.P, SKEW,
+MODE.MULT, PMT and PPMT differ in value or error. NPV's rule is "NPV with a rate of -1 or 1E+300 is #DIV/0!" (financial.md).
+- P!A2 `IRR(D01!C4:E7,-D01!C8)`: `#NUM!` (ours 31622775.851604085; 0620505280d2ea6e A77)
+- P!A28 `PERMUTATIONA(D02!D$12,D02!A12)`: 1.0 (ours `#NUM!`; 097af1ca33638670 A358)
+- P!A35 `COMBINA((-0.5),D03!$A3)`: 1.0 (ours `#NUM!`; 11eb3ab4f4f8104c A90)
+- P!A39 `PV(-D03!B$1,0,-713)`: `#NUM!` (ours `#DIV/0!`; 11eb3ab4f4f8104c A109)
+- P!A45 `PRICEDISC(D03!$A4,D03!D2,0.3,103,(-2.5))`: `#NUM!` (ours `#VALUE!`; 11eb3ab4f4f8104c A160)
+- P!A58 `T.TEST((D03!A11+(-0.5)),(42/D03!$D6),1,(-1))`: `#VALUE!` (ours `#NUM!`; 11eb3ab4f4f8104c A169)
+- P!A70 `TAKE(LET(v,D05!A$11,acc,v,y,"?b",acc),-1,-1)`: 0.0 (ours 64|1x1|0; 1b31092a0d79e5f1 A143)
+- P!A75 `PERCENTRANK.INC(D05!A7:D8,2,-1e-15)`: `#N/A` (ours `#NUM!`; 1b31092a0d79e5f1 A171)
+- P!A78 `WEIBULL.DIST(IRR({-100,100}),1E+8,NORMDIST(40,(D05!A11*1),MAX(D05!C1:C8,D05!C8:C10),(D05!$A$9<D05!B$`: 0.0 (ours `#NUM!`; 1b31092a0d79e5f1 A179)
+- P!A92 `NPER(1E-300,-113,3037,368,1)`: `#DIV/0!` (ours `#NUM!`; 1b31092a0d79e5f1 A260)
+- P!A96 `MODE.MULT(D05!A8:A8,D05!C7:C10,D05!D3:D11)`: `#VALUE!` (ours 64|2x1|2.5;1.005; 1b31092a0d79e5f1 A343)
+- P!A124 `T.INV.2T(D07!$A4,1)`: `#DIV/0!` (ours `#NUM!`; 2138b909d8f810ea A344)
+- P!A127 `BETA.INV(0.025,1e-15,2.5)`: `#NUM!` (ours 2.518020676354722e-31; 2138b909d8f810ea A358)
+- P!A136 `PV((-1+2^-52),165,-978,224,0)`: `#DIV/0!` (ours `#NUM!`; 31f09e6c48ca245c A232)
+- P!A158 `STDEV.P(D10!A9:A12,IFERROR(1/0,D10!$E6),{1,2,3,4,5,6,7,8,9,10})`: 25.559768683380703 (ours 26.354817185647274; 334f3dc9ca937f10 A226)
+- P!A165 `DB(15779,385,37,D11!$B7,D11!C11)`: `#NUM!` (ours `#VALUE!`; 38e4fc309fe199ea A89)
+- P!A198 `ACCRINT(34443,36178,38986,0.05/12,3587,1,5,"true")`: `#VALUE!` (ours `#NUM!`; 44a8841352dc48e9 A7)
+- P!A207 `YIELDDISC(36531,45775,97,RANK.EQ(D14!A9,D14!B9:E11,0),(-1))`: `#NUM!` (ours `#N/A`; 44a8841352dc48e9 A291)
+- P!A214 `YIELD(39681,45662,D14!B$8,3.14159,102,4)`: `#NUM!` (ours 19.040243161919385; 44a8841352dc48e9 A318)
+- P!A216 `POISSON.DIST(((D15!E12+0.2)*(1000000000000000.0*1000000000000000.0)),((D15!D5-D15!D10)+HOUR(D15!A9))`: 1.0 (ours `#NUM!`; 5919660b7bb4d195 A88)
+- P!A222 `TTEST(((D16!C6+D16!E$6)/FINV(1.5,3,0.3)),IRR(INDEX(D16!D3:E9,D16!$C7),ROUNDDOWN(1,42)),2,(INDEX(D16!`: `#VALUE!` (ours `#REF!`; 5cebac1f02bf30f2 A311)
+- P!A245 `SKEW({1E+200,1E+200,-1E+200},2.5,D18!D5)`: `#DIV/0!` (ours 0.0; 6e18550e9fc9c1b9 A347)
+- P!A266 `STEYX(ERROR.TYPE(SUMPRODUCT(D20!C1:E5,7)),MATCH((D20!$E$8>=D20!$E7),D20!A11:C11))`: `#NUM!` (ours `#DIV/0!`; 775d053de498b8c7 A98)
+- P!A273 `SLOPE(CELL("row",D20!E3),(0.1-TIME(5,16,59)))`: `#NUM!` (ours `#DIV/0!`; 775d053de498b8c7 A112)
+- P!A279 `(TAKE(D20!C8:E12,D20!B12,D20!$A7)-(D20!A$3/D20!A2))`: `#DIV/0!` (ours 64|1x1|#2; 775d053de498b8c7 A235)
+- P!A317 `F.INV.RT(1-1E-10,8,7)`: 0.0012599666259138292 (ours 0.0012599666259138298; 873f30d2bf76f8db A308)
+- P!A326 `MODE.SNGL(CELL("contents",D26!C$5))`: `#VALUE!` (ours `#N/A`; 92d4fa29e5510f1e A98)
+- P!A330 `IRR(D26!C8:E12,1E-10)`: `#NUM!` (ours 399999999999998.7; 92d4fa29e5510f1e A236)
+- P!A341 `BINOM.DIST(3,1E+15,1E-20,FALSE)`: `#NUM!` (ours 1.6666500000833278e-16; 9bc247733a1ca9fa A5)
+- P!A353 `TRIMMEAN(D28!A6,D28!C2)`: `#NUM!` (ours `#VALUE!`; 9bc247733a1ca9fa A360)
+- P!A396 `PERCENTRANK.EXC(D31!A9:C9,D31!B12,D31!B$3)`: `#N/A` (ours `#NUM!`; a4090567758520df A101)
+- P!A407 `WEIBULL(D32!E2,D32!E2,D32!$E11,D32!$A$8)`: `#NUM!` (ours 1.0; a5342a7e24fd803e A166)
+- P!A417 `NEGBINOMDIST(7,9,1E-10)`: 6.434999995495541e-87 (ours 6.434999995495502e-87; a63d1c7d6f96c56d A92)
+- P!A424 `IRR(D33!C4:E8,((-0.5)*D33!D4))`: `#NUM!` (ours -0.9710878190154174; a63d1c7d6f96c56d A111)
+- P!A455 `PERCENTRANK(D36!C11:E12,(-0.0001),1000000000000000.0)`: `#DIV/0!` (ours #NUM!; bbab6562e88b70e8 A290)
+- P!A462 `PMT(D37!C9,346,96301,42,1)`: -278.44797687866065 (ours -278.4479768786607; bcb1105c61a2649d A97)
+- P!A491 `COUNT(D38!B2:B10,CELL("contents",D38!C8))`: 3.0 (ours 2.0; c2684066d8df263e A201)
+- P!A517 `DB(79665,(-100),17,9)`: `#NUM!` (ours #NUM!; cb61169f4c033d4b A272)
+- P!A520 `SKEW(D41!D11:D12,D41!D10)`: 2.4980018054066022e-15 (ours 2.9976021664879227e-15; d208bbafc3bc1997 A262)
+- P!A543 `PPMT(100,5,217,4143,669,1)`: 0.0 (ours 4.768374219565885e-5; d910f000b60e2eac A20)
+- P!A549 `XMATCH(COUNTA(D45!B8),{3;1;4;1;5},(D45!$C1+D45!E8))`: 2.0 (ours `#N/A`; eccd03df42e40006 A21)
+- P!A563 `IRR(D47!A6:C8)`: `#NUM!` (ours -0.8583707295763425; eedd629f3d69fdda A297)
+- P!A567 `ACCRINTM(32899,36547,D48!C9,2035,3)`: `#VALUE!` (ours `#NUM!`; f82473275380882e A131)
+- P!A572 `NORMDIST(1E+300,MAX(D48!C11:C12),2.5,0)`: `#NUM!` (ours 0.0; f82473275380882e A143)
+Evidence: probes/t2475-stat-subexpressions (excel-graph, 2026-10-24, T-2475); the owning gen-m9 cells are listed in T-2619 to T-2622.
+Ours: as given per cell (T-2619 IRR, T-2620 financial, T-2621 statistical, T-2622 TAKE, CELL, XMATCH).
+Status: VERIFIED (excel-graph; the per-cell values, not yet the rules behind them)
+Tasks: T-2475, T-2619, T-2620, T-2621, T-2622

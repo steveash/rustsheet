@@ -89,11 +89,12 @@ Cells:
 - gen-m9/f82473275380882e.case.json (2): Calc!A131, A143
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2256): these 83 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] Visible parity (gen-m9, T-2256): each of these 83 known-failure lines is owned by a `campaign: visible` follow-up
+      (T-2618 to T-2623), which removes it from eval/baseline/gen-m9.txt; a probe task cannot fix them (Out of scope). The probe's
+      121 new known-failure lines (written by `make eval-baseline`) are the divergences those follow-ups own.
 - [x] A probe case per source case (or one combined case) holds the sub-expressions, filled from excel-graph and committed.
 - [x] Every cell above is moved to a fix task (new or extended) whose Context lists it; each quirk found is in docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the inner functions (their own tasks).
@@ -168,7 +169,7 @@ that is itself a quirk to record):
 
 No diverging sub-expression in the probe (31): 097af1ca33638670 A14, 097af1ca33638670 A89, 17c110a53924beb8 A300, 1db18890916ee643 A89, 334f3dc9ca937f10 A125, 3b7990bd4e3307ba A98, 41248d1cb153c66e A394, 6e18550e9fc9c1b9 A69, 73f053591a54bc43 A226, 7980ffb6095a340d A146, 80586b859b73c87d A67, 873f30d2bf76f8db A96, 928d08e3e1eecb5f A333, 941c409532603d32 A148, 9bc247733a1ca9fa A207, 9e2225ead8a6a07b A100, 9e2225ead8a6a07b A292, a2262ea466fcc142 A316, a5342a7e24fd803e A322, b9a32ce9a1fd0d71 A14, b9a32ce9a1fd0d71 A142, b9a32ce9a1fd0d71 A212, bcb1105c61a2649d A230, c2684066d8df263e A65, c4635963fc926284 A12, c4635963fc926284 A92, c4635963fc926284 A153, d37313406b9f6e55 A137, d37313406b9f6e55 A182, d8f44d556674c2fd A398, ede0323c389fc703 A7
 
-Families seen: NPV with a rate of -1 or 1E+300 is `#DIV/0!` (ours `#NUM!` or a value; 5 cells); IRR is `#NUM!` where ours returns a
+Families seen: NPV with a rate of -1 or 1E+300 is `#DIV/0!` (ours `#NUM!` or a value; 6 cells); IRR is `#NUM!` where ours returns a
 rate (4; T-1686); argument-domain error order of PV, NPER, PRICEDISC, DB, ACCRINT, ACCRINTM, YIELDDISC, T.TEST, T.INV.2T,
 PERCENTRANK(.INC/.EXC), TRIMMEAN, XMATCH (one or two cells each); PERMUTATIONA and COMBINA with a negative argument are 1; CELL("contents")
 in COUNT and MODE.SNGL; MODE.MULT, STDEV.P, SKEW, F.INV.RT, NEGBINOMDIST, PMT, PPMT, BINOM.DIST, NORMDIST, WEIBULL(.DIST), BETA.INV
@@ -176,8 +177,9 @@ and YIELD values; TAKE of a LET scalar is a scalar (`TAKE(LET(..),-1,-1)`), and 
 Owners: T-2618 (NPV, 6 cells), T-2619 (IRR, 4), T-2620 (financial domain errors and digits, 12), T-2621 (statistical domain
 errors and extreme values, 23), T-2622 (TAKE, CELL("contents"), XMATCH, a LAMBDA joined as text, 5), T-2623 (the 31 cells whose
 probed sub-expressions all match Excel and the 2 GETPIVOTDATA cells, 33). Quirks recorded: financial.md "NPV with a rate of -1 or
-1E+300 is #DIV/0!", arrays.md "An uncalled LAMBDA is one value" (joined as text); the other families' rules are their tasks'
-to state once fixed.
+1E+300 is #DIV/0!", arrays.md "An uncalled LAMBDA is one value" (joined as text), and every other family's per-cell Excel
+values in statistics.md "Inner sub-expressions of the T-2256 gen-m9 statistical cells (T-2475)"; the rules behind them are the
+follow-ups' to state.
 
 ## Outcome
 probes/t2475-stat-subexpressions (574 cells, excel-graph) gives 50 of the 83 cells an innermost diverging sub-expression; every cell
