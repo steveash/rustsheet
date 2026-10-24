@@ -338,14 +338,15 @@ Qty 4, 10, 0, 2, 1, -4, 7, 5, Price 2.5, "x", 4, TRUE, 10, 0.5, 100, -1 and Date
   (row 4's date is empty, so one date). That is the reference moved one row up per record (row 4 reads B3 = 10, row 9
   reads B8 = 7) except for the first record, row 3, whose moved reference B2 (= 4, the header row) would also pass but
   does not match. Ours matches rows 3, 4 and 9 (`DVAR` 25, `DSTDEVP` 4.08248290463863, `DCOUNTA` 3, `DAVERAGE` 45145.5).
-- `DGET(Db!A2:D9,4,Db!O1:O2)` is 45291 although two records match: the other one's date (row 4) is empty, so DGET seems
-  to count only records with a non-empty field (ours `#NUM!`). UNVERIFIED reading; one cell.
+- `DGET(Db!A2:D9,4,Db!O1:O2)` is 45291 although two records match: the other one's date (row 4) is empty. DGET counts
+  only matching records whose field cell is non-empty: one such record gives its value, none `#VALUE!`, more than one
+  `#NUM!` (probes/db-get-blank-field N1-N8, excel-graph 2026-10-24, T-2422; implemented in `fn_dget`).
 - A database on another sheet (Data) with the criterion on Db matches no record: `DCOUNTA(Data!B4:B6,1,Db!O1:O2)`,
   `DMAX(Data!B2:E4,4,..)`, `DPRODUCT(Data!B11:E12,3,..)`, `DPRODUCT(Data!C10:E12,3,..)`, `DPRODUCT(Data!C6:D10,2,..)` are
   0, `DAVERAGE(Data!A10:C12,2,..)` and `DVAR(Data!D2:E12,1,..)` `#DIV/0!` and `DGET(Data!A7:D11,2,..)` `#VALUE!` (ours
   finds records: 1, 1, 1, -0.0042, 123456789.123, 3.14159, 549.25, `#NUM!`).
 - An unknown criteria header is ignored over a Data database too: `DGET(Data!B6:E8,4,Db!N1:N2)` (N1 "Nope") is -0.5
-  (ours `#NUM!`).
+  (DGET skips the blank E8, above).
 Evidence: gen-m9 4dc761698ca23149 A129, 74779cff2810ccf4 A52, fa8ee59f2f1be7e0 A332, 7a819ffbbeff8fcc A303,
 5bdef392d16a5efb A161, f066968376660329 A292, A205, A313, d193e8b4ab820f52 A375, A260, f61a73cd9af21e6d A289,
 c9d7659896d95368 A82, A1, 6d16afd40600302b A365, cb80ca09be0e12bc A52, d9d55972b50e55e8 A106, 88cabddc4935351c A255

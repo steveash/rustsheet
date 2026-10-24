@@ -21,14 +21,14 @@ part of a pivot; no oracle evidence backs it, nor the drop. The formula oracle c
 workbook range `insert` and `delete` actions (`shift: Down/Up/Right/Left` on an `entireRow`/`entireColumn` range) on a workbook
 holding a pivot can, as can a recorded desktop observation (decision 0039: desktop-only evidence never blocks a task).
 Cases: insert rows above, at the first row, inside and just below a pivot; delete rows wholly above, its first row, an inner
-row, its last row, every row of it, and a block straddling its first row; the same for columns. With a report filter (page field) above the body, also an insert
+row, its last row, every row of it, and a block straddling its first row; the same for columns.
+Also moves (cut and insert of whole rows or columns; the engine's `Model::move_pivots`, T-2401): lines above or left of a pivot moved past it, its whole span moved, a group straddling an edge, lines moved entirely inside it; the same for columns. With a report filter (page field) above the body, also an insert
 between the filter area and the body (the engine only checks `<location>`; page-field pivots are `#REF!` today).
 
 ## Acceptance criteria
-- [ ] web.md "Pivot tables and structural edits" lists each case above with Excel's outcome and its evidence (Graph run or desktop observation, dated).
+- [ ] web.md "Pivot tables and structural edits" lists each case above with Excel's outcome (inserts, deletes and moves) and its evidence (Graph run or desktop observation, dated).
 - [ ] Where Excel differs from the engine's rule, a follow-up engine task is filed with the case.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Row/column moves (T-2401).
 - Changing the engine (follow-up tasks).

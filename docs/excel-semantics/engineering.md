@@ -349,9 +349,21 @@ Tasks: T-1385
   (`IMPOWER(..,170891300)` = `-0.999999886163532+1.2252504385364E-08i`; probes/eng-impower-angle-cut A9-A17,
   eng-impower-past-cut A15; T-1950; excel-graph). Mac desktop's cached IMABS digits in COMPLEXs.xlsx match neither
   (below, "neither `sqrt(x²+y²)` nor `hypot`"), unexplained. See "IMPOWER past the angle cut" for bases past the cut.
-Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950).
+- IMLN, IMLOG10 and IMLOG2 use the same modulus: `IMLN("0.7071067811865476+0.7071067811865476i")` is
+  `-6.66133814775094E-16+0.785398163397448i` (ln of 0.9999999999999993; `sqrt` would give -7.77E-16), IMLOG10 `-2.89298239965986E-16+..`,
+  IMLOG2 `-9.61027951144476E-16+..` (probes/eng-imln-modulus A1, A6, A11; T-2117). IMSQRT keeps `sqrt(x²+y²)`: its first cell cannot tell (15 digits agree) and Excel's "0" for `3E-200+4E-200i` and `1E-170+1E-170i` (x² underflows; A18, A20) matches only that form.
+- IMLN, IMLOG10 and IMLOG2 are `#NUM!` when both parts are nonzero and `x²+y²` is infinite or subnormal: `1E153+1E153i` works,
+  `1E154+1E154i` (sum 2E308) and `1E-154+1E-154i` (sum 2E-308 < 2.2250738585072014E-308) are `#NUM!`, `1.5E-154+1.5E-154i`
+  (2.25E-308), `1E-160+1i` and `1.1E154+0.1E154i` work, and a zero part exempts the number (`IMLN("1E-160+0i")`,
+  `IMLN("1E160i")`, `IMLN("1E154+0i")` answer). Implemented (T-2117; probes/eng-imln-modulus-range A1-A42, A71-A78, A81-A84).
+- Not yet fitted (T-2572): Excel seems to flush a subnormal square to 0 inside the modulus: `IMLN("1E-154+1E-153i")`
+  is -352.295519228089 (= ln 1E-153, the 1E-154 part ignored), where `hypot` gives -352.290544062662; IMSQRT has its own
+  range rule (`IMSQRT("1E154+1E154i")` is "0", `IMSQRT("1E155+1E155i")`, `IMSQRT("1E160+0i")` and `IMSQRT("3E200+4E200i")` are `#NUM!`,
+  `IMSQRT("1E-155+0i")` is "0"); IMABS of 1E±150..155 pairs differs from `hypot` by 1 ulp
+  (probes/eng-imln-modulus-range A43-A70, A79, A80, eng-imln-modulus A17).
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950); probes/eng-imln-modulus, eng-imln-modulus-range (excel-graph, 2026-10-21, T-2117).
 Status: VERIFIED (excel-graph)
-Tasks: T-1766, T-1892, T-1950
+Tasks: T-1766, T-1892, T-1950, T-2117, T-2572
 
 ## IMPOWER past the angle cut
 Rule: once IMPOWER's angle `atan2(y,x)·n` passes the cut (about 134217727), Excel's sine and cosine both read as the
@@ -709,3 +721,10 @@ Rule: BESSELK below the smallest normal double is 0: `BESSELK(705,0)` is 3.13529
 Rule: BESSELI is `#NUM!` for every order from x = 710 on, however large (`BESSELI(1E+15,2)`, `(-1000000000000002,3)`); `BESSELI(705,0)` is 2.26205E+304 and 700 is finite.
 Rule: BITLSHIFT/BITRSHIFT truncate the shift amount first and limit it after (`BITLSHIFT(1,53.5)` and `(1,-53.5)` are 0; 54 is `#NUM!`, 54.x not probed). A number 0 shifts to 0 by any amount (`BITLSHIFT(0,1E+10)`). For a nonzero number an effective left shift of 48 is `#NUM!` (`BITLSHIFT(1,48)`, `BITRSHIFT(1,-48)`), of 49 to 53 places is 0 (not the overflow `#NUM!`), 54 and more is `#NUM!`; a right shift of 48 to 53 places is 0, 54 is `#NUM!`.
 Not fixed here: `BESSELK(700,4)` and `(705,4)` miss in the 15th digit (T-2549); `BESSELI(2.5,100001)` and `(2.5,1E+6)` are 0 in Excel and `#NUM!` here (BESSEL order cap DEVIATION, pinned in probes/deviations); `BESSELK(2.5,171)` onward overflows to `#NUM!` (170 is 7.09E+287, 200 and 1000 are `#NUM!`).
+
+## BESSELJ and BIN2* cells of the T-2436 sub-expression probe
+Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; ours 5.29E-09,
+T-2547), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (ours `#VALUE!`, T-2544); an `IMSUM` of
+an empty array is `#VALUE!` (arrays.md "An empty array as a function argument").
+Status: VERIFIED (excel-graph), one cell each
+Tasks: T-2547, T-2544, T-2580

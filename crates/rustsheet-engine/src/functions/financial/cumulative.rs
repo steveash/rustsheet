@@ -90,7 +90,8 @@ impl Model {
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let nper = self.cast_number_no_bools_ref(nper, cell)?;
         let pv = self.cast_number_no_bools_ref(pv, cell)?;
-        let start = self.cast_number_no_bools_ref(start, cell)?.ceil();
+        let given_start = self.cast_number_no_bools_ref(start, cell)?;
+        let start = given_start.ceil();
         let end = self.cast_number_no_bools_ref(end, cell)?.trunc();
         // 0 at the end of the period, 1 at the beginning of the period
         let period_start = match self.cast_number_no_bools_ref(period_type, cell)? {
@@ -100,9 +101,16 @@ impl Model {
         };
         // An end period past nper is #NUM!, also below nper + 1: `CUMIPMT(0.01,100.5,1000,1,101,0)`
         // (probes/fin-cumipmt-period-bound A20-A22).
+        // The start period is compared with 1 as given, before it rounds up: 0.3, 0.5 and 1E-15 are
+        // `#NUM!` although they round up to 1 (gen-m9 0a957119475760c5 A40, 3aa168259335be54 A10,
+        // 6376e27be7a05871 A306, bc04c1f478c9896c A260; financial.md "gen-m9 financial sweep").
         // Written as negated `>=`/`<=` so a NaN argument fails a check too.
-        let valid =
-            start <= end && rate > 0.0 && nper > 0.0 && pv > 0.0 && start >= 1.0 && end <= nper;
+        let valid = start <= end
+            && rate > 0.0
+            && nper > 0.0
+            && pv > 0.0
+            && given_start >= 1.0
+            && end <= nper;
         if !valid {
             return Err(num_error(cell));
         }

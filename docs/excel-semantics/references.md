@@ -65,6 +65,10 @@ A scalar function over a one-sheet span's range lifts and spills like the plain 
 exactly as `=ABS(Data1!A1:A3)`, `ROWS(ABS(..))` is 3 and `SUM(ABS(Data1:Data1!A1:B1))` 4, while the two-sheet
 `=ABS(Data1:Data2!A1:A3)` is `#REF!`. Excel stores the one-sheet span as the plain reference: `FORMULATEXT` of
 `=ABS(Data1:Data1!A1:A3)` is `=ABS(Data1!A1:A3)`.
+In a legacy-import workbook (formula stored without the dynamic-array flag) the span takes the automatic `@` exactly as the plain
+range does (probes/3d-ref-one-sheet-span-legacy-at, excel-graph, 2026-10-24, T-2564): `SIN(Data1:Data1!A1:A10)` is 0.8414709848078965
+with `FORMULATEXT` `=SIN(@Data1!A1:A10)`, identical to `SIN(Data1!A1:A10)`; and (dynamic-array formulas, explicit `@`) `FORMULATEXT` of
+`=@Data1:Data1!A1` is `=@Data1!A1`, the same as `=@Data1!A1` (value 1).
 COUNTBLANK of an error (probes/countblank-choose-errors, excel-graph, 2026-10-10, T-1181): an argument that evaluates to an error,
 not a reference, gives that error: `COUNTBLANK(Data1:Nope!A1:B3)` and its IF and CHOOSE forms `#NAME?`, `COUNTBLANK(CHOOSE(1,#N/A))`,
 `CHOOSE(1,NA())` and `IF(TRUE,NA())` `#N/A`, an empty intersection in CHOOSE `#NULL!`; also (probes/countblank-error-forms-b,
@@ -694,7 +698,9 @@ forms were single-formula workbooks, not kept as cases (a refused workbook gives
 Status: VERIFIED (Excel for the web)
 Implemented in: expressions/parser/lambda.rs (`Parser::chain_calls`, after a call and a name call), parser/operands.rs
 (`parse_named_call`, after a built-in `is_reference_operand` accepts), node_frames.rs (a called value,
-`Model::call_variable`). Open: ours gives `#NAME?` for the called TAKE, DROP, TRIMRANGE and XLOOKUP results (T-2499).
+`Model::call_variable`), functions/logical/lambda.rs (`Model::evaluate_callee`: a called TAKE, DROP, TRIMRANGE or
+XLOOKUP over a range is the range it picks, `#REF!`; probes/chained-calls-builtin-take, -drop, -trimrange, -xlookup,
+T-2499).
 Tasks: T-2038, T-2405, T-2499, T-2501
 
 ## A defined name may be an intersection
@@ -1719,14 +1725,14 @@ Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2
 Value contexts hold the same way (probes/legacy-if-arm-other-references K-T, excel-graph): `=IF(TRUE,OFFSET(B1,0,0,6))`
 shows `=@IF(TRUE,OFFSET(B1,0,0,6))`, `=ABS(IFS(TRUE,B1:B6))` `=ABS(@IFS(TRUE,B1:B6))`,
 `=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)` is 3. A single-cell INDEX arm, `=IF(TRUE,INDEX(B1:B6,3))`, shows no
-`@` at all in Excel; ours puts `@` on the IF (known failure, probes M12, filed as a follow-up task).
+`@` at all in Excel; ours matches (`returns_single_cell_index`, T-2326) for exactly that shape: an IF whose value arms are all `INDEX(one-column range, literal non-zero row)`. UNVERIFIED, so still `@`: IFS, a 2-D range (two-argument INDEX gives a whole row), a computed row (`INDEX(B1:B6,1+2)`), mixed arms.
 Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
 `=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
 `=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).
-Excel drops the `@` for both one-cell arms (M12, S12), which T-2326 needs.
+Excel drops the `@` for both one-cell arms (M12, S12).
 Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
-Tasks: T-1935, T-1969
+Tasks: T-1935, T-1969, T-2326
 
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
@@ -2077,7 +2083,7 @@ parser/stringify/bound_variables.rs) picks the names the R1C1 storage escapes;
 `is_out_of_range_r1c1_name` (names never resolved: `name_operand`, INDIRECT, the R1C1 lexer).
 Dotted ranges in formulas: `consume_dotted_corner` (lexer/ranges.rs; the forms with `$` or
 whitespace) and `parse_dotted_a1_range` through `dotted_range_operand` (parser/operands.rs; an
-identifier such as `A1.B2`, unless an enclosing LET or LAMBDA binds it: `bind_reference_shaped_name`).
+identifier such as `A1.B2`, unless an enclosing LET or LAMBDA binds it: `bind_name`).
 The unknown call `A1.INDEX(...)` keeps its spelling (spelling rule in "Unknown function call names", T-1719).
 Status: VERIFIED (excel-graph)
 Tasks: T-1652, T-1659
@@ -2097,7 +2103,7 @@ Typed, Excel refuses the same formulas: entering `=LET(f1,1,f1+1)`, the `add5` f
 rejected with 400 `InvalidArgument`, while `=LET(x,1,x+1)` entered so gives 2. The refused
 entries cannot be committed as cases.
 Ours: the A1 parser reads a cell-shaped name in a LET or LAMBDA name position as the variable,
-and every later use within the call too (`bind_reference_shaped_name`, parser/operands.rs, the
+and every later use within the call too (`bind_name`, parser/operands.rs, the
 mechanism of the Lotus-style names above), whether the text is typed or stored; a use before the binding (`LET(x,F1,F1,2,...)`) stays the cell (its stored
 form would prefix it; unprobed). The R1C1 storage writes such a name as `_xlpm.f1` (the R1C1
 lexer refuses a cell-shaped identifier), and the xlsx export as `_xlpm.add5` like any bound
@@ -2114,7 +2120,7 @@ Evidence: probes/let-cell-shaped-name-stored, let-cell-shaped-name-typed-control
 lambda-escaping-closures H4, H5 (excel-graph, 2026-10-23); the refused typed entries were
 single-cell cases like -typed-control (`rustsheet-oracle fill`, 2026-10-23), not committed.
 Status: VERIFIED (excel-graph)
-Implemented in: `bind_reference_shaped_name`, `binds_reference_shaped_name` (parser/operands.rs),
+Implemented in: `bind_name`, `binds_reference_shaped_name` (parser/operands.rs),
 `Parser::parse_operand`, `reads_back_as_cell` (parser/stringify/bound_variables.rs); the typed
 refusal: `Parser::set_typed`, `Parser::typed_refusal` (parser/mod.rs), `Model::set_typed_user_input`
 (typed_input.rs), `Input::StoredFormula` (crates/rustsheet edit.rs).
@@ -2146,8 +2152,9 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   its `#Totals` is `#REF!` (column-range 44cecbb1ecd5b2da K180, K23, K185).
 Status: VERIFIED (excel-graph)
 Implemented in: partly; the `@` shorthand is implemented (T-1672), rows outside the table and reversed ranges (T-1675, `structured_reference_operand` in operands.rs),
-totals rows from the eval adapter T-1671.
-Tasks: T-1607, T-1671, T-1672, T-1675
+totals rows from the eval adapter T-1671. Since T-1699 (SPEC-0016 step 2) `#This Row` is decided at the evaluating cell's row
+(`Node::ThisRowKind`, resolved by `Node::ungrouped_at`), not when the formula is parsed, so it follows the table when the table list changes.
+Tasks: T-1607, T-1671, T-1672, T-1675, T-1699
 
 ## Structured references: names and item specifiers
 Rule (gen-m8b, excel-graph, 2026-10-16, T-1607): table names, column names and the item specifiers
@@ -2199,7 +2206,7 @@ through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Re
   have (`=SUM(Sales[Nope])`) is loaded by Excel for the web with the reference rewritten: `#REF!`, and FORMULATEXT prints
   `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
 Status: VERIFIED (excel-graph)
-Implemented in: partly (T-2195, SPEC-0016 step 1). Every structured reference except `#This Row` (T-1699)
+Implemented in: partly (T-2195, SPEC-0016 step 1; T-1699, step 2). Every structured reference, `#This Row` included,
 is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference.rs) and its area is
 re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
 first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
@@ -2210,10 +2217,20 @@ values match Excel except where the table grows (`ROWS(Sales)` stays 4, `ROWS(Sa
 range; the plain-range quirk is not implemented. The move and grow classes are T-2297, the two edge rows
 and the quirk T-2321. With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
-is a parse error too (`#ERROR!`, FORMULATEXT the original text; T-2322). FORMULATEXT shows the stored
+(xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
+(`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
 canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
 table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322
+A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
+that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
+its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2297, T-2325).
+A copy and paste (not a cut) keeps the text, so the copy reads the row it lands on (hand expectation, unprobed; before step 2 it
+kept reading the old row). A duplicated sheet, which gets no table, lowers each `#This Row` cell on its own row, so it reads
+what it read (`#VALUE!` off the data rows). A formula on another sheet that refers to a deleted sheet's table is `#REF!` on
+every row, off the data rows too (before step 2 those were `#VALUE!`), which matches "Delete the table's sheet" below
+(table-delete-sheet: every structured reference becomes `#REF!`). A defined name has no cell, so its `#This Row` is resolved
+at row 1, where its body is parsed, as before step 2 (unprobed, hand: Excel may resolve it at the calling cell's row; T-2595).
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595
 
 ## Structured references under row deletes, column edits, convert, table and sheet delete
 Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases
@@ -2338,8 +2355,19 @@ The name is bound inside its own value expression too, so it hides the defined n
 `LET(Pv,LAMBDA(a,Pv),Pv(1))` (B2). It does without a defined name too: `LET(y,LAMBDA(a,y),y(1))` and
 `LET(Y,LAMBDA(a,y),y(1))` are `#NAME?` (probes/let-lambda-body-own-name A1:A2, excel-graph, 2026-10-24), as are
 `LET(y,y+1,y)` and a forward use, `LET(f,LAMBDA(a,g(a)),g,LAMBDA(a,a+1),f(1))`; `LET(y,LAMBDA(a,a+1),y(1))` is 2.
-A LET name spelled like a built-in function wins in call position: `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Pv,LAMBDA(a,Pv),Pv(1))` `#NAME?` (probes/let-lambda-body-own-name A6:A7); the engine reads `Pv(1)` as the function PV and gives `#ERROR!` (open, T-2567). In the engine the parser binds a LET name in its own value (so the defined name stays hidden there), but the evaluator gives it no value there: `let_scope` patches ids only into the later pairs and the body (T-2558).
+A LET name or LAMBDA parameter spelled like a built-in function, called, is the variable only in the stored form, where the call is written `_xlpm.Pv(1)`; typed, the function always wins. Stored (spec2xlsx writes every same-spelled word inside the LET or LAMBDA call as `_xlpm.`), in any case and wherever the name is in scope: `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Pv,LAMBDA(a,Pv),Pv(1))` `#NAME?` (probes/let-lambda-body-own-name A6:A7); `LET(abs,LAMBDA(a,a*2),ABS(-3))` is -6, `LAMBDA(Pv,Pv(2))(LAMBDA(a,a+1))` 3, `LET(If,LAMBDA(a,a+1),If(1))` 2 and `LET(Today,LAMBDA(a,a),Today(4))` 4; the call takes the LAMBDA's arity, so `LET(Sum,LAMBDA(a,a*2),SUM(1,2))`, `PV(1,2,3)` and `Pv()` are `#VALUE!`; a bound non-LAMBDA called, `LET(Pv,2,Pv(1))`, is `#NAME?`; out of the LET's scope the function is back (`LET(x,LET(Sum,..,Sum(1)),SUM(x,1))` is 3) (probes/let-name-function-spelled-call, excel-graph, 2026-10-24). Typed through Excel's input parser, the call is the function, and FORMULATEXT shows it upper-cased: `=LET(Sum,LAMBDA(a,a*2),Sum(3))` is 3 (`SUM(3)`), `=LET(sum,SUM(1,2),sum*2)` 6, `=LET(abs,LAMBDA(a,a*2),ABS(-3))` 3, `=LAMBDA(Abs,ABS(-2))(5)` 2, `=LET(x,LET(Sum,..,Sum(1)),SUM(x,1))` 2; and `=LET(Pv,LAMBDA(a,a),Pv(1))`, `=LAMBDA(Pv,Pv(2))(LAMBDA(a,a+1))` and `=LET(Pv,2,Pv(1))` are refused (Graph PATCH 400), as `=PV(1)` is (probes/let-function-name-typed-*, excel-graph, 2026-10-24). So a real file never holds a bare call of a bound name: Excel writes `_xlpm.` on every use. Probing the stored form with a call of the function inside the name's own value or before its binding measures the case builder, not Excel: it prefixes those too (`LET(Sum,SUM(1,2),Sum)` is stored `_xlpm.SUM(1,2)` and is `#NAME?`). In the engine the parser records every LET name and LAMBDA parameter declared bare (`bound_names`) and, in A1 text that is not typed, skips the function lookup for a callee so bound (`calls_bound_name`, T-2567): that is unprefixed stored text (`Input::StoredFormula`, the harness's case formulas), which stands for the builder's `_xlpm.` file. Excel's files (xlsx import, also A1 text) declare `_xlpm.Sum`, so a bare `SUM(` there stays the function (`LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)` is 6, as typed-05), and `_xlpm.Sum(` is the variable; how Excel opens a third-party file that declares the name bare is unprobed (the engine reads it like the harness text); the engine does not refuse the typed `=LET(Pv,LAMBDA(a,a),Pv(1))` (open, T-2568). In the engine the parser binds a LET name in its own value (so the defined name stays hidden there), but the evaluator gives it no value there: `let_scope` patches ids only into the later pairs and the body (T-2558).
 Evidence: probes/let-name-shadows-defined-name A1-A13, B1-B3 (excel-graph, 2026-10-23 and 2026-10-24). Implemented in the parser
-(`bind_reference_shaped_name`, which also skips the defined-name lookup for bound names).
+(`bind_name`, which also skips the defined-name lookup for bound names).
 Status: VERIFIED (excel-graph)
-Tasks: T-2057
+Tasks: T-2057, T-2558, T-2567
+
+## INDIRECT: a 1x1 array a1 argument is #VALUE! (T-2436)
+Rule: INDIRECT's a1 argument given as a one-element array is `#VALUE!`, while a scalar boolean is read as usual and a longer
+array lifts: `INDIRECT("B1",{1})` and `INDIRECT("B1",{TRUE})` are `#VALUE!`, `INDIRECT("B1",TRUE)` is B1's 5 and
+`ROWS(INDIRECT("B1",{1;1}))` 2 (probes/t2436/computed-scalar A39:A42); in the sweep `INDIRECT("Data!B3",TOCOL(2,0,Data!A5))`
+is `#VALUE!` (06b4e8f5de409d5e A261) and `INDIRECT("Data!A1",FILTER(..)<6 numbers>)` six `#VALUE!` elements
+(f2bd5f380ec002bf A383). This answers T-2347's question for INDIRECT's a1 argument (ref_text is still unprobed).
+Evidence: probes/t2436/computed-scalar, probes/t2436/06b4e8f5de409d5e, probes/t2436/f2bd5f380ec002bf (excel-graph, 2026-10-24).
+Ours: the 1x1 array read as its element (5); T-2577.
+Status: VERIFIED (excel-graph)
+Tasks: T-2577, T-2347

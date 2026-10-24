@@ -62,7 +62,18 @@ Cells:
 - gen-m9/d912671baa1364aa.case.json (1): Calc!A303
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A72, A112
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `YIELD(36563,45559,SUM(..)<999999999999995>,107,107,2,1)` (a huge rate) is `#NUM!` (ours 10.571526228899263) and `MDURATION(<-1.5>,46394,COVARIANCE.P(..)<#N/A>,100,2)` `#NUM!`, the settlement check before the coupon's error (ours `#N/A`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/320d51765af9b6b7 Calc!A329 `=CHITEST(YIELD(36563,45559,SUM(Data!B11:B12,Data!B$8),107,107,2,1),(DAY(43015)-ODDLPRICE(35397,38233,33415,1E-300,Data!B2,109,4)))`: Excel #NUM!, ours #N/A; inner `YIELD(36563,45559,SUM(Data!B11:B12,Data!B$8),107,107,2,1)` Excel #NUM!, ours 10.571526228899263
+- gen-m9/58e3253bbd3a7a82 Calc!A143 `=EXPONDIST((-(-2.5)/MONTH(6421)),MDURATION((Data!B11+Data!D4),46394,COVARIANCE.P(Data!C7,Data!C10:E10),100,2),FALSE)`: Excel #NUM!, ours #N/A; inner `MDURATION((Data!B11+Data!D4),46394,COVARIANCE.P(Data!C7,Data!C10:E10),100,2)` Excel #NUM!, ours #N/A
+Cells:
+- gen-m9/320d51765af9b6b7.case.json (1): Calc!A329
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A143
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 50 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: for each of the four functions, an out-of-domain argument before an error argument, and an error argument before an out-of-domain one.

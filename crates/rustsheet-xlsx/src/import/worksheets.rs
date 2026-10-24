@@ -754,6 +754,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // One parser for the whole sheet: building one clones the defined names
     // and tables, which is far too much to do once per formula cell.
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
+    parser.set_loaded(true);
     // The cells are streamed; what is left of the worksheet is small and is
     // read as a tree.
     let SheetDataXml {

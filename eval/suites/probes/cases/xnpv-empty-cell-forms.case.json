@@ -1,0 +1,19 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2599: XNPV with a one-cell values range over an empty cell, and an empty single dates cell (follow-on to xnpv-empty-values-cell). A2 empty, B11 = 100.",
+ "tags": ["M2", "probe", "T-2599"],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "B11": 100,
+    "C1": "=XNPV(1,A2:A2,B11)",
+    "C2": "=XNPV(1,A2:A2,B11:B11)",
+    "C3": "=XNPV(1,B11,A2)",
+    "C4": "=XNPV(1,B11,A2:A2)",
+    "C5": "=XNPV(1,A2,A2)"
+   }
+  }
+ ]
+}

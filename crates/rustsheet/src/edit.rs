@@ -331,7 +331,7 @@ impl Txn<'_> {
             Input::Parse(text) | Input::Formula(text) => {
                 model.set_typed_user_input(sheet, row, col, text)
             }
-            Input::StoredFormula(text) => model.set_user_input(sheet, row, col, text),
+            Input::StoredFormula(text) => model.set_loaded_user_input(sheet, row, col, text),
             Input::LegacyFormula(text) => {
                 model.set_cell_with_legacy_formula(sheet, row, col, &text)
             }

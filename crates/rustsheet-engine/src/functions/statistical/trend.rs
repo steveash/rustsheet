@@ -191,7 +191,10 @@ impl Model {
         // a text cell waits for them (`TREND(Data!C10:E11,..,Data!$A12)` with A12 = "abc" is
         // `#REF!`, bbab6562e88b70e8 A13). A multi-cell range does not lift
         // (`TREND(..,OFFSET(Data!B6:C12,-1,3))` is `#VALUE!`, 43c6227e0ff368c7 A165).
-        let typed = !matches!(const_node, Node::ReferenceKind { .. });
+        let typed = !matches!(
+            *const_node.resolved_at(cell.row),
+            Node::ReferenceKind { .. }
+        );
         let kernel = |model: &mut Model, value: CalcResult| {
             if value.is_error() {
                 return data.predictions(Const::Early(value), cell);

@@ -302,6 +302,17 @@ time of day).
 Status: VERIFIED
 Tasks: T-0954
 
+## `m`/`mm` directly before `:ss` is minutes, with no hour
+Rule: `m` or `mm` followed by `:` and a plain `s`/`ss` is a minute even when the code has no hour
+token (otherwise it is a month): `mm:ss` shows 1000 as "00:00", 123456.789 as "56:10" and 1.5 as
+"00:00". After an hour it was already minutes (`h:mm`).
+Evidence: suite gen-m10 displayed-text cells (excel-graph, 2026-10-16, T-1611), 71 of 80 `mm:ss` cells
+failed before the fix. Status: VERIFIED (excel-graph).
+Implemented in: `minute_before_seconds` (formatter/parser.rs). Probed: `mm:ss`, `mm:ss.0`, `mm:ss.00`. Unprobed
+(implemented by the same rule): single `m:ss`, `:s`, `[m]`/`[s]` forms, `mmss` with no colon, and any other
+separator or literal between the `m` and the seconds (those still read as months).
+Tasks: T-1733
+
 ## Fractional seconds in clock formats
 Rule: `.0`, `.00` or `.000` after a plain `s`/`ss` prints the fraction of the second, rounded to that
 many digits: on 36191.1702084375 (04:05:06.009) `hh:mm:ss.000 am/pm` → "04:05:06.009 AM" (A32),
@@ -543,11 +554,15 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - `[$USD]` is currency text ("-1.50 USD") and `[Cyan]` a color.
 - Engineering and padded mantissas: `##0.0E+0` on 123456.789 is "123.5E+3", `00.0E+0` on 36.5
   "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
-- Rule (T-1730, implemented for the exponent only): the exponent is the decimal exponent rounded down to a
+- Rule (T-1730, T-2226): the exponent is the decimal exponent rounded down to a
   multiple of the integer-placeholder count (`##0.0E+0` on 61 "61.0E+0"); a zero exponent prints `E+00`
   (never `E-00`) and `E00` under `E-`. The group size for grouped codes (`#,##0.0E+0`) is unprobed.
-- Not implemented (VERIFIED, gen-m10): the mantissa is rounded after the shift (`##0.0E+0` on 1/3
-  "333.3E-3", `##0.00E+00` "333.33E-03"; T-2226); zero prints all integer placeholders (`##0.0E+0` on 0
+- Implemented (VERIFIED, gen-m10, T-2226): an engineering mantissa (two or more integer placeholders) rounds after
+  the shift, to its own integer digits plus the decimals (`##0.0E+0` on 1/3 "333.3E-3", on -1/7 "-142.9E-3",
+  `##0.00E+00` on 1/3 "333.33E-03", `00.0E+0` on 0.125 "12.5E-2"; 28 gen-m10 text cells). Ours: a rounding carry
+  into the next power of ten moves the exponent to the next multiple (`##0.0E+0` on 999.96 "1.0E+3"), which is
+  unprobed for engineering codes.
+- Not implemented (VERIFIED, gen-m10): zero prints all integer placeholders (`##0.0E+0` on 0
   "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
   "1.0E+02") (T-2227).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed

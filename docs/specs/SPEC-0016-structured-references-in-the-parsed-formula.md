@@ -150,6 +150,20 @@ reference operators, SUM's reference arm). One helper does the job:
 a `ReferenceKind` gives. It is not open-coded at each site. Step 2 re-audits every `ReferenceKind`/`RangeKind` site,
 static analysis included (shape and `StaticResult`), for `ThisRowKind`.
 
+Step 2 as built (T-1699): `ThisRowKind` also carries `cell: bool`, for one column named alone
+(`Sales[@Qty]`), so it resolves to the `ReferenceKind` its parse-time lowering was and the other forms to
+a `RangeKind`. The helper is `Node::this_row_at(row)`, the node the parse-time lowering gave on that row
+(the cell or range, or `ErrorKind(VALUE)`), not a `Model` method returning an `Area`: the sites that match
+on the kind of an argument call `Node::ungrouped_at(row)` (or `Node::resolved_at(row)` where they do not
+ungroup), so each sees exactly the node it saw before step 2, and evaluation (`evaluate_node_in_context`,
+`evaluate_node_with_reference`) resolves it the same way. Static analysis, which has no row, reads it as it
+is on a data row (`Node::ungrouped_static`). A structural edit that moves a formula to another row
+re-enters it with its `#This Row` areas lowered at the old row (`Model::moved_text`), and a cut and
+paste to another row prints the lowered area, so the moved formula reads what it read; a formula that keeps
+its row keeps its text. A duplicated sheet lowers each `#This Row` cell on its own row
+(`lower_this_row_cells`, tables.rs), and a defined name, which has no cell, resolves its `#This Row` at row 1,
+where its body is parsed (`Node::lower_this_rows_at`), both as before step 2.
+
 ### Printing
 The storage and in-engine printers print a `StructuredReferenceKind` from `reference`, in the
 canonical long form:
@@ -343,7 +357,7 @@ same reference. `ThisRowKind` evaluation is O(1).
    parse-time lowering, so its text is still lost. Export is unchanged. This step is complete on
    its own. If the diff gets too large, the printer escapes and their property test can be split
    into a second PR.
-2. **T-1699 (S): `#This Row` at evaluation.** Add `ThisRowKind` and `Model::this_row_area`, and
+2. **T-1699 (S): `#This Row` at evaluation.** Add `ThisRowKind` and its resolver (built as `Node::this_row_at`, see "Step 2 as built"), and
    emit the wrapper for `#This Row` too. Re-audit the reference sites for `ThisRowKind`. Add the
    grow-the-table test and tests for `ISREF(Sales[@Qty])` and `SUM(Sales[@[A]:[B]])`.
 3. **T-2196 (M): table parts in the export.** Write `<tableParts>` and `xl/tables/tableN.xml`,

@@ -952,7 +952,9 @@ as a guard of ours; it cannot occur below |x| = 1 and no cell probes it.)
   alone, 486 / 484. Rounding the product and quotient to 64 bits before the double (x87 double rounding) also fits all
   1015, so the sweep does not tell the two apart; the engine keeps plain doubles. Earlier negative results (x87 F2XM1,
   64-bit expm1) are in the entry above.
-Ours: `excel_expm1` in `functions/math_and_trigonometry/hyperbolic.rs`.
+Ours: `excel_expm1` in `x87_exp.rs` (moved from hyperbolic.rs by T-2242). PPMT also uses it, for `1-EXP(-n*L)` with |x| = n*L up to
+hundreds (financial.md "PPMT discounts with an atanh-series log", probes-numeric/ppmt-log-rate-sweep), where the u - 1 = -1 guard
+is reachable (n*L above about 36.7).
 Status: VERIFIED (excel-graph).
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
@@ -1657,7 +1659,7 @@ product of `(n+i)/(i+1)` over k gives 92377.99999999999 and 35345263800 instead)
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/COMBIN_COMBINA.xlsx D4, D5, D16, and D11 for `COMBINA(0,0)` (Excel-cached,
 Excel Online). A huge k is past the bound below (`COMBINA(2,1E300)` is `#NUM!`).
 Ours: `fn_combina` calls `combin(n+k-1, k)`. Its loop runs min(k, n-1) times and stops at overflow; the bound below
-keeps `n+k-1` under 2^31-1, so `COMBINA(1,1E10)` is `#NUM!` at once (directive 5; the old loop ran k times).
+keeps `n+k-1` under 2^31-1, so `COMBINA(1,1E10)` is `#NUM!` at once, as in Excel (probes/t2291 A5); the loop is bounded as a side effect.
 Status: VERIFIED (3 cached cells; the rule is a fit to them)
 Tasks: T-0905
 Bound (T-2162): a large `number` is `#NUM!`: `COMBINA(9007199254740992,1)`, `COMBINA(6227020800,10)` (`FACT(13)`),
@@ -1670,8 +1672,10 @@ and `COMBIN(2^31+1, 2^31+1)` is `#NUM!`. COMBINA is `#NUM!` when `n+k-1` >= 2^31
 `COMBINA(2^31-1,2)` and `COMBINA(2^31-10,20)` are `#NUM!`; with k = 0 it is `#NUM!` from `n` = 2^31. Both agree with COMBINA(n,k) being COMBIN(n+k-1,k).
 Evidence (excel-graph, 2026-10-20): gen-m5/34f69d858a39f497 Calc!A231, gen-m5/50d8a085335c05e6 Calc!A173,
 gen-m5/e0087a1fb9a36188 Calc!A379, gen-m5/fc81c2f704bef138 Calc!A265, gen-m5/6b831f5e2a20bc34 Calc!A5; numbers from gen-m5/1b30e4d075b252ea Calc!A213,
-gen-m5/c688ca172fe533dc Calc!A288. Every probed cell has `n` near 2^31 or above; for a small `n` with `k` past 2^31
-(`COMBINA(1,1E10)`, ours `#NUM!`) the rule is extrapolated (T-2291). Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
+gen-m5/c688ca172fe533dc Calc!A288. For a small `n` with a huge `k` the rule holds too
+(probes/t2291-combina-small-n-huge-k A1:A7, excel-graph, 2026-10-23, T-2291): `COMBINA(1,2^31-1)`, `COMBINA(1,2^31)`,
+`COMBINA(2,2^31-2)`, `COMBINA(2,2^31-1)`, `COMBINA(1,1E10)` and `COMBINA(2,1E300)` are all `#NUM!` (n+k-1 >= 2^31-1), and
+`COMBIN(2^31-2,2^31-2)` is 1. Ours matches. Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
 functions/math_and_trigonometry/mathematical.rs, T-2162).
 
 ## SEQUENCE accumulates its step

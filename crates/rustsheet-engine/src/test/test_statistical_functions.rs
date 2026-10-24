@@ -600,6 +600,20 @@ fn rank_of_at_prefixed_non_reference_array_is_one_cell() {
     assert_eq!(model._get_text("K25"), *"3");
 }
 
+// A number or text argument of F.TEST/FTEST is a sample with no points: #DIV/0!, not #VALUE!
+// (probes-numeric/t1049-ftest Calc!A29:A32, m9-legacy-ftest Calc!A32; T-2093).
+#[test]
+fn test_f_test_scalar_argument_is_div0() {
+    let mut model = new_empty_model();
+    model._set("A1", "=F.TEST(3,4)");
+    model._set("A2", "=F.TEST(\"a\",{1,2,3})");
+    model._set("A3", "=FTEST(1,{1,2,3})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#DIV/0!");
+    assert_eq!(model._get_text("A2"), "#DIV/0!");
+    assert_eq!(model._get_text("A3"), "#DIV/0!");
+}
+
 // ── LINEST / LOGEST / QUARTILE argument order (T-2455) ─────────────────────
 
 // Error values first, in argument order, then the data checks; a computed blank y is `#VALUE!` at

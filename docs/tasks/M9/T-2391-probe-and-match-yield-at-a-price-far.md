@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-1592]
 campaign: visible
 ---
 
@@ -47,10 +47,19 @@ Cells:
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A121
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A145, A390
 
+## First attempt (T-2391, 2026-10-24)
+probes/yield-newton-domain is committed and filled (excel-graph): the price sweep's cut lies between 1E4 (computes, -0.340)
+and 1E5 (`#NUM!`), and the 100-step cap returns non-roots at very large redemptions. No solver model fitted all of it.
+Newton from the coupon rate with no fallback fixes the 18 `#NUM!` cells but breaks prices 1500 to 10000, which compute
+today through the bisection fallback. Step halving and fixed restarts fail the other way. Details and counts:
+financial.md "YIELD's #NUM! cells and its suspected 100-step cap". Both groups seem to come from YIELD's unfitted start phase, so
+this task now waits on T-1592. Restart from the probe's C column, where about 100 analytic-Newton steps from near the
+redemption-100 root land within 1e-6 of Excel.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 20 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A probe case sweeps the price to locate the cut, filled through excel-graph.
+- [x] A probe case sweeps the price to locate the cut, filled through excel-graph (probes/yield-newton-domain).
 - [ ] YIELD matches Excel's `#NUM!` cells; the financial.md entry states the rule (VERIFIED).
 - [ ] `make check` green; reviewers approve.
 

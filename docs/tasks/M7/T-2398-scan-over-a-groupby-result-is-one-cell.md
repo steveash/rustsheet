@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2593]
 campaign: visible
 ---
 
@@ -31,4 +31,4 @@ Re-split from T-2359. probes/groupby-lifted-args (excel-graph, 2026-10-22):
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- GROUPBY's own result.
+- GROUPBY's own result: its nested `LAMBDA(w,w)` cells come from T-2593 (SPEC-0018), which A153 and the gen-m7 cell need.

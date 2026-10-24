@@ -785,10 +785,32 @@ P, excel-graph, 2026-10-23, T-2360): with `LAMBDA(v,v)`, `TYPE(INDEX(GROUPBY(..)
 over several value columns gives each column its own array. A consumer that lifts over the result reads each cell's top-left, so
 `SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a nested array's top-left is one (`{#N/A;3}`, P!C33 = 1),
 and the gen-m7 REGEXEXTRACT whose return_mode is such a GROUPBY gets a valid mode, not `#VALUE!` (gen-m7/21b4eef18424ce94 A1504),
-while MAP over the result is an error (t2311-pivotby-value-columns-error P!D12). Blank keys show as true blanks in INDEX (`TYPE` 1,
-`&""` is "", G!A12, B3), not 0. Ours: `#VALUE!` per cell and 0 for a blank key (the engine has no nested arrays; follow-ups T-2459, T-2460).
-A LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`) is `#VALUE!` in every cell, like an array result; so is a
-two-parameter LAMBDA (each cell, not the whole result). `field_headers` 2 over two keys and two values generates
+while MAP over the result is not an error (T-2592 below). Blank keys show as true blanks in INDEX (`TYPE` 1,
+`&""` is "", G!A12, B3), not 0. Ours: `#VALUE!` per cell and 0 for a blank key (the engine has no nested arrays: SPEC-0018, T-2593; blank keys T-2460).
+T-2592 (probes/t2592-nested-groupby-cells, excel-graph, 2026-10-24; `GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))` is 3x3: keys a, b, Total by
+key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown headers are off). Nested cells in practice:
+- A LAMBDA whose body is a one-cell reference (`LAMBDA(x,D!D2)`) still displays `#VALUE!` in every spilled cell (probes/groupby-lambda-forms
+  G!K193:K198, excel-graph, 2026-10-16), but INDEX reads such a cell as its value, not an error (`TYPE` 1, 10; A21): the cell is
+  reference-like, shown as `#VALUE!` and read as the referenced value, never a nested array. A two-parameter `LAMBDA(x,y,x)` also displays
+  `#VALUE!` (G!K217:K222) but holds a nested array like `LAMBDA(v,v)` (`64|2x1|3`, A22). A computed 1x1 result is nested too
+  (`LAMBDA(v,{7})` and `LAMBDA(v,SEQUENCE(1))` `64|1x1`, A33, A34), and subtotal cells (two row fields, `total_depth` 2) are: a
+  one-record group `64|1x1`, a two-record subtotal `64|2x1`, the Total `64|4x1` (A35:A41).
+- MAP, BYROW and BYCOL over the result are not errors: a scalar step returns an array of the result's shape (3x3, 3x1, 1x3; A1:A5) and the
+  LAMBDA is handed each nested cell whole: `MAP(..,LAMBDA(x,ROWS(x)))` is 1 for a key, 2 for group b's C cell, 4 for the Total's
+  (A100:A102), `TYPE(x)` is 64 for a nested cell (A103) and `SUM(x)` its sum (7 for `{3;4}`, A105); BYROW's row and BYCOL's column
+  hold the nested cells too (`TYPE(INDEX(r,1,2))` 64, A106, A107). A LAMBDA that returns `x` itself gives `#CALC!` (ERROR.TYPE 14, A104).
+  MAP over a PIVOTBY result with a scalar step is fine as well (A108, A109), so t2311 P!D12's "E" is not MAP itself: its step is `IFERROR(x&"",..)`, and `&""` on a nested cell is still an array (A18), which a MAP step cannot return (`#CALC!`, A104).
+- REDUCE visits every one of the 9 cells with the nested array as `x` (a count 9; `a+ROWS(x)` 19, A14, A15).
+- Aggregates read through the nested cells, flattening them: SUM 220, COUNT 16, COUNTA 19 (keys count; A6:A8); AVERAGE is `#N/A`
+  (ERROR.TYPE 7, A9), ARRAYTOTEXT `#CALC!` (14, A10), TEXTJOIN and CONCAT `#VALUE!` (3, A11, A12). `&""` over the whole result keeps
+  the 3x3 shape (A13).
+- `+0`, `--` and `&""` on one INDEXed nested cell leave it an array (`64|2x1|3`, A16:A18).
+- `ZZ1#` over a spilled result reads every nested cell as `#VALUE!` (`SUM(ZZ1#)` and `INDEX(ZZ1#,2,2)` ERROR.TYPE 3, A19, A20).
+- Two levels: a LAMBDA returning a GROUPBY gives a nested cell that is the inner 3x3 result, whose own cells are nested again
+  (`64|3x3|a`, inner INDEX(..,2,2) `64|2x1`, A23, A24); so one level is not the limit in Excel.
+- TAKE, CHOOSECOLS, VSTACK, SORT, FILTER and an INDEX of a whole row or column all keep the nested cells (A26:A32).
+Ours: not implemented (no nested arrays; SPEC-0018, T-2593, T-2594).
+`field_headers` 2 over two keys and two values generates
 "Row Field 1", "Row Field 2", "Value 1", "Value 2"; `field_headers` 3 with `total_depth` -1 puts the header row first, then
 Total. A header row over no records (`GROUPBY(A1,D1,f,1)`), a non-function (`5`) and fractional options (`total_depth`
 0.5, `field_headers` 2.5) are `#VALUE!` (ERROR.TYPE 3). An empty-text key (`=""`) is its own group, separate from the blank
@@ -1504,9 +1526,22 @@ total (P!A33), and an array result (`LAMBDA(v,v)`, P!A12: Excel's cells there ar
 same functions over one value column, each gen-m7 call below is a pivot with error cells (value-cause `val1` rows). This is
 why five generated PIVOTBY calls are `#VALUE!` (gen-m7/18b80d3fd292d63a Calc!A913, 07d27aa0add0247f A708, A992, 90de8755a2e565e6
 A1, A285). Unprobed: an error only in a column subtotal.
-Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes every Total column cell of each line and the Total row.
+Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes the Total column cells of each line and the Total row.
+Which hidden Total cells count (T-2578, excel-graph, 2026-10-24: derived from a decode of all 256 layouts of four records over up to
+four column groups, run during T-2578 and not committed; checked by probes/t2578-pivotby-hidden-total-slot, 7 layouts with 2 and 3
+value columns and two column fields, 129 cells, and t2578-pivotby-total-error-scope): Excel computes the Total cell of value column `v`
+(0-based) in a row only when that row has a record under the column line at value-column position `G + v` of the grid, the
+line `(G + v) div V` with `G` column lines and `V` value columns (as if each line were one value column wide), and never when
+that is past the last line. So with `G` 2 and 2 values every row's Total cells count; with 3 column groups x, y, z and 2
+values, value 0 counts in the rows with a y record and value 1 in those with a z record; with 4 groups both look at the
+third; with one group only value 0 (the Total cells of the last value column are shown and never count). The Total row has
+records under every line, so its cells always count (P!A7, P!A35); the error decides with the true total (power-of-two
+sums decode to the row's own records). The gen-m9 calls with 7 column groups have no hidden Total error under their gates and
+so are arrays (`PIVOTBY(Data!B1:B12,Data!C1:C12,Data!D1:E12,_xleta.AVERAGE)` 11x17 although row 7's Total cells are `#DIV/0!`).
+Consistent with two column fields (four leaf lines). Unprobed: column subtotal lines and `col_total_depth` -1 (ours counts every
+line, subtotals included, in grid order); a LAMBDA returning `""` in the gating cell (ours: a record is enough).
 Status: VERIFIED
-Tasks: T-2311
+Tasks: T-2311, T-2578
 
 ## EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not
 Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes/m7-lift-take-drop-sortby rows 20-23,
@@ -1624,8 +1659,8 @@ Rule: a one-cell reference to a blank cell stays blank in TOROW and UNIQUE: `TOR
 left; gen-m7/9bb61f6ae34c7e20 Calc!A3029), and `UNIQUE(Data!Z1,TRUE)&..` joins as "" (`TEXTAFTER(UNIQUE(Data!Z1,Data!A$2)&IF(TRUE,
 Data!E5,"a"),"")` is "1000000000000000": gen-m7/f7e94a817e5385ac A2942), as a blank range cell would.
 Evidence: gen-m7 (excel-graph, 2026-10-22, T-2254 triage).
-Ours: the lone reference is read as the value 0 (`TOROW(Z1,3)` 0, `UNIQUE(Z1)&"x"` "0x"), while `Z1:Z1` and `Z1:Z2` already stay blank;
-TOCOL, SORT and TAKE read a lone blank the same way and are unprobed (T-2409).
+Ours (T-2409): TOROW, TOCOL and UNIQUE keep a lone blank reference blank (`Model::eval_to_array_keep_blank`); before, it was read as 0;
+TOCOL keeps a lone blank too (gen-m9/8dd2312c96effb1b Calc!A399 `TOCOL(Data!Z1,3,..)` is `#CALC!`; gen-m9/928d08e3e1eecb5f A333 `TOROW(Data!E1,1)`; gen-m9/7980ffb6095a340d A294 `UNIQUE(Data!D$4)`); SORT and TAKE still read it as 0 and are unprobed (T-2409).
 Status: VERIFIED (excel-graph)
 Tasks: T-2409
 
@@ -1669,3 +1704,60 @@ frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2359, T-2397, T-2398, T-2399
+
+## An empty array as a function argument (T-2436)
+Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH (as the value
+or a case), IMSUM and WORKDAY's holidays, while ABS and N keep the `#CALC!`, ERROR.TYPE gives 14 and IFERROR catches it:
+`SWITCH(1,TAKE(0.2,0,3),5,6)`, `SWITCH(DROP({1},1),1,2,3)`, `IMSUM(DROP({1},1))` and `WORKDAY(1,1,DROP({1},1))` are `#VALUE!`,
+`ABS(DROP({1},1))` and `N(DROP({1},1))` `#CALC!` (probes/t2436/computed-scalar A43:A50). Which other functions turn it into
+`#VALUE!` is unprobed. Separately, `SEQUENCE(0.0123,123456789.123,..)` is `#VALUE!`, not the zero rows'
+`#CALC!` (the oversized columns as the cause is UNVERIFIED) (gen-m9 f280df8ba95f96b9 A222).
+Evidence: probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9 (excel-graph, 2026-10-24).
+Ours: `#CALC!` for all of them; T-2580.
+Status: VERIFIED (excel-graph) for the listed calls
+Tasks: T-2580
+
+## GROUPBY and PIVOTBY in the gen-m9 sweep (T-2436)
+Rule: Excel computes these calls that ours rejected or computes differently: `PIVOTBY(Data!B1:E12,Data!B1:D12,Data!D1:E12,
+_xleta.AVERAGE)` is a 16x30 array and `PIVOTBY(Data!B1:B12,Data!B1:C12,Data!B1:C12,_xleta.AVERAGE,1)` 13x25 (ROWS and COLUMNS
+of them; ours was `#VALUE!`: their hidden Total cells that are errors are not computed, see "PIVOTBY: an error column total over
+several value columns"), and `AVERAGEA(GROUPBY(Data!B1:E12,Data!B1:D12,_xleta.PRODUCT,0,2),{0.02,0.027},Data!B7:B7)` is
+-4.454221888962187E+22 (GROUPBY 20x7; ours -4.161608772169051E+22). The GROUPBY differs only in its blank keys: Excel's are
+true blanks that COUNT and AVERAGEA skip (COUNT 91, ours 100 with 0 for each; probes/t2578-groupby-product-subtotals), the
+"Blank keys show as true blanks" rule above (T-2460). Over a LAMBDA(x,x) function the results' elements make MAX, HARMEAN and
+AVERAGE `#N/A` and COUNT 142 (gen-m9 06b4e8f5de409d5e A366, 68d8ffb69ff739d8 A285, 7c20351562a2d71d A381, e85daedce5c2675e
+A35), which the nested-array model decides (SPEC-0018, T-2593).
+Evidence: probes/t2436 (excel-graph, 2026-10-24), the cases named in T-2578; probes/t2578-* (excel-graph, 2026-10-24).
+Ours: the PIVOTBY shapes since T-2578; the GROUPBY blank keys are T-2460's, the LAMBDA(x,x) cells T-2593's.
+Status: VERIFIED (excel-graph)
+Tasks: T-2578, T-2460, T-2593
+
+## Array-value edges in the gen-m9 sweep (T-2436)
+Rule (one gen-m9 cell each, probes/t2436, excel-graph, 2026-10-24; mechanisms probed in probes/t2579-array-value-edges,
+excel-graph, 2026-10-24, T-2579; there D!A1:A6 = 1, blank, TRUE, "x", 5, =1/0 and D!B1:B6 = 2, 4, .., 12):
+- An array value may be wider or taller than the grid: `COLUMNS(MAKEARRAY(1,20000,LAMBDA(r,c,c)))` is 20000 (B20; INDEX,
+  SUM and `+1` of it work, B21, B22, B30), `ROWS(MAKEARRAY(1048577,1,..))` 1048577 (B23), `COLUMNS(SEQUENCE(1,16385))`
+  16385 (B24), HSTACK and TRANSPOSE build 20000 columns (B28, B29), and only a spill of one is `#SPILL!` (B26:
+  `ERROR.TYPE(MAKEARRAY(1,16385,..))` in a cell). `MAKEARRAY(4,DATE(1952,-2.5,123456789.123),..)` has COLUMNS 51638
+  (B25; gen-m9 4250f880ab640c49 A237 is `#SPILL!`). Ours: `#VALUE!` for B23, B24, B26 (`limits::check_array_size`; T-2600).
+- IMSQRT, IMABS and the other IM functions do not lift over a multi-cell reference (`ROWS(IMSQRT(D!B1:B2))` off its rows is
+  `#VALUE!`, B44; through LET too, B48, B50), but lift over an array (`IMSQRT(REDUCE(0,1,LAMBDA(a,b,{2;8})))` has 2 rows,
+  B46), while SQRT and ABS lift over both (B42, B51). A REDUCE whose LAMBDA returns a range gives that reference
+  (`ROWS(REDUCE(0,1,LAMBDA(a,b,D!B1:B2)))` 2, B43; IMSQRT of it `#VALUE!`, B40), and so does one returning TRIMRANGE of a
+  range (B49 `#VALUE!`; gen-m9 df083d85b436b49a A20). Ours: the TRIMRANGE form lifts (T-2596).
+- COMBIN lifts over arrays and ranges as COMBINA does: `INDEX(COMBIN(18,{1,2;3,4}),2,2)` is 3060, `SUM(COMBIN(18,FILTER(..)))`
+  21777.000000000004, `SUM(COMBIN(D!B1:B3,1))` 12, a text element `#VALUE!` (B60-B68; gen-m9 c18dbf21f11093f3 A174's inner
+  `COMBIN(18,FILTER(..))` is 1).
+- IFERROR and IFNA over a multi-cell range give its values with each blank cell as 0: `COUNT(IFERROR(D!A1:A6,-1))` is 4
+  (1, 0, 5, -1), AVERAGE 1.25, AVEDEV 1.875, DEVSQ 20.75, SUM 5, `INDEX(IFERROR(D!A1:A6,-1),2)&"|"` "0|" (B70-B84; gen-m9
+  fec39efaba9284c3 A253; through TRIMRANGE of a range too, B74, B84). TRUE and "x" stay a boolean and text, which AVEDEV skips in an array as in a range (B79, B80). IFNA alike
+  (`COUNT(IFNA(D!A1:A6,-1))` is 3, the `#DIV/0!` kept; `INDEX(IFNA(..),2)&"|"` "0|": B85, B86). A one-cell range is the
+  blank's empty value, not 0 (`ISBLANK(IFERROR(D!A2:A2,1))` TRUE, `&"|"` "|": B87, B88; logic.md "IFERROR / IFNA of a blank
+  cell").
+Evidence: probes/t2436 (excel-graph, 2026-10-24); probes/t2579-array-value-edges (excel-graph, 2026-10-24).
+Ours (since T-2579): COMBIN lifts (`fn_combin`, lift/kinds/general.rs) and `if_error_like` reads a multi-cell range's
+blanks, and those of the range a direct TRIMRANGE keeps, as 0 (`blanks_as_zero`); wrapped forms (LET, IF, TAKE, DROP, a
+lifted TRIMRANGE), IFNA through TRIMRANGE and a TRIMRANGE trimmed to one blank cell are unprobed (T-2597); wide arrays
+T-2600; the REDUCE/TRIMRANGE reference T-2596.
+Status: VERIFIED (excel-graph)
+Tasks: T-2579, T-2600, T-2596

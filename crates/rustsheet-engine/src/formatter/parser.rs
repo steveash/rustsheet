@@ -268,6 +268,14 @@ impl Parser {
         }
     }
 
+    /// Whether `m`/`mm` read just before `next_token` is a minute because `:ss` follows with no
+    /// hour ahead of it: `mm:ss` on 123456.789 is "56:10", not a month (gen-m10 text cells,
+    /// T-1733; number-formats.md).
+    fn minute_before_seconds(&mut self, next_token: &Token) -> bool {
+        *next_token == Token::Literal(':')
+            && matches!(self.lexer.peek_token(), Token::Second | Token::SecondPadded)
+    }
+
     fn parse_part(&mut self) -> ParsePart {
         let mut token = self.lexer.next_token();
         let mut digit_count = 0;
@@ -545,7 +553,7 @@ impl Parser {
                     tokens.push(TextToken::MonthName);
                 }
                 Token::Month => {
-                    if is_time {
+                    if is_time || self.minute_before_seconds(&next_token) {
                         // minute
                         tokens.push(TextToken::Minute);
                     } else {
@@ -554,7 +562,7 @@ impl Parser {
                     }
                 }
                 Token::MonthPadded => {
-                    if is_time {
+                    if is_time || self.minute_before_seconds(&next_token) {
                         // minute padded
                         tokens.push(TextToken::MinutePadded);
                     } else {

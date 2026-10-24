@@ -77,7 +77,18 @@ Cells:
 - gen-m9/8fa8b572ebc1f001.case.json (1): Calc!A382
 - gen-m9/e707d43a891ba9b5.case.json (1): Calc!A391
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `T.DIST.RT(1E+300,7)` is `#NUM!` like TDIST (ours 0), and `POISSON(0,-0.5,Data!E$6)` (cumulative) is EXP(0.5) = 1.6487212707001282 (ours `#NUM!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/fec39efaba9284c3 Calc!A37 `=FORECAST(Data!E8,Data!D4:E6,T.DIST.RT(1E+300,7))`: Excel #NUM!, ours #N/A; inner `T.DIST.RT(1E+300,7)` Excel #NUM!, ours 0.0
+- gen-m9/165db58d1540f014 Calc!A105 `=CONFIDENCE((POISSON(0,(-0.5),Data!E$6)*CHITEST(Data!E1,(-2.5))),VAR(Data!D5:D11,Data!B8:B9),6)`: Excel #N/A, ours #NUM!; inner `POISSON(0,(-0.5),Data!E$6)` Excel 1.6487212707001282, ours #NUM!
+Cells:
+- gen-m9/fec39efaba9284c3.case.json (1): Calc!A37
+- gen-m9/165db58d1540f014.case.json (1): Calc!A105
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 42 known-failure lines disappear from eval/baseline/gen-m9.txt

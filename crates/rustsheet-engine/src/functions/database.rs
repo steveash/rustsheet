@@ -78,6 +78,7 @@ impl Model {
                     | Node::StringKind(_)
                     | Node::ReferenceKind { .. }
                     | Node::RangeKind { .. }
+                    | Node::ThisRowKind { .. }
                     | Node::EmptyArgKind
             )
         });
@@ -270,18 +271,19 @@ impl Model {
     // Returns the (single) field value for the unique matching row
     pub(crate) fn fn_dget(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dget, args, cell, false, |model, query, cell| {
-            let mut matches = 0usize;
+            // Only a record with a non-empty field counts: two matching records of which one has a
+            // blank field give the other's value (gen-m9 c9d7659896d95368 A1, criteria.md "D*
+            // computed criteria"), and none with a field is `#VALUE!` as if nothing matched
+            // (probes/db-computed-criteria-shapes AB51).
+            let mut filled = 0usize;
             let mut result = None;
             model.db_fold(query, (), |(), value| {
-                matches += 1;
-                result = Some(value);
-            });
-            match (matches, result) {
-                // A blank field cell in the one matching record is `#VALUE!`, as if nothing
-                // matched (probes/db-computed-criteria-shapes AB51).
-                (1, Some(CalcResult::EmptyCell)) => {
-                    CalcResult::new_error(Error::VALUE, cell, "Blank field cell".to_string())
+                if !matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg) {
+                    filled += 1;
+                    result = Some(value);
                 }
+            });
+            match (filled, result) {
                 (1, Some(value)) => value,
                 (0, _) | (_, None) => {
                     CalcResult::new_error(Error::VALUE, cell, "No matching record".to_string())

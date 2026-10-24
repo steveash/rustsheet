@@ -39,7 +39,7 @@ impl Model {
     ) -> Result<DataRead, CalcResult> {
         let y = self.read_data(y_arg, cell)?;
         if matches!(y, DataRead::Scalar(Element::Blank))
-            && !matches!(y_arg, Node::ReferenceKind { .. })
+            && !matches!(*y_arg.resolved_at(cell.row), Node::ReferenceKind { .. })
         {
             return Err(CalcResult::new_error(
                 Error::VALUE,

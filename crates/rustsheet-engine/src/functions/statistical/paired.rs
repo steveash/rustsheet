@@ -41,10 +41,15 @@ impl PairedArg {
     /// As [`Self::from_result`] for the value of `node`: a single cell holding text, a boolean
     /// or nothing is an array of one cell with no number (`CHISQ.TEST(B4,C5:D11)` with B4 text is
     /// `#N/A`, gen-m9 a2e51f48717af2a1 A34), which a typed text or boolean is not (unprobed).
-    pub(crate) fn from_node_result(node: &Node, value: CalcResult) -> Result<Self, CalcResult> {
+    /// `row` is the formula's row, which a `#This Row` area is on.
+    pub(crate) fn from_node_result(
+        node: &Node,
+        value: CalcResult,
+        row: i32,
+    ) -> Result<Self, CalcResult> {
         match Self::from_result(value) {
             Err(CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell)
-                if matches!(node.ungrouped(), Node::ReferenceKind { .. }) =>
+                if matches!(*node.ungrouped_at(row), Node::ReferenceKind { .. }) =>
             {
                 Ok(Self::Values(vec![None]))
             }
@@ -139,7 +144,7 @@ impl Model {
         if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
             return PairedArg::Values(vec![None]);
         }
-        PairedArg::from_node_result(arg, value).unwrap_or_else(|_| {
+        PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {
             PairedArg::Error(CalcResult::new_error(
                 Error::VALUE,
                 cell,

@@ -1,6 +1,7 @@
 # 0107 — Allow one LINEST spill-cell regression unmasked by T-1741
 
-- **Status:** accepted (2026-10-24, T-1741)
+- **Status:** withdrawn (2026-10-24, T-1741): never applied. T-2547 (decision 0109) made `BESSELJ(1E+15,1)`
+  `#NUM!` as in Excel, so A122 and B122 pass with T-1741's LINEST and no regression is recorded.
 - **Context:** T-1741 makes LINEST and LOGEST accept one point, as Excel does: a scalar known_y
   with no known_x is one point, so `LINEST(2)` is `{0,2}` (gen-m9 8d3588d8df0812df A186, 05d44f6dd6cfc567
   A378:B378, linest-modes K141; docs/excel-semantics/statistics.md "LINEST, LOGEST and GROWTH in

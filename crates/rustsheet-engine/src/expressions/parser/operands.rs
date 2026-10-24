@@ -9,7 +9,9 @@ use super::super::utils::{
     is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
 };
 use super::reference_operators::is_reference_operand;
-use super::structured_reference::{COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND};
+use super::structured_reference::{
+    is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
+};
 use super::*;
 
 impl Parser {
@@ -344,16 +346,32 @@ impl Parser {
         Some(self.range_operand(None, left, right))
     }
 
-    /// Whether an enclosing LET or LAMBDA binds `name`, a name that would otherwise read as a
-    /// defined name ([`Parser::bind_reference_shaped_name`]), in any grammar mode.
+    /// Whether an enclosing LET or LAMBDA binds `name` ([`Parser::bind_name`]),
+    /// in any grammar mode.
     fn binds_name(&self, name: &str) -> bool {
-        self.reference_shaped_names
+        self.bound_names
             .iter()
             .any(|bound| bound.eq_ignore_ascii_case(name))
     }
 
-    /// [`Parser::binds_name`] for a name the A1 grammar would otherwise read as a cell or a
-    /// Lotus-style range.
+    /// Whether a call of `name`, spelled like a function, is a call of the LET name or LAMBDA
+    /// parameter of that name instead: only in unprefixed stored text (A1 grammar, not typed, the
+    /// `typed` split of decision 0103), where the name was declared bare ([`Parser::bind_name`]).
+    /// Such text (`Input::StoredFormula`, the harness's case formulas) stands for the `_xlpm.`
+    /// form the file holds, and there Excel calls the variable: stored as `_xlpm.Pv(1)`,
+    /// `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Sum,LAMBDA(a,a*2),SUM(1,2))` `#VALUE!`
+    /// (probes/let-name-function-spelled-call, let-lambda-body-own-name, T-2567). Typed, the
+    /// function wins in any case: `=LET(Sum,LAMBDA(a,a*2),Sum(3))` is `SUM(3)`, 3, and
+    /// `=LET(Pv,LAMBDA(a,a),Pv(1))` is refused (probes/let-function-name-typed-*). Excel's files
+    /// (xlsx import, also A1 grammar) declare the name `_xlpm.Sum` and call it `_xlpm.Sum(`, so
+    /// a bare `SUM(` there is the function (`LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)` is 6); the R1C1
+    /// storage form writes such a call `_xlpm.Sum(` too (`callee_text`).
+    fn calls_bound_name(&self, name: &str) -> bool {
+        self.lexer.is_a1_mode() && !self.typed && self.binds_name(name)
+    }
+
+    /// [`Parser::binds_name`] in the A1 grammar, asked for a name it would otherwise read as a
+    /// cell or a Lotus-style range.
     pub(super) fn binds_reference_shaped_name(&self, name: &str) -> bool {
         self.lexer.is_a1_mode() && self.binds_name(name)
     }
@@ -367,22 +385,28 @@ impl Parser {
     /// (probes/let-cell-shaped-name-typed-*): it binds here too, and typed entry refuses the
     /// formula afterwards ([`Parser::typed_refusal`], decision 0103). A name that was read as a
     /// defined name becomes the variable in any grammar mode, shadowing the defined name
-    /// (probes/let-name-shadows-defined-name, T-2057).
-    pub(super) fn bind_reference_shaped_name(
-        &mut self,
-        token: &TokenType,
-        text: &str,
-        node: Node,
-    ) -> Node {
+    /// (probes/let-name-shadows-defined-name, T-2057). Any other plain name is recorded as bound
+    /// too when declared bare, for [`Parser::calls_bound_name`] (T-2567).
+    pub(super) fn bind_name(&mut self, token: &TokenType, text: &str, node: Node) -> Node {
         // A name that is also a defined name parsed as that defined name; it declares the
         // variable instead, and shadows the defined name up to the end of the scope. In any
         // grammar mode: a stored formula (R1C1 mode) prints the name without `_xlpm.`.
         if let (TokenType::Ident(_), Node::DefinedNameKind((name, ..))) = (token, &node) {
             if !name.contains(['!', '[']) {
                 let name = name.clone();
-                self.reference_shaped_names.push(name.clone());
+                self.bound_names.push(name.clone());
                 return Node::NamedVariableKind { name, id: None };
             }
+        }
+        // Any other plain name declared bare is bound too: called in unprefixed stored text, it
+        // is the variable, not a function of its name (`calls_bound_name`, T-2567). A name
+        // declared `_xlpm.Sum`, as Excel and the export write it, is not: there every call of
+        // the variable is `_xlpm.Sum(` too, and a bare `SUM(` is the function.
+        if let (TokenType::Ident(_), Node::NamedVariableKind { name, .. }) = (token, &node) {
+            if !text.trim_start().starts_with("_xlpm.") {
+                self.bound_names.push(name.clone());
+            }
+            return node;
         }
         if !self.lexer.is_a1_mode() {
             return node;
@@ -409,7 +433,7 @@ impl Parser {
             }
             _ => return node,
         };
-        self.reference_shaped_names.push(bound.clone());
+        self.bound_names.push(bound.clone());
         Node::NamedVariableKind {
             name: bound,
             id: None,
@@ -494,7 +518,12 @@ impl Parser {
             return self.function_call(kind, args);
         }
         // We should do this *only* importing functions from xlsx
-        if let Some(function_kind) = self.language.functions.lookup_stored(&name) {
+        if let Some(function_kind) = self
+            .language
+            .functions
+            .lookup_stored(&name)
+            .filter(|_| !self.calls_bound_name(&name))
+        {
             let node = self.function_call(function_kind, args);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel
@@ -567,9 +596,10 @@ impl Parser {
     }
 
     /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
-    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` is still lowered
-    /// at parse time, from the context row, so it keeps no text (T-1699); a reference that does
-    /// not resolve (unknown table or column) stays a parse error, which keeps the formula text.
+    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` lowers to a
+    /// [`Node::ThisRowKind`], resolved at the evaluating cell's row (T-1699); a reference that
+    /// does not resolve (unknown table or column) stays a parse error, which keeps the formula
+    /// text.
     pub(super) fn structured_reference_operand(
         &mut self,
         table_name: String,
@@ -577,7 +607,6 @@ impl Parser {
         table_reference: Option<TableReference>,
         bare: bool,
     ) -> Node {
-        let this_row = specifier == Some(token::TableSpecifier::ThisRow);
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
@@ -585,7 +614,13 @@ impl Parser {
             bare,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
-        if this_row || matches!(lowered, Node::ParseErrorKind { .. }) {
+        if let Node::ParseErrorKind { message, .. } = &lowered {
+            if self.loaded
+                && !message.starts_with(TABLE_SHEET_NOT_FOUND)
+                && is_unresolved_structured_reference(message)
+            {
+                return Node::ErrorKind(token::Error::REF);
+            }
             return lowered;
         }
         Node::StructuredReferenceKind {
@@ -595,7 +630,7 @@ impl Parser {
     }
 
     /// The area a structured reference resolves to against the parser's table list: a
-    /// `ReferenceKind`, a `RangeKind`, an `ErrorKind` or a `ParseErrorKind`.
+    /// `ReferenceKind`, a `RangeKind`, a `ThisRowKind`, an `ErrorKind` or a `ParseErrorKind`.
     fn lower_structured_reference(
         &mut self,
         table_name: String,
@@ -604,7 +639,7 @@ impl Parser {
     ) -> Node {
         // We will try to convert to a normal reference
         // table_name[column_name] => cell1:cell2
-        // table_name[[#This Row], [column_name]:[column_name]] => cell1:cell2
+        // table_name[[#This Row], [column_name]:[column_name]] => the columns on the cell's row
         let context = &self.context;
         let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
             Some(i) => i,
@@ -687,16 +722,10 @@ impl Parser {
         };
         row_end = data_end;
 
+        let this_row = specifier == Some(token::TableSpecifier::ThisRow);
         match specifier {
-            Some(token::TableSpecifier::ThisRow) => {
-                // Off the data rows (header, totals, above, below) it is #VALUE!
-                // (docs/excel-semantics/references.md, gen-m8b this-row e1bf5aa0ffb4ed87).
-                if context.row < data_start || context.row > data_end {
-                    return Node::ErrorKind(token::Error::VALUE);
-                }
-                row_start = context.row;
-                row_end = context.row;
-            }
+            // Decided at the evaluating cell's row (`Node::ThisRowKind`), below.
+            Some(token::TableSpecifier::ThisRow) => {}
             Some(token::TableSpecifier::Totals) => {
                 if totals_row_count != 0 {
                     row_start = totals_row;
@@ -731,7 +760,8 @@ impl Parser {
                 row_start = data_start;
             }
         }
-        match table_reference {
+        let one_column = matches!(table_reference, Some(TableReference::ColumnReference(_)));
+        let lowered = match table_reference {
             None => Node::RangeKind {
                 sheet_name,
                 sheet_index: table_sheet_index,
@@ -756,7 +786,7 @@ impl Parser {
                         };
                     }
                 };
-                if row_start == row_end {
+                if row_start == row_end && !this_row {
                     return Node::ReferenceKind {
                         sheet_name,
                         sheet_index: table_sheet_index,
@@ -818,6 +848,29 @@ impl Parser {
                     column2: left_column_index.max(right_column_index),
                 }
             }
+        };
+        if !this_row {
+            return lowered;
+        }
+        // Off the data rows (header, totals, above, below) it is #VALUE!, at the evaluating
+        // cell's row (docs/excel-semantics/references.md, gen-m8b this-row e1bf5aa0ffb4ed87).
+        match lowered {
+            Node::RangeKind {
+                sheet_name,
+                sheet_index,
+                column1,
+                column2,
+                ..
+            } => Node::ThisRowKind {
+                sheet_name,
+                sheet_index,
+                column1,
+                column2,
+                data_start,
+                data_end,
+                cell: one_column,
+            },
+            other => other,
         }
     }
 }

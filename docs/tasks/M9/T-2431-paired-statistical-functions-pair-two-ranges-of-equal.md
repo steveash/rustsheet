@@ -76,7 +76,18 @@ Examples:
 Cells:
 - gen-m9/76551d6fbafc7007.case.json (1): Calc!A174
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `FORECAST(<FALSE>,Data!C1:D3,Data!C10:E11)` (3x2 against 2x3) is `#DIV/0!` (ours `#N/A`) and `CHITEST(Data!D7:D9,Data!C10:E10)` (3x1 against 1x3) 0.1353352832366127 (ours `#NUM!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/b4173fe25109a238 Calc!A78 `=FORECAST(CSCH(1E+16),(FORECAST(Data!E3,Data!C1:D3,Data!C10:E11)/Data!B6),1)`: Excel #DIV/0!, ours #N/A; inner `FORECAST(Data!E3,Data!C1:D3,Data!C10:E11)` Excel #DIV/0!, ours #N/A
+- gen-m9/c6cfda6bd10cae93 Calc!A375 `=CHITEST(Data!D7:D9,Data!C10:E10)`: Excel 0.1353352832366127, ours #NUM!
+Cells:
+- gen-m9/b4173fe25109a238.case.json (1): Calc!A78
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A375
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 34 known-failure lines (17 from T-2255, 17 from T-2256) disappear from eval/baseline/gen-m9.txt

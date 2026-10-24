@@ -111,8 +111,8 @@ impl Model {
         cell: &CellReferenceIndex,
     ) -> Option<Units> {
         // Written parentheses do not change a formula's units: `=(A1)*2` (SPEC-0007).
-        let node = node.ungrouped();
-        match node {
+        let node = node.ungrouped_at(cell.row);
+        match &*node {
             Node::ReferenceKind {
                 sheet_name: _,
                 sheet_index,
@@ -165,7 +165,7 @@ impl Model {
             Node::OpSumKind { .. } | Node::OpProductKind { .. } => {
                 // A loop down the chain's left operands, not recursion (T-0128). A link that
                 // is neither `+ -` nor `* /` has no units, whatever its operands.
-                let (links, first) = left_chain(node);
+                let (links, first) = left_chain(&node);
                 let mut units = self.compute_node_units(first, cell);
                 for link in links {
                     units = match link {
@@ -206,8 +206,10 @@ impl Model {
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
             Node::SpillRangeOperator { .. } => None,
-            // Unreachable: peeled above.
-            Node::Group { .. } | Node::StructuredReferenceKind { .. } => None,
+            // Unreachable: peeled and resolved above.
+            Node::Group { .. }
+            | Node::StructuredReferenceKind { .. }
+            | Node::ThisRowKind { .. } => None,
             Node::LambdaDefKind { .. } => None,
             Node::LambdaCallKind { .. } => None,
         }
