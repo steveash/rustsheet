@@ -3,7 +3,7 @@ id: T-2483
 title: "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD: argument check order, and ODDLPRICE before the last coupon is #NUM! (gen-m9, 70 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
