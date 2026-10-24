@@ -416,3 +416,43 @@ fn discount_securities_check_order() {
         );
     }
 }
+
+// AMORLINC and AMORDEGRC read cost to rate first (a date off the calendar is #NUM! as it is read),
+// then check the values, then read the basis, and accept a purchase date below 1
+// (probes/amor-argument-check-order, T-2485).
+#[test]
+fn amortization_check_order_and_early_purchase() {
+    let cases = [
+        // A boolean rate beside a negative cost: the read comes first.
+        ("=AMORLINC(-1,39679,39813,300,1,TRUE,1)", "#VALUE!"),
+        ("=AMORDEGRC(-1,39679,39813,300,1,TRUE,1)", "#VALUE!"),
+        // A date off the calendar beats a later error; serial 0.5 passes the read.
+        ("=AMORLINC(2400,-1,NA(),300,1,0.15,1)", "#NUM!"),
+        ("=AMORDEGRC(2400,39679,2958466,NA(),1,0.15,1)", "#NUM!"),
+        ("=AMORLINC(2400,0.5,NA(),300,1,0.15,1)", "#N/A"),
+        // The value checks come before the basis, AMORDEGRC's asset life after it.
+        ("=AMORLINC(-1,39679,39813,300,1,0.15,NA())", "#NUM!"),
+        ("=AMORDEGRC(2400,40000,39813,300,1,0.15,\"x\")", "#NUM!"),
+        ("=AMORDEGRC(2400,39679,39813,300,1,0.5,NA())", "#N/A"),
+        // Two errors: the earlier one.
+        ("=AMORLINC(2400,39679,39813,1/0,NA(),0.15,1)", "#DIV/0!"),
+        // Purchase dates 0 and 1E-15, and one on the first period's end.
+        ("=AMORDEGRC(2400,0,366,300,1,0.15,1)", "562"),
+        ("=AMORDEGRC(2400,1E-15,1,300,1,0.15,1)", "899"),
+        ("=AMORDEGRC(2400,1,366,300,1,0.15,1)", "563"),
+        ("=AMORLINC(46557,0,39881,440,0,0.1)", "46117"),
+        ("=AMORLINC(2400,1,1,300,1,0.15,1)", "360"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
