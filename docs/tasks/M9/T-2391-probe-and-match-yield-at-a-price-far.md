@@ -3,7 +3,7 @@ id: T-2391
 title: "Probe and match YIELD at a price far above par (1E6): #NUM!, not a negative yield"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
