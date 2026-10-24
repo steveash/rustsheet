@@ -1549,9 +1549,22 @@ total (P!A33), and an array result (`LAMBDA(v,v)`, P!A12: Excel's cells there ar
 same functions over one value column, each gen-m7 call below is a pivot with error cells (value-cause `val1` rows). This is
 why five generated PIVOTBY calls are `#VALUE!` (gen-m7/18b80d3fd292d63a Calc!A913, 07d27aa0add0247f A708, A992, 90de8755a2e565e6
 A1, A285). Unprobed: an error only in a column subtotal.
-Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes every Total column cell of each line and the Total row.
+Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes the Total column cells of each line and the Total row.
+Which hidden Total cells count (T-2578, excel-graph, 2026-10-24: derived from a decode of all 256 layouts of four records over up to
+four column groups, run during T-2578 and not committed; checked by probes/t2578-pivotby-hidden-total-slot, 7 layouts with 2 and 3
+value columns and two column fields, 129 cells, and t2578-pivotby-total-error-scope): Excel computes the Total cell of value column `v`
+(0-based) in a row only when that row has a record under the column line at value-column position `G + v` of the grid, the
+line `(G + v) div V` with `G` column lines and `V` value columns (as if each line were one value column wide), and never when
+that is past the last line. So with `G` 2 and 2 values every row's Total cells count; with 3 column groups x, y, z and 2
+values, value 0 counts in the rows with a y record and value 1 in those with a z record; with 4 groups both look at the
+third; with one group only value 0 (the Total cells of the last value column are shown and never count). The Total row has
+records under every line, so its cells always count (P!A7, P!A35); the error decides with the true total (power-of-two
+sums decode to the row's own records). The gen-m9 calls with 7 column groups have no hidden Total error under their gates and
+so are arrays (`PIVOTBY(Data!B1:B12,Data!C1:C12,Data!D1:E12,_xleta.AVERAGE)` 11x17 although row 7's Total cells are `#DIV/0!`).
+Consistent with two column fields (four leaf lines). Unprobed: column subtotal lines and `col_total_depth` -1 (ours counts every
+line, subtotals included, in grid order); a LAMBDA returning `""` in the gating cell (ours: a record is enough).
 Status: VERIFIED
-Tasks: T-2311
+Tasks: T-2311, T-2578
 
 ## EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not
 Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes/m7-lift-take-drop-sortby rows 20-23,
@@ -1728,17 +1741,19 @@ Status: VERIFIED (excel-graph) for the listed calls
 Tasks: T-2580
 
 ## GROUPBY and PIVOTBY in the gen-m9 sweep (T-2436)
-Rule: Excel computes these calls that ours rejects or computes differently: `PIVOTBY(Data!B1:E12,Data!B1:D12,Data!D1:E12,
+Rule: Excel computes these calls that ours rejected or computes differently: `PIVOTBY(Data!B1:E12,Data!B1:D12,Data!D1:E12,
 _xleta.AVERAGE)` is a 16x30 array and `PIVOTBY(Data!B1:B12,Data!B1:C12,Data!B1:C12,_xleta.AVERAGE,1)` 13x25 (ROWS and COLUMNS
-of them; ours `#VALUE!`), and `AVERAGEA(GROUPBY(Data!B1:E12,Data!B1:D12,_xleta.PRODUCT,0,2),{0.02,0.027},Data!B7:B7)` is
--4.454221888962187E+22 (GROUPBY 20x7; ours -4.161608772169051E+22). Over a LAMBDA(x,x) function the results' elements make
-MAX, HARMEAN and AVERAGE `#N/A` and COUNT 142 (gen-m9 06b4e8f5de409d5e A366, 68d8ffb69ff739d8 A285, 7c20351562a2d71d A381,
-e85daedce5c2675e A35), which T-2459's nested-array model decides. Which elements differ is not shown: the spills are blocked
-in the sweep layout.
-Evidence: probes/t2436 (excel-graph, 2026-10-24), the cases named in T-2578.
-Ours: `#VALUE!` for the PIVOTBY calls, other values for the rest; T-2578.
-Status: VERIFIED (excel-graph) for the shapes and enclosing values
-Tasks: T-2578, T-2459
+of them; ours was `#VALUE!`: their hidden Total cells that are errors are not computed, see "PIVOTBY: an error column total over
+several value columns"), and `AVERAGEA(GROUPBY(Data!B1:E12,Data!B1:D12,_xleta.PRODUCT,0,2),{0.02,0.027},Data!B7:B7)` is
+-4.454221888962187E+22 (GROUPBY 20x7; ours -4.161608772169051E+22). The GROUPBY differs only in its blank keys: Excel's are
+true blanks that COUNT and AVERAGEA skip (COUNT 91, ours 100 with 0 for each; probes/t2578-groupby-product-subtotals), the
+"Blank keys show as true blanks" rule above (T-2460). Over a LAMBDA(x,x) function the results' elements make MAX, HARMEAN and
+AVERAGE `#N/A` and COUNT 142 (gen-m9 06b4e8f5de409d5e A366, 68d8ffb69ff739d8 A285, 7c20351562a2d71d A381, e85daedce5c2675e
+A35), which the nested-array model decides (SPEC-0018, T-2593).
+Evidence: probes/t2436 (excel-graph, 2026-10-24), the cases named in T-2578; probes/t2578-* (excel-graph, 2026-10-24).
+Ours: the PIVOTBY shapes since T-2578; the GROUPBY blank keys are T-2460's, the LAMBDA(x,x) cells T-2593's.
+Status: VERIFIED (excel-graph)
+Tasks: T-2578, T-2460, T-2593
 
 ## Array-value edges in the gen-m9 sweep (T-2436)
 Rule (one gen-m9 cell each, probes/t2436, excel-graph, 2026-10-24; mechanisms probed in probes/t2579-array-value-edges,
