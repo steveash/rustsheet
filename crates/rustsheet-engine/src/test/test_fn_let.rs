@@ -247,3 +247,24 @@ fn let_names_and_lambda_parameters_shadow_defined_names() {
         }
     }
 }
+
+// probes/let-lambda-body-own-name (excel-graph, T-2558): a LAMBDA body naming its own LET name
+// is #NAME?, with or without a defined name of that name (probes/let-name-shadows-defined-name B2).
+#[test]
+fn lambda_body_naming_its_own_let_name_is_name_error() {
+    let mut model = new_empty_model();
+    model.define_name("Pv", None, "=7").unwrap();
+    let cases = [
+        ("=LET(y,LAMBDA(a,y),y(1))", "#NAME?"),
+        ("=LET(Y,LAMBDA(a,y),y(1))", "#NAME?"),
+        ("=LET(y,LAMBDA(a,a+1),y(1))", "2"),
+        ("=LET(Pv,LAMBDA(a,Pv),Pv(1))", "#NAME?"),
+    ];
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(model._get_text(&format!("A{}", row + 1)), *expected, "{formula}");
+    }
+}
