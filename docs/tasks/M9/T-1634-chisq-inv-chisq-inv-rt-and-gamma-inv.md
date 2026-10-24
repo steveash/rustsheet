@@ -116,8 +116,8 @@ Cells:
       from eval/baseline/gen-m9.txt (`make eval-baseline`; 67 with the T-2258 cell below), with no new
       known-failure lines in any baseline. 112 of the 142 cells this task owns now meet the campaign's
       visible-parity target: 47 pass outright and 65 are within half a unit of Excel's 15th significant
-      digit while still baselined as bit-level known failures (T-2561's Out of scope records that the
-      bit-level residue has no owner yet). The 30 still visibly off are Excel's own deep-tail rounding,
+      digit while still baselined as bit-level known failures; their last digits belong to T-0972
+      (gamma quantile parity), which this task's kernel change feeds. The 30 still visibly off are Excel's own deep-tail rounding,
       not the engine's accuracy, and move to T-2561 with the campaign key (decision 0083).
 - [x] The listed cells of t1543-inverse-cdf-tiny-p pass (within the suite's numeric tolerance) and ordinary-p cases do not regress.
 - [x] `make check` green; reviewers approve.
@@ -146,6 +146,6 @@ about 1E-20 is `#NUM!` though the quantile exists.
 Eval delta: gen-m9 known failures 8550 -> 8483 (67 baseline lines removed, 0 regressions, no other
 suite moved); visible parity 8388 -> 8346 in-scope cells visibly off. Of the 142 cells this task
 owned, 47 now pass (their baseline lines are gone) and 65 more are visibly right but not yet
-bit-exact, so they stay in the baseline; the 30 still visibly off are Excel's own rounding (at
+bit-exact, so they stay in the baseline as T-0972's last-digit work; the 30 still visibly off are Excel's own rounding (at
 `CHISQ.INV(1E-300,50)` Excel is 4E-13 off the correctly rounded quantile the engine now returns)
 and move to T-2561 with the campaign key.
