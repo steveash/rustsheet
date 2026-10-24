@@ -36,4 +36,4 @@ Added probes-numeric/m9-besselk-underflow (147 cells), oracle-filled through exc
 docs/excel-semantics/engineering.md "BESSELK near the bottom of the double range, BESSELI overflow point (T-2550)".
 Ours matches 134 of 147: 12 BESSELK cells (n = 2 to 5 at x = 700, 702, 705) and `BESSELI(709.78,0)`
 (Excel `#NUM!`, ours finite) differ. The `#NUM!` point of BESSELI lies in (709.5, 709.78]. Kernel work stays with
-T-2549 The BESSELI cut is T-2613..
+T-2549. The BESSELI cut is T-2613.
