@@ -44,6 +44,12 @@ the A&S 26.6.4-26.6.8 finite series (df even or odd) divided by its own powers; 
 `F.TEST({0.02,0.027},..)` cell may instead be VAR.S's one-pass variance (statistics.md "VAR/STDEV
 switch"). Score each over the F.TEST cells on file, extracted from the case files as (x, y, Excel p) rows the way T-2361 did.
 
+Unprobed corners (T-2361 review): an overflowing variance ratio, `FTEST({1E-160,2E-160},{1E150,2E150})`
+in both orders (the engine says 0); large df where the double-double remainder hands over to
+`beta_reg_complement` at a + b = 200 (e.g. df 1 against df 249 or 400). Probe both before fitting.
+The T-2361 fit rows were extracted ad hoc and not committed: commit the extraction (tools/fitlab)
+with this task so the scores are reproducible.
+
 ## Acceptance criteria
 - [ ] Visible parity: the 10 cells above have Excel's value to 15 significant digits, with no new
       known-failure lines in any baseline beyond decision 0083's allowance.
