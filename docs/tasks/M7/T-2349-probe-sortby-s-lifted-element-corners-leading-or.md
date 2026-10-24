@@ -21,6 +21,8 @@ From T-1839's Excel-fidelity review. arrays.md "UNIQUE's and SORTBY's lifted ele
 - `SORTBY(A1:A3,NA(),{1;-1})`: ours `#N/A` in every element.
 Write a probe case per the excel-probe skill (ROWS, and per element ISBLANK, `&"|"`, TYPE and SUM, as probes/m7-unique-lift-elements does), fill it on excel-graph, and fix whatever differs in `fn_sortby`/`sortby_of`.
 
+Also probe (from T-2348): SORTBY's uniform 1xN sort_order (`SORTBY(A1:A3,C1:C3,{1,1})`), with and without a second by_array/sort_order pair, and UNIQUE's error element past the first column (`UNIQUE(D1:D3,FALSE,{"a","a"})`); ours keeps SORTBY's top-lefts and UNIQUE's error.
+
 ## Acceptance criteria
 - [ ] A probe case with these cells, filled from excel-graph; arrays.md updated (the UNVERIFIED lines resolved).
 - [ ] Every cell of it passes, or each failing cell has its own task.

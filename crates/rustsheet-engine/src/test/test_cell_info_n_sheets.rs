@@ -178,3 +178,18 @@ fn cell_lifts_over_a_range_info_type() {
     assert_eq!(model._get_text("F2"), *"2");
     assert_eq!(model._get_text("H1"), *"#SPILL!");
 }
+
+/// `VSTACK(CELL("contents",ref),..)` is `#VALUE!` in Excel; CELL alone and `VSTACK(0,..)` are
+/// fine (probes/t2414-gen-m7-unexplained, T-2457).
+#[test]
+fn cell_contents_as_vstack_argument() {
+    let mut model = new_empty_model();
+    model._set("A1", "=VSTACK(CELL(\"contents\",C11),1)");
+    model._set("B2", "=VSTACK(0,1)");
+    model._set("C3", "=CELL(\"contents\",C11)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("B2"), *"0");
+    assert_eq!(model._get_text("C3"), *"0");
+}

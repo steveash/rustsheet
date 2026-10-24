@@ -119,9 +119,10 @@ impl Model {
                 // Excel: a boolean coefficient is `#VALUE!` in every form (cell, typed, array
                 // literal); probes/seriessum-boolean-coefficients, math-argument-modes C44. `Empty`
                 // never gets here: the filter above drops blank cells.
-                ArrayNode::Boolean(_) | ArrayNode::String(_) | ArrayNode::Empty => {
-                    return value_error(cell)
-                }
+                ArrayNode::Boolean(_)
+                | ArrayNode::String(_)
+                | ArrayNode::Empty
+                | ArrayNode::Lambda(_) => return value_error(cell),
                 ArrayNode::Error(e) => {
                     return CalcResult::new_error(e.clone(), cell, String::new())
                 }

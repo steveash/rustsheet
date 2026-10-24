@@ -60,7 +60,51 @@ The fit is numeric, but the evidence is already in `eval/` (decision 0083: where
 Use the engine's own `ln`/`exp` kernels (numbers.md; fit lab, T-1523) before settling a form.
 Extra candidate densities are cheap to test.
 
+T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): WEIBULL and WEIBULL.DIST values, and their overflow and underflow edges: `WEIBULL(1E+300,2.5,100,0.5)` and `WEIBULL(2,1E+5,0.5,TRUE)` are `#NUM!` where ours gives 1, `WEIBULL(0,1.5E+10,0.01,1)` is 0 where ours is `#NUM!`, `WEIBULL.DIST(0.1,10000000000.5,0.2,FALSE)` `#DIV/0!`. Booleans from cells are T-1849's.
+
+Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 44 known-failure lines in eval/baseline/gen-m9.txt, 29 visibly off.
+Examples:
+- gen-m9/0bbab6206b5c9a07 Calc!A340 `=WEIBULL.DIST(100,1E+10,0.01,1)`: Excel #NUM!, ours 1.0
+- gen-m9/329b177b5d5165ad Calc!A101 `=WEIBULL(1E+300,2.5,100,0.5)`: Excel #NUM!, ours 1.0
+- gen-m9/5389dd4d5b5739d2 Calc!A378 `=WEIBULL.DIST(100,2.5,1.5E+10,TRUE)`: Excel 3.6288736930120994e-21, ours 3.628873693012116e-21
+- gen-m9/5cebac1f02bf30f2 Calc!A336 `=WEIBULL(1.5,1.999,1.5E+10,(((-1)+42)>Data!E4))`: Excel 1.3637084610461536e-20, ours 1.3637084610461485e-20
+- gen-m9/a63d1c7d6f96c56d Calc!A352 `=WEIBULL.DIST(Data!$A9,99999,99999,"FALSE")`: Excel #NUM!, ours 0.0
+Cells:
+- gen-m9/0072265d385d8ab2.case.json (1): Calc!A14
+- gen-m9/0620505280d2ea6e.case.json (2): Calc!A61, A247
+- gen-m9/0bbab6206b5c9a07.case.json (1): Calc!A340
+- gen-m9/11eb3ab4f4f8104c.case.json (3): Calc!A85, A258, A320
+- gen-m9/201d67f1d59436ed.case.json (1): Calc!A360
+- gen-m9/329b177b5d5165ad.case.json (1): Calc!A101
+- gen-m9/3b7990bd4e3307ba.case.json (1): Calc!A308
+- gen-m9/3fb9cecf2c23169f.case.json (4): Calc!A17, A337, A342, A389
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A320
+- gen-m9/44a8841352dc48e9.case.json (2): Calc!A256, A370
+- gen-m9/46ac3ef5e61583ca.case.json (1): Calc!A339
+- gen-m9/5389dd4d5b5739d2.case.json (1): Calc!A378
+- gen-m9/5395b8a427764a3f.case.json (2): Calc!A272, A288
+- gen-m9/583ca2baea0bb30a.case.json (1): Calc!A50
+- gen-m9/5cebac1f02bf30f2.case.json (1): Calc!A336
+- gen-m9/607e85cfee83a689.case.json (2): Calc!A158, A344
+- gen-m9/6e18550e9fc9c1b9.case.json (1): Calc!A350
+- gen-m9/7fd0a98183c6babf.case.json (1): Calc!A390
+- gen-m9/873f30d2bf76f8db.case.json (2): Calc!A250, A364
+- gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A197
+- gen-m9/941c409532603d32.case.json (2): Calc!A18, A142
+- gen-m9/9bc247733a1ca9fa.case.json (2): Calc!A108, A123
+- gen-m9/a4090567758520df.case.json (1): Calc!A315
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A352
+- gen-m9/c4635963fc926284.case.json (1): Calc!A46
+- gen-m9/c7664e494e418395.case.json (2): Calc!A36, A226
+- gen-m9/d208bbafc3bc1997.case.json (1): Calc!A248
+- gen-m9/d37313406b9f6e55.case.json (1): Calc!A114
+- gen-m9/d5fd9e05e9e6f466.case.json (1): Calc!A35
+- gen-m9/eccd03df42e40006.case.json (1): Calc!A96
+- gen-m9/f82473275380882e.case.json (1): Calc!A356
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2256): these 44 known-failure lines (the T-2256 cells in Context) disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Every cell in the table is within half a unit of the 15th significant digit of Excel's value.
 - [ ] No other WEIBULL.DIST or WEIBULL cell in m9-weibull-dist, t1048-weibull, t1049-weibulldist or
       ironcalc-calc WEIBULL_DIST.xlsx becomes visibly off. A cell that moves from bit-exact to

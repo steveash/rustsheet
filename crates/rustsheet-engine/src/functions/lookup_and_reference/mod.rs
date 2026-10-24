@@ -26,6 +26,11 @@ pub(crate) use ref_lift::lifts_into_references;
 
 pub(crate) use drop_take::Edge;
 
+/// 2^31, the least size Excel reads as no longer a size: EXPAND's rows or columns (`#VALUE!`) and
+/// WRAPROWS/WRAPCOLS's `wrap_count` (`#NUM!`) refuse it (arrays.md "Stacked results past the grid",
+/// "WRAPROWS and WRAPCOLS with a huge `wrap_count`").
+const SIZE_LIMIT_EXCLUSIVE: f64 = 2_147_483_648.0;
+
 mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
@@ -38,6 +43,7 @@ mod grouping;
 mod hstack_vstack;
 mod index;
 mod index_arg;
+mod lifted_options;
 mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
@@ -900,30 +906,36 @@ impl Model {
                 rows.push(values);
             }
             CalcResult::Array(rows)
-        } else if matches!(
-            args[0].ungrouped(),
-            Node::FunctionKind {
-                kind: Function::Index,
-                ..
-            }
-        ) {
-            // An erroring INDEX is its own error (`FORMULATEXT(INDEX(A1:A3,9))` is `#REF!`) and an
-            // INDEX of an array constant picks a value, not a cell, so is `#VALUE!`
-            // (probes/index-reference-args Calc!A4, A5; T-2137).
+        } else if let Node::FunctionKind { kind, .. } = args[0].ungrouped() {
+            // A reference-returning call that fails is its own error, unchanged, and one that
+            // yields values rather than cells is `#VALUE!` over the shape of the result
+            // (probes/formulatext-erroring-references; docs/excel-semantics/references.md).
+            let is_pick = matches!(
+                kind,
+                Function::Index
+                    | Function::Offset
+                    | Function::Indirect
+                    | Function::Choose
+                    | Function::If
+            );
             match reference {
-                error @ CalcResult::Error { .. } => error,
-                _ => CalcResult::new_error(
+                error @ CalcResult::Error { .. } if is_pick => error,
+                CalcResult::Array(rows) if is_pick => CalcResult::Array(
+                    rows.iter()
+                        .map(|row| vec![ArrayNode::Error(Error::VALUE); row.len()])
+                        .collect(),
+                ),
+                // INDEX of an array constant picks a value, not a cell
+                // (probes/index-reference-args Calc!A4, A5; T-2137).
+                _ if matches!(kind, Function::Index) => CalcResult::new_error(
                     Error::VALUE,
                     cell,
                     "Argument must be a reference".to_string(),
                 ),
+                _ => not_a_reference(cell),
             }
         } else {
-            CalcResult::Error {
-                error: Error::ERROR,
-                origin: cell,
-                message: "Argument must be a reference".to_string(),
-            }
+            not_a_reference(cell)
         }
     }
 
@@ -938,6 +950,15 @@ impl Model {
                 message: "Reference does not have a formula".to_string(),
             }
         }
+    }
+}
+
+/// FORMULATEXT's `#ERROR!` for an argument that is not a reference.
+fn not_a_reference(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::Error {
+        error: Error::ERROR,
+        origin: cell,
+        message: "Argument must be a reference".to_string(),
     }
 }
 

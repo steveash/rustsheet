@@ -34,6 +34,8 @@ const BACKREF_CHAR: u64 = 8;
 /// Units charged per character a case-insensitive backreference compares: folding one
 /// character builds and folds a one-character class.
 const BACKREF_FOLD_CHAR: u64 = 256;
+/// Units charged per character a lookbehind steps back.
+const STEP_BACK_CHAR: u64 = 8;
 /// Units charged per start position an unanchored search tries.
 const ATTEMPT: u64 = 64;
 /// Units charged per word of the visited set cleared: a word is 64 positions of one instruction.
@@ -52,6 +54,13 @@ enum Frame {
     Loop { slot: usize, old: usize },
     /// Where an atomic group opened.
     Barrier,
+    /// Where a lookaround opened, at `pos`: a negative one resumes at `after` when its body
+    /// fails.
+    Look {
+        pos: usize,
+        negative: bool,
+        after: usize,
+    },
 }
 
 /// The search state of a [`Program`], reused across searches: cleared, not freed.
@@ -404,6 +413,42 @@ impl<'a> Backtracker<'a> {
                     }
                     true
                 }
+                Some(Inst::LookStart { negative, end }) => {
+                    self.push(Frame::Look {
+                        pos,
+                        negative: *negative,
+                        after: end.saturating_add(1),
+                    })?;
+                    true
+                }
+                Some(Inst::StepBack(chars)) => {
+                    charge(self.work, u64::from(*chars).saturating_mul(STEP_BACK_CHAR))?;
+                    match step_back(text, pos, *chars) {
+                        Some(at) => {
+                            pos = at;
+                            true
+                        }
+                        None => false,
+                    }
+                }
+                Some(Inst::LookEnd) => match self.close_look()? {
+                    // A positive lookaround holds: on at the position it opened at.
+                    Some(at) => {
+                        pos = at;
+                        true
+                    }
+                    // A negative one fails: its frames are undone.
+                    None => false,
+                },
+                Some(Inst::CondGroup { group, no }) => {
+                    let first = group.saturating_mul(2);
+                    let slot = |i: usize| self.cache.slots.get(i).copied().flatten();
+                    if slot(first).is_none() || slot(first.saturating_add(1)).is_none() {
+                        pc = *no;
+                        continue;
+                    }
+                    true
+                }
             };
             if matched {
                 pc += 1;
@@ -418,17 +463,20 @@ impl<'a> Backtracker<'a> {
                         pos = at;
                         break;
                     }
-                    Some(Frame::Slot { slot, old }) => {
-                        if let Some(entry) = self.cache.slots.get_mut(slot) {
-                            *entry = old;
-                        }
-                    }
-                    Some(Frame::Loop { slot, old }) => {
-                        if let Some(entry) = self.cache.loops.get_mut(slot) {
-                            *entry = old;
-                        }
-                    }
+                    Some(frame @ (Frame::Slot { .. } | Frame::Loop { .. })) => self.undo(frame),
                     Some(Frame::Barrier) => {}
+                    Some(Frame::Look {
+                        pos: at,
+                        negative,
+                        after,
+                    }) => {
+                        // A negative lookaround's body failed every way: it holds.
+                        if negative {
+                            pc = after;
+                            pos = at;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -448,18 +496,74 @@ impl<'a> Backtracker<'a> {
     /// the frames that restore slots and loop starts, so backtracking past the group still
     /// undoes what the group recorded.
     fn close_atomic(&mut self) -> Result<(), Spent> {
-        let stack = &mut self.cache.stack;
-        let barrier = stack
+        let barrier = self
+            .cache
+            .stack
             .iter()
             .rposition(|frame| matches!(frame, Frame::Barrier))
             .unwrap_or(0);
+        self.cut(barrier)
+    }
+
+    /// Closes the innermost lookaround, its body having matched. A positive one is atomic (PCRE2):
+    /// it drops its barrier and the choices above it as [`Backtracker::close_atomic`] does, and
+    /// is the position it opened at. A negative one fails: every frame down to its barrier is
+    /// undone, so captures set in its body are dropped, and it is `None`.
+    fn close_look(&mut self) -> Result<Option<usize>, Spent> {
+        let stack = &self.cache.stack;
+        let Some((barrier, pos, negative)) =
+            stack
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(i, frame)| match frame {
+                    Frame::Look { pos, negative, .. } => Some((i, *pos, *negative)),
+                    _ => None,
+                })
+        else {
+            // Unreachable: the compiler pairs every `LookEnd` with a `LookStart`. Failing is the
+            // safe answer.
+            return Ok(None);
+        };
+        if !negative {
+            self.cut(barrier)?;
+            return Ok(Some(pos));
+        }
         let scanned = stack.len().saturating_sub(barrier);
-        charge(
-            self.work,
-            u64::try_from(scanned)
-                .unwrap_or(u64::MAX)
-                .saturating_mul(FRAME),
-        )?;
+        charge(self.work, to_u64(scanned).saturating_mul(FRAME))?;
+        // Choices and barriers inside the body are dropped with it; only records are undone.
+        while self.cache.stack.len() > barrier {
+            if let Some(frame) = self.cache.stack.pop() {
+                self.undo(frame);
+            }
+        }
+        Ok(None)
+    }
+
+    /// Undoes what a popped frame recorded: a capture slot or a loop's iteration start. Choices
+    /// and barriers record nothing.
+    fn undo(&mut self, frame: Frame) {
+        match frame {
+            Frame::Slot { slot, old } => {
+                if let Some(entry) = self.cache.slots.get_mut(slot) {
+                    *entry = old;
+                }
+            }
+            Frame::Loop { slot, old } => {
+                if let Some(entry) = self.cache.loops.get_mut(slot) {
+                    *entry = old;
+                }
+            }
+            Frame::Retry { .. } | Frame::Barrier | Frame::Look { .. } => {}
+        }
+    }
+
+    /// Drops the frame at `barrier` and the choices above it, charged per frame scanned, keeping
+    /// the frames that restore slots and loop starts.
+    fn cut(&mut self, barrier: usize) -> Result<(), Spent> {
+        let stack = &mut self.cache.stack;
+        let scanned = stack.len().saturating_sub(barrier);
+        charge(self.work, to_u64(scanned).saturating_mul(FRAME))?;
         let mut kept = barrier;
         for i in barrier..stack.len() {
             if let Some(frame) = stack.get(i).copied() {
@@ -521,6 +625,16 @@ impl<'a> Backtracker<'a> {
 /// The character at byte `pos` of `text`.
 fn char_at(text: &str, pos: usize) -> Option<char> {
     text.get(pos..)?.chars().next()
+}
+
+/// The byte position `chars` characters before byte `pos` of `text`, `None` past its start.
+fn step_back(text: &str, pos: usize, chars: u32) -> Option<usize> {
+    let mut before = text.get(..pos)?.char_indices().rev();
+    let mut at = pos;
+    for _ in 0..chars {
+        at = before.next()?.0;
+    }
+    Some(at)
 }
 
 /// The character before byte `pos` of `text`.

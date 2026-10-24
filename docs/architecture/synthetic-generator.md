@@ -534,6 +534,10 @@ T-2247 added `probability`, `shape`, `stat_x`, `gamma_x`, `flag` and `stat_data`
 flags, and the data arrays of the aggregates, order statistics and paired functions) and put FISHER's x on
 `unit_interval`; no draw change was needed, as an `array` or `aggregate` parameter's non-range draw already reaches
 the pool.
+T-2438 added `count` (the integer counts of the binomial, hypergeometric, CONFIDENCE and LARGE functions, with their
+soft `int` domain kept), `ets_target`, `ets_seasonality`, `ets_completion`, `ets_aggregation`, `ets_confidence`,
+`ets_statistic`, `ets_timeline` and `ets_values` array constants (the first entries are 24 sorted, evenly spaced points
+beside 24 values; the two are drawn independently, so a matching pair comes up by chance, the rest are mismatches), `beta_bound`, `fisherinv_y`, `forecast_x` and `lognorm_mean`.
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),
@@ -630,6 +634,10 @@ an optional `Probe` sheet for subexpression sidecars (§9.3), and an optional `L
 sheet. The sheet count is sampled from {1: 50%, 2–3: 40%, 4–8: 10%}, skewed to small,
 matching the corpus median of 1 worksheet. Sheet names include spaces, quotes, unicode and
 names that look like cell refs (`'A1'`, `'R1C1'`, `'TRUE'`) to exercise quoting.
+
+As built (T-2396): a case that calls GETPIVOTDATA (catalog `pivot: true`) gets a third sheet, `Pivot`, with a seeded
+source block and one compact-form pivot over it (spec `pivot_tables`); every GETPIVOTDATA call in the case queries
+that pivot, with deliberate `#REF!` misses (tools/src/rustsheet_tools/gen/pivots.py).
 
 ### 7.2 Realistic data tables
 

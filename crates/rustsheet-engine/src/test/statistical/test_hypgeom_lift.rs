@@ -145,7 +145,8 @@ fn a_cdf_sum_is_bounded() {
 #[test]
 fn hypgeom_dist_is_charged_its_weight() {
     // HYPGEOM.DIST is charged 2^22 an element (the bound of one capped cdf): 2^27 / 2^22 = 32
-    // elements, so a lifted call of 33 is refused before it runs. HYPGEOMDIST is `Constant`.
+    // elements, so a lifted call of 33 is refused before it runs. HYPGEOMDIST is charged 2^13 (its
+    // pmf walk, T-0977): 16,384 elements.
     let mut model = new_empty_model();
     let calls = [
         "HYPGEOM.DIST(SEQUENCE(#)*0+2,3,5,10,TRUE)",
@@ -163,14 +164,16 @@ fn hypgeom_dist_is_charged_its_weight() {
             &format!("=ROWS({})", call.replace('#', "33")),
         );
     }
-    model._set("C1", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(100000)+19))");
+    model._set("C1", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16384)+19))");
+    model._set("C2", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16385)+19))");
     model.evaluate();
     for (row, call) in calls.iter().enumerate() {
         let row = row + 1;
         assert_eq!(model._get_text(&format!("A{row}")), *"32", "{call}");
         assert_eq!(model._get_text(&format!("B{row}")), *"#ERROR!", "{call}");
     }
-    assert_eq!(model._get_text("C1"), *"100000");
+    assert_eq!(model._get_text("C1"), *"16384");
+    assert_eq!(model._get_text("C2"), *"#ERROR!");
 }
 
 #[test]

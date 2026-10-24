@@ -258,10 +258,10 @@ Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more cells (A7 A28 A
 gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED. Implementation: `number_to_text` (T-0107).
 ACOT shows no negative zero either: `ACOT(CEILING.PRECISE(Data!C9))` with C9 = -0.0001 is 1.5707963267948966 (PI()/2), the
-value of `ACOT(0)` (gen-m5/6efa59fc1257c475 Calc!A7, excel-graph, 2026-10-22, T-2252 triage). Ours is -1.5707963267948966:
+value of `ACOT(0)` (gen-m5/6efa59fc1257c475 Calc!A7, excel-graph, 2026-10-22, T-2252 triage). Before T-2376 ours was -1.5707963267948966:
 CEILING.PRECISE (and CEILING, CEILING.MATH, ISO.CEILING, ECMA.CEILING, unary minus `-(0)` and `INT(-0)`) yields the double -0.0,
-and `fn_acot` tests `f >= 0.0` (true for -0.0) and returns `atan(1/-0.0)` = -PI()/2. Whether Excel's CEILING.PRECISE yields
-+0 or ACOT ignores the sign of zero cannot be told from the cell; both give PI()/2. Task: T-2376.
+and `fn_acot` tested `f >= 0.0` (true for -0.0) and returned `atan(1/-0.0)` = -PI()/2. Implementation: the zero branch of `fn_acot` (T-2376). Whether Excel's CEILING.PRECISE yields
++0 or ACOT ignores the sign of zero cannot be told from the cell; both give PI()/2.
 
 ## Overflow in `+ - * /` is #NUM! where it happens
 Rule: a sum, difference, product or quotient beyond the double range is the error `#NUM!` at that
@@ -1076,7 +1076,7 @@ quirk. The ATAN kernel is the engine's `f64::atan`, as in `fn_atan`; ulp parity 
 Evidence: probes/atan2-quadrants (all 123 numeric cells equal this model; libm `atan2` misses 25 by one ulp, as does
 the 34-cell G column of probes/asin-atan-sign-source), probes/atan2-error-edges, probes/atan2-kept-subnormal (with `=0`
 companions, decision 0042); excel-graph, 2026-10-19, T-1930.
-Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT may share the kernel (not probed).
+Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT is the same kernel (77 of 77 cells of probes-numeric im-last-digit-sweep; engineering.md "IM* reciprocal kernels, IMABS and IMARGUMENT", T-2044).
 Status: VERIFIED
 Tasks: T-1930, T-1797
 
@@ -1507,7 +1507,8 @@ Tasks: T-0239
 ## CHISQ.DIST degrees of freedom and BITAND operands are bounded
 Rule: CHISQ.DIST with degrees of freedom above 10^10 is `#NUM!` (10^10 itself is accepted;
 CHISQ.DIST.RT/CHISQ.INV/CHISQ.INV.RT share the constant but are unprobed), and BITAND is `#NUM!` for an operand of
-2^48 or more (2^48-1 is accepted; the other BIT functions share the constant but are unprobed).
+2^48 or more (2^48-1 is accepted). BITOR and BITLSHIFT agree (engineering.md "Engineering edge-pool smoke check
+(T-2249)", UNVERIFIED until T-2421 commits the probe).
 These are Excel's own limits, not deviations.
 Evidence: probes/resource-limits C5, C6 (CHISQ.DIST), C7, C8 (BITAND) (excel-graph, 2026-10-05).
 Status: VERIFIED
@@ -1540,12 +1541,14 @@ position past a shorter array is `#N/A`). Examples:
 - Each element keeps its own form: `AGGREGATE({9,14},0,E1:E6,2)` is `#VALUE!` (2 is not a reference), then 5.
 - Invalid elements fail alone: `{1,"x",TRUE}` gives 3.83, `#VALUE!`, 3.83, and `{9,99}` gives 23, `#VALUE!`.
 - A range fourth argument is a reference, not lifted: `AGGREGATE({9,4},0,E1:E6,E1:E2)` spills 27, 9.
-
-Observation (T-2381): `SERIESSUM(MINVERSE(0.2),-AGGREGATE(15,Data!$C12,Data!A6:C12,Data!B2:E12),2,1E+15)` with C12 = -0.0001
-is `#VALUE!` (gen-m5/c634f6ec7b14fe08 Calc!A322, excel-graph, 2026-10-22); ours is `#NUM!` from the AGGREGATE, which truncates the
-option to 0 and reads k = B2 (blank, 0). Either a negative option below 0 is `#VALUE!` before truncation (as -0.0001 < 0), or a
-multi-cell range k for functions 14-19 is `#VALUE!` (the formula sits in row 322, outside B2:E12); the cell cannot tell which.
-Status: OBSERVED (one excel-graph cell; T-2381 probes it)
+- An `options` below 0 is `#VALUE!` before it is truncated: `AGGREGATE(15,-0.0001,E1:E6,1)`, `AGGREGATE(9,-0.5,E1:E6)` and
+  `AGGREGATE(15,-1,..)` are `#VALUE!`, while `AGGREGATE(15,7.9,..)` is option 7 and `AGGREGATE(14.5,0,..)` is function 14. A
+  multi-cell range k for functions 14-19 reads its first cell wherever the formula sits (`AGGREGATE(15,0,E1:E6,G1:G2)` is the
+  smallest, 1, in rows 1, 2 and 6, and `@` gives the same), and the array `{1;2}` lifts. So
+  `SERIESSUM(MINVERSE(0.2),-AGGREGATE(15,Data!$C12,..),2,1E+15)` with C12 = -0.0001 is `#VALUE!` from the option
+  (gen-m5/c634f6ec7b14fe08 Calc!A322).
+  Evidence: probes/aggregate-negative-option-range-k (excel-graph, 2026-10-22, T-2381). Status: VERIFIED (excel-graph).
+  Implemented in: crates/rustsheet-engine/src/functions/aggregate.rs (`aggregate_scalar`).
 
 A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift array criteria", DEVIATION):
 the elements to compute times the cells every element reads (the used cells of each reference plus the size of each
@@ -1775,12 +1778,16 @@ truncates to 0 gives empty text: `BASE(0.2,29,0.3)` is "" (`LENB` of it is 0; ou
 (`MID(BASE(0,22),1,MONTH(43194))` = "0"), and with `min_length` n it is n zeros (`BASE(0.1,15,9)` "000000000",
 `BASE(0.1,24,10)`), which is what a default `min_length` of 1 would give.
 A number past 2^53 is `#NUM!`: `BASE(ROUNDUP(2^53,-6),10,5)` (9007199255000000) and BASE of about 7.47E+19 (a SUM of products of
-123456789.123) in radix 34 are `#NUM!` (ours "9007199255000000" and "3TDTK1V8J6TPP"; above 2^63 ours prints i64::MAX's digits). Whether
-2^53 itself is accepted is unprobed (T-2289).
-Evidence (excel-graph, 2026-10-22, T-2252 triage): gen-m5/dde5ea295a38fb16 Calc!A254 (zero, min_length 0.3);
+123456789.123) in radix 34 are `#NUM!` (ours "9007199255000000" and "3TDTK1V8J6TPP"; above 2^63 ours prints i64::MAX's digits).
+The cut is exact: `number` of 2^53-1 is accepted (radix 2 prints 53 ones, radix 16 "1FFFFFFFFFFFFF", radix 36 "2GOSA7PA2GV"),
+while 2^53, 2^53+2, 2^63, 2^64 and 1E+300 are `#NUM!` in radix 2, 16 and 36, with or without `min_length`; `BASE(-2^53,10)`
+is `#NUM!` too (negatives are `#NUM!` anyway). `BASE(9007199254740993,10)` is accepted and
+gives "9007199254740990" (15 significant digits, below 2^53); whether the cut happens on entry or inside BASE is unprobed.
+Evidence (excel-graph, 2026-10-22): probes/base-number-upper-bound (T-2289); T-2252 triage: gen-m5/dde5ea295a38fb16 Calc!A254 (zero, min_length 0.3);
 gen-m5/55afc805e00a1509 Calc!A101, gen-m5/08eafc9e61602bcb Calc!A98 (past 2^53); the "0" and zero-padded cells, which pass:
 gen-m5/cd883013bea3b305 Calc!A22, gen-m5/9a7a94353845ea12 Calc!A45, gen-m5/90bf45bea539723d Calc!A251.
-Status: VERIFIED (excel-graph) for the cells above; engine DIVERGENT until T-2373 and T-2374 land.
+Unprobed: zero with a written-empty or blank-cell `min_length` (`BASE(0,2,)`, `BASE(0,2,Z99)`, `BASE(0,2,"")`); the engine reads them as 0, so they give empty text.
+Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374).
 Tasks: T-2289, T-2373, T-2374
 
 ## RANDBETWEEN and RANDARRAY argument checks
@@ -1903,8 +1910,15 @@ above 4) is `#VALUE!`. BASE does the opposite: a negative number is `#NUM!` befo
 "0000000000", "0".
 Evidence (excel-graph, 2026-10-20): gen-m5/49bfbf67a1409563 Calc!A179, gen-m5/0362d48f56108faa Calc!A39, gen-m5/1962de140dae0111 Calc!A206,
 gen-m5/a6fec430ac350c1a Calc!A31, gen-m5/c0651f0e0fb544d0 Calc!A253, gen-m5/d1b251fd6e9c4b4b Calc!A24.
-Unprobed: which error wins when both the number and the form are bad (`ROMAN(-5,NA())`, `ROMAN(4000,9)`); the engine
-reports the number's.
+Which error wins when both are bad: see the T-2423 probe below.
+ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)` is five "DLXI" (forms
+1, 2, 0.5, 3, 4; the 123456789.123 element is `#VALUE!` and the HSTACK pads `#N/A`, both dropped by ignore 2: gen-m7/f7e94a817e5385ac
+Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. The array number, a multi-cell range and an array of booleans as the form are evidenced below (T-2423). Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
+ROMAN probed (T-2423, probes/roman-lift-forms, excel-graph, 2026-10-23): `ROMAN({1;4},0)` is the 2x1 "I", "IV"; `ROMAN(4,Data!A1:A2)` (forms 0, 4) is "IV", "IV"; `ROMAN(Data!A1:A2,0)` (numbers 0, 4) is "", "IV"; `ROMAN(4,{TRUE,FALSE})` is "IV", "IV" and `ROMAN(4,TRUE)` is "IV". `ROMAN(499,{TRUE,FALSE})` is "CDXCIX", "ID" (TRUE is form 0, FALSE is form 4) and `ROMAN(499,Data!A1:A2)` (forms 0, 4) is "CDXCIX", "ID"; `ROMAN(499,{1,2,3,4})` is "LDVLIV", "XDIX", "VDIV", "ID" (the 4-based results above cannot tell the forms apart). When both are bad the form's error wins over a negative number for `ROMAN(-5,NA())` (`#N/A`; ours `#VALUE!`, T-2523), and the text form `ROMAN(-5,"x")` is `#VALUE!`; `ROMAN(4000,9)` is `#VALUE!`.
+COMBINA lifts over arrays (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COMBINA({7;1},4)` is the 2x1 209.99999999999997 (COMBIN(10,4), as above), 1; `COMBINA(Data!E7:E8,4)` and `COMBINA(4,{1;2})` are
+2 rows; `COMBINA(WRAPROWS(E6:E12,1,1),4)` is 7x1: #NUM! (blank is 0), 209.99999999999997, #NUM!, 5, #VALUE! ("abc"), #NUM!, #VALUE!. The gen-m7 `#VALUE!` of
+`VSTACK(COMBINA(..),CHOOSE(3,..))` (f19581ac44da1653 A3357) is the CHOOSE: a scalar-error argument makes VSTACK that error (probes/vstack-scalar-error, T-1695)
+(`VSTACK({1;2},CHOOSE(3,1,2))` is `#VALUE!`, ours agrees). Implemented (T-2453): COMBINA lifts both arguments.
 Status: VERIFIED (excel-graph); implemented (T-2154).
 
 ## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes

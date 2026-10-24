@@ -237,11 +237,11 @@ pub(crate) enum PickedReference<'a> {
 }
 
 impl crate::functions::logical::ScopeResult for PickedReference<'_> {
-    fn lambda(&self) -> Option<usize> {
+    fn lambdas(&self) -> Vec<usize> {
         match self {
-            PickedReference::Value(value) => value.lambda(),
-            PickedReference::Read(read) => read.lambda(),
-            PickedReference::External(_) | PickedReference::Node(_) => None,
+            PickedReference::Value(value) => value.lambdas(),
+            PickedReference::Read(read) => read.lambdas(),
+            PickedReference::External(_) | PickedReference::Node(_) => Vec::new(),
         }
     }
 }

@@ -223,6 +223,15 @@ impl Model {
         };
         let decimal_sep = separator(1, ".")?;
         let group_sep = separator(2, ",")?;
+        // A separator over 255 characters is #VALUE!, though only its first character is used
+        // (probes/numbervalue-separator-edges A1, A2, A10, A11, A17-A19; T-2379).
+        if number_text_too_long(&decimal_sep) || number_text_too_long(&group_sep) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Separator too long".to_string(),
+            ));
+        }
 
         // Only the first character of each separator counts, and an empty one is #VALUE!
         // (docs/excel-semantics/text.md "NUMBERVALUE reads text as VALUE does"; gen-m5/5704666097cbc5b2

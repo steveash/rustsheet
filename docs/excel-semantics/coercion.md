@@ -266,9 +266,14 @@ is a shape mismatch). A blank plus a shape mismatch is `#VALUE!` in every positi
 `SUMPRODUCT(<number>,D4:D4)` fc81c2f704bef138 A165, `SUMPRODUCT(A11:A11,1.005,C11:C11)` aac6230c2fb40e1e A64). An error argument ahead of the blank wins
 (`SUMPRODUCT(NA(),blank)`, `SUMPRODUCT(NA(),R,blank)` are `#N/A`); the blank ahead of the error gives `#VALUE!`.
 Status: VERIFIED (excel-graph); implemented in `fn_sumproduct` / `sumproduct_array` (T-2150).
-Open: whether an error element inside a range (not a whole-argument error) beats an earlier shape mismatch is
-unprobed; ours keeps the pre-T-2150 order, where the first mismatched argument wins (T-2296).
-Tasks: T-0944, T-2150, T-2296
+Probed (excel-graph, 2026-10-23, T-2296, probes/t2296-sumproduct-error-element, Calc!A1:A16): an error *element* inside a range or array
+beats a shape mismatch wherever it sits: `SUMPRODUCT(X,R)` and `SUMPRODUCT(R,X)` (X 2x1 numbers, R 2x2 with a `#DIV/0!` element) are `#DIV/0!`,
+`SUMPRODUCT(X,{1,#N/A;2,3})` and `SUMPRODUCT({1,#N/A;2,3},X)` are `#N/A`, `SUMPRODUCT(X,N,R)` (N a 2x2 of numbers) is `#DIV/0!`, and
+`SUMPRODUCT(B1:C4,{1,#N/A,3})` and `SUMPRODUCT({1,#N/A,3},B1:C4)` are `#N/A` (gen-m7/f7e94a817e5385ac Calc!A50 agrees). A mismatch with no error
+anywhere is `#VALUE!` (`SUMPRODUCT(B1:C4,{1,2,3})`). A whole-argument error beats an error element: `SUMPRODUCT(R,X,NA())`
+and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Ours differs
+(the first mismatched argument stops element reading, and `SUMPRODUCT(R,X,NA())` gives `#DIV/0!`): T-2450.
+Tasks: T-0944, T-2150, T-2296, T-2450
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
 Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =

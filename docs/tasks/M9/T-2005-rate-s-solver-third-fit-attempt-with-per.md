@@ -3,7 +3,7 @@ id: T-2005
 title: "RATE's solver: third fit attempt with per-iterate traces, the nested RATE(n,PMT(..)) cells and Excel's #NUM! failure rule"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -51,7 +51,27 @@ Engine: `compute_rate` (functions/financial/financial_util.rs), called from `fn_
 RATE's f(r) evaluates the annuity (1+r)^n, so it depends on kernel-map rank 1 (T-1528, time-boxed). If a candidate
 matches the iterates but misses the final bits only through (1+r)^n, record that and stop there.
 
+gen-m9 sweep (gap triage 2026-10-23, T-2255). This task's single cell gen-m9/eefcc3989f31de76 A5 is now in the gated gen-m9 baseline
+(the sweep gated the suite).
+Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 formulas.
+Examples:
+- gen-m9/eefcc3989f31de76 Calc!A5 `=IFERROR((RATE(199,-805,61378)/Data!E3),SUM(Data!E6:E7,Data!E4:E9))`: Excel -0.011859926889590918, ours -0.011859926889595479
+Cells:
+- gen-m9/eefcc3989f31de76.case.json (1): Calc!A5
+
+T-2257 sweep (gen-m9 financial; gap triage 2026-10-23): `SLN(RATE(105,-788,80075),1.005,12)` is -0.08369822820750211 in Excel, ours -0.08369822820750304: the inner RATE differs (SLN is exact).
+
+Owned gen-m9 cells (T-2257 triage, excel-graph, 2026-10-23): 1 known-failure lines in eval/baseline/gen-m9.txt, 1 visibly off.
+Examples:
+- gen-m9/a91bad4e84f49739 Calc!A69 `=SLN(RATE(105,-788,80075),(AVERAGE(Data!E5:E5)+(100*Data!$E7)),12)`: Excel -0.08369822820750211, ours -0.08369822820750304
+Cells:
+- gen-m9/a91bad4e84f49739.case.json (1): Calc!A69
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2257): the 1 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The lab parses the nested `RATE(n,PMT(..),..)` cells and scores every candidate on all RATE cells of
       m9-fin-irr-rate, solver-iteration-traces R and rate-empty-arguments, with iterate hits. Each candidate's
       bit-exact and within-4-ulp counts go into financial.md "RATE iterates on the rate itself", rejected ones included.
@@ -74,3 +94,23 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - RATE: 362 cells (13-14 digits right 103, 10-12 237, 6-9 20, fewer or 0 vs nonzero 2); most in `probes-numeric/m9-fin-irr-rate.case.json` 262; `probes/solver-iteration-traces.case.json` 71. e.g. `RATE(A2,B2,C2)` Excel 0.007701472488201368, ours 0.00770147248823353
 
 Excel stops early, so 15 digits here means reproducing its stop, not converging further; a fit that reaches 15 digits on the sweep is enough for stage 1.
+
+## Outcome
+RATE is now Excel's secant on the FV residual (financial.md "RATE is a secant on the FV residual", which replaces
+"RATE iterates on the rate itself"): r1 = guess - 0.001·sign(f), f with FV's power and annuity factor, Excel's
+twice-rounded step, stop |dr| < 1e-7 and |f| < 1e-7, at most 200 steps with the 200th iterate returned on the step test
+alone, iterates at or below -1 `#NUM!`. The cap is new evidence: probes/rate-step-cap (46 cells, excel-graph) shows runs
+of 172-200 steps converge and 201-216 are `#NUM!`. Guess 0 now converges.
+- Scoring (a scratch Rust harness that evaluated every argument with the engine, nested `RATE(n,PMT(..))` cells
+  included): bit-exact 240/421 numeric literal RATE cells (Newton 16; T-1533's best secant 19/136), value-or-`#NUM!`
+  463/464 (Newton 446). Candidates and their counts, rejected ones included, are in financial.md.
+- Eval: known failures gen-m9 8185 -> 8182 (both visible-parity cells of this task, eefcc3989f31de76 A5 and
+  a91bad4e84f49739 A69, pass), ironcalc-calc 801 -> 775, probes 1981 -> 1894 (rate-empty-arguments all pass), no
+  regressions in the gated suites. probes-numeric/m9-fin-irr-rate (ungated) 317 -> 481 passing cells, but three cells
+  that passed on main now fail: A278 `RATE(3,PMT(0.05,3,10000,-500,1),10000,-500,1)` 68 ulp (Excel 0.04999999999999943,
+  ours 0.0499999999999999; visibly off, a regression past decision 0083's 4-ulp allowance), A245
+  `RATE(1,PMT(0.1,1,10000),10000)` 26 ulp (within 15 digits) and A367 `RATE(6,PMT(0.3,6,10000),10000)` 1 ulp; all
+  three go to T-2527. A583 `RATE(10,-1E6,1E7)` (root 0) is `#NUM!` in Excel and was already a number on main
+  (-4.5E-13); ours is now -2.6E-9, still open.
+- The lab criterion is met by the scratch harness, not by `rustsheet-fitlab`; the port, the 117 RATE cells still visibly
+  off (mostly nested PMT cells) and A583 move to T-2527 (decision 0083's visible stage).

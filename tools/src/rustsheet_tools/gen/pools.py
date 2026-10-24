@@ -6,7 +6,9 @@ workbook for one (docs/excel-semantics/numbers.md). `number_edges` is the target
 
 from __future__ import annotations
 
+import math
 import re
+from collections.abc import Iterable
 
 from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM
@@ -18,6 +20,11 @@ MAX_STRING_LITERAL = 255
 def entries(text: str, sep: str = "|") -> list[str]:
     """The `sep`-separated formula texts of `text` (a pool written compactly)."""
     return [e.strip() for e in text.split(sep)]
+
+
+def _column(values: Iterable[float]) -> str:
+    """An array constant holding `values` as one column (a literal, so a pooled call needs no function)."""
+    return "{" + ";".join(f"{v:g}" if isinstance(v, float) else str(v) for v in values) + "}"
 
 
 POOLS: dict[str, list[str]] = {
@@ -293,6 +300,170 @@ POOLS: dict[str, list[str]] = {
         "{0,1,59,60,61} | {45322,45351,45352,45657,45658} | {39448.5,39508.25,39859,39904,40000.9} | "
         "{39448,39508,39859} | {39448;39508;39859;39904;40000}"
     ),
+    # The M9 engineering functions (docs/excel-semantics/engineering.md). IM* inumbers: a bare i or j, a zero
+    # imaginary part, the j suffix and mixed suffixes ("T-1625 probes": IMSUB and IMDIV give #NUM!, IMSUM #VALUE!),
+    # an upper-case I (COMPLEX's suffix is case-sensitive), E notation and parts near the double range (IM* results
+    # that overflow: IMEXP("710"), IMPOWER("1E155",2)), malformed text (#NUM!), empty text (#NUM!, "Engineering edge
+    # cases from a generated sample"), a number (read as its digits), a boolean (#VALUE!) and a blank cell (0;
+    # Data!Z1 is never filled).
+    "complex_text": entries(
+        '"i" | "-i" | "j" | "3+0i" | "0" | "0i" | "3+4j" | "1+2I" | "1.5E+2-2E-3i" | "1E+200" | "1E-200+1E-200i" | '
+        '"1E+300+1E+300i" | "710" | "1000+1i" | "0.99999973i" | "-724.227-562.884i" | "i3" | "3+4" | "3+4ii" | '
+        '"+i" | "--1" | " 3+4i" | "3 + 4i" | "x" | "" | 3 | (-2.5) | TRUE | Data!Z1'
+    ),
+    # COMPLEX's suffix: i and j, the upper-case forms and other text (#VALUE!), empty text (the default i), a
+    # number and a boolean.
+    "complex_suffix": entries('"i" | "j" | "I" | "J" | "" | "k" | "ij" | " i" | 1 | TRUE'),
+    # BIN2DEC, BIN2HEX and BIN2OCT numbers: 10 binary digits at most, the 10th the sign bit of a two's-complement
+    # negative (1000000000 is -512, 1111111111 is -1); 11 digits, a digit 2, a fraction and a negative are #NUM!;
+    # leading zeros, digits as text, empty text and a blank cell (0: "Base conversions read a blank cell and empty
+    # text as 0"), a boolean (#VALUE!).
+    "bin_digits": entries(
+        '0 | 1 | 111111111 | 1000000000 | 1111111111 | 1111111110 | 10000000000 | 2 | 1.5 | (-1) | "0000000001" | '
+        '"1111111111" | "" | Data!Z1 | TRUE'
+    ),
+    # OCT2BIN, OCT2DEC and OCT2HEX numbers: 3777777777 is the largest positive, 4000000000 the most negative and
+    # 7777777777 is -1; 11 digits, an 8 or 9 digit and a fraction are #NUM!; OCT2BIN of a negative beyond -512
+    # (7777777000) and of a positive past 511 (1000) has no 10-bit form; a blank cell is 0 ("OCT2BIN of a blank
+    # cell is 0").
+    "oct_digits": entries(
+        "0 | 7 | 777 | 1000 | 3777777777 | 4000000000 | 7777777777 | 7777777000 | 77777777777 | 8 | 19 | 1.5 | (-1) | "
+        '"0000000017" | "" | Data!Z1 | TRUE'
+    ),
+    # HEX2BIN, HEX2DEC and HEX2OCT numbers: 7FFFFFFFFF and 8000000000 (the two's-complement turn), FFFFFFFFFF (-1),
+    # lower case, 11 digits and a non-hex letter (#NUM!), leading zeros, a number read as its digits (HEX2DEC(255)
+    # is 597), HEX2BIN past its 10-bit range (200, FFFFFFFDFF), HEX2OCT past its 30-bit one (20000000), empty text.
+    "hex_digits": entries(
+        '"0" | "1F" | "1f" | "1FF" | "200" | "7FFFFFFFFF" | "8000000000" | "FFFFFFFFFF" | "FFFFFFFDFF" | "FFFFFFFE00" | '
+        '"20000000" | "FFE0000000" | "00000000FF" | "10000000000" | "G" | " 1" | "-1" | "1.5" | 255 | "" | Data!Z1 | TRUE'
+    ),
+    # DEC2BIN, DEC2HEX and DEC2OCT numbers: the ends of each range (DEC2BIN -512..511, DEC2OCT -2^29..2^29-1,
+    # DEC2HEX -2^39..2^39-1) and the first values past them, fractions (they truncate), number text and a boolean.
+    "dec_number": entries(
+        "0 | 1 | (-1) | 511 | 512 | (-512) | (-513) | 536870911 | 536870912 | (-536870912) | (-536870913) | "
+        '549755813887 | 549755813888 | (-549755813888) | (-549755813889) | 1.9 | (-1.9) | 0.5 | "9" | TRUE | Data!Z1'
+    ),
+    # `places` of the base conversions: 1 to 10 work, 0, -1, 11 and "x" do not ("A negative base-conversion result
+    # ignores places"), a fraction truncates, number text is read, and a positive result longer than `places` is
+    # #NUM! (1 and 2 are below most results' length).
+    "places": entries('1 | 2 | 3 | 9 | 10 | 11 | 0 | (-1) | 2.9 | 10.5 | "4" | "x" | TRUE'),
+    # Bessel x ("BESSELJ / BESSELY (T-0900)"): 0 (BESSELY and BESSELK of x <= 0 are #NUM!), tiny values, both sides
+    # of the x = 8 switch from the rational approximation to the asymptotic branch, 100 (the largest probed) and
+    # beyond (unprobed, T-2140), BESSELI's overflow near 713, negatives (J and I take them) and number text.
+    "bessel_x": entries(
+        "0 | 1E-300 | 1E-10 | 0.5 | 1 | 2.5 | 7.999999 | 8 | 8.000001 | 10 | 30 | 100 | 1000 | 1E+5 | 700 | 713 | "
+        '714 | (-1) | (-8.5) | (-1E-10) | "2.5" | TRUE'
+    ),
+    # Bessel order n: a positive fraction truncates (BESSELJ(8,9.99) is BESSELJ(8,9)), any negative is #NUM!
+    # before truncation (-0.0001), orders above x (Miller's recurrence), 100000 (our cap, "BESSEL order cap") and
+    # past it (Excel's BESSELJ(10,1000000) is 0; a DEVIATION), number text and a boolean.
+    "bessel_order": entries(
+        '0 | 1 | 2 | 0.9999 | 9.99 | 10 | 11 | 100 | 101 | 1000 | 100000 | 100001 | 1E+6 | (-0.0001) | (-1) | "1" | TRUE'
+    ),
+    # CONVERT units ("CONVERT constants and evaluation order", "CONVERT temperature"): base units, prefixed and
+    # binary-prefixed ones, long names, units whose class keeps a non-SI base (dyn, erg, l, ang2), every
+    # temperature scale with the prefixable K and kel and the unprefixable mC, kF, units of different classes
+    # (#N/A), unknown and empty units, and case (units are case-sensitive).
+    "convert_unit": entries(
+        '"m" | "km" | "mm" | "Ym" | "ft" | "in" | "mi" | "Nmi" | "ang" | "parsec" | "ly" | "g" | "kg" | "lbm" | '
+        '"sg" | "u" | "C" | "cel" | "F" | "K" | "kel" | "mK" | "kK" | "Rank" | "Reau" | "mC" | "kF" | "s" | "hr" | '
+        '"day" | "yr" | "J" | "cal" | "eV" | "erg" | "N" | "dyn" | "lbf" | "m2" | "ha" | "ang2" | "m3" | "l" | '
+        '"gal" | "uk_pt" | "tsp" | "tbs" | "Pa" | "atm" | "W" | "HP" | "T" | "ga" | "bit" | "byte" | "kibyte" | '
+        '"Kibyte" | "M" | "KM" | "xyz" | "" | " m" | 1'
+    ),
+    # ERF, ERFC and their .PRECISE forms: 0 and tiny values, the point where ERF rounds to 1 (about 5.9) and
+    # where ERFC underflows (about 27.2), negatives (ERF of a negative lower limit, ERFC near 2), huge values
+    # and number text.
+    "erf_x": entries(
+        "0 | 1E-300 | (-1E-300) | 1E-10 | 0.5 | 1 | 2 | 3 | 5.9 | 6 | 10 | 26.5 | 27 | 27.3 | 28 | (-0.5) | "
+        '(-1) | (-6) | (-27.3) | 1E+300 | (-1E+300) | "0.5" | TRUE'
+    ),
+    # BITAND, BITOR, BITXOR and the shifts: 2^48-1 is the largest number and 2^48 is #NUM! (numbers.md "CHISQ.DIST
+    # degrees of freedom and BITAND operands are bounded"); a fraction and a negative are #NUM!, number text is
+    # read, a boolean is its number (BITAND(TRUE,139) is 1) and a blank cell is 0 (engineering.md "Engineering
+    # edge-pool smoke check (T-2249)").
+    "bit_number": entries(
+        "0 | 1 | 13 | 2^47 | 2^48-1 | 2^48 | 281474976710655 | 281474976710656 | 1.5 | 0.9999999999 | (-1) | "
+        '"13" | TRUE | Data!Z1'
+    ),
+    # BITLSHIFT and BITRSHIFT shift_amount: 48 and 54 are #NUM! for BITLSHIFT(1,..) but 53 and -53 give 0
+    # (T-2421); a negative shifts the other way and a fraction truncates (the T-2249 smoke check).
+    "bit_shift": entries('0 | 1 | (-1) | 47 | 48 | 53 | 54 | (-53) | (-54) | 1.5 | (-1.5) | "2" | TRUE'),
+    # The D* database (gen/database.py's sheet Db): the whole table, absolute, the header row alone (no
+    # records), one column, the first four records, trailing blank records, the table without its Name column,
+    # and the table without its header row (the first record is read as headers).
+    "db_table": entries(
+        "Db!A1:D9 | Db!$A$1:$D$9 | Db!A1:D1 | Db!A1:B9 | Db!A1:D5 | Db!A1:D12 | Db!B1:D9 | Db!A2:D9"
+    ),
+    # The D* field ("Database function argument modes"): column indexes 1-4, past the table (5) and 0, a negative
+    # and a fraction, headers by name in either case and with a space, an unknown name and numeric text
+    # (#VALUE!), a boolean (no column: 0, #DIV/0! or #NUM!), empty text and a header cell reference.
+    "db_field": entries(
+        '1 | 2 | 3 | 4 | 5 | 0 | (-1) | 2.9 | "Qty" | "qty" | "Price" | " Qty" | "Name" | "Nope" | "2" | TRUE | "" | '
+        "Db!B1 | Db!C1"
+    ),
+    # The D* criteria (gen/database.py's blocks): each block alone, two adjacent blocks (an AND across columns),
+    # a block with a blank row under it (a blank criteria row matches every record), the header row only, a
+    # header-only cell, absolute references and a block whose header the table does not have.
+    "db_criteria": entries(
+        "Db!F1:F2 | Db!G1:G2 | Db!H1:H2 | Db!I1:I2 | Db!J1:J2 | Db!K1:K2 | Db!L1:L3 | Db!M1:M2 | Db!N1:N2 | "
+        "Db!O1:O2 | Db!P1:P2 | Db!Q1:Q2 | Db!R1:R2 | Db!S1:S2 | Db!F1:G2 | Db!G1:H2 | Db!F1:F3 | Db!F1:G1 | "
+        "Db!F1 | Db!$G$1:$G$2 | Db!F1:Q2"
+    ),
+    # Integer counts (BINOM.DIST, BINOM.INV, CRITBINOM, BINOM.DIST.RANGE, HYPGEOM.DIST, CONFIDENCE's size, LARGE's k):
+    # 0, 1 and 2; a fraction that truncates (2.9; "LARGE/SMALL: a fractional k rounds up for LARGE and down for
+    # SMALL"); a negative fraction and a negative integer ("HYPGEOMDIST: a sample below the possible range is 0; a
+    # negative or huge count is #NUM!": any negative count is #NUM!, however small); 2^31 and 2^32, where a
+    # 32-bit count would wrap; 1E15, where the huge-count cut sits; text that does and does not read as a number.
+    "count": entries('0 | 1 | 2 | 2.9 | (-0.5) | (-1) | 2^31 | 2^32 | 1E+15 | "3" | "x"'),
+    # FORECAST.ETS family target_date (statistics.md, "FORECAST.ETS family on excel-graph"): inside the
+    # `ets_timeline` pool (1-24), just past its end, between two points, before it, and the date-serial bounds.
+    "ets_target": entries("1 | 12 | 24 | 25 | 24.5 | 30 | 100 | 0 | (-1) | 2958465 | 2958466 | 1E+15"),
+    # seasonality: 0 (detect), 1 (none), 2-4, the first value past 4, and -1 (T-2255 sweep: every scalar argument is read
+    # before the #N/A, an error or text decides first, so these reach the argument checks).
+    "ets_seasonality": entries('0 | 1 | 2 | 3 | 4 | 5 | (-1) | 1.5 | 24 | "x"'),
+    # data_completion: 0 (zeros), 1 (interpolate) and the first value past 1.
+    "ets_completion": entries("0 | 1 | 2 | (-1) | 0.5 | TRUE"),
+    # aggregation: 1-7 and the neighbours 0 and 8.
+    "ets_aggregation": entries("1 | 2 | 3 | 4 | 5 | 6 | 7 | 0 | 8 | (-1)"),
+    # confidence_level (FORECAST.ETS.CONFINT): the ends of (0, 1), the usual 0.95 and values outside it.
+    "ets_confidence": entries("0.95 | 0.5 | 0.99 | 0 | 1 | 1.5 | (-0.5) | 1E-10"),
+    # statistic_type (FORECAST.ETS.STAT): 1-8 and the neighbours 0 and 9.
+    "ets_statistic": entries("1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 0 | 9 | (-1)"),
+    # timeline and values of the FORECAST.ETS family: 24 evenly spaced, sorted points (two seasons of 12), so a
+    # valid call reaches the algorithm; excel-graph answers those `#N/A` (T-1293), desktop values are T-1553. The
+    # values pool's first entry has the same count, as the two must; the generator draws them independently, so a
+    # matching pair is a chance draw and a mismatch is `#N/A` before anything else.
+    "ets_timeline": [
+        _column(range(1, 25)),
+        _column(range(2, 50, 2)),
+        _column(range(45000, 45168, 7)),
+        _column(range(1, 26)),
+        _column(range(1, 31)),
+    ],
+    "ets_values": [
+        _column(round(2 * i + 3 * math.sin(i * math.pi / 6), 3) for i in range(1, 25)),
+        _column(i * i for i in range(1, 25)),
+        _column([5] * 24),
+        _column(-i for i in range(1, 25)),
+        _column(range(1, 26)),
+        _column(range(1, 31)),
+    ],
+    # The A and B bounds of BETA.DIST, BETA.INV, BETADIST and BETAINV: the default 0 and 1, equal bounds, bounds
+    # reversed, shifted, negative and wide.
+    "beta_bound": entries("0 | 1 | 2 | (-1) | 0.5 | 10 | (-10) | 1E+10 | (-1E+10) | 1E-300"),
+    # FISHERINV y ("FISHERINV is (EXP(2y)-1)/(EXP(2y)+1), with its cancellation near 0"): 0, +-1E-7 where the
+    # cancellation shows, moderate values, and 710 and beyond where exp(2y) overflows (FISHERINV(1000) and
+    # FISHERINV(1E10) are 1).
+    "fisherinv_y": entries(
+        "0 | 1E-7 | (-1E-7) | 1E-300 | 1 | (-1) | 0.5 | 5 | 20 | 355 | 710 | 1000 | 1E+10 | (-1000)"
+    ),
+    # FORECAST and FORECAST.LINEAR x: zero, inside and beyond the usual known_x's, far outside (the extrapolation
+    # grows), and numeric text and plain text ("FORECAST ... lifted scalar arguments").
+    "forecast_x": entries('0 | 1 | (-1) | 3.5 | 100 | 1E+10 | 1E+15 | 1E-300 | "3" | "x" | TRUE'),
+    # The lognormal mean (LOGNORM.DIST, LOGNORM.INV, LOGINV, LOGNORMDIST): 0, signs, fractions, and the values where
+    # EXP(mean) leaves the double range (709.78) or the quantile overflows.
+    "lognorm_mean": entries("0 | 1 | (-1) | 0.5 | 10 | 100 | 700 | 710 | (-710) | 1E+5 | 1E-300"),
 }
 
 
