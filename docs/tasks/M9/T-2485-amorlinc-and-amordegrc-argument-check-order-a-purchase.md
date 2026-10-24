@@ -64,7 +64,7 @@ Cells:
 - [x] Visible parity (gen-m9, T-2257): these 41 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline. (40 of 41; d912671baa1364aa A76 moved to T-1895, and the 21 new-coverage probe lines are T-1895's, see Outcome)
 - [x] Unit tests for a purchase date of 0 and 1E-15 and a boolean rate beside a negative cost.
-- [ ] A unit test for a period of 0.5625: moved to T-1895 (a stale value, see Outcome).
+- [ ] A unit test for a period of 0.5625: moved to T-1895 (unexplained in Excel, see Outcome).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -82,10 +82,11 @@ off 0-2958465 being `#NUM!` as it is read, then check the values, then read the 
 last; a purchase on the first period's end is valid, and a purchase date below 1 is serial 0, the day before serial 1.
 `amortization_of` follows it (with the shared `day_count_basis_of` and `financial_calendar_date_of`) and `amor_date` maps
 serial 0. Every order cell matches (financial.md "AMORLINC and AMORDEGRC check order").
-A period between 0 and 1 is not a rounding: AMORDEGRC returns a value left over from another evaluation
-(probes/amordegrc-fractional-period), which depends on the calculation order; the one owned cell that shows it,
+AMORDEGRC below period 1 is unexplained (financial.md "AMORLINC and AMORDEGRC check order",
+probes/amordegrc-fractional-period): mostly the asset's period-1 charge, but not always; one untested hypothesis is a value
+left over from an earlier evaluation. The one owned cell that shows it,
 gen-m9/d912671baa1364aa Calc!A76, and the probe lines move to T-1895, which already owned AMORDEGRC below period 1, so the
 0.5625 unit test is not written here.
 Eval delta: gen-m9 -23 known failures (40 of the 41 owned cells pass; 17 had already left the baseline), probes 0 fixed and
 21 new-coverage lines in the two new cases (amor-argument-check-order A846-A851, amordegrc-fractional-period A1-A11 and
-A23-A26), all stale-period cells owned by T-1895; 0 regressions.
+A23-A26), all AMORDEGRC-below-period-1 cells owned by T-1895; 0 regressions.

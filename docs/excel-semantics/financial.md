@@ -1089,8 +1089,8 @@ truncates (1.5 is period 1, 2.9 period 2), and AMORLINC reads any period above 0
 Evidence: probes/amor-argument-check-order (866 cells: each out-of-domain argument against `NA()`, text and `TRUE` in every
 other position, `NA()` and `1/0` in every pair, booleans and text alone, purchase dates below 1, fractional periods;
 excel-graph, 2026-10-24, T-2485) and probes/amordegrc-fractional-period (32 cells). Every order cell fits the rule.
-Inferred: a date of -0.5 or 2958465.5 (the floor is taken from the shared reader's other functions; only -1, 0, 1E-15, 0.5
-and 2958466 were probed here).
+Dates -1, -0.5, 0, 1E-15, 0.5, 0.99, 1 and 2958466 were probed (-0.5 is `#NUM!`, A410-A412, A843-A845); 2958465.5 is
+inferred (the floor is taken from the shared reader's other functions).
 Ours: since T-2485 (`amortization_of` and `amor_date` in functions/financial/amortization.rs). AMORDEGRC below period 1
 stays 0 (known failures, T-1895).
 Status: VERIFIED (excel-graph) for the order and the purchase date below 1; UNEXPLAINED for AMORDEGRC below period 1
@@ -1140,7 +1140,7 @@ share the readers of probed ones. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E
 Evidence: probes/fin-bond-negative-basis (176 cells, excel-graph, 2026-10-20, T-1870); probes/fin-yield-odd-lift L5
 (excel-graph, 2026-10-18, T-1842).
 Ours: one reader, `day_count_basis` (functions/financial/dates.rs), serves the coupon-bond and ODD* kernels, ACCRINT,
-AMORLINC, AMORDEGRC and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC (its parts since T-2032). Before T-1870,
+AMORLINC, AMORDEGRC (through `day_count_basis_of`, read after the value checks, since T-2485) and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC (its parts since T-2032). Before T-1870,
 `floor() as u32` saturated a negative basis to 0, and the `as i32` of YEARFRAC and the `trunc()` of AMOR* turned -0.5
 into 0. The probe's eight failing cells, rows 1, 2, 9 and 17 in columns E and G (YIELD, PRICE,
 ODDFPRICE and ODDFYIELD at bases 0 and 4.9), are last-digit misses of the T-1374 and T-2007 class, not basis reads;
@@ -1829,7 +1829,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order" (T-2483).
 - A settlement serial below 1 is valid for the T-bills: `TBILLPRICE(1e-15,1,100)` = 72.22222222222221 (0a957119475760c5 A309),
   `TBILLYIELD(0.3,1,98)` = 7.346938775510203 (e8d55ec393460bb7 A287); and AMORLINC's purchase date may be below 1:
-  `AMORLINC(46557,0,39881,440,0,0.1)` = 46117 (1b60bf99d71424e7 A368).
+  `AMORLINC(46557,0,39881,440,0,0.1)` = 46117 (1b60bf99d71424e7 A368); now probed and followed ("AMORLINC and AMORDEGRC
+  check order", T-2485).
 - CUMIPMT and CUMPRINC are `#NUM!` for a start period below 1, fractional included: `CUMPRINC(0.05,249,329832,0.3,19,0)`
   (0a957119475760c5 A40).
 - SYD with a negative salvage is `#NUM!` (`SYD(36746,-100,22,3)`, 31474c20fc1dafd6 A207) and with a life of 1E+300 `#DIV/0!`
