@@ -35,7 +35,7 @@ Calc!A381, e85daedce5c2675e Calc!A35 (HARMEAN, AVERAGE `#N/A`, COUNT 142; arrays
 ## Acceptance criteria
 - [ ] The four gen-m9 cells handed over from T-2578 disappear from eval/baseline/gen-m9.txt (or are explained by a remaining cause).
 - [ ] The owned cells above pass and leave eval/baseline (`make eval-baseline`), with no new known-failure lines.
-- [ ] Unit tests: `NestedArray::new` invariants, `scalar()` through two levels, two levels as SPEC-0018 rule 8, the cell cap
+- [ ] Unit tests: `NestedArray::new` invariants, `scalar()` through two levels (the assumed rule of SPEC-0018 "One reader", not Excel parity until T-2609 lands) and on a `Reference` (`#VALUE!`), two levels as SPEC-0018 rule 8, the cell cap
       (`#ERROR!` past 1,048,576 kept cells, inner levels included), the depth cap (`MAX_NESTED_DEPTH`, refused in `NestedArray::new`)
       and the walk budget (`MAX_NESTED_WALK_CELLS`) charged by `array_node_to_calc_result` and `PartialEq` (a VSTACK fan-out of a large
       nested cell read through INDEX is `#ERROR!` in bounded time); DEVIATION entries in arrays.md.

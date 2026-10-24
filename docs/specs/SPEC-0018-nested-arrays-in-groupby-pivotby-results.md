@@ -37,11 +37,11 @@ P!C12, P!D12; probes/groupby-lifted-args A153, A161, A169 (excel-graph, 2026-10-
 b `{3;4}`/`{30;40}`, Total 4x1). docs/excel-semantics/arrays.md, the
 paragraph starting "A LAMBDA array result is shown as `#VALUE!`, but the cell holds the array itself".
 
-1. **Which cells are nested.** A value cell of GROUPBY or PIVOTBY (group and Total cells; subtotal cells assumed, T-2592) whose function
+1. **Which cells are nested.** A value cell of GROUPBY or PIVOTBY (group, subtotal and Total cells) whose function
    passes an array through holds that array, whatever its size: a one-record group is a 1x1 array (P!B3 `64|1x1|1`), a two-record
    group 2x1, the Total 4x1 (P!B21 `64|4x1|1`). A computed array result is nested the same way, 1x1 included (`LAMBDA(v,{7})`,
    `LAMBDA(v,SEQUENCE(1))` `64|1x1`, A33, A34), and so is the result of a two-parameter LAMBDA (`LAMBDA(x,y,x)` `64|2x1|3`,
-   A22) and every subtotal cell (two row fields, `total_depth` 2: `64|1x1`, `64|2x1`, the Total `64|4x1`, A35:A41). One LAMBDA over several value columns gives each column its own array
+   A22) and so are the leaf and subtotal cells of a two-row-field result with `total_depth` 2 (a one-record leaf `64|1x1`, a two-record subtotal `64|2x1`, the Total `64|4x1`, A35:A41). One LAMBDA over several value columns gives each column its own array
    (P!B3 vs C3). Key, header and empty filler cells are scalars (P!A3 `2|a`, P!F2 `2|Total`, the corner P!A2 `""`). One exception:
    PIVOTBY's Total columns over several value columns stay `""`, not nested (P!F3:G5 `2||#3`; arrays.md "PIVOTBY's Total
    columns are `""` only for one function over several value columns", P!Y97), while with one value column the Total
@@ -63,12 +63,12 @@ paragraph starting "A LAMBDA array result is shown as `#VALUE!`, but the cell ho
      count, A6:A8). AVERAGE is `#N/A` (A9), ARRAYTOTEXT `#CALC!` (A10), and TEXTJOIN and CONCAT `#VALUE!` (A11, A12). These
      are Excel's values, odd as they are; T-2594 owns them.
 5. **MAP, BYROW, BYCOL and REDUCE hand the LAMBDA each nested cell whole.**
-   - MAP, BYROW and BYCOL with a scalar step return an array of the result's shape (3x3, 3x1, 1x3; A1:A5, and over PIVOTBY
-     A108, A109). Inside the step the nested cell is an array: `ROWS(x)` is 1 for a key, 2 for group b's cell and 4 for the
+   - MAP, BYROW and BYCOL with a scalar step return an array of the result's shape (3x3, 3x1, 1x3; A1:A5), and a scalar step over PIVOTBY
+     gives its values (A108, A109). Inside the step the nested cell is an array: `ROWS(x)` is 1 for a key, 2 for group b's cell and 4 for the
      Total's (A100:A102), `TYPE(x)` 64 (A103), `SUM(x)` 7 for `{3;4}` (A105). BYROW's row and BYCOL's column hold the nested
      cells (`TYPE(INDEX(r,1,2))` 64, A106, A107).
    - A step that returns its nested argument (`LAMBDA(x,x)`) is `#CALC!` (A104), an array step as in the non-goals. t2311
-     P!D12's error comes from this: its step `IFERROR(x&"",..)` keeps the nested cell an array (A18).
+     P!D12's error is inferred to come from this (A104, A18; the oracle shows only IFERROR's "E"): its step `IFERROR(x&"",..)` keeps the nested cell an array (A18).
    - REDUCE visits every one of the 9 cells with the nested array as `x` (a count of 9, `a+ROWS(x)` 19; A14, A15).
    - TAKE, CHOOSECOLS, VSTACK, SORT, FILTER and an INDEX of a whole row or column keep the nested cells (A26:A32).
 6. **SCAN** over a GROUPBY result is one cell (`#N/A` for `LAMBDA(w,w)`, 0 for SUM, the error for `LAMBDA(w,1/0)`:
@@ -105,8 +105,9 @@ with saturating arithmetic. `new` refuses (returns `None`, and the caller gives 
 They are never recomputed by walking the tree. Elements may themselves be `Nested`, since Excel nests again (rule 8).
 
 **One reader.** `ArrayNode::scalar(&self) -> &ArrayNode` returns, for `Nested`, its top-left element taken recursively
-(the top-left of a nested top-left, a loop of at most `MAX_NESTED_DEPTH` steps), and for a `Reference` its one value;
-otherwise the node itself. Every site that today matches `ArrayNode::Lambda` to
+(the top-left of a nested top-left, a loop of at most `MAX_NESTED_DEPTH` steps; assumed, since no element-wise lift over a
+two-level result is probed, T-2609), and for a `Reference` the error `#VALUE!` (only INDEX reads its value, rule 7; a lifted
+read of one is unprobed, T-2609); otherwise the node itself. Every site that today matches `ArrayNode::Lambda` to
 place a non-scalar, and that rule 4 shows to read the top-left, goes through it: the element-wise lifts (ISERROR,
 REGEXEXTRACT's return_mode). Every other site keeps today's `#VALUE!` until a rule here covers it, for both kinds (a `Reference` cell included, until T-2594). The inventory is those sites (35 matches in 25 files: cast.rs, arithmetic.rs, functions/util.rs,
 aggregate_args.rs, lift/kinds, text_kernel.rs, spill_functions.rs, ...); each gets an explicit `Nested` arm, either
@@ -135,7 +136,7 @@ before adding `scalar()` (CLAUDE.md directive 3). The compiler finds every exhau
 - MAP, BYROW, BYCOL and REDUCE (rule 5) pass the nested cell to the LAMBDA through `array_node_to_calc_result`, as an
   array. A step whose result is still an array is `#CALC!` through the existing array-step check. T-2594 owns this.
 - SUM, COUNT and COUNTA flatten nested cells, and AVERAGE, ARRAYTOTEXT, TEXTJOIN and CONCAT give rule 4's errors. Each
-  aggregate gets an explicit `Nested` arm (T-2594). Every flatten is charged to the walk budget below.
+  aggregate gets an explicit `Nested` arm (T-2594). Every flatten is charged to the walk budget below, and so is any other read of a nested element's contents (an aggregate that returns its error without reading them is not charged).
 - TAKE, CHOOSECOLS, VSTACK, SORT, FILTER and row or column INDEX copy `ArrayNode`s, so the nested cells ride along with no
   new code (rule 5). Because of the `Arc`, each copy is O(1), so one nested cell can appear in up to 1,048,576 outer cells
   (`VSTACK(r,r,..)`, `CHOOSEROWS(r,SEQUENCE(1048576)^0)`). Copying is cheap; reading the copies is not, and the walk budget

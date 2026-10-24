@@ -20,8 +20,8 @@ docs/specs/SPEC-0018-nested-arrays-in-groupby-pivotby-results.md rules 4, 5 and 
 - A one-cell reference body makes a `Reference` cell: it displays `#VALUE!`, and INDEX reads it as the referenced value (A21).
 
 Owned:
-- probes/t2311-pivotby-value-columns-error P!D12. Excel's error comes from its `IFERROR(x&"",..)` step, which stays an array, so
-  it is `#CALC!` (rule 5). Ours is a value.
+- probes/t2311-pivotby-value-columns-error P!D12. Excel's error is inferred (A104, A18) to come from its `IFERROR(x&"",..)` step, which stays an
+  array, so `#CALC!` (rule 5; the oracle shows only "E"). Ours is a value.
 - probes/t2592-nested-groupby-cells A1:A15, A21 and A100:A109, whichever of them T-2593 leaves failing.
 
 If the aggregates and the `Reference` kind together grow the task past size S, split it (planner) first.
