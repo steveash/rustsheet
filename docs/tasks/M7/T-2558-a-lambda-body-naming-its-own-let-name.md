@@ -3,7 +3,7 @@ id: T-2558
 title: "A LAMBDA body naming its own LET name is #NAME?, not #ERROR!"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
