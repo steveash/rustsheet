@@ -352,13 +352,14 @@ Evidence: gen-m9 4dc761698ca23149 A129, 74779cff2810ccf4 A52, fa8ee59f2f1be7e0 A
 c9d7659896d95368 A82, A1, 6d16afd40600302b A365, cb80ca09be0e12bc A52, d9d55972b50e55e8 A106, 88cabddc4935351c A255
 (excel-graph, 2026-10-22/23, T-2258).
 Ours: the same-sheet cells match since T-2553: a record whose moved relative reference into the database's columns lands
-on its header row (or above) does not match (`reads_records` in functions/database.rs; the first record of Db!A2:D9
-reads B2). Unprobed: a reference outside the database's columns, or below its records, is read as it is. The cells over
+on its header row does not match (`reads_records` in functions/database.rs; the first record of Db!A2:D9
+reads B2). Ours extends this, unprobed, to a reference above the header row and to a range with either end there; a
+reference outside the database's columns, or below its records, is read as it is (all in T-2616's probe). The cells over
 a database on another sheet are T-2616's: the plain shift ours does gives Excel's `DCOUNTA(Data!A2:C10,3,Db!O1:O2)` = 3
 (02b7cfabebd2cc0a A231) and `DVARP(Data!A4:D9,1,Db!O1:O2)` = 0 (d193e8b4ab820f52 A114), but not the 8 cells above that
 match nothing, and no fixed shift fits all ten.
 Status: VERIFIED (excel-graph) for the values; the reference rule for a criterion away from the database is VERIFIED
 (T-2525, probes/db-criteria-formula-placement: relative references rebase onto the first record, absolute ones
-stay put; ours agrees); the header-row rule is VERIFIED on the eight same-sheet cells (T-2553); the other-sheet rule is
-UNVERIFIED (T-2616).
+stay put; ours agrees); the header-row rule is VERIFIED for Db!A2:D9 with `=B2>3` only (eight cells, one placement; T-2553),
+its general form and the other-sheet rule are UNVERIFIED (T-2616).
 Tasks: T-2258, T-2422, T-2525, T-2553, T-2616

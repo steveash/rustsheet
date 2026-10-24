@@ -1,6 +1,6 @@
 ---
 id: T-2553
-title: "D* computed criteria when the database starts below the criteria row or sits on another sheet: Excel's records (gen-m9, 16 cells)"
+title: "D* computed criteria when the database starts below the criteria row or sits on another sheet: Excel's records (gen-m9, 8 of 16 cells; rest T-2616)"
 milestone: M9
 lane: functions-criteria
 status: done

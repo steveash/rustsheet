@@ -30,6 +30,9 @@ No shift d (record i reads Db!B(2+i+d)) fits all ten. Probe, with one Db-like cr
 starting at rows 1, 2, 4 and 10 and at columns A, B and D, a criterion with an unqualified reference, the same qualified
 with the criteria sheet's name, and one qualified with the database sheet's name; read DCOUNTA and DSUM, plus ROW() and
 CELL("address") of the reference inside the condition (`=AND(B2>3,ISNUMBER(B2))`) if that tells which cell is read.
+Also probe the same-sheet choices T-2553 made without evidence (its `reads_records`): a reference two or more rows above
+the first record, a reference in a column outside the database, and a range with one end on the header row
+(`=SUM(B2:B3)>3`).
 
 Owned gen-m9 cells (moved from T-2553, excel-graph, 2026-10-23): 8 known-failure lines in eval/baseline/gen-m9.txt.
 Cells:
