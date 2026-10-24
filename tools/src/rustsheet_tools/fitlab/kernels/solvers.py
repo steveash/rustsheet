@@ -27,11 +27,13 @@ import datetime
 import math
 from collections.abc import Callable
 from contextvars import ContextVar
+from fractions import Fraction
 from functools import partial
 from typing import NamedTuple
 
 from rustsheet_tools.fitlab.exact import X87
 from rustsheet_tools.fitlab.fit import Fit
+from rustsheet_tools.fitlab.kernels.power import excel_model
 from rustsheet_tools.fitlab.score import Candidate, ExcelError, candidate
 from rustsheet_tools.fitlab.sweep import (
     Arg,
@@ -96,33 +98,48 @@ class Probe(NamedTuple):
 Stop = Callable[[Probe], bool]
 
 
-def xnpv(rate: float, values: list[float], dates: list[float]) -> float:
-    """Excel's XNPV sum, days counted from the first date."""
+def caret_pow(base: float, exponent: float) -> float:
+    """base ^ exponent with Excel's `^` (`power.excel_model`); a power that is not real is
+    NoResultError, as in `rpow`."""
+    if base <= 0 and not exponent.is_integer():
+        msg = f"{base} ^ {exponent} is not real"
+        raise NoResultError(msg)
+    return excel_model(Fraction(base), exponent)
+
+
+def xnpv(
+    rate: float, values: list[float], dates: list[float], power: Callable[[float, float], float] = rpow
+) -> float:
+    """Excel's XNPV sum, days counted from the first date, each value divided by `power`(1 + rate,
+    days / 365): libm by default; Excel's XNPV discounts with its own `^` (`caret_pow`: 541 of 541
+    cells of probes/xirr-exact-root-sign, T-2328, where libm misses the sign at an exact root)."""
     base = 1 + rate
     if base <= 0:
         raise NoResultError(f"1 + rate = {base}")
     total = 0.0
     for value, date in zip(values, dates, strict=True):
         try:
-            total += value / rpow(base, (date - dates[0]) / 365)
+            total += value / power(base, (date - dates[0]) / 365)
         except (OverflowError, ZeroDivisionError):
             raise NoResultError("XNPV overflows") from None
     return total
 
 
-def xirr_bracket(values: list[float], dates: list[float], guess: float) -> tuple[float, float]:
+def xirr_bracket(
+    values: list[float], dates: list[float], guess: float, power: Callable[[float, float], float] = rpow
+) -> tuple[float, float]:
     """The first point of the trial chain whose XNPV sign differs from XNPV(0)'s, and the point
     before it. With s = guess (1e-5 for guess 0): 0, s, 2s, 4s, ... for a guess >= 0; then, if
     s < 1, 0, -s and p -> (p - 1) / 2 toward -1. A negative guess walks 0, g, (g - 1) / 2, ...
     The cap of 100 points per walk is not probed."""
-    f0 = xnpv(0.0, values, dates)
+    f0 = xnpv(0.0, values, dates, power)
     step = guess if guess != 0 else 1e-5
 
     def walk(first: float, nxt: Callable[[float], float]) -> tuple[float, float] | None:
         prev, point = 0.0, first
         for _ in range(100):
             try:
-                fp = xnpv(point, values, dates)
+                fp = xnpv(point, values, dates, power)
             except NoResultError:
                 return None
             if (fp > 0) != (f0 > 0):
@@ -152,19 +169,21 @@ def xirr_model(
     half_step: bool = True,
     first_value_sign: bool = False,
     trace: list[float] | None = None,
+    power: Callable[[float, float], float] = rpow,
 ) -> float:
     """Bisection on the bracket: `a` starts at the upper end (lower if not `from_upper`), each
     step replaces the end whose XNPV has XNPV(m)'s sign; an exact 0 does not stop it. With
     `first_value_sign`, the upper end is replaced when XNPV(m) * values[0] >= 0 instead (T-1583):
     the same end whenever XNPV at the upper end has the first value's sign and is not 0, and the
     upper end every step when the first value is 0. The midpoint is a + (b - a) / 2 (Excel's), or
-    (a + b) / 2 when not `half_step`. Each midpoint is appended to `trace`, if given."""
-    lo, hi = sorted(xirr_bracket(values, dates, guess))
+    (a + b) / 2 when not `half_step`. Each midpoint is appended to `trace`, if given. XNPV discounts
+    with `power` (see `xnpv`)."""
+    lo, hi = sorted(xirr_bracket(values, dates, guess, power))
     a, b = (hi, lo) if from_upper else (lo, hi)
-    fa = xnpv(a, values, dates)
+    fa = xnpv(a, values, dates, power)
     for _ in range(200):  # the bisection cap is not probed
         m = a + (b - a) / 2 if half_step else (a + b) / 2
-        fm = xnpv(m, values, dates)
+        fm = xnpv(m, values, dates, power)
         if trace is not None:
             trace.append(m)
         if stop(Probe(m, abs(b - a) / 2, fm, values, dates)):
@@ -221,7 +240,12 @@ STOPS: dict[str, Stop] = {
 
 
 def _xirr(
-    stop: Stop, *, from_upper: bool = True, half_step: bool = True, first_value_sign: bool = False
+    stop: Stop,
+    *,
+    from_upper: bool = True,
+    half_step: bool = True,
+    first_value_sign: bool = False,
+    power: Callable[[float, float], float] = rpow,
 ) -> Callable[..., float]:
     def call(values: Arg, dates: Arg, guess: Arg = 0.1, trace: list[float] | None = None) -> float:
         model = partial(
@@ -230,6 +254,7 @@ def _xirr(
             half_step=half_step,
             first_value_sign=first_value_sign,
             trace=trace,
+            power=power,
         )
         return model(floats(values), floats(dates), numeric_arg(guess), stop)
 
@@ -275,6 +300,24 @@ def xirr_candidates() -> list[Candidate]:
             "bisect, first-value sign, |f| bound skipped when values[0] = 0",
             _xirr(zero_first_value_stop(), first_value_sign=True),
             "T-1583",
+        ),
+    ]
+    # T-2328: XNPV discounted with Excel's `^` (probes/xirr-exact-root-sign) under the T-1583 rules.
+    out += [
+        _xirr_candidate(
+            "bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)",
+            _xirr(span_stop(), first_value_sign=True, power=caret_pow),
+            "T-2328",
+        ),
+        _xirr_candidate(
+            "bisect, first-value sign, fitted stop, Excel ^",
+            _xirr(fitted_stop(), first_value_sign=True, power=caret_pow),
+            "T-2328",
+        ),
+        _xirr_candidate(
+            "bisect, first-value sign, step test only, Excel ^",
+            _xirr(h_test(), first_value_sign=True, power=caret_pow),
+            "T-2328",
         ),
     ]
     # The step test's bound: A in A + 1e-8 |m| (fitted 4.93e-9 <= A <= 5.09e-9), then B at A = 5e-9.
