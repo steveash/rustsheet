@@ -745,3 +745,9 @@ Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (c
 an empty array is `#VALUE!` (arrays.md "An empty array as a function argument").
 Status: VERIFIED (excel-graph), one cell each
 Tasks: T-2547, T-2544, T-2580
+
+## IMPOWER of a base whose squared modulus overflows (T-2539)
+Evidence: probes/eng-impower-overflow (12 cells, excel-graph, 2026-10-24).
+Rule: IMPOWER is `#NUM!` when both parts are nonzero and `x²+y²` overflows, whatever the power and even when the result is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `(…,-1)`, `(…,0.5)`, `(…,1)`, `(…,0)`, `IMPOWER("1E+154+1E+154i",-0.5)` and `(…,2)`, `IMPOWER("1E+155+1E+155i",1)`. A pure real base is not refused: `IMPOWER("1E+300",-0.5)` is `1E-150`, `IMPOWER("1E+200",-0.5)` is `1E-100`. An underflowing square gives "0" (`IMPOWER("1E-200+1E-200i",2)`, `("1E-170+1E-170i",2)`). A pure imaginary base is not probed (treated as the real one). `IMLN("1E+200")`, `IMLOG10("1E+200")` and `IMLOG2("1E+200")` already match after T-2117.
+Status: VERIFIED (excel-graph)
+Tasks: T-2539
