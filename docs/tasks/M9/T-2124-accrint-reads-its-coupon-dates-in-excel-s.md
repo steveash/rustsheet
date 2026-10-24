@@ -3,7 +3,7 @@ id: T-2124
 title: "ACCRINT reads its coupon dates in Excel's 1900 calendar (probes/fin-coupon-walk-bounds-c O)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
