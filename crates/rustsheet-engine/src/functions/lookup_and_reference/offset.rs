@@ -160,8 +160,19 @@ impl Model {
     /// The values of rows, cols, height and width, held inline (no heap allocation for the
     /// scalar call, SPEC-0014 "Producers"); a written empty argument is `EmptyArg`, so a missing
     /// or empty height/width keeps the reference's size.
+    ///
+    /// A TAKE or DROP of a range (an IF picking one too) is read as the reference it returns, so
+    /// a one-cell result is a scalar, not a lifting 1x1 array:
+    /// `ROWS(OFFSET(B9:C12,5,1,DROP(H2:H4,-2,0),2))` is 3 for H2 = 3, while a `{3}` constant or a
+    /// SEQUENCE lifts and gives 1 (probes/t2454-offset-one-cell-array-args A1:D12).
     fn offset_values(&mut self, args: &[Node], cell: CellReferenceIndex) -> ArgBuf<CalcResult> {
-        self.reference_lift_values(args.get(1..).unwrap_or_default(), cell)
+        self.reference_lift_values_read(
+            args.get(1..).unwrap_or_default(),
+            cell,
+            |model, arg, cell| {
+                model.evaluate_picked_source(arg, cell, Self::evaluate_node_in_context)
+            },
+        )
     }
 
     /// Whether an OFFSET call lifts into an array of references, its own arguments evaluated

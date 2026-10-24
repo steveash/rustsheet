@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, round_trip_value};
 
 #[test]
 fn test_fn_f_test_sanity() {
@@ -56,4 +56,33 @@ fn f_test_of_a_single_value() {
     assert_eq!(model._get_text("A5"), "#DIV/0!");
     assert_eq!(model._get_text("A7"), "#VALUE!");
     assert_eq!(model._get_text("A6"), "#DIV/0!");
+}
+
+// F.TEST divides the larger variance by the smaller and so is exactly symmetric in its samples
+// (probes/ftest-decomposition A7 = E7); its tail carries exp(a ln x)'s rounding but an accurate
+// remainder: within 15 digits of Excel's 0.7947858780819458 (probes/stat-argument-modes H250) and
+// of the deep tail 7.189542390448293E-56 (gen-m9/06b4e8f5de409d5e A317), which the exact p misses
+// visibly (docs/excel-semantics/statistics.md, T-2361).
+#[test]
+fn f_test_is_symmetric_and_keeps_the_rounded_powers() {
+    let mut model = new_empty_model();
+    model._set("A1", "=FTEST({1,2,4,3,7,5,8,6},{2,3,5,4,9,6,9,8})");
+    model._set("A2", "=FTEST({2,3,5,4,9,6,9,8},{1,2,4,3,7,5,8,6})");
+    model._set(
+        "B1",
+        "=FTEST({123456789.123,1E+15,1.005,0.1,2,7,1.005,1,1,123456789.123,1E-15},{0.1,2,7,7,1.005})",
+    );
+    // An overflowing variance is `#NUM!` (gen-m9/7674c89c824aca43 A39), and so, in either order,
+    // is a ratio that overflows (unprobed; T-2571).
+    model._set("C1", "=FTEST({1E-160,2E-160},{1E+150,2E+150})");
+    model._set("C2", "=FTEST({1E+150,2E+150},{1E-160,2E-160})");
+    model._set("C3", "=F.TEST({1E+200,1E+200,-1E+200},{1,2,4})");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#NUM!");
+    assert_eq!(model._get_text("C2"), "#NUM!");
+    assert_eq!(model._get_text("C3"), "#NUM!");
+    let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
+    assert_eq!(number("A1").to_bits(), number("A2").to_bits());
+    assert!((number("A1") / 0.794_785_878_081_945_8 - 1.0).abs() < 5e-16);
+    assert!((number("B1") / 7.189_542_390_448_293e-56 - 1.0).abs() < 5e-16);
 }
