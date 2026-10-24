@@ -1306,7 +1306,6 @@ C	probes/yield-one-period-dsr-zero.case.json	18
 C	probes/yield-solver-sweep.case.json	66
 C	probes/yield-start-rate-term.case.json	150
 C	probes/yield-start-sweep.case.json	100
-F	probes/3d-ref-one-sheet-span-lift.case.json	Calc!B6
 F	probes/chained-calls-builtin-drop.case.json	Sheet1!B1
 F	probes/chained-calls-builtin-drop.case.json	Sheet1!B2
 F	probes/chained-calls-builtin-take.case.json	Sheet1!B1
