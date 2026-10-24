@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 
 use crate::formatter::dates::real_date_to_serial;
 
-mod coupon_schedule;
+pub(super) mod coupon_schedule;
 mod yield_closed;
 mod yield_solver;
 
@@ -759,7 +759,13 @@ impl Model {
         let date_system = self.workbook.settings.date_system;
         let mut read = [None; N];
         for (date, value) in read.iter_mut().zip(date_values) {
-            *date = date_system.odd_period_1900_serial(self.cast_number_no_bools_ref(value, cell)?);
+            let serial = self.cast_number_no_bools_ref(value, cell)?;
+            // A negative date is `#NUM!` as it is read, ahead of an error in a later argument
+            // (probes/fin-odd-date-before-error-arg A1:A7, A11, A14:A16; a date of 0 is fine, A17).
+            if serial < 0.0 {
+                return Err(num_error(cell));
+            }
+            *date = date_system.odd_period_1900_serial(serial);
         }
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let yld_or_pr = self.cast_number_no_bools_ref(yld_or_pr, cell)?;

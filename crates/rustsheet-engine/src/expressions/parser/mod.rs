@@ -409,7 +409,8 @@ pub struct Parser {
     /// Names the enclosing LET and LAMBDA calls bind so far, kept only when spelled like a
     /// Lotus-style range or a cell: such a name is the variable where bound and the range or
     /// cell elsewhere (`LET(R1.C1,5,R1.C1*2)` is 10, probes/r1c1-let-name-r1-c1,
-    /// lotus-dot-range, T-1659; `LET(f1,1,f1+1)` is 2, probes/let-cell-shaped-name-stored, T-2040).
+    /// lotus-dot-range, T-1659; `LET(f1,1,f1+1)` is 2, probes/let-cell-shaped-name-stored, T-2040),
+    /// or spelled like a defined name, which the variable shadows (T-2057).
     reference_shaped_names: Vec<String>,
     /// The formula is being typed (API `Input::Formula`/`Parse`), not read as stored: a LET name
     /// or LAMBDA parameter spelled like a cell then refuses the formula, as Excel refuses it

@@ -70,6 +70,15 @@ fn formula_text_round_trips() {
 }
 
 #[test]
+fn a_one_sheet_span_reads_back_as_the_plain_reference() {
+    let mut model = sample();
+    model._set("A1", "=ABS(Data1:Data1!A1:A3)");
+    model._set("A2", "=SUM('Q 4:Q 4'!$A$1)");
+    assert_eq!(model._get_formula("A1"), "=ABS(Data1!A1:A3)");
+    assert_eq!(model._get_formula("A2"), "=SUM('Q 4'!$A$1)");
+}
+
+#[test]
 fn an_error_cell_in_the_span_wins() {
     let mut model = sample();
     model._set("Data2!B1", "=1/0");
