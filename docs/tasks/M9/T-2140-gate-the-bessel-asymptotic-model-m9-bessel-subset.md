@@ -25,4 +25,4 @@ T-0908's fidelity review: the 362 m9-bessel cells that model makes bit-exact sit
 - The order cap (T-2139).
 
 ## Outcome
-Added probe cases `bessel-asymptotic` (50 cells, x 8..100, all bit-exact, gated via the probes baseline) and `bessel-large-x` (24 cells; 3 pass, 21 are known failures (13 are `#NUM!` or whole-value mismatches, the rest 1 ulp or last-digit drift)). Excel returns `#NUM!` at x = 2^27 (orders 0, 3) and 1e10 (all orders) and the engine does not; x = 1e3..1e6 drift by up to ~1e-14 relative. Recorded in docs/excel-semantics/engineering.md; fix filed as T-2563. Eval delta: +53 passing probes cells, 0 regressions.
+Added probe cases `bessel-asymptotic` (50 cells, x 8..100, all bit-exact, gated via the probes baseline) and `bessel-large-x` (24 cells; 3 pass, 21 are known failures (10 are `#NUM!` mismatches, 11 are 1 ulp or last-digit drift)). Excel returns `#NUM!` at x = 2^27 (orders 0, 3) and 1e10 (all orders) and the engine does not; x = 1e3..1e6 drift by up to ~1e-14 relative. Recorded in docs/excel-semantics/engineering.md; fix filed as T-2563. Eval delta: +53 passing probes cells, 0 regressions.
