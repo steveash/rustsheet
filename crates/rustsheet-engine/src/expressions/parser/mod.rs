@@ -578,6 +578,9 @@ pub struct Parser {
     /// The formula is read from a file (xlsx import, `Input::StoredFormula`): a structured
     /// reference to an unknown table or column is `#REF!` (see [`Parser::set_loaded`]).
     loaded: bool,
+    /// The table being deleted: its bare name (`ROWS(Sales)`) is `#REF!` in the reparse that
+    /// follows (see [`Parser::set_deleted_table`]).
+    deleted_table: Option<String>,
     /// The first cell-shaped name the last parse bound (see `typed`).
     cell_shaped_binding: Option<String>,
 }
@@ -624,6 +627,7 @@ impl Parser {
             bound_names: Vec::new(),
             typed: false,
             loaded: false,
+            deleted_table: None,
             cell_shaped_binding: None,
         }
     }
@@ -634,6 +638,13 @@ impl Parser {
     /// anywhere else (typed text, a re-parse after `remove_table`) it stays a parse error.
     pub fn set_loaded(&mut self, loaded: bool) {
         self.loaded = loaded;
+    }
+
+    /// Names the table a Graph delete is removing, so a bare use of its name reparses to `#REF!`
+    /// instead of `#NAME?` (`ROWS(Sales)` is `#REF!` after the table is deleted, T-2340,
+    /// probes/table-edits/table-delete-table); `None` clears it.
+    pub(crate) fn set_deleted_table(&mut self, name: Option<&str>) {
+        self.deleted_table = name.map(str::to_lowercase);
     }
 
     /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see

@@ -205,7 +205,9 @@ impl Model {
         // `=SUM(#REF!)`, T-2340, docs/excel-semantics/references.md), as a file loader does for an
         // unknown table; `remove_table` keeps them as parse errors.
         self.parser.set_loaded(true);
+        self.parser.set_deleted_table(Some(name));
         let removed = self.remove_table(name);
+        self.parser.set_deleted_table(None);
         self.parser.set_loaded(false);
         removed
     }

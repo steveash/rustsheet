@@ -330,6 +330,9 @@ impl Parser {
                 return self.structured_reference_operand(name, None, None, true);
             }
         }
+        if self.loaded && self.deleted_table.as_deref() == Some(name_lower.as_str()) {
+            return Node::ErrorKind(token::Error::REF);
+        }
         // xlpm: Excel Lambda Parameter
         let name = name.trim_start_matches("_xlpm.").to_string();
         Node::NamedVariableKind { name, id: None }
