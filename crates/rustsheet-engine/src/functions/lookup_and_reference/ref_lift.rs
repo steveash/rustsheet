@@ -159,6 +159,7 @@ fn reads_cheaply(node: &Node) -> bool {
             | Node::ImplicitIntersection { .. }
             | Node::ReferenceKind { .. }
             | Node::RangeKind { .. }
+            | Node::ThisRowKind { .. }
     )
 }
 

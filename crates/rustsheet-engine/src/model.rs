@@ -16,7 +16,10 @@ use crate::{
             move_formula::{move_formula, MoveContext},
             new_parser_english,
             static_analysis::StaticResult,
-            stringify::{to_english_string, to_localized_string, to_rc_format},
+            stringify::{
+                to_english_string, to_localized_string, to_localized_string_this_row_lowered,
+                to_rc_format,
+            },
             ArrayNode, CallNameSpellings, CompletionContext, Node, Parser,
         },
         token::{get_error_by_name, Error},
@@ -267,6 +270,10 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let node = node.ungrouped(); // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007)
+                                     // A `#This Row` area is the reference it is on the cell's row (SPEC-0016 step 2).
+        if let Some(area) = node.this_row_at(cell.row) {
+            return self.evaluate_node_with_reference(&area, cell);
+        }
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -643,6 +650,7 @@ impl Model {
             | ParseErrorKind { .. }
             | Group { .. }
             | StructuredReferenceKind { .. }
+            | ThisRowKind { .. }
             | SpillRangeOperator { .. }
             | ImplicitIntersection { .. }
             | LambdaDefKind { .. }
@@ -1653,6 +1661,19 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<Option<String>, String> {
+        self.cell_formula_text(sheet, row, column, false)
+    }
+
+    /// [`Model::get_cell_formula`], with every `#This Row` structured reference printed as the
+    /// area it is on the cell's row when `this_row_lowered`: the text of a formula a structural
+    /// edit moves to another row (T-1699).
+    pub(crate) fn cell_formula_text(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        this_row_lowered: bool,
+    ) -> Result<Option<String>, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
@@ -1668,10 +1689,17 @@ impl Model {
                         row,
                         column,
                     };
-                    Ok(Some(format!(
-                        "={}",
+                    let text = if this_row_lowered {
+                        to_localized_string_this_row_lowered(
+                            formula,
+                            &cell_ref,
+                            self.locale,
+                            self.language,
+                        )
+                    } else {
                         to_localized_string(formula, &cell_ref, self.locale, self.language)
-                    )))
+                    };
+                    Ok(Some(format!("={text}")))
                 }
                 None => Ok(None),
             },

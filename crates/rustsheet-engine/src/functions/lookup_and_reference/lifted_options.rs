@@ -174,6 +174,9 @@ impl Model {
     /// Omitted arguments, literals, references (cheap to read again, and a blank cell is not a
     /// literal) and anything that evaluates to a reference or a LAMBDA are kept as they are.
     fn frozen(&mut self, node: &Node, cell: CellReferenceIndex) -> Node {
+        // A `#This Row` area is the cell or range on the formula's row (SPEC-0016 step 2).
+        let resolved = node.resolved_at(cell.row);
+        let node: &Node = &resolved;
         if is_scalar_node(node) || matches!(node, Node::RangeKind { .. } | Node::ArrayKind(_)) {
             return node.clone();
         }

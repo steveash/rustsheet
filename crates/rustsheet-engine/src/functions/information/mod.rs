@@ -150,6 +150,10 @@ impl Model {
             PickedReference::Read(read) => return matches!(read, RefArg::Ranges(_)),
             PickedReference::Value(_) => return false,
         };
+        // A `#This Row` area is the cell or range on the formula's row, `#VALUE!` off the data rows
+        // (SPEC-0016 step 2).
+        let resolved = node.ungrouped_at(cell.row);
+        let node: &Node = &resolved;
         // OFFSET of one is `#VALUE!`, so not a reference (probes/external-ref-no-link-index
         // A16), also of one a LET picks (probes/external-ref-no-link-let-index A3), where OFFSET
         // otherwise counts as one unevaluated (`kind.returns_reference()`).
@@ -612,7 +616,8 @@ impl Model {
             // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So are a
             // range operator over function operands (`A1:OFFSET(..)`) and a cross-sheet one
             // other than [`joins_a_cell_to_a_sheet_qualified_one`] (`Alpha!A1:Beta!B1`).
-            let argument = args[0].ungrouped();
+            let argument = args[0].ungrouped_at(cell.row);
+            let argument: &Node = &argument;
             if matches!(
                 argument,
                 Node::ReferenceKind { .. }

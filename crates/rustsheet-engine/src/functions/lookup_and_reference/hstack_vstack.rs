@@ -119,7 +119,7 @@ impl Model {
                     "CELL(\"contents\", ref) is not stackable".to_string(),
                 );
             }
-            if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
+            if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) {
                 known_rows = known_rows.saturating_add(1);
                 results.push(None);
                 continue;

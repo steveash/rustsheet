@@ -20,7 +20,7 @@ use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
-pub(crate) use structured::to_string_lowering;
+pub(crate) use structured::{to_localized_string_this_row_lowered, to_string_lowering};
 
 pub enum DisplaceData {
     Column {
@@ -68,6 +68,9 @@ enum Rewrite<'a> {
     /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
     /// and restore").
     Lower(&'a [String]),
+    /// Prints every `#This Row` structured reference as the area it is on the printing cell's
+    /// row: the text a formula moved to another row keeps (T-1699).
+    LowerThisRow,
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
@@ -475,7 +478,7 @@ fn stringify(
             }
             &DisplaceData::None
         }
-        Rewrite::Lower(_) => &DisplaceData::None,
+        Rewrite::Lower(_) | Rewrite::LowerThisRow => &DisplaceData::None,
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
@@ -744,6 +747,17 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
+        // Printed only as a lowered area (a structural-edit fallback, the export): first resolved
+        // at the printing cell's row, which is the text its parse-time lowering had (`$A$3` or
+        // `#VALUE!`), then rewritten; with no cell, as the columns on the formula's own row
+        // (SPEC-0016 "Structural edits", T-1699).
+        ThisRowKind { .. } => {
+            let area = match context {
+                Some(context) => node.this_row_at(context.row),
+                None => node.this_row_relative(),
+            };
+            area.map_or_else(String::new, |area| sub(&area))
+        }
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
             lowered,
@@ -903,6 +917,11 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
             }
         }
         Node::RangeKind {
+            sheet_name,
+            sheet_index: index,
+            ..
+        }
+        | Node::ThisRowKind {
             sheet_name,
             sheet_index: index,
             ..

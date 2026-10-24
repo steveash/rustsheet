@@ -2150,8 +2150,9 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   its `#Totals` is `#REF!` (column-range 44cecbb1ecd5b2da K180, K23, K185).
 Status: VERIFIED (excel-graph)
 Implemented in: partly; the `@` shorthand is implemented (T-1672), rows outside the table and reversed ranges (T-1675, `structured_reference_operand` in operands.rs),
-totals rows from the eval adapter T-1671.
-Tasks: T-1607, T-1671, T-1672, T-1675
+totals rows from the eval adapter T-1671. Since T-1699 (SPEC-0016 step 2) `#This Row` is decided at the evaluating cell's row
+(`Node::ThisRowKind`, resolved by `Node::ungrouped_at`), not when the formula is parsed, so it follows the table when the table list changes.
+Tasks: T-1607, T-1671, T-1672, T-1675, T-1699
 
 ## Structured references: names and item specifiers
 Rule (gen-m8b, excel-graph, 2026-10-16, T-1607): table names, column names and the item specifiers
@@ -2203,7 +2204,7 @@ through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Re
   have (`=SUM(Sales[Nope])`) is loaded by Excel for the web with the reference rewritten: `#REF!`, and FORMULATEXT prints
   `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
 Status: VERIFIED (excel-graph)
-Implemented in: partly (T-2195, SPEC-0016 step 1). Every structured reference except `#This Row` (T-1699)
+Implemented in: partly (T-2195, SPEC-0016 step 1; T-1699, step 2). Every structured reference, `#This Row` included,
 is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference.rs) and its area is
 re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
 first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
@@ -2217,7 +2218,13 @@ error that keeps its text and is exported as `#REF!`; a loaded formula naming an
 is a parse error too (`#ERROR!`, FORMULATEXT the original text; T-2322). FORMULATEXT shows the stored
 canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
 table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322
+A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
+that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
+its value before step 2. Not as before step 2 (a change from the engine's old values; Excel itself copies
+the table with the sheet): on a duplicated sheet, a `#This Row` formula off the source table's data rows reads the copy's cell on
+its row instead of `#VALUE!`, and one on another sheet off the data rows of a deleted sheet's table is `#REF!` instead of
+`#VALUE!` (the shared formula is lowered with no row; T-2589).
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2589
 
 ## Structured references under row deletes, column edits, convert, table and sheet delete
 Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases

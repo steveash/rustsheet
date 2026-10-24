@@ -594,9 +594,10 @@ impl Parser {
     }
 
     /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
-    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` is still lowered
-    /// at parse time, from the context row, so it keeps no text (T-1699); a reference that does
-    /// not resolve (unknown table or column) stays a parse error, which keeps the formula text.
+    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` lowers to a
+    /// [`Node::ThisRowKind`], resolved at the evaluating cell's row (T-1699); a reference that
+    /// does not resolve (unknown table or column) stays a parse error, which keeps the formula
+    /// text.
     pub(super) fn structured_reference_operand(
         &mut self,
         table_name: String,
@@ -604,7 +605,6 @@ impl Parser {
         table_reference: Option<TableReference>,
         bare: bool,
     ) -> Node {
-        let this_row = specifier == Some(token::TableSpecifier::ThisRow);
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
@@ -612,7 +612,7 @@ impl Parser {
             bare,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
-        if this_row || matches!(lowered, Node::ParseErrorKind { .. }) {
+        if matches!(lowered, Node::ParseErrorKind { .. }) {
             return lowered;
         }
         Node::StructuredReferenceKind {
@@ -622,7 +622,7 @@ impl Parser {
     }
 
     /// The area a structured reference resolves to against the parser's table list: a
-    /// `ReferenceKind`, a `RangeKind`, an `ErrorKind` or a `ParseErrorKind`.
+    /// `ReferenceKind`, a `RangeKind`, a `ThisRowKind`, an `ErrorKind` or a `ParseErrorKind`.
     fn lower_structured_reference(
         &mut self,
         table_name: String,
@@ -631,7 +631,7 @@ impl Parser {
     ) -> Node {
         // We will try to convert to a normal reference
         // table_name[column_name] => cell1:cell2
-        // table_name[[#This Row], [column_name]:[column_name]] => cell1:cell2
+        // table_name[[#This Row], [column_name]:[column_name]] => the columns on the cell's row
         let context = &self.context;
         let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
             Some(i) => i,
@@ -714,16 +714,10 @@ impl Parser {
         };
         row_end = data_end;
 
+        let this_row = specifier == Some(token::TableSpecifier::ThisRow);
         match specifier {
-            Some(token::TableSpecifier::ThisRow) => {
-                // Off the data rows (header, totals, above, below) it is #VALUE!
-                // (docs/excel-semantics/references.md, gen-m8b this-row e1bf5aa0ffb4ed87).
-                if context.row < data_start || context.row > data_end {
-                    return Node::ErrorKind(token::Error::VALUE);
-                }
-                row_start = context.row;
-                row_end = context.row;
-            }
+            // Decided at the evaluating cell's row (`Node::ThisRowKind`), below.
+            Some(token::TableSpecifier::ThisRow) => {}
             Some(token::TableSpecifier::Totals) => {
                 if totals_row_count != 0 {
                     row_start = totals_row;
@@ -758,7 +752,8 @@ impl Parser {
                 row_start = data_start;
             }
         }
-        match table_reference {
+        let one_column = matches!(table_reference, Some(TableReference::ColumnReference(_)));
+        let lowered = match table_reference {
             None => Node::RangeKind {
                 sheet_name,
                 sheet_index: table_sheet_index,
@@ -783,7 +778,7 @@ impl Parser {
                         };
                     }
                 };
-                if row_start == row_end {
+                if row_start == row_end && !this_row {
                     return Node::ReferenceKind {
                         sheet_name,
                         sheet_index: table_sheet_index,
@@ -845,6 +840,29 @@ impl Parser {
                     column2: left_column_index.max(right_column_index),
                 }
             }
+        };
+        if !this_row {
+            return lowered;
+        }
+        // Off the data rows (header, totals, above, below) it is #VALUE!, at the evaluating
+        // cell's row (docs/excel-semantics/references.md, gen-m8b this-row e1bf5aa0ffb4ed87).
+        match lowered {
+            Node::RangeKind {
+                sheet_name,
+                sheet_index,
+                column1,
+                column2,
+                ..
+            } => Node::ThisRowKind {
+                sheet_name,
+                sheet_index,
+                column1,
+                column2,
+                data_start,
+                data_end,
+                cell: one_column,
+            },
+            other => other,
         }
     }
 }

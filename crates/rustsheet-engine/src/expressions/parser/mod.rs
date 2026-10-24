@@ -31,6 +31,7 @@ f_args  => e (',' e)*
 </pre>
 */
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use crate::functions::Function;
@@ -312,6 +313,22 @@ pub enum Node {
         reference: Box<StructuredReference>,
         lowered: Box<Node>,
     },
+    /// The `lowered` area of a `[#This Row]` structured reference: columns `column1..column2` of
+    /// the row of the cell evaluating it, a data row `data_start..data_end` of the table, and
+    /// `#VALUE!` off the data rows (gen-m8b this-row e1bf5aa0ffb4ed87). It does not depend on the
+    /// row the formula was parsed at, so a shared formula serves a whole column (SPEC-0016 step
+    /// 2, T-1699). `cell` marks one column named alone (`Sales[@Qty]`), which is a cell
+    /// reference; the other forms are ranges, as their parse-time lowering was. Seen through
+    /// [`Node::ungrouped_at`] and [`Node::lowered_at`], which resolve it at a row.
+    ThisRowKind {
+        sheet_name: Option<String>,
+        sheet_index: u32,
+        column1: i32,
+        column2: i32,
+        data_start: i32,
+        data_end: i32,
+        cell: bool,
+    },
     CompareKind {
         kind: OpCompare,
         left: ChainLeft,
@@ -360,6 +377,130 @@ impl Node {
         match self {
             Node::StructuredReferenceKind { lowered, .. } => lowered,
             node => node,
+        }
+    }
+
+    /// [`Node::ungrouped`], with a `#This Row` area resolved at `row`, the row of the cell
+    /// evaluating or printing it: the cell or range on that row, or `#VALUE!` off the table's
+    /// data rows, the node its parse-time lowering gave before SPEC-0016 step 2 (T-1699). For the
+    /// sites that match on the kind of reference an argument is.
+    pub(crate) fn ungrouped_at(&self, row: i32) -> Cow<'_, Node> {
+        let node = self.ungrouped();
+        node.this_row_at(row)
+            .map_or(Cow::Borrowed(node), Cow::Owned)
+    }
+
+    /// The node itself, but a `#This Row` structured reference (or its bare area) is its area at
+    /// `row`, as [`Node::ungrouped_at`] gives it; any other wrapper is kept. For the sites that
+    /// match on the kind of the node as written.
+    pub(crate) fn resolved_at(&self, row: i32) -> Cow<'_, Node> {
+        self.lowered()
+            .this_row_at(row)
+            .map_or(Cow::Borrowed(self), Cow::Owned)
+    }
+
+    /// [`Node::ungrouped`] for static analysis, which has no row: a `#This Row` area is what it is
+    /// on a data row, the shape its lowering had on the rows that read the table (T-1699).
+    pub(crate) fn ungrouped_static(&self) -> Cow<'_, Node> {
+        let node = self.ungrouped();
+        node.this_row_on_a_data_row()
+            .map_or(Cow::Borrowed(node), Cow::Owned)
+    }
+
+    /// [`Node::lowered`] for static analysis, as [`Node::ungrouped_static`] resolves it.
+    pub(crate) fn lowered_static(&self) -> Cow<'_, Node> {
+        let node = self.lowered();
+        node.this_row_on_a_data_row()
+            .map_or(Cow::Borrowed(node), Cow::Owned)
+    }
+
+    /// The area of a [`Node::ThisRowKind`] on the table's first data row.
+    fn this_row_on_a_data_row(&self) -> Option<Node> {
+        match self {
+            Node::ThisRowKind { data_start, .. } => self.this_row_at(*data_start),
+            _ => None,
+        }
+    }
+
+    /// The area of a [`Node::ThisRowKind`] on `row` (a `ReferenceKind`, a `RangeKind` or
+    /// `#VALUE!`); `None` for any other node. A plain comparison: the bounds were computed with
+    /// checked arithmetic when the formula was parsed.
+    pub(crate) fn this_row_at(&self, row: i32) -> Option<Node> {
+        let Node::ThisRowKind {
+            sheet_name,
+            sheet_index,
+            column1,
+            column2,
+            data_start,
+            data_end,
+            cell,
+        } = self
+        else {
+            return None;
+        };
+        if row < *data_start || row > *data_end {
+            return Some(Node::ErrorKind(token::Error::VALUE));
+        }
+        Some(Node::this_row_reference(
+            sheet_name.clone(),
+            *sheet_index,
+            (*column1, *column2, *cell),
+            (true, row),
+        ))
+    }
+
+    /// A `#This Row` area with no row to resolve it at (a shared formula printed in R1C1): the
+    /// same columns on the formula's own row, `RC1` or `RC1:RC2`. Its cells are the ones
+    /// [`Node::this_row_at`] gives on every data row.
+    pub(crate) fn this_row_relative(&self) -> Option<Node> {
+        let Node::ThisRowKind {
+            sheet_name,
+            sheet_index,
+            column1,
+            column2,
+            cell,
+            ..
+        } = self
+        else {
+            return None;
+        };
+        Some(Node::this_row_reference(
+            sheet_name.clone(),
+            *sheet_index,
+            (*column1, *column2, *cell),
+            (false, 0),
+        ))
+    }
+
+    /// The reference to `columns` (first, last, whether it is one cell) on a row, absolute or an
+    /// offset from the formula's row.
+    fn this_row_reference(
+        sheet_name: Option<String>,
+        sheet_index: u32,
+        (column1, column2, cell): (i32, i32, bool),
+        (absolute_row, row): (bool, i32),
+    ) -> Node {
+        if cell {
+            return Node::ReferenceKind {
+                sheet_name,
+                sheet_index,
+                absolute_row,
+                absolute_column: true,
+                row,
+                column: column1,
+            };
+        }
+        Node::RangeKind {
+            sheet_name,
+            sheet_index,
+            absolute_row1: absolute_row,
+            absolute_column1: true,
+            row1: row,
+            column1,
+            absolute_row2: absolute_row,
+            absolute_column2: true,
+            row2: row,
+            column2,
         }
     }
 

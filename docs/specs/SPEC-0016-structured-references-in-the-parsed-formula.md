@@ -150,6 +150,18 @@ reference operators, SUM's reference arm). One helper does the job:
 a `ReferenceKind` gives. It is not open-coded at each site. Step 2 re-audits every `ReferenceKind`/`RangeKind` site,
 static analysis included (shape and `StaticResult`), for `ThisRowKind`.
 
+Step 2 as built (T-1699): `ThisRowKind` also carries `cell: bool`, for one column named alone
+(`Sales[@Qty]`), so it resolves to the `ReferenceKind` its parse-time lowering was and the other forms to
+a `RangeKind`. The helper is `Node::this_row_at(row)`, the node the parse-time lowering gave on that row
+(the cell or range, or `ErrorKind(VALUE)`), not a `Model` method returning an `Area`: the sites that match
+on the kind of an argument call `Node::ungrouped_at(row)` (or `Node::resolved_at(row)` where they do not
+ungroup), so each sees exactly the node it saw before step 2, and evaluation (`evaluate_node_in_context`,
+`evaluate_node_with_reference`) resolves it the same way. Static analysis, which has no row, reads it as it
+is on a data row (`Node::ungrouped_static`). A structural edit that moves a formula to another row
+re-enters it with its `#This Row` areas lowered at the old row (`Model::cell_formula_text`), and a cut and
+paste to another row prints the lowered area, so the moved formula reads what it read; a formula that keeps
+its row keeps its text.
+
 ### Printing
 The storage and in-engine printers print a `StructuredReferenceKind` from `reference`, in the
 canonical long form:

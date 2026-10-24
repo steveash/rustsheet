@@ -262,7 +262,7 @@ impl Model {
             ArgReading::Aggregate => self.evaluate_aggregate_arg(arg, cell),
             ArgReading::PickedKeepingBlanks => self.evaluate_picked_reference_arg(arg, cell),
         };
-        let is_reference = matches!(arg.ungrouped(), Node::ReferenceKind { .. });
+        let is_reference = matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
         self.walk_aggregate_read(read, is_reference, cell, walk, visit)
     }
 

@@ -251,7 +251,8 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let node = node.ungrouped();
+        let node = node.ungrouped_at(cell.row); // `#This Row` resolved (SPEC-0016 step 2)
+        let node: &Node = &node;
         match node {
             Node::SheetSpanKind {
                 first_index,
@@ -365,6 +366,9 @@ impl Model {
                 })
             }
         };
+        // A `#This Row` area is the cell or range on the formula's row (SPEC-0016 step 2).
+        let resolved = node.ungrouped_at(cell.row);
+        let node: &Node = &resolved;
         // A 3-D span of a linked workbook's cached sheets is read sheet by sheet, as a span of
         // this workbook is (fixtures/external-link-cached-3d-span Refs!B2:B6; T-1654).
         if let Some(rows) = self.cached_span_cells(node, cell) {

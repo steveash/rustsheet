@@ -55,6 +55,11 @@ impl Model {
                 cell,
                 "Unpeeled group or structured reference".to_string(),
             ),
+            // The cell, range or `#VALUE!` it is on the cell's row (SPEC-0016 step 2, T-1699).
+            ThisRowKind { .. } => match node.this_row_at(cell.row) {
+                Some(area) => self.evaluate_node_in_context(&area, cell),
+                None => CalcResult::new_error(Error::ERROR, cell, "Unresolved row".to_string()),
+            },
             SpillRangeOperator { child } => self.evaluate_spill_range_operator(child, cell),
             ImplicitIntersection { child, .. } => {
                 let result = self.evaluate_implicit_intersection_operand(child, cell);

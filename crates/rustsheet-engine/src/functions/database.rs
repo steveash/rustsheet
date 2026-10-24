@@ -78,6 +78,7 @@ impl Model {
                     | Node::StringKind(_)
                     | Node::ReferenceKind { .. }
                     | Node::RangeKind { .. }
+                    | Node::ThisRowKind { .. }
                     | Node::EmptyArgKind
             )
         });
