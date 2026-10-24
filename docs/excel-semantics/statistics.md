@@ -774,7 +774,7 @@ the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(
 and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SKEW, SKEW.P, KURT, ..." below).
 Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
 Ours: matches (T-1290); BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as 1 since T-1849 (L1, L13;
-PHI's is unprobed). Every argument of these functions is `Lift`
+PHI's read is probed separately). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order; T.DIST.2T and TDIST read every argument
 before they check any ("Overflowing arguments, PERMUT's limit and argument error order" below). One scalar change
 here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
@@ -2586,9 +2586,9 @@ with C6 = FALSE is `#NUM!` (beta 0; d37313406b9f6e55 A380), `WEIBULL.DIST(0.2,Da
 (928d08e3e1eecb5f A303), `STANDARDIZE(-40,Data!E5,-1)` with E5 = FALSE `#NUM!` (sd -1; 334f3dc9ca937f10 A219) and
 `STANDARDIZE(-1E-15,1E-15,Data!A7)` with A7 = TRUE -2E-15 (928d08e3e1eecb5f A249).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 90 cells listed in T-1849; T-2256 (2026-10-23), 28 more cells.
-The BETA.DIST/BETA.INV bounds A and B read a boolean the same way (gen-m9 BETADIST/BETAINV cells). A TRUE typed directly in alpha, beta, the HYPGEOM counts, WEIBULL and the STANDARDIZE mean and standard_dev has no oracle cell: UNVERIFIED.
+The BETA.DIST/BETA.INV bounds A and B read a boolean the same way (`BETADIST(1E+10,Data!A2,0.5,0.2,Data!A2)` with A2 = TRUE is `#NUM!`, 165db58d1540f014 A52; `BETAINV(1-1E-10,1E+10,1E-10,Data!D2)` with D2 = TRUE `#NUM!`, bc40d37cb4d8301d A145). A TRUE typed directly in alpha, beta, the HYPGEOM counts, WEIBULL and the STANDARDIZE mean and standard_dev has no oracle cell: UNVERIFIED (T-2559 probes it).
 Ours: matches since T-1849 (the kernels use `cast_number_ref`, so a boolean reads as 1 or 0).
-Status: VERIFIED (excel-graph)
+Status: VERIFIED (excel-graph) except the typed-direct reads named above
 
 ## HYPGEOMDIST: a sample below the possible range is 0; a negative or huge count is #NUM! (T-2255)
 Rule: HYPGEOMDIST and HYPGEOM.DIST return 0 when sample_s is below number_sample - (number_pop - population_s), the

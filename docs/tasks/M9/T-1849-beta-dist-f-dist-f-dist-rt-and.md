@@ -158,4 +158,6 @@ significant digit of Excel's value (an expected 0 exactly 0); the visible-parity
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
 
 ## Outcome
-BETA.DIST/BETA.INV, F.DIST/F.DIST.RT/F.INV/F.INV.RT, HYPGEOM.DIST, WEIBULL and STANDARDIZE kernels now read a boolean as 1/0 (`cast_number_ref`). Eval: 127 known-failure lines removed (122 gen-m9, 5 probes); none added.
+BETA.DIST/BETA.INV (including bounds A and B), F.DIST/F.DIST.RT/F.INV/F.INV.RT, HYPGEOM.DIST, WEIBULL and STANDARDIZE
+kernels now read a boolean as 1/0 (`cast_number_ref`). Eval: 134 known-failure lines removed (129 gen-m9, 5 probes); none added.
+Residue in T-2559: 7 visibly-off gen-m9 cells (4 wrong error, 3 numeric) and 3 cells within 4 ulp.
