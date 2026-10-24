@@ -3,7 +3,7 @@ id: T-2420
 title: "Probe and match IM* with a leading plus, OCT2DEC of 11 digits and OCT/HEX conversions of TRUE"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
