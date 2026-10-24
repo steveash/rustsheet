@@ -115,7 +115,7 @@
         "A108": "=LET(x,INDEX(MAP(_xlfn.PIVOTBY(D!A1:A5,D!B1:B5,D!C1:D5,LAMBDA(v,v)),LAMBDA(x,1)),2,2),t,TYPE(x),IF(t=64,\"64|\"&ROWS(x)&\"x\"&COLUMNS(x)&\"|\"&IFERROR(INDEX(x,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(x,1,1))),t&\"|\"&IFERROR(x&\"\",\"#\"&ERROR.TYPE(x))))",
         "B108": "MAP over PIVOTBY",
         "A109": "=LET(x,INDEX(MAP(_xlfn.PIVOTBY(D!A1:A5,D!B1:B5,D!C1:D5,LAMBDA(v,v)),LAMBDA(x,ROWS(x))),3,2),t,TYPE(x),IF(t=64,\"64|\"&ROWS(x)&\"x\"&COLUMNS(x)&\"|\"&IFERROR(INDEX(x,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(x,1,1))),t&\"|\"&IFERROR(x&\"\",\"#\"&ERROR.TYPE(x))))",
-        "B109": "MAP over PIVOTBY ROWS elem 2,2"
+        "B109": "MAP over PIVOTBY ROWS elem 3,2"
       }
     },
     {

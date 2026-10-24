@@ -40,4 +40,4 @@ Use the excel-probe skill; one case file.
 - Engine changes (T-2593, T-2594).
 
 ## Outcome
-Probe `probes/t2592-nested-groupby-cells` (excel-graph, 42+10 cells) answers every SPEC-0018 unknown; recorded in arrays.md (it corrects the earlier claim that MAP over the result is an error and that reference/two-parameter LAMBDAs show `#VALUE!`). SPEC-0018 points at it; revision filed as T-2602. No engine change; the probe's failing cells are baselined.
+Probe `probes/t2592-nested-groupby-cells` (excel-graph, 42+10 cells) answers every SPEC-0018 unknown; recorded in arrays.md (it corrects the earlier claim that MAP over the result is an error and settles what reference-body and two-parameter LAMBDA cells hold: both still display `#VALUE!`, but the first reads as its value and the second as a nested array). SPEC-0018 points at it; revision filed as T-2602. No engine change; the probe's failing cells are baselined.
