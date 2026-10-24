@@ -406,11 +406,12 @@ pub struct Parser {
     /// The parser is outside every parenthesis and argument list, where a comma is the bare
     /// union operator (`=A1,B2`, T-1073).
     top_level: bool,
-    /// Names the enclosing LET and LAMBDA calls bind so far, kept only when spelled like a
-    /// Lotus-style range or a cell: such a name is the variable where bound and the range or
-    /// cell elsewhere (`LET(R1.C1,5,R1.C1*2)` is 10, probes/r1c1-let-name-r1-c1,
-    /// lotus-dot-range, T-1659; `LET(f1,1,f1+1)` is 2, probes/let-cell-shaped-name-stored, T-2040).
-    reference_shaped_names: Vec<String>,
+    /// Names the enclosing LET and LAMBDA calls bind so far. A name spelled like a Lotus-style
+    /// range or a cell is the variable where bound and the range or cell elsewhere
+    /// (`LET(R1.C1,5,R1.C1*2)` is 10, probes/r1c1-let-name-r1-c1, lotus-dot-range, T-1659;
+    /// `LET(f1,1,f1+1)` is 2, probes/let-cell-shaped-name-stored, T-2040); the variable shadows
+    /// a defined name (T-2057) and, called, a function of its name (T-2567).
+    bound_names: Vec<String>,
     /// The formula is being typed (API `Input::Formula`/`Parse`), not read as stored: a LET name
     /// or LAMBDA parameter spelled like a cell then refuses the formula, as Excel refuses it
     /// typed (decision 0103, T-2497). Stored text (xlsx import, re-parses) keeps binding it.
@@ -458,7 +459,7 @@ impl Parser {
             depth: 0,
             inner_depth: 0,
             value_operators: 0,
-            reference_shaped_names: Vec::new(),
+            bound_names: Vec::new(),
             typed: false,
             cell_shaped_binding: None,
         }
@@ -522,7 +523,7 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.value_operators = 0;
-        self.reference_shaped_names.clear();
+        self.bound_names.clear();
         self.cell_shaped_binding = None;
         self.top_level = true;
         let node = self.parse_expr();

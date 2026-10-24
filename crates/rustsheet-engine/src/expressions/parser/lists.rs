@@ -64,9 +64,9 @@ impl Parser {
     /// (`IF(A1,,2)`) are `EmptyArgKind`.
     pub(super) fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
         // The names a LET binds are in scope up to its `)`.
-        let scope = self.reference_shaped_names.len();
+        let scope = self.bound_names.len();
         let args = self.parse_function_args_in_scope(fn_name);
-        self.reference_shaped_names.truncate(scope);
+        self.bound_names.truncate(scope);
         args
     }
 
@@ -79,7 +79,7 @@ impl Parser {
         match token {
             Some(token) if self.lexer.peek_token() == self.get_argument_separator_token() => {
                 let text = self.lexer.source_since(start);
-                self.bind_reference_shaped_name(&token, &text, node)
+                self.bind_name(&token, &text, node)
             }
             _ => node,
         }
