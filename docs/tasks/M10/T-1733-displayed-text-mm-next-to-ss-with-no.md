@@ -3,7 +3,7 @@ id: T-1733
 title: "Displayed text: mm next to ss with no h is minutes, not months"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
