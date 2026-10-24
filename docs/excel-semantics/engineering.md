@@ -776,5 +776,5 @@ Rule: for |x| > 709 and a nonzero imaginary part, IMCOSH and IMSINH compute `exp
 - IMPRODUCT of a range holding a blank, and of a blank alone, is "0" (`IMPRODUCT(C1:C3)` with C2 blank, `IMPRODUCT(C2:C3)`,
   `IMPRODUCT(C2)`; A55-A57).
 Status: VERIFIED (excel-graph)
-Implemented in: `hyperbolic_log_parts` in functions/engineering/complex/trig.rs
+Implemented in: `hyperbolic_log_form` and `HYPERBOLIC_LOG_CUT` in functions/engineering/complex/trig.rs
 Tasks: T-2231

@@ -439,7 +439,7 @@ impl Model {
     }
 
     pub(crate) fn fn_imln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let op: ComplexFn = |p, c| complex_log(p, c, |x, y| (modulus(x, y).ln(), f64::atan2(y, x)));
+        let op: ComplexFn = |p, c| complex_log(p, c, imln_parts);
         self.lift_complex(Function::Imln, args, op, cell)
     }
 
@@ -848,6 +848,11 @@ fn complex_log(
     }
     let (re, im) = parts(x, y);
     finite_complex_result(re, im, suffix, c)
+}
+
+/// IMLN is `ln` of the [`modulus`] and the argument (`atan2`).
+fn imln_parts(x: f64, y: f64) -> (f64, f64) {
+    (modulus(x, y).ln(), f64::atan2(y, x))
 }
 
 /// IMLOG10 divides the argument by ln 10: multiplying by log10 e misses
