@@ -1712,11 +1712,15 @@ expression and case values, IMSUM, IMPRODUCT, and the holidays of WORKDAY and NE
 `WORKDAY(1,1,DROP({1},1))` and `NETWORKDAYS(1,10,DROP({1},1))`. It stays `#CALC!` in SWITCH's result and default
 (`SWITCH(1,1,DROP({1},1),3)`), CHOOSE (index or value), IFS, IF, XLOOKUP's if_not_found, SUM, MAX, ABS, LEN and N; ERROR.TYPE
 gives 14 and IFERROR catches it (probes/empty-array-args-sequence A1:A21).
+It is any `#CALC!` value, not only an inline TAKE or DROP: a cell holding `=DROP({1},1)` (`SWITCH(Z1,1,2,3)`, `SWITCH(1,Z1,2,3)`,
+`WORKDAY(1,1,Z1)`, `IMSUM(Z1)`), FILTER with no match and `MAP({1},LAMBDA(x,{1,2}))` are `#VALUE!` too (A140:A148); `SWITCH(1,LAMBDA(x,x),2,3)`
+is 3. In IMSUM an error argument before the empty array wins (`IMSUM(1/0,DROP({1},1))` `#DIV/0!`, `IMSUM("x",DROP({1},1))`
+`#NUM!`, `IMSUM(<#DIV/0! cell>,DROP({1},1))` `#DIV/0!`), one after it does not (`IMSUM(DROP({1},1),1/0)` `#VALUE!`; A150:A154, A170:A172).
 SEQUENCE: rows and columns both reach 1048576, and an extent that is negative or past it is `#VALUE!` even next to a zero one:
 `SEQUENCE(0,1048576)` and `SEQUENCE(0.0123,16385)` are `#CALC!`, `SEQUENCE(0,1048577)`, `SEQUENCE(0,-1)` and
 `SEQUENCE(0.0123,123456789.123)` `#VALUE!` (so the oversized columns are the cause, gen-m9 f280df8ba95f96b9 A222); with a
-non-zero rows a columns past the grid's 16384 gives an array (`#SPILL!` in a cell: `SEQUENCE(1,20000)`, `SEQUENCE(1,1048576)`)
-up to 1048576, `#VALUE!` above. An extent is floored after adding 2^-23 (the single-precision epsilon, 1.1920929E-7): `SEQUENCE(4,-1.19E-7)` and
+non-zero rows a columns past the grid's 16384 gives an array (`COLUMNS(SEQUENCE(1,20000))` is 20000, `COLUMNS(SEQUENCE(1,1048576))`
+1048576, `ERROR.TYPE(SEQUENCE(1,1048576))` `#SPILL!`; A155:A157) up to 1048576, `#VALUE!` above (A158). An extent is floored after adding 2^-23 (the single-precision epsilon, 1.1920929E-7): `SEQUENCE(4,-1.19E-7)` and
 `SEQUENCE(0,-1E-8)` are `#CALC!` (a zero extent; gen-m7 c36ff5f42a1a4d47 A359), `SEQUENCE(4,-1.2E-7)` and `SEQUENCE(0,-1)`
 `#VALUE!`, and `SEQUENCE(0.99999999,1)` is 1, `SEQUENCE(0.999999,1)` `#CALC!`. Ours: the array case is `#VALUE!` (T-2600, not probed here).
 Evidence: probes/empty-array-args-sequence (excel-graph, 2026-10-24), probes/t2436/computed-scalar, probes/t2436/f280df8ba95f96b9.

@@ -608,7 +608,12 @@ impl Model {
             // An empty array's `#CALC!` is `#VALUE!` (probes/empty-array-args-sequence A5:A7).
             if let RefArg::Value(value) = &read {
                 if value.is_empty_array() {
-                    return value.clone().empty_array_as_value_error(cell);
+                    // An earlier referenced error still wins (`IMSUM(<#DIV/0! cell>,DROP({1},1))`
+                    // is `#DIV/0!`, a later one does not: probes/empty-array-args-sequence A170:A172).
+                    return walk
+                        .finish()
+                        .err()
+                        .unwrap_or_else(|| value.clone().empty_array_as_value_error(cell));
                 }
             }
             // The cells of the range (blank cells included), and the cells its walk visits.
