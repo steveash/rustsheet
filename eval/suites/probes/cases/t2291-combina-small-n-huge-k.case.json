@@ -1,0 +1,24 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2291 probe: COMBINA with a small number and number_chosen at or past 2^31 (is the bound n+k-1 >= 2^31-1 still the rule there), plus COMBIN(2^31-2,2^31-2).",
+  "tags": [
+    "M5",
+    "probe",
+    "math"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=COMBINA(1,2^31-1)",
+        "A2": "=COMBINA(1,2^31)",
+        "A3": "=COMBINA(2,2^31-2)",
+        "A4": "=COMBINA(2,2^31-1)",
+        "A5": "=COMBINA(1,1E10)",
+        "A6": "=COMBINA(2,1E300)",
+        "A7": "=COMBIN(2^31-2,2^31-2)"
+      }
+    }
+  ],
+  "expected": {}
+}
