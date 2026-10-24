@@ -121,3 +121,8 @@ the 15th digit, as `closeness.rs`):
   P_n - 1): 188-194/209 over all fv/type-0 cells. A166 needs y = RN(-360*log1p(0.1)) plus one ulp (the exact
   product is 0.08 ulp above the double, the true -360*ln(1.1) 0.1 ulp), so it is not a rounding of y; an
   ulp-level probe of Excel's PPMT at per=1 over nper (and of EXP(-360*LN(1.1))) is the next step.
+- New probe probes-numeric/ppmt-first-period-sweep (excel-graph, 2026-10-24; eval/baseline not yet updated for it,
+  run `make eval-baseline` before the PR): PPMT(r,1,n,10000) with PMT(r,n,10000) for r = 0.1 and 0.05, n = 1..400,
+  and EXP(-n*LN(1.1)). With Excel's own PMT cell, `PMT*exp(-n*log1p r)` is bit-exact on only 38/400 (r 0.1) and
+  43/400 (0.05), `PMT/exp(n*log1p r)` 31 and 46, `PMT*EXP(-n*LN(1.1))` 2: misses are 1-3 ulp either way, so the
+  last bits come from somewhere else (a 64-bit intermediate?). The sweep is the data to fit the form on.
