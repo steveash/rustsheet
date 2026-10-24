@@ -25,3 +25,4 @@ Found by the Excel-fidelity review of T-2057. Excel gives `#NAME?` for `=LET(Pv,
 
 ## Outcome
 Probes/let-lambda-body-own-name (excel-graph): all five forms `#NAME?` except the control. `let_scope` no longer patches a name's id into its own value expression, so the LAMBDA body does not read the LET-bound lambda (it gave `#CALC!`). Unit test added.
+The task's own example `LET(Pv,LAMBDA(a,Pv),Pv(1))` (probes/let-name-shadows-defined-name B2) stays `#ERROR!`: `Pv` is also the function PV, so `Pv(1)` is read as a call of it. Filed as T-2567.
