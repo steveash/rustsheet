@@ -746,6 +746,7 @@ C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
 C	probes/numbervalue-separator-edges.case.json	20
+C	probes/odd-bond-argument-check-order.case.json	1091
 C	probes/off-grid-corners.case.json	6
 C	probes/offset-negative-height-width.case.json	80
 C	probes/omitted-arg-compare.case.json	10
@@ -2275,6 +2276,7 @@ F	probes/npv-reference-forms.case.json	Sheet1!A6
 F	probes/npv-reference-forms.case.json	Sheet1!A8
 F	probes/npv-reference-forms.case.json	Sheet1!A9
 F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
+F	probes/odd-bond-argument-check-order.case.json	Calc!A258
 F	probes/regression-trend.case.json	Sheet1!N10
 F	probes/regression-trend.case.json	Sheet1!N12
 F	probes/regression-trend.case.json	Sheet1!N3
@@ -2663,14 +2665,8 @@ F	probes/t2436/60b0b6e69ad35a45.case.json	Calc!U16
 F	probes/t2436/60b0b6e69ad35a45.case.json	Calc!U46
 F	probes/t2436/60b0b6e69ad35a45.case.json	Calc!U61
 F	probes/t2436/623663cacea53bbc.case.json	Calc!A256
-F	probes/t2436/623663cacea53bbc.case.json	Calc!A76
-F	probes/t2436/623663cacea53bbc.case.json	Calc!A91
 F	probes/t2436/623663cacea53bbc.case.json	Calc!T256
-F	probes/t2436/623663cacea53bbc.case.json	Calc!T76
-F	probes/t2436/623663cacea53bbc.case.json	Calc!T91
 F	probes/t2436/623663cacea53bbc.case.json	Calc!U256
-F	probes/t2436/623663cacea53bbc.case.json	Calc!U76
-F	probes/t2436/623663cacea53bbc.case.json	Calc!U91
 F	probes/t2436/68d8ffb69ff739d8.case.json	Calc!A61
 F	probes/t2436/68d8ffb69ff739d8.case.json	Calc!T61
 F	probes/t2436/68d8ffb69ff739d8.case.json	Calc!U61

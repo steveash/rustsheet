@@ -3,7 +3,7 @@ id: T-2483
 title: "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD: argument check order, and ODDLPRICE before the last coupon is #NUM! (gen-m9, 70 cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -80,14 +80,14 @@ Cells:
 - gen-m9/623663cacea53bbc.case.json (1): Calc!A256
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): these 68 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257): these 68 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for ODDLPRICE with the settlement before, on and after `last_interest`, and for the argument order of each function.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for ODDLPRICE with the settlement before, on and after `last_interest`, and for the argument order of each function.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - ODDFYIELD's solver digits (T-2007).
@@ -97,3 +97,12 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed the order (probes/odd-bond-argument-check-order, 1091 excel-graph cells: each out-of-domain argument against
+`NA()`, text and `TRUE` in every other position). The four functions now make a date below 0 or past 9999-12-31 and a
+frequency other than 1, 2 or 4 `#NUM!` as they read them (before the basis), and ODDLPRICE and ODDLYIELD are `#NUM!` for a
+settlement on or before `last_interest`, after every read (`odd_args`, `odd_last_of` in financial_bonds.rs). Recorded in
+financial.md "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order".
+Eval: gen-m9 −39 known failures (every owned cell now passes; the rest of the 71 had been fixed by earlier tasks), probes
+−6 (t2436/623663cacea53bbc) and +1 new-case line (A258, ODDFYIELD's solver digits, added to T-2007), 0 regressions.

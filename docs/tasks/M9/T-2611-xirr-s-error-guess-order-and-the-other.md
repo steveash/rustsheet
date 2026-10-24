@@ -102,6 +102,10 @@ Cells:
 - gen-m9/f61a73cd9af21e6d.case.json (1): Calc!A275
 - gen-m9/fec39efaba9284c3.case.json (2): Calc!A216, A285
 
+Fixed by T-2483 (2026-10-24; financial.md "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order"): 2801c1c11c21e134
+A110 (an inner ODDFYIELD whose issue date, 123456789.123 times a cell, is past 9999-12-31: `#NUM!` as it is read) and 320d51765af9b6b7 A246 (an inner ODDLPRICE whose
+settlement past 9999-12-31 is `#NUM!` as it is read); both lines are gone from the baseline.
+
 ## Acceptance criteria
 - [ ] The 86 known-failure lines listed above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), or each one
       left is listed in the Outcome with its traced cause and owner task; no new known-failure lines in any baseline.
