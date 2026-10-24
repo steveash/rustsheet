@@ -76,7 +76,7 @@ Cells:
 ## Out of scope
 - Engine changes (T-1532).
 
-## Evidence so far (blocked until T-2187)
+## Evidence (first round, before T-2187)
 No start formula fits, so the model cannot be raised from 3/90 with the evidence at hand. The lab now has
 `newton_back_chain` (solvers.py). A test pins the shared one-step-back iterate of S!A1 and S!F1:
 0.05523446268, equal to 1.1e-11 across frequencies 2 and 1. Candidates tried, with counts in financial.md
@@ -123,3 +123,8 @@ model at any compounding either (financial.md "YIELD stops short of PRICE's root
 visible-parity cells stay. Unblock with evidence that separates the start from the stop rule: T-2330's re-probe of the
 stop rule, or a probe that fixes everything but one input (price alone, rate alone, term alone) on the T-2304 grid so S
 can be fitted per input.
+
+## Outcome
+Blocked (2026-10-24). The lab's `yield` fit gains the "Newton, finite difference" family (six variants, best 5/178 bit-exact,
+14/178 within 4 ulp). No model raises the bit-exact count beyond noise. The findings are in financial.md "YIELD stops short of
+PRICE's root" (third-round paragraph). Eval delta: none; the 23 gen-m9 cells stay.
