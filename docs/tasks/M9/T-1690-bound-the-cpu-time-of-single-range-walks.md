@@ -36,13 +36,6 @@ Explicit near-whole ranges (`A2:XFD1048576`) are not clipped by `used_area_corne
 ## Out of scope
 - Memory of the lists (T-1681).
 
-## Notes
-- 2026-10-25: claimed and released unworked by an opus run that ran out of session budget (no code on this branch).
-  Starting point: `walk_area`'s `AreaWalk::ClipBlocks` in functions/util.rs hands every position to `f`; the callers
-  of `for_each_cell_or_error_in_areas` / `for_each_position_in_areas` (count.rs, chisq.rs, paired.rs, aggregate_args.rs,
-  concatenate.rs, date_and_time.rs, multinomial.rs, financial/mod.rs, subtotal.rs, aggregate.rs) each need an audit of
-  what they do with `EmptyCell` before single areas can walk existing cells only.
-
 ## Outcome
 A single range whose used-area-clipped rectangle holds at least 65,536 positions and more than four
 per cell its columns hold (`Model::walks_sparsely`, using the new `SheetData::cells_in_columns`)

@@ -623,13 +623,12 @@ impl Model {
     /// whole argument (`of_union` false) is walked densely: every position of the range within
     /// each sheet's used area, for an explicit block as for whole rows and columns (T-0405),
     /// unless a far cell leaves that area mostly blank, when it is walked like a union's area
-    /// ([`Self::walks_sparsely`], T-1690). An
-    /// area of a union is walked over the cells that exist only: every caller of a union walk
-    /// skips blank cells, and a union can repeat a whole column
-    /// many times over (`MAX_AREAS` copies, or a LAMBDA walking one per row), so the walk must
-    /// cost what the data costs (T-1497). Its work is drawn from the formula's walk budget
-    /// ([`Model::spend_area_walk`]) as it goes, and the area is recorded as seen empty in one
-    /// piece rather than cell by cell.
+    /// ([`Self::walks_sparsely`], T-1690). An area of a union is walked over the cells that
+    /// exist only: every caller of a union walk skips blank cells, and a union can repeat a
+    /// whole column many times over (`MAX_AREAS` copies, or a LAMBDA walking one per row), so
+    /// the walk must cost what the data costs (T-1497). Its work is drawn from the formula's
+    /// walk budget ([`Model::spend_area_walk`]) as it goes, and the area is recorded as seen
+    /// empty in one piece rather than cell by cell.
     pub(crate) fn for_each_position_in_area<F>(
         &mut self,
         area: &Range,

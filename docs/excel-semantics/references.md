@@ -913,7 +913,9 @@ far cell stretches that used area: a single range whose clipped area holds at le
 positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
 XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area and draws on
 the same budget (T-1690), so it costs the data, and is `#VALUE!` only past 2^24 steps of it, where
-the walk position by position would have run for hours. Over
+the walk position by position would have run for hours; the cap is then met only by an area
+holding more than about 16 million cells (a step per cell, plus a step per row found and per 16
+row slots tested). Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
@@ -949,7 +951,7 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`, `Model::walks_sparsely`, functions/util/existing_walk.rs); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
 Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690
 
 ## Seen-range cap

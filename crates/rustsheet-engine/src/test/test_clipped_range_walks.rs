@@ -500,8 +500,8 @@ fn a_far_cell_does_not_stretch_single_range_walks() {
     }
 }
 
-// A sparse single range finds the same first error
-// in row-major order as the walk position by position.
+// A sparse single range finds the same first error in row-major order as the walk position by
+// position.
 #[test]
 fn a_sparse_single_range_finds_the_first_error_in_row_major_order() {
     let mut model = sample();
