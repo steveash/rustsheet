@@ -813,26 +813,27 @@ H90-H99, H173-H177, H231-H245, H518-H529.
 Ours: matches the lift cells (T-1848). A TRUE element reads as 1 in BETA.INV, F.INV and F.INV.RT
 since T-1849 (L2, L3, L19). Their quantile comes from statrs 0.18's
 `inv_beta_reg`, ported line for line to `statistical/inverse_beta.rs` with a per-call cap of its own: at most 512 Newton
-steps and 4,096 step adjustments (64 and 512 for Student's t). Where statrs finishes, the port returns its double bit for bit
+steps and 4,096 step adjustments (64 and 512 for Student's t). Since T-2119 BETA.INV and BETAINV refine that estimate to
+the crossing of BETA.DIST's cdf, the T-0970 incomplete beta, as F.INV does. Where statrs finishes, the port returns its double bit for bit
 (unit test `the_port_is_statrs_where_statrs_finishes`; probes-numeric is unchanged cell for cell), so the values
 probes-numeric checks are main's. statrs needs at most 377 steps where it finishes (13 million samples: F at p down to
-1E-162, Beta shapes 1E-5 to 1E5, Student t). Below the old thresholds the quantile is still a bisection on the cdf of at
-most 1,100 (BETA.INV) or 264 (T.INV) evaluations; F.INV, F.INV.RT and FINV refine statrs' estimate to the crossing of the
+1E-162, Beta shapes 1E-5 to 1E5, Student t). Below the old thresholds the T.INV quantile is still a bisection on the cdf of
+at most 264 evaluations; BETA.INV, BETAINV, F.INV, F.INV.RT and FINV refine statrs' estimate to the crossing of the
 T-0970 incomplete beta (`special::refine_increasing`, at most 129 cdfs, 65 without a start; T-0974, "F.INV is a crossing of
 F.DIST's tails" below). The lifting table charges BETA.INV, BETAINV, F.INV, F.INV.RT and FINV 2^18 units an element and
 T.INV, T.INV.2T, TINV and CONFIDENCE.T 2^16: the bound of each kernel's caps at a full-cost incomplete-beta cdf (140
-continued-fraction steps, 3.1 to 3.4 us in release), about 3.4 ms (BETA.INV's 1,100-cdf bisection; F.INV's statrs search
-plus refinement is about 2.5 ms) and 0.82 ms (T.INV's 264-cdf bisection); the cases measured cost far less (167 us for
+continued-fraction steps, 3.1 to 3.4 us in release), about 2.5 ms (the statrs search plus the refinement of BETA.INV and F.INV) and 0.82 ms (T.INV's 264-cdf bisection); the cases measured cost far less (167 us for
 `BETA.INV(1E-300,0.5,1E6)`, 17.5 us for `T.INV.2T(1E-9,99999)`); lift/kinds/statistical.rs has the measurements.
 Since T-0974 the F quantiles below p = 1E-20, where statrs has no start, bisect the cdf: `F.INV(1E-300,5,5)` to
 `F.INV(1E-100,5,5)` (E1-E5) and the lifted A7 of the unit test are Excel's power-law values to 13 digits, no longer
 `#NUM!`. `F.INV(1E-50,6000,4)` is 0.016348827552952715 where Excel gives 0.0004924127886173762 (E6), and
 `F.INV(1E-50,2000,2)` 0.008195481623830967 where Excel gives 0.004452511009947361 (E7): our deep tail of the incomplete
 beta at these df is not Excel's (T-1871). E8, E11 and E12 are within the 15th digit and E10 is 25 units of it off (T-1871).
-DEVIATION (decision 0014, CLAUDE.md directive 5): where statrs' search never finished, the capped search is `#NUM!` and
-Excel gives a number. Its step loop never ends once a Newton step is infinite, found once for BETA.INV at p = 1-2^-53
-(`BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)`, E9). Unit test `quantile_searches_that_hung_or_panicked_are_bounded`;
-T-1871 gives Excel's value there. (statrs also panicked for every F.INV below p = 1.6E-162 and hung for about 7% of F.INV
+Where statrs' search never finished (its step loop never ends once a Newton step is infinite, found once for BETA.INV at
+p = 1-2^-53), the capped search has no start and the refinement bisects the cdf: since T-2119
+`BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` is 0.003013141..., a known mismatch: Excel gives
+0.0691959487211844 (E9; it was `#NUM!`). Unit test `quantile_searches_that_hung_or_panicked_are_bounded`; T-1871 gives
+Excel's value there. (statrs also panicked for every F.INV below p = 1.6E-162 and hung for about 7% of F.INV
 calls below p = 3.6E-27; since T-0974 those bisect the cdf without a start and give a number, see E6 above.)
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BETA.INV, BETAINV, F.INV, F.INV.RT or FINV of more than 512
 elements, and a lifted T.INV, T.INV.2T, TINV or CONFIDENCE.T of more than 2,048, is `#ERROR!` before it runs where Excel
@@ -1593,7 +1594,7 @@ its digits below, -expm1(b*ln1p(-x)) as far as the cells tell, the same cut as T
 - At df 2, half the uncancelled tail is Excel's `T.DIST.RT(4.245,2)` = 0.025631992844658943 (t0969-t-df2-cut
   B450) bit for bit, 1 ulp from the closed form.
 Ours: `incomplete_beta.rs` `beta_reg_complement` (`A1_CLOSED_FORM_MIN_X`), so F.DIST, F.DIST.RT and the F quantiles take it;
-BETA.DIST's cdf is still statrs' (T-2119).
+since T-2119 BETA.DIST's cdf and BETA.INV take it too.
 Status: VERIFIED (excel-graph) at x from 1E-11 to 4E-4 below the cut and at 0.1; the cut itself between 4E-4 and 0.1
 is UNVERIFIED (assumed T.DIST.RT's).
 Tasks: T-0974, T-2119
@@ -1700,6 +1701,10 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
   `t0969-beta-prefactor` (BETA.DIST cdf and pdf for a around 7.5 and several b at x = 0.05 and 0.2) shows the same
   -14 to -22 at (7.5, 0.5), but its other cells carry 10 to 90 x 2^-53 of power-term noise, too much to isolate
   a prefactor.
+  Ours (since T-2119, BETA.DIST's cdf on the T-0970 incomplete beta): four of these cells are visibly off, past
+  half a unit of the 15th digit. They are t0969-beta-prefactor D85 (Excel 1.6851260494385718E-11, 18 ulp) and D86
+  (Excel 8.417666830127187E-07, 33 ulp; bit-exact on statrs' cdf), and t0969-t-beta-link E56 `BETA.DIST(D56,B56/2,0.5,TRUE)`
+  (Excel 9.114921170875367E-05, 4 ulp) and F6 `=E6/2` (Excel 0.07797913037736931, 6 ulp). T-2633 owns them.
 - The algorithm, for a < 1 and b <= 8 (T-0969 attempt 10): B(a,b) = EXP(GAMMALN(a) + (GAMMALN(b) - GAMMALN(a+b))),
   with Excel's own GAMMALN and in that grouping. probes-numeric `t0969-beta-switch` (excel-graph, 2026-10-21) has
   `BETA.DIST(x,a,b,FALSE)` at x = 0.01 and 0.03 for a in {0.25, 0.5, 0.75, 1.5, 2.5} and b = 6.5 to 9.5 by 1/32, with
@@ -2256,7 +2261,7 @@ Tasks: T-1543, T-1634
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
-- Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. `BETA.INV` uses it for shapes up to 1E5 and p of 1E-15 or more (bit-exact with Excel in ironcalc-calc BETADIST_BETAINV.xlsx) and bisects on the cdf otherwise. A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
+- Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 
 ## NORM.S.INV is AS 241 PPND16 in the tails; the central region is unfitted (T-1746)
 Rule: for |p - 0.5| > 0.425, NORM.S.INV(p) (and NORMSINV, NORM.INV(p,0,1)) equals Wichura's
@@ -2719,7 +2724,15 @@ has one point or the error is not the k-th value: `LARGE({1,#N/A,3},3)` and `LAR
 `CORREL({1,#N/A,3},Data!A11:C11)` `#N/A` (a54c738c697617c3 A352), `F.TEST({-1,0,1},{1,#N/A,3})` `#N/A`
 (165db58d1540f014 A337), `FTEST({1,#N/A,3},AVERAGE(0.2))` `#N/A`, not the one-point `#DIV/0!` (9cca17438a7e6f8a A43).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-2430 and T-2093.
-Ours: `#VALUE!`; T-2430 (T-2093 for F.TEST).
+Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3},(<FALSE>/"x~*"))` and `COVARIANCE.S({1,#N/A,3},RANK(<#VALUE!>))`
+are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
+(gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
+Ours: T-2430 implements it for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST and the paired functions
+(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB and FREQUENCY still map an array's error element to `#VALUE!` (T-2636),
+F.TEST and FTEST are T-2093's. UNVERIFIED (shared reader, no oracle cell): SLOPE, INTERCEPT, STEYX, RSQ, FORECAST, FORECAST.LINEAR,
+CHISQ.TEST and CHITEST now return the element's error too; the other argument's error winning is verified only for PERCENTILE, TRIMMEAN
+and COVARIANCE.S and applied to every function above; an array with an error element as the second argument against a plain first
+one, and an empty argument in the other position, are unprobed (T-2636).
 Status: VERIFIED (excel-graph)
 
 ## F.TEST: an error argument is that error; overflowing squares are #NUM!, KURT's #DIV/0! (T-2255)
