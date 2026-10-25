@@ -3,7 +3,7 @@ id: T-2698
 title: "NPER: a rate of 1E-300 is #DIV/0! (ln(1+rate) is 0) and a rate of -1 is #NUM! (gen-m9, 7 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -68,3 +68,8 @@ Cells:
 Decision 0083: every cell this task owns has the wrong error or a wrong type (none is a last-digit difference), so the task
 is in the campaign at the `semantics` stage. Its target is that every cell it owns has Excel's type and error; the
 visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Fixed by T-2620 (same `nper_of` change). NPER is `#DIV/0!` when ln(1+rate) is 0 and `#NUM!` at a rate of -1. All 7 cells
+left eval/baseline/gen-m9.txt.
+
