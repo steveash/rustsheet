@@ -16,7 +16,9 @@
 //! The rest of the argument is `search_cache.rs`'s (T-0448): the first read of a cached range
 //! records what it saw, so a spill that later writes into it restarts the pass, and every pass
 //! starts with an empty cache; nothing is cached under iterative calculation, Excel-order passes
-//! or outside a pass. Values read through the cache are the walk's values, and the matches are
+//! or outside a pass. Reading the whole range records reads the walk may not have made, so a
+//! later spill into one of those cells restarts the pass where the walk would not: slower, never
+//! a different value. Values read through the cache are the walk's values, and the matches are
 //! taken in the walk's order (row by row), so sums round alike and the first error wins alike.
 //!
 //! Directive 5: ranges between [`MIN_CACHED_CELLS`] and [`MAX_CACHED_CELLS`] cells are cached;
