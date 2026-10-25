@@ -3,7 +3,7 @@ id: T-2487
 title: "TBILLEQ, TBILLPRICE and TBILLYIELD: a settlement below serial 1 is valid, and their error order (gen-m9, 14 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
