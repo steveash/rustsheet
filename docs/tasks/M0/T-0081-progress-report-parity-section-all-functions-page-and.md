@@ -3,7 +3,7 @@ id: T-0081
 title: "Progress report parity section, all-functions page and docs/parity.md pointer"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
