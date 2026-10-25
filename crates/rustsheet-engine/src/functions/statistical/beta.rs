@@ -6,6 +6,7 @@ use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
 use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
+use crate::functions::statistical::loader::excel_beta_density;
 use crate::functions::statistical::special::refine_increasing;
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
@@ -136,7 +137,16 @@ impl Model {
             beta_reg_complement(t, 1.0 - t, alpha, beta_param)
         } else {
             // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A)
-            beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width
+            // Both shapes above 1: Excel's Loader saddle point (T-2507).
+            let loader = if alpha > 1.0 && beta_param > 1.0 {
+                excel_beta_density(t, alpha, beta_param)
+            } else {
+                None
+            };
+            loader
+                .or_else(|| beta_density(t, alpha, beta_param))
+                .unwrap_or_else(|| dist.pdf(t))
+                / width
         };
         if result.is_nan() || result.is_infinite() {
             return Err(num_error(cell));
