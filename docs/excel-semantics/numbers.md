@@ -711,10 +711,21 @@ GAMMADIST; rows 21-24), the EXPON.DIST density and cdf (`EXPON.DIST(712,1,FALSE)
 `EXPON.DIST(1E-150,1E-160,TRUE)`; rows 26-29), the WEIBULL.DIST density at shapes 1 and 2 under both names (rows 30-33)
 and the CHISQ.DIST density (`CHISQ.DIST(1430,2,FALSE)`, row 35). So the closed forms at the ends keep it (k = n and
 k = 0, f = 0, p^s) and so do the BETA.DIST (2, 1) cdf, x^2, and the WEIBULL.DIST cdf, while the EXPON.DIST cdf of the
-same 1E-310 is 0. `GAMMA.DIST(1E-10,1,1E+307*10,FALSE)` is #NUM! (row 25; T-2738). The engine is wrong at rows 5-7, 9,
-12-13, 15, 19-20, 25, 29 and 35 (T-2737, T-2738). The scale is `1E+307*10` because a typed `1E+308` is refused (Graph
-400) and a stored one makes Excel refuse the workbook (createSession 501 FileCorruptTryRepair; both excel-graph 2026-10-25, scratch fills), as for the tiny
-literals below.
+same 1E-310 is 0. `GAMMA.DIST(1E-10,1,1E+307*10,FALSE)` is #NUM! (row 25; T-2738).
+The scale is `1E+307*10` because a typed `1E+308` is refused (Graph 400) and a stored one makes Excel refuse the
+workbook (createSession 501 FileCorruptTryRepair; both excel-graph 2026-10-25, scratch fills), as for the tiny literals
+below.
+The BETA.DIST cdf keeps it exactly at beta = 1 (T-2737, probes/t2737-subnormal-cdf-shapes, excel-graph 2026-10-25,
+same layout): kept at shapes (3, 1), (10, 1), (1.5, 1), (2, 1) at another x, (2, 1) with bounds 0, 1 and (5, 1)
+(rows 2, 3, 6, 7, 11, 12), 0 at (2, 2), (2, 1.5), (2, 3), (2, 1.0000001), (10, 2) at another x and BETADIST at
+(10, 2) (rows 1, 4, 5, 8-10). GAMMA.DIST's cdf at shape 5 and at shape 2 with scale 2, CHISQ.DIST's cdf at 4 degrees
+and its densities at 4 and 6 degrees are 0 too (rows 13-17). Implemented (T-2737): those cdfs, the BINOM.DIST and
+NEGBINOM.DIST cdfs off their closed forms, the EXPON.DIST cdf and the CHISQ.DIST density pass through
+`arithmetic::flush_subnormal`, the BETA.DIST cdf does unless beta = 1, and the NEGBINOM.DIST pmf at f = 0 no longer
+does (test/statistical/test_subnormal_results.rs). Unprobed and flushed by extension: the CHISQ.DIST cdf at 2 degrees
+(`1 - EXP(-x/2)`, subnormal from x below 4.4E-308) and at 1 degree (an ERF form, never subnormal from a normal x), the
+BETA.DIST cdf at alpha = 1, and BETADIST at beta = 1 off (2, 1). Only row 25 of t2706-subnormal-density-paths is still
+wrong (T-2738).
 Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
 2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
 `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
@@ -2213,6 +2224,13 @@ ACOTH(1) and ACOTH(-1) are `#NUM!`. Evidence: probes/atanh-unit-argument (excel-
 ## SUBTOTAL 6 over no numbers is 0 (T-2269)
 Rule (excel-graph, gen-m6, 2026-10-21): SUBTOTAL's PRODUCT (function_num 6) of ranges holding no numbers is 0, as `PRODUCT` is:
 `DATE(2071,6,SUBTOTAL(6,Data!C5:C7))` over "?b", "abc", "abc" is 62609 (`DATE(2071,6,0)`) (gen-m6/216e3c05f407ca79 Calc!A21).
-Ours: implemented (T-2269). Function_num 6 is VERIFIED; function_num 106 is treated the same but is UNVERIFIED (no oracle cell).
-Status: VERIFIED (6), UNVERIFIED (106)
-Tasks: T-2269
+Function_num 106 is 0 too (excel-graph, probes/subtotal-106-no-numbers, T-2302): over text only
+(Hide!C1), blanks only (Hide!C2, with `SUBTOTAL(6,...)` as control in C3), several such references (C7),
+and over ranges whose only numbers sit in manually hidden rows (Hide!C4, C6, C8, C9; the
+function_num 6 control C5 still multiplies the hidden 3 and 5 to 15) or in rows a table filter hides
+(Filter!C2, C3; function_num 6 skips filtered rows too, so Filter!C1 is 0). AGGREGATE's PRODUCT
+(function 6) gives 0 the same way under options 1, 4, 5 and 6 (Hide!C10-C12, Filter!C4): an empty
+product is 0 whenever no number is included, never 1.
+Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
+Status: VERIFIED
+Tasks: T-2269, T-2302
