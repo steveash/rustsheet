@@ -101,7 +101,8 @@ def _signature_max(fn: dict[str, Any]) -> int:
 # `area_num`, a fourth argument (probes/index-area-num-snap J1:J4, Excel-computed; the syntax line
 # shows the array form). The others' syntax lines do not parse, which would give 255; typed, Excel
 # takes these maxima (probes/t2682-typed-max-arg-counts A8:A15) and refuses one more argument, as it
-# does DETECTLANGUAGE's second and TRANSLATE's fourth (Graph PATCH 400, 2026-10-25, T-2682;
+# does DETECTLANGUAGE's second (its maximum is the catalog minimum, 1) and TRANSLATE's fourth
+# (Graph PATCH 400, 2026-10-25, T-2682;
 # docs/excel-semantics/syntax.md "Minimum argument counts").
 MAX_OVERRIDES = {
     "INDEX": 4,

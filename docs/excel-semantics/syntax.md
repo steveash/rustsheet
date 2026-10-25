@@ -43,16 +43,17 @@ override in place of both: INDEX's reference form, `INDEX(reference,row,column,a
 `repeat` cycles (`ArgKinds::accepts`); stored text keeps such a call (`#ERROR!`).
 Maxima and pairs, typed (T-2682, Graph PATCH 2026-10-25). Excel accepts each call at its maximum: `XLOOKUP` 6, `IF` 3,
 INDEX's reference form 4, `FIND`/`FINDB`/`SEARCHB` 3, `LEFTB`/`RIGHTB` 2, `LENB` 1, `MIDB` 3, `REPLACEB` 4, and
-`TRANSLATE` 3 and `DETECTLANGUAGE` 1 (both `#BUSY!` at the PATCH). It also accepts whole pairs, `IFS(TRUE,1)`,
+`TRANSLATE` 3 (`#BUSY!` at the PATCH, logged, no sidecar). It also accepts whole pairs, `IFS(TRUE,1)`,
 `IFS(FALSE,1,TRUE,2)`, `LET(x,1,x)` and `LET(x,1,y,2,x+y)`, and `SWITCH(1,1,2)` and `SWITCH(1,2,3,4)` (a default after
-the pairs). See probes/t2682-typed-max-arg-counts A1:A17; the TRANSLATE and DETECTLANGUAGE values are not kept.
+the pairs). See probes/t2682-typed-max-arg-counts A1:A17.
 It refuses (400 `InvalidArgument`, refused inputs cannot be committed) one argument past each of those maxima
 (`=XLOOKUP(1,{1,2},{3,4},0,0,1,1)`, `=IF(TRUE,2,3,4)`, `=INDEX((Sheet1!B1:C2,Sheet1!D1:E2),1,1,2,1)`, `=FIND("a","abc",1,1)` and the
 same for FINDB, SEARCHB, LEFTB, RIGHTB, LENB, MIDB, REPLACEB, `=DETECTLANGUAGE("hello","x")`,
 `=TRANSLATE("hello","en","es","x")`) and a count that ends inside an IFS or LET pair (`=IFS(TRUE,1,2)`,
 `=IFS(FALSE,1,TRUE,2,3)`, `=LET(x,1,y,2)`, `=LET(x,1,y,2,z,3)`) and `=SWITCH(1,2)`, below its minimum of 3. The engine's table
 takes these maxima as cited overrides (tools/tests/test_catalog_arity.py `MAX_OVERRIDES`; DETECTLANGUAGE and TRANSLATE are
-not implemented, `#NAME?`), and `arg_counts::takes_count` refuses IFS and LET off whole pairs. UNVERIFIED: the pair rule above 6 arguments (probed
+not implemented, `#NAME?`), and `arg_counts::takes_count` refuses IFS and LET off whole pairs. UNVERIFIED: that `DETECTLANGUAGE("hello")` (1, the catalog minimum) is accepted
+typed (only the refusal at 2 is logged); the pair rule above 6 arguments (probed
 IFS 2 to 5, LET 3 to 6); the 255-argument
 maxima (`SUM` 255/256, `TEXTJOIN` 254/255): the oracle cannot type a formula over 255 characters (T-2709).
 Status: VERIFIED
