@@ -3,7 +3,7 @@ id: T-2618
 title: "NPV with a rate of -1 or 1E+300 is #DIV/0! (T-2475 probe)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
