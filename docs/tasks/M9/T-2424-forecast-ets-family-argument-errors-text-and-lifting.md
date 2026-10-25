@@ -3,7 +3,7 @@ id: T-2424
 title: "FORECAST.ETS family: argument errors, text and lifting decide the result before #N/IMPL! (gen-m9, 1196 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
