@@ -42,7 +42,7 @@ mod tests {
     use super::{entries, min_args, takes_count};
 
     /// Every catalog function is listed once, with the catalog's minimum (the maximum is checked by
-    /// tools/tests/test_catalog_arity.py, which reads functions.yaml).
+    /// `tools/tests/test_catalog_arity.py`, which reads `functions.yaml`).
     #[test]
     fn table_matches_catalog() {
         let catalog = include_str!(concat!(
