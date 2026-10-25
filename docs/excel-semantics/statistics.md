@@ -3678,3 +3678,11 @@ Unprobed: a fractional x in (0, 1), and a huge negative mean (EXP overflow).
 Ours: `#NUM!` (known failure, T-2628).
 Status: VERIFIED (excel-graph)
 Tasks: T-2628
+
+## T.TEST of a blank one-cell sample and WEIBULL.DIST overflow (T-2496 probe)
+Rule (excel-graph, 2026-10-25): `T.TEST(Data!E11,Data!A6:C12,2,123456789.123)` with E11 blank is `#VALUE!`, before the
+type check that ours reports as `#NUM!` (T-2469). `WEIBULL.DIST(7,1E+8,0.3,"TRUE")` is `#NUM!`, where ours returns the limit 1
+(hypothesis: Excel reports the overflow of (x/beta)^alpha; T-2435).
+Evidence: probes/t2496-fin-subexpressions P!A90; probes/tbill-error-order-inner-calls (the T.TEST cell).
+Status: VERIFIED (excel-graph), one cell each; the boundaries are not probed.
+Tasks: T-2469, T-2435

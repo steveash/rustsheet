@@ -2012,3 +2012,20 @@ Evidence: probes/t2436; cells in T-2482, T-2483, T-2484, T-2428, T-2493, T-2494,
 Ours: values or the other argument's error; those tasks.
 Status: VERIFIED (excel-graph), one or two cells each
 Tasks: T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491
+
+## Financial cells of the T-2496 sub-expression probe
+Rule (excel-graph, 2026-10-25, probes/t2496-fin-subexpressions, each gen-m9 case's Data sheet copied): in the gen-m9
+financial cells whose error the outer call cannot make, an inner call differs and the outer call passes its error on.
+`PV(-1+2^-52,91,-421)` is `#DIV/0!` (ours `#NUM!`; hypothesis: (1+rate)^91 underflows to 0, T-2657 probes it); `IRR(<4x4 flows>,41.9999)` is
+`#DIV/0!` (ours converges on 4.1E+12, T-2657); `NPV(-1,1E-15,2.5)` and `NPV(1E+300,7,1E+15,2.5)` are `#DIV/0!` (T-2493, as
+in the T-2436 probe); `XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is `#N/A` (lookup.md, T-2656). The statistical inner calls
+follow statistics.md: Z.TEST's one-number `#DIV/0!` and lone-empty-cell `#N/A` (T-2470), PROB's unequal-count `#N/A` and
+one-value `#DIV/0!` (T-2468), FREQUENCY's extra row for a bins argument with no number, so the enclosing ODDFYIELD and
+CUMIPMT lift to a 2x1 array and show `#SPILL!` (T-2427), `T.TEST` of a blank one-cell sample (T-2469) and WEIBULL.DIST
+overflow (T-2435). The T-bill cells: `PPMT(2E+15,8,360,-100,926)` is 0 (T-2490), `QUARTILE` of a TRUE cell `#NUM!`
+(T-2344), `BIN2DEC("x")` `#NUM!` (T-2544).
+Evidence: probes/t2496-fin-subexpressions P!A1-A99 (column B names the gen-m9 cell and sub-expression);
+probes/tbill-error-order-inner-calls.
+Ours: the other error or a value; the tasks named.
+Status: VERIFIED (excel-graph), one or two cells each
+Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T-2490, T-2344, T-2544
