@@ -206,11 +206,24 @@ fn f_quantile_through_beta(df1: f64, df2: f64, p: f64) -> f64 {
 /// is [`f_pdf_loader`], which a plain logarithmic form is not accurate enough to replace (T-1290:
 /// `F.DIST(1,1000,1000,FALSE)` 6.306254544584165 against the true 6.3062545445902005).
 fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
+    // Excel's density is 0 once (df1 x)^(df1/2) underflows to 0, although the density can be far
+    // above the double range's bottom: `F.DIST(1E-300,3,1000,FALSE)` is 0 (exact 2.1E-150) while
+    // `F.DIST(1E-215,3,1000,FALSE)` (power 1.6E-322) is positive, and so is
+    // `F.DIST(1E-65,10,1000,FALSE)` (power 1E-320, where x^5 is already 0): probes-numeric
+    // t1864-f-pdf-tiny-x, t1864-f-pdf-edges A8.
+    if x > 0.0 && (df1 * x).powf(df1 / 2.0) == 0.0 {
+        return 0.0;
+    }
     let direct = dist.pdf(x);
     // Where the direct form is finite: the beta density at y = df1 x / (df1 x + df2) times
     // dy/dx = y (1 - y) / x, while Gamma((df1 + df2)/2) is finite. `F.DIST(0.7,4,2,FALSE)` is
     // then 1 ulp from Excel's 0.40509259259259256 (`F_DIST.xlsx` F3), statrs' form 28 ulp (T-0970).
-    if direct.is_finite() {
+    // A huge x where statrs' form underflows to 0 is not done: Excel gives the positive density,
+    // `F.DIST(1E100,2,3,FALSE)` 2.7556759606310174E-250 and `F.DIST(1E200,1,1,FALSE)`
+    // 3.1830988618378795E-301 (probes-numeric t1864-f-pdf-edges A6, A7), so it goes on to the
+    // log-form underflow check and Loader's form below (`F.DIST(1E300,1,1,FALSE)` stays 0, A11).
+    let huge_x_underflow = direct == 0.0 && x > 1.0;
+    if direct.is_finite() && !huge_x_underflow {
         let scaled = df1 * x;
         let y = scaled / (scaled + df2);
         return beta_density(y, df1 / 2.0, df2 / 2.0)

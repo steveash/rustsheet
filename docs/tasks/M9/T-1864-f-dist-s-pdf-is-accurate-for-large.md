@@ -3,7 +3,7 @@ id: T-1864
 title: "F.DIST's pdf is accurate for large degrees of freedom instead of #NUM! (probes-numeric t1530-f-df-cut)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -35,8 +35,10 @@ Cells:
 - gen-m9/285d87cea1aaa73c.case.json (1): Calc!A64
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] ~~Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.~~ Visible parity met (A64 is 1 ulp
+      from Excel, within half a unit of the 15th digit); the bit-level remainder moved to T-2642 per the
+      Visible-parity stage rule below.
 - [x] probes-numeric/t1530-f-df-cut's F.DIST pdf cells match Excel (or within the documented ulp tolerance), and no
   passing F.DIST/F.DIST.RT/FDIST cell changes (compare every suite cell by cell with main).
 - [x] The rule and the form are recorded in docs/excel-semantics/statistics.md.
@@ -72,3 +74,16 @@ there). Recorded in docs/excel-semantics/statistics.md, "F density at large degr
   number wherever one df is above about 143 and x is moderate (e.g. `F.DIST(20,100,3,FALSE)` = 0.0010807581083264...),
   so the new branch is Excel's behavior there. Ours: 1 bit-exact, 6 within 4 ulp, 3 about 2E-14 relative off (Excel's
   own large-shape noise, T-2586).
+- Follow-ups: the bit-level remainder of the first criterion (A64's last ulp, the exponent summed in double-double) is
+  T-2642. When T-2507 (the beta density) lands, check `incomplete_beta::stirling_correction` against
+  `loader::stirlerr` for consolidation: the quality review found they compute different quantities today, so this is
+  only a note. `loader.rs`'s ln sqrt(2 pi) is the correctly rounded double and stays distinct from `gammaln.rs`'s,
+  one ulp lower because it reproduces Excel's GAMMALN (a unit test pins both).
+- Edge probes (2026-10-25, fidelity review): probes-numeric t1864-f-pdf-edges (12 cells) and t1864-f-pdf-tiny-x (20
+  cells), excel-graph. Excel returns the density at a huge x with a small df, a tiny x with a large df2 and a
+  non-integer (truncated) df, as ours does. Two differences found and fixed here: Excel is 0 once (df1 x)^(df1/2)
+  underflows (`F.DIST(1E-300,3,1000,FALSE)`; ours was 2.1E-150, now 0 by a guard at the top of `f_pdf`, 8 zero cells),
+  and Excel gives the positive density at a huge x where statrs' form underflows to 0 (`F.DIST(1E100,2,3,FALSE)`
+  2.7556759606310174E-250, `F.DIST(1E200,1,1,FALSE)` 3.1830988618378795E-301; ours was 0, now Loader's form through
+  the log-form underflow check, within 15 digits of Excel). Where the power is subnormal Excel loses digits in a way
+  not yet modelled (t1864-f-pdf-tiny-x A5, A6, A10, A17): T-2647. Recorded in statistics.md.

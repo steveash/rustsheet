@@ -2102,9 +2102,22 @@ df above about 143 (probes-numeric t1864-f-pdf-moderate-x, 10 cells, e.g. `F.DIS
 0.0010807581083264...). Excel's value is its own formula (T-2586), not the exact density: it is up to about 6.5E-14
 relative off the exact density (mpmath), so even the exact density is within 15 digits of Excel on only 26 of the 44
 literal-argument cells of t2220-f-dist-sweep-pdf/-d2-1, m9-f-dist and t1530-f-df-cut.
+- The edges are numbers too (probes-numeric t1864-f-pdf-edges): a huge x with a small df
+  (`F.DIST(1E10,30,5,FALSE)` 8.379700461247534E-35, `F.DIST(1E20,300,1,FALSE)` 3.986099675993838E-31,
+  `F.DIST(1E50,10,10,FALSE)` 6.300000000000124E-298), a tiny x with a large df2 (`F.DIST(1E-300,1,1000,FALSE)`
+  3.9884255731385913E149, `F.DIST(1E-300,2,1000,FALSE)` 0.9999999999999979), and a huge x where the density is near the
+  bottom of the double range (`F.DIST(1E100,2,3,FALSE)` 2.7556759606310174E-250, `F.DIST(1E200,1,1,FALSE)`
+  3.1830988618378795E-301; `F.DIST(1E300,1,1,FALSE)`, whose density 3E-451 underflows, is 0). A non-integer df is
+  truncated first (`F.DIST(2,150.7,3,FALSE)` 0.17202585847929508 is the density at df 150).
+- Excel's density is 0 once (df1 x)^(df1/2) underflows to 0, however large the density itself: `F.DIST(1E-300,3,1000,
+  FALSE)` is 0 (exact 2.1E-150), as are `F.DIST(1E-300,3,5,FALSE)`, `F.DIST(1E-220,3,1000,FALSE)`,
+  `F.DIST(1E-170,4,1000,FALSE)` and `F.DIST(1E-300,1000,1000,FALSE)`, while `F.DIST(1E-215,3,1000,FALSE)` (power
+  1.6E-322) and `F.DIST(1E-65,10,1000,FALSE)` (power 1E-320, where x^5 is already 0) are positive
+  (t1864-f-pdf-tiny-x, 20 cells). Where that power is subnormal Excel's value loses digits in a way not yet modelled
+  (A6 2.1% below the exact density, A17 11.6% above; T-2647).
 Evidence: probes-numeric t2220-f-dist-sweep-pdf (A897, A994), t2220-f-dist-sweep-d2-1 (A710, A776), t1530-f-df-cut
-A9-A10, m9-f-dist A30, t1864-f-pdf-moderate-x; gen-m9 285d87cea1aaa73c A64 (`F.DIST(0.1,123456792,1,FALSE)`
-0.085003679623665).
+A9-A10, m9-f-dist A30, t1864-f-pdf-moderate-x, t1864-f-pdf-edges A1-A12, t1864-f-pdf-tiny-x A1-A20 (excel-graph,
+2026-10-25); gen-m9 285d87cea1aaa73c A64 (`F.DIST(0.1,123456792,1,FALSE)` 0.085003679623665).
 Ours: an accurate form, not Excel's algorithm. Where statrs' direct form overflows (a df above about 143, or a huge x
 that does not underflow), `fisher.rs` `f_pdf_loader` is Loader's saddle-point binomial form as in R's `df`: with
 q = n/(n + x m), p = x m/(n + x m), (m q/2)·dbinom_raw((m-2)/2, (m+n-2)/2, p, q) for m >= 2 and
@@ -2113,10 +2126,12 @@ from R keep digits: the binomial deviation k - N p is formed without cancellatio
 rounding error, and passed to bd0 (whose closed form becomes x ln(x/np) - diff); and ln(2πx(1 - x/n)) is one logarithm,
 with 1 - x/n from the exact n - x past n/2 (R's log1p(-x/n) is 4E-8 relative off at `F.DIST(2,1E10,5,FALSE)`, R's bd0
 up to 9,000 ulp at `F.DIST(57400,50,1,FALSE)`). A plain log-space form misses by up to about 300 ulp (T-1290). The
-error grows with |ln density| (about 100 ulp at `F.DIST(100,50,100,FALSE)` = 2.2E-67). Every value that passed before is
-unchanged: the form only replaces a non-finite statrs result, and x <= 0 keeps its value.
-Status: VERIFIED (excel-graph) for the values; the form is ours
-Tasks: T-1864, T-1290, T-2586
+error grows with |ln density| (about 100 ulp at `F.DIST(100,50,100,FALSE)` = 2.2E-67, 171 at `F.DIST(1E200,1,1,FALSE)`).
+The form replaces a non-finite statrs result and statrs' 0 at an x above 1 (the log-form underflow check still gives
+0 where the density underflows); x <= 0 keeps its value; and `f_pdf` returns 0 first when (df1 x)^(df1/2) is 0. The
+subnormal-power digits are T-2647's, the last ulp of gen-m9 285d87cea1aaa73c A64 T-2642's.
+Status: VERIFIED (excel-graph) for the values and the zero rule; the form is ours
+Tasks: T-1864, T-1290, T-2586, T-2642, T-2647
 
 ## F quantile at a huge df goes through Excel's BETA.INV (T-1538)
 Rule: at a huge df Excel's F.INV and F.INV.RT are Excel's BETA.INV mapped to the F scale, and that BETA.INV

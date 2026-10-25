@@ -20,8 +20,11 @@ use std::f64::consts::PI;
 
 use super::special::ln_gamma;
 
-/// ln sqrt(2 pi).
-const LN_SQRT_2PI: f64 = 0.918_938_533_204_672_8;
+/// ln sqrt(2 pi) = 0.918938533204672741780..., the correctly rounded double
+/// (`0x3FED_67F1_C864_BEB5`). Deliberately not `gammaln.rs`'s `LN_SQRT_2PI`, which is one ulp
+/// lower because it reproduces the constant Excel's GAMMALN Stirling sum adds; these pieces are
+/// accurate forms, not Excel's, so they take the exact value.
+const LN_SQRT_2PI_CORRECTLY_ROUNDED: f64 = 0.918_938_533_204_672_8;
 
 /// `stirlerr(k / 2)` for k = 0..=30; k = 0 is a placeholder (the function is infinite at 0).
 const STIRLERR_HALVES: [f64; 31] = [
@@ -83,7 +86,7 @@ pub(crate) fn stirlerr(n: f64) -> f64 {
         {
             return value;
         }
-        return ln_gamma(n + 1.0) - (n + 0.5) * n.ln() + n - LN_SQRT_2PI;
+        return ln_gamma(n + 1.0) - (n + 0.5) * n.ln() + n - LN_SQRT_2PI_CORRECTLY_ROUNDED;
     }
     let nn = n * n;
     if n > 500.0 {
@@ -200,6 +203,7 @@ pub(crate) fn dbinom_raw_dev(x: f64, n: f64, p: f64, q: f64, diff: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test::util::ulps;
 
     #[test]
     fn stirlerr_matches_its_definition() {
@@ -207,11 +211,10 @@ mod tests {
         // accurate to about 1e-13 relative (n near 1), and the series' continuity at 15.
         for k in 1..=6 {
             let n = f64::from(k) / 2.0;
-            let direct = ln_gamma(n + 1.0) - (n + 0.5) * n.ln() + n - LN_SQRT_2PI;
+            let direct = ln_gamma(n + 1.0) - (n + 0.5) * n.ln() + n - LN_SQRT_2PI_CORRECTLY_ROUNDED;
             assert!((stirlerr(n) - direct).abs() < 1e-14, "{n}");
         }
-        // Exact stirlerr(16) and stirlerr(100) (mpmath).
-        // The series' truncation: about 1e-16 absolute at 16 (the next term, 691/360360/n^11),
+        // Exact stirlerr(16) and stirlerr(100) (mpmath); the series' truncation: about 1e-16 absolute at 16 (the next term, 691/360360/n^11),
         // far below the rounding of the terms stirlerr is added to.
         assert!((stirlerr(16.0) - 0.005_207_655_919_609_640_4).abs() < 2e-16);
         assert!((stirlerr(100.0) - 0.000_833_330_555_634_914_7).abs() < 1e-17);
@@ -228,6 +231,74 @@ mod tests {
             let closed = x * (x / np).ln() + np - x;
             assert!((bd0(x, np) - closed).abs() <= 1e-12 * closed.abs(), "{np}");
         }
+    }
+
+    #[test]
+    fn ln_sqrt_2pi_is_correctly_rounded_and_one_ulp_above_gammaln_s() {
+        // mpmath: ln sqrt(2 pi) = 0.91893853320467274178..., nearest double 0x1.d67f1c864beb5p-1.
+        assert_eq!(
+            LN_SQRT_2PI_CORRECTLY_ROUNDED.to_bits(),
+            0x3FED_67F1_C864_BEB5
+        );
+        assert_eq!(
+            LN_SQRT_2PI_CORRECTLY_ROUNDED.to_bits() - super::super::gammaln::LN_SQRT_2PI.to_bits(),
+            1
+        );
+    }
+
+    #[test]
+    fn bd0_closed_form_below_half_np() {
+        // x < np/2 takes x ln(x/np) - diff; references are mpmath (600 digits) at the same doubles,
+        // rounded. Within 2 ulp: ln(x/np) rounds twice (the quotient, the logarithm) and the sum
+        // once, and here the sum does not cancel (np - x dominates).
+        for (x, np, expected) in [
+            (1.0, 10.0, 6.697_414_907_005_954),
+            (0.3, 1000.0, 997.266_481_575_007_6),
+            (2.0, 4.5, 0.878_139_567_567_342_5),
+        ] {
+            let got = bd0(x, np);
+            assert!(
+                ulps(got, expected) <= 2,
+                "bd0({x}, {np}) = {got}, want {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn dbinom_raw_end_cases() {
+        // x = 0 is q^n and x = n is p^n: through bd0 for a small p (resp. q), else n ln q. p =
+        // 2^-10 keeps q = 1 - p exact. References: mpmath (1023/1024)^1000 and 0.75^10, rounded.
+        // Within 4 ulp: the result is exp of a value near -1 or -2.9 carrying a few roundings
+        // (an ulp of the exponent is about 0.25 to 1 ulp of the result).
+        let small = 2.0_f64.powi(-10);
+        let big = 1.0 - small;
+        let cases = [
+            (0.0, 1000.0, small, big, 0.376_423_798_056_724_05),
+            (0.0, 10.0, 0.25, 0.75, 0.056_313_514_709_472_656),
+            (1000.0, 1000.0, big, small, 0.376_423_798_056_724_05),
+            (10.0, 10.0, 0.75, 0.25, 0.056_313_514_709_472_656),
+        ];
+        for (x, n, p, q, expected) in cases {
+            let got = dbinom_raw_dev(x, n, p, q, x - n * p);
+            assert!(
+                ulps(got, expected) <= 4,
+                "x={x} n={n} p={p}: {got}, want {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn dbinom_raw_huge_n_takes_the_logarithm_apart() {
+        // 2 pi x (1 - x/n) overflows for x = n/2 = 0.75 * 2^1023, so lf is the sum of three
+        // logarithms. Reference: mpmath (600 digits) exp(lgamma(n+1) - 2 lgamma(x+1) - n ln 2)
+        // at the same doubles. The density is exp(-0.5 lf) with lf about 710, whose ulp (1.1e-13)
+        // is about 256 ulp of the result, so allow 512.
+        let n = 1.5 * 2.0_f64.powi(1023);
+        let x = 0.5 * n;
+        assert!(!(2.0 * PI * x * 0.5).is_finite());
+        let got = dbinom_raw_dev(x, n, 0.5, 0.5, 0.0);
+        let expected = 6.871_501_566_382_49e-155;
+        assert!(ulps(got, expected) <= 512, "{got}, want {expected}");
     }
 
     #[test]

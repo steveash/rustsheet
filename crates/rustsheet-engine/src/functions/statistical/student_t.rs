@@ -523,8 +523,8 @@ fn dd_atan(u: Dd) -> Dd {
 
 #[cfg(test)]
 mod tests {
-    use super::super::incomplete_beta::tests::ulps;
     use super::*;
+    use crate::test::util::ulps;
 
     #[test]
     fn tail_beyond_one_is_taken_at_the_rounded_y() {
