@@ -3,7 +3,7 @@ id: T-2661
 title: "POWER of a tiny base to a huge exponent: Excel's #NUM! and 0 where ours gives 0 and #DIV/0! (calipers formulas_math_basic)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
