@@ -35,6 +35,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
+use crate::tailed_array::range_corners;
 use crate::{cf_types::CfCellResult, clock::Clock, tz::Tz, variable_stack::VariableStack};
 
 // The structure of a cell. It can be:
@@ -174,7 +175,7 @@ pub struct Model {
     pub(crate) captured_cells: usize,
     /// What this evaluation spent of its nested-array budgets (SPEC-0018 "Bound").
     pub(crate) nested_budget: crate::nested_array::NestedBudget,
-    /// The aggregate arguments being evaluated as a head and a tail (`tailed_array.rs`).
+    /// Aggregate arguments being read as a head and a tail (`tailed_array.rs`).
     pub(crate) tail_views: Vec<crate::tailed_array::TailView>,
     /// Where the stack was when the outermost LAMBDA call running now started
     /// (`Model::lambda_stack_base`), `None` while no call runs.
@@ -3140,45 +3141,6 @@ impl Model {
             self.language,
         )
     }
-}
-
-/// The corners of the range `node` (a `Node::RangeKind`) written in the formula of `cell`:
-/// relative corners are offsets from the cell, and the corners are put in order.
-pub(crate) fn range_corners(
-    node: &Node,
-    cell: CellReferenceIndex,
-) -> Option<(CellReferenceIndex, CellReferenceIndex)> {
-    let Node::RangeKind {
-        sheet_index,
-        row1,
-        column1,
-        row2,
-        column2,
-        absolute_column1,
-        absolute_row2,
-        absolute_row1,
-        absolute_column2,
-        sheet_name: _,
-    } = node
-    else {
-        return None;
-    };
-    let r1 = *row1 + if *absolute_row1 { 0 } else { cell.row };
-    let r2 = *row2 + if *absolute_row2 { 0 } else { cell.row };
-    let c1 = *column1 + if *absolute_column1 { 0 } else { cell.column };
-    let c2 = *column2 + if *absolute_column2 { 0 } else { cell.column };
-    Some((
-        CellReferenceIndex {
-            sheet: *sheet_index,
-            row: r1.min(r2),
-            column: c1.min(c2),
-        },
-        CellReferenceIndex {
-            sheet: *sheet_index,
-            row: r1.max(r2),
-            column: c1.max(c2),
-        },
-    ))
 }
 
 #[cfg(test)]

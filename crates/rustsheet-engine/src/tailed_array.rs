@@ -24,7 +24,7 @@ use crate::constants::LAST_ROW;
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
-use crate::model::{range_corners, Model};
+use crate::model::Model;
 
 #[cfg(test)]
 thread_local! {
@@ -262,4 +262,43 @@ impl Model {
             Err(error) => error,
         })
     }
+}
+
+/// The corners of the range `node` (a `Node::RangeKind`) written in the formula of `cell`:
+/// relative corners are offsets from the cell, and the corners are put in order.
+pub(crate) fn range_corners(
+    node: &Node,
+    cell: CellReferenceIndex,
+) -> Option<(CellReferenceIndex, CellReferenceIndex)> {
+    let Node::RangeKind {
+        sheet_index,
+        row1,
+        column1,
+        row2,
+        column2,
+        absolute_column1,
+        absolute_row2,
+        absolute_row1,
+        absolute_column2,
+        sheet_name: _,
+    } = node
+    else {
+        return None;
+    };
+    let r1 = *row1 + if *absolute_row1 { 0 } else { cell.row };
+    let r2 = *row2 + if *absolute_row2 { 0 } else { cell.row };
+    let c1 = *column1 + if *absolute_column1 { 0 } else { cell.column };
+    let c2 = *column2 + if *absolute_column2 { 0 } else { cell.column };
+    Some((
+        CellReferenceIndex {
+            sheet: *sheet_index,
+            row: r1.min(r2),
+            column: c1.min(c2),
+        },
+        CellReferenceIndex {
+            sheet: *sheet_index,
+            row: r1.max(r2),
+            column: c1.max(c2),
+        },
+    ))
 }
