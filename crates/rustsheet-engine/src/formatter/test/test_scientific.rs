@@ -87,3 +87,28 @@ fn scientific_literals_before_the_exponent_digits() {
         );
     }
 }
+
+// A one-digit mantissa rounds the 15-digit decimal half away from zero, once: 2.5 is "3E+0", 1.005
+// (the double 1.00499999…) "1.01E+00", and 12.345 "1.23E+01" (gen-m10 05c1c646c95a2d60 F!I10,
+// F!L11, 5eb95c63c7d6180c F!G8, F!G19; probes/t2705-scientific-mantissa-rounding; T-2705).
+#[test]
+fn scientific_mantissa_rounds_the_15_digit_decimal_half_away() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (2.5, "0E+0", "3E+0"),
+        (2.5, "#E+0", "3E+0"),
+        (-2.5, "#E+0", "-3E+0"),
+        (12.345, "0.00E+00", "1.23E+01"),
+        (1.005, "0.00E+00", "1.01E+00"),
+        (2.5 - 2f64.powi(-51), "0E+0", "3E+0"),
+        (0.285, "0.0E+0", "2.9E-1"),
+        (100.5, "0.0E+0", "1.0E+2"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{value} {code}"
+        );
+    }
+}

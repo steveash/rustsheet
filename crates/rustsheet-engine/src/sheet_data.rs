@@ -273,6 +273,18 @@ impl SheetData {
         self.column_counts.keys().next_back().copied().unwrap_or(0)
     }
 
+    /// The number of cells in the columns `column1..=column2`, all rows: a search of the column
+    /// counts and a step per column that holds a cell.
+    pub(crate) fn cells_in_columns(&self, column1: i32, column2: i32) -> u64 {
+        if column1 > column2 {
+            return 0;
+        }
+        self.column_counts
+            .range(column1..=column2)
+            .map(|(_, &count)| count as u64)
+            .sum()
+    }
+
     /// Recounts the columns from the cells, for a sheet that was decoded. The column index is
     /// left to be built when a walk needs it.
     pub(crate) fn rebuild_column_counts(&mut self) {
