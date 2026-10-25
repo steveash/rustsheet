@@ -347,7 +347,7 @@ impl ArgKinds {
 
     /// Whether `count` is between the function's least and most arguments, whole `repeat`
     /// cycles aside (see [`ArgKinds::accepts`]).
-    pub(crate) fn takes_count(&self, count: usize) -> bool {
+    fn takes_count(&self, count: usize) -> bool {
         (self.required..=self.max).contains(&count)
     }
 

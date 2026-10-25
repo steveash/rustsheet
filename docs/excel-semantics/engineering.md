@@ -72,30 +72,55 @@ orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
 - BESSELJ has an explicit order cap: `BESSELJ(10,n)` is 0 for n up to and including 10,000,000 and `#NUM!` from 10,000,001
   (also `BESSELJ(10,2^31-1)`, `(0,2^31-1)`, `(1E5,2^31-1)`). It is not an underflow: `BESSELJ(1E5,100001)` is 0.0094462635180178,
   `BESSELK(2.5,100001)` and `(2.5,2^31-1)` are `#NUM!` (K overflows).
-- Separate quirk, cause unknown: `BESSELJ(1E-300,100001)` is `#NUM!` although `BESSELJ(10,100001)` is 0 and the order is far below
-  the 10,000,000 cap (probably tiny-x underflow). The engine matches only because its own 100,000 cap applies; revisit if `MAX_ORDER` is raised.
+- `BESSELJ(1E-300,100001)` is `#NUM!` although `BESSELJ(10,100001)` is 0 and the order is far below the 10,000,000 cap: the
+  Miller recurrence overflows at a tiny x ("BESSEL order cap", T-2546). The engine matches.
 Status: VERIFIED for these cells; the algorithm is fitted (T-0908, above).
 
 Provenance: the coefficients are the published Numerical Recipes (2nd ed., §6.5) rational
 approximations, reproduced only because Excel's output matches them bit-for-bit.
 
 ## BESSEL order cap
-Rule: RustSheet returns `#NUM!` for BESSELI, BESSELJ, BESSELK and BESSELY orders above 100,000 to bound per-cell work on
-untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0` (probes-numeric/m9-bessel, T-1004), so the engine differs above 100,000 for J.
-Excel's own J cap is 10,000,000 (T-2139, above); between 100,001 and that the engine gives `#NUM!` where Excel gives the value (0, or a nonzero
-value when x is large: `BESSELJ(1E5,100001)`). Status: DEVIATION (decision 0014).
-BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's BESSELI above
-100,000 is 0 (`BESSELI(2.5,100001)`, `(2.5,1E+6)`; "Engineering edge-pool smoke check (T-2249)"); BESSELK's is `#NUM!` already at 100,001 (`BESSELK(2.5,100001)`, T-2139; probably overflow, the first `#NUM!` order is not probed).
+Rule: RustSheet runs no Bessel recurrence for an order above 100,000 (`MAX_ORDER`), to bound per-cell work on untrusted input
+(CLAUDE.md directive 5). Above it the engine decides in O(1): BESSELI, BESSELJ and BESSELK are Excel's 0 where a bound proves
+Excel's recurrence ends in exactly 0, and `#NUM!` otherwise; BESSELY is always `#NUM!`.
+Excel past 100,000 (probes/t2546-bessel-past-cap, 83 cells, excel-graph, 2026-10-25; probes/m9-bessel-order-limits, T-2139):
+- Excel's own cap for J, I and K is 10,000,000: `BESSELJ(0,1E+7)`, `BESSELI(100,1E+7)`, `BESSELK(800,1E+7)` are 0, and
+  `BESSELJ(0,10000001)`, `BESSELI(100,10000001)`, `(100,2^31-1)`, `(2.5,2E+9)`, `BESSELK(800,10000001)` are `#NUM!`. Ours matches.
+- BESSELJ is 0 where J_n(x) underflows, also close to the turning point (`BESSELJ(9E+4,100001)`, `(1E+5,1E+6)`, `(10,5E+6)`,
+  `(-10,100001)` are 0), but has its value near and past x = n (`BESSELJ(1E+5,100001)` 0.0094462635180178, `(2E+5,100001)`
+  -0.0019102131173835007, `(1E+6,1000001)` 0.004431989058609136). A tiny x is `#NUM!`: Miller's downward recurrence
+  (Numerical Recipes `bessj`, rescaled by 1E-10 when a term passes 1E+10) overflows when `j * 2/x` passes 1E+10 over many
+  steps: `BESSELJ(1E-5,100001)`, `(1E-300,100001)`, `(3E-5,1E+6)` are `#NUM!`, `(2E-5,100001)` and `(3E-4,1E+6)` are 0.
+  That also explains the `BESSELJ(1E-300,100001)` quirk above.
+- BESSELI is 0 where I_n(x) underflows (`BESSELI(100,100001)`, `(700,100001)`, `(1E-3,100001)`, `(8,1E+6)`, `(-2.5,100001)`),
+  `#NUM!` from x = 709.79, where Excel's I0(x) (the normalizer) overflows, even though I_n(x) underflows (`BESSELI(713,100001)`,
+  `(1E+4,100001)`, `(2E+5,100001)`), and `#NUM!` for a tiny x, as J (`BESSELI(2E-5,100001)`; `(5E-5,100001)` is 0: BESSELI
+  starts its recurrence at 2(n + sqrt(40n)), twice J's order, so it overflows from a larger x).
+- BESSELK is 0 at every order from 2 on from x = 705.5 (inferred: 705 is `#NUM!` and 706 is 0 at order 100001), where K0 and
+  K1 are below the normal range, so Excel's upward recurrence starts from 0 (orders 0 and 1 are T-2421's) (`BESSELK(706,100001)`, `(720,1000)`, `(720,100000)`, `(25019,1E+6)`, `(1E+6,1E+7)`), although K_n(x) itself
+  overflows there; below 705.5 it overflows to `#NUM!` (`BESSELK(705,100001)`, `(700,100001)`, `(2.5,100001)`).
+- BESSELY has its value when x is large (`BESSELY(1E+6,100001)` 0.00011963510780476231, `(2E+5,100001)`,
+  `(1E+7,1E+6)`); `(800,100001)` is `#NUM!` (overflow).
+Ours: the engine's 0 comes from Kapteyn's bound `|J_n(nz)| <= (z e^w / (1 + w))^n`, `w = sqrt(1 - z^2)`, for J and
+`I_n(x) <= (x/2)^n / n! * e^(x^2 / (4 (n + 1)))` for I, each below e^-850, with the recurrence's compound growth past
+1E+10 (from `ln Gamma`) small enough that it provably stays finite; the K rule is the flushed K0 and K1 above. A unit test
+checks against the uncapped recurrences that the rules never give 0 where the recurrence does not. The engine matches every
+J, I and K cell of the probe above except BESSELJ near and past x = n (above), which stays `#NUM!`, and BESSELY past 100,000
+when x is large; those are the deviation. Between a provable 0 and a provable overflow lies a narrow band of x (tiny x at the
+overflow edge) where the engine is `#NUM!` and Excel may be 0.
+Status: DEVIATION (decision 0014), for BESSELJ with x near or above n, BESSELY with a large x, and that band.
+BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); T-2546 added the O(1) 0.
 A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
 (SPEC-0011 `ValueWork::Loop`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
-cap and 1 for n = 0; an order past the cap is refused (`#NUM!`) before the kernel loops and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
+cap and 1 for n = 0; an order past the cap is decided in O(1) without a loop and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
 the cap (`ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))` is `#ERROR!`), while small orders lift freely
 (`ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000, as in Excel). A text order
 is charged as at the cap. At the order cap a BESSELI element runs about 2·10^5
 recurrence steps; 2,048 such elements take about 2 s in a release build (8,192 took 8 s, T-1383).
-Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
+Evidence: probes-numeric/m9-bessel (T-1004), probes/m9-bessel-order-limits (T-2139) and probes/t2546-bessel-past-cap (T-2546)
+show Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Tasks: T-1004, T-1383; T-1819 (the lifted cap is an order-based work budget).
+Tasks: T-1004, T-1383; T-1819 (the lifted cap is an order-based work budget); T-2546 (the O(1) 0 past the cap).
 Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`), bessel_i.rs, bessel_k.rs;
 functions/lift/kinds/engineering.rs (`BESSEL`, `BESSEL_WEIGHT`), functions/lift/driver.rs (`kernel_units`)
 
@@ -609,7 +634,7 @@ Rule: observed values at the edges of the M9 engineering generator pools (tools/
 - `places`: a fraction truncates (`DEC2BIN(9,2.9)` is `#NUM!`, below the length; `DEC2BIN(9,10.5)` "0000001001"), "4"
   is read, 0, -1 and 11 are `#NUM!`, "x" and TRUE `#VALUE!`; a negative result ignores places 1 to 10 and 2.9 alike.
 - `BESSELI(713,0)` and `(714,0)` are `#NUM!`; `BESSELK(713,1)` and `(714,1)` are 0 (ours a subnormal, T-2421).
-  BESSELI past our order cap is 0 (`BESSELI(2.5,100001)`, `(2.5,1E+6)`), as BESSELJ is ("BESSEL order cap").
+  BESSELI past our order cap is 0 (`BESSELI(2.5,100001)`, `(2.5,1E+6)`), as BESSELJ is ("BESSEL order cap"; ours matches since T-2546).
   BESSELJ and BESSELY at x = 1000 and 1E+5 miss by a few ulps (x above 100 is T-2140's).
 - `ERF(5.9)` is 0.9999999999999999 and `ERF(6)` 1; `ERFC(26.5)` is 2.2109076642637346E-307 and `ERFC(27)` 0.
 - BIT*: 2^48-1 is the largest number (2^48 is `#NUM!`), a fraction or a negative number is `#NUM!`, "13" is read
@@ -729,7 +754,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   5.1668995876750464E-05 (matched since T-2547: the phase cut and Excel's sine, "BESSELJ / BESSELY" above);
   `BESSELJ(1E+5,100000)` is 0.009636944011336267 (ours ...629, T-2548). `BESSELI(1E+15,n)` is `#NUM!` (ours 0), and BESSELK at 713 and 714 is 0 for orders 0, 1
   and 4, T-2421. Past the order cap Excel gives 0: `BESSELI(100,100001)`, `BESSELI(8,1E+6)`, `BESSELJ(0,1E+6)`,
-  `BESSELK(25019,100001)` ("BESSEL order cap"; T-2546). `BESSELK(700,3)` is 4.69979514014056E-306 (ours
+  `BESSELK(25019,100001)` ("BESSEL order cap"; ours matches since T-2546). `BESSELK(700,3)` is 4.69979514014056E-306 (ours
   4.699871435825504E-306, 1.6E-5 relative), T-2549.
 - **BIT shifts.** `BITRSHIFT(n,-53)` is 0 for n = 41, 434, 633, 699, 944, `BITLSHIFT(218,53)` 0, and a number 0 shifts
   to 0 by 54 either way (`BITRSHIFT(0,54)`, `BITLSHIFT(<empty>,-54)`) although `BITLSHIFT(1,-54)` is `#NUM!` (T-2249). T-2421.
