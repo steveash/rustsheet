@@ -937,7 +937,8 @@ pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
 
 /// How far below the next integer a whole-number argument may fall and still count as that
 /// integer: 2^-22 + 2^-33, the same at 1, 500, 1000, 30000 and 100000 (an absolute bound, not
-/// relative). LEFT, RIGHT, REPLACE counts, INDEX's and VLOOKUP/HLOOKUP's indexes and TIME share it.
+/// relative). LEFT, RIGHT, REPLACE counts, INDEX's and VLOOKUP/HLOOKUP's indexes, DATE, TIME and the
+/// XMATCH and XLOOKUP modes share it.
 pub(crate) const NEAR_INTEGER_TOLERANCE: f64 = 1.0 / 4_194_304.0 + 1.0 / 8_589_934_592.0;
 
 /// The whole number LEFT, RIGHT, REPLACE, INDEX, VLOOKUP and HLOOKUP read from a count, position
@@ -956,6 +957,25 @@ pub(crate) fn near_integer_floor(x: f64, tolerance: f64) -> f64 {
     let whole = x.floor();
     // `x - whole` is exact for every finite double, so the bound is not blurred at large x.
     whole + f64::from(u8::from(x - whole >= 1.0 - tolerance))
+}
+
+/// The whole number DATE, TIME, XMATCH and XLOOKUP read from an argument: [`near_integer_floor`]
+/// with [`NEAR_INTEGER_TOLERANCE`], half of it for a negative value, so `TIME(1-2^-22,0,0)` is
+/// 1:00, `TIME(1,0,-1E-7)` 1:00, `DATE(1983,12,-1E-15)` day 0 and an XMATCH mode of
+/// `0.5^1E-15` reads 1, while `-0.4` reads -1.
+// Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is `#NUM!`" and "DATE: a
+// year, month or day just below an integer" (probes/time-argument-*, date-argument-window; T-2267,
+// T-2268); lookup.md "XMATCH and XLOOKUP floor a fractional mode, snapping near an integer"
+// (probes/t2656-xmatch-mode-*, T-2656). The XMATCH probes put both edges exactly:
+// 1 - 2^-22*(1+2^-11) reads 1 and 1 - 2^-22*(1+9*2^-14) reads 0; -2^-23*(1+2^-11) reads 0 and
+// -2^-23*(1+9*2^-14) reads -1 (t2656-xmatch-mode-snap-edge-fine), the same at -1, 1 and 2.
+pub(crate) fn near_integer_whole(value: f64) -> f64 {
+    let tolerance = if value < 0.0 {
+        NEAR_INTEGER_TOLERANCE / 2.0
+    } else {
+        NEAR_INTEGER_TOLERANCE
+    };
+    near_integer_floor(value, tolerance)
 }
 
 impl Function {

@@ -1050,10 +1050,25 @@ Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as bl
 Status: VERIFIED (excel-graph)
 Tasks: T-2278
 
-## XMATCH: a search_mode within 15 digits of 1 reads 1 (T-2656)
-Rule (hypothesis): XMATCH reads a search_mode of 0.9999999999999993 (`0.5^1E-15`) as 1, not as 0 after truncation:
-`XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is `#N/A` (nothing matches), where an invalid mode would be `#VALUE!`. A cut to 15
-significant digits before the truncation, as INT and TRUNC cut, fits.
-Evidence: probes/t2496-fin-subexpressions P!A2 (excel-graph, 2026-10-25); gen-m9/01523d247594952e Calc!A51.
-Status: UNVERIFIED (one cell; the rule is not probed). Ours: `#VALUE!`.
-Tasks: T-2656
+## XMATCH and XLOOKUP floor a fractional mode, snapping near an integer (T-2656)
+Rule (excel-graph, 2026-10-25): XMATCH and XLOOKUP read `match_mode` and `search_mode` the way DATE and TIME read their
+arguments (dates.md "TIME: an argument past 32767 is `#NUM!`"): the value is floored toward minus infinity. A value just
+below an integer counts as that integer: within `NEAR_INTEGER_TOLERANCE` (2^-22 + 2^-33) for a positive value, and half of
+that (2^-23 + 2^-34) for a negative one. Neither the 15-digit cut of INT nor truncation applies. So `0.5^1E-15`
+(0.9999999999999993), `1-1E-7`, 0.9999999999999 and 1.99999999999999 read 1, 1, 1 and 2, while `1-2.5E-7` reads 0.
+`XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is therefore `#N/A`, not `#VALUE!`. Ties and other fractions floor: 0.5 reads 0, 1.5 reads 1,
+2.5 and 2.6 read 2, while -0.4 and -0.5 read -1, -1.5 reads -2 and -2.5 reads -3, all the same for both modes and both functions.
+The edges are measured exactly:
+- `1-2^-22*(1+2^-11)` reads 1 and `1-2^-22*(1+9*2^-14)` reads 0, the same below 2 and 3 (so the bound is absolute).
+- `-(2^-23*(1+2^-11))` reads 0 and `-(2^-23*(1+9*2^-14))` reads -1, the same below -1 and -2.
+A tiny negative mode reads 0 (`-1E-7`, `-1E-10`, `-1E-300`). TRUE reads 1, and the text "1" and "1.5" read 1. ±1E300 is
+`#VALUE!`, as is any value that floors outside the valid modes.
+A match_mode of 3 (or one that floors to 3) is the regex mode in both functions: `XMATCH(2.5,{1,2,3},3)` is `#N/A`, the
+XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both. Ours has no regex mode in XLOOKUP (T-2660).
+Evidence: probes/t2656-xmatch-mode-near-integer, -rounding, -snap, -snap-boundary, -snap-bisect, -snap-grid, -snap-edge,
+-snap-edge-fine (1070 cells, excel-graph, 2026-10-25); probes/t2496-fin-subexpressions P!A2; gen-m9/01523d247594952e
+Calc!A51.
+Status: VERIFIED (excel-graph). Ours matches every cell but XLOOKUP's regex mode (3 cells, T-2660).
+Implemented in: functions/util.rs `near_integer_whole` (shared with DATE and TIME), read by `Model::xmatch_of`
+(lookup_and_reference/xmatch.rs) and `xlookup_modes` (xlookup.rs).
+Tasks: T-2656, T-2660
