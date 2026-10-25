@@ -1,9 +1,9 @@
 ---
 id: T-2494
-title: "IRR and XIRR: Excel's #VALUE!, #DIV/0! and #NUM! for IRR(CELL(..)), a huge guess, a #DIV/0! of unprobed cause and no root (gen-m9, 21 cells)"
+title: "IRR: a guess at or above 2^53 is #VALUE! (gen-m9, 5 cells; the rest cut to T-2727 and T-2728)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -12,6 +12,7 @@ campaign: semantics
 ---
 
 ## Goal
+(Narrowed on 2026-10-25: the no-root and `#DIV/0!` cells moved to T-2727, the CELL, `#REF!` and XIRR cells to T-2728; 3 cells, 3aa168259335be54 A1, 5ded7594e597e31e A282 and d912671baa1364aa A158, already passed on main.)
 IRR returns Excel's `#VALUE!`, `#DIV/0!` or `#NUM!` where ours returns a root or another error, and XIRR returns Excel's value at a huge guess.
 
 ## Context
@@ -69,12 +70,11 @@ Cells:
 - gen-m9/abc2939ebd1e2365.case.json (1): Calc!A280
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): these 21 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for a 1E+300 guess and the probed causes of A63's `#VALUE!` and A56's `#DIV/0!`; scalar flows stay `#NUM!`.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9): the 5 guess cells (1b60bf99d71424e7 A215, 6376e27be7a05871 A9, 79d87fc527927626 A26,
+      b6a02893a8d6b151 A236, e168be7f6d3f84c2 A395) disappear from eval/baseline/gen-m9.txt, with no new known-failure lines.
+      (The T-2436 cell and the other T-2257 cells are T-2727's and T-2728's.)
+- [x] Unit tests for a huge guess; scalar flows stay `#NUM!`. (A63's and A56's causes: T-2728, T-2727.)
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IRR's returned digits (T-2131) and IRR over an array with an error element (T-2390).
@@ -84,3 +84,10 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed (excel-graph, 2026-10-25) in probes/irr-guess-edges (47 cells) and irr-guess-edges-2 (44 cells): an IRR guess at or
+above 2^53 is `#VALUE!` (2^53-1 and 9E+15 converge), before the flows are read. `compute_irr` checks it with the existing
+guess <= -1 check; financial.md "IRR's guess range". The probes' other findings (no root for far roots, `#DIV/0!` at a root
+near 1E+15, CELL's row and col, XIRR at huge guesses) are recorded in the new tasks T-2727 and T-2728, which own the
+remaining 14 cells. Eval: see the PR.

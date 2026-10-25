@@ -141,9 +141,19 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
 /// and `#NUM!` for flows without a sign change. Where both runs fail, [`irr_fallback`] runs the
 /// earlier Newton/bisection solver (unverified, T-1686). The 50-step cap is a directive-5 bound
 /// (financial.md "The IRR and XIRR solver caps").
+/// The smallest guess IRR refuses as too large: 2^53.
+const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
+
 pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
-    if guess <= -1.0 {
-        return Err((Error::VALUE, "Rate initial guess must be > -1".to_string()));
+    // Excel: a guess at or above 2^53 is #VALUE! too, before the flows are looked at:
+    // `IRR({-100,60,60},2^53-1)` and `(..,9E+15)` converge, `(..,2^53)` and `(..,1E+16)` are #VALUE!,
+    // and so is `IRR(COUNTBLANK(..),1E+300)` (probes/irr-guess-edges A1-A19,
+    // irr-guess-edges-2 A1-A14; financial.md "IRR's guess range").
+    if guess <= -1.0 || guess >= IRR_GUESS_BOUND {
+        return Err((
+            Error::VALUE,
+            "Rate initial guess must be > -1 and < 2^53".to_string(),
+        ));
     }
     // The values cannot be all positive or all negative
     if values.iter().all(|&x| x >= 0.0) || values.iter().all(|&x| x <= 0.0) {
