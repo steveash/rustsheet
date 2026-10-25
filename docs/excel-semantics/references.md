@@ -2264,7 +2264,9 @@ Right/Left):
 - Convert to Range (`tables/convertToRange`): every value is kept and each structured reference from another
   sheet is rewritten as an absolute, sheet-qualified range: `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
   `=COLUMN(S!$C$4:$C$7)`; `ROWS(Sales)` 4, `ROWS(Sales[#All])` 5 and `ROW(Sales[#Headers])` 3 keep their values
-  (table-convert-to-range).
+  (table-convert-to-range). On the table's own sheet the range is not sheet-qualified: `=SUM($C$4:$C$7)`,
+  `=COUNTA($B$4:$B$7)`, `ROWS(Sales[#All])` 5, and a `#This Row` reference beside the table prints
+  `=$C4*2` (absolute column, relative row) (table-convert-same-sheet, T-2342).
 - Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
   `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
   cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
