@@ -693,7 +693,21 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   limit. A number argument keeps its full precision: `IMPOWER(1.6564497455696935E-10,3)` is 4.54500948137352E-30, which
   no 15-digit reading of the base gives (ours ...349, the 15-digit read). Cells: 65ff9a692665eba9 A28, b5aef3645cec1b95
   A101, 12e4aa13a20cc1f8 A391, 3cf48801617a72ad A91, 12e4aa13a20cc1f8 A224, 8fa8b572ebc1f001 A377, c2d778463fe008ed
-  A232, 756a9f7bc3a06bcc A345. T-2541.
+  A232, 756a9f7bc3a06bcc A345. Implemented in T-2541 (`complex_of`); probes/eng-inumber-reading (excel-graph, 2026-10-25) adds:
+  `IMABS("$1,234.50")` 1234.5, `IMABS("50%")` 0.5, `IMABS("1E3")` 1000, trailing space read, text of 255 characters read
+  and 256 `#VALUE!` (`REPT("0",254)&"3"` 3, `REPT("0",255)&"3"` and `REPT("0",255)&"3+4i"` `#VALUE!`), `IMREAL("1E-310")`
+  `#NUM!`, and a number keeps full precision into IMREAL(1/3) 0.3333333333333333 while IMPOWER, IMSUM and IMSUB of it
+  print 15 digits.
+  Inner minus (probes/eng-inumber-date-boundary, excel-graph, 2026-10-25): text with a minus sign that is neither its
+  first character (past leading spaces) nor an exponent's is not read even where VALUE reads it: `IMABS` of
+  "2024-01-01", "1-2-2020", "1-Jan-2020", "2020-1-2", "1-1-1", "$-5", "2-" and "$1,000-" is `#NUM!`. Slash and
+  month-name dates and clock text are read as VALUE reads them ("1/2/2020" 43832, "2024/01/01" 45292, "1/2/2020 3:00"
+  43832.125, "Jan 1, 2020" 43831, "1/2/20" 43832, "12:00 PM" 0.5), and so are " -5", "- 5", "(5)", "1E-3%" 1E-05,
+  "1,000E-2" 10 and "3 1/2" 3.5. Ours matches all of these since T-2541 (`has_inner_minus`) except "3 1/2", which
+  VALUE does not read yet (text.md, T-2646).
+  Not yet matched: `IMABS("$1+2i")` is 2.23606797749979 (ours `#NUM!`; T-2641).
+  Unprobed (ours in brackets): a "+" inside non-complex text; "$ -5", "(-5)" and "June-2020" [`#NUM!`, the inner-minus
+  rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`].
 - **Large parts in plain notation.** `IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i" (21
   characters per part; ours E notation; e707d43a891ba9b5 A330). With `IMCOT("1E-20")` "100000000000000000000" (T-1966's
   probe) the cut is at least 1E+21; where it is is unprobed. T-2542.
