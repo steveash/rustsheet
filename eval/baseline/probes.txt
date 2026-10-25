@@ -1232,6 +1232,17 @@ C	probes/t2693-subnormal-loginv.case.json	2
 C	probes/t2693-subnormal-weibull.case.json	2
 C	probes/t2705-scientific-mantissa-rounding.case.json	14
 C	probes/t2706-subnormal-density-paths.case.json	70
+C	probes/t2709-typed-concat-253.case.json	2
+C	probes/t2709-typed-concat-254-long.case.json	2
+C	probes/t2709-typed-concat-254-short.case.json	2
+C	probes/t2709-typed-concat-254.case.json	2
+C	probes/t2709-typed-literal-255.case.json	2
+C	probes/t2709-typed-literal-256.case.json	2
+C	probes/t2709-typed-max-255.case.json	2
+C	probes/t2709-typed-sum-255.case.json	2
+C	probes/t2709-typed-sum-8192-chars.case.json	2
+C	probes/t2709-typed-textjoin-254-short.case.json	2
+C	probes/t2709-typed-textjoin-254.case.json	2
 C	probes/t2714-mod-near-smallest-normal-b.case.json	700
 C	probes/t2714-mod-near-smallest-normal-c.case.json	660
 C	probes/t2714-mod-near-smallest-normal.case.json	1331
