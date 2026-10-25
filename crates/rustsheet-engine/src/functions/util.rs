@@ -635,13 +635,14 @@ impl Model {
 
     /// Calls `f` with the position of the cells of one area, row by row. A range that is the
     /// whole argument (`of_union` false) is walked densely: every position of the range within
-    /// each sheet's used area, for an explicit block as for whole rows and columns (T-0405). An
-    /// area of a union is walked over the cells that exist only: every caller of a union walk
-    /// skips blank cells, and a union can repeat a whole column
-    /// many times over (`MAX_AREAS` copies, or a LAMBDA walking one per row), so the walk must
-    /// cost what the data costs (T-1497). Its work is drawn from the formula's walk budget
-    /// ([`Model::spend_area_walk`]) as it goes, and the area is recorded as seen empty in one
-    /// piece rather than cell by cell.
+    /// each sheet's used area, for an explicit block as for whole rows and columns (T-0405),
+    /// unless a far cell leaves that area mostly blank, when it is walked like a union's area
+    /// ([`Self::walks_sparsely`], T-1690). An area of a union is walked over the cells that
+    /// exist only: every caller of a union walk skips blank cells, and a union can repeat a
+    /// whole column many times over (`MAX_AREAS` copies, or a LAMBDA walking one per row), so
+    /// the walk must cost what the data costs (T-1497). Its work is drawn from the formula's
+    /// walk budget ([`Model::spend_area_walk`]) as it goes, and the area is recorded as seen
+    /// empty in one piece rather than cell by cell.
     pub(crate) fn for_each_position_in_area<F>(
         &mut self,
         area: &Range,
@@ -712,6 +713,28 @@ impl Model {
             };
             let (row2, column2) =
                 clipped.map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            // A far cell stretches the used area: `SUM(A:XFD)` with data in A1 and XFD1048576
+            // is 1.7e10 positions. A mostly blank area is walked over its cells that exist, as
+            // a union's areas are, so the walk costs the data (T-1690). The blank cells it
+            // skips are ones the dense walk hands on, so `ClipBlocks` reports them left out.
+            if matches!(walk, AreaWalk::ClipBlocks)
+                && self.walks_sparsely(sheet, left, (row2, column2))
+            {
+                blanks_left_out = true;
+                let corner = CellReferenceIndex {
+                    sheet,
+                    row: row2,
+                    column: column2,
+                };
+                self.for_each_existing_position(
+                    sheet,
+                    (left, &corner),
+                    cell,
+                    (&mut columns, WalkBudget::Free),
+                    f,
+                )?;
+                continue;
+            }
             for row in left.row..=row2 {
                 for column in left.column..=column2 {
                     f(self, CellReferenceIndex { sheet, row, column })?;
