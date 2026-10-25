@@ -1,0 +1,12 @@
+('1<=v<2', 'model exact') 274
+('1<=v<2', 'model within 1 ulp') 540
+('1<=v<2', 'n') 771
+('2<=v<8', 'model exact') 1292
+('2<=v<8', 'model within 1 ulp') 1312
+('2<=v<8', 'n') 1320
+('v<1', 'model exact') 1738
+('v<1', 'model within 1 ulp') 2361
+('v<1', 'n') 2585
+('v>=8', 'model exact') 1167
+('v>=8', 'model within 1 ulp') 1167
+('v>=8', 'n') 1167

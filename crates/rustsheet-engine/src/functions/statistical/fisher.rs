@@ -28,8 +28,7 @@ fn f_df_ok(df: f64) -> bool {
 /// functions pass them to the kernel (T-2464 w5-triangulation, T-2502): u = 1/(1 + df2/(df1 x)) and
 /// its complement 1/(1 + df1 x/df2), each formed directly. On the b0 = 1 closed-form cells, which
 /// depend on the argument alone, this is bit-exact on 197 of 197, against 180 for
-/// df1 x/(df1 x + df2) (docs/excel-semantics/statistics.md "Engine status of the oriented
-/// incomplete-beta closed forms").
+/// df1 x/(df1 x + df2) (docs/excel-semantics/statistics.md "Incomplete beta is TOMS 708 `bratio`").
 fn f_beta_arguments(df1: f64, df2: f64, x: f64) -> (f64, f64) {
     let scaled = df1 * x;
     (1.0 / (1.0 + df2 / scaled), 1.0 / (1.0 + scaled / df2))

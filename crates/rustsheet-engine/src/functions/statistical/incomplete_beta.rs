@@ -349,7 +349,7 @@ fn gamma_ln_shift(a: f64, b: f64) -> f64 {
 
 /// ln Gamma(z) - ((z - 1/2) ln z - z + ln(2 pi)/2) for z of [`STIRLING_MIN`] or more: Stirling's
 /// series to the 1/z^15 term (the next is below 2^-53 times the sum at z = 8).
-fn stirling_correction(z: f64) -> f64 {
+pub(super) fn stirling_correction(z: f64) -> f64 {
     // B_2k / (2k (2k-1)) for k = 1..8.
     const C: [f64; 8] = [
         1.0 / 12.0,
@@ -372,7 +372,7 @@ fn stirling_correction(z: f64) -> f64 {
 /// t - ln(1 + t) for t > -1, without the cancellation of the plain difference near 0: with
 /// r = t/(2+t), ln(1+t) = 2 atanh r and t - 2r = r t, so the result is
 /// r t - 2 (r^3/3 + r^5/5 + ...), used for |t| <= 1/2 (|r| <= 1/3).
-fn rlog1(t: f64) -> f64 {
+pub(super) fn rlog1(t: f64) -> f64 {
     if t.abs() > 0.5 {
         return t - t.ln_1p();
     }

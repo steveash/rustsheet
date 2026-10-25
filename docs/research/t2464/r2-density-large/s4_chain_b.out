@@ -1,0 +1,6 @@
+xruns-2:3  (2.5,3.5) [ar=x,addar=e,cut=0.2,series=lp,xar=e] lc=x g=x E=x h=h0-4ulp even 329/502 hold 355/522
+xruns-2:3  (2.5,3.5) [ar=x,addar=e,cut=0.2,series=lp,xar=e] lc=e g=x E=x h=h0-4ulp even 329/502 hold 355/522
+xruns-2:3  (2.5,3.5) [ar=x,addar=e,cut=0.2,series=lpv,xar=e] lc=x g=x E=x h=h0-4ulp even 342/502 hold 371/522
+xruns-2:3  (2.5,3.5) [ar=x,addar=e,cut=0.2,series=lpv,xar=e] lc=e g=x E=x h=h0-4ulp even 342/502 hold 371/522
+xruns-2:3  (2.5,3.5) [ar=x,addar=x,cut=0.2,series=lp,xar=x] lc=x g=x E=x h=h0-4ulp even 329/502 hold 355/522
+xruns-2:3  (2.5,3.5) [ar=x,addar=x,cut=0.2,series=lp,xar=x] lc=e g=x E=x h=h0-4ulp even 329/502 hold 355/522

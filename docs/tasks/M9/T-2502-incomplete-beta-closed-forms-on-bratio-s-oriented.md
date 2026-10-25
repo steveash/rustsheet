@@ -85,4 +85,8 @@ Implemented on branch `claude/hopeful-meitner-5oxf0g-t2502` (merged with main af
   (gen-m9 5, ironcalc-calc 5). Before the merge (statrs BETA.DIST cdf) the same change fixed 276 cells, but it broke
   the chained `BETADIST_BETAINV.xlsx` H30; T-2119's crossing refinement on main resolves that.
 - T-2221 now notes what this task settles.
+- Left to T-2505 (noted in its Context): the parts of criterion 2 not met here. The w5 F argument forms are used only
+  where a closed form applies, and the unoriented callers (F.INV/F.INV.RT/FINV with T-2511, BETA.INV's huge-shape
+  crossing, F.TEST) still need moving to the port. statistics.md records both in the T-2464 closed-forms entry's
+  Ours line; T-2502's own engine-status section was folded into that entry and its "Implemented in:" line.
 

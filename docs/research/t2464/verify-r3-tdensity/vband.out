@@ -1,0 +1,32 @@
+== vhold: 1000 cells; t read back for 1000, mismatches 0
+  q~0.1   n=  97 CR 22/92/97 of 97 | LT1e 37/95/97 of 97 | cut x2>n (LT1): exC 40 | cut x2>0.2n: exC 40 | no log branch: exC 40
+  q~0.2   n= 103 CR 30/100/103 of 103 | LT1e 38/97/103 of 103 | cut x2>n (LT1): exC 41 | cut x2>0.2n: exC 41 | no log branch: exC 41
+  q~0.5   n= 200 CR 14/124/182 of 200 | LT1e 88/163/193 of 200 | cut x2>n (LT1): exC 88 | cut x2>0.2n: exC 31 | no log branch: exC 88
+  q~0.9   n= 200 CR 8/85/131 of 200 | LT1e 100/173/188 of 200 | cut x2>n (LT1): exC 98 | cut x2>0.2n: exC 41 | no log branch: exC 98
+  q~1.1   n= 200 CR 15/100/157 of 200 | LT1e 105/179/180 of 200 | cut x2>n (LT1): exC 105 | cut x2>0.2n: exC 105 | no log branch: exC 48
+  q~5.8   n=  30 CR 0/9/18 of 30 | LT1e 19/30/30 of 30 | cut x2>n (LT1): exC 19 | cut x2>0.2n: exC 19 | no log branch: exC 12
+  q~5.9   n=  54 CR 1/13/29 of 54 | LT1e 41/54/54 of 54 | cut x2>n (LT1): exC 41 | cut x2>0.2n: exC 41 | no log branch: exC 37
+  q~6     n=  37 CR 1/9/21 of 37 | LT1e 26/37/37 of 37 | cut x2>n (LT1): exC 26 | cut x2>0.2n: exC 26 | no log branch: exC 18
+  q~6.1   n=  44 CR 2/12/31 of 44 | LT1e 27/44/44 of 44 | cut x2>n (LT1): exC 27 | cut x2>0.2n: exC 27 | no log branch: exC 19
+  q~6.2   n=  35 CR 0/11/18 of 35 | LT1e 20/35/35 of 35 | cut x2>n (LT1): exC 20 | cut x2>0.2n: exC 20 | no log branch: exC 16
+  total cut x2>n (LT1): exactC 505/918/977 of 1000; LT1e C 501/907/961 of 1000
+  total cut x2>0.2n: exactC 391/754/888 of 1000; LT1e C 377/738/867 of 1000
+  total no log branch: exactC 417/770/884 of 1000; LT1e C 414/774/885 of 1000
+== hold2: 960 cells; t read back for 960, mismatches 0
+  q~0     n= 240 CR 138/240/240 of 240 | LT1e 136/240/240 of 240 | cut x2>n (LT1): exC 164 | cut x2>0.2n: exC 164 | no log branch: exC 164
+  q~0.1   n= 160 CR 52/154/160 of 160 | LT1e 50/159/160 of 160 | cut x2>n (LT1): exC 71 | cut x2>0.2n: exC 71 | no log branch: exC 71
+  q~0.2   n=  80 CR 21/73/80 of 80 | LT1e 43/80/80 of 80 | cut x2>n (LT1): exC 43 | cut x2>0.2n: exC 37 | no log branch: exC 43
+  q~0.3   n=  80 CR 17/79/80 of 80 | LT1e 45/80/80 of 80 | cut x2>n (LT1): exC 45 | cut x2>0.2n: exC 13 | no log branch: exC 45
+  q~0.4   n=  40 CR 12/40/40 of 40 | LT1e 17/40/40 of 40 | cut x2>n (LT1): exC 17 | cut x2>0.2n: exC 7 | no log branch: exC 17
+  q~0.5   n=  40 CR 10/40/40 of 40 | LT1e 3/40/40 of 40 | cut x2>n (LT1): exC 26 | cut x2>0.2n: exC 6 | no log branch: exC 26
+  q~0.7   n=  40 CR 2/7/16 of 40 | LT1e 22/40/40 of 40 | cut x2>n (LT1): exC 22 | cut x2>0.2n: exC 9 | no log branch: exC 22
+  q~0.9   n=  40 CR 1/6/6 of 40 | LT1e 18/40/40 of 40 | cut x2>n (LT1): exC 18 | cut x2>0.2n: exC 6 | no log branch: exC 18
+  q~1.2   n=  40 CR 1/11/26 of 40 | LT1e 21/40/40 of 40 | cut x2>n (LT1): exC 21 | cut x2>0.2n: exC 21 | no log branch: exC 13
+  q~1.5   n=  40 CR 1/12/13 of 40 | LT1e 24/40/40 of 40 | cut x2>n (LT1): exC 24 | cut x2>0.2n: exC 24 | no log branch: exC 9
+  q~2.2   n=  40 CR 2/26/40 of 40 | LT1e 32/40/40 of 40 | cut x2>n (LT1): exC 32 | cut x2>0.2n: exC 32 | no log branch: exC 22
+  q~2.5   n=  40 CR 3/27/35 of 40 | LT1e 31/40/40 of 40 | cut x2>n (LT1): exC 31 | cut x2>0.2n: exC 31 | no log branch: exC 27
+  q~3.2   n=  40 CR 4/29/23 of 40 | LT1e 30/40/40 of 40 | cut x2>n (LT1): exC 30 | cut x2>0.2n: exC 30 | no log branch: exC 21
+  q~3.9   n=  40 CR 2/32/40 of 40 | LT1e 29/40/40 of 40 | cut x2>n (LT1): exC 29 | cut x2>0.2n: exC 29 | no log branch: exC 22
+  total cut x2>n (LT1): exactC 573/960/960 of 960; LT1e C 501/959/960 of 960
+  total cut x2>0.2n: exactC 480/865/903 of 960; LT1e C 430/863/903 of 960
+  total no log branch: exactC 520/883/899 of 960; LT1e C 448/882/899 of 960

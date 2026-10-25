@@ -1,0 +1,14 @@
+('bgrat', 'hold', '0.29 matches') 1
+('bgrat', 'hold', '0.3 matches') 0
+('bgrat', 'hold', 'differ') 1
+('bgrat', 'tune', '0.29 matches') 1
+('bgrat', 'tune', '0.3 matches') 0
+('bgrat', 'tune', 'differ') 1
+('bup+bgrat', 'hold', '0.29 matches') 41
+('bup+bgrat', 'hold', '0.3 matches') 137
+('bup+bgrat', 'hold', 'differ') 215
+('bup+bgrat', 'tune', '0.29 matches') 44
+('bup+bgrat', 'tune', '0.3 matches') 147
+('bup+bgrat', 'tune', 'differ') 217
+('same', False) 1568
+('same', True) 798

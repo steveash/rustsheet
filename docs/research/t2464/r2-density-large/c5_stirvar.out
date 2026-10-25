@@ -1,0 +1,28 @@
+absweep:0: need mean -0.80 sd 3.90
+    ex   mean    -0.46 sd   1.08 rho -0.03 rms   4.10
+    tab  mean    +2.85 sd   3.42 rho -0.01 rms   6.36
+    g1   mean    +3.32 sd   3.28 rho +0.02 rms   6.52
+    gE   mean    +2.66 sd   2.16 rho +0.08 rms   5.52
+    gG   mean    +1.78 sd   3.51 rho +0.12 rms   5.55
+    g0   mean    +3.05 sd   3.01 rho -0.01 rms   6.28
+absweep:4: need mean +1.37 sd 3.55
+    ex   mean    -0.79 sd   1.05 rho +0.10 rms   4.21
+    tab  mean    +1.55 sd   3.30 rho +0.10 rms   4.61
+    g1   mean    +1.75 sd   3.29 rho +0.10 rms   4.61
+    gE   mean    +1.81 sd   2.08 rho +0.14 rms   3.88
+    gG   mean    +1.16 sd   3.34 rho +0.18 rms   4.42
+    g0   mean    +1.47 sd   3.14 rho +0.05 rms   4.63
+absweep:1: need mean +1.02 sd 2.47
+    ex   mean    -0.52 sd   2.45 rho +0.37 rms   3.16
+    tab  mean    +6.25 sd  14.69 rho -0.34 rms  16.56
+    g1   mean   +47.03 sd  42.62 rho -0.08 rms  62.91
+    gE   mean   +44.61 sd  44.68 rho -0.15 rms  62.74
+    gG   mean    +6.10 sd  35.85 rho -0.28 rms  36.97
+    g0   mean    +4.99 sd  38.94 rho -0.08 rms  39.43
+absweep:5: need mean +2.00 sd 2.49
+    ex   mean    +0.39 sd   2.02 rho +0.40 rms   2.97
+    tab  mean    -3.94 sd  22.32 rho -0.09 rms  23.45
+    g1   mean   +37.92 sd  48.85 rho +0.01 rms  60.66
+    gE   mean   +38.92 sd  44.79 rho +0.06 rms  57.99
+    gG   mean    -9.16 sd  38.18 rho -0.28 rms  40.52
+    g0   mean    +6.48 sd  35.84 rho -0.04 rms  36.29
