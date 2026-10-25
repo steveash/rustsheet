@@ -3,7 +3,7 @@ id: T-2673
 title: "Sweep gen-m2: the 23 M2 functions under 200 generated outer-call cells"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -55,3 +55,19 @@ no follow-up; this task and T-2674, T-2675 and T-2676 cover them by milestone.
 ## Visible-parity stage
 The coverage half of decision 0094's checkpoint for M2. The task is done when the 23 functions meet the 200
 outer-call-cell bar and every new visibly-off family has a task.
+
+## Outcome
+gen-m2 grew from 30 to 39 cases and from 12,000 to 15,600 scored cells (9 cases x 400), all excel-graph-backed (fill: 9
+sidecars, 0 failures, 0 skipped, no case refused). Command:
+`cd tools && uv run rustsheet-gen --milestone M2 --focus --functions <the 23> --count 9 --formulas 400 --seed 2673`
+(each function the outer call of 155-157 new formulas, so no top-up batch), then
+`uv run rustsheet-oracle fill -b excel-graph --suite gen-m2` and `make eval-baseline`.
+
+All 23 functions are now covered in the "Fifteen-digit parity checkpoint" (generated outer-call cells: minimum YEAR 217,
+then UPPER 223, LOWER 226, ROUNDUP 230; maximum SUMIF 341). 14 in-scope functions remain uncovered, all owned by T-2674,
+T-2675 and T-2676. gen-m2 stays 100% bit-exact: known failures 0 -> 0 (0 new-coverage, 0 regressions); the visible-parity
+lock 6,039 is unchanged. With no new gen-m2 known failures there is nothing for the gap-triager to trace and no family task
+to file.
+
+Pools: the 782 COUNTIF/COUNTIFS/SUMIF/SUMIFS/MATCH formulas use wildcard criteria (176), comparison operators (345) and
+text-number criteria (165), so no criteria-pool gap was found. No quirks surfaced, so docs/excel-semantics/ is unchanged.
