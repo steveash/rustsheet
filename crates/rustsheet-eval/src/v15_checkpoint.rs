@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::catalog::Catalog;
 use crate::evidence_floor::EVIDENCE_FLOOR;
 use crate::formula_calls::outer_call;
+use crate::milestone_exit::{RATE_DEN, RATE_NUM};
 use crate::report::RunReport;
 use crate::runner::CaseResult;
 use crate::value::Verdict;
@@ -21,9 +22,6 @@ use crate::value::Verdict;
 pub const CELLS_BAR: usize = 400;
 /// Of those, cells in a generated suite with the function as the outer call.
 pub const GENERATED_BAR: usize = 200;
-/// Phase 1 exit (decision 0114): at most this many visibly-off cells per [`RATE_DEN`] Excel cells.
-const RATE_OFF: usize = 1;
-const RATE_DEN: usize = 1000;
 
 /// One in-scope catalog function's standing against the bar.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -166,7 +164,7 @@ pub fn summarize(
                 meets: covered && visible == 0,
                 meets_rate: covered
                     && n > 0
-                    && visible.saturating_mul(RATE_DEN) <= n.saturating_mul(RATE_OFF),
+                    && visible.saturating_mul(RATE_DEN) <= n.saturating_mul(RATE_DEN - RATE_NUM),
             }
         })
         .collect();

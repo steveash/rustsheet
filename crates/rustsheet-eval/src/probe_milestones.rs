@@ -364,7 +364,7 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 s.bit_exact += 1;
             } else if c.verdict == Verdict::Deviation {
                 s.deviations += 1;
-            } else if Visible::of(c).total() > 0 {
+            } else if Visible::is_off(c) {
                 s.visibly_off += 1;
             }
             rows_of_case.insert(row);

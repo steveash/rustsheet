@@ -143,7 +143,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
                     row.bit_exact += 1;
                 } else if c.verdict.is_failure() {
                     let key = format!("{}!{}", r.id, c.key());
-                    if Visible::of(c).total() > 0 {
+                    if Visible::is_off(c) {
                         row.visibly_off.push(key.clone());
                     }
                     row.failing.push(key);

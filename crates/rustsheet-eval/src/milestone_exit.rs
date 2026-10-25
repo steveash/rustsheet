@@ -15,9 +15,11 @@ use crate::report::RunReport;
 pub const MILESTONES: [&str; 2] = ["M5", "M6"];
 /// Fewest scored cells the generated suite must have (decision 0085 item 2).
 pub const MIN_SCORED: usize = 20_000;
-/// The generated suite's pass rate must reach 999/1000 of its scored cells.
-const RATE_NUM: usize = 999;
-const RATE_DEN: usize = 1000;
+/// The generated suite's pass rate must reach 999/1000 of its scored cells; decision 0114's
+/// per-function Phase 1 rate (`v15_checkpoint`) shares it.
+pub(crate) const RATE_NUM: usize = 999;
+/// The denominator of [`RATE_NUM`].
+pub(crate) const RATE_DEN: usize = 1000;
 
 /// One milestone's four measures; `None` means the input was absent from the run.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -88,10 +90,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 row.gen_rate = (scored > 0).then(|| s.cell_pass_rate());
                 row.gen_known_failures = Some(scored - passed);
                 row.gen_visibly_off = Some(visible);
-                // Cell counts stay far below 2^52, so the casts are exact.
-                #[allow(clippy::cast_precision_loss)]
-                let rate15 = (scored > 0).then(|| (scored - visible) as f64 / scored as f64);
-                row.gen_rate15 = rate15;
+                row.gen_rate15 = (scored > 0).then(|| s.rate(scored - visible));
                 row.gen_allowance = Some(scored / RATE_DEN);
                 row.gen_met = Some(
                     scored >= MIN_SCORED
