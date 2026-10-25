@@ -3,7 +3,7 @@ id: T-2492
 title: "VDB and DDB: a text no_switch, a boolean factor, factor 0, and their error order (gen-m9, 10 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
