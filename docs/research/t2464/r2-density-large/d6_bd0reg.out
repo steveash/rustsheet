@@ -1,0 +1,10 @@
+xruns-1:0: sd 1.13 -> 0.80; 1=+3.01, p.div=+1.04, p.ln=+1.02, p.mul=+1.02, p.add=-0.05, q.div=-0.05, q.ln=-0.13, q.mul=+0.18, q.add=-0.04
+    feature sds: p.div=0.49, p.ln=0.43, p.mul=0.36, p.add=0.71, q.div=0.83, q.ln=0.18, q.mul=0.29, q.add=1.23
+xruns-2:0: sd 1.53 -> 0.63; 1=+2.93, p.div=+1.00, p.ln=+1.01, p.mul=+0.99, p.add=-0.03, q.div=+0.99, q.ln=+1.02, q.mul=+1.00, q.add=+0.01
+    feature sds: p.div=0.73, p.ln=0.22, p.mul=0.31, p.add=0.61, q.div=0.89, q.ln=0.36, q.mul=0.59, q.add=1.31
+xruns-1:2: sd 2.21 -> 2.18; 1=-4.05, p.div=-0.02, p.ln=+0.31, p.mul=-0.03, p.add=-0.01, q.div=+0.01, q.ln=+0.04, q.mul=-0.12, q.add=+0.02
+    feature sds: p.div=2.67, p.ln=0.91, p.mul=0.57, p.add=2.28, q.div=3.56, q.ln=0.77, q.mul=0.57, q.add=4.63
+xruns-2:2: sd 5.85 -> 2.04; 1=+5.08, p.div=+1.03, p.ln=+0.94, p.mul=+0.97, p.add=-0.02, q.div=+1.00, q.ln=+0.96, q.mul=+1.05, q.add=-0.01
+    feature sds: p.div=2.99, p.ln=0.91, p.mul=1.15, p.add=2.82, q.div=3.77, q.ln=1.54, q.mul=2.30, q.add=5.68
+xruns-1:5: sd 2.84 -> 1.03; 1=-2.33, p.div=+0.99, p.ln=+0.99, p.mul=+0.98, p.add=-0.02, q.div=+0.95, q.ln=+1.01, q.mul=+1.02, q.add=+0.02
+    feature sds: p.div=1.61, p.ln=0.86, p.mul=1.21, p.add=1.22, q.div=1.32, q.ln=0.43, q.mul=0.60, q.add=1.22

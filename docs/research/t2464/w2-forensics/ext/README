@@ -1,0 +1,7 @@
+R's src/nmath/toms708.c (Didonato & Morris TOMS 708, R-core translation) is fetched, not committed:
+  curl -sS -o ext/toms708.c https://raw.githubusercontent.com/wch/r-source/trunk/src/nmath/toms708.c
+  gcc -O2 -o ext/bratio_sse ext/toms708.c ext/drv.c -Iext -lm
+nmath.h/dpq.h here are minimal shims; drv.c reads "a b x y" (hex floats) per line and prints w w1 ierr.
+drv2.c #includes toms708.c to expose its static routines (bratio, brcomp, betaln, gamln, algdiv, bcorr, bpser, bfrac):
+  gcc -O2 -o ext/toms_sse ext/drv2.c -Iext -lm ; gcc -O2 -mfpmath=387 -o ext/toms_387 ext/drv2.c -Iext -lm
+Binaries and the fetched sources are git-ignored (ext/.gitignore).

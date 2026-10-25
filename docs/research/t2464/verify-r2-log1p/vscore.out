@@ -1,0 +1,27 @@
+pilot rows 195 echo mismatch 0 errors 0 n of errors [] max finite n 32768
+runs rows 5328 echo mismatch 0 errors 64 n of errors [8589934592] max finite n 33554432
+grid rows 5450 echo mismatch 0 errors 0 n of errors [] max finite n 2097152
+hold rows 5400 echo mismatch 0 errors 518 n of errors [2147483648, 4294967296, 8589934592] max finite n 1073741824
+finite rows 15791 distinct p 15726 dup p 65 dup by case pair [('pilot', 'pilot'), ('pilot', 'runs')]
+worker excel_log1p.ln1m disagrees with my model on 0 rows
+all (incl pilot)             n=15791 model=15764 horner=15722 rev=15723 ieee_quot=15762 N11=15691 N12=15764 CR=10821
+all excl pilot               n=15596 model=15569 horner=15528 rev=15529 ieee_quot=15567 N11=15503 N12=15569 CR=10658
+p<=0.375 excl pilot          n=15197 model=15170 horner=15129 rev=15130 ieee_quot=15168 N11=15104 N12=15170 CR=10259
+p>0.375                      n=  430 model=430 horner=430 rev=430 ieee_quot=430 N11=430 N12=430 CR=430
+runs+grid only, p<=0.375     n=10315 model=10295 horner=10261 rev=10263 ieee_quot=10293 N11=10229 N12=10295 CR=6866
+hold only, p<=0.375          n= 4882 model=4875 horner=4868 rev=4867 ieee_quot=4875 N11=4875 N12=4875 CR=3393
+pilot only                   n=  195 model=195 horner=194 rev=194 ieee_quot=195 N11=188 N12=195 CR=163
+hash half 0 p<=.375          n= 7617 model=7602 horner=7585 rev=7586 ieee_quot=7601 N11=7564 N12=7602 CR=5106
+hash half 1 p<=.375          n= 7580 model=7568 horner=7544 rev=7544 ieee_quot=7567 N11=7540 N12=7568 CR=5153
+p in [0.25,0.375]            n= 4086 model=4070 horner=4036 rev=4037 ieee_quot=4070 N11=4004 N12=4070 CR=2698
+model misses (excl pilot): 27 offset histogram of admissible l (ulps of l): {(-1,): 13, (1,): 14}
+miss cases: {'runs': 7, 'grid': 13, 'hold': 7}
+--- cells.tsv BINOM k=0 ---
+rows 345 distinct (n,p) 171 distinct p 11 p<=0.375 170 distinct (n,p) p<=.375 85
+  model: all 345/345  p<=.375 170/170
+  horner: all 345/345  p<=.375 170/170
+  CR: all 311/345  p<=.375 136/170
+  p<=.375 rows where model l != CR l: 34 ; where predicted cell differs: 34 ; model right on those: 34
+  p<=.375 rows where model vs horner prediction differs: 0 model right: 0
+  cells.tsv k=0 p that also appear in probes: 170
+  distinct n values (p<=.375): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 20, 30, 50, 100]

@@ -1,0 +1,6 @@
+# big: 2304 rows, 48 runs, max(d) >= 0.0; CONTROL xd,st,kl,ext
+CR                         median   34.1 mean   56.0
+xd,st,kl,ext               median    0.0 mean    0.0 |  2304/ 2304/ 2304 of  2304
+xd,st,kl,st                median    0.0 mean    0.0 |  2304/ 2304/ 2304 of  2304
+xd,st,none,st              median    0.7 mean    8.5 |  1127/ 1652/ 1847 of  2304
+xn,st,kl,ext               median    0.8 mean    0.8 |  1568/ 2304/ 2304 of  2304

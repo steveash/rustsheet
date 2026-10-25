@@ -1,0 +1,22 @@
+pre-T2464 visibly-off cells: 5533 (offcells_pre.tsv)
+  piece                                                          n  gated modelled  fixed
+  K same kernel, arguments not resolved here (nested/ref)      741    293        0      0
+  O other kernel (binom-k0)                                     32      0        0      0
+  O other kernel (binom-pmf)                                   368      1        0      0
+  O other kernel (f-pdf)                                       580      2        0      0
+  O other kernel (negbinom-pmf)                                 94      0        0      0
+  O other kernel (t-pdf)                                       184      0        0      0
+  P1 closed forms                                               79      0       79     79
+  P2 density M1 + Excel log1p                                  147      0      147    141
+  P4 bpser (w3 series)                                         720     14      720    630
+  P5 L140 bup, brcmp1 = pdf*x*y                                235      2      235    226
+  P6 density Loader (min > 1)                                  252      0      252    165
+  P7 bfrac with brcomp = pdf*x*y                               127      0      127     84
+  P8 inverse: crossing search on the ported CDF                737    129        0      0
+  U1 bgrat family (unsolved)                                   358      3      358    150
+  X argument/error handling (not the kernel)                   879    792        0      0
+PLAN pre-T2464  all      n=13655 eng_vis=1998 fixed=1531 broke15=77 net_vis=1454 ex=6837 u4=12573 w15=13111 gain_exact=3124 lost_exact=514 lost_exact_gated=6
+PLAN pre-T2464  gated    n=161 eng_vis=23 fixed=19 broke15=2 net_vis=17 ex=106 u4=148 w15=155 gain_exact=48 lost_exact=6 lost_exact_gated=6
+PLAN pre-T2464  hold-out n=6812 eng_vis=979 fixed=758 broke15=36 net_vis=722 ex=3478 u4=6268 w15=6555 gain_exact=1595 lost_exact=233 lost_exact_gated=4
+PLAN w2f-probes all      n=41554 eng_vis=23657 fixed=22444 broke15=31 net_vis=22413 ex=18584 u4=36635 w15=40310 gain_exact=17887 lost_exact=1329 lost_exact_gated=0
+PLAN w2f-probes hold-out n=20641 eng_vis=11729 fixed=11140 broke15=15 net_vis=11125 ex=9262 u4=18159 w15=20037 gain_exact=8912 lost_exact=686 lost_exact_gated=0

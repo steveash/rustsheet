@@ -1,0 +1,10 @@
+t2,p,term                even 3439/3457 odd 3448/3457
+t2,p,s                   even 3425/3457 odd 3431/3457
+t2,p,rs                  even 3440/3457 odd 3448/3457
+t2,term,s                even 3424/3457 odd 3434/3457
+t2,term,rs               even 3438/3457 odd 3447/3457
+t2,s,rs                  even 3422/3457 odd 3434/3457
+p,term,s                 even 3425/3457 odd 3431/3457
+p,term,rs                even 3440/3457 odd 3451/3457
+p,s,rs                   even 3421/3457 odd 3431/3457
+term,s,rs                even 3420/3457 odd 3431/3457

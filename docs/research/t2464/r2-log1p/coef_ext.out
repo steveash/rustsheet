@@ -1,0 +1,3 @@
+all ext    even 3436/3457 odd 3443/3457
+k=1 ext    even 3436/3457 odd 3443/3457
+k>=2 ext   even 3441/3457 odd 3447/3457

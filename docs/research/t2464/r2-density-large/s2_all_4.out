@@ -1,0 +1,4 @@
+p1(2.5,3.5) (2.5,3.5) [ar=x,lnmode=xl,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +3.320u  even 423/806  hold 423/794
+p1(2.5,3.5) (2.5,3.5) [ar=m,lnmode=m,cut=0.1,comb=x] comb=x C-C0= +3.328u  even 294/806  hold 284/794
+p1(12,20)  (12,20) [ar=x,lnmode=xl,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= -0.594u  even 235/781  hold 215/819
+p1(12,20)  (12,20) [ar=m,lnmode=m,cut=0.1,comb=x] comb=x C-C0= -0.070u  even 82/781  hold 75/819

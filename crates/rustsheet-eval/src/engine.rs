@@ -343,15 +343,12 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
                 let id = sheet_id_of(workbook, sheet)?;
                 workbook.edit(|tx| tx.delete_sheet(id)).map(drop)
             }
-            // The engine has no convert to range yet: the case scores as an adapter error.
-            SheetOp::ConvertTable { .. } => {
-                return Err(format!(
-                    "sheet op {op:?}: the engine cannot convert a table to a range"
-                ));
-            }
             // Not `Txn` edits: the facade has no structural edits yet, so the harness uses its
             // feature-gated ones (decisions 0076, 0098). Rows and columns are 1-based in the case
             // file. A `Txn` edit recalculates on commit; these do not.
+            SheetOp::ConvertTable { table, .. } => workbook
+                .convert_table_to_range(table)
+                .map(|()| workbook.recalculate()),
             SheetOp::DeleteTable { table, .. } => workbook
                 .delete_table(table)
                 .map(|()| workbook.recalculate()),
@@ -581,9 +578,9 @@ mod tests {
     }
 
     #[test]
-    fn convert_table_and_bad_structural_ops_are_adapter_errors() {
+    fn bad_structural_ops_are_adapter_errors() {
         for op in [
-            r#"{"op":"convert_table","sheet":"Calc","table":"Sales"}"#,
+            r#"{"op":"convert_table","sheet":"Calc","table":"Nope"}"#,
             r#"{"op":"delete_table","sheet":"Calc","table":"Nope"}"#,
             r#"{"op":"delete_row","sheet":"Calc","row":0}"#,
             r#"{"op":"delete_row","sheet":"Nope","row":1}"#,

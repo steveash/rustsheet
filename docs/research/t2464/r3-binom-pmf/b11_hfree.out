@@ -1,0 +1,46 @@
+a(10,32)v+0.35             best 90/96  H = h_exact - -35.894 units (mod period 4: 0.106)
+      at model H: LF0 0  LF1 89  ex 89
+a(10,32)v-0.35             best 86/96  H = h_exact - -74.836 units (mod period 8: 5.164)
+      at model H: LF0 61  LF1 0  ex 0
+a(100,256)v+0.12           best 96/96  H = h_exact - -35.988 units (mod period 4: 0.012)
+      at model H: LF0 94  LF1 94  ex 94
+a(100,256)v+0.35           best 96/96  H = h_exact - -163.415 units (mod period 32: 28.585)
+      at model H: LF0 66  LF1 66  ex 0
+a(100,256)v-0.12           best 79/96  H = h_exact - -76.195 units (mod period 8: 3.805)
+      at model H: LF0 68  LF1 68  ex 0
+a(100,256)v-0.35           best 94/96  H = h_exact - -515.438 units (mod period 128: 124.562)
+      at model H: LF0 61  LF1 61  ex 0
+a(13,30)v+0.35             best 74/96  H = h_exact - -36.712 units (mod period 4: 3.288)
+      at model H: LF0 6  LF1 6  ex 51
+a(13,30)v-0.35             best 95/96  H = h_exact - -191.984 units (mod period 32: 0.016)
+      at model H: LF0 0  LF1 0  ex 92
+a(150,1000)v+0.12          best 60/96  H = h_exact - -80.720 units (mod period 8: 7.280)
+      at model H: LF0 40  LF1 0  ex 40
+a(150,1000)v+0.35          best 96/96  H = h_exact - -319.140 units (mod period 64: 0.860)
+      at model H: LF0 50  LF1 0  ex 50
+a(150,1000)v-0.12          best 76/96  H = h_exact - -73.456 units (mod period 8: 6.544)
+      at model H: LF0 20  LF1 0  ex 20
+a(150,1000)v-0.35          best 96/96  H = h_exact - -511.813 units (mod period 128: 0.187)
+      at model H: LF0 81  LF1 0  ex 81
+a(3,10)v-0.35              best 96/96  H = h_exact - -40.000 units (mod period 4: 0.000)
+      at model H: LF0 96  LF1 96  ex 96
+a(3,8)v-0.35               best 96/96  H = h_exact - -35.536 units (mod period 4: 0.464)
+      at model H: LF0 0  LF1 54  ex 54
+a(30,100)v+0.35            best 68/96  H = h_exact - -79.633 units (mod period 8: 0.367)
+      at model H: LF0 57  LF1 57  ex 57
+a(30,100)v-0.35            best 96/96  H = h_exact - -160.219 units (mod period 32: 31.781)
+      at model H: LF0 85  LF1 85  ex 85
+a(37,77)v+0.35             best 96/96  H = h_exact - -124.029 units (mod period 16: 3.971)
+      at model H: LF0 93  LF1 0  ex 0
+a(37,77)v-0.12             best 76/96  H = h_exact - -41.472 units (mod period 4: 2.528)
+      at model H: LF0 12  LF1 12  ex 12
+a(40,128)v+0.35            best 96/96  H = h_exact - -116.117 units (mod period 16: 11.883)
+      at model H: LF0 91  LF1 0  ex 0
+a(40,128)v-0.12            best 83/96  H = h_exact - -39.363 units (mod period 4: 0.637)
+      at model H: LF0 68  LF1 68  ex 68
+a(40,128)v-0.35            best 74/96  H = h_exact - -164.313 units (mod period 32: 27.687)
+      at model H: LF0 68  LF1 0  ex 0
+a(5,16)v-0.35              best 94/96  H = h_exact - -39.574 units (mod period 4: 0.426)
+      at model H: LF0 71  LF1 0  ex 71
+a(7,20)v-0.35              best 95/96  H = h_exact - -79.906 units (mod period 8: 0.094)
+      at model H: LF0 0  LF1 92  ex 92

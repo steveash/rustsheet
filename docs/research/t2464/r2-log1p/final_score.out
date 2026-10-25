@@ -1,0 +1,32 @@
+(1) pinned l = Excel's ln(1-p): model vs CR log1p, per case and p region
+  runs  p in [0,0.0001)  model 64/64/64 of 64           CR-log1p 64/64/64 of 64
+  runs  p in [0.0001,0.05)  model 992/992/992 of 992       CR-log1p 558/992/992 of 992
+  runs  p in [0.05,0.15)  model 1344/1344/1344 of 1344   CR-log1p 934/1344/1344 of 1344
+  runs  p in [0.15,0.25)  model 1148/1152/1152 of 1152   CR-log1p 763/1152/1152 of 1152
+  runs  p in [0.25,0.375)  model 1509/1512/1512 of 1512   CR-log1p 997/1512/1512 of 1512
+  runs  p in [0.375,0.6)  model 200/200/200 of 200       CR-log1p 200/200/200 of 200
+  grid  p in [0.0001,0.05)  model 700/700/700 of 700       CR-log1p 494/700/700 of 700
+  grid  p in [0.05,0.15)  model 1401/1402/1402 of 1402   CR-log1p 967/1402/1402 of 1402
+  grid  p in [0.15,0.25)  model 1399/1402/1402 of 1402   CR-log1p 968/1402/1402 of 1402
+  grid  p in [0.25,0.375)  model 1737/1746/1746 of 1746   CR-log1p 1120/1746/1746 of 1746
+  grid  p in [0.375,0.6)  model 200/200/200 of 200       CR-log1p 200/200/200 of 200
+  hold  p in [0,0.0001)  model 252/252/252 of 252       CR-log1p 172/252/252 of 252
+  hold  p in [0.0001,0.05)  model 940/940/940 of 940       CR-log1p 661/940/940 of 940
+  hold  p in [0.05,0.15)  model 1431/1431/1431 of 1431   CR-log1p 1004/1431/1431 of 1431
+  hold  p in [0.15,0.25)  model 1429/1432/1432 of 1432   CR-log1p 976/1432/1432 of 1432
+  hold  p in [0.25,0.375)  model 823/827/827 of 827       CR-log1p 580/827/827 of 827
+  tiny  p in [0,0.0001)  model 431/431/431 of 431       CR-log1p 313/431/431 of 431
+  pilot p in [0.0001,0.05)  model 64/64/64 of 64           CR-log1p 64/64/64 of 64
+  pilot p in [0.05,0.15)  model 1/1/1 of 1               CR-log1p 1/1/1 of 1
+  pilot p in [0.15,0.25)  model 1/1/1 of 1               CR-log1p 1/1/1 of 1
+  pilot p in [0.25,0.375)  model 97/97/97 of 97           CR-log1p 65/97/97 of 97
+  pilot p in [0.375,0.6)  model 32/32/32 of 32           CR-log1p 32/32/32 of 32
+  all cases, even rows: model 7997/8014/8014 of 8014
+  all cases, odd rows: model 8003/8013/8013 of 8013
+(2) probe cells BINOM.DIST(0,2^k,p,FALSE) (column B), predicted EXP(2^k * model l)
+  runs  5257/5257/5257 of 5264
+  grid  5437/5437/5437 of 5450
+  hold  4875/4875/4875 of 4882
+(3) out of sample: BINOM.DIST(0,n,p,*) cells in ../cells.tsv, = EXP(fl(n*l))
+  model                all 345/345/345 of 345   p<=0.375 170/170/170 of 170
+  CR log1p / LN(1-p)   all 311/331/339 of 345   p<=0.375 136/156/164 of 170

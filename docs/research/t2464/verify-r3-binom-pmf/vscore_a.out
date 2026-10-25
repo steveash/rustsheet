@@ -1,0 +1,21 @@
+== a: 10560 rows, 10560 distinct (kernel,k,n,p)
+-- BETA interior (5280)
+   CR           697/3293/3985 of 5280
+   L-lcx/LF1    1227/4152/4596 of 5280
+   L-lcxx/LF0   1150/4245/4756 of 5280
+   L-ext/LF0    696/3821/4381 of 5280
+-- BIN interior (5280)
+   CR           915/3241/4017 of 5280
+   L-lcx/LF1    1200/4180/4640 of 5280
+   L-lcxx/LF0   1148/4216/4739 of 5280
+   L-ext/LF0    604/3777/4509 of 5280
+-- all (10560)
+   CR           1612/6534/8002 of 10560
+   L-lcx/LF1    2427/8332/9236 of 10560
+   L-lcxx/LF0   2298/8461/9495 of 10560
+   L-ext/LF0    1300/7598/8890 of 10560
+-- all, distinct cells only
+   CR           1612/6534/8002 of 10560
+   L-lcx/LF1    2427/8332/9236 of 10560
+   L-lcxx/LF0   2298/8461/9495 of 10560
+   L-ext/LF0    1300/7598/8890 of 10560

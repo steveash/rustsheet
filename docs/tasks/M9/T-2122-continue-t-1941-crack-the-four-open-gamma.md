@@ -72,6 +72,13 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
   N6+N7 fit: rms 2.4e4 cycles/x, head move N7 +4.0e8, N8 -4.61e10, N9 +3.50e12 ulps. The g-l anchors pull N7 by
   about 2e8 ulps. The joint fit fails its planted control (no alias freedom on N6 rows), so fix it first (14.2 step
   1), then score the a-f head move on rows6 (14.2 step 2). No oracle cases were added.
+- T-2513 evidence (2026-10-24, no run): the beta density M2 (T-2503) needs Excel's GAMMALN exact at its shape
+  arguments, and below 1 the engine model is not. Probe probes-numeric t2513-r3-m1-residual-gl holds Excel's GAMMALN at
+  569 shape arguments (`docs/research/t2464/r3-m1-residual/mkprobe_gl.py`, `probe_gl.args.json`): the engine differs on
+  14 of 47 arguments below 1 (0.71: -2 ulps, 0.77: +2, 0.99: +2). With t2513-verify-r3-m1-residual-hold's 54 more, the
+  verifier counts 24 of 66 below 1 and 19 of 541 from 1 on (verify-r3-m1-residual `vchecks.out`). Below 0.7 that is
+  fl(GAMMALN(fl(x + 1)) - LN(x)), so these are K3 and (1.5, 2] points; use them as extra test points. Cost today: the
+  M2 density's bit-exact hold-out counts drop from 3,106 to 2,804 of 4,096 and from 649 to 562 of 864.
 
 Worksheet cells K3 owns (moved from T-0973, 2026-10-23; known failures in `eval/baseline/gen-m9.txt`, ulp-level): gen-m9
 `GAMMALN.PRECISE` at 40425341c5034eed Calc!A115 (x = 1.0014973824124909), 8f2ac25945af87da A97 (0.8172501166257935),
