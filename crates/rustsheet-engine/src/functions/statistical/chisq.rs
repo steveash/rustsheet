@@ -382,21 +382,18 @@ impl Model {
             Err(r) => return r,
         };
 
-        let mut values = Vec::with_capacity(values_left.len());
-
-        // Now we have:
-        // - values: flattened (observed, expected)
-        // - width, height: shape
-        for (left_value, right_value) in values_left.iter().zip(&values_right) {
-            match (*left_value, *right_value) {
-                (Some(v1), Some(v2)) => {
-                    values.push((v1, v2));
-                }
-                _ => {
-                    values.push((1.0, 1.0));
-                }
-            }
-        }
+        // A pair with a non-number on either side adds nothing; the degrees of freedom still come
+        // from the first range's shape (statistics.md, CHITEST text rule). Pairs of only text and
+        // blanks are 1.0 for most shapes (gen-m9/8dd2312c96effb1b A343), but
+        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` is #DIV/0! (0a9226016e8f5f33 A333), unexplained.
+        let values: Vec<(f64, f64)> = values_left
+            .iter()
+            .zip(&values_right)
+            .map(|(left, right)| match (*left, *right) {
+                (Some(v1), Some(v2)) => (v1, v2),
+                _ => (1.0, 1.0),
+            })
+            .collect();
         // Excel: a scalar or a single value is #N/A (probes-numeric/t1049-chisqtest A36
         // `CHISQ.TEST(5,5)`, probes/regression-pairs-text-scalar K1 `CHISQ.TEST("a","a")`).
         if width * height < 2 {
@@ -409,11 +406,14 @@ impl Model {
 
         let mut chi2 = 0.0;
         for (obs, exp) in &values {
-            if *obs < 0.0 || *exp < 0.0 {
+            // Excel: a negative actual value is used as is (`CHITEST(Data!D7:D9,Data!C10:E10)` with
+            // -1 against 1 is 0.1353352832366127, gen-m9/c6cfda6bd10cae93 A375); only a negative
+            // expected value is #NUM!.
+            if *exp < 0.0 {
                 return CalcResult::new_error(
                     Error::NUM,
                     cell,
-                    "Negative value in CHISQ.TEST data".to_string(),
+                    "Negative expected value in CHISQ.TEST data".to_string(),
                 );
             }
             if *exp == 0.0 {

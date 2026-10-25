@@ -1,0 +1,24 @@
+---
+id: T-2650
+title: "CHISQ.TEST of text-and-blank pairs is #DIV/0! in one shape (gen-m9 0a9226016e8f5f33 A333)"
+milestone: M9
+lane: functions-stat
+status: todo
+priority: P2
+size: S
+tier: opus
+depends_on: []
+---
+
+## Goal
+CHISQ.TEST of text-and-blank-only pairs matches Excel in every shape.
+
+## Context
+gen-m9/0a9226016e8f5f33 Calc!A333 `=CHISQ.TEST(Data!A10:B12,Data!A8:C9)` is `#DIV/0!` in Excel, ours 1.0, while 8dd2312c96effb1b A343 (`CHITEST(Data!A6:B7,Data!C7:D8)`, no numeric pair) is 1. Probe blank-against-blank and text-against-text pairs first (excel-probe skill); see statistics.md "Paired functions" (T-2431). Code: functions/statistical/chisq.rs.
+
+## Acceptance criteria
+- [ ] The probed rule is implemented and gen-m9/0a9226016e8f5f33 Calc!A333 leaves eval/baseline/gen-m9.txt.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-

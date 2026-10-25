@@ -16,13 +16,6 @@ use crate::{
 
 type TwoMatricesResult = (i64, i64, Vec<Option<f64>>, Vec<Option<f64>>);
 
-// Helper to check if two shapes are the same or compatible 1D shapes
-fn is_same_shape_or_1d(rows1: i64, cols1: i64, rows2: i64, cols2: i64) -> bool {
-    (rows1 == rows2 && cols1 == cols2)
-        || (rows1 == 1 && cols2 == 1 && cols1 == rows2)
-        || (rows2 == 1 && cols1 == 1 && cols2 == rows1)
-}
-
 impl Model {
     // SUMX2MY2(array_x, array_y) - Returns the sum of the difference of squares
     pub(crate) fn fn_sumx2my2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -155,8 +148,9 @@ impl Model {
                 "Both arguments must be ranges or arrays".to_string(),
             ));
         };
-        if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
-            // Excel: unequal sizes are #N/A, with or without text in the ranges (T-1292, T-1620).
+        if rows1 * cols1 != rows2 * cols2 {
+            // Excel: unequal cell counts are #N/A, with or without text in the ranges (T-1292, T-1620);
+            // any two shapes with the same count pair in reading order (T-2431).
             return Err(CalcResult::new_error(
                 Error::NA,
                 cell,
