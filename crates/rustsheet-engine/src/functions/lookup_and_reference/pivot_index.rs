@@ -97,7 +97,7 @@ fn supported(pivot: &PivotTable) -> Option<Vec<u32>> {
 }
 
 /// Whether `pivot` has several fields on its row or its column axis. GETPIVOTDATA answers such a
-/// pivot's grand total (calipers formula_stress_test Database!B16: two row and two column
+/// pivot's grand total (calipers `formula_stress_test` `Database!B16`: two row and two column
 /// fields, `GETPIVOTDATA("Sum of Qux",B32)` is 57); any pair is SPEC-0015 unknown 10, `#REF!`.
 pub(crate) fn nested_axis(pivot: &PivotTable) -> bool {
     pivot.row_fields.len() > 1 || pivot.column_fields.len() > 1
@@ -232,7 +232,7 @@ impl Model {
     }
 
     /// The blank item (`<m/>`, shown as `(blank)`) of the field at axis position `position` of
-    /// pivot `pivot`, which an omitted item argument picks (calipers pv23_041 Liability Summary
+    /// pivot `pivot`, which an omitted item argument picks (calipers `pv23_041` `Liability Summary`
     /// F5:F7, `GETPIVOTDATA(...,"Remediation Status",)`); `None` when the field has none. Call
     /// [`Model::pivot_axis`] first.
     pub(crate) fn pivot_blank_item(&self, pivot: usize, position: usize) -> Option<u32> {

@@ -113,7 +113,7 @@ impl Model {
             _ => return None,
         }
         // A field with no item (H15); a pair on a pivot with nested axis fields (unknown 10).
-        if pairs.len() % 2 == 1 || !pairs.is_empty() && nested_axis(table) {
+        if pairs.len() % 2 == 1 || (!pairs.is_empty() && nested_axis(table)) {
             return None;
         }
         let axis_names: Vec<String> = axis

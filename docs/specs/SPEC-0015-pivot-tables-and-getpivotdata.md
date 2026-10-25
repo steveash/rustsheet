@@ -62,7 +62,7 @@ T-1703 behavior where one exists), never a guessed value:
 10. two row fields and their subtotals, tabular and outline form (the no-pair grand total is evidenced, T-2662);
 11. whether the answer follows the cache when the records disagree with the rendered cells (a file
     saved without refreshing), and the summation order (cache order or display order) on
-    non-representable decimals;
+    non-representable decimals (one data point: web.md "GETPIVOTDATA on real-model pivots", T-2662);
 12. grouped fields (`<fieldGroup>`, date grouping), calculated fields, and a cache saved without
     records (`saveData="0"`): skipped at import (`#REF!`), a non-parity gap T-2085 records.
 13. an error in a field or item argument (ours `#REF!`), an error held by a single-cell

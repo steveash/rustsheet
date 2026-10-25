@@ -106,7 +106,8 @@ the 1904 epoch in a `date1904` workbook has no serial there and skips the cache 
 GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
 pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
 Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or
-hidden items, a pair on a pivot with two fields on one axis, a reference meeting two pivots, `""` or an omitted data_field, a number, date or
+hidden items, a pair on a pivot with two fields on one axis, a reference meeting two pivots, `""` or an omitted
+data_field, a number, date or
 boolean as an item (or an item that matches two cache items differing only in case), the same field twice with the same
 item, an error in a field/item pair, an empty intersection of any aggregate but Sum, a picked record whose data-field value
 is not a number, a number or boolean data_field, and an array data_field, pivot_table or field name (an array of items
