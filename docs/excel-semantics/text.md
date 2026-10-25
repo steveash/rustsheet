@@ -1028,9 +1028,9 @@ Ours: matches (`text_around_element`, `around_options` and `around_not_found` in
 match_end is read the same way: -0.0001 is 0, so `TEXTAFTER(LOWER("'a"),Data!A11:B12,1,1,<-0.0001>)`, where no delimiter is in the text,
 is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7/2d9b48c6363e7a16 Calc!A660 (excel-graph, 2026-10-22); 0.5 is 0 too: `TEXTAFTER("1.5","-",-1,1,0.5)` is `#N/A`, gen-m9/b9a32ce9a1fd0d71 Calc!A142.
 Ours: implemented (T-2412), `around_options` cuts match_end toward zero. The cut value must then be 0 or 1, else `#VALUE!`, also when the
-delimiter is found and beside an if_not_found: 1.5, 1.9999, TRUE (also from a cell), the text "1" and "1.5" (also from a cell) are 1, 0.9999,
+delimiter is found and beside an if_not_found: 1.5 (also from a cell), 1.9999, TRUE (also from a cell), the text "1" (also from a cell) and the text "1.5" are 1, 0.9999,
 -0.5 and FALSE are 0, while 2, -1 and -1.5 are `#VALUE!` (`TEXTAFTER("ab","b",1,0,2)` is `#VALUE!`, not ""), and the text "TRUE" is `#VALUE!`.
-`TEXTAFTER("a","zz",1,0,<any>)` is `#VALUE!` from the longer delimiter first. Evidence: probes/t2498-textafter-match-end (excel-graph,
+TEXTBEFORE reads it the same way (A16-A30): with the delimiter not found, a value cut to 1 gives the whole text "ab", one cut to 0 `#N/A`, and the same values are `#VALUE!`. `TEXTAFTER("a","zz",1,0,<any>)` is `#VALUE!` from the longer delimiter first. Evidence: probes/t2498-textafter-match-end (excel-graph,
 2026-10-25, T-2498). Ours: matches (`around_options`).
 TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
 `ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
