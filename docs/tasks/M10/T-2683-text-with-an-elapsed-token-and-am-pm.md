@@ -1,6 +1,6 @@
 ---
 id: T-2683
-title: "TEXT with an elapsed token and AM/PM ([h]:mm"
+title: "TEXT with an elapsed token and AM/PM ([h]:mm AM/PM) is #VALUE!"
 milestone: M10
 lane: functions-text
 status: todo
