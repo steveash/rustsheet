@@ -105,3 +105,15 @@ fn f_inv_rt_deep_upper_tail_is_solved_on_its_own_tail() {
     assert_eq!(model._get_text("A1"), *"60647458731");
     assert_eq!(model._get_text("A2"), *"183379.0031");
 }
+
+#[test]
+fn f_test_an_error_element_is_that_error() {
+    // gen-m9/165db58d1540f014 A337, 9cca17438a7e6f8a A43 (excel-graph; T-2692): the element's
+    // error, not #VALUE!, and before the one-point #DIV/0!.
+    let mut model = new_empty_model();
+    model._set("A1", "=F.TEST({-1,0,1},{1,#N/A,3})");
+    model._set("A2", "=FTEST({1,#N/A,3},AVERAGE(0.2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+}

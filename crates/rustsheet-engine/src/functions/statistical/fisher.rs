@@ -579,12 +579,12 @@ impl Model {
         }
         match sample {
             CalcResult::Range { left, right } => self.values_from_range(left, right),
+            // An error element is that error, before the one-point check: `F.TEST({-1,0,1},{1,#N/A,3})`
+            // is #N/A (statistics.md "An error element of an array argument is that error";
+            // gen-m9/165db58d1540f014 A337, 9cca17438a7e6f8a A43; T-2692). A LAMBDA or nested element
+            // stays #VALUE!.
             CalcResult::Array(a) => self.values_from_array(a).map_err(|error| {
-                CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    format!("Error in {which} array: {error:?}"),
-                )
+                CalcResult::new_error(error, cell, format!("Error in {which} array"))
             }),
             error @ CalcResult::Error { .. } => Err(error),
             _ => Ok(Vec::new()),

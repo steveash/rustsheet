@@ -3,7 +3,7 @@ id: T-2692
 title: "F.TEST and FTEST: an error element inside an array argument is that error, not #VALUE! (gen-m9, 21 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -68,13 +68,13 @@ Owned gen-m9 cells (gap triage 2026-10-25, excel-graph): 21 known-failure lines 
 - gen-m9/d8266bc15533702a.case.json (1): Calc!A105
 
 ## Acceptance criteria
-- [ ] Visible parity: the 21 owned cells listed under Context have Excel's error, so these 21 known-failure lines leave
+- [x] Visible parity: the 21 owned cells listed under Context have Excel's error, so these 21 known-failure lines leave
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new line in any baseline.
-- [ ] A unit test covers `F.TEST({-1,0,1},{1,#N/A,3})` (#N/A), `FTEST({1,#N/A,3},AVERAGE(0.2))` (#N/A, before the one-point #DIV/0!)
+- [x] A unit test covers `F.TEST({-1,0,1},{1,#N/A,3})` (#N/A), `FTEST({1,#N/A,3},AVERAGE(0.2))` (#N/A, before the one-point #DIV/0!)
       and the existing `#DIV/0!` and `#VALUE!` (blank one-cell reference) cases in fisher.rs.
-- [ ] statistics.md "An error element of an array argument is that error (T-2255)": its "Ours" line says F.TEST and FTEST
+- [x] statistics.md "An error element of an array argument is that error (T-2255)": its "Ours" line says F.TEST and FTEST
       implement it (T-2692).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - PROB and FREQUENCY (T-2636), the ERROR.TYPE/CELL `#NUM!` cells (T-2576) and INDIRECT's 1x1 array a1 argument (T-2577).
@@ -83,3 +83,11 @@ Owned gen-m9 cells (gap triage 2026-10-25, excel-graph): 21 known-failure lines 
 ## Visible-parity stage
 Decision 0083: every owned cell is a wrong error, visible to anyone, so this task is in the `semantics` stage
 (decision 0114). Its first acceptance criterion is the visible-parity target, and it is also the bit-level one.
+
+## Outcome
+- `f_test_sample` (fisher.rs) keeps the error kind `values_from_array` returns for an error element (a LAMBDA or nested
+  element stays `#VALUE!`), so F.TEST and FTEST return the element's error before the one-point check.
+- Eval: all 21 owned gen-m9 cells pass, including the GROUPBY, DAYS360/TRANSPOSE, INDIRECT/WRAPROWS, UNIQUE-RANK.EQ and
+  VSTACK ones. So does one more cell with the same cause that the triage did not list, gen-m9/8f2ac25945af87da Calc!A9
+  `=FTEST({1,#N/A,3},Data!B6:D9)`. `make eval-baseline` removed all 22 lines, and there are no regressions. Unit test `f_test_an_error_element_is_that_error`.
+  statistics.md names T-2692 for F.TEST and FTEST.
