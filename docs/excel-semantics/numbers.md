@@ -1801,8 +1801,8 @@ A written-empty `min_length` is an omitted one, but a blank cell is 0: `BASE(0,2
 while `BASE(0,2,Z99)` is "" (`LEN` 0), `BASE(5,2,Z99)` "101"; `BASE(0,2,"")` is `#VALUE!`; `BASE({0,5},2,{0,0})` is {"", "101"}.
 Ours reads the written-empty argument as 0, so `BASE(0,2,)` gives "" (follow-up T-2634).
 Evidence (excel-graph, 2026-10-25): probes/base-zero-empty-min-length (T-2416).
-Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374).
-Tasks: T-2289, T-2373, T-2374
+Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374) except a written-empty `min_length` (T-2634).
+Tasks: T-2289, T-2373, T-2374, T-2416, T-2634
 
 ## RANDBETWEEN and RANDARRAY argument checks
 Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`, even
