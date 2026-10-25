@@ -56,8 +56,8 @@ impl Model {
         let x_value = self.evaluate_node_in_context(x_range, cell);
         let prob_value = self.evaluate_node_in_context(prob_range, cell);
         // Before the limits, an error value given as a data argument is the result (x_range's
-        // first), then a one-cell reference to an empty cell is `#VALUE!` and one value on each
-        // side is `#DIV/0!` (statistics.md "PROB: an error data argument first", T-2468).
+        // first), then a one-cell reference to an empty cell is `#VALUE!`
+        // (statistics.md "PROB: an error data argument first", T-2468).
         for value in [&x_value, &prob_value] {
             if matches!(value, CalcResult::Error { .. }) {
                 return value.clone();
@@ -67,14 +67,6 @@ impl Model {
             if self.is_blank_one_cell(value) {
                 return CalcResult::new_error(Error::VALUE, cell, String::new());
             }
-        }
-        // A single probability outside [0, 1] is not this case: `PROB(SUM(TRUE cell),-0.0001,..)`
-        // is `#NUM!` (gen-m9/5919660b7bb4d195 A267), while 0.5 alone is `#DIV/0!`.
-        let prob_out_of_range = self
-            .numeric_flat_of(prob_value.clone(), cell)
-            .is_ok_and(|probs| probs.iter().any(|p| !(0.0..=1.0).contains(p)));
-        if is_single_value(&x_value) && is_single_value(&prob_value) && !prob_out_of_range {
-            return CalcResult::new_error(Error::DIV, cell, String::new());
         }
         let data = self
             .prob_data(x_value, prob_value, cell)
@@ -137,15 +129,6 @@ impl Model {
                 "Expected numeric range".to_string(),
             )),
         }
-    }
-}
-
-/// A scalar or a reference to one cell.
-fn is_single_value(value: &CalcResult) -> bool {
-    match value {
-        CalcResult::Range { left, right } => left == right,
-        CalcResult::Array(_) => false,
-        _ => true,
     }
 }
 

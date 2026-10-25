@@ -19,8 +19,6 @@ fn prob_checks_data_arguments_before_limits() {
     model._set("F3", "0.5");
     model._set("C1", "=PROB(1/0,{0.5;0.5},1)");
     model._set("C2", "=PROB({1;2},NA(),\"a\")");
-    model._set("C3", "=PROB(2,0.5,1)");
-    model._set("C4", "=PROB(A1,B1,1)");
     model._set("C5", "=PROB(A1:A3,B1:B2,1)");
     model._set("C6", "=PROB(D1:D3,F1:F3,\"a\")");
     model._set("C7", "=PROB(H1,B1,1)");
@@ -28,8 +26,6 @@ fn prob_checks_data_arguments_before_limits() {
 
     assert_eq!(model._get_text("C1"), *"#DIV/0!");
     assert_eq!(model._get_text("C2"), *"#N/A");
-    assert_eq!(model._get_text("C3"), *"#DIV/0!");
-    assert_eq!(model._get_text("C4"), *"#DIV/0!");
     assert_eq!(model._get_text("C5"), *"#N/A");
     assert_eq!(model._get_text("C6"), *"#VALUE!");
     assert_eq!(model._get_text("C7"), *"#VALUE!");
