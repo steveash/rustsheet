@@ -98,11 +98,10 @@ def _number(milestone: str) -> int:
 
 def _phases(lines: list[str]) -> dict[str, str]:
     """Milestone -> phase number, from the phase table under `## Phase order`."""
-    try:
-        start = lines.index(next(line for line in lines if line.startswith(PHASE_HEADING)))
-    except StopIteration:
+    start = next((i for i, line in enumerate(lines) if line.startswith(PHASE_HEADING)), None)
+    if start is None:
         msg = f"{MILESTONES_MD} has no `{PHASE_HEADING}` section"
-        raise ProgressReportError(msg) from None
+        raise ProgressReportError(msg)
     phases: dict[str, str] = {}
     for line in lines[start + 1 :]:
         if line.startswith("## "):

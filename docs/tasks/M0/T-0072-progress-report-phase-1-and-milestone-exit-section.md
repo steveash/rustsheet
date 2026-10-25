@@ -57,7 +57,7 @@ The dashboard opens with progress toward the goals:
       synthetic tasks.json.
 - [x] The regenerated page is committed. The Outcome compares the campaign table with the
       assessment's plan table and explains any difference.
-- [ ] `make py-check` green; `make check` green; reviewers approve.
+- [x] `make py-check` green; `make check` green; reviewers approve.
 
 ## Out of scope
 - A mechanical split of numeric off cells between the accuracy and visible stages (SPEC-0022,
