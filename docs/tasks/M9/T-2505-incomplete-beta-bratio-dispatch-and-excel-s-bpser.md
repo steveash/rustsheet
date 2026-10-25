@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-campaign: visible
+campaign: accuracy
 depends_on: [T-2645, T-2502, T-2504]
 spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
@@ -95,3 +95,6 @@ Decision 0083: this task is done when every cell it owns, a mapped cell in a bps
 15th significant digit of Excel's value. r2-impact counts 746 such cells visibly off pre-T2464 (bpser(a,b>1) 369,
 w_bpser 341, w1_bpser 36); the model leaves 93, 48 of them BINOM in bpser(a,b>1). Cells still off then are named in
 the Outcome and handed to T-2512. Bit-level criteria still unmet move to a follow-up task without the campaign key.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

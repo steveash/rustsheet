@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: [T-2550]
-campaign: visible
+campaign: accuracy
 ---
 
 ## Goal
@@ -39,3 +39,6 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
 The sweep is done: 12 cells differ (n = 2 to 5 at x = 700, 702, 705), not only `BESSELK(700,3)`. At 702 and 705 Excel's
 K2 = K4 = K0 and K3 = K5 = K1. Rule to implement: Excel sets a subnormal recurrence product `2n/x*K(n)` to 0 (replayed bit-exactly on all 12 cells). See docs/excel-semantics/engineering.md "BESSELK near the bottom of the double range,
 BESSELI overflow point (T-2550)" and probes-numeric/m9-besselk-underflow.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

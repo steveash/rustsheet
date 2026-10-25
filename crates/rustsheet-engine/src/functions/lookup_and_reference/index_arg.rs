@@ -9,7 +9,8 @@ use crate::{
     },
     functions::{
         lift::{LiftCost, LiftOptions, LiftedArg},
-        util::{array_node_to_calc_result, near_integer_count},
+        util::array_node_to_calc_result,
+        util::near_integer::near_integer_count,
         Function,
     },
     model::Model,

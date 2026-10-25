@@ -88,9 +88,8 @@ values of ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx), each model computed exactly i
   `exp` and `log1p`) is within 15 digits on 153, all but A166 (Excel -1.2549699967849914E-12,
   that model -1.254969996784983E-12), and bit-exact on 63; with `ln` of the double `1+rate` it is
   131. Explained by Excel's own log and EXP ("PPMT discounts with an atanh-series log", T-2242).
-- Not probed: whether the exact form also holds where P_n leaves about 1E±270 (the engine falls
-  back to its double forms there; probes/pmt-overflow covers the overflow edges), and for |nper|
-  above 2^32.
+- Past P_n of about 1E+270 and where IPMT's balance cancels on fv: "IPMT cancels on fv" (T-2490).
+  Not probed: |nper| above 2^32.
 Status: VERIFIED to 15 digits (m9-fin-pmt and IPMT_PPMT.xlsx), except the four PPMT cells above (T-2242);
 bits open (T-1528, T-2243)
 Implemented in: `accurate_growth`, `accurate_payment` and `accurate_period_split`
@@ -142,6 +141,55 @@ Financing"!E231, "Est Property Value"!B47:C47, IRR!B26), pv23_009 and pv23_056 (
 T-0455, 2026-10-24). Until T-0458 settles which form Excel uses for their arguments, the calipers
 baseline cannot record its fixes.
 Tasks: T-2242, T-0458
+
+## IPMT cancels on fv
+Rule: Excel's IPMT is `-rate*B`, divided by `1+rate` for type 1 (0 in period 1 of type 1), with
+the balance after period-1 periods `B = (pv+fv)*Y - fv` and `Y = (1-(1+rate)^(per-1-nper))/(1-(1+rate)^-nper)`.
+Where that balance is smaller than fv (`|B| < |fv|`) it is computed in doubles on the rounded `Y`, so
+IPMT carries fv's rounding instead of the exact balance: `IPMT(0.5,2,124,0,315)` is 0 (exact
+1.15E-20), `IPMT(50,2,10,0,315)` is 5.6843418860808015E-12 = 25*2^-42 (exact 6.615E-12, B is two
+ulp of 315), `IPMT(1E+10,10,10,0,315)` is 315.00007935392205 (exact 314.9999999685) and
+`IPMT(1E+300,10,10,0,315)` 0 (exact 315). Elsewhere B is the exact balance, as "PMT, IPMT and PPMT
+are the exact payment" has it. The form needs no `(1+rate)^nper`, so past its overflow IPMT keeps
+its value, about `-pv*rate` for huge rates: `IPMT(1E+300,3,2000,452017,905)` is -4.52017E+305,
+`IPMT(123456789.123,3,156,64486)` -7961234503385.777, `IPMT(2,1100,1100,1,5)` 2. PPMT past the
+overflow is the discounted form of "PPMT discounts with an atanh-series log", with a discount
+`Q(per-1-nper)` below the normal range read as 0 (so PPMT is 0): `PPMT(r,1,300,1)` keeps a discount of
+2^-1022 and is 0 from 2^-1022.5 on, `PPMT(10,1,296,1)` is 0 though its value, 5.6E-308, is normal, `PPMT(42,10,303,8292,1,1)` and `PPMT(1E+300,1.5,180,194733,-1E+300)`
+0, `PPMT(10,11,304,44626,826)` -3.0768304255991313E-301, `PPMT(2,1100,1100,1,5)` -4. Neither needs
+PMT's value: `PPMT(1E+307,7,292,176644,89)` is 0 where `pv*rate` overflows, and
+`IPMT(-0.5,1,2000,1,0,1)` is 0 where PMT is `#NUM!` (PPMT of it `#NUM!`, as PMT).
+Evidence: probes/fin-ipmt-ppmt-huge-rate (excel-graph, 2026-10-25, T-2490): column A, 1152 cells
+over rates 0.5 to 1E+300, nper 10 to 2000, period 2, nper/2 and nper, pv/fv (1000,0), (0,315),
+(1000,315), (1000,-1000) and both types; column B the edges above. probes/fin-ppmt-discount-underflow
+(excel-graph, 2026-10-25): `PPMT(r,1,300,1)` with `(1+r)^300 = 2^k`, k from 1021.5 to 1074, and power-of-two bases. Fit (exact rationals, then the
+rounding named): on its 595 IPMT cells the cancelling form is within 15 digits on 590, the exact
+balance on 521 (all its misses pv-0 cells); on m9-fin-pmt's 286 IPMT cells the doubles-everywhere
+form misses 38 to the bit and 2 to 15 digits (`IPMT(0.05/12,2,3,10000,0,1)`), so the switch on
+`|B| < |fv|` (any threshold from 0.1 to 1 fits; 2 loses 5 m9 cells) keeps every exact match.
+`Y` from `1-EXP(x*L)` instead of the exact quotient is 592 of 595 but loses short terms at small
+rates; `-expm1` 586. The gen-m9 cells of T-2257 that motivated it: 31474c20fc1dafd6 A235,
+6376e27be7a05871 A32, abb7d565af89b849 A112, b6a02893a8d6b151 A280, 81bcdc0bec0c8e6b A249 (rate
+50, pv 0: 0) and the rest of T-2490's list.
+- Open: a fractional nper past the range. `IPMT(1.005,7,~1.85E+7,92160,674,1)` is
+  -46194.91271820449, `-rate*(B/(1+rate))` and the FV recurrence on the rounded PMT, not the exact
+  balance's ...448, while on the integer-nper type-1 cells past the range the exact balance fits 91
+  of 118 and `-rate*(B/(1+rate))` 59; the engine keeps the FV recurrence for a fractional nper
+  there (gen-m9 0a957119475760c5 A153; T-2665).
+- Open: `PPMT(7,10,350,58827)` is -4.581304695604488E-303, its discount 8^-341 = 2^-1023 kept, where
+  `PPMT(7,1,341,1)` with the same discount is 0 (probes/fin-ppmt-discount-underflow F1, F8; gen-m9
+  a91bad4e84f49739 A158; T-2666).
+- Open: the fit's rational model is within 15 digits on 590 of 595, the engine on 588: 7 pv-0 cells keep
+  their cancellation's last bits unexplained: `IPMT(10,2,10,0,315)` (Excel 1.2144607808295405E-6, ours
+  1.214461349263729E-6), `IPMT(10,5,10,0,315)` and `IPMT(10,10,10,0,315)` (one ulp of 315 in B; Excel
+  286.3636362532304, ours 286.363636253231), each with its type 1, and `IPMT(0.1,2,360,0,1)` (Excel 0,
+  ours 1.11E-17: Excel's Y rounds to 1 where the exact quotient rounds below it). Excel's own Y is a few
+  ulp from the exact one; which formulation it is was not separated (T-2667). The `|B| < |fv|` switch is
+  a fitted boundary, not an identified formulation.
+Status: VERIFIED to 15 digits on 590/595 by the model, 588/595 by the engine (excel-graph); bits open.
+Implemented in: `balance_interest`, `accurate_discount` and `discounted_principal`'s `past_range`
+(crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2490).
+Tasks: T-2490, T-2665, T-2666, T-2667
 
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
@@ -1249,7 +1297,7 @@ and `PMT(1,1023,1)`, `PMT(1,1024,1)`, `PMT(1,1100,1)` are all -1. When P is fini
 overflows (0, or the subnormal 2^-1070) PMT is `#NUM!` whatever fv and type are, and so are IPMT, PPMT and CUMIPMT:
 `PMT(-0.5,2000,1)`, `PMT(1,-2000,1)`, `PMT(-0.5,2000,0,5)`, `PMT(-0.5,2000,1,0,1)`, `PMT(-0.5,2000,1,5)`,
 `PMT(-0.5,1070,1)`, `PMT(-0.5,1070,0,5)`, `IPMT(-0.5,1,2000,1)`, `PPMT(-0.5,1,2000,1)`, `CUMIPMT(-0.5,2000,1,1,1,0)`
-(CUMPRINC, which shares the kernel, and a subnormal P whose reciprocal is finite are unprobed). IPMT and PPMT follow PMT: `IPMT(100,1,184,439103)` is
+(CUMPRINC, which shares the kernel, and a subnormal P whose reciprocal is finite are unprobed), except IPMT in period 1 of type 1, which is 0 ("IPMT cancels on fv"). IPMT and PPMT follow PMT: `IPMT(100,1,184,439103)` is
 -43910300 and `PPMT` of it 0; `IPMT(1,1,2000,1)`, `IPMT(1,2,2000,1)` are -1 and their PPMT 0;
 `PPMT(1,1,60,1)` is -8.67361737988405E-19 (ours 0, unscored: a last-digit question, T-1528). PV, FV and NPER stay `#NUM!` there (`PV(100,184,1)`, `FV(100,184,1)`,
 `NPER(100,-1,1)`). The gen-m9 inference holds: `FLOOR(NA(),1/0)` is `#N/A`, FLOOR returns its number's error first.
@@ -2051,3 +2099,32 @@ probes/tbill-error-order-inner-calls.
 Ours: the other error or a value; the tasks named.
 Status: VERIFIED (excel-graph), one or two cells each
 Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T-2490, T-2344, T-2544
+
+## NPV's residue at IRR's root is not the double sum
+Rule: where NPV's terms cancel, Excel's value differs from both the exact sum and the plain double sum of
+v_i/(1+r)^i, by more than half a unit of the 15th significant digit of the result. Excel's per-period discount and
+summation order are not identified. At M2, M8 and Three Parameters!E2 below (and at H367 and A148) Excel is nearer the exact value than the double sum, at
+M3 further from it, so Excel does not compute a more accurate sum either.
+Evidence (ironcalc-calc/FINANCIAL/IRR.xlsx, saved by Excel Online; the rate cell is an IRR that ours matches to the
+bit, so NPV gets the same inputs):
+- General!M2 `NPV(L2,A2:F2)`, flows {-20,5,5,5,5,5}, L2 = 0.07930826116039724: Excel 6.4212018552224666E-12, exact at
+  that rate 6.421923509333131E-12, ours (left-to-right sum of v/(1+r).powi(i), `compute_npv`; with libm `pow` M2 is 6.419753617592505E-12) 6.418865439172805E-12.
+- General!M3, flows {-1000,230,200,125,200,10}, L3 = -0.1015006760535847: Excel -2.8358465972398184E-11, exact
+  -2.815865414018216E-11, ours -2.8180124900245573E-11.
+- General!M8, flows {-70,12,15}, L8 = -0.44350694133432755: Excel -1.579429159894141E-10, exact
+  -1.5794321715940695E-10, ours -1.5792522845003987E-10.
+- Three Parameters!E2 `NPV(D2,A2:C2)`, flows {1,-2,1}, D2 = 1.091399510766422E-07: Excel 1.187938506697367E-14, exact
+  1.1911525020941654E-14, ours 1.2101430968414206E-14.
+- Also General!M5, M9, M10, M11, M13, FullRow!Q2 and FullColumn!B21, B22 (same flows and rates as E2, M2 and M3 over
+  whole rows).
+- The same holds away from a root: probes/fin-argument-modes H367 `NPV(0.1,-10000,2750,4250,3250,2750)` is
+  302.233453999042 in Excel (exact at the double rate 302.23345399904366, ours 302.23345399904133); probes-numeric/m9-fin-nper-npv A148
+  `NPV(0.1,-1E6,250000,250000,250000,250000,250000)` is -47548.46149808013 (exact -47548.46149807995, ours
+  -47548.4614980802).
+Rejected (gap triage 2026-10-25, doubles, on the 9 rate-exact residues and H367): sum of v/(1+r)^i left to right or
+reversed, Horner from the last value with / or * 1/(1+r) (matches M8 only), a running factor by * or /,
+v*(1+r)^-i, v/exp(i*log1p r), fsum, and the future-value Horner divided by (1+r)^n. T-1528's Blocked section lists its
+own rejected forms on m9-fin-nper-npv.
+Ours: the left-to-right double sum (`compute_npv`).
+Status: VERIFIED (values: the IRR.xlsx Excel Online cache, and excel-graph sidecars fin-argument-modes.oracle.json and m9-fin-nper-npv.oracle.json for H367 and A148); the formulation is open (T-2671 probes it, T-2672 fits it).
+Tasks: T-2671, T-2672, T-1528, T-2131

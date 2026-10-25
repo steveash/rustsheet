@@ -8,6 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: [T-0971]
+defer: phase-1b
 ---
 
 ## Goal
@@ -54,3 +55,6 @@ is now `#NUM!` (530,000 terms over its cdfs), shape 3E8 still finishes. docs/exc
 
 ## Out of scope
 -
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

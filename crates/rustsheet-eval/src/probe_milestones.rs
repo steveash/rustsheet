@@ -23,6 +23,7 @@ use crate::baseline::Baseline;
 use crate::case::split_qualified;
 use crate::catalog::Catalog;
 use crate::cellref::Addr;
+use crate::closeness::Visible;
 use crate::formula_calls::functions_in;
 use crate::milestone_lists::MilestoneList;
 use crate::runner::{CaseResult, CellResult};
@@ -327,6 +328,10 @@ pub struct MilestoneRow {
     /// The cases behind `known_failures`: case id and its known-failure items in this row,
     /// most first, then by id.
     pub failing_cases: Vec<(String, usize)>,
+    /// Scored cells that are visibly off (decision 0083): the Phase 1 exit counts these
+    /// (decision 0114).
+    #[serde(default)]
+    pub visibly_off: usize,
 }
 
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
@@ -359,6 +364,8 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 s.bit_exact += 1;
             } else if c.verdict == Verdict::Deviation {
                 s.deviations += 1;
+            } else if Visible::is_off(c) {
+                s.visibly_off += 1;
             }
             rows_of_case.insert(row);
         }
@@ -408,14 +415,20 @@ pub fn write_markdown(rows: &[MilestoneRow], md: &mut String) {
     );
     let _ = writeln!(
         md,
-        "| milestone | cases | scored cells | bit-exact | deviations | known failures (cells) |\n\
-         |---|---|---|---|---|---|"
+        "| milestone | cases | scored cells | bit-exact | deviations | known failures (cells) | visibly off |\n\
+         |---|---|---|---|---|---|---|"
     );
     for s in rows {
         let _ = writeln!(
             md,
-            "| {} | {} | {} | {} | {} | {} |",
-            s.milestone, s.cases, s.cells, s.bit_exact, s.deviations, s.known_failures
+            "| {} | {} | {} | {} | {} | {} | {} |",
+            s.milestone,
+            s.cases,
+            s.cells,
+            s.bit_exact,
+            s.deviations,
+            s.known_failures,
+            s.visibly_off
         );
     }
     for s in rows.iter().filter(|s| !s.failing_cases.is_empty()) {
@@ -749,6 +762,7 @@ mod tests {
                 deviations,
                 known_failures: failing.iter().map(|f| f.1).sum(),
                 failing_cases: failing.iter().map(|f| (f.0.to_owned(), f.1)).collect(),
+                visibly_off: 0,
             }
         };
         assert_eq!(
@@ -759,14 +773,17 @@ mod tests {
                 row("M6", 1, 1, 1, 0, &[]),
                 row("M7", 1, 0, 0, 0, &[("probes/p.case.json", 1)]),
                 row("M8", 0, 0, 0, 0, &[]),
-                row(
-                    "M9",
-                    2,
-                    2,
-                    0,
-                    0,
-                    &[("probes/catalog/c.case.json", 1), ("probes/d.case.json", 1)]
-                ),
+                MilestoneRow {
+                    visibly_off: 1,
+                    ..row(
+                        "M9",
+                        2,
+                        2,
+                        0,
+                        0,
+                        &[("probes/catalog/c.case.json", 1), ("probes/d.case.json", 1)],
+                    )
+                },
                 row("M10", 0, 0, 0, 0, &[]),
                 row("M11", 0, 0, 0, 0, &[]),
                 row("M12", 1, 0, 0, 0, &[]),
@@ -775,8 +792,8 @@ mod tests {
         let mut md = String::new();
         write_markdown(&rows, &mut md);
         assert!(md.contains("## Probe milestones (decision 0051)"), "{md}");
-        assert!(md.contains("| M0-M2 | 2 | 3 | 1 | 1 | 1 |"), "{md}");
-        assert!(md.contains("| M9 | 2 | 2 | 0 | 0 | 2 |"), "{md}");
+        assert!(md.contains("| M0-M2 | 2 | 3 | 1 | 1 | 1 | 0 |"), "{md}");
+        assert!(md.contains("| M9 | 2 | 2 | 0 | 0 | 2 | 1 |"), "{md}");
         assert!(
             md.contains("Failing cases in M9:\n\n- `probes/catalog/c.case.json`: 1\n- `probes/d.case.json`: 1\n"),
             "{md}"

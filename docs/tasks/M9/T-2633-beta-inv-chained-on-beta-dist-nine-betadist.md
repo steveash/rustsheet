@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-campaign: visible
+campaign: accuracy
 depends_on: [T-2505]
 ---
 
@@ -65,3 +65,6 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
 
 ## Out of scope
 - BETADIST_BETAINV G5 and G26 (the T-1044 sweep).
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

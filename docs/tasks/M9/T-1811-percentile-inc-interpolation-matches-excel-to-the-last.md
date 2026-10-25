@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -72,3 +72,6 @@ Decision 0083 (gap triage 2026-10-23, T-2256): it now owns 13 visibly-off gen-m9
 campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria
 still unmet then move to a follow-up task without the key.
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
