@@ -1,8 +1,9 @@
 """`rustsheet-progress-report --check`: the judgment blocks of docs/progress.md (SPEC-0022, T-0074).
 
 A judgment block passes when its as-of line names the run in the `status` block, every number in
-it appears verbatim in a generated block, and it is plain text: no URL, no Markdown link, image or
-reference definition, and no `<` tag apart from its own as-of comment. The page is parsed by
+it appears verbatim in a generated block, and it is plain text: no URL, web or email address, no
+`[` or `]` (so no Markdown link, image or reference definition in any form), and no `<` apart from
+its own as-of comment. The page is parsed by
 `page.parse` (blocks.py's parser, with page.py's `LAYOUT` names), so the check sees exactly the
 blocks the generator sees.
 """
@@ -17,21 +18,30 @@ from rustsheet_tools.progress_report.model import COMMIT_SHA, RUN_DATE, Progress
 OK = "progress check ok"
 # The run the `status` block names; page.status writes this sentence (a test keeps the two in step).
 STATUS_RUN = re.compile(rf"The eval run of \*\*({RUN_DATE.pattern})\*\* at commit `({COMMIT_SHA.pattern})`")
-# What counts as a number (T-0074). A trailing `,` is the sentence's, not the number's.
-NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?%?")
+# What counts as a number (T-0074): `\d[\d,]*(\.\d+)?%?` standing alone, never the digits of an
+# identifier such as LOG10, ATAN2, v15 or phase1 (no word character directly before or after, and
+# no shorter match cut out of `1.5x` or `1,234x`). A trailing `,` is the sentence's, not the number's.
+NUMBER = re.compile(r"(?<!\w)\d[\d,]*(?:\.\d+)?%?(?!\w|[.,]\d)")
 # Digit runs that are names, not measurements: the as-of comment, dates, task, spec, PR and
-# decision ids, milestones.
+# decision ids. Milestone names (M2) need no entry: NUMBER never matches digits after a letter.
 IGNORED = re.compile(
     rf"{blocks.AS_OF.pattern}|{RUN_DATE.pattern}"
-    r"|\bT-\d{4}\b|\bSPEC-\d{4}\b|#\d+|\b[Dd]ecision \d{4}\b|\bM\d+\b"
+    r"|\bT-\d{4}\b|\bSPEC-\d{4}\b|#\d+|\b[Dd]ecision \d{4}\b"
 )
-# Plain text only (SPEC-0022 "Plain text only"): each pattern names what it rejects.
+# Plain text only (SPEC-0022 "Plain text only"): (what is wrong, pattern). Banning every bracket and
+# every `<` outright closes the nested, escaped and indented link and reference-definition forms and
+# every tag form that a narrower pattern would miss. A scheme counts only when text follows its `:`
+# directly, so prose such as "the data: 12 cells" stays plain text.
 NOT_PLAIN = (
     ("a URL", re.compile(r"https?://", re.IGNORECASE)),
-    ("a Markdown image", re.compile(r"!\[[^\]]*\]\([^)]*\)")),
-    ("a Markdown link", re.compile(r"(?<!!)\[[^\]]*\]\([^)]*\)|\[[^\]]*\]\[[^\]]*\]")),
-    ("a reference definition", re.compile(r"^ {0,3}\[[^\]]+\]:", re.MULTILINE)),
-    ("a tag", re.compile(r"<[A-Za-z/!]")),
+    ("a web address", re.compile(r"\bwww\.", re.IGNORECASE)),
+    (
+        "a URL scheme",
+        re.compile(r"\b(?:ftp|mailto|xmpp|javascript|data|vbscript|file):(?=\S)", re.IGNORECASE),
+    ),
+    ("an email address", re.compile(r"\S@\S+\.\w")),
+    ("square brackets are not allowed (links)", re.compile(r"[\[\]]")),
+    ("`<` is not allowed (tags)", re.compile(r"<")),
 )
 
 
@@ -58,6 +68,7 @@ def offenders(text: str) -> list[str]:
     parsed = page.parse(text)
     status = parsed.get("status")
     run = STATUS_RUN.search(status.text) if status is not None else None
+    # An "unknown commit" status fails on purpose: an as-of line needs a sha to name the run.
     if run is None:
         msg = "the `status` block names no run date and commit, so no as-of line can match it"
         raise ProgressReportError(msg)
@@ -77,12 +88,12 @@ def offenders(text: str) -> list[str]:
                 f"{run.group(1)} {run.group(2)}"
             )
         body = _body(block.text)
-        found += [
-            f"{name}: holds {what}, {body[m.start() :].partition(chr(10))[0][:60]!r}; "
-            "judgment blocks are plain text only"
-            for what, pattern in NOT_PLAIN
-            for m in pattern.finditer(body)
-        ]
+        for what, pattern in NOT_PLAIN:
+            hits = list(pattern.finditer(body))
+            if hits:
+                first = body[hits[0].start() :].partition("\n")[0][:60]
+                more = f" (and {len(hits) - 1} more)" if len(hits) > 1 else ""
+                found.append(f"{name}: {what}: {first!r}{more}; judgment blocks are plain text only")
         found += [
             f"{name}: the number {n} appears in no generated block"
             for n in dict.fromkeys(numbers(body))

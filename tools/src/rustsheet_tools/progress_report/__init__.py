@@ -35,7 +35,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--check", action="store_true", help="check the judgment blocks of the existing page")
     args = ap.parse_args(argv)
     if args.check:
-        # The page's own path (a CODE_READ_PATHS entry, decision 0049) names the default docs dir.
+        # The default docs dir is named by the page's own path because "docs/progress.md" is in
+        # CODE_READ_PATHS (scripts/ci_changes.py, decision 0049) and a bare "docs" is not: keep it so,
+        # or scripts/check_docs_readers.py fails `make hygiene`.
         run_check(args.out_dir or (repo / "docs/progress.md").parent)
         return
     if args.out_dir is None:

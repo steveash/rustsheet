@@ -90,31 +90,72 @@ def test_a_stale_or_missing_as_of_fails(as_of: str, error: str) -> None:
     assert found[0].startswith(error)
 
 
+URL, WEB, SCHEME, EMAIL = "a URL", "a web address", "a URL scheme", "an email address"
+BRACKETS, LT = "square brackets are not allowed (links)", "`<` is not allowed (tags)"
+
+
 @pytest.mark.parametrize(
-    ("text", "what"),
+    ("text", "whats"),
     [
-        ("Read https://example.com first.", "a URL"),
-        ("Read HTTP://example.com first.", "a URL"),
-        ("Read [the log](status.md).", "a Markdown link"),
-        ("Read [the log][log].", "a Markdown link"),
-        ("Look: ![chart](chart.svg)", "a Markdown image"),
-        ("[log]: status.md", "a reference definition"),
-        ("Some <b>bold</b> text.", "a tag"),
-        ("A hidden <!-- comment -->.", "a tag"),
+        ("Read https://example.com first.", {URL}),
+        ("Read HTTP://example.com first.", {URL}),
+        ("Read www.evil.com first.", {WEB}),
+        ("Mail mailto:a@b.c now.", {SCHEME, EMAIL}),
+        ("Mail a@b.com now.", {EMAIL}),
+        ("Fetch FTP://x now.", {SCHEME}),
+        ("Run javascript:alert(1) now.", {SCHEME}),
+        ("Read [the log](status.md).", {BRACKETS}),
+        ("Read [the log][log].", {BRACKETS}),
+        ("A shortcut [log] reference.", {BRACKETS}),
+        ("Look: ![chart](chart.svg)", {BRACKETS}),
+        ("[log]: status.md", {BRACKETS}),
+        ("[a [b]](javascript:alert(1))", {BRACKETS, SCHEME}),
+        ("[a\\]b](evil.com)", {BRACKETS}),
+        ("> [x]: evil.com", {BRACKETS}),
+        ("- [x]: evil.com", {BRACKETS}),
+        ("Some <b>bold</b> text.", {LT}),
+        ("A hidden <!-- comment -->.", {LT}),
+        ("A <?php ?> instruction.", {LT}),
+        ("12 < 1,234 is still a `<`.", {LT}),
     ],
 )
-def test_anything_but_plain_text_fails(text: str, what: str) -> None:
+def test_anything_but_plain_text_fails(text: str, whats: set[str]) -> None:
     found = offenders(text)
-    assert found
-    assert all(f"holds {what}" in f for f in found)
+    assert {f.split(": ")[1] for f in found} == whats
+    assert all(f.endswith("judgment blocks are plain text only") for f in found)
+
+
+def test_each_rule_is_listed_once_per_block_with_its_first_hit() -> None:
+    assert offenders("[a](b) and [c]") == [
+        f"risks: {BRACKETS}: '[a](b) and [c]' (and 3 more); judgment blocks are plain text only"
+    ]
 
 
 def test_a_second_as_of_comment_is_a_tag() -> None:
-    assert offenders(AS_OF) == [f"risks: holds a tag, {AS_OF!r}; judgment blocks are plain text only"]
+    assert offenders(AS_OF) == [f"risks: {LT}: {AS_OF!r}; judgment blocks are plain text only"]
 
 
-def test_plain_text_with_emphasis_lists_and_comparisons_passes() -> None:
-    assert offenders("- **Bold** and _emphasis_; 12 < 1,234 and [brackets] alone.") == []
+def test_plain_text_with_emphasis_lists_and_prose_colons_passes() -> None:
+    text = "- **Bold** and _emphasis_; 12 is below 1,234.\n- The data: 12 functions, per file: 12."
+    assert offenders(text) == []
+
+
+@pytest.mark.parametrize("text", ["LOG10 and ATAN2 are off.", "Phase1 needs v15 and x_2.", "A 10x gain."])
+def test_digits_inside_identifiers_are_not_numbers(text: str) -> None:
+    assert check.numbers(text) == []
+    assert offenders(text) == []
+
+
+def test_number_boundaries() -> None:
+    assert check.numbers("1.5x, 1,234x, 97.5%, 1,234, and 12.") == ["97.5%", "1,234", "12"]
+    assert check.numbers("M2, M21, #1858, T-0074, SPEC-0022, decision 0118 and 2026-10-19.") == []
+
+
+def test_identifier_digits_in_generated_blocks_are_not_cited() -> None:
+    status = STATUS + " LOG10 is listed."
+    assert check.offenders(a_page({"risks": f"\n{AS_OF}\n10 cells.\n"}, status=status)) == [
+        "risks: the number 10 appears in no generated block"
+    ]
 
 
 def test_every_offender_is_listed_and_placeholders_fail() -> None:

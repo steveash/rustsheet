@@ -45,12 +45,22 @@ the steward's judgment text cites only numbers the page generated, for the curre
 ## Outcome
 `rustsheet-progress-report --check` (new `progress_report/check.py`, a small `--check` hook in
 `__init__.py`; `--out-dir` is now required only without `--check`, which defaults to the repo's
-docs directory). It parses the page with `page.parse` (blocks.py's parser; no second one) and exits 1 listing
-every offender: a missing judgment block, a missing or stale as-of line against the run named in
-the `status` block, any number not printed in a generated block (compared as exact tokens, so
-`1234` does not match `1,234`; a trailing comma is dropped), and any URL, Markdown link, image,
-reference definition or `<` tag other than the block's own first-line as-of comment. Ignored digit
-runs: the as-of comment, dates, `T-`/`SPEC-` ids, `#n`, `decision nnnn` and `Mn`. The generated
-block names come from page.py's `LAYOUT`, so blocks added later (T-0081 and on) count as cited
+docs directory). It parses the page with `page.parse` (blocks.py's parser; no second one) and
+exits 1 listing every offender: a missing judgment block, a missing or stale as-of line against
+the run named in the `status` block (an "unknown commit" status fails on purpose), any number not
+printed in a generated block, and any text that is not plain.
+- **Numbers** are compared as exact tokens, so `1234` does not match `1,234`, and a trailing comma
+  is dropped. Digits inside identifiers (LOG10, ATAN2, v15, phase1, M2) are not numbers on either
+  side. Ignored digit runs are the as-of comment, dates, `T-`/`SPEC-` ids, `decision nnnn` and
+  `#n`. `#n` is kept because risks cite PR numbers. No separate milestone rule is needed: `M2` is
+  an identifier.
+- **Plain text** is stricter than the spec's list, after security review. Any `[` or `]` fails,
+  which covers every link, image and reference-definition form, including nested, escaped and
+  indented ones. Any `<` other than the block's own as-of comment fails. URLs (`http(s)://`),
+  `www.` addresses, email addresses, and the schemes ftp, mailto, xmpp, javascript, data, vbscript
+  and file also fail. A scheme counts only when text follows its `:` directly, so prose such as
+  "the data: 12 cells" passes. Each rule is listed once per block, with its first hit.
+
+The generated block names come from page.py's `LAYOUT`, so blocks added later count as cited
 sources with no change here. A page holding a placeholder fails, since it has no as-of line.
 Tests: tools/tests/test_progress_check.py. No eval delta (tools only).
