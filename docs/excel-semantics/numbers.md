@@ -76,13 +76,19 @@ Status: VERIFIED
 Implemented in: `fn_trunc` in functions/math_and_trigonometry/mathematical.rs, via `round_decimal` (T-0297)
 
 ## FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from zero (T-2652)
-Rule (hypothesis): the CEILING/FLOOR family cuts `value/significance` to 15 significant digits before rounding, and a tie at
-the 16th digit goes away from zero, as INT's cut does (below), not to even: `FLOOR.PRECISE(x)` with x = -333333333333266.5
-exactly (`AVERAGE(100,0.5,100-1E+15)`) is -333333333333267, where a tie-to-even cut gives -333333333333266. No cut at all
-(a plain floor) also gives -333333333333267, so the cell does not tell the two apart. A typed
-16-digit literal is cut on entry, so a probe builds the tie from exact arithmetic.
-Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648). The other family members are not probed.
-Status: UNVERIFIED (one generated cell); `snap_ratio` (ceiling_floor.rs) cuts through `to_excel_precision`, ties to even.
+Rule: the CEILING/FLOOR family cuts `value/significance` to 15 significant digits before rounding, and a tie at the
+16th digit goes away from zero, as INT's cut does (below), not to even. FLOOR, FLOOR.MATH, FLOOR.PRECISE, CEILING,
+CEILING.MATH, CEILING.PRECISE and ISO.CEILING all agree: with significance 1, `FLOOR(-333333333333266.5,1)` =
+-333333333333267 and `FLOOR(333333333333266.5,1)` = 333333333333267 (a tie-to-even cut gives ...266), `x.5` at ...265.5
+gives ...266 in both signs and both directions, `±999999999999999.5` gives ±1E+15, and `±100000000000000.5` gives
+±100000000000001. A typed 16-digit literal is cut on entry, so the gen-m5 cell builds the tie from exact arithmetic
+(`AVERAGE(100,0.5,100-1E+15)`) and the probe stores exact halves.
+Caveat: excel-graph returns values of 1E+15 and above rounded to 15 digits, so the probe cannot show whether the cut
+stops there as INT's does (`FLOOR(1000000000000001.5,1)` reads 1E+15).
+Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648); probes/t2652-floor-ceiling-ties
+(14 values x 7 functions, excel-graph, 2026-10-25, T-2652).
+Status: VERIFIED
+Implemented in: `snap_ratio` (ceiling_floor.rs) via `significant_15` with ties away from zero (T-2652)
 Tasks: T-2652
 
 ## INT cuts to 15 significant digits first (T-2171)

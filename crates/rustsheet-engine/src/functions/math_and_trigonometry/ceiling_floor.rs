@@ -1,18 +1,27 @@
 //! The CEILING/FLOOR family on the SPEC-0011 driver (T-1773): CEILING, ECMA.CEILING, FLOOR,
 //! CEILING.MATH, CEILING.PRECISE, ISO.CEILING, FLOOR.MATH and FLOOR.PRECISE.
 
-use crate::constants::EXCEL_PRECISION;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
-use crate::number_format::to_excel_precision;
+use crate::number_format::significant_15;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-/// `value / significance` with Excel's precision applied, so floating-point noise does not
-/// push an exact multiple over a step boundary.
+/// `value / significance` cut to 15 significant digits, so floating-point noise does not push an
+/// exact multiple over a step boundary. An exact tie at the 16th digit goes away from zero, as
+/// INT's cut does (numbers.md "FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from
+/// zero", probes/t2652-floor-ceiling-ties).
 fn snap_ratio(value: f64, significance: f64) -> f64 {
-    to_excel_precision(value / significance, EXCEL_PRECISION)
+    let ratio = value / significance;
+    if !ratio.is_finite() || ratio == 0.0 {
+        return ratio;
+    }
+    let (mantissa, exponent) = significant_15(ratio.abs(), true);
+    // `mantissa` has 15 digits, so its last digit has place value 10^(exponent - 14).
+    format!("{mantissa}e{}", exponent - 14)
+        .parse::<f64>()
+        .map_or(ratio, |cut| cut.copysign(ratio))
 }
 
 /// MROUND of two non-zero, same-signed numbers. Excel rounds the double quotient `|n / m|` up
