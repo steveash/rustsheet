@@ -682,6 +682,7 @@ C	probes/min-max-value-args.case.json	16
 C	probes/minverse-overflow-computed-pivot.case.json	43
 C	probes/minverse-singular-near-singular.case.json	46
 C	probes/mod-array-lift.case.json	25
+C	probes/mod-huge-opposite-divisor.case.json	183
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
 C	probes/mod-quotient-threshold.case.json	22

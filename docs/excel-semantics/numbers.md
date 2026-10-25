@@ -780,11 +780,19 @@ C21 (d=-0.1) =-0.09999999990000055, C25 `MOD(5,1E-10)`=9.999981783901343e-11, C2
 Status: VERIFIED (Excel-cached)
 
 ## MOD of a small number by a huge opposite-sign divisor is 0 (T-2654)
-Rule (hypothesis): when the exact remainder plus the divisor rounds to the divisor itself, Excel's MOD is 0, not `d`:
-`MOD(1.005,d)` with d about -1E+30 (`(1.005^-0.0001)-SUMSQ(-1,1E+15,100,0.2,7,1,-0.5)`) is 0, where "fmod plus d" gives
--1E+30. Other rules (a quotient path for tiny |n/d|) fit the one cell too.
-Evidence: gen-m5/abef960804539149 Calc!A400 (excel-graph, 2026-10-25, T-2648).
-Status: UNVERIFIED (one generated cell); the engine gives d.
+Rule: when the signs differ and the shifted result `fmod(n,d) + d` rounds (in doubles) back to `d` itself, Excel's MOD
+is 0, not `d`. The test is that one rounded sum, not a quotient or relative threshold: `MOD(1,-(2^53))` =
+-9007199254740991 but `MOD(1,-(2^54))` = 0; `MOD(0.5,-(2^52))` = -4503599627370495.5 but `MOD(0.5,-(2^53))` = 0 (the
+tie rounds to even, which is `d`) while `MOD(0.75,-(2^53))` = -9007199254740991; `MOD(1.005,-1E+16)` =
+-9999999999999998 but `MOD(1.005,-1E+17)` = 0; `MOD(0.5,-5E+15)` = 0 but `MOD(0.5,-2E+15)` = -1999999999999999.5;
+`MOD(1,-1E+30)`, `MOD(1,-9.99999999999999E+307)` and the mirrored `MOD(-1,1E+30)` are 0. Same-sign controls keep the
+remainder (`MOD(1,2^60)` = 1, `MOD(-0.5,-(2^54))` = -0.5). Over all 168 opposite-sign cells, the cells that differ from
+"fmod plus d" are exactly those where the sum equals `d`.
+In passing: `MOD(0.75,-(2^53))+2^53` is 0, not 1 (-9007199254740991 + 2^53; see "Near-zero snapping in addition and subtraction").
+Evidence: probes/mod-huge-opposite-divisor (183 cells, excel-graph, 2026-10-25); gen-m5/abef960804539149 Calc!A400
+(T-2648).
+Status: VERIFIED
+Implemented in: `excel_mod` in crates/rustsheet-engine/src/functions/util.rs
 Tasks: T-2654
 
 ## SINH / COSH / TANH are exp-based, not libm
