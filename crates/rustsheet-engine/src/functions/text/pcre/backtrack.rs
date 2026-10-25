@@ -345,7 +345,7 @@ impl<'a> Backtracker<'a> {
                     _ => false,
                 },
                 Some(Inst::Any { dot_all }) => match char_at(text, pos) {
-                    Some(c) if *dot_all || c != '\n' => {
+                    Some(c) if *dot_all || !matches!(c, '\n' | '\r') => {
                         pos += c.len_utf8();
                         true
                     }
@@ -666,18 +666,21 @@ fn is_word(c: Option<char>) -> bool {
     c.is_some_and(|c| regex_syntax::try_is_word_character(c).unwrap_or(false))
 }
 
-/// Whether `anchor` holds at byte `pos` of `text`, `\G` being `search_start`. The meanings are
-/// those the automata translation gives each anchor (`hir.rs`), `$` and `\Z` with PCRE2's final
-/// `\n` on every text.
+/// Whether `anchor` holds at byte `pos` of `text`, `\G` being `search_start`: exactly, on every
+/// text, the meanings the automata translation (`hir.rs`) gives each anchor on the texts it runs.
+/// The line anchors follow PCRE2's ANYCRLF newline convention, as Excel does
+/// (probes/t2364-regex-newline-convention, t2364-regex-dollar-final-cr; T-2364).
 fn holds(anchor: Anchor, text: &str, pos: usize, search_start: usize) -> bool {
     match anchor {
         Anchor::Start => pos == 0,
-        Anchor::StartLine => pos == 0 || char_before(text, pos) == Some('\n'),
+        Anchor::StartLine => match char_before(text, pos) {
+            None | Some('\n') => true,
+            Some('\r') => char_at(text, pos) != Some('\n'),
+            Some(_) => false,
+        },
         Anchor::End => pos == text.len(),
-        Anchor::EndLine => pos == text.len() || char_at(text, pos) == Some('\n'),
-        Anchor::EndOrFinalLf => {
-            pos == text.len() || (pos + 1 == text.len() && char_at(text, pos) == Some('\n'))
-        }
+        Anchor::EndLine => pos == text.len() || matches!(char_at(text, pos), Some('\n' | '\r')),
+        Anchor::EndOrFinalLf => matches!(text.get(pos..), Some("" | "\n" | "\r" | "\r\n")),
         Anchor::WordBoundary => is_word(char_before(text, pos)) != is_word(char_at(text, pos)),
         Anchor::NotWordBoundary => is_word(char_before(text, pos)) == is_word(char_at(text, pos)),
         Anchor::SearchStart => pos == search_start,
