@@ -182,7 +182,10 @@ pub(crate) fn conditional_section(
         Compare::LessOrEqualThan => bound < 0.0,
         _ => false,
     };
-    let drop_sign = section_condition(&parts[index]).is_some_and(negatives_only);
+    let drop_sign = parts
+        .get(index)
+        .and_then(section_condition)
+        .is_some_and(negatives_only);
     Some((index, drop_sign))
 }
 
