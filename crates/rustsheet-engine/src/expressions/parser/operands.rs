@@ -445,10 +445,10 @@ impl Parser {
     /// T-2567) and in a file (docs/excel-semantics/syntax.md "Minimum argument counts"); stored
     /// text keeps it, and the call evaluates to `#ERROR!`. Only the lifting table's counts are
     /// used: they agree with Excel's documented minimums (eval/catalog/excel-functions.tsv,
-    /// tools/tests/test_catalog_arity.py), and a function outside the table is never refused here.
+    /// `tools/tests/test_catalog_arity.py`), and a function outside the table is never refused here.
     /// Only the least and most counts are checked, not whole `repeat` cycles
     /// ([`ArgKinds::takes_count`], not `accepts`): Excel's syntax line lets SORTBY's last
-    /// sort_order be omitted (`SORTBY(a,b1,1,b2)`), and no probe shows a typed off-cycle call
+    /// `sort_order` be omitted (`SORTBY(a,b1,1,b2)`), and no probe shows a typed off-cycle call
     /// refused, so refusing it could refuse a formula Excel takes.
     fn note_argument_count(&mut self, kind: &Function, name: &str, count: usize) {
         let refused = kind
