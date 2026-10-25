@@ -191,34 +191,69 @@ impl PatternCache {
     }
 }
 
-/// The pattern of an XMATCH or XLOOKUP regex search (`match_mode` 3) on the REGEX* engine, so
-/// a lookup reads the same PCRE2 syntax as REGEXTEST: lookbehind, backreferences, `\K`,
-/// possessive and atomic groups (probes/t2680-lookup-regex-pcre2; T-2680). It is case-sensitive,
-/// and one search shares one compile and work budget as one REGEX* call does (SPEC-0013).
-pub(crate) struct LookupPattern {
-    pattern: String,
+/// The regex state of one XMATCH or XLOOKUP call (`match_mode` 3): its patterns on the REGEX*
+/// engine, so a lookup reads the same PCRE2 syntax as REGEXTEST (lookbehind, backreferences,
+/// `\K`, possessive and atomic groups; probes/t2680-lookup-regex-pcre2; T-2680), and the call's
+/// one compile, held-memory and work budget, shared by every lifted element as in a REGEX* call
+/// (SPEC-0013). Past it the call is `#ERROR!`: a DEVIATION (decision 0014), lookup.md "XMATCH and
+/// XLOOKUP regex mode".
+pub(crate) struct LookupRegexes {
     cache: PatternCache,
 }
 
-impl LookupPattern {
-    /// `pattern` compiled for a search: `#VALUE!` when it is invalid, `#ERROR!` when compiling
-    /// it spends the call's work.
-    pub(crate) fn new(pattern: String, cell: CellReferenceIndex) -> Result<Self, CalcResult> {
-        let mut cache = PatternCache::new();
-        cache.with(&pattern, false, "", cell, |_| Ok(()))?;
-        Ok(LookupPattern { pattern, cache })
+impl LookupRegexes {
+    pub(crate) fn new() -> Self {
+        LookupRegexes {
+            cache: PatternCache::new(),
+        }
     }
 
-    /// Whether the pattern matches anywhere in `text`; `#ERROR!` once the search's work is
-    /// spent.
+    /// `pattern`, compiled for a case-sensitive search: `#VALUE!` when it is invalid,
+    /// `#ERROR!` once the call's work is spent.
+    pub(crate) fn pattern(
+        &mut self,
+        pattern: String,
+        cell: CellReferenceIndex,
+    ) -> Result<LookupPattern<'_>, CalcResult> {
+        // The text-independent compile: a pattern holding `$` or `\Z` also compiles a variant for
+        // each kind of final line feed when a text needs it, but the variants parse alike, so
+        // one that compiles here compiles there too.
+        self.cache.with(&pattern, false, "", cell, |_| Ok(()))?;
+        Ok(LookupPattern {
+            regexes: self,
+            pattern,
+        })
+    }
+
+    /// The call's result: `#ERROR!` when its work ran out in any element.
+    pub(crate) fn finish(&self, result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
+        self.cache.finish(result, cell)
+    }
+
+    #[cfg(test)]
+    fn spend(&mut self, left: u64) {
+        self.cache.work = left;
+    }
+}
+
+/// One element's compiled pattern, searching on its call's [`LookupRegexes`].
+pub(crate) struct LookupPattern<'a> {
+    regexes: &'a mut LookupRegexes,
+    pattern: String,
+}
+
+impl LookupPattern<'_> {
+    /// Whether the pattern matches anywhere in `text`; `#ERROR!` once the call's work is spent.
     pub(crate) fn is_match(
         &mut self,
         text: &str,
         cell: CellReferenceIndex,
     ) -> Result<bool, CalcResult> {
-        self.cache.with(&self.pattern, false, text, cell, |search| {
-            search.is_match(text)
-        })
+        self.regexes
+            .cache
+            .with(&self.pattern, false, text, cell, |search| {
+                search.is_match(text)
+            })
     }
 }
 
@@ -606,6 +641,37 @@ mod tests {
                 ..
             })
         )
+    }
+
+    // T-2680: a lookup's patterns share their call's budget; once it is spent the search and
+    // the call are `#ERROR!` (DEVIATION, decision 0014), and an invalid pattern is `#VALUE!`.
+    #[test]
+    fn lookup_regexes_share_the_call_budget() {
+        let mut regexes = super::LookupRegexes::new();
+        assert!(matches!(
+            regexes.pattern("(".into(), CELL),
+            Err(CalcResult::Error {
+                error: Error::VALUE,
+                ..
+            })
+        ));
+        let matched = regexes
+            .pattern("a".into(), CELL)
+            .and_then(|mut p| p.is_match("cat", CELL));
+        assert!(matches!(matched, Ok(true)));
+        regexes.spend(1_000);
+        let text = "y".repeat(1 << 16);
+        let spent = regexes
+            .pattern("x".into(), CELL)
+            .and_then(|mut p| p.is_match(&text, CELL));
+        assert!(is_error(&spent));
+        assert!(matches!(
+            regexes.finish(CalcResult::Number(1.0), CELL),
+            CalcResult::Error {
+                error: Error::ERROR,
+                ..
+            }
+        ));
     }
 
     // T-1272 performance review: a simple pattern is charged what its lazy DFA scans, so a

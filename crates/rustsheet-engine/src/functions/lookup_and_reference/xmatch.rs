@@ -9,7 +9,7 @@ use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
     binary_search::binary_search,
     criteria::wildcard_text_matcher,
-    text::LookupPattern,
+    text::{LookupPattern, LookupRegexes},
     util::{compare_values, near_integer::near_integer_whole},
 };
 
@@ -119,21 +119,22 @@ pub(crate) fn linear_scan<'a>(
 
 /// The regex mode's (`match_mode` 3) pattern when `regex_mode`, else `None`: `lookup_value`
 /// read as text, as a number, boolean or blank reads (`12.5` is the pattern "12.5", TRUE
-/// "TRUE"), compiled once per search on the REGEX* engine ([`LookupPattern`], PCRE2 syntax). An
-/// invalid pattern is `#VALUE!`; an error lookup value (handled before) or any other non-scalar
-/// has none. Shared by XMATCH and XLOOKUP (probes/t2669-xlookup-regex-mode D17, E17, D18, D19).
-pub(crate) fn regex_pattern(
+/// "TRUE"), compiled on the call's REGEX* engine ([`LookupRegexes`], PCRE2 syntax). An invalid
+/// pattern is `#VALUE!`; an error lookup value (handled before) or any other non-scalar has none.
+/// Shared by XMATCH and XLOOKUP (probes/t2669-xlookup-regex-mode D17, E17, D18, D19).
+pub(crate) fn regex_pattern<'a>(
     lookup_value: &CalcResult,
     regex_mode: bool,
+    regexes: &'a mut LookupRegexes,
     cell: CellReferenceIndex,
-) -> Result<Option<LookupPattern>, CalcResult> {
+) -> Result<Option<LookupPattern<'a>>, CalcResult> {
     if !regex_mode {
         return Ok(None);
     }
     let Some(pattern) = calc_scalar_to_string(lookup_value) else {
         return Ok(None);
     };
-    LookupPattern::new(pattern, cell).map(Some)
+    regexes.pattern(pattern, cell).map(Some)
 }
 
 /// The first (in `indices` order) candidate of `get` whose text `regex` finds anywhere in it,
@@ -142,7 +143,7 @@ pub(crate) fn regex_pattern(
 /// "XMATCH and XLOOKUP regex mode" (probes/t2669-xlookup-regex-mode, -blanks; T-2669). The
 /// search's work is bounded as a REGEX* call's: `#ERROR!` once it is spent (SPEC-0013).
 pub(crate) fn regex_scan<'a>(
-    regex: Option<&mut LookupPattern>,
+    regex: Option<&mut LookupPattern<'_>>,
     indices: impl IntoIterator<Item = usize>,
     get: impl Fn(usize) -> &'a CalcResult,
     cell: CellReferenceIndex,
@@ -169,7 +170,7 @@ fn linear_search(
     array: &SearchVector,
     search_mode: &SearchMode,
     match_mode: MatchMode,
-    regex: Option<&mut LookupPattern>,
+    regex: Option<&mut LookupPattern<'_>>,
     cell: CellReferenceIndex,
 ) -> Result<Option<usize>, CalcResult> {
     let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
@@ -231,7 +232,8 @@ impl Model {
 
         let array = self.xmatch_vector(&args[1], cell);
         let scan = array.as_ref().map_or(1, SearchVector::scan_cells);
-        self.lift_values(
+        let mut regexes = LookupRegexes::new();
+        let result = self.lift_values(
             vec![lookup_value, match_mode, search_mode],
             LiftCost::Cells(scan),
             &LiftOptions::REUSE_EQUAL_RUNS,
@@ -240,9 +242,17 @@ impl Model {
                 let [lookup_value, match_mode, search_mode] = values else {
                     return CalcResult::new_args_number_error(cell);
                 };
-                model.xmatch_of(lookup_value, match_mode, search_mode, &array, cell)
+                model.xmatch_of(
+                    lookup_value,
+                    match_mode,
+                    search_mode,
+                    &array,
+                    &mut regexes,
+                    cell,
+                )
             },
-        )
+        );
+        regexes.finish(result, cell)
     }
 
     /// XMATCH of one element. The errors come in argument order: `lookup_value`, `match_mode`,
@@ -253,6 +263,7 @@ impl Model {
         match_mode: &CalcResult,
         search_mode: &CalcResult,
         array: &Result<SearchVector, CalcResult>,
+        regexes: &mut LookupRegexes,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         if lookup_value.is_error() {
@@ -300,11 +311,15 @@ impl Model {
 
         match search_mode {
             SearchMode::FirstToLast | SearchMode::LastToFirst => {
-                let mut regex =
-                    match regex_pattern(lookup_value, match_mode == MatchMode::Regex, cell) {
-                        Ok(regex) => regex,
-                        Err(error) => return error,
-                    };
+                let mut regex = match regex_pattern(
+                    lookup_value,
+                    match_mode == MatchMode::Regex,
+                    regexes,
+                    cell,
+                ) {
+                    Ok(regex) => regex,
+                    Err(error) => return error,
+                };
                 match linear_search(
                     lookup_value,
                     array,

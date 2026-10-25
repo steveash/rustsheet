@@ -22,4 +22,4 @@ mod text_kernel;
 mod textsplit;
 pub(super) mod util;
 
-pub(crate) use regex_functions::LookupPattern;
+pub(crate) use regex_functions::{LookupPattern, LookupRegexes};

@@ -316,7 +316,9 @@ Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED as noted above
 Tasks: T-1272, T-1824 (probe the guesses), T-1361 (delimiter ranges)
 
 ## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
-Rule: Excel computes these calls whatever their size.
+Rule: Excel computes these calls whatever their size. The REGEX* limits below also bound an XMATCH or XLOOKUP call in
+regex mode (`match_mode` 3, T-2680): one call, all its lifted elements included, has one REGEX* budget
+(`LookupRegexes`; lookup.md "XMATCH and XLOOKUP regex mode").
 Ours: a call is `#ERROR!` (as the *IF(S) lift) when its work passes `limits::MAX_LIFTED_CELL_VISITS` (2^27): over
 every operand, each element's length plus 1, times how often the broadcast repeats it; the text's length is further
 multiplied, per position, by the delimiter count plus the delimiter bytes compared there (each delimiter at most the
@@ -385,9 +387,9 @@ Backtracker limits (T-1900, functions/text/pcre/backtrack.rs and program.rs):
   (`REGEXTEST("a"&CHAR(10)&REPT("a",32764)&CHAR(10),"(?:b[a-z]{20000}|a)*b$")`). Each chunk it reaches is charged one unit
   a word, and each state it enters a step.
 Status: DEVIATION (decision 0014)
-Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache` and `LookupRegexes` (regex_functions.rs)
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355
+Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355, T-2680
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
