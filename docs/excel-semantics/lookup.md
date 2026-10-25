@@ -723,7 +723,7 @@ Probed (excel-graph, 2026-10-12, T-1407), row and column index alike:
   (probes/index-area-num-snap J1:J11, excel-graph, T-1424).
 Evidence: probes/index-tiny-negative, probes/index-snap-tolerance and probes/index-area-num-snap.
 Implemented in: `index_number` and `index_numbers` (area_num) (functions/lookup_and_reference/index.rs) with `near_integer_count` and
-`NEAR_INTEGER_TOLERANCE` (functions/near_integer.rs). The negative cut is half the positive bound to within 1E-14
+`NEAR_INTEGER_TOLERANCE` (functions/util/near_integer.rs). The negative cut is half the positive bound to within 1E-14
 (-1.1926749E-7 vs -1.1926751E-7); the engine takes it as exactly half, inclusive.
 Status: VERIFIED (web)
 Tasks: T-1407, T-1424
@@ -1075,6 +1075,6 @@ Evidence: probes/t2656-xmatch-mode-near-integer, -rounding, -snap, -snap-boundar
 probes/t2496-fin-subexpressions P!A1, P!A2; gen-m9/01523d247594952e Calc!A51.
 Status: VERIFIED (excel-graph), within the brackets above. Ours matches every cell except XLOOKUP's regex mode (4 cells,
 T-2660).
-Implemented in: functions/near_integer.rs `near_integer_whole` (shared with DATE and TIME), read by `Model::xmatch_of`
+Implemented in: functions/util/near_integer.rs `near_integer_whole` (shared with DATE and TIME), read by `Model::xmatch_of`
 (lookup_and_reference/xmatch.rs) and `xlookup_modes` (xlookup.rs).
 Tasks: T-2656, T-2660

@@ -1,3 +1,5 @@
+pub(crate) mod near_integer;
+
 use crate::external_reference::PickedReference;
 use crate::{
     area_budget::SLOTS_PER_WALK_STEP,

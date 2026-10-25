@@ -11,7 +11,7 @@ use super::{
     lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::SearchVector,
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
-    near_integer::near_integer_whole,
+    util::near_integer::near_integer_whole,
     util::{array_element_value, array_node_to_calc_result},
 };
 

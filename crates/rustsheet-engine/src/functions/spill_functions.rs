@@ -1,5 +1,5 @@
-use crate::functions::near_integer::near_integer_count;
 use crate::functions::util::array_node_to_calc_result;
+use crate::functions::util::near_integer::near_integer_count;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
