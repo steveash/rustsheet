@@ -3,7 +3,7 @@ id: T-2498
 title: "Probe TEXTBEFORE and TEXTAFTER match_end 1.5, 2, -1 and TRUE"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
