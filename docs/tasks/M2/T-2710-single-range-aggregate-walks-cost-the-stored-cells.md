@@ -58,6 +58,12 @@ Things to settle while doing it:
   cell, so a budget would make a filled `SUM(A:Z)` `#VALUE!` where Excel computes it. Only take a budget
   if it never fires on a sheet Excel can hold (record the reasoning in references.md either way).
 
+Since filed: T-1690 (PR #1813) walks a `ClipBlocks` single range over its stored cells when its
+clipped block holds at least 65,536 positions and more than `DENSE_WALK_FACTOR` per stored cell of its
+columns (`Model::walks_sparsely`, `WalkBudget::Free`, one read-empty rectangle), so `SUM(A:XFD)` beside
+one far cell is bounded. Still open here: `ClipWholeLines`, COUNTBLANK's count without a visit per
+blank, the work-counter test, and the probe timing.
+
 ## Acceptance criteria
 - [ ] Every single-range mode of `walk_area` visits stored cells only (or an equivalent bounded walk):
       the work of one walk is O(stored cells in the range + rows or chunks searched), whatever the used
