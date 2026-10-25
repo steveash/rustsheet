@@ -1580,7 +1580,7 @@ for a missing argument or an empty slot), not its value. A LET name bound to an 
 ISOMITTED(z)))(1)`), an empty LET value (`LET(z,,ISOMITTED(z))`) and an omitted parameter handed to another LAMBDA
 (`LAMBDA(x,[y],LAMBDA(z,ISOMITTED(z))(y))(1)`) stay TRUE, while a LET name bound to the empty value
 (`LET(z,IFERROR(Z1,1),ISOMITTED(z))`) is now FALSE like the LAMBDA form, and so is an empty REDUCE or SCAN initial value
-(`REDUCE(,{1,2},LAMBDA(a,v,ISOMITTED(a)))`; all unprobed, T-2667).
+(`REDUCE(,{1,2},LAMBDA(a,v,ISOMITTED(a)))`; all unprobed, T-2670).
 Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307, T-2413, T-2461, T-2649
 
