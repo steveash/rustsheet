@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: [T-2547]
+defer: phase-1b
 ---
 
 ## Goal
@@ -50,3 +51,6 @@ recurrence, n = x; visibly off in the 15th digit). Tried without a match: the st
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

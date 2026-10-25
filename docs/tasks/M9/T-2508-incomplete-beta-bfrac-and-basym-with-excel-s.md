@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-campaign: visible
+campaign: accuracy
 depends_on: [T-2505, T-2507]
 ---
 
@@ -41,3 +41,6 @@ density times x·y (T-2507).
 Decision 0083: this task is done when every bfrac or basym cell it owns is within half a unit of the 15th significant
 digit of Excel's value, or the cells still off are named in the Outcome and handed to T-2512. r2-impact counts 128
 visibly off pre-T2464; the model leaves 44. Bit-level criteria move to a follow-up task without the campaign key.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

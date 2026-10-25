@@ -1,7 +1,7 @@
 ---
 id: T-2425
 title: "FORECAST.ETS family: implement from desktop Excel values; owns the 877 gen-m9 cells excel-graph leaves #N/A"
-milestone: M9
+milestone: M14
 lane: functions-stat
 status: blocked
 priority: P3
@@ -218,3 +218,6 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Milestone (decision 0114)
+Moved from M9 to M14: the values need desktop Excel (excel-graph leaves them `#N/A`), so under decision 0039 rule 3 this filed task does not block the Phase 1 exit. Its argument-error cells stay with T-2424 (`campaign: semantics`).
