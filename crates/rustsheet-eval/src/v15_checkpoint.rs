@@ -220,7 +220,12 @@ pub fn summarize(
                 attribution,
                 rate_cells,
                 rate_visible,
-                meets_rate: covered && meets_rate(rate_cells - rate_visible, rate_cells, RATE_NUM),
+                meets_rate: covered
+                    && meets_rate(
+                        rate_cells.saturating_sub(rate_visible),
+                        rate_cells,
+                        RATE_NUM,
+                    ),
                 strict: StrictRate {
                     meets_rate: covered && meets_rate(n.saturating_sub(visible), n, RATE_NUM),
                 },
