@@ -62,6 +62,8 @@ pub fn git_commit(root: &Path) -> Option<String> {
         .arg("-C")
         .arg(root)
         .args(["rev-parse", "--short=8", "HEAD"])
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
         .output()
         .ok()?;
     let sha = String::from_utf8(out.stdout).ok()?;

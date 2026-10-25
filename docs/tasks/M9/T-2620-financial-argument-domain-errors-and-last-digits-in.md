@@ -3,10 +3,10 @@ id: T-2620
 title: "Financial argument-domain errors and last digits in the T-2475 probe: PV, NPER, PRICEDISC, DB, ACCRINT, ACCRINTM, YIELDDISC, YIELD, PMT, PPMT"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: semantics
 ---
@@ -32,8 +32,28 @@ Owned gen-m9 cells (12; known failures in eval/baseline/gen-m9.txt, and the prob
 - gen-m9/f82473275380882e.case.json Calc!A131: probe P!A567 `ACCRINTM(32899,36547,D48!C9,2035,3)`: Excel "#3", ours "#6"
 
 ## Acceptance criteria
-- [ ] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] The owned gen-m9 cells (all but the YIELD and PMT cells, split to T-2747 and T-2748) leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Handoff (resumed)
+Not started in code. Escalated by a sonnet run on reading the task: ten functions (PV, NPER, PRICEDISC, DB, ACCRINT, ACCRINTM, YIELDDISC, YIELD, PMT, PPMT) each need their own argument-domain check order, and PMT/PPMT need last-digit numeric fitting (PMT -278.44797687866065 vs ours -278.4479768786607; PPMT 0.0 vs 4.768374219565885e-5, a cancellation case). Next: take the cells one function at a time (the probe's innermost sub-expressions in the list above), find the existing implementations with `rg`, and split the numeric ones (PMT, PPMT) from the error-order ones if the PR grows past size M.
+
+## Outcome
+Done (opus, resumed from the sonnet handoff).
+- PV divides by Excel's `^`: a rate of -1 with nper 0 is 0^0, `#NUM!`, and a P of 0 is `#DIV/0!`.
+- NPER is `#DIV/0!` when ln(1+rate) is 0, and `#NUM!` at a rate of -1. This also finishes T-2698: all 7 of its cells pass.
+- DB reads a boolean `month` as a number.
+- The rules are in financial.md "Annuity and DB argument domains at their limits".
+
+Of the 12 owned cells, 6 were already fixed on main by other tasks. This PR fixes 4: 11eb3ab4f4f8104c A109, 1b31092a0d79e5f1 A260, 31f09e6c48ca245c A232 and 38e4fc309fe199ea A89. Two are split out:
+- YIELD (44a8841352dc48e9 A318, P!A214) to T-2747: the cut needs a probe.
+- PMT (bcb1105c61a2649d A97, P!A462) to T-2748: last-digit fitting at rate 1E-15.
+
+Eval delta:
+- gen-m9 known failures 4236 -> 4216 (fixed 20).
+- probes 2660 -> 2648 (fixed 12).
+- 0 regressions and 0 new known failures.
+

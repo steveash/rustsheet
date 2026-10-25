@@ -644,7 +644,7 @@ fn run() -> Result<ExitCode> {
             for s in Suite::load_all(&root.join("eval/suites"))? {
                 let n = s.cases().map_or(0, |c| c.len());
                 let cases = match s.fetch_state() {
-                    FetchState::NotFetched => "not fetched".to_string(),
+                    FetchState::NotFetched => rustsheet_eval::run_meta::NOT_FETCHED.to_string(),
                     _ => format!("{n} cases"),
                 };
                 println!(
