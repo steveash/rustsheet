@@ -77,7 +77,7 @@ Analysis:
 ## Outcome
 probes/yield-start-one-input (192 cells, excel-graph, canary-verified) is committed and in the fit lab's `YIELD_CASES`;
 its 191 failing cells (ours is at PRICE's root, Excel short of it; 1 cell passes) are new-coverage lines in
-eval/baseline/probes.txt, no other baseline line changed (visible-parity.json counts the new case's 173 visibly-off cells).
+eval/baseline/probes.txt, no other baseline line changed (the visible-parity lock rises 4519 -> 4640: the case adds 173 visibly-off cells and the old lock's 52 of slack are absorbed).
 Findings (financial.md "YIELD stops short of PRICE's root", T-2740 paragraph): S is two Newton steps back on both
 twins (rows 22-96, to 1.3e-8); it equals the coupon rate at price 100 and is linear in the coupon rate (0.0046704412 +
 1.01128042·R, to 6e-9); its price and term shapes are tabulated but unfitted (time-box). Rows 1-5 and 67 are at the root
