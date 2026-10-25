@@ -1,0 +1,14 @@
+# hold-out: 1584 value rows (0 echo mismatches), 50 edge cells
+# visibly-off M-final cells: 17809
+  side2/r<=.375/large        5634 cells, 109 shapes
+  side1/r<=.375/large        3178 cells, 78 shapes
+  side1/r>.375/large         3063 cells, 437 shapes
+  side2/r>.375/large         2991 cells, 436 shapes
+  side1/r<=.375/small         791 cells, 57 shapes
+  side2/r<=.375/small         621 cells, 52 shapes
+  side2/r>.375/small          539 cells, 35 shapes
+  side1/r>.375/small          380 cells, 27 shapes
+  side2/r<=.375/mid           174 cells, 32 shapes
+  side1/r<=.375/mid           164 cells, 27 shapes
+  side2/r>.375/mid            142 cells, 20 shapes
+  side1/r>.375/mid            132 cells, 18 shapes

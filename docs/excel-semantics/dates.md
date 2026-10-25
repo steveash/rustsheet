@@ -1153,6 +1153,18 @@ Ours: `fn_date` reads each argument through the same near-integer floor as TIME 
 Status: VERIFIED
 Tasks: T-2268
 
+## WORKDAY and NETWORKDAYS holidays: text holidays skip the day, they are not just accepted (T-2369)
+See also the older number-text sections below (T-2270, T-2272).
+Rule (excel-graph, probes/t2369-workday-text-holidays, 2026-10-25): a text holiday is coerced like a number-valued
+argument and then counts as a holiday wherever it lands, in a cell, a literal, a formula result or an array. With start
+45000 (Wed), +5 workdays and holiday 45001 (Thu): `WORKDAY(45000,5,A1)` is 45008 (one day skipped) and
+`NETWORKDAYS(45000,45007,A1)` is 5 (not 6) for A1 `"45001"`, and identically for a literal `"45001"`, `TEXT(45001,"0")`,
+`{"45001"}`, `"45001.5"`, `" 45001"` (padded), date text `"3/16/2023"`, currency text `"$45001"`, and a TEXT() date.
+Percent and time text are no error but no holiday in the range (their coerced serials, 0.5 and 100000, are inferred, not observed): `"50%"` and `"12:00"` (0.5)
+leave WORKDAY at 45007 and NETWORKDAYS at 6, as does `"1E5"` (100000, on the calendar but past the walk). The `.INTL`
+forms (weekend 1) agree with WORKDAY/NETWORKDAYS in every case, and `{"45001";"45002"}` gives NETWORKDAYS 4.
+Ours already matched all 68 cells (`collect_serial_numbers` counts what `cast_number` reads); no code change.
+
 ## WORKDAY and NETWORKDAYS holidays: blank and number-text cells, and the error order (T-2270, T-2272)
 Rule (excel-graph, gen-m6, 2026-10-21):
 - A one-cell `holidays` reference to a blank cell is no holiday, not `#VALUE!`: `NETWORKDAYS(17247,33116,Data!E9)` = 11336,

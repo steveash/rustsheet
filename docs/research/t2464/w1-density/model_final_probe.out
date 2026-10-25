@@ -1,0 +1,12 @@
+== probe1 by sheet: n=16000  M1 10301/16000 w4 14827 w15 15502  exact-rounded 4537/16000 w4 13100 w15 14688
+  probe1C0 a=0.5 b=7.0         M1 1060/1600 w4 1599 w15 1600 | even 520/800 odd 540/800 | exact-rounded 101
+  probe1C1 a=0.5 b=1.0         M1 1591/1600 w4 1600 w15 1600 | even 794/800 odd 797/800 | exact-rounded 1163
+  probe1C2 a=1.0 b=7.0         M1 1261/1600 w4 1600 w15 1600 | even 616/800 odd 645/800 | exact-rounded 332
+  probe1C3 a=0.25 b=3.3        M1 1105/1600 w4 1600 w15 1600 | even 546/800 odd 559/800 | exact-rounded 389
+  probe1C4 a=2.5 b=3.5         M1  133/1600 w4 1448 w15 1545 | even 68/800 odd 65/800 | exact-rounded 133
+  probe1C5 a=12.0 b=20.0       M1  111/1600 w4  674 w15 1192 | even 54/800 odd 57/800 | exact-rounded 111
+  probe1C6 a=0.5 b=20.0        M1 1015/1600 w4 1554 w15 1584 | even 506/800 odd 509/800 | exact-rounded 215
+  probe1C7 a=3.0 b=0.5         M1 1286/1600 w4 1600 w15 1600 | even 638/800 odd 648/800 | exact-rounded 749
+  probe1C8 a=1.5 b=1.0         M1 1593/1600 w4 1600 w15 1600 | even 796/800 odd 797/800 | exact-rounded 1247
+  probe1C9 a=1.0 b=20.0        M1 1146/1600 w4 1552 w15 1581 | even 556/800 odd 590/800 | exact-rounded 97
+== probe1 by sheet and x zone: n=16000  M1 10301/16000 w4 14827 w15 15502  exact-rounded 4537/16000 w4 13100 w15 14688

@@ -1,0 +1,51 @@
+---
+id: T-2510
+title: "Incomplete beta bgrat family for BETA.DIST, F, BINOM and NEGBINOM (T-2464 E7)"
+milestone: M9
+lane: functions-stat
+status: todo
+priority: P2
+size: M
+tier: opus
+campaign: visible
+depends_on: [T-2505, T-2506, T-2509]
+---
+
+## Goal
+bratio's bgrat branches are ported for BETA.DIST, F, BINOM and NEGBINOM: bup+bgrat, bgrat, L140 bup+bgrat and
+bup+bup+bgrat. At b = 1/2 they use T-2509's extended bgrat. At other b they use TOMS bgrat with Excel's pieces (Excel's
+LN, EXP, log1p and GAMMALN, and brcmp1 = density·x·y), where that is a net visible gain.
+
+## Context
+- T-2464 research, step E7 of docs/research/t2464/r2-impact/RESULTS.md section 4.
+  - r2-impact's E7 said "T keeps `student_t.rs`". With r2-tdist the T tails take their own rule instead, so T is
+    T-2509's, and this task reuses T-2509's b = 1/2 bgrat for the other callers (365 of 387 non-T b = 1/2 cells, against
+    277).
+- At b ≠ 1/2 Excel's bgrat is not solved:
+  - plain TOMS bgrat with Excel's pieces scores 989/1,761/2,156 of 2,451 bgrat cells, against CR 899/2,072/2,230;
+  - L140 bup+bgrat scores 212/2,208/2,402 of 3,303, against CR 618/2,814/3,025 (verify-r2-bratio/analyze.out).
+  - So move a branch only where it wins on visible cells, function by function, and leave the rest on today's kernel.
+  - The open question is T-2512's: the b = 1/2 identity with Q(b, z) from Excel's incomplete gamma.
+- The (30.7, 1.7, 0.81) runs sit about -6 ulp off with sd 2.9 once literals are truncated (verify-r2-bratio/misparse.out),
+  not at sd 47 as r2-bratio reported.
+- r2-impact's expected change for this group without T (step S6):
+  - -137 visibly-off pre-T2464 cells and -2,319 in the w2f probes, with 17 broke;
+  - 1 gated bit-exact cell lost: gen-m9 FDIST c18dbf21 A151, bup+bgrat, 7 ulp.
+- Models: r2-bratio `bratio_excel.py` (`bgrat` and its incomplete-gamma helper, `Cfg(bgrat="orig")`), r2-tdist `xlk.py`.
+
+## Acceptance criteria
+- [ ] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
+      net negative. A branch that is not stays on today's kernel, with the measurement in the Outcome.
+- [ ] Non-T bgrat cells at b = 1/2 score at least 365 bit-exact of 387.
+- [ ] The gated FDIST c18dbf21 A151 is kept or recorded under decision 0083.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- T (T-2509).
+- Solving bgrat for b ≠ 1/2 (T-2512).
+
+## Visible-parity stage
+Decision 0083: this task is done when every bgrat-family cell it owns is within half a unit of the 15th significant
+digit of Excel's value, or the cells still off are named in the Outcome and handed to T-2512. r2-impact counts 381
+visibly off pre-T2464 across the four branches, T included; T's share is T-2509's. Bit-level criteria move to a
+follow-up task without the campaign key.

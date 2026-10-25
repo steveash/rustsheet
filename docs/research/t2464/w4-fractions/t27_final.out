@@ -1,0 +1,7 @@
+('xruns-1:0', 2.5, 3.5) n 1023 | model exact 615 (even 298 odd 317) w4 1023 w15 1023 | oracle pieces exact 898 w4 1023 | CR exact 260 w4 1021 w15 1023
+('xruns-1:1', 2.5, 3.5) n 1024 | model exact 519 (even 253 odd 266) w4 1024 w15 1024 | oracle pieces exact 925 w4 1024 | CR exact 293 w4 1024 w15 1024
+('xruns-1:2', 7.3, 11.6) n 1023 | model exact 300 (even 158 odd 142) w4 1021 w15 1023 | oracle pieces exact 0 w4 0 | CR exact 85 w4 605 w15 1023
+('xruns-1:5', 4.0, 4.0) n 1024 | model exact 580 (even 286 odd 294) w4 1024 w15 1024 | oracle pieces exact 843 w4 1024 | CR exact 96 w4 779 w15 979
+('xruns-2:3', 2.5, 3.5) n 1024 | model exact 725 (even 356 odd 369) w4 1024 w15 1024 | oracle pieces exact 905 w4 1024 | CR exact 360 w4 1024 w15 1024
+('xruns-2:5', 2.5, 3.5) n 513 | model exact 324 (even 166 odd 158) w4 513 w15 513 | oracle pieces exact 0 w4 0 | CR exact 218 w4 513 w15 513
+{'m0': 5631, 'm1': 3063, 'm2': 5629, 'm3': 5631, 'o0': 5631, 'o1': 3571, 'o2': 4095, 'o3': 5118, 'c0': 5631, 'c1': 1312, 'c2': 4966, 'c3': 5586}

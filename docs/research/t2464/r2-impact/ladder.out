@@ -1,0 +1,55 @@
+
+== pre-T2464: n 13655, engine visibly off 1998
+  step                                     vis_left  d_vis  fixed  broke  exact lost_ex lost_gated
+  S1 closed forms (P1)                         1915    -83     83      0   4473       0          0
+  S2 density M1 + log1p (P2)                   1767   -148    232      1   4905      69          0
+  S3 bratio dispatch + bpser (P3+P4)           1135   -632    885     22   6162     362          2
+  S4 L140 bup+bpser (P5)                        912   -223   1120     34   6600     446          5
+  S5 bfrac/basym (P7)                           829    -83   1204     35   6653     451          5
+  S6 bgrat family, not T (U1 as TOMS)           692   -137   1358     52   6772     486          6
+  S7 density Loader min>1 (P6)                  544   -148   1531     77   6837     514          6
+  (S6' bgrat family for T too)                  604     60   1624    230   6692     899          6
+
+== pre hold-out: n 6812, engine visibly off 979
+  step                                     vis_left  d_vis  fixed  broke  exact lost_ex lost_gated
+  S1 closed forms (P1)                          940    -39     39      0   2234       0          0
+  S2 density M1 + log1p (P2)                    859    -81    120      0   2456      35          0
+  S3 bratio dispatch + bpser (P3+P4)            556   -303    437     14   3114     169          2
+  S4 L140 bup+bpser (P5)                        447   -109    549     17   3338     203          4
+  S5 bfrac/basym (P7)                           407    -40    589     17   3365     206          4
+  S6 bgrat family, not T (U1 as TOMS)           325    -82    677     23   3435     223          4
+  S7 density Loader min>1 (P6)                  257    -68    758     36   3478     233          4
+  (S6' bgrat family for T too)                  294     37    796    111   3390     445          4
+
+== pre non-BETA: n 10602, engine visibly off 986
+  step                                     vis_left  d_vis  fixed  broke  exact lost_ex lost_gated
+  S1 closed forms (P1)                          963    -23     23      0   3994       0          0
+  S2 density M1 + log1p (P2)                    963      0     23      0   3994       0          0
+  S3 bratio dispatch + bpser (P3+P4)            609   -354    397     20   5048     289          2
+  S4 L140 bup+bpser (P5)                        475   -134    543     32   5414     373          5
+  S5 bfrac/basym (P7)                           434    -41    585     33   5442     378          5
+  S6 bgrat family, not T (U1 as TOMS)           376    -58    660     50   5514     412          6
+  S7 density Loader min>1 (P6)                  376      0    660     50   5514     412          6
+  (S6' bgrat family for T too)                  436     60    753    203   5369     797          6
+
+== pre gated: n 161, engine visibly off 23
+  step                                     vis_left  d_vis  fixed  broke  exact lost_ex lost_gated
+  S1 closed forms (P1)                           21     -2      2      0     68       0          0
+  S2 density M1 + log1p (P2)                     21      0      2      0     68       0          0
+  S3 bratio dispatch + bpser (P3+P4)             11    -10     13      1     90       2          2
+  S4 L140 bup+bpser (P5)                          9     -2     16      2    102       5          5
+  S5 bfrac/basym (P7)                             9      0     16      2    102       5          5
+  S6 bgrat family, not T (U1 as TOMS)             6     -3     19      2    106       6          6
+  S7 density Loader min>1 (P6)                    6      0     19      2    106       6          6
+  (S6' bgrat family for T too)                    6      0     19      2    106       6          6
+
+== w2f probes: n 41554, engine visibly off 23657
+  step                                     vis_left  d_vis  fixed  broke  exact lost_ex lost_gated
+  S1 closed forms (P1)                        23643    -14     14      0   2044       0          0
+  S2 density M1 + log1p (P2)                  23233   -410    424      0   5923     138          0
+  S3 bratio dispatch + bpser (P3+P4)          17952  -5281   5705      0  10664     143          0
+  S4 L140 bup+bpser (P5)                       9008  -8944  14649      0  17156     149          0
+  S5 bfrac/basym (P7)                          8570   -438  15087      0  17188     149          0
+  S6 bgrat family, not T (U1 as TOMS)          6251  -2319  17406      0  17384     167          0
+  S7 density Loader min>1 (P6)                 1244  -5007  22444     31  18584    1329          0
+  (S6' bgrat family for T too)                 1244      0  22444     31  18584    1329          0

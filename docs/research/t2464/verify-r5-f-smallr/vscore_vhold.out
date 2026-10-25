@@ -1,0 +1,15 @@
+CR | all    14/136/355 of 960
+CR | r<=0.375    14/136/355 of 960
+dd | all    55/150/509 of 960
+dd | r<=0.375    55/150/509 of 960
+msd | all    26/289/635 of 960
+msd | r<=0.375    26/289/635 of 960
+xs | all    6/261/615 of 960
+xs | r<=0.375    6/261/615 of 960
+xs1 | all    16/323/664 of 960
+xs1 | r<=0.375    16/323/664 of 960
+CR | t2586-verify-r5-f-smallr-hold | r<=0.375    14/136/355 of 960
+dd | t2586-verify-r5-f-smallr-hold | r<=0.375    55/150/509 of 960
+msd | t2586-verify-r5-f-smallr-hold | r<=0.375    26/289/635 of 960
+xs | t2586-verify-r5-f-smallr-hold | r<=0.375    6/261/615 of 960
+xs1 | t2586-verify-r5-f-smallr-hold | r<=0.375    16/323/664 of 960

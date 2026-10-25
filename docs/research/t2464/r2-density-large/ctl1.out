@@ -1,0 +1,13 @@
+control 1, truth = best knobs, C0+3.3u:
+xruns-1:0  (2.5,3.5) [ar=x,lnmode=xl,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +3.305u  even 504/504  hold 519/519
+xruns-1:0  (2.5,3.5) [ar=m,lnmode=m,cut=0.1,comb=x] comb=x C-C0= +3.156u  even 288/504  hold 289/519
+control 1, truth = best knobs, C0+3.3u:
+xruns-2:3  (2.5,3.5) [ar=x,lnmode=xl,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +3.258u  even 502/502  hold 522/522
+xruns-2:3  (2.5,3.5) [ar=m,lnmode=m,cut=0.1,comb=x] comb=x C-C0= +3.250u  even 502/502  hold 522/522
+control 2 (y-tie response):
+   xruns-1:0 (2.5,3.5) synthetic loader: coef -0.65  (loader pred -0.65, logform pred +2.50)
+   xruns-1:0 (2.5,3.5) synthetic logform: coef +2.49  (loader pred -0.65, logform pred +2.50)
+   xruns-1:2 (7.3,11.6) synthetic loader: coef -1.72  (loader pred -1.68, logform pred +10.60)
+   xruns-1:2 (7.3,11.6) synthetic logform: coef +10.60  (loader pred -1.68, logform pred +10.60)
+   xruns-2:3 (2.5,3.5) synthetic loader: coef -0.37  (loader pred -0.36, logform pred +2.50)
+   xruns-2:3 (2.5,3.5) synthetic logform: coef +2.50  (loader pred -0.36, logform pred +2.50)

@@ -22,6 +22,11 @@ written as `<v>0</v>`, as Excel does, so a file RustSheet saves reads back like 
 - Code: crates/rustsheet-xlsx/src/export/worksheets.rs (cell value writing). Search for an existing subnormal helper
   (`arithmetic::flush_subnormal` in the engine) before adding one.
 - Only the cached `<v>` changes; the in-memory value and recalculation are untouched.
+- Evidence gap (2026-10-25 steward spot-audit of #1374, fidelity and architecture reviewers): the
+  only evidence is Excel for the web's save of positive kept subnormals (`EXP(-745)`, `EXP(-720)`, `=A1`
+  in `probes/subnormal-saved-as-zero`). Before implementing, probe a negative one with a FALSE companion
+  (`=-EXP(-745)` beside `=(-EXP(-745))=0`) and a stored constant subnormal; desktop Excel's save is
+  unprobed (record that, decision 0039).
 
 ## Acceptance criteria
 - [ ] An export test: a workbook with `=EXP(-745)` saves `<v>0</v>` for that cell, and `=EXP(-708)` saves its value
