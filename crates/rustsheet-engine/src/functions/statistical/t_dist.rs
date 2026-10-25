@@ -247,6 +247,14 @@ fn t_test_p(
 /// Excel: see docs/excel-semantics/statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043
 pub(crate) const T_DF_MAX: f64 = 1e10;
 
+/// Whether the cumulative Student-t functions refuse `x`: Excel's T.DIST (cumulative), T.DIST.RT,
+/// T.DIST.2T and TDIST of 1E+300 and 1E+307 are `#NUM!`, not 0, while `T.DIST.2T(1E+15,1)` is a number
+/// (gen-m9 T-2256 cells; statistics.md "Scalar distributions at extreme arguments, part 2"). The cut,
+/// where `x²` overflows (|x| about 1.34E+154), is UNVERIFIED (T-2474).
+fn t_x_overflows(x: f64) -> bool {
+    (x * x).is_infinite()
+}
+
 /// Above this df `statrs`' `inverse_cdf` is both inaccurate and unbounded in time (seconds at 1E7,
 /// no finish at 1E8), and its cdf is only good to ~1E-6 relative, so the quantile comes from the
 /// normal quantile and the A&S 26.7.5 series instead.
@@ -353,7 +361,7 @@ impl Model {
         if !cumulative && df == 0.0 {
             return Err(div_error(cell));
         }
-        if df < 1.0 || (cumulative && df > T_DF_MAX) {
+        if df < 1.0 || (cumulative && (df > T_DF_MAX || t_x_overflows(x))) {
             return Err(num_error(cell));
         }
         let result = if cumulative {
@@ -395,7 +403,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let df = self.cast_number_ref(df, cell)?.trunc();
-        if x < 0.0 || !(1.0..=T_DF_MAX).contains(&df) {
+        if x < 0.0 || !(1.0..=T_DF_MAX).contains(&df) || t_x_overflows(x) {
             return Err(num_error(cell));
         }
         let result = 2.0 * student_t_tails(x, df).1;
@@ -428,7 +436,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let df = self.cast_number_ref(df, cell)?.trunc();
-        if !(1.0..=T_DF_MAX).contains(&df) {
+        if !(1.0..=T_DF_MAX).contains(&df) || t_x_overflows(x) {
             return Err(num_error(cell));
         }
         let result = student_t_tails(x, df).1;
