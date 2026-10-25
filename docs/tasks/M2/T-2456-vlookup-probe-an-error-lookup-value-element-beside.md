@@ -3,7 +3,7 @@ id: T-2456
 title: "VLOOKUP: probe an error lookup_value element beside a failed index, and each element of the T-2411 two-element claims"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
