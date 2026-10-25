@@ -713,7 +713,7 @@ and the CHISQ.DIST density (`CHISQ.DIST(1430,2,FALSE)`, row 35). So the closed f
 k = 0, f = 0, p^s) and so do the BETA.DIST (2, 1) cdf, x^2, and the WEIBULL.DIST cdf, while the EXPON.DIST cdf of the
 same 1E-310 is 0. `GAMMA.DIST(1E-10,1,1E+307*10,FALSE)` is #NUM! (row 25; T-2738). The engine is wrong at rows 5-7, 9,
 12-13, 15, 19-20, 25, 29 and 35 (T-2737, T-2738). The scale is `1E+307*10` because a typed `1E+308` is refused (Graph
-400) and a stored one makes Excel refuse the workbook (createSession 501 FileCorruptTryRepair), as for the tiny
+400) and a stored one makes Excel refuse the workbook (createSession 501 FileCorruptTryRepair; both excel-graph 2026-10-25, scratch fills), as for the tiny
 literals below.
 Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
 2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
