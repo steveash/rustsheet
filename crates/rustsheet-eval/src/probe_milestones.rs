@@ -598,6 +598,7 @@ mod tests {
                 .filter(|c| c.verdict == Verdict::Deviation)
                 .count(),
             skipped_volatile: 0,
+            skipped_add_in: 0,
             millis: 0,
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             cells,

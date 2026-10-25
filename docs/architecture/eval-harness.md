@@ -135,6 +135,13 @@ does not flow through it to its dependents. Rules:
 - `rustsheet-oracle fill` recalculates a case with `invariant` cells a second time without the
   cache and leaves pending (prints `VARIES ...`) every listed cell whose two values differ.
 
+A formula that calls an add-in function (`_xll.` prefix, outside string literals;
+`formula_calls::calls_add_in`) is not scored either, and is counted as `skipped_add_in` (T-0462).
+Decision 0027 puts add-ins out of scope, and Excel's cached value came from the add-in (calipers
+pv26_003's S&P Capital IQ `_xll.ciqfunctions.udf.CIQHI` cells). Unlike volatile taint, only the
+calling cell is left out: its dependents are scored, so a miss they show stays visible. report.md's
+out-of-scope section lists each suite's count.
+
 | Verdict | Meaning |
 |---|---|
 | `pass` | bit-identical (−0 == +0), same text/bool/error |
@@ -161,7 +168,8 @@ Only `pass` counts as passing. Case statuses:
   ranked by failing cells; failing examples per function; Excel evidence per function; out-of-scope
   functions. This is the hill-climbing to-do list. Function counts follow the catalog's `scope`
   (decision 0027), read from the generated `eval/catalog/scope.json` (decision 0040): `scope: out`
-  functions leave the function tables and get their own section with their reason; the evidence
+  functions leave the function tables and get their own section with their reason (and the per-suite
+  count of unscored add-in cells, see Scoring); the evidence
   section lists in-scope catalog functions with no Excel evidence, the `oracle: none` ones that
   need another evidence source, and, by catalog category, the ones below the evidence floor
   (fewer than 20 Excel cells; T-0056, decision 0062). Suite cell counts and baselines still cover every checked cell.

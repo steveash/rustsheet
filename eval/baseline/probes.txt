@@ -314,6 +314,7 @@ C	probes/elapsed-huge-f-1900.case.json	9
 C	probes/elapsed-huge-g-1900.case.json	25
 C	probes/elapsed-huge-h-1900.case.json	21
 C	probes/elapsed-huge-i-1900.case.json	12
+C	probes/elapsed-no-seconds-boundary.case.json	32
 C	probes/elapsed-positive-large-1900.case.json	17
 C	probes/elapsed-positive-large-1904.case.json	17
 C	probes/elapsed-tiny-negatives-1900.case.json	11
@@ -797,6 +798,8 @@ C	probes/pivotby-total-columns-one-group.case.json	172
 C	probes/pmt-overflow.case.json	40
 C	probes/poisson-negative-mean.case.json	8
 C	probes/power-chain-text.case.json	16
+C	probes/power-huge-exponent.case.json	300
+C	probes/power-op-huge-exponent.case.json	300
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
@@ -1635,6 +1638,8 @@ F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
+F	probes/elapsed-no-seconds-boundary.case.json	S!A31
+F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-im-overflow-edges.case.json	S!A17
 F	probes/eng-im-overflow-edges.case.json	S!A58
 F	probes/eng-im-overflow-edges.case.json	S!A9
