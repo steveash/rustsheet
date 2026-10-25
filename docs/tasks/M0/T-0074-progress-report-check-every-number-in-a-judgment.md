@@ -3,7 +3,7 @@ id: T-0074
 title: "Progress report --check: every number in a judgment block appears in the generated part of docs/progress.md"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
