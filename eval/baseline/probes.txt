@@ -215,6 +215,7 @@ C	probes/criteria-lone-surrogates.case.json	48
 C	probes/criteria-operands.case.json	25
 C	probes/criteria-padded-operand.case.json	18
 C	probes/criteria-padded-text.case.json	14
+C	probes/criteria-sparse-cross-sheet.case.json	9
 C	probes/criteria-tilde-blank-single-cell-edges.case.json	88
 C	probes/criteria-wildcard-newline.case.json	17
 C	probes/criteria-wildcard-tilde.case.json	16
@@ -1174,6 +1175,7 @@ C	probes/t2579-array-value-edges.case.json	52
 C	probes/t2581-textsplit-textbefore.case.json	50
 C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
+C	probes/t2601-index-scalar-forms-t-n.case.json	56
 C	probes/t2625-nested-consumers.case.json	32
 C	probes/t2652-floor-ceiling-ties.case.json	98
 C	probes/t2653-ifs-text-condition-array-value.case.json	30
@@ -1195,6 +1197,7 @@ C	probes/t2682-typed-max-arg-counts.case.json	17
 C	probes/t2693-subnormal-expon-dist.case.json	2
 C	probes/t2693-subnormal-loginv.case.json	2
 C	probes/t2693-subnormal-weibull.case.json	2
+C	probes/t2705-scientific-mantissa-rounding.case.json	14
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
@@ -3164,6 +3167,9 @@ F	probes/t2578-pivotby-total-error-scope.case.json	P!D62
 F	probes/t2578-pivotby-total-error-scope.case.json	P!D64
 F	probes/t2578-pivotby-total-error-scope.case.json	P!D65
 F	probes/t2579-array-value-edges.case.json	P!B49
+F	probes/t2601-index-scalar-forms-t-n.case.json	S!B14
+F	probes/t2601-index-scalar-forms-t-n.case.json	S!B15
+F	probes/t2601-index-scalar-forms-t-n.case.json	S!B28
 F	probes/t2625-nested-consumers.case.json	P!A13
 F	probes/t2625-nested-consumers.case.json	P!A18
 F	probes/t2625-nested-consumers.case.json	P!A19
@@ -3174,6 +3180,7 @@ F	probes/t2625-nested-consumers.case.json	P!A28
 F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
+F	probes/t2705-scientific-mantissa-rounding.case.json	Sheet1!A13
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9

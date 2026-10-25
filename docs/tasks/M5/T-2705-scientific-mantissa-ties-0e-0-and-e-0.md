@@ -3,7 +3,7 @@ id: T-2705
 title: "Scientific mantissa ties: 0E+0 and #E+0 on 2.5 are 3E+0, 0.00E+00 on 12.345 is 1.23E+01 (gen-m10, 11 cells)"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -45,14 +45,14 @@ Code: crates/rustsheet-engine/src/formatter/format.rs, the `p.is_scientific` bra
 `get_fract_part`. Reuse `decimal_round` (T-2206) rather than adding another rounding helper.
 
 ## Acceptance criteria
-- [ ] The 10 TF lines and the F line listed under Context leave eval/baseline/gen-m10.txt
+- [x] The 10 TF lines and the F line listed under Context leave eval/baseline/gen-m10.txt
       (`make eval-baseline`), with no new known-failure or TF line in any suite. In particular, every
       other scientific cell of gen-m10, probes/displayed-text-formats, poi/NumberFormatApproxTests and the
       engineering cells of T-2226 still pass.
-- [ ] A unit test in the formatter covers the four values above (2.5, -2.5 under `0E+0` or `#E+0`, and
+- [x] A unit test in the formatter covers the four values above (2.5, -2.5 under `0E+0` or `#E+0`, and
       12.345 under `0.00E+00`).
-- [ ] number-formats.md's gap-triage 2026-10-25 bullet says "Implemented (T-2705)" and states the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] number-formats.md's gap-triage 2026-10-25 bullet says "Implemented (T-2705)" and states the rule.
+- [x] `make check` green; reviewers approve.
 
 If the rule above breaks a passing scientific cell, stop and hand the task up (work-loop step 5b): the
 rule then needs a probe, which is not this task's work.
@@ -63,3 +63,14 @@ rule then needs a probe, which is not this task's work.
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format. The
 acceptance criteria above are the visible-parity stage.
+
+## Outcome
+Done. The Context's reading (round the double itself) was wrong. A probe settled it (probes/t2705-scientific-mantissa-
+rounding, excel-graph 2026-10-25): the mantissa rounds the 15-digit decimal half away from zero, once, at its shown digits.
+`0.00E+00` on 1.005 is "1.01E+00". 12.345 is not below a tie (it is 12.34500000000000063…); ours was wrong only because it
+rounded twice. `decimal_round::round_significant` (`significant_15` and then `round_off`) gives a one-integer-placeholder
+mantissa in `formatter/format.rs`; engineering codes keep `round_engineering`.
+`make eval-baseline`: gen-m10 fixed 13, namely the 10 TF lines, the T!A7 F line, bfbcd16cee266336 F!W12 and
+fbdab487cb11409e F!Q20. No regressions, and poi is unchanged at 119. One probe cell fails, A13 (a `%` after the exponent
+scales in ours but not in Excel); it is filed as T-2720. The unit tests in formatter/test/test_scientific.rs cover 2.5,
+-2.5, 12.345, 1.005, 2.5-2^-51, 0.285 and 100.5.
