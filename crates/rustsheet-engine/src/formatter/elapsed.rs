@@ -1,6 +1,5 @@
 //! Elapsed `[h]`/`[m]`/`[s]` token text and fractional seconds (`s.000`, `[s].000`).
 
-use super::parser::TextToken;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 
 /// The unit of an elapsed `[h]`/`[m]`/`[s]` token.
@@ -78,24 +77,16 @@ pub(super) struct DisplayClock {
     pub(super) hms: (f64, f64, f64),
     /// Whole days after rounding, so a time just short of midnight rolls into the next date.
     pub(super) days: i64,
-    /// What the elapsed tokens count from, if rounded: only when seconds or a fraction are shown
-    /// (`[h]` or `[m]` alone keep their own truncation, probes/elapsed-fractions-1900).
+    /// What the elapsed tokens count from, rounded like the clock whether or not seconds are
+    /// shown: `[h]` on 0.4 s short of 3 h is "3", on 0.6 s short "2" (probes/elapsed-no-seconds-boundary,
+    /// T-2385). `None` past 9999-12-31.
     pub(super) elapsed: Option<FractionalSeconds>,
 }
 
 impl DisplayClock {
     /// `value` is a non-negative serial. Past 9999-12-31 only a lone elapsed token formats and
     /// nothing is rounded here.
-    pub(super) fn new(value: f64, fraction_digits: Option<usize>, tokens: &[TextToken]) -> Self {
-        let shows_seconds = tokens.iter().any(|t| {
-            matches!(
-                t,
-                TextToken::Second
-                    | TextToken::SecondPadded
-                    | TextToken::ElapsedSecond
-                    | TextToken::ElapsedSecondPadded
-            )
-        });
+    pub(super) fn new(value: f64, fraction_digits: Option<usize>) -> Self {
         let digits = match fraction_digits {
             Some(digits) => Some(digits),
             None if value < f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0 => Some(0),
@@ -113,10 +104,11 @@ impl DisplayClock {
                 elapsed: None,
             };
         };
-        let hms = rounded.clock();
-        let days = rounded.days();
-        let elapsed = (fraction_digits.is_some() || shows_seconds).then_some(rounded);
-        Self { hms, days, elapsed }
+        Self {
+            hms: rounded.clock(),
+            days: rounded.days(),
+            elapsed: Some(rounded),
+        }
     }
 }
 
@@ -139,7 +131,8 @@ fn snap(x: f64, scale: f64) -> f64 {
 /// 1e-12 (1.5/86400 days is "2" although it is 1.4999999999999998 s, yet 0.49999999999 s stays
 /// "0"), `[h]`/`[m]` snap them to the millisecond ((3-1E-7) h is "3"). Those snaps are fitted to
 /// the probes, not documented. Excel has no 32-bit limit (T-1362) and no i64 one (T-1375).
-/// With a fraction token in the section the count comes from `fraction` instead.
+/// Up to 9999-12-31 the count comes from `fraction` instead, the serial rounded to the shown
+/// second (T-1732, T-2385), so the snaps only serve a lone token past it.
 pub(super) fn elapsed_text(
     value: f64,
     padded: bool,
