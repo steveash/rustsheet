@@ -361,8 +361,10 @@ pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
     let smaller = x.abs().min(y.abs());
     // 2^floor(log2(smaller)) for a normal double (its exponent bits alone); 0 for a subnormal.
     let scale = f64::from_bits(smaller.to_bits() & 0x7FF0_0000_0000_0000);
-    // 8 ULP of `smaller` is scale * 2^-49.
-    if total.abs() < scale * 2f64.powi(-49) {
+    // 8 ULP of `smaller` is scale * 2^-49. Excel flushes that bound when it is subnormal, so
+    // addends below 2^-973 never snap, even to a subnormal total: `=1.5*2^-973-x` snaps for
+    // x = 1.5*2^-973*(1+2^-52) but not at 2^-974 (probes/t2714-snap-tiny-addends).
+    if total.abs() < flush_subnormal(scale * 2f64.powi(-49)) {
         0.0
     } else {
         total
