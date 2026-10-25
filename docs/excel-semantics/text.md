@@ -400,6 +400,9 @@ Ours: a lifted call is `#ERROR!` ("Too many cells to visit") before its first el
 counts as 32 bytes, an error or a blank as none. `FIND(REPT("a",32766)&"b",REPT("a",32763)&SEQUENCE(1000))`, about
 10^9 compared bytes per element, is `#ERROR!`; `SUM(FIND("a",A1:A100000))` over short texts runs, and a call that does
 not lift is not charged (`FIND(REPT("a",32766)&"b",REPT("a",32767))` is `#VALUE!`, after one scan).
+Even a one-character search is charged each start position, as TEXTBEFORE reads each position: a lift whose
+`within_text`s add up past about 2^27 bytes is `#ERROR!` (`SUM(--ISNUMBER(SEARCH("x",A1:A5000)))` over 32,767-character
+cells), where 100,000 texts of 1,000 bytes run.
 Status: DEVIATION (decision 0014)
 Implemented in: `ValueWork::TextScan` and `text_scan_units` (functions/lift/kinds/mod.rs), the FIND and SEARCH entries
 (functions/lift/kinds/text.rs)
