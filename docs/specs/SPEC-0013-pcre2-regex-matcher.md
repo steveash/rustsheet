@@ -187,6 +187,10 @@ same rule; T-1972 confirms it for Excel. They stay regular, and the choice is ma
 - on a text that ends in `\n` and has another `\n`, the search runs on the backtracker in its memoized mode
   (section 3), so it stays linear.
 
+A text that holds a CR is a fourth kind (T-2364): Excel's newlines are CR, LF and CRLF
+(docs/excel-semantics/text.md "REGEX* newlines are CR, LF and CRLF"), so `$`, `\Z` and `(?m)$` there run on the
+memoized mode; `.` and `(?m)^` take regex-syntax's CRLF forms on every text.
+
 Cells rarely end in a line feed, so `^\d{5}$` over a column stays on the lazy DFA. T-1973 implements the final-`\n`
 rule for the first two cases (today's `$` is `\z` on every text, A34's known failure). The third case needs T-1900's
 memoized mode: until it lands, T-1973 keeps `\z` there, and a unit test pins that gap for T-1900 to flip. `.` does

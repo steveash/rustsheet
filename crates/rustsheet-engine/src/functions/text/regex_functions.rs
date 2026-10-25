@@ -48,9 +48,9 @@ struct Compiled {
 /// [`HELD_LIMIT`], and every search is charged against [`SEARCH_BUDGET`].
 struct PatternCache {
     /// The case-sensitive patterns, then the case-insensitive ones; each once for
-    /// [`FinalLf::EndLf`] texts, then for [`FinalLf::End`] and [`FinalLf::InnerLf`] ones (compiled
-    /// only for a text that needs it).
-    entries: [HashMap<String, Compiled>; 6],
+    /// [`FinalLf::EndLf`] texts, then for [`FinalLf::End`], [`FinalLf::InnerLf`] and
+    /// [`FinalLf::Cr`] ones (compiled only for a text that needs it).
+    entries: [HashMap<String, Compiled>; 8],
     held: usize,
     budget: usize,
     work: u64,
@@ -93,6 +93,7 @@ impl PatternCache {
             FinalLf::EndLf => 0,
             FinalLf::End => 1,
             FinalLf::InnerLf => 2,
+            FinalLf::Cr => 3,
         };
         let index = usize::from(case_insensitive) + 2 * kind;
         if !self.entries[index].contains_key(pattern) {
