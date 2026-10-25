@@ -35,6 +35,7 @@ use rustsheet_eval::milestone_exit;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
+use rustsheet_eval::run_meta::RunMeta;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
 use rustsheet_eval::text_expect;
@@ -683,6 +684,7 @@ fn run() -> Result<ExitCode> {
             check_deviations(&root, &suites)?;
             let catalog = Catalog::load(&root)?;
             let milestones = load_milestones(&root, &catalog)?;
+            let started = std::time::SystemTime::now();
             let results = execute(&suites, &sel);
             let mut report = RunReport::build(
                 RustSheetEngine.name(),
@@ -691,6 +693,8 @@ fn run() -> Result<ExitCode> {
                 &catalog,
             );
             score_milestones(&milestones, &catalog, &suites, &results, &mut report);
+            let all = Suite::load_all(&root.join("eval/suites"))?;
+            report.run = RunMeta::new(&root, started, &all, &suites);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(
