@@ -3,7 +3,7 @@ id: T-0461
 title: "Calipers pv23_022: every formula of the Company1153 3-Statement sheet computes 0 (308 cells)"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
