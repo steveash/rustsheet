@@ -2,7 +2,7 @@ use statrs::distribution::{Beta, Continuous, ContinuousCDF};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
-use crate::functions::statistical::incomplete_beta::beta_density;
+use crate::functions::statistical::incomplete_beta::{beta_density, closed_form_tails};
 use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
 use crate::functions::statistical::special::bisect_unit_interval;
 use crate::functions::Function;
@@ -58,8 +58,9 @@ fn beta_cumulative(value: &CalcResult, cell: CellReferenceIndex) -> Result<bool,
 impl Model {
     /// `BETA.DIST(x, alpha, beta, cumulative, [A], [B])`: every argument lifts over an array and
     /// a range (SPEC-0011; probes/stat-argument-modes H84-H89, probes/stat-later-argument-lift
-    /// H1-H5, K3-K6). The cdf is statrs' incomplete beta, a continued fraction of at most 140
-    /// steps; the density is `incomplete_beta::beta_density` where it applies.
+    /// H1-H5, K3-K6). The cdf is Excel's closed form at a shape of 1
+    /// (`incomplete_beta::closed_form_tails`), else statrs' incomplete beta, a continued fraction of
+    /// at most 140 steps; the density is `incomplete_beta::beta_density` where it applies.
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaDist, args, cell, &mut |model, values| {
             let [x, alpha, beta, cumulative, bounds @ ..] = values else {
@@ -113,7 +114,10 @@ impl Model {
         // TODO(T-2119): the cdf moves to `incomplete_beta::beta_reg` (bit-exact on more of
         // BETADIST_BETAINV.xlsx), once the chained BETA.INV cells it moves are decided.
         let result = if cumulative {
-            dist.cdf(t)
+            // Excel's closed forms (a shape of 1) on bratio's oriented arguments, with y = fl(1 - t)
+            // (T-2502); the rest stays on statrs until bratio's other branches land (T-2505).
+            closed_form_tails(t, 1.0 - t, alpha, beta_param)
+                .map_or_else(|| dist.cdf(t), |(lower, _)| lower)
         } else {
             // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A)
             beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width

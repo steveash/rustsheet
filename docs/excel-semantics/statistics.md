@@ -3096,3 +3096,26 @@ Unprobed: a fractional x in (0, 1), and a huge negative mean (EXP overflow).
 Ours: `#NUM!` (known failure, T-2628).
 Status: VERIFIED (excel-graph)
 Tasks: T-2628
+
+## Engine status of the oriented incomplete-beta closed forms (T-2502)
+Rule: the rule is the T-2464 entry "Incomplete beta closed forms act on the oriented arguments" (on the T-2464 research
+branch until it merges; this note sits apart from it so that the two merge cleanly). In short: after bratio's swap
+at x > 0.5, b0 = 1 gives w = EXP(a0·LN(x0)), a0 = 1 with y0 <= 0.9 gives w1 = EXP(b0·LN(fl(1 - x0))), and the other
+tail is (0.5 - w) + 0.5. F passes x = 1/(1 + d2/(d1·X)) and y = 1/(1 + (d1·X)/d2).
+Evidence: the 1,286 closed-form cells of docs/research/t2464/w5-triangulation `closed_final.py`, all bit-exact through
+the worksheet functions with the engine (T-2502).
+Ours: `incomplete_beta.rs` `closed_form_tails`, with Excel's EXP and LN (`x87_exp.rs`, `x87_log10.rs`), for F.DIST,
+F.DIST.RT and FDIST (`fisher.rs` `f_tail`, on the w5 x and y above), BETA.DIST's cdf (the rest of that cdf stays
+statrs, T-2505), T.DIST* at df 2 (`student_t.rs` `closed_form_tail`), BINOM.DIST at k = n - 1 (k = 0 is BINOM's own
+shortcut, T-2633) and NEGBINOM.DIST at r = 1 or f = 0. Partial (T-2502), each to keep bit-exact cells bit-exact with
+today's Cephes kernel, until bratio's branches land (T-2505) and the inverses solve the ported cdf (T-2464 E8):
+- F cells outside the closed forms keep x = d1X/(d1X + d2), y = d2/(d1X + d2): the w5 forms there moved about 100
+  bit-exact cells by 1 ulp (`F.DIST(1.5,5,5,TRUE)`, probes/stat-argument-modes H215; `F.DIST(0.1,2,100,TRUE)`,
+  probes-numeric/t2220-f-dist-sweep-cdf A191).
+- F.INV, F.INV.RT, FINV, BETA.INV's crossing search and F.TEST keep the pre-T-2502 closed forms (unoriented, std ln
+  and exp): with the oriented ones `F.INV(0.05,2,5)` (m9-f-inv A10) and `F.TEST` gen-m9/68d8ffb69ff739d8 A143 move
+  1 to 2 ulp off Excel.
+- a0 = 1 with y0 > 0.9 keeps the engine's earlier tail (-expm1(b ln1p(-x)) below x = 0.1, exp(a ln x) for a swapped
+  b = 1).
+Status: VERIFIED (excel-graph)
+Tasks: T-2502, T-2464, T-2505, T-2221

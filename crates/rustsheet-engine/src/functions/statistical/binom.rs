@@ -8,6 +8,7 @@
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
 
 use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ratio, Scaled};
+use super::incomplete_beta::closed_form_tails;
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
@@ -57,6 +58,15 @@ impl Model {
                 k == certain
             };
             return Ok(if hit { 1.0 } else { 0.0 });
+        }
+        // Excel's cdf is the upper tail of the incomplete beta I_p(k+1, n-k) at x = p, y = fl(1 - p),
+        // which at k = n - 1 takes Excel's closed form (T-2464 w5-triangulation, T-2502). k = 0 is
+        // BINOM's own shortcut, not the kernel's (T-2633).
+        if cumulative && k >= 1 && k < n {
+            let shapes = (number_s + 1.0, trials - number_s);
+            if let Some((_, upper)) = closed_form_tails(p, 1.0 - p, shapes.0, shapes.1) {
+                return Ok(upper);
+            }
         }
         let walked = if cumulative {
             binomial_cdf(n, odds(p), k)
@@ -237,6 +247,16 @@ impl Model {
             return Err(num_error(cell));
         }
         let f_u = number_f as u64;
+        // Excel's cdf is the incomplete beta I_p(r, f+1) at x = p, y = fl(1 - p), which at r = 1 or
+        // f = 0 takes Excel's closed form (T-2464 w5-triangulation, T-2502).
+        if cumulative {
+            let shapes = (number_s, number_f + 1.0);
+            if let Some((lower, _)) =
+                closed_form_tails(probability_s, 1.0 - probability_s, shapes.0, shapes.1)
+            {
+                return Ok(lower);
+            }
+        }
         // F failures before the r-th success: P(F <= f) is P(at most f failures in f + r trials),
         // a binomial cdf whose "success" is a failure, and P(F = f) = r / (f + r) times that
         // binomial's pmf at f.
