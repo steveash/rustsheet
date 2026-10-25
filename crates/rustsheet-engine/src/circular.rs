@@ -41,7 +41,7 @@ impl Model {
     /// What a circular cell at `at` stores: the value it held before this
     /// recalculation, which a loaded workbook's cached value supplies, as Excel
     /// keeps it with iterative calculation off (fixtures/circular-keeps-cached-values;
-    /// calipers pv23_022, whose loop members include one-cell dynamic arrays such as
+    /// calipers `pv23_022`, whose loop members include one-cell dynamic arrays such as
     /// D88 `=D37`). A formula never evaluated is 0, and so is an anchor that spills,
     /// whose earlier spill no evidence covers.
     pub(crate) fn circular_value(&self, at: CellReferenceIndex) -> CalcResult {
