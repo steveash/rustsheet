@@ -38,7 +38,8 @@ impl Model {
 
     /// `PROB(x_range, prob_range, lower_limit, [upper_limit])`: the probability that a value
     /// of `x_range` lies in [`lower_limit`, `upper_limit`]. The limits lift over an array and a
-    /// multi-cell range, the data is read once (SPEC-0011, T-1813). An element checks its limits,
+    /// multi-cell range, the data is read once (SPEC-0011, T-1813). A data argument that is an
+    /// error value (or a blank one-cell reference) is each element's result first; otherwise an element checks its limits,
     /// then the data: `PROB(D1:D3,F1:F3,"a")` with D2 = `#N/A` is `#VALUE!`, and a lifted element
     /// with good limits is the data's `#N/A` (probes/stat-test-lift P14, P87). Each element walks
     /// the data, so the call is charged its cells per element.
