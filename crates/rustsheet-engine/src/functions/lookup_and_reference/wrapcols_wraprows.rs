@@ -176,14 +176,18 @@ enum VectorError {
 /// The `pad_with` value (3rd arg of WRAPCOLS/WRAPROWS, 4th of EXPAND). An error `pad_with` is
 /// a value like another: it fills the padded cells, and when nothing is padded the array is
 /// returned (probes/wrapcols-wraprows-pad-with, `WRAPROWS({1,2,3,4},4,VALUE("x"))`). A missing
-/// one is `#N/A`; any other non-scalar value (the callers never pass one) is `#VALUE!`.
+/// one is `#N/A`; any other non-scalar value (the callers never pass one) is `#VALUE!`. A blank
+/// cell pads with blank elements, not 0: `ISBLANK` of them is TRUE for all three functions
+/// (probes/t2413-blank-in-stacked-arrays A32, t2461-blank-array-sources A20, A22; T-2461). An
+/// empty argument is the missing one, `#N/A` (`ISNA(INDEX(WRAPCOLS({1,2,3},2,),2,2))` is TRUE,
+/// A34, A35); EXPAND makes it blank itself.
 pub(super) fn pad_with_of(value: Option<&CalcResult>) -> ArrayNode {
     match value {
-        None => ArrayNode::Error(Error::NA),
+        None | Some(CalcResult::EmptyArg) => ArrayNode::Error(Error::NA),
         Some(CalcResult::Number(n)) => ArrayNode::Number(*n),
         Some(CalcResult::Boolean(b)) => ArrayNode::Boolean(*b),
         Some(CalcResult::String(s)) => ArrayNode::String(s.clone()),
-        Some(CalcResult::EmptyCell | CalcResult::EmptyArg) => ArrayNode::Number(0.0),
+        Some(CalcResult::EmptyCell) => ArrayNode::Empty,
         Some(CalcResult::Error { error, .. }) => ArrayNode::Error(error.clone()),
         Some(_) => ArrayNode::Error(Error::VALUE),
     }
