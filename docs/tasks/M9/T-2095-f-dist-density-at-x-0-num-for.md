@@ -47,3 +47,5 @@ F.DIST at 0 and F.DIST.RT at 0 do not change (`F.DIST.RT(0,...)` is 1 per the do
   probes-numeric/t1049-fdist A27 and A28 pass; the case's other failing cells are the last-digit
   ones (T-0970), unchanged, and no other suite cell takes this path. Unit test
   `test_fn_f_dist_density_at_zero`. statistics.md "Density at 0" names T-2095 for F.DIST.
+- Review follow-up: probes-numeric/t2095-fdist-zero (excel-graph, 2026-10-25) confirms the rule for
+  df2 = 1 and 100 and for a truncating df1 (1.5 -> `#NUM!`, 2.9 -> 1); all 6 cells pass.
