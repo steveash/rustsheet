@@ -223,12 +223,18 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
 }
 
 /// Whether `text`, past its leading spaces, has a `-` that is neither its first character nor an
-/// exponent's sign (`1E-3`): Excel's complex reader does not hand such text to VALUE.
+/// exponent's sign (`1E-3`, an `E` after a digit or a `.`): Excel's complex reader does not hand
+/// such text to VALUE.
 fn has_inner_minus(text: &str) -> bool {
-    text.trim_start_matches(' ')
-        .as_bytes()
-        .windows(2)
-        .any(|pair| matches!(pair, [before, b'-'] if !matches!(before, b'E' | b'e')))
+    let bytes = text.trim_start_matches(' ').as_bytes();
+    (1..bytes.len()).any(|i| {
+        let exponent_sign = matches!(bytes.get(i - 1), Some(b'E' | b'e'))
+            && matches!(
+                i.checked_sub(2).and_then(|j| bytes.get(j)),
+                Some(b'0'..=b'9' | b'.')
+            );
+        bytes.get(i) == Some(&b'-') && !exponent_sign
+    })
 }
 
 /// A parsed complex number: the real part, the imaginary part and the suffix.
@@ -942,7 +948,28 @@ fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
 mod tests {
     use crate::functions::engineering::complex::Suffix;
 
+    use super::has_inner_minus;
     use super::parse_complex_number as parse;
+
+    #[test]
+    fn inner_minus_spares_a_leading_sign_and_an_exponent() {
+        // probes/eng-inumber-date-boundary: refused A4, A8, A12, A13, A20, A23; read A3, A5, A6, A21.
+        for text in [
+            "2024-01-01",
+            "1-2-2020",
+            "$-5",
+            "2020-1-2",
+            "$1,000-",
+            "1-1-1",
+            "Dec-2020",
+            "June-2020",
+        ] {
+            assert!(has_inner_minus(text), "{text}");
+        }
+        for text in [" -5", "$5", "1E-3%", "1,000E-2", "- 5", "-5", ".5e-1"] {
+            assert!(!has_inner_minus(text), "{text}");
+        }
+    }
 
     #[test]
     fn coefficient_one_written_unless_exactly_one() {

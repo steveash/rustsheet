@@ -702,7 +702,8 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   dates and clock text are read as VALUE reads them ("1/2/2020" 43832, "2024/01/01" 45292, "1/2/2020 3:00" 43832.125,
   "Jan 1, 2020" 43831, "1/2/20" 43832, "12:00 PM" 0.5), and " -5", "- 5", "(5)", "1E-3%" 1E-05, "1,000E-2" 10
   and "3 1/2" 3.5 are read (probes/eng-inumber-date-boundary, excel-graph, 2026-10-25; "+" inside non-complex text is
-  unprobed, as are "$ -5" and "(-5)", which the inner-minus rule refuses). "3 1/2" is read as VALUE reads it, 3.5, which ours does not yet (T-2646). Not yet matched (T-2641): `IMABS("$1+2i")` is 2.23606797749979 (ours `#NUM!`).
+  unprobed, as are "$ -5", "(-5)" and month-name text like "June-2020", which the inner-minus rule refuses, and so
+  are a tab after leading spaces, which ours reads, and a leading tab on text over 255 characters, which ours makes `#VALUE!`). "3 1/2" is read as VALUE reads it, 3.5, which ours does not yet (T-2646). Not yet matched (T-2641): `IMABS("$1+2i")` is 2.23606797749979 (ours `#NUM!`).
 - **Large parts in plain notation.** `IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i" (21
   characters per part; ours E notation; e707d43a891ba9b5 A330). With `IMCOT("1E-20")` "100000000000000000000" (T-1966's
   probe) the cut is at least 1E+21; where it is is unprobed. T-2542.
