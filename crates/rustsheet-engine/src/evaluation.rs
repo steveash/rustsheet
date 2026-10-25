@@ -253,6 +253,9 @@ pub(crate) struct Evaluation {
     pub(crate) restarts_in_last_evaluation: u32,
     /// Number of `evaluate()` calls so far.
     pub(crate) evaluations: u64,
+    /// Number of cells read through `Model::evaluate_cell` so far: the work counter of the
+    /// tests that bound how many cells a walk visits (T-2711).
+    pub(crate) cell_reads: u64,
     /// Number of formulas running right now, that is the depth of the
     /// recursion. It can be smaller than `stack.len()`: see `unwinding`.
     pub(crate) depth: usize,
@@ -352,6 +355,7 @@ impl Default for Evaluation {
             in_pass: false,
             restarts_in_last_evaluation: 0,
             evaluations: 0,
+            cell_reads: 0,
             depth: 0,
             max_depth: default_max_depth(),
             max_stack: DEFAULT_MAX_STACK,
@@ -533,6 +537,7 @@ impl Model {
     /// not been evaluated in this pass. Reads are performed on behalf of the
     /// cell on top of the stack.
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
+        self.evaluation.cell_reads += 1;
         if self.evaluation.restart.is_some() || self.evaluation.unwinding {
             // The pass is being abandoned, or the recursion is unwinding;
             // nothing computed now is kept. This comes before anything is put
