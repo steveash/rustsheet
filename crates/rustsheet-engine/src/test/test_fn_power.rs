@@ -349,7 +349,9 @@ fn an_overflowing_log_product_is_an_overflow() {
         ("=POWER(0.5,-9.99999999999999E+307)", "#DIV/0!"),
         ("=POWER(0,9.99999999999999E+307)", "0"),
         ("=POWER(0,-9.99999999999999E+307)", "#DIV/0!"),
+        ("=POWER(10,9.99999999999999E+307)", "#NUM!"),
         ("=POWER(10,-9.99999999999999E+307)", "0"),
+        ("=POWER(1,9.99999999999999E+307)", "1"),
     ];
     for (i, (formula, _)) in cases.iter().enumerate() {
         model._set(&format!("A{}", i + 1), formula);
