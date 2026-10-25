@@ -9,8 +9,8 @@ use super::{
     parse::Invalid,
 };
 
-/// Which texts a pattern is compiled for, as `$` and `\Z` (at the end or before a final `\n`)
-/// read on them (SPEC-0013 section 2).
+/// Which texts a pattern is compiled for, as `$` and `\Z` (at the end or before a final LF, CR
+/// or CRLF) and `(?m)$` read on them (SPEC-0013 section 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::functions::text) enum FinalLf {
     /// Texts that hold a `\n` but do not end in one: `$` is `Look::End`, exact there.
@@ -21,11 +21,18 @@ pub(in crate::functions::text) enum FinalLf {
     /// Texts with a `\n` before the last character, where no `Look` is exact: a regular pattern
     /// with `$` or `\Z` runs on the backtracker's memoized mode (T-2355).
     InnerLf,
+    /// Texts holding a CR, where `$`, `\Z` and `(?m)$` match before it (and `(?m)$` between a CR
+    /// and its LF), which no `Look` gives: a regular pattern holding one of them runs on the
+    /// memoized mode (T-2364).
+    Cr,
 }
 
-/// `ast` as a `Hir`, `$` and `\Z` read for `final_lf` texts ([`FinalLf::InnerLf`] reads as
-/// `EndLf`: `translate` sends a pattern holding them to the backtracker there); `Invalid` for a
-/// construct only the backtracker runs. The recursion is bounded by the parser's nest limit.
+/// `ast` as a `Hir`, `$` and `\Z` read for `final_lf` texts ([`FinalLf::InnerLf`] and
+/// [`FinalLf::Cr`] read as `EndLf`: `translate` sends a pattern holding them to the backtracker
+/// there); `Invalid` for a construct only the backtracker runs. `.` and the `(?m)` anchors take
+/// the CRLF forms, exact on every text but for `(?m)$` before the LF of a CRLF, a [`FinalLf::Cr`]
+/// text (Excel's ANYCRLF convention, T-2364). The recursion is bounded by the parser's nest
+/// limit.
 pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
     Ok(match ast {
         Ast::Empty => Hir::empty(),
@@ -40,16 +47,16 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
         Ast::Dot { dot_all } => Hir::dot(if *dot_all {
             Dot::AnyChar
         } else {
-            Dot::AnyCharExceptLF
+            Dot::AnyCharExceptCRLF
         }),
         Ast::Anchor(anchor) => Hir::look(match anchor {
             Anchor::Start => Look::Start,
-            Anchor::StartLine => Look::StartLF,
-            Anchor::EndLine => Look::EndLF,
+            Anchor::StartLine => Look::StartCRLF,
+            Anchor::EndLine => Look::EndCRLF,
             Anchor::End => Look::End,
             Anchor::EndOrFinalLf => match final_lf {
                 FinalLf::End => Look::End,
-                FinalLf::EndLf | FinalLf::InnerLf => Look::EndLF,
+                FinalLf::EndLf | FinalLf::InnerLf | FinalLf::Cr => Look::EndLF,
             },
             Anchor::WordBoundary => Look::WordUnicode,
             Anchor::NotWordBoundary => Look::WordUnicodeNegate,

@@ -16,6 +16,7 @@ mod program;
 #[cfg(test)]
 mod tests;
 
+use ast::Anchor;
 pub(in crate::functions::text) use backtrack::{BacktrackCache, Backtracker};
 pub(in crate::functions::text) use hir::FinalLf;
 pub(in crate::functions::text) use program::Program;
@@ -84,7 +85,8 @@ impl Backtrack {
 
 /// `pattern` for its engine, ignoring case when `caseless` (`(?i)` and `(?-i)` override it), for
 /// texts of kind `final_lf`: a regular pattern with `$` or `\Z` goes to the memoized mode on a
-/// [`FinalLf::InnerLf`] text (the backtracker reads them exactly on every text). Its case folding
+/// [`FinalLf::InnerLf`] text, and one with `$`, `\Z` or `(?m)$` on a [`FinalLf::Cr`] text (the
+/// backtracker reads them exactly on every text). Its case folding
 /// stops past `fold_budget` code points, with a `fold_cost` of `usize::MAX`.
 pub(super) fn translate(
     pattern: &str,
@@ -98,7 +100,13 @@ pub(super) fn translate(
             ast: parsed.ast,
             memoized: false,
         })
-    } else if final_lf == FinalLf::InnerLf && parsed.ast.has_final_lf_anchor() {
+    } else if match final_lf {
+        FinalLf::InnerLf => parsed.ast.has_anchor(&[Anchor::EndOrFinalLf]),
+        FinalLf::Cr => parsed
+            .ast
+            .has_anchor(&[Anchor::EndOrFinalLf, Anchor::EndLine]),
+        FinalLf::End | FinalLf::EndLf => false,
+    } {
         Form::Backtrack(Backtrack {
             ast: parsed.ast,
             memoized: true,
@@ -118,10 +126,13 @@ pub(super) fn translate(
     })
 }
 
-/// Which kind of text `text` is for `$` (SPEC-0013 section 2): `End` when it holds a `\n` but
-/// does not end in one, `InnerLf` when it ends in a `\n` and holds another (where no automata
-/// translation of `$` is exact), `EndLf` otherwise.
+/// Which kind of text `text` is for `$` (SPEC-0013 section 2): `Cr` when it holds a CR, `End`
+/// when it holds a `\n` but does not end in one, `InnerLf` when it ends in a `\n` and holds
+/// another (where no automata translation of `$` is exact), `EndLf` otherwise.
 pub(super) fn final_lf_for(text: &str) -> FinalLf {
+    if text.contains('\r') {
+        return FinalLf::Cr;
+    }
     match text.strip_suffix('\n') {
         Some(body) if body.contains('\n') => FinalLf::InnerLf,
         Some(_) => FinalLf::EndLf,

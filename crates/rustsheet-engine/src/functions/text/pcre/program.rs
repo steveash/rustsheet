@@ -25,7 +25,7 @@ pub(super) enum Inst {
     Char(char),
     /// Matches one character in the class's sorted ranges.
     Class(Box<[ClassUnicodeRange]>),
-    /// `.`: any character, `\n` only when `dot_all`.
+    /// `.`: any character, a CR or an LF only when `dot_all`.
     Any { dot_all: bool },
     /// `\X`: one extended grapheme cluster, whole.
     Grapheme,

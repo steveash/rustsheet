@@ -767,7 +767,8 @@ included (`REGEXEXTRACT("naïve","\w+")` is "naïve"; `\W` does not match `é`; 
 not match in "aé"); `\d` matches the Arabic-Indic three and the full-width digit; `\s` matches NBSP, U+2003, U+3000,
 U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]]` and `[[:word:]]` match `é`;
 `(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
-`a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
+`a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF. A final CR or
+CRLF counts as a final LF does (next entry, T-2364).
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
 Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
 `\X` and `\R` (A27, A42) since T-2287 (next entry).
@@ -789,6 +790,25 @@ then runs on the backtracker's memoized mode. Before, they matched only at the v
 but none at the end stays on the automata, `$` meaning its end (A7, A8).
 Status: VERIFIED (excel-graph)
 Tasks: T-1829 (probe), T-1900, T-1903, T-2355 (probe t2355-regex-dollar-inner-lf), T-1973
+
+## REGEX* newlines are CR, LF and CRLF (PCRE2's ANYCRLF convention)
+Rule: Excel's PCRE2 counts CR, LF and the pair CRLF as newlines, and nothing else (not U+2028, NEL, VT or FF). `$`
+without `(?m)` and `\Z` match at the end and before a final LF, CR or CRLF, so also between the CR and LF of a final
+CRLF: `REGEXTEST("a"&CHAR(13),"a$")`, `REGEXTEST("a"&CHAR(13)&CHAR(10),"a$")` and `"a\r$"` on it are TRUE, and
+`REGEXREPLACE("a"&CHAR(13)&CHAR(10),"$","x")` puts an x before the CR, before the LF and at the end; two CRs or LF CR
+at the end are not one newline (`"a"&CHAR(13)&CHAR(13)` and `"a"&CHAR(10)&CHAR(13)` do not match `a$`); `\z` stays the
+very end. `(?m)$` matches at the end and before every CR and every LF, also between a CR and its LF (`"a"&CHAR(13)&
+CHAR(10)&"b"` with `(?m)$` -> x gives `ax<CR>x<LF>bx`). `(?m)^` matches after an LF and after a CR that no LF follows,
+never between a CR and its LF (`xa<CR><LF>xb`), and not after U+2028. `.` matches neither CR nor LF (`a.b` on
+`"a"&CHAR(13)&"b"` and `a..b` on a CRLF are FALSE) but matches U+2028.
+Evidence: probes/t2364-regex-newline-convention B1-B25 and probes/t2364-regex-dollar-final-cr A1-A5 (excel-graph,
+2026-10-22 and 2026-10-25).
+Ours: matches since T-2364. The backtracker's `holds` and `.` read these rules; the automata use regex-syntax's CRLF
+forms (`Dot::AnyCharExceptCRLF`, `Look::StartCRLF`, `Look::EndCRLF`), and a regular pattern holding `$`, `\Z` or
+`(?m)$` over a text with a CR runs on the backtracker's memoized mode (`FinalLf::Cr`), since no `Look` gives those
+there. Unprobed: `(?m)^` at the very end after a final CR or LF (ours matches there, as before).
+Status: VERIFIED (excel-graph)
+Tasks: T-2364
 
 ## `\R` and `\X` are atomic; `\X` is PCRE2's grapheme cluster (T-2287)
 Rule: `\R` is one line break, CR LF or any one of LF, VT, FF, CR, NEL, U+2028 and U+2029, and it never gives back the

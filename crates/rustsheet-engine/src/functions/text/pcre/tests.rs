@@ -108,6 +108,66 @@ fn dollar_matches_before_a_final_line_feed() {
     assert!(!automata("a$", "a\nb\n"));
 }
 
+#[test]
+fn line_anchors_and_dot_follow_anycrlf() {
+    // probes/t2364-regex-newline-convention (B rows) and t2364-regex-dollar-final-cr: CR, LF and
+    // CRLF are newlines; U+2028, NEL, VT and FF are not.
+    for (pattern, text, expected) in [
+        ("a$", "a\r", true),
+        ("a$", "a\r\n", true),
+        (r"a\r$", "a\r\n", true),
+        ("a$", "a\r\r", false),
+        ("a$", "a\n\r", false),
+        ("a$", "a\u{2028}", false),
+        ("a$", "a\u{85}", false),
+        (r"a\Z", "a\r", true),
+        (r"a\Z", "a\r\n", true),
+        (r"a\z", "a\r", false),
+        ("(?m)a$", "a\rb", true),
+        ("(?m)a$", "xa\r\nb", true),
+        ("(?m)\r$", "a\r\nb", true),
+        ("(?m)^b", "a\rb", true),
+        ("(?m)^b", "a\r\nb", true),
+        ("(?m)^\n", "a\r\nb", false),
+        ("(?m)^b", "a\u{2028}b", false),
+        ("a.b", "a\rb", false),
+        ("a..b", "a\r\nb", false),
+        ("a.b", "a\u{2028}b", true),
+        ("(?s)a.b", "a\rb", true),
+    ] {
+        assert_eq!(
+            matches(pattern, text, false),
+            expected,
+            "{pattern} on {text:?}"
+        );
+        let (Form::Automata { retry, .. } | Form::Backtrack(retry)) =
+            translate(pattern, false, FinalLf::EndLf, usize::MAX)
+                .unwrap()
+                .form;
+        let program = retry.compile(usize::MAX).ok().unwrap();
+        let (mut cache, mut work) = (BacktrackCache::default(), u64::MAX);
+        let found = Backtracker::new(&program, &mut cache, &mut work, usize::MAX)
+            .find_from(text, 0)
+            .unwrap();
+        assert_eq!(
+            found.is_some(),
+            expected,
+            "backtracker: {pattern} on {text:?}"
+        );
+    }
+    // A text with a CR sends `$`, `\Z` and `(?m)$` to the backtracker, nothing else.
+    let automata = |pattern: &str| {
+        matches!(
+            translate(pattern, false, super::final_lf_for("a\r\nb"), usize::MAX)
+                .unwrap()
+                .form,
+            Form::Automata { .. }
+        )
+    };
+    assert!(!automata("a$") && !automata(r"a\Z") && !automata("(?m)a$"));
+    assert!(automata("(?m)^b") && automata("a.b") && automata(r"a\z"));
+}
+
 /// The match of `program` in `text`, its groups' spans, and every match of its iteration with
 /// the groups of each.
 type Outcome = (
@@ -437,7 +497,8 @@ fn folding_stops_at_its_budget() {
 
 #[test]
 fn our_hir_agrees_with_regex_syntax_where_the_dialects_agree() {
-    // Patterns both dialects read alike (no \Q, possessive or POSIX class): the same Hir.
+    // Patterns both dialects read alike (no \Q, possessive or POSIX class): the same Hir. Ours
+    // has Excel's ANYCRLF newlines (`.` matches no CR, T-2364): regex-syntax's CRLF mode.
     let atoms = [
         "a", "b", ".", r"\d", r"\w", "[a-c]", "[^b]", r"\b", "^", "(a)", "(?:ab)", "(?i)a",
     ];
@@ -461,7 +522,11 @@ fn our_hir_agrees_with_regex_syntax_where_the_dialects_agree() {
             }
         }
         let ours = hir(&pattern, false, FinalLf::EndLf);
-        let theirs = regex_syntax::Parser::new().parse(&pattern).expect(&pattern);
+        let theirs = regex_syntax::ParserBuilder::new()
+            .crlf(true)
+            .build()
+            .parse(&pattern)
+            .expect(&pattern);
         assert_eq!(ours, theirs, "{pattern}");
     }
 }
