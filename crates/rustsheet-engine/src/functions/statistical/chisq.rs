@@ -385,7 +385,7 @@ impl Model {
         // A pair with a non-number on either side adds nothing; the degrees of freedom still come
         // from the first range's shape (statistics.md, CHITEST text rule). Pairs of only text and
         // blanks are 1.0 for most shapes (gen-m9/8dd2312c96effb1b A343), but
-        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` is #DIV/0! (0a9226016e8f5f33 A333), unexplained.
+        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` is #DIV/0! (0a9226016e8f5f33 A333), unexplained: TODO(T-2650).
         let values: Vec<(f64, f64)> = values_left
             .iter()
             .zip(&values_right)

@@ -109,4 +109,4 @@ states it.
 Paired functions pair by cell count in reading order (`fn_get_two_matrices`); CHISQ.TEST/CHITEST accept a negative actual
 value. gen-m9 known failures 5344 -> 5342 after the rebase onto the earlier baseline (55 lines removed in total across gen-m9
 and probes); `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (0a9226016e8f5f33 A333, `#DIV/0!`) is still a known failure, filed as a
-follow-up (needs a probe of blank-against-blank pairs).
+follow-up T-2650 (needs a probe of blank-against-blank pairs). INTERCEPT A382 (a61e547a1cab994c) is `#VALUE!` as in Excel now.

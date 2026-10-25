@@ -154,7 +154,7 @@ impl Model {
             return Err(CalcResult::new_error(
                 Error::NA,
                 cell,
-                "Arguments must be of the same shape".to_string(),
+                "Arguments must have the same number of cells".to_string(),
             ));
         }
         let array_error = |_, error| array_element_error(error, cell);
