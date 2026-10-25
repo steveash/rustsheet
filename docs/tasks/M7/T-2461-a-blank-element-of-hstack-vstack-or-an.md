@@ -3,7 +3,7 @@ id: T-2461
 title: "A blank element of HSTACK, VSTACK or an EXPAND pad is the empty value through INDEX, VSTACK of a blank cell and an EXPAND blank pad (t2413 probe cells)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
