@@ -3,7 +3,7 @@ id: T-2571
 title: "Identify Excel's F.TEST remainder: the last visibly-off F.TEST cells after T-2361"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
