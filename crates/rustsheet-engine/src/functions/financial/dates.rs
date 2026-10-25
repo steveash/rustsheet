@@ -64,17 +64,6 @@ impl Model {
             .coupon_schedule_breaks(maturity)
     }
 
-    /// A date argument of a financial function as a kernel reads it (SPEC-0011): the number of
-    /// `value` (a boolean is #VALUE!) as `financial_date` reads it.
-    pub(super) fn financial_date_of(
-        &self,
-        value: &CalcResult,
-        cell: CellReferenceIndex,
-    ) -> Result<i64, CalcResult> {
-        let serial = self.cast_number_no_bools_ref(value, cell)?;
-        Ok(self.financial_date(serial))
-    }
-
     /// The settlement check of PRICE, YIELD and DURATION: #NUM! unless the settlement is a
     /// calendar date before the maturity. Excel is #NUM! for a settlement below serial 1 in a 1900
     /// workbook (0, 0.5, -1: probes/fin-coupon-walk-bounds A10-A13, A20, fin-coupon-walk-bounds-c
@@ -98,10 +87,10 @@ impl Model {
     }
 
     /// A date argument of the TBILL, discount-security, AMORLINC and AMORDEGRC functions as read:
-    /// its number, #NUM! unless it floors to a serial from 0 to 9999-12-31, checked before the next
-    /// argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)` are #NUM!,
-    /// `TBILLEQ(0,39100,1/0)` #DIV/0!; probes/securities-argument-error-order C1:F16; financial.md,
-    /// T-1406).
+    /// its number, #NUM! unless it floors to a serial from 0 to 9999-12-31, checked before the
+    /// next argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)`
+    /// are #NUM!, `TBILLEQ(0,39100,1/0)` #DIV/0!; probes/securities-argument-error-order C1:F16;
+    /// financial.md, T-1406).
     pub(super) fn financial_calendar_date_of(
         &self,
         value: &CalcResult,
@@ -113,6 +102,30 @@ impl Model {
             return Err(num_error(cell));
         }
         Ok(serial)
+    }
+
+    /// A date argument of the COUP* functions as read, as `financial_date` reads it: #NUM!
+    /// unless it floors to a day of this workbook's calendar, checked before the next argument is
+    /// read (`COUPDAYS(2958466,NA(),2)` and `COUPNUM(39000,2958466,2,NA())` are #NUM!,
+    /// `COUPNCD(2958465.5,NA(),2)` #N/A; probes/coup-calendar-edges A1-A8, T-2486). In a 1904
+    /// workbook the bound is its own last day, 9999-12-31, though `financial_date` reads that past
+    /// it (probes/date-system-1904-coupon-bound, where 9999-12-31 maturities compute).
+    pub(super) fn coupon_date_of(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        let serial = self.cast_number_no_bools_ref(value, cell)?;
+        let calendar = 0..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        let day = self
+            .workbook
+            .settings
+            .date_system
+            .to_1900_serial(serial.floor() as i64);
+        if !day.is_some_and(|day| calendar.contains(&day)) {
+            return Err(num_error(cell));
+        }
+        Ok(self.financial_date(serial))
     }
 
     /// A day-count basis argument as read: an error, text or boolean is returned, an omitted basis

@@ -3,7 +3,7 @@ id: T-2486
 title: "COUP* functions: a settlement or maturity past 9999-12-31 is #NUM! as it is read, and the calendar-edge day counts (gen-m9, 20 cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -65,3 +65,15 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed the rules (probes/coup-calendar-edges, 115 cells, excel-graph, 2026-10-24) and implemented two of them:
+- A COUP* settlement or maturity that does not floor to a day of the workbook's calendar is `#NUM!` as it is read
+  (`coupon_date_of` in functions/financial/dates.rs; in a 1904 workbook the bound is the 1904 calendar's last day).
+- Each coupon date is the maturity moved back whole periods, its day clamped, so a 29th/30th maturity no longer drifts
+  to the 28th after a February (`coupon_period` in coupon_schedule.rs; COUPDAYS' basis-1 29 February walk keeps the
+  chained walk, `chained_coupon_period`).
+Eval: 11 gen-m9 known failures fixed (5674 -> 5663; 8 of the 20 owned cells had already been fixed before this task);
+probes: one new case, 15 new-coverage failures (its settlement-0 basis-1 COUPDAYS cells). The one owned cell left,
+gen-m9/b72d952c5f52cb4d Calc!A88 (`COUPDAYS(5E-05,2958465,2,1)` = 184), follows an irregular pattern recorded in
+financial.md "COUPDAYS basis 1 for a period before 1900-01-01" and moves to T-2632.
