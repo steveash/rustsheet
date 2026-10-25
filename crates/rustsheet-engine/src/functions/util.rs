@@ -935,7 +935,11 @@ pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
         // A shift that rounds back to the divisor is 0: `MOD(1,-(2^54))` = 0 but
         // `MOD(1,-(2^53))` = 1-2^53 (probes/mod-huge-opposite-divisor; numbers.md "MOD of a
         // small number by a huge opposite-sign divisor is 0").
-        if shifted == divisor { 0.0 } else { shifted }
+        if shifted == divisor {
+            0.0
+        } else {
+            shifted
+        }
     } else {
         remainder
     }
