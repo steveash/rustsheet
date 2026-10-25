@@ -68,7 +68,12 @@ impl Model {
                 return CalcResult::new_error(Error::VALUE, cell, String::new());
             }
         }
-        if is_single_value(&x_value) && is_single_value(&prob_value) {
+        // A single probability outside [0, 1] is not this case: `PROB(SUM(TRUE cell),-0.0001,..)`
+        // is `#NUM!` (gen-m9/5919660b7bb4d195 A267), while 0.5 alone is `#DIV/0!`.
+        let prob_out_of_range = self
+            .numeric_flat_of(prob_value.clone(), cell)
+            .is_ok_and(|probs| probs.iter().any(|p| !(0.0..=1.0).contains(p)));
+        if is_single_value(&x_value) && is_single_value(&prob_value) && !prob_out_of_range {
             return CalcResult::new_error(Error::DIV, cell, String::new());
         }
         let data = self
