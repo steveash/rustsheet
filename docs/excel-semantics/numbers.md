@@ -2200,7 +2200,7 @@ and over ranges whose only numbers sit in manually hidden rows (Hide!C4, C6, C8,
 function_num 6 control C5 still multiplies the hidden 3 and 5 to 15) or in rows a table filter hides
 (Filter!C2, C3; function_num 6 skips filtered rows too, so Filter!C1 is 0). AGGREGATE's PRODUCT
 (function 6) gives 0 the same way under options 1, 4, 5 and 6 (Hide!C10-C12, Filter!C4): an empty
-product is 0 whenever every number is skipped, never 1.
+product is 0 whenever no number is included, never 1.
 Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
 Status: VERIFIED
 Tasks: T-2269, T-2302
