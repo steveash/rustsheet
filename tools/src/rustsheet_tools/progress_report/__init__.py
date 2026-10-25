@@ -85,44 +85,85 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
     try:
         rows = history.load(history_path)
         previous = page.read_existing(args.out_dir)
-        head = git.head()
         report = read_report(args.report)
-        outcome: Stale | tuple[Run, Parity] = report if isinstance(report, Stale) else _evaluate(report, args)
-        if isinstance(outcome, Stale):
-            run = outcome.run
-            date, commit = (run.date, run.commit or head) if run else (args.today, head)
-            row = history.incomplete_row(date, commit, run.skipped if run else ())
-            rows = history.add(rows, row)
-            # The page keeps the numbers of the latest complete row, which may be today's own.
-            last = history.latest_complete(rows)
-            progress = page.render_stale(previous, page.stale_status(outcome.reason, date, commit, last, run))
-            files: dict[str, str] = {}
-            summary = [f"stale: {outcome.reason}; only the status block was rewritten"]
-        else:
-            run, data = outcome
-            row = history.complete_row(run, data, tasks_of(load_object(args.tasks)), head)
-            rows = history.add(rows, row)
-            last = history.last_complete(rows, row["date"])
-            commits = git.commits_since(last["commit"]) if last and last["commit"] else None
-            sections = {
-                "since-last-run": history.since_block(row, last, commits),
-                "trends": history.trends_block(parity.ASSETS),
-            }
-            progress = page.render(run, data, previous, sections, head)
-            files = {**parity.files(data, run), **history.charts(rows)}
-            summary = [
-                f"{len(data.functions)} functions: "
-                + ", ".join(f"{t.tier} {t.functions}" for t in data.tiers),
-                parity.phase1_lines(data).splitlines()[0],
-            ]
+        outcome = report if isinstance(report, Stale) else _evaluate(report, args)
+        result = (
+            _stale_outcome(outcome, rows, previous, git.head(), args.today)
+            if isinstance(outcome, Stale)
+            else _complete_outcome(*outcome, rows, previous, git=git, tasks=load_object(args.tasks))
+        )
     except ProgressReportError as e:
         sys.exit(f"{PROG}: {e}")
-    written = [*parity.write(files, args.out_dir), page.write(args.out_dir, progress)]
+    written = [*parity.write(result.files, args.out_dir), page.write(args.out_dir, result.page)]
     written.append(history_path)
     history_path.parent.mkdir(parents=True, exist_ok=True)
-    history_path.write_bytes(history.dump(rows).encode("utf-8"))
-    for line in [*(f"wrote {path}" for path in written), *summary]:
+    history_path.write_bytes(history.dump(result.rows).encode("utf-8"))
+    for line in [*(f"wrote {path}" for path in written), *result.summary]:
         print(line)
+
+
+@dataclass(frozen=True)
+class Result:
+    """What a run writes: the page, the files under progress/, the history rows, and the lines it
+    prints."""
+
+    page: str
+    files: dict[str, str]
+    rows: list[history.Row]
+    summary: list[str]
+
+
+def _stale_outcome(
+    stale: Stale, rows: list[history.Row], previous: str | None, head: str | None, today: str
+) -> Result:
+    """An incomplete run: only the status block is rewritten, and a `complete: false` row added."""
+    run = stale.run
+    # Without a run record, the row is dated today and names the generating commit.
+    date, commit = (run.date, run.commit or head) if run else (today, head)
+    summary = [f"stale: {stale.reason}; only the status block was rewritten"]
+    if rows and date < rows[-1]["date"]:
+        # An old report left behind (its run predates the last row): the page is still marked
+        # stale, but the row is not recorded, since older rows are never rewritten.
+        summary.append(
+            f"not recorded in history: the run's date {date} is before the last row, {rows[-1]['date']}"
+        )
+    else:
+        rows = history.add(rows, history.incomplete_row(date, commit, run.skipped if run else ()))
+    # The page keeps the numbers of the latest complete row, which may be today's own.
+    last = history.latest_complete(rows)
+    status = page.stale_status(stale.reason, date, commit, last, run, head=head)
+    return Result(page.render_stale(previous, status), {}, rows, summary)
+
+
+def _complete_outcome(
+    run: Run,
+    data: Parity,
+    rows: list[history.Row],
+    previous: str | None,
+    *,
+    git: history.Git,
+    tasks: dict[str, Any],
+) -> Result:
+    """A complete run: every generated block, the charts and functions.md, and its history row."""
+    # HEAD is read only when the report has no commit (see history.complete_row).
+    row = history.complete_row(run, data, tasks_of(tasks), None if run.commit else git.head())
+    rows = history.add(rows, row)
+    last = history.last_complete(rows, row["date"])
+    commits = (
+        git.commits_between(last["commit"], row["commit"])
+        if last and last["commit"] and row["commit"]
+        else None
+    )
+    sections = {
+        "since-last-run": history.since_block(row, last, commits),
+        "trends": history.trends_block(parity.ASSETS),
+    }
+    summary = [
+        f"{len(data.functions)} functions: " + ", ".join(f"{t.tier} {t.functions}" for t in data.tiers),
+        parity.phase1_lines(data).splitlines()[0],
+    ]
+    files = {**parity.files(data, run), **history.charts(rows)}
+    return Result(page.render(run, data, previous, sections), files, rows, summary)
 
 
 def _evaluate(report: dict[str, Any], args: argparse.Namespace) -> Stale | tuple[Run, Parity]:

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -71,8 +72,8 @@ class Git(Protocol):
     def head(self) -> str | None:
         """`git rev-parse --short=8 HEAD`."""
 
-    def commits_since(self, commit: str) -> int | None:
-        """`git rev-list --count --first-parent <commit>..HEAD`."""
+    def commits_between(self, since: str, until: str) -> int | None:
+        """`git rev-list --count --first-parent <since>..<until>`."""
 
 
 @dataclass(frozen=True)
@@ -95,10 +96,10 @@ class RepoGit:
         sha = self._run("rev-parse", "--short=8", "HEAD")
         return sha if sha and COMMIT_SHA.fullmatch(sha) else None
 
-    def commits_since(self, commit: str) -> int | None:
-        """The first-parent commits from `commit` to HEAD; None for a commit not in this clone."""
-        n = self._run("rev-list", "--count", "--first-parent", f"{commit}..HEAD")
-        return int(n) if n and n.isdigit() else None
+    def commits_between(self, since: str, until: str) -> int | None:
+        """The first-parent commits from `since` to `until`; None for a commit not in this clone."""
+        n = self._run("rev-list", "--count", "--first-parent", f"{since}..{until}")
+        return int(n) if n and re.fullmatch(r"[0-9]+", n) else None
 
 
 def _check_row(row: Any, i: int) -> str:
@@ -210,8 +211,9 @@ def _skipped(skipped: tuple[SkippedSuite, ...]) -> list[dict[str, str]]:
 
 
 def complete_row(run: Run, data: Parity, tasks: Tasks, head: str | None) -> Row:
-    """The history row of a complete run; its commit is the report's, or HEAD when that is
-    unknown."""
+    """The history row of a complete run. Its commit is the report's `run.commit`; only when the
+    eval could not read it (null) does the row fall back to `head`, the commit generating the page,
+    so the next run can still count the commits since this one."""
     cells = data.attributed_cells()
     numeric, other = VISIBLE
     return {
@@ -274,7 +276,8 @@ def signed(delta: int) -> str:
 
 def since_block(row: Row, last: Row | None, commits: int | None) -> str:
     """The `since-last-run` block: this run's measures against the last complete row `last`, and
-    `commits`, the first-parent commits from its commit to HEAD (None when git could not say)."""
+    `commits`, the first-parent commits from its commit to this row's (None when git could not
+    say). Both commits are the runs' own, so the block does not depend on the generating HEAD."""
     head = "## Since the last run"
     if last is None:
         return (
@@ -287,7 +290,7 @@ def since_block(row: Row, last: Row | None, commits: int | None) -> str:
     else:
         landed = (
             f"**{commits:,}** commit{'s' if commits != 1 else ''} landed on `main` since then "
-            f"(`git rev-list --count --first-parent {last['commit']}..HEAD`)."
+            f"(`git rev-list --count --first-parent {last['commit']}..{row['commit']}`)."
         )
     rows = [
         [label, f"{measure(last):,}", f"{measure(row):,}", signed(measure(row) - measure(last))]
@@ -387,11 +390,12 @@ def charts(rows: list[Row]) -> dict[str, str]:
 
 
 METHOD = """- **History.** Each run adds one row to docs/progress/history.json, one per date: a
-  rerun on the same date replaces it, and older rows are never rewritten. A run is complete when
+  rerun on the same date replaces it, except that an incomplete rerun never replaces a complete
+  row of the same date, and older rows are never rewritten. A run is complete when
   report.json parses, has the `run`, `v15_checkpoint` and tier fields, and skipped no suite. An
   incomplete run adds a `complete: false` row without measures and rewrites only the status
   block, marked stale; the rest of the page keeps the last complete run's numbers. "Since the
   last run" compares against the last complete row; its commits are `git rev-list --count
-  --first-parent <that row's commit>..HEAD`. Its visibly-off and Excel cells are the parity
+  --first-parent <that row's commit>..<this run's commit>`. Its visibly-off and Excel cells are the parity
   section's attributed cells, and open tasks are todo, in progress or blocked (`scripts/tasks.py
   stats --json`)."""

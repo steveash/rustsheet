@@ -6,7 +6,6 @@ The eval run of **2026-10-25** at commit `05703c6c` (report.json `run`).
 
 - **Suites run (17):** calipers, corpus-bench, fixtures, gen-m1, gen-m10, gen-m2, gen-m5, gen-m6, gen-m7, gen-m8a, gen-m8b, gen-m9, ironcalc-calc, poi, probes, probes-numeric, smoke.
 - **Suites skipped (0):** none.
-- **Generated at commit `dd0a6f52`**, not the run's commit `05703c6c`: the numbers are the run's.
 - The steward's operational log is [docs/status.md](status.md). Every function's parity is in
   [docs/progress/functions.md](progress/functions.md).
 <!-- /progress:generated -->
@@ -52,7 +51,7 @@ value is the same. Every function is listed in [docs/progress/functions.md](prog
 
 ### Functions by worst-cell tier
 
-**330 of 506** in-scope functions (65.22%) never differ from Excel in the 15 digits Excel shows, on every counted cell; **97** have fewer than 99% of their cells within 15 digits.
+**330 of 506** in-scope functions (65.22%) never differ from Excel in the 15 digits Excel shows, on every counted cell; **97** have fewer than 99% of their cells within 15 digits. The Phase 1 line above counts a function once 99.9% of its cells match; this stricter figure counts only functions with no cell off at all.
 
 | Tier | Meaning | Functions | Share | Placed by every Excel cell |
 | --- | --- | ---: | ---: | ---: |
@@ -124,7 +123,7 @@ displayed-text (`TF`) lines after "text".
 | gen-m9 | 261 | 95,262 | 95.55% | 97.09% | 2,519 | 261 | 30 | 30 | 231 | 0 | 4,216 |
 | ironcalc-calc | 219 | 72,357 | 99.11% | 99.71% | 165 | 218 | 186 | 203 | 15 | 0 | 644 |
 | poi | 336 | 27,209 | 99.61% | 99.64% | 95 | 115 | 112 | 112 | 3 | 0 | 119 |
-| probes | 1,539 | 101,262 | 97.40% | 98.10% | 1,770 | 1,533 | 1,366 | 1,393 | 140 | 0 | 2,686 |
+| probes | 1,539 | 101,262 | 97.40% | 98.10% | 1,770 | 1,533 | 1,366 | 1,393 | 140 | 0 | 2,666 |
 | probes-numeric | 263 | 611,860 | 48.72% | 71.46% | 129,994 | 263 | 69 | 108 | 155 | 0 | no baseline |
 | smoke | 6 | 46 | 100.00% | 100.00% | 0 | 6 | 6 | 6 | 0 | 0 | 0 |
 <!-- /progress:generated -->
@@ -160,12 +159,13 @@ _Not written yet: the steward writes this block (SPEC-0022)._
   not Excel, so its cells are in no function's counts. Known failures are counted from
   eval/baseline/, never edited.
 - **History.** Each run adds one row to docs/progress/history.json, one per date: a
-  rerun on the same date replaces it, and older rows are never rewritten. A run is complete when
+  rerun on the same date replaces it, except that an incomplete rerun never replaces a complete
+  row of the same date, and older rows are never rewritten. A run is complete when
   report.json parses, has the `run`, `v15_checkpoint` and tier fields, and skipped no suite. An
   incomplete run adds a `complete: false` row without measures and rewrites only the status
   block, marked stale; the rest of the page keeps the last complete run's numbers. "Since the
   last run" compares against the last complete row; its commits are `git rev-list --count
-  --first-parent <that row's commit>..HEAD`. Its visibly-off and Excel cells are the parity
+  --first-parent <that row's commit>..<this run's commit>`. Its visibly-off and Excel cells are the parity
   section's attributed cells, and open tasks are todo, in progress or blocked (`scripts/tasks.py
   stats --json`).
 - **Regenerate** with `make eval && make progress-report`. The same inputs give a byte-identical page.

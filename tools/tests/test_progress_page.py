@@ -22,7 +22,7 @@ SECTIONS = {"since-last-run": "## Since the last run", "trends": "## Trends"}
 
 def render(existing: str | None) -> str:
     """The page for RUN at its own commit, keeping the judgment text of `existing`."""
-    return page.render(RUN, DATA, existing, SECTIONS, RUN.commit)
+    return page.render(RUN, DATA, existing, SECTIONS)
 
 
 def judgment_page(texts: dict[str, str]) -> str:

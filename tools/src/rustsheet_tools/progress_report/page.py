@@ -59,28 +59,31 @@ def same_commit(a: str, b: str) -> bool:
     return a.startswith(b) or b.startswith(a)
 
 
-def status(run: Run, head: str | None = None) -> str:
+def status(run: Run) -> str:
     """The `status` block: the run's date and commit, the suites it ran and skipped, and links.
-    When `head`, the commit the page is generated at, is not the report's, it names both."""
+    It names only the report's commit, never the generating HEAD, so the same report gives the
+    same block from any checkout."""
     lines = [
         f"The eval run of **{run.date}** at {_commit(run.commit)} (report.json `run`).",
         "",
         _suites(run),
+        LINKS,
     ]
-    if head is not None and run.commit is not None and not same_commit(head, run.commit):
-        lines.append(
-            f"- **Generated at commit `{head}`**, not the run's commit `{run.commit}`: the numbers "
-            "are the run's."
-        )
-    lines.append(LINKS)
     return "\n".join(lines)
 
 
 def stale_status(
-    reason: str, date: str, commit: str | None, last: history.Row | None, run: Run | None
+    reason: str,
+    date: str,
+    commit: str | None,
+    last: history.Row | None,
+    run: Run | None,
+    *,
+    head: str | None,
 ) -> str:
     """The `status` block of an incomplete run: a Stale banner with `reason`, this run's date and
-    commit, and the last complete run (`last`, a history row) whose numbers the page still shows."""
+    commit, the commit generating the page (`head`) when that differs, and the last complete run
+    (`last`, a history row) whose numbers the page still shows."""
     if last is None:
         shown = (
             f"No complete run is recorded in {history.HISTORY_LINK} yet, so the rest of the page is "
@@ -91,9 +94,10 @@ def stale_status(
             f"Every number below is from the last complete run, **{last['date']}** at "
             f"{_commit(last['commit'])}."
         )
-    lines = [
-        f"> **Stale.** The run of **{date}** at {_commit(commit)} is incomplete: {md_text(reason)}. {shown}",
-    ]
+    at = _commit(commit)
+    if head is not None and (commit is None or not same_commit(head, commit)):
+        at += f", generated at commit `{head}`,"
+    lines = [f"> **Stale.** The run of **{date}** at {at} is incomplete: {md_text(reason)}. {shown}"]
     if run is not None:
         lines += ["", _suites(run)]
     else:
@@ -123,12 +127,11 @@ def parse(text: str) -> dict[str, blocks.Block]:
     return blocks.parse(text, GENERATED_BLOCKS, JUDGMENT_BLOCKS)
 
 
-def render(run: Run, data: Parity, previous: str | None, sections: dict[str, str], head: str | None) -> str:
+def render(run: Run, data: Parity, previous: str | None, sections: dict[str, str]) -> str:
     """The whole page for a complete `run`, keeping the judgment text of `previous` (the existing
-    page). `sections` holds the history blocks (`since-last-run`, `trends`); `head` is the commit
-    the page is generated at."""
+    page). `sections` holds the history blocks (`since-last-run`, `trends`)."""
     old = parse(previous) if previous is not None else {}
-    body = {**sections, "status": status(run, head), "parity": parity.block(data), "method": METHOD}
+    body = {**sections, "status": status(run), "parity": parity.block(data), "method": METHOD}
     parts = [HEADER]
     for _, name, heading in LAYOUT:
         parts.append(
