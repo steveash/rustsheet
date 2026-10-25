@@ -3,7 +3,7 @@ id: T-2416
 title: "Probe BASE of zero with an empty or blank min_length (BASE(0,2,), BASE(0,2,Z99))"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Found by the T-2374 Excel-fidelity review: the engine reads an empty `min_length
 
 ## Out of scope
 - Changing BASE unless the probe contradicts the engine (then a fix task).
+
+## Outcome
+Probe probes/base-zero-empty-min-length filled by excel-graph. Excel: `BASE(0,2,)` is "0" (written-empty = omitted), `BASE(0,2,Z99)` "", `BASE(0,2,"")` `#VALUE!`. Engine differs on the written-empty cells (A1, A5); fix filed as T-2691. numbers.md updated.

@@ -1,20 +1,15 @@
-// The regex mode's engine, shared with XLOOKUP so the wasm choice lives here only.
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) use regex::Regex;
-#[cfg(target_arch = "wasm32")]
-pub(crate) use regex_lite::Regex;
-
 use crate::cast::calc_scalar_to_string;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-use super::lookup_table::SearchVector;
+use super::lookup_table::{Indexed, SearchVector};
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
     binary_search::binary_search,
     criteria::wildcard_text_matcher,
+    text::{LookupPattern, LookupRegexes},
     util::{compare_values, near_integer::near_integer_whole},
 };
 
@@ -124,56 +119,90 @@ pub(crate) fn linear_scan<'a>(
 
 /// The regex mode's (`match_mode` 3) pattern when `regex_mode`, else `None`: `lookup_value`
 /// read as text, as a number, boolean or blank reads (`12.5` is the pattern "12.5", TRUE
-/// "TRUE"), compiled once per search. An invalid pattern is `#VALUE!`; an error lookup value
-/// (handled before) or any other non-scalar has none. Shared by XMATCH and XLOOKUP
-/// (probes/t2669-xlookup-regex-mode D17, E17, D18, D19).
-pub(crate) fn regex_pattern(
+/// "TRUE"), compiled on the call's REGEX* engine ([`LookupRegexes`], PCRE2 syntax). An invalid
+/// pattern is `#VALUE!`; an error lookup value (handled before) or any other non-scalar has none.
+/// Shared by XMATCH and XLOOKUP (probes/t2669-xlookup-regex-mode D17, E17, D18, D19).
+pub(crate) fn regex_pattern<'a>(
     lookup_value: &CalcResult,
     regex_mode: bool,
+    regexes: &'a mut LookupRegexes,
     cell: CellReferenceIndex,
-) -> Result<Option<Regex>, CalcResult> {
+) -> Result<Option<LookupPattern<'a>>, CalcResult> {
     if !regex_mode {
         return Ok(None);
     }
     let Some(pattern) = calc_scalar_to_string(lookup_value) else {
         return Ok(None);
     };
-    Regex::new(&pattern).map(Some).map_err(|_| {
-        CalcResult::new_error(Error::VALUE, cell, "Invalid regular expression".to_string())
-    })
+    regexes.pattern(pattern, cell).map(Some)
 }
 
 /// The first (in `indices` order) candidate of `get` whose text `regex` finds anywhere in it,
 /// case-sensitively: a number reads as its text, a boolean as TRUE or FALSE, a blank as "" (so
 /// `^$` matches it) and an error never matches. Excel: docs/excel-semantics/lookup.md
-/// "XMATCH and XLOOKUP regex mode" (probes/t2669-xlookup-regex-mode, -blanks; T-2669).
+/// "XMATCH and XLOOKUP regex mode" (probes/t2669-xlookup-regex-mode, -blanks; T-2669). The
+/// search's work is bounded as a REGEX* call's: `#ERROR!` once it is spent (SPEC-0013).
 pub(crate) fn regex_scan<'a>(
-    regex: Option<&Regex>,
+    regex: Option<&mut LookupPattern<'_>>,
     indices: impl IntoIterator<Item = usize>,
     get: impl Fn(usize) -> &'a CalcResult,
-) -> Option<usize> {
-    let regex = regex?;
-    indices
-        .into_iter()
-        .find(|&idx| calc_scalar_to_string(get(idx)).is_some_and(|text| regex.is_match(&text)))
+    cell: CellReferenceIndex,
+) -> Result<Option<usize>, CalcResult> {
+    let Some(regex) = regex else {
+        return Ok(None);
+    };
+    for idx in indices {
+        if let Some(text) = calc_scalar_to_string(get(idx)) {
+            if regex.is_match(&text, cell)? {
+                return Ok(Some(idx));
+            }
+        }
+    }
+    Ok(None)
+}
+
+/// [`linear_scan`]'s exact match through `array`'s index, which finds what the walk would: a
+/// blank lookup value (it matches blanks) and an error are left to the walk.
+/// [`Indexed::Unindexed`] when the index does not apply. Shared by XMATCH and XLOOKUP (T-0448).
+pub(crate) fn exact_through_index(
+    lookup_value: &CalcResult,
+    array: &SearchVector,
+    forward: bool,
+    match_mode: MatchMode,
+) -> Indexed {
+    if match_mode != MatchMode::Exact || is_blank(lookup_value) || lookup_value.is_error() {
+        return Indexed::Unindexed;
+    }
+    array.collated_match(lookup_value, forward)
 }
 
 /// Searches `array` for `lookup_value` and returns the 0-based index of the match,
 /// or `None` if not found. `regex` is the regex mode's pattern ([`regex_pattern`], compiled once
-/// by the caller). Only the candidates `SearchVector` names are tested: they cover the virtual
-/// empty tail with a single cell.
+/// by the caller); its search may run out of work (`#ERROR!`). Only the candidates
+/// `SearchVector` names are tested: they cover the virtual empty tail with a single cell.
 fn linear_search(
     lookup_value: &CalcResult,
     array: &SearchVector,
     search_mode: &SearchMode,
     match_mode: MatchMode,
-    regex: Option<&Regex>,
-) -> Option<usize> {
-    let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
+    regex: Option<&mut LookupPattern<'_>>,
+    cell: CellReferenceIndex,
+) -> Result<Option<usize>, CalcResult> {
+    let forward = *search_mode == SearchMode::FirstToLast;
+    if let Indexed::Searched(found) = exact_through_index(lookup_value, array, forward, match_mode)
+    {
+        return Ok(found);
+    }
+    let candidates = array.linear_candidates(forward);
 
     match match_mode {
-        MatchMode::Regex => regex_scan(regex, candidates, |idx| array.get(idx)),
-        _ => linear_scan(lookup_value, candidates, |idx| array.get(idx), match_mode),
+        MatchMode::Regex => regex_scan(regex, candidates, |idx| array.get(idx), cell),
+        _ => Ok(linear_scan(
+            lookup_value,
+            candidates,
+            |idx| array.get(idx),
+            match_mode,
+        )),
     }
 }
 
@@ -223,7 +252,8 @@ impl Model {
 
         let array = self.xmatch_vector(&args[1], cell);
         let scan = array.as_ref().map_or(1, SearchVector::scan_cells);
-        self.lift_values(
+        let mut regexes = LookupRegexes::new();
+        let result = self.lift_values(
             vec![lookup_value, match_mode, search_mode],
             LiftCost::Cells(scan),
             &LiftOptions::REUSE_EQUAL_RUNS,
@@ -232,9 +262,17 @@ impl Model {
                 let [lookup_value, match_mode, search_mode] = values else {
                     return CalcResult::new_args_number_error(cell);
                 };
-                model.xmatch_of(lookup_value, match_mode, search_mode, &array, cell)
+                model.xmatch_of(
+                    lookup_value,
+                    match_mode,
+                    search_mode,
+                    &array,
+                    &mut regexes,
+                    cell,
+                )
             },
-        )
+        );
+        regexes.finish(result, cell)
     }
 
     /// XMATCH of one element. The errors come in argument order: `lookup_value`, `match_mode`,
@@ -245,6 +283,7 @@ impl Model {
         match_mode: &CalcResult,
         search_mode: &CalcResult,
         array: &Result<SearchVector, CalcResult>,
+        regexes: &mut LookupRegexes,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         if lookup_value.is_error() {
@@ -292,8 +331,12 @@ impl Model {
 
         match search_mode {
             SearchMode::FirstToLast | SearchMode::LastToFirst => {
-                let regex = match regex_pattern(lookup_value, match_mode == MatchMode::Regex, cell)
-                {
+                let mut regex = match regex_pattern(
+                    lookup_value,
+                    match_mode == MatchMode::Regex,
+                    regexes,
+                    cell,
+                ) {
                     Ok(regex) => regex,
                     Err(error) => return error,
                 };
@@ -302,10 +345,12 @@ impl Model {
                     array,
                     &search_mode,
                     match_mode,
-                    regex.as_ref(),
+                    regex.as_mut(),
+                    cell,
                 ) {
-                    Some(idx) => CalcResult::Number(idx as f64 + 1.0),
-                    None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
+                    Ok(Some(idx)) => CalcResult::Number(idx as f64 + 1.0),
+                    Ok(None) => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
+                    Err(error) => error,
                 }
             }
             SearchMode::BinaryAscending | SearchMode::BinaryDescending => {

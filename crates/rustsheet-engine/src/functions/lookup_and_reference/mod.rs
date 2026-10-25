@@ -19,7 +19,6 @@ use crate::{
     utils::ParsedReference,
 };
 
-use super::criteria::wildcard_text_matcher;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
@@ -32,7 +31,6 @@ pub(crate) use drop_take::Edge;
 mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
-mod eta_min_args;
 mod expand;
 mod getpivotdata;
 mod group_functions;
@@ -50,6 +48,7 @@ pub(crate) mod pivot_index;
 mod pivotby;
 mod ref_lift;
 mod relative_to;
+pub(crate) mod search_cache;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
@@ -69,10 +68,8 @@ fn lookup_index(
 ) -> Option<usize> {
     if is_sorted {
         search_vector.approximate_search(lookup_value)
-    } else if let CalcResult::String(s) = lookup_value {
-        search_vector.position(wildcard_text_matcher(s))
     } else {
-        search_vector.exact_position(lookup_value)
+        search_vector.exact_match(lookup_value)
     }
 }
 

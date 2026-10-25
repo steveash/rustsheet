@@ -21,6 +21,7 @@ mod gauss;
 mod geomean;
 mod hypegeom;
 mod if_ifs;
+pub(crate) mod ifs_cache;
 mod incomplete_beta;
 mod incomplete_gamma;
 mod inverse_beta;
@@ -54,3 +55,4 @@ mod weibull;
 mod z_test;
 
 pub(crate) use if_ifs::IfsShape;
+pub(crate) use special::ln_gamma;
