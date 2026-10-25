@@ -7,7 +7,7 @@ status: in-progress
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2468]
 campaign: semantics
 ---
 
@@ -74,16 +74,19 @@ last-digit difference), so the task is in the campaign. Its target is that every
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
 
-## Progress notes (T-2491, 2026-10-25)
-Data from the run that started this task, to check against the acceptance criteria. Pushed in flight at the session budget.
-- Probe probes/fin-syd-db-domain (filled, excel-graph) and its rules in financial.md "DB and SYD argument domains" are on
-  this branch; `fn_db` and `fn_syd` implement them. `make eval-baseline` then fixes 21 gen-m9 lines (19 of this task's 20;
-  the other two are the A377 below) and 14 probes lines; the probes baseline is recorded, gen-m9's is not yet.
-- Open regression, which blocks the gen-m9 baseline: gen-m9/2138b909d8f810ea Calc!A146
-  `=PROB(<scalar>,Data!B3:D8,SYD(85972,-439103,18,9),1)`. It is Excel `#VALUE!`; ours is now `#NUM!` (SYD is `#NUM!` as in
-  Excel). PROB checks its limits before its data (prob.rs `prob_element`, probes/stat-test-lift P14), but here a limit
-  that is an error value loses to the data's `#VALUE!`. That is PROB's error order: probe `PROB(<bad data>,...,NA())` and
-  `PROB(<bad data>,...,"a")` to split the error-value and text cases, fix `prob_element`, then `make eval-baseline`.
-- gen-m9 01523d247594952e A377 (`SYD(15023,AVEDEV(..)*F.INV.RT(1E-20,9,3),33,1)`) is not SYD: the 30-ulp gap needs a
-  salvage 30 ulp off, so it is F.INV.RT's far tail (T-2435). Leave its line, and say so in the Outcome.
-- Still to do: unit tests (acceptance), `make check`, review, PR.
+## Outcome
+- Probe probes/fin-syd-db-domain (excel-graph, A1:M6) fixes the rules, recorded in financial.md "DB and SYD argument
+  domains": SYD and DB are `#NUM!` for a negative salvage (DB even at cost 0); SYD's `life*(life+1)` overflow is
+  `#DIV/0!` and an overflowing numerator `#NUM!`; DB reads life and period as 32-bit integers (a period above i32::MAX is
+  period 1, so `DB(0.01,488,32,1E+200,10)` now has Excel's value instead of the period-cap DEVIATION; a life above it is
+  `#NUM!`, except the odd u32::MAX "wrapped last year" case for a period below 1 and a month other than 12). The
+  "DB and VDB period cap" entry is narrowed to DB periods 100,001 to 2147483647.
+- `fn_db`, `fn_syd` implement them; unit test `fn_syd_db_argument_domains`; two older tests that encoded the
+  pre-probe values now cite the probe.
+- Eval delta: gen-m9 -21 known-failure lines (all 20 owned but A377, plus one more), probes -12 lines (t2436/t2475
+  cells the negative-salvage rule fixes). Depends on T-2468 (PR #1771): gen-m9/2138b909d8f810ea A146
+  `PROB(...,SYD(85972,-439103,18,9),1)` is Excel `#VALUE!`; with SYD now `#NUM!` it needs PROB's data-first error order,
+  which #1771 lands (checked: the two branches merged pass A146). The gen-m9 baseline is recorded after #1771 merges.
+- Left: gen-m9 01523d247594952e A377 (`SYD(15023,AVEDEV(..)*F.INV.RT(1E-20,9,3),33,1)`) is F.INV.RT's far tail, not SYD
+  (the 30-ulp gap needs a salvage 30 ulp off; T-2435), so the "SYD value above" criterion belongs there. Probe C1:C2 (DB's
+  partial last year) are one ulp off; an order that fixes them regresses DB_DDB G42, filed as T-2697.

@@ -557,15 +557,31 @@
    "L9": {
     "t": "n",
     "v": 0.0
+   },
+   "M1": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "M2": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "M4": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "M6": {
+    "t": "e",
+    "v": "#NUM!"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "54817eede58442f9a450149311bab7cee9204500fd0e29f77c5d455a039f2637",
+  "input_sha256": "49260b07fc8888727d24a0e94618bd6b127559b214bd6e4f1332ff627de7722e",
   "kind": "excel-graph",
-  "produced_at": "2026-10-25T09:36:26+00:00",
+  "produced_at": "2026-10-25T10:20:55+00:00",
   "version": null,
-  "workbook_name": "45aa59b26341ae920cc24f08cc52d833cc976295870ddf808294630cc474daa9.xlsx"
+  "workbook_name": "1caf6e67d2709e2cc73169ff1e280906e5e64ba6085bd3db653a05bbb5da7e04.xlsx"
  }
 }
