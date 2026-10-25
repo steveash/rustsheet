@@ -64,6 +64,16 @@ Cells:
 - gen-m9/d912671baa1364aa.case.json (1): Calc!A245
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A47, A194
 
+Calipers evidence (gap triage 2026-10-25; desktop goldens of real bond models, ungated suite, no other owner): 42 visibly-off
+YIELD cells, the same below-the-root pattern, 1e-14 to 1e-9 relative:
+- `calipers/pv_goldens/pv23_004` Bonds-Calls-Puts!K13 `YIELD(Settlement_Date,Maturity_Date,Coupon_Rate,...,100,Num_Coupons)`:
+  Excel 0.05999999999993105, ours 0.05999999999999983. Also K16, K20:Y20 (except R20), K23:Y23 (except R23), K27, M27,
+  O27, Q27, S27, U27, W27 and Y27. S20 and S23 are off by 1e-9 relative (Excel 0.057696257180238915, ours
+  0.05769625724582727).
+- `calipers/pv_goldens/pv23_003` Bond-Refinancing!K15, F39 and K18 (`=+F39`), and K20, an MDURATION fed by the YIELD
+  (Excel 0.251101533693552, ours 0.2511015337115343 at K15).
+These are desktop values (decision 0039: excel-graph is the target), so use them as a check on a fitted rule, not to fit it.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 23 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.

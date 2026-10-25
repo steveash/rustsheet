@@ -103,7 +103,8 @@ const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
 /// file this form is bit-exact on 90 against 53 for the correctly rounded p and visibly off on 6
 /// against 40 (docs/excel-semantics/statistics.md "F.TEST / FTEST: larger variance on top").
 /// The closed forms a = 1 or b = 1 and large shapes are [`beta_reg_complement_unoriented`]'s (Excel's
-/// oriented closed forms move bit-exact F.TEST cells, gen-m9/68d8ffb69ff739d8 A143, T-2502).
+/// oriented closed forms move bit-exact F.TEST cells, gen-m9/68d8ffb69ff739d8 A143, T-2502), and
+/// a = b = 1/2 is Excel's closed form 2 asin(sqrt x)/pi (T-2571; current scores in statistics.md).
 fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     let half_integers = (2.0 * a).fract() == 0.0 && (2.0 * b).fract() == 0.0;
     if !(x > 0.0 && y > 0.0 && half_integers && a + b <= F_TEST_SERIES_SHAPE_MAX)
@@ -111,6 +112,11 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
         || b == 1.0
     {
         return beta_reg_complement_unoriented(x, y, a, b);
+    }
+    // Bit-exact on 13 of the 16 such cells on file against 3 for the series (T-2571,
+    // statistics.md).
+    if a == 0.5 && b == 0.5 {
+        return 2.0 * x.sqrt().asin() / std::f64::consts::PI;
     }
     (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
 }
@@ -579,12 +585,12 @@ impl Model {
         }
         match sample {
             CalcResult::Range { left, right } => self.values_from_range(left, right),
+            // An error element is that error, before the one-point check: `F.TEST({-1,0,1},{1,#N/A,3})`
+            // is #N/A (statistics.md "An error element of an array argument is that error";
+            // gen-m9/165db58d1540f014 A337, 9cca17438a7e6f8a A43; T-2692). A LAMBDA or nested element
+            // stays #VALUE!.
             CalcResult::Array(a) => self.values_from_array(a).map_err(|error| {
-                CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    format!("Error in {which} array: {error:?}"),
-                )
+                CalcResult::new_error(error, cell, format!("Error in {which} array"))
             }),
             error @ CalcResult::Error { .. } => Err(error),
             _ => Ok(Vec::new()),

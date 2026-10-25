@@ -426,6 +426,24 @@ Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` an
 Status: VERIFIED (excel-graph)
 Tasks: T-0221, T-1496, T-1498, T-1499, T-1500, T-1501
 
+## Desktop goldens round `*` once (calipers formulas_nested)
+Rule (desktop only, observed): the desktop Excel that saved `calipers/roundtrip/formulas_nested/golden.xlsx`
+rounds the worksheet `*` once (correctly rounded), not twice as excel-graph does ("Division rounds twice"
+above). Over all 5,518 `x*constant` cells of the workbook, simulated exactly from Excel's cached operands,
+the singly rounded product matches the cached value in 5,518 cells and the twice-rounded product in 5,514.
+The four cells that tell them apart all hold the singly rounded product:
+- `Extreme Depth!E1834` `=E1833*1.001` (E1833 49.81856401224343) is 49.86838257625566, where twice
+  rounding gives 49.86838257625567;
+- `Extreme Depth!E4446` `=E4445*1.001` (E4445 10.161093439757583) is 10.17125453319734, where twice
+  rounding gives 10.171254533197338;
+- `XSheet Chain A!E919` and `E2225` are the same two products, read across sheets.
+The sibling roundtrip goldens are Mac saves (T-2663), and a Mac build on ARM has no x87 double rounding.
+Excel for the web stays the target (decision 0039 item 4), so the engine keeps rounding twice. These four
+products, and the 296 chain cells after them, are the workbook's 300 calipers known failures.
+Evidence: calipers/roundtrip/formulas_nested/golden.xlsx cached values (desktop, gap triage 2026-10-25).
+Status: UNVERIFIED (one desktop golden; Windows desktop unprobed: T-2704)
+Tasks: T-2704
+
 ## x87 precision is per operator, not per kernel (T-1524)
 Rule: where a kernel's formulation is fitted, it is evaluated in doubles, each operation behaving
 like the Excel operator of the same name ("Division rounds twice"). The same formulation with
@@ -659,6 +677,17 @@ Implemented in: `arithmetic::plus`/`minus` keep subnormals (T-1027); number text
 normal reads as 0 (`Model::parse_number_text`; VERIFIED for the strings `1e-308` and `1e-309` only, T-1143: the `(x)=0` companions of `("1e-308"+0)`, `("1e-308"-0)`, `VALUE("1e-309")` and `VALUE("1e-308")` are all TRUE, probes/subnormal-text-and-tail-companions); `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
 flushes the results of PRODUCT and SUMPRODUCT (each running product, T-1007), SUMSQ (each square, T-1057), AVERAGE, AVERAGEA, AVERAGEIF(S) and
 SUBTOTAL 1/101 (final result; T-0987, T-1007), and of the postfix `%` (T-0988).
+Distribution densities (T-2693, VERIFIED at the probed arguments, excel-graph 2026-10-25, companions added to the
+probes-numeric cases below and probes/t2693-subnormal-*). Excel KEEPS the subnormal (companion FALSE) of `EXP(-720)`,
+`EXP(-725)`, `EXP(-730)` and `EXP(-740)` (t2586-r5-f-edges-a A927:A932, -hold A293:A295, t2586-verify-r5-f-edges-hold
+A55-A71), of `BINOM.DIST(0,999,p,FALSE)` (the k = 0 pmf; t2513-verify-r3-binom-pmf-h A229, A238) and of a LOGINV
+(gen-m9/899f9555e67da2d6 A386). It returns a TRUE 0 (companion TRUE) from `BINOM.DIST(4000000,10000000,p,FALSE)`
+(t2513-r3-binom-pmf-n B1729:B1792), `NEGBINOM.DIST(999,1,p,FALSE)` (t2513-verify-r3-binom-pmf-h B229, B238), the
+BETA.DIST density (t2513-r3-m1-residual-hold D863, D875, D957), `GAMMA.DIST(50000000,500,1000000,FALSE)`
+(m9-gamma-dist-a500 A22), an EXPON.DIST (gen-m9/165db58d1540f014 A65) and a WEIBULL (gen-m9/eccd03df42e40006 A96).
+The flush follows each function's internal path, not the size of the result: `BINOM.DIST(0,999,p,FALSE)` and
+`NEGBINOM.DIST(999,1,p,FALSE)` differ only by a factor of p, yet Excel keeps the first and zeroes the second (I229/I238
+FALSE, J229/J238 TRUE). Ours keeps every one of these, so the flushing ones fail; T-2703 flushes them.
 Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
 2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
 `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
@@ -2091,6 +2120,17 @@ TAN misses this model by 1 ulp at arguments near 1.2E+8: `TAN(123456789.123)` is
 2026-10-20): gen-m5/d0419fa09d6a756a Calc!A311, gen-m5/f0f205865a3a4328 Calc!A227, gen-m5/c688ca172fe533dc Calc!A284. T-2172 sweep (145 arguments over 1E+6 .. 2^27, probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A1:D145): SIN and COS match the
 pi64 model on all 145 cells; TAN misses only B121, B123, B126 and B130 (+-123456788.123 and +-123456789.123, 1 ulp), its other 141 cells
 pass. So the miss is TAN-only and confined to arguments near 1.2E+8 (T-2147 fits).
+T-2147 fit: Excel's TAN is the pi64-reduced tangent rounded twice, to a 64-bit significand and then to a double, RN53(RN64(tan)),
+as an x87 tangent is stored. That model matches every one of the 311 earlier TAN cells with a constant argument (gen-m5, gen-m6,
+probes-numeric/trig-odd-even-sumxmy2-sweep, m9-trig-reduction and the others), the 5 misses above included, where the single
+rounding misses 5. probes-numeric/t2147-tan-double-rounding (excel-graph, 2026-10-25, filled twice with identical results) holds
+150 arguments picked where the tangent lies near a 64-bit tie, so the candidates disagree: RN53(RN64(tan)) matches 129, the
+correctly rounded tangent 47, and the quotient of RN64 sine and cosine rounded to 64 bits (an FPTAN-style result) 63. Guard-bit
+variants (the tangent rounded or truncated to 65..72 bits first) match 118..134, so none is better beyond noise. The 21 misses are
+not all at the tightest ties: x = 8242 lies 0.04 of a 64-bit ulp from a 64-bit value that is a 53-bit midpoint, and Excel still
+rounds it the other way. So Excel's own tangent carries an error up to about half a 64-bit ulp, and its last bit at such a near-tie
+is not predictable from the exact value. Those 21 cells stay known failures of that probe (as decision 0112 keeps LN's near-ties).
+Ours: implemented (`excel_tan` in functions/math_and_trigonometry/trig.rs, T-2147). COT, which is 1/TAN, inherits the change.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 

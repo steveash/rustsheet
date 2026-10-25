@@ -12665,15 +12665,27 @@
    "D99": {
     "t": "n",
     "v": 0.1204497606801485
+   },
+   "E293": {
+    "t": "b",
+    "v": false
+   },
+   "E294": {
+    "t": "b",
+    "v": false
+   },
+   "E295": {
+    "t": "b",
+    "v": false
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "231b035c0606f6ce4a89a0dadd46ac730e0cfd609fc90651a6d928246c2ec629",
+  "input_sha256": "fb3fedfe38cb4585569b88d345e03dc1918295392aea09bd58fd3fd6113320eb",
   "kind": "excel-graph",
-  "produced_at": "2026-10-24T16:00:17+00:00",
+  "produced_at": "2026-10-25T10:53:55+00:00",
   "version": null,
-  "workbook_name": "0fef048fdc4c0b9ac8bc040ebc40f407b0648d85c31a41e70590136746856d2d.xlsx"
+  "workbook_name": "4558bd21ca068ec9dc6780b8b6547f89021c4d3dd6f0bab3a0d02484fa49503d.xlsx"
  }
 }

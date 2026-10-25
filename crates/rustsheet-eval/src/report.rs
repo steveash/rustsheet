@@ -11,6 +11,7 @@ use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
+use crate::out_of_scope::{self, OutOfScope};
 use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::text_expect;
@@ -47,6 +48,10 @@ pub struct SuiteSummary {
     /// Scored text cells whose text matched Excel's.
     #[serde(default)]
     pub text_passed: usize,
+    /// Formula cells left unscored because they call an add-in function (`_xll.`, decision 0027;
+    /// T-0462): they are in none of the counts above.
+    #[serde(default)]
+    pub skipped_add_in: usize,
     /// The suite's in-scope scored cells per closeness bucket: cells that call no out-of-scope
     /// catalog function (decision 0027). Its visibly-off cells are what the visible-parity
     /// ratchet counts (T-0061, `visible_parity`).
@@ -133,18 +138,6 @@ pub struct FunctionEvidence {
     pub cells: usize,
     /// Suites those cells come from.
     pub suites: BTreeSet<String>,
-}
-
-/// An out-of-scope catalog function (decision 0027) and the cells the run checked for it.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct OutOfScope {
-    pub name: String,
-    /// The catalog's reason for leaving it out.
-    pub reason: String,
-    /// Cells calling the function that the run checked (passing or not).
-    pub cells: usize,
-    /// Of those, the failing ones.
-    pub failing: usize,
 }
 
 /// The report's lists that come from comparing the run with the catalog.
@@ -284,6 +277,7 @@ impl RunReport {
             *s.statuses.entry(r.status).or_default() += 1;
             s.cells += r.checked;
             s.cells_passed += r.passed;
+            s.skipped_add_in += r.skipped_add_in;
             s.deviations += r.deviations;
             s.millis += r.millis;
             s.text_cells += r.text.len();
@@ -632,31 +626,8 @@ impl RunReport {
         }
         self.write_evidence(&mut md);
         catalog_coverage::write_markdown(&self.catalog_coverage, &mut md);
-        self.write_out_of_scope(&mut md);
+        out_of_scope::write_markdown(&self.out_of_scope, &self.suites, &mut md);
         md
-    }
-
-    fn write_out_of_scope(&self, md: &mut String) {
-        if self.out_of_scope.is_empty() {
-            return;
-        }
-        let _ = writeln!(
-            md,
-            "\n## Out of scope ({})\n\nCatalog functions whose results depend on systems outside the workbook (decision 0027). They are left out of every count above.\n",
-            self.out_of_scope.len()
-        );
-        let _ = writeln!(md, "| function | cells checked | failing | reason |");
-        let _ = writeln!(md, "|---|---|---|---|");
-        for f in &self.out_of_scope {
-            let _ = writeln!(
-                md,
-                "| {} | {} | {} | {} |",
-                f.name,
-                f.cells,
-                f.failing,
-                f.reason.replace('|', "\\|")
-            );
-        }
     }
 
     fn examples_for(&self, function: &str, n: usize) -> Vec<(&str, &CellResult)> {
@@ -695,6 +666,7 @@ pub(crate) mod tests {
             passed: 1,
             deviations: 0,
             skipped_volatile: 0,
+            skipped_add_in: 0,
             millis,
             tags: Vec::new(),
             cells: Vec::new(),
@@ -940,6 +912,26 @@ pub(crate) mod tests {
             "{md}"
         );
         assert!(!md.contains("### WEBSERVICE"));
+    }
+
+    #[test]
+    fn add_in_cells_are_counted_per_suite_and_listed_out_of_scope() {
+        // T-0462: cells calling `_xll.` are not scored; the out-of-scope section counts them.
+        let mut a = case("calipers/a", 1);
+        a.skipped_add_in = 246;
+        let mut b = case("calipers/b", 1);
+        b.skipped_add_in = 246;
+        let report = RunReport::build("e", &[a, b, case("probes/c", 1)], &[], &Catalog::default());
+        let calipers = report.suites.iter().find(|s| s.name == "calipers");
+        assert_eq!(calipers.map(|s| s.skipped_add_in), Some(492));
+        let md = report.to_markdown(1);
+        assert!(
+            md.contains(
+                "- calipers: 492 cells call an add-in function (`_xll.`) and are not scored."
+            ),
+            "{md}"
+        );
+        assert!(!md.contains("- probes:"), "{md}");
     }
 
     #[test]
