@@ -7,7 +7,7 @@ use crate::{expressions::parser::Node, functions::Function};
 const MANY: u8 = 2;
 
 /// Whether the function `kind` evaluates its argument `index` exactly once per evaluation of the
-/// call (each audited): VSTACK and HSTACK ([`Model::eval_to_array`]), LET (each value bound once,
+/// call (each audited): VSTACK and HSTACK ([`crate::model::Model::eval_to_array`]), LET (each value bound once,
 /// `bind_argument`, then the body), IF (the condition, then one branch, or with an array condition
 /// both: [`crate::variable_stack::VariableStack::copy_read_once`]), and the array of SORT, TAKE and DROP.
 fn evaluates_once(kind: &Function, index: usize) -> bool {
