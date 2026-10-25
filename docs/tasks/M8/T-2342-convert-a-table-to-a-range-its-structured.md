@@ -3,7 +3,7 @@ id: T-2342
 title: "Convert a table to a range: its structured references become absolute plain ranges (T-2324)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: sonnet
