@@ -117,11 +117,7 @@ impl Model {
         );
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
-            CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("Error in {which} array: {error:?}"),
-            )
+            CalcResult::new_error(error, cell, format!("Error in {which} array"))
         })
         .map_err(|error| PairedSamplesError {
             error,
@@ -183,7 +179,20 @@ impl Model {
         cell: CellReferenceIndex,
         array_error: impl Fn(usize, Error) -> CalcResult,
     ) -> Result<PairedValues, CalcResult> {
-        let (first_cells, first) = self.sparse_values(first, cell, |e| array_error(0, e))?;
+        // An error element of an array is the result unless the other argument is itself an error
+        // value, which wins (`COVARIANCE.S({1,#N/A,3},RANK(<#VALUE!>))` is `#VALUE!`;
+        // docs/excel-semantics/statistics.md "An error element of an array argument is that
+        // error", gen-m9/165db58d1540f014 A353). A first argument's own error value still comes first.
+        let first_is_array = matches!(first, PairedArg::Array(_));
+        let second_error = match &second {
+            PairedArg::Error(error) => Some(error.clone()),
+            _ => None,
+        };
+        let first_result = self.sparse_values(first, cell, |e| array_error(0, e));
+        let (first_cells, first) = match (first_result, second_error) {
+            (Err(_), Some(error)) if first_is_array => return Err(error),
+            (result, _) => result?,
+        };
         let (second_cells, second) = self.sparse_values(second, cell, |e| array_error(1, e))?;
         let shared = first_cells.min(second_cells);
         // Merge the two position lists; a position missing from one side is blank there.
