@@ -573,6 +573,11 @@ array literal whole: `LOOKUP(2,{1,2,3},{4,5,6})` = 5, `LOOKUP(2,{1,2,3})` = 2, `
 XLOOKUP's if_not_found, ADDRESS's sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols; which problem wins inside a
 CHOOSECOLS/CHOOSEROWS index list between uncoercible text and a later error, or between two errors (an error beats an
 out-of-range index: VERIFIED, see the T-2273 entry; ours returns uncoercible text's `#VALUE!` or the first error found at once).
+XLOOKUP's match_mode and search_mode both lift (probes/lookup-argument-modes; probes/xlookup-array-lookup-value-args;
+probes/xlookup-array-search-mode-indirect). An error lookup_value does not stop the lift: with an array match_mode every
+element is that error, so the result is an array and, where its spill is blocked, `#SPILL!`
+(`XLOOKUP(VALUE("TRUE"),A5:A10,C1:D9,"nf",DECIMAL(OFFSET(B10:E11,5,3,3,2),21),0)` is `#SPILL!`; gen-m6/fe0972380d030e4a
+Calc!A224, excel-graph, T-2290). With only scalar criteria the error is returned as is.
 Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238); ADDRESS's a1 and HYPERLINK's
 friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
 Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
