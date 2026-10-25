@@ -92,3 +92,15 @@ fn test_fn_log_norm_arguments() {
     assert_eq!(model._get_text("B4"), *"33.11545196");
     assert_eq!(model._get_text("B5"), *"#ERROR!");
 }
+
+#[test]
+fn log_norm_inv_tail_is_exp_of_the_ppnd16_quantile() {
+    // Excel's `LOGNORM.INV(1E-20,0,1)` (probes-numeric/t1543-inverse-cdf-tiny-p A16): EXP of NORM.INV's
+    // PPND16 tail quantile, where statrs' `LogNormal::inverse_cdf` was 9.493291347224338E-05 (T-0925).
+    let mut model = new_empty_model();
+    model._set("A1", "=LOGNORM.INV(1E-20,0,1)=9.493291347224372E-05");
+    model._set("A2", "=LOGNORM.INV(1E-20,0,1)=EXP(NORM.INV(1E-20,0,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"TRUE");
+}
