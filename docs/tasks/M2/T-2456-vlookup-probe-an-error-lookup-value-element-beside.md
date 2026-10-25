@@ -3,7 +3,7 @@ id: T-2456
 title: "VLOOKUP: probe an error lookup_value element beside a failed index, and each element of the T-2411 two-element claims"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,10 +22,13 @@ probes/lookup-argument-edges H120-H124 and probes/vlookup-scalar-range-lookup-li
 "2 columns of `#VALUE!`" (G12 reads only column 2) and a `"TRUE"` range_lookup gives "one","two" (G19 reads only the second).
 
 ## Acceptance criteria
-- [ ] A probe case (excel-probe skill) reads `ERROR.TYPE(INDEX(VLOOKUP({1;#N/A},A1:B2,"a"),2))` and each element of the
+- [x] A probe case (excel-probe skill) reads `ERROR.TYPE(INDEX(VLOOKUP({1;#N/A},A1:B2,"a"),2))` and each element of the
       HLOOKUP and `"TRUE"` cases above through INDEX, with oracle values.
-- [ ] Ours matches every new cell, or a follow-up task names each mismatch; lookup.md cites the new cells.
-- [ ] `make check` green; reviewers approve.
+- [x] Ours matches every new cell, or a follow-up task names each mismatch; lookup.md cites the new cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing VLOOKUP behavior beyond what a mismatching cell shows.
+
+## Outcome
+New probe vlookup-t2411-elements (6 cells, excel-graph): an error lookup_value element beside a failed index keeps its own error (`#VALUE!`, `#N/A`), both HLOOKUP columns are `#VALUE!`, both `"TRUE"` rows are "one", "two". All six match ours, so no mismatch and no follow-up; lookup.md cites the cells. Eval delta: probes +6 cells passing, 0 regressions.
