@@ -3,7 +3,7 @@ id: T-1691
 title: "Moving a 3-D span's end sheet past its other end shrinks the span to the remaining sheets, as Excel rewrites it"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
