@@ -3,7 +3,7 @@ id: T-1880
 title: "TEXT: why three or more letters after a quote-taking _ are #VALUE! (follow-up of T-1486)"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
