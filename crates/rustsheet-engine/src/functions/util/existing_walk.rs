@@ -1,6 +1,8 @@
 //! The walks of the cells that exist in a rectangle of one sheet: the union-area walk of T-1497
 //! ([`Model::for_each_existing_position`], through the column index when the cells lie in few
-//! columns) and the *IF(S) criteria walks built on it ([`Model::stored_walk`], T-2711).
+//! columns), the *IF(S) criteria walks built on it ([`Model::stored_walk`], T-2711), and the
+//! walk of a single aggregate range that a far cell leaves mostly blank ([`Model::walks_sparsely`],
+//! T-1690).
 
 use crate::{
     area_budget::SLOTS_PER_WALK_STEP,
@@ -20,9 +22,16 @@ const MAX_INDEXED_COLUMNS: usize = 16;
 /// ([`Model::for_each_existing_position`]): one chunk of row storage.
 const MIN_INDEXED_ROWS: i32 = 1024;
 
-/// Most positions per stored cell of its columns a [`Model::for_each_stored_position`] walk may
-/// visit densely: past it the block is mostly blank, and walking the cells that exist is cheaper.
+/// Most positions per stored cell of its columns a [`Model::for_each_stored_position`] walk, or a
+/// single aggregate range ([`Model::walks_sparsely`]), may visit densely: past it the block is
+/// mostly blank, and walking the cells that exist is cheaper.
 const DENSE_WALK_FACTOR: u64 = 4;
+
+/// Fewest positions a single area clipped to the used area must hold to be walked over its
+/// existing cells instead of position by position ([`Model::walks_sparsely`]): a smaller area
+/// costs little either way, and keeps the one-by-one record of its blank cells, which spends
+/// nothing from the formula's seen-range cap (a LAMBDA may walk one small area per row).
+const MIN_SPARSE_WALK_POSITIONS: u64 = 1 << 16;
 
 /// Rows of one column an indexed walk reads from the index at a time: one search, then a step per
 /// row, so a dense column costs a read step per this many cells.
@@ -35,7 +44,9 @@ pub(super) enum WalkBudget {
     /// A union area: nothing else bounds how many a formula walks (T-1497).
     Charged,
     /// A single range of a caller that bounds its own walks (the *IF(S) criteria walks, priced
-    /// by the lift budget), and that must not fail where the dense walk it replaces did not.
+    /// by the lift budget), and that must not fail where the dense walk it replaces did not; so
+    /// is a mostly blank aggregate range ([`Model::walks_sparsely`]), whose walk costs less than
+    /// the dense one, which was never charged (a LAMBDA repeating `SUM(A:Z)` over 100,000 cells).
     Free,
 }
 
@@ -69,6 +80,30 @@ impl ColumnBatch {
 }
 
 impl Model {
+    /// Whether the area from `left` to the corner `(row2, column2)` on `sheet`, a single area
+    /// already clipped to the used area, is walked over its existing cells
+    /// ([`Self::for_each_existing_position`], [`WalkBudget::Free`]) rather than position by
+    /// position: it holds at least [`MIN_SPARSE_WALK_POSITIONS`] positions, more than
+    /// [`DENSE_WALK_FACTOR`] per cell its columns hold, and the formula can still record the area
+    /// as read empty in one rectangle (T-1690).
+    pub(super) fn walks_sparsely(
+        &self,
+        sheet: u32,
+        left: &CellReferenceIndex,
+        (row2, column2): (i32, i32),
+    ) -> bool {
+        let side = |first: i32, last: i32| u64::try_from(last - first + 1).unwrap_or(0);
+        let positions = side(left.row, row2) * side(left.column, column2);
+        if positions < MIN_SPARSE_WALK_POSITIONS || !self.area_budget.has_seen_ranges(1) {
+            return false;
+        }
+        let Ok(worksheet) = self.workbook.worksheet(sheet) else {
+            return false;
+        };
+        let cells = worksheet.sheet_data.cells_in_columns(left.column, column2);
+        positions > cells.saturating_mul(DENSE_WALK_FACTOR)
+    }
+
     /// [`Self::spend_area_walk`] for a [`WalkBudget::Charged`] walk; a free walk spends nothing.
     fn spend_walk(
         &mut self,
@@ -189,7 +224,10 @@ impl Model {
         // existing cells too, which is harmless: a spill can only write where nothing but its
         // own spill cells stands, and those read as empty until it has run.
         // The area itself is a step: its record must be paid for even when it finds nothing, or
-        // a LAMBDA repeating a union over an empty sheet would grow the record without bound.
+        // a LAMBDA repeating a union over an empty sheet would grow the record without bound. A
+        // free single area is not charged: a mostly blank aggregate range is walked here only
+        // while the seen-range cap can pay for its record ([`Self::walks_sparsely`]), and a
+        // rectangle already on record is free.
         self.spend_walk(budget, 1, cell)?;
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
         let data = &mut self
