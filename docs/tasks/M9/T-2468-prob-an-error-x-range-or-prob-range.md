@@ -3,7 +3,7 @@ id: T-2468
 title: "PROB: an error x_range or prob_range is that error, one value on each side is #DIV/0!, unequal counts #N/A (gen-m9, 116 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -153,7 +153,7 @@ criterion under Acceptance criteria states it.
 Blank one-cell reference cells that need this function's argument order, left failing by T-2426 (which made the blank
 `#VALUE!` in the shared readers): 583ca2baea0bb30a A58, 9735c5ab72fa5ecf A164, 139684e68fb2fc3b A353, 46ac3ef5e61583ca A269, 5919660b7bb4d195 A1, d8f44d556674c2fd A192.
 
-## Handoff
+## Handoff (resumed)
 Partly done in the first PR (95 gen-m9 and 6 probe known-failure lines removed, no regressions): `fn_prob` reads
 the data arguments before the limits: an error value as x_range, then prob_range, then a blank one-cell reference
 `#VALUE!`; each is the result of every lifted element, so array limits still spill (7 `#SPILL!` cells needed that).
