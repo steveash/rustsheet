@@ -3,7 +3,7 @@ id: T-0457
 title: "Probe: lookups into a linked workbook's sheet with no cached data"
 milestone: M11
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
