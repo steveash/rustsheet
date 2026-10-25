@@ -72,8 +72,8 @@ counts below; worker claims the verifier refuted are dropped). Probes: 21 cases 
 - F density: not beta × Jacobian, not R's df, not GAMMALN; swap-symmetric constant (585/585), Excel's log1p switch
   on r = min(mx/n, n/mx). Unsolved (ratio model 161 against CR 114 of 1,440 exact on the hold-out).
 - GAMMALN: the engine model is off on 14 of 47 arguments below 1 (verifier 24 of 66); evidence added to T-2122.
-Filed: T-2585 (engine, T density, campaign visible, depends on T-2501 and T-2507), T-2586 (research: Loader constant,
+Filed: T-2585 (engine, T density, campaign visible, depends on T-2633 and T-2507), T-2586 (research: Loader constant,
 bd0 series, T constant, BINOM interior, NEGBINOM final step, F density). Amended: T-2503 (M2), T-2507 (round-3
-structure, still PARTIAL), T-2501 (BINOM k = n), T-2512 (algdiv pins), T-2122 (GAMMALN points), T-0969 (Blocked
+structure, still PARTIAL), T-2633 (BINOM k = n), T-2512 (algdiv pins), T-2122 (GAMMALN points), T-0969 (Blocked
 because). statistics.md: four T-2464 entries and the T-0969 density entry updated, four new T-2513 entries, a
 GAMMALN note.

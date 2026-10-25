@@ -10,7 +10,7 @@
     The next largest research directory is under 1 MB.
   - The architecture reviewer asked for either a trim or a record. The oracle values cannot be
     regenerated offline: they cost oracle time, and Excel for the web changes (T-2337). Without them
-    the statistics.md entries and the engine tasks T-2501..T-2513 could not be re-checked.
+    the statistics.md entries and the engine tasks (T-2502..T-2513, T-2633) could not be re-checked.
   - Caches, pickles, copies of other workers' code and tables the scripts rebuild in seconds are
     already git-ignored (`docs/research/t2464/.gitignore`), and so are the 87 exploratory scripts no
     RESULTS.md cites.

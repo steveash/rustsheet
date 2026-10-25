@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2501, T-2502, T-2504]
+depends_on: [T-2633, T-2502, T-2504]
 ---
 
 ## Goal
@@ -22,7 +22,7 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
   (0.5 - w) + 0.5, caller arguments) and "Incomplete beta bpser".
 - The bpser itself, with x87 stored ops:
   - s = fl(1/a), with forward terms c·((0.5 - b/n) + 0.5)·x and s += c/(a+n), until s stops changing;
-  - I = fl(EXP(z)·s), with z = fl64(fl(a·LN x) - L) and EXP of the extended argument (T-2501);
+  - I = fl(EXP(z)·s), with z = fl64(fl(a·LN x) - L) and EXP of the extended argument (T-2633);
   - L is r2-bpser-small's GL53 form, fl(GL(a0) + fl(GL(b0) - GL(fl(a0+b0)))), for b0 < 8;
   - L = fl(GL(a0) + algdiv(a0, b0)) for b0 >= 8;
   - no fpser; apser falls through the dispatch.

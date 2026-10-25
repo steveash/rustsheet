@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2501]
+depends_on: [T-2633]
 ---
 
 ## Goal
@@ -20,7 +20,7 @@ T-2464's M1). The same function is the prefactor density that bup needs (T-2506)
   (docs/research/t2464/r3-m1-residual, verifier-confirmed in verify-r3-m1-residual).
 - The rule is docs/excel-semantics/statistics.md "Beta density for min(a,b) <= 1: lnB and a double-double exponent split
   (T-2464, T-2513)":
-  - lnx = LN(x); ly = Excel's log1p(-x) for x <= 0.375 (T-2501), LN(fl(1 - x)) above;
+  - lnx = LN(x); ly = Excel's log1p(-x) for x <= 0.375 (T-2633), LN(fl(1 - x)) above;
   - tx = fl(fl(a-1)·lnx) and ty = fl(fl(b-1)·ly), x87 ops stored to doubles;
   - lnB:
     - a = 1 or b = 1: -LN(the other shape), at any size (a < 1 with b = 1 rests on one shape, (0.37, 1));

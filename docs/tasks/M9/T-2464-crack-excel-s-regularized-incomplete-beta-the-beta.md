@@ -55,7 +55,7 @@ docs/excel-semantics/statistics.md, after the T-1744 entry, which now points at 
 - Verifiers refuted the "(7.3, 0.6) lnB +24 units" and "(30.7, 1.7) sd 47" claims: the workers rounded the formula
   literals where Excel truncates them.
 Filed:
-- T-2501 (E0, log1p, extended EXP, BINOM k = 0); T-2502 (E1, closed forms); T-2503 (E2, M1 density);
+- T-2633 (E0, log1p, extended EXP, BINOM k = 0); T-2502 (E1, closed forms); T-2503 (E2, M1 density);
 - T-2504 (E3a, spec); T-2505 (E3, dispatch and bpser; subsumes T-2119's BETA.DIST switch); T-2506 (E4, L140);
 - T-2507 (E5, Loader density); T-2508 (E6, bfrac); T-2509 (T tails, from r2-tdist); T-2510 (E7, bgrat family);
 - T-2511 (E8, inverses);

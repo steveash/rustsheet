@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2501, T-2505, T-2506]
+depends_on: [T-2633, T-2505, T-2506]
 ---
 
 ## Goal
@@ -24,7 +24,7 @@ fall from about 1,286 (the CR level) to about 7.
   - y = fl(n/fl(n + fl(t·t))), and the complement z = fl(fl(t·t)/fl(n + fl(t·t))). At df 2 the complement is
     fl(1 - y).
   - L = I/2; 2T = I; the upper side is fl(1 - L); y == 1 gives L = 0.5.
-  - bgrat at b = 1/2: ν = a - 1/4, and lnx = LN(y) if z > 0.01, else Excel's log1p(-z) (T-2501).
+  - bgrat at b = 1/2: ν = a - 1/4, and lnx = LN(y) if z > 0.01, else Excel's log1p(-z) (T-2633).
   - TOMS bgrat runs in x87 extended, except three stored doubles: lnx, z = fl(-ν·lnx), and
     ERFC.PRECISE(fl(sqrt(z))). ERFC.PRECISE is the engine's bit-exact `functions/statistical/erf.rs` model (T-1778).
 - Model: `r2-tdist/xlk.py` (`bgrat_half_ld`, `XCfg`), scored by `tscore.py` (`args=t2,alnrel=xl,erfc=xl,
