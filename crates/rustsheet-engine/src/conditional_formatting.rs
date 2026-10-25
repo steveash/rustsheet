@@ -136,6 +136,11 @@ impl Model {
     /// processed last). The result for each cell is stored in
     /// `cf_cache` and consumed by `get_extended_style_for_cell`.
     pub fn evaluate_conditional_formatting(&mut self) {
+        self.cf_stale = false;
+        #[cfg(test)]
+        {
+            self.cf_runs += 1;
+        }
         self.cf_cache.clear();
         let sheet_count = self.workbook.worksheets.len();
         for sheet_idx in 0..sheet_count {
@@ -1123,14 +1128,18 @@ impl Model {
 
     // -----------------------------------------------------------------------
 
-    /// Returns the extended cell style for (`sheet`, `row`, `column`), including
-    /// any conditional-formatting overlay computed by the last `evaluate()` call.
+    /// Returns the extended cell style for (`sheet`, `row`, `column`), including any
+    /// conditional-formatting overlay. The conditional formats are evaluated here, on the first
+    /// read after a load, an `evaluate()` or `set_theme`, not by those (SPEC-0021).
     pub fn get_extended_style_for_cell(
-        &self,
+        &mut self,
         sheet: u32,
         row: i32,
         column: i32,
     ) -> Result<ExtendedStyle, String> {
+        if self.cf_stale {
+            self.evaluate_conditional_formatting();
+        }
         let base = self.get_style_for_cell(sheet, row, column)?;
         let extended = match self.cf_cache.get(&(sheet, row, column)) {
             Some(c) => c,
