@@ -3,7 +3,7 @@ id: T-0071
 title: "Progress report: run history in docs/progress/history.json, since-last-run deltas, trend charts and stale handling for incomplete runs"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -24,12 +24,12 @@ failed, the page says so and keeps the last good numbers, marked stale.
   in the history must show as a gap in the trend charts, not be interpolated.
 
 ## Acceptance criteria
-- [ ] The module `progress_report/history.py` handles the history file:
+- [x] The module `progress_report/history.py` handles the history file:
   - it reads docs/progress/history.json, or creates it with today's row only;
   - it adds one row per run date, and a rerun on the same date replaces that row;
   - it never rewrites an older row;
   - it fails non-zero on invalid JSON or a row missing a schema key.
-- [ ] The `since-last-run` block shows deltas against the last *complete* row:
+- [x] The `since-last-run` block shows deltas against the last *complete* row:
   - Phase 1 functions at rate;
   - functions per tier;
   - visibly-off cells by kind;
@@ -37,10 +37,10 @@ failed, the page says so and keeps the last good numbers, marked stale.
   - tasks done;
   - commits on `main` since that row's commit (`git rev-list --count --first-parent`).
   On the first run it says there is no earlier run.
-- [ ] The `trends` block has line-chart SVGs, with a dark-scheme style and explicit fills as in
+- [x] The `trends` block has line-chart SVGs, with a dark-scheme style and explicit fills as in
       T-2041: functions at ≥ 99.9% within 15 digits, visibly-off cells, and open tasks per
       campaign stage. A missing date leaves a gap.
-- [ ] An incomplete run (report missing or unparseable, an older shape, or
+- [x] An incomplete run (report missing or unparseable, an older shape, or
       `run.skipped_suites` not empty):
   - rewrites only the `status` block, with a Stale banner naming the reason and the last complete
     run;
@@ -48,10 +48,55 @@ failed, the page says so and keeps the last good numbers, marked stale.
   - adds a `complete: false` row;
   - exits 0.
   Tests cover each reason.
-- [ ] A report whose `run.commit` is not `HEAD` still counts as complete, and `status` names both
+- [x] A report whose `run.commit` is not `HEAD` still counts as complete, and `status` names both
       commits (test).
-- [ ] `make py-check` green; `make check` green; reviewers approve.
+- [x] `make py-check` green; `make check` green; reviewers approve.
 
 ## Out of scope
 - Back-filling the assessment's numbers: the method differs (SPEC-0022).
 - Running the generator in CI or a routine (T-0076).
+
+## Outcome
+- New module `progress_report/history.py` handles docs/progress/history.json. It writes one row
+  per line, so a run's diff is one added or changed line. It reads the file, or starts it with
+  this run's row only. A new date appends a row, and a rerun on the same date replaces that row.
+  One exception: an incomplete rerun never replaces a complete row of the same date, because the
+  page still shows that run's numbers and its stale banner names that row. A date before the last
+  row's date stops the run, so older rows are never rewritten. These all exit non-zero: invalid
+  JSON, a non-array, a row missing a key of the SPEC-0022 schema (a complete row also needs every
+  measure the deltas and charts read), and dates that are not one per day, oldest first.
+- `since-last-run` compares against the last complete row before this run's date. Incomplete
+  rows and a same-day rerun's own row are skipped. It shows:
+  - Phase 1 functions at rate;
+  - the functions in each tier;
+  - visibly-off attributed cells, numbers and type/error/text separately;
+  - attributed Excel cells;
+  - tasks done;
+  - first-parent commits from that row's commit to HEAD (`git rev-list --count --first-parent`).
+  Git sits behind a small `Git` protocol, so tests use a fake.
+- `trends` has three line charts made by `svg.line_chart`: functions at rate, visibly-off cells by
+  kind, and open tasks (todo, in progress, blocked; scripts/tasks.py `OPEN`) per campaign stage
+  plus parked. The charts reuse svg.py's `Palette`, chrome and dark-scheme style. Lines get an
+  explicit `stroke` and a `.s-<key>` dark-mode stroke rule. Every date from the first row to the
+  last gets a slot, so a missing date or an incomplete run breaks the line, and a point with no
+  neighbour is drawn as a dot. The y axis starts at 0, unless the values sit in a narrow band far
+  from 0 (`y_axis`).
+- Incomplete runs: a missing or unreadable report, invalid JSON, an older report shape, or a
+  non-empty `run.skipped_suites`. An older shape is the new `ReportShapeError`: a field tagged with
+  the task that added it, or no `run`. Such a run rewrites only the status block, splicing it with
+  `blocks.replace_generated`, so every other byte of the page stays the same. The new status block
+  is a Stale banner with the reason, the run's date and commit, and the last complete run. The
+  run also adds a `complete: false` row and exits 0. functions.md and the SVGs are left alone.
+  Catalog mismatches and malformed reports or markers still exit non-zero. When there is no
+  existing page, the other generated blocks get a placeholder. Tests cover each reason, and
+  test_progress_history.py also covers the byte-identical rest of the page.
+- A report whose `run.commit` is not HEAD still counts as complete, and the status block names
+  both commits.
+- The history row's `milestones_exited` lists the report's `milestone_exit` rows with `exit: true`.
+  Today that is M5 and M6 only. T-0072 parses docs/milestones.md and may widen this.
+- The seed is one row for the T-0081 run (2026-10-25, `05703c6c`, complete) with tasks.json
+  regenerated on this branch. No past rows were invented. In the regenerated page, two known-failure
+  cells in the suites table differ from T-0081's page (gen-m6 1 to 0, probes 2,644 to 2,686). They
+  come from the eval baselines merged from `main` since then, not from this change.
+- Gates: `make py-check` (1011 passed), `make hygiene`, `scripts/check_governance.py origin/main`
+  and `make typos`.

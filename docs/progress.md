@@ -6,6 +6,7 @@ The eval run of **2026-10-25** at commit `05703c6c` (report.json `run`).
 
 - **Suites run (17):** calipers, corpus-bench, fixtures, gen-m1, gen-m10, gen-m2, gen-m5, gen-m6, gen-m7, gen-m8a, gen-m8b, gen-m9, ironcalc-calc, poi, probes, probes-numeric, smoke.
 - **Suites skipped (0):** none.
+- **Generated at commit `dd0a6f52`**, not the run's commit `05703c6c`: the numbers are the run's.
 - The steward's operational log is [docs/status.md](status.md). Every function's parity is in
   [docs/progress/functions.md](progress/functions.md).
 <!-- /progress:generated -->
@@ -15,6 +16,26 @@ The eval run of **2026-10-25** at commit `05703c6c` (report.json `run`).
 <!-- progress:judgment bottom-line -->
 _Not written yet: the steward writes this block (SPEC-0022)._
 <!-- /progress:judgment -->
+
+<!-- progress:generated since-last-run -->
+## Since the last run
+
+No earlier complete run: this is the first complete row of [docs/progress/history.json](progress/history.json), so there is nothing to compare yet.
+<!-- /progress:generated -->
+
+<!-- progress:generated trends -->
+## Trends
+
+One point per complete run in [docs/progress/history.json](progress/history.json).
+A date with no complete run (a missed or stale day) leaves a gap in the lines; nothing is
+interpolated.
+
+![Functions at ≥ 99.9% within 15 digits](progress/trend-functions.svg)
+
+![Visibly-off attributed cells](progress/trend-visibly-off.svg)
+
+![Open tasks per campaign stage](progress/trend-open-tasks.svg)
+<!-- /progress:generated -->
 
 <!-- progress:generated parity -->
 ## Parity
@@ -96,14 +117,14 @@ displayed-text (`TF`) lines after "text".
 | gen-m10 | 20 | 1,690 | 99.17% | 99.17% | 14 | 20 | 9 | 9 | 11 | 0 | 14; text 394 |
 | gen-m2 | 39 | 15,600 | 100.00% | 100.00% | 0 | 39 | 39 | 39 | 0 | 0 | 0 |
 | gen-m5 | 115 | 41,640 | 99.99% | 99.99% | 2 | 115 | 109 | 113 | 2 | 0 | 6 |
-| gen-m6 | 85 | 25,000 | 99.99% | 99.99% | 1 | 85 | 84 | 84 | 1 | 0 | 1 |
+| gen-m6 | 85 | 25,000 | 99.99% | 99.99% | 1 | 85 | 84 | 84 | 1 | 0 | 0 |
 | gen-m7 | 52 | 31,845 | 100.00% | 100.00% | 0 | 52 | 52 | 52 | 0 | 0 | 0 |
 | gen-m8a | 12 | 3,577 | 100.00% | 100.00% | 0 | 12 | 12 | 12 | 0 | 0 | no baseline |
 | gen-m8b | 9 | 3,368 | 91.78% | 91.78% | 277 | 9 | 4 | 4 | 5 | 0 | no baseline |
 | gen-m9 | 261 | 95,262 | 95.55% | 97.09% | 2,519 | 261 | 30 | 30 | 231 | 0 | 4,216 |
 | ironcalc-calc | 219 | 72,357 | 99.11% | 99.71% | 165 | 218 | 186 | 203 | 15 | 0 | 644 |
 | poi | 336 | 27,209 | 99.61% | 99.64% | 95 | 115 | 112 | 112 | 3 | 0 | 119 |
-| probes | 1,539 | 101,262 | 97.40% | 98.10% | 1,770 | 1,533 | 1,366 | 1,393 | 140 | 0 | 2,644 |
+| probes | 1,539 | 101,262 | 97.40% | 98.10% | 1,770 | 1,533 | 1,366 | 1,393 | 140 | 0 | 2,686 |
 | probes-numeric | 263 | 611,860 | 48.72% | 71.46% | 129,994 | 263 | 69 | 108 | 155 | 0 | no baseline |
 | smoke | 6 | 46 | 100.00% | 100.00% | 0 | 6 | 6 | 6 | 0 | 0 | 0 |
 <!-- /progress:generated -->
@@ -138,5 +159,14 @@ _Not written yet: the steward writes this block (SPEC-0022)._
   is `GLUE` in crates/rustsheet-eval/src/closeness.rs. corpus-bench values come from LibreOffice,
   not Excel, so its cells are in no function's counts. Known failures are counted from
   eval/baseline/, never edited.
+- **History.** Each run adds one row to docs/progress/history.json, one per date: a
+  rerun on the same date replaces it, and older rows are never rewritten. A run is complete when
+  report.json parses, has the `run`, `v15_checkpoint` and tier fields, and skipped no suite. An
+  incomplete run adds a `complete: false` row without measures and rewrites only the status
+  block, marked stale; the rest of the page keeps the last complete run's numbers. "Since the
+  last run" compares against the last complete row; its commits are `git rev-list --count
+  --first-parent <that row's commit>..HEAD`. Its visibly-off and Excel cells are the parity
+  section's attributed cells, and open tasks are todo, in progress or blocked (`scripts/tasks.py
+  stats --json`).
 - **Regenerate** with `make eval && make progress-report`. The same inputs give a byte-identical page.
 <!-- /progress:generated -->
