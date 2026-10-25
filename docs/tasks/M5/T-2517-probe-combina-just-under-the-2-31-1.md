@@ -3,7 +3,7 @@ id: T-2517
 title: "Probe COMBINA just under the 2^31-1 cut for small number (COMBINA(1,2^31-2), COMBINA(2,2^31-3))"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
