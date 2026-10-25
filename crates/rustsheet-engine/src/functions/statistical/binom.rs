@@ -8,9 +8,10 @@
 
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
 
-use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ratio, Scaled};
+use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ratio};
 use super::incomplete_beta::closed_form_tails;
 
+use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -89,13 +90,20 @@ impl Model {
         let walked = if cumulative {
             binomial_cdf(n, odds(p), k)
         } else {
-            binomial_pmf(n, odds(p), k).map(Scaled::to_f64)
+            // Off the k = 0 and k = n closed forms a subnormal pmf is 0, as in Excel (`(x)=0` TRUE:
+            // probes-numeric/t2513-r3-binom-pmf-n E1729:E1792), while the k = 0 one is kept
+            // (t2513-verify-r3-binom-pmf-h I229, I238; docs/excel-semantics/numbers.md "Distribution densities").
+            binomial_pmf(n, odds(p), k).map(|pmf| flush_subnormal(pmf.to_f64()))
         };
         if let Some(prob) = walked {
             return Ok(prob);
         }
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
-        let prob = if cumulative { dist.cdf(k) } else { dist.pmf(k) };
+        let prob = if cumulative {
+            dist.cdf(k)
+        } else {
+            flush_subnormal(dist.pmf(k))
+        };
         if prob.is_nan() || prob.is_infinite() {
             return Err(num_error(cell));
         }
@@ -286,7 +294,10 @@ impl Model {
             let walked = if cumulative {
                 binomial_cdf(trials, failure_odds, f_u)
             } else {
-                binomial_pmf(trials, failure_odds, f_u).map(|pmf| times_ratio(pmf, r_u, trials))
+                // A subnormal pmf is 0, as in Excel (`(x)=0` TRUE: probes-numeric/
+                // t2513-verify-r3-binom-pmf-h J229, J238; docs/excel-semantics/numbers.md "Distribution densities").
+                binomial_pmf(trials, failure_odds, f_u)
+                    .map(|pmf| flush_subnormal(times_ratio(pmf, r_u, trials)))
             };
             if let Some(result) = walked {
                 return Ok(result);
@@ -296,7 +307,7 @@ impl Model {
         let result = if cumulative {
             dist.cdf(f_u)
         } else {
-            dist.pmf(f_u)
+            flush_subnormal(dist.pmf(f_u))
         };
         if !result.is_finite() {
             return Err(num_error(cell));
