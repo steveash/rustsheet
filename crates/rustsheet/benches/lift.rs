@@ -50,6 +50,10 @@
 //!   longest schedule, over four-coupon schedules at the solver's slowest inputs and over
 //!   one-period ones, where the per-pass fixed part of the charge binds.
 //!
+//! - the criteria walks over sparse whole columns (T-2711): `=COUNTIFS(A:J,1)+SUMIFS(A:A,B:B,"")`
+//!   on a sheet whose only data cell is J1048576 (no rows of data), so the used area is every
+//!   row: the walks visit the stored cells, not the 10,485,760 positions of A:J.
+//!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
 //!
@@ -71,11 +75,17 @@ const RUN_LENGTH: u32 = 10_000;
 const CYCLE: u32 = 100;
 const CYCLED_ROWS: u32 = 10_000;
 const RUNS: usize = 11;
+/// The criteria walks over sparse whole columns, beside J1048576 (T-2711).
+const SPARSE_CRITERIA: &str = "=COUNTIFS(A:J,1)+SUMIFS(A:A,B:B,\"\")";
 
 /// A workbook with `rows` rows of runs in column A, the row number in column B, at most
-/// `CYCLED_ROWS` rows of cycling values in column D, and `formula` in C1.
+/// `CYCLED_ROWS` rows of cycling values in column D, and `formula` in C1. With no rows, J1048576
+/// holds 1 instead, so the used area spans every row.
 fn workbook(rows: u32, formula: &str) -> Result<Workbook, Box<dyn Error>> {
     common::filled_workbook(|tx| {
+        if rows == 0 {
+            tx.set("J1048576", 1.0)?;
+        }
         for r in 1..=rows {
             tx.set(format!("A{r}").as_str(), f64::from((r - 1) / RUN_LENGTH))?;
             tx.set(format!("B{r}").as_str(), f64::from(r))?;
@@ -119,6 +129,7 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             10_000,
             "=SUM(SUMIFS(B1:B10000,D1:D10000,D1:D10000))",
         ),
+        ("COUNTIFS and SUMIFS, sparse whole columns", 0, SPARSE_CRITERIA),
         (
             "SWITCH, numeric result",
             1_000_000,
