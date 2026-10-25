@@ -415,28 +415,32 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
 
 /// Whether `kind(args)` is `INDEX(<scalar literal>,0)` or `INDEX(<scalar literal>,0,0)`: the whole of
 /// a scalar is an array, so it reads like an array constant under N or T, `#VALUE!`, and Excel shows
-/// no `@`. The scalar is a number, a negated number, text or a boolean, and an empty row argument
-/// reads as 0 (`=N(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX(TRUE,0))`, `=N(INDEX(-5,0))`,
-/// `=T(INDEX(5,,0))`; probes/index-zero-index-scalar-shape E5, E6, F5, F6, T-2191,
-/// probes/index-zero-index-scalar-t-n A1-A14, T-2368). Other indices of a scalar are unprobed and
-/// keep their `@`.
+/// no `@`. The scalar is a number, text or a boolean, negated or parenthesised or both, and an empty
+/// row or column argument reads as 0 (`=N(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX(TRUE,0))`,
+/// `=N(INDEX(-5,0))`, `=T(INDEX(5,,0))`; probes/index-zero-index-scalar-shape E5, E6, F5, F6, T-2191,
+/// probes/index-zero-index-scalar-t-n A1-A14, T-2368). Any chain of groups and minus around the
+/// literal, and a grouped 0 index, read the same (`=N(INDEX(--5,0))`, `=T(INDEX((-"a"),0,0))`,
+/// `=N(INDEX(((5)),0))`, `=N(INDEX(5,(0)))`: probes/t2601-index-scalar-forms-t-n A1-A27, T-2601).
+/// Our parser drops a unary plus, which Excel keeps in the formula text on text and booleans
+/// (T-2723). A nonzero index takes the element: `=N(INDEX(5,1))` is 5 (A28; its `@` is T-2725).
 fn indexes_a_scalar_whole(kind: &Function, args: &[Node]) -> bool {
-    let is_zero = |arg: &Node| matches!(arg, Node::NumberKind(n) if *n == 0.0);
-    let is_scalar = |arg: &Node| match arg {
-        Node::NumberKind(_) | Node::StringKind(_) | Node::BooleanKind(_) => true,
-        Node::UnaryKind {
-            kind: OpUnary::Minus,
-            right,
-        } => matches!(**right, Node::NumberKind(_)),
-        _ => false,
-    };
+    fn is_scalar(arg: &Node) -> bool {
+        match arg.ungrouped() {
+            Node::NumberKind(_) | Node::StringKind(_) | Node::BooleanKind(_) => true,
+            Node::UnaryKind {
+                kind: OpUnary::Minus,
+                right,
+            } => is_scalar(right),
+            _ => false,
+        }
+    }
+    let is_zero = |arg: &Node| matches!(arg.ungrouped(), Node::NumberKind(n) if *n == 0.0);
+    let zero_or_empty = |arg: &Node| is_zero(arg) || matches!(arg, Node::EmptyArgKind);
     matches!(kind, Function::Index)
         && match args {
-            [scalar, row] => is_scalar(scalar) && is_zero(row),
+            [scalar, row] => is_scalar(scalar) && zero_or_empty(row),
             [scalar, row, column] => {
-                is_scalar(scalar)
-                    && (is_zero(row) || matches!(row, Node::EmptyArgKind))
-                    && is_zero(column)
+                is_scalar(scalar) && zero_or_empty(row) && zero_or_empty(column)
             }
             _ => false,
         }
