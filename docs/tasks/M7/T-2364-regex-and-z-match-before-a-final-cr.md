@@ -3,7 +3,7 @@ id: T-2364
 title: "REGEX `$` and `\\Z` match before a final CR or CRLF, as before a final LF (t2364-regex-dollar-final-cr A1-A4)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
