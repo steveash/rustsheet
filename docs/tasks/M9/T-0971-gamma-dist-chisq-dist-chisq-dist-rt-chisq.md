@@ -214,7 +214,7 @@ The criteria that are not met:
   cells, BETA_GAMMA L3, CHISQ G3 and G4, and GAMMA E16 (BETA_GAMMA L4 and GAMMA E21 are still NumericClose too, so the second criterion is not met either, but they
   are now within the 15th digit). Five gen-m9 cells that were already known failures went from within the 15th digit
   on statrs to visibly off: `CHIINV(0.975,5)` twice, `CHISQ.DIST(1E-10,8,...)`, `GAMMADIST(...,7,...)` at 2.9E-64,
-  and `CHIDIST(...,8)` at 4.3E-18. Decision 0083's condition 2 does not hold for these five (see the PR). On the
+  and `CHIDIST(...,8)` at 4.3E-18. Decision 0083's condition 2 does not hold for these five (accepted by the owner in decision 0111). On the
   ones checked against 50 digits, ours is correctly rounded and Excel 7-37 ulp off. So Excel's tail forms need
   fitting. T-2638 (campaign: visible) owns all 21 cells.
 - **Bit-exact residue.** The ulp-level cells, 1-4 ulp, are owned by T-2367, along with the cap-shape measurement.
