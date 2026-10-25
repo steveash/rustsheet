@@ -349,7 +349,7 @@ impl Model {
             if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
                 return Err(Error::NUM);
             }
-            Ok(crate::functions::util::excel_mod(value, divisor))
+            crate::functions::util::excel_mod(value, divisor).ok_or(Error::NUM)
         })
     }
 
