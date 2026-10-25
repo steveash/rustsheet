@@ -491,9 +491,10 @@ impl Model {
         };
         let mut criteria = vec![lookup_value, match_mode, search_mode];
         let lifts = criteria.iter().any(LiftedArg::is_grid);
-        // A scalar error lookup_value is the result unless another criterion lifts: then it is
-        // the error of every element, so a grid match_mode still gives an array and `#SPILL!`
-        // where it is blocked (gen-m6/fe0972380d030e4a Calc!A224, excel-graph).
+        // A scalar error lookup_value is the result unless another criterion lifts: then each
+        // element is an error (ours; which one is unverified), so a grid match_mode still gives
+        // an array and `#SPILL!` where it is blocked (gen-m6/fe0972380d030e4a Calc!A224,
+        // excel-graph).
         if !lifts && criteria[0].is_error() {
             return criteria.swap_remove(0);
         }
