@@ -1191,6 +1191,8 @@ C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2473-percentrank-significance.case.json	69
 C	probes/t2475-stat-subexpressions.case.json	574
 C	probes/t2492-vdb-ddb-arguments.case.json	64
+C	probes/t2493-npv-error-order-inner-calls.case.json	18
+C	probes/t2493-npv-rate-edges.case.json	67
 C	probes/t2496-fin-subexpressions.case.json	99
 C	probes/t2498-textafter-match-end.case.json	75
 C	probes/t2517-combina-below-cut-small-n.case.json	4
@@ -1232,6 +1234,7 @@ C	probes/t2714-mod-near-smallest-normal-c.case.json	660
 C	probes/t2714-mod-near-smallest-normal.case.json	1331
 C	probes/t2714-snap-tiny-addends.case.json	360
 C	probes/t2720-scientific-percent.case.json	15
+C	probes/t2725-index-scalar-nonzero-t-n.case.json	48
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
@@ -3227,6 +3230,8 @@ F	probes/t2492-vdb-ddb-arguments.case.json	Sheet1!A10
 F	probes/t2492-vdb-ddb-arguments.case.json	Sheet1!A11
 F	probes/t2492-vdb-ddb-arguments.case.json	Sheet1!A12
 F	probes/t2492-vdb-ddb-arguments.case.json	Sheet1!A9
+F	probes/t2493-npv-rate-edges.case.json	Calc!A60
+F	probes/t2493-npv-rate-edges.case.json	Calc!A61
 F	probes/t2496-fin-subexpressions.case.json	P!A10
 F	probes/t2496-fin-subexpressions.case.json	P!A11
 F	probes/t2496-fin-subexpressions.case.json	P!A12
@@ -3257,7 +3262,6 @@ F	probes/t2578-pivotby-total-error-scope.case.json	P!D65
 F	probes/t2579-array-value-edges.case.json	P!B49
 F	probes/t2601-index-scalar-forms-t-n.case.json	S!B14
 F	probes/t2601-index-scalar-forms-t-n.case.json	S!B15
-F	probes/t2601-index-scalar-forms-t-n.case.json	S!B28
 F	probes/t2625-nested-consumers.case.json	P!A13
 F	probes/t2625-nested-consumers.case.json	P!A18
 F	probes/t2625-nested-consumers.case.json	P!A19
