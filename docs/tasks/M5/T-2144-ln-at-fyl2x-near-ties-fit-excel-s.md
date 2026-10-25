@@ -50,8 +50,9 @@ of x and says how the probe scores those cells.
 
 ## Outcome
 Fitted guard-bit FYL2X models (a k-bit internal product, truncated or rounded, before RN64 and RN53; k = 66..72;
-docs/research/t1941/ln_guard_bits.py) against the 357 points where T-2143's three fills agree, and against the
-`ln_kernel` fixture. The best, k = 67 rounded, matches 354 of 357 and keeps all 4,000 sampled fixture points. The
-shipped model matches 345 of 357. No candidate fits every stable point, so `excel_ln` is unchanged. Decision 0112:
-the 27 probes/ln-fyl2x-kernel near-ties stay named known failures, and as one-ulp cells at an FYL2X near-tie they block
-no milestone exit (decision 0085 item 3). numbers.md records the counts. Eval: no change.
+docs/research/t1941/ln_guard_bits.py). They were scored against the 357 points where T-2143's three fills agree, the
+`ln_kernel` fixture and probes/ln-fyl2x-kernel; numbers.md has the table. The best, k = 67 rounded, matches 354 of 357 (the shipped
+model 345), all 4,000 sampled fixture points, 18 of the 30 fixture near-ties and 242 of the probe's 253 cells (shipped 226).
+No candidate fits every stable point, so `excel_ln` is unchanged. Decision 0112 keeps the 27 probes/ln-fyl2x-kernel
+near-ties as named known failures with no exit exemption. Follow-up T-2641 tests k = 67 rounded on the full T-1941 near-tie set and
+ships it if it loses no point. Eval: no change.

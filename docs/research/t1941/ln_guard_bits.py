@@ -47,15 +47,21 @@ fix = []
 for line in open(R+'crates/rustsheet-engine/src/test/fixtures/ln_kernel.fixture'):
     if line.startswith('#') or not line.strip(): continue
     x, ex, _ = line.split(); fix.append((fbits(x), fbits(ex)))
-print('stable', len(stable), 'unstable', unstable, 'fixture', len(fix))
+# probes/ln-fyl2x-kernel: one fill (2026-10-20) of the 30 research near-ties and 223 sampled x.
+kc = json.load(open(R+'eval/suites/probes/cases/ln-fyl2x-kernel.case.json'))['sheets'][0]
+ko = json.load(open(R+'eval/suites/probes/cases/ln-fyl2x-kernel.oracle.json'))['sheets'][kc['name']]
+kernel = []
+for k, f in kc['cells'].items():
+    if isinstance(f, str) and f.startswith('=LN(') and k in ko and ko[k].get('t') == 'n':
+        kernel.append((kc['cells'][f[4:-1]], ko[k]['v']))
+print('stable', len(stable), 'unstable', unstable, 'fixture', len(fix), 'kernel probe', len(kernel))
 cands = [(0, 'rn')] + [(k, m) for k in (66, 67, 68, 69, 70, 72) for m in ('tz', 'rn')]
-for k, m in cands:
-    s = sum(model(x, k, m) == y for x, y in stable)
-    f = sum(model(x, k, m) == y for x, y in fix)
-    print(f'k={k} {m}: stable {s}/{len(stable)} fixture {f}/{len(fix)}', flush=True)
-print('--- breakdown')
 base = [model(x, 0, 'rn') == y for x, y in fix]
-for k, m in [(0,'rn'),(66,'rn'),(67,'tz'),(67,'rn'),(68,'tz')]:
+for k, m in cands:
     r = [model(x, k, m) == y for x, y in fix]
-    a = sum(1 for i in range(len(fix)) if base[i] and r[i]); b = sum(1 for i in range(len(fix)) if not base[i] and r[i])
-    print(f'k={k} {m}: keeps {a}/{sum(base)} model-agreeing fixture points, {b}/{len(fix)-sum(base)} of the near-tie misses')
+    a = sum(1 for i in range(len(fix)) if base[i] and r[i])
+    b = sum(1 for i in range(len(fix)) if not base[i] and r[i])
+    s = sum(model(x, k, m) == y for x, y in stable)
+    p = sum(model(x, k, m) == y for x, y in kernel)
+    print(f'k={k} {m}: stable {s}/{len(stable)}, fixture sample {a}/{sum(base)}, '
+          f'fixture near-ties {b}/{len(fix) - sum(base)}, kernel probe {p}/{len(kernel)}', flush=True)
