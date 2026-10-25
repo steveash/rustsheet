@@ -3529,7 +3529,10 @@ limit's: Excel's PV at a rate of -0.9999999999 over 78 or 161 periods would be `
 UNVERIFIED, the PV itself is not probed). These are direct error values; an error inside a range still loses to a
 lower/upper error (T-1813, section "RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments"). Whether a
 lower_limit error beats unequal counts rests on cells whose lower_limit is an inner function ours computes differently
-(d37313406b9f6e55 A142, a YIELD, `#NUM!`): UNVERIFIED.
+(d37313406b9f6e55 A142, a YIELD, `#NUM!`): UNVERIFIED. A bare typed text or boolean (`PROB(1,"a",1)`, `PROB(-6,1=1,0,3)`)
+taken as one cell with no number, so `#DIV/0!` against a single number, is inferred from the typed text's `#N/A`
+against 18 cells (A206) and the TRANSPOSE'd boolean (A372): UNVERIFIED. A blank one-cell x_range against an error
+prob_range (ours: the error) has no cell: UNVERIFIED.
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256): the top-level PROB cells of T-2468 and T-2426; probes/t2436 (T-2436).
 An earlier reading of this entry ("a single value on both sides is `#DIV/0!`") was wrong: a pair of numbers is checked
 as usual (T-2468).

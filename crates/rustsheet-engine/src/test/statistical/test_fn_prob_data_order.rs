@@ -57,6 +57,7 @@ fn prob_pairs_cells_by_position() {
     model._set("C3", "=PROB(H1:H2,0.5,1)");
     // A single value on each side with no pair of numbers is #DIV/0!; a pair is checked as usual.
     model._set("C4", "=PROB(H1,G1,1)");
+    // A bare typed boolean is inferred from a TRANSPOSE'd one (5cebac1f02bf30f2 A372); unprobed.
     model._set("C5", "=PROB(-6,1=1,0,3)");
     model._set("C6", "=PROB(3,0.1,-1,-1)");
     model._set("C7", "=PROB(H1,1,5)");

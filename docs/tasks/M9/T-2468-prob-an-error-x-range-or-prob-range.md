@@ -128,20 +128,20 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 | gen-m9/c0681a8b150ce301 Calc!A290 | `PROB(Data!$E12,1000000000000000.0,Data!E2)` (E12 = TRUE, prob 1E+15, lower -2.5) | #DIV/0! | #VALUE! |
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 115 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2256): these 115 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `PROB(1/0,{0.5;0.5},1)` is `#DIV/0!` and `PROB({1;2},NA(),"a")` `#N/A` (data errors before the limits);
+- [x] Unit tests: `PROB(1/0,{0.5;0.5},1)` is `#DIV/0!` and `PROB({1;2},NA(),"a")` `#N/A` (data errors before the limits);
       ~~`PROB(2,0.5,1)` and `PROB(A1,B1,1)` with numbers in A1, B1 are `#DIV/0!`~~ (contradicted by Excel: a pair of
       numbers is checked as usual, `PROB(3,0.1,-1,-1)` is `#NUM!`, 0bbab6206b5c9a07 A322; replaced by: a single text or
       boolean against a number is `#DIV/0!`, and cells pair by position); `PROB(A1:A3,B1:B4,1)` is `#N/A`;
       `PROB(D1:D3,F1:F3,"a")` with D2 = `#N/A` stays `#VALUE!` (T-1813).
-- [ ] statistics.md's T-2256 PROB entry gets an "Ours:" line naming this task.
-- [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's T-2256 PROB entry gets an "Ours:" line naming this task.
+- [x] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The sum-of-probabilities `#NUM!` and the limits' lifting (unchanged).
@@ -175,7 +175,7 @@ reference `#VALUE!`), then per lifted element the limits, then the data: x_range
 (`paired_values`), unequal **cell** counts are `#N/A`, a pair counts only when both cells are numbers, no pair is
 `#DIV/0!`, then the probability checks. The earlier "one value on each side is `#DIV/0!`" reading was wrong and is
 corrected in statistics.md. Eval: gen-m9 known failures -139 (95 in the first part, 44 here), probes -54, no regressions.
-Not fixed, moved on: 6e18550e9fc9c1b9 A394 and 92d4fa29e5510f1e A70 (their lower limit is a PV at rate -0.9999999999,
+Every acceptance criterion is met except the visible-parity lines of these 6 cells, which move on: 6e18550e9fc9c1b9 A394 and 92d4fa29e5510f1e A70 (their lower limit is a PV at rate -0.9999999999,
 inferred `#DIV/0!` in Excel; T-2685); 17c110a53924beb8 A330 (its GROUPBY), 941c409532603d32 A324 (its
 FORECAST.ETS.SEASONALITY, T-2425), d37313406b9f6e55 A142 (its inner YIELD) and 80586b859b73c87d A353 (`RANK.EQ` of a
 PROB whose upper limit is a TINV; Excel's `#N/A` may be RANK.EQ's not-found) keep their lines: each needs its inner call
