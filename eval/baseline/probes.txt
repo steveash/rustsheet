@@ -68,6 +68,7 @@ C	probes/average-value-args.case.json	32
 C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14
 C	probes/base-number-upper-bound.case.json	50
+C	probes/base-zero-empty-min-length.case.json	9
 C	probes/bessel-asymptotic.case.json	50
 C	probes/bessel-large-x.case.json	24
 C	probes/bond-argument-check-order.case.json	298
@@ -682,6 +683,7 @@ C	probes/min-max-value-args.case.json	16
 C	probes/minverse-overflow-computed-pivot.case.json	43
 C	probes/minverse-singular-near-singular.case.json	46
 C	probes/mod-array-lift.case.json	25
+C	probes/mod-huge-opposite-divisor.case.json	183
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
 C	probes/mod-quotient-threshold.case.json	22
@@ -795,6 +797,8 @@ C	probes/pivotby-total-columns-one-group.case.json	172
 C	probes/pmt-overflow.case.json	40
 C	probes/poisson-negative-mean.case.json	8
 C	probes/power-chain-text.case.json	16
+C	probes/power-huge-exponent.case.json	300
+C	probes/power-op-huge-exponent.case.json	300
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
@@ -1153,6 +1157,7 @@ C	probes/t2455-transpose-single-value.case.json	95
 C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2475-stat-subexpressions.case.json	574
 C	probes/t2496-fin-subexpressions.case.json	99
+C	probes/t2498-textafter-match-end.case.json	75
 C	probes/t2517-combina-below-cut-small-n.case.json	4
 C	probes/t2545-base-places-boolean.case.json	7
 C	probes/t2546-bessel-past-cap.case.json	83
@@ -1500,6 +1505,8 @@ F	probes/amordegrc-fractional-period.case.json	Calc!A6
 F	probes/amordegrc-fractional-period.case.json	Calc!A7
 F	probes/amordegrc-fractional-period.case.json	Calc!A8
 F	probes/amordegrc-fractional-period.case.json	Calc!A9
+F	probes/base-zero-empty-min-length.case.json	Sheet1!A1
+F	probes/base-zero-empty-min-length.case.json	Sheet1!A5
 F	probes/coup-calendar-edges.case.json	S!C1
 F	probes/coup-calendar-edges.case.json	S!C16
 F	probes/coup-calendar-edges.case.json	S!C2
