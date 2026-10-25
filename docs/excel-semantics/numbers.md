@@ -2194,6 +2194,13 @@ ACOTH(1) and ACOTH(-1) are `#NUM!`. Evidence: probes/atanh-unit-argument (excel-
 ## SUBTOTAL 6 over no numbers is 0 (T-2269)
 Rule (excel-graph, gen-m6, 2026-10-21): SUBTOTAL's PRODUCT (function_num 6) of ranges holding no numbers is 0, as `PRODUCT` is:
 `DATE(2071,6,SUBTOTAL(6,Data!C5:C7))` over "?b", "abc", "abc" is 62609 (`DATE(2071,6,0)`) (gen-m6/216e3c05f407ca79 Calc!A21).
-Ours: implemented (T-2269). Function_num 6 is VERIFIED; function_num 106 is treated the same but is UNVERIFIED (no oracle cell).
-Status: VERIFIED (6), UNVERIFIED (106)
-Tasks: T-2269
+Function_num 106 is 0 too (excel-graph, probes/subtotal-106-no-numbers, T-2302): over text only
+(Hide!C1), blanks only (Hide!C2, with `SUBTOTAL(6,...)` as control in C3), several such references (C7),
+and over ranges whose only numbers sit in manually hidden rows (Hide!C4, C6, C8, C9; the
+function_num 6 control C5 still multiplies the hidden 3 and 5 to 15) or in rows a table filter hides
+(Filter!C2, C3; function_num 6 skips filtered rows too, so Filter!C1 is 0). AGGREGATE's PRODUCT
+(function 6) gives 0 the same way under options 1, 4, 5 and 6 (Hide!C10-C12, Filter!C4): an empty
+product is 0 whenever every number is skipped, never 1.
+Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
+Status: VERIFIED
+Tasks: T-2269, T-2302
