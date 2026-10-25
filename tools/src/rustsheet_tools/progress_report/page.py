@@ -3,7 +3,8 @@ the stale page of an incomplete run (T-0071).
 
 The `parity` block is parity.py's (T-0081); `since-last-run` and `trends` are history.py's
 (T-0071); `top-functions` and `evidence` are evidence.py's (T-0073). Later sections (goals,
-campaign) are added by their own tasks as generated blocks in `LAYOUT`, without changing the block protocol in blocks.py.
+campaign) are added by their own tasks as generated blocks in `LAYOUT`, without changing the
+block protocol in blocks.py.
 """
 
 from __future__ import annotations
