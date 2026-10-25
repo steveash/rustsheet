@@ -28,4 +28,4 @@ probe needs a way to read applied formats (desktop Excel, `DisplayFormat`), henc
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Making conditional formats evaluate on demand (T-0468).

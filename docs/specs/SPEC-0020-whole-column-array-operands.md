@@ -1,8 +1,8 @@
 # SPEC-0020 — Whole-column array operands: a used head and one repeated tail row
 
-- **Status:** draft
+- **Status:** accepted
 - **Milestone / lane:** M11 / perf
-- **Tasks:** T-0456 (this spec); implementation tasks in the Rollout
+- **Tasks:** T-0456 (this spec); T-0469, T-0470, T-0471 (Rollout)
 
 ## Problem
 In an aggregate over an element-wise expression of whole columns, every operand becomes a
@@ -94,7 +94,8 @@ A node is tailed when all of the following hold:
   whole-column leaves pass the Gain check below.
 - **Operators.** Every interior node is one of:
   - a comparison, arithmetic or concatenation operator;
-  - a unary `-` or `+`, or the percent operator;
+  - a unary `-` or the percent operator (the AST has no unary plus: `+F:F` parses as the bare
+    reference, which the top-node rule rejects);
   - a parenthesized group;
   - IF with 2 or 3 arguments.
 - **Row span.** Every range leaf with more than one row has the same top row and the same height,

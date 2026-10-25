@@ -32,7 +32,7 @@ the 2^20-cell bound (docs/excel-semantics/arrays.md) and seen-empty records stil
       invariants that keep results identical, and the directive 5 limits.
 - [x] Implementation tasks are filed, each S/M, with corpus-bench 59932 (55 s eval, 78 s through the
       harness) as the measure: under 60 s through the harness leaves its `!Timeout` baseline line.
-- [ ] Reviewers approve the spec.
+- [x] Reviewers approve the spec.
 
 ## Out of scope
 - The implementation itself (the follow-up tasks).
@@ -45,3 +45,6 @@ the 2^20-cell bound (docs/excel-semantics/arrays.md) and seen-empty records stil
   error precedence, reads and restarts are unchanged. No general array representation change.
 - Filed T-0469 (core, measured on corpus-bench 59932 and 17049), T-0470 (element-wise functions),
   T-0471 (SUMPRODUCT). Profiling 17049 (T-0430) showed the same cost as 59932.
+- Reviews: security, quality APPROVE; architecture and Excel-fidelity APPROVE after the
+  array-producing rule (no bare-range or scalar-condition-IF arguments), the owner-only tail skip,
+  `array_of_errors` error tails and chain-walk recursion bounds were added.
