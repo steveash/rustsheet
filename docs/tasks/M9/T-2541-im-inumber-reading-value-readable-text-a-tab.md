@@ -3,10 +3,10 @@ id: T-2541
 title: "IM* inumber reading: VALUE-readable text, a tab or U+3000 is #NUM!, over 255 characters #VALUE!, a number at full precision (gen-m9, 8 cells)"
 milestone: M9
 lane: functions-engineering
-status: done
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: visible
 ---
@@ -48,3 +48,8 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
 
 ## Outcome
 `complex_of` is now a `Model` method: a number argument is read at full precision, text over 255 characters is `#VALUE!`, a leading tab or U+3000 is `#NUM!`, and text `parse_complex_number` rejects falls back to VALUE's reading (`value_text_number`). gen-m9: the 8 owned lines are removed from the baseline, no regressions. New probe probes/eng-inumber-reading (19 cells, oracle-filled; 18 pass). The date-shaped guard keeps `IMABS("2024-01-01")` `#NUM!`. The one cell that differs, `$` before a complex number, is T-2641.
+
+## Handoff
+Tried: `complex_of` (complex/mod.rs) now takes `&self`, reads a number at full precision, rejects text over 255 characters (`#VALUE!`) and a leading tab/U+3000 (`#NUM!`), and falls back to `value_text_number` for text `parse_complex_number` rejects. That fixes the 8 owned gen-m9 cells; `make check` is green; security, architecture and quality approved.
+Failed: the excel-fidelity reviewer requested changes twice. (1) The VALUE fallback read ISO date text, but Excel gives `IMABS("2024-01-01")` `#NUM!` (probe A4). (2) My fix, a `date_shaped` guard (any `/`, or a `-` past the first character), is wider than the evidence: it breaks `" -5"`, `"$-5"`, `"1E-3%"`, `"1,000E-2"` (VALUE reads them) and `"1/2"` (seen once as 46024, year dependent).
+Next: narrow the guard to the probed `yyyy-mm-dd` shape only, or probe the boundary first (add to probes/eng-inumber-reading and fill with `rustsheet-oracle fill -b excel-graph --suite probes`): `"1/2/2020"`, `"2024/01/01"`, `" -5"`, `"$-5"`, `"1E-3%"`, `"1,000E-2"`, `"Jan 1"`, `"1-2"`. Then fix engineering.md (state only probed shapes; it now says "a `/`, or a `-`...") and re-run the fidelity reviewer. T-2641 carries A5 (`"$1+2i"`).
