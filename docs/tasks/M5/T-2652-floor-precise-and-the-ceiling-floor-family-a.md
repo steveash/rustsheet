@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -26,7 +26,8 @@ as INT's cut does, not to even.
 - The AVERAGE is -333333333333266.5 exactly (sum -999999999999799.5 over 3 numbers, every step exact), so FLOOR.PRECISE is
   the innermost divergence. `snap_ratio` (crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs)
   cuts the ratio with `to_excel_precision`, whose `{:e}` formatting breaks a tie to even (266), then floors. Excel's
-  -333333333333267 fits a cut that breaks the tie away from zero (267) before the floor, like INT (numbers.md "INT cuts to
+  -333333333333267 fits a cut that breaks the tie away from zero (267) before the floor, or no cut at all at this
+  magnitude (a plain floor of -333333333333266.5 is -333333333333267 too); the probe tells them apart. The first is like INT (numbers.md "INT cuts to
   15 significant digits first (T-2171)", T-2215: `INT(-999999999999999.5)` = -1E+15) and TRUNC.
 - Reuse the cut INT and TRUNC use (`round_decimal`, mathematical.rs); do not add another. Note INT's "no cut at 1E+15 and
   above" boundary too: the probe should say whether the family has it.

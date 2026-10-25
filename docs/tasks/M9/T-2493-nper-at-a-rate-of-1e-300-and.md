@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -54,12 +54,20 @@ Cells:
 - gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A398
 - gen-m9/c468f5046aadfbbc.case.json (1): Calc!A378
 
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 2 gen-m9 financial cells moved here from T-2496. NPV at 1E+300 is `#DIV/0!` too (financial.md "Financial cells of the T-2436 sub-expression probe").
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/b6a02893a8d6b151 Calc!A78 | `NPV((-1),1e-15,Data!C3:C3)` (inside YIELD's COUPDAYBS) | #DIV/0! | #NUM! |
+| gen-m9/1cd3096e3e87c965 Calc!A334 | `NPV(1E+300,Data!D5:D8,Data!D4:D5)` (numbers 7, 1E+15, 2.5; inside COUPDAYS) | #DIV/0! | 6.999999999999999E-300 |
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 14 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for NPER at 1E-300 and -1, and NPV at -1.
+- [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

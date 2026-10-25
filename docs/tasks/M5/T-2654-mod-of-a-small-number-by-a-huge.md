@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -22,6 +22,10 @@ Excel, not -1E+30.
 |---|---|---|---|
 | gen-m5/abef960804539149 Calc!A400 | `=MOD(1.005,((1.005^Data!D12)-SUMSQ((-1),1000000000000000.0,Data!A6:A11)))` (D12 = -0.0001; SUMSQ is about 1E+30) | 0.0 | -1e30 |
 
+- The same rule shows in the real-world calipers goldens (desktop, Phase 1 assessment 2026-10-25): in
+  `calipers/roundtrip/formulas_math_basic` (`Math Tests`) and `formulas_datetime` (`Sheet2`), `MOD($C$6,$C$13)` with
+  C6 = 1 and C13 = -9.99999999999999E+307 is 0 in Excel, -9.99999999999999E+307 ours (K84), and `MOD($C$7,$C$12)` with
+  C7 = -1 is 0 in Excel, 9.99999999999999E+307 ours (J85). Check them when the rule lands.
 - The divisor is about -1E+30, and both the power and SUMSQ are plain arithmetic, so MOD is the innermost divergence (its
   divisor only has to be within an ulp, and every such divisor gives the same results below). docs/excel-semantics/numbers.md
   "MOD is an exact remainder": `fmod(n,d)`, plus `d` when the result is non-zero and its sign differs from `d`. Here

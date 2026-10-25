@@ -11,6 +11,7 @@ use super::{
     lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::SearchVector,
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
+    util::near_integer::near_integer_whole,
     util::{array_element_value, array_node_to_calc_result},
 };
 
@@ -126,7 +127,8 @@ fn xlookup_modes(
     // probes/lookup-t2278-followups A6, A7).
     let match_number = model.cast_to_number(match_mode.clone(), cell)?;
     let search_number = model.cast_to_number(search_mode.clone(), cell)?;
-    let match_mode = match match_number.floor() as i32 {
+    // Each mode is floored, snapping just below an integer as XMATCH does (T-2656).
+    let match_mode = match near_integer_whole(match_number) as i32 {
         -1 => MatchMode::ExactMatchSmaller,
         1 => MatchMode::ExactMatchLarger,
         0 => MatchMode::ExactMatch,
@@ -134,7 +136,7 @@ fn xlookup_modes(
         _ => return Err(unexpected()),
     };
     // An unknown search_mode is #VALUE! (probes/xlookup-array-lookup-value-args A9, A67).
-    let search_mode = match search_number.floor() as i32 {
+    let search_mode = match near_integer_whole(search_number) as i32 {
         1 => SearchMode::StartAtFirstItem,
         -1 => SearchMode::StartAtLastItem,
         -2 => SearchMode::BinarySearchDescending,

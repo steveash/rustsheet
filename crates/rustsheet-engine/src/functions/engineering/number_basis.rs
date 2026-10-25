@@ -93,6 +93,15 @@ impl Model {
         self.cast_number_no_bools_ref(value, cell)
     }
 
+    /// `binary_digits` for BIN2*: text that is not a number is `#NUM!`, not `#VALUE!` (T-2544;
+    /// engineering.md "Base conversions"). A boolean stays `#VALUE!`; DEC2* keep `#VALUE!` for text.
+    fn bin_digits(&self, value: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        match self.binary_digits(value, cell) {
+            Err(_) if matches!(value, CalcResult::String(_)) => Err(num_error(cell)),
+            other => other,
+        }
+    }
+
     // BIN2DEC(number)
     pub(crate) fn fn_bin2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Bin2dec, args, cell, &mut |model, values| {
@@ -104,7 +113,7 @@ impl Model {
         let [number] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match self.binary_digits(number, cell) {
+        let value = match self.bin_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -126,7 +135,7 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value = match self.binary_digits(number, cell) {
+        let value = match self.bin_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -167,7 +176,7 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value = match self.binary_digits(number, cell) {
+        let value = match self.bin_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };

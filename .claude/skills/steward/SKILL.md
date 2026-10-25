@@ -136,7 +136,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   "Fifteen-digit parity: ..." line from the "Fifteen-digit parity checkpoint" section of
   `eval/runs/latest/report.md` (report.json: `v15_checkpoint`) into the docs/status.md scoreboard,
   and say whether the previous run's line also read "met". The checkpoint is reached only when two
-  consecutive runs are met.
+  consecutive runs are met. Copy the section's "Phase 1 (decision 0114): ..." line beside it: it
+  counts the in-scope functions at ≥ 99.9% within 15 digits, which is the Phase 1 exit. When you add
+  the `**Phase 1:** exited` line, remove `defer: phase-1b` from every task in the same PR.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.
 - **Review-round limit** (decision 0095): list every PR whose task is `Blocked because: review-round

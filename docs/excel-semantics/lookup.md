@@ -723,7 +723,7 @@ Probed (excel-graph, 2026-10-12, T-1407), row and column index alike:
   (probes/index-area-num-snap J1:J11, excel-graph, T-1424).
 Evidence: probes/index-tiny-negative, probes/index-snap-tolerance and probes/index-area-num-snap.
 Implemented in: `index_number` and `index_numbers` (area_num) (functions/lookup_and_reference/index.rs) with `near_integer_count` and
-`NEAR_INTEGER_TOLERANCE` (functions/util.rs). The negative cut is half the positive bound to within 1E-14
+`NEAR_INTEGER_TOLERANCE` (functions/util/near_integer.rs). The negative cut is half the positive bound to within 1E-14
 (-1.1926749E-7 vs -1.1926751E-7); the engine takes it as exactly half, inclusive.
 Status: VERIFIED (web)
 Tasks: T-1407, T-1424
@@ -1049,3 +1049,32 @@ So are the other empty values: an omitted argument (`MMULT(,2)`), IFERROR of a b
 Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as blank, as a blank cell.
 Status: VERIFIED (excel-graph)
 Tasks: T-2278
+
+## XMATCH and XLOOKUP floor a fractional mode, snapping near an integer (T-2656)
+Rule (excel-graph, 2026-10-25): XMATCH and XLOOKUP read `match_mode` and `search_mode` the way DATE and TIME read their
+arguments (dates.md "TIME: an argument past 32767 is `#NUM!`"): the value is floored toward minus infinity. A value just
+below an integer counts as that integer: within `NEAR_INTEGER_TOLERANCE` (2^-22 + 2^-33) for a positive value, and half of
+that (2^-23 + 2^-34) for a negative one. Neither the 15-digit cut of INT nor truncation applies. So `0.5^1E-15`
+(0.9999999999999993), `1-1E-7`, 0.9999999999999 and 1.99999999999999 read 1, 1, 1 and 2, while `1-2.5E-7` reads 0.
+`XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is therefore `#N/A`, not `#VALUE!`. Ties and other fractions floor: 0.5 reads 0, 1.5 reads 1,
+2.5 and 2.6 read 2, while -0.4 and -0.5 read -1, -1.5 reads -2 and -2.5 reads -3, all the same for both modes and both functions.
+The edges are bracketed to a relative 2^-14 (an absolute ~2^-36), and the engine constants sit on the snapping side:
+- `1-2^-22*(1+2^-11)` reads 1 and `1-2^-22*(1+9*2^-14)` reads 0. This holds at that resolution below 1, 2 and 3 for
+  XMATCH (snap-edge-fine; xlookup-mode-snap-edge column E) and for XLOOKUP's search_mode. The XMATCH 2^-25 grid
+  agrees below 3 (2^-22 reads 3, 2^-22 + 2^-25 reads 2). The bound is absolute.
+- `-(2^-23*(1+2^-11))` reads 0 and `-(2^-23*(1+9*2^-14))` reads -1, at that resolution below 0 and -1 for XMATCH and
+  below 0, -1 and -2 for XLOOKUP.
+- XLOOKUP's match_mode and search_mode snap at the same points as XMATCH's: `1-1E-7` and `-1-1E-8` snap, `1-2.5E-7` and
+  `-1E-7` do not (probes/t2656-xlookup-mode-snap-edge, every non-regex cell).
+A tiny negative mode reads 0 (`-1E-7`, `-1E-10`, `-1E-300`). TRUE reads 1, and the text "1" and "1.5" read 1. ±1E300 is
+`#VALUE!`, as is any value that floors outside the valid modes.
+A match_mode of 3 (or one that floors to 3) is the regex mode in both functions: `XMATCH(2.5,{1,2,3},3)` is `#N/A`, the
+XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both. Ours has no regex mode in XLOOKUP (T-2669).
+Evidence: probes/t2656-xmatch-mode-near-integer, -rounding, -snap, -snap-boundary, -snap-bisect, -snap-grid, -snap-edge,
+-snap-edge-fine, and probes/t2656-xlookup-mode-snap-edge (1138 cells, excel-graph, 2026-10-25);
+probes/t2496-fin-subexpressions P!A1, P!A2; gen-m9/01523d247594952e Calc!A51.
+Status: VERIFIED (excel-graph), within the brackets above. Ours matches every cell except XLOOKUP's regex mode (4 cells,
+T-2669).
+Implemented in: functions/util/near_integer.rs `near_integer_whole` (shared with DATE and TIME), read by `Model::xmatch_of`
+(lookup_and_reference/xmatch.rs) and `xlookup_modes` (xlookup.rs).
+Tasks: T-2656, T-2669
