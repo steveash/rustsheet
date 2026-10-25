@@ -2016,7 +2016,7 @@ Tasks: T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491
 ## Financial cells of the T-2496 sub-expression probe
 Rule (excel-graph, 2026-10-25, probes/t2496-fin-subexpressions, each gen-m9 case's Data sheet copied): in the gen-m9
 financial cells whose error the outer call cannot make, an inner call differs and the outer call passes its error on.
-`PV(-1+2^-52,91,-421)` is `#DIV/0!` ((1+rate)^91 underflows to 0; ours `#NUM!`, T-2657); `IRR(<4x4 flows>,41.9999)` is
+`PV(-1+2^-52,91,-421)` is `#DIV/0!` (ours `#NUM!`; hypothesis: (1+rate)^91 underflows to 0, T-2657 probes it); `IRR(<4x4 flows>,41.9999)` is
 `#DIV/0!` (ours converges on 4.1E+12, T-2657); `NPV(-1,1E-15,2.5)` and `NPV(1E+300,7,1E+15,2.5)` are `#DIV/0!` (T-2493, as
 in the T-2436 probe); `XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is `#N/A` (lookup.md, T-2656). The statistical inner calls
 follow statistics.md: Z.TEST's one-number `#DIV/0!` and lone-empty-cell `#N/A` (T-2470), PROB's unequal-count `#N/A` and
