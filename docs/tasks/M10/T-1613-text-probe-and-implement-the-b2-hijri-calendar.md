@@ -3,7 +3,7 @@ id: T-1613
 title: "TEXT: probe and implement the B2 (Hijri) calendar prefix with date tokens"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -21,8 +21,16 @@ the `hijri` flag) because the Hijri calendar is not implemented. Semantics: docs
 `"B2mmmm"`, `"B2dddd"`, `"B2e"`, a time-only `"B2h:mm"`, serials 1, 60 and 2958465, and `B2` after other tokens (`"dB2"`).
 
 ## Acceptance criteria
-- [ ] A probe case covers the formats above (excel-graph) and passes; number-formats.md records the rule (VERIFIED).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case covers the formats above (excel-graph) and passes; number-formats.md records the rule (VERIFIED).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other calendars and locale prefixes (`[$-x-...]`).
+
+## Outcome
+TEXT and cell formats with a bare `B2` prefix now print Hijri dates: the tabular Islamic calendar with leap year 15 (not
+16) and epoch 622-07-18, Arabic month and weekday names, and Excel's name-state quirk (a weekday after a month name is
+weekday min(month, 7); a month name after a weekday repeats it). Serial 0 shows serial 1's date and 60 is `#VALUE!`.
+New probes probes/t1613-hijri-b2 (144 cells) and t1613-hijri-b2-weekday (78), excel-graph, both passing; number-formats.md
+"The `B2` (Hijri) calendar". The day and month name tokens moved from format.rs into formatter/date_names.rs. Eval delta: probes
++2 cases, 222 cells, all passing; 0 regressions. Follow-up T-2729: `B2` before a locale tag and calendar digit 6.
