@@ -670,7 +670,9 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `atan(0.001)` is 0.0009999996666668668, one ulp above `atan2(1,1000)`, so the imaginary part
   `hypot(1000,1)·sin(angle)` is 1.0000000000000002 and prints "1i" (libm's angle gives exactly 1, "1000+i"; gen-m9
   74779cff2810ccf4 A379). Every other IMPOWER cell in the suites is unchanged by the switch. Implemented (T-2610);
-  where `atan(y/x)` errs (x zero or subnormal, y/x overflowing) ours keeps libm `atan2` (unprobed).
+  unprobed (T-2736): where `atan(y/x)` errs (x zero or subnormal, y/x overflowing) ours keeps libm `atan2`; the
+  kernel's flush of a subnormal angle to 0 now makes `IMPOWER("1E20+1E-300i",1)` "1E+20" (libm's angle keeps the 1E-300 part),
+  and x < 0 with a -0 imaginary part takes +π where `atan2` took -π.
 - **IM* trigonometry of a real number is SIN, COS and TAN.** With a zero imaginary part, IMSIN, IMCOS, IMTAN, IMSEC,
   IMCSC and IMCOT give exactly the worksheet functions' values (x87 reduction, numbers.md "Trig of a huge angle"), as the
   engine's own SIN/COS/TAN reproduce: `IMSIN(123456789.123)` 0.99984293955201 (= SIN; libm 0.999842939552045),
