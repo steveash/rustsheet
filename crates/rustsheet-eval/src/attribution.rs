@@ -26,7 +26,7 @@ use crate::runner::CellResult;
 )]
 #[serde(rename_all = "snake_case")]
 pub enum Tier {
-    /// Every cell bit-exact (an accepted deviation's pinned value passes).
+    /// Every cell bit-exact.
     Exact,
     /// Every cell within 4 ulp.
     Ulp4,

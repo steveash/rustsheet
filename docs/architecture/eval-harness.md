@@ -194,6 +194,8 @@ Only `pass` counts as passing. Case statuses:
   it is (`closeness::sole_call`), `tier` the worst-cell tier and `attribution` whether `attributed`
   (`sole`) or, below 20 attributed cells, `excel` (`all`) placed it. Each suite's `workbooks`
   counts its cases with a scored in-scope cell: `all_exact`, `all_within15` and `any_visible`.
+  It uses the suite's `closeness` cells (hand-written expectations and deviation passes included),
+  so it is suite scope, not Excel-only evidence.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 - `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
   it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
