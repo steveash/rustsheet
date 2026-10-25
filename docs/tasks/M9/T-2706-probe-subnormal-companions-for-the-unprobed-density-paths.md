@@ -3,7 +3,7 @@ id: T-2706
 title: "Probe subnormal companions for the unprobed density paths: BINOM.DIST k = n, cumulative tails, legacy names, second regimes"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
