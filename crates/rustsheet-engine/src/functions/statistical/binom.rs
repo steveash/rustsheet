@@ -309,14 +309,16 @@ impl Model {
             }
         }
         let dist = NegativeBinomial::new(number_s, probability_s).map_err(|_| num_error(cell))?;
-        let result = if cumulative || f_u > 0 {
-            flush_subnormal(if cumulative {
-                dist.cdf(f_u)
-            } else {
-                dist.pmf(f_u)
-            })
+        let raw = if cumulative {
+            dist.cdf(f_u)
         } else {
             dist.pmf(f_u)
+        };
+        let keeps_subnormal = !cumulative && f_u == 0;
+        let result = if keeps_subnormal {
+            raw
+        } else {
+            flush_subnormal(raw)
         };
         if !result.is_finite() {
             return Err(num_error(cell));
