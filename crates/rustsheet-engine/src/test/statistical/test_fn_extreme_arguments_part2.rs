@@ -14,13 +14,15 @@ fn scalar_distributions_at_extreme_arguments_part2() {
         ("=T.DIST.2T(1E+307,3)", "#NUM!"),
         ("=T.DIST.RT(1E+300,7)", "#NUM!"),
         ("=T.DIST(1E+307,9,TRUE)", "#NUM!"),
-        // 46ac3ef5e61583ca A236: 6.366197723675813E-16.
+        // 46ac3ef5e61583ca A236: 6.366197723675813E-16; only "a number" is pinned, its last digits
+        // are the Student t accuracy tasks' (out of scope).
         ("=ISNUMBER(T.DIST.2T(1E+15,1))", "TRUE"),
         // A negative mean with x truncating to 0 is EXP(-mean); x of 1 or more stays #NUM!.
         ("=POISSON(0,-1,0)", "2.718281828"),
         ("=POISSON(0.3,-0.5,TRUE)", "1.648721271"),
         ("=POISSON.DIST(0,-42,FALSE)", "1.73927E+18"),
         ("=POISSON(1,-1,TRUE)", "#NUM!"),
+        // UNVERIFIED (ours, unprobed): EXP(-mean) overflowing is #NUM!.
         ("=POISSON(0,-1000,TRUE)", "#NUM!"),
         // A probability that underflows the result is 0.
         ("=NEGBINOMDIST(7,123456789.123,1E-200)", "0"),
