@@ -3,7 +3,7 @@ id: T-2494
 title: "IRR and XIRR: Excel's #VALUE!, #DIV/0! and #NUM! for IRR(CELL(..)), a huge guess, a #DIV/0! of unprobed cause and no root (gen-m9, 21 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
