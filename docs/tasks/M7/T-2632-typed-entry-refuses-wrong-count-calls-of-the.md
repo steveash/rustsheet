@@ -40,3 +40,5 @@ take their signature from `fallback_signature` (parser/static_analysis.rs). A ca
 `group_functions.rs` `table_matches_catalog`); extend or move it (one definition per concept) rather than writing a second table.
 Maximums are not in the catalog's min_args column; they would come from its `syntax` column (`...` = repeating) and need care
 for engine-only extras (ACCRINTM's 3 arguments).
+
+Resumed 2026-10-25 07:50 UTC by an opus run (routine step 2).
