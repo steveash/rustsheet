@@ -3,7 +3,7 @@ id: T-2714
 title: "MOD of two opposite-sign operands near the smallest normal is #NUM! (calipers formulas_math_basic I88, H89)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
