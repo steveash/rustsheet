@@ -3,7 +3,7 @@ id: T-1734
 title: "Displayed text: two-condition sections pick the section as Excel does"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
