@@ -3,7 +3,7 @@ id: T-2119
 title: "BETA.DIST cdf on incomplete_beta::beta_reg; decide the nine chained BETA.INV cells it moves"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -63,10 +63,10 @@ record the regressions (`--allow-regressions` was refused to it), so it shipped 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A decision record allows exactly the chained BETA.INV lines (or they are avoided), and the
+- [x] A decision record allows exactly the chained BETA.INV lines (or they are avoided), and the
       baseline diff adds no other line.
-- [ ] BETA.DIST's cdf is `incomplete_beta`'s; BETA.INV (and F.INV, or a filed task) inverts the same cdf.
-- [ ] `make check` green; reviewers approve.
+- [x] BETA.DIST's cdf is `incomplete_beta`'s; BETA.INV (and F.INV, or a filed task) inverts the same cdf.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - BETADIST_BETAINV G5 and G26 (Cephes' fraction 160 ulp off where Excel is correctly rounded;
@@ -82,3 +82,29 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
 
 The nine chained BETA.INV cells that move from bit-exact to 1-2 ulp are exactly the trade decision 0083 allows: record them under its allowance instead of waiting for a separate decision.
+
+## Outcome
+BETA.DIST and BETADIST's cdf is `incomplete_beta::beta_reg_complement`. BETA.INV refines statrs' estimate to the
+crossing of that cdf (`special::refine_increasing`, the upper tail on 1 - p above p = 0.5, as `fisher.rs` `f_quantile`
+does). The unused `special::bisect_unit_interval` is gone. F.INV and F.INV.RT already invert F.DIST's own tails (T-0974).
+
+Eval (merged with main at 8c586da, 2026-10-25): fixed 27 gated lines (ironcalc-calc 19, probes 5, and gen-m9 3: 589f42e67f4b4b8d A221,
+787ba8d801105a60 A259, 899f9555e67da2d6 A101). The visible-parity cell gen-m9/35e8168aae2b00f8 A159
+`BETADIST(1E-10,0.5,10000000000.5)` moved from 0.8427190549884069 to 0.8427009368248534, but Excel's is
+0.8427007929652814. It is still visibly off, so the first criterion is not met, and it moves to T-2633.
+Across every suite, ungated probes-numeric included, in-scope visibly-off cells fell from 11,309 to 10,296.
+BETA.DIST fell 1,336 to 638, BETA.INV 272 to 69, BETAINV 34 to 21 and BETADIST 27 to 22. In-scope cells visibly off: 5,999 (lock 8,632).
+The baseline was recorded with `update-baseline --allow-regressions` under decision 0083's standing allowance, with the
+owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. It adds exactly these 9 lines,
+all numeric, all in `ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx` `Sheet1`, none visibly off (Excel vs ours):
+- H2: 3.0 vs 3.000000000000001 (2 ulp)
+- H23: -0.23399999999999987 vs -0.23399999999999999 (4 ulp)
+- H42, H44, H46, H47, H48, H49: 0.23399999999999999 vs 0.234 (1 ulp each)
+- H67: 3.0 vs 2.999999999999999 (2 ulp)
+
+Follow-up: T-2633 (campaign: visible) owns these nine cells and A159. It also owns four ungated probes-numeric
+cells that this change makes visibly off: t0969-beta-prefactor D85 (18 ulp) and D86 (33 ulp, bit-exact before),
+and t0969-t-beta-link E56 (4 ulp) and F6 (6 ulp). Decision 0083's condition 2 ("no cell becomes visibly off")
+does not hold for them. The owner accepted them in decision 0111. T-2633 also owns the 58 ungated probes-numeric
+cells that are newly 1-2 ulp off. `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` is now 0.003013141..., about the true quantile (1 - (1 - x)^b with a near 1; T-1871 says about 0.003), instead of
+`#NUM!` (Excel 0.0691959487211844, probes/stat-quantile-lift E9, still a known failure).
