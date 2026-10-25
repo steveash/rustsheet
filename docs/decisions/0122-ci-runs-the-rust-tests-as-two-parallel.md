@@ -1,6 +1,31 @@
 # 0122 — CI runs the Rust tests as two parallel shards
 
-- **Status:** accepted (TODO(fill): date, task id)
-- **Context:** TODO(fill): what forced the decision; evidence.
-- **Decision:** TODO(fill): the rule, in one or two sentences.
-- **Consequences:** TODO(fill): what changes for agents, gates and later work.
+- **Status:** accepted (2026-10-25, owner request to shorten PR CI, T-2754). It changes where the
+  Rust tests run, not which tests run.
+- **Context:** PR CI wall time is how long the merge lock (decision 0075) is held. Over the 48 h
+  before 2026-10-25 PR runs took p50 6.7 / p90 7.4 min, bounded by the rust job (p50 5.6, p90 6.5
+  min). Its `make test` step took 4.8-6.0 min in six PR runs that day; in run 40242056004 the
+  engine's unit-test binary alone ran 261 s, after about 1.2 min of compiling. The tests are CPU
+  bound (4604 engine unit tests, 585 CPU-s locally on 4 threads, single tests up to 55 s), so only
+  more cores help. Options weighed with numbers:
+  - opt-level 1 for tests: locally compile +127 s and tests -110 s, a net loss;
+  - cargo-nextest partitions: a new CI tool and a different test runner from `make test` (one
+    process per test, no doctests), so CI would no longer run what agents run;
+  - `CARGO_INCREMENTAL=0`: dtolnay/rust-toolchain already sets it;
+  - rust-cache keys: PRs already restore main's cache with a full match;
+  - splitting `make test` with libtest's own filters: no new tool, same runner.
+  Peak concurrency over the last 60 runs was 24 jobs with no queueing (2 s), so one more job per
+  PR fits.
+- **Decision:** `make test-shard-1` runs the tests whose names contain one of the substrings in
+  `TEST_SHARD_1` (the slowest engine modules, about half the test CPU time); `make test-shard-2`
+  runs every other test with `--skip` on the same substrings, which libtest matches the same way.
+  Together they run exactly the tests of `make test`, each once; a new test lands in shard 2
+  unless it matches. CI's rust job is a matrix of the two shards; shard 1 also runs fmt-check
+  and clippy, and each shard has its own rust-cache key. `make test` and `make check` are
+  unchanged.
+- **Consequences:** every gate still runs on every PR: fmt-check, clippy and the tests of shard
+  1 in `rust (fmt, clippy, test 1/2)`, the remaining tests in `rust (test 2/2)`. Each PR uses one
+  more runner, and both shards compile the tests. Rebalance `TEST_SHARD_1` when one shard grows
+  much slower than the other; a substring that stops matching only moves tests to shard 2. With
+  the rust job shorter, the python job (about 4 min, mostly pytest building the release
+  rustsheet-eval binary) bounds PR CI next.
