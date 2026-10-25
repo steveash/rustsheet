@@ -596,6 +596,7 @@ impl Model {
                 })
             }
             RangeKind { .. } => {
+                // Never `None`: `node` is a `RangeKind`.
                 let Some((left, right)) = range_corners(node, cell) else {
                     return CalcResult::new_error(Error::ERROR, cell, String::new());
                 };

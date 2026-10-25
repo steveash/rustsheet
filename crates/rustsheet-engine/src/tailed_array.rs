@@ -57,7 +57,8 @@ pub(crate) struct Tailed<T> {
     pub(crate) tail_len: usize,
 }
 
-/// The node under its parentheses.
+/// The node under its parentheses. Unlike `Node::ungrouped`, a structured reference stays itself,
+/// so a table column is never taken for a whole column (it keeps the ordinary reading).
 fn ungroup(mut node: &Node) -> &Node {
     while let Node::Group { child, .. } = node {
         node = child;
@@ -65,6 +66,9 @@ fn ungroup(mut node: &Node) -> &Node {
     node
 }
 
+/// A node's identity while its formula is evaluated: the address is only compared, never
+/// dereferenced, and only while the argument it was taken from is borrowed by `read_tailed`, so
+/// the parsed tree cannot move or be freed meanwhile.
 fn address(node: &Node) -> usize {
     std::ptr::from_ref(node) as usize
 }
@@ -137,6 +141,7 @@ impl Model {
         while let Some(node) = pending.pop() {
             let node = ungroup(node);
             if push_operands(node, &mut pending) {
+                // `push_operands` took this function only as IF with 2 or 3 arguments.
                 if let Node::FunctionKind { args, .. } = node {
                     conditions.push(&args[0]);
                 }
