@@ -3,7 +3,7 @@ id: T-2102
 title: "excel_exp integer core: steps 1, 2 and 4 of model V6 at a few ns (T-1945 follow-up)"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
