@@ -630,7 +630,11 @@ fn annuity_and_db_domain_errors() {
             ("A5", "=ERROR.TYPE(NPER(-1,-31,1))", "6"),
             // a boolean month from a cell is 0, not #VALUE!
             ("A6", "=ERROR.TYPE(DB(15779,385,37,B1,B1))", "6"),
-            ("A7", "=DB(10000,1000,6,1,TRUE)=DB(10000,1000,6,1,1)", "TRUE"),
+            (
+                "A7",
+                "=DB(10000,1000,6,1,TRUE)=DB(10000,1000,6,1,1)",
+                "TRUE",
+            ),
         ],
     );
 }
