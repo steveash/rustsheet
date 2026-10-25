@@ -1,0 +1,26 @@
+tiny literals parsed exactly: 48 of 48
+relative parse errors: [(0.0, 48)]
+('apser/sw|apser', 'CR exact') 0
+('apser/sw|apser', 'CR w15') 65
+('apser/sw|apser', 'CR w4') 16
+('apser/sw|apser', 'exact-args == literal-args') 192
+('apser/sw|apser', 'model exact') 1
+('apser/sw|apser', 'model w15') 67
+('apser/sw|apser', 'model w4') 22
+('apser/sw|apser', 'n') 192
+('fpser|fpser', 'CR exact') 4
+('fpser|fpser', 'CR w15') 81
+('fpser|fpser', 'CR w4') 34
+('fpser|fpser', 'exact-args == literal-args') 184
+('fpser|fpser', 'model exact') 6
+('fpser|fpser', 'model w15') 95
+('fpser|fpser', 'model w4') 32
+('fpser|fpser', 'n') 184
+('w_bpser|bpser:b0<=1', 'CR exact') 0
+('w_bpser|bpser:b0<=1', 'CR w15') 1
+('w_bpser|bpser:b0<=1', 'CR w4') 0
+('w_bpser|bpser:b0<=1', 'exact-args == literal-args') 8
+('w_bpser|bpser:b0<=1', 'model exact') 0
+('w_bpser|bpser:b0<=1', 'model w15') 3
+('w_bpser|bpser:b0<=1', 'model w4') 0
+('w_bpser|bpser:b0<=1', 'n') 8

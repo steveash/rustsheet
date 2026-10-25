@@ -1,0 +1,17 @@
+rows 40014 distinct points 36433
+
+R_LIKE port vs R bratio binary (distinct points), by branch: bit-identical (w and w1) / total
+  L140 bup+bgrat           3229/3229    max |ulp| of misses 0.0
+  L140 bup+bpser          11250/11250   max |ulp| of misses 0.0
+  L140 bup+bup+bgrat         32/32      max |ulp| of misses 0.0
+  basym                       1/1       max |ulp| of misses 0.0
+  bfrac                    1223/1223    max |ulp| of misses 0.0
+  bgrat                    1119/1121    max |ulp| of misses 1.0
+  bpser(a,b>1)             1123/1123    max |ulp| of misses 0.0
+  bup+bgrat                 961/961     max |ulp| of misses 0.0
+  w1_bpser                 4626/4626    max |ulp| of misses 0.0
+  w_bpser                 12867/12867   max |ulp| of misses 0.0
+   e.g. bgrat ((100.0, 0.5, 0.8031541415152366, 0.19684585848476344), 3.7612949710067634e-11, 3.761294971006764e-11, 1.0)
+   e.g. bgrat ((500.0, 0.5, 0.9635410596225003, 0.03645894037749975), 1.1098354033082538e-09, 1.1098354033082536e-09, 1.0)
+
+R_LIKE port vs correctly rounded (rows): |ulp| histogram (9 = 9+): {0: 10822, 1: 11227, 2: 6552, 3: 3519, 4: 1936, 5: 1192, 6: 911, 7: 701, 8: 566, 9: 2588}

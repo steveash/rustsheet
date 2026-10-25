@@ -1,0 +1,9 @@
+floorE   bins   264 rows  15591 consistent     6   null     4
+nintE    bins   264 rows  15591 consistent     6   null     5
+nint_t   bins   378 rows  15591 consistent     9   null    10
+floor_t  bins   378 rows  15590 consistent     8   null     8
+E*8      bins  2024 rows  15557 consistent  1075   null  1090
+E*64     bins  2144 rows   9931 consistent  1874   null  1886
+t*16     bins  3191 rows  13732 consistent  2627   null  2626
+t*256    bins   534 rows   6303 consistent   465   null   466
+b        bins    22 rows  15596 consistent     1   null     0

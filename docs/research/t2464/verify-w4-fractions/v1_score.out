@@ -1,0 +1,22 @@
+parsed BETA.DIST cells 32768 non-exact x sums 0
+L140 direct cdf cells 5633 distinct points 5633 dup points 0
+dup points with differing excel 0
+by (a,b): Counter({(2.5, 3.5): 3585, (7.3, 11.6): 1024, (4.0, 4.0): 1024})
+
+FULL n=5633  CR: n 5633 exact 1312 w4 4968 w15 5588
+  claimed      exact 3065 w4 5631 w15 5633
+  W stored     exact 3015 w4 5632 w15 5633
+  W ext        exact 2552 w4 5558 w15 5633
+  order (Py)x  exact 2578 w4 5630 w15 5633
+  lnB gl       exact 3065 w4 5631 w15 5633
+  break        exact 3065 w4 5631 w15 5633
+  block ('1', 2.5, 3.5, 0) n 1024 model 616/1024/1024 CR 260/1022/1024
+  block ('1', 2.5, 3.5, 1) n 1024 model 519/1024/1024 CR 293/1024/1024
+  block ('1', 4.0, 4.0, 5) n 1024 model 580/1024/1024 CR 96/779/979
+  block ('1', 7.3, 11.6, 2) n 1024 model 301/1022/1024 CR 85/606/1024
+  block ('2', 2.5, 3.5, 3) n 1024 model 725/1024/1024 CR 360/1024/1024
+  block ('2', 2.5, 3.5, 5) n 513 model 324/513/513 CR 218/513/513
+random half A {'claimed': 1549, 'W stored': 1496, 'W ext': 1270, 'order (Py)x': 1309, 'lnB gl': 1549, 'break': 1549} CR 650 n 2817
+random half B {'claimed': 1516, 'W stored': 1519, 'W ext': 1282, 'order (Py)x': 1269, 'lnB gl': 1516, 'break': 1516} CR 662 n 2816
+lower-x half {'claimed': 1571, 'W stored': 1566, 'W ext': 1294, 'order (Py)x': 1300, 'lnB gl': 1571, 'break': 1571} CR 666 n 2816
+upper-x half {'claimed': 1494, 'W stored': 1449, 'W ext': 1258, 'order (Py)x': 1278, 'lnB gl': 1494, 'break': 1494} CR 646 n 2817

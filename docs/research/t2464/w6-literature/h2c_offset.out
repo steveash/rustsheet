@@ -1,0 +1,80 @@
+old:old            a=10 b=2.5 n=200
+   ctrl exact-E  c=0:  15/200   best c=+4.250: tune 12/100 hold-out 4/100
+   D-LF1         c=0:  12/200   best c=+4.750: tune 12/100 hold-out 9/100
+   D-LF0         c=0:  10/200   best c=-4.500: tune 9/100 hold-out 2/100
+   E-LF1         c=0:  13/200   best c=+6.625: tune 11/100 hold-out 10/100
+probe1:12.0,20.0   a=12 b=20 n=200
+   ctrl exact-E  c=0:   4/200   best c=+8.625: tune 10/100 hold-out 2/100
+   D-LF1         c=0:  29/200   best c=-0.125: tune 18/100 hold-out 10/100
+   D-LF0         c=0:  24/200   best c=-0.125: tune 15/100 hold-out 9/100
+   E-LF1         c=0:   5/200   best c=+1.625: tune 7/100 hold-out 5/100
+probe1:2.5,3.5     a=2.5 b=3.5 n=200
+   ctrl exact-E  c=0:  26/200   best c=+2.625: tune 33/100 hold-out 25/100
+   D-LF1         c=0:  28/200   best c=+2.125: tune 26/100 hold-out 18/100
+   D-LF0         c=0:  19/200   best c=+3.250: tune 26/100 hold-out 19/100
+   E-LF1         c=0:  17/200   best c=+2.375: tune 34/100 hold-out 20/100
+w2:absweep:0       a=2.5 b=3.5 n=200
+   ctrl exact-E  c=0:  30/200   best c=+2.375: tune 19/100 hold-out 21/100
+   D-LF1         c=0:  33/200   best c=-2.250: tune 18/100 hold-out 10/100
+   D-LF0         c=0:  37/200   best c=-2.000: tune 23/100 hold-out 11/100
+   E-LF1         c=0:  15/200   best c=+1.125: tune 15/100 hold-out 15/100
+w2:absweep:1       a=7.3 b=11.6 n=200
+   ctrl exact-E  c=0:  25/200   best c=+3.000: tune 21/100 hold-out 12/100
+   D-LF1         c=0:   5/200   best c=-19.250: tune 8/100 hold-out 0/100
+   D-LF0         c=0:   7/200   best c=-16.625: tune 8/100 hold-out 3/100
+   E-LF1         c=0:  23/200   best c=+5.750: tune 19/100 hold-out 12/100
+w2:absweep:4       a=2.5 b=3.5 n=200
+   ctrl exact-E  c=0:  22/200   best c=+5.250: tune 21/100 hold-out 13/100
+   D-LF1         c=0:  33/200   best c=+3.875: tune 17/100 hold-out 12/100
+   D-LF0         c=0:  31/200   best c=+3.875: tune 20/100 hold-out 18/100
+   E-LF1         c=0:  15/200   best c=+1.625: tune 19/100 hold-out 12/100
+w2:absweep:5       a=7.3 b=11.6 n=200
+   ctrl exact-E  c=0:  43/200   best c=+0.750: tune 31/100 hold-out 20/100
+   D-LF1         c=0:   0/200   best c=+19.500: tune 10/100 hold-out 10/100
+   D-LF0         c=0:   0/200   best c=+19.750: tune 10/100 hold-out 10/100
+   E-LF1         c=0:  12/200   best c=+2.000: tune 17/100 hold-out 20/100
+w2:xruns-1:0       a=2.5 b=3.5 n=200
+   ctrl exact-E  c=0:   6/200   best c=+3.000: tune 47/100 hold-out 47/100
+   D-LF1         c=0:   2/200   best c=+4.000: tune 35/100 hold-out 37/100
+   D-LF0         c=0:   0/200   best c=+4.000: tune 31/100 hold-out 26/100
+   E-LF1         c=0:   3/200   best c=+3.500: tune 52/100 hold-out 37/100
+w2:xruns-1:1       a=2.5 b=3.5 n=200
+   ctrl exact-E  c=0:   0/200   best c=+3.250: tune 75/100 hold-out 67/100
+   D-LF1         c=0:   0/200   best c=+4.000: tune 84/100 hold-out 81/100
+   D-LF0         c=0:   0/200   best c=+5.000: tune 84/100 hold-out 80/100
+   E-LF1         c=0:   0/200   best c=+3.750: tune 77/100 hold-out 74/100
+w2:xruns-1:2       a=7.3 b=11.6 n=200
+   ctrl exact-E  c=0:   5/200   best c=-4.000: tune 37/100 hold-out 33/100
+   D-LF1         c=0:   0/200   best c=-12.500: tune 17/100 hold-out 14/100
+   D-LF0         c=0:   0/200   best c=-12.500: tune 17/100 hold-out 14/100
+   E-LF1         c=0:  66/200   best c=-0.625: tune 38/100 hold-out 35/100
+w2:xruns-1:5       a=4 b=4 n=200
+   ctrl exact-E  c=0:  24/200   best c=-0.875: tune 18/100 hold-out 16/100
+   D-LF1         c=0:  52/200   best c=-4.625: tune 30/100 hold-out 20/100
+   D-LF0         c=0: 100/200   best c=-0.625: tune 41/100 hold-out 36/100
+   E-LF1         c=0:  35/200   best c=+0.125: tune 19/100 hold-out 18/100
+w2:xruns-1:7       a=100 b=120 n=200
+   ctrl exact-E  c=0:   8/200   best c=-4.500: tune 8/100 hold-out 5/100
+   D-LF1         c=0:   3/200   best c=-4.500: tune 32/100 hold-out 21/100
+   D-LF0         c=0:   8/200   best c=+3.500: tune 34/100 hold-out 22/100
+   E-LF1         c=0:   8/200   best c=-3.625: tune 8/100 hold-out 4/100
+w2:xruns-2:0       a=2.5 b=3.5 n=200
+   ctrl exact-E  c=0:  17/200   best c=+2.375: tune 42/100 hold-out 41/100
+   D-LF1         c=0:   4/200   best c=+4.125: tune 51/100 hold-out 45/100
+   D-LF0         c=0:   0/200   best c=+4.000: tune 41/100 hold-out 38/100
+   E-LF1         c=0:  11/200   best c=+2.750: tune 42/100 hold-out 39/100
+w2:xruns-2:2       a=7.3 b=11.6 n=200
+   ctrl exact-E  c=0:  14/200   best c=+4.875: tune 12/100 hold-out 9/100
+   D-LF1         c=0:   9/200   best c=-8.000: tune 24/100 hold-out 20/100
+   D-LF0         c=0:   9/200   best c=-8.000: tune 24/100 hold-out 20/100
+   E-LF1         c=0:   3/200   best c=+8.250: tune 11/100 hold-out 11/100
+w2:xruns-2:3       a=2.5 b=3.5 n=200
+   ctrl exact-E  c=0:   0/200   best c=+3.000: tune 56/100 hold-out 60/100
+   D-LF1         c=0:   2/200   best c=+4.000: tune 56/100 hold-out 48/100
+   D-LF0         c=0:   0/200   best c=+4.000: tune 49/100 hold-out 46/100
+   E-LF1         c=0:   0/200   best c=+3.750: tune 58/100 hold-out 55/100
+w2:xruns-2:5       a=2.5 b=3.5 n=200
+   ctrl exact-E  c=0:   0/200   best c=+3.500: tune 76/100 hold-out 71/100
+   D-LF1         c=0:   0/200   best c=+4.000: tune 85/100 hold-out 88/100
+   D-LF0         c=0:   0/200   best c=+5.000: tune 82/100 hold-out 86/100
+   E-LF1         c=0:   0/200   best c=+3.875: tune 74/100 hold-out 70/100

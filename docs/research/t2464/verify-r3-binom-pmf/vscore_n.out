@@ -1,0 +1,26 @@
+== n: 4432 rows, 4432 distinct (kernel,k,n,p)
+-- BIN interior (1792)
+   CR           233/708/814 of 1792
+   L-lcx/LF1    281/711/870 of 1792
+   L-lcxx/LF0   433/757/867 of 1792
+   L-ext/LF0    434/741/846 of 1792
+-- NEG (2448)
+   CR           257/1484/1750 of 2448
+   L-lcx/LF1    398/1921/2069 of 2448
+   L-lcxx/LF0   449/1980/2094 of 2448
+   L-ext/LF0    432/1774/1948 of 2448
+-- NEG r=1 (192)
+   CR           24/191/192 of 192
+   L-lcx/LF1    20/192/192 of 192
+   L-lcxx/LF0   20/192/192 of 192
+   L-ext/LF0    20/192/192 of 192
+-- all (4432)
+   CR           514/2383/2756 of 4432
+   L-lcx/LF1    699/2824/3131 of 4432
+   L-lcxx/LF0   902/2929/3153 of 4432
+   L-ext/LF0    886/2707/2986 of 4432
+-- all, distinct cells only
+   CR           514/2383/2756 of 4432
+   L-lcx/LF1    699/2824/3131 of 4432
+   L-lcxx/LF0   902/2929/3153 of 4432
+   L-ext/LF0    886/2707/2986 of 4432

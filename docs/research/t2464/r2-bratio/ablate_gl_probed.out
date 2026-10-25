@@ -1,0 +1,12 @@
+('ALL',) n=40014 | base: 22731/35884/36944 med +0.0 sd 10.0 | CR: 11812/33858/36618 med +0.0 sd 156.7
+('be', '35e8168aae2b00f8', 0.5, 10000000000.5, 'bgrat') n=1 | base: 1/1/1 med +0.0 sd 0.0 | CR: 1/1/1 med +0.0 sd 0.0
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t2464/r2-bratio/exp.py", line 51, in <module>
+    main()
+    ~~~~^^
+  File "/home/user/rustsheet/docs/research/t2464/r2-bratio/exp.py", line 46, in main
+    out.append(f"{n}: {ex}/{f}/{w} med {statistics.median(e):+.1f} sd {statistics.pstdev(e):.1f}")
+                                        ~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.13/statistics.py", line 637, in median
+    raise StatisticsError("no median for empty data")
+statistics.StatisticsError: no median for empty data

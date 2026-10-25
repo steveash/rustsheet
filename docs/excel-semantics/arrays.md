@@ -1548,10 +1548,28 @@ empty value IFERROR gives a blank cell (logic.md "IFERROR / IFNA of a blank cell
 TRUE,FALSE,TRUE,FALSE, `REDUCE(0,..,LAMBDA(a,v,a+COUNT(v)))` 4; A7:A11). VSTACK of one-cell blank references (A13:A23) and
 EXPAND's pad from a blank cell (`ISBLANK` TRUE for the pad elements, A32) make the same empty value. A blank cell of a *range*
 stays a blank cell: over `IF(TRUE,Z1:Z2)` COUNT is 0 and MAP's COUNT 0,0 (A37:A47).
-Ours: a LAMBDA's element binding gives the empty value since T-2413 (`lambda_cells`, for every blank element of an array value, also from sources not probed such as SORT or FILTER), which fixes A2088; INDEX of the element, VSTACK of
-a blank one-cell reference and EXPAND's blank pad still give a blank cell or 0 (A2, A3, A6, A13, A16, A20, A32; T-2461).
+Ours: a LAMBDA's element binding gives the empty value since T-2413 (`lambda_cells`), which fixes A2088; INDEX of the
+element, VSTACK and HSTACK of a blank one-cell reference and EXPAND's blank pad give it too since T-2461 (A2, A3, A6, A13,
+A16, A20, A32; `SEARCH(HSTACK(Z1),"Hello World",8)` is 8, gen-m9/2a18b2f5a4dc43ac Calc!A79).
+More sources (probes/t2461-blank-array-sources, excel-graph, 2026-10-25, T-2461): SORT and FILTER of a blank range make the
+empty value too (`MAP(SORT(Z1:Z2),_xleta.COUNT)` 1,1, `COUNT(INDEX(SORT(Z1:Z2),1,1))` 1, ISBLANK TRUE; A1:A4, A7:A9, A11),
+but TAKE and DROP of a range return a reference, so their blank cells stay blank cells: `MAP(TAKE(Z1:Z2,2),_xleta.COUNT)` is
+0,0, `COUNT(INDEX(TAKE(Z1:Z2,2),1,1))` and `COUNT(INDEX(DROP(Z1:Z3,1),1,1))` are 0 and `ISREF` of either INDEX is TRUE
+(`ISREF(INDEX(TAKE({1;2},1),1,1))` FALSE; A5, A6, A10, A27, A28, A36:A39); TAKE of an HSTACK keeps the empty value
+(A29). The pads: a blank cell pads EXPAND, WRAPCOLS and WRAPROWS with the empty value (ISBLANK TRUE, COUNT 1; A19:A22), and an
+empty pad_with differs by function: `EXPAND(1,2,2,)` pads with the empty value (A18) but `WRAPCOLS({1,2,3},2,)` and
+`WRAPROWS(..,2,)` with `#N/A`, as if it were missing (ISNA TRUE; A30, A31, A34, A35), while the empty value an argument
+evaluates to pads all three with the empty value (`WRAPCOLS({1,2,3},2,IFERROR(Z1,1))`, the same with the INDEX element, and
+EXPAND's: ISBLANK TRUE, COUNT 1, ISNA FALSE; A40:A45). HSTACK and VSTACK of a lone blank cell
+are the empty value (`COUNT(INDEX(HSTACK(Z1),1,1))` 1, `VSTACK(Z1)&"|"` "|"; A15:A17, A25), VSTACK of a blank range keeps
+the range's cells as the empty value (`COUNT(INDEX(VSTACK(Z1:Z2),1,1))` 1, A23:A24), and a spill shows the empty value as 0
+(`MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,v))`, `HSTACK(Z1,1)`, `EXPAND(1,2,2,Z1)`; C1:D7). The empty value is not an omitted
+argument: `LAMBDA(x,ISOMITTED(x))(IFERROR(Z1,1))`, the same of the INDEX element, and ISOMITTED in MAP over the HSTACK are
+FALSE (A12:A14).
+Ours: all of the above since T-2461 (INDEX picks from TAKE and DROP as a reference, `index_source`), except ISOMITTED, which
+is TRUE for the empty value (A12:A14; T-2649).
 Status: VERIFIED (excel-graph).
-Tasks: T-2306, T-2307, T-2413
+Tasks: T-2306, T-2307, T-2413, T-2461, T-2649
 
 ## MAKEARRAY rows and columns must be whole numbers
 Rule: MAKEARRAY is `#VALUE!` when rows or columns is not a whole number; it does not truncate as SEQUENCE does. Evidence (gen-m7,

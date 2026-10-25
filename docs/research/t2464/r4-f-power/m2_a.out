@@ -1,0 +1,25 @@
+run(100,100,x0.37)   | LN/LN   19.1 | cr/LN   19.1 | cr/cr   19.1 | cr/L64   19.1 | L64/LN   32.6
+run(100,100,x1.9)    | LN/LN    8.6 | cr/LN    8.6 | cr/cr    8.6 | cr/L64    8.6 | L64/LN   28.4
+run(100,100,x13)     | LN/LN   51.8 | cr/LN   51.8 | cr/cr   51.8 | cr/L64   51.7 | L64/LN  122.9
+run(100,100,x100)    | LN/LN  103.0 | cr/LN  103.0 | cr/cr  103.0 | cr/L64  103.0 | L64/LN  192.3
+run(50,100,x0.37)    | LN/LN    8.6 | cr/LN    8.6 | cr/cr    8.6 | cr/L64    8.6 | L64/LN   16.5
+run(50,100,x1.9)     | LN/LN    9.5 | cr/LN    9.5 | cr/cr    9.5 | cr/L64    9.5 | L64/LN   16.8
+run(50,100,x13)      | LN/LN   44.7 | cr/LN   44.7 | cr/cr   44.7 | cr/L64   44.8 | L64/LN  132.4
+run(50,100,x100)     | LN/LN  109.0 | cr/LN  108.7 | cr/cr  108.7 | cr/L64  108.6 | L64/LN  190.4
+run(100,50,x0.37)    | LN/LN   18.6 | cr/LN   18.6 | cr/cr   18.6 | cr/L64   18.6 | L64/LN   34.7
+run(100,50,x1.9)     | LN/LN    4.7 | cr/LN    4.7 | cr/cr    4.7 | cr/L64    4.7 | L64/LN   14.5
+run(100,50,x13)      | LN/LN   28.1 | cr/LN   28.1 | cr/cr   28.1 | cr/L64   28.1 | L64/LN   61.1
+run(100,50,x100)     | LN/LN   43.5 | cr/LN   43.5 | cr/cr   43.5 | cr/L64   43.3 | L64/LN   88.8
+run(60,200,x0.37)    | LN/LN   13.9 | cr/LN   13.9 | cr/cr   13.9 | cr/L64   13.9 | L64/LN   20.8
+run(60,200,x1.9)     | LN/LN    9.1 | cr/LN    9.1 | cr/cr    9.1 | cr/L64    9.1 | L64/LN   18.5
+run(60,200,x13)      | LN/LN   84.9 | cr/LN   84.9 | cr/cr   84.9 | cr/L64   84.9 | L64/LN  246.0
+run(60,200,x100)     | LN/LN  217.7 | cr/LN  217.7 | cr/cr  217.7 | cr/L64  217.7 | L64/LN  381.8
+run(50,50,x0.37)     | LN/LN    9.3 | cr/LN    9.3 | cr/cr    9.3 | cr/L64    9.3 | L64/LN   17.4
+run(50,50,x1.9)      | LN/LN    4.7 | cr/LN    4.7 | cr/cr    4.7 | cr/L64    4.7 | L64/LN   14.6
+run(50,50,x13)       | LN/LN   26.6 | cr/LN   26.6 | cr/cr   26.6 | cr/L64   26.6 | L64/LN   58.3
+run(50,50,x100)      | LN/LN   41.8 | cr/LN   41.8 | cr/cr   41.8 | cr/L64   41.8 | L64/LN   91.2
+run(20,100,x0.37)    | LN/LN    2.6 | cr/LN    2.6 | cr/cr    2.6 | cr/L64    2.6 | L64/LN    6.9
+run(20,100,x1.9)     | LN/LN    4.6 | cr/LN    4.6 | cr/cr    4.6 | cr/L64    4.6 | L64/LN    6.6
+run(20,100,x13)      | LN/LN   51.8 | cr/LN   51.8 | cr/cr   51.8 | cr/L64   51.8 | L64/LN  123.5
+run(20,100,x100)     | LN/LN   47.1 | cr/LN   47.1 | cr/cr   47.1 | cr/L64   47.1 | L64/LN  166.2
+median: {'LN/LN': 22.81, 'cr/LN': 22.81, 'cr/cr': 22.81, 'cr/L64': 22.82, 'L64/LN': 46.5}

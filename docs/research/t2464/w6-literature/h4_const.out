@@ -1,0 +1,22 @@
+(a,b): predicted density offset = -(lnB_lib - lnB_exact)/2^-53 ; Excel measured
+  (2.5,3.5): TOMS betaln    -1.25   R lbeta    +0.00   | Excel +2.7..+3.4 (both sides of the mean)
+  (4,4): TOMS betaln    +0.00   R lbeta    +0.00   | Excel -2.40
+  (7.3,11.6): TOMS betaln    -0.59   R lbeta    -0.27   | Excel -4.2 (x .273) / +5.4 (x .613); a-sweep +1.1, b-sweep +1.0
+  (12,20): TOMS betaln    -2.36   R lbeta    -0.41   | Excel -1.0 (sd 21)
+  (100,120): TOMS betaln    -2.35   R lbeta    -0.33   | Excel -1.1 (sd 13)
+  (10,2.5): TOMS betaln    -0.59   R lbeta    -0.06   | Excel +6.3 (sd 49)
+TOMS gamln(v) - lnGamma(v), units of 2^-53 absolute:
+  0.25: +0.442
+  0.5: +0.626
+  0.75: -0.114
+  1.5: +0.626
+  2.5: +0.626
+  3.5: +0.626
+  4: +0.000
+  6: +0.000
+  7.3: +0.568
+  11.6: +2.379
+  18.9: +2.342
+  12: +2.374
+  20: +2.347
+  32: +2.360

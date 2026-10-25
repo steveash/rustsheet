@@ -170,7 +170,8 @@ fn incomplete_gammas_that_hung_or_panicked_are_bounded() {
     model._set("A8", "=GAMMA.DIST(1E10,1E10,1,TRUE)");
     model._set("A9", "=POISSON(1E12,1E12,TRUE)");
     model._set("A10", "=CHISQ.DIST.RT(C2,2)");
-    // The largest chi-squared shape keeps statrs' value (481,117 terms).
+    // The largest chi-squared shape: Excel's 0.5000018806319452 (probes/incomplete-gamma-cap
+    // E16), which statrs' series missed (0.499998213; T-0971).
     model._set("A11", "=CHISQ.DIST(1E10,1E10,TRUE)");
     model._set("A12", "=INDEX(GAMMA.DIST({1.5;1E16},{2;1E16},1,TRUE),2)");
     model._set("A13", "=GAMMA.DIST(1000000000000001,1E15,1,TRUE)");
@@ -179,14 +180,15 @@ fn incomplete_gammas_that_hung_or_panicked_are_bounded() {
         ("A1", "#NUM!"),
         ("A2", "#NUM!"),
         ("A3", "#NUM!"),
-        ("A4", "#NUM!"),
+        // The accurate kernel's continued fraction ends here: 1, Excel's E4 (T-0971).
+        ("A4", "1"),
         ("A5", "#NUM!"),
         ("A6", "#NUM!"),
         ("A7", "0"),
         ("A8", "#NUM!"),
         ("A9", "#NUM!"),
         ("A10", "0"),
-        ("A11", "0.499998213"),
+        ("A11", "0.500001881"),
         ("A12", "#NUM!"),
         ("A13", "#NUM!"),
     ];

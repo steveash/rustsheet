@@ -3,7 +3,7 @@ id: T-2364
 title: "REGEX `$` and `\\Z` match before a final CR or CRLF, as before a final LF (t2364-regex-dollar-final-cr A1-A4)"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,10 +34,21 @@ they already do before a final LF. This is what Excel does.
   around an inner CR and an inner CRLF; whether `.` matches CR; `\Z` before a final CR.
 
 ## Acceptance criteria
-- [ ] probes/t2364-regex-dollar-final-cr A1-A4 pass, and their lines leave eval/baseline/probes.txt with no
+- [x] probes/t2364-regex-dollar-final-cr A1-A4 pass, and their lines leave eval/baseline/probes.txt with no
       new known failure.
-- [ ] A probe case (excel-graph) answers the questions above, and text.md records the newline rule (VERIFIED).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case (excel-graph) answers the questions above, and text.md records the newline rule (VERIFIED).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - `$` with another LF earlier in the text (T-2355).
+
+## Outcome
+Probed the open questions first (probes/t2364-regex-newline-convention, 25 cells, excel-graph 2026-10-25): Excel's
+PCRE2 uses the ANYCRLF newline convention. CR, LF and CRLF are newlines; U+2028, NEL, VT and FF are not. `$` and `\Z` match
+before a final LF, CR or CRLF, and between the CR and LF of a final CRLF. `(?m)$` matches before every CR and LF. `(?m)^`
+matches after an LF or after a CR that no LF follows. `.` matches neither CR nor LF. The engine now follows this.
+The backtracker's `holds` and `.` read the rules directly. The automata use regex-syntax's CRLF forms
+(`Dot::AnyCharExceptCRLF`, `Look::StartCRLF`, `Look::EndCRLF`). A new text kind, `FinalLf::Cr`, sends a regular pattern
+holding `$`, `\Z` or `(?m)$` to the memoized mode on a text with a CR. text.md has a new VERIFIED entry, and SPEC-0013
+section 2 notes the fourth text kind. Eval: probes known failures 2570 -> 2566 (A1-A4 fixed), plus 25 new passing cells,
+no regressions. Unprobed: `(?m)^` at the very end after a final newline (unchanged).

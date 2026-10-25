@@ -1,0 +1,6 @@
+col B lnx=LN(x)              rows 5264 at the common offset 5264  (median q +6.932447891572509)
+col B lnx=series(-fl(1-x))   rows 5232 at the common offset 4041  (median q +6.932447891572509)
+col B lnx=CR ln x            rows 5264 at the common offset 5264  (median q +6.932447891572509)
+col C lnx=LN(x)              rows 5264 at the common offset 2937  (median q +10.519819809719259)
+col C lnx=series(-fl(1-x))   rows 5232 at the common offset 2756  (median q +10.519819809719259)
+col C lnx=CR ln x            rows 5264 at the common offset 2937  (median q +10.519819809719259)

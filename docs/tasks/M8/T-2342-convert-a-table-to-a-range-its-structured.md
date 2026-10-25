@@ -3,7 +3,7 @@ id: T-2342
 title: "Convert a table to a range: its structured references become absolute plain ranges (T-2324)"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: sonnet
@@ -25,9 +25,12 @@ the adapter call it. Formulas on the table's own sheet and `#This Row` (relative
 them in the same PR (excel-probe skill).
 
 ## Acceptance criteria
-- [ ] table-convert-to-range scores and every cell passes; the adapter accepts `convert_table`.
-- [ ] references.md updated with the same-sheet probe.
-- [ ] `make check` green; reviewers approve.
+- [x] table-convert-to-range scores and every cell passes; the adapter accepts `convert_table`.
+- [x] references.md updated with the same-sheet probe.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cut and paste, row and column moves, undo and duplicated sheets (desktop, T-2325).
+
+## Outcome
+`Model::convert_table_to_range` (tables.rs) rewrites every structured reference to the table, in formulas and defined names, as the absolute area it lowered to, then removes the table; the cells stay. The facade gets a harness-only `Workbook::convert_table_to_range` (moved with the other harness edits to `workbook/harness.rs` to stay under the file-size limit) and the adapter accepts `convert_table`. New probe table-convert-same-sheet (excel-graph): on the table's own sheet the range is unqualified (`=SUM($C$4:$C$7)`) and `#This Row` prints `=$C4*2`; recorded in references.md. Eval delta: probes table-convert-to-range 0 to 12/12 cells, table-convert-same-sheet 7/7; no regressions.
