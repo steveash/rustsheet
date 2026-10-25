@@ -450,11 +450,18 @@ angle"); cosh and sinh are libm's. Rule:
 - IMCSC: `t = sin²x + (cosh 2y − 1)/2`, result `(sin x·(cosh y/t), −cos x·(sinh y/t))`: 69 of the 69 finite cells
   (the old `sin²x·cosh²y + cos²x·sinh²y` 58). Writing sinh²y as `(cosh 2y − 1)/2` is what loses the tiny-argument
   digits above; `sin²x + (cosh²y − 1)` reproduces those two rows but misses `0.00829243+6.03779e-05i` (row 31).
-- IMSEC: `t = cos²x + (cosh 2y − 1)/2`, result `(cos x·cosh y/t, sin x·sinh y/t)`: 68 of 70 finite cells; the misses
-  (rows 29 and 33, `23.7944+0.00977722i`, `956.615+0.00387493i`) sit near a pole, row 33 off in the 10th digit.
+- IMSEC (T-2743): `t = cos²x + ((cosh 2y + 1)/2 − 1)`, i.e. sinh²y as cosh²y − 1 with cosh²y from the
+  half-angle identity, result `(cos x·cosh y/t, sin x·sinh y/t)`: all 70 finite cells. Near a pole the
+  cancellation in cosh²y − 1 is visible: `IMSEC("956.615+0.00387493i")` is -2.46276584105671+258.045027895372i
+  (G33; exact -2.462765841048564+258.045027894412i, off in the 10th digit) and `IMSEC("23.7944+0.00977722i")`
+  4.33329584706818-0.178960935839407i (G29; exact real part 4.3332958470681874). IMCSC's `(cosh 2y − 1)/2`
+  (T-2044) missed G29 and G33; `cos²x·cosh²y + sin²x·(cosh²y − 1)` with `cosh²y = cosh y·cosh y` gets them but
+  misses rows 45 and 79 (`-9.51393+8.31084i`, `1+0.5i`); `cos²x + (cosh y·cosh y − 1)` misses rows 20, 36, 45.
 - IMSECH: `t = cos²y + sinh²x` (sinh squared itself, unlike IMSEC), result `(cosh x·cos y/t, −sinh x·sin y/t)`: 61 of
   62 finite cells (miss J34/L34, `1.34384-77.6742i`, last digit of the imaginary part, which the old
   `cosh²x cos²y + sinh²x sin²y` kernel got right; that kernel missed rows 28, 49, 79 and the IMSECH("3+4i") digit). This is why IMSEC("4+3i") and IMSECH("3+4i") differ.
+  IMSEC's T-2743 form turned a quarter (`cos²y + ((cosh 2x + 1)/2 − 1)`) gets 41 of the 49 sweep rows with a
+  nonzero imaginary part; the candidates T-2743 tried for J34 are in T-2750, which owns it.
 - IMCOT: `(sin 2x, −sinh 2y) / (cosh 2y − (2cos²x − 1))`: all 63 cells with a nonzero imaginary part, including the
   tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit). Past `cosh 2y`'s range the
   value is `−i` for y > 0 and `i` for y < 0 (P27, P44, P49, P68, P69, P71; P52, P55). A real number keeps `1/tan x`.

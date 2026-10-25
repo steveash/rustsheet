@@ -3,7 +3,7 @@ id: T-2743
 title: "IMSEC near a pole and IMSECH of 1.34384-77.6742i print Excel's text (im-last-digit-sweep G29, G33, J34)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -51,14 +51,14 @@ gated IM* cells that use these kernels: ironcalc-calc ENGINEERING/COMPLEXs.xlsx,
 eng-argument-modes, and the gen-m9 IMSEC/IMSECH cells (`make eval` "Functions with failing cells").
 
 ## Acceptance criteria
-- [ ] probes-numeric/im-last-digit-sweep G29, H29, G33, H33, I33, J34 and L34 pass (`make eval-show
+- [x] probes-numeric/im-last-digit-sweep G29, H29, G33, H33, I33, J34 and L34 pass (`make eval-show
       CASE=probes-numeric/im-last-digit-sweep.case.json`), and no IMSEC or IMSECH cell of that sweep that passes
       on main fails; or, at the time-box, the candidates tried and their sweep scores are recorded in
       docs/excel-semantics/engineering.md "IM* reciprocal kernels" and the cells stay owned by a follow-up.
-- [ ] No new known-failure lines in any eval/baseline file (`make eval-baseline` refuses regressions); the
+- [x] No new known-failure lines in any eval/baseline file (`make eval-baseline` refuses regressions); the
       gated IMSEC/IMSECH cells in ironcalc-calc, probes and gen-m9 pass at least as before.
-- [ ] Unit tests pin the three inputs' 15-digit texts.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests pin the three inputs' 15-digit texts.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMSEC/IMSECH at a real argument (T-2534) and IMSECH in the gen-m9 sweep (T-2537).
@@ -71,3 +71,10 @@ digits (G33 in the 10th digit), so the cells are visibly off and the task is in 
 `visible`. Its target is that every cell it owns prints Excel's text and the IMREAL/IMAGINARY readers are
 within half a unit of the 15th significant digit of Excel's value; the first acceptance criterion states it.
 Bit-level criteria still unmet then move to a follow-up with `defer: phase-1b`.
+
+## Outcome
+IMSEC's denominator is now `cos²x + ((cosh 2y + 1)/2 − 1)` (sinh²y as cosh²y − 1 by the half-angle identity):
+all 70 finite IMSEC cells of im-last-digit-sweep, so G29, H29, G33, H33 and I33 pass (sweep 1399 of 1404
+cells) and row 79 is kept. IMSECH hit the time-box: no candidate got J34 without losing another row; the
+scores are recorded in docs/excel-semantics/engineering.md and J34/L34 are owned by T-2750. eval/baseline
+unchanged (no gated case moved; probes-numeric is not baselined).
