@@ -1,0 +1,27 @@
+rows 30257 GAMMALN fallbacks (harness model) 416
+label mismatch vs bx 0
+('1<b0<8', 'ALL') n 7455 GL53 ex 3365 BEST ex 4038 | GL53 w15 6432 BEST w15 6432 | cells w/ fallback GL 416 | measured-GL only: GL53 3069 BEST 3731 of 7039
+('1<b0<8', 'be') n 99 GL53 ex 64 BEST ex 63 | GL53 w15 99 BEST w15 99 | cells w/ fallback GL 0 | measured-GL only: GL53 64 BEST 63 of 99
+('1<b0<8', 'w2f') n 3262 GL53 ex 1733 BEST ex 2239 | GL53 w15 3262 BEST w15 3262 | cells w/ fallback GL 416 | measured-GL only: GL53 1437 BEST 1932 of 2846
+('1<b0<8', 'w4p1') n 4094 GL53 ex 1568 BEST ex 1736 | GL53 w15 3071 BEST w15 3071 | cells w/ fallback GL 0 | measured-GL only: GL53 1568 BEST 1736 of 4094
+('a0>=1', 'ALL') n 66 GL53 ex 36 BEST ex 33 | GL53 w15 66 BEST w15 66 | cells w/ fallback GL 0 | measured-GL only: GL53 36 BEST 33 of 66
+('a0>=1', 'be') n 66 GL53 ex 36 BEST ex 33 | GL53 w15 66 BEST w15 66 | cells w/ fallback GL 0 | measured-GL only: GL53 36 BEST 33 of 66
+('b0<=1', 'ALL') n 2209 GL53 ex 1670 BEST ex 1378 | GL53 w15 2209 BEST w15 2208 | cells w/ fallback GL 0 | measured-GL only: GL53 1670 BEST 1378 of 2209
+('b0<=1', 'be') n 65 GL53 ex 29 BEST ex 28 | GL53 w15 65 BEST w15 64 | cells w/ fallback GL 0 | measured-GL only: GL53 29 BEST 28 of 65
+('b0<=1', 'w2f') n 2144 GL53 ex 1641 BEST ex 1350 | GL53 w15 2144 BEST w15 2144 | cells w/ fallback GL 0 | measured-GL only: GL53 1641 BEST 1350 of 2144
+('b0>=8', 'ALL') n 79 GL53 ex 39 BEST ex 55 | GL53 w15 78 BEST w15 78 | cells w/ fallback GL 0 | measured-GL only: GL53 39 BEST 55 of 79
+('b0>=8', 'be') n 79 GL53 ex 39 BEST ex 55 | GL53 w15 78 BEST w15 78 | cells w/ fallback GL 0 | measured-GL only: GL53 39 BEST 55 of 79
+
+largest old shapes:
+('w4p1', 2.5, 0.5) 1<b0<8 3071 GL53 1568 BEST 1736 fb 0
+('w2f', 0.5, 0.7) b0<=1 2048 GL53 1568 BEST 1275 fb 0
+('w2f', 0.5, 6.25) 1<b0<8 1024 GL53 494 BEST 766 fb 0
+('w2f', 1.5, 0.5) 1<b0<8 1024 GL53 446 BEST 553 fb 0
+('w4p1', 7.3, 0.6) 1<b0<8 1023 GL53 0 BEST 0 fb 0
+('be', 0.5, 0.5) b0<=1 39 GL53 16 BEST 16 fb 0
+('be', 0.5, 2.5) 1<b0<8 23 GL53 20 BEST 20 fb 0
+('be', 2.5, 0.5) 1<b0<8 23 GL53 18 BEST 18 fb 0
+('be', 0.5, 10.0) b0>=8 16 GL53 10 BEST 13 fb 0
+('be', 10.0, 0.5) b0>=8 14 GL53 11 BEST 13 fb 0
+('be', 0.5, 100.0) b0>=8 13 GL53 1 BEST 9 fb 0
+('be', 10.0, 1.0) a0>=1 12 GL53 11 BEST 10 fb 0

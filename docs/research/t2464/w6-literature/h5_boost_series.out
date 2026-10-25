@@ -1,0 +1,44 @@
+CR                             all 805/4637/4748 of 5183
+    README branch direct (be) 40/176/241 of 318        hold-out 21/91/121 of 163
+    README branch direct (w2) 675/3521/3567 of 3825    hold-out 354/1810/1833 of 1959
+    README branch reflected (w2) 90/940/940 of 1040       hold-out 40/453/453 of 501
+    a,b>1 (b*x<=0.7)         19/122/196 of 249        hold-out 11/76/110 of 142
+    block absweep            166/905/905 of 1024      hold-out 85/468/468 of 525
+    block be                 40/176/241 of 318        hold-out 21/91/121 of 163
+    block unit-shape         43/194/251 of 256        hold-out 22/102/132 of 133
+    block xruns-1            286/1925/1914 of 2048    hold-out 163/1000/993 of 1061
+    block xruns-2            270/1437/1437 of 1537    hold-out 124/693/693 of 741
+    min<=1                   786/4515/4552 of 4934    hold-out 404/2278/2297 of 2481
+w3 model (EXP(z)*s)            all 4442/5093/5131 of 5183
+    README branch direct (be) 109/236/274 of 318       hold-out 59/128/144 of 163
+    README branch direct (w2) 3311/3817/3817 of 3825   hold-out 1692/1956/1958 of 1959
+    README branch reflected (w2) 1022/1040/1040 of 1040   hold-out 492/501/501 of 501
+    a,b>1 (b*x<=0.7)         124/208/221 of 249       hold-out 70/122/128 of 142
+    block absweep            934/1020/1020 of 1024    hold-out 476/524/524 of 525
+    block be                 109/236/274 of 318       hold-out 59/128/144 of 163
+    block unit-shape         165/252/252 of 256       hold-out 83/131/133 of 133
+    block xruns-1            1720/2048/2048 of 2048   hold-out 894/1061/1061 of 1061
+    block xruns-2            1514/1537/1537 of 1537   hold-out 731/741/741 of 741
+    min<=1                   4318/4885/4910 of 4934   hold-out 2173/2463/2475 of 2481
+Boost-scaled, eps stop         all 1538/4323/4124 of 5183
+    README branch direct (be) 66/220/271 of 318        hold-out 30/119/141 of 163
+    README branch direct (w2) 1308/3233/2983 of 3825   hold-out 655/1641/1527 of 1959
+    README branch reflected (w2) 164/870/870 of 1040      hold-out 80/422/422 of 501
+    a,b>1 (b*x<=0.7)         71/199/221 of 249        hold-out 39/115/127 of 142
+    block absweep            440/1022/1022 of 1024    hold-out 215/524/524 of 525
+    block be                 66/220/271 of 318        hold-out 30/119/141 of 163
+    block unit-shape         121/252/252 of 256       hold-out 63/130/133 of 133
+    block xruns-1            581/1462/1212 of 2048    hold-out 300/747/630 of 1061
+    block xruns-2            330/1367/1367 of 1537    hold-out 157/662/662 of 741
+    min<=1                   1467/4124/3903 of 4934   hold-out 726/2067/1963 of 2481
+Boost-scaled, unchanged stop   all 1540/4323/4124 of 5183
+    README branch direct (be) 68/220/271 of 318        hold-out 31/119/141 of 163
+    README branch direct (w2) 1308/3233/2983 of 3825   hold-out 655/1641/1527 of 1959
+    README branch reflected (w2) 164/870/870 of 1040      hold-out 80/422/422 of 501
+    a,b>1 (b*x<=0.7)         71/199/221 of 249        hold-out 39/115/127 of 142
+    block absweep            440/1022/1022 of 1024    hold-out 215/524/524 of 525
+    block be                 68/220/271 of 318        hold-out 31/119/141 of 163
+    block unit-shape         121/252/252 of 256       hold-out 63/130/133 of 133
+    block xruns-1            581/1462/1212 of 2048    hold-out 300/747/630 of 1061
+    block xruns-2            330/1367/1367 of 1537    hold-out 157/662/662 of 741
+    min<=1                   1469/4124/3903 of 4934   hold-out 727/2067/1963 of 2481

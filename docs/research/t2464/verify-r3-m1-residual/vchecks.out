@@ -1,0 +1,17 @@
+(1) max == 8 shapes
+   old (0.25, 8.0) n 2: GL form 2, TOMS algdiv 0 (lnB equal: False)
+   old (0.5, 8.0) n 6: GL form 6, TOMS algdiv 0 (lnB equal: False)
+   old (0.75, 8.0) n 2: GL form 2, TOMS algdiv 2 (lnB equal: True)
+   old (8.0, 0.25) n 2: GL form 2, TOMS algdiv 0 (lnB equal: False)
+   old (8.0, 0.5) n 2: GL form 2, TOMS algdiv 0 (lnB equal: False)
+   vhold (0.4, 8.0) n 27: GL form 27, TOMS algdiv 0 (lnB equal: False)
+   vhold (8.0, 0.66) n 27: GL form 27, TOMS algdiv 0 (lnB equal: False)
+(2) engine GAMMALN vs measured
+   args < 1: 66, engine differs on 24
+   args >= 1: 541, engine differs on 19
+(3) min = 1 misses
+   probe1!C9!B156 x=0.156015515 a=1.0 b=20.0 model 0.7968650760312332 excel 0.7968650760312339 ulps 6
+   a!Calc!D523 x=0.33723305165698686 a=1.0 b=333.0 model 1.6377360169766323e-57 excel 1.637736016976586e-57 ulps 164
+   hold!Calc!D863 x=8.089259918892688e-05 a=1.0 b=9100000.0 model 1.78706089487e-313 excel 0.0 ulps 36170515192
+   hold!Calc!D875 x=8.332753274256999e-05 a=1.0 b=9100000.0 model 4.4e-323 excel 0.0 ulps 9
+   hold!Calc!D957 x=1.8984142489329656e-06 a=1.0 b=400000000.0 model 6.5e-322 excel 0.0 ulps 132
