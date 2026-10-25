@@ -3,7 +3,7 @@ id: T-2596
 title: "IMSQRT and the IM functions over a REDUCE that returns TRIMRANGE of a range are #VALUE!, not lifted"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
