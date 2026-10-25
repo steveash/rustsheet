@@ -83,3 +83,16 @@ Evidence: probes/t2280-ifs-one-cell-range-condition (excel-graph, 2026-10-21), C
 gen-m6/870c5e38f51ce5d4 Calc!A360 (`ROWS((IFS(Data!A$7,Data!D$10)*Data!C10))` is 1).
 Status: VERIFIED (excel-graph); implemented (T-2280, `ifs_pick`).
 Tasks: T-2280
+
+## IFS: a text condition with an array value spills its shape (T-2653)
+Rule: when an IFS condition is text not reading as a boolean, the `#VALUE!` result is an array of the broadcast shape of
+that pair's value and every *later* argument (conditions and values), at least 1x1; earlier scalar pairs do not count (an earlier array condition lifts the whole call: `IFS({TRUE,FALSE},{1;2},"x",5)` is 2x2).
+`IFS("x",{1,2;3,4})` is 2x2, `IFS("x",A1:B3)` 3x2, `IFS("x",5,TRUE,{1,2})` 1x2, `IFS("x",5,{TRUE,FALSE,TRUE},1)` 1x3,
+`IFS("x",5,"y",{1,2,3,4})` 1x4, `IFS("x",{1,2},{TRUE;FALSE},3)` 2x2, `IFS("x",5)` 1x1; `IFS(FALSE,{1,2},"x",5)` is 1x1.
+All have TYPE 64. A TRUE condition before the text one picks its value as usual. So a 3x2 value spills, or is `#SPILL!`
+when blocked (gen-m5/4260ce3226165deb Calc!A208).
+Evidence: probes/t2653-ifs-text-condition-array-value, probes/t2653-ifs-text-condition-shape-sources (excel-graph,
+2026-10-25); gen-m5/4260ce3226165deb Calc!A208.
+Untested: a later scalar error argument (`IFS("x",5,TRUE,1/0)`) and mismatched later shapes (`IFS("x",{1,2},TRUE,{1,2,3})`); the engine gives `#VALUE!` in every element.
+Status: VERIFIED (excel-graph); implemented (T-2653, `ifs_text_condition_error`).
+Tasks: T-2653

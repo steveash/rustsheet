@@ -130,6 +130,12 @@ impl Visible {
     pub fn total(&self) -> usize {
         self.numeric + self.other
     }
+
+    /// Whether `cell` is visibly off (decision 0083): the one test every report section uses.
+    #[must_use]
+    pub fn is_off(cell: &CellResult) -> bool {
+        Visible::of(cell).total() > 0
+    }
 }
 
 /// Whether `actual` is within half a unit in the 15th significant digit of `expected`: the

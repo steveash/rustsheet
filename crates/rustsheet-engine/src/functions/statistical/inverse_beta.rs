@@ -41,7 +41,7 @@
 
 use statrs::function::beta::{checked_beta_reg, checked_ln_beta};
 
-use super::incomplete_beta::{beta_reg_complement, ln_near_one};
+use super::incomplete_beta::{beta_reg_complement_unoriented, ln_near_one};
 use super::incomplete_gamma::gamma_ur;
 use super::special::nearest_crossing;
 
@@ -246,7 +246,7 @@ pub(crate) fn beta_lower_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
         );
     }
     nearest_crossing(
-        |x| beta_reg_complement(x, 1.0 - x, alpha, beta),
+        |x| beta_reg_complement_unoriented(x, 1.0 - x, alpha, beta),
         p,
         0.0,
         1.0,

@@ -12,6 +12,7 @@ mod test_fn_devsq;
 mod test_fn_expon_dist;
 mod test_fn_f;
 mod test_fn_f_df_limit;
+mod test_fn_f_pdf_large_df;
 mod test_fn_f_test;
 mod test_fn_fisher;
 mod test_fn_gamma;

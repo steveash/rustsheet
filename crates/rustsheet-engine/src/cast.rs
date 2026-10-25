@@ -122,7 +122,7 @@ pub(crate) fn array_node_to_text(node: &ArrayNode) -> Result<Cow<'_, Text>, Erro
 
 /// The text a scalar value reads as: a number as its text, a boolean as TRUE or FALSE, empty as
 /// "". `None` for an error, a range, an array or a LAMBDA.
-fn calc_scalar_to_string(value: &CalcResult) -> Option<String> {
+pub(crate) fn calc_scalar_to_string(value: &CalcResult) -> Option<String> {
     match value {
         CalcResult::Number(f) => Some(number_to_text(*f)),
         CalcResult::String(s) => Some((**s).to_owned()),

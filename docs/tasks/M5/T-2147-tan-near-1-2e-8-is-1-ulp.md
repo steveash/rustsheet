@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: [T-2172]
+defer: phase-1b
 ---
 
 ## Goal
