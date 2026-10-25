@@ -1,6 +1,7 @@
 //! The CEILING/FLOOR family on the SPEC-0011 driver (T-1773): CEILING, ECMA.CEILING, FLOOR,
 //! CEILING.MATH, CEILING.PRECISE, ISO.CEILING, FLOOR.MATH and FLOOR.PRECISE.
 
+use crate::decimal_round::decimal_to_f64;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
 use crate::number_format::significant_15;
@@ -19,9 +20,7 @@ fn snap_ratio(value: f64, significance: f64) -> f64 {
     }
     let (mantissa, exponent) = significant_15(ratio.abs(), true);
     // `mantissa` has 15 digits, so its last digit has place value 10^(exponent - 14).
-    format!("{mantissa}e{}", exponent - 14)
-        .parse::<f64>()
-        .map_or(ratio, |cut| cut.copysign(ratio))
+    decimal_to_f64(mantissa, exponent - 14).map_or(ratio, |cut| cut.copysign(ratio))
 }
 
 /// MROUND of two non-zero, same-signed numbers. Excel rounds the double quotient `|n / m|` up
@@ -188,7 +187,27 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::mround_value;
+    use super::{mround_value, snap_ratio};
+
+    #[test]
+    fn snap_ratio_tie_goes_away_from_zero() {
+        // probes/t2652-floor-ceiling-ties: a 16th-digit tie is not cut to even.
+        assert_eq!(
+            snap_ratio(-333_333_333_333_266.5, 1.0),
+            -333_333_333_333_267.0
+        );
+        assert_eq!(
+            snap_ratio(333_333_333_333_266.5, 1.0),
+            333_333_333_333_267.0
+        );
+        assert_eq!(
+            snap_ratio(333_333_333_333_265.5, 1.0),
+            333_333_333_333_266.0
+        );
+        assert_eq!(snap_ratio(999_999_999_999_999.5, 1.0), 1e15);
+        assert_eq!(snap_ratio(0.0, 1.0), 0.0);
+        assert!(snap_ratio(1.0, 0.0).is_infinite());
+    }
 
     #[test]
     fn mround_quotient_tolerance() {

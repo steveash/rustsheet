@@ -88,7 +88,7 @@ stops there as INT's does (`FLOOR(1000000000000001.5,1)` reads 1E+15).
 Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648); probes/t2652-floor-ceiling-ties
 (14 values x 7 functions, excel-graph, 2026-10-25, T-2652).
 Status: VERIFIED
-Implemented in: `snap_ratio` (ceiling_floor.rs) via `significant_15` with ties away from zero (T-2652)
+Implemented in: `snap_ratio` (ceiling_floor.rs) via `significant_15` and `decimal_to_f64`, ties away from zero (T-2652)
 Tasks: T-2652
 
 ## INT cuts to 15 significant digits first (T-2171)
