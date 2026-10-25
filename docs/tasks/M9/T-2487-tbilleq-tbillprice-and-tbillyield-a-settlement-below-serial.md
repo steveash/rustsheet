@@ -3,7 +3,7 @@ id: T-2487
 title: "TBILLEQ, TBILLPRICE and TBILLYIELD: a settlement below serial 1 is valid, and their error order (gen-m9, 14 cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -54,12 +54,12 @@ Cells:
 - gen-m9/bf979a17ab5aafcb.case.json (1): Calc!A52
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): these 13 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257): these 13 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for a settlement of 1E-15, 0.3 and 0.5 in each of the three functions.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for a settlement of 1E-15, 0.3 and 0.5 in each of the three functions.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -69,3 +69,14 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+TBILLEQ, TBILLPRICE and TBILLYIELD floor both dates before counting days, and the one-year limit compares Excel's
+displayed dates (`excel_serial_to_ymd`), so serial 0 (1900-01-00) is a valid settlement and serial 1 is 1900-01-01
+(the old chrono stand-in read it as 1899-12-31, so `TBILLPRICE(1,367,0.1)` was wrongly `#NUM!`). New probes:
+probes/tbill-settlement-below-one (23 cells, all pass) and probes/tbill-error-order-inner-calls (20 cells, 10 baselined
+inner-call failures). The error-order cells follow the T-bill order; their inner T.TEST, PPMT, QUARTILE and BIN2DEC differ,
+so those 4 cells moved to T-2496 with the probe's trace; the last-digit A91 (TBILLYIELD over F.INV) moved to T-1374;
+e168be7f6d3f84c2 A11 already passed on main. Eval: gen-m9 known failures 5512 -> 5503 (fixed 9: 8 owned plus
+fec39efaba9284c3 A216, a TBILLPRICE(0.5,..) inside BETADIST), 0 regressions; probes +10 new-coverage failures.
+financial.md "T-bill settlement below serial 1".

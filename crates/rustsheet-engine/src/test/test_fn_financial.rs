@@ -484,6 +484,40 @@ fn fn_tbillyield() {
     assert_eq!(model._get_text("C2"), *"#ERROR!");
 }
 
+// The T-bills floor both dates, so a settlement from 0 to below 1 is serial 0, a valid date
+// (probes/tbill-settlement-below-one, gen-m9 0a957119475760c5 A309, e8d55ec393460bb7 A287,
+// ba4ddb817a8e700e A135; T-2487).
+#[test]
+fn tbills_take_a_settlement_below_one() {
+    check_cells(
+        &[],
+        &[
+            ("A1", "=TBILLPRICE(1E-15,1,100)", "72.22222222222221"),
+            ("A2", "=TBILLPRICE(0.3,1,0.1)", "99.97222222222221"),
+            ("A3", "=TBILLPRICE(0.5,1.9,0.1)", "99.97222222222221"),
+            ("A4", "=TBILLPRICE(0.5,0.9,0.1)", "#NUM!"),
+            ("A5", "=TBILLPRICE(0,366,0.1)", "89.83333333333333"),
+            ("A6", "=TBILLPRICE(0,367,0.1)", "#NUM!"),
+            (
+                "A7",
+                "=TBILLPRICE(39000.7,39001.2,0.1)",
+                "99.97222222222221",
+            ),
+            ("B1", "=TBILLYIELD(1E-15,1,98)", "7.346938775510203"),
+            ("B2", "=TBILLYIELD(0.3,1,98)", "7.346938775510203"),
+            ("B3", "=TBILLYIELD(0.5,1,98)", "7.346938775510203"),
+            ("B4", "=TBILLYIELD(0,366,98)", "0.020073603211776512"),
+            ("B5", "=TBILLYIELD(0,367,98)", "#NUM!"),
+            ("B6", "=TBILLYIELD(1E-15,100,1E+300)", "-3.6"),
+            ("C1", "=TBILLEQ(1E-15,1,0.05/12)", "0.004224585932707554"),
+            ("C2", "=TBILLEQ(0.3,1,0.05/12)", "0.004224585932707554"),
+            ("C3", "=TBILLEQ(0.5,1,0.05/12)", "0.004224585932707554"),
+            ("C4", "=TBILLEQ(0,200,0.1)", "0.10685341885245037"),
+            ("C5", "=TBILLEQ(0,366,0.1)", "0.11013984535998977"),
+        ],
+    );
+}
+
 #[test]
 fn fn_dollarde() {
     let mut model = new_empty_model();

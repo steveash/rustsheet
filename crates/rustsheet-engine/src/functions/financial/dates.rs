@@ -10,38 +10,27 @@ use crate::{
     calc_result::CalcResult,
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{token::Error, types::CellReferenceIndex},
-    formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
+    formatter::dates::{excel_serial_to_ymd, EPOCH_1904_IN_1900_SERIALS},
     functions::lift::num_error,
     model::Model,
 };
 
-/// Whether `end_date` is at most a year after `start_date` (1900 serials), the TBILL* limit.
-pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bool, String> {
-    let end = from_excel_date(end_date)?;
-    let start = from_excel_date(start_date)?;
+/// Whether `end_date` is at most a year after `start_date` (1900 serials), the TBILL* limit,
+/// `None` off the calendar. It compares the dates Excel shows, so serial 0 is 1900-01-00 and
+/// serial 1 1900-01-01: `TBILLPRICE(0,366,0.1)` and `TBILLPRICE(1,367,0.1)` are numbers and
+/// `TBILLPRICE(0,367,0.1)` is `#NUM!` (probes/tbill-settlement-below-one B3, B4, B7;
+/// docs/excel-semantics/financial.md "T-bill settlement below serial 1").
+pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Option<bool> {
     if end_date - start_date < 365 {
-        return Ok(true);
+        return Some(true);
     }
-    let end_year = end.year();
-    let start_year = start.year();
+    let (start_year, start_month, start_day) = excel_serial_to_ymd(start_date)?;
+    let (end_year, end_month, end_day) = excel_serial_to_ymd(end_date)?;
     if end_year == start_year {
-        return Ok(true);
+        return Some(true);
     }
-    if end_year != start_year + 1 {
-        return Ok(false);
-    }
-    let start_month = start.month();
-    let end_month = end.month();
-    if end_month < start_month {
-        return Ok(true);
-    }
-    if end_month > start_month {
-        return Ok(false);
-    }
-    // we are one year later same month
-    let start_day = start.day();
-    let end_day = end.day();
-    Ok(end_day <= start_day)
+    // One year later: on or before the same month and day.
+    Some(end_year == start_year + 1 && (end_month, end_day) <= (start_month, start_day))
 }
 
 impl Model {

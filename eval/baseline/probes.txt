@@ -1171,6 +1171,8 @@ C	probes/take-drop-over-ifs-switch-picks.case.json	20
 C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
 C	probes/take-drop-trimrange-over-xlookup.case.json	23
 C	probes/tbill-equal-dates.case.json	11
+C	probes/tbill-error-order-inner-calls.case.json	20
+C	probes/tbill-settlement-below-one.case.json	23
 C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
 C	probes/text-255-units-array-element.case.json	8
@@ -3162,6 +3164,16 @@ F	probes/table-edits/table-insert-row-inside-data.case.json	F!A9
 F	probes/table-edits/table-totals-baseline.case.json	F!A10
 F	probes/table-edits/table-totals-baseline.case.json	F!A11
 F	probes/table-edits/table-totals-baseline.case.json	F!A3
+F	probes/tbill-error-order-inner-calls.case.json	Calc!A1
+F	probes/tbill-error-order-inner-calls.case.json	Calc!A2
+F	probes/tbill-error-order-inner-calls.case.json	Calc!A3
+F	probes/tbill-error-order-inner-calls.case.json	Calc!A5
+F	probes/tbill-error-order-inner-calls.case.json	Calc!B1
+F	probes/tbill-error-order-inner-calls.case.json	Calc!B2
+F	probes/tbill-error-order-inner-calls.case.json	Calc!B3
+F	probes/tbill-error-order-inner-calls.case.json	Calc!B5
+F	probes/tbill-error-order-inner-calls.case.json	Calc!C3
+F	probes/tbill-error-order-inner-calls.case.json	Calc!C5
 F	probes/text-255-units-array-element.case.json	S!A4
 F	probes/text-255-units-from-cell.case.json	S!A12
 F	probes/text-255-units-from-cell.case.json	S!A4

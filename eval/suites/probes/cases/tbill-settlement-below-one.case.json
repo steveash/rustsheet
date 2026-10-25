@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2487: T-bill functions with a settlement serial from 0 to below 1, and fractional dates. Questions: whether day counts floor both dates; how the one-year limit reads serial 0 (1900-01-00) for maturities 364-367; TBILLEQ's 183-day branch and 366-day year from serial 0.",
+ "tags": [
+  "M9",
+  "probe",
+  "financial",
+  "T-2487",
+  "tbilleq",
+  "tbillyield",
+  "tbillprice"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=TBILLPRICE(0,1,0.1)",
+    "A2": "=TBILLPRICE(0.5,1.9,0.1)",
+    "A3": "=TBILLPRICE(39000.7,39001.2,0.1)",
+    "A4": "=TBILLPRICE(39000.2,39001.9,0.1)",
+    "A5": "=TBILLPRICE(0.5,0.9,0.1)",
+    "A6": "=TBILLPRICE(0,0,0.1)",
+    "B1": "=TBILLPRICE(0,364,0.1)",
+    "B2": "=TBILLPRICE(0,365,0.1)",
+    "B3": "=TBILLPRICE(0,366,0.1)",
+    "B4": "=TBILLPRICE(0,367,0.1)",
+    "B5": "=TBILLPRICE(0.5,366.5,0.1)",
+    "B6": "=TBILLPRICE(1,366,0.1)",
+    "B7": "=TBILLPRICE(1,367,0.1)",
+    "C1": "=TBILLEQ(0,200,0.1)",
+    "C2": "=TBILLEQ(0,365,0.1)",
+    "C3": "=TBILLEQ(0,366,0.1)",
+    "C4": "=TBILLEQ(0.3,182.9,0.1)",
+    "C5": "=TBILLEQ(39000.7,39183.2,0.1)",
+    "D1": "=TBILLYIELD(0,1,98)",
+    "D2": "=TBILLYIELD(0,366,98)",
+    "D3": "=TBILLYIELD(0,367,98)",
+    "D4": "=TBILLYIELD(39000.7,39001.2,98)",
+    "D5": "=TBILLYIELD(1E-15,100,1E+300)"
+   }
+  }
+ ]
+}
