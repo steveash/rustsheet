@@ -48,7 +48,7 @@ Where M5's exit stands ("Milestone exit (decision 0085)" in the report):
   - All are functions-lane work. `make exit-owners MILESTONE=M5` reports 0 unowned cells.
 - M6 (next): coverage 38/39 is not met; gen-m6 (2/25) and M6 probes (0) are met.
 
-Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 3,008 (was 3,121; ratcheted) · oversized files 9 (was 11; `stringify.rs` is no longer oversized; ratcheted).
+Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 3,028 at c29fedf3 (was 3,121; ratcheted) · oversized files 9 (was 11; `stringify.rs` is no longer oversized; ratcheted).
 
 Since the 2026-10-22 snapshot (steward PR #1509), 221 commits landed on `main` through 0ab959f4. None was reverted.
 - All 221 were squash-merged through PRs on GitHub (committer GitHub). The 23 titles without `(#n)` are PR squashes too: for example T-2540 is #1729, merged at 00:33 UTC. No direct pushes to `main`.
