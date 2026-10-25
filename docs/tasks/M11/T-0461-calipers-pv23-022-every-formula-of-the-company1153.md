@@ -71,3 +71,6 @@ Eval:
 - The 36 regressions are the same on `main` (the calipers baseline is stale; it is not gated). Filed T-0463; the
   calipers baseline is not ratcheted here.
 - Gated suites: 0 regressions; fixtures +1 case.
+
+Follow-up from review: T-0464 probes the cases still at 0 with no Excel evidence (a loop member with no cached value, a
+spilling anchor on a loop, a cached text, boolean or error on a loop).

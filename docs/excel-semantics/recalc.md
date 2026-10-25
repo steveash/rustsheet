@@ -40,11 +40,12 @@ Tasks: T-1484, T-2068, T-2069, T-2070
 ## A circular reference without iteration keeps the cells' values from before the recalculation
 Rule: with iterative calculation off, every cell of a cycle, and every cell whose evaluation reads one, keeps the value
 it had before the recalculation, with no error value. In a loaded workbook that is the cached value; a formula never
-calculated (every cell of a spec probe, whose builder caches 0) is 0. In fixtures/circular-keeps-cached-values the cached
+calculated (every cell of a spec probe, whose builder caches 0) is 0 in ours; Excel with no cached `<v>` is
+unprobed (T-0464). In fixtures/circular-keeps-cached-values the cached
 values are A1 `=B1+1` 5, B1 `=A1` 4, C1 `=A1*2` 999, D1 `=D1+1` 7, E1 `=D1+100` 0, F1 `=1+1` 55, G1 `=F1*3` 0, H1 `=C1+1` 0,
 I1 `=A1+F1` 0 and J1 `=IF(F1>100,A1,F1*10)` 0. After the recalculation, F1 is 2 and G1 6 (recalculated). A1 through E1,
-H1 and I1 keep 5, 4, 999, 7, 0, 0 and 0. So does I1, though it also reads the changed F1. J1, which never evaluates its
-A1 branch, recalculates to 20. Calipers pv23_022, a Mac Excel model with two 3-statement loops and iteration off, keeps
+H1 and I1 keep 5, 4, 999, 7, 0, 0 and 0; I1 keeps its value though it also reads the changed F1. J1, which never evaluates its
+A1 branch, recalculates to 20. Calipers pv23_022, a Mac Excel model with two 3-statement loops, iteration off and `calcMode="manual"`, keeps
 its cached loop values, one-cell dynamic arrays (`cm="1"`, D88 `=D37`) included. The rest of this entry was probed on
 workbooks whose cached values are all 0, so each "is 0" below is "keeps 0". With no cached values, every cell of a cycle is 0: a
 self-reference `=A1+1`, `=A2`, and the 2- and 3-cell cycles `B1=C1+1, C1=B1+1` and `D1=E1+1,
@@ -66,11 +67,13 @@ pv23_022 (Excel-cached, and the same values from an excel-graph recalculation of
 Ours: matches since T-0445, and the T-0451 probe passes in full (17/17). A read that closes a loop, or reads a cell
 already known to be circular, marks every cell on the evaluation stack circular. A circular cell keeps its stored
 value, which is 0 for a formula never evaluated, and does not spill (`Model::mark_stack_circular` and
-`Model::circular_value`, crates/rustsheet-engine/src/circular.rs; T-0461). A spilling anchor on a loop, and an array
-anchor whose spill contradicts its own inputs (which the driver marks circular), are 0, and so are their readers. No
-probe covers an earlier spill kept on a loop.
+`Model::circular_value`, crates/rustsheet-engine/src/circular.rs; T-0461). A spilling anchor on a loop is 0, and so are its
+readers. An array anchor whose spill contradicts its own inputs (which the driver marks circular) keeps a cached value
+when it is stored as a one-cell array, and is 0 otherwise. No probe covers an earlier spill kept on a loop, a loop
+member with no cached value, or a cached text, boolean or error on a loop (T-0464). The fixture is the reproducible
+evidence: pv23_022 is not vendored, and its file is in manual calculation mode.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401, T-0445, T-0451, T-0461
+Tasks: T-0428, T-0401, T-0445, T-0451, T-0461, T-0464
 
 ## Iterative calculation sweeps the cycle in sheet order, in place
 Rule: with iteration on, each iteration recalculates the cycle's cells once in row-major sheet
