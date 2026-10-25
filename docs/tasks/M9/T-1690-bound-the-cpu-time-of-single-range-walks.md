@@ -38,7 +38,7 @@ Explicit near-whole ranges (`A2:XFD1048576`) are not clipped by `used_area_corne
 
 ## Outcome
 A single range whose used-area-clipped rectangle holds at least 65,536 positions and more than four
-per cell its columns hold (`Model::walks_sparsely`, using the new `SheetData::cells_in_columns`)
+per cell its columns hold (`Model::walks_sparsely`, using `SheetData::cells_in_columns` and `DENSE_WALK_FACTOR` from T-2711)
 is walked over its existing cells by the union walk (`for_each_existing_position`), recorded as
 read empty in one rectangle. It is not charged to the formula's `MAX_AREA_WALK` budget (it costs
 less than the dense walk it replaces, which never was), so it adds no `#VALUE!`: a test repeats
