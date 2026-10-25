@@ -1970,7 +1970,8 @@ BETA.DIST(p,k+1,n-k+1,FALSE):
 - k = n: EXP(fl(n·LN(p))), 172 of 172 cells.tsv cells (CR 70), p = 0.99 and 0.999 included; 320 of 320 on the
   verifier's probe.
 - k = 0: EXP(fl(n·l)) with Excel's log1p ("Excel's log1p is a 14-term atanh series"): 173 of 173 pmf cells (CR 54);
-  318 of 320 on the verifier's probe. The 2 misses are subnormal results that Excel returns as 0:
+  318 of 320 on the verifier's probe. The 2 misses are subnormal results that the excel-graph oracle reads as 0
+  (decision 0042: Graph shows 0 where Excel keeps a subnormal), so they are not evidence against the rule:
   `BINOM.DIST(0,999,0.5220313151772082,FALSE)` is 0 where the model gives 5.2E-321, and p = 0.5183174306860642 is 0
   against 1.2E-317 (t2513-verify-r3-binom-pmf-h A229, A238).
 - Interior: on 56 runs of consecutive p, BINOM's and BETA's exponent errors differ by sd 0.38-1.13 units (the
@@ -1989,8 +1990,7 @@ Evidence: probes-numeric t2513-r3-binom-pmf-a, -n, -hold, t2513-verify-r3-binom-
 docs/research/t2464/cells.tsv; docs/research/t2464/r3-binom-pmf (`a1_survey.out`, `b2_share_a.out`, `b3_reg_a.out`,
 `b19_cfit_mul.out`, `c1_hold.out`), verify-r3-binom-pmf (`vscore_v.out`, `vstruct_v.out`).
 Ours: `discrete.rs` `binomial_pmf`, a double-double walk.
-Status: VERIFIED (excel-graph) for k = 0 (a subnormal result is 0), k = n and the shared kernel; the interior pmf
-UNVERIFIED
+Status: VERIFIED (excel-graph) for k = 0, k = n and the shared kernel; the interior pmf UNVERIFIED
 Tasks: T-2633, T-2146, T-2586
 
 ## NEGBINOM.DIST pmf sits on the shifted binomial kernel (T-2513)
