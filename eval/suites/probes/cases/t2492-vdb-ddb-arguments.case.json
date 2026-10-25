@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2492: VDB and DDB argument handling. A1:A12 cover VDB's no_switch and factor given as text, as a boolean and from a cell (B1 TRUE, B2 \"FALSE\" text, B3 FALSE). A13:A20 cover a factor of 0 or below and a zero-length window. A21:A31 cover error order (A29 is the ACCRINT subexpression of gen-m9/3aa168259335be54 A237). A32:A42 cover DDB's factor as a boolean, a text or 0. A43:A46 cover a text argument with another argument out of range. A47:A54 cover ACCRINT's calc_method given as text. A55:A58 hold the no_switch subexpressions of gen-m9/d0854366830dcdee A218, with Data!E11 (TRUE) replaced by B1.",
+ "description": "T-2492: VDB and DDB argument handling. A1:A12 cover VDB's no_switch and factor given as text, as a boolean and from a cell (B1 TRUE, B2 \"FALSE\" text, B3 FALSE). A13:A20 cover a factor of 0 or below and a zero-length window. A21:A31 cover error order (A29 is the ACCRINT subexpression of gen-m9/3aa168259335be54 A237). A32:A42 cover DDB's factor as a boolean, a text or 0. A43:A46 cover a text argument with another argument out of range. A47:A54 cover ACCRINT's calc_method given as text. A55:A58 hold the no_switch subexpressions of gen-m9/d0854366830dcdee A218, with Data!E11 (TRUE) replaced by B1. A59:A64 cover an empty or blank factor (B4 is blank), invalid no_switch text with a cost of -1, and an empty no_switch.",
  "tags": [
   "M9",
   "financial",
@@ -70,7 +70,13 @@
     "A55": "=PERCENTILE(B1,7)",
     "A56": "=PDURATION(1E+300,2484,1)",
     "A57": "=(PERCENTILE(B1,7)>=PDURATION(1E+300,2484,1))",
-    "A58": "=VDB(51470,333,34,2,9,1,A57)"
+    "A58": "=VDB(51470,333,34,2,9,1,A57)",
+    "A59": "=VDB(1000,100,10,0,1,,FALSE)",
+    "A60": "=VDB(1000,100,10,0,1,,TRUE)",
+    "A61": "=VDB(1000,100,10,0,1,B4)",
+    "A62": "=VDB(1000,100,10,0,1,B4,TRUE)",
+    "A63": "=VDB(-1,0,39,1,9,10,\"x\")",
+    "A64": "=VDB(1000,100,10,0,1,2,)"
    }
   }
  ]

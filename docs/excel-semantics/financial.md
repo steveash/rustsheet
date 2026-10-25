@@ -1763,10 +1763,12 @@ Tasks: T-1975, T-2185
 ## VDB, DDB and ACCRINT argument types
 Rule: VDB's `no_switch` reads as a boolean. TRUE, FALSE and a number are taken, and so is the text "TRUE" or "FALSE"
 in any case, typed or from a cell. Any other text is `#VALUE!` before the range checks, numeric text too ("1", "0",
-"x"). The value checks then apply: `VDB(1,-0.0001,23,1,9,10,"true")` is `#NUM!`.
+"x"), and it is `#VALUE!` even with a cost of -1 (`VDB(-1,0,39,1,9,10,"x")`, A63). The value checks then apply:
+`VDB(1,-0.0001,23,1,9,10,"true")` is `#NUM!`. An empty no_switch is FALSE (`VDB(1000,100,10,0,1,2,)` is 200).
 VDB takes a factor of 0. With no declining balance, the switching mode is straight line and no_switch gives 0:
 `VDB(1000,100,10,0,1,0)` is 90, with TRUE it is 0, and `VDB(43478,488,1E+9,3,7,0)` is 0.00017196. A negative
-factor is `#NUM!`. VDB also takes an empty window at period 0: `VDB(1000,100,10,0,0)` and `VDB(0.01,5,25,0,0,3)` are 0.
+factor is `#NUM!`. An empty or blank factor is 0, not the default 2: `VDB(1000,100,10,0,1,,FALSE)` and a blank cell
+give 90, and with TRUE they give 0 (A59:A62). VDB also takes an empty window at period 0: `VDB(1000,100,10,0,0)` and `VDB(0.01,5,25,0,0,3)` are 0.
 VDB's factor and DDB's factor read a boolean as 1 or 0 and a numeric text as its number. `DDB(1000,100,10,1,TRUE)` is
 100, also from a TRUE cell. With FALSE (factor 0) it is `#NUM!`, with "3" it is 300, and with "TRUE" it is `#VALUE!`.
 ACCRINT's `calc_method` takes a boolean but no text: "FALSE", "TRUE" and a "FALSE" cell are all `#VALUE!`, before a
@@ -1774,7 +1776,7 @@ negative rate's `#NUM!`.
 The error-order cells of the T-2257 sweep come from the arguments' own errors. `VDB(-1,0,39,<ACCRINT(..,"FALSE")>,9,10,0)`
 is `#VALUE!` because that ACCRINT is `#VALUE!`, while `VDB(-1,0,39,SQRT(-1),9,10,0)` is `#NUM!` and
 `VDB(73409,713,1/0,SQRT(-1),10)` is `#DIV/0!`, the first error in argument order.
-Evidence: probes/t2492-vdb-ddb-arguments A1:A54 (excel-graph, 2026-10-25, T-2492).
+Evidence: probes/t2492-vdb-ddb-arguments A1:A64 (excel-graph, 2026-10-25, T-2492).
 Implemented (T-2492): `fn_vdb`, `fn_ddb` (functions/financial/financial_depreciation.rs) and `accrint_of`
 (functions/financial/accrint.rs). VDB from a fractional start in the switching mode still misses by value (A1, A9:A12),
 which T-2185 owns. A218 of gen-m9/d0854366830dcdee is `#NUM!` because `PERCENTILE(<TRUE cell>,7)` is `#NUM!` (A55), and ours
