@@ -3,7 +3,7 @@ id: T-2513
 title: "Crack the open densities: the Loader constant of BETA.DIST(.,FALSE) for a, b > 1 and the Student t density (T-2464 follow-up)"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -45,7 +45,7 @@ Bit-level models, scored on held-out probes, for two pieces:
 - [x] statistics.md's entries are updated.
 - [x] If the T density is solved, T-0969's "Blocked because" section is updated with the new hypothesis.
 - [x] Engine follow-ups are filed for any solved piece (T-2507 owns the Loader structure).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes.

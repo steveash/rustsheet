@@ -3,7 +3,7 @@ id: T-2464
 title: "Crack Excel's regularized incomplete beta (the BETA.DIST family's kernel) from the gen-m9 sweeps, with Excel's own EXP, LN and GAMMALN"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -30,7 +30,7 @@ F.TEST, T.DIST.RT, T.DIST.2T, T.TEST, BETA.INV and the F/T inverses (about 5,600
 - [x] Every hypothesis tried is recorded with its bit-exact, within-4-ulp and within-15-digit counts, rejected ones
       included (decision 0056), and the findings go into statistics.md.
 - [x] If a model reaches the visible-parity stage on the sweeps, file the engine task (or land it here if small).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
