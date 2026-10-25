@@ -65,12 +65,19 @@ Cells:
 - gen-m9/abc2939ebd1e2365.case.json (2): Calc!A250, A11
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A23
 
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 1 gen-m9 financial cell moved here from T-2496.
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/d0854366830dcdee Calc!A298 | `WEIBULL.DIST(7,1E+8,Data!D5,"TRUE")` (beta 0.3: (x/beta)^alpha overflows) | #NUM! | 1 |
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255): these 20 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Each rule's probe cells are in eval/, and statistics.md's entry gets an "Ours:" line naming this task.
+- [ ] Visible parity (gen-m9, T-2496): the 1 known-failure line of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

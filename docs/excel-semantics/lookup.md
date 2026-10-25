@@ -1049,3 +1049,11 @@ So are the other empty values: an omitted argument (`MMULT(,2)`), IFERROR of a b
 Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as blank, as a blank cell.
 Status: VERIFIED (excel-graph)
 Tasks: T-2278
+
+## XMATCH: a search_mode within 15 digits of 1 reads 1 (T-2656)
+Rule (hypothesis): XMATCH reads a search_mode of 0.9999999999999993 (`0.5^1E-15`) as 1, not as 0 after truncation:
+`XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is `#N/A` (nothing matches), where an invalid mode would be `#VALUE!`. A cut to 15
+significant digits before the truncation, as INT and TRUNC cut, fits.
+Evidence: probes/t2496-fin-subexpressions P!A2 (excel-graph, 2026-10-25); gen-m9/01523d247594952e Calc!A51.
+Status: UNVERIFIED (one cell; the rule is not probed). Ours: `#VALUE!`.
+Tasks: T-2656

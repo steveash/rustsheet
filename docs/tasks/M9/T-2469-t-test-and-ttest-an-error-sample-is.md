@@ -79,6 +79,12 @@ Examples:
 Cells:
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A22
 
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 1 gen-m9 financial cell moved here from T-2496. A blank one-cell sample is #VALUE! before the type check, like an error sample.
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/3c06f9298f65a3ba Calc!A312 | `T.TEST(Data!E11,Data!A6:C12,2,Data!$D8)` (E11 blank, type 123456789.123; inside TBILLEQ) | #VALUE! | #NUM! |
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -87,6 +93,7 @@ Cells:
 - [ ] Unit tests: `T.TEST(1/0,A1:A3,3,2)` is `#DIV/0!`, `T.TEST(A1:A3,NA(),1,9)` `#N/A`, `T.TEST(A1:A3,B1:B3,-2.5,"a")`
       `#VALUE!`, `T.TEST("",A1:A4,1,3)` `#DIV/0!`; with D2 = `#N/A`, `T.TEST(D1:D3,A1:A3,3,2)` stays `#NUM!` (T-1813).
 - [ ] statistics.md's T-2256 T.TEST entry gets an "Ours:" line naming this task.
+- [ ] Visible parity (gen-m9, T-2496): the 1 known-failure line of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
