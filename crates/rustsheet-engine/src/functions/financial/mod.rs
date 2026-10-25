@@ -24,7 +24,7 @@ pub(crate) use financial_util::RATE_MAX_STEPS;
 mod mirr;
 mod rate_conversions;
 
-use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
+use financial_util::{compute_irr, compute_xirr, compute_xnpv, excel_npv};
 
 use crate::functions::lift::{num_error, number_or_error, number_result, LiftCost};
 use crate::functions::Function;
@@ -422,9 +422,7 @@ impl Model {
                 match (rate, &flows) {
                     (Err(error), _) => error,
                     (Ok(_), Err(error)) => error.clone(),
-                    (Ok(rate), Ok(flows)) => {
-                        number_result(compute_npv(rate, flows).map_err(|error| error.0), cell)
-                    }
+                    (Ok(rate), Ok(flows)) => number_result(excel_npv(rate, flows), cell),
                 }
             },
         )
@@ -437,6 +435,12 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
+        // Excel: an error inside a range or an array is the result only when no direct argument
+        // errs, whatever their order: `NPV(0.1,{1,#DIV/0!},"x")` is #VALUE!, `NPV(0.1,Q1:Q2,NA())`
+        // over a #DIV/0! cell #N/A, and the first range or array error wins among them
+        // (probes/npv-power-edges A36-A51, npv-power-edges-2 A31-A40). docs/excel-semantics/
+        // financial.md "NPV's error order".
+        let mut deferred = None;
         for arg in flows {
             // Excel: an argument read as a reference skips the text and booleans of its cells,
             // however the reference is written: `B1`, `(B1)`, `@B1:B1`, `IF(TRUE,B1)`,
@@ -452,7 +456,15 @@ impl Model {
                 .evaluate_reference_arg(arg, cell)
                 .into_ranges_or_value()
             {
-                Ok(areas) => self.for_each_number_in_areas(&areas, cell, |v| values.push(v))?,
+                Ok(areas) => {
+                    if deferred.is_none() {
+                        if let Err(error) =
+                            self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
+                        {
+                            deferred = Some(error);
+                        }
+                    }
+                }
                 Err(CalcResult::Number(value)) => values.push(value),
                 Err(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
                     values.push(self.cast_number_ref(&direct, cell)?);
@@ -460,20 +472,27 @@ impl Model {
                 // A written empty argument is a cash flow of 0 (probes/npv-fvschedule-edges A2).
                 Err(CalcResult::EmptyArg) => values.push(0.0),
                 // An array is read whole: its numbers are the cash flows, its text and booleans
-                // are skipped and its first error is the result (H368; probes/npv-reference-forms
-                // A7, A8, A13).
-                Err(array @ CalcResult::Array(_)) => values.extend(self.array_of_numbers_from(
-                    array,
-                    &cell,
-                    true,
-                    || Ok(None),
-                    || Ok(None),
-                )?),
+                // are skipped and its first error is deferred like a range's (H368;
+                // probes/npv-reference-forms A7, A8, A13).
+                Err(array @ CalcResult::Array(_)) => {
+                    if deferred.is_none() {
+                        match self.array_of_numbers_from(
+                            array,
+                            &cell,
+                            true,
+                            || Ok(None),
+                            || Ok(None),
+                        ) {
+                            Ok(numbers) => values.extend(numbers),
+                            Err(error) => deferred = Some(error),
+                        }
+                    }
+                }
                 Err(error @ CalcResult::Error { .. }) => return Err(error),
                 Err(_) => {}
             }
         }
-        Ok(values)
+        deferred.map_or(Ok(values), Err)
     }
 
     /// `IRR(values, [guess])`: the internal rate of return of cash flows at regular intervals.
