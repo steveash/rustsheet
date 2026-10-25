@@ -3223,10 +3223,6 @@ F	probes/t2625-nested-consumers.case.json	P!A28
 F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
-F	probes/t2693-subnormal-expon-dist.case.json	Calc!A1
-F	probes/t2693-subnormal-expon-dist.case.json	Calc!A2
-F	probes/t2693-subnormal-weibull.case.json	Calc!A1
-F	probes/t2693-subnormal-weibull.case.json	Calc!A2
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9
