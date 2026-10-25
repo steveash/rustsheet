@@ -3,7 +3,7 @@ id: T-0068
 title: "Eval report: glue-aware per-function attribution, worst-cell parity tier and per-suite workbook closeness"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
