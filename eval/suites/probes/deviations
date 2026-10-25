@@ -18,3 +18,7 @@ m9-bessel-order-limits.case.json	Calc!D428	decision 0014	docs/excel-semantics/en
 m9-bessel-order-limits.case.json	Calc!D433	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
 eng-besselk-underflow-bit-shift.case.json	S!A179	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
 eng-besselk-underflow-bit-shift.case.json	S!A180	decision 0014	docs/excel-semantics/engineering.md#bessel-order-cap	#NUM!
+t2452-expand-2x524289.case.json	Sheet1!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+t2452-expand-1048576x2.case.json	Sheet1!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+t2452-makearray-2x524289.case.json	Sheet1!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+t2452-makearray-cols-1048577.case.json	Sheet1!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
