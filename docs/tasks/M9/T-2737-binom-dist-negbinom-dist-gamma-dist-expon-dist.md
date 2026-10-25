@@ -3,11 +3,11 @@ id: T-2737
 title: "BINOM.DIST, NEGBINOM.DIST, GAMMA.DIST, EXPON.DIST cdfs and the CHISQ.DIST density flush a subnormal; the NEGBINOM.DIST pmf at f = 0 keeps it"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-2706]
 ---
 
 ## Goal
@@ -30,9 +30,15 @@ Excel keeps, the engine flushes: the NEGBINOM.DIST pmf at f = 0, p^s (A12:B13, N
 pmf at k = n, an EXP-based closed form (binom.rs `fn_negbinom_dist`).
 
 ## Acceptance criteria
-- [ ] Each cell above matches; probes/t2706-subnormal-density-paths fails only A25:B25 (baseline shrinks).
-- [ ] numbers.md "Distribution densities" says which paths the engine flushes, citing the cells.
-- [ ] `make check` green; reviewers approve.
+- [x] Each cell above matches; probes/t2706-subnormal-density-paths fails only A25:B25 (baseline shrinks).
+- [x] numbers.md "Distribution densities" says which paths the engine flushes, citing the cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - GAMMA.DIST's #NUM! at a 1E+308 scale (T-2738).
+
+## Outcome
+probes/t2737-subnormal-cdf-shapes (17 calls with companions) settles BETA.DIST: its cdf keeps a subnormal only at
+beta = 1. The engine flushes the BINOM.DIST and NEGBINOM.DIST cdfs off their closed forms, the GAMMA.DIST, EXPON.DIST
+and CHISQ.DIST cdfs, the CHISQ.DIST density and the BETA.DIST cdf off beta = 1, and keeps the NEGBINOM.DIST pmf at
+f = 0; both probes pass but for t2706 row 25 (T-2738). Recorded in numbers.md "Distribution densities".
