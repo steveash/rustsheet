@@ -82,6 +82,9 @@ Cells:
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A392
 - gen-m9/c0681a8b150ce301.case.json (2): Calc!A57, A351
 
+Handed over by T-2734: `NPV(-0.9999999999999999,<19 ones>)` is 1.0153083415854513E+285, ours ...512E+285, and with 20 ones
+1.016120504184532E+300, ours ...319E+300 (probes/t2493-npv-rate-edges A60, A61; the rate is cut to 15 digits, -0.999999999999999).
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
