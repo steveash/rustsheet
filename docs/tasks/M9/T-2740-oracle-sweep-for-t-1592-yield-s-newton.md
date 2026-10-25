@@ -3,7 +3,7 @@ id: T-2740
 title: "Oracle sweep for T-1592: YIELD's Newton start one input at a time (price, coupon rate, term) on the T-2304 bond"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
