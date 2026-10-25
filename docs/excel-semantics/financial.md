@@ -1462,9 +1462,9 @@ COUPPCD, COUPNCD, COUPDAYBS and COUPDAYSNC are unaffected (`COUPNCD(0,2958465,2)
 Evidence: probes/coup-calendar-edges C1-C21, D1-I12 (excel-graph, 2026-10-25, T-2486); gen-m9/b72d952c5f52cb4d Calc!A88
 (`COUPDAYS(5E-05,2958465,2,1)` = 184).
 Ours: the real-calendar length (`coupdays_actual`), so the March/May cells give 182 and the settlement-0 June/December
-cells 181 (TODO T-2632).
+cells 181 (TODO T-2640).
 Status: VERIFIED (excel-graph; unexplained)
-Tasks: T-2486, T-2632
+Tasks: T-2486, T-2640
 
 ## YIELD stops short of PRICE's root
 Rule: YIELD's last digits are not the exact root of PRICE: Excel stops early, below the root, by up to about 1e-9
