@@ -7113,15 +7113,31 @@
    "H9": {
     "t": "n",
     "v": 0.10078368057011665
+   },
+   "I229": {
+    "t": "b",
+    "v": false
+   },
+   "I238": {
+    "t": "b",
+    "v": false
+   },
+   "J229": {
+    "t": "b",
+    "v": true
+   },
+   "J238": {
+    "t": "b",
+    "v": true
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "a4fe2e4ea9e2c68bbc68fe9e02a1cb09c06498730e0cbfa96f578c92d6144a72",
+  "input_sha256": "b9e7208cd14fe9164e8298b0e137abf4fc94410730c519a085bfb61ac4866b1b",
   "kind": "excel-graph",
-  "produced_at": "2026-10-24T07:38:49+00:00",
+  "produced_at": "2026-10-25T10:53:38+00:00",
   "version": null,
-  "workbook_name": "dcc0396954390bf3c502299561c2047e72163f03587e2e2ff1420fea605ad8a5.xlsx"
+  "workbook_name": "56bb09cd94b8eb40744017c9b8c8c7750432eced2752552dc30ba6f83f0248c4.xlsx"
  }
 }
