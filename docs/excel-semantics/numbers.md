@@ -1169,8 +1169,9 @@ and RN53. Matches out of the 357 fill-stable points of T-2143's case / the fixtu
 | k=70 tz / rn | 350 / 348 | 4000 / 4000 | 5 / 5 | 231 / 231 |
 | k=72 tz / rn | 346 / 346 | 4000 / 4000 | 1 / 1 | 227 / 227 |
 
-No candidate matches every fill-stable point. k=67 rn does at least as well as the shipped model on every column and loses no
-stable point the shipped model matches, so it is the candidate T-2641 tests on the full T-1941 near-tie set before shipping.
+No candidate matches every fill-stable point. k=67 rn beats the shipped model on every column and loses no
+fill-stable point; its one loss is kernel probe B231 (x = 9.612345678912595), a near-tie whose Excel bit already differs between
+this probe's fill and the research run. It is the candidate T-2641 tests on the full T-1941 near-tie set before shipping.
 The model is unchanged until then (decision 0112).
 Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
 sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,

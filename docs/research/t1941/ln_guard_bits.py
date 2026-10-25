@@ -65,3 +65,6 @@ for k, m in cands:
     p = sum(model(x, k, m) == y for x, y in kernel)
     print(f'k={k} {m}: stable {s}/{len(stable)}, fixture sample {a}/{sum(base)}, '
           f'fixture near-ties {b}/{len(fix) - sum(base)}, kernel probe {p}/{len(kernel)}', flush=True)
+    # Points the shipped model matches and this candidate misses, per set.
+    lost = [x for x, y in stable + kernel if model(x, 0, 'rn') == y and model(x, k, m) != y]
+    print(f'  losses against the shipped model (stable and kernel probe): {lost}', flush=True)

@@ -14,13 +14,16 @@
     - fill-stable points: 354 of 357 (shipped 345), losing none the shipped model matches
     - sampled fixture points: all 4,000
     - fixture near-ties: 18 of 30 (shipped 0)
-    - probes/ln-fyl2x-kernel: 242 of 253 cells (shipped 226).
+    - probes/ln-fyl2x-kernel: 242 of 253 cells (shipped 226). It fixes 17 of the 27 known failures and loses one cell the
+      shipped model matches, Calc!B231 (x = 9.612345678912595). That x is one of the 3 near-ties where this probe's fill and
+      the 2026-10-19 research run already returned different bits (numbers.md), so Excel's bit there is fill-unstable.
     It still misses 3 fill-stable points, so T-2144's criterion for changing `excel_ln` (every fill-stable point) is not met.
     The fixture sample holds few near-ties, so it cannot show the model is safe where it differs.
 - **Options considered:**
   - *(a) Accept either neighbour at these cells* (a scoring rule like decision 0042's pair). The evidence that Excel's bit
     varies exists only at the 23 T-2143 points, not per probe cell. Not chosen.
-  - *(b) Ship k = 67 rounded now.* It dominates the shipped model on all the evidence scored here. Its risk lies in the
+  - *(b) Ship k = 67 rounded now.* It beats the shipped model on every count scored here and loses no fill-stable point. Its
+    only loss is B231, a fill-unstable cell, which would become a new known failure. Its risk lies in the
     near-ties of the full T-1941 set (2.89M cells), which T-2144 did not score. Deferred to T-2641, which ships it if it
     loses no point there.
   - *(c) Keep the 27 cells as named known failures of probes/ln-fyl2x-kernel until T-2641 decides.* Chosen.
@@ -32,6 +35,6 @@
   2. This decision grants no milestone-exit exemption. The cells count like any other known failure of their probe
      row. A later exemption needs its own decision, under the probes criteria of docs/milestones.md.
 - **Consequences:**
-  - No engine change now. T-2641 may fix up to 16 of the 27 cells. A cell whose Excel bit varies between fills cannot be
+  - No engine change now. If T-2641 ships k = 67 rounded, 17 of the 27 cells pass and B231 becomes a known failure (a net 16). A cell whose Excel bit varies between fills cannot be
     matched by any deterministic model, so whatever T-2641 decides, some near-tie cells may remain.
   - If T-2641 ships k = 67 rounded, it amends this record's item 1 (the model and the cells it still owns).
