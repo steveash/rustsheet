@@ -3201,7 +3201,7 @@ B 124 / 264 / 26, backward 115 / 270 / 27, forward over the recurrence B 104 / 2
 exp(a ln x + b ln y) 118 / 240 / 101, libm pow 116 / 221 / 180, x and y from the variances without f 111 / 251 / 99, VAR.S's
 one-pass variance 90 / 232. Every R variant keeps the same worst cells (26, 14, 13 and 12 ulp), so the visibly-off
 residual is probably not in R. Further scores (T-2571): ln of the larger side by log1p 140 / 271 / 24, pairwise variance
-117 / 259, ln as a difference 105 / 203; A&S 26.6.4 for an even df_big (positive series) 126 / 251 at best; the finite sums
+117 / 259, ln as a difference 105 / 203; A&S 26.6.4 for an even df_big (positive series, `f-test-as`) 126 / 251 at best; the finite sums
 from the asin base (`f-test-finite`) fail in deep tails (cancellation) but get several body cells the model misses.
 One degree of freedom on each side (a = b = 1/2) is a closed form in Excel: `2*asin(sqrt(x))/pi` is bit-exact on 13 of
 the 16 such cells on file ((2/pi)*asin 11, 2/pi*atan(sqrt(x)/sqrt(y)) 10, the series model 3); the engine uses it

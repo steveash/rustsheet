@@ -86,3 +86,23 @@ fn f_test_is_symmetric_and_keeps_the_rounded_powers() {
     assert!((number("A1") / 0.794_785_878_081_945_8 - 1.0).abs() < 5e-16);
     assert!((number("B1") / 7.189_542_390_448_293e-56 - 1.0).abs() < 5e-16);
 }
+
+// One degree of freedom on each side is Excel's closed form 2 asin(sqrt x)/pi, bit for bit where
+// the series is 14 ulps off (gen-m9/8f2ac25945af87da A241 and gen-m9/c468f5046aadfbbc A192,
+// excel-graph; T-2571).
+#[test]
+fn f_test_of_one_degree_of_freedom_each_is_the_asin_form() {
+    let mut model = new_empty_model();
+    model._set("A1", "=F.TEST({0.02,0.027},{1.005,1E+15})");
+    model._set("A2", "=F.TEST({7,0.3},{-0.5,123456789.123})");
+    model.evaluate();
+    let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
+    assert_eq!(
+        number("A1").to_bits(),
+        8.912_676_813_146_147e-18_f64.to_bits()
+    );
+    assert_eq!(
+        number("A2").to_bits(),
+        6.909_871_037_288_267e-8_f64.to_bits()
+    );
+}

@@ -95,7 +95,8 @@ def in_fit(cell: Cell) -> bool:
 
 
 def beta_recurrence(a: float, b: float) -> float:
-    """B(a,b) for half-integer shapes, in doubles, by the engine's recurrence from B(1,1) = 1,
+    """B(a,b) for half-integer shapes, in doubles, by the engine's recurrence (`f_test_remainder`,
+    fisher.rs, which carries it in double-double) from B(1,1) = 1,
     B(1/2,1) = B(1,1/2) = 2 or B(1/2,1/2) = pi."""
     p = 1.0 if a % 1 == 0 else 0.5
     q = 1.0 if b % 1 == 0 else 0.5
