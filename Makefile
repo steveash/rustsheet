@@ -13,7 +13,7 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
 # ---------------------------------------------------------------- Rust
-.PHONY: fmt fmt-check clippy test build
+.PHONY: fmt fmt-check clippy test test-shard-1 test-shard-2 build
 fmt: ## Format Rust and Python code
 	$(CARGO) fmt --all
 	cd tools && $(UV) run ruff format src tests && $(UV) run ruff check --fix src tests
@@ -26,6 +26,19 @@ clippy: ## Lint Rust with -D warnings (workspace lint policy in Cargo.toml)
 
 test: ## Run Rust tests
 	$(CARGO) test --workspace --exclude rustsheet_python
+
+# CI runs `make test` as two parallel jobs (decision 0122, T-2754). Shard 1 runs every test whose
+# name contains one of these substrings (libtest filters); shard 2 runs every other test (libtest
+# `--skip` with the same substrings, which matches the same way). So the two together run exactly
+# the tests `make test` runs, each once, and a new test lands in shard 2 unless it matches. The
+# substrings pick the slowest engine modules, about half of the test CPU time.
+TEST_SHARD_1 := test::test_tailed_array test::test_fn_groupby fn_regex_backtrack test::test_nested_groupby_cells
+
+test-shard-1: ## CI: the tests matching TEST_SHARD_1 (half of make test)
+	$(CARGO) test --workspace --exclude rustsheet_python -- $(TEST_SHARD_1)
+
+test-shard-2: ## CI: every test test-shard-1 does not run (the other half of make test)
+	$(CARGO) test --workspace --exclude rustsheet_python -- $(addprefix --skip ,$(TEST_SHARD_1))
 
 build: ## Release build of the eval harness
 	$(CARGO) build --release -p rustsheet_eval

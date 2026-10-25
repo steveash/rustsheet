@@ -56,20 +56,34 @@ jobs:
           echo "changed files: $(tr -cd '\0' < "$RUNNER_TEMP/changed" | wc -c), code=$code"
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
+  # Decision 0122: `make test` runs as two shards in parallel (the engine's unit tests took about
+  # 4.5 of the job's 6-7 minutes). `make test-shard-1` and `make test-shard-2` together run exactly
+  # the tests `make test` runs (see the Makefile); fmt and clippy run beside shard 1.
   rust:
-    name: rust (fmt, clippy, test)
+    name: ${{ matrix.shard == 1 && 'rust (fmt, clippy, test 1/2)' || 'rust (test 2/2)' }}
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.run_heavy != 'false' }}
     runs-on: ubuntu-24.04
+    strategy:
+      # Each shard reports its own failures.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.97
         with:
           components: rustfmt, clippy
+      # Shard 1 also caches clippy's artifacts; one key per shard keeps either from overwriting
+      # the other's cache.
       - uses: Swatinem/rust-cache@v2
-      - run: make fmt-check
-      - run: make clippy
-      - run: make test
+        with:
+          key: test-shard-${{ matrix.shard }}
+      - if: matrix.shard == 1
+        run: make fmt-check
+      - if: matrix.shard == 1
+        run: make clippy
+      - run: make test-shard-${{ matrix.shard }}
 
   eval:
     name: eval (Excel-compatibility gate)
