@@ -210,6 +210,17 @@ const MIN_INDEXED_ROWS: i32 = 1024;
 /// row, so a dense column costs a read step per this many cells.
 const INDEX_BATCH_ROWS: usize = 64;
 
+/// Fewest positions a single area clipped to the used area must hold to be walked over its
+/// existing cells instead of position by position ([`Model::walks_sparsely`]): a smaller area
+/// costs little either way, and keeps the one-by-one record of its blank cells, which spends
+/// nothing from the formula's seen-range cap (a LAMBDA may walk one small area per row).
+const MIN_SPARSE_WALK_POSITIONS: i64 = 1 << 16;
+
+/// How many positions per cell its columns hold a single area must have to be walked over its
+/// existing cells: a denser one is cheaper walked position by position, which tests no row slots
+/// and searches no rows.
+const SPARSE_WALK_POSITIONS_PER_CELL: i64 = 4;
+
 /// Which cells of a sheet a range walk hands on ([`Model::walk_area`]). The two dense walks
 /// differ only for an explicit block reaching past the used area: `ClipBlocks` stops at the
 /// used area ([`Model::clip_block_to_used_area`]), `ClipWholeLines` walks the block whole and
@@ -655,7 +666,9 @@ impl Model {
 
     /// Calls `f` with the position of the cells of one area, row by row. A range that is the
     /// whole argument (`of_union` false) is walked densely: every position of the range within
-    /// each sheet's used area, for an explicit block as for whole rows and columns (T-0405). An
+    /// each sheet's used area, for an explicit block as for whole rows and columns (T-0405),
+    /// unless a far cell leaves that area mostly blank, when it is walked like a union's area
+    /// ([`Self::walks_sparsely`], T-1690). An
     /// area of a union is walked over the cells that exist only: every caller of a union walk
     /// skips blank cells, and a union can repeat a whole column
     /// many times over (`MAX_AREAS` copies, or a LAMBDA walking one per row), so the walk must
@@ -726,6 +739,22 @@ impl Model {
             };
             let (row2, column2) =
                 clipped.map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            // A far cell stretches the used area: `SUM(A:XFD)` with data in A1 and XFD1048576
+            // is 1.7e10 positions. A mostly blank area is walked over its cells that exist, as
+            // a union's areas are, so the walk costs the data (T-1690). The blank cells it
+            // skips are ones the dense walk hands on, so `ClipBlocks` reports them left out.
+            if matches!(walk, AreaWalk::ClipBlocks)
+                && self.walks_sparsely(sheet, left, (row2, column2))
+            {
+                blanks_left_out = true;
+                let corner = CellReferenceIndex {
+                    sheet,
+                    row: row2,
+                    column: column2,
+                };
+                self.for_each_existing_position(sheet, (left, &corner), cell, &mut columns, f)?;
+                continue;
+            }
             for row in left.row..=row2 {
                 for column in left.column..=column2 {
                     f(self, CellReferenceIndex { sheet, row, column })?;
@@ -733,6 +762,31 @@ impl Model {
             }
         }
         Ok(blanks_left_out)
+    }
+
+    /// Whether the area from `left` to the corner `(row2, column2)` on `sheet`, a single area
+    /// already clipped to the used area, is walked over its existing cells
+    /// ([`Self::for_each_existing_position`]) rather than position by position: it holds at least
+    /// [`MIN_SPARSE_WALK_POSITIONS`] positions, more than [`SPARSE_WALK_POSITIONS_PER_CELL`] per
+    /// cell its columns hold, and the formula can still record the area as read empty in one
+    /// rectangle.
+    fn walks_sparsely(
+        &self,
+        sheet: u32,
+        left: &CellReferenceIndex,
+        (row2, column2): (i32, i32),
+    ) -> bool {
+        let positions =
+            i64::from(row2 - left.row + 1).max(0) * i64::from(column2 - left.column + 1).max(0);
+        if positions < MIN_SPARSE_WALK_POSITIONS || !self.area_budget.has_seen_ranges(1) {
+            return false;
+        }
+        let Ok(worksheet) = self.workbook.worksheet(sheet) else {
+            return false;
+        };
+        let cells = worksheet.sheet_data.cells_in_columns(left.column, column2);
+        let cells = i64::try_from(cells).unwrap_or(i64::MAX);
+        positions / SPARSE_WALK_POSITIONS_PER_CELL > cells
     }
 
     /// The union-area walk of [`Self::for_each_position_in_area`] on one sheet: the existing

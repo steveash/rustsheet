@@ -908,7 +908,12 @@ step per row found (at least one, even with no cell in the area's columns), one 
 chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
 operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
-range argument is not counted and is walked as before (every position of its used area). Over
+range argument is not counted and is walked as before (every position of its used area), unless a
+far cell stretches that used area: a single range whose clipped area holds at least 65,536
+positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
+XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area and draws on
+the same budget (T-1690), so it costs the data, and is `#VALUE!` only past 2^24 steps of it, where
+the walk position by position would have run for hours. Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
@@ -944,8 +949,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a

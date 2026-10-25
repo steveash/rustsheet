@@ -273,6 +273,19 @@ impl SheetData {
         self.column_counts.keys().next_back().copied().unwrap_or(0)
     }
 
+    /// How many cells the columns `first..=last` hold, in O(columns used among them): an upper
+    /// bound on the cells of any area over those columns, so a walk can tell an area that is
+    /// mostly blank from one it is cheaper to walk position by position.
+    pub(crate) fn cells_in_columns(&self, first: i32, last: i32) -> usize {
+        if first > last {
+            return 0;
+        }
+        self.column_counts
+            .range(first..=last)
+            .map(|(_, count)| count)
+            .sum()
+    }
+
     /// Recounts the columns from the cells, for a sheet that was decoded. The column index is
     /// left to be built when a walk needs it.
     pub(crate) fn rebuild_column_counts(&mut self) {
