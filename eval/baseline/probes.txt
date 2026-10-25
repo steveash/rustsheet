@@ -1154,6 +1154,7 @@ C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2475-stat-subexpressions.case.json	574
 C	probes/t2496-fin-subexpressions.case.json	99
 C	probes/t2517-combina-below-cut-small-n.case.json	4
+C	probes/t2546-bessel-past-cap.case.json	83
 C	probes/t2547-bessel-phase-cut.case.json	88
 C	probes/t2578-groupby-product-subtotals.case.json	6
 C	probes/t2578-pivotby-hidden-total-slot.case.json	129
