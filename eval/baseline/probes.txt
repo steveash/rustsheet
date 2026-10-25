@@ -1185,6 +1185,7 @@ C	probes/t2656-xmatch-mode-snap.case.json	126
 C	probes/t2669-xlookup-regex-blanks.case.json	14
 C	probes/t2669-xlookup-regex-lift.case.json	12
 C	probes/t2669-xlookup-regex-mode.case.json	60
+C	probes/t2682-typed-max-arg-counts.case.json	17
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
