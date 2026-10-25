@@ -1059,7 +1059,7 @@ Evidence:
 - gen-m1/6462bf910ef9f28f Calc!A41 and A207; gen-m2/1b6ceed7489e0800 Calc!A62; gen-m7/9ff3afcacd3bd0fc Calc!A13.
 - ironcalc-calc POWER.xlsx Sheet1!D3 and F9.
 Not probed: other negative bases; exponents within 1E-15 of ±0.5.
-Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
+Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic/power.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-1319, T-1421, T-0221, T-0959, T-2694
 
@@ -1346,7 +1346,7 @@ cell. This settles the calipers desktop goldens `formulas_math_basic` / `formula
 Evidence: probes/power-huge-exponent (POWER) and power-op-huge-exponent (`^`), 15 bases by 20 exponents each, oracle
 excel-graph, 2026-10-25.
 Status: VERIFIED (excel-graph)
-Implemented in: `positive_power` in crates/rustsheet-engine/src/arithmetic.rs
+Implemented in: `positive_power` in crates/rustsheet-engine/src/arithmetic/power.rs
 Tasks: T-2661
 
 ## `^` / POWER are not correctly rounded
@@ -1371,7 +1371,7 @@ integer-exponent cells above: `(1E-15)^3` = 1.0000000000000001E-45, `((1E-15)^3)
 1.0000000000000002E-90, `100^100` = 1.0000000000000005E+200. `EXP(n*LN(x))` is plain libm (154/154).
 Non-integer exponents are not explained by this rule.
 Evidence: probes-numeric/m9-fin-power.case.json (oracle: excel-graph, 2026-10-06, T-0942).
-Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic.rs (T-1302), for finite integer
+Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic/power.rs (T-1302), for finite integer
 exponents with |n| <= 2^53 whose result is finite and non-zero. Overflow and underflow beyond the
 oracle's exponents 1..360 are unverified, so a zero or non-finite result falls back to the libm
 `powf` path (and its #NUM! / #DIV/0! handling) unchanged. Exponents beyond 360, subnormal results and base 10 are in the next entry (T-1311).
@@ -1424,7 +1424,7 @@ Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379
 3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
 2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
-Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs;
+Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic/power.rs;
 `square_and_multiply` rounds each product with `extended_product` (T-1495).
 Status: VERIFIED (the 2^32 - 1 threshold is bracketed by 4294967294 and 4294967295 exactly; the base-10
 rule is sampled at about 20 exponents in 23..=308 and inferred between them)
