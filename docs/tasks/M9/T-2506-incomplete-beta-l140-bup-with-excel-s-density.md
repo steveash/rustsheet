@@ -46,9 +46,10 @@ bup+bgrat (T-2509, T-2510) reuses it.
       the test of r2-impact's hypothesis 1 in the Outcome. gen-m9/2801c1c11c21e134 A374 (FDIST, 6 ulp in the model)
       would become visibly off, which decision 0083 does not cover: it stays delegated for `F`, or gets a decision
       record (SPEC-0019 "Gated regressions").
-- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
-      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
-      cut to 15 significant digits.
+- [ ] SPEC-0019 port rules (decision 0115): the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`)
+      fixes far more cells than it loses. No cell becomes visibly off or changes type or error unless Excel agrees.
+      Every lost bit-exact cell is listed with its ulp in the Outcome, or in a committed file the Outcome cites.
+      Arguments taken from formula text are cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

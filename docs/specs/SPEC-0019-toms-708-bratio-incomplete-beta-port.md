@@ -303,24 +303,30 @@ are measured, so there is no umbrella record.
 ### Port rules (every port task: T-2503, T-2505 to T-2511, T-2585)
 1. **The migration rule** above. The `Caller::takes` diff is the list of what the PR moves, and the Outcome repeats
    it.
-2. **probes-numeric, cell by cell.**
+2. **probes-numeric, cell by cell: net gain, listed losses** (the owner's ruling of 2026-10-25, decision 0115).
+   This supersedes the stricter wording first drafted here: 0 previously passing cells changed, unless Excel agrees.
    - The gated `eval-check` cannot see the ungated probes-numeric suite (`gate = false`), which holds most of this
      family's cells.
    - Every port task runs `rustsheet-eval run` over probes-numeric on origin/main (the merge base) and on HEAD. It then
      compares the two reports cell by cell.
-   - Previously passing (bit-exact) cells changed: 0, unless Excel agrees. "Excel agrees" means the cell's new value is
-     Excel's value in another oracle reading of the same formula, for example the build-dependent bits of decision 0112
-     or a duplicate cell in another case. Or it means the cell's input is a misparsed xlsx number, checked at x ± 1
-     ulp (numbers.md "Stored numbers in an xlsx are not always parsed to the nearest double"). Each such cell is named
-     with its evidence in the Outcome.
-   - A task that cannot meet this narrows what it moves, per caller or per measured region of a branch, or stops for an
-     owner decision record that names every cell. Decision 0083's allowance covers gated baselines only, not this.
-   - The Outcome reports the comparison: fixed, newly failing (0), changed and still failing (with ulp), and newly
-     visibly off.
+   - The task may lose previously bit-exact probes-numeric cells when it fixes far more cells than it loses and makes
+     nothing visibly worse.
+   - No cell may become visibly off (beyond half a unit in the 15th significant digit), and no cell may change type or
+     error, unless Excel agrees with the new value. "Excel agrees" means another oracle reading of the same formula
+     gives the new value (the build-dependent bits of decision 0112, a duplicate cell in another case). Or it means the
+     cell's input is a misparsed xlsx number, checked at x ± 1 ulp (numbers.md "Stored numbers in an xlsx are not
+     always parsed to the nearest double"). Each such cell is named with its evidence.
+   - The Outcome lists every lost cell with its ulp distance. When there are many, they go in a committed file that the
+     Outcome cites. The Outcome also gives the counts: fixed, lost, changed and still failing (with ulp), newly
+     visibly off (0 unless Excel agrees).
+   - A task that would make a cell visibly worse narrows what it moves, per caller or per measured region of a branch.
+     Otherwise it needs a decision record naming the cell.
+   - Gated suites are unchanged: 0 regressions, or decision 0083's allowance, or a decision record (port rule 4).
    - T-2505 adds the comparison as `rustsheet-eval diff <base report.json> <head report.json> [--suite S]`, and later
-     tasks reuse it. It is one definition, not a script per task.
-   - r2-impact's ladder estimated hundreds of lost bit-exact cells: 362 by step S3, 514 by S7, mostly in
-     probes-numeric. Its numbers predate this rule. Under the rule, those cells decide how far each step can go.
+     tasks reuse it, so the lists come out mechanically. It is one definition, not a script per task.
+   - The lost cells are bit-level debt. They go to the task's bit-level follow-up (decision 0083), or to T-2512 or
+     T-2586. r2-impact's ladder estimates their size: 362 lost bit-exact cells by step S3, 514 by S7, against about
+     1,450 visibly-off cells fixed.
 3. **Formula literals are cut to 15 significant digits.**
    - Expected values and fixture rows built from formula text use the arguments as Excel reads them: cut to 15
      significant digits, never rounded and never the Python `float` of the literal text. Taking the parsed formula
@@ -418,9 +424,8 @@ Ordered by `depends_on`. Steps on the same row can run in parallel.
 - Every port task already depended on T-2505, and through it on this spec, except T-2503, T-2507 and T-2585. Those
   three only add bodies to the density module and to `loader.rs`. T-2503 and T-2507 were claimed before this spec,
   so they get no new edge. The layout above accommodates either landing order. Their task files get only a `spec:`
-  line, so that their branches do not conflict, but the port rules bind them too. Port rule 2 replaces T-2503's
-  "Bit-exact probes-numeric cells lost are listed in the Outcome": they are listed, and there must be none unless
-  Excel agrees.
+  line, so that their branches do not conflict, but the port rules bind them too. T-2503's "Bit-exact
+  probes-numeric cells lost are listed in the Outcome" already matches port rule 2 (decision 0115).
 - **Changed: T-2633** (`depends_on: []` → `[T-2505]`). T-2633's goal fits BETA.DIST's last bits and the chained
   BETA.INV cells on today's Cephes kernel, which T-2505 replaces for those cells:
   - t0969-beta-prefactor D85/D86 sit in the bpser branches;

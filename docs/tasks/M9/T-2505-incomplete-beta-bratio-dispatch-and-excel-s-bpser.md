@@ -80,9 +80,10 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
       engine's own kernel, or the research tools keep a copy outside the crate). Only if T-2512 and T-2586 are done;
       otherwise the last of them deletes it (SPEC-0019).
 - [ ] The module layout, `Branch`, `Caller` and the port table follow SPEC-0019, and `rustsheet-eval diff` exists.
-- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
-      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
-      cut to 15 significant digits.
+- [ ] SPEC-0019 port rules (decision 0115): the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`)
+      fixes far more cells than it loses. No cell becomes visibly off or changes type or error unless Excel agrees.
+      Every lost bit-exact cell is listed with its ulp in the Outcome, or in a committed file the Outcome cites.
+      Arguments taken from formula text are cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

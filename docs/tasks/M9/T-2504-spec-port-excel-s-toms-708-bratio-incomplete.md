@@ -62,7 +62,8 @@ two existing kernels.
   - which task deletes each T-2502 seam;
   - directive 5 caps, and the `#NUM!` and saturation edges;
   - the gated cells per task: decision 0083, or a record for gen-m9 60b0b6e6 A151, 2801c1c1 A374 and c18dbf21 A151;
-  - the port rules: probes-numeric main-vs-HEAD cell comparison, 15-digit literal truncation;
+  - the port rules: probes-numeric main-vs-HEAD cell comparison under the owner's "net gain, listed losses" ruling
+    (decision 0115), 15-digit literal truncation;
   - a test and evidence plan per branch, and the Rollout ordering.
 - Task files: `spec:` line on T-2503, T-2505 to T-2511 and T-2585. Criteria amended in T-2505 (seams, harness, the
   visible gated cell, the layout and `rustsheet-eval diff`), T-2506, T-2510 and T-2511. The port-rule criterion was

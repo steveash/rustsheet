@@ -47,9 +47,10 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
       J3/L3, gen-m9/68d8ffb69ff739d8 A143) are among those reported.
 - [ ] `FQuantile`, `BetaQuantile` and `FTest` take their branches (SPEC-0019), and `legacy.rs` is deleted, or the
       Outcome names each (caller, branch) pair still delegated and its owner.
-- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
-      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
-      cut to 15 significant digits.
+- [ ] SPEC-0019 port rules (decision 0115): the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`)
+      fixes far more cells than it loses. No cell becomes visibly off or changes type or error unless Excel agrees.
+      Every lost bit-exact cell is listed with its ulp in the Outcome, or in a committed file the Outcome cites.
+      Arguments taken from formula text are cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

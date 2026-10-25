@@ -42,9 +42,10 @@ LN, EXP, log1p and GAMMALN, and brcmp1 = density·x·y), where that is a net vis
       bup+bgrat delegated, or recorded in a decision record (SPEC-0019 "Gated regressions").
 - [ ] `unoriented_shape_one` and `A1_CLOSED_FORM_MIN_X` are deleted, and so is `fisher.rs` `f_tail_delegate` if `F`
       takes every branch it reaches; otherwise the Outcome names the (caller, branch) pairs that still reach them.
-- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
-      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
-      cut to 15 significant digits.
+- [ ] SPEC-0019 port rules (decision 0115): the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`)
+      fixes far more cells than it loses. No cell becomes visibly off or changes type or error unless Excel agrees.
+      Every lost bit-exact cell is listed with its ulp in the Outcome, or in a committed file the Outcome cites.
+      Arguments taken from formula text are cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
