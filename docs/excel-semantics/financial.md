@@ -2051,3 +2051,32 @@ probes/tbill-error-order-inner-calls.
 Ours: the other error or a value; the tasks named.
 Status: VERIFIED (excel-graph), one or two cells each
 Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T-2490, T-2344, T-2544
+
+## NPV's residue at IRR's root is not the double sum
+Rule: where NPV's terms cancel, Excel's value differs from both the exact sum and the plain double sum of
+v_i/(1+r)^i, by more than half a unit of the 15th significant digit of the result. Excel's per-period discount and
+summation order are not identified. At M2 and M8 below Excel is nearer the exact value than the double sum, at M3 and
+Three Parameters!E2 further from it, so Excel does not compute a more accurate sum either.
+Evidence (ironcalc-calc/FINANCIAL/IRR.xlsx, saved by Excel Online; the rate cell is an IRR that ours matches to the
+bit, so NPV gets the same inputs):
+- General!M2 `NPV(L2,A2:F2)`, flows {-20,5,5,5,5,5}, L2 = 0.07930826116039724: Excel 6.4212018552224666E-12, exact at
+  that rate 6.421923509333131E-12, ours (left-to-right sum of v/(1+r)^i) 6.418865439172805E-12.
+- General!M3, flows {-1000,230,200,125,200,10}, L3 = -0.1015006760535847: Excel -2.8358465972398184E-11, exact
+  -2.815865414018216E-11, ours -2.8180124900245573E-11.
+- General!M8, flows {-70,12,15}, L8 = -0.44350694133432755: Excel -1.579429159894141E-10, exact
+  -1.5794321715940695E-10, ours -1.5792522845003987E-10.
+- Three Parameters!E2 `NPV(D2,A2:C2)`, flows {1,-2,1}, D2 = 1.091399510766422E-07: Excel 1.187938506697367E-14, exact
+  1.1911525020941654E-14, ours 1.2101430968414206E-14.
+- Also General!M5, M9, M10, M11, M13, FullRow!Q2 and FullColumn!B21, B22 (same flows and rates as E2, M2 and M3 over
+  whole rows).
+- The same holds away from a root: probes/fin-argument-modes H367 `NPV(0.1,-10000,2750,4250,3250,2750)` is
+  302.233453999042 in Excel (exact 302.2334539990438, ours 302.23345399904133); probes-numeric/m9-fin-nper-npv A148
+  `NPV(0.1,-1E6,250000,250000,250000,250000,250000)` is -47548.46149808013 (exact -47548.46149807995, ours
+  -47548.4614980802).
+Rejected (gap triage 2026-10-25, doubles, on the 9 rate-exact residues and H367): sum of v/(1+r)^i left to right or
+reversed, Horner from the last value with / or * 1/(1+r) (matches M8 only), a running factor by * or /,
+v*(1+r)^-i, v/exp(i*log1p r), fsum, and the future-value Horner divided by (1+r)^n. T-1528's Blocked section lists its
+own rejected forms on m9-fin-nper-npv.
+Ours: the left-to-right double sum (`compute_npv`).
+Status: VERIFIED (values, Excel Online cache); the formulation is open (T-2671 probes it, T-2672 fits it).
+Tasks: T-2671, T-2672, T-1528, T-2131
