@@ -14,6 +14,9 @@ depends_on: []
 A blank row-field key in GROUPBY and PIVOTBY results is a true blank (TYPE 1, `&""` is ""), as Excel has it, not the number 0.
 
 ## Context
+Also owns (T-2623): gen-m9/d37313406b9f6e55.case.json Calc!A182 `=TRIMMEAN(_xlfn.GROUPBY(Data!E1:E12,Data!E1:E12,LAMBDA(z,ROUND(2,5)),0),(Data!C12-NPV(100,(-0.5))))`:
+Excel 8230453.917639333, ours 7716050.547786875; the GROUPBY's blank-key row shows `""` in Excel and 0 in ours
+(probes/t2475-stat-subexpressions P!A530, A531), and TRIMMEAN then counts our 0.
 Split from T-2360. probes/t2360-array-lambda-holidays G!A12, G!B3, G!C4, G!C11, G!D3, G!D12 (excel-graph, 2026-10-23):
 `INDEX(GROUPBY(D90!A1:D12,..),r,c)` over a blank key cell is `1|` (TYPE 1, empty text); ours `1|0`. arrays.md (paragraph "A LAMBDA
 array result is shown as `#VALUE!`...") records it; the GROUPBY section already says blank values inside LAMBDA arguments are true
