@@ -149,7 +149,7 @@ impl Model {
 
     /// Cells of `node`'s range inside the used area (at least 1): what one dense walk visits.
     pub(crate) fn walk_cost(&mut self, node: &Node, cell: CellReferenceIndex) -> u64 {
-        let value = self.evaluate_node_with_reference(node, cell);
+        let value = self.ifs_range_arg(node, cell);
         self.range_walk_cost(&value)
     }
 
@@ -184,7 +184,7 @@ impl Model {
         }
         let criteria = self.criteria_values(args, 2, cell);
         // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
-        let sum_value = self.evaluate_node_with_reference(&args[0], cell);
+        let sum_value = self.ifs_range_arg(&args[0], cell);
         let ranges = self.resolve_sum_ranges(args, sum_value, cell, shape);
         let walked = ranges
             .as_ref()
@@ -228,7 +228,7 @@ impl Model {
         }
         let criteria = self.criteria_values(args, 1, cell);
         // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
-        let first = self.evaluate_node_with_reference(&args[0], cell);
+        let first = self.ifs_range_arg(&args[0], cell);
         let ranges = self
             .resolve_criteria_ranges(args, 0, first.clone(), cell)
             .and_then(|ranges| {
@@ -259,12 +259,19 @@ impl Model {
             }
             CalcResult::Range { left, right } => Ok(Range { left, right }),
             error if error.is_error() => Err(error),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected a range".to_string(),
-            )),
+            _ => Err(not_a_range(cell)),
         }
+    }
+
+    /// A range argument of the IF and IFS functions, evaluated by reference. A range of a linked
+    /// workbook is an array (of its cached cells, or of `#BLOCKED!`), which [`Self::ifs_range`]
+    /// turns into `#VALUE!`, so it is that error at once: building the array would cost a lookup
+    /// per cell, a whole column's 2^20 per call (corpus-bench 52450, T-0477).
+    fn ifs_range_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        if self.is_external_array(node, cell) {
+            return not_a_range(cell);
+        }
+        self.evaluate_node_with_reference(node, cell)
     }
 
     /// The criteria ranges `args[first]`, `args[first + 2]`, ... of COUNTIFS and the
@@ -280,7 +287,7 @@ impl Model {
     ) -> Result<Vec<Range>, CalcResult> {
         let mut ranges = vec![Self::ifs_range(first_value, cell)?];
         for node in args.iter().skip(first + 2).step_by(2) {
-            let value = self.evaluate_node_with_reference(node, cell);
+            let value = self.ifs_range_arg(node, cell);
             ranges.push(Self::ifs_range(value, cell)?);
         }
         Ok(ranges)
@@ -302,7 +309,7 @@ impl Model {
     ) -> Result<SumRanges, CalcResult> {
         let shared = (shape == IfsShape::ResizedSelf).then(|| sum_value.clone());
         Self::ifs_range(sum_value, cell).and_then(|sum_range| {
-            let first = shared.unwrap_or_else(|| self.evaluate_node_with_reference(&args[1], cell));
+            let first = shared.unwrap_or_else(|| self.ifs_range_arg(&args[1], cell));
             let ranges = self.resolve_criteria_ranges(args, 1, first, cell)?;
             if shape == IfsShape::Strict {
                 let sum_shape = range_shape(&sum_range);
@@ -701,4 +708,9 @@ impl Model {
             CalcResult::Number(if max.is_infinite() { 0.0 } else { max })
         })
     }
+}
+
+/// The error of an IF or IFS range argument that is not a range.
+fn not_a_range(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "Expected a range".to_string())
 }
