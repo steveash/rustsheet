@@ -3,7 +3,7 @@ id: T-2693
 title: "Probe (x)=0 companions for the 89 cells where Excel for the web shows 0 and the engine keeps a subnormal (EXP, BINOM.DIST, NEGBINOM.DIST, BETA.DIST, GAMMA.DIST)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
