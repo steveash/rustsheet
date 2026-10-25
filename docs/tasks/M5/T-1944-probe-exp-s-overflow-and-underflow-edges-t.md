@@ -3,7 +3,7 @@ id: T-1944
 title: "Probe EXP's overflow and underflow edges (T-1931)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,10 +25,18 @@ Establish with oracle evidence what Excel's EXP does at its range edges, and mak
 - Use the `excel-probe` skill. Put a dense grid of consecutive doubles, as stored inputs, around each edge.
 
 ## Acceptance criteria
-- [ ] A probes-numeric case with an excel-graph oracle covers both edges and `EXP(710)`, and every Excel quirk
+- [x] A probes-numeric case with an excel-graph oracle covers both edges and `EXP(710)`, and every Excel quirk
   found is recorded in numbers.md.
-- [ ] The engine matches every cell of the case, or each miss is a listed residual.
-- [ ] `make check` green; reviewers approve.
+- [x] The engine matches every cell of the case, or each miss is a listed residual.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - EXP accuracy inside the range (T-1931, T-1940).
+
+## Outcome
+No engine change was needed: probes-numeric/t2203-exp-range-edges (T-2203, excel-graph 2026-10-22) already covers both
+edges with dense grids of consecutive stored doubles, the 709.79-710.5 overflow tail with 710 itself, and `(EXP(a))=0`
+companions for the underflow switch, and the engine (model V6) matches all 780 checked cells (`rustsheet-eval show
+probes-numeric/t2203-exp-range-edges.case.json`: status=Pass, checked=780 passed=780, 2026-10-25). The quirks (last finite
+argument 709.782712893384 with EXP = 1.7976931348622732E308, the underflow switch between -745.1332191019412 and
+-745.1332191019411) are in docs/excel-semantics/numbers.md "Range edges". Eval: no change (no residuals).
