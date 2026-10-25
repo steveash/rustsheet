@@ -165,6 +165,10 @@ the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scal
   Beside a bad range_lookup, every element is that range_lookup's `#VALUE!` (`VLOOKUP({1;99},A1:B2,0,"1")`, G28).
 - Text range_lookup that reads as a boolean works: `VLOOKUP({1;2},A1:B2,2,"TRUE")` is "one", "two" (G18, G19).
 - The scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
+Each element of those claims is probed (probes/vlookup-t2411-elements, excel-graph, 2026-10-25, T-2456):
+`VLOOKUP({1;#N/A},A1:B2,"a")` is `#VALUE!` in the first element and `#N/A` in the second (H1, H2: the failed index
+does not hide an error lookup_value element); `HLOOKUP({1,2},D1:E2,2,"x")` is `#VALUE!` in both columns (H3, H4); and
+`VLOOKUP({1;2},A1:B2,2,"TRUE")` is "one", "two" (H5, H6).
 Ours: matches since T-2411.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
 search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is
