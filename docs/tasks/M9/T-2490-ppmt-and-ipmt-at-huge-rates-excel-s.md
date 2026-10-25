@@ -3,7 +3,7 @@ id: T-2490
 title: "PPMT and IPMT at huge rates: Excel's 0, overflow and long-tail results (gen-m9, 31 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
