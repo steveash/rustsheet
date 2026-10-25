@@ -20,8 +20,9 @@ past the used area read the same in every row. Make the list from a scan of the 
 (corpus-bench, calipers) for aggregates over whole-column expressions.
 
 ## Acceptance criteria
-- [ ] The scan and the resulting list in the Outcome; each listed function in `tailed_shape` and
-      `evaluate_tailed` through its existing element kernel.
+- [ ] The scan and the resulting list in the Outcome; each listed function admitted by
+      `tailed_leaves` (tailed_array.rs; the two evaluations already run it through the ordinary
+      evaluator, so only the static check changes).
 - [ ] Equivalence tests per function (as T-0469's).
 - [ ] `make check` green; reviewers approve.
 
