@@ -3,7 +3,7 @@ id: T-2648
 title: "Sweep gen-m5 round 3: the 41 M5 functions under 200 generated outer-call cells"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
