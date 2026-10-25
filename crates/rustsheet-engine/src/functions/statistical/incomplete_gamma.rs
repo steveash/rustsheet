@@ -173,6 +173,23 @@ fn gamma_prefactor(a: f64, x: f64) -> f64 {
     (a / (2.0 * std::f64::consts::PI)).sqrt() * exponent.exp()
 }
 
+/// The gamma density x^(a-1) e^(-x/scale) / (scale^a Gamma(a)) for a > 0, x > 0 and scale > 0,
+/// as [`gamma_prefactor`]`(a, x / scale) / x`: the prefactor P and Q share, so the density keeps
+/// its digits where statrs' `exp(ln pdf)` loses the absolute error of its log (T-0971). `None` at
+/// x = 0 or where x / scale is not normal, which keep statrs' closed forms.
+pub(crate) fn gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
+    let y = x / scale;
+    if x <= 0.0 || !y.is_normal() {
+        return None;
+    }
+    // The exponential density e^(-x/scale) / scale, as statrs forms it: one rounding fewer than
+    // the prefactor's y e^-y / x (gen-m9/ecc87f80077959e0 A261 `CHISQ.DIST(1.5,2,FALSE)`).
+    if a == 1.0 {
+        return Some((-y).exp() / scale);
+    }
+    Some(gamma_prefactor(a, y) / x)
+}
+
 /// The shape below which, for x below 1, Q is not 1 - P but [`small_shape_upper`]: there P runs
 /// up to 1 as the shape falls (P(0.00113, 8E-4) = 0.992), and 1 - P keeps only the digits P and
 /// 1 share. At a shape of 1/2 or more and x below 1, Q is at least Q(1/2, 1) = 0.157.
@@ -308,8 +325,13 @@ fn incomplete_gamma_pair(a: f64, x: f64, terms: &mut Terms) -> (f64, f64) {
         let lower = prefactor * sum / a;
         if a < SMALL_SHAPE && x < 1.0 {
             let upper = small_shape_upper(a, x, terms);
+            // Where Q is at most 1/2, 1 - Q is P to within an ulp, which the series is not as P
+            // nears 1: `GAMMADIST(0.5,1E-300,1,TRUE)` is Excel's 1, the series' 1 - 2^-53
+            // (gen-m9/11eb3ab4f4f8104c A252 truncates it in POISSON.DIST).
             return if upper.is_nan() {
                 (f64::NAN, f64::NAN)
+            } else if upper <= 0.5 {
+                (1.0 - upper, upper)
             } else {
                 (lower, upper)
             };
@@ -579,8 +601,8 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::{
-        gamma_cdf, gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair,
-        inverse_cdf_within, Tail, Terms, MAX_TERMS,
+        gamma_cdf, gamma_density, gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur,
+        incomplete_gamma_pair, inverse_cdf_within, Tail, Terms, MAX_TERMS,
     };
     use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
     use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -667,6 +689,33 @@ mod tests {
     }
 
     // a = 1 is the exponential distribution: P = -expm1(-x) and Q = exp(-x), exactly.
+    #[test]
+    fn the_density_is_within_a_few_ulps_of_the_reference() {
+        // (a, x, scale, density) from mpmath at 50 digits. The first is Excel's
+        // `GAMMA.DIST(10,9,2,FALSE)` (ironcalc-calc GAMMA.xlsx E3), the last `CHISQ.DIST(37.5,6,FALSE)`.
+        for (a, x, scale, expected) in [
+            (9.0, 10.0, 2.0, 0.032_639_019_674_079_374),
+            (2.5, 0.3, 1.0, 0.091_570_869_452_182_3),
+            (500.0, 480.0, 1.0, 0.012_319_344_669_927_745),
+            (0.5, 1e-3, 2.0, 12.609_356_355_490_782),
+            (3.0, 37.5, 2.0, 6.322_968_483_684_419e-7),
+        ] {
+            let ours = gamma_density(a, x, scale).unwrap();
+            assert!(within_ulps(ours, expected, 4.0), "{a} {x} {scale}: {ours}");
+        }
+        assert_eq!(gamma_density(1.0, 1.5, 2.0), Some((-0.75f64).exp() / 2.0));
+        assert_eq!(gamma_density(2.0, 0.0, 1.0), None);
+    }
+
+    #[test]
+    fn a_tiny_shape_s_lower_tail_is_one_minus_its_upper() {
+        // `GAMMADIST(0.5,1E-300,1,TRUE)` is Excel's 1 (gen-m9/11eb3ab4f4f8104c A252), where the
+        // series gives 1 - 2^-53.
+        let (lower, upper) = pair(1e-300, 0.5);
+        assert_eq!(lower, 1.0);
+        assert!(upper > 0.0 && upper < 1e-299);
+    }
+
     #[test]
     fn shape_one_is_expm1() {
         for x in [1e-300, 1e-10, 0.5, 1.0, 2.0, 30.0, 700.0] {

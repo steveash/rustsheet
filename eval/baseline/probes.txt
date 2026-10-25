@@ -1994,7 +1994,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E19
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E2
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E20
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E3
-F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
@@ -2387,16 +2386,7 @@ F	probes/solver-iteration-traces.case.json	Y!E7
 F	probes/solver-iteration-traces.case.json	Y!E8
 F	probes/stat-argument-modes.case.json	Sheet1!H117
 F	probes/stat-argument-modes.case.json	Sheet1!H13
-F	probes/stat-argument-modes.case.json	Sheet1!H132
-F	probes/stat-argument-modes.case.json	Sheet1!H136
-F	probes/stat-argument-modes.case.json	Sheet1!H140
 F	probes/stat-argument-modes.case.json	Sheet1!H144
-F	probes/stat-argument-modes.case.json	Sheet1!H148
-F	probes/stat-argument-modes.case.json	Sheet1!H152
-F	probes/stat-argument-modes.case.json	Sheet1!H157
-F	probes/stat-argument-modes.case.json	Sheet1!H158
-F	probes/stat-argument-modes.case.json	Sheet1!H160
-F	probes/stat-argument-modes.case.json	Sheet1!H161
 F	probes/stat-argument-modes.case.json	Sheet1!H163
 F	probes/stat-argument-modes.case.json	Sheet1!H168
 F	probes/stat-argument-modes.case.json	Sheet1!H173
@@ -2466,8 +2456,6 @@ F	probes/stat-quantile-lift.case.json	Sheet1!E6
 F	probes/stat-quantile-lift.case.json	Sheet1!E7
 F	probes/stat-quantile-lift.case.json	Sheet1!E8
 F	probes/stat-quantile-lift.case.json	Sheet1!E9
-F	probes/stat-quantile-lift.case.json	Sheet1!J35
-F	probes/stat-quantile-lift.case.json	Sheet1!J37
 F	probes/stat-test-lift.case.json	Sheet1!P64
 F	probes/stat-test-lift.case.json	Sheet1!P65
 F	probes/stat-test-lift.case.json	Sheet1!P66

@@ -935,8 +935,17 @@ Where the prefactor underflows to 0 the tail it multiplies is 0 at once, as stat
 past x = 2^54 the continued fraction's `b += 2` leaves b unchanged and its delta stays an ulp below 1, so without the
 shortcut `CHISQ.DIST(1E30,10,TRUE)`, `GAMMADIST(1E300,123456789.123,1E5,TRUE)` and
 `GAMMA.DIST(0.5,123456789.123,1E-300,TRUE)` spent the cap and were `#NUM!` where Excel is 1 (gen-m9).
+Below a shape of 1/2 and x of 1, P is 1 - Q wherever that Q is at most 1/2: the series then gives P an ulp low as it
+nears 1, and `GAMMADIST(0.5,1E-300,1,TRUE)` is Excel's 1 (POISSON.DIST truncates it as its k, gen-m9/11eb3ab4f4f8104c
+A252).
+The density (GAMMA.DIST, GAMMADIST, CHISQ.DIST with cumulative FALSE) is the same prefactor at x / scale, divided by
+x (`gamma_density`). A shape of 1 is e^(-x/scale) / scale. x = 0 and an x / scale that is not normal keep statrs'
+closed forms. That gives `GAMMA.DIST(10,9,2,FALSE)` = 0.032639019674079374, Excel's and correctly rounded (GAMMA.xlsx
+E3, E34, E42, E58, BETA_GAMMA.xlsx L6; statrs' exp(ln pdf) was 78 ulp off).
+Not yet Excel's (T-2638): deep upper tails and tiny-x values such as `CHIDIST(100,8)` and `CHISQ.DIST(1E-10,8,TRUE)`,
+and `CHIINV(0.975,5)`. Ours is correctly rounded there against 50 digits, and Excel is 7-37 ulp off.
 Status: VERIFIED (excel-graph)
-Tasks: T-0971, T-0972
+Tasks: T-0971, T-0972, T-2638
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
