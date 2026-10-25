@@ -65,9 +65,12 @@ Decision 0083: a wrong TEXT or displayed-text result is visible to every user of
 acceptance criteria above are the visible-parity stage.
 
 ## Outcome
-Done. `number_format::significant_15` is generalized to `significant_digits(value, count, tie_away)`, which
-rounds the exact double at `count` significant digits. The `p.is_scientific` branch of `formatter/format.rs`
-uses it for a one-integer-placeholder mantissa, with ties away from zero; engineering codes keep
-`round_engineering`. `make eval-baseline` fixed 13 gen-m10 cells: the 10 TF lines and the T!A7 F line, plus
-bfbcd16cee266336 F!W12 and fbdab487cb11409e F!Q20. There were no regressions in any suite, and poi (fetched)
-is unchanged at 119 known failures. A unit test in formatter/test/test_scientific.rs covers 2.5, -2.5 and 12.345.
+Done. The Context's reading (round the double itself) was wrong. A probe settled it (probes/t2705-scientific-mantissa-
+rounding, excel-graph 2026-10-25): the mantissa rounds the 15-digit decimal half away from zero, once, at its shown digits.
+`0.00E+00` on 1.005 is "1.01E+00". 12.345 is not below a tie (it is 12.34500000000000063…); ours was wrong only because it
+rounded twice. `decimal_round::round_significant` (`significant_15` and then `round_off`) gives a one-integer-placeholder
+mantissa in `formatter/format.rs`; engineering codes keep `round_engineering`.
+`make eval-baseline`: gen-m10 fixed 13, namely the 10 TF lines, the T!A7 F line, bfbcd16cee266336 F!W12 and
+fbdab487cb11409e F!Q20. No regressions, and poi is unchanged at 119. One probe cell fails, A13 (a `%` after the exponent
+scales in ours but not in Excel); it is filed as T-2720. The unit tests in formatter/test/test_scientific.rs cover 2.5,
+-2.5, 12.345, 1.005, 2.5-2^-51, 0.285 and 100.5.
