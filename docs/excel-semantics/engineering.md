@@ -241,6 +241,7 @@ Typed coercion follows the ToolPak rule:
   The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
 - A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
 - COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
+- COMPLEX reads its suffix before its numbers: an invalid suffix (a number, TRUE, "J", other text) is `#VALUE!` and an error suffix is that error, whatever errors real_num or i_num hold (17 gen-m9 cells, T-2532). With a valid suffix, real_num's error still comes before i_num's.
 - Non-complex text is `#NUM!` (`IMSUB("x","1")`), and a number cell is a real number (`IMDIV("3+4i",M2)` with M2 = 3 is
   "1+1.33333333333333i").
 
