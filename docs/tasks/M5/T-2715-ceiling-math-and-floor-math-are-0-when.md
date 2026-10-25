@@ -50,7 +50,7 @@ record a desktop-only rule and file an M14 follow-up instead of matching the gol
       ECMA.CEILING, FLOOR, FLOOR.MATH (both modes), FLOOR.PRECISE and MROUND. Numbers are ±1E-307, ±2^-1022 and ±1E-300.
       Significances put the ratio just above, at and below 2^-1022 (for example 1, 4, 4.5, 10, 1E+10). ROUNDUP and
       ROUNDDOWN of the same numbers are controls (moved to their own case, probes/t2715-roundup-near-smallest-normal,
-      owned by T-2737; see Outcome).
+      owned by T-2756; see Outcome).
 - [x] The engine matches every cell of the probe. The 8 calipers cells above pass (`rustsheet-eval run --suite calipers`
       after `rustsheet-eval fetch --suite calipers`), and their lines leave eval/baseline/calipers.txt
       (`rustsheet-eval update-baseline --suite calipers`) with no new known failure. (The cells pass; the calipers.txt
@@ -73,7 +73,7 @@ Excel's value.
   `snap_ratio` now flushes the ratio with `arithmetic::flush_subnormal`. numbers.md "CEILING and FLOOR of a subnormal
   ratio are 0".
 - Found in passing: ROUNDUP(±2^-1022, d) is 0 while ROUNDUP(±1E-307, d) is one step. The controls are their own case
-  (probes/t2715-roundup-near-smallest-normal, M2, 10 new-coverage known failures), owned by T-2737.
+  (probes/t2715-roundup-near-smallest-normal, M2, 10 new-coverage known failures), owned by T-2756.
 - calipers: E169, F169, E183 and F183 pass in both workbooks. `update-baseline --suite calipers` still refuses on
   the 36 pv_goldens cells (pv23_007/008/009/056) that T-2714 found failing on `main` too (T-2708, T-0463), so the
   eight `F` lines leave calipers.txt with T-0463's ratchet.
