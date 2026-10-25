@@ -45,6 +45,14 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
   - The chained BETA.INV cells T-2119 left are owned by T-2633 (decision 0111); coordinate with it, since the port
     moves them again.
   - F.INV and F.INV.RT inverting the same cdf is T-2511.
+- T-2502 left two pieces of its criterion 2 here (statistics.md "Incomplete beta closed forms act on the oriented
+  arguments", Ours):
+  - F.DIST, F.DIST.RT and FDIST pass w5's x = 1/(1 + d2/(d1·X)), y = 1/(1 + d1·X/d2) only where a closed form applies
+    (`fisher.rs` `f_tail`); elsewhere `f_tail_pre_t2502` keeps d1X/(d1X + d2), since the w5 forms moved about 100
+    bit-exact cells by 1 ulp on the Cephes kernel. The port should pass the w5 forms everywhere.
+  - The unoriented callers, `beta_reg_complement_unoriented` and `beta_reg_upper_unoriented`: F.INV/F.INV.RT/FINV's
+    crossing (with T-2511), BETA.INV's huge-shape crossing (`inverse_beta.rs`) and F.TEST. Move them to the port and
+    delete the unoriented kernel and `unoriented_shape_one`.
 - Related: T-2146 (BINOM/NEGBINOM last digits) and T-2219 (F to 15 digits) own cells that this task moves. Re-triage
   them when it lands.
 
@@ -58,6 +66,8 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
 - [ ] BETA.DIST's cdf runs on the bratio port.
 - [ ] The two gated lost cells are recorded under decision 0083 (or a decision record), and the effect on T-2633's
       chained BETA.INV cells is stated. No other baseline line is added.
+- [ ] The pre-T-2502 seams are deleted: `beta_reg_complement_unoriented`, `beta_reg_upper_unoriented`,
+      `unoriented_shape_one`, `fisher.rs` `f_tail_pre_t2502` and the `A1_CLOSED_FORM_MIN_X` branch.
 - [ ] statistics.md's bpser and bratio entries gain "Implemented in" lines.
 - [ ] The T-2464 research harness is deleted: `functions/statistical/t2464_harness.rs` and its `mod t2464_harness;`
       line in `functions/statistical/mod.rs` (docs/research/t2464/README.md "Rebuilding the harness" then points at the
