@@ -87,6 +87,18 @@ fn f_test_is_symmetric_and_keeps_the_rounded_powers() {
     assert!((number("B1") / 7.189_542_390_448_293e-56 - 1.0).abs() < 5e-16);
 }
 
+#[test]
+fn f_test_an_error_element_is_that_error() {
+    // gen-m9/165db58d1540f014 A337, 9cca17438a7e6f8a A43 (excel-graph; T-2692): the element's
+    // error, not #VALUE!, and before the one-point #DIV/0!.
+    let mut model = new_empty_model();
+    model._set("A1", "=F.TEST({-1,0,1},{1,#N/A,3})");
+    model._set("A2", "=FTEST({1,#N/A,3},AVERAGE(0.2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+}
+
 // One degree of freedom on each side is Excel's closed form 2 asin(sqrt x)/pi, bit for bit where
 // the series is 14 ulps off (gen-m9/8f2ac25945af87da A241 and gen-m9/c468f5046aadfbbc A192,
 // excel-graph; T-2571).
