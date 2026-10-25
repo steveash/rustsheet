@@ -3,7 +3,7 @@ id: T-2429
 title: "HYPGEOM.DIST and HYPGEOMDIST: a huge count is #NUM!, and the remaining T-2255/T-2256 cells (gen-m9, 26 cells; impossible sample and negative counts cut to T-2699, T-2700)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
