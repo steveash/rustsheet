@@ -1,0 +1,67 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2529 probe: FORMULATEXT of scalar pick calls, error array elements, array INDIRECT, and XLOOKUP/TAKE/DROP/LET/SWITCH/IFS results. Data!A2 is a formula; one probe per column block so spills cannot collide.",
+  "tags": [
+    "M5",
+    "probe",
+    "references",
+    "information"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": "=A1+1",
+        "A3": 3,
+        "B1": "x",
+        "B2": 2,
+        "B3": "y",
+        "C1": "Data!A1",
+        "D1": "Data!A2"
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=FORMULATEXT(IF(TRUE,5,Data!A1))",
+        "A2": "=FORMULATEXT(CHOOSE(1,5,Data!A1))",
+        "A3": "=FORMULATEXT(IF(FALSE,5,Data!A2))",
+        "A4": "=FORMULATEXT(CHOOSE(2,5,Data!A2))",
+        "A5": "=FORMULATEXT(XLOOKUP(3,Data!A1:A3,Data!A1:A3))",
+        "A6": "=FORMULATEXT(XLOOKUP(2,Data!B1:B3,Data!A1:A3))",
+        "A7": "=FORMULATEXT(XLOOKUP(9,Data!A1:A3,Data!A1:A3))",
+        "A8": "=FORMULATEXT(XLOOKUP(9,Data!A1:A3,Data!A1:A3,\"nf\"))",
+        "A9": "=FORMULATEXT(TAKE(Data!A1:A3,1))",
+        "A10": "=FORMULATEXT(TAKE(Data!A1:A3,-1))",
+        "A11": "=FORMULATEXT(TAKE(SEQUENCE(3),1))",
+        "A12": "=FORMULATEXT(DROP(Data!A1:A3,2))",
+        "A14": "=FORMULATEXT(DROP(SEQUENCE(3),2))",
+        "A15": "=FORMULATEXT(LET(x,Data!A2,x))",
+        "A16": "=FORMULATEXT(LET(x,5,x))",
+        "A17": "=FORMULATEXT(LET(x,Data!A2,x+1))",
+        "A18": "=FORMULATEXT(SWITCH(1,1,Data!A2,Data!A1))",
+        "A19": "=FORMULATEXT(SWITCH(1,1,5,Data!A1))",
+        "A20": "=FORMULATEXT(SWITCH(9,1,5,Data!A2))",
+        "A21": "=FORMULATEXT(SWITCH(9,1,5))",
+        "A22": "=FORMULATEXT(IFS(TRUE,Data!A2,TRUE,Data!A1))",
+        "A23": "=FORMULATEXT(IFS(TRUE,5,TRUE,Data!A1))",
+        "A24": "=FORMULATEXT(IFS(FALSE,5))",
+        "A25": "=FORMULATEXT(IF(TRUE,Data!A2,5))",
+        "C1": "=FORMULATEXT(IF({TRUE,FALSE},NA(),Data!A2))",
+        "E1": "=FORMULATEXT(IF({TRUE,FALSE},Data!A2,NA()))",
+        "G1": "=FORMULATEXT(CHOOSE({1,2},NA(),Data!A2))",
+        "I1": "=FORMULATEXT(IF({TRUE,TRUE},NA(),Data!A2))",
+        "K1": "=FORMULATEXT(INDIRECT({\"Data!A1\",\"Data!A2\"}))",
+        "M1": "=FORMULATEXT(INDIRECT({\"Data!A2\";\"Data!A1\"}))",
+        "O1": "=FORMULATEXT(INDIRECT({\"Data!A2\"}))",
+        "Q1": "=FORMULATEXT(INDIRECT({\"Data!A2\",\"zz zz\"}))",
+        "S1": "=FORMULATEXT(INDIRECT(Data!C1:D1))",
+        "U1": "=FORMULATEXT(XLOOKUP({1,3},Data!A1:A3,Data!A1:A3))",
+        "X1": "=FORMULATEXT(DROP(Data!A1:A3,1,0))",
+        "Z1": "=FORMULATEXT(TAKE(Data!A1:A3,2))",
+        "AB1": "=FORMULATEXT(TAKE(Data!A1:A3,1,-1))"
+      }
+    }
+  ]
+}
