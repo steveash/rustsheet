@@ -3,7 +3,7 @@ id: T-0072
 title: "Progress report: Phase 1 and milestone exit section and campaign-stage table with task counts and off cells"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
