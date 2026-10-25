@@ -256,10 +256,7 @@ impl Parser {
                 }
                 sheet.to_string()
             }
-            None => match prefix.strip_prefix('\'') {
-                Some(quoted) => quoted.strip_suffix('\'')?.replace("''", "'"),
-                None => prefix.to_string(),
-            },
+            None => crate::expressions::utils::unquote_sheet_prefix(prefix)?,
         };
         let scope = if sheet.is_empty() {
             None
