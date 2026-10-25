@@ -883,7 +883,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     text = format!("{text}0");
                                 }
                             } else if digit.kind == '?' {
-                                text = format!("{text} ");
+                                // A padding space, after the point when it is the first decimal:
+                                // `?.??` on 1000 is "1000.  " (gen-m10, T-1738).
+                                if needs_period {
+                                    text = format!("{text}{decimal_separator} ");
+                                } else {
+                                    text = format!("{text} ");
+                                }
                             } else if digit.kind == '#' && needs_period {
                                 // FIXME: This is what Excel does, but it transforms "3" into "3."
                                 text = format!("{text}{decimal_separator}");

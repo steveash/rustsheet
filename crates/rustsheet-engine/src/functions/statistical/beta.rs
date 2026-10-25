@@ -134,7 +134,15 @@ impl Model {
         let t = (x - a) / width;
         let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
         let result = if cumulative {
-            beta_reg_complement(t, 1.0 - t, alpha, beta_param)
+            // A subnormal cdf is kept only at beta = 1, the closed form t^alpha, and is 0 at any
+            // other beta, 1.0000001 included (`(x)=0` FALSE at B2, B3, B6, B7, B11, B12 of
+            // probes/t2737-subnormal-cdf-shapes, TRUE at B1, B4, B5, B8:B10; T-2737).
+            let cdf = beta_reg_complement(t, 1.0 - t, alpha, beta_param);
+            if beta_param == 1.0 {
+                cdf
+            } else {
+                flush_subnormal(cdf)
+            }
         } else {
             // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A). A subnormal
             // density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/t2513-r3-m1-residual-hold E863,

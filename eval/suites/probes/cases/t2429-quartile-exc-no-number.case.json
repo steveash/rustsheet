@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2429: QUARTILE.EXC and the rest of the PERCENTILE/QUARTILE/PERCENTRANK family of a reference holding no number (a TRUE, a text, an empty cell) against an error or invalid quart, as gen-m9/38e4fc309fe199ea A5 `QUARTILE.EXC(Data!D7,HYPGEOMDIST(2,3,7,2^32))` (D7 TRUE) is #NUM! in Excel.",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=QUARTILE.EXC(Data!A1,1)",
+        "A2": "=QUARTILE.EXC(Data!A1,NA())",
+        "A3": "=QUARTILE.EXC(Data!A1,1/0)",
+        "A4": "=QUARTILE.EXC(Data!A1,\"a\")",
+        "A5": "=QUARTILE.EXC(TRUE,1)",
+        "A6": "=QUARTILE.EXC(Data!A2,1)",
+        "A7": "=QUARTILE.EXC(Data!A2,NA())",
+        "A8": "=QUARTILE.EXC(Data!A3,NA())",
+        "A9": "=QUARTILE.EXC(Data!A1,SQRT(-1))",
+        "A10": "=QUARTILE(Data!A1,NA())",
+        "A11": "=QUARTILE.INC(Data!A1,NA())",
+        "A12": "=PERCENTILE.EXC(Data!A1,NA())",
+        "A13": "=QUARTILE.EXC(Data!A1:A2,NA())",
+        "A14": "=QUARTILE.EXC(Data!A4:A6,NA())",
+        "A15": "=QUARTILE.EXC(Data!A4:A6,5)",
+        "A16": "=PERCENTRANK(Data!A1,1)",
+        "A17": "=PERCENTRANK.INC(Data!A1,1)",
+        "A18": "=PERCENTRANK.EXC(Data!A1,1)",
+        "A19": "=PERCENTILE(Data!A1,0.5)",
+        "A20": "=PERCENTILE.INC(Data!A1,0.5)",
+        "A21": "=PERCENTILE.EXC(Data!A1,0.5)",
+        "A22": "=QUARTILE(Data!A1,1)",
+        "A23": "=PERCENTRANK(Data!A1,NA())",
+        "A24": "=MEDIAN(Data!A1)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": true,
+        "A2": "x",
+        "A4": 1,
+        "A5": 2,
+        "A6": 3
+      }
+    }
+  ],
+  "expected": {}
+}

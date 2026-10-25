@@ -986,10 +986,10 @@ population of 1.8E8, 258,239 terms each, 1.38 to 1.55 s). hypegeom.rs `MAX_TERMS
 DEVIATION (decision 0014, CLAUDE.md directive 5): where more than 2^18 terms are left the cdf is `#NUM!` where main
 gave a number, and Excel's value there is unprobed (T-1896; no suite case is near the cap: the largest sums 501
 terms). That is a cdf whose standard deviation is above about 3,400 (a population above about 1.84E8 with a wide
-sample), such as `HYPGEOM.DIST(1074741824,2147483648,2147483648,4294967296,TRUE)` (1,255,925 terms are not 0; main
-1.0000065293398746 after 191 s in release), and any sum of more than 2^18 terms at a population above 2^52, where
-nothing is skipped (above 2^53 a count rounds as a double and statrs' terms are not the pmf's:
-`HYPGEOM.DIST(524288,1048576,2^59,2^60,TRUE)` was `#NUM!` on main too, its sum infinite). Unit tests
+sample), such as `HYPGEOM.DIST(537370912,1073741823,1073741823,2147483646,TRUE)`. Since T-2429 a count of 2^31 - 1 or
+more is `#NUM!` as in Excel ("HYPGEOMDIST: a sample below the possible range is 0; a negative or huge count is
+#NUM!"), so populations past that, such as `HYPGEOM.DIST(1074741824,2147483648,2147483648,4294967296,TRUE)` (main
+1.0000065293398746 after 191 s in release) and the subnormal window measured above, no longer reach the cap. Unit tests
 `a_call_past_its_cap_is_nan`, `the_cap_counts_the_terms_summed` and `a_cdf_sum_is_bounded`; T-1896 probes Excel's
 values there.
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted HYPGEOM.DIST of more than 32 elements is `#ERROR!` before
@@ -3423,10 +3423,33 @@ A85, 4bad303d32cc3f46 A267, 4250f880ab640c49 A339; `HYPGEOM.DIST(1,2,7,7,FALSE)`
 count, however small, is `#NUM!` (`HYPGEOMDIST(3,-0.025,5,9)`, 7674c89c824aca43 A386; `HYPGEOMDIST(5,1,-5E-20,2)`,
 589f42e67f4b4b8d A2); so is a count of about 1E15 (`HYPGEOMDIST(1E15,2,2,17)`, a612e89321a6df9c A395;
 `HYPGEOMDIST(2,3,8,1000000000000017.1)`, ee2497a5e683c5d9 A264; `HYPGEOM.DIST(3,4,1,753749999999999.8,FALSE)`,
-a013a45a8fbcab4f A352), where 202769 still computes. The threshold between them is UNVERIFIED.
-Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 30 cells listed in T-2429.
-Ours: `#NUM!` for the impossible sample, 0 or 1 for the negative and huge counts; T-2429.
-Status: VERIFIED (excel-graph) except the threshold
+a013a45a8fbcab4f A352). The threshold is 2^31 - 1, the integer-count functions' limit (PERMUT, COMBIN, BINOM.DIST's
+trials): a count of 2147483647 or more in any of the four arguments is `#NUM!`, even a sample_s above the possible
+range, while 2147483646.9 computes (`HYPGEOMDIST(1,2,3,2147483646)` 2.7939677238464347E-09, `HYPGEOMDIST(2147483646.9,2,2,17)`
+0; `HYPGEOMDIST(1,2,3,2147483647)`, `HYPGEOMDIST(2147483647,2,2,17)`, `HYPGEOMDIST(1,2,3,2147483647.0000002)` `#NUM!`).
+Every argument is read first: a text cumulative is `#VALUE!` beside a huge or negative count
+(`HYPGEOM.DIST(1E+15,2,3,10,"abc")`, `HYPGEOM.DIST(1,-0.5,3,10,"abc")`), while the text "true" and a numeric -1 or 0.5
+are a cumulative TRUE (`HYPGEOM.DIST(1,2,3,10,"true")` 0.9333333333333333). A negative fraction in population_s or
+number_pop is `#NUM!` too (`HYPGEOM.DIST(1,2,-0.5,10,TRUE)`, `HYPGEOMDIST(1,2,3,-0.5)`).
+Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 30 cells listed in T-2429; probes/t2429-hypgeom-huge-count A1-A54
+and probes/t2429-hypgeom-threshold A1-A47 (excel-graph, 2026-10-25); probes/t2429/<case>, each owned gen-m9 cell's
+HYPGEOM call and its arguments on that case's Data sheet.
+Ours: since T-2429, `#NUM!` for a negative or huge count (`limits::COUNT_LIMIT_EXCLUSIVE`), checked on every count
+before truncation; the impossible sample is still `#NUM!` (T-2699; probes/t2429-hypgeom-huge-count A5, A6 and their
+rows, `HYPGEOMDIST(1,N,3,N)`, are its cells).
+Status: VERIFIED (excel-graph)
+
+## A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data (T-2429)
+Rule: as a single cell holding text ("A single cell holding text is no number" above), a single cell holding TRUE is no
+number in the data of QUARTILE, QUARTILE.INC/.EXC and PERCENTILE, PERCENTILE.INC/.EXC: the data is empty and the call
+`#NUM!` (`QUARTILE.EXC(A1,1)`, `QUARTILE(A1,1)`, `PERCENTILE.INC(A1,0.5)` with A1 = TRUE), after quart's or k's own
+error (`QUARTILE.EXC(A1,NA())` `#N/A`, `QUARTILE.EXC(A1,1/0)` `#DIV/0!`, `QUARTILE.EXC(A1,"a")` `#VALUE!`), while a typed
+TRUE stays the one value 1 ("QUARTILE(TRUE,1)", but `QUARTILE.EXC(TRUE,1)` is `#NUM!` for one value). PERCENTRANK of it is
+`#N/A` and `MEDIAN(A1)` `#NUM!`. So `QUARTILE.EXC(Data!D7,HYPGEOMDIST(2,3,7,2^32))` with D7 TRUE is `#NUM!`
+(gen-m9/38e4fc309fe199ea A5).
+Evidence: probes/t2429-quartile-exc-no-number A1-A24 (excel-graph, 2026-10-25).
+Ours: since T-2429 (`percentile_numbers`); `#VALUE!` before.
+Status: VERIFIED (excel-graph)
 
 ## GAUSS of a tiny argument is x times phi(0) (T-2255)
 Rule: GAUSS(z) keeps its leading term for tiny z: `GAUSS(1E-300)` is 3.989422804014327E-301 and `GAUSS(-1E-300)`
@@ -3636,14 +3659,23 @@ Ours: the data's `#NUM!`/`#N/A` first, and significance (`#NUM!`) before the ran
 Status: VERIFIED (excel-graph)
 
 ## PERCENTRANK: a huge significance is #DIV/0!; truncation does not lose a digit at a cut (T-2256)
-Rule: a significance of about 2^31 or more makes PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC `#DIV/0!` (2147483648,
+Rule: a significance of 309 or more (10^significance overflows) makes PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC `#DIV/0!` (2147483648,
 7fd0a98183c6babf A202; 5616037595088.403, 941c409532603d32 A168; 1E+15, 91e167cd8d7eb652 A9; 9.18E+36, 2138b909d8f810ea A333),
-where a significance below 1 is `#NUM!`; the cut between 3 digits and 2^31 is UNVERIFIED. The truncation to significance
+where a significance below 1 is `#NUM!`. The cut is where 10^significance overflows: 308 digits computes and 309 or more
+is `#DIV/0!` (probes/t2473-percentrank-significance A1-A15, B1-B15, C1-C15). The truncation to significance
 digits does not drop a digit when the rank lies within rounding of a cut: `PERCENTRANK.EXC({1E+15,1,-1E+15},0.3)` is 0.5
 (c7664e494e418395 A252), `PERCENTRANK.INC(Data!D4:E12,0)` 0.5 (d37313406b9f6e55 A303), `PERCENTRANK.INC(Data!A1:C3,0.2,2)` 0.36
 (ede0323c389fc703 A43) and 0.603 at 3 digits (A157), where a plain floor of the double rank gives 0.499, 0.35 and 0.602.
-Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2473.
-Ours: `#NUM!` for the huge significance and a plain floor; T-2473.
+The fit (t2473 D1-D24): the rank times 10^significance is cut to 15 significant digits, then floored and divided back
+in doubles, so 2/3 at 15 digits is 0.666666666666667 (rounded up by the cut), at 17 digits 0.6666666666666671, and 1/7 at
+20 digits 0.14285714285714302, while a rank of 0.499999999999999 (15 digits) still floors to 0.499. A typed literal of 16
+nines is cut to 15 digits on entry, so `PERCENTRANK({0,1},0.9999999999999999,3)` is 0.999.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2473; probes/t2473-percentrank-significance (excel-graph,
+2026-10-25).
+Ours: since T-2473 (`percentrank_of`, `decimal_round::cut_to_15_digits`, 10^significance correctly rounded).
+UNVERIFIED: how the `#DIV/0!` orders against an x outside the data (`#N/A`) and a single value (1); ours checks it after
+both. The direction of an exact 16th-digit tie in the cut (ours away from zero, as FLOOR's) is unobserved, as no probed
+rank reaches one.
 Status: VERIFIED (excel-graph) for the cited cells
 
 ## Scalar distributions at extreme arguments, part 2 (T-2256)
@@ -3682,7 +3714,7 @@ QUARTILE*, PERCENTILE* and TRIMMEAN are `#NUM!` (`QUARTILE(Data!E2,3)` with E2 =
 `TRIMMEAN(Data!B7,1.005)` with TRUE, 9735c5ab72fa5ecf A264) and PERCENTRANK* `#N/A` (`PERCENTRANK(Data!C11,1.005)` with "a",
 44a8841352dc48e9 A52). This answers T-2344's single-cell question and T-2066's (`QUARTILE` of one text cell).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 72 cells in T-2344.
-Ours: `#VALUE!` (the cell read as a typed value); T-2344.
+Ours: since T-2429 a cell holding text or a boolean is no number in QUARTILE*, PERCENTILE* and PERCENTRANK* ("A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"); the name and INDEX forms, the empty cell and TRIMMEAN stay T-2344's.
 Status: VERIFIED (excel-graph)
 
 ## COVARIANCE: a boolean scalar is one value (T-2436)
