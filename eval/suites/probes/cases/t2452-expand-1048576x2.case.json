@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2452: whether EXPAND's column cap is a cell count: a full-grid-height EXPAND of 2 columns, 2^21 cells (one cell per workbook, since sizes Excel builds can hang excel-graph).",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2452"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=ROWS(_xlfn.EXPAND(1,1048576,2))"
+      }
+    }
+  ],
+  "expected": {}
+}
