@@ -866,9 +866,10 @@ impl Model {
     /// The union-area walk of [`Self::for_each_position_in_area`] on one sheet: the existing
     /// cells of the rectangle `left..=right`, in row-major order like the dense walk, so the
     /// first error cell is the same one. A [`WalkBudget::Charged`] walk pays for the area, every
-    /// chunk and row slot the search looks at and every cell it hands to `f` before `f` runs. An area whose cells lie in at
-    /// most [`MAX_INDEXED_COLUMNS`] columns is walked through the column index instead
-    /// ([`Self::for_each_indexed_position`]), so the rows other columns fill cost it nothing.
+    /// chunk and row slot the search looks at and every cell it hands to `f` before `f` runs. An
+    /// area whose cells lie in at most [`MAX_INDEXED_COLUMNS`] columns is walked through the
+    /// column index instead ([`Self::for_each_indexed_position`]), so the rows other columns fill
+    /// cost it nothing.
     fn for_each_existing_position<F>(
         &mut self,
         sheet: u32,
