@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-campaign: visible
+campaign: semantics
 depends_on: [T-1841]
 ---
 
