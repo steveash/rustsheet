@@ -1321,6 +1321,27 @@ Ours: matches since T-2482 (`bond_args` in financial_bonds.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2482
 
+## PRICE, DURATION and MDURATION at a huge yield or coupon
+Rule: PRICE, DURATION and MDURATION are `#NUM!` when `(1+yld/frequency)^t` overflows a double at the redemption's term
+`t = DSC/E + N - 1`, the longest one, although the overflowing flows would just discount to 0. A sum that overflows (a
+huge coupon) is `#NUM!` too. There is no separate cap on the yield or the coupon.
+- The boundary is the power's overflow: with N = 20 and settlement on a coupon date (t = 20), a yield of 5.12154E+15
+  gives `PRICE` 9.76268856632966E-16 and 5.22501E+15 `#NUM!` (the overflow is at 5.1733E+15); with settlement half a
+  period in (t = 19.5) 1.27233E+16 is a number and 1.29803E+16 `#NUM!`; with N = 40 1.00701E+08 is a number and
+  1.02735E+08 `#NUM!`. A zero coupon has the same boundary. DURATION and MDURATION switch at the same yields.
+- A single remaining coupon (t at most 1) never overflows: `PRICE(47300,47484,0.05,1E+300,100,2,0)` is 2.05E-298,
+  DURATION 0.5, MDURATION 1E-300.
+- At a 5% yield a coupon rate of 1E+300 gives a price of 7.794581142823408E+302 and DURATION 4.841148506210218; 1E+306
+  and 9.99999999999999E+307, whose coupon sums overflow, are `#NUM!` for all three.
+- `1E+308` cannot be typed into Excel (9.99999999999999E+307 is the largest literal): a workbook with it fails to load
+  in Excel for the web (`FileCorruptTryRepair`).
+Evidence: probes/bond-huge-yield-overflow (78 cells, excel-graph, 2026-10-25, T-2488); gen-m9 cells such as
+`PRICE(39050,44044,0.5,123456789.123,110,4,2)` and `MDURATION(38368,44642,1%,1E+300,4,3)`, both `#NUM!`.
+Unprobed: ODDFPRICE and ODDLPRICE at an overflowing yield; YIELD's solver near the boundary (T-2391).
+Ours: matches since T-2488 (`CouponSchedule::discount_overflows` in financial_bonds.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2488
+
 ## ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order
 Rule: the four odd-coupon functions read their arguments in order and check few of them as they read:
 1. The dates (settlement, maturity, then issue and first_coupon, or last_interest): an error or text is returned, and a
@@ -1929,7 +1950,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   -20000000000 (89f0aee953a55a45 A124).
 - YIELD is `#NUM!` at a coupon rate far above the yield (`YIELD(38829,45714,100,0.25,2,4,4)`, 31474c20fc1dafd6 A321), and PRICE,
   DURATION and MDURATION at a huge yield or coupon (`PRICE(39050,44044,0.5,123456789.123,110,4,2)`, 1dce4774f5c0e736 A8;
-  `MDURATION(38368,44642,0.01,1E+300,4,3)`, c0681a8b150ce301 A248); the boundaries are unprobed (T-2488, T-2391).
+  `MDURATION(38368,44642,0.01,1E+300,4,3)`, c0681a8b150ce301 A248). PRICE's, DURATION's and MDURATION's boundary is now
+  probed ("PRICE, DURATION and MDURATION at a huge yield or coupon", T-2488); YIELD's is unprobed (T-2391).
 - FVSCHEDULE with an empty schedule cell returns the principal (`FVSCHEDULE(6527,<empty>)` = 6527, 30e20ba3302fea8b A250).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2257); the cells and the rest of each family are listed in the owning tasks.
 Ours: see each task; the triage (T-2257 Outcome) lists every family.
@@ -2012,3 +2034,20 @@ Evidence: probes/t2436; cells in T-2482, T-2483, T-2484, T-2428, T-2493, T-2494,
 Ours: values or the other argument's error; those tasks.
 Status: VERIFIED (excel-graph), one or two cells each
 Tasks: T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491
+
+## Financial cells of the T-2496 sub-expression probe
+Rule (excel-graph, 2026-10-25, probes/t2496-fin-subexpressions, each gen-m9 case's Data sheet copied): in the gen-m9
+financial cells whose error the outer call cannot make, an inner call differs and the outer call passes its error on.
+`PV(-1+2^-52,91,-421)` is `#DIV/0!` (ours `#NUM!`; hypothesis: (1+rate)^91 underflows to 0, T-2657 probes it); `IRR(<4x4 flows>,41.9999)` is
+`#DIV/0!` (ours converges on 4.1E+12, T-2657); `NPV(-1,1E-15,2.5)` and `NPV(1E+300,7,1E+15,2.5)` are `#DIV/0!` (T-2493, as
+in the T-2436 probe); `XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is `#N/A` (lookup.md, T-2656). The statistical inner calls
+follow statistics.md: Z.TEST's one-number `#DIV/0!` and lone-empty-cell `#N/A` (T-2470), PROB's unequal-count `#N/A` and
+one-value `#DIV/0!` (T-2468), FREQUENCY's extra row for a bins argument with no number, so the enclosing ODDFYIELD and
+CUMIPMT lift to a 2x1 array and show `#SPILL!` (T-2427), `T.TEST` of a blank one-cell sample (T-2469) and WEIBULL.DIST
+overflow (T-2435). The T-bill cells: `PPMT(2E+15,8,360,-100,926)` is 0 (T-2490), `QUARTILE` of a TRUE cell `#NUM!`
+(T-2344), `BIN2DEC("x")` `#NUM!` (T-2544).
+Evidence: probes/t2496-fin-subexpressions P!A1-A99 (column B names the gen-m9 cell and sub-expression);
+probes/tbill-error-order-inner-calls.
+Ours: the other error or a value; the tasks named.
+Status: VERIFIED (excel-graph), one or two cells each
+Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T-2490, T-2344, T-2544
