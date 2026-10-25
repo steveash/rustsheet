@@ -67,6 +67,10 @@ with this task so the scores are reproducible.
   cell on file with plain-range arguments (291 numeric cells). Scores are in statistics.md under the F.TEST entry.
 - Finding: no double-sum R (forward, backward, Gamma-ratio B) beats the correctly rounded R, and every R variant keeps
   the same worst cells, so the visibly-off cells' residual probably lies outside R.
-- Next: candidates for the powers' arguments (ln x as log1p(-y), or ln(df_small) - ln(df_big f + df_small)), the
+- Found and implemented: df 1 against df 1 is Excel's closed form 2 asin(sqrt x)/pi (13 of 16 such cells exact);
+  `f_test_upper_tail` uses it. 6 gen-m9 cells fixed, 2 of them on this task's list (8f2ac25945af87da A241, c468f5046aadfbbc
+  A192); 8 visibly-off cells remain. Scored and rejected so far: double 2F1 sums, A&S 26.6.4 positive series for an even
+  df_big, the finite sums from the asin base, log1p / log-difference powers, pairwise and one-pass variances (statistics.md).
+- Next (was): candidates for the powers' arguments (ln x as log1p(-y), or ln(df_small) - ln(df_big f + df_small)), the
   variance's summation order (pairwise, column-major for 2-D ranges), and the unprobed corners listed in Context.
 

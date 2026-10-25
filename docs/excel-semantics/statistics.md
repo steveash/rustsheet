@@ -3104,8 +3104,13 @@ model with R correctly rounded 142 / 267 / 26 (the engine 150 / 267 / 26); R as 
 B 124 / 264 / 26, backward 115 / 270 / 27, forward over the recurrence B 104 / 262 / 27; with R correctly rounded,
 exp(a ln x + b ln y) 118 / 240 / 101, libm pow 116 / 221 / 180, x and y from the variances without f 111 / 251 / 99, VAR.S's
 one-pass variance 90 / 232. Every R variant keeps the same worst cells (26, 14, 13 and 12 ulp), so the visibly-off
-residual is probably not in R: the next hypotheses are the powers' arguments (a ln x with ln x from log1p(-y) or from
-ln(df_small) - ln(total)) and the two-pass variance's summation order.
+residual is probably not in R. Further scores (T-2571): ln of the larger side by log1p 140 / 271 / 24, pairwise variance
+117 / 259, ln as a difference 105 / 203; A&S 26.6.4 for an even df_big (positive series) 126 / 251 at best; the finite sums
+from the asin base (`f-test-finite`) fail in deep tails (cancellation) but get several body cells the model misses.
+One degree of freedom on each side (a = b = 1/2) is a closed form in Excel: `2*asin(sqrt(x))/pi` is bit-exact on 13 of
+the 16 such cells on file ((2/pi)*asin 11, 2/pi*atan(sqrt(x)/sqrt(y)) 10, the series model 3); the engine uses it
+since T-2571 (6 gen-m9 cells fixed, among them `F.TEST({0.02,0.027},Data!D6:D7)`, gen-m9/8f2ac25945af87da A241, and
+gen-m9/c468f5046aadfbbc A192). Whether Excel's other half-integer shapes go through A&S's theta forms is open (T-2571).
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own

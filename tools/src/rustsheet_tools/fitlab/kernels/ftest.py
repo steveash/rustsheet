@@ -200,6 +200,19 @@ def one_pass_variance(values: list[float]) -> float:
     return (n * sq - s * s) / (n * (n - 1.0))
 
 
+def _pairwise(values: list[float]) -> float:
+    if len(values) <= 2:
+        return sum(values)
+    half = len(values) // 2
+    return _pairwise(values[:half]) + _pairwise(values[half:])
+
+
+def pairwise_variance(values: list[float]) -> float:
+    """The two-pass variance with both sums pairwise."""
+    mean = _pairwise(values) / len(values)
+    return _pairwise([(v - mean) * (v - mean) for v in values]) / (len(values) - 1)
+
+
 def variant(
     *,
     variance: Callable[[list[float]], float] = two_pass_variance,
@@ -223,10 +236,19 @@ def variant(
             total = df_big * f + df_small
             x, y = df_small / total, df_big * f / total
         a, b = df_small / 2.0, df_big / 2.0
+        lx, ly = math.log(x), math.log(y)
+        if power == "log1p":
+            lx, ly = (math.log1p(-y), ly) if x > y else (lx, math.log1p(-x))
+        elif power == "lndiff":
+            lt = math.log(total)
+            lx = math.log(df_small * small if ratio_free else df_small) - lt
+            ly = math.log(df_big * big if ratio_free else df_big * (big / small)) - lt
         if b == 1.0:
             upper = math.exp(a * math.log(x))
         elif a == 1.0:
             upper = -math.expm1(b * math.log1p(-x))
+        elif power in ("log1p", "lndiff"):
+            upper = math.exp(a * lx) * math.exp(b * ly) * r_correct(x, a, b)
         elif power == "pow":
             upper = x**a * y**b * r_correct(x, a, b)
         elif power == "joint":
@@ -246,6 +268,9 @@ def structure_candidates() -> list[Candidate]:
         candidate("x, y without f", variant(ratio_free=True), "x"),
         candidate("pow powers", variant(power="pow"), "powers"),
         candidate("joint exp", variant(power="joint"), "powers"),
+        candidate("ln of the larger by log1p", variant(power="log1p"), "powers"),
+        candidate("ln as a difference", variant(power="lndiff"), "powers"),
+        candidate("pairwise variance", variant(variance=pairwise_variance), "variance"),
     ]
 
 
@@ -256,6 +281,125 @@ FITS.append(
         cases=_cases(),
         pattern=_PATTERN,
         candidates=structure_candidates,
+        where=in_fit,
+    )
+)
+
+
+def ibeta_finite(x: float, a: float, b: float, *, b_first: bool = True) -> float:
+    """I_x(a,b) for half-integer shapes as a finite sum (A&S 26.6.4-26.6.8 in incomplete-beta
+    form): the base I_x(a0,b0) (a0, b0 in {1/2, 1}: (2/pi) asin(sqrt x), sqrt x, 1 - sqrt(1-x) or
+    x), then I_x(p,q+1) = I_x(p,q) + T/q and I_x(p+1,q) = I_x(p,q) - T/p with
+    T = x^p y^q / B(p,q) carried incrementally, in doubles."""
+    y = 1.0 - x
+    p = 1.0 if a % 1 == 0 else 0.5
+    q = 1.0 if b % 1 == 0 else 0.5
+    sx, sy = math.sqrt(x), math.sqrt(y)
+    if p == q == 0.5:
+        value, term = 2.0 / math.pi * math.asin(sx), sx * sy / math.pi  # x^p y^q / B(p,q)
+    elif p == 0.5:
+        value, term = sx, sx * y / 2.0
+    elif q == 0.5:
+        value, term = 1.0 - sy, x * sy / 2.0
+    else:
+        value, term = x, x * y
+    steps = [("b", q, b), ("a", p, a)] if b_first else [("a", p, a), ("b", q, b)]
+    for which, _, _ in steps:
+        while (q < b) if which == "b" else (p < a):
+            if which == "b":
+                value += term / q
+                term *= y * (p + q) / q
+                q += 1.0
+            else:
+                value -= term / p
+                term *= x * (p + q) / p
+                p += 1.0
+    return value
+
+
+def f_test_finite(*, b_first: bool) -> Callable[..., float]:
+    """F.TEST with the upper tail I_x(a,b) as `ibeta_finite`."""
+
+    def call(*args: Arg) -> float:
+        shape = _shape(Cell("", "", "", "", tuple(args), 0.0))
+        if shape is None:
+            raise ExcelError(code="#DIV/0!")
+        x, _, a, b = shape
+        upper = ibeta_finite(x, a, b, b_first=b_first)
+        return 2.0 * min(upper, 1.0 - upper)
+
+    return call
+
+
+FITS.append(
+    Fit(
+        name="f-test-finite",
+        description="F.TEST/FTEST (T-2571): the upper tail as A&S's finite sums from the asin base",
+        cases=_cases(),
+        pattern=_PATTERN,
+        candidates=lambda: [
+            candidate("finite, b first", f_test_finite(b_first=True), "finite"),
+            candidate("finite, a first", f_test_finite(b_first=False), "finite"),
+            candidate("model", variant(), "model"),
+        ],
+        where=in_fit,
+    )
+)
+
+
+def ibeta_even_b(x: float, a: float, b: float, power: str) -> float:
+    """A&S 26.6.4 for an even df_big (b an integer): I_x(a,b) = x^a sum_(k<b) (a)_k/k! y^k, a
+    sum of positive terms, with x^a by exp(a ln x), libm pow, or sqrt(x) times x^(a-1/2)."""
+    y = 1.0 - x
+    if power == "explog":
+        lead = math.exp(a * math.log(x))
+    elif power == "pow":
+        lead = x**a
+    else:
+        lead = (math.sqrt(x) if a % 1 else 1.0) * x ** int(a)
+    total, term, k = 1.0, 1.0, 0.0
+    while k + 1.0 < b:
+        term *= (a + k) * y / (k + 1.0)
+        total += term
+        k += 1.0
+    return lead * total
+
+
+def f_test_as(power: str, *, finite_above: float) -> Callable[..., float]:
+    """A&S for an even df_big; the finite sums (a first) when the tail is above `finite_above`;
+    otherwise the T-2361 model."""
+    model = variant()
+
+    def call(*args: Arg) -> float:
+        shape = _shape(Cell("", "", "", "", tuple(args), 0.0))
+        if shape is None:
+            raise ExcelError(code="#DIV/0!")
+        x, _, a, b = shape
+        if b % 1 == 0:
+            upper = ibeta_even_b(x, a, b, power)
+        else:
+            upper = ibeta_finite(x, a, b, b_first=False)
+            if not upper > finite_above:
+                return model(*args)
+        return 2.0 * min(upper, 1.0 - upper)
+
+    return call
+
+
+FITS.append(
+    Fit(
+        name="f-test-as",
+        description="F.TEST/FTEST (T-2571): A&S 26.6.4 for an even df_big, finite sums above a tail size",
+        cases=_cases(),
+        pattern=_PATTERN,
+        candidates=lambda: (
+            [
+                candidate(f"A&S {pw}, finite above {t:g}", f_test_as(pw, finite_above=t), pw)
+                for pw in ("explog", "pow", "sqrt")
+                for t in (1e-3, 1e-6, 1e-300)
+            ]
+            + [candidate("model", variant(), "model")]
+        ),
         where=in_fit,
     )
 )

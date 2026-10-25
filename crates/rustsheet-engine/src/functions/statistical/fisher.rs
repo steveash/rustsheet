@@ -70,6 +70,11 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     {
         return beta_reg_complement(x, y, a, b);
     }
+    // One degree of freedom on each side: Excel's closed form 2 asin(sqrt x)/pi, bit-exact on 13
+    // of the 16 such cells on file against 3 for the series (T-2571, `rustsheet-fitlab f-test-finite`).
+    if a == 0.5 && b == 0.5 {
+        return 2.0 * x.sqrt().asin() / std::f64::consts::PI;
+    }
     (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
 }
 
