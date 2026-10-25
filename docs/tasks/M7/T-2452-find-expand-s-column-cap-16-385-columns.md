@@ -3,7 +3,7 @@ id: T-2452
 title: "Find EXPAND's column cap: 16,385 columns are built, 123,456,789 are #NUM! (probe sizes Excel refuses without building)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
