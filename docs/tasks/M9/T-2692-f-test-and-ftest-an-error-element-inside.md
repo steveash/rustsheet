@@ -3,7 +3,7 @@ id: T-2692
 title: "F.TEST and FTEST: an error element inside an array argument is that error, not #VALUE! (gen-m9, 21 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
