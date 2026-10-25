@@ -662,7 +662,12 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
 - **IMSQRT of a negative real is polar through COS and ATAN2.** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i (516488da78a6b08c A52,
-  59a16b5ab566ee5c A6, 7dc52cfcbc8b4448 A254). T-2536.
+  59a16b5ab566ee5c A6, 7dc52cfcbc8b4448 A254). Status: CONFLICTING (web vs desktop). Mac desktop 16.0300 caches libm's
+  value for the same formula: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!AL26 `IMREAL(IMSQRT(COMPLEX(-1,0)))` is
+  6.12323399573677E-17 and AL12 (of -12) 2.12115047744981E-16, which the engine matches with libm `atan2`/`cos`/`sin`.
+  T-2536 found that Excel's ATAN2 and SIN/COS give the four web cells but turn AL12 and AL26 into failures. The gap is a
+  near-zero residue (about 2.5E-20 on a 6E-17 part), so under decision 0030 rule 4 and decision 0039 the engine keeps the
+  desktop value and the 5 gen-m9 cells stay known failures. The desktop check is T-1075 item 16.
 - **IM* kernels still to fit (T-2044, T-2537, T-2538).** New web cells: `IMSECH("3+4i")` (and `" 3+4i"`, `"3 + 4i"`,
   `"3+4j"`) "-0.065294027857947+0.0752249603027732i" (57 cells), `IMSECH("0.1")` 0.995020748953227, `IMCOT("-1.5+0.5i")`
   "-0.0557109884865415-0.463942860183828i", `IMCSC("-1.5+0.5i")` "-0.888092201609111-0.029103639571751i",
