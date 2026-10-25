@@ -2306,7 +2306,7 @@ Tasks: T-2035 (partial), T-2093
   infinite), the df=2 value is 1 (F) and 0.5 (CHISQ), higher df give 0; `WEIBULL.DIST(0,0.5,3,FALSE)`
   is 0, not `#NUM!`, and so is the shape-1 density at 0, which is mathematically 1/lambda:
   `WEIBULL.DIST(0,1,3,FALSE)` = 0 (`weibulldist` A27; `WEIBULL(0,1,1,FALSE)` = 0 too, probes-numeric/t1048-weibull A16,
-  gap triage 2026-10-19). The density at x = 0 is 0 for every probed shape. Implementing these edges is T-2035. `F.DIST.RT(0,...)` and `CHISQ.DIST.RT(0,...)` are 1.
+  gap triage 2026-10-19). The density at x = 0 is 0 for every probed shape. Implementing these edges is T-2035 (HYPGEOM.DIST, WEIBULL.DIST, PHI) and T-2095 (F.DIST). `F.DIST.RT(0,...)` and `CHISQ.DIST.RT(0,...)` are 1.
 - **Boundary probabilities:** `CHISQ.INV(0,3)`, `F.INV(0,3,7)` are 0 and p = 1 is `#NUM!`; the RT inverses
   are the mirror (`p=1` -> 0, `p=0` -> `#NUM!`). TRUE as p is 1 (`CHISQ.INV(TRUE,3)` = `#NUM!`).
   `CHISQ.INV(0.5,1E10)` = 9999999999.333334 (not probed above 1E10; the T.INV and F limits are in T-1043 and T-1530).
