@@ -40,8 +40,8 @@ ever tested.
 -
 
 ## Outcome
-- `Model::is_cached_external_array` (external_links.rs) says, without reading any cell, whether a
-  node is a range of a cached linked sheet that `external_area_value` would build as an array.
+- `Model::is_external_array` (external_links.rs) says, without reading any cell, whether a node is
+  a range of a linked workbook that would be built as an array (cached cells, or `#BLOCKED!`).
   `ifs_range_arg` (if_ifs.rs) gives such an argument the `#VALUE!` "Expected a range" that
   `ifs_range` gave it after building it (one `not_a_range` for both). It is used by every IF and
   IFS range evaluation: criteria ranges, sum ranges, and the walk-cost estimate AGGREGATE also
@@ -51,5 +51,6 @@ ever tested.
   All 37,641 of its cells match Excel's cached values.
 - Tests (test_external_links.rs): COUNTIF/COUNTIFS/SUMIF/SUMIFS/AVERAGEIFS/MAXIFS over cached,
   uncached, single-cell, whole-column and too-large external ranges keep today's results (the same
-  assertions passed once with the shortcut disabled, by hand); the predicate is true only for a cached multi-cell area.
+  assertions passed once with the shortcut disabled, by hand); the predicate agrees with
+  what evaluating each range builds (cached, uncached, single cell, too large, local).
 - T-0465 (value indexes) still applies to calipers pv26_002, not to 52450.

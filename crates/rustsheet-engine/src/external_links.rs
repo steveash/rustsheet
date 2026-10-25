@@ -307,8 +307,8 @@ impl Model {
         let Some(sheet) = area.cache else {
             return area.blocked_value(cell);
         };
-        // These branches decide when an area is built as an array; `is_cached_external_array`
-        // repeats them without building it, and must stay in step.
+        // These branches, and `blocked_value`'s, decide when an area is built as an array;
+        // `is_external_array` repeats them without building it (a test checks they agree).
         let (rows, columns) = area.extent();
         if (rows, columns) == (1, 1) {
             return self.cached_value(sheet, area.first_row, area.first_column, cell);
@@ -319,11 +319,11 @@ impl Model {
         CalcResult::Array(self.cached_rows(sheet, area, cell))
     }
 
-    /// Whether `node` is a range of a linked workbook that evaluates to an array of its cached
-    /// cells ([`Self::external_area_value`]): its sheet is cached and it has more than one cell
-    /// within the array bound. Reads nothing, so a caller that only needs to know can skip
-    /// building the array (T-0477).
-    pub(crate) fn is_cached_external_array(&self, node: &Node, cell: CellReferenceIndex) -> bool {
+    /// Whether `node` is a range of a linked workbook that evaluates to an array: more than one
+    /// cell within the array bound, of its cached cells ([`Self::external_area_value`]) or, with no
+    /// cache for its sheet, of `#BLOCKED!` ([`ExternalArea::blocked_value`]). Reads nothing, so a
+    /// caller that only needs to know can skip building the array (T-0477).
+    pub(crate) fn is_external_array(&self, node: &Node, cell: CellReferenceIndex) -> bool {
         if !matches!(node.ungrouped(), Node::WrongRangeKind { .. }) {
             return false;
         }
@@ -331,9 +331,7 @@ impl Model {
             return false;
         };
         let (rows, columns) = area.extent();
-        area.cache.is_some()
-            && (rows, columns) != (1, 1)
-            && check_array_size(rows, columns).is_none()
+        (rows, columns) != (1, 1) && check_array_size(rows, columns).is_none()
     }
 
     /// [`ExternalArea::picked_value`] for an area INDEX or an intersection picked: its cached

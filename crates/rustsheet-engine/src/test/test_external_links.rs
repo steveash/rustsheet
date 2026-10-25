@@ -577,8 +577,8 @@ fn lookups_into_an_uncached_linked_sheet() {
 }
 
 // A criteria or sum range of a cached sheet is #VALUE!, as any argument that is not a range of
-// this workbook is; it is that error without its array being built (T-0477). An uncached range
-// takes the ordinary path, and one too large for an array keeps its bound's error.
+// this workbook is, cached or not; it is that error without its array being built (T-0477). One
+// too large for an array keeps its bound's error.
 #[test]
 fn criteria_ranges_of_a_cached_sheet_are_value_errors() {
     let mut model = linked();
@@ -601,7 +601,7 @@ fn criteria_ranges_of_a_cached_sheet_are_value_errors() {
 }
 
 #[test]
-fn only_cached_multi_cell_external_ranges_are_cached_arrays() {
+fn only_multi_cell_external_ranges_are_external_arrays() {
     use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
     let mut model = linked();
     let cell = CellReferenceIndex {
@@ -614,14 +614,22 @@ fn only_cached_multi_cell_external_ranges_are_cached_arrays() {
         row: 1,
         column: 3,
     };
+    // The predicate agrees with what evaluating the range builds.
     let mut is_array = |range: &str| {
         let node = model.parse_internal_formula(range, &context);
-        model.is_cached_external_array(&node, cell)
+        let predicted = model.is_external_array(&node, cell);
+        let built = matches!(
+            model.evaluate_node_in_context(&node, cell),
+            crate::calc_result::CalcResult::Array(_)
+        );
+        assert_eq!(predicted, built, "{range}");
+        predicted
     };
     assert!(is_array("[1]Uses!$A$1:$A$3"));
     assert!(is_array("[1]Uses!$A:$A"));
     assert!(!is_array("[1]Uses!$A$1"));
-    assert!(!is_array("[1]Nope!$A$1:$A$3"));
+    assert!(is_array("[1]Nope!$A$1:$A$3"));
+    assert!(is_array("[1]Nope!$A:$A"));
     assert!(!is_array("[1]Uses!$A:$B"));
     assert!(!is_array("A1:A3"));
 }

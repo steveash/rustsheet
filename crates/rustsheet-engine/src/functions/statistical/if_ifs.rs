@@ -264,11 +264,11 @@ impl Model {
     }
 
     /// A range argument of the IF and IFS functions, evaluated by reference. A range of a linked
-    /// workbook's cached sheet is an array, which [`Self::ifs_range`] turns into `#VALUE!`, so it
-    /// is that error at once: building the array would cost a lookup per cell, a whole column's
-    /// 2^20 per call (corpus-bench 52450, T-0477).
+    /// workbook is an array (of its cached cells, or of `#BLOCKED!`), which [`Self::ifs_range`]
+    /// turns into `#VALUE!`, so it is that error at once: building the array would cost a lookup
+    /// per cell, a whole column's 2^20 per call (corpus-bench 52450, T-0477).
     fn ifs_range_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
-        if self.is_cached_external_array(node, cell) {
+        if self.is_external_array(node, cell) {
             return not_a_range(cell);
         }
         self.evaluate_node_with_reference(node, cell)
