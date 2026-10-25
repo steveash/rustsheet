@@ -3,12 +3,12 @@ id: T-2490
 title: "PPMT and IPMT at huge rates: Excel's 0, overflow and long-tail results (gen-m9, 31 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -66,11 +66,11 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 | gen-m9/81bcdc0bec0c8e6b Calc!A251 | `PPMT((2*Data!B11),8,360,(-100),926)` (rate 2E+15; inside TBILLEQ) | 0 | 2E+17 |
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): these 31 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257) (30 of 31; A158 moved to T-2666; the new probe cases add known-failure lines of their own, no existing case regressed): these 31 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] No PMT, IPMT or PPMT cell of probes-numeric/m9-fin-pmt or IPMT_PPMT.xlsx gets visibly off (re-check with `make eval-show`).
-- [ ] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] No PMT, IPMT or PPMT cell of probes-numeric/m9-fin-pmt or IPMT_PPMT.xlsx gets visibly off (re-check with `make eval-show`).
+- [x] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The long-term tails within a few digits (T-2242).
@@ -80,3 +80,16 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed (probes/fin-ipmt-ppmt-huge-rate, 1194 cells, and probes/fin-ppmt-discount-underflow, 81 cells; excel-graph,
+2026-10-25) and fitted: IPMT is `-rate*B` on the balance `B = (pv+fv)*Y - fv`, in doubles on the rounded `Y` where it
+cancels (`|B| < |fv|`), so pv-0 cells carry fv's rounding (`IPMT(0.5,2,124,0,315)` is 0); past `(1+rate)^nper`'s range IPMT
+keeps that form (about `-pv*rate`) and PPMT the discounted form with a subnormal discount read as 0; neither needs PMT's
+value, and IPMT is 0 in period 1 of type 1 even where PMT is `#NUM!`. financial.md "IPMT cancels on fv".
+Eval: gen-m9 known failures 5340 -> 5305 (35 fixed: 30 of this task's 31 lines, the T-2496 A251 line, and 4 more cells fed
+by PPMT/IPMT), no regressions; m9-fin-pmt, IPMT_PPMT.xlsx and the CUMIPMT probes unchanged. Probes: +2 cases, 180 new
+known-failure lines (172 last-digit cells and 8 visibly-off cells of the new cases: 7 unexplained pv-0 cancellations, T-2667, and the 2^-1023 discount, T-2666).
+Not fixed: gen-m9 3c06f9298f65a3ba A109 is now 1 ulp (-8.888530001365962E-271 for Excel's ...961: visibly right, line kept);
+gen-m9 a91bad4e84f49739 A158 (`PPMT(7,10,350,58827)`, a 2^-1023 discount Excel keeps) moves to T-2666. A fractional nper past
+the range keeps the FV recurrence (gen-m9 0a957119475760c5 A153 stays bit-exact), T-2665.

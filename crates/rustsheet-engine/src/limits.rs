@@ -50,6 +50,13 @@ pub fn check_array_cells(rows: usize, columns: usize) -> Option<(Error, String)>
 /// "WRAPROWS and WRAPCOLS with a huge `wrap_count`").
 pub(crate) const SIZE_LIMIT_EXCLUSIVE: f64 = 2_147_483_648.0;
 
+/// 2^31 - 1, the least count Excel's integer-count functions refuse with `#NUM!` (2^31 - 2 is the
+/// largest they take): PERMUT's number (probes/stat-overflow-arguments E5, B8), COMBIN's number and
+/// COMBINA's `number + number_chosen - 1` (probes/t2199-text-length-and-combin-cuts A20-A37, B20-B34),
+/// and BINOM.DIST's, BINOMDIST's and BINOM.DIST.RANGE's trials (probes-numeric/t2645-binom-trials-limit;
+/// statistics.md "BINOM.DIST is #NUM! from 2^31 - 1 trials").
+pub(crate) const COUNT_LIMIT_EXCLUSIVE: f64 = 2_147_483_647.0;
+
 /// The bound of a MAKEARRAY or SEQUENCE result, which Excel builds past the grid:
 /// `COLUMNS(MAKEARRAY(1,20000,..))` is 20000, `ROWS(MAKEARRAY(1048577,1,..))` 1048577 and
 /// `COLUMNS(SEQUENCE(1,16385))` 16385 (probes/t2579-array-value-edges B20, B23, B24). Within the
