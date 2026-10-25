@@ -57,9 +57,37 @@ Evidence: probes/text-format-bare-literals A40-A63 (excel-graph, 2026-10-15, T-1
 probes/text-format-unquoted-letters A53-A104.
 Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `BUDDHIST_ERA_OFFSET` (formatter/format.rs). `B2` (Hijri) with
-any date or time token that prints is `#VALUE!` in the engine: the Hijri calendar is not implemented (unprobed). Whether
+date tokens is "The `B2` (Hijri) calendar" below (T-1613). Whether
 the lone-`B` error is about the end of the code or of the section is inferred from `"B"` and `"dB"` only.
 Tasks: T-1262
+
+## The `B2` (Hijri) calendar
+Rule: a `B2` (or `b2`) prefix with no locale tag puts the section's date tokens in the tabular Islamic calendar that Excel
+uses (a 30-year cycle with leap years 2, 5, 7, 10, 13, 15, 18, 21, 24, 26 and 29, months of 30 and 29 days alternating,
+the twelfth 30 in a leap year, and 1 Muharram 1 AH on the proleptic Gregorian 622-07-18). `TEXT(45000,"B2yyyy-mm-dd")`
+is "1444-08-23", 45125 is "1445-01-01", 2958465 is "9666-04-03". This one rule replays all 103 probed dates (serials
+1 to 2958465); the usual Kuwaiti variant with leap year 16 instead of 15 misses two (952726, 1303730).
+Rule: serial 0 shows serial 1's date ("1317-08-29") and serial 60 (the fictitious 1900-02-29) is `#VALUE!`; 59 and 61
+are consecutive Hijri days ("1317-10-28", "1317-10-29"). A negative serial is `#VALUE!`, as in Gregorian.
+Rule: the year tokens read the Hijri year: `yyyy`, `yyy`, `e` and `ee` are "1444"; `y` and `yy` "44"; `b`/`bbbb` add
+543 to it ("1987", `bb` "87"); `g` is "". Time tokens are unchanged (`B2h:mm AM/PM` of 45000.75 is "6:00 PM",
+`B2[h]:mm` "1080018:00"). `dB2` is `#VALUE!` (the prefix must come before any printing token).
+Rule: names are Arabic, and `mmm` = `mmmm`, `ddd` = `dddd` (full names; `mmmmm` is the first letter, "ش"). Two-word month
+names are joined by a no-break space ("ذو\u00a0الحجة"). Months from Muharram: محرم, صفر, ربيع الأول, ربيع الثاني,
+جمادى الأولى, جمادى الثانية, رجب, شعبان, رمضان, شوال, ذو القعدة, ذو الحجة. Weekdays from Sunday: الأحد, الإثنين,
+الثلاثاء, الأربعاء, الخميس, الجمعة, السبت.
+Rule (quirk): every name token after the first in a `B2` section reads the first name token's value. A weekday after a
+month name is weekday number min(month, 7), Sunday being 1: `B2mmmm|dddd` of 45000 (Wednesday, 1444-08-23) is "شعبان|السبت"
+(Saturday, as for every month from 7 on), of 45148 (Muharram) "محرم|الأحد" (Sunday), of 45177 (Safar) Monday. A month
+name after a weekday prints the weekday again: `B2dddd|mmmm` is "الأربعاء|الأربعاء". Numeric tokens in between change
+nothing (`B2m|dddd`, `B2d|dddd`, `B2yyyy|dddd` show the real weekday). Gregorian sections do not do this
+(`mmmm|dddd` of 45148 is "August|Thursday"). Whether a second weekday after `dddd|mmmm` follows the same rule is unprobed.
+Evidence: probes/t1613-hijri-b2 (144 cells), probes/t1613-hijri-b2-weekday (78 cells) (excel-graph, 2026-10-25, T-1613).
+Unprobed: the 1904 date system (the engine converts through the 1900 serial); a serial-0 weekday.
+Implemented in: formatter/date_names.rs (`hijri_ymd`, `NameTokens`), the `hijri` flag of `DatePart` (formatter/parser.rs).
+Not modelled: `B2` before a locale tag and calendar digit 6 (T-2703).
+Status: VERIFIED (excel-graph)
+Tasks: T-1613
 
 ## Bare digits beside a date token
 Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`TEXT(5,"2")` = "2", `"4a"` = "4a",
@@ -479,7 +507,7 @@ Rule: a hex locale tag `[$-NNCCLLLL]` holds a numeral system (NN), a calendar (C
 Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai. Day halves follow the LCID under every calendar digit: `[$-20411]`, `[$-40411]` and `[$-50411]h AM/PM` are "6 午後", and `[$-70412]`/`[$-90412]` give "6 오후".
 
 **Not modelled** (the tag prints English and keeps `A/P`):
-- 6 is Hijri ("1444-08-23", "Sha'ban", or French "Chaaban" under 40C; T-1613).
+- 6 is Hijri ("1444-08-23", "Sha'ban", or French "Chaaban" under 40C; T-2703).
 - 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i").
 - 10 is Saka ("1944-12-24", "Phalguna", "Budhavara").
 - A is Gregorian with Levant Arabic names ("آذار"); B and C give "مارس".
@@ -488,7 +516,7 @@ Under every one of these, `e` stays the Gregorian four-digit year, and so do `b`
 - Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).
 - Underscore tags pick calendars: `[$-fr_FR]` gives the Saka date with English Gregorian month names ("December|1944-12-24"); `[$-de_DE]`, `[$-en_US]` and `[$-ja_JP]` give the lunar date in English; `[$-_]` gives Russian names (T-1924).
 
-**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (T-1613).
+**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (not modelled, T-2703).
 
 Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20), text-locale-era-gregorian (23) (excel-graph, 2026-10-18).
 Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), format.rs (years, `e`, `g`).
