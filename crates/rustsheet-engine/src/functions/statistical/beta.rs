@@ -2,6 +2,7 @@ use statrs::distribution::{Beta, Continuous};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
+use crate::functions::statistical::beta_small_shape::small_shape_density;
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
@@ -81,7 +82,8 @@ impl Model {
     /// a range (SPEC-0011; probes/stat-argument-modes H84-H89, probes/stat-later-argument-lift
     /// H1-H5, K3-K6). The cdf is the T-0970 incomplete beta (`incomplete_beta::beta_reg_complement`,
     /// T-2119), with Excel's closed forms on bratio's oriented arguments at a shape of 1 (T-2502);
-    /// the density is `incomplete_beta::beta_density` where it applies.
+    /// the density is `beta_small_shape::small_shape_density` for min(alpha, beta) <= 1 (T-2503)
+    /// and `incomplete_beta::beta_density` elsewhere where it applies.
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaDist, args, cell, &mut |model, values| {
             let [x, alpha, beta, cumulative, bounds @ ..] = values else {
@@ -135,8 +137,13 @@ impl Model {
         let result = if cumulative {
             beta_reg_complement(t, 1.0 - t, alpha, beta_param)
         } else {
-            // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A)
-            beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width
+            // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A). A shape of 1
+            // or less takes Excel's model M2 (T-2503); F.DIST keeps `beta_density` (T-2513 found
+            // its density is not the beta density times a Jacobian).
+            small_shape_density(t, alpha, beta_param)
+                .or_else(|| beta_density(t, alpha, beta_param))
+                .unwrap_or_else(|| dist.pdf(t))
+                / width
         };
         if result.is_nan() || result.is_infinite() {
             return Err(num_error(cell));

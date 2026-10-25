@@ -1,4 +1,5 @@
 mod beta;
+mod beta_small_shape;
 mod binom;
 mod chisq;
 mod correl;

@@ -2125,7 +2125,11 @@ m9-beta-dist-a*, t0969-beta-switch, t0969-beta-density-b, t2464-w2f-xruns-2, t24
 (w1-density/probe, not in eval/suites); docs/research/t2464/r3-m1-residual (`final_score.py`, `m1score.out`,
 `hivar.out`, `lnbshape_a.out`, `lnbfit.py`), verify-r3-m1-residual (`vscore_all.out`, `vshape_vhold.out`,
 `vchecks.out`); w1-density, r2-log1p `dens_m1.py`, w6-literature `h1_lnb.py`.
-Ours: `incomplete_beta::beta_density`, powf(x,a-1)·powf(1-x,b-1)·tgamma ratio.
+Ours: M2 with the engine's GAMMALN, TOMS algdiv in doubles, and -LN(the other shape) whenever a = 1 or b = 1 (for
+(0.37, 1) the engine's GL form already equals -LN(0.37)). Fixture counts (exact / 15 digits): probe1 12,796 / 12,799 of
+12,800, old cells 806 / 1,103 of 1,107, worker hold-out 2,810 / 4,065 of 4,096, verifier hold-out 562 / 846 of 864.
+F.DIST's density stays on `incomplete_beta::beta_density` (powf × tgamma ratio).
+Implemented in: `functions/statistical/beta_small_shape.rs` `small_shape_density` (BETA.DIST's pdf in `beta.rs`, T-2503).
 Status: PARTIAL (excel-graph): VERIFIED for max <= 8 and a = 1 or b = 1 with max > 1 (a < 1 with b = 1 on one shape);
 algdiv (min < 1 < 8 < max) open
 Tasks: T-2503, T-2512, T-2122, T-2513
