@@ -142,7 +142,7 @@ NORM.S.DIST, statistics.md "NORM.S.INV is AS 241 PPND16 in the tails") and LOGNO
 
 ## Update (T-0925 part 1, 2026-10-25)
 Shipped:
-- LOGNORM.INV and LOGINV are EXP of `normal::normal_inverse`, so they take the PPND16 tails. That fixes 20
+- LOGNORM.INV and LOGINV are EXP of `normal::normal_quantile`, so they take the PPND16 tails. That fixes 20
   ironcalc-calc LOGNORM.xlsx lines and 17 gen-m9 lines, 11 of them among the 14 T-2255 visible-parity cells.
 - The third acceptance criterion (no other statrs normal `inverse_cdf` call) is still open. T.INV's large-df
   series (`t_dist.rs`) keeps statrs' z. Moving it to the PPND16 hybrid moved 38 T.INV, TINV, T.INV.2T and
