@@ -90,4 +90,6 @@ then move to a follow-up task without the campaign key.
 - statistics.md: the T-2464/T-2513 entries ("Excel's log1p is a 14-term atanh series", "BINOM.DIST pmf: closed forms
   at k = 0 and k = n") are not on main yet. The new entry names the implementation for them. Their "Ours:" lines
   should become "Implemented in" when the research PR lands, which is why that criterion is still unticked.
-
+- Renumbered from T-2633 (main took that id), with the probe renamed to t2645-binom-trials-limit. After merging main
+  (T-2119's BETA.DIST/BETA.INV change does not touch this code), `make check` passes locally: fmt, clippy, tests,
+  eval-check with 0 regressions, evidence floor, python, hygiene and typos.

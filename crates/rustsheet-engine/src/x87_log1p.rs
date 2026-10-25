@@ -21,22 +21,16 @@ use crate::x87_log10::excel_ln;
 /// The series' coefficients, `c_k = RN(1/(2k+1))` for k = 1..=14 as doubles (Excel's first one is
 /// `RN(1/3)` exactly, r2-log1p `coef_scan.py`; 12 terms and more give the same doubles on every
 /// pinned row).
-const COEFFICIENTS: [f64; 14] = [
-    1.0 / 3.0,
-    1.0 / 5.0,
-    1.0 / 7.0,
-    1.0 / 9.0,
-    1.0 / 11.0,
-    1.0 / 13.0,
-    1.0 / 15.0,
-    1.0 / 17.0,
-    1.0 / 19.0,
-    1.0 / 21.0,
-    1.0 / 23.0,
-    1.0 / 25.0,
-    1.0 / 27.0,
-    1.0 / 29.0,
-];
+const COEFFICIENTS: [f64; 14] = {
+    let mut coefficients = [0.0; 14];
+    let (mut k, mut odd) = (0, 3.0);
+    while k < 14 {
+        coefficients[k] = 1.0 / odd;
+        k += 1;
+        odd += 2.0;
+    }
+    coefficients
+};
 
 /// The largest x for which Excel's ln(1 - x) takes the series (at 0.375 both forms give the
 /// same double; the next double up already takes LN).
@@ -130,6 +124,8 @@ mod tests {
         assert_eq!(excel_log1p(0.0), 0.0);
         assert_eq!(excel_log1p(-1e-300), -1e-300);
         assert!(excel_log1p(f64::NAN).is_nan());
+        assert_eq!(COEFFICIENTS[0], 1.0 / 3.0);
+        assert_eq!(COEFFICIENTS[13], 1.0 / 29.0);
     }
 
     /// Every finite pinned row of r2-log1p's pilot, runs, grid and hold cases, when
