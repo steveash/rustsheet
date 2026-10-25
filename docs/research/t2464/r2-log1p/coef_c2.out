@@ -1,0 +1,9 @@
+c2  -4 ulp: even 3439/3457 odd 3447/3457
+c2  -3 ulp: even 3439/3457 odd 3448/3457
+c2  -2 ulp: even 3440/3457 odd 3448/3457
+c2  -1 ulp: even 3440/3457 odd 3448/3457
+c2  +0 ulp: even 3441/3457 odd 3447/3457
+c2  +1 ulp: even 3439/3457 odd 3447/3457
+c2  +2 ulp: even 3438/3457 odd 3447/3457
+c2  +3 ulp: even 3438/3457 odd 3447/3457
+c2  +4 ulp: even 3437/3457 odd 3447/3457

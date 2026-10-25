@@ -1,0 +1,36 @@
+# a: 3168 cells, 0 duplicate keys, skipped {}
+a      CR            all  337/ 1958/ 2638 of  3168 | max(d)>=50   20/  169/  331 of   720 | min(d)<=2  169/  961/ 1099 of  1152 | other  148/  828/ 1208 of  1296
+a      ratio-xl      all  382/ 2081/ 2661 of  3168 | max(d)>=50   20/  174/  350 of   720 | min(d)<=2  181/  980/ 1080 of  1152 | other  181/  927/ 1231 of  1296
+a      ratio-xl-e    all  398/ 2185/ 2693 of  3168 | max(d)>=50   26/  234/  383 of   720 | min(d)<=2  178/  987/ 1079 of  1152 | other  194/  964/ 1231 of  1296
+a      ratio-xl-lxm  all  388/ 2178/ 2719 of  3168 | max(d)>=50   33/  227/  391 of   720 | min(d)<=2  172/ 1007/ 1100 of  1152 | other  183/  944/ 1228 of  1296
+a      ratio-m       all  321/ 1962/ 2649 of  3168 | max(d)>=50   12/  176/  341 of   720 | min(d)<=2  164/  966/ 1101 of  1152 | other  145/  820/ 1207 of  1296
+a      ratio-ln      all  252/ 1648/ 2325 of  3168 | max(d)>=50    6/   67/  209 of   720 | min(d)<=2  112/  792/  976 of  1152 | other  134/  789/ 1140 of  1296
+# sw: 2400 cells, 50 duplicate keys, skipped {}
+sw     CR            all  585/ 2167/ 2227 of  2400 | max(d)>=50  227/  716/  764 of   852 | min(d)<=2  228/  961/  979 of   984 | other  130/  490/  484 of   564
+sw     ratio-xl      all  396/ 2192/ 2293 of  2400 | max(d)>=50   99/  713/  799 of   852 | min(d)<=2  194/  976/  984 of   984 | other  103/  503/  510 of   564
+sw     ratio-xl-e    all  421/ 2224/ 2310 of  2400 | max(d)>=50  117/  739/  810 of   852 | min(d)<=2  201/  977/  984 of   984 | other  103/  508/  516 of   564
+sw     ratio-xl-lxm  all  385/ 2195/ 2260 of  2400 | max(d)>=50  102/  730/  777 of   852 | min(d)<=2  198/  973/  982 of   984 | other   85/  492/  501 of   564
+sw     ratio-m       all  483/ 2170/ 2234 of  2400 | max(d)>=50  146/  712/  767 of   852 | min(d)<=2  251/  969/  982 of   984 | other   86/  489/  485 of   564
+sw     ratio-ln      all  124/  757/ 1026 of  2400 | max(d)>=50   17/  125/  182 of   852 | min(d)<=2   51/  317/  498 of   984 | other   56/  315/  346 of   564
+# hold: 1440 cells, 0 duplicate keys, skipped {}
+hold   CR            all  114/  733/ 1060 of  1440 | max(d)>=50    2/   46/  100 of   360 | min(d)<=2   67/  364/  436 of   480 | other   45/  323/  524 of   600
+hold   ratio-xl      all  145/  781/ 1084 of  1440 | max(d)>=50    4/   61/  116 of   360 | min(d)<=2   95/  362/  433 of   480 | other   46/  358/  535 of   600
+hold   ratio-xl-e    all  161/  776/ 1091 of  1440 | max(d)>=50    6/   55/  117 of   360 | min(d)<=2  103/  361/  435 of   480 | other   52/  360/  539 of   600
+hold   ratio-xl-lxm  all  134/  775/ 1075 of  1440 | max(d)>=50    3/   46/   93 of   360 | min(d)<=2   89/  365/  436 of   480 | other   42/  364/  546 of   600
+hold   ratio-m       all  110/  751/ 1067 of  1440 | max(d)>=50    5/   49/  101 of   360 | min(d)<=2   67/  368/  436 of   480 | other   38/  334/  530 of   600
+hold   ratio-ln      all   97/  709/  990 of  1440 | max(d)>=50    4/   41/   75 of   360 | min(d)<=2   56/  325/  411 of   480 | other   37/  343/  504 of   600
+# holdsw: 400 cells, 4 duplicate keys, skipped {}
+holdsw CR            all   37/  311/  395 of   400 | max(d)>=50   21/  157/  201 of   204 | min(d)<=2    0/    8/    8 of     8 | other   16/  146/  186 of   188
+holdsw ratio-xl      all   62/  366/  399 of   400 | max(d)>=50   41/  182/  203 of   204 | min(d)<=2    0/    8/    8 of     8 | other   21/  176/  188 of   188
+holdsw ratio-xl-e    all   71/  373/  400 of   400 | max(d)>=50   41/  187/  204 of   204 | min(d)<=2    0/    8/    8 of     8 | other   30/  178/  188 of   188
+holdsw ratio-xl-lxm  all   65/  374/  400 of   400 | max(d)>=50   36/  189/  204 of   204 | min(d)<=2    0/    8/    8 of     8 | other   29/  177/  188 of   188
+holdsw ratio-m       all   48/  326/  391 of   400 | max(d)>=50   30/  174/  200 of   204 | min(d)<=2    0/    8/    8 of     8 | other   18/  144/  183 of   188
+holdsw ratio-ln      all   30/  185/  265 of   400 | max(d)>=50   12/   52/   90 of   204 | min(d)<=2    0/    8/    8 of     8 | other   18/  125/  167 of   188
+# cells: 1600 cells, 25 duplicate keys, skipped {'outside': 2, 'non_numeric': 7}
+cells  CR            all  152/ 1078/ 1309 of  1600 | max(d)>=50   20/  148/  207 of   285 | min(d)<=2   93/  675/  789 of   943 | other   39/  255/  313 of   372
+cells  ratio-xl      all  156/ 1057/ 1291 of  1600 | max(d)>=50   23/  156/  205 of   285 | min(d)<=2   93/  644/  772 of   943 | other   40/  257/  314 of   372
+cells  ratio-xl-e    all  172/ 1053/ 1298 of  1600 | max(d)>=50   29/  158/  211 of   285 | min(d)<=2   94/  646/  774 of   943 | other   49/  249/  313 of   372
+cells  ratio-xl-lxm  all  175/ 1100/ 1324 of  1600 | max(d)>=50   26/  161/  216 of   285 | min(d)<=2  107/  685/  791 of   943 | other   42/  254/  317 of   372
+cells  ratio-m       all  149/ 1071/ 1306 of  1600 | max(d)>=50   15/  142/  206 of   285 | min(d)<=2   96/  678/  787 of   943 | other   38/  251/  313 of   372
+cells  ratio-ln      all  110/  811/ 1135 of  1600 | max(d)>=50    9/   62/  123 of   285 | min(d)<=2   72/  525/  713 of   943 | other   29/  224/  299 of   372
+# keys shared across sets: 75

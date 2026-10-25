@@ -1,0 +1,5 @@
+p in [0e+00,1e-09): fwd(r x87) 217/217  fwd(r double) 217/217  CR 175/217
+p in [1e-09,1e-07): fwd(r x87) 181/181  fwd(r double) 181/181  CR 117/181
+p in [1e-07,1e-06): fwd(r x87) 92/92  fwd(r double) 92/92  CR 65/92
+p in [1e-06,1e-05): fwd(r x87) 97/97  fwd(r double) 97/97  CR 66/97
+p in [1e-05,1e-04): fwd(r x87) 160/160  fwd(r double) 160/160  CR 126/160

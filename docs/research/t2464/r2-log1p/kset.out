@@ -1,0 +1,7 @@
+2r+2r*(t2*S) d       rows 14881 no-k 2 k=0 excluded 73  empty at -r: [0.0022, 0.0042]
+2r+2r*(t2*S) x       rows 14881 no-k 0 k=0 excluded 73  empty at -r: []
+2r+(2r*t2)*S x       rows 14881 no-k 0 k=0 excluded 72  empty at -r: []
+2(r+r*(t2*S)) x      rows 14881 no-k 0 k=0 excluded 73  empty at -r: []
+2(r+(r*t2)*S) x      rows 14881 no-k 0 k=0 excluded 72  empty at -r: []
+2r+t2*(2r*S) x       rows 14881 no-k 0 k=0 excluded 79  empty at -r: []
+2r+r*(t2*S2) x       rows 14881 no-k 0 k=0 excluded 73  empty at -r: []

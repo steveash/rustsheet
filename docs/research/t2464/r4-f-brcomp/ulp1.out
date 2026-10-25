@@ -1,0 +1,4 @@
+a: 2769 misses, 697 of them 1 ulp off
+big: 2276 misses, 59 of them 1 ulp off
+hold4: 1415 misses, 203 of them 1 ulp off
+hold: 1277 misses, 249 of them 1 ulp off

@@ -1,0 +1,13 @@
+a(1,10)v-0.35            ls max 59/96 at d in [-0.50,-0.50] (per 2)  cands LF0-0.81 LF1+0.19 lnf_R+0.19 lnf_P+0.19 ln2pi++0.19 LN(2pi+0.19 LF0 re+0.19 LN_SQR+0.19
+a(10,32)v-0.35           ll max 0/96 at d in [-8.00,+7.90] (per 16)  cands LF0+1.31 LF1-0.69 lnf_R-0.69 lnf_P-0.69 ln2pi+-0.69 LN(2pi-0.69 LF0 re+3.31 LN_SQR+3.31
+a(100,256)v-0.35         ll max 0/96 at d in [-64.00,+63.90] (per 128)  cands LF0+2.35 LF1+2.35 lnf_R-1.65 lnf_P-1.65 ln2pi+-1.65 LN(2pi-1.65 LF0 re-1.65 LN_SQR-1.65
+a(13,30)v-0.35           ll max 0/96 at d in [-16.00,+15.90] (per 32)  cands LF0+1.36 LF1+1.36 lnf_R-0.64 lnf_P-0.64 ln2pi+-0.64 LN(2pi-0.64 LF0 re+3.36 LN_SQR+3.36
+a(150,1000)v-0.35        ls max 0/96 at d in [-64.00,+63.90] (per 128)  cands LF0+1.33 LF1-2.67 lnf_R-2.67 lnf_P+1.33 ln2pi++1.33 LN(2pi+1.33 LF0 re+5.33 LN_SQR+5.33
+a(2,50)v-0.35            ls max 34/96 at d in [-1.40,-1.40] (per 4)  cands LF0-0.82 LF1-0.82 lnf_R-0.82 lnf_P-0.82 ln2pi++1.18 LN(2pi-0.82 LF0 re+1.18 LN_SQR+1.18
+a(3,10)v-0.35            ll max 0/96 at d in [-2.00,+1.90] (per 4)  cands LF0+0.45 LF1+0.45 lnf_R+0.45 lnf_P+0.45 ln2pi++0.45 LN(2pi+0.45 LF0 re+0.45 LN_SQR+0.45
+a(3,8)v-0.35             ll max 67/96 at d in [-3.80,+0.10] (per 8)  cands LF0+2.15 LF1+0.15 lnf_R+0.15 lnf_P+0.15 ln2pi++0.15 LN(2pi+0.15 LF0 re+0.15 LN_SQR+0.15
+a(30,100)v-0.35          ll max 0/96 at d in [-16.00,+15.90] (per 32)  cands LF0+1.43 LF1+1.43 lnf_R+1.43 lnf_P+1.43 ln2pi++1.43 LN(2pi+1.43 LF0 re-2.57 LN_SQR-2.57
+a(40,128)v-0.35          ll max 0/96 at d in [-32.00,+31.90] (per 64)  cands LF0+4.10 LF1+0.10 lnf_R+0.10 lnf_P+0.10 ln2pi++0.10 LN(2pi+0.10 LF0 re+0.10 LN_SQR+0.10
+a(45,50)v-0.35           sl max 38/96 at d in [-2.00,-2.00] (per 4)  cands LF0-0.23 LF1+1.77 lnf_R-0.23 lnf_P-0.23 ln2pi++1.77 LN(2pi-0.23 LF0 re+1.77 LN_SQR+1.77
+a(5,16)v-0.35            ll max 55/96 at d in [-1.00,+2.90] (per 8)  cands LF0+0.91 LF1-1.09 lnf_R+0.91 lnf_P-1.09 ln2pi+-1.09 LN(2pi+0.91 LF0 re+2.91 LN_SQR+2.91
+a(7,20)v-0.35            ll max 0/96 at d in [-4.00,+3.90] (per 8)  cands LF0+2.66 LF1+0.66 lnf_R-1.34 lnf_P-1.34 ln2pi++0.66 LN(2pi-1.34 LF0 re+0.66 LN_SQR+0.66

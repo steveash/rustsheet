@@ -1,0 +1,277 @@
+parse failures 0; c0 = +2.0665
+
+== old_df12: n=1077 unique(|t|,n)=1054 dfs=[1.0, 2.0]...
+  CR            470/1074/1075 of 1077
+  LT1e          1077/1077/1077 of 1077
+
+== old_df3+: n=18699 unique(|t|,n)=18597 dfs=[3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0]...
+  CR            3788/18075/18472 of 18699
+  LT1e          9870/18683/18696 of 18699
+  exactC        5956/18383/18631 of 18699
+  LT1-insample  11517/18684/18697 of 18699
+  constmean     5293/18382/18633 of 18699
+  etab-shift+1  6634/18509/18623 of 18699
+  etab-shift-1  6622/18658/18690 of 18699
+  etab-shift+2  3444/18121/18538 of 18699
+  etab-shift+0.52794/18227/18602 of 18699
+
+== a1+a2: n=2406 unique(|t|,n)=2406 dfs=[3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0]...
+  CR            531/2280/2326 of 2406
+  LT1e          1251/2404/2402 of 2406
+  exactC        879/2400/2400 of 2406
+  LT1-insample  1412/2405/2406 of 2406
+  constmean     801/2402/2400 of 2406
+  etab-shift+1  682/2391/2358 of 2406
+  etab-shift-1  1103/2404/2406 of 2406
+  etab-shift+2  597/2350/2296 of 2406
+  etab-shift+0.5678/2351/2305 of 2406
+
+== hold: n=1252 unique(|t|,n)=1252 dfs=[3.0, 4.0, 6.0, 8.0, 12.0, 20.0, 101.0, 103.0, 105.0, 107.0, 109.0, 111.0]...
+  CR            288/1077/1185 of 1252
+  LT1e          701/1241/1222 of 1252
+  exactC        563/1156/1228 of 1252
+  LT1-insample  703/1204/1228 of 1252
+  constmean     442/1153/1228 of 1252
+  etab-shift+1  550/1252/1242 of 1252
+  etab-shift-1  475/1190/1208 of 1252
+  etab-shift+2  464/1156/1228 of 1252
+  etab-shift+0.5448/1135/1208 of 1252
+   df 3: LT1e 89/192/192 of 192 | exactC 48/192/192 of 192 | CR 16/182/183 of 192 | LT1e off +2.06
+   df 4: LT1e 134/192/192 of 192 | exactC 63/144/192 of 192 | CR 52/182/192 of 192 | LT1e off -1.26
+   df 6: LT1e 134/192/192 of 192 | exactC 118/192/192 of 192 | CR 55/175/173 of 192 | LT1e off -0.52
+   df 8: LT1e 86/192/192 of 192 | exactC 72/144/178 of 192 | CR 37/146/187 of 192 | LT1e off +1.35
+   df 12: LT1e 107/192/192 of 192 | exactC 99/192/192 of 192 | CR 47/138/180 of 192 | LT1e off -0.29
+   df 20: LT1e 91/181/162 of 192 | exactC 103/192/182 of 192 | CR 46/154/170 of 192 | LT1e off -0.67
+   df 101: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 103: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 105: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 107: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 109: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 111: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 113: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 115: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 117: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 119: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 121: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 123: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 125: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 127: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 129: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 131: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 133: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 135: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 137: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 139: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 141: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 143: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 145: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 147: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 149: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 151: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 153: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 155: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 157: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 159: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 161: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 163: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 165: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 167: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 169: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 171: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 173: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 175: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 177: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 179: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 181: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 183: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 185: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 187: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 189: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 191: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 193: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 195: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 197: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 199: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 201: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 203: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 205: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 207: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 209: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 211: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 213: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 215: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 217: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 219: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 221: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 223: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 225: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 227: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 229: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 231: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 233: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 235: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 237: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 239: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 241: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 243: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 245: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 247: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 249: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 251: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 253: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 255: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 257: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 259: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 261: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 263: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 265: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 267: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 269: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 271: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 273: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 275: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 277: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 279: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 281: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 283: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 285: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 287: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 289: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 291: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 293: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 295: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   df 297: LT1e 0/1/1 of 1 | exactC 0/1/1 of 1 | CR 0/1/1 of 1 | LT1e off +0.00
+   df 299: LT1e 1/1/1 of 1 | exactC 1/1/1 of 1 | CR 1/1/1 of 1 | LT1e off +0.00
+   scan df 3: best off +2.6 exact 114/192; at LT1e off +2.06; at 0: 48
+   scan df 4: best off -1.5 exact 140/192; at LT1e off -1.26; at 0: 63
+   scan df 6: best off -0.5 exact 136/192; at LT1e off -0.52; at 0: 118
+   scan df 8: best off +0.9 exact 105/192; at LT1e off +1.35; at 0: 72
+   scan df 12: best off -0.4 exact 115/192; at LT1e off -0.29; at 0: 99
+   scan df 20: best off +0.1 exact 105/192; at LT1e off -0.67; at 0: 103
+   scan df 101: best off +0.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 103: best off +1.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 105: best off -2.1 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 107: best off -1.0 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 109: best off +0.9 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 111: best off -0.9 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 113: best off +0.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 115: best off -0.2 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 117: best off +0.0 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 119: best off +0.2 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 121: best off +0.4 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 123: best off -1.0 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 125: best off -1.0 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 127: best off +0.3 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 129: best off -2.0 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 131: best off -0.6 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 133: best off -0.2 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 135: best off -1.0 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 137: best off -0.4 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 139: best off +0.5 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 141: best off -0.9 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 143: best off -0.1 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 145: best off -1.0 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 147: best off -2.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 149: best off -0.9 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 151: best off +0.0 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 153: best off -1.4 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 155: best off -0.1 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 157: best off -0.7 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 159: best off -1.3 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 161: best off -1.8 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 163: best off -2.3 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 165: best off -3.9 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 167: best off +0.9 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 169: best off -0.1 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 171: best off +1.7 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 173: best off -1.6 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 175: best off -0.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 177: best off -0.4 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 179: best off -2.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 181: best off -1.4 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 183: best off -2.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 185: best off -0.4 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 187: best off -0.7 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 189: best off -3.3 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 191: best off -0.1 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 193: best off -1.9 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 195: best off -0.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 197: best off -2.0 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 199: best off +1.2 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 201: best off +0.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 203: best off -0.6 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 205: best off -1.9 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 207: best off -0.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 209: best off -1.5 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 211: best off -0.8 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 213: best off -1.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 215: best off -2.0 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 217: best off -1.4 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 219: best off -0.2 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 221: best off -0.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 223: best off -0.4 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 225: best off -0.5 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 227: best off -1.6 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 229: best off +0.5 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 231: best off -0.7 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 233: best off +0.9 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 235: best off +1.3 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 237: best off -4.0 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 239: best off -0.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 241: best off -0.7 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 243: best off -1.8 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 245: best off -0.2 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 247: best off -1.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 249: best off +1.2 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 251: best off -1.6 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 253: best off -0.7 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 255: best off -0.5 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 257: best off -0.8 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 259: best off -2.1 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 261: best off -0.9 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 263: best off +0.5 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 265: best off -1.2 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 267: best off -1.5 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 269: best off -0.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 271: best off -1.3 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 273: best off +0.0 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 275: best off -1.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 277: best off -0.3 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 279: best off +0.1 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 281: best off +0.6 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 283: best off +2.1 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 285: best off -0.5 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 287: best off +0.0 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 289: best off -1.5 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 291: best off +0.4 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 293: best off -1.7 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 295: best off -0.7 exact 1/1; at LT1e off +0.00; at 0: 1
+   scan df 297: best off +0.3 exact 1/1; at LT1e off +0.00; at 0: 0
+   scan df 299: best off -1.2 exact 1/1; at LT1e off +0.00; at 0: 1
+
+== hold2: n=960 unique(|t|,n)=960 dfs=[9.0, 11.0, 14.0, 16.0, 24.0, 28.0, 41.0, 53.0]...
+  CR            266/776/839 of 960
+  LT1e          501/959/960 of 960
+  exactC        573/960/960 of 960
+  LT1-insample  573/960/960 of 960
+  constmean     527/927/920 of 960
+  etab-shift+1  522/960/960 of 960
+  etab-shift-1  603/960/960 of 960
+  etab-shift+2  530/951/960 of 960
+  etab-shift+0.5386/924/960 of 960
+   df 9: LT1e 38/120/120 of 120 | exactC 76/120/120 of 120 | CR 33/112/120 of 120 | LT1e off -1.73
+   df 11: LT1e 70/120/120 of 120 | exactC 51/120/120 of 120 | CR 37/109/103 of 120 | LT1e off -1.75
+   df 14: LT1e 78/120/120 of 120 | exactC 78/120/120 of 120 | CR 26/106/115 of 120 | LT1e off +0.03
+   df 16: LT1e 78/120/120 of 120 | exactC 87/120/120 of 120 | CR 43/106/120 of 120 | LT1e off -0.23
+   df 24: LT1e 65/120/120 of 120 | exactC 65/120/120 of 120 | CR 38/89/93 of 120 | LT1e off +0.20
+   df 28: LT1e 73/120/120 of 120 | exactC 70/120/120 of 120 | CR 37/87/106 of 120 | LT1e off +0.33
+   df 41: LT1e 77/120/120 of 120 | exactC 77/120/120 of 120 | CR 25/80/86 of 120 | LT1e off -0.08
+   df 53: LT1e 22/119/120 of 120 | exactC 69/120/120 of 120 | CR 27/87/96 of 120 | LT1e off -1.52
+   scan df 9: best off -0.5 exact 83/120; at LT1e off -1.73; at 0: 76
+   scan df 11: best off -1.5 exact 77/120; at LT1e off -1.75; at 0: 51
+   scan df 14: best off +0.2 exact 84/120; at LT1e off +0.03; at 0: 78
+   scan df 16: best off +0.0 exact 87/120; at LT1e off -0.23; at 0: 87
+   scan df 24: best off +0.3 exact 72/120; at LT1e off +0.20; at 0: 65
+   scan df 28: best off +0.2 exact 73/120; at LT1e off +0.33; at 0: 70
+   scan df 41: best off -0.4 exact 77/120; at LT1e off -0.08; at 0: 77
+   scan df 53: best off +1.0 exact 79/120; at LT1e off -1.52; at 0: 69

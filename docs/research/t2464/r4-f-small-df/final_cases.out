@@ -1,0 +1,25 @@
+# case:t2513-verify-r3-fdensity-hold: 960 rows
+case:t2513-verify-r3-fdensity-hold CR     all    47/  337/  568 of   960 | min<=2     9/   79/  115 of   160 | both<=10     9/   49/   66 of    80 | other    25/  190/  323 of   480 | max>=50     4/   19/   64 of   240
+case:t2513-verify-r3-fdensity-hold M-xd   all    80/  528/  708 of   960 | min<=2    10/  107/  140 of   160 | both<=10     9/   67/   75 of    80 | other    47/  293/  373 of   480 | max>=50    14/   61/  120 of   240
+case:t2513-verify-r3-fdensity-hold M-sd   all   159/  651/  784 of   960 | min<=2    25/  116/  133 of   160 | both<=10    24/   69/   77 of    80 | other   102/  374/  437 of   480 | max>=50     8/   92/  137 of   240
+case:t2513-verify-r3-fdensity-hold M-sdm  all   192/  650/  781 of   960 | min<=2    33/  116/  133 of   160 | both<=10    28/   68/   77 of    80 | other   122/  373/  435 of   480 | max>=50     9/   93/  136 of   240
+# case:t2220-f-dist-sweep-pdf: 1000 rows
+case:t2220-f-dist-sweep-pdf CR     all   111/  703/  845 of  1000 | min<=2    43/  241/  264 of   280 | both<=10    23/  175/  216 of   250 | other    16/   70/   86 of   110 | max>=50    29/  217/  279 of   360
+case:t2220-f-dist-sweep-pdf M-xd   all   145/  777/  883 of  1000 | min<=2    54/  264/  274 of   280 | both<=10    26/  185/  223 of   250 | other    15/   83/   94 of   110 | max>=50    50/  245/  292 of   360
+case:t2220-f-dist-sweep-pdf M-sd   all   337/  890/  936 of  1000 | min<=2   143/  277/  279 of   280 | both<=10    64/  242/  247 of   250 | other    33/   91/   98 of   110 | max>=50    97/  280/  312 of   360
+case:t2220-f-dist-sweep-pdf M-sdm  all   375/  890/  936 of  1000 | min<=2   152/  277/  279 of   280 | both<=10    76/  242/  246 of   250 | other    37/   91/   99 of   110 | max>=50   110/  280/  312 of   360
+# case:t2220-f-dist-sweep-d1-1: 300 rows
+case:t2220-f-dist-sweep-d1-1 CR     all    14/  179/  228 of   300 | min<=2    12/  145/  191 of   240 | max>=50     2/   34/   37 of    60
+case:t2220-f-dist-sweep-d1-1 M-xd   all    18/  209/  242 of   300 | min<=2    15/  172/  204 of   240 | max>=50     3/   37/   38 of    60
+case:t2220-f-dist-sweep-d1-1 M-sd   all    70/  238/  261 of   300 | min<=2    55/  200/  219 of   240 | max>=50    15/   38/   42 of    60
+case:t2220-f-dist-sweep-d1-1 M-sdm  all    73/  236/  260 of   300 | min<=2    62/  199/  219 of   240 | max>=50    11/   37/   41 of    60
+# case:t2220-f-dist-sweep-d2-1: 270 rows
+case:t2220-f-dist-sweep-d2-1 CR     all    22/  170/  208 of   270 | min<=2    19/  138/  169 of   210 | max>=50     3/   32/   39 of    60
+case:t2220-f-dist-sweep-d2-1 M-xd   all    25/  196/  232 of   270 | min<=2    20/  158/  188 of   210 | max>=50     5/   38/   44 of    60
+case:t2220-f-dist-sweep-d2-1 M-sd   all    52/  208/  237 of   270 | min<=2    47/  169/  196 of   210 | max>=50     5/   39/   41 of    60
+case:t2220-f-dist-sweep-d2-1 M-sdm  all    61/  210/  237 of   270 | min<=2    56/  171/  196 of   210 | max>=50     5/   39/   41 of    60
+# case:m9-f-dist: 15 rows
+case:m9-f-dist CR     all     4/   14/   14 of    15 | min<=2     3/    9/    9 of     9 | both<=10     0/    3/    3 of     3 | max>=50     1/    2/    2 of     3
+case:m9-f-dist M-xd   all     3/   14/   13 of    15 | min<=2     2/    9/    9 of     9 | both<=10     1/    3/    3 of     3 | max>=50     0/    2/    1 of     3
+case:m9-f-dist M-sd   all     8/   13/   14 of    15 | min<=2     8/    9/    9 of     9 | both<=10     0/    3/    3 of     3 | max>=50     0/    1/    2 of     3
+case:m9-f-dist M-sdm  all     8/   13/   14 of    15 | min<=2     8/    9/    9 of     9 | both<=10     0/    3/    3 of     3 | max>=50     0/    1/    2 of     3

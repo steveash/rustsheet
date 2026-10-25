@@ -1,0 +1,5 @@
+probe:a R-bd0r2    consistent 584/2736  odd-half at even-fit C 182/1356
+probe:a R          consistent 600/2736  odd-half at even-fit C 190/1356
+probe:a div        consistent 620/2736  odd-half at even-fit C 206/1356
+probe:a q1         consistent 490/2736  odd-half at even-fit C 138/1356
+probe:a w5         consistent 599/2736  odd-half at even-fit C 200/1356

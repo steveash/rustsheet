@@ -1,0 +1,17 @@
+pre all                                      n=13655 eng_ex=4227 eng_vis=1998 ex=6837 u4=12573 w15=13111 vis=544 fixed=1531 broke=77 lost_ex=514
+pre md5(case|cell) odd [worker's hold-out]   n=6812 eng_ex=2116 eng_vis=979 ex=3478 u4=6268 w15=6555 vis=257 fixed=758 broke=36 lost_ex=233
+pre md5(case|cell) even                      n=6843 eng_ex=2111 eng_vis=1019 ex=3359 u4=6305 w15=6556 vis=287 fixed=773 broke=41 lost_ex=281
+pre by-case split: md5(case) odd             n=7195 eng_ex=2230 eng_vis=722 ex=3385 u4=6635 w15=6923 vis=272 fixed=466 broke=16 lost_ex=252
+pre by-case split: md5(case) even            n=6460 eng_ex=1997 eng_vis=1276 ex=3452 u4=5938 w15=6188 vis=272 fixed=1065 broke=61 lost_ex=262
+pre non-BETA                                 n=10602 eng_ex=3847 eng_vis=986 ex=5514 u4=9801 w15=10226 vis=376 fixed=660 broke=50 lost_ex=412
+pre gated                                    n=161 eng_ex=64 eng_vis=23 ex=106 u4=148 w15=155 vis=6 fixed=19 broke=2 lost_ex=6
+w2f all                                      n=41554 eng_ex=2026 eng_vis=23657 ex=18584 u4=36635 w15=40310 vis=1244 fixed=22444 broke=31 lost_ex=1329
+pre distinct (fn,args): 13388  max repeat: 4
+pre distinct (fn,args), first occurrence     n=13388 eng_ex=4144 eng_vis=1977 ex=6714 u4=12325 w15=12850 vis=538 fixed=1515 broke=76 lost_ex=501
+pre cells with a >15-digit literal arg       n=1970 eng_ex=350 eng_vis=262 ex=575 u4=1864 w15=1948 vis=22 fixed=241 broke=1 lost_ex=1
+ladder pre              eng 1998 -> 1915 1767 1135 912 829 692 544
+ladder pre md5 odd      eng 979 -> 940 859 556 447 407 325 257
+ladder pre by-case odd  eng 722 -> 702 685 514 446 426 385 272
+ladder w2f              eng 23657 -> 23643 23233 17952 9008 8570 6251 1244
+branch counts pre: [('w_bpser', 3218), ('bgrat', 1718), ('L140 bup+bpser', 1516), ('bup+bgrat', 1502), ('bpser(a,b>1)', 1368), ('pdfM1', 1107), ('pdf>1', 928), ('closed:a0=1', 796), ('closed:b0=1', 508), ('w1_bpser', 407), ('bfrac', 298), ('L140 bup+bgrat', 232), ('L140 bup+bup+bgrat', 55), ('basym', 2)]
+control closed forms pre:  1304 / 1304
