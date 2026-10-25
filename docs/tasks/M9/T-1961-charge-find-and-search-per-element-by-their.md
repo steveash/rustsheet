@@ -3,7 +3,7 @@ id: T-1961
 title: "Charge FIND and SEARCH per element by their text lengths in the lift driver"
 milestone: M9
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
