@@ -3,7 +3,7 @@ id: T-2653
 title: "IFS with a text condition and an array value: a #VALUE! array the value's shape (spills)"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
