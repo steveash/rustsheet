@@ -56,6 +56,12 @@ Examples:
 Cells:
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A336
 
+Handed over by T-2492. Once T-2492 read the text no_switch, these cells are left with only the fractional-start value,
+visibly off:
+- gen-m9/762cd0e4ec9a7aa9 Calc!A379 `=VDB(17334,389,36,0.2,9,3,"FALSE")`: Excel 9114.101951893414, ours 9123.7036444456
+- probes/t2492-vdb-ddb-arguments A1, A9, A10 (the same call, no_switch FALSE: 9114.101951893414) and A11, A12
+  (`VDB(17334,389,36,0.2,9,TRUE,FALSE)`: Excel 4147.934913793104, ours 4148.285714285714)
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.

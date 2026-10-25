@@ -3,7 +3,7 @@ id: T-2703
 title: "BINOM.DIST (k > 0), NEGBINOM.DIST, BETA.DIST, GAMMA.DIST, EXPON.DIST and WEIBULL densities flush a subnormal result to 0, as Excel does"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,9 +31,17 @@ everything else as it is. Probe first if one function's flush point is unclear (
 for every k > 0 or only on one of its internal paths).
 
 ## Acceptance criteria
-- [ ] Every cell above passes; no baseline gains a line.
-- [ ] numbers.md records the flush per function, with these cells cited.
-- [ ] `make check` green; reviewers approve.
+- [x] Every cell above passes; no baseline gains a line.
+- [x] numbers.md records the flush per function, with these cells cited.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - EXP, LOGINV and BINOM.DIST k = 0, which keep a subnormal in Excel and already pass.
+
+## Outcome
+Done. The EXPON.DIST, WEIBULL, BETA.DIST and GAMMA.DIST densities, the BINOM.DIST pmf off its k = 0 and k = n closed
+forms and the NEGBINOM.DIST pmf now pass their result through `arithmetic::flush_subnormal`. Every owned cell and its
+companion passes: t2513-r3-binom-pmf-n B/E1729:1792, t2513-verify-r3-binom-pmf-h B/J229, B/J238 (A/I229, A/I238 still
+pass), t2513-r3-m1-residual-hold D/E863, D/E875, D/E957, m9-gamma-dist-a500 A22/B22, probes/t2693-subnormal-expon-dist
+and -weibull A1:A2. `make eval-baseline`: gen-m9 fixed 2 (the two source cells), probes fixed 4, no regressions.
+The closed forms and the cumulative modes are unchanged (no evidence that they flush).
