@@ -97,15 +97,31 @@ def _signature_max(fn: dict[str, Any]) -> int:
     return len(fn["params"])
 
 
-# Maxima neither source shows: INDEX's reference form takes `area_num`, a fourth argument
-# (probes/index-area-num-snap J1:J4, Excel-computed; the syntax line shows the array form).
-MAX_OVERRIDES = {"INDEX": 4}
+# Maxima the sources get wrong, used in place of the derived one. INDEX's reference form takes
+# `area_num`, a fourth argument (probes/index-area-num-snap J1:J4, Excel-computed; the syntax line
+# shows the array form). The others' syntax lines do not parse, which would give 255; typed, Excel
+# takes these maxima (probes/t2682-typed-max-arg-counts A8:A15) and refuses one more argument, as it
+# does DETECTLANGUAGE's second and TRANSLATE's fourth (Graph PATCH 400, 2026-10-25, T-2682;
+# docs/excel-semantics/syntax.md "Minimum argument counts").
+MAX_OVERRIDES = {
+    "INDEX": 4,
+    "DETECTLANGUAGE": 1,
+    "TRANSLATE": 3,
+    "FIND": 3,
+    "FINDB": 3,
+    "LEFTB": 2,
+    "LENB": 1,
+    "MIDB": 3,
+    "REPLACEB": 4,
+    "RIGHTB": 2,
+    "SEARCHB": 3,
+}
 
 
 def expected_arg_counts() -> dict[str, tuple[int, int]]:
     """The engine's typed-entry count table (T-2632): Excel's minimum (excel-functions.tsv) and the
-    most of: the syntax line's parameters (255 when it repeats or does not parse), the
-    functions.yaml signature's (`_signature_max`) and `MAX_OVERRIDES`."""
+    most of the syntax line's parameters (255 when it repeats or does not parse) and the
+    functions.yaml signature's (`_signature_max`), or the `MAX_OVERRIDES` maximum in place of both."""
     rows = load_excel_functions(SOURCE)
     counts = {}
     for name, row in rows.items():
@@ -115,7 +131,7 @@ def expected_arg_counts() -> dict[str, tuple[int, int]]:
             most = MAX_ARGS
         if name in SIGNATURES:
             most = max(most, _signature_max(SIGNATURES[name]))
-        counts[name] = (least, max(most, MAX_OVERRIDES.get(name, 0)))
+        counts[name] = (least, MAX_OVERRIDES.get(name, most))
     return counts
 
 
