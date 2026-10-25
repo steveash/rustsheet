@@ -2,10 +2,9 @@
 //! CEILING.MATH, CEILING.PRECISE, ISO.CEILING, FLOOR.MATH and FLOOR.PRECISE.
 
 use crate::arithmetic::flush_subnormal;
-use crate::decimal_round::decimal_to_f64;
+use crate::decimal_round::cut_to_15_digits;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
-use crate::number_format::significant_15;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -17,13 +16,7 @@ use crate::{
 /// call is 0 (numbers.md "CEILING and FLOOR of a subnormal ratio are 0",
 /// probes/t2715-ceiling-floor-subnormal-ratio).
 fn snap_ratio(value: f64, significance: f64) -> f64 {
-    let ratio = flush_subnormal(value / significance);
-    if !ratio.is_finite() || ratio == 0.0 {
-        return ratio;
-    }
-    let (mantissa, exponent) = significant_15(ratio.abs(), true);
-    // `mantissa` has 15 digits, so its last digit has place value 10^(exponent - 14).
-    decimal_to_f64(mantissa, exponent - 14).map_or(ratio, |cut| cut.copysign(ratio))
+    cut_to_15_digits(flush_subnormal(value / significance), true)
 }
 
 /// MROUND of two non-zero, same-signed numbers. Excel rounds the double quotient `|n / m|` up

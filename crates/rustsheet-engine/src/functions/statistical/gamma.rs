@@ -82,7 +82,9 @@ impl Model {
         }
         let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
         let result = if cumulative {
-            gamma_dist_cdf(&dist, x, beta_scale)
+            // A subnormal cdf is 0, as in Excel (`(x)=0` TRUE: probes/t2706-subnormal-density-paths
+            // B19:B20, probes/t2737-subnormal-cdf-shapes B13:B14).
+            flush_subnormal(gamma_dist_cdf(&dist, x, beta_scale))
         } else {
             // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/m9-gamma-dist-a500
             // B22; docs/excel-semantics/numbers.md "Distribution densities").
