@@ -80,7 +80,8 @@ impl Model {
     /// `BETA.DIST(x, alpha, beta, cumulative, [A], [B])`: every argument lifts over an array and
     /// a range (SPEC-0011; probes/stat-argument-modes H84-H89, probes/stat-later-argument-lift
     /// H1-H5, K3-K6). The cdf is the T-0970 incomplete beta (`incomplete_beta::beta_reg_complement`,
-    /// T-2119); the density is `incomplete_beta::beta_density` where it applies.
+    /// T-2119), with Excel's closed forms on bratio's oriented arguments at a shape of 1 (T-2502);
+    /// the density is `incomplete_beta::beta_density` where it applies.
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaDist, args, cell, &mut |model, values| {
             let [x, alpha, beta, cumulative, bounds @ ..] = values else {
