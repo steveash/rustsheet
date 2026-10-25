@@ -2,8 +2,10 @@
 //! 1,000,000 cells, SUM over the same column with an error in A2 (the walk ends there), and SUM
 //! over a block three columns wide reaching past the used area (T-0405: cut at the used area).
 //! Then criteria aggregates over shared ranges (T-0449): 2,000 SUMIFS and 2,000 COUNTIFS over
-//! 50,000 rows, with five text criteria and 100 numeric thresholds.
-//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria` runs only the T-0449 case)
+//! 50,000 rows, with five text criteria and 100 numeric thresholds. Then aggregates over
+//! whole-column expressions (T-0469): 400 `MAX(IF(F:F=A1,G:G,""))` over 2,000 rows.
+//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria` and `-- whole_column` run only
+//! the T-0449 or the T-0469 case)
 //!
 //! One warm-up run, then `RUNS` measured recalculations; each case prints the fastest, the median
 //! and the spread.
@@ -64,7 +66,38 @@ fn criteria_workbook() -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
+/// Rows of data in the T-0469 case.
+const WHOLE_COLUMN_ROWS: u32 = 2_000;
+/// Whole-column MAX(IF(..)) calls.
+const WHOLE_COLUMN_CALLS: u32 = 400;
+
+/// A key in F (one of 50) and an amount in G, with `WHOLE_COLUMN_CALLS` keys in A and
+/// `MAX(IF(F:F=A1,G:G,""))` beside each in B, as in corpus-bench 17049.
+fn whole_column_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        for r in 1..=WHOLE_COLUMN_ROWS {
+            tx.set(format!("F{r}").as_str(), format!("k{}", r % 50).as_str())?;
+            tx.set(format!("G{r}").as_str(), f64::from((r * 37) % 1000))?;
+        }
+        for r in 1..=WHOLE_COLUMN_CALLS {
+            tx.set(format!("A{r}").as_str(), format!("k{}", r % 50).as_str())?;
+            let formula = format!("=MAX(IF(F:F=A{r},G:G,\"\"))");
+            tx.set(format!("B{r}").as_str(), Input::Formula(formula))?;
+        }
+        Ok(())
+    })
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
+    let mut wb = whole_column_workbook()?;
+    let t = common::timings(RUNS, || wb.recalculate());
+    writeln!(
+        std::io::stdout(),
+        "MAX(IF(F:F=A1,G:G,\"\")): {WHOLE_COLUMN_CALLS} calls over {WHOLE_COLUMN_ROWS} rows, runs={RUNS} {t}"
+    )?;
+    if std::env::args().any(|arg| arg == "whole_column") {
+        return Ok(());
+    }
     let mut wb = criteria_workbook()?;
     let t = common::timings(RUNS, || wb.recalculate());
     writeln!(

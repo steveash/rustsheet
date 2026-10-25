@@ -1,6 +1,6 @@
 use super::annuity::{annuity_factor, annuity_power};
 use crate::{
-    arithmetic::{extended_product, extended_quotient, extended_sum},
+    arithmetic::{extended_product, extended_quotient, extended_sum, flush_subnormal},
     expressions::token::Error,
 };
 
@@ -80,7 +80,38 @@ pub(crate) fn compute_rate(
     Err(Error::NUM)
 }
 
-pub(crate) fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
+/// The worksheet NPV: the sum of `value[i]/(1+rate)^i` with Excel's range rules
+/// (financial.md "NPV's discount past the double range", probes/npv-power-edges and
+/// npv-power-edges-2). Excel divides each value by the previous period's power (kept as a
+/// double) times 1+rate, so the call is `#DIV/0!` when 1+rate is 0 (a rate of -1, also with no
+/// flow but 0s) or when a power that a later period builds on overflows or is below the
+/// smallest normal double: `NPV(1E+300,1,1)` is 1E-300 but `NPV(1E+300,0,0,0)` is `#DIV/0!`, and
+/// `NPV(1,SEQUENCE(1024))` is a number but 1025 flows are `#DIV/0!`. The last period's power
+/// may overflow: its quotient is taken in two steps (`NPV(1E+300,1,1E+300)` is 2E-300). A
+/// subnormal quotient is 0, as for `/` (`NPV(9E+307,1)` is 0).
+pub(crate) fn excel_npv(rate: f64, values: &[f64]) -> Result<f64, Error> {
+    let base = 1.0 + rate;
+    let mut npv = 0.0;
+    // base^i as a double, the power period i + 1 builds on.
+    let mut previous = 1.0_f64;
+    for (i, item) in values.iter().enumerate() {
+        if base == 0.0 || previous == 0.0 || !previous.is_finite() {
+            return Err(Error::DIV);
+        }
+        let power = base.powi(i as i32 + 1);
+        let quotient = if power.is_finite() && power.abs() >= f64::MIN_POSITIVE {
+            item / power
+        } else {
+            item / previous / base
+        };
+        npv += flush_subnormal(quotient);
+        previous = flush_subnormal(power);
+    }
+    Ok(npv)
+}
+
+/// The plain sum of `value[i]/(1+rate)^i`, for the solver IRR falls back on.
+fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
     let mut npv = 0.0;
     for (i, item) in values.iter().enumerate() {
         npv += item / (1.0 + rate).powi(i as i32 + 1);
