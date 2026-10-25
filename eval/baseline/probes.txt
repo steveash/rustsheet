@@ -1130,7 +1130,8 @@ C	probes/t2581-textsplit-textbefore.case.json	50
 C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
 C	probes/t2625-nested-consumers.case.json	32
-C	probes/table-edits/table-convert-to-range.case.json	0
+C	probes/table-edits/table-convert-same-sheet.case.json	7
+C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
 C	probes/table-edits/table-delete-column-qty.case.json	12
 C	probes/table-edits/table-delete-column-region.case.json	12
@@ -3068,7 +3069,6 @@ F	probes/t2625-nested-consumers.case.json	P!A28
 F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
-F	probes/table-edits/table-convert-to-range.case.json	!EngineError
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9
