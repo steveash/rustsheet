@@ -71,13 +71,12 @@ fn t_test_element(
     {
         return error.clone();
     }
-    let tails = model.kernel_number(tails, cell).map(f64::trunc);
-    let test_type = model.kernel_number(test_type, cell).map(f64::trunc);
-    let (tails, test_type) = match (tails, test_type) {
-        (Err(error), _) | (_, Err(error)) => return error,
-        (Ok(tails), Ok(test_type)) => (tails, test_type),
+    let tails = match model.kernel_number(tails, cell).map(f64::trunc) {
+        Ok(tails) => tails,
+        Err(error) => return error,
     };
-    // array2's error value comes after an error tails or type (gen-m9/7f7ca726c3f68554 A308).
+    // array2's error value comes after an error tails and before an error type
+    // (gen-m9/7f7ca726c3f68554 A308, 9735c5ab72fa5ecf A336).
     if let Err(PairedSamplesError {
         error,
         direct_error: true,
@@ -86,6 +85,10 @@ fn t_test_element(
     {
         return error.clone();
     }
+    let test_type = match model.kernel_number(test_type, cell).map(f64::trunc) {
+        Ok(test_type) => test_type,
+        Err(error) => return error,
+    };
     let tails = match tails {
         1.0 => TTestTails::OneTailed,
         2.0 => TTestTails::TwoTailed,
