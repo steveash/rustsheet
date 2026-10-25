@@ -3062,9 +3062,6 @@ F	probes/t2496-fin-subexpressions.case.json	P!A74
 F	probes/t2496-fin-subexpressions.case.json	P!A79
 F	probes/t2496-fin-subexpressions.case.json	P!A89
 F	probes/t2496-fin-subexpressions.case.json	P!A90
-F	probes/t2496-fin-subexpressions.case.json	P!A92
-F	probes/t2496-fin-subexpressions.case.json	P!A96
-F	probes/t2496-fin-subexpressions.case.json	P!A98
 F	probes/t2578-groupby-product-subtotals.case.json	P!A1
 F	probes/t2578-groupby-product-subtotals.case.json	P!A3
 F	probes/t2578-groupby-product-subtotals.case.json	P!A6
