@@ -21,6 +21,8 @@ table-convert-names-this-row S!F2, S!F10, T!A2 (references.md, convert-to-range 
 a structured reference to a table that no longer exists: unparsed, it is a `ParseErrorKind`, and on load an
 unresolved one becomes `#REF!` (`structured_reference_operand`, parser/operands.rs). It needs a node, or stored text,
 that prints the structured reference, evaluates `#VALUE!`, survives a reload and has an xlsx export decision.
+Also probe a cross-sheet `#This Row` on one of the table's data rows (T!A5 `=Sales[[#This Row],[Qty]]` and its
+FORMULATEXT): T-2643 keeps such cells on the shared, row-relative lowering without evidence.
 Small design note first (docs/specs/ or a decision record) if it touches the parser's node set.
 
 ## Acceptance criteria

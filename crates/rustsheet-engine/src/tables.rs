@@ -309,9 +309,6 @@ impl Model {
         (taken.into_iter().collect(), rewritten)
     }
 
-    /// Prints `#REF!` for every structured reference to one of `tables` (lowercase names) in the
-    /// formulas of every sheet but `skip_sheet` and in the defined names, and returns what it
-    /// changed. Does not reparse.
     /// Gives every cell off the table's `data_rows` whose formula holds a `#This Row` reference
     /// to one of `tables` the text that reference lowers to there (`lower_this_row_cells`), so it
     /// stays `#VALUE!` after the convert as in Excel (S!F1, S!F9 and T!A1 of
@@ -340,6 +337,9 @@ impl Model {
         self.parser.set_lexer_mode(LexerMode::A1);
     }
 
+    /// Prints `#REF!` for every structured reference to one of `tables` (lowercase names) in the
+    /// formulas of every sheet but `skip_sheet` and in the defined names, and returns what it
+    /// changed. Does not reparse.
     fn rewrite_table_references(
         &mut self,
         tables: &[String],

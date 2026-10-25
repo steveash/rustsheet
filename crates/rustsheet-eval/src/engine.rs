@@ -386,7 +386,8 @@ fn calculations(spec: &CaseSpec) -> usize {
 }
 
 /// Defines the workbook and sheet-scoped names of `spec` whose formula has a structured
-/// reference (`structured`) or has none.
+/// reference (`structured`) or has none. A `[` anywhere in the formula counts, an approximation:
+/// a name whose `[` is in a string is only defined later, after the tables, which is harmless.
 fn define_names(
     tx: &mut rustsheet::Txn<'_>,
     spec: &CaseSpec,
