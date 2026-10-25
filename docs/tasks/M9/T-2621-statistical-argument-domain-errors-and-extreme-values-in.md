@@ -8,7 +8,7 @@ priority: P2
 size: M
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal

@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -101,3 +101,6 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

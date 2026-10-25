@@ -13,17 +13,31 @@ whose exit criteria are not met.
 
 | Phase | Milestones, in order | Status |
 |---|---|---|
-| 1. Parity | M0, M1, M2, M5, M6, M7, M8, M9, M10, M11 | active |
+| 1. Parity (fifteen digits) | M0, M1, M2, M5, M6, M7, M8, M9, M10, M11 | active |
+| 1b. Bit parity | the `defer: phase-1b` tasks of every milestone | after Phase 1 exits (decision 0114) |
 | 2. Architecture and performance | M3, M4, M13 | deferred until Phase 1 exits |
 | 3. Release | M12 | after Phase 2 |
 | 4. Desktop oracle | M14 | after Phase 3; not started (decision 0039) |
 
-**Phase 1 exit:** every Excel function is in the catalog with its parity scope (T-0040). Every
-in-scope function has oracle-backed cases covering each parameter mode and edge pool, and
-reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a filed task or a
-`DEVIATION` entry. "Bit-exact" percentages here and in every milestone count only scored cells
-not listed as accepted deviations, which are scored in their own column (decision 0036). Accepted
-deviations are directive-5 limits only (decision 0052). The exit criteria of M1, M2, M5–M10 and M11 are met.
+**Phase 1 exit (decision 0114):** every Excel function is in the catalog with its parity scope
+(T-0040). Every in-scope function has oracle-backed cases covering each parameter mode and edge
+pool (decision 0094's coverage: 400 Excel cells, 200 of them generated), and has **≥ 99.9% of its
+Excel cells within 15 significant digits** of Excel's value with the right type, error and text
+(decision 0083's rule: not visibly off). Each remaining failure has a filed task or a `DEVIATION`
+entry. Percentages here and in every milestone count only scored cells not listed as accepted
+deviations, which are scored in their own column (decision 0036). Accepted deviations are
+directive-5 limits only (decision 0052). The exit criteria of M1, M2, M5–M10 and M11 are met.
+
+Wherever a Phase 1 milestone below says "bit-exact" (including "100% bit-exact" probes and suite
+rates), Phase 1 reads it as "not visibly off"; the eval report's milestone exit rows and its
+"Phase 1" line measure it that way (decision 0114). The bit-level wording stays the target of
+**Phase 1b**: ≥ 99.9% bit-exact and 100% within 4 ulp per function, worked after Phase 1 exits and
+before Phase 3. Tasks that only move cells already within 15 digits carry `defer: phase-1b` and are
+not picked before then. The CI gate is unchanged: no cell may regress, bit for bit.
+
+Phase 1 works visibly-off cells in campaign stages (decision 0114): semantic fixes first (wrong
+type, error or text), then accurate kernels where Excel is close to correctly rounded, then
+reproducing Excel's algorithm where Excel is the inaccurate one (time-boxed, decision 0056).
 
 A failure whose only open question needs desktop Excel evidence has its filed task in M14
 (Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
