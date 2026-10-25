@@ -3,7 +3,7 @@ id: T-2720
 title: "A % after a scientific exponent does not scale: TEXT(2.675,'0.00E+00%') is 2.68E+00%"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
