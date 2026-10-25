@@ -37,7 +37,7 @@ fn cell_is(operator: ValueOperator, formula: &str, formula2: Option<&str>) -> Cf
     }
 }
 
-fn is_red(model: &crate::Model, row: i32) -> bool {
+fn is_red(model: &mut crate::Model, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()
@@ -59,9 +59,15 @@ fn test_equal() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&model, 4), "row 4 (8 cores) should match Equal 8");
+    assert!(
+        is_red(&mut model, 4),
+        "row 4 (8 cores) should match Equal 8"
+    );
     for row in [1, 2, 3, 5, 6, 7] {
-        assert!(!is_red(&model, row), "row {row} should not match Equal 8");
+        assert!(
+            !is_red(&mut model, row),
+            "row {row} should not match Equal 8"
+        );
     }
 }
 
@@ -74,10 +80,10 @@ fn test_not_equal() {
     model.evaluate();
 
     for row in [1, 2, 3, 5, 6, 7] {
-        assert!(is_red(&model, row), "row {row} should match NotEqual 8");
+        assert!(is_red(&mut model, row), "row {row} should match NotEqual 8");
     }
     assert!(
-        !is_red(&model, 4),
+        !is_red(&mut model, 4),
         "row 4 (8 cores) should not match NotEqual 8"
     );
 }
@@ -96,11 +102,14 @@ fn test_greater_than() {
 
     // rows 5 (16), 6 (32), 7 (64) are > 8
     for row in [5, 6, 7] {
-        assert!(is_red(&model, row), "row {row} should match GreaterThan 8");
+        assert!(
+            is_red(&mut model, row),
+            "row {row} should match GreaterThan 8"
+        );
     }
     for row in [1, 2, 3, 4] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match GreaterThan 8"
         );
     }
@@ -121,13 +130,13 @@ fn test_greater_than_or_equal() {
     // rows 4 (8), 5 (16), 6 (32), 7 (64) are >= 8
     for row in [4, 5, 6, 7] {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} should match GreaterThanOrEqual 8"
         );
     }
     for row in [1, 2, 3] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match GreaterThanOrEqual 8"
         );
     }
@@ -147,11 +156,11 @@ fn test_less_than() {
 
     // rows 1 (1), 2 (2), 3 (4) are < 8
     for row in [1, 2, 3] {
-        assert!(is_red(&model, row), "row {row} should match LessThan 8");
+        assert!(is_red(&mut model, row), "row {row} should match LessThan 8");
     }
     for row in [4, 5, 6, 7] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match LessThan 8"
         );
     }
@@ -172,13 +181,13 @@ fn test_less_than_or_equal() {
     // rows 1 (1), 2 (2), 3 (4), 4 (8) are <= 8
     for row in [1, 2, 3, 4] {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} should match LessThanOrEqual 8"
         );
     }
     for row in [5, 6, 7] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match LessThanOrEqual 8"
         );
     }
@@ -199,13 +208,13 @@ fn test_between() {
     // rows 3 (4), 4 (8), 5 (16) are in [4, 16]
     for row in [3, 4, 5] {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} should match Between 4 and 16"
         );
     }
     for row in [1, 2, 6, 7] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match Between 4 and 16"
         );
     }
@@ -226,13 +235,13 @@ fn test_not_between() {
     // rows 1 (1), 2 (2), 6 (32), 7 (64) are outside [4, 16]
     for row in [1, 2, 6, 7] {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} should match NotBetween 4 and 16"
         );
     }
     for row in [3, 4, 5] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match NotBetween 4 and 16"
         );
     }
@@ -247,10 +256,10 @@ fn inverted_ranges() {
     model.evaluate();
 
     for row in [1, 2, 3, 5, 6, 7] {
-        assert!(is_red(&model, row), "row {row} should match NotEqual 8");
+        assert!(is_red(&mut model, row), "row {row} should match NotEqual 8");
     }
     assert!(
-        !is_red(&model, 4),
+        !is_red(&mut model, 4),
         "row 4 (8 cores) should not match NotEqual 8"
     );
 }
@@ -271,8 +280,8 @@ fn test_equal_and_not_equal_use_15_digit_comparison() {
         .add_conditional_formatting(0, "A2", cell_is(ValueOperator::Equal, "1", None))
         .unwrap();
     model.evaluate();
-    assert!(!is_red(&model, 1));
-    assert!(is_red(&model, 2));
+    assert!(!is_red(&mut model, 1));
+    assert!(is_red(&mut model, 2));
 
     let mut model = new_empty_model();
     model.set_user_input(0, 1, 1, "1E-17".to_string()).unwrap();
@@ -287,6 +296,6 @@ fn test_equal_and_not_equal_use_15_digit_comparison() {
         .add_conditional_formatting(0, "A2", cell_is(ValueOperator::NotEqual, "1", None))
         .unwrap();
     model.evaluate();
-    assert!(is_red(&model, 1));
-    assert!(!is_red(&model, 2));
+    assert!(is_red(&mut model, 1));
+    assert!(!is_red(&mut model, 2));
 }
