@@ -28,6 +28,14 @@ rows hold, but an insert at `r == d1` or `r == t` grows the table in Excel (T-23
 them fallback here).
 Tests: `src/test/test_structured_references.rs` (`check_edit` pins today's values with plain-range twins).
 
+Probe cells this task owns (gap triage 2026-10-25): FORMULATEXT after an edit wholly before the table or a row edit strictly
+inside its data rows keeps the structured text in Excel, ours prints the lowered range:
+- probes/table-edits/table-delete-column-before F!A5 `=SUM(Sales[Qty])` (ours `=SUM(S!$B$4:$B$7)`), F!A9
+  `=COUNTA(Sales[Region])`, F!A12 `=COLUMN(Sales[Qty])`
+- probes/table-edits/table-delete-row-inside-data F!A5, F!A9, F!A12 (ours `=SUM(S!$C$4:$C$6)` ...)
+- probes/table-edits/table-insert-column-left-edge F!A5, F!A9, F!A12 (ours `=SUM(S!$D$4:$D$7)` ...)
+The table-insert-row-* cases are T-2321's, and table-insert-column-inside is T-2339's.
+
 ## Acceptance criteria
 - [ ] Each row of SPEC-0016's edge-case table and each column case has a test: move and grow/shrink keep
   the structured text, fallback prints today's lowered text; values equal today's in every case.
