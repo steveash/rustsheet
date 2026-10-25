@@ -1032,6 +1032,13 @@ Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
 - `exp` is EXP's own kernel (see "EXP is an x87 2^(a*log2 e) evaluation"), and `y·ln x` is the twice-rounded `*`: `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` =
   9.999999999999827E+99, where libm `exp` gives 9.999999999999825E+99, and `8^(1/101+28·2^-59)` = 1.0208019359564402
   (probes-numeric/power-ulp-sources A13-A18, power-odd-root-tolerance A72/A74; excel-graph, 2026-10-19, T-0959).
+- `ln x` is LN's own x87 FYL2X kernel (see `excel_ln`), not a correctly rounded libm `ln` (T-2694). Over the T-2513 and
+  T-2586 density studies (half-integer exponents -50.5 to 50.5, over 7,000 POWER cells) libm `ln` left six cells 1 to 10
+  ulp off from Excel, which is below the correctly rounded value in all six; Excel's LN matches all six to the bit and changes no other cell of
+  probes-numeric's 611,774. `POWER(12/(12+A563*A563),6.5)` with A563 = 7.71216677000003 is 9.174378504956638E-06 (libm
+  `ln` 9.174378504956655E-06; the correctly rounded value is 4.4 ulp above Excel's) (probes-numeric/t2513-r3-tdensity-hold I563,
+  I475-I477, t2513-r3-tdensity-a2 D653, t2586-r4-f-small-df-a D4143; excel-graph). MIRR's root keeps libm `ln` and
+  `exp` (`power_with_libm_exp`, decisions 0030 and 0039).
 
 An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
 
@@ -1054,7 +1061,7 @@ Evidence:
 Not probed: other negative bases; exponents within 1E-15 of ±0.5.
 Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
 Status: VERIFIED (excel-graph)
-Tasks: T-1319, T-1421, T-0221, T-0959
+Tasks: T-1319, T-1421, T-0221, T-0959, T-2694
 
 ## POWER and `^`: odd roots of negatives, zero and overflow
 Rule: `POWER(-8, 1/3)` is -1.9999999999999998 (an odd root of a negative number is real; see "Non-integer exponents: exp(y·ln x)"); `POWER(0,0)` is #NUM!;

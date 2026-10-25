@@ -15,6 +15,7 @@ use crate::{
     number_format::to_excel_precision,
     text::Text,
     x87_exp::excel_exp,
+    x87_log10::excel_ln,
 };
 
 /// Maps an output index `i` back to the source array index, applying Excel's
@@ -374,7 +375,31 @@ const NEGATIVE_BASE_EXPONENT_LIMIT: f64 = 4_294_967_295.0;
 
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
 pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
-    power_with(x, y, |y, ln_x| excel_exp(extended_product(y, ln_x)))
+    power_with(
+        x,
+        y,
+        PowerSteps {
+            ln: excel_ln_or_minus_infinity,
+            exp_of_product: |y, ln_x| excel_exp(extended_product(y, ln_x)),
+        },
+    )
+}
+
+/// Excel's own LN ([`excel_ln`]) of a non-negative `x`, with ln 0 = -∞ as libm has it (a zero
+/// base's power is then 0 or an overflow, as before).
+fn excel_ln_or_minus_infinity(x: f64) -> f64 {
+    if x == 0.0 {
+        f64::NEG_INFINITY
+    } else {
+        excel_ln(x)
+    }
+}
+
+/// The `ln x` and `exp(y·ln x)` steps of a non-integer power.
+#[derive(Clone, Copy)]
+struct PowerSteps {
+    ln: fn(f64) -> f64,
+    exp_of_product: fn(f64, f64) -> f64,
 }
 
 /// [`power`] with `exp(y·ln x)` for a non-integer `y` taken as libm `exp` of a once-rounded
@@ -383,11 +408,18 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
 /// the web and [`power`] give 0.3933280241536674 (ironcalc-calc FINANCIAL/MIRR.xlsx Sheet2!N16,
 /// probes-numeric/power-mirr-root; decisions 0030 and 0039 keep the passing desktop cell).
 pub(crate) fn power_with_libm_exp(x: f64, y: f64) -> Result<f64, Error> {
-    power_with(x, y, |y, ln_x| (y * ln_x).exp())
+    power_with(
+        x,
+        y,
+        PowerSteps {
+            ln: f64::ln,
+            exp_of_product: |y, ln_x| (y * ln_x).exp(),
+        },
+    )
 }
 
-/// [`power`] with `exp_of_product(y, ln x)` as the `exp(y·ln x)` step of a non-integer exponent.
-fn power_with(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> Result<f64, Error> {
+/// [`power`] with `steps` as the `ln x` and `exp(y·ln x)` steps of a non-integer exponent.
+fn power_with(x: f64, y: f64, steps: PowerSteps) -> Result<f64, Error> {
     if x == 0.0 && y == 0.0 {
         return Err(Error::NUM);
     }
@@ -406,9 +438,9 @@ fn power_with(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> Result<f64
         // An odd root of a negative number is a real number, minus the root of the magnitude:
         // `(-8)^(1/3)` is -1.9999999999999998 (POWER.xlsx Sheet1!D3, F9). The exponent is the one
         // given, not 1/n: `(-8)^(1/3+8·2^-54)` is -2.0000000000000018.
-        -non_integer_power(-x, y, exp_of_product)
+        -non_integer_power(-x, y, steps)
     } else {
-        non_integer_power(x, y, exp_of_product)
+        non_integer_power(x, y, steps)
     };
     if result.is_infinite() {
         // POWER(0,-1) is #DIV/0! (POWER.xlsx Sheet1!D2), and so is any negative exponent whose
@@ -428,14 +460,14 @@ fn power_with(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> Result<f64
     finite_or_num(result)
 }
 
-/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` (`exp_of_product`; for
-/// [`power`] EXP's kernel [`excel_exp`] on a twice-rounded product), a negative exponent as one
+/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` (`steps`; for [`power`]
+/// LN's kernel [`excel_ln`], T-2694, and EXP's kernel [`excel_exp`] on a twice-rounded product), a negative exponent as one
 /// over the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180
 /// numeric oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep),
 /// and `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` = 9.999999999999827E+99, where libm `exp` is 2 ulps
 /// lower (probes-numeric/power-ulp-sources A13; docs/excel-semantics/numbers.md "Non-integer
 /// exponents: exp(y·ln x)"). A negative `x` gives NaN.
-fn non_integer_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64 {
+fn non_integer_power(x: f64, y: f64, steps: PowerSteps) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
     let x = if x == 0.0 { 0.0 } else { x };
     if y == 0.5 {
@@ -445,9 +477,9 @@ fn non_integer_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64
         // `1/SQRT(x)` agree (probes-numeric/power-neg-half-rounding, T-1541).
         extended_quotient(1.0, extended_sqrt(x))
     } else if y > 0.0 {
-        positive_power(x, y, exp_of_product)
+        positive_power(x, y, steps)
     } else {
-        extended_quotient(1.0, positive_power(x, -y, exp_of_product))
+        extended_quotient(1.0, positive_power(x, -y, steps))
     }
 }
 
@@ -456,13 +488,13 @@ fn non_integer_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64
 /// `POWER(0.1,-9.99999999999999E+307)` is 0, while `POWER(0.5,9.99999999999999E+307)` (a finite
 /// product, -6.9E+307) is 0 (probes/power-huge-exponent A61-A62, A81; numbers.md "POWER when
 /// y·ln x overflows").
-fn positive_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64 {
-    let ln_x = x.ln();
+fn positive_power(x: f64, y: f64, steps: PowerSteps) -> f64 {
+    let ln_x = (steps.ln)(x);
     // ln 0 is -∞ already: `POWER(0,9.99999999999999E+307)` stays 0 (A281).
     if ln_x.is_finite() && (y * ln_x).is_infinite() {
         f64::INFINITY
     } else {
-        exp_of_product(y, ln_x)
+        (steps.exp_of_product)(y, ln_x)
     }
 }
 
