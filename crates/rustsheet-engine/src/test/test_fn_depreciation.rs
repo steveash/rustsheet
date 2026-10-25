@@ -58,6 +58,49 @@ fn fn_vdb_errors() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
 }
 
+/// VDB's `no_switch` reads as a boolean ("TRUE"/"FALSE" text in any case; other text, numeric too,
+/// is `#VALUE!` before the range checks), a factor of 0 is straight line, an empty window at 0 is 0,
+/// and DDB's factor takes a boolean and numeric text (probes/t2492-vdb-ddb-arguments, excel-graph,
+/// 2026-10-25, T-2492).
+#[test]
+fn vdb_and_ddb_switch_and_factor_arguments() {
+    let mut model = new_empty_model();
+    model._set("B1", "TRUE");
+    for (a1, formula) in [
+        ("A1", "=VDB(17334,389,36,0.2,9,3,\"true\")"),
+        ("A2", "=VDB(17334,389,36,0.2,9,3,\"1\")"),
+        ("A3", "=VDB(17334,389,36,0.2,9,3,\"x\")"),
+        ("A4", "=VDB(1,-0.0001,23,1,9,10,\"true\")"),
+        ("A5", "=VDB(1000,100,10,0,1,0)"),
+        ("A6", "=VDB(1000,100,10,0,1,0,TRUE)"),
+        ("A7", "=VDB(1000,100,10,0,1,-1)"),
+        ("A8", "=VDB(1000,100,10,0,0)"),
+        ("A9", "=VDB(43478,488,1E+9,3,7,0)"),
+        ("A10", "=DDB(1000,100,10,1,TRUE)"),
+        ("A11", "=DDB(1000,100,10,1,B1)"),
+        ("A12", "=DDB(1000,100,10,1,FALSE)"),
+        ("A13", "=DDB(1000,100,10,1,\"3\")"),
+        ("A14", "=DDB(1000,100,10,1,\"TRUE\")"),
+    ] {
+        model._set(a1, formula);
+    }
+    model.evaluate();
+    assert!((num(&mut model, "A1") - 9_123.703_644_445_597).abs() < 1e-6);
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(num(&mut model, "A5"), 90.0);
+    assert_eq!(num(&mut model, "A6"), 0.0);
+    assert_eq!(model._get_text("A7"), *"#NUM!");
+    assert_eq!(num(&mut model, "A8"), 0.0);
+    assert!((num(&mut model, "A9") - 0.000_171_96).abs() < 1e-12);
+    assert_eq!(model._get_text("A10"), *"$100.00");
+    assert_eq!(model._get_text("A11"), *"$100.00");
+    assert_eq!(model._get_text("A12"), *"#NUM!");
+    assert_eq!(model._get_text("A13"), *"$300.00");
+    assert_eq!(model._get_text("A14"), *"#VALUE!");
+}
+
 // AMORLINC documented example
 // (https://support.microsoft.com/en-us/office/amorlinc-function-7d417b45-f7f5-4dba-a0a5-3451a81079a8)
 #[test]
