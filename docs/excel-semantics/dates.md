@@ -1154,6 +1154,7 @@ Status: VERIFIED
 Tasks: T-2268
 
 ## WORKDAY and NETWORKDAYS holidays: text holidays skip the day, they are not just accepted (T-2369)
+See also the older number-text sections below (T-2270, T-2272).
 Rule (excel-graph, probes/t2369-workday-text-holidays, 2026-10-25): a text holiday is coerced like a number-valued
 argument and then counts as a holiday wherever it lands, in a cell, a literal, a formula result or an array. With start
 45000 (Wed), +5 workdays and holiday 45001 (Thu): `WORKDAY(45000,5,A1)` is 45008 (one day skipped) and
