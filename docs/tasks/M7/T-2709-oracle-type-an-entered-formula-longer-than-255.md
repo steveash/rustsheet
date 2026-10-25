@@ -3,7 +3,7 @@ id: T-2709
 title: "Oracle: type an entered formula longer than 255 characters, then probe SUM 255/256 and TEXTJOIN 254/255 typed"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
