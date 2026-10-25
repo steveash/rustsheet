@@ -693,7 +693,12 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   limit. A number argument keeps its full precision: `IMPOWER(1.6564497455696935E-10,3)` is 4.54500948137352E-30, which
   no 15-digit reading of the base gives (ours ...349, the 15-digit read). Cells: 65ff9a692665eba9 A28, b5aef3645cec1b95
   A101, 12e4aa13a20cc1f8 A391, 3cf48801617a72ad A91, 12e4aa13a20cc1f8 A224, 8fa8b572ebc1f001 A377, c2d778463fe008ed
-  A232, 756a9f7bc3a06bcc A345. T-2541.
+  A232, 756a9f7bc3a06bcc A345. Implemented in T-2541 (`complex_of`); probes/eng-inumber-reading (excel-graph, 2026-10-25) adds:
+  `IMABS("$1,234.50")` 1234.5, `IMABS("50%")` 0.5, `IMABS("1E3")` 1000, trailing space read, text of 255 characters read
+  and 256 `#VALUE!` (`REPT("0",254)&"3"` 3, `REPT("0",255)&"3"` and `REPT("0",255)&"3+4i"` `#VALUE!`), `IMREAL("1E-310")`
+  `#NUM!`, and a number keeps full precision into IMREAL(1/3) 0.3333333333333333 while IMPOWER, IMSUM and IMSUB of it
+  print 15 digits. Not yet matched (T-2641): `IMABS("2024-01-01")` is `#NUM!` (ours reads the date), `IMABS("$1+2i")` is
+  2.23606797749979 (ours `#NUM!`). `IMABS("1/2")` reads as a date serial of the current year (not probe-able).
 - **Large parts in plain notation.** `IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i" (21
   characters per part; ours E notation; e707d43a891ba9b5 A330). With `IMCOT("1E-20")` "100000000000000000000" (T-1966's
   probe) the cut is at least 1E+21; where it is is unprobed. T-2542.

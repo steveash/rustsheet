@@ -3,7 +3,7 @@ id: T-2541
 title: "IM* inumber reading: VALUE-readable text, a tab or U+3000 is #NUM!, over 255 characters #VALUE!, a number at full precision (gen-m9, 8 cells)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -45,3 +45,6 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`complex_of` is now a `Model` method: a number argument is read at full precision, text over 255 characters is `#VALUE!`, a leading tab or U+3000 is `#NUM!`, and text `parse_complex_number` rejects falls back to VALUE's reading (`value_text_number`). gen-m9: the 8 owned lines are removed from the baseline, no regressions. New probe probes/eng-inumber-reading (19 cells, oracle-filled; 17 pass). Two cells differ and are filed as T-2641 (ISO date text, `$` before a complex number).
