@@ -36,7 +36,7 @@ Establish with oracle evidence what Excel's EXP does at its range edges, and mak
 ## Outcome
 No engine change was needed: probes-numeric/t2203-exp-range-edges (T-2203, excel-graph 2026-10-22) already covers both
 edges with dense grids of consecutive stored doubles, the 709.79-710.5 overflow tail with 710 itself, and `(EXP(a))=0`
-companions for the underflow switch, and the engine (model V6) matches all 780 checked cells (527 rows: the inputs plus the `=0` companions) (`rustsheet-eval show
+companions for the underflow switch, and the engine (model V6) matches all 780 checked cells (in 527 rows) (`rustsheet-eval show
 probes-numeric/t2203-exp-range-edges.case.json`: status=Pass, checked=780 passed=780, 2026-10-25). The quirks (last finite
 argument 709.782712893384 with EXP = 1.7976931348622732E308, the underflow switch between -745.1332191019412 and
 -745.1332191019411) are in docs/excel-semantics/numbers.md "Range edges". Eval: no change (no residuals).
