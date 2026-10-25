@@ -426,6 +426,24 @@ Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` an
 Status: VERIFIED (excel-graph)
 Tasks: T-0221, T-1496, T-1498, T-1499, T-1500, T-1501
 
+## Desktop goldens round `*` once (calipers formulas_nested)
+Rule (desktop only, observed): the desktop Excel that saved `calipers/roundtrip/formulas_nested/golden.xlsx`
+rounds the worksheet `*` once (correctly rounded), not twice as excel-graph does ("Division rounds twice"
+above). Over all 5,518 `x*constant` cells of the workbook, simulated exactly from Excel's cached operands,
+the singly rounded product matches the cached value in 5,518 cells and the twice-rounded product in 5,514.
+The four cells that tell them apart all hold the singly rounded product:
+- `Extreme Depth!E1834` `=E1833*1.001` (E1833 49.81856401224343) is 49.86838257625566, where twice
+  rounding gives 49.86838257625567;
+- `Extreme Depth!E4446` `=E4445*1.001` (E4445 10.161093439757583) is 10.17125453319734, where twice
+  rounding gives 10.171254533197338;
+- `XSheet Chain A!E919` and `E2225` are the same two products, read across sheets.
+The sibling roundtrip goldens are Mac saves (T-2663), and a Mac build on ARM has no x87 double rounding.
+Excel for the web stays the target (decision 0039 item 4), so the engine keeps rounding twice. These four
+products, and the 296 chain cells after them, are the workbook's 300 calipers known failures.
+Evidence: calipers/roundtrip/formulas_nested/golden.xlsx cached values (desktop, gap triage 2026-10-25).
+Status: UNVERIFIED (one desktop golden; Windows desktop unprobed: T-2704)
+Tasks: T-2704
+
 ## x87 precision is per operator, not per kernel (T-1524)
 Rule: where a kernel's formulation is fitted, it is evaluated in doubles, each operation behaving
 like the Excel operator of the same name ("Division rounds twice"). The same formulation with
@@ -1326,6 +1344,22 @@ probed cells as a fitted rule (no mechanism for the power-of-two exemption). Rus
 T-1108).
 Tasks: T-1108, T-1112, T-1113, T-1120, T-0289, T-1172
 
+## POWER when y·ln x overflows (T-2661)
+Rule: for a positive base and a huge non-integer-path exponent (|y| > 2^53 or not an integer), a product `|y|·ln x` that
+overflows the doubles counts as an overflow of the positive power, even when it overflows to -∞ (a base below 1): the
+positive power is `#NUM!` and the negative one is 0, the reverse of the underflow results. `POWER(0.1,9.99999999999999E+307)`
+is `#NUM!` and `POWER(0.1,-9.99999999999999E+307)` is 0 (|y|·ln 0.1 is about -2.3E+308), likewise for bases 1E-10, 1E-300
+and 1E-307; but `POWER(0.5,9.99999999999999E+307)` is 0 and `POWER(0.5,-9.99999999999999E+307)` `#DIV/0!` (a finite
+product, -6.9E+307, that underflows), and so are 0.9, 0.999999 and every base below 1 to `±1E+300`. Bases above 1 overflow
+as before (`#NUM!` up, 0 down), 1 to any power is 1, and 0 keeps `0` / `#DIV/0!` (ln 0 is -∞ already). `^` agrees on every
+cell. This settles the calipers desktop goldens `formulas_math_basic` / `formulas_datetime` J75 (`POWER(10^-307,
+9.99999999999999E+307)`, `#NUM!`) and K75 (the negative exponent, 0).
+Evidence: probes/power-huge-exponent (POWER) and power-op-huge-exponent (`^`), 15 bases by 20 exponents each, oracle
+excel-graph, 2026-10-25.
+Status: VERIFIED (excel-graph)
+Implemented in: `positive_power` in crates/rustsheet-engine/src/arithmetic.rs
+Tasks: T-2661
+
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
 0.7071067811865475 (pow: …476), `=100^100` = 1.0000000000000005E+200.
@@ -2075,6 +2109,17 @@ TAN misses this model by 1 ulp at arguments near 1.2E+8: `TAN(123456789.123)` is
 2026-10-20): gen-m5/d0419fa09d6a756a Calc!A311, gen-m5/f0f205865a3a4328 Calc!A227, gen-m5/c688ca172fe533dc Calc!A284. T-2172 sweep (145 arguments over 1E+6 .. 2^27, probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A1:D145): SIN and COS match the
 pi64 model on all 145 cells; TAN misses only B121, B123, B126 and B130 (+-123456788.123 and +-123456789.123, 1 ulp), its other 141 cells
 pass. So the miss is TAN-only and confined to arguments near 1.2E+8 (T-2147 fits).
+T-2147 fit: Excel's TAN is the pi64-reduced tangent rounded twice, to a 64-bit significand and then to a double, RN53(RN64(tan)),
+as an x87 tangent is stored. That model matches every one of the 311 earlier TAN cells with a constant argument (gen-m5, gen-m6,
+probes-numeric/trig-odd-even-sumxmy2-sweep, m9-trig-reduction and the others), the 5 misses above included, where the single
+rounding misses 5. probes-numeric/t2147-tan-double-rounding (excel-graph, 2026-10-25, filled twice with identical results) holds
+150 arguments picked where the tangent lies near a 64-bit tie, so the candidates disagree: RN53(RN64(tan)) matches 129, the
+correctly rounded tangent 47, and the quotient of RN64 sine and cosine rounded to 64 bits (an FPTAN-style result) 63. Guard-bit
+variants (the tangent rounded or truncated to 65..72 bits first) match 118..134, so none is better beyond noise. The 21 misses are
+not all at the tightest ties: x = 8242 lies 0.04 of a 64-bit ulp from a 64-bit value that is a 53-bit midpoint, and Excel still
+rounds it the other way. So Excel's own tangent carries an error up to about half a 64-bit ulp, and its last bit at such a near-tie
+is not predictable from the exact value. Those 21 cells stay known failures of that probe (as decision 0112 keeps LN's near-ties).
+Ours: implemented (`excel_tan` in functions/math_and_trigonometry/trig.rs, T-2147). COT, which is 1/TAN, inherits the change.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 
