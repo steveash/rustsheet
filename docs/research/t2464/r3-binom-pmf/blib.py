@@ -9,12 +9,7 @@ r2-log1p's Excel log1p by import.  Every model returns E (the exponent EXP is ap
 
 from __future__ import annotations
 
-import csv
-import hashlib
-import json
-import math
-import pickle
-import sys
+import csv, hashlib, json, math, pickle, sys  # noqa: E401
 from fractions import Fraction
 from pathlib import Path
 
