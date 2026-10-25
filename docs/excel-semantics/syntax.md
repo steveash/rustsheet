@@ -134,7 +134,7 @@ characters), so the published 255 is not the typed limit; one of 7,996 is refuse
 between is unprobed (T-2739).
 Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
 writer cannot emit them raw; T-1075 item 8).
-Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; a string-literal length limit (unprobed; 255 characters is the published figure) is the likely cause for the literals, which is why the cases split them.
+Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; a string-literal length limit (255 characters is the published figure; typed, 256 are accepted and 7,996 refused, see "Typed" above and T-2739) is the likely cause for the literals, which is why the cases split them.
 Status: VERIFIED (excel-graph, file load)
 Implemented in: rustsheet-xlsx `import::sheet_data::check_formula_length`
 Tasks: T-1091, T-1093, T-1386, T-1397
