@@ -231,16 +231,16 @@ class Series:
     values: tuple[int | None, ...]
 
 
-def _runs(values: tuple[int | None, ...]) -> list[list[int]]:
-    """The slot indices of each unbroken run of values."""
-    runs: list[list[int]] = []
+def _runs(values: tuple[int | None, ...]) -> list[list[tuple[int, int]]]:
+    """Each unbroken run of values, as (slot index, value) pairs."""
+    runs: list[list[tuple[int, int]]] = []
     for i, v in enumerate(values):
         if v is None:
             continue
-        if runs and runs[-1][-1] == i - 1:
-            runs[-1].append(i)
+        if runs and runs[-1][-1][0] == i - 1:
+            runs[-1].append((i, v))
         else:
-            runs.append([i])
+            runs.append([(i, v)])
     return runs
 
 
@@ -308,22 +308,23 @@ def line_chart(title: str, desc: str, x_labels: list[str], series: list[Series],
         runs = _runs(s.values)
         for run in runs:
             if len(run) > 1:
-                points = " ".join(f"{x_at(i):.1f},{y_at(s.values[i] or 0):.1f}" for i in run)
+                points = " ".join(f"{x_at(i):.1f},{y_at(v):.1f}" for i, v in run)
                 out.append(
                     f'<polyline class="s-{s.key}" stroke="{light}" fill="none" stroke-width="2" '
                     f'stroke-linejoin="round" points="{points}"><title>{escape(s.label)}</title></polyline>'
                 )
         last = runs[-1][-1] if runs else None
-        for run in runs:
-            for i in run:
-                if len(run) == 1 or i == last:
-                    value = s.values[i] or 0
-                    out.append(
-                        f'<circle class="b-{s.key}" fill="{light}" cx="{x_at(i):.1f}" cy="{y_at(value):.1f}" '
-                        f'r="3.5"><title>{escape(s.label)}, {escape(x_labels[i])}: {value:,}</title></circle>'
-                    )
+        # A dot for each point with no neighbour, and for the last point.
+        dots = [run[0] for run in runs if len(run) == 1]
+        if last is not None and last not in dots:
+            dots.append(last)
+        for i, value in dots:
+            out.append(
+                f'<circle class="b-{s.key}" fill="{light}" cx="{x_at(i):.1f}" cy="{y_at(value):.1f}" '
+                f'r="3.5"><title>{escape(s.label)}, {escape(x_labels[i])}: {value:,}</title></circle>'
+            )
         if last is not None:
-            ends.append((last, s.values[last] or 0))
+            ends.append(last)
     placed = _spread([y_at(v) for _, v in ends], MIN_LABEL_GAP)
     for (i, value), y in zip(ends, placed, strict=True):
         out.append(_text(x_at(i) + 10, y, f"{value:,}", "ink num", _fill("ink")))

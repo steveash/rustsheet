@@ -14,7 +14,7 @@ from rustsheet_tools import progress_report
 from rustsheet_tools.progress_report import blocks, history, page
 from rustsheet_tools.progress_report.history import Git, Row
 from rustsheet_tools.progress_report.markdown import md_text
-from rustsheet_tools.progress_report.model import ProgressReportError, Run, tasks_of
+from rustsheet_tools.progress_report.model import RUN_DATE, ProgressReportError, Run, tasks_of
 from rustsheet_tools.progress_report.svg import Series, line_chart, y_axis
 
 
@@ -177,7 +177,7 @@ def test_since_last_run_compares_against_the_last_complete_row() -> None:
     text = history.since_block(now, last, 7)
     assert "Against the last complete run, **2026-10-17** at commit `0000aaaa`" in text
     assert (
-        "**7** commits landed on `main` since then (`git rev-list --count --first-parent 0000aaaa..HEAD`)"
+        "**7** commits landed on `main` since then (`git rev-list --count --first-parent 0000aaaa..abc12345`)"
         in text
     )
     assert (
@@ -200,7 +200,7 @@ def test_the_next_day_shows_deltas_and_commits_from_git(tmp_path: Path) -> None:
     r = report()
     r["run"] = {"commit": "def45678", "date": "2026-10-21", "skipped_suites": []}
     r["v15_checkpoint"]["at_rate"] = 5
-    out = run_main(tmp_path, r, git=FakeGit("def45678", {"abc12345": 12}))
+    out = run_main(tmp_path, r, git=FakeGit("fedc9876", {("abc12345", "def45678"): 12}))
     assert [x["date"] for x in rows_of(out)] == ["2026-10-19", "2026-10-21"]
     text = (out / "progress.md").read_text()
     assert "Against the last complete run, **2026-10-19** at commit `abc12345`" in text
@@ -212,18 +212,39 @@ def test_the_next_day_shows_deltas_and_commits_from_git(tmp_path: Path) -> None:
     assert svg.count("<circle") == 2
 
 
-def test_a_report_at_another_commit_is_complete_and_names_both(tmp_path: Path) -> None:
+def test_a_report_at_another_commit_is_complete_and_the_page_does_not_depend_on_head(tmp_path: Path) -> None:
     out = run_main(tmp_path, git=FakeGit("fedc9876"))
     text = (out / "progress.md").read_text()
     assert "**Stale.**" not in text
     assert "The eval run of **2026-10-19** at commit `abc12345`" in text
-    assert "**Generated at commit `fedc9876`**, not the run's commit `abc12345`" in text
+    assert "fedc9876" not in text
     assert rows_of(out)[0]["complete"] is True
-    assert "Generated at" not in page.status(run_of_report(), "abc1234567")
+    assert rows_of(out)[0]["commit"] == "abc12345"
+    first = snapshot(out)
+    # The same report regenerated from another HEAD (or with git unavailable) is byte-identical.
+    run_main(tmp_path, git=FakeGit("0123abcd"))
+    assert snapshot(out) == first
+    run_main(tmp_path, git=FakeGit(None))
+    assert snapshot(out) == first
 
 
-def run_of_report() -> Run:
-    return Run("2026-10-19", "abc12345", ("s",), ())
+def test_a_report_without_a_commit_falls_back_to_head_in_its_row(tmp_path: Path) -> None:
+    r = report()
+    r["run"]["commit"] = None
+    out = run_main(tmp_path, r, git=FakeGit("fedc9876"))
+    assert rows_of(out)[0]["commit"] == "fedc9876"
+
+
+def test_the_stale_banner_names_the_generating_head(tmp_path: Path) -> None:
+    run_main(tmp_path)
+    r = report()
+    _skipped(r)
+    r["run"]["date"] = "2026-10-20"
+    out = run_main(tmp_path, r, git=FakeGit("fedc9876"))
+    status = page.parse((out / "progress.md").read_text())["status"].text
+    assert "at commit `abc12345`, generated at commit `fedc9876`, is incomplete" in status
+    same = page.stale_status("r", "2026-10-20", "abc12345", None, None, head="abc12345")
+    assert "generated at" not in same
 
 
 def _no_run(r: dict[str, Any]) -> None:
@@ -355,3 +376,28 @@ def test_line_chart_runs_and_axis() -> None:
     hostile = line_chart("<x>", "<y>", ["<d>"], [Series("at_rate", "<s>", (1,))], history.FUNCTIONS_PALETTE)
     assert "<x>" not in hostile
     assert "<s>" not in hostile
+
+
+def test_a_stale_run_older_than_the_last_row_is_not_recorded_and_exits_0(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = run_main(tmp_path)
+    history_before = (out / "progress" / "history.json").read_bytes()
+    r = report()
+    r["run"]["date"] = "2026-10-18"
+    _skipped(r)
+    run_main(tmp_path, r)  # exits 0: no SystemExit
+    assert (out / "progress" / "history.json").read_bytes() == history_before
+    status = page.parse((out / "progress.md").read_text())["status"].text
+    assert status.startswith("\n> **Stale.** The run of **2026-10-18**")
+    assert "not recorded in history: the run's date 2026-10-18 is before the last row, 2026-10-19" in (
+        capsys.readouterr().out
+    )
+
+
+def test_dates_and_shas_take_ascii_digits_only() -> None:
+    arabic_indic = "\N{ARABIC-INDIC DIGIT TWO}" * 4 + "-10-19"
+    assert RUN_DATE.fullmatch("2026-10-19")
+    assert not RUN_DATE.fullmatch(arabic_indic)
+    with pytest.raises(ProgressReportError, match="not a YYYY-MM-DD"):
+        history.parse(history.dump([{**stale_row("2026-10-19"), "date": arabic_indic}]))

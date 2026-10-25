@@ -322,17 +322,19 @@ def tasks() -> dict[str, Any]:
 
 
 class FakeGit:
-    """`Git` with a fixed HEAD and commit counts."""
+    """`Git` with a fixed HEAD and commit counts by (since, until)."""
 
-    def __init__(self, head: str | None = "abc12345", since: dict[str, int] | None = None) -> None:
+    def __init__(
+        self, head: str | None = "abc12345", between: dict[tuple[str, str], int] | None = None
+    ) -> None:
         self._head = head
-        self._since = since or {}
+        self._between = between or {}
 
     def head(self) -> str | None:
         return self._head
 
-    def commits_since(self, commit: str) -> int | None:
-        return self._since.get(commit)
+    def commits_between(self, since: str, until: str) -> int | None:
+        return self._between.get((since, until))
 
 
 GIT: Git = FakeGit()

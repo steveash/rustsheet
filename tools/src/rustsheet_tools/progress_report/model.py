@@ -386,7 +386,7 @@ def load_object(path: Path) -> dict[str, Any]:
 
 # The run's commit and date are printed into the page, so they must be what `run_meta.rs` writes.
 COMMIT_SHA = re.compile(r"[0-9a-f]{4,40}")
-RUN_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+RUN_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")  # ASCII digits only, unlike `\d`
 
 
 @dataclass(frozen=True)

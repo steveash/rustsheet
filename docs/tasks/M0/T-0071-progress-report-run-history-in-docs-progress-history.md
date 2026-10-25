@@ -48,8 +48,9 @@ failed, the page says so and keeps the last good numbers, marked stale.
   - adds a `complete: false` row;
   - exits 0.
   Tests cover each reason.
-- [x] A report whose `run.commit` is not `HEAD` still counts as complete, and `status` names both
-      commits (test).
+- [x] A report whose `run.commit` is not `HEAD` still counts as complete (test). Changed in review:
+      a complete page names only the report's commit, so it does not depend on `HEAD`; only a
+      Stale banner also names `HEAD`.
 - [x] `make py-check` green; `make check` green; reviewers approve.
 
 ## Out of scope
@@ -72,7 +73,7 @@ failed, the page says so and keeps the last good numbers, marked stale.
   - visibly-off attributed cells, numbers and type/error/text separately;
   - attributed Excel cells;
   - tasks done;
-  - first-parent commits from that row's commit to HEAD (`git rev-list --count --first-parent`).
+  - first-parent commits from that row's commit to this run's (`git rev-list --count --first-parent`).
   Git sits behind a small `Git` protocol, so tests use a fake.
 - `trends` has three line charts made by `svg.line_chart`: functions at rate, visibly-off cells by
   kind, and open tasks (todo, in progress, blocked; scripts/tasks.py `OPEN`) per campaign stage
@@ -90,13 +91,31 @@ failed, the page says so and keeps the last good numbers, marked stale.
   Catalog mismatches and malformed reports or markers still exit non-zero. When there is no
   existing page, the other generated blocks get a placeholder. Tests cover each reason, and
   test_progress_history.py also covers the byte-identical rest of the page.
-- A report whose `run.commit` is not HEAD still counts as complete, and the status block names
-  both commits.
+- A report whose `run.commit` is not HEAD still counts as complete. After review, a complete page
+  names only the report's commit and never HEAD, so the same report regenerates it byte for byte
+  from any checkout (test). The commits in "since the last run" are counted between the two runs'
+  own commits (`<last row's commit>..<run.commit>`), not up to HEAD. A history row's commit is
+  `run.commit`, and falls back to HEAD only when the report has none. Only a Stale banner names the
+  generating HEAD as well.
 - The history row's `milestones_exited` lists the report's `milestone_exit` rows with `exit: true`.
-  Today that is M5 and M6 only. T-0072 parses docs/milestones.md and may widen this.
-- The seed is one row for the T-0081 run (2026-10-25, `05703c6c`, complete) with tasks.json
-  regenerated on this branch. No past rows were invented. In the regenerated page, two known-failure
-  cells in the suites table differ from T-0081's page (gen-m6 1 to 0, probes 2,644 to 2,686). They
-  come from the eval baselines merged from `main` since then, not from this change.
+  The report has rows for M5 and M6 only, and neither has exited, so the list is empty today.
+  T-0072 parses docs/milestones.md and may widen this.
+- The seed is one row for the T-0081 run (2026-10-25, `05703c6c`, complete), regenerated from
+  the same report.json as T-0081's committed page, with tasks.json regenerated on this branch. No
+  past rows were invented. Apart from the new blocks and method text, the regenerated page is the
+  T-0081 page on `main`. An earlier regeneration on this branch showed probes known failures as
+  2,686 where `main` shows 2,666. That was drift in eval/baseline/probes.txt from `main` (the
+  branch's baseline before the merge), not this change; after the merge the page matches `main`
+  again. A second regeneration leaves `git status` clean.
+- Review fixes:
+  - the tier sentence in parity.py that the merge of `main` dropped is restored;
+  - an incomplete run older than the last history row still rewrites the status block as stale
+    and exits 0, but its row is not recorded and the reason is printed (test);
+  - `RUN_DATE` and the git commit count take ASCII digits only (test);
+  - SPEC-0022 and the method text now say that an incomplete rerun never replaces a complete row
+    of the same date;
+  - a complete page no longer depends on HEAD (see above; SPEC-0022 updated to match);
+  - `main` delegates to `_stale_outcome` and `_complete_outcome`, and svg.py's `_runs` yields
+    (index, value) pairs.
 - Gates: `make py-check` (1011 passed), `make hygiene`, `scripts/check_governance.py origin/main`
   and `make typos`.

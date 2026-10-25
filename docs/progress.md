@@ -36,16 +36,16 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 
 | Milestone | Phase | Exit criteria checked | Catalog coverage | Exit measures (report) | Frozen list and probes | Todo | In progress | Blocked | Done |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 7 | 1 | 1 | 69 |
+| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 6 | 0 | 1 | 71 |
 | M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 22 visibly off, 22 known failures | 4 | 1 | 2 | 391 |
 | M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 22 visibly off, 22 known failures | 5 | 0 | 0 | 371 |
 | M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
 | M4 Storage, memory and structural edits (Phase 2) | 2 | prose | – | – | – | 0 | 0 | 0 | 0 |
 | M5 Function families I: math, logical, text, information | 1 | prose | 135/135 | **exit not met**; coverage 135/135 (met); generated suite 2 visibly off of 41,640, allowance 41 (met); ironcalc-calc 0 visibly off (met); probes 10 visibly off (not met) | probes M5: 10 visibly off, 10 known failures | 28 | 0 | 0 | 202 |
-| M6 Lookup & reference, date & time | 1 | prose | 38/39 | **exit not met**; coverage 38/39 (not met); generated suite 0 visibly off of 25,000, allowance 25 (met); ironcalc-calc 0 visibly off (met); probes 0 visibly off (met) | probes M6: 0 visibly off, 0 known failures | 16 | 0 | 0 | 93 |
-| M7 Dynamic arrays & modern Excel | 1 | prose | 32/32 | – | probes M7: 55 visibly off, 55 known failures | 37 | 0 | 0 | 151 |
+| M6 Lookup & reference, date & time | 1 | prose | 38/39 | **exit not met**; coverage 38/39 (not met); generated suite 0 visibly off of 25,000, allowance 25 (met); ironcalc-calc 0 visibly off (met); probes 0 visibly off (met) | probes M6: 0 visibly off, 0 known failures | 15 | 0 | 0 | 94 |
+| M7 Dynamic arrays & modern Excel | 1 | prose | 32/32 | – | probes M7: 55 visibly off, 55 known failures | 37 | 0 | 0 | 152 |
 | M8 Names, tables, structured references, multi-sheet | 1 | prose | no functions | – | probes M8: 99 visibly off, 99 known failures | 20 | 0 | 0 | 33 |
-| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 1,499 visibly off, 2,385 known failures | 203 | 1 | 6 | 341 |
+| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 1,499 visibly off, 2,385 known failures | 203 | 1 | 6 | 342 |
 | M10 Formatting & display | 1 | prose | no functions | – | probes M10: 95 visibly off, 95 known failures | 27 | 0 | 0 | 22 |
 | M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 22 | 0 | 1 | 36 |
 | M12 API v1, bindings & release | 3 | prose | – | – | – | 1 | 0 | 0 | 0 |
@@ -66,7 +66,7 @@ Fixing only the type, error and text cells would lift **69** of them to ≥ 99.9
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Semantics | wrong type, error or text, and semantic rules | 47 | 43 | 0 | 33 | 20,009 type, error or text | 69 of 169 |
 | Accuracy | more accurate kernels where Excel is close to correctly rounded | 13 | 9 | 0 | 1 | 131,346 numbers, accuracy and visible together | – |
-| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 38 | 23 | 4 | 216 | in the accuracy row | – |
+| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 38 | 23 | 4 | 217 | in the accuracy row | – |
 | Parked (defer: phase-1b) | last-digit work on cells already within 15 digits (Phase 1b) | 37 | 0 | 6 | 1 | – | – |
 
 - **Tasks** are `scripts/tasks.py stats --json`. Open is todo, in progress or blocked. Ready is
@@ -115,7 +115,7 @@ value is the same. Every function is listed in [docs/progress/functions.md](prog
 
 ### Functions by worst-cell tier
 
-**330 of 506** in-scope functions (65.22%) never differ from Excel in the 15 digits Excel shows, on every counted cell; **97** have fewer than 99% of their cells within 15 digits.
+**330 of 506** in-scope functions (65.22%) never differ from Excel in the 15 digits Excel shows, on every counted cell; **97** have fewer than 99% of their cells within 15 digits. The Phase 1 line above counts a function once 99.9% of its cells match; this stricter figure counts only functions with no cell off at all.
 
 | Tier | Meaning | Functions | Share | Placed by every Excel cell |
 | --- | --- | ---: | ---: | ---: |
@@ -232,12 +232,13 @@ _Not written yet: the steward writes this block (SPEC-0022)._
   not Excel, so its cells are in no function's counts. Known failures are counted from
   eval/baseline/, never edited.
 - **History.** Each run adds one row to docs/progress/history.json, one per date: a
-  rerun on the same date replaces it, and older rows are never rewritten. A run is complete when
+  rerun on the same date replaces it, except that an incomplete rerun never replaces a complete
+  row of the same date, and older rows are never rewritten. A run is complete when
   report.json parses, has the `run`, `v15_checkpoint` and tier fields, and skipped no suite. An
   incomplete run adds a `complete: false` row without measures and rewrites only the status
   block, marked stale; the rest of the page keeps the last complete run's numbers. "Since the
   last run" compares against the last complete row; its commits are `git rev-list --count
-  --first-parent <that row's commit>..HEAD`. Its visibly-off and Excel cells are the parity
+  --first-parent <that row's commit>..<this run's commit>`. Its visibly-off and Excel cells are the parity
   section's attributed cells, and open tasks are todo, in progress or blocked (`scripts/tasks.py
   stats --json`).
 - **Regenerate** with `make eval && make progress-report`. The same inputs give a byte-identical page.

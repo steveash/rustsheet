@@ -94,7 +94,8 @@ def tier_summary(p: Parity) -> str:
     return (
         f"**{never:,} of {n:,}** in-scope functions ({pct(never, n)}) never differ from Excel in "
         f"the 15 digits Excel shows, on every counted cell; **{below:,}** have fewer than 99% of "
-        f"their cells within 15 digits."
+        f"their cells within 15 digits. The Phase 1 line above counts a function once 99.9% of its "
+        f"cells match; this stricter figure counts only functions with no cell off at all."
     )
 
 
