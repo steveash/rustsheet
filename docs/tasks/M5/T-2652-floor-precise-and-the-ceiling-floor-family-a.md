@@ -49,5 +49,5 @@ as INT's cut does, not to even.
 `snap_ratio` (ceiling_floor.rs) now cuts `value/significance` with `significant_15` (ties away from zero) instead of
 `to_excel_precision` (ties to even). Probe `probes/t2652-floor-ceiling-ties` (14 values x 7 functions, excel-graph) shows all
 seven family members agree; 98/98 cells pass. Eval delta: gen-m5 known failure `048f6b1a0fb9544b` Calc!A257 fixed, no new
-known failures. Caveat: excel-graph rounds results of 1E+15 and above to 15 digits, so whether the cut stops at 1E+15 (as INT's
-does) is not evidenced; recorded in numbers.md.
+known failures. The probe also shows the family's cut has no 1E+15 boundary, unlike INT (numbers.md). Every probe row uses
+significance 1; a non-unit significance is not probed.

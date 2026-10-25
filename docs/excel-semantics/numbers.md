@@ -83,8 +83,11 @@ CEILING.MATH, CEILING.PRECISE and ISO.CEILING all agree: with significance 1, `F
 gives ...266 in both signs and both directions, `±999999999999999.5` gives ±1E+15, and `±100000000000000.5` gives
 ±100000000000001. A typed 16-digit literal is cut on entry, so the gen-m5 cell builds the tie from exact arithmetic
 (`AVERAGE(100,0.5,100-1E+15)`) and the probe stores exact halves.
-Caveat: excel-graph returns values of 1E+15 and above rounded to 15 digits, so the probe cannot show whether the cut
-stops there as INT's does (`FLOOR(1000000000000001.5,1)` reads 1E+15).
+Unlike INT, the family's cut has no 1E+15 boundary: `FLOOR(-1000000000000000.5,1)` = -1E+15 (INT gives -1000000000000001),
+`FLOOR(1000000000000002.5,1)` = `CEILING(1000000000000002.5,1)` = 1E+15, and `FLOOR(±4503599627370495.5,1)` =
+±4503599627370500 (INT gives 4503599627370495 and -4503599627370496); without the cut these would keep their integer digits
+(probe cells B7-B14). Not probed: a significance other than 1 (every probe row has significance 1, as does the gen-m5 cell),
+so "cuts the ratio" rather than "cuts the value" rests on the existing design.
 Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648); probes/t2652-floor-ceiling-ties
 (14 values x 7 functions, excel-graph, 2026-10-25, T-2652).
 Status: VERIFIED
