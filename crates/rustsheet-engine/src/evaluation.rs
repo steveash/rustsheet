@@ -405,7 +405,8 @@ impl Model {
             self.iterate_cycles(false);
         }
         self.end_iteration();
-        self.evaluate_conditional_formatting();
+        // Conditional formats are evaluated on the next style read (SPEC-0021).
+        self.cf_stale = true;
     }
 
     /// Runs passes until one completes without a restart. `RestartLog` learns

@@ -26,7 +26,7 @@ fn red_fill() -> Dxf {
     }
 }
 
-fn is_red(model: &Model, row: i32, col: i32) -> bool {
+fn is_red(model: &mut Model, row: i32, col: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, col)
         .unwrap()
@@ -88,7 +88,10 @@ fn cf_formula_entered_in_english_survives_switch_to_spanish() {
     // Displayed in English (the active language).
     assert_eq!(displayed_cf_formula(&model), "=IF($A1>5,TRUE,FALSE)");
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "row {row} should be red in English");
+        assert!(
+            is_red(&mut model, row, 1),
+            "row {row} should be red in English"
+        );
     }
 
     // Switch to Spanish.
@@ -101,10 +104,13 @@ fn cf_formula_entered_in_english_survives_switch_to_spanish() {
     // And the rule keeps highlighting the same rows.
     model.evaluate();
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "row {row} should be red in Spanish");
+        assert!(
+            is_red(&mut model, row, 1),
+            "row {row} should be red in Spanish"
+        );
     }
     for row in 1..=5 {
-        assert!(!is_red(&model, row, 1), "row {row} should not be red");
+        assert!(!is_red(&mut model, row, 1), "row {row} should not be red");
     }
 }
 
@@ -133,7 +139,7 @@ fn cf_formula_entered_in_spanish_is_stored_in_english() {
     // Displayed back in Spanish.
     assert_eq!(displayed_cf_formula(&model), "=SI($A1>5,VERDADERO,FALSO)");
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "row {row} should be red");
+        assert!(is_red(&mut model, row, 1), "row {row} should be red");
     }
 
     // Switching back to English shows the English form.
@@ -141,7 +147,7 @@ fn cf_formula_entered_in_spanish_is_stored_in_english() {
     assert_eq!(displayed_cf_formula(&model), "=IF($A1>5,TRUE,FALSE)");
     model.evaluate();
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "row {row} should still be red");
+        assert!(is_red(&mut model, row, 1), "row {row} should still be red");
     }
 }
 
