@@ -37,7 +37,7 @@ Cells:
 
 ## Acceptance criteria
 - [x] Visible parity (gen-m9, T-2258): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`); the only new known-failure line is probes S!A5 of the new probe (T-2641).
+      (`make eval-baseline`); the only new known-failure lines are probes eng-inumber-reading S!A5 (T-2641) and eng-inumber-date-boundary S!A22, B21:B23 (VALUE gaps, T-2646).
 - [x] The probe case is oracle-filled; every cell passes but A5 (`"$1+2i"`, already failing on main, scope moved to T-2641).
 - [ ] `make check` green; reviewers approve.
 
@@ -47,7 +47,7 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
 
 ## Outcome
-`complex_of` is now a `Model` method: a number argument is read at full precision, text over 255 characters is `#VALUE!`, a leading tab or U+3000 is `#NUM!`, and text `parse_complex_number` rejects falls back to VALUE's reading (`value_text_number`). gen-m9: the 8 owned lines are removed from the baseline, no regressions. New probe probes/eng-inumber-reading (19 cells, oracle-filled; 18 pass). The date-shaped guard keeps `IMABS("2024-01-01")` `#NUM!`. The one cell that differs, `$` before a complex number, is T-2641.
+`complex_of` is now a `Model` method: a number argument is read at full precision, text over 255 characters is `#VALUE!`, a leading tab or U+3000 is `#NUM!`, and text `parse_complex_number` rejects falls back to VALUE's reading (`value_text_number`). gen-m9: the 8 owned lines are removed from the baseline, no regressions. New probe probes/eng-inumber-reading (19 cells, oracle-filled; 18 pass). Text with an inner minus that is not an exponent's (`"2024-01-01"`, `"1-2"`, `"$-5"`) stays `#NUM!` without the VALUE fallback; slash dates, clock text, `" -5"`, `"1E-3%"` are read (boundary probe probes/eng-inumber-date-boundary, 46 cells, oracle-filled; 42 pass, the 4 others are VALUE gaps filed as T-2646). The one cell that differs, `$` before a complex number, is T-2641.
 
 ## Handoff (resumed)
 Tried: `complex_of` (complex/mod.rs) now takes `&self`, reads a number at full precision, rejects text over 255 characters (`#VALUE!`) and a leading tab/U+3000 (`#NUM!`), and falls back to `value_text_number` for text `parse_complex_number` rejects. That fixes the 8 owned gen-m9 cells; `make check` is green; security, architecture and quality approved.
