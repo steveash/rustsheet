@@ -41,9 +41,9 @@ fn percentile_numbers(
         CalcResult::String(_) => Ok(vec![]),
         CalcResult::Array(array) => match nested_array_error(&array, cell) {
             Some(error) => Err(error),
-            None => model.numeric_flat_of(CalcResult::Array(array), cell),
+            None => model.numeric_flat_with_element_errors(CalcResult::Array(array), cell),
         },
-        value => model.numeric_flat_of(value, cell),
+        value => model.numeric_flat_with_element_errors(value, cell),
     }
 }
 

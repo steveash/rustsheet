@@ -1,0 +1,36 @@
+---
+id: T-2640
+title: "COUPDAYS basis 1 for a coupon period before 1900-01-01: Excel's irregular lengths (gen-m9, 1 cell)"
+milestone: M9
+lane: functions-financial
+status: todo
+priority: P2
+size: S
+tier: opus
+depends_on: []
+campaign: visible
+---
+
+## Goal
+COUPDAYS on basis 1 gives Excel's length for a coupon period that starts before 1900-01-01, including the semiannual
+month-end schedules where Excel differs from the real-calendar length and settlement 0 differs from settlement 1.
+
+## Context
+Split from T-2486, which probed it (probes/coup-calendar-edges C1-C21, D1-I12; docs/excel-semantics/financial.md
+"COUPDAYS basis 1 for a period before 1900-01-01"). Ours counts the real calendar (`coupdays_actual` in
+crates/rustsheet-engine/src/functions/financial/financial_bonds/coupon_schedule.rs). Excel matches that on quarterly,
+annual and mid-month schedules but gives 181 for a March/September or May/November month-end semiannual schedule (real
+182) and 184 for a June/December one at settlement 0 or 5E-05 (181 at settlement 1). Find the rule first (more probes:
+other maturity years, the 1904 date system, settlements 0.5 and 1 against each month), then implement it.
+
+Owned gen-m9 cell (T-2257 triage, excel-graph, 2026-10-23):
+- gen-m9/b72d952c5f52cb4d Calc!A88 `=COUPDAYS((Data!B7*(-0.5)),2958465,Data!B1,1)`: Excel 184.0, ours 181.0
+
+## Acceptance criteria
+- [ ] Visible parity: the gen-m9/b72d952c5f52cb4d Calc!A88 known-failure line disappears from eval/baseline/gen-m9.txt,
+      and probes/coup-calendar-edges C1-I12 pass, with no new known-failure lines in any baseline.
+- [ ] The rule is written into financial.md (Status no longer "unexplained") with its probe evidence.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- The 1904 coupon rules (T-2125, T-2337).

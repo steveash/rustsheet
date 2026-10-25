@@ -105,31 +105,52 @@ pub(in crate::functions::financial) fn find_pcd_ncd(
 }
 
 // The real calendar dates of the coupon period around settlement, with the end-of-month rule
-// of the maturity. The previous one may fall before 1900-01-01.
+// of the maturity. The previous one may fall before 1900-01-01. Each date is the maturity moved
+// back a whole number of periods, its day clamped to the month, so the day does not drift after
+// a short month: maturity 2027-11-29 quarterly has 2003-08-29 and 2003-11-29, not the 28th
+// (`COUPPCD(37913,46720,4)` is 37862, `COUPDAYBS(37913,46720,4,4)` 50).
+// Excel: see docs/excel-semantics/financial.md#coupon-dates-keep-the-maturitys-day.
 fn coupon_period(
     settlement: i64,
     maturity: i64,
     frequency: u32,
 ) -> Result<(NaiveDate, NaiveDate), String> {
-    let return_last = is_last_day_of_month(coupon_date(maturity)?);
-    walk_coupon_schedule(settlement, maturity, frequency, return_last)
+    let mat = coupon_date(maturity)?;
+    let return_last = is_last_day_of_month(mat);
+    let months_per = (12 / frequency) as i32;
+    walk_coupon_schedule(settlement, mat, |_, periods| {
+        change_month(mat, -months_per * periods, return_last)
+    })
 }
 
-// The schedule walk of `coupon_period`, with the end-of-month rule given by the caller.
-fn walk_coupon_schedule(
+// The coupon period around settlement on the schedule COUPDAYS' basis 1 counts around a
+// 29 February (`coupdays_actual`): walked back from the maturity without the end-of-month rule,
+// each date the one after it moved back a period, so its day can drift to the 28th.
+fn chained_coupon_period(
     settlement: i64,
     maturity: i64,
     frequency: u32,
-    return_last: bool,
 ) -> Result<(NaiveDate, NaiveDate), String> {
     let months_per = (12 / frequency) as i32;
-    let mat = coupon_date(maturity)?;
+    walk_coupon_schedule(settlement, coupon_date(maturity)?, |later, _| {
+        change_month(later, -months_per, false)
+    })
+}
 
+// Walks back from `mat` until a date is on or before settlement: `step(later, periods)` gives the
+// date `periods` periods before the maturity from the one after it, `later`.
+fn walk_coupon_schedule(
+    settlement: i64,
+    mat: NaiveDate,
+    step: impl Fn(NaiveDate, i32) -> Result<NaiveDate, String>,
+) -> Result<(NaiveDate, NaiveDate), String> {
+    let mut periods = 0;
     let mut front = mat;
     let mut trailing = mat;
     while coupon_serial(front) > settlement {
         trailing = front;
-        front = change_month(front, -months_per, return_last)?;
+        periods += 1;
+        front = step(front, periods)?;
     }
     Ok((front, trailing))
 }
@@ -223,7 +244,7 @@ pub(in crate::functions::financial) fn coupdays_actual(
         d != mat && d.month() == 2 && (d.day() == 29 || (d.year() == 1900 && d.day() == 28))
     };
     let (prev, next) = if on_leap_day(prev) || on_leap_day(next) {
-        walk_coupon_schedule(settlement, maturity, frequency, false)?
+        chained_coupon_period(settlement, maturity, frequency)?
     } else {
         (prev, next)
     };

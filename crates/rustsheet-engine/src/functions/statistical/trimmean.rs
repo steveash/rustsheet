@@ -16,7 +16,7 @@ const TRIMMEAN_DATA: DataArg = DataArg {
     // error before the bad `percent` (probes/stat-test-lift P82, T-1982).
     read: |model, node, cell| match model.evaluate_node_in_context(node, cell) {
         error @ CalcResult::Error { .. } => Err(error),
-        value => model.numeric_flat_of(value, cell),
+        value => model.numeric_flat_with_element_errors(value, cell),
     },
     order: DataOrder::Ascending,
     cost: LiftCost::Cells,
