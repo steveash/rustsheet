@@ -1055,6 +1055,7 @@ C	probes/t2352-time-text-trailing-colon.case.json	26
 C	probes/t2355-regex-dollar-inner-lf.case.json	11
 C	probes/t2360-array-lambda-holidays.case.json	508
 C	probes/t2364-regex-dollar-final-cr.case.json	5
+C	probes/t2364-regex-newline-convention.case.json	25
 C	probes/t2365-wrap-expand-tocol-error-lift.case.json	13
 C	probes/t2413-blank-in-stacked-arrays.case.json	45
 C	probes/t2414-gen-m7-unexplained.case.json	70
@@ -2481,10 +2482,6 @@ F	probes/t2360-array-lambda-holidays.case.json	G!C11
 F	probes/t2360-array-lambda-holidays.case.json	G!C4
 F	probes/t2360-array-lambda-holidays.case.json	G!D12
 F	probes/t2360-array-lambda-holidays.case.json	G!D3
-F	probes/t2364-regex-dollar-final-cr.case.json	Sheet1!A1
-F	probes/t2364-regex-dollar-final-cr.case.json	Sheet1!A2
-F	probes/t2364-regex-dollar-final-cr.case.json	Sheet1!A3
-F	probes/t2364-regex-dollar-final-cr.case.json	Sheet1!A4
 F	probes/t2413-blank-in-stacked-arrays.case.json	P!A13
 F	probes/t2413-blank-in-stacked-arrays.case.json	P!A16
 F	probes/t2413-blank-in-stacked-arrays.case.json	P!A2
