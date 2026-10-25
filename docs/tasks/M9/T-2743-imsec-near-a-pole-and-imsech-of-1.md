@@ -57,7 +57,7 @@ eng-argument-modes, and the gen-m9 IMSEC/IMSECH cells (`make eval` "Functions wi
       docs/excel-semantics/engineering.md "IM* reciprocal kernels" and the cells stay owned by a follow-up.
 - [x] No new known-failure lines in any eval/baseline file (`make eval-baseline` refuses regressions); the
       gated IMSEC/IMSECH cells in ironcalc-calc, probes and gen-m9 pass at least as before.
-- [x] Unit tests pin the three inputs' 15-digit texts.
+- [x] Unit tests pin the two IMSEC inputs' 15-digit texts (J34 is pinned by T-2750).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -73,6 +73,7 @@ within half a unit of the 15th significant digit of Excel's value; the first acc
 Bit-level criteria still unmet then move to a follow-up with `defer: phase-1b`.
 
 ## Outcome
+First criterion met through its time-box clause for J34/L34 (owned by T-2750); the IMSEC cells pass.
 IMSEC's denominator is now `cos²x + ((cosh 2y + 1)/2 − 1)` (sinh²y as cosh²y − 1 by the half-angle identity):
 all 70 finite IMSEC cells of im-last-digit-sweep, so G29, H29, G33, H33 and I33 pass (sweep 1399 of 1404
 cells) and row 79 is kept. IMSECH hit the time-box: no candidate got J34 without losing another row; the
