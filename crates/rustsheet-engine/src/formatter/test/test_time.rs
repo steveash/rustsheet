@@ -84,3 +84,23 @@ fn clock_past_last_date_is_unshowable() {
     assert!(!formatted.unshowable);
     assert_eq!(formatted.text, "86400000000000000000");
 }
+
+#[test]
+fn minutes_before_seconds_without_hour() {
+    // `mm` directly before `:ss` is minutes even with no hour in the code
+    // (gen-m10 text cells, excel-graph 2026-10-16, T-1733).
+    let ctx = FormatContext::new(get_default_locale());
+    for (value, format, expected) in [
+        (1000.0, "mm:ss", "00:00"),
+        (123_456.789, "mm:ss", "56:10"),
+        (1.5, "mm:ss", "00:00"),
+        // Unprobed in Excel, same rule.
+        (123_456.789, "m:ss", "56:10"),
+    ] {
+        assert_eq!(
+            format_number(value, format, &ctx).text,
+            expected,
+            "{format}"
+        );
+    }
+}

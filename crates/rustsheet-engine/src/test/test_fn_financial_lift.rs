@@ -258,9 +258,10 @@ fn discount_securities_and_t_bills_lift_arrays_and_refuse_ranges() {
 #[test]
 fn the_table_enters_rate_as_weighted() {
     use crate::functions::Function;
-    // RATE's Newton iteration has a fixed 50-step cap; each element is charged that weight.
+    // RATE's secant has a fixed 200-step cap (Excel's, probes/rate-step-cap); each element is
+    // charged that weight.
     let weight = |function: Function| function.arg_kinds().map(|kinds| kinds.work.weight());
-    assert_eq!(weight(Function::Rate), Some(50));
+    assert_eq!(weight(Function::Rate), Some(200));
     assert_eq!(weight(Function::Pmt), Some(1));
 }
 
@@ -340,7 +341,8 @@ fn npv_irr_and_mirr_lift_their_rates_beside_whole_cash_flows() {
         // order", UNVERIFIED; T-2103). A values error is every element's.
         ("H10", "=INDEX(NPV({\"x\";0.1},K1:K2,F4),1)", "#VALUE!"),
         ("H11", "=INDEX(NPV({\"x\";0.1},K1:K2,F4),2)", "#DIV/0!"),
-        ("H12", "=INDEX(IRR(F4,{\"x\";0.1}),1)", "#DIV/0!"),
+        // A referenced cell holding an error is #VALUE! for IRR (probes/fin-irr-error-array H3, T-2390).
+        ("H12", "=INDEX(IRR(F4,{\"x\";0.1}),1)", "#VALUE!"),
         ("H13", "=INDEX(MIRR(F4,{\"x\";0.1},0.1),1)", "#DIV/0!"),
         ("H14", "=INDEX(MIRR(K1:K5,{\"x\";0.1},0.1),1)", "#VALUE!"),
         ("H18", "=SUM(--ISERROR(IRR(F4,{0.1;0.1})))", "2"),
@@ -521,4 +523,94 @@ fn a_lifted_xirr_over_long_flows_is_refused_by_the_work_bound() {
     assert_eq!(model._get_text("C4"), "#ERROR!");
     assert_eq!(model._get_text("C5"), "100000");
     assert_eq!(model._get_text("C6"), "100000");
+}
+
+// ------------------------------------------- XIRR, XNPV and FVSCHEDULE argument checks (T-2428)
+
+/// A model for the argument checks: H1 "x", H2 TRUE, H3 FALSE, H4 "1.5" as text, H5 empty,
+/// G1:G5 dates, K1:K2 "ü" and 0.3, then `cells`.
+fn checks_model(cells: &[(&str, &str)]) -> Model {
+    let mut model = new_empty_model();
+    model._set("H1", "x");
+    model._set("H2", "TRUE");
+    model._set("H3", "FALSE");
+    model._set("H4", "'1.5");
+    for (row, date) in ["39448", "39508", "39859", "39904", "40000"]
+        .iter()
+        .enumerate()
+    {
+        model._set(&format!("G{}", row + 1), date);
+    }
+    model._set("K1", "ü");
+    model._set("K2", "0.3");
+    for (cell, formula) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    model
+}
+
+fn check_args(cells: &[(&str, &str, &str)]) {
+    let input: Vec<(&str, &str)> = cells.iter().map(|(c, f, _)| (*c, *f)).collect();
+    let model = checks_model(&input);
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), *expected, "{cell}: {formula}");
+    }
+}
+
+/// financial.md "XIRR and XNPV under the gen-m9 statistical cells": the sizes come before the
+/// numbers are read.
+#[test]
+fn xirr_checks_sizes_before_reading_numbers() {
+    check_args(&[
+        // Different counts are #NUM! whatever the values hold (gen-m9/1b60bf99d71424e7 A372).
+        ("A1", "=XIRR(K1:K2,G1)", "#NUM!"),
+        ("A2", "=XIRR({-100,#N/A,60},G1:G5)", "#NUM!"),
+        // One value with one date is #N/A (gen-m9/30e20ba3302fea8b A110).
+        ("A3", "=XIRR(1E15,G1)", "#N/A"),
+        // A single text or boolean date cell is #VALUE! (gen-m9/1cd3096e3e87c965 A48).
+        ("A4", "=XIRR({-100,#N/A,60},H3)", "#VALUE!"),
+        // An error dates argument is that error before the sizes.
+        ("A5", "=XIRR({-100,50,60},1/0)", "#DIV/0!"),
+        // A boolean guess keeps the element reading's #VALUE! over a size error
+        // (`XIRR(<6 cells, text among them>,{3 dates},<TRUE>)`, gen-m9/b6a02893a8d6b151 A226);
+        // the error-guess order is T-2611's.
+        ("A7", "=XIRR(K1:K2,G1:G3,H2)", "#VALUE!"),
+        // Matching counts still solve.
+        // 1.1^(365/60) - 1.
+        ("A6", "=ROUND(XIRR({-100,110},G1:G2),6)", "0.785688"),
+    ]);
+}
+
+/// financial.md "XIRR and XNPV under the gen-m9 statistical cells": XNPV's rate, then one values
+/// cell, an error dates argument, one dates cell, then the counts.
+#[test]
+fn xnpv_checks_rate_cells_and_sizes_in_order() {
+    check_args(&[
+        // A boolean rate is #VALUE! (gen-m9/1dce4774f5c0e736 A22).
+        ("A1", "=XNPV(H2,{-100,50},G1)", "#VALUE!"),
+        // One non-numeric values cell is #VALUE!, before the dates' error (3aa168259335be54 A334).
+        ("A2", "=XNPV(0.1,H3,NA())", "#VALUE!"),
+        // Numeric text is not refused there: the counts differ (81bcdc0bec0c8e6b A37).
+        ("A3", "=XNPV(0.1,H4,G1:G2)", "#NUM!"),
+        // An error dates argument comes before the values' cells (5c6a23c4f6597f1c A111).
+        ("A4", "=XNPV(0.05,H1:H2,NA())", "#N/A"),
+        // One non-numeric dates cell is #VALUE! (d0854366830dcdee A274).
+        ("A5", "=XNPV(0.1,{-100,50},H1)", "#VALUE!"),
+        // Different counts are #NUM! before an error value (bc04c1f478c9896c A313).
+        ("A6", "=XNPV(0.1,{-100,#N/A,60},G1:G5)", "#NUM!"),
+        ("A7", "=XNPV(0.2,0.3,H1:H4)", "#NUM!"),
+        // Matching counts still discount.
+        // -100 + 110/1.1^(60/365).
+        ("A8", "=ROUND(XNPV(0.1,{-100,110},G1:G2),6)", "8.290014"),
+    ]);
+}
+
+/// One empty schedule cell leaves the principal (gen-m9/30e20ba3302fea8b A250).
+#[test]
+fn fvschedule_of_one_empty_cell_is_the_principal() {
+    check_args(&[
+        ("A1", "=FVSCHEDULE(6527,H5)", "6527"),
+        ("A2", "=FVSCHEDULE(100,IF(TRUE,H5,H1))", "100"),
+    ]);
 }

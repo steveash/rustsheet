@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B1": {
+    "t": "n",
+    "v": 6.0
+   },
+   "C1": {
+    "t": "s",
+    "v": "=IF(TRUE,LAMBDA(x,x*2))(3)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "cc6da572709af718712d91be44f40689e932493a13e88824cb9767e4fc784b36",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-23T12:28:25+00:00",
+  "version": null,
+  "workbook_name": "873ad3e2442f9cafb8382417139d40cfa762be9fcd26f25912b9505113861e13.xlsx"
+ }
+}

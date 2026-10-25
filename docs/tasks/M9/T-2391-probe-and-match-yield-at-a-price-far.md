@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-1592]
 campaign: visible
 ---
 
@@ -47,10 +47,26 @@ Cells:
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A121
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A145, A390
 
+## First attempt (T-2391, 2026-10-24)
+probes/yield-newton-domain is committed and filled (excel-graph): the price sweep's cut lies between 1E4 (computes, -0.340)
+and 1E5 (`#NUM!`), and the 100-step cap returns non-roots at very large redemptions. No solver model fitted all of it.
+Newton from the coupon rate with no fallback fixes the 18 `#NUM!` cells but breaks prices 1500 to 10000, which compute
+today through the bisection fallback. Step halving and fixed restarts fail the other way. Details and counts:
+financial.md "YIELD's #NUM! cells and its suspected 100-step cap". Both groups seem to come from YIELD's unfitted start phase, so
+this task now waits on T-1592. Restart from the probe's C column, where about 100 analytic-Newton steps from near the
+redemption-100 root land within 1e-6 of Excel.
+
+Moved from T-2482 (2026-10-24): YIELD at a coupon rate of 999999999999995 is `#NUM!` in Excel, ours 10.571526228899263
+(probes/t2436, T-2436); its arguments are in range, so only the solver's limit is left.
+Owned gen-m9 cells (T-2482, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 visibly off.
+- gen-m9/320d51765af9b6b7 Calc!A329 `=CHITEST(YIELD(36563,45559,SUM(Data!B11:B12,Data!B$8),107,107,2,1),(DAY(43015)-ODDLPRICE(35397,38233,33415,1E-300,Data!B2,109,4)))`: Excel #NUM!, ours #N/A
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2482): the known-failure line listed under "Moved from T-2482" disappears from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): the 20 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A probe case sweeps the price to locate the cut, filled through excel-graph.
+- [x] A probe case sweeps the price to locate the cut, filled through excel-graph (probes/yield-newton-domain).
 - [ ] YIELD matches Excel's `#NUM!` cells; the financial.md entry states the rule (VERIFIED).
 - [ ] `make check` green; reviewers approve.
 

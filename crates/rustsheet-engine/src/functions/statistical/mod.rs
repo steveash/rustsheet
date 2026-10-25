@@ -36,6 +36,7 @@ mod poisson;
 mod prob;
 mod quartile;
 mod rank_eq_avg;
+mod regression;
 mod sorted_data;
 pub(super) mod special;
 mod standard_dev;
@@ -44,6 +45,7 @@ mod student_t;
 #[cfg(test)]
 mod t2464_harness;
 mod t_dist;
+mod trend;
 mod trimmean;
 pub(super) mod variance;
 mod weibull;

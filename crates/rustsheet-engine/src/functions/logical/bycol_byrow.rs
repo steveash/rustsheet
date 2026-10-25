@@ -2,6 +2,7 @@ use super::lambda::LambdaCaller;
 use crate::cast::calc_result_to_element;
 use crate::functions::util::{array_element_value, array_node_to_calc_result};
 use crate::functions::Function;
+use crate::nested_array::NestedKind;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -9,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::{check_array_cells, check_array_size, check_range_size},
+    limits::{check_built_array_size, check_range_size},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -292,18 +293,31 @@ impl Model {
             // a blank cell: ISBLANK TRUE, yet COUNT and AVERAGE count it as 0
             // (`MAP(HSTACK(Z1:Z2,{1;2}),_xleta.COUNT)` is 1,1,1,1, probes/t2413-blank-in-stacked-arrays
             // A7:A11, T-2413). A range's blank cell stays a blank cell (A43:A47).
-            Source::Values(data) => LambdaGrid::Values(
-                data.iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|node| match node {
-                                ArrayNode::Empty => CalcResult::EmptyArg,
-                                node => array_element_value(node, cell),
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
+            // A nested cell of a GROUPBY or PIVOTBY result reaches the LAMBDA whole, as its array
+            // (`MAP(GROUPBY(..,LAMBDA(v,v)),LAMBDA(x,ROWS(x)))` gives 2 for a two-record group,
+            // `REDUCE(0,..,LAMBDA(a,x,a+ROWS(x)))` 19; SPEC-0018 rule 5, probes/t2592-nested-groupby-cells
+            // A100:A105, A15). Its cells are charged to the walk budget (`NestedArray::value`), and
+            // past it the whole call is `#ERROR!` (DEVIATION, decision 0014).
+            Source::Values(data) => {
+                let mut grid = Vec::with_capacity(data.len());
+                for row in &data {
+                    let mut values = Vec::with_capacity(row.len());
+                    for node in row {
+                        values.push(match node {
+                            ArrayNode::Empty => CalcResult::EmptyArg,
+                            ArrayNode::Nested(nested) if nested.kind() == NestedKind::Array => {
+                                match nested.value(&mut self.nested_budget, cell) {
+                                    array @ CalcResult::Array(_) => array,
+                                    error => return Err(error),
+                                }
+                            }
+                            node => array_element_value(node, cell),
+                        });
+                    }
+                    grid.push(values);
+                }
+                LambdaGrid::Values(grid)
+            }
         })
     }
 
@@ -426,16 +440,10 @@ impl Model {
             Err(error) => return error,
         };
 
-        // Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is
-        // 16385 (probes/expand-makearray-past-grid D1); rows past it stay `#VALUE!`, and so do
-        // columns past it above the cell bound (`MAKEARRAY(3,1E15,..)` is `#VALUE!`,
-        // gen-m7/b2078b5d702c691a A2553).
-        let refused = if check_array_cells(rows, cols).is_some() {
-            check_array_size(rows, cols)
-        } else {
-            check_array_size(rows, 1)
-        };
-        if let Some((error, message)) = refused {
+        // Rows and columns past the grid are built: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385
+        // (probes/expand-makearray-past-grid D1), `ROWS(MAKEARRAY(1048577,1,..))` 1048577
+        // (probes/t2579-array-value-edges B23, above our cell bound).
+        if let Some((error, message)) = check_built_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
 
@@ -465,11 +473,14 @@ impl Model {
     }
 }
 
-/// A number, text, boolean or blank: a value that is neither an array nor a reference.
+/// A number, text, boolean, blank or error value: a value that is neither an array nor a
+/// reference. An error value as a later array of MAP is `#VALUE!` whatever the error
+/// (probes/map-later-array-error-blank A1:A3, A12:A13, T-1946).
 fn is_scalar_value(value: &CalcResult) -> bool {
     matches!(
         value,
-        CalcResult::Number(_)
+        CalcResult::Error { .. }
+            | CalcResult::Number(_)
             | CalcResult::String(_)
             | CalcResult::Boolean(_)
             | CalcResult::EmptyCell

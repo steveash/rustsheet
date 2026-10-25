@@ -72,7 +72,16 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (2): Calc!A136, A326
 - gen-m9/eedd629f3d69fdda.case.json (1): Calc!A79
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `TTEST(<0>,Data!A2:D5,ROUND(0.1,9),<#VALUE!>)` is `#VALUE!`: the type argument's error before the tails range check (ours `#NUM!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/a612e89321a6df9c Calc!A22 `=F.INV.RT(0.975,0,TTEST(CEILING.PRECISE(Data!D$9,0.1),Data!A2:D5,ROUND(0.1,9),(Data!C8/Data!D7)))`: Excel #VALUE!, ours #NUM!; inner `TTEST(CEILING.PRECISE(Data!D$9,0.1),Data!A2:D5,ROUND(0.1,9),(Data!C8/Data!D7))` Excel #VALUE!, ours #NUM!
+Cells:
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A22
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 64 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `T.TEST(1/0,A1:A3,3,2)` is `#DIV/0!`, `T.TEST(A1:A3,NA(),1,9)` `#N/A`, `T.TEST(A1:A3,B1:B3,-2.5,"a")`
@@ -87,3 +96,7 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2256): every cell it owns has the wrong type, error or text (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Also owns (from T-2426)
+Blank one-cell reference cells that need this function's argument order, left failing by T-2426 (which made the blank
+`#VALUE!` in the shared readers): 583ca2baea0bb30a A389, c2684066d8df263e A90, 0620505280d2ea6e A139, 91e167cd8d7eb652 A24, d8f44d556674c2fd A329.

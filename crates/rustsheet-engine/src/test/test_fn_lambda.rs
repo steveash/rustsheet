@@ -341,6 +341,50 @@ fn a_call_of_a_call_is_chained() {
 }
 
 #[test]
+fn a_call_of_a_reference_function_result_is_chained() {
+    // probes/chained-calls-builtin-* and chained-calls-ref-4, -6 (excel-graph, T-2405, T-2499):
+    // the result of a built-in that can return a reference (or a LAMBDA) may be called; Excel
+    // refuses the others (`SUM(1)(2)`, `ABS(1)(2)`, `IFERROR`, `IFNA`), which stay syntax errors.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("A3", "3")] {
+        model._set(cell, value);
+    }
+    let cases = [
+        ("=IF(TRUE,LAMBDA(x,x*2))(3)", "6"),
+        ("=CHOOSE(1,LAMBDA(x,x*2))(3)", "6"),
+        ("=IFS(TRUE,LAMBDA(x,x*2))(3)", "6"),
+        ("=SWITCH(1,1,LAMBDA(x,x*2))(3)", "6"),
+        ("=LET(f,LAMBDA(x,x*2),f)(3)", "6"),
+        ("=INDEX(A1:A3,1)(2)", "#REF!"),
+        ("=OFFSET(A1,0,0)(2)", "#REF!"),
+        ("=INDIRECT(\"A1\")(2)", "#REF!"),
+        ("=CHOOSE(1,A1:A3)(2)", "#REF!"),
+        // A called TAKE, DROP, TRIMRANGE or XLOOKUP over a range is the range it picks (T-2499).
+        ("=TAKE(A1:A3,1)(2)", "#REF!"),
+        ("=DROP(A1:A3,1)(2)", "#REF!"),
+        ("=TRIMRANGE(A1:A3)(2)", "#REF!"),
+        ("=XLOOKUP(1,A1:A3,A1:A3)(2)", "#REF!"),
+        ("=INDEX({1,2},1)(2)", "#NAME?"),
+        ("=SUM(1)(2)", "#ERROR!"),
+        ("=ABS(1)(2)", "#ERROR!"),
+        ("=IFERROR(LAMBDA(x,x*2),0)(3)", "#ERROR!"),
+        ("=IFNA(LAMBDA(x,x*2),0)(3)", "#ERROR!"),
+    ];
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("C{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, value)) in cases.iter().enumerate() {
+        let cell = format!("C{}", row + 1);
+        assert_eq!(model._get_text(&cell), *value, "{formula}");
+        if *value != "#ERROR!" {
+            // FORMULATEXT prints the callee bare (probes/chained-calls-builtin-if-text C1).
+            assert_eq!(model._get_formula(&cell), *formula);
+        }
+    }
+}
+
+#[test]
 fn a_long_call_chain_is_bounded_like_nesting() {
     // Each chained call is a level of the tree, so a chain past the depth limit is refused
     // rather than overflowing the stack (CLAUDE.md directive 5).

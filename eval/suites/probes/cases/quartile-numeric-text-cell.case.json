@@ -1,0 +1,24 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2066: QUARTILE/PERCENTILE/PERCENTRANK of a single cell of numeric-looking text (A1 = text '5', C1 checks it is text), and k's error before the empty data of a no-number range (A2 = ' x ', A3 empty).",
+ "tags": ["M2", "probe", "T-2066"],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "5",
+    "A2": " x ",
+    "C1": "=ISTEXT(A1)",
+    "C2": "=QUARTILE(A1,1)",
+    "C3": "=PERCENTRANK(A1,5)",
+    "C4": "=PERCENTILE.INC(A1,0)",
+    "C5": "=QUARTILE.EXC(A1,1)",
+    "C6": "=PERCENTILE.EXC(A2:A3,1/0)",
+    "C7": "=PERCENTILE.EXC(A2:A3,\"x\")",
+    "C8": "=QUARTILE.EXC(A2:A3,1/0)",
+    "C9": "=PERCENTILE(A2:A3,1/0)"
+   }
+  }
+ ]
+}

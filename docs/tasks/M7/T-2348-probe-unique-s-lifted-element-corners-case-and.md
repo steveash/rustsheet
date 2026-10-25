@@ -3,7 +3,7 @@ id: T-2348
 title: "Probe UNIQUE's lifted-element corners: case and -0 entries, call errors, INDEX of other empty values"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -44,3 +44,6 @@ Decision 0083 (gap triage 2026-10-22, T-2254): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probe `probes/m7-unique-lift-corners` (21 questions, excel-graph, 2026-10-23) filled; findings in arrays.md "UNIQUE's and SORTBY's lifted elements": uniform entries spanning several columns keep the call's top-left only in the first column (other columns empty), independent of by_col; text entries are `#VALUE!` whatever their case; `{0;-0}` is equal; call errors stay and the first good element is kept; INDEX of an empty value from IFERROR is `#VALUE!` (already matched). Engine: `empty_past_first_column` in lift/driver.rs. Eval: gen-m7 known failures 45 -> 39 (the 6 owned lines), the new probe passes in full, no regressions. The rule is UNIQUE-only (`CallResult::ArrayFirstColumn`); SORTBY is unchanged, and its uniform 1xN sort_order and an error element past column one are UNVERIFIED in arrays.md, added to T-2349.

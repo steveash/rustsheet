@@ -327,3 +327,132 @@ fn effect_and_nominal_use_excels_power() {
         );
     }
 }
+
+#[test]
+fn effect_and_nominal_overflow_is_num_error() {
+    // probes/effect-overflow-power-of-ten (excel-graph): an overflowing `^` is #NUM!, and
+    // EFFECT(270,30) is 1E30 (T-2241).
+    let mut model = new_empty_model();
+    model._set("A1", "=EFFECT(1E300,2)");
+    model._set("A2", "=NOMINAL(1E300,0.5)");
+    model._set("A3", "=EFFECT(270,30)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A3"),
+        Ok(CellValue::Number(1e30))
+    );
+}
+
+// =============================================================================
+// Argument order and booleans (T-2455, probes/t2455-transpose-single-value)
+// =============================================================================
+
+// The discount securities read basis first (A21, A64, A65); a boolean ACCRINTM par, ACCRINT issue
+// and AMORDEGRC rate are `#VALUE!` (A41, A52, A51), after an out-of-range earlier date's `#NUM!`.
+#[test]
+fn financial_argument_order_and_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=RECEIVED(37025,2.5,1E+300,1/0,"abc")"#);
+    model._set("A2", r#"=DISC(37025,2.5,1/0,100,"abc")"#);
+    model._set("A3", "=ACCRINTM(34825,37622,1E-9,TRUE,4)");
+    model._set("A4", "=ACCRINT(TRUE,SQRT(-1),1e-15,100,9984,2,1.9)");
+    model._set("A5", "=AMORDEGRC(90812,36624,38707,453,3,TRUE,4)");
+    model._set("A6", "=AMORDEGRC(70537,36888,7E13,46,12,TRUE,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#NUM!");
+}
+
+// The discount securities read the basis first (ACCRINTM last), a date off the calendar is #NUM!
+// as it is read, and the date order and amounts are checked after every read
+// (probes/discount-argument-check-order, T-2484).
+#[test]
+fn discount_securities_check_order() {
+    let cases = [
+        // A date off the calendar beats a later error, text or boolean ...
+        ("=DISC(-1,NA(),95,100,0)", "#NUM!"),
+        ("=INTRATE(39448,2958466,\"x\",1100,0)", "#NUM!"),
+        ("=PRICEDISC(39668,-1,\"x\",106)", "#NUM!"),
+        ("=RECEIVED(123456789.123,44370,TRUE,0.05,4)", "#NUM!"),
+        ("=PRICEMAT(39448,43831,-1,NA(),0.05,0)", "#NUM!"),
+        ("=YIELDMAT(2958466,43831,39000,0.06,TRUE,0)", "#NUM!"),
+        ("=ACCRINTM(-1,39448,0.1,1000,NA())", "#NUM!"),
+        // ... but not an earlier argument's error, nor (except ACCRINTM) the basis.
+        ("=DISC(NA(),-1,95,100,0)", "#N/A"),
+        ("=YIELDDISC(-1,43831,95,100,\"x\")", "#VALUE!"),
+        ("=PRICEMAT(-1,43831,39000,0.06,0.05,NA())", "#N/A"),
+        // Serial 0.5 passes the read.
+        ("=DISC(0.5,NA(),95,100,0)", "#N/A"),
+        // A basis off 0-4 is #NUM! before any other argument is read.
+        ("=YIELDDISC(9.33,1E+15,0,NA(),5)", "#NUM!"),
+        ("=YIELDMAT(NA(),43831,39000,0.06,98,-1)", "#NUM!"),
+        ("=ACCRINTM(NA(),39448,0.1,1000,5)", "#N/A"),
+        // The date order and the amounts come after every argument is read.
+        ("=INTRATE(39448,39000,1000,NA(),0)", "#N/A"),
+        ("=RECEIVED(39448,43831,0,\"x\",0)", "#VALUE!"),
+        ("=PRICEMAT(39448,43831,40000,0.06,TRUE,0)", "#VALUE!"),
+        ("=ACCRINTM(39448,38000,TRUE,1000,0)", "#VALUE!"),
+        // Two errors: the earlier one in reading order.
+        ("=DISC(39448,43831,1/0,NA(),0)", "#DIV/0!"),
+        ("=DISC(NA(),43831,95,100,1/0)", "#DIV/0!"),
+        ("=ACCRINTM(39000,NA(),0.1,1000,1/0)", "#N/A"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+// AMORLINC and AMORDEGRC read cost to rate first (a date off the calendar is #NUM! as it is read),
+// then check the values, then read the basis, and accept a purchase date below 1
+// (probes/amor-argument-check-order, T-2485).
+#[test]
+fn amortization_check_order_and_early_purchase() {
+    let cases = [
+        // A boolean rate beside a negative cost: the read comes first.
+        ("=AMORLINC(-1,39679,39813,300,1,TRUE,1)", "#VALUE!"),
+        ("=AMORDEGRC(-1,39679,39813,300,1,TRUE,1)", "#VALUE!"),
+        // A date off the calendar beats a later error; serial 0.5 passes the read.
+        ("=AMORLINC(2400,-1,NA(),300,1,0.15,1)", "#NUM!"),
+        ("=AMORDEGRC(2400,39679,2958466,NA(),1,0.15,1)", "#NUM!"),
+        ("=AMORLINC(2400,0.5,NA(),300,1,0.15,1)", "#N/A"),
+        // The value checks come before the basis, AMORDEGRC's asset life after it.
+        ("=AMORLINC(-1,39679,39813,300,1,0.15,NA())", "#NUM!"),
+        ("=AMORDEGRC(2400,40000,39813,300,1,0.15,\"x\")", "#NUM!"),
+        ("=AMORDEGRC(2400,39679,39813,300,1,0.5,NA())", "#N/A"),
+        // Two errors: the earlier one.
+        ("=AMORLINC(2400,39679,39813,1/0,NA(),0.15,1)", "#DIV/0!"),
+        // Purchase dates 0 and 1E-15, and one on the first period's end.
+        ("=AMORDEGRC(2400,0,366,300,1,0.15,1)", "562"),
+        ("=AMORDEGRC(2400,1E-15,1,300,1,0.15,1)", "899"),
+        ("=AMORDEGRC(2400,1,366,300,1,0.15,1)", "563"),
+        ("=AMORLINC(46557,0,39881,440,0,0.1)", "46117"),
+        ("=AMORLINC(2400,1,1,300,1,0.15,1)", "360"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

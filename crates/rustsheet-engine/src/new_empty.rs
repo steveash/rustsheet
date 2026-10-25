@@ -22,6 +22,7 @@ use crate::{
     language::{get_default_language, get_language, Language},
     locale::{get_default_locale, get_locale, Locale},
     model::Model,
+    tables::lower_this_row_cells,
     types::{
         DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
         WorksheetView,
@@ -47,7 +48,12 @@ fn is_valid_sheet_name(name: &str) -> bool {
 
 impl Model {
     /// Creates a new worksheet. Note that it does not check if the name or the `sheet_id` exists
-    fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
+    fn new_empty_worksheet(
+        name: &str,
+        sheet_id: u32,
+        load_rank: u32,
+        view_ids: &[&u32],
+    ) -> Worksheet {
         let mut views = HashMap::new();
         for id in view_ids {
             views.insert(
@@ -73,6 +79,7 @@ impl Model {
             shared_formulas: vec![],
             sheet_data: Default::default(),
             sheet_id,
+            load_rank,
             state: SheetState::Visible,
             color: Default::default(),
             frozen_columns: 0,
@@ -81,7 +88,19 @@ impl Model {
             views,
             conditional_formatting: vec![],
             links: HashMap::new(),
+            data_tables: Vec::new(),
         }
+    }
+
+    /// The load rank a sheet added now gets: one past the highest in the workbook, so it
+    /// runs before every sheet loaded earlier in Excel's calc order (SPEC-0017).
+    fn get_new_load_rank(&self) -> u32 {
+        self.workbook
+            .worksheets
+            .iter()
+            .map(|worksheet| worksheet.load_rank.saturating_add(1))
+            .max()
+            .unwrap_or(0)
     }
 
     pub fn get_new_sheet_id(&self) -> u32 {
@@ -186,7 +205,11 @@ impl Model {
                 // Defined-name formulas are stored internally in English, so
                 // they must be parsed with the English parser regardless of the
                 // user's active language.
-                match self.parse_internal_formula(formula_body, &dummy_ref) {
+                let mut body = self.parse_internal_formula(formula_body, &dummy_ref);
+                // A name has no cell: its `#This Row` areas are resolved at the row it is parsed
+                // at, as before SPEC-0016 step 2. Excel's rule is unprobed (T-1699, T-2595).
+                body.lower_this_rows_at(dummy_ref.row);
+                match body {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(Arc::new((parameters, *body)))
                     }
@@ -262,7 +285,8 @@ impl Model {
         // Now we need a sheet_id
         let sheet_id = self.get_new_sheet_id();
         let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
-        let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id, &view_ids);
+        let worksheet =
+            Model::new_empty_worksheet(&sheet_name, sheet_id, self.get_new_load_rank(), &view_ids);
         self.workbook.worksheets.push(worksheet);
         self.reset_parsed_structures();
         (sheet_name, self.workbook.worksheets.len() as u32 - 1)
@@ -294,7 +318,8 @@ impl Model {
             None => self.get_new_sheet_id(),
         };
         let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
-        let worksheet = Model::new_empty_worksheet(sheet_name, sheet_id, &view_ids);
+        let worksheet =
+            Model::new_empty_worksheet(sheet_name, sheet_id, self.get_new_load_rank(), &view_ids);
         if sheet_index as usize > self.workbook.worksheets.len() {
             return Err("Sheet index out of range".to_string());
         }
@@ -383,6 +408,7 @@ impl Model {
         let mut new_worksheet = self.workbook.worksheet(source_index)?.clone();
         new_worksheet.name = new_name.clone();
         new_worksheet.sheet_id = new_sheet_id;
+        new_worksheet.load_rank = self.get_new_load_rank();
 
         // Retarget the copied formulas: references to the source sheet become
         // references to the new sheet, everything else is left as-is. Implicit
@@ -402,12 +428,17 @@ impl Model {
         // written as the retargeted area, which reads the copy's cells, as before SPEC-0016.
         let source_tables = self.table_names_on_sheet(&source_name);
         let mut shared_formulas = Vec::with_capacity(new_worksheet.shared_formulas.len());
-        for formula in &new_worksheet.shared_formulas {
+        let mut by_row = Vec::new();
+        for (index, formula) in new_worksheet.shared_formulas.iter().enumerate() {
             let mut t = self.parser.parse(formula, &cell_reference);
             rename_sheet_in_node(&mut t, source_index, &new_name);
             shared_formulas.push(to_string_lowering(&t, None, &source_tables));
+            if t.has_this_row_to(&source_tables) {
+                by_row.push((index, t));
+            }
         }
         new_worksheet.shared_formulas = shared_formulas;
+        lower_this_row_cells(&mut new_worksheet, &by_row, &source_tables);
         self.parser.set_lexer_mode(LexerMode::A1);
 
         // Insert the copy right after the source sheet.
@@ -701,7 +732,7 @@ impl Model {
         let workbook = Workbook {
             shared_strings: vec![],
             defined_names: vec![],
-            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, &[&0])],
+            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, 0, &[&0])],
             styles: Default::default(),
             name: name.to_string(),
             settings: WorkbookSettings::new(timezone, locale_id),
@@ -770,6 +801,7 @@ impl Model {
             named_lambdas: NamedLambdas::default(),
             lambda_captures: HashMap::new(),
             captured_cells: 0,
+            nested_budget: crate::nested_array::NestedBudget::default(),
             lambda_calls_base: None,
             last_lambda_id: 0,
             defined_names_running: Default::default(),

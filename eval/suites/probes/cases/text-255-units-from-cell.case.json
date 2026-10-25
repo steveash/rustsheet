@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2305 probe: REPT, CODE, UNICODE and T of text over 255 units read from a cell (literal D1/D2, formula result D3).",
+ "tags": [
+  "M5",
+  "probe",
+  "text",
+  "T-2305"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=REPT(D1,2)",
+    "A2": "=CODE(D1)",
+    "A3": "=UNICODE(D1)",
+    "A4": "=T(D1)",
+    "A5": "=REPT(D2,2)",
+    "A6": "=CODE(D2)",
+    "A7": "=UNICODE(D2)",
+    "A8": "=T(D2)",
+    "A9": "=REPT(D3,2)",
+    "A10": "=CODE(D3)",
+    "A11": "=UNICODE(D3)",
+    "A12": "=T(D3)",
+    "D1": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "D2": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "D3": "=REPT(\"x\",256)"
+   }
+  }
+ ],
+ "expected": {}
+}

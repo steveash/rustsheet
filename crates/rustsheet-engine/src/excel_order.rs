@@ -96,12 +96,26 @@ pub(crate) fn run_chain<C>(
 }
 
 impl Model {
-    /// The formula cells of the workbook in natural `(sheet, row, column)` order: the chain
-    /// starts at the last one.
+    /// The formula cells of the workbook in `(load rank, row, column)` order: the chain starts at
+    /// the last one. A sheet keeps its load position after a move (SPEC-0017), so the sheets
+    /// are ordered by `Worksheet::load_rank`, not by their tab.
     fn formula_positions(&self) -> Vec<CellReferenceIndex> {
-        self.positions_where(|cell| {
+        let mut positions = self.positions_where(|cell| {
             matches!(cell, Cell::CellFormula { .. } | Cell::ArrayFormula { .. })
-        })
+        });
+        positions.sort_unstable_by_key(|position| self.chain_key(*position));
+        positions
+    }
+
+    /// Where a cell stands in the chain's natural order; the sheet index only breaks a tie
+    /// between equal ranks.
+    fn chain_key(&self, position: CellReferenceIndex) -> (u32, u32, i32, i32) {
+        let rank = self
+            .workbook
+            .worksheets
+            .get(position.sheet as usize)
+            .map_or(0, |worksheet| worksheet.load_rank);
+        (rank, position.sheet, position.row, position.column)
     }
 
     /// Everything after the anchors of a pass in Excel order. The anchors ran first, as in the
@@ -148,7 +162,12 @@ impl Model {
             };
             state.weeknum_start = weeknum_start;
             let precedent = (precedent.sheet, precedent.row, precedent.column);
-            match positions.binary_search_by_key(&precedent, |p| (p.sheet, p.row, p.column)) {
+            let precedent = model.chain_key(CellReferenceIndex {
+                sheet: precedent.0,
+                row: precedent.1,
+                column: precedent.2,
+            });
+            match positions.binary_search_by_key(&precedent, |p| model.chain_key(*p)) {
                 Ok(precedent) => Outcome::Blocked(precedent as u32),
                 Err(_) => Outcome::Blocked(index),
             }

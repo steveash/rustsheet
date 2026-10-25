@@ -48,7 +48,7 @@ fn n_of(value: &ArrayNode) -> ArrayNode {
         ArrayNode::Boolean(b) => ArrayNode::Number(f64::from(u8::from(*b))),
         ArrayNode::String(_) | ArrayNode::Empty => ArrayNode::Number(0.0),
         ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
-        ArrayNode::Lambda(_) => ArrayNode::Error(Error::VALUE),
+        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => ArrayNode::Error(Error::VALUE),
     }
 }
 
@@ -150,6 +150,9 @@ impl Model {
             PickedReference::Read(read) => return matches!(read, RefArg::Ranges(_)),
             PickedReference::Value(_) => return false,
         };
+        // A `#This Row` area is the cell or range on the formula's row, `#VALUE!` off the data rows
+        // (SPEC-0016 step 2).
+        let node: &Node = &node.ungrouped_at(cell.row);
         // OFFSET of one is `#VALUE!`, so not a reference (probes/external-ref-no-link-index
         // A16), also of one a LET picks (probes/external-ref-no-link-let-index A3), where OFFSET
         // otherwise counts as one unevaluated (`kind.returns_reference()`).
@@ -392,11 +395,13 @@ impl Model {
         CalcResult::Array(flags)
     }
 
+    /// A data table's result cells count as formulas (`{=TABLE(,A1)}`; recalc.md).
     fn cell_has_formula(&self, at: CellReferenceIndex) -> bool {
-        matches!(
-            self.get_cell_formula(at.sheet, at.row, at.column),
-            Ok(Some(_))
-        )
+        self.data_table_at(at).is_some()
+            || matches!(
+                self.get_cell_formula(at.sheet, at.row, at.column),
+                Ok(Some(_))
+            )
     }
 
     /// Lifts over a multi-cell range or array like the IS* tests (probes/rich-errors-arg-kinds
@@ -612,7 +617,8 @@ impl Model {
             // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So are a
             // range operator over function operands (`A1:OFFSET(..)`) and a cross-sheet one
             // other than [`joins_a_cell_to_a_sheet_qualified_one`] (`Alpha!A1:Beta!B1`).
-            let argument = args[0].ungrouped();
+            // A `#This Row` area is its cell or range on the formula's row (SPEC-0016 step 2).
+            let argument: &Node = &args[0].ungrouped_at(cell.row);
             if matches!(
                 argument,
                 Node::ReferenceKind { .. }

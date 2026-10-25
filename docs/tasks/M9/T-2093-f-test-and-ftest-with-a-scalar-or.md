@@ -3,7 +3,7 @@ id: T-2093
 title: "F.TEST and FTEST with a scalar or text argument are #DIV/0!, not #VALUE!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -172,10 +172,10 @@ Cells:
 - [ ] Visible parity: the visibly-off cell listed under Context (2026-10-21) has Excel's value to 15 significant digits, or its type, error and text: the 1 cell of the ungated probes-numeric suite passes in `make eval`, with no new known-failure lines in any baseline.
 - [ ] The five cells above pass in `make eval`. t1049-ftest A15, A16 and A22 still pass, and no
       gated baseline (eval/baseline/*.txt) gains an F line.
-- [ ] A unit test covers `F.TEST(3,4)`, `F.TEST("a",{1,2,3})` and `FTEST(1,{1,2,3})`, each `#DIV/0!`.
+- [x] A unit test covers `F.TEST(3,4)`, `F.TEST("a",{1,2,3})` and `FTEST(1,{1,2,3})`, each `#DIV/0!`.
       The code comment cites the probe cells.
-- [ ] statistics.md's T-1049 entry says the scalar rule is implemented (T-2093).
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's T-1049 entry says the scalar rule is implemented (T-2093).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - An empty one-cell reference (T-2426) and overflowing data (T-2432).
@@ -183,3 +183,6 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#VALUE!` where Excel is `#DIV/0!`), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+F.TEST/FTEST treat a number or text argument as a sample with no points, so they give `#DIV/0!` (fisher.rs). t1049-ftest A29-A32 and m9-legacy-ftest A32 now match Excel; gated baselines unchanged. Unit test and statistics.md updated. After T-2255 landed on main (`f_test_sample`, which reads a number or text as an empty sample and an error argument as its error, from gen-m9 evidence), the merge keeps main's code and this task's unit test; the probe follow-up T-2400 was dropped because T-2255's gen-m9 cells already answer it.

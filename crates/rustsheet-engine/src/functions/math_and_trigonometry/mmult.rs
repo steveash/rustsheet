@@ -1,3 +1,4 @@
+use super::matrix::coerce_to_f64;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -62,27 +63,8 @@ impl Model {
             );
         }
 
-        // Coerce one ArrayNode into f64 (or return an early error).
-        // MMULT does not coerce booleans or empty cells — those yield #VALUE!.
-        fn coerce(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
-            match node {
-                ArrayNode::Number(v) => Ok(*v),
-                ArrayNode::Boolean(_)
-                | ArrayNode::Empty
-                | ArrayNode::String(_)
-                | ArrayNode::Lambda(_) => Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "MMULT requires numeric values".to_string(),
-                )),
-                ArrayNode::Error(e) => Err(CalcResult::new_error(
-                    e.clone(),
-                    cell,
-                    "MMULT received an error value".to_string(),
-                )),
-            }
-        }
-
+        // MMULT does not coerce booleans or empty cells: those yield #VALUE!, as in MDETERM and
+        // MINVERSE.
         // Pre-coerce both matrices so we fail fast and avoid repeated work.
         let mut a_num = vec![vec![0.0f64; k]; m];
         for i in 0..m {
@@ -94,7 +76,7 @@ impl Model {
                 );
             }
             for j in 0..k {
-                match coerce(&a[i][j], cell) {
+                match coerce_to_f64(&a[i][j], cell) {
                     Ok(v) => a_num[i][j] = v,
                     Err(e) => return e,
                 }
@@ -111,7 +93,7 @@ impl Model {
                 );
             }
             for j in 0..n {
-                match coerce(&b[i][j], cell) {
+                match coerce_to_f64(&b[i][j], cell) {
                     Ok(v) => b_num[i][j] = v,
                     Err(e) => return e,
                 }

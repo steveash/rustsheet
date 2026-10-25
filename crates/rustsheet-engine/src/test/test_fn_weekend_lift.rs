@@ -65,3 +65,57 @@ fn three_d_weekend_and_holidays() {
     assert_eq!(model._get_text("A4"), *"#VALUE!");
     assert_eq!(model._get_text("A5"), *"#VALUE!");
 }
+
+// T-2271: a number weekend truncates, a boolean is 1 or 0 and a blank cell is 0 (`#NUM!`)
+// (probes/weekend-number-coercion A1:A26, excel-graph).
+#[test]
+fn weekend_number_truncates_and_boolean_and_blank_read_as_numbers() {
+    let mut model = new_empty_model();
+    model._set("B1", "TRUE");
+    model._set("B2", "FALSE");
+    let cases = [
+        ("TRUE", "45007", "23"),
+        ("FALSE", "#NUM!", "#NUM!"),
+        ("B1", "45007", "23"),
+        ("B2", "#NUM!", "#NUM!"),
+        ("3.9", "45007", "23"),
+        ("11.5", "45006", "27"),
+        ("D1", "#NUM!", "#NUM!"),
+        ("0.5", "#NUM!", "#NUM!"),
+    ];
+    for (row, (weekend, _, _)) in (1..).zip(cases) {
+        model._set(
+            &format!("A{row}"),
+            &format!("=WORKDAY.INTL(45000,5,{weekend})"),
+        );
+        model._set(
+            &format!("C{row}"),
+            &format!("=NETWORKDAYS.INTL(45000,45030,{weekend})"),
+        );
+    }
+    model.evaluate();
+    for (row, (_, workday, networkdays)) in (1..).zip(cases) {
+        assert_eq!(
+            model._get_text(&format!("A{row}")),
+            workday,
+            "WORKDAY.INTL row {row}"
+        );
+        assert_eq!(
+            model._get_text(&format!("C{row}")),
+            networkdays,
+            "NETWORKDAYS.INTL row {row}"
+        );
+    }
+}
+
+// T-2583: NETWORKDAYS.INTL reads the weekend before the holidays: a blank weekend cell's `#NUM!`
+// beats the `#N/A` of an array holiday (gen-m9 c2974c061384fdd9 Calc!A149, probes/t2436).
+#[test]
+fn networkdays_intl_blank_weekend_error_beats_the_holidays_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=NETWORKDAYS.INTL(31,4886,D1,{1,2;#N/A,\"\"})");
+    model._set("A2", "=NETWORKDAYS.INTL(31,4886,1,{1,2;#N/A,\"\"})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+}

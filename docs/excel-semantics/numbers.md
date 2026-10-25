@@ -96,6 +96,13 @@ Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 999
 `EVEN((0.1/E5)*SERIESSUM(-2.5,B10,3,0.1))` (gen-m5/38b1b8e51dbad326 Calc!A10) was not an EVEN miss: the EVEN input was an
 ulp low through SERIESSUM's own power, and the cell passes since T-2163 raised with the `^` kernel. No formulation is fitted
 yet for the ODD cells.
+Fitting points (66 values 2^52 .. 1.8E+308, ODD and EVEN, excel-graph, T-2172): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66.
+EVEN matches Excel on all 66 cells. ODD misses 11: every miss is an even double strictly above 2^53 and up to about 1E+16 (2^53+2,
+2^53+6, ..., 9999999999999990 .. 1.000000000000001E+16, and -(2^53+2)), where Excel returns the next double away from zero (x+2) and
+ours the one toward zero (e.g. G10 `ODD(9007199254740994)` is 9007199254740996, ours 9007199254740992; G30 `ODD(9999999999999998)` is
+1E+16, an even result). Between 2^53 and at least 1.000000000000001E+16 (G36; where the band ends below 2^54 is unprobed) the rule is by residue: x = 2 (mod 4) gives x+2 (away from zero), x = 0 (mod 4) returns x unchanged, an even result
+(G11, G13, G15, G17, G27, G29, G31, G33, G35, G63). `ODD(2^53)` and values from 2^54 up return the input unchanged (F9, F20:F25, F37:F64, F66).
+`EVEN(6.223015277861143E+37)` with the stored double returns its input (H60); the gen-m5 ...144 came from a computed, 1-ulp-low input, not EVEN. T-2173 fits this.
 Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224 (gen-m5/38b1b8e51dbad326 Calc!A10 fixed by T-2163).
 `ODD(EVEN(9999999999999999))` is 9999999999999992 as well (ours 9999999999999988): gen-m5/d88d12a62b726a0a Calc!A232 (excel-graph,
 2026-10-22, T-2252 triage).
@@ -952,7 +959,9 @@ as a guard of ours; it cannot occur below |x| = 1 and no cell probes it.)
   alone, 486 / 484. Rounding the product and quotient to 64 bits before the double (x87 double rounding) also fits all
   1015, so the sweep does not tell the two apart; the engine keeps plain doubles. Earlier negative results (x87 F2XM1,
   64-bit expm1) are in the entry above.
-Ours: `excel_expm1` in `functions/math_and_trigonometry/hyperbolic.rs`.
+Ours: `excel_expm1` in `x87_exp.rs` (moved from hyperbolic.rs by T-2242). PPMT also uses it, for `1-EXP(-n*L)` with |x| = n*L up to
+hundreds (financial.md "PPMT discounts with an atanh-series log", probes-numeric/ppmt-log-rate-sweep), where the u - 1 = -1 guard
+is reachable (n*L above about 36.7).
 Status: VERIFIED (excel-graph).
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
@@ -1076,7 +1085,7 @@ quirk. The ATAN kernel is the engine's `f64::atan`, as in `fn_atan`; ulp parity 
 Evidence: probes/atan2-quadrants (all 123 numeric cells equal this model; libm `atan2` misses 25 by one ulp, as does
 the 34-cell G column of probes/asin-atan-sign-source), probes/atan2-error-edges, probes/atan2-kept-subnormal (with `=0`
 companions, decision 0042); excel-graph, 2026-10-19, T-1930.
-Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT may share the kernel (not probed).
+Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT is the same kernel (77 of 77 cells of probes-numeric im-last-digit-sweep; engineering.md "IM* reciprocal kernels, IMABS and IMARGUMENT", T-2044).
 Status: VERIFIED
 Tasks: T-1930, T-1797
 
@@ -1657,7 +1666,7 @@ product of `(n+i)/(i+1)` over k gives 92377.99999999999 and 35345263800 instead)
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/COMBIN_COMBINA.xlsx D4, D5, D16, and D11 for `COMBINA(0,0)` (Excel-cached,
 Excel Online). A huge k is past the bound below (`COMBINA(2,1E300)` is `#NUM!`).
 Ours: `fn_combina` calls `combin(n+k-1, k)`. Its loop runs min(k, n-1) times and stops at overflow; the bound below
-keeps `n+k-1` under 2^31-1, so `COMBINA(1,1E10)` is `#NUM!` at once (directive 5; the old loop ran k times).
+keeps `n+k-1` under 2^31-1, so `COMBINA(1,1E10)` is `#NUM!` at once, as in Excel (probes/t2291 A5); the loop is bounded as a side effect.
 Status: VERIFIED (3 cached cells; the rule is a fit to them)
 Tasks: T-0905
 Bound (T-2162): a large `number` is `#NUM!`: `COMBINA(9007199254740992,1)`, `COMBINA(6227020800,10)` (`FACT(13)`),
@@ -1670,8 +1679,10 @@ and `COMBIN(2^31+1, 2^31+1)` is `#NUM!`. COMBINA is `#NUM!` when `n+k-1` >= 2^31
 `COMBINA(2^31-1,2)` and `COMBINA(2^31-10,20)` are `#NUM!`; with k = 0 it is `#NUM!` from `n` = 2^31. Both agree with COMBINA(n,k) being COMBIN(n+k-1,k).
 Evidence (excel-graph, 2026-10-20): gen-m5/34f69d858a39f497 Calc!A231, gen-m5/50d8a085335c05e6 Calc!A173,
 gen-m5/e0087a1fb9a36188 Calc!A379, gen-m5/fc81c2f704bef138 Calc!A265, gen-m5/6b831f5e2a20bc34 Calc!A5; numbers from gen-m5/1b30e4d075b252ea Calc!A213,
-gen-m5/c688ca172fe533dc Calc!A288. Every probed cell has `n` near 2^31 or above; for a small `n` with `k` past 2^31
-(`COMBINA(1,1E10)`, ours `#NUM!`) the rule is extrapolated (T-2291). Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
+gen-m5/c688ca172fe533dc Calc!A288. For a small `n` with a huge `k` the rule holds too
+(probes/t2291-combina-small-n-huge-k A1:A7, excel-graph, 2026-10-23, T-2291): `COMBINA(1,2^31-1)`, `COMBINA(1,2^31)`,
+`COMBINA(2,2^31-2)`, `COMBINA(2,2^31-1)`, `COMBINA(1,1E10)` and `COMBINA(2,1E300)` are all `#NUM!` (n+k-1 >= 2^31-1), and
+`COMBIN(2^31-2,2^31-2)` is 1. Ours matches. Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
 functions/math_and_trigonometry/mathematical.rs, T-2162).
 
 ## SEQUENCE accumulates its step
@@ -1886,7 +1897,13 @@ Observation: `SUMXMY2(C10:E12,C6:E8)`, whose numeric pairs are (-1, 123456789.12
 double sums of `(x-y)^2`, of `x^2-2xy+y^2` and of `x^2+y^2-2xy` (ours). `SUMX2-2SUMXY+SUMY2` gives ...518. So Excel's
 accumulation is none of these; one cell cannot fit it.
 Evidence: gen-m5/bf8903e05ec369ca Calc!A248 (excel-graph, 2026-10-22, T-2252 triage).
-Status: OBSERVED; the T-2172 oracle sweep collects the points, T-2384 fits them.
+Sweep points (77 rows x SUMXMY2, SUMX2MY2, SUMX2PY2, excel-graph, T-2172): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!J1:X77 (row 1 is the A248 pairs).
+SUMX2MY2 and SUMX2PY2 match on all 77 rows. SUMXMY2 misses only V1, V3, V10, V12 and V16 (ours 1 ulp low). Excel's SUMXMY2 is order-dependent: rows 1-6 are the three A248
+pairs in all six orders, and V1 and V3 are 1.5241579027474522E+16 while V2, V4, V5 and V6 are 1.524157902747452E+16 (row 16, x/y
+swapped, gives ...522 like row 1; row 17 gives ...520); a plain sequential sum gives ...520 in every order, so no order-independent
+accumulation fits. V10 and V12 (the big pair with (7,1E-15)) are ...520 where ours is ...518; V11 and V14 match. Every mixed,
+cancelling and large-difference sum matches.
+Status: OBSERVED; the T-2172 sweep holds the points, T-2384 fits them.
 
 ## ARABIC of a blank cell, and padded numerals (T-2153)
 Rule: ARABIC of a blank cell is 0, as `ARABIC("")` is, whether the blank comes as a reference (`ARABIC(C3)`), through
@@ -1910,15 +1927,15 @@ above 4) is `#VALUE!`. BASE does the opposite: a negative number is `#NUM!` befo
 "0000000000", "0".
 Evidence (excel-graph, 2026-10-20): gen-m5/49bfbf67a1409563 Calc!A179, gen-m5/0362d48f56108faa Calc!A39, gen-m5/1962de140dae0111 Calc!A206,
 gen-m5/a6fec430ac350c1a Calc!A31, gen-m5/c0651f0e0fb544d0 Calc!A253, gen-m5/d1b251fd6e9c4b4b Calc!A24.
-Unprobed: which error wins when both the number and the form are bad (`ROMAN(-5,NA())`, `ROMAN(4000,9)`); the engine
-reports the number's.
+Which error wins when both are bad: see the T-2423 probe below.
 ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)` is five "DLXI" (forms
 1, 2, 0.5, 3, 4; the 123456789.123 element is `#VALUE!` and the HSTACK pads `#N/A`, both dropped by ignore 2: gen-m7/f7e94a817e5385ac
-Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. Only the array form is evidenced; the array number and a multi-cell range follow the same table entry unprobed. Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
+Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. The array number, a multi-cell range and an array of booleans as the form are evidenced below (T-2423). Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
+ROMAN probed (T-2423, probes/roman-lift-forms, excel-graph, 2026-10-23): `ROMAN({1;4},0)` is the 2x1 "I", "IV"; `ROMAN(4,Data!A1:A2)` (forms 0, 4) is "IV", "IV"; `ROMAN(Data!A1:A2,0)` (numbers 0, 4) is "", "IV"; `ROMAN(4,{TRUE,FALSE})` is "IV", "IV" and `ROMAN(4,TRUE)` is "IV". `ROMAN(499,{TRUE,FALSE})` is "CDXCIX", "ID" (TRUE is form 0, FALSE is form 4) and `ROMAN(499,Data!A1:A2)` (forms 0, 4) is "CDXCIX", "ID"; `ROMAN(499,{1,2,3,4})` is "LDVLIV", "XDIX", "VDIV", "ID" (the 4-based results above cannot tell the forms apart). When both are bad the form's error wins over a negative number for `ROMAN(-5,NA())` (`#N/A`; ours `#VALUE!`, T-2523), and the text form `ROMAN(-5,"x")` is `#VALUE!`; `ROMAN(4000,9)` is `#VALUE!`.
 COMBINA lifts over arrays (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COMBINA({7;1},4)` is the 2x1 209.99999999999997 (COMBIN(10,4), as above), 1; `COMBINA(Data!E7:E8,4)` and `COMBINA(4,{1;2})` are
 2 rows; `COMBINA(WRAPROWS(E6:E12,1,1),4)` is 7x1: #NUM! (blank is 0), 209.99999999999997, #NUM!, 5, #VALUE! ("abc"), #NUM!, #VALUE!. The gen-m7 `#VALUE!` of
 `VSTACK(COMBINA(..),CHOOSE(3,..))` (f19581ac44da1653 A3357) is the CHOOSE: a scalar-error argument makes VSTACK that error (probes/vstack-scalar-error, T-1695)
-(`VSTACK({1;2},CHOOSE(3,1,2))` is `#VALUE!`, ours agrees). Ours COMBINA is `#N/IMPL!` on arrays (T-2453).
+(`VSTACK({1;2},CHOOSE(3,1,2))` is `#VALUE!`, ours agrees). Implemented (T-2453): COMBINA lifts both arguments.
 Status: VERIFIED (excel-graph); implemented (T-2154).
 
 ## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes
@@ -1976,8 +1993,8 @@ Tasks: T-1282, T-1785
 ## Trig of a huge angle
 SIN, COS, TAN, COT, SEC and CSC return `#NUM!` when |x| >= 2^27 (134217728); 2^27-1 still gives a
 number, and the cut is the same for negative arguments and for 1E+300. The error is a real error
-(`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). Only the integers 2^27-1 and 2^27 (and their negatives -2^27, -2^27-1) were probed at the cut; the
-exact cut for fractional arguments in between is unprobed (assumed |x| >= 2^27). COSH(1E+15) is also
+(`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). T-1201 probed only the integers 2^27-1 and 2^27 (and their negatives) at the cut; T-2172 adds fractions: the
+cut for fractional arguments is also |x| >= 2^27: 134217727.25, .5, .75 and 2^27-2^-26 give numbers, 134217728.25 and -2^27 are `#NUM!`, negative fractions below 2^27 in magnitude give numbers (-134217728.25 itself unprobed) (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A131:D142, T-2172). COSH(1E+15) is also
 `#NUM!` (probe cell A85).
 Excel reduces every trig argument by multiples of `π₆₄/2`, where `π₆₄` is π rounded to a 64-bit
 significand (the x87 `FLDPI` constant `0xC90FDAA22168C235·2^-62`, π₆₄ − π ≈ 5.0166e-20), and
@@ -1995,8 +2012,9 @@ near the cut the 10th-12th digit moves (SIN(2^27-1) is -0.9559933287726706, libm
 distinguished by any probed cell.
 TAN misses this model by 1 ulp at arguments near 1.2E+8: `TAN(123456789.123)` is 56.41575748007382 (model and ours
 56.415757480073815, also `SIN(x)/COS(x)`) and `TAN(123456788.123)` is 0.6173408433901317 (ours ...318). Evidence (excel-graph,
-2026-10-20): gen-m5/d0419fa09d6a756a Calc!A311, gen-m5/f0f205865a3a4328 Calc!A227, gen-m5/c688ca172fe533dc Calc!A284. SIN and COS at these
-arguments are unprobed (T-2172 sweeps them; T-2147 fits).
+2026-10-20): gen-m5/d0419fa09d6a756a Calc!A311, gen-m5/f0f205865a3a4328 Calc!A227, gen-m5/c688ca172fe533dc Calc!A284. T-2172 sweep (145 arguments over 1E+6 .. 2^27, probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A1:D145): SIN and COS match the
+pi64 model on all 145 cells; TAN misses only B121, B123, B126 and B130 (+-123456788.123 and +-123456789.123, 1 ulp), its other 141 cells
+pass. So the miss is TAN-only and confined to arguments near 1.2E+8 (T-2147 fits).
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 

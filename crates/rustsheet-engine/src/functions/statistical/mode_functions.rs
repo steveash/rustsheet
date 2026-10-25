@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::nested_array::nested_array_error;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -22,12 +23,17 @@ impl Model {
                     let v = self.values_from_range(left, right)?;
                     values.extend(v.into_iter().flatten());
                 }
-                CalcResult::Array(arr) => match self.values_from_array(arr) {
-                    Ok(v) => values.extend(v.into_iter().flatten()),
-                    Err(e) => {
-                        return Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}")))
+                CalcResult::Array(arr) => {
+                    if let Some(error) = nested_array_error(&arr, cell) {
+                        return Err(error);
                     }
-                },
+                    match self.values_from_array(arr) {
+                        Ok(v) => values.extend(v.into_iter().flatten()),
+                        Err(e) => {
+                            return Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}")))
+                        }
+                    }
+                }
                 CalcResult::Number(n) => values.push(n),
                 // A direct error propagates as itself: `MODE(1,"1",#DIV/0!,2,3)` is `#DIV/0!`
                 // (probes/mode-typed-arguments A22, T-1291), as do an error cell, range or name
@@ -40,7 +46,9 @@ impl Model {
                 // coerced and not `#VALUE!` (probes/mode-typed-arguments A1-A20, T-1291), and
                 // text inside ranges is skipped too. A blank single-cell reference is `#VALUE!`
                 // (coercion.md, MODE; T-0947).
-                CalcResult::EmptyCell if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) => {
+                CalcResult::EmptyCell
+                    if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
+                {
                     return Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,

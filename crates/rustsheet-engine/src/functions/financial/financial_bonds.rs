@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 
 use crate::formatter::dates::real_date_to_serial;
 
-mod coupon_schedule;
+pub(super) mod coupon_schedule;
 mod yield_closed;
 mod yield_solver;
 
@@ -21,6 +21,7 @@ use super::number_or_error;
 use crate::{
     arithmetic::power,
     calc_result::CalcResult,
+    constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     functions::lift::{div_error, num_error},
@@ -565,7 +566,12 @@ impl Model {
 
     /// Reads and checks `(settlement, maturity, rate, yld, frequency, basis)` of DURATION and
     /// MDURATION, and of PRICE and YIELD (`yld` is the price) with their redemption at
-    /// `values[4]`: every argument is read, in order, before any value is checked.
+    /// `values[4]`, in Excel's order (probes/bond-argument-check-order, T-2482; financial.md
+    /// "PRICE, YIELD, DURATION and MDURATION check order"). PRICE and YIELD read and check the
+    /// basis first, DURATION and MDURATION last. A settlement or maturity off the calendar is
+    /// #NUM! as it is read, and DURATION's frequency as it is read; the date order and the
+    /// rate, yld, price and redemption checks come after every argument is read, and settlement
+    /// 0 passes the read (`PRICE(0,43831,NA(),..)` is #N/A).
     fn bond_args(
         &self,
         values: &[CalcResult],
@@ -579,8 +585,14 @@ impl Model {
                 (false, [s, m, r, y, f, rest @ ..]) => (s, m, r, y, None, f, rest.first()),
                 _ => return Err(CalcResult::new_args_number_error(cell)),
             };
-        let settlement = self.financial_date_of(settlement, cell)?;
-        let maturity = self.financial_date_of(maturity, cell)?;
+        // `PRICE(-1,..,NA())` is #N/A and `PRICE(NA(),..,5)` #NUM!; DURATION's basis comes last.
+        let early_basis = if with_redemption {
+            Some(self.day_count_basis_of(basis, cell)?)
+        } else {
+            None
+        };
+        let settlement = self.financial_calendar_date_of(settlement, cell)?;
+        let maturity = self.financial_calendar_date_of(maturity, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let yld = self.cast_number_no_bools_ref(yld, cell)?;
         let redemption = match redemption {
@@ -588,9 +600,15 @@ impl Model {
             None => 100.0,
         };
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?;
         validate_frequency(frequency, cell)?;
-        let basis = validate_basis(basis, cell)?;
+        let basis = match early_basis {
+            Some(basis) => basis,
+            None => self.day_count_basis_of(basis, cell)?,
+        };
+        let (settlement, maturity) = (
+            self.financial_date(settlement),
+            self.financial_date(maturity),
+        );
         // YIELD's price must be positive, a yield may be 0.
         let bad_fourth = match function {
             BondFunction::Yield => yld <= 0.0,
@@ -739,10 +757,12 @@ impl Model {
 
     /// Reads and checks the arguments of ODDFPRICE and ODDFYIELD (`N` = 4 dates: settlement,
     /// maturity, issue, `first_coupon`) or ODDLPRICE and ODDLYIELD (`N` = 3: settlement, maturity,
-    /// `last_interest`), then rate, yld or pr (`price_given`), redemption, frequency and [basis].
-    /// Every argument is read, in order, before any value is checked; then a date off the
-    /// calendar, the frequency, the basis, `check_dates` (the dates' order) and the values are
-    /// #NUM! in that order.
+    /// `last_interest`), then rate, yld or pr (`price_given`), redemption, frequency and [basis],
+    /// in Excel's order (probes/odd-bond-argument-check-order, T-2483; financial.md "ODDFPRICE,
+    /// ODDFYIELD, ODDLPRICE and ODDLYIELD check order"). A date below 0 or past 9999-12-31 is
+    /// #NUM! as it is read, and so is the frequency, before the basis is read; then a date a 1904
+    /// workbook's reading moves off the calendar, the basis, `check_dates` (the dates' order) and
+    /// the values are #NUM! in that order.
     fn odd_args<const N: usize>(
         &self,
         values: &[CalcResult],
@@ -759,19 +779,28 @@ impl Model {
         let date_system = self.workbook.settings.date_system;
         let mut read = [None; N];
         for (date, value) in read.iter_mut().zip(date_values) {
-            *date = date_system.odd_period_1900_serial(self.cast_number_no_bools_ref(value, cell)?);
+            let serial = self.cast_number_no_bools_ref(value, cell)?;
+            // A date off the calendar is `#NUM!` as it is read, ahead of an error in a later
+            // argument (probes/fin-odd-date-before-error-arg A1:A7, A11, A14:A16; a date of 0 is
+            // fine, A17; odd-bond-argument-check-order: -0.5 and 2958466 too, 2958465 is fine).
+            let calendar = 0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0;
+            if !calendar.contains(&serial) {
+                return Err(num_error(cell));
+            }
+            *date = date_system.odd_period_1900_serial(serial);
         }
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let yld_or_pr = self.cast_number_no_bools_ref(yld_or_pr, cell)?;
         let redemption = self.cast_number_no_bools_ref(redemption, cell)?;
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
+        // `ODDFPRICE(..,100,3,NA())` is #NUM!: the frequency is checked before the basis is read.
+        validate_frequency(frequency, cell)?;
         let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         // A date Excel's reading moves off the calendar (`DateSystem::odd_period_1900_serial`).
         let mut dates = [0; N];
         for (date, read) in dates.iter_mut().zip(read) {
             *date = read.ok_or_else(|| num_error(cell))?;
         }
-        validate_frequency(frequency, cell)?;
         let basis = validate_basis(basis, cell)?;
         check_dates(&dates, frequency)?;
         let bad_fourth = if price_given {
@@ -822,7 +851,9 @@ impl Model {
         Ok((odd, schedule))
     }
 
-    /// The checked arguments of ODDLPRICE (`price_given` false) or ODDLYIELD.
+    /// The checked arguments of ODDLPRICE (`price_given` false) or ODDLYIELD. A settlement on or
+    /// before the last coupon is #NUM!, after every argument is read
+    /// (probes/odd-bond-argument-check-order A909:A925).
     fn odd_last_of(
         &self,
         values: &[CalcResult],
@@ -831,7 +862,7 @@ impl Model {
     ) -> Result<OddArgs<3>, CalcResult> {
         self.odd_args::<3>(values, price_given, cell, |dates, _| {
             let [settlement, maturity, last_interest] = *dates;
-            if last_interest >= maturity || settlement >= maturity {
+            if settlement <= last_interest || last_interest >= maturity || settlement >= maturity {
                 return Err(num_error(cell));
             }
             Ok(())

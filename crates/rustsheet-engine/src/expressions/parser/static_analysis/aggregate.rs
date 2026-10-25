@@ -47,7 +47,7 @@ pub(super) fn areas_static_result(args: &[Node]) -> StaticResult {
 /// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12, H15:H17).
 fn is_read_reference(arg: &Node) -> bool {
     // A written group is its child: `AREAS((A1,B1))` reads the union (T-1342).
-    match arg.ungrouped() {
+    match &*arg.ungrouped_static() {
         Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::OpRangeKind { .. }

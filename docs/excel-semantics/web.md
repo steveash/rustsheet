@@ -53,9 +53,11 @@ A real pivot: see the next section (T-1705).
 Rule: Excel loads a pivot of any size its grid allows. The importer drops, never truncates, a pivot cache with more
 than 1,048,576 records, 16,384 fields, 1,000,000 shared items over its fields or 10,000,000 record values (records x
 fields), every cache once the workbook's caches together pass 10,000,000 record values (in workbook order), and a pivot
-with more than 256 fields on an axis (rows, columns or page) or 256 data fields, or past the 64th pivot of a sheet;
-the pivots on a dropped cache go with it. GETPIVOTDATA against a dropped pivot is `#REF!` rather than a wrong total.
+with more than 256 fields on an axis (rows, columns or page) or 256 data fields, past the 64th pivot of a sheet, or past the 1,000th pivot
+of the workbook (in sheet order; T-2394); the pivots on a dropped cache go with it. GETPIVOTDATA against a dropped pivot is `#REF!` rather than a wrong total.
 The limits are totals counted while parsing, before anything past them is allocated (CLAUDE.md directive 5).
+Part names that differ only by case or by `\` against `/` are one part, so a pivot or cache reached twice that way is skipped like any other. A
+sheet that loses pivots to a cap logs one line with the count, not one per pivot.
 Evidence: none for Excel; this is a resource limit (SPEC-0015 "Untrusted-input limits").
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/pivot.rs (`CacheBuilder`, `MAX_*`), crates/rustsheet-xlsx/src/import/pivots.rs
@@ -99,8 +101,8 @@ includes time-only dates if Excel writes them so), and a pivot whose data field 
 no `location` or not one `pivotField` per cache field, or whose parts are reached outside the package (absolute,
 escaping or External targets), twice, or through a duplicate `cacheId`: GETPIVOTDATA against it is `#REF!`.
 UNVERIFIED: what Excel answers for each of these (presumably it computes them, refreshing a cache saved without
-records); a known gap, not a deviation. Cache `<d>` dates are read as 1900-system serials even in a `date1904`
-workbook, which no answer depends on yet (GETPIVOTDATA matches text items only; T-2393 before dates are matched).
+records); a known gap, not a deviation. A cache `<d>` date is converted to the workbook's date system (T-2393); one before
+the 1904 epoch in a `date1904` workbook has no serial there and skips the cache like a pre-1900 date (UNVERIFIED: Excel's answer). The 1904 serial is the 1900 sum minus 1462, so a timestamp's fraction can differ by one ulp from the 1904 sum's; compute the date part in the target system before pivot date items are matched (T-2085). The 1904 values are derived from the 1462-day epoch offset, not from a 1904 pivot workbook.
 GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
 pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
 Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or
@@ -121,10 +123,10 @@ insert inside it, a delete of its first line, an inner line or its last line) is
 SPEC-0015 states that Excel refuses an edit that would change part of a pivot, and refusing is the engine's way of matching
 that (as for an edit that would break an array formula), never a silently cut pivot. A sheet rename keeps the sheet's pivots
 (they are keyed by sheet id) and rewrites the cache sources naming that sheet; a sheet deletion removes its pivots and undoing
-it brings them back. A row or column move on a sheet holding pivots still drops them (`#REF!`), a known gap (T-2401).
-Evidence: none from Excel yet. The formula oracle cannot make structural edits; T-2402 records which inserts and deletes
+it brings them back. A row or column move shifts a pivot that lies wholly inside the moved lines, or wholly inside the zone they jump over, with its cells; a pivot wholly outside the moved group and the zone it jumps over stays where it is; a move that would split it (some lines in the moved group or zone, some not) is refused with an error and changes nothing, as a move that splits a merged cell is (T-2401).
+Evidence: none from Excel yet. The formula oracle cannot make structural edits; T-2402 records which inserts, deletes and moves
 Excel refuses (Graph range insert/delete or a desktop observation), including whether deleting every line of a pivot deletes it.
 Status: UNVERIFIED
-Implemented in: crates/rustsheet-engine/src/pivot.rs (`Model::displace_pivots`, `take_pivots_on`, `restore_pivots`,
-`rename_pivot_sources`), called from the insert/delete actions in actions.rs and from sheet_undo.rs and new_empty.rs (T-2086).
+Implemented in: crates/rustsheet-engine/src/pivot.rs (`Model::displace_pivots`, `move_pivots`, `take_pivots_on`, `restore_pivots`,
+`rename_pivot_sources`), called from the insert/delete/move actions in actions.rs and from sheet_undo.rs and new_empty.rs (T-2086).
 Tasks: T-2086, T-2401, T-2402

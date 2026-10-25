@@ -97,10 +97,11 @@ impl Model {
         Ok(())
     }
 
-    /// A date argument of the TBILL functions as read: its number, #NUM! unless it floors to a
-    /// serial from 0 to 9999-12-31, checked before the next argument is read (`TBILLEQ(-1,1/0,0.05)`
-    /// and `TBILLEQ(39000,2958466,1/0)` are #NUM!, `TBILLEQ(0,39100,1/0)` #DIV/0!;
-    /// probes/securities-argument-error-order C1:F16; financial.md, T-1406).
+    /// A date argument of the TBILL, discount-security, AMORLINC and AMORDEGRC functions as read:
+    /// its number, #NUM! unless it floors to a serial from 0 to 9999-12-31, checked before the next
+    /// argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)` are #NUM!,
+    /// `TBILLEQ(0,39100,1/0)` #DIV/0!; probes/securities-argument-error-order C1:F16; financial.md,
+    /// T-1406).
     pub(super) fn financial_calendar_date_of(
         &self,
         value: &CalcResult,
@@ -112,6 +113,20 @@ impl Model {
             return Err(num_error(cell));
         }
         Ok(serial)
+    }
+
+    /// A day-count basis argument as read: an error, text or boolean is returned, an omitted basis
+    /// is 0, and a number that is not a basis (5, -1) is #NUM! before the next argument is read
+    /// (`PRICE(NA(),..,5)` and `DISC(NA(),..,5)` are #NUM!; probes/bond-argument-check-order,
+    /// probes/discount-argument-check-order; financial.md "PRICE, YIELD, DURATION and MDURATION
+    /// check order", "Discount securities check order").
+    pub(super) fn day_count_basis_of(
+        &self,
+        basis: Option<&CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> Result<u32, CalcResult> {
+        day_count_basis(self.cast_number_no_bools_or(basis, 0.0, cell)?)
+            .ok_or_else(|| num_error(cell))
     }
 
     /// The date checks PRICE, YIELD and DURATION make before computing: [`Model::check_settlement`]

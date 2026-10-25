@@ -260,6 +260,7 @@ pub(crate) fn get_worksheet_xml(
         .iter()
         .map(|(node, _)| legacy_reading_intersects(node))
         .collect();
+    let table_formulas = super::data_tables::anchor_formulas(&worksheet.data_tables);
     for row_index in row_indices {
         let mut row_data_str: Vec<String> = vec![];
         for (column_index, cell) in worksheet.sheet_data.cells_in_row(row_index) {
@@ -589,6 +590,11 @@ pub(crate) fn get_worksheet_xml(
                         ei = exported_error_literal(ei),
                         vm = vm_attribute(ei)
                     ));
+                }
+            }
+            if let Some(formula) = table_formulas.get(&(row_index, column_index)) {
+                if let Some(last) = row_data_str.last_mut() {
+                    *last = super::data_tables::with_formula(last, formula);
                 }
             }
         }

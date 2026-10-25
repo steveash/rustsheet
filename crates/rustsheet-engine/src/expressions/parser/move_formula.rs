@@ -1,8 +1,7 @@
 use super::{
-    stringify::{stringify_reference, to_string_moved, DisplaceData},
+    stringify::{open_range_flags, stringify_reference, to_string_moved, DisplaceData},
     Node, Reference,
 };
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::{Area, CellReferenceRC};
 use crate::{language::Language, locale::Locale};
 
@@ -125,11 +124,10 @@ pub(super) fn moved_reference_text(node: &Node, move_context: &MoveContext) -> O
             row2,
             column2,
         } => {
-            let full_row = *absolute_row1 && *absolute_row2 && (*row1 == 1) && (*row2 == LAST_ROW);
-            let full_column = *absolute_column1
-                && *absolute_column2
-                && (*column1 == 1)
-                && (*column2 == LAST_COLUMN);
+            let (full_row, full_column) = open_range_flags(
+                (*absolute_row1, *row1, *absolute_row2, *row2),
+                (*absolute_column1, *column1, *absolute_column2, *column2),
+            );
 
             let reference_row1 = if *absolute_row1 {
                 *row1

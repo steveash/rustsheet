@@ -1,4 +1,5 @@
 use crate::arithmetic::{extended_product, extended_sum, flush_subnormal};
+use crate::nested_array::NestedKind;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -18,7 +19,7 @@ impl Model {
     /// Multiplies corresponding elements across all arrays and returns the sum.
     /// Non-numeric values (text, booleans, empty) are treated as 0, but a blank one-cell
     /// reference is `#VALUE!`. All arrays must have the same dimensions; a mismatch yields
-    /// `#VALUE!` unless a later argument is itself an error or blank.
+    /// `#VALUE!` unless an argument holds an error element or a later one is itself an error or blank.
     pub(crate) fn fn_sumproduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -27,12 +28,15 @@ impl Model {
         // Read every argument in order: a whole-argument error or a blank one-cell argument
         // wins even over a shape mismatch between earlier arguments
         // (`SUMPRODUCT(NA(),D1:E2,blank)` is `#N/A`, `SUMPRODUCT(blank,D1:E2,NA())` `#VALUE!`;
-        // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150). Once the shapes
-        // disagree, the elements of that and later arguments are not read, so an error element
-        // there does not win: unprobed, TODO(T-2450).
+        // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150). An error element
+        // of any argument beats a shape mismatch in either order, but not a whole-argument
+        // error of a later argument (`SUMPRODUCT(R,X,NA())` is `#N/A`); the first element error
+        // in argument then element order is kept (probes/t2296-sumproduct-error-element, T-2450). A blank
+        // one-cell argument after an element error also wins, inferred and unprobed.
         let mut arrays: Vec<Vec<Vec<f64>>> = Vec::with_capacity(args.len());
         let mut shape: Option<(usize, usize)> = None;
         let mut mismatch = false;
+        let mut element_error: Option<Error> = None;
         for arg in args {
             let arr = match self.sumproduct_array(arg, cell) {
                 Ok(a) => a,
@@ -40,11 +44,8 @@ impl Model {
             };
             let arg_shape = (arr.len(), arr.first().map_or(0, Vec::len));
             mismatch = mismatch || *shape.get_or_insert(arg_shape) != arg_shape;
-            if mismatch {
-                continue;
-            }
 
-            // Coerce to f64: non-numeric → 0.0, errors propagate.
+            // Coerce to f64: non-numeric → 0.0.
             let mut num_arr: Vec<Vec<f64>> = Vec::with_capacity(arr.len());
             for row in &arr {
                 let mut num_row: Vec<f64> = Vec::with_capacity(row.len());
@@ -52,13 +53,16 @@ impl Model {
                     let v = match node {
                         ArrayNode::Number(v) => *v,
                         ArrayNode::Boolean(_) | ArrayNode::String(_) | ArrayNode::Empty => 0.0,
-                        ArrayNode::Lambda(_) => return Model::lambda_as_number_error(cell),
+                        // A nested GROUPBY or PIVOTBY cell is no number: `SUMPRODUCT(GROUPBY(..))`
+                        // is 0 (probes/t2594-nested-aggregates A22, T-2625). A reference cell is
+                        // unprobed and stays `#VALUE!`.
+                        ArrayNode::Nested(nested) if nested.kind() == NestedKind::Array => 0.0,
+                        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
+                            return Model::lambda_as_number_error(cell)
+                        }
                         ArrayNode::Error(e) => {
-                            return CalcResult::Error {
-                                error: e.clone(),
-                                origin: cell,
-                                message: String::new(),
-                            }
+                            element_error.get_or_insert_with(|| e.clone());
+                            0.0
                         }
                     };
                     num_row.push(v);
@@ -68,6 +72,9 @@ impl Model {
             arrays.push(num_arr);
         }
 
+        if let Some(error) = element_error {
+            return CalcResult::new_error(error, cell, String::new());
+        }
         if mismatch {
             return CalcResult::new_error(
                 Error::VALUE,

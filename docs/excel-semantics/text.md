@@ -618,7 +618,7 @@ Status: VERIFIED (excel-graph); implemented: first-character separators and empt
 after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
 colon after a bare hour (T-2352, in the shared clock parser).
 
-## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
+## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155; T of a cell reference gives "", T-2305)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
 count: `REPT(REPT("ab",300),0)`, `REPT(REPT("ab",300),3)`, `REPT(REPT("ab",300),5)`, `CODE(REPT("ab",300))` and
 `UNICODE(REPT("ab",300))` are `#VALUE!` (ours: the repeated text, "", 97, 97), while `REPT(REPT("x",255),3)` works
@@ -631,10 +631,14 @@ in all three (A1, A2, B1-B2, C1-C2: REPT doubles it, CODE and UNICODE give 120) 
 units (`LEN` 256) and is `#VALUE!` in all three (row 7), as is 255 "x" plus it (row 8). T shares the cut:
 `T(REPT("x",256))` is `#VALUE!` (A12). CLEAN, TRIM, LOWER and LEFT(..,1) take the same 256-character text
 (A9-A11, A13, `LEN` 256 for the first three). `VALUE(REPT("1",256))` is `#VALUE!` (A14), which the probe cannot tell
-from a numeral-length limit. Unprobed (every oracle cell builds the text inline with REPT): long text from a cell reference or as an array
-element (ours: `#VALUE!` in REPT, CODE and UNICODE and for T's scalar or top-left cell, T keeps a long array element),
-and which error wins when REPT's count is also an error (ours: the text's `#VALUE!`).
-Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs).
+from a numeral-length limit. From a cell, as an array element and with an error count (T-2305; probes/text-255-units-from-cell, -array-element,
+-rept-error-count, excel-graph 2026-10-24): a cell holding 256 "x" (typed, D1, or a formula result, D3) is `#VALUE!` in
+`REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!` (ours `#VALUE!`); 255 from a cell works in all
+four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!` (ours keeps T's element);
+255 works. excel-graph refused to open a workbook whose array constants held 256-character literals (cause not isolated), so the probe builds the long text with REPT. REPT with a
+long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!` (ours
+`#VALUE!`); `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. Unprobed: `T` of a multi-cell range whose top-left cell holds long text.
+Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count differences are T-2627.
 
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or
@@ -971,8 +975,14 @@ Status: VERIFIED (excel-graph); not implemented (T-2250).
 Tasks: T-2169, T-2250
 
 ## TEXTBEFORE and TEXTAFTER: instance_num past the text, a number if_not_found
-Rule: an instance_num whose size is greater than the text's length, counted in UTF-16 units, is `#VALUE!`, whatever the delimiter,
-match_end and if_not_found (the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
+Rule: an instance_num whose size is greater than the number of positions the shortest delimiter could start at (the text's length
+less that delimiter's, plus one, counted in UTF-16 units) is `#VALUE!`, whatever match_end and if_not_found (the empty delimiter
+excepted, see above). `TEXTBEFORE("abcde","xyz",3)` and `-3` are `#N/A`, `4` and `-4` `#VALUE!`; `TEXTBEFORE("abcde",{"xyz","qq"},4)`
+is `#N/A`, `5` `#VALUE!`; `TEXTBEFORE("ab","xyz",1)` is `#VALUE!`; a number delimiter is its text, so `TEXTBEFORE("42ABC",1.005,-2)`,
+also from a cell, is `#VALUE!` (gen-m9 8d3588d8df0812df A313) but `-1` `#N/A`; `TEXTAFTER("😀b","😀😀",2)` is `#VALUE!` (probes/
+t2581-textsplit-textbefore A30-A50, excel-graph, 2026-10-24; T-2581). Unprobed: a delimiter whose case folding changes its UTF-16 length under
+match_mode 1 (ours measures the unfolded delimiter), and a delimiter that fits the text by UTF-8 bytes but not by UTF-16 positions
+(A50 is decided by ours' earlier every-delimiter-longer check). With a one-unit delimiter this is the text's length: `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
 `TEXTBEFORE("ab","a",3,0,0,"nf")` are `#VALUE!`, while `TEXTBEFORE("ab","a",2)` is the usual `#N/A`. `TEXTAFTER("😀","a",2)` is `#N/A`
 and `TEXTAFTER("😀","a",3)` `#VALUE!` (two units), `TEXTAFTER("é","a",2)` `#VALUE!` (one). Gen-m7 shows it on `TEXTBEFORE("x~*","1",
 WORKDAY(..))` (611ce3bbfab27cef A336) and `TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767).
@@ -993,7 +1003,7 @@ TEXTAFTER's result takes the shape of an array if_not_found even when the text i
 (Excel reads the one-cell DROP result as a height giving 2 rows, ours as a lifted 1x1). The gen-m7 `#SPILL!` (4dac39f89709e2fc A2870) is
 then consistent with a 2x2 TEXTAFTER of `#VALUE!` colliding; only ROWS = 2 of it is probed.
 Status: VERIFIED (excel-graph)
-Tasks: T-2314, T-2412
+Tasks: T-2314, T-2412, T-2581
 
 ## TEXTSPLIT: argument errors first, an all-empty result
 Rule: TEXTSPLIT checks its arguments in this order, the first failure being the result: the text (an error); a delimiter that is
@@ -1021,11 +1031,35 @@ past the shorter one (column 3 of bc4a69b0b512bc04 A538:C548); and a delimiter t
 (`VLOOKUP(..)` `#N/A` against `"a"`, c36ff5f42a1a4d47 A1409).
 TRANSPOSE of a single value is that value, not a 1x1 array (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COLUMNS(TEXTSPLIT(TRANSPOSE("a,b"),","))`
 and `COLUMNS(TEXTSPLIT(TRANSPOSE(Data!G1),","))` (G1 = "a,b") are 2, so the text does not lift to one element as `{"a,b"}` does
-(`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1); `ISREF(TRANSPOSE(Data!G1))` is FALSE. Ours lifts (1 column, T-2455); is consistent
-with f7e94a817e5385ac B2882 (the probe covers a text literal and a text cell; a numeric TRANSPOSE argument is unprobed).
+(`COLUMNS(TEXTSPLIT({"a,b"},","))` is 1); `ISREF(TRANSPOSE(Data!G1))` is FALSE; consistent with f7e94a817e5385ac B2882.
+A one-cell range `TRANSPOSE(B2:B2)` is the value too, while a 1x1 array stays an array, a constant or computed:
+`COLUMNS(TEXTSPLIT(TRANSPOSE({"a,b"}),","))`, `TRANSPOSE(IF(TRUE,{"a,b"}))`, `TRANSPOSE(SEQUENCE(1)&"a,b")` and
+`TRANSPOSE(UNIQUE({"a,b"}))` split to 1 column (probes/t2455-transpose-single-value A12:A16, A70:A72, excel-graph, 2026-10-23); a numeric argument follows from F.TEST
+(`FTEST(TRANSPOSE(5),{1;2;3})` is the one-value `#DIV/0!`, A10, statistics.md "F.TEST of a single value") and from UNIQUE
+(`UNIQUE(1,TRANSPOSE("1"))` is `#VALUE!` like `UNIQUE(1,"1")` and `UNIQUE(1,{"1"})`, A1:A3).
+A blank cell transposes to a blank value: `ISBLANK(TRANSPOSE(B10))` is FALSE and `FTEST(TRANSPOSE(B10),{1;2;3})` is the
+one-value `#DIV/0!`, not the blank-cell `#VALUE!` (A92, A93).
+Ours: since T-2455 (`fn_transpose`: a 1x1 result of an argument that did not evaluate to an array is its element).
 Unprobed: an array pad_with against an error element of a delimiter list (ours: the pad_with `#VALUE!`), and a one-cell reference to an
 error cell as the delimiter, which ours reads as a list, so `TEXTSPLIT("abc",B1,,1/0)` with B1 `#N/A` is ours `#DIV/0!`.
 Ours: this order and the `#CALC!` since T-2315 (`fn_textsplit`, `textsplit_element` in functions/text/textsplit.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2315
 
+
+## TEXTSPLIT: column delimiters first, match_mode 0 or 1
+Rule: TEXTSPLIT scans the text once, left to right, for both delimiter lists: the earliest match ends a piece, and a row delimiter
+also ends the row. At one position a column delimiter beats a row delimiter whatever their lengths (within one list the longest
+wins, see "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"). So it is not a split into rows and
+then of each row into columns: `TEXTSPLIT("abcd","bc","cd")` is {"a","d"} (the column match at 1 consumes the c of "cd"), while
+`TEXTSPLIT("abcd","cd","bc")` is {"a";"d"}; `TEXTSPLIT("a*","a","a*")` is {"","*"}, `TEXTSPLIT("ab|c","b","b|")` {"a","|c"},
+`TEXTSPLIT("a*","a*","a")` {"",""}, `TEXTSPLIT("a1b2c","1","b")` {"a","";"2c",#N/A} and `TEXTSPLIT("aXbc","b","aXb")` {"";"c"}.
+match_mode is cut toward zero and must then be 0 or 1, else `#VALUE!` (as in TEXTBEFORE): 2, -1 and 255 are `#VALUE!`, 0.5 and -0.5 are
+0, 1.5 and TRUE are 1. That check comes after an error element of a delimiter list (`TEXTSPLIT("aBc",{"b",#N/A},,,2)` is `#N/A`);
+beside an invalid ignore_empty, an array pad_with, an empty delimiter or empty text the result is `#VALUE!` either way (A24-A28).
+Evidence: probes/t2581-textsplit-textbefore A1-A29 (excel-graph, 2026-10-24). The gen-m9 cells it explains (T-2436 probe):
+`TEXTSPLIT("a*","a",Data!A6:B12,FALSE,0)` is the 1x2 {"","*"} (3e98b26cf6713e77 A383, "a*" is also a row delimiter) and
+`TEXTSPLIT(2,"a",Data!B5:D6,2.5,2,"a*")` `#VALUE!` (984cba67bbe6972b A160, match_mode 2).
+Ours: since T-2581 (`split_grid`, `textsplit_element` in functions/text/textsplit.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2581

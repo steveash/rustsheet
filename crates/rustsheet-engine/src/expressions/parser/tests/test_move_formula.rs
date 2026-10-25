@@ -442,7 +442,7 @@ fn test_move_formula_wrong_reference() {
     let worksheets = vec!["Sheet1".to_string()];
     let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
-    // Wrong formulas will NOT be displaced
+    // Wrong formulas will NOT be displaced; a missing sheet prints as `#REF!` (T-2340)
     let node = parser.parse("Sheet3!AB31", context);
     let t = move_formula(
         &node,
@@ -456,7 +456,7 @@ fn test_move_formula_wrong_reference() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "Sheet3!AB31");
+    assert_eq!(t, "#REF!AB31");
     let node = parser.parse("Sheet3!$X$9", context);
     let t = move_formula(
         &node,
@@ -470,7 +470,7 @@ fn test_move_formula_wrong_reference() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "Sheet3!$X$9");
+    assert_eq!(t, "#REF!$X$9");
 
     let node = parser.parse("SUM(Sheet3!D2:D3)", context);
     let t = move_formula(
@@ -485,7 +485,7 @@ fn test_move_formula_wrong_reference() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "SUM(Sheet3!D2:D3)");
+    assert_eq!(t, "SUM(#REF!D2:D3)");
 }
 
 #[test]

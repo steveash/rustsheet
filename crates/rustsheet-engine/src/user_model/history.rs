@@ -4,6 +4,7 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
+    tables::RewrittenFormula,
     types::{
         Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Table, Theme,
         Worksheet,
@@ -177,6 +178,8 @@ pub(crate) enum Diff {
         old_data: Box<Worksheet>,
         /// The tables on the sheet, which the delete takes out of the workbook (SPEC-0016).
         tables: Vec<(String, Table)>,
+        /// The other formulas whose references to those tables became `#REF!` (T-2340).
+        rewritten: Vec<RewrittenFormula>,
     },
     SetFrozenRowsCount {
         sheet: u32,

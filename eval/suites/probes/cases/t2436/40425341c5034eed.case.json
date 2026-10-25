@@ -1,0 +1,83 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2436: sub-expressions of the untraced gen-m9 cells of gen-m9/40425341c5034eed (A206), on that case's Data sheet; one sub-expression per row block (column A, with its ROWS in T and COLUMNS in U).",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=INDEX(Data!B5:C11,0)",
+        "T1": "=ROWS(INDEX(Data!B5:C11,0))",
+        "U1": "=COLUMNS(INDEX(Data!B5:C11,0))",
+        "A16": "=EXPAND(Data!$E12,3,5,Data!A4:B10)",
+        "T16": "=ROWS(EXPAND(Data!$E12,3,5,Data!A4:B10))",
+        "U16": "=COLUMNS(EXPAND(Data!$E12,3,5,Data!A4:B10))",
+        "A31": "=(EXPAND(Data!$E12,3,5,Data!A4:B10)/Data!D5)",
+        "T31": "=ROWS((EXPAND(Data!$E12,3,5,Data!A4:B10)/Data!D5))",
+        "U31": "=COLUMNS((EXPAND(Data!$E12,3,5,Data!A4:B10)/Data!D5))",
+        "A46": "=SUBTOTAL(11,Data!C10:E12)",
+        "T46": "=ROWS(SUBTOTAL(11,Data!C10:E12))",
+        "U46": "=COLUMNS(SUBTOTAL(11,Data!C10:E12))",
+        "A61": "=LOGINV(INDEX(Data!B5:C11,0),(EXPAND(Data!$E12,3,5,Data!A4:B10)/Data!D5),SUBTOTAL(11,Data!C10:E12))",
+        "T61": "=ROWS(LOGINV(INDEX(Data!B5:C11,0),(EXPAND(Data!$E12,3,5,Data!A4:B10)/Data!D5),SUBTOTAL(11,Data!C10:E12)))",
+        "U61": "=COLUMNS(LOGINV(INDEX(Data!B5:C11,0),(EXPAND(Data!$E12,3,5,Data!A4:B10)/Data!D5),SUBTOTAL(11,Data!C10:E12)))"
+      }
+    },
+    {
+      "cells": {
+        "A1": 2,
+        "A10": 0.3,
+        "A11": true,
+        "A2": "1.5",
+        "A3": 2,
+        "A4": 42,
+        "A5": 1.005,
+        "A6": 0.5,
+        "A8": 0.5,
+        "A9": -0.0001,
+        "B11": 1,
+        "B12": 0,
+        "B2": 1e-15,
+        "B4": 1e-15,
+        "B5": "?b",
+        "B7": true,
+        "B9": 0.2,
+        "C1": -0.5,
+        "C11": 0.3,
+        "C12": 1000000000000000.0,
+        "C2": 1000000000000000.0,
+        "C3": false,
+        "C4": "1",
+        "C6": false,
+        "C7": "ABC",
+        "D1": 1,
+        "D10": 1e-15,
+        "D11": "ABC",
+        "D12": 0,
+        "D2": 123456789.123,
+        "D3": 0.1,
+        "D4": "ABC",
+        "D5": -2.5,
+        "D6": -2.5,
+        "D7": 0.5,
+        "D8": "ABC",
+        "D9": "x~*",
+        "E1": 0.3,
+        "E10": 1.005,
+        "E11": "x~*",
+        "E12": 3.14159,
+        "E3": 0.1,
+        "E5": 0.5,
+        "E6": false,
+        "E7": 123456789.123,
+        "E8": true,
+        "E9": 123456789.123
+      },
+      "name": "Data"
+    }
+  ],
+  "expected": {}
+}

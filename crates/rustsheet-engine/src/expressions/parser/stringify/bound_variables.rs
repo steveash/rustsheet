@@ -101,6 +101,7 @@ where
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::StructuredReferenceKind { .. }
+        | Node::ThisRowKind { .. }
         | Node::SheetSpanKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }

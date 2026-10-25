@@ -18,8 +18,7 @@
 
 use chrono::{Datelike, NaiveDate};
 
-use super::accrint::acc_days_between;
-use super::dates::day_count_basis;
+use super::dates::{actual_days, days_30_360_eu, days_30_360_us};
 use super::number_or_error;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
@@ -30,6 +29,16 @@ use crate::{
     functions::Function,
     model::Model,
 };
+
+// EFF `DaysBetween` in the numerator position: 30/360 on bases 0 and 4, the actual days
+// otherwise. AMORLINC and AMORDEGRC count their first period with it.
+fn first_period_days(start: NaiveDate, end: NaiveDate, basis: i32) -> f64 {
+    match basis {
+        0 => days_30_360_us(start, end),
+        4 => days_30_360_eu(start, end),
+        _ => actual_days(start, end),
+    }
+}
 
 /// The most AMORDEGRC periods walked one by one. Up to here the kernel is main's walk
 /// (probes/fin-amor-period-bound B6-B14, up to 10^6 periods, are Excel's values); past it, where the
@@ -72,8 +81,11 @@ impl Model {
         })
     }
 
-    /// Reads every argument in order (the basis refuses a boolean), then checks them as main did.
-    /// The checks are written as the valid ranges, so a NaN argument fails them too.
+    /// Reads the arguments in Excel's order (probes/amor-argument-check-order, T-2485; financial.md
+    /// "AMORLINC and AMORDEGRC check order"): cost to rate left to right, each a number (an error,
+    /// text or boolean is returned) and each date #NUM! off the calendar as it is read; then the
+    /// value checks; then the basis; then AMORDEGRC's asset life. The checks are written as the
+    /// valid ranges, so a NaN argument fails them too.
     fn amortization_of(
         &self,
         values: &[CalcResult],
@@ -83,28 +95,38 @@ impl Model {
         let [cost, purchased, first_period, salvage, period, rate, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let cost = self.cast_number_ref(cost, cell)?;
-        let purchased = self.financial_date(self.cast_number_ref(purchased, cell)?);
-        let first_period = self.financial_date(self.cast_number_ref(first_period, cell)?);
-        let salvage = self.cast_number_ref(salvage, cell)?;
-        let period = self.cast_number_ref(period, cell)?;
-        let rate = self.cast_number_ref(rate, cell)?;
-        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
-        let basis = day_count_basis(basis).and_then(|basis| i32::try_from(basis).ok());
+        let cost = self.cast_number_no_bools_ref(cost, cell)?;
+        // `AMORLINC(2400,-1,NA(),..)` and `AMORLINC(2400,39679,2958466,NA(),..)` are #NUM!, while a
+        // date of 0 or 0.5 passes (`AMORLINC(2400,0.5,NA(),..)` is #N/A).
+        let purchased = self.financial_calendar_date_of(purchased, cell)?;
+        let first_period = self.financial_calendar_date_of(first_period, cell)?;
+        let salvage = self.cast_number_no_bools_ref(salvage, cell)?;
+        let period = self.cast_number_no_bools_ref(period, cell)?;
+        let rate = self.cast_number_no_bools_ref(rate, cell)?;
+        let (purchased, first_period) = (
+            self.financial_date(purchased),
+            self.financial_date(first_period),
+        );
+        // The purchase may fall on the first period's end (`AMORLINC(2400,1,1,300,1,0.15,1)` is
+        // 360), and every value is checked before the basis is read
+        // (`AMORLINC(-1,39679,39813,300,1,0.15,NA())` is #NUM!).
         let valid = cost >= 0.0
             && salvage >= 0.0
             && salvage < cost
             && period >= 0.0
             && rate > 0.0
-            && purchased < first_period
-            && matches!(basis, Some(0 | 1 | 3 | 4));
-        let Some(basis) = basis.filter(|_| valid) else {
+            && purchased <= first_period;
+        if !valid {
+            return Err(num_error(cell));
+        }
+        let basis = self.day_count_basis_of(rest.first(), cell)?;
+        let Some(basis) = i32::try_from(basis).ok().filter(|basis| *basis != 2) else {
             return Err(num_error(cell));
         };
         let asset = Asset {
             cost,
-            purchased: from_excel_date(purchased).map_err(|_| num_error(cell))?,
-            first_period: from_excel_date(first_period).map_err(|_| num_error(cell))?,
+            purchased: amor_date(purchased).ok_or_else(|| num_error(cell))?,
+            first_period: amor_date(first_period).ok_or_else(|| num_error(cell))?,
             salvage,
             rate,
             basis,
@@ -112,6 +134,7 @@ impl Model {
         match kind {
             Amortization::Linear => asset.linear(period),
             Amortization::Degressive => {
+                // Checked after the basis (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is #N/A).
                 // The asset life must not fall in [0, 3] or strictly between 4 and 5: Excel
                 // accepts a life of exactly 4 and 5 (rates 0.25, 0.2; probes/fin-amordegrc
                 // A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
@@ -126,8 +149,20 @@ impl Model {
     }
 }
 
-/// Validated arguments: `0 <= salvage < cost`, a positive rate, the purchase before the first
-/// period, a basis of 0, 1, 3 or 4.
+/// The stand-in date of a 1900 serial from 0 to 9999-12-31 (`from_excel_date`, whose serial 1 is
+/// 1899-12-31): serial 0 is the day before, so a purchase on it counts one day more than on serial
+/// 1 and its basis-1 year has 365 days (`AMORDEGRC(2400,0,366,300,1,0.15,1)` is 562,
+/// `AMORDEGRC(2400,0,1,..)` 899, `AMORDEGRC(2400,1,366,..)` 563; probes/amor-argument-check-order).
+fn amor_date(serial: i64) -> Option<NaiveDate> {
+    if serial == 0 {
+        NaiveDate::from_ymd_opt(1899, 12, 30)
+    } else {
+        from_excel_date(serial).ok()
+    }
+}
+
+/// Validated arguments: `0 <= salvage < cost`, a positive rate, the purchase on or before the
+/// first period, a basis of 0, 1, 3 or 4.
 struct Asset {
     cost: f64,
     purchased: NaiveDate,
@@ -199,7 +234,7 @@ impl Asset {
         let days_in_yr = amor_days_in_year(self.purchased, self.basis);
         let purchased = amor_fix_29_february(self.purchased, self.basis);
         let first_period = amor_fix_29_february(self.first_period, self.basis);
-        let first_len = acc_days_between(purchased, first_period, true, self.basis)?;
+        let first_len = first_period_days(purchased, first_period, self.basis);
         let first_depr_temp = first_len / days_in_yr * rate * self.cost;
         let first_depr = if first_depr_temp == 0.0 {
             self.cost * rate

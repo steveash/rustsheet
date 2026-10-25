@@ -12,7 +12,7 @@ use std::io::BufRead;
 use quick_xml::events::{BytesEnd, BytesStart, Event};
 use rustsheet_engine::expressions::parser::Parser;
 use rustsheet_engine::expressions::utils::{is_valid_row, number_to_column};
-use rustsheet_engine::types::{Cell, Row, SheetData};
+use rustsheet_engine::types::{Cell, DataTable, DataTableInput, DateSystem, Row, SheetData};
 
 use crate::error::XlsxError;
 
@@ -46,6 +46,7 @@ pub(super) struct SheetDataXml {
     /// The rows that carry a height, a style or a flag.
     pub(super) rows: Vec<Row>,
     pub(super) shared_formulas: Vec<String>,
+    pub(super) data_tables: Vec<DataTable>,
 }
 
 /// The elements inside `sheetData` the reader cares about.
@@ -104,9 +105,20 @@ struct FormulaXml {
     shared_index: Option<String>,
     /// The `ca` attribute is "1": calculate always.
     calculate_always: bool,
+    /// A data table's `dt2D`, `dtr`, `del1` and `del2` flags and its `r1` and `r2` input cells.
+    data_table: DataTableXml,
     /// None if the element has no text at all.
     text: Option<String>,
     has_elements: bool,
+}
+
+/// The data-table attributes of an `<f t="dataTable">` (ECMA-376 18.3.1.40).
+#[derive(Default)]
+struct DataTableXml {
+    two_dimensional: bool,
+    row: bool,
+    deleted: [bool; 2],
+    inputs: [Option<String>; 2],
 }
 
 /// A `<c>` element while its children are being read.
@@ -143,6 +155,8 @@ struct SheetDataReader<'a> {
     limits: &'a ImportLimits,
     /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
     rich_errors: &'a [Option<&'static str>],
+    /// The workbook's date system, for `t="d"` cells.
+    date_system: DateSystem,
 
     sheet_data: SheetData,
     rows: Vec<Row>,
@@ -153,6 +167,8 @@ struct SheetDataReader<'a> {
     index_map: HashMap<i32, i32>,
     /// Cells covered by an array formula, with the anchor cell of the formula.
     array_cell: HashMap<(i32, i32), (i32, i32)>,
+    /// The sheet's what-if data tables; their result cells load as plain values.
+    data_tables: Vec<DataTable>,
 
     /// The open elements inside `sheetData`.
     stack: Vec<Tag>,
@@ -222,6 +238,12 @@ impl SheetDataReader<'_> {
                             "ref" => formula.reference = Some(value.into_owned()),
                             "si" => formula.shared_index = Some(value.into_owned()),
                             "ca" => formula.calculate_always = &*value == "1",
+                            "dt2D" => formula.data_table.two_dimensional = &*value == "1",
+                            "dtr" => formula.data_table.row = &*value == "1",
+                            "del1" => formula.data_table.deleted[0] = &*value == "1",
+                            "del2" => formula.data_table.deleted[1] = &*value == "1",
+                            "r1" => formula.data_table.inputs[0] = Some(value.into_owned()),
+                            "r2" => formula.data_table.inputs[1] = Some(value.into_owned()),
                             _ => {}
                         }
                     }
@@ -556,7 +578,14 @@ impl SheetDataReader<'_> {
                     }
                 }
                 "dataTable" => {
-                    return Err(XlsxError::NotImplemented("data table formulas".to_string()));
+                    let range = formula.reference.as_deref().unwrap_or(&cell.reference);
+                    let table = data_table(range, &formula.data_table)?;
+                    // Workbooks are untrusted: the same rules as `Model::add_data_table`, so a
+                    // table is bounded and never overlaps another (directive 5).
+                    table
+                        .check(&self.data_tables)
+                        .map_err(|e| XlsxError::Xml(format!("Invalid data table {range}: {e}")))?;
+                    self.data_tables.push(table);
                 }
                 "array" => {
                     let range = match formula.reference {
@@ -634,6 +663,7 @@ impl SheetDataReader<'_> {
             cell.rich_text,
             anchor_cell,
             array_kind,
+            self.date_system,
         );
         row.cells.insert(column_index, cell);
         Ok(())
@@ -649,6 +679,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     shared_strings: &mut SharedStringTable,
     limits: &ImportLimits,
     rich_errors: &[Option<&'static str>],
+    date_system: DateSystem,
 ) -> Result<SheetDataXml, XlsxError> {
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();
@@ -660,12 +691,14 @@ pub(super) fn read_sheet_data<R: BufRead>(
         shared_strings,
         limits,
         rich_errors,
+        date_system,
         sheet_data: SheetData::new(),
         rows: Vec::new(),
         shared_formulas: Vec::new(),
         formula_lookup: HashMap::new(),
         index_map: HashMap::new(),
         array_cell: HashMap::new(),
+        data_tables: Vec::new(),
         stack: Vec::new(),
         row: None,
         cell: None,
@@ -694,6 +727,37 @@ pub(super) fn read_sheet_data<R: BufRead>(
         sheet_data: state.sheet_data,
         rows: state.rows,
         shared_formulas: state.shared_formulas,
+        data_tables: state.data_tables,
+    })
+}
+
+/// The data table an `<f t="dataTable" ref=…>` describes. A two-variable table's `r1` is the row
+/// input and `r2` the column input; a one-variable table's `r1` is the row input when `dtr` is
+/// set and the column input otherwise (docs/excel-semantics/recalc.md).
+fn data_table(range: &str, xml: &DataTableXml) -> Result<DataTable, XlsxError> {
+    let (top, left, bottom, right) = parse_range(range)
+        .map_err(|_| XlsxError::Xml(format!("Invalid data table range: {range}")))?;
+    let input = |i: usize| -> Result<Option<DataTableInput>, XlsxError> {
+        if xml.deleted[i] {
+            return Ok(Some(DataTableInput::Deleted));
+        }
+        xml.inputs[i]
+            .as_deref()
+            .map(|r| match parse_range(r) {
+                Ok((row, column, ..)) => Ok(DataTableInput::Cell(row, column)),
+                Err(_) => Err(XlsxError::Xml(format!("Invalid data table input: {r}"))),
+            })
+            .transpose()
+    };
+    let (row_input, column_input) = match (xml.two_dimensional, xml.row) {
+        (true, _) => (input(0)?, input(1)?),
+        (false, true) => (input(0)?, None),
+        (false, false) => (None, input(0)?),
+    };
+    Ok(DataTable {
+        range: (top, left, bottom, right),
+        row_input,
+        column_input,
     })
 }
 
@@ -742,6 +806,7 @@ mod tests {
             &mut SharedStringTable::default(),
             &ImportLimits::default(),
             &[],
+            DateSystem::Excel1900,
         )?;
         let mut positions: Vec<(i32, i32)> = read
             .sheet_data
@@ -750,6 +815,63 @@ mod tests {
             .collect();
         positions.sort_unstable();
         Ok(positions)
+    }
+
+    /// The cell a lone `<c r="A1" t="d">` holding `text` reads as in `date_system`.
+    fn read_date_cell(text: &str, date_system: DateSystem) -> Result<Cell, XlsxError> {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="d"><v>{text}</v></c></row></sheetData></worksheet>"#
+        );
+        let mut parser = new_parser_english(vec!["Sheet1".to_string()], vec![], HashMap::new());
+        let read = read_sheet_data(
+            xml.as_bytes(),
+            "Sheet1",
+            &mut parser,
+            &mut SharedStringTable::default(),
+            &ImportLimits::default(),
+            &[],
+            date_system,
+        )?;
+        let cell = read
+            .sheet_data
+            .cells()
+            .next()
+            .map(|(_, _, cell)| cell.clone());
+        cell.ok_or_else(|| XlsxError::Xml("no cell".to_string()))
+    }
+
+    // docs/excel-semantics/xlsx-storage.md "`t="d"` cells in a 1904 workbook" (T-2515):
+    // fixtures/t-d-1904, t-d-1904-epoch, t-d-1904-time-only, t-d-1904-pre-epoch.
+    #[test]
+    fn t_d_cells_take_their_serial_in_the_workbook_date_system() -> Result<(), XlsxError> {
+        use rustsheet_engine::expressions::token::Error;
+        let number = |v| Cell::NumberCell { v, s: 0 };
+        for (text, system, expected) in [
+            (
+                "2024-01-01T00:00:00",
+                DateSystem::Excel1900,
+                number(45292.0),
+            ),
+            (
+                "2024-01-01T00:00:00",
+                DateSystem::Excel1904,
+                number(43830.0),
+            ),
+            ("1904-01-01", DateSystem::Excel1904, number(0.0)),
+            ("12:00:00", DateSystem::Excel1904, number(0.5)),
+            (
+                "1903-12-31",
+                DateSystem::Excel1904,
+                Cell::ErrorCell {
+                    ei: Error::VALUE,
+                    s: 0,
+                },
+            ),
+            ("1903-12-31", DateSystem::Excel1900, number(1461.0)),
+        ] {
+            assert_eq!(read_date_cell(text, system)?, expected, "{text} {system:?}");
+        }
+        Ok(())
     }
 
     // docs/excel-semantics/xlsx-storage.md "Cells and rows without r are positional" (T-0181).

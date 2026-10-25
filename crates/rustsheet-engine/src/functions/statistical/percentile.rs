@@ -8,6 +8,7 @@ use crate::expressions::types::CellReferenceIndex;
 pub(super) use crate::functions::lift::num_error;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
+use crate::nested_array::nested_array_error;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -22,18 +23,26 @@ fn percentile_numbers(
     arg: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
-    let typed_in_place = !matches!(arg.ungrouped(), Node::ReferenceKind { .. });
+    let typed_in_place = !matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
     match model.evaluate_node_in_context(arg, cell) {
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
         error @ CalcResult::Error { .. } => Err(error),
         // A typed boolean is a one-element array (`QUARTILE(TRUE,1)` is 1, probes-numeric/t1748-
         // typed-boolean-data A1-A8 for the whole family, probes/stat-order-floor-batch A102, A128),
-        // and typed text a number (A11). A single cell holding either is unprobed and keeps the
+        // and typed text a number (A11). A single cell holding a boolean is unprobed and keeps the
         // old reading below.
         CalcResult::Boolean(b) if typed_in_place => Ok(vec![f64::from(u8::from(b))]),
         text @ CalcResult::String(_) if typed_in_place => {
             model.cast_number_ref(&text, cell).map(|n| vec![n])
         }
+        // A single cell holding text (a cell reference, not the typed text above) is no number,
+        // like text inside a range: the data is empty and every function reports `#NUM!`, not
+        // `#VALUE!` (probes/quartile-single-text-cell B1-B11, quartile-numeric-text-cell C2-C5).
+        CalcResult::String(_) => Ok(vec![]),
+        CalcResult::Array(array) => match nested_array_error(&array, cell) {
+            Some(error) => Err(error),
+            None => model.numeric_flat_of(CalcResult::Array(array), cell),
+        },
         value => model.numeric_flat_of(value, cell),
     }
 }
@@ -85,10 +94,10 @@ impl Model {
             &PERCENTILE_DATA,
             cell,
             &mut |model, data, values| {
-                if data.is_empty() {
-                    return num_error(cell);
-                }
+                // k's error comes before the empty-data `#NUM!`, as PERCENTILE.EXC's:
+                // `PERCENTILE(<no number>,1/0)` is `#DIV/0!` (probes/quartile-numeric-text-cell C9).
                 match model.cast_number_ref(value_at(values, 1), cell) {
+                    Ok(_) if data.is_empty() => num_error(cell),
                     Ok(k) if (0.0..=1.0).contains(&k) => {
                         CalcResult::Number(percentile_inc_impl(data.sorted(), k))
                     }
@@ -156,7 +165,7 @@ impl Model {
         )
     }
 
-    /// PERCENTRANK.INC or .EXC (`rank_of`) of one element: an empty array is `#N/A`, then x,
+    /// PERCENTRANK.INC or .EXC (`rank_of`) of one element: an error x, then an empty array `#N/A`,
     /// then the significance (3 digits when omitted; below 1 `#NUM!` unless the data is one
     /// value), then an x outside the data is `#N/A`.
     fn percentrank_of(
@@ -166,13 +175,15 @@ impl Model {
         rank_of: fn(&[f64], f64) -> f64,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if data.is_empty() {
-            return CalcResult::new_error(Error::NA, cell, String::new());
-        }
+        // An error or text x comes before the empty-data `#N/A` (probes/quartile-single-text-cell
+        // B12-B18, T-2066).
         let x = match self.cast_number_ref(value_at(values, 1), cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if data.is_empty() {
+            return CalcResult::new_error(Error::NA, cell, String::new());
+        }
         // No cell or coercion gives NaN; refuse one before it reaches the rank search.
         if x.is_nan() {
             return num_error(cell);

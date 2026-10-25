@@ -3,7 +3,7 @@ id: T-1741
 title: "LINEST: match Excel on the linest-modes probe (spill shape, #N/A fill, collinear x, flags, 1e-16 residual stats)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -152,14 +152,31 @@ Cells:
 - gen-m9/abb7d565af89b849.case.json (1): Calc!A374
 - gen-m9/e8d55ec393460bb7.case.json (1): Calc!A376
 
+gen-m9 engineering sweep (gap triage 2026-10-23, T-2258): 5 more cells nest LINEST of one point in an engineering call: `BIN2OCT(LINEST(<-0.0001005>))` "0", `COMPLEX(LINEST(<0.995>),-0.5,"i")` "-0.5i", `COMPLEX(LINEST(MIN(3.14159)),1)` "i", `GESTEP(..,LINEST(Data!C10:C10))` 1 (anchor 0), and `BITXOR(755,COMBINA(LINEST(<7>,<2>),8))` `#NUM!` (ours `#VALUE!` for all).
+Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 formulas, 5 visibly off.
+Examples:
+- gen-m9/7096c4cd615d43ac Calc!A364 `=GESTEP((SUMPRODUCT(Data!A5:D11)+MIN(1)),LINEST(Data!C10:C10))`: Excel 1.0, ours #VALUE!
+- gen-m9/79dac8dde81afda9 Calc!A322 `=BIN2OCT(LINEST((Data!C$9*Data!E3)))`: Excel "0", ours #VALUE!
+- gen-m9/7c7e5bff12d93365 Calc!A209 `=COMPLEX(LINEST((Data!$B$7-Data!D10)),((Data!D1-0)-(Data!B11+0)),"i")`: Excel "-0.5i", ours #VALUE!
+- gen-m9/8c018ae063ac131b Calc!A186 `=COMPLEX(LINEST(MIN(3.14159)),(Data!D10^SUM(Data!C2:C11,Data!$C2)))`: Excel "i", ours #VALUE!
+- gen-m9/e882060cf4613302 Calc!A271 `=BITXOR(755,COMBINA(LINEST(Data!A4,Data!$B$4),8))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/7096c4cd615d43ac.case.json (1): Calc!A364
+- gen-m9/79dac8dde81afda9.case.json (1): Calc!A322
+- gen-m9/7c7e5bff12d93365.case.json (1): Calc!A209
+- gen-m9/8c018ae063ac131b.case.json (1): Calc!A186
+- gen-m9/e882060cf4613302.case.json (1): Calc!A271
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): the 8 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
-      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 170 known-failure lines (159 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [ ] (all but the 13 cells handed to T-2574) Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity: the 13 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 13 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] probes/linest-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.
-- [ ] `make check` green; reviewers approve.
+- [ ] (all but the 13 cells handed to T-2574) Visible parity (gen-m9, T-2257): the 8 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] (all but the 13 cells handed to T-2574) Visible parity (gen-m9, T-2255 and T-2256): these 170 known-failure lines (159 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] (11 of 13 met; K106 and K134 are the solve's noise digits, moved to T-2006) Visible parity: the 13 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 13 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] (all but the noise-digit cells moved to T-2006) probes/linest-modes baseline entries shrink to zero (or documented DEVIATIONs), apart from the last-digit cells T-2006 owns; `make eval-baseline` records the fix.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes outside this function, and the FORECAST.ETS family (T-1553).
@@ -168,3 +185,15 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (wrong LINEST shapes and errors, and K134 past the 15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. The last-digit numerics stay with T-2006.
+
+## Outcome
+- LINEST and LOGEST share TREND's shape rules and readers (new functions/statistical/regression.rs): the same
+  shape element by element, column/row y with one variable per x column/row, empty known_x the default, one point
+  accepted; a singular fit drops collinear columns (last column first, coefficient and se 0, df and F over the
+  kept ones), exact fits give se 0 and F `#NUM!`; text const/stats is `#VALUE!` (typed at once, a cell after the
+  shapes; also T-2556's cells); error elements are `#VALUE!` after the shapes; an array const or stats lifts.
+- Left: linest-modes K106:P110, K134:L138, K190:L194, K197:L201 (the solve's noise digits and F; added to T-2006);
+  13 other gen-m9 cells, listed in T-2574. gen-m9 c468f5046aadfbbc A122/B122 pass since T-2547 made
+  BESSELJ(1E+15,1) `#NUM!`, so decision 0107's regression allowance was never needed (withdrawn).
+- Eval delta (on main after T-2547): gen-m9 known failures 6732 -> 6405 (327 fixed), probes 2745 -> 2636 (109 fixed),
+  no regressions; visibly-off cells 6873 (lock 8632).

@@ -60,11 +60,12 @@ pub(crate) fn array_element_value(node: &ArrayNode, cell: CellReferenceIndex) ->
         ArrayNode::Error(e) => CalcResult::new_error(e.clone(), cell, String::new()),
         ArrayNode::Empty => CalcResult::EmptyCell,
         ArrayNode::Lambda(id) => CalcResult::Lambda(*id),
+        // Only INDEX reads its contents (`NestedArray::value`); others see `#VALUE!` (SPEC-0018).
+        ArrayNode::Nested(_) => CalcResult::new_error(Error::VALUE, cell, String::new()),
     }
 }
 
-/// The top left element of an array, which is what the implicit intersection
-/// operator makes of it.
+/// The top left element of an array, which is what the implicit intersection operator makes of it.
 pub(crate) fn top_left_of_array(array: &[Vec<ArrayNode>], cell: CellReferenceIndex) -> CalcResult {
     match array.first().and_then(|row| row.first()) {
         Some(node) => array_node_to_calc_result(node, cell),
@@ -251,7 +252,8 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let node = node.ungrouped();
+        // A `#This Row` area is its cell or range on the formula's row (SPEC-0016 step 2).
+        let node: &Node = &node.ungrouped_at(cell.row);
         match node {
             Node::SheetSpanKind {
                 first_index,
@@ -365,6 +367,8 @@ impl Model {
                 })
             }
         };
+        // A `#This Row` area is its cell or range on the formula's row (SPEC-0016 step 2).
+        let node: &Node = &node.ungrouped_at(cell.row);
         // A 3-D span of a linked workbook's cached sheets is read sheet by sheet, as a span of
         // this workbook is (fixtures/external-link-cached-3d-span Refs!B2:B6; T-1654).
         if let Some(rows) = self.cached_span_cells(node, cell) {
@@ -545,8 +549,7 @@ impl Model {
     /// [`Self::for_each_cell_or_error_in_whole_range`]. Several areas (a union) are walked over
     /// their existing cells only, so `f` is never handed a blank cell of a union
     /// ([`Self::for_each_position_in_area`]). The first error cell aborts the walk
-    /// and is returned as `Err`, as does an `Err` from `f`. `f` never sees
-    /// `CalcResult::Error`.
+    /// and is returned as `Err`, as does an `Err` from `f`. `f` never sees `CalcResult::Error`.
     pub(crate) fn for_each_cell_in_areas<F>(
         &mut self,
         areas: &[Range],

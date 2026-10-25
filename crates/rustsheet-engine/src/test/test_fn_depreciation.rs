@@ -185,3 +185,27 @@ fn fn_rri_and_duration_bits() {
     assert_eq!(bits("A1"), 0.698_646_464_634_247_2_f64.to_bits());
     assert_eq!(bits("A2"), 5.541_666_666_666_668_f64.to_bits());
 }
+
+// DB keeps the remaining balance and DDB charges `min(old * rate, old - salvage)`, in Excel's
+// operation order (financial.md "DB and DDB operation order"; ironcalc-calc DB_DDB.xlsx G20,
+// G42, H10, probes/fin-argument-modes H95, T-2033).
+#[test]
+fn fn_db_ddb_operation_order_bits() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DB(100,10,4,1,2)");
+    model._set("A2", "=DB(23,10,4,5,2)");
+    model._set("A3", "=DDB(100,10,4,3,1.3334)");
+    model._set("A4", "=DDB(10000,1000,6,2,2)");
+    model._set("A5", "=DDB(9695,282,20,8,1)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+
+    assert_eq!(bits("A1"), 7.299_999_999_999_999_f64.to_bits());
+    assert_eq!(bits("A2"), 1.868_731_396_396_230_9_f64.to_bits());
+    assert_eq!(bits("A3"), 14.814_814_787_037_497_f64.to_bits());
+    assert_eq!(bits("A4"), 2_222.222_222_222_222_f64.to_bits());
+    assert_eq!(bits("A5"), 338.519_004_281_445_3_f64.to_bits());
+}

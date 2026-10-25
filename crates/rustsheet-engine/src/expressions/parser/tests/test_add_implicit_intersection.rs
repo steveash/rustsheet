@@ -44,8 +44,8 @@ fn simple_test() {
         ("ATAN2(A1:A10,A1)", "ATAN2(@A1:A10,A1)"),
         ("SQRT(A1:A10)", "SQRT(@A1:A10)"),
         // A one-sheet span is that sheet's reference: its range gets the `@` (T-2351).
-        ("SIN(Sheet1:Sheet1!A1:A10)", "SIN(@Sheet1:Sheet1!A1:A10)"),
-        ("SIN(Sheet1:Sheet1!A1)", "SIN(Sheet1:Sheet1!A1)"),
+        ("SIN(Sheet1:Sheet1!A1:A10)", "SIN(@Sheet1!A1:A10)"),
+        ("SIN(Sheet1:Sheet1!A1)", "SIN(Sheet1!A1)"),
         // An Analysis ToolPak argument's bare range takes no `@`: legacy `SQRTPI(E1:E3)` and
         // `MROUND(E1:E3,2)` are #VALUE! on the range's rows (probes/date-math-lift-driver-edges K2-K3).
         ("SQRTPI(A1:A10)", "SQRTPI(A1:A10)"),
@@ -69,6 +69,16 @@ fn simple_test() {
         // IF passes its range arms whole and takes the `@` itself (`=@IF(TRUE,B1:B6)`,
         // probes/legacy-if-arm-range-argument Q12, T-1935).
         ("IF(A1:A10,B1:B10,C1:C10)", "@IF(@A1:A10,B1:B10,C1:C10)"),
+        // A single-cell INDEX arm shows no `@` at all; a whole-column INDEX arm still does
+        // (probes/legacy-if-arm-other-references M12, T-2326).
+        ("IF(TRUE,INDEX(B1:B6,3))", "IF(TRUE,INDEX(B1:B6,3))"),
+        ("IF(TRUE,INDEX(B1:C6,0,1))", "@IF(TRUE,INDEX(B1:C6,0,1))"),
+        // Unevidenced shapes keep the `@`: a 2-D range (INDEX gives a row) and IFS.
+        ("IF(TRUE,INDEX(B1:C6,3))", "@IF(TRUE,INDEX(B1:C6,3))"),
+        (
+            "_xlfn.IFS(TRUE,INDEX(B1:B6,3))",
+            "@IFS(TRUE,INDEX(B1:B6,3))",
+        ),
         // CHOOSE value args pass references through: no `@` on the arms. In a
         // scalar position the whole call is wrapped instead; in a range
         // position (e.g. inside SUM) nothing is wrapped.
@@ -131,7 +141,8 @@ fn simple_test() {
         let r = to_english_localized_string(&t, &cell_reference);
         assert_eq!(r, expected);
         let excel_formula = to_excel_string(&t, &cell_reference);
-        assert_eq!(excel_formula, formula);
+        // A one-sheet span is written as the plain reference (T-2357).
+        assert_eq!(excel_formula, formula.replace("Sheet1:Sheet1!", "Sheet1!"));
     }
 }
 

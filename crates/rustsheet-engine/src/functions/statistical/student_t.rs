@@ -30,7 +30,9 @@
 //! [`MAX_POWER_SERIES_TERMS`] power-series terms a call.
 
 use super::gammaln::excel_gammaln;
-use super::incomplete_beta::{beta_reg_complement, beta_reg_upper, incbcf, incbd};
+use super::incomplete_beta::{
+    beta_reg_complement, beta_reg_upper, incbcf, incbd, A1_CLOSED_FORM_MIN_X,
+};
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp, two_sum};
 
 /// A double-double: an unevaluated sum `hi + lo` with |lo| <= ulp(hi)/2.
@@ -62,10 +64,6 @@ const MIN_SERIES_TAIL: f64 = 1e-12;
 /// Largest rounded y = n/(n+t^2) at which the tail of a t beyond 1 is taken at that y
 /// ([`unflushed_upper_tail`]).
 const ROUNDED_Y_MAX: f64 = 0.99;
-/// Smallest y at which the df-2 tail is the closed form ([`closed_form_tail`]): Excel takes it at
-/// `T.DIST.RT(4.24,2)` (y = 0.100112) and not at `T.DIST.RT(4.245,2)` (y = 0.099900), probes-numeric
-/// t0969-t-df2-cut.
-const CLOSED_FORM_MIN_Y: f64 = 0.1;
 /// 1/pi as a double-double.
 const FRAC_1_PI_DD: Dd = (
     f64::from_bits(0x3FD4_5F30_6DC9_C883),
@@ -195,14 +193,14 @@ fn tail_at(y: f64, n: f64) -> f64 {
     tail_from(&args, n)
 }
 
-/// L at df 2 for y = n/(n+t^2) from [`CLOSED_FORM_MIN_Y`] up, from y as the worksheet rounds it,
+/// L at df 2 for y = n/(n+t^2) from [`A1_CLOSED_FORM_MIN_X`] up, from y as the worksheet rounds it,
 /// fl(2/fl(2 + fl(t*t))): there `I_y(1, 1/2)` is BETA.DIST's a = 1 closed form, 1 - exp(ln(1 - y)/2)
 /// (T-1744), inside t = 1 too. `T.DIST.RT(0.0513,2)` = 0.4818746322295301 is that form, where the
 /// exact tail at t is 15 ulp off (probes-numeric t0969-t-tail-grid), and so is every
 /// `T.DIST.RT(t,2)` from t = 2 to 4.24 (t0969-t-df2-cut; docs/excel-semantics/statistics.md
 /// "T.DIST.RT at df 2 is BETA.DIST's closed form down to y = 0.1"). `None` elsewhere.
 fn closed_form_tail(y: f64, n: f64) -> Option<f64> {
-    (n == 2.0 && (CLOSED_FORM_MIN_Y..1.0).contains(&y))
+    (n == 2.0 && (A1_CLOSED_FORM_MIN_X..1.0).contains(&y))
         .then(|| 0.5 * beta_reg_complement(y, 1.0 - y, 1.0, 0.5))
 }
 
@@ -575,7 +573,7 @@ mod tests {
         // the incomplete beta's a = 1 tail is the uncancelled form there (T-0974) and gives
         // Excel's value.
         let y = 2.0 / (2.0 + 4.245 * 4.245);
-        assert!(y < CLOSED_FORM_MIN_Y);
+        assert!(y < A1_CLOSED_FORM_MIN_X);
         assert_eq!(closed_form_tail(y, 2.0), None);
         let closed = 0.5 * (1.0 - (0.5 * (1.0 - y).ln()).exp());
         assert_eq!(ulps(closed, 0.025_631_992_844_658_943), 1);

@@ -75,7 +75,18 @@ Cells:
 - gen-m9/a4090567758520df.case.json (1): Calc!A396
 - gen-m9/afc00c8b70e78baf.case.json (1): Calc!A135
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): the impossible sample is 0 for the cumulative form too: `HYPGEOMDIST(2,5,9,11)` and `HYPGEOM.DIST(1,3,6,7,TRUE)` are 0 (ours `#NUM!`), so the enclosing CHIDIST and KURT/YEAR give Excel's values.
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/0a9226016e8f5f33 Calc!A26 `=CHIDIST(TIME(11,HYPGEOMDIST(2,5,9,11),1),9)`: Excel 0.9999790730352063, ours #NUM!; inner `HYPGEOMDIST(2,5,9,11)` Excel 0.0, ours #NUM!
+- gen-m9/35e8168aae2b00f8 Calc!A271 `=KURT(Data!D10:D11,YEAR(HYPGEOM.DIST(1,3,6,7,TRUE)))`: Excel #DIV/0!, ours #NUM!; inner `HYPGEOM.DIST(1,3,6,7,TRUE)` Excel 0.0, ours #NUM!
+Cells:
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A26
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A271
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 40 known-failure lines (29 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `HYPGEOMDIST(3,5,5,6)` is 0, `HYPGEOMDIST(3,-0.025,5,9)` and `HYPGEOMDIST(1E15,2,2,17)` are `#NUM!`.

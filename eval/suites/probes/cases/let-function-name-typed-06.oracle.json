@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=LET(max,MAX(1,2),x,max+1,x)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "7f6114f6e030ba3013f058c0d393f418f5e91e5b1394dc85c9af65d5a44dcd19",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-24T04:26:55+00:00",
+  "version": null,
+  "workbook_name": "6f668af1516325530f531cfe6cd5b3db4a17959c9c0ac49ee52bc1167df35325.xlsx"
+ }
+}

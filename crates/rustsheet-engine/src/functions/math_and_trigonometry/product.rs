@@ -1,7 +1,7 @@
 use crate::arithmetic::{extended_product, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -12,6 +12,7 @@ const PRODUCT_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
     grids: GridReading::TopLeft,
+    nested: NestedReading::NotAvailable,
 };
 
 impl Model {

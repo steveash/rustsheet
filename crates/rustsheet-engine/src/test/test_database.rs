@@ -547,17 +547,152 @@ fn lifted_field_is_charged_the_criteria_table() {
     assert_eq!(model._get_text("F2"), *"#ERROR!");
 }
 
-/// A one-cell criteria reference is a one-cell criteria table (a header only: every record
-/// matches), as before the criteria were lifted (T-1389 fidelity review).
+/// A criteria reference of one row (headers only) is `#VALUE!`, as is a database of one row
+/// (probes/db-header-criteria-shapes AB2-AB37, excel-graph).
 #[test]
-fn one_cell_criteria_reference_is_a_table() {
+fn one_row_criteria_or_database_is_value_error() {
     let mut model = new_empty_model();
     for (cell, value) in [("A1", "Price"), ("A2", "2.5"), ("A3", "4"), ("E1", "Price")] {
         model._set(cell, value);
     }
+    model._set("E2", ">3");
     model._set("F1", "=DSUM(A1:A3,\"Price\",E1)");
-    model._set("F2", "=DSUM(A1:A3,\"Price\",$E$1)");
+    model._set("F2", "=DCOUNTA(A1:A3,\"Price\",$E$1)");
+    model._set("F3", "=DSUM(A1:A1,\"Price\",E1:E2)");
+    model._set("F4", "=DSUM(A1:A3,\"Price\",E1:E2)");
     model.evaluate();
-    assert_eq!(model._get_text("F1"), *"6.5");
-    assert_eq!(model._get_text("F2"), *"6.5");
+    assert_eq!(model._get_text("F1"), *"#VALUE!");
+    assert_eq!(model._get_text("F2"), *"#VALUE!");
+    assert_eq!(model._get_text("F3"), *"#VALUE!");
+    assert_eq!(model._get_text("F4"), *"4");
+}
+
+/// Criteria headers name database columns by their text (a number by its coerced text), each
+/// criteria column keeps its own header, and a header that names no column makes its conditions
+/// computed criteria (probes/db-header-criteria-shapes, probes/db-computed-criteria-shapes).
+#[test]
+fn criteria_headers_and_computed_criteria() {
+    let mut model = new_empty_model();
+    model._set("A1", "Name");
+    model._set("B1", "Qty");
+    model._set("C1", "0.5");
+    for row in 2..=6 {
+        model._set(&format!("A{row}"), &format!("n{row}"));
+        model._set(&format!("B{row}"), &(row - 1).to_string());
+        model._set(&format!("C{row}"), &(10 * (row - 1)).to_string());
+    }
+    // An unknown header over a blank cell is ignored; the second column still tests Qty.
+    model._set("H1", "Zzz");
+    model._set("I1", "Qty");
+    model._set("I2", ">3");
+    // The text "0.5" names the number header 0.5.
+    model._set("J1", "'0.5");
+    model._set("J2", ">20");
+    // Computed criteria under a blank or unknown header: TRUE, "TRUE" and 1 hold, ">2" does not.
+    model._set("K2", "TRUE");
+    model._set("L1", "Zzz");
+    model._set("L2", ">2");
+    model._set("M1", "Zzz");
+    model._set("M2", "'TRUE");
+    // A formula condition is evaluated again for each record.
+    model._set("N2", "=B2>2");
+    // A blank criteria row matches every record.
+    model._set("O1", "Qty");
+    model._set("O2", ">4");
+    model._set("F1", "=DSUM(A1:C6,2,H1:I2)");
+    model._set("F2", "=DSUM(A1:C6,2,J1:J2)");
+    model._set("F3", "=DSUM(A1:C6,2,K1:K2)");
+    model._set("F4", "=DSUM(A1:C6,2,L1:L2)");
+    model._set("F5", "=DSUM(A1:C6,2,M1:M2)");
+    model._set("F6", "=DSUM(A1:C6,2,N1:N2)");
+    model._set("F7", "=DSUM(A1:C6,2,O1:O3)");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), *"9");
+    assert_eq!(model._get_text("F2"), *"12");
+    assert_eq!(model._get_text("F3"), *"15");
+    assert_eq!(model._get_text("F4"), *"0");
+    assert_eq!(model._get_text("F5"), *"15");
+    assert_eq!(model._get_text("F6"), *"12");
+    assert_eq!(model._get_text("F7"), *"15");
+}
+
+/// A formula condition that runs a D-function over its own criteria is bounded (directive 5).
+#[test]
+fn self_referencing_formula_condition_is_bounded() {
+    let mut model = new_empty_model();
+    model._set("A1", "Qty");
+    for row in 2..=6 {
+        model._set(&format!("A{row}"), &row.to_string());
+    }
+    model._set("E2", "=DSUM($A$1:$A$6,1,$E$1:$E$2)>0");
+    model._set("F1", "=DSUM(A1:A6,1,E1:E2)");
+    model.evaluate();
+    // The nested condition in E2 is not re-evaluated (one level only, a DEVIATION in
+    // docs/excel-semantics/statistics.md), so it fails for every record and nothing is summed.
+    assert_eq!(model._get_text("F1"), *"0");
+}
+
+/// A cell first computed while a formula condition is re-evaluated runs its own D-functions in
+/// full: the one-level guard belongs to one formula run (T-1390 fidelity review).
+#[test]
+fn cells_reached_from_a_formula_condition_evaluate_in_full() {
+    let mut model = new_empty_model();
+    model._set("A1", "Qty");
+    for row in 2..=6 {
+        model._set(&format!("A{row}"), &(row - 1).to_string());
+        model._set(&format!("K{row}"), "=DCOUNT($A$1:$A$6,1,$G$1:$G$2)");
+    }
+    model._set("G2", "=A2>2");
+    model._set("H2", "=K2>0");
+    model._set("M1", "=DCOUNT(A1:A6,1,H1:H2)");
+    model._set("N1", "=DCOUNT(A1:A6,1,G1:G2)");
+    model.evaluate();
+    for row in 2..=6 {
+        assert_eq!(model._get_text(&format!("K{row}")), *"3");
+    }
+    assert_eq!(model._get_text("M1"), *"5");
+    assert_eq!(model._get_text("N1"), *"3");
+}
+
+/// A record whose moved formula reference lands on the database's header row does not match:
+/// over A2:D9 (header row 2) `=B2>3` reads B2 for the first record, and that record fails
+/// (gen-m9 4dc761698ca23149 A129, f066968376660329 A292, f61a73cd9af21e6d A289; T-2553).
+#[test]
+fn formula_condition_on_the_header_row_fails() {
+    let mut model = new_empty_model();
+    for (row, (qty, price)) in [
+        ("Qty", "Price"),
+        ("4", "2.5"),
+        ("10", "x"),
+        ("0", "4"),
+        ("2", "TRUE"),
+        ("1", "10"),
+        ("-4", "0.5"),
+        ("7", "100"),
+        ("5", "-1"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        model._set(&format!("B{}", row + 1), qty);
+        model._set(&format!("C{}", row + 1), price);
+    }
+    model._set("O1", "Calc");
+    model._set("O2", "=B2>3");
+    model._set("F1", "=DPRODUCT(B2:C9,2,O1:O2)");
+    model._set("F2", "=DMAX(B2:C9,2,O1:O2)");
+    model._set("F3", "=DCOUNTA(B2:C9,2,O1:O2)");
+    // The same condition over B1:C9 starts at its first record: rows 2, 3, 8 and 9 match.
+    model._set("F4", "=DCOUNTA(B1:C9,2,O1:O2)");
+    // An absolute row stays put and is not checked: every record reads B2 = 4 and matches.
+    model._set("P1", "Calc");
+    model._set("P2", "=B$2>3");
+    model._set("F5", "=DCOUNTA(B2:C9,2,P1:P2)");
+    model.evaluate();
+    // Rows 4 (B3 = 10) and 9 (B8 = 7) match; row 3 (B2 = 4, the header row) does not.
+    assert_eq!(model._get_text("F1"), *"-4");
+    assert_eq!(model._get_text("F2"), *"4");
+    assert_eq!(model._get_text("F3"), *"2");
+    assert_eq!(model._get_text("F4"), *"4");
+    assert_eq!(model._get_text("F5"), *"7");
 }

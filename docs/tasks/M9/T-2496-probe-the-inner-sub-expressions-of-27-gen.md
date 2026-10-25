@@ -53,7 +53,17 @@ Cells:
 - gen-m9/d0854366830dcdee.case.json (2): Calc!A183, A298
 - gen-m9/d912671baa1364aa.case.json (1): Calc!A347
 
+Moved from T-2482 (2026-10-24): YIELD's maturity is `ODDFPRICE(SUM(..)<123456793.56>,46471,..,IFNA("","1.5")<"">,..)`,
+ours `#VALUE!` (the text rate). Excel's YIELD is `#NUM!`, so its ODDFPRICE is likely `#NUM!` from the settlement past
+9999-12-31, read before the rate as PRICE does (financial.md "PRICE, YIELD, DURATION and MDURATION check order"). Probe
+the inner ODDFPRICE. Fixed by T-2483 (2026-10-24): a settlement past 9999-12-31 is `#NUM!` as ODDFPRICE reads it
+(financial.md "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order"); the line below is gone from the baseline.
+Owned gen-m9 cells (T-2482, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 visibly off.
+- gen-m9/3c06f9298f65a3ba Calc!A309 `=YIELD(38778,ODDFPRICE(SUM(Data!D11,Data!D4:D8),46471,BYCOL(Data!D4,LAMBDA(acc,1000000000000000.0)),38622,IFNA("","1.5"),IPMT(2,1,150,481849),109,2),IFNA((1e-15>Data!A3),(Data!E11-Data!B6)),101,103,2)`: Excel #NUM!, ours #VALUE!
+
 ## Acceptance criteria
+- [x] Visible parity (gen-m9, T-2482): the known-failure line listed under "Moved from T-2482" disappears from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 28 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Every cell above is listed in a fix task's Context (new or extended), or explained in financial.md as a quirk with its owning task; the probe case's cells are in eval/ and gated or baselined.

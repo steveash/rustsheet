@@ -179,6 +179,36 @@ Status: VERIFIED (Excel-authored files)
 Implemented in: crates/rustsheet-xlsx/src/export/worksheets.rs (`plain_formula`, T-1552).
 Tasks: T-1552
 
+## Members of a volatile spill are stored as empty `<f ca="1"/>`
+Rule: desktop Excel saves each spilled member of a volatile dynamic array, apart from the anchor, as an
+empty formula element with the calculate-always flag and its value:
+`<c r="F261" cm="1"><f t="array" aca="1" ref="F261:F265" ca="1">_xlfn.RANDARRAY(5)</f><v>0.57…</v></c>`
+then `<c r="F262"><f ca="1"/><v>0.61…</v></c>` through F265. Members of a non-volatile spill are plain
+values with no `<f>`. An empty `<f ca="1"/>` inside an array's `ref` is therefore a spill member, not a
+formula of its own.
+Evidence: calipers roundtrip/formulas_dynamic_arrays/golden.xlsx (desktop Excel, Calipers 9e47ea4f):
+the RANDARRAY spills at F261, F267, F269, F273 and F279 (T-0446).
+Ours: the import loads the members as the anchor's spill. The eval snapshot reader marks them array
+members, and the harness skips them as volatile, as it does the anchor (T-0446).
+Status: VERIFIED (Excel-authored files)
+Implemented in: crates/rustsheet-eval/src/xlsx_snapshot.rs (`parse_sheet`), crates/rustsheet-eval/src/volatile.rs (`scorable_cells`).
+Tasks: T-0446
+
+## Iterative calculation is `calcPr@iterate`, with count and delta only when not the defaults
+Rule: desktop Excel saves iterative calculation as `<calcPr iterate="1"/>` in workbook.xml. It
+writes `iterateCount` and `iterateDelta` only when they differ from the defaults, 100 and 0.001:
+`<calcPr calcId="191029" iterate="1" iterateCount="200" iterateDelta="9.9999999999999995E-7"/>`.
+The delta is a shortest round-trip double with an upper-case exponent.
+Evidence: calipers pv_goldens (desktop Excel, Calipers 9e47ea4f). 68 workbooks store a bare
+`iterate="1"`, and pv26_007 and pv26_2_007 store the count and delta above (T-0447).
+Ours: the import reads all three. The export always writes `iterate="1"` with the count and delta,
+defaults included, which Excel reads the same and which keeps a round trip exact. Unprobed, a decision-0014 choice for untrusted input: an
+`iterateCount` outside 1 to 32,767 (Excel's dialog range), or a delta that is negative, NaN or
+unparsable, imports as the default.
+Status: VERIFIED (Excel-authored files) for the storage; the fallback is our choice
+Implemented in: crates/rustsheet-xlsx/src/import/workbook.rs (`iteration_from`), crates/rustsheet-xlsx/src/export/workbook.rs
+Tasks: T-0447
+
 ## LAMBDA optional parameters are stored `_xlop.`
 Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of
 it as `_xlpm.y` like any other parameter: `=LAMBDA(x,[y],ISOMITTED(y))(1)` is saved as
@@ -252,9 +282,19 @@ is ignored), `1990-01-01T12:00:00.5` = 32874.500005787035 (fractional seconds co
 time-only `12:00:00` = 0.5, and `1899-12-31` (before 1900-01-01) is a `#VALUE!` cell
 (`ISNUMBER` FALSE). UNVERIFIED: dates after 9999-12-31, `24:00:00`, non-zero-padded dates (the importer
 maps these to `#VALUE!` too) and a `t="d"` cell with no `<v>` (imported empty). Probe run 2026-10-07 (plain forms), 2026-10-14 (the rest), Excel for the web.
+VERIFIED for a `t="d"` cell in a 1904 workbook (`<workbookPr date1904="1">`, T-2515, Excel for the web,
+2026-10-23): the text names a date, and the cell holds that date's serial in the 1904 system.
+`2024-01-01T00:00:00` = 43830 (45292 in a 1900 workbook), `1904-01-01` = 0, time-only `12:00:00` = 0.5
+(a day fraction in both systems), and a date before the 1904 epoch (`1903-12-31`, `1900-01-01`) is a
+`#VALUE!` cell (`ISNUMBER` FALSE), as a date before 1900-01-01 is in a 1900 workbook. `TEXT(A1,"yyyy-mm-dd
+hh:mm:ss")` shows the written date (`2024-01-01 00:00:00`, `1904-01-01 12:00:00` for the time-only cell).
+Evidence: fixtures/t-d-1904, t-d-1904-epoch, t-d-1904-time-only, t-d-1904-pre-epoch, t-d-1904-1900-01-01.
+UNVERIFIED: `1900-02-29` (the 1900 system's phantom day) in a 1904 workbook; it is before the epoch, so
+the importer reads it as `#VALUE!` too.
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
-`iso8601_to_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs (shared with the eval snapshot reader)
-Tasks: T-0112, T-0406, T-0407
+`iso8601_to_serial` and `iso8601_to_date_system_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs
+(shared with pivot cache `<d>` items and the eval snapshot reader)
+Tasks: T-0112, T-0406, T-0407, T-2515
 
 ## Structured references in the file
 Rule (excel-graph uploads of spec2xlsx files, 2026-10-16, T-1607): the file form of a structured reference
