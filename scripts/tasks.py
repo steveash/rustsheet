@@ -13,6 +13,9 @@
   scripts/tasks.py validate              # schema + dependency checks, and every TODO(T-XXXX) in
                                          # code names an open task (CI)
   scripts/tasks.py board                 # write docs/tasks/BOARD.md (local view, git-ignored)
+  scripts/tasks.py stats --json          # task counts per milestone, campaign stage and status,
+                                         # and deferred tasks, for the progress dashboard
+                                         # (SPEC-0022); never fetches; fails like `validate`
   scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S]
                        [--tier sonnet|opus] [--no-fetch]
                                          # write a task file with the next free id (decision 0016)
@@ -24,6 +27,7 @@ See docs/process/task-format.md.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -143,6 +147,11 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
     return errors
 
 
+def check(tasks: list[dict[str, object]]) -> list[str]:
+    """Every error `validate` reports: the task schema and dependencies, then stale TODOs."""
+    return validate(tasks) + stale_todos(tasks, code_files())
+
+
 def stale_todos(tasks: list[dict[str, object]], files: dict[str, str]) -> list[str]:
     """Every `TODO(T-XXXX)` in `files` (path -> text) whose task is not open: done, dropped or
     unknown. A TODO's owner must be a task someone will still pick up.
@@ -188,6 +197,34 @@ def ready(t: dict[str, object], by_id: dict[str, dict[str, object]]) -> bool:
         and "defer" not in t
         and all(by_id.get(d, {}).get("status") == "done" for d in deps_of(t))
     )
+
+
+def stats(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -> dict[str, object]:
+    """Task counts for the progress dashboard (SPEC-0022, "Task counts"), so its generator never
+    parses front matter itself.
+
+    `by_milestone`: milestone -> status -> count. `by_campaign`: stage (a `campaign:` tag) ->
+    status -> count, plus `ready`, the stage's tasks that `ready` accepts; branch claims are not
+    checked, because that would fetch (`available` does). `deferred`: deferred tasks (decision
+    0114) still open, and done. Every status and stage is present, zero or not.
+    """
+
+    def zero() -> dict[str, int]:
+        return dict.fromkeys(STATUSES, 0)
+
+    by_milestone: dict[str, dict[str, int]] = {}
+    by_campaign: dict[str, dict[str, int]] = {stage: {**zero(), "ready": 0} for stage in CAMPAIGNS}
+    deferred = {"open": 0, "done": 0}
+    for t in tasks:
+        status = str(t.get("status"))
+        by_milestone.setdefault(str(t.get("milestone")), zero())[status] += 1
+        stage = by_campaign.get(str(t.get("campaign")))
+        if stage is not None:  # no `campaign:` tag, or an unknown one (`validate` rejects it)
+            stage[status] += 1
+            stage["ready"] += int(ready(t, by_id))
+        if "defer" in t and status in (*OPEN, "done"):
+            deferred["open" if status in OPEN else "done"] += 1
+    return {"by_milestone": by_milestone, "by_campaign": by_campaign, "deferred": deferred}
 
 
 def git_branch_names(directory: str, pattern: re.Pattern[str], fetch: bool = True) -> set[str]:
@@ -480,11 +517,24 @@ def main() -> int:
     tasks = load()
     by_id = {str(t["id"]): t for t in tasks}
     if cmd == "validate":
-        errors = validate(tasks) + stale_todos(tasks, code_files())
+        errors = check(tasks)
         for e in errors:
             print(f"FAIL {e}")
         print(f"{len(tasks)} tasks, {len(errors)} errors")
         return 1 if errors else 0
+    if cmd == "stats":
+        if "--json" not in sys.argv:
+            print("usage: tasks.py stats --json", file=sys.stderr)
+            return 2
+        # Counts over an invalid task set would mislead the dashboard; fail like `validate`.
+        errors = check(tasks)
+        for e in errors:
+            print(f"FAIL {e}", file=sys.stderr)
+        if errors:
+            print(f"{len(tasks)} tasks, {len(errors)} errors; see `scripts/tasks.py validate`", file=sys.stderr)
+            return 1
+        print(json.dumps(stats(tasks, by_id), indent=2, sort_keys=True))
+        return 0
     if cmd == "new":
         return new_task(tasks, fetch="--no-fetch" not in sys.argv)
     if cmd in ("next", "ready"):
