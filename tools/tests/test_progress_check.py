@@ -140,14 +140,15 @@ def test_plain_text_with_emphasis_lists_and_prose_colons_passes() -> None:
     assert offenders(text) == []
 
 
-@pytest.mark.parametrize("text", ["LOG10 and ATAN2 are off.", "Phase1 needs v15 and x_2.", "A 10x gain."])
+@pytest.mark.parametrize("text", ["LOG10 and ATAN2 are off.", "Phase1 needs v15 and x_2."])
 def test_digits_inside_identifiers_are_not_numbers(text: str) -> None:
     assert check.numbers(text) == []
     assert offenders(text) == []
 
 
 def test_number_boundaries() -> None:
-    assert check.numbers("1.5x, 1,234x, 97.5%, 1,234, and 12.") == ["97.5%", "1,234", "12"]
+    assert check.numbers("1.5x, 1,234x, 97.5%, 1,234, and 12.") == ["1.5", "1,234", "97.5%", "1,234", "12"]
+    assert check.numbers("500x faster, 99k users, 12ms, 3rd") == ["500", "99", "12", "3"]
     assert check.numbers("M2, M21, #1858, T-0074, SPEC-0022, decision 0118 and 2026-10-19.") == []
 
 

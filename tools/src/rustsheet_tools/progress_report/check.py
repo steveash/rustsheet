@@ -19,9 +19,10 @@ OK = "progress check ok"
 # The run the `status` block names; page.status writes this sentence (a test keeps the two in step).
 STATUS_RUN = re.compile(rf"The eval run of \*\*({RUN_DATE.pattern})\*\* at commit `({COMMIT_SHA.pattern})`")
 # What counts as a number (T-0074): `\d[\d,]*(\.\d+)?%?` standing alone, never the digits of an
-# identifier such as LOG10, ATAN2, v15 or phase1 (no word character directly before or after, and
-# no shorter match cut out of `1.5x` or `1,234x`). A trailing `,` is the sentence's, not the number's.
-NUMBER = re.compile(r"(?<!\w)\d[\d,]*(?:\.\d+)?%?(?!\w|[.,]\d)")
+# identifier such as LOG10, ATAN2, v15 or phase1 (no word character directly before). A unit suffix
+# does not hide a number: `500x`, `12ms` and `1.5x` still yield 500, 12 and 1.5, so a judgment block
+# cannot state an uncited figure that way. A trailing `,` is the sentence's, not the number's.
+NUMBER = re.compile(r"(?<!\w)\d[\d,]*(?:\.\d+)?%?(?![.,]\d)")
 # Digit runs that are names, not measurements: the as-of comment, dates, task, spec, PR and
 # decision ids. Milestone names (M2) need no entry: NUMBER never matches digits after a letter.
 IGNORED = re.compile(
