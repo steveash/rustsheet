@@ -55,7 +55,7 @@ follow-up instead of matching the golden (decision 0039).
       ±2.2250738585072014E-308, ±1E-300 with d = -(n·(1±k·2^-52)) for k = 1, 2, 4; plus the two calipers pairs and
       same-sign controls. Each pair has an `ISERROR` or `(x)=0` companion where Graph's 0 for a kept subnormal would
       hide the answer (decision 0042).
-- [x] The engine matches every cell of the probe. The calipers I88 and H89 cells of both workbooks pass
+- [x] The engine matches every cell of the probe. (The calipers.txt part waits on T-0463's ratchet; see Outcome.) The calipers I88 and H89 cells of both workbooks pass
       (`rustsheet-eval run --suite calipers` after `rustsheet-eval fetch --suite calipers`), and their lines leave
       eval/baseline/calipers.txt (`rustsheet-eval update-baseline --suite calipers`) with no new known failure.
 - [x] numbers.md gets an entry "MOD near the smallest normal" with the fitted rule, the evidence and `Status: VERIFIED`.
@@ -82,4 +82,5 @@ Excel's type and value.
   0032, 0090) pointing at the probe's identical rows 130 and 131.
 - Eval delta: probes +4 cases (3,051 cells, all passing), known failures unchanged in every gated suite, 0 regressions.
   calipers (not gated): the 8 owned cells pass. `update-baseline --suite calipers` still refuses because of 36 cells
-  (pv_goldens NPV ulps and CHISQ.INV) that fail on `main` too, so calipers.txt is not ratcheted here.
+  (pv_goldens PPMT/NPV ulps and CHISQ.INV) that fail on `main` too (checked with a build of `main`; owned by T-2708 and
+  T-0463), so calipers.txt is not ratcheted here: the eight T-2714 cells' `F` lines leave it with T-0463's ratchet.
