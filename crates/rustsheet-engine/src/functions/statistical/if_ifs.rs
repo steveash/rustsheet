@@ -4,6 +4,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
+use crate::functions::statistical::ifs_cache::{count_bits, set_bits};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::Node,
@@ -12,7 +13,7 @@ use crate::{
 };
 
 /// A compiled criterion predicate, as returned by `build_criteria`.
-type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
+pub(super) type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
 
 /// Rows and columns spanned by a range.
 fn range_shape(range: &Range) -> (i32, i32) {
@@ -377,6 +378,37 @@ impl Model {
             }
         }
 
+        // Every range cached for this pass (`ifs_cache.rs`, T-0449): count the cells all criteria
+        // match within the used rows, then the empty rows past them as the walk below does.
+        if !open_column {
+            let last_row = if open_row {
+                right_row.min(max_row)
+            } else {
+                right_row
+            };
+            let rects: Vec<Range> = ranges
+                .iter()
+                .map(|range| Range {
+                    left: range.left,
+                    right: CellReferenceIndex {
+                        sheet: range.left.sheet,
+                        row: range.left.row + last_row - left_row,
+                        column: range.right.column,
+                    },
+                })
+                .collect();
+            if let Some(matched) = self.ifs_all_matches(&rects, criteria, &fn_criteria) {
+                total = count_bits(&matched) as f64;
+                if open_row
+                    && right_row > max_row
+                    && fn_criteria.iter().all(|f| f(&CalcResult::EmptyCell))
+                {
+                    total += ((LAST_ROW - max_row) * (right_column - left_column + 1)) as f64;
+                }
+                return CalcResult::Number(total);
+            }
+        }
+
         for row in left_row..right_row + 1 {
             if open_row && row > max_row {
                 // If the row is larger than the max row in the sheet then all cells are empty.
@@ -447,18 +479,21 @@ impl Model {
     {
         let SumRanges { sum_range, ranges } = ranges.as_ref().map_err(Clone::clone)?;
         let fn_criteria = self.build_ifs_criteria(criteria, cell)?;
-        self.run_ifs(sum_range, ranges, &fn_criteria, cell, apply)
+        self.run_ifs(sum_range, ranges, criteria, &fn_criteria, cell, apply)
     }
 
     /// Walks `sum_range` and applies `apply` to every numeric cell whose parallel
-    /// cell in each criteria range satisfies the matching criterion. `ranges` and
-    /// `fn_criteria` are parallel (one criteria range and one predicate per case).
+    /// cell in each criteria range satisfies the matching criterion. `ranges`, `criteria` and
+    /// `fn_criteria` are parallel (one criteria range, criterion and predicate per case).
     ///
-    /// The walk behind [`Model::apply_ifs`].
+    /// The walk behind [`Model::apply_ifs`]. When every range it would read is cached for this
+    /// pass (`ifs_cache.rs`, T-0449), the matching cells come from the cached match sets instead,
+    /// taken in the walk's order.
     fn run_ifs<F>(
         &mut self,
         sum_range: &Range,
         ranges: &[Range],
+        criteria: &[CalcResult],
         fn_criteria: &[Criterion<'_>],
         cell: CellReferenceIndex,
         mut apply: F,
@@ -483,6 +518,30 @@ impl Model {
                 right_column = c;
             }
             Err(message) => return Err(CalcResult::new_error(Error::ERROR, cell, message)),
+        }
+
+        if right_row >= left_row && right_column >= left_column {
+            let walked = |range: &Range| Range {
+                left: range.left,
+                right: CellReferenceIndex {
+                    sheet: range.left.sheet,
+                    row: range.left.row + right_row - left_row,
+                    column: range.left.column + right_column - left_column,
+                },
+            };
+            let rects: Vec<Range> = ranges.iter().map(walked).collect();
+            if let Some(matched) = self.ifs_all_matches(&rects, criteria, fn_criteria) {
+                if let Some(values) = self.ifs_values(&walked(sum_range)) {
+                    for index in set_bits(&matched) {
+                        match values.get(index) {
+                            Some(CalcResult::Number(n)) => apply(*n),
+                            Some(error @ CalcResult::Error { .. }) => return Err(error.clone()),
+                            _ => {}
+                        }
+                    }
+                    return Ok(());
+                }
+            }
         }
 
         for row in left_row..right_row + 1 {

@@ -19,7 +19,7 @@ pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
 mod math_and_trigonometry;
 mod spill_functions;
-mod statistical;
+pub(crate) mod statistical;
 mod subtotal;
 mod text;
 pub(crate) mod util;

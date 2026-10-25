@@ -1,0 +1,125 @@
+//! The per-pass cache of lookup search vectors (T-0448). Every exact-match lookup into a range
+//! used to evaluate and copy the range's cells, then walk them: 5,000 VLOOKUPs into 20,000 rows
+//! cost 10^8 cell reads. Within one pass the cells of a range, once all evaluated, cannot change,
+//! so the vector built by the first lookup serves the rest, and its exact-match indexes
+//! (`SearchVector::exact_match`, `SearchVector::collated_match`) replace the walks.
+//!
+//! Why a cached vector reads what a fresh walk would, and when nothing is cached:
+//! * It is only stored when building it evaluated every cell of the range to its value for this
+//!   pass: no restart or unwind started, no read was blocked (Excel order), and no cell read was
+//!   still `Evaluating` (a cycle through the range, whose cell gets its value later)
+//!   (`Evaluation::evaluating_reads`).
+//! * An evaluated cell keeps its value for the rest of the pass, except where a dynamic array
+//!   spills over it or gives it up. The first walk recorded what it saw at every position, so
+//!   such a write contradicts that record and restarts the pass, and every pass starts with an
+//!   empty cache (`run_pass`). The pass that completes therefore saw no such write after any
+//!   cached build.
+//! * A read of a circular cell marks its reader circular, so a range holding one is not cached.
+//! * Iterative calculation joins each reader of a cycle member to the cycle, and Excel-order
+//!   passes stop at unevaluated reads; neither caches. Outside a pass (data tables, conditional
+//!   formats) nothing is cached either.
+//!
+//! Directive 5: the cached cells across all ranges are capped at [`MAX_CACHED_CELLS`], beyond
+//! which lookups walk as before. A vector's two exact-match indexes add at most one key per cell
+//! each (for text, its folded units or collation key), so a cached vector with both built takes
+//! about three times the memory of its values: still proportional to the capped cells.
+
+use std::collections::HashMap;
+
+use crate::evaluation::KeyBuild;
+use crate::expressions::types::CellReferenceIndex;
+use crate::model::Model;
+
+use super::lookup_table::SearchVector;
+
+/// Cells all cached vectors of one pass may hold together.
+const MAX_CACHED_CELLS: usize = 4_000_000;
+
+/// Ranges shorter than this are cheaper to walk again than to cache.
+const MIN_CACHED_CELLS: usize = 64;
+
+/// The evaluated part of a search range.
+#[derive(PartialEq, Eq, Hash)]
+struct VectorKey {
+    /// Its first cell.
+    left: (u32, i32, i32),
+    /// Its last evaluated cell.
+    end: (u32, i32, i32),
+    /// The range's full length, the empty tail included.
+    len: usize,
+    /// Down a column, else along a row.
+    down: bool,
+}
+
+/// The search vectors built in the current pass, by range.
+#[derive(Default)]
+pub(crate) struct SearchCache {
+    vectors: HashMap<VectorKey, SearchVector, KeyBuild>,
+    cells: usize,
+}
+
+impl SearchCache {
+    /// Forgets every vector: a new pass, or cells whose state was reset.
+    pub(crate) fn clear(&mut self) {
+        self.vectors.clear();
+        self.cells = 0;
+    }
+}
+
+impl Model {
+    /// The search vector of `left:end` (`end` the last cell worth evaluating, `len` the range's
+    /// full length), from this pass's cache when it is there, else evaluated and, when that was
+    /// safe (module docs), cached.
+    pub(super) fn cached_search_vector(
+        &mut self,
+        left: &CellReferenceIndex,
+        end: &CellReferenceIndex,
+        len: usize,
+        down: bool,
+    ) -> SearchVector {
+        let cells = usize::try_from(if down {
+            end.row - left.row + 1
+        } else {
+            end.column - left.column + 1
+        })
+        .unwrap_or(0);
+        let key = VectorKey {
+            left: (left.sheet, left.row, left.column),
+            end: (end.sheet, end.row, end.column),
+            len,
+            down,
+        };
+        let cacheable = cells >= MIN_CACHED_CELLS && self.pass_cache_safe();
+        if cacheable {
+            if let Some(vector) = self.evaluation.search_cache.vectors.get(&key) {
+                return vector.clone();
+            }
+        }
+        let evaluating_reads = self.evaluation.evaluating_reads;
+        let vector = SearchVector::with_len(self.prepare_array(left, end, down), len);
+        let cache = &self.evaluation.search_cache;
+        if cacheable
+            && cache.cells + cells <= MAX_CACHED_CELLS
+            && self.pass_cache_safe()
+            && self.evaluation.blocked_on.is_none()
+            && self.evaluation.evaluating_reads == evaluating_reads
+            && !self.any_circular(left, end)
+        {
+            let cache = &mut self.evaluation.search_cache;
+            cache.cells += cells;
+            cache.vectors.insert(key, vector.clone());
+        }
+        vector
+    }
+
+    /// Whether any cell of `left:end` (one sheet) is known to be circular.
+    fn any_circular(&self, left: &CellReferenceIndex, end: &CellReferenceIndex) -> bool {
+        let circular = &self.evaluation.circular;
+        if circular.is_empty() {
+            return false;
+        }
+        (left.row..=end.row).any(|row| {
+            (left.column..=end.column).any(|column| circular.contains(&(left.sheet, row, column)))
+        })
+    }
+}

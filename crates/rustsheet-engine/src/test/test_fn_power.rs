@@ -335,6 +335,37 @@ fn huge_integer_exponents_and_subnormal_results() {
     }
 }
 
+// Excel: a product y·ln x that overflows to -∞ is an overflow, not an underflow
+// (probes/power-huge-exponent, power-op-huge-exponent A61-A62, A81-A82, A281-A282).
+#[test]
+fn an_overflowing_log_product_is_an_overflow() {
+    let mut model = new_empty_model();
+    let cases = [
+        ("=POWER(0.1,9.99999999999999E+307)", "#NUM!"),
+        ("=POWER(0.1,-9.99999999999999E+307)", "0"),
+        ("=(1E-307)^9.99999999999999E+307", "#NUM!"),
+        ("=(1E-307)^-9.99999999999999E+307", "0"),
+        ("=POWER(0.5,9.99999999999999E+307)", "0"),
+        ("=POWER(0.5,-9.99999999999999E+307)", "#DIV/0!"),
+        ("=POWER(0,9.99999999999999E+307)", "0"),
+        ("=POWER(0,-9.99999999999999E+307)", "#DIV/0!"),
+        ("=POWER(10,9.99999999999999E+307)", "#NUM!"),
+        ("=POWER(10,-9.99999999999999E+307)", "0"),
+        ("=POWER(1,9.99999999999999E+307)", "1"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
 #[test]
 fn powers_of_minus_ten_keep_the_square_and_multiply_digits() {
     // The 15-digit display of `(-10)^33` hides that it is -1.0000000000000001E+33, not -1E+33.
