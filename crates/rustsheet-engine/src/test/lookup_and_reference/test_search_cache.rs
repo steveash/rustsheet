@@ -199,3 +199,31 @@ fn a_cycle_through_the_range_is_not_cached() {
         );
     }
 }
+
+/// A dynamic array spills into a range that a lookup read earlier in the same pass: the pass
+/// restarts with the anchor first (the walk recorded what it saw there), and the restarted pass
+/// starts with an empty cache, so every lookup sees the spilled values as the walk does. B1 is
+/// itself an anchor, so it runs before A50 in the first pass and reads A51:A59 still empty.
+#[test]
+fn a_spill_into_a_cached_range_restarts_with_an_empty_cache() {
+    let mut model = new_empty_model();
+    for row in 60..=ROWS {
+        model._set(&format!("A{row}"), &row.to_string());
+    }
+    model._set("B1", "=MATCH({1005;1009},$A$51:$A$120,0)");
+    for row in 3..=5 {
+        model._set(&format!("B{row}"), "=MATCH(1005,$A$51:$A$120,0)");
+        model._set(
+            &format!("C{row}"),
+            &format!("=MATCH(1005,$A$51:$A${},0)", 120 + row),
+        );
+    }
+    model._set("A50", "=SEQUENCE(10,1,1000)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "5");
+    assert_eq!(model._get_text("B2"), "9");
+    for row in 3..=5 {
+        assert_eq!(model._get_text(&format!("B{row}")), "5");
+        assert_eq!(model._get_text(&format!("C{row}")), "5");
+    }
+}

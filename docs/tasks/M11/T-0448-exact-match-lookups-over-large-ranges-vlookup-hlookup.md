@@ -92,10 +92,15 @@ Shared constraints:
 - Tests: `test_search_cache.rs` (every lookup value of a mixed-type range through MATCH, VLOOKUP,
   XMATCH and XLOOKUP in both directions and wildcard mode equals the walk over a range of its
   own length; duplicates, case and types; a cache per pass with a range of formulas edited
-  between evaluations; a cycle through the range); `collation_key_equality_is_cmp_text_equality`;
+  between evaluations; a cycle through the range; a spill into a cached range that restarts the
+  pass); `collation_key_equality_is_cmp_text_equality`;
   the `cmp_excel_precision` shortcut test now also checks `excel_precision_key`. Mutation checks:
   returning the first match for a backward search, keying -0 apart from 0, keeping the cache
   across passes, and caching through a cycle each fail a test.
 - Eval: `rustsheet-eval check` 0 regressions in every gated suite; corpus-bench 0 regressions.
   `check --suite calipers` lists 5 PPMT cells of pv23_056 (row 27, 1 to 4 ulp) that `main` gives
   the same (checked on a `main` build): the ungated calipers baseline predates them (T-0458).
+- Review: security, architecture, quality and Excel fidelity APPROVE. MINORs done: a note on
+  `Evaluation::cells` that every reset must clear `search_cache`, the index weight in the
+  cache's directive-5 note, a named `VectorKey`, and a test of a spill into a cached range within
+  one pass (it fails with a stale `#N/A` when the per-pass clear is removed).

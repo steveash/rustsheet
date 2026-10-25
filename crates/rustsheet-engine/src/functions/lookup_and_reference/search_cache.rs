@@ -20,7 +20,9 @@
 //!   formats) nothing is cached either.
 //!
 //! Directive 5: the cached cells across all ranges are capped at [`MAX_CACHED_CELLS`], beyond
-//! which lookups walk as before.
+//! which lookups walk as before. A vector's two exact-match indexes add at most one key per cell
+//! each (for text, its folded units or collation key), so a cached vector with both built takes
+//! about three times the memory of its values: still proportional to the capped cells.
 
 use std::collections::HashMap;
 
@@ -36,9 +38,18 @@ const MAX_CACHED_CELLS: usize = 4_000_000;
 /// Ranges shorter than this are cheaper to walk again than to cache.
 const MIN_CACHED_CELLS: usize = 64;
 
-/// The evaluated part of a search range: its sheet, first cell, last evaluated cell and full
-/// length (with the empty tail), and its direction.
-type VectorKey = (u32, i32, i32, i32, i32, usize, bool);
+/// The evaluated part of a search range.
+#[derive(PartialEq, Eq, Hash)]
+struct VectorKey {
+    /// Its first cell.
+    left: (u32, i32, i32),
+    /// Its last evaluated cell.
+    end: (u32, i32, i32),
+    /// The range's full length, the empty tail included.
+    len: usize,
+    /// Down a column, else along a row.
+    down: bool,
+}
 
 /// The search vectors built in the current pass, by range.
 #[derive(Default)]
@@ -72,15 +83,12 @@ impl Model {
             end.column - left.column + 1
         })
         .unwrap_or(0);
-        let key = (
-            left.sheet,
-            left.row,
-            left.column,
-            end.row,
-            end.column,
+        let key = VectorKey {
+            left: (left.sheet, left.row, left.column),
+            end: (end.sheet, end.row, end.column),
             len,
             down,
-        );
+        };
         let cacheable = cells >= MIN_CACHED_CELLS && self.search_cache_safe();
         if cacheable {
             if let Some(vector) = self.evaluation.search_cache.vectors.get(&key) {
@@ -115,7 +123,7 @@ impl Model {
             && !self.iterating()
     }
 
-    /// Whether any cell of the single row or column `left:end` is known to be circular.
+    /// Whether any cell of `left:end` (one sheet) is known to be circular.
     fn any_circular(&self, left: &CellReferenceIndex, end: &CellReferenceIndex) -> bool {
         let circular = &self.evaluation.circular;
         if circular.is_empty() {

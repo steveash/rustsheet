@@ -213,7 +213,9 @@ pub(crate) struct Evaluation {
     /// next evaluation needs no restart. New anchors are appended in natural
     /// `(sheet, row, column)` order.
     pub(crate) anchor_order: Vec<CellReferenceIndex>,
-    /// Formula cells touched in the current pass, and their state.
+    /// Formula cells touched in the current pass, and their state. Whatever clears this map or
+    /// removes an entry must also clear `search_cache`, whose vectors hold values read under
+    /// these states (T-0448).
     pub(crate) cells: HashMap<CellKey, CellState, KeyBuild>,
     /// Cells being evaluated, innermost last.
     pub(crate) stack: Vec<CellReferenceIndex>,
