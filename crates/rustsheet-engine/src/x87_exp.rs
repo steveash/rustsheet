@@ -17,6 +17,7 @@ use crate::arithmetic::{
     round_extended_to_double, round_extended_to_subnormal, round_to_bits, significand_and_exponent,
 };
 use crate::x87_log10::excel_ln;
+use crate::x87_register::Register;
 
 /// RN64(log2 e), the 64-bit significand FLDL2E loads, with the value `LOG2_E_64 * 2^-63`
 /// (`round8/exp_v6.py` `_L2E64`; log2 e = 1.442695040888963407359924681001892137..., whose
@@ -27,16 +28,32 @@ const LOG2_E_64: u128 = 0xB8AA_3B29_5C17_F0BC;
 pub(crate) const LN_2_HI: f64 = f64::from_bits(0x3FE6_2E42_FEFA_39EF); // 0x1.62e42fefa39efp-1
 pub(crate) const LN_2_LO: f64 = f64::from_bits(0x3C7A_BC9E_3B39_803F); // 0x1.abc9e3b39803fp-56
 
-/// |a| below this gives exactly 1: |u| < 2^-64 then, under half a 64-bit ulp of 1, so w = 1.
-const TINY_ARGUMENT: f64 = 1.0 / 36_893_488_147_419_103_232.0; // 2^-65
-
 /// |t| beyond this is far outside the double range either way (|t| > 1075 is 0 or infinite), and
 /// keeps every shift below in range.
 const T_LIMIT: f64 = 2000.0;
 
-/// Excel's EXP(a) under model V6 (module docs). `a` is finite; a NaN gives NaN, and an argument
-/// past the double range gives 0 or infinity.
+/// Excel's EXP(a) under model V6 (module docs). A NaN gives NaN, and an argument past the
+/// double range (an infinity included) gives 0 or infinity. It is [`excel_exp_extended`] of the
+/// double loaded into a register, so the two agree on every double.
 pub(crate) fn excel_exp(a: f64) -> f64 {
+    if a.is_nan() {
+        return f64::NAN;
+    }
+    if a.is_infinite() {
+        return if a > 0.0 { f64::INFINITY } else { 0.0 };
+    }
+    excel_exp_extended(Register::load(a))
+}
+
+/// Excel's EXP of an argument held in an x87 register (a 64-bit significand, never stored to a
+/// double), under model V6 (module docs): step 1 multiplies the register's own significand by
+/// RN64(log2 e). Excel applies EXP to an unstored exponent in its Loader pmf and its beta density
+/// (docs/excel-semantics/statistics.md "BINOM.DIST pmf: closed forms at k = 0 and k = n, and one
+/// kernel with BETA.DIST", T-2513; the mpmath reference is `docs/research/t2464/w1-density/lib.py`
+/// `exp_v6`, which this matches on the 5,200 random extended arguments of
+/// `test/fixtures/exp_extended.fixture`, T-2633). An argument past the double range gives 0 or
+/// infinity.
+pub(crate) fn excel_exp_extended(a: Register) -> f64 {
     exp_with(a, two_to_the_minus_one)
 }
 
@@ -56,21 +73,28 @@ pub(crate) fn excel_expm1(x: f64) -> f64 {
     u_minus_1 * x / excel_ln(u)
 }
 
-/// [`excel_exp`] with step 3's RN64(2^f - 1) taken from `two_to_the_minus_one`, so the tests can
-/// run the whole model on the reference series.
-fn exp_with(a: f64, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
-    if a.is_nan() {
-        return f64::NAN;
-    }
-    if a.abs() < TINY_ARGUMENT {
+/// [`excel_exp_extended`] with step 3's RN64(2^f - 1) taken from `two_to_the_minus_one`, so the
+/// tests can run the whole model on the reference series.
+#[inline]
+fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
+    let (negative, a_significand, a_exponent) = a.parts();
+    if a_significand == 0 {
         return 1.0;
     }
-    if a.abs() * std::f64::consts::LOG2_E > T_LIMIT {
-        return if a > 0.0 { f64::INFINITY } else { 0.0 };
+    // 2^top <= |a| < 2^(top + 1); a significand has at most 64 bits, so the width fits an i32.
+    let top = a_exponent + i32::try_from(127 - a_significand.leading_zeros()).unwrap_or(0);
+    // |a| < 2^-65 gives exactly 1: |u| < 2^-64 then, under half a 64-bit ulp of 1, so w = 1.
+    if top < -65 {
+        return 1.0;
     }
-    // Step 1: t = T * 2^t_exponent, T a 64-bit integer (a is normal here, |a| >= 2^-65).
-    let (a_significand, a_exponent) = significand_and_exponent(a);
-    let (t, shift) = round_to_bits(u128::from(a_significand) * LOG2_E_64, 64, false);
+    // |a| * log2 e beyond T_LIMIT: certain from the exponent outside [1024, 2048), and for a
+    // double the same f64 test as before on the stored value (exact for a loaded double).
+    if top >= 11 || (top == 10 && a.store().abs() * std::f64::consts::LOG2_E > T_LIMIT) {
+        return if negative { 0.0 } else { f64::INFINITY };
+    }
+    // Step 1: t = T * 2^t_exponent, T a 64-bit integer (|a| >= 2^-65, and a significand of at
+    // least 53 bits times the 64-bit constant has more than 64 bits to round).
+    let (t, shift) = round_to_bits(a_significand * LOG2_E_64, 64, false);
     let t_exponent = a_exponent - 63 + shift;
     // Step 2: |t| <= T_LIMIT < 2^11 and |t| >= 2^-66, so `drop` is in 53..=130. The guards above
     // make every `try_from` fallback below unreachable: t < 2^64, n <= 2^11 and |f| < 2^64.
@@ -90,8 +114,8 @@ fn exp_with(a: f64, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
         (i32::try_from(n).unwrap_or(0), f)
     };
     // f * sign(a) is the true fraction: `fraction` is the magnitude-side remainder of |t|.
-    let negative_f = (fraction < 0) != (a < 0.0);
-    let n = if a < 0.0 { -n } else { n };
+    let negative_f = (fraction < 0) != negative;
+    let n = if negative { -n } else { n };
     // Step 3: w = W * 2^w_exponent, W a 64-bit integer.
     let (mut w, mut w_exponent) = (1_u128 << 63, -63);
     if fraction != 0 {
@@ -393,7 +417,7 @@ mod tests {
     use super::*;
 
     fn excel_exp_series(a: f64) -> f64 {
-        exp_with(a, two_to_the_minus_one_series)
+        exp_with(Register::load(a), two_to_the_minus_one_series)
     }
 
     #[test]
@@ -497,6 +521,74 @@ mod tests {
                     "a = {a:e}"
                 );
             }
+        }
+    }
+
+    /// EXP of an extended argument equals w1-density's mpmath model V6 (`lib.py` `exp_v6`) on the
+    /// 5,200 random 64-bit arguments of `test/fixtures/exp_extended.fixture` (lines
+    /// `±significand exponent model`, the significand and the model's bits in hex).
+    #[test]
+    fn extended_arguments_match_the_mpmath_model() {
+        let mut rows = 0;
+        for line in include_str!("test/fixtures/exp_extended.fixture").lines() {
+            if line.starts_with('#') || line.trim().is_empty() {
+                continue;
+            }
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            let (negative, significand) = fields[0].split_at(1);
+            let significand = u128::from_str_radix(significand, 16).unwrap();
+            let exponent: i32 = fields[1].parse().unwrap();
+            let model = u64::from_str_radix(fields[2], 16).unwrap();
+            let a = Register::from_parts(negative == "-", significand, exponent);
+            assert_eq!(
+                a.parts(),
+                (negative == "-", significand, exponent),
+                "{line}"
+            );
+            assert_eq!(excel_exp_extended(a).to_bits(), model, "{line}");
+            rows += 1;
+        }
+        assert_eq!(rows, 5200);
+    }
+
+    /// On a double, EXP of the double as a full-width register (its significand shifted up to 64
+    /// bits, as an operation leaves it, not the 53 bits of a load) is EXP of the double, bit for
+    /// bit: random doubles in [-750, 750], at every binade from 2^-70 up, and at the range guards.
+    fn full_width(a: f64) -> Register {
+        let register = Register::load(a).mul(Register::load(1.0));
+        assert!(a == 0.0 || register.parts().1 >> 63 == 1, "{a:e}");
+        register
+    }
+
+    #[test]
+    fn extended_argument_of_a_double_is_excel_exp() {
+        let mut state = 0x2633_0000_9E37_79B9_u64;
+        for _ in 0..100_000 {
+            let unit = (next(&mut state) >> 11) as f64 / 9_007_199_254_740_992.0;
+            let wide = (unit - 0.5) * 1500.0;
+            let binade =
+                f64::from_bits(((next(&mut state) % 80 + 953) << 52) | (next(&mut state) >> 12));
+            for a in [wide, binade, -binade] {
+                let extended = excel_exp_extended(full_width(a));
+                assert_eq!(extended.to_bits(), excel_exp(a).to_bits(), "a = {a:e}");
+            }
+        }
+        for a in [
+            0.0,
+            -0.0,
+            1386.0,
+            1387.0,
+            -1386.0,
+            -1387.0,
+            2048.0,
+            f64::MAX,
+            -f64::MAX,
+        ] {
+            assert_eq!(
+                excel_exp_extended(full_width(a)).to_bits(),
+                excel_exp(a).to_bits(),
+                "a = {a:e}"
+            );
         }
     }
 

@@ -3,7 +3,8 @@
 //! probes/stat-argument-modes H105-H131, H374-H384, probes/stat-later-argument-lift H11-H23,
 //! K15-K16). BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST sum their pmf terms in double-double
 //! (`discrete.rs`, T-0927), and past that walk's budget fall back to statrs' incomplete beta, a
-//! continued fraction of at most 140 steps, as BINOM.INV's search does throughout.
+//! continued fraction of at most 140 steps, as BINOM.INV's search does throughout. BINOM.DIST at
+//! k = 0, and its pmf at k = n, take Excel's closed forms instead (T-2633).
 
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
 
@@ -12,7 +13,16 @@ use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ra
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
+use crate::x87_exp::excel_exp;
+use crate::x87_log10::excel_ln;
+use crate::x87_log1p::excel_ln_one_minus;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
+
+/// The trial count (after truncation) from which BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE are
+/// `#NUM!` whatever the other arguments: 2^31 - 1, so 2^31 - 2 trials is the most Excel evaluates
+/// (statistics.md "BINOM.DIST is #NUM! from 2^31 - 1 trials"; probes-numeric
+/// t2633-binom-trials-limit, excel-graph: every k, both cumulative modes, p = 0 and 1 too).
+const TRIALS_LIMIT: f64 = 2_147_483_647.0;
 
 impl Model {
     /// `BINOM.DIST(number_s, trials, probability_s, cumulative)`, and BINOMDIST.
@@ -42,8 +52,7 @@ impl Model {
         {
             return Err(num_error(cell));
         }
-        // Limit to u64
-        if trials > u64::MAX as f64 {
+        if trials >= TRIALS_LIMIT {
             return Err(num_error(cell));
         }
         let n = trials as u64;
@@ -57,6 +66,17 @@ impl Model {
                 k == certain
             };
             return Ok(if hit { 1.0 } else { 0.0 });
+        }
+        // Loader's (2000) end branches, Excel's own closed forms (statistics.md "BINOM.DIST pmf:
+        // closed forms at k = 0 and k = n"; T-2464 r2-log1p, T-2513 r3-binom-pmf): at k = 0 the
+        // pmf, and so the cdf, is EXP(fl(n·l)) with l Excel's ln(1 - p), bit-exact on all 345
+        // BINOM.DIST(0,n,p) cells of the T-2464 research set; at k = n the pmf is
+        // EXP(fl(n·LN(p))), 172 of 172.
+        if k == 0 {
+            return Ok(excel_exp(trials * excel_ln_one_minus(p)));
+        }
+        if k == n && !cumulative {
+            return Ok(excel_exp(trials * excel_ln(p)));
         }
         let walked = if cumulative {
             binomial_cdf(n, odds(p), k)
@@ -114,7 +134,7 @@ impl Model {
         {
             return Err(num_error(cell));
         }
-        if trials > u64::MAX as f64 {
+        if trials >= TRIALS_LIMIT {
             return Err(num_error(cell));
         }
         let n = trials as u64;
