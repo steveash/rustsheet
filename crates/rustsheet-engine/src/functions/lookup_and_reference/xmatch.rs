@@ -4,7 +4,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-use super::lookup_table::SearchVector;
+use super::lookup_table::{Indexed, SearchVector};
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
     binary_search::binary_search,
@@ -161,6 +161,21 @@ pub(crate) fn regex_scan<'a>(
     Ok(None)
 }
 
+/// [`linear_scan`]'s exact match through `array`'s index, which finds what the walk would: a
+/// blank lookup value (it matches blanks) and an error are left to the walk.
+/// [`Indexed::Unindexed`] when the index does not apply. Shared by XMATCH and XLOOKUP (T-0448).
+pub(crate) fn exact_through_index(
+    lookup_value: &CalcResult,
+    array: &SearchVector,
+    forward: bool,
+    match_mode: MatchMode,
+) -> Indexed {
+    if match_mode != MatchMode::Exact || is_blank(lookup_value) || lookup_value.is_error() {
+        return Indexed::Unindexed;
+    }
+    array.collated_match(lookup_value, forward)
+}
+
 /// Searches `array` for `lookup_value` and returns the 0-based index of the match,
 /// or `None` if not found. `regex` is the regex mode's pattern ([`regex_pattern`], compiled once
 /// by the caller); its search may run out of work (`#ERROR!`). Only the candidates
@@ -173,7 +188,12 @@ fn linear_search(
     regex: Option<&mut LookupPattern<'_>>,
     cell: CellReferenceIndex,
 ) -> Result<Option<usize>, CalcResult> {
-    let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
+    let forward = *search_mode == SearchMode::FirstToLast;
+    if let Indexed::Searched(found) = exact_through_index(lookup_value, array, forward, match_mode)
+    {
+        return Ok(found);
+    }
+    let candidates = array.linear_candidates(forward);
 
     match match_mode {
         MatchMode::Regex => regex_scan(regex, candidates, |idx| array.get(idx), cell),
