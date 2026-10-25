@@ -2,7 +2,8 @@
 
 use std::cmp::Ordering;
 
-use crate::functions::util::collation::cmp_text_excel;
+use crate::functions::util::collation::{cmp_text, cmp_text_excel, collation_key};
+use crate::text::Text;
 
 /// Asserts `texts` are strictly increasing in Excel's order.
 fn assert_increasing(texts: &[&str]) {
@@ -110,6 +111,80 @@ fn ascii_fast_path_agrees_with_the_general_path() {
                 cmp_text_excel(left, right),
                 cmp_text_excel(&prefixed(left), &prefixed(right)),
                 "{left:?} vs {right:?}"
+            );
+        }
+    }
+}
+
+/// Two texts have the same collation key exactly when `cmp_text` finds them equal: the
+/// exact-match index of XMATCH and XLOOKUP hashes the key (T-0448). Case, accents, expansions,
+/// skipped hyphens and apostrophes, spaces, ASCII against non-ASCII, and lone surrogates.
+#[test]
+fn collation_key_equality_is_cmp_text_equality() {
+    let mut texts: Vec<Text> = [
+        "",
+        "a",
+        "A",
+        "ab",
+        "AB",
+        "aB",
+        "a-b",
+        "a'b",
+        "a\u{2013}b",
+        "ab-",
+        "-ab",
+        "co-op",
+        "coop",
+        "Co-Op",
+        "cafe",
+        "café",
+        "CAFÉ",
+        "cafè",
+        "ae",
+        "æ",
+        "Æ",
+        "ss",
+        "ß",
+        "SS",
+        "ij",
+        "ĳ",
+        "oe",
+        "œ",
+        "th",
+        "þ",
+        "u",
+        "ü",
+        "Ü",
+        "ø",
+        "ö",
+        "d",
+        "đ",
+        "ð",
+        "1",
+        "¹",
+        "01",
+        " a",
+        "a ",
+        "a\u{a0}",
+        "\u{1}a",
+        "a\u{1}",
+        "😀",
+        "😀a",
+        "x",
+        "X",
+    ]
+    .iter()
+    .map(|s| Text::from(*s))
+    .collect();
+    texts.push(Text::from_utf16(vec![0xD800]));
+    texts.push(Text::from_utf16(vec![0xD800, 0x61]));
+    texts.push(Text::from_utf16(vec![0x61, 0xDC00]));
+    for a in &texts {
+        for b in &texts {
+            assert_eq!(
+                cmp_text(a, b) == Ordering::Equal,
+                collation_key(a) == collation_key(b),
+                "{a:?} vs {b:?}"
             );
         }
     }

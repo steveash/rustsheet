@@ -50,3 +50,7 @@ harness = false
 [[bench]]
 name = "pivot"
 harness = false
+
+[[bench]]
+name = "lookup"
+harness = false
