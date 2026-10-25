@@ -109,6 +109,8 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A39
 - gen-m9/fec39efaba9284c3.case.json (2): Calc!A85, A177
 
+T-2429 (2026-10-25) adds last-digit known failures at large populations in eval/baseline/probes.txt: probes/t2429-hypgeom-huge-count A1, A7, A13, A19, A25 and probes/t2429-hypgeom-threshold A1, A5, A9, A13, A17, A21, A25 (e.g. `HYPGEOMDIST(1,2,3,2147483646)`: Excel 2.7939677238464347E-09, ours 2.7939677238464355E-09).
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 22 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
