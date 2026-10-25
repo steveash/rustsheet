@@ -75,6 +75,8 @@ const RUN_LENGTH: u32 = 10_000;
 const CYCLE: u32 = 100;
 const CYCLED_ROWS: u32 = 10_000;
 const RUNS: usize = 11;
+/// The criteria walks over sparse whole columns, beside J1048576 (T-2711).
+const SPARSE_CRITERIA: &str = "=COUNTIFS(A:J,1)+SUMIFS(A:A,B:B,\"\")";
 
 /// A workbook with `rows` rows of runs in column A, the row number in column B, at most
 /// `CYCLED_ROWS` rows of cycling values in column D, and `formula` in C1. With no rows, J1048576
@@ -127,11 +129,7 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             10_000,
             "=SUM(SUMIFS(B1:B10000,D1:D10000,D1:D10000))",
         ),
-        (
-            "COUNTIFS and SUMIFS, sparse whole columns beside the last row",
-            0,
-            "=COUNTIFS(A:J,1)+SUMIFS(A:A,B:B,\"\")",
-        ),
+        ("COUNTIFS and SUMIFS, sparse whole columns", 0, SPARSE_CRITERIA),
         (
             "SWITCH, numeric result",
             1_000_000,

@@ -88,5 +88,5 @@ Semantics the sparse walk must keep (docs/excel-semantics/criteria.md):
 - Bench (release, medians, main -> branch, this container): lift "SUMIFS, array criterion"
   38 -> 41 ms, "SUMIFS, 10,000-element criteria range" 36 -> 35 ms, "COUNTIFS, lifted whole column"
   67 -> 54 ms, "COUNTIFS, occurrence count" 53 -> 44 ms; new case "COUNTIFS and SUMIFS, sparse
-  whole columns beside the last row" 6.6 us (seconds on main); edit bench recalc 36.2 -> 36.1 ms.
+  whole columns" (beside J1048576) 6.6 us (seconds on main); edit bench recalc 36.2 -> 36.1 ms.
 - Eval delta: +9 probe cells (new case, all pass); no baseline change.
