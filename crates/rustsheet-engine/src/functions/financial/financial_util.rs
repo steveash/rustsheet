@@ -145,7 +145,7 @@ const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
 /// earlier Newton/bisection solver (unverified, T-1686). The 50-step cap is a directive-5 bound
 /// (financial.md "The IRR and XIRR solver caps").
 pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
-    // Excel: a guess at or above 2^53 is #VALUE! too, before the flows are looked at:
+    // Excel: a guess at or above 2^53 is #VALUE! too, before the sign-change check:
     // `IRR({-100,60,60},2^53-1)` and `(..,9E+15)` converge, `(..,2^53)` and `(..,1E+16)` are #VALUE!,
     // and so is `IRR(COUNTBLANK(..),1E+300)` (probes/irr-guess-edges A1-A19,
     // irr-guess-edges-2 A1-A14; financial.md "IRR's guess range").

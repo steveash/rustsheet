@@ -23,7 +23,8 @@ Cut from T-2494 on 2026-10-25. Probes (excel-graph, 2026-10-25):
   irr-guess-edges-2 A35-A44). So CELL's row and col results reach IRR as something other than a plain number; probe what
   (e.g. ISREF, ROWS, an array-taking function) before implementing.
 - `IRR((YEAR(Data!D$11)+UNIQUE(Data!B2:E10,TRUE,TRUE)),INDEX(Data!A3:B9,2))` is `#REF!` (ours `#VALUE!`): probe the guess
-  `INDEX(Data!A3:B9,2)` (a row reference) and the order between a flows error and a guess error.
+  `INDEX(Data!A3:B9,2)` (a row reference) and the order between a flows error and a guess error, including a flows
+  error with a guess at or above 2^53 (`IRR(1/0,1E+300)`: ours `#DIV/0!`; financial.md "IRR's guess range").
 - XIRR: `XIRR({-100,10,20,30,40},{0,1,59,60,61},G)` is 3.4266142457661796E-09 for G = 123456789.123, 4.336808689942018E-09
   for 1E+10 and 3.637978807091713E-09 for 1000 (ours `#NUM!`), `#NUM!` for 1E+300 as ours, and 2.9802322387695314E-09 with
   no guess (ours -2.9802322387695314E-09, the sign) (probes/irr-guess-edges A41-A47). The root is exactly 0; read

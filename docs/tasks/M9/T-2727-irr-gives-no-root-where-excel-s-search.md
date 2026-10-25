@@ -24,7 +24,8 @@ Cut from T-2494 on 2026-10-25 (its 1E+300-guess cells were fixed there). Probes 
   `IRR({-2.5,-1,123456789.123})` = 7026.083662734896 (financial.md "IRR is a secant in v"), so the bound on far roots
   lies between about 2E+4 and 1E+13, or the rule is not a bound on r.
 - probes/irr-guess-edges A27-A29: `IRR(D!A1:D12)` over gen-m9 bc04c1f478c9896c's Data!A1:D12 is `#DIV/0!` with guesses 0.05,
-  0.1 and 0.5 (ours `#NUM!`); `IRR({0,1E+15,2,42,1E+15,-0.0001})` (its first numbers) is `#NUM!` as ours. A38, A39:
+  0.1 and 0.5 (ours `#NUM!`); `IRR({0,1E+15,2,42,1E+15,-0.0001})` (its first numbers) is `#NUM!` as ours. A37: `IRR({1E+15,1,-1E+15},0.05)` is
+  `#NUM!` (ours -4.8E-16). A38, A39:
   `IRR({-1,1E+15},0.05)` and `IRR({-1,1E+300})` are `#DIV/0!`.
 - The remaining cells have roots near -1 (ours -0.99995, -0.9998, -0.99998, -0.98958, -0.9999999999) or around -0.75 to
   -0.88 that Excel does not return. Read financial.md "IRR is a secant in v = 1/(1 + r)" and "The IRR and XIRR solver caps";
