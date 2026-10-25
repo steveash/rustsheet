@@ -265,17 +265,19 @@ Sheet1's used area), `=COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"<>x")` = 1048574,
 Evidence: probes/criteria-sparse-cross-sheet Calc!A1:A9 (excel-graph, 2026-10-25, T-2711).
 How the engine walks (no Excel-visible effect; directive 5): a position at which no range stores
 a cell is blank in every range, so it matches or fails as a whole and is counted without being
-read; COUNTIFS visits only the positions where some range stores a cell, and the SUMIFS family
-only the cells stored in its sum range (a matched position adds only a number or an error held by
-its sum cell; the first such error in row-major order is the result). The work is the stored
-cells plus the rows or chunks searched, not the ranges' extent: `COUNTIF(A:J,1)` beside one cell
+read; COUNTIFS visits the positions where some range stores a cell, and the SUMIFS family the
+cells stored in its sum range (a matched position adds only a number or an error held by its sum
+cell; the first such error in row-major order is the result). A well-filled range is walked
+densely (its block within the used area is at most 4x the cells stored in its columns), any other
+over its stored cells only, so the work is at most a few times the stored cells plus the rows or
+chunks searched, not the ranges' extent: `COUNTIF(A:J,1)` beside one cell
 in J1048576 reads a few cells, `COUNTIF(A:J,"")` there is still 10,485,759. Each range is put on
 record as read empty in one piece, so a spill into it restarts the pass
 (references.md "Seen-range cap"). The engine used to treat every row past the first range's used
 area as blank in every range, which gave 0 and 1048575 for the first two calls above.
 Status: VERIFIED
 Implemented in: `count_ifs`, `run_ifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`;
-`for_each_stored_position` in `crates/rustsheet-engine/src/functions/util.rs`
+`stored_walk`, `for_each_stored_position` in `crates/rustsheet-engine/src/functions/util.rs`
 Tasks: T-2711
 
 ## SUMIF resizes sum_range from its top-left cell and never errors

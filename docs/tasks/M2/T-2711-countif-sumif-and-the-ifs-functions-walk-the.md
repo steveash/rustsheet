@@ -3,7 +3,7 @@ id: T-2711
 title: "COUNTIF, SUMIF and the *IFS functions walk the criteria ranges' stored cells, not every used-area position (COUNTIFS(A:J,1) beside one cell in J1048576 takes 3.9 s)"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -53,18 +53,40 @@ Semantics the sparse walk must keep (docs/excel-semantics/criteria.md):
 - Keep the read-empty records (`record_seen_empty_range`) correct for spills into any walked range.
 
 ## Acceptance criteria
-- [ ] The eight functions' range walks do work O(stored cells in their ranges + rows or chunks
+- [x] The eight functions' range walks do work O(stored cells in their ranges + rows or chunks
       searched), whatever the used area's extent. A test proves it with a work counter, not a
       wall-clock limit (T-2282): `COUNTIF(A:J,1)`, `COUNTIFS(A:J,"",B:K,"<>x")` and
       `SUMIFS(A:A,B:B,"")` beside one cell in the last row visit a few cells, and `COUNTIF(A:J,"")` is
       still 10,485,759 there.
-- [ ] Every criteria case in eval passes as before: no baseline gains a line, `make eval-baseline`
+- [x] Every criteria case in eval passes as before: no baseline gains a line, `make eval-baseline`
       shows no regression.
-- [ ] The edit benchmark and any criteria bench are not more than 50% slower (decision 0081), and a
+- [x] The edit benchmark and any criteria bench are not more than 50% slower (decision 0081), and a
       sparse whole-column COUNTIFS/SUMIFS bench case shows the gain.
-- [ ] criteria.md (or references.md "Seen-range cap") says how the criteria walk visits cells.
-- [ ] `make check` green; reviewers approve.
+- [x] criteria.md (or references.md "Seen-range cap") says how the criteria walk visits cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Sharing matched-row sets across formulas (T-0449, M11 perf).
 - The aggregate walker (T-2710), TEXTJOIN (T-2713), D-functions (`database.rs`, 0.3 s, not dense).
+
+## Outcome
+- `count_ifs` (COUNTIF/COUNTIFS) and `run_ifs` (SUMIF(S), AVERAGEIF(S), MAXIFS, MINIFS) walk the
+  cells stored in their ranges through a new `Model::stored_walk` / `for_each_stored_position`
+  (functions/util.rs): a range whose block within the used area is at most 4x the cells stored in
+  its columns (plus 1,024) is walked densely in place, any other through the union walk of
+  T-1497 (`for_each_existing_position`, now with a `WalkBudget::Free` mode that does not draw on
+  the union budget). COUNTIFS counts the all-blank positions arithmetically; SUMIFS visits only its
+  sum range's stored cells. The lift budget prices a criteria walk by the cells it visits
+  (`criteria_walk_cost`). Each walked range goes on record as read empty in one piece.
+- Fixed in passing (Excel-evidenced, probes/criteria-sparse-cross-sheet, excel-graph 2026-10-25):
+  rows past the *first* range's used area were taken as blank in every range, so
+  `COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"x")` with Sheet2!A100 = "x" was 0 (Excel 1). Recorded in
+  criteria.md "*IF(S) criteria ranges line up position by position".
+- Work counter: `Evaluation::cell_reads`; test_criteria_sparse_walk.rs shows COUNTIF(A:J,1),
+  COUNTIFS(A:J,"",B:K,"<>x"), SUMIFS/SUMIF/AVERAGEIFS/MAXIFS/MINIFS beside J1048576 read < 50
+  cells, and COUNTIF(A:J,"") is still 10,485,759.
+- Bench (release, medians, main -> branch, this container): lift "SUMIFS, array criterion"
+  38 -> 41 ms, "SUMIFS, 10,000-element criteria range" 36 -> 35 ms, "COUNTIFS, lifted whole column"
+  67 -> 54 ms, "COUNTIFS, occurrence count" 53 -> 44 ms; new case "COUNTIFS and SUMIFS, sparse
+  whole columns beside the last row" 6.6 us (seconds on main); edit bench recalc 36.2 -> 36.1 ms.
+- Eval delta: +9 probe cells (new case, all pass); no baseline change.

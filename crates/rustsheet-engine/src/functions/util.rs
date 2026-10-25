@@ -206,6 +206,10 @@ const MAX_INDEXED_COLUMNS: usize = 16;
 /// ([`Model::for_each_existing_position`]): one chunk of row storage.
 const MIN_INDEXED_ROWS: i32 = 1024;
 
+/// Most positions per stored cell of its columns a [`Model::for_each_stored_position`] walk may
+/// visit densely: past it the block is mostly blank, and walking the cells that exist is cheaper.
+const DENSE_WALK_FACTOR: u64 = 4;
+
 /// Rows of one column an indexed walk reads from the index at a time: one search, then a step per
 /// row, so a dense column costs a read step per this many cells.
 const INDEX_BATCH_ROWS: usize = 64;
@@ -234,6 +238,16 @@ enum WalkBudget {
     /// A single range of a caller that bounds its own walks (the *IF(S) criteria walks, priced
     /// by the lift budget), and that must not fail where the dense walk it replaces did not.
     Free,
+}
+
+/// How [`Model::stored_walk`] walks a range to visit the cells stored in it.
+#[derive(Clone, Copy)]
+pub(crate) enum StoredWalk {
+    /// Every position of the range's top-left cell to `(row2, column2)`, its block within the
+    /// used area (none when the corner is above or left of it).
+    Dense { row2: i32, column2: i32 },
+    /// The cells that exist only.
+    Sparse,
 }
 
 /// The rows of one column of an indexed walk that were read from the index, from `next` on not
@@ -765,12 +779,47 @@ impl Model {
         }
     }
 
-    /// Calls `f` with the position of every cell that exists in `range` (one sheet), in row-major
-    /// order, and records the whole range as read empty in one piece: the walk of
-    /// [`Self::for_each_existing_position`], so it costs the cells stored in the range plus the
-    /// rows or chunks searched, whatever the range's or the used area's extent (T-2711). It does
-    /// not draw on the union walk budget ([`WalkBudget::Free`]): its callers price their walks.
-    pub(crate) fn for_each_stored_position<F>(
+    /// How to walk `range` (one sheet) so as to visit every cell stored in it, in row-major
+    /// order, and maybe some blank positions too, for a caller that reads a blank position as
+    /// blank: when the range's block within the used area is at most [`DENSE_WALK_FACTOR`] times
+    /// the cells stored in its columns (plus [`MIN_INDEXED_ROWS`]), every position of that block
+    /// ([`StoredWalk::Dense`], the cheaper walk of well-filled data); otherwise only the cells that
+    /// exist ([`StoredWalk::Sparse`], [`Self::for_each_existing_cell`]). Either way the work is at
+    /// most a few times the cells stored in the range's columns plus the rows or chunks searched,
+    /// whatever the range's or the used area's extent (T-2711). The whole range is put on record
+    /// as read empty in one piece, so a spill into it restarts the pass.
+    pub(crate) fn stored_walk(
+        &mut self,
+        range: &Range,
+        cell: CellReferenceIndex,
+    ) -> Result<StoredWalk, CalcResult> {
+        let Range { left, right } = range;
+        let sheet = left.sheet;
+        let sheet_error = |message| CalcResult::new_error(Error::ERROR, cell, message);
+        let (row2, column2) = self
+            .clip_block_to_used_area(sheet, left.row, left.column, right.row, right.column)
+            .map_err(sheet_error)?;
+        let area = u64::try_from(row2 - left.row + 1).unwrap_or(0)
+            * u64::try_from(column2 - left.column + 1).unwrap_or(0);
+        let stored = self
+            .workbook
+            .worksheet(sheet)
+            .map_err(sheet_error)?
+            .sheet_data
+            .cells_in_columns(left.column, right.column);
+        if area <= stored.saturating_mul(DENSE_WALK_FACTOR) + MIN_INDEXED_ROWS as u64 {
+            self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
+            Ok(StoredWalk::Dense { row2, column2 })
+        } else {
+            Ok(StoredWalk::Sparse)
+        }
+    }
+
+    /// The [`StoredWalk::Sparse`] walk of `range`: calls `f` with the position of every cell that
+    /// exists in it, through [`Self::for_each_existing_position`], which records the range as read
+    /// empty. It does not draw on the union walk budget ([`WalkBudget::Free`]): its callers price
+    /// their walks.
+    pub(crate) fn for_each_existing_cell<F>(
         &mut self,
         range: &Range,
         cell: CellReferenceIndex,
@@ -787,6 +836,31 @@ impl Model {
             (&mut columns, WalkBudget::Free),
             f,
         )
+    }
+
+    /// Calls `f`, in row-major order, with every position of the walk [`Self::stored_walk`]
+    /// chooses for `range`: every cell stored in it, and maybe some blank positions too.
+    pub(crate) fn for_each_stored_position<F>(
+        &mut self,
+        range: &Range,
+        cell: CellReferenceIndex,
+        f: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
+        match self.stored_walk(range, cell)? {
+            StoredWalk::Dense { row2, column2 } => {
+                let sheet = range.left.sheet;
+                for row in range.left.row..=row2 {
+                    for column in range.left.column..=column2 {
+                        f(self, CellReferenceIndex { sheet, row, column })?;
+                    }
+                }
+                Ok(())
+            }
+            StoredWalk::Sparse => self.for_each_existing_cell(range, cell, f),
+        }
     }
 
     /// The union-area walk of [`Self::for_each_position_in_area`] on one sheet: the existing

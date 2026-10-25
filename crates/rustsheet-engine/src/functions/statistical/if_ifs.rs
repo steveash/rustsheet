@@ -4,6 +4,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
+use crate::functions::util::StoredWalk;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::Node,
@@ -437,25 +438,59 @@ impl Model {
         // A matched position adds only a number or an error held by its sum cell, so the walk
         // visits the cells stored in the sum range only, in row-major order: the first error is
         // the same one, and the walk costs the stored cells, not the range's extent (T-2711).
-        let (top, left) = (sum_range.left.row, sum_range.left.column);
-        self.for_each_stored_position(sum_range, cell, &mut |model, position| {
-            for (range, fn_criterion) in ranges.iter().zip(fn_criteria.iter()) {
-                let value = model.evaluate_cell(CellReferenceIndex {
-                    sheet: range.left.sheet,
-                    row: range.left.row + position.row - top,
-                    column: range.left.column + position.column - left,
-                });
-                if !fn_criterion(&value) {
-                    return Ok(());
+        // A well-filled range is walked densely in place: the loop is the hot path of SUMIFS.
+        match self.stored_walk(sum_range, cell)? {
+            StoredWalk::Dense { row2, column2 } => {
+                for row in sum_range.left.row..=row2 {
+                    for column in sum_range.left.column..=column2 {
+                        let position = CellReferenceIndex {
+                            sheet: sum_range.left.sheet,
+                            row,
+                            column,
+                        };
+                        self.apply_ifs_at(sum_range, position, ranges, fn_criteria, &mut apply)?;
+                    }
                 }
+                Ok(())
             }
-            match model.evaluate_cell(position) {
-                CalcResult::Number(n) => apply(n),
-                error @ CalcResult::Error { .. } => return Err(error),
-                _ => {}
+            StoredWalk::Sparse => {
+                self.for_each_existing_cell(sum_range, cell, &mut |model, position| {
+                    model.apply_ifs_at(sum_range, position, ranges, fn_criteria, &mut apply)
+                })
             }
-            Ok(())
-        })
+        }
+    }
+
+    /// One position of [`Model::run_ifs`]: `apply` gets the sum cell's number when every
+    /// criteria cell aligned with it meets its criterion, and its error is the walk's result.
+    #[inline(always)]
+    fn apply_ifs_at<F>(
+        &mut self,
+        sum_range: &Range,
+        position: CellReferenceIndex,
+        ranges: &[Range],
+        fn_criteria: &[Criterion<'_>],
+        apply: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        for (range, fn_criterion) in ranges.iter().zip(fn_criteria.iter()) {
+            let value = self.evaluate_cell(CellReferenceIndex {
+                sheet: range.left.sheet,
+                row: range.left.row + position.row - sum_range.left.row,
+                column: range.left.column + position.column - sum_range.left.column,
+            });
+            if !fn_criterion(&value) {
+                return Ok(());
+            }
+        }
+        match self.evaluate_cell(position) {
+            CalcResult::Number(n) => apply(n),
+            error @ CalcResult::Error { .. } => return Err(error),
+            _ => {}
+        }
+        Ok(())
     }
 
     /// SUMIF: the SUMIFS walk on `(sum_range, criteria_range, criteria)`, minus its shape
