@@ -1,7 +1,8 @@
 # 0095 — Tasks blocked at the review-round limit are re-reviewed by the opus worker
 
 - **Status:** accepted (2026-10-21, T-2284). Refines decision 0048 (a task blocked on its branch
-  stays claimed at any age).
+  stays claimed at any age). Amended by 0121: on resume, merge `origin/main` in only if it
+  conflicts or collides.
 - **Context:**
   - Work-loop step 5 allows three review rounds. After the third, the run sets `status: blocked`
     on the branch, marks the PR draft and moves on, usually with the last round's fixes pushed and
