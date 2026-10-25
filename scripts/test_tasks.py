@@ -530,8 +530,8 @@ class BranchClaims(unittest.TestCase):
 
 class Stats(unittest.TestCase):
     def run_stats(self, root: Path, *argv: str, files: dict[str, str] | None = None) -> tuple[int, str, str]:
-        """`tasks.py stats` on `root`'s tasks and the code `files` (path -> text): (exit code, stdout,
-        stderr). Any git call (a fetch, a branch read) fails the test."""
+        """`tasks.py stats` on `root`'s tasks and the code `files` (path -> text, standing in for
+        `code_files`): (exit code, stdout, stderr). Any other git call fails the test."""
         out, err = io.StringIO(), io.StringIO()
         no_git = AssertionError("stats must not fetch or read branches")
         with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
@@ -572,7 +572,7 @@ class Stats(unittest.TestCase):
                 "accuracy": {**zero, "todo": 1, "in-progress": 1, "ready": 0},
                 "visible": {**zero, "done": 1, "dropped": 1, "ready": 0},
             },
-            "deferred": {"open": 1, "done": 1},
+            "deferred": {**zero, "todo": 1, "done": 1, "dropped": 1, "ready": 0},
         })
         # Deterministic: keys sorted at every level, and the same bytes on a rerun.
         self.assertEqual(rerun, out)
@@ -604,6 +604,42 @@ class Stats(unittest.TestCase):
             code, out, err = self.run_stats(root, "--json", files={"a.rs": f"// {T}(T-0001): x\n"})
         self.assertEqual((code, out), (1, ""))
         self.assertIn("names a task that is done", err)
+
+    def test_only_git_call_is_a_local_ls_files(self) -> None:
+        # The real `code_files` runs; record every subprocess call it makes.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001")
+            (root / "scripts").mkdir()
+            (root / "scripts/a.py").write_text(f"# {T}(T-0001): x\n")
+            calls: list[list[str]] = []
+
+            def record(cmd: list[str], **_: object) -> mock.Mock:
+                calls.append(cmd)
+                return mock.Mock(stdout="scripts/a.py\0")
+
+            argv = ["tasks.py", "stats", "--json"]
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                    mock.patch.object(tasks.sys, "argv", argv), \
+                    mock.patch.object(tasks.subprocess, "run", side_effect=record), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(tasks.main(), 0)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][:4], ["git", "-C", str(root), "ls-files"])
+
+    def test_missing_git_fails_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001")
+            err = io.StringIO()
+            argv = ["tasks.py", "stats", "--json"]
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                    mock.patch.object(tasks.sys, "argv", argv), \
+                    mock.patch.object(tasks.subprocess, "run", side_effect=FileNotFoundError("git")), \
+                    contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(err):
+                self.assertEqual(tasks.main(), 1)
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("git ls-files", err.getvalue())
 
     def test_needs_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

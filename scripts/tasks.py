@@ -15,7 +15,8 @@
   scripts/tasks.py board                 # write docs/tasks/BOARD.md (local view, git-ignored)
   scripts/tasks.py stats --json          # task counts per milestone, campaign stage and status,
                                          # and deferred tasks, for the progress dashboard
-                                         # (SPEC-0022); never fetches; fails like `validate`
+                                         # (SPEC-0022); fails like `validate`; no fetch, no
+                                         # network: one local, read-only `git ls-files`
   scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S]
                        [--tier sonnet|opus] [--no-fetch]
                                          # write a task file with the next free id (decision 0016)
@@ -205,8 +206,13 @@ def stats(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -
 
     `by_milestone`: milestone -> status -> count. `by_campaign`: stage (a `campaign:` tag) ->
     status -> count, plus `ready`, the stage's tasks that `ready` accepts; branch claims are not
-    checked, because that would fetch (`available` does). `deferred`: deferred tasks (decision
-    0114) still open, and done. Every status and stage is present, zero or not.
+    checked, because that would fetch (`available` does). `deferred`: the same map for deferred
+    tasks (decision 0114), whose `ready` is always 0. A task with both a `campaign:` and a
+    `defer:` counts in its stage and in `deferred`, so the two must not be summed. Every status
+    and stage is present, zero or not.
+
+    Callers run `check` first: the counts index the status maps directly, so an unknown status
+    (which `validate` rejects) would raise KeyError here.
     """
 
     def zero() -> dict[str, int]:
@@ -214,7 +220,7 @@ def stats(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -
 
     by_milestone: dict[str, dict[str, int]] = {}
     by_campaign: dict[str, dict[str, int]] = {stage: {**zero(), "ready": 0} for stage in CAMPAIGNS}
-    deferred = {"open": 0, "done": 0}
+    deferred = {**zero(), "ready": 0}
     for t in tasks:
         status = str(t.get("status"))
         by_milestone.setdefault(str(t.get("milestone")), zero())[status] += 1
@@ -222,8 +228,9 @@ def stats(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -
         if stage is not None:  # no `campaign:` tag, or an unknown one (`validate` rejects it)
             stage[status] += 1
             stage["ready"] += int(ready(t, by_id))
-        if "defer" in t and status in (*OPEN, "done"):
-            deferred["open" if status in OPEN else "done"] += 1
+        if "defer" in t:
+            deferred[status] += 1
+            deferred["ready"] += int(ready(t, by_id))  # 0: `ready` excludes deferred tasks
     return {"by_milestone": by_milestone, "by_campaign": by_campaign, "deferred": deferred}
 
 
@@ -526,12 +533,20 @@ def main() -> int:
         if "--json" not in sys.argv:
             print("usage: tasks.py stats --json", file=sys.stderr)
             return 2
-        # Counts over an invalid task set would mislead the dashboard; fail like `validate`.
-        errors = check(tasks)
+        # Counts over an invalid task set would mislead the dashboard; fail like `validate`. Its
+        # stale-TODO scan is the one git call: a local, read-only `git ls-files`.
+        try:
+            errors = check(tasks)
+        except (OSError, subprocess.CalledProcessError) as e:
+            print(f"FAIL could not list tracked files with `git ls-files` ({e})", file=sys.stderr)
+            return 1
         for e in errors:
             print(f"FAIL {e}", file=sys.stderr)
         if errors:
-            print(f"{len(tasks)} tasks, {len(errors)} errors; see `scripts/tasks.py validate`", file=sys.stderr)
+            print(
+                f"{len(tasks)} tasks, {len(errors)} errors; see `scripts/tasks.py validate`",
+                file=sys.stderr,
+            )
             return 1
         print(json.dumps(stats(tasks, by_id), indent=2, sort_keys=True))
         return 0
