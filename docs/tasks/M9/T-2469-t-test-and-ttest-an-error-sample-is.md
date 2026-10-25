@@ -110,6 +110,5 @@ Blank one-cell reference cells that need this function's argument order, left fa
 
 ## Outcome
 `t_test_element` now answers array1's error value, an error tails, array2's error value, an error type, then the tails/type range
-check; a typed text sample is a sample with no number. Eval delta: gen-m9 known failures 4380 -> 4310 (70 fixed, 0 regressions, no
-other baseline changes). Two owned cells stay: a5342a7e24fd803e A15 (the unexplained `#NUM!`) and c2684066d8df263e A214 (a PIVOTBY
+check; a typed text sample is a sample with no number. Eval delta: gen-m9 known failures 4380 -> 4310 (70 fixed, 0 regressions, eval/baseline/probes.txt loses 11 lines: t2436 a612e89321a6df9c A46/A61/T46/T61/U46/U61, t2475 P!A222/A57/A58, tbill-error-order-inner-calls A1/B1). Two owned cells stay: a5342a7e24fd803e A15 (the unexplained `#NUM!`) and c2684066d8df263e A214 (a PIVOTBY
 sample, numeric mismatch), both still in eval/baseline/gen-m9.txt; they are filed in the follow-up T-2722.

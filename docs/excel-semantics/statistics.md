@@ -3576,12 +3576,13 @@ pair of numbers `#DIV/0!`, each after the limits.
 Status: VERIFIED (excel-graph) except the noted UNVERIFIED parts
 
 ## T.TEST: an error sample first, then tails and type errors, then their range check (T-2256)
-Rule: T.TEST and TTEST return array1's error when array1 is an error value, then array2's (`T.TEST({1,2},-CEILING(..)
+Rule: T.TEST and TTEST return array1's error when array1 is an error value, then an error tails, then array2's error
+value, then an error type, then the range check (see Order below; `T.TEST({1,2},-CEILING(..)
 <#VALUE!>,Data!C10,1)` is `#VALUE!`, 73f053591a54bc43 A280; `T.TEST({1;2;"";4},STDEV(Data!C$10)<#DIV/0!>,2,0)` `#DIV/0!`
 before the type 0 `#NUM!`, bbab6562e88b70e8 A338; `TTEST(MATCH(..)<#N/A>,..,7,3)` `#N/A` before tails 7), then a one-cell
 reference to an empty cell `#VALUE!` (T-2426), then an error in tails or type (`TTEST(5,-0.005,Data!E$11,<#VALUE!>)` is
 `#VALUE!` with tails FALSE, b9a32ce9a1fd0d71 A274; `T.TEST(Data!A6:D11,Data!A1:A12,-2.5,<#VALUE!>)` `#VALUE!`, 80586b859b73c87d
-A32), and only then the tails/type range check (`#NUM!`). A typed empty text as a sample is no number (`TTEST(IFERROR(
+A32), and only then the tails/type range check (`#NUM!`). A typed empty text as a sample is no number (a non-empty typed text, and an array1 range error against an array2 error value, are UNVERIFIED) (`TTEST(IFERROR(
 #VALUE!,""),Data!B11:E11,1,3)` is `#DIV/0!`, 46ac3ef5e61583ca A344). The data-error-first order holds for direct error values;
 an error inside a range still loses to a bad tails/type (T-1813). Unexplained: `TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`
 is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve is `#DIV/0!` in ours: UNVERIFIED.

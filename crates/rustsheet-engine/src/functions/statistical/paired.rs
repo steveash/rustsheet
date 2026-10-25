@@ -120,16 +120,28 @@ impl Model {
             (Some(m), Some(n)) if m != n
         );
         let first_direct = matches!(first, PairedArg::Error(_));
-        let direct_error = first_direct || matches!(second, PairedArg::Error(_));
+        let second_error = match &second {
+            PairedArg::Error(error) => Some(error.clone()),
+            _ => None,
+        };
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
             CalcResult::new_error(error, cell, format!("Error in {which} array"))
         })
-        .map_err(|error| PairedSamplesError {
-            error,
-            sizes_differ,
-            direct_error,
-            first_direct,
+        .map_err(|error| {
+            // An error value as array2 outranks an error inside array1 (unprobed: T-2469 follows
+            // the precedence `paired_values` gives an array1 array).
+            let (error, direct_error) = match second_error {
+                Some(second) if !first_direct => (second, true),
+                Some(_) => (error, true),
+                None => (error, first_direct),
+            };
+            PairedSamplesError {
+                error,
+                sizes_differ,
+                direct_error,
+                first_direct,
+            }
         })
     }
 

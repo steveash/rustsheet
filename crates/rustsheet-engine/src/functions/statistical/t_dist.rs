@@ -50,8 +50,8 @@ enum TTestTails {
     TwoTailed,
 }
 
-/// One T.TEST element over the samples read once: `tails`, then `type`, then the samples' error,
-/// then the test.
+/// One T.TEST element over the samples read once: array1's error value, `tails`, array2's error
+/// value, `type`, the tails/type range check, then the samples' other errors and the test.
 fn t_test_element(
     model: &Model,
     samples: &Result<PairedValues, PairedSamplesError>,
@@ -518,7 +518,8 @@ impl Model {
 
     /// `T.TEST(array1, array2, tails, type)` and TTEST: `tails` and `type` lift over an array
     /// and a multi-cell range, the samples are read once (SPEC-0011, T-1982). An element
-    /// truncates and checks `tails`, then `type`, then takes the samples' error:
+    /// checks array1's error value, `tails`, array2's error value, `type`, the range check, then takes
+    /// the samples' other errors:
     /// `T.TEST(D1:D3,A1:A3,3,2)` with D2 = `#N/A` is `#NUM!`, while a lifted element with good
     /// arguments is the samples' `#N/A`; `tails` 3 or `type` 4 is `#NUM!` per element, `1.7` and
     /// `2.9` are 1 and 2, TRUE is 1 (probes/stat-test-lift P60-P67, P88). Each element walks the
