@@ -3,7 +3,7 @@ use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
-    decimal_round::{round_engineering, round_shown_place},
+    decimal_round::{round_engineering, round_scientific, round_shown_place},
     locale::Locale,
     number_format::{cut_15_digits, to_precision},
     text::Text,
@@ -755,7 +755,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
                         (value, exponent) = round_engineering(scaled, group, p.precision);
                     } else {
-                        exponent = value_abs.log10().floor();
+                        (value, exponent) = round_scientific(scaled, p.precision);
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();

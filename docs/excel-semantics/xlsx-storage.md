@@ -332,3 +332,18 @@ missing; a part with neither is still an import error. Tables stay keyed by `nam
 they differ is unprobed (T-2320).
 Status: VERIFIED (web)
 Tasks: T-2208
+
+## Cached volatile values are those of the last calculation, near the save time
+Rule: a workbook's cached values for `TODAY()`, `NOW()` and their dependents are those of Excel's last
+calculation before the save, so without the METADATA `NOW` convention (SPEC-0008) the closest clock for them
+is the save time, `docProps/core.xml` `dcterms:modified`. That is UTC, while Excel's `TODAY()` uses the
+author's local time, and the last calculation can come before the save: a `NOW()` value can differ, and a
+`TODAY()` value can be off by a day for saves near midnight.
+Evidence: crates/rustsheet-xlsx/tests/templates/wordle.xlsx `Wordle!N2`
+(`INDEX(FILTER(Words!$A$2:$A$1000,Words!$B$2:$B$1000=TRUE),MOD(TODAY()-DATE(2024,1,1),Words!$C$2)+1)`) caches
+"RHINO", the word for 2026-06-25, and `dcterms:modified` is 2026-06-25T13:36:18Z (Excel-authored; no oracle
+run).
+Ours: `rustsheet_xlsx::compare` pins such a workbook's clock to `dcterms:modified` for its comparison tests
+(T-0468, decision 0117); the engine itself reads the system clock unless pinned.
+Status: VERIFIED (desktop, one workbook)
+Tasks: T-0468
