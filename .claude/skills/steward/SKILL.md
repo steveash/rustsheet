@@ -21,7 +21,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   of `origin/main` conflicts; "Merge conflicts" below), or (2) for a known id collision: `main`
   now holds a task id or decision number the branch also adds (`tasks.py validate` or
   `check_decisions.py` fails on a local test-merge, or CI on the merged head failed under the
-  lock), and the PR renumbers its own file. Never merge it in only because the branch is behind:
+  lock, in which case release the lock first), and the PR renumbers its own file. Never merge it in only because the branch is behind:
   `main` moves again before the lock is free, so the merge is wasted and costs a CI run. Behind is
   handled once, under the lock.
 - **Merge lock** (decision 0075): every merge to `main` is made under the merge lock, so `main`

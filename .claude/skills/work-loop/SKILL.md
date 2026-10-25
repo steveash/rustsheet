@@ -100,9 +100,9 @@ file and its acceptance criteria.
    `.github/pull_request_template.md`, pasting the eval delta and the review table.
 3. Check the PR's `mergeable_state` at once and after every push: a conflicting PR gets no CI,
    so resolve conflicts immediately per the `steward` skill ("Merge conflicts are never waiting
-   on CI"). Never merge `origin/main` in only because the branch is behind (decision 0121).
-   Then wait for CI (subscribe to PR activity and arm a check-in; do not poll with
-   sleep). Fix failures per the `steward` skill. When CI is green and all reviewers approve:
+   on CI"). Merge `origin/main` in before the lock only as the `steward` skill's "When to merge
+   `main` in" allows (decision 0121). Then wait for CI (subscribe to PR activity and arm a
+   check-in; do not poll with sleep). Fix failures per the `steward` skill. When CI is green and all reviewers approve:
    **squash-merge under the merge lock** (the `steward` skill's "Merge lock", decision 0075):
    `make merge-lock-acquire PR=<n>`, then, holding it, bring `origin/main` in if the branch is
    behind and wait for CI on that head, run the mechanical up-to-date check (decision 0028),

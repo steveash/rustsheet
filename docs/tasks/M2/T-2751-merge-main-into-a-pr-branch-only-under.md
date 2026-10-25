@@ -36,10 +36,11 @@ lock" step 2), unless it has a real conflict or a known id collision. A branch t
       decision id that `main` now also uses, as found by `tasks.py validate`/`check_decisions.py` on
       a local test-merge, or by red CI under the lock). Being behind is handled once, under the lock.
 - [x] The steward skill (check (c), merge lock, orphaned PRs, branch updates, merge conflicts), the
-      work-loop skill (steps 5c and 6), `docs/process/agent-workflow.md` and the routine prompts in
-      `docs/process/routines.md` agree with it.
+      work-loop skill (steps 5c and 6), `docs/process/agent-workflow.md` agree with it; the routine prompts in
+      `docs/process/routines.md` were checked and left unchanged (they only require "up to date with
+      main" and defer to the steward skill).
 - [x] Decision 0020 (conflicts are never "waiting on CI") and the dormant merge-queue text are kept.
-- [ ] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`, `make typos` and the
+- [x] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`, `make typos` and the
       scripts unit tests pass; reviewers approve (architecture and security for the protected paths).
 
 ## Out of scope

@@ -32,6 +32,3 @@
   never lands on `main`. Not merging early saves CI minutes, at the cost of finding a late clash a
   little later. The routine prompts already defer to the steward skill ("branch up to date with
   main" is still a merge condition), so they are unchanged.
-- **Reviewers:** this changes protected paths (`.claude/skills/`, `docs/process/`), so
-  `reviewer-architecture` and `reviewer-security` must approve it explicitly (steward skill,
-  "Governance failures").
