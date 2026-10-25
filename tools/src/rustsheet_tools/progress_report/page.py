@@ -1,15 +1,17 @@
-"""docs/progress.md: the page layout, the `status` and `method` blocks (SPEC-0022, T-0070).
+"""docs/progress.md: the page layout, the `status` and `method` blocks (SPEC-0022, T-0070), and
+the stale page of an incomplete run (T-0071).
 
-The `parity` block is parity.py's (T-0081). Later sections (goals, campaign, history, top
-functions, evidence) are added by their own tasks as generated blocks in `LAYOUT`, without changing
-the block protocol in blocks.py.
+The `parity` block is parity.py's (T-0081); `since-last-run` and `trends` are history.py's
+(T-0071); `top-functions` and `evidence` are evidence.py's (T-0073). Later sections (goals,
+campaign) are added by their own tasks as generated blocks in `LAYOUT`, without changing the
+block protocol in blocks.py.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from rustsheet_tools.progress_report import blocks, parity
+from rustsheet_tools.progress_report import blocks, evidence, history, parity
 from rustsheet_tools.progress_report.markdown import REGENERATE, md_text
 from rustsheet_tools.progress_report.model import Parity, ProgressReportError, Run
 
@@ -19,7 +21,11 @@ PAGE = "progress.md"
 LAYOUT = (
     (blocks.GENERATED, "status", None),
     (blocks.JUDGMENT, "bottom-line", "Bottom line"),
+    (blocks.GENERATED, "since-last-run", None),
+    (blocks.GENERATED, "trends", None),
     (blocks.GENERATED, "parity", None),
+    (blocks.GENERATED, "top-functions", None),
+    (blocks.GENERATED, "evidence", None),
     (blocks.JUDGMENT, "readiness", "Real-world readiness"),
     (blocks.JUDGMENT, "risks", "Risks"),
     (blocks.GENERATED, "method", None),
@@ -36,17 +42,71 @@ def _list(items: list[str]) -> str:
     return ", ".join(items) if items else "none"
 
 
-def status(run: Run) -> str:
-    """The `status` block: the run's date and commit, the suites it ran and skipped, and links."""
-    commit = f"commit `{run.commit}`" if run.commit else "an unknown commit (git was unavailable)"
+LINKS = """- The steward's operational log is [docs/status.md](status.md). Every function's parity is in
+  [docs/progress/functions.md](progress/functions.md)."""
+
+
+def _commit(commit: str | None) -> str:
+    return f"commit `{commit}`" if commit else "an unknown commit (git was unavailable)"
+
+
+def _suites(run: Run) -> str:
     ran = [md_text(name) for name in run.suites]
     skipped = [f"{md_text(s.name)} ({md_text(s.reason)})" for s in run.skipped]
-    return f"""The eval run of **{run.date}** at {commit} (report.json `run`).
+    return f"""- **Suites run ({len(ran)}):** {_list(ran)}.
+- **Suites skipped ({len(skipped)}):** {_list(skipped)}."""
 
-- **Suites run ({len(ran)}):** {_list(ran)}.
-- **Suites skipped ({len(skipped)}):** {_list(skipped)}.
-- The steward's operational log is [docs/status.md](status.md). Every function's parity is in
-  [docs/progress/functions.md](progress/functions.md)."""
+
+def same_commit(a: str, b: str) -> bool:
+    """Whether two abbreviated shas name the same commit (one is a prefix of the other)."""
+    return a.startswith(b) or b.startswith(a)
+
+
+def status(run: Run) -> str:
+    """The `status` block: the run's date and commit, the suites it ran and skipped, and links.
+    It names only the report's commit, never the generating HEAD, so the same report gives the
+    same block from any checkout."""
+    lines = [
+        f"The eval run of **{run.date}** at {_commit(run.commit)} (report.json `run`).",
+        "",
+        _suites(run),
+        LINKS,
+    ]
+    return "\n".join(lines)
+
+
+def stale_status(
+    reason: str,
+    date: str,
+    commit: str | None,
+    last: history.Row | None,
+    run: Run | None,
+    *,
+    head: str | None,
+) -> str:
+    """The `status` block of an incomplete run: a Stale banner with `reason`, this run's date and
+    commit, the commit generating the page (`head`) when that differs, and the last complete run
+    (`last`, a history row) whose numbers the page still shows."""
+    if last is None:
+        shown = (
+            f"No complete run is recorded in {history.HISTORY_LINK} yet, so the rest of the page is "
+            "from before the history began, or empty."
+        )
+    else:
+        shown = (
+            f"Every number below is from the last complete run, **{last['date']}** at "
+            f"{_commit(last['commit'])}."
+        )
+    at = _commit(commit)
+    if head is not None and (commit is None or not same_commit(head, commit)):
+        at += f", generated at commit `{head}`,"
+    lines = [f"> **Stale.** The run of **{date}** at {at} is incomplete: {md_text(reason)}. {shown}"]
+    if run is not None:
+        lines += ["", _suites(run)]
+    else:
+        lines.append("")
+    lines.append(LINKS)
+    return "\n".join(lines)
 
 
 METHOD = f"""## Method
@@ -61,6 +121,7 @@ METHOD = f"""## Method
 - **One definition per measure.** Every verdict, bucket and tier is computed once, in the Rust eval
   report (crates/rustsheet-eval). This page only adds up the report's counts.
 {parity.METHOD}
+{history.METHOD}
 - **Regenerate** with `{REGENERATE}`. The same inputs give a byte-identical page."""
 
 
@@ -69,10 +130,17 @@ def parse(text: str) -> dict[str, blocks.Block]:
     return blocks.parse(text, GENERATED_BLOCKS, JUDGMENT_BLOCKS)
 
 
-def render(run: Run, data: Parity, previous: str | None) -> str:
-    """The whole page for `run`, keeping the judgment text of `previous` (the existing page)."""
+def render(run: Run, data: Parity, previous: str | None, sections: dict[str, str]) -> str:
+    """The whole page for a complete `run`, keeping the judgment text of `previous` (the existing
+    page). `sections` holds the history blocks (`since-last-run`, `trends`)."""
     old = parse(previous) if previous is not None else {}
-    body = {"status": status(run), "parity": parity.block(data), "method": METHOD}
+    body = {
+        **sections,
+        **evidence.blocks(data),
+        "status": status(run),
+        "parity": parity.block(data),
+        "method": METHOD,
+    }
     parts = [HEADER]
     for _, name, heading in LAYOUT:
         parts.append(
@@ -81,6 +149,29 @@ def render(run: Run, data: Parity, previous: str | None) -> str:
             else blocks.generated(name, body[name])
         )
     return "\n\n".join(parts) + "\n"
+
+
+NO_COMPLETE_RUN = f"_No complete run yet: `{REGENERATE}` writes this block when the eval completes._"
+
+
+def render_stale(previous: str | None, status_body: str) -> str:
+    """The page of an incomplete run: `previous` with only its `status` block rewritten to
+    `status_body`, every other byte kept. With no previous page, a page whose other generated
+    blocks say no complete run has written them yet."""
+    if previous is None:
+        parts = [HEADER]
+        for _, name, heading in LAYOUT:
+            parts.append(
+                blocks.judgment(name, heading, {}, None)
+                if heading is not None
+                else blocks.generated(name, status_body if name == "status" else NO_COMPLETE_RUN)
+            )
+        return "\n\n".join(parts) + "\n"
+    old = parse(previous)
+    if "status" not in old:
+        msg = f"the existing {PAGE} has no status block to mark stale"
+        raise ProgressReportError(msg)
+    return blocks.replace_generated(previous, old["status"], status_body)
 
 
 def read_existing(out_dir: Path) -> str | None:
