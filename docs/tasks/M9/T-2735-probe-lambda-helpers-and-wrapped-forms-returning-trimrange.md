@@ -17,7 +17,7 @@ Oracle evidence says whether a LAMBDA step that returns TRIMRANGE of a range is 
 T-2596 made REDUCE keep a body that is `TRIMRANGE(range)` as the trimmed reference
 (probes/t2579-array-value-edges B49; `LambdaCaller::keeping_trimrange_references`, functions/logical/lambda.rs).
 Unprobed (docs/excel-semantics/arrays.md "Array-value edges in the gen-m9 sweep"): a TRIMRANGE wrapped in IF, LET or
-CHOOSE as REDUCE's body; SCAN, MAP, BYROW and BYCOL bodies returning TRIMRANGE; a direct call
+CHOOSE as REDUCE's body (a grouped `(TRIMRANGE(r))` is kept as the reference since T-2596, also unprobed); SCAN, MAP, BYROW and BYCOL bodies returning TRIMRANGE; a direct call
 `LAMBDA(x,TRIMRANGE(x))(D!B1:B3)`. Probe with consumers that tell a reference from an array: `ROWS(IMSQRT(..))`, `ISREF(..)`.
 
 ## Acceptance criteria
