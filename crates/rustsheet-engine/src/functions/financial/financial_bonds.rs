@@ -98,6 +98,19 @@ impl CouponSchedule {
         })
     }
 
+    /// Whether `(1 + yld/frequency)^t` overflows at the redemption's term `t`, the longest one:
+    /// PRICE, DURATION and MDURATION are then #NUM!, where the overflowing flows would discount to
+    /// 0. `PRICE(43831,47484,0.05,5.12154E+15,100,2,0)` (t = 20) is 9.76e-16 and 5.22501E+15
+    /// #NUM!, and with t = 19.5 1.27233E+16 is a number and 1.29803E+16 #NUM!
+    /// (probes/bond-huge-yield-overflow; financial.md "PRICE, DURATION and MDURATION at a huge
+    /// yield or coupon", T-2488). A term of at most 1 cannot overflow, so a single remaining
+    /// coupon, which PRICE discounts linearly, is never #NUM! here (`PRICE(..,1E+300,..)` is
+    /// 2.05e-298).
+    fn discount_overflows(&self, yld: f64, frequency: u32) -> bool {
+        let dsc_over_e = (self.e - self.a) / self.e;
+        power(1.0 + yld / frequency as f64, dsc_over_e + self.n - 1.0).is_err()
+    }
+
     /// The clean price (per `redemption` par) at the yield `yld`: a sum over every coupon, and no
     /// schedule walk, so YIELD's solver walks the schedule once, not on every step (T-1842).
     fn price(
@@ -143,7 +156,13 @@ fn compute_price(
     basis: u32,
 ) -> Result<f64, String> {
     let schedule = CouponSchedule::new(settlement, maturity, frequency, basis)?;
-    Ok(schedule.price(rate, yld, redemption, frequency, discount_growth))
+    let price = schedule.price(rate, yld, redemption, frequency, discount_growth);
+    // A coupon so large that the sum overflows is #NUM! too (`PRICE(..,1E+306,0.05,..)`;
+    // probes/bond-huge-yield-overflow A22, A23).
+    if schedule.discount_overflows(yld, frequency) || !price.is_finite() {
+        return Err("#NUM!".to_string());
+    }
+    Ok(price)
 }
 
 // ============================================================
@@ -641,10 +660,12 @@ impl Model {
         let bond = self.bond_args(values, BondFunction::Duration, cell)?;
         let (settlement, maturity, frequency, basis) =
             (bond.settlement, bond.maturity, bond.frequency, bond.basis);
-        let date_error = |_| num_error(cell);
-        let n = f64::from(coupon_count(settlement, maturity, frequency).map_err(date_error)?);
-        let e = coupon_days_e(settlement, maturity, frequency, basis).map_err(date_error)?;
-        let a = coupon_days_a(settlement, maturity, frequency, basis).map_err(date_error)?;
+        let schedule = CouponSchedule::new(settlement, maturity, frequency, basis)
+            .map_err(|_| num_error(cell))?;
+        if schedule.discount_overflows(bond.yld_or_pr, frequency) {
+            return Err(num_error(cell));
+        }
+        let CouponSchedule { n, e, a } = schedule;
         let dsc_over_e = (e - a) / e;
 
         let redemption = bond.redemption;
@@ -658,8 +679,7 @@ impl Model {
         let mut num = 0.0; // sum of t * PV(CF)
         let mut den = 0.0; // dirty price (sum of PV(CF))
         let mut add_cash_flow = |t: f64, cash_flow: f64| {
-            // `v` > 1 and `t` > 0 here, so `^` fails only by overflowing: the flow's present value
-            // is then 0.
+            // `v` > 1 and `t` > 0 here, and the longest term does not overflow.
             let growth = discount_growth(v, t);
             num += t * cash_flow / growth;
             den += cash_flow / growth;
@@ -672,7 +692,13 @@ impl Model {
         if den == 0.0 {
             return Err(div_error(cell));
         }
-        Ok(num / den / frequency as f64)
+        // A coupon so large that the sums overflow is #NUM! (`DURATION(..,1E+306,0.05,2,0)`;
+        // probes/bond-huge-yield-overflow B22, B23).
+        let duration = num / den / frequency as f64;
+        if !duration.is_finite() {
+            return Err(num_error(cell));
+        }
+        Ok(duration)
     }
 
     // MDURATION(settlement, maturity, coupon, yld, frequency, [basis])

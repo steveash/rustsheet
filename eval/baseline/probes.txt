@@ -71,6 +71,7 @@ C	probes/base-number-upper-bound.case.json	50
 C	probes/bessel-asymptotic.case.json	50
 C	probes/bessel-large-x.case.json	24
 C	probes/bond-argument-check-order.case.json	298
+C	probes/bond-huge-yield-overflow.case.json	78
 C	probes/bond-one-period-bases.case.json	80
 C	probes/byrow-bycol-array-results.case.json	32
 C	probes/callee-unparenthesized-lower-row-over.case.json	2
