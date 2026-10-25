@@ -3,7 +3,7 @@ id: T-2750
 title: "IMSECH of 1.34384-77.6742i prints Excel's last digit (im-last-digit-sweep J34, L34)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
