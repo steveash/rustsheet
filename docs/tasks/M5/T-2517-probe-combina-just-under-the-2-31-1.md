@@ -18,7 +18,7 @@ T-2291 probed only cells at or past the cut for small `n`. Probe `COMBINA(1,2^31
 
 ## Acceptance criteria
 - [x] Those cells are in a probes case, oracle-filled (excel-graph), and numbers.md COMBINA bound cites them; a fix task is filed if ours differs.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing COMBIN or COMBINA (the fix task's).

@@ -1722,7 +1722,7 @@ gen-m5/c688ca172fe533dc Calc!A288. For a small `n` with a huge `k` the rule hold
 `COMBIN(2^31-2,2^31-2)` is 1. Ours matches. Bounded from below too (probes/t2517-combina-below-cut-small-n A1:A4,
 excel-graph, 2026-10-25, T-2517): with n+k-1 at 2^31-2 (A3: 2^31-3) the cell is a number, not `#NUM!`: `COMBINA(1,2^31-2)` is 1,
 `COMBINA(2,2^31-3)` is 2147483646, `COMBINA(1,2^31-3)` is 1 and `COMBINA(3,2^31-4)` is 2.3058430038449848E+18 (each is COMBIN(n+k-1,k)),
-so the cut is on n+k-1, not on k a little lower. Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
+so the cut is on n+k-1, not on k a little lower. Ours matches. Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
 functions/math_and_trigonometry/mathematical.rs, T-2162).
 
 ## SEQUENCE accumulates its step
