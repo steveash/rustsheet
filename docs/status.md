@@ -67,7 +67,7 @@ Blocked: 34 (31 last run, counted by front matter).
 - None unblocked.
 
 Open PRs: 24 at 18:50 UTC. Three agent PRs are older than 24 h.
-- **#1682 (T-2532, COMPLEX suffix first)** meets every orphan condition (decision 0050). I re-ran all four reviewers on its diff, and each returned APPROVE. I merged `main` into it, which conflicted on gen-m9.txt; I took main's side and ran `update-baseline --suite gen-m9` (18 fixed, 0 regressions). It merges once CI is green on 74dd6f49.
+- **#1682 (T-2532, COMPLEX suffix first)** meets every orphan condition (decision 0050). I re-ran all four reviewers on its diff, and each returned APPROVE. I merged `main` into it, which conflicted on gen-m9.txt; I took main's side and ran `update-baseline --suite gen-m9` (18 fixed, 0 regressions). **Merged** as c53c17a7, once CI was green on 6a6cc1bf and the branch was up to date (merge lock held). gen-m9 known failures drop to 4,248.
 - #1583 (T-2398) and #1658 (T-2131) are drafts whose tasks are blocked, waiting on T-2439/T-2459 and on T-2565.
 - #1718 (T-2427) and #1727 (T-2622) pass 24 h at 21:10 and 23:28 UTC.
 - No duplicates. No task is `Blocked because: review-round limit`.
