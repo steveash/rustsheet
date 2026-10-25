@@ -1,17 +1,8 @@
-#![allow(clippy::unwrap_used)]
-
-use crate::{
-    formatter::{
-        format::{format_number, format_text_value, FormatContext},
-        locale_tag::{resolve, LocaleTag},
-    },
-    locale::get_locale,
+use super::text;
+use crate::formatter::{
+    format::format_text_value,
+    locale_tag::{resolve, LocaleTag},
 };
-
-fn text(value: f64, format: &str) -> String {
-    let ctx = FormatContext::new(get_locale("en").unwrap());
-    format_number(value, format, &ctx).text
-}
 
 // Values from probes/text-locale-date-names, text-locale-name-tables and text-locale-am-neutral.
 
