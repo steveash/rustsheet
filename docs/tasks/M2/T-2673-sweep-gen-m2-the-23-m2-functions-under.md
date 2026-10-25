@@ -71,3 +71,10 @@ filed. Visible parity: 0 visibly-off cells in the new cases; lock 6,039 unchange
 Pool gap (noted, not filled): the M2 criteria pool for COUNTIF/COUNTIFS/SUMIF/SUMIFS has wildcards (`*c`, `?b?`,
 `a*`), comparison operators (`<>1`, `<5`, `>=2`, `>0`, `=a`, `<>`), `""` and numeric literal criteria, but no
 text-number criteria such as `"1"` or `"2.5"`. Filed T-2717.
+
+Coverage-quality gap (found in review): in the 9 new cases Excel returns an error for most outer-call cells of SUMIFS
+(154/156, all `#VALUE!` from criteria_range/sum_range shape mismatches), COUNTIFS (102/154, all `#VALUE!`) and MATCH
+(136/157: 112 `#N/A`, mostly from a 2-D lookup_array). COUNTIF and SUMIF have none. These three count as covered, but
+generated evidence for their matching itself is thin (about 2 SUMIFS, 52 COUNTIFS and 21 MATCH non-error cells). The
+generator picks each range argument's shape independently and does not treat MATCH's lookup_array as a vector. Filed
+T-2719 (shared *IFS shapes, a 1-D MATCH lookup_array, and a top-up batch).
