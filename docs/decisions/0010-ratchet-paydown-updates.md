@@ -204,5 +204,7 @@
   `number_basis.rs` coerce `places` through one shared helper instead of nine copies of the block.
   T-2255: functions below the evidence floor 3 -> 0 (FORECAST.ETS.CONFINT, FORECAST.ETS.SEASONALITY and
   FORECAST.ETS.STAT, each now over 500 excel-graph cells from the gen-m9 statistical sweep; `make eval-baseline`).
+  T-2545: duplicated lines 3028 -> 2951 (the base conversions' digit reading became `ten_digit_value` instead of five
+  copies, once the places check moved into `number_and_places`; `check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
