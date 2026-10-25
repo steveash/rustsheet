@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-0070]
+depends_on: [T-0081]
 spec: docs/specs/SPEC-0022-daily-progress-dashboard.md
 ---
 
@@ -18,7 +18,7 @@ failed, the page says so and keeps the last good numbers, marked stale.
 
 ## Context
 - SPEC-0022, sections "History and deltas" and "Failure handling". The row schema is in the spec.
-- Inputs: report.json `run` (T-0068), `v15_checkpoint`, the T-0068 tiers, tasks.json (T-0069),
+- Inputs: report.json `run` (T-0080), `v15_checkpoint` (T-0080), the T-0068 tiers, tasks.json (T-0069),
   and git.
 - The steward missed 2026-10-23 and 2026-10-24 without a trace in the repository. A missing date
   in the history must show as a gap in the trend charts, not be interpolated.

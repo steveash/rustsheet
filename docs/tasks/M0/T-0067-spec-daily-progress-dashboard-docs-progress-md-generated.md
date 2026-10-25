@@ -38,7 +38,7 @@ with day-over-day deltas. The tasks that build it are filed with their dependenc
   - what moves out of docs/status.md;
   - docs/parity.md;
   - the steward changes.
-- [x] Implementation tasks T-0068 to T-0079 are filed with `depends_on`. T-0066 and T-2037 are
+- [x] Implementation tasks T-0068 to T-0081 are filed with `depends_on`. T-0066 and T-2037 are
   superseded and say so.
 - [x] `python3 scripts/tasks.py validate`, `make hygiene` and `make typos` green.
 
@@ -47,14 +47,30 @@ with day-over-day deltas. The tasks that build it are filed with their dependenc
   T-0076.
 
 ## Outcome
-SPEC-0022 written, accepted with this PR.
-- Filed: T-0068 (report attribution, tiers and run metadata), T-0069 (`tasks.py stats`), T-0070
-  (generator MVP and parity.md pointer), T-0071 (history and stale handling), T-0072 (goals and
-  campaign), T-0073 (top-40 and evidence), T-0074 (`--check`), T-0075 (skill), T-0076 (steward
-  and routine, blocked on the owner).
-- Later phases: T-0077, T-0078, T-0079.
-- T-0066 is dropped (folded into T-0070). T-2037 is dropped (superseded by T-0076). T-2036 was
+SPEC-0022 written, accepted with this PR (#1831).
+- Filed:
+  - T-0068: report attribution, tiers and workbook counts;
+  - T-0080: run metadata and the decision-0118 Phase 1 switch;
+  - T-0069: `tasks.py stats`;
+  - T-0070: generator rename, Makefile target, `CODE_READ_PATHS`, status and judgment blocks;
+  - T-0081: parity section, functions.md and the parity.md pointer;
+  - T-0071: history and stale handling;
+  - T-0072: goals and campaign;
+  - T-0073: top-40 and evidence;
+  - T-0074: `--check`;
+  - T-0075: the skill;
+  - T-0076: steward and routine, blocked on the owner.
+- Later phases: T-0078 (P2), T-0077 and T-0079 (P3).
+- T-0066 is dropped (folded into T-0081). T-2037 is dropped (superseded by T-0076). T-2036 was
   already done; T-0068 builds on it.
-- The owner answered the spec's questions on 2026-10-25 (SPEC-0022, "Owner decisions"). Decision
-  0118 records the exit measure: the attributed count decides Phase 1 (implemented by T-0068).
-  T-0076 lands through the owner's planning session.
+- The owner answered the spec's questions on 2026-10-25 (SPEC-0022, "Owner decisions").
+  Decision 0118 records the exit measure: the attributed count decides Phase 1. T-0068 computes
+  it, and T-0080 switches the Phase 1 line to it. T-0076 lands through the owner's planning
+  session.
+- Review round 1 (#1831):
+  - T-0068 split into T-0068 and T-0080;
+  - T-0070 split into T-0070 and T-0081;
+  - docs read by code go in `CODE_READ_PATHS`;
+  - judgment blocks are plain text only;
+  - decision 0118 extended (items 1 and 4 of 0114, unattributed cells, the glue-only difference
+    from 0088, 0094's process step).

@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-0070, T-0071]
+depends_on: [T-0081, T-0071]
 spec: docs/specs/SPEC-0022-daily-progress-dashboard.md
 ---
 
@@ -50,7 +50,7 @@ The dashboard opens with progress toward the goals:
   - on the semantics row, the number of below-bar functions whose `attributed` share reaches
     99.9% once their `visible_other` cells are fixed.
   Python only does arithmetic on the report's counts; the 99.9% threshold comes from the report
-  (`v15_checkpoint` or the T-0068 tier), never from a Python constant.
+  (`v15_checkpoint`, T-0080, or the T-0068 tier), never from a Python constant.
 - [ ] The milestones.md parse fails loudly on a milestone heading with no `**Exit criteria:**`
       list (test).
 - [ ] Tests cover the lift count on a synthetic report, and the stage and parked rows from a

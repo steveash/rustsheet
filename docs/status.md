@@ -66,7 +66,7 @@ Blocked: 31 (31 last run, counted by front matter).
 - New: T-2425 (FORECAST.ETS family, needs excel-desktop; decision 0039, M14-style wait).
 - Unblocked: T-0441 (done in #1706) and T-1699 (done).
 - T-2119 (#1620) and T-0971 (#1536) were blocked at the start of the run because the workers' permission policy refused their `rustsheet-eval update-baseline --allow-regressions` step (decision 0083's standing ulp allowance). Both merged during this run.
-- The rest are unchanged: Phase 2 (T-0400, T-0401, T-0402, T-0423, T-1066), time-boxed fits with no new hypothesis (T-0968, T-0969, T-1528, T-1529, T-1592), T-1099/T-1284 (GEOMEAN), T-0431 (FUSE corpus), T-2037 (needs a routine change) and the M14 desktop-oracle tasks (decision 0039).
+- The rest are unchanged: Phase 2 (T-0400, T-0401, T-0402, T-0423, T-1066), time-boxed fits with no new hypothesis (T-0968, T-0969, T-1528, T-1529, T-1592), T-1099/T-1284 (GEOMEAN), T-0431 (FUSE corpus), T-0076 (needs a routine change; it supersedes T-2037) and the M14 desktop-oracle tasks (decision 0039).
 
 Open PRs: 9 at 00:55 UTC. Four agent PRs had been open longer than 24 h: #1536 (T-0971), #1583 (T-2398), #1620 (T-2119) and #1658 (T-2131, passes 24 h at 02:03 UTC).
 - All four are drafts whose tasks are `status: blocked`, so none can be merged as an orphan (decision 0050).

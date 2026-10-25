@@ -29,6 +29,6 @@ tools/src/rustsheet_tools/parity_report.py recomputes `cells - visible` beside
 - Changing the measure.
 
 ## Outcome (dropped, 2026-10-25, planner)
-Superseded by T-0070 (SPEC-0022). The parity generator becomes the progress-report generator. T-0070
+Superseded by T-0081 (SPEC-0022). The parity generator becomes the progress-report generator. T-0081
 reads `v15_checkpoint.functions[].cells`, `visible`, `meets_rate` and `at_rate`, and deletes
 `within15_share` and `PHASE1_SHARE`. That is this task's acceptance criterion, carried over there.

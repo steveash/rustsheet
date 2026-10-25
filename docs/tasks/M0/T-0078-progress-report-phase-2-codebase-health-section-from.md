@@ -4,7 +4,7 @@ title: "Progress report phase 2: codebase health section from the quality ratche
 milestone: M0
 lane: harness
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: sonnet
 depends_on: [T-0071]

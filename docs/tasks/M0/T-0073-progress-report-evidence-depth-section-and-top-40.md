@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
-depends_on: [T-0070]
+depends_on: [T-0081]
 spec: docs/specs/SPEC-0022-daily-progress-dashboard.md
 ---
 
@@ -23,7 +23,7 @@ functions stand: these are the bulk of what everyday workbooks call.
   scope.json, so read it with the existing loader `rustsheet_tools.gen.generator.Catalog.load`,
   as catalog_view.py does. Do not add a second YAML parse, and do not change scope.json:
   `CatalogFunction` in Rust denies unknown fields.
-- Tier, attributed cells and share: the report's T-0068 fields, as rendered by T-0070.
+- Tier, attributed cells and share: the report's T-0068 fields, as rendered by T-0081.
 
 ## Acceptance criteria
 - [ ] Module `progress_report/evidence.py` writes the `evidence` block:

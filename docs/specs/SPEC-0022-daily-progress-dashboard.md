@@ -2,9 +2,12 @@
 
 - **Status:** accepted
 - **Milestone / lane:** M0 / harness
-- **Tasks:** T-0067 (this spec); MVP: T-0068, T-0069, T-0070, T-0071, T-0072, T-0073, T-0074,
-  T-0075, T-0076; later phases: T-0077, T-0078, T-0079. Supersedes T-0066 and T-2037.
-- **Decisions:** 0118 (the Phase 1 exit uses the attributed count; owner, 2026-10-25)
+- **Tasks:** T-0067 (this spec).
+  - MVP: T-0068, T-0080, T-0069, T-0070, T-0081, T-0071, T-0072, T-0073, T-0074, T-0075, T-0076.
+  - Later phases: T-0077, T-0078, T-0079.
+  - Supersedes T-0066 and T-2037.
+- **Decisions:** 0118 (the Phase 1 exit uses the attributed count; owner, 2026-10-25). The
+  decision records for the protected paths come with T-0069, T-0070, T-0075 and T-0076.
 
 ## Problem
 The owner wants one overall dashboard, refreshed once a day, that shows progress toward the
@@ -77,7 +80,7 @@ Goals:
 Non-goals:
 - Changing any gate or baseline. The one measure change is decision 0118, which the owner made
   for this spec (see "Owner decisions"): the Phase 1 exit uses the glue-aware attributed count.
-  The dashboard shows the report's `v15_checkpoint` Phase 1 line, computed that way by T-0068, as
+  The dashboard shows the report's `v15_checkpoint` Phase 1 line, computed that way by T-0080, as
   the exit measure. It shows the stricter every-function count beside it, labelled as information.
 - A CI freshness gate on the page. Decision 0079's reasoning still holds: a gate would fail every
   PR that moves a number, and the page names the run it shows.
@@ -109,14 +112,14 @@ steward owns every `judgment` block. The sections, in order:
 | 3 | `campaign` | generated | One row per decision-0114 stage (semantics, accuracy, visible) and one for parked (`defer: phase-1b`): open, ready, blocked and done tasks; visibly-off cells of the functions below the bar, by kind; the functions that fixing all their type, error and text cells would lift to ≥ 99.9% | T-0072 |
 | 4 | `since-last-run` | generated | Deltas against the last complete history row: Phase 1 functions at rate, functions per tier, visibly-off cells, Excel cells, tasks done, commits landed on `main` | T-0071 |
 | 5 | `trends` | generated | Trend SVGs from history: functions at ≥ 99.9% within 15 digits, visibly-off cells, open tasks per stage | T-0071 |
-| 6 | `parity` | generated | Functions per worst-cell tier (glue-aware), tiers by category (table and stacked SVG), attributed cells by closeness, suites (cases, cells, bit-exact, ≤ 4 ulp, visibly off, known failures, timeouts, workbooks all exact / all within 15 digits / any visibly off) | T-0070 |
+| 6 | `parity` | generated | Functions per worst-cell tier (glue-aware), tiers by category (table and stacked SVG), attributed cells by closeness, suites (cases, cells, bit-exact, ≤ 4 ulp, visibly off, known failures, timeouts, workbooks all exact / all within 15 digits / any visibly off) | T-0081 |
 | 7 | `top-functions` | generated | The 40 in-scope functions with the highest catalog `prior`: tier, attributed cells, within-15-digit share, Excel cells | T-0073 |
 | 8 | `evidence` | generated | Excel cells per function in bands (< 20, 20–199, 200–399, 400–999, ≥ 1000), the median, how many are covered under decision 0094, a histogram SVG | T-0073 |
 | 9 | `readiness` | judgment | Readiness by use (read and compute, edit and recalc, large ranges, save and round-trip), each rated with a cited number | T-0075 |
 | 10 | `risks` | judgment | Ranked risks, each with its number and owning task id, or "no task" | T-0075 |
 | 11 | `method` | generated | How each number is made (static text kept next to the code) | T-0070 |
 
-`docs/progress/functions.md` holds the all-functions table (T-0070). It is generated in full and
+`docs/progress/functions.md` holds the all-functions table (T-0081). It is generated in full and
 has no judgment blocks. Later phases add generated blocks `arguments` (T-0077), `codebase`
 (T-0078) and a usage-weighted line in `parity` (T-0079) without changing the block protocol.
 
@@ -138,6 +141,10 @@ has no judgment blocks. Later phases add generated blocks `arguments` (T-0077), 
   appear in the generated part of the page. Numbers are digit runs with optional `,` `.` `%`; dates
   and task, decision and PR ids are ignored. The skill requires the check to pass before the
   steward commits. This is what makes "every claim cites a number" reviewable.
+- **Plain text only.** Judgment blocks hold plain text and Markdown emphasis and lists. They hold
+  no URL (`http://`, `https://`), no Markdown link or image, and no `<` tag apart from their own
+  as-of comment. `--check` fails on any of them. The page is shared by link, so a block can never
+  point readers elsewhere or inject markup.
 
 ### Inputs and generator
 `make progress-report` (Makefile, protected; decision record in T-0070) does two things:
@@ -152,10 +159,24 @@ has no judgment blocks. Later phases add generated blocks `arguments` (T-0077), 
    - `docs/progress/history.json`;
    - git: `HEAD`, and `git rev-list --count --first-parent <last row's commit>..HEAD`.
 
+**Docs read by code.** Decision 0079 said nothing under docs/ is read by code. Decisions 0049 and
+0066 skip the rust, eval and python CI jobs for PRs that change only docs/, and
+`scripts/check_docs_readers.py` enforces that through `CODE_READ_PATHS` in scripts/ci_changes.py.
+The generator now reads three docs paths, so T-0070 adds `docs/milestones.md`,
+`docs/progress.md` and `docs/progress/` to `CODE_READ_PATHS` (protected; T-0070's decision
+record).
+- Steward PRs that change the page or its history therefore still run the python job.
+- The generator may name these paths as literals.
+- That record amends decision 0079's "nothing under docs/ is read by code". It keeps 0079's rule
+  that no CI freshness gate checks the page.
+
+The alternative was rejected: passing every docs path from the Makefile as an argument would
+keep tools/ free of docs literals, but it lets docs-only steward PRs skip the python job.
+
 `make parity-report` goes away. The generator is the existing one, renamed and extended rather
 than copied:
 - `tools/src/rustsheet_tools/parity_report.py` becomes the package
-  `tools/src/rustsheet_tools/progress_report/`, created with `git mv` so history follows. It holds
+  `tools/src/rustsheet_tools/progress_report/`, created with `git mv` so history follows (T-0070). It holds
   `__init__.py` (CLI and `main`), `model.py` (input loading and validation), `blocks.py` (marker
   parsing and preservation), `parity.py` (sections 6 and 11, and functions.md), `goals.py`
   (sections 2 and 3), `history.py` (sections 4 and 5), `evidence.py` (sections 7 and 8) and
@@ -166,12 +187,12 @@ than copied:
   `tools/tests/test_parity_report.py` becomes `test_progress_report.py` (`git mv`).
 - The generator reads the report's `v15_checkpoint` for the Phase 1 share and threshold
   (`functions[].cells`, `visible`, `meets_rate`, `at_rate`). `within15_share` and `PHASE1_SHARE`
-  are deleted. That is T-0066, folded into T-0070.
+  are deleted. That is T-0066, folded into T-0081.
 - It reads the report's per-function `tier` and `attributed` counts (T-0068) and computes no
   verdict, bucket or tier itself. Python only does arithmetic on the report's counts: sums,
   shares, medians and deltas.
 
-### Glue-aware attribution lives in the Rust eval report (T-0068)
+### Glue-aware attribution lives in the Rust eval report (T-0068, T-0080)
 The assessment's attribution counts a cell toward a function only when that function is the
 formula's only non-routing call. It belongs where the other per-function counts are made:
 `RunReport::build` (crates/rustsheet-eval/src/report.rs), with the glue list in
@@ -179,8 +200,14 @@ formula's only non-routing call. It belongs where the other per-function counts 
 keeps only failing cells, and it would add a third copy of `functions_in` and `GLUE`.
 T-2036, which moved the buckets into the report, is already done. T-0068 builds on its
 `Closeness`. Proportionate scope:
-- `formula_calls::sole_call(called) -> Option<&str>` gives the formula's one non-`GLUE` function.
-  When every call is glue and there is exactly one, it gives that one. Otherwise it gives `None`.
+- T-0068 adds `sole_call(called)` next to `GLUE` and `blamed()` in closeness.rs, or in a new
+  attribution.rs beside it. It takes the same distinct-call set as `blamed()`. It returns:
+  - the set's one function not in `GLUE`;
+  - when every call is glue, the set's only element;
+  - otherwise `None`.
+
+  Repeated calls of one function are one element, so `GAMMA(1)+GAMMA(2)` is GAMMA's.
+  `IF(AND(..),..)` is nobody's here, though `blamed()` blames both IF and AND (decision 0118).
 - `FunctionStat` gains two fields:
   - `excel: Closeness`: every Excel-evidence cell (`from_excel`) that calls the function;
   - `attributed: Closeness`: the Excel-evidence cells whose sole call it is.
@@ -196,13 +223,14 @@ T-2036, which moved the buckets into the report, is already done. T-0068 builds 
   bit-exact, how many have every cell within 15 digits, and how many have a visibly-off cell. These
   are counted in the same loop. The calipers line of the assessment ("87% of workbooks show no
   visible difference") comes from these counts.
-- `RunReport` gains `run`:
-  - `commit` (`git rev-parse HEAD`, or none when git is unavailable);
+- T-0080: `RunReport` gains `run`:
+  - `commit` (`git rev-parse --short=8 HEAD`, the same short form as the history rows, or null
+    when git is unavailable);
   - `date` (UTC, YYYY-MM-DD);
   - `skipped_suites`: `{name, reason}` for each suite under eval/suites that did not run. Today
     that is "not fetched", which main.rs already prints.
 - report.md gains a short "Parity tiers (glue-aware)" section with the tier counts.
-- `v15_checkpoint` switches to the attributed count (decision 0118). This changes the meaning of
+- T-0080: `v15_checkpoint` switches to the attributed count (decision 0118). This changes the meaning of
   its `meets_rate`, `at_rate`, `phase1_met` and the Phase 1 line:
   - the share is measured over `attributed`, or over `excel` below 20 attributed cells;
   - coverage (`covered`) still counts every Excel cell that calls the function (decision 0094);
@@ -271,7 +299,8 @@ daily rewrite:
     with known failures and deltas;
   - the bold "Fifteen-digit parity: …" line, the "Phase 1 (decision 0114): …" line and the
     "previous run also read …" sentence, which become section 2 (history answers the two-runs
-    question);
+    question). This supersedes the process part of decision 0094, the copy into status.md, as
+    decision 0118 records. 0094's checkpoint definition is unchanged;
   - the "Where M<n>'s exit stands" measure lines (coverage, generated suite, ironcalc-calc row,
     probes met or not), which become section 2.
 - **Kept**:
@@ -283,7 +312,8 @@ daily rewrite:
   - CI, nightly fuzz, the hygiene line (until T-0078 moves it), merged tasks, blocked tasks, open
     PRs, queues, upstream, oracle, spot-audit, `**Critical lane:**`, "Needs owner" and the Log;
   - the `**Phase 1:** exited <date>` line (docs/milestones.md) stays in status.md, and the
-    dashboard shows it too.
+    dashboard shows it too. The steward decides to add it from `v15_checkpoint.phase1_met` in
+    report.json (shown in `goals`), not from a status.md line.
 
 ### docs/parity.md
 **Recommendation: make it a short pointer.** docs/parity.md becomes a static four-line page that
@@ -303,9 +333,11 @@ even when `make eval` failed or a fetch failed. It then follows the `progress-re
 (T-0075) to rewrite the judgment blocks, runs the `--check`, and commits docs/progress.md,
 docs/progress/ and history.json in the same `steward: <date> health` PR. The steward skill's
 "Fifteen-digit parity checkpoint" rule changes: the lines are no longer copied into status.md,
-and the two-consecutive-runs question is read from the history rows. The exact new routine text
-is in T-0076. docs/process/routines.md is protected, and agents never change the real routine, so
-T-0076 is `blocked` on the owner, as T-2037 was.
+and the two-consecutive-runs question is read from the history rows. Its Phase 1 exit rule
+(decision 0114 item 3: add `**Phase 1:** exited` and remove `defer: phase-1b`) reads
+`v15_checkpoint.phase1_met`. The exact new routine text is in T-0076. docs/process/routines.md is
+protected, and agents never change the real routine, so T-0076 is `blocked` on the owner. The
+owner's planning session prepares its PR, and the owner pastes the prompt into the live routine.
 
 ### The `progress-report` skill (T-0075)
 `.claude/skills/progress-report/SKILL.md` (protected; decision record in T-0075) covers:
@@ -347,7 +379,8 @@ T-0076 is `blocked` on the owner, as T-2037 was.
 1. **Exit measure.** The Phase 1 exit uses the assessment's attribution (decision 0118). A cell
    counts only toward its formula's single function outside the harness glue list. A function
    with fewer than 20 such cells falls back to every cell that calls it. The stricter
-   every-function count is still shown, labelled as information. T-0068 implements both.
+   every-function count is still shown, labelled as information. T-0068 computes the attributed
+   counts and T-0080 switches the Phase 1 line to them.
 2. **T-0076.** The owner's planning session prepares it. Once the dashboard work has merged, that
    session opens one PR with the routines.md prompt, the steward skill and the status.md changes.
    It gives the owner the exact prompt, and the owner pastes it into the live routine.
@@ -365,29 +398,40 @@ T-0076 is `blocked` on the owner, as T-2037 was.
   - an incomplete run rewrites only `status` and appends `complete: false`;
   - deltas skip incomplete rows;
   - same-date row replacement;
-  - `--check` on cited and uncited numbers;
+  - `--check` on cited and uncited numbers, and on URLs, links, images and tags;
   - byte-identical output on the same inputs.
-- crates/rustsheet-eval unit tests: `sole_call` (glue-only formulas, two specialised calls), tier
+- crates/rustsheet-eval unit tests: `sole_call` (glue-only formulas with one and two calls,
+  repeated calls, two specialised calls), tier
   boundaries (exactly 99.9%, the fallback at 19 and 20 attributed cells), workbook counts,
   `skipped_suites`, and a `v15_checkpoint` function that meets the rate on its attributed cells
   but not on the stricter count (decision 0118).
 - scripts/test_tasks.py: `stats --json` on fixture tasks, including campaign, defer and blocked.
-- The T-0070 PR regenerates docs/progress.md from a fresh `make eval`. Its Outcome compares the
+- The T-0081 PR regenerates docs/progress.md from a fresh `make eval`. Its Outcome compares the
   tier counts with the assessment's (308 functions never visibly off, 127 below 99%) and explains
   any difference.
 
 ## Rollout
-1. T-0068 (eval report fields) and T-0069 (`tasks.py stats`), in parallel.
-2. T-0070: the MVP page, the rename, the parity.md pointer and the Makefile target with its
-   decision record. It depends on 1.
-3. T-0071 (history, deltas, trends, stale handling), T-0072 (goals and campaign), T-0073
-   (top-40 and evidence) and T-0074 (`--check`). Each depends on T-0070. They share the harness
-   lane, so they land one at a time, but each touches its own module.
-4. T-0075: the skill, with its decision record. It depends on T-0070 and T-0074.
-5. T-0076: the steward skill, routines.md and status.md. It is blocked on the owner and depends
-   on T-0071, T-0072 and T-0075.
-6. Later phases, P3: T-0077 (argument coverage), T-0078 (codebase health), T-0079 (usage
-   weighting).
+Each step lists the task's `depends_on`. Tasks in the harness lane land one at a time, but each
+touches its own module.
+1. T-0068 (attribution, tiers, workbook counts; after T-0067) and T-0069 (`tasks.py stats`;
+   after T-0067), in parallel.
+2. T-0080 (`run` metadata and the decision-0118 Phase 1 switch). Depends on T-0068.
+3. T-0070 (rename, Makefile target, `CODE_READ_PATHS`, `status` and judgment blocks, with the
+   decision record amending 0079). Depends on T-0069 and T-0080.
+4. T-0081 (parity section, functions.md, the parity.md pointer, the first committed page).
+   Depends on T-0068 and T-0070.
+5. These depend on step 4 or 3:
+   - T-0071 (history, deltas, trends, stale handling): depends on T-0081;
+   - T-0073 (top-40 and evidence): depends on T-0081;
+   - T-0074 (`--check`): depends on T-0070.
+6. T-0072 (goals and campaign). Depends on T-0081 and T-0071.
+7. T-0075 (the skill, with its decision record). Depends on T-0081 and T-0074.
+8. T-0076 (steward skill, routines.md and status.md). Blocked on the owner; depends on T-0071,
+   T-0072 and T-0075. The owner's planning session prepares it, and the owner pastes the prompt.
+9. Later phases:
+   - T-0078 (codebase health, P2): depends on T-0071;
+   - T-0077 (argument coverage, P3): depends on T-0081;
+   - T-0079 (usage weighting, P3): depends on T-0068, T-0081 and T-0073.
 
 Until T-0076 is unblocked, a worker or owner session may run `make eval && make progress-report`
 by hand. The page names its run date, so a lagging page is never wrong (decision 0079).

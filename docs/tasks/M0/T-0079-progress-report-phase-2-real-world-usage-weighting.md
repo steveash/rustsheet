@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
-depends_on: [T-0068, T-0070, T-0073]
+depends_on: [T-0068, T-0081, T-0073]
 spec: docs/specs/SPEC-0022-daily-progress-dashboard.md
 ---
 
