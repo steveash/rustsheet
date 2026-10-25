@@ -3,7 +3,7 @@ id: T-0972
 title: "GAMMA.INV/CHISQ.INV/CHISQ.INV.RT: gamma quantile parity (39 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P1
 size: S
 tier: opus
@@ -191,3 +191,28 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - CHIINV: 28 cells (13-14 digits right 22, 10-12 2, 6-9 4, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-legacy-chiinv.case.json` 26; `probes/stat-argument-modes.case.json` 1. e.g. `CHIINV(0.4,5)` Excel 5.131867074401821, ours 5.131867074401809
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Blocked because
+Blocked because: the baseline update needs `rustsheet-eval update-baseline --allow-regressions` (decision 0083's
+standing ulp allowance), which the 2026-10-25 opus run's permission policy refused; a run allowed to use the
+allowance (or the owner) unblocks it. The branch carries the change and passes the engine's statistical tests and clippy.
+
+What the branch does (incomplete_gamma.rs `gamma_quantile`, `quantile_tail`):
+- The quantile is always the crossing of the smaller tail (T-1634's shortcut keeping statrs' search where it solved
+  that tail to 1E-13 relative is gone; it left `GAMMA.INV(0.5,9,1)` 7E-15 off).
+- The lower tail's `powf * exp(-x - ln Gamma(a + 1))` form only at x * rate <= 1: up to x = a its large exponent
+  costs 1E-14 relative at shape 50 (`GAMMA.INV(0.5,50,1)` 13 ulps off Excel's true quantile).
+
+Eval (`rustsheet-eval check` against main fe2d3ea): gen-m9 fixed 23, regressed 36; ironcalc-calc fixed 5, regressed 9;
+probes regressed 4. Every regression is numeric, at most 3 ulp, none visibly off (worst
+`ironcalc-calc/STATISTICAL/GAMMA.xlsx` F5, 3 ulp; the rest 1 to 2 ulp, e.g. `CHISQ.INV.RT(0.4,5)` 2 ulp). Visibly-off
+in-scope cells 5626 -> 5617; visibly-off quantile cells (formulas with GAMMA.INV, CHISQ.INV, CHIINV) 75 -> 56.
+A zero-regression variant (keep statrs' result within 3E-14) only reaches 5624.
+
+Evidence (docs/excel-semantics/statistics.md, T-0972 bullet): against mpmath, 509 of 545 literal-argument quantile
+cells of Excel are within half a unit of the 15th digit of the true quantile; the rest are Excel's own error where its
+double cdf is flat (p near 0.999, 40 to 100 ulps) or its far-tail cdf (p 1E-200, 1E-300). An accurate kernel
+therefore tops out near 509/545; the remaining visibly-off cells need Excel's iteration fitted (a follow-up).
+
+Next: update the baseline with the allowance, list the 49 regressed cells in the Outcome, file the ulp follow-up,
+review, PR.
