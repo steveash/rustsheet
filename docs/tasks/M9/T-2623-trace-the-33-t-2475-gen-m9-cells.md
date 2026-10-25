@@ -3,7 +3,7 @@ id: T-2623
 title: "Trace the 33 T-2475 gen-m9 cells the sub-expression probe does not settle"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
