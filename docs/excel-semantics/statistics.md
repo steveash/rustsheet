@@ -3705,7 +3705,7 @@ QUARTILE*, PERCENTILE* and TRIMMEAN are `#NUM!` (`QUARTILE(Data!E2,3)` with E2 =
 `TRIMMEAN(Data!B7,1.005)` with TRUE, 9735c5ab72fa5ecf A264) and PERCENTRANK* `#N/A` (`PERCENTRANK(Data!C11,1.005)` with "a",
 44a8841352dc48e9 A52). This answers T-2344's single-cell question and T-2066's (`QUARTILE` of one text cell).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 72 cells in T-2344.
-Ours: `#VALUE!` (the cell read as a typed value); T-2344.
+Ours: since T-2429 a cell holding text or a boolean is no number in QUARTILE*, PERCENTILE* and PERCENTRANK* ("A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"); the name and INDEX forms, the empty cell and TRIMMEAN stay T-2344's.
 Status: VERIFIED (excel-graph)
 
 ## COVARIANCE: a boolean scalar is one value (T-2436)
