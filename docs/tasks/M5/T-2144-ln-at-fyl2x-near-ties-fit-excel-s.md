@@ -3,7 +3,7 @@ id: T-2144
 title: "LN at FYL2X near-ties: fit Excel's last bit or settle the 27 probes/ln-fyl2x-kernel known failures"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -33,17 +33,25 @@ of x and says how the probe scores those cells.
   call `excel_ln`) inherit it. Check that their probes do not regress.
 
 ## Acceptance criteria
-- [ ] numbers.md "LN is FLDLN2 then FYL2X" records the fit: each candidate's count on T-2143's case, on the 30
+- [x] numbers.md "LN is FLDLN2 then FYL2X" records the fit: each candidate's count on T-2143's case, on the 30
       near-ties and on the committed ln_kernel fixture.
-- [ ] If a candidate matches every point on which all of T-2143's fills agree, and keeps every fixture point:
+- [ ] (not met: no candidate fits) If a candidate matches every point on which all of T-2143's fills agree, and keeps every fixture point:
       `excel_ln` uses it. The probes/ln-fyl2x-kernel known-failure lines it fixes then disappear from
       eval/baseline/probes.txt, with no new ones in any gated suite.
-- [ ] Otherwise: a decision record (`make new-decision`) says how the probe scores a near-tie whose Excel bit
+- [x] Otherwise: a decision record (`make new-decision`) says how the probe scores a near-tie whose Excel bit
       varies between fills. One option is to accept either neighbour, as decision 0042 accepts its pair. The other is
       to keep them as named known failures. The record also says whether these cells count toward any milestone exit.
       No baseline hand-edit and no `--allow-regressions`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The LN cost (perf, T-2016 covers LOG10).
 - GAMMALN/GAMMA model shipping (T-2128, T-2129).
+
+## Outcome
+Fitted guard-bit FYL2X models (a k-bit internal product, truncated or rounded, before RN64 and RN53; k = 66..72;
+docs/research/t1941/ln_guard_bits.py) against the 357 points where T-2143's three fills agree, and against the
+`ln_kernel` fixture. The best, k = 67 rounded, matches 354 of 357 and keeps all 4,000 sampled fixture points. The
+shipped model matches 345 of 357. No candidate fits every stable point, so `excel_ln` is unchanged. Decision 0112:
+the 27 probes/ln-fyl2x-kernel near-ties stay named known failures, and as one-ulp cells at an FYL2X near-tie they block
+no milestone exit (decision 0085 item 3). numbers.md records the counts. Eval: no change.
