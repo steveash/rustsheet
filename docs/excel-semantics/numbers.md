@@ -669,7 +669,9 @@ BETA.DIST density (t2513-r3-m1-residual-hold D863, D875, D957), `GAMMA.DIST(5000
 (m9-gamma-dist-a500 A22), an EXPON.DIST (gen-m9/165db58d1540f014 A65) and a WEIBULL (gen-m9/eccd03df42e40006 A96).
 The flush follows each function's internal path, not the size of the result: `BINOM.DIST(0,999,p,FALSE)` and
 `NEGBINOM.DIST(999,1,p,FALSE)` differ only by a factor of p, yet Excel keeps the first and zeroes the second (I229/I238
-FALSE, J229/J238 TRUE). Ours keeps every one of these, so the flushing ones fail; T-2703 flushes them.
+FALSE, J229/J238 TRUE). Implemented (T-2703): the EXPON.DIST, WEIBULL, BETA.DIST and GAMMA.DIST densities and the BINOM.DIST pmf off its
+k = 0 and k = n closed forms, and the NEGBINOM.DIST pmf, pass their result through `arithmetic::flush_subnormal`; the
+closed forms and the cumulative modes keep a subnormal (not probed).
 Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
 2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
 `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
