@@ -3,7 +3,7 @@ id: T-2491
 title: "SYD with a negative salvage or a huge life, and DB with a huge life or past the period cap (gen-m9, 18 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
