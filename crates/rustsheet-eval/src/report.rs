@@ -47,6 +47,10 @@ pub struct SuiteSummary {
     /// Scored text cells whose text matched Excel's.
     #[serde(default)]
     pub text_passed: usize,
+    /// Formula cells left unscored because they call an add-in function (`_xll.`, decision 0027;
+    /// T-0462): they are in none of the counts above.
+    #[serde(default)]
+    pub skipped_add_in: usize,
     /// The suite's in-scope scored cells per closeness bucket: cells that call no out-of-scope
     /// catalog function (decision 0027). Its visibly-off cells are what the visible-parity
     /// ratchet counts (T-0061, `visible_parity`).
@@ -284,6 +288,7 @@ impl RunReport {
             *s.statuses.entry(r.status).or_default() += 1;
             s.cells += r.checked;
             s.cells_passed += r.passed;
+            s.skipped_add_in += r.skipped_add_in;
             s.deviations += r.deviations;
             s.millis += r.millis;
             s.text_cells += r.text.len();
@@ -637,7 +642,12 @@ impl RunReport {
     }
 
     fn write_out_of_scope(&self, md: &mut String) {
-        if self.out_of_scope.is_empty() {
+        let add_in: Vec<&SuiteSummary> = self
+            .suites
+            .iter()
+            .filter(|s| s.skipped_add_in > 0)
+            .collect();
+        if self.out_of_scope.is_empty() && add_in.is_empty() {
             return;
         }
         let _ = writeln!(
@@ -645,6 +655,18 @@ impl RunReport {
             "\n## Out of scope ({})\n\nCatalog functions whose results depend on systems outside the workbook (decision 0027). They are left out of every count above.\n",
             self.out_of_scope.len()
         );
+        // Add-in calls are not catalog functions: their cells are not scored at all (T-0462).
+        for s in add_in {
+            let _ = writeln!(
+                md,
+                "- {}: {} cells call an add-in function (`_xll.`) and are not scored.",
+                s.name, s.skipped_add_in
+            );
+        }
+        if self.out_of_scope.is_empty() {
+            return;
+        }
+        let _ = writeln!(md);
         let _ = writeln!(md, "| function | cells checked | failing | reason |");
         let _ = writeln!(md, "|---|---|---|---|");
         for f in &self.out_of_scope {
@@ -695,6 +717,7 @@ pub(crate) mod tests {
             passed: 1,
             deviations: 0,
             skipped_volatile: 0,
+            skipped_add_in: 0,
             millis,
             tags: Vec::new(),
             cells: Vec::new(),
@@ -940,6 +963,26 @@ pub(crate) mod tests {
             "{md}"
         );
         assert!(!md.contains("### WEBSERVICE"));
+    }
+
+    #[test]
+    fn add_in_cells_are_counted_per_suite_and_listed_out_of_scope() {
+        // T-0462: cells calling `_xll.` are not scored; the out-of-scope section counts them.
+        let mut a = case("calipers/a", 1);
+        a.skipped_add_in = 246;
+        let mut b = case("calipers/b", 1);
+        b.skipped_add_in = 246;
+        let report = RunReport::build("e", &[a, b, case("probes/c", 1)], &[], &Catalog::default());
+        let calipers = report.suites.iter().find(|s| s.name == "calipers");
+        assert_eq!(calipers.map(|s| s.skipped_add_in), Some(492));
+        let md = report.to_markdown(1);
+        assert!(
+            md.contains(
+                "- calipers: 492 cells call an add-in function (`_xll.`) and are not scored."
+            ),
+            "{md}"
+        );
+        assert!(!md.contains("- probes:"), "{md}");
     }
 
     #[test]

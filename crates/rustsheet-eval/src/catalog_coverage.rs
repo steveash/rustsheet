@@ -253,6 +253,7 @@ mod tests {
             passed: 1,
             deviations: 0,
             skipped_volatile: 0,
+            skipped_add_in: 0,
             millis: 0,
             tags: Vec::new(),
             cells: vec![cell],

@@ -18,6 +18,7 @@ use crate::case_log;
 use crate::cellref::Addr;
 use crate::deviations::{self, Outcome};
 use crate::engine::{Engine, Evaluated};
+use crate::formula_calls::calls_add_in;
 use crate::overrides;
 use crate::spill_extent::SpillExtent;
 use crate::suite::{CaseFile, Suite, SuiteKind};
@@ -91,6 +92,10 @@ pub struct CaseResult {
     #[serde(default)]
     pub deviations: usize,
     pub skipped_volatile: usize,
+    /// Formula cells left unscored because they call an add-in function (`_xll.`, decision 0027;
+    /// T-0462).
+    #[serde(default)]
+    pub skipped_add_in: usize,
     pub millis: u64,
     /// The spec case's `tags` (none for xlsx cases or unreadable ones); the probe milestone
     /// report reads a case's milestone tag from them (decision 0051).
@@ -167,6 +172,7 @@ struct PreparedCase {
     extent: Option<SpillExtent>,
     expected_source: String,
     skipped_volatile: usize,
+    skipped_add_in: usize,
     tags: Vec<String>,
     text: Vec<TextExpectation>,
     defined_names: BTreeMap<String, String>,
@@ -212,6 +218,7 @@ fn invalid(suite: &Suite, case: &CaseFile, message: String) -> CaseResult {
         passed: 0,
         deviations: 0,
         skipped_volatile: 0,
+        skipped_add_in: 0,
         millis: 0,
         tags: Vec::new(),
         cells: Vec::new(),
@@ -242,6 +249,7 @@ pub fn run_case(
         passed: 0,
         deviations: 0,
         skipped_volatile: prepared.skipped_volatile,
+        skipped_add_in: prepared.skipped_add_in,
         millis: 0,
         tags: prepared.tags.clone(),
         cells: Vec::new(),
@@ -440,6 +448,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             extent: None,
             expected_source: "none".into(),
             skipped_volatile: 0,
+            skipped_add_in: 0,
             tags: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
@@ -447,8 +456,17 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     };
     let (scorable, skipped_volatile) =
         scorable_cells(&snapshot, pinned_clock_serial(&snapshot.sheets).is_some());
+    let mut skipped_add_in = 0;
     let expectations = scorable
         .into_iter()
+        .filter(|(sheet, _, cell)| {
+            let add_in = cell.formula.as_deref().is_some_and(calls_add_in)
+                || cell
+                    .anchor_formula(&snapshot.sheets, sheet)
+                    .is_some_and(|f| calls_add_in(&f));
+            skipped_add_in += usize::from(add_in);
+            !add_in
+        })
         .filter_map(|(sheet, addr, cell)| {
             Some(Expectation {
                 sheet: sheet.to_string(),
@@ -476,6 +494,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         extent: None,
         expected_source: source,
         skipped_volatile,
+        skipped_add_in,
         tags: Vec::new(),
         text: Vec::new(),
         defined_names,
@@ -579,6 +598,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     };
     let mut expectations = Vec::new();
     let mut skipped_volatile = 0;
+    let mut skipped_add_in = 0;
     for q in wanted {
         let (sheet, a1) = split_qualified(&q).ok_or_else(|| format!("bad cell key {q}"))?;
         let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
@@ -590,6 +610,10 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         let from_graph = formula.as_deref().is_some_and(|f| kept_nonzero.contains(f));
         if volatile.contains(&(sheet.clone(), addr)) {
             skipped_volatile += 1;
+            continue;
+        }
+        if formula.as_deref().is_some_and(calls_add_in) {
+            skipped_add_in += 1;
             continue;
         }
         expectations.push(Expectation {
@@ -616,6 +640,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         expectations,
         expected_source: source,
         skipped_volatile,
+        skipped_add_in,
     })
 }
 
