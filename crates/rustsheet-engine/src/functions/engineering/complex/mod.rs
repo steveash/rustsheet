@@ -222,6 +222,15 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     }
 }
 
+/// Whether `text`, past its leading spaces, has a `-` that is neither its first character nor an
+/// exponent's sign (`1E-3`): Excel's complex reader does not hand such text to VALUE.
+fn has_inner_minus(text: &str) -> bool {
+    text.trim_start_matches(' ')
+        .as_bytes()
+        .windows(2)
+        .any(|pair| matches!(pair, [before, b'-'] if !matches!(before, b'E' | b'e')))
+}
+
 /// A parsed complex number: the real part, the imaginary part and the suffix.
 type ComplexParts = (f64, f64, Suffix);
 
@@ -314,13 +323,14 @@ impl Model {
         if value.starts_with(['\t', '\u{3000}']) {
             return Err(num_error(cell));
         }
-        // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1"),
-        // but not date text: `IMABS("2024-01-01")` is `#NUM!` (probes/eng-inumber-reading A4), so a
-        // `/` or a `-` past the first character (a date separator) keeps the text unreadable.
-        let date_shaped = value.contains('/') || value.get(1..).is_some_and(|t| t.contains('-'));
+        // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",
+        // `IMABS("1/2/2020")` 43832), except text with an inner minus sign that is not an exponent's:
+        // `IMABS` of "2024-01-01", "1-2", "1-Jan-2020" and "$-5" is `#NUM!` where VALUE reads them,
+        // while " -5", "- 5", "1E-3%" and "1,000E-2" are read (probes/eng-inumber-reading A4,
+        // probes/eng-inumber-date-boundary column A).
         match parse_complex_number(&value) {
             Ok(z) => Ok(z),
-            Err(_) if date_shaped => Err(num_error(cell)),
+            Err(_) if has_inner_minus(&value) => Err(num_error(cell)),
             Err(_) => self
                 .value_text_number(&value)
                 .map(|f| (f, 0.0, Suffix::Real))
