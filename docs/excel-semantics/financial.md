@@ -1115,7 +1115,8 @@ Evidence: probes/t2493-npv-rate-edges A1:A77 and probes/t2493-npv-error-order-in
 T-2493). A60 and A61 are a unit in the last place off (T-1528).
 Status: VERIFIED (excel-graph)
 Implemented in: functions/financial/financial_util.rs (`npv_discount_fails`), functions/financial/mod.rs (`fn_npv`,
-`npv_cash_flows`). Unprobed: a subnormal power whose reciprocal is finite (ours does not fail).
+`npv_cash_flows`). Unprobed: a subnormal power whose reciprocal is finite (ours does not fail), and a single-cell
+reference holding an error against a scalar error (ours defers it like a range's).
 Tasks: T-2493, T-1528
 
 ## NPV, IRR and MIRR error order
