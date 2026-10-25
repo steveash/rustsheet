@@ -1970,7 +1970,9 @@ BETA.DIST(p,k+1,n-k+1,FALSE):
 - k = n: EXP(fl(n·LN(p))), 172 of 172 cells.tsv cells (CR 70), p = 0.99 and 0.999 included; 320 of 320 on the
   verifier's probe.
 - k = 0: EXP(fl(n·l)) with Excel's log1p ("Excel's log1p is a 14-term atanh series"): 173 of 173 pmf cells (CR 54);
-  318 of 320 on the verifier's probe.
+  318 of 320 on the verifier's probe. The 2 misses are subnormal results that Excel returns as 0:
+  `BINOM.DIST(0,999,0.5220313151772082,FALSE)` is 0 where the model gives 5.2E-321, and p = 0.5183174306860642 is 0
+  against 1.2E-317 (t2513-verify-r3-binom-pmf-h A229, A238).
 - Interior: on 56 runs of consecutive p, BINOM's and BETA's exponent errors differ by sd 0.38-1.13 units (the
   output-rounding floor) while each alone reaches 195 (verifier: 0.47-0.89 on 10 new runs, each alone up to 50). Only a
   per-shape constant differs (LN(n+1), the final rounding). So the pmf is a window on the beta density's Loader pieces
@@ -1987,7 +1989,8 @@ Evidence: probes-numeric t2513-r3-binom-pmf-a, -n, -hold, t2513-verify-r3-binom-
 docs/research/t2464/cells.tsv; docs/research/t2464/r3-binom-pmf (`a1_survey.out`, `b2_share_a.out`, `b3_reg_a.out`,
 `b19_cfit_mul.out`, `c1_hold.out`), verify-r3-binom-pmf (`vscore_v.out`, `vstruct_v.out`).
 Ours: `discrete.rs` `binomial_pmf`, a double-double walk.
-Status: VERIFIED (excel-graph) for k = 0, k = n and the shared kernel; the interior pmf UNVERIFIED
+Status: VERIFIED (excel-graph) for k = 0 (a subnormal result is 0), k = n and the shared kernel; the interior pmf
+UNVERIFIED
 Tasks: T-2633, T-2146, T-2586
 
 ## NEGBINOM.DIST pmf sits on the shifted binomial kernel (T-2513)
@@ -2211,8 +2214,12 @@ mx = fl(m·x):
   whole model 293 of 4,005 bit-exact, CR 292). Not a GAMMALN formula (40 compositions all below CR; best 114/832/1,133
   of 1,599 cells.tsv cells).
 - The shape constant is swap-symmetric: F.DIST(1,m,n,FALSE) = F.DIST(1,n,m,FALSE) bit for bit on 585 of 585 pairs.
-  It is close to exact only for min(d) <= 7 (sd 0.6-0.9 units at x = 1, uncorrelated with Excel's GAMMALN errors);
-  at large shapes it is off by -64 units at (300,300) and -35 at (160,160), and differs by side (T-2586, below).
+  At x = 1 Excel's value is the exact density to about one ulp at every shape measured: sd 0.6-0.9 units for
+  min(d) <= 7, uncorrelated with Excel's GAMMALN errors, and within -3..+2 ulp of the correctly rounded value on 361
+  shapes with d1, d2 in [16, 1000] (`F.DIST(1,300,300,FALSE)` = 3.4520635814275824, 1 ulp below the exact
+  3.452063581427583; t2586-r5-f-bigconst-a B5770, B4690 at (160,160)). REFUTED (round 5): round 4's "off by -64
+  units at (300,300) and -35 at (160,160), differing by side" was the round-4 model's own H rounding absorbed into
+  its constant, not Excel's (docs/research/t2464/r5-f-bigconst).
 - The x-dependence goes through ln(1 + r), r = min(mx/n, n/mx), with Excel's log1p switch (series to 0.375, then
   LN(fl(1 + r))): Excel's error responds to the rounding of s = fl(1 + r) with slope about -h on 12 of 12 hold-out runs
   with 0.375 < r <= 1, and |slope| <= 0.61h on all 24 below (the verifier confirms the switch).
@@ -2269,9 +2276,9 @@ verify-r4-*; round 5: probes-numeric t2586-r5-f-*, t2586-verify-r5-*; docs/resea
 r5-f-bigconst, r5-f-edges, r5-f-final and verify-r5-*.
 Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite (statrs' NaN, `#NUM!`, where it
 overflows; T-1864).
-Status: UNVERIFIED (excel-graph): the negatives, the swap symmetry and the ratio switch are measured; the formula is
-unsolved
-Tasks: T-2586, T-2219
+Status: PARTIAL (excel-graph): the argument and range rules (round 5), the negatives, the swap symmetry, the x = 1
+values and the ratio switch are measured; the formula for the value is unsolved
+Tasks: T-2586, T-2219, T-2095
 
 ## Incomplete beta: the integrated model, what is open and what is rejected (T-2464)
 Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN; x0 >= 0.3), r2-bratio's

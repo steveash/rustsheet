@@ -3,7 +3,7 @@ id: T-2586
 title: "Crack the densities left open by T-2513: Loader's constant and bd0 series, the T constant, BINOM's interior pmf, NEGBINOM's final step, the F density"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
