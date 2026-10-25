@@ -395,7 +395,7 @@ fn im_reciprocal_kernels_match_the_sweep() {
             "-2.46276584105671+258.045027895372i",
         ),
         (r#"=IMSEC("1+0.5i")"#, "1.08126832311555+0.778194035118073i"),
-        // IMSECH's t fuses sinh²x into cos²y (J34; T-2750): the unfused sum gives ...306335i.
+        // IMSECH's t fuses sinh²x into the sum (J34; T-2750): unfused it gives ...306335i.
         (
             r#"=IMSECH("1.34384-77.6742i")"#,
             "-0.367433538630135+0.376675382306336i",
