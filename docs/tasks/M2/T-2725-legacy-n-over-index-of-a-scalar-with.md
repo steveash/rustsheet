@@ -3,7 +3,7 @@ id: T-2725
 title: "Legacy N over INDEX of a scalar with a nonzero index shows no @: FORMULATEXT of =N(INDEX(5,1)) is =N(INDEX(5,1))"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -21,9 +21,15 @@ the element's value with no marker. Unprobed: T, text and boolean scalars, `INDE
 computed index. Probe those first (excel-probe skill).
 
 ## Acceptance criteria
-- [ ] probes/t2601-index-scalar-forms-t-n B28 passes and leaves eval/baseline/probes.txt; new probes pass.
-- [ ] lookup.md "INDEX of an array: a whole row stays an array" records it.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/t2601-index-scalar-forms-t-n B28 passes and leaves eval/baseline/probes.txt; new probes pass.
+- [x] lookup.md "INDEX of an array: a whole row stays an array" records it.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The unary plus in formula text (T-2723).
+
+## Outcome
+Done (probes/t2725-index-scalar-nonzero-t-n A1:B16, excel-graph 2026-10-25). Excel shows no `@` on INDEX of a scalar
+literal under a legacy N or T, whatever the indices. Nonzero indices take the element (5, "a", `#REF!` past it, `#VALUE!`
+below 1), and any 0 or empty index takes the whole scalar (`#VALUE!`). `indexes_a_scalar_whole` now depends only on the
+first argument being a scalar literal, under groups and minus; INDEX itself gives the values. probes/t2601 B28 is fixed.

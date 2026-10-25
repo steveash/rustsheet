@@ -413,16 +413,17 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
         || indexes_a_scalar_whole(kind, args)
 }
 
-/// Whether `kind(args)` is `INDEX(<scalar literal>,0)` or `INDEX(<scalar literal>,0,0)`: the whole of
-/// a scalar is an array, so it reads like an array constant under N or T, `#VALUE!`, and Excel shows
-/// no `@`. The scalar is a number, text or a boolean, negated or parenthesised or both, and an empty
-/// row or column argument reads as 0 (`=N(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX(TRUE,0))`,
-/// `=N(INDEX(-5,0))`, `=T(INDEX(5,,0))`; probes/index-zero-index-scalar-shape E5, E6, F5, F6, T-2191,
-/// probes/index-zero-index-scalar-t-n A1-A14, T-2368). Any chain of groups and minus around the
-/// literal, and a grouped 0 index, read the same (`=N(INDEX(--5,0))`, `=T(INDEX((-"a"),0,0))`,
-/// `=N(INDEX(((5)),0))`, `=N(INDEX(5,(0)))`: probes/t2601-index-scalar-forms-t-n A1-A27, T-2601).
-/// Our parser drops a unary plus, which Excel keeps in the formula text on text and booleans
-/// (T-2723). A nonzero index takes the element: `=N(INDEX(5,1))` is 5 (A28; its `@` is T-2725).
+/// Whether `kind(args)` is INDEX of a scalar literal with a row and maybe a column: Excel shows no
+/// `@` on it under N or T, whatever the indices (probes/t2725-index-scalar-nonzero-t-n B1:B16,
+/// T-2725). A 0 or empty index takes the whole scalar, an array, which N and T read as `#VALUE!`:
+/// `=N(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX(TRUE,0))`, `=T(INDEX(5,,0))`
+/// (probes/index-zero-index-scalar-shape E5, E6, F5, F6, T-2191; probes/index-zero-index-scalar-t-n
+/// A1-A14, T-2368), and so does one 0 index beside a 1 (`=N(INDEX(5,1,0))`, `=N(INDEX(5,,1))`; T-2725
+/// A11-A14). Nonzero indices take the element: `=N(INDEX(5,1))` is 5, `=N(INDEX(5,2))` `#REF!`,
+/// `=N(INDEX(5,-1))` `#VALUE!` (T-2725 A1-A10, A15, A16). The scalar is a number, text or a
+/// boolean under any chain of groups and minus (`=N(INDEX(--5,0))`, `=T(INDEX((-"a"),0,0))`;
+/// probes/t2601-index-scalar-forms-t-n A1-A28, T-2601). Our parser drops a unary plus, which Excel
+/// keeps in the formula text on text and booleans (T-2723).
 fn indexes_a_scalar_whole(kind: &Function, args: &[Node]) -> bool {
     fn is_scalar(arg: &Node) -> bool {
         match arg.ungrouped() {
@@ -434,16 +435,8 @@ fn indexes_a_scalar_whole(kind: &Function, args: &[Node]) -> bool {
             _ => false,
         }
     }
-    let is_zero = |arg: &Node| matches!(arg.ungrouped(), Node::NumberKind(n) if *n == 0.0);
-    let zero_or_empty = |arg: &Node| is_zero(arg) || matches!(arg, Node::EmptyArgKind);
     matches!(kind, Function::Index)
-        && match args {
-            [scalar, row] => is_scalar(scalar) && zero_or_empty(row),
-            [scalar, row, column] => {
-                is_scalar(scalar) && zero_or_empty(row) && zero_or_empty(column)
-            }
-            _ => false,
-        }
+        && matches!(args, [scalar, _] | [scalar, _, _] if is_scalar(scalar))
 }
 
 /// Whether `kind(args)` is a CHOOSE with an array constant for its index over cell or range

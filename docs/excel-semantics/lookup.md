@@ -729,7 +729,13 @@ parenthesised scalar, a unary plus, or a negated text or boolean: `=N(INDEX((5),
 any chain of groups and minus around the literal (`--5`, `-(5)`, `-("a")`, `((5))`, `(TRUE)`, `(-"a")`, `-(-5)`) and a
 grouped 0 index (`INDEX(5,(0))`); `FORMULATEXT` shows them all with no `@`. FORMULATEXT drops a unary plus on a number (`+5` prints `5`) but keeps one on text
 or a boolean (`+"a"`, `+TRUE`). Ours drops both (T-2723).
-A nonzero index takes the element: `=N(INDEX(5,1))` is 5, and FORMULATEXT shows no `@` (ours shows one, T-2725).
+Excel shows no `@` on INDEX of a scalar literal under N or T, whatever the indices. When every index is nonzero it takes
+the element: `=N(INDEX(5,1))` and `=N(INDEX(5,1,1))` are 5, `=T(INDEX("a",1))` is "a", `=N(INDEX(TRUE,1))` is 1,
+`=T(INDEX(5,1))` is "", and so are a computed index (`INDEX(5,C1)` with C1 1, `INDEX(5,0+1)`), a negated or grouped scalar.
+`=N(INDEX(5,2))` is `#REF!` and `=N(INDEX(5,-1))` is `#VALUE!`. One 0 or empty index beside a 1 takes the whole scalar:
+`=N(INDEX(5,1,0))`, `=N(INDEX(5,0,1))`, `=N(INDEX(5,1,))` and `=N(INDEX(5,,1))` are `#VALUE!`
+(probes/t2725-index-scalar-nonzero-t-n A1:B16, excel-graph 2026-10-25, T-2725). Ours: implemented (T-2725,
+`indexes_a_scalar_whole`).
 Evidence: probes/t2601-index-scalar-forms-t-n A1:B28 (excel-graph, 2026-10-25, T-2601). Ours: implemented (T-2601,
 `indexes_a_scalar_whole`), except the kept unary plus (B14, B15; T-2723).
 
