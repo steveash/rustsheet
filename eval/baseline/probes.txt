@@ -1230,6 +1230,7 @@ C	probes/t2714-mod-near-smallest-normal-b.case.json	700
 C	probes/t2714-mod-near-smallest-normal-c.case.json	660
 C	probes/t2714-mod-near-smallest-normal.case.json	1331
 C	probes/t2714-snap-tiny-addends.case.json	360
+C	probes/t2720-scientific-percent.case.json	15
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
@@ -3269,7 +3270,6 @@ F	probes/t2625-nested-consumers.case.json	P!A28
 F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
-F	probes/t2705-scientific-mantissa-rounding.case.json	Sheet1!A13
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9
