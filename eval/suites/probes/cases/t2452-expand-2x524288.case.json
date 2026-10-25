@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2452: whether EXPAND's column cap is a cell count: 2 rows of 524,288 columns, 2^20 cells (one cell per workbook, since sizes Excel builds can hang excel-graph).",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2452"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=COLUMNS(_xlfn.EXPAND(1,2,524288))"
+      }
+    }
+  ],
+  "expected": {}
+}
