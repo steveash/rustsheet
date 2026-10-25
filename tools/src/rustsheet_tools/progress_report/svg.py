@@ -1,4 +1,4 @@
-"""Hand-written SVG bar charts for the generated parity page (T-2041).
+"""Hand-written SVG bar charts for the generated progress and parity pages (T-2041, SPEC-0022).
 
 GitHub shows a committed SVG through an `<img>` tag, so the chart carries its own `<style>`:
 light colors by default and an `@media (prefers-color-scheme: dark)` block for dark mode. Every
@@ -14,7 +14,7 @@ import math
 from dataclasses import dataclass
 from html import escape
 
-# (light, dark) fill per bucket key; the order is the bucket order of parity_report.BUCKETS.
+# (light, dark) fill per bucket key; the order is the bucket order of model.BUCKETS.
 BUCKET_FILLS: dict[str, tuple[str, str]] = {
     "pass": ("#2a78d6", "#3987e5"),
     "ulp1": ("#1baf7a", "#199e70"),
