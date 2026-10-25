@@ -131,7 +131,8 @@ pub(crate) fn cut_to_15_digits(value: f64, tie_away: bool) -> f64 {
     }
     let (mantissa, exponent) = significant_15(value.abs(), tie_away);
     // `mantissa` has 15 digits, so its last digit has place value 10^(exponent - 14).
-    decimal_to_f64(mantissa, exponent - 14).map_or(value, |cut| cut.copysign(value))
+    decimal_to_f64(mantissa, exponent - (SIGNIFICANT_DIGITS - 1))
+        .map_or(value, |cut| cut.copysign(value))
 }
 
 /// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`: the digits kept, and whether

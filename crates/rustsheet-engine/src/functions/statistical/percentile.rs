@@ -218,7 +218,8 @@ impl Model {
         // A significance whose 10^sig overflows (309 or more) is `#DIV/0!` (308 still computes:
         // probes/t2473-percentrank-significance A6-A15, B6-B15, C6-C15).
         // 10^sig correctly rounded: `powi` drifts by ulps past 10^22 and moves the result
-        // (`PERCENTRANK({1,2,3,4},2.5,100)` is 0.5, t2473 A5).
+        // (`PERCENTRANK({1,2,3,4},2.5,100)` is 0.5, t2473 A5). `None` is a power past the double
+        // range.
         let factor = decimal_to_f64(1, sig.into()).unwrap_or(f64::INFINITY);
         if !factor.is_finite() {
             return CalcResult::new_error(Error::DIV, cell, String::new());
