@@ -1,6 +1,7 @@
 """T-2144: fit LN's FYL2X near-ties with a k-bit internal product (truncated `tz` or rounded `rn`)
 before RN64 and RN53, against the points where all three T-2143 fills agree and the T-2123 fixture.
-k=0 is the shipped model. Run: python3 docs/research/t1941/ln_guard_bits.py (stdlib only)."""
+k=0 is the shipped model. Its own `frac_round` (on Fraction, with a truncating mode) stands in for rnd.py's
+mpmath `round_bits`, so the script needs only the standard library. Run: python3 docs/research/t1941/ln_guard_bits.py (stdlib only)."""
 import json, struct, sys
 from decimal import Decimal, getcontext
 from fractions import Fraction

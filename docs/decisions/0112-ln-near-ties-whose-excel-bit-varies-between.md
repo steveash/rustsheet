@@ -23,7 +23,10 @@
   - *(c) Keep the 27 cells as named known failures of probes/ln-fyl2x-kernel.* Chosen.
 - **Decision:**
   1. The shipped model stays (`excel_ln`, `RN53(RN64(RN64(ln 2) * log2 x))`). The 27 cells stay F lines of
-     eval/baseline/probes.txt. Their owner is T-2144, which is done.
+     eval/baseline/probes.txt. Their owner is T-2144, which is done. Each is one ulp off: probes/ln-fyl2x-kernel Calc!B10,
+     B16, B26, B33, B48, B67, B78, B83, B95, B99, B107, B113, B114, B117, B129, B132, B140, B163, B164, B179, B190, B197,
+     B208, B233, B238, B246 and B249. The probe is tagged M9, so these cells are outside the M5 criterion of decision
+     0085 item 3 in any case; this item names them for every row that counts them.
   2. Every such cell is one ulp from Excel's cached value, so under decision 0085 item 3 none blocks a milestone exit.
      The same holds for any later LN cell (or LOG10, GAMMALN, GAMMA cell through `excel_ln`) that is one ulp off at an
      FYL2X near-tie, that is, with its exact product within 4e-4 ulp53 of a 53-bit midpoint. Such a cell may be named
