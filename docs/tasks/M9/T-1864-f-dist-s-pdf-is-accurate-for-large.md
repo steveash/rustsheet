@@ -68,7 +68,3 @@ Excel (0.08500367962366501 against 0.085003679623665, the exact density's double
 (visible-parity count 8326 to 8321, left for the steward's lock) but its known-failure line stays: the first criterion
 is open at the bit level, which needs the exponent summed in double-double (its rounding is 0.67 ulp of the result
 there). Recorded in docs/excel-semantics/statistics.md, "F density at large degrees of freedom (T-1864)".
-- Moderate-x evidence (2026-10-24): probes-numeric t1864-f-pdf-moderate-x (10 cells, excel-graph): Excel returns a
-  number wherever one df is above about 143 and x is moderate (e.g. `F.DIST(20,100,3,FALSE)` = 0.0010807581083264...),
-  so the new branch is Excel's behavior there. Ours: 1 bit-exact, 6 within 4 ulp, 3 about 2E-14 relative off (Excel's
-  own large-shape noise, T-2586).
