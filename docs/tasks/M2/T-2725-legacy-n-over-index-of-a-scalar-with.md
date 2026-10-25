@@ -3,7 +3,7 @@ id: T-2725
 title: "Legacy N over INDEX of a scalar with a nonzero index shows no @: FORMULATEXT of =N(INDEX(5,1)) is =N(INDEX(5,1))"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
