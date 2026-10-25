@@ -61,11 +61,29 @@ the inner ODDFPRICE. Fixed by T-2483 (2026-10-24): a settlement past 9999-12-31 
 Owned gen-m9 cells (T-2482, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 visibly off.
 - gen-m9/3c06f9298f65a3ba Calc!A309 `=YIELD(38778,ODDFPRICE(SUM(Data!D11,Data!D4:D8),46471,BYCOL(Data!D4,LAMBDA(acc,1000000000000000.0)),38622,IFNA("","1.5"),IPMT(2,1,150,481849),109,2),IFNA((1e-15>Data!A3),(Data!E11-Data!B6)),101,103,2)`: Excel #NUM!, ours #VALUE!
 
+Moved from T-2487 (2026-10-25): four T-bill cells whose error differs from Excel's in an inner call, not in the T-bill
+argument order; probes/tbill-error-order-inner-calls (each case's Data sheet copied, excel-graph) already traces them:
+`T.TEST(..)` is `#VALUE!` in Excel (ours `#NUM!`), `PPMT(2*B11,8,360,-100,926)` 0 (ours 2E17), `QUARTILE(<text cell>,..)`
+`#NUM!` (ours `#VALUE!`), `BIN2DEC(<text cell>)` `#NUM!` (ours `#VALUE!`). File or extend the fix task for each
+(financial.md "T-bill settlement below serial 1").
+Owned gen-m9 cells (T-2487, excel-graph, 2026-10-25): 4 known-failure lines in eval/baseline/gen-m9.txt, 4 visibly off.
+- gen-m9/3c06f9298f65a3ba Calc!A312 `=TBILLEQ(39717,(T.TEST(Data!E11,Data!A6:C12,2,Data!$D8)*Data!A$2%),(Data!E$7-AVERAGE(Data!C8)))`: Excel #VALUE!, ours #NUM!
+- gen-m9/81bcdc0bec0c8e6b Calc!A251 `=TBILLEQ(PPMT((2*Data!B11),8,360,(-100),926),COVAR(Data!C3:E12,Data!B3:B9),Data!C3)`: Excel #N/A, ours #NUM!
+- gen-m9/b72d952c5f52cb4d Calc!A241 `=TBILLYIELD(COUNT(-2),STDEV.S(QUARTILE(Data!C7,Data!$E9),Data!D8:D8),94)`: Excel #NUM!, ours #VALUE!
+- gen-m9/d0854366830dcdee Calc!A137 `=TBILLPRICE(COUNT(Data!B7:B10)%,59,SUM(Data!E6:E8,BIN2DEC(Data!A6)))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/3c06f9298f65a3ba.case.json (1): Calc!A312
+- gen-m9/81bcdc0bec0c8e6b.case.json (1): Calc!A251
+- gen-m9/b72d952c5f52cb4d.case.json (1): Calc!A241
+- gen-m9/d0854366830dcdee.case.json (1): Calc!A137
+
 ## Acceptance criteria
 - [x] Visible parity (gen-m9, T-2482): the known-failure line listed under "Moved from T-2482" disappears from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 28 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2487): the 4 known-failure lines under "Moved from T-2487" disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Every cell above is listed in a fix task's Context (new or extended), or explained in financial.md as a quirk with its owning task; the probe case's cells are in eval/ and gated or baselined.
 - [ ] `make check` green; reviewers approve.
 

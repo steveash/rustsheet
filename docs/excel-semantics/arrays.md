@@ -245,9 +245,13 @@ Excel refuses itself; and MAKEARRAY allows columns past the grid as HSTACK does:
 The thresholds (probes/expand-makearray-past-grid A1-A15 and -big, excel-graph, 2026-10-23, T-2408): EXPAND rows or columns of
 2^31 or more are `#VALUE!` (`ROWS(EXPAND(1,2^31,1))`, 1E10 through 1E21, `COLUMNS(EXPAND(1,1,2^31))`), and rows below 2^31 past
 the grid `#NUM!` (`2^31-1`); a negative rows is `#VALUE!` (smaller than the array). Columns past the grid have a cap of Excel's
-own: 16,385 are built with 1 and 4 rows, while 123,456,789 in one row and 2^27 in four are `#NUM!`, so the cap is a column count,
-not a cell count, somewhere in 16,386..123,456,789 (T-2452). Ours refuses from 123,456,789; below it, a result above 2^20 cells is
-`#ERROR!` (the DEVIATION below), and sizes Excel builds there hang excel-graph, so they are unprobed.
+own: 16,385 are built with 1 and 4 rows, while 123,456,789 in one row and 2^27 in four are `#NUM!`. The cap is 1,048,576 columns,
+2^20, the grid's row count: in one row, `COLUMNS(EXPAND(1,1,n))` is n for 16386, 32769, 65537, 131073, 262145, 524289 and 1048576,
+and `#NUM!` for 1048577, 2^21, 2^22, 2^24 and 2^26 (probes/t2452-expand-cols-<n>, one cell per workbook, excel-graph, 2026-10-25,
+T-2452). It counts columns, not cells: `COLUMNS(EXPAND(1,2,524288))` and `(1,2,524289)` are 524288 and 524289, and
+`ROWS(EXPAND(1,1048576,2))`, 2^21 cells, is 1048576 (probes/t2452-expand-2x524288, -2x524289, -1048576x2). Ours refuses from
+1,048,577 columns (`COLUMNS_REFUSED`), after the smaller-than-the-array `#VALUE!` and before the rows check; below it, a result
+above 2^20 cells is `#ERROR!` (the DEVIATION below; -2x524289 and -1048576x2 are listed in probes/deviations, decision 0113).
 VSTACK checks its rows before it reads a referenced cell, after it evaluates every other argument: a stack past the grid
 is `#NUM!` even when a reference argument holds the formula's own cell, so `ROWS(VSTACK(A:A,1:1))` in W1 (-c2),
 `ROWS(VSTACK(2:2,A:A))` in W2, `ROWS(VSTACK(A:A,W8))` in W8 and `COLUMNS(VSTACK(A:A,12:12))` in W12 are `#NUM!`, not a
@@ -262,7 +266,7 @@ evaluates every argument but a one-cell reference, a range only to its corners, 
 before reading a reference (T-1965); that an evaluated array's rows count too, `ROWS(VSTACK(SEQUENCE(1048576),1:1))` in
 row 1 `#NUM!`, follows from that order but is unprobed. W9 is 0 since T-0445 (recalc.md), and so is -c3 W1, which sits in row 1, which it stacks.
 Status: VERIFIED (excel-graph)
-Tasks: T-1803, T-1967, T-1965, T-2408
+Tasks: T-1803, T-1967, T-1965, T-2408, T-2452
 
 ## Arrays past the grid: MAKEARRAY, SEQUENCE and the lifts over them
 Rule: an array value may be wider or taller than the grid; only a spill of it is `#SPILL!`. `COLUMNS(MAKEARRAY(1,20000,LAMBDA(r,c,c)))`
@@ -275,16 +279,20 @@ a function lifted over such an array lifts it whole, so `ERROR.TYPE(MAKEARRAY(1,
 `MAKEARRAY(3,1E15,..)` is `#VALUE!` (gen-m7/b2078b5d702c691a A2553).
 Evidence: probes/t2579-array-value-edges B20-B32 (excel-graph, 2026-10-24, T-2579); probes/resource-limits C13.
 Ours: `limits::check_built_array_size` in MAKEARRAY and SEQUENCE (after SEQUENCE's own rows check against the grid): any
-shape within the cell bound of the next section is built; above it, columns past the grid are `#VALUE!`, as `SEQUENCE(3,123456789)`
+shape within the cell bound of the next section is built; above it, SEQUENCE's columns past the grid are `#VALUE!`, as `SEQUENCE(3,123456789)`
 is in Excel (gen-m9/f2bd5f380ec002bf Calc!A177) and `MAKEARRAY(3,1E15,..)` (A2553), and so are rows of 2^31 or more, EXPAND's
 threshold (`SIZE_LIMIT_EXCLUSIVE`), as `MAKEARRAY(1E15,4,..)` is (gen-m7/8c4570978f18f4c2 A2736, gen-m9/895a33aa8352864a A238,
 gen-m9/f280df8ba95f96b9 A89); any other shape is the bound's `#ERROR!`, so `ROWS(MAKEARRAY(1048577,1,..))` (B23) is `#ERROR!`
-(DEVIATION, decision 0014, listed in probes/deviations). Unprobed: where between 16,385 and 123,456,789 columns Excel's own
-`#VALUE!` starts (EXPAND's column cap is another, T-2452), and where between 1,048,577 and 1E15 rows MAKEARRAY's does. The lifting
+(DEVIATION, decision 0014, listed in probes/deviations). MAKEARRAY has no column cap at EXPAND's: `COLUMNS(MAKEARRAY(1,1048576,..))`
+is 1048576, `(1,1048577,..)` 1048577 and `COLUMNS(MAKEARRAY(2,524289,..))` 524289 (probes/t2452-makearray-cols-1048576, -1048577,
+-2x524289, excel-graph, 2026-10-25, T-2452; `MAKEARRAY(1,123456789,..)` never opened in excel-graph, so it is unprobed), so ours
+refuses MAKEARRAY's columns with `#VALUE!` only from 2^31, as its rows, and the two built cells above the bound are its `#ERROR!`
+(DEVIATION, decision 0113). Unprobed: where between 16,385 and 123,456,789 columns SEQUENCE's own `#VALUE!` starts, and where
+between 1,048,577 and 1E15 (rows) or 2^31 (columns) MAKEARRAY's does. The lifting
 driver's broadcast (`lift::driver::broadcast_shape`) checks the cell count only (`check_array_cells`), so B26 is the
 spill's `#SPILL!`. A237 is `#ERROR!`: its 206,552 BETAINV elements pass the quantile's lift cost cap (statistics.md), T-2607.
 Status: VERIFIED (excel-graph)
-Tasks: T-2579, T-2600
+Tasks: T-2579, T-2600, T-2452
 
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
@@ -1586,11 +1594,12 @@ in argument order, before either is validated: `MAKEARRAY(1.5,NA(),..)`, `(-1,NA
 D9-D17, excel-graph, 2026-10-23). Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385 (D1,
 D2) and the bare `MAKEARRAY(4,25000,..)` is `#SPILL!` (gen-m7/21b4eef18424ce94 A3348); rows past the grid are unprobed (the
 probe's 1,048,577-row, 1E9 and 1E6-element cells hang excel-graph's workbook open) and stay `#VALUE!` in ours.
-Unverified: columns past the grid above the 2^20-cell bound (`MAKEARRAY(1,2^20+1,..)`) are `#VALUE!` in ours; Excel's only answer
-there is `MAKEARRAY(3,1E15,..)`, `#VALUE!` (gen-m7/b2078b5d702c691a A2553), so its column cap may lie anywhere above 16,385 (T-2452).
+Columns past the 2^20-cell bound are built too: `COLUMNS(MAKEARRAY(1,1048577,..))` is 1048577 (probes/t2452-makearray-cols-1048577,
+T-2452; ours `#ERROR!`, the cell bound's DEVIATION), while `MAKEARRAY(3,1E15,..)` is `#VALUE!` (gen-m7/b2078b5d702c691a A2553); ours
+is `#VALUE!` from 2^31 columns, EXPAND's threshold ("Arrays past the grid").
 Ours: both sizes read first, then validated; columns past the grid under the cell bound (T-2408).
 Status: VERIFIED (excel-graph)
-Tasks: T-2308, T-2408
+Tasks: T-2308, T-2408, T-2452
 
 ## SORTBY with a single-value by_array or a fractional sort_order
 Rule: a by_array sorts the array's rows when it is one column as tall as the array, and its columns when it is one row as wide

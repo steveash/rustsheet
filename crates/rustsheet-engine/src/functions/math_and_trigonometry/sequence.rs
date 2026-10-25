@@ -1,4 +1,4 @@
-use crate::constants::LAST_ROW;
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
@@ -82,8 +82,11 @@ impl Model {
             );
         }
         // Columns past the grid are built (`COLUMNS(SEQUENCE(1,16385))` is 16385,
-        // probes/t2579-array-value-edges B24) under `check_built_array_size`.
-        if let Some((error, message)) = check_built_array_size(rows, columns) {
+        // probes/t2579-array-value-edges B24) under `check_built_array_size`; above the cell
+        // bound they are `#VALUE!` from one past the grid (`SEQUENCE(3,123456789)`).
+        if let Some((error, message)) =
+            check_built_array_size(rows, columns, f64::from(LAST_COLUMN) + 1.0)
+        {
             return CalcResult::new_error(error, cell, message);
         }
 
