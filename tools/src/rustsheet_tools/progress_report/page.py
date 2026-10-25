@@ -2,15 +2,16 @@
 the stale page of an incomplete run (T-0071).
 
 The `parity` block is parity.py's (T-0081); `since-last-run` and `trends` are history.py's
-(T-0071). Later sections (goals, campaign, top functions, evidence) are added by their own tasks as
-generated blocks in `LAYOUT`, without changing the block protocol in blocks.py.
+(T-0071); `top-functions` and `evidence` are evidence.py's (T-0073). Later sections (goals,
+campaign) are added by their own tasks as generated blocks in `LAYOUT`, without changing the
+block protocol in blocks.py.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from rustsheet_tools.progress_report import blocks, history, parity
+from rustsheet_tools.progress_report import blocks, evidence, history, parity
 from rustsheet_tools.progress_report.markdown import REGENERATE, md_text
 from rustsheet_tools.progress_report.model import Parity, ProgressReportError, Run
 
@@ -23,6 +24,8 @@ LAYOUT = (
     (blocks.GENERATED, "since-last-run", None),
     (blocks.GENERATED, "trends", None),
     (blocks.GENERATED, "parity", None),
+    (blocks.GENERATED, "top-functions", None),
+    (blocks.GENERATED, "evidence", None),
     (blocks.JUDGMENT, "readiness", "Real-world readiness"),
     (blocks.JUDGMENT, "risks", "Risks"),
     (blocks.GENERATED, "method", None),
@@ -131,7 +134,13 @@ def render(run: Run, data: Parity, previous: str | None, sections: dict[str, str
     """The whole page for a complete `run`, keeping the judgment text of `previous` (the existing
     page). `sections` holds the history blocks (`since-last-run`, `trends`)."""
     old = parse(previous) if previous is not None else {}
-    body = {**sections, "status": status(run), "parity": parity.block(data), "method": METHOD}
+    body = {
+        **sections,
+        **evidence.blocks(data),
+        "status": status(run),
+        "parity": parity.block(data),
+        "method": METHOD,
+    }
     parts = [HEADER]
     for _, name, heading in LAYOUT:
         parts.append(
