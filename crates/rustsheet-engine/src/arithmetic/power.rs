@@ -30,8 +30,8 @@ struct PowerSteps {
 }
 
 /// [`power`] with `exp(y·ln x)` for a non-integer `y` taken as libm `exp` of a once-rounded
-/// product, the operator `^` before T-0959. MIRR's root keeps it: Mac desktop Excel caches
-/// `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` as 0.3933280241536672, which this gives, where Excel for
+/// product and libm `ln`, the operator `^` before T-0959. MIRR's root keeps it: Mac desktop
+/// Excel caches `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` as 0.3933280241536672, which this gives, where Excel for
 /// the web and [`power`] give 0.3933280241536674 (ironcalc-calc FINANCIAL/MIRR.xlsx Sheet2!N16,
 /// probes-numeric/power-mirr-root; decisions 0030 and 0039 keep the passing desktop cell).
 pub(crate) fn power_with_libm_exp(x: f64, y: f64) -> Result<f64, Error> {
@@ -87,14 +87,13 @@ fn power_with(x: f64, y: f64, steps: PowerSteps) -> Result<f64, Error> {
     finite_or_num(result)
 }
 
-/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` (`steps`; for [`power`]
-/// LN's kernel [`excel_ln`], T-2694, and EXP's kernel [`excel_exp`] on a twice-rounded
-/// product), a negative exponent as one over the positive power, and `y` = ±0.5 through
-/// [`extended_sqrt`]. This matches all 180
-/// numeric oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep),
-/// and `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` = 9.999999999999827E+99, where libm `exp` is 2 ulps
-/// lower (probes-numeric/power-ulp-sources A13; docs/excel-semantics/numbers.md "Non-integer
-/// exponents: exp(y·ln x)"). A negative `x` gives NaN.
+/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` (`steps`; for [`power`] LN's
+/// kernel [`excel_ln`], T-2694, and EXP's kernel [`excel_exp`] on a twice-rounded product), a
+/// negative exponent as one over the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This
+/// matches all 180 numeric oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93
+/// (probes-numeric/power-non-integer-sweep), and `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` =
+/// 9.999999999999827E+99, where libm `exp` is 2 ulps lower (probes-numeric/power-ulp-sources A13;
+/// docs/excel-semantics/numbers.md "Non-integer exponents: exp(y·ln x)"). A negative `x` gives NaN.
 fn non_integer_power(x: f64, y: f64, steps: PowerSteps) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
     let x = if x == 0.0 { 0.0 } else { x };
@@ -117,13 +116,13 @@ fn non_integer_power(x: f64, y: f64, steps: PowerSteps) -> f64 {
 /// product, -6.9E+307) is 0 (probes/power-huge-exponent A61-A62, A81; numbers.md "POWER when
 /// y·ln x overflows").
 fn positive_power(x: f64, y: f64, steps: PowerSteps) -> f64 {
-    // ln 0 is -∞ (libm's, where `excel_ln` is NaN), so a zero base's power is 0 or an overflow.
+    // ln 0 is -∞ (libm's, where `excel_ln` is NaN): `POWER(0,9.99999999999999E+307)` stays 0
+    // (A281).
     let ln_x = if x == 0.0 {
         f64::NEG_INFINITY
     } else {
         (steps.ln)(x)
     };
-    // ln 0 is -∞ already: `POWER(0,9.99999999999999E+307)` stays 0 (A281).
     if ln_x.is_finite() && (y * ln_x).is_infinite() {
         f64::INFINITY
     } else {
