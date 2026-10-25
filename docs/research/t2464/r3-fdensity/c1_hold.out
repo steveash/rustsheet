@@ -1,0 +1,12 @@
+probe:hold CR            all   114/  733/ 1060 of  1440 | max(d)>=50     2/   46/  100 of   360 | min(d)<=2    67/  364/  436 of   480 | other    45/  323/  524 of   600
+probe:hold ratio-xl      all   145/  781/ 1084 of  1440 | max(d)>=50     4/   61/  116 of   360 | min(d)<=2    95/  362/  433 of   480 | other    46/  358/  535 of   600
+probe:hold ratio-xl-e    all   161/  776/ 1091 of  1440 | max(d)>=50     6/   55/  117 of   360 | min(d)<=2   103/  361/  435 of   480 | other    52/  360/  539 of   600
+probe:hold ratio-xl-lxm  all   134/  775/ 1075 of  1440 | max(d)>=50     3/   46/   93 of   360 | min(d)<=2    89/  365/  436 of   480 | other    42/  364/  546 of   600
+probe:hold ratio-m       all   110/  751/ 1067 of  1440 | max(d)>=50     5/   49/  101 of   360 | min(d)<=2    67/  368/  436 of   480 | other    38/  334/  530 of   600
+probe:hold ratio-ln      all    97/  709/  990 of  1440 | max(d)>=50     4/   41/   75 of   360 | min(d)<=2    56/  325/  411 of   480 | other    37/  343/  504 of   600
+holdsw CR            all    37/  311/  395 of   400 | max(d)>=50    21/  157/  201 of   204 | min(d)<=2     0/    8/    8 of     8 | other    16/  146/  186 of   188
+holdsw ratio-xl      all    62/  366/  399 of   400 | max(d)>=50    41/  182/  203 of   204 | min(d)<=2     0/    8/    8 of     8 | other    21/  176/  188 of   188
+holdsw ratio-xl-e    all    71/  373/  400 of   400 | max(d)>=50    41/  187/  204 of   204 | min(d)<=2     0/    8/    8 of     8 | other    30/  178/  188 of   188
+holdsw ratio-xl-lxm  all    65/  374/  400 of   400 | max(d)>=50    36/  189/  204 of   204 | min(d)<=2     0/    8/    8 of     8 | other    29/  177/  188 of   188
+holdsw ratio-m       all    48/  326/  391 of   400 | max(d)>=50    30/  174/  200 of   204 | min(d)<=2     0/    8/    8 of     8 | other    18/  144/  183 of   188
+holdsw ratio-ln      all    30/  185/  265 of   400 | max(d)>=50    12/   52/   90 of   204 | min(d)<=2     0/    8/    8 of     8 | other    18/  125/  167 of   188

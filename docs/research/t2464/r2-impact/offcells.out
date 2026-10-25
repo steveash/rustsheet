@@ -1,0 +1,135 @@
+== report functions table (closeness.visible) for the family, all suites
+  BETA.DIST          cells  76192 visible  52796
+  BINOM.DIST         cells  20035 visible  16196
+  T.DIST             cells  20249 visible    209
+  T.DIST.RT          cells  16943 visible   2385
+  F.DIST             cells   3547 visible    828
+  F.DIST.RT          cells   1990 visible    252
+  NEGBINOM.DIST      cells   1235 visible    126
+  BINOM.DIST.RANGE   cells   1126 visible     85
+  BETA.INV           cells    545 visible    264
+  F.TEST             cells    534 visible    264
+  FTEST              cells    539 visible    253
+  T.INV.2T           cells    325 visible    172
+  F.INV.RT           cells    619 visible    149
+  T.INV              cells    317 visible    110
+  F.INV              cells    594 visible    146
+  FINV               cells    558 visible    126
+  FDIST              cells    568 visible     48
+  CONFIDENCE.T       cells    528 visible    107
+  T.DIST.2T          cells    239 visible     12
+  BETAINV            cells    561 visible     59
+  BETADIST           cells    551 visible     40
+  BINOMDIST          cells    565 visible     20
+  T.TEST             cells    152 visible      6
+  TINV               cells     80 visible     28
+  TTEST              cells     95 visible      9
+  TDIST              cells     91 visible      6
+  CRITBINOM          cells    520 visible     11
+  BINOM.INV          cells    566 visible      9
+  NEGBINOMDIST       cells     64 visible      4
+
+== visibly-off cells by population x function (outer family call)
+  [standing] total 29187
+    BETA.DIST           24980  (gated suites 36)
+    F.DIST                826  (gated suites 23)
+    BINOM.DIST            642  (gated suites 18)
+    F.TEST                262  (gated suites 256)
+    BETA.INV              262  (gated suites 15)
+    T.DIST.RT             252  (gated suites 6)
+    FTEST                 250  (gated suites 248)
+    F.DIST.RT             247  (gated suites 27)
+    T.DIST                209  (gated suites 10)
+    T.INV.2T              172  (gated suites 26)
+    F.INV.RT              148  (gated suites 93)
+    F.INV                 145  (gated suites 107)
+    NEGBINOM.DIST         126  (gated suites 6)
+    FINV                  123  (gated suites 97)
+    T.INV                 110  (gated suites 11)
+    CONFIDENCE.T          107  (gated suites 59)
+    BINOM.DIST.RANGE       83  (gated suites 12)
+    BETAINV                57  (gated suites 49)
+    FDIST                  47  (gated suites 38)
+    BETADIST               37  (gated suites 31)
+    TINV                   28  (gated suites 5)
+    BINOMDIST              20  (gated suites 18)
+    CRITBINOM              11  (gated suites 11)
+    T.DIST.2T              11  (gated suites 4)
+    BINOM.INV               9  (gated suites 9)
+    TTEST                   7  (gated suites 7)
+    T.TEST                  6  (gated suites 6)
+    TDIST                   6  (gated suites 6)
+    NEGBINOMDIST            4  (gated suites 2)
+  [r2probes] total 45499
+    BETA.DIST           27814  (gated suites 0)
+    BINOM.DIST          15554  (gated suites 0)
+    T.DIST.RT            2131  (gated suites 0)
+
+== standing visibly-off: by suite
+  probes-numeric   27951
+  gen-m9           1108
+  ironcalc-calc    86
+  probes           42
+
+== standing visibly-off: numeric vs other (error/type)
+   Counter({'visible_numeric': 28308, 'visible_other': 879})
+
+== standing visibly-off: what the cell is (kernel mapping)
+  cdf                          19313
+  pdf                          6267
+  none:unresolved-args         1470
+  none:inverse                 820
+  none:f-pdf                   627
+  none:binom-pmf               368
+  none:t-pdf                   184
+  none:negbinom-pmf            94
+  none:binom-k0                32
+  none:f-edge                  11
+  none:beta-edge               1
+
+== standing visibly-off by case (top 40)
+   10482 probes-numeric/t2464-w2f-xruns-1.case.json
+    7570 probes-numeric/t2464-w2f-xruns-2.case.json
+    5315 probes-numeric/t2464-w2f-absweep.case.json
+     622 probes-numeric/t2145-binomial-sweep.case.json
+     404 probes-numeric/t1745-beta-inv-roundtrip.case.json
+     338 probes-numeric/t0969-t-beta-link.case.json
+     326 probes-numeric/t2220-f-dist-sweep-pdf.case.json
+     287 probes-numeric/t2464-w2f-unit-shape.case.json
+     227 probes-numeric/t0969-t-tail-grid.case.json
+     224 probes-numeric/t2220-f-dist-sweep-d2-1.case.json
+     203 probes-numeric/t0969-beta-prefactor.case.json
+     167 probes-numeric/t2220-f-dist-sweep-d1-1.case.json
+     158 probes-numeric/t2220-f-dist-sweep-rt.case.json
+     146 probes-numeric/t0969-t-pdf-runs.case.json
+     141 probes-numeric/t0969-beta-density-b.case.json
+     141 probes-numeric/t0969-beta-switch.case.json
+     119 probes-numeric/t2220-f-dist-sweep-cdf.case.json
+     118 probes-numeric/t2145-negbinom-sweep.case.json
+     103 probes-numeric/m9-beta-inv.case.json
+     101 probes-numeric/m9-t-inv-2t.case.json
+      85 probes-numeric/t1531-t-tiny-p.case.json
+      71 probes-numeric/t2145-binom-range-sweep.case.json
+      67 probes-numeric/m9-t-inv.case.json
+      45 probes-numeric/m9-legacy-finv.case.json
+      43 probes-numeric/m9-beta-dist-a100.case.json
+      39 probes-numeric/m9-beta-dist-a50.case.json
+      30 ironcalc-calc/STATISTICAL/T_DIST.xlsx
+      30 probes-numeric/m9-confidence-t.case.json
+      27 gen-m9/165db58d1540f014.case.json
+      27 ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx
+      27 probes-numeric/t1543-inverse-cdf-tiny-p.case.json
+      26 gen-m9/7c20351562a2d71d.case.json
+      25 probes-numeric/m9-t-dist-pdf.case.json
+      24 probes-numeric/m9-beta-dist-a10.case.json
+      23 gen-m9/589f42e67f4b4b8d.case.json
+      23 gen-m9/58e3253bbd3a7a82.case.json
+      23 gen-m9/ec2a1d9194a84396.case.json
+      23 gen-m9/eced4bb6a0234c9e.case.json
+      23 gen-m9/fa25422d6f18c157.case.json
+      22 gen-m9/a612e89321a6df9c.case.json
+
+wrote offcells.tsv: 74686 rows
+
+== standing family cells failing but within 15 digits (ulp1/ulp4/digits15)
+   Counter({'ulp4': 20349, 'ulp1': 15689, 'digits15': 6579})

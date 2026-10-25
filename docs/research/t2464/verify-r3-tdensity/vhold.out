@@ -1,0 +1,32 @@
+parse failures 0; c0 = +2.0665
+
+== vhold: n=1000 unique(|t|,n)=1000 dfs=[13.0, 15.0, 17.0, 19.0, 22.0, 26.0, 33.0, 37.0, 46.0, 50.0]...
+  CR            93/555/787 of 1000
+  LT1e          501/907/961 of 1000
+  exactC        505/918/977 of 1000
+  LT1-insample  505/918/977 of 1000
+  constmean     481/895/971 of 1000
+  etab-shift+1  493/915/986 of 1000
+  etab-shift-1  526/948/979 of 1000
+  etab-shift+2  538/945/992 of 1000
+  etab-shift+0.5528/943/992 of 1000
+   df 13: LT1e 47/98/100 of 100 | exactC 47/98/100 of 100 | CR 14/73/90 of 100 | LT1e off -0.01
+   df 15: LT1e 68/100/100 of 100 | exactC 68/100/100 of 100 | CR 16/72/86 of 100 | LT1e off -0.19
+   df 17: LT1e 51/99/100 of 100 | exactC 51/99/100 of 100 | CR 10/73/83 of 100 | LT1e off +0.26
+   df 19: LT1e 55/99/100 of 100 | exactC 33/74/85 of 100 | CR 13/65/88 of 100 | LT1e off -0.47
+   df 22: LT1e 32/69/98 of 100 | exactC 32/69/98 of 100 | CR 12/59/69 of 100 | LT1e off +0.36
+   df 26: LT1e 50/97/100 of 100 | exactC 50/97/100 of 100 | CR 7/53/86 of 100 | LT1e off -0.08
+   df 33: LT1e 52/94/100 of 100 | exactC 58/98/100 of 100 | CR 5/41/71 of 100 | LT1e off -2.40
+   df 37: LT1e 52/99/100 of 100 | exactC 52/99/100 of 100 | CR 5/47/78 of 100 | LT1e off +0.04
+   df 46: LT1e 53/90/94 of 100 | exactC 53/90/94 of 100 | CR 4/34/67 of 100 | LT1e off +0.33
+   df 50: LT1e 41/62/69 of 100 | exactC 61/94/100 of 100 | CR 7/38/69 of 100 | LT1e off -1.61
+   scan df 13: best off +0.1 exact 57/100; at LT1e off -0.01; at 0: 47
+   scan df 15: best off -0.8 exact 68/100; at LT1e off -0.19; at 0: 68
+   scan df 17: best off -1.0 exact 57/100; at LT1e off +0.26; at 0: 51
+   scan df 19: best off -1.0 exact 55/100; at LT1e off -0.47; at 0: 33
+   scan df 22: best off -1.3 exact 51/100; at LT1e off +0.36; at 0: 32
+   scan df 26: best off -1.7 exact 50/100; at LT1e off -0.08; at 0: 50
+   scan df 33: best off -0.9 exact 58/100; at LT1e off -2.40; at 0: 58
+   scan df 37: best off -2.1 exact 52/100; at LT1e off +0.04; at 0: 52
+   scan df 46: best off -0.1 exact 53/100; at LT1e off +0.33; at 0: 53
+   scan df 50: best off -0.7 exact 61/100; at LT1e off -1.61; at 0: 61

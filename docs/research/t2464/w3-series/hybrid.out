@@ -1,0 +1,10 @@
+-- source all
+hybrid S exact           | a,b>1: 2293/9530/11088 of 12177 | a<1 max<=8: 995/2675/2704 of 2718 | a<1 max>8: 12/21/24 of 24 | b<1 max<=8: 271/1160/1172 of 1185 | b<1 max>8: 3/20/31 of 44 | hold-out min<1: 662/1978/1999 of 2014
+hybrid bpser ext         | a,b>1: 2293/9530/11088 of 12177 | a<1 max<=8: 980/2676/2703 of 2718 | a<1 max>8: 18/21/24 of 24 | b<1 max<=8: 266/1155/1171 of 1185 | b<1 max>8: 3/20/32 of 44 | hold-out min<1: 626/1973/2000 of 2014
+hybrid, L exact always   | a,b>1: 2293/9530/11088 of 12177 | a<1 max<=8: 352/2489/2517 of 2718 | a<1 max>8: 12/21/24 of 24 | b<1 max<=8: 263/1142/1167 of 1185 | b<1 max>8: 3/20/31 of 44 | hold-out min<1: 329/1882/1906 of 2014
+correctly rounded        | a,b>1: 2293/9530/11088 of 12177 | a<1 max<=8: 393/2443/2466 of 2718 | a<1 max>8: 6/24/24 of 24 | b<1 max<=8: 296/1126/1155 of 1185 | b<1 max>8: 2/22/34 of 44 | hold-out min<1: 365/1844/1873 of 2014
+-- source be
+hybrid S exact           | a,b>1: 21/150/214 of 304 | a<1 max<=8: 15/54/60 of 61 | a<1 max>8: 12/21/24 of 24 | b<1 max<=8: 6/44/57 of 65 | b<1 max>8: 3/20/31 of 44 | hold-out min<1: 17/67/80 of 89
+hybrid bpser ext         | a,b>1: 21/150/214 of 304 | a<1 max<=8: 14/54/60 of 61 | a<1 max>8: 18/21/24 of 24 | b<1 max<=8: 7/43/58 of 65 | b<1 max>8: 3/20/32 of 44 | hold-out min<1: 19/66/80 of 89
+hybrid, L exact always   | a,b>1: 21/150/214 of 304 | a<1 max<=8: 13/51/57 of 61 | a<1 max>8: 12/21/24 of 24 | b<1 max<=8: 4/34/52 of 65 | b<1 max>8: 3/20/31 of 44 | hold-out min<1: 16/62/78 of 89
+correctly rounded        | a,b>1: 21/150/214 of 304 | a<1 max<=8: 23/54/56 of 61 | a<1 max>8: 6/24/24 of 24 | b<1 max<=8: 3/35/51 of 65 | b<1 max>8: 2/22/34 of 44 | hold-out min<1: 17/60/77 of 89

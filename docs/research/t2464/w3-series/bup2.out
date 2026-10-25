@@ -1,0 +1,30 @@
+== xruns-1:0 a=2.5 b=3.5: Excel c -3.70
+   exact  215  c -7.21  tail x=x, bup ln x from x', ln y=log1p(-x')
+   exact  215  c -7.21  tail x=x, bup ln x from x', ln y=LN(y)
+   exact  209  c -7.66  tail x=x, bup ln x from x', ln y=log1p(-x)
+   exact  208  c -7.72  tail x=x', bup ln x from x', ln y=log1p(-x')
+   exact  208  c -7.72  tail x=x', bup ln x from x', ln y=LN(y)
+== xruns-1:1 a=2.5 b=3.5: Excel c -1.36
+   exact  268  c -3.20  tail x=x, bup ln x from x', ln y=log1p(-x')
+   exact  268  c -3.20  tail x=x, bup ln x from x', ln y=LN(y)
+   exact  265  c -3.66  tail x=x, bup ln x from x', ln y=log1p(-x)
+   exact  253  c -3.57  tail x=x', bup ln x from x', ln y=log1p(-x')
+   exact  253  c -3.57  tail x=x', bup ln x from x', ln y=LN(y)
+== xruns-1:2 a=7.3 b=11.6: Excel c -8.52
+   exact  111  c -11.75  tail x=x, bup ln x from x', ln y=log1p(-x)
+   exact  111  c -11.76  tail x=x', bup ln x from x', ln y=log1p(-x)
+   exact  107  c -11.14  tail x=x, bup ln x from x', ln y=log1p(-x')
+   exact  107  c -11.14  tail x=x, bup ln x from x', ln y=LN(y)
+   exact  107  c -11.15  tail x=x', bup ln x from x', ln y=log1p(-x')
+== xruns-1:5 a=4.0 b=4.0: Excel c -7.17
+   exact  138  c -11.31  tail x=x, bup ln x from x', ln y=log1p(-x)
+   exact  129  c -10.34  tail x=x, bup ln x from x', ln y=log1p(-x')
+   exact  129  c -10.34  tail x=x, bup ln x from x', ln y=LN(y)
+   exact  126  c -12.00  tail x=x', bup ln x from x', ln y=log1p(-x)
+   exact  121  c -11.04  tail x=x', bup ln x from x', ln y=log1p(-x')
+== xruns-2:3 a=2.5 b=3.5: Excel c -1.90
+   exact  316  c -4.27  tail x=x, bup ln x from x', ln y=log1p(-x')
+   exact  316  c -4.27  tail x=x, bup ln x from x', ln y=LN(y)
+   exact  298  c -4.72  tail x=x', bup ln x from x', ln y=log1p(-x')
+   exact  298  c -4.72  tail x=x', bup ln x from x', ln y=LN(y)
+   exact  294  c -4.75  tail x=x, bup ln x from x', ln y=log1p(-x)

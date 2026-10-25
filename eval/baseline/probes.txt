@@ -148,6 +148,8 @@ C	probes/chained-calls-builtin-trimrange.case.json	1
 C	probes/chained-calls-builtin-unknown-name.case.json	1
 C	probes/chained-calls-builtin-xlookup.case.json	1
 C	probes/chained-calls-lambda.case.json	9
+C	probes/chained-calls-name-curried.case.json	1
+C	probes/chained-calls-name-value.case.json	1
 C	probes/chained-calls-ref-1.case.json	1
 C	probes/chained-calls-ref-2.case.json	1
 C	probes/chained-calls-ref-3.case.json	1
@@ -1134,7 +1136,8 @@ C	probes/t2581-textsplit-textbefore.case.json	50
 C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
 C	probes/t2625-nested-consumers.case.json	32
-C	probes/table-edits/table-convert-to-range.case.json	0
+C	probes/table-edits/table-convert-same-sheet.case.json	7
+C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
 C	probes/table-edits/table-delete-column-qty.case.json	12
 C	probes/table-edits/table-delete-column-region.case.json	12
@@ -1840,15 +1843,12 @@ F	probes/ftest-decomposition.case.json	Calc!A5
 F	probes/ftest-decomposition.case.json	Calc!A6
 F	probes/ftest-decomposition.case.json	Calc!A7
 F	probes/ftest-decomposition.case.json	Calc!A8
-F	probes/ftest-decomposition.case.json	Calc!B11
-F	probes/ftest-decomposition.case.json	Calc!B12
 F	probes/ftest-decomposition.case.json	Calc!B4
 F	probes/ftest-decomposition.case.json	Calc!B5
 F	probes/ftest-decomposition.case.json	Calc!B6
 F	probes/ftest-decomposition.case.json	Calc!B8
 F	probes/ftest-decomposition.case.json	Calc!B9
 F	probes/ftest-decomposition.case.json	Calc!C10
-F	probes/ftest-decomposition.case.json	Calc!C11
 F	probes/ftest-decomposition.case.json	Calc!C12
 F	probes/ftest-decomposition.case.json	Calc!C4
 F	probes/ftest-decomposition.case.json	Calc!C5
@@ -1857,7 +1857,6 @@ F	probes/ftest-decomposition.case.json	Calc!C8
 F	probes/ftest-decomposition.case.json	Calc!C9
 F	probes/ftest-decomposition.case.json	Calc!D10
 F	probes/ftest-decomposition.case.json	Calc!D11
-F	probes/ftest-decomposition.case.json	Calc!D12
 F	probes/ftest-decomposition.case.json	Calc!D13
 F	probes/ftest-decomposition.case.json	Calc!D4
 F	probes/ftest-decomposition.case.json	Calc!D5
@@ -1874,7 +1873,6 @@ F	probes/ftest-decomposition.case.json	Calc!E7
 F	probes/ftest-decomposition.case.json	Calc!E8
 F	probes/ftest-decomposition.case.json	Calc!F10
 F	probes/ftest-decomposition.case.json	Calc!F11
-F	probes/ftest-decomposition.case.json	Calc!F12
 F	probes/ftest-decomposition.case.json	Calc!F4
 F	probes/ftest-decomposition.case.json	Calc!F5
 F	probes/ftest-decomposition.case.json	Calc!F6
@@ -2017,7 +2015,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E19
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E2
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E20
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E3
-F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
@@ -2410,16 +2407,7 @@ F	probes/solver-iteration-traces.case.json	Y!E7
 F	probes/solver-iteration-traces.case.json	Y!E8
 F	probes/stat-argument-modes.case.json	Sheet1!H117
 F	probes/stat-argument-modes.case.json	Sheet1!H13
-F	probes/stat-argument-modes.case.json	Sheet1!H132
-F	probes/stat-argument-modes.case.json	Sheet1!H136
-F	probes/stat-argument-modes.case.json	Sheet1!H140
 F	probes/stat-argument-modes.case.json	Sheet1!H144
-F	probes/stat-argument-modes.case.json	Sheet1!H148
-F	probes/stat-argument-modes.case.json	Sheet1!H152
-F	probes/stat-argument-modes.case.json	Sheet1!H157
-F	probes/stat-argument-modes.case.json	Sheet1!H158
-F	probes/stat-argument-modes.case.json	Sheet1!H160
-F	probes/stat-argument-modes.case.json	Sheet1!H161
 F	probes/stat-argument-modes.case.json	Sheet1!H163
 F	probes/stat-argument-modes.case.json	Sheet1!H168
 F	probes/stat-argument-modes.case.json	Sheet1!H173
@@ -2489,8 +2477,6 @@ F	probes/stat-quantile-lift.case.json	Sheet1!E6
 F	probes/stat-quantile-lift.case.json	Sheet1!E7
 F	probes/stat-quantile-lift.case.json	Sheet1!E8
 F	probes/stat-quantile-lift.case.json	Sheet1!E9
-F	probes/stat-quantile-lift.case.json	Sheet1!J35
-F	probes/stat-quantile-lift.case.json	Sheet1!J37
 F	probes/stat-test-lift.case.json	Sheet1!P64
 F	probes/stat-test-lift.case.json	Sheet1!P65
 F	probes/stat-test-lift.case.json	Sheet1!P66
@@ -3063,7 +3049,6 @@ F	probes/t2625-nested-consumers.case.json	P!A28
 F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
-F	probes/table-edits/table-convert-to-range.case.json	!EngineError
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9

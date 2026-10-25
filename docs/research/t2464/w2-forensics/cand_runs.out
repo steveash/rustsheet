@@ -1,0 +1,112 @@
+('1', 0) a=2.5 b=3.5 x0=0.2114 excel c=-3.72
+   exact           exact  260 w4 1022 c=+0.00
+   toms            exact  169 w4  971 c=+1.24
+   NR betai eps=3  exact  115 w4  804 c=+4.15
+   Cephes incbet,  exact  209 w4 1007 c=+0.14
+   closed forms,   exact  127 w4  898 c=+3.55
+   LibreOffice Ge  exact  122 w4  845 c=+3.61
+('1', 1) a=2.5 b=3.5 x0=0.3314 excel c=-1.36
+   exact           exact  293 w4 1024 c=-0.00
+   toms            exact  183 w4 1008 c=+1.04
+   NR betai eps=3  exact   88 w4  683 c=+4.14
+   Cephes incbet,  exact  118 w4  840 c=+3.12
+   closed forms,   exact  118 w4  834 c=+3.13
+   LibreOffice Ge  exact   91 w4  748 c=+3.49
+('1', 2) a=7.3 b=11.6 x0=0.2731 excel c=-8.51
+   exact           exact   85 w4  606 c=+0.00
+   toms            exact   38 w4  313 c=+7.95
+   NR betai eps=3  exact    0 w4    1 c=+11.57
+   Cephes incbet,  exact   13 w4   62 c=+11.62
+   closed forms,   exact   11 w4   64 c=+11.51
+   LibreOffice Ge  exact   27 w4  205 c=+11.03
+('1', 3) a=0.5 b=6.25 x0=0.0431 excel c=-0.20
+   exact           exact    0 w4  901 c=-0.00
+   toms            exact    0 w4  946 c=+0.06
+   NR betai eps=3  exact    0 w4    0 c=+6.73
+   Cephes incbet,  exact    0 w4  940 c=+0.11
+   closed forms,   exact   12 w4  641 c=+4.99
+   LibreOffice Ge  exact  215 w4 1009 c=-0.13
+('1', 4) a=30.7 b=1.7 x0=0.8117 excel c=+nan
+   exact           exact  104 w4  761 c=+nan
+   toms            exact   44 w4  437 c=+nan
+   NR betai eps=3  exact    0 w4    0 c=+nan
+   Cephes incbet,  exact    8 w4   46 c=+nan
+   closed forms,   exact    9 w4   47 c=+nan
+   LibreOffice Ge  exact   32 w4  265 c=+nan
+('1', 5) a=4.0 b=4.0 x0=0.2317 excel c=-7.17
+   exact           exact   96 w4  779 c=+0.00
+   toms            exact   73 w4  610 c=+1.06
+   NR betai eps=3  exact   59 w4  517 c=+4.29
+   Cephes incbet,  exact   96 w4  751 c=-0.93
+   closed forms,   exact   68 w4  581 c=+4.34
+   LibreOffice Ge  exact   65 w4  601 c=+4.28
+('1', 6) a=1.5 b=0.5 x0=0.3511 excel c=+0.15
+   exact           exact  286 w4 1024 c=-0.00
+   toms            exact   73 w4 1007 c=-0.03
+   NR betai eps=3  exact   98 w4  711 c=+0.62
+   Cephes incbet,  exact   87 w4 1020 c=+0.01
+   closed forms,   exact  146 w4  898 c=+0.95
+   LibreOffice Ge  exact  109 w4  803 c=-0.04
+('1', 7) a=100.0 b=120.0 x0=0.4013 excel c=-10.58
+   exact           exact   34 w4  264 c=+0.00
+   toms            exact   28 w4  226 c=-0.55
+   NR betai eps=3  exact    0 w4    0 c=+120.52
+   Cephes incbet,  exact    0 w4    6 c=+123.26
+   closed forms,   exact    1 w4    9 c=+127.68
+   LibreOffice Ge  exact    0 w4    0 c=+119.09
+('2', 0) a=2.5 b=3.5 x0=0.6137 excel c=+nan
+   exact           exact  712 w4 1024 c=+nan
+   toms            exact  731 w4 1024 c=+nan
+   NR betai eps=3  exact  244 w4 1024 c=+nan
+   Cephes incbet,  exact  733 w4 1024 c=+nan
+   closed forms,   exact  466 w4 1024 c=+nan
+   LibreOffice Ge  exact  339 w4 1024 c=+nan
+('2', 1) a=0.5 b=6.25 x0=0.3113 excel c=-0.26
+   exact           exact  464 w4 1024 c=-0.00
+   toms            exact  684 w4 1024 c=-0.26
+   NR betai eps=3  exact  120 w4 1024 c=-0.29
+   Cephes incbet,  exact  540 w4 1024 c=-0.26
+   closed forms,   exact  469 w4 1024 c=-0.26
+   LibreOffice Ge  exact  753 w4 1024 c=-0.06
+('2', 2) a=7.3 b=11.6 x0=0.6131 excel c=+nan
+   exact           exact  775 w4 1024 c=+nan
+   toms            exact  805 w4 1024 c=+nan
+   NR betai eps=3  exact  209 w4 1024 c=+nan
+   Cephes incbet,  exact  529 w4 1024 c=+nan
+   closed forms,   exact  526 w4 1024 c=+nan
+   LibreOffice Ge  exact  771 w4 1024 c=+nan
+('2', 3) a=2.5 b=3.5 x0=0.2857 excel c=-1.91
+   exact           exact  360 w4 1024 c=+0.00
+   toms            exact  228 w4 1024 c=+1.98
+   NR betai eps=3  exact  107 w4  785 c=+5.09
+   Cephes incbet,  exact  169 w4  979 c=+2.92
+   closed forms,   exact  143 w4  940 c=+4.17
+   LibreOffice Ge  exact  134 w4  892 c=+3.43
+('2', 4) a=40.0 b=1.03 x0=0.9500 excel c=+nan
+   exact           exact  326 w4 1024 c=+nan
+   toms            exact  247 w4 1008 c=+nan
+   NR betai eps=3  exact    0 w4    2 c=+nan
+   Cephes incbet,  exact    1 w4   10 c=+nan
+   closed forms,   exact    2 w4   25 c=+nan
+   LibreOffice Ge  exact   32 w4  220 c=+nan
+('2', 5) a=2.5 b=3.5 x0=0.4167 excel c=-1.81
+   exact           exact  335 w4 1024 c=+0.00
+   toms            exact  369 w4 1023 c=-0.54
+   NR betai eps=3  exact  119 w4  762 c=+5.36
+   Cephes incbet,  exact  181 w4  967 c=-1.38
+   closed forms,   exact  182 w4  965 c=+0.35
+   LibreOffice Ge  exact  118 w4  871 c=+0.14
+('2', 6) a=0.5 b=0.7 x0=0.4167 excel c=+0.03
+   exact           exact  270 w4 1024 c=-0.00
+   toms            exact   11 w4  977 c=-0.00
+   NR betai eps=3  exact   20 w4  371 c=+0.81
+   Cephes incbet,  exact  199 w4 1024 c=-0.00
+   closed forms,   exact  181 w4  991 c=-0.69
+   LibreOffice Ge  exact  148 w4  904 c=-0.47
+('2', 7) a=0.5 b=0.7 x0=0.5000 excel c=+0.42
+   exact           exact  285 w4  924 c=-0.00
+   toms            exact  185 w4 1022 c=-0.00
+   NR betai eps=3  exact   60 w4  513 c=-0.93
+   Cephes incbet,  exact  149 w4  990 c=-0.02
+   closed forms,   exact  170 w4  852 c=-0.59
+   LibreOffice Ge  exact  144 w4  866 c=-0.56

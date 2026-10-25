@@ -1,0 +1,31 @@
+# probe hold: 1396 rows, echo mismatches 0
+M-edge       all   459/  960/ 1094 of  1396
+   zero       12/   12/   12 of    12
+   neg         6/    6/    6 of     6
+   dflow      12/   14/   14 of    14
+   dfhigh      0/    4/    4 of     4
+   frac       56/  108/  127 of   128
+   tiny       19/   20/   23 of    48
+   thresh      8/    8/    9 of    80
+   sub         3/    3/    3 of    25
+   huge       25/   25/   28 of    36
+   hthr       44/   44/   44 of    64
+   ovf        19/   19/   19 of    19
+   vrun      255/  697/  805 of   960
+M-edge-mulr  all   457/  961/ 1093 of  1396
+   zero       12/   12/   12 of    12
+   neg         6/    6/    6 of     6
+   dflow      12/   14/   14 of    14
+   dfhigh      0/    4/    4 of     4
+   frac       53/  111/  127 of   128
+   tiny       19/   20/   23 of    48
+   thresh      8/    8/    9 of    80
+   sub         3/    3/    3 of    25
+   huge       25/   25/   28 of    36
+   hthr       44/   44/   44 of    64
+   ovf        19/   19/   19 of    19
+   vrun      256/  695/  804 of   960
+   vrun d1=1: M-edge    87/  226/  250 of   288  CR    41/  185/  212 of   288
+   vrun d1=2: M-edge    84/  239/  251 of   288  CR    65/  198/  227 of   288
+   vrun d2=1: M-edge    44/  123/  133 of   192  CR    21/   93/  120 of   192
+   vrun d2=2: M-edge    40/  109/  171 of   192  CR    18/  102/  154 of   192

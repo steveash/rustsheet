@@ -5,7 +5,7 @@ use statrs::distribution::{Continuous, Gamma};
 
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
-use super::incomplete_gamma::{gamma_cdf, gamma_quantile, gamma_sf, Tail};
+use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, gamma_sf, Tail};
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
 
@@ -98,7 +98,7 @@ impl Model {
         } else if cumulative {
             gamma_cdf(&dist, x)
         } else {
-            dist.pdf(x)
+            gamma_density(dist.shape(), x, 1.0 / dist.rate()).unwrap_or_else(|| dist.pdf(x))
         };
         if !result.is_finite() {
             return Err(num_error(cell));

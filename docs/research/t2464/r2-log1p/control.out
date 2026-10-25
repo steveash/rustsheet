@@ -1,0 +1,6 @@
+planted fwd power sum: pinned uniquely 9880/9880; recovered == planted 9880
+    scored model fwd power sum  : 9880/9880
+    scored model Horner S N=12  : 9825/9880
+planted Horner S N=12: pinned uniquely 9880/9880; recovered == planted 9880
+    scored model fwd power sum  : 9825/9880
+    scored model Horner S N=12  : 9880/9880
