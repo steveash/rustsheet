@@ -53,7 +53,10 @@ fn test_today_matches_only_today() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&mut model, 1), "today should match PeriodType::Today");
+    assert!(
+        is_red(&mut model, 1),
+        "today should match PeriodType::Today"
+    );
     assert!(
         !is_red(&mut model, 2),
         "yesterday should not match PeriodType::Today"
@@ -174,12 +177,18 @@ fn test_next_7_days_includes_endpoints() {
         is_red(&mut model, 1),
         "today is the left boundary of next 7 days"
     );
-    assert!(is_red(&mut model, 2), "3 days from now is within next 7 days");
+    assert!(
+        is_red(&mut model, 2),
+        "3 days from now is within next 7 days"
+    );
     assert!(
         is_red(&mut model, 3),
         "6 days from now is the right boundary of next 7 days"
     );
-    assert!(!is_red(&mut model, 4), "7 days from now is outside next 7 days");
+    assert!(
+        !is_red(&mut model, 4),
+        "7 days from now is outside next 7 days"
+    );
     assert!(!is_red(&mut model, 5), "yesterday is outside next 7 days");
 }
 
@@ -206,9 +215,15 @@ fn test_this_year_includes_endpoints() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&mut model, 1), "Jan 1 this year should match ThisYear");
+    assert!(
+        is_red(&mut model, 1),
+        "Jan 1 this year should match ThisYear"
+    );
     assert!(is_red(&mut model, 2), "mid-year date should match ThisYear");
-    assert!(is_red(&mut model, 3), "Dec 31 this year should match ThisYear");
+    assert!(
+        is_red(&mut model, 3),
+        "Dec 31 this year should match ThisYear"
+    );
     assert!(
         !is_red(&mut model, 4),
         "Dec 31 last year should not match ThisYear"
@@ -242,9 +257,15 @@ fn test_last_year_includes_endpoints() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&mut model, 1), "Jan 1 last year should match LastYear");
+    assert!(
+        is_red(&mut model, 1),
+        "Jan 1 last year should match LastYear"
+    );
     assert!(is_red(&mut model, 2), "mid last year should match LastYear");
-    assert!(is_red(&mut model, 3), "Dec 31 last year should match LastYear");
+    assert!(
+        is_red(&mut model, 3),
+        "Dec 31 last year should match LastYear"
+    );
     assert!(
         !is_red(&mut model, 4),
         "two years ago should not match LastYear"
@@ -278,9 +299,15 @@ fn test_next_year_includes_endpoints() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&mut model, 1), "Jan 1 next year should match NextYear");
+    assert!(
+        is_red(&mut model, 1),
+        "Jan 1 next year should match NextYear"
+    );
     assert!(is_red(&mut model, 2), "mid next year should match NextYear");
-    assert!(is_red(&mut model, 3), "Dec 31 next year should match NextYear");
+    assert!(
+        is_red(&mut model, 3),
+        "Dec 31 next year should match NextYear"
+    );
     assert!(
         !is_red(&mut model, 4),
         "Dec 31 this year should not match NextYear"
@@ -437,7 +464,10 @@ fn test_between_missing_dates_highlights_nothing() {
     model.evaluate();
 
     for row in 1..=5 {
-        assert!(!is_red(&mut model, row), "row {row} should not be highlighted");
+        assert!(
+            !is_red(&mut model, row),
+            "row {row} should not be highlighted"
+        );
     }
 }
 
@@ -455,7 +485,10 @@ fn test_between_invalid_dates_highlight_nothing() {
     model.evaluate();
 
     for row in 1..=5 {
-        assert!(!is_red(&mut model, row), "row {row} should not be highlighted");
+        assert!(
+            !is_red(&mut model, row),
+            "row {row} should not be highlighted"
+        );
     }
 }
 

@@ -59,9 +59,15 @@ fn test_equal() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&mut model, 4), "row 4 (8 cores) should match Equal 8");
+    assert!(
+        is_red(&mut model, 4),
+        "row 4 (8 cores) should match Equal 8"
+    );
     for row in [1, 2, 3, 5, 6, 7] {
-        assert!(!is_red(&mut model, row), "row {row} should not match Equal 8");
+        assert!(
+            !is_red(&mut model, row),
+            "row {row} should not match Equal 8"
+        );
     }
 }
 
@@ -96,7 +102,10 @@ fn test_greater_than() {
 
     // rows 5 (16), 6 (32), 7 (64) are > 8
     for row in [5, 6, 7] {
-        assert!(is_red(&mut model, row), "row {row} should match GreaterThan 8");
+        assert!(
+            is_red(&mut model, row),
+            "row {row} should match GreaterThan 8"
+        );
     }
     for row in [1, 2, 3, 4] {
         assert!(

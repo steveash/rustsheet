@@ -87,7 +87,10 @@ fn test_top1_highlights_only_maximum() {
 
     assert!(is_red(&mut model, 10), "row 10 (100) should be the top 1");
     for row in 1..=9 {
-        assert!(!is_red(&mut model, row), "row {row} should not be the top 1");
+        assert!(
+            !is_red(&mut model, row),
+            "row {row} should not be the top 1"
+        );
     }
 }
 
@@ -105,7 +108,10 @@ fn test_top_20_percent_highlights_two_highest() {
     model.evaluate();
 
     for row in 9..=10 {
-        assert!(is_red(&mut model, row), "row {row} should be in the top 20 %");
+        assert!(
+            is_red(&mut model, row),
+            "row {row} should be in the top 20 %"
+        );
     }
     for row in 1..=8 {
         assert!(
@@ -125,7 +131,10 @@ fn test_top_30_percent_highlights_three_highest() {
     model.evaluate();
 
     for row in 8..=10 {
-        assert!(is_red(&mut model, row), "row {row} should be in the top 30 %");
+        assert!(
+            is_red(&mut model, row),
+            "row {row} should be in the top 30 %"
+        );
     }
     for row in 1..=7 {
         assert!(
@@ -174,7 +183,10 @@ fn test_bottom1_highlights_only_minimum() {
 
     assert!(is_red(&mut model, 1), "row 1 (10) should be the bottom 1");
     for row in 2..=10 {
-        assert!(!is_red(&mut model, row), "row {row} should not be the bottom 1");
+        assert!(
+            !is_red(&mut model, row),
+            "row {row} should not be the bottom 1"
+        );
     }
 }
 
@@ -276,7 +288,10 @@ fn test_top_ignores_text_cells() {
         .unwrap();
     model.evaluate();
 
-    assert!(!is_red(&mut model, 1), "text cell should not be highlighted");
+    assert!(
+        !is_red(&mut model, 1),
+        "text cell should not be highlighted"
+    );
     assert!(!is_red(&mut model, 2), "5 is not the top value");
     assert!(is_red(&mut model, 3), "10 is the top value");
 }

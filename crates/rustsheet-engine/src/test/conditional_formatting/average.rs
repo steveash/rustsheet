@@ -90,7 +90,10 @@ fn test_above_average_boundary_not_included() {
     model.evaluate();
 
     assert!(!is_red(&mut model, 1), "10 is below mean, should not match");
-    assert!(!is_red(&mut model, 2), "30 equals the mean, should not match");
+    assert!(
+        !is_red(&mut model, 2),
+        "30 equals the mean, should not match"
+    );
     assert!(is_red(&mut model, 3), "50 is above the mean, should match");
 }
 
@@ -149,8 +152,14 @@ fn test_below_average_boundary_not_included() {
     model.evaluate();
 
     assert!(is_red(&mut model, 1), "10 is below the mean, should match");
-    assert!(!is_red(&mut model, 2), "30 equals the mean, should not match");
-    assert!(!is_red(&mut model, 3), "50 is above the mean, should not match");
+    assert!(
+        !is_red(&mut model, 2),
+        "30 equals the mean, should not match"
+    );
+    assert!(
+        !is_red(&mut model, 3),
+        "50 is above the mean, should not match"
+    );
 }
 
 #[test]

@@ -144,8 +144,14 @@ fn test_formula_relative_row_across_columns() {
     }
     // Rows 1–5: neither column
     for row in 1..=5 {
-        assert!(!is_red(&mut model, row, 1), "A{row} should not be highlighted");
-        assert!(!is_red(&mut model, row, 2), "B{row} should not be highlighted");
+        assert!(
+            !is_red(&mut model, row, 1),
+            "A{row} should not be highlighted"
+        );
+        assert!(
+            !is_red(&mut model, row, 2),
+            "B{row} should not be highlighted"
+        );
     }
 }
 

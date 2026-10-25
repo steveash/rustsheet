@@ -32,7 +32,9 @@ fn model_with_rule() -> Model {
     for row in 1..=10 {
         model.set_user_input(0, row, 1, row.to_string()).unwrap();
     }
-    model.add_conditional_formatting(0, "A1:A10", rule()).unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A10", rule())
+        .unwrap();
     model
 }
 
@@ -93,7 +95,9 @@ fn user_model() -> UserModel {
 fn user_model_edits_undo_and_redo_are_seen_by_the_next_read() {
     let mut model = user_model();
     assert!(!user_red(&mut model, 6));
-    model.add_conditional_formatting(0, "A1:A10", rule()).unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A10", rule())
+        .unwrap();
     assert!(user_red(&mut model, 6));
     model.undo().unwrap();
     assert!(!user_red(&mut model, 6));
@@ -108,7 +112,9 @@ fn paused_edits_after_a_read_wait_for_evaluate() {
     let mut model = user_model();
     assert!(!user_red(&mut model, 6));
     model.pause_evaluation();
-    model.add_conditional_formatting(0, "A1:A10", rule()).unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A10", rule())
+        .unwrap();
     assert!(!user_red(&mut model, 6));
     model.resume_evaluation();
     model.evaluate();
@@ -116,7 +122,9 @@ fn paused_edits_after_a_read_wait_for_evaluate() {
 
     let mut fresh = user_model();
     fresh.pause_evaluation();
-    fresh.add_conditional_formatting(0, "A1:A10", rule()).unwrap();
+    fresh
+        .add_conditional_formatting(0, "A1:A10", rule())
+        .unwrap();
     assert!(user_red(&mut fresh, 6));
 }
 
