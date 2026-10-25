@@ -30,5 +30,6 @@ formulas refuse because typed their callee is PV (T-2567), and `=PV(1)` itself r
 binding the variable (1, 3, `#NAME?`). Functions outside the lifting table are not checked (no false refusals). The
 lifting table's minimums match eval/catalog/excel-functions.tsv for 349 of 350 functions; ACCRINTM's `par` is optional in the
 engine and required in Microsoft's syntax line, so `ACCRINTM` with three arguments stays accepted (permissive). API test
-`typed_calls_with_a_wrong_argument_count_are_refused`; syntax.md and references.md updated. Eval: no change (the harness
-uses stored text).
+`typed_calls_with_a_wrong_argument_count_are_refused`; syntax.md and references.md updated. Eval: no change (no `entered`
+case has a wrong-count call). Off-cycle SORTBY counts stay accepted typed (`ArgKinds::takes_count`); a Python test pins the
+lifting table's minimums to excel-functions.tsv.
