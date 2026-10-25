@@ -31,12 +31,15 @@ build: ## Release build of the eval harness
 	$(CARGO) build --release -p rustsheet_eval
 
 # ---------------------------------------------------------------- Eval (Excel compatibility)
-.PHONY: eval eval-check eval-baseline eval-lower-visible-lock eval-show evidence-floor
+.PHONY: eval eval-check eval-gates eval-baseline eval-lower-visible-lock eval-show evidence-floor
 eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
 	$(EVAL_GUARDED) run
 
-eval-check: build ## Gate: fail on any regression vs eval/baseline (CI)
+eval-check: build ## Gate: fail on any regression vs eval/baseline
 	$(EVAL_GUARDED) check
+
+eval-gates: build ## eval-check and evidence-floor from one run of the suites (CI, make check; T-2753)
+	$(EVAL_GUARDED) check --evidence-floor
 
 eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json after fixes (refuses regressions)
 	$(EVAL_GUARDED) update-baseline
@@ -45,7 +48,7 @@ eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json af
 eval-lower-visible-lock: build ## Steward only, daily: also record a drop in eval/baseline/visible-parity.json (decision 0093)
 	$(EVAL_GUARDED) update-baseline --lower-visible-lock
 
-evidence-floor: build ## Gate: no more in-scope functions below the evidence floor (T-0056, CI)
+evidence-floor: build ## Gate: no more in-scope functions below the evidence floor (T-0056; CI runs it in eval-gates)
 	$(EVAL) evidence-floor
 
 eval-show: build ## Show one case: make eval-show CASE=ironcalc-calc/FINANCIAL/IRR.xlsx
@@ -94,7 +97,7 @@ governance: ## Protected-path changes need a decision record
 
 # ---------------------------------------------------------------- Aggregates
 .PHONY: check ci
-check: fmt-check clippy test eval-check evidence-floor py-check py-bindings hygiene typos ## Everything an agent must pass before a PR (typos too: CI fails on it)
+check: fmt-check clippy test eval-gates py-check py-bindings hygiene typos ## Everything an agent must pass before a PR (typos too: CI fails on it)
 
 ci: check deny machete
 
