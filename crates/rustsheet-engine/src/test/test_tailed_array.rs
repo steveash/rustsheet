@@ -1,0 +1,202 @@
+#![allow(clippy::unwrap_used)]
+
+//! Whole-column aggregate arguments read as a used head and one repeated tail row (SPEC-0020,
+//! T-0469) give what the 1,048,576-row arrays give.
+
+use crate::tailed_array::{TAILED_OFF, TAILED_WALKS};
+use crate::test::util::new_empty_model;
+use crate::Model;
+
+/// A1:C40 of Sheet1: numbers, text, booleans, blanks, empty text and errors; H1:H3 the scalars
+/// the formulas read. Sheet2!A1:A60 holds numbers, so its used area is longer than Sheet1's.
+fn fill(model: &mut Model) {
+    const A: &[&str] = &["1", "2", "", "x", "TRUE", "=1/0", "3", "=\"\"", "1", "0"];
+    const B: &[&str] = &["5", "", "7", "y", "FALSE", "2.5", "=NA()", "-1", "0.1", "9"];
+    const C: &[&str] = &["0.2", "3", "", "z", "1", "4", "TRUE", "", "=\"\"", "8"];
+    for row in 1..=40 {
+        let i = (row - 1) % 10;
+        let j = (row * 3) % 10;
+        model._set(&format!("A{row}"), A[i]);
+        model._set(&format!("B{row}"), B[j]);
+        model._set(&format!("C{row}"), C[(i + j) % 10]);
+    }
+    model._set("H1", "1");
+    model._set("H2", "=1/0");
+    model._set("H3", "TRUE");
+    model.new_sheet();
+    for row in 1..=60 {
+        model._set(&format!("Sheet2!A{row}"), &(row % 7).to_string());
+    }
+}
+
+/// Each formula's text with the tailed reading on and with it off; how many arguments the
+/// first evaluation walked as a head and a tail.
+fn both_ways(formulas: &[String]) -> (Vec<(String, String, String)>, usize) {
+    let mut values = Vec::new();
+    let mut walks = 0;
+    for off in [false, true] {
+        TAILED_OFF.with(|flag| flag.set(off));
+        TAILED_WALKS.with(|count| count.set(0));
+        let mut model = new_empty_model();
+        fill(&mut model);
+        for (index, formula) in formulas.iter().enumerate() {
+            model._set(&format!("E{}", index + 1), formula);
+        }
+        model.evaluate();
+        if !off {
+            walks = TAILED_WALKS.with(std::cell::Cell::get);
+        }
+        values.push(
+            (0..formulas.len())
+                .map(|index| model._get_text(&format!("E{}", index + 1)))
+                .collect::<Vec<_>>(),
+        );
+    }
+    TAILED_OFF.with(|flag| flag.set(false));
+    let results = formulas
+        .iter()
+        .enumerate()
+        .map(|(index, formula)| {
+            (
+                formula.clone(),
+                values[0][index].clone(),
+                values[1][index].clone(),
+            )
+        })
+        .collect();
+    (results, walks)
+}
+
+/// Every aggregate of `aggregates` over every expression of `expressions` gives the same text
+/// both ways, and all of them were tailed.
+fn check(aggregates: &[&str], expressions: &[&str]) {
+    let formulas: Vec<String> = aggregates
+        .iter()
+        .flat_map(|f| expressions.iter().map(move |e| format!("={f}({e})")))
+        .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, formulas.len(), "every argument is tailed");
+}
+
+/// One aggregate per kind of walk: sums, extremes, counts of numbers and of values, logicals,
+/// the A variants' coercions and the variance family's two passes.
+const AGGREGATES: &[&str] = &["SUM", "MIN", "COUNT", "COUNTA", "AND", "MAXA", "VAR"];
+
+#[test]
+fn if_over_whole_column_conditions() {
+    check(
+        AGGREGATES,
+        &[
+            "IF(A:A=$H$1,B:B,\"\")",
+            "IF(A:A>1,B:B*2,C:C)",
+            // An empty tail through a branch; COUNTA counts it in every row.
+            "IF(A:A=\"\",C:C)",
+        ],
+    );
+}
+
+#[test]
+fn operators_over_whole_columns() {
+    check(
+        AGGREGATES,
+        &["(A:A=1)*B:B", "-A:A", "A:A%", "B:B/A:A", "A:A&\"x\""],
+    );
+}
+
+#[test]
+fn numeric_and_error_tails() {
+    check(
+        AGGREGATES,
+        &[
+            // A numeric tail, summed once per row.
+            "IF(A:A=\"\",0.1,0)",
+            // Scalar error operands: the tail keeps the left error (`array_of_errors`).
+            "((A:A+$H$2)=$H$2)",
+            "$H$2+A:A",
+            // A bare range as the condition.
+            "IF(C:C,B:B,A:A)",
+        ],
+    );
+}
+
+/// The number-folding aggregates skip a repeated tail only when their rules ignore it: a
+/// numeric tail counts in every row, and so does a text tail for VARA (text is 0). Sheet2's
+/// head has no blanks, so only the tail rows give these values.
+#[test]
+fn number_folding_aggregates_skip_only_ignored_tails() {
+    check(
+        &["AVERAGE", "MAX", "MIN", "PRODUCT", "VARA", "STDEV"],
+        &[
+            "IF(Sheet2!A:A=\"\",0.5,Sheet2!A:A)",
+            "IF(Sheet2!A:A=\"\",\"t\",Sheet2!A:A)",
+            "IF(Sheet2!A:A=\"\",TRUE,Sheet2!A:A)",
+        ],
+    );
+}
+
+#[test]
+fn operands_on_another_sheet() {
+    // Sheet2's used area is longer than Sheet1's: Sheet1's columns are padded with blanks.
+    check(
+        &["SUM", "MAX", "COUNTA"],
+        &["Sheet2!A:A*(A:A=1)", "IF(Sheet2!A:A>3,A:A,B:B)"],
+    );
+}
+
+/// A chain of 4,000 operators is walked without recursion, and is tailed.
+#[test]
+fn a_long_operator_chain_is_tailed() {
+    let mut model = new_empty_model();
+    for row in 1..=10 {
+        model._set(&format!("A{row}"), &row.to_string());
+    }
+    let chain = vec!["A:A"; 4000].join("+");
+    model._set("E1", &format!("=SUM({chain})"));
+    model._set("E2", &format!("=COUNTA({chain})"));
+    TAILED_WALKS.with(|count| count.set(0));
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "220000");
+    assert_eq!(model._get_text("E2"), "1048576");
+    assert_eq!(TAILED_WALKS.with(std::cell::Cell::get), 2);
+}
+
+/// What a tailed reading must leave to the ordinary one: references walked as references, an IF
+/// over a scalar condition, functions and bounded ranges.
+#[test]
+fn excluded_forms_are_not_tailed() {
+    let formulas: Vec<String> = [
+        "=SUM(A:A)",
+        "=SUM((A:A))",
+        "=COUNTA(+A:A)",
+        "=MIN(IF($H$3,A:A,B:B))",
+        "=SUM(IF(A1>0,A:A,B:B)*1)",
+        "=SUM(ISNUMBER(A:A)*1)",
+        "=SUM(A1:A100*1)",
+        "=SUM(A:B*1)",
+        "=SUM(ROW(A:A)*0)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, 0);
+}
+
+/// A dynamic array spills into the tail rows of a column a tailed argument read: the pass
+/// restarts, and the aggregate counts the spilled values.
+#[test]
+fn a_spill_into_the_tail_restarts_the_pass() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("E1", "=SUM(IF(A:A>0,A:A))");
+    model._set("F1", "=SEQUENCE(5,1,10)");
+    model._set("A100", "=F1:F5*1");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "61");
+}
