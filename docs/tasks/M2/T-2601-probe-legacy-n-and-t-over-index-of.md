@@ -25,8 +25,10 @@ T-2368 probed the scalar literals with a 0 index (probes/index-zero-index-scalar
 -
 
 ## Outcome
-Done (probes/t2601-index-scalar-forms-t-n, excel-graph 2026-10-25). Every probed form is `#VALUE!` with no `@` under a
-legacy N or T: an empty column or row argument (`INDEX(5,0,)`, `INDEX(5,)`, `INDEX(5,,)`), a parenthesised scalar, a
-unary plus, and a negated text or boolean. `indexes_a_scalar_whole` now takes any number, text or boolean literal under
-grouping and negation, with each index 0 or empty. FORMULATEXT keeps a unary plus on text and booleans and drops it on
-numbers. Ours drops both, so B14 and B15 fail; that is filed as T-2723.
+Done (probes/t2601-index-scalar-forms-t-n A1:B28, excel-graph 2026-10-25). Every probed form under a legacy N or T is
+`#VALUE!` with no `@`. The forms cover an empty column or row argument (`INDEX(5,0,)`, `INDEX(5,)`, `INDEX(5,,)`), a unary
+plus, and any chain of groups and minus around a number, text or boolean literal (`(5)`, `-"a"`, `--5`, `-(5)`, `((5))`,
+`(TRUE)`, `(-"a")`). A grouped 0 index (`INDEX(5,(0))`) behaves the same. `indexes_a_scalar_whole` now takes all of these.
+Two cells are left:
+- FORMULATEXT keeps a unary plus on text and booleans and drops it on numbers; ours drops both (B14, B15, T-2723).
+- `=N(INDEX(5,1))` is 5 with no `@`; ours shows an `@` (B28, T-2725).

@@ -42,9 +42,49 @@
     "t": "e",
     "v": "#VALUE!"
    },
+   "A19": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A2": {
     "t": "e",
     "v": "#VALUE!"
+   },
+   "A20": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A21": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A22": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A23": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A24": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A25": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A26": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A27": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A28": {
+    "t": "n",
+    "v": 5.0
    },
    "A3": {
     "t": "e",
@@ -114,9 +154,49 @@
     "t": "s",
     "v": "=N(INDEX((-5),0))"
    },
+   "B19": {
+    "t": "s",
+    "v": "=N(INDEX(--5,0))"
+   },
    "B2": {
     "t": "s",
     "v": "=T(INDEX(5,0,))"
+   },
+   "B20": {
+    "t": "s",
+    "v": "=N(INDEX(-(5),0,0))"
+   },
+   "B21": {
+    "t": "s",
+    "v": "=T(INDEX(-(\"a\"),0))"
+   },
+   "B22": {
+    "t": "s",
+    "v": "=N(INDEX(((5)),0))"
+   },
+   "B23": {
+    "t": "s",
+    "v": "=N(INDEX((TRUE),0))"
+   },
+   "B24": {
+    "t": "s",
+    "v": "=T(INDEX((-\"a\"),0,0))"
+   },
+   "B25": {
+    "t": "s",
+    "v": "=N(INDEX(-(-5),0,))"
+   },
+   "B26": {
+    "t": "s",
+    "v": "=N(INDEX((-TRUE),0))"
+   },
+   "B27": {
+    "t": "s",
+    "v": "=N(INDEX(5,(0)))"
+   },
+   "B28": {
+    "t": "s",
+    "v": "=N(INDEX(5,1))"
    },
    "B3": {
     "t": "s",
@@ -150,10 +230,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "67e90d43b68a68575a26e1a50e1eb218d57c6c622e4bd35c47366b2af93df982",
+  "input_sha256": "b9bc55da3285c96972caf693ef8285ce3d2310944f1020f4a7926020ad0b3ba9",
   "kind": "excel-graph",
-  "produced_at": "2026-10-25T14:46:45+00:00",
+  "produced_at": "2026-10-25T15:01:39+00:00",
   "version": null,
-  "workbook_name": "8059bc756421c38b9a17ccc1375420e6e8be6e14184f830d70dd43912005fc46.xlsx"
+  "workbook_name": "552e0a78a7be7f328af52df7c91969f90911dc5e28bc095b37b550c651883d15.xlsx"
  }
 }

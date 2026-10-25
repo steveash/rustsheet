@@ -725,10 +725,13 @@ forms are all `#VALUE!`, and `FORMULATEXT` shows them with no `@`.
 Evidence: probes/index-zero-index-scalar-t-n (excel-graph, 2026-10-24, T-2368). Ours: implemented (T-2368).
 The same holds with an empty column or row argument (`=N(INDEX(5,0,))`, `=N(INDEX(5,))`, `=N(INDEX(5,,))`), and for a
 parenthesised scalar, a unary plus, or a negated text or boolean: `=N(INDEX((5),0,0))`, `=T(INDEX(+"a",0,0))`,
-`=N(INDEX(-TRUE,0,0))`, `=T(INDEX(-"a",0,0))`, `=T(INDEX(("a"),0))` and `=N(INDEX((-5),0))` are all `#VALUE!`, and
+`=N(INDEX(-TRUE,0,0))`, `=T(INDEX(-"a",0,0))`, `=T(INDEX(("a"),0))` and `=N(INDEX((-5),0))` are all `#VALUE!`, and so is
+any chain of groups and minus around the literal (`--5`, `-(5)`, `-("a")`, `((5))`, `(TRUE)`, `(-"a")`, `-(-5)`) and a
+grouped 0 index (`INDEX(5,(0))`), and
 `FORMULATEXT` shows them with no `@`. FORMULATEXT drops a unary plus on a number (`+5` prints `5`) but keeps one on text
 or a boolean (`+"a"`, `+TRUE`). Ours drops both (T-2723).
-Evidence: probes/t2601-index-scalar-forms-t-n A1:B18 (excel-graph, 2026-10-25, T-2601). Ours: implemented (T-2601,
+A nonzero index takes the element: `=N(INDEX(5,1))` is 5, and FORMULATEXT shows no `@` (ours shows one, T-2725).
+Evidence: probes/t2601-index-scalar-forms-t-n A1:B28 (excel-graph, 2026-10-25, T-2601). Ours: implemented (T-2601,
 `indexes_a_scalar_whole`), except the kept unary plus (B14, B15; T-2723).
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0

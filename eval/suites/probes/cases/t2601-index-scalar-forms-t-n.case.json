@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "Legacy T and N over INDEX of a scalar with an empty column or row argument (`INDEX(5,0,)`, `INDEX(5,)`, `INDEX(5,,)`), and of a unary plus, parenthesised or negated text or boolean scalar, plus FORMULATEXT (T-2601; follows probes/index-zero-index-scalar-t-n, T-2368).",
+ "description": "Legacy T and N over INDEX of a scalar with an empty column or row argument (`INDEX(5,0,)`, `INDEX(5,)`, `INDEX(5,,)`), and of a unary plus, parenthesised or negated text or boolean scalar, plus FORMULATEXT (T-2601; follows probes/index-zero-index-scalar-t-n, T-2368). A19:A28 cover nested minus, minus over a group, double groups, a grouped boolean, a grouped negated text or boolean, a grouped 0 index and a nonzero index.",
  "tags": [
   "M2",
   "lookup",
@@ -46,7 +46,27 @@
     "A17": "=N(INDEX((\"a\"),0,0))",
     "B17": "=FORMULATEXT(A17)",
     "A18": "=N(INDEX((-5),0))",
-    "B18": "=FORMULATEXT(A18)"
+    "B18": "=FORMULATEXT(A18)",
+    "A19": "=N(INDEX(--5,0))",
+    "B19": "=FORMULATEXT(A19)",
+    "A20": "=N(INDEX(-(5),0,0))",
+    "B20": "=FORMULATEXT(A20)",
+    "A21": "=T(INDEX(-(\"a\"),0))",
+    "B21": "=FORMULATEXT(A21)",
+    "A22": "=N(INDEX(((5)),0))",
+    "B22": "=FORMULATEXT(A22)",
+    "A23": "=N(INDEX((TRUE),0))",
+    "B23": "=FORMULATEXT(A23)",
+    "A24": "=T(INDEX((-\"a\"),0,0))",
+    "B24": "=FORMULATEXT(A24)",
+    "A25": "=N(INDEX(-(-5),0,))",
+    "B25": "=FORMULATEXT(A25)",
+    "A26": "=N(INDEX((-TRUE),0))",
+    "B26": "=FORMULATEXT(A26)",
+    "A27": "=N(INDEX(5,(0)))",
+    "B27": "=FORMULATEXT(A27)",
+    "A28": "=N(INDEX(5,1))",
+    "B28": "=FORMULATEXT(A28)"
    },
    "legacy_formulas": [
     "A1",
@@ -66,7 +86,17 @@
     "A15",
     "A16",
     "A17",
-    "A18"
+    "A18",
+    "A19",
+    "A20",
+    "A21",
+    "A22",
+    "A23",
+    "A24",
+    "A25",
+    "A26",
+    "A27",
+    "A28"
    ]
   }
  ]
