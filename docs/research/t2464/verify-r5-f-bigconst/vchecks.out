@@ -1,0 +1,9 @@
+== t2586-r5-f-bigconst-a: x=1 cells 361; Excel - CR (ulps): [(-3, 11), (-2, 33), (-1, 106), (0, 152), (1, 48), (2, 11)]
+  C_BIG sweep, x1 bit-exact of 3420: -1.50:979 -1.00:1218 -0.70:1355 -0.42:1398 -0.20:1399 +0.00:1319 +0.30:1230 +0.60:1068 +1.00:810 +1.54:500
+  M-sd e-table part at these shapes (units): min -0.721 max 3.079 distinct 36
+== t2586-r5-f-bigconst-hold: x=1 cells 144; Excel - CR (ulps): [(-3, 2), (-2, 5), (-1, 33), (0, 54), (1, 34), (2, 12), (3, 2), (4, 2)]
+  C_BIG sweep, x1 bit-exact of 1404: -1.50:367 -1.00:478 -0.70:512 -0.42:533 -0.20:548 +0.00:532 +0.30:543 +0.60:502 +1.00:402 +1.54:266
+  M-sd e-table part at these shapes (units): min -2.501 max 3.822 distinct 21
+== t2586-verify-r5-f-bigconst-hold: x=1 cells 72; Excel - CR (ulps): [(-3, 2), (-2, 6), (-1, 25), (0, 26), (1, 13)]
+  C_BIG sweep, x1 bit-exact of 360: -1.50:92 -1.00:123 -0.70:125 -0.42:120 -0.20:119 +0.00:109 +0.30:110 +0.60:89 +1.00:86 +1.54:62
+  M-sd e-table part at these shapes (units): min 0.515 max 1.545 distinct 5

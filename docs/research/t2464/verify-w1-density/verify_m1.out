@@ -1,0 +1,72 @@
+control: own EXP V6 vs engine EXP 5035/5035
+
+== full old pdf set (unmodelled -> exact-rounded fallback, as the claim does)
+baseline exact-rounded                                  n= 2035 exact=  337 (16.6%) w4= 1618 w15= 1812
+M1 claim (log1p stored x87)                             n= 2035 exact=  685 (33.7%) w4= 1838 w15= 1926
+M1 log1p correctly rounded                              n= 2035 exact=  685 (33.7%) w4= 1838 w15= 1926
+M1 stored exponent                                      n= 2035 exact=  610 (30.0%) w4= 1784 w15= 1901
+M1 lnB in arg order                                     n= 2035 exact=  669 (32.9%) w4= 1835 w15= 1925
+
+== per region (claim model)
+a<1,b<8 M1                                              n=  398 exact=  271 (68.1%) w4=  397 w15=  398
+a<1,b<8 baseline                                        n=  398 exact=   48 (12.1%) w4=  231 w15=  315
+a<1,b<8 stored-exponent                                 n=  398 exact=  226 (56.8%) w4=  390 w15=  396
+a<1,b>8 M1                                              n=  562 exact=  207 (36.8%) w4=  557 w15=  560
+a<1,b>8 baseline                                        n=  562 exact=  139 (24.7%) w4=  549 w15=  555
+a<1,b>8 stored-exponent                                 n=  562 exact=  206 (36.7%) w4=  548 w15=  551
+other-modelled M1                                       n=  147 exact=   84 (57.1%) w4=  140 w15=  142
+other-modelled baseline                                 n=  147 exact=   27 (18.4%) w4=   94 w15=  116
+other-modelled stored-exponent                          n=  147 exact=   55 (37.4%) w4=  102 w15=  128
+unmodelled M1                                           n=  928 exact=  123 (13.3%) w4=  744 w15=  826
+unmodelled baseline                                     n=  928 exact=  123 (13.3%) w4=  744 w15=  826
+unmodelled stored-exponent                              n=  928 exact=  123 (13.3%) w4=  744 w15=  826
+
+modelled only, M1                                      n= 1107 exact=  562 (50.8%) w4= 1094 w15= 1100
+modelled only, baseline                                 n= 1107 exact=  214 (19.3%) w4=  874 w15=  986
+modelled, dedup (x,a,b), M1                             n= 1085 exact=  550 (50.7%) w4= 1072 w15= 1078
+
+== hold-outs on modelled cells
+case m9-beta-dist-a0p0001.case.json M1                  n=   27 exact=   14 (51.9%) w4=   23 w15=   25
+case m9-beta-dist-a0p0001.case.json base                n=   27 exact=    0 (0.0%) w4=    3 w15=   14
+case m9-beta-dist-a0p5.case.json M1                     n=   27 exact=   14 (51.9%) w4=   27 w15=   27
+case m9-beta-dist-a0p5.case.json base                   n=   27 exact=   12 (44.4%) w4=   20 w15=   22
+case m9-beta-dist-a1.case.json M1                       n=   27 exact=   20 (74.1%) w4=   27 w15=   27
+case m9-beta-dist-a1.case.json base                     n=   27 exact=   10 (37.0%) w4=   22 w15=   22
+case m9-beta-dist-a10.case.json M1                      n=    9 exact=    7 (77.8%) w4=    8 w15=    9
+case m9-beta-dist-a10.case.json base                    n=    9 exact=    1 (11.1%) w4=    6 w15=    8
+case m9-beta-dist-a100.case.json M1                     n=    9 exact=    3 (33.3%) w4=    7 w15=    7
+case m9-beta-dist-a100.case.json base                   n=    9 exact=    0 (0.0%) w4=    4 w15=    5
+case m9-beta-dist-a2.case.json M1                       n=    9 exact=    7 (77.8%) w4=    9 w15=    9
+case m9-beta-dist-a2.case.json base                     n=    9 exact=    3 (33.3%) w4=    6 w15=    8
+case m9-beta-dist-a2p5.case.json M1                     n=    9 exact=    5 (55.6%) w4=    9 w15=    9
+case m9-beta-dist-a2p5.case.json base                   n=    9 exact=    3 (33.3%) w4=    6 w15=    7
+case m9-beta-dist-a5.case.json M1                       n=    9 exact=    5 (55.6%) w4=    9 w15=    9
+case m9-beta-dist-a5.case.json base                     n=    9 exact=    2 (22.2%) w4=    7 w15=    9
+case m9-beta-dist-a50.case.json M1                      n=    9 exact=    0 (0.0%) w4=    5 w15=    6
+case m9-beta-dist-a50.case.json base                    n=    9 exact=    1 (11.1%) w4=    2 w15=    2
+case t0969-beta-density-b.case.json M1                  n=  328 exact=  155 (47.3%) w4=  328 w15=  328
+case t0969-beta-density-b.case.json base                n=  328 exact=   82 (25.0%) w4=  316 w15=  325
+case t0969-beta-prefactor.case.json M1                  n=   62 exact=   33 (53.2%) w4=   62 w15=   62
+case t0969-beta-prefactor.case.json base                n=   62 exact=   11 (17.7%) w4=   38 w15=   51
+case t0969-beta-switch.case.json M1                     n=  582 exact=  299 (51.4%) w4=  580 w15=  582
+case t0969-beta-switch.case.json base                   n=  582 exact=   89 (15.3%) w4=  444 w15=  513
+pair-hash half A M1                                     n=  554 exact=  277 (50.0%) w4=  550 w15=  551
+pair-hash half A base                                   n=  554 exact=  105 (19.0%) w4=  443 w15=  501
+pair-hash half B M1                                     n=  553 exact=  285 (51.5%) w4=  544 w15=  549
+pair-hash half B base                                   n=  553 exact=  109 (19.7%) w4=  431 w15=  485
+a<1,b<8 x<med M1                                        n=  175 exact=  120 (68.6%) w4=  175 w15=  175
+a<1,b<8 x>=med M1                                       n=  223 exact=  151 (67.7%) w4=  222 w15=  223
+
+== discrete choices
+max==8: M1 claim (log1p stored x87)                     n=   14 exact=    9 (64.3%) w4=   14 w15=   14
+max==8: M1 log1p correctly rounded                      n=   14 exact=    9 (64.3%) w4=   14 w15=   14
+max==8: M1 stored exponent                              n=   14 exact=    4 (28.6%) w4=   12 w15=   14
+max==8: M1 lnB in arg order                             n=   14 exact=    8 (57.1%) w4=   14 w15=   14
+a>b, min<1: M1 claim (log1p stored x87)                 n=   77 exact=   42 (54.5%) w4=   77 w15=   77
+a>b, min<1: M1 log1p correctly rounded                  n=   77 exact=   42 (54.5%) w4=   77 w15=   77
+a>b, min<1: M1 stored exponent                          n=   77 exact=   28 (36.4%) w4=   57 w15=   73
+a>b, min<1: M1 lnB in arg order                         n=   77 exact=   26 (33.8%) w4=   74 w15=   76
+
+modelled within 1 ulp: 956/1107
+
+sanity: random-perturbation null (M1 exponent +/- 1 ulp of E) -> see null section

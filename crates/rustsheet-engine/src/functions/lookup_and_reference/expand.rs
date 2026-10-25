@@ -97,6 +97,9 @@ impl Model {
                     CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
                     other => other.clone(),
                 });
+                // A written empty pad_with pads with blank elements too, where WRAPCOLS's is
+                // `#N/A`: `ISBLANK(INDEX(EXPAND(1,2,2,),2,2))` is TRUE, `WRAPCOLS({1,2,3},2,)`'s
+                // FALSE (probes/t2461-blank-array-sources A18, A30).
                 expand_kernel(
                     data,
                     target_rows,

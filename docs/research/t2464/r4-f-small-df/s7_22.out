@@ -1,0 +1,26 @@
+side1 (1/p)^2                       12 of 64
+side1 1/(p*p)                       25 of 64
+side1 1/p/p                         20 of 64
+side1 CR                            26 of 64
+side1 EXP(-2 L(r) - 2LN x)          30 of 64
+side1 EXP(-2 L(r)) [s2: /x^2]       30 of 64
+side1 EXP(-2 LN p)                  25 of 64
+side1 EXP(-2L - fl(2LNx))           30 of 64
+side1 EXP(-2L)/fl(x*x)              30 of 64
+side1 EXP(-2L)/x/x                  30 of 64
+side1 EXP(-LNx-2L)/x s2             30 of 64
+side1 EXP(fl(-2L))                  30 of 64
+side1 M-xd                          31 of 64
+side2 (1/p)^2                       25 of 64
+side2 1/(p*p)                       23 of 64
+side2 1/p/p                         24 of 64
+side2 CR                            24 of 64
+side2 EXP(-2 L(r) - 2LN x)          24 of 64
+side2 EXP(-2 L(r)) [s2: /x^2]       24 of 64
+side2 EXP(-2 LN p)                  16 of 64
+side2 EXP(-2L - fl(2LNx))           24 of 64
+side2 EXP(-2L)/fl(x*x)              21 of 64
+side2 EXP(-2L)/x/x                  17 of 64
+side2 EXP(-LNx-2L)/x s2             33 of 64
+side2 EXP(fl(-2L))                  24 of 64
+side2 M-xd                          33 of 64

@@ -30,11 +30,11 @@ probes/stat-quantile-lift (excel-graph, 2026-10-18):
   0.043055297894031924 (ours 0.04305529789403196, 5 ulp); E10 `F.INV.RT(1-2^-53,6000,4)` = 0.04910526649490917 (ours
   0.049105266494906694, 357 ulp); E11 `FINV(1-2^-53,5,5)` = 2.1094279171713594E-07 (ours 2.1094279171713626E-07,
   12 ulp); E12 `F.INV(1E-20,5,5)` = 5.081599921802649E-09 (ours 5.081599921802652E-09, 4 ulp), the power law's anchor.
-- E9: `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` = 0.0691959487211844 (ours `#NUM!`, statrs never
+- E9: `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` = 0.0691959487211844 (ours, since T-2119, 0.0030131411834558195; it was `#NUM!` when statrs never
   finished); the true quantile is about 0.003, so this is Excel's erratic extreme-shape behaviour (statistics.md
   "Inverse CDF functions at a tiny or near-1 probability (T-1543)").
 A lower-tail form of the F quantile (the incomplete beta's leading term, as `t_dist::t_tail_quantile` does for Student's
-t) or a bisection fallback on [0, 1] (`special::bisect_unit_interval`) are candidates; T-1745 found Excel's BETA.INV
+t) or a bisection on [0, 1] (`special::refine_increasing` with no start, which BETA.INV uses since T-2119) are candidates; T-1745 found Excel's BETA.INV
 solves its own cdf to the crossing. Keep the per-call caps and the lift weights of kinds.rs `QUANTILE_WEIGHT`.
 
 gen-m9 sweep (gap triage 2026-10-23, T-2255). F.INV, FINV, F.INV.RT and BETAINV at a tiny or near-1 probability
