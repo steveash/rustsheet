@@ -860,7 +860,9 @@ as its value (A21), and BYROW's row and BYCOL's column holding nested cells (A10
 the LAMBDA each nested cell as its array (A100:A105, A109, A15), and t2311 P!D12 is `#CALC!`; ARRAYTOTEXT over a result
 holding one is `#CALC!` (A10); and the aggregates follow "Aggregates over nested GROUPBY and PIVOTBY cells" below. An element-wise lift
 of a two-level cell reads the inner top-left (assumed, T-2609), of a reference cell `#VALUE!` (unprobed, T-2609); a lifted INDEX
-element and an operator over the whole result read a nested cell as `#VALUE!` (unprobed, T-2609).
+element and an operator over the whole result read a nested cell as `#VALUE!` (unprobed, T-2609). Excel's operator does not:
+`MEDIAN({1;2;"";4},GROUPBY(..,LAMBDA(z,z))-x,..)` is `#N/A`, as MEDIAN over nested cells, where ours is `#VALUE!`, and TEXTJOIN over
+`IFERROR((GROUPBY(..)-x)&"",..)` fails as over nested cells (probes/t2475-stat-subexpressions P!A62, A63; T-2623, fix T-2686).
 Aggregates over nested GROUPBY and PIVOTBY cells (probes/t2594-nested-aggregates, excel-graph, 2026-10-24, T-2594, over the T-2592
 data): SUM, COUNT and COUNTA flatten a nested cell (SUM 220, COUNT 16, COUNTA 19 over GROUPBY; over PIVOTBY SUM 220, COUNT 16,
 COUNTA 32; `SUM(1,GROUPBY(..),2)` 223; A26:A29). Every other aggregate tried is `#N/A`: MIN, MAX, MINA, MAXA, AVERAGEA, PRODUCT,
