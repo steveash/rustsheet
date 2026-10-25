@@ -7,8 +7,8 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: []
-defer: phase-1b
 ---
 
 ## Goal
@@ -67,5 +67,6 @@ Cells:
 ## Out of scope
 - Visibly-off cells of these functions (other tasks).
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+## Visible-parity stage
+Decision 0083/0114: this task is done when every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value. Bit-level criteria still unmet then move to a follow-up task filed without the key and with `defer: phase-1b`.
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/4ab2ba98d26c8a5e Calc!A395 `=FISHER((Data!E4/Data!$D2))`: Excel 2.2204460492503126e-16, ours 3.3306690738754686e-16.

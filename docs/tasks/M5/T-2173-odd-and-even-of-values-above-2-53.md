@@ -7,8 +7,8 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-2172]
-defer: phase-1b
 ---
 
 ## Goal
@@ -54,5 +54,6 @@ already 5E+15, so the ODD is the innermost divergence.
 ## Out of scope
 - SERIESSUM (T-2163).
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+## Visible-parity stage
+Decision 0083/0114: this task is done when every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value. Bit-level criteria still unmet then move to a follow-up task filed without the key and with `defer: phase-1b`.
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m5/36133d9266f8ed26 Calc!A144 `=CEILING.PRECISE(AVERAGE(Data!E8,ODD(9999999999999999)))`: Excel 5000000000000000, ours 4999999999999990 (the M5 gen suite's visibly-off cell; ODD is the innermost divergence, Context).

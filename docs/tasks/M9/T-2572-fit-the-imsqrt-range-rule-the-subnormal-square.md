@@ -7,8 +7,8 @@ status: todo
 priority: P3
 size: M
 tier: opus
+campaign: visible
 depends_on: []
-defer: phase-1b
 ---
 
 ## Goal
@@ -31,5 +31,6 @@ candidate modulus algorithms (scaled, flushed squares, long double).
 ## Out of scope
 - IMPOWER (T-1950).
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+## Visible-parity stage
+Decision 0083/0114: this task is done when every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value. Bit-level criteria still unmet then move to a follow-up task filed without the key and with `defer: phase-1b`.
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: probes/eng-imln-modulus-range A79 `=IMLN("1E-154+1E-153i")`: Excel "-352.295519228089+1.47112767430373i", ours "-352.290544062662+1.47112767430373i"; A80 `=IMSQRT("1E-154+1E-153i")`: Excel "2.34467878292635E-77+2.12190513569646E-77i", ours "2.35051862586971E-77+2.12719012092489E-77i".
