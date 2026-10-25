@@ -325,7 +325,7 @@ impl Model {
         }
         // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",
         // `IMABS("1/2/2020")` 43832), except text with an inner minus sign that is not an exponent's:
-        // `IMABS` of "2024-01-01", "1-2", "1-Jan-2020" and "$-5" is `#NUM!` where VALUE reads them,
+        // `IMABS` of "2024-01-01", "1-2-2020", "1-Jan-2020" and "$-5" is `#NUM!` where VALUE reads them,
         // while " -5", "- 5", "1E-3%" and "1,000E-2" are read (probes/eng-inumber-reading A4,
         // probes/eng-inumber-date-boundary column A).
         match parse_complex_number(&value) {
