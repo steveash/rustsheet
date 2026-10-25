@@ -858,8 +858,8 @@ Tasks: T-2714
 Rule: CEILING, CEILING.MATH (both modes), CEILING.PRECISE, ISO.CEILING, ECMA.CEILING, FLOOR, FLOOR.MATH (both modes) and
 FLOOR.PRECISE flush the ratio number/significance to 0 when it is subnormal (|ratio| < 2^-1022), as `/` does ("Subnormal
 results become 0"), so the result is 0. A ratio at 2^-1022 keeps its step. `CEILING.MATH(10^-307,10)` and
-`FLOOR.MATH(-10^-307,100)` are 0, while `CEILING.MATH(1E-307,4)` (ratio 2.5E-308) is 4, `CEILING(2^-1022,1)` is 1 and
-`CEILING(2^-1022,1.0000001)` is 0. The sign and argument checks are unchanged (`CEILING(1E-307,-10)` is still `#NUM!`).
+`FLOOR.MATH(-10^-307,100)` are 0, while `CEILING.MATH(1E-307,4)` (ratio 2.5E-308) is 4, `CEILING(2^-1022,1)` is 1, `FLOOR.MATH(-(2^-1022),1)` is -1
+and `CEILING(2^-1022,1.0000001)` is 0. (Write a negative input as `-(2^-1022)`: `-2^-1022` is `(-2)^-1022`, positive.) The sign and argument checks are unchanged (`CEILING(1E-307,-10)` is still `#NUM!`).
 MROUND already matched (its quotient rounds to 0 there). ROUNDUP does not follow this rule: `ROUNDUP(1E-307,-2)` is 100,
 but `ROUNDUP(2^-1022,0)` is 0 (T-2737, not yet fitted). This settles the calipers goldens `formulas_math_basic` and
 `formulas_datetime` E169, F169, E183 and F183.

@@ -215,6 +215,7 @@ mod tests {
         assert_eq!(snap_ratio(1e-307, 4.5), 0.0);
         assert_eq!(snap_ratio(-1e-300, 1e8), 0.0);
         assert_eq!(snap_ratio(f64::MIN_POSITIVE, 1.0).ceil(), 1.0);
+        assert_eq!(snap_ratio(-f64::MIN_POSITIVE, 1.0).floor(), -1.0);
     }
 
     #[test]
