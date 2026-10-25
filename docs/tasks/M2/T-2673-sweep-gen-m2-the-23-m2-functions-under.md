@@ -3,7 +3,7 @@ id: T-2673
 title: "Sweep gen-m2: the 23 M2 functions under 200 generated outer-call cells"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
