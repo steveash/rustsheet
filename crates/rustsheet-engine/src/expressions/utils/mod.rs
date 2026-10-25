@@ -382,6 +382,15 @@ pub(crate) fn bare_defined_name(name: &str) -> &str {
     name.rsplit_once('!').map_or(name, |(_, bare)| bare)
 }
 
+/// The sheet name a `Sheet!` prefix spells: `'O''B'` is `O'B`, an unquoted prefix is itself.
+/// `None` for a quoted prefix without its closing quote.
+pub(crate) fn unquote_sheet_prefix(prefix: &str) -> Option<String> {
+    match prefix.strip_prefix('\'') {
+        Some(quoted) => Some(quoted.strip_suffix('\'')?.replace("''", "'")),
+        None => Some(prefix.to_string()),
+    }
+}
+
 /// Points the sheet prefix of a qualified defined name (`Data!Local`) at `new_sheet` when the
 /// name is scoped to the renamed sheet (`scope == Some(renamed)`). A name with no prefix, and a
 /// linked workbook's `[1]!Name`, are left as they are. A workbook name read through a sheet
@@ -410,6 +419,14 @@ pub fn quote_name(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unquote_sheet_prefix_undoubles_quotes() {
+        assert_eq!(unquote_sheet_prefix("CoB").as_deref(), Some("CoB"));
+        assert_eq!(unquote_sheet_prefix("'Co A'").as_deref(), Some("Co A"));
+        assert_eq!(unquote_sheet_prefix("'O''B'").as_deref(), Some("O'B"));
+        assert_eq!(unquote_sheet_prefix("'CoB"), None);
+    }
 
     #[test]
     fn test_quote_name() {

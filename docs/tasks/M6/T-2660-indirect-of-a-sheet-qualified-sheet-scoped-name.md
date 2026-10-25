@@ -3,7 +3,7 @@ id: T-2660
 title: "INDIRECT of a sheet-qualified sheet-scoped name (INDIRECT('Sheet!Name')) is #REF!, not the name's cell (calipers pv26_020)"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -29,9 +29,9 @@ INDIRECT with the sheet qualifier, without it from the name's own sheet and from
 quoted sheet names, a workbook-scoped name of the same name, and a name that is a range.
 
 ## Acceptance criteria
-- [ ] A probes case (milestone tag M6) with excel-graph values covers the forms above; the rule
+- [x] A probes case (milestone tag M6) with excel-graph values covers the forms above; the rule
       goes into docs/excel-semantics/references.md.
-- [ ] Ours matches the probe; the pv26_020 and pv26_2_020 cells are not visibly off.
+- [x] Ours matches the probe; the pv26_020 and pv26_2_020 cells are not visibly off.
 - [ ] `make check` green; reviewers approve.
 
 ## Visible-parity stage
@@ -41,3 +41,17 @@ follow-up (decision 0114).
 
 ## Out of scope
 - INDIRECT with R1C1 text (unchanged).
+
+## Outcome
+- The engine already resolved `INDIRECT("<Sheet>!<Name>")` for sheet-scoped names. The pv26_020 and
+  pv26_2_020 `Summary!*17` cells are a **corpus artifact**: the anonymisation renamed the text in
+  `Summary!B17` to `Company0691` but left the sheet it names as `ConAgra` (whose `TargetName` D24
+  is the cached `Company2277`). The shipped workbook has no `Company0691` sheet, so `#REF!` is the
+  right answer for it; the 50 cells stay failing in the ungated calipers suite and are no longer
+  actionable (lookup.md "INDIRECT of `Sheet!Name` text", calipers note).
+- New probe probes/indirect-sheet-scoped-name (43 cells, excel-graph) found two real gaps, fixed
+  in `indirect_defined_name`: an unquoted prefix that would need quotes (`"Co A!tn"`, `"P&L!tn"`,
+  `"O'B!tn"`) is `#REF!`, and a quoted prefix undoubles `''` (`"'O''B'!tn"`). The prefix
+  unquoting is shared with the parser (`unquote_sheet_prefix`).
+- Eval delta: probes +42 passing cells of the new case (42/43); the remaining cell,
+  `INDIRECT("2024!B1")`, is follow-up T-2678.
