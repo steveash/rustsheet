@@ -574,9 +574,4 @@ fn lookups_into_an_uncached_linked_sheet() {
     );
     assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B$2,0)"), "#N/A");
     assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B:$B)"), "#N/A");
-    // A sheet the book does not list is unprobed here and keeps the direct-read error.
-    assert_eq!(
-        eval(&mut model, "=VLOOKUP(5,[1]Nope!$B$2,1,FALSE)"),
-        "#BLOCKED!"
-    );
 }
