@@ -444,7 +444,8 @@ impl Parser {
     /// `=IF(1)`, `=ABS(1,2)`, `ACCRINTM` with three arguments, T-2632) and in a file
     /// (docs/excel-semantics/syntax.md "Minimum argument counts"); stored text keeps it, and the
     /// call evaluates to `#ERROR!`. The counts are the catalog's for every function
-    /// ([`arg_counts::takes_count`]); a lifted function must also end on a whole `repeat` cycle
+    /// ([`arg_counts::takes_count`], which also refuses IFS and LET off whole pairs, T-2682); a
+    /// lifted function must also end on a whole `repeat` cycle
     /// ([`ArgKinds::accepts`]: Excel refuses `=SORTBY(C1:C2,D1:D2,1,E1:E2)` typed, T-2632). A
     /// function the catalog does not list is never refused here.
     fn note_argument_count(&mut self, kind: &Function, name: &str, count: usize) {
