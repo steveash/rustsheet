@@ -36,6 +36,30 @@ an INDIRECT argument (functions/information/mod.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1657, T-1682
 
+## INDIRECT of `Sheet!Name` text: the prefix must be spelled as a formula would spell it
+Rule: `INDIRECT("<Sheet>!<Name>")` reads a name that exists only at that sheet's scope from any
+sheet (`INDIRECT(A1&"!tn")` on Summary, A1 `CoB`, is CoB's `tn`; a range name sums, counts and
+spills; `ISREF` TRUE), sheet and name text case-insensitive. Unprefixed text reads the INDIRECT's
+own sheet scope only: `INDIRECT("tn")` is `#REF!` on a sheet with no `tn` though other sheets
+define one, and `"Summary!tn"` is `#REF!` too. The prefix follows formula quoting: unquoted, the
+sheet name may hold only letters, digits, `_` and `.`, so `"Co A!tn"`, `"P&L!tn"` and `"O'B!tn"`
+are `#REF!` (also with `a1` FALSE) while `"2024!tn"`, `"Q1!tn"` and `"x.y!tn"` resolve; quoted,
+`''` is one quote (`"'O''B'!tn"` resolves) and any sheet name may be quoted (`"'CoB'!tn"`).
+Verified for ASCII sheet names only; unquoted non-ASCII names (`"Données!tn"`) and letter-after-digit
+names (`"1Q!tn"`) are unprobed (the engine accepts them).
+Cell text follows the same quoting for `"Co A!B1"`, `"P&L!B1"` and `"O'B!B1"` (`#REF!`), and
+`"Q1!B1"`, `"x.y!B1"` resolve; `"2024!B1"` (an unquoted all-digit sheet) is `"y2024"` in Excel and
+`#REF!` in the engine (open gap: T-2678).
+Evidence: probes/indirect-sheet-scoped-name (excel-graph, 2026-10-25, T-2660).
+Calipers note: `calipers/pv_goldens/pv26_020` and `pv26_2_020` `Summary!C17:...17` are not evidence
+for this rule: the corpus anonymisation renamed the text in `Summary!B17` to `Company0691` but left
+the sheet it names as `ConAgra` (whose `TargetName`, D24, is the cached `Company2277`), so the
+workbook as shipped has no `Company0691` sheet and `#REF!` is right for it (lookup.md "INDIRECT to
+a sheet that does not exist is #REF!").
+Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2660
+
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
 Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
 `INDIRECT("H2",-1)` = 5, `"TRUE"` text = TRUE), `0` is FALSE, so `INDIRECT("H2",0)` reads "H2" as R1C1

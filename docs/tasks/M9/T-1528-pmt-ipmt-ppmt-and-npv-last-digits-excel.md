@@ -134,6 +134,9 @@ so the candidate orders differ).
 where `pmt - ipmt` gives 0 (PMT -1, IPMT -1). That is exactly `-pv*rate/(P-1)` with P = 2^60, so Excel's first-period
 PPMT is not `PMT - IPMT` but a closed form of its own; PPMT's last digits may follow from that form.
 
+## New evidence (gap triage 2026-10-25)
+NPV's visibly-off cells moved to T-2672 (visible-parity stage), which waits on T-2671's decomposition probe (one-term, zero-padded and two-term NPVs at rates where the candidate orders differ). The new evidence is NPV at IRR's root in ironcalc-calc/FINANCIAL/IRR.xlsx: 12 cells whose rate is bit-exact in ours still differ in the residue (financial.md "NPV's residue at IRR's root is not the double sum"). NPV's last-digit tail stays here.
+
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2257): the gen-m9 cells listed under "T-2257 sweep" in Context are visibly off (wrong
 type, error, text, or a value off by more than half a unit of the 15th significant digit), so the task is in the campaign. Its
