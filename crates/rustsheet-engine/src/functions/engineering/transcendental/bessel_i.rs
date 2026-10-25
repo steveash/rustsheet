@@ -1,14 +1,12 @@
 use super::bessel_excel::{
-    miller_stays_finite, EXCEL_MAX_ORDER, LN_COMPUTED_ZERO, MAX_ORDER, MILLER_RESCALE,
+    miller_stays_finite, EXCEL_MAX_ORDER, LN_COMPUTED_ZERO, MAX_ORDER, MILLER_ACCURACY,
+    MILLER_RESCALE, MILLER_RESCALE_FACTOR,
 };
 use crate::functions::statistical::ln_gamma;
 
-/// The Miller recurrence's accuracy parameter (Numerical Recipes `ACC`).
-const ACCURACY: f64 = 40.0;
-
-/// The even order BESSELI's Miller recurrence starts from, `2 (n + sqrt(ACCURACY n))`.
+/// The even order BESSELI's Miller recurrence starts from, `2 (n + sqrt(MILLER_ACCURACY n))`.
 fn in_start_order(n: i32) -> f64 {
-    2.0 * ((ACCURACY * f64::from(n)).sqrt().trunc() + f64::from(n))
+    2.0 * ((MILLER_ACCURACY * f64::from(n)).sqrt().trunc() + f64::from(n))
 }
 
 /// `BESSELI(x, n)` for `MAX_ORDER < n` without the recurrence: 0 where Excel's is provably 0, else
@@ -163,8 +161,6 @@ pub(crate) fn bessel_i(n: i32, x: f64) -> f64 {
 /// BESSELI's Miller downward recurrence for `n >= 2`, `0 < |x| <= MILLER_RESCALE`, at any order
 /// (the callers cap it).
 pub(super) fn in_miller(n: i32, x: f64) -> f64 {
-    let large_number = MILLER_RESCALE;
-    let small_number = 1e-10;
     let tox = 2.0 / x.abs();
     let mut bip = 0.0;
     let mut bi = 1.0;
@@ -174,10 +170,10 @@ pub(super) fn in_miller(n: i32, x: f64) -> f64 {
     for j in (1..=m).rev() {
         (bip, bi) = (bi, bip + (j as f64) * tox * bi);
         // Prevent overflow
-        if bi.abs() > large_number {
-            result *= small_number;
-            bi *= small_number;
-            bip *= small_number;
+        if bi.abs() > MILLER_RESCALE {
+            result *= MILLER_RESCALE_FACTOR;
+            bi *= MILLER_RESCALE_FACTOR;
+            bip *= MILLER_RESCALE_FACTOR;
         }
         if j == n {
             result = bip;

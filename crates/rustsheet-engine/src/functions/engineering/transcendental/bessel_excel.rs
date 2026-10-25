@@ -29,6 +29,10 @@ pub(crate) const MAX_ORDER: i32 = 100_000;
 pub(super) const EXCEL_MAX_ORDER: i32 = 10_000_000;
 /// The Miller recurrences scale their terms by `1/MILLER_RESCALE` whenever one passes it.
 pub(super) const MILLER_RESCALE: f64 = 1e10;
+/// The Miller recurrences' accuracy parameter (Numerical Recipes `ACC`).
+pub(super) const MILLER_ACCURACY: f64 = 40.0;
+/// The factor of that rescale, `1/MILLER_RESCALE`.
+pub(super) const MILLER_RESCALE_FACTOR: f64 = 1e-10;
 /// ln of a bound below which a Bessel value past `MAX_ORDER` is certainly computed as exactly 0 by
 /// the Miller recurrence (e^-850 is about 1E-369, far enough below the subnormals that the scaled
 /// term at order n is rescaled to 0 before the recurrence ends; `past_cap_rules_agree_with_the_recurrence`).
@@ -265,7 +269,7 @@ fn y1(x: f64) -> f64 {
 /// Miller's downward recurrence for `J_n(|x|)`, `n >= 2`, `0 < |x| <= n`.
 /// The even order BESSELJ's Miller recurrence starts from, as in Numerical Recipes (`ACC = 40`).
 fn jn_start_order(n: i32) -> i32 {
-    2 * ((n + (40.0 * f64::from(n)).sqrt() as i32) / 2)
+    2 * ((n + (MILLER_ACCURACY * f64::from(n)).sqrt() as i32) / 2)
 }
 
 /// Whether a Miller downward recurrence from the order `m` with `tox = 2/|x|` provably never
@@ -287,8 +291,8 @@ pub(super) fn miller_stays_finite(m: f64, tox: f64) -> bool {
 /// `BESSELJ(x, n)` for `MAX_ORDER < n`, `ax = |x|`, without the recurrence: 0 where Excel's is
 /// provably 0 (x = 0, or `ax <= n` with Kapteyn's bound `|J_n(nz)| <= (z e^w / (1 + w))^n`,
 /// `w = sqrt(1 - z^2)`, below `LN_COMPUTED_ZERO` and a recurrence that stays finite), else NaN:
-/// `BESSELJ(9E+4,100001)`, `(1E-3,100001)` and `(0,1E+7)` are 0, `BESSELJ(1E+5,100001)` is
-/// 0.0094462635180178 (probes/t2546-bessel-past-cap).
+/// `BESSELJ(9E+4,100001)`, `(1E-3,100001)` and `(0,1E+7)` are 0 (probes/t2546-bessel-past-cap);
+/// `BESSELJ(1E+5,100001)` is 0.0094462635180178 (probes/m9-bessel-order-limits).
 fn bessel_j_past_cap(n: i32, ax: f64) -> f64 {
     if n > EXCEL_MAX_ORDER {
         return f64::NAN;
@@ -319,11 +323,11 @@ pub(super) fn jn_miller(n: i32, ax: f64) -> f64 {
         let bjm = f64::from(j) * tox * bj - bjp;
         bjp = bj;
         bj = bjm;
-        if bj.abs() > 1e10 {
-            bj *= 1e-10;
-            bjp *= 1e-10;
-            ans *= 1e-10;
-            sum *= 1e-10;
+        if bj.abs() > MILLER_RESCALE {
+            bj *= MILLER_RESCALE_FACTOR;
+            bjp *= MILLER_RESCALE_FACTOR;
+            ans *= MILLER_RESCALE_FACTOR;
+            sum *= MILLER_RESCALE_FACTOR;
         }
         if odd {
             sum += bj;

@@ -71,7 +71,7 @@ fn bessel_k1(x: f64) -> f64 {
 }
 
 pub(crate) fn bessel_k(n: i32, x: f64) -> f64 {
-    if x <= 0.0 || !(0..=EXCEL_MAX_ORDER).contains(&n) {
+    if x.is_nan() || x <= 0.0 || !(0..=EXCEL_MAX_ORDER).contains(&n) {
         return f64::NAN;
     }
 

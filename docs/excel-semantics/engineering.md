@@ -96,8 +96,8 @@ Excel past 100,000 (probes/t2546-bessel-past-cap, 83 cells, excel-graph, 2026-10
   `#NUM!` from x = 709.79, where Excel's I0(x) (the normalizer) overflows, even though I_n(x) underflows (`BESSELI(713,100001)`,
   `(1E+4,100001)`, `(2E+5,100001)`), and `#NUM!` for a tiny x, as J (`BESSELI(2E-5,100001)`; `(5E-5,100001)` is 0: BESSELI
   starts its recurrence at 2(n + sqrt(40n)), twice J's order, so it overflows from a larger x).
-- BESSELK is 0 at every order from x = 705.5, where K0 and K1 are below the normal range, so Excel's upward recurrence starts
-  from 0 (`BESSELK(706,100001)`, `(720,1000)`, `(720,100000)`, `(25019,1E+6)`, `(1E+6,1E+7)`), although K_n(x) itself
+- BESSELK is 0 at every order from 2 on from x = 705.5 (inferred: 705 is `#NUM!` and 706 is 0 at order 100001), where K0 and
+  K1 are below the normal range, so Excel's upward recurrence starts from 0 (orders 0 and 1 are T-2421's) (`BESSELK(706,100001)`, `(720,1000)`, `(720,100000)`, `(25019,1E+6)`, `(1E+6,1E+7)`), although K_n(x) itself
   overflows there; below 705.5 it overflows to `#NUM!` (`BESSELK(705,100001)`, `(700,100001)`, `(2.5,100001)`).
 - BESSELY has its value when x is large (`BESSELY(1E+6,100001)` 0.00011963510780476231, `(2E+5,100001)`,
   `(1E+7,1E+6)`); `(800,100001)` is `#NUM!` (overflow).
