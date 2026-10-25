@@ -3,7 +3,7 @@ id: T-2544
 title: "BIN2DEC, BIN2HEX and BIN2OCT of non-binary text are #NUM!, not #VALUE! (gen-m9, 7 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
