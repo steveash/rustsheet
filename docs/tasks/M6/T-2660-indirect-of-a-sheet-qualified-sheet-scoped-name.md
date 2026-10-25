@@ -3,7 +3,7 @@ id: T-2660
 title: "INDIRECT of a sheet-qualified sheet-scoped name (INDIRECT('Sheet!Name')) is #REF!, not the name's cell (calipers pv26_020)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
