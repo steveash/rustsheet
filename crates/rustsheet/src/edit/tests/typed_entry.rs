@@ -55,6 +55,14 @@ fn typed_calls_with_a_wrong_argument_count_are_refused() {
         ("A11", "=ACCRINTM(DATE(2020,1,1),DATE(2021,1,1),0.1)"),
         ("A12", "=SORTBY({1;2},{2;1},1,{1;1})"),
         ("A13", "=PI(1)"),
+        // One past the maximum, and off-cycle IFS and LET (Graph PATCH 400, T-2682).
+        ("A14", "=IF(TRUE,2,3,4)"),
+        ("A15", "=INDEX((E1:F2,G1:H2),1,1,2,1)"),
+        ("A16", "=IFS(TRUE,1,2)"),
+        ("A17", "=LET(x,1,y,2)"),
+        ("A18", "=FIND(\"a\",\"abc\",1,1)"),
+        ("A19", "=LENB(\"abc\",1)"),
+        ("A20", "=SWITCH(1,2)"),
     ] {
         for input in [Input::Formula(text.into()), Input::Parse(text.into())] {
             let err = wb.set(a1, input).unwrap_err();
@@ -89,6 +97,10 @@ fn typed_calls_with_a_wrong_argument_count_are_refused() {
         ("C7", "=PI()"),
         // INDEX's reference form takes `area_num` (probes/index-area-num-snap).
         ("C8", "=INDEX((E1:F2,G1:H2),1,1,2)"),
+        // Whole IFS and LET pairs (probes/t2682-typed-max-arg-counts A4:A7).
+        ("C9", "=IFS(FALSE,1,TRUE,2)"),
+        ("C10", "=LET(x,1,y,2,x+y)"),
+        ("C11", "=SWITCH(1,2,3,4)"),
     ] {
         wb.set(a1, Input::Formula(text.into())).unwrap();
     }
