@@ -3,7 +3,7 @@ id: T-2416
 title: "Probe BASE of zero with an empty or blank min_length (BASE(0,2,), BASE(0,2,Z99))"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
