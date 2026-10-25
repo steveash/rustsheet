@@ -57,4 +57,7 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
 - Eval: all 15 owned gen-m9 cells pass. `make eval-baseline` removed 14 lines; the 15th, e707d43a891ba9b5 Calc!A82
   (`BIN2OCT` of text), was already fixed by T-2544 (#1756). No regressions. Unit test
   `an_invalid_places_is_num_before_the_number_is_read`, with cells from the task's Excel list only. engineering.md: the
-  "Base conversions" bullet and the T-1816 entry are updated. DELTA and GESTEP stay unprobed, as the task said.
+  "Base conversions" bullet and the T-1816 entry are updated.
+- `fn_dec2bin_misc` (an inherited IronCalc test) pinned `DEC2BIN(TRUE,-1)`, `DEC2OCT(TRUE,-1)` and `DEC2HEX(TRUE,-1)` as
+  ours `#VALUE!`, with the note "Excel here return #NUM! instead". With places checked first, ours now gives Excel's
+  `#NUM!`, so the three assertions were updated to it (this is the T-2545 rule with a boolean number). DELTA and GESTEP stay unprobed, as the task said.

@@ -531,8 +531,6 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
-        // There is not a default value for places
-        // But if there is a value it needs to be positive and less than 11
         // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A33).
         if value.len() > 10 {
             return num_error(cell);

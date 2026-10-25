@@ -289,10 +289,11 @@ fn fn_dec2bin_misc() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"1000000001");
-    // Note Excel here return #NUM! instead
-    assert_eq!(model._get_text("A2"), *"#VALUE!");
-    assert_eq!(model._get_text("A3"), *"#VALUE!");
-    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    // Excel's #NUM!: the invalid places is checked before the boolean number (T-2545; this
+    // test pinned our old #VALUE! with a note that Excel differs).
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
 }
 
 #[test]
