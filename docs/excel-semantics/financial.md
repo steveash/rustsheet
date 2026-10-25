@@ -1577,7 +1577,9 @@ as serial 0) when A is before 1900-01-01 after the extra step.
   to 2024-02-29; settlement 2024-03-15 gives 182 (2024-02-28 to 2024-08-28), 2024-02-28 gives 182 and 2024-02-27 184.
   Frequency 1, maturity 2025-02-28, settlement 2023-06-15: 365. A maturity on a 29 February is a month end
   (`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182), and so is 28 February of a common year (2099-08-31 to
-  2100-02-28, 181). `COUPDAYS(59,36585,4,1)` is 90 (1900-02-28 is not a month end).
+  2100-02-28, 181). `COUPDAYS(59,36585,4,1)` is 90 (1900-02-28 is not a month end). A walk that lands on a 29 February
+  counts from the month end: `COUPDAYS(DATE(2027,11,15),DATE(2028,8,31),2,1)` is 182 (2027-08-31 to 2028-02-29; T-1493
+  had predicted 184), and `COUPDAYS(DATE(2027,11,15),DATE(2028,5,31),4,1)` is 92 (2027-08-29 to 2027-11-29).
 - Before the calendar (T-2640): maturity 2019-03-31 semiannual is 181 for settlements 0 to 89 (1899-09-30 to
   1900-03-30, real days), 91 for 90 (1900-03-30: A = 1900-03-31 is after it, so 1899-09-30 to 1900-03-31 counted as
   serial 91 - 0) and 183 from 91; maturity 2019-05-31 is 152 at settlement 151. Maturity 2019-12-31 or 9999-12-31
@@ -1590,7 +1592,7 @@ Only COUPDAYS shows it: COUPPCD, COUPNCD, COUPDAYBS and COUPDAYSNC keep the end-
 on basis 1 use COUPNCD - COUPPCD, and bases 0, 2, 3 and 4 have fixed lengths.
 Evidence: probes/coupdays-pre1900-control (1,728 cells: settlements on the 15th of every month of 1900, 1901, 1904, 1950,
 2000 and 2018 against 12 schedules), coupdays-pre1900-sweep (6,316 cells: every settlement 0 to 370 on 38 schedules),
-coupdays-pre1900-period (146 cells) (excel-graph, 2026-10-25, T-2640); coup-calendar-edges C1-C21, D1-I12 (T-2486);
+coupdays-pre1900-period (148 cells) (excel-graph, 2026-10-25, T-2640); coup-calendar-edges C1-C21, D1-I12 (T-2486);
 coupdays-feb-month-end (296 cells, T-1493) and date-system-1900-financial-readers E15; gen-m9/b72d952c5f52cb4d Calc!A88
 (`COUPDAYS(5E-05,2958465,2,1)` = 184). The rule reproduces all 7,422 basis-1 COUPDAYS cells of the 1900-system probes.
 Ours: `coupdays_actual` (functions/financial/financial_bonds/coupon_schedule.rs). Before T-2640 it counted

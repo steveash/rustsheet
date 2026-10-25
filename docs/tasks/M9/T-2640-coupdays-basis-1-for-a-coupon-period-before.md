@@ -41,7 +41,7 @@ maturity without the end-of-month rule, takes the first date after settlement (B
 period, landing on a month end only when B is one. If that start is after settlement it steps back once more, and a
 pre-1900 date compares one higher than its serial. That one rule also covers the old 29 February special case, and it
 reproduces all 7,422 basis-1 COUPDAYS cells of the 1900-system probes. New probes: coupdays-pre1900-control (1,728
-cells), -sweep (6,316) and -period (146). financial.md "COUPDAYS basis 1 counts from the chained next coupon" replaces
+cells), -sweep (6,316) and -period (148). financial.md "COUPDAYS basis 1 counts from the chained next coupon" replaces
 "COUPDAYS basis 1 around 29 February" and "COUPDAYS basis 1 for a period before 1900-01-01". `coupdays_actual` is
 rewritten. Eval: gen-m9 known failures 4216 -> 4215 (b72d952c5f52cb4d Calc!A88). Probes 2644 -> 2629 (coup-calendar-edges
 C/D/F cells). The 3 new cases pass in full, with no regressions.

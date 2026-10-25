@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2640: COUPDAYS basis 1 when the coupon period around settlement starts before 1900-01-01. A/B/D/E: settlement 0 (B: 1) to maturities 2019-12-15..31 at frequency 2 (A, B), 4 (D) and 1 (E); C: settlement 0, maturities 2019-06-15..30, frequency 2; F/G: COUPPCD and COUPDAYSNC for column A; H: other settlements in [0,1) and later, 1900 maturities, post-1900 controls for the same month-end schedules.",
+ "description": "T-2640: COUPDAYS basis 1 when the coupon period around settlement starts before 1900-01-01. A/B/D/E: settlement 0 (B: 1) to maturities 2019-12-15..31 at frequency 2 (A, B), 4 (D) and 1 (E); C: settlement 0, maturities 2019-06-15..30, frequency 2; F/G: COUPPCD and COUPDAYSNC for column A; H: other settlements in [0,1) and later, 1900 maturities, post-1900 controls for the same month-end schedules. H29-H30: a chained walk that lands on 2028-02-29.",
  "tags": [
   "M9",
   "probe",
@@ -157,7 +157,9 @@
     "H25": "=COUPDAYSNC(0,DATE(2019,3,31),2,1)",
     "H26": "=COUPDAYBS(0,DATE(2019,3,31),2,1)",
     "H27": "=COUPDAYS(0,DATE(2019,12,31),2,0)",
-    "H28": "=COUPDAYS(0,DATE(2019,9,30),2,1)"
+    "H28": "=COUPDAYS(0,DATE(2019,9,30),2,1)",
+    "H29": "=COUPDAYS(DATE(2027,11,15),DATE(2028,8,31),2,1)",
+    "H30": "=COUPDAYS(DATE(2027,11,15),DATE(2028,5,31),4,1)"
    }
   }
  ],
