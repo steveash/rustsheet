@@ -70,6 +70,10 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 |---|---|---|---|
 | gen-m9/d0854366830dcdee Calc!A298 | `WEIBULL.DIST(7,1E+8,Data!D5,"TRUE")` (beta 0.3: (x/beta)^alpha overflows) | #NUM! | 1 |
 
+T-2491 hand-off (2026-10-25): gen-m9/01523d247594952e Calc!A377 `=SYD(15023,(AVEDEV(Data!A11:A11,{1;2;3;4;5})*F.INV.RT(1E-20,9,3)),33,1)`
+is Excel -1987062826671.328, ours -1987062826671.3352. SYD's operation order cannot produce a 30-ulp gap, so the salvage must be
+about 30 ulp off: the cause is F.INV.RT's far tail (`F.INV.RT(1E-20,9,3)`). This task owns that cell.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

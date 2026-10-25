@@ -1,0 +1,76 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2693: gen-m9/165db58d1540f014 Calc!A65 (EXPON.DIST), where excel-graph shows 0 and the engine keeps a subnormal, with its `(x)=0` companion (decision 0042). Data is that case's Data sheet.",
+ "tags": [
+  "M9",
+  "probe",
+  "subnormal"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": "?b",
+    "A10": 100,
+    "A11": 100,
+    "A12": "#N/A",
+    "A2": true,
+    "A3": 1,
+    "A5": 0.2,
+    "A6": "a*",
+    "A9": 0.1,
+    "B1": true,
+    "B10": 0,
+    "B11": 1,
+    "B12": -0.0001,
+    "B2": 7,
+    "B3": -0.5,
+    "B4": 1000000000000000.0,
+    "B5": 0.2,
+    "B6": "x~*",
+    "B7": 2,
+    "B8": -0.0001,
+    "B9": 100,
+    "C1": 0,
+    "C10": 42,
+    "C11": " x ",
+    "C12": "TRUE",
+    "C2": true,
+    "C3": false,
+    "C4": 0,
+    "C5": true,
+    "C7": -0.5,
+    "C9": 1,
+    "D10": 7,
+    "D12": 0.2,
+    "D2": false,
+    "D3": "?b",
+    "D4": -0.0001,
+    "D5": 100,
+    "D6": "1.5",
+    "D7": 100,
+    "D8": true,
+    "E1": false,
+    "E11": true,
+    "E12": "x",
+    "E4": "ABC",
+    "E5": 0.2,
+    "E6": 0.1,
+    "E8": "a*",
+    "E9": 2
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=EXPON.DIST(ERROR.TYPE(MATCH(\"TRUE\",Data!C5:E6,-1)),(100+MIN(Data!C8,Data!D7:D7,2)),0)",
+    "A2": "=(EXPON.DIST(ERROR.TYPE(MATCH(\"TRUE\",Data!C5:E6,-1)),(100+MIN(Data!C8,Data!D7:D7,2)),0))=0"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Calc!A1",
+  "Calc!A2"
+ ]
+}
