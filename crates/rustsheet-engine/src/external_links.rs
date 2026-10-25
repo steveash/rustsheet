@@ -317,6 +317,23 @@ impl Model {
         CalcResult::Array(self.cached_rows(sheet, area, cell))
     }
 
+    /// Whether `node` is a range of a linked workbook that evaluates to an array of its cached
+    /// cells ([`Self::external_area_value`]): its sheet is cached and it has more than one cell
+    /// within the array bound. Reads nothing, so a caller that only needs to know can skip
+    /// building the array (T-0477).
+    pub(crate) fn is_cached_external_array(&self, node: &Node, cell: CellReferenceIndex) -> bool {
+        if !matches!(node.ungrouped(), Node::WrongRangeKind { .. }) {
+            return false;
+        }
+        let Some(area) = self.cached_external_area(node, cell) else {
+            return false;
+        };
+        let (rows, columns) = area.extent();
+        area.cache.is_some()
+            && (rows, columns) != (1, 1)
+            && check_array_size(rows, columns).is_none()
+    }
+
     /// [`ExternalArea::picked_value`] for an area INDEX or an intersection picked: its cached
     /// cells when the cache holds its sheet (`INDEX([1]Uses!$A$1:$B$3,2,2)` is the cached "7";
     /// fixtures/external-link-cached-ranges).
