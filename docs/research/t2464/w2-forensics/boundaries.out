@@ -1,0 +1,10 @@
+b*x=1   a=2.5 b=3.5 pdf | below: n=513 mean +3.31 sd 0.85 exact 0.00 | above: n=511 mean +3.37 sd 0.82 exact 0.00 | 64 nearest: n=64 mean +3.28 sd 0.90 exact 0.00 || n=64 mean +3.39 sd 0.81 exact 0.00
+b*x=1   a=2.5 b=3.5 cdf | below: n=513 mean +0.74 sd 1.98 exact 0.35 | above: n=511 mean +0.69 sd 1.92 exact 0.35 | 64 nearest: n=64 mean +0.72 sd 2.03 exact 0.30 || n=64 mean +0.78 sd 1.84 exact 0.31
+x=0.95  a=40.0 b=1.03 pdf | below: n=513 mean +17.43 sd 2.40 exact 0.00 | above: n=511 mean +17.32 sd 2.40 exact 0.00 | 64 nearest: n=64 mean +17.75 sd 2.50 exact 0.00 || n=64 mean +17.37 sd 2.27 exact 0.00
+x=0.95  a=40.0 b=1.03 cdf | below: n=513 mean +0.24 sd 2.36 exact 0.30 | above: n=511 mean +0.33 sd 2.29 exact 0.34 | 64 nearest: n=64 mean -0.06 sd 2.47 exact 0.34 || n=64 mean +0.35 sd 2.51 exact 0.31
+mean    a=2.5 b=3.5 pdf | below: n=513 mean +3.41 sd 0.56 exact 0.00 | above: n=511 mean +3.45 sd 0.58 exact 0.00 | 64 nearest: n=64 mean +3.32 sd 0.60 exact 0.00 || n=64 mean +3.42 sd 0.65 exact 0.00
+mean    a=2.5 b=3.5 cdf | below: n=513 mean +0.60 sd 1.78 exact 0.42 | above: n=511 mean +1.46 sd 2.36 exact 0.23 | 64 nearest: n=64 mean +0.66 sd 1.75 exact 0.44 || n=64 mean +1.87 sd 2.07 exact 0.25
+mean    a=0.5 b=0.7 pdf | below: n=513 mean +0.61 sd 0.71 exact 0.53 | above: n=511 mean +0.59 sd 0.69 exact 0.57 | 64 nearest: n=64 mean +0.47 sd 0.70 exact 0.62 || n=64 mean +0.49 sd 0.70 exact 0.61
+mean    a=0.5 b=0.7 cdf | below: n=513 mean +0.65 sd 1.56 exact 0.36 | above: n=511 mean +2.35 sd 1.55 exact 0.16 | 64 nearest: n=64 mean +1.01 sd 1.26 exact 0.42 || n=64 mean +1.96 sd 1.26 exact 0.20
+x=0.5   a=0.5 b=0.7 pdf | below: n=513 mean +0.49 sd 0.73 exact 0.63 | above: n=511 mean +0.52 sd 0.69 exact 0.64 | 64 nearest: n=64 mean +0.47 sd 0.68 exact 0.67 || n=64 mean +0.47 sd 0.68 exact 0.67
+x=0.5   a=0.5 b=0.7 cdf | below: n=513 mean -5.88 sd 1.83 exact 0.00 | above: n=511 mean +0.35 sd 1.10 exact 0.56 | 64 nearest: n=64 mean -5.00 sd 1.14 exact 0.00 || n=64 mean +1.09 sd 0.99 exact 0.36

@@ -1,0 +1,27 @@
+== probe1C8 a=1.5 b=1.0 n=1600 exact-rounded 1247
+   1593  grid  993 runlo 300 runhi 300  EXP txD(am1*LNd) tyE(bm1*lye) L1d D(tx+(d(ty-L)))
+   1593  grid  993 runlo 300 runhi 300  EXP txD(am1*LNd) tyE(bm1*lye) L1d D(tx+(e(ty-L)))
+   1593  grid  993 runlo 300 runhi 300  EXP txD(am1*LNd) tyD(bm1*lye) L1d D(tx+(d(ty-L)))
+   1593  grid  993 runlo 300 runhi 300  EXP txD(am1*LNd) tyD(bm1*lye) L1d D(tx+(e(ty-L)))
+   1593  grid  993 runlo 300 runhi 300  EXP txD(am1*LNd) tyD(bm1*D(lye)) L1d D(tx+(d(ty-L)))
+   1593  grid  993 runlo 300 runhi 300  EXP txD(am1*LNd) tyD(bm1*D(lye)) L1d D(tx+(e(ty-L)))
+   1593  grid  993 runlo 300 runhi 300  EXP txD(am1*LNd) tyD(bm1*LNy) L1d D(tx+(d(ty-L)))
+   1593  grid  993 runlo 300 runhi 300  EXP txD(am1*LNd) tyD(bm1*LNy) L1d D(tx+(e(ty-L)))
+== probe1C2 a=1.0 b=7.0 n=1600 exact-rounded 332
+      3  grid    3 runlo   0 runhi   0  EXP txD(am1*LNd) tyE(bm1*lye) L1d tx+(e(ty-L))
+      3  grid    3 runlo   0 runhi   0  EXP txD(am1*LNd) tyE(bm1*lye) L1d (e(tx+ty))-L
+      3  grid    3 runlo   0 runhi   0  EXP txE(am1*LNd) tyE(bm1*lye) L1d tx+(e(ty-L))
+      3  grid    3 runlo   0 runhi   0  EXP txE(am1*LNd) tyE(bm1*lye) L1d (e(tx+ty))-L
+      3  grid    3 runlo   0 runhi   0  EXP txE(am1*LNe) tyE(bm1*lye) L1d tx+(e(ty-L))
+      3  grid    3 runlo   0 runhi   0  EXP txE(am1*LNe) tyE(bm1*lye) L1d (e(tx+ty))-L
+      3  grid    3 runlo   0 runhi   0  EXP txD(am1*LNe) tyE(bm1*lye) L1d tx+(e(ty-L))
+      3  grid    3 runlo   0 runhi   0  EXP txD(am1*LNe) tyE(bm1*lye) L1d (e(tx+ty))-L
+== probe1C0 a=0.5 b=7.0 n=1600 exact-rounded 101
+   1021  grid  613 runlo 189 runhi 219  EXP txD(am1*LNd) tyD(bm1*D(lye)) L1d tx+(e(ty-L))
+   1021  grid  613 runlo 189 runhi 219  EXP txD(am1*LNd) tyD(bm1*D(lye)) L1d (e(tx+ty))-L
+   1021  grid  613 runlo 189 runhi 219  EXP txE(am1*LNd) tyD(bm1*D(lye)) L1d tx+(e(ty-L))
+   1021  grid  613 runlo 189 runhi 219  EXP txE(am1*LNd) tyD(bm1*D(lye)) L1d (e(tx+ty))-L
+   1021  grid  613 runlo 189 runhi 219  EXP txD(am1*LNe) tyD(bm1*D(lye)) L1d tx+(e(ty-L))
+   1021  grid  613 runlo 189 runhi 219  EXP txD(am1*LNe) tyD(bm1*D(lye)) L1d (e(tx+ty))-L
+   1021  grid  613 runlo 189 runhi 219  EXP txD(am1*LNd) tyD(bm1*D(lye)) L1e tx+(e(ty-L))
+   1021  grid  613 runlo 189 runhi 219  EXP txD(am1*LNd) tyD(bm1*D(lye)) L1e (e(tx+ty))-L

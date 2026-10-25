@@ -1,0 +1,33 @@
+== beta_exact pdf cells by region: n=2035  M1  685/2035 w4 1838 w15 1926  exact-rounded  337/2035 w4 1618 w15 1812
+  a<1,b<1                      M1   14/22   w4   22 w15   22 | even 7/11 odd 7/11 | exact-rounded 7
+  a<1,b<8                      M1  252/368  w4  368 w15  368 | even 126/186 odd 126/182 | exact-rounded 37
+  a<1,b=1                      M1    5/8    w4    7 w15    8 | even 2/4 odd 3/4 | exact-rounded 4
+  a<1,b=8                      M1    8/10   w4   10 w15   10 | even 4/5 odd 4/5 | exact-rounded 0
+  a<1,b>8                      M1  207/562  w4  557 w15  560 | even 101/280 odd 106/282 | exact-rounded 139
+  a<8,b<1                      M1   34/60   w4   60 w15   60 | even 20/30 odd 14/30 | exact-rounded 9
+  a<8,b<8                      M1   50/345  w4  281 w15  323 | even 23/173 odd 27/172 | exact-rounded 50
+  a<8,b=1                      M1    9/11   w4   11 w15   11 | even 5/5 odd 4/6 | exact-rounded 5
+  a<8,b=8                      M1    3/24   w4   13 w15   20 | even 1/11 odd 2/13 | exact-rounded 3
+  a<8,b>8                      M1   63/475  w4  420 w15  438 | even 29/237 odd 34/238 | exact-rounded 63
+  a=1,b<1                      M1    5/6    w4    6 w15    6 | even 2/3 odd 3/3 | exact-rounded 2
+  a=1,b<8                      M1    6/9    w4    9 w15    9 | even 3/5 odd 3/4 | exact-rounded 5
+  a=1,b=1                      M1    3/3    w4    3 w15    3 | even 2/2 odd 1/1 | exact-rounded 3
+  a=1,b>8                      M1    6/9    w4    9 w15    9 | even 3/4 odd 3/5 | exact-rounded 0
+  a>=8,b<1                     M1   10/30   w4   27 w15   28 | even 3/15 odd 7/15 | exact-rounded 2
+  a>=8,b<8                     M1    5/51   w4   18 w15   31 | even 3/27 odd 2/24 | exact-rounded 5
+  a>=8,b=1                     M1    3/9    w4    5 w15    6 | even 2/5 odd 1/4 | exact-rounded 1
+  a>=8,b=8                     M1    1/6    w4    3 w15    4 | even 1/2 odd 0/4 | exact-rounded 1
+  a>=8,b>8                     M1    1/27   w4    9 w15   10 | even 0/13 odd 1/14 | exact-rounded 1
+== beta_exact pdf cells by case: n=2035  M1  685/2035 w4 1838 w15 1926  exact-rounded  337/2035 w4 1618 w15 1812
+  m9-beta-dist-a0p0001         M1   14/27   w4   23 w15   25 | even 7/14 odd 7/13 | exact-rounded 0
+  m9-beta-dist-a0p5            M1   14/27   w4   27 w15   27 | even 6/13 odd 8/14 | exact-rounded 12
+  m9-beta-dist-a1              M1   20/27   w4   27 w15   27 | even 10/14 odd 10/13 | exact-rounded 10
+  m9-beta-dist-a10             M1   11/27   w4   19 w15   22 | even 6/13 odd 5/14 | exact-rounded 5
+  m9-beta-dist-a100            M1    4/27   w4   13 w15   13 | even 1/14 odd 3/13 | exact-rounded 1
+  m9-beta-dist-a2              M1   11/27   w4   21 w15   23 | even 6/13 odd 5/14 | exact-rounded 7
+  m9-beta-dist-a2p5            M1    7/27   w4   18 w15   23 | even 4/14 odd 3/13 | exact-rounded 5
+  m9-beta-dist-a5              M1    7/27   w4   21 w15   24 | even 4/13 odd 3/14 | exact-rounded 4
+  m9-beta-dist-a50             M1    1/27   w4   10 w15   15 | even 1/14 odd 0/13 | exact-rounded 2
+  t0969-beta-density-b         M1  209/640  w4  633 w15  631 | even 98/320 odd 111/320 | exact-rounded 136
+  t0969-beta-prefactor         M1   38/182  w4  115 w15  146 | even 21/91 odd 17/91 | exact-rounded 16
+  t0969-beta-switch            M1  349/970  w4  911 w15  950 | even 173/485 odd 176/485 | exact-rounded 139

@@ -1,0 +1,5 @@
+pairs 190 raw rms 1.487
+u(w)+v(o)        params   39 rms 0.881
+e(w)+e(o)        params   20 rms 1.083
+e(w)+e(o)-e(h)   params  173 rms 0.532
+u(w)+v(o)+k(h)   params  203 rms 0.027

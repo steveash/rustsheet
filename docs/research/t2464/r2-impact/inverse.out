@@ -1,0 +1,9 @@
+crossing search on BEST+log1p, standing pre-T2464 inverse cells with numeric args: {'n': 1207, 'eng_vis': 778, 'fix_hi': 413, 'fix_either': 418, 'broke_hi': 115, 'exact_either': 310}
+  BETA.INV   n  412 eng_vis  243 fixed(either side)  185 broke(hi)   30
+  BETAINV    n   26 eng_vis   10 fixed(either side)   10 broke(hi)    2
+  F.INV      n  137 eng_vis  100 fixed(either side)   43 broke(hi)    6
+  F.INV.RT   n  147 eng_vis  102 fixed(either side)   56 broke(hi)   20
+  FINV       n  102 eng_vis   80 fixed(either side)   47 broke(hi)   10
+  T.INV      n  178 eng_vis   97 fixed(either side)   29 broke(hi)   34
+  T.INV.2T   n  172 eng_vis  125 fixed(either side)   43 broke(hi)    9
+  TINV       n   33 eng_vis   21 fixed(either side)    5 broke(hi)    4

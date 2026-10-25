@@ -1,0 +1,31 @@
+== hold: 10368 rows, 10368 distinct (kernel,k,n,p)
+-- BETA interior (3456)
+   CR           733/2315/2566 of 3456
+   L-lcx/LF1    716/2771/2863 of 3456
+   L-lcxx/LF0   500/2747/2927 of 3456
+   L-ext/LF0    422/2717/2894 of 3456
+-- BIN interior (3456)
+   CR           762/2345/2790 of 3456
+   L-lcx/LF1    794/2763/3129 of 3456
+   L-lcxx/LF0   638/2759/2992 of 3456
+   L-ext/LF0    516/2762/3014 of 3456
+-- NEG (3072)
+   CR           417/1909/2289 of 3072
+   L-lcx/LF1    328/2316/2541 of 3072
+   L-lcxx/LF0   295/2281/2537 of 3072
+   L-ext/LF0    316/2199/2473 of 3072
+-- NEG r=1 (384)
+   CR           114/384/384 of 384
+   L-lcx/LF1    168/384/384 of 384
+   L-lcxx/LF0   168/384/384 of 384
+   L-ext/LF0    168/384/384 of 384
+-- all (10368)
+   CR           2026/6953/8029 of 10368
+   L-lcx/LF1    2006/8234/8917 of 10368
+   L-lcxx/LF0   1601/8171/8840 of 10368
+   L-ext/LF0    1422/8062/8765 of 10368
+-- all, distinct cells only
+   CR           2026/6953/8029 of 10368
+   L-lcx/LF1    2006/8234/8917 of 10368
+   L-lcxx/LF0   1601/8171/8840 of 10368
+   L-ext/LF0    1422/8062/8765 of 10368

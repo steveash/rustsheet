@@ -1,0 +1,12 @@
+xruns-1:0 (2.5,3.5) excel: q-tie coefficient -0.66
+xruns-1:0 (2.5,3.5) model: q-tie coefficient -0.65
+xruns-1:2 (7.3,11.6) excel: q-tie coefficient -1.62
+xruns-1:2 (7.3,11.6) model: q-tie coefficient -1.71
+xruns-1:5 (4,4) excel: q-tie coefficient +0.15
+xruns-1:5 (4,4) model: q-tie coefficient +0.14
+xruns-1:7 (100,120) excel: q-tie coefficient -11.37
+xruns-1:7 (100,120) model: q-tie coefficient -11.36
+xruns-2:3 (2.5,3.5) excel: q-tie coefficient -0.37
+xruns-2:3 (2.5,3.5) model: q-tie coefficient -0.42
+xruns-2:5 (2.5,3.5) excel: q-tie coefficient +0.16
+xruns-2:5 (2.5,3.5) model: q-tie coefficient +0.16

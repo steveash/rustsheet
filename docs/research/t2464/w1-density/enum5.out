@@ -1,0 +1,26 @@
+a<1,b<=8 386
+ 264 | EXP(E) tx=D(am1*LN) ty=D(bm1*ly) g2 | st-a0p0001:9/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:198/294
+ 264 | EXP(E) tx=D(am1*LN) ty=D(bm1*ly) g1 | st-a0p0001:9/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:198/294
+ 264 | EXP(E) tx=D(am1*LN) ty=D(bm1*ly) g0 | st-a0p0001:9/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:198/294
+ 263 | EXP(E) tx=D(am1*LN) ty=e(bm1*ly) g2 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(am1*LN) ty=e(bm1*ly) g1 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(am1*LN) ty=e(bm1*ly) g0 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(am1*LN) ty=e(b*ly)-ly g2 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(am1*LN) ty=e(b*ly)-ly g1 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(am1*LN) ty=e(b*ly)-ly g0 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=e(bm1*ly) g2 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=e(bm1*ly) g1 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=e(bm1*ly) g0 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=e(b*ly)-ly g2 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=e(b*ly)-ly g1 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=e(b*ly)-ly g0 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=D(bm1*ly) g2 | st-a0p0001:8/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:198/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=D(bm1*ly) g1 | st-a0p0001:8/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:198/294
+ 263 | EXP(E) tx=D(a*LN-LN) ty=D(bm1*ly) g0 | st-a0p0001:8/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:198/294
+ 195 | EXP(E) tx=D(LN*am1) e-LN ty=D(bm1*ly) g2 | st-a0p0001:7/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:131/294
+ 195 | EXP(E) tx=D(LN*am1) e-LN ty=D(bm1*ly) g1 | st-a0p0001:7/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:131/294
+ 195 | EXP(E) tx=D(LN*am1) e-LN ty=D(bm1*ly) g0 | st-a0p0001:7/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:131/294
+ 195 | EXP(E) tx=D(D(a*LN)-LN) ty=D(bm1*ly) g2 | st-a0p0001:8/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:130/294
+ 195 | EXP(E) tx=D(D(a*LN)-LN) ty=D(bm1*ly) g1 | st-a0p0001:8/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:130/294
+ 195 | EXP(E) tx=D(D(a*LN)-LN) ty=D(bm1*ly) g0 | st-a0p0001:8/12 -dist-a0p5:7/12 -density-b:41/58 -prefactor:9/10 eta-switch:130/294
+ 194 | EXP(E) tx=D(D(a*LN)-LN) ty=e(bm1*ly) g2 | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:130/294

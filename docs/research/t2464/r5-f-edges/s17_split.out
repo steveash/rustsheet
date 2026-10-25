@@ -1,0 +1,4 @@
+(3,5) R=   50.1 (sd 0.5, n=18)  N= -413.5 (n=12)  psi(K_sd - R)=  413.2  needed -N=  413.5  delta_sd=7.1
+(4,5) R= -455.2 (sd 4990.5, n=18)  N=   13.0 (n=12)  psi(K_sd - R)=  -12.8  needed -N=  -13.0  delta_sd=5.8
+(10,3) R= -114.9 (sd 0.8, n=18)  N= -183.7 (n=12)  psi(K_sd - R)=  183.5  needed -N=  183.7  delta_sd=11.3
+(6,1) R=  108.0 (sd 0.8, n=18)  N=  -96.6 (n=12)  psi(K_sd - R)=   97.0  needed -N=   96.6  delta_sd=0.5

@@ -1,0 +1,31 @@
+a<1,b<=8 386
+ 263 w4  386 | ref EXP(e(tx+e(ty-lnB))) | st-a0p0001:8/12 -dist-a0p5:6/12 -density-b:41/58 -prefactor:9/10 eta-switch:199/294
+ 131 w4  386 | pxe*pye fyl2xp1(-x) ; e chain /Be | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | pxe*pye fyl2x(1-x) ; e chain /Be | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | pxe*pyd fyl2xp1(-x) ; e chain /Be | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:5/10 eta-switch:96/294
+ 131 w4  386 | pxe*pyd fyl2x(1-x) ; e chain /Be | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:5/10 eta-switch:96/294
+ 131 w4  386 | 2^(tx+ty) fyl2xp1(-x) sume ; D(p/Be) | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^(tx+ty) fyl2x(1-x) sume ; D(p/Be) | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^(tx+(ty-L)) fyl2xp1(-x) lnB/ln2 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^(tx+(ty-L)) fyl2xp1(-x) lnB*l2e64 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^(tx+(ty-L)) fyl2x(1-x) lnB/ln2 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^(tx+(ty-L)) fyl2x(1-x) lnB*l2e64 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^((tx-L)+ty) fyl2xp1(-x) lnB/ln2 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^((tx-L)+ty) fyl2xp1(-x) lnB*l2e64 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^((tx-L)+ty) fyl2x(1-x) lnB/ln2 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^((tx-L)+ty) fyl2x(1-x) lnB*l2e64 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^((tx+ty)-L) fyl2xp1(-x) lnB/ln2 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^((tx+ty)-L) fyl2xp1(-x) lnB*l2e64 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^((tx+ty)-L) fyl2x(1-x) lnB/ln2 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 131 w4  386 | 2^((tx+ty)-L) fyl2x(1-x) lnB*l2e64 ine | st-a0p0001:5/12 -dist-a0p5:6/12 -density-b:19/58 -prefactor:9/10 eta-switch:92/294
+ 125 w4  386 | 2^(tx+ty) fyl2xp1(-x) sumd ; D(p/Be) | st-a0p0001:4/12 -dist-a0p5:8/12 -density-b:16/58 -prefactor:6/10 eta-switch:91/294
+ 125 w4  386 | 2^(tx+ty) fyl2x(1-x) sumd ; D(p/Be) | st-a0p0001:4/12 -dist-a0p5:8/12 -density-b:16/58 -prefactor:6/10 eta-switch:91/294
+ 125 w4  386 | 2^((tx+ty)-L) fyl2xp1(-x) lnB/ln2 ind | st-a0p0001:4/12 -dist-a0p5:8/12 -density-b:16/58 -prefactor:6/10 eta-switch:91/294
+ 125 w4  386 | 2^((tx+ty)-L) fyl2xp1(-x) lnB*l2e64 ind | st-a0p0001:4/12 -dist-a0p5:8/12 -density-b:16/58 -prefactor:6/10 eta-switch:91/294
+ 125 w4  386 | 2^((tx+ty)-L) fyl2x(1-x) lnB/ln2 ind | st-a0p0001:4/12 -dist-a0p5:8/12 -density-b:16/58 -prefactor:6/10 eta-switch:91/294
+ 125 w4  386 | 2^((tx+ty)-L) fyl2x(1-x) lnB*l2e64 ind | st-a0p0001:4/12 -dist-a0p5:8/12 -density-b:16/58 -prefactor:6/10 eta-switch:91/294
+ 124 w4  386 | pxe*pye fyl2xp1(-x) ; D(e(px*py)/B) | st-a0p0001:3/12 -dist-a0p5:6/12 -density-b:21/58 -prefactor:8/10 eta-switch:86/294
+ 124 w4  386 | pxe*pye fyl2x(1-x) ; D(e(px*py)/B) | st-a0p0001:3/12 -dist-a0p5:6/12 -density-b:21/58 -prefactor:8/10 eta-switch:86/294
+ 124 w4  386 | 2^(tx+ty) fyl2xp1(-x) sume ; D(p/B) | st-a0p0001:3/12 -dist-a0p5:6/12 -density-b:21/58 -prefactor:8/10 eta-switch:86/294
+ 124 w4  386 | 2^(tx+ty) fyl2x(1-x) sume ; D(p/B) | st-a0p0001:3/12 -dist-a0p5:6/12 -density-b:21/58 -prefactor:8/10 eta-switch:86/294
+ 122 w4  386 | pxe*pyd fyl2xp1(-x) ; D(e(px*py)/B) | st-a0p0001:4/12 -dist-a0p5:4/12 -density-b:19/58 -prefactor:6/10 eta-switch:89/294

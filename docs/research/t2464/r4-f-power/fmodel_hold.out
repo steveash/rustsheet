@@ -1,0 +1,24 @@
+hold      CR    all    14/  117/  294 of  1536 | max(d)>=50    14/  117/  294 of  1536
+hold      m1    all    17/  138/  334 of  1536 | max(d)>=50    17/  138/  334 of  1536
+hold      dd    all    16/  276/  483 of  1536 | max(d)>=50    16/  276/  483 of  1536
+hold      ddl   all    35/  268/  483 of  1536 | max(d)>=50    35/  268/  483 of  1536
+hold      g3    all    16/  264/  420 of  1536 | max(d)>=50    16/  264/  420 of  1536
+hold      dd2   all    18/  159/  368 of  1536 | max(d)>=50    18/  159/  368 of  1536
+hold      dd2l  all    17/  157/  369 of  1536 | max(d)>=50    17/  157/  369 of  1536
+hold      dd2g  all    15/  146/  320 of  1536 | max(d)>=50    15/  146/  320 of  1536
+r3:hold   CR    all   114/  733/ 1060 of  1440 | max(d)>=50     2/   46/  100 of   360 | min(d)<=2    67/  364/  436 of   480 | other    45/  323/  524 of   600
+r3:hold   m1    all   167/  848/ 1145 of  1440 | max(d)>=50     6/   71/  149 of   360 | min(d)<=2   107/  379/  439 of   480 | other    54/  398/  557 of   600
+r3:hold   dd    all   137/  922/ 1144 of  1440 | max(d)>=50     0/   84/  135 of   360 | min(d)<=2    87/  405/  449 of   480 | other    50/  433/  560 of   600
+r3:hold   ddl   all   137/  911/ 1142 of  1440 | max(d)>=50     4/   84/  130 of   360 | min(d)<=2    84/  400/  451 of   480 | other    49/  427/  561 of   600
+r3:hold   g3    all   134/  920/ 1146 of  1440 | max(d)>=50     0/   84/  135 of   360 | min(d)<=2    87/  405/  449 of   480 | other    47/  431/  562 of   600
+r3:hold   dd2   all   144/  859/ 1143 of  1440 | max(d)>=50     8/   69/  150 of   360 | min(d)<=2    86/  388/  436 of   480 | other    50/  402/  557 of   600
+r3:hold   dd2l  all   131/  855/ 1141 of  1440 | max(d)>=50     6/   71/  149 of   360 | min(d)<=2    82/  386/  437 of   480 | other    43/  398/  555 of   600
+r3:hold   dd2g  all   143/  859/ 1143 of  1440 | max(d)>=50     8/   69/  150 of   360 | min(d)<=2    86/  388/  436 of   480 | other    49/  402/  557 of   600
+r3:holdsw CR    all    37/  311/  395 of   400 | max(d)>=50    21/  157/  201 of   204 | min(d)<=2     0/    8/    8 of     8 | other    16/  146/  186 of   188
+r3:holdsw m1    all    60/  371/  400 of   400 | max(d)>=50    36/  187/  204 of   204 | min(d)<=2     0/    8/    8 of     8 | other    24/  176/  188 of   188
+r3:holdsw dd    all    65/  368/  400 of   400 | max(d)>=50    39/  185/  204 of   204 | min(d)<=2     1/    8/    8 of     8 | other    25/  175/  188 of   188
+r3:holdsw ddl   all    67/  368/  400 of   400 | max(d)>=50    38/  185/  204 of   204 | min(d)<=2     1/    8/    8 of     8 | other    28/  175/  188 of   188
+r3:holdsw g3    all    65/  368/  400 of   400 | max(d)>=50    39/  185/  204 of   204 | min(d)<=2     1/    8/    8 of     8 | other    25/  175/  188 of   188
+r3:holdsw dd2   all    57/  375/  400 of   400 | max(d)>=50    37/  190/  204 of   204 | min(d)<=2     0/    8/    8 of     8 | other    20/  177/  188 of   188
+r3:holdsw dd2l  all    60/  371/  400 of   400 | max(d)>=50    36/  187/  204 of   204 | min(d)<=2     0/    8/    8 of     8 | other    24/  176/  188 of   188
+r3:holdsw dd2g  all    57/  375/  400 of   400 | max(d)>=50    37/  190/  204 of   204 | min(d)<=2     0/    8/    8 of     8 | other    20/  177/  188 of   188
