@@ -549,8 +549,7 @@ fn span_of_many_cached_sheets_is_one_walk() {
 }
 
 // A sheet `sheetNames` lists but the cache holds no cell of reads `#BLOCKED!`, yet a lookup over
-// it is `#N/A`; whole columns of a cached sheet are cut to the cache before a lookup reads them
-// (fixtures/external-link-uncached-lookups, excel-graph; T-0457).
+// it is `#N/A` (fixtures/external-link-uncached-lookups, excel-graph; T-0457).
 #[test]
 fn lookups_into_an_uncached_linked_sheet() {
     let mut model = linked();
@@ -580,22 +579,4 @@ fn lookups_into_an_uncached_linked_sheet() {
         eval(&mut model, "=VLOOKUP(5,[1]Nope!$B$2,1,FALSE)"),
         "#BLOCKED!"
     );
-    // Whole columns and rows of a cached sheet.
-    assert_eq!(
-        eval(&mut model, "=VLOOKUP(\"hello!\",[1]Uses!$A:$C,1,FALSE)"),
-        "Hello!"
-    );
-    assert_eq!(
-        eval(&mut model, "=VLOOKUP(99,[1]Uses!$A:$C,2,FALSE)"),
-        "#N/A"
-    );
-    assert_eq!(
-        eval(&mut model, "=VLOOKUP(TRUE,[1]Uses!$A:$Z,26,FALSE)"),
-        "0"
-    );
-    assert_eq!(
-        eval(&mut model, "=HLOOKUP(142,[1]Defines!$2:$2,1,FALSE)"),
-        "142"
-    );
-    assert_eq!(eval(&mut model, "=MATCH(TRUE,[1]Uses!$A:$A,0)"), "2");
 }

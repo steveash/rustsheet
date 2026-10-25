@@ -33,7 +33,7 @@ probes/external-ref-no-link* (no link part at all).
       VLOOKUP, HLOOKUP, MATCH and XLOOKUP over one cell, a small range and a whole column of
       that sheet, found and not found.
 - [x] The quirk is recorded in docs/excel-semantics/references.md; rustsheet matches it, or a
-      DEVIATION entry explains why it cannot (directive 5). Except 3 cells (B13, B38, B44), tracked in T-0472.
+      DEVIATION entry explains why it cannot (directive 5). Except 7 cells, tracked in T-0472 (B13, B38, B44) and T-0474 (B17, B21, B49, B50).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -49,9 +49,11 @@ XLOOKUP) over such a sheet are `#N/A` over one cell, a small range and whole col
 `#N/A`".
 
 Engine: a linked sheet the cache holds no cell of is now uncached (`#BLOCKED!` on direct reads), and
-`Model::external_lookup_table` gives MATCH/VLOOKUP/HLOOKUP tables `#N/A` there and cuts whole columns or rows of a
-cached sheet to the cache's extent (whole-column VLOOKUPs over cached sheets were `#ERROR!`, past the array bound).
+`Model::external_lookup_table` gives MATCH/VLOOKUP/HLOOKUP tables `#N/A` there. A first cut also clipped whole
+columns of a cached sheet to the cache's extent; the Excel-fidelity review showed that moves approximate-search
+midpoints, so it was dropped and filed as **T-0474**.
 
-Eval delta: fixtures 23 -> 24 cases, 48/51 new cells pass, 3 new-coverage known failures (B13 one-cell XLOOKUP, B38
-refreshError `#REF!`, B44 COUNTA), filed as **T-0472**; the cache-scan cost reviewers noted is **T-0473**; corpus-bench known failures 12 -> 11 (56637 now passes);
-0 regressions in every suite (poi and corpus-bench fetched; calipers not fetched).
+Eval delta: fixtures 23 -> 24 cases, 44/51 new cells pass, 7 new-coverage known failures: B13 one-cell XLOOKUP,
+B38 refreshError `#REF!`, B44 COUNTA (**T-0472**) and B17, B21, B49, B50 whole columns of a cached sheet
+(**T-0474**). The cache-scan cost reviewers noted is **T-0473**. 0 regressions in every suite (poi and
+corpus-bench fetched; calipers not fetched).

@@ -420,15 +420,16 @@ fallback and XLOOKUP's if_not_found is returned (`"none"`). The `#N/A` comes bef
 `VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)` is `#N/A`, not `#REF!`. The same holds for a sheet whose
 `sheetData` has `refreshError="1"` and no cells, but a direct read of that one is `#REF!`
 (`ERROR.TYPE('[1]56737'!$B$2)` is 4). Unlike a reference with no link, `COUNTA([1]Sort!$B:$B)` is
-1048576: it counts every blocked cell. Whole columns of a cached sheet are looked up like a range of
-this workbook: `VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)` is the cached "7", `VLOOKUP(6,[1]Uses!$A:$C,3,TRUE)`
+1048576: it counts every blocked cell. Over whole columns of a cached sheet Excel gives: `VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)` is the cached "7", `VLOOKUP(6,[1]Uses!$A:$C,3,TRUE)`
 1, `VLOOKUP(5,[1]Uses!$A:$Z,26,FALSE)` 0 and `VLOOKUP(99,…)` `#N/A`.
 Evidence: fixtures/external-link-uncached-lookups Refs!B1:B51 (excel-graph, 2026-10-25, T-0457).
+Unprobed, do not extrapolate: LOOKUP, XMATCH, INDEX/MATCH and defined names (`[1]!Name`) into such a
+sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part.
 Engine: a sheet the cache holds no cell of is uncached (`cached_sheet`, external_links.rs), so it
 reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and MATCH's table
-`#N/A` on such a sheet and cuts whole columns or rows of a cached sheet to the cache's extent. Not
-yet matched (T-0457 follow-up): the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)` (`#BLOCKED!`, not
-`#N/A`), the refreshError sheet's `#REF!` and COUNTA's count.
+`#N/A` on such a sheet. Not yet matched: the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)`
+(`#BLOCKED!`, not `#N/A`), the refreshError sheet's `#REF!` and COUNTA's count (T-0472), and whole
+columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
 Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
 Tasks: T-0457
 
