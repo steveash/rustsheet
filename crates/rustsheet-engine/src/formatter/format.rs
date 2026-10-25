@@ -421,7 +421,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             {
                 return invalid_date(value_original);
             }
-            let clock = DisplayClock::new(value, fraction_digits, tokens);
+            let clock = DisplayClock::new(value, fraction_digits);
             let (hours, minutes, seconds) = clock.hms;
             let elapsed_fraction = clock.elapsed.as_ref();
             let day_serial = clock.days;
