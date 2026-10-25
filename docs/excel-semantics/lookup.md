@@ -45,6 +45,8 @@ define one, and `"Summary!tn"` is `#REF!` too. The prefix follows formula quotin
 sheet name may hold only letters, digits, `_` and `.`, so `"Co A!tn"`, `"P&L!tn"` and `"O'B!tn"`
 are `#REF!` (also with `a1` FALSE) while `"2024!tn"`, `"Q1!tn"` and `"x.y!tn"` resolve; quoted,
 `''` is one quote (`"'O''B'!tn"` resolves) and any sheet name may be quoted (`"'CoB'!tn"`).
+Verified for ASCII sheet names only; unquoted non-ASCII names (`"Données!tn"`) and letter-after-digit
+names (`"1Q!tn"`) are unprobed (the engine accepts them).
 Cell text follows the same quoting for `"Co A!B1"`, `"P&L!B1"` and `"O'B!B1"` (`#REF!`), and
 `"Q1!B1"`, `"x.y!B1"` resolve; `"2024!B1"` (an unquoted all-digit sheet) is `"y2024"` in Excel and
 `#REF!` in the engine (open gap: T-2678).

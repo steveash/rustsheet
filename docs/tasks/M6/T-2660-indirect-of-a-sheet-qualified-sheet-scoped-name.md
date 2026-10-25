@@ -32,7 +32,7 @@ quoted sheet names, a workbook-scoped name of the same name, and a name that is 
 - [x] A probes case (milestone tag M6) with excel-graph values covers the forms above; the rule
       goes into docs/excel-semantics/references.md.
 - [x] Ours matches the probe; the pv26_020 and pv26_2_020 cells are not visibly off.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Every cell this task owns is within half a unit of the 15th significant digit of Excel's value, or
@@ -55,3 +55,5 @@ follow-up (decision 0114).
   unquoting is shared with the parser (`unquote_sheet_prefix`).
 - Eval delta: probes +42 passing cells of the new case (42/43); the remaining cell,
   `INDIRECT("2024!B1")`, is follow-up T-2678.
+- The probe is tagged `M8`, not M6: defined-name probes take M8 (excel-probe skill, decision 0057),
+  as its sibling probes/indirect-defined-name-text does.

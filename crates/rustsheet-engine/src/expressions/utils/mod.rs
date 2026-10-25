@@ -382,6 +382,16 @@ pub(crate) fn bare_defined_name(name: &str) -> &str {
     name.rsplit_once('!').map_or(name, |(_, bare)| bare)
 }
 
+/// Whether INDIRECT text may spell `prefix` without quotes: letters, digits, '_' and '.' only,
+/// a leading digit and a cell-shaped name included (`2024`, `Q1`, `x.y`; `Co A`, `P&L` and `O'B`
+/// are not). Looser than [`name_needs_quoting`] (probes/indirect-sheet-scoped-name,
+/// docs/excel-semantics/lookup.md "INDIRECT of `Sheet!Name` text").
+pub(crate) fn is_indirect_unquoted_sheet(prefix: &str) -> bool {
+    prefix
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+}
+
 /// The sheet name a `Sheet!` prefix spells: `'O''B'` is `O'B`, an unquoted prefix is itself.
 /// `None` for a quoted prefix without its closing quote.
 pub(crate) fn unquote_sheet_prefix(prefix: &str) -> Option<String> {
@@ -426,6 +436,16 @@ mod tests {
         assert_eq!(unquote_sheet_prefix("'Co A'").as_deref(), Some("Co A"));
         assert_eq!(unquote_sheet_prefix("'O''B'").as_deref(), Some("O'B"));
         assert_eq!(unquote_sheet_prefix("'CoB"), None);
+    }
+
+    #[test]
+    fn indirect_unquoted_sheet_names() {
+        for ok in ["CoB", "2024", "Q1", "x.y", "a_b"] {
+            assert!(is_indirect_unquoted_sheet(ok), "{ok}");
+        }
+        for bad in ["Co A", "P&L", "O'B", "'CoB'"] {
+            assert!(!is_indirect_unquoted_sheet(bad), "{bad}");
+        }
     }
 
     #[test]
