@@ -1155,6 +1155,7 @@ product `RN64(ln 2) * log2 x` from the nearest 53-bit midpoint, in 53-bit ulps, 
 - Consequence for T-2144: no single model can match every fill at the unstable points; fit only on points that agree
   across fills (357 of 380 here); 12 of those 357 (11 old near-ties and one new point, d 2.36e-4 to 2.71e-4) stably return the
   neighbour the model does not, so inside the window Excel can be stable and still differ from the model.
+
 T-2144 fit (docs/research/t1941/ln_guard_bits.py): a k-bit internal product, truncated (tz) or rounded (rn), before RN64
 and RN53. Matches out of the 357 fill-stable points of T-2143's case / the fixture's 4,000 sampled points / its 30 near-ties
 (one research run) / probes/ln-fyl2x-kernel's 253 cells:

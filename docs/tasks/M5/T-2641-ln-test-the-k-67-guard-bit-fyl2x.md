@@ -28,7 +28,7 @@ FYL2X path (`x87_log10.rs`).
 ## Acceptance criteria
 - [ ] numbers.md "LN is FLDLN2 then FYL2X" records k=67 rn's count against the shipped model's on the T-1941 near-tie subset,
       with its losses (points the shipped model matches and k=67 misses).
-- [ ] If k=67 rn loses no fill-stable point anywhere (B231-like points, where Excel's own runs disagree, do not count): `excel_ln`
+- [ ] If k=67 rn loses no fill-stable point anywhere (a losing point is excluded only when a T-2143-style refill of it, three fills, shows Excel's bit varies, as B231's two runs already do): `excel_ln`
       uses it (LN only: LOG10's FYL2X constant differs and was not fitted; the LOG10, GAMMALN and ASINH/ACOSH probes must not
       regress), the fixture is
       regenerated, and the probes/ln-fyl2x-kernel lines it fixes leave eval/baseline/probes.txt. B231's new known failure needs a decision record

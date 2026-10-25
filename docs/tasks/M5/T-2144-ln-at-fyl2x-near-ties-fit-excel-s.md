@@ -42,7 +42,7 @@ of x and says how the probe scores those cells.
       varies between fills. One option is to accept either neighbour, as decision 0042 accepts its pair. The other is
       to keep them as named known failures. The record also says whether these cells count toward any milestone exit.
       No baseline hand-edit and no `--allow-regressions`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The LN cost (perf, T-2016 covers LOG10).
