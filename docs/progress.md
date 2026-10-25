@@ -16,6 +16,26 @@ The eval run of **2026-10-25** at commit `05703c6c` (report.json `run`).
 _Not written yet: the steward writes this block (SPEC-0022)._
 <!-- /progress:judgment -->
 
+<!-- progress:generated since-last-run -->
+## Since the last run
+
+No earlier complete run: this is the first complete row of [docs/progress/history.json](progress/history.json), so there is nothing to compare yet.
+<!-- /progress:generated -->
+
+<!-- progress:generated trends -->
+## Trends
+
+One point per complete run in [docs/progress/history.json](progress/history.json).
+A date with no complete run (a missed or stale day) leaves a gap in the lines; nothing is
+interpolated.
+
+![Functions at ≥ 99.9% within 15 digits](progress/trend-functions.svg)
+
+![Visibly-off attributed cells](progress/trend-visibly-off.svg)
+
+![Open tasks per campaign stage](progress/trend-open-tasks.svg)
+<!-- /progress:generated -->
+
 <!-- progress:generated parity -->
 ## Parity
 
@@ -218,5 +238,15 @@ _Not written yet: the steward writes this block (SPEC-0022)._
   is `GLUE` in crates/rustsheet-eval/src/closeness.rs. corpus-bench values come from LibreOffice,
   not Excel, so its cells are in no function's counts. Known failures are counted from
   eval/baseline/, never edited.
+- **History.** Each run adds one row to docs/progress/history.json, one per date: a
+  rerun on the same date replaces it, except that an incomplete rerun never replaces a complete
+  row of the same date, and older rows are never rewritten. A run is complete when
+  report.json parses, has the `run`, `v15_checkpoint` and tier fields, and skipped no suite. An
+  incomplete run adds a `complete: false` row without measures and rewrites only the status
+  block, marked stale; the rest of the page keeps the last complete run's numbers. "Since the
+  last run" compares against the last complete row; its commits are `git rev-list --count
+  --first-parent <that row's commit>..<this run's commit>`. Its visibly-off and Excel cells are the parity
+  section's attributed cells, and open tasks are todo, in progress or blocked (`scripts/tasks.py
+  stats --json`).
 - **Regenerate** with `make eval && make progress-report`. The same inputs give a byte-identical page.
 <!-- /progress:generated -->
