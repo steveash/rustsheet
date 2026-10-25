@@ -122,7 +122,9 @@ impl Model {
         // existing cells too, which is harmless: a spill can only write where nothing but its
         // own spill cells stands, and those read as empty until it has run.
         // The area itself is a step: its record must be paid for even when it finds nothing, or
-        // a LAMBDA repeating a union over an empty sheet would grow the record without bound.
+        // a LAMBDA repeating a union over an empty sheet would grow the record without bound. A
+        // single area is not charged: it is walked here only while the seen-range cap can pay
+        // for its record ([`Self::walks_sparsely`]), and a rectangle already on record is free.
         self.spend_walk_if(budgeted, 1, cell)?;
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
         let data = &mut self
