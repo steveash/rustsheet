@@ -1054,6 +1054,7 @@ C	probes/t1626-regextest.case.json	31
 C	probes/t1626-replaceb.case.json	27
 C	probes/t1626-rightb.case.json	29
 C	probes/t1626-searchb.case.json	26
+C	probes/t1738-question-first-decimal.case.json	10
 C	probes/t2127-trimrange-blank-shapes.case.json	63
 C	probes/t2189-ifs-omitted-concat.case.json	1
 C	probes/t2189-ifs-omitted-isblank.case.json	1
