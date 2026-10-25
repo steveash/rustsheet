@@ -68,7 +68,7 @@ states it.
 
 ## Outcome
 Probed the rules (probes/coup-calendar-edges, 129 cells, and coup-calendar-edges-1904, 8 cells; excel-graph,
-2026-10-24) and implemented two of them:
+2026-10-25) and implemented two of them:
 - A COUP* settlement or maturity that does not floor to a day of the workbook's calendar is `#NUM!` as it is read
   (`coupon_date_of` in functions/financial/dates.rs; in a 1904 workbook the bound is the 1904 calendar's last day).
 - Each coupon date is the maturity moved back whole periods, its day clamped, so a 29th/30th maturity no longer drifts
@@ -77,7 +77,8 @@ Probed the rules (probes/coup-calendar-edges, 129 cells, and coup-calendar-edges
   probe cells (J1-J14) confirm the change for them too.
 Eval: 11 gen-m9 known failures fixed (5674 -> 5663; 8 of the 20 owned cells had already been fixed before this task);
 probes: two new cases; the new-coverage known-failure lines are the 15 settlement-0 basis-1 COUPDAYS cells (owned by
-T-2632) and the yield-solver last digits of J2, J8 and J12 (NumericClose; the same 1e-15-relative solver gap as the
-other YIELD/ODDFYIELD cells), accepted knowingly against the "no new known-failure lines" criterion. The one owned cell left,
+T-2632) and the yield-solver last digits of J2, J8 and J12 (NumericClose, about 1e-14 relative: the "YIELD stops short
+of PRICE's root" gap), accepted knowingly against the "no new known-failure lines" criterion. Follow-up probe of the
+ODDL* and ACCRINT walks: T-2639. The one owned cell left,
 gen-m9/b72d952c5f52cb4d Calc!A88 (`COUPDAYS(5E-05,2958465,2,1)` = 184), follows an irregular pattern recorded in
 financial.md "COUPDAYS basis 1 for a period before 1900-01-01" and moves to T-2632.
