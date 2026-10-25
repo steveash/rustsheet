@@ -164,6 +164,31 @@ enum Prepared {
     Spec { spec: Box<CaseSpec> },
 }
 
+#[cfg(test)]
+impl CaseResult {
+    /// A passing case `id` of `suite` that checked one passing cell and holds none, for tests to
+    /// fill in with struct-update syntax.
+    pub(crate) fn for_test(id: &str, suite: &str) -> CaseResult {
+        CaseResult {
+            id: id.into(),
+            suite: suite.into(),
+            status: CaseStatus::Pass,
+            message: None,
+            expected_source: String::new(),
+            checked: 1,
+            passed: 1,
+            deviations: 0,
+            skipped_volatile: 0,
+            skipped_add_in: 0,
+            millis: 0,
+            tags: Vec::new(),
+            cells: Vec::new(),
+            text: Vec::new(),
+            defined_names: BTreeMap::new(),
+        }
+    }
+}
+
 struct PreparedCase {
     input: Prepared,
     /// The workbook's file name in the oracle (sidecar `source.workbook_name`; T-2042).
