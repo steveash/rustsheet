@@ -1,30 +1,49 @@
-"""The per-function Excel parity page (T-2041), now part of the progress report (SPEC-0022).
+"""The progress page's `parity` block and the all-functions page (SPEC-0022, T-0081).
 
-Writes `parity.md`, `parity/functions.md` and three SVG charts under the output directory (the
-repository's docs directory; `make progress-report` passes it). The page is generated, never
-hand-edited: regenerate it with `make eval && make progress-report`. T-0081 replaces it with the
-progress page's `parity` section.
+The `parity` block shows the Phase 1 line of report.json `v15_checkpoint` (decisions 0114 and
+0118) with the stricter count as information, the in-scope functions per worst-cell tier, the
+tiers by catalog category, the attributed Excel cells by closeness and the suites. It links three
+SVG charts under `progress/`. `progress/functions.md` lists every in-scope function.
 
-Each in-scope function's scored cells are split into six buckets: bit-exact, within 1 ulp,
-within 2-4 ulp, within half a unit in the 15th significant digit, and visibly off (a number
-further than that, or a wrong type, error or text; decision 0083, T-0061). The function sits in
-the bucket of its worst cell. Its "visibly off" count is the report's blamed count: a cell is held
-against the specialised functions it calls, not the glue (IF, SUM, ...) around them. The Phase 1
-exit (decision 0114) reads each function's share of cells that are not visibly off, at 99.9%.
+Every tier, attribution and Phase 1 verdict is the report's (crates/rustsheet-eval/src/
+attribution.rs, v15_checkpoint.rs). A cell is attributed to a function when that function is its
+formula's only call outside the harness glue list (`GLUE` in closeness.rs); below 20 attributed
+cells a function is placed by every Excel cell that calls it. This module only adds up counts.
 """
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from rustsheet_tools.progress_report.markdown import pct, table
-from rustsheet_tools.progress_report.model import BUCKETS, EN, LE, PHASE1_BANDS, VISIBLE, Parity
-from rustsheet_tools.progress_report.svg import Bar, bar_chart
+from rustsheet_tools.progress_report.markdown import REGENERATE, pct, table
+from rustsheet_tools.progress_report.model import BUCKETS, EN, GE, LE, TIERS, VISIBLE, Parity, Run, Suite
+from rustsheet_tools.progress_report.svg import TIER_PALETTE, Bar, bar_chart
 
-LABELS = {
+ASSETS = "progress"
+FUNCTIONS_PAGE = "functions.md"
+
+# Short tier labels for tables, charts and legends, and what each tier means.
+TIER_LABELS = {
+    "exact": "Exact",
+    "ulp4": f"{LE} 4 ulp",
+    "digits15": "15 digits",
+    "rate999": f"{GE} 99.9%",
+    "rate99": f"{GE} 99%",
+    "below99": "< 99%",
+    "unscored": "Unscored",
+}
+TIER_MEANINGS = {
+    "exact": "every cell bit-exact",
+    "ulp4": "every cell within 4 ulp",
+    "digits15": "every cell within 15 significant digits",
+    "rate999": f"{GE} 99.9% of cells within 15 digits",
+    "rate99": f"99{EN}99.9% of cells within 15 digits",
+    "below99": "< 99% of cells within 15 digits",
+    "unscored": "no scored Excel cell",
+}
+BUCKET_LABELS = {
     "pass": "Bit-exact",
     "ulp1": "Within 1 ulp",
     "ulp4": f"Within 2{EN}4 ulp",
@@ -32,266 +51,238 @@ LABELS = {
     "visible_numeric": "Visibly off: number",
     "visible_other": "Visibly off: type or text",
 }
+# The tiers whose every counted cell shows Excel's 15 digits.
+NEVER_OFF = ("exact", "ulp4", "digits15")
 
 
-def bucket_header() -> list[str]:
-    """The bucket labels, in bucket order, as table column headers."""
-    return [LABELS[b] for b in BUCKETS]
-
-
-def summary_tables(p: Parity) -> str:
-    """The functions-per-bucket and checked-cells-per-bucket tables, with their headings."""
-    fb, cb = p.functions_per_bucket(), p.cells_per_bucket()
-    nf, nc = len(p.functions), sum(cb.values())
-    funcs = table(
-        ["Bucket", "Functions", "Share"],
-        [[LABELS[b], f"{fb[b]:,}", pct(fb[b], nf)] for b in BUCKETS] + [["**All**", f"**{nf:,}**", ""]],
+def phase1_lines(p: Parity) -> str:
+    """The Phase 1 line (decision 0114, counted as decision 0118 says) and the stricter count."""
+    ph = p.phase1
+    verdict = "met" if ph.met else "not met"
+    return (
+        f"**Phase 1 (decision 0114): {verdict}.** **{ph.at_rate:,} of {ph.in_scope:,}** in-scope "
+        f"functions are covered with {GE} 99.9% of their attributed Excel cells within 15 digits "
+        f"(decision 0118; report.json `v15_checkpoint`).\n\n"
+        f"_Information, gates nothing:_ {ph.at_strict_rate:,} of {ph.in_scope:,} functions are "
+        f"covered with {GE} 99.9% of every Excel cell that calls them within 15 digits, each "
+        f"visibly-off cell blamed on every non-glue function of its formula (decision 0088)."
     )
-    cells = table(
-        ["Bucket", "Checked cells", "Share"],
-        [[LABELS[b], f"{cb[b]:,}", pct(cb[b], nc)] for b in BUCKETS] + [["**All**", f"**{nc:,}**", ""]],
+
+
+def tier_table(p: Parity) -> str:
+    """Functions per tier (report.json `tiers`), with the fallbacks placed by every Excel cell."""
+    n = sum(t.functions for t in p.tiers)
+    rows = [
+        [
+            TIER_LABELS[t.tier],
+            TIER_MEANINGS[t.tier],
+            f"{t.functions:,}",
+            pct(t.functions, n),
+            f"{t.fallback:,}",
+        ]
+        for t in p.tiers
+    ]
+    total = ["**All**", "", f"**{n:,}**", "", f"{sum(t.fallback for t in p.tiers):,}"]
+    return table(["Tier", "Meaning", "Functions", "Share", "Placed by every Excel cell"], [*rows, total], 2)
+
+
+def tier_summary(p: Parity) -> str:
+    """One sentence: the functions never visibly off, and those below 99%."""
+    n = sum(t.functions for t in p.tiers)
+    never = sum(p.tier_functions(t) for t in NEVER_OFF)
+    below = p.tier_functions("below99")
+    return (
+        f"**{never:,} of {n:,}** in-scope functions ({pct(never, n)}) never differ from Excel in "
+        f"the 15 digits Excel shows, on every counted cell; **{below:,}** have fewer than 99% of "
+        f"their cells within 15 digits."
     )
-    return f"### Functions per bucket\n\n{funcs}\n\n### Checked cells per bucket\n\n{cells}\n"
-
-
-def phase1_table(p: Parity) -> str:
-    """Functions per Phase 1 band: the share of their cells within 15 digits (decision 0114)."""
-    per, nf = p.functions_per_phase1_band(), len(p.functions)
-    rows = [[label, f"{per[label]:,}", pct(per[label], nf)] for label, _ in PHASE1_BANDS]
-    return table(["Cells within 15 digits", "Functions", "Share"], [*rows, ["**All**", f"**{nf:,}**", ""]])
 
 
 def category_table(p: Parity) -> str:
-    """Functions per catalog category and worst-cell bucket, with the category's cell totals."""
-    rows = []
-    for cat, fs in p.categories():
-        per = Counter(f.worst for f in fs)
-        cells = sum(f.cells for f in fs)
-        exact = sum(f.counts["pass"] for f in fs)
-        rows.append([cat, str(len(fs)), *(str(per[b]) for b in BUCKETS), f"{cells:,}", pct(exact, cells)])
-    return table(["Category", "Functions", *bucket_header(), "Cells", "Cells bit-exact"], rows)
+    """Functions per catalog category and tier."""
+    rows = [[cat, f"{per.total():,}", *(f"{per[t]:,}" for t in TIERS)] for cat, per in p.categories()]
+    return table(["Category", "Functions", *(TIER_LABELS[t] for t in TIERS)], rows)
+
+
+def closeness_table(p: Parity) -> str:
+    """Attributed Excel cells per closeness bucket."""
+    cells = p.attributed_cells()
+    n = sum(cells.values())
+    rows = [[BUCKET_LABELS[b], f"{cells[b]:,}", pct(cells[b], n)] for b in BUCKETS]
+    return table(["Closeness", "Attributed cells", "Share"], [*rows, ["**All**", f"**{n:,}**", ""]])
+
+
+def closeness_summary(p: Parity) -> str:
+    """One sentence: how many attributed cells, and how many of them are visibly off."""
+    cells = p.attributed_cells()
+    n = sum(cells.values())
+    off = sum(cells[b] for b in VISIBLE)
+    return (
+        f"**{n:,}** attributed Excel cells: {pct(cells['pass'], n)} bit-exact, "
+        f"{pct(n - off, n)} within 15 digits, **{off:,}** ({pct(off, n)}) visibly off."
+    )
+
+
+def _known(s: Suite) -> str:
+    if s.known_failures is None:
+        return "no baseline"
+    text = f"; text {s.text_known_failures:,}" if s.text_known_failures else ""
+    return f"{s.known_failures:,}{text}"
 
 
 def suites_table(p: Parity) -> str:
-    """One row per eval suite: cells by harness verdict (every cell, not only catalog calls), and its
-    in-scope visibly-off cells."""
+    """One row per eval suite: cells by harness verdict, in-scope visibly-off cells, workbooks
+    (cases with a scored in-scope cell) by their worst cell, timeouts and known failures."""
     rows = []
     for s in p.suites:
-        v: dict[str, int] = s.get("verdicts", {})
-        cells = int(s["cells"])
-        passed = int(s["cells_passed"])
-        dev = v.get("deviation", 0)
-        ulp, close, unsup = v.get("numeric_ulp", 0), v.get("numeric_close", 0), v.get("unsupported", 0)
-        off = cells - passed - dev - ulp - close - unsup
-        visible = sum(int(s.get("closeness", {}).get(b, 0)) for b in VISIBLE)
+        wb = s.workbooks
         rows.append(
             [
-                str(s["name"]),
-                f"{int(s['cases']):,}",
-                f"{cells:,}",
-                pct(passed, cells - dev),
-                f"{ulp:,}",
-                f"{close:,}",
-                f"{off:,}",
-                f"{visible:,}",
-                f"{dev:,}",
-                f"{unsup:,}",
+                s.name,
+                f"{s.cases:,}",
+                f"{s.cells:,}",
+                pct(min(s.passed, s.scored), s.scored),
+                pct(min(s.passed + s.ulp, s.scored), s.scored),
+                f"{s.visible:,}",
+                f"{wb['scored']:,}",
+                f"{wb['all_exact']:,}",
+                f"{wb['all_within15']:,}",
+                f"{wb['any_visible']:,}",
+                f"{s.timeouts:,}",
+                _known(s),
             ]
         )
-    header = ["Suite", "Cases", "Cells", "Bit-exact", f"{LE}4 ulp", "Within 1e-9", "Off", "Visibly off"]
-    return table([*header, "Deviations", "Unsupported"], rows)
+    header = ["Suite", "Cases", "Cells", "Bit-exact", f"{LE} 4 ulp", "Visibly off", "Workbooks"]
+    return table(
+        [*header, "All exact", "All within 15 digits", "Any visibly off", "Timeouts", "Known failures"], rows
+    )
+
+
+def block(p: Parity) -> str:
+    """The `parity` block of docs/progress.md."""
+    charts = {c.name: f"![{c.title}]({ASSETS}/{c.name})" for c in CHARTS}
+    return f"""## Parity
+
+{phase1_lines(p)}
+
+Each in-scope function is placed by the **worst** of its counted Excel cells, so one off cell
+drops it a tier. A cell counts toward a function only when that function is its formula's only
+call outside the glue list (IF, SUM, INDEX and the like); a function with fewer than 20 such
+cells is placed by every Excel cell that calls it. "Within 15 digits" means Excel's displayed
+value is the same. Every function is listed in [docs/progress/functions.md]({ASSETS}/{FUNCTIONS_PAGE}).
+
+### Functions by worst-cell tier
+
+{tier_summary(p)}
+
+{tier_table(p)}
+
+{charts["tiers.svg"]}
+
+### Tiers by category
+
+{category_table(p)}
+
+{charts["tiers-by-category.svg"]}
+
+### Attributed cells by closeness
+
+{closeness_summary(p)}
+
+{closeness_table(p)}
+
+{charts["cells-by-closeness.svg"]}
+
+### Suites
+
+Every cell each suite scored. Bit-exact and {LE} 4 ulp leave out accepted deviations (decision
+0036). Visibly off and the workbook columns count in-scope cells; a workbook is a case with a
+scored in-scope cell. Known failures are the `F` lines of eval/baseline/&lt;suite&gt;.txt, with the
+displayed-text (`TF`) lines after "text".
+
+{suites_table(p)}"""
+
+
+METHOD = """- **Parity.** Tiers, attribution and the Phase 1 line are the eval report's own (report.json
+  `tiers`, `functions[].tier`, `attribution`, `attributed`, `excel`, and `v15_checkpoint`;
+  crates/rustsheet-eval/src/attribution.rs and v15_checkpoint.rs, decision 0118). The glue list
+  is `GLUE` in crates/rustsheet-eval/src/closeness.rs. corpus-bench values come from LibreOffice,
+  not Excel, so its cells are in no function's counts. Known failures are counted from
+  eval/baseline/, never edited."""
 
 
 def function_table(p: Parity) -> str:
-    """The full per-function table, sorted by name."""
+    """Every in-scope function, sorted by name."""
     rows = [
         [
             f.name,
             f.category,
             f.milestone,
-            f"{f.cells:,}",
-            pct(f.counts["pass"], f.cells),
-            *(f"{f.counts[b]:,}" for b in BUCKETS),
-            f"{f.visible:,}",
-            pct(f.cells - min(f.visible, f.cells), f.cells),
-            LABELS[f.worst],
+            TIER_LABELS[f.tier],
+            "sole call" if f.attribution == "sole" else "every call",
+            f"{f.attributed_cells:,}",
+            f"{f.excel_cells:,}",
+            pct(f.rate_within15, f.rate_cells),
+            "yes" if f.meets_rate else "no",
         ]
         for f in p.functions
     ]
-    header = [
-        "Function",
-        "Category",
-        "Milestone",
-        "Cells",
-        "Bit-exact %",
-        "Exact",
-        "1 ulp",
-        f"2{EN}4 ulp",
-    ]
-    return table(
-        [*header, "15 digits", "Off: number", "Off: type/text", "Visibly off", "Within 15 digits %", "Worst"],
-        rows,
-        right_from=3,
-    )
+    header = ["Function", "Category", "Milestone", "Tier", "Placed by", "Attributed cells", "Excel cells"]
+    return table([*header, "Within 15 digits", "Phase 1 rate met"], rows, right_from=5)
 
 
-def takeaway(p: Parity) -> str:
-    """The landing page's one-paragraph summary."""
-    fb, cb = p.functions_per_bucket(), p.cells_per_bucket()
-    nf, nc = len(p.functions), sum(cb.values())
-    near = fb["ulp1"] + fb["ulp4"] + fb["digits15"]
-    off = sum(fb[b] for b in VISIBLE)
-    blamed = p.blamed()
-    return (
-        f"Of **{nf:,}** implemented functions with Excel-checked cells, **{fb['pass']:,}** "
-        f"({pct(fb['pass'], nf)}) match Excel bit for bit on every checked cell, and **{near:,}** more "
-        f"show the same 15 digits on every cell ({fb['ulp1']:,} within 1 ulp, {fb['ulp4']:,} within 2{EN}4 ulp, "
-        f"{fb['digits15']:,} within half a unit in the 15th digit). **{off:,}** have at least one cell that is "
-        f"visibly off, but {p.near_off():,} of those still match bit for bit on 99% or more of their cells. "
-        f"Blaming each visibly-off cell on the specialised function it calls rather than on glue such as IF "
-        f"or SUM, **{len(blamed):,} in-scope functions are visibly off** "
-        f"({pct(len(blamed), nf)}), over **{p.suite_visible_cells():,}** in-scope cells. Across all "
-        f"**{nc:,}** checked cells (a cell calling several functions counts for each), "
-        f"{pct(cb['pass'], nc)} are bit-exact and {pct(sum(cb[b] for b in VISIBLE), nc)} are visibly off."
-    )
-
-
-def visible_table(p: Parity) -> str:
-    """The functions with visibly-off cells blamed on them, worst first."""
-    rows = [[f.name, f.category, f.milestone, f"{f.visible:,}", f"{f.cells:,}"] for f in p.blamed()]
-    return table(["Function", "Category", "Milestone", "Visibly off", "Cells"], rows, right_from=3)
-
-
-def unscored_note(p: Parity) -> str:
-    """Which in-scope catalog functions have no scored cell yet."""
-    if not p.unscored:
-        return f"All {p.in_scope:,} in-scope catalog functions have checked cells."
-    names = ", ".join(p.unscored) if len(p.unscored) <= 20 else f"{len(p.unscored)} functions"
-    return (
-        f"The catalog has {p.in_scope:,} in-scope functions; {len(p.unscored):,} "
-        f"{'has' if len(p.unscored) == 1 else 'have'} no scored cell yet ({names})."
-    )
-
-
-REGENERATE = "make eval && make progress-report"
-
-
-def landing_page(p: Parity, run_date: str, commit: str) -> str:
-    """The landing page (parity.md): the snapshot header, takeaway, summary tables, charts and how to read them."""
-    charts = "\n\n".join(f"![{c.title}](parity/{c.name})" for c in CHARTS)
+def functions_page(p: Parity, run: Run) -> str:
+    """docs/progress/functions.md: every in-scope function."""
+    commit = f"`{run.commit}`" if run.commit else "an unknown commit"
     return f"""<!-- Generated by `{REGENERATE}` (tools/src/rustsheet_tools/progress_report/). Do not edit. -->
-# RustSheet Excel parity
+# Every in-scope function
 
-Per-function parity with Microsoft 365 Excel, from the eval run of **{run_date}** on `main` at
-**`{commit}`**.
+All {len(p.functions):,} in-scope catalog functions, from the eval run of **{run.date}** at
+{commit}. Back to the [progress page](../progress.md#parity).
 
-{takeaway(p)}
-
-{unscored_note(p)} The full per-function table is in [parity/functions.md](parity/functions.md).
-
-## Summary
-
-{summary_tables(p)}
-## Phase 1 (decision 0114)
-
-Phase 1 exits when every in-scope function has at least 99.9% of its cells within 15 significant
-digits of Excel's, with the right type, error and text. A function's share counts its cells less
-the visibly-off cells blamed on it.
-
-{phase1_table(p)}
-
-## Charts
-
-{charts}
-
-## Visibly off
-
-Functions with visibly-off cells blamed on them, worst first: a number further than half a unit
-in the 15th significant digit of Excel's (or 0 against nonzero), or a wrong type, error or text.
-A cell is blamed on the functions it calls other than glue (IF, SUM, DATE, INDEX and the like;
-`GLUE` in crates/rustsheet-eval/src/closeness.rs), or on its glue when it calls nothing else.
-
-{visible_table(p)}
-
-## By category
-
-Each function counts once, in the bucket of its worst checked cell.
-
-{category_table(p)}
-
-## Suites
-
-The eval suites the counts come from. Suite cells include cells that call no catalog function;
-"{LE}4 ulp" is the harness's `numeric_ulp` verdict, and bit-exact leaves out accepted
-deviations.
-
-{suites_table(p)}
-
-## How to read this
-
-- **Bit-exact**: the same value and type as Excel. Accepted deviations (decision 0036) count here.
-- **Within 1 ulp** / **Within 2{EN}4 ulp**: a number at most 1, or 2 to 4, units in the last place of a
-  64-bit double from Excel's.
-- **Within 15 digits**: further than 4 ulp, but within half a unit in the 15th significant digit of
-  Excel's value, so Excel's 15 displayed digits agree up to rounding (decision 0083).
-- **Visibly off: number**: a number further than that, or 0 against nonzero.
-- **Visibly off: type or text**: a wrong type, error, text or boolean.
-- A function is placed by its **worst** checked cell: one visibly-off cell makes the function
-  visibly off. {p.near_off():,} of those still match bit for bit on 99% or more of their cells.
-- The **Visibly off** column of the function table counts only the cells blamed on that function.
-- A cell that calls several functions counts for each of them, as the eval report's per-function
-  counts do (`functions_in` in crates/rustsheet-eval/src/report.rs).
-- Only catalog functions with `scope: in` (eval/catalog/scope.json) are counted. Cells the engine
-  reports as unsupported are left out.
-
-## Regenerate
-
-```
-{REGENERATE}
-```
-
-The run date and commit are the eval report's own (`run` in report.json).
-"""
-
-
-def functions_page(p: Parity, run_date: str, commit: str) -> str:
-    """The per-function page (parity/functions.md): the full table."""
-    return f"""<!-- Generated by `{REGENERATE}` (tools/src/rustsheet_tools/progress_report/). Do not edit. -->
-# Excel parity by function
-
-Every in-scope function with checked cells, from the eval run of **{run_date}** on `main` at
-**`{commit}`**. Columns are checked cells per bucket; "Worst" is the bucket the function is placed
-in. Back to the [parity summary](../parity.md).
+- **Tier**: the function's worst counted cell (see the progress page).
+- **Placed by**: "sole call" counts the Excel cells whose formula calls it as the only function
+  outside the glue list; "every call", below 20 such cells, counts every Excel cell that calls it.
+- **Attributed cells** / **Excel cells**: its scored sole-call cells, and every scored Excel cell
+  that calls it.
+- **Within 15 digits**: the share of the counted cells within 15 digits, which the Phase 1 rate
+  reads; **Phase 1 rate met**: covered with {GE} 99.9% (report.json `v15_checkpoint`).
 
 {function_table(p)}
 """
 
 
-def _functions_per_bucket_chart(p: Parity, title: str) -> str:
-    fb, nf = p.functions_per_bucket(), len(p.functions)
-    bars = [Bar(LABELS[b], ((b, fb[b]),), f"{fb[b]:,} ({pct(fb[b], nf)})") for b in BUCKETS]
-    return bar_chart(title, f"{nf} functions, each in the bucket of its worst checked cell.", bars)
+def _tiers_chart(p: Parity, title: str) -> str:
+    n = sum(t.functions for t in p.tiers)
+    bars = [
+        Bar(TIER_LABELS[t.tier], ((t.tier, t.functions),), f"{t.functions:,} ({pct(t.functions, n)})")
+        for t in p.tiers
+    ]
+    return bar_chart(
+        title,
+        f"{n} in-scope functions, each in the tier of its worst counted cell.",
+        bars,
+        palette=TIER_PALETTE,
+    )
 
 
-def _functions_per_category_chart(p: Parity, title: str) -> str:
-    bars = []
-    for cat, fs in p.categories():
-        per = Counter(f.worst for f in fs)
-        bars.append(Bar(cat, tuple((b, per[b]) for b in BUCKETS), f"{len(fs)}"))
-    legend = [(b, LABELS[b]) for b in BUCKETS]
-    return bar_chart(title, "Functions per catalog category, stacked by worst-cell bucket.", bars, legend)
+def _tiers_by_category_chart(p: Parity, title: str) -> str:
+    bars = [Bar(cat, tuple((t, per[t]) for t in TIERS), f"{per.total():,}") for cat, per in p.categories()]
+    legend = [(t, TIER_LABELS[t]) for t in TIERS]
+    desc = "In-scope functions per catalog category, stacked by worst-cell tier."
+    return bar_chart(title, desc, bars, legend, palette=TIER_PALETTE)
 
 
-def _cells_per_bucket_chart(p: Parity, title: str) -> str:
-    cb = p.cells_per_bucket()
-    nc = sum(cb.values())
-    bars = [Bar(LABELS[b], ((b, cb[b]),), f"{cb[b]:,} ({pct(cb[b], nc)})") for b in BUCKETS]
-    return bar_chart(title, f"{nc:,} checked cells by closeness to Excel.", bars)
+def _cells_by_closeness_chart(p: Parity, title: str) -> str:
+    cells = p.attributed_cells()
+    n = sum(cells.values())
+    bars = [Bar(BUCKET_LABELS[b], ((b, cells[b]),), f"{cells[b]:,} ({pct(cells[b], n)})") for b in BUCKETS]
+    return bar_chart(title, f"{n:,} attributed Excel cells by closeness to Excel.", bars)
 
 
 @dataclass(frozen=True)
 class Chart:
-    """One SVG chart: its file name under parity/, its title and alt text, and its builder."""
+    """One SVG chart: its file name under progress/, its title and alt text, and its builder."""
 
     name: str
     title: str
@@ -299,26 +290,24 @@ class Chart:
 
 
 CHARTS = (
-    Chart("functions-per-bucket.svg", "Functions per bucket", _functions_per_bucket_chart),
-    Chart("functions-per-category.svg", "Functions per category, by bucket", _functions_per_category_chart),
-    Chart("cells-per-bucket.svg", "Checked cells per bucket", _cells_per_bucket_chart),
+    Chart("tiers.svg", "Functions by worst-cell tier", _tiers_chart),
+    Chart("tiers-by-category.svg", "Tiers by category", _tiers_by_category_chart),
+    Chart("cells-by-closeness.svg", "Attributed cells by closeness", _cells_by_closeness_chart),
 )
 
 
-def charts(p: Parity) -> dict[str, str]:
-    """The SVG charts by file name."""
-    return {c.name: c.build(p, c.title) for c in CHARTS}
+def files(p: Parity, run: Run) -> dict[str, str]:
+    """The files under progress/ by name: the all-functions page and the charts."""
+    return {FUNCTIONS_PAGE: functions_page(p, run), **{c.name: c.build(p, c.title) for c in CHARTS}}
 
 
-def write(p: Parity, out_dir: Path, run_date: str, commit: str) -> list[Path]:
-    """Write the landing page, the per-function page and the charts; return the paths written."""
-    sub = out_dir / "parity"
+def write(rendered: dict[str, str], out_dir: Path) -> list[Path]:
+    """Write `rendered` (from `files`) under `out_dir`/progress/ byte for byte; return the paths."""
+    sub = out_dir / ASSETS
     sub.mkdir(parents=True, exist_ok=True)
-    files = {
-        out_dir / "parity.md": landing_page(p, run_date, commit),
-        sub / "functions.md": functions_page(p, run_date, commit),
-        **{sub / name: svg for name, svg in charts(p).items()},
-    }
-    for path, text in files.items():
-        path.write_text(text, encoding="utf-8")
-    return list(files)
+    written = []
+    for name, text in rendered.items():
+        path = sub / name
+        path.write_bytes(text.encode("utf-8"))
+        written.append(path)
+    return written

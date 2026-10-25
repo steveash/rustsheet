@@ -59,9 +59,10 @@ py-sync:
 py-check: py-sync ## Lint, type-check and test tools/
 	cd tools && $(UV) run ruff check src tests && $(UV) run ruff format --check src tests && $(UV) run mypy && $(UV) run pytest -q
 
-progress-report: py-sync ## Regenerate docs/progress.md (and, until T-0081, docs/parity.md) from eval/runs/latest/ (after make eval; SPEC-0022, decision 0120)
+progress-report: py-sync ## Regenerate docs/progress.md and docs/progress/ from eval/runs/latest/ (after make eval; SPEC-0022, decision 0120)
 	mkdir -p eval/runs/latest
-	$(PY) scripts/tasks.py stats --json > eval/runs/latest/tasks.json.tmp && mv eval/runs/latest/tasks.json.tmp eval/runs/latest/tasks.json
+	$(PY) scripts/tasks.py stats --json > eval/runs/latest/tasks.json.tmp || { rm -f eval/runs/latest/tasks.json.tmp; exit 1; }
+	mv eval/runs/latest/tasks.json.tmp eval/runs/latest/tasks.json
 	cd tools && $(UV) run rustsheet-progress-report --out-dir ../docs
 
 py-bindings: ## Build the PyO3 bindings into bindings/python/.venv and run their tests
