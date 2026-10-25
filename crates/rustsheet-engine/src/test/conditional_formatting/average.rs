@@ -33,7 +33,7 @@ fn below_average_rule() -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model, row: i32) -> bool {
+fn is_red(model: &mut crate::Model, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()
@@ -58,7 +58,7 @@ fn test_above_average_highlights_correct_rows() {
     // mean = 55; values 60-100 (rows 6-10) are above average
     for row in 6..=10 {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} (value {}) should be above average",
             VALUES[row as usize - 1]
         );
@@ -66,7 +66,7 @@ fn test_above_average_highlights_correct_rows() {
     // values 10-50 (rows 1-5) are below average
     for row in 1..=5 {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} (value {}) should not be above average",
             VALUES[row as usize - 1]
         );
@@ -89,9 +89,12 @@ fn test_above_average_boundary_not_included() {
         .unwrap();
     model.evaluate();
 
-    assert!(!is_red(&model, 1), "10 is below mean, should not match");
-    assert!(!is_red(&model, 2), "30 equals the mean, should not match");
-    assert!(is_red(&model, 3), "50 is above the mean, should match");
+    assert!(!is_red(&mut model, 1), "10 is below mean, should not match");
+    assert!(
+        !is_red(&mut model, 2),
+        "30 equals the mean, should not match"
+    );
+    assert!(is_red(&mut model, 3), "50 is above the mean, should match");
 }
 
 #[test]
@@ -119,7 +122,7 @@ fn test_below_average_highlights_correct_rows() {
     // values 10-50 (rows 1-5) are below average
     for row in 1..=5 {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} (value {}) should be below average",
             VALUES[row as usize - 1]
         );
@@ -127,7 +130,7 @@ fn test_below_average_highlights_correct_rows() {
     // values 60-100 (rows 6-10) are above average
     for row in 6..=10 {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} (value {}) should not be below average",
             VALUES[row as usize - 1]
         );
@@ -148,9 +151,15 @@ fn test_below_average_boundary_not_included() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&model, 1), "10 is below the mean, should match");
-    assert!(!is_red(&model, 2), "30 equals the mean, should not match");
-    assert!(!is_red(&model, 3), "50 is above the mean, should not match");
+    assert!(is_red(&mut model, 1), "10 is below the mean, should match");
+    assert!(
+        !is_red(&mut model, 2),
+        "30 equals the mean, should not match"
+    );
+    assert!(
+        !is_red(&mut model, 3),
+        "50 is above the mean, should not match"
+    );
 }
 
 #[test]

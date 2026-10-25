@@ -1,9 +1,10 @@
 //! Excel's argument counts of every catalogued function (`arg_counts.txt`, one `NAME MIN MAX` per
 //! line): the minimum of `eval/catalog/excel-functions.tsv`, and the most of Microsoft's syntax
 //! line (255 when it repeats or does not parse), a non-repeating `eval/catalog/functions.yaml`
-//! signature and a cited override. The engine crate cannot read the catalog at run time, so the
-//! table is a hand-maintained copy that `tools/tests/test_catalog_arity.py` and
-//! `table_matches_catalog` below check against it, failing on any drift (T-2632).
+//! signature, or a cited override in place of both; IFS and LET also take only whole pairs
+//! ([`PAIRED`], T-2682). The engine crate cannot read the catalog at run time, so the table is a
+//! hand-maintained copy that `tools/tests/test_catalog_arity.py` and `table_matches_catalog` below
+//! check against it, failing on any drift (T-2632).
 
 const TABLE: &str = include_str!("arg_counts.txt");
 
@@ -18,10 +19,21 @@ pub(crate) fn min_args(name: &str) -> u8 {
     counts(name).map_or(1, |(min, _)| min)
 }
 
-/// Whether Excel takes a call of `name` with `count` arguments, as far as the counts tell; a
-/// function the catalog does not list takes any count.
+/// Functions outside the lifting table whose arguments come in pairs, each with the remainder of
+/// the counts Excel takes modulo 2: typed, Excel refuses a count that ends inside a pair
+/// (`=IFS(TRUE,1,2)`, `=IFS(FALSE,1,TRUE,2,3)`, `=LET(x,1,y,2)`, `=LET(x,1,y,2,z,3)`: Graph PATCH
+/// 400, 2026-10-25) and takes whole pairs (`=IFS(TRUE,1)`, `=LET(x,1,y,2,x+y)`:
+/// probes/t2682-typed-max-arg-counts A4:A7). T-2682.
+/// Each entry is `(name, count % 2)` for the counts Excel takes.
+const PAIRED: [(&str, usize); 2] = [("IFS", 0), ("LET", 1)];
+
+/// Whether Excel takes a call of `name` with `count` arguments, as far as the counts (and, for
+/// [`PAIRED`] functions, whole pairs) tell; a function the catalog does not list takes any count.
 pub(crate) fn takes_count(name: &str, count: usize) -> bool {
     counts(name).is_none_or(|(min, max)| (usize::from(min)..=usize::from(max)).contains(&count))
+        && PAIRED
+            .iter()
+            .all(|&(paired, remainder)| paired != name || count % 2 == remainder)
 }
 
 /// Every `(name, minimum, maximum)` of the table, in file order.
@@ -79,5 +91,9 @@ mod tests {
         assert!(takes_count("XLOOKUP", 6));
         assert!(!takes_count("ABS", 2));
         assert!(takes_count("NOT.A.FUNCTION", 300));
+        assert!(takes_count("IFS", 4));
+        assert!(!takes_count("IFS", 3));
+        assert!(takes_count("LET", 5));
+        assert!(!takes_count("LET", 4));
     }
 }

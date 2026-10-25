@@ -723,6 +723,15 @@ The same holds for T and for every scalar literal: a legacy `=T(INDEX(5,0,0))`, 
 `=N(INDEX(TRUE,0))`, `=N(INDEX(-5,0,0))` (a negated number), `=N(INDEX(5,,0))` (an empty row reads as 0) and the one-index
 forms are all `#VALUE!`, and `FORMULATEXT` shows them with no `@`.
 Evidence: probes/index-zero-index-scalar-t-n (excel-graph, 2026-10-24, T-2368). Ours: implemented (T-2368).
+The same holds with an empty column or row argument (`=N(INDEX(5,0,))`, `=N(INDEX(5,))`, `=N(INDEX(5,,))`), and for a
+parenthesised scalar, a unary plus, or a negated text or boolean: `=N(INDEX((5),0,0))`, `=T(INDEX(+"a",0,0))`,
+`=N(INDEX(-TRUE,0,0))`, `=T(INDEX(-"a",0,0))`, `=T(INDEX(("a"),0))` and `=N(INDEX((-5),0))` are all `#VALUE!`, and so is
+any chain of groups and minus around the literal (`--5`, `-(5)`, `-("a")`, `((5))`, `(TRUE)`, `(-"a")`, `-(-5)`) and a
+grouped 0 index (`INDEX(5,(0))`); `FORMULATEXT` shows them all with no `@`. FORMULATEXT drops a unary plus on a number (`+5` prints `5`) but keeps one on text
+or a boolean (`+"a"`, `+TRUE`). Ours drops both (T-2723).
+A nonzero index takes the element: `=N(INDEX(5,1))` is 5, and FORMULATEXT shows no `@` (ours shows one, T-2725).
+Evidence: probes/t2601-index-scalar-forms-t-n A1:B28 (excel-graph, 2026-10-25, T-2601). Ours: implemented (T-2601,
+`indexes_a_scalar_whole`), except the kept unary plus (B14, B15; T-2723).
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
@@ -1117,13 +1126,26 @@ Rule (excel-graph, 2026-10-25): `match_mode` 3 is a regular-expression match in 
 - **Search direction:** search_mode -1 finds the last match.
 - **Lifting:** a lifted lookup_value lifts one search per element (`XLOOKUP({"o";"zzz";"^c"},...,"nf",3)` spills 20, "nf",
   10).
-- **Syntax:** the pattern syntax is PCRE2's, as in the REGEX* functions. Lookbehind `(?<=D)og` and a backreference
-  `(d)\1` match in Excel. Ours compiles with the `regex` crate, which refuses both with `#VALUE!` (T-2680).
+- **Syntax:** the pattern syntax is PCRE2's, as in the REGEX* functions. In Excel, lookbehind `(?<=D)og` and `(?<!D)og`,
+  lookahead `o(?=g)` and `d(?!o)`, backreferences `(a)\1\1`, `foo\Kbar`, possessive `a++a` and atomic `(?>a+)a`
+  (both no match on "aaa"), `(?i)`, `\d{2}$`, `[[:digit:]]` and `\p{Lu}` all behave as in REGEXTEST
+  (probes/t2680-lookup-regex-pcre2). Ours runs the lookups on the REGEX* engine since T-2680; before that, the `regex`
+  crate refused the PCRE2-only forms with `#VALUE!`.
+- **DEVIATION (decision 0014):** Excel answers every regex lookup. Ours bounds one XMATCH or XLOOKUP call, all its lifted
+  elements together, by the REGEX* call limits (text.md "Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are
+  capped"): 128 MiB of compile limits, 64 MiB held, and 2^30 units of search work, about 1 s of the slowest searches.
+  Past any of them the whole call is `#ERROR!`, as a REGEX* call is: a lookup whose backtracking pattern scans long texts,
+  `XMATCH("\G(a|a)*b",REPT("a",30000)&SEQUENCE(1000),3)`, is `#ERROR!` (about 0.5 s) where Excel would give `#N/A`, as no
+  text holds a "b" (unprobed). So are the REGEX* parse
+  limits (the 250-level nesting `#VALUE!`, the case-fold budget). Before T-2680 a lookup's regex was bounded only by the
+  lift's cell-visit cap and the `regex` crate's size limit and linear-time search, not by a REGEX*-style budget.
 Evidence: probes/t2669-xlookup-regex-mode (60 cells: XLOOKUP in D beside XMATCH in E), -blanks (14 cells) and -lift (12
-cells: lifting, a blank-cell pattern, PCRE2 syntax); the regex
+cells: lifting, a blank-cell pattern, PCRE2 syntax) and probes/t2680-lookup-regex-pcre2 (45 cells); the regex
 cells of probes/t2656-xmatch-mode-near-integer G7, G21, -rounding G15, t2656-xlookup-mode-snap-edge C8.
-Status: VERIFIED (excel-graph). Ours matches every cell but the two PCRE2-only patterns (-lift G1, G2; T-2680). Before
-T-2669, XLOOKUP rejected mode 3, XMATCH read a boolean as "true", and a non-text lookup value gave no pattern.
+Status: VERIFIED (excel-graph). Ours matches every cell. Before T-2669, XLOOKUP rejected mode 3, XMATCH read a boolean as
+"true", and a non-text lookup value gave no pattern; before T-2680, PCRE2-only syntax was `#VALUE!`.
 Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `regex_scan`, used by XMATCH's
-`linear_search` and XLOOKUP's (xlookup.rs).
+`linear_search` and XLOOKUP's (xlookup.rs). They match on functions/text/regex_functions.rs `LookupRegexes`: one REGEX*
+`PatternCache` per XMATCH or XLOOKUP call, shared by its lifted elements (repeated patterns compile once), so a call has
+one REGEX* call's compile and work budget (SPEC-0013).
 Tasks: T-2669, T-2680

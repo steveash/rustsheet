@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1045 sweep for T-0971/T-0972: GAMMA.DIST(x,500,b,cum) over b, x around the mean, cum.",
+ "description": "T-1045 sweep for T-0971/T-0972: GAMMA.DIST(x,500,b,cum) over b, x around the mean, cum. T-2693 adds `(x)=0` companions (decision 0042) in column B for the cells where excel-graph shows 0 and the engine keeps a subnormal.",
  "tags": [
   "M9",
   "probe",
@@ -35,6 +35,7 @@
     "A20": "=GAMMA.DIST(3000,500,2,FALSE)",
     "A21": "=GAMMA.DIST(50000000,500,1000000,TRUE)",
     "A22": "=GAMMA.DIST(50000000,500,1000000,FALSE)",
+    "B22": "=(GAMMA.DIST(50000000,500,1000000,FALSE))=0",
     "A23": "=GAMMA.DIST(250000000,500,1000000,TRUE)",
     "A24": "=GAMMA.DIST(250000000,500,1000000,FALSE)",
     "A25": "=GAMMA.DIST(500000000,500,1000000,TRUE)",

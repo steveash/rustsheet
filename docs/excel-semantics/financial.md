@@ -191,6 +191,30 @@ Implemented in: `balance_interest`, `accurate_discount` and `discounted_principa
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2490).
 Tasks: T-2490, T-2665, T-2666, T-2667
 
+## DB and SYD argument domains
+Rule: SYD with a negative salvage is `#NUM!` (`SYD(100,-1E-300,10,1)`; salvage 0 is a value), and `life*(life+1)` past the
+double range is `#DIV/0!` (`SYD(100,10,1.3E+154,1)` 1.3846153846153848E-152, `SYD(100,10,1.4E+154,1)` and
+`SYD(1E+300,1,1E+200,1)` `#DIV/0!`); an overflowing numerator is `#NUM!` (`SYD(9E+307,0,10,1)`, `SYD(9E+307,1E+307,3,1)`). DB
+reads life and period as 32-bit integers: a life above 2147483647 is `#NUM!` (`DB(100,10,2147483648,1)`,
+`DB(6912,0,2147483648,2,6)`, `DB(100,10,2147483648,0.5)`; 2147483647 is a value), with one odd exception: from a life of
+4294967295 (u32::MAX) on, with a month other than 12, a period in (0, 1) is the partial last year straight after the first,
+`(cost - cost*rate*month/12) * (rate*(12-month)/12)` (`DB(100,0,4294967296,0.5,8)` 11.111111111111114,
+`DB(100,0,1E+10,0.5,6)` 25, `DB(18057,894,FACT(13),0.5,8)` 0, gen-m9 762cd0e4ec9a7aa9 A200), as if the life saturated in an
+unsigned 32-bit integer and life+1 wrapped to period 0. 4294967294 and 4E+9 are still `#NUM!` there, a month of 12 is
+`#NUM!` (`DB(100,10,4294967296,0.5,12)`), and period 1 is `#NUM!` (`DB(100,10,4294967296,1,8)`); a 64-bit-to-32-bit wrap of
+the life is ruled out (`DB(100,10,6442450944,0.5,8)` is 0), and the threshold is on the untruncated life
+(`DB(100,10,4294967294.5,0.5,8)` is `#NUM!`). Only salvage-0 cells test the formula's value (L7, L8): for any other
+salvage the rate rounds to 0 at such lives. A period above 2147483647 is period 1's value whatever the life
+(`DB(100,10,4,2147483648)` and `DB(100,10,4,1E+200)` are 43.8, `DB(0.01,488,32,1E+200,10)` -0.0033416666666666673,
+`DB(1,0,1E15,1E15)` 1)
+while 2147483647 is past life+1 and `#NUM!`; the life+1 bound is on the period's whole part (`DB(0.01,488,32,33.5,10)` is
+period 33's value; C1 and C2 are one ulp off ours, T-2697). A negative salvage is `#NUM!` for DB too, even at cost 0 (`DB(0,-1,4,1)`, `DB(100,-0.0001,4,1)`), while
+`DB(0,0,4,1)` is 0. So a huge period needs no schedule walk and is not under "DB and VDB period cap".
+Evidence: probes/fin-syd-db-domain (excel-graph, 2026-10-25, T-2491); gen-m9 cells of T-2491.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_db`, `fn_syd`, `DB_INTEGER_MAX`, `DB_WRAPPED_LIFE`, `db_wrapped_last_year` (crates/rustsheet-engine/src/functions/financial/financial_depreciation.rs, T-2491).
+Tasks: T-2491
+
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
 other order tried misses cells where the orders differ in the last bit: `pv*rate*(per/nper-1)` (the old engine form)
@@ -485,6 +509,23 @@ Implemented in: `xirr_bracket` (`WALK_CAP`), `compute_xirr` (`BISECTION_CAP`), `
 `irr_fallback` and `irr_newton_raphson` (functions/financial/financial_util.rs)
 Tasks: T-0916, T-1686
 
+## IRR's guess range
+Rule: IRR's guess must be above -1 and below 2^53, else the call is `#VALUE!`, ahead of the no-sign-change `#NUM!`:
+`IRR({-100,60,60},G)` converges for G = 1E+15, 2^52, 8E+15, 9E+15 and 2^53-1, and is `#VALUE!` for 2^53, 2^60, 2^100,
+1E+16, 1E+20, 2.5E+29 and 1E+300 (as for -1, -2 and -1E+300); `IRR(COUNTBLANK(..),1E+300)` (a scalar flow, otherwise
+`#NUM!`) is `#VALUE!` too. (guess >= 2^53 and 1 + guess = guess are the same test on doubles.) Whether an error in
+the flows comes before the guess bound is unprobed (ours: the flows error, T-2728).
+Other findings of the same probes, not implemented yet: `IRR({-1,X})` is `#NUM!` for X from 1E+13 to 1E+16 (ours
+converges on X-1) except `#DIV/0!` at X = 1E+15, `IRR({-1,1E+300})` is `#DIV/0!`, and over gen-m9 bc04c1f478c9896c's
+Data!A1:D12 IRR is `#DIV/0!` for guesses 0.05, 0.1 and 0.5 (T-2727); `IRR(CELL("row",D2))`, `IRR(CELL("col",D2))` and
+`IRR(LET(x,CELL("row",D2),x))` are `#VALUE!` while `IRR(CELL("row",D2)+0)`, `IRR(CELL("contents",D2))` and `IRR(ROW(D2))`
+are `#NUM!`; `XIRR({-100,10,20,30,40},{0,1,59,60,61},123456789.123)` is 3.4266142457661796E-09 (ours `#NUM!`) and with
+no guess 2.9802322387695314E-09 (ours the negative) (T-2728).
+Evidence: probes/irr-guess-edges, probes/irr-guess-edges-2 (excel-graph, 2026-10-25).
+Status: VERIFIED (excel-graph)
+Implemented in: functions/financial/financial_util.rs (`compute_irr`, `IRR_GUESS_BOUND`)
+Tasks: T-2494, T-2727, T-2728
+
 ## RATE is a secant on the FV residual
 Rule: RATE is a secant, not Newton's method, on the residual f(r) = pv·P + pmt·(k·((P-1)/r)) + fv with
 FV's own evaluation: P = (1+r)^n by Excel's `^` on Excel's `1+r`, k = 1+r for type 1, in exactly that
@@ -608,13 +649,14 @@ Tasks: T-1114, T-1124, T-2329
 ## DB and VDB period cap
 Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_period`, whose integer part is above
 100,000, after Excel's own argument checks, to bound per-call work on untrusted input (CLAUDE.md directive 5). Both
-schedules step one period at a time (`DB(1,0,1E15,1E15)` ran for hours before the cap). Excel's values above the cap are
-unprobed. A lifted DB or VDB call is also charged by each element's period
+schedules step one period at a time (`VDB(1000,0,1E9,0,1E9)` would walk 1E9 periods). Excel's values above the cap are
+unprobed, except that a DB period above 2147483647 is period 1's value and walks nothing ("DB and SYD argument domains";
+`DB(1,0,1E15,1E15)` is 1), so DB's cap covers periods 100,001 to 2147483647. A lifted DB or VDB call is also charged by each element's period
 (SPEC-0011 `ValueWork::Loop`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
 periods lift freely (`ROWS(DB(G25:G26,1000,6,2,7))` is 2 in Excel, probes/fin-argument-modes). Within the cap the values are unchanged.
 Evidence: the cap is a resource limit, not an Excel observation; probes/fin-argument-modes shows Excel lifting DB and VDB.
 Status: DEVIATION (decision 0014)
-Tasks: T-1820
+Tasks: T-1820, T-2491
 Implemented in: functions/financial/financial_depreciation.rs (`MAX_DEPRECIATION_PERIODS`),
 functions/lift/kinds/financial.rs (`DB`, `VDB`)
 
@@ -1068,15 +1110,52 @@ functions/financial/mod.rs (`fn_xnpv`, `fn_xirr`, `fn_fvschedule`, `flow_count`)
 Tasks: T-1843
 
 ## NPV, IRR and MIRR error order
-Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR
+Rule (ours, unprobed for IRR and MIRR): NPV reads its rate before its cash flows, so a rate error wins over an error in
+the flows (probed for NPV: `NPV(NA(),"x")` is #N/A, `NPV("x",NA())` #VALUE!, probes/npv-power-edges-2 A41-A43). IRR
 and MIRR read their flows first, so a flows error wins over a guess or rate error. This is the order the scalar calls
 had before T-1821. When the rate lifts, an error in the flows is every element's error, after that element's own
 earlier arguments. The flows are evaluated once per call, before the elements, even when NPV's rate is an error. The
-values are the same, but it is not Excel's evaluation order, which is unprobed.
-Evidence: none yet (T-2103).
-Status: UNVERIFIED
+values are the same, but it is not Excel's evaluation order, which is unprobed. Among NPV's flows, see "NPV's error
+order".
+Evidence: probes/npv-power-edges-2 A41-A43 (NPV); none yet for IRR and MIRR (T-2103).
+Status: VERIFIED for NPV's rate-first order; UNVERIFIED for IRR and MIRR
 Implemented in: functions/financial/mod.rs (`fn_npv`, `fn_irr`), functions/financial/mirr.rs (`fn_mirr`)
-Tasks: T-1821, T-2103
+Tasks: T-1821, T-2103, T-2493
+
+## NPV's error order
+Rule: among NPV's cash-flow arguments, an error that is a direct argument (an error value, or text that is no number,
+#VALUE!) is the result in argument order, and an error inside a range or an array (a constant one, a computed one or a
+single cell) is the result only when no direct argument errs, whatever the order. Among ranges and arrays the first
+error in argument order wins. Any flow error beats NPV's own `#DIV/0!` ("NPV's discount past the double range").
+`NPV(1.0049,0,{1,2}/0,NA())` is #N/A, `NPV(0.1,{1,#DIV/0!},"x")` #VALUE!, `NPV(0.1,Q1:Q2,NA())` (Q2 `=1/0`) #N/A,
+`NPV(0.1,Q3,NA())` (Q3 `=1/0`) #N/A, `NPV(0.1,{#N/A},#DIV/0!)` #DIV/0!, `NPV(1.0049,0,1/0,NA())` #DIV/0!,
+`NPV(0.1,{1,#DIV/0!},{#N/A})` #DIV/0!, `NPV(0.1,Q1:Q2,{1,#N/A})` #DIV/0!, `NPV(0.1,{1,#N/A},Q1:Q2)` #N/A,
+`NPV(1E+300,1,1,{1,#N/A})` #N/A, `NPV(-1,{1,#N/A},NA())` #N/A. This explains gen-m9 0a957119475760c5 Calc!A255, whose
+third argument is a `TOROW(..)/0` array of #DIV/0! and fourth a RANK.EQ #N/A (Excel #N/A).
+Evidence: probes/npv-power-edges A35-A51, probes/npv-power-edges-2 A31-A48 (excel-graph, 2026-10-25).
+Status: VERIFIED (excel-graph)
+Implemented in: functions/financial/mod.rs (`npv_cash_flows`)
+Tasks: T-2493
+
+## NPV's discount past the double range
+Rule: NPV divides each value by (1+rate)^i built period by period, the power of period i-1 kept as a double. It is
+`#DIV/0!` when 1+rate is 0 (a rate of -1, or one that rounds to -1 such as -1+1E-100, with any flows, 0s included:
+`NPV(-1,0)`, `NPV(-1,{1,2})`) and when the power some later period builds on overflows or falls below the smallest
+normal double. The last period's own power may overflow, and its quotient is not lost: `NPV(1E+300,1,1E+300)` is
+2E-300, `NPV(1E+300,0,0)` 0 and `NPV(1E+200,1,1)` 1E-200, but `NPV(1E+200,1,1,1)`, `NPV(1E+300,0,0,0)`,
+`NPV(1E+300,1,,)` and `NPV(9E+307,1,1,1)` are #DIV/0!; `NPV(1E+154,1,1,1)` is 1E-154 (1E+308 is in range).
+`NPV(1,SEQUENCE(1024))` is 1.9999999999999998 and 1025 flows are #DIV/0!; `NPV(-0.5,<1023 zeros>)` is 0 and
+`NPV(-0.5,<1074 zeros>)` #DIV/0! (consistent with a subnormal power read as 0; 1024 to 1073 zeros unprobed). A
+subnormal quotient is 0 (`NPV(9E+307,1)` is 0), and an overflowing sum is #NUM! (`NPV(-0.5,9E+307,1)`). A rate below
+-1 is fine (`NPV(-2,1,1)` 0, `NPV(-3,1,1,1)` -0.375). The literal 1E+308 in a probe formula makes Excel Online
+reject the workbook ("unsupported features"), so these probes use 9E+307.
+Evidence: probes/npv-power-edges A1-A34, probes/npv-power-edges-2 A1-A30 (excel-graph, 2026-10-25); the T-2436 and
+T-2496 sub-expression probes (NPV(-1,..) and NPV(1E+300,..) cells).
+Ours: matches since T-2493. The power is Rust's `powi` (binary exponentiation), not Excel's running product, so the
+two may disagree right at an overflow or underflow edge (unprobed); the overflowing last quotient is two divisions.
+Status: VERIFIED (excel-graph)
+Implemented in: functions/financial/financial_util.rs (`excel_npv`)
+Tasks: T-2493
 
 ## AMORLINC and AMORDEGRC over many periods
 Rule: Excel walks AMORLINC's and AMORDEGRC's periods one by one in doubles, so a long walk carries every rounding:
@@ -1760,6 +1839,29 @@ Status: VERIFIED (excel-graph)
 Implemented (T-1975): `vdb_no_switch_between` and `vdb_switching_between` in functions/financial/financial_depreciation.rs.
 Tasks: T-1975, T-2185
 
+## VDB, DDB and ACCRINT argument types
+Rule: VDB's `no_switch` reads as a boolean. TRUE, FALSE and a number are taken, and so is the text "TRUE" or "FALSE"
+in any case, typed or from a cell. Any other text is `#VALUE!` before the range checks, numeric text too ("1", "0",
+"x"), and it is `#VALUE!` even with a cost of -1 (`VDB(-1,0,39,1,9,10,"x")`, A63). The value checks then apply:
+`VDB(1,-0.0001,23,1,9,10,"true")` is `#NUM!`. An empty no_switch is FALSE (`VDB(1000,100,10,0,1,2,)` is 200).
+VDB takes a factor of 0. With no declining balance, the switching mode is straight line and no_switch gives 0:
+`VDB(1000,100,10,0,1,0)` is 90, with TRUE it is 0, and `VDB(43478,488,1E+9,3,7,0)` is 0.00017196. A negative
+factor is `#NUM!`. An empty or blank factor is 0, not the default 2: `VDB(1000,100,10,0,1,,FALSE)` and a blank cell
+give 90, and with TRUE they give 0 (A59:A62). VDB also takes an empty window at period 0: `VDB(1000,100,10,0,0)` and `VDB(0.01,5,25,0,0,3)` are 0.
+VDB's factor and DDB's factor read a boolean as 1 or 0 and a numeric text as its number. `DDB(1000,100,10,1,TRUE)` is
+100, also from a TRUE cell. With FALSE (factor 0) it is `#NUM!`, with "3" it is 300, and with "TRUE" it is `#VALUE!`.
+ACCRINT's `calc_method` takes a boolean but no text: "FALSE", "TRUE" and a "FALSE" cell are all `#VALUE!`, before a
+negative rate's `#NUM!`.
+The error-order cells of the T-2257 sweep come from the arguments' own errors. `VDB(-1,0,39,<ACCRINT(..,"FALSE")>,9,10,0)`
+is `#VALUE!` because that ACCRINT is `#VALUE!`, while `VDB(-1,0,39,SQRT(-1),9,10,0)` is `#NUM!` and
+`VDB(73409,713,1/0,SQRT(-1),10)` is `#DIV/0!`, the first error in argument order.
+Evidence: probes/t2492-vdb-ddb-arguments A1:A64 (excel-graph, 2026-10-25, T-2492).
+Implemented (T-2492): `fn_vdb`, `fn_ddb` (functions/financial/financial_depreciation.rs) and `accrint_of`
+(functions/financial/accrint.rs). VDB from a fractional start in the switching mode still misses by value (A1, A9:A12),
+which T-2185 owns. A218 of gen-m9/d0854366830dcdee is `#NUM!` because `PERCENTILE(<TRUE cell>,7)` is `#NUM!` (A55), and ours
+`#VALUE!` (T-2605).
+Status: VERIFIED
+
 ## DB and DDB operation order
 Rule: DB and DDB compute each period's charge in a fixed operation order, and the last bits depend on it.
 - DB: `rate = ROUND(1 - (salvage/cost)^(1/life), 3)`; the first period is `cost * rate * (month/12)` (month over 12
@@ -1981,9 +2083,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   `DB(6912,0,1E+300,2,6)` e168be7f6d3f84c2 A70); `DB(0.01,488,32,1E+200,10)` = -0.0033416666666666673 (762cd0e4ec9a7aa9 A151),
   a first Excel value past the "DB and VDB period cap".
 - VDB takes a text `no_switch`: `VDB(17334,389,36,0.2,9,3,"FALSE")` = 9114.101951893414 (762cd0e4ec9a7aa9 A379); DDB takes a
-  TRUE factor from a cell without `#VALUE!` (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8; the salvage is above
-  the cost there, so whether the boolean is read as 1 or the 0 comes before the factor is read is unprobed); `VDB(43478,488,1E+9,3,7,0)` = 0.00017196
-  (a91bad4e84f49739 A323).
+  TRUE factor from a cell without `#VALUE!` (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8); `VDB(43478,488,1E+9,3,7,0)`
+  = 0.00017196 (a91bad4e84f49739 A323). Now probed and followed ("VDB, DDB and ACCRINT argument types", T-2492).
 - NPER at a rate of 1E-300 is `#DIV/0!` (`NPER(1E-300,-236,2766,945)`, 3c06f9298f65a3ba A148; five more 1E-300 cells in
   T-2698), and at a rate of -1 it is `#NUM!` (`NPER(-1,-31,1)`, 3c06f9298f65a3ba A50, where ours is 0). NPV at a rate
   of -1 is `#DIV/0!` (`NPV(-1,GESTEP(-2.5,-100))`, 3aa168259335be54 A18), EFFECT at a huge nominal rate `#NUM!` (`EFFECT(1E+300,11)`,
