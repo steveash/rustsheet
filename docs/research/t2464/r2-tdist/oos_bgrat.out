@@ -1,0 +1,96 @@
+('BEST', 'all'): 823/1045/1083 of 1124
+('CR', 'all'): 622/1060/1095 of 1124
+('ideal', 'all'): 917/1083/1094 of 1124
+('ideal_toms_lnx', 'all'): 865/1065/1091 of 1124
+('xl', 'all'): 834/1065/1088 of 1124
+('xl+cut', 'all'): 857/1083/1093 of 1124
+('BEST', 'bgrat'): 271/297/305 of 314
+('CR', 'bgrat'): 225/297/307 of 314
+('ideal', 'bgrat'): 302/305/305 of 314
+('ideal_toms_lnx', 'bgrat'): 278/298/305 of 314
+('xl', 'bgrat'): 275/298/305 of 314
+('xl+cut', 'bgrat'): 290/305/305 of 314
+('BEST', 'bgrat', 'be'): 11/12/12 of 12
+('CR', 'bgrat', 'be'): 11/12/12 of 12
+('ideal', 'bgrat', 'be'): 12/12/12 of 12
+('ideal_toms_lnx', 'bgrat', 'be'): 12/12/12 of 12
+('xl', 'bgrat', 'be'): 10/12/12 of 12
+('xl+cut', 'bgrat', 'be'): 9/12/12 of 12
+('BEST', 'bgrat', 'ix'): 61/85/93 of 102
+('CR', 'bgrat', 'ix'): 55/85/95 of 102
+('ideal', 'bgrat', 'ix'): 90/93/93 of 102
+('ideal_toms_lnx', 'bgrat', 'ix'): 67/86/93 of 102
+('xl', 'bgrat', 'ix'): 66/86/93 of 102
+('xl+cut', 'bgrat', 'ix'): 81/93/93 of 102
+('BEST', 'bgrat', 'x29'): 199/200/200 of 200
+('CR', 'bgrat', 'x29'): 159/200/200 of 200
+('ideal', 'bgrat', 'x29'): 200/200/200 of 200
+('ideal_toms_lnx', 'bgrat', 'x29'): 199/200/200 of 200
+('xl', 'bgrat', 'x29'): 199/200/200 of 200
+('xl+cut', 'bgrat', 'x29'): 200/200/200 of 200
+('BEST', 'bgrat/sw'): 6/34/51 of 73
+('CR', 'bgrat/sw'): 7/42/55 of 73
+('ideal', 'bgrat/sw'): 63/64/64 of 73
+('ideal_toms_lnx', 'bgrat/sw'): 41/52/59 of 73
+('xl', 'bgrat/sw'): 11/53/58 of 73
+('xl+cut', 'bgrat/sw'): 17/64/63 of 73
+('BEST', 'bgrat/sw', 'be'): 1/7/8 of 11
+('CR', 'bgrat/sw', 'be'): 0/8/9 of 11
+('ideal', 'bgrat/sw', 'be'): 11/11/11 of 11
+('ideal_toms_lnx', 'bgrat/sw', 'be'): 10/10/10 of 11
+('xl', 'bgrat/sw', 'be'): 0/10/9 of 11
+('xl+cut', 'bgrat/sw', 'be'): 0/11/10 of 11
+('BEST', 'bgrat/sw', 'ix'): 5/27/43 of 62
+('CR', 'bgrat/sw', 'ix'): 7/34/46 of 62
+('ideal', 'bgrat/sw', 'ix'): 52/53/53 of 62
+('ideal_toms_lnx', 'bgrat/sw', 'ix'): 31/42/49 of 62
+('xl', 'bgrat/sw', 'ix'): 11/43/49 of 62
+('xl+cut', 'bgrat/sw', 'ix'): 17/53/53 of 62
+('BEST', 'bup+bgrat'): 521/635/644 of 648
+('CR', 'bup+bgrat'): 374/639/648 of 648
+('ideal', 'bup+bgrat'): 524/636/644 of 648
+('ideal_toms_lnx', 'bup+bgrat'): 521/636/644 of 648
+('xl', 'bup+bgrat'): 523/636/644 of 648
+('xl+cut', 'bup+bgrat'): 523/636/644 of 648
+('BEST', 'bup+bgrat', 'be'): 8/12/12 of 12
+('CR', 'bup+bgrat', 'be'): 4/11/12 of 12
+('ideal', 'bup+bgrat', 'be'): 8/12/12 of 12
+('ideal_toms_lnx', 'bup+bgrat', 'be'): 8/12/12 of 12
+('xl', 'bup+bgrat', 'be'): 8/12/12 of 12
+('xl+cut', 'bup+bgrat', 'be'): 8/12/12 of 12
+('BEST', 'bup+bgrat', 'ix'): 66/108/116 of 120
+('CR', 'bup+bgrat', 'ix'): 43/115/120 of 120
+('ideal', 'bup+bgrat', 'ix'): 69/109/116 of 120
+('ideal_toms_lnx', 'bup+bgrat', 'ix'): 66/109/116 of 120
+('xl', 'bup+bgrat', 'ix'): 67/109/116 of 120
+('xl+cut', 'bup+bgrat', 'ix'): 68/109/116 of 120
+('BEST', 'bup+bgrat', 'w2f'): 6/15/16 of 16
+('CR', 'bup+bgrat', 'w2f'): 0/13/16 of 16
+('ideal', 'bup+bgrat', 'w2f'): 6/15/16 of 16
+('ideal_toms_lnx', 'bup+bgrat', 'w2f'): 6/15/16 of 16
+('xl', 'bup+bgrat', 'w2f'): 6/15/16 of 16
+('xl+cut', 'bup+bgrat', 'w2f'): 6/15/16 of 16
+('BEST', 'bup+bgrat', 'x29'): 441/500/500 of 500
+('CR', 'bup+bgrat', 'x29'): 327/500/500 of 500
+('ideal', 'bup+bgrat', 'x29'): 441/500/500 of 500
+('ideal_toms_lnx', 'bup+bgrat', 'x29'): 441/500/500 of 500
+('xl', 'bup+bgrat', 'x29'): 442/500/500 of 500
+('xl+cut', 'bup+bgrat', 'x29'): 441/500/500 of 500
+('BEST', 'bup+bgrat/sw'): 25/79/83 of 89
+('CR', 'bup+bgrat/sw'): 16/82/85 of 89
+('ideal', 'bup+bgrat/sw'): 28/78/81 of 89
+('ideal_toms_lnx', 'bup+bgrat/sw'): 25/79/83 of 89
+('xl', 'bup+bgrat/sw'): 25/78/81 of 89
+('xl+cut', 'bup+bgrat/sw'): 27/78/81 of 89
+('BEST', 'bup+bgrat/sw', 'be'): 2/5/5 of 5
+('CR', 'bup+bgrat/sw', 'be'): 0/5/5 of 5
+('ideal', 'bup+bgrat/sw', 'be'): 2/5/5 of 5
+('ideal_toms_lnx', 'bup+bgrat/sw', 'be'): 2/5/5 of 5
+('xl', 'bup+bgrat/sw', 'be'): 2/5/5 of 5
+('xl+cut', 'bup+bgrat/sw', 'be'): 2/5/5 of 5
+('BEST', 'bup+bgrat/sw', 'ix'): 23/74/78 of 84
+('CR', 'bup+bgrat/sw', 'ix'): 16/77/80 of 84
+('ideal', 'bup+bgrat/sw', 'ix'): 26/73/76 of 84
+('ideal_toms_lnx', 'bup+bgrat/sw', 'ix'): 23/74/78 of 84
+('xl', 'bup+bgrat/sw', 'ix'): 23/73/76 of 84
+('xl+cut', 'bup+bgrat/sw', 'ix'): 25/73/76 of 84

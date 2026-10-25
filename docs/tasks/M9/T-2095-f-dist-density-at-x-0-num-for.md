@@ -29,6 +29,12 @@ already truncated before the pdf. For x == 0 and not cumulative: return `#NUM!` 
 df1 == 2. Keep today's 0 for df1 > 2: it matches the doc and is the mathematical value. A cumulative
 F.DIST at 0 and F.DIST.RT at 0 do not change (`F.DIST.RT(0,...)` is 1 per the doc).
 
+T-2586 round 5 (2026-10-24) measured every F.DIST(.,FALSE) argument and range rule on an untouched hold-out:
+x = 0 depends on trunc(d1) only (1 → #NUM!, 2 → exactly 1, 3+ → 0, whatever d2 is); a subnormal x is #DIV/0!; the
+result is #NUM! exactly when fl(trunc(d1)·x) overflows; an F below 2^-1022 is 0 (statistics.md "F density is not the
+beta density, R's df or a GAMMALN formula", round 5 block; docs/research/t2464/r5-f-edges/edgemodel.py `rule()`). This
+task can take all of them.
+
 ## Acceptance criteria
 - [x] t1049-fdist A27 and A28 pass in `make eval`. Every other t1049-fdist cell keeps its verdict,
       and no gated baseline (eval/baseline/*.txt) gains an F line.

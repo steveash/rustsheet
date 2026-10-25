@@ -1,0 +1,425 @@
+n=4800; CR all (4800, 367, 3949, 4450)
+   CR old (all a,b>2)                          (300, 25, 168, 240)
+   CR probe1:12.0,20.0                         (300, 14, 147, 216)
+   CR probe1:2.5,3.5                           (300, 26, 286, 296)
+   CR w2:absweep:0                             (300, 45, 257, 300)
+   CR w2:absweep:1                             (300, 36, 281, 300)
+   CR w2:absweep:4                             (300, 41, 258, 300)
+   CR w2:absweep:5                             (300, 65, 296, 300)
+   CR w2:xruns-1:0                             (300, 8, 299, 300)
+   CR w2:xruns-1:1                             (300, 0, 298, 300)
+   CR w2:xruns-1:2                             (300, 11, 282, 300)
+   CR w2:xruns-1:5                             (300, 33, 266, 266)
+   CR w2:xruns-1:7                             (300, 11, 91, 203)
+   CR w2:xruns-2:0                             (300, 32, 300, 300)
+   CR w2:xruns-2:2                             (300, 20, 124, 229)
+   CR w2:xruns-2:3                             (300, 0, 296, 300)
+   CR w2:xruns-2:5                             (300, 0, 300, 300)
+== D LF1 log=xl log1p=cr lgamma=GL: all (4800, 268, 2817, 3803)
+   old (all a,b>2)                          14/300 (e8 o6) w4 85 w15 177
+   probe1:12.0,20.0                         39/300 (e23 o16) w4 109 w15 188
+   probe1:2.5,3.5                           34/300 (e20 o14) w4 246 w15 281
+   w2:absweep:0                             32/300 (e17 o15) w4 222 w15 300
+   w2:absweep:1                             6/300 (e2 o4) w4 75 w15 202
+   w2:absweep:4                             45/300 (e23 o22) w4 241 w15 300
+   w2:absweep:5                             4/300 (e2 o2) w4 32 w15 181
+   w2:xruns-1:0                             2/300 (e0 o2) w4 246 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 289 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 2 w15 132
+   w2:xruns-1:5                             78/300 (e25 o53) w4 296 w15 296
+   w2:xruns-1:7                             4/300 (e1 o3) w4 134 w15 233
+   w2:xruns-2:0                             7/300 (e2 o5) w4 300 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 0 w15 13
+   w2:xruns-2:3                             3/300 (e3 o0) w4 250 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 290 w15 300
+== D LF1 log=xl log1p=cr lgamma=lnG: all (4800, 304, 2973, 4078)
+   old (all a,b>2)                          18/300 (e11 o7) w4 119 w15 204
+   probe1:12.0,20.0                         39/300 (e23 o16) w4 109 w15 188
+   probe1:2.5,3.5                           34/300 (e20 o14) w4 246 w15 281
+   w2:absweep:0                             45/300 (e23 o22) w4 234 w15 300
+   w2:absweep:1                             6/300 (e3 o3) w4 80 w15 210
+   w2:absweep:4                             51/300 (e25 o26) w4 251 w15 300
+   w2:absweep:5                             2/300 (e1 o1) w4 16 w15 164
+   w2:xruns-1:0                             2/300 (e0 o2) w4 246 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 289 w15 300
+   w2:xruns-1:2                             2/300 (e0 o2) w4 54 w15 283
+   w2:xruns-1:5                             78/300 (e25 o53) w4 296 w15 296
+   w2:xruns-1:7                             4/300 (e1 o3) w4 134 w15 233
+   w2:xruns-2:0                             7/300 (e2 o5) w4 300 w15 300
+   w2:xruns-2:2                             13/300 (e6 o7) w4 59 w15 119
+   w2:xruns-2:3                             3/300 (e3 o0) w4 250 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 290 w15 300
+== D LF1 log=xl log1p=ln1 lgamma=GL: all (4800, 267, 2822, 3804)
+   old (all a,b>2)                          14/300 (e8 o6) w4 85 w15 177
+   probe1:12.0,20.0                         39/300 (e23 o16) w4 109 w15 188
+   probe1:2.5,3.5                           34/300 (e20 o14) w4 246 w15 281
+   w2:absweep:0                             33/300 (e20 o13) w4 223 w15 300
+   w2:absweep:1                             7/300 (e2 o5) w4 74 w15 203
+   w2:absweep:4                             42/300 (e22 o20) w4 244 w15 300
+   w2:absweep:5                             4/300 (e2 o2) w4 34 w15 181
+   w2:xruns-1:0                             2/300 (e0 o2) w4 246 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 289 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 2 w15 132
+   w2:xruns-1:5                             78/300 (e25 o53) w4 296 w15 296
+   w2:xruns-1:7                             4/300 (e1 o3) w4 134 w15 233
+   w2:xruns-2:0                             7/300 (e2 o5) w4 300 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 0 w15 13
+   w2:xruns-2:3                             3/300 (e3 o0) w4 250 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 290 w15 300
+== D LF1 log=xl log1p=ln1 lgamma=lnG: all (4800, 313, 2971, 4077)
+   old (all a,b>2)                          18/300 (e11 o7) w4 119 w15 204
+   probe1:12.0,20.0                         39/300 (e23 o16) w4 109 w15 188
+   probe1:2.5,3.5                           34/300 (e20 o14) w4 246 w15 281
+   w2:absweep:0                             50/300 (e27 o23) w4 234 w15 300
+   w2:absweep:1                             7/300 (e3 o4) w4 78 w15 211
+   w2:absweep:4                             54/300 (e26 o28) w4 251 w15 300
+   w2:absweep:5                             2/300 (e1 o1) w4 16 w15 162
+   w2:xruns-1:0                             2/300 (e0 o2) w4 246 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 289 w15 300
+   w2:xruns-1:2                             2/300 (e0 o2) w4 54 w15 283
+   w2:xruns-1:5                             78/300 (e25 o53) w4 296 w15 296
+   w2:xruns-1:7                             4/300 (e1 o3) w4 134 w15 233
+   w2:xruns-2:0                             7/300 (e2 o5) w4 300 w15 300
+   w2:xruns-2:2                             13/300 (e6 o7) w4 59 w15 119
+   w2:xruns-2:3                             3/300 (e3 o0) w4 250 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 290 w15 300
+== D LF0 log=xl log1p=cr lgamma=GL: all (4800, 330, 2215, 3809)
+   old (all a,b>2)                          12/300 (e6 o6) w4 80 w15 172
+   probe1:12.0,20.0                         31/300 (e19 o12) w4 105 w15 187
+   probe1:2.5,3.5                           21/300 (e10 o11) w4 193 w15 273
+   w2:absweep:0                             35/300 (e20 o15) w4 218 w15 300
+   w2:absweep:1                             6/300 (e1 o5) w4 75 w15 205
+   w2:absweep:4                             53/300 (e27 o26) w4 239 w15 300
+   w2:absweep:5                             4/300 (e2 o2) w4 36 w15 185
+   w2:xruns-1:0                             0/300 (e0 o0) w4 164 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 108 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 2 w15 132
+   w2:xruns-1:5                             148/300 (e55 o93) w4 300 w15 300
+   w2:xruns-1:7                             20/300 (e11 o9) w4 151 w15 242
+   w2:xruns-2:0                             0/300 (e0 o0) w4 270 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 0 w15 13
+   w2:xruns-2:3                             0/300 (e0 o0) w4 175 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 99 w15 300
+== D LF0 log=xl log1p=cr lgamma=lnG: all (4800, 354, 2378, 4091)
+   old (all a,b>2)                          17/300 (e10 o7) w4 114 w15 202
+   probe1:12.0,20.0                         31/300 (e19 o12) w4 105 w15 187
+   probe1:2.5,3.5                           21/300 (e10 o11) w4 193 w15 273
+   w2:absweep:0                             51/300 (e24 o27) w4 236 w15 300
+   w2:absweep:1                             11/300 (e2 o9) w4 77 w15 215
+   w2:absweep:4                             40/300 (e22 o18) w4 252 w15 300
+   w2:absweep:5                             0/300 (e0 o0) w4 21 w15 170
+   w2:xruns-1:0                             0/300 (e0 o0) w4 164 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 108 w15 300
+   w2:xruns-1:2                             2/300 (e0 o2) w4 54 w15 283
+   w2:xruns-1:5                             148/300 (e55 o93) w4 300 w15 300
+   w2:xruns-1:7                             20/300 (e11 o9) w4 151 w15 242
+   w2:xruns-2:0                             0/300 (e0 o0) w4 270 w15 300
+   w2:xruns-2:2                             13/300 (e6 o7) w4 59 w15 119
+   w2:xruns-2:3                             0/300 (e0 o0) w4 175 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 99 w15 300
+== D FX log=xl log1p=cr lgamma=GL: all (4800, 356, 3008, 3758)
+   old (all a,b>2)                          13/300 (e6 o7) w4 115 w15 200
+   probe1:12.0,20.0                         38/300 (e16 o22) w4 131 w15 196
+   probe1:2.5,3.5                           45/300 (e26 o19) w4 284 w15 295
+   w2:absweep:0                             26/300 (e16 o10) w4 211 w15 300
+   w2:absweep:1                             8/300 (e2 o6) w4 78 w15 203
+   w2:absweep:4                             37/300 (e16 o21) w4 244 w15 300
+   w2:absweep:5                             2/300 (e1 o1) w4 40 w15 175
+   w2:xruns-1:0                             44/300 (e25 o19) w4 285 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 300 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 0 w15 58
+   w2:xruns-1:5                             36/300 (e28 o8) w4 288 w15 288
+   w2:xruns-1:7                             25/300 (e14 o11) w4 139 w15 243
+   w2:xruns-2:0                             58/300 (e26 o32) w4 300 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 0 w15 0
+   w2:xruns-2:3                             23/300 (e11 o12) w4 293 w15 300
+   w2:xruns-2:5                             1/300 (e1 o0) w4 300 w15 300
+== D FX log=xl log1p=cr lgamma=lnG: all (4800, 359, 3068, 4015)
+   old (all a,b>2)                          18/300 (e8 o10) w4 148 w15 229
+   probe1:12.0,20.0                         38/300 (e16 o22) w4 131 w15 196
+   probe1:2.5,3.5                           45/300 (e26 o19) w4 284 w15 295
+   w2:absweep:0                             31/300 (e14 o17) w4 238 w15 300
+   w2:absweep:1                             7/300 (e2 o5) w4 75 w15 211
+   w2:absweep:4                             33/300 (e17 o16) w4 252 w15 300
+   w2:absweep:5                             0/300 (e0 o0) w4 18 w15 172
+   w2:xruns-1:0                             44/300 (e25 o19) w4 285 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 300 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 6 w15 222
+   w2:xruns-1:5                             36/300 (e28 o8) w4 288 w15 288
+   w2:xruns-1:7                             25/300 (e14 o11) w4 139 w15 243
+   w2:xruns-2:0                             58/300 (e26 o32) w4 300 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 11 w15 59
+   w2:xruns-2:3                             23/300 (e11 o12) w4 293 w15 300
+   w2:xruns-2:5                             1/300 (e1 o0) w4 300 w15 300
+== E LF1 log=xl log1p=cr lgamma=GL: all (4800, 203, 3270, 4132)
+   old (all a,b>2)                          15/300 (e7 o8) w4 91 w15 190
+   probe1:12.0,20.0                         14/300 (e6 o8) w4 155 w15 218
+   probe1:2.5,3.5                           17/300 (e10 o7) w4 280 w15 292
+   w2:absweep:0                             22/300 (e14 o8) w4 225 w15 300
+   w2:absweep:1                             3/300 (e1 o2) w4 55 w15 270
+   w2:absweep:4                             25/300 (e15 o10) w4 227 w15 300
+   w2:absweep:5                             10/300 (e3 o7) w4 79 w15 179
+   w2:xruns-1:0                             4/300 (e4 o0) w4 297 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 294 w15 300
+   w2:xruns-1:2                             14/300 (e7 o7) w4 284 w15 300
+   w2:xruns-1:5                             43/300 (e21 o22) w4 270 w15 270
+   w2:xruns-1:7                             12/300 (e5 o7) w4 110 w15 226
+   w2:xruns-2:0                             23/300 (e16 o7) w4 300 w15 300
+   w2:xruns-2:2                             1/300 (e0 o1) w4 22 w15 87
+   w2:xruns-2:3                             0/300 (e0 o0) w4 286 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 295 w15 300
+== E LF1 log=xl log1p=cr lgamma=lnG: all (4800, 345, 3787, 4419)
+   old (all a,b>2)                          21/300 (e8 o13) w4 161 w15 241
+   probe1:12.0,20.0                         14/300 (e6 o8) w4 155 w15 218
+   probe1:2.5,3.5                           17/300 (e10 o7) w4 280 w15 292
+   w2:absweep:0                             22/300 (e9 o13) w4 224 w15 300
+   w2:absweep:1                             35/300 (e25 o10) w4 266 w15 300
+   w2:absweep:4                             28/300 (e21 o7) w4 217 w15 300
+   w2:absweep:5                             24/300 (e15 o9) w4 249 w15 300
+   w2:xruns-1:0                             4/300 (e4 o0) w4 297 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 294 w15 300
+   w2:xruns-1:2                             93/300 (e47 o46) w4 300 w15 300
+   w2:xruns-1:5                             43/300 (e21 o22) w4 270 w15 270
+   w2:xruns-1:7                             12/300 (e5 o7) w4 110 w15 226
+   w2:xruns-2:0                             23/300 (e16 o7) w4 300 w15 300
+   w2:xruns-2:2                             9/300 (e2 o7) w4 83 w15 172
+   w2:xruns-2:3                             0/300 (e0 o0) w4 286 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 295 w15 300
+== E LF1 log=xl log1p=ln1 lgamma=GL: all (4800, 203, 3270, 4132)
+   old (all a,b>2)                          15/300 (e7 o8) w4 91 w15 190
+   probe1:12.0,20.0                         14/300 (e6 o8) w4 155 w15 218
+   probe1:2.5,3.5                           17/300 (e10 o7) w4 280 w15 292
+   w2:absweep:0                             22/300 (e14 o8) w4 225 w15 300
+   w2:absweep:1                             3/300 (e1 o2) w4 55 w15 270
+   w2:absweep:4                             25/300 (e15 o10) w4 227 w15 300
+   w2:absweep:5                             10/300 (e3 o7) w4 79 w15 179
+   w2:xruns-1:0                             4/300 (e4 o0) w4 297 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 294 w15 300
+   w2:xruns-1:2                             14/300 (e7 o7) w4 284 w15 300
+   w2:xruns-1:5                             43/300 (e21 o22) w4 270 w15 270
+   w2:xruns-1:7                             12/300 (e5 o7) w4 110 w15 226
+   w2:xruns-2:0                             23/300 (e16 o7) w4 300 w15 300
+   w2:xruns-2:2                             1/300 (e0 o1) w4 22 w15 87
+   w2:xruns-2:3                             0/300 (e0 o0) w4 286 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 295 w15 300
+== E LF1 log=xl log1p=ln1 lgamma=lnG: all (4800, 345, 3787, 4419)
+   old (all a,b>2)                          21/300 (e8 o13) w4 161 w15 241
+   probe1:12.0,20.0                         14/300 (e6 o8) w4 155 w15 218
+   probe1:2.5,3.5                           17/300 (e10 o7) w4 280 w15 292
+   w2:absweep:0                             22/300 (e9 o13) w4 224 w15 300
+   w2:absweep:1                             35/300 (e25 o10) w4 266 w15 300
+   w2:absweep:4                             28/300 (e21 o7) w4 217 w15 300
+   w2:absweep:5                             24/300 (e15 o9) w4 249 w15 300
+   w2:xruns-1:0                             4/300 (e4 o0) w4 297 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 294 w15 300
+   w2:xruns-1:2                             93/300 (e47 o46) w4 300 w15 300
+   w2:xruns-1:5                             43/300 (e21 o22) w4 270 w15 270
+   w2:xruns-1:7                             12/300 (e5 o7) w4 110 w15 226
+   w2:xruns-2:0                             23/300 (e16 o7) w4 300 w15 300
+   w2:xruns-2:2                             9/300 (e2 o7) w4 83 w15 172
+   w2:xruns-2:3                             0/300 (e0 o0) w4 286 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 295 w15 300
+== E LF0 log=xl log1p=cr lgamma=GL: all (4800, 203, 3270, 4132)
+   old (all a,b>2)                          15/300 (e7 o8) w4 91 w15 190
+   probe1:12.0,20.0                         14/300 (e6 o8) w4 155 w15 218
+   probe1:2.5,3.5                           17/300 (e10 o7) w4 280 w15 292
+   w2:absweep:0                             22/300 (e14 o8) w4 225 w15 300
+   w2:absweep:1                             3/300 (e1 o2) w4 55 w15 270
+   w2:absweep:4                             25/300 (e15 o10) w4 227 w15 300
+   w2:absweep:5                             10/300 (e3 o7) w4 79 w15 179
+   w2:xruns-1:0                             4/300 (e4 o0) w4 297 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 294 w15 300
+   w2:xruns-1:2                             14/300 (e7 o7) w4 284 w15 300
+   w2:xruns-1:5                             43/300 (e21 o22) w4 270 w15 270
+   w2:xruns-1:7                             12/300 (e5 o7) w4 110 w15 226
+   w2:xruns-2:0                             23/300 (e16 o7) w4 300 w15 300
+   w2:xruns-2:2                             1/300 (e0 o1) w4 22 w15 87
+   w2:xruns-2:3                             0/300 (e0 o0) w4 286 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 295 w15 300
+== E LF0 log=xl log1p=cr lgamma=lnG: all (4800, 344, 3787, 4419)
+   old (all a,b>2)                          21/300 (e8 o13) w4 161 w15 241
+   probe1:12.0,20.0                         14/300 (e6 o8) w4 155 w15 218
+   probe1:2.5,3.5                           17/300 (e10 o7) w4 280 w15 292
+   w2:absweep:0                             22/300 (e9 o13) w4 224 w15 300
+   w2:absweep:1                             35/300 (e25 o10) w4 266 w15 300
+   w2:absweep:4                             28/300 (e21 o7) w4 217 w15 300
+   w2:absweep:5                             24/300 (e15 o9) w4 249 w15 300
+   w2:xruns-1:0                             4/300 (e4 o0) w4 297 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 294 w15 300
+   w2:xruns-1:2                             92/300 (e47 o45) w4 300 w15 300
+   w2:xruns-1:5                             43/300 (e21 o22) w4 270 w15 270
+   w2:xruns-1:7                             12/300 (e5 o7) w4 110 w15 226
+   w2:xruns-2:0                             23/300 (e16 o7) w4 300 w15 300
+   w2:xruns-2:2                             9/300 (e2 o7) w4 83 w15 172
+   w2:xruns-2:3                             0/300 (e0 o0) w4 286 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 295 w15 300
+== E FX log=xl log1p=cr lgamma=GL: all (4800, 243, 3302, 4120)
+   old (all a,b>2)                          11/300 (e7 o4) w4 90 w15 187
+   probe1:12.0,20.0                         21/300 (e7 o14) w4 151 w15 219
+   probe1:2.5,3.5                           26/300 (e14 o12) w4 285 w15 295
+   w2:absweep:0                             27/300 (e12 o15) w4 225 w15 300
+   w2:absweep:1                             6/300 (e3 o3) w4 65 w15 275
+   w2:absweep:4                             29/300 (e19 o10) w4 230 w15 300
+   w2:absweep:5                             13/300 (e4 o9) w4 80 w15 177
+   w2:xruns-1:0                             14/300 (e7 o7) w4 298 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 297 w15 300
+   w2:xruns-1:2                             23/300 (e13 o10) w4 292 w15 300
+   w2:xruns-1:5                             31/300 (e19 o12) w4 253 w15 253
+   w2:xruns-1:7                             9/300 (e4 o5) w4 112 w15 218
+   w2:xruns-2:0                             32/300 (e21 o11) w4 300 w15 300
+   w2:xruns-2:2                             1/300 (e1 o0) w4 27 w15 96
+   w2:xruns-2:3                             0/300 (e0 o0) w4 297 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 300 w15 300
+== E FX log=xl log1p=cr lgamma=lnG: all (4800, 395, 3829, 4404)
+   old (all a,b>2)                          21/300 (e10 o11) w4 167 w15 239
+   probe1:12.0,20.0                         21/300 (e7 o14) w4 151 w15 219
+   probe1:2.5,3.5                           26/300 (e14 o12) w4 285 w15 295
+   w2:absweep:0                             31/300 (e13 o18) w4 224 w15 300
+   w2:absweep:1                             37/300 (e22 o15) w4 272 w15 300
+   w2:absweep:4                             35/300 (e26 o9) w4 231 w15 300
+   w2:absweep:5                             32/300 (e18 o14) w4 254 w15 300
+   w2:xruns-1:0                             14/300 (e7 o7) w4 298 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 297 w15 300
+   w2:xruns-1:2                             95/300 (e44 o51) w4 300 w15 300
+   w2:xruns-1:5                             31/300 (e19 o12) w4 253 w15 253
+   w2:xruns-1:7                             9/300 (e4 o5) w4 112 w15 218
+   w2:xruns-2:0                             32/300 (e21 o11) w4 300 w15 300
+   w2:xruns-2:2                             11/300 (e6 o5) w4 88 w15 180
+   w2:xruns-2:3                             0/300 (e0 o0) w4 297 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 300 w15 300
+== S LF1 log=xl log1p=cr lgamma=GL: all (4800, 269, 2815, 3802)
+   old (all a,b>2)                          14/300 (e8 o6) w4 85 w15 177
+   probe1:12.0,20.0                         39/300 (e23 o16) w4 109 w15 188
+   probe1:2.5,3.5                           34/300 (e20 o14) w4 246 w15 281
+   w2:absweep:0                             32/300 (e17 o15) w4 222 w15 300
+   w2:absweep:1                             6/300 (e2 o4) w4 75 w15 201
+   w2:absweep:4                             46/300 (e24 o22) w4 240 w15 300
+   w2:absweep:5                             4/300 (e2 o2) w4 32 w15 181
+   w2:xruns-1:0                             2/300 (e0 o2) w4 246 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 289 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 2 w15 132
+   w2:xruns-1:5                             78/300 (e25 o53) w4 296 w15 296
+   w2:xruns-1:7                             4/300 (e1 o3) w4 134 w15 233
+   w2:xruns-2:0                             7/300 (e2 o5) w4 300 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 0 w15 13
+   w2:xruns-2:3                             3/300 (e3 o0) w4 249 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 290 w15 300
+== S LF1 log=xl log1p=cr lgamma=lnG: all (4800, 305, 2972, 4077)
+   old (all a,b>2)                          18/300 (e11 o7) w4 119 w15 204
+   probe1:12.0,20.0                         39/300 (e23 o16) w4 109 w15 188
+   probe1:2.5,3.5                           34/300 (e20 o14) w4 246 w15 281
+   w2:absweep:0                             45/300 (e23 o22) w4 234 w15 300
+   w2:absweep:1                             6/300 (e3 o3) w4 80 w15 209
+   w2:absweep:4                             52/300 (e26 o26) w4 251 w15 300
+   w2:absweep:5                             2/300 (e1 o1) w4 16 w15 164
+   w2:xruns-1:0                             2/300 (e0 o2) w4 246 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 289 w15 300
+   w2:xruns-1:2                             2/300 (e0 o2) w4 54 w15 283
+   w2:xruns-1:5                             78/300 (e25 o53) w4 296 w15 296
+   w2:xruns-1:7                             4/300 (e1 o3) w4 134 w15 233
+   w2:xruns-2:0                             7/300 (e2 o5) w4 300 w15 300
+   w2:xruns-2:2                             13/300 (e6 o7) w4 59 w15 119
+   w2:xruns-2:3                             3/300 (e3 o0) w4 249 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 290 w15 300
+== S LF1 log=xl log1p=ln1 lgamma=GL: all (4800, 266, 2822, 3803)
+   old (all a,b>2)                          14/300 (e8 o6) w4 85 w15 177
+   probe1:12.0,20.0                         39/300 (e23 o16) w4 109 w15 188
+   probe1:2.5,3.5                           34/300 (e20 o14) w4 246 w15 281
+   w2:absweep:0                             33/300 (e20 o13) w4 223 w15 300
+   w2:absweep:1                             7/300 (e2 o5) w4 74 w15 202
+   w2:absweep:4                             41/300 (e21 o20) w4 245 w15 300
+   w2:absweep:5                             4/300 (e2 o2) w4 34 w15 181
+   w2:xruns-1:0                             2/300 (e0 o2) w4 246 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 289 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 2 w15 132
+   w2:xruns-1:5                             78/300 (e25 o53) w4 296 w15 296
+   w2:xruns-1:7                             4/300 (e1 o3) w4 134 w15 233
+   w2:xruns-2:0                             7/300 (e2 o5) w4 300 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 0 w15 13
+   w2:xruns-2:3                             3/300 (e3 o0) w4 249 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 290 w15 300
+== S LF1 log=xl log1p=ln1 lgamma=lnG: all (4800, 315, 2970, 4076)
+   old (all a,b>2)                          18/300 (e11 o7) w4 119 w15 204
+   probe1:12.0,20.0                         39/300 (e23 o16) w4 109 w15 188
+   probe1:2.5,3.5                           34/300 (e20 o14) w4 246 w15 281
+   w2:absweep:0                             50/300 (e27 o23) w4 234 w15 300
+   w2:absweep:1                             7/300 (e3 o4) w4 78 w15 210
+   w2:absweep:4                             56/300 (e28 o28) w4 251 w15 300
+   w2:absweep:5                             2/300 (e1 o1) w4 16 w15 162
+   w2:xruns-1:0                             2/300 (e0 o2) w4 246 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 289 w15 300
+   w2:xruns-1:2                             2/300 (e0 o2) w4 54 w15 283
+   w2:xruns-1:5                             78/300 (e25 o53) w4 296 w15 296
+   w2:xruns-1:7                             4/300 (e1 o3) w4 134 w15 233
+   w2:xruns-2:0                             7/300 (e2 o5) w4 300 w15 300
+   w2:xruns-2:2                             13/300 (e6 o7) w4 59 w15 119
+   w2:xruns-2:3                             3/300 (e3 o0) w4 249 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 290 w15 300
+== S LF0 log=xl log1p=cr lgamma=GL: all (4800, 330, 2214, 3809)
+   old (all a,b>2)                          12/300 (e6 o6) w4 80 w15 172
+   probe1:12.0,20.0                         31/300 (e19 o12) w4 105 w15 187
+   probe1:2.5,3.5                           21/300 (e10 o11) w4 193 w15 273
+   w2:absweep:0                             35/300 (e20 o15) w4 218 w15 300
+   w2:absweep:1                             6/300 (e1 o5) w4 75 w15 205
+   w2:absweep:4                             53/300 (e27 o26) w4 239 w15 300
+   w2:absweep:5                             4/300 (e2 o2) w4 36 w15 185
+   w2:xruns-1:0                             0/300 (e0 o0) w4 164 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 108 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 2 w15 132
+   w2:xruns-1:5                             148/300 (e55 o93) w4 300 w15 300
+   w2:xruns-1:7                             20/300 (e11 o9) w4 151 w15 242
+   w2:xruns-2:0                             0/300 (e0 o0) w4 270 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 0 w15 13
+   w2:xruns-2:3                             0/300 (e0 o0) w4 174 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 99 w15 300
+== S LF0 log=xl log1p=cr lgamma=lnG: all (4800, 354, 2377, 4091)
+   old (all a,b>2)                          17/300 (e10 o7) w4 114 w15 202
+   probe1:12.0,20.0                         31/300 (e19 o12) w4 105 w15 187
+   probe1:2.5,3.5                           21/300 (e10 o11) w4 193 w15 273
+   w2:absweep:0                             51/300 (e24 o27) w4 236 w15 300
+   w2:absweep:1                             11/300 (e2 o9) w4 77 w15 215
+   w2:absweep:4                             40/300 (e22 o18) w4 252 w15 300
+   w2:absweep:5                             0/300 (e0 o0) w4 21 w15 170
+   w2:xruns-1:0                             0/300 (e0 o0) w4 164 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 108 w15 300
+   w2:xruns-1:2                             2/300 (e0 o2) w4 54 w15 283
+   w2:xruns-1:5                             148/300 (e55 o93) w4 300 w15 300
+   w2:xruns-1:7                             20/300 (e11 o9) w4 151 w15 242
+   w2:xruns-2:0                             0/300 (e0 o0) w4 270 w15 300
+   w2:xruns-2:2                             13/300 (e6 o7) w4 59 w15 119
+   w2:xruns-2:3                             0/300 (e0 o0) w4 174 w15 300
+   w2:xruns-2:5                             0/300 (e0 o0) w4 99 w15 300
+== S FX log=xl log1p=cr lgamma=GL: all (4800, 357, 3008, 3758)
+   old (all a,b>2)                          13/300 (e6 o7) w4 115 w15 200
+   probe1:12.0,20.0                         38/300 (e16 o22) w4 131 w15 196
+   probe1:2.5,3.5                           45/300 (e26 o19) w4 284 w15 295
+   w2:absweep:0                             26/300 (e16 o10) w4 211 w15 300
+   w2:absweep:1                             9/300 (e2 o7) w4 78 w15 203
+   w2:absweep:4                             37/300 (e16 o21) w4 244 w15 300
+   w2:absweep:5                             2/300 (e1 o1) w4 40 w15 175
+   w2:xruns-1:0                             44/300 (e25 o19) w4 285 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 300 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 0 w15 58
+   w2:xruns-1:5                             36/300 (e28 o8) w4 288 w15 288
+   w2:xruns-1:7                             25/300 (e14 o11) w4 139 w15 243
+   w2:xruns-2:0                             58/300 (e26 o32) w4 300 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 0 w15 0
+   w2:xruns-2:3                             23/300 (e11 o12) w4 293 w15 300
+   w2:xruns-2:5                             1/300 (e1 o0) w4 300 w15 300
+== S FX log=xl log1p=cr lgamma=lnG: all (4800, 360, 3068, 4014)
+   old (all a,b>2)                          18/300 (e8 o10) w4 148 w15 229
+   probe1:12.0,20.0                         38/300 (e16 o22) w4 131 w15 196
+   probe1:2.5,3.5                           45/300 (e26 o19) w4 284 w15 295
+   w2:absweep:0                             31/300 (e14 o17) w4 238 w15 300
+   w2:absweep:1                             8/300 (e2 o6) w4 75 w15 210
+   w2:absweep:4                             33/300 (e17 o16) w4 252 w15 300
+   w2:absweep:5                             0/300 (e0 o0) w4 18 w15 172
+   w2:xruns-1:0                             44/300 (e25 o19) w4 285 w15 300
+   w2:xruns-1:1                             0/300 (e0 o0) w4 300 w15 300
+   w2:xruns-1:2                             0/300 (e0 o0) w4 6 w15 222
+   w2:xruns-1:5                             36/300 (e28 o8) w4 288 w15 288
+   w2:xruns-1:7                             25/300 (e14 o11) w4 139 w15 243
+   w2:xruns-2:0                             58/300 (e26 o32) w4 300 w15 300
+   w2:xruns-2:2                             0/300 (e0 o0) w4 11 w15 59
+   w2:xruns-2:3                             23/300 (e11 o12) w4 293 w15 300
+   w2:xruns-2:5                             1/300 (e1 o0) w4 300 w15 300

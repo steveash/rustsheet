@@ -1,0 +1,26 @@
+# t2586-r5-f-edges-hold: 1396 rows (B; C/2^k where present)
+all       M-edge 459/960/1094 of 1396     CR 301/816/979 of 1396
+d1=1      M-edge 115/255/282 of 336       CR 69/215/244 of 336
+d1=2      M-edge 90/245/257 of 326        CR 71/207/237 of 326
+d2=1      M-edge 69/148/160 of 232        CR 46/118/148 of 232
+d2=2      M-edge 51/120/182 of 208        CR 29/113/165 of 208
+ovf-near  M-edge 12/12/12 of 12           CR 12/12/12 of 12
+rule      M-edge 35/35/35 of 35           CR 24/24/24 of 35
+tinyx     M-edge 22/22/24 of 104          CR 9/9/11 of 104
+twin      M-edge 65/123/142 of 143        CR 41/118/138 of 143
+twins B==D bitwise: 143/143
+error/zero decisions (either side error or 0): M-edge 140/140
+# t2586-r5-f-edges-a: 1437 rows (B; C/2^k where present)
+all       M-edge 737/957/1029 of 1437     CR 539/807/872 of 1437
+d1=1      M-edge 103/113/123 of 179       CR 102/113/123 of 179
+d1=2      M-edge 73/98/107 of 164         CR 73/80/88 of 164
+d2=1      M-edge 78/87/93 of 170          CR 61/71/78 of 170
+d2=2      M-edge 58/65/69 of 98           CR 46/52/56 of 98
+hugex     M-edge 68/69/71 of 84           CR 68/70/72 of 84
+ovf-near  M-edge 32/32/32 of 32           CR 32/32/32 of 32
+rest      M-edge 0/4/9 of 14              CR 0/5/6 of 14
+rule      M-edge 98/98/98 of 98           CR 58/58/58 of 98
+tinyx     M-edge 85/91/105 of 246         CR 52/54/62 of 246
+twin      M-edge 142/300/322 of 352       CR 47/272/297 of 352
+twins B==D bitwise: 352/352
+error/zero decisions (either side error or 0): M-edge 581/581
