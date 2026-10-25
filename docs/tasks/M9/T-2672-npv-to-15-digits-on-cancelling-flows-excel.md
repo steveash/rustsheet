@@ -38,14 +38,14 @@ Visibly-off numeric NPV cells (Excel / ours):
 - IRR.xlsx, rate also off in ours (12; re-measure after T-2131): General!M4, M6, M12, M16, M17, M18, M19, Three
   Parameters!E3, E4, E5, FullRow!R2, FullColumn!B23.
 - probes/fin-argument-modes H186, H367, H368, H372 `NPV(0.1,-10000,2750,4250,3250,2750)` in four argument forms:
-  302.233453999042 / 302.23345399904133 (exact 302.2334539990438).
+  302.233453999042 / 302.23345399904133 (exact at the double rate 302.23345399904366).
 - probes-numeric/m9-fin-nper-npv A148, A154, A156, A159, A164, A167, e.g. A148
   `NPV(0.1,-1E6,250000,250000,250000,250000,250000)`: -47548.46149808013 / -47548.4614980802.
 - gen-m9 (T-2257 sweep cells T-1528 lists as visibly off): 1cd3096e3e87c965 Calc!A345 (0.7710730536356959 /
   0.771073053635682), 3aa168259335be54 Calc!A214 (2.671477233044049 / 2.671477233044019), abb7d565af89b849
   Calc!A387 (0.00020006599755898017 / 0.00020006599755891932).
 
-Excel is not the correctly rounded sum: at M2 and M8 it is nearer the exact value than ours, at M3 and E2 further
+Excel is not the correctly rounded sum: at M2, M8 and E2 it is nearer the exact value than ours, at M3 further
 from it. A triage scan of plain doubles (sum of v/(1+r)^i, reverse order, Horner from the last value, running factor
 by * or /, v*(1+r)^-i, v/exp(i*log1p r), fsum) matched none of the 12 rate-exact residues, except Horner on M8.
 T-1528's Blocked section lists the formulations its three attempts rejected on m9-fin-nper-npv (best 27/88).
