@@ -3,7 +3,7 @@ id: T-2743
 title: "IMSEC near a pole and IMSECH of 1.34384-77.6742i print Excel's text (im-last-digit-sweep G29, G33, J34)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
