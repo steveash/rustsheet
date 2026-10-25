@@ -407,6 +407,22 @@ the same way at parse time, so ISREF and a rename see them. A sheet-qualified wo
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
 Tasks: T-1382, T-1459, T-1460, T-1526, T-1550, T-1609, T-1654
 
+## Criteria and sum ranges of a linked workbook are `#VALUE!`
+Rule: a criteria or sum range of COUNTIF, COUNTIFS, SUMIF, SUMIFS, AVERAGEIF, AVERAGEIFS, MAXIFS or
+MINIFS that is a range of a linked workbook is `#VALUE!` without the other file open, even though
+other functions read its cached cells (SUM, INDEX, lookups: "Cached values of a linked workbook"
+above). A whole column counts too: `COUNTIFS('[1]XA Data Pull'!$J:$J,">="&W$1,...)` is `#VALUE!`.
+Evidence: corpus-bench 52450 sheet1, all 1,830 formulas with a COUNTIFS over `'[1]XA Data Pull'!`
+ranges (W5:Y5 and the rest of their block), Excel-cached `#VALUE!` (desktop workbook; no oracle run).
+Unprobed: a range of a linked sheet the file caches nothing for, where ours is `#VALUE!` too (an
+array of `#BLOCKED!`, which is not a range).
+Ours: IMPLEMENTED: `ifs_range` (functions/statistical/if_ifs.rs) makes any argument that is not a
+range of this workbook `#VALUE!`; `ifs_range_arg` gives a linked range that error without building its
+array (`Model::is_external_array`, external_links.rs; T-0477). A single cached cell is `#VALUE!` the
+same way; a range past the array bound keeps that bound's error (arrays.md).
+Status: VERIFIED (desktop, cached values)
+Tasks: T-0477
+
 ## Lookups into a linked sheet with no cached data are `#N/A`
 Rule: a sheet the externalLink part lists in `sheetNames` but caches no cell of (no
 `sheetData` for its `sheetId`, or an empty `<sheetData sheetId="4"/>`) reads `#BLOCKED!` as a

@@ -307,6 +307,8 @@ impl Model {
         let Some(sheet) = area.cache else {
             return area.blocked_value(cell);
         };
+        // These branches, and `blocked_value`'s, decide when an area is built as an array;
+        // `is_external_array` repeats them without building it (a test checks they agree).
         let (rows, columns) = area.extent();
         if (rows, columns) == (1, 1) {
             return self.cached_value(sheet, area.first_row, area.first_column, cell);
@@ -315,6 +317,21 @@ impl Model {
             return CalcResult::new_error(error, cell, message);
         }
         CalcResult::Array(self.cached_rows(sheet, area, cell))
+    }
+
+    /// Whether `node` is a range of a linked workbook that evaluates to an array: more than one
+    /// cell within the array bound, of its cached cells ([`Self::external_area_value`]) or, with no
+    /// cache for its sheet, of `#BLOCKED!` ([`ExternalArea::blocked_value`]). Reads nothing, so a
+    /// caller that only needs to know can skip building the array (T-0477).
+    pub(crate) fn is_external_array(&self, node: &Node, cell: CellReferenceIndex) -> bool {
+        if !matches!(node.ungrouped(), Node::WrongRangeKind { .. }) {
+            return false;
+        }
+        let Some(area) = self.cached_external_area(node, cell) else {
+            return false;
+        };
+        let (rows, columns) = area.extent();
+        (rows, columns) != (1, 1) && check_array_size(rows, columns).is_none()
     }
 
     /// [`ExternalArea::picked_value`] for an area INDEX or an intersection picked: its cached
