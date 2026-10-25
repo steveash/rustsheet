@@ -318,6 +318,7 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
         ("N(INDEX(5,1,0))", true, "N(INDEX(5,1,0))"),
         ("T(INDEX(\"a\",1,1))", true, "T(INDEX(\"a\",1,1))"),
         ("N(INDEX(5,C1))", true, "N(INDEX(5,C1))"),
+        ("N(INDEX(5,,1))", true, "N(INDEX(5,,1))"),
         ("N(IFS(1,{2;3}))", true, "N(IFS(1,{2;3}))"),
         ("ABS(N(IF(1,{2;3})))", true, "ABS(N(IF(1,{2;3})))"),
         ("N(IF(1,{2;3}))+0", true, "N(IF(1,{2;3}))+0"),

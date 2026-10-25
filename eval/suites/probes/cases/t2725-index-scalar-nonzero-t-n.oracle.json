@@ -34,9 +34,41 @@
     "t": "e",
     "v": "#VALUE!"
    },
+   "A17": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A18": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A19": {
+    "t": "n",
+    "v": 5.0
+   },
    "A2": {
     "t": "s",
     "v": "a"
+   },
+   "A20": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A21": {
+    "t": "s",
+    "v": "a"
+   },
+   "A22": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A23": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A24": {
+    "t": "n",
+    "v": 5.0
    },
    "A3": {
     "t": "n",
@@ -98,9 +130,41 @@
     "t": "s",
     "v": "=N(INDEX(5,-1))"
    },
+   "B17": {
+    "t": "s",
+    "v": "=N(INDEX(5,C2))"
+   },
+   "B18": {
+    "t": "s",
+    "v": "=N(INDEX(5,C3))"
+   },
+   "B19": {
+    "t": "s",
+    "v": "=N(INDEX(5,@{1,1}))"
+   },
    "B2": {
     "t": "s",
     "v": "=T(INDEX(\"a\",1))"
+   },
+   "B20": {
+    "t": "s",
+    "v": "=N(INDEX(5,@C1:C2))"
+   },
+   "B21": {
+    "t": "s",
+    "v": "=T(INDEX(\"a\",@{1}))"
+   },
+   "B22": {
+    "t": "s",
+    "v": "=N(INDEX(5,1,C2))"
+   },
+   "B23": {
+    "t": "s",
+    "v": "=N(INDEX(5,IF(TRUE,1)))"
+   },
+   "B24": {
+    "t": "s",
+    "v": "=N(INDEX(5,@{1;1},1))"
    },
    "B3": {
     "t": "s",
@@ -134,10 +198,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "dd4cc8983f0075b942a9e5c96e014a5f53a441f2abc5980304d28677bff4c772",
+  "input_sha256": "4bcf0fe8c7457205d5f302a319dc0f9da6ad3a0d00a49040809106d5c18b4480",
   "kind": "excel-graph",
-  "produced_at": "2026-10-25T16:56:47+00:00",
+  "produced_at": "2026-10-25T17:14:54+00:00",
   "version": null,
-  "workbook_name": "1339e7ff538379c4c270b75b6c411072a70560594109eae62636b64e0e6f3c51.xlsx"
+  "workbook_name": "b2b9f62fe8cea8fac0d7a1e3988f9189d2ecaa7ffbff0316f526de6a56b40d0f.xlsx"
  }
 }
