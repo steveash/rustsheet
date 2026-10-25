@@ -591,7 +591,8 @@ TEXT() with the same codes. Points the earlier probes did not show:
   "2.68%E+00", `%0.00E+00` is "%2.68E+00", `0.00E+00%%` is "2.68E+00%%" and `0.0%0E+00` is "2.6%8E+00". On 0.5, `0%E+0`
   is "5%E-1". Under an engineering code, `##0.0E+0%` on 2.675 is "2.7E+0%". A trailing or embedded `,` is dropped
   without dividing: `0.00E+00,` and `0.00,E+00` on 2675 are "2.68E+03". The parser gives a scientific part no
-  `percent` or `comma` scaling (formatter/parser.rs).
+  `percent` or `comma` scaling (formatter/parser.rs). Unprobed: a fraction followed by an exponent (`# ?/?%E+0`),
+  which the same rule covers.
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
 Implemented (T-2206): the shown place rounds the 15-digit decimal half away from zero (`0`, `#,##0`,
