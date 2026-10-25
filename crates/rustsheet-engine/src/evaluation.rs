@@ -214,8 +214,8 @@ pub(crate) struct Evaluation {
     /// `(sheet, row, column)` order.
     pub(crate) anchor_order: Vec<CellReferenceIndex>,
     /// Formula cells touched in the current pass, and their state. Whatever clears this map or
-    /// removes an entry must also clear `search_cache`, whose vectors hold values read under
-    /// these states (T-0448).
+    /// removes an entry must also clear `search_cache` and `ifs_cache`, which hold values read
+    /// under these states (T-0448, T-0449).
     pub(crate) cells: HashMap<CellKey, CellState, KeyBuild>,
     /// Cells being evaluated, innermost last.
     pub(crate) stack: Vec<CellReferenceIndex>,
@@ -272,6 +272,9 @@ pub(crate) struct Evaluation {
     /// The lookup search vectors built in this pass (`search_cache.rs`, T-0448). Dropped whenever
     /// `cells` is cleared or loses an entry.
     pub(crate) search_cache: crate::functions::lookup_and_reference::search_cache::SearchCache,
+    /// The criteria aggregates' range values and match sets of this pass (`ifs_cache.rs`, T-0449),
+    /// dropped with `search_cache`.
+    pub(crate) ifs_cache: crate::functions::statistical::ifs_cache::IfsCache,
     /// Reads of a formula cell that was still `Evaluating` (a cycle), or of the spill area of
     /// a running anchor, so far: a search vector whose build made one is not cached.
     pub(crate) evaluating_reads: u64,
@@ -345,6 +348,7 @@ impl Default for Evaluation {
             stack_base: 0,
             unwinding: false,
             search_cache: Default::default(),
+            ifs_cache: Default::default(),
             evaluating_reads: 0,
             pivot_indexes: Default::default(),
             weeknum_start: None,
@@ -462,6 +466,7 @@ impl Model {
         let state = &mut self.evaluation;
         state.cells.clear();
         state.search_cache.clear();
+        state.ifs_cache.clear();
         state.stack.clear();
         state.seen.clear();
         state.seen_ranges.clear();
@@ -644,6 +649,7 @@ impl Model {
             self.evaluation.circular_below = self.evaluation.circular_below.min(base);
             self.evaluation.cells.remove(&key);
             self.evaluation.search_cache.clear();
+            self.evaluation.ifs_cache.clear();
             return CalcResult::EmptyCell;
         }
         if self.evaluation.depth > 0 || !self.evaluation.unwinding {
