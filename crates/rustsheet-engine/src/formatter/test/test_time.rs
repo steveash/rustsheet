@@ -104,3 +104,22 @@ fn minutes_before_seconds_without_hour() {
         );
     }
 }
+
+// `[h]` and `[m]` without a seconds token count from the serial rounded to the second, as the
+// clock does (probes/elapsed-no-seconds-boundary A1-A8, A20, T-2385).
+#[test]
+fn elapsed_without_seconds_rounds_to_the_second() {
+    let ctx = FormatContext::new(get_default_locale());
+    let short = |hours: f64, seconds: f64| (hours - seconds / 3600.0) / 24.0;
+    for (value, format, text) in [
+        (short(3.0, 0.4), "[h]", "3"),
+        (short(3.0, 0.4), "[h]:mm", "3:00"),
+        (short(3.0, 0.4), "[m]", "180"),
+        (short(3.0, 0.6), "[h]", "2"),
+        (short(3.0, 0.6), "[h]:mm", "2:59"),
+        (short(3.0, 0.6), "[m]", "179"),
+        ((5.0 - 0.4 / 60.0) / 1440.0, "[m]", "5"),
+    ] {
+        assert_eq!(format_number(value, format, &ctx).text, text, "{format}");
+    }
+}
