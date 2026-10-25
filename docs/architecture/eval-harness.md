@@ -196,6 +196,12 @@ Only `pass` counts as passing. Case statuses:
   counts its cases with a scored in-scope cell: `all_exact`, `all_within15` and `any_visible`.
   It uses the suite's `closeness` cells (hand-written expectations and deviation passes included),
   so it is suite scope, not Excel-only evidence.
+  The top-level `tiers` holds the per-tier function counts of that section, over the catalog's
+  in-scope set. `run` (T-0080, `run_meta.rs`) records the run itself: `commit` (`git rev-parse
+  --short=8 HEAD`, or null when git fails), `date` (UTC, `YYYY-MM-DD`) and `skipped_suites`
+  (`{name, reason}` for each suite under eval/suites that did not run: `not fetched` or `not
+  selected`); report.md prints it under the title. `date` and `commit` change on every run, so no
+  test or golden file compares a whole report.json.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 - `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
   it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
@@ -275,8 +281,13 @@ A missing input prints `n/a` and is never `met`; `exit` is `met` only when all f
 measure, not a gate.
 
 The "Fifteen-digit parity checkpoint" section (`v15_checkpoint`, decision 0094) also prints the
-Phase 1 line of decision 0114: the in-scope functions that are covered and have at most one Excel cell
-in a thousand visibly off, with each function's within-15-digit share.
+Phase 1 line of decision 0114: the in-scope functions that are covered and have at most one cell in
+a thousand visibly off, with each function's within-15-digit share. Decision 0118 counts those cells
+(T-0080): each function's `rate_cells` and `rate_visible` are its `attributed` cells, or its `excel`
+cells below 20 attributed cells (`attribution`), and `meets_rate`, `at_rate`, `phase1_met` and the
+Phase 1 line follow them. Coverage (`covered`) still counts every Excel cell that calls the function
+(decision 0094). The stricter share, `cells` against the blamed `visible`, stays as information:
+`strict.meets_rate`, `at_strict_rate` and a line labelled "Information, gates nothing".
 
 ## CLI
 ```

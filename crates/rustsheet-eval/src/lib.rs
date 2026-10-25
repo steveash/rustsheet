@@ -33,6 +33,7 @@ pub mod out_of_scope;
 pub mod overrides;
 pub mod probe_milestones;
 pub mod report;
+pub mod run_meta;
 pub mod runner;
 mod spec_pivots;
 mod spill_extent;
