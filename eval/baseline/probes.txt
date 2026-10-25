@@ -1153,6 +1153,7 @@ C	probes/t2455-transpose-single-value.case.json	95
 C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2475-stat-subexpressions.case.json	574
 C	probes/t2496-fin-subexpressions.case.json	99
+C	probes/t2498-textafter-match-end.case.json	75
 C	probes/t2517-combina-below-cut-small-n.case.json	4
 C	probes/t2545-base-places-boolean.case.json	7
 C	probes/t2546-bessel-past-cap.case.json	83
