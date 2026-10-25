@@ -30,6 +30,23 @@ pub struct NestedArray {
     depth: usize,
 }
 
+/// The error of an array argument holding a nested cell of kind [`NestedKind::Array`] to the
+/// consumers that read their data whole rather than through the aggregate walker: `#N/A` for
+/// MODE.SNGL, LARGE, SMALL and PERCENTILE.INC over a GROUPBY result (probes/t2594-nested-aggregates
+/// A15, A19:A21; MODE.MULT, QUARTILE.INC and PERCENTILE.EXC: t2625-nested-consumers A10:A12;
+/// QUARTILE, PERCENTRANK and PERCENTRANK.EXC: gen-m9/46ac3ef5e61583ca A325, 2138b909d8f810ea A226,
+/// 928d08e3e1eecb5f A374; T-2625).
+pub(crate) fn nested_array_error(
+    array: &[Vec<ArrayNode>],
+    cell: CellReferenceIndex,
+) -> Option<CalcResult> {
+    array
+        .iter()
+        .flatten()
+        .any(|node| matches!(node, ArrayNode::Nested(nested) if nested.kind() == NestedKind::Array))
+        .then(|| CalcResult::new_error(Error::NA, cell, "Nested array".to_string()))
+}
+
 /// What one evaluation has spent of its nested-array budgets (SPEC-0018 "Bound"): the cells its
 /// GROUPBY and PIVOTBY calls kept in nested cells' own grids (`NestedArray::grid_cells`: an inner
 /// level was charged when its own call kept it), against [`MAX_NESTED_KEPT_CELLS`], and the
