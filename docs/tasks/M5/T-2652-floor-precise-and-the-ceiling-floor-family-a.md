@@ -3,12 +3,12 @@ id: T-2652
 title: "FLOOR.PRECISE and the CEILING/FLOOR family: a 16th-digit tie in the ratio's 15-digit cut goes away from zero"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -36,11 +36,18 @@ as INT's cut does, not to even.
 - Recorded in docs/excel-semantics/numbers.md "FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from zero".
 
 ## Acceptance criteria
-- [ ] An excel-graph probe (`excel-probe` skill) covers 16th-digit ties, positive and negative, for FLOOR, FLOOR.MATH,
+- [x] An excel-graph probe (`excel-probe` skill) covers 16th-digit ties, positive and negative, for FLOOR, FLOOR.MATH,
       FLOOR.PRECISE, CEILING, CEILING.MATH, CEILING.PRECISE and ISO.CEILING, plus ratios at and above 1E+15.
-- [ ] The engine matches the probe; the gen-m5 line above disappears (`make eval-baseline`), with no new known failure.
-- [ ] numbers.md entry updated with the probe evidence and `Status: VERIFIED`.
-- [ ] `make check` green; reviewers approve.
+- [x] The engine matches the probe; the gen-m5 line above disappears (`make eval-baseline`), with no new known failure.
+- [x] numbers.md entry updated with the probe evidence and `Status: VERIFIED`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MROUND (its own quotient rule, `mround_value`).
+
+## Outcome
+`snap_ratio` (ceiling_floor.rs) now cuts `value/significance` with `significant_15` (ties away from zero) instead of
+`to_excel_precision` (ties to even). Probe `probes/t2652-floor-ceiling-ties` (14 values x 7 functions, excel-graph) shows all
+seven family members agree; 98/98 cells pass. Eval delta: gen-m5 known failure `048f6b1a0fb9544b` Calc!A257 fixed, no new
+known failures. The probe also shows the family's cut has no 1E+15 boundary, unlike INT (numbers.md). Every probe row uses
+significance 1; a non-unit significance is not probed.

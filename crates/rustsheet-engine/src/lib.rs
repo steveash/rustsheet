@@ -98,6 +98,7 @@ mod variable_stack;
 mod workbook;
 mod x87_exp;
 mod x87_log10;
+mod x87_log1p;
 mod x87_register;
 
 #[cfg(test)]

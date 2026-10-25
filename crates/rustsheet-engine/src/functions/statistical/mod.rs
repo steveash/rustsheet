@@ -25,6 +25,7 @@ mod incomplete_beta;
 mod incomplete_gamma;
 mod inverse_beta;
 mod linest;
+mod loader;
 mod log_normal;
 mod mode_functions;
 mod normal;
@@ -53,3 +54,4 @@ mod weibull;
 mod z_test;
 
 pub(crate) use if_ifs::IfsShape;
+pub(crate) use special::ln_gamma;

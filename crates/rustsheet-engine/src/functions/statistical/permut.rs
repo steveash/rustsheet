@@ -4,7 +4,7 @@ use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// The smallest number PERMUT refuses (Excel: 2^31 - 1; probes/stat-overflow-arguments E5, B8).
-const PERMUT_NUMBER_LIMIT: f64 = 2_147_483_647.0;
+const PERMUT_NUMBER_LIMIT: f64 = crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
 impl Model {
     /// `PERMUT(number, number_chosen) = n! / (n-k)! = n*(n-1)*...*(n-k+1)`: both arguments lift

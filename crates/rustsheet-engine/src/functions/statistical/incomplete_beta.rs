@@ -395,14 +395,9 @@ pub(super) fn rlog1(t: f64) -> f64 {
 }
 
 #[cfg(test)]
-pub(super) mod tests {
+mod tests {
     use super::*;
-
-    /// The ulps between two doubles of the same sign.
-    pub(in crate::functions::statistical) fn ulps(a: f64, b: f64) -> u64 {
-        let (ia, ib) = (a.to_bits() as i64, b.to_bits() as i64);
-        ia.abs_diff(ib)
-    }
+    use crate::test::util::ulps;
 
     // T-2465: with one shape below 8 and a huge other, ln x of a rounded x near 1 lost most of its
     // digits; ln(1 - y) from the given y keeps them. References: 60-digit mpmath I_y(b, a) at the

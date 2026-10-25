@@ -98,7 +98,7 @@ impl SuiteSummary {
     }
 
     /// `count` over the scored cells (all but accepted deviations), at most 1.
-    fn rate(&self, count: usize) -> f64 {
+    pub(crate) fn rate(&self, count: usize) -> f64 {
         let scored = self.cells.saturating_sub(self.deviations);
         if scored == 0 {
             return 0.0;

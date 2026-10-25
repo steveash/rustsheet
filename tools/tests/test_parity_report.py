@@ -189,7 +189,20 @@ def test_main_writes_the_pages_and_charts(tmp_path: Path) -> None:
     table = (out / "parity" / "functions.md").read_text()
     rows = [line for line in table.splitlines() if line.startswith("| ")]
     assert [r.split(" | ")[0] for r in rows[2:]] == ["| ABS", "| BETA.DIST", "| LN", "| SUM", "| UPPER"]
-    assert all(r.count("|") == 14 for r in rows)
+    assert all(r.count("|") == 15 for r in rows)
+    assert "## Phase 1 (decision 0114)" in page
+
+
+def test_phase1_bands_read_the_within_fifteen_digit_share() -> None:
+    # Decision 0114: BETA.DIST has 2 of 6 cells blamed visibly off; the others none.
+    p = compute(report(), SCOPE)
+    f = {x.name: x for x in p.functions}
+    assert f["BETA.DIST"].within15_share == pytest.approx(4 / 6)
+    assert f["BETA.DIST"].phase1_band == "Below 90%"
+    assert f["SUM"].phase1_band.endswith("(Phase 1 exit)")
+    per = p.functions_per_phase1_band()
+    assert (per["Below 90%"], sum(per.values())) == (1, 5)
+    assert "| Below 90% | 1 | 20.00% |" in parity_report.phase1_table(p)
 
 
 def test_nice_step_picks_1_2_5_steps() -> None:

@@ -13,7 +13,7 @@ use crate::{
         format::{format_text, format_text_value_exact, FormatContext, Formatted},
         rejects_format_code,
     },
-    functions::{text::position::find_element, util::near_integer_count, Function},
+    functions::{text::position::find_element, util::near_integer::near_integer_count, Function},
     model::Model,
     number_format::to_precision,
     text::{Char, Text},

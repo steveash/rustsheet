@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
-campaign: visible
+campaign: semantics
 depends_on: []
 ---
 
