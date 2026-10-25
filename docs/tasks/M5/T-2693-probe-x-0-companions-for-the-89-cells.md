@@ -3,7 +3,7 @@ id: T-2693
 title: "Probe (x)=0 companions for the 89 cells where Excel for the web shows 0 and the engine keeps a subnormal (EXP, BINOM.DIST, NEGBINOM.DIST, BETA.DIST, GAMMA.DIST)"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -43,14 +43,14 @@ one). The three gen-m9 cells are generated, so do not edit their cases: copy the
 probes case with companions and record the answer.
 
 ## Acceptance criteria
-- [ ] Every probes-numeric cell listed above has a filled `=(<formula>)=0` companion in its case, and the refill changed
+- [x] Every probes-numeric cell listed above has a filled `=(<formula>)=0` companion in its case, and the refill changed
       no other cell's expected value.
-- [ ] Visible parity: each listed probes-numeric cell either passes under decision 0042 (companion FALSE) or, where the
+- [x] Visible parity: each listed probes-numeric cell either passes under decision 0042 (companion FALSE) or, where the
       companion is TRUE, is owned by a new fix task (engine flushes that function's result) filed with the cells listed.
-- [ ] A new probes case answers the three gen-m9 formulas (companion values recorded); numbers.md "Subnormal results
+- [x] A new probes case answers the three gen-m9 formulas (companion values recorded); numbers.md "Subnormal results
       become 0" lists which of EXP, BINOM.DIST, NEGBINOM.DIST, BETA.DIST, GAMMA.DIST, EXPON.DIST, LOGINV and WEIBULL keep a
       subnormal, with the cells cited.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing decision 0042 or the harness rule (a companion in another case does not count).
@@ -60,3 +60,17 @@ probes case with companions and record the answer.
 Decision 0083: these 89 cells read as 0 against a nonzero engine value, so they are visibly off until the evidence says
 which side is right. The second acceptance criterion is the visible-parity target (decision 0114, `semantics`: the
 question is which value kind Excel returns).
+
+## Outcome
+- 86 `=(<formula>)=0` companions were added to the 7 probes-numeric cases, each in a free column on its target's row.
+  They were added by text insertion, so the case files gain only those lines plus a description note. All 7 cases were
+  refilled from excel-graph (`--force`), and no other cell's value changed against the previous sidecars. The 3 gen-m9
+  formulas got their own cases (probes/t2693-subnormal-expon-dist, -loginv, -weibull) with a copy of each Data sheet.
+- Excel keeps the subnormal (companion FALSE) of EXP (14 cells), `BINOM.DIST(0,n,p,FALSE)` (2) and LOGINV (1). Those 17
+  cells pass now under decision 0042. Excel returns a true 0 (companion TRUE) from BINOM.DIST off k = 0 (64),
+  NEGBINOM.DIST (2), the BETA.DIST density (3), GAMMA.DIST (1), EXPON.DIST and WEIBULL (1 each). Follow-up T-2703 owns
+  those targets and their companions.
+- numbers.md "Subnormal results become 0" gains a "Distribution densities" paragraph with every cell cited.
+- Eval: probes +3 cases (LOGINV passes; the EXPON.DIST and WEIBULL cases add 4 new-coverage lines, owned by T-2703).
+  probes-numeric is not gated: there the 16 keep-subnormal cells pass, and the flush cells and their TRUE companions fail
+  until T-2703. No regressions.

@@ -1187,6 +1187,9 @@ C	probes/t2669-xlookup-regex-blanks.case.json	14
 C	probes/t2669-xlookup-regex-lift.case.json	12
 C	probes/t2669-xlookup-regex-mode.case.json	60
 C	probes/t2680-lookup-regex-pcre2.case.json	45
+C	probes/t2693-subnormal-expon-dist.case.json	2
+C	probes/t2693-subnormal-loginv.case.json	2
+C	probes/t2693-subnormal-weibull.case.json	2
 C	probes/t2705-scientific-mantissa-rounding.case.json	14
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
@@ -3221,6 +3224,10 @@ F	probes/t2625-nested-consumers.case.json	P!A28
 F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
+F	probes/t2693-subnormal-expon-dist.case.json	Calc!A1
+F	probes/t2693-subnormal-expon-dist.case.json	Calc!A2
+F	probes/t2693-subnormal-weibull.case.json	Calc!A1
+F	probes/t2693-subnormal-weibull.case.json	Calc!A2
 F	probes/t2705-scientific-mantissa-rounding.case.json	Sheet1!A13
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5

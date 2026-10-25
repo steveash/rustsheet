@@ -677,6 +677,17 @@ Implemented in: `arithmetic::plus`/`minus` keep subnormals (T-1027); number text
 normal reads as 0 (`Model::parse_number_text`; VERIFIED for the strings `1e-308` and `1e-309` only, T-1143: the `(x)=0` companions of `("1e-308"+0)`, `("1e-308"-0)`, `VALUE("1e-309")` and `VALUE("1e-308")` are all TRUE, probes/subnormal-text-and-tail-companions); `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
 flushes the results of PRODUCT and SUMPRODUCT (each running product, T-1007), SUMSQ (each square, T-1057), AVERAGE, AVERAGEA, AVERAGEIF(S) and
 SUBTOTAL 1/101 (final result; T-0987, T-1007), and of the postfix `%` (T-0988).
+Distribution densities (T-2693, VERIFIED at the probed arguments, excel-graph 2026-10-25, companions added to the
+probes-numeric cases below and probes/t2693-subnormal-*). Excel KEEPS the subnormal (companion FALSE) of `EXP(-720)`,
+`EXP(-725)`, `EXP(-730)` and `EXP(-740)` (t2586-r5-f-edges-a A927:A932, -hold A293:A295, t2586-verify-r5-f-edges-hold
+A55-A71), of `BINOM.DIST(0,999,p,FALSE)` (the k = 0 pmf; t2513-verify-r3-binom-pmf-h A229, A238) and of a LOGINV
+(gen-m9/899f9555e67da2d6 A386). It returns a TRUE 0 (companion TRUE) from `BINOM.DIST(4000000,10000000,p,FALSE)`
+(t2513-r3-binom-pmf-n B1729:B1792), `NEGBINOM.DIST(999,1,p,FALSE)` (t2513-verify-r3-binom-pmf-h B229, B238), the
+BETA.DIST density (t2513-r3-m1-residual-hold D863, D875, D957), `GAMMA.DIST(50000000,500,1000000,FALSE)`
+(m9-gamma-dist-a500 A22), an EXPON.DIST (gen-m9/165db58d1540f014 A65) and a WEIBULL (gen-m9/eccd03df42e40006 A96).
+The flush follows each function's internal path, not the size of the result: `BINOM.DIST(0,999,p,FALSE)` and
+`NEGBINOM.DIST(999,1,p,FALSE)` differ only by a factor of p, yet Excel keeps the first and zeroes the second (I229/I238
+FALSE, J229/J238 TRUE). Ours keeps every one of these, so the flushing ones fail; T-2703 flushes them.
 Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
 2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
 `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
