@@ -2963,9 +2963,7 @@ F	probes/t2475-stat-subexpressions.case.json	P!A321
 F	probes/t2475-stat-subexpressions.case.json	P!A326
 F	probes/t2475-stat-subexpressions.case.json	P!A329
 F	probes/t2475-stat-subexpressions.case.json	P!A330
-F	probes/t2475-stat-subexpressions.case.json	P!A339
 F	probes/t2475-stat-subexpressions.case.json	P!A34
-F	probes/t2475-stat-subexpressions.case.json	P!A341
 F	probes/t2475-stat-subexpressions.case.json	P!A348
 F	probes/t2475-stat-subexpressions.case.json	P!A349
 F	probes/t2475-stat-subexpressions.case.json	P!A35

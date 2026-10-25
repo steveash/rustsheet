@@ -2015,16 +2015,25 @@ Above x = 0.375 it is LN(fl(1 - x)); at 0.375 both give the same double and the 
   of 3,200), and the density's ln x at x > 0.625 (LN(x)).
 Evidence: probes-numeric t2464-r2-log1p-pilot, -runs, -grid, -hold, -hix; docs/research/t2464/r2-log1p
 (`excel_log1p.py`, `pin.py`, `control.py`, `final_score.py`, `algdiv_try.py`); verify-r2-log1p/vscore.out.
-Ours: BINOM.DIST walks the pmf; the beta density uses powf.
+Implemented in: `excel_log1p` and `excel_ln_one_minus` in `crates/rustsheet-engine/src/x87_log1p.rs` (T-2645), used by
+BINOM.DIST(0,n,p) in `functions/statistical/binom.rs`. Ours: the beta density still uses powf (T-2503).
 Status: VERIFIED (excel-graph) for -0.375 <= a < 0 (27 of 15,791 rows 1 ulp off); a > 0 UNVERIFIED
 Tasks: T-2645
 
 
-## BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31] (T-2464)
-Rule: BINOM.DIST(0,n,p,FALSE) with n = 2^30 returns a number; n = 2^31, 2^32 and 2^33 return `#NUM!`. The probes only
-use powers of two, so the exact limit (2^31 - 1, as PERMUT's, is the natural guess) is not measured.
-Evidence: probes-numeric t2464-r2-log1p-hold (rows with n = 2^30 .. 2^33); docs/research/t2464/verify-r2-log1p/vscore.out.
-Status: UNVERIFIED (bracket only)
+## BINOM.DIST is #NUM! from 2^31 - 1 trials (T-2464, T-2645)
+Rule: BINOM.DIST and BINOMDIST are `#NUM!` when the truncated trial count is 2^31 - 1 = 2147483647 or more, whatever
+k, p (0 and 1 included) and the cumulative flag. BINOM.DIST.RANGE is `#NUM!` there too, though it was probed only at
+number_s = 0 and p = 1E-12 (A33, A45). 2^31 - 2 trials still evaluates
+(`BINOM.DIST(0,2^31-2,1E-12,FALSE)` is 0.9978548205473029), while 2^31 - 0.5 truncates to 2^31 - 1 and is `#NUM!`.
+So the accepted range is n < 2^31 - 1, one short of the largest 32-bit integer. NEGBINOM.DIST has no such limit
+(`NEGBINOM.DIST(2^31,1,1-1E-12,FALSE)` is 0).
+T-2464's powers of two bracketed it first: n = 2^30 evaluates, 2^31 to 2^33 are `#NUM!`.
+Evidence: probes-numeric/t2645-binom-trials-limit A1-A46 (excel-graph, 2026-10-25); probes-numeric t2464-r2-log1p-hold
+(rows with n = 2^30 .. 2^33), docs/research/t2464/verify-r2-log1p/vscore.out.
+Unprobed: BINOM.INV and CRITBINOM at these trial counts.
+Implemented in: `TRIALS_LIMIT` in `crates/rustsheet-engine/src/functions/statistical/binom.rs` (T-2645).
+Status: VERIFIED (excel-graph)
 Tasks: T-2464, T-2645
 
 ## BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST (T-2513)
@@ -2053,7 +2062,9 @@ BETA.DIST(p,k+1,n-k+1,FALSE):
 Evidence: probes-numeric t2513-r3-binom-pmf-a, -n, -hold, t2513-verify-r3-binom-pmf-h; BINOM cells of
 docs/research/t2464/cells.tsv; docs/research/t2464/r3-binom-pmf (`a1_survey.out`, `b2_share_a.out`, `b3_reg_a.out`,
 `b19_cfit_mul.out`, `c1_hold.out`), verify-r3-binom-pmf (`vscore_v.out`, `vstruct_v.out`).
-Ours: `discrete.rs` `binomial_pmf`, a double-double walk.
+Implemented in: `binom_dist_of` in `crates/rustsheet-engine/src/functions/statistical/binom.rs` (T-2645): k = 0, pmf and
+cdf, is `excel_exp(n * excel_ln_one_minus(p))`; the pmf at k = n is `excel_exp(n * excel_ln(p))`. Ours: the interior pmf
+is `discrete.rs` `binomial_pmf`, a double-double walk.
 Status: VERIFIED (excel-graph) for k = 0, k = n and the shared kernel; the interior pmf UNVERIFIED
 Tasks: T-2645, T-2146, T-2586
 
