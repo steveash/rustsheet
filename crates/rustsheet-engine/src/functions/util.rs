@@ -777,24 +777,32 @@ pub(crate) fn poly(c: &[f64], y: f64) -> f64 {
 
 /// Excel's `MOD`: the exact remainder (`fmod`) shifted into the divisor's sign. Not
 /// `n - d*floor(n/d)`, which loses precision for tiny divisors; evidence: `MOD_QUOTIENT.xlsx`
-/// C20/C21/C25/C26 (docs/excel-semantics/numbers.md). `divisor` must be non-zero.
-pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
+/// C20/C21/C25/C26 (docs/excel-semantics/numbers.md). `divisor` must be non-zero. `None` is
+/// Excel's `#NUM!` for a remainder that passes below the smallest normal double.
+pub(crate) fn excel_mod(value: f64, divisor: f64) -> Option<f64> {
     let remainder = value % divisor;
     if remainder == 0.0 {
         // Drop the sign of -0.0 (fmod keeps the dividend's sign).
-        0.0
-    } else if (remainder < 0.0) != (divisor < 0.0) {
-        let shifted = remainder + divisor;
-        // A shift that rounds back to the divisor is 0: `MOD(1,-(2^54))` = 0 but
-        // `MOD(1,-(2^53))` = 1-2^53 (probes/mod-huge-opposite-divisor; numbers.md "MOD of a
-        // small number by a huge opposite-sign divisor is 0").
-        if shifted == divisor {
-            0.0
-        } else {
-            shifted
+        return Some(0.0);
+    }
+    // Excel: a subnormal remainder, or a subnormal shifted result, is #NUM!; when both are
+    // subnormal the result is `d - fmod` if |d| is exactly 2^-1022 and #NUM! otherwise
+    // (`MOD(-(2^-1021*(1+2^-52)),2^-1022)` = 2^-1022+2^-1073, probes/t2714-mod-near-smallest-
+    // normal, -b, -c; numbers.md "MOD near the smallest normal").
+    let is_subnormal = |x: f64| x.abs() < f64::MIN_POSITIVE;
+    if (remainder < 0.0) == (divisor < 0.0) {
+        return (!is_subnormal(remainder)).then_some(remainder);
+    }
+    let shifted = remainder + divisor;
+    match (is_subnormal(remainder), is_subnormal(shifted)) {
+        (true, true) if divisor.abs() == f64::MIN_POSITIVE => Some(divisor - remainder),
+        (false, false) => {
+            // A shift that rounds back to the divisor is 0: `MOD(1,-(2^54))` = 0 but
+            // `MOD(1,-(2^53))` = 1-2^53 (probes/mod-huge-opposite-divisor; numbers.md "MOD of
+            // a small number by a huge opposite-sign divisor is 0").
+            Some(if shifted == divisor { 0.0 } else { shifted })
         }
-    } else {
-        remainder
+        _ => None,
     }
 }
 
