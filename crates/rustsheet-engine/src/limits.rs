@@ -54,18 +54,24 @@ pub(crate) const SIZE_LIMIT_EXCLUSIVE: f64 = 2_147_483_648.0;
 /// `COLUMNS(MAKEARRAY(1,20000,..))` is 20000, `ROWS(MAKEARRAY(1048577,1,..))` 1048577 and
 /// `COLUMNS(SEQUENCE(1,16385))` 16385 (probes/t2579-array-value-edges B20, B23, B24). Within the
 /// cell bound of [`check_array_cells`] any shape is built. Above it, `#VALUE!` as in Excel for
-/// columns past the grid (`SEQUENCE(3,123456789)`, gen-m9/f2bd5f380ec002bf A177;
+/// columns from `columns_refused` (SEQUENCE passes one past the grid: `SEQUENCE(3,123456789)`,
+/// gen-m9/f2bd5f380ec002bf A177; MAKEARRAY passes [`SIZE_LIMIT_EXCLUSIVE`], since Excel builds
+/// `MAKEARRAY(1,1048577,..)`, probes/t2452-makearray-cols-1048577, and refuses
 /// `MAKEARRAY(3,1E15,..)`, gen-m7/b2078b5d702c691a A2553) and for rows of 2^31 or more
 /// (`MAKEARRAY(1E15,4,..)`, gen-m7/8c4570978f18f4c2 A2736; the threshold is EXPAND's,
 /// [`SIZE_LIMIT_EXCLUSIVE`]); any other shape is the bound's `#ERROR!`, where Excel builds
-/// MAKEARRAY's 1048577 rows (DEVIATION, decision 0014; arrays.md "Arrays past the grid"; T-2600).
-/// SEQUENCE checks its rows against the grid first.
-pub fn check_built_array_size(rows: usize, columns: usize) -> Option<(Error, String)> {
+/// MAKEARRAY's 1048577 rows or columns (DEVIATION, decision 0014; arrays.md "Arrays past the
+/// grid"; T-2600, T-2452). SEQUENCE checks its rows against the grid first.
+pub fn check_built_array_size(
+    rows: usize,
+    columns: usize,
+    columns_refused: f64,
+) -> Option<(Error, String)> {
     let refused = check_array_cells(rows, columns)?;
-    if columns > LAST_COLUMN as usize {
+    if columns as f64 >= columns_refused {
         return Some((
             Error::VALUE,
-            format!("columns exceeds sheet limit of {LAST_COLUMN}"),
+            format!("columns must be less than {columns_refused}"),
         ));
     }
     if rows as f64 >= SIZE_LIMIT_EXCLUSIVE {
