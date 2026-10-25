@@ -2235,3 +2235,24 @@ own rejected forms on m9-fin-nper-npv.
 Ours: the left-to-right double sum (`compute_npv`).
 Status: VERIFIED (values: the IRR.xlsx Excel Online cache, and excel-graph sidecars fin-argument-modes.oracle.json and m9-fin-nper-npv.oracle.json for H367 and A148); the formulation is open (T-2671 probes it, T-2672 fits it).
 Tasks: T-2671, T-2672, T-1528, T-2131
+
+## Annuity and DB argument domains at their limits
+Rule: PV's growth factor `P = (1+rate)^nper` is Excel's `^`, errors included, and PV then divides by P:
+- a rate of -1 with nper 0 is 0^0, which is `#NUM!` (`PV(-1,0,-713)`);
+- a P of 0 is the division's `#DIV/0!`. That covers a rate of -1 with nper > 0, and a rate so near -1 that P underflows
+  (`PV(-1+2^-52,165,-978,224,0)`, where 1+rate is 2^-52 and its 165th power is 0).
+
+NPER divides by ln(1+rate):
+- a rate so small that 1+rate is 1 is `#DIV/0!`, start-of-period type 1 too (`NPER(1E-300,-113,3037,368,1)`);
+- a rate of -1 is `#NUM!` (LN(0); `NPER(-1,-31,1)`).
+
+DB's `month` reads a boolean as 1 or 0, from a cell too, as DDB's factor does ("VDB, DDB and ACCRINT argument types").
+`DB(15779,385,37,<FALSE>,<FALSE>)`, with period and month both FALSE cells, is `#NUM!`, not `#VALUE!`. Only the FALSE
+pair is probed; TRUE as month 1 is inferred from DDB.
+
+Evidence: probes/t2475-stat-subexpressions P!A39, A92, A136, A165 (excel-graph, 2026-10-24, T-2475), and the gen-m9 cells
+they isolate: 11eb3ab4f4f8104c A109, 1b31092a0d79e5f1 A260, 31f09e6c48ca245c A232, 38e4fc309fe199ea A89, and
+3c06f9298f65a3ba A50, A148 (T-2698's list).
+Ours: `pv_of` and `nper_of` (functions/financial/annuity.rs), `fn_db` (functions/financial/financial_depreciation.rs), T-2620.
+Status: VERIFIED for the probed cells; DB's TRUE month is UNVERIFIED.
+Tasks: T-2620, T-2698
