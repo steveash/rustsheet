@@ -1,8 +1,8 @@
 # Argument counts of every function in eval/catalog/excel-functions.tsv, one `NAME MIN MAX` per
 # line: Excel's minimum (column 3) and the most of the syntax line's parameters (255 when it
 # repeats or does not parse) and the eval/catalog/functions.yaml signature's (255 when it repeats),
-# or a cited override in place of both (INDEX's reference form takes 4, FIND 3). A hand-maintained copy:
-# tools/tests/test_catalog_arity.py fails on any drift (T-2632).
+# or a cited override in place of both (INDEX's reference form takes 4, FIND 3). A hand-maintained
+# copy: tools/tests/test_catalog_arity.py fails on any drift (T-2632).
 ABS 1 1
 ACCRINT 6 8
 ACCRINTM 4 5
