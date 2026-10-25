@@ -1,0 +1,76 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2693: gen-m9/eccd03df42e40006 Calc!A96 (WEIBULL), where excel-graph shows 0 and the engine keeps a subnormal, with its `(x)=0` companion (decision 0042). Data is that case's Data sheet.",
+ "tags": [
+  "M9",
+  "probe",
+  "subnormal"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": false,
+    "A10": " x ",
+    "A11": -1,
+    "A12": 0.1,
+    "A4": -0.0001,
+    "A6": 0.5,
+    "A7": "1.5",
+    "A8": -1,
+    "A9": 0,
+    "B1": 2,
+    "B11": 100,
+    "B12": 42,
+    "B2": -1,
+    "B3": "a*",
+    "B4": 7,
+    "B5": -0.5,
+    "B7": "a*",
+    "B8": true,
+    "B9": 123456789.123,
+    "C1": 1,
+    "C11": "a*",
+    "C12": "Hello World",
+    "C2": "abc",
+    "C3": 2,
+    "C4": 0.2,
+    "C5": "TRUE",
+    "C6": -0.5,
+    "C7": false,
+    "C8": 0.5,
+    "C9": "x~*",
+    "D1": "x~*",
+    "D11": true,
+    "D12": 0,
+    "D2": "TRUE",
+    "D5": false,
+    "D7": "x~*",
+    "D8": "TRUE",
+    "D9": "?b",
+    "E1": "TRUE",
+    "E10": "Hello World",
+    "E11": 0.2,
+    "E12": 0.2,
+    "E2": false,
+    "E3": "#N/A",
+    "E4": 2.5,
+    "E5": 1.005,
+    "E7": true,
+    "E8": 2
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=WEIBULL(1E+307,Z.TEST({1,2},DOLLARFR(Data!A4,18)),0.999,(\"TRUE\"<SUMIF(Data!B5:C12,\"*c\")))",
+    "A2": "=(WEIBULL(1E+307,Z.TEST({1,2},DOLLARFR(Data!A4,18)),0.999,(\"TRUE\"<SUMIF(Data!B5:C12,\"*c\"))))=0"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Calc!A1",
+  "Calc!A2"
+ ]
+}

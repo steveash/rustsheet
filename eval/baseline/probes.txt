@@ -1188,6 +1188,9 @@ C	probes/t2669-xlookup-regex-blanks.case.json	14
 C	probes/t2669-xlookup-regex-lift.case.json	12
 C	probes/t2669-xlookup-regex-mode.case.json	60
 C	probes/t2680-lookup-regex-pcre2.case.json	45
+C	probes/t2693-subnormal-expon-dist.case.json	2
+C	probes/t2693-subnormal-loginv.case.json	2
+C	probes/t2693-subnormal-weibull.case.json	2
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12

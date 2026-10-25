@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2513 r3-m1-residual probe hold: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 (a = 1 and a < 1 with b > 8 for TOMS algdiv, a < 1 with 1 < b < 8 for lnGamma(a0 < 1), the (0.6, 7.3) and (0.5, 6.25) shapes, b < 1, consecutive-double runs); x, a, b are exact two-piece literals read back in A:C",
+ "description": "T-2513 r3-m1-residual probe hold: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 (a = 1 and a < 1 with b > 8 for TOMS algdiv, a < 1 with 1 < b < 8 for lnGamma(a0 < 1), the (0.6, 7.3) and (0.5, 6.25) shapes, b < 1, consecutive-double runs); x, a, b are exact two-piece literals read back in A:C T-2693 adds `(x)=0` companions (decision 0042) in column E for the cells where excel-graph shows 0 and the engine keeps a subnormal.",
  "tags": [
   "M9",
   "probe",
@@ -3464,6 +3464,7 @@
     "B863": "=1",
     "C863": "=9100000",
     "D863": "=BETA.DIST(A863,B863,C863,FALSE)",
+    "E863": "=(BETA.DIST(A863,B863,C863,FALSE))=0",
     "A864": "=(88331997*2^-41+9200902*2^-67)",
     "B864": "=1",
     "C864": "=9100000",
@@ -3512,6 +3513,7 @@
     "B875": "=1",
     "C875": "=9100000",
     "D875": "=BETA.DIST(A875,B875,C875,FALSE)",
+    "E875": "=(BETA.DIST(A875,B875,C875,FALSE))=0",
     "A876": "=(96187230*2^-41+58025697*2^-67)",
     "B876": "=1",
     "C876": "=9100000",
@@ -3840,6 +3842,7 @@
     "B957": "=1",
     "C957": "=400000000",
     "D957": "=BETA.DIST(A957,B957,C957,FALSE)",
+    "E957": "=(BETA.DIST(A957,B957,C957,FALSE))=0",
     "A958": "=(121212936*2^-41+21086646*2^-67)",
     "B958": "=1",
     "C958": "=400000000",
