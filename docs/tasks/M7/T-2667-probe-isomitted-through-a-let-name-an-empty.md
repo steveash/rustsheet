@@ -13,7 +13,7 @@ depends_on: []
 ## Goal
 Excel evidence for ISOMITTED of forms ours decides without it: `LAMBDA(x,[y],LET(z,y,ISOMITTED(z)))(1)`,
 `LET(z,,ISOMITTED(z))`, `LET(z,IFERROR(Z1,1),ISOMITTED(z))`, `LAMBDA(x,[y],LAMBDA(z,ISOMITTED(z))(y))(1)`, `LAMBDA(x,[y],ISOMITTED(IF(TRUE,y)))(1)`, `LAMBDA(x,[y],ISOMITTED(CHOOSE(1,y)))(1)`,
-`LAMBDA(x,[y],ISOMITTED(IFERROR(y,1)))(1)`, and `ISOMITTED(IFERROR(Z1,1))` outside a LAMBDA (Z1 blank).
+`LAMBDA(x,[y],ISOMITTED(IFERROR(y,1)))(1)`, `REDUCE(,{1,2},LAMBDA(a,v,ISOMITTED(a)))` and its SCAN twin (FALSE in ours since T-2649), and `ISOMITTED(IFERROR(Z1,1))` outside a LAMBDA (Z1 blank).
 
 ## Context
 T-2649 made omission a property of the binding (`Binding::Omitted`, variable_stack.rs): a LET name bound to an omitted
