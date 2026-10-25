@@ -659,7 +659,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   imaginary part -0.0014297538124271 (= -SIN(150)·(EXP(-0.002)-EXP(0.002))/2; with sinh ...242709).
   `IMSIN("1E-200+1E-200i")` is "1E-200": the imaginary part cos(x)·sinh(1E-200) is 0 because the two EXPs are equal. IMCOSH
   had no failing cell. T-2535.
-- **IMSQRT of a negative real is polar through COS and ATAN2.** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
+- **IMSQRT of a negative real is polar through COS and ATAN2 on the web (the engine keeps desktop's libm value).** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i (516488da78a6b08c A52,
   59a16b5ab566ee5c A6, 7dc52cfcbc8b4448 A254). Status: CONFLICTING (web vs desktop). Mac desktop 16.0300 caches libm's

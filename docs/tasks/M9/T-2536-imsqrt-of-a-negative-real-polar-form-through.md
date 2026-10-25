@@ -50,3 +50,5 @@ Sheet1!AL12 (expected 2.12115047744981e-16, got 2.12201937071624e-16) and AL26 (
 golden that misses the desktop fit only by a near-zero residue below 1e-15 absolute is not a fitting target. So nothing here is
 implementable before desktop evidence. Its open question is item 16 of the M14 task T-1075 (desktop-only, decision 0039 rule 3:
 it does not block a milestone). Recorded as CONFLICTING in engineering.md "IMSQRT of a negative real is polar through COS and ATAN2".
+Unblocks when T-1075 item 16 is answered: if Windows desktop gives the web values, implement them (the engine change is
+`excel_atan2` plus `excel_sin_cos` of the half angle in `imsqrt`) and update the two COMPLEXs.xlsx cells under decision 0030.
