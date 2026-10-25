@@ -2,16 +2,16 @@
 
 A judgment block passes when its as-of line names the run in the `status` block, every number in
 it appears verbatim in a generated block, and it is plain text: no URL, no Markdown link, image or
-reference definition, and no `<` tag apart from its own as-of comment. The page is parsed with the
-block parser in blocks.py, so the check sees exactly the blocks the generator sees.
+reference definition, and no `<` tag apart from its own as-of comment. The page is parsed by
+`page.parse` (blocks.py's parser, with page.py's `LAYOUT` names), so the check sees exactly the
+blocks the generator sees.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Collection
 
-from rustsheet_tools.progress_report import blocks
+from rustsheet_tools.progress_report import blocks, page
 from rustsheet_tools.progress_report.model import COMMIT_SHA, RUN_DATE, ProgressReportError
 
 OK = "progress check ok"
@@ -49,13 +49,13 @@ def _body(text: str) -> str:
     return "".join(lines[:first] + lines[first + 1 :])
 
 
-def offenders(page: str, generated: Collection[str]) -> list[str]:
-    """Every reason the judgment blocks of `page` fail the check; empty when they pass.
+def offenders(text: str) -> list[str]:
+    """Every reason the judgment blocks of page `text` fail the check; empty when they pass.
 
-    `generated` is the generated block names known (page.GENERATED_BLOCKS). Fails
-    (ProgressReportError) when the page's markers do not parse or its `status` block names no run.
+    Fails (ProgressReportError) when the page's markers do not parse or its `status` block names
+    no run.
     """
-    parsed = blocks.parse(page, generated)
+    parsed = page.parse(text)
     status = parsed.get("status")
     run = STATUS_RUN.search(status.text) if status is not None else None
     if run is None:
@@ -63,7 +63,7 @@ def offenders(page: str, generated: Collection[str]) -> list[str]:
         raise ProgressReportError(msg)
     cited = {n for b in parsed.values() if b.kind == blocks.GENERATED for n in numbers(b.text)}
     found = []
-    for name in blocks.JUDGMENT_BLOCKS:
+    for name in page.JUDGMENT_BLOCKS:
         block = parsed.get(name)
         if block is None:
             found.append(f"{name}: the judgment block is missing")

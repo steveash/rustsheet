@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from test_progress_page import AS_OF, RUN, judgment_page
+from test_progress_page import AS_OF, DATA, RUN, judgment_page
 
 from rustsheet_tools import progress_report
 from rustsheet_tools.progress_report import blocks, check, page
@@ -20,7 +20,7 @@ STATUS = (
 
 def a_page(texts: dict[str, str] | None = None, status: str = STATUS) -> str:
     """A page whose judgment blocks hold `texts` (every other block: the as-of line alone)."""
-    full = dict.fromkeys(blocks.JUDGMENT_BLOCKS, f"\n{AS_OF}\n") | (texts or {})
+    full = dict.fromkeys(page.JUDGMENT_BLOCKS, f"\n{AS_OF}\n") | (texts or {})
     return "\n\n".join(
         [
             blocks.generated("status", status),
@@ -31,14 +31,14 @@ def a_page(texts: dict[str, str] | None = None, status: str = STATUS) -> str:
 
 
 def offenders(text: str) -> list[str]:
-    return check.offenders(a_page({"risks": f"\n{AS_OF}\n{text}\n"}), page.GENERATED_BLOCKS)
+    return check.offenders(a_page({"risks": f"\n{AS_OF}\n{text}\n"}))
 
 
 def test_a_rendered_page_with_current_as_of_lines_passes() -> None:
     # The real generator's status block: keeps STATUS_RUN in step with page.status.
-    texts = dict.fromkeys(blocks.JUDGMENT_BLOCKS, f"\n{AS_OF}\nSee the suites run (1) above.\n")
-    rendered = page.render(RUN, judgment_page(texts))
-    assert check.offenders(rendered, page.GENERATED_BLOCKS) == []
+    texts = dict.fromkeys(page.JUDGMENT_BLOCKS, f"\n{AS_OF}\nSee the suites run (1) above.\n")
+    rendered = page.render(RUN, DATA, judgment_page(texts))
+    assert check.offenders(rendered) == []
 
 
 def test_cited_numbers_and_percentages_pass() -> None:
@@ -85,7 +85,7 @@ def test_numbers_inside_the_as_of_comment_are_ignored() -> None:
     ],
 )
 def test_a_stale_or_missing_as_of_fails(as_of: str, error: str) -> None:
-    found = check.offenders(a_page({"risks": f"\n{as_of}\n"}), page.GENERATED_BLOCKS)
+    found = check.offenders(a_page({"risks": f"\n{as_of}\n"}))
     assert len(found) == 1
     assert found[0].startswith(error)
 
@@ -119,7 +119,7 @@ def test_plain_text_with_emphasis_lists_and_comparisons_passes() -> None:
 
 def test_every_offender_is_listed_and_placeholders_fail() -> None:
     texts = {"bottom-line": blocks.PLACEHOLDER, "risks": f"\n{AS_OF}\n13 and 14, see https://x.y\n"}
-    found = check.offenders(a_page(texts), page.GENERATED_BLOCKS)
+    found = check.offenders(a_page(texts))
     assert [f.split(":")[0] for f in found] == ["bottom-line", "risks", "risks", "risks"]
 
 
@@ -127,9 +127,9 @@ def test_a_missing_block_fails_and_a_status_without_a_run_fails_loudly() -> None
     no_risks = a_page().replace(
         blocks.open_marker("judgment", "risks") + f"\n{AS_OF}\n" + blocks.close_marker("judgment"), ""
     )
-    assert check.offenders(no_risks, page.GENERATED_BLOCKS) == ["risks: the judgment block is missing"]
+    assert check.offenders(no_risks) == ["risks: the judgment block is missing"]
     with pytest.raises(ProgressReportError, match="names no run"):
-        check.offenders(a_page(status="No run."), page.GENERATED_BLOCKS)
+        check.offenders(a_page(status="No run."))
 
 
 def test_main_check_prints_ok_or_lists_offenders(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

@@ -62,7 +62,7 @@ def run_check(docs: Path) -> None:
         if existing is None:
             msg = f"{docs / page.PAGE}: no page to check"
             raise ProgressReportError(msg)
-        found = check.offenders(existing, page.GENERATED_BLOCKS)
+        found = check.offenders(existing)
     except ProgressReportError as e:
         sys.exit(f"{PROG} --check: {e}")
     if found:

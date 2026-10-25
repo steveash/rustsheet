@@ -45,12 +45,12 @@ the steward's judgment text cites only numbers the page generated, for the curre
 ## Outcome
 `rustsheet-progress-report --check` (new `progress_report/check.py`, a small `--check` hook in
 `__init__.py`; `--out-dir` is now required only without `--check`, which defaults to the repo's
-docs directory). It parses the page with `blocks.parse` (no second parser) and exits 1 listing
+docs directory). It parses the page with `page.parse` (blocks.py's parser; no second one) and exits 1 listing
 every offender: a missing judgment block, a missing or stale as-of line against the run named in
 the `status` block, any number not printed in a generated block (compared as exact tokens, so
 `1234` does not match `1,234`; a trailing comma is dropped), and any URL, Markdown link, image,
 reference definition or `<` tag other than the block's own first-line as-of comment. Ignored digit
 runs: the as-of comment, dates, `T-`/`SPEC-` ids, `#n`, `decision nnnn` and `Mn`. The generated
-blocks come from `page.GENERATED_BLOCKS`, so blocks added later (T-0081 and on) count as cited
+block names come from page.py's `LAYOUT`, so blocks added later (T-0081 and on) count as cited
 sources with no change here. A page holding a placeholder fails, since it has no as-of line.
 Tests: tools/tests/test_progress_check.py. No eval delta (tools only).
