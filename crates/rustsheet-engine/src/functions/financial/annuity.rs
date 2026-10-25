@@ -466,9 +466,9 @@ pub(super) fn period_payments(
         let whole_term = period_count.fract() == 0.0;
         interest = match balance_interest(rate, period_count, period, values, period_start) {
             Some((interest, true)) => Some(interest),
-            balance => split.map(|(interest, _)| interest.0).or(balance
-                .filter(|_| whole_term)
-                .map(|(interest, _)| interest)),
+            balance => split
+                .map(|(interest, _)| interest.0)
+                .or(balance.filter(|_| whole_term).map(|(interest, _)| interest)),
         };
     }
     if let (Some(interest), Some(principal)) = (interest, principal) {
