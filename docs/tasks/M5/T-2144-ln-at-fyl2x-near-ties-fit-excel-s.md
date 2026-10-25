@@ -3,7 +3,7 @@ id: T-2144
 title: "LN at FYL2X near-ties: fit Excel's last bit or settle the 27 probes/ln-fyl2x-kernel known failures"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
