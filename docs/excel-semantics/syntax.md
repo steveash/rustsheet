@@ -35,7 +35,9 @@ minimum, as for every other function (`fn_xnpv`).
 Typed (API `Input::Formula`/`Parse`), Excel for the web refuses `=PV(1)` (Graph PATCH 400, T-2567), so typed entry
 refuses a call with fewer or more arguments than the function takes, for the functions in the engine's lifting table, whose
 counts match excel-functions.tsv (ACCRINTM's `par` aside, which the engine takes as optional); that a typed call with too
-many arguments is refused is inferred from the file form (T-2568).
+many arguments is refused is inferred from the file form (T-2568). Only the least and most counts are checked: a
+count between them that ends inside a repeating group (`SORTBY(a,b1,1,b2)`, whose last sort_order Microsoft's syntax line
+marks optional) is accepted typed, its Excel behavior unprobed (`ArgKinds::takes_count`, tools/tests/test_catalog_arity.py).
 Status: VERIFIED
 
 ## Unary minus binds tighter than `^`

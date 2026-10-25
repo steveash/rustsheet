@@ -444,12 +444,16 @@ impl Parser {
     /// range, for [`Parser::typed_refusal`]: Excel refuses such a formula typed (`=PV(1)`,
     /// T-2567) and in a file (docs/excel-semantics/syntax.md "Minimum argument counts"); stored
     /// text keeps it, and the call evaluates to `#ERROR!`. Only the lifting table's counts are
-    /// used: they agree with Excel's documented minimums (eval/catalog/excel-functions.tsv), and
-    /// a function outside the table is never refused here.
+    /// used: they agree with Excel's documented minimums (eval/catalog/excel-functions.tsv,
+    /// tools/tests/test_catalog_arity.py), and a function outside the table is never refused here.
+    /// Only the least and most counts are checked, not whole `repeat` cycles
+    /// ([`ArgKinds::takes_count`], not `accepts`): Excel's syntax line lets SORTBY's last
+    /// sort_order be omitted (`SORTBY(a,b1,1,b2)`), and no probe shows a typed off-cycle call
+    /// refused, so refusing it could refuse a formula Excel takes.
     fn note_argument_count(&mut self, kind: &Function, name: &str, count: usize) {
         let refused = kind
             .arg_kinds()
-            .is_some_and(|kinds| !(kinds.required..=kinds.max).contains(&count));
+            .is_some_and(|kinds| !kinds.takes_count(count));
         if refused && self.wrong_count_call.is_none() {
             self.wrong_count_call = Some(name.to_ascii_uppercase());
         }

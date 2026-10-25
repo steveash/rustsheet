@@ -67,7 +67,18 @@ fn typed_calls_with_a_wrong_argument_count_are_refused() {
     assert_eq!(wb.value("B1").unwrap(), Value::Number(1.0));
     assert_eq!(wb.value("B2").unwrap(), Value::Number(3.0));
     assert!(matches!(wb.value("B3").unwrap(), Value::Error(_)));
-    // The counts the function takes stay accepted typed, its optional arguments included.
+    // The first wrong-count call to end, left to right, is the one named.
+    let err = wb
+        .set("A7", Input::Formula("=ABS(1,2)+PV(1)".into()))
+        .unwrap_err();
+    assert!(format!("{err:?}").contains("ABS"), "{err:?}");
+    // The counts the function takes stay accepted typed, its optional arguments included. An
+    // off-cycle count of a repeating group is not refused (its typed behavior is unprobed).
+    wb.set(
+        "C3",
+        Input::Formula("=ROWS(SORTBY({1;2},{2;1},1,{1;1}))".into()),
+    )
+    .unwrap();
     wb.set("C1", Input::Formula("=PV(0,2,-3)".into())).unwrap();
     wb.set("C2", Input::Formula("=PV(0,2,-3,0,1)".into()))
         .unwrap();
