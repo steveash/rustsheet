@@ -157,6 +157,28 @@ pub(crate) fn round_shown_place(value: f64, precision: i32, is_scientific: bool)
     })
 }
 
+/// The first `shown` (1 to 15) significant digits of positive finite `value_abs` and its decimal
+/// exponent, as a scientific mantissa with one integer digit shows them: the 15-digit decimal
+/// rounded half away from zero at `shown` digits, as the fixed codes round (`0.00E+00` on 1.005,
+/// the double 1.00499999…, is "1.01E+00"; `0E+0` on 2.5 "3E+0"; probes/t2705-scientific-mantissa-
+/// rounding, gen-m10; T-2705). `(digits, exponent)` with `10^(shown-1) <= digits < 10^shown`.
+pub(crate) fn round_significant(value_abs: f64, shown: usize) -> (u64, i64) {
+    let shown = shown.clamp(1, 15);
+    let (mantissa, mut exponent) = significant_15(value_abs, false);
+    let dropped = 15 - shown as i64;
+    let (mut digits, round_up) = if dropped == 0 {
+        (mantissa, false)
+    } else {
+        round_off(mantissa, dropped, RoundMode::HalfAwayFromZero)
+    };
+    digits += u64::from(round_up);
+    if digits == 10_u64.pow(shown as u32) {
+        digits /= 10;
+        exponent += 1;
+    }
+    (digits, exponent)
+}
+
 /// `value` rounded to the digits an engineering mantissa of `group` integer placeholders and
 /// `precision` decimals shows, and the exponent (a multiple of `group`) it is shown with.
 pub(crate) fn round_engineering(value: f64, group: f64, precision: i32) -> (f64, f64) {

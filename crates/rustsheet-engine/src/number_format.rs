@@ -313,26 +313,17 @@ const EXACT_DIGITS: usize = 800;
 /// from zero when `tie_away`, otherwise toward zero. Excel's 15-digit cut, shared by the ROUND
 /// family (`decimal_round.rs`) and [`number_to_text`] (docs/excel-semantics/numbers.md).
 pub(crate) fn significant_15(value: f64, tie_away: bool) -> (u64, i64) {
-    significant_digits(value, 15, tie_away)
-}
-
-/// [`significant_15`] for `count` (1 to 15) significant digits: `(mantissa, exponent)` with
-/// `10^(count-1) <= mantissa < 10^count` and `value ≈ mantissa / 10^(count-1) * 10^exponent`,
-/// rounded on the exact binary value (an exact tie away from zero when `tie_away`, otherwise
-/// toward zero). A scientific format's mantissa rounds this way (T-2705).
-pub(crate) fn significant_digits(value: f64, count: usize, tie_away: bool) -> (u64, i64) {
-    let count = count.clamp(1, 15);
-    // Ten more correctly rounded digits decide every case except a possible exact tie, which
-    // needs the exact expansion (rare: only a 5 right after the kept digits and zeros after it).
-    let (mut digits, mut exponent) = scientific_digits(value, count + 10);
-    if is_possible_tie(&digits, count) {
+    // 25 correctly rounded digits decide every case except a possible exact tie, which needs
+    // the exact expansion (rare: only values with a 5 as 16th digit and zeros after it).
+    let (mut digits, mut exponent) = scientific_digits(value, 25);
+    if is_possible_tie(&digits) {
         (digits, exponent) = scientific_digits(value, EXACT_DIGITS);
     }
-    let lead = digits.get(..count).unwrap_or_default();
+    let lead = digits.get(..15).unwrap_or_default();
     let mut mantissa = lead
         .iter()
         .fold(0_u64, |acc, d| acc * 10 + u64::from(d - b'0'));
-    let rest = digits.get(count..).unwrap_or_default();
+    let rest = digits.get(15..).unwrap_or_default();
     let round_up = match rest.split_first() {
         Some((&first, _)) if first > b'5' => true,
         Some((&b'5', tail)) => tie_away || tail.iter().any(|&d| d != b'0'),
@@ -340,8 +331,7 @@ pub(crate) fn significant_digits(value: f64, count: usize, tie_away: bool) -> (u
     };
     if round_up {
         mantissa += 1;
-        // `count` <= 15, so the power fits.
-        if mantissa == 10_u64.pow(u32::try_from(count).unwrap_or(15)) {
+        if mantissa == 1_000_000_000_000_000 {
             mantissa /= 10;
             exponent += 1;
         }
@@ -391,9 +381,9 @@ pub(crate) fn cut_15_digits(abs_value: f64, tie_away: bool) -> (Vec<u8>, Vec<u8>
     }
 }
 
-/// True when the significant digit after the first `kept` is 5 and every later printed digit is 0.
-fn is_possible_tie(digits: &[u8], kept: usize) -> bool {
-    digits.get(kept) == Some(&b'5') && digits.iter().skip(kept + 1).all(|&d| d == b'0')
+/// True when the 16th significant digit is 5 and every later printed digit is 0.
+fn is_possible_tie(digits: &[u8]) -> bool {
+    digits.get(15) == Some(&b'5') && digits.iter().skip(16).all(|&d| d == b'0')
 }
 
 /// The first `count` significant digits of positive finite `value` (correctly rounded) and its
