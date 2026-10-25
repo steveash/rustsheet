@@ -3,7 +3,7 @@ id: T-2680
 title: "XMATCH and XLOOKUP regex mode on the REGEX* PCRE2 engine (lookaround, backreferences)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -28,10 +28,33 @@ backtracker otherwise, one work budget per call; SPEC-0013). Reuse it, never cop
 Size M, and SPEC-0013 may need a short addendum.
 
 ## Acceptance criteria
-- [ ] t2669-xlookup-regex-lift G1 and G2 pass; no baseline gains a line.
-- [ ] A probe covers PCRE2 features (lookahead, lookbehind, backreference, `\K`, a possessive quantifier) in XMATCH and
+- [x] t2669-xlookup-regex-lift G1 and G2 pass; no baseline gains a line.
+- [x] A probe covers PCRE2 features (lookahead, lookbehind, backreference, `\K`, a possessive quantifier) in XMATCH and
       XLOOKUP regex mode, and records the result in lookup.md "XMATCH and XLOOKUP regex mode".
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The REGEX* functions themselves.
+
+## Outcome
+- probes/t2680-lookup-regex-pcre2 (excel-graph, 45 cells: XMATCH, XLOOKUP and XMATCH from the last) shows Excel's
+  lookup regex mode is full PCRE2, the same as REGEXTEST: lookbehind and lookahead (both polarities), backreferences,
+  `\K`, possessive and atomic groups, `(?i)`, POSIX classes and `\p{..}`.
+- The lookups now match on the REGEX* engine. `LookupRegexes` (functions/text/regex_functions.rs) holds one
+  `PatternCache` per XMATCH or XLOOKUP call, created in `fn_xmatch` and `xlookup_impl` and shared through the lift by
+  every element, so the call has one REGEX* call's compile budget, held-memory limit and search-work budget, and
+  repeated patterns compile once (SPEC-0013). `LookupPattern` is one element's pattern on it. Once the work is spent,
+  the search is `#ERROR!`, and so is the whole call (`finish`, as for REGEX*). `regex_scan` and both `linear_search`s
+  now return a `Result` for that error. This is a DEVIATION, recorded in lookup.md and in text.md's REGEX* cap entry
+  (decision 0014). Excel's lookup regex is case-sensitive like REGEXTEST's default, so no case argument is
+  needed. Invalid patterns stay `#VALUE!` (checked when the pattern is built).
+- The `regex` and `regex-lite` dependencies of rustsheet-engine are gone: XMATCH was their last user, and Cargo.lock
+  drops regex-lite. The PCRE2 unit tests' regex-automata `meta` feature, which `regex` used to switch on through
+  feature unification, is a dev-dependency feature now.
+- Eval: t2669-xlookup-regex-lift G1 and G2 pass, and all 45 new cells pass. Unit test `regex_mode_reads_pcre2_syntax`.
+- Design question from the task, the budget for a lookup that tests many candidates: one budget per call, shared by
+  all its lifted elements, exactly as SPEC-0013 scopes it for a REGEX* call. So no addendum is needed. The first
+  version gave each element its own budget; the Excel-fidelity review caught that, since N elements could then spend
+  N seconds.
+- Unit tests `regex_mode_reads_pcre2_syntax` and `lookup_regexes_share_the_call_budget` (the `#ERROR!` and the
+  invalid-pattern `#VALUE!`).
