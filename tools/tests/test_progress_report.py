@@ -1,6 +1,7 @@
 """The progress report generator (SPEC-0022) on a small synthetic report: the parity block, the
 all-functions page and the charts (T-0081), input validation, and the run record (T-0070).
-test_progress_page.py covers the page and its judgment blocks."""
+test_progress_page.py covers the page and its judgment blocks, test_progress_history.py the run
+history and stale runs (T-0071)."""
 
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ import pytest
 
 from rustsheet_tools import progress_report
 from rustsheet_tools.progress_report import parity
+from rustsheet_tools.progress_report.history import Git
 from rustsheet_tools.progress_report.markdown import md_cell, md_text, pct, table
 from rustsheet_tools.progress_report.model import (
     TIERS,
@@ -77,6 +79,9 @@ def report() -> dict[str, Any]:
             "at_rate": 4,
             "phase1_met": False,
             "at_strict_rate": 3,
+            "met": False,
+            "covered": 5,
+            "visibly_off": 3,
             "functions": [
                 rate("ABS", 30, 0, True),
                 rate("SUM", 23, 0, True),
@@ -87,6 +92,7 @@ def report() -> dict[str, Any]:
             ],
         },
         "cases": [],
+        "milestone_exit": [{"milestone": "M5", "exit": True}, {"milestone": "M6", "exit": False}],
         "run": {"commit": "abc12345", "date": "2026-10-19", "skipped_suites": []},
         "suites": [
             {
@@ -210,16 +216,56 @@ def test_pct_never_rounds_to_the_ends() -> None:
     assert pct(0, 0) == "\N{EN DASH}"
 
 
-def write_inputs(tmp_path: Path, r: dict[str, Any]) -> list[str]:
-    rep, scope = tmp_path / "report.json", tmp_path / "scope.json"
+def stage(todo: int, blocked: int, done: int) -> dict[str, int]:
+    """A tasks.json stage map (`scripts/tasks.py stats --json`)."""
+    return {"todo": todo, "in-progress": 1, "blocked": blocked, "done": done, "dropped": 1, "ready": 2}
+
+
+def tasks() -> dict[str, Any]:
+    """A tasks.json: two milestones, the three campaign stages and the deferred tasks."""
+    milestone = {"todo": 3, "in-progress": 1, "blocked": 2, "done": 10, "dropped": 1}
+    return {
+        "by_milestone": {"M0": milestone, "M2": {**milestone, "done": 5}},
+        "by_campaign": {"semantics": stage(4, 1, 7), "accuracy": stage(2, 0, 1), "visible": stage(3, 2, 9)},
+        "deferred": stage(5, 3, 0),
+    }
+
+
+class FakeGit:
+    """`Git` with a fixed HEAD and commit counts by (since, until)."""
+
+    def __init__(
+        self, head: str | None = "abc12345", between: dict[tuple[str, str], int] | None = None
+    ) -> None:
+        self._head = head
+        self._between = between or {}
+
+    def head(self) -> str | None:
+        return self._head
+
+    def commits_between(self, since: str, until: str) -> int | None:
+        return self._between.get((since, until))
+
+
+GIT: Git = FakeGit()
+
+
+def write_inputs(
+    tmp_path: Path, r: dict[str, Any], t: dict[str, Any] | None = None, *, today: str = "2026-10-19"
+) -> list[str]:
+    rep, scope, tasks_json = tmp_path / "report.json", tmp_path / "scope.json", tmp_path / "tasks.json"
     rep.write_text(json.dumps(r))
     scope.write_text(json.dumps(SCOPE))
-    return ["--report", str(rep), "--scope", str(scope), "--baselines", str(NO_BASELINES)]
+    tasks_json.write_text(json.dumps(t or tasks()))
+    return [
+        *("--report", str(rep), "--scope", str(scope), "--baselines", str(NO_BASELINES)),
+        *("--tasks", str(tasks_json), "--today", today),
+    ]
 
 
 def test_main_writes_the_page_the_functions_page_and_the_charts(tmp_path: Path) -> None:
     out = tmp_path / "out"
-    progress_report.main([*write_inputs(tmp_path, report()), "--out-dir", str(out)])
+    progress_report.main([*write_inputs(tmp_path, report()), "--out-dir", str(out)], GIT)
     page = (out / "progress.md").read_text()
     assert "## Parity" in page
     assert "(progress/functions.md)" in page
@@ -310,5 +356,5 @@ def test_the_run_record_is_validated(tmp_path: Path, field: str, value: object) 
     with pytest.raises(ProgressReportError, match=f"run.{field}"):
         run_of(r)
     with pytest.raises(SystemExit, match=field):
-        progress_report.main([*write_inputs(tmp_path, r), "--out-dir", str(tmp_path / "out")])
+        progress_report.main([*write_inputs(tmp_path, r), "--out-dir", str(tmp_path / "out")], GIT)
     assert not (tmp_path / "out").exists()
