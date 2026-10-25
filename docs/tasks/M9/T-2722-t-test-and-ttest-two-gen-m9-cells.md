@@ -18,6 +18,7 @@ Left over from T-2469 (statistics.md "T.TEST: an error sample first..."). A15 ne
 
 ## Acceptance criteria
 - [ ] Both cells' known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), no new ones.
+- [ ] Probe and settle the two unevidenced T-2469 rules: `T.TEST(<range with an error>,NA(),1,9)` (ours `#N/A`, array2's error value first) and a non-empty typed text sample `T.TEST("a",A1:A4,1,3)` / `(..,1,1)` (ours: a sample with no number); update statistics.md.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
