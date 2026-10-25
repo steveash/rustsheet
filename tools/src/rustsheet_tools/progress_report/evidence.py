@@ -18,7 +18,7 @@ from pathlib import Path
 import yaml
 
 from rustsheet_tools.gen.generator import Catalog
-from rustsheet_tools.progress_report.markdown import pct, table
+from rustsheet_tools.progress_report.markdown import md_text, pct, table
 from rustsheet_tools.progress_report.model import EN, GE, FunctionParity, Parity, ProgressReportError
 from rustsheet_tools.progress_report.parity import ASSETS, NEVER_OFF, TIER_LABELS
 from rustsheet_tools.progress_report.svg import BLACK, BLUE, Bar, Palette, bar_chart
@@ -52,7 +52,7 @@ def load_priors(path: Path) -> dict[str, float | None]:
     `ProgressReportError`."""
     try:
         catalog = Catalog.load(path)
-    except (OSError, UnicodeDecodeError, yaml.YAMLError) as e:
+    except (OSError, UnicodeDecodeError, yaml.YAMLError, AttributeError, TypeError) as e:
         msg = f"{path}: {e}"
         raise ProgressReportError(msg) from e
     priors: dict[str, float | None] = {}
@@ -128,7 +128,7 @@ Excel-evidence cell that calls the function, accepted deviations included.
 
 
 def _short_list(fs: list[FunctionParity], limit: int = 20) -> str:
-    named = ", ".join(f"{f.name} ({f.evidence:,})" for f in fs[:limit])
+    named = ", ".join(f"{md_text(f.name)} ({f.evidence:,})" for f in fs[:limit])
     more = f", and {len(fs) - limit:,} more" if len(fs) > limit else ""
     return f"{named}{more}" if fs else "none"
 
