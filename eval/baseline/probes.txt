@@ -68,6 +68,7 @@ C	probes/average-value-args.case.json	32
 C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14
 C	probes/base-number-upper-bound.case.json	50
+C	probes/base-zero-empty-min-length.case.json	9
 C	probes/bessel-asymptotic.case.json	50
 C	probes/bessel-large-x.case.json	24
 C	probes/bond-argument-check-order.case.json	298
@@ -1501,6 +1502,8 @@ F	probes/amordegrc-fractional-period.case.json	Calc!A6
 F	probes/amordegrc-fractional-period.case.json	Calc!A7
 F	probes/amordegrc-fractional-period.case.json	Calc!A8
 F	probes/amordegrc-fractional-period.case.json	Calc!A9
+F	probes/base-zero-empty-min-length.case.json	Sheet1!A1
+F	probes/base-zero-empty-min-length.case.json	Sheet1!A5
 F	probes/coup-calendar-edges.case.json	S!C1
 F	probes/coup-calendar-edges.case.json	S!C16
 F	probes/coup-calendar-edges.case.json	S!C2
