@@ -638,6 +638,41 @@ def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[
     return chain
 
 
+def _fd_newton_yield(
+    start: float, h: float, relative: bool, central: bool, tol: float
+) -> Callable[..., float]:
+    """Newton on PRICE(y) - pr from `start` with a finite-difference derivative, its step `h`
+    absolute or `h * |y|`, forward or central, returning the iterate after a step below `tol`
+    (T-1592: a numerical derivative would make the analytic back-chain's shared start an artefact)."""
+
+    def call(*args: Arg) -> float:
+        price_of, _, pr = _bond_price(args)
+        y = start
+        for _ in range(100):
+            d = h * abs(y) if relative and y != 0 else h
+            low = price_of(y - d) if central else price_of(y)
+            slope = (price_of(y + d) - low) / (2 * d if central else d)
+            step = (price_of(y) - pr) / slope
+            y -= step
+            if abs(step) < tol:
+                return y
+        raise NoResultError("Newton did not converge")
+
+    return call
+
+
+FD_NEWTON_YIELDS = [
+    # (start, h, relative, central, tol): the best of a T-1592 scratch grid of 560 (starts 0, 0.1, the coupon
+    # rate, the current yield; h 1e-8 to 1e-2 and -1e-4, -1e-3; step and residual stops), none above 5/178.
+    (0.0, 1e-5, False, False, 1e-10),
+    (0.0, 1e-7, False, False, 1e-10),
+    (0.0, 1e-6, True, False, 1e-10),
+    (0.0, 1e-8, False, True, 1e-10),
+    (0.1, -1e-4, True, False, 1e-9),
+    (0.1, 1e-4, False, False, 1e-9),
+]
+
+
 def _secant_yield(tol: float) -> Callable[..., float]:
     """The secant on PRICE(y) - pr from yields 0 and 1."""
 
@@ -718,6 +753,15 @@ def yield_candidates() -> list[Candidate]:
             f"Newton from {name}, |step| < 6.9e-6", _newton_yield_from(start, 6.9e-6), "Newton, model start"
         )
         for name, start in model_starts.items()
+    ]
+    out += [
+        candidate(
+            f"Newton from {y0:g}, {'central' if c else 'forward'} difference {h:g}{' * |y|' if rel else ''}, "
+            f"|step| < {t:g}",
+            _fd_newton_yield(y0, h, rel, c, t),
+            "Newton, finite difference",
+        )
+        for y0, h, rel, c, t in FD_NEWTON_YIELDS
     ]
     return out
 

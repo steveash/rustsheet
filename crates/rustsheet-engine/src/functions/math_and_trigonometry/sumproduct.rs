@@ -1,4 +1,5 @@
 use crate::arithmetic::{extended_product, extended_sum, flush_subnormal};
+use crate::nested_array::NestedKind;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -52,7 +53,13 @@ impl Model {
                     let v = match node {
                         ArrayNode::Number(v) => *v,
                         ArrayNode::Boolean(_) | ArrayNode::String(_) | ArrayNode::Empty => 0.0,
-                        ArrayNode::Lambda(_) => return Model::lambda_as_number_error(cell),
+                        // A nested GROUPBY or PIVOTBY cell is no number: `SUMPRODUCT(GROUPBY(..))`
+                        // is 0 (probes/t2594-nested-aggregates A22, T-2625). A reference cell is
+                        // unprobed and stays `#VALUE!`.
+                        ArrayNode::Nested(nested) if nested.kind() == NestedKind::Array => 0.0,
+                        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
+                            return Model::lambda_as_number_error(cell)
+                        }
                         ArrayNode::Error(e) => {
                             element_error.get_or_insert_with(|| e.clone());
                             0.0

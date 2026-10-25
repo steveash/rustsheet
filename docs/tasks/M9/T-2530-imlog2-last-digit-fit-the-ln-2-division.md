@@ -3,7 +3,7 @@ id: T-2530
 title: "IMLOG2 last digit: fit the ln 2 division (COMPLEXs AH19, sweep N18/N19, overflow-edge A104/A107/A108/A109)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -28,11 +28,16 @@ A104, A107, A109 are also listed by T-2231 (same kernel; whichever lands first t
 Code: `imlog2` in crates/rustsheet-engine/src/functions/engineering/complex/mod.rs.
 
 ## Acceptance criteria
-- [ ] COMPLEXs.xlsx Sheet1!AH19 leaves eval/baseline/ironcalc-calc.txt (`make eval-baseline`), with
+- [x] COMPLEXs.xlsx Sheet1!AH19 leaves eval/baseline/ironcalc-calc.txt (`make eval-baseline`), with
       no new known-failure lines in any baseline.
-- [ ] The candidate's score over the sweep's N/O columns and eng-im-overflow-edges A104-A109 is
+- [x] The candidate's score over the sweep's N/O columns and eng-im-overflow-edges A104-A109 is
       recorded in engineering.md (>= 99.9% of cells, or time-boxed per decision 0056).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMLOG10 and IMLN (their own cells under T-2231).
+
+## Outcome
+Done by T-2231. IMLOG2 multiplies by the double one ulp above log2 e and uses IMABS's scaled modulus. That fits
+all 103 real and 103 imaginary IMLOG2 parts in the suites (engineering.md "IM* reciprocal kernels, IMABS and
+IMARGUMENT"). AH19 has left eval/baseline/ironcalc-calc.txt.

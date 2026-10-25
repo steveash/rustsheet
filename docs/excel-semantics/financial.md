@@ -135,7 +135,13 @@ relative from the exact -1.254969996784983E-12 (m9-fin-pmt A166).
 Status: VERIFIED to 15 digits (excel-graph); bits open.
 Implemented in: `growth_log` and `discounted_principal`, on `x87_exp::excel_expm1`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2242).
-Tasks: T-2242
+Conflicting evidence: 35 cells of desktop-Excel-saved Calipers models fed by PPMT and IPMT
+matched Excel bit for bit before T-2242 and are now off by a few ulps. They are in pv_goldens
+pv23_007 ("Pro Forma Cash Flow Statement" AF13, AV13, BG15, G15, G24, N13, …), pv23_008 ("Debt
+Financing"!E231, "Est Property Value"!B47:C47, IRR!B26), pv23_009 and pv23_056 (found merging
+T-0455, 2026-10-24). Until T-0458 settles which form Excel uses for their arguments, the calipers
+baseline cannot record its fixes.
+Tasks: T-2242, T-0458
 
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
@@ -329,6 +335,15 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   (T-2328)" scores 227/227 on the fit set and 51/52 on `xirr-oos`, where the one miss is the A7 input check
   (`xirr-early-dates`). The span factor stays: with Excel's `^`, the unscaled fitted stop scores 33/52 and the
   step test alone 48/52. The A8 124-year cell still needs the scaled bound.
+- T-2329 (probes/xirr-zero-first-bracket, excel-graph, 2026-10-24): with a zero first value the flows do
+  not matter. The bracket is [0, s] (s is the guess itself for any positive guess, 1 or more included, and 1e-5 for a guess of 0), and the
+  bisection replaces the upper end every step (the first-value sign rule above), so XIRR is s/2^k at the first k
+  with s/2^k < 5e-9 + 1e-8·s/2^k: 2.9802322387695314e-09 at the default guess for a root at 1.0 (A1), 3 (A4) or
+  -0.1 (A5), on all-equal dates where XNPV is a flat 10 (A8) or a flat 0 (A12), and on a first date later than
+  equal others (A13); 4.470348358154297e-09 = 0.3/2^26 at guess 0.3 (A3), 4.8828125e-09 = 1e-5/2^11 at guess 0
+  (A9), 3.725290298461914e-09 = 2/2^29 at guess 2 (A10). A negative guess is `#NUM!` (A6, A7, A11), even
+  where the downward chain from the guess brackets the root (A6: root -0.1, guess -0.2). So no XNPV sign is
+  read on the walk; a NaN from normalising XNPV by the first value would explain it (unconfirmed).
 Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
 T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells. The walk
 cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
@@ -336,7 +351,7 @@ caps" below). A trial rate where a power overflows or underflows to 0 has no XNP
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. The XNPV part of the stop test
 (T-1583's span-scaled form) fits every numeric cell probed once XNPV uses Excel's `^` (T-2328). Its form rests on the
 fit set, `xirr-oos` and A8 alone, so it is a fitted rule, not a known mechanism.
-Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329
 
 ## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of v = 1/(1 + r):
@@ -516,8 +531,10 @@ and is `#NUM!` (X2). Text in either range is `#VALUE!` (X6, X7). Dates before th
 `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same flows is
 #NUM!), and -1000, 1100, -1000 on 45000, 45365, 44000 = -0.24668241366744048 (X8). But XIRR is `#NUM!`
 when no date is later than the first and the first value is nonzero, even where a root exists (with a zero first value
-it is not: probes/xirr-span-zero-first A28-A30, `{0,-1000,1100}` on 46000, 45000, 45365, give 2.98e-9 / 3.73e-9, T-1591; the exact
-condition is unprobed; T-2329 relaxes the engine check): -1000 on 45365 then 1100 on 45000 (X9,
+it is not: probes/xirr-span-zero-first A28-A30, `{0,-1000,1100}` on 46000, 45000, 45365, give 2.98e-9 / 3.73e-9, T-1591;
+T-2329 skips the engine's later-date check for a zero first value; equal dates with a zero first value are 2.5849043512437796E-09 in Excel
+(gen-m9/e168be7f6d3f84c2 A125, a computed guess), because a zero first value fixes the bracket whatever the dates, see the T-2329 bullet under
+"XIRR is a bracketing bisection"): -1000 on 45365 then 1100 on 45000 (X9,
 xirr-early-dates is the same as an array: X12), and 1100, -1000, -1000 on 45365, 45000, 44000 (X13).
 All dates equal is `#NUM!` (A3), while a repeat of the first date next to a later one is fine (A4,
 A5). Positive flows on earlier dates with no root are `#NUM!` (A1, A2, A14, A15). A negative date or
@@ -577,7 +594,8 @@ PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB and PMT). ACCRINTM's basis lifts elem
 `{0;1;2;3;4}` gives 100, 100, 101.38888888888889, 100, 100; 5 and -1 are `#NUM!`, `TRUE` is `#VALUE!`, `"1"` is
 100, 1.9 truncates to 1 and `"x"` is `#VALUE!`; beside `{39083;39100}` in the issue it broadcasts to a 2x2 result
 (J1-J15). ACCRINTM reads every argument before it checks a value: `ACCRINTM(39083,39448,-0.1,1000,NA())` is `#N/A`,
-not the rate's `#NUM!`, and the same per element (J17, J20).
+not the rate's `#NUM!`, and the same per element (J17, J20); a date off the calendar is the exception, `#NUM!` as it
+is read ("Discount securities check order").
 Every other later argument of ACCRINT, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DURATION, MDURATION,
 ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE and YIELD is refused too, over a two-cell range on the formula's own
 rows (93 cells, each with its intersected control giving the base value: probes/fin-remaining-later-argument-ranges
@@ -1042,10 +1060,41 @@ finishes in closed form, `remain * exp(n * log1p(-rate))` ("AMORDEGRC past 2^20 
 `counted += 1.0` stopped moving past 2^53, so main never finished there; where Excel did not finish within the
 excel-graph timeout, the kernel returns the value the walk reaches (a DEVIATION: `AMORLINC(2400,39679,39813,300,1E15,
 1E-300,1)` is 2.4E-297, the charge, and `AMORDEGRC(1E300,39679,39813,300,1E15,1E-300,1)` is 3, the charge 2.5 rounded).
-AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0) and at a cost of 1E308 (-b B2) are base values, T-1895.
+AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0: unexplained, "AMORLINC and AMORDEGRC check order") and at a cost of 1E308 (-b B2) are base values, T-1895.
 Status: VERIFIED (excel-graph) for AMORLINC's walks and AMORDEGRC's up to 2^20 periods; DEVIATION (decision 0014) past
 2^20 AMORDEGRC periods and where Excel did not finish
 Tasks: T-1841, T-1895
+
+## AMORLINC and AMORDEGRC check order
+Rule: AMORLINC and AMORDEGRC read cost, date_purchased, first_period, salvage, period and rate in order, each a number (an
+error, text or boolean is returned; text "1" is 1), and a date that does not floor to 0-2958465 (9999-12-31) is `#NUM!` as it
+is read (`AMORLINC(2400,-1,NA(),..)` and `AMORLINC(2400,39679,2958466,NA(),..)` are `#NUM!`, `AMORLINC(NA(),-1,..)` `#N/A`;
+dates 0 and 0.5 pass, `AMORLINC(2400,0.5,NA(),..)` is `#N/A`). Then the values are checked, all `#NUM!`: a negative cost or
+salvage, a salvage not below the cost, a negative period, a rate of 0 or less, a purchase after the first period (one on
+it is valid: `AMORLINC(2400,1,1,300,1,0.15,1)` is 360). Only then the basis is read: its error, text or boolean, then
+`#NUM!` for any basis but 0, 1, 3 or 4 (`AMORLINC(-1,39679,39813,300,1,0.15,NA())` is `#NUM!`). AMORDEGRC's asset-life check
+comes last (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is `#N/A`). A purchase date below 1 is serial 0, the day before
+serial 1: `AMORDEGRC(2400,0,366,300,1,0.15,1)` is 562 (366 days), `AMORDEGRC(2400,0,1,..)` 899, `AMORDEGRC(2400,1,366,..)` 563,
+`AMORLINC(46557,0,39881,440,0,0.1)` 46117.
+AMORDEGRC with a period strictly between 0 and 1 is UNEXPLAINED. Mostly it is the asset's period-1 charge: on the 2400 asset
+periods 0.001 to 0.9999 are 776, period 1's value (probes/amordegrc-fractional-period A1-A11, the first cells of their
+workbook; amor-argument-check-order A846-A851), and `AMORDEGRC(98882,37287,38647,1E-13,0.3,0.1,1)` is 1693, its period 1
+(A23, A27). But `AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)` and `(..,0.5,..)` are 1693 where that asset's period 1 is 2284
+(A24, A26: 1693 is the value of the cell just before each), `AMORDEGRC(2400,..,0.0001,0.15,0)` and `(..,1)` are 0
+(amor-argument-check-order A862, A863), and `AMORDEGRC(98882,37287,38647,1E-13,0.5625,0.1,1)` is 0 in that probe (A864) but
+1 inside gen-m9 d912671baa1364aa A76. One hypothesis, untested, is a value left over from an earlier evaluation, which would depend on
+the calculation order; probing each formula alone in a fresh workbook would test it (T-1895). From 1 on a fractional period
+truncates (1.5 is period 1, 2.9 period 2), and AMORLINC reads any period above 0 and up to the full periods as a full charge
+(`AMORLINC(..,0.0001,0.15,1)` is 360).
+Evidence: probes/amor-argument-check-order (866 cells: each out-of-domain argument against `NA()`, text and `TRUE` in every
+other position, `NA()` and `1/0` in every pair, booleans and text alone, purchase dates below 1, fractional periods;
+excel-graph, 2026-10-24, T-2485) and probes/amordegrc-fractional-period (32 cells). Every order cell fits the rule.
+Dates -1, -0.5, 0, 1E-15, 0.5, 0.99, 1 and 2958466 were probed (-0.5 is `#NUM!`, A410-A412, A843-A845); 2958465.5 is
+inferred (the floor is taken from the shared reader's other functions).
+Ours: since T-2485 (`amortization_of` and `amor_date` in functions/financial/amortization.rs). AMORDEGRC below period 1
+stays 0 (known failures, T-1895).
+Status: VERIFIED (excel-graph) for the order and the purchase date below 1; UNEXPLAINED for AMORDEGRC below period 1
+Tasks: T-2485, T-1895
 
 ## AMORDEGRC past 2^20 periods
 Rule: past 2^20 periods RustSheet computes AMORDEGRC's decay in closed form, `remain * exp(n * log1p(-rate))` from the
@@ -1091,7 +1140,7 @@ share the readers of probed ones. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E
 Evidence: probes/fin-bond-negative-basis (176 cells, excel-graph, 2026-10-20, T-1870); probes/fin-yield-odd-lift L5
 (excel-graph, 2026-10-18, T-1842).
 Ours: one reader, `day_count_basis` (functions/financial/dates.rs), serves the coupon-bond and ODD* kernels, ACCRINT,
-AMORLINC, AMORDEGRC and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC (its parts since T-2032). Before T-1870,
+AMORLINC, AMORDEGRC (through `day_count_basis_of`, read after the value checks, since T-2485) and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC (its parts since T-2032). Before T-1870,
 `floor() as u32` saturated a negative basis to 0, and the `as i32` of YEARFRAC and the `trunc()` of AMOR* turned -0.5
 into 0. The probe's eight failing cells, rows 1, 2, 9 and 17 in columns E and G (YIELD, PRICE,
 ODDFPRICE and ODDFYIELD at bases 0 and 4.9), are last-digit misses of the T-1374 and T-2007 class, not basis reads;
@@ -1123,7 +1172,7 @@ take YEARFRAC's two parts, the basis day count D (30/360 for bases 0 and 4, actu
 length B (360, 365, or basis 1's YEARFRAC year), and round in this order, with `b/d` computed first where it appears:
 - DISC = `(1 - pr/redemption) * (B/DSM)`; INTRATE = `(redemption - investment)/investment * (B/DIM)`;
   YIELDDISC = `(redemption - pr)/pr * (B/DSM)`; PRICEDISC = `redemption - discount*redemption*DSM/B`;
-  RECEIVED = `investment / (1 - discount*(DIM/B))`.
+  RECEIVED = `investment / (1 - discount*DIM/B)`, left to right (T-2484: "Discount securities check order").
 - PRICEMAT and YIELDMAT read one B, that of issue to settlement, with A = days(issue, settlement), DIM =
   days(issue, maturity) and DSM = DIM - A: PRICEMAT = `(100 + DIM/B*rate*100) / (1 + DSM/B*yld) - A/B*rate*100`;
   YIELDMAT = `((1 + DIM/B*rate) - T) / T * (B/DSM)` with T = `pr/100 + A/B*rate`.
@@ -1132,8 +1181,8 @@ exactly 0.08 (the year-fraction form gives 0.08000000000000007), `INTRATE(43159,
 1.2000000000000002 = 0.1*(360/30), not 1.2, and `YIELDMAT(43101,43466,42736,0.06,98,0)` is 0.07692307692307698 (the
 expanded numerator `DIM/B*rate + 1 - pr/100 - A/B*rate` gives ...704). The grouping `x*(B/D)` is the only one of ten
 candidates matching all eight distinct DISC.xlsx cells (F2:F5 and F15:F18, bases 0-3 on two spans; F6:F10 and F19
-repeat them with basis 4, 2.4 or omitted). RECEIVED's form is the year
-fraction it always used (`DIM/B` is YEARFRAC); no cell separates it from the alternatives.
+repeat them with basis 4, 2.4 or omitted). RECEIVED's form was the year
+fraction (`DIM/B` is YEARFRAC) until probes/discount-argument-check-order A758 separated it (T-2484).
 Evidence: ironcalc-calc DISC.xlsx F2:F19 and INTRATE.xlsx F2:F6 (Excel-cached); probes/discount-security-modes,
 probes/date-system-1900-financial-daycount, probes/date-system-1904-financial-daycount,
 probes/date-system-1904-financial A25, A27, probes/fin-argument-modes H139, H352 (excel-graph). 73 cells, all now bit-exact.
@@ -1235,6 +1284,56 @@ engine checks the date after the 1904 shift).
 Ours: matches since T-1406 (`coupon_args` in financial_bonds.rs, `tbill_arguments` in discount.rs).
 Status: VERIFIED (web)
 Tasks: T-1406
+
+## PRICE, YIELD, DURATION and MDURATION check order
+Rule: these four do not read their arguments as the COUP* functions do, and PRICE and YIELD differ from DURATION and
+MDURATION:
+1. PRICE and YIELD read the basis first: its error or text is returned, and a basis outside 0-4 is `#NUM!`, before
+   anything else (`PRICE(-1,43831,0.0575,0.065,100,2,NA())` is `#N/A`, `PRICE(NA(),43831,0.0575,0.065,100,2,5)` and
+   `YIELD(39448,43831,0.0575,95.04,100,"x",5)` are `#NUM!`). DURATION and MDURATION read it last (step 4).
+2. settlement, then maturity: an error or text is returned, and a serial that does not floor to 0-2958465 is `#NUM!`
+   as it is read (`PRICE(-1,NA(),..)`, `PRICE(2958466,"x",..)`, `DURATION(39448,-1,NA(),..)` are `#NUM!`,
+   `DURATION(NA(),-1,..)` is `#N/A`). Serial 0, 0.5 and 2958465 pass this read (`PRICE(0,43831,NA(),..)` is `#N/A`),
+   though a settlement below 1 is `#NUM!` later (step 5).
+3. rate, yld (YIELD's price), PRICE's and YIELD's redemption, then frequency: an error, text or boolean is returned.
+4. DURATION and MDURATION check the frequency as they read it, then read the basis: `DURATION(39448,43831,0.08,0.09,3,NA())`
+   is `#NUM!`, `DURATION(39448,43831,0.08,"x",3,1)` `#VALUE!`. PRICE and YIELD check the frequency after every read
+   (`PRICE(..,100,3,NA())` is `#N/A`, but step 1 already read the basis).
+5. Only then the value checks, all `#NUM!`: settlement below 1 or not before the maturity, a negative rate, a negative
+   yld (YIELD: a price of 0 or less), a redemption of 0 or less. So `PRICE(39448,39000,"x",..)` and
+   `DURATION(39448,43831,-0.05,NA(),2,1)` are the later argument's `#VALUE!` and `#N/A`.
+The reason the basis comes first only for PRICE and YIELD is unknown; it holds for every position probed.
+Evidence: probes/bond-argument-check-order (298 cells: each out-of-domain argument against an error, and text next to
+it, in every other position; excel-graph, 2026-10-24, T-2482).
+Unprobed: a maturity past 9999-12-31 against a later error (the read check is taken from the settlement's and the
+T-bills'); a negative fraction such as -0.5 as a date (floored to -1 like the T-bills').
+Ours: matches since T-2482 (`bond_args` in financial_bonds.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2482
+
+## ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order
+Rule: the four odd-coupon functions read their arguments in order and check few of them as they read:
+1. The dates (settlement, maturity, then issue and first_coupon, or last_interest): an error or text is returned, and a
+   serial below 0 (-0.5 too) or past 2958465 (9999-12-31) is `#NUM!` as it is read
+   (`ODDFPRICE(2958466,NA(),..)`, `ODDLYIELD(43000,43200,-1,NA(),..)` are `#NUM!`, `ODDFPRICE(NA(),-1,..)` is `#N/A`). Serial
+   0, 0.5 and 2958465 pass this read (`ODDFPRICE(0.5,43831,39300,39630,NA(),..)` is `#N/A`).
+2. rate, yld or pr, redemption, then frequency: an error, text or boolean is returned; the frequency is `#NUM!` unless 1, 2
+   or 4 as it is read (`ODDLPRICE(..,100,3,NA())` is `#NUM!`).
+3. basis: an error, text or boolean is returned, then outside 0-4 `#NUM!`.
+4. Only then the date order and value checks, all `#NUM!`: a settlement not before the maturity, an issue not before the
+   first coupon, a coupon date not before the maturity, ODDLPRICE's and ODDLYIELD's settlement on or before `last_interest`
+   (`ODDLPRICE(42917,43200,42917,..)` is `#NUM!`, `ODDLPRICE(42918,43200,42917,0.0575,0.065,100,2,0)` = 99.44775142683748),
+   a negative rate, a negative yld (ODDFYIELD and ODDLYIELD: a price of 0 or less), a redemption of 0 or less. So
+   `ODDFPRICE(43832,43831,..,NA(),2,0)` is `#N/A` and `ODDLPRICE(43000,43200,42917,-0.05,..,TRUE)` `#VALUE!`.
+Unlike PRICE and YIELD, the basis is read last (step 3).
+Evidence: probes/odd-bond-argument-check-order (1091 cells: each out-of-domain argument against `NA()`, text and `TRUE` in
+every other position, the ODDL* settlement around `last_interest`, dates 0, 0.5 and 2958465; excel-graph, 2026-10-24,
+T-2483); probes/fin-odd-date-before-error-arg for the negative dates.
+Unprobed: a 1904 workbook, whose reading moves a date 2 * 1462 days on (`DateSystem::odd_period_1900_serial`): a 1904 serial
+that only the move takes past 9999-12-31 is `#NUM!` after the reads, as before T-2483.
+Ours: matches since T-2483 (`odd_args` and `odd_last_of` in financial_bonds.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2483
 
 ## ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule
 
@@ -1402,6 +1501,14 @@ These cells also contradict the stop rule above (first step below about 7e-6): B
 target after a last step of 7.54e-6, above T-2187's 7.11e-6 upper bound (B17), so the absolute cut is ruled out; B2
 (2.4e-4 relative) and A26 (last step 6.87e-6, 1.43e-4 relative) rule out the relative cut. The stop rule needs
 re-probing (T-2330).
+T-1592 (third round, 2026-10-24): a numerical derivative does not explain S either. Newton with a finite-difference
+derivative (forward or central, step 1e-8 to 1e-2 absolute or relative to y, also -1e-4 and -1e-3; from 0, 0.1, the coupon rate
+or the current yield; stops on the step at 1e-10 to 1e-5 or on |PRICE - pr| at 1e-8 to 1e-6; 560 variants in a scratch grid)
+reaches at most 5/178 bit-exact, against 4/178 for analytic Newton from 0.1 (lab family "Newton, finite difference", six
+variants: 5/178 bit-exact and 14 within 4 ulp at best; the family union 14/178, the union of all candidates 23/178). So the
+back-chained S is not an artefact of assuming an analytic derivative. Nor is S an iterate of Newton on the frequency-free annuity
+model (redemption 100, compounding 1, 2, 3, 4, 6, 12 or 365 times a year, or continuous, over the basis term T) from 0, 0.01,
+0.05, 0.1, 0.5 or 1: no iterate comes within 5e-4 relative of the starts of A1, D2, E1, E4 or E5 (scratch arithmetic).
 Next (T-1592, T-2330): fit S on the T-2304 grid (it moves with term, rate and price) and re-probe the stop rule.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
@@ -1567,6 +1674,16 @@ Resolved by the T-2216 sweep above: RRI.xlsx Sheet1!D12 `RRI(0.5,3,4)` is 0.7777
 form with `*(1/nper)` fits D12, RRI.xlsx D3-D6 and every excel-graph RRI cell above. Fix: T-2217 (supersedes T-2222).
 Tasks: T-1975, T-2216, T-2217
 
+## NPV with a rate of -1 or 1E+300 is #DIV/0!
+Rule: NPV whose rate is -1 is `#DIV/0!` (`NPV((-1),(-0.5),D06!A$9,D06!B8:B11)`, `NPV((-1),D17!B7:B11)`, `NPV(D22!$B4,..)` with
+B4 = -1, `NPV(((-1)-D12!$C4),..)` with C4 empty), and so is NPV whose rate is 1E+300 (`NPV(1E+300,(D34!E3+0.5),{-100,-200,-300})`; that an overflowing discount factor
+causes it is a hypothesis, and the threshold between rates that give a value and rates that give `#DIV/0!` is unprobed). The `#DIV/0!` carries through the enclosing calls (`MODE.SNGL(D06!B11:B12,(NPV(..)+..))`).
+Evidence: probes/t2475-stat-subexpressions P!A116, A148, A177, A236, A297, A429 (excel-graph, 2026-10-24, T-2475); the gen-m9 cells listed in T-2618.
+Ours: at -1 a non-finite number that leaks out of NPV (TYPE reads it as a number; the cell shows `#NUM!`, and `NPV(..)+..`
+gives `#NUM!`), and 8E-301 at 1E+300 (T-2618).
+Status: VERIFIED (excel-graph)
+Tasks: T-2475, T-2618
+
 ## NPV and FVSCHEDULE arguments
 Rule: NPV reads an array literal whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042) and skips
 text, booleans and empty elements inside it (`{-10000,"2750",4250}`, `{-10000,TRUE,4250}`, `{-10000,"x"}`,
@@ -1655,9 +1772,39 @@ gen-m9/0a614cfe974b59c3 Calc!A390), `CHISQ.INV((XIRR(0.5,{0,1,59,60,61})/..),8)`
 with both TRUE, bc40d37cb4d8301d A392) and `#NUM!` for a number against a range of a different count
 (`XNPV(1,2.5,Data!A4:C12)`, ee2497a5e683c5d9 A107; `XNPV(0.5,-0.5,Data!B4:E8)`, bc40d37cb4d8301d A79).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 51 cells listed in T-2428.
-Ours: `#VALUE!` for the XIRR cases, `#NUM!` for the XNPV ones; T-2428.
-Status: VERIFIED (excel-graph, inferred through the enclosing call)
-Tasks: T-2428
+Order (XIRR, T-2428, from 198 gen-m9 cells now passing): an error dates argument, then (beside a number or omitted guess;
+a text, boolean or error guess keeps the element reading's `#VALUE!` or that error) one value with one date is `#N/A`
+unless either is a text, boolean or empty cell (`#VALUE!`; an array element such as BYROW's `{FALSE}` is not a cell, so
+`#N/A`); a single date that is a text, boolean or empty cell is `#VALUE!`; a single text or boolean value cell against
+several dates is `#VALUE!`; then different counts are `#NUM!` whatever a larger range holds (gen-m9/0a957119475760c5 A47);
+then the element reading. Open (T-2428): an error guess beside numeric values is the guess's error in Excel
+(1b60bf99d71424e7 A29, 67a4c03afd63f988 A388) but text values beside an error guess are `#VALUE!` (b72d952c5f52cb4d A50).
+Order (XNPV, T-2428): the rate first, per element, where a boolean is `#VALUE!` (a cell, `XNPV(<TRUE>,..)`,
+1dce4774f5c0e736 A22, or an array element, `XNPV(SORT(<FALSE>),..)`, 5c6a23c4f6597f1c A258); then one values cell that is
+non-numeric text or a boolean is `#VALUE!`, before an error dates argument (`XNPV(-1,<FALSE>,<#N/A>)`, 3aa168259335be54
+A334), while numeric text there is not refused (`DB(XNPV(0.1,<"1.5">,Data!C5:C6)*..)` is the count's `#NUM!`,
+81bcdc0bec0c8e6b A37); then an error dates argument is that error, before the values' cells (`XNPV(0.05,Data!B1:E2,<#N/A>)`,
+5c6a23c4f6597f1c A111; four cells with a `#VALUE!` dates expression beside a values range holding text); then one dates cell
+that is non-numeric text or a boolean is `#VALUE!` (d0854366830dcdee A274); then values and dates of different counts are
+`#NUM!` whatever they hold, an error value included (`XNPV(0.1,{-100,#N/A,60},<5 dates>)`, bc04c1f478c9896c A313;
+`XNPV(10,{100,200,300},<6 cells with text>)`, 1b60bf99d71424e7 A24); then the element reading. Open (T-2611): equal counts
+with text in both (1b60bf99d71424e7 A171 `#VALUE!`) and a boolean date inside a range (5ded7594e597e31e A12 `#NUM!`).
+Evidence: 38 of the 48 gen-m9 cells whose formula is a bare XNPV or FVSCHEDULE call (excel-graph, direct), and the
+nested cells listed in T-2428.
+Ours: XIRR follows its order (`xirr_size_error`) and XNPV its (`xnpv_size_error`, the rate read without booleans) since
+T-2428; the error-guess cells are T-2611's.
+Status: VERIFIED (excel-graph; direct for the bare XIRR and XNPV cells, inferred through the enclosing call otherwise)
+Tasks: T-2428, T-2611
+
+## FVSCHEDULE with one empty schedule cell is the principal
+Rule: a schedule that is one empty cell is an empty schedule, so FVSCHEDULE returns the principal: `FVSCHEDULE(6527,D1)`
+is 6527 and `FVSCHEDULE(2758,C7)` 2758 with the cell empty, also through a reference-returning IF
+(`FVSCHEDULE(1E+300,IF(Data!C7,Data!B$3,Data!B9))` is 1E+300), while text in the schedule stays `#VALUE!`.
+Evidence: gen-m9/30e20ba3302fea8b A250, e8d55ec393460bb7 A3, 6376e27be7a05871 A140 (excel-graph, 2026-10-23, direct).
+Ours: matches since T-2428 (`fn_fvschedule`). `FVSCHEDULE(5916,{-1E+300,1E+300})` is 0 in Excel (89f0aee953a55a45 A349),
+ours `#DIV/0!` (T-2611).
+Status: VERIFIED (excel-graph)
+Tasks: T-2428, T-2611
 
 ## Financial functions in the gen-m9 financial sweep (T-2257)
 Rule: the generated financial cells show these Excel rules that ours does not follow yet (each cell is a gen-m9 formula whose
@@ -1666,19 +1813,24 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   discount securities, AMORLINC, AMORDEGRC; inferred): an earlier out-of-range date, a settlement after the maturity, or a
   negative rate is `#NUM!` before a later argument's error, text or boolean is looked at. `PRICE(36917,-0.5,HOUR(..)<#VALUE!>,..)`
   (81bcdc0bec0c8e6b A7), `ODDLYIELD(-0.0001,39378,-2.5," x ",92,106,0)` (67a4c03afd63f988 A341), `DURATION(2958466,46410,..,
-  <#VALUE!>,4,0)` (b6a02893a8d6b151 A213) and `PRICEDISC(39668,-1,<text>%,106)` (abb7d565af89b849 A294) are `#NUM!`. AMORLINC and
+  <#VALUE!>,4,0)` (b6a02893a8d6b151 A213) and `PRICEDISC(39668,-1,<text>%,106)` (abb7d565af89b849 A294) are `#NUM!`. For PRICE,
+  YIELD, DURATION and MDURATION the order is now probed ("PRICE, YIELD, DURATION and MDURATION check order", T-2482), and for
+  the ODD* four ("ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order", T-2483). AMORLINC and
   AMORDEGRC give a boolean rate or salvage `#VALUE!` before a negative cost or a salvage above the cost
   (`AMORLINC(-439103,37926,39037,412,7,FALSE,..)` b73c6cc96e093f03 A360, `AMORDEGRC(27029,37050,39005,789,1E15-0.1,TRUE)`
-  1b60bf99d71424e7 A298 are `#VALUE!`).
+  1b60bf99d71424e7 A298 are `#VALUE!`); now probed ("AMORLINC and AMORDEGRC check order", T-2485), as are the discount
+  securities ("Discount securities check order", T-2484).
 - COUP* functions: a settlement or maturity past 9999-12-31 is `#NUM!` as it is read, before a later error or text
   (`COUPDAYS(123456789.123,<FALSE>,4)` 89f0aee953a55a45 A363, `COUPNUM(37484,2958466,2,<#VALUE!>)` 1dce4774f5c0e736 A19), and
   `COUPDAYS(39123,2958466,1,0)` is `#NUM!` (a91bad4e84f49739 A153). `COUPDAYBS(37913,46720,4,4)` = 50 (7d2979fba2c95d64 A304) and
   `COUPDAYS(5E-05,2958465,2.5,1)` = 184 (b72d952c5f52cb4d A88).
 - ODDLPRICE with the settlement before `last_interest` is `#NUM!`: `ODDLPRICE(59,38163,33447,0,10,110,1,4)` (0a957119475760c5 A351),
-  `ODDLPRICE(36111,38608,36584,..)` (89f0aee953a55a45 A8).
+  `ODDLPRICE(36111,38608,36584,..)` (89f0aee953a55a45 A8); probed, with ODDLYIELD and a settlement on `last_interest`, in
+  "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order" (T-2483).
 - A settlement serial below 1 is valid for the T-bills: `TBILLPRICE(1e-15,1,100)` = 72.22222222222221 (0a957119475760c5 A309),
   `TBILLYIELD(0.3,1,98)` = 7.346938775510203 (e8d55ec393460bb7 A287); and AMORLINC's purchase date may be below 1:
-  `AMORLINC(46557,0,39881,440,0,0.1)` = 46117 (1b60bf99d71424e7 A368).
+  `AMORLINC(46557,0,39881,440,0,0.1)` = 46117 (1b60bf99d71424e7 A368); now probed and followed ("AMORLINC and AMORDEGRC
+  check order", T-2485).
 - CUMIPMT and CUMPRINC are `#NUM!` for a start period below 1, fractional included: `CUMPRINC(0.05,249,329832,0.3,19,0)`
   (0a957119475760c5 A40).
 - SYD with a negative salvage is `#NUM!` (`SYD(36746,-100,22,3)`, 31474c20fc1dafd6 A207) and with a life of 1E+300 `#DIV/0!`
@@ -1717,9 +1869,37 @@ argument's error, a settlement error too (`DISC(1/0,2.5,1,100,"abc")` is `#VALUE
 `RECEIVED(37025,2.5,1E+300,NA(),1/0)` is `#DIV/0!` (probes/t2455-transpose-single-value A21, A64, A65, excel-graph,
 2026-10-23); gen-m9 ba4ddb817a8e700e A345 has the same shape.
 INTRATE, PRICEDISC and YIELDDISC are the same (`..(37025,2.5,1/0,100,"abc")` is `#VALUE!`, A80:A82).
-Ours: since T-2455 (`discount_args`, shared by the five).
+Ours: since T-2455 (`discount_args`, shared by the five); the full order, PRICEMAT and YIELDMAT included, is in
+"Discount securities check order" (T-2484).
 Status: VERIFIED (excel-graph)
-Tasks: T-2455
+Tasks: T-2455, T-2484
+
+## Discount securities check order
+Rule: DISC, INTRATE, PRICEDISC, RECEIVED, YIELDDISC, PRICEMAT and YIELDMAT read their arguments in this order and check
+only the basis and the dates as they read them:
+1. basis: an error, text or boolean is returned, and a basis outside 0-4 (5, -1) is `#NUM!`, before anything else
+   (`DISC(NA(),43831,95,100,5)` and `YIELDMAT(NA(),..,-1)` are `#NUM!`, `DISC(NA(),43831,95,100,1/0)` `#DIV/0!`);
+2. settlement, maturity, then PRICEMAT's and YIELDMAT's issue: an error, text or boolean is returned, and a serial that
+   does not floor to 0-2958465 (9999-12-31) is `#NUM!` as it is read (`DISC(-1,NA(),..)`, `DISC(39448,2958466,"x",..)`,
+   `PRICEMAT(39448,43831,-1,NA(),..)` are `#NUM!`; `DISC(NA(),-1,..)` is `#N/A`). Serial 0.5 passes the read
+   (`DISC(0.5,NA(),..)` is `#N/A`);
+3. the amounts (price, investment, discount, redemption, rate, yld): an error, text or boolean is returned;
+4. only then the date order and the amount checks, `#NUM!` (`DISC(39448,39000,NA(),..)` is `#N/A`,
+   `DISC(39448,43831,0,"x",0)` `#VALUE!`).
+ACCRINTM reads in its own order, issue, settlement, rate, par, basis, with the same checks as it reads (both dates
+on the calendar, the basis in 0-4), so its basis comes last (`ACCRINTM(-1,39448,0.1,1000,NA())` is `#NUM!`,
+`ACCRINTM(NA(),39448,0.1,1000,5)` `#N/A`). A boolean is `#VALUE!` in every position of all eight, text "1" is 1.
+`RECEIVED` divides as `investment / (1 - discount*DIM/B)` left to right: `RECEIVED(39448,43831,"1",0.05,0)` is 2.5, where
+`discount*(DIM/B)` gives 2.5000000000000004 (A758; the "Discount securities: day count and year length" form left this
+open).
+Evidence: probes/discount-argument-check-order (1707 cells: each function with one argument out of its domain against
+`NA()`, text and `TRUE` in every other position, `NA()` and `1/0` in every pair of positions, and `TRUE`, text and "1"
+alone in each position; excel-graph, 2026-10-24, T-2484). Every cell fits the rule above.
+Unprobed: a 1904 workbook (the read checks the date after the 1904 shift, as for the T-bills).
+Ours: matches since T-2484 (`discount_args`, `maturity_args`, `accrintm_of` and `discount_date_of` in
+functions/financial/discount.rs; `day_count_basis_of` in financial/dates.rs, shared with `bond_args`).
+Status: VERIFIED (excel-graph)
+Tasks: T-2484
 
 ## Booleans in ACCRINT, ACCRINTM, AMORLINC and AMORDEGRC (T-2455)
 Rule: a boolean is `#VALUE!`, typed or from a cell, in ACCRINTM's par (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, A41, A54; text "2"
@@ -1728,10 +1908,10 @@ A53), ACCRINT's rate (`ACCRINT(39000,39500,0.1,TRUE,40000,2,0)`, A56, before the
 (`AMORDEGRC(90812,36624,38707,453,3,TRUE,4)`, A51, A57): probes/t2455-transpose-single-value, excel-graph, 2026-10-23. gen-m9
 165db58d1540f014 A141, 0a614cfe974b59c3 A265 and 7c20351562a2d71d A212 show it through F.TEST. A purchase or first_period
 date past the calendar is `#NUM!` before AMORDEGRC's boolean rate (`AMORDEGRC(70537,36888,7E13%,46,12,<TRUE>,0)`, gen-m9
-e8d55ec393460bb7 A374), while a date of 0 or below waits for the value checks (`AMORDEGRC(-1,<blank>,38872,265,0,<#VALUE!>,0)`
-is `#VALUE!`, 1dce4774f5c0e736 A199).
-Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which also
-refuses a boolean salvage per "Argument order of the Analysis ToolPak securities functions"). ACCRINT's other dates and numbers
+e8d55ec393460bb7 A374), while a date of 0 passes the read (`AMORDEGRC(-1,<blank>,38872,265,0,<#VALUE!>,0)` is `#VALUE!`,
+1dce4774f5c0e736 A199) and one below 0 is `#NUM!` as it is read ("AMORLINC and AMORDEGRC check order").
+Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which since
+T-2485 refuses a boolean in every argument, "AMORLINC and AMORDEGRC check order"). ACCRINT's other dates and numbers
 still take booleans (unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-2455

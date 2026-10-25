@@ -257,6 +257,23 @@ pub fn to_excel_precision_str(value: f64) -> String {
 /// tolerance: tiny values never equal 0 (docs/excel-semantics/numbers.md#criteria-equality). NaN
 /// is a total order (above every number, equal to itself) so sorts stay consistent.
 pub(crate) fn cmp_excel_precision(a: f64, b: f64) -> std::cmp::Ordering {
+    // The 15-digit cut formats both numbers, which dominated whole-column comparisons such as
+    // `MAX(IF(D:D=K2,F:F))` (corpus-bench 59932, T-0455). It is monotone, so it can only make
+    // two numbers equal, never swap them, and two numbers it makes equal are less than one
+    // 15-digit unit of the larger apart: at most 1e-14 of its magnitude. Equal numbers and
+    // numbers further apart than 1e-13 of it therefore need no cut. NaN and infinities fall
+    // through (the comparison below is false for them).
+    if a == b {
+        return std::cmp::Ordering::Equal;
+    }
+    if (a - b).abs() > a.abs().max(b.abs()) * 1e-13 {
+        return a.total_cmp(&b);
+    }
+    cmp_rounded(a, b)
+}
+
+/// [`cmp_excel_precision`] without its shortcuts: the order of the two 15-digit values.
+fn cmp_rounded(a: f64, b: f64) -> std::cmp::Ordering {
     // total_cmp orders -0.0 below 0.0 and negative-sign NaN below every number, so canonicalise
     // both first (`+ 0.0` turns -0.0 into 0.0).
     let canon = |x: f64| {
@@ -647,6 +664,70 @@ mod tests {
             failures.is_empty(),
             "codes the formatter rejected: {failures:?}"
         );
+    }
+
+    // The shortcuts of `cmp_excel_precision` agree with the 15-digit cut everywhere: around
+    // equality (neighbouring doubles, the 15th digit's rounding edge, decade boundaries), across
+    // magnitudes and signs, and for zeros, subnormals, infinities and NaN (T-0455).
+    #[test]
+    fn excel_precision_shortcuts_agree_with_the_cut() {
+        use rand::{Rng, SeedableRng};
+        let mut rng = rand::rngs::StdRng::seed_from_u64(455);
+        let mut values = vec![
+            0.0,
+            -0.0,
+            5e-324,
+            -5e-324,
+            1e-308,
+            f64::MIN_POSITIVE,
+            f64::MAX,
+            f64::MIN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NAN,
+            1.0,
+            10.0,
+            0.1 + 0.2,
+            0.3,
+            9.999_999_999_999_95,
+            9.999_999_999_999_96,
+            10.000_000_000_000_04,
+            1e15 + 0.3,
+        ];
+        for _ in 0..20_000 {
+            let mantissa: f64 = rng.gen_range(1.0..10.0);
+            let exponent: i32 = rng.gen_range(-320..=308);
+            let sign = if rng.gen_bool(0.5) { 1.0 } else { -1.0 };
+            values.push(sign * mantissa * 10f64.powi(exponent));
+        }
+        let mut checked = 0;
+        for &a in &values {
+            // Neighbours a few ulps away, and a few 15-digit units away.
+            let mut others = vec![a, -a, 0.0];
+            let mut up = a;
+            let mut down = a;
+            for _ in 0..3 {
+                up = f64::from_bits(up.to_bits().wrapping_add(1));
+                down = f64::from_bits(down.to_bits().wrapping_sub(1));
+                others.extend([up, down]);
+            }
+            for k in [
+                -2e-13, -1.1e-13, -0.9e-13, -1.5e-14, -1e-14, -9.9e-15, -9e-15, -5e-15, -4.9e-15,
+                4.9e-15, 5e-15, 9e-15, 9.9e-15, 1e-14, 0.9e-13, 1.1e-13, 2e-13,
+            ] {
+                others.push(a * (1.0 + k));
+            }
+            others.push(values[rng.gen_range(0..values.len())]);
+            for b in others {
+                assert_eq!(
+                    cmp_excel_precision(a, b),
+                    cmp_rounded(a, b),
+                    "{a:e} vs {b:e}"
+                );
+                checked += 1;
+            }
+        }
+        assert!(checked > 300_000);
     }
 
     // The specific regression: id 39 formats 175000 as a grouped 2-decimal number, not `#VALUE!`.

@@ -97,7 +97,7 @@ fn array_node_to_bool(node: &ArrayNode) -> Result<bool, ArrayNode> {
     match node {
         ArrayNode::Boolean(b) => Ok(*b),
         ArrayNode::Number(n) => Ok(*n != 0.0),
-        ArrayNode::Lambda(_) => Err(ArrayNode::Error(Error::VALUE)),
+        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => Err(ArrayNode::Error(Error::VALUE)),
         ArrayNode::String(s) => {
             let lower = s.to_lowercase();
             if lower == "true" {

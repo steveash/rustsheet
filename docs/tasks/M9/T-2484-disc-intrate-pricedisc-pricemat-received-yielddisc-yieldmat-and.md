@@ -3,7 +3,7 @@ id: T-2484
 title: "DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and ACCRINTM: argument check order (gen-m9, 87 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -73,13 +73,20 @@ Examples:
 Cells:
 - gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A236
 
+From T-1743 (2026-10-24): gen-m9 05d44f6dd6cfc567 Calc!A34 `=GROWTH(DISC(39060,Data!A$4,Data!C6,(Data!D$7/1e-15)),..)` is
+`#NUM!` in Excel, `#VALUE!` in ours. GROWTH reports its known_y's error first, so the inner DISC decides: maturity 1E+15
+(past 9999-12-31), price "a*" (text) and redemption `"#N/A"/1E-15` (`#VALUE!`); Excel's DISC is `#NUM!` there (the
+date first; inferred from the outer `#NUM!`, so probe the DISC call alone), ours `#VALUE!`. This cell's line goes with this task.
+Cells:
+- gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A34
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): these 87 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257): these 87 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for the order between a date error, a domain error and a text argument in each function.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for the order between a date error, a domain error and a text argument in each function.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The T-bill functions (T-2487).
@@ -89,3 +96,16 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed the order first (probes/discount-argument-check-order, 1707 cells, excel-graph): DISC, INTRATE, PRICEDISC, RECEIVED,
+YIELDDISC, PRICEMAT and YIELDMAT read and check the basis first, then every other argument left to right, a date off
+0-2958465 being `#NUM!` as it is read, and check the date order and amounts only after every read; ACCRINTM reads in
+argument order (basis last) with the same read checks. Every probe cell fits that one rule (financial.md "Discount
+securities check order"). `discount_args`, `maturity_args` and `accrintm_of` now follow it through a shared
+`discount_date_of` and a new `day_count_basis_of` (dates.rs), which `bond_args` now uses too. The probe also showed
+RECEIVED's denominator is `1 - discount*DIM/B` left to right (A758, 2.5 not 2.5000000000000004); fixed.
+Eval delta: gen-m9 known failures -79 (88 of the 89 owned cells pass; 9 had already left the baseline), probes -12
+known failures in t2436 and t2475 sub-expression cells, and the new probe passes all 1707 cells.
+The one owned cell left, gen-m9/23d82b62e9a85bdd Calc!A208, is POISSON's: `POISSON(0,-1,2)` is EXP(1) in Excel, not
+`#NUM!` (probes/poisson-negative-mean); moved to T-2628 with statistics.md "POISSON at x 0 with a negative mean".

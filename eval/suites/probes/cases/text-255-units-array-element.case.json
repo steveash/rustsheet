@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2305 probe: REPT, CODE, UNICODE and T of an array element of 256 and 255 units (a formula text literal is capped at 255, so the element is REPT(..)&{\"\"}).",
+ "tags": [
+  "M5",
+  "probe",
+  "text",
+  "T-2305"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=REPT((REPT(\"x\",256)&{\"\"}),1)",
+    "A2": "=CODE((REPT(\"x\",256)&{\"\"}))",
+    "A3": "=UNICODE((REPT(\"x\",256)&{\"\"}))",
+    "A4": "=T((REPT(\"x\",256)&{\"\"}))",
+    "A5": "=REPT((REPT(\"x\",255)&{\"\"}),1)",
+    "A6": "=CODE((REPT(\"x\",255)&{\"\"}))",
+    "A7": "=UNICODE((REPT(\"x\",255)&{\"\"}))",
+    "A8": "=T((REPT(\"x\",255)&{\"\"}))"
+   }
+  }
+ ],
+ "expected": {}
+}

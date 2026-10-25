@@ -2,7 +2,7 @@ use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::paired::PairedArg;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
 
 use crate::{
@@ -132,6 +132,8 @@ impl Model {
         }
         let x_range = self.evaluate_node_in_context(&args[0], cell);
         let y_range = self.evaluate_node_in_context(&args[1], cell);
+        let x_range = self.blank_one_cell_as_error(x_range, cell);
+        let y_range = self.blank_one_cell_as_error(y_range, cell);
         if let (CalcResult::Range { left: l1, .. }, CalcResult::Range { left: l2, .. }) =
             (&x_range, &y_range)
         {
@@ -237,6 +239,7 @@ const SUM_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
     grids: GridReading::TopLeft,
+    nested: NestedReading::Flatten,
 };
 
 impl Model {

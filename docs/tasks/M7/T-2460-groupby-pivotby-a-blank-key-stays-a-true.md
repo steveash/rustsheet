@@ -24,6 +24,10 @@ t2578-groupby-product-subtotals: COUNT 91, ours 100); probes/t2578-pivotby-total
 row and column keys as `""` through MAP (ours "0"). Note `shown_key` (grouping.rs) cites G!A1 and groupby-pivotby-followup
 G!A821 for 0: those are the spilled cells, where a true blank element displays as 0.
 
+Also owned (T-2625, 2026-10-24): probes/t2625-nested-consumers P!A13, A18, A19, A23, A24, A26 (COUNT over a PIVOTBY with several
+key fields) and A28:A31 (its key column and column-key rows as text: Excel shows a blank key as "" in the row keys and in each
+column-key row, ours 0), and gen-m9/e85daedce5c2675e Calc!A35 (`BESSELJ(COUNT(PIVOTBY(..)),..)`, the same COUNT plus 2).
+
 ## Acceptance criteria
 - [ ] The six G! known-failure lines above disappear from eval/baseline/probes.txt, no new known failures.
 - [ ] gen-m9/8d3588d8df0812df Calc!A240 and the eleven probes/t2578-* blank-key lines disappear from the baselines.

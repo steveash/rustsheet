@@ -1,4 +1,5 @@
 use crate::calc_result::Range;
+use crate::nested_array::nested_array_error;
 use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{Continuous, Gamma};
 
@@ -308,6 +309,9 @@ impl Model {
                     .collect(),
             )),
             CalcResult::Array(array) => {
+                if let Some(error) = nested_array_error(&array, cell) {
+                    return Err(error);
+                }
                 self.values_from_array(array)
                     .map_err(|e| CalcResult::Error {
                         error: Error::VALUE,
@@ -361,7 +365,7 @@ impl Model {
                     }
                     // A LAMBDA element read as a value: `INTERCEPT(..,BYCOL(..,LAMBDA(x,LAMBDA(w,w))))`
                     // is `#VALUE!` (gen-m9/ee2497a5e683c5d9 A124).
-                    ArrayNode::Lambda(_) => return Err(Error::VALUE),
+                    ArrayNode::Lambda(_) | ArrayNode::Nested(_) => return Err(Error::VALUE),
                     _ => {
                         values.push(None);
                     }

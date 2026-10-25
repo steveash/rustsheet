@@ -78,3 +78,23 @@ fn test_text_reads_number_like_text_and_prints_control_characters() {
     assert_eq!(model._get_text("A3"), "\n");
     assert_eq!(model._get_text("A4"), "-\u{1}");
 }
+
+#[test]
+fn test_text_reads_number_like_text_whatever_the_sections() {
+    // probes/text-number-like-text-and-control-chars (excel-graph, T-2332): probe A1, A2, A9, A10, A12 and A15 are
+    // this test's A1 to A6.
+    let mut model = new_empty_model();
+    model._set("A1", r#"=TEXT("001","@")"#);
+    model._set("A2", r#"=TEXT("1","0;0;0;@")"#);
+    model._set("A3", r#"=TEXT("1","""@""0")"#);
+    model._set("A4", r#"=TEXT("1","\@")"#);
+    model._set("A5", r#"=TEXT("abc","0;0;0;""x""@")"#);
+    model._set("A6", r#"=TEXT("1","0;0;0;;")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "1");
+    assert_eq!(model._get_text("A3"), "@1");
+    assert_eq!(model._get_text("A4"), "@");
+    assert_eq!(model._get_text("A5"), "xabc");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+}

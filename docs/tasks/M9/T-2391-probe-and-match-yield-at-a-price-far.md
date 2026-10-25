@@ -56,7 +56,14 @@ financial.md "YIELD's #NUM! cells and its suspected 100-step cap". Both groups s
 this task now waits on T-1592. Restart from the probe's C column, where about 100 analytic-Newton steps from near the
 redemption-100 root land within 1e-6 of Excel.
 
+Moved from T-2482 (2026-10-24): YIELD at a coupon rate of 999999999999995 is `#NUM!` in Excel, ours 10.571526228899263
+(probes/t2436, T-2436); its arguments are in range, so only the solver's limit is left.
+Owned gen-m9 cells (T-2482, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 visibly off.
+- gen-m9/320d51765af9b6b7 Calc!A329 `=CHITEST(YIELD(36563,45559,SUM(Data!B11:B12,Data!B$8),107,107,2,1),(DAY(43015)-ODDLPRICE(35397,38233,33415,1E-300,Data!B2,109,4)))`: Excel #NUM!, ours #N/A
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2482): the known-failure line listed under "Moved from T-2482" disappears from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): the 20 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] A probe case sweeps the price to locate the cut, filled through excel-graph (probes/yield-newton-domain).

@@ -79,11 +79,14 @@ impl LiftedArg {
 
     /// The grid slot at output position (`row`, `column`), `None` for a scalar: a dimension of
     /// length 1 stretches, a position past a shorter array is `#N/A`
-    /// (probes/ifs-array-criteria H11, H33-H37).
+    /// (probes/ifs-array-criteria H11, H33-H37). A nested GROUPBY cell is read as its top-left
+    /// (`ArrayNode::scalar`, SPEC-0018 rule 4).
     pub(crate) fn element(&self, row: usize, column: usize) -> Option<&ArrayNode> {
         match self {
             LiftedArg::Scalar(_) => None,
-            LiftedArg::Grid(grid) => Some(bcast_get(grid, row, column).unwrap_or(&MISSING)),
+            LiftedArg::Grid(grid) => {
+                Some(bcast_get(grid, row, column).unwrap_or(&MISSING).scalar())
+            }
         }
     }
 }
@@ -145,7 +148,7 @@ pub(super) fn kernel_units(
                 lifted.get(index).map(|arg| match arg {
                     LiftedArg::Scalar(value) => ArgValue::of(value),
                     LiftedArg::Grid(grid) => {
-                        ArgValue::of_node(bcast_get(grid, row, column).unwrap_or(&MISSING))
+                        ArgValue::of_node(bcast_get(grid, row, column).unwrap_or(&MISSING).scalar())
                     }
                 })
             };
@@ -375,6 +378,8 @@ impl Hash for ElementKey<'_> {
                 }
                 ArrayNode::Error(error) => std::mem::discriminant(error).hash(state),
                 ArrayNode::Lambda(id) => id.hash(state),
+                // Never: `LiftedArg::element` reads a nested cell through `ArrayNode::scalar`.
+                ArrayNode::Nested(_) => {}
                 ArrayNode::Empty => {}
             }
         }
@@ -491,11 +496,12 @@ fn scalar_numbers(values: &[CalcResult], grid_index: usize) -> Option<ArgBuf<f64
 
 /// An array element as a scalar value, by value: a string element moves, not copied. A LAMBDA
 /// element reaches the kernel as that LAMBDA, so each kernel's rule for a LAMBDA value applies
-/// (`ISERROR(SCAN(..))` over LAMBDAs is FALSE per element, probes/lambda-arrays B8).
+/// (`ISERROR(SCAN(..))` over LAMBDAs is FALSE per element, probes/lambda-arrays B8), and a nested
+/// GROUPBY cell as its top-left (`ArrayNode::scalar`, SPEC-0018 rule 4).
 fn array_node_into_calc_result(node: ArrayNode, cell: CellReferenceIndex) -> CalcResult {
     match node {
         ArrayNode::String(text) => CalcResult::String(text),
-        other => array_element_value(&other, cell),
+        other => array_element_value(other.scalar(), cell),
     }
 }
 

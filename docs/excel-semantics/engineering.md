@@ -445,17 +445,21 @@ angle"); cosh and sinh are libm's. Rule:
   (`IMCSC("1E-9i")`, `IMCOT("1E-9i")`, `IMCOT("1E-9+1E-9i")`) are `#NUM!` in ours (before T-2044 about -1E+9i), and
   between 1E-8 and 1E-6 only a few digits survive; the sweep stops at 1E-5. Probe: T-2531.
 - UNVERIFIED: for |x| ≥ 2^27 (SIN's own `#NUM!` cut) the reciprocal kernels take libm's sine and cosine.
-- Time-boxed (decision 0056), IMLOG2: no candidate fits. Dividing `ln |z|` by the double one ulp below ln 2
-  (0.6931471805599452) prints Excel's digits in 75 of 77 sweep cells and fixes `IMLOG2("1E-20")` (N18, COMPLEXs
-  AH19) and probes/eng-im-overflow-edges A104, A107, A109, but turns A108 `IMLOG2("712+3i")` (9.4757462372528) to
-  ...281, and a fit of a constant factor on `log2 |z|` across those cells is empty (A104 needs at least 1.18 ulps
-  above the exact value, A108 at most 0.36). `log2`, `ln/LN_2`, `ln·log2 e`, x87 FYL2X forms with 64-bit ln 2 or
-  log10 2, and IMLOG10/log10 2 all fit 68-75. Unchanged (`log2 |z|`, `atan2·log2 e`); see the follow-up task.
+- IMLOG2 (T-2231, superseding the T-2044 time-box): `ln` of IMABS's scaled modulus and the argument (`atan2`),
+  both times K = 1.4426950408889636, the double one ulp above log2 e (= `1/ln 2` with the double one ulp below ln 2).
+  It fits all 103 distinct real and 103 imaginary parts of IMLOG2 cells in the eval suites (sweep N/O, COMPLEXs AH19,
+  eng-im-overflow-edges A104-A109, gen-m9, eng-im-overflow-edges-2 A35-A44). The earlier candidate, dividing
+  `ln |z|` by the double below ln 2, fails on A108 `IMLOG2("712+3i")` because the division and the multiplication
+  round differently; `hypot` as the modulus misses only `-0.66925-0.233532i` (sweep row 53). `log2`, `ln/LN_2` and
+  `ln·log2 e` fit 92-94 of the 103 real parts.
+- IMLOG10's imaginary part is `atan2 / LN_10`: `atan2·log10 e` misses `IMLOG10("711+1.5i")` (0.000916231724847909,
+  eng-im-overflow-edges A95) and `atan2·(1/LN_10)` misses `IMLOG10("1.5+710.4i")` (0.68127117135401); the division fits
+  all 36 IMLOG10 cells (T-2231). Its real part stays `log10 |z|` (`ln/LN_10` fits the same cells).
 Evidence: probes-numeric `im-last-digit-sweep` (excel-graph, 2026-10-21); COMPLEXs.xlsx G7, G8, G14, G23, H14, H23,
 T14, V4, V15, W4, W7, W21, Z25, AB7; probes/eng-argument-modes A45; probes/eng-im-overflow-edges A47.
 Status: VERIFIED (excel-graph)
-Implemented in: `imcsc`, `imsec`, `imsech`, `imcot` in functions/engineering/complex/trig.rs, `imabs`, `imargument` in functions/engineering/complex/mod.rs (T-2044)
-Tasks: T-2044
+Implemented in: `imcsc`, `imsec`, `imsech`, `imcot` in functions/engineering/complex/trig.rs, `imabs`, `imargument` in functions/engineering/complex/mod.rs (T-2044); `imlog2_parts`, `imlog10_parts` (T-2231)
+Tasks: T-2044, T-2231
 
 ## IMTAN and IMCOT use the double-angle form (T-0907)
 Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
@@ -635,8 +639,10 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
 - **"1i" when a part is not exactly 1.** IM* text omits the coefficient only for an imaginary part of exactly ±1; a part
   that rounds to 1 at 15 digits keeps it: `COMPLEX(0.1,1+2^-52,"i")` is "0.1+1i", `COMPLEX(1/3,1-2^-53)`
   "0.333333333333333+1i", `COMPLEX(1+2^-52,1-2^-53,"j")` "1+1j", `IMDIV("5","-1.5+0.5i")` "-3-1i",
-  `IMPOWER("1000+1i",1)` "1000+1i" (493bb194c8e0b577 A331, 62c886e21a1042af A243, 7dc52cfcbc8b4448 A247, ...). Ours
-  compares the 15-digit-rounded part with ±1 and writes "i". T-2533.
+  `IMPOWER("1000+1i",1)` "1000+1i" (493bb194c8e0b577 A331, 62c886e21a1042af A243, 7dc52cfcbc8b4448 A247, ...). Implemented
+  for the text of COMPLEX and IMDIV (T-2533): the coefficient is compared unrounded.
+  After that fix `IMPOWER("1000+1i",1)` is still "1000+i": our polar form gives an imaginary part of exactly 1,
+  Excel's is not exactly 1 (gen-m9 74779cff2810ccf4 A379). T-2610.
 - **IM* trigonometry of a real number is SIN, COS and TAN.** With a zero imaginary part, IMSIN, IMCOS, IMTAN, IMSEC,
   IMCSC and IMCOT give exactly the worksheet functions' values (x87 reduction, numbers.md "Trig of a huge angle"), as the
   engine's own SIN/COS/TAN reproduce: `IMSIN(123456789.123)` 0.99984293955201 (= SIN; libm 0.999842939552045),
@@ -723,16 +729,53 @@ Tasks: T-2258, T-2532 to T-2551, T-2420, T-2421, T-2335, T-2389, T-2044, T-2117,
 Rule: IM* read one leading `+` like a leading `-`: `IMABS("+i")` 1, `IMABS("+3+4i")` 5, `IMABS("+4i")` 4, `IMSUB("+i","1")` "-1+i", `IMDIV("2i","+i")` "2"; a second sign (`"++i"`, `"+-i"`, `"-+i"`, `"1++i"`) is `#NUM!` (probes/eng-leading-plus-oct-bool A1:A26).
 Rule: a boolean is `#VALUE!` in every OCT2* and HEX2* argument, typed, from a cell, from `IF`/`INDEX`, in an array literal or a MAP result, with or without places; the same as BIN2DEC (A35:A62). A boolean inside arithmetic is a number (`OCT2DEC(7+B1:B2)` is `#NUM!`, A62).
 Rule: OCT2DEC, OCT2BIN and OCT2HEX of 11 digits, number or text, are `#NUM!` (`OCT2DEC(7777777777)` is -1; A27:A33).
-Rule: ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD read the date arguments first and a negative date (-0.5 too) is `#NUM!` at once, ahead of an error in a later argument (`ODDFPRICE(39000,-1,..,NA(),..)` is `#NUM!`); a date of 0 is not, and an out-of-order date pair still lets the later error win (`#N/A`) (probes/fin-odd-date-before-error-arg).
+Rule: ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD read the date arguments first and a negative date (-0.5 too) is `#NUM!` at once, ahead of an error in a later argument (`ODDFPRICE(39000,-1,..,NA(),..)` is `#NUM!`); a date of 0 is not, and an out-of-order date pair still lets the later error win (`#N/A`) (probes/fin-odd-date-before-error-arg). The full order, with a date past 9999-12-31 also `#NUM!` as it is read, is in financial.md "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order" (T-2483).
 
 ## BESSELK underflow, BESSELI overflow and BIT shifts of 49 to 53 (T-2421)
 Rule: BESSELK below the smallest normal double is 0: `BESSELK(705,0)` is 3.135297088468052E-308 but `BESSELK(705.5,n)` and every x past it (708, 713, 714, 1000, 1E5) are 0 for n = 0, 1 and 4 (probes/eng-besselk-underflow-bit-shift).
 Rule: BESSELI is `#NUM!` for every order from x = 710 on, however large (`BESSELI(1E+15,2)`, `(-1000000000000002,3)`); `BESSELI(705,0)` is 2.26205E+304 and 700 is finite.
 Rule: BITLSHIFT/BITRSHIFT truncate the shift amount first and limit it after (`BITLSHIFT(1,53.5)` and `(1,-53.5)` are 0; 54 is `#NUM!`, 54.x not probed). A number 0 shifts to 0 by any amount (`BITLSHIFT(0,1E+10)`). For a nonzero number an effective left shift of 48 is `#NUM!` (`BITLSHIFT(1,48)`, `BITRSHIFT(1,-48)`), of 49 to 53 places is 0 (not the overflow `#NUM!`), 54 and more is `#NUM!`; a right shift of 48 to 53 places is 0, 54 is `#NUM!`.
-Not fixed here: `BESSELK(700,4)` and `(705,4)` miss in the 15th digit (T-2549); `BESSELI(2.5,100001)` and `(2.5,1E+6)` are 0 in Excel and `#NUM!` here (BESSEL order cap DEVIATION, pinned in probes/deviations); `BESSELK(2.5,171)` onward overflows to `#NUM!` (170 is 7.09E+287, 200 and 1000 are `#NUM!`).
+Not fixed here: `BESSELK(700,4)` and `(705,4)` miss by 0.3% and 1.1%, not in the 15th digit (T-2549; "BESSELK near the bottom of the double range"); `BESSELI(2.5,100001)` and `(2.5,1E+6)` are 0 in Excel and `#NUM!` here (BESSEL order cap DEVIATION, pinned in probes/deviations); `BESSELK(2.5,171)` onward overflows to `#NUM!` (170 is 7.09E+287, 200 and 1000 are `#NUM!`).
+
+## BESSELK near the bottom of the double range, BESSELI overflow point (T-2550)
+Evidence: probes-numeric/m9-besselk-underflow (147 cells, excel-graph): BESSELK(x,n) for n = 0 to 5 and BESSELI(x,0) at x = 500, 600, 650, 680, 690, 695, 700, 702, 705, 707, 708, 709, 709.5, 709.78, 710 to 713 in steps of 0.5 from 710 (21 x values x 7 cells = 147). Ours matches 134 of 147 cells.
+Rule: ours is bit-exact for BESSELK at every n probed up to x = 695, and at x = 700, 702 and 705 for n = 0 and 1; BESSELK is 0 for n = 0 to 5 from x = 707 on (T-2421 puts the flush between 705 and 705.5), as ours.
+Rule: in the upward recurrence `K(n+1) = K(n-1) + 2n/x * K(n)`, Excel sets the product `2n/x * K(n)` to 0 when it is subnormal (|product| < 2.2250738585072014E-308; inferred: the probe only brackets the threshold in (1.34E-308, 2.67E-308], from the x = 700 products of n = 1 (flushed) and n = 2 (kept)), as the other subnormal flushes here do (BESSELK below the smallest normal, T-2421). Replaying the recurrence from the oracle's K0 and K1 with that flush reproduces all 12 differing cells bit-exactly; without it, it reproduces our 12 values bit-exactly. At x = 700 only the n = 1 product (about 1.3E-308) is subnormal, so only K2 = K0 (4.669776528722504E-306) while K3 (4.69979514014056E-306), K4 (4.710060487066566E-306) and K5 (4.753624402849892E-306) still get their terms; at 702 and 705 every product is subnormal, so K2 = K4 = K0 and K3 = K5 = K1 (`BESSELK(702,4)` 6.310849433265845E-307, `(702,5)` 6.315342484400538E-307, `(705,4)` 3.135297088468052E-308). Ours adds the subnormal term and misses these 12 cells (n = 2 to 5 at x = 700, 702 and 705) by 1.6E-5 (`BESSELK(700,3)`) to 1.7% relative (`BESSELK(702,5)`, ours 6.4241464536256334E-307).
+Rule: BESSELI(x,0) is finite up to x = 709.5 (2.02976276636543E+306) and `#NUM!` at 709.78 and from there to 713; ours is finite at 709.78 (2.685109662266049E+306), so the overflow cut lies in (709.5, 709.78], below the true overflow of I0 near 713.98 (T-2421 has 710 on).
+Not fixed here: the kernel change is T-2549; the BESSELI cut is T-2613.
 
 ## BESSELJ and BIN2* cells of the T-2436 sub-expression probe
 Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; matched since T-2547, the phase cut), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (ours `#VALUE!`, T-2544); an `IMSUM` of
 an empty array is `#VALUE!` (arrays.md "An empty array as a function argument").
 Status: VERIFIED (excel-graph), one cell each
 Tasks: T-2547, T-2544, T-2580
+
+## IMPOWER of a base whose squared modulus overflows (T-2539)
+Evidence: probes/eng-impower-overflow (12 cells, excel-graph, 2026-10-24).
+Rule: IMPOWER is `#NUM!` when both parts are nonzero and `x²+y²` overflows, whatever the power and even when the result is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `(…,-1)`, `(…,0.5)`, `(…,1)`, `(…,0)`, `IMPOWER("1E+154+1E+154i",-0.5)` and `(…,2)`, `IMPOWER("1E+155+1E+155i",1)`. A pure real base is not refused: `IMPOWER("1E+300",-0.5)` is `1E-150`, `IMPOWER("1E+200",-0.5)` is `1E-100`. An underflowing square gives "0" (`IMPOWER("1E-200+1E-200i",2)`, `("1E-170+1E-170i",2)`). A pure imaginary base is not probed (treated as the real one). `IMLN("1E+200")`, `IMLOG10("1E+200")` and `IMLOG2("1E+200")` already match after T-2117.
+Status: VERIFIED (excel-graph)
+Tasks: T-2539
+
+## IMCOSH and IMSINH past |x| = 709 work in log space (T-2231)
+Evidence: probes/eng-im-overflow-edges A6-A21, probes/eng-im-overflow-edges-2 A1-A24, A58-A114 (excel-graph, 2026-10-24).
+Rule: for |x| > 709 and a nonzero imaginary part, IMCOSH and IMSINH compute `exp(|x| + ln(cos y / 2))` and
+`exp(|x| + ln(sin y / 2))`, then give sinh's factor the sign of x (IMCOSH `(a, sign(x)·b)`, IMSINH `(sign(x)·a, b)`).
+- Consequences: `#NUM!` whenever cos y or sin y is negative, even far below the overflow: `IMCOSH("709.05+2i")`,
+  `"709.0000000001+2i"`, `"709.3-0.5i"`, `"-709.3-0.5i"`, `"-710.4-2i"`, `"709.5+3.14159265358979i"`, `IMSINH("709.4+2i")`,
+  while `IMCOSH("709+2i")` is `-1.71003213329077E+307+3.73648837869846E+307i` (product form) and `"-710.4+1.5i"` answers
+  `1.17873946358278E+307-1.6621900184285E+308i`. A result past DBL_MAX is `#NUM!` (`IMCOSH("711+1.5i")`); `"710.48+1i"` answers.
+- The digits differ from `cosh x·cos y`: `IMCOSH("710.4+1.5i")` is `1.17873946358278E+307+1.6621900184285E+308i`
+  (exact ...281), `IMSINH("709.5+1E-200i")` has real part `6.77493159657354E+307` against `IMSINH("709.5")`'s
+  `6.77493159657316E+307`; the candidates `exp(x - ln 2 + ln t)`, `exp(x + ln t)/2` and `exp(x/2)·exp(x/2)·t/2` all miss.
+- A zero imaginary part keeps the real path (`cosh x`, `sinh x`; `#NUM!` once `exp |x|` overflows): `IMCOSH("709.5")`,
+  `"709.5+0i"`, `IMCOSH(709.5)` are `6.77493159657316E+307`, `IMSINH("-709.5")` its negative.
+- The cut lies in (709, 709.0000000001]; implemented as `|x| > 709`. UNVERIFIED: a large y with |x| > 709 (ours takes
+  libm sin and cos; SIN's own reduction could matter), and whether IMSIN/IMCOS and IMSECH/IMCSCH share the
+  negative-factor `#NUM!` (T-2631).
+- IMSIN and IMCOS with 709.78 < |y| < 710.4 are `#NUM!` as for larger |y| (`IMSIN("1.5+709.9i")`, `"0+709.9i"`,
+  `IMCOS("-2-709.9i")`; A25-A34), and `IMSIN("1.5+709.7i")` answers: `exp |y|` overflowing is the cut, as implemented.
+- IMPRODUCT of a range holding a blank, and of a blank alone, is "0" (`IMPRODUCT(C1:C3)` with C2 blank, `IMPRODUCT(C2:C3)`,
+  `IMPRODUCT(C2)`; A55-A57).
+Status: VERIFIED (excel-graph)
+Implemented in: `hyperbolic_log_form` and `HYPERBOLIC_LOG_CUT` in functions/engineering/complex/trig.rs
+Tasks: T-2231

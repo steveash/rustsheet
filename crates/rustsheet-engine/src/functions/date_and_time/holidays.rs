@@ -65,6 +65,10 @@ impl Model {
                 _ => break self.evaluate_node_in_context(arg, cell),
             }
         };
+        // An empty array (`#CALC!`) is `#VALUE!` here (probes/empty-array-args-sequence A8, A9).
+        if value.is_empty_array() {
+            return Err(early(value.empty_array_as_value_error(cell)));
+        }
         let one_value = is_one_value(&value);
         let date_system = self.workbook.settings.date_system;
         let (mut serials, mut out_of_range) = (Vec::new(), false);

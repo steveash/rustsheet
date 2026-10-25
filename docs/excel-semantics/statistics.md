@@ -2357,7 +2357,8 @@ Rule (excel-graph, 2026-10-16, T-1621; spilled cells are evidence too; cell ids 
 - Dynamic arrays: GROWTH with `new_x's` omitted or equal to known_x's returns an array of y's size, also with const FALSE and no new_x's; a scalar new_x gives a scalar; the result shape follows new_x's. A new_x with the wrong number of columns is `#REF!`; boolean or text new_x is `#VALUE!`. `#SPILL!` for a blocked spill is unprobed here.
 - Exactly representable fits come out inexact: LOGEST({1,2,4,8},{1,2,3,4}) gives 1.9999999999999998 and 0.5000000000000001, GROWTH({1,2,4,8},{1,2,3,4},{5,6}) gives 15.999999999999996 and 31.999999999999968, GROWTH(5,5,5) is 4.999999999999999: the oracle's evaluation order is evidence for T-1741, T-1742, T-1743.
 Evidence: probes/linest-modes, logest-modes, growth-modes.
-Ours: GROWTH spills collapse to the first cell, the LINEST stats block is short or `#N/A`, many last-digit differences (T-1741, T-1742, T-1743).
+Ours: the LINEST and LOGEST shapes, stats block and check order match since T-1741 (section "LINEST and LOGEST: shapes,
+one point, collinear columns, exact fits and check order"); the last-digit differences remain (T-2006).
 FORECAST.ETS.SEASONALITY/STAT/CONFINT could not be lifted: excel-graph is `#N/A` for every valid call (section above), so cases would be junk evidence; the three stay below the floor until desktop values exist (T-1553).
 Status: VERIFIED (excel-graph) for the stated cases; the unprobed items are marked
 Tasks: T-1621, T-1741, T-1742, T-1743, T-2006 (shared least-squares kernel)
@@ -2419,8 +2420,8 @@ many columns; the result is a column), a row y one per row (the result is a row)
 is both, so `TREND(-1,Data!D8:D9)` is one point of two variables, -1 (gen-m9 0bbab6206b5c9a07 A44), while
 `TREND(Data!C4,Data!A3:D12)` is `#REF!` (41248d1cb153c66e A54). A singular fit drops the collinear x columns, as LINEST
 does ("LINEST, LOGEST, GROWTH: probe findings"), so a zero-variance x gives the mean of y (`TREND(A1:A6,G1:G6)` 4.5, trend O20);
-which near-collinear columns are dropped (ours: a Gram-Schmidt residual under 1E-10 of the column, only once the plain
-solve fails) is UNVERIFIED (T-2569).
+which near-collinear columns are dropped (ours: a Gram-Schmidt residual under 1E-10 of the column, the last column
+first, only once the plain solve fails) is UNVERIFIED (T-2569); the last-first order is LINEST's (K106, T-1741).
 Order of the checks (gen-m9 T-2256 cells): (1) an argument that is an error value, in argument order, const included
 (`TREND(<#NUM!>,Data!B8,Data!A5:C11,NA())` `#NUM!`, 3b7990bd4e3307ba A345; `TREND(Data!B4:C10,Data!A11:B12,<#VALUE!>)`
 with unequal shapes `#VALUE!`, 11eb3ab4f4f8104c A326; `TREND(Data!C7:D12,0.2,<#N/A>,<bool>)` `#N/A`, c2684066d8df263e
@@ -2448,7 +2449,7 @@ Evidence: probes/regression-trend (excel-graph, 2026-10-16, T-1620); gen-m9 (exc
 Ours: matches since T-1726 (`trend_or_growth` in functions/statistical/trend.rs), but for the last-digit differences of the
 shared least-squares solve (T-2006) and A187 above. A single point without a constant term (`TREND(5,2,4,FALSE)`) is a fit
 through the origin, UNVERIFIED (T-2569). LINEST and LOGEST of one point are accepted by Excel (linest-modes K141, logest-modes
-K162); ours still rejects them (T-1741, T-1742).
+K162), and ours since T-1741.
 Status: VERIFIED (excel-graph)
 Tasks: T-1726 (overlaps T-1402, T-1743)
 
@@ -2606,7 +2607,7 @@ F.TEST checks its samples in order, each one's error or blank one-cell reference
 computed blank (`FTEST(IF(TRUE,B10),{1;2;3})`) is `#VALUE!` too (A79). An omitted sample (`FTEST(,{1;2;3})`) is unprobed
 (ours: the one-value `#DIV/0!`).
 Ours: since T-2455 (`fn_f_test`, `f_test_sample`, `is_blank_one_cell` in functions/statistical/fisher.rs). The paired
-functions' blank-cell `#VALUE!` stays with T-2426.
+functions' blank-cell `#VALUE!` followed in T-2426.
 Status: VERIFIED (excel-graph)
 Tasks: T-2455, T-2426
 
@@ -2646,7 +2647,10 @@ fcf11f2ec6f7a59d A9, the T-2051 question). A one-cell reference holding a number
 ("Array arguments given a scalar, a single cell or an error" above; `FTEST(6,Data!A$11)` with A11 = "x" is `#DIV/0!`,
 35e8168aae2b00f8 A253). This contradicts the earlier inference that an empty cell is one value with no number.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 109 cells listed in T-2426.
-Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions `#N/A` (size) or `#DIV/0!` (one point), T-2426.
+A reference returned by IF is `#VALUE!` too (`FORECAST(Data!$D2,IF(ISNUMBER(Data!E2),Data!A10,Data!D$5),LEN("ß"))`, 4250f880ab640c49 A294); a blank
+from IFERROR or LET is UNVERIFIED for the paired functions (F.TEST: `#VALUE!`, A79). PROB follows the same rule (see its entry, T-2468).
+Ours: F.TEST and FTEST since T-2455 (`is_blank_one_cell`); the paired functions since T-2426 (`blank_one_cell_as_error` in
+functions/statistical/paired.rs, called by `fn_get_two_matrices` and `paired_samples`).
 Status: VERIFIED (excel-graph)
 Tasks: T-2426, T-2051
 
@@ -2754,6 +2758,46 @@ FALSE)` and `GAMMADIST(2,1.85E+76,1E+10,"TRUE")` are `#NUM!` (2801c1c11c21e134 A
 Ours: a number for each `#NUM!` above, `#NUM!` for the GAMMA.DIST zeros, the subnormal for EXPON.DIST; T-2435.
 Status: VERIFIED (excel-graph), one cell each
 
+## LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order (T-1741)
+Rule: LINEST and LOGEST line known_x up with known_y as TREND does ("TREND: defaults, shapes, single points and error
+inputs"): the same shape is one variable read element by element (row arrays and `TRANSPOSE` results included:
+`LINEST({2,4},{1,2})` is `{2,0}`, `LINEST(TRANSPOSE(B2:B9),TRANSPOSE(A2:A9),TRUE,TRUE)` the column fit), a column y takes
+one variable per column of x, a row y one per row, anything else is `#REF!` (`LINEST({1,2,3,5},{1;2;3;4})`); an empty
+known_x is the default 1, 2, 3, ... (`LINEST(B2:B9,,TRUE,TRUE)`). One point is accepted (K141, K204). A column that is,
+to rounding, a combination of the intercept and the later columns is dropped: coefficient 0, standard error 0, and the
+degrees of freedom and F count only the kept columns. The last column is kept first: with E = 2A,
+`LINEST(B2:B9,A2:E9,TRUE,TRUE)` drops A (its se is exactly 0, the others are noise), df 3, F 3.1e34 = (ss_reg/4)/(ss_resid/3).
+One point drops its x (`LINEST(B15,A15,TRUE,TRUE)` is `{0,9; 0,0; 1,0; #NUM!,0; 0,0}`), and one point of 8 variables
+drops them all (`LINEST(5,A2:A9)` is `{0,..,0,5}`). With no degree of freedom left, se_y and the standard errors are 0 and
+F is `#NUM!` (`LINEST(A12:A13,B12:B13,TRUE,TRUE)`, two points: `{0.5,-1.5; 0,0; 1,0; #NUM!,0; 0.5,0}`); an exact fit with
+degrees of freedom left has F `#NUM!` too (`LINEST({2,4,6},{1,2,3},TRUE,TRUE)`, K249).
+Order of the checks (gen-m9 cells): (1) an argument that is an error value, in argument order (section "LINEST and
+LOGEST report error values first"), and a typed or computed const or stats text that is no boolean, `#VALUE!`
+(`LINEST(UNIQUE(Data!D9:E9),Data!B7,TRUE,"1")`, `LOGEST(Data!C6:E9,Data!D$6,1,"")` against unequal shapes,
+a013a45a8fbcab4f A276, fd9fa22d212080d6 A201), while a text cell waits for the shapes (`LINEST(Data!D10:E10,Data!B1:B7,
+<"x~*" cell>,<#N/A>)` is `#N/A`, bcb24385baafb2f0 A40); (2) the shapes, `#REF!`, as TREND (`LINEST(Data!B11:E12,
+(BYROW(..)+HOUR(0.5)),2,-1)` is `#REF!` though its x holds errors, 05d44f6dd6cfc567 A317, and six more cells); (3) an
+error element of known_y or known_x, `#VALUE!` (`LINEST(Data!A1:C6,ROUND(GROUPBY(..)),..)`, 589f42e67f4b4b8d A100;
+`LOGEST(<number>,IF(SORT(IF({1,0,1},1,NA())),..),..)`, a scalar y against a 1x3 x holding `#N/A`, d8266bc15533702a A117);
+(4) a const or stats cell, or a LAMBDA result that is a reference to one, holding text that is no boolean, `#VALUE!`
+(`LOGEST(Data!A10:B10,Data!B8:B8,-1,<"a" cell>)` and `LOGEST(Data!A10:A11,-0,LAMBDA(acc,Data!B3)(..))` with B3 = " x "
+are `#REF!`, f34f66fb7f81e673 A179, bbdfc06cae0e0d71 A324); (5) a blank, text or boolean element, `#VALUE!`
+(`LINEST(B2:B9,A2:A9&"")`, K113), LOGEST's non-positive y `#NUM!` as GROWTH's. An array const or stats lifts:
+`LOGEST(Data!C$10,0.1,EXPAND(Data!A10:C11,2,4))` (165db58d1540f014 A327) and `LINEST(..,..,..,HSTACK(..))` as stats
+(165db58d1540f014 A366, e6cf3b20a014e6a3 A89) are `#SPILL!`. Excel lifts before the data arguments' error values
+(`LINEST(<#DIV/0!>,..,..,MAKEARRAY(2,3,..))` is `#SPILL!`, c2974c061384fdd9 A89), while
+`LOGEST(Data!C6:E12,<#NUM!>,TRIMRANGE(..),TRUE)` is `#NUM!` (0a614cfe974b59c3 A342), presumably because TRIMRANGE is a
+reference there; ours reports the data error first (T-2574).
+The collinear drop rests on one probe, K106 (A's se exactly 0 there): which column of another collinear pair is kept,
+with y not in x, is unprobed (T-2569).
+Evidence: probes/linest-modes (excel-graph, 2026-10-16, T-1621); gen-m9 (excel-graph, 2026-10-22/23).
+Ours: since T-1741 (`linest_or_logest` in functions/statistical/linest.rs, shared readers in regression.rs). The
+noise digits of exact and collinear fits (K106, K190, K197: Excel 1.4e-16 where ours is 0, F 1.4e32 where ours is
+`#NUM!`) and the two-point K134 (Excel exactly 0.5 and -1.5) come from Excel's solve and stay with T-2006; the other
+leftover gen-m9 cells are T-2574's.
+Status: VERIFIED (excel-graph)
+Tasks: T-1741, T-2006, T-2556, T-2574
+
 ## LINEST, LOGEST and GROWTH in the gen-m9 sweep (T-2255)
 Rule: confirmations and additions to "LINEST, LOGEST, GROWTH: probe findings": a scalar known_y with no known_x is one
 point, so LINEST's anchor is 0 and LOGEST's 1 (`LINEST(2)`, 8d3588d8df0812df A186; `LOGEST(0.3)`, 8dd2312c96effb1b A329;
@@ -2764,9 +2808,43 @@ too (`LOGEST(-SUBTOTAL(5,..))` = LOGEST(-0.1), c468f5046aadfbbc A282; `LOGEST(Da
 known_x (`LINEST(Data!B1:D11,Data!E10)` with E10 = "ü", c18dbf21f11093f3 A182), the size check before the text check;
 a range known_y with text is `#VALUE!` (`LINEST(Data!D4:D5)`, 2a18b2f5a4dc43ac A273; whether it spills is not shown, B273 is unchecked).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-1741, T-1742, T-1743.
-Ours: `#VALUE!` for the scalar known_y and the sign/size checks above; T-1741, T-1742, T-1743.
+Ours: matches since T-1741 (section "LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order").
 Status: VERIFIED (excel-graph)
 
+
+## LINEST, LOGEST and GROWTH: cells left after T-1741 (T-1742)
+Rule: of the 189 gen-m9 LOGEST cells of T-1742, T-1741's shared shape and check-order code fixes 184; the other five are
+decided elsewhere. `LOGEST(T.DIST.2T(Data!B3,6),Data!C9:C12,<FALSE>)` (the const is an IF that is FALSE; one point of four variables, x = 0, -1, -2.5, 0.2,
+no constant) is 1 in Excel (285d87cea1aaa73c A293), so Excel drops the last column (0.2) where ours keeps it and fits
+m = 2.7E-40. Together with linest-modes K106 (E = 2A keeps E) this fits a solve that keeps the column of largest norm
+first (pivoted QR), which is UNVERIFIED (T-2569). `LOGEST(Data!A10:B11)` 2.220601291150046, ours ...0514, is the solve's
+digits (589f42e67f4b4b8d A193, T-2006), as are logest-modes K85 and the exact-fit stats K169:L173 and K197:L201 (Excel's
+residual is exactly 0, so se is 0 and F `#NUM!`). The remaining three are other functions: TRIMMEAN's order (a5342a7e24fd803e
+A288, the next entry), and PRICEMAT with an error yld beside a LOGEST basis (bc04c1f478c9896c A75, Excel `#VALUE!`, ours
+`#NUM!`) and LOGEST over an HLOOKUP whose range_lookup refers to a text "TRUE" cell (b8ee55934c5b824c A161, Excel `#VALUE!`,
+ours the size `#REF!`), both UNVERIFIED (T-2615). A blank one-cell known_x reference beside a range known_y is the size
+`#REF!` in Excel, as in ours (`LOGEST(Data!B9:D12,Data!A$9)`, 05d44f6dd6cfc567 A30; `LINEST(Data!C6:E12,Data!A11)`,
+623663cacea53bbc A210; `GROWTH(Data!A11:D12,Data!C12)`, fec39efaba9284c3 A265).
+GROWTH (T-1743): of its 75 gen-m9 cells, T-1726's and T-1741's shared code fixes 71. The other four are decided
+elsewhere. `GROWTH(DISC(39060,Data!A$4,Data!C6,(Data!D$7/1E-15)),..)` is `#NUM!` (05d44f6dd6cfc567 A34): GROWTH reports
+its known_y's error first, so Excel's DISC there, with maturity 1E+15, a text price and an error redemption, is
+`#NUM!` (inferred: no other argument can give `#NUM!`; T-2484's probe confirms it), where ours is `#VALUE!` (T-2484). `WEIBULL(PROB(-42,GROWTH(Data!B10:C11,Data!B$3),..),..)` is `#REF!` (41248d1cb153c66e
+A12): the GROWTH is the size `#REF!` in both, and Excel's PROB returns that prob_range error before the scalar x_range's
+`#VALUE!` (T-2468). A 0 y against a 2x2 x is abc2939ebd1e2365 A187 (T-2569), and `GROWTH(Data!D10:E10)`
+0.19999999999999996, ours 0.2000000000000001, is the solve (8fec7b207f4dd753 A75, T-2006), as are the growth-modes
+numerics past the 15th digit (K145:K152, K157 and K169 with a multi-column x; K3, K15, K27, K123 and K219).
+Evidence: gen-m9 (excel-graph, 2026-10-22); probes/logest-modes and probes/growth-modes (excel-graph).
+Ours: as described; T-2006, T-2468, T-2484, T-2569, T-2614, T-2615.
+Status: VERIFIED (excel-graph) for the values; the pivot and the four cross-function causes (PRICEMAT, HLOOKUP, DISC, PROB) UNVERIFIED
+Tasks: T-2006, T-2468, T-2484, T-2569, T-2614, T-2615
+
+## TRIMMEAN: an error percent before data with no number (T-1742)
+Rule: TRIMMEAN returns an error-valued percent before it reports data with no number: `TRIMMEAN(Data!E11:E11,<#N/A>)`
+with E11 = TRUE is `#N/A`, not `#NUM!` (a5342a7e24fd803e A288, the percent `COVARIANCE.P(8 cells,3 cells)-LOGEST(..)`).
+Evidence: gen-m9 (excel-graph, 2026-10-22).
+Ours: `#NUM!` (the data first); `TRIMMEAN(1,NA())` is already `#N/A`; T-2614.
+Status: VERIFIED (excel-graph), one cell
+Tasks: T-2614
 
 ## PROB: an error data argument first, one value on each side is #DIV/0!, unequal counts #N/A (T-2256)
 Rule: PROB checks its data in this order, each step before the next: x_range given as an error value is that error,
@@ -2812,8 +2890,15 @@ FALSE, 873f30d2bf76f8db A333; `ZTEST(Data!$A4,..)` with A4 empty, 201d67f1d59436
 no number, `ZTEST(Data!B5:C5,0.04)` (B5 empty, C5 FALSE; its x is `SUMXMY2(UNIQUE(Data!D4),-0.2)`, 7980ffb6095a340d A294)
 and `ZTEST(Data!B10:B10,..)` (its sigma is `PV(-0.9999999999,167,-43,1E+300)`, a63d1c7d6f96c56d A324), are explained by
 their x or sigma argument, not by the range: UNVERIFIED, T-2470 (which owns them) traces them.
-Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2470.
-Ours: x and sigma first, `#NUM!` for sigma before the one-value `#DIV/0!`, `#VALUE!` or `#DIV/0!` for the lone cells; T-2470.
+The error array comes first in every element of a lifted call (`Z.TEST(NA(),{1,2})` spills two `#N/A`,
+`Z.TEST(NA(),Data!A1:A2)` too), and it is only an error *value*: an error inside a range or array, or in a one-cell
+reference, still comes after x (`Z.TEST(Data!B2,1/0)` and `Z.TEST(Data!B2:B3,1/0)` with B2 `#N/A`, and
+`Z.TEST({1,2,#N/A},1/0)`, are `#DIV/0!`; "RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments").
+`ZTEST(PERCENTRANK.EXC(..,LCM(<text>))<#VALUE!>,XIRR(..)<#NUM!>)` is `#VALUE!` (gen-m9/c7664e494e418395 A204).
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2470; probes/t2428-ztest-error-data A1-A14 (excel-graph,
+2026-10-24, direct).
+Ours: the error array value first, per element, since T-2428 (`statistical/z_test.rs`); otherwise x and sigma first,
+`#NUM!` for sigma before the one-value `#DIV/0!`, `#VALUE!` or `#DIV/0!` for the lone cells; T-2470.
 Status: VERIFIED (excel-graph)
 
 ## MODE: a one-cell range reference to an empty cell is #VALUE! (T-2256)
@@ -2943,3 +3028,72 @@ Evidence: probes/t2436 (57 cases plus computed-scalar).
 Ours: see each owning task.
 Status: VERIFIED (excel-graph)
 Tasks: T-2436
+
+## Inner sub-expressions of the T-2256 gen-m9 statistical cells (T-2475)
+Rule: Excel gives these values for the innermost sub-expressions where the T-2475 probe found ours diverging, each read on a copy
+of its gen-m9 case's Data sheet (the probe's D01..D48 sheets; errors are named, numbers are the full doubles). They are observed
+values, one cell each, recorded so the fix tasks can state the rule behind each: PERMUTATIONA and COMBINA give 1 for the probed
+negative argument; IRR is `#NUM!` on four flow sets where ours converges; PV, NPER, PRICEDISC, DB, ACCRINT, ACCRINTM, YIELDDISC,
+YIELD, T.TEST, T.INV.2T, PERCENTRANK(.INC/.EXC), TRIMMEAN, XMATCH, STEYX and SLOPE give a different error from ours (the
+argument-domain order); TAKE of a LET-bound scalar is that scalar, not a 1x1 array; CELL("contents") is read differently inside
+COUNT and MODE.SNGL; and BINOM.DIST, NORMDIST, WEIBULL(.DIST), BETA.INV, POISSON.DIST, F.INV.RT, NEGBINOMDIST, STDEV.P, SKEW,
+MODE.MULT, PMT and PPMT differ in value or error. NPV's rule is "NPV with a rate of -1 or 1E+300 is #DIV/0!" (financial.md).
+- P!A2 `IRR(D01!C4:E7,-D01!C8)`: `#NUM!` (ours 31622775.851604085; 0620505280d2ea6e A77)
+- P!A28 `PERMUTATIONA(D02!D$12,D02!A12)`: 1.0 (ours `#NUM!`; 097af1ca33638670 A358)
+- P!A35 `COMBINA((-0.5),D03!$A3)`: 1.0 (ours `#NUM!`; 11eb3ab4f4f8104c A90)
+- P!A39 `PV(-D03!B$1,0,-713)`: `#NUM!` (ours `#DIV/0!`; 11eb3ab4f4f8104c A109)
+- P!A45 `PRICEDISC(D03!$A4,D03!D2,0.3,103,(-2.5))`: `#NUM!` (ours `#VALUE!`; 11eb3ab4f4f8104c A160)
+- P!A58 `T.TEST((D03!A11+(-0.5)),(42/D03!$D6),1,(-1))`: `#VALUE!` (ours `#NUM!`; 11eb3ab4f4f8104c A169)
+- P!A70 `TAKE(LET(v,D05!A$11,acc,v,y,"?b",acc),-1,-1)`: 0.0 (ours 64|1x1|0; 1b31092a0d79e5f1 A143)
+- P!A75 `PERCENTRANK.INC(D05!A7:D8,2,-1e-15)`: `#N/A` (ours `#NUM!`; 1b31092a0d79e5f1 A171)
+- P!A78 `WEIBULL.DIST(IRR({-100,100}),1E+8,NORMDIST(40,(D05!A11*1),MAX(D05!C1:C8,D05!C8:C10),(D05!$A$9<D05!B$`: 0.0 (ours `#NUM!`; 1b31092a0d79e5f1 A179)
+- P!A92 `NPER(1E-300,-113,3037,368,1)`: `#DIV/0!` (ours `#NUM!`; 1b31092a0d79e5f1 A260)
+- P!A96 `MODE.MULT(D05!A8:A8,D05!C7:C10,D05!D3:D11)`: `#VALUE!` (ours 64|2x1|2.5;1.005; 1b31092a0d79e5f1 A343)
+- P!A124 `T.INV.2T(D07!$A4,1)`: `#DIV/0!` (ours `#NUM!`; 2138b909d8f810ea A344)
+- P!A127 `BETA.INV(0.025,1e-15,2.5)`: `#NUM!` (ours 2.518020676354722e-31; 2138b909d8f810ea A358)
+- P!A136 `PV((-1+2^-52),165,-978,224,0)`: `#DIV/0!` (ours `#NUM!`; 31f09e6c48ca245c A232)
+- P!A158 `STDEV.P(D10!A9:A12,IFERROR(1/0,D10!$E6),{1,2,3,4,5,6,7,8,9,10})`: 25.559768683380703 (ours 26.354817185647274; 334f3dc9ca937f10 A226)
+- P!A165 `DB(15779,385,37,D11!$B7,D11!C11)`: `#NUM!` (ours `#VALUE!`; 38e4fc309fe199ea A89)
+- P!A198 `ACCRINT(34443,36178,38986,0.05/12,3587,1,5,"true")`: `#VALUE!` (ours `#NUM!`; 44a8841352dc48e9 A7)
+- P!A207 `YIELDDISC(36531,45775,97,RANK.EQ(D14!A9,D14!B9:E11,0),(-1))`: `#NUM!` (ours `#N/A`; 44a8841352dc48e9 A291)
+- P!A214 `YIELD(39681,45662,D14!B$8,3.14159,102,4)`: `#NUM!` (ours 19.040243161919385; 44a8841352dc48e9 A318)
+- P!A216 `POISSON.DIST(((D15!E12+0.2)*(1000000000000000.0*1000000000000000.0)),((D15!D5-D15!D10)+HOUR(D15!A9))`: 1.0 (ours `#NUM!`; 5919660b7bb4d195 A88)
+- P!A222 `TTEST(((D16!C6+D16!E$6)/FINV(1.5,3,0.3)),IRR(INDEX(D16!D3:E9,D16!$C7),ROUNDDOWN(1,42)),2,(INDEX(D16!`: `#VALUE!` (ours `#REF!`; 5cebac1f02bf30f2 A311)
+- P!A245 `SKEW({1E+200,1E+200,-1E+200},2.5,D18!D5)`: `#DIV/0!` (ours 0.0; 6e18550e9fc9c1b9 A347)
+- P!A266 `STEYX(ERROR.TYPE(SUMPRODUCT(D20!C1:E5,7)),MATCH((D20!$E$8>=D20!$E7),D20!A11:C11))`: `#NUM!` (ours `#DIV/0!`; 775d053de498b8c7 A98)
+- P!A273 `SLOPE(CELL("row",D20!E3),(0.1-TIME(5,16,59)))`: `#NUM!` (ours `#DIV/0!`; 775d053de498b8c7 A112)
+- P!A279 `(TAKE(D20!C8:E12,D20!B12,D20!$A7)-(D20!A$3/D20!A2))`: `#DIV/0!` (ours 64|1x1|#2; 775d053de498b8c7 A235)
+- P!A317 `F.INV.RT(1-1E-10,8,7)`: 0.0012599666259138292 (ours 0.0012599666259138298; 873f30d2bf76f8db A308)
+- P!A326 `MODE.SNGL(CELL("contents",D26!C$5))`: `#VALUE!` (ours `#N/A`; 92d4fa29e5510f1e A98)
+- P!A330 `IRR(D26!C8:E12,1E-10)`: `#NUM!` (ours 399999999999998.7; 92d4fa29e5510f1e A236)
+- P!A341 `BINOM.DIST(3,1E+15,1E-20,FALSE)`: `#NUM!` (ours 1.6666500000833278e-16; 9bc247733a1ca9fa A5)
+- P!A353 `TRIMMEAN(D28!A6,D28!C2)`: `#NUM!` (ours `#VALUE!`; 9bc247733a1ca9fa A360)
+- P!A396 `PERCENTRANK.EXC(D31!A9:C9,D31!B12,D31!B$3)`: `#N/A` (ours `#NUM!`; a4090567758520df A101)
+- P!A407 `WEIBULL(D32!E2,D32!E2,D32!$E11,D32!$A$8)`: `#NUM!` (ours 1.0; a5342a7e24fd803e A166)
+- P!A417 `NEGBINOMDIST(7,9,1E-10)`: 6.434999995495541e-87 (ours 6.434999995495502e-87; a63d1c7d6f96c56d A92)
+- P!A424 `IRR(D33!C4:E8,((-0.5)*D33!D4))`: `#NUM!` (ours -0.9710878190154174; a63d1c7d6f96c56d A111)
+- P!A455 `PERCENTRANK(D36!C11:E12,(-0.0001),1000000000000000.0)`: `#DIV/0!` (ours `#NUM!` for the whole TYPE/ERROR.TYPE summary, the error escaping it; bbab6562e88b70e8 A290)
+- P!A462 `PMT(D37!C9,346,96301,42,1)`: -278.44797687866065 (ours -278.4479768786607; bcb1105c61a2649d A97)
+- P!A491 `COUNT(D38!B2:B10,CELL("contents",D38!C8))`: 3.0 (ours 2.0; c2684066d8df263e A201)
+- P!A517 `DB(79665,(-100),17,9)`: `#NUM!` (ours `#NUM!` for the whole TYPE/ERROR.TYPE summary, the error escaping it; cb61169f4c033d4b A272)
+- P!A520 `SKEW(D41!D11:D12,D41!D10)`: 2.4980018054066022e-15 (ours 2.9976021664879227e-15; d208bbafc3bc1997 A262)
+- P!A543 `PPMT(100,5,217,4143,669,1)`: 0.0 (ours 4.768374219565885e-5; d910f000b60e2eac A20)
+- P!A549 `XMATCH(COUNTA(D45!B8),{3;1;4;1;5},(D45!$C1+D45!E8))`: 2.0 (ours `#N/A`; eccd03df42e40006 A21)
+- P!A563 `IRR(D47!A6:C8)`: `#NUM!` (ours -0.8583707295763425; eedd629f3d69fdda A297)
+- P!A567 `ACCRINTM(32899,36547,D48!C9,2035,3)`: `#VALUE!` (ours `#NUM!`; f82473275380882e A131)
+- P!A572 `NORMDIST(1E+300,MAX(D48!C11:C12),2.5,0)`: `#NUM!` (ours 0.0; f82473275380882e A143)
+Evidence: probes/t2475-stat-subexpressions (excel-graph, 2026-10-24, T-2475); the owning gen-m9 cells are listed in T-2619 to T-2622.
+Ours: as given per cell (T-2619 IRR, T-2620 financial, T-2621 statistical, T-2622 TAKE, CELL, XMATCH).
+Status: VERIFIED (excel-graph; the per-cell values, not yet the rules behind them)
+Tasks: T-2475, T-2619, T-2620, T-2621, T-2622
+
+## POISSON at x 0 with a negative mean
+Rule: POISSON and POISSON.DIST at x 0 with a negative mean are EXP(-mean), cumulative or not, not `#NUM!`:
+`POISSON(0,-1,2)`, `POISSON(0,-1,TRUE)`, `POISSON(0,-1,FALSE)` and `POISSON.DIST(0,-1,TRUE)` are 2.718281828459045,
+`POISSON.DIST(0,-0.5,FALSE)` is 1.6487212707001282; at x 1 a negative mean is `#NUM!` (`POISSON(1,-1,TRUE)`).
+Evidence: probes/poisson-negative-mean A1-A7 (excel-graph, 2026-10-24, T-2484); it surfaced through gen-m9
+23d82b62e9a85bdd A208 (a RECEIVED maturity of `0/POISSON(0,-1,2)` is 0, not an error).
+Unprobed: a fractional x in (0, 1), and a huge negative mean (EXP overflow).
+Ours: `#NUM!` (known failure, T-2628).
+Status: VERIFIED (excel-graph)
+Tasks: T-2628

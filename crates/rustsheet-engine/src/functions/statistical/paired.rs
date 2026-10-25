@@ -129,6 +129,25 @@ impl Model {
         })
     }
 
+    /// `value` as `#VALUE!` when it is a one-cell reference to a blank cell (`B4`, `B4:B4`), which
+    /// the paired functions and F.TEST reject before reading the other argument, whereas a
+    /// one-cell reference holding a number, text or a boolean is one value (statistics.md "A
+    /// one-cell reference to an empty cell is #VALUE! in the paired functions and F.TEST").
+    pub(crate) fn blank_one_cell_as_error(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if self.is_blank_one_cell(&value) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Argument is a reference to an empty cell".to_string(),
+            );
+        }
+        value
+    }
+
     fn sample_arg(
         &mut self,
         arg: &Node,
@@ -141,6 +160,7 @@ impl Model {
         // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
         // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is unprobed and stays `#VALUE!`.
         let value = self.evaluate_node_in_context(arg, cell);
+        let value = self.blank_one_cell_as_error(value, cell);
         if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
             return PairedArg::Values(vec![None]);
         }
