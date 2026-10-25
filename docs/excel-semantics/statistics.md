@@ -3206,7 +3206,14 @@ from the asin base (`f-test-finite`) fail in deep tails (cancellation) but get s
 One degree of freedom on each side (a = b = 1/2) is a closed form in Excel: `2*asin(sqrt(x))/pi` is bit-exact on 13 of
 the 16 such cells on file ((2/pi)*asin 11, 2/pi*atan(sqrt(x)/sqrt(y)) 10, the series model 3); the engine uses it
 since T-2571 (6 gen-m9 cells fixed, among them `F.TEST({0.02,0.027},Data!D6:D7)`, gen-m9/8f2ac25945af87da A241, and
-gen-m9/c468f5046aadfbbc A192). Whether Excel's other half-integer shapes go through A&S's theta forms is open (T-2571).
+gen-m9/c468f5046aadfbbc A192). Whether Excel's other half-integer shapes go through A&S's theta forms is open (T-2681).
+The residual is not in the variance ratio f (T-2571): the two-pass double variances are within 3 ulp of the exact
+ones on all but 14 of the 291 cells (and on those Excel follows the double f), the tail at the exact f is further from
+Excel (42 bit-exact, up to 173 ulp), and on the worst cells the f that would give Excel's p lies 6 to 70 ulps from the
+exact f while the double f is within 3: the residual is in the tail's evaluation. Numerical
+Recipes' `betai` in doubles (exp(lnB + a ln x + b ln y) or with three separate exps, `betacf`, with or without the
+symmetry switch, ln y or ln(1 - x), libm or correctly rounded lgamma) scores at best 132 / 235 / 29, and ln y as
+log1p(-x) under the model 146 / 272 / 24: none beats the model.
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
