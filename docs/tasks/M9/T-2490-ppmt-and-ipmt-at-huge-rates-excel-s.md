@@ -59,10 +59,17 @@ Cells:
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A205
 - gen-m9/c0681a8b150ce301.case.json (1): Calc!A81
 
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 1 gen-m9 financial cell moved here from T-2496.
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/81bcdc0bec0c8e6b Calc!A251 | `PPMT((2*Data!B11),8,360,(-100),926)` (rate 2E+15; inside TBILLEQ) | 0 | 2E+17 |
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): these 31 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] No PMT, IPMT or PPMT cell of probes-numeric/m9-fin-pmt or IPMT_PPMT.xlsx gets visibly off (re-check with `make eval-show`).
+- [ ] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
