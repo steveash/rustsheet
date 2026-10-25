@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -51,6 +51,8 @@ Examples:
 Cells:
 - gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A323
 - gen-m9/e8d55ec393460bb7.case.json (1): Calc!A10
+
+From T-2429 (2026-10-25): gen-m9/11eb3ab4f4f8104c Calc!A10 `=WEIBULL(HYPGEOM.DIST(1,2,10,7,_xlfn.GROUPBY(Data!B1:B12,Data!B1:E12,_xleta.MAX)),..)` is Excel `#SPILL!`, ours `#ERROR!`; the inner HYPGEOM.DIST lifted over the GROUPBY result is `#SPILL!` in Excel (probes/t2429/11eb3ab4f4f8104c A1), ours `#ERROR!`, likely the 32-element HYPGEOM.DIST lift charge (statistics.md "HYPGEOM.DIST: per-call cap and lifting"). Unverified; the cell stays in eval/baseline/gen-m9.txt.
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 2 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear

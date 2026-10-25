@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: sonnet
 depends_on: [T-1741]
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal

@@ -1,0 +1,5 @@
+exact  hits 152/361 rms miss 0.98
+g1     hits 160/361 rms miss 1.00
+g0     hits 161/361 rms miss 1.11
+g1d    hits 160/361 rms miss 1.00
+g0d    hits 161/361 rms miss 1.11

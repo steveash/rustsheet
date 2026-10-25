@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2452: whether MAKEARRAY's cap is a cell count: 2 rows of 524,289 columns (one cell per workbook, since sizes Excel builds can hang excel-graph).",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2452"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=COLUMNS(_xlfn.MAKEARRAY(2,524289,LAMBDA(r,c,1)))"
+      }
+    }
+  ],
+  "expected": {}
+}

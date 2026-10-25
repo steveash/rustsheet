@@ -1,0 +1,22 @@
+# big: 2304 rows in 48 runs with max(d) >= 0.0
+CR                           run sd median   31.3 mean   56.4 |    45/  344/  857 of  2304
+x,ext,ext,xl                 run sd median    8.5 mean   32.4 |    27/  510/ 1091 of  2304
+exact,ext,ext,xl             run sd median   10.5 mean   31.0 |    28/  522/ 1063 of  2304
+x,st,ext,xl                  run sd median   19.3 mean   41.8 |    42/  412/ 1028 of  2304
+x,ext,st,xl                  run sd median   19.3 mean   40.8 |    35/  425/ 1017 of  2304
+exact,ext,st,xl              run sd median   19.8 mean   40.1 |    37/  415/ 1008 of  2304
+exact,st,ext,xl              run sd median   19.8 mean   40.2 |    48/  404/ 1002 of  2304
+x,ab,ext,xl                  run sd median   20.6 mean   41.6 |    46/  434/ 1004 of  2304
+exact,ab,ext,xl              run sd median   22.0 mean   39.8 |    50/  419/  978 of  2304
+exact,split,ext,xl           run sd median   22.9 mean   41.6 |    47/  403/  967 of  2304
+x,ext,ext,ln                 run sd median   23.1 mean   43.7 |    32/  426/  980 of  2304
+x,split,ext,xl               run sd median   23.3 mean   43.4 |    40/  409/  998 of  2304
+exact,ext,ext,ln             run sd median   23.6 mean   42.2 |    24/  426/  956 of  2304
+rdiv,ext,ext,xl              run sd median   23.7 mean   43.0 |    42/  398/  937 of  2304
+r,ext,ext,xl                 run sd median   23.8 mean   43.0 |    35/  404/  938 of  2304
+exact,ab,st,xl               run sd median   24.5 mean   45.3 |    41/  365/  941 of  2304
+x,st,st,xl                   run sd median   24.5 mean   46.4 |    38/  344/  962 of  2304
+x,ab,st,xl                   run sd median   24.9 mean   46.6 |    39/  367/  959 of  2304
+exact,split,st,xl            run sd median   25.2 mean   46.9 |    39/  321/  913 of  2304
+exact,st,st,xl               run sd median   25.4 mean   45.5 |    39/  336/  944 of  2304
+r,ab,ext,xl                  run sd median   27.0 mean   47.9 |    41/  409/  933 of  2304

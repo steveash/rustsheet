@@ -104,7 +104,7 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
 }
 
 /// The double nearest to `digits * 10^place`, where `digits <= 10^15`.
-fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
+pub(crate) fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
     // Fast path: `digits` (< 2^53) and 10^|place| (|place| <= 22) are exact doubles, so one
     // multiplication or division is correctly rounded, like the parse below.
     if let Ok(exact_power) = i32::try_from(place.unsigned_abs()) {
@@ -119,6 +119,20 @@ fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
         }
     }
     format!("{digits}e{place}").parse().ok()
+}
+
+/// `value` cut to 15 significant digits, as the double nearest that decimal: an exact tie at the
+/// 16th digit goes away from zero when `tie_away`, otherwise toward zero. A zero or non-finite
+/// `value` is itself. FLOOR's ratio snap and PERCENTRANK's truncation use it, so that a double
+/// just below a digit boundary counts as on it.
+pub(crate) fn cut_to_15_digits(value: f64, tie_away: bool) -> f64 {
+    if !value.is_finite() || value == 0.0 {
+        return value;
+    }
+    let (mantissa, exponent) = significant_15(value.abs(), tie_away);
+    // `mantissa` has 15 digits, so its last digit has place value 10^(exponent - 14).
+    decimal_to_f64(mantissa, exponent - (SIGNIFICANT_DIGITS - 1))
+        .map_or(value, |cut| cut.copysign(value))
 }
 
 /// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`: the digits kept, and whether
@@ -155,6 +169,29 @@ pub(crate) fn round_shown_place(value: f64, precision: i32, is_scientific: bool)
             ),
         )
     })
+}
+
+/// `value` (nonzero, finite) rounded to the digits a scientific mantissa with one integer digit and
+/// `precision` decimals shows, and its exponent: the 15-digit decimal rounded half away from zero,
+/// once, at `precision + 1` digits, as the fixed codes round (`0.00E+00` on 1.005, the double
+/// 1.00499999…, is "1.01E+00"; `0E+0` on 2.5 "3E+0"; on 12.345 "1.23E+01", where rounding to four
+/// digits first gave "1.24E+01"; probes/t2705-scientific-mantissa-rounding, gen-m10; T-2705).
+pub(crate) fn round_scientific(value: f64, precision: i32) -> (f64, f64) {
+    let shown = (i64::from(precision) + 1).clamp(1, SIGNIFICANT_DIGITS);
+    let (mantissa, mut exponent) = significant_15(value.abs(), false);
+    let dropped = SIGNIFICANT_DIGITS - shown;
+    let (mut digits, round_up) = if dropped == 0 {
+        (mantissa, false)
+    } else {
+        round_off(mantissa, dropped, RoundMode::HalfAwayFromZero)
+    };
+    digits += u64::from(round_up);
+    if Some(digits) == u32::try_from(shown).ok().map(|shown| 10_u64.pow(shown)) {
+        digits /= 10;
+        exponent += 1;
+    }
+    let rounded = decimal_to_f64(digits, exponent - shown + 1).unwrap_or(f64::INFINITY);
+    (rounded.copysign(value), exponent as f64)
 }
 
 /// `value` rounded to the digits an engineering mantissa of `group` integer placeholders and

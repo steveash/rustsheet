@@ -1,0 +1,75 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Aggregates over a GROUPBY/PIVOTBY result whose cells hold LAMBDA(v,v)'s arrays (SPEC-0018 rule 4): which flatten the nested cells, which are #N/A or another error (T-2594).",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2594"
+  ],
+  "sheets": [
+    {
+      "name": "P",
+      "cells": {
+        "A1": "=LET(r,MIN(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A2": "=LET(r,MAX(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A3": "=LET(r,MINA(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A4": "=LET(r,MAXA(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A5": "=LET(r,AVERAGEA(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A6": "=LET(r,PRODUCT(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A7": "=LET(r,SUMSQ(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A8": "=LET(r,MEDIAN(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A9": "=LET(r,_xlfn.STDEV.S(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A10": "=LET(r,_xlfn.VAR.P(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A11": "=LET(r,HARMEAN(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A12": "=LET(r,GEOMEAN(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A13": "=LET(r,DEVSQ(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A14": "=LET(r,AVEDEV(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A15": "=LET(r,_xlfn.MODE.SNGL(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A16": "=LET(r,KURT(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A17": "=LET(r,SKEW(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A18": "=LET(r,_xlfn.CONCAT(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A19": "=LET(r,LARGE(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v)),1),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A20": "=LET(r,SMALL(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v)),1),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A21": "=LET(r,PERCENTILE.INC(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v)),0.5),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A22": "=LET(r,SUMPRODUCT(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A23": "=LET(r,ROWS(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A24": "=LET(r,COLUMNS(_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A25": "=LET(r,AVERAGE(1,_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A26": "=LET(r,SUM(1,_xlfn.GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v)),2),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A27": "=LET(r,SUM(_xlfn.PIVOTBY(D!A1:A5,D!B1:B5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A28": "=LET(r,COUNT(_xlfn.PIVOTBY(D!A1:A5,D!B1:B5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A29": "=LET(r,COUNTA(_xlfn.PIVOTBY(D!A1:A5,D!B1:B5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A30": "=LET(r,AVERAGE(_xlfn.PIVOTBY(D!A1:A5,D!B1:B5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A31": "=LET(r,MAX(_xlfn.PIVOTBY(D!A1:A5,D!B1:B5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))",
+        "A32": "=LET(r,MIN(_xlfn.PIVOTBY(D!A1:A5,D!B1:B5,D!C1:D5,LAMBDA(v,v))),t,TYPE(r),IF(t=16,\"#\"&ERROR.TYPE(r),t&\"|\"&ROWS(r)&\"x\"&COLUMNS(r)&\"|\"&IFERROR(INDEX(r,1,1)&\"\",\"#\"&ERROR.TYPE(INDEX(r,1,1)))))"
+      }
+    },
+    {
+      "name": "D",
+      "cells": {
+        "A1": "k",
+        "B1": "c",
+        "C1": "u",
+        "D1": "w",
+        "A2": "a",
+        "B2": "x",
+        "C2": 1,
+        "D2": 10,
+        "A3": "a",
+        "B3": "y",
+        "C3": 2,
+        "D3": 20,
+        "A4": "b",
+        "B4": "x",
+        "C4": 3,
+        "D4": 30,
+        "A5": "b",
+        "B5": "y",
+        "C5": 4,
+        "D5": 40
+      }
+    }
+  ],
+  "expected": {}
+}

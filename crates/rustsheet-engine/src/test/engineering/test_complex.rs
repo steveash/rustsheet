@@ -22,6 +22,22 @@ fn fn_complex() {
 }
 
 #[test]
+fn complex_suffix_error_wins_over_number_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=COMPLEX(1/0,1,"x")"#);
+    model._set("A2", "=COMPLEX(NA(),1,1/0)");
+    model._set("A3", r#"=COMPLEX(1/0,1,"j")"#);
+    model._set("A4", "=COMPLEX(1/0,1,1)");
+    model._set("A5", r#"=COMPLEX(1/0,1,"J")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+}
+
+#[test]
 fn fn_imabs() {
     let mut model = new_empty_model();
     model._set("A1", r#"=IMABS("3+4i")"#);
@@ -266,6 +282,41 @@ fn im_overflow_edges() {
     assert_eq!(model._get_text("B4"), *"#NUM!");
     assert_eq!(model._get_text("B5"), *"0");
     assert_eq!(model._get_text("B6"), *"0");
+}
+
+// Excel: probes-numeric/im-last-digit-sweep E55:I55, K42:L42 and gen-m9/b5aef3645cec1b95 A154,
+// probes/eng-im-overflow-edges A82 (T-2335): where the reciprocal's denominator overflows, a normal
+// tiny part is kept and a subnormal one prints as 0.
+#[test]
+fn im_reciprocal_overflow_keeps_normal_tiny_parts() {
+    let cases = [
+        (
+            r#"=IMCSC("-724.227-562.884i")"#,
+            "-6.94796703439417E-245-6.26263832046024E-246i",
+        ),
+        (
+            r#"=IMSEC("-724.227-562.884i")"#,
+            "-6.26263832046024E-246+6.94796703439417E-245i",
+        ),
+        (
+            r#"=IMSECH("-524.561+5.3113i")"#,
+            "1.73046857535442E-228-2.53533899849465E-228i",
+        ),
+        (r#"=IMSEC("1.5+711i")"#, "0"),
+        (r#"=IMEXP("-724.227-562.884i")"#, "0"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
 }
 
 // Excel: probes-numeric/im-last-digit-sweep D21, M21, P21 (T-2334).

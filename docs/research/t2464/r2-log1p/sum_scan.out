@@ -1,0 +1,8 @@
+fwd                    even 3441/3457 odd 3447/3457
+fwd, T1 by /3          even 3436/3457 odd 3443/3457
+T1 + rev(rest)         even 3425/3457 odd 3430/3457
+T1 + fwd(rest)         even 3424/3457 odd 3430/3457
+(T1+T2) + fwd(rest)    even 3426/3457 odd 3431/3457
+pairwise               even 3425/3457 odd 3432/3457
+Horner tail p1*H       even 3424/3457 odd 3430/3457
+Horner r*(t2*H)        even 3425/3457 odd 3428/3457

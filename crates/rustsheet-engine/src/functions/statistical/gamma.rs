@@ -3,9 +3,9 @@ use statrs::distribution::{Continuous, Gamma};
 use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
-use super::incomplete_gamma::{gamma_cdf, gamma_quantile, Tail};
+use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, Tail};
 
-use crate::arithmetic::extended_quotient;
+use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -84,7 +84,9 @@ impl Model {
         let result = if cumulative {
             gamma_dist_cdf(&dist, x, beta_scale)
         } else {
-            dist.pdf(x)
+            // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/m9-gamma-dist-a500
+            // B22; docs/excel-semantics/numbers.md "Distribution densities").
+            flush_subnormal(gamma_density(alpha, x, beta_scale).unwrap_or_else(|| dist.pdf(x)))
         };
         if !result.is_finite() {
             return Err(num_error(cell));

@@ -32,6 +32,30 @@ in-scope catalog function loaded at the count in excel-functions.tsv (probes/cat
 `=XNPV(1,A1:B2,A1:B2)` loads and gives 9.962109338017495 (probes/xnpv-argument-count D1; D3 shows
 values and dates of different lengths are `#NUM!`). RustSheet gives `#ERROR!` for a call below the
 minimum, as for every other function (`fn_xnpv`).
+Typed (API `Input::Formula`/`Parse`), Excel for the web refuses a call with fewer or more arguments than the function
+takes: `=PV(1)` (Graph PATCH 400, T-2567), and `=SUM()`, `=IF(1)`, `=ABS(1,2)` (too many) and
+`=ACCRINTM(DATE(2020,1,1),DATE(2021,1,1),0.1)` (`par` is required) (Graph PATCH 400 `InvalidArgument`, 2026-10-25, T-2632;
+the control `=ABS(1)` is accepted; refused inputs cannot be committed). A count between the least and most that ends inside a
+repeating group is refused too: `=SORTBY(C1:C2,D1:D2,1,E1:E2)` (the second pair lacks its sort order; same probe). The engine
+refuses typed by the catalog's counts for every function (`functions/kinds/arg_counts.txt`: the minimum of excel-functions.tsv; the
+maximum of Microsoft's syntax line, 255 when it repeats, widened by a non-repeating functions.yaml signature, or a cited
+override in place of both: INDEX's reference form, `INDEX(reference,row,column,area_num)`, 4 (probes/index-area-num-snap); checked by tools/tests/test_catalog_arity.py) and, for lifted functions, whole
+`repeat` cycles (`ArgKinds::accepts`); stored text keeps such a call (`#ERROR!`).
+Maxima and pairs, typed (T-2682, Graph PATCH 2026-10-25). Excel accepts each call at its maximum: `XLOOKUP` 6, `IF` 3,
+INDEX's reference form 4, `FIND`/`FINDB`/`SEARCHB` 3, `LEFTB`/`RIGHTB` 2, `LENB` 1, `MIDB` 3, `REPLACEB` 4, and
+`TRANSLATE` 3 (`#BUSY!` at the PATCH, logged, no sidecar). It also accepts whole pairs, `IFS(TRUE,1)`,
+`IFS(FALSE,1,TRUE,2)`, `LET(x,1,x)` and `LET(x,1,y,2,x+y)`, and `SWITCH(1,1,2)` and `SWITCH(1,2,3,4)` (a default after
+the pairs). See probes/t2682-typed-max-arg-counts A1:A17.
+It refuses (400 `InvalidArgument`, refused inputs cannot be committed) one argument past each of those maxima
+(`=XLOOKUP(1,{1,2},{3,4},0,0,1,1)`, `=IF(TRUE,2,3,4)`, `=INDEX((Sheet1!B1:C2,Sheet1!D1:E2),1,1,2,1)`, `=FIND("a","abc",1,1)` and the
+same for FINDB, SEARCHB, LEFTB, RIGHTB, LENB, MIDB, REPLACEB, `=DETECTLANGUAGE("hello","x")`,
+`=TRANSLATE("hello","en","es","x")`) and a count that ends inside an IFS or LET pair (`=IFS(TRUE,1,2)`,
+`=IFS(FALSE,1,TRUE,2,3)`, `=LET(x,1,y,2)`, `=LET(x,1,y,2,z,3)`) and `=SWITCH(1,2)`, below its minimum of 3. The engine's table
+takes these maxima as cited overrides (tools/tests/test_catalog_arity.py `MAX_OVERRIDES`; DETECTLANGUAGE and TRANSLATE are
+not implemented, `#NAME?`), and `arg_counts::takes_count` refuses IFS and LET off whole pairs. UNVERIFIED: that `DETECTLANGUAGE("hello")` (1, the catalog minimum) is accepted
+typed (only the refusal at 2 is logged); the pair rule above 6 arguments (probed
+IFS 2 to 5, LET 3 to 6); the 255-argument
+maxima (`SUM` 255/256, `TEXTJOIN` 254/255): the oracle cannot type a formula over 255 characters (T-2709).
 Status: VERIFIED
 
 ## Unary minus binds tighter than `^`
@@ -246,6 +270,24 @@ An error inside an array ranks with the referenced errors in MIN, MAX, AVERAGE a
 Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228, T-1314, T-1315, T-1334, T-1379, T-1439, T-1604, T-1615, T-1629, T-1696
 Implemented in: statistical/variance.rs (`VARA_ARGS`), math_and_trigonometry/sum.rs (`sum_with_last_addition`, reference and array errors held back), product.rs, mathematical.rs (`fold_min_max`) and statistical/count_and_average.rs (`for_each_value`, AVERAGE; reference errors held back, T-1379), functions/criteria.rs (`build_criteria_with`, `#BUSY!` criterion matches nothing); expressions/token.rs (`Error::GETTINGDATA`/`CONNECT`/`BLOCKED`/`FIELD`/`BUSY`, `Error::error_type_code`, `Error::stored_literal`, `get_error_by_english_name`, `get_error_by_name`); rustsheet value.rs (`ErrorKind`); rustsheet-xlsx export/worksheets.rs (`exported_error_literal`)
+
+## A typed unary plus stays in the formula text, except on a number literal
+Rule: typed (Graph PATCH), Excel keeps a unary plus in the formula text everywhere except when it is directly followed by
+a number literal, where it folds into the number. Typing `=+5` stores `=5`, `=+1E+3` stores `=1000`, `=+.5` stores
+`=0.5` and `=+5%` stores `=5%`. With more than one sign, only the plus directly before the number folds: `=++5` stores
+`=+5`, `=1++2` stores `=1+2` and `=-+5` stores `=-5`. A space breaks the fold: `=+ 5` stays as typed. On anything else the
+plus is kept as typed: `=+"a"`, `=+TRUE`, `=+B1`, `=+B1:B2`, `=+SUM(1,2)`, `=+(1)`, `=+-5`, `=++"a"`, `=1++"2"`,
+`=+{1,2}`, `=+#N/A`, `=+"a"&"b"`, `=SUM(+"1",2)`, `=IF(TRUE,+"a")`, `=+(+"a")`, `=+ "a"` and `=+LAMBDA(x,x)(1)`. The plus
+is the identity: every value matches the operand's.
+Evidence: probes/t2723-unary-plus-formula-text A1:C26 (excel-graph `entered`, 2026-10-25, T-2723). Stored, a plus on text
+or a boolean loads and is kept too (probes/t2601-index-scalar-forms-t-n B14, B15), and so do stored `=+10^1` and `=+Z1`
+forms (gen-m1/6462bf910ef9f28f, probes/lookup-argument-edges). The full set stored in one workbook was refused
+(FileCorruptTryRepair); which formula caused it is unprobed (`=+LAMBDA(x,x)(1)` is the likely one: T-2405 records
+`=SUM(1)(2)` the same way). The same rule appears in references.md (`=@+1` prints `=@1`) and lookup.md (INDEX's
+`+"a"`).
+Ours: the parser drops every unary plus, so FORMULATEXT shows none (C1, C2, C4:C9, C11, C12, C14:C16, C18, C19, C22:C26 fail;
+T-2723).
+Status: VERIFIED (excel-graph)
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every

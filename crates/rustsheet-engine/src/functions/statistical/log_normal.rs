@@ -2,10 +2,9 @@
 //! an array and a range (SPEC-0011; probes/stat-argument-modes H353-H373,
 //! probes/stat-later-argument-lift H49-H55). The kernels are closed form.
 
-use statrs::distribution::{ContinuousCDF, LogNormal};
-
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::statistical::normal::normal_quantile;
 use crate::functions::statistical::special::{normal_cdf, SQRT_2PI};
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
@@ -85,8 +84,8 @@ impl Model {
         if p <= 0.0 || p >= 1.0 || std_dev <= 0.0 {
             return Err(num_error(cell));
         }
-        let dist = LogNormal::new(mean, std_dev).map_err(|_| num_error(cell))?;
-        let result = dist.inverse_cdf(p);
+        // EXP of NORM.INV's quantile, so the PPND16 tails reach LOGNORM.INV too (T-0925).
+        let result = normal_quantile(p, mean, std_dev, cell)?.exp();
         if !result.is_finite() {
             return Err(num_error(cell));
         }

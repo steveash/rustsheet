@@ -1,0 +1,51 @@
+EXP V6 control vs harness: (4000, 4000)
+GAMMALN probe values parsed: 5843
+rows 20576 problems {}
+duplicate (a,b,x) keys: 0 extra cells 0
+GAMMALN args not in probe (harness model fallback): 2
+w_bpser cells using a fallback GAMMALN: 8
+vs worker pickle: same value 17729, different 0, label mismatch 0
+worker pickle variants: ['W3z64', 'NOFA', 'L53/glalgdiv', 'GL53', 'GL53/glalgdiv']
+
+## probe shapes+runs+tiny, w_bpser, GL53/glalgdiv (my implementation)
+b0<=1   n=5139 exact=3683 w4=5138 w15=5139 | hold n=3214 ex=2336 w15=3214 | tune n=1925 ex=1347 | baseline(worker W3z64) ex=2482 hold ex=1719 {'shapes': 3083, 'runs': 2048, 'tiny': 8}
+1<b0<8  n=8186 exact=6489 w4=8186 w15=8186 | hold n=3274 ex=2487 w15=3274 | tune n=4912 ex=4002 | baseline(worker W3z64) ex=5788 hold ex=2233 {'shapes': 4602, 'runs': 3584}
+b0>=8   n=4404 exact=1995 w4=4376 w15=4397 | hold n=1887 ex=742 w15=1885 | tune n=2517 ex=1253 | baseline(worker W3z64) ex=1501 hold ex=694 {'shapes': 2868, 'runs': 1536}
+
+## shapes only
+b0<=1   n=3083 exact=2311 w4=3082 w15=3083 | hold n=1670 ex=1229 w15=1670 | tune n=1413 ex=1082 {'shapes': 3083}
+1<b0<8  n=4602 exact=3369 w4=4602 w15=4602 | hold n=2250 ex=1628 w15=2250 | tune n=2352 ex=1741 {'shapes': 4602}
+b0>=8   n=2868 exact=1489 w4=2840 w15=2861 | hold n=1375 ex=741 w15=1373 | tune n=1493 ex=748 {'shapes': 2868}
+
+## runs only
+b0<=1   n=2048 exact=1366 w4=2048 w15=2048 | hold n=1536 ex=1101 w15=1536 | tune n=512 ex=265 {'runs': 2048}
+1<b0<8  n=3584 exact=3120 w4=3584 w15=3584 | hold n=1024 ex=859 w15=1024 | tune n=2560 ex=2261 {'runs': 3584}
+b0>=8   n=1536 exact=506 w4=1536 w15=1536 | hold n=512 ex=1 w15=512 | tune n=1024 ex=505 {'runs': 1536}
+
+## per run (exact / n)
+(0.37, 0.81) b0<=1 [420, 512] hold
+(0.83, 0.29) b0<=1 [326, 512] hold
+(0.153, 0.571) b0<=1 [355, 512] hold
+(0.43, 3.7) 1<b0<8 [475, 512] hold
+(2.9, 0.61) 1<b0<8 [384, 512] hold
+(0.717, 6.31) 1<b0<8 [512, 512] tune
+(5.13, 0.217) 1<b0<8 [305, 512] tune
+(0.29, 13.7) b0>=8 [264, 512] tune
+(17.3, 0.47) b0>=8 [241, 512] tune
+(0.91, 2.17) 1<b0<8 [512, 512] tune
+(1.37, 0.73) 1<b0<8 [446, 512] tune
+(0.0731, 0.913) b0<=1 [265, 512] tune
+(11.9, 0.83) b0>=8 [1, 512] hold
+(0.53, 1.13) 1<b0<8 [486, 512] tune
+
+old: GAMMALN fallbacks 0
+
+## OLD beta_exact.tsv cdf, w_bpser (fully out of sample)
+b0<=1   n=75 exact=29 w4=71 w15=75 | hold n=70 ex=27 w15=70 | tune n=5 ex=2 {'be': 75}
+1<b0<8  n=99 exact=64 w4=99 w15=99 | hold n=60 ex=33 w15=60 | tune n=39 ex=31 {'be': 99}
+b0>=8   n=79 exact=39 w4=75 w15=78 | hold n=24 ex=13 w15=24 | tune n=55 ex=26 {'be': 79}
+a0>=1   n=66 exact=36 w4=54 w15=66 | hold n=21 ex=20 w15=21 | tune n=45 ex=16 {'be': 66}
+b0<=1 CR exact 41 of 75
+1<b0<8 CR exact 31 of 99
+b0>=8 CR exact 26 of 79
+a0>=1 CR exact 43 of 66

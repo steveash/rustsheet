@@ -6,7 +6,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::util::aggregate_args::{
-        AggregatePolicy, ArgReading, ErrorRule, GridReading, ItemSource,
+        AggregatePolicy, ArgReading, ErrorRule, GridReading, ItemSource, NestedReading,
     },
     functions::util::array_node_to_calc_result,
     model::Model,
@@ -132,10 +132,12 @@ impl Model {
 
 /// How AND, OR and XOR read their arguments (SPEC-0009 "Consumer mapping"): as
 /// `evaluate_aggregate_arg` gives them (picked cells are references), first error wins, an
-/// empty argument is an item.
+/// empty argument is an item, and a nested GROUPBY or PIVOTBY cell is `#N/A`
+/// (probes/t2625-nested-consumers A5:A7).
 const LOGICAL_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::First,
     skip_empty_args: false,
     grids: GridReading::Values,
+    nested: NestedReading::NotAvailable,
 };

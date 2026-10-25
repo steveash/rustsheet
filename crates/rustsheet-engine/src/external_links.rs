@@ -116,15 +116,28 @@ impl Model {
         self.workbook.external_books.get(external_book_index(book)?)
     }
 
-    /// The cache of the sheet `[book]Sheet` names, `None` when the workbook holds none.
+    /// The cache of the sheet `[book]Sheet` names, `None` when the workbook holds none. A sheet
+    /// `sheetNames` lists but the cache holds no cell of (no `sheetData`, or an empty one) is not
+    /// cached either: `=[1]Sort!$B$2` and `SUM([1]Sort!$B$2:$C$3)` are `#BLOCKED!` and ISBLANK
+    /// FALSE (fixtures/external-link-uncached-lookups Refs!B26, B37, B40-B43, T-0457).
     fn cached_sheet(&self, sheet_name: &str) -> Option<CachedSheet> {
+        let (book_index, book, sheet) = self.linked_sheet(sheet_name)?;
+        book.cells
+            .keys()
+            .any(|&(index, ..)| index == sheet)
+            .then_some(CachedSheet {
+                book: book_index,
+                sheet,
+            })
+    }
+
+    /// The book index, book and sheet index of `[book]Sheet` when the workbook links that book
+    /// and its `sheetNames` lists the sheet, whatever the cache holds of it.
+    fn linked_sheet(&self, sheet_name: &str) -> Option<(usize, &ExternalBook, u32)> {
         let (book, sheet) = split_book_prefix(sheet_name)?;
         let book_index = external_book_index(book)?;
-        let sheet = sheet_index(self.workbook.external_books.get(book_index)?, sheet)?;
-        Some(CachedSheet {
-            book: book_index,
-            sheet,
-        })
+        let book = self.workbook.external_books.get(book_index)?;
+        Some((book_index, book, sheet_index(book, sheet)?))
     }
 
     /// A 3-D span of a linked workbook's cached sheets, `[1]Uses:Defines!$B$2`: its book, the
@@ -294,6 +307,8 @@ impl Model {
         let Some(sheet) = area.cache else {
             return area.blocked_value(cell);
         };
+        // These branches, and `blocked_value`'s, decide when an area is built as an array;
+        // `is_external_array` repeats them without building it (a test checks they agree).
         let (rows, columns) = area.extent();
         if (rows, columns) == (1, 1) {
             return self.cached_value(sheet, area.first_row, area.first_column, cell);
@@ -302,6 +317,21 @@ impl Model {
             return CalcResult::new_error(error, cell, message);
         }
         CalcResult::Array(self.cached_rows(sheet, area, cell))
+    }
+
+    /// Whether `node` is a range of a linked workbook that evaluates to an array: more than one
+    /// cell within the array bound, of its cached cells ([`Self::external_area_value`]) or, with no
+    /// cache for its sheet, of `#BLOCKED!` ([`ExternalArea::blocked_value`]). Reads nothing, so a
+    /// caller that only needs to know can skip building the array (T-0477).
+    pub(crate) fn is_external_array(&self, node: &Node, cell: CellReferenceIndex) -> bool {
+        if !matches!(node.ungrouped(), Node::WrongRangeKind { .. }) {
+            return false;
+        }
+        let Some(area) = self.cached_external_area(node, cell) else {
+            return false;
+        };
+        let (rows, columns) = area.extent();
+        (rows, columns) != (1, 1) && check_array_size(rows, columns).is_none()
     }
 
     /// [`ExternalArea::picked_value`] for an area INDEX or an intersection picked: its cached
@@ -352,6 +382,40 @@ impl Model {
                 "Error with Implicit Intersection".to_string(),
             ),
         })
+    }
+
+    /// A VLOOKUP, HLOOKUP or MATCH table written into a linked workbook, on a sheet `sheetNames`
+    /// lists but the cache holds no cell of: the lookup is `#N/A` before its index is checked,
+    /// over one cell, a small range and whole columns or rows alike,
+    /// `VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)` included, though a direct read of such a cell is
+    /// `#BLOCKED!` (fixtures/external-link-uncached-lookups Refs!B1-B12, B29-B35, B46, B51;
+    /// T-0457). `None` for any other node, which the caller evaluates as usual.
+    pub(crate) fn external_lookup_table(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        let (Node::WrongReferenceKind {
+            sheet_name: Some(sheet_name),
+            ..
+        }
+        | Node::WrongRangeKind {
+            sheet_name: Some(sheet_name),
+            ..
+        }) = node.ungrouped()
+        else {
+            return None;
+        };
+        let area = self.cached_external_area(node, cell)?;
+        if area.cache.is_some() {
+            return None;
+        }
+        self.linked_sheet(sheet_name)?;
+        Some(CalcResult::new_error(
+            Error::NA,
+            cell,
+            format!("No cached data for {sheet_name}"),
+        ))
     }
 
     /// The rows and columns of `sheet` its cached cells span, `None` when it holds none.

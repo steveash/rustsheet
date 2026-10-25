@@ -382,6 +382,39 @@ pub(crate) fn bare_defined_name(name: &str) -> &str {
     name.rsplit_once('!').map_or(name, |(_, bare)| bare)
 }
 
+/// Whether INDIRECT text may spell `prefix` without quotes: letters, digits, '_' and '.' only,
+/// a leading digit and a cell-shaped name included (`2024`, `Q1`, `x.y`; `Co A`, `P&L` and `O'B`
+/// are not). Looser than [`name_needs_quoting`] (probes/indirect-sheet-scoped-name,
+/// docs/excel-semantics/lookup.md "INDIRECT of `Sheet!Name` text").
+pub(crate) fn is_indirect_unquoted_sheet(prefix: &str) -> bool {
+    prefix
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+}
+
+/// INDIRECT text whose unquoted sheet prefix starts with a digit (`2024!B1`) with the prefix
+/// quoted (`'2024'!B1`), which the lexer reads; any other text is returned as it is.
+pub(crate) fn quote_digit_leading_sheet(text: &str) -> std::borrow::Cow<'_, str> {
+    match text.rsplit_once('!') {
+        Some((prefix, rest))
+            if prefix.starts_with(|c: char| c.is_ascii_digit())
+                && is_indirect_unquoted_sheet(prefix) =>
+        {
+            format!("'{prefix}'!{rest}").into()
+        }
+        _ => text.into(),
+    }
+}
+
+/// The sheet name a `Sheet!` prefix spells: `'O''B'` is `O'B`, an unquoted prefix is itself.
+/// `None` for a quoted prefix without its closing quote.
+pub(crate) fn unquote_sheet_prefix(prefix: &str) -> Option<String> {
+    match prefix.strip_prefix('\'') {
+        Some(quoted) => Some(quoted.strip_suffix('\'')?.replace("''", "'")),
+        None => Some(prefix.to_string()),
+    }
+}
+
 /// Points the sheet prefix of a qualified defined name (`Data!Local`) at `new_sheet` when the
 /// name is scoped to the renamed sheet (`scope == Some(renamed)`). A name with no prefix, and a
 /// linked workbook's `[1]!Name`, are left as they are. A workbook name read through a sheet
@@ -410,6 +443,32 @@ pub fn quote_name(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unquote_sheet_prefix_undoubles_quotes() {
+        assert_eq!(unquote_sheet_prefix("CoB").as_deref(), Some("CoB"));
+        assert_eq!(unquote_sheet_prefix("'Co A'").as_deref(), Some("Co A"));
+        assert_eq!(unquote_sheet_prefix("'O''B'").as_deref(), Some("O'B"));
+        assert_eq!(unquote_sheet_prefix("'CoB"), None);
+    }
+
+    #[test]
+    fn digit_leading_sheet_is_quoted() {
+        assert_eq!(quote_digit_leading_sheet("2024!B1"), "'2024'!B1");
+        for same in ["Q1!B1", "'2024'!B1", "B1", "2 4!B1", "2&4!B1"] {
+            assert_eq!(quote_digit_leading_sheet(same), same);
+        }
+    }
+
+    #[test]
+    fn indirect_unquoted_sheet_names() {
+        for ok in ["CoB", "2024", "Q1", "x.y", "a_b"] {
+            assert!(is_indirect_unquoted_sheet(ok), "{ok}");
+        }
+        for bad in ["Co A", "P&L", "O'B", "'CoB'"] {
+            assert!(!is_indirect_unquoted_sheet(bad), "{bad}");
+        }
+    }
 
     #[test]
     fn test_quote_name() {

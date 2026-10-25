@@ -245,16 +245,20 @@ Excel refuses itself; and MAKEARRAY allows columns past the grid as HSTACK does:
 The thresholds (probes/expand-makearray-past-grid A1-A15 and -big, excel-graph, 2026-10-23, T-2408): EXPAND rows or columns of
 2^31 or more are `#VALUE!` (`ROWS(EXPAND(1,2^31,1))`, 1E10 through 1E21, `COLUMNS(EXPAND(1,1,2^31))`), and rows below 2^31 past
 the grid `#NUM!` (`2^31-1`); a negative rows is `#VALUE!` (smaller than the array). Columns past the grid have a cap of Excel's
-own: 16,385 are built with 1 and 4 rows, while 123,456,789 in one row and 2^27 in four are `#NUM!`, so the cap is a column count,
-not a cell count, somewhere in 16,386..123,456,789 (T-2452). Ours refuses from 123,456,789; below it, a result above 2^20 cells is
-`#ERROR!` (the DEVIATION below), and sizes Excel builds there hang excel-graph, so they are unprobed.
+own: 16,385 are built with 1 and 4 rows, while 123,456,789 in one row and 2^27 in four are `#NUM!`. The cap is 1,048,576 columns,
+2^20, the grid's row count: in one row, `COLUMNS(EXPAND(1,1,n))` is n for 16386, 32769, 65537, 131073, 262145, 524289 and 1048576,
+and `#NUM!` for 1048577, 2^21, 2^22, 2^24 and 2^26 (probes/t2452-expand-cols-<n>, one cell per workbook, excel-graph, 2026-10-25,
+T-2452). It counts columns, not cells: `COLUMNS(EXPAND(1,2,524288))` and `(1,2,524289)` are 524288 and 524289, and
+`ROWS(EXPAND(1,1048576,2))`, 2^21 cells, is 1048576 (probes/t2452-expand-2x524288, -2x524289, -1048576x2). Ours refuses from
+1,048,577 columns (`COLUMNS_REFUSED`), after the smaller-than-the-array `#VALUE!` and before the rows check; below it, a result
+above 2^20 cells is `#ERROR!` (the DEVIATION below; -2x524289 and -1048576x2 are listed in probes/deviations, decision 0113).
 VSTACK checks its rows before it reads a referenced cell, after it evaluates every other argument: a stack past the grid
 is `#NUM!` even when a reference argument holds the formula's own cell, so `ROWS(VSTACK(A:A,1:1))` in W1 (-c2),
 `ROWS(VSTACK(2:2,A:A))` in W2, `ROWS(VSTACK(A:A,W8))` in W8 and `COLUMNS(VSTACK(A:A,12:12))` in W12 are `#NUM!`, not a
 circular reference; an error argument wins over the size wherever it stands, `ROWS(VSTACK(A:A,3:3,1/0))` in W3,
 `ROWS(VSTACK(1/0,A:A,4:4))` in W4, `ROWS(VSTACK(A:A,1/0))` and `ROWS(VSTACK(1/0,A:A))` are `#DIV/0!`; and an argument
 that is an expression reading the cell is evaluated, so it is a cycle: `ROWS(VSTACK(A:A,B9+W9))` in W9 is 0
-(recalc.md "A circular reference without iteration is 0"). ROWS, COLUMNS and ISREF of the formula's own row read no
+(recalc.md "A circular reference without iteration keeps the cells' values", here a cached 0). ROWS, COLUMNS and ISREF of the formula's own row read no
 cell: `ROWS(5:5)` in W5 is 1, `COLUMNS(6:6)` in W6 16384, `ISREF(7:7)` in W7 TRUE.
 Evidence: probes/vstack-self-past-grid W2-W12 (excel-graph, 2026-10-21, T-1965).
 Ours: `limits::check_stack_size` in `fn_hstack`, `fn_vstack` (T-1803), EXPAND, WRAPROWS and WRAPCOLS (T-1967). `fn_vstack`
@@ -262,7 +266,7 @@ evaluates every argument but a one-cell reference, a range only to its corners, 
 before reading a reference (T-1965); that an evaluated array's rows count too, `ROWS(VSTACK(SEQUENCE(1048576),1:1))` in
 row 1 `#NUM!`, follows from that order but is unprobed. W9 is 0 since T-0445 (recalc.md), and so is -c3 W1, which sits in row 1, which it stacks.
 Status: VERIFIED (excel-graph)
-Tasks: T-1803, T-1967, T-1965, T-2408
+Tasks: T-1803, T-1967, T-1965, T-2408, T-2452
 
 ## Arrays past the grid: MAKEARRAY, SEQUENCE and the lifts over them
 Rule: an array value may be wider or taller than the grid; only a spill of it is `#SPILL!`. `COLUMNS(MAKEARRAY(1,20000,LAMBDA(r,c,c)))`
@@ -275,16 +279,20 @@ a function lifted over such an array lifts it whole, so `ERROR.TYPE(MAKEARRAY(1,
 `MAKEARRAY(3,1E15,..)` is `#VALUE!` (gen-m7/b2078b5d702c691a A2553).
 Evidence: probes/t2579-array-value-edges B20-B32 (excel-graph, 2026-10-24, T-2579); probes/resource-limits C13.
 Ours: `limits::check_built_array_size` in MAKEARRAY and SEQUENCE (after SEQUENCE's own rows check against the grid): any
-shape within the cell bound of the next section is built; above it, columns past the grid are `#VALUE!`, as `SEQUENCE(3,123456789)`
+shape within the cell bound of the next section is built; above it, SEQUENCE's columns past the grid are `#VALUE!`, as `SEQUENCE(3,123456789)`
 is in Excel (gen-m9/f2bd5f380ec002bf Calc!A177) and `MAKEARRAY(3,1E15,..)` (A2553), and so are rows of 2^31 or more, EXPAND's
 threshold (`SIZE_LIMIT_EXCLUSIVE`), as `MAKEARRAY(1E15,4,..)` is (gen-m7/8c4570978f18f4c2 A2736, gen-m9/895a33aa8352864a A238,
 gen-m9/f280df8ba95f96b9 A89); any other shape is the bound's `#ERROR!`, so `ROWS(MAKEARRAY(1048577,1,..))` (B23) is `#ERROR!`
-(DEVIATION, decision 0014, listed in probes/deviations). Unprobed: where between 16,385 and 123,456,789 columns Excel's own
-`#VALUE!` starts (EXPAND's column cap is another, T-2452), and where between 1,048,577 and 1E15 rows MAKEARRAY's does. The lifting
+(DEVIATION, decision 0014, listed in probes/deviations). MAKEARRAY has no column cap at EXPAND's: `COLUMNS(MAKEARRAY(1,1048576,..))`
+is 1048576, `(1,1048577,..)` 1048577 and `COLUMNS(MAKEARRAY(2,524289,..))` 524289 (probes/t2452-makearray-cols-1048576, -1048577,
+-2x524289, excel-graph, 2026-10-25, T-2452; `MAKEARRAY(1,123456789,..)` never opened in excel-graph, so it is unprobed), so ours
+refuses MAKEARRAY's columns with `#VALUE!` only from 2^31, as its rows, and the two built cells above the bound are its `#ERROR!`
+(DEVIATION, decision 0113). Unprobed: where between 16,385 and 123,456,789 columns SEQUENCE's own `#VALUE!` starts, and where
+between 1,048,577 and 1E15 (rows) or 2^31 (columns) MAKEARRAY's does. The lifting
 driver's broadcast (`lift::driver::broadcast_shape`) checks the cell count only (`check_array_cells`), so B26 is the
 spill's `#SPILL!`. A237 is `#ERROR!`: its 206,552 BETAINV elements pass the quantile's lift cost cap (statistics.md), T-2607.
 Status: VERIFIED (excel-graph)
-Tasks: T-2579, T-2600
+Tasks: T-2579, T-2600, T-2452
 
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
@@ -388,7 +396,20 @@ exactly 0, not 2.22E-16. The inverse is the MDETERM elimination above (multiplie
 with L and back substitution with U per identity column (subtract then divide by the pivot): in IEEE doubles that reproduces
 all nine 3x3 residual entries bit for bit (T-2362). Dividing each U entry by the pivot before subtracting, or multiplying by
 the pivot's reciprocal, misses some of them.
-Unprobed: an inverse element past the double range (`MINVERSE(1E-300*1E-10)`) is `#NUM!` for the whole result, as for MDETERM.
+An inverse element past the double range makes the whole result `#NUM!`, not just that element: `MINVERSE({1E-200,1;0,1E-200})`
+(back substitution overflows to -1E+400 in the corner) is `#NUM!` in every cell: `INDEX(...,1,1)` and `INDEX(...,2,2)`, which are finite on their own, are `#NUM!` too; the
+non-overflowing `MINVERSE({1E-200,0;0,1E-200})` is {1E+200,0;0,1E+200}, although both matrices have the same underflowing determinant
+(1E-400), so it is the overflowing inverse element, not determinant underflow, that gives `#NUM!`. Evidence: probes/minverse-overflow-computed-pivot Calc!I2:I8
+(excel-graph, 2026-10-24, T-2386).
+A 1x1 inverse past the double range is `#NUM!` too: A3 = `=3E-308-2.5E-308` is a kept subnormal (about 5E-309; `(3E-308-2.5E-308)=0` is FALSE,
+numbers.md "Subnormal results become 0"), `MDETERM(A3)` keeps it (`(MDETERM(A3))=0` is FALSE) and `MINVERSE(A3)` / `MINVERSE(3E-308-2.5E-308)`
+are `#NUM!`, consistent with its inverse (about 2E+308) overflowing; a kept subnormal with a finite inverse (just below 2.2E-308) was not probed (Calc!P1:P4, A3:A4; graph reports the subnormal cells as 0, decision 0042).
+`MINVERSE(A1)` with A1 = `=1E-300*1E-10` is `#NUM!` for a different reason: `*` flushes 1E-310 to a true 0 (Calc!A5 `A1=0` is TRUE;
+numbers.md "Subnormal results become 0"), so the 1x1 matrix is exactly singular (Calc!I1).
+A near-singular pivot computed from cells is inverted: B1:C2 = 1, 1, 1, `=1+2^-52` (the cell holds 1+2^-52 exactly, unlike the
+literal) gives `MDETERM` 2.220446049250313E-16 and `MINVERSE` {4503599627370497,-4503599627370496;-4503599627370496,4503599627370496}
+(Calc!I4, J1:J4). That is consistent with the 15-digit literal explanation above for `{1,1;1,1.0000000000000002}` (the cell-held value is invertible, the literal is not; the literal's stored value was not probed separately). The 3x3
+`{1,2,3;4,5,6;7,8,9}` read from cells (E1:G3) gives the same residual inverse as the array literal (Calc!K1:K9, spill L1:N3).
 MINVERSE inverts a 1x1 pivot far below 2.2E-16: `MINVERSE(1.0000000000000085E-108)` is 9.999999999999914E+107 (before T-2362 ours was `#NUM!`),
 gen-m5/9284730052aff46c Calc!A39 (excel-graph, 2026-10-20).
 `MINVERSE((Data!E1+Data!E1)/TRUNC(2^31))` = `MINVERSE(9.313225746154786E-25)` is 1.0737418239999999E+24, the IEEE reciprocal
@@ -835,10 +856,31 @@ key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown 
   (`64|3x3|a`, inner INDEX(..,2,2) `64|2x1`, A23, A24); so one level is not the limit in Excel.
 - TAKE, CHOOSECOLS, VSTACK, SORT, FILTER and an INDEX of a whole row or column all keep the nested cells (A26:A32).
 Ours since T-2593 (SPEC-0018): the nested cells of rules 1, 3 and 8 (A16:A18, A22:A41), the one-cell reference body read by INDEX
-as its value (A21), and BYROW's row and BYCOL's column holding nested cells (A106, A107). MAP, BYROW and BYCOL steps, REDUCE and
-the aggregates (A1:A15, A100:A105, A108, A109) still read a nested cell as the `#VALUE!` it shows (T-2594); an element-wise lift
+as its value (A21), and BYROW's row and BYCOL's column holding nested cells (A106, A107). Since T-2594: MAP and REDUCE hand
+the LAMBDA each nested cell as its array (A100:A105, A109, A15), and t2311 P!D12 is `#CALC!`; ARRAYTOTEXT over a result
+holding one is `#CALC!` (A10); and the aggregates follow "Aggregates over nested GROUPBY and PIVOTBY cells" below. An element-wise lift
 of a two-level cell reads the inner top-left (assumed, T-2609), of a reference cell `#VALUE!` (unprobed, T-2609); a lifted INDEX
-element and an operator over the whole result read a nested cell as `#VALUE!` (unprobed, T-2609).
+element and an operator over the whole result read a nested cell as `#VALUE!` (unprobed, T-2609). Excel's operator does not read it as `#VALUE!`:
+`MEDIAN({1;2;"";4},GROUPBY(..,LAMBDA(z,z))-x,..)` is `#N/A`, as MEDIAN over nested cells, where ours is `#VALUE!`, and TEXTJOIN over
+`IFERROR((GROUPBY(..)-x)&"",..)` fails as over nested cells (probes/t2475-stat-subexpressions P!A62, A63; T-2623, fix T-2686).
+Aggregates over nested GROUPBY and PIVOTBY cells (probes/t2594-nested-aggregates, excel-graph, 2026-10-24, T-2594, over the T-2592
+data): SUM, COUNT and COUNTA flatten a nested cell (SUM 220, COUNT 16, COUNTA 19 over GROUPBY; over PIVOTBY SUM 220, COUNT 16,
+COUNTA 32; `SUM(1,GROUPBY(..),2)` 223; A26:A29). Every other aggregate tried is `#N/A`: MIN, MAX, MINA, MAXA, AVERAGEA, PRODUCT,
+SUMSQ, MEDIAN, STDEV.S, VAR.P, HARMEAN, GEOMEAN, DEVSQ, AVEDEV, MODE.SNGL, KURT, SKEW, LARGE, SMALL, PERCENTILE.INC (A1:A21),
+`AVERAGE(1,GROUPBY(..))` (A25), AVERAGE and MIN/MAX over PIVOTBY (A30:A32); gen-m9 MAX, HARMEAN and AVERAGE over a
+`LAMBDA(z,z)` result agree (06b4e8f5de409d5e A366, 68d8ffb69ff739d8 A285, 7c20351562a2d71d A381). CONCAT is `#VALUE!` (A18),
+SUMPRODUCT 0 (A22), ROWS and COLUMNS the outer shape (A23, A24). A one-cell reference body's cell is `#VALUE!` to PRODUCT and MIN
+(gen-m7/bcad709c30cfdf64 A13, gen-m9/2a18b2f5a4dc43ac A371). Range-only functions (MAXIFS, RANK.EQ, COUNTBLANK, SUBTOTAL,
+AGGREGATE 1-13) cannot take the result. Ours since T-2594: the walker's `NestedReading` (functions/util/aggregate_args.rs):
+SUM, COUNT and COUNTA flatten, charging the walk budget; the AVERAGE family, MIN, MAX, PRODUCT, SUMSQ and the A-variants give
+`#N/A`. T-2625 (probes/t2625-nested-consumers, excel-graph, 2026-10-24): VARA, STDEVA, VARPA, STDEVPA, AND, OR and XOR are `#N/A`
+too (A1:A7), IMSUM and IMPRODUCT `#VALUE!` (A8, A9), MODE.MULT, QUARTILE.INC and PERCENTILE.EXC `#N/A` (A10:A12). MODE.SNGL,
+LARGE, SMALL and the PERCENTILE/QUARTILE family read their data outside the walker and give `#N/A` through `nested_array_error`
+(crates/rustsheet-engine/src/nested_array.rs); SUMPRODUCT reads a nested cell as 0. Inferred, unprobed: the `#N/A` beats an
+error element anywhere in the array (ours checks for a nested cell first), and the 0 holds for multi-argument SUMPRODUCT. COUNT over a PIVOTBY with several key and
+value columns (`COUNT(PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)))` 140, A13; gen-m9/e85daedce5c2675e A35's 142)
+differs from ours only in the blank keys, which Excel shows as true blanks in the row keys and in every column-key row
+(A28:A31; ours 0, so COUNT 165): T-2460.
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),
@@ -1165,15 +1207,18 @@ grids (`MAX_NESTED_KEPT_CELLS`, as a LAMBDA's captures; a loop of GROUPBY calls 
 most 64 levels (`MAX_NESTED_DEPTH`); past any of them the whole result is `#ERROR!`. Copies of a nested cell share it, so
 `CHOOSEROWS(r,SEQUENCE(200)^0)` copies one for free; reading one's contents (INDEX of the cell) charges its cells to a
 per-evaluation walk budget of 2^27 cells (`MAX_NESTED_WALK_CELLS`), past which the read is `#ERROR!` (200 INDEX reads of a
-1,048,512-cell nested cell fail at the 129th). Equality of two nested cells is by content but O(1) for copies of one and for
+1,048,512-cell nested cell fail at the 129th). Since T-2594 SUM, COUNT and COUNTA flattening a nested cell, and MAP, REDUCE and
+SCAN handing one to the LAMBDA, charge the same budget, and past it the whole call is `#ERROR!`. Equality of two nested cells is by content but O(1) for copies of one and for
 cells of different sizes, so it is not charged.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5), SPEC-0018 "Bound". Unit tests in
 crates/rustsheet-engine/src/nested_array.rs and test/test_nested_groupby_cells.rs.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray::new`, `NestedBudget`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
-crates/rustsheet-engine/src/limits.rs (`MAX_NESTED_DEPTH`, `MAX_NESTED_WALK_CELLS`, `MAX_NESTED_KEPT_CELLS`)
-Tasks: T-2593
+crates/rustsheet-engine/src/limits.rs (`MAX_NESTED_DEPTH`, `MAX_NESTED_WALK_CELLS`, `MAX_NESTED_KEPT_CELLS`),
+crates/rustsheet-engine/src/functions/util/aggregate_args.rs (`walk_array_items`),
+crates/rustsheet-engine/src/functions/logical/bycol_byrow.rs (`lambda_cells`)
+Tasks: T-2593, T-2594
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!; an empty single cell is #VALUE!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
@@ -1513,10 +1558,33 @@ empty value IFERROR gives a blank cell (logic.md "IFERROR / IFNA of a blank cell
 TRUE,FALSE,TRUE,FALSE, `REDUCE(0,..,LAMBDA(a,v,a+COUNT(v)))` 4; A7:A11). VSTACK of one-cell blank references (A13:A23) and
 EXPAND's pad from a blank cell (`ISBLANK` TRUE for the pad elements, A32) make the same empty value. A blank cell of a *range*
 stays a blank cell: over `IF(TRUE,Z1:Z2)` COUNT is 0 and MAP's COUNT 0,0 (A37:A47).
-Ours: a LAMBDA's element binding gives the empty value since T-2413 (`lambda_cells`, for every blank element of an array value, also from sources not probed such as SORT or FILTER), which fixes A2088; INDEX of the element, VSTACK of
-a blank one-cell reference and EXPAND's blank pad still give a blank cell or 0 (A2, A3, A6, A13, A16, A20, A32; T-2461).
+Ours: a LAMBDA's element binding gives the empty value since T-2413 (`lambda_cells`), which fixes A2088; INDEX of the
+element, VSTACK and HSTACK of a blank one-cell reference and EXPAND's blank pad give it too since T-2461 (A2, A3, A6, A13,
+A16, A20, A32; `SEARCH(HSTACK(Z1),"Hello World",8)` is 8, gen-m9/2a18b2f5a4dc43ac Calc!A79).
+More sources (probes/t2461-blank-array-sources, excel-graph, 2026-10-25, T-2461): SORT and FILTER of a blank range make the
+empty value too (`MAP(SORT(Z1:Z2),_xleta.COUNT)` 1,1, `COUNT(INDEX(SORT(Z1:Z2),1,1))` 1, ISBLANK TRUE; A1:A4, A7:A9, A11),
+but TAKE and DROP of a range return a reference, so their blank cells stay blank cells: `MAP(TAKE(Z1:Z2,2),_xleta.COUNT)` is
+0,0, `COUNT(INDEX(TAKE(Z1:Z2,2),1,1))` and `COUNT(INDEX(DROP(Z1:Z3,1),1,1))` are 0 and `ISREF` of either INDEX is TRUE
+(`ISREF(INDEX(TAKE({1;2},1),1,1))` FALSE; A5, A6, A10, A27, A28, A36:A39); TAKE of an HSTACK keeps the empty value
+(A29). The pads: a blank cell pads EXPAND, WRAPCOLS and WRAPROWS with the empty value (ISBLANK TRUE, COUNT 1; A19:A22), and an
+empty pad_with differs by function: `EXPAND(1,2,2,)` pads with the empty value (A18) but `WRAPCOLS({1,2,3},2,)` and
+`WRAPROWS(..,2,)` with `#N/A`, as if it were missing (ISNA TRUE; A30, A31, A34, A35), while the empty value an argument
+evaluates to pads all three with the empty value (`WRAPCOLS({1,2,3},2,IFERROR(Z1,1))`, the same with the INDEX element, and
+EXPAND's: ISBLANK TRUE, COUNT 1, ISNA FALSE; A40:A45). HSTACK and VSTACK of a lone blank cell
+are the empty value (`COUNT(INDEX(HSTACK(Z1),1,1))` 1, `VSTACK(Z1)&"|"` "|"; A15:A17, A25), VSTACK of a blank range keeps
+the range's cells as the empty value (`COUNT(INDEX(VSTACK(Z1:Z2),1,1))` 1, A23:A24), and a spill shows the empty value as 0
+(`MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,v))`, `HSTACK(Z1,1)`, `EXPAND(1,2,2,Z1)`; C1:D7). The empty value is not an omitted
+argument: `LAMBDA(x,ISOMITTED(x))(IFERROR(Z1,1))`, the same of the INDEX element, and ISOMITTED in MAP over the HSTACK are
+FALSE (A12:A14).
+Ours: all of the above since T-2461 (INDEX picks from TAKE and DROP as a reference, `index_source`); ISOMITTED of a
+parameter bound to the empty value is FALSE since T-2649 (A12:A14): omission is how a parameter was bound (`Binding::Omitted`
+for a missing argument or an empty slot), not its value. A LET name bound to an omitted parameter (`LAMBDA(x,[y],LET(z,y,
+ISOMITTED(z)))(1)`), an empty LET value (`LET(z,,ISOMITTED(z))`) and an omitted parameter handed to another LAMBDA
+(`LAMBDA(x,[y],LAMBDA(z,ISOMITTED(z))(y))(1)`) stay TRUE, while a LET name bound to the empty value
+(`LET(z,IFERROR(Z1,1),ISOMITTED(z))`) is now FALSE like the LAMBDA form, and so is an empty REDUCE or SCAN initial value
+(`REDUCE(,{1,2},LAMBDA(a,v,ISOMITTED(a)))`; all unprobed, T-2670).
 Status: VERIFIED (excel-graph).
-Tasks: T-2306, T-2307, T-2413
+Tasks: T-2306, T-2307, T-2413, T-2461, T-2649
 
 ## MAKEARRAY rows and columns must be whole numbers
 Rule: MAKEARRAY is `#VALUE!` when rows or columns is not a whole number; it does not truncate as SEQUENCE does. Evidence (gen-m7,
@@ -1533,11 +1601,12 @@ in argument order, before either is validated: `MAKEARRAY(1.5,NA(),..)`, `(-1,NA
 D9-D17, excel-graph, 2026-10-23). Columns past the grid are built, as HSTACK's are: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385 (D1,
 D2) and the bare `MAKEARRAY(4,25000,..)` is `#SPILL!` (gen-m7/21b4eef18424ce94 A3348); rows past the grid are unprobed (the
 probe's 1,048,577-row, 1E9 and 1E6-element cells hang excel-graph's workbook open) and stay `#VALUE!` in ours.
-Unverified: columns past the grid above the 2^20-cell bound (`MAKEARRAY(1,2^20+1,..)`) are `#VALUE!` in ours; Excel's only answer
-there is `MAKEARRAY(3,1E15,..)`, `#VALUE!` (gen-m7/b2078b5d702c691a A2553), so its column cap may lie anywhere above 16,385 (T-2452).
+Columns past the 2^20-cell bound are built too: `COLUMNS(MAKEARRAY(1,1048577,..))` is 1048577 (probes/t2452-makearray-cols-1048577,
+T-2452; ours `#ERROR!`, the cell bound's DEVIATION), while `MAKEARRAY(3,1E15,..)` is `#VALUE!` (gen-m7/b2078b5d702c691a A2553); ours
+is `#VALUE!` from 2^31 columns, EXPAND's threshold ("Arrays past the grid").
 Ours: both sizes read first, then validated; columns past the grid under the cell bound (T-2408).
 Status: VERIFIED (excel-graph)
-Tasks: T-2308, T-2408
+Tasks: T-2308, T-2408, T-2452
 
 ## SORTBY with a single-value by_array or a fractional sort_order
 Rule: a by_array sorts the array's rows when it is one column as tall as the array, and its columns when it is one row as wide

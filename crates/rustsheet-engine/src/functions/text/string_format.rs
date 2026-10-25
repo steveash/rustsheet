@@ -15,7 +15,7 @@ use crate::{
     number_format::{cut_15_digits, increment_digits, parse_excel_number},
 };
 
-use crate::functions::util::near_integer_count;
+use crate::functions::util::near_integer::near_integer_count;
 
 /// Groups the digits of an integer part in threes (`1234567` → `1,234,567`).
 fn group_thousands(digits: &str) -> String {

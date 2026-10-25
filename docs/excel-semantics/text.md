@@ -316,7 +316,9 @@ Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED as noted above
 Tasks: T-1272, T-1824 (probe the guesses), T-1361 (delimiter ranges)
 
 ## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
-Rule: Excel computes these calls whatever their size.
+Rule: Excel computes these calls whatever their size. The REGEX* limits below also bound an XMATCH or XLOOKUP call in
+regex mode (`match_mode` 3, T-2680): one call, all its lifted elements included, has one REGEX* budget
+(`LookupRegexes`; lookup.md "XMATCH and XLOOKUP regex mode").
 Ours: a call is `#ERROR!` (as the *IF(S) lift) when its work passes `limits::MAX_LIFTED_CELL_VISITS` (2^27): over
 every operand, each element's length plus 1, times how often the broadcast repeats it; the text's length is further
 multiplied, per position, by the delimiter count plus the delimiter bytes compared there (each delimiter at most the
@@ -385,9 +387,9 @@ Backtracker limits (T-1900, functions/text/pcre/backtrack.rs and program.rs):
   (`REGEXTEST("a"&CHAR(10)&REPT("a",32764)&CHAR(10),"(?:b[a-z]{20000}|a)*b$")`). Each chunk it reaches is charged one unit
   a word, and each state it enters a step.
 Status: DEVIATION (decision 0014)
-Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache` and `LookupRegexes` (regex_functions.rs)
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355
+Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355, T-2680
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
@@ -618,7 +620,7 @@ Status: VERIFIED (excel-graph); implemented: first-character separators and empt
 after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
 colon after a bare hour (T-2352, in the shared clock parser).
 
-## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
+## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155; T of a cell reference gives "", T-2305)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
 count: `REPT(REPT("ab",300),0)`, `REPT(REPT("ab",300),3)`, `REPT(REPT("ab",300),5)`, `CODE(REPT("ab",300))` and
 `UNICODE(REPT("ab",300))` are `#VALUE!` (ours: the repeated text, "", 97, 97), while `REPT(REPT("x",255),3)` works
@@ -631,10 +633,14 @@ in all three (A1, A2, B1-B2, C1-C2: REPT doubles it, CODE and UNICODE give 120) 
 units (`LEN` 256) and is `#VALUE!` in all three (row 7), as is 255 "x" plus it (row 8). T shares the cut:
 `T(REPT("x",256))` is `#VALUE!` (A12). CLEAN, TRIM, LOWER and LEFT(..,1) take the same 256-character text
 (A9-A11, A13, `LEN` 256 for the first three). `VALUE(REPT("1",256))` is `#VALUE!` (A14), which the probe cannot tell
-from a numeral-length limit. Unprobed (every oracle cell builds the text inline with REPT): long text from a cell reference or as an array
-element (ours: `#VALUE!` in REPT, CODE and UNICODE and for T's scalar or top-left cell, T keeps a long array element),
-and which error wins when REPT's count is also an error (ours: the text's `#VALUE!`).
-Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs).
+from a numeral-length limit. From a cell, as an array element and with an error count (T-2305; probes/text-255-units-from-cell, -array-element,
+-rept-error-count, excel-graph 2026-10-24): a cell holding 256 "x" (typed, D1, or a formula result, D3) is `#VALUE!` in
+`REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!` (ours `#VALUE!`); 255 from a cell works in all
+four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!` (ours keeps T's element);
+255 works. excel-graph refused to open a workbook whose array constants held 256-character literals (cause not isolated), so the probe builds the long text with REPT. REPT with a
+long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!` (ours
+`#VALUE!`); `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. Unprobed: `T` of a multi-cell range whose top-left cell holds long text.
+Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count differences are T-2627.
 
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or
@@ -763,12 +769,13 @@ included (`REGEXEXTRACT("naïve","\w+")` is "naïve"; `\W` does not match `é`; 
 not match in "aé"); `\d` matches the Arabic-Indic three and the full-width digit; `\s` matches NBSP, U+2003, U+3000,
 U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]]` and `[[:word:]]` match `é`;
 `(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
-`a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
+`a$`; without `(?m)`, an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF. A final CR or
+CRLF counts as a final LF does (next entry, T-2364).
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
 Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
 `\X` and `\R` (A27, A42) since T-2287 (next entry).
-`\Z` follows `$`'s final-LF rule, as SPEC-0013 reads PCRE2. That is UNVERIFIED for Excel (T-1972); before T-1973 it was
-`#VALUE!`.
+`\Z` follows `$`'s final-LF rule, as SPEC-0013 reads PCRE2, and Excel's does too (probes/t2364-regex-newline-convention
+B18-B20, T-2364); before T-1973 it was `#VALUE!`.
 Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them):
 - Now accepted as PCRE2 reads it: `(?n)`, `(?-)`, `(?'name'..)`, `\e`, `\cX`, `[\b]`, `\p{^Lu}`, a `{` that starts
   no quantifier (a literal), and spaces inside a bracket under `(?x)` (literal).
@@ -785,6 +792,28 @@ then runs on the backtracker's memoized mode. Before, they matched only at the v
 but none at the end stays on the automata, `$` meaning its end (A7, A8).
 Status: VERIFIED (excel-graph)
 Tasks: T-1829 (probe), T-1900, T-1903, T-2355 (probe t2355-regex-dollar-inner-lf), T-1973
+
+## REGEX* newlines are CR, LF and CRLF (PCRE2's ANYCRLF convention)
+Rule: Excel's PCRE2 counts CR, LF and the pair CRLF as newlines, and nothing else (not U+2028, NEL, VT or FF). `$`
+without `(?m)` and `\Z` match at the end and before a final LF, CR or CRLF, so also between the CR and LF of a final
+CRLF: `REGEXTEST("a"&CHAR(13),"a$")`, `REGEXTEST("a"&CHAR(13)&CHAR(10),"a$")` and `"a\r$"` on it are TRUE, and
+`REGEXREPLACE("a"&CHAR(13)&CHAR(10),"$","x")` puts an x before the CR, before the LF and at the end; two CRs or LF CR
+at the end are not one newline (`"a"&CHAR(13)&CHAR(13)` and `"a"&CHAR(10)&CHAR(13)` do not match `a$`); `\z` stays the
+very end. `(?m)$` matches at the end and before every CR and every LF, also between a CR and its LF (`"a"&CHAR(13)&
+CHAR(10)&"b"` with `(?m)$` -> x gives `ax<CR>x<LF>bx`). `(?m)^` matches after an LF and after a CR that no LF follows,
+never between a CR and its LF (`xa<CR><LF>xb`), and not after U+2028. `.` matches neither CR nor LF (`a.b` on
+`"a"&CHAR(13)&"b"` and `a..b` on a CRLF are FALSE) but matches U+2028.
+Evidence: probes/t2364-regex-newline-convention B1-B25 and probes/t2364-regex-dollar-final-cr A1-A5 (excel-graph,
+2026-10-22 and 2026-10-25).
+Ours: matches since T-2364. The backtracker's `holds` and `.` read these rules; the automata use regex-syntax's CRLF
+forms (`Dot::AnyCharExceptCRLF`, `Look::StartCRLF`, `Look::EndCRLF`), and a regular pattern holding `$`, `\Z` or
+`(?m)$` over a text with a CR runs on the backtracker's memoized mode (`FinalLf::Cr`), since no `Look` gives those
+there. Unprobed (T-1972): `(?m)^` at the very end after a final LF (ours matches there, as before T-2364) or a final CR
+(ours matches there since T-2364, through `Look::StartCRLF`; stock PCRE2 matches after neither); and PCRE2's ANYCRLF
+bump-along, which after a failed attempt at a CR skips the position between it and its LF unless the pattern holds a
+literal CR or LF (`REGEXTEST("a"&CHAR(13)&CHAR(10)&"b","\s\w")` would then be FALSE; ours is TRUE).
+Status: VERIFIED (excel-graph)
+Tasks: T-2364
 
 ## `\R` and `\X` are atomic; `\X` is PCRE2's grapheme cluster (T-2287)
 Rule: `\R` is one line break, CR LF or any one of LF, VT, FF, CR, NEL, U+2028 and U+2029, and it never gives back the
@@ -902,6 +931,15 @@ Implemented in: `fn_value` (functions/text/common.rs), through the lift driver (
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
 
+## VALUE reads a mixed fraction, a sign before a space and a one-digit-year dash date (T-2646)
+Rule: `VALUE("- 5")` is -5, `VALUE("3 1/2")` 3.5 and `VALUE("1-1-1")` 36892 (2001-01-01, month-day-year with a
+one-digit year). Readers built on VALUE's grammar follow it: `IMABS("3 1/2")` is 3.5 (engineering.md "How an inumber
+is read").
+Evidence: probes/eng-inumber-date-boundary B21:B23, A22 (excel-graph, 2026-10-25).
+Ours: `#VALUE!` for all three (`value_text_number`, functions/text/common.rs).
+Status: VERIFIED (excel-graph); not implemented (T-2646).
+Tasks: T-2646
+
 ## REGEX* POSIX classes are Unicode (T-1903)
 Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:
 `alnum` L or N (`²`, `½`, `Ⅳ`, Arabic-Indic and fullwidth digits too); `alpha` L (`ª`, CJK; not `²` or `Ⅳ`); `ascii` U+0000-U+007F;
@@ -991,7 +1029,11 @@ Ours: matches (`text_around_element`, `around_options` and `around_not_found` in
 `TEXTBEFORE("abc","b",1,-0.5)` is "a", not `#VALUE!`: flooring -0.5 would give the invalid -1 (A2), so match_mode is cut toward zero.
 match_end is read the same way: -0.0001 is 0, so `TEXTAFTER(LOWER("'a"),Data!A11:B12,1,1,<-0.0001>)`, where no delimiter is in the text,
 is `#N/A` (with match_end 1 the end of the text would match and give ""): gen-m7/2d9b48c6363e7a16 Calc!A660 (excel-graph, 2026-10-22); 0.5 is 0 too: `TEXTAFTER("1.5","-",-1,1,0.5)` is `#N/A`, gen-m9/b9a32ce9a1fd0d71 Calc!A142.
-Ours: implemented (T-2412), `around_options` cuts match_end toward zero. Other match_end values (2, -1, TRUE) are unprobed, and 1.5 is cut to 1 by the same helper, also unprobed.
+Ours: implemented (T-2412), `around_options` cuts match_end toward zero. The cut value must then be 0 or 1, else `#VALUE!`, also when the
+delimiter is found and beside an if_not_found: 1.5 (also from a cell), 1.9999, TRUE (also from a cell), the text "1" (also from a cell) and the text "1.5" are 1, 0.9999,
+-0.5 and FALSE are 0, while 2, -1 and -1.5 are `#VALUE!` (`TEXTAFTER("ab","b",1,0,2)` is `#VALUE!`, not ""), and the text "TRUE" is `#VALUE!`.
+TEXTBEFORE reads it the same way (A16-A30): with the delimiter not found, a value cut to 1 gives the whole text "ab", one cut to 0 `#N/A`, and the same values are `#VALUE!`. `TEXTAFTER("a","zz",1,0,<any>)` is `#VALUE!` for every value (the longer-delimiter rule above; for 2 and -1 both checks give `#VALUE!`, so their order is not shown). Evidence: probes/t2498-textafter-match-end (excel-graph,
+2026-10-25, T-2498). Ours: matches (`around_options`).
 TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
 `ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
 `ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. The OFFSET alone is a 2x2 reference

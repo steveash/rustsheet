@@ -1,0 +1,4 @@
+control run(50,50,x100) true delta +40 | HKP11 best delta +36 sd 0.32 | delta +38 sd 0.32 | delta +40 sd 0.32
+control run(50,50,x100) true delta +40 | KPH11 best delta -260 sd 64.00 | delta -258 sd 64.00 | delta -256 sd 64.00
+control run(100,100,x13) true delta -100 | HKP11 best delta +156 sd 0.40 | delta -100 sd 0.40 | delta -98 sd 8.59
+control run(100,100,x13) true delta -100 | KPH11 best delta -80 sd 61.98 | delta -78 sd 61.98 | delta -76 sd 61.98

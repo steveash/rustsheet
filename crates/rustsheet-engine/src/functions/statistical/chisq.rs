@@ -1,9 +1,11 @@
 use crate::calc_result::Range;
+use crate::nested_array::nested_array_error;
 use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{Continuous, Gamma};
 
+use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
-use super::incomplete_gamma::{gamma_cdf, gamma_quantile, gamma_sf, Tail};
+use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, gamma_sf, Tail};
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
 
@@ -96,7 +98,7 @@ impl Model {
         } else if cumulative {
             gamma_cdf(&dist, x)
         } else {
-            dist.pdf(x)
+            gamma_density(dist.shape(), x, 1.0 / dist.rate()).unwrap_or_else(|| dist.pdf(x))
         };
         if !result.is_finite() {
             return Err(num_error(cell));
@@ -307,13 +309,14 @@ impl Model {
                     })
                     .collect(),
             )),
+            // An error element is the result, whichever element it is (statistics.md "An error
+            // element of an array argument is that error"; gen-m9, T-2255).
             CalcResult::Array(array) => {
+                if let Some(error) = nested_array_error(&array, cell) {
+                    return Err(error);
+                }
                 self.values_from_array(array)
-                    .map_err(|e| CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {e}"),
-                    })
+                    .map_err(|error| array_element_error(error, cell))
             }
             CalcResult::Range { left, right } => self.values_from_range(left, right),
             CalcResult::Boolean(_)
@@ -379,21 +382,19 @@ impl Model {
             Err(r) => return r,
         };
 
-        let mut values = Vec::with_capacity(values_left.len());
-
-        // Now we have:
-        // - values: flattened (observed, expected)
-        // - width, height: shape
-        for (left_value, right_value) in values_left.iter().zip(&values_right) {
-            match (*left_value, *right_value) {
-                (Some(v1), Some(v2)) => {
-                    values.push((v1, v2));
-                }
-                _ => {
-                    values.push((1.0, 1.0));
-                }
-            }
-        }
+        // A pair with a non-number on either side adds nothing; the degrees of freedom still come
+        // from the first range's shape (statistics.md, CHITEST text rule; for two different shapes
+        // that choice is UNVERIFIED, TODO(T-2650)). Pairs of only text and
+        // blanks are 1.0 for most shapes (gen-m9/8dd2312c96effb1b A343), but
+        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` is #DIV/0! (0a9226016e8f5f33 A333), unexplained: TODO(T-2650).
+        let values: Vec<(f64, f64)> = values_left
+            .iter()
+            .zip(&values_right)
+            .map(|(left, right)| match (*left, *right) {
+                (Some(v1), Some(v2)) => (v1, v2),
+                _ => (1.0, 1.0),
+            })
+            .collect();
         // Excel: a scalar or a single value is #N/A (probes-numeric/t1049-chisqtest A36
         // `CHISQ.TEST(5,5)`, probes/regression-pairs-text-scalar K1 `CHISQ.TEST("a","a")`).
         if width * height < 2 {
@@ -406,13 +407,6 @@ impl Model {
 
         let mut chi2 = 0.0;
         for (obs, exp) in &values {
-            if *obs < 0.0 || *exp < 0.0 {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Negative value in CHISQ.TEST data".to_string(),
-                );
-            }
             if *exp == 0.0 {
                 return CalcResult::new_error(
                     Error::DIV,
@@ -426,6 +420,17 @@ impl Model {
 
         if chi2 < 0.0 && chi2 > -1e-12 {
             chi2 = 0.0;
+        }
+        // Excel: there is no per-cell sign check, only a negative summed statistic is #NUM!:
+        // a negative actual (`CHITEST(Data!D7:D9,Data!C10:E10)`, c6cfda6bd10cae93 A375) and a
+        // negative expected cell with a positive total (f2bd5f380ec002bf A314, 0) are numbers,
+        // while probes-numeric/m9-legacy-chitest A21 (total below zero) is #NUM!.
+        if chi2 < 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Negative CHISQ.TEST statistic".to_string(),
+            );
         }
 
         let total = width * height;

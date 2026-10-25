@@ -6,7 +6,7 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
 use crate::functions::statistical::IfsShape;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
@@ -27,7 +27,7 @@ const BASE_NUMBER_LIMIT: f64 = 9_007_199_254_740_992.0;
 /// COMBIN's `number`, and COMBINA's `number + number_chosen - 1`, at or above which Excel gives
 /// `#NUM!`, whatever the coefficient: 2^31-1 (probes/t2199-text-length-and-combin-cuts A20-A37,
 /// B20-B34; numbers.md "COMBINA is COMBIN(n+k-1, k)", "Bound").
-const COMBIN_MAX_NUMBER: f64 = 2_147_483_647.0;
+const COMBIN_MAX_NUMBER: f64 = crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
 /// SIN, COS, TAN, COT, SEC and CSC are `#NUM!` from |x| = 2^27 (SIN(2^27-1) is a number, SIN(2^27)
 /// is `#NUM!`; probes/trig-huge-argument, docs/excel-semantics/numbers.md "Trig of a huge angle").
@@ -57,6 +57,7 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
     grids: GridReading::TopLeft,
+    nested: NestedReading::NotAvailable,
 };
 
 /// LOG of `x` in `base`, or LOG10 with the base omitted: not ln(x)/ln(10), as `LOG(1000)` is 3
@@ -348,7 +349,7 @@ impl Model {
             if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
                 return Err(Error::NUM);
             }
-            Ok(crate::functions::util::excel_mod(value, divisor))
+            crate::functions::util::excel_mod(value, divisor).ok_or(Error::NUM)
         })
     }
 

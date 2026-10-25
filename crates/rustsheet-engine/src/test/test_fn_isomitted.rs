@@ -67,3 +67,42 @@ fn test_isomitted_function_result_empty_value_is_not_omitted() {
     model.evaluate();
     assert_eq!(model._get_text("D1"), *"FALSE");
 }
+
+#[test]
+fn test_isomitted_parameter_bound_to_the_empty_value_is_not_omitted() {
+    // probes/t2461-blank-array-sources A12:A14 (excel-graph): Z1:Z2 blank. The empty value a
+    // parameter is bound to is supplied; an empty slot or a missing argument stays omitted.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        r#"=TEXTJOIN(",",FALSE,MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,ISOMITTED(v))))"#,
+    );
+    model._set("A2", "=LAMBDA(x,ISOMITTED(x))(IFERROR(Z1,1))");
+    model._set(
+        "A3",
+        "=LAMBDA(x,ISOMITTED(x))(INDEX(HSTACK(Z1:Z2,{1;2}),1,1))",
+    );
+    model._set("A4", "=LAMBDA(x,[y],ISOMITTED(y))(1,)");
+    model._set("A5", "=LAMBDA(x,[y],ISOMITTED(x))(,2)");
+    model._set("A6", "=LAMBDA(x,[y],LET(z,y,ISOMITTED(z)))(1)");
+    model._set("A7", "=LAMBDA(x,[y],ISOMITTED((y)))(1)");
+    model._set("A8", "=LAMBDA(x,COUNT(x)&ISBLANK(x))(IFERROR(Z1,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"FALSE,FALSE,FALSE,FALSE");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+    assert_eq!(model._get_text("A3"), *"FALSE");
+    assert_eq!(model._get_text("A4"), *"TRUE");
+    assert_eq!(model._get_text("A5"), *"TRUE");
+    assert_eq!(model._get_text("A6"), *"TRUE");
+    assert_eq!(model._get_text("A7"), *"TRUE");
+    assert_eq!(model._get_text("A8"), *"1TRUE");
+}
+
+#[test]
+fn test_isomitted_let_name_bound_to_an_empty_slot_is_omitted() {
+    // As before T-2649 (unprobed): a LET name bound to an empty slot reads as omitted.
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(z,,ISOMITTED(z))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+}

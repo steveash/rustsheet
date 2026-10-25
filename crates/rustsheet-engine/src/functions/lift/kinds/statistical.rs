@@ -48,6 +48,9 @@ const ETS_STAT_TYPE: ArgKinds = ArgKinds::fixed(
     &[WholeByCaller, WholeByCaller, Lift, Lift, Lift, Lift],
     Constant,
 );
+/// `FORECAST.ETS.SEASONALITY(values, timeline, [data_completion], [aggregation])`.
+const ETS_SEASONALITY: ArgKinds =
+    ArgKinds::fixed(2, &[WholeByCaller, WholeByCaller, Lift, Lift], Constant);
 /// A lifted argument, a reference read by its function, then an optional lifted argument:
 /// `RANK(number, ref, [order])`.
 const ONE_THEN_REFERENCE_THEN_1: ArgKinds =
@@ -90,10 +93,10 @@ const BINOM_INV_WEIGHT: u32 = 1 << 12;
 ///
 /// What one BETA.INV or F.INV element is charged. Its quantile is the capped port of statrs'
 /// inversion (`statistical/inverse_beta.rs`: at most 512 Newton steps of one cdf and 4,096 step
-/// adjustments, its own per-call cap: 1.6 ms at full cost), for F.INV refined to the crossing of
-/// the T-0970 incomplete beta (`special::refine_increasing`: at most 129 of its cdfs, each at most
-/// two continued fractions of 300 steps, about twice statrs' cost: 0.9 ms more; T-0974), or, at a
-/// huge shape or df, a crossing of at most 67 of those cdfs (`inverse_beta::beta_quantile_crossing`,
+/// adjustments, its own per-call cap: 1.6 ms at full cost), refined to the crossing of the T-0970
+/// incomplete beta (`special::refine_increasing`: at most 129 of its cdfs, each at most two
+/// continued fractions of 300 steps, about twice statrs' cost: 0.9 ms more; T-0974, T-2119), or, at
+/// a huge shape or df, a crossing of at most 67 of those cdfs (`inverse_beta::beta_quantile_crossing`,
 /// T-1538: 0.5 ms), so the full Newton search plus refinement (2.5 ms) is the bound.
 /// The weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.7 s at the bound (a DEVIATION,
 /// statistics.md). The cases measured cost much less (over 8,192 elements in release: 167 us for
@@ -230,6 +233,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::ForecastEts => Some(&ETS_TARGET),
         Function::ForecastEtsConfint => Some(&ETS_CONFINT_TARGET),
         Function::ForecastEtsStat => Some(&ETS_STAT_TYPE),
+        Function::ForecastEtsSeasonality => Some(&ETS_SEASONALITY),
         // RANK's `number` and `order` lift likewise over a `ref` read once; a `ref` that is not a
         // reference broadcasts as its own shape of errors (probes/stat-test-lift P20-P33, P72;
         // probes/stat-argument-modes H492-H499; T-1999). A lifted call sorts the numbers once

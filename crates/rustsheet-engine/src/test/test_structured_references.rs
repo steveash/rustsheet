@@ -497,3 +497,29 @@ fn a_displayed_deleted_sheet_reference_reads_back_as_ref() {
     assert_eq!(value(&model, 1, 31, 1), "#REF!");
     assert_eq!(value(&model, 1, 32, 1), "1");
 }
+
+#[test]
+fn convert_to_range_keeps_cells_and_makes_references_absolute_ranges() {
+    // T-2342: probes/table-edits/table-convert-to-range.
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model.set_user_input(0, 1, 1, "Qty".to_string()).unwrap();
+    model.set_user_input(0, 2, 1, "5".to_string()).unwrap();
+    model.set_user_input(0, 3, 1, "7".to_string()).unwrap();
+    model.add_table(0, "Sales", (1, 1, 3, 1), false).unwrap();
+    model
+        .set_user_input(0, 1, 3, "=SUM(Sales[Qty])".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 2, 3, "=ROWS(Sales[#All])".to_string())
+        .unwrap();
+    model.convert_table_to_range("Sales").unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "12");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 3).unwrap(), "3");
+    assert_eq!(
+        model.get_localized_cell_content(0, 1, 3).unwrap(),
+        "=SUM($A$2:$A$3)"
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "7");
+    assert!(model.convert_table_to_range("Sales").is_err());
+}

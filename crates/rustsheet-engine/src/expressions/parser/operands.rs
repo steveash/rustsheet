@@ -13,6 +13,8 @@ use super::structured_reference::{
     is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
 };
 use super::*;
+use crate::functions::kinds::arg_counts;
+use crate::language::get_default_language;
 
 impl Parser {
     /// The parse error for a token that cannot start an operand.
@@ -256,10 +258,7 @@ impl Parser {
                 }
                 sheet.to_string()
             }
-            None => match prefix.strip_prefix('\'') {
-                Some(quoted) => quoted.strip_suffix('\'')?.replace("''", "'"),
-                None => prefix.to_string(),
-            },
+            None => crate::expressions::utils::unquote_sheet_prefix(prefix)?,
         };
         let scope = if sheet.is_empty() {
             None
@@ -440,6 +439,29 @@ impl Parser {
         }
     }
 
+    /// Records the first call of `kind` with a `count` of arguments the function does not take,
+    /// for [`Parser::typed_refusal`]: Excel refuses such a formula typed (`=PV(1)`, T-2567; `=SUM()`,
+    /// `=IF(1)`, `=ABS(1,2)`, `ACCRINTM` with three arguments, T-2632) and in a file
+    /// (docs/excel-semantics/syntax.md "Minimum argument counts"); stored text keeps it, and the
+    /// call evaluates to `#ERROR!`. The counts are the catalog's for every function
+    /// ([`arg_counts::takes_count`], which also refuses IFS and LET off whole pairs, T-2682); a
+    /// lifted function must also end on a whole `repeat` cycle
+    /// ([`ArgKinds::accepts`]: Excel refuses `=SORTBY(C1:C2,D1:D2,1,E1:E2)` typed, T-2632). A
+    /// function the catalog does not list is never refused here.
+    fn note_argument_count(&mut self, kind: &Function, name: &str, count: usize) {
+        // Only typed text is refused, and the count table is a linear scan: skip it for stored
+        // formulas and xlsx import.
+        if !self.typed || self.wrong_count_call.is_some() {
+            return;
+        }
+        let english = kind.to_localized_name(get_default_language());
+        let refused = !arg_counts::takes_count(&english, count)
+            || kind.arg_kinds().is_some_and(|kinds| !kinds.accepts(count));
+        if refused {
+            self.wrong_count_call = Some(name.to_ascii_uppercase());
+        }
+    }
+
     /// A call by name, `SUM(...)` or `_xlfn.LAMBDA(...)(...)`, after its `(`.
     fn parse_named_call(&mut self, name: String) -> Node {
         // It's a function call "SUM(.."
@@ -524,6 +546,7 @@ impl Parser {
             .lookup_stored(&name)
             .filter(|_| !self.calls_bound_name(&name))
         {
+            self.note_argument_count(&function_kind, &display_name, args.len());
             let node = self.function_call(function_kind, args);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel

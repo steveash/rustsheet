@@ -15,8 +15,9 @@
 //! - beyond t = 1 and short of y = 0.99, deep tail included, L is `I_y(n/2, 1/2)`/2 at y as the
 //!   worksheet rounds it, fl(n / fl(n + fl(t*t))), through the same kernel as T.TEST's
 //!   [`student_t_tail_at`] (T-0969 attempt 7, probes-numeric t0969-t-tail-grid);
-//! - at df 2, for y from 0.1 up and t of any size, L is BETA.DIST's a = 1 closed form
-//!   1 - exp(ln(1 - y)/2), halved, at that rounded y ([`closed_form_tail`], T-0969 attempt 8);
+//! - at df 2, for fl(1 - y) <= 0.9 and t of any size, L is the incomplete beta's closed form on
+//!   bratio's oriented arguments, halved, at that rounded y ([`closed_form_tail`], T-0969 attempt 8,
+//!   T-2502);
 //! - elsewhere away from the deep tail (an integer df above [`SERIES_MAX_DF`], or a series tail too
 //!   small to keep its digits) L comes from Cephes' fractions with every input
 //!   formed from z and t^2/n, never from the rounded y ([`centre_tail`]): Excel is within a few ulp
@@ -30,9 +31,8 @@
 //! [`MAX_POWER_SERIES_TERMS`] power-series terms a call.
 
 use super::gammaln::excel_gammaln;
-use super::incomplete_beta::{
-    beta_reg_complement, beta_reg_upper, incbcf, incbd, A1_CLOSED_FORM_MIN_X,
-};
+use super::incomplete_beta::{beta_reg_upper, closed_form_tails, incbcf, incbd};
+use crate::arithmetic::flush_subnormal;
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp, two_sum};
 
 /// A double-double: an unevaluated sum `hi + lo` with |lo| <= ulp(hi)/2.
@@ -101,21 +101,12 @@ pub(crate) fn student_t_tails(t: f64, n: f64) -> (f64, f64) {
     }
 }
 
-/// L = P(T > t) for t > 0.
+/// L = P(T > t) for t > 0. A tail below the normal range is 0: main (statrs) returned 0 for a
+/// subnormal tail and `T.DIST.2T(...)` in gen-m9/3ec66461400faf2f A15 is 0 in Excel; the graph
+/// oracle cannot tell 0 from a kept subnormal (decision 0042), so the flush stays until a probe
+/// with a companion cell decides it.
 fn upper_tail(t: f64, n: f64) -> f64 {
     flush_subnormal(unflushed_upper_tail(t, n))
-}
-
-/// A tail below the normal range is 0. Main (statrs) returned 0 for a subnormal tail and
-/// `T.DIST.2T(...)` in gen-m9/3ec66461400faf2f A15 is 0 in Excel; the graph oracle cannot tell 0
-/// from a kept subnormal (decision 0042), so the flush stays until a probe with a companion cell
-/// decides it.
-fn flush_subnormal(tail: f64) -> f64 {
-    if tail < f64::MIN_POSITIVE {
-        0.0
-    } else {
-        tail
-    }
 }
 
 /// [`upper_tail`] before the subnormal flush.
@@ -193,15 +184,18 @@ fn tail_at(y: f64, n: f64) -> f64 {
     tail_from(&args, n)
 }
 
-/// L at df 2 for y = n/(n+t^2) from [`A1_CLOSED_FORM_MIN_X`] up, from y as the worksheet rounds it,
-/// fl(2/fl(2 + fl(t*t))): there `I_y(1, 1/2)` is BETA.DIST's a = 1 closed form, 1 - exp(ln(1 - y)/2)
-/// (T-1744), inside t = 1 too. `T.DIST.RT(0.0513,2)` = 0.4818746322295301 is that form, where the
-/// exact tail at t is 15 ulp off (probes-numeric t0969-t-tail-grid), and so is every
-/// `T.DIST.RT(t,2)` from t = 2 to 4.24 (t0969-t-df2-cut; docs/excel-semantics/statistics.md
-/// "T.DIST.RT at df 2 is BETA.DIST's closed form down to y = 0.1"). `None` elsewhere.
+/// L at df 2 for y = n/(n+t^2) as the worksheet rounds it, fl(2/fl(2 + fl(t*t))), with complement
+/// fl(1 - y): where the incomplete beta takes Excel's closed form on bratio's oriented arguments
+/// ([`closed_form_tails`] for `I_y(1, 1/2)`), inside t = 1 too. That is every y with
+/// fl(1 - y) <= 0.9: `T.DIST.RT(0.0513,2)` = 0.4818746322295301 is that form, where the exact tail
+/// at t is 15 ulp off (probes-numeric t0969-t-tail-grid), and so is every `T.DIST.RT(t,2)` from
+/// t = 2 to 4.24 (t0969-t-df2-cut; docs/excel-semantics/statistics.md "Incomplete beta closed forms
+/// act on the oriented arguments", 508 of 508 df-2 cells, T-2502). `None` elsewhere.
 fn closed_form_tail(y: f64, n: f64) -> Option<f64> {
-    (n == 2.0 && (A1_CLOSED_FORM_MIN_X..1.0).contains(&y))
-        .then(|| 0.5 * beta_reg_complement(y, 1.0 - y, 1.0, 0.5))
+    if n != 2.0 || !(y > 0.0 && y < 1.0) {
+        return None;
+    }
+    closed_form_tails(y, 1.0 - y, 1.0, 0.5).map(|(lower, _)| 0.5 * lower)
 }
 
 /// The inputs one tail is computed from, z = t^2/(n+t^2) and y = n/(n+t^2) among them, so that
@@ -523,8 +517,9 @@ fn dd_atan(u: Dd) -> Dd {
 
 #[cfg(test)]
 mod tests {
-    use super::super::incomplete_beta::tests::ulps;
+    use super::super::incomplete_beta::{beta_reg_complement, A1_CLOSED_FORM_MIN_X};
     use super::*;
+    use crate::test::util::ulps;
 
     #[test]
     fn tail_beyond_one_is_taken_at_the_rounded_y() {

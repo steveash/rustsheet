@@ -135,6 +135,13 @@ does not flow through it to its dependents. Rules:
 - `rustsheet-oracle fill` recalculates a case with `invariant` cells a second time without the
   cache and leaves pending (prints `VARIES ...`) every listed cell whose two values differ.
 
+A formula that calls an add-in function (`_xll.` prefix, outside string literals;
+`formula_calls::calls_add_in`) is not scored either, and is counted as `skipped_add_in` (T-0462).
+Decision 0027 puts add-ins out of scope, and Excel's cached value came from the add-in (calipers
+pv26_003's S&P Capital IQ `_xll.ciqfunctions.udf.CIQHI` cells). Unlike volatile taint, only the
+calling cell is left out: its dependents are scored, so a miss they show stays visible. report.md's
+out-of-scope section lists each suite's count.
+
 | Verdict | Meaning |
 |---|---|
 | `pass` | bit-identical (−0 == +0), same text/bool/error |
@@ -161,7 +168,8 @@ Only `pass` counts as passing. Case statuses:
   ranked by failing cells; failing examples per function; Excel evidence per function; out-of-scope
   functions. This is the hill-climbing to-do list. Function counts follow the catalog's `scope`
   (decision 0027), read from the generated `eval/catalog/scope.json` (decision 0040): `scope: out`
-  functions leave the function tables and get their own section with their reason; the evidence
+  functions leave the function tables and get their own section with their reason (and the per-suite
+  count of unscored add-in cells, see Scoring); the evidence
   section lists in-scope catalog functions with no Excel evidence, the `oracle: none` ones that
   need another evidence source, and, by catalog category, the ones below the evidence floor
   (fewer than 20 Excel cells; T-0056, decision 0062). Suite cell counts and baselines still cover every checked cell.
@@ -176,9 +184,24 @@ Only `pass` counts as passing. Case statuses:
   `visible_other`) and lists the functions with visibly-off cells, worst first. A visibly-off
   cell is blamed on the functions it calls other than glue (`closeness::GLUE`: IF, SUM, DATE,
   INDEX and the like), or on its glue when it calls nothing else.
+  A "Parity tiers (glue-aware)" section (T-0068, decision 0118, `attribution.rs`) counts the
+  in-scope functions per worst-cell tier (`exact`, `ulp4`, `digits15`, `rate999`, `rate99`,
+  `below99`, `unscored`) and how many of them use the fallback. Informational; never gated.
 - `report.json`: the same data, machine-readable. Each function's `closeness` holds its bucket
   counts and `visible` its blamed visibly-off cells; each suite's `closeness` holds its in-scope
-  bucket counts.
+  bucket counts. Decision 0118's counts sit beside them (T-0068): each function's `excel` holds
+  the non-deviation Excel-evidence cells that call it, `attributed` those whose only non-glue call
+  it is (`closeness::sole_call`), `tier` the worst-cell tier and `attribution` whether `attributed`
+  (`sole`) or, below 20 attributed cells, `excel` (`all`) placed it. Each suite's `workbooks`
+  counts its cases with a scored in-scope cell: `all_exact`, `all_within15` and `any_visible`.
+  It uses the suite's `closeness` cells (hand-written expectations and deviation passes included),
+  so it is suite scope, not Excel-only evidence.
+  The top-level `tiers` holds the per-tier function counts of that section, over the catalog's
+  in-scope set. `run` (T-0080, `run_meta.rs`) records the run itself: `commit` (`git rev-parse
+  --short=8 HEAD`, or null when git fails), `date` (UTC, `YYYY-MM-DD`) and `skipped_suites`
+  (`{name, reason}` for each suite under eval/suites that did not run: `not fetched` or `not
+  selected`); report.md prints it under the title. `date` and `commit` change on every run, so no
+  test or golden file compares a whole report.json.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 - `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
   it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
@@ -246,14 +269,25 @@ functions, which report.md lists apart as "Mk exempt from b". The row is at 100%
 `functions`. The table is an exit measure, not a gate; M6 inherits the rule.
 
 ## Milestone exit
-`crates/rustsheet-eval/src/milestone_exit.rs` (T-2177) adds a "Milestone exit (decision 0085)" section to
-report.md (report.json: `milestone_exit`) with one row each for M5 and M6 (M7 to M11 need their own
-decision first). It reads four rows the report already computes and scores nothing itself: catalog
-coverage (`covered == functions`), the `gen-m<k>` suite (at least 20,000 scored cells, `cells -
-deviations`, at a 0.999 pass rate; known failures print beside the allowance `floor(0.001 * scored)`),
-`ironcalc-calc` failing cells excluding exit exceptions (0), and the probe row's known failures (0). A
-missing input prints `n/a` and is never `met`; `exit` is `met` only when all four are. It is an exit
+`crates/rustsheet-eval/src/milestone_exit.rs` (T-2177) adds a "Milestone exit (decisions 0085, 0114)"
+section to report.md (report.json: `milestone_exit`) with one row each for M5 and M6 (M7 to M11 need
+their own decision first). It reads four rows the report already computes and scores nothing itself:
+catalog coverage (`covered == functions`), the `gen-m<k>` suite (at least 20,000 scored cells, `cells -
+deviations`, with at least 0.999 of them not visibly off; visibly-off cells print beside the allowance
+`floor(0.001 * scored)`), `ironcalc-calc` visibly-off cells excluding exit exceptions (0), and the
+probe row's visibly-off cells (0). Decision 0114 measures Phase 1 at visible parity; the bit-level
+counts (`gen_known_failures`, `calc_failing`, `probe_known_failures`) print in brackets for Phase 1b.
+A missing input prints `n/a` and is never `met`; `exit` is `met` only when all four are. It is an exit
 measure, not a gate.
+
+The "Fifteen-digit parity checkpoint" section (`v15_checkpoint`, decision 0094) also prints the
+Phase 1 line of decision 0114: the in-scope functions that are covered and have at most one cell in
+a thousand visibly off, with each function's within-15-digit share. Decision 0118 counts those cells
+(T-0080): each function's `rate_cells` and `rate_visible` are its `attributed` cells, or its `excel`
+cells below 20 attributed cells (`attribution`), and `meets_rate`, `at_rate`, `phase1_met` and the
+Phase 1 line follow them. Coverage (`covered`) still counts every Excel cell that calls the function
+(decision 0094). The stricter share, `cells` against the blamed `visible`, stays as information:
+`strict.meets_rate`, `at_strict_rate` and a line labelled "Information, gates nothing".
 
 ## CLI
 ```

@@ -339,7 +339,7 @@ fn cf_formula_created_in_spanish_undo_redo() {
     };
     assert_eq!(formula, "=SI($A1>5,VERDADERO,FALSO)");
 
-    let is_red = |m: &UserModel, row: i32| {
+    let is_red = |m: &mut UserModel, row: i32| {
         m.model
             .get_extended_style_for_cell(0, row, 1)
             .unwrap()
@@ -348,7 +348,7 @@ fn cf_formula_created_in_spanish_undo_redo() {
             .color
             == Color::Rgb("#FF0000".to_string())
     };
-    assert!(is_red(&model, 10));
+    assert!(is_red(&mut model, 10));
 
     // Switch to English then undo/redo.
     model.set_language("en").unwrap();
@@ -358,6 +358,6 @@ fn cf_formula_created_in_spanish_undo_redo() {
 
     model.redo().unwrap();
     assert_eq!(stored_cf_formula(&model), "=IF($A1>5,TRUE,FALSE)");
-    assert!(is_red(&model, 10));
-    assert!(!is_red(&model, 1));
+    assert!(is_red(&mut model, 10));
+    assert!(!is_red(&mut model, 1));
 }

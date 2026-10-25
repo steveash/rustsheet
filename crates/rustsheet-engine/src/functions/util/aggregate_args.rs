@@ -13,7 +13,9 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::{cell_number, coerced_cell_number};
 use crate::model::Model;
+use crate::nested_array::NestedKind;
 use crate::reference_operators::{RefArg, RefElement, RefGrid};
+use crate::tailed_array::Tailed;
 
 /// Where an item the walker hands on came from. The coercion rules depend on it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -74,6 +76,21 @@ pub(crate) enum GridReading {
     TopLeft,
 }
 
+/// How the walker reads a nested cell of a GROUPBY or PIVOTBY result in an array argument
+/// (SPEC-0018 rule 4; probes/t2592-nested-groupby-cells A6:A12, probes/t2594-nested-aggregates).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NestedReading {
+    /// Its array's elements are walked as array elements, nested cells in them too: SUM 220,
+    /// COUNT 16 and COUNTA 19 over a 3x3 GROUPBY whose six value cells hold 16 numbers (A6:A8).
+    Flatten,
+    /// The cell is an array error `#N/A` (AVERAGE, MIN, MAX, PRODUCT, SUMSQ, MEDIAN, the A-variants,
+    /// the variance and deviation family: t2594-nested-aggregates A1:A21, A25; VARA, STDEVA,
+    /// VARPA, STDEVPA, AND, OR and XOR: t2625-nested-consumers A1:A7).
+    NotAvailable,
+    /// `#VALUE!`, as a LAMBDA element: IMSUM and IMPRODUCT (t2625-nested-consumers A8, A9).
+    Value,
+}
+
 /// What sets one consumer's argument walk apart (SPEC-0009, "Consumer mapping").
 #[derive(Clone, Copy)]
 pub(crate) struct AggregatePolicy {
@@ -85,6 +102,8 @@ pub(crate) struct AggregatePolicy {
     pub(crate) skip_empty_args: bool,
     /// How an array of references is read.
     pub(crate) grids: GridReading,
+    /// How a nested GROUPBY or PIVOTBY cell in an array is read.
+    pub(crate) nested: NestedReading,
 }
 
 /// How a direct value (and, under `Cast`, a [`ItemSource::ReferenceValue`]) becomes a number.
@@ -145,12 +164,35 @@ impl NumberRules {
 pub(crate) struct AggregateWalk {
     policy: AggregatePolicy,
     held: Option<CalcResult>,
+    /// The rules of a visitor that folds numbers ([`Model::for_each_aggregate_number`]): the
+    /// array elements they turn into no number change nothing, so a tailed argument's repeated
+    /// tail of one is not walked (SPEC-0020). `None` for every other visitor.
+    numbers: Option<ArrayNumbers>,
 }
 
 impl AggregateWalk {
     /// A walk with nothing held yet.
     pub(crate) fn new(policy: AggregatePolicy) -> Self {
-        AggregateWalk { policy, held: None }
+        AggregateWalk {
+            policy,
+            held: None,
+            numbers: None,
+        }
+    }
+
+    /// Whether visiting the array element `node` changes nothing: the walk's visitor folds
+    /// numbers and `node` gives none under its rules ([`Model::aggregate_number`] for an
+    /// [`ItemSource::ArrayElement`]), and no error is held.
+    fn ignores(&self, node: &ArrayNode) -> bool {
+        let Some(numbers) = self.numbers else {
+            return false;
+        };
+        self.held.is_none()
+            && match node {
+                ArrayNode::Empty | ArrayNode::Boolean(_) => true,
+                ArrayNode::String(_) => numbers == ArrayNumbers::Numbers,
+                _ => false,
+            }
     }
 
     /// The held referenced error, if any, once every argument is walked.
@@ -226,12 +268,25 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
         policy: AggregatePolicy,
+        visit: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        self.walk_aggregate_args_with(args, cell, AggregateWalk::new(policy), visit)
+    }
+
+    /// [`Self::walk_aggregate_args`] with a walk already set up.
+    fn walk_aggregate_args_with<F>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        mut walk: AggregateWalk,
         mut visit: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
     {
-        let mut walk = AggregateWalk::new(policy);
         for arg in args {
             self.walk_aggregate_arg(arg, cell, &mut walk, &mut visit)?;
         }
@@ -258,10 +313,32 @@ impl Model {
             return Ok(());
         }
         // References (also via IF, INDEX, XLOOKUP, TAKE …) arrive as ranges.
-        let read = match walk.policy.reading {
-            ArgReading::Aggregate => self.evaluate_aggregate_arg(arg, cell),
-            ArgReading::PickedKeepingBlanks => self.evaluate_picked_reference_arg(arg, cell),
+        let reading = walk.policy.reading;
+        let read_arg = move |model: &mut Self| match reading {
+            ArgReading::Aggregate => model.evaluate_aggregate_arg(arg, cell),
+            ArgReading::PickedKeepingBlanks => model.evaluate_picked_reference_arg(arg, cell),
         };
+        // An element-wise expression of whole columns: its used head and its tail row
+        // (SPEC-0020).
+        if let Some(tailed) = self.read_tailed(arg, cell, read_arg) {
+            if let Some((head, tail)) = tailed_elements(tailed) {
+                #[cfg(test)]
+                crate::tailed_array::TAILED_WALKS.with(|walks| walks.set(walks.get() + 1));
+                self.walk_array_nodes(head, cell, walk, visit)?;
+                return match tail {
+                    Some((element, _)) if walk.ignores(&element) => Ok(()),
+                    Some((element, repeats)) => self.walk_array_nodes(
+                        std::iter::repeat_n(element, repeats),
+                        cell,
+                        walk,
+                        visit,
+                    ),
+                    None => Ok(()),
+                };
+            }
+            // Not the shape the two evaluations give: read it as usual, its cells evaluated.
+        }
+        let read = read_arg(self);
         let is_reference = matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
         self.walk_aggregate_read(read, is_reference, cell, walk, visit)
     }
@@ -289,21 +366,7 @@ impl Model {
         };
         match read {
             Ok(areas) => self.walk_areas(&areas, cell, walk, visit),
-            Err(CalcResult::Array(array)) => {
-                for node in array.into_iter().flatten() {
-                    match array_item(node) {
-                        Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
-                        // Only the first array or referenced error is held (`Ranked`).
-                        Err(error) if items => visit(
-                            self,
-                            ItemSource::ArrayElement,
-                            CalcResult::new_error(error, cell, String::new()),
-                        )?,
-                        Err(error) => walk.array_error(error, cell)?,
-                    }
-                }
-                Ok(())
-            }
+            Err(CalcResult::Array(array)) => self.walk_array_items(array, cell, walk, visit),
             Err(error @ CalcResult::Error { .. }) if !items => Err(error),
             Err(value) => {
                 let source = if is_reference {
@@ -321,6 +384,73 @@ impl Model {
                 }
             }
         }
+    }
+
+    /// The elements of an array argument as [`ItemSource::ArrayElement`] items: an error is held
+    /// (`Ranked`) or handed on (`Items`), and a nested GROUPBY or PIVOTBY cell is read as the
+    /// policy's [`NestedReading`] says. A flattened nested cell's cells are charged to the walk
+    /// budget first (`#ERROR!` past it; SPEC-0018 "Bound"); its own nested cells recurse, at most
+    /// `MAX_NESTED_DEPTH` deep (`NestedArray::new`).
+    fn walk_array_items<F>(
+        &mut self,
+        array: Vec<Vec<ArrayNode>>,
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        self.walk_array_nodes(array.into_iter().flatten(), cell, walk, visit)
+    }
+
+    /// [`Self::walk_array_items`] over the elements of an array in row-major order.
+    fn walk_array_nodes<F>(
+        &mut self,
+        nodes: impl Iterator<Item = ArrayNode>,
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        let items = walk.policy.errors == ErrorRule::Items;
+        for node in nodes {
+            let item = match node {
+                // A `Reference` cell is `#VALUE!` to every policy: `PRODUCT(..,PIVOTBY(..,
+                // LAMBDA(v,Data!E6)))` and `MIN(GROUPBY(..,LAMBDA(v,Data!A12),..),..)` are `#VALUE!`
+                // (gen-m7/bcad709c30cfdf64 A13, gen-m9/2a18b2f5a4dc43ac A371); SUM and COUNT are
+                // unprobed (T-2609).
+                ArrayNode::Nested(nested) if nested.kind() == NestedKind::Reference => {
+                    Err(Error::VALUE)
+                }
+                ArrayNode::Nested(nested) => match walk.policy.nested {
+                    NestedReading::Flatten => match nested.value(&mut self.nested_budget, cell) {
+                        CalcResult::Array(inner) => {
+                            self.walk_array_items(inner, cell, walk, visit)?;
+                            continue;
+                        }
+                        // Past the walk budget.
+                        error => return Err(error),
+                    },
+                    NestedReading::NotAvailable => Err(Error::NA),
+                    NestedReading::Value => Err(Error::VALUE),
+                },
+                node => array_item(node),
+            };
+            match item {
+                Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
+                // Only the first array or referenced error is held (`Ranked`).
+                Err(error) if items => visit(
+                    self,
+                    ItemSource::ArrayElement,
+                    CalcResult::new_error(error, cell, String::new()),
+                )?,
+                Err(error) => walk.array_error(error, cell)?,
+            }
+        }
+        Ok(())
     }
 
     /// The cells of `areas`, walked as referenced cells: blanks skipped, the first error cell
@@ -410,7 +540,11 @@ impl Model {
     where
         F: FnMut(f64),
     {
-        self.walk_aggregate_args(args, cell, policy, |model, source, value| {
+        let walk = AggregateWalk {
+            numbers: Some(rules.array),
+            ..AggregateWalk::new(policy)
+        };
+        self.walk_aggregate_args_with(args, cell, walk, |model, source, value| {
             // The hot path: a number in a referenced cell counts under every rule.
             if let (ItemSource::ReferencedCell, CalcResult::Number(number)) = (source, &value) {
                 f(*number);
@@ -499,6 +633,30 @@ impl Model {
     }
 }
 
+/// The elements of a tailed argument (`tailed_array.rs`): its head's, and its tail element with
+/// the number of rows it stands for; `None` unless the head is one column of values and the tail
+/// one element, as the two evaluations of an array argument give.
+fn tailed_elements(
+    tailed: Tailed<RefArg>,
+) -> Option<(impl Iterator<Item = ArrayNode>, Option<(ArrayNode, usize)>)> {
+    let Err(CalcResult::Array(head)) = tailed.head.into_ranges_or_value() else {
+        return None;
+    };
+    if head.iter().any(|row| row.len() != 1) {
+        return None;
+    }
+    let tail = match tailed.tail.map(RefArg::into_ranges_or_value) {
+        None => None,
+        Some(Err(CalcResult::Array(tail))) => {
+            let [row] = <[Vec<ArrayNode>; 1]>::try_from(tail).ok()?;
+            let [element] = <[ArrayNode; 1]>::try_from(row).ok()?;
+            Some((element, tailed.tail_len))
+        }
+        Some(_) => return None,
+    };
+    Some((head.into_iter().flatten(), tail))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -509,6 +667,7 @@ mod tests {
         errors: ErrorRule::Ranked,
         skip_empty_args: false,
         grids: GridReading::Values,
+        nested: NestedReading::Value,
     };
 
     /// Z1, where every test formula sits.
@@ -601,6 +760,7 @@ mod tests {
             errors: ErrorRule::First,
             skip_empty_args: true,
             grids: GridReading::Values,
+            nested: NestedReading::Value,
         };
         assert_eq!(items(&cells, "=SUM(A1,1/0)", first), err("#N/A"));
         assert_eq!(items(&[], "=SUM(5,)", first).map(|v| v.len()), Ok(1));
@@ -632,6 +792,7 @@ mod tests {
             errors: ErrorRule::Items,
             skip_empty_args: false,
             grids: GridReading::Values,
+            nested: NestedReading::Value,
         };
         let cells = [("A1", "=NA()"), ("A2", "3")];
         assert_eq!(
@@ -655,6 +816,7 @@ mod tests {
             errors: ErrorRule::Ranked,
             skip_empty_args: false,
             grids: GridReading::Values,
+            nested: NestedReading::Value,
         };
         let rules = NumberRules {
             direct: DirectNumbers::CastA,
@@ -670,6 +832,22 @@ mod tests {
             model.for_each_aggregate_number(&args, Z1, policy, rules, |number| seen.push(number));
         assert!(walked.is_ok());
         assert_eq!(seen, vec![5.0, 1.0, 7.0, 2.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn a_tailed_text_tail_counts_in_every_row_under_text_zero() {
+        // A whole-column expression (SPEC-0020) whose rows past the used area are "t": under
+        // `TextZero` each of them is a 0, so the tail is walked, once per row.
+        let rules = NumberRules {
+            direct: DirectNumbers::CastScalars,
+            cells: CellNumbers::Numbers,
+            array: ArrayNumbers::TextZero,
+        };
+        let (mut model, args) = setup(&[("A1", "5"), ("A2", "6")], "=SUM(IF(A:A=\"\",\"t\",A:A))");
+        let mut count = 0;
+        let walked = model.for_each_aggregate_number(&args, Z1, RANKED, rules, |_| count += 1);
+        assert!(walked.is_ok());
+        assert_eq!(count, 1_048_576);
     }
 
     #[test]

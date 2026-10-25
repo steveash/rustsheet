@@ -1,5 +1,6 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Weibull};
 
+use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -44,7 +45,13 @@ impl Model {
         }
         // statrs::Weibull: shape = k (alpha), scale = lambda (beta)
         let dist = Weibull::new(alpha, beta).map_err(|_| num_error(cell))?;
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
+        // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes/t2693-subnormal-weibull A2;
+        // docs/excel-semantics/numbers.md "Distribution densities").
+        let result = if cumulative {
+            dist.cdf(x)
+        } else {
+            flush_subnormal(dist.pdf(x))
+        };
         if !result.is_finite() {
             return Err(num_error(cell));
         }

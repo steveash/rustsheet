@@ -1,0 +1,54 @@
+fitting offsets on a1/a2 (runs and exact blocks):
+  fit n=3: 243/352 at +2.481
+  fit n=4: 234/352 at -1.613
+  fit n=5: 173/352 at +1.697
+  fit n=7: 201/352 at -0.009
+  fit n=10: 223/352 at +1.525
+  fit n=30: 183/352 at -0.756
+hold LT1 all: 703/1204/1228 of 1252
+hold LT1 br=bd0-log: 58/96/96 of 96
+hold LT1 br=bd0-series: 374/676/666 of 676
+hold LT1 br=log(x2>n): 271/432/466 of 480
+hold LT1 md5-odd: 373/628/640 of 655
+hold LT1 n=3: 113/192/192 of 192
+hold LT1 n=4: 138/192/192 of 192
+hold LT1 n=6: 118/192/192 of 192
+hold LT1 n=8: 72/144/178 of 192
+hold LT1 n=>10: 262/484/474 of 484
+hold CR all: 288/1077/1185 of 1252
+hold CR br=bd0-log: 2/77/96 of 96
+hold CR br=bd0-series: 233/669/656 of 676
+hold CR br=log(x2>n): 53/331/433 of 480
+hold CR md5-odd: 149/563/613 of 655
+hold CR n=3: 16/182/183 of 192
+hold CR n=4: 52/182/192 of 192
+hold CR n=6: 55/175/173 of 192
+hold CR n=8: 37/146/187 of 192
+hold CR n=>10: 128/392/450 of 484
+hold-out structure test (offset fitted on the hold-out's md5-even half, scored on the odd half):
+  fit n=3: 58/99 at +2.512
+  fit n=4: 70/93 at -1.520
+  fit n=6: 58/76 at -0.326
+  fit n=8: 53/97 at +0.837
+  fit n=12: 52/87 at -0.398
+  fit n=20: 54/103 at -0.110
+hold-odd LT1(free C) all: 367/597/593 of 597
+hold-odd LT1(free C) br=bd0-log: 33/53/53 of 53
+hold-odd LT1(free C) br=bd0-series: 183/295/291 of 295
+hold-odd LT1(free C) br=log(x2>n): 151/249/249 of 249
+hold-odd LT1(free C) md5-odd: 367/597/593 of 597
+hold-odd LT1(free C) n=3: 55/93/93 of 93
+hold-odd LT1(free C) n=4: 70/99/99 of 99
+hold-odd LT1(free C) n=6: 77/116/116 of 116
+hold-odd LT1(free C) n=8: 51/95/95 of 95
+hold-odd LT1(free C) n=>10: 114/194/190 of 194
+hold-odd CR all: 129/505/555 of 597
+hold-odd CR br=bd0-log: 1/40/53 of 53
+hold-odd CR br=bd0-series: 99/290/283 of 295
+hold-odd CR br=log(x2>n): 29/175/219 of 249
+hold-odd CR md5-odd: 129/505/555 of 597
+hold-odd CR n=3: 7/88/88 of 93
+hold-odd CR n=4: 26/94/99 of 99
+hold-odd CR n=6: 37/105/102 of 116
+hold-odd CR n=8: 18/72/91 of 95
+hold-odd CR n=>10: 41/146/175 of 194
