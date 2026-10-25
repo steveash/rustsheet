@@ -87,6 +87,12 @@ mod tests {
         assert_eq!(min_args("NOT.A.FUNCTION"), 1);
         assert!(!takes_count("SUM", 0));
         assert!(takes_count("SUM", 255));
+        assert!(!takes_count("SUM", 256));
+        // Typed, Excel refuses a 255th argument to CONCAT and TEXTJOIN (T-2709).
+        assert!(takes_count("CONCAT", 254));
+        assert!(!takes_count("CONCAT", 255));
+        assert!(takes_count("TEXTJOIN", 254));
+        assert!(!takes_count("TEXTJOIN", 255));
         assert!(!takes_count("XLOOKUP", 7));
         assert!(takes_count("XLOOKUP", 6));
         assert!(!takes_count("ABS", 2));

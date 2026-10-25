@@ -8,6 +8,9 @@ blocks byte for byte, and `progress/` (the all-functions page, the charts and hi
 incomplete run (no report, an older report shape, or a skipped suite) rewrites only the page's
 status block as stale, adds a `complete: false` history row and exits 0. Every input is checked
 and every file rendered before anything is written, so a failed run leaves the pages as they were.
+
+With `--check` it writes nothing: it checks the judgment blocks of the existing page (check.py,
+T-0074) and exits 1, listing every offender, when one fails.
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.progress_report import history, page, parity
+from rustsheet_tools.progress_report import check, history, page, parity
 from rustsheet_tools.progress_report.model import (
     Parity,
     ProgressReportError,
@@ -73,13 +76,24 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
     ap.add_argument("--scope", type=Path, default=repo / "eval" / "catalog" / "scope.json")
     ap.add_argument("--baselines", type=Path, default=repo / "eval" / "baseline", help="eval/baseline/")
     ap.add_argument("--tasks", type=Path, default=repo / "eval" / "runs" / "latest" / "tasks.json")
-    ap.add_argument("--out-dir", type=Path, required=True, help="the docs directory to write into")
+    ap.add_argument(
+        "--out-dir", type=Path, help="the docs directory to write into (or, with --check, to read)"
+    )
+    ap.add_argument("--check", action="store_true", help="check the judgment blocks of the existing page")
     ap.add_argument(
         "--today",
         default=dt.datetime.now(dt.UTC).date().isoformat(),
         help="the UTC date of an incomplete run whose report has no run record (default: today)",
     )
     args = ap.parse_args(argv)
+    if args.check:
+        # The default docs dir is named by the page's own path because "docs/progress.md" is in
+        # CODE_READ_PATHS (scripts/ci_changes.py, decision 0049) and a bare "docs" is not: keep it so,
+        # or scripts/check_docs_readers.py fails `make hygiene`.
+        run_check(args.out_dir or (repo / "docs/progress.md").parent)
+        return
+    if args.out_dir is None:
+        ap.error("--out-dir is required unless --check is given")
     git = git or history.RepoGit(repo)
     history_path = args.out_dir / parity.ASSETS / history.HISTORY
     try:
@@ -180,6 +194,21 @@ def _evaluate(report: dict[str, Any], args: argparse.Namespace) -> Stale | tuple
     if run.skipped:
         return Stale(_skipped_reason(run), run)
     return run, data
+
+
+def run_check(docs: Path) -> None:
+    """`--check`: print `progress check ok`, or every offender and exit 1 (SPEC-0022, T-0074)."""
+    try:
+        existing = page.read_existing(docs)
+        if existing is None:
+            msg = f"{docs / page.PAGE}: no page to check"
+            raise ProgressReportError(msg)
+        found = check.offenders(existing)
+    except ProgressReportError as e:
+        sys.exit(f"{PROG} --check: {e}")
+    if found:
+        sys.exit("\n".join([f"{PROG} --check: {len(found)} offender(s) in {docs / page.PAGE}:", *found]))
+    print(check.OK)
 
 
 if __name__ == "__main__":
