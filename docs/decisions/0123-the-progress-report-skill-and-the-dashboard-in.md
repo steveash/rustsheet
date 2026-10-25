@@ -30,9 +30,10 @@
     of carrying the rules in its prompt.
   - Judgment text stays reviewable: reviewers check the skill's rules by reading the blocks, and
     `--check` covers the numbers and markup.
-  - On a stale run `--check` cannot pass today: it reads the run only from a complete run's
-    status line, so a Stale banner stops it before any block is checked. The skill tells the
-    steward to review the blocks by hand and say so in the PR body until `--check` learns the
-    Stale banner.
+  - `--check` must pass on stale runs too. T-0075 makes check.py read the Stale banner's run
+    line ("The run of **date** at commit `sha`") as well as the complete run's ("The eval run of
+    …"), with the same ASCII-only date and sha patterns. On a stale page the as-of lines name the
+    incomplete run the banner reports, and the blocks are checked as usual. A banner with no
+    commit (git unavailable) still names no run, and `--check` stops loudly.
   - Reviewers `reviewer-architecture` and `reviewer-security` approve the protected paths
     explicitly (T-0075).

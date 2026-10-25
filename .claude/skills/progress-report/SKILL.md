@@ -32,7 +32,7 @@ they mean. Decision 0123 records this skill.
      PR and write "no task, filed T-XXXX".
 4. **As-of line.** Make the first line of each block `<!-- as-of: YYYY-MM-DD <sha8> -->`, with
    the date and the commit exactly as `status` names the run (the bold date and the backticked
-   commit).
+   commit; on a stale page, the run the Stale banner reports).
 5. **Check.** Run `cd tools && uv run rustsheet-progress-report --check` and fix every offender
    it lists, until it prints `progress check ok`. It fails on an as-of line that does not name
    the run, a number found in no generated block, and anything that is not plain text.
@@ -55,11 +55,9 @@ they mean. Decision 0123 records this skill.
   measure.
 - **Stale run**: open `bottom-line` with the stale reason and the date and commit of the last
   complete run, both as the Stale banner prints them, and say the numbers below are that run's.
-  Keep readiness and risks unless a risk was opened or closed; set every as-of to the run the
-  banner names. `--check` reads the run only from a complete run's status line, so on a Stale
-  banner it stops with "the `status` block names no run date and commit" and checks nothing
-  else. That error cannot be fixed by editing the page: review the blocks by hand against every
-  rule here, and say in the PR body that `--check` could not run because the page is stale.
+  Keep readiness and risks unless a risk was opened or closed. Set every as-of to the incomplete
+  run the banner reports ("The run of **date** at commit `sha`"), not to the last complete run:
+  `--check` reads that line on a stale page and must pass there too.
 - **Nothing changed** (no number you cite moved, no risk opened or closed): keep the text and
   update only the as-of lines.
 - **Never edit generated blocks, the markers, history.json or the SVGs by hand**, not even to
