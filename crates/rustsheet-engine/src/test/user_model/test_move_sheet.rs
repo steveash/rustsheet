@@ -232,6 +232,8 @@ fn a_span_left_with_one_sheet_becomes_a_plain_reference() {
     model.move_sheet(2, 1).unwrap();
     assert_eq!(sheet_names(&model), ["Calc", "Feb", "Jan", "Mar"]);
     assert_eq!(calc_a1(&model), text_and_value("=SUM(Jan!A1)", "10"));
+    model.undo().unwrap();
+    assert_eq!(calc_a1(&model), text_and_value("=SUM(Jan:Feb!A1)", "30"));
 }
 
 #[test]

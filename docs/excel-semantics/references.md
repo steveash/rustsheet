@@ -109,7 +109,9 @@ Rule (excel-graph, replayed sheet edits, T-1608):
   The engine rewrites them before the move (`move_sheet_in_node`, T-1691), and its undo puts the
   written text back.
 - Moving the sheet that holds the formula changes nothing (sheet-ops-move-formula-sheet).
-Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
+Unprobed: moving the first sheet of a two-sheet span past the last (the engine writes the last
+sheet alone), a span written backwards (`Mar:Jan`, which the engine rewrites in tab order when it
+shrinks), deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
 cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
 that lost an end sheet `#REF!` and does not shift a span for row or column edits.
 Status: VERIFIED (Excel for the web) for renames and moves; UNVERIFIED for deletes
