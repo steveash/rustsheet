@@ -84,11 +84,13 @@ impl Model {
             if let Some((_, upper)) =
                 closed_form_tails(p, 1.0 - p, number_s + 1.0, trials - number_s)
             {
-                return Ok(upper);
+                return Ok(flush_subnormal(upper));
             }
         }
+        // Off k = 0 a subnormal cdf is 0, as in Excel (`(x)=0` TRUE: probes/
+        // t2706-subnormal-density-paths B5:B7), while the k = 0 one is kept (B4).
         let walked = if cumulative {
-            binomial_cdf(n, odds(p), k)
+            binomial_cdf(n, odds(p), k).map(flush_subnormal)
         } else {
             // Off the k = 0 and k = n closed forms a subnormal pmf is 0, as in Excel (`(x)=0` TRUE:
             // probes-numeric/t2513-r3-binom-pmf-n E1729:E1792), while the k = 0 one is kept
@@ -99,11 +101,7 @@ impl Model {
             return Ok(prob);
         }
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
-        let prob = if cumulative {
-            dist.cdf(k)
-        } else {
-            flush_subnormal(dist.pmf(k))
-        };
+        let prob = flush_subnormal(if cumulative { dist.cdf(k) } else { dist.pmf(k) });
         if prob.is_nan() || prob.is_infinite() {
             return Err(num_error(cell));
         }
@@ -291,23 +289,34 @@ impl Model {
                 let (p, q) = odds(probability_s);
                 (q, p)
             };
+            // Off the closed forms a subnormal cdf or pmf is 0, as in Excel (`(x)=0` TRUE: probes/
+            // t2706-subnormal-density-paths B9:B11, probes-numeric/t2513-verify-r3-binom-pmf-h J229,
+            // J238), but the pmf at f = 0, p^r, is kept (t2706-subnormal-density-paths B12:B13).
             let walked = if cumulative {
-                binomial_cdf(trials, failure_odds, f_u)
+                binomial_cdf(trials, failure_odds, f_u).map(flush_subnormal)
             } else {
-                // A subnormal pmf is 0, as in Excel (`(x)=0` TRUE: probes-numeric/
-                // t2513-verify-r3-binom-pmf-h J229, J238; docs/excel-semantics/numbers.md "Distribution densities").
-                binomial_pmf(trials, failure_odds, f_u)
-                    .map(|pmf| flush_subnormal(times_ratio(pmf, r_u, trials)))
+                binomial_pmf(trials, failure_odds, f_u).map(|pmf| {
+                    let pmf = times_ratio(pmf, r_u, trials);
+                    if f_u == 0 {
+                        pmf
+                    } else {
+                        flush_subnormal(pmf)
+                    }
+                })
             };
             if let Some(result) = walked {
                 return Ok(result);
             }
         }
         let dist = NegativeBinomial::new(number_s, probability_s).map_err(|_| num_error(cell))?;
-        let result = if cumulative {
-            dist.cdf(f_u)
+        let result = if cumulative || f_u > 0 {
+            flush_subnormal(if cumulative {
+                dist.cdf(f_u)
+            } else {
+                dist.pmf(f_u)
+            })
         } else {
-            flush_subnormal(dist.pmf(f_u))
+            dist.pmf(f_u)
         };
         if !result.is_finite() {
             return Err(num_error(cell));
