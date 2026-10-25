@@ -20,6 +20,8 @@ pub const MIN_SCORED: usize = 20_000;
 pub(crate) const RATE_NUM: usize = 999;
 /// The denominator of [`RATE_NUM`].
 pub(crate) const RATE_DEN: usize = 1000;
+/// 99% over [`RATE_DEN`]: the next parity tier below [`RATE_NUM`] (`attribution::Tier`, T-0068).
+pub(crate) const RATE99_NUM: usize = 990;
 
 /// One milestone's four measures; `None` means the input was absent from the run.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

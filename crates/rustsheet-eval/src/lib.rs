@@ -9,6 +9,7 @@
 //!
 //! See `docs/architecture/eval-harness.md`.
 
+pub mod attribution;
 pub mod baseline;
 pub mod calibrate;
 pub mod case;
