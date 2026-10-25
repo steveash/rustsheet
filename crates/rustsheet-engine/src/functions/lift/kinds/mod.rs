@@ -263,6 +263,8 @@ fn text_scan_length(value: Option<ArgValue>) -> u64 {
 /// The units one search for a `find`-byte text in a `within`-byte one is charged: each text's
 /// length plus 1 for reading it, and at each of `within + 1` start positions 1 plus the bytes
 /// compared there (at most the shorter length) over `per_visit`. Saturating.
+/// TEXTSPLIT, TEXTBEFORE and TEXTAFTER charge a whole call by the same shape (`ScanCost` in
+/// functions/text/lifted.rs), but over a delimiter list read whole; this one is per element.
 fn text_scan_units(find: u64, within: u64, per_visit: u32) -> u64 {
     let compared = find.min(within) / u64::from(per_visit.max(1));
     find.saturating_add(1).saturating_add(
@@ -286,7 +288,8 @@ pub(crate) fn coupon_walk_units(span: u64, per_year: u64, weight: u32) -> u64 {
 }
 
 impl KernelWork {
-    /// The units one kernel call is charged before it runs (for `ByValue`, the most it can be).
+    /// The units one kernel call is charged before it runs (for `ByValue`, the most it can be:
+    /// `u64::MAX` for a `TextScan`, which `kernel_units` charges by value instead).
     pub(crate) fn weight(self) -> u64 {
         match self {
             KernelWork::Constant | KernelWork::Output { .. } => 1,
