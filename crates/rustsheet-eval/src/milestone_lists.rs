@@ -352,6 +352,7 @@ mod tests {
                 .filter(|v| **v == Verdict::Deviation)
                 .count(),
             skipped_volatile: 0,
+            skipped_add_in: 0,
             millis: 0,
             tags: Vec::new(),
             cells,

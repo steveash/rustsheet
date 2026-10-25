@@ -412,12 +412,40 @@ pub(crate) fn dd_to_extended((hi, lo): (f64, f64)) -> (u128, i32) {
     (rounded, exponent - 24 + shift)
 }
 
+/// The double-double `(hi, lo)` rounded to a 64-bit significand and then to a double,
+/// RN53(RN64(v)), as an x87 result is stored. Zero, and a result past the normal range, keep the
+/// single rounding `hi`.
+pub(crate) fn dd_rounded_twice((hi, lo): (f64, f64)) -> f64 {
+    if hi == 0.0 {
+        return hi;
+    }
+    // `dd_to_extended` adds the tail to the head's magnitude, so it takes |v|.
+    let negative = hi < 0.0;
+    let magnitude = if negative { (-hi, -lo) } else { (hi, lo) };
+    let (extended, exponent) = dd_to_extended(magnitude);
+    round_extended_to_double(extended, exponent, negative).unwrap_or(hi)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn excel_exp_series(a: f64) -> f64 {
         exp_with(Register::load(a), two_to_the_minus_one_series)
+    }
+
+    #[test]
+    fn dd_rounded_twice_ties_after_the_64_bit_rounding() {
+        let one_up = 1.0 + f64::EPSILON;
+        // 1 + 2^-53 + 2^-80: once rounded it is 1 + 2^-52, but RN64 drops the 2^-80 and leaves
+        // the 53-bit midpoint, which RN53 ties to the even 1.0.
+        let tail = -power_of_two(-53) + power_of_two(-80);
+        assert_eq!(one_up + tail, one_up);
+        assert_eq!(dd_rounded_twice((one_up, tail)), 1.0);
+        assert_eq!(dd_rounded_twice((-one_up, -tail)), -1.0);
+        // Away from a midpoint both roundings agree with the head.
+        assert_eq!(dd_rounded_twice((one_up, -power_of_two(-55))), one_up);
+        assert_eq!(dd_rounded_twice((0.0, 0.0)), 0.0);
     }
 
     #[test]
