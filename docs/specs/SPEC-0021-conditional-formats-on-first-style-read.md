@@ -37,19 +37,21 @@ Unchanged: every rule is evaluated by today's code. The only question is when it
 
 ## Design
 - **Stale flag.** `Model` gains `cf_stale: bool`, initialised in the one struct literal
-  (new_empty.rs). It is set at exactly the four places that call
-  `evaluate_conditional_formatting()` today, which no longer call it:
-  - load, in `Model::from_workbook*` (model.rs) and in new_empty.rs, which covers every
-    rustsheet-xlsx import;
-  - the end of `evaluate()` (evaluation.rs);
-  - `set_theme` (model.rs).
+  (new_empty.rs). It is set at exactly the four call sites of `evaluate_conditional_formatting()`
+  today, which no longer call it:
+  1. load in `Model::from_workbook*` (model.rs), which covers every rustsheet-xlsx import;
+  2. load in new_empty.rs;
+  3. the end of `evaluate()` (evaluation.rs);
+  4. `set_theme` (model.rs).
 
   The invariant is that the cache is rebuilt from exactly the states it is rebuilt from today.
-  Rule, dxf and sheet edits that bypass these four places include undo/redo and clipboard writes
-  to `Worksheet::conditional_formatting`, `create_dxf`, and row, column and sheet edits. Such an
-  edit made through `Model`, or through a paused `UserModel`, leaves the cache as stale as it does
-  today, until the next `evaluate()`. The edit sites therefore need no flag of their own. `UserModel`'s edits evaluate (`evaluate_if_not_paused`),
-  and so do its undo and redo, so they set the flag. No setter site is added, and none can be missed.
+  Rule, dxf and sheet edits that bypass these four sites include undo/redo and clipboard writes to
+  `Worksheet::conditional_formatting`, `create_dxf`, and row, column and sheet edits. Such an edit
+  made through `Model`, or through a paused `UserModel`, leaves the cache as stale as it does
+  today, until the next `evaluate()`. The edit sites therefore need no flag of their own.
+
+  `UserModel`'s edits evaluate (`evaluate_if_not_paused`), and so do its undo and redo, so they set
+  the flag. No setter site is added, and none can be missed.
 - **Mutable style reads.** These public methods change from `&self` to `&mut self`:
   - `Model::get_extended_style_for_cell(&mut self, ..)`;
   - `UserModel::get_extended_cell_style(&mut self, ..)`;
