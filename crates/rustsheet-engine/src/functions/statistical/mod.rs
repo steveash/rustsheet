@@ -54,3 +54,4 @@ mod weibull;
 mod z_test;
 
 pub(crate) use if_ifs::IfsShape;
+pub(crate) use special::ln_gamma;

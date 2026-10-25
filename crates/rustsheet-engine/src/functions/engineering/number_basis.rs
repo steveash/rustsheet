@@ -39,8 +39,10 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, ()> {
 impl Model {
     /// The number and the truncated optional `places` of one conversion element.
     ///
-    /// `places` is coerced before `number` is looked at: Excel reads the second argument first,
-    /// so its error wins (probes/eng-first-vs-second-error).
+    /// `places` is read and range-checked (truncated, then 1 to 10) before `number` is looked
+    /// at: Excel reads the second argument first, so its error wins
+    /// (probes/eng-first-vs-second-error) and so does an invalid value: `DEC2HEX(<#N/A>,0)`,
+    /// `HEX2OCT(<#VALUE!>,0.5)` and `BIN2OCT("ABC",-1)` are `#NUM!` (gen-m9 T-2258 triage; T-2545).
     fn number_and_places<'a>(
         &self,
         values: &'a [CalcResult],
@@ -56,6 +58,9 @@ impl Model {
             Some(Err(e)) => return Err(e),
             None => None,
         };
+        if places.is_some_and(|p| !(1..=10).contains(&p)) {
+            return Err(num_error(cell));
+        }
         Ok((number, places))
     }
 
@@ -78,6 +83,21 @@ impl Model {
         } else {
             text
         })
+    }
+
+    /// The [`Self::base_digits`] of a HEX2*, OCT2DEC or OCT2HEX `number` read in `radix`: more
+    /// than ten digits (probes/eng-leading-plus-oct-bool A27:A33) or a non-digit is `#NUM!`.
+    /// OCT2BIN does not check the length.
+    fn ten_digit_value(
+        value: &CalcResult,
+        radix: u32,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        let digits = Self::base_digits(value, cell)?;
+        if digits.len() > 10 {
+            return Err(num_error(cell));
+        }
+        i64::from_str_radix(&digits, radix).map_err(|_| num_error(cell))
     }
 
     /// The `number` of a BIN2* call as a number, with a blank cell or empty text read as 0 (same
@@ -139,11 +159,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let value = match from_binary_to_decimal(value) {
             Ok(n) => n,
             Err(()) => return num_error(cell),
@@ -184,11 +199,6 @@ impl Model {
             Ok(n) => n,
             Err(()) => return num_error(cell),
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         if value < 0 {
             CalcResult::String(format!("{:0width$o}", OCT_MAX + value, width = 9).into())
         } else {
@@ -220,11 +230,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let mut value = value_raw.trunc() as i64;
         if !(-512..=511).contains(&value) {
             return num_error(cell);
@@ -258,11 +263,6 @@ impl Model {
             Ok(f) => f.trunc(),
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let mut value = value_raw.trunc() as i64;
         if !(-HEX_MAX_HALF..=HEX_MAX_HALF - 1).contains(&value) {
             return num_error(cell);
@@ -296,11 +296,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let mut value = value_raw.trunc() as i64;
 
         if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
@@ -332,23 +327,9 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
-        let mut value = match i64::from_str_radix(&value, 16) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 16, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
@@ -388,18 +369,9 @@ impl Model {
         let [number] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 16) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 16, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
@@ -422,23 +394,9 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 16) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 16, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
@@ -482,11 +440,6 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let mut value = match i64::from_str_radix(&value, 8) {
             Ok(f) => f,
             Err(_) => {
@@ -527,19 +480,9 @@ impl Model {
         let [number] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A28).
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 8) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 8, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
@@ -562,26 +505,9 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        // There is not a default value for places
-        // But if there is a value it needs to be positive and less than 11
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
-        // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A33).
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 8) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 8, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
