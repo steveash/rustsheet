@@ -67,10 +67,22 @@ fn trig_sin_cos(x: f64) -> (f64, f64) {
     }
 }
 
-/// The result of a reciprocal (IMSEC, IMCSC, IMSECH, IMCSCH) whose denominator `t` overflowed to
+/// IMSEC, IMCSC and IMSECH where the denominator `t` overflows (the hyperbolic argument `v` past
+/// about 355): cosh v and |sinh v| are then both `M = e^|v|/2` and `t` is M², so the result is the
+/// trigonometric parts `(re, im)` over M, computed as `2e^-|v|` so that it stays finite. Excel
+/// keeps these tiny parts: `IMCSC("-724.227-562.884i")` is
+/// -6.94796703439417E-245-6.26263832046024E-246i and `IMSECH("-524.561+5.3113i")`
+/// 1.73046857535442E-228-2.53533899849465E-228i (probes-numeric im-last-digit-sweep E55:F55,
+/// K42:L42). Past |v| ≈ 708 the parts are subnormal and print as 0 (`IMSEC("1.5+711i")`).
+fn overflowed_reciprocal(re: f64, im: f64, v: f64, suffix: Suffix) -> CalcResult {
+    let scale = 2.0 * (-v.abs()).exp();
+    complex_result(re * scale, im * scale, suffix)
+}
+
+/// The result of a reciprocal (IMCSCH) whose denominator `t` overflowed to
 /// infinity or NaN: Excel answers `0` where `inf / inf` is NaN. A zero or finite `t` is not this
-/// case and stays an error. Examples: `IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`,
-/// `IMSEC("1.5+711i")` (probes/eng-im-overflow-edges A55, A56, A64, A74, A82).
+/// case and stays an error. Example: `IMCSCH("710.4+0i")` (probes/eng-im-overflow-edges A64).
+/// Whether IMCSCH keeps normal tiny parts as IMSECH does (`overflowed_reciprocal`) is unprobed.
 fn reciprocal_result(x: f64, y: f64, t: f64, suffix: Suffix) -> CalcResult {
     if !t.is_finite() && (x.is_nan() || y.is_nan()) {
         return complex_result(0.0, 0.0, suffix);
@@ -136,7 +148,10 @@ pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if t == 0.0 {
         return num_error(cell);
     }
-    reciprocal_result(x_sin * (y_cosh / t), -x_cos * (y_sinh / t), t, suffix)
+    if !t.is_finite() {
+        return overflowed_reciprocal(x_sin, -x_cos * y.signum(), y, suffix);
+    }
+    complex_result(x_sin * (y_cosh / t), -x_cos * (y_sinh / t), suffix)
 }
 
 /// csch(x+iy) is `#NUM!` when the squared modulus of sinh underflows to 0: `IMCSCH("0")` and
@@ -169,7 +184,10 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Calc
     let y_sinh = y.sinh();
 
     let t = x_cos * x_cos + (f64::cosh(2.0 * y) - 1.0) / 2.0;
-    reciprocal_result(x_cos * y_cosh / t, x_sin * y_sinh / t, t, suffix)
+    if !t.is_finite() {
+        return overflowed_reciprocal(x_cos, x_sin * y.signum(), y, suffix);
+    }
+    complex_result(x_cos * y_cosh / t, x_sin * y_sinh / t, suffix)
 }
 
 /// sech(x+iy) = `(cosh x·cos y, -sinh x·sin y) / (cos²y + sinh²x)`: 61 of the 62 finite cells of
@@ -183,7 +201,10 @@ pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Cal
     let (y_sin, y_cos) = trig_sin_cos(y);
 
     let t = y_cos * y_cos + x_sinh * x_sinh;
-    reciprocal_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, t, suffix)
+    if !t.is_finite() {
+        return overflowed_reciprocal(y_cos, -y_sin * x.signum(), x, suffix);
+    }
+    complex_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, suffix)
 }
 
 pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {

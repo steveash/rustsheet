@@ -73,7 +73,11 @@ impl fmt::Display for Complex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // 15-digit rounding of a part near DBL_MAX overflows to infinity; Excel writes
         // `1.79769313486232E+308` (probes/eng-imexp-overflow-imag A22), so keep the unrounded part.
+        // A subnormal part is 0, as a subnormal number prints `0` (numbers.md "Subnormal results
+        // become 0"): `IMEXP("-724.227-562.884i")` is "0", not "0+0i" (gen-m9/b5aef3645cec1b95
+        // A154), and `IMSEC("1.5+711i")` "0".
         let round15 = |v: f64| {
+            let v = if v.is_subnormal() { 0.0 } else { v };
             Some(to_precision(v, 15))
                 .filter(|r| r.is_finite())
                 .unwrap_or(v)
