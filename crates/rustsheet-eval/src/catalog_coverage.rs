@@ -215,7 +215,7 @@ pub fn write_markdown(rows: &[MilestoneCoverage], md: &mut String) {
 mod tests {
     use super::*;
     use crate::catalog::{CatalogFunction, OracleSupport, Scope};
-    use crate::runner::{CaseStatus, CellResult};
+    use crate::runner::CellResult;
 
     fn func(name: &str, scope: Scope, oracle: Option<OracleSupport>) -> CatalogFunction {
         CatalogFunction {
@@ -244,20 +244,8 @@ mod tests {
             graph_subnormal: false,
         };
         CaseResult {
-            id: format!("{suite}/c"),
-            suite: suite.into(),
-            status: CaseStatus::Pass,
-            message: None,
-            expected_source: String::new(),
-            checked: 1,
-            passed: 1,
-            deviations: 0,
-            skipped_volatile: 0,
-            millis: 0,
-            tags: Vec::new(),
             cells: vec![cell],
-            text: Vec::new(),
-            defined_names: BTreeMap::new(),
+            ..CaseResult::for_test(&format!("{suite}/c"), suite)
         }
     }
 
