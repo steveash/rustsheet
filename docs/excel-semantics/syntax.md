@@ -54,8 +54,11 @@ same for FINDB, SEARCHB, LEFTB, RIGHTB, LENB, MIDB, REPLACEB, `=DETECTLANGUAGE("
 takes these maxima as cited overrides (tools/tests/test_catalog_arity.py `MAX_OVERRIDES`; DETECTLANGUAGE and TRANSLATE are
 not implemented, `#NAME?`), and `arg_counts::takes_count` refuses IFS and LET off whole pairs. UNVERIFIED: that `DETECTLANGUAGE("hello")` (1, the catalog minimum) is accepted
 typed (only the refusal at 2 is logged); the pair rule above 6 arguments (probed
-IFS 2 to 5, LET 3 to 6); the 255-argument
-maxima (`SUM` 255/256, `TEXTJOIN` 254/255): the oracle cannot type a formula over 255 characters (T-2709).
+IFS 2 to 5, LET 3 to 6).
+The repeating maxima, typed (T-2709, excel-graph 2026-10-25): `SUM` and `MAX` take 255 arguments (probes/t2709-typed-sum-255,
+-max-255) and are refused at 256; `CONCAT` and `TEXTJOIN` take 254 (probes/t2709-typed-concat-253, -concat-254,
+-textjoin-254, which joins 252 texts) and are refused at 255 and 256 (Graph PATCH 400). So CONCAT takes 254 texts, one more than Microsoft's
+documented 253, and TEXTJOIN the documented 252; the engine table holds 254 for both as cited overrides.
 Status: VERIFIED
 
 ## Unary minus binds tighter than `^`
