@@ -35,6 +35,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
+use crate::tailed_array::range_corners;
 use crate::{cf_types::CfCellResult, clock::Clock, tz::Tz, variable_stack::VariableStack};
 
 // The structure of a cell. It can be:
@@ -174,6 +175,8 @@ pub struct Model {
     pub(crate) captured_cells: usize,
     /// What this evaluation spent of its nested-array budgets (SPEC-0018 "Bound").
     pub(crate) nested_budget: crate::nested_array::NestedBudget,
+    /// Aggregate arguments being read as a head and a tail (`tailed_array.rs`).
+    pub(crate) tail_views: Vec<crate::tailed_array::TailView>,
     /// Where the stack was when the outermost LAMBDA call running now started
     /// (`Model::lambda_stack_base`), `None` while no call runs.
     pub(crate) lambda_calls_base: Option<usize>,
@@ -593,35 +596,19 @@ impl Model {
                     column: column1,
                 })
             }
-            RangeKind {
-                sheet_index,
-                row1,
-                column1,
-                row2,
-                column2,
-                absolute_column1,
-                absolute_row2,
-                absolute_row1,
-                absolute_column2,
-                sheet_name: _,
-            } => {
-                // Relative corners are offsets from the formula's cell.
-                let r1 = *row1 + if *absolute_row1 { 0 } else { cell.row };
-                let r2 = *row2 + if *absolute_row2 { 0 } else { cell.row };
-                let c1 = *column1 + if *absolute_column1 { 0 } else { cell.column };
-                let c2 = *column2 + if *absolute_column2 { 0 } else { cell.column };
-                CalcResult::Range {
-                    left: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: r1.min(r2),
-                        column: c1.min(c2),
-                    },
-                    right: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: r1.max(r2),
-                        column: c1.max(c2),
-                    },
+            RangeKind { .. } => {
+                // Never `None`: `node` is a `RangeKind`.
+                let Some((left, right)) = range_corners(node, cell) else {
+                    return CalcResult::new_error(Error::ERROR, cell, String::new());
+                };
+                let range = CalcResult::Range { left, right };
+                // A whole-column operand of a tailed aggregate argument (`tailed_array.rs`).
+                if !self.tail_views.is_empty() {
+                    if let Some(value) = self.tailed_operand(node, cell, &range) {
+                        return value;
+                    }
                 }
+                range
             }
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             NamedFunctionKind { name, args, id } => {
