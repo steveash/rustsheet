@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-0475]
 ---
 
 ## Goal
@@ -24,7 +24,8 @@ of `evaluate()` (evaluation.rs) all call. The file's expression rules cover near
 and `apply_cf_formula` evaluates the formula once per cell of the area: about 1.6e9 array elements
 per run, all discarded (an array result counts as no match, `_ => false`).
 
-Only `get_extended_style_for_cell` (and `UserModel::get_extended_cell_style`) read `cf_cache`, and
+Design: docs/specs/SPEC-0021-conditional-formats-on-first-style-read.md (T-0475). Only
+`get_extended_style_for_cell` (and `UserModel::get_extended_cell_style`) read `cf_cache`, and
 nothing in value evaluation does. Design points to settle (a short spec first if the public receivers
 change): the getters take `&self` while CF evaluation needs `&mut self` (evaluate_outside_cell); what
 "the state of the last `evaluate()`" means when cells change between `evaluate()` and the first read
