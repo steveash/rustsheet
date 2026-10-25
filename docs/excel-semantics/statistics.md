@@ -3661,12 +3661,18 @@ Status: VERIFIED (excel-graph)
 ## PERCENTRANK: a huge significance is #DIV/0!; truncation does not lose a digit at a cut (T-2256)
 Rule: a significance of about 2^31 or more makes PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC `#DIV/0!` (2147483648,
 7fd0a98183c6babf A202; 5616037595088.403, 941c409532603d32 A168; 1E+15, 91e167cd8d7eb652 A9; 9.18E+36, 2138b909d8f810ea A333),
-where a significance below 1 is `#NUM!`; the cut between 3 digits and 2^31 is UNVERIFIED. The truncation to significance
+where a significance below 1 is `#NUM!`. The cut is where 10^significance overflows: 308 digits computes and 309 or more
+is `#DIV/0!` (probes/t2473-percentrank-significance A1-A15, B1-B15, C1-C15). The truncation to significance
 digits does not drop a digit when the rank lies within rounding of a cut: `PERCENTRANK.EXC({1E+15,1,-1E+15},0.3)` is 0.5
 (c7664e494e418395 A252), `PERCENTRANK.INC(Data!D4:E12,0)` 0.5 (d37313406b9f6e55 A303), `PERCENTRANK.INC(Data!A1:C3,0.2,2)` 0.36
 (ede0323c389fc703 A43) and 0.603 at 3 digits (A157), where a plain floor of the double rank gives 0.499, 0.35 and 0.602.
-Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2473.
-Ours: `#NUM!` for the huge significance and a plain floor; T-2473.
+The fit (t2473 D1-D24): the rank times 10^significance is cut to 15 significant digits, then floored and divided back
+in doubles, so 2/3 at 15 digits is 0.666666666666667 (rounded up by the cut), at 17 digits 0.6666666666666671, and 1/7 at
+20 digits 0.14285714285714302, while a rank of 0.499999999999999 (15 digits) still floors to 0.499. A typed literal of 16
+nines is cut to 15 digits on entry, so `PERCENTRANK({0,1},0.9999999999999999,3)` is 0.999.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2473; probes/t2473-percentrank-significance (excel-graph,
+2026-10-25).
+Ours: since T-2473 (`percentrank_of`, `decimal_round::cut_to_15_digits`, 10^significance correctly rounded).
 Status: VERIFIED (excel-graph) for the cited cells
 
 ## Scalar distributions at extreme arguments, part 2 (T-2256)
