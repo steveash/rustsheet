@@ -154,7 +154,7 @@ Blank one-cell reference cells that need this function's argument order, left fa
 `#VALUE!` in the shared readers): 583ca2baea0bb30a A58, 9735c5ab72fa5ecf A164, 139684e68fb2fc3b A353, 46ac3ef5e61583ca A269, 5919660b7bb4d195 A1, d8f44d556674c2fd A192.
 
 ## Handoff
-Done and merged with the first PR (95 gen-m9 and 6 probe known-failure lines removed, no regressions): `fn_prob` reads
+Partly done in the first PR (95 gen-m9 and 6 probe known-failure lines removed, no regressions): `fn_prob` reads
 the data arguments before the limits: an error value as x_range, then prob_range, then a blank one-cell reference
 `#VALUE!`; each is the result of every lifted element, so array limits still spill (7 `#SPILL!` cells needed that).
 Not done, needs oracle evidence (sonnet could not decide it):
