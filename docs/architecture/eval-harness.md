@@ -184,9 +184,18 @@ Only `pass` counts as passing. Case statuses:
   `visible_other`) and lists the functions with visibly-off cells, worst first. A visibly-off
   cell is blamed on the functions it calls other than glue (`closeness::GLUE`: IF, SUM, DATE,
   INDEX and the like), or on its glue when it calls nothing else.
+  A "Parity tiers (glue-aware)" section (T-0068, decision 0118, `attribution.rs`) counts the
+  in-scope functions per worst-cell tier (`exact`, `ulp4`, `digits15`, `rate999`, `rate99`,
+  `below99`, `unscored`) and how many of them use the fallback. Informational; never gated.
 - `report.json`: the same data, machine-readable. Each function's `closeness` holds its bucket
   counts and `visible` its blamed visibly-off cells; each suite's `closeness` holds its in-scope
-  bucket counts.
+  bucket counts. Decision 0118's counts sit beside them (T-0068): each function's `excel` holds
+  the non-deviation Excel-evidence cells that call it, `attributed` those whose only non-glue call
+  it is (`closeness::sole_call`), `tier` the worst-cell tier and `attribution` whether `attributed`
+  (`sole`) or, below 20 attributed cells, `excel` (`all`) placed it. Each suite's `workbooks`
+  counts its cases with a scored in-scope cell: `all_exact`, `all_within15` and `any_visible`.
+  It uses the suite's `closeness` cells (hand-written expectations and deviation passes included),
+  so it is suite scope, not Excel-only evidence.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 - `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
   it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).

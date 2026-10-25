@@ -385,6 +385,14 @@ impl Lexer {
         count
     }
 
+    /// How many characters from the current position are exactly `c`, without consuming them.
+    /// Unlike [`Self::consume_run`] it is case-sensitive: `aAa` is not a weekday run (T-1880).
+    fn same_char_run(&self, c: char) -> usize {
+        self.chars
+            .get(self.position..)
+            .map_or(0, |rest| rest.iter().take_while(|&&next| next == c).count())
+    }
+
     /// Whether the characters from the current position start with `text`, ignoring ASCII case.
     fn looks_at(&self, text: &str) -> bool {
         let mut position = self.position;
@@ -636,6 +644,29 @@ impl Lexer {
                         self.read_next_char();
                         let pm = self.read_next_char().unwrap_or('p');
                         Token::AP(x, pm)
+                    } else if let first @ 3.. = 1 + self.same_char_run(x) {
+                        // Excel: three or more of one `a` (all lowercase or all uppercase) are the
+                        // weekday, `aaa` short and `aaaa`+ full like `ddd`/`dddd`; mixed case
+                        // prints (`TEXT(1,"aaa")` = "Sun", `"AAAA"` "Sunday", `"aAa"` "aAa").
+                        // Such runs of the other case right after it join it (`"aaaAAA"` is
+                        // "Sunday"), shorter ones do not (`"aaaA"` is "SunA"; probes/
+                        // text-format-aaa-weekday, -b, -c; T-1880).
+                        self.position += first - 1;
+                        let mut run = first;
+                        while let Some(next @ ('a' | 'A')) = self.peek_char() {
+                            match self.same_char_run(next) {
+                                more @ 3.. => {
+                                    self.position += more;
+                                    run += more;
+                                }
+                                _ => break,
+                            }
+                        }
+                        if run == 3 {
+                            Token::DayNameShort
+                        } else {
+                            Token::DayName
+                        }
                     } else {
                         // Excel: an unquoted `a` that is not AM/PM prints as itself
                         // (probes/text-format-unquoted-letters A1, A27).
