@@ -3,7 +3,7 @@ id: T-2643
 title: "Probe convert-to-range for a defined name and out-of-table or cross-sheet #This Row references (T-2342)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
