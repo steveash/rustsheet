@@ -60,7 +60,7 @@ outer-call-cell bar and every new visibly-off family has a task.
 gen-m2 grew from 30 to 39 cases and from 12,000 to 15,600 scored cells (9 cases x 400), all excel-graph-backed (fill:
 9 sidecars, 0 failures, 0 skipped, no case refused). Generator command:
 `cd tools && uv run rustsheet-gen --milestone M2 --focus --functions <the 23> --count 9 --formulas 400 --seed 2673`,
-which made each of the 23 functions the outer call of 151-158 new formulas, so no top-up batch was needed. Then
+which raised each of the 23 functions by 154-159 generated outer-call cells, so no top-up batch was needed. Then
 `uv run rustsheet-oracle fill -b excel-graph --suite gen-m2` and `make eval-baseline`.
 
 After the sweep every one of the 23 functions is covered in the "Fifteen-digit parity checkpoint" (minimum: YEAR, 217
