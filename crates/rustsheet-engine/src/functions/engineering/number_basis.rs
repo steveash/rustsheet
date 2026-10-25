@@ -39,8 +39,10 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, ()> {
 impl Model {
     /// The number and the truncated optional `places` of one conversion element.
     ///
-    /// `places` is coerced before `number` is looked at: Excel reads the second argument first,
-    /// so its error wins (probes/eng-first-vs-second-error).
+    /// `places` is read and range-checked (truncated, then 1 to 10) before `number` is looked
+    /// at: Excel reads the second argument first, so its error wins
+    /// (probes/eng-first-vs-second-error) and so does an invalid value: `DEC2HEX(<#N/A>,0)`,
+    /// `HEX2OCT(<#VALUE!>,0.5)` and `BIN2OCT("ABC",-1)` are `#NUM!` (gen-m9 T-2258 triage; T-2545).
     fn number_and_places<'a>(
         &self,
         values: &'a [CalcResult],
@@ -56,6 +58,9 @@ impl Model {
             Some(Err(e)) => return Err(e),
             None => None,
         };
+        if places.is_some_and(|p| !(1..=10).contains(&p)) {
+            return Err(num_error(cell));
+        }
         Ok((number, places))
     }
 
@@ -139,11 +144,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let value = match from_binary_to_decimal(value) {
             Ok(n) => n,
             Err(()) => return num_error(cell),
@@ -184,11 +184,6 @@ impl Model {
             Ok(n) => n,
             Err(()) => return num_error(cell),
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         if value < 0 {
             CalcResult::String(format!("{:0width$o}", OCT_MAX + value, width = 9).into())
         } else {
@@ -220,11 +215,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let mut value = value_raw.trunc() as i64;
         if !(-512..=511).contains(&value) {
             return num_error(cell);
@@ -258,11 +248,6 @@ impl Model {
             Ok(f) => f.trunc(),
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let mut value = value_raw.trunc() as i64;
         if !(-HEX_MAX_HALF..=HEX_MAX_HALF - 1).contains(&value) {
             return num_error(cell);
@@ -296,11 +281,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let mut value = value_raw.trunc() as i64;
 
         if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
@@ -338,11 +318,6 @@ impl Model {
         };
         if value.len() > 10 {
             return num_error(cell);
-        }
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
         }
         let mut value = match i64::from_str_radix(&value, 16) {
             Ok(f) => f,
@@ -426,11 +401,6 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         if value.len() > 10 {
             return num_error(cell);
         }
@@ -482,11 +452,6 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         let mut value = match i64::from_str_radix(&value, 8) {
             Ok(f) => f,
             Err(_) => {
@@ -568,11 +533,6 @@ impl Model {
         };
         // There is not a default value for places
         // But if there is a value it needs to be positive and less than 11
-        if let Some(p) = places {
-            if p <= 0 || p > 10 {
-                return num_error(cell);
-            }
-        }
         // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A33).
         if value.len() > 10 {
             return num_error(cell);
