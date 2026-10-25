@@ -29,7 +29,8 @@ ever tested.
       and give the same `#VALUE!`. An uncached area, a single cell and an area past the bound keep
       today's path.
 - [x] Tests: the functions over cached, uncached, single-cell, whole-column and too-large external
-      ranges give today's results (also with the shortcut disabled), and the predicate is true
+      ranges give today's results (also checked once by hand with the shortcut disabled), and the
+      predicate is true
       only for the cached multi-cell case.
 - [x] corpus-bench 52450 release timings before and after in the Outcome; its `!Timeout` line
       leaves the baseline via `make eval-baseline`.
@@ -49,6 +50,6 @@ ever tested.
   left eval/baseline/corpus-bench.txt (`make eval-baseline`: fixed 1, 0 regressions in every suite).
   All 37,641 of its cells match Excel's cached values.
 - Tests (test_external_links.rs): COUNTIF/COUNTIFS/SUMIF/SUMIFS/AVERAGEIFS/MAXIFS over cached,
-  uncached, single-cell, whole-column and too-large external ranges keep today's results, checked
-  again with the shortcut disabled; the predicate is true only for a cached multi-cell area.
+  uncached, single-cell, whole-column and too-large external ranges keep today's results (the same
+  assertions passed once with the shortcut disabled, by hand); the predicate is true only for a cached multi-cell area.
 - T-0465 (value indexes) still applies to calipers pv26_002, not to 52450.

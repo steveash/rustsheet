@@ -307,6 +307,8 @@ impl Model {
         let Some(sheet) = area.cache else {
             return area.blocked_value(cell);
         };
+        // These branches decide when an area is built as an array; `is_cached_external_array`
+        // repeats them without building it, and must stay in step.
         let (rows, columns) = area.extent();
         if (rows, columns) == (1, 1) {
             return self.cached_value(sheet, area.first_row, area.first_column, cell);
