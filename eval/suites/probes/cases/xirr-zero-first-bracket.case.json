@@ -1,0 +1,49 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2329: XIRR with a zero first value: does the bracket stop at the first chain point whatever the flows (equal dates, far roots, negative roots, negative guesses)?",
+  "tags": [
+    "M9",
+    "financial",
+    "xirr",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=XIRR({0,-1000,2000},{45000,45000,45365})",
+        "B1": "zero first, root 1.0, default guess",
+        "A2": "=XIRR({0,-1000,2000},{45000,45000,45365},0.5)",
+        "B2": "zero first, root 1.0, guess 0.5",
+        "A3": "=XIRR({0,-1000,2000},{45000,45000,45365},0.3)",
+        "B3": "zero first, root 1.0, guess 0.3",
+        "A4": "=XIRR({0,-1,4},{45000,45000,45365})",
+        "B4": "zero first, root 3, default guess",
+        "A5": "=XIRR({0,-1000,900},{45000,45000,45365})",
+        "B5": "zero first, root -0.1, default guess",
+        "A6": "=XIRR({0,-1000,900},{45000,45000,45365},-0.2)",
+        "B6": "zero first, root -0.1, guess -0.2",
+        "A7": "=XIRR({0,-1000,1100},{45000,45000,45365},-0.5)",
+        "B7": "zero first, root 0.1, guess -0.5",
+        "A8": "=XIRR({0,-100,110},{45000,45000,45000})",
+        "B8": "zero first, equal dates, XNPV 10",
+        "A9": "=XIRR({0,-100,110},{45000,45000,45000},0)",
+        "B9": "zero first, equal dates, guess 0",
+        "A10": "=XIRR({0,-100,110},{45000,45000,45000},2)",
+        "B10": "zero first, equal dates, guess 2",
+        "A11": "=XIRR({0,-100,110},{45000,45000,45000},-0.5)",
+        "B11": "zero first, equal dates, guess -0.5",
+        "A12": "=XIRR({0,-100,100},{45000,45000,45000})",
+        "B12": "zero first, equal dates, XNPV 0",
+        "A13": "=XIRR({0,-100,110},{45000,44000,44000})",
+        "B13": "zero first, later first date, other dates equal",
+        "A14": "=XIRR({0,0,-100,50,60},{39448,39448,39448,39448,39448},0.1)",
+        "B14": "gen-m9 A125 flows, guess 0.1",
+        "A15": "=XIRR({0,0,-100,50,60},{39448,39448,39448,39448,39448},0.021683)",
+        "B15": "gen-m9 A125 flows, guess 0.021683",
+        "A16": "=XIRR({0,-1000,1100},{45000,45000,45365},0.1)",
+        "B16": "zero first, root 0.1, guess 0.1 (control)"
+      }
+    }
+  ]
+}

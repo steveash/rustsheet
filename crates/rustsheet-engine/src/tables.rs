@@ -7,7 +7,7 @@ use crate::{
         lexer::LexerMode,
         parser::{
             parse_range,
-            stringify::{to_english_string, to_rc_lowering_at, to_string_lowering},
+            stringify::{to_english_string, to_rc_lowering_at, to_string_with_ref_errors},
             Node,
         },
         types::{Area, CellReferenceRC},
@@ -201,6 +201,10 @@ impl Model {
                 height: bottom - top + 1,
             })?;
         }
+        // Excel rewrites the references to a deleted table to `#REF!` (FORMULATEXT
+        // `=SUM(#REF!)`, `ROWS(Sales)` is `#REF!`; T-2340, probes/table-edits/table-delete-table);
+        // `remove_table` alone would leave them as parse errors.
+        self.rewrite_table_references(&[name.to_lowercase()], None);
         self.remove_table(name)
     }
 
@@ -241,7 +245,7 @@ impl Model {
         self.reset_tables();
     }
 
-    /// The lowercase names of the tables on the sheet `sheet_name`, for [`to_string_lowering`].
+    /// The lowercase names of the tables on the sheet `sheet_name`, for the delete rewrite.
     pub(crate) fn table_names_on_sheet(&self, sheet_name: &str) -> Vec<String> {
         self.workbook
             .tables
@@ -251,21 +255,42 @@ impl Model {
             .collect()
     }
 
-    /// Takes out the tables of the sheet at `sheet_index`, before the sheet is deleted. The
-    /// structured references to them in the other sheets' formulas and in defined names are
-    /// first rewritten as the areas they stand for, which the delete turns into `#REF!`, as
-    /// before SPEC-0016; a sheet added later under the old name brings none of them back.
-    pub(crate) fn take_tables_of_sheet(&mut self, sheet_index: u32) -> Vec<(String, Table)> {
+    /// Takes out the tables of the sheet at `sheet_index`, before the sheet is deleted, with the
+    /// formulas that referred to them. Their structured references in the other sheets' formulas
+    /// and in defined names become `#REF!`, as in Excel (`=SUM(#REF!)`, T-2340,
+    /// probes/table-edits/table-delete-sheet); a sheet added later under the old name brings
+    /// none of them back, and [`Model::restore_table_references`] puts the text back.
+    pub(crate) fn take_tables_of_sheet(
+        &mut self,
+        sheet_index: u32,
+    ) -> (Vec<(String, Table)>, Vec<RewrittenFormula>) {
         let Ok(sheet_name) = self.workbook.worksheet(sheet_index).map(|w| w.get_name()) else {
-            return Vec::new();
+            return (Vec::new(), Vec::new());
         };
         let lowercase = self.table_names_on_sheet(&sheet_name);
         if lowercase.is_empty() {
-            return Vec::new();
+            return (Vec::new(), Vec::new());
         }
+        let rewritten = self.rewrite_table_references(&lowercase, Some(sheet_index as usize));
+        let (taken, kept) = std::mem::take(&mut self.workbook.tables)
+            .into_iter()
+            .partition(|(_, table)| table.is_on_sheet(&sheet_name));
+        self.workbook.tables = kept;
+        (taken.into_iter().collect(), rewritten)
+    }
+
+    /// Prints `#REF!` for every structured reference to one of `tables` (lowercase names) in the
+    /// formulas of every sheet but `skip_sheet` and in the defined names, and returns what it
+    /// changed. Does not reparse.
+    fn rewrite_table_references(
+        &mut self,
+        tables: &[String],
+        skip_sheet: Option<usize>,
+    ) -> Vec<RewrittenFormula> {
+        let mut rewritten = Vec::new();
         self.parser.set_lexer_mode(LexerMode::R1C1);
         for (index, worksheet) in self.workbook.worksheets.iter_mut().enumerate() {
-            if index == sheet_index as usize {
+            if Some(index) == skip_sheet {
                 continue;
             }
             let context = CellReferenceRC {
@@ -273,9 +298,19 @@ impl Model {
                 row: 1,
                 column: 1,
             };
-            for formula in &mut worksheet.shared_formulas {
+            for (formula_index, formula) in worksheet.shared_formulas.iter_mut().enumerate() {
                 let node = self.parser.parse(formula, &context);
-                *formula = to_string_lowering(&node, None, &lowercase);
+                let text = to_string_with_ref_errors(&node, None, tables);
+                if text != *formula {
+                    rewritten.push(RewrittenFormula {
+                        place: FormulaPlace::Shared {
+                            sheet_id: worksheet.sheet_id,
+                            index: formula_index,
+                        },
+                        original: std::mem::replace(formula, text.clone()),
+                        rewritten: text,
+                    });
+                }
             }
         }
         self.parser.set_lexer_mode(LexerMode::A1);
@@ -285,29 +320,75 @@ impl Model {
             .worksheets
             .iter()
             .enumerate()
-            .find(|(index, _)| *index != sheet_index as usize)
+            .find(|(index, _)| Some(*index) != skip_sheet)
             .map(|(_, worksheet)| worksheet.get_name());
-        for defined_name in &mut self.workbook.defined_names {
-            let Some(sheet) = &remaining else {
-                break;
-            };
-            let context = CellReferenceRC {
-                sheet: sheet.clone(),
-                row: 1,
-                column: 1,
-            };
+        let Some(sheet) = remaining else {
+            return rewritten;
+        };
+        let context = CellReferenceRC {
+            sheet,
+            row: 1,
+            column: 1,
+        };
+        for (index, defined_name) in self.workbook.defined_names.iter_mut().enumerate() {
             let stored = defined_name.formula.trim_start();
             let (eq, body) = stored.strip_prefix('=').map_or(("", stored), |b| ("=", b));
             let node = self.parser.parse(body, &context);
-            let lowered = to_string_lowering(&node, Some(&context), &lowercase);
-            if lowered != to_english_string(&node, &context) {
-                defined_name.formula = format!("{eq}{lowered}");
+            let text = to_string_with_ref_errors(&node, Some(&context), tables);
+            if text != to_english_string(&node, &context) {
+                let text = format!("{eq}{text}");
+                rewritten.push(RewrittenFormula {
+                    place: FormulaPlace::DefinedName(index),
+                    original: std::mem::replace(&mut defined_name.formula, text.clone()),
+                    rewritten: text,
+                });
             }
         }
-        let (taken, kept) = std::mem::take(&mut self.workbook.tables)
-            .into_iter()
-            .partition(|(_, table)| table.is_on_sheet(&sheet_name));
-        self.workbook.tables = kept;
-        taken.into_iter().collect()
+        rewritten
     }
+
+    /// Puts back the formulas [`Model::take_tables_of_sheet`] rewrote, where they still hold the
+    /// rewritten text (the undo of a sheet delete). Does not reparse.
+    pub(crate) fn restore_table_references(&mut self, rewritten: Vec<RewrittenFormula>) {
+        for RewrittenFormula {
+            place,
+            original,
+            rewritten,
+        } in rewritten
+        {
+            let slot = match place {
+                FormulaPlace::Shared { sheet_id, index } => self
+                    .workbook
+                    .worksheets
+                    .iter_mut()
+                    .find(|worksheet| worksheet.sheet_id == sheet_id)
+                    .and_then(|worksheet| worksheet.shared_formulas.get_mut(index)),
+                FormulaPlace::DefinedName(index) => self
+                    .workbook
+                    .defined_names
+                    .get_mut(index)
+                    .map(|defined_name| &mut defined_name.formula),
+            };
+            if let Some(slot) = slot.filter(|slot| **slot == rewritten) {
+                *slot = original;
+            }
+        }
+    }
+}
+
+/// A formula that a table or sheet delete rewrote, kept so the undo can put it back.
+#[derive(Debug, Clone, bitcode::Encode, bitcode::Decode)]
+pub(crate) struct RewrittenFormula {
+    place: FormulaPlace,
+    original: String,
+    rewritten: String,
+}
+
+/// Where a [`RewrittenFormula`] lives.
+#[derive(Debug, Clone, Copy, bitcode::Encode, bitcode::Decode)]
+enum FormulaPlace {
+    /// A shared formula of the sheet with this id.
+    Shared { sheet_id: u32, index: usize },
+    /// A defined name, by its index in the workbook's list.
+    DefinedName(usize),
 }

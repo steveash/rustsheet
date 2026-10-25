@@ -8,6 +8,7 @@ use crate::expressions::types::CellReferenceIndex;
 pub(super) use crate::functions::lift::num_error;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
+use crate::nested_array::nested_array_error;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -38,6 +39,10 @@ fn percentile_numbers(
         // like text inside a range: the data is empty and every function reports `#NUM!`, not
         // `#VALUE!` (probes/quartile-single-text-cell B1-B11, quartile-numeric-text-cell C2-C5).
         CalcResult::String(_) => Ok(vec![]),
+        CalcResult::Array(array) => match nested_array_error(&array, cell) {
+            Some(error) => Err(error),
+            None => model.numeric_flat_of(CalcResult::Array(array), cell),
+        },
         value => model.numeric_flat_of(value, cell),
     }
 }

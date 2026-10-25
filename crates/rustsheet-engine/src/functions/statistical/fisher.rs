@@ -455,7 +455,7 @@ impl Model {
 
     /// Whether `sample` is a one-cell reference to a blank cell: `B9:B9` arrives as a range, `B10`
     /// as the cell's blank value.
-    fn is_blank_one_cell(&mut self, sample: &CalcResult) -> bool {
+    pub(crate) fn is_blank_one_cell(&mut self, sample: &CalcResult) -> bool {
         match sample {
             CalcResult::EmptyCell => true,
             CalcResult::Range { left, right } if left == right => {

@@ -14,11 +14,45 @@ fn trig_exp_overflows(y: f64) -> bool {
 }
 
 /// IMCOSH and IMSINH are `#NUM!` for a zero imaginary part once `exp(|x|)` overflows, although
-/// `cosh x` is still finite: `IMCOSH("710.4+0i")`. With a nonzero imaginary part they answer
-/// (`IMCOSH("710.4+1.5i")`); a tiny nonzero one is UNVERIFIED (probes/eng-im-overflow-edges A8,
-/// A16).
+/// `cosh x` is still finite: `IMCOSH("710.4+0i")` (probes/eng-im-overflow-edges A8, A16). With a
+/// nonzero imaginary part, even `1E-300`, they take [`hyperbolic_log_form`].
 fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
     y == 0.0 && x.abs().exp().is_infinite()
+}
+
+/// Past |x| = 709 (709 itself takes the product form), IMCOSH and IMSINH of a number with a
+/// nonzero imaginary part take both parts in log space, `exp(|x| + ln(cos y / 2))` and
+/// `exp(|x| + ln(sin y / 2))`, the sign of x then going to sinh's factor. Hence `#NUM!` whenever
+/// cos y or sin y is negative (`IMCOSH("709.05+2i")`, `"709.3-0.5i"`, `"-710.4-2i"`, while
+/// `"709+2i"` and `"-710.4+1.5i"` answer), and digits that differ from `cosh x·cos y`:
+/// `IMCOSH("710.4+1.5i")` is 1.17873946358278E+307+1.6621900184285E+308i, `IMSINH("709.5+1E-200i")`
+/// has real part 6.77493159657354E+307 where `IMSINH("709.5")` is 6.77493159657316E+307
+/// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231). The exact cut between
+/// 709 and 709.0000000001 is not pinned.
+const HYPERBOLIC_LOG_CUT: f64 = 709.0;
+
+/// IMCOSH's (`sinh` false) or IMSINH's value past [`HYPERBOLIC_LOG_CUT`], `None` below the cut or
+/// for a zero y. `#NUM!` where cos y or sin y is not positive (Excel takes its log).
+fn hyperbolic_log_form(
+    (x, y, suffix): ComplexParts,
+    sinh: bool,
+    cell: CellReferenceIndex,
+) -> Option<CalcResult> {
+    if y == 0.0 || x.abs() <= HYPERBOLIC_LOG_CUT {
+        return None;
+    }
+    let (sin_y, cos_y) = (y.sin(), y.cos());
+    if sin_y <= 0.0 || cos_y <= 0.0 {
+        return Some(num_error(cell));
+    }
+    let part = |t: f64| (x.abs() + (t / 2.0).ln()).exp();
+    let (re, im) = (part(cos_y), part(sin_y));
+    let (re, im) = if sinh {
+        (x.signum() * re, im)
+    } else {
+        (re, x.signum() * im)
+    };
+    Some(finite_complex_result(re, im, suffix, cell))
 }
 
 /// The sine and cosine of `x` as SIN and COS reduce it (by the x87 64-bit π) where they answer,
@@ -54,6 +88,9 @@ pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if hyperbolic_exp_overflows(x, y) {
         return num_error(cell);
+    }
+    if let Some(result) = hyperbolic_log_form((x, y, suffix), false, cell) {
+        return result;
     }
     finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
 }
@@ -154,6 +191,9 @@ pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if hyperbolic_exp_overflows(x, y) {
         return num_error(cell);
+    }
+    if let Some(result) = hyperbolic_log_form((x, y, suffix), true, cell) {
+        return result;
     }
     finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
 }

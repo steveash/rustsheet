@@ -634,13 +634,17 @@ fn parse_sheet(
             }
         }
     }
-    // Cells inside array ranges (other than the anchor) are array members.
+    // Cells inside array ranges (other than the anchor) are array members. Excel writes each member
+    // of a volatile spill as an empty `<f ca="1"/>` (calipers roundtrip/formulas_dynamic_arrays,
+    // `RANDARRAY`), which is a member too, not a formula of its own.
     for (tl, br, anchor) in array_ranges {
         for (addr, cell) in cells.range_mut(tl..=br) {
+            let empty_formula =
+                cell.formula.is_none() && cell.formula_kind == Some(FormulaKind::Normal);
             if addr.col >= tl.col
                 && addr.col <= br.col
                 && *addr != anchor
-                && cell.formula_kind.is_none()
+                && (cell.formula_kind.is_none() || empty_formula)
             {
                 cell.formula_kind = Some(FormulaKind::ArrayMember {
                     anchor: anchor.to_string(),
@@ -717,7 +721,14 @@ fn finish_cell(
                     }
                     (text, Some(FormulaKind::Array { range }))
                 }
-                // `dataTable` and plain formulas
+                // A data table's other result cells are plain values; scoring them as members
+                // checks every result (docs/excel-semantics/recalc.md, T-0441).
+                Some("dataTable") => {
+                    if let Some((tl, br)) = rf.as_deref().and_then(parse_range) {
+                        arrays.push((tl, br, addr));
+                    }
+                    (text, Some(FormulaKind::Normal))
+                }
                 _ => (text, Some(FormulaKind::Normal)),
             }
         }

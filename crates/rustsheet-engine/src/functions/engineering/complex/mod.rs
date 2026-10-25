@@ -7,7 +7,7 @@ use crate::functions::math_and_trigonometry::{
     EXCEL_TRIG_LIMIT,
 };
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource, NestedReading,
 };
 use crate::limits::too_many_visits;
 use crate::reference_operators::RefArg;
@@ -83,9 +83,12 @@ impl fmt::Display for Complex {
         // Each part is written as Excel's number-to-text writes it: plain up to 20 characters,
         // then E notation (`1.22514845490862E-16`, probes/eng-impower A9; `1E+200`,
         // probes/eng-imdiv A19).
-        let y_str = if y == 1.0 {
+        // The coefficient 1 is dropped only for an imaginary part that is exactly ±1: Excel writes
+        // `0.1+1i` for `COMPLEX(0.1,1+2^-52,"i")` (gen-m9/62c886e21a1042af A243), so compare the
+        // unrounded part.
+        let y_str = if self.y == 1.0 {
             String::new()
-        } else if y == -1.0 {
+        } else if self.y == -1.0 {
             "-".to_string()
         } else {
             complex_part_to_text(y)
@@ -266,6 +269,7 @@ const COMPLEX_FOLD_POLICY: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::First,
     skip_empty_args: false,
     grids: GridReading::Values,
+    nested: NestedReading::Value,
 };
 
 /// The cells of the rectangle `rows` x `columns`, 0 when either is not positive.
@@ -436,17 +440,17 @@ impl Model {
     }
 
     pub(crate) fn fn_imln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let op: ComplexFn = |p, c| complex_log(p, c, f64::ln, 1.0);
+        let op: ComplexFn = |p, c| complex_log(p, c, imln_parts);
         self.lift_complex(Function::Imln, args, op, cell)
     }
 
     pub(crate) fn fn_imlog10(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let op: ComplexFn = |p, c| complex_log(p, c, f64::log10, f64::log10(f64::exp(1.0)));
+        let op: ComplexFn = |p, c| complex_log(p, c, imlog10_parts);
         self.lift_complex(Function::Imlog10, args, op, cell)
     }
 
     pub(crate) fn fn_imlog2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let op: ComplexFn = |p, c| complex_log(p, c, f64::log2, f64::log2(f64::exp(1.0)));
+        let op: ComplexFn = |p, c| complex_log(p, c, imlog2_parts);
         self.lift_complex(Function::Imlog2, args, op, cell)
     }
 
@@ -469,6 +473,12 @@ impl Model {
             };
             if n == 0.0 && x == 0.0 && y == 0.0 {
                 return num_error(cell); // probes/eng-impower A6
+            }
+            // A base with both parts nonzero whose x²+y² overflows is `#NUM!` even when the result
+            // is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `("1E+154+1E+154i",2)`; a pure real
+            // `IMPOWER("1E+300",-0.5)` is 1E-150 (probes/eng-impower-overflow A1-A12; T-2539).
+            if x != 0.0 && y != 0.0 && (x * x + y * y).is_infinite() {
+                return num_error(cell);
             }
             let r = modulus(x, y);
             // Excel's `^` (square-and-multiply for an integer power) and its x87-reduced sine
@@ -601,6 +611,18 @@ impl Model {
         let mut walk = AggregateWalk::new(COMPLEX_FOLD_POLICY);
         for arg in args {
             let read = self.evaluate_picked_reference_arg(arg, cell);
+            // An empty array's `#CALC!` is `#VALUE!` (probes/empty-array-args-sequence A5:A7).
+            if let RefArg::Value(value) = &read {
+                if value.is_empty_array() {
+                    // An earlier referenced error still wins (`IMSUM(<#DIV/0! cell>,DROP({1},1))`
+                    // is `#DIV/0!`, a later one does not: probes/empty-array-args-sequence A170:A172).
+                    return walk
+                        .finish()
+                        .err()
+                        .unwrap_or_else(|| value.clone())
+                        .empty_array_as_value_error(cell);
+                }
+            }
             // The cells of the range (blank cells included), and the cells its walk visits.
             let (cells, walked) = match &read {
                 RefArg::Ranges(ranges) => match &ranges[..] {
@@ -697,14 +719,15 @@ impl Model {
                 },
             );
             if let Err(error) = walked {
-                return error;
+                return error.empty_array_as_value_error(cell);
             }
             if referenced < cells {
                 has_blank = true;
             }
         }
+        // A referenced cell holding an empty array's `#CALC!` is `#VALUE!` too (A140..A147).
         if let Err(error) = walk.finish() {
-            return error;
+            return error.empty_array_as_value_error(cell);
         }
         let (x, y, suffix) = total.unwrap_or((0.0, 0.0, Suffix::I));
         if fold == ComplexFold::Product && has_blank {
@@ -729,13 +752,18 @@ impl Model {
 /// the 78 IMABS cells of probes-numeric im-last-digit-sweep bit for bit (`hypot` 59, `sqrt(x²+y²)`
 /// 55; the miss is B33, `956.615+0.00387493i`, 2 ulps; T-2044). IMPOWER's modulus is [`modulus`].
 fn imabs((x, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+    CalcResult::Number(scaled_modulus(x, y))
+}
+
+/// IMABS's modulus, `a·sqrt(1 + (b/a)²)` with a = max(|x|, |y|) (IMLOG2 takes it too).
+fn scaled_modulus(x: f64, y: f64) -> f64 {
     let (x, y) = (x.abs(), y.abs());
     let (large, small) = if x >= y { (x, y) } else { (y, x) };
     if large == 0.0 {
-        return CalcResult::Number(0.0);
+        return 0.0;
     }
     let ratio = small / large;
-    CalcResult::Number(large * (1.0 + ratio * ratio).sqrt())
+    large * (1.0 + ratio * ratio).sqrt()
 }
 
 /// `|x+yi|` as IMPOWER takes it: it matches `hypot`, not `sqrt(x²+y²)`. They differ in the last
@@ -808,14 +836,46 @@ fn log_modulus_out_of_range(x: f64, y: f64) -> bool {
     x != 0.0 && y != 0.0 && !(x * x + y * y).is_normal()
 }
 
-/// IMLN, IMLOG10 and IMLOG2: `log` of the modulus, and the argument times `k` (1 for IMLN). The
+/// IMLN, IMLOG10 and IMLOG2: the real and imaginary parts that `parts` makes of `(x, y)`. The
 /// log of 0 is `#NUM!`, not "-inf" (T-2389).
-fn complex_log(p: ComplexParts, c: CellReferenceIndex, log: fn(f64) -> f64, k: f64) -> CalcResult {
+fn complex_log(
+    p: ComplexParts,
+    c: CellReferenceIndex,
+    parts: fn(f64, f64) -> (f64, f64),
+) -> CalcResult {
     let (x, y, suffix) = p;
     if log_modulus_out_of_range(x, y) {
         return num_error(c);
     }
-    finite_complex_result(log(modulus(x, y)), f64::atan2(y, x) * k, suffix, c)
+    let (re, im) = parts(x, y);
+    finite_complex_result(re, im, suffix, c)
+}
+
+/// IMLN is `ln` of the [`modulus`] and the argument (`atan2`).
+fn imln_parts(x: f64, y: f64) -> (f64, f64) {
+    (modulus(x, y).ln(), f64::atan2(y, x))
+}
+
+/// IMLOG10 divides the argument by ln 10: multiplying by log10 e misses
+/// `IMLOG10("711+1.5i")`'s 0.000916231724847909 (probes/eng-im-overflow-edges A95) and the
+/// reciprocal `1/ln 10` misses `IMLOG10("1.5+710.4i")`; the division fits all 36 IMLOG10 cells
+/// of the eval suites (T-2231).
+fn imlog10_parts(x: f64, y: f64) -> (f64, f64) {
+    (
+        modulus(x, y).log10(),
+        f64::atan2(y, x) / std::f64::consts::LN_10,
+    )
+}
+
+/// IMLOG2 is `ln` of IMABS's [`scaled_modulus`] and the argument, both times the double one ulp
+/// above log2 e (`1/ln 2` rounded from the double below ln 2): it fits all 103 distinct real and
+/// 103 imaginary parts of IMLOG2 in the eval suites, `IMLOG2("710.4+0i")` 9.47248777146275 and
+/// `IMLOG2("1E-20")` -66.4385618977473 among them, where `log2` and `atan2·log2 e` print the digit
+/// below (probes/eng-im-overflow-edges A104, A107, A109; probes-numeric im-last-digit-sweep N, O;
+/// T-2231). `hypot` instead of the scaled modulus misses `-0.66925-0.233532i` (sweep row 53).
+fn imlog2_parts(x: f64, y: f64) -> (f64, f64) {
+    let k = std::f64::consts::LOG2_E.next_up();
+    (scaled_modulus(x, y).ln() * k, f64::atan2(y, x) * k)
 }
 
 fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -845,6 +905,24 @@ mod tests {
     use crate::functions::engineering::complex::Suffix;
 
     use super::parse_complex_number as parse;
+
+    #[test]
+    fn coefficient_one_written_unless_exactly_one() {
+        let text = |x: f64, y: f64| {
+            super::Complex {
+                x,
+                y,
+                suffix: Suffix::I,
+            }
+            .to_string()
+        };
+        assert_eq!(text(0.1, 1.0 + 2f64.powi(-52)), "0.1+1i");
+        assert_eq!(text(0.5, 1.0 - 2f64.powi(-53)), "0.5+1i");
+        assert_eq!(text(0.5, -1.0 - 2f64.powi(-52)), "0.5-1i");
+        assert_eq!(text(0.5, 1.0), "0.5+i");
+        assert_eq!(text(0.5, -1.0), "0.5-i");
+        assert_eq!(text(0.0, 1.0), "i");
+    }
 
     #[test]
     fn suffix_join() {

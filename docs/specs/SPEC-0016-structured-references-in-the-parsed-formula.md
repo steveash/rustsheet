@@ -277,10 +277,15 @@ parse-error value.
    The tables are then removed from `workbook.tables` and kept with the taken sheet, so a sheet
    added later under the old name does not bring a deleted table's references back. Excel's
    result for a cross-sheet structured reference to a deleted sheet's table is assumed to be
-   `#REF!` (unprobed; a question for T-2197).
+   `#REF!` (unprobed; a question for T-2197; superseded: T-2324 probed it, see below).
+   As built (T-2340, after T-2324 probed it): the structured references print `#REF!` instead
+   of their lowered areas (FORMULATEXT `=SUM(#REF!)`, as Excel), and the delete keeps what it
+   rewrote with the taken sheet.
 3. **Restore.** `restore_sheet` (undo of a delete) puts the kept tables back in
    `workbook.tables`. The other sheets' formulas stay as the delete left them (today's undo
    behavior for plain references).
+   As built (T-2340): the restore (and `UserModel` undo) puts back the structured text the delete
+   rewrote to `#REF!`.
 4. **Export.** Until T-2196, `to_excel_string` prints `lowered`, never `reference`. After a rename
    or a delete no formula is left as a parse error holding a structured reference, so an export
    then never writes a structured reference into a file without table parts (xlsx-storage.md

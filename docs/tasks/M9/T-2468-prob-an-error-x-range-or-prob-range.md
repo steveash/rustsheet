@@ -113,6 +113,13 @@ Cells:
 - gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A116
 - gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A73
 
+From T-1743 (2026-10-24): gen-m9 41248d1cb153c66e Calc!A12 `=WEIBULL(PROB((Data!C$2-Data!C3),GROWTH(Data!B10:C11,
+Data!B$3),IF(..)),..)` is `#REF!` in Excel, `#VALUE!` in ours. Its GROWTH is the size `#REF!` in both; ours PROB gives
+the scalar x_range's `#VALUE!` (`PROB(-42,#REF!,2)`) where Excel returns the prob_range's error, as this task's order says.
+This cell's line goes with this task.
+Cells:
+- gen-m9/41248d1cb153c66e.case.json (1): Calc!A12
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -133,3 +140,7 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2256): every cell it owns has the wrong type, error or text (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Also owns (from T-2426)
+Blank one-cell reference cells that need this function's argument order, left failing by T-2426 (which made the blank
+`#VALUE!` in the shared readers): 583ca2baea0bb30a A58, 9735c5ab72fa5ecf A164, 139684e68fb2fc3b A353, 46ac3ef5e61583ca A269, 5919660b7bb4d195 A1, d8f44d556674c2fd A192.

@@ -2,6 +2,7 @@ use super::lambda::LambdaCaller;
 use crate::cast::calc_result_to_element;
 use crate::functions::util::{array_element_value, array_node_to_calc_result};
 use crate::functions::Function;
+use crate::nested_array::NestedKind;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -292,18 +293,31 @@ impl Model {
             // a blank cell: ISBLANK TRUE, yet COUNT and AVERAGE count it as 0
             // (`MAP(HSTACK(Z1:Z2,{1;2}),_xleta.COUNT)` is 1,1,1,1, probes/t2413-blank-in-stacked-arrays
             // A7:A11, T-2413). A range's blank cell stays a blank cell (A43:A47).
-            Source::Values(data) => LambdaGrid::Values(
-                data.iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|node| match node {
-                                ArrayNode::Empty => CalcResult::EmptyArg,
-                                node => array_element_value(node, cell),
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
+            // A nested cell of a GROUPBY or PIVOTBY result reaches the LAMBDA whole, as its array
+            // (`MAP(GROUPBY(..,LAMBDA(v,v)),LAMBDA(x,ROWS(x)))` gives 2 for a two-record group,
+            // `REDUCE(0,..,LAMBDA(a,x,a+ROWS(x)))` 19; SPEC-0018 rule 5, probes/t2592-nested-groupby-cells
+            // A100:A105, A15). Its cells are charged to the walk budget (`NestedArray::value`), and
+            // past it the whole call is `#ERROR!` (DEVIATION, decision 0014).
+            Source::Values(data) => {
+                let mut grid = Vec::with_capacity(data.len());
+                for row in &data {
+                    let mut values = Vec::with_capacity(row.len());
+                    for node in row {
+                        values.push(match node {
+                            ArrayNode::Empty => CalcResult::EmptyArg,
+                            ArrayNode::Nested(nested) if nested.kind() == NestedKind::Array => {
+                                match nested.value(&mut self.nested_budget, cell) {
+                                    array @ CalcResult::Array(_) => array,
+                                    error => return Err(error),
+                                }
+                            }
+                            node => array_element_value(node, cell),
+                        });
+                    }
+                    grid.push(values);
+                }
+                LambdaGrid::Values(grid)
+            }
         })
     }
 

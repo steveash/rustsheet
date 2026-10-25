@@ -3,6 +3,7 @@
 use super::{stringify, DisplaceData, Rewrite, NO_REWRITE};
 use crate::expressions::parser::move_formula::ref_is_in_area;
 use crate::expressions::parser::{Node, StructuredReference};
+use crate::expressions::token;
 use crate::expressions::types::CellReferenceRC;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
@@ -15,19 +16,30 @@ pub(crate) fn to_string_lowering(
     context: Option<&CellReferenceRC>,
     tables: &[String],
 ) -> String {
+    rewritten_text(node, context, &Rewrite::Lower(tables, None))
+}
+
+/// The text of `node` printed with `rewrite`, in R1C1 without `context` (a parse error keeps its
+/// stored text) and in English A1 with it.
+fn rewritten_text(node: &Node, context: Option<&CellReferenceRC>, rewrite: &Rewrite) -> String {
     crate::expressions::parser::unparsed::stored_text(node)
         .filter(|_| context.is_none())
         .unwrap_or_else(|| {
             let (locale, language) = (get_default_locale(), get_default_language());
-            stringify(
-                node,
-                context,
-                &Rewrite::Lower(tables, None),
-                false,
-                locale,
-                language,
-            )
+            stringify(node, context, rewrite, false, locale, language)
         })
+}
+
+/// [`to_string_lowering`], but every structured reference to one of `tables` prints as `#REF!`:
+/// the text a formula keeps after those tables, or their sheet, are deleted (T-2340,
+/// references.md "Structured references under row deletes, column edits, convert, table and
+/// sheet delete").
+pub(crate) fn to_string_with_ref_errors(
+    node: &Node,
+    context: Option<&CellReferenceRC>,
+    tables: &[String],
+) -> String {
+    rewritten_text(node, context, &Rewrite::RefError(tables))
 }
 
 /// [`to_string_lowering`] in R1C1 for the formula of one cell on `row`: a `#This Row` area to
@@ -104,6 +116,14 @@ pub(super) fn reference_text(
             let name = reference.table_name.to_lowercase();
             return if tables.contains(&name) {
                 print(lowered, rewrite)
+            } else {
+                reference.text()
+            };
+        }
+        Rewrite::RefError(tables) => {
+            let name = reference.table_name.to_lowercase();
+            return if tables.contains(&name) {
+                token::Error::REF.to_string()
             } else {
                 reference.text()
             };
