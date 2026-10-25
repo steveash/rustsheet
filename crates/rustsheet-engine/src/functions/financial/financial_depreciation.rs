@@ -383,12 +383,9 @@ impl Model {
                     .cast_number_no_bools_or(rest.first(), 12.0, cell)?
                     .trunc();
                 // Excel reads life and period as 32-bit integers: a period past i32::MAX is period 1
-                // (`DB(100,10,4,2147483648)` is 43.8), and a life past it is #NUM!
-                // (`DB(100,10,2147483648,1)`, `DB(100,10,2147483648,0.5)`) except that from
-                // u32::MAX on, with a month other than 12, a period below 1 is the partial last
-                // year (`DB(18057,894,FACT(13),0.5,8)` is 0, gen-m9 762cd0e4ec9a7aa9 A200); a
-                // negative salvage is #NUM! even at cost 0 (probes/fin-syd-db-domain A7, D8, F1, F4,
-                // G4:G14, H1:L12; financial.md "DB and SYD argument domains").
+                // (month 12 too, probe E8), a life past it is #NUM! except the u32::MAX "wrapped
+                // last year", and a negative salvage is #NUM! even at cost 0 (financial.md "DB and
+                // SYD argument domains", probes/fin-syd-db-domain).
                 let huge_period = period > DB_INTEGER_MAX;
                 let period = if huge_period { 1.0 } else { period };
                 let wrapped_last_year = life >= DB_WRAPPED_LIFE && month != 12.0 && period < 1.0;
