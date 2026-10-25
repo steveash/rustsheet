@@ -40,7 +40,7 @@ Cells:
 - gen-m9/85f48d5cdfb24555.case.json (1): Calc!A35
 - gen-m9/8fec7b207f4dd753.case.json (1): Calc!A125
 - gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A240
-- gen-m9/a013a45a8fbcab4f.case.json (2): Calc!A97, A206
+- gen-m9/a013a45a8fbcab4f.case.json (2): Calc!A97, A206 (A97, `LOGNORMDIST(..,MDURATION(..,1E+300,2))`, passes since T-2488: its MDURATION is `#NUM!`)
 - gen-m9/a5828d3925575713.case.json (1): Calc!A315
 - gen-m9/a61e547a1cab994c.case.json (1): Calc!A127
 - gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A231
