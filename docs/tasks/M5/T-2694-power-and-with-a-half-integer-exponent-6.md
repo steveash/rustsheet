@@ -3,7 +3,7 @@ id: T-2694
 title: "POWER and ^ with a half-integer exponent: 6 misses in over 7,000 probes-numeric cells, one visibly off (t2513-r3-tdensity-hold I563)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
