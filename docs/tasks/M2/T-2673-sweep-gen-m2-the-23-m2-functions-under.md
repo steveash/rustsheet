@@ -70,4 +70,4 @@ filed. Visible parity: 0 visibly-off cells in the new cases; lock 6,039 unchange
 
 Pool gap (noted, not filled): the M2 criteria pool for COUNTIF/COUNTIFS/SUMIF/SUMIFS has wildcards (`*c`, `?b?`,
 `a*`), comparison operators (`<>1`, `<5`, `>=2`, `>0`, `=a`, `<>`), `""` and numeric literal criteria, but no
-text-number criteria such as `"1"` or `"2.5"`.
+text-number criteria such as `"1"` or `"2.5"`. Filed T-2717.
