@@ -388,6 +388,20 @@ pub(crate) fn dd_to_extended((hi, lo): (f64, f64)) -> (u128, i32) {
     (rounded, exponent - 24 + shift)
 }
 
+/// The double-double `(hi, lo)` rounded to a 64-bit significand and then to a double,
+/// RN53(RN64(v)), as an x87 result is stored. Zero, and a result past the normal range, keep the
+/// single rounding `hi`.
+pub(crate) fn dd_rounded_twice((hi, lo): (f64, f64)) -> f64 {
+    if hi == 0.0 {
+        return hi;
+    }
+    // `dd_to_extended` adds the tail to the head's magnitude, so it takes |v|.
+    let negative = hi < 0.0;
+    let magnitude = if negative { (-hi, -lo) } else { (hi, lo) };
+    let (extended, exponent) = dd_to_extended(magnitude);
+    round_extended_to_double(extended, exponent, negative).unwrap_or(hi)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -2,13 +2,14 @@
 //!
 //! Excel reduces an angle by multiples of `π₆₄/2`, where `π₆₄` is π rounded to a 64-bit
 //! significand (the x87 `FLDPI` constant, `0xC90FDAA22168C235·2^-62`), and then returns the
-//! correctly rounded sine or cosine of the remainder, and its tangent rounded twice (to 64 bits,
-//! then to a double; [`excel_tan`]). So its SIN(x) is the true
+//! correctly rounded sine or cosine of the remainder. So its SIN(x) is the true
 //! sin(x + n·δ/2), with n = round(2x/π) and δ = π − π₆₄ ≈ -5.0166e-20: SIN(PI()) is
 //! 1.22514845490862E-16 (not 1.2246467991473532E-16), COS(PI()/2) is 6.1257422745431E-17 and
 //! SIN(2^27-1) is -0.9559933287726706. This reproduces all 672 numeric cells of
 //! probes-numeric/m9-trig-reduction and probes/trig-huge-argument bit for bit
 //! (docs/excel-semantics/numbers.md "Trig of a huge angle"; T-1563).
+//! The tangent is the quotient of those sums rounded twice, to a 64-bit significand and then to a
+//! double, as an x87 tangent is stored ([`excel_tan`], T-2147).
 //!
 //! The remainder `x − n·π₆₄/2` is computed exactly as a double-double and its sine and cosine
 //! are summed in double-double arithmetic, so the final rounding is the only one.
@@ -21,8 +22,7 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 use std::ops::Neg;
 
-use crate::arithmetic::round_extended_to_double;
-use crate::x87_exp::dd_to_extended;
+use crate::x87_exp::dd_rounded_twice;
 
 /// `π₆₄/2 − FRAC_PI_2`: the 11 low bits of the 64-bit significand that a double drops
 /// (`0x235·2^-63`). It is COS(PI()/2) in Excel.
@@ -322,12 +322,12 @@ pub(crate) fn excel_fsin(v: f64) -> f64 {
         let r = DoubleDouble::two_sum(FRAC_PI_2 - magnitude.min(FRAC_PI_2), HALF_PI_TAIL);
         COSINE.full(r.mul(r))
     };
-    let (extended, exponent) = dd_to_extended((sine.hi, sine.lo));
-    round_extended_to_double(extended, exponent, v < 0.0).unwrap_or(if v < 0.0 {
-        -sine.hi
+    let rounded = dd_rounded_twice((sine.hi, sine.lo));
+    if v < 0.0 {
+        -rounded
     } else {
-        sine.hi
-    })
+        rounded
+    }
 }
 
 /// Excel's SIN(x), for |x| < [`EXCEL_TRIG_LIMIT`].
@@ -364,20 +364,8 @@ pub(crate) fn excel_sin_cos(x: f64) -> (f64, f64) {
 /// decide a 64-bit rounding, so the full sums always run.
 pub(super) fn excel_tan(x: f64) -> f64 {
     let (sin, cos) = excel_sin_cos_exact(x);
-    rounded_twice(sin.div(cos))
-}
-
-/// `v` rounded to a 64-bit significand and then to a double. Zero, and a result past the normal
-/// range (none below the 2^27 cut), keep the single rounding.
-fn rounded_twice(v: DoubleDouble) -> f64 {
-    if v.hi == 0.0 {
-        return v.hi;
-    }
-    // `dd_to_extended` adds the tail to the head's magnitude, so it takes |v|.
-    let negative = v.hi < 0.0;
-    let magnitude = if negative { v.neg() } else { v };
-    let (extended, exponent) = dd_to_extended((magnitude.hi, magnitude.lo));
-    round_extended_to_double(extended, exponent, negative).unwrap_or(v.hi)
+    let tan = sin.div(cos);
+    dd_rounded_twice((tan.hi, tan.lo))
 }
 
 #[cfg(test)]
@@ -440,7 +428,10 @@ mod tests {
             assert_eq!((excel_sin(x), excel_cos(x)), expected, "x = {x:e}");
             assert_eq!(
                 excel_tan(x).to_bits(),
-                rounded_twice(sin.div(cos)).to_bits(),
+                {
+                    let tan = sin.div(cos);
+                    dd_rounded_twice((tan.hi, tan.lo)).to_bits()
+                },
                 "TAN({x:e})"
             );
         }
