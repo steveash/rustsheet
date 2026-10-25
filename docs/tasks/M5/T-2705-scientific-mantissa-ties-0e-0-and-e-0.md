@@ -3,7 +3,7 @@ id: T-2705
 title: "Scientific mantissa ties: 0E+0 and #E+0 on 2.5 are 3E+0, 0.00E+00 on 12.345 is 1.23E+01 (gen-m10, 11 cells)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
