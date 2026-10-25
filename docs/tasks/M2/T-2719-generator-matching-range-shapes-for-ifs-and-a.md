@@ -21,7 +21,8 @@ fifteen-digit checkpoint means the matching itself is exercised.
   (112 `#N/A`, 17 `#VALUE!`, 5 `#REF!`); COUNTIF and SUMIF have 0 errors. Examples: gen-m2/b9c807444a35c9a2 Calc!A114
   `=SUMIFS(Data!C2:C9,Data!A10:D11,"?b?")`, A137 `=SUMIFS(Data!A3:D6,Data!A6:B10,"<>")`.
 - Cause: `argument_text` in `tools/src/rustsheet_tools/gen/generator.py` picks the shape of each `range` parameter
-  independently, and MATCH's lookup_array is not a `vector` parameter in the generator's signatures.
+  independently, and MATCH's `lookup_array` in `eval/catalog/functions.yaml` lacks the `vector: true` that
+  LOOKUP's `lookup_vector` has (the flag always gives a one-column range, so the 2-D rate needs its own knob).
 
 ## Acceptance criteria
 - [ ] Within one *IFS call, sum_range/average_range/max_range and every criteria_range share one shape (rows x
