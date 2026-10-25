@@ -66,6 +66,8 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
 - [ ] BETA.DIST's cdf runs on the bratio port.
 - [ ] The two gated lost cells are recorded under decision 0083 (or a decision record), and the effect on T-2633's
       chained BETA.INV cells is stated. No other baseline line is added.
+- [ ] The pre-T-2502 seams are deleted: `beta_reg_complement_unoriented`, `beta_reg_upper_unoriented`,
+      `unoriented_shape_one`, `fisher.rs` `f_tail_pre_t2502` and the `A1_CLOSED_FORM_MIN_X` branch.
 - [ ] statistics.md's bpser and bratio entries gain "Implemented in" lines.
 - [ ] The T-2464 research harness is deleted: `functions/statistical/t2464_harness.rs` and its `mod t2464_harness;`
       line in `functions/statistical/mod.rs` (docs/research/t2464/README.md "Rebuilding the harness" then points at the

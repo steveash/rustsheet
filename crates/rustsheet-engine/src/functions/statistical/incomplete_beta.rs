@@ -51,8 +51,11 @@ pub(crate) const A1_CLOSED_FORM_MIN_X: f64 = 0.1;
 
 /// The largest oriented complement y0 at which a0 = 1 takes Excel's closed form
 /// ([`closed_form_tails`]): Excel takes it at `T.DIST.RT(4.24,2)` (y0 = 0.899888) and not at
-/// `T.DIST.RT(4.245,2)` (y0 = 0.900100), probes-numeric t0969-t-df2-cut, and takes it at
-/// x0 = fl(1 - 0.9) = 0.09999999999999998 (`BETA.DIST(0.9,1,2.5,TRUE)`, T-2464).
+/// `T.DIST.RT(4.245,2)` (y0 = 0.900100), probes-numeric t0969-t-df2-cut, and takes it at y0 = 0.9
+/// itself (`BETA.DIST(0.1,1,50,TRUE)`, probes-numeric m9-beta-dist-a1 A43; and swapped to a0 = 1 at
+/// x0 = fl(1 - 0.9), `BETA.DIST(0.9,0.5,1,TRUE)`, m9-beta-dist-a0p5 A17). A cut at x0 >= 0.1 instead
+/// scores 1,258 of the 1,286 closed-form cells against 1,286 (T-2464 w5-triangulation
+/// `closed_variants.py`).
 const A1_CLOSED_FORM_MAX_Y: f64 = 0.9;
 
 /// `I_x(a, b)` for shapes a, b > 0; 0 at x <= 0 and 1 at x >= 1. NaN in, NaN out.
@@ -608,7 +611,9 @@ pub(super) mod tests {
     }
 
     /// The a0 = 1 cut, y0 <= 0.9: x0 = fl(1 - 0.9) takes the closed form, and x0 = 0.0998999751
-    /// (`T.DIST.RT(4.245,2)`, probes-numeric t0969-t-df2-cut B450) is the general kernel.
+    /// (`T.DIST.RT(4.245,2)`, probes-numeric t0969-t-df2-cut B450) is the general kernel. The
+    /// unswapped a0 = 1 call at x0 = fl(1 - 0.9) with b = 2.5 is synthetic, not an Excel cell; the
+    /// swapped one is `BETA.DIST(0.9,b,1,TRUE)`'s orientation (m9-beta-dist-a0p5 A17 at b = 0.5).
     #[test]
     fn a0_one_cut_is_at_y0_one_tenth_below_one() {
         let closed = 0.099_999_999_999_999_98;

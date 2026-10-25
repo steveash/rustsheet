@@ -3,7 +3,7 @@ id: T-2502
 title: "Incomplete beta closed forms on bratio's oriented arguments, with F's argument forms (T-2464 E1)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -44,11 +44,13 @@ pass the kernel Excel's x and y. Every closed-form cell of BETA.DIST, F, T at df
 ## Acceptance criteria
 - [x] With the engine, w5's closed-form cell set (`closed_final.py`) is 1,286 of 1,286 bit-exact, including the T df 2
       cells. Where T stays on `student_t.rs`, its df-2 closed form must agree with this one.
-- [ ] F.DIST, F.DIST.RT and FDIST use w5's x and y forms. (Partial: on the closed-form cells only; see Outcome.)
+- [x] ~~F.DIST, F.DIST.RT and FDIST use w5's x and y forms.~~ Met on every closed-form cell, which the visible-parity
+      stage below owns (all S1 cells pass). Using the forms on the other F cells, and moving the unoriented callers,
+      moved to T-2505 (its Context and a new acceptance criterion) per the Visible-parity stage rule below.
 - [x] The rule's cut is pinned by unit tests at x0 = 0.0998999751 (general kernel) and x0 = 0.09999999999999998
       (closed form).
 - [x] The cells r2-impact lists for step S1 are no longer visibly off, and no baseline gains a line.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - bratio's other branches (T-2505 onwards).
@@ -89,4 +91,9 @@ Implemented on branch `claude/hopeful-meitner-5oxf0g-t2502` (merged with main af
   where a closed form applies, and the unoriented callers (F.INV/F.INV.RT/FINV with T-2511, BETA.INV's huge-shape
   crossing, F.TEST) still need moving to the port. statistics.md records both in the T-2464 closed-forms entry's
   Ours line; T-2502's own engine-status section was folded into that entry and its "Implemented in:" line.
+- Review follow-ups: T-2658 probes bounded BETA.DIST/BETADIST (A, B given) at a shape of 1 near the x0 = 0.5 swap and
+  the y0 = 0.9 cut, since `beta.rs` now sends the bounded path through the oriented closed forms at t = (x - A)/(B - A),
+  y = fl(1 - t) and w5's evidence covers only the unbounded forms. T-2505's acceptance criteria now include deleting
+  the pre-T-2502 seams. Function-level tests pin the BINOM.DIST (k = n - 1) and NEGBINOM.DIST (r = 1, f = 0) dispatch
+  (`test/statistical/test_fn_binom.rs`).
 

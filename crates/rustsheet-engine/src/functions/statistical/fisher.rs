@@ -81,9 +81,9 @@ fn f_tail_pre_t2502(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
     }
 }
 
-/// Above this a + b (half the two df summed) F.TEST's tail is [`beta_reg_complement_unoriented`]'s; below
-/// it the remainder of [`f_test_upper_tail`] is summed in double-double, at most about 30,000
-/// terms (x <= 0.9975 there).
+/// Above this a + b (half the two df summed) F.TEST's tail is
+/// [`beta_reg_complement_unoriented`]'s; below it the remainder of [`f_test_upper_tail`] is summed
+/// in double-double, at most about 30,000 terms (x <= 0.9975 there).
 const F_TEST_SERIES_SHAPE_MAX: f64 = 200.0;
 
 /// Bound on the terms of [`f_test_remainder`]'s series (it converges well before it below
