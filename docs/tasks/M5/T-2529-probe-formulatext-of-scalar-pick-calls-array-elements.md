@@ -3,7 +3,7 @@ id: T-2529
 title: "Probe FORMULATEXT of scalar pick calls, array elements that are errors, array INDIRECT and XLOOKUP/TAKE/DROP/LET/SWITCH/IFS results"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
