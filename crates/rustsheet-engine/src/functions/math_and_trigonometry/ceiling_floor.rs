@@ -1,6 +1,7 @@
 //! The CEILING/FLOOR family on the SPEC-0011 driver (T-1773): CEILING, ECMA.CEILING, FLOOR,
 //! CEILING.MATH, CEILING.PRECISE, ISO.CEILING, FLOOR.MATH and FLOOR.PRECISE.
 
+use crate::arithmetic::flush_subnormal;
 use crate::decimal_round::decimal_to_f64;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
@@ -12,9 +13,11 @@ use crate::{
 /// `value / significance` cut to 15 significant digits, so floating-point noise does not push an
 /// exact multiple over a step boundary. An exact tie at the 16th digit goes away from zero, as
 /// INT's cut does (numbers.md "FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from
-/// zero", probes/t2652-floor-ceiling-ties).
+/// zero", probes/t2652-floor-ceiling-ties). A subnormal ratio is 0, as `/` flushes it, so the
+/// call is 0 (numbers.md "CEILING and FLOOR of a subnormal ratio are 0",
+/// probes/t2715-ceiling-floor-subnormal-ratio).
 fn snap_ratio(value: f64, significance: f64) -> f64 {
-    let ratio = value / significance;
+    let ratio = flush_subnormal(value / significance);
     if !ratio.is_finite() || ratio == 0.0 {
         return ratio;
     }
@@ -207,6 +210,11 @@ mod tests {
         assert_eq!(snap_ratio(999_999_999_999_999.5, 1.0), 1e15);
         assert_eq!(snap_ratio(0.0, 1.0), 0.0);
         assert!(snap_ratio(1.0, 0.0).is_infinite());
+        // probes/t2715-ceiling-floor-subnormal-ratio: a subnormal ratio is 0, the smallest normal
+        // is kept.
+        assert_eq!(snap_ratio(1e-307, 4.5), 0.0);
+        assert_eq!(snap_ratio(-1e-300, 1e8), 0.0);
+        assert_eq!(snap_ratio(f64::MIN_POSITIVE, 1.0), f64::MIN_POSITIVE);
     }
 
     #[test]

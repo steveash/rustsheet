@@ -854,6 +854,22 @@ Status: VERIFIED (excel-graph) as a fitted rule
 Implemented in: `excel_mod` in crates/rustsheet-engine/src/functions/util.rs
 Tasks: T-2714
 
+## CEILING and FLOOR of a subnormal ratio are 0 (T-2715)
+Rule: CEILING, CEILING.MATH (both modes), CEILING.PRECISE, ISO.CEILING, ECMA.CEILING, FLOOR, FLOOR.MATH (both modes) and
+FLOOR.PRECISE flush the ratio number/significance to 0 when it is subnormal (|ratio| < 2^-1022), as `/` does ("Subnormal
+results become 0"), so the result is 0. A ratio at 2^-1022 keeps its step. `CEILING.MATH(10^-307,10)` and
+`FLOOR.MATH(-10^-307,100)` are 0, while `CEILING.MATH(1E-307,4)` (ratio 2.5E-308) is 4, `CEILING(2^-1022,1)` is 1 and
+`CEILING(2^-1022,1.0000001)` is 0. The sign and argument checks are unchanged (`CEILING(1E-307,-10)` is still `#NUM!`).
+MROUND already matched (its quotient rounds to 0 there). ROUNDUP does not follow this rule: `ROUNDUP(1E-307,-2)` is 100,
+but `ROUNDUP(2^-1022,0)` is 0 (T-2737, not yet fitted). This settles the calipers goldens `formulas_math_basic` and
+`formulas_datetime` E169, F169, E183 and F183.
+Evidence: probes/t2715-ceiling-floor-subnormal-ratio (excel-graph, 2026-10-25): 76 number/significance pairs (±1E-307,
+±2^-1022, ±1E-300 against significances above, at and below the boundary, both signs, and the calipers pairs) times 11
+functions, all matching the rule; probes/t2715-roundup-near-smallest-normal (the ROUNDUP and ROUNDDOWN controls).
+Status: VERIFIED (excel-graph)
+Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs
+Tasks: T-2715, T-2737 (ROUNDUP)
+
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`
 (sheet `SINH_COSH_TANH`; T-0914): COSH = `(e^x + e^-x)/2` (34/34 cells; libm 33/34); SINH uses the

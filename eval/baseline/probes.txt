@@ -1204,6 +1204,8 @@ C	probes/t2714-mod-near-smallest-normal-b.case.json	700
 C	probes/t2714-mod-near-smallest-normal-c.case.json	660
 C	probes/t2714-mod-near-smallest-normal.case.json	1331
 C	probes/t2714-snap-tiny-addends.case.json	360
+C	probes/t2715-ceiling-floor-subnormal-ratio.case.json	1064
+C	probes/t2715-roundup-near-smallest-normal.case.json	120
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
@@ -3217,6 +3219,16 @@ F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
 F	probes/t2705-scientific-mantissa-rounding.case.json	Sheet1!A13
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C11
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C12
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C13
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C14
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C15
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C16
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C17
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C18
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C19
+F	probes/t2715-roundup-near-smallest-normal.case.json	Sheet1!C20
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9
