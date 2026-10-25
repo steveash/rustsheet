@@ -3,7 +3,7 @@ id: T-1690
 title: "Bound the CPU time of single-range walks stretched by a far cell (A:XFD with data at XFD1048576)"
 milestone: M9
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
