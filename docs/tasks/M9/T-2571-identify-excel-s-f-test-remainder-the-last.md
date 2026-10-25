@@ -61,7 +61,7 @@ with this task so the scores are reproducible.
 ## Out of scope
 - F.DIST, F.DIST.RT and BETA.DIST, which use the shared `beta_reg_complement` kernel.
 
-## Progress (2026-10-25, opus run; work in flight)
+## Progress (2026-10-25, opus run; resumed by a later opus run)
 - Committed the extraction the Context asked for: fits `f-test` (candidate remainders R) and `f-test-structure`
   (variance, x/y and power alternatives) in tools/src/rustsheet_tools/fitlab/kernels/ftest.py, over every F.TEST/FTEST
   cell on file with plain-range arguments (291 numeric cells). Scores are in statistics.md under the F.TEST entry.
