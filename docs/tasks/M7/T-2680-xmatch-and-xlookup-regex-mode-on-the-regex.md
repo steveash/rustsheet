@@ -3,7 +3,7 @@ id: T-2680
 title: "XMATCH and XLOOKUP regex mode on the REGEX* PCRE2 engine (lookaround, backreferences)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
