@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 //! An error element inside an array argument is the result of LARGE, SMALL, QUARTILE.EXC,
 //! PERCENTRANK, MODE.MULT, COVARIANCE.S, CORREL and the like, not `#VALUE!` (gen-m9, T-2255,
 //! T-2256; docs/excel-semantics/statistics.md "An error element of an array argument is that
@@ -21,6 +19,11 @@ const CASES: &[(&str, &str)] = &[
     ("COVARIANCE.S({1,#N/A,3},{-1,0,1})", "#N/A"),
     ("COVAR({1,#N/A,3},{-1,0,1})", "#N/A"),
     ("CORREL({1,#N/A,3},{-1,0,1})", "#N/A"),
+    // Another argument's error, or one that does not coerce, wins over the element's
+    // (gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
+    ("PERCENTILE({1,#N/A,3},(\"x\"*1))", "#VALUE!"),
+    ("TRIMMEAN({1,#N/A,3},{\"a\"})", "#VALUE!"),
+    ("COVARIANCE.S({1,#N/A,3},(\"x\"*1))", "#VALUE!"),
     ("PEARSON({1,#N/A,3},{-1,0,1})", "#N/A"),
     ("TRIMMEAN({1,#N/A,3},0.2)", "#N/A"),
 ];

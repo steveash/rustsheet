@@ -3,25 +3,11 @@ use crate::nested_array::nested_array_error;
 use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{Continuous, Gamma};
 
+use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
 use super::incomplete_gamma::{gamma_cdf, gamma_quantile, gamma_sf, Tail};
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
-
-/// The message of the error [`Model::values_from_array`]'s callers return for an error element, which
-/// [`is_array_element_error`] tells from the error of a whole argument.
-const ARRAY_ELEMENT_ERROR: &str = "Error in array argument";
-
-/// `error`, the error of an array argument's error element, as the result of the call at `cell`.
-pub(super) fn array_element_error(error: Error, cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(error, cell, ARRAY_ELEMENT_ERROR.to_string())
-}
-
-/// Whether `result` is the error of an array argument's error element (a lifted function lets another
-/// argument's error win over it, statistics.md "An error element of an array argument is that error").
-pub(super) fn is_array_element_error(result: &CalcResult) -> bool {
-    matches!(result, CalcResult::Error { message, .. } if message == ARRAY_ELEMENT_ERROR)
-}
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;

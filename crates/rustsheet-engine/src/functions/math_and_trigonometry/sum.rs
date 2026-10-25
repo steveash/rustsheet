@@ -1,5 +1,6 @@
 use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::element_errors::array_element_error;
 use crate::functions::statistical::paired::PairedArg;
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
@@ -74,8 +75,7 @@ impl Model {
                 return unequal_counts();
             }
         }
-        let array_error =
-            |_, error| CalcResult::new_error(error, cell, "Error in array".to_string());
+        let array_error = |_, error| array_element_error(error, cell);
         let paired = match self.paired_values(first, second, cell, array_error) {
             Ok(paired) => paired,
             Err(e) => return e,
@@ -163,8 +163,7 @@ impl Model {
                 "Arguments must be of the same shape".to_string(),
             ));
         }
-        let array_error =
-            |_, error| CalcResult::new_error(error, cell, "Error in array".to_string());
+        let array_error = |_, error| array_element_error(error, cell);
         let paired = self.paired_values(first, second, cell, array_error)?;
         Ok((rows1, cols1, paired.first, paired.second))
     }

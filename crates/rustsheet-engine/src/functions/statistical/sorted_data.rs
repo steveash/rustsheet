@@ -10,7 +10,7 @@
 
 use std::cmp::Ordering::Equal;
 
-use super::chisq::is_array_element_error;
+use super::element_errors::is_array_element_error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;

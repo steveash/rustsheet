@@ -181,3 +181,4 @@ COVAR, COVARIANCE.*, CORREL, PEARSON and T.TEST, and another argument's error (o
 cells show (statistics.md). gen-m9: 130 known failures fixed, 0 regressions; probes: 23 fixed. Not done: PROB and FREQUENCY (T-2636, they
 regressed when changed), F.TEST/FTEST (T-2093), and a few nested cells (FORECAST.ETS*, XNPV, one SMALL, one T.TEST): the baseline lists them.
 The acceptance criteria that every owned cell leaves the baseline is therefore met in part; T-2636 carries the rest.
+Unmet: the first four acceptance criteria (every owned gen-m9 line leaves the baseline) are met for 130 of the lines; the rest are tracked by T-2636 (PROB, FREQUENCY, and the nested SMALL, T.TEST, FORECAST.ETS*, XNPV cells listed there) and T-2093 (F.TEST, FTEST).

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use super::element_errors::array_element_error;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::nested_array::nested_array_error;
@@ -29,13 +30,7 @@ impl Model {
                     }
                     match self.values_from_array(arr) {
                         Ok(v) => values.extend(v.into_iter().flatten()),
-                        Err(error) => {
-                            return Err(CalcResult::new_error(
-                                error,
-                                cell,
-                                "Error in array argument".to_string(),
-                            ))
-                        }
+                        Err(error) => return Err(array_element_error(error, cell)),
                     }
                 }
                 CalcResult::Number(n) => values.push(n),

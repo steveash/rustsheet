@@ -1,4 +1,4 @@
-use super::chisq::array_element_error;
+use super::element_errors::array_element_error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
@@ -89,7 +89,7 @@ impl Model {
     }
 
     /// [`Self::numeric_flat_of`] where an error element of an array is the result, marked as
-    /// [`super::chisq::is_array_element_error`] reads it (statistics.md "An error element of an array argument
+    /// [`super::element_errors::is_array_element_error`] reads it (statistics.md "An error element of an array argument
     /// is that error"); PROB and FREQUENCY keep `#VALUE!`.
     pub(crate) fn numeric_flat_with_element_errors(
         &mut self,
@@ -113,6 +113,7 @@ impl Model {
             CalcResult::Array(arr) => match self.values_from_array(arr) {
                 Ok(v) => Ok(v.into_iter().flatten().collect()),
                 Err(error) if element_errors => Err(array_element_error(error, cell)),
+                // TODO(T-2636): PROB and FREQUENCY should propagate an error element too.
                 Err(e) => Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}"))),
             },
             CalcResult::Number(n) => Ok(vec![n]),
