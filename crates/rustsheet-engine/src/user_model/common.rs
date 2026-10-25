@@ -1872,7 +1872,7 @@ impl UserModel {
     /// Identical border-adjacency logic as [`Self::get_cell_style`] but applied to the CF-overlaid style.
     /// Use this when you need icon-set or data-bar decorations in addition to the base style.
     pub fn get_extended_cell_style(
-        &self,
+        &mut self,
         sheet: u32,
         row: i32,
         column: i32,

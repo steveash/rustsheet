@@ -808,7 +808,7 @@ impl Model {
             clock,
         );
         model.parse_formulas();
-        model.evaluate_conditional_formatting();
+        model.cf_stale = true;
         Ok(model)
     }
 
@@ -852,6 +852,9 @@ impl Model {
             area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
+            cf_stale: true,
+            #[cfg(test)]
+            cf_runs: 0,
             links: HashMap::new(),
         }
     }
