@@ -81,7 +81,7 @@ Queues at the start of the run:
 - functions: 48 ready (≥ 3), so the gap-triager did not run. The sonnet buffer is 51 (≥ 10).
 - M5 ready by lane: engine 0, harness 0, research 0, quality 4, api 3.
   - Engine and harness have no open M5 tasks. Research has T-2517 and T-2529 unclaimed, but its lane is busy (T-2416, #1733).
-- The planner ran for M5 and filed **T-2638** (research, opus, `campaign: visible`). It is a gen-m5 sweep for the 41 M5 functions with fewer than 200 generated outer-call cells (CELL, ERROR.TYPE, TEXTJOIN, MOD, AGGREGATE, IFS, SWITCH and others; 1,027 visibly-off cells).
+- The planner ran for M5 and filed **T-2648** (research, opus, `campaign: visible`). It is a gen-m5 sweep for the 41 M5 functions with fewer than 200 generated outer-call cells (CELL, ERROR.TYPE, TEXTJOIN, MOD, AGGREGATE, IFS, SWITCH and others; 1,027 visibly-off cells).
   - It filed nothing for engine: all 8 M5 probe failures are fixable inside their functions.
   - It filed nothing for harness: every M5 exit measure is already reported and owned.
 
@@ -118,7 +118,7 @@ Spot-audit (2026-10-25; the last was 2026-10-16). I sampled 3 code PRs merged si
 **Critical lane:** research
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M5.
-- research: T-2638 (gen-m5 sweep, opus), then the queued M5 probes T-2517 and T-2529. These are the only M5 tasks outside the functions lanes.
+- research: T-2648 (gen-m5 sweep, opus), then the queued M5 probes T-2517 and T-2529. These are the only M5 tasks outside the functions lanes.
 - The M5 exit work (8 probe cells) is in the functions lanes: T-2627 (functions-text), T-2441 (functions-text), T-2523 (functions-math) and T-2388 (functions-text, text-format-digits-date-token). The workers reach them through `functions`.
 - engine and harness have no M5 work; quality and api have no M5 exit work. perf stays out: Phase 2.)
 
