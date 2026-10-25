@@ -31,7 +31,7 @@ value is the same. Every function is listed in [docs/progress/functions.md](prog
 
 ### Functions by worst-cell tier
 
-**330 of 506** in-scope functions (65.22%) never differ from Excel in the 15 digits Excel shows, on every counted cell; **97** have fewer than 99% of their cells within 15 digits.
+**330 of 506** in-scope functions (65.22%) never differ from Excel in the 15 digits Excel shows, on every counted cell; **97** have fewer than 99% of their cells within 15 digits. The Phase 1 line above counts a function once 99.9% of its cells match; this stricter figure counts only functions with no cell off at all.
 
 | Tier | Meaning | Functions | Share | Placed by every Excel cell |
 | --- | --- | ---: | ---: | ---: |
@@ -96,14 +96,14 @@ displayed-text (`TF`) lines after "text".
 | gen-m10 | 20 | 1,690 | 99.17% | 99.17% | 14 | 20 | 9 | 9 | 11 | 0 | 14; text 394 |
 | gen-m2 | 39 | 15,600 | 100.00% | 100.00% | 0 | 39 | 39 | 39 | 0 | 0 | 0 |
 | gen-m5 | 115 | 41,640 | 99.99% | 99.99% | 2 | 115 | 109 | 113 | 2 | 0 | 6 |
-| gen-m6 | 85 | 25,000 | 99.99% | 99.99% | 1 | 85 | 84 | 84 | 1 | 0 | 1 |
+| gen-m6 | 85 | 25,000 | 99.99% | 99.99% | 1 | 85 | 84 | 84 | 1 | 0 | 0 |
 | gen-m7 | 52 | 31,845 | 100.00% | 100.00% | 0 | 52 | 52 | 52 | 0 | 0 | 0 |
 | gen-m8a | 12 | 3,577 | 100.00% | 100.00% | 0 | 12 | 12 | 12 | 0 | 0 | no baseline |
 | gen-m8b | 9 | 3,368 | 91.78% | 91.78% | 277 | 9 | 4 | 4 | 5 | 0 | no baseline |
 | gen-m9 | 261 | 95,262 | 95.55% | 97.09% | 2,519 | 261 | 30 | 30 | 231 | 0 | 4,216 |
 | ironcalc-calc | 219 | 72,357 | 99.11% | 99.71% | 165 | 218 | 186 | 203 | 15 | 0 | 644 |
 | poi | 336 | 27,209 | 99.61% | 99.64% | 95 | 115 | 112 | 112 | 3 | 0 | 119 |
-| probes | 1,539 | 101,262 | 97.40% | 98.10% | 1,770 | 1,533 | 1,366 | 1,393 | 140 | 0 | 2,644 |
+| probes | 1,539 | 101,262 | 97.40% | 98.10% | 1,770 | 1,533 | 1,366 | 1,393 | 140 | 0 | 2,686 |
 | probes-numeric | 263 | 611,860 | 48.72% | 71.46% | 129,994 | 263 | 69 | 108 | 155 | 0 | no baseline |
 | smoke | 6 | 46 | 100.00% | 100.00% | 0 | 6 | 6 | 6 | 0 | 0 | 0 |
 <!-- /progress:generated -->
