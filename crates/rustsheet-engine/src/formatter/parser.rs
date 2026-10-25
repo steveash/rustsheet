@@ -781,7 +781,7 @@ impl Parser {
                         | TextToken::Spacer(_)
                 )
             });
-            // TODO(T-2703): `B2` before a locale tag (`B2[$-40C]mmmm` is "Chaaban") is not modelled.
+            // TODO(T-2729): `B2` before a locale tag (`B2[$-40C]mmmm` is "Chaaban") is not modelled.
             if is_number || (hijri && prints_date && tagged) {
                 return ParsePart::Error(ErrorPart::default());
             }

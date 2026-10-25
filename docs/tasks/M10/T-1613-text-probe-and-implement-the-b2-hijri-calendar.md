@@ -33,4 +33,4 @@ TEXT and cell formats with a bare `B2` prefix now print Hijri dates: the tabular
 weekday min(month, 7); a month name after a weekday repeats it). Serial 0 shows serial 1's date and 60 is `#VALUE!`.
 New probes probes/t1613-hijri-b2 (144 cells) and t1613-hijri-b2-weekday (78), excel-graph, both passing; number-formats.md
 "The `B2` (Hijri) calendar". The day and month name tokens moved from format.rs into formatter/date_names.rs. Eval delta: probes
-+2 cases, 222 cells, all passing; 0 regressions. Follow-up T-2703: `B2` before a locale tag and calendar digit 6.
++2 cases, 222 cells, all passing; 0 regressions. Follow-up T-2729: `B2` before a locale tag and calendar digit 6.

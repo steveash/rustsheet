@@ -81,11 +81,11 @@ month name is weekday number min(month, 7), Sunday being 1: `B2mmmm|dddd` of 450
 (Saturday, as for every month from 7 on), of 45148 (Muharram) "محرم|الأحد" (Sunday), of 45177 (Safar) Monday. A month
 name after a weekday prints the weekday again: `B2dddd|mmmm` is "الأربعاء|الأربعاء". Numeric tokens in between change
 nothing (`B2m|dddd`, `B2d|dddd`, `B2yyyy|dddd` show the real weekday). Gregorian sections do not do this
-(`mmmm|dddd` of 45148 is "August|Thursday"). Unprobed combinations, which the engine decides by the same rule: a second weekday after `dddd|mmmm`, `dddd|mmmmm`, `mmmm|dddd|mmmm`, `mmmm|dddd|dddd`, and `mmmmm` as the first name token (T-2703).
+(`mmmm|dddd` of 45148 is "August|Thursday"). Unprobed combinations, which the engine decides by the same rule: a second weekday after `dddd|mmmm`, `dddd|mmmmm`, `mmmm|dddd|mmmm`, `mmmm|dddd|dddd`, and `mmmmm` as the first name token (T-2729).
 Evidence: probes/t1613-hijri-b2 (144 cells), probes/t1613-hijri-b2-weekday (78 cells) (excel-graph, 2026-10-25, T-1613).
 Unprobed: the 1904 date system (the engine converts through the 1900 serial); a serial-0 weekday; `B2` as a cell number format (only TEXT was probed; the same formatter serves both).
 Implemented in: formatter/date_names.rs (`hijri_ymd`, `NameTokens`), the `hijri` flag of `DatePart` (formatter/parser.rs).
-Not modelled: `B2` before a locale tag and calendar digit 6 (T-2703).
+Not modelled: `B2` before a locale tag and calendar digit 6 (T-2729).
 Status: VERIFIED (excel-graph)
 Tasks: T-1613
 
@@ -507,7 +507,7 @@ Rule: a hex locale tag `[$-NNCCLLLL]` holds a numeral system (NN), a calendar (C
 Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai. Day halves follow the LCID under every calendar digit: `[$-20411]`, `[$-40411]` and `[$-50411]h AM/PM` are "6 午後", and `[$-70412]`/`[$-90412]` give "6 오후".
 
 **Not modelled** (the tag prints English and keeps `A/P`):
-- 6 is Hijri ("1444-08-23", "Sha'ban", or French "Chaaban" under 40C; T-2703).
+- 6 is Hijri ("1444-08-23", "Sha'ban", or French "Chaaban" under 40C; T-2729).
 - 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i").
 - 10 is Saka ("1944-12-24", "Phalguna", "Budhavara").
 - A is Gregorian with Levant Arabic names ("آذار"); B and C give "مارس".
@@ -516,7 +516,7 @@ Under every one of these, `e` stays the Gregorian four-digit year, and so do `b`
 - Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).
 - Underscore tags pick calendars: `[$-fr_FR]` gives the Saka date with English Gregorian month names ("December|1944-12-24"); `[$-de_DE]`, `[$-en_US]` and `[$-ja_JP]` give the lunar date in English; `[$-_]` gives Russian names (T-1924).
 
-**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (not modelled, T-2703).
+**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (not modelled, T-2729).
 
 Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20), text-locale-era-gregorian (23) (excel-graph, 2026-10-18).
 Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), format.rs (years, `e`, `g`).
