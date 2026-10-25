@@ -105,7 +105,7 @@ Oracle: excel-graph credentials are present (`rustsheet-oracle status`: excel-gr
 
 Spot-audit (2026-10-25; the last was 2026-10-16). I sampled 3 code PRs merged since then (seeded random draw from 553) and re-reviewed each squash diff with every reviewer on `model: opus`.
 - #1062 (T-1706, GROUPBY/PIVOTBY eta arity from the catalog minimum): 4/4 APPROVE.
-  - **Miss** (architecture, which ran on Sonnet at merge time, and Excel fidelity, which ran on Opus): minimum-0 functions (ROW, COLUMN, SHEET, RANDARRAY, PI…) now make the whole result `#VALUE!`. That is extrapolated from NOW alone, and no probe task was filed. Filed **T-2636** (research).
+  - **Miss** (architecture, which ran on Sonnet at merge time, and Excel fidelity, which ran on Opus): minimum-0 functions (ROW, COLUMN, SHEET, RANDARRAY, PI…) now make the whole result `#VALUE!`. That is extrapolated from NOW alone, and no probe task was filed. Filed **T-2644** (research).
   - Minor, not filed: the `table_matches_catalog` doc says "generated" (it is hand-maintained), and the table is re-scanned per call.
 - #1121 (T-1926, MATCH error lookup_value over an array match_type): 4/4 APPROVE.
   - **Miss** (Excel fidelity on Opus; architecture on Sonnet): per-slot error order against a bad match_type element, and the shape against an error or 2-D lookup_array, are unprobed. lookup.md's `{0;"x"}` note can be misread. Filed **T-2637** (research).
