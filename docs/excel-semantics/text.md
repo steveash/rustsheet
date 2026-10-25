@@ -772,8 +772,8 @@ CRLF counts as a final LF does (next entry, T-2364).
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
 Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
 `\X` and `\R` (A27, A42) since T-2287 (next entry).
-`\Z` follows `$`'s final-LF rule, as SPEC-0013 reads PCRE2. That is UNVERIFIED for Excel (T-1972); before T-1973 it was
-`#VALUE!`.
+`\Z` follows `$`'s final-LF rule, as SPEC-0013 reads PCRE2, and Excel's does too (probes/t2364-regex-newline-convention
+B18-B20, T-2364); before T-1973 it was `#VALUE!`.
 Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them):
 - Now accepted as PCRE2 reads it: `(?n)`, `(?-)`, `(?'name'..)`, `\e`, `\cX`, `[\b]`, `\p{^Lu}`, a `{` that starts
   no quantifier (a literal), and spaces inside a bracket under `(?x)` (literal).
@@ -806,7 +806,10 @@ Evidence: probes/t2364-regex-newline-convention B1-B25 and probes/t2364-regex-do
 Ours: matches since T-2364. The backtracker's `holds` and `.` read these rules; the automata use regex-syntax's CRLF
 forms (`Dot::AnyCharExceptCRLF`, `Look::StartCRLF`, `Look::EndCRLF`), and a regular pattern holding `$`, `\Z` or
 `(?m)$` over a text with a CR runs on the backtracker's memoized mode (`FinalLf::Cr`), since no `Look` gives those
-there. Unprobed: `(?m)^` at the very end after a final CR or LF (ours matches there, as before).
+there. Unprobed (T-1972): `(?m)^` at the very end after a final LF (ours matches there, as before T-2364) or a final CR
+(ours matches there since T-2364, through `Look::StartCRLF`; stock PCRE2 matches after neither); and PCRE2's ANYCRLF
+bump-along, which after a failed attempt at a CR skips the position between it and its LF unless the pattern holds a
+literal CR or LF (`REGEXTEST("a"&CHAR(13)&CHAR(10)&"b","\s\w")` would then be FALSE; ours is TRUE).
 Status: VERIFIED (excel-graph)
 Tasks: T-2364
 
