@@ -8,17 +8,35 @@ priority: P2
 size: S
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
-TODO(fill): the outcome, not the implementation.
+MOD matches Excel when the exact remainder plus the divisor rounds to the divisor itself: `MOD(1.005,-1E+30)` is 0 in
+Excel, not -1E+30.
 
 ## Context
-TODO(fill): why; failing case ids; semantics notes; code paths.
+- gen-m5 round-3 triage (T-2648, excel-graph oracle, 2026-10-25), 1 cell in eval/baseline/gen-m5.txt, visibly off:
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m5/abef960804539149 Calc!A400 | `=MOD(1.005,((1.005^Data!D12)-SUMSQ((-1),1000000000000000.0,Data!A6:A11)))` (D12 = -0.0001; SUMSQ is about 1E+30) | 0.0 | -1e30 |
+
+- The divisor is about -1E+30, and both the power and SUMSQ are plain arithmetic, so MOD is the innermost divergence (its
+  divisor only has to be within an ulp, and every such divisor gives the same results below). docs/excel-semantics/numbers.md
+  "MOD is an exact remainder": `fmod(n,d)`, plus `d` when the result is non-zero and its sign differs from `d`. Here
+  fmod is 1.005 and 1.005 + d rounds to d. Excel's 0 fits "a result equal to d in magnitude is 0" (the remainder must be
+  below |d|), but other rules fit too (a quotient-based `n - d*INT(n/d)` path for tiny |n/d|, or a relative snap of
+  `n/d`), so this needs a probe; opus because it is a fit.
+- Recorded in numbers.md "MOD of a small number by a huge opposite-sign divisor is 0" (UNVERIFIED).
 
 ## Acceptance criteria
-- [ ] TODO(fill): verifiable statements.
+- [ ] An excel-graph probe (`excel-probe` skill) of `MOD(n,d)` with opposite signs over |n/d| from 2^-40 to 2^-60 around
+      the point where `n + d` rounds to `d` (e.g. n = 1, 1.005, 3, 0.5 and d = -2^53, -1E+16, -1E+17, -1E+30, and the
+      mirrored signs), plus same-sign controls, separates the hypotheses.
+- [ ] The engine matches the probe; the gen-m5 line above disappears (`make eval-baseline`), with no new known failure.
+- [ ] numbers.md entry updated with the fitted rule and `Status: VERIFIED`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- MOD's `#NUM!` quotient limit (numbers.md, 1.1259E+12), which this case is far from.

@@ -83,3 +83,12 @@ Evidence: probes/t2280-ifs-one-cell-range-condition (excel-graph, 2026-10-21), C
 gen-m6/870c5e38f51ce5d4 Calc!A360 (`ROWS((IFS(Data!A$7,Data!D$10)*Data!C10))` is 1).
 Status: VERIFIED (excel-graph); implemented (T-2280, `ifs_pick`).
 Tasks: T-2280
+
+## IFS: a text condition with an array value spills its shape (T-2653)
+Rule (hypothesis): when the IFS condition that is text not reading as a boolean is paired with an array value, the
+`#VALUE!` result is an array of the value's shape, not the 1x1 array of the scalar case above. With E5 = "x",
+`=IFS(Data!E5,(INDEX(Data!B9:C11,0,0)+SUMIF(..)),..)` (a 3x2 value) is `#SPILL!` in a cell whose spill area is occupied.
+Evidence: gen-m5/4260ce3226165deb Calc!A208 (excel-graph, 2026-10-25, T-2648). Whether the shape is the value's, the
+broadcast with the condition, or covers later pairs is not probed.
+Status: UNVERIFIED (one generated cell); the engine gives a single `#VALUE!`.
+Tasks: T-2653
