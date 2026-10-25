@@ -3,7 +3,7 @@ id: T-2536
 title: "IMSQRT of a negative real: polar form through Excel's ATAN2, COS and SIN (gen-m9, 5 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
