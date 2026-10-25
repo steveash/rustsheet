@@ -31,8 +31,23 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 107 cells, 88 numeric 
 - gen-m8b/d86ef297e840325f (12): Calc!K49, Calc!K115, Calc!K118, Calc!K144, Calc!K155, Calc!K187, Calc!K250, Calc!K266, Calc!K331, Calc!K336, Calc!K367, Calc!K369
 - gen-m8b/e804cf2f8af00680 (11): Calc!K8, Calc!K15, Calc!K23, Calc!K80, Calc!K142, Calc!K192, Calc!K203, Calc!K230, Calc!K241, Calc!K277, Calc!K396
 
+More visibly-off cells (gap triage 2026-10-25, decision 0083): 170 more gen-m8b cells, none listed above, have the same root
+cause: 169 read `[#Totals]` of a `totals_row: true` table (`SUM(Sales[[#Totals],[Price]:[a.b]])`, MIN, MAX, AVERAGE,
+bare `Sales[[#Totals],[Val]]`, `INDEX(Wide[#Totals],1,1)`) and get `#REF!`, where Excel gives the totals cell's value or
+its error (0.5, 2, 8.75, `#N/A`, `#DIV/0!`); one is `SUBTOTAL(103,Wide[#All])` (Excel 34, ours 33, one row short). Blamed on
+SUM 39, MIN 39, AVERAGE 37, MAX 36, the bare reference 17, SUBTOTAL 1, INDEX 1. Examples:
+- gen-m8b/44cecbb1ecd5b2da Calc!K28 `=SUM(Sales[[#Totals],[Price]:[a.b]])`: Excel 0.5, ours #REF!
+- gen-m8b/9cb2e511e5e01db0 Calc!K60 `=MIN(Wide[[#Totals],[Total$]:[Total$]])`: Excel 0.5, ours #REF!
+- gen-m8b/9cb2e511e5e01db0 Calc!K33 `=AVERAGE(Sales[[#Totals],[Unit Price]:[a.b]])`: Excel #N/A, ours #REF!
+- gen-m8b/9cb2e511e5e01db0 Calc!K27 `=SUBTOTAL(103,Wide[#All])`: Excel 34, ours 33
+- gen-m8b/44cecbb1ecd5b2da.case.json (4): Calc!K28, K173, K215, K327
+- gen-m8b/9cb2e511e5e01db0.case.json (155): Calc!K2, K5, K7, K9, K24, K27, K30, K31, K33, K35, K38, K40, K47, K51, K53, K54, K60, K67, K73, K91, K94, K96, K97, K98, K102, K103, K105, K110, K120, K121, K123, K126, K127, K128, K130, K133, K139, K140, K146, K148, K149, K154, K155, K164, K165, K169, K171, K172, K179, K180, K182, K185, K190, K193, K198, K200, K202, K203, K204, K205, K206, K210, K211, K213, K218, K219, K221, K227, K228, K229, K230, K236, K237, K238, K248, K249, K250, K251, K252, K255, K256, K257, K259, K261, K262, K263, K264, K266, K268, K269, K274, K277, K280, K285, K287, K288, K292, K293, K294, K296, K299, K300, K301, K304, K307, K313, K317, K319, K322, K324, K325, K327, K328, K329, K334, K335, K337, K338, K340, K344, K346, K347, K349, K351, K353, K354, K355, K356, K358, K359, K360, K361, K365, K366, K367, K370, K371, K372, K373, K375, K376, K378, K380, K383, K385, K386, K387, K388, K389, K393, K394, K396, K397, K398, K400
+- gen-m8b/e804cf2f8af00680.case.json (11): Calc!K68, K74, K110, K160, K217, K221, K247, K269, K276, K286, K344
+
 ## Acceptance criteria
 - [ ] Visible parity: the 107 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 107 cells of the ungated gen-m8b suite pass in `make eval`, with no new known-failure lines in any baseline.
+- [ ] Visible parity: the 170 further gen-m8b cells listed under Context (2026-10-25) pass in `make eval` too, or the ones that
+      still differ once the totals row loads are filed as a follow-up with their cells.
 - [ ] `Txn::add_table` (or a sibling) can set a one-row totals row; a unit test shows `#Totals` and
   `#All` of such a table.
 - [ ] The adapter passes `totals_row` through and the `TODO(T-1671)` is gone; gen-m8b totals cells
