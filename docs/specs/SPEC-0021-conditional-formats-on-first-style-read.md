@@ -1,6 +1,6 @@
 # SPEC-0021 — Conditional formats evaluated on the first style read
 
-- **Status:** draft
+- **Status:** accepted
 - **Milestone / lane:** M11 / perf
 - **Tasks:** T-0475 (this spec), T-0468 (implementation), T-0476 (the work bound)
 
