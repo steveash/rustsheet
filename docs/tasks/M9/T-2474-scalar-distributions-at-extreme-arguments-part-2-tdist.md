@@ -3,7 +3,7 @@ id: T-2474
 title: "Scalar distributions at extreme arguments, part 2: TDIST of 1E+300, POISSON with a negative mean, NEGBINOMDIST and PERMUTATIONA limits (gen-m9, 44 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
