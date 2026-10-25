@@ -624,7 +624,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Intercept => vec![Signature::Vector; 2],
         Function::Slope => vec![Signature::Vector; 2],
         Function::Steyx => vec![Signature::Vector; 2],
-        Function::ForecastEtsSeasonality => vec![Signature::Vector; arg_count],
         Function::Frequency => vec![Signature::Vector, Signature::Vector],
         Function::Growth | Function::Trend => match arg_count {
             1 => vec![Signature::Vector],
@@ -832,7 +831,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Intercept => StaticResult::Scalar,
         Function::Slope => StaticResult::Scalar,
         Function::Steyx => StaticResult::Scalar,
-        Function::ForecastEtsSeasonality => StaticResult::Scalar,
         // Spill-returning functions
         Function::Frequency => StaticResult::Unknown,
         Function::Growth => StaticResult::Unknown,
