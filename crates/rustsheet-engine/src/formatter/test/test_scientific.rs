@@ -112,3 +112,24 @@ fn scientific_mantissa_rounds_the_15_digit_decimal_half_away() {
         );
     }
 }
+
+// A scientific code never scales: a `%` anywhere is a literal and a trailing `,` is dropped
+// (probes/t2720-scientific-percent A1, A2, A7, A8, A15; excel-graph, T-2720).
+#[test]
+fn scientific_percent_and_comma_do_not_scale() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (2.675, "0.00E+00%", "2.68E+00%"),
+        (2.675, "0.00%E+00", "2.68%E+00"),
+        (0.5, "0%E+0", "5%E-1"),
+        (2675.0, "0.00E+00,", "2.68E+03"),
+        (2.675, "##0.0E+0%", "2.7E+0%"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{value} {code}"
+        );
+    }
+}

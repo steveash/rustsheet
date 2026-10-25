@@ -610,10 +610,17 @@ TEXT() with the same codes. Points the earlier probes did not show:
   and on 4.35 it is "4.4E+0" (probe A1:A6, A12). `0.00E+00` on 12.345 is "1.23E+01" (12.345 is the double
   12.34500000000000063…, no tie). Ours showed "1.24E+01" because it rounded twice: first to the integer digits plus
   the decimals (12.35), then the mantissa 1.235 again. Engineering codes (T-2598) and zero mantissas (T-2227) are
-  separate. A `%` after the exponent does not scale (`0.00E+00%` on 2.675 is "2.68E+00%", probe A13; ours scales,
-  T-2720). Cells: displayed text 05c1c646c95a2d60 F!I10 and F!L11, 5255389143dbcef6 F!D13 and F!G20,
+  separate. A `%` after the exponent does not scale (`0.00E+00%` on 2.675 is "2.68E+00%", probe A13; see the
+  next bullet). Cells: displayed text 05c1c646c95a2d60 F!I10 and F!L11, 5255389143dbcef6 F!D13 and F!G20,
   5eb95c63c7d6180c F!G8 and F!G19, 659cd5776d423ce3 F!B10, b4f66526f822ff2c F!L18, eec351e03ccedfe0 F!Q15,
   fbdab487cb11409e F!Q3 (and F!Q20, bfbcd16cee266336 F!W12); TEXT 5eb95c63c7d6180c T!A7 `TEXT(2.5,"#E+0")` "3E+0".
+- Implemented (T-2720; VERIFIED, probes/t2720-scientific-percent, excel-graph 2026-10-25): a scientific code never
+  scales its value. A `%` anywhere in it is shown as written: `0.00E+00%` on 2.675 is "2.68E+00%", `0.00%E+00` is
+  "2.68%E+00", `%0.00E+00` is "%2.68E+00", `0.00E+00%%` is "2.68E+00%%" and `0.0%0E+00` is "2.6%8E+00". On 0.5, `0%E+0`
+  is "5%E-1". Under an engineering code, `##0.0E+0%` on 2.675 is "2.7E+0%". A trailing or embedded `,` is dropped
+  without dividing: `0.00E+00,` and `0.00,E+00` on 2675 are "2.68E+03". The parser gives a scientific part no
+  `percent` or `comma` scaling (formatter/parser.rs). Unprobed: a fraction followed by an exponent (`# ?/?%E+0`),
+  which the same rule covers.
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
 Implemented (T-2206): the shown place rounds the 15-digit decimal half away from zero (`0`, `#,##0`,
