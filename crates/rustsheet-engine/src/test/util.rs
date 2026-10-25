@@ -15,6 +15,12 @@ pub fn fixed_clock(ms: i64) -> Clock {
     Clock::fixed_unix_millis(ms).unwrap()
 }
 
+/// The ulps between two doubles of the same sign (their bit patterns' distance; for two negative
+/// doubles the sign bits cancel in the difference).
+pub fn ulps(a: f64, b: f64) -> u64 {
+    a.to_bits().abs_diff(b.to_bits())
+}
+
 /// An empty en-US model in UTC on the fixed test clock.
 pub fn new_empty_model() -> Model {
     Model::new_empty_with_clock("model", "en", "UTC", "en", fixed_clock(TEST_CLOCK_MS)).unwrap()
