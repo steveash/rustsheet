@@ -1577,7 +1577,9 @@ FALSE (A12:A14).
 Ours: all of the above since T-2461 (INDEX picks from TAKE and DROP as a reference, `index_source`); ISOMITTED of a
 parameter bound to the empty value is FALSE since T-2649 (A12:A14): omission is how a parameter was bound (`Binding::Omitted`
 for a missing argument or an empty slot), not its value. A LET name bound to an omitted parameter (`LAMBDA(x,[y],LET(z,y,
-ISOMITTED(z)))(1)`) hands the omission on and stays TRUE (unprobed).
+ISOMITTED(z)))(1)`), an empty LET value (`LET(z,,ISOMITTED(z))`) and an omitted parameter handed to another LAMBDA
+(`LAMBDA(x,[y],LAMBDA(z,ISOMITTED(z))(y))(1)`) stay TRUE, while a LET name bound to the empty value
+(`LET(z,IFERROR(Z1,1),ISOMITTED(z))`) is now FALSE like the LAMBDA form (all unprobed; T-2667).
 Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307, T-2413, T-2461, T-2649
 

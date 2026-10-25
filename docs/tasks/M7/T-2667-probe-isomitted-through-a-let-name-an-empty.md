@@ -12,7 +12,7 @@ depends_on: []
 
 ## Goal
 Excel evidence for ISOMITTED of forms ours decides without it: `LAMBDA(x,[y],LET(z,y,ISOMITTED(z)))(1)`,
-`LET(z,,ISOMITTED(z))`, `LAMBDA(x,[y],ISOMITTED(IF(TRUE,y)))(1)`, `LAMBDA(x,[y],ISOMITTED(CHOOSE(1,y)))(1)`,
+`LET(z,,ISOMITTED(z))`, `LET(z,IFERROR(Z1,1),ISOMITTED(z))`, `LAMBDA(x,[y],LAMBDA(z,ISOMITTED(z))(y))(1)`, `LAMBDA(x,[y],ISOMITTED(IF(TRUE,y)))(1)`, `LAMBDA(x,[y],ISOMITTED(CHOOSE(1,y)))(1)`,
 `LAMBDA(x,[y],ISOMITTED(IFERROR(y,1)))(1)`, and `ISOMITTED(IFERROR(Z1,1))` outside a LAMBDA (Z1 blank).
 
 ## Context
@@ -22,7 +22,7 @@ parameter or to an empty slot hands the omission on (TRUE), and a non-variable a
 (arrays.md, the T-2413/T-2649 paragraph and the "ISOMITTED of a function result" entry). Use the `excel-probe` skill.
 
 ## Acceptance criteria
-- [ ] A probe case with the six forms (and their FALSE controls) is oracle-filled; arrays.md records the results.
+- [ ] A probe case with these forms (and their FALSE controls) is oracle-filled; arrays.md records the results.
 - [ ] Any mismatch is filed as a functions-logic task (or fixed here if it is one line in `fn_isomitted`/`bind_argument`).
 - [ ] `make check` green; reviewers approve.
 
