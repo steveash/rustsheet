@@ -144,8 +144,10 @@ NORM.S.DIST, statistics.md "NORM.S.INV is AS 241 PPND16 in the tails") and LOGNO
 Shipped:
 - LOGNORM.INV and LOGINV are EXP of `normal::normal_inverse`, so they take the PPND16 tails. That fixes 20
   ironcalc-calc LOGNORM.xlsx lines and 17 gen-m9 lines, 11 of them among the 14 T-2255 visible-parity cells.
-- T.INV's large-df series takes its z from the same `normal_inverse`, so no statrs normal `inverse_cdf` call is
-  left: the third acceptance criterion is met.
+- The third acceptance criterion (no other statrs normal `inverse_cdf` call) is still open. T.INV's large-df
+  series (`t_dist.rs`) keeps statrs' z. Moving it to the PPND16 hybrid moved 38 T.INV, TINV, T.INV.2T and
+  CONFIDENCE.T cells, all already failing: 28 went up to 4 ulp further from Excel and 10 closer. There is no Excel
+  evidence that T.INV builds on PPND16, so the change was reverted.
 
 Across every suite, in-scope visibly-off cells fall from 11,309 to 11,276, and no cell newly fails.
 

@@ -1,9 +1,8 @@
-use statrs::distribution::{Continuous, ContinuousCDF, StudentsT};
+use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
-use crate::functions::statistical::normal::normal_inverse;
 use crate::functions::statistical::paired::{PairedSamplesError, PairedValues};
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::functions::statistical::student_t::{
@@ -311,7 +310,10 @@ pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
         }
         return t_inverse_cdf(df, p);
     }
-    let z = normal_inverse(p, 0.0, 1.0);
+    let Ok(normal) = Normal::new(0.0, 1.0) else {
+        return f64::NAN;
+    };
+    let z = normal.inverse_cdf(p);
     // Abramowitz & Stegun 26.7.5; the neglected term is O(z^11 / df^5).
     let (z2, z3) = (z * z, z * z * z);
     let z5 = z3 * z2;

@@ -2232,6 +2232,12 @@ Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 40
   own NORM.S.DIST(PPND16(p)) is already exactly p, yet Excel returns a different x on 177 of those.
 - It is not a Newton solve on 0.5*erfc(-x*sqrt(0.5)) from PPND7, Acklam, Moro or 0, stopping at
   |dx| <= 1e-15|x| or at dx = 0 [61 to 79].
+- It is not a bisection on Excel's own NORM.S.DIST (the engine's `normal_cdf`, bit-exact with it since T-1916),
+  checked against the 341 central cells (T-0925, 2026-10-25, with a throwaway engine test that is not committed: it
+  calls `special::normal_cdf` on each variant). Variants tried: fixed brackets from [-1, 1] to
+  [-100, 100]; brackets of 1E-12 to 1E-2 around PPND16; widths of 0 to 1E-13, absolute or relative; returning lo,
+  the midpoint or hi. None matched more than 68 cells. A Newton solve on that CDF from PPND16, stopping on |dx| or
+  on |CDF - p| at 1E-17 to 1E-10, matched at most 68 too. statrs' closed form gets 164.
 - NORM.S.DIST(NORM.S.INV(p)) equals p on only 172 of 341 points. Probe t1759-norm-s-inv-roundtrip
   (T-1759) adds NORM.S.DIST at Excel's x and at its neighbouring doubles:
   - x is a crossing of Excel's own CDF at 234 of 340 central points;
@@ -2259,21 +2265,22 @@ Input handling seen on the way:
 - `NORM.S.INV(2.3E-308-1E-309)` is PPND16(2.3E-308): the subnormal literal 1E-309 counts as 0
   (numbers.md, "A subnormal divisor is zero"). The difference itself is normal; had it flushed,
   the result would be #NUM!.
-- It is not a bisection on Excel's own NORM.S.DIST (the engine's `normal_cdf`, bit-exact with it since T-1916),
-  checked against the 341 central cells (T-0925, 2026-10-25). Variants tried: fixed brackets from [-1, 1] to
-  [-100, 100]; brackets of 1E-12 to 1E-2 around PPND16; widths of 0 to 1E-13, absolute or relative; returning lo,
-  the midpoint or hi. None matched more than 68 cells. A Newton solve on that CDF from PPND16, stopping on |dx| or
-  on |CDF - p| at 1E-17 to 1E-10, matched at most 68 too. statrs' closed form gets 164.
-LOGNORM.INV(p, m, s) is EXP(NORM.INV(p, m, s)) on the same hybrid (T-0925). In the tails it is EXP(m + z*s), with z
-the PPND16 quantile. `LOGNORM.INV(1E-20,0,1)` = 9.493291347224372E-05 (probes-numeric/t1543-inverse-cdf-tiny-p
-A16; statrs' `LogNormal::inverse_cdf` gave ...338E-05). With it, 20 ironcalc-calc LOGNORM.xlsx lines and 17 gen-m9
-LOGNORM.INV, LOGINV, CONFIDENCE.NORM and CONFIDENCE lines pass, and no cell regresses. The central LOGNORM.INV
-cells, such as `LOGINV(0.2,250,30)` (gen-m9/8fec7b207f4dd753 A55), wait on the central fit above.
 Evidence: probes-numeric/t1746-norm-s-inv-central (341 literal p over the central region, with
 NORM.S.DIST of each result and of PPND16(p)), m9-norm-s-inv, t1048-normsinv, t1048-norminv. Run
 it with `uv run rustsheet-fitlab norm-s-inv` (`fitlab/kernels/norm_inv.py`).
 Status: VERIFIED (tails); the central algorithm is UNVERIFIED
 Tasks: T-1746, T-1759, T-0925, T-0968
+
+## LOGNORM.INV is EXP of NORM.INV's quantile (T-0925)
+Rule: LOGNORM.INV(p, m, s) and LOGINV are EXP(NORM.INV(p, m, s)), on NORM.INV's hybrid (PPND16 in the tails, see above). In the tails it is EXP(m + z*s), with z
+the PPND16 quantile. `LOGNORM.INV(1E-20,0,1)` = 9.493291347224372E-05 (probes-numeric/t1543-inverse-cdf-tiny-p
+A16; statrs' `LogNormal::inverse_cdf` gave ...338E-05). With it, 20 ironcalc-calc LOGNORM.xlsx lines and 17 gen-m9
+LOGNORM.INV, LOGINV, CONFIDENCE.NORM and CONFIDENCE lines pass, and no cell regresses. The central LOGNORM.INV
+cells, such as `LOGINV(0.2,250,30)` (gen-m9/8fec7b207f4dd753 A55), wait on the central fit above.
+Evidence: probes-numeric/t1543-inverse-cdf-tiny-p A16 (excel-graph); ironcalc-calc STATISTICAL/LOGNORM.xlsx (Excel-authored
+cached values; 113 -> 133 of 147 cells pass); gen-m9 LOGNORM.INV, LOGINV, CONFIDENCE.NORM and CONFIDENCE cells (T-2255).
+Status: VERIFIED (tails); the centre waits on NORM.S.INV's
+Tasks: T-0925
 
 ## AVERAGEA, MAXA and MINA over an array
 Rule: an array value's elements are not read like range cells. AVERAGEA skips a boolean element and

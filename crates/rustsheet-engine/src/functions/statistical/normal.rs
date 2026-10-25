@@ -83,27 +83,18 @@ fn ppnd16_tail(p: f64) -> Option<f64> {
 }
 
 /// The quantile of `p` in (0, 1) of the normal distribution with `mean` and `std_dev`, O(1): the
-/// PPND16 tail as `mean + z*std_dev`, else statrs' closed form (`erfc_inv`). NaN where statrs
-/// refuses the distribution (a `std_dev` that is not positive).
-pub(crate) fn normal_inverse(p: f64, mean: f64, std_dev: f64) -> f64 {
-    if let Some(z) = ppnd16_tail(p) {
-        return mean + z * std_dev;
-    }
-    Normal::new(mean, std_dev).map_or(f64::NAN, |dist| dist.inverse_cdf(p))
-}
-
-/// [`normal_inverse`], `#NUM!` where it is NaN.
+/// PPND16 tail as `mean + z*std_dev`, else statrs' closed form (`erfc_inv`).
 pub(crate) fn normal_quantile(
     p: f64,
     mean: f64,
     std_dev: f64,
     cell: CellReferenceIndex,
 ) -> Result<f64, CalcResult> {
-    let quantile = normal_inverse(p, mean, std_dev);
-    if quantile.is_nan() {
-        return Err(num_error(cell));
+    if let Some(z) = ppnd16_tail(p) {
+        return Ok(mean + z * std_dev);
     }
-    Ok(quantile)
+    let dist = Normal::new(mean, std_dev).map_err(|_| num_error(cell))?;
+    Ok(dist.inverse_cdf(p))
 }
 
 /// The standard normal quantile of `p` in (0, 1) ([`normal_quantile`]).
