@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2669 (second probe): XMATCH/XLOOKUP regex mode over blank cells (A1 blank, A2 \"x\", A3 0; C1 \"\", C2 \"x\"), FALSE as text and as lookup value, a computed number as pattern, a \\d class.",
+  "tags": [
+    "M6",
+    "lookup",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A2": "x",
+        "A3": 0,
+        "C1": "",
+        "C2": "x",
+        "E1": "=XMATCH(\"^$\",A1:A3,3)",
+        "E2": "=XLOOKUP(\"^$\",A1:A3,{1;2;3},\"nf\",3)",
+        "E3": "=XMATCH(\".\",A1:A3,3)",
+        "E4": "=XMATCH(\"^0$\",A1:A3,3)",
+        "E5": "=XMATCH(\"^$\",A2:A3,3)",
+        "E6": "=XMATCH(\"\",A1:A3,3)",
+        "E7": "=XMATCH(\"^$\",C1:C2,3)",
+        "E8": "=XMATCH(\"x\",A1:A3,3,-1)",
+        "E9": "=XMATCH(\"FALSE\",{TRUE;FALSE},3)",
+        "E10": "=XMATCH(FALSE,{TRUE;FALSE},3)",
+        "E11": "=XLOOKUP(FALSE,{TRUE;FALSE},{1;2},\"nf\",3)",
+        "E12": "=XMATCH(0.1+0.2,{\"0.3\"},3)",
+        "E13": "=XMATCH(\"\\d\",{\"a\";\"5\"},3)",
+        "E14": "=XLOOKUP(\"o\",A1:A3,{1;2;3},\"nf\",3)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!E1",
+    "Sheet1!E2",
+    "Sheet1!E3",
+    "Sheet1!E4",
+    "Sheet1!E5",
+    "Sheet1!E6",
+    "Sheet1!E7",
+    "Sheet1!E8",
+    "Sheet1!E9",
+    "Sheet1!E10",
+    "Sheet1!E11",
+    "Sheet1!E12",
+    "Sheet1!E13",
+    "Sheet1!E14"
+  ]
+}

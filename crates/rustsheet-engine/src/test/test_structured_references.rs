@@ -318,26 +318,34 @@ fn a_sheet_delete_is_a_ref_error_and_restore_brings_the_tables_back() {
     model.define_name("Total", None, "SUM(Sales[Qty])").unwrap();
     let taken = model.take_sheet(0).unwrap();
     model.evaluate();
-    // `Calc` is now sheet 0.
+    // `Calc` is now sheet 0. As in Excel, a structured reference to the deleted sheet's table
+    // becomes `#REF!` and a plain one is displayed with `#REF!` for its sheet (T-2340).
     assert_eq!(value(&model, 0, 1, 1), "#REF!");
+    assert_eq!(formula(&model, 0, 1, 1), "=SUM(#REF!)");
+    assert_eq!(formula(&model, 0, 1, 2), "=SUM(#REF!$A$2:$A$3)");
     for (row, _) in PAIRS.iter().enumerate() {
         let row = row as i32 + 1;
-        assert_eq!(formula(&model, 0, row, 1), formula(&model, 0, row, 2));
+        assert!(!formula(&model, 0, row, 1).contains("Sales"));
         assert_eq!(value(&model, 0, row, 1), value(&model, 0, row, 2));
     }
     let names = model.workbook.defined_names.clone();
-    assert_eq!(names[0].formula, "SUM(Data!$A$2:$A$3)");
+    assert_eq!(names[0].formula, "SUM(#REF!)");
     assert!(model.workbook.tables.is_empty());
-    // A new sheet with the old name does not bring the table back.
+    // A new sheet with the old name does not bring the table back. The plain twin, whose stored
+    // text keeps the sheet name, reads the new sheet: a known gap from Excel (T-2612).
     model.add_sheet("Data").unwrap();
     model.evaluate();
-    assert_eq!(value(&model, 0, 1, 1), value(&model, 0, 1, 2));
+    assert_eq!(value(&model, 0, 1, 1), "#REF!");
+    assert_eq!(value(&model, 0, 1, 2), "0");
     model
         .delete_sheet(model.get_sheet_index_by_name("Data").unwrap())
         .unwrap();
     model.restore_sheet(0, taken).unwrap();
     model.evaluate();
     assert!(model.workbook.tables.contains_key("Sales"));
+    // The restore puts the structured references back.
+    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Sales[Qty])");
+    assert_eq!(model.workbook.defined_names[0].formula, "SUM(Sales[Qty])");
     model
         .set_user_input(1, 20, 1, "=SUM(Sales[Qty])".to_string())
         .unwrap();
@@ -390,11 +398,8 @@ fn undoing_a_sheet_delete_brings_the_tables_back() {
     assert_eq!(user.get_formatted_cell_value(0, 1, 1).unwrap(), "#REF!");
     user.undo().unwrap();
     assert_eq!(user.get_formatted_cell_value(1, 1, 1).unwrap(), "3");
-    // The other sheets' formulas stay as the delete left them (SPEC-0016), as plain ranges.
-    assert_eq!(
-        user.get_cell_content(1, 1, 1).unwrap(),
-        "=SUM(Data!$A$2:$A$3)"
-    );
+    // The undo puts back the structured references the delete made `#REF!` (T-2340).
+    assert_eq!(user.get_cell_content(1, 1, 1).unwrap(), "=SUM(Sales[Qty])");
     // The table is back: a new structured reference resolves.
     user.set_user_input(1, 20, 1, "=SUM(Sales[Qty])").unwrap();
     assert_eq!(user.get_formatted_cell_value(1, 20, 1).unwrap(), "3");
@@ -455,4 +460,66 @@ fn delete_table_clears_the_cells_and_a_huge_range_is_clamped() {
         })
         .unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 1_048_576, 1).unwrap(), "");
+}
+
+#[test]
+fn a_table_delete_makes_its_references_ref_errors_for_good() {
+    // probes/table-edits/table-delete-table (T-2340): the text becomes `#REF!`, so a later
+    // reparse (here from adding a sheet) keeps it.
+    let mut model = model();
+    model
+        .set_user_input(1, 20, 1, "=ROWS(Sales)".to_string())
+        .unwrap();
+    model.delete_table("Sales").unwrap();
+    model.add_sheet("Later").unwrap();
+    model.evaluate();
+    assert_eq!(formula(&model, 1, 1, 1), "=SUM(#REF!)");
+    assert_eq!(value(&model, 1, 1, 1), "#REF!");
+    assert_eq!(formula(&model, 1, 20, 1), "=ROWS(#REF!)");
+    assert_eq!(value(&model, 1, 20, 1), "#REF!");
+}
+
+#[test]
+fn a_displayed_deleted_sheet_reference_reads_back_as_ref() {
+    // Excel displays `S!C4:C7` as `#REF!C4:C7` once S is deleted (T-2340); typed back, that
+    // text is the #REF! error, not a parse error.
+    let mut model = model();
+    for (row, input) in ["=SUM(#REF!A1:A3)", "=#REF!$B$2", "=COUNTA(#REF!A1)"]
+        .iter()
+        .enumerate()
+    {
+        model
+            .set_user_input(1, row as i32 + 30, 1, (*input).to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    assert_eq!(value(&model, 1, 30, 1), "#REF!");
+    assert_eq!(value(&model, 1, 31, 1), "#REF!");
+    assert_eq!(value(&model, 1, 32, 1), "1");
+}
+
+#[test]
+fn convert_to_range_keeps_cells_and_makes_references_absolute_ranges() {
+    // T-2342: probes/table-edits/table-convert-to-range.
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model.set_user_input(0, 1, 1, "Qty".to_string()).unwrap();
+    model.set_user_input(0, 2, 1, "5".to_string()).unwrap();
+    model.set_user_input(0, 3, 1, "7".to_string()).unwrap();
+    model.add_table(0, "Sales", (1, 1, 3, 1), false).unwrap();
+    model
+        .set_user_input(0, 1, 3, "=SUM(Sales[Qty])".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 2, 3, "=ROWS(Sales[#All])".to_string())
+        .unwrap();
+    model.convert_table_to_range("Sales").unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "12");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 3).unwrap(), "3");
+    assert_eq!(
+        model.get_localized_cell_content(0, 1, 3).unwrap(),
+        "=SUM($A$2:$A$3)"
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "7");
+    assert!(model.convert_table_to_range("Sales").is_err());
 }

@@ -118,6 +118,15 @@ pub(crate) fn get_workbook_xml(
         DateSystem::Excel1904 => "<workbookPr date1904=\"1\"/>",
         DateSystem::Excel1900 => "",
     };
+    // Excel writes iterateCount and iterateDelta only when they differ from 100 and 0.001;
+    // writing them always is equivalent and keeps a round trip exact.
+    let calc_pr = match workbook.settings.iteration {
+        None => "<calcPr/>".to_string(),
+        Some(i) => format!(
+            r#"<calcPr iterate="1" iterateCount="{}" iterateDelta="{}"/>"#,
+            i.max_iterations, i.max_change
+        ),
+    };
     let sheets = sheets_str.join("");
     let defined_names = defined_names_str.join("");
     Ok(format!("{XML_DECLARATION}\n\
@@ -132,6 +141,6 @@ pub(crate) fn get_workbook_xml(
       <definedNames>\
         {defined_names}\
       </definedNames>\
-      <calcPr/>\
+      {calc_pr}\
     </workbook>"))
 }

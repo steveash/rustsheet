@@ -3,7 +3,7 @@ use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
-    decimal_round::round_shown_place,
+    decimal_round::{round_engineering, round_shown_place},
     locale::Locale,
     number_format::{cut_15_digits, to_precision},
     text::Text,
@@ -420,7 +420,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             {
                 return invalid_date(value_original);
             }
-            let clock = DisplayClock::new(value, fraction_digits, tokens);
+            let clock = DisplayClock::new(value, fraction_digits);
             let (hours, minutes, seconds) = clock.hms;
             let elapsed_fraction = clock.elapsed.as_ref();
             let day_serial = clock.days;
@@ -732,7 +732,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let tokens = &p.tokens;
             // `General` among literals shows the value itself, with its sign
             let general_value = value;
-            value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
+            let scaled = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
+            value = scaled;
             // p.precision is the number of significant digits _after_ the decimal point
             // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
             // probes-numeric/4f413cc257ce15c4 A23)
@@ -749,7 +750,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     // `00.0E+0` on 36.5 "36.5E+0"; eval/suites/gen-m10, T-1730). A zero
                     // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
                     let group = f64::from(p.digit_count.max(1));
-                    let exponent = (value_abs.log10().floor() / group).floor() * group;
+                    let exponent;
+                    if group > 1.0 {
+                        // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
+                        (value, exponent) = round_engineering(scaled, group, p.precision);
+                    } else {
+                        exponent = value_abs.log10().floor();
+                    }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
                     value /= 10.0_f64.powf(exponent);

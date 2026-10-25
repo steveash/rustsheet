@@ -3,7 +3,10 @@ use crate::cast::NumberOrArray;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::expressions::utils::is_out_of_range_r1c1_name;
+use crate::expressions::utils::{
+    is_indirect_unquoted_sheet, is_out_of_range_r1c1_name, quote_digit_leading_sheet,
+    unquote_sheet_prefix,
+};
 use crate::external_reference::{one_external_area, PickedReference};
 use crate::functions::logical::{if_arg_at, if_arg_dims};
 use crate::functions::text::util::within_text_budget;
@@ -16,7 +19,6 @@ use crate::{
     utils::ParsedReference,
 };
 
-use super::criteria::wildcard_text_matcher;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
@@ -26,15 +28,9 @@ pub(crate) use ref_lift::lifts_into_references;
 
 pub(crate) use drop_take::Edge;
 
-/// 2^31, the least size Excel reads as no longer a size: EXPAND's rows or columns (`#VALUE!`) and
-/// WRAPROWS/WRAPCOLS's `wrap_count` (`#NUM!`) refuse it (arrays.md "Stacked results past the grid",
-/// "WRAPROWS and WRAPCOLS with a huge `wrap_count`").
-const SIZE_LIMIT_EXCLUSIVE: f64 = 2_147_483_648.0;
-
 mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
-mod eta_min_args;
 mod expand;
 mod getpivotdata;
 mod group_functions;
@@ -52,6 +48,7 @@ pub(crate) mod pivot_index;
 mod pivotby;
 mod ref_lift;
 mod relative_to;
+pub(crate) mod search_cache;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
@@ -71,10 +68,8 @@ fn lookup_index(
 ) -> Option<usize> {
     if is_sorted {
         search_vector.approximate_search(lookup_value)
-    } else if let CalcResult::String(s) = lookup_value {
-        search_vector.position(wildcard_text_matcher(s))
     } else {
-        search_vector.exact_position(lookup_value)
+        search_vector.exact_match(lookup_value)
     }
 }
 
@@ -783,6 +778,10 @@ impl Model {
         };
 
         let parsed_reference = if a1 {
+            // The lexer takes no unquoted sheet name that starts with a digit; INDIRECT text
+            // does (`INDIRECT("2024!B1")` reads sheet `2024`; probes/indirect-sheet-scoped-name
+            // Summary!D3, docs/excel-semantics/lookup.md), so quote it for the parser.
+            let ref_text = quote_digit_leading_sheet(&ref_text);
             ParsedReference::parse_reference_formula(
                 Some(cell.sheet),
                 &ref_text,
@@ -832,11 +831,14 @@ impl Model {
         }
         let scope = match text.rsplit_once('!') {
             Some((prefix, _)) => {
-                let prefix = prefix
-                    .strip_prefix('\'')
-                    .and_then(|p| p.strip_suffix('\''))
-                    .unwrap_or(prefix);
-                self.get_sheet_index_by_name(prefix)?
+                // Unquoted, the sheet name may hold only letters, digits, '_' and '.':
+                // `INDIRECT("Co A!tn")`, `"P&L!tn"` and `"O'B!tn"` are #REF!, while `"2024!tn"`,
+                // `"Q1!tn"`, `"x.y!tn"` and the quoted `"'O''B'!tn"` resolve
+                // (probes/indirect-sheet-scoped-name, docs/excel-semantics/lookup.md).
+                if !prefix.starts_with('\'') && !is_indirect_unquoted_sheet(prefix) {
+                    return None;
+                }
+                self.get_sheet_index_by_name(&unquote_sheet_prefix(prefix)?)?
             }
             None => sheet,
         };
@@ -941,6 +943,9 @@ impl Model {
 
     /// FORMULATEXT of the one cell `at`: its formula, or `#N/A` when it holds none.
     fn formula_text_of(&self, at: CellReferenceIndex, cell: CellReferenceIndex) -> CalcResult {
+        if let Some(table) = self.data_table_at(at) {
+            return CalcResult::String(table.formula_text().into());
+        }
         if let Ok(Some(f)) = self.get_english_cell_formula(at.sheet, at.row, at.column) {
             CalcResult::String(f.into())
         } else {

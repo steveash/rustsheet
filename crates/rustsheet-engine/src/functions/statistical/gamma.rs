@@ -3,7 +3,7 @@ use statrs::distribution::{Continuous, Gamma};
 use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
-use super::incomplete_gamma::{gamma_cdf, gamma_quantile, Tail};
+use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, Tail};
 
 use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
@@ -84,7 +84,7 @@ impl Model {
         let result = if cumulative {
             gamma_dist_cdf(&dist, x, beta_scale)
         } else {
-            dist.pdf(x)
+            gamma_density(alpha, x, beta_scale).unwrap_or_else(|| dist.pdf(x))
         };
         if !result.is_finite() {
             return Err(num_error(cell));

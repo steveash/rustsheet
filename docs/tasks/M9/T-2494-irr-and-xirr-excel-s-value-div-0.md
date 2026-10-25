@@ -8,7 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -61,7 +61,16 @@ Cells:
 - gen-m9/d912671baa1364aa.case.json (1): Calc!A158
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A395
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `IRR(Data!C10:D12,<blank guess>)` is `#NUM!` (ours 19999998.999885842).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/abc2939ebd1e2365 Calc!A280 `=FISHERINV((COUNTIF(Data!B1:D12,"abc")/IRR(Data!C10:D12,Data!E12)))`: Excel #NUM!, ours 0.0; inner `IRR(Data!C10:D12,Data!E12)` Excel #NUM!, ours 19999998.999885842
+Cells:
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A280
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): these 21 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests for a 1E+300 guess and the probed causes of A63's `#VALUE!` and A56's `#DIV/0!`; scalar flows stay `#NUM!`.

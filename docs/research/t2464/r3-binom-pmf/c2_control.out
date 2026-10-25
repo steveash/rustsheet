@@ -1,0 +1,8 @@
+1320 rows; planted (row) vs scored (column), exact matches
+               L-ext/LF0   L-ext/LF1   L-lcx/LF0   L-lcx/LF1  L-lcx/lnfR  L-lcxx/LF0
+L-ext/LF0           1320         420         726         221         305         694
+L-ext/LF1            420        1320         223         737         494         204
+L-lcx/LF0            726         223        1320         421         421        1141
+L-lcx/LF1            221         737         421        1320         840         348
+L-lcx/lnfR           305         494         421         840        1320         361
+L-lcxx/LF0           694         204        1141         348         361        1320

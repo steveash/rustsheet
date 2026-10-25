@@ -621,9 +621,9 @@ fn fn_oddlprice_oddlyield_roundtrip() {
 
 #[test]
 fn fn_oddlprice_long_last_period_basis1_settlement_before_li() {
-    // Settlement before last_interest: regular coupons remain plus an odd final
-    // payment. Long last period (Oct-2024 to Aug-2025 > 6 months), actual/actual
-    // basis exercises the per-quasi-period day-count weighting.
+    // Settlement before last_interest is #NUM! in Excel for both functions, whatever the
+    // period length or basis (probes/odd-bond-argument-check-order A909:A922, excel-graph,
+    // T-2483); this test once priced it as regular coupons plus an odd final payment.
     let mut model = new_empty_model();
     model._set(
         "A1",
@@ -631,14 +631,11 @@ fn fn_oddlprice_long_last_period_basis1_settlement_before_li() {
     );
     model._set(
         "A2",
-        "=ODDLYIELD(DATE(2023,3,1),DATE(2025,8,15),DATE(2024,10,15),0.06,A1,100,2,1)",
+        "=ODDLYIELD(DATE(2023,3,1),DATE(2025,8,15),DATE(2024,10,15),0.06,101,100,2,1)",
     );
     model.evaluate();
-    let p: f64 = model._get_text("A1").parse().unwrap();
-    let y: f64 = model._get_text("A2").parse().unwrap();
-    // Above-coupon-rate context: price above par, yield recovered.
-    assert!(p > 100.0, "ODDLPRICE long last period = {p}");
-    assert!((y - 0.05).abs() < 1e-6, "ODDLYIELD roundtrip = {y}");
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
 }
 
 #[test]
@@ -691,4 +688,39 @@ fn bond_prices_discount_with_excels_power() {
     assert_eq!(bits("A1"), 108.226_897_223_108_92_f64.to_bits());
     assert_eq!(bits("A2"), 83.347_166_283_754_35_f64.to_bits());
     assert_eq!(bits("A3"), 92.407_763_209_327_3_f64.to_bits());
+}
+
+#[test]
+fn coupon_dates_past_the_calendar_are_num_as_read() {
+    // T-2486: a settlement or maturity past 9999-12-31 is #NUM! before a later error, text or
+    // boolean (probes/coup-calendar-edges A1-A8; gen-m9 a91bad4e84f49739 A153, 89f0aee953a55a45
+    // A363).
+    let mut model = new_empty_model();
+    model._set("A1", "=COUPNUM(37484,2958466,2,NA())");
+    model._set("A2", "=COUPDAYS(123456789,TRUE,4)");
+    model._set("A3", "=COUPDAYS(39123,2958466,1,0)");
+    model._set("A4", "=COUPPCD(39000,2958465.9,2)");
+    model._set("A5", "=COUPNCD(2958465.5,NA(),2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+    assert_eq!(model._get_text("A4"), "38898");
+    assert_eq!(model._get_text("A5"), "#N/A");
+}
+
+#[test]
+fn coupon_dates_keep_the_maturitys_day() {
+    // T-2486: each coupon date is the maturity moved back whole periods, so the 29th survives a
+    // February (probes/coup-calendar-edges B1-B14; gen-m9 7d2979fba2c95d64 A304).
+    let mut model = new_empty_model();
+    model._set("A1", "=COUPDAYBS(37913,46720,4,4)");
+    model._set("A2", "=COUPPCD(37913,46720,4)");
+    model._set("A3", "=COUPNCD(DATE(2020,1,1),DATE(2027,5,30),4)");
+    model._set("A4", "=COUPDAYSNC(37913,46720,4,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "50");
+    assert_eq!(model._get_text("A2"), "37862");
+    assert_eq!(model._get_text("A3"), "43890");
+    assert_eq!(model._get_text("A4"), "41");
 }

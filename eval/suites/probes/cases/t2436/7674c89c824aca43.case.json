@@ -1,0 +1,77 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2436: sub-expressions of the untraced gen-m9 cells of gen-m9/7674c89c824aca43 (A305), on that case's Data sheet; one sub-expression per row block (column A, with its ROWS in T and COLUMNS in U).",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=TAKE(Data!E$7,2,42)",
+        "T1": "=ROWS(TAKE(Data!E$7,2,42))",
+        "U1": "=COLUMNS(TAKE(Data!E$7,2,42))",
+        "A16": "=(Data!E$9-TAKE(Data!E$7,2,42))",
+        "T16": "=ROWS((Data!E$9-TAKE(Data!E$7,2,42)))",
+        "U16": "=COLUMNS((Data!E$9-TAKE(Data!E$7,2,42)))",
+        "A31": "=CHITEST((Data!E$9-TAKE(Data!E$7,2,42)),Data!C8:C10)",
+        "T31": "=ROWS(CHITEST((Data!E$9-TAKE(Data!E$7,2,42)),Data!C8:C10))",
+        "U31": "=COLUMNS(CHITEST((Data!E$9-TAKE(Data!E$7,2,42)),Data!C8:C10))"
+      }
+    },
+    {
+      "cells": {
+        "A1": "?b",
+        "A10": "1",
+        "A11": true,
+        "A12": 100,
+        "A2": "Hello World",
+        "A3": 7,
+        "A5": 0.2,
+        "A6": 0.3,
+        "A7": false,
+        "A8": 0.2,
+        "A9": 1000000000000000.0,
+        "B1": "a*",
+        "B10": "abc",
+        "B11": 0.1,
+        "B2": 0.2,
+        "B3": false,
+        "B4": -2.5,
+        "B6": 0.1,
+        "B7": 42,
+        "B8": 1,
+        "C1": 0.2,
+        "C10": -0.0001,
+        "C11": -0.5,
+        "C12": "?b",
+        "C2": false,
+        "C5": 1.005,
+        "C9": -1,
+        "D1": "ü",
+        "D10": 0.5,
+        "D11": 100,
+        "D12": 1,
+        "D2": 2,
+        "D3": 100,
+        "D4": -1,
+        "D6": false,
+        "D7": 3.14159,
+        "D8": false,
+        "D9": true,
+        "E1": "a*",
+        "E12": "TRUE",
+        "E2": 123456789.123,
+        "E3": "ü",
+        "E4": "x",
+        "E5": 0.1,
+        "E6": -2.5,
+        "E7": "a*",
+        "E8": 1.005
+      },
+      "name": "Data"
+    }
+  ],
+  "expected": {}
+}

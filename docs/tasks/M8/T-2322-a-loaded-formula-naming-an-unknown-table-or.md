@@ -3,7 +3,7 @@ id: T-2322
 title: "A loaded formula naming an unknown table or column is #REF! and prints #REF! (T-2197)"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,10 @@ records the engine's own behavior).
 
 ## Out of scope
 - Formulas typed through the API that name an unknown table (an edit-time question, not probed).
+
+## Outcome
+Stored formulas (xlsx import and `Input::StoredFormula`, which the eval adapter replays) naming an unknown
+table or column now lower to `#REF!` (`Parser::set_loaded`, `Model::set_loaded_user_input`); typed formulas
+and the re-parse after `remove_table` keep the parse error. Eval: probes known failures 2839 -> 2835 (the
+4 cells of table-unknown-name-load and table-unknown-column-load). Unit test:
+`crates/rustsheet-xlsx/tests/table_part_names.rs::unknown_table_or_column_loads_as_ref`.

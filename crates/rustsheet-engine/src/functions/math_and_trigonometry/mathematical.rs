@@ -6,7 +6,7 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
 use crate::functions::statistical::IfsShape;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
@@ -27,7 +27,7 @@ const BASE_NUMBER_LIMIT: f64 = 9_007_199_254_740_992.0;
 /// COMBIN's `number`, and COMBINA's `number + number_chosen - 1`, at or above which Excel gives
 /// `#NUM!`, whatever the coefficient: 2^31-1 (probes/t2199-text-length-and-combin-cuts A20-A37,
 /// B20-B34; numbers.md "COMBINA is COMBIN(n+k-1, k)", "Bound").
-const COMBIN_MAX_NUMBER: f64 = 2_147_483_647.0;
+const COMBIN_MAX_NUMBER: f64 = crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
 /// SIN, COS, TAN, COT, SEC and CSC are `#NUM!` from |x| = 2^27 (SIN(2^27-1) is a number, SIN(2^27)
 /// is `#NUM!`; probes/trig-huge-argument, docs/excel-semantics/numbers.md "Trig of a huge angle").
@@ -57,6 +57,7 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
     grids: GridReading::TopLeft,
+    nested: NestedReading::NotAvailable,
 };
 
 /// LOG of `x` in `base`, or LOG10 with the base omitted: not ln(x)/ln(10), as `LOG(1000)` is 3
@@ -788,25 +789,29 @@ impl Model {
         }
     }
 
+    /// COMBIN; both arguments lift over a range or an array, as COMBINA's do:
+    /// `SUM(COMBIN(18,FILTER(..)))` and `SUM(COMBIN(D1:D3,1))` add the elements' results
+    /// (probes/t2579-array-value-edges B60-B68, excel-graph; T-2579).
     pub(crate) fn fn_combin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        let k = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        if n < 0.0 || k < 0.0 {
-            return num_error(cell);
-        }
-        if k > n {
-            return num_error(cell);
-        }
-        if n >= COMBIN_MAX_NUMBER {
+        self.lift_call(Function::Combin, args, cell, &mut |model, values| {
+            let [n, k] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let n = match model.kernel_number(n, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            let k = match model.kernel_number(k, cell) {
+                Ok(f) => f.floor(),
+                Err(error) => return error,
+            };
+            Self::combin_of(n, k, cell)
+        })
+    }
+
+    /// COMBIN on a floored `n` and `k` (see `fn_combin`).
+    fn combin_of(n: f64, k: f64, cell: CellReferenceIndex) -> CalcResult {
+        if n < 0.0 || k < 0.0 || k > n || n >= COMBIN_MAX_NUMBER {
             return num_error(cell);
         }
         match combin(n, k) {

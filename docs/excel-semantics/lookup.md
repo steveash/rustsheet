@@ -36,6 +36,30 @@ an INDIRECT argument (functions/information/mod.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1657, T-1682
 
+## INDIRECT of `Sheet!Name` text: the prefix must be spelled as a formula would spell it
+Rule: `INDIRECT("<Sheet>!<Name>")` reads a name that exists only at that sheet's scope from any
+sheet (`INDIRECT(A1&"!tn")` on Summary, A1 `CoB`, is CoB's `tn`; a range name sums, counts and
+spills; `ISREF` TRUE), sheet and name text case-insensitive. Unprefixed text reads the INDIRECT's
+own sheet scope only: `INDIRECT("tn")` is `#REF!` on a sheet with no `tn` though other sheets
+define one, and `"Summary!tn"` is `#REF!` too. The prefix follows formula quoting: unquoted, the
+sheet name may hold only letters, digits, `_` and `.`, so `"Co A!tn"`, `"P&L!tn"` and `"O'B!tn"`
+are `#REF!` (also with `a1` FALSE) while `"2024!tn"`, `"Q1!tn"` and `"x.y!tn"` resolve; quoted,
+`''` is one quote (`"'O''B'!tn"` resolves) and any sheet name may be quoted (`"'CoB'!tn"`).
+Verified for ASCII sheet names only; unquoted non-ASCII names (`"Données!tn"`) and letter-after-digit
+names (`"1Q!tn"`) are unprobed (the engine accepts them).
+Cell text follows the same quoting for `"Co A!B1"`, `"P&L!B1"` and `"O'B!B1"` (`#REF!`), and
+`"Q1!B1"`, `"x.y!B1"` and `"2024!B1"` (an unquoted all-digit sheet, `"y2024"`) resolve; the engine
+quotes a digit-leading prefix for its lexer (T-2678). A typed `=2024!B1`, the R1C1 form `INDIRECT("2024!R1C1",FALSE)` and `"2024!B1:2024!B3"` are unprobed.
+Evidence: probes/indirect-sheet-scoped-name (excel-graph, 2026-10-25, T-2660).
+Calipers note: `calipers/pv_goldens/pv26_020` and `pv26_2_020` `Summary!C17:...17` are not evidence
+for this rule: the corpus anonymisation renamed the text in `Summary!B17` to `Company0691` but left
+the sheet it names as `ConAgra` (whose `TargetName`, D24, is the cached `Company2277`), so the
+workbook as shipped has no `Company0691` sheet and `#REF!` is right for it (lookup.md "INDIRECT to
+a sheet that does not exist is #REF!").
+Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2660
+
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
 Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
 `INDIRECT("H2",-1)` = 5, `"TRUE"` text = TRUE), `0` is FALSE, so `INDIRECT("H2",0)` reads "H2" as R1C1
@@ -151,8 +175,8 @@ the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scal
 - An error range_lookup is that error per element: `NA()` gives `#N/A` and `1/0` gives `#DIV/0!` (G7, G29).
 - An error lookup_value element keeps its own error (`{1;#DIV/0!}`).
 - A range lookup_value lifts the same way, and so does HLOOKUP (`HLOOKUP({1,2},D1:E2,2,"x")`, 2 columns of `#VALUE!`).
-- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's,
-  ahead of a bad range_lookup and of the search:
+- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's
+  (except an error lookup_value element, which keeps its own, T-2456 H2), ahead of a bad range_lookup and of the search:
   - `VLOOKUP({1;2},A1:B2,"a",NA())` is `#VALUE!` per element (G20).
   - `VLOOKUP({1;99},A1:B2,1/0,"1")` is `#DIV/0!` per element (G24).
   - Under exact match 99 is not found, and the index error still wins: `VLOOKUP({1;99},A1:B2,"a",FALSE)` is `#VALUE!` and
@@ -165,6 +189,10 @@ the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scal
   Beside a bad range_lookup, every element is that range_lookup's `#VALUE!` (`VLOOKUP({1;99},A1:B2,0,"1")`, G28).
 - Text range_lookup that reads as a boolean works: `VLOOKUP({1;2},A1:B2,2,"TRUE")` is "one", "two" (G18, G19).
 - The scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
+Each element of those claims is probed (probes/vlookup-t2411-elements, excel-graph, 2026-10-25, T-2456):
+`VLOOKUP({1;#N/A},A1:B2,"a")` is `#VALUE!` in the first element and `#N/A` in the second (H1, H2: the failed index
+does not hide an error lookup_value element); `HLOOKUP({1,2},D1:E2,2,"x")` is `#VALUE!` in both columns (H3, H4); and
+`VLOOKUP({1;2},A1:B2,2,"TRUE")` is "one", "two" (H5, H6).
 Ours: matches since T-2411.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
 search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is
@@ -690,7 +718,11 @@ Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); 
 probes/index-zero-index-scalar-shape (excel-graph, 2026-10-20, T-1943).
 Status: VERIFIED (excel-graph)
 Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs); a legacy N over `INDEX(5,0,0)` or
-`INDEX(5,0)` (a scalar first argument) is `#VALUE!` with no `@` (T-2191, `indexes_a_number_whole` in static_analysis/legacy.rs).
+`INDEX(5,0)` (a scalar first argument) is `#VALUE!` with no `@` (T-2191, `indexes_a_scalar_whole` in static_analysis/legacy.rs).
+The same holds for T and for every scalar literal: a legacy `=T(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX("a",0,0))`,
+`=N(INDEX(TRUE,0))`, `=N(INDEX(-5,0,0))` (a negated number), `=N(INDEX(5,,0))` (an empty row reads as 0) and the one-index
+forms are all `#VALUE!`, and `FORMULATEXT` shows them with no `@`.
+Evidence: probes/index-zero-index-scalar-t-n (excel-graph, 2026-10-24, T-2368). Ours: implemented (T-2368).
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
@@ -715,7 +747,7 @@ Probed (excel-graph, 2026-10-12, T-1407), row and column index alike:
   (probes/index-area-num-snap J1:J11, excel-graph, T-1424).
 Evidence: probes/index-tiny-negative, probes/index-snap-tolerance and probes/index-area-num-snap.
 Implemented in: `index_number` and `index_numbers` (area_num) (functions/lookup_and_reference/index.rs) with `near_integer_count` and
-`NEAR_INTEGER_TOLERANCE` (functions/util.rs). The negative cut is half the positive bound to within 1E-14
+`NEAR_INTEGER_TOLERANCE` (functions/util/near_integer.rs). The negative cut is half the positive bound to within 1E-14
 (-1.1926749E-7 vs -1.1926751E-7); the engine takes it as exactly half, inclusive.
 Status: VERIFIED (web)
 Tasks: T-1407, T-1424
@@ -1041,3 +1073,57 @@ So are the other empty values: an omitted argument (`MMULT(,2)`), IFERROR of a b
 Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as blank, as a blank cell.
 Status: VERIFIED (excel-graph)
 Tasks: T-2278
+
+## XMATCH and XLOOKUP floor a fractional mode, snapping near an integer (T-2656)
+Rule (excel-graph, 2026-10-25): XMATCH and XLOOKUP read `match_mode` and `search_mode` the way DATE and TIME read their
+arguments (dates.md "TIME: an argument past 32767 is `#NUM!`"): the value is floored toward minus infinity. A value just
+below an integer counts as that integer: within `NEAR_INTEGER_TOLERANCE` (2^-22 + 2^-33) for a positive value, and half of
+that (2^-23 + 2^-34) for a negative one. Neither the 15-digit cut of INT nor truncation applies. So `0.5^1E-15`
+(0.9999999999999993), `1-1E-7`, 0.9999999999999 and 1.99999999999999 read 1, 1, 1 and 2, while `1-2.5E-7` reads 0.
+`XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is therefore `#N/A`, not `#VALUE!`. Ties and other fractions floor: 0.5 reads 0, 1.5 reads 1,
+2.5 and 2.6 read 2, while -0.4 and -0.5 read -1, -1.5 reads -2 and -2.5 reads -3, all the same for both modes and both functions.
+The edges are bracketed to a relative 2^-14 (an absolute ~2^-36), and the engine constants sit on the snapping side:
+- `1-2^-22*(1+2^-11)` reads 1 and `1-2^-22*(1+9*2^-14)` reads 0. This holds at that resolution below 1, 2 and 3 for
+  XMATCH (snap-edge-fine; xlookup-mode-snap-edge column E) and for XLOOKUP's search_mode. The XMATCH 2^-25 grid
+  agrees below 3 (2^-22 reads 3, 2^-22 + 2^-25 reads 2). The bound is absolute.
+- `-(2^-23*(1+2^-11))` reads 0 and `-(2^-23*(1+9*2^-14))` reads -1, at that resolution below 0 and -1 for XMATCH and
+  below 0, -1 and -2 for XLOOKUP.
+- XLOOKUP's match_mode and search_mode snap at the same points as XMATCH's: `1-1E-7` and `-1-1E-8` snap, `1-2.5E-7` and
+  `-1E-7` do not (probes/t2656-xlookup-mode-snap-edge, every non-regex cell).
+A tiny negative mode reads 0 (`-1E-7`, `-1E-10`, `-1E-300`). TRUE reads 1, and the text "1" and "1.5" read 1. ±1E300 is
+`#VALUE!`, as is any value that floors outside the valid modes.
+A match_mode of 3 (or one that floors to 3) is the regex mode in both functions: `XMATCH(2.5,{1,2,3},3)` is `#N/A`, the
+XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both ("XMATCH and XLOOKUP regex mode" below; T-2669).
+Evidence: probes/t2656-xmatch-mode-near-integer, -rounding, -snap, -snap-boundary, -snap-bisect, -snap-grid, -snap-edge,
+-snap-edge-fine, and probes/t2656-xlookup-mode-snap-edge (1138 cells, excel-graph, 2026-10-25);
+probes/t2496-fin-subexpressions P!A1, P!A2; gen-m9/01523d247594952e Calc!A51.
+Status: VERIFIED (excel-graph), within the brackets above. Ours matches every cell (XLOOKUP's regex mode since T-2669).
+Implemented in: functions/util/near_integer.rs `near_integer_whole` (shared with DATE and TIME), read by `Model::xmatch_of`
+(lookup_and_reference/xmatch.rs) and `xlookup_modes` (xlookup.rs).
+Tasks: T-2656, T-2669
+
+## XMATCH and XLOOKUP regex mode (T-2669)
+Rule (excel-graph, 2026-10-25): `match_mode` 3 is a regular-expression match in XLOOKUP as in XMATCH.
+- **Matching:** the pattern is found anywhere in a candidate's text (`"o"` finds "Dog"; anchors work: `"^o"` finds nothing,
+  `"^c.t$"` finds "cat"), case-sensitively (`"dog"` skips "Dog"; `"(?i)dog"` finds it).
+- **Text of the values:** both sides read as text the way a scalar reads as text (`calc_scalar_to_string`). A number is
+  its text, so `"12"` and `"12\.5"` find 12.5, `"E"` finds 1E+20 and the lookup value `0.1+0.2` is the pattern "0.3". A
+  boolean is TRUE or FALSE, so `"TRUE"` and the lookup value TRUE find TRUE but `"true"` does not. A blank cell is "", so
+  `"^$"` finds a blank as well as a `""` cell, and the empty pattern finds the first candidate. A blank cell as the
+  lookup value is the empty pattern too (`XMATCH(Z99,A1:A3,3)` is 1, with search_mode -1 it is 3).
+- **No match:** an error candidate never matches (`"#N/A"` skips #N/A).
+- **Errors:** an invalid pattern (`"("`) is `#VALUE!`, never XLOOKUP's if_not_found. A binary search_mode (2 or -2) is
+  `#VALUE!` in regex mode, as in wildcard mode.
+- **Search direction:** search_mode -1 finds the last match.
+- **Lifting:** a lifted lookup_value lifts one search per element (`XLOOKUP({"o";"zzz";"^c"},...,"nf",3)` spills 20, "nf",
+  10).
+- **Syntax:** the pattern syntax is PCRE2's, as in the REGEX* functions. Lookbehind `(?<=D)og` and a backreference
+  `(d)\1` match in Excel. Ours compiles with the `regex` crate, which refuses both with `#VALUE!` (T-2680).
+Evidence: probes/t2669-xlookup-regex-mode (60 cells: XLOOKUP in D beside XMATCH in E), -blanks (14 cells) and -lift (12
+cells: lifting, a blank-cell pattern, PCRE2 syntax); the regex
+cells of probes/t2656-xmatch-mode-near-integer G7, G21, -rounding G15, t2656-xlookup-mode-snap-edge C8.
+Status: VERIFIED (excel-graph). Ours matches every cell but the two PCRE2-only patterns (-lift G1, G2; T-2680). Before
+T-2669, XLOOKUP rejected mode 3, XMATCH read a boolean as "true", and a non-text lookup value gave no pattern.
+Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `regex_scan`, used by XMATCH's
+`linear_search` and XLOOKUP's (xlookup.rs).
+Tasks: T-2669, T-2680

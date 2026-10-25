@@ -181,6 +181,13 @@ impl Engine for RustSheetEngine {
         .map_err(|e| e.to_string())?;
         // The harness only reads final values: skip the per-edit value diff.
         workbook.set_track_changes(false);
+        if let Some(c) = spec.calculation.as_ref().filter(|c| c.iterate) {
+            let default = rustsheet::Iteration::default();
+            workbook.set_iteration(Some(rustsheet::Iteration {
+                max_iterations: c.iterate_count.unwrap_or(default.max_iterations),
+                max_change: c.iterate_delta.unwrap_or(default.max_change),
+            }));
+        }
         workbook
             .edit(|tx| {
                 let mut ids = Vec::with_capacity(spec.sheets.len());
@@ -252,6 +259,22 @@ impl Engine for RustSheetEngine {
                     }
                 }
                 for (sheet, &id) in spec.sheets.iter().zip(&ids) {
+                    for table in &sheet.data_tables {
+                        let input = |a1: &Option<String>| -> Result<_, rustsheet::EditError> {
+                            let Some(a1) = a1.as_deref() else {
+                                return Ok(None);
+                            };
+                            let addr = Addr::parse(a1).ok_or_else(|| {
+                                rustsheet::EditError::Engine(format!("bad address {a1}"))
+                            })?;
+                            Ok(Some(CellRef::new(id, addr.row - 1, addr.col - 1)?))
+                        };
+                        tx.add_data_table(
+                            range_ref(id, &table.range)?,
+                            input(&table.row_input)?,
+                            input(&table.column_input)?,
+                        )?;
+                    }
                     for (a1, format) in &sheet.number_formats {
                         let addr = Addr::parse(a1).ok_or_else(|| {
                             rustsheet::EditError::Engine(format!("bad address {a1}"))
@@ -320,15 +343,12 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
                 let id = sheet_id_of(workbook, sheet)?;
                 workbook.edit(|tx| tx.delete_sheet(id)).map(drop)
             }
-            // The engine has no convert to range yet: the case scores as an adapter error.
-            SheetOp::ConvertTable { .. } => {
-                return Err(format!(
-                    "sheet op {op:?}: the engine cannot convert a table to a range"
-                ));
-            }
             // Not `Txn` edits: the facade has no structural edits yet, so the harness uses its
             // feature-gated ones (decisions 0076, 0098). Rows and columns are 1-based in the case
             // file. A `Txn` edit recalculates on commit; these do not.
+            SheetOp::ConvertTable { table, .. } => workbook
+                .convert_table_to_range(table)
+                .map(|()| workbook.recalculate()),
             SheetOp::DeleteTable { table, .. } => workbook
                 .delete_table(table)
                 .map(|()| workbook.recalculate()),
@@ -558,9 +578,9 @@ mod tests {
     }
 
     #[test]
-    fn convert_table_and_bad_structural_ops_are_adapter_errors() {
+    fn bad_structural_ops_are_adapter_errors() {
         for op in [
-            r#"{"op":"convert_table","sheet":"Calc","table":"Sales"}"#,
+            r#"{"op":"convert_table","sheet":"Calc","table":"Nope"}"#,
             r#"{"op":"delete_table","sheet":"Calc","table":"Nope"}"#,
             r#"{"op":"delete_row","sheet":"Calc","row":0}"#,
             r#"{"op":"delete_row","sheet":"Nope","row":1}"#,

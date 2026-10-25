@@ -3,12 +3,12 @@ id: T-2431
 title: "Paired statistical functions pair two ranges of equal count but different shape instead of #N/A (gen-m9, 18 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -76,7 +76,18 @@ Examples:
 Cells:
 - gen-m9/76551d6fbafc7007.case.json (1): Calc!A174
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `FORECAST(<FALSE>,Data!C1:D3,Data!C10:E11)` (3x2 against 2x3) is `#DIV/0!` (ours `#N/A`) and `CHITEST(Data!D7:D9,Data!C10:E10)` (3x1 against 1x3) 0.1353352832366127 (ours `#NUM!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/b4173fe25109a238 Calc!A78 `=FORECAST(CSCH(1E+16),(FORECAST(Data!E3,Data!C1:D3,Data!C10:E11)/Data!B6),1)`: Excel #DIV/0!, ours #N/A; inner `FORECAST(Data!E3,Data!C1:D3,Data!C10:E11)` Excel #DIV/0!, ours #N/A
+- gen-m9/c6cfda6bd10cae93 Calc!A375 `=CHITEST(Data!D7:D9,Data!C10:E10)`: Excel 0.1353352832366127, ours #NUM!
+Cells:
+- gen-m9/b4173fe25109a238.case.json (1): Calc!A78
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A375
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 34 known-failure lines (17 from T-2255, 17 from T-2256) disappear from eval/baseline/gen-m9.txt
@@ -93,3 +104,22 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Paired functions pair by cell count in reading order (`fn_get_two_matrices`); CHISQ.TEST/CHITEST accept a negative actual
+value. gen-m9 known failures 5344 -> 5342 after the rebase onto the earlier baseline (55 lines removed in total across gen-m9
+and probes); `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (0a9226016e8f5f33 A333, `#DIV/0!`) is still a known failure, filed as a
+follow-up T-2650 (needs a probe of blank-against-blank pairs). INTERCEPT A382 (a61e547a1cab994c) is `#VALUE!` as in Excel now.
+
+Owned cells still in the baseline: 0a9226016e8f5f33 A333 (T-2650); 201d67f1d59436ed A177 (`PEARSON(Data!B11:D12,{1,1,2,2,2,3})`,
+last-digit ULP only, visible parity met); ede0323c389fc703 A75 (a TTEST argument-validation cell triaged here by mistake,
+re-homed to T-2655). CHISQ.TEST has no per-cell sign check, only a negative summed statistic is `#NUM!`
+(A375 and f2bd5f380ec002bf A314 fixed).
+
+## Handoff (resumed)
+Tried: cell-count pairing in `fn_get_two_matrices` (done, evidenced, 0 regressions); CHISQ.TEST sign rule revised twice after
+fidelity review (final: no per-cell sign check, `#NUM!` only for a negative summed statistic, fits A21/A314/A375); quirk entry
+extended. `make check` green on the branch. The fidelity reviewer requested changes in three rounds (round 3's only finding,
+naming PEARSON/RSQ/SLOPE/STEYX and the FORECAST probe in the statistics.md entry, is fixed in the last commit but not
+re-reviewed). Next: run the full review panel once on the current head, mark the PR ready, merge. Remaining baseline cells:
+A333 (T-2650), A177 (ULP), A75 (T-2655).

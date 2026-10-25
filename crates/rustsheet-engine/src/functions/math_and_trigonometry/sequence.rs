@@ -2,10 +2,15 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
-use crate::limits::check_array_size;
+use crate::limits::check_built_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+
+/// What Excel adds to a SEQUENCE extent before flooring it: 2^-23, the single-precision epsilon,
+/// symmetric about 0 (probes/empty-array-args-sequence A120:A134), unlike `near_integer_floor`'s
+/// window. Probed near 0, 1 and 1048577 only (arrays.md).
+const EXTENT_EPSILON: f64 = f32::EPSILON as f64;
 
 impl Model {
     /// `=SEQUENCE(rows, [cols], [start], [step])`
@@ -26,11 +31,10 @@ impl Model {
     /// One SEQUENCE call over argument values. A missing or empty argument takes its default.
     fn sequence_kernel(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         // Every argument is read first, so an error value in any of them beats an invalid extent
-        // (`SEQUENCE(0,1,<#NUM!>,..)` is `#NUM!`, gen-m7 36809e9faa59553f A334); then rows is
-        // checked, then columns: negative or past the grid `#VALUE!`, 0 `#CALC!` (probes/
-        // m7-argument-modes F53), so `SEQUENCE(0,<negative>)` is `#CALC!` (c36ff5f42a1a4d47 A359)
-        // and a rows of 1E+15 beats a zero columns (611ce3bbfab27cef A1065); arrays.md "SEQUENCE
-        // and TAKE: an argument error before zero rows"; T-2316.
+        // (`SEQUENCE(0,1,<#NUM!>,..)` is `#NUM!`, gen-m7 36809e9faa59553f A334); then each extent
+        // is checked, an invalid one (negative or past 1048576) `#VALUE!` and beating a zero one,
+        // and only then a zero rows or columns is `#CALC!` (probes/empty-array-args-sequence;
+        // arrays.md "SEQUENCE and TAKE: an argument error before zero rows"; T-2316, T-2580).
         let number = |value: Option<&CalcResult>| match value {
             None | Some(CalcResult::EmptyArg) => Ok(1.0),
             Some(value) => self.cast_number_ref(value, cell),
@@ -43,31 +47,46 @@ impl Model {
             }
         }
         let [rows, columns, start, step] = read;
-        let extent = |n: f64, last: usize, name: &str| -> Result<usize, CalcResult> {
-            let n = n.floor() as i64;
-            let error = match n {
-                0 => Error::CALC,
-                n if n < 0 => Error::VALUE,
-                n => match usize::try_from(n) {
-                    Ok(n) if n <= last => return Ok(n),
-                    _ => Error::VALUE,
-                },
-            };
-            Err(CalcResult::new_error(
-                error,
-                cell,
-                format!("{name} must be between 1 and {last}"),
-            ))
+        // An extent past its limit or negative is `#VALUE!` and beats a zero in the other one
+        // (`SEQUENCE(0,-1)`, `SEQUENCE(0.0123,123456789.123)`); only then does a zero give `#CALC!`
+        // (probes/empty-array-args-sequence A22:A62). Columns reach 1048576 like rows, past the
+        // 16384 of the grid (`SEQUENCE(0,1048576)` is `#CALC!`, `SEQUENCE(0,1048577)` `#VALUE!`).
+        let extent = |n: f64, name: &str| -> Result<usize, CalcResult> {
+            // Excel floors an extent within 2^-23 of the next integer up to it: `-1.19E-7` and
+            // `0.99999999` are 0 and 1, `-1.2E-7` and `0.999999` -1 and 0 (probes/
+            // empty-array-args-sequence A120:A134; `SEQUENCE(0,-1E-8)` is `#CALC!`, gen-m7
+            // c36ff5f42a1a4d47 A359).
+            let n = (n + EXTENT_EPSILON).floor() as i64;
+            match usize::try_from(n) {
+                Ok(n) if n <= LAST_ROW as usize => Ok(n),
+                _ => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("{name} must be between 1 and {LAST_ROW}"),
+                )),
+            }
         };
-        let rows = match extent(rows, LAST_ROW as usize, "rows") {
+        let rows = match extent(rows, "rows") {
             Ok(rows) => rows,
             Err(error) => return error,
         };
-        let columns = match extent(columns, LAST_COLUMN as usize, "columns") {
+        let columns = match extent(columns, "columns") {
             Ok(columns) => columns,
             Err(error) => return error,
         };
-        if let Some((error, message)) = check_array_size(rows, columns) {
+        if rows == 0 || columns == 0 {
+            return CalcResult::new_error(
+                Error::CALC,
+                cell,
+                "rows and columns must be at least 1".to_string(),
+            );
+        }
+        // Columns past the grid are built (`COLUMNS(SEQUENCE(1,16385))` is 16385,
+        // probes/t2579-array-value-edges B24) under `check_built_array_size`; above the cell
+        // bound they are `#VALUE!` from one past the grid (`SEQUENCE(3,123456789)`).
+        if let Some((error, message)) =
+            check_built_array_size(rows, columns, f64::from(LAST_COLUMN) + 1.0)
+        {
             return CalcResult::new_error(error, cell, message);
         }
 

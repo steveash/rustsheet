@@ -1,0 +1,43 @@
+base (r2-bratio TOMS algdiv, doubles): {'a': [1485, 2448, 30, 52], 'old': [308, 606, 126, 287], 'probe1': [3198, 3200, 2, 2]}
+control: algdiv_v default == lnb_base on every shape: True -2.1400661634962708
+ar=d,aln=toms,lnb=xl,t2=sq,fin=toms,gsum=d,st= {'a': (1485, 2448, 30, 52), 'old': (308, 606, 126, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=xl,t2=sq,fin=wuv,gsum=d,st= {'a': (1485, 2448, 30, 52), 'old': (308, 606, 126, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=xl,t2=bb,fin=toms,gsum=d,st= {'a': (1485, 2448, 30, 52), 'old': (308, 606, 126, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=xl,t2=bb,fin=wuv,gsum=d,st= {'a': (1485, 2448, 30, 52), 'old': (308, 606, 126, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=xl,t2=sq,fin=toms,gsum=d,st= {'a': (1485, 2448, 30, 52), 'old': (308, 606, 126, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=xl,t2=sq,fin=wuv,gsum=d,st= {'a': (1485, 2448, 30, 52), 'old': (308, 606, 126, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=xl,t2=bb,fin=toms,gsum=d,st= {'a': (1485, 2448, 30, 52), 'old': (308, 606, 126, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=xl,t2=bb,fin=wuv,gsum=d,st= {'a': (1485, 2448, 30, 52), 'old': (308, 606, 126, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=xl,t2=sq,fin=wvu,gsum=d,st= {'a': (1447, 2448, 29, 52), 'old': (294, 606, 118, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=xl,t2=bb,fin=wvu,gsum=d,st= {'a': (1447, 2448, 29, 52), 'old': (294, 606, 118, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=xl,t2=sq,fin=wvu,gsum=d,st= {'a': (1447, 2448, 29, 52), 'old': (294, 606, 118, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=xl,t2=bb,fin=wvu,gsum=d,st= {'a': (1447, 2448, 29, 52), 'old': (294, 606, 118, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=cr,lnb=e,t2=sq,fin=w(uv),gsum=d,st= {'a': (1195, 2448, 23, 52), 'old': (303, 606, 118, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=cr,lnb=e,t2=bb,fin=w(uv),gsum=d,st= {'a': (1195, 2448, 23, 52), 'old': (303, 606, 118, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=cr,lnb=e,t2=sq,fin=w(uv),gsum=d,st= {'a': (1195, 2448, 23, 52), 'old': (303, 606, 118, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=cr,lnb=e,t2=bb,fin=w(uv),gsum=d,st= {'a': (1195, 2448, 23, 52), 'old': (303, 606, 118, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=ser,lnb=xl,t2=sq,fin=w(uv),gsum=d,st= {'a': (1202, 2448, 23, 52), 'old': (295, 606, 117, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=ser,lnb=xl,t2=bb,fin=w(uv),gsum=d,st= {'a': (1202, 2448, 23, 52), 'old': (295, 606, 117, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=ser,lnb=xl,t2=sq,fin=w(uv),gsum=d,st= {'a': (1202, 2448, 23, 52), 'old': (295, 606, 117, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=ser,lnb=xl,t2=bb,fin=w(uv),gsum=d,st= {'a': (1202, 2448, 23, 52), 'old': (295, 606, 117, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=xl,t2=sq,fin=w(uv),gsum=d,st= {'a': (1202, 2448, 23, 52), 'old': (293, 606, 116, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=xl,t2=bb,fin=w(uv),gsum=d,st= {'a': (1202, 2448, 23, 52), 'old': (293, 606, 116, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=xl,t2=sq,fin=w(uv),gsum=d,st= {'a': (1202, 2448, 23, 52), 'old': (293, 606, 116, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=xl,t2=bb,fin=w(uv),gsum=d,st= {'a': (1202, 2448, 23, 52), 'old': (293, 606, 116, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=e,t2=sq,fin=w(uv),gsum=d,st= {'a': (1155, 2448, 22, 52), 'old': (301, 606, 116, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=d,aln=toms,lnb=e,t2=bb,fin=w(uv),gsum=d,st= {'a': (1155, 2448, 22, 52), 'old': (301, 606, 116, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=e,t2=sq,fin=w(uv),gsum=d,st= {'a': (1155, 2448, 22, 52), 'old': (301, 606, 116, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=x,aln=toms,lnb=e,t2=bb,fin=w(uv),gsum=d,st= {'a': (1155, 2448, 22, 52), 'old': (301, 606, 116, 287), 'probe1': (3198, 3200, 2, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=toms,gsum=d,st= {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=toms,gsum=d,st=w {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=toms,gsum=e,st= {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=toms,gsum=e,st=w {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=wuv,gsum=d,st= {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=wuv,gsum=d,st=w {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=wuv,gsum=e,st= {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=wuv,gsum=e,st=w {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=wvu,gsum=d,st= {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=wvu,gsum=d,st=w {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=wvu,gsum=e,st= {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+ar=e,aln=toms,lnb=e,t2=sq,fin=wvu,gsum=e,st=w {'a': (1607, 2448, 34, 52), 'old': (345, 606, 142, 287), 'probe1': (2281, 3200, 1, 2)}
+worst ar=x,aln=ln,lnb=e,t2=bb,fin=wvu,gsum=d,st= {'a': [239, 2448, 5, 52], 'old': [51, 606, 21, 287], 'probe1': [0, 3200, 0, 2]}

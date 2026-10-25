@@ -43,6 +43,13 @@ fn formula_error(cell: CellReferenceIndex) -> impl Fn(Error) -> CalcResult {
     move |error| CalcResult::new_error(error, cell, String::new())
 }
 
+/// Which XNPV argument [`Model::xnpv_numbers`] reads.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum XnpvArgument {
+    Values,
+    Dates,
+}
+
 // See:
 // https://github.com/apache/openoffice/blob/c014b5f2b55cff8d4b0c952d5c16d62ecde09ca1/main/scaddins/source/analysis/financial.cxx
 
@@ -94,26 +101,14 @@ impl Model {
                 }
                 let sheet = left.sheet;
                 let row1 = left.row;
-                let mut row2 = right.row;
                 let column1 = left.column;
-                let mut column2 = right.column;
-                let (used_row, used_column) = self
-                    .workbook
-                    .worksheet(sheet)
-                    .map_err(|_| {
-                        CalcResult::new_error(
-                            Error::ERROR,
-                            *cell,
-                            format!("Invalid worksheet index: '{sheet}'"),
-                        )
-                    })?
-                    .used_area_end();
-                if row1 == 1 && row2 == LAST_ROW {
-                    row2 = used_row;
-                }
-                if column1 == 1 && column2 == LAST_COLUMN {
-                    column2 = used_column;
-                }
+                let (row2, column2) = self.flow_range_end(&left, &right).ok_or_else(|| {
+                    CalcResult::new_error(
+                        Error::ERROR,
+                        *cell,
+                        format!("Invalid worksheet index: '{sheet}'"),
+                    )
+                })?;
                 for row in row1..=row2 {
                     for column in column1..=column2 {
                         let cell_ref = CellReferenceIndex { sheet, row, column };
@@ -151,7 +146,7 @@ impl Model {
                                     "Error in array".to_string(),
                                 ));
                             }
-                            ArrayNode::Lambda(_) => {
+                            ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
                                 return Err(Model::lambda_as_number_error(*cell))
                             }
                             ArrayNode::Empty => {
@@ -190,39 +185,56 @@ impl Model {
         )
     }
 
-    fn get_array_of_numbers_xpnv(
+    /// XNPV's values or dates. A non-number cell refuses the values with `#NUM!` and the dates
+    /// with `#VALUE!`. A values argument that is one empty cell is a single cash flow of 0,
+    /// `XNPV(1,A2,B11)` is 0 (probes/xnpv-empty-values-cell C1-C4, T-2599); empty cells in a
+    /// larger range stay refused.
+    fn xnpv_numbers(
         &mut self,
-        arg: &Node,
+        result: CalcResult,
         cell: &CellReferenceIndex,
-        error: Error,
+        kind: XnpvArgument,
     ) -> Result<Vec<f64>, CalcResult> {
-        self.get_array_of_numbers_generic(
-            arg,
-            cell,
-            true, // accept_number_node
-            || {
-                Err(CalcResult::new_error(
-                    Error::NUM,
-                    *cell,
-                    "Expected number".to_string(),
-                ))
-            },
-            || {
+        let refuse = |error: Error| {
+            move || {
                 Err(CalcResult::new_error(
                     error.clone(),
                     *cell,
                     "Expected number".to_string(),
                 ))
-            },
+            }
+        };
+        if self.empty_cell(&result) {
+            // One empty cell, `A2` or `A2:A2`, is a 0 cash flow but no date: `XNPV(1,A2:A2,B11)`
+            // is 0 and `XNPV(1,B11,A2)` is `#NUM!` (probes/xnpv-empty-cell-forms C1-C5).
+            return match kind {
+                XnpvArgument::Values => Ok(vec![0.0]),
+                XnpvArgument::Dates => Err(CalcResult::new_error(
+                    Error::NUM,
+                    *cell,
+                    "Expected number".to_string(),
+                )),
+            };
+        }
+        let non_number = match kind {
+            XnpvArgument::Values => Error::NUM,
+            XnpvArgument::Dates => Error::VALUE,
+        };
+        self.array_of_numbers_from(
+            result,
+            cell,
+            true, // accept_number_node
+            refuse(Error::NUM),
+            refuse(non_number),
         )
     }
 
-    fn get_array_of_numbers_xirr(
+    fn xirr_numbers(
         &mut self,
-        arg: &Node,
+        arg: CalcResult,
         cell: &CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        self.get_array_of_numbers_generic(
+        self.array_of_numbers_from(
             arg,
             cell,
             false,            // Do not accept a single number node
@@ -235,6 +247,150 @@ impl Model {
                 ))
             },
         )
+    }
+
+    /// XIRR's size checks (T-2428): one value and one date is `#N/A`
+    /// (`XIRR(Data!A9:A9,Data!E9:E9)`, gen-m9/30e20ba3302fea8b A110; also with a FALSE date,
+    /// bc04c1f478c9896c A24), a single date that is text or a boolean `#VALUE!`
+    /// (`XIRR({-100,#N/A,60},<FALSE>)`, 1cd3096e3e87c965 A48), then values and dates of
+    /// different counts `#NUM!`, whatever the cells hold (`XIRR({-100,#N/A,60},<5 dates>)`,
+    /// b72d952c5f52cb4d A1). An argument that is no range, array or scalar is left to the
+    /// number reading.
+    fn xirr_size_error(
+        &mut self,
+        values: &CalcResult,
+        dates: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        let value_count = self.flow_element_count(values)?;
+        let date_count = self.flow_element_count(dates)?;
+        let error = if value_count == 1 && date_count == 1 {
+            // A text, boolean or empty cell keeps the old `#VALUE!` (gen-m9/097af1ca33638670
+            // A255, a91bad4e84f49739 A203, bc04c1f478c9896c A318).
+            if self.non_number_cell(values) || self.non_number_cell(dates) {
+                return None;
+            }
+            Error::NA
+        } else if date_count == 1 && self.non_number_cell(dates) {
+            // gen-m9/1cd3096e3e87c965 A48, 1db18890916ee643 A108 (an empty date cell).
+            Error::VALUE
+        } else if value_count == 1 && self.non_number_cell(values) {
+            // One text or boolean value cell against several dates is read first, `#VALUE!`
+            // (gen-m9/6376e27be7a05871 A67); a larger values range of another count is `#NUM!`
+            // whatever it holds (0a957119475760c5 A47, bbdfc06cae0e0d71 A44).
+            return None;
+        } else if value_count != date_count {
+            Error::NUM
+        } else {
+            return None;
+        };
+        Some(CalcResult::new_error(error, cell, String::new()))
+    }
+
+    /// XNPV's checks before it reads a number (T-2428), after the rate's, in Excel's order:
+    ///
+    /// 1. One values cell that is non-numeric text or a boolean is `#VALUE!`, before an error
+    ///    dates argument (`XNPV(-1,<FALSE>,<#N/A>)`, gen-m9/3aa168259335be54 A334). Numeric text
+    ///    is not refused: `XNPV(0.1,<"1.5">,Data!C5:C6)` is the count's `#NUM!` (81bcdc0bec0c8e6b
+    ///    A37, through DB).
+    /// 2. An error dates argument is that error, before the values' cells
+    ///    (`XNPV(0.05,Data!B1:E2,<#N/A>)`, 5c6a23c4f6597f1c A111).
+    /// 3. One dates cell that is non-numeric text or a boolean is `#VALUE!`
+    ///    (d0854366830dcdee A274).
+    /// 4. Values and dates of different counts are `#NUM!` whatever they hold
+    ///    (`XNPV(0.1,{-100,#N/A,60},<5 dates>)`, bc04c1f478c9896c A313;
+    ///    `XNPV(0.2,0.3,Data!C9:D12)`, 1cd3096e3e87c965 A217).
+    ///
+    /// An empty cell is left to the reading: one empty values cell is a 0 cash flow (T-2599).
+    fn xnpv_size_error(
+        &mut self,
+        values: &CalcResult,
+        dates: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        if self.non_numeric_text_or_boolean_cell(values) {
+            return Some(CalcResult::new_error(Error::VALUE, cell, String::new()));
+        }
+        if matches!(dates, CalcResult::Error { .. }) {
+            return (!matches!(values, CalcResult::Error { .. })).then(|| dates.clone());
+        }
+        if self.non_numeric_text_or_boolean_cell(dates) {
+            return Some(CalcResult::new_error(Error::VALUE, cell, String::new()));
+        }
+        let value_count = self.flow_element_count(values)?;
+        let date_count = self.flow_element_count(dates)?;
+        (value_count != date_count).then(|| CalcResult::new_error(Error::NUM, cell, String::new()))
+    }
+
+    /// The number of elements XIRR and XNPV read from an evaluated argument: a range's cells (a
+    /// whole column or row trimmed to the used area, as [`Self::array_of_numbers_from`]), an
+    /// array's elements, 1 for a scalar; `None` for an error or anything else.
+    fn flow_element_count(&self, arg: &CalcResult) -> Option<usize> {
+        match arg {
+            CalcResult::Range { left, right } if left.sheet == right.sheet => {
+                let (row2, column2) = self.flow_range_end(left, right)?;
+                let rows = usize::try_from(row2 - left.row + 1).ok()?;
+                let columns = usize::try_from(column2 - left.column + 1).ok()?;
+                Some(rows.saturating_mul(columns))
+            }
+            CalcResult::Array(array) => Some(
+                array
+                    .len()
+                    .saturating_mul(array.first().map_or(0, Vec::len)),
+            ),
+            CalcResult::Number(_)
+            | CalcResult::String(_)
+            | CalcResult::Boolean(_)
+            | CalcResult::EmptyCell => Some(1),
+            _ => None,
+        }
+    }
+
+    /// A range's last row and column with a whole column or row trimmed to the used area, as
+    /// [`Self::array_of_numbers_from`] and the XIRR and XNPV size checks read it; `None` for a
+    /// missing sheet.
+    fn flow_range_end(
+        &self,
+        left: &CellReferenceIndex,
+        right: &CellReferenceIndex,
+    ) -> Option<(i32, i32)> {
+        let (used_row, used_column) = self.workbook.worksheet(left.sheet).ok()?.used_area_end();
+        let row2 = if left.row == 1 && right.row == LAST_ROW {
+            used_row
+        } else {
+            right.row
+        };
+        let column2 = if left.column == 1 && right.column == LAST_COLUMN {
+            used_column
+        } else {
+            right.column
+        };
+        Some((row2, column2))
+    }
+
+    /// Whether a one-cell range or scalar is text, a boolean or nothing.
+    ///
+    /// An array element is not a cell: `XIRR(D2,BYROW(D9,LAMBDA(x,ISBLANK(x))))` is `#N/A`
+    /// (gen-m9/bc04c1f478c9896c A24).
+    fn non_number_cell(&mut self, arg: &CalcResult) -> bool {
+        matches!(
+            *self.single_cell_value(arg),
+            CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell
+        )
+    }
+
+    /// Whether a one-cell range or scalar is empty.
+    fn empty_cell(&mut self, arg: &CalcResult) -> bool {
+        matches!(*self.single_cell_value(arg), CalcResult::EmptyCell)
+    }
+
+    /// Whether a one-cell range or scalar is a boolean or text that does not read as a number.
+    fn non_numeric_text_or_boolean_cell(&mut self, arg: &CalcResult) -> bool {
+        match &*self.single_cell_value(arg) {
+            CalcResult::String(text) => self.cast_number(text).is_none(),
+            CalcResult::Boolean(_) => true,
+            _ => false,
+        }
     }
 
     /// `NPV(rate, value1, [value2], ...)`: `Sum[value[i]/(1+rate)^i, {i, 1, n}]`. The rate lifts
@@ -335,7 +491,7 @@ impl Model {
         // probes/fin-irr-error-array).
         let flows = match self.evaluate_node_in_context(values, cell) {
             error @ CalcResult::Error { .. }
-                if !matches!(values.ungrouped(), Node::ReferenceKind { .. }) =>
+                if !matches!(*values.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
             {
                 Err(error)
             }
@@ -371,12 +527,15 @@ impl Model {
         let [_, values, dates] = args else {
             return CalcResult::new_args_number_error(cell);
         };
+        let values = self.evaluate_node_in_context(values, cell);
+        let dates = self.evaluate_node_in_context(dates, cell);
+        let size_error = self.xnpv_size_error(&values, &dates, cell);
         // The dates are truncated and checked once, not per element: each element is charged
         // only the values' count.
         let flows = self
-            .get_array_of_numbers_xpnv(values, &cell, Error::NUM)
+            .xnpv_numbers(values, &cell, XnpvArgument::Values)
             .and_then(|values| {
-                let dates = self.get_array_of_numbers_xpnv(dates, &cell, Error::VALUE)?;
+                let dates = self.xnpv_numbers(dates, &cell, XnpvArgument::Dates)?;
                 let dates = xnpv_dates(&values, &dates);
                 Ok((values, dates))
             })
@@ -389,10 +548,15 @@ impl Model {
             )),
             cell,
             &mut |model, values| {
+                // A boolean rate, a cell or an array element, is `#VALUE!` (`XNPV(<TRUE>,..)`,
+                // gen-m9/1dce4774f5c0e736 A22; `XNPV(SORT(<FALSE>),..)`, 5c6a23c4f6597f1c A258).
                 let rate = match values.first() {
-                    Some(rate) => model.cast_number_ref(rate, cell),
+                    Some(rate) => model.cast_number_no_bools_ref(rate, cell),
                     None => Err(CalcResult::new_args_number_error(cell)),
                 };
+                if let (Ok(_), Some(size_error)) = (&rate, &size_error) {
+                    return size_error.clone();
+                }
                 match (rate, &flows) {
                     (Err(error), _) => error,
                     (Ok(_), Err(error)) => error.clone(),
@@ -421,11 +585,21 @@ impl Model {
         let ([values, dates] | [values, dates, _]) = args else {
             return CalcResult::new_args_number_error(cell);
         };
+        let values = self.evaluate_node_in_context(values, cell);
+        let dates = self.evaluate_node_in_context(dates, cell);
+        // Excel checks the sizes before it reads a number, and only an error dates or guess
+        // comes first (financial.md "XIRR and XNPV under the gen-m9 statistical cells" and
+        // "Financial functions in the gen-m9 financial sweep (T-2257)", T-2428).
+        let size_error = if matches!(dates, CalcResult::Error { .. }) {
+            None
+        } else {
+            self.xirr_size_error(&values, &dates, cell)
+        };
         // The dates are truncated and checked once, not per element, as XNPV's.
         let flows = self
-            .get_array_of_numbers_xirr(values, &cell)
+            .xirr_numbers(values, &cell)
             .and_then(|values| {
-                let dates = self.get_array_of_numbers_xirr(dates, &cell)?;
+                let dates = self.xirr_numbers(dates, &cell)?;
                 let dates = xirr_dates(&values, &dates);
                 Ok((values, dates))
             })
@@ -438,6 +612,13 @@ impl Model {
             )),
             cell,
             &mut |model, arguments| {
+                // A size error stands only beside a number guess: a text, boolean or error guess
+                // leaves the old reading's `#VALUE!` (gen-m9/b6a02893a8d6b151 A226, b72d952c5f52cb4d
+                // A50).
+                let number_guess = matches!(arguments.get(2), None | Some(CalcResult::Number(_)));
+                if let (true, Some(size_error)) = (number_guess, &size_error) {
+                    return size_error.clone();
+                }
                 let (values, dates) = match &flows {
                     Ok(flows) => flows,
                     Err(error) => return error.clone(),
@@ -520,6 +701,10 @@ impl Model {
                 .cast_number(&text)
                 .map(|rate| vec![rate])
                 .ok_or_else(not_a_number),
+            // One empty cell is an empty schedule, the principal unchanged: `FVSCHEDULE(6527,D1)`
+            // is 6527 with D1 empty, also through `IF(..,B3,B9)` (gen-m9/30e20ba3302fea8b A250,
+            // 6376e27be7a05871 A140; T-2428).
+            CalcResult::EmptyCell => Ok(Vec::new()),
             result => {
                 self.array_of_numbers_from(result, &cell, true, || Ok(None), || Err(not_a_number()))
             }
@@ -594,10 +779,14 @@ fn xirr_dates(values: &[f64], dates: &[f64]) -> Result<Vec<f64>, Error> {
     // {-1000,1100,-1000} on {45000,45365,44000} is -0.2467, and {-1000,1100} on
     // {45365,45000} is #NUM! although it has a root (financial.md, "XIRR reads empty cells as
     // 0 and accepts earlier dates"; probes/xirr-mismatched-empties, xirr-early-dates; T-1124).
+    // A zero first value skips the later-date check: `{0,-1000,1100}` on 46000, 45000, 45365 is
+    // 2.98e-9, and so are equal dates (probes/xirr-span-zero-first A28-A30, xirr-zero-first-bracket
+    // A8-A13; gen-m9/e168be7f6d3f84c2 A125; T-2329).
+    let first_value_is_zero = values.first() == Some(&0.0);
     if dates
         .iter()
         .any(|date| *date < 0.0 || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64)
-        || !dates.iter().any(|date| *date > first_date)
+        || (!first_value_is_zero && !dates.iter().any(|date| *date > first_date))
     {
         return Err(Error::NUM);
     }

@@ -3,7 +3,7 @@ id: T-2461
 title: "A blank element of HSTACK, VSTACK or an EXPAND pad is the empty value through INDEX, VSTACK of a blank cell and an EXPAND blank pad (t2413 probe cells)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,14 +26,32 @@ external ranges (probes/textjoin-array-arguments A10, A18, A22; fixtures/externa
 probes/dynamic-array-reshape-and-isomitted S!B24:B25, so the fix belongs at INDEX's array read and in VSTACK/EXPAND's blank copy. T-2413's `ArrayNode::Empty => CalcResult::EmptyArg` arm in `lambda_cells`
 (functions/logical/bycol_byrow.rs) goes if the fix moves into a shared read.
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `SEARCH(HSTACK(<blank>),"Hello World",8)` is 8: HSTACK of a blank cell is the empty value, read as "" (ours 0, so `#VALUE!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/2a18b2f5a4dc43ac Calc!A79 `=EXPONDIST(Data!C12,SEARCH(HSTACK(Data!B$5),"Hello World",8),BYCOL(Data!A11:D11,LAMBDA(w,REDUCE(w,w,LAMBDA(x,v,1)))))`: Excel 0.9816843611112658, ours #VALUE!; inner `SEARCH(HSTACK(Data!B$5),"Hello World",8)` Excel 8.0, ours #VALUE!
+Cells:
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A79
+
 ## Acceptance criteria
-- [ ] The seven t2413-blank-in-stacked-arrays lines above leave eval/baseline/probes.txt, no new known failures.
-- [ ] arrays.md's T-2413 paragraph says "Ours" for each.
-- [ ] The probe also reads (cells added to probes/t2413-blank-in-stacked-arrays or a new case): MAP/REDUCE COUNT over blanks
+- [x] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The seven t2413-blank-in-stacked-arrays lines above leave eval/baseline/probes.txt, no new known failures.
+- [x] arrays.md's T-2413 paragraph says "Ours" for each.
+- [x] The probe also reads (cells added to probes/t2413-blank-in-stacked-arrays or a new case): MAP/REDUCE COUNT over blanks
       that SORT, FILTER and TAKE put into an array (T-2413 binds every blank array element as the empty value, unprobed for
       these sources); `MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,ISOMITTED(v)))` and `LAMBDA(x,ISOMITTED(x))(IFERROR(Z1,1))` (ours TRUE;
       a task if Excel is FALSE); the spill of `MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,v))` (ours 0).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A lone blank cell reference given to TOROW or UNIQUE (T-2409).
+
+## Outcome
+INDEX of a blank element of an array value is the empty value (`EmptyArg`); HSTACK and VSTACK read a lone blank cell as a
+blank element (`eval_to_array_keep_blank`); a blank-cell pad_with pads EXPAND, WRAPCOLS and WRAPROWS with blank elements
+(`pad_with_of`), and so does the empty value (`IFERROR(Z1,1)`); EXPAND's written empty pad_with pads blanks while
+WRAPCOLS/WRAPROWS's is `#N/A`; INDEX picks from TAKE and DROP over
+a range as a reference (`index_source`). New probe probes/t2461-blank-array-sources (55 cells, excel-graph) answers the
+probe criterion; arrays.md records all of it. Eval: gen-m9 5653 → 5652 (Calc!A79), probes 2566 → 2557 (t2413 ×7, t2436 ×5
+fixed; 3 new-coverage ISOMITTED cells A12:A14 → follow-up T-2649), no regressions in any suite (poi, corpus-bench included).

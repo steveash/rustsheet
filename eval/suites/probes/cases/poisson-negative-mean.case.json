@@ -1,0 +1,25 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "POISSON and POISSON.DIST with a negative mean at x 0 and 1 (T-2484: gen-m9 23d82b62e9a85bdd A208).",
+ "tags": [
+  "M9",
+  "statistical",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=POISSON(0,-1,2)",
+    "A2": "=POISSON(0,-1,TRUE)",
+    "A3": "=POISSON(0,-1,FALSE)",
+    "A4": "=POISSON(1,-1,TRUE)",
+    "A5": "=POISSON.DIST(0,-1,TRUE)",
+    "A6": "=POISSON.DIST(0,-0.5,FALSE)",
+    "A7": "=ROUNDDOWN(0.285,-2.5)/POISSON(0,-1,2)",
+    "A8": "=RECEIVED(39880,0,NA(),-0.5,2)"
+   }
+  }
+ ],
+ "expected": {}
+}

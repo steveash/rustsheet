@@ -99,6 +99,8 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
         },
         ArrayNode::Empty => FormulaValue::Number(0.0),
         ArrayNode::Lambda(_) => array_node_to_formula_value(ArrayNode::Error(Error::CALC)),
+        // A nested GROUPBY or PIVOTBY cell shows `#VALUE!` (SPEC-0018 rule 2).
+        ArrayNode::Nested(_) => array_node_to_formula_value(ArrayNode::Error(Error::VALUE)),
     }
 }
 
@@ -170,6 +172,8 @@ pub struct Model {
     pub(crate) lambda_captures: HashMap<usize, Captures>,
     /// The cells `lambda_captures` holds copies of, against `MAX_CAPTURED_CELLS`.
     pub(crate) captured_cells: usize,
+    /// What this evaluation spent of its nested-array budgets (SPEC-0018 "Bound").
+    pub(crate) nested_budget: crate::nested_array::NestedBudget,
     /// Where the stack was when the outermost LAMBDA call running now started
     /// (`Model::lambda_stack_base`), `None` while no call runs.
     pub(crate) lambda_calls_base: Option<usize>,
@@ -252,6 +256,7 @@ impl Model {
         self.evaluate_cell(cell);
         self.lambda_captures.clear();
         self.captured_cells = 0;
+        self.nested_budget = crate::nested_array::NestedBudget::default();
     }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
@@ -259,6 +264,7 @@ impl Model {
         self.named_lambdas = NamedLambdas::default();
         self.lambda_captures.clear();
         self.captured_cells = 0;
+        self.nested_budget = crate::nested_array::NestedBudget::default();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
@@ -266,7 +272,9 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let node = node.ungrouped(); // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007)
+        // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007), and a `#This Row` area is its cell or range
+        // on the formula's row (SPEC-0016 step 2).
+        let node: &Node = &node.ungrouped_at(cell.row);
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -279,17 +287,14 @@ impl Model {
                 // Relative coordinates are offsets from the formula's cell.
                 let row1 = *row + if *absolute_row { 0 } else { cell.row };
                 let column1 = *column + if *absolute_column { 0 } else { cell.column };
+                let at = CellReferenceIndex {
+                    sheet: *sheet_index,
+                    row: row1,
+                    column: column1,
+                };
                 CalcResult::Range {
-                    left: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: row1,
-                        column: column1,
-                    },
-                    right: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: row1,
-                        column: column1,
-                    },
+                    left: at,
+                    right: at,
                 }
             }
             Node::RangeKind {
@@ -643,6 +648,7 @@ impl Model {
             | ParseErrorKind { .. }
             | Group { .. }
             | StructuredReferenceKind { .. }
+            | ThisRowKind { .. }
             | SpillRangeOperator { .. }
             | ImplicitIntersection { .. }
             | LambdaDefKind { .. }
@@ -1653,30 +1659,7 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<Option<String>, String> {
-        let worksheet = self.workbook.worksheet(sheet)?;
-        match worksheet.cell(row, column) {
-            Some(cell) => match cell.get_formula() {
-                Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
-                        .ok_or("missing formula")?;
-                    let cell_ref = CellReferenceRC {
-                        sheet: worksheet.get_name(),
-                        row,
-                        column,
-                    };
-                    Ok(Some(format!(
-                        "={}",
-                        to_localized_string(formula, &cell_ref, self.locale, self.language)
-                    )))
-                }
-                None => Ok(None),
-            },
-            None => Ok(None),
-        }
+        self.formula_text_with(sheet, row, column, to_localized_string)
     }
 
     /// Returns the text for the formula in (`sheet`, `row`, `column`) in English if any

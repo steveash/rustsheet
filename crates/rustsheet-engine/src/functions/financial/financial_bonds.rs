@@ -1,26 +1,26 @@
 use chrono::{Datelike, NaiveDate};
 use std::cmp::Ordering;
 
-use crate::formatter::dates::real_date_to_serial;
-
 pub(super) mod coupon_schedule;
+mod odd_last;
 mod yield_closed;
 mod yield_solver;
 
 use super::dates::{
-    basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, days_30_360_us_both,
-    BROKEN_SCHEDULE_PCD,
+    basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, BROKEN_SCHEDULE_PCD,
 };
 use coupon_schedule::{
     change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, coupon_days_nc,
     find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
+use odd_last::odd_l_func;
 use yield_solver::solve_yield;
 
 use super::number_or_error;
 use crate::{
     arithmetic::power,
     calc_result::CalcResult,
+    constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     functions::lift::{div_error, num_error},
@@ -97,6 +97,19 @@ impl CouponSchedule {
         })
     }
 
+    /// Whether `(1 + yld/frequency)^t` overflows at the redemption's term `t`, the longest one:
+    /// PRICE, DURATION and MDURATION are then #NUM!, where the overflowing flows would discount to
+    /// 0. `PRICE(43831,47484,0.05,5.12154E+15,100,2,0)` (t = 20) is 9.76e-16 and 5.22501E+15
+    /// #NUM!, and with t = 19.5 1.27233E+16 is a number and 1.29803E+16 #NUM!
+    /// (probes/bond-huge-yield-overflow; financial.md "PRICE, DURATION and MDURATION at a huge
+    /// yield or coupon", T-2488). A term of at most 1 cannot overflow, so a single remaining
+    /// coupon, which PRICE discounts linearly, is never #NUM! here (`PRICE(..,1E+300,..)` is
+    /// 2.05e-298).
+    fn discount_overflows(&self, yld: f64, frequency: u32) -> bool {
+        let dsc_over_e = (self.e - self.a) / self.e;
+        power(1.0 + yld / frequency as f64, dsc_over_e + self.n - 1.0).is_err()
+    }
+
     /// The clean price (per `redemption` par) at the yield `yld`: a sum over every coupon, and no
     /// schedule walk, so YIELD's solver walks the schedule once, not on every step (T-1842).
     fn price(
@@ -142,7 +155,13 @@ fn compute_price(
     basis: u32,
 ) -> Result<f64, String> {
     let schedule = CouponSchedule::new(settlement, maturity, frequency, basis)?;
-    Ok(schedule.price(rate, yld, redemption, frequency, discount_growth))
+    let price = schedule.price(rate, yld, redemption, frequency, discount_growth);
+    // A coupon so large that the sum overflows is #NUM! too (`PRICE(..,1E+306,0.05,..)`;
+    // probes/bond-huge-yield-overflow A22, A23).
+    if schedule.discount_overflows(yld, frequency) || !price.is_finite() {
+        return Err("#NUM!".to_string());
+    }
+    Ok(price)
 }
 
 // ============================================================
@@ -172,17 +191,8 @@ fn compute_yield_from_price(
 // ============================================================
 
 // `DaysBetween` (Numerator position), clamped to be non-negative.
-fn days_between_not_neg(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
+pub(super) fn days_between_not_neg(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
     basis_days(d1, d2, basis).max(0.0)
-}
-
-// As above, but basis 0 uses the 30/360 ModifyBothDates rule.
-fn days_between_not_neg_with_hack(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
-    if basis == 0 {
-        days_30_360_us_both(d1, d2).max(0.0)
-    } else {
-        days_between_not_neg(d1, d2, basis)
-    }
 }
 
 // Port of `coupNumber`: counts whole quasi-coupon periods between
@@ -373,81 +383,6 @@ impl OddFirstSchedule {
 }
 
 // ============================================================
-// Odd-last-period price / yield
-// ============================================================
-
-// Port of `oddLFunc` from oddbonds.fs. With `is_l_price` it returns the
-// ODDLPRICE clean price; otherwise it returns the ODDLYIELD yield in closed form.
-// last_interest: last regular interest (coupon) date before the odd last period.
-#[allow(clippy::too_many_arguments)]
-fn odd_l_func(
-    settlement: i64,
-    maturity: i64,
-    last_interest: i64,
-    rate: f64,
-    pr_or_yld: f64,
-    redemption: f64,
-    frequency: u32,
-    basis: u32,
-    is_l_price: bool,
-) -> Result<f64, String> {
-    let m = frequency as f64;
-    let num_months = (12 / frequency) as i32;
-
-    let settlement_d = from_excel_date(settlement)?;
-    let maturity_d = from_excel_date(maturity)?;
-    let last_interest_d = from_excel_date(last_interest)?;
-
-    let nc = coupon_count(last_interest, maturity, frequency)? as i64;
-
-    let mut early_coupon = last_interest_d;
-    let mut dcnl = 0.0_f64;
-    let mut anl = 0.0_f64;
-    let mut dscnl = 0.0_f64;
-    for index in 1..=nc {
-        let late_coupon = change_month(early_coupon, num_months, false)?;
-        // A quasi-coupon date past 9999-12-31 is #NUM!, even the one after the maturity
-        // (`ODDLPRICE(DATE(9999,8,1),DATE(9999,12,31),DATE(9999,5,15),...)`,
-        // probes/date-system-1900-odd-accrint-bound D7-D10; T-1457).
-        if real_date_to_serial(late_coupon).is_none() {
-            return Err("quasi-coupon date past the last date".to_string());
-        }
-        let nl = days_between_not_neg_with_hack(early_coupon, late_coupon, basis);
-        let dci = if index < nc {
-            nl
-        } else {
-            days_between_not_neg_with_hack(early_coupon, maturity_d, basis)
-        };
-        let a = if late_coupon < settlement_d {
-            dci
-        } else if early_coupon < settlement_d {
-            days_between_not_neg(early_coupon, settlement_d, basis)
-        } else {
-            0.0
-        };
-        let start_date = settlement_d.max(early_coupon);
-        let end_date = maturity_d.min(late_coupon);
-        let dsc = days_between_not_neg(start_date, end_date, basis);
-        early_coupon = late_coupon;
-        dcnl += dci / nl;
-        anl += a / nl;
-        dscnl += dsc / nl;
-    }
-
-    let x = 100.0 * rate / m;
-    let term1 = dcnl * x + redemption;
-    if is_l_price {
-        let term2 = dscnl * pr_or_yld / m + 1.0;
-        let term3 = anl * x;
-        Ok(term1 / term2 - term3)
-    } else {
-        let term2 = anl * x + pr_or_yld;
-        let term3 = m / dscnl;
-        Ok((term1 - term2) / term2 * term3)
-    }
-}
-
-// ============================================================
 // Shared argument reader for COUP* functions
 // (settlement, maturity, frequency, [basis])
 // ============================================================
@@ -526,13 +461,10 @@ impl Model {
         let [settlement, maturity, frequency, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let settlement = self.financial_date_of(settlement, cell)?;
         // Settlement 0 is a date to the COUP* functions (`COUPPCD(0,43831,2)` is 0); COUPNUM is
         // #NUM! there because its previous coupon date falls before the calendar (`coupon_count`).
-        if settlement < 0 {
-            return Err(num_error(cell));
-        }
-        let maturity = self.financial_date_of(maturity, cell)?;
+        let settlement = self.coupon_date_of(settlement, cell)?;
+        let maturity = self.coupon_date_of(maturity, cell)?;
         if settlement >= maturity {
             return Err(num_error(cell));
         }
@@ -565,7 +497,12 @@ impl Model {
 
     /// Reads and checks `(settlement, maturity, rate, yld, frequency, basis)` of DURATION and
     /// MDURATION, and of PRICE and YIELD (`yld` is the price) with their redemption at
-    /// `values[4]`: every argument is read, in order, before any value is checked.
+    /// `values[4]`, in Excel's order (probes/bond-argument-check-order, T-2482; financial.md
+    /// "PRICE, YIELD, DURATION and MDURATION check order"). PRICE and YIELD read and check the
+    /// basis first, DURATION and MDURATION last. A settlement or maturity off the calendar is
+    /// #NUM! as it is read, and DURATION's frequency as it is read; the date order and the
+    /// rate, yld, price and redemption checks come after every argument is read, and settlement
+    /// 0 passes the read (`PRICE(0,43831,NA(),..)` is #N/A).
     fn bond_args(
         &self,
         values: &[CalcResult],
@@ -579,8 +516,14 @@ impl Model {
                 (false, [s, m, r, y, f, rest @ ..]) => (s, m, r, y, None, f, rest.first()),
                 _ => return Err(CalcResult::new_args_number_error(cell)),
             };
-        let settlement = self.financial_date_of(settlement, cell)?;
-        let maturity = self.financial_date_of(maturity, cell)?;
+        // `PRICE(-1,..,NA())` is #N/A and `PRICE(NA(),..,5)` #NUM!; DURATION's basis comes last.
+        let early_basis = if with_redemption {
+            Some(self.day_count_basis_of(basis, cell)?)
+        } else {
+            None
+        };
+        let settlement = self.financial_calendar_date_of(settlement, cell)?;
+        let maturity = self.financial_calendar_date_of(maturity, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let yld = self.cast_number_no_bools_ref(yld, cell)?;
         let redemption = match redemption {
@@ -588,9 +531,15 @@ impl Model {
             None => 100.0,
         };
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?;
         validate_frequency(frequency, cell)?;
-        let basis = validate_basis(basis, cell)?;
+        let basis = match early_basis {
+            Some(basis) => basis,
+            None => self.day_count_basis_of(basis, cell)?,
+        };
+        let (settlement, maturity) = (
+            self.financial_date(settlement),
+            self.financial_date(maturity),
+        );
         // YIELD's price must be positive, a yield may be 0.
         let bad_fourth = match function {
             BondFunction::Yield => yld <= 0.0,
@@ -626,10 +575,12 @@ impl Model {
         let bond = self.bond_args(values, BondFunction::Duration, cell)?;
         let (settlement, maturity, frequency, basis) =
             (bond.settlement, bond.maturity, bond.frequency, bond.basis);
-        let date_error = |_| num_error(cell);
-        let n = f64::from(coupon_count(settlement, maturity, frequency).map_err(date_error)?);
-        let e = coupon_days_e(settlement, maturity, frequency, basis).map_err(date_error)?;
-        let a = coupon_days_a(settlement, maturity, frequency, basis).map_err(date_error)?;
+        let schedule = CouponSchedule::new(settlement, maturity, frequency, basis)
+            .map_err(|_| num_error(cell))?;
+        if schedule.discount_overflows(bond.yld_or_pr, frequency) {
+            return Err(num_error(cell));
+        }
+        let CouponSchedule { n, e, a } = schedule;
         let dsc_over_e = (e - a) / e;
 
         let redemption = bond.redemption;
@@ -643,8 +594,7 @@ impl Model {
         let mut num = 0.0; // sum of t * PV(CF)
         let mut den = 0.0; // dirty price (sum of PV(CF))
         let mut add_cash_flow = |t: f64, cash_flow: f64| {
-            // `v` > 1 and `t` > 0 here, so `^` fails only by overflowing: the flow's present value
-            // is then 0.
+            // `v` > 1 and `t` > 0 here, and the longest term does not overflow.
             let growth = discount_growth(v, t);
             num += t * cash_flow / growth;
             den += cash_flow / growth;
@@ -657,7 +607,13 @@ impl Model {
         if den == 0.0 {
             return Err(div_error(cell));
         }
-        Ok(num / den / frequency as f64)
+        // A coupon so large that the sums overflow is #NUM! (`DURATION(..,1E+306,0.05,2,0)`;
+        // probes/bond-huge-yield-overflow B22, B23).
+        let duration = num / den / frequency as f64;
+        if !duration.is_finite() {
+            return Err(num_error(cell));
+        }
+        Ok(duration)
     }
 
     // MDURATION(settlement, maturity, coupon, yld, frequency, [basis])
@@ -739,10 +695,12 @@ impl Model {
 
     /// Reads and checks the arguments of ODDFPRICE and ODDFYIELD (`N` = 4 dates: settlement,
     /// maturity, issue, `first_coupon`) or ODDLPRICE and ODDLYIELD (`N` = 3: settlement, maturity,
-    /// `last_interest`), then rate, yld or pr (`price_given`), redemption, frequency and [basis].
-    /// Every argument is read, in order, before any value is checked; then a date off the
-    /// calendar, the frequency, the basis, `check_dates` (the dates' order) and the values are
-    /// #NUM! in that order.
+    /// `last_interest`), then rate, yld or pr (`price_given`), redemption, frequency and [basis],
+    /// in Excel's order (probes/odd-bond-argument-check-order, T-2483; financial.md "ODDFPRICE,
+    /// ODDFYIELD, ODDLPRICE and ODDLYIELD check order"). A date below 0 or past 9999-12-31 is
+    /// #NUM! as it is read, and so is the frequency, before the basis is read; then a date a 1904
+    /// workbook's reading moves off the calendar, the basis, `check_dates` (the dates' order) and
+    /// the values are #NUM! in that order.
     fn odd_args<const N: usize>(
         &self,
         values: &[CalcResult],
@@ -760,9 +718,11 @@ impl Model {
         let mut read = [None; N];
         for (date, value) in read.iter_mut().zip(date_values) {
             let serial = self.cast_number_no_bools_ref(value, cell)?;
-            // A negative date is `#NUM!` as it is read, ahead of an error in a later argument
-            // (probes/fin-odd-date-before-error-arg A1:A7, A11, A14:A16; a date of 0 is fine, A17).
-            if serial < 0.0 {
+            // A date off the calendar is `#NUM!` as it is read, ahead of an error in a later
+            // argument (probes/fin-odd-date-before-error-arg A1:A7, A11, A14:A16; a date of 0 is
+            // fine, A17; odd-bond-argument-check-order: -0.5 and 2958466 too, 2958465 is fine).
+            let calendar = 0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0;
+            if !calendar.contains(&serial) {
                 return Err(num_error(cell));
             }
             *date = date_system.odd_period_1900_serial(serial);
@@ -771,13 +731,14 @@ impl Model {
         let yld_or_pr = self.cast_number_no_bools_ref(yld_or_pr, cell)?;
         let redemption = self.cast_number_no_bools_ref(redemption, cell)?;
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
+        // `ODDFPRICE(..,100,3,NA())` is #NUM!: the frequency is checked before the basis is read.
+        validate_frequency(frequency, cell)?;
         let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         // A date Excel's reading moves off the calendar (`DateSystem::odd_period_1900_serial`).
         let mut dates = [0; N];
         for (date, read) in dates.iter_mut().zip(read) {
             *date = read.ok_or_else(|| num_error(cell))?;
         }
-        validate_frequency(frequency, cell)?;
         let basis = validate_basis(basis, cell)?;
         check_dates(&dates, frequency)?;
         let bad_fourth = if price_given {
@@ -828,7 +789,9 @@ impl Model {
         Ok((odd, schedule))
     }
 
-    /// The checked arguments of ODDLPRICE (`price_given` false) or ODDLYIELD.
+    /// The checked arguments of ODDLPRICE (`price_given` false) or ODDLYIELD. A settlement on or
+    /// before the last coupon is #NUM!, after every argument is read
+    /// (probes/odd-bond-argument-check-order A909:A925).
     fn odd_last_of(
         &self,
         values: &[CalcResult],
@@ -837,7 +800,7 @@ impl Model {
     ) -> Result<OddArgs<3>, CalcResult> {
         self.odd_args::<3>(values, price_given, cell, |dates, _| {
             let [settlement, maturity, last_interest] = *dates;
-            if last_interest >= maturity || settlement >= maturity {
+            if settlement <= last_interest || last_interest >= maturity || settlement >= maturity {
                 return Err(num_error(cell));
             }
             Ok(())

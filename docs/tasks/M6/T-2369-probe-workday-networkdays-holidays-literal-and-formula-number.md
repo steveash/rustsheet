@@ -3,7 +3,7 @@ id: T-2369
 title: "Probe WORKDAY/NETWORKDAYS holidays: literal and formula number text, date text, and count-vs-skip of number-text cells"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -17,8 +17,13 @@ Excel's treatment of text holidays in WORKDAY, WORKDAY.INTL, NETWORKDAYS and NET
 T-2270 accepts a blank one-cell holidays reference and number-text cells (docs/excel-semantics/dates.md "WORKDAY and NETWORKDAYS holidays: blank and number-text cells"). Unverified there: (1) count vs skip of a number-text holiday inside the date range; (2) a literal (`"45001"`) or formula (`TEXT(45001,"0")`) number text as holidays; (3) date, currency, percent and time text in a holiday cell. `collect_serial_numbers` (functions/date_and_time.rs) currently counts all text `cast_number` reads. Use the excel-probe skill.
 
 ## Acceptance criteria
-- [ ] A probes case covers (1)-(3) with oracle values; the engine matches or the findings are recorded in dates.md.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes case covers (1)-(3) with oracle values; the engine matches or the findings are recorded in dates.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/t2369-workday-text-holidays (68 cells, excel-graph oracle). Number, date, currency, padded and formula
+text holidays skip the day; percent/time/`1E5` text are accepted but fall outside the walk. The engine already matched
+every cell, so no code change; findings are in dates.md. Eval delta: +68 passing probe cells, no regressions.

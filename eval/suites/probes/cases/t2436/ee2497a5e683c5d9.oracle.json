@@ -1,0 +1,196 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 0.3
+   },
+   "A106": {
+    "t": "s",
+    "v": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "A121": {
+    "t": "n",
+    "v": 255.0
+   },
+   "A136": {
+    "t": "n",
+    "v": -2.5
+   },
+   "A151": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A16": {
+    "t": "n",
+    "v": -2.5
+   },
+   "A166": {
+    "t": "n",
+    "v": -0.0001
+   },
+   "A181": {
+    "t": "n",
+    "v": -0.000100000000001
+   },
+   "A196": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A211": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A31": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "A46": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "A61": {
+    "t": "n",
+    "v": -0.3
+   },
+   "A76": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "A91": {
+    "t": "n",
+    "v": 52148.0
+   },
+   "T1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T106": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T121": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T136": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T151": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "T16": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T166": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T181": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T196": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "T211": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "T31": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "T46": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "T61": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T76": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "T91": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U106": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U121": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U136": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U151": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "U16": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U166": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U181": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U196": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "U211": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "U31": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "U46": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "U61": {
+    "t": "n",
+    "v": 1.0
+   },
+   "U76": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "U91": {
+    "t": "n",
+    "v": 1.0
+   }
+  },
+  "Data": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "0a0d64b0c17025bb77945998cc163e9e6192d1b2c28024485be28bbe3e37658f",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-24T08:07:45+00:00",
+  "version": null,
+  "workbook_name": "0b35da85881c55cb792fb398132482321e7362d0ac5c08b3918a3a68e713cdc3.xlsx"
+ }
+}

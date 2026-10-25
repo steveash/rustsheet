@@ -140,7 +140,7 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
 In the 1900 date system TEXT of a negative under a format that mixes an elapsed token with a date/time token (`[h]:mm`, `[s] yy`, `[s].00`) is #VALUE! instead; a format whose only date/time token is one elapsed token still prints a minus, with any literals (below; dates.md "Negative serials under an explicit negative section", probes/text-negative-serial-elapsed-mixed, probes/negative-date-sections-1900, T-1079/T-1105); the minus above is the 1904-workbook behavior. Two elapsed tokens in one section (`[h]:[mm]`) are #VALUE! in both systems, for positive values too (same evidence).
-An elapsed token works on the magnitude of the value and keeps a minus for a negative one, in both date systems (VERIFIED, probes/elapsed-tiny-negatives-1900/-1904 and elapsed-fractions-1900/-1904, excel-graph, T-1338, T-1346): `[s]`/`[ss]` round it to nearest (1.7 s = "2", 1.2 s = "1", 1.5 s = "2", -0.9 s = "-1", -1.7 s = "-2", `TEXT(-1E-10,"[s]")` = "-0"); `[m]`/`[mm]`/`[h]`/`[hh]` truncate it (1.7 min = "1", 1.7 h = "1", -1.7 min = "-1", -0.3 h = "-0"). Padding follows the sign (`[ss]` of -1E-10 = "-00", of -1.7 s = "-02", of 1.7 s = "02"). Binary noise is absorbed: -1.5/86400 days is "-2", `TEXT(-(3-1E-7)/24,"[h]")` = "-3", `TEXT(-(2-1E-9)/1440,"[m]")` = "-2", yet `TEXT(-0.49999999999/86400,"[s]")` = "-0" and `TEXT(-(5-1E-6)/86400,"[s]")` = "-5". The engine models that as a 1e-12 snap of the seconds for `[s]` and a millisecond snap for `[h]`/`[m]`: fitted to these cells, not known (the true threshold is unprobed). The positive near-integers behave the same (VERIFIED, probes/elapsed-positive-large-1900/-1904, excel-graph, T-1362): `TEXT((3-1E-7)/24,"[h]")` = "3", `TEXT((5-1E-6)/86400,"[s]")` = "5", `TEXT(0.49999999999/86400,"[s]")` = "0". The count is plain arithmetic with no 32-bit limit in either date system: `TEXT(30000,"[s]")` = "2592000000", `TEXT(24856,"[s]")` = "2147558400", `TEXT(2958465,"[s]")` = "255611376000", `TEXT(1E9,"[h]")` = "24000000000". `TEXT(-1.5,"[s]")` = "-129600".
+An elapsed token works on the magnitude of the value and keeps a minus for a negative one, in both date systems (VERIFIED, probes/elapsed-tiny-negatives-1900/-1904 and elapsed-fractions-1900/-1904, excel-graph, T-1338, T-1346): `[s]`/`[ss]` round it to nearest (1.7 s = "2", 1.2 s = "1", 1.5 s = "2", -0.9 s = "-1", -1.7 s = "-2", `TEXT(-1E-10,"[s]")` = "-0"); `[m]`/`[mm]`/`[h]`/`[hh]` truncate it (1.7 min = "1", 1.7 h = "1", -1.7 min = "-1", -0.3 h = "-0"). Padding follows the sign (`[ss]` of -1E-10 = "-00", of -1.7 s = "-02", of 1.7 s = "02"). Binary noise is absorbed: -1.5/86400 days is "-2", `TEXT(-(3-1E-7)/24,"[h]")` = "-3", `TEXT(-(2-1E-9)/1440,"[m]")` = "-2", yet `TEXT(-0.49999999999/86400,"[s]")` = "-0" and `TEXT(-(5-1E-6)/86400,"[s]")` = "-5". Up to 9999-12-31 the engine counts every elapsed token from the serial rounded to the whole second, then truncates `[m]`/`[h]` (T-2385, probes/elapsed-no-seconds-boundary); past it a lone token uses a 1e-12 snap of the seconds for `[s]` and a millisecond snap for `[h]`/`[m]`: fitted to these cells, not known (the true threshold is unprobed). The positive near-integers behave the same (VERIFIED, probes/elapsed-positive-large-1900/-1904, excel-graph, T-1362): `TEXT((3-1E-7)/24,"[h]")` = "3", `TEXT((5-1E-6)/86400,"[s]")` = "5", `TEXT(0.49999999999/86400,"[s]")` = "0". The count is plain arithmetic with no 32-bit limit in either date system: `TEXT(30000,"[s]")` = "2592000000", `TEXT(24856,"[s]")` = "2147558400", `TEXT(2958465,"[s]")` = "255611376000", `TEXT(1E9,"[h]")` = "24000000000". `TEXT(-1.5,"[s]")` = "-129600".
 
 **Elapsed tokens beyond the i64 range** (VERIFIED, probes/elapsed-huge-a/b0/b1/b2/c/d/e/f/g/h/i-1900, excel-graph, T-1375): the count is printed in full, never in scientific notation, but only its first 15 significant digits are kept and the rest are zeros, from 1e15 up (`TEXT(1E15,"[s]")` = "86400000000000000000", `TEXT(1.234567890123456E16,"[s]")` = "1066666657066660000000", `TEXT(1E100,"[h]")` = 1 followed by 99 zeros times 24; the same at `[m]`/`[ss]`; negatives keep the minus). Below 1e15 it is the exact integer. The result is `#VALUE!` once it is over 255 characters (`TEXT(1E253,"[h]")` is 255 digits and works, `TEXT(1E254,"[h]")` is #VALUE!; `TEXT(1E250,"[s]")` works, `TEXT(-1E250,"[s]")` is #VALUE! because of the minus; `TEXT(1E300,"[s]")` is #VALUE!). When the count itself overflows a double the result is "0" ("-0" for a negative): `[s]` once days*86400 overflows (`TEXT(2.0807E303,"[s]")` = "0" while `TEXT(2.0806E303,"[s]")` is #VALUE!), `[m]`/`[h]` once days*1440 / days*24 does (`TEXT(1.5E307,"[h]")` = "0", `TEXT(1E305,"[m]")` is still #VALUE!). A literal 1.7E308 in a formula made excel-graph reject the whole workbook, so serials that high are unprobed. The 255-character `#VALUE!` is probed for elapsed tokens only; the engine applies the 255-character cap to every date/time section as an assumption. Corrected (T-1388): a far lower limit on the format code itself decides first (see "TEXT format code complexity limit" below), so a date/time TEXT cannot reach 255 characters through repeated tokens; whether any can exceed 255 is unprobed.
 Evidence: poi/ElapsedFormatTests.xlsx A2-A7, A10-A17, A21-A27, A31-A37, A40-A47, A50, A51 (web and
@@ -302,6 +302,17 @@ time of day).
 Status: VERIFIED
 Tasks: T-0954
 
+## `m`/`mm` directly before `:ss` is minutes, with no hour
+Rule: `m` or `mm` followed by `:` and a plain `s`/`ss` is a minute even when the code has no hour
+token (otherwise it is a month): `mm:ss` shows 1000 as "00:00", 123456.789 as "56:10" and 1.5 as
+"00:00". After an hour it was already minutes (`h:mm`).
+Evidence: suite gen-m10 displayed-text cells (excel-graph, 2026-10-16, T-1611), 71 of 80 `mm:ss` cells
+failed before the fix. Status: VERIFIED (excel-graph).
+Implemented in: `minute_before_seconds` (formatter/parser.rs). Probed: `mm:ss`, `mm:ss.0`, `mm:ss.00`. Unprobed
+(implemented by the same rule): single `m:ss`, `:s`, `[m]`/`[s]` forms, `mmss` with no colon, and any other
+separator or literal between the `m` and the seconds (those still read as months).
+Tasks: T-1733
+
 ## Fractional seconds in clock formats
 Rule: `.0`, `.00` or `.000` after a plain `s`/`ss` prints the fraction of the second, rounded to that
 many digits: on 36191.1702084375 (04:05:06.009) `hh:mm:ss.000 am/pm` → "04:05:06.009 AM" (A32),
@@ -390,8 +401,8 @@ Rule: a text value that reads as a number is formatted as that number: `TEXT("1"
 as a literal: `TEXT(100,CHAR(10))` is a line feed and `TEXT(-2.5,CHAR(1))` is "-" followed by CHAR(1) (ours `#VALUE!` for both).
 Evidence (excel-graph, 2026-10-20): gen-m5/901e91c09b347914 Calc!A210, gen-m5/eb942f4a59b1c004 Calc!A54,
 gen-m5/d586a1e0c9896942 Calc!A38, gen-m5/c0651f0e0fb544d0 Calc!A336.
-Unprobed (the engine's choices, all UNVERIFIED): date-like and percent text (they coerce only because VALUE's parser reads them); number-like text with a text section (`@`, or four sections), where the engine keeps the text path (`TEXT("001","@")` is "001"); the trimming (VALUE's, spaces only); control characters other than CHAR(1) and CHAR(10) (the engine treats every `char::is_control` character as a literal).
-Status: VERIFIED (excel-graph); implemented (T-2158).
+Whatever the code's sections (T-2332, probes/text-number-like-text-and-control-chars, 29 cells, excel-graph 2026-10-24): number-like text is always formatted as its number, never as text. `TEXT("001","@")` is "1", `TEXT("1","0;0;0;@")` and `TEXT("1","0;0")` are "1", `TEXT("1","0;0;0;""@;""@")` is "1", and a quoted or escaped `@` is a literal: `TEXT("1","""@""0")` is "@1", `TEXT("1","\@")` is "@", `TEXT(1,"\@0")` is "@1". Text that does not read as a number takes the text section (`TEXT("abc","0;0;0;""x""@")` is "xabc", `TEXT("abc","0;0;0;""@;""@")` is "@;abc"); `TEXT("1","0;0;0;;")` is `#VALUE!`. Date and percent text coerce: `TEXT("1/2/2020","0")` is 43832, `TEXT("1/2/2020","m/d/yyyy")` "1/2/2020", `TEXT("50%","0.00")` "0.50", `TEXT("50%","0%")` "50%", `TEXT("1E2","0")` "100", `TEXT("$1","0")` "1", `TEXT("1,000","0")` "1000". Leading and trailing spaces are ignored (`TEXT(" 1 ","0")`, `("1 ","0")`, `(" 1","0")` are "1"; a tab or other whitespace is unprobed, and ours does not coerce `TEXT(CHAR(9)&"1","0")`; number-like text read from a cell reference is unprobed too). CHAR(9), CHAR(13), CHAR(127), CHAR(1) and CHAR(10) in the code are each one literal character (`LEN(TEXT(1,"0"&CHAR(n)&"0"))` is 3). Ours had kept text with an `@` or four sections as text (4 cells); fixed in T-2332.
+Status: VERIFIED (excel-graph); implemented (T-2158, T-2332).
 
 ## Unquoted ASCII letters in a number format (T-1450)
 
@@ -530,10 +541,19 @@ TEXT() with the same codes. Points the earlier probes did not show:
   under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
   Also `[m]:ss` "1440:00", `d \d\a\y\s h:mm` "1 days 0:00", `dd/mm/yy` "01/01/00" (VERIFIED, gen-m10, T-1732). Implemented in
   `DisplayClock` (formatter/elapsed.rs, rounded to whole seconds): clock fields and the day always
-  round; an elapsed count rounds only when a seconds token is in the section (`[h]`/`[m]` alone keep their truncation; unprobed).
+  round, and so does an elapsed count with or without a seconds token: `[h]` on 0.4 s short of 3 h is "3", `[h]:mm` "3:00",
+  `[m]` "180"; 0.6 s short they are "2", "2:59", "179" (VERIFIED, probes/elapsed-no-seconds-boundary A1-A29, T-2385).
+  In the same probe: `[h]:mm AM/PM` is #VALUE! (A31, T-2683), `[h]:mm.0` on 0.6 s short of 3 h is "2:59.4", the
+  tenths of the seconds after the minutes with no seconds token (A32, T-2684), and `[h]:mm` of a negative is #VALUE!
+  while `[h]` and `[m]` alone show "-2" and "-4" (A24-A26).
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".
 - The text section formats booleans as well as text: `"pre "@` on TRUE is "pre TRUE", `;;;` shows
   nothing, `0.0;[Red]-0.0;0.0;"<"@">"` on an empty string "<>".
+- The accounting formats' text section `_(@_)` pads a text, a boolean or an empty string with one space on each side:
+  `_(* #,##0_);_(* \(#,##0\);_(* "-"_);_(@_)` on "text" is " text " (gen-m10 05c1c646c95a2d60 F!M4), on TRUE " TRUE "
+  (eec351e03ccedfe0 F!R2) and on `=""` two spaces (5255389143dbcef6 F!H11); the `$` variants do the same
+  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25). Ours shows
+  the plain value (T-1736).
 - A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5". A value that rounds to
   nothing shows no minus: `#,` on -0.5 "", `0.0,,` on -1234.5678 "0.0"; `#,` on 1.5 is "" and on
   1000 "1".
@@ -543,13 +563,26 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - `[$USD]` is currency text ("-1.50 USD") and `[Cyan]` a color.
 - Engineering and padded mantissas: `##0.0E+0` on 123456.789 is "123.5E+3", `00.0E+0` on 36.5
   "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
-- Rule (T-1730, implemented for the exponent only): the exponent is the decimal exponent rounded down to a
+- Rule (T-1730, T-2226): the exponent is the decimal exponent rounded down to a
   multiple of the integer-placeholder count (`##0.0E+0` on 61 "61.0E+0"); a zero exponent prints `E+00`
   (never `E-00`) and `E00` under `E-`. The group size for grouped codes (`#,##0.0E+0`) is unprobed.
-- Not implemented (VERIFIED, gen-m10): the mantissa is rounded after the shift (`##0.0E+0` on 1/3
-  "333.3E-3", `##0.00E+00` "333.33E-03"; T-2226); zero prints all integer placeholders (`##0.0E+0` on 0
+- Implemented (VERIFIED, gen-m10, T-2226): an engineering mantissa (two or more integer placeholders) rounds after
+  the shift, to its own integer digits plus the decimals (`##0.0E+0` on 1/3 "333.3E-3", on -1/7 "-142.9E-3",
+  `##0.00E+00` on 1/3 "333.33E-03", `00.0E+0` on 0.125 "12.5E-2"; 28 gen-m10 text cells). Ours: a rounding carry
+  into the next power of ten moves the exponent to the next multiple (`##0.0E+0` on 999.96 "1.0E+3"), which is
+  unprobed for engineering codes.
+- Not implemented (VERIFIED, gen-m10): zero prints all integer placeholders (`##0.0E+0` on 0
   "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
   "1.0E+02") (T-2227).
+- Not implemented (VERIFIED, gen-m10; gap triage 2026-10-25): a scientific mantissa does not round like the
+  fixed codes. On an exact tie it goes away from zero: `0E+0` and `#E+0` on 2.5 are "3E+0", and on -2.5
+  "-3E+0" (ours "2E+0", "-2E+0"). But `0.00E+00` on 12.345 is "1.23E+01" (ours "1.24E+01"), where the
+  15-digit decimal half away from zero of the fixed codes would give "1.24E+01" (`0%` on 12.345 is "1235%",
+  T-2206). Both fit rounding the double itself (12.345 is 12.3449999999999997513...) with ties away from
+  zero; that reading is an assumption until a probe separates it from others (T-2705). Cells: displayed text
+  05c1c646c95a2d60 F!I10 and F!L11, 5255389143dbcef6 F!D13 and F!G20, 5eb95c63c7d6180c F!G8 and F!G19,
+  659cd5776d423ce3 F!B10, b4f66526f822ff2c F!L18, eec351e03ccedfe0 F!Q15, fbdab487cb11409e F!Q3; TEXT
+  5eb95c63c7d6180c T!A7 `TEXT(2.5,"#E+0")` "3E+0".
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
 Implemented (T-2206): the shown place rounds the 15-digit decimal half away from zero (`0`, `#,##0`,

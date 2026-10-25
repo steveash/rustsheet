@@ -1,0 +1,5 @@
+ext/
+__pycache__/
+*.pkl
+*.npy
+w1copy/probe/

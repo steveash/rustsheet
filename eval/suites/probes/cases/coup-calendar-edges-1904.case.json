@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2486: the 9999-12-31 read bound of the COUP* functions in a 1904 workbook, whose last date is serial 2957003 (A: 2957003 and 2957004 as maturity and settlement against a later error).",
+ "tags": [
+  "M9",
+  "probe",
+  "dates",
+  "financial",
+  "T-2486"
+ ],
+ "date_system": 1904,
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=COUPPCD(39000,2957003,2)",
+    "A2": "=COUPPCD(39000,2957004,2)",
+    "A3": "=COUPNUM(39000,2957004,2,NA())",
+    "A4": "=COUPPCD(2957004,NA(),2)",
+    "A5": "=COUPPCD(2957003,NA(),2)",
+    "A6": "=COUPDAYS(39000,2957003.5,2,1)",
+    "A7": "=COUPNCD(39000,2958465,2)",
+    "A8": "=COUPNUM(39000,2958466,2,NA())"
+   }
+  }
+ ],
+ "expected": {}
+}

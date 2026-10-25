@@ -213,15 +213,18 @@ pub(crate) struct Evaluation {
     /// next evaluation needs no restart. New anchors are appended in natural
     /// `(sheet, row, column)` order.
     pub(crate) anchor_order: Vec<CellReferenceIndex>,
-    /// Formula cells touched in the current pass, and their state.
+    /// Formula cells touched in the current pass, and their state. Whatever clears this map or
+    /// removes an entry must also clear `search_cache`, whose vectors hold values read under
+    /// these states (T-0448).
     pub(crate) cells: HashMap<CellKey, CellState, KeyBuild>,
     /// Cells being evaluated, innermost last.
     pub(crate) stack: Vec<CellReferenceIndex>,
     /// The cell the driver is evaluating: the root of the current recursion,
     /// on whose behalf every read of the pass is recorded.
     pub(crate) root: Option<CellReferenceIndex>,
-    /// Cells known to be circular, or to read a circular cell: each stores 0
-    /// (recalc.md "A circular reference without iteration is 0"). Marked on the
+    /// Cells known to be circular, or to read a circular cell: each keeps its
+    /// value from before the recalculation (`Model::circular_value`; recalc.md "A
+    /// circular reference without iteration keeps the cells' values"). Marked on the
     /// stack when a read closes a loop or reads a circular cell, or by the
     /// driver when an anchor's spill contradicts its own inputs; the latter
     /// survive restarts within one evaluation.
@@ -267,6 +270,12 @@ pub(crate) struct Evaluation {
     /// restart, the cells stay on `stack`, still `Evaluating`, to be run again
     /// from the top once the recursion has unwound.
     pub(crate) unwinding: bool,
+    /// The lookup search vectors built in this pass (`search_cache.rs`, T-0448). Dropped whenever
+    /// `cells` is cleared or loses an entry.
+    pub(crate) search_cache: crate::functions::lookup_and_reference::search_cache::SearchCache,
+    /// Reads of a formula cell that was still `Evaluating` (a cycle), or of the spill area of
+    /// a running anchor, so far: a search vector whose build made one is not cached.
+    pub(crate) evaluating_reads: u64,
     /// GETPIVOTDATA's per-pivot indices and memo, dropped at each `evaluate()` (`pivot_index.rs`).
     pub(crate) pivot_indexes: crate::functions::lookup_and_reference::pivot_index::PivotIndexes,
     /// WEEKNUM's stale `return_type` state (SPEC-0017).
@@ -281,6 +290,8 @@ pub(crate) struct Evaluation {
     pub(crate) blocked_on: Option<CellReferenceIndex>,
     /// Number of passes the last `evaluate()` ran, restarted ones included. For tests.
     pub(crate) passes_in_last_evaluation: u32,
+    /// Circular references under iterative calculation (`iteration.rs`).
+    pub(crate) iteration: crate::iteration::IterationState,
 }
 
 /// How deep the recursion may go when nobody has said otherwise, in formulas
@@ -334,6 +345,8 @@ impl Default for Evaluation {
             max_stack: DEFAULT_MAX_STACK,
             stack_base: 0,
             unwinding: false,
+            search_cache: Default::default(),
+            evaluating_reads: 0,
             pivot_indexes: Default::default(),
             weeknum_start: None,
             weeknum_read: false,
@@ -341,20 +354,36 @@ impl Default for Evaluation {
             blocking: false,
             blocked_on: None,
             passes_in_last_evaluation: 0,
+            iteration: Default::default(),
         }
     }
 }
 
 impl Model {
-    /// Evaluates every formula in the workbook.
-    ///
+    /// Evaluates every formula in the workbook, then its data tables and, if there are any,
+    /// everything again so that their readers see the results (`data_tables.rs`). With
+    /// iterative calculation on, each round's circular references are then iterated
+    /// (`iteration.rs`).
+    pub fn evaluate(&mut self) {
+        self.evaluation.evaluations += 1;
+        self.begin_iteration();
+        self.evaluate_passes();
+        self.iterate_cycles(true);
+        if self.evaluate_data_tables() {
+            self.restart_iteration_round();
+            self.evaluate_passes();
+            self.iterate_cycles(false);
+        }
+        self.end_iteration();
+        self.evaluate_conditional_formatting();
+    }
+
     /// Runs passes until one completes without a restart. `RestartLog` learns
     /// from each restart, reorders the anchors and marks what it proves
     /// circular; see there for why the loop ends. A marked anchor stores
     /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
     /// is marked, so there is nothing of it to read or to contradict.
-    pub fn evaluate(&mut self) {
-        self.evaluation.evaluations += 1;
+    fn evaluate_passes(&mut self) {
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
@@ -397,7 +426,6 @@ impl Model {
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
         self.evaluation.weeknum_start = None;
-        self.evaluate_conditional_formatting();
     }
 
     /// Sets how many formulas deep the evaluation may recurse. A formula that
@@ -429,129 +457,12 @@ impl Model {
         self.evaluation.max_stack
     }
 
-    /// Every position that holds a cell, in natural `(sheet, row, column)` order.
-    fn all_positions(&self) -> Vec<CellReferenceIndex> {
-        self.get_all_cells()
-            .into_iter()
-            .map(|index| CellReferenceIndex {
-                sheet: index.index,
-                row: index.row,
-                column: index.column,
-            })
-            .collect()
-    }
-
-    /// Every dynamic anchor and every spill cell of a dynamic anchor, as they
-    /// are now, in natural order, which is the order the sheets give their
-    /// cells in.
-    fn dynamic_spills(&self) -> Vec<(CellReferenceIndex, Cell)> {
-        let mut found = Vec::new();
-        for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
-                if !matches!(cell, Cell::ArrayFormula { .. } | Cell::SpillCell { .. }) {
-                    continue;
-                }
-                let position = CellReferenceIndex {
-                    sheet: sheet as u32,
-                    row,
-                    column,
-                };
-                if self.belongs_to_a_dynamic_array(position, cell) {
-                    found.push((position, cell.clone()));
-                }
-            }
-        }
-        found
-    }
-
-    /// Puts the dynamic anchors and their spill cells back to `snapshot`,
-    /// removing the spill cells written since.
-    fn restore_dynamic_spills(&mut self, snapshot: &[(CellReferenceIndex, Cell)]) {
-        let written_since: Vec<CellReferenceIndex> = self
-            .dynamic_spills()
-            .into_iter()
-            .filter(|(_, cell)| matches!(cell, Cell::SpillCell { .. }))
-            .map(|(position, _)| position)
-            .collect();
-        for position in written_since {
-            if let Ok(worksheet) = self.workbook.worksheet_mut(position.sheet) {
-                let _ = worksheet.cell_clear_contents(position.row, position.column);
-            }
-        }
-        for (position, cell) in snapshot {
-            if let Ok(worksheet) = self.workbook.worksheet_mut(position.sheet) {
-                let _ = worksheet.update_cell(position.row, position.column, cell.clone());
-            }
-        }
-    }
-
-    fn belongs_to_a_dynamic_array(&self, position: CellReferenceIndex, cell: &Cell) -> bool {
-        match cell {
-            Cell::ArrayFormula {
-                kind: ArrayKind::Dynamic,
-                ..
-            } => true,
-            Cell::SpillCell { a, .. } => matches!(
-                self.fetch_cell(CellReferenceIndex {
-                    sheet: position.sheet,
-                    row: a.0,
-                    column: a.1,
-                }),
-                Some(Cell::ArrayFormula {
-                    kind: ArrayKind::Dynamic,
-                    ..
-                })
-            ),
-            _ => false,
-        }
-    }
-
-    /// Brings `anchor_order` in line with the dynamic anchors that exist now:
-    /// anchors that are gone are dropped, new ones are appended in natural
-    /// order, the rest keep their relative order.
-    fn sync_anchor_order(&mut self) {
-        let current = self.dynamic_anchors_in_natural_order();
-        let current_set: HashSet<CellReferenceIndex> = current.iter().copied().collect();
-        let order = &mut self.evaluation.anchor_order;
-        order.retain(|anchor| current_set.contains(anchor));
-        let known: HashSet<CellReferenceIndex> = order.iter().copied().collect();
-        order.extend(current.into_iter().filter(|a| !known.contains(a)));
-    }
-
-    fn dynamic_anchors_in_natural_order(&self) -> Vec<CellReferenceIndex> {
-        self.positions_where(|cell| {
-            matches!(
-                cell,
-                Cell::ArrayFormula {
-                    kind: ArrayKind::Dynamic,
-                    ..
-                }
-            )
-        })
-    }
-
-    /// The positions of the cells that `keep` accepts, in natural `(sheet, row, column)` order.
-    pub(crate) fn positions_where(&self, keep: impl Fn(&Cell) -> bool) -> Vec<CellReferenceIndex> {
-        let mut found = Vec::new();
-        for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
-            for (row, column, cell) in worksheet.sheet_data.cells() {
-                if keep(cell) {
-                    found.push(CellReferenceIndex {
-                        sheet: sheet as u32,
-                        row,
-                        column,
-                    });
-                }
-            }
-        }
-        found
-    }
-
     /// One pass over the workbook: anchors first, then every cell. Returns the
     /// reason the pass had to be abandoned, if any.
     fn run_pass(&mut self, circular_anchors: &[CellKey]) -> Option<Restart> {
         let state = &mut self.evaluation;
         state.cells.clear();
+        state.search_cache.clear();
         state.stack.clear();
         state.seen.clear();
         state.seen_ranges.clear();
@@ -661,6 +572,7 @@ impl Model {
             // counts as empty until the anchor commits. If the anchor then
             // writes this position, its inputs depended on its own output.
             (ArrayKind::Dynamic, Some(CellState::Evaluating)) => {
+                self.evaluation.evaluating_reads += 1;
                 self.record_seen(cell_reference, Seen::Empty);
                 CalcResult::EmptyCell
             }
@@ -692,12 +604,18 @@ impl Model {
     ) -> CalcResult {
         let key = key(cell_reference);
         match self.evaluation.cells.get(&key) {
+            Some(CellState::Evaluating) if self.iterating() => {
+                self.evaluation.evaluating_reads += 1;
+                return self.read_into_cycle(cell_reference);
+            }
             Some(CellState::Evaluating) => {
+                self.evaluation.evaluating_reads += 1;
                 self.mark_stack_circular();
                 return circular_reference();
             }
             Some(CellState::Evaluated) => {
                 self.mark_readers_of(key);
+                self.read_evaluated(cell_reference);
                 return self.stored_value(cell_reference);
             }
             None if self.evaluation.blocking && !self.evaluation.stack.is_empty() => {
@@ -726,6 +644,7 @@ impl Model {
             self.evaluation.stack.truncate(base);
             self.evaluation.circular_below = self.evaluation.circular_below.min(base);
             self.evaluation.cells.remove(&key);
+            self.evaluation.search_cache.clear();
             return CalcResult::EmptyCell;
         }
         if self.evaluation.depth > 0 || !self.evaluation.unwinding {
@@ -812,7 +731,7 @@ impl Model {
         }
         // The cell may have been found on a cycle while it ran.
         let result = if self.evaluation.circular.contains(&key) {
-            circular_reference()
+            self.circular_value(cell_reference)
         } else {
             result
         };

@@ -14,11 +14,45 @@ fn trig_exp_overflows(y: f64) -> bool {
 }
 
 /// IMCOSH and IMSINH are `#NUM!` for a zero imaginary part once `exp(|x|)` overflows, although
-/// `cosh x` is still finite: `IMCOSH("710.4+0i")`. With a nonzero imaginary part they answer
-/// (`IMCOSH("710.4+1.5i")`); a tiny nonzero one is UNVERIFIED (probes/eng-im-overflow-edges A8,
-/// A16).
+/// `cosh x` is still finite: `IMCOSH("710.4+0i")` (probes/eng-im-overflow-edges A8, A16). With a
+/// nonzero imaginary part, even `1E-300`, they take [`hyperbolic_log_form`].
 fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
     y == 0.0 && x.abs().exp().is_infinite()
+}
+
+/// Past |x| = 709 (709 itself takes the product form), IMCOSH and IMSINH of a number with a
+/// nonzero imaginary part take both parts in log space, `exp(|x| + ln(cos y / 2))` and
+/// `exp(|x| + ln(sin y / 2))`, the sign of x then going to sinh's factor. Hence `#NUM!` whenever
+/// cos y or sin y is negative (`IMCOSH("709.05+2i")`, `"709.3-0.5i"`, `"-710.4-2i"`, while
+/// `"709+2i"` and `"-710.4+1.5i"` answer), and digits that differ from `cosh x·cos y`:
+/// `IMCOSH("710.4+1.5i")` is 1.17873946358278E+307+1.6621900184285E+308i, `IMSINH("709.5+1E-200i")`
+/// has real part 6.77493159657354E+307 where `IMSINH("709.5")` is 6.77493159657316E+307
+/// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231). The exact cut between
+/// 709 and 709.0000000001 is not pinned.
+const HYPERBOLIC_LOG_CUT: f64 = 709.0;
+
+/// IMCOSH's (`sinh` false) or IMSINH's value past [`HYPERBOLIC_LOG_CUT`], `None` below the cut or
+/// for a zero y. `#NUM!` where cos y or sin y is not positive (Excel takes its log).
+fn hyperbolic_log_form(
+    (x, y, suffix): ComplexParts,
+    sinh: bool,
+    cell: CellReferenceIndex,
+) -> Option<CalcResult> {
+    if y == 0.0 || x.abs() <= HYPERBOLIC_LOG_CUT {
+        return None;
+    }
+    let (sin_y, cos_y) = (y.sin(), y.cos());
+    if sin_y <= 0.0 || cos_y <= 0.0 {
+        return Some(num_error(cell));
+    }
+    let part = |t: f64| (x.abs() + (t / 2.0).ln()).exp();
+    let (re, im) = (part(cos_y), part(sin_y));
+    let (re, im) = if sinh {
+        (x.signum() * re, im)
+    } else {
+        (re, x.signum() * im)
+    };
+    Some(finite_complex_result(re, im, suffix, cell))
 }
 
 /// The sine and cosine of `x` as SIN and COS reduce it (by the x87 64-bit π) where they answer,
@@ -33,10 +67,22 @@ fn trig_sin_cos(x: f64) -> (f64, f64) {
     }
 }
 
-/// The result of a reciprocal (IMSEC, IMCSC, IMSECH, IMCSCH) whose denominator `t` overflowed to
+/// IMSEC, IMCSC and IMSECH where the denominator `t` overflows (the hyperbolic argument `v` past
+/// about 355): cosh v and |sinh v| are then both `M = e^|v|/2` and `t` is M², so the result is the
+/// trigonometric parts `(re, im)` over M, computed as `2e^-|v|` so that it stays finite. Excel
+/// keeps these tiny parts: `IMCSC("-724.227-562.884i")` is
+/// -6.94796703439417E-245-6.26263832046024E-246i and `IMSECH("-524.561+5.3113i")`
+/// 1.73046857535442E-228-2.53533899849465E-228i (probes-numeric im-last-digit-sweep E55:F55,
+/// K42:L42). Past |v| ≈ 708 the parts are subnormal and print as 0 (`IMSEC("1.5+711i")`).
+fn overflowed_reciprocal(re: f64, im: f64, v: f64, suffix: Suffix) -> CalcResult {
+    let scale = 2.0 * (-v.abs()).exp();
+    complex_result(re * scale, im * scale, suffix)
+}
+
+/// The result of a reciprocal (IMCSCH) whose denominator `t` overflowed to
 /// infinity or NaN: Excel answers `0` where `inf / inf` is NaN. A zero or finite `t` is not this
-/// case and stays an error. Examples: `IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`,
-/// `IMSEC("1.5+711i")` (probes/eng-im-overflow-edges A55, A56, A64, A74, A82).
+/// case and stays an error. Example: `IMCSCH("710.4+0i")` (probes/eng-im-overflow-edges A64).
+/// Whether IMCSCH keeps normal tiny parts as IMSECH does (`overflowed_reciprocal`) is unprobed.
 fn reciprocal_result(x: f64, y: f64, t: f64, suffix: Suffix) -> CalcResult {
     if !t.is_finite() && (x.is_nan() || y.is_nan()) {
         return complex_result(0.0, 0.0, suffix);
@@ -54,6 +100,9 @@ pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if hyperbolic_exp_overflows(x, y) {
         return num_error(cell);
+    }
+    if let Some(result) = hyperbolic_log_form((x, y, suffix), false, cell) {
+        return result;
     }
     finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
 }
@@ -99,10 +148,15 @@ pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if t == 0.0 {
         return num_error(cell);
     }
-    reciprocal_result(x_sin * (y_cosh / t), -x_cos * (y_sinh / t), t, suffix)
+    if !t.is_finite() {
+        return overflowed_reciprocal(x_sin, -x_cos * y.signum(), y, suffix);
+    }
+    complex_result(x_sin * (y_cosh / t), -x_cos * (y_sinh / t), suffix)
 }
 
-pub(super) fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+/// csch(x+iy) is `#NUM!` when the squared modulus of sinh underflows to 0: `IMCSCH("0")` and
+/// `IMCSCH("1E-200+1E-200i")` (gen-m9/2f0d384b8ed0d392 A315, 59a16b5ab566ee5c A274), as IMCSC's `t`.
+pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let x_cosh = x.cosh();
     let x_sinh = x.sinh();
 
@@ -110,6 +164,9 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Cal
     let y_sin = y.sin();
 
     let t = x_sinh * x_sinh * y_cos * y_cos + x_cosh * x_cosh * y_sin * y_sin;
+    if t == 0.0 {
+        return num_error(cell);
+    }
     reciprocal_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, t, suffix)
 }
 
@@ -127,7 +184,10 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Calc
     let y_sinh = y.sinh();
 
     let t = x_cos * x_cos + (f64::cosh(2.0 * y) - 1.0) / 2.0;
-    reciprocal_result(x_cos * y_cosh / t, x_sin * y_sinh / t, t, suffix)
+    if !t.is_finite() {
+        return overflowed_reciprocal(x_cos, x_sin * y.signum(), y, suffix);
+    }
+    complex_result(x_cos * y_cosh / t, x_sin * y_sinh / t, suffix)
 }
 
 /// sech(x+iy) = `(cosh x·cos y, -sinh x·sin y) / (cos²y + sinh²x)`: 61 of the 62 finite cells of
@@ -141,7 +201,10 @@ pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Cal
     let (y_sin, y_cos) = trig_sin_cos(y);
 
     let t = y_cos * y_cos + x_sinh * x_sinh;
-    reciprocal_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, t, suffix)
+    if !t.is_finite() {
+        return overflowed_reciprocal(y_cos, -y_sin * x.signum(), x, suffix);
+    }
+    complex_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, suffix)
 }
 
 pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -154,6 +217,9 @@ pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if hyperbolic_exp_overflows(x, y) {
         return num_error(cell);
+    }
+    if let Some(result) = hyperbolic_log_form((x, y, suffix), true, cell) {
+        return result;
     }
     finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
 }

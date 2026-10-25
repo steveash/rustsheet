@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -67,7 +67,18 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (1): Calc!A256
 - gen-m9/ede0323c389fc703.case.json (1): Calc!A260
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `SKEW.P({1E+200,1E+200,-1E+200},{1,1,2,2,2,3})` is `#DIV/0!` (ours 0) and `T.TEST(Data!B6:D12,{1E+200,1E+200,-1E+200},1,2)` `#NUM!` (ours 0.5): the overflowing squares.
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/899f9555e67da2d6 Calc!A113 `=EXPON.DIST((-2),(SKEW.P({1E+200,1E+200,-1E+200},{1,1,2,2,2,3})-Data!A1),AND(FALSE,ISBLANK(Data!A$8)))`: Excel #DIV/0!, ours #NUM!; inner `SKEW.P({1E+200,1E+200,-1E+200},{1,1,2,2,2,3})` Excel #DIV/0!, ours 0.0
+- gen-m9/a612e89321a6df9c Calc!A375 `=FISHER(T.TEST(Data!B6:D12,{1E+200,1E+200,-1E+200},1,2))`: Excel #NUM!, ours 0.5493061443340549; inner `T.TEST(Data!B6:D12,{1E+200,1E+200,-1E+200},1,2)` Excel #NUM!, ours 0.5
+Cells:
+- gen-m9/899f9555e67da2d6.case.json (1): Calc!A113
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A375
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 29 known-failure lines (11 from T-2255, 18 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The probe cells are in eval/ and statistics.md's entry has the rule and an "Ours:" line naming this task.

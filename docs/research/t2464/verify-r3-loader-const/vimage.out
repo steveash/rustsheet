@@ -1,0 +1,7 @@
+cells 111351 (prefix ''); per |ln y| bin: n, Excel y reachable, control EXP(double) reachable, chance, M4 prediction reachable
+  |E| <1   n  51215  Excel  51215  control  51215  chance  51215.0  M4-extended  51215  M4-Cd 51215  M4-CdXd 51215  M4-L5x 51215  M4-hx 51215  M4-lcx 51215
+  |E| 1-2  n  27128  Excel  21596  control  27128  chance  18426.1  M4-extended  18340  M4-Cd 20654  M4-CdXd 22623  M4-L5x 26765  M4-hx 18569  M4-lcx 26796
+  |E| 2-4  n  10577  Excel   6036  control  10577  chance   3665.7  M4-extended   4002  M4-Cd 5040  M4-CdXd 5500  M4-L5x 8309  M4-hx 3897  M4-lcx 8369
+  |E| 4-8  n   8112  Excel   2220  control   8112  chance   1416.7  M4-extended   1434  M4-Cd 2403  M4-CdXd 2203  M4-L5x 5787  M4-hx 1288  M4-lcx 5787
+  |E| >=8  n  14319  Excel    615  control  14319  chance    589.2  M4-extended    517  M4-Cd 939  M4-CdXd 798  M4-L5x 2205  M4-hx 254  M4-lcx 2205
+base (45.2, 60.9) exactly: 112 cells, reachable 0

@@ -3,7 +3,7 @@ id: T-2483
 title: "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD: argument check order, and ODDLPRICE before the last coupon is #NUM! (gen-m9, 70 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -72,13 +72,22 @@ Cells:
 - gen-m9/62c886e21a1042af.case.json (1): Calc!A88
 - gen-m9/7dc52cfcbc8b4448.case.json (1): Calc!A133
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `ODDFPRICE(2958466,46506,33984,39398,-1,CONVERT(42,"F","yd")<#N/A>,104,4,2)` is `#NUM!`, a range check before the yld's error (ours `#N/A`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/623663cacea53bbc Calc!A256 `=AVERAGEA(Data!E10:E11,FIXED(COUNTA(Data!A$2),3,(Data!D$3>(-0.5))),ODDFPRICE(2958466,46506,33984,39398,Data!C6,CONVERT(42,"F","yd"),104,4,2))`: Excel #NUM!, ours #N/A; inner `ODDFPRICE(2958466,46506,33984,39398,Data!C6,CONVERT(42,"F","yd"),104,4,2)` Excel #NUM!, ours #N/A
+Cells:
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A256
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): these 68 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for ODDLPRICE with the settlement before, on and after `last_interest`, and for the argument order of each function.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2257): these 68 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] Unit tests for ODDLPRICE with the settlement before, on and after `last_interest`, and for the argument order of each function.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - ODDFYIELD's solver digits (T-2007).
@@ -88,3 +97,12 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed the order (probes/odd-bond-argument-check-order, 1091 excel-graph cells: each out-of-domain argument against
+`NA()`, text and `TRUE` in every other position). The four functions now make a date below 0 or past 9999-12-31 and a
+frequency other than 1, 2 or 4 `#NUM!` as they read them (before the basis), and ODDLPRICE and ODDLYIELD are `#NUM!` for a
+settlement on or before `last_interest`, after every read (`odd_args`, `odd_last_of` in financial_bonds.rs). Recorded in
+financial.md "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order".
+Eval: gen-m9 −39 known failures (every owned cell now passes; the rest of the 71 had been fixed by earlier tasks), probes
+−6 (t2436/623663cacea53bbc) and +1 new-case line (A258, ODDFYIELD's solver digits, added to T-2007), 0 regressions.

@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -67,7 +67,18 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (2): Calc!A252, A314
 - gen-m9/ede0323c389fc703.case.json (1): Calc!A30
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `TRIMMEAN(<"abc",FALSE,"a">,SUMX2PY2(..)<#N/A>)` is `#N/A`, percent's error before the no-number `#NUM!` (ours `#NUM!`); `PERCENTRANK.INC(<blank>,<"TRUE" text>,4)` is `#VALUE!`, x's text before the empty data (ours `#N/A`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/3e98b26cf6713e77 Calc!A247 `=CRITBINOM(TRIMMEAN(Data!A9:C9,SUMX2PY2(Data!B7,Data!D9:E12)),FLOOR.PRECISE((0.3/Data!D10),Data!E9),1E-200)`: Excel #N/A, ours #NUM!; inner `TRIMMEAN(Data!A9:C9,SUMX2PY2(Data!B7,Data!D9:E12))` Excel #N/A, ours #NUM!
+- gen-m9/c2974c061384fdd9 Calc!A90 `=LOGNORM.INV(Data!A5,GAMMAINV(Data!B1,PERCENTRANK.INC(Data!A7,Data!D12,4),Data!B10),99999)`: Excel #VALUE!, ours #N/A; inner `PERCENTRANK.INC(Data!A7,Data!D12,4)` Excel #VALUE!, ours #N/A
+Cells:
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A247
+- gen-m9/c2974c061384fdd9.case.json (1): Calc!A90
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 62 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `QUARTILE(Z1,1/0)` with Z1 empty is `#DIV/0!`, `PERCENTILE.INC(A1:A2,"x")` with text data `#VALUE!`,

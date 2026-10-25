@@ -104,7 +104,7 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
 }
 
 /// The double nearest to `digits * 10^place`, where `digits <= 10^15`.
-fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
+pub(crate) fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
     // Fast path: `digits` (< 2^53) and 10^|place| (|place| <= 22) are exact doubles, so one
     // multiplication or division is correctly rounded, like the parse below.
     if let Ok(exact_power) = i32::try_from(place.unsigned_abs()) {
@@ -155,6 +155,25 @@ pub(crate) fn round_shown_place(value: f64, precision: i32, is_scientific: bool)
             ),
         )
     })
+}
+
+/// `value` rounded to the digits an engineering mantissa of `group` integer placeholders and
+/// `precision` decimals shows, and the exponent (a multiple of `group`) it is shown with.
+pub(crate) fn round_engineering(value: f64, group: f64, precision: i32) -> (f64, f64) {
+    let exponent_of = |v: f64| (v.abs().log10().floor() / group).floor() * group;
+    let digits_of = |v: f64, exponent: f64| {
+        let integer_digits = v.abs().log10().floor() - exponent + 1.0;
+        // At most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text").
+        (integer_digits + f64::from(precision)).clamp(1.0, EXCEL_PRECISION as f64) as usize
+    };
+    let exponent = exponent_of(value);
+    let rounded = to_precision(value, digits_of(value, exponent));
+    let carried = exponent_of(rounded);
+    if carried == exponent {
+        (rounded, exponent)
+    } else {
+        (to_precision(value, digits_of(rounded, carried)), carried)
+    }
 }
 
 #[cfg(test)]

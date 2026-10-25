@@ -1,0 +1,7 @@
+# t2586-verify-r4-f-small-df-hold: n = 896
+CR     all 88/644/803 of 896 | both<=10 14/137/187 of 224 | min<=2 56/363/411 of 448 | other 18/144/205 of 224
+M-xd   all 118/771/858 of 896 | both<=10 18/165/205 of 224 | min<=2 68/403/429 of 448 | other 32/203/224 of 224
+M-sd   all 312/852/886 of 896 | both<=10 63/220/224 of 224 | min<=2 184/421/438 of 448 | other 65/211/224 of 224
+M-sdm  all 355/854/884 of 896 | both<=10 80/221/224 of 224 | min<=2 202/421/437 of 448 | other 73/212/223 of 224
+vM-sd  all 312/852/886 of 896 | both<=10 63/220/224 of 224 | min<=2 184/421/438 of 448 | other 65/211/224 of 224
+vM-sd == M-sd on 896 of 896

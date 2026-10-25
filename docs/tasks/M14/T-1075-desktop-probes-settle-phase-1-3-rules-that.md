@@ -70,6 +70,16 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    1.2626272556789115 and 1.1071487177940906; the web and the engine give the correctly rounded ...118 and ...904. Does Windows
    desktop give the Mac values? If it does, sweep desktop ATAN near rounding midpoints to find the kernel (fdlibm `atan` gives D14
    but not D26). The engine follows the web, and the two cells stay known failures.
+15. **BESSELJ/BESSELY sine at x = 1e5** (T-2547, decision 0109; engineering.md "BESSELJ / BESSELY").
+   ironcalc-calc/ENGINEERING/BESSEL.xlsx All!D18 `BESSELJ(100000,5)` and F18 `BESSELY(100000,5)` cache Mac 16.0300's
+   0.001846551246313725 and 0.001719431947654535; the web and the engine (Excel's x87-reduced sine of the phase) give
+   0.0018465512463137278 and 0.0017194319476545319 (probes/t2547-bessel-phase-cut A85, A86). Does Windows desktop give the
+   web values? The engine follows the web, and the two cells stay known failures.
+16. **IMSQRT of a negative real** (T-2536; engineering.md "IMSQRT of a negative real is polar through COS and ATAN2").
+   ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!AL26 `IMREAL(IMSQRT(COMPLEX(-1,0)))` and AL12 (of -12) cache Mac 16.0300's
+   libm-like 6.12323399573677E-17 and 2.12115047744981E-16. The web gives 6.1257422745431E-17 for `IMSQRT("-1")` (Excel's
+   COS(ATAN2(-1,0)/2); gen-m9/59a16b5ab566ee5c A6 and 4 more cells). Does Windows desktop give the Mac values? The engine
+   follows the desktop cache (decision 0030 rule 4), and the 5 gen-m9 cells stay known failures.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

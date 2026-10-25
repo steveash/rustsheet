@@ -4,11 +4,11 @@
 //! intersection (`ArgKind::LiftArrays`, SPEC-0011). Evidence: probes/fin-argument-modes (every
 //! argument over an array, the first over a range) and probes/fin-later-argument-ranges H1-H82
 //! (every later argument over a range on its own rows), docs/excel-semantics/financial.md
-//! "Financial function argument modes". Each kernel reads all its arguments, in order, before it
-//! checks their values, so an error argument wins over an invalid value. That is oracle-proven for
-//! ACCRINTM (a negative rate and an `NA()` basis is `#N/A`, fin-later-argument-ranges J17, J20); the
-//! others keep main's existing read-then-check order. Moved out of
-//! `financial/mod.rs` (T-1372).
+//! "Financial function argument modes". Each kernel reads its arguments one by one, returning
+//! the first error, text or boolean, and checks only the basis and the dates as it reads them;
+//! the date order and the amounts are checked after every read, so an error argument wins over an
+//! invalid amount (probes/discount-argument-check-order, T-2484; financial.md "Discount securities
+//! check order"). Moved out of `financial/mod.rs` (T-1372).
 
 use super::dates::is_less_than_one_year;
 use super::number_or_error;
@@ -27,7 +27,7 @@ struct DiscountArgs {
     maturity: i64,
     first: f64,
     second: f64,
-    basis: f64,
+    basis: u32,
 }
 
 /// `(settlement, maturity, issue, rate, last, basis)` of PRICEMAT and YIELDMAT.
@@ -37,7 +37,7 @@ struct MaturityArgs {
     issue: i64,
     rate: f64,
     last: f64,
-    basis: f64,
+    basis: u32,
 }
 
 impl Model {
@@ -56,23 +56,40 @@ impl Model {
         let [issue, settlement, rate, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let issue_serial = self.cast_number_ref(issue, cell)?.floor() as i64;
-        let settlement_serial = self.cast_number_ref(settlement, cell)?.floor() as i64;
-        let rate = self.cast_number_ref(rate, cell)?;
-        // A boolean par is `#VALUE!` (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, a TRUE cell too:
-        // probes/t2455-transpose-single-value A41, A54); text "2" is 2 (A55).
+        // Unlike the other discount securities, ACCRINTM reads its basis last; both dates are
+        // #NUM! off the calendar as they are read (`ACCRINTM(-1,39448,0.1,1000,NA())` is #NUM!,
+        // `ACCRINTM(NA(),2958466,..)` #N/A: probes/discount-argument-check-order).
+        let issue_serial = self.discount_date_of(issue, cell)?;
+        let settlement_serial = self.discount_date_of(settlement, cell)?;
+        // A boolean rate or par is `#VALUE!` (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, a TRUE cell
+        // too: probes/t2455-transpose-single-value A41, A54); text "2" is 2 (A55).
+        let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let par = self.cast_number_no_bools_or(rest.first(), 1000.0, cell)?;
         // A boolean basis is #VALUE!, text "1" is 1, 1.9 truncates to 1, 5 and -1 are #NUM!
         // (fin-later-argument-ranges J1-J11), and it is read before any value is checked (J20).
-        let basis = self.cast_number_no_bools_or(rest.get(1), 0.0, cell)?;
+        let basis = self.day_count_basis_of(rest.get(1), cell)?;
         if rate <= 0.0 || par <= 0.0 || issue_serial >= settlement_serial {
             return Err(num_error(cell));
         }
-        let year_fraction = self.get_yearfrac(issue_serial, settlement_serial, basis, cell)?;
+        let year_fraction =
+            self.get_yearfrac(issue_serial, settlement_serial, f64::from(basis), cell)?;
         Ok(par * rate * year_fraction)
     }
 
-    /// Reads [`DiscountArgs`], each argument a number (a boolean is `#VALUE!`).
+    /// A date argument of the discount securities as read: its whole-day serial, #NUM! unless it
+    /// floors to a serial from 0 to 9999-12-31 (`DISC(39448,-1,NA(),..)` and
+    /// `DISC(2958466,"x",..)` are #NUM!, `DISC(0.5,NA(),..)` #N/A:
+    /// probes/discount-argument-check-order).
+    fn discount_date_of(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        Ok(self.financial_calendar_date_of(value, cell)?.floor() as i64)
+    }
+
+    /// Reads [`DiscountArgs`] in Excel's order: the basis first, then the rest left to right, each
+    /// a number (a boolean is `#VALUE!`) and each date on the calendar.
     fn discount_args(
         &self,
         values: &[CalcResult],
@@ -81,14 +98,14 @@ impl Model {
         let [settlement, maturity, first, second, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // The basis is read first: `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and
+        // The basis is read and checked first: `RECEIVED(37025,2.5,1E+300,1/0,"abc")` and
         // `DISC(37025,2.5,1/0,100,"abc")` are `#VALUE!`, `RECEIVED(..,NA(),1/0)` `#DIV/0!`
-        // (probes/t2455-transpose-single-value A21, A64, A65; financial.md "The discount
-        // securities read basis first").
-        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
+        // (probes/t2455-transpose-single-value A21, A64, A65), `DISC(NA(),..,5)` #NUM!
+        // (probes/discount-argument-check-order; financial.md "Discount securities check order").
+        let basis = self.day_count_basis_of(rest.first(), cell)?;
         Ok(DiscountArgs {
-            settlement: self.cast_number_no_bools_ref(settlement, cell)?.floor() as i64,
-            maturity: self.cast_number_no_bools_ref(maturity, cell)?.floor() as i64,
+            settlement: self.discount_date_of(settlement, cell)?,
+            maturity: self.discount_date_of(maturity, cell)?,
             first: self.cast_number_no_bools_ref(first, cell)?,
             second: self.cast_number_no_bools_ref(second, cell)?,
             basis,
@@ -105,7 +122,7 @@ impl Model {
         if args.first <= 0.0 || args.second <= 0.0 || args.settlement >= args.maturity {
             return Err(num_error(cell));
         }
-        self.year_parts(args.settlement, args.maturity, args.basis, cell)
+        self.year_parts(args.settlement, args.maturity, f64::from(args.basis), cell)
     }
 
     /// `DISC(settlement, maturity, pr, redemption, [basis])`.
@@ -183,7 +200,9 @@ impl Model {
         let args = self.discount_args(values, cell)?;
         let (investment, discount) = (args.first, args.second);
         let (dim, b) = self.discount_days(&args, cell)?;
-        let denom = 1.0 - discount * (dim / b);
+        // `discount*DIM/B` left to right, not `discount*(DIM/B)`: `RECEIVED(39448,43831,"1",0.05,0)`
+        // is 2.5, not 2.5000000000000004 (probes/discount-argument-check-order A758).
+        let denom = 1.0 - discount * dim / b;
         if denom <= 0.0 {
             return Err(num_error(cell));
         }
@@ -211,7 +230,8 @@ impl Model {
         Ok((redemption - pr) / pr * (b / dsm))
     }
 
-    /// Reads [`MaturityArgs`], each argument a number (a boolean is `#VALUE!`).
+    /// Reads [`MaturityArgs`] in the order of [`Model::discount_args`]: the basis first, then the
+    /// rest left to right (probes/discount-argument-check-order).
     fn maturity_args(
         &self,
         values: &[CalcResult],
@@ -220,13 +240,14 @@ impl Model {
         let [settlement, maturity, issue, rate, last, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        let basis = self.day_count_basis_of(rest.first(), cell)?;
         Ok(MaturityArgs {
-            settlement: self.cast_number_no_bools_ref(settlement, cell)?.floor() as i64,
-            maturity: self.cast_number_no_bools_ref(maturity, cell)?.floor() as i64,
-            issue: self.cast_number_no_bools_ref(issue, cell)?.floor() as i64,
+            settlement: self.discount_date_of(settlement, cell)?,
+            maturity: self.discount_date_of(maturity, cell)?,
+            issue: self.discount_date_of(issue, cell)?,
             rate: self.cast_number_no_bools_ref(rate, cell)?,
             last: self.cast_number_no_bools_ref(last, cell)?,
-            basis: self.cast_number_no_bools_or(rest.first(), 0.0, cell)?,
+            basis,
         })
     }
 
@@ -251,8 +272,13 @@ impl Model {
         {
             return Err(num_error(cell));
         }
-        let (b, dim, a, dsm) =
-            self.get_mat_factors(args.issue, args.settlement, args.maturity, args.basis, cell)?;
+        let (b, dim, a, dsm) = self.get_mat_factors(
+            args.issue,
+            args.settlement,
+            args.maturity,
+            f64::from(args.basis),
+            cell,
+        )?;
         let denom = 1.0 + dsm / b * yld;
         if denom == 0.0 {
             return Err(div_error(cell));
@@ -281,8 +307,13 @@ impl Model {
         {
             return Err(num_error(cell));
         }
-        let (b, dim, a, dsm) =
-            self.get_mat_factors(args.issue, args.settlement, args.maturity, args.basis, cell)?;
+        let (b, dim, a, dsm) = self.get_mat_factors(
+            args.issue,
+            args.settlement,
+            args.maturity,
+            f64::from(args.basis),
+            cell,
+        )?;
         let denom = price / 100.0 + a / b * rate;
         if denom == 0.0 || dsm == 0.0 {
             return Err(div_error(cell));
@@ -297,28 +328,33 @@ impl Model {
     // d_e = d_m - 365/2 (183 for d_m = 366), v = p*(1 + y/2)*(1 + d_e*y/365), which with the
     // relation of p and v is a quadratic equation for y.
 
-    /// The checked `(settlement, maturity, rate or price)` of TBILLEQ, TBILLPRICE and TBILLYIELD.
+    /// The checked `(days from settlement to maturity, rate or price)` of TBILLEQ, TBILLPRICE and
+    /// TBILLYIELD.
     fn tbill_arguments(
         &self,
         values: &[CalcResult],
         cell: CellReferenceIndex,
-    ) -> Result<(f64, f64, f64), CalcResult> {
+    ) -> Result<(f64, f64), CalcResult> {
         let [settlement, maturity, rate] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // The date order and the one-year limit are checked after the discount is read.
-        let settlement = self.financial_calendar_date_of(settlement, cell)?;
-        let maturity = self.financial_calendar_date_of(maturity, cell)?;
+        // The date order and the one-year limit are checked after the discount is read. Both
+        // dates floor to whole days, so a settlement from 0 to below 1 is serial 0
+        // (`TBILLPRICE(0.5,1.9,0.1)` = `TBILLPRICE(0,1,0.1)` and `TBILLPRICE(0.5,0.9,0.1)` is
+        // #NUM!: probes/tbill-settlement-below-one A1:A5; financial.md "T-bill settlement below
+        // serial 1").
+        let settlement = self.discount_date_of(settlement, cell)?;
+        let maturity = self.discount_date_of(maturity, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let less_than_one_year = is_less_than_one_year(
-            self.financial_date(settlement),
-            self.financial_date(maturity),
+            self.financial_date(settlement as f64),
+            self.financial_date(maturity as f64),
         )
-        .map_err(|_| num_error(cell))?;
+        .ok_or_else(|| num_error(cell))?;
         if settlement >= maturity || !less_than_one_year || rate <= 0.0 {
             return Err(num_error(cell));
         }
-        Ok((settlement, maturity, rate))
+        Ok(((maturity - settlement) as f64, rate))
     }
 
     /// `TBILLEQ(settlement, maturity, discount)`.
@@ -333,8 +369,7 @@ impl Model {
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let (settlement, maturity, discount) = self.tbill_arguments(values, cell)?;
-        let d_m = maturity - settlement;
+        let (d_m, discount) = self.tbill_arguments(values, cell)?;
         let result = if d_m < 183.0 {
             // A zero denominator (price 0) is 0 and a negative one `#NUM!`, not `#DIV/0!`
             // (probes/tbilleq-zero-price A3, probes/tbilleq-nonpositive-price; financial.md
@@ -380,9 +415,7 @@ impl Model {
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let (settlement, maturity, discount) = self.tbill_arguments(values, cell)?;
-        // days to maturity
-        let d_m = maturity - settlement;
+        let (d_m, discount) = self.tbill_arguments(values, cell)?;
         let result = 100.0 * (1.0 - discount * d_m / 360.0);
         if result.is_infinite() {
             return Err(div_error(cell));
@@ -405,8 +438,7 @@ impl Model {
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let (settlement, maturity, pr) = self.tbill_arguments(values, cell)?;
-        let days = maturity - settlement;
+        let (days, pr) = self.tbill_arguments(values, cell)?;
         // Excel's order: `(100 - pr)/pr * (360/days)` (ironcalc-calc TBILLs.xlsx R6:R30, bit-exact;
         // docs/excel-semantics/financial.md "TBILLEQ and TBILLYIELD").
         Ok((100.0 - pr) / pr * (360.0 / days))

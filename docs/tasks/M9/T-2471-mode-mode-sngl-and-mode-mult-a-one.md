@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -59,7 +59,18 @@ Cells:
 - gen-m9/d910f000b60e2eac.case.json (1): Calc!A351
 - gen-m9/eccd03df42e40006.case.json (1): Calc!A198
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `MODE.SNGL(Data!B4:B10,Data!D10:D10,..)` and `MODE.MULT(Data!D10:D10,Data!D1:D6)` with D10 empty are `#VALUE!` (ours `#N/A`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/984cba67bbe6972b Calc!A277 `=AVERAGEA(MODE.SNGL(Data!B4:B10,Data!D10:D10,(1e-15^3.14159)),"ABC")`: Excel #VALUE!, ours #N/A; inner `MODE.SNGL(Data!B4:B10,Data!D10:D10,(1e-15^3.14159))` Excel #VALUE!, ours #N/A
+- gen-m9/ecc87f80077959e0 Calc!A187 `=CONFIDENCE.T(RADIANS(STDEV.S(Data!E5:E12,Data!A1:A1,{0.02,0.027})),ACCRINTM(MODE.MULT(Data!D10:D10,Data!D1:D6),39448,(-0.5),4317,3),8)`: Excel #VALUE!, ours #N/A; inner `MODE.MULT(Data!D10:D10,Data!D1:D6)` Excel #VALUE!, ours #N/A
+Cells:
+- gen-m9/984cba67bbe6972b.case.json (1): Calc!A277
+- gen-m9/ecc87f80077959e0.case.json (1): Calc!A187
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 36 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `MODE(Z1:Z1)`, `MODE.SNGL(1,1,Z1:Z1)` and `MODE.MULT(Z1:Z1,{5})` with Z1 empty are `#VALUE!`;

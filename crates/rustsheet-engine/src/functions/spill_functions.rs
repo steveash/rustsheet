@@ -1,4 +1,5 @@
-use crate::functions::util::{array_node_to_calc_result, near_integer_count};
+use crate::functions::util::array_node_to_calc_result;
+use crate::functions::util::near_integer::near_integer_count;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
@@ -82,6 +83,8 @@ pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
         ArrayNode::Error(e) => CellKey::Error(e.error_type_code()),
         ArrayNode::Empty => CellKey::Empty,
         ArrayNode::Lambda(id) => CellKey::Lambda(*id),
+        // Keyed as the `#VALUE!` it shows: UNIQUE over nested cells is unprobed (SPEC-0018).
+        ArrayNode::Nested(_) => CellKey::Error(Error::VALUE.error_type_code()),
     }
 }
 
@@ -685,7 +688,7 @@ impl Model {
             for node in row {
                 match node {
                     ArrayNode::Boolean(_) | ArrayNode::Number(_) | ArrayNode::Empty => {}
-                    ArrayNode::String(_) | ArrayNode::Lambda(_) => {
+                    ArrayNode::String(_) | ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
                         return CalcResult::new_error(
                             Error::VALUE,
                             cell,

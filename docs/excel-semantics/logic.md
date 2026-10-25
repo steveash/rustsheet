@@ -50,7 +50,7 @@ lookup_value is a blank cell"), and comparisons treat it as a blank: `IFERROR(B1
 are all TRUE and `SWITCH(IFERROR(B1,1),0,"zero",..)` is "zero". An omitted argument compares the same way:
 `SWITCH(0,,"a","b")` and `SWITCH(,0,"a","b")` are "a", and `CHOOSE(1,)=0`, `=FALSE`, `=""`, `<1`, `IF(TRUE,)=""` and `IF(TRUE,)=0`
 are TRUE. Unlike a blank cell given directly, COUNT and COUNTA
-count it (`COUNT(IFERROR(B1,1))` = 1, COUNTA 1); so does an omitted argument (`COUNTA(,)` = 2, `COUNTA(1,)` = 2, `COUNTA(,,)` = 3, `COUNT(,)` = 2, `COUNT(1,)` = 2, `COUNTA(B1,)` = 1 with B1 blank, probes/counta-empty-value D1-D8, T-1294), and the count also holds through LET (`LET(x,IFERROR(B1,1),COUNTA(x))` = 1) and for two such arguments (2). The array form counts the empty element too (`COUNTA(IFERROR(B1:B2,1))` with B2 "x" is 2, D18) whereas `COUNTA(TAKE(<blank>,1))` is 0 (probes/subtotal-reference-operands-c H13): TAKE of a range is a reference (references.md), so COUNTA skips its blank cells, while every element of an array value counts; the blank element of a lifted INDEX, an array, counts too (`COUNTA(INDEX(D1:D5,{1,2,3}))` with D2 blank is 3, probes/index-lifted-edge-cases H136), yet ISBLANK of it is TRUE, ISNUMBER and ISTEXT FALSE, TYPE 1, N 0,
+count it (`COUNT(IFERROR(B1,1))` = 1, COUNTA 1); so does an omitted argument (`COUNTA(,)` = 2, `COUNTA(1,)` = 2, `COUNTA(,,)` = 3, `COUNT(,)` = 2, `COUNT(1,)` = 2, `COUNTA(B1,)` = 1 with B1 blank, probes/counta-empty-value D1-D8, T-1294), and the count also holds through LET (`LET(x,IFERROR(B1,1),COUNTA(x))` = 1) and for two such arguments (2). The array form counts the empty element too (`COUNTA(IFERROR(B1:B2,1))` with B2 "x" is 2, D18; over a multi-cell range each blank is the number 0, so COUNT and AVERAGE count it: arrays.md "Array-value edges in the gen-m9 sweep", T-2579) whereas `COUNTA(TAKE(<blank>,1))` is 0 (probes/subtotal-reference-operands-c H13): TAKE of a range is a reference (references.md), so COUNTA skips its blank cells, while every element of an array value counts; the blank element of a lifted INDEX, an array, counts too (`COUNTA(INDEX(D1:D5,{1,2,3}))` with D2 blank is 3, probes/index-lifted-edge-cases H136), yet ISBLANK of it is TRUE, ISNUMBER and ISTEXT FALSE, TYPE 1, N 0,
 and the cell itself shows 0 (as a consumer it reads as 0/FALSE/"": `NOT(IFERROR(B1,1))` TRUE, `IF(IFERROR(B1,1),..)` takes the false branch, `-IFERROR(B1,1)`, SUM, AVERAGE, MAX, PRODUCT and LEN of it are 0, `ISLOGICAL` FALSE, `LET(x,IFERROR(B1,1),ISBLANK(x))` TRUE; probes/counta-empty-value D9-D17, D25-D26). IFNA behaves the same (OR FALSE, `&` "", VLOOKUP 0).
 Evidence: gen-m2 7469c3e920e1ade4 Calc!A351, ef5c55a81783b7d5 Calc!A291, dd99be1f2454159f Calc!A110 (excel-graph);
 probes/iferror-blank-value D1:D23 and probes/omitted-arg-compare D1:D10 (excel-graph, 2026-10-09, T-0291).
@@ -83,3 +83,16 @@ Evidence: probes/t2280-ifs-one-cell-range-condition (excel-graph, 2026-10-21), C
 gen-m6/870c5e38f51ce5d4 Calc!A360 (`ROWS((IFS(Data!A$7,Data!D$10)*Data!C10))` is 1).
 Status: VERIFIED (excel-graph); implemented (T-2280, `ifs_pick`).
 Tasks: T-2280
+
+## IFS: a text condition with an array value spills its shape (T-2653)
+Rule: when an IFS condition is text not reading as a boolean, the `#VALUE!` result is an array of the broadcast shape of
+that pair's value and every *later* argument (conditions and values), at least 1x1; earlier scalar pairs do not count (an earlier array condition lifts the whole call: `IFS({TRUE,FALSE},{1;2},"x",5)` is 2x2).
+`IFS("x",{1,2;3,4})` is 2x2, `IFS("x",A1:B3)` 3x2, `IFS("x",5,TRUE,{1,2})` 1x2, `IFS("x",5,{TRUE,FALSE,TRUE},1)` 1x3,
+`IFS("x",5,"y",{1,2,3,4})` 1x4, `IFS("x",{1,2},{TRUE;FALSE},3)` 2x2, `IFS("x",5)` 1x1; `IFS(FALSE,{1,2},"x",5)` is 1x1.
+All have TYPE 64. A TRUE condition before the text one picks its value as usual. So a 3x2 value spills, or is `#SPILL!`
+when blocked (gen-m5/4260ce3226165deb Calc!A208).
+Evidence: probes/t2653-ifs-text-condition-array-value, probes/t2653-ifs-text-condition-shape-sources (excel-graph,
+2026-10-25); gen-m5/4260ce3226165deb Calc!A208.
+Untested: a later scalar error argument (`IFS("x",5,TRUE,1/0)`) and mismatched later shapes (`IFS("x",{1,2},TRUE,{1,2,3})`); the engine gives `#VALUE!` in every element.
+Status: VERIFIED (excel-graph); implemented (T-2653, `ifs_text_condition_error`).
+Tasks: T-2653

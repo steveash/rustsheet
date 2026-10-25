@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: [T-2550]
-campaign: visible
+campaign: accuracy
 ---
 
 ## Goal
@@ -27,10 +27,18 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Every T-2550 sweep cell is within half a unit of the 15th digit, or the time-box (decision 0056) is recorded in engineering.md with the best candidate.
+- [ ] Every T-2550 sweep cell (the 12 listed in the update below) matches Excel exactly, or the time-box (decision 0056) is recorded in engineering.md with the best candidate.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Update (T-2550)
+The sweep is done: 12 cells differ (n = 2 to 5 at x = 700, 702, 705), not only `BESSELK(700,3)`. At 702 and 705 Excel's
+K2 = K4 = K0 and K3 = K5 = K1. Rule to implement: Excel sets a subnormal recurrence product `2n/x*K(n)` to 0 (replayed bit-exactly on all 12 cells). See docs/excel-semantics/engineering.md "BESSELK near the bottom of the double range,
+BESSELI overflow point (T-2550)" and probes-numeric/m9-besselk-underflow.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

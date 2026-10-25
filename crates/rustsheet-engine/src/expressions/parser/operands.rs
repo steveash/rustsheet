@@ -9,8 +9,12 @@ use super::super::utils::{
     is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
 };
 use super::reference_operators::is_reference_operand;
-use super::structured_reference::{COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND};
+use super::structured_reference::{
+    is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
+};
 use super::*;
+use crate::functions::kinds::arg_counts;
+use crate::language::get_default_language;
 
 impl Parser {
     /// The parse error for a token that cannot start an operand.
@@ -254,10 +258,7 @@ impl Parser {
                 }
                 sheet.to_string()
             }
-            None => match prefix.strip_prefix('\'') {
-                Some(quoted) => quoted.strip_suffix('\'')?.replace("''", "'"),
-                None => prefix.to_string(),
-            },
+            None => crate::expressions::utils::unquote_sheet_prefix(prefix)?,
         };
         let scope = if sheet.is_empty() {
             None
@@ -438,6 +439,28 @@ impl Parser {
         }
     }
 
+    /// Records the first call of `kind` with a `count` of arguments the function does not take,
+    /// for [`Parser::typed_refusal`]: Excel refuses such a formula typed (`=PV(1)`, T-2567; `=SUM()`,
+    /// `=IF(1)`, `=ABS(1,2)`, `ACCRINTM` with three arguments, T-2632) and in a file
+    /// (docs/excel-semantics/syntax.md "Minimum argument counts"); stored text keeps it, and the
+    /// call evaluates to `#ERROR!`. The counts are the catalog's for every function
+    /// ([`arg_counts::takes_count`]); a lifted function must also end on a whole `repeat` cycle
+    /// ([`ArgKinds::accepts`]: Excel refuses `=SORTBY(C1:C2,D1:D2,1,E1:E2)` typed, T-2632). A
+    /// function the catalog does not list is never refused here.
+    fn note_argument_count(&mut self, kind: &Function, name: &str, count: usize) {
+        // Only typed text is refused, and the count table is a linear scan: skip it for stored
+        // formulas and xlsx import.
+        if !self.typed || self.wrong_count_call.is_some() {
+            return;
+        }
+        let english = kind.to_localized_name(get_default_language());
+        let refused = !arg_counts::takes_count(&english, count)
+            || kind.arg_kinds().is_some_and(|kinds| !kinds.accepts(count));
+        if refused {
+            self.wrong_count_call = Some(name.to_ascii_uppercase());
+        }
+    }
+
     /// A call by name, `SUM(...)` or `_xlfn.LAMBDA(...)(...)`, after its `(`.
     fn parse_named_call(&mut self, name: String) -> Node {
         // It's a function call "SUM(.."
@@ -522,6 +545,7 @@ impl Parser {
             .lookup_stored(&name)
             .filter(|_| !self.calls_bound_name(&name))
         {
+            self.note_argument_count(&function_kind, &display_name, args.len());
             let node = self.function_call(function_kind, args);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel
@@ -594,9 +618,10 @@ impl Parser {
     }
 
     /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
-    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` is still lowered
-    /// at parse time, from the context row, so it keeps no text (T-1699); a reference that does
-    /// not resolve (unknown table or column) stays a parse error, which keeps the formula text.
+    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` lowers to a
+    /// [`Node::ThisRowKind`], resolved at the evaluating cell's row (T-1699); a reference that
+    /// does not resolve (unknown table or column) stays a parse error, which keeps the formula
+    /// text.
     pub(super) fn structured_reference_operand(
         &mut self,
         table_name: String,
@@ -604,7 +629,6 @@ impl Parser {
         table_reference: Option<TableReference>,
         bare: bool,
     ) -> Node {
-        let this_row = specifier == Some(token::TableSpecifier::ThisRow);
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
@@ -612,7 +636,13 @@ impl Parser {
             bare,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
-        if this_row || matches!(lowered, Node::ParseErrorKind { .. }) {
+        if let Node::ParseErrorKind { message, .. } = &lowered {
+            if self.loaded
+                && !message.starts_with(TABLE_SHEET_NOT_FOUND)
+                && is_unresolved_structured_reference(message)
+            {
+                return Node::ErrorKind(token::Error::REF);
+            }
             return lowered;
         }
         Node::StructuredReferenceKind {
@@ -622,7 +652,7 @@ impl Parser {
     }
 
     /// The area a structured reference resolves to against the parser's table list: a
-    /// `ReferenceKind`, a `RangeKind`, an `ErrorKind` or a `ParseErrorKind`.
+    /// `ReferenceKind`, a `RangeKind`, a `ThisRowKind`, an `ErrorKind` or a `ParseErrorKind`.
     fn lower_structured_reference(
         &mut self,
         table_name: String,
@@ -631,7 +661,7 @@ impl Parser {
     ) -> Node {
         // We will try to convert to a normal reference
         // table_name[column_name] => cell1:cell2
-        // table_name[[#This Row], [column_name]:[column_name]] => cell1:cell2
+        // table_name[[#This Row], [column_name]:[column_name]] => the columns on the cell's row
         let context = &self.context;
         let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
             Some(i) => i,
@@ -714,16 +744,10 @@ impl Parser {
         };
         row_end = data_end;
 
+        let this_row = specifier == Some(token::TableSpecifier::ThisRow);
         match specifier {
-            Some(token::TableSpecifier::ThisRow) => {
-                // Off the data rows (header, totals, above, below) it is #VALUE!
-                // (docs/excel-semantics/references.md, gen-m8b this-row e1bf5aa0ffb4ed87).
-                if context.row < data_start || context.row > data_end {
-                    return Node::ErrorKind(token::Error::VALUE);
-                }
-                row_start = context.row;
-                row_end = context.row;
-            }
+            // Decided at the evaluating cell's row (`Node::ThisRowKind`), below.
+            Some(token::TableSpecifier::ThisRow) => {}
             Some(token::TableSpecifier::Totals) => {
                 if totals_row_count != 0 {
                     row_start = totals_row;
@@ -758,7 +782,8 @@ impl Parser {
                 row_start = data_start;
             }
         }
-        match table_reference {
+        let one_column = matches!(table_reference, Some(TableReference::ColumnReference(_)));
+        let lowered = match table_reference {
             None => Node::RangeKind {
                 sheet_name,
                 sheet_index: table_sheet_index,
@@ -783,7 +808,7 @@ impl Parser {
                         };
                     }
                 };
-                if row_start == row_end {
+                if row_start == row_end && !this_row {
                     return Node::ReferenceKind {
                         sheet_name,
                         sheet_index: table_sheet_index,
@@ -845,6 +870,29 @@ impl Parser {
                     column2: left_column_index.max(right_column_index),
                 }
             }
+        };
+        if !this_row {
+            return lowered;
+        }
+        // Off the data rows (header, totals, above, below) it is #VALUE!, at the evaluating
+        // cell's row (docs/excel-semantics/references.md, gen-m8b this-row e1bf5aa0ffb4ed87).
+        match lowered {
+            Node::RangeKind {
+                sheet_name,
+                sheet_index,
+                column1,
+                column2,
+                ..
+            } => Node::ThisRowKind {
+                sheet_name,
+                sheet_index,
+                column1,
+                column2,
+                data_start,
+                data_end,
+                cell: one_column,
+            },
+            other => other,
         }
     }
 }

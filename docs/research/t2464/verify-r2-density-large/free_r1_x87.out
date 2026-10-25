@@ -1,0 +1,12 @@
+x87   ('pr1', 12.0, 20.0, 'all')                              fit0 c=-1.75 hold1 162/772 | fit1 c=-0.75 hold0 200/828 | c=0 345/1600
+x87   ('w2:t2464-w2f-xruns-1.case.json', 100.0, 120.0, 0.4)   fit0 c=+0.25 hold1 25/526 | fit1 c=+2.50 hold0 21/498 | c=0 46/1024
+x87   ('w2:t2464-w2f-xruns-1.case.json', 2.5, 3.5, 0.21)      fit0 c=+4.75 hold1 365/516 | fit1 c=+4.25 hold0 355/507 | c=0 0/1023
+x87   ('w2:t2464-w2f-xruns-1.case.json', 2.5, 3.5, 0.33)      fit0 c=+5.00 hold1 406/480 | fit1 c=+5.00 hold0 476/544 | c=0 0/1024
+x87   ('w2:t2464-w2f-xruns-1.case.json', 30.7, 1.7, 0.81)     fit0 c=+0.00 hold1 0/493 | fit1 c=+0.00 hold0 0/530 | c=0 0/1023
+x87   ('w2:t2464-w2f-xruns-1.case.json', 4.0, 4.0, 0.23)      fit0 c=+0.00 hold1 271/541 | fit1 c=+0.00 hold0 273/483 | c=0 544/1024
+x87   ('w2:t2464-w2f-xruns-1.case.json', 7.3, 11.6, 0.27)     fit0 c=+1.75 hold1 189/514 | fit1 c=+1.25 hold0 185/509 | c=0 314/1023
+x87   ('w2:t2464-w2f-xruns-2.case.json', 2.5, 3.5, 0.29)      fit0 c=+4.75 hold1 350/509 | fit1 c=+4.75 hold0 350/515 | c=0 0/1024
+x87   ('w2:t2464-w2f-xruns-2.case.json', 2.5, 3.5, 0.42)      fit0 c=+5.00 hold1 420/493 | fit1 c=+5.00 hold0 447/531 | c=0 0/1024
+x87   ('w2:t2464-w2f-xruns-2.case.json', 2.5, 3.5, 0.61)      fit0 c=+4.50 hold1 430/534 | fit1 c=+4.50 hold0 402/490 | c=0 0/1024
+x87   ('w2:t2464-w2f-xruns-2.case.json', 40.0, 1.03, 0.95)    fit0 c=+5.25 hold1 96/516 | fit1 c=+6.00 hold0 86/508 | c=0 13/1024
+x87   ('w2:t2464-w2f-xruns-2.case.json', 7.3, 11.6, 0.61)     fit0 c=+0.00 hold1 486/511 | fit1 c=+0.00 hold0 486/513 | c=0 972/1024

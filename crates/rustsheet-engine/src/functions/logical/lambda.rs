@@ -81,9 +81,11 @@ impl ScopeResult for Binding {
     fn lambdas(&self) -> Vec<usize> {
         match self.resolved() {
             Binding::Value(value) | Binding::ReadOnce(value) => value.lambdas(),
-            Binding::Areas(_) | Binding::Span(_) | Binding::Grid(_) | Binding::Shared(_) => {
-                Vec::new()
-            }
+            Binding::Omitted
+            | Binding::Areas(_)
+            | Binding::Span(_)
+            | Binding::Grid(_)
+            | Binding::Shared(_) => Vec::new(),
         }
     }
 }
@@ -286,6 +288,21 @@ impl Model {
         self.call_lambda(callee, call_args, cell)
     }
 
+    /// What the callee of a call written in the formula, `callee(args)`, evaluates to, a
+    /// reference kept as one: a cell, an INDEX or IF that selects one, and the range a TAKE, DROP,
+    /// TRIMRANGE or XLOOKUP over a range picks, so `TAKE(A1:A3,1)(2)` and
+    /// `XLOOKUP(1,A1:A3,A1:A3)(2)` are `#REF!` (probes/chained-calls-builtin-take, -drop,
+    /// -trimrange, -xlookup, excel-graph; T-2499). These are read as SUBTOTAL reads them
+    /// ([`Self::evaluate_picked_reference_arg`]); what SUM(TAKE(..)) reads is unchanged.
+    pub(crate) fn evaluate_callee(
+        &mut self,
+        lambda: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.evaluate_picked_reference_arg(lambda, cell)
+            .into_single_area(cell)
+    }
+
     /// [`Self::call_callee`] of a call written where a reference is wanted (an aggregate's
     /// argument, ISREF): a body that gives a reference keeps it, a single cell too, so
     /// `SUM(LAMBDA(x,x)(K1))` and `MAX(LAMBDA(x,x)(K1))` skip the text in K1 (0) and
@@ -297,9 +314,7 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> RefArg {
-        let callee = self
-            .evaluate_reference_arg(lambda, cell)
-            .into_single_area(cell);
+        let callee = self.evaluate_callee(lambda, cell);
         // Anything but a LAMBDA is called as `call_variable` calls it: a reference is `#REF!`
         // (`call_callee`), a value gives Excel's odd results.
         if !matches!(callee, CalcResult::Lambda(_)) {
@@ -369,7 +384,7 @@ impl Model {
     }
 
     /// Evaluates the body of a named lambda with the given call-site argument nodes.
-    /// Optional parameters not covered by `call_args` receive `EmptyArg`.
+    /// Optional parameters not covered by `call_args` are [`Binding::Omitted`].
     pub(crate) fn call_lambda(
         &mut self,
         lambda_result: CalcResult,
@@ -444,8 +459,9 @@ impl Model {
     }
 
     /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
-    /// receive `EmptyArg`). The values are moved into the parameters, not copied, so REDUCE and
-    /// SCAN hand their accumulator (possibly a large array) to each step without a deep copy.
+    /// are [`Binding::Omitted`]). The values are moved into the parameters, not copied, so
+    /// REDUCE and SCAN hand their accumulator (possibly a large array) to each step without a
+    /// deep copy.
     pub(crate) fn call_lambda_caller(
         &mut self,
         caller: &mut LambdaCaller,
@@ -455,7 +471,7 @@ impl Model {
         // `call_prepared` binds the parameters in order, so the i-th call takes the i-th value.
         let mut values = values.into_iter();
         self.call_prepared(caller, cell, |_, _| {
-            Binding::Value(values.next().unwrap_or(CalcResult::EmptyArg))
+            values.next().map_or(Binding::Omitted, Binding::Value)
         })
         .into_single_area(cell)
     }
@@ -482,7 +498,7 @@ impl Model {
     ) -> RefArg {
         self.call_prepared(caller, cell, |model, i| match call_args.get(i) {
             Some(arg) => model.bind_argument(arg, cell),
-            None => Binding::Value(CalcResult::EmptyArg),
+            None => Binding::Omitted,
         })
     }
 
@@ -904,7 +920,7 @@ fn called_value(value: &ArrayNode) -> ArrayNode {
     match value {
         ArrayNode::String(_) => ArrayNode::Number(0.0),
         ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
-        ArrayNode::Lambda(_) => ArrayNode::Error(Error::VALUE),
+        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => ArrayNode::Error(Error::VALUE),
         // An empty element is taken as a number (not probed: `LET(f,"",f(2))` makes Excel refuse
         // the workbook).
         ArrayNode::Number(_) | ArrayNode::Boolean(_) | ArrayNode::Empty => {

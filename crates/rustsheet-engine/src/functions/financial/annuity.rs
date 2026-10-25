@@ -10,7 +10,9 @@
 use super::financial_util::compute_rate;
 use super::{formula_error, number_or_error};
 use crate::functions::lift::{div_error, num_error};
-use crate::x87_exp::{dd_add, dd_div, dd_mul, two_sum};
+use crate::x87_exp::{dd_add, dd_div, dd_mul, excel_exp, excel_expm1, two_sum};
+use crate::x87_log10::excel_ln;
+use crate::x87_register::Register;
 use crate::{
     arithmetic::{extended_quotient, extended_sum, power},
     calc_result::CalcResult,
@@ -164,6 +166,150 @@ fn accurate_period_split(
     (interest.0.is_finite() && principal.0.is_finite()).then_some((interest, principal))
 }
 
+/// Below this |rate| PPMT's `ln(1+rate)` is the atanh series, from it on Excel's LN of `1+rate`:
+/// probes-numeric/ppmt-log-rate-sweep has the series through 0.37 and the log from 0.38 on (0.375
+/// is a round point between them, not pinned).
+const GROWTH_LOG_SERIES_TO: f64 = 0.375;
+
+/// At or below this rate PPMT keeps the exact form, which matches `PPMT(-0.5,1,277,73630,609)`
+/// (-37119.5) where the discounted one is 25 ulp off; other -0.5 cells fit neither (T-2588).
+const DISCOUNTED_RATE_FROM: f64 = -0.375;
+
+/// The series stops once a term leaves the sum unchanged; for |rate| < 0.375 each term is under
+/// 0.025 of the one before, so about 11 terms. This only bounds the loop.
+const GROWTH_LOG_TERMS: u32 = 64;
+
+/// The `L = ln(1+rate)` of Excel's PPMT discount: for |rate| < [`GROWTH_LOG_SERIES_TO`],
+/// `2*(s + s^3/3 + s^5/5 + ...)` with `s = rate/(2+rate)` a double and `s^2`, the running power,
+/// each term and each partial sum kept in an x87 register, until a term leaves the sum unchanged;
+/// above it, Excel's LN of the double `1+rate`. Either way L is often an ulp or two from the
+/// correctly rounded `ln(1+rate)` (-1 at 0.1, +1 at 0.05, +2 at 0.6), and the discount follows it
+/// (docs/excel-semantics/financial.md "PPMT discounts with an atanh-series log", T-2242). ATANH's
+/// own series (`hyperbolic::atanh_series`) stores each term and partial sum to a double instead,
+/// which misses this L, so the two loops stay separate.
+fn growth_log(rate: f64) -> f64 {
+    if rate.abs() >= GROWTH_LOG_SERIES_TO {
+        return excel_ln(1.0 + rate);
+    }
+    let s = Register::load(rate / (2.0 + rate));
+    let square = s.mul(s);
+    let mut power = s;
+    let mut sum = s;
+    for k in 1..=GROWTH_LOG_TERMS {
+        power = power.mul(square);
+        let next = sum.add(power.div(Register::load(f64::from(2 * k + 1))));
+        if next == sum {
+            break;
+        }
+        sum = next;
+    }
+    2.0 * sum.store()
+}
+
+/// Below this |nper*L| PPMT keeps the exact form: L's ulp-level error moves the power by under an
+/// ulp there, and the exact form matches Excel's last bit where the discounted one does not
+/// (`PPMT(1E-10,2,124,191996,822,1)` is -1554.9838614045912, gen-m9 5ded7594e597e31e A49).
+const SHORT_GROWTH: f64 = 1e-6;
+
+/// PPMT (financial.md "PPMT discounts with an atanh-series log"): with `Q(x) = EXP(x*L)` (Excel's
+/// EXP, [`growth_log`]'s L), `-(pv+fv)*rate*Q(period-1-nper)/(1-Q(-nper))`, the denominator
+/// Excel's expm1 of `-nper*L` and the whole divided by `1+rate` for type 1, rounded once. It is the
+/// exact `-(pv+fv)*rate*P_e/(P-1)` with Excel's own power, several ulp off the exact one for long
+/// terms (`PPMT(0.1,1,360,10000)` is -1.2549699967849914E-12, the exact value
+/// -1.254969996784983E-12). `None` for a rate at or below [`DISCOUNTED_RATE_FROM`], where Excel is
+/// the exact form instead (`PPMT(-0.5,1,277,73630,609)` is -37119.5, gen-m9 762cd0e4ec9a7aa9 A5),
+/// below [`SHORT_GROWTH`], and where a factor or the result is not finite and normal.
+///
+/// `past_range` is the form where the exact one declines, `(1+rate)^nper` past about 1E+270: a
+/// discount below the normal range is then 0 and so is PPMT, as Excel's is (`PPMT(42,10,303,8292,
+/// 1,1)` and `PPMT(10,1,296,1)` are 0, the discount 11^-296 subnormal and PPMT itself not;
+/// `PPMT(10,11,304,44626,826)` is -3.0768304255991313E-301; gen-m9 31474c20fc1dafd6 A235,
+/// probes/fin-ipmt-ppmt-huge-rate B4, gen-m9 6376e27be7a05871 A32), even where `(pv+fv)*rate`
+/// overflows (`PPMT(1E+300,1.5,180,194733,-1E+300)` is 0, B13).
+fn discounted_principal(
+    rate: f64,
+    nper: f64,
+    period: f64,
+    (pv, fv): (f64, f64),
+    period_start: bool,
+    past_range: bool,
+) -> Option<f64> {
+    if rate <= DISCOUNTED_RATE_FROM {
+        return None;
+    }
+    let log = growth_log(rate);
+    if (nper * log).abs() < SHORT_GROWTH {
+        return None;
+    }
+    let discount = excel_exp((period - 1.0 - nper) * log);
+    let periods = -excel_expm1(-nper * log);
+    if !periods.is_normal() {
+        return None;
+    }
+    if !discount.is_normal() {
+        return past_range.then_some(0.0);
+    }
+    let owed = dd_mul(dd_mul(two_sum(pv, fv), (rate, 0.0)), (discount, 0.0));
+    let mut principal = negated(dd_div(owed, (periods, 0.0)));
+    if period_start {
+        principal = dd_div(principal, two_sum(1.0, rate));
+    }
+    let principal = principal.0;
+    let usable = if past_range {
+        principal.is_finite()
+    } else {
+        principal.is_normal()
+    };
+    usable.then_some(principal)
+}
+
+/// `(1+rate)^x` for `x <= 0` as [`accurate_growth`] has it, and 0 where that declines for a
+/// positive rate (the power is then below 1E-270, which a double near 1 cannot see).
+fn accurate_discount(rate: f64, x: f64) -> Option<Pair> {
+    match accurate_growth(rate, x) {
+        None if rate > 0.0 && x < 0.0 => Some((0.0, 0.0)),
+        growth => growth,
+    }
+}
+
+/// IPMT as `-rate*B` (divided by `1+rate` for type 1) on the balance after period-1 periods,
+/// `B = (pv+fv)*Y - fv` with `Y = (1-(1+rate)^(period-1-nper))/(1-(1+rate)^-nper)`, and whether
+/// that balance cancels (`|B| < |fv|`). Where it cancels Excel has `B` in doubles on the rounded
+/// `Y`, `(pv+fv)*Y - fv`, so its IPMT carries `fv`'s rounding: `IPMT(0.5,2,124,0,315)` is 0,
+/// `IPMT(50,2,10,0,315)` 5.6843418860808015E-12 = 25*2^-42, `IPMT(1E+10,10,10,0,315)`
+/// 315.00007935392205 (probes/fin-ipmt-ppmt-huge-rate A27, A291, A403); otherwise `B` is exact
+/// and the caller keeps [`accurate_period_split`]'s interest where it has one. Needing no
+/// `(1+rate)^nper`, it has the huge rates' `-pv*rate` (`IPMT(1E+300,3,2000,452017,905)` is
+/// -4.52017E+305, gen-m9 abb7d565af89b849 A112). docs/excel-semantics/financial.md "IPMT
+/// cancels on fv". `None` where a power declines or the result is not finite.
+fn balance_interest(
+    rate: f64,
+    nper: f64,
+    period: f64,
+    (pv, fv): (f64, f64),
+    period_start: bool,
+) -> Option<(f64, bool)> {
+    let one_minus = |x: Pair| dd_add((1.0, 0.0), negated(x));
+    let remaining = one_minus(accurate_discount(rate, period - 1.0 - nper)?);
+    let periods = one_minus(accurate_discount(rate, -nper)?);
+    if periods.0 == 0.0 {
+        return None;
+    }
+    let share = dd_div(remaining, periods);
+    let exact = dd_add(dd_mul(two_sum(pv, fv), share), (-fv, 0.0));
+    let cancels = exact.0.abs() < fv.abs();
+    let balance = if cancels {
+        ((pv + fv) * share.0 - fv, 0.0)
+    } else {
+        exact
+    };
+    let mut interest = negated(dd_mul(balance, (rate, 0.0)));
+    if period_start {
+        interest = dd_div(interest, two_sum(1.0, rate));
+    }
+    interest.0.is_finite().then_some((interest.0, cancels))
+}
+
 /// PMT's fitted quotient for `P = rate_nper`; not finite when `pv*P` overflows.
 fn fitted_payment(rate: f64, rate_nper: f64, pv: f64, fv: f64, period_start: bool) -> f64 {
     if period_start {
@@ -260,7 +406,10 @@ fn compute_future_value(
     Ok(fv)
 }
 
-/// `(IPMT, PPMT)` of one period, for IPMT, PPMT, CUMIPMT and CUMPRINC.
+/// `(IPMT, PPMT)` of one period, for IPMT, PPMT, CUMIPMT and CUMPRINC, each with its own error:
+/// past PMT's overflow at a positive rate IPMT and PPMT keep their values (`PPMT(1E+307,7,292,
+/// 176644,89)` is 0, gen-m9 3aa168259335be54 A340), and IPMT is 0 in period 1 of type 1 even where
+/// PMT is `#NUM!` (`IPMT(-0.5,1,2000,1,0,1)`, probes/fin-ipmt-ppmt-huge-rate B1).
 pub(super) fn period_payments(
     rate: f64,
     period: f64,
@@ -268,48 +417,96 @@ pub(super) fn period_payments(
     present_value: f64,
     future_value: f64,
     period_start: bool,
-) -> Result<(f64, f64), Error> {
-    // http://www.staff.city.ac.uk/o.s.kerr/CompMaths/WSheet4.pdf
-    // https://www.experts-exchange.com/articles/1948/A-Guide-to-the-PMT-FV-IPMT-and-PPMT-Functions.html
-    // type = 0 (end of period)
-    // impt = -[(1+rate)^(period-1)*(pv*rate+pmt)-pmt]
-    // ipmt = FV(rate, period-1, payment, pv, type) * rate
-    // type = 1 (beginning of period)
-    // ipmt = (FV(rate, period-2, payment, pv, type) - payment) * rate
-    let payment = payment_pair(
+) -> (Result<f64, Error>, Result<f64, Error>) {
+    if period < 1.0 || period >= period_count + 1.0 {
+        return (Err(Error::NUM), Err(Error::NUM));
+    }
+    let payment = match payment_pair(
         rate,
         period_count,
         present_value,
         future_value,
         period_start,
-    )?;
-    if period < 1.0 || period >= period_count + 1.0 {
-        return Err(Error::NUM);
-    }
-    if period == 1.0 && period_start {
-        return Ok((0.0, payment.0));
-    }
-    let p = if period_start {
-        period - 2.0
-    } else {
-        period - 1.0
-    };
-    if rate != 0.0 {
-        if let Some((interest, principal)) = accurate_period_split(
-            rate,
-            period_count,
-            p,
-            (present_value, future_value),
-            payment,
-            period_start,
-        ) {
-            return Ok((interest.0, principal.0));
+    ) {
+        Ok(payment) => Some(payment),
+        // For a positive rate PMT errs only when its value overflows (`(1+rate)^nper` cannot
+        // underflow there), which IPMT and PPMT do not need.
+        Err(_) if rate > 0.0 => None,
+        Err(error) => {
+            let interest = if period == 1.0 && period_start {
+                Ok(0.0)
+            } else {
+                Err(error.clone())
+            };
+            return (interest, Err(error));
         }
+    };
+    if period == 1.0 && period_start {
+        return (Ok(0.0), payment.map(|p| p.0).ok_or(Error::NUM));
     }
-    let c = if period_start { -payment.0 } else { 0.0 };
-    let fv = compute_future_value(rate, p, payment.0, present_value, period_start)?;
+    let values = (present_value, future_value);
+    let (mut interest, mut principal) = (None, None);
+    if rate != 0.0 {
+        let e = if period_start {
+            period - 2.0
+        } else {
+            period - 1.0
+        };
+        let split = payment.and_then(|payment| {
+            accurate_period_split(rate, period_count, e, values, payment, period_start)
+        });
+        principal = discounted_principal(rate, period_count, period, values, period_start, false)
+            .or(split.map(|(_, principal)| principal.0))
+            .or_else(|| {
+                discounted_principal(rate, period_count, period, values, period_start, true)
+            });
+        // A fractional nper past the range keeps the FV recurrence below: it has Excel's last
+        // bit on the one such cell probed, where the exact balance is an ulp off (gen-m9
+        // 0a957119475760c5 A153, nper about 1.85E+7; TODO(T-2665)).
+        let whole_term = period_count.fract() == 0.0;
+        interest = match balance_interest(rate, period_count, period, values, period_start) {
+            Some((interest, true)) => Some(interest),
+            balance => split
+                .map(|(interest, _)| interest.0)
+                .or(balance.filter(|_| whole_term).map(|(interest, _)| interest)),
+        };
+    }
+    if let (Some(interest), Some(principal)) = (interest, principal) {
+        return (Ok(interest), Ok(principal));
+    }
+    let fallback = payment.ok_or(Error::NUM).and_then(|payment| {
+        double_period_payments(rate, period, present_value, payment.0, period_start)
+    });
+    match fallback {
+        Ok((fallback_interest, fallback_principal)) => (
+            Ok(interest.unwrap_or(fallback_interest)),
+            Ok(principal.unwrap_or(fallback_principal)),
+        ),
+        Err(error) => (
+            interest.ok_or_else(|| error.clone()),
+            principal.ok_or(error),
+        ),
+    }
+}
+
+/// IPMT and PPMT from FV's double recurrence on the rounded PMT, where the closed forms decline:
+/// type 0 `IPMT = FV(rate, period-1, pmt, pv)*rate`, type 1 `(FV(rate, period-2, pmt, pv, 1) -
+/// pmt)*rate`, and `PPMT = PMT - IPMT`.
+fn double_period_payments(
+    rate: f64,
+    period: f64,
+    present_value: f64,
+    payment: f64,
+    period_start: bool,
+) -> Result<(f64, f64), Error> {
+    let (e, c) = if period_start {
+        (period - 2.0, -payment)
+    } else {
+        (period - 1.0, 0.0)
+    };
+    let fv = compute_future_value(rate, e, payment, present_value, period_start)?;
     let interest = (fv + c) * rate;
-    Ok((interest, payment.0 - interest))
+    Ok((interest, payment - interest))
 }
 
 // These formulas revolve around compound interest and annuities.
@@ -470,7 +667,7 @@ impl Model {
         self.lift_call(Function::Ipmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
                 period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
-                    .map(|(interest, _)| interest)
+                    .0
                     .map_err(formula_error(cell))
             }))
         })
@@ -481,7 +678,7 @@ impl Model {
         self.lift_call(Function::Ppmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
                 period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
-                    .map(|(_, principal)| principal)
+                    .1
                     .map_err(formula_error(cell))
             }))
         })
@@ -609,5 +806,61 @@ impl Model {
             return Err(num_error(cell));
         }
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{growth_log, period_payments};
+    use crate::expressions::token::Error;
+
+    /// IPMT and PPMT past `(1+rate)^nper`'s range and where IPMT's balance cancels on fv
+    /// (probes/fin-ipmt-ppmt-huge-rate, gen-m9; financial.md "IPMT cancels on fv").
+    #[test]
+    fn period_payments_at_huge_rates() {
+        let ipmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).0;
+        let ppmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).1;
+        assert_eq!(ppmt(42.0, 10.0, 303.0, 8292.0, 1.0, true), Ok(0.0));
+        assert_eq!(ppmt(10.0, 1.0, 296.0, 1.0, 0.0, false), Ok(0.0));
+        assert_eq!(
+            ppmt(10.0, 11.0, 304.0, 44626.0, 826.0, false),
+            Ok(-3.076_830_425_599_131_3e-301)
+        );
+        assert_eq!(ppmt(1e300, 1.5, 180.0, 194_733.0, -1e300, false), Ok(0.0));
+        assert_eq!(ppmt(1e307, 7.0, 292.0, 176_644.0, 89.0, false), Ok(0.0));
+        assert_eq!(ppmt(2.0, 1100.0, 1100.0, 1.0, 5.0, false), Ok(-4.0));
+        assert_eq!(
+            ipmt(1e300, 3.0, 2000.0, 452_017.0, 905.0, false),
+            Ok(-4.520_170_000_000_000_4e305)
+        );
+        assert_eq!(
+            ipmt(1e10, 8.0, 226.0, 439_138.0, 43.0, false),
+            Ok(-4.391_38e15)
+        );
+        assert_eq!(ipmt(2.0, 1100.0, 1100.0, 1.0, 5.0, false), Ok(2.0));
+        assert_eq!(ipmt(0.5, 2.0, 124.0, 0.0, 315.0, false), Ok(0.0));
+        assert_eq!(
+            ipmt(50.0, 2.0, 10.0, 0.0, 315.0, false),
+            Ok(25.0 * 2f64.powi(-42))
+        );
+        assert_eq!(
+            ipmt(1e10, 10.0, 10.0, 0.0, 315.0, false),
+            Ok(315.000_079_353_922_05)
+        );
+        // Period 1 of type 1 is 0 even where PMT is #NUM!; PPMT is PMT there.
+        assert_eq!(ipmt(-0.5, 1.0, 2000.0, 1.0, 0.0, true), Ok(0.0));
+        assert_eq!(ppmt(-0.5, 1.0, 2000.0, 1.0, 0.0, true), Err(Error::NUM));
+    }
+
+    /// PPMT's log is the series below 0.375 and Excel's LN above it, an ulp or two from
+    /// `ln_1p` in places (probes-numeric/ppmt-first-period-sweep, ppmt-log-rate-sweep).
+    #[test]
+    fn growth_log_is_excels() {
+        assert_eq!(growth_log(0.1), 0.095_310_179_804_324_85); // ln_1p: ...87
+        assert_eq!(growth_log(0.05), 0.048_790_164_169_432_014); // ln_1p: ...01
+        assert_eq!(growth_log(-0.02), -0.020_202_707_317_519_45);
+        assert_eq!(growth_log(0.37), 0.314_810_739_840_033_5);
+        assert_eq!(growth_log(0.38), 0.322_083_499_169_113_2); // LN(1.38)
+        assert_eq!(growth_log(0.6), 0.470_003_629_245_735_63);
     }
 }

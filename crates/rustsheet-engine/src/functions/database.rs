@@ -38,6 +38,58 @@ fn computed_criterion_holds(condition: &CalcResult) -> bool {
     }
 }
 
+/// Whether a formula condition evaluated at `context` (its cell moved down to a record) stays off
+/// the database's header row: Excel matches no record whose moved relative reference into the
+/// database lands on its header row or above. Over Db!A2:D9 (header row 2) with `=B2>3` as the
+/// condition, the first record reads B2 = 4 and does not match, while the later records read
+/// B3..B8 (`DVAR(Db!A2:D9,2,Db!O1:O2)` is 12.5 and `DCOUNTA(..,3,..)` 2, rows 4 and 9; criteria.md
+/// "D* computed criteria and an unknown header in the gen-m9 database sweep (T-2258)"). Absolute
+/// rows stay put and are not checked (probes/db-criteria-formula-placement F2, F14); a reference
+/// on another sheet, or outside the database's columns, is read as it is: TODO(T-2617).
+fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> bool {
+    let first_record = query.left.row + 1;
+    let columns = query.left.column..=query.right.column;
+    let reads = |sheet: u32, row: i32, column: i32, absolute_column: bool| {
+        let column = column + if absolute_column { 0 } else { context.column };
+        sheet != query.left.sheet || !columns.contains(&column) || row + context.row >= first_record
+    };
+    let mut pending = vec![node];
+    while let Some(node) = pending.pop() {
+        let holds = match node {
+            Node::ReferenceKind {
+                sheet_index,
+                absolute_row: false,
+                absolute_column,
+                row,
+                column,
+                ..
+            } => reads(*sheet_index, *row, *column, *absolute_column),
+            // Each corner in `reads`'s argument order, its absolute row flag first.
+            Node::RangeKind {
+                absolute_row1,
+                sheet_index,
+                row1,
+                column1,
+                absolute_column1,
+                absolute_row2,
+                row2,
+                column2,
+                absolute_column2,
+                ..
+            } => {
+                (*absolute_row1 || reads(*sheet_index, *row1, *column1, *absolute_column1))
+                    && (*absolute_row2 || reads(*sheet_index, *row2, *column2, *absolute_column2))
+            }
+            _ => true,
+        };
+        if !holds {
+            return false;
+        }
+        node.push_children(&mut pending);
+    }
+    true
+}
+
 /// The corners of a reference argument; an error passes through, anything else is `#VALUE!`
 /// (a database given as an array makes Excel refuse the workbook, statistics.md "Database
 /// function argument modes"; a criteria element of a lifted array is a scalar, `#VALUE!`).
@@ -78,6 +130,7 @@ impl Model {
                     | Node::StringKind(_)
                     | Node::ReferenceKind { .. }
                     | Node::RangeKind { .. }
+                    | Node::ThisRowKind { .. }
                     | Node::EmptyArgKind
             )
         });
@@ -535,7 +588,8 @@ impl Model {
     /// A computed criterion's value for database `row`. A formula condition is evaluated again
     /// as if it sat as many rows lower as the record is below the first record, so its relative
     /// references follow the record (a blank header over `=B2>2` tests each record's B cell);
-    /// a constant is its own value (probes/db-computed-criteria-shapes AB23-AB26).
+    /// a constant is its own value (probes/db-computed-criteria-shapes AB23-AB26). A record whose
+    /// moved references land on the database's header row does not match ([`reads_records`]).
     fn db_computed_condition(
         &mut self,
         query: &DbQuery,
@@ -544,9 +598,6 @@ impl Model {
         value: CalcResult,
     ) -> CalcResult {
         let offset = row - query.left.row - 1;
-        if offset == 0 {
-            return value;
-        }
         let formula = self
             .workbook
             .worksheet(criteria_cell.sheet)
@@ -573,6 +624,12 @@ impl Model {
         else {
             return value;
         };
+        if !reads_records(&node, context, query) {
+            return CalcResult::Boolean(false);
+        }
+        if offset == 0 {
+            return value;
+        }
         // A formula condition that itself runs a D-function with formula conditions would
         // re-evaluate them without passing through a cell, its work growing as the records to the
         // power of the nesting (directive 5). Only one level runs: a nested one is `#ERROR!`, so

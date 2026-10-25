@@ -1,0 +1,4 @@
+old     modelled             n= 1107  M1(CR log1p)  562/1107 w4 1094 w15 1100  M1(Excel log1p)  560/1107 w4 1096 w15 1100  even 277/555 odd 283/552
+old     modelled, x<=0.375   n= 1017  M1(CR log1p)  511/1017 w4 1010 w15 1014  M1(Excel log1p)  509/1017 w4 1012 w15 1014  even 252/510 odd 257/507
+probe1  modelled             n=12800  M1(CR log1p) 10057/12800 w4 12705 w15 12765  M1(Excel log1p) 10375/12800 w4 12799 w15 12799  even 5176/6400 odd 5199/6400
+probe1  modelled, x<=0.375   n= 5400  M1(CR log1p) 4084/5400 w4 5305 w15 5365  M1(Excel log1p) 4402/5400 w4 5399 w15 5399  even 2192/2704 odd 2210/2696

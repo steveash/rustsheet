@@ -1,0 +1,22 @@
+== lf=LF0
+  absweep:0    (2.5,3.5)    27/  146/  200 of   200  CR    30/  173/  200 of   200  model-excel mean  +2.64 sd  5.11
+  absweep:1    (7.3,11.6)     6/   52/  139 of   200  CR    25/  189/  200 of   200  model-excel mean  +5.31 sd 15.98
+  absweep:3    (30.7,1.7)     8/   65/  140 of   200  CR     2/   25/   71 of   200  model-excel mean -28.68 sd 47.89
+  absweep:4    (2.5,3.5)    35/  174/  200 of   200  CR    22/  163/  200 of   200  model-excel mean  -1.27 sd  4.05
+  absweep:5    (7.3,11.6)     0/    2/  141 of   200  CR    43/  197/  200 of   200  model-excel mean  -4.17 sd 21.80
+  absweep:7    (30.7,1.7)    64/   90/  200 of   200  CR     2/   18/   77 of   200  model-excel mean  -0.88 sd  9.43
+  old          (10,2)    28/  132/  141 of   200  CR    30/  145/  161 of   200  model-excel mean -11.34 sd 63.30
+  p1(12,20)    (12,20)    49/   95/  155 of   200  CR     4/   67/  124 of   200  model-excel mean  +2.40 sd 13.26
+  p1(2.5,3.5)  (2.5,3.5)    13/  173/  186 of   200  CR    26/  187/  196 of   200  model-excel mean  -4.22 sd  2.40
+  xruns-1:0    (2.5,3.5)     0/  184/  200 of   200  CR     6/  199/  200 of   200  model-excel mean  -4.51 sd  1.02
+  xruns-1:1    (2.5,3.5)     0/   56/  200 of   200  CR     0/  198/  200 of   200  model-excel mean  -5.05 sd  0.61
+  xruns-1:2    (7.3,11.6)     0/    0/  117 of   200  CR     5/  188/  200 of   200  model-excel mean +18.46 sd  2.11
+  xruns-1:4    (30.7,1.7)     0/  160/  193 of   200  CR     8/   78/  199 of   200  model-excel mean  -2.25 sd  6.83
+  xruns-1:5    (4,4)   111/  200/  200 of   200  CR    24/  174/  174 of   200  model-excel mean  -0.47 sd  1.43
+  xruns-1:7    (100,120)    12/   99/  172 of   200  CR     8/   64/  146 of   200  model-excel mean  -2.35 sd  8.74
+  xruns-2:0    (2.5,3.5)     0/  200/  200 of   200  CR    17/  200/  200 of   200  model-excel mean  -4.69 sd  1.16
+  xruns-2:2    (7.3,11.6)     0/    0/    0 of   200  CR    14/   80/  153 of   200  model-excel mean +20.10 sd  0.52
+  xruns-2:3    (2.5,3.5)     0/  108/  200 of   200  CR     0/  196/  200 of   200  model-excel mean  -4.97 sd  1.13
+  xruns-2:4    (40,1.03)    14/  170/  200 of   200  CR     0/    0/    0 of   200  model-excel mean  -2.74 sd  2.53
+  xruns-2:5    (2.5,3.5)     0/   54/  200 of   200  CR     0/  200/  200 of   200  model-excel mean  -5.03 sd  0.60
+  ALL   367/ 2160/ 3384 of  4000

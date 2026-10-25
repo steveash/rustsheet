@@ -1110,7 +1110,9 @@ for a negative value the window is half as wide, about 1.2E-7. Measured edges: p
 `1-2.4E-7` does not (same at 5, 30000 and 32768); negative, `-1-(2^-23+1E-12)` and `-(2^-23+1E-12)` count as -1 and 0, while
 `-1-1.2E-7` and `-1.2E-7` floor (same at -5, -30000, -32767). The positive window is the one LEFT, RIGHT, REPLACE and
 INDEX use (`NEAR_INTEGER_TOLERANCE`, 2^-22+2^-33, text.md and lookup.md), which lies inside the measured (2^-22+1E-12, 2.4E-7);
-we take half of it for a negative value, inside (2^-23+1E-12, 1.2E-7). The exact constants inside those brackets are unprobed. Then any argument outside
+we take half of it for a negative value, inside (2^-23+1E-12, 1.2E-7). The exact constants inside those brackets are unprobed
+for TIME and DATE. The XMATCH and XLOOKUP modes, read by the same `near_integer_whole`, bracket both constants to a relative
+2^-14 (lookup.md "XMATCH and XLOOKUP floor a fractional mode", T-2656). Then any argument outside
 -32768..32767 is `#NUM!` (before the total is formed, so a minute of -32768 is legal and one of -32769 is not, whatever the
 hour), and so is a negative total; otherwise the value is `((h*3600+m*60+s)/86400) % 1` as in "TIME divides by 86400 first".
 Mind Excel's precedence when probing: `-2^-22` is `(-2)^-22`, a positive number; write `-(2^-22)`.
@@ -1152,6 +1154,18 @@ Evidence: probes/date-argument-window (90 cells, excel-graph, 2026-10-21).
 Ours: `fn_date` reads each argument through the same near-integer floor as TIME (T-2268).
 Status: VERIFIED
 Tasks: T-2268
+
+## WORKDAY and NETWORKDAYS holidays: text holidays skip the day, they are not just accepted (T-2369)
+See also the older number-text sections below (T-2270, T-2272).
+Rule (excel-graph, probes/t2369-workday-text-holidays, 2026-10-25): a text holiday is coerced like a number-valued
+argument and then counts as a holiday wherever it lands, in a cell, a literal, a formula result or an array. With start
+45000 (Wed), +5 workdays and holiday 45001 (Thu): `WORKDAY(45000,5,A1)` is 45008 (one day skipped) and
+`NETWORKDAYS(45000,45007,A1)` is 5 (not 6) for A1 `"45001"`, and identically for a literal `"45001"`, `TEXT(45001,"0")`,
+`{"45001"}`, `"45001.5"`, `" 45001"` (padded), date text `"3/16/2023"`, currency text `"$45001"`, and a TEXT() date.
+Percent and time text are no error but no holiday in the range (their coerced serials, 0.5 and 100000, are inferred, not observed): `"50%"` and `"12:00"` (0.5)
+leave WORKDAY at 45007 and NETWORKDAYS at 6, as does `"1E5"` (100000, on the calendar but past the walk). The `.INTL`
+forms (weekend 1) agree with WORKDAY/NETWORKDAYS in every case, and `{"45001";"45002"}` gives NETWORKDAYS 4.
+Ours already matched all 68 cells (`collect_serial_numbers` counts what `cast_number` reads); no code change.
 
 ## WORKDAY and NETWORKDAYS holidays: blank and number-text cells, and the error order (T-2270, T-2272)
 Rule (excel-graph, gen-m6, 2026-10-21):
@@ -1208,10 +1222,11 @@ start's, and a blank weekend cell is weekend 0 (`#NUM!`), not the default: `NETW
 = 32394, `WORKDAY.INTL(45351,10,1.005)` = 45365, `NETWORKDAYS.INTL(44926," x ",3.14159)` is the end's `#VALUE!` (not the weekend's `#NUM!`),
 `NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`, and so is `NETWORKDAYS.INTL(13803,28521,<blank>)` (gen-m6/afe9267df3df26a8 A47, T-2253)
 (gen-m6/c93ea588c271840e Calc!A31, 1a404a0379a1372c A62, ee56a4ed5a612a0d A186, c96ac1ada46179c4 A287, ee56a4ed5a612a0d A387,
-fde83d52a9d1fc63 A219). Ours: a fractional weekend truncates (folded into T-2272, whose order otherwise let gen-m6/e3a562557696e2fc A385 `WORKDAY.INTL(11303,-4,1.25,..)` reach it), `#VALUE!` for TRUE, the default weekend for a blank cell.
+fde83d52a9d1fc63 A219). A boolean weekend is its number: TRUE acts as weekend 1 (`WORKDAY.INTL(45000,5,TRUE)` = 45007, `NETWORKDAYS.INTL(45000,45030,TRUE)` = 23, as weekend 1; on these dates weekends 2 and 3 give the same, so the probe shows TRUE is one of 1-3) and FALSE is weekend 0 (`#NUM!`), both as a literal and read from a cell; 3.9 is weekend 3 and 0.5 is 0 (`#NUM!`), so a number truncates (11.5 and 1.5 match truncation, but there 11 and 12 agree) and a blank cell is `#NUM!` (probes/weekend-number-coercion A1:A26, excel-graph, 2026-10-21). An omitted weekend is still weekend 1; an empty argument (`WORKDAY.INTL(x,5,)`) is unprobed (the engine keeps the default). T-2591 probes these gaps.
 A FALSE weekend cell raises no `#VALUE!` ahead of a negative holiday's `#NUM!`: `NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`
-with C5 FALSE and -1 among the holidays (B7) is `#NUM!` (gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253; ours `#VALUE!`).
-Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates and whether a fraction of .5 or more truncates or rounds (every cited fraction is below .5): UNVERIFIED (no cell shows them; T-2271 probes them).
+with C5 FALSE and -1 among the holidays (B7) is `#NUM!` (gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253), as FALSE is weekend 0.
+Ours: implemented (T-2271; the fraction truncation first landed with T-2272).
+Status: VERIFIED
 Tasks: T-2271
 
 ## WEEKNUM of a boolean serial is `#VALUE!` (T-2276)
@@ -1229,3 +1244,10 @@ Rule (excel-graph, gen-m6, 2026-10-21): a start date out of the calendar is `#NU
 d0c30225243fde60 A266). Ours: implemented (T-2266).
 Status: VERIFIED for these two cells; an error start against an error end keeps the start's error (VERIFIED: probes/scalar-lift-open-d W2 `YEARFRAC(NA(),1/0,1)` and W5 `YEARFRAC(1/0,NA(),1)`). An out-of-calendar start against a text or multi-cell-range end (`YEARFRAC(-1,"x")`, now #NUM!) is UNVERIFIED.
 Tasks: T-2266
+
+## NETWORKDAYS.INTL: the blank weekend's #NUM! before the holidays' error (T-2436)
+Rule: `NETWORKDAYS.INTL(31,4886,<blank>,{1,2;#N/A,""})` is `#NUM!`, the blank weekend cell's error (T-2271) before the holidays'
+`#N/A` (gen-m9 c2974c061384fdd9 A149, probes/t2436/c2974c061384fdd9, excel-graph, 2026-10-24).
+Ours: implemented (T-2271's weekend read comes before the holidays' error; T-2583 pins it with a unit test).
+Status: VERIFIED (excel-graph), one cell
+Tasks: T-2583

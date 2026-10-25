@@ -3,7 +3,7 @@ id: T-2486
 title: "COUP* functions: a settlement or maturity past 9999-12-31 is #NUM! as it is read, and the calendar-edge day counts (gen-m9, 20 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -65,3 +65,20 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed the rules (probes/coup-calendar-edges, 129 cells, and coup-calendar-edges-1904, 8 cells; excel-graph,
+2026-10-25) and implemented two of them:
+- A COUP* settlement or maturity that does not floor to a day of the workbook's calendar is `#NUM!` as it is read
+  (`coupon_date_of` in functions/financial/dates.rs; in a 1904 workbook the bound is the 1904 calendar's last day).
+- Each coupon date is the maturity moved back whole periods, its day clamped, so a 29th/30th maturity no longer drifts
+  to the 28th after a February (`coupon_period` in coupon_schedule.rs; COUPDAYS' basis-1 29 February walk keeps the
+  chained walk, `chained_coupon_period`). PRICE, YIELD, DURATION, MDURATION and ODDF* read the same schedule; their
+  probe cells (J1-J14) confirm the change for them too.
+Eval: 11 gen-m9 known failures fixed (5674 -> 5663; 8 of the 20 owned cells had already been fixed before this task);
+probes: two new cases; the new-coverage known-failure lines are the 15 settlement-0 basis-1 COUPDAYS cells (owned by
+T-2640) and the yield-solver last digits of J2, J8 and J12 (NumericClose, about 1e-14 relative: the "YIELD stops short
+of PRICE's root" gap), accepted knowingly against the "no new known-failure lines" criterion. Follow-up probe of the
+ODDL* and ACCRINT walks: T-2639. The one owned cell left,
+gen-m9/b72d952c5f52cb4d Calc!A88 (`COUPDAYS(5E-05,2958465,2,1)` = 184), follows an irregular pattern recorded in
+financial.md "COUPDAYS basis 1 for a period before 1900-01-01" and moves to T-2640.

@@ -107,7 +107,7 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
         }),
         ArrayNode::Empty => Ok("".to_string()),
         ArrayNode::Error(e) => Err(e.clone()),
-        ArrayNode::Lambda(_) => Err(Error::VALUE),
+        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => Err(Error::VALUE),
     }
 }
 
@@ -122,7 +122,7 @@ pub(crate) fn array_node_to_text(node: &ArrayNode) -> Result<Cow<'_, Text>, Erro
 
 /// The text a scalar value reads as: a number as its text, a boolean as TRUE or FALSE, empty as
 /// "". `None` for an error, a range, an array or a LAMBDA.
-fn calc_scalar_to_string(value: &CalcResult) -> Option<String> {
+pub(crate) fn calc_scalar_to_string(value: &CalcResult) -> Option<String> {
     match value {
         CalcResult::Number(f) => Some(number_to_text(*f)),
         CalcResult::String(s) => Some((**s).to_owned()),
@@ -182,7 +182,7 @@ impl Model {
             ArrayNode::Empty => Ok(0.0),
             ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
             ArrayNode::Error(e) => Err(e.clone()),
-            ArrayNode::Lambda(_) => Err(Error::VALUE),
+            ArrayNode::Lambda(_) | ArrayNode::Nested(_) => Err(Error::VALUE),
         }
     }
 
@@ -499,7 +499,7 @@ impl Model {
                         ArrayNode::Boolean(b) => Some(if *b { 1.0 } else { 0.0 }),
                         ArrayNode::Empty => Some(0.0),
                         ArrayNode::String(s) => self.cast_number(s),
-                        ArrayNode::Lambda(_) => None,
+                        ArrayNode::Lambda(_) | ArrayNode::Nested(_) => None,
                         ArrayNode::Error(_) => continue,
                     };
                     *value = match n {
@@ -553,7 +553,7 @@ impl Model {
                     ArrayNode::Empty => CalcResult::EmptyCell,
                     // Read as a value (`CONFIDENCE.NORM(BYROW(..,LAMBDA(acc,LAMBDA(v,v))),..)` is
                     // `#VALUE!`, gen-m9/165db58d1540f014 A273).
-                    ArrayNode::Lambda(_) => {
+                    ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
                         CalcResult::new_error(Error::VALUE, cell, String::new())
                     }
                 }

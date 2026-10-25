@@ -1,7 +1,9 @@
 //! Printing a structured reference (SPEC-0016 "Printing" and "Structural edits").
 
 use super::{stringify, DisplaceData, Rewrite, NO_REWRITE};
+use crate::expressions::parser::move_formula::ref_is_in_area;
 use crate::expressions::parser::{Node, StructuredReference};
+use crate::expressions::token;
 use crate::expressions::types::CellReferenceRC;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
@@ -14,19 +16,81 @@ pub(crate) fn to_string_lowering(
     context: Option<&CellReferenceRC>,
     tables: &[String],
 ) -> String {
+    rewritten_text(node, context, &Rewrite::Lower(tables, None))
+}
+
+/// The text of `node` printed with `rewrite`, in R1C1 without `context` (a parse error keeps its
+/// stored text) and in English A1 with it.
+fn rewritten_text(node: &Node, context: Option<&CellReferenceRC>, rewrite: &Rewrite) -> String {
     crate::expressions::parser::unparsed::stored_text(node)
         .filter(|_| context.is_none())
         .unwrap_or_else(|| {
             let (locale, language) = (get_default_locale(), get_default_language());
-            stringify(
-                node,
-                context,
-                &Rewrite::Lower(tables),
-                false,
-                locale,
-                language,
-            )
+            stringify(node, context, rewrite, false, locale, language)
         })
+}
+
+/// [`to_string_lowering`], but every structured reference to one of `tables` prints as `#REF!`:
+/// the text a formula keeps after those tables, or their sheet, are deleted (T-2340,
+/// references.md "Structured references under row deletes, column edits, convert, table and
+/// sheet delete").
+pub(crate) fn to_string_with_ref_errors(
+    node: &Node,
+    context: Option<&CellReferenceRC>,
+    tables: &[String],
+) -> String {
+    rewritten_text(node, context, &Rewrite::RefError(tables))
+}
+
+/// [`to_string_lowering`] in R1C1 for the formula of one cell on `row`: a `#This Row` area to
+/// one of `tables` is printed as the area it is on that row (`R3C1`, or `#VALUE!` off the data
+/// rows), the text its parse-time lowering had (T-1699).
+pub(crate) fn to_rc_lowering_at(node: &Node, row: i32, tables: &[String]) -> String {
+    let (locale, language) = (get_default_locale(), get_default_language());
+    let rewrite = Rewrite::Lower(tables, Some(row));
+    stringify(node, None, &rewrite, false, locale, language)
+}
+
+/// [`super::to_localized_string`] with every `#This Row` structured reference printed as the
+/// area it is on `context`'s row (`$A$3`, or `#VALUE!` off the data rows): the text of a formula
+/// that a structural edit moves to another row, which then reads the row it read, as before
+/// SPEC-0016 step 2 (T-1699).
+pub(crate) fn to_localized_string_this_row_lowered(
+    node: &Node,
+    context: &CellReferenceRC,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    stringify(
+        node,
+        Some(context),
+        &Rewrite::LowerThisRow,
+        false,
+        locale,
+        language,
+    )
+}
+
+/// The printed `Node::ThisRowKind`, which is printed only as a lowered area (a structural-edit
+/// fallback, the export): first resolved at the printing cell's row, which gives the text its
+/// parse-time lowering had (`$A$3` or `#VALUE!`), then rewritten by `sub`; with no cell, as the
+/// columns on the formula's own row (SPEC-0016 "Structural edits", T-1699).
+pub(super) fn this_row_text(
+    node: &Node,
+    context: Option<&CellReferenceRC>,
+    rewrite: &Rewrite,
+    sub: impl Fn(&Node) -> String,
+) -> String {
+    let row = match (context, rewrite) {
+        (Some(context), _) => Some(context.row),
+        (None, Rewrite::Lower(_, row)) => *row,
+        (None, _) => None,
+    };
+    let area = match row {
+        Some(row) => node.this_row_at(row),
+        None => node.this_row_relative(),
+    };
+    area.map_or_else(String::new, |area| sub(&area))
 }
 
 /// The printed `Node::StructuredReferenceKind`: its text as written, or the area it resolves to
@@ -48,10 +112,25 @@ pub(super) fn reference_text(
     }
     match rewrite {
         Rewrite::Displace(DisplaceData::None) => return reference.text(),
-        Rewrite::Lower(tables) => {
+        Rewrite::Lower(tables, _) => {
             let name = reference.table_name.to_lowercase();
             return if tables.contains(&name) {
                 print(lowered, rewrite)
+            } else {
+                reference.text()
+            };
+        }
+        Rewrite::RefError(tables) => {
+            let name = reference.table_name.to_lowercase();
+            return if tables.contains(&name) {
+                token::Error::REF.to_string()
+            } else {
+                reference.text()
+            };
+        }
+        Rewrite::LowerThisRow => {
+            return if matches!(lowered, Node::ThisRowKind { .. }) {
+                print(lowered, &NO_REWRITE)
             } else {
                 reference.text()
             };
@@ -61,10 +140,40 @@ pub(super) fn reference_text(
     // A structural edit or a cut and paste that changes the area prints the changed area, as
     // before SPEC-0016, since the table itself does not move (the fallback of SPEC-0016
     // "Structural edits"); otherwise the reference stays as written.
+    // A `#This Row` area is printed resolved at the cell's row, so its text is kept only where
+    // the cell keeps its row too; otherwise it prints the area it read, its text before SPEC-0016
+    // step 2 (T-1699).
     let rewritten = print(lowered, rewrite);
-    if rewritten == print(lowered, &NO_REWRITE) {
+    if rewritten == print(lowered, &NO_REWRITE) && !row_may_move(lowered, context, rewrite) {
         reference.text()
     } else {
         rewritten
     }
+}
+
+/// Whether the cut and paste `rewrite` moves the formula cell `context` to another row, for a
+/// `#This Row` area `lowered` (false for any other node and any other rewrite: a structural edit
+/// re-enters the formulas it moves to another row with their `#This Row` areas lowered first,
+/// `Model::moved_text`). The cell's sheet is the area's when the area names no sheet; when
+/// it names one, the cell is on another sheet, which may be the cut one.
+fn row_may_move(lowered: &Node, context: Option<&CellReferenceRC>, rewrite: &Rewrite) -> bool {
+    let (
+        Node::ThisRowKind {
+            sheet_name,
+            sheet_index,
+            ..
+        },
+        Some(context),
+        Rewrite::Move(moved),
+    ) = (lowered, context, rewrite)
+    else {
+        return false;
+    };
+    let on_the_cut_sheet = match sheet_name {
+        None => moved.area.sheet == *sheet_index,
+        Some(_) => moved.area.sheet != *sheet_index,
+    };
+    moved.row_delta != 0
+        && on_the_cut_sheet
+        && ref_is_in_area(moved.area.sheet, context.row, context.column, moved.area)
 }

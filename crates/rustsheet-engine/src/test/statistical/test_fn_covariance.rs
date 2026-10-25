@@ -142,3 +142,44 @@ fn size_mismatch_beats_an_error_cell() {
     assert_eq!(model._get_text("A6"), "#DIV/0!");
     assert_eq!(model._get_text("A7"), "#DIV/0!");
 }
+
+/// A one-cell reference to an empty cell is `#VALUE!` in the paired functions, before the size
+/// check and the other argument's error; one holding a number is one value (statistics.md,
+/// T-2255, T-2426).
+#[test]
+fn test_paired_blank_one_cell_reference_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("B1", "5");
+    model._set("A4", "=COVAR(A1:A3,Z1)");
+    model._set("A5", "=CORREL(Z1:Z1,{1,2,3})");
+    model._set("A6", "=F.TEST(Z1,A1:A3)");
+    model._set("A7", "=INTERCEPT(Z1,1/0)");
+    model._set("A8", "=COVAR(A1:A3,B1)");
+    model._set("A9", "=T.TEST(Z1,A1:A3,2,2)");
+    model._set("A10", "=CHISQ.TEST(A1:A3,Z1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
+    assert_eq!(model._get_text("A8"), "#N/A");
+    assert_eq!(model._get_text("A9"), "#VALUE!");
+    assert_eq!(model._get_text("A10"), "#VALUE!");
+}
+
+// T-2431: two arrays with the same cell count pair in reading order whatever their shapes.
+#[test]
+fn test_paired_functions_pair_by_cell_count() {
+    let mut model = new_empty_model();
+    model._set("A1", "=CORREL({1,2;3,4},{1;2;3;4})");
+    model._set("A2", "=INTERCEPT({1;2;3;4},{1,2;3,5})");
+    model._set("A3", "=CORREL({1,2;3,4},{1;2;3})");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"0.457142857");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+}

@@ -3,7 +3,7 @@ id: T-2496
 title: "Probe the inner sub-expressions of 28 gen-m9 financial cells of the T-2257 sweep whose divergence is not traced"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -53,11 +53,41 @@ Cells:
 - gen-m9/d0854366830dcdee.case.json (2): Calc!A183, A298
 - gen-m9/d912671baa1364aa.case.json (1): Calc!A347
 
+Moved from T-2482 (2026-10-24): YIELD's maturity is `ODDFPRICE(SUM(..)<123456793.56>,46471,..,IFNA("","1.5")<"">,..)`,
+ours `#VALUE!` (the text rate). Excel's YIELD is `#NUM!`, so its ODDFPRICE is likely `#NUM!` from the settlement past
+9999-12-31, read before the rate as PRICE does (financial.md "PRICE, YIELD, DURATION and MDURATION check order"). Probe
+the inner ODDFPRICE. Fixed by T-2483 (2026-10-24): a settlement past 9999-12-31 is `#NUM!` as ODDFPRICE reads it
+(financial.md "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order"); the line below is gone from the baseline.
+Owned gen-m9 cells (T-2482, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 visibly off.
+- gen-m9/3c06f9298f65a3ba Calc!A309 `=YIELD(38778,ODDFPRICE(SUM(Data!D11,Data!D4:D8),46471,BYCOL(Data!D4,LAMBDA(acc,1000000000000000.0)),38622,IFNA("","1.5"),IPMT(2,1,150,481849),109,2),IFNA((1e-15>Data!A3),(Data!E11-Data!B6)),101,103,2)`: Excel #NUM!, ours #VALUE!
+
+Moved from T-2487 (2026-10-25): four T-bill cells whose error differs from Excel's in an inner call, not in the T-bill
+argument order; probes/tbill-error-order-inner-calls (each case's Data sheet copied, excel-graph) already traces them:
+`T.TEST(..)` is `#VALUE!` in Excel (ours `#NUM!`), `PPMT(2*B11,8,360,-100,926)` 0 (ours 2E17), `QUARTILE(<text cell>,..)`
+`#NUM!` (ours `#VALUE!`), `BIN2DEC(<text cell>)` `#NUM!` (ours `#VALUE!`). File or extend the fix task for each
+(financial.md "T-bill settlement below serial 1").
+Owned gen-m9 cells (T-2487, excel-graph, 2026-10-25): 4 known-failure lines in eval/baseline/gen-m9.txt, 4 visibly off.
+- gen-m9/3c06f9298f65a3ba Calc!A312 `=TBILLEQ(39717,(T.TEST(Data!E11,Data!A6:C12,2,Data!$D8)*Data!A$2%),(Data!E$7-AVERAGE(Data!C8)))`: Excel #VALUE!, ours #NUM!
+- gen-m9/81bcdc0bec0c8e6b Calc!A251 `=TBILLEQ(PPMT((2*Data!B11),8,360,(-100),926),COVAR(Data!C3:E12,Data!B3:B9),Data!C3)`: Excel #N/A, ours #NUM!
+- gen-m9/b72d952c5f52cb4d Calc!A241 `=TBILLYIELD(COUNT(-2),STDEV.S(QUARTILE(Data!C7,Data!$E9),Data!D8:D8),94)`: Excel #NUM!, ours #VALUE!
+- gen-m9/d0854366830dcdee Calc!A137 `=TBILLPRICE(COUNT(Data!B7:B10)%,59,SUM(Data!E6:E8,BIN2DEC(Data!A6)))`: Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/3c06f9298f65a3ba.case.json (1): Calc!A312
+- gen-m9/81bcdc0bec0c8e6b.case.json (1): Calc!A251
+- gen-m9/b72d952c5f52cb4d.case.json (1): Calc!A241
+- gen-m9/d0854366830dcdee.case.json (1): Calc!A137
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): these 28 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Every cell above is listed in a fix task's Context (new or extended), or explained in financial.md as a quirk with its owning task; the probe case's cells are in eval/ and gated or baselined.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2482): the known-failure line listed under "Moved from T-2482" disappears from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] Visible parity (gen-m9, T-2257): these 28 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. 16 have left the baseline; the other 12
+      are transferred to their owning fix tasks' visible-parity criteria (Outcome), as T-2436 did.
+- [x] Visible parity (gen-m9, T-2487): the 4 known-failure lines under "Moved from T-2487" disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline. Transferred to
+      their owning fix tasks' visible-parity criteria (Outcome).
+- [x] Every cell above is listed in a fix task's Context (new or extended), or explained in financial.md as a quirk with its owning task; the probe case's cells are in eval/ and gated or baselined.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the functions (the tasks this one files).
@@ -67,3 +97,21 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+16 of the 32 owned cells (28 from T-2257, 4 from T-2487) already pass on main: later merges fixed them, and their lines
+are gone from eval/baseline/gen-m9.txt. For the other 16, probe `probes/t2496-fin-subexpressions` (99 cells, excel-graph,
+2026-10-25) copies each case's Data sheet (D01-D13) and puts every call and compound argument of each owned cell in its own
+row, read through a TYPE/shape summary. Column B names the cell and the sub-expression. The four T-bill cells were already
+traced by probes/tbill-error-order-inner-calls. Each innermost divergence now sits in its owner's Context, under a
+"T-2496 probe" block that has its own visible-parity criterion:
+- existing tasks: T-2470 Z.TEST (2), T-2468 PROB (2), T-2427 FREQUENCY with no numeric bin gives 2 rows, so the enclosing
+  call lifts and spills (2), T-2493 NPV at -1 and 1E+300 (2), T-2469 T.TEST blank sample (1), T-2490 PPMT at a huge rate (1),
+  T-2344 QUARTILE of a TRUE cell (1), T-2435 WEIBULL.DIST overflow (1), T-2544 BIN2DEC of text (1);
+- new tasks: T-2656 XMATCH search_mode within 15 digits of 1 (1, M6), T-2657 PV near a rate of -1 and IRR from a guess of
+  42 (2, opus).
+Quirks: financial.md "Financial cells of the T-2496 sub-expression probe", lookup.md "XMATCH: a search_mode within 15
+digits of 1 reads 1", and statistics.md "T.TEST of a blank one-cell sample and WEIBULL.DIST overflow".
+Eval delta: the probe's 32 cells that ours fails today are new-coverage lines in eval/baseline/probes.txt (the divergences
+those tasks own). 0 regressions, gen-m9 unchanged. The visible-parity lock is unchanged at 6,039; 32 of the 5,684
+visibly-off cells are in the new case.

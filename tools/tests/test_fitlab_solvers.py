@@ -206,6 +206,18 @@ def test_yield_start_sweep_newton_from_a_shared_start() -> None:
         assert abs(newton(*cell.args) - cell.expected) < 5e-14 * cell.expected, cell.key
 
 
+def test_finite_difference_newton_reaches_the_analytic_root() -> None:
+    # T-1592: every finite-difference variant (forward, central, absolute and relative step) converges on
+    # yield-start-sweep A1 to the root analytic Newton finds, within the derivative's error.
+    cell = next(
+        c for c in load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells if c.key == "S!A1"
+    )
+    root = solvers._newton_yield(0.1, 1e-14)(*cell.args)
+    for start, h, relative, central, tol in solvers.FD_NEWTON_YIELDS:
+        got = solvers._fd_newton_yield(start, h, relative, central, tol)(*cell.args)
+        assert abs(got - root) < 1e-9, (start, h, relative, central)
+
+
 def test_yield_start_moves_with_the_basis_days_over_its_year() -> None:
     # T-1592: yield-start-sweep D2 (basis 1) and D11 (basis 0) step back to hidden starts 1.04e-6 apart.
     # A frequency-free annuity model over T = settlement-to-maturity days in the basis over 360 (basis 0)

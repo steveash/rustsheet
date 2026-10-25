@@ -55,6 +55,11 @@ impl Model {
                 cell,
                 "Unpeeled group or structured reference".to_string(),
             ),
+            // The cell, range or `#VALUE!` it is on the cell's row (SPEC-0016 step 2, T-1699).
+            ThisRowKind { .. } => match node.this_row_at(cell.row) {
+                Some(area) => self.evaluate_node_in_context(&area, cell),
+                None => CalcResult::new_error(Error::ERROR, cell, "Unresolved row".to_string()),
+            },
             SpillRangeOperator { child } => self.evaluate_spill_range_operator(child, cell),
             ImplicitIntersection { child, .. } => {
                 let result = self.evaluate_implicit_intersection_operand(child, cell);
@@ -65,12 +70,12 @@ impl Model {
                 CalcResult::Lambda(self.store_lambda(definition))
             }
             LambdaCallKind { lambda, args } => {
-                // With a reference kept as one, a cell and an INDEX or IF that selects one
-                // included: a called reference is `#REF!` (`call_callee`), and a called value,
-                // what a call returned (`LAMBDA(x,x)(1)(2)`), is called like a LET-bound one
-                // (`call_variable`; probes/chained-calls-lambda B4-B8, T-2038).
-                let callee = self.evaluate_reference_arg(lambda, cell);
-                self.call_variable(callee.into_single_area(cell), args, cell)
+                // With a reference kept as one (`evaluate_callee`): a called reference is `#REF!`
+                // (`call_callee`), and a called value, what a call returned (`LAMBDA(x,x)(1)(2)`),
+                // is called like a LET-bound one (`call_variable`; probes/chained-calls-lambda
+                // B4-B8, T-2038).
+                let callee = self.evaluate_callee(lambda, cell);
+                self.call_variable(callee, args, cell)
             }
             // Unreachable by construction: `evaluate_node_in_context` answers these itself, so
             // this is at most one bounce.

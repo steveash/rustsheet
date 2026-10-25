@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -89,7 +89,30 @@ Cells:
 - gen-m9/74779cff2810ccf4.case.json (1): Calc!A67
 - gen-m9/7820ebc42c7a56a6.case.json (1): Calc!A116
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): a lone text or boolean cell as QUARTILE's data is `#NUM!`: `QUARTILE.EXC(<"1.5">,21)`, `QUARTILE.INC(<FALSE>,0.1)`, `QUARTILE.INC(<"#N/A" text>,-2.5)`, `QUARTILE.EXC(<"ABC">,1)`, `QUARTILE.INC(<"?b">,1)` (ours `#VALUE!`); `PERCENTRANK(<"x~*">,1.005,42)` is `#N/A` (ours `#VALUE!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 6 known-failure lines in eval/baseline/gen-m9.txt, 6 formulas.
+Examples:
+- gen-m9/0a9226016e8f5f33 Calc!A23 `=GAMMADIST(QUARTILE.EXC(Data!A8,DATE(0,1,21)),3,0.5,(Data!$E12<>(Data!$A8+Data!A2)))`: Excel #NUM!, ours #VALUE!; inner `QUARTILE.EXC(Data!A8,DATE(0,1,21))` Excel #NUM!, ours #VALUE!
+- gen-m9/3a25a03eb94fcfbd Calc!A179 `=HARMEAN(Data!B6:B10,Data!B6:B12,((Data!$E12/Data!$D9)*QUARTILE.INC(Data!D4,Data!$A9)))`: Excel #NUM!, ours #VALUE!; inner `QUARTILE.INC(Data!D4,Data!$A9)` Excel #NUM!, ours #VALUE!
+- gen-m9/623663cacea53bbc Calc!A353 `=COVAR(Data!A8:C9,QUOTIENT(QUARTILE.INC(Data!D4,(-2.5)),(Data!A6^Data!$C10)))`: Excel #NUM!, ours #VALUE!; inner `QUARTILE.INC(Data!D4,(-2.5))` Excel #NUM!, ours #VALUE!
+- gen-m9/a790a4d4a6a82756 Calc!A380 `=HYPGEOMDIST((QUARTILE.EXC(Data!D5,1)/SEQUENCE(3,1,Data!$C6)),(-Data!A8/QUOTIENT(2^53+1,0.5)),9,11)`: Excel #NUM!, ours #VALUE!; inner `QUARTILE.EXC(Data!D5,1)` Excel #NUM!, ours #VALUE!
+Cells:
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A23
+- gen-m9/3a25a03eb94fcfbd.case.json (1): Calc!A179
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A353
+- gen-m9/a790a4d4a6a82756.case.json (1): Calc!A380
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A131
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A253
+
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 1 gen-m9 financial cell moved here from T-2496.
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/b72d952c5f52cb4d Calc!A241 | `QUARTILE(Data!C7,Data!$E9)` (C7 = TRUE, quart -2.5; inside STDEV.S and TBILLYIELD) | #NUM! | #VALUE! |
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2256): these 72 known-failure lines (the T-2256 cells in Context) disappear from
@@ -97,6 +120,7 @@ Cells:
 - [ ] A probes-numeric case with an oracle sidecar covers those forms; the engine matches, and the hand-written expectations in test_sorted_data_lift.rs (`typed_scalar_data_...`) cite it.
 - [ ] statistics.md drops UNVERIFIED for the single-cell reading.
 - [ ] `make check` green; reviewers approve.
+- [ ] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

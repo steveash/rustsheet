@@ -1,3 +1,5 @@
+pub(crate) mod near_integer;
+
 use crate::external_reference::PickedReference;
 use crate::{
     area_budget::SLOTS_PER_WALK_STEP,
@@ -60,11 +62,12 @@ pub(crate) fn array_element_value(node: &ArrayNode, cell: CellReferenceIndex) ->
         ArrayNode::Error(e) => CalcResult::new_error(e.clone(), cell, String::new()),
         ArrayNode::Empty => CalcResult::EmptyCell,
         ArrayNode::Lambda(id) => CalcResult::Lambda(*id),
+        // Only INDEX reads its contents (`NestedArray::value`); others see `#VALUE!` (SPEC-0018).
+        ArrayNode::Nested(_) => CalcResult::new_error(Error::VALUE, cell, String::new()),
     }
 }
 
-/// The top left element of an array, which is what the implicit intersection
-/// operator makes of it.
+/// The top left element of an array, which is what the implicit intersection operator makes of it.
 pub(crate) fn top_left_of_array(array: &[Vec<ArrayNode>], cell: CellReferenceIndex) -> CalcResult {
     match array.first().and_then(|row| row.first()) {
         Some(node) => array_node_to_calc_result(node, cell),
@@ -251,7 +254,8 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let node = node.ungrouped();
+        // A `#This Row` area is its cell or range on the formula's row (SPEC-0016 step 2).
+        let node: &Node = &node.ungrouped_at(cell.row);
         match node {
             Node::SheetSpanKind {
                 first_index,
@@ -365,6 +369,8 @@ impl Model {
                 })
             }
         };
+        // A `#This Row` area is its cell or range on the formula's row (SPEC-0016 step 2).
+        let node: &Node = &node.ungrouped_at(cell.row);
         // A 3-D span of a linked workbook's cached sheets is read sheet by sheet, as a span of
         // this workbook is (fixtures/external-link-cached-3d-span Refs!B2:B6; T-1654).
         if let Some(rows) = self.cached_span_cells(node, cell) {
@@ -545,8 +551,7 @@ impl Model {
     /// [`Self::for_each_cell_or_error_in_whole_range`]. Several areas (a union) are walked over
     /// their existing cells only, so `f` is never handed a blank cell of a union
     /// ([`Self::for_each_position_in_area`]). The first error cell aborts the walk
-    /// and is returned as `Err`, as does an `Err` from `f`. `f` never sees
-    /// `CalcResult::Error`.
+    /// and is returned as `Err`, as does an `Err` from `f`. `f` never sees `CalcResult::Error`.
     pub(crate) fn for_each_cell_in_areas<F>(
         &mut self,
         areas: &[Range],
@@ -926,33 +931,18 @@ pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
         // Drop the sign of -0.0 (fmod keeps the dividend's sign).
         0.0
     } else if (remainder < 0.0) != (divisor < 0.0) {
-        remainder + divisor
+        let shifted = remainder + divisor;
+        // A shift that rounds back to the divisor is 0: `MOD(1,-(2^54))` = 0 but
+        // `MOD(1,-(2^53))` = 1-2^53 (probes/mod-huge-opposite-divisor; numbers.md "MOD of a
+        // small number by a huge opposite-sign divisor is 0").
+        if shifted == divisor {
+            0.0
+        } else {
+            shifted
+        }
     } else {
         remainder
     }
-}
-
-/// How far below the next integer a whole-number argument may fall and still count as that
-/// integer: 2^-22 + 2^-33, the same at 1, 500, 1000, 30000 and 100000 (an absolute bound, not
-/// relative). LEFT, RIGHT, REPLACE counts, INDEX's and VLOOKUP/HLOOKUP's indexes and TIME share it.
-pub(crate) const NEAR_INTEGER_TOLERANCE: f64 = 1.0 / 4_194_304.0 + 1.0 / 8_589_934_592.0;
-
-/// The whole number LEFT, RIGHT, REPLACE, INDEX, VLOOKUP and HLOOKUP read from a count, position
-/// or index: `x` floored, except that a fraction within [`NEAR_INTEGER_TOLERANCE`] of the next
-/// integer counts as that integer, so `LEFT("abc",1-2^-22)` is "a". MID truncates exactly and does
-/// not use this.
-// Excel: docs/excel-semantics/text.md "LEFT, RIGHT and REPLACE round counts up near an
-// integer" (probes/text-count-argument-bounds) and lookup.md "INDEX rounds an index up near an
-// integer" (probes/index-snap-tolerance).
-pub(crate) fn near_integer_count(x: f64) -> f64 {
-    near_integer_floor(x, NEAR_INTEGER_TOLERANCE)
-}
-
-/// `x` floored, but a fraction within `tolerance` of the next integer counts as that integer.
-pub(crate) fn near_integer_floor(x: f64, tolerance: f64) -> f64 {
-    let whole = x.floor();
-    // `x - whole` is exact for every finite double, so the bound is not blurred at large x.
-    whole + f64::from(u8::from(x - whole >= 1.0 - tolerance))
 }
 
 impl Function {
@@ -973,25 +963,5 @@ impl Function {
     /// Whether the call is one of [`Function::picked_reference_arg`]'s.
     pub(crate) fn picks_reference(&self) -> bool {
         self.picked_reference_arg().is_some()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::near_integer_count;
-
-    #[test]
-    fn near_integer_count_rounds_up_within_the_tolerance() {
-        // probes/text-count-argument-bounds Z10, Z9, AA1, AA2: 1 - (2^-22 + 2^-33) is 1, a hair
-        // further down is 0; the bound is absolute (AA13, AA14 below 30000).
-        let at = 2f64.powi(-22) + 2f64.powi(-33);
-        let past = 2f64.powi(-22) + 9.0 * 2f64.powi(-36);
-        assert_eq!(near_integer_count(1.0 - at), 1.0);
-        assert_eq!(near_integer_count(1.0 - past), 0.0);
-        assert_eq!(near_integer_count(30000.0 - at), 30000.0);
-        assert_eq!(near_integer_count(30000.0 - past), 29999.0);
-        assert_eq!(near_integer_count(2.5), 2.0);
-        assert_eq!(near_integer_count(1e-300), 0.0);
-        assert_eq!(near_integer_count(1e100), 1e100);
     }
 }

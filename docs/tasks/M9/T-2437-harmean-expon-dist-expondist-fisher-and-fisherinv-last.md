@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -48,7 +49,16 @@ Cells:
 - gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A30
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A166
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `FISHER(1E-15/3.14159)` is 2.2204460492503126E-16 in Excel (ours 3.3306690738754686E-16): visibly off, not a last digit.
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Examples:
+- gen-m9/4ab2ba98d26c8a5e Calc!A395 `=FISHER((Data!E4/Data!$D2))`: Excel 2.2204460492503126e-16, ours 3.3306690738754686e-16
+Cells:
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A395
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Either the fitted order is implemented and these lines leave eval/baseline/gen-m9.txt (`make eval-baseline`) with no
       new known-failure line in any baseline, or the task is `blocked` with "Blocked because: time-boxed (decision 0056)"
       and the candidates' bit-exact counts in statistics.md.
@@ -56,3 +66,6 @@ Cells:
 
 ## Out of scope
 - Visibly-off cells of these functions (other tasks).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

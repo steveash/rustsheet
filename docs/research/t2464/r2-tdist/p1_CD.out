@@ -1,0 +1,44 @@
+== part C
+('CR', 'ALL'): 238/1350/1732 of 5000
+('FINAL', 'ALL'): 4931/4995/4997 of 5000
+('FINAL bg=ld', 'ALL'): 4920/4995/4997 of 5000
+('r2-bratio BEST, yz', 'ALL'): 183/1327/1801 of 5000
+('FINAL', 'ALL hold'): 2517/2557/2558 of 2559
+('FINAL bg=ld', 'ALL hold'): 2510/2557/2558 of 2559
+('r2-bratio BEST, yz', 'ALL hold'): 80/721/966 of 2559
+('CR', 'bgrat/sw'): 236/1335/1699 of 4915
+('FINAL', 'bgrat/sw'): 4906/4910/4912 of 4915
+('FINAL bg=ld', 'bgrat/sw'): 4895/4910/4912 of 4915
+('r2-bratio BEST, yz', 'bgrat/sw'): 158/1242/1716 of 4915
+('CR', 'w1_bpser/sw'): 2/12/26 of 72
+('FINAL', 'w1_bpser/sw'): 22/72/72 of 72
+('FINAL bg=ld', 'w1_bpser/sw'): 22/72/72 of 72
+('r2-bratio BEST, yz', 'w1_bpser/sw'): 22/72/72 of 72
+('CR', 'w_bpser'): 0/3/7 of 13
+('FINAL', 'w_bpser'): 3/13/13 of 13
+('FINAL bg=ld', 'w_bpser'): 3/13/13 of 13
+('r2-bratio BEST, yz', 'w_bpser'): 3/13/13 of 13
+== part D
+('CR', 'ALL'): 1319/3039/3578 of 4000
+('FINAL', 'ALL'): 2720/3993/3994 of 4000
+('FINAL bg=ld', 'ALL'): 2726/3993/3994 of 4000
+('r2-bratio BEST, yz', 'ALL'): 2675/3970/3982 of 4000
+('FINAL', 'ALL hold'): 1366/2020/2021 of 2025
+('FINAL bg=ld', 'ALL hold'): 1367/2020/2021 of 2025
+('r2-bratio BEST, yz', 'ALL hold'): 1349/2013/2014 of 2025
+('CR', 'bup+bgrat/sw'): 41/309/508 of 675
+('FINAL', 'bup+bgrat/sw'): 217/672/673 of 675
+('FINAL bg=ld', 'bup+bgrat/sw'): 223/672/673 of 675
+('r2-bratio BEST, yz', 'bup+bgrat/sw'): 172/649/661 of 675
+('CR', 'w1_bpser/sw'): 29/194/282 of 343
+('FINAL', 'w1_bpser/sw'): 192/343/343 of 343
+('FINAL bg=ld', 'w1_bpser/sw'): 192/343/343 of 343
+('r2-bratio BEST, yz', 'w1_bpser/sw'): 192/343/343 of 343
+('CR', 'w_bpser'): 59/492/681 of 862
+('FINAL', 'w_bpser'): 423/858/858 of 862
+('FINAL bg=ld', 'w_bpser'): 423/858/858 of 862
+('r2-bratio BEST, yz', 'w_bpser'): 423/858/858 of 862
+('CR', 'w_bpser/sw'): 1190/2044/2107 of 2120
+('FINAL', 'w_bpser/sw'): 1888/2120/2120 of 2120
+('FINAL bg=ld', 'w_bpser/sw'): 1888/2120/2120 of 2120
+('r2-bratio BEST, yz', 'w_bpser/sw'): 1888/2120/2120 of 2120

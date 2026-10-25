@@ -3,7 +3,7 @@ id: T-2430
 title: "An error element inside an array argument of LARGE, SMALL, QUARTILE, COVARIANCE and the paired functions is that error, not #VALUE! (gen-m9, 20 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -139,7 +139,23 @@ Examples:
 Cells:
 - gen-m9/e707d43a891ba9b5.case.json (1): Calc!A35
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): the error element also comes from a lifted or padded array: `COVAR(RANK(HSTACK(<blank>),..)<{#N/A}>,5)` and `COVARIANCE.P(SCAN(..)<{#N/A}>,Data!E6)` are `#N/A`, as are `MODE(0,TRANSPOSE(VSTACK({1,2},{3})))`, `LARGE(EXPAND(TRUE,5,3),3)` and `LARGE(HSTACK({1,2,3},Data!A5:C11),1)` (the `#N/A` pads; ours `#VALUE!`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 5 known-failure lines in eval/baseline/gen-m9.txt, 5 formulas.
+Examples:
+- gen-m9/05d44f6dd6cfc567 Calc!A196 `=COVAR(RANK(HSTACK(Data!A5),Data!A11:D12),5)`: Excel #N/A, ours #VALUE!
+- gen-m9/285d87cea1aaa73c Calc!A154 `=COVARIANCE.P(SCAN(INTERCEPT(Data!A7,Data!D7:D10),MEDIAN(Data!E3:E6,Data!A3:A12,Data!D9:D11),LAMBDA(acc,v,acc*v)),Data!E6)`: Excel #N/A, ours #VALUE!
+- gen-m9/589f42e67f4b4b8d Calc!A185 `=FINV(MODE((Data!E9/0.1),TRANSPOSE(VSTACK({1,2},{3}))),3,6)`: Excel #N/A, ours #VALUE!; inner `MODE((Data!E9/0.1),TRANSPOSE(VSTACK({1,2},{3})))` Excel #N/A, ours #VALUE!
+- gen-m9/c2974c061384fdd9 Calc!A157 `=LARGE(EXPAND((100<>"Hello World"),5,3),3)`: Excel #N/A, ours #VALUE!
+Cells:
+- gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A196
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A154
+- gen-m9/589f42e67f4b4b8d.case.json (1): Calc!A185
+- gen-m9/c2974c061384fdd9.case.json (1): Calc!A157
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A14
+
 ## Acceptance criteria
+- [ ] Visible parity (gen-m9, T-2436): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2257): the 5 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
@@ -158,3 +174,11 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+An error element of an array argument is now the result for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST,
+COVAR, COVARIANCE.*, CORREL, PEARSON and T.TEST, and another argument's error (or one that does not coerce) still beats it, as the gen-m9
+cells show (statistics.md). gen-m9: 130 known failures fixed, 0 regressions; probes: 23 fixed. Not done: PROB and FREQUENCY (T-2636, they
+regressed when changed), F.TEST/FTEST (T-2093), and a few nested cells (FORECAST.ETS*, XNPV, one SMALL, one T.TEST): the baseline lists them.
+The acceptance criteria that every owned cell leaves the baseline is therefore met in part; T-2636 carries the rest.
+Unmet: the first four acceptance criteria (every owned gen-m9 line leaves the baseline) are met for 130 of the lines; the rest are tracked by T-2636 (PROB, FREQUENCY, and the nested SMALL, T.TEST, FORECAST.ETS*, XNPV cells listed there) and T-2093 (F.TEST, FTEST).

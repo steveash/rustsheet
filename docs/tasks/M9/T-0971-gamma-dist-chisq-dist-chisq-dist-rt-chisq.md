@@ -3,7 +3,7 @@ id: T-0971
 title: "GAMMA.DIST/CHISQ.DIST/CHISQ.DIST.RT/CHISQ.TEST: accurate regularized incomplete gamma (43 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -157,10 +157,10 @@ Cells:
 - [ ] No line listed above remains NumericClose (`rustsheet-eval show`), at least 25 of the 43 lines
       leave `eval/baseline/ironcalc-calc.txt`, no new lines in any baseline (POISSON.DIST must not
       regress if it switches kernel; EXPON.DIST stays fixed).
-- [ ] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-1045
+- [x] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-1045
       incomplete-gamma sweep (family 6).
-- [ ] CHISQ.TEST and CHISQ.DIST.RT use the direct upper tail (no `1.0 - cdf`).
-- [ ] Unit tests: P(1,x) = -expm1(-x), P(a,x) + Q(a,x) = 1 within 2 ulp at a few points, a in {0.5,
+- [x] CHISQ.TEST and CHISQ.DIST.RT use the direct upper tail (no `1.0 - cdf`).
+- [x] Unit tests: P(1,x) = -expm1(-x), P(a,x) + Q(a,x) = 1 within 2 ulp at a few points, a in {0.5,
       9, 500}, huge scale (b = 1e6); bounded iteration counts; `make check` green; reviewers approve.
 
 ## Out of scope
@@ -181,3 +181,50 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - POISSON: 10 cells (13-14 digits right 9, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-poisson.case.json` 10; `probes/incomplete-gamma-cap.case.json` 0. e.g. `POISSON(2,3,TRUE)` Excel 0.4231900811268434, ours 0.4231900811268454
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Outcome
+`statistical/incomplete_gamma.rs` `incomplete_gamma_pair` replaces statrs' `gamma_lr`/`gamma_ur`, and the statrs port
+is deleted. The kernel:
+- the prefactor from `powf * exp / tgamma` below a = 20, and TOMS 654's `rcomp` above it;
+- the power series with its geometric tail for P below x = a + 1, and modified Lentz for Q above it;
+- for a small shape, Q is formed directly. P is 1 - Q wherever that Q is at most 1/2, so
+  `GAMMADIST(0.5,1E-300,1,TRUE)` is Excel's 1;
+- a = 1 is (-expm1(-x), exp(-x)).
+
+CHISQ.DIST.RT, CHIDIST, CHISQ.TEST and CHITEST take Q directly. The densities of GAMMA.DIST, GAMMADIST and CHISQ.DIST
+(`gamma_density`) are the same prefactor at x / scale divided by x, and e^(-x/scale) / scale at a shape of 1.
+statistics.md "Incomplete gamma: accurate kernel (T-0971)" records both.
+
+Eval, merged with main at 8c586da (2026-10-25):
+- gen-m9 5,664 -> 5,531 known failures (146 fixed);
+- ironcalc-calc 737 -> 682 (57 fixed; 29 of the 43 lines listed above);
+- probes 2,570 -> 2,558 (12 fixed).
+
+Across every suite, ungated probes-numeric included, in-scope visibly-off cells fell from 11,309 to 10,916.
+
+The baseline was recorded with `update-baseline --allow-regressions` under decision 0083's standing allowance, with
+the owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. It adds 15 lines. All are
+numeric, 1-2 ulp and not visibly off:
+- `ironcalc-calc/STATISTICAL/GAMMA.xlsx` `GAMMA.DIST GAMMA.INV!F38` (Excel 1, ours 0.9999999999999999);
+- `POISSON.xlsx` `POISSON.DIST!D16` (0.9863047314016171 vs 0.986304731401617);
+- 13 gen-m9 cells: CHIINV, GAMMA.INV, POISSON, CHIDIST, CHISQ.INV and CHISQ.INV.RT. They are 146b46e74f2dac3b A307,
+  2801c1c11c21e134 A332, 38e4fc309fe199ea A57, 530c636749a85209 A242, 899f9555e67da2d6 A5, 984cba67bbe6972b A216,
+  a612e89321a6df9c A273, a61e547a1cab994c A1, a7bf0d8d81d33ba6 A121, c7664e494e418395 A256, d0854366830dcdee A238,
+  f2bd5f380ec002bf A174 and fd9fa22d212080d6 A123. T-2367 gives their values.
+
+The criteria that are not met:
+- **Visible parity.** 56 of the 68 gen-m9 cells reached it. The other 12 are still visibly off. So are four ironcalc-calc
+  cells, BETA_GAMMA L3, CHISQ G3 and G4, and GAMMA E16 (BETA_GAMMA L4 and GAMMA E21 are still NumericClose too, so the second criterion is not met either, but they
+  are now within the 15th digit). Five gen-m9 cells that were already known failures went from within the 15th digit
+  on statrs to visibly off: `CHIINV(0.975,5)` twice, `CHISQ.DIST(1E-10,8,...)`, `GAMMADIST(...,7,...)` at 2.9E-64,
+  and `CHIDIST(...,8)` at 4.3E-18. Decision 0083's condition 2 does not hold for these five (accepted by the owner in decision 0111). On the
+  ones checked against 50 digits, ours is correctly rounded and Excel 7-37 ulp off. So Excel's tail forms need
+  fitting. T-2638 (campaign: visible) owns all 21 cells.
+- **Bit-exact residue.** The ulp-level cells, 1-4 ulp, are owned by T-2367, along with the cap-shape measurement.
+  Ungated probes-numeric has 14 cells newly 1 ulp off, also owned by T-2367:
+  - m9-chisq-inv-rt A40, m9-chisq-inv A38;
+  - m9-gamma-dist-a0p5 A22, m9-gamma-dist-a1 A24 and A26, m9-gamma-dist-a2 A2 and A12;
+  - m9-gamma-inv A31, A32 and A38;
+  - t1048-gammainv A1, A15, B1 and B15.
+- The kernel lives in `incomplete_gamma.rs`, which T-0972, POISSON and CHISQ.TEST already import from, not in
+  `special.rs` as the Context proposed. It shares `rlog1` and `stirling_correction` with `incomplete_beta.rs`.

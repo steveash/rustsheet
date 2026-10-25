@@ -1,0 +1,35 @@
+vhold algdiv (0.09, 45.0) lnB=2.0206958272110818: M2 0/27, free lnB best 27 at -1  <-
+vhold gl     (0.13, 2.2) lnB=1.902786456440376: M2 27/27, free lnB best 27 at +0
+vhold algdiv (0.23, 17.0) lnB=0.7297912436647397: M2 13/27, free lnB best 27 at -1  <-
+vhold gl     (0.27, 4.15) lnB=0.8466480331341992: M2 27/27, free lnB best 27 at +0
+vhold algdiv (0.33, 33.3) lnB=-0.15759139401335343: M2 13/27, free lnB best 27 at -2  <-
+vhold gl     (0.36, 0.82) lnB=1.1178761691093873: M2 27/27, free lnB best 27 at +0
+vhold gl     (0.37, 1.0) lnB=0.994252273343867: M2 16/27, free lnB best 27 at -1  <-
+vhold gl     (0.39, 7.95) lnB=0.0291455960754613: M2 27/27, free lnB best 27 at +0
+vhold gl     (0.4, 8.0) lnB=-0.02004579772785564: M2 27/27, free lnB best 27 at +0
+vhold algdiv (0.47, 8.6) lnB=-0.36326688747030134: M2 11/27, free lnB best 27 at -2  <-
+vhold gl     (0.48, 1.05) lnB=0.7050627005991987: M2 27/27, free lnB best 27 at +0
+vhold algdiv (0.56, 120000.0) lnB=-6.086458103090403: M2 0/27, free lnB best 27 at +1  <-
+vhold gl     (0.57, 0.21) lnB=1.7467558545837978: M2 27/27, free lnB best 27 at +0
+vhold gl     (0.63, 3.3) lnB=-0.3638243590671184: M2 27/27, free lnB best 27 at +0
+vhold algdiv (0.71, 9.0) lnB=-1.2998765314529808: M2 0/27, free lnB best 27 at +1  <-
+vhold gl     (0.74, 6.6) lnB=-1.167774942702799: M2 27/27, free lnB best 27 at +0
+vhold algdiv (0.81, 250.5) lnB=-4.331170832408382: M2 0/27, free lnB best 27 at -1  <-
+vhold gl     (0.92, 5.05) lnB=-1.4310965959604531: M2 27/27, free lnB best 27 at +0
+vhold algdiv (0.96, 11.4) lnB=-2.310176394845772: M2 27/27, free lnB best 27 at +0
+vhold min1   (1.0, 1.35) lnB=-0.30010459245033816: M2 27/27, free lnB best 27 at +0
+vhold min1   (1.0, 4.7) lnB=-1.547562508716013: M2 27/27, free lnB best 27 at +0
+vhold min1   (1.0, 63.5) lnB=-4.151039905898646: M2 27/27, free lnB best 27 at +0
+vhold min1   (1.0, 12345.6) lnB=-9.421055003271356: M2 27/27, free lnB best 27 at +0
+vhold gl     (1.85, 0.44) lnB=0.4955821366077192: M2 27/27, free lnB best 27 at +0
+vhold min1   (2.6, 1.0) lnB=-0.9555114450274363: M2 27/27, free lnB best 27 at +0
+vhold gl     (4.6, 0.73) lnB=-0.867470716535215: M2 27/27, free lnB best 27 at +0
+vhold gl     (7.2, 0.16) lnB=1.4534218675352695: M2 27/27, free lnB best 27 at +0
+vhold gl     (8.0, 0.66) lnB=-1.0465008762056978: M2 27/27, free lnB best 27 at +0
+vhold algdiv (9.2, 0.41) lnB=-0.12526768344473405: M2 2/27, free lnB best 27 at -8  <-
+vhold min1   (15.2, 1.0) lnB=-2.7212954278522306: M2 27/27, free lnB best 27 at +0
+vhold algdiv (30.3, 0.62) lnB=-1.7428933507271558: M2 0/27, free lnB best 27 at -2  <-
+vhold min1   (3000.5, 1.0) lnB=-8.006534220429568: M2 27/27, free lnB best 27 at +0
+vhold min1: n 189, M2 189, free-lnB ceiling 189
+vhold gl: n 405, M2 394, free-lnB ceiling 405
+vhold algdiv: n 270, M2 66, free-lnB ceiling 270

@@ -754,6 +754,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // One parser for the whole sheet: building one clones the defined names
     // and tables, which is far too much to do once per formula cell.
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
+    parser.set_loaded(true);
     // The cells are streamed; what is left of the worksheet is small and is
     // read as a tree.
     let SheetDataXml {
@@ -761,6 +762,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         mut sheet_data,
         rows,
         shared_formulas,
+        data_tables,
     } = read_sheet_data(
         file,
         sheet_name,
@@ -771,11 +773,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         settings.date_system,
     )?;
     let ws = &worksheet;
-
     let dimension = load_dimension(ws);
-
     let sheet_view = get_sheet_view(ws);
-
     let cols = load_columns(ws)?;
     let color = load_sheet_color(ws, theme)?;
 
@@ -853,6 +852,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             views,
             conditional_formatting,
             links,
+            data_tables,
         },
         sheet_view.is_selected,
     ))

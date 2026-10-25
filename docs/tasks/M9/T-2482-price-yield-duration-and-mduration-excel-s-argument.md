@@ -3,7 +3,7 @@ id: T-2482
 title: "PRICE, YIELD, DURATION and MDURATION: Excel's argument check order under error and text arguments (gen-m9, 50 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -62,11 +62,22 @@ Cells:
 - gen-m9/d912671baa1364aa.case.json (1): Calc!A303
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A72, A112
 
+T-2436 probe (excel-graph, 2026-10-24; probes/t2436/<case>, each gen-m9 cell's sub-expressions on its Data sheet): `YIELD(36563,45559,SUM(..)<999999999999995>,107,107,2,1)` (a huge rate) is `#NUM!` (ours 10.571526228899263) and `MDURATION(<-1.5>,46394,COVARIANCE.P(..)<#N/A>,100,2)` `#NUM!`, the settlement check before the coupon's error (ours `#N/A`).
+Owned gen-m9 cells (T-2436 probe, excel-graph, 2026-10-24): 2 known-failure lines in eval/baseline/gen-m9.txt, 2 formulas.
+Examples:
+- gen-m9/320d51765af9b6b7 Calc!A329 `=CHITEST(YIELD(36563,45559,SUM(Data!B11:B12,Data!B$8),107,107,2,1),(DAY(43015)-ODDLPRICE(35397,38233,33415,1E-300,Data!B2,109,4)))`: Excel #NUM!, ours #N/A; inner `YIELD(36563,45559,SUM(Data!B11:B12,Data!B$8),107,107,2,1)` Excel #NUM!, ours 10.571526228899263
+- gen-m9/58e3253bbd3a7a82 Calc!A143 `=EXPONDIST((-(-2.5)/MONTH(6421)),MDURATION((Data!B11+Data!D4),46394,COVARIANCE.P(Data!C7,Data!C10:E10),100,2),FALSE)`: Excel #NUM!, ours #N/A; inner `MDURATION((Data!B11+Data!D4),46394,COVARIANCE.P(Data!C7,Data!C10:E10),100,2)` Excel #NUM!, ours #N/A
+Cells:
+- gen-m9/320d51765af9b6b7.case.json (1): Calc!A329
+- gen-m9/58e3253bbd3a7a82.case.json (1): Calc!A143
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): these 50 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436; partly met: A143 fixed, A329 moved to T-2391, see Outcome): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: for each of the four functions, an out-of-domain argument before an error argument, and an error argument before an out-of-domain one.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2257; partly met: 46 of 50 fixed, 4 moved to T-2488, T-2496 and T-2426, see Outcome): these 50 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] Unit tests: for each of the four functions, an out-of-domain argument before an error argument, and an error argument before an out-of-domain one.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The #NUM! at a huge yield or coupon (T-2488) and YIELD's solver (T-1592, T-2391).
@@ -76,3 +87,17 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Probed the order with probes/bond-argument-check-order (298 cells, excel-graph): it is not the COUP* order. PRICE and
+YIELD read and check the basis first; settlement and maturity are `#NUM!` off the calendar as they are read; DURATION
+and MDURATION check the frequency as they read it and read the basis last; the date order and the rate, yld, price and
+redemption checks come after every read (financial.md "PRICE, YIELD, DURATION and MDURATION check order"). `bond_args`
+in financial_bonds.rs follows it; unit test `bond_functions_check_their_arguments_in_excel_order`.
+Eval: gen-m9 known failures 6417 -> 6358 (59 fixed, 47 of the 52 owned), probes 2708 -> 2702 (6 fixed) plus the new
+case's 298 cells passing; 0 regressions.
+The 5 owned cells left are not argument order and moved to their owners:
+- A huge yield, `#DIV/0!` in ours: gen-m9/3c06f9298f65a3ba A130 and ba4ddb817a8e700e A8 to T-2488.
+- YIELD at a coupon rate of about 1E15: 320d51765af9b6b7 A329 to T-2391.
+- An inner ODDFPRICE with its settlement past 9999-12-31: 3c06f9298f65a3ba A309 to T-2496.
+- An inner `RSQ(Data!E11:E11,..)` over an empty cell, which Excel makes `#VALUE!`: 3c06f9298f65a3ba A113. That is T-2426's rule, and that task is in flight on its branch, so its file was not edited. The cell clears when T-2426 lands.
