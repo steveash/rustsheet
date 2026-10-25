@@ -1069,12 +1069,12 @@ The edges are bracketed to a relative 2^-14 (an absolute ~2^-36), and the engine
 A tiny negative mode reads 0 (`-1E-7`, `-1E-10`, `-1E-300`). TRUE reads 1, and the text "1" and "1.5" read 1. ±1E300 is
 `#VALUE!`, as is any value that floors outside the valid modes.
 A match_mode of 3 (or one that floors to 3) is the regex mode in both functions: `XMATCH(2.5,{1,2,3},3)` is `#N/A`, the
-XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both. Ours has no regex mode in XLOOKUP (T-2660).
+XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both. Ours has no regex mode in XLOOKUP (T-2669).
 Evidence: probes/t2656-xmatch-mode-near-integer, -rounding, -snap, -snap-boundary, -snap-bisect, -snap-grid, -snap-edge,
 -snap-edge-fine, and probes/t2656-xlookup-mode-snap-edge (1138 cells, excel-graph, 2026-10-25);
 probes/t2496-fin-subexpressions P!A1, P!A2; gen-m9/01523d247594952e Calc!A51.
 Status: VERIFIED (excel-graph), within the brackets above. Ours matches every cell except XLOOKUP's regex mode (4 cells,
-T-2660).
+T-2669).
 Implemented in: functions/util/near_integer.rs `near_integer_whole` (shared with DATE and TIME), read by `Model::xmatch_of`
 (lookup_and_reference/xmatch.rs) and `xlookup_modes` (xlookup.rs).
-Tasks: T-2656, T-2660
+Tasks: T-2656, T-2669
