@@ -40,6 +40,8 @@ Code, all in crates/rustsheet-engine/src/functions/statistical/:
 Check the sign on the untruncated value, then truncate. A negative number_pop and NEGBINOM's number_s already fail
 after truncation, so they need no change.
 
+T-2429 (2026-10-25) landed the HYPGEOM part: hypegeom.rs now checks every count's sign before truncation (and a count of 2^31 - 1 or more), so the three HYPGEOM cells below (7674c89c824aca43 A386, 589f42e67f4b4b8d A2, cde551ea787f713a A72) pass and left the baseline. What is left is BINOM and NEGBINOM.
+
 Excel cells (gen-m9, excel-graph, 2026-10-22/23; known failures in eval/baseline/gen-m9.txt). The resolved count is from
 statistics.md or the case's Data sheet:
 
@@ -67,7 +69,7 @@ Cells:
 - gen-m9/d208bbafc3bc1997.case.json (1): Calc!A231
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 9 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 9 known-failure lines (6 now; the 3 HYPGEOM lines went with T-2429) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline. In particular the probes-numeric t1048/t1049
       binomdist, negbinomdist and hypgeomdist cells keep passing.
 - [ ] Unit tests: `BINOM.DIST(-0.0125,10,1E-16,FALSE)`, `NEGBINOMDIST(-0.5,8,0.5)` and `HYPGEOMDIST(3,-0.025,5,9)` are
