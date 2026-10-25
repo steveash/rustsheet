@@ -579,7 +579,7 @@ result is still an array, so a blocked spill is `#SPILL!`. Real oracle cell (gen
 excel-graph, T-2290): `=XLOOKUP(VALUE((Data!$E$1&Data!D6)),Data!A5:A10,Data!C1:D9,ISERR(FIND(" x ","ü",1)),DECIMAL(OFFSET(Data!B10:E11,5,3,3,2),21),0)`
 is `#SPILL!`; its lookup_value is `#VALUE!` and its scalar search_mode `0` is invalid. UNVERIFIED (the oracle cell only
 shows the array shape): which error each element holds, and which wins between an error lookup_value and an invalid mode
-element (T-2290 follow-up probe). With only scalar criteria the error is returned as is.
+element (T-2746). With only scalar criteria the error is returned as is.
 Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238); ADDRESS's a1 and HYPERLINK's
 friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
 Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
