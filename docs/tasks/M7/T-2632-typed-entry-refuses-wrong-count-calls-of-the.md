@@ -3,7 +3,7 @@ id: T-2632
 title: "Typed entry refuses wrong-count calls of the functions outside the lifting table (=SUM(), =IF(1))"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,9 +25,35 @@ Probe (excel-probe skill, typed Graph PATCH) the cases T-2568 inferred or left o
 arguments). Also decide ACCRINTM's `par`: the engine takes 3 arguments, Microsoft's syntax line says 4 (excel-functions.tsv).
 
 ## Acceptance criteria
-- [ ] `=SUM()`, `=IF(1)` and a too-long XLOOKUP fail typed with `EditError::InvalidInput` and stay accepted stored; every
+- [x] `=SUM()`, `=IF(1)` and a too-long XLOOKUP fail typed with `EditError::InvalidInput` and stay accepted stored; every
   built-in's count range is tested against excel-functions.tsv's minimum.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Progress notes (2026-10-25)
+Claimed at the end of a session's budget and left unstarted for the next opus run (routine step 2, after 2 h idle). Starting
+points found: `Parser::note_argument_count` (parser/operands.rs) asks only `Function::arg_kinds`; the ~300 other functions
+take their signature from `fallback_signature` (parser/static_analysis.rs). A catalog-checked minimum table already exists:
+`functions/lookup_and_reference/eta_min_args.rs` + `eta_min_args.txt` (names whose minimum is not 1, checked by
+`group_functions.rs` `table_matches_catalog`); extend or move it (one definition per concept) rather than writing a second table.
+Maximums are not in the catalog's min_args column; they would come from its `syntax` column (`...` = repeating) and need care
+for engine-only extras (ACCRINTM's 3 arguments).
+
+Resumed 2026-10-25 07:50 UTC by an opus run (routine step 2).
+
+## Outcome
+- Probed typed (Graph PATCH, 2026-10-25): `=SUM()`, `=IF(1)`, `=ABS(1,2)`, three-argument ACCRINTM and the off-cycle
+  `=SORTBY(C1:C2,D1:D2,1,E1:E2)` are all refused (400 `InvalidArgument`); `=ABS(1)` is accepted. Recorded in syntax.md.
+- `functions/lookup_and_reference/eta_min_args.{rs,txt}` became `functions/kinds/arg_counts.{rs,txt}`: one `NAME MIN MAX`
+  line per catalog function (527). MIN is excel-functions.tsv's; MAX is Microsoft's syntax line (255 when it repeats or does
+  not parse), widened by a non-repeating functions.yaml signature and a cited override (INDEX's reference form, 4). The
+  functions.yaml repeat caps are generator bounds, so they never narrow it (review round 1: they refused 4-argument INDEX
+  and GETPIVOTDATA with three pairs). `table_matches_catalog` (Rust) pins the minimums and
+  `test_engine_arg_counts_match_the_catalog` (tools/tests) the whole table. GROUPBY/PIVOTBY's eta arity reads it.
+- `Parser::note_argument_count` refuses typed by the catalog's counts for every function, plus whole `repeat` cycles for
+  lifted functions (`ArgKinds::accepts`; was `takes_count`). ACCRINTM with three arguments is now refused typed.
+- Eval: no change (no `entered` case has a wrong-count call). API test extended.
+- Left open (UNVERIFIED in syntax.md): off-cycle counts of repeating functions outside the lifting table (IFS, SWITCH, LET)
+  stay accepted typed. Probing typed maxima (max and max+1) is T-2682.

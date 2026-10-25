@@ -439,3 +439,43 @@ fn fractional_modes_floor_but_snap_just_below_an_integer() {
         assert_eq!(model._get_text(cell), expected, "{formula}");
     }
 }
+
+#[test]
+fn regex_mode_reads_values_as_text_in_xmatch_and_xlookup() {
+    // probes/t2669-xlookup-regex-mode and -blanks (excel-graph, T-2669): match_mode 3 finds the
+    // pattern anywhere, case-sensitively; numbers, booleans and blanks read as their text, on both
+    // sides; a binary search or an invalid pattern is #VALUE!.
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=XMATCH(\"TRUE\",{\"x\";TRUE},3)", "2"),
+        ("A2", "=XMATCH(\"true\",{\"x\";TRUE},3)", "#N/A"),
+        ("A3", "=XMATCH(12.5,{\"x\";12.5},3)", "2"),
+        ("A4", "=XMATCH(FALSE,{TRUE;FALSE},3)", "2"),
+        ("A5", "=XMATCH(\"^$\",C1:C2,3)", "1"),
+        ("A6", "=XLOOKUP(\"o\",{\"x\";\"Dog\"},{1;2},\"nf\",3)", "2"),
+        (
+            "A7",
+            "=XLOOKUP(\"zzz\",{\"x\";\"Dog\"},{1;2},\"nf\",3)",
+            "nf",
+        ),
+        (
+            "A8",
+            "=XLOOKUP(\"(\",{\"x\";\"Dog\"},{1;2},\"nf\",3)",
+            "#VALUE!",
+        ),
+        (
+            "A9",
+            "=XLOOKUP(\"o\",{\"x\";\"Dog\"},{1;2},\"nf\",3,2)",
+            "#VALUE!",
+        ),
+        ("A10", "=XLOOKUP(\"E\",{1E+20;0.00001},{1;2},\"nf\",3)", "1"),
+    ];
+    model._set("C2", "x");
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
+}

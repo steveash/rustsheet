@@ -111,3 +111,54 @@ fn forecast_ets_family_reads_lifted_argument_then_is_not_implemented() {
         ["#N/IMPL!", "#VALUE!", "#N/IMPL!", "#VALUE!", "#N/IMPL!", "#VALUE!", "2", "2"]
     );
 }
+
+/// T-2424: before it gives up, the family reads every argument in order and the first that fails
+/// decides: a scalar argument's error or non-numeric text, or an error given directly as `values`
+/// or `timeline` (statistics.md "FORECAST.ETS family on excel-graph: argument errors, text and
+/// lifting decide before the #N/A (T-2255)"; gen-m9/22656c225ff4f22a A1, A28, A32, A69).
+#[test]
+fn forecast_ets_family_first_failing_argument_decides() {
+    let mut model = new_empty_model();
+    for row in 1..=8 {
+        model._set(&format!("A{row}"), &format!("{}", row * 2));
+        model._set(&format!("B{row}"), &format!("{row}"));
+    }
+    model._set("C1", "ABC");
+    let cells = [
+        // An error in each position: target_date, values, timeline, then the optional ones.
+        ("=FORECAST.ETS(NA(),1/0,B1:B8)", "#N/A"),
+        ("=FORECAST.ETS(9,1/0,SQRT(-1))", "#DIV/0!"),
+        ("=FORECAST.ETS(9,A1:A8,SQRT(-1),NA())", "#NUM!"),
+        ("=FORECAST.ETS(9,A1:A8,B1:B8,1/0,NA())", "#DIV/0!"),
+        ("=FORECAST.ETS(9,A1:A8,B1:B8,1,1,NA())", "#N/A"),
+        (
+            "=FORECAST.ETS.CONFINT(9,A1:A8,B1:B8,0.95,1,1,SQRT(-1))",
+            "#NUM!",
+        ),
+        ("=FORECAST.ETS.SEASONALITY(A1:A8,SQRT(-1),NA())", "#NUM!"),
+        ("=FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,1,NA())", "#N/A"),
+        ("=FORECAST.ETS.STAT(A1:A8,B1:B8,1,1,1,1/0)", "#DIV/0!"),
+        // Text is #VALUE! in its turn, before a later argument's error.
+        ("=FORECAST.ETS(C1,1/0,B1:B8)", "#VALUE!"),
+        ("=FORECAST.ETS(9,A1:A8,B1:B8,\"x\",NA())", "#VALUE!"),
+        ("=FORECAST.ETS.STAT(A1:A8,B1:B8,C1,NA())", "#VALUE!"),
+        ("=FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,\"x\")", "#VALUE!"),
+        // A call with no error or text stays unimplemented.
+        ("=FORECAST.ETS(9,A1:A8,B1:B8,1,1,1)", "#N/IMPL!"),
+        ("=FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,1,1)", "#N/IMPL!"),
+        // A two-row scalar argument lifts.
+        ("=ROWS(FORECAST.ETS(9,A1:A8,B1:B8,{1;1}))", "2"),
+        ("=ROWS(FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,B1:B2))", "2"),
+    ];
+    for (row, (formula, _)) in cells.iter().enumerate() {
+        model._set(&format!("E{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cells.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("E{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "BASE of zero with a written-empty, blank-cell, empty-text or array min_length (T-2416)",
+  "tags": [
+    "M5",
+    "probe",
+    "base"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=BASE(0,2,)",
+        "A2": "=BASE(0,2,Z99)",
+        "A3": "=BASE(0,2,\"\")",
+        "A4": "=BASE({0,5},2,{0,0})",
+        "A5": "=LEN(BASE(0,2,))",
+        "A6": "=LEN(BASE(0,2,Z99))",
+        "A7": "=BASE(5,2,)",
+        "A8": "=BASE(5,2,Z99)"
+      }
+    }
+  ],
+  "expected": {}
+}

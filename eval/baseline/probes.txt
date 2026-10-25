@@ -68,6 +68,7 @@ C	probes/average-value-args.case.json	32
 C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14
 C	probes/base-number-upper-bound.case.json	50
+C	probes/base-zero-empty-min-length.case.json	9
 C	probes/bessel-asymptotic.case.json	50
 C	probes/bessel-large-x.case.json	24
 C	probes/bond-argument-check-order.case.json	298
@@ -495,6 +496,7 @@ C	probes/index-zero-index-scalar-shape.case.json	55
 C	probes/index-zero-index-scalar-t-n.case.json	28
 C	probes/indirect-defined-name-text.case.json	32
 C	probes/indirect-r1c1-offset-overflow.case.json	7
+C	probes/indirect-sheet-scoped-name.case.json	43
 C	probes/indirect-text-broadcast.case.json	58
 C	probes/info-cell-address-cross-sheet.case.json	13
 C	probes/info-cell-contents-range.case.json	50
@@ -681,6 +683,7 @@ C	probes/min-max-value-args.case.json	16
 C	probes/minverse-overflow-computed-pivot.case.json	43
 C	probes/minverse-singular-near-singular.case.json	46
 C	probes/mod-array-lift.case.json	25
+C	probes/mod-huge-opposite-divisor.case.json	183
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
 C	probes/mod-quotient-threshold.case.json	22
@@ -1152,6 +1155,10 @@ C	probes/t2455-transpose-single-value.case.json	95
 C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2475-stat-subexpressions.case.json	574
 C	probes/t2496-fin-subexpressions.case.json	99
+C	probes/t2498-textafter-match-end.case.json	75
+C	probes/t2517-combina-below-cut-small-n.case.json	4
+C	probes/t2545-base-places-boolean.case.json	7
+C	probes/t2546-bessel-past-cap.case.json	83
 C	probes/t2547-bessel-phase-cut.case.json	88
 C	probes/t2578-groupby-product-subtotals.case.json	6
 C	probes/t2578-pivotby-hidden-total-slot.case.json	129
@@ -1161,6 +1168,7 @@ C	probes/t2581-textsplit-textbefore.case.json	50
 C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
 C	probes/t2625-nested-consumers.case.json	32
+C	probes/t2652-floor-ceiling-ties.case.json	98
 C	probes/t2653-ifs-text-condition-array-value.case.json	30
 C	probes/t2653-ifs-text-condition-shape-sources.case.json	21
 C	probes/t2656-xlookup-mode-snap-edge.case.json	68
@@ -1172,6 +1180,9 @@ C	probes/t2656-xmatch-mode-snap-edge-fine.case.json	104
 C	probes/t2656-xmatch-mode-snap-edge.case.json	128
 C	probes/t2656-xmatch-mode-snap-grid.case.json	240
 C	probes/t2656-xmatch-mode-snap.case.json	126
+C	probes/t2669-xlookup-regex-blanks.case.json	14
+C	probes/t2669-xlookup-regex-lift.case.json	12
+C	probes/t2669-xlookup-regex-mode.case.json	60
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
@@ -1492,6 +1503,8 @@ F	probes/amordegrc-fractional-period.case.json	Calc!A6
 F	probes/amordegrc-fractional-period.case.json	Calc!A7
 F	probes/amordegrc-fractional-period.case.json	Calc!A8
 F	probes/amordegrc-fractional-period.case.json	Calc!A9
+F	probes/base-zero-empty-min-length.case.json	Sheet1!A1
+F	probes/base-zero-empty-min-length.case.json	Sheet1!A5
 F	probes/coup-calendar-edges.case.json	S!C1
 F	probes/coup-calendar-edges.case.json	S!C16
 F	probes/coup-calendar-edges.case.json	S!C2
@@ -3138,8 +3151,6 @@ F	probes/t2475-stat-subexpressions.case.json	P!A529
 F	probes/t2475-stat-subexpressions.case.json	P!A530
 F	probes/t2475-stat-subexpressions.case.json	P!A531
 F	probes/t2475-stat-subexpressions.case.json	P!A533
-F	probes/t2475-stat-subexpressions.case.json	P!A545
-F	probes/t2475-stat-subexpressions.case.json	P!A549
 F	probes/t2475-stat-subexpressions.case.json	P!A559
 F	probes/t2475-stat-subexpressions.case.json	P!A56
 F	probes/t2475-stat-subexpressions.case.json	P!A560
@@ -3203,10 +3214,8 @@ F	probes/t2625-nested-consumers.case.json	P!A28
 F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
-F	probes/t2656-xlookup-mode-snap-edge.case.json	Sheet1!C8
-F	probes/t2656-xmatch-mode-near-integer.case.json	Sheet1!G21
-F	probes/t2656-xmatch-mode-near-integer.case.json	Sheet1!G7
-F	probes/t2656-xmatch-mode-rounding.case.json	Sheet1!G15
+F	probes/t2669-xlookup-regex-lift.case.json	Sheet1!G1
+F	probes/t2669-xlookup-regex-lift.case.json	Sheet1!G2
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9
