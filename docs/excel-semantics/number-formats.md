@@ -204,8 +204,8 @@ second's condition and falls to the third (`[<100]0.0;[>=1000]#,##0;0` prints 99
 The matched section keeps the minus (`[<100]0.0` on -0.5 is "-0.5", `[<1]0.0000` on -0.5 "-0.5000",
 the `else` section of `[>=1]0.00;0.000` on -0.5 "-0.500", `[=0]"nil";General` on -123456.789
 "-123456.789") except when its condition holds for negatives only: `[<=-1]0` on -1.5 is "2".
-Unprobed: that cut for `[<=0]`, `[=-1]`, `[<0]` with digits, and negatives reaching a third
-section; the engine drops the sign only for `<` with a bound <= 0 and `<=` with a bound < 0.
+Unprobed (T-2642): that cut for `[<=0]`, `[=-1]`, `[<0]` with digits, negatives reaching a third
+section, a three-section format whose second section has no condition (the sign rules apply), and four sections; the engine drops the sign only for `<` with a bound <= 0 and `<=` with a bound < 0.
 Evidence: gen-m10 (excel-graph, 2026-10-16) 039accabcfe1e6c7 F!Q1:Q20, 03a284c57e24ff37 and siblings (T-1734).
 Evidence: poi/FormatChoiceTests.xlsx A3:A26 (excel-graph); probes/text-format-length-limit-d
 S!A31, -f Sheet1!A41:A42, -j Sheet1!A43, -q Sheet1!A16 (excel-graph); poi/FormatConditionTests.xlsx
