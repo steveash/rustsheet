@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "MOD of a small number by a huge opposite-sign divisor: where fmod plus d rounds to d (T-2654)",
   "tags": [
-    "M1",
+    "M5",
     "mod",
     "probe"
   ],
