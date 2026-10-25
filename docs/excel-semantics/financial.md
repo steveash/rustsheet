@@ -1093,15 +1093,52 @@ functions/financial/mod.rs (`fn_xnpv`, `fn_xirr`, `fn_fvschedule`, `flow_count`)
 Tasks: T-1843
 
 ## NPV, IRR and MIRR error order
-Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR
+Rule (ours, unprobed for IRR and MIRR): NPV reads its rate before its cash flows, so a rate error wins over an error in
+the flows (probed for NPV: `NPV(NA(),"x")` is #N/A, `NPV("x",NA())` #VALUE!, probes/npv-power-edges-2 A41-A43). IRR
 and MIRR read their flows first, so a flows error wins over a guess or rate error. This is the order the scalar calls
 had before T-1821. When the rate lifts, an error in the flows is every element's error, after that element's own
 earlier arguments. The flows are evaluated once per call, before the elements, even when NPV's rate is an error. The
-values are the same, but it is not Excel's evaluation order, which is unprobed.
-Evidence: none yet (T-2103).
-Status: UNVERIFIED
+values are the same, but it is not Excel's evaluation order, which is unprobed. Among NPV's flows, see "NPV's error
+order".
+Evidence: probes/npv-power-edges-2 A41-A43 (NPV); none yet for IRR and MIRR (T-2103).
+Status: VERIFIED for NPV's rate-first order; UNVERIFIED for IRR and MIRR
 Implemented in: functions/financial/mod.rs (`fn_npv`, `fn_irr`), functions/financial/mirr.rs (`fn_mirr`)
-Tasks: T-1821, T-2103
+Tasks: T-1821, T-2103, T-2493
+
+## NPV's error order
+Rule: among NPV's cash-flow arguments, an error that is a direct argument (an error value, or text that is no number,
+#VALUE!) is the result in argument order, and an error inside a range or an array (a constant one, a computed one or a
+single cell) is the result only when no direct argument errs, whatever the order. Among ranges and arrays the first
+error in argument order wins. Any flow error beats NPV's own `#DIV/0!` ("NPV's discount past the double range").
+`NPV(1.0049,0,{1,2}/0,NA())` is #N/A, `NPV(0.1,{1,#DIV/0!},"x")` #VALUE!, `NPV(0.1,Q1:Q2,NA())` (Q2 `=1/0`) #N/A,
+`NPV(0.1,Q3,NA())` (Q3 `=1/0`) #N/A, `NPV(0.1,{#N/A},#DIV/0!)` #DIV/0!, `NPV(1.0049,0,1/0,NA())` #DIV/0!,
+`NPV(0.1,{1,#DIV/0!},{#N/A})` #DIV/0!, `NPV(0.1,Q1:Q2,{1,#N/A})` #DIV/0!, `NPV(0.1,{1,#N/A},Q1:Q2)` #N/A,
+`NPV(1E+300,1,1,{1,#N/A})` #N/A, `NPV(-1,{1,#N/A},NA())` #N/A. This explains gen-m9 0a957119475760c5 Calc!A255, whose
+third argument is a `TOROW(..)/0` array of #DIV/0! and fourth a RANK.EQ #N/A (Excel #N/A).
+Evidence: probes/npv-power-edges A35-A51, probes/npv-power-edges-2 A31-A48 (excel-graph, 2026-10-25).
+Status: VERIFIED (excel-graph)
+Implemented in: functions/financial/mod.rs (`npv_cash_flows`)
+Tasks: T-2493
+
+## NPV's discount past the double range
+Rule: NPV divides each value by (1+rate)^i built period by period, the power of period i-1 kept as a double. It is
+`#DIV/0!` when 1+rate is 0 (a rate of -1, or one that rounds to -1 such as -1+1E-100, with any flows, 0s included:
+`NPV(-1,0)`, `NPV(-1,{1,2})`) and when the power some later period builds on overflows or falls below the smallest
+normal double. The last period's own power may overflow, and its quotient is not lost: `NPV(1E+300,1,1E+300)` is
+2E-300, `NPV(1E+300,0,0)` 0 and `NPV(1E+200,1,1)` 1E-200, but `NPV(1E+200,1,1,1)`, `NPV(1E+300,0,0,0)`,
+`NPV(1E+300,1,,)` and `NPV(9E+307,1,1,1)` are #DIV/0!; `NPV(1E+154,1,1,1)` is 1E-154 (1E+308 is in range).
+`NPV(1,SEQUENCE(1024))` is 1.9999999999999998 and 1025 flows are #DIV/0!; `NPV(-0.5,<1023 zeros>)` is 0 and
+`NPV(-0.5,<1074 zeros>)` #DIV/0! (consistent with a subnormal power read as 0; 1024 to 1073 zeros unprobed). A
+subnormal quotient is 0 (`NPV(9E+307,1)` is 0), and an overflowing sum is #NUM! (`NPV(-0.5,9E+307,1)`). A rate below
+-1 is fine (`NPV(-2,1,1)` 0, `NPV(-3,1,1,1)` -0.375). The literal 1E+308 in a probe formula makes Excel Online
+reject the workbook ("unsupported features"), so these probes use 9E+307.
+Evidence: probes/npv-power-edges A1-A34, probes/npv-power-edges-2 A1-A30 (excel-graph, 2026-10-25); the T-2436 and
+T-2496 sub-expression probes (NPV(-1,..) and NPV(1E+300,..) cells).
+Ours: matches since T-2493. The power is Rust's `powi` (binary exponentiation), not Excel's running product, so the
+two may disagree right at an overflow or underflow edge (unprobed); the overflowing last quotient is two divisions.
+Status: VERIFIED (excel-graph)
+Implemented in: functions/financial/financial_util.rs (`excel_npv`)
+Tasks: T-2493
 
 ## AMORLINC and AMORDEGRC over many periods
 Rule: Excel walks AMORLINC's and AMORDEGRC's periods one by one in doubles, so a long walk carries every rounding:
