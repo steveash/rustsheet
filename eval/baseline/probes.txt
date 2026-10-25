@@ -1163,6 +1163,7 @@ C	probes/t2581-textsplit-textbefore.case.json	50
 C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
 C	probes/t2625-nested-consumers.case.json	32
+C	probes/t2652-floor-ceiling-ties.case.json	98
 C	probes/t2653-ifs-text-condition-array-value.case.json	30
 C	probes/t2653-ifs-text-condition-shape-sources.case.json	21
 C	probes/t2656-xlookup-mode-snap-edge.case.json	68
