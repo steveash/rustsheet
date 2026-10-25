@@ -1160,7 +1160,7 @@ argument and then counts as a holiday wherever it lands, in a cell, a literal, a
 45000 (Wed), +5 workdays and holiday 45001 (Thu): `WORKDAY(45000,5,A1)` is 45008 (one day skipped) and
 `NETWORKDAYS(45000,45007,A1)` is 5 (not 6) for A1 `"45001"`, and identically for a literal `"45001"`, `TEXT(45001,"0")`,
 `{"45001"}`, `"45001.5"`, `" 45001"` (padded), date text `"3/16/2023"`, currency text `"$45001"`, and a TEXT() date.
-Percent and time text coerce to small serials and are no error but no holiday in the range: `"50%"` and `"12:00"` (0.5)
+Percent and time text are no error but no holiday in the range (their coerced serials, 0.5 and 100000, are inferred, not observed): `"50%"` and `"12:00"` (0.5)
 leave WORKDAY at 45007 and NETWORKDAYS at 6, as does `"1E5"` (100000, on the calendar but past the walk). The `.INTL`
 forms (weekend 1) agree with WORKDAY/NETWORKDAYS in every case, and `{"45001";"45002"}` gives NETWORKDAYS 4.
 Ours already matched all 68 cells (`collect_serial_numbers` counts what `cast_number` reads); no code change.
