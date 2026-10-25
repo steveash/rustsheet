@@ -3,7 +3,7 @@ id: T-0073
 title: "Progress report: evidence depth section and top-40 most-used functions table"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
