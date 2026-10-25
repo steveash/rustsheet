@@ -3,8 +3,8 @@ use regex::Regex;
 #[cfg(target_arch = "wasm32")]
 use regex_lite::Regex;
 
+use crate::cast::calc_scalar_to_string;
 use crate::expressions::types::CellReferenceIndex;
-use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -68,7 +68,7 @@ fn compare_blank_last(candidate: &CalcResult, lookup_value: &CalcResult) -> i32 
 /// `match_mode`, shared by XMATCH and XLOOKUP. A blank candidate never matches a non-blank
 /// lookup value in an exact or wildcard search, and matches a blank one (Col!M14, M30-M34), which
 /// in turn matches nothing but a blank, not a 0, `""` or FALSE (Blk!M1-M5, M19-M22);
-/// the regex mode is XMATCH's own and matches nothing here.
+/// the regex mode goes through [`regex_scan`] instead and matches nothing here.
 pub(crate) fn linear_scan<'a>(
     lookup_value: &CalcResult,
     indices: impl IntoIterator<Item = usize>,
@@ -121,6 +121,37 @@ pub(crate) fn linear_scan<'a>(
     }
 }
 
+/// The regex mode's (`match_mode` 3) pattern: `lookup_value` read as text, as a number, boolean or
+/// blank reads (`12.5` is the pattern "12.5", TRUE "TRUE"), compiled once per search. An invalid
+/// pattern is `#VALUE!`; an error lookup value (handled before) or any other non-scalar has none.
+/// Shared by XMATCH and XLOOKUP (probes/t2669-xlookup-regex-mode D17, E17, D18, D19).
+pub(crate) fn regex_pattern(
+    lookup_value: &CalcResult,
+    cell: CellReferenceIndex,
+) -> Result<Option<Regex>, CalcResult> {
+    let Some(pattern) = calc_scalar_to_string(lookup_value) else {
+        return Ok(None);
+    };
+    Regex::new(&pattern).map(Some).map_err(|_| {
+        CalcResult::new_error(Error::VALUE, cell, "Invalid regular expression".to_string())
+    })
+}
+
+/// The first (in `indices` order) candidate of `get` whose text `regex` finds anywhere in it,
+/// case-sensitively: a number reads as its text, a boolean as TRUE or FALSE, a blank as "" (so
+/// `^$` matches it) and an error never matches. Excel: docs/excel-semantics/lookup.md
+/// "XMATCH and XLOOKUP regex mode" (probes/t2669-xlookup-regex-mode, -blanks; T-2669).
+pub(crate) fn regex_scan<'a>(
+    regex: Option<&Regex>,
+    indices: impl IntoIterator<Item = usize>,
+    get: impl Fn(usize) -> &'a CalcResult,
+) -> Option<usize> {
+    let regex = regex?;
+    indices
+        .into_iter()
+        .find(|&idx| calc_scalar_to_string(get(idx)).is_some_and(|text| regex.is_match(&text)))
+}
+
 /// Searches `array` for `lookup_value` and returns the 0-based index of the match,
 /// or `None` if not found. `regex` is the regex mode's pattern, compiled once by the caller
 /// (`None` for a lookup value that is not text, which matches nothing). Only the candidates `SearchVector` names are tested:
@@ -135,18 +166,7 @@ fn linear_search(
     let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
 
     match match_mode {
-        MatchMode::Regex => {
-            let re = regex?;
-            candidates.into_iter().find(|&idx| {
-                let text = match array.get(idx) {
-                    CalcResult::String(s) => (**s).to_owned(),
-                    CalcResult::Number(n) => number_to_text(*n),
-                    CalcResult::Boolean(b) => b.to_string(),
-                    _ => return false,
-                };
-                re.is_match(&text)
-            })
-        }
+        MatchMode::Regex => regex_scan(regex, candidates, |idx| array.get(idx)),
         // Regex is handled above; the other modes share XLOOKUP's blank-aware scan.
         _ => linear_scan(lookup_value, candidates, |idx| array.get(idx), match_mode),
     }
@@ -267,18 +287,13 @@ impl Model {
 
         match search_mode {
             SearchMode::FirstToLast | SearchMode::LastToFirst => {
-                let regex = match (match_mode, lookup_value) {
-                    (MatchMode::Regex, CalcResult::String(pat)) => match Regex::new(pat) {
-                        Ok(regex) => Some(regex),
-                        Err(_) => {
-                            return CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "Invalid regular expression".to_string(),
-                            )
-                        }
-                    },
-                    _ => None,
+                let regex = if match_mode == MatchMode::Regex {
+                    match regex_pattern(lookup_value, cell) {
+                        Ok(regex) => regex,
+                        Err(error) => return error,
+                    }
+                } else {
+                    None
                 };
                 match linear_search(
                     lookup_value,

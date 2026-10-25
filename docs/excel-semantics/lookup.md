@@ -1069,12 +1069,31 @@ The edges are bracketed to a relative 2^-14 (an absolute ~2^-36), and the engine
 A tiny negative mode reads 0 (`-1E-7`, `-1E-10`, `-1E-300`). TRUE reads 1, and the text "1" and "1.5" read 1. ±1E300 is
 `#VALUE!`, as is any value that floors outside the valid modes.
 A match_mode of 3 (or one that floors to 3) is the regex mode in both functions: `XMATCH(2.5,{1,2,3},3)` is `#N/A`, the
-XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both. Ours has no regex mode in XLOOKUP (T-2669).
+XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both ("XMATCH and XLOOKUP regex mode" below; T-2669).
 Evidence: probes/t2656-xmatch-mode-near-integer, -rounding, -snap, -snap-boundary, -snap-bisect, -snap-grid, -snap-edge,
 -snap-edge-fine, and probes/t2656-xlookup-mode-snap-edge (1138 cells, excel-graph, 2026-10-25);
 probes/t2496-fin-subexpressions P!A1, P!A2; gen-m9/01523d247594952e Calc!A51.
-Status: VERIFIED (excel-graph), within the brackets above. Ours matches every cell except XLOOKUP's regex mode (4 cells,
-T-2669).
+Status: VERIFIED (excel-graph), within the brackets above. Ours matches every cell (XLOOKUP's regex mode since T-2669).
 Implemented in: functions/util/near_integer.rs `near_integer_whole` (shared with DATE and TIME), read by `Model::xmatch_of`
 (lookup_and_reference/xmatch.rs) and `xlookup_modes` (xlookup.rs).
 Tasks: T-2656, T-2669
+
+## XMATCH and XLOOKUP regex mode (T-2669)
+Rule (excel-graph, 2026-10-25): `match_mode` 3 is a regular-expression match in XLOOKUP as in XMATCH.
+- **Matching:** the pattern is found anywhere in a candidate's text (`"o"` finds "Dog"; anchors work: `"^o"` finds nothing,
+  `"^c.t$"` finds "cat"), case-sensitively (`"dog"` skips "Dog"; `"(?i)dog"` finds it).
+- **Text of the values:** both sides read as text the way a scalar reads as text (`calc_scalar_to_string`). A number is
+  its text, so `"12"` and `"12\.5"` find 12.5, `"E"` finds 1E+20 and the lookup value `0.1+0.2` is the pattern "0.3". A
+  boolean is TRUE or FALSE, so `"TRUE"` and the lookup value TRUE find TRUE but `"true"` does not. A blank cell is "", so
+  `"^$"` finds a blank as well as a `""` cell, and the empty pattern finds the first candidate.
+- **No match:** an error candidate never matches (`"#N/A"` skips #N/A).
+- **Errors:** an invalid pattern (`"("`) is `#VALUE!`, never XLOOKUP's if_not_found. A binary search_mode (2 or -2) is
+  `#VALUE!` in regex mode, as in wildcard mode.
+- **Search direction:** search_mode -1 finds the last match. A lifted lookup_value lifts.
+Evidence: probes/t2669-xlookup-regex-mode (60 cells: XLOOKUP in D beside XMATCH in E) and -blanks (14 cells); the regex
+cells of probes/t2656-xmatch-mode-near-integer G7, G21, -rounding G15, t2656-xlookup-mode-snap-edge C8.
+Status: VERIFIED (excel-graph). Ours matches every cell. Before T-2669, XLOOKUP rejected mode 3 and XMATCH read a boolean
+as "true" and a non-text lookup value as no pattern.
+Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `regex_scan`, used by XMATCH's
+`linear_search` and XLOOKUP's (xlookup.rs).
+Tasks: T-2669

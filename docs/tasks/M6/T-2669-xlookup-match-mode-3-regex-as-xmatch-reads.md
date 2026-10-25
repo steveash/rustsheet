@@ -3,7 +3,7 @@ id: T-2669
 title: "XLOOKUP match_mode 3 (regex) as XMATCH reads it"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -27,9 +27,21 @@ modes onto `XmatchMode` for `linear_scan`, so it likely needs the regex arm ther
 with regex, and XLOOKUP's regex over numbers and booleans, before implementing either.
 
 ## Acceptance criteria
-- [ ] The four cells above pass; no baseline gains a line.
-- [ ] A probe pins XLOOKUP's regex mode for text, numbers and the binary search modes, recorded in lookup.md.
-- [ ] `make check` green; reviewers approve.
+- [x] The four cells above pass; no baseline gains a line.
+- [x] A probe pins XLOOKUP's regex mode for text, numbers and the binary search modes, recorded in lookup.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - XMATCH's regex mode (implemented).
+
+## Outcome
+- Two excel-graph probes (probes/t2669-xlookup-regex-mode, 60 cells, XLOOKUP beside XMATCH; -blanks, 14 cells;
+  2026-10-25) pin the regex mode. It is a case-sensitive find anywhere in the text, with numbers, booleans and blanks
+  read as text on both sides. An invalid pattern or a binary search_mode is `#VALUE!`, and an error candidate never
+  matches. Recorded in lookup.md "XMATCH and XLOOKUP regex mode".
+- XLOOKUP accepts match_mode 3 through two helpers now shared with XMATCH, `regex_pattern` and `regex_scan` in xmatch.rs.
+  They read values with `calc_scalar_to_string`, which cast.rs now exports instead of keeping it private. XMATCH's own
+  regex scan was rewritten onto them, which fixed two XMATCH bugs the probe found: a boolean read as "true" (Excel
+  "TRUE"), and a number or boolean lookup value matching nothing (Excel uses its text as the pattern).
+- Eval: the 4 T-2656 known failures pass (near-integer G7, G21; rounding G15; xlookup-mode-snap-edge C8), and all 74 new
+  cells pass. Unit test `regex_mode_reads_values_as_text_in_xmatch_and_xlookup`.
