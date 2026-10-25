@@ -214,6 +214,17 @@ enum AreaWalk {
 }
 
 impl Model {
+    /// MATCH's, VLOOKUP's and HLOOKUP's table argument: [`Model::external_lookup_table`] for a
+    /// table written into a linked workbook, else [`Model::evaluate_single_sheet_arg`].
+    pub(crate) fn evaluate_lookup_table_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.external_lookup_table(node, cell)
+            .unwrap_or_else(|| self.evaluate_single_sheet_arg(node, cell))
+    }
+
     /// Evaluates an argument that must be a single-sheet reference (INDEX, AREAS, VLOOKUP,
     /// MATCH, COUNTBLANK): a 3-D reference is `#VALUE!` there, not the `#REF!` it is as a
     /// value (probes/3d-ref-functions; docs/excel-semantics/references.md). A one-cell reference,
