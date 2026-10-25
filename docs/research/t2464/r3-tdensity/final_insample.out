@@ -1,0 +1,82 @@
+fitting offsets on a1/a2 (runs and exact blocks):
+  fit n=3: 243/352 at +2.481
+  fit n=4: 234/352 at -1.613
+  fit n=5: 173/352 at +1.697
+  fit n=7: 201/352 at -0.009
+  fit n=10: 223/352 at +1.525
+  fit n=30: 183/352 at -0.756
+in-sample LT1 all: 1412/2405/2406 of 2406
+in-sample LT1 br=bd0-log: 287/517/517 of 517
+in-sample LT1 br=bd0-series: 811/1407/1408 of 1408
+in-sample LT1 br=log(x2>n): 314/481/481 of 481
+in-sample LT1 md5-odd: 683/1198/1199 of 1199
+in-sample LT1 n=10: 226/355/355 of 355
+in-sample LT1 n=3: 245/355/355 of 355
+in-sample LT1 n=30: 186/355/355 of 355
+in-sample LT1 n=4: 236/355/355 of 355
+in-sample LT1 n=5: 175/355/355 of 355
+in-sample LT1 n=6: 1/3/3 of 3
+in-sample LT1 n=7: 203/355/355 of 355
+in-sample LT1 n=8: 1/3/3 of 3
+in-sample LT1 n=9: 1/3/3 of 3
+in-sample LT1 n=>10: 138/266/267 of 267
+in-sample CR all: 531/2280/2326 of 2406
+in-sample CR br=bd0-log: 59/436/465 of 517
+in-sample CR br=bd0-series: 381/1399/1382 of 1408
+in-sample CR br=log(x2>n): 91/445/479 of 481
+in-sample CR md5-odd: 256/1136/1157 of 1199
+in-sample CR n=10: 46/332/337 of 355
+in-sample CR n=3: 22/341/329 of 355
+in-sample CR n=30: 106/293/349 of 355
+in-sample CR n=4: 119/354/351 of 355
+in-sample CR n=5: 29/338/336 of 355
+in-sample CR n=6: 1/3/3 of 3
+in-sample CR n=7: 98/348/348 of 355
+in-sample CR n=8: 1/3/3 of 3
+in-sample CR n=9: 0/3/3 of 3
+in-sample CR n=>10: 109/265/267 of 267
+old LT1 all: 11517/18684/18697 of 18699
+old LT1 br=bd0-log: 1615/2339/2340 of 2340
+old LT1 br=bd0-series: 6778/11411/11422 of 11424
+old LT1 br=log(x2>n): 3124/4934/4935 of 4935
+old LT1 md5-odd: 5850/9457/9460 of 9461
+old LT1 n=10: 1001/1779/1779 of 1779
+old LT1 n=3: 3708/5875/5875 of 5875
+old LT1 n=30: 11/24/24 of 24
+old LT1 n=4: 3815/5874/5874 of 5874
+old LT1 n=5: 1647/2802/2802 of 2802
+old LT1 n=6: 5/10/10 of 10
+old LT1 n=7: 1071/1764/1764 of 1764
+old LT1 n=8: 6/9/10 of 10
+old LT1 n=9: 5/10/10 of 10
+old LT1 n=>10: 248/537/549 of 551
+old LT1 exactC all: 5956/18383/18631 of 18699
+old LT1 exactC br=bd0-log: 105/2339/2340 of 2340
+old LT1 exactC br=bd0-series: 3053/11407/11421 of 11424
+old LT1 exactC br=log(x2>n): 2798/4637/4870 of 4935
+old LT1 exactC md5-odd: 3031/9293/9422 of 9461
+old LT1 exactC n=10: 778/1774/1777 of 1779
+old LT1 exactC n=3: 880/5870/5874 of 5875
+old LT1 exactC n=30: 12/24/24 of 24
+old LT1 exactC n=4: 2009/5585/5812 of 5874
+old LT1 exactC n=5: 942/2800/2801 of 2802
+old LT1 exactC n=6: 5/10/10 of 10
+old LT1 exactC n=7: 1071/1764/1764 of 1764
+old LT1 exactC n=8: 6/9/10 of 10
+old LT1 exactC n=9: 5/10/10 of 10
+old LT1 exactC n=>10: 248/537/549 of 551
+old CR all: 3788/18075/18472 of 18699
+old CR br=bd0-log: 79/2314/2328 of 2340
+old CR br=bd0-series: 2781/11388/11413 of 11424
+old CR br=log(x2>n): 928/4373/4731 of 4935
+old CR md5-odd: 1911/9122/9346 of 9461
+old CR n=10: 274/1614/1722 of 1779
+old CR n=3: 283/5762/5833 of 5875
+old CR n=30: 12/19/19 of 24
+old CR n=4: 2223/5808/5862 of 5874
+old CR n=5: 283/2732/2771 of 2802
+old CR n=6: 4/10/10 of 10
+old CR n=7: 533/1600/1702 of 1764
+old CR n=8: 5/10/10 of 10
+old CR n=9: 2/9/10 of 10
+old CR n=>10: 169/511/533 of 551

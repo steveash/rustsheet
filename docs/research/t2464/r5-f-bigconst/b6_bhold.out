@@ -1,0 +1,5 @@
+exact        hits   54/144  |miss|<1 113  rms 1.07 mean -0.13
+msd          hits   37/144  |miss|<1 84  rms 1.44 mean +0.84
+ld_exactln   hits   58/144  |miss|<1 112  rms 1.01 mean -0.08
+ld_exactln+-0.42 hits   64/144  |miss|<1 113  rms 1.09 mean -0.32
+st_ABDs      hits   47/144  |miss|<1 115  rms 1.21 mean -0.10

@@ -1,0 +1,19 @@
+(1,1) s1 64 | m-xd 36 xn64 29 m-xd-st 34 xn64-st 29 xn-st 14 m-xd-st2 30 m-xd-stH 36
+(1,1) s2 64 | m-xd 31 xn64 42 m-xd-st 24 xn64-st 13 xn-st 12 m-xd-st2 20 m-xd-stH 31
+(1,2) s1 64 | m-xd 31 xn64 36 m-xd-st 38 xn64-st 32 xn-st 32 m-xd-st2 37 m-xd-stH 31
+(1,2) s2 64 | m-xd 32 xn64 31 m-xd-st 37 xn64-st 14 xn-st 14 m-xd-st2 25 m-xd-stH 31
+(1,3) s1 64 | m-xd 38 xn64 37 m-xd-st 40 xn64-st 26 xn-st 19 m-xd-st2 31 m-xd-stH 38
+(1,3) s2 64 | m-xd 25 xn64 28 m-xd-st 14 xn64-st 16 xn-st 12 m-xd-st2 13 m-xd-stH 25
+(2,1) s1 64 | m-xd 35 xn64 30 m-xd-st 31 xn64-st 29 xn-st 22 m-xd-st2 29 m-xd-stH 31
+(2,1) s2 64 | m-xd 34 xn64 35 m-xd-st 43 xn64-st 26 xn-st 23 m-xd-st2 42 m-xd-stH 31
+(2,2) s1 64 | m-xd 32 xn64 38 m-xd-st 30 xn64-st 37 xn-st 24 m-xd-st2 30 m-xd-stH 32
+(2,2) s2 64 | m-xd 35 xn64 37 m-xd-st 30 xn64-st 23 xn-st 18 m-xd-st2 29 m-xd-stH 35
+(2,3) s1 64 | m-xd 44 xn64 41 m-xd-st 44 xn64-st 38 xn-st 33 m-xd-st2 42 m-xd-stH 41
+(2,3) s2 64 | m-xd 24 xn64 24 m-xd-st 19 xn64-st 13 xn-st 12 m-xd-st2 19 m-xd-stH 31
+(3,1) s1 64 | m-xd 33 xn64 33 m-xd-st 13 xn64-st 34 xn-st 15 m-xd-st2 10 m-xd-stH 33
+(3,1) s2 64 | m-xd 47 xn64 46 m-xd-st 46 xn64-st 40 xn-st 33 m-xd-st2 40 m-xd-stH 47
+(3,2) s1 64 | m-xd 37 xn64 38 m-xd-st 24 xn64-st 37 xn-st 32 m-xd-st2 23 m-xd-stH 38
+(3,2) s2 64 | m-xd 38 xn64 38 m-xd-st 35 xn64-st 31 xn-st 28 m-xd-st2 36 m-xd-stH 36
+(3,3) s1 64 | m-xd 28 xn64 30 m-xd-st 27 xn64-st 28 xn-st 22 m-xd-st2 26 m-xd-stH 25
+(3,3) s2 64 | m-xd 33 xn64 30 m-xd-st 33 xn64-st 21 xn-st 19 m-xd-st2 30 m-xd-stH 30
+TOTAL {'m-xd': 613, 'xn64': 623, 'm-xd-st': 562, 'xn64-st': 487, 'xn-st': 384, 'm-xd-st2': 512, 'm-xd-stH': 602}

@@ -1,0 +1,7 @@
+xruns-1:1 (2.5,3.5) x~0.3314: ab:s x -0.21; ab:s y +0.14; ln pdf -0.13; a1b1:p lnx+q lny -0.08; ab:x^p y^q +0.06; ab:p lnx+q lny +0.05; x*y +0.04; ab:rlog1(-lam/p) +0.04
+xruns-2:5 (2.5,3.5) x~0.4167: ab:s x +0.13; ln pdf -0.12; ab:p lnx +0.10; a1b1:p lnx+q lny -0.07; a1b1:p u + q v -0.07; a1b1:p rlog1 -0.06; lnx +0.06; ab:s y/q +0.06
+xruns-2:3 (2.5,3.5) x~0.2857: ab:s x -0.24; ln pdf -0.18; a1b1:q lny -0.16; lnx -0.12; ab:p lnx -0.09; y/x -0.07; a1b1:p lnx+q lny +0.07; a1b1:rlog1(lam/q) -0.06
+xruns-1:0 (2.5,3.5) x~0.2114: a1b1:p/(s x) -0.48; ab:lambda +0.23; ab:s x -0.23; a1b1:s y/q -0.11; ab:y^q -0.08; ab:s y/q +0.07; ab:s y -0.06; ab:p rlog1 -0.05
+xruns-2:0 (2.5,3.5) x~0.6137: a1b1:q/(s y) -0.57; a1b1:p/(s x) -0.49; a1b1:lam/q +0.09; x*y -0.06; a1b1:q rlog1 -0.05; ab:s x/p +0.05; ab:-lam/p -0.05; ab:q lny +0.05
+xruns-1:2 (7.3,11.6) x~0.2731: a1b1:s y +0.16; lnx -0.09; ab:lambda -0.06; ab:y^q -0.06; a1b1:s x -0.06; a1b1:q/(s y) +0.06; a1b1:p/(s x) +0.05; ln pdf +0.05
+xruns-1:5 (4,4) x~0.2317: a1b1:s y -0.30; a1b1:q lny -0.14; ab:p/(s x) -0.10; a1b1:p/(s x) -0.10; y/x -0.09; brcomp -0.08; lnx +0.05; ab:p lnx +0.05

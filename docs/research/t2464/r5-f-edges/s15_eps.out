@@ -1,0 +1,46 @@
+(1,1) s1 no phase
+(1,1) s2 qmax=256 eps in [-127.908,127.842] (mod 256)  delta_sd=   4.8
+(1,2) s1 qmax=512 eps in [-248.937,-217.187] (mod 512)  delta_sd=  -0.1
+(1,2) s2 no phase
+(1,3) s2 qmax=512 eps in [-20.8908,235.109] (mod 512)  delta_sd=   4.5
+(1,4) s2 qmax=512 eps in [-115.601,140.399] (mod 512)  delta_sd=   0.1
+(1,5) s1 qmax=512 eps in [-74.9333,-43.1833] (mod 512)  delta_sd=   4.4
+(1,30) s1 no phase
+(2,1) s1 qmax=1024 eps in [288.25,320] (mod 1024)  delta_sd=   0.7
+(2,1) s2 qmax=256 eps in [7.06332,38.8133] (mod 256)  delta_sd=  -0.1
+(2,2) s1 qmax=1024 eps in [-64,-32.25] (mod 1024)  delta_sd=  -0.3
+(2,2) s2 qmax=512 eps in [-64,64] (mod 512)  delta_sd=  -0.3
+(2,4) s2 qmax=512 eps in [-77.6266,178.373] (mod 512)  delta_sd=   3.4
+(2,5) s1 qmax=1024 eps in [-32,32] (mod 1024)  delta_sd=   1.1
+(2,30) s1 qmax=1024 eps in [-32,32] (mod 1024)  delta_sd=   0.0
+(3,1) s1 qmax=1024 eps in [-20.8908,42.8592] (mod 1024)  delta_sd=   4.5
+(3,2) s1 qmax=1024 eps in [-350.685,-286.935] (mod 1024)  delta_sd=   2.7
+(3,5) s1 qmax=1024 eps in [-72.2636,-8.51364] (mod 1024)  delta_sd=   7.1
+(3,30) s1 qmax=1024 eps in [-188.606,-124.606] (mod 1024)  delta_sd=   4.6
+(4,1) s1 qmax=1024 eps in [12.6493,76.3993] (mod 1024)  delta_sd=   0.1
+(4,2) s1 qmax=512 eps in [-77.6266,178.373] (mod 512)  delta_sd=   3.4
+(4,5) s1 no phase
+(4,30) s1 qmax=1024 eps in [160.766,288.766] (mod 1024)  delta_sd=   2.0
+(5,1) s1 qmax=1024 eps in [-511.941,511.809] (mod 1024)  delta_sd=   3.6
+(5,1) s2 qmax=256 eps in [-74.9333,-43.1833] (mod 256)  delta_sd=   4.4
+(5,2) s1 qmax=1024 eps in [-98.4445,29.0555] (mod 1024)  delta_sd=   3.8
+(5,2) s2 qmax=512 eps in [-64,64] (mod 512)  delta_sd=   1.1
+(5,3) s2 qmax=512 eps in [-72.2636,183.736] (mod 512)  delta_sd=   7.1
+(5,4) s2 qmax=512 eps in [-166.242,89.7585] (mod 512)  delta_sd=   5.8
+(5,5) s1 qmax=512 eps in [-186.937,-59.4368] (mod 512)  delta_sd=   2.5
+(5,30) s1 qmax=1024 eps in [-225.315,-97.8149] (mod 1024)  delta_sd=   2.8
+(6,1) s1 qmax=1024 eps in [-460.359,51.6413] (mod 1024)  delta_sd=   0.5
+(6,2) s1 qmax=1024 eps in [-468.482,-212.982] (mod 1024)  delta_sd=  -1.5
+(6,5) s1 qmax=1024 eps in [-347.694,-219.944] (mod 1024)  delta_sd=   8.6
+(6,30) s1 qmax=1024 eps in [3.87785,131.378] (mod 1024)  delta_sd=  -0.4
+(8,1) s1 qmax=512 eps in [-31.7077,96.0423] (mod 512)  delta_sd=  10.9
+(8,2) s1 qmax=512 eps in [-255.839,255.911] (mod 512)  delta_sd=  -3.0
+(8,30) s1 qmax=512 eps in [-62.8674,193.133] (mod 512)  delta_sd=   1.2
+(10,1) s1 qmax=1024 eps in [-500.414,-244.414] (mod 1024)  delta_sd=  10.5
+(10,2) s1 qmax=1024 eps in [-511.765,511.985] (mod 1024)  delta_sd=  -0.9
+(10,5) s1 qmax=1024 eps in [-79.8996,48.1004] (mod 1024)  delta_sd=   9.0
+(10,30) s1 qmax=1024 eps in [225.28,481.28] (mod 1024)  delta_sd=  -3.6
+(50,1) s2 qmax=256 eps in [67.8977,99.6477] (mod 256)  delta_sd=   1.3
+(50,2) s2 qmax=512 eps in [64.25,128] (mod 512)  delta_sd=   0.1
+(50,3) s2 qmax=512 eps in [-255.913,255.837] (mod 512)  delta_sd=   2.3
+(50,4) s2 qmax=512 eps in [-255.932,255.818] (mod 512)  delta_sd=   0.3

@@ -1,0 +1,55 @@
+---
+id: T-2511
+title: "BETA.INV, F.INV, F.INV.RT and T.INV invert the ported incomplete beta to the crossing (T-2464 E8)"
+milestone: M9
+lane: functions-stat
+status: todo
+priority: P2
+size: M
+tier: opus
+campaign: visible
+depends_on: [T-2505, T-2506, T-2508, T-2509, T-2510]
+---
+
+## Goal
+BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T and TINV find the crossing of the engine's ported CDF. The
+crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces statrs' AS 64/109 Newton on statrs'
+`checked_beta_reg`.
+
+## Context
+- T-2464 research, step E8 of docs/research/t2464/r2-impact/RESULTS.md section 4 (`inverse.py` → `inverse.out`).
+- Rule: docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the crossing (T-1745)". That holds at 155
+  of 188 rows; 11 miss by 1 to 188 ulps of p, which suggests a tolerance stop that is not established.
+- r2-impact's estimate on 1,207 numeric inverse cells (778 visibly off in the engine):
+  - a bisection to the crossing of the BEST+log1p CDF fixes 418 and breaks 115, and is bit-exact on 310;
+  - per function: BETA.INV 185/243, BETAINV 10/10, F.INV 43/100, F.INV.RT 56/102, FINV 47/80, T.INV 29/97,
+    T.INV.2T 43/125, TINV 5/21.
+  - The estimate is rough: the model CDF was wrong on the T bgrat cells then (T-2509 fixes them), and Excel's start
+    and stop rule is unknown.
+- Overlap:
+  - T-0974 (done 2026-10-23) already solves F.INV, F.INV.RT and FINV as the crossing of F.DIST's own tails with
+    `special::refine_increasing` (statistics.md "F.INV is a crossing of F.DIST's tails"). Reuse that helper for
+    BETA.INV and T.INV* on the ported CDF instead of writing a second search; F.INV moves when its CDF does.
+  - T-0967 (T.INV, T.INV.2T, CONFIDENCE.T) and T-1871 (statrs saturation and panics) own the remaining cells.
+    Re-triage them in the Outcome and close what this settles.
+  - T-2119 (done) already refines BETA.INV to its crossing on today's kernel; its leftover chained cells are T-2633's
+    (decision 0111).
+
+## Acceptance criteria
+- [ ] Every listed inverse calls one crossing search on the ported CDF (no statrs inversion left).
+- [ ] T-1745's probes-numeric t1745-beta-inv-roundtrip: at least 155 of 188 rows land on a crossing of the engine's
+      CDF.
+- [ ] The search is bounded, with no panics, on any input (directive 5; T-1871's cells).
+- [ ] The Outcome reports fixed and broke counts per function on the 1,207 numeric inverse cells, against r2-impact's
+      418 / 115.
+- [ ] No gated line is added without decision 0083's allowance.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Fitting Excel's start, step and stop rule beyond the crossing. File a research task if the Outcome shows it is the
+  limit.
+
+## Visible-parity stage
+Decision 0083: this task is done when every numeric inverse cell it owns is within half a unit of the 15th significant
+digit of Excel's value, or the cells still off are named in the Outcome with T-0974, T-0967 or a follow-up as owner.
+Bit-level criteria move to a follow-up task without the campaign key.

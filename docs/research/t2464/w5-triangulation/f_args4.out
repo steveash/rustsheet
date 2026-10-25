@@ -1,0 +1,20 @@
+== small argument w: 130 discriminating cells
+  p/s | d2/s             loss     1731  <=1   16  <=4   49
+  ext                    loss     1776  <=1   19  <=4   42
+  x/(x+r) | r/(x+r)      loss     1875  <=1   12  <=4   40
+  1/(1+q) | 1/(1+u)      loss     1559  <=1   21  <=4   54
+  u/(1+u) | q/(1+q)      loss     1868  <=1   15  <=4   50
+  u/(1+u) | 1/(1+u)      loss     1868  <=1   15  <=4   50
+  1/(1+q) | q/(1+q)      loss     1559  <=1   21  <=4   54
+  x*d1/(x*d1+d2)         loss     1731  <=1   16  <=4   49
+  x/(x+d2/d1) | 1-       loss     1875  <=1   12  <=4   40
+== small argument v: 181 discriminating cells
+  p/s | d2/s             loss     2179  <=1   25  <=4   67
+  ext                    loss     2204  <=1   25  <=4   67
+  x/(x+r) | r/(x+r)      loss     2342  <=1   28  <=4   58
+  1/(1+q) | 1/(1+u)      loss     2061  <=1   29  <=4   74
+  u/(1+u) | q/(1+q)      loss     2726  <=1   15  <=4   46
+  u/(1+u) | 1/(1+u)      loss     2061  <=1   29  <=4   74
+  1/(1+q) | q/(1+q)      loss     2726  <=1   15  <=4   46
+  x*d1/(x*d1+d2)         loss     2179  <=1   25  <=4   67
+  x/(x+d2/d1) | 1-       loss     2140  <=1   21  <=4   71

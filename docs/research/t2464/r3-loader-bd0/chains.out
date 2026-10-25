@@ -1,0 +1,21 @@
+chain C
+TOTAL [v=x,ph=1,ld=x] even 3277/5612 hold 3261/5649
+TOTAL [v=x,ph=1,ld=x] even 1456/6235 hold 1225/6053
+chain Ce
+TOTAL [v=x,ph=1,ld=x] even 3098/5612 hold 3060/5649
+TOTAL [v=x,ph=1,ld=x] even 1828/6235 hold 1509/6053
+chain K
+TOTAL [v=x,ph=1,ld=x] even 3561/5612 hold 3505/5649
+TOTAL [v=x,ph=1,ld=x] even 1640/6235 hold 1406/6053
+chain Ke
+TOTAL [v=x,ph=1,ld=x] even 3371/5612 hold 3333/5649
+TOTAL [v=x,ph=1,ld=x] even 1644/6235 hold 1354/6053
+chain R
+TOTAL [v=x,ph=1,ld=x] even 3144/5612 hold 3184/5649
+TOTAL [v=x,ph=1,ld=x] even 1390/6235 hold 1250/6053
+chain Rg
+TOTAL [v=x,ph=1,ld=x] even 3473/5612 hold 3466/5649
+TOTAL [v=x,ph=1,ld=x] even 1640/6235 hold 1406/6053
+chain Rge
+TOTAL [v=x,ph=1,ld=x] even 3283/5612 hold 3294/5649
+TOTAL [v=x,ph=1,ld=x] even 1644/6235 hold 1354/6053

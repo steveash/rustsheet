@@ -1,0 +1,43 @@
+a#2      (20.5,45.5) ss sd(c)   8.92 sd(dk)  5.28  k: slope +1.10 rho +0.65  M: slope +0.06 rho +0.05  shuf: slope -0.04 rho -0.03
+a#3      (20.5,45.5) ss sd(c)   4.37 sd(dk)  2.60  k: slope +1.01 rho +0.60  M: slope +0.10 rho +0.08  shuf: slope -0.08 rho -0.05
+a#4      (20.5,45.5) ss sd(c)   3.30 sd(dk)  1.56  k: slope +0.87 rho +0.41  M: slope -0.11 rho -0.05  shuf: slope +0.17 rho +0.08
+a#5      (20.5,45.5) ss sd(c)   6.61 sd(dk)  3.21  k: slope +1.08 rho +0.52  M: slope -0.17 rho -0.09  shuf: slope -0.08 rho -0.04
+a#6      (20.5,45.5) ls sd(c)   7.49 sd(dk)  4.51  k: slope +1.04 rho +0.63  M: slope +0.74 rho +0.45  shuf: slope +0.11 rho +0.06
+a#8      (40.25,89.75) ss sd(c)  19.10 sd(dk) 10.79  k: slope +1.12 rho +0.63  M: slope -0.09 rho -0.06  shuf: slope +0.05 rho +0.03
+a#9      (40.25,89.75) ss sd(c)   9.02 sd(dk)  5.28  k: slope +1.16 rho +0.68  M: slope -0.02 rho -0.01  shuf: slope -0.16 rho -0.09
+a#10     (40.25,89.75) ss sd(c)   6.49 sd(dk)  3.31  k: slope +0.92 rho +0.47  M: slope +0.14 rho +0.07  shuf: slope -0.12 rho -0.06
+a#11     (40.25,89.75) ss sd(c)  11.78 sd(dk)  6.62  k: slope +0.79 rho +0.45  M: slope +0.12 rho +0.07  shuf: slope -0.24 rho -0.13
+a#12     (40.25,89.75) ls sd(c)  14.58 sd(dk)  9.31  k: slope +0.94 rho +0.60  M: slope -0.06 rho -0.04  shuf: slope -0.09 rho -0.06
+a#14     (100.5,157.5) ss sd(c)  49.13 sd(dk) 25.26  k: slope +1.10 rho +0.56  M: slope -0.05 rho -0.03  shuf: slope -0.06 rho -0.03
+a#15     (100.5,157.5) ss sd(c)  24.13 sd(dk) 13.02  k: slope +0.99 rho +0.53  M: slope +0.34 rho +0.18  shuf: slope -0.17 rho -0.09
+a#16     (100.5,157.5) ss sd(c)  21.08 sd(dk) 13.16  k: slope +0.97 rho +0.60  M: slope +0.13 rho +0.08  shuf: slope +0.06 rho +0.04
+a#17     (100.5,157.5) ss sd(c)  33.81 sd(dk) 20.78  k: slope +0.98 rho +0.60  M: slope +0.03 rho +0.02  shuf: slope -0.05 rho -0.03
+a#18     (100.5,157.5) ls sd(c)  31.28 sd(dk) 18.49  k: slope +0.55 rho +0.32  M: slope -0.04 rho -0.02  shuf: slope +0.04 rho +0.02
+a#20     (5.5,12.5) ss sd(c)   2.40 sd(dk)  1.31  k: slope +0.99 rho +0.54  M: slope -0.17 rho -0.09  shuf: slope -0.06 rho -0.03
+a#21     (5.5,12.5) ss sd(c)   1.38 sd(dk)  0.65  k: slope +0.74 rho +0.35  M: slope -0.09 rho -0.04  shuf: slope -0.14 rho -0.07
+a#22     (5.5,12.5) ss sd(c)   1.17 sd(dk)  0.42  k: slope +1.00 rho +0.36  M: slope +0.01 rho +0.00  shuf: slope -0.24 rho -0.09
+a#23     (5.5,12.5) ss sd(c)   1.61 sd(dk)  0.80  k: slope +0.93 rho +0.47  M: slope +0.15 rho +0.08  shuf: slope +0.07 rho +0.04
+a#24     (5.5,12.5) ls sd(c)   1.44 sd(dk)  0.62  k: slope +1.08 rho +0.47  M: slope +0.10 rho +0.08  shuf: slope -0.33 rho -0.14
+a#26     (20.3,30.1) ss sd(c)   9.69 sd(dk)  5.16  k: slope +1.09 rho +0.58  M: slope -0.14 rho -0.08  shuf: slope -0.03 rho -0.02
+a#27     (20.3,30.1) ss sd(c)   4.51 sd(dk)  2.64  k: slope +1.02 rho +0.60  M: slope +0.18 rho +0.13  shuf: slope -0.00 rho -0.00
+a#28     (20.3,30.1) ss sd(c)   2.79 sd(dk)  1.66  k: slope +0.78 rho +0.47  M: slope -0.02 rho -0.01  shuf: slope -0.09 rho -0.05
+a#29     (20.3,30.1) ss sd(c)   5.91 sd(dk)  3.26  k: slope +1.02 rho +0.56  M: slope -0.18 rho -0.10  shuf: slope +0.06 rho +0.03
+a#30     (20.3,30.1) ls sd(c)   6.43 sd(dk)  2.34  k: slope +1.30 rho +0.48  M: slope -0.03 rho -0.02  shuf: slope -0.21 rho -0.08
+a#32     (5.3,9.7) ss sd(c)   2.27 sd(dk)  1.28  k: slope +0.91 rho +0.51  M: slope +0.11 rho +0.06  shuf: slope +0.15 rho +0.08
+a#33     (5.3,9.7) ss sd(c)   1.35 sd(dk)  0.68  k: slope +1.06 rho +0.53  M: slope -0.12 rho -0.06  shuf: slope -0.04 rho -0.02
+a#34     (5.3,9.7) ss sd(c)   1.15 sd(dk)  0.40  k: slope +1.29 rho +0.45  M: slope +0.45 rho +0.16  shuf: slope -0.34 rho -0.12
+a#35     (5.3,9.7) ss sd(c)   1.61 sd(dk)  0.81  k: slope +0.75 rho +0.38  M: slope +0.21 rho +0.11  shuf: slope -0.03 rho -0.02
+a#36     (5.3,9.7) ls sd(c)   1.60 sd(dk)  0.58  k: slope +1.89 rho +0.69  M: slope -0.12 rho -0.09  shuf: slope -0.33 rho -0.12
+a#38     (40.7,55.3) sl sd(c)   9.31 sd(dk)  4.70  k: slope +1.03 rho +0.52  M: slope +0.04 rho +0.04  shuf: slope +0.09 rho +0.05
+a#39     (40.7,55.3) ss sd(c)  10.91 sd(dk)  6.43  k: slope +1.09 rho +0.64  M: slope -0.07 rho -0.04  shuf: slope -0.19 rho -0.11
+a#40     (40.7,55.3) ss sd(c)   5.55 sd(dk)  3.20  k: slope +0.87 rho +0.50  M: slope -0.02 rho -0.01  shuf: slope +0.15 rho +0.09
+a#41     (40.7,55.3) ss sd(c)  11.14 sd(dk)  6.38  k: slope +1.05 rho +0.60  M: slope -0.02 rho -0.01  shuf: slope +0.00 rho +0.00
+a#42     (40.7,55.3) ls sd(c)   6.89 sd(dk)  4.63  k: slope +0.66 rho +0.44  M: slope +0.09 rho +0.12  shuf: slope +0.06 rho +0.04
+a#44     (100,120) sl sd(c)  31.83 sd(dk) 18.33  k: slope +1.13 rho +0.65  M: slope +0.02 rho +0.01  shuf: slope +0.04 rho +0.02
+a#45     (100,120) ss sd(c)  21.18 sd(dk) 12.50  k: slope +0.96 rho +0.57  M: slope -0.09 rho -0.05  shuf: slope +0.17 rho +0.10
+a#46     (100,120) ss sd(c)  25.62 sd(dk) 13.36  k: slope +1.44 rho +0.75  M: slope -0.07 rho -0.03  shuf: slope -0.08 rho -0.04
+a#47     (100,120) ss sd(c)  32.87 sd(dk) 19.27  k: slope +0.93 rho +0.54  M: slope +0.11 rho +0.07  shuf: slope -0.05 rho -0.03
+a#48     (100,120) ls sd(c)  34.33 sd(dk) 18.13  k: slope +1.15 rho +0.61  M: slope +0.14 rho +0.07  shuf: slope -0.04 rho -0.02
+SUMMARY k: blocks 40  median rho +0.543  rho>0 in 40
+SUMMARY M: blocks 40  median rho -0.002  rho>0 in 20
+SUMMARY shuf: blocks 40  median rho -0.029  rho>0 in 14

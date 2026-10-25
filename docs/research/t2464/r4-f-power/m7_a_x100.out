@@ -1,0 +1,6 @@
+run(100,100,x100)    KXPH110 j=+0 Hs=1 sd 70.6 m -1 | XKPH110 j=+0 Hs=1 sd 70.6 m -1 | KXPH110 j=+0 Hs=0 sd 70.6 m -1 | XKPH110 j=+0 Hs=0 sd 70.6 m -1
+run(50,100,x100)     HKP11 j=-1 Hs=0 sd 80.7 m +293 | HKP11 j=-1 Hs=1 sd 80.7 m +293 | KHP11 j=-1 Hs=0 sd 80.7 m +293 | KHP11 j=-1 Hs=1 sd 80.7 m +293
+run(100,50,x100)     HKP11 j=+0 Hs=0 sd 22.4 m +12 | HKP11 j=+0 Hs=1 sd 22.4 m +12 | KHP11 j=+0 Hs=0 sd 22.4 m +12 | KHP11 j=+0 Hs=1 sd 22.4 m +12
+run(60,200,x100)     HKPX110 j=+1 Hs=0 sd 100.4 m -265 | HKPX110 j=+1 Hs=1 sd 100.4 m -265 | KHPX110 j=+1 Hs=0 sd 100.4 m -265 | KHPX110 j=+1 Hs=1 sd 100.4 m -265
+run(50,50,x100)      HKP11 j=+0 Hs=0 sd 28.8 m -14 | HKP11 j=+0 Hs=1 sd 28.8 m -14 | KHP11 j=+0 Hs=0 sd 28.8 m -14 | KHP11 j=+0 Hs=1 sd 28.8 m -14
+run(20,100,x100)     HKPX000 j=-2 Hs=1 sd 47.0 m +225 | HKPX000 j=-1 Hs=1 sd 47.0 m +97 | HKPX000 j=+0 Hs=1 sd 47.0 m -31 | HKPX000 j=+1 Hs=1 sd 47.0 m -159

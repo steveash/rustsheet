@@ -1,0 +1,44 @@
+A     564/3168 order am1L1+hLr1 C last sums e E e
+A     564/3168 order am1L1+hLr1 C first sums e E e
+A     564/3168 order hLr1+am1L1 C first sums e E e
+      worst blocks: 50,50,,x1.9) 2/48, 100,10,x0.37) 2/48, 100,10,,x1.9) 2/48, 100,100,,x1.9) 2/48, 1,50,,x1.9) 3/48, 20,100,x0.37) 3/48
+Al    564/3168 order am1L1+hl1p C last sums e E e
+Al    564/3168 order am1L1+hl1p C first sums e E e
+Al    564/3168 order hl1p+am1L1 C first sums e E e
+      worst blocks: 50,50,,x1.9) 2/48, 100,10,x0.37) 2/48, 100,10,,x1.9) 2/48, 100,100,,x1.9) 2/48, 1,50,,x1.9) 3/48, 20,100,x0.37) 3/48
+B     408/3168 order am1L1+hLd C last sums x E e
+B     408/3168 order hLd+am1L1 C last sums x E e
+B     403/3168 order am1L1+hLd C last sums e E e
+      worst blocks: 20,100,x0.37) 2/48, 20,100,,x1.9) 2/48, 50,50,x0.37) 2/48, 50,50,,x1.9) 2/48, 100,10,x0.37) 2/48, 100,10,,x1.9) 2/48
+C     658/3168 order aLy+L1+bLq C first sums x E e
+C     651/3168 order aLy+bLq+L1 C last sums e E e
+C     651/3168 order aLy+bLq+L1 C first sums e E e
+      worst blocks: 10,30,0,x13) 0/48, 50,50,0,x13) 0/48, 50,100,0,x13) 0/48, 100,100,,x1.9) 0/48, 100,100,0,x13) 0/48, 50,50,,x1.9) 1/48
+Cw    687/3168 order aLyw+L1+bLqw C first sums x E e
+Cw    662/3168 order aLyw+bLqw+L1 C first sums x E e
+Cw    661/3168 order aLyw+bLqw+L1 C last sums e E e
+      worst blocks: 10,30,0,x13) 0/48, 50,50,0,x13) 0/48, 50,100,0,x13) 0/48, 100,100,,x1.9) 0/48, 100,100,0,x13) 0/48, 30,6,,x1.9) 1/48
+Cl    733/3168 order aLy+bl1p+L1 C first sums x E x
+Cl    733/3168 order aLy+L1+bl1p C first sums x E e
+Cl    724/3168 order aLy+bl1p+L1 C first sums x E e
+      worst blocks: 5,10,0,x13) 0/48, 20,20,0,x13) 0/48, 50,50,,x1.9) 0/48, 50,100,,x1.9) 0/48, 50,100,0,x13) 0/48, 100,100,,x1.9) 0/48
+D     424/3168 order aLmx+hLd+L1 C last sums e E e
+D     424/3168 order aLmx+hLd+L1 C first sums e E e
+D     424/3168 order aLmx+L1+hLd C first sums e E e
+      worst blocks: 20,100,,x1.9) 2/48, 100,10,,x1.9) 2/48, 1,50,,x1.9) 3/48, 1,50,0,x13) 3/48, 10,30,x0.37) 3/48, 10,30,,x1.9) 3/48
+E     604/3168 order aLr+hLr1+L1 C last sums e E e
+E     604/3168 order aLr+hLr1+L1 C first sums e E e
+E     604/3168 order aLr+L1+hLr1 C first sums e E e
+      worst blocks: 4,20,0,x13) 3/48, 50,100,,x1.9) 3/48, 100,10,,x1.9) 3/48, 1,50,,x1.9) 4/48, 10,3,3,x13) 4/48, 10,30,0,x13) 4/48
+El    604/3168 order aLr+hl1p+L1 C last sums e E e
+El    604/3168 order aLr+hl1p+L1 C first sums e E e
+El    604/3168 order aLr+L1+hl1p C first sums e E e
+      worst blocks: 4,20,0,x13) 3/48, 50,100,,x1.9) 3/48, 100,10,,x1.9) 3/48, 1,50,,x1.9) 4/48, 10,3,3,x13) 4/48, 10,30,0,x13) 4/48
+S1    538/3168 order hLs1+bp1L1 C last sums e E e
+S1    538/3168 order hLs1+bp1L1 C first sums e E e
+S1    538/3168 order bp1L1+hLs1 C first sums e E e
+      worst blocks: 20,100,x0.37) 2/48, 20,100,,x1.9) 2/48, 50,50,x0.37) 2/48, 100,100,x0.37) 2/48, 1,50,x0.37) 3/48, 1,50,,x1.9) 3/48
+J     702/3168 order am1Ly+Ly+bm1Lq+Lq+L1 C first sums x E e
+J     690/3168 order am1Ly+bm1Lq+Ly+L1+Lq C first sums x E e
+J     686/3168 order am1Ly+Ly+bm1Lq+L1+Lq C first sums x E e
+      worst blocks: 4,20,0,x13) 0/48, 5,10,0,x13) 0/48, 10,30,0,x13) 0/48, 20,100,0,x13) 0/48, 50,50,0,x13) 0/48, 50,100,0,x13) 0/48
