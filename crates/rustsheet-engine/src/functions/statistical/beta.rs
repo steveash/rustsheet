@@ -1,5 +1,6 @@
 use statrs::distribution::{Beta, Continuous};
 
+use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
 use crate::functions::statistical::incomplete_beta::{
@@ -135,8 +136,12 @@ impl Model {
         let result = if cumulative {
             beta_reg_complement(t, 1.0 - t, alpha, beta_param)
         } else {
-            // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A)
-            beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width
+            // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A). A subnormal
+            // density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/t2513-r3-m1-residual-hold E863,
+            // E875, E957; docs/excel-semantics/numbers.md "Distribution densities").
+            flush_subnormal(
+                beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width,
+            )
         };
         if result.is_nan() || result.is_infinite() {
             return Err(num_error(cell));

@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2513 verify-r3-binom-pmf fresh hold-out: BINOM.DIST k=0 / k=n closed forms, NEGBINOM.DIST r=1, and interior BINOM/BETA/NEGBINOM runs at new shapes (docs/research/t2464/verify-r3-binom-pmf/vprobe.py)",
+ "description": "T-2513 verify-r3-binom-pmf fresh hold-out: BINOM.DIST k=0 / k=n closed forms, NEGBINOM.DIST r=1, and interior BINOM/BETA/NEGBINOM runs at new shapes (docs/research/t2464/verify-r3-binom-pmf/vprobe.py) T-2693 adds `(x)=0` companions (decision 0042) in columns I and J for the cells where excel-graph shows 0 and the engine keeps a subnormal.",
  "tags": [
   "M9",
   "probe",
@@ -469,7 +469,9 @@
     "A228": "=BINOM.DIST(0,999,(128389316*2^-29+59334230*2^-55),FALSE)",
     "B228": "=NEGBINOM.DIST(999,1,(128389316*2^-29+59334230*2^-55),FALSE)",
     "A229": "=BINOM.DIST(0,999,(70065857*2^-27+4559162*2^-53),FALSE)",
+    "I229": "=(BINOM.DIST(0,999,(70065857*2^-27+4559162*2^-53),FALSE))=0",
     "B229": "=NEGBINOM.DIST(999,1,(70065857*2^-27+4559162*2^-53),FALSE)",
+    "J229": "=(NEGBINOM.DIST(999,1,(70065857*2^-27+4559162*2^-53),FALSE))=0",
     "A230": "=BINOM.DIST(0,999,(91660620*2^-27+32555853*2^-53),FALSE)",
     "B230": "=NEGBINOM.DIST(999,1,(91660620*2^-27+32555853*2^-53),FALSE)",
     "A231": "=BINOM.DIST(0,999,(117104091*2^-28+14789927*2^-54),FALSE)",
@@ -487,7 +489,9 @@
     "A237": "=BINOM.DIST(0,999,(104466307*2^-27+202270*2^-53),FALSE)",
     "B237": "=NEGBINOM.DIST(999,1,(104466307*2^-27+202270*2^-53),FALSE)",
     "A238": "=BINOM.DIST(0,999,(69567387*2^-27+62376415*2^-53),FALSE)",
+    "I238": "=(BINOM.DIST(0,999,(69567387*2^-27+62376415*2^-53),FALSE))=0",
     "B238": "=NEGBINOM.DIST(999,1,(69567387*2^-27+62376415*2^-53),FALSE)",
+    "J238": "=(NEGBINOM.DIST(999,1,(69567387*2^-27+62376415*2^-53),FALSE))=0",
     "A239": "=BINOM.DIST(0,999,(128496328*2^-28+65115877*2^-54),FALSE)",
     "B239": "=NEGBINOM.DIST(999,1,(128496328*2^-28+65115877*2^-54),FALSE)",
     "A240": "=BINOM.DIST(0,999,(118822054*2^-28+27228378*2^-54),FALSE)",
