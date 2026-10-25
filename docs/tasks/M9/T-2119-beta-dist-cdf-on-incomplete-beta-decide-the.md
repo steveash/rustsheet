@@ -103,6 +103,6 @@ all numeric, all in `ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx` `Sheet1`, 
 Follow-up: T-2633 (campaign: visible) owns these nine cells and A159. It also owns four ungated probes-numeric
 cells that this change makes visibly off: t0969-beta-prefactor D85 (18 ulp) and D86 (33 ulp, bit-exact before),
 and t0969-t-beta-link E56 (4 ulp) and F6 (6 ulp). Decision 0083's condition 2 ("no cell becomes visibly off")
-does not hold for them. The owner ruled on that; see the PR. T-2633 also owns the 58 ungated probes-numeric
+does not hold for them. The owner accepted them in decision 0111. T-2633 also owns the 58 ungated probes-numeric
 cells that are newly 1-2 ulp off. `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` is now the true quantile 0.003013141... instead of
 `#NUM!` (Excel 0.0691959487211844, probes/stat-quantile-lift E9, still a known failure).
