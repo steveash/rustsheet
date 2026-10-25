@@ -10,7 +10,9 @@ use super::{
     binary_search::{binary_search, Sequence},
     lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::SearchVector,
-    lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
+    lookup_and_reference::xmatch::{
+        linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode, Regex,
+    },
     util::near_integer::near_integer_whole,
     util::{array_element_value, array_node_to_calc_result},
 };
@@ -29,23 +31,27 @@ enum MatchMode {
     ExactMatch = 0,
     ExactMatchLarger = 1,
     WildcardMatch = 2,
+    RegexMatch = 3,
 }
 
 /// The first match of `lookup_value` in `values` walking in `search_mode`'s direction. Only the
 /// candidates `SearchVector` names are tested: its virtual empty tail is one cell.
+/// `regex` is the regex mode's compiled pattern ([`regex_pattern`]).
 fn linear_search(
     lookup_value: &CalcResult,
     values: &SearchVector,
     search_mode: &SearchMode,
     match_mode: &MatchMode,
+    regex: Option<&Regex>,
 ) -> Option<usize> {
+    let candidates = values.linear_candidates(*search_mode == SearchMode::StartAtFirstItem);
     let mode = match match_mode {
         MatchMode::ExactMatch => XmatchMode::Exact,
         MatchMode::ExactMatchSmaller => XmatchMode::ExactMatchSmaller,
         MatchMode::ExactMatchLarger => XmatchMode::ExactMatchLarger,
         MatchMode::WildcardMatch => XmatchMode::Wildcard,
+        MatchMode::RegexMatch => return regex_scan(regex, candidates, |index| values.get(index)),
     };
-    let candidates = values.linear_candidates(*search_mode == SearchMode::StartAtFirstItem);
     linear_scan(lookup_value, candidates, |index| values.get(index), mode)
 }
 
@@ -53,8 +59,9 @@ fn linear_search(
 enum BinaryHit {
     Found(usize),
     NotFound,
-    /// Wildcard match mode with a binary search, which is `#VALUE!`.
-    Wildcard,
+    /// Wildcard or regex match mode with a binary search, which is `#VALUE!`
+    /// (probes/t2669-xlookup-regex-mode D22, D23).
+    Pattern,
 }
 
 /// The binary-search XLOOKUP modes (2 ascending, -2 descending) over `values`: the position of
@@ -66,8 +73,8 @@ fn binary_hit<S: Sequence<CalcResult> + ?Sized>(
     search_mode: &SearchMode,
     match_mode: &MatchMode,
 ) -> BinaryHit {
-    if *match_mode == MatchMode::WildcardMatch {
-        return BinaryHit::Wildcard;
+    if matches!(match_mode, MatchMode::WildcardMatch | MatchMode::RegexMatch) {
+        return BinaryHit::Pattern;
     }
     let side = match match_mode {
         MatchMode::ExactMatchSmaller => Ordering::Less,
@@ -133,6 +140,8 @@ fn xlookup_modes(
         1 => MatchMode::ExactMatchLarger,
         0 => MatchMode::ExactMatch,
         2 => MatchMode::WildcardMatch,
+        // Regex, as in XMATCH (probes/t2656-xmatch-mode-near-integer G7, t2669-xlookup-regex-mode).
+        3 => MatchMode::RegexMatch,
         _ => return Err(unexpected()),
     };
     // An unknown search_mode is #VALUE! (probes/xlookup-array-lookup-value-args A9, A67).
@@ -351,17 +360,29 @@ impl Model {
         };
         let found = match search_mode {
             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
-                linear_search(lookup_value, &table.values, &search_mode, &match_mode)
+                // An invalid pattern is #VALUE!, never if_not_found (t2669-xlookup-regex-mode D17).
+                let regex =
+                    match regex_pattern(lookup_value, match_mode == MatchMode::RegexMatch, cell) {
+                        Ok(regex) => regex,
+                        Err(error) => return error,
+                    };
+                linear_search(
+                    lookup_value,
+                    &table.values,
+                    &search_mode,
+                    &match_mode,
+                    regex.as_ref(),
+                )
             }
             SearchMode::BinarySearchAscending | SearchMode::BinarySearchDescending => {
                 match binary_hit(lookup_value, &table.values, &search_mode, &match_mode) {
                     BinaryHit::Found(index) => Some(index),
                     BinaryHit::NotFound => None,
-                    BinaryHit::Wildcard => {
+                    BinaryHit::Pattern => {
                         return CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            "Cannot use wildcard in binary search".to_string(),
+                            "Cannot use wildcard or regex in binary search".to_string(),
                         )
                     }
                 }
@@ -402,6 +423,7 @@ impl Model {
     ///   * -1 - Exact match. If none found, return the next smaller item.
     ///   *  1 - Exact match. If none found, return the next larger item.
     ///   *  2 - A wildcard match where *, ?, and ~ have special meaning.
+    ///   *  3 - A regular-expression match, as in XMATCH.
     ///
     /// [`search_mode`]
     /// Specify the search mode to use:
