@@ -3394,7 +3394,7 @@ the anchor is `#SPILL!`: `FREQUENCY(Data!B11:C12,Data!B3:B3)` (0a614cfe974b59c3 
 with C7 = " x " (3e98b26cf6713e77 A249). The exact row count for a text or boolean bin is UNVERIFIED (the cells show
 only that it is at least two). An error argument is the result: `FREQUENCY((0*CHITEST(..)),(-2.5))`
 `#N/A` (05d44f6dd6cfc567 A65), `FREQUENCY(Data!B6:D10,YEAR(VDB(..)))` `#NUM!` (b4173fe25109a238 A184); which wins when
-both data and bins are errors is UNVERIFIED (no cell has both).
+both data and bins are errors is settled by probes/frequency-bins below.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 142 cells listed in T-2427.
 Resolved by probes/frequency-bins (excel-graph, 2026-10-24): with no numeric bin (a text, boolean or blank cell or a
 typed text or boolean) the result is two rows, 0 then every numeric data value; text and booleans in data or bins are
