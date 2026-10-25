@@ -7,7 +7,7 @@ status: in-progress
 priority: P1
 size: M
 tier: opus
-campaign: visible
+campaign: accuracy
 depends_on: [T-2645]
 ---
 
@@ -68,6 +68,9 @@ Decision 0083: this task is done when every BETA.DIST(.,FALSE) cell with min(a,b
 unit of the 15th significant digit of Excel's value. r2-impact counts 155 such cells visibly off pre-T2464, and M1
 left 6 (M2 leaves 4 of the 1,107 old cells). Bit-level criteria still unmet then move to a follow-up task without the
 campaign key.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up. Owner ruling 2026-10-25 (this task's session, recorded in decision 0115 by T-2504): for the beta family a caller ports Excel's pieces and may take a correctly rounded piece wherever that scores better on the oracle's visible cells; this task's M2 scores better than the accurate path (Outcome).
 
 ## Outcome
 2026-10-25. `functions/statistical/beta_small_shape.rs` `small_shape_density` is M2 as statistics.md states it: tx, ty,
