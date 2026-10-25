@@ -1,0 +1,72 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2461: blank elements of arrays from SORT, FILTER and TAKE through MAP, REDUCE and INDEX; ISOMITTED of an empty-value argument; HSTACK/VSTACK of a lone blank cell; EXPAND, WRAPCOLS and WRAPROWS pads from a blank cell or an omitted pad; the spill of MAP, HSTACK and EXPAND over blanks.",
+ "tags": [
+  "M7",
+  "probe",
+  "dynamic-arrays",
+  "T-2461"
+ ],
+ "sheets": [
+  {
+   "name": "P",
+   "cells": {
+    "A1": "=TEXTJOIN(\",\",FALSE,MAP(SORT(D!Z1:Z2),_xleta.COUNT))",
+    "A2": "=REDUCE(0,SORT(D!Z1:Z2),LAMBDA(a,v,a+COUNT(v)))",
+    "A3": "=TEXTJOIN(\",\",FALSE,MAP(FILTER(D!Z1:Z2,{TRUE;TRUE}),_xleta.COUNT))",
+    "A4": "=REDUCE(0,FILTER(D!Z1:Z2,{TRUE;TRUE}),LAMBDA(a,v,a+COUNT(v)))",
+    "A5": "=TEXTJOIN(\",\",FALSE,MAP(TAKE(D!Z1:Z2,2),_xleta.COUNT))",
+    "A6": "=REDUCE(0,TAKE(D!Z1:Z2,2),LAMBDA(a,v,a+COUNT(v)))",
+    "A7": "=TEXTJOIN(\",\",FALSE,MAP(SORT(D!Z1:Z2),LAMBDA(v,ISBLANK(v))))",
+    "A8": "=COUNT(INDEX(SORT(D!Z1:Z2),1,1))",
+    "A9": "=ISBLANK(INDEX(SORT(D!Z1:Z2),1,1))",
+    "A10": "=COUNT(INDEX(TAKE(D!Z1:Z2,2),1,1))",
+    "A11": "=COUNT(INDEX(FILTER(D!Z1:Z2,{TRUE;TRUE}),1,1))",
+    "A12": "=TEXTJOIN(\",\",FALSE,MAP(HSTACK(D!Z1:Z2,{1;2}),LAMBDA(v,ISOMITTED(v))))",
+    "A13": "=LAMBDA(x,ISOMITTED(x))(IFERROR(D!Z1,1))",
+    "A14": "=LAMBDA(x,ISOMITTED(x))(INDEX(HSTACK(D!Z1:Z2,{1;2}),1,1))",
+    "A15": "=COUNT(INDEX(HSTACK(D!Z1),1,1))",
+    "A16": "=ISBLANK(INDEX(HSTACK(D!Z1),1,1))",
+    "A17": "=SEARCH(HSTACK(D!Z1),\"Hello World\",8)",
+    "A18": "=ISBLANK(INDEX(EXPAND(1,2,2,),2,2))",
+    "A19": "=COUNT(INDEX(EXPAND(1,2,2,D!Z1),2,2))",
+    "A20": "=ISBLANK(INDEX(WRAPCOLS({1,2,3},2,D!Z1),2,2))",
+    "A21": "=COUNT(INDEX(WRAPCOLS({1,2,3},2,D!Z1),2,2))",
+    "A22": "=ISBLANK(INDEX(WRAPROWS({1,2,3},2,D!Z1),2,2))",
+    "A23": "=COUNT(INDEX(VSTACK(D!Z1:Z2),1,1))",
+    "A24": "=ISBLANK(INDEX(VSTACK(D!Z1:Z2),1,1))",
+    "A25": "=VSTACK(D!Z1)&\"|\"",
+    "A26": "=TYPE(INDEX(HSTACK(D!Z1:Z2,{1;2}),0,1))",
+    "C1": "=MAP(HSTACK(D!Z1:Z2,{1;2}),LAMBDA(v,v))",
+    "C4": "=HSTACK(D!Z1,1)",
+    "C6": "=EXPAND(1,2,2,D!Z1)",
+    "A27": "=COUNT(INDEX(DROP(D!Z1:Z3,1),1,1))",
+    "A28": "=ISREF(INDEX(TAKE(D!Z1:Z2,2),1,1))",
+    "A29": "=COUNT(INDEX(TAKE(HSTACK(D!Z1:Z2,{1;2}),2),1,1))",
+    "A30": "=ISBLANK(INDEX(WRAPCOLS({1,2,3},2,),2,2))",
+    "A31": "=COUNT(INDEX(WRAPROWS({1,2,3},2,),2,2))",
+    "A32": "=COUNT(INDEX(TAKE(D!Z1:Z2,{2}),1,1))",
+    "A33": "=COUNT(INDEX(DROP(D!Z1:Z3,1),2))",
+    "A34": "=ISNA(INDEX(WRAPROWS({1,2,3},2,),2,2))",
+    "A35": "=ISNA(INDEX(WRAPCOLS({1,2,3},2,),2,2))",
+    "A36": "=ISREF(INDEX(DROP(D!Z1:Z3,1),1,1))",
+    "A37": "=INDEX(TAKE(D!Z1:Z2,2),1,1)&\"|\"",
+    "A38": "=ISREF(INDEX(TAKE(D!A1:B3,2),0,1))",
+    "A39": "=ISREF(INDEX(TAKE({1;2},1),1,1))",
+    "A40": "=ISNA(INDEX(WRAPCOLS({1,2,3},2,IFERROR(D!Z1,1)),2,2))",
+    "A41": "=ISBLANK(INDEX(WRAPCOLS({1,2,3},2,IFERROR(D!Z1,1)),2,2))",
+    "A42": "=COUNT(INDEX(WRAPROWS({1,2,3},2,IFERROR(D!Z1,1)),2,2))",
+    "A43": "=ISBLANK(INDEX(EXPAND(1,2,2,IFERROR(D!Z1,1)),2,2))",
+    "A44": "=COUNT(INDEX(EXPAND(1,2,2,IFERROR(D!Z1,1)),2,2))",
+    "A45": "=ISNA(INDEX(WRAPCOLS({1,2,3},2,INDEX(HSTACK(D!Z1:Z2,{1;2}),1,1)),2,2))"
+   }
+  },
+  {
+   "name": "D",
+   "cells": {
+    "A1": "x"
+   }
+  }
+ ],
+ "expected": {}
+}
