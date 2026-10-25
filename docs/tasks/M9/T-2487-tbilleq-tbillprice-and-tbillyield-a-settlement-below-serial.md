@@ -73,8 +73,8 @@ states it.
 ## Outcome
 TBILLEQ, TBILLPRICE and TBILLYIELD floor both dates before counting days, and the one-year limit compares Excel's
 displayed dates (`excel_serial_to_ymd`), so serial 0 (1900-01-00) is a valid settlement and serial 1 is 1900-01-01
-(the old chrono stand-in read it as 1899-12-31, so `TBILLPRICE(1,367,0.1)` was wrongly `#NUM!`). New probes:
-probes/tbill-settlement-below-one (23 cells, all pass) and probes/tbill-error-order-inner-calls (20 cells, 10 baselined
+(the old chrono stand-in read it as 1899-12-31, so `TBILLPRICE(1,367,0.1)` was wrongly `#NUM!`); a 29 February settlement reaches its anniversary on 1 March, as the probe shows for 2024 and the fictitious 1900-02-29. New probes:
+probes/tbill-settlement-below-one (34 cells, all pass) and probes/tbill-error-order-inner-calls (20 cells, 10 baselined
 inner-call failures). The error-order cells follow the T-bill order; their inner T.TEST, PPMT, QUARTILE and BIN2DEC differ,
 so those 4 cells moved to T-2496 with the probe's trace; the last-digit A91 (TBILLYIELD over F.INV) moved to T-1374;
 e168be7f6d3f84c2 A11 already passed on main. Eval: gen-m9 known failures 5512 -> 5503 (fixed 9: 8 owned plus

@@ -18,7 +18,9 @@ use crate::{
 /// Whether `end_date` is at most a year after `start_date` (1900 serials), the TBILL* limit,
 /// `None` off the calendar. It compares the dates Excel shows, so serial 0 is 1900-01-00 and
 /// serial 1 1900-01-01: `TBILLPRICE(0,366,0.1)` and `TBILLPRICE(1,367,0.1)` are numbers and
-/// `TBILLPRICE(0,367,0.1)` is `#NUM!` (probes/tbill-settlement-below-one B3, B4, B7;
+/// `TBILLPRICE(0,367,0.1)` is `#NUM!`. A 29 February settlement, the fictitious 1900-02-29
+/// (serial 60) too, reaches a year on at 1 March: `TBILLPRICE(DATE(2024,2,29),DATE(2025,3,1),0.1)`
+/// and `TBILLPRICE(60,426,0.1)` are numbers (probes/tbill-settlement-below-one B3-B18;
 /// docs/excel-semantics/financial.md "T-bill settlement below serial 1").
 pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Option<bool> {
     if end_date - start_date < 365 {
@@ -29,8 +31,13 @@ pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Option<bo
     if end_year == start_year {
         return Some(true);
     }
-    // One year later: on or before the same month and day.
-    Some(end_year == start_year + 1 && (end_month, end_day) <= (start_month, start_day))
+    let anniversary = if (start_month, start_day) == (2, 29) {
+        (3, 1)
+    } else {
+        (start_month, start_day)
+    };
+    // One year later: on or before the settlement's anniversary.
+    Some(end_year == start_year + 1 && (end_month, end_day) <= anniversary)
 }
 
 impl Model {

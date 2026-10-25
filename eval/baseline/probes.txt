@@ -1172,7 +1172,7 @@ C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
 C	probes/take-drop-trimrange-over-xlookup.case.json	23
 C	probes/tbill-equal-dates.case.json	11
 C	probes/tbill-error-order-inner-calls.case.json	20
-C	probes/tbill-settlement-below-one.case.json	23
+C	probes/tbill-settlement-below-one.case.json	34
 C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
 C	probes/text-255-units-array-element.case.json	8
