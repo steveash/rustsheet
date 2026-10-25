@@ -23,7 +23,10 @@ input fails the fill with 400 `InvalidArgument` and cannot be committed, so reco
 at the maximum and one past it for: a fixed-arity function with optional arguments (XLOOKUP 6/7, IF 3/4), INDEX's
 reference form (4/5), a 255-repeating function (SUM with 255/256 arguments, TEXTJOIN 254/255 per Microsoft's 252 texts),
 and off-cycle counts of repeating functions outside the lifting table (`=IFS(1,2,3)`, `=SWITCH(1,2)`, `=LET(x,1,y,2)`),
-which typed entry still accepts.
+which typed entry still accepts. Too-lenient maxima from unusable syntax lines (T-2632 review): DETECTLANGUAGE and
+TRANSLATE get 255 (their notes give `DETECTLANGUAGE(text)` and `TRANSLATE(text, [source], [target])`), and FIND, FINDB,
+LEFTB, LENB, MIDB, REPLACEB, RIGHTB and SEARCHB get 255 in the table (the lifting table still caps them); give them cited
+`MAX_OVERRIDES`.
 
 ## Acceptance criteria
 - [ ] Each probed count is recorded in syntax.md as accepted (with an oracle sidecar) or refused (Graph 400, dated).

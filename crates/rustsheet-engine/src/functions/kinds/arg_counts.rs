@@ -1,7 +1,8 @@
 //! Excel's argument counts of every catalogued function (`arg_counts.txt`, one `NAME MIN MAX` per
-//! line): the minimum of `eval/catalog/excel-functions.tsv` and the most arguments the function's
-//! `eval/catalog/functions.yaml` signature takes. The engine crate cannot read the catalog at run
-//! time, so the table is a hand-maintained copy that `tools/tests/test_catalog_arity.py` and
+//! line): the minimum of `eval/catalog/excel-functions.tsv`, and the most of Microsoft's syntax
+//! line (255 when it repeats or does not parse), a non-repeating `eval/catalog/functions.yaml`
+//! signature and a cited override. The engine crate cannot read the catalog at run time, so the
+//! table is a hand-maintained copy that `tools/tests/test_catalog_arity.py` and
 //! `table_matches_catalog` below check against it, failing on any drift (T-2632).
 
 const TABLE: &str = include_str!("arg_counts.txt");
