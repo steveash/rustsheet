@@ -142,7 +142,7 @@ Cells:
 - [x] Unit tests: an error in each argument position (first one wins), a text target_date/seasonality/statistic_type
       before a later error, and a 2-row target_date that spills; a call with no error or text stays `#N/IMPL!`.
 - [x] statistics.md's T-2255 entry gets an "Ours:" line naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any forecast value or the web `#N/A` of a valid call (T-2425, after T-1553).
@@ -177,3 +177,6 @@ stay unticked:
   and 899f9555e67da2d6 A142, KURT in 43a13a091907b402 A256, XIRR in fa25422d6f18c157 A122, MODE.MULT in A100, NPV
   at rate -1 in ec2a1d9194a84396 A38, SYD in A65, and PROB in 67f5e0fe790e6bec A50, 1db18890916ee643 A312 and
   5389dd4d5b5739d2 A89.
+
+The 13 inner-function cells are owned by those functions' own tasks (statistics.md, the T-2255 FORECAST.ETS section
+lists them); none needs a FORECAST.ETS change.
