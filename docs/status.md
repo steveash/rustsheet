@@ -65,12 +65,12 @@ Since the 2026-10-22 snapshot (steward PR #1509), 221 commits landed on `main` t
 Blocked: 31 (31 last run, counted by front matter).
 - New: T-2425 (FORECAST.ETS family, needs excel-desktop; decision 0039, M14-style wait).
 - Unblocked: T-0441 (done in #1706) and T-1699 (done).
-- **Blocked by the workers' permission layer, not by a missing capability:** T-0971 (#1536), a campaign task (`campaign: visible`) whose code is done. Its `rustsheet-eval update-baseline --allow-regressions` step falls under decision 0083's standing ulp allowance, but the workers' permission policy refused it. See "Needs owner". T-2119 (#1620) had the same block and merged during this run.
+- T-2119 (#1620) and T-0971 (#1536) were blocked at the start of the run because the workers' permission policy refused their `rustsheet-eval update-baseline --allow-regressions` step (decision 0083's standing ulp allowance). Both merged during this run.
 - The rest are unchanged: Phase 2 (T-0400, T-0401, T-0402, T-0423, T-1066), time-boxed fits with no new hypothesis (T-0968, T-0969, T-1528, T-1529, T-1592), T-1099/T-1284 (GEOMEAN), T-0431 (FUSE corpus), T-2037 (needs a routine change) and the M14 desktop-oracle tasks (decision 0039).
 
 Open PRs: 9 at 00:55 UTC. Four agent PRs had been open longer than 24 h: #1536 (T-0971), #1583 (T-2398), #1620 (T-2119) and #1658 (T-2131, passes 24 h at 02:03 UTC).
 - All four are drafts whose tasks are `status: blocked`, so none can be merged as an orphan (decision 0050).
-  - #1536 and #1620: the `--allow-regressions` permission (above). #1620's branch moved at 00:37 UTC, so a session is working on it.
+  - #1536 and #1620: the `--allow-regressions` permission (above). Both merged during this run (#1620 at about 01:45 UTC, #1536 by 02:15 UTC).
   - #1583: waits on T-2459 (nested-array spec).
   - #1658: waits on T-2565 evidence.
 - **Closed #1700 (T-2580) as a duplicate.** #1703 had already merged T-2580, and #1700's branch had been idle since 2026-10-24 15:15 UTC. I commented with a link to #1703 and deleted nothing.
@@ -125,7 +125,6 @@ Spot-audit (2026-10-25; the last was 2026-10-16). I sampled 3 code PRs merged si
 ## Needs owner
 
 - **Direct pushes to `main`** (2026-10-18, continuing 2026-10-19). Session `01Xbmds2…` has now pushed fifteen T-1778 commits straight to `main` with no PR (6f85cc9 … 892a53ca reported last run; fc3f993d, c00142bb, 0b5ce7a4, 36217c63, 756f849f, 37d303dd, 32ac084d and c763916b since), so the reviewer agents never saw them. CI passed on each and nothing needs reverting. New this run: **32ac084d edits a protected path, `.claude/skills/excel-probe/SKILL.md`**, without the decision record the governance gate demands of a PR. It is a two-line pointer to the new `docs/research/excel-kernel-playbook.md`, and both read as benign research guidance. Still, agent instructions changed with no review. Recommended fix: a branch ruleset on `main` that requires a pull request (the steward and workers already merge through PRs, so nothing changes for them). If these pushes were your own interactive work, remove this item. Update 2026-10-20: no direct push to `main` since the last run; all 109 commits came through PRs. Update 2026-10-25: still none; all 221 commits since 2026-10-22 came through PRs.
-- **`--allow-regressions` is refused for campaign PRs** (2026-10-25). T-0971 (#1536) has finished code and is blocked only because the worker's permission layer refused `rustsheet-eval update-baseline --allow-regressions`. Decision 0083's standing ulp allowance permits that command for campaign PRs, so the task is not breaking a rule. Either allow that exact command in the routine sessions' permission settings, or run it yourself on that branch; the task's "Blocked because" section names its cells. T-2119 (#1620) had the same blocker but merged at 01:4x UTC during this run, so some session could run the command.
 - **Missed steward runs** (2026-10-25). There is no steward snapshot or PR for 2026-10-23 or 2026-10-24, so this snapshot covers three days. Please check that the daily steward routine fired on those days.
 - **Steward regenerates the parity page** (2026-10-19, T-2037). `make parity-report` (T-2041, decision 0079) refreshes docs/parity.md after `make eval`; running it daily needs an owner change to the steward routine and its copy in docs/process/routines.md.
 
