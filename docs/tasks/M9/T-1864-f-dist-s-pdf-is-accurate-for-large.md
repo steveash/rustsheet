@@ -3,7 +3,7 @@ id: T-1864
 title: "F.DIST's pdf is accurate for large degrees of freedom instead of #NUM! (probes-numeric t1530-f-df-cut)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -37,9 +37,9 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [x] probes-numeric/t1530-f-df-cut's F.DIST pdf cells match Excel (or within the documented ulp tolerance), and no
+- [ ] probes-numeric/t1530-f-df-cut's F.DIST pdf cells match Excel (or within the documented ulp tolerance), and no
   passing F.DIST/F.DIST.RT/FDIST cell changes (compare every suite cell by cell with main).
-- [x] The rule and the form are recorded in docs/excel-semantics/statistics.md.
+- [ ] The rule and the form are recorded in docs/excel-semantics/statistics.md.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -51,20 +51,3 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
-
-## Outcome
-Where statrs' direct F density overflows (a df above about 143, or a huge x whose log form does not underflow),
-`f_pdf` now uses Loader's saddle-point binomial form as R's `df` does (`fisher.rs` `f_pdf_loader`; new
-`functions/statistical/loader.rs` with `stirlerr`, `bd0`/`bd0_dev` and `dbinom_raw_dev`, meant for T-2507 and T-2585).
-Two departures from R keep digits it loses: the binomial deviation is formed without cancellation and passed to bd0, and
-ln(2πx(1 - x/n)) is one logarithm with 1 - x/n from the exact n - x (R's form was 4E-8 relative off at
-`F.DIST(2,1E10,5,FALSE)` and 9,000 ulp at `F.DIST(57400,50,1,FALSE)`). Unit tests (test_fn_f_pdf_large_df.rs) check 10
-large-df cells against the exact density (mpmath): 0-4 ulp, and about 100 ulp on the 2.2E-67 tail of
-`F.DIST(100,50,100,FALSE)`. Eval against the run before: 607 F.DIST pdf cells went from `#NUM!` to numbers (13 now
-bit-exact, 229 within 15 digits of Excel; ours is a median 1.9E-15 relative off the exact density on 545 of them,
-Excel's own value 3.2E-15, so the rest is Excel's own noise, T-2586); no other cell of any suite changed. t1530-f-df-cut
-A9 is bit-exact and A10 is 1 ulp from Excel and equal to the exact density. gen-m9 285d87cea1aaa73c A64 is 1 ulp from
-Excel (0.08500367962366501 against 0.085003679623665, the exact density's double), so it is no longer visibly off
-(visible-parity count 8326 to 8321, left for the steward's lock) but its known-failure line stays: the first criterion
-is open at the bit level, which needs the exponent summed in double-double (its rounding is 0.67 ulp of the result
-there). Recorded in docs/excel-semantics/statistics.md, "F density at large degrees of freedom (T-1864)".

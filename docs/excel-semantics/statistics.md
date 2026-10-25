@@ -1053,12 +1053,13 @@ Ours: matches (T-1290). Before, the overflowing F.DIST and BETA.DIST calls panic
 of 2^31 - 1 and more, and TDIST checked x before reading deg_freedom (`TDIST(-1,NA(),1)` was `#NUM!`). The F pdf falls
 back to logarithms only when the overflow comes from x alone: `df1^df1`, `df2^df2` and `(df1+df2)^(df1+df2)` finite,
 and only a result that underflows to 0 is taken from it, so `F.DIST(1E308,1,3,FALSE)` and `F.DIST(8E307,2,3,FALSE)`
-are 0. A positive density there (moderate x with df1 near 30-140, `F.DIST(20,100,3,FALSE)`) and degrees of freedom
-large enough to overflow those powers (`F.DIST(3,50,100,FALSE)`, `F.DIST(2,5,1E10,FALSE)`) were `#NUM!` until T-1864,
-because the logarithmic form is not accurate enough there; they are now Loader's form ("F density at large degrees of
-freedom (T-1864)").
+are 0; a positive density there (moderate x with df1 near 30-140, `F.DIST(20,100,3,FALSE)`) keeps main's `#NUM!`,
+unprobed (T-1865). Degrees of freedom large enough to overflow those
+powers keep main's `#NUM!` (`F.DIST(3,50,100,FALSE)`; probes-numeric/t1530-f-df-cut `F.DIST(2,5,1E10,FALSE)`, where
+Excel gives 0.14167277676179968), because the logarithmic form is not accurate enough there (T-1865); no
+probes-numeric cell covers the moderate-x region, and every one is unchanged from main.
 Status: VERIFIED (excel-graph)
-Tasks: T-1290, T-1864
+Tasks: T-1290, T-1865
 
 ## RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments
 Rule: RANK `number`/`order`, FORECAST `x`, PROB `lower_limit`/`upper_limit`, Z.TEST `x`/`sigma` and T.TEST
@@ -2219,37 +2220,11 @@ docs/research/t2464/cells.tsv; docs/research/t2464/r3-fdensity (`a8_pair.out`, `
 -hold and the verifiers' t2586-verify-* cases; docs/research/t2464/r4-f-brcomp, r4-f-power, r4-f-small-df and
 verify-r4-*; round 5: probes-numeric t2586-r5-f-*, t2586-verify-r5-*; docs/research/t2464/r5-f-combine, r5-f-smallr,
 r5-f-bigconst, r5-f-edges, r5-f-final and verify-r5-*.
-Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite, Loader's
-binomial form where it overflows ("F density at large degrees of freedom (T-1864)").
+Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite (statrs' NaN, `#NUM!`, where it
+overflows; T-1864).
 Status: UNVERIFIED (excel-graph): the negatives, the swap symmetry and the ratio switch are measured; the formula is
 unsolved
 Tasks: T-2586, T-2219
-
-## F density at large degrees of freedom (T-1864)
-Rule: F.DIST(x,d1,d2,FALSE) is an ordinary number wherever the density is a positive double, however large the degrees
-of freedom (up to the 1E10 cut, "F-distribution df limit (T-1530)"): `F.DIST(1,100,100,FALSE)` 1.9897309346794694,
-`F.DIST(3,50,100,FALSE)` 1.05292998522241E-05, `F.DIST(28.1,100,1,FALSE)` 0.0026239848297062718,
-`F.DIST(2,5,1E10,FALSE)` 0.14167277676179968, `F.DIST(2,1E10,5,FALSE)` 0.18825249234504016. Excel's value is its own
-formula (entry above), not the exact density: on the 545 large-df cells of the t2513 F-density probes it is a median
-3.2E-15 and up to 6.5E-14 relative off the exact density (mpmath), so even the exact density is within 15 digits of
-Excel on only 26 of the 44 literal-argument cells of t2220-f-dist-sweep-pdf/-d2-1, m9-f-dist and t1530-f-df-cut.
-Evidence: probes-numeric t2220-f-dist-sweep-pdf (A897, A994), t2220-f-dist-sweep-d2-1 (A710, A776), t1530-f-df-cut
-A9-A10, m9-f-dist A30, t2513-r3-fdensity-a, -hold, t2513-verify-r3-fdensity-hold, t2513-r3-tdensity-hold (G column);
-gen-m9 285d87cea1aaa73c A64 (`F.DIST(0.1,123456792,1,FALSE)` 0.085003679623665).
-Ours: an accurate form, not Excel's algorithm. Where statrs' direct form overflows (a df above about 143, or a huge x
-that does not underflow), `fisher.rs` `f_pdf_loader` is Loader's saddle-point binomial form as in R's `df`: with
-q = n/(n + x m), p = x m/(n + x m), (m q/2)·dbinom_raw((m-2)/2, (m+n-2)/2, p, q) for m >= 2 and
-m² q/(2p(m+n))·dbinom_raw(m/2, (m+n)/2, p, q) for m = 1 (`loader.rs`: stirlerr, bd0, dbinom_raw_dev). Two departures
-from R keep digits: the binomial deviation k - N p is formed without cancellation as n(2k - x m)/(2(n + x m)), with x m's
-rounding error, and passed to bd0 (whose closed form becomes x ln(x/np) - diff); and ln(2πx(1 - x/n)) is one logarithm,
-with 1 - x/n from the exact n - x past n/2 (R's log1p(-x/n) is 4E-8 relative off at `F.DIST(2,1E10,5,FALSE)`, R's bd0
-up to 9,000 ulp at `F.DIST(57400,50,1,FALSE)`). A plain log-space form misses by up to about 300 ulp (T-1290). Ours is a
-median 1.9E-15 and at most 3.7E-14 relative off the exact density on those 545 cells (the error grows with |ln density|,
-about 100 ulp at `F.DIST(100,50,100,FALSE)` = 2.2E-67), closer than Excel's own; 229 of the 607 F.DIST cells it turned
-from `#NUM!` into numbers are within 15 digits of Excel, the rest are Excel's noise (T-2586). Every value that passed
-before is unchanged: the form only replaces a non-finite statrs result, and x <= 0 keeps its value.
-Status: VERIFIED (excel-graph) for the values; the form is ours
-Tasks: T-1864, T-1290, T-2586
 
 ## Incomplete beta: the integrated model, what is open and what is rejected (T-2464)
 Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN; x0 >= 0.3), r2-bratio's
