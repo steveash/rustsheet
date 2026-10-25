@@ -20,6 +20,8 @@ these and computes no verdicts.
 
 ## Context
 - SPEC-0022, "Glue-aware attribution lives in the Rust eval report".
+- Decision 0118 (owner, 2026-10-25): the Phase 1 exit uses this attributed count. The stricter
+  every-function count stays, labelled as information.
 - Today `FunctionStat.closeness` counts a cell toward every function it calls. That would show
   485 of 506 functions as off. The 2026-10-25 assessment instead counted a cell only toward its
   sole non-routing call (`closeness::GLUE`), with a fallback to all cells below 20 attributed
@@ -57,13 +59,24 @@ these and computes no verdicts.
   - `skipped_suites` lists each suite under eval/suites that did not run, with its reason.
 - [ ] report.md gains a "Parity tiers (glue-aware)" section: functions per tier and how many use
       the fallback.
+- [ ] `v15_checkpoint` and its Phase 1 line use the attributed count (decision 0118):
+  - each function's rate, `meets_rate`, `at_rate` and `phase1_met` are computed over
+    `attributed`, or over `excel` below `EVIDENCE_FLOOR` attributed cells;
+  - `covered` still counts every Excel cell that calls the function (decision 0094);
+  - each `V15Function` keeps the stricter share (every Excel cell that calls it, with decision
+    0088's `visible` blame) as an information field, for example `strict_rate` and
+    `meets_strict_rate`, with a strict at-rate total;
+  - report.md prints that total on its own line labelled "information".
+  A unit test has a function that meets the rate on its attributed cells but not on the strict
+  count.
+- [ ] docs/milestones.md's Phase 1 exit paragraph cites decision 0118 for how a function's cells
+      are counted. The steward skill's wording is T-0076's, so this task does not touch it.
 - [ ] The Outcome gives the tier counts on a fresh `make eval` of `main` with poi, corpus-bench
       and calipers fetched, next to the assessment's (308 never visibly off, 127 below 99%), and
       explains any difference.
 - [ ] `make check` green, with no baseline or lock change; reviewers approve.
 
 ## Out of scope
-- Changing `closeness`, `visible`, `v15_checkpoint`, the visible-parity lock or any gate.
-- Changing the Phase 1 measure to the glue-aware one: that is an owner decision (SPEC-0022, "Open
-  question").
+- Changing `closeness`, `visible`, the visible-parity lock, decision 0094's coverage counts or
+  any gate.
 - Rendering the fields on a page (T-0070).

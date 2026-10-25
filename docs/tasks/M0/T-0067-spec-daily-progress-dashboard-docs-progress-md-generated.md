@@ -55,4 +55,6 @@ SPEC-0022 written, accepted with this PR.
 - Later phases: T-0077, T-0078, T-0079.
 - T-0066 is dropped (folded into T-0070). T-2037 is dropped (superseded by T-0076). T-2036 was
   already done; T-0068 builds on it.
-- No decision record is needed for the spec itself.
+- The owner answered the spec's questions on 2026-10-25 (SPEC-0022, "Owner decisions"). Decision
+  0118 records the exit measure: the attributed count decides Phase 1 (implemented by T-0068).
+  T-0076 lands through the owner's planning session.

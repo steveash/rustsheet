@@ -24,6 +24,14 @@ docs/status.md links the dashboard at the top and no longer carries a second sco
   (.claude/skills/steward/SKILL.md) and docs/process/ are protected, so this PR needs a decision
   record. `reviewer-architecture` and `reviewer-security` must approve the protected part
   explicitly.
+- **How it lands** (owner decision, 2026-10-25, session
+  https://claude.ai/code/session_014ASuNyVecGvKjcZUDfWLKA, SPEC-0022 "Owner decisions"):
+  1. Once T-0071, T-0072 and T-0075 have merged, that planning session prepares this task. It
+     opens one PR with the docs/process/routines.md prompt, the steward skill and the
+     docs/status.md changes, plus the decision record.
+  2. It then gives the owner the exact prompt below.
+  3. The owner pastes the prompt into the live "rustsheet steward (daily)" routine.
+  Worker runs do not pick this task.
 
 ## New steward prompt
 Replace the whole fenced block under "## Prompt — steward (daily)" in docs/process/routines.md,
@@ -34,19 +42,19 @@ You are the daily RustSheet steward (repo steveash/rustsheet). Work on a branch 
 ```
 
 ## Blocked because
-Needs the owner: approval of the prompt above and the change to the real steward routine, which
-agents never make. Unblock when `grep -n 'make progress-report' docs/process/routines.md` shows
-the step in the steward prompt on `origin/main`. That means the owner, or a session the owner
-directs, has landed the prompt above in docs/process/routines.md with its decision record and
-pasted it into the routine. The simplest path is for that owner session to do this whole task in
-one PR. An agent run never unblocks this task on any other evidence.
+Needs the owner: the live steward routine changes only when the owner pastes the prompt above,
+because agents never edit routines. Per the owner's decision (Context, "How it lands"), the
+owner's planning session prepares the PR once its dependencies are done. That session sets
+`status: in-progress`, and no other agent run unblocks this task. Check that the dependencies
+are done: `python3 scripts/tasks.py list | grep -E 'T-007[125]'` shows all three `done`.
 
 ## Acceptance criteria
 - [ ] The steward block of docs/process/routines.md is byte-identical to "New steward prompt"
   above.
 - [ ] .claude/skills/steward/SKILL.md is updated in three places:
   - the "Fifteen-digit parity checkpoint" rule no longer copies the two lines into docs/status.md,
-    and reads "was the previous run also met" from docs/progress/history.json;
+    reads "was the previous run also met" from docs/progress/history.json, and cites decision 0118
+    for the Phase 1 measure;
   - a new "Progress dashboard" rule points to the `progress-report` skill and to SPEC-0022's
     failure handling;
   - the `**Phase 1:** exited` rule is unchanged.

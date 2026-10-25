@@ -4,6 +4,7 @@
 - **Milestone / lane:** M0 / harness
 - **Tasks:** T-0067 (this spec); MVP: T-0068, T-0069, T-0070, T-0071, T-0072, T-0073, T-0074,
   T-0075, T-0076; later phases: T-0077, T-0078, T-0079. Supersedes T-0066 and T-2037.
+- **Decisions:** 0118 (the Phase 1 exit uses the attributed count; owner, 2026-10-25)
 
 ## Problem
 The owner wants one overall dashboard, refreshed once a day, that shows progress toward the
@@ -52,8 +53,9 @@ The four PRs before #1736 opened between 06:25 and 08:25 UTC, which fits the rou
 It was probably not a scheduled run, but the repository cannot tell. Whether the routine fired on
 10-23 and 10-24 and failed before pushing, or did not fire at all, is only visible in the routine's
 run history in claude.ai, which agents cannot read. The 2026-10-25 snapshot already lists this
-under "Needs owner". The dashboard makes a missed day visible: the history file (below) has no row
-for that date, and the trend charts show the gap.
+under "Needs owner". The owner has not answered yet (2026-10-25). This is an open note, and it
+blocks nothing. The dashboard makes a missed day visible: the history file (below) has no row for
+that date, and the trend charts show the gap.
 
 ## Goals / non-goals
 Goals:
@@ -73,9 +75,10 @@ Goals:
   Rust eval report. The Python generator renders it and never re-derives a cell verdict.
 
 Non-goals:
-- Changing any measure, gate, baseline or the Phase 1 exit rule. The dashboard shows the report's
-  own `v15_checkpoint` Phase 1 line as the official exit measure. The glue-aware tiers sit next to
-  it as a view, not as a second exit rule (see "Open question").
+- Changing any gate or baseline. The one measure change is decision 0118, which the owner made
+  for this spec (see "Owner decisions"): the Phase 1 exit uses the glue-aware attributed count.
+  The dashboard shows the report's `v15_checkpoint` Phase 1 line, computed that way by T-0068, as
+  the exit measure. It shows the stricter every-function count beside it, labelled as information.
 - A CI freshness gate on the page. Decision 0079's reasoning still holds: a gate would fail every
   PR that moves a number, and the page names the run it shows.
 - MVP only: argument coverage (T-0077), codebase health (T-0078) and real-world usage weighting
@@ -199,9 +202,17 @@ T-2036, which moved the buckets into the report, is already done. T-0068 builds 
   - `skipped_suites`: `{name, reason}` for each suite under eval/suites that did not run. Today
     that is "not fetched", which main.rs already prints.
 - report.md gains a short "Parity tiers (glue-aware)" section with the tier counts.
+- `v15_checkpoint` switches to the attributed count (decision 0118). This changes the meaning of
+  its `meets_rate`, `at_rate`, `phase1_met` and the Phase 1 line:
+  - the share is measured over `attributed`, or over `excel` below 20 attributed cells;
+  - coverage (`covered`) still counts every Excel cell that calls the function (decision 0094);
+  - each `V15Function` also keeps the stricter share, all Excel cells with decision 0088's
+    `visible` blame, as an information field (for example `strict_rate`);
+  - report.md prints the stricter count on its own line labelled "information".
 
 This adds no verdict and changes no gate. The existing `closeness` and `visible` fields stay as
-they are, because the visible-parity lock and `v15_checkpoint` read them.
+they are, because the visible-parity lock reads the suite counts, and the information count reads
+`visible`.
 
 ### Task counts (T-0069)
 `scripts/tasks.py stats --json` reuses `load()`, `ready()` and the campaign stage list. It
@@ -320,25 +331,30 @@ T-0076 is `blocked` on the owner, as T-2037 was.
   a generated page.
 - **Compute the attribution and tiers in Python from report.json.** Rejected. It needs passing
   cells, which the report drops, and copies `GLUE` and `functions_in` a third time.
-- **Change the Phase 1 measure to the glue-aware one now.** Out of scope: that is an owner
-  decision amending 0114 (see "Open question").
+- **Keep the Phase 1 measure on every cell that calls the function.** Rejected by the owner
+  (decision 0118). One off sub-expression counted against every specialised function in the
+  formula. That count stays on the page, labelled as information.
 - **Split accuracy and visible off cells per stage mechanically.** The assessment split them with
   a 50-digit reference and per-family judgment, which a daily run cannot repeat. The MVP shows
   per stage what is mechanical: task counts, type, error and text cells (the semantics stage), and
   numeric cells (accuracy and visible together). It also shows the functions that the semantic
-  fixes alone would lift. The steward's judgment blocks may cite the assessment's split. A later
-  `functions:` task key could make the per-stage cell split mechanical; that is not filed.
+  fixes alone would lift. The steward's judgment blocks may cite the assessment's split. The
+  owner chose to keep this MVP split and to file nothing more (2026-10-25).
 - **A history in git log only** (diffing old pages). Rejected. Trends need machine-readable rows,
   and a page diff cannot drive a chart.
 
-## Open question (owner)
-The dashboard shows two "≥ 99.9% within 15 digits" counts:
-- the official Phase 1 line (`v15_checkpoint`): all Excel cells that call the function, with
-  visibly-off cells blamed on every non-glue call;
-- the glue-aware tier count: the assessment's method, 308 to 310 on 2026-10-25.
-
-They will differ. Should decision 0114's exit be measured by the glue-aware tiers? If so, that is
-a decision amending 0114 plus a `v15_checkpoint` change, filed after T-0068.
+## Owner decisions (2026-10-25, session https://claude.ai/code/session_014ASuNyVecGvKjcZUDfWLKA)
+1. **Exit measure.** The Phase 1 exit uses the assessment's attribution (decision 0118). A cell
+   counts only toward its formula's single function outside the harness glue list. A function
+   with fewer than 20 such cells falls back to every cell that calls it. The stricter
+   every-function count is still shown, labelled as information. T-0068 implements both.
+2. **T-0076.** The owner's planning session prepares it. Once the dashboard work has merged, that
+   session opens one PR with the routines.md prompt, the steward skill and the status.md changes.
+   It gives the owner the exact prompt, and the owner pastes it into the live routine.
+3. **Missed steward days** (2026-10-23, 2026-10-24): not answered yet. This is an open note in
+   "The steward's missed days" and blocks nothing.
+4. **Stage split.** Keep the MVP: off cells show accuracy and algorithm together, with task counts
+   per stage. Nothing more is filed.
 
 ## Test plan
 - tools/tests/test_progress_report.py, the renamed test_parity_report.py, on synthetic reports:
@@ -352,8 +368,9 @@ a decision amending 0114 plus a `v15_checkpoint` change, filed after T-0068.
   - `--check` on cited and uncited numbers;
   - byte-identical output on the same inputs.
 - crates/rustsheet-eval unit tests: `sole_call` (glue-only formulas, two specialised calls), tier
-  boundaries (exactly 99.9%, the fallback at 19 and 20 attributed cells), workbook counts and
-  `skipped_suites`.
+  boundaries (exactly 99.9%, the fallback at 19 and 20 attributed cells), workbook counts,
+  `skipped_suites`, and a `v15_checkpoint` function that meets the rate on its attributed cells
+  but not on the stricter count (decision 0118).
 - scripts/test_tasks.py: `stats --json` on fixture tasks, including campaign, defer and blocked.
 - The T-0070 PR regenerates docs/progress.md from a fresh `make eval`. Its Outcome compares the
   tier counts with the assessment's (308 functions never visibly off, 127 below 99%) and explains
