@@ -1642,7 +1642,8 @@ t1049-ttest A44, `T.TEST({1,2,3},{2,4,7},2,1)`, and A48, `T.TEST({1,1,1},{2,3,4}
   1E11 ulp) and not any simple form: on those 352 cells plus the six `m9-t-dist-rt` cells from t = 5 to 1E6,
   -expm1(log1p(-y)/2)/2 is bit-exact on 208 of 358, y/(1 + sqrt(1 - y))/2 on 175, our Cephes power series on
   111, and -expm1 of ln(1 - y) or of ln z on about 40.
-Ours: `student_t.rs` `closed_form_tail` (since T-0969 attempt 8); below y = 0.1 the general tail.
+Ours: `student_t.rs` `closed_form_tail` (since T-0969 attempt 8), the kernel's oriented closed form with the
+y0 <= 0.9 cut since T-2502; below it the general tail.
 Status: VERIFIED (excel-graph) from y = 0.100112 up and below y = 0.099900. The exact cut is UNVERIFIED: whether y = 0.1
 itself takes the closed form, and whether Excel tests y or z = 1 - y, need a dense probe near t = sqrt(18).
 T-2464 places the cut. It is the kernel's a0 = 1 test y0 <= 0.9 on the oriented arguments, and BETA.DIST at
@@ -1948,8 +1949,10 @@ bratio's dispatch picks and returns the other as `(0.5 - w) + 0.5`, x87 stored.
 Evidence: probes-numeric t2464-r2-bratio-x29, t2464-w2f-*, and the F, BINOM, NEGBINOM and T cells of
 docs/research/t2464/cells.tsv; w5-triangulation (`f_pairs2.py`, `binom_negbinom.py`, `f_argform_closed.py`,
 `ix_evidence.tsv`), r2-bratio (`x29_test.py`, `ctl_r.py`), verify-r2-bratio/x29check.out.
-Ours: `incomplete_beta.rs` swaps at the mean for every shape, uses Cephes' fractions and 1 - v, and forms F's x as
-d1X/(d1X + d2); BETA.DIST's cdf is `beta_reg` since T-2119, BINOM and NEGBINOM walk the pmf, T is `student_t.rs`.
+Ours: outside the closed forms (which follow bratio's swap and F's argument forms, T-2502: "Incomplete beta closed forms
+act on the oriented arguments"), `incomplete_beta.rs` swaps at the mean for every shape, uses Cephes' fractions and
+1 - v, and forms F's x as d1X/(d1X + d2); BETA.DIST's cdf is `beta_reg` since T-2119, BINOM and NEGBINOM walk the pmf
+outside the closed forms, T is `student_t.rs`.
 Status: VERIFIED (excel-graph) for the dispatch, computed tail, complement and argument forms; each branch's
 arithmetic is in the entries below
 Tasks: T-2464, T-2504, T-2505
@@ -1958,7 +1961,10 @@ Tasks: T-2464, T-2504, T-2505
 Rule: after bratio's swap, on (a0, b0, x0, y0), with Excel's EXP and LN: b0 = 1 gives w = EXP(a0·LN(x0)); a0 = 1 with
 y0 <= 0.9 gives w1 = EXP(b0·LN(fl(1 - x0))), 1 - x0 recomputed in the kernel (not the caller's y); a0 = 1 with y0 > 0.9
 has no closed form. The other tail is (0.5 - w) + 0.5. The cut lies between x0 = 0.0998999751 (general kernel) and
-x0 = 0.09999999999999998 = fl(1 - 0.9) (closed); T.DIST.RT at df 2 brackets it (t = 4.24 closed, t = 4.245 not).
+x0 = 0.09999999999999998 = fl(1 - 0.9) (closed): T.DIST.RT at df 2 brackets it (t = 4.24 closed, t = 4.245 not),
+`BETA.DIST(0.1,1,50,TRUE)` (m9-beta-dist-a1 A43, y0 = 0.9) is closed, and so is `BETA.DIST(0.9,0.5,1,TRUE)`
+(m9-beta-dist-a0p5 A17), which x > 0.5 swaps to a0 = 1 at x0 = fl(1 - 0.9). `BETA.DIST(0.9,1,2.5|5,TRUE)` do not test
+this cut: x > 0.5 swaps them to b0 = 1. A cut at x0 >= 0.1 scores 1,258 against 1,286 (`closed_variants.py`).
 - Bit-exact on 1,286 of 1,286 cells (BETA.DIST 133, F 367, T.DIST.RT df 2 508, BINOM 112, NEGBINOM 138), 633 of 633 on
   the md5 hold-out and 193 of 193 on a case-level hold-out; the correctly rounded value matches 602. Through r2-bratio's
   full kernel, 2,345 of 2,345 over every data set.
@@ -1968,9 +1974,23 @@ x0 = 0.09999999999999998 = fl(1 - 0.9) (closed); T.DIST.RT at df 2 brackets it (
 Evidence: closed-form cells of docs/research/t2464/cells.tsv (m9-beta-dist-a1, t0969-t-df2-cut, F, BINOM and NEGBINOM
 probes); w5-triangulation `closed_final.py` (`closed_final.out`), `closed_variants.py`;
 verify-w5-triangulation/verify_closed.out; verify-r2-bratio/analyze.out.
-Ours: `incomplete_beta.rs` applies b = 1 and a = 1 before any swap, with std ln/exp and 1 - v.
+Ours: all 1,286 cells bit-exact through the worksheet functions (T-2502). Still pending:
+- F.DIST, F.DIST.RT and FDIST pass w5's x = 1/(1 + d2/(d1·X)), y = 1/(1 + d1·X/d2) only where a closed form applies;
+  elsewhere they keep d1X/(d1X + d2) and d2/(d1X + d2), because w5's forms on today's Cephes kernel moved about 100
+  bit-exact F cells by 1 ulp (`F.DIST(1.5,5,5,TRUE)`, probes/stat-argument-modes H215; `F.DIST(0.1,2,100,TRUE)`,
+  probes-numeric/t2220-f-dist-sweep-cdf A191). T-2505.
+- F.INV, F.INV.RT and FINV (their crossing search), BETA.INV's huge-shape crossing (`inverse_beta.rs`) and F.TEST keep
+  the unoriented forms with std ln and exp (`beta_reg_complement_unoriented`): the oriented ones move `F.INV(0.05,2,5)`
+  (m9-f-inv A10) and F.TEST gen-m9/68d8ffb69ff739d8 A143 1 to 2 ulp off Excel. T-2505, T-2511.
+- a0 = 1 with y0 > 0.9 keeps the engine's earlier tail (-expm1(b ln1p(-x)) below x = 0.1, exp(a ln x) for a swapped
+  b = 1) until bratio's general branches land (T-2505).
+- BINOM.DIST's k = 0 is BINOM's own shortcut, not this kernel (T-2645).
 Status: VERIFIED (excel-graph)
-Tasks: T-2502
+Implemented in: `incomplete_beta.rs::closed_form_tails` (Excel's EXP and LN, `x87_exp.rs`, `x87_log10.rs`), through
+`beta_reg_complement` and `beta_reg_upper` (BETA.DIST's cdf and BETA.INV's refinement), `fisher.rs::f_tail` (F.DIST,
+F.DIST.RT, FDIST), `student_t.rs::closed_form_tail` (T.DIST* at df 2), `binom.rs` (BINOM.DIST at k = n - 1,
+NEGBINOM.DIST at r = 1 or f = 0)
+Tasks: T-2502, T-2505, T-2511
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)
 Rule: for ln(1 + a) with -0.375 <= a < 0, i.e. ln(1 - x) at x <= 0.375 (the beta density, BINOM.DIST(0,n,p), bgrat's
@@ -3706,3 +3726,11 @@ Unprobed: a fractional x in (0, 1), and a huge negative mean (EXP overflow).
 Ours: `#NUM!` (known failure, T-2628).
 Status: VERIFIED (excel-graph)
 Tasks: T-2628
+
+## T.TEST of a blank one-cell sample and WEIBULL.DIST overflow (T-2496 probe)
+Rule (excel-graph, 2026-10-25): `T.TEST(Data!E11,Data!A6:C12,2,123456789.123)` with E11 blank is `#VALUE!`, before the
+type check that ours reports as `#NUM!` (T-2469). `WEIBULL.DIST(7,1E+8,0.3,"TRUE")` is `#NUM!`, where ours returns the limit 1
+(hypothesis: Excel reports the overflow of (x/beta)^alpha; T-2435).
+Evidence: probes/t2496-fin-subexpressions P!A90; probes/tbill-error-order-inner-calls (the T.TEST cell).
+Status: VERIFIED (excel-graph), one cell each; the boundaries are not probed.
+Tasks: T-2469, T-2435

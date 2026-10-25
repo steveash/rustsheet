@@ -3,7 +3,7 @@ use statrs::distribution::{Continuous, FisherSnedecor};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::incomplete_beta::{
-    beta_density, beta_reg_complement, beta_reg_upper,
+    beta_density, beta_reg_complement_unoriented, beta_reg_upper_unoriented, closed_form_tails,
 };
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
 use crate::functions::statistical::loader::dbinom_raw_dev;
@@ -25,26 +25,66 @@ fn f_df_ok(df: f64) -> bool {
     (1.0..=F_DF_MAX).contains(&df)
 }
 
-/// P(F <= x) for the F distribution: `I_y(df1/2, df2/2)` with y = df1 x / (df1 x + df2), its
-/// complement df2 / (df1 x + df2) formed directly.
-fn f_cdf(df1: f64, df2: f64, x: f64) -> f64 {
+/// The incomplete beta's argument and its complement for the F distribution at `x` as Excel's F
+/// functions pass them to the kernel (T-2464 w5-triangulation, T-2502): u = 1/(1 + df2/(df1 x)) and
+/// its complement 1/(1 + df1 x/df2), each formed directly. On the b0 = 1 closed-form cells, which
+/// depend on the argument alone, this is bit-exact on 197 of 197, against 180 for
+/// df1 x/(df1 x + df2) (docs/excel-semantics/statistics.md "Incomplete beta is TOMS 708 `bratio`").
+fn f_beta_arguments(df1: f64, df2: f64, x: f64) -> (f64, f64) {
     let scaled = df1 * x;
-    let total = scaled + df2;
-    beta_reg_complement(scaled / total, df2 / total, df1 / 2.0, df2 / 2.0)
+    (1.0 / (1.0 + df2 / scaled), 1.0 / (1.0 + scaled / df2))
+}
+
+/// One F tail (`upper`: P(F > x)): Excel's closed forms on [`f_beta_arguments`] where they apply
+/// ([`closed_form_tails`], a df of 2), else [`f_tail_pre_t2502`].
+fn f_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
+    let (u, v) = f_beta_arguments(df1, df2, x);
+    match closed_form_tails(u, v, df1 / 2.0, df2 / 2.0) {
+        Some((lower, upper_tail)) => {
+            if upper {
+                upper_tail
+            } else {
+                lower
+            }
+        }
+        None => f_tail_pre_t2502(df1, df2, x, upper),
+    }
+}
+
+/// P(F <= x) for the F distribution: `I_u(df1/2, df2/2)` ([`f_tail`]).
+fn f_cdf(df1: f64, df2: f64, x: f64) -> f64 {
+    f_tail(df1, df2, x, false)
 }
 
 /// P(F > x): the upper tail of [`f_cdf`]'s incomplete beta, taken from its evaluation (the
 /// unreflected side directly, not as 1 - a reflected one) rather than as 1 - [`f_cdf`]
 /// (T-0970: `F.DIST.RT(0.7,4,2.4)` is 0.6597222222222223 in `F_DIST.xlsx`).
 fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
-    let scaled = df1 * x;
-    let total = scaled + df2;
-    beta_reg_upper(scaled / total, df2 / total, df1 / 2.0, df2 / 2.0)
+    f_tail(df1, df2, x, true)
 }
 
-/// Above this a + b (half the two df summed) F.TEST's tail is [`beta_reg_complement`]'s; below
-/// it the remainder of [`f_test_upper_tail`] is summed in double-double, at most about 30,000
-/// terms (x <= 0.9975 there).
+/// One F tail as the engine had it before T-2502: u = df1 x/(df1 x + df2) and its complement
+/// df2/(df1 x + df2) into [`beta_reg_complement_unoriented`], the forms the engine's Cephes kernel
+/// needs until bratio's branches are ported (T-2505). The w5 forms there move bit-exact cells by
+/// 1 ulp (`F.DIST(1.5,5,5,TRUE)`, probes/stat-argument-modes H215; `F.DIST(0.1,2,100,TRUE)`,
+/// probes-numeric/t2220-f-dist-sweep-cdf A191). F.INV and F.INV.RT search the crossing of this
+/// tail at every shape: with Excel's closed forms the crossing moves 1 to 2 ulp off Excel's
+/// quantile (`F.INV(0.05,2,5)`, probes-numeric/m9-f-inv A10), until the inverses solve the
+/// ported kernel (T-2464 step E8).
+fn f_tail_pre_t2502(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
+    let scaled = df1 * x;
+    let total = scaled + df2;
+    let (u, v, a, b) = (scaled / total, df2 / total, df1 / 2.0, df2 / 2.0);
+    if upper {
+        beta_reg_upper_unoriented(u, v, a, b)
+    } else {
+        beta_reg_complement_unoriented(u, v, a, b)
+    }
+}
+
+/// Above this a + b (half the two df summed) F.TEST's tail is
+/// [`beta_reg_complement_unoriented`]'s; below it the remainder of [`f_test_upper_tail`] is summed
+/// in double-double, at most about 30,000 terms (x <= 0.9975 there).
 const F_TEST_SERIES_SHAPE_MAX: f64 = 200.0;
 
 /// Bound on the terms of [`f_test_remainder`]'s series (it converges well before it below
@@ -62,14 +102,15 @@ const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
 /// a ln x is about -100) but not a continued fraction's: over the 188 distinct F.TEST inputs on
 /// file this form is bit-exact on 90 against 53 for the correctly rounded p and visibly off on 6
 /// against 40 (docs/excel-semantics/statistics.md "F.TEST / FTEST: larger variance on top").
-/// The closed forms a = 1 or b = 1 and large shapes are [`beta_reg_complement`]'s.
+/// The closed forms a = 1 or b = 1 and large shapes are [`beta_reg_complement_unoriented`]'s (Excel's
+/// oriented closed forms move bit-exact F.TEST cells, gen-m9/68d8ffb69ff739d8 A143, T-2502).
 fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     let half_integers = (2.0 * a).fract() == 0.0 && (2.0 * b).fract() == 0.0;
     if !(x > 0.0 && y > 0.0 && half_integers && a + b <= F_TEST_SERIES_SHAPE_MAX)
         || a == 1.0
         || b == 1.0
     {
-        return beta_reg_complement(x, y, a, b);
+        return beta_reg_complement_unoriented(x, y, a, b);
     }
     (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
 }
@@ -168,9 +209,21 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
     }
     if lower > 0.5 {
         let upper = if right_tail { p } else { 1.0 - p };
-        refine_increasing(|x| -f_sf(df1, df2, x), -upper, estimate, 0.0, f64::MAX)
+        refine_increasing(
+            |x| -f_tail_pre_t2502(df1, df2, x, true),
+            -upper,
+            estimate,
+            0.0,
+            f64::MAX,
+        )
     } else {
-        refine_increasing(|x| f_cdf(df1, df2, x), lower, estimate, 0.0, f64::MAX)
+        refine_increasing(
+            |x| f_tail_pre_t2502(df1, df2, x, false),
+            lower,
+            estimate,
+            0.0,
+            f64::MAX,
+        )
     }
 }
 
