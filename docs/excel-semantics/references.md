@@ -134,6 +134,11 @@ A sheet-qualified sheet-scoped name (`=Data!Local`) also keeps working after the
 Status: VERIFIED (Excel for the web)
 Tasks: T-1693
 
+## INDIRECT of sheet-qualified name text
+`INDIRECT("<Sheet>!<Name>")` reaches a name scoped to that sheet from any sheet; its prefix follows
+formula quoting. Rule, evidence and the calipers pv26_020 anonymisation note: lookup.md "INDIRECT of
+`Sheet!Name` text" (probes/indirect-sheet-scoped-name, T-2660).
+
 ## INDIRECT does not take 3-D text
 Rule (excel-graph): INDIRECT of span text is `#REF!`. `SUM(INDIRECT("Jan:Mar!A1"))` is `#REF!`,
 while `SUM(Jan:Mar!A1)` written in the formula sums the span.
