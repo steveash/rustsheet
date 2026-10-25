@@ -3,7 +3,7 @@ id: T-2715
 title: "CEILING.MATH and FLOOR.MATH are 0 when number/significance is below the smallest normal (calipers E169, F169, E183, F183)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
