@@ -1,0 +1,8 @@
+xruns-1:5  (4,4) [ar=x,lnmode=xl,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= -2.750u  even 370/505  hold 378/519
+xruns-1:5  (4,4) [ar=m,lnmode=m,cut=0.1,comb=x] comb=x C-C0= -0.961u  even 88/505  hold 75/519
+xruns-1:7  (100,120) [ar=x,lnmode=xl,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +0.500u  even 28/531  hold 19/493
+xruns-1:7  (100,120) [ar=m,lnmode=m,cut=0.1,comb=x] comb=x C-C0= -4.680u  even 21/531  hold 12/493
+xruns-2:0  (2.5,3.5) [ar=x,lnmode=xl,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +3.250u  even 405/509  hold 418/515
+xruns-2:0  (2.5,3.5) [ar=m,lnmode=m,cut=0.1,comb=x] comb=x C-C0= +2.867u  even 212/509  hold 198/515
+xruns-2:2  (7.3,11.6) [ar=x,lnmode=xl,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +4.750u  even 478/506  hold 494/518
+xruns-2:2  (7.3,11.6) [ar=m,lnmode=m,cut=0.1,comb=x] comb=x C-C0= +5.273u  even 40/506  hold 35/518

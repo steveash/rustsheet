@@ -1,0 +1,11 @@
+ca min(d) in [6,16): BIG_MIN 6   666/ 1862/ 1920 of  1920
+ca min(d) in [6,16): BIG_MIN 8   799/ 1860/ 1920 of  1920
+ca min(d) in [6,16): BIG_MIN 10   665/ 1860/ 1920 of  1920
+ca min(d) in [6,16): BIG_MIN 12   665/ 1860/ 1920 of  1920
+ca min(d) in [6,16): BIG_MIN 14   621/ 1860/ 1920 of  1920
+ca min(d) in [6,16): BIG_MIN 16   629/ 1861/ 1920 of  1920
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t2464/r5-f-bigconst/b8_thresh.py", line 18, in <module>
+    print(name, "min(d) in [6,16): BIG_MIN", t, B.F.fmt(res["all"]))
+                                                        ~~~^^^^^^^
+KeyError: 'all'

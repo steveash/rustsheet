@@ -2264,7 +2264,9 @@ Right/Left):
 - Convert to Range (`tables/convertToRange`): every value is kept and each structured reference from another
   sheet is rewritten as an absolute, sheet-qualified range: `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
   `=COLUMN(S!$C$4:$C$7)`; `ROWS(Sales)` 4, `ROWS(Sales[#All])` 5 and `ROW(Sales[#Headers])` 3 keep their values
-  (table-convert-to-range).
+  (table-convert-to-range). On the table's own sheet the range is not sheet-qualified: `=SUM($C$4:$C$7)`,
+  `=COUNTA($B$4:$B$7)`, `ROWS(Sales[#All])` 5, and a `#This Row` reference beside the table prints
+  `=$C4*2` (absolute column, relative row) (table-convert-same-sheet, T-2342).
 - Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
   `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
   cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
@@ -2281,8 +2283,9 @@ Status: VERIFIED (excel-graph)
 Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
-move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339),
-and convert to range (T-2342; the adapter refuses `convert_table`) do not. A deleted table or sheet matches
+move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
+do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
+reference as the absolute area it lowered to (defined names too, unprobed). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a

@@ -1,0 +1,16 @@
+runs: ['run(100,100,x100)', 'run(50,100,x100)', 'run(100,50,x100)', 'run(60,200,x100)', 'run(50,50,x100)', 'run(20,100,x100)']
+-b -1L                       median sd   75.05  per run 103 109 44 218 42 47
+-1 -b +0L                    median sd   75.05  per run 103 109 44 218 42 47
++a-1 -a -b-1 -1L             median sd  112.37  per run 103 150 105 307 42 119
++a-1 -a+1 -b +1L             median sd  113.29  per run 138 122 105 214 56 58
+-a +a+1 -b+1 -1L             median sd  115.00  per run 103 145 105 336 42 125
++a-1 -a -b +0L               median sd  116.82  per run 142 125 109 221 59 57
++a -a+1 -b +0L               median sd  119.75  per run 142 117 122 245 60 54
+-1 -b-1 -1L                  median sd  119.79  per run 128 149 74 298 73 112
++b-1 -b -b+1 +1L             median sd  120.14  per run 138 139 60 326 56 102
+-b+1 +0L                     median sd  130.98  per run 142 159 60 317 60 120
++1 -b+1 -1L                  median sd  130.98  per run 142 159 60 317 60 120
+-1 -b+1 +1L                  median sd  130.98  per run 142 159 60 317 60 120
++a-1 -a+1 -b-1 +0L           median sd  132.88  per run 142 155 124 306 60 124
++a-1 -a -b+1 +1L             median sd  133.27  per run 138 154 107 337 56 128
+-a-1 +a -b+1 -1L             median sd  150.15  per run 191 179 121 337 96 117

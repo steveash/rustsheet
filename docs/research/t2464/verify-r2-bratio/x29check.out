@@ -1,0 +1,6 @@
+cells in [0.29,0.3) 2800 dispatch differs 434
+excel==0.3 model 284 excel==0.29 model 87
+sha1 half: 0.3 140 0.29 37 of 206
+w15 0.3 434 w15 0.29 434
+mean |ulp| 0.3 0.37327188940092165 0.29 1.0529953917050692
+ix L140 bup+bpser n 1383 BEST (1383, 905, 1318, 1354) CR(kernel args) (1383, 598, 1191, 1268)

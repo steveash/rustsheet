@@ -1,0 +1,12 @@
+toms arg z64 {'fpser': '84/165/176 of 192', 'apser': '5/29/60 of 192'}
+toms arg z53 {'fpser': '45/58/98 of 192', 'apser': '3/16/48 of 192'}
+toms min z64 {'fpser': '85/165/176 of 192', 'apser': '5/29/60 of 192'}
+toms min z53 {'fpser': '45/58/98 of 192', 'apser': '3/16/48 of 192'}
+gl arg z64 {'fpser': '97/166/176 of 192', 'apser': '5/29/60 of 192'}
+gl arg z53 {'fpser': '45/58/98 of 192', 'apser': '3/16/48 of 192'}
+gl min z64 {'fpser': '97/166/176 of 192', 'apser': '5/29/60 of 192'}
+gl min z53 {'fpser': '45/58/98 of 192', 'apser': '3/16/48 of 192'}
+acc arg z64 {'fpser': '5/31/98 of 192', 'apser': '3/17/51 of 192'}
+acc arg z53 {'fpser': '43/55/81 of 192', 'apser': '3/15/48 of 192'}
+acc min z64 {'fpser': '5/31/98 of 192', 'apser': '3/17/51 of 192'}
+acc min z53 {'fpser': '43/55/81 of 192', 'apser': '3/15/48 of 192'}

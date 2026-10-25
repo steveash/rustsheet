@@ -1,0 +1,47 @@
+== ('BINOM.DIST', 'cdf', 'k=0') 171
+   EXP(n*LN(1-p))               128/159/168 of 171
+   exact q^n (q=fl(1-p))        36/106/134 of 171
+   exact (1-p)^n, p decimal     45/106/129 of 171
+   pow q^n libm                 36/106/134 of 171
+== ('BINOM.DIST', 'cdf', 'k=n-1') 170
+   1-EXP(n*LN(p))               125/153/161 of 170
+   0.5-P+0.5                    139/153/161 of 170
+   exact 1-p^n                  136/170/170 of 170
+== ('BINOM.DIST', 'pmf', 'k=0') 171
+   EXP(n*LN(1-p))               128/159/168 of 171
+   exact q^n (q=fl(1-p))        36/106/134 of 171
+   exact (1-p)^n, p decimal     45/106/129 of 171
+   pow q^n libm                 36/106/134 of 171
+== ('BINOM.DIST', 'pmf', 'k=n') 172
+   EXP(n*LN(p))                 172/172/172 of 172
+   exact p^n                    69/131/142 of 172
+   pow                          69/131/142 of 172
+== ('BINOMDIST', 'cdf', 'k=0') 2
+   EXP(n*LN(1-p))               2/2/2 of 2
+   exact q^n (q=fl(1-p))        1/2/2 of 2
+   exact (1-p)^n, p decimal     1/1/1 of 2
+   pow q^n libm                 1/2/2 of 2
+== ('BINOMDIST', 'pmf', 'k=0') 2
+   EXP(n*LN(1-p))               2/2/2 of 2
+   exact q^n (q=fl(1-p))        2/2/2 of 2
+   exact (1-p)^n, p decimal     2/2/2 of 2
+   pow q^n libm                 2/2/2 of 2
+== ('BINOMDIST', 'pmf', 'k=n') 2
+   EXP(n*LN(p))                 2/2/2 of 2
+   exact p^n                    2/2/2 of 2
+   pow                          2/2/2 of 2
+== ('NEGBINOM.DIST', 'cdf', 'f=0') 50
+   EXP(r*LN(p))                 50/50/50 of 50
+   exact p^r                    31/48/49 of 50
+   pow                          31/48/49 of 50
+== ('NEGBINOM.DIST', 'cdf', 'r=1') 110
+   1-EXP((f+1)*LN(1-p))         92/110/110 of 110
+   exact 1-q^(f+1)              86/110/110 of 110
+== ('NEGBINOM.DIST', 'pmf', 'f=0') 51
+   EXP(r*LN(p))                 51/51/51 of 51
+   exact p^r                    32/49/50 of 51
+   pow                          32/49/50 of 51
+== ('NEGBINOMDIST', 'pmf', 'f=0') 1
+   EXP(r*LN(p))                 1/1/1 of 1
+   exact p^r                    1/1/1 of 1
+   pow                          1/1/1 of 1

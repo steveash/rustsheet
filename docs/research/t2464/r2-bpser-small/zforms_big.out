@@ -1,0 +1,17 @@
+bpser:b0>=8 3617 cells 568 shapes
+cells: tune 2136, hold-out 1481, runs 1536, shapes 2081
+tune   880 hold   344 | runs 506 shapes 718 | g=gl G=- tree=(alx (-g -algdiv)) round(preorder)=(64, 53)
+tune   837 hold   336 | runs 547 shapes 626 | g=gl G=- tree=(alx (-g -algdiv)) round(preorder)=(64, 64)
+tune   837 hold   336 | runs 547 shapes 626 | g=gl G=- tree=((alx -g) -algdiv) round(preorder)=(64, 64)
+tune   837 hold   336 | runs 547 shapes 626 | g=gl G=- tree=((alx -algdiv) -g) round(preorder)=(64, 64)
+tune   780 hold   314 | runs 411 shapes 683 | g=g1ln53 G=- tree=(alx (-g -algdiv)) round(preorder)=(64, 53)
+tune   762 hold   312 | runs 411 shapes 663 | g=g1ln64 G=- tree=(alx (-g -algdiv)) round(preorder)=(64, 53)
+tune   725 hold   308 | runs 436 shapes 597 | g=g1ln53 G=- tree=(alx (-g -algdiv)) round(preorder)=(64, 64)
+tune   725 hold   308 | runs 436 shapes 597 | g=g1ln53 G=- tree=((alx -g) -algdiv) round(preorder)=(64, 64)
+tune   725 hold   308 | runs 436 shapes 597 | g=g1ln53 G=- tree=((alx -algdiv) -g) round(preorder)=(64, 64)
+tune   665 hold   309 | runs 388 shapes 586 | g=g1ln64 G=- tree=(alx (-g -algdiv)) round(preorder)=(64, 64)
+tune   665 hold   309 | runs 388 shapes 586 | g=g1ln64 G=- tree=((alx -g) -algdiv) round(preorder)=(64, 64)
+tune   665 hold   309 | runs 388 shapes 586 | g=g1ln64 G=- tree=((alx -algdiv) -g) round(preorder)=(64, 64)
+tune   457 hold   191 | runs 266 shapes 382 | g=gl G=- tree=(alx (-g -algdiv)) round(preorder)=(53, 64)
+tune   457 hold   191 | runs 266 shapes 382 | g=gl G=- tree=((alx -g) -algdiv) round(preorder)=(53, 64)
+tune   457 hold   191 | runs 266 shapes 382 | g=gl G=- tree=((alx -algdiv) -g) round(preorder)=(53, 64)

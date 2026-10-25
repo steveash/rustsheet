@@ -322,6 +322,17 @@ impl Model {
                 num_error(cell)
             });
         }
+        // The density at 0 is infinite for df1 = 1 and exactly 1 for df1 = 2; higher df1 give
+        // 0 (`F.DIST(0,1,7,FALSE)` = #NUM!, `F.DIST(0,2,7,FALSE)` = 1;
+        // probes-numeric/t1049-fdist A27, A28).
+        if x == 0.0 && !cumulative {
+            if df1 == 1.0 {
+                return Err(num_error(cell));
+            }
+            if df1 == 2.0 {
+                return Ok(1.0);
+            }
+        }
         let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
         let result = if cumulative {
             f_cdf(df1, df2, x)

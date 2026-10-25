@@ -1,0 +1,153 @@
+control: closed-form cells, BEST bit-exact by function
+  BETA.DIST      141/141
+  BINOM.DIST     128/128
+  F.DIST         165/165
+  F.DIST.RT      180/180
+  FDIST          22/22
+  NEGBINOM.DIST  142/142
+  T.DIST         9/9
+  T.DIST.2T      7/7
+  T.DIST.RT      510/510
+
+== pre-T2464 cells (all functions, cdf + beta pdf)
+  model                            n   eng_vis     fixed   broke15   net_vis        ex        u4       w15gain_exactlost_exactlost_exact_gated
+  ENGINE (now)                 13655      1998         0         0         0      4227     10420     11657         0         0         0
+  R_LIKE                       13655      1998      1226       599       627      4620     10681     12284      2133      1740        15
+  TOMS_XL                      13655      1998      1264       587       677      4566     10635     12334      2005      1666        13
+  +closed                      13655      1998      1275       572       703      5214     10764     12360      2094      1107         8
+  +w3bpser                     13655      1998      1368       487       881      5775     11112     12538      2632      1084        10
+  +z64                         13655      1998      1462       330      1132      6190     11509     12789      2945       982         8
+  +w3lg                        13655      1998      1465       330      1135      6194     11508     12792      2959       992         8
+  +brcmp1pdf                   13655      1998      1591       231      1360      6685     12158     13017      3357       899         6
+  +w4arith                     13655      1998      1592       230      1362      6682     12157     13019      3352       897         6
+  BEST                         13655      1998      1609       214      1395      6700     12196     13052      3368       895         6
+  BEST+log1p                   13655      1998      1618       213      1405      6714     12220     13062      3380       893         6
+  BEST-closed                  13655      1998      1604       260      1344      5986     12059     13001      3267      1508        11
+  BEST-bpser                   13655      1998      1418       457       961      5724     11452     12618      2505      1008         9
+  BEST-brcmp1                  13655      1998      1486       317      1169      6200     11540     12826      2961       988         8
+  BEST-brcomp                  13655      1998      1592       230      1362      6682     12157     13019      3352       897         6
+  ENG+closed                   13655      1998        83         0        83      4473     10520     11740       246         0         0
+  ENG+M1pdf                    13655      1998       149         1       148      4660     10772     11805       502        69         0
+  ENG+M1pdf+log1p              13655      1998       149         1       148      4659     10774     11805       501        69         0
+  ENG+closed+M1pdf+log1p       13655      1998       232         1       231      4905     10874     11888       747        69         0
+
+== pre-T2464 hold-out half (md5 odd)
+  model                            n   eng_vis     fixed   broke15   net_vis        ex        u4       w15gain_exactlost_exactlost_exact_gated
+  ENGINE (now)                  6812       979         0         0         0      2116      5183      5833         0         0         0
+  R_LIKE                        6812       979       608       280       328      2322      5351      6161      1067       861         6
+  TOMS_XL                       6812       979       620       273       347      2293      5321      6180      1011       834         5
+  +closed                       6812       979       624       267       357      2619      5390      6190      1052       549         2
+  +w3bpser                      6812       979       675       236       439      2926      5553      6272      1343       533         4
+  +z64                          6812       979       718       162       556      3132      5744      6389      1506       490         4
+  +w3lg                         6812       979       720       163       557      3140      5740      6390      1514       490         4
+  +brcmp1pdf                    6812       979       777       114       663      3370      6051      6496      1699       445         4
+  +w4arith                      6812       979       777       114       663      3384      6053      6496      1712       444         4
+  BEST                          6812       979       781       103       678      3394      6074      6511      1722       444         4
+  BEST+log1p                    6812       979       787       101       686      3402      6089      6519      1728       442         4
+  ENG+closed                    6812       979        39         0        39      2234      5232      5872       118         0         0
+  ENG+M1pdf                     6812       979        81         0        81      2338      5367      5914       258        36         0
+  ENG+M1pdf+log1p               6812       979        81         0        81      2338      5368      5914       257        35         0
+  ENG+closed+M1pdf+log1p        6812       979       120         0       120      2456      5417      5953       375        35         0
+
+== pre-T2464, functions other than BETA.DIST (out of sample for the bpser/L140 pieces)
+  model                            n   eng_vis     fixed   broke15   net_vis        ex        u4       w15gain_exactlost_exactlost_exact_gated
+  ENGINE (now)                 10602       986         0         0         0      3847      8897      9616         0         0         0
+  R_LIKE                       10602       986       478       581      -103      3502      8111      9513      1291      1636        15
+  TOMS_XL                      10602       986       516       567       -51      3441      8065      9565      1155      1561        13
+  +closed                      10602       986       517       552       -35      4045      8173      9581      1200      1002         8
+  +w3bpser                     10602       986       584       476       108      4530      8463      9724      1666       983        10
+  +z64                         10602       986       649       320       329      4905      8819      9945      1940       882         8
+  +w3lg                        10602       986       649       320       329      4907      8811      9945      1956       896         8
+  +brcmp1pdf                   10602       986       739       221       518      5345      9397     10134      2301       803         6
+  +w4arith                     10602       986       738       220       518      5342      9396     10134      2296       801         6
+  BEST                         10602       986       747       204       543      5355      9431     10159      2307       799         6
+  BEST+log1p                   10602       986       753       203       550      5369      9448     10166      2319       797         6
+  ENG+closed                   10602       986        23         0        23      3994      8922      9639       147         0         0
+  ENG+M1pdf                    10602       986         0         0         0      3847      8897      9616         0         0         0
+  ENG+M1pdf+log1p              10602       986         0         0         0      3847      8897      9616         0         0         0
+  ENG+closed+M1pdf+log1p       10602       986        23         0        23      3994      8922      9639       147         0         0
+
+== pre-T2464, gated suites only
+  model                            n   eng_vis     fixed   broke15   net_vis        ex        u4       w15gain_exactlost_exactlost_exact_gated
+  ENGINE (now)                   161        23         0         0         0        64       116       138         0         0         0
+  R_LIKE                         161        23        10        12        -2        58       119       136         9        15        15
+  TOMS_XL                        161        23        10        12        -2        62       117       136        11        13        13
+  +closed                        161        23        10        12        -2        70       117       136        14         8         8
+  +w3bpser                       161        23        12         7         5        86       133       143        32        10        10
+  +z64                           161        23        17         2        15        91       145       153        35         8         8
+  +w3lg                          161        23        17         2        15        92       145       153        36         8         8
+  +brcmp1pdf                     161        23        19         2        17       106       149       155        48         6         6
+  +w4arith                       161        23        19         2        17       106       148       155        48         6         6
+  BEST                           161        23        19         2        17       106       148       155        48         6         6
+  BEST+log1p                     161        23        19         2        17       106       148       155        48         6         6
+  ENG+closed                     161        23         2         0         2        68       118       140         4         0         0
+  ENG+M1pdf                      161        23         0         0         0        64       116       138         0         0         0
+  ENG+M1pdf+log1p                161        23         0         0         0        64       116       138         0         0         0
+  ENG+closed+M1pdf+log1p         161        23         2         0         2        68       118       140         4         0         0
+
+== w2f research probes (tuning data of w2/w3/w4)
+  model                            n   eng_vis     fixed   broke15   net_vis        ex        u4       w15gain_exactlost_exactlost_exact_gated
+  ENGINE (now)                 41554     23657         0         0         0      2026     14101     17897         0         0         0
+  R_LIKE                       41554     23657     19076       128     18948      9628     33324     36845      8947      1345         0
+  TOMS_XL                      41554     23657     19071       128     18943      9653     33340     36840      8971      1344         0
+  +closed                      41554     23657     19072       128     18944      9658     33341     36841      8976      1344         0
+  +w3bpser                     41554     23657     19440       124     19316     14015     33634     37213     13318      1329         0
+  +z64                         41554     23657     19447       124     19323     12850     33642     37220     12155      1331         0
+  +w3lg                        41554     23657     19447       124     19323     13201     33642     37220     12505      1330         0
+  +brcmp1pdf                   41554     23657     19720       102     19618     16424     35391     37515     15712      1314         0
+  +w4arith                     41554     23657     19720       102     19618     16551     35397     37515     15841      1316         0
+  BEST                         41554     23657     19786       102     19684     16560     35421     37581     15850      1316         0
+  BEST+log1p                   41554     23657     20546       101     20445     16909     36296     38342     16209      1326         0
+  ENG+closed                   41554     23657        14         0        14      2044     14115     17911        18         0         0
+  ENG+M1pdf                    41554     23657       410         0       410      5649     15460     18307      3754       131         0
+  ENG+M1pdf+log1p              41554     23657       410         0       410      5905     15460     18307      4017       138         0
+  ENG+closed+M1pdf+log1p       41554     23657       424         0       424      5923     15474     18321      4035       138         0
+
+== pre-T2464: engine visibly-off cells by BEST branch -> fixed by BEST / BEST+log1p; remaining
+  branch                          n  eng_vis  R_LIKE TOMS_XL   BEST  B+l1p  broke   left  lostex
+  bpser(a,b>1)                 1368      369     176     179    295    295     10     74      11
+  w_bpser                      3218      341     266     261    323    323      9     18     264
+  bgrat                        1718      246      95     133    133    133    152    113     212
+  L140 bup+bpser               1516      244     115     115    229    235     12      9      84
+  pdf:min>1,max>=8              583      224     148     148    148    148      4     76      12
+  pdf:M1 min<=1                1076      152     148     148    148    148      0      4      69
+  bfrac                         298      128      67      67     84     84      1     44       5
+  L140 bup+bgrat                232       79      56      56     69     72      1      7       8
+  closed:b0=1                   508       50      45      45     50     50      0      0       0
+  bup+bgrat                    1502       48      34      34     34     34     16     14     192
+  pdf:min>1,max<8               345       37      19      19     19     19      4     18      10
+  w1_bpser                      407       36      23      23     35     35      2      1      18
+  closed:a0=1                   796       33      25      27     33     33      0      0       0
+  L140 bup+bup+bgrat             55        8       8       8      8      8      1      0       8
+  pdf:M1 b=1                     31        3       1       1      1      1      1      2       0
+  basym                           2        0       0       0      0      0      0      0       0
+
+== w2f-probes: engine visibly-off cells by BEST branch -> fixed by BEST / BEST+log1p; remaining
+  branch                          n  eng_vis  R_LIKE TOMS_XL   BEST  B+l1p  broke   left  lostex
+  L140 bup+bpser              10240     8944    8712    8712   8944   8944      0      0       6
+  pdf:min>1,max>=8             7168     5305    3082    3082   3082   3082     67   2223      13
+  w_bpser                      5408     5182    4808    4806   5182   5182      0      0       2
+  L140 bup+bgrat               3072     2494    1489    1491   1530   2290      0    204      17
+  bfrac                        1024     1024     376     372    438    438      0    586       0
+  pdf:M1 min<=1                6144      410     410     410    410    410      0      0     138
+  pdf:min>1,max<8              7168      153      58      58     58     58     34     95    1146
+  bpser(a,b>1)                  192       78      78      78     78     78      0      0       3
+  bup+bgrat                      48       32      29      28     29     29      0      3       1
+  w1_bpser                     1072       21      21      21     21     21      0      0       0
+  closed:b0=1                     9        7       7       7      7      7      0      0       0
+  closed:a0=1                     9        7       6       6      7      7      0      0       0
+
+== pre-T2464: engine visibly-off by function -> fixed by BEST+log1p (left)
+  BETA.DIST          n   1001 eng_vis   590 fixed   543 left    47 broke    1
+  BETA.DIST pdf      n   2035 eng_vis   416 fixed   316 left   100 broke    9
+  BETADIST           n     17 eng_vis     6 fixed     6 left     0 broke    0
+  BINOM.DIST         n   1296 eng_vis   230 fixed   175 left    55 broke   12
+  BINOMDIST          n      7 eng_vis     1 fixed     1 left     0 broke    0
+  F.DIST             n   1605 eng_vis   185 fixed   158 left    27 broke   14
+  F.DIST.RT          n   1696 eng_vis   240 fixed   202 left    38 broke   20
+  FDIST              n    132 eng_vis    20 fixed    17 left     3 broke    1
+  NEGBINOM.DIST      n    551 eng_vis    30 fixed    27 left     3 broke    1
+  T.DIST             n    149 eng_vis     2 fixed     0 left     2 broke    0
+  T.DIST.2T          n    127 eng_vis     8 fixed     2 left     6 broke    4
+  T.DIST.RT          n   5021 eng_vis   270 fixed   171 left    99 broke  150
+  TDIST              n     18 eng_vis     0 fixed     0 left     0 broke    1
