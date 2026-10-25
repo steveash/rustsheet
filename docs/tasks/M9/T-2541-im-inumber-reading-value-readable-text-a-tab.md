@@ -3,7 +3,7 @@ id: T-2541
 title: "IM* inumber reading: VALUE-readable text, a tab or U+3000 is #NUM!, over 255 characters #VALUE!, a number at full precision (gen-m9, 8 cells)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -39,7 +39,7 @@ Cells:
 - [x] Visible parity (gen-m9, T-2258): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`); the only new known-failure lines are probes eng-inumber-reading S!A5 (T-2641) and eng-inumber-date-boundary S!A22, B21:B23 (VALUE gaps, T-2646).
 - [x] The probe case is oracle-filled; every cell passes but A5 (`"$1+2i"`, already failing on main, scope moved to T-2641).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
@@ -50,6 +50,8 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
 `complex_of` is now a `Model` method: a number argument is read at full precision, text over 255 characters is `#VALUE!`, a leading tab or U+3000 is `#NUM!`, and text `parse_complex_number` rejects falls back to VALUE's reading (`value_text_number`). gen-m9: the 8 owned lines are removed from the baseline, no regressions. New probe probes/eng-inumber-reading (19 cells, oracle-filled; 18 pass). Text with an inner minus that is not an exponent's (`"2024-01-01"`, `"1-2-2020"`, `"$-5"`) stays `#NUM!` without the VALUE fallback; slash dates, clock text, `" -5"`, `"1E-3%"` are read (boundary probe probes/eng-inumber-date-boundary, 46 cells, oracle-filled; 42 pass, the 4 others are VALUE gaps filed as T-2646). The one cell that differs, `$` before a complex number, is T-2641.
 
 ## Handoff (resumed)
+Resolved by the opus run: the guard is narrowed to an inner minus after a boundary probe; see Outcome. The notes below are the original handoff, kept as the record.
+
 Tried: `complex_of` (complex/mod.rs) now takes `&self`, reads a number at full precision, rejects text over 255 characters (`#VALUE!`) and a leading tab/U+3000 (`#NUM!`), and falls back to `value_text_number` for text `parse_complex_number` rejects. That fixes the 8 owned gen-m9 cells; `make check` is green; security, architecture and quality approved.
 Failed: the excel-fidelity reviewer requested changes twice. (1) The VALUE fallback read ISO date text, but Excel gives `IMABS("2024-01-01")` `#NUM!` (probe A4). (2) My fix, a `date_shaped` guard (any `/`, or a `-` past the first character), is wider than the evidence: it breaks `" -5"`, `"$-5"`, `"1E-3%"`, `"1,000E-2"` (VALUE reads them) and `"1/2"` (seen once as 46024, year dependent).
 Next: narrow the guard to the probed `yyyy-mm-dd` shape only, or probe the boundary first (add to probes/eng-inumber-reading and fill with `rustsheet-oracle fill -b excel-graph --suite probes`): `"1/2/2020"`, `"2024/01/01"`, `" -5"`, `"$-5"`, `"1E-3%"`, `"1,000E-2"`, `"Jan 1"`, `"1-2"`. Then fix engineering.md (state only probed shapes; it now says "a `/`, or a `-`...") and re-run the fidelity reviewer. T-2641 carries A5 (`"$1+2i"`).

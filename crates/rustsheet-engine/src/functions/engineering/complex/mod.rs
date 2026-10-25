@@ -953,7 +953,9 @@ mod tests {
 
     #[test]
     fn inner_minus_spares_a_leading_sign_and_an_exponent() {
-        // probes/eng-inumber-date-boundary: refused A4, A8, A12, A13, A20, A23; read A3, A5, A6, A21.
+        // Excel: probes/eng-inumber-reading A4 ("2024-01-01") and probes/eng-inumber-date-boundary
+        // A4, A8, A13, A20, A23 refused; A3, A5, A6, A10, A21 read. "Dec-2020", "June-2020", "$5"
+        // and ".5e-1" are the rule's own reading, unprobed.
         for text in [
             "2024-01-01",
             "1-2-2020",
