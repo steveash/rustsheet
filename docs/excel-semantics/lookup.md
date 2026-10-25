@@ -151,8 +151,8 @@ the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scal
 - An error range_lookup is that error per element: `NA()` gives `#N/A` and `1/0` gives `#DIV/0!` (G7, G29).
 - An error lookup_value element keeps its own error (`{1;#DIV/0!}`).
 - A range lookup_value lifts the same way, and so does HLOOKUP (`HLOOKUP({1,2},D1:E2,2,"x")`, 2 columns of `#VALUE!`).
-- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's,
-  ahead of a bad range_lookup and of the search:
+- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's
+  (except an error lookup_value element, which keeps its own, T-2456 H2), ahead of a bad range_lookup and of the search:
   - `VLOOKUP({1;2},A1:B2,"a",NA())` is `#VALUE!` per element (G20).
   - `VLOOKUP({1;99},A1:B2,1/0,"1")` is `#DIV/0!` per element (G24).
   - Under exact match 99 is not found, and the index error still wins: `VLOOKUP({1;99},A1:B2,"a",FALSE)` is `#VALUE!` and
