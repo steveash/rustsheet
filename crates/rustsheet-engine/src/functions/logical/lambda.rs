@@ -97,6 +97,9 @@ pub(crate) struct LambdaCaller {
     prepared: Option<PreparedLambda>,
     /// Whether a call returns a reference the body gives as one (`LambdaCaller::keeping_references`).
     references: bool,
+    /// Whether a body that is a TRIMRANGE of a range returns the trimmed reference
+    /// (`LambdaCaller::keeping_trimrange_references`).
+    trimrange_references: bool,
 }
 
 impl LambdaCaller {
@@ -107,6 +110,15 @@ impl LambdaCaller {
     /// (probes/groupby-lambda-forms G!J193, probes/groupby-pivotby-functions G!A541-A581).
     pub(crate) fn keeping_references(mut self) -> Self {
         self.references = true;
+        self
+    }
+
+    /// This caller with a body that is a TRIMRANGE returning its trimmed reference of a range
+    /// instead of the trimmed values, as a body that is the range itself does: REDUCE's step
+    /// result, so `ROWS(IMSQRT(REDUCE(0,1,LAMBDA(a,b,TRIMRANGE(D!B1:B2)))))` is `#VALUE!` as
+    /// IMSQRT of a multi-cell reference is (probes/t2579-array-value-edges B49; T-2596).
+    pub(crate) fn keeping_trimrange_references(mut self) -> Self {
+        self.trimrange_references = true;
         self
     }
 }
@@ -438,6 +450,7 @@ impl Model {
             provided,
             prepared: None,
             references: false,
+            trimrange_references: false,
         }
     }
 
@@ -576,10 +589,13 @@ impl Model {
                 // the arm an IF, CHOOSE, IFS or SWITCH picks or a LET body, is that reference:
                 // ISREF is TRUE, SUM skips its text and GROUPBY makes it `#VALUE!`
                 // (probes/lambda-body-picked-references, take-drop-over-ifs-switch-picks A78).
-                let result = if caller.references {
-                    self.evaluate_picked_reference_arg(body, cell)
-                } else {
-                    RefArg::Value(self.evaluate_node_in_context(body, cell))
+                let result = match body.ungrouped() {
+                    _ if caller.references => self.evaluate_picked_reference_arg(body, cell),
+                    Node::FunctionKind {
+                        kind: Function::Trimrange,
+                        args,
+                    } if caller.trimrange_references => self.trimrange_reference(args, cell, true),
+                    _ => RefArg::Value(self.evaluate_node_in_context(body, cell)),
                 };
                 // A LAMBDA the body made may read the parameters and the captures bound here.
                 // Most calls make no LAMBDA, and they list no ids (a plain call allocates nothing).
