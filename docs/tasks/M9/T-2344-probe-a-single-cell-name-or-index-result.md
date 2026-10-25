@@ -120,7 +120,7 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 - [ ] A probes-numeric case with an oracle sidecar covers those forms; the engine matches, and the hand-written expectations in test_sorted_data_lift.rs (`typed_scalar_data_...`) cite it.
 - [ ] statistics.md drops UNVERIFIED for the single-cell reading.
 - [ ] `make check` green; reviewers approve.
-- [ ] Visible parity (gen-m9, T-2496): the 1 known-failure line of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

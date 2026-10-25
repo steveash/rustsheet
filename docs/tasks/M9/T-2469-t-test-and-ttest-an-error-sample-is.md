@@ -93,7 +93,7 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 - [ ] Unit tests: `T.TEST(1/0,A1:A3,3,2)` is `#DIV/0!`, `T.TEST(A1:A3,NA(),1,9)` `#N/A`, `T.TEST(A1:A3,B1:B3,-2.5,"a")`
       `#VALUE!`, `T.TEST("",A1:A4,1,3)` `#DIV/0!`; with D2 = `#N/A`, `T.TEST(D1:D3,A1:A3,3,2)` stays `#NUM!` (T-1813).
 - [ ] statistics.md's T-2256 T.TEST entry gets an "Ours:" line naming this task.
-- [ ] Visible parity (gen-m9, T-2496): the 1 known-failure line of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

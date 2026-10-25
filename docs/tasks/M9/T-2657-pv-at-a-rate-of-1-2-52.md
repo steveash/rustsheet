@@ -28,15 +28,15 @@ PV and IRR give Excel's `#DIV/0!` where the rate makes a growth factor underflow
   `#NUM!`. IRR: from a guess of 41.9999 Excel stops with `#DIV/0!` where ours
   converges on 4.1E+12. T-2493 (NPV at a rate of -1 or 1E+300 is `#DIV/0!`) and T-1686 (IRR caps and overflowing trial rates) are
   the neighbours: reuse their findings and probes.
-- Recorded in docs/excel-semantics/financial.md "PV near a rate of -1 and IRR from a large guess are #DIV/0!"
-  (UNVERIFIED).
+- Recorded in docs/excel-semantics/financial.md "Financial cells of the T-2496 sub-expression probe" (one cell each; the
+  boundaries are not probed).
 
 ## Acceptance criteria
 - [ ] An excel-graph probe (`excel-probe` skill) of PV, FV and PMT with rate -1+k*2^-52 and n from 1 to 200, plus IRR over the cell's flows from guesses 1, 10, 41.9999 and 1E+3, pins where `#DIV/0!` starts.
 - [ ] The engine matches the probe.
 - [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines above disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] financial.md entry updated with the probe evidence and `Status: VERIFIED`.
+- [ ] A financial.md entry of its own for PV and IRR, with the probe's boundaries, replaces their sentence in that section.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

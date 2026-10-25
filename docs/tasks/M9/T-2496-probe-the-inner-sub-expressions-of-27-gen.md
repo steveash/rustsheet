@@ -115,4 +115,3 @@ digits of 1 reads 1", and statistics.md "T.TEST of a blank one-cell sample and W
 Eval delta: the probe's 32 cells that ours fails today are new-coverage lines in eval/baseline/probes.txt (the divergences
 those tasks own). 0 regressions, gen-m9 unchanged. The visible-parity lock is unchanged at 6,039; 32 of the 5,684
 visibly-off cells are in the new case.
-
