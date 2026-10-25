@@ -34,11 +34,11 @@ rational almost everywhere, and visibly off it at a few cells. docs/excel-semant
   - Loader's `dhyper`.
 - T-2481's Context says "Needs evidence beyond the sweeps (excel-probe skill)": a grid at a fixed small N, so the
   formulation can be pinned from exactly representable cases such as `HYPGEOMDIST(0,3,1,6)` = 0.5000000000000001.
-  No task has filed that grid, and T-2481 has no evidence dependency.
+  No task had filed that grid.
 
 This is a numeric-fitting group that needs more Excel points than the cached workbooks give. Following the
-gap-triager's rule, it is an oracle sweep, not a blind fit. T-2481 depends on this task. Add the dependency in this
-task's PR, since T-2481's file is outside this triage's change.
+gap-triager's rule, it is an oracle sweep, not a blind fit. T-2481 depends on this task (the filing PR added
+the dependency).
 
 Sweep design: one case, `eval/suites/probes-numeric/cases/t2742-hypgeom-small-n.case.json`, tag `M9`,
 `"expected": {}`. Follow the `excel-probe` skill and write the layout into the case description. Generate it with a
@@ -66,7 +66,7 @@ Analysis (scratch or fit lab):
 - [ ] statistics.md "HYPGEOM.DIST is not exact for small integer arguments" gains a T-2742 paragraph. It gives the
       share of cells on the exact value, the ulp-offset pattern with cited cells, each candidate's bit-exact count on
       the grid, and whether the cdf-as-sum-of-pmfs rule holds on every cdf cell.
-- [ ] T-2481 lists this task in `depends_on`, and its Context points at the new evidence.
+- [ ] T-2481's Context points at the new evidence (it already lists this task in `depends_on`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
