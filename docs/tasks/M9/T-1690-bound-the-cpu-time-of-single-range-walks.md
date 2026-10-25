@@ -3,7 +3,7 @@ id: T-1690
 title: "Bound the CPU time of single-range walks stretched by a far cell (A:XFD with data at XFD1048576)"
 milestone: M9
 lane: perf
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,11 +27,26 @@ single areas, with care for callers that need blanks: COUNTBLANK, and ranges lif
 Explicit near-whole ranges (`A2:XFD1048576`) are not clipped by `used_area_corner` at all.
 
 ## Acceptance criteria
-- [ ] A unit test with cells at A1 and XFD1048576 evaluates `SUM(A:XFD)`, `COUNT(A:XFD)` and
+- [x] A unit test with cells at A1 and XFD1048576 evaluates `SUM(A:XFD)`, `COUNT(A:XFD)` and
       `SUMXMY2(A:XFD,A:XFD)` in bounded time (release and debug).
-- [ ] Values are unchanged on every gated suite (eval delta 0 regressions), and a benchmark shows
+- [x] Values are unchanged on every gated suite (eval delta 0 regressions), and a benchmark shows
       no slowdown on dense ranges.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Memory of the lists (T-1681).
+
+## Outcome
+A single range whose used-area-clipped rectangle holds at least 65,536 positions and more than four
+per cell its columns hold (`Model::walks_sparsely`, using `SheetData::cells_in_columns` and `DENSE_WALK_FACTOR` from T-2711)
+is walked over its existing cells by the union walk (`for_each_existing_position`), recorded as
+read empty in one rectangle. It is not charged to the formula's `MAX_AREA_WALK` budget (it costs
+less than the dense walk it replaces, which never was), so it adds no `#VALUE!`: a test repeats
+`SUM(A:Z)` over 100,001 cells 200 times in a BYROW (review finding). All callers of
+`ClipBlocks` (SUM/COUNT/aggregates, `values_from_range`, `paired_values`, SUBTOTAL, AGGREGATE,
+COUNTBLANK, CONCAT, MULTINOMIAL, GCD/LCM) read a blank as nothing, so values are unchanged; the
+walk keeps row-major order, so the first error is the same. `test_clipped_range_walks` checks ten
+functions over `A:XFD` with a cell at XFD1048576 (release 0.16 s, debug 1.5 s for the file). The
+aggregate bench gains a far-cell case (`SUM(A:XFD)` over 1,000,000 filled rows: 163 ms); dense cases
+match main within noise (SUM 138 vs 151 ms, block past used area 262 vs 286 ms). references.md
+"Union area cap" names the new case. Eval delta: 0 (no case changes).

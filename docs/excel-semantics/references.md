@@ -407,6 +407,22 @@ the same way at parse time, so ISREF and a rename see them. A sheet-qualified wo
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
 Tasks: T-1382, T-1459, T-1460, T-1526, T-1550, T-1609, T-1654
 
+## Criteria and sum ranges of a linked workbook are `#VALUE!`
+Rule: a criteria or sum range of COUNTIF, COUNTIFS, SUMIF, SUMIFS, AVERAGEIF, AVERAGEIFS, MAXIFS or
+MINIFS that is a range of a linked workbook is `#VALUE!` without the other file open, even though
+other functions read its cached cells (SUM, INDEX, lookups: "Cached values of a linked workbook"
+above). A whole column counts too: `COUNTIFS('[1]XA Data Pull'!$J:$J,">="&W$1,...)` is `#VALUE!`.
+Evidence: corpus-bench 52450 sheet1, all 1,830 formulas with a COUNTIFS over `'[1]XA Data Pull'!`
+ranges (W5:Y5 and the rest of their block), Excel-cached `#VALUE!` (desktop workbook; no oracle run).
+Unprobed: a range of a linked sheet the file caches nothing for, where ours is `#VALUE!` too (an
+array of `#BLOCKED!`, which is not a range).
+Ours: IMPLEMENTED: `ifs_range` (functions/statistical/if_ifs.rs) makes any argument that is not a
+range of this workbook `#VALUE!`; `ifs_range_arg` gives a linked range that error without building its
+array (`Model::is_external_array`, external_links.rs; T-0477). A single cached cell is `#VALUE!` the
+same way; a range past the array bound keeps that bound's error (arrays.md).
+Status: VERIFIED (desktop, cached values)
+Tasks: T-0477
+
 ## Lookups into a linked sheet with no cached data are `#N/A`
 Rule: a sheet the externalLink part lists in `sheetNames` but caches no cell of (no
 `sheetData` for its `sheetId`, or an empty `<sheetData sheetId="4"/>`) reads `#BLOCKED!` as a
@@ -934,7 +950,13 @@ step per row found (at least one, even with no cell in the area's columns), one 
 chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
 operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
-range argument is not counted and is walked as before (every position of its used area). Over
+range argument is not counted and is walked as before (every position of its used area), unless a
+far cell stretches that used area: a single range whose clipped area holds at least 65,536
+positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
+XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area, so it costs
+the data (T-1690). It does not draw on the budget: that walk costs less than the dense one it
+replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over 100,000
+cells) gives the same value as the dense walk, and the change adds no `#VALUE!`. Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
@@ -970,8 +992,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
