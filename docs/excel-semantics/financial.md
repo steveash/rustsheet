@@ -1135,7 +1135,8 @@ subnormal quotient is 0 (`NPV(9E+307,1)` is 0), and an overflowing sum is #NUM! 
 -1 is fine (`NPV(-2,1,1)` 0, `NPV(-3,1,1,1)` -0.375). The literal 1E+308 in a probe formula makes Excel Online
 reject the workbook ("unsupported features"), so these probes use 9E+307.
 Evidence: probes/npv-power-edges A1-A34, probes/npv-power-edges-2 A1-A30 (excel-graph, 2026-10-25); probes/t2493-npv-rate-edges
-A1:A47 and A60:A70 (a typed -0.9999999999999999 is cut to 15 digits; 20 flows of 1 give 1.016120504184532E+300, 21 give #NUM!,
+A1:A14, A30:A47 and A60:A70 (a typed -0.9999999999999999 is cut to 15 digits, numbers.md "Formula number literals are read at
+15 significant digits"; 20 flows of 1 give 1.016120504184532E+300, 21 give #NUM!,
 22 and more #DIV/0!; T-2734); the T-2436 and
 T-2496 sub-expression probes (NPV(-1,..) and NPV(1E+300,..) cells).
 Ours: matches since T-2493. The power is Rust's `powi` (binary exponentiation), not Excel's running product, so the

@@ -29,3 +29,9 @@ Main's engine passes all of them except A60 and A61, which are 1 ulp off (NPV la
 
 ## Out of scope
 - Engine changes (#1818 has them).
+
+## Outcome
+Done. Both cases are recorded with their excel-graph sidecars, and financial.md "NPV's error order" and the discount
+section cite them. Main's engine (#1818) passes every cell except A60 and A61, which are 1 ulp off and handed to T-1528.
+The rate-edges case description still names A15:A25, which are in the inner-calls case; it is left as filled, because
+the sidecar records the case's input.
