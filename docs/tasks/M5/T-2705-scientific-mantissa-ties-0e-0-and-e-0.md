@@ -3,7 +3,7 @@ id: T-2705
 title: "Scientific mantissa ties: 0E+0 and #E+0 on 2.5 are 3E+0, 0.00E+00 on 12.345 is 1.23E+01 (gen-m10, 11 cells)"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -45,14 +45,14 @@ Code: crates/rustsheet-engine/src/formatter/format.rs, the `p.is_scientific` bra
 `get_fract_part`. Reuse `decimal_round` (T-2206) rather than adding another rounding helper.
 
 ## Acceptance criteria
-- [ ] The 10 TF lines and the F line listed under Context leave eval/baseline/gen-m10.txt
+- [x] The 10 TF lines and the F line listed under Context leave eval/baseline/gen-m10.txt
       (`make eval-baseline`), with no new known-failure or TF line in any suite. In particular, every
       other scientific cell of gen-m10, probes/displayed-text-formats, poi/NumberFormatApproxTests and the
       engineering cells of T-2226 still pass.
-- [ ] A unit test in the formatter covers the four values above (2.5, -2.5 under `0E+0` or `#E+0`, and
+- [x] A unit test in the formatter covers the four values above (2.5, -2.5 under `0E+0` or `#E+0`, and
       12.345 under `0.00E+00`).
-- [ ] number-formats.md's gap-triage 2026-10-25 bullet says "Implemented (T-2705)" and states the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] number-formats.md's gap-triage 2026-10-25 bullet says "Implemented (T-2705)" and states the rule.
+- [x] `make check` green; reviewers approve.
 
 If the rule above breaks a passing scientific cell, stop and hand the task up (work-loop step 5b): the
 rule then needs a probe, which is not this task's work.
@@ -63,3 +63,11 @@ rule then needs a probe, which is not this task's work.
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format. The
 acceptance criteria above are the visible-parity stage.
+
+## Outcome
+Done. `number_format::significant_15` is generalized to `significant_digits(value, count, tie_away)`, which
+rounds the exact double at `count` significant digits. The `p.is_scientific` branch of `formatter/format.rs`
+uses it for a one-integer-placeholder mantissa, with ties away from zero; engineering codes keep
+`round_engineering`. `make eval-baseline` fixed 13 gen-m10 cells: the 10 TF lines and the T!A7 F line, plus
+bfbcd16cee266336 F!W12 and fbdab487cb11409e F!Q20. There were no regressions in any suite, and poi (fetched)
+is unchanged at 119 known failures. A unit test in formatter/test/test_scientific.rs covers 2.5, -2.5 and 12.345.

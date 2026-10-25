@@ -87,3 +87,24 @@ fn scientific_literals_before_the_exponent_digits() {
         );
     }
 }
+
+// A one-digit mantissa rounds the double itself, an exact tie away from zero: 2.5 is a tie, while
+// 12.345 is the double 12.3449999… and rounds down (gen-m10 05c1c646c95a2d60 F!I10, F!L11,
+// 5eb95c63c7d6180c F!G8, F!G19; excel-graph, T-2705).
+#[test]
+fn scientific_mantissa_rounds_the_double_ties_away() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (2.5, "0E+0", "3E+0"),
+        (2.5, "#E+0", "3E+0"),
+        (-2.5, "#E+0", "-3E+0"),
+        (12.345, "0.00E+00", "1.23E+01"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{value} {code}"
+        );
+    }
+}

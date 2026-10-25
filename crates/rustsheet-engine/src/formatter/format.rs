@@ -3,9 +3,9 @@ use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
-    decimal_round::{round_engineering, round_shown_place},
+    decimal_round::{decimal_to_f64, round_engineering, round_shown_place},
     locale::Locale,
-    number_format::{cut_15_digits, to_precision},
+    number_format::{cut_15_digits, significant_digits, to_precision},
     text::Text,
     types::DateSystem,
 };
@@ -754,13 +754,23 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     if group > 1.0 {
                         // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
                         (value, exponent) = round_engineering(scaled, group, p.precision);
+                        value /= 10.0_f64.powf(exponent);
+                        value = to_precision(value, 15);
                     } else {
-                        exponent = value_abs.log10().floor();
+                        // One integer digit: the mantissa rounds the double itself at its shown
+                        // digits, an exact tie away from zero (`0E+0` on 2.5 is "3E+0", but
+                        // `0.00E+00` on 12.345, the double 12.3449999…, is "1.23E+01"; gen-m10,
+                        // docs/excel-semantics/number-formats.md, T-2705).
+                        let shown = usize::try_from(p.precision).unwrap_or(0) + 1;
+                        let (digits, decimal_exponent) =
+                            significant_digits(scaled.abs(), shown, true);
+                        exponent = decimal_exponent as f64;
+                        let mantissa =
+                            decimal_to_f64(digits, 1 - shown.min(15) as i64).unwrap_or(0.0);
+                        value = mantissa.copysign(scaled);
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
-                    value /= 10.0_f64.powf(exponent);
-                    value = to_precision(value, 15);
                     value_abs = value.abs();
                 }
             }
