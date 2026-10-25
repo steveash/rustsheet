@@ -38,6 +38,8 @@ change): the getters take `&self` while CF evaluation needs `&mut self` (evaluat
 - [ ] corpus-bench 41978 loads and calculates in under 60 s through the harness; its `!Timeout`
       line leaves eval/baseline/corpus-bench.txt via `make eval-baseline`; release timings
       before/after in the Outcome.
+- [ ] The change in values read between load and the first `evaluate()` (SPEC-0021) is recorded
+      in docs/decisions/; the Python binding's `get_extended_cell_style` follows the receiver.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

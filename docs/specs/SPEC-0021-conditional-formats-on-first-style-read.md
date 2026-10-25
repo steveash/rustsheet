@@ -2,7 +2,7 @@
 
 - **Status:** draft
 - **Milestone / lane:** M11 / perf
-- **Tasks:** T-0475 (this spec), T-0468 (implementation)
+- **Tasks:** T-0475 (this spec), T-0468 (implementation), T-0476 (the work bound)
 
 ## Problem
 `Model::evaluate_conditional_formatting` (conditional_formatting.rs) runs at load
@@ -36,25 +36,51 @@ Non-goals:
 Unchanged: every rule is evaluated by today's code. The only question is when it is evaluated.
 
 ## Design
-- **Stale flag.** `Model` gains `cf_stale: bool`. These set it instead of evaluating: the end of
-  `evaluate()`, load, `set_theme`, and every edit of the conditional formats or of the dxf styles
-  they reference.
+- **Stale flag.** `Model` gains `cf_stale: bool`, initialised in the one struct literal
+  (new_empty.rs). It is set at exactly the four places that call
+  `evaluate_conditional_formatting()` today, which no longer call it:
+  - load, in `Model::from_workbook*` (model.rs) and in new_empty.rs, which covers every
+    rustsheet-xlsx import;
+  - the end of `evaluate()` (evaluation.rs);
+  - `set_theme` (model.rs).
+
+  A conditional-format or dxf edit made through `Model` therefore leaves the cache as stale as it
+  does today, until the next `evaluate()`. `UserModel`'s edits evaluate (`evaluate_if_not_paused`),
+  and so do its undo and redo, so they set the flag. No setter site is added, and none can be missed.
 - **Mutable style reads.** These public methods change from `&self` to `&mut self`:
   - `Model::get_extended_style_for_cell(&mut self, ..)`;
-  - `UserModel::get_extended_cell_style(&mut self, ..)`.
+  - `UserModel::get_extended_cell_style(&mut self, ..)`;
+  - the Python binding's `UserModel.get_extended_cell_style` (bindings/python/src/user_model.rs),
+    which becomes a `&mut self` pyo3 method.
 
-  When the flag is set they call `evaluate_conditional_formatting()` and clear it, then read
-  `cf_cache` as today. They need `&mut` because rule formulas are evaluated through
-  `evaluate_outside_cell`. Their callers are the engine's and rustsheet-xlsx's tests, plus
-  `UserModel`. No binding or `rustsheet` API exposes them.
+  When the flag is set they call `evaluate_conditional_formatting()`, then clear it. That function
+  returns nothing and cannot fail, so the cache is never left half-built. Then they read `cf_cache`
+  as today. They need `&mut` because rule formulas are evaluated through `evaluate_outside_cell`.
+- **Callers.**
+  - The engine's conditional-formatting tests and `rustsheet-xlsx/tests/test_conditional_formatting.rs`.
+  - `UserModel`.
+  - The Python binding, where Python callers see no change: a method that takes `PyRefMut`
+    fails only on a re-entrant borrow, and nothing here re-enters.
+    `bindings/python/tests/test_styles.py` must keep passing.
+  - The `rustsheet` crate exposes none of these.
 - **Public refresh.** `Model::evaluate_conditional_formatting` stays public for callers that want
   the work done eagerly.
+
+### Resource limits (directive 5)
+This change takes the conditional-format work out of load and `evaluate()`. It does not bound
+it. A host that reads styles still pays the whole evaluation on the first read after each
+`evaluate()`: 41978's rules cost about 190 s, and a hostile workbook can cost more. A `UserModel`
+host that reads styles after every edit pays that per edit, as it does today.
+
+Bounding one conditional-format evaluation (a work budget per evaluation, with a DEVIATION entry,
+decision 0014) is T-0476. Evaluating only the rules whose areas hold the queried cell is a further
+option for that task.
 
 ### When the evaluation happens, and what it can see
 Today the cache is a snapshot taken at the end of `evaluate()`, or at load. The lazy evaluation
 runs at the first style read instead. The two agree whenever nothing changes in between, which
-covers the eval harness and `UserModel`, since `UserModel` evaluates after every edit
-(`evaluate_if_not_paused`). Two differences remain, and both are accepted:
+covers the eval harness and `UserModel`, since `UserModel` evaluates after every edit, undo and
+redo (`evaluate_if_not_paused`). Two differences remain, and both are accepted:
 - **Edits made through `Model`, or through a paused `UserModel`, without `evaluate()`.** If cells are changed between `evaluate()`
   and the first style read, the conditional formats see the changed inputs. Today they would have
   seen the snapshot. Formula cells are not re-evaluated by this; they keep their last values, as
@@ -63,7 +89,12 @@ covers the eval harness and `UserModel`, since `UserModel` evaluates after every
   the formula cells the rules read (`evaluate_cell` outside a pass) and stores their values. So a
   value read after load could be a recomputed one rather than the file's cached one. With the
   change, values read after load are the file's cached values until `evaluate()` or a style read.
-  That matches Excel, which opens a workbook showing its cached values.
+  That matches Excel, which opens a workbook showing its cached values. T-0468 records this change in
+  docs/decisions/.
+
+The eval harness never reads styles, so 41978's "under 60 s" below holds because the
+conditional-format work is no longer done at all there. A style read of 41978 still costs about
+190 s until T-0476.
 
 ## Alternatives considered
 - **A static "this rule can never match" check** (a rule formula that is always an array). It
@@ -74,15 +105,19 @@ covers the eval harness and `UserModel`, since `UserModel` evaluates after every
   entry, and still charges every load.
 
 ## Test plan
-- The conditional-formatting tests pass unchanged, with only the receivers changed (engine
-  `test/conditional_formatting`, `rustsheet-xlsx/tests/test_conditional_formatting.rs`).
+- These pass unchanged, with only the receivers changed: the engine's `test/conditional_formatting`,
+  `rustsheet-xlsx/tests/test_conditional_formatting.rs` and `bindings/python/tests/test_styles.py`.
 - New tests:
-  - a load or an `evaluate()` followed by no style read evaluates no rule (a test-only counter);
-  - the first read after `evaluate()`, `set_theme` or a conditional-format edit sees the new state;
+  - a load or an `evaluate()` followed by no style read evaluates no rule (a `#[cfg(test)]`
+    counter of `evaluate_conditional_formatting` runs on `Model`);
+  - the first read after `evaluate()` or `set_theme`, and after a `UserModel` conditional-format
+    edit, undo or redo, sees the new state;
   - a second read does not re-evaluate.
 - `rustsheet-eval check`: 0 regressions in every gated suite.
 - corpus-bench 41978 runs under 60 s through the harness, and its `!Timeout` line leaves the
   baseline.
 
 ## Rollout
-1. **T-0468 (M).** The flag, the receivers, the call sites and the tests above, measured on 41978.
+1. **T-0468 (M).** The flag, the receivers (the binding included), the four call sites, the decision
+   record and the tests above, measured on 41978.
+2. **T-0476 (M).** A bound on one conditional-format evaluation (directive 5).
