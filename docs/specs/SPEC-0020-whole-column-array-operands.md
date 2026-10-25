@@ -127,10 +127,15 @@ asks `tailed_operand` about each such leaf.
   rows 1 to `h`, which `evaluate_range` reads cell by cell.
 - **Tail.** Each leaf evaluates as the one-element array `{Empty}`: the value of every row past
   `h`, where every leaf is empty and every scalar is what it is in every row. The tail reads the
-  one-cell references again. That finds them evaluated (or evaluating) and changes no state.
+  one-cell references again. An evaluated cell is read as before, and a read that closes a cycle
+  repeats marks that are already set, so neither changes the outcome.
 - **The used area grew while the head was evaluated** (a spill evaluated on the way, past `h`).
   The head is then too short. The argument is read once more the ordinary way, its cells already
-  evaluated. The same happens if the head is not one column or the tail not one element.
+  evaluated. The same happens if the head is not one column or the tail not one element. That
+  second read records each column's seen-empty rectangle again, against the formula's seen-range
+  budget (docs/excel-semantics/references.md "Seen-range cap"). A formula already near that cap
+  could reach it one rectangle sooner. This is a directive 5 limit, not a value Excel shows, and
+  needs a spill to grow the used area in the middle of the formula.
 - **The pass is being abandoned** (a restart or an unwind after the head). The tail is skipped,
   since the value is discarded.
 

@@ -102,7 +102,16 @@ fn if_over_whole_column_conditions() {
 fn operators_over_whole_columns() {
     check(
         AGGREGATES,
-        &["(A:A=1)*B:B", "-A:A", "A:A%", "B:B/A:A", "A:A&\"x\""],
+        &[
+            "(A:A=1)*B:B",
+            "-A:A",
+            "A:A%",
+            "B:B/A:A",
+            "A:A&\"x\"",
+            "A:A^2",
+            "B:B<>A:A",
+            "A:A<=1",
+        ],
     );
 }
 
@@ -199,4 +208,60 @@ fn a_spill_into_the_tail_restarts_the_pass() {
     model._set("A100", "=F1:F5*1");
     model.evaluate();
     assert_eq!(model._get_text("E1"), "61");
+}
+
+/// A head of one row (only A1 is used): a 1x1 array where the ordinary reading has the whole
+/// column, which IF and the operators treat as an array all the same.
+#[test]
+fn a_head_of_one_row() {
+    let formulas: Vec<String> = [
+        "=SUM(IF(A:A=1,A:A*2))",
+        "=COUNTA(A:A&\"\")",
+        "=MAX((A:A>0)*A:A)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let mut values = Vec::new();
+    for off in [false, true] {
+        TAILED_OFF.with(|flag| flag.set(off));
+        TAILED_WALKS.with(|count| count.set(0));
+        let mut model = new_empty_model();
+        model._set("A1", "3");
+        for (index, formula) in formulas.iter().enumerate() {
+            model._set(&format!("E{}", index + 1), formula);
+        }
+        model.evaluate();
+        if !off {
+            assert_eq!(TAILED_WALKS.with(std::cell::Cell::get), formulas.len());
+        }
+        values.push(
+            (1..=formulas.len())
+                .map(|r| model._get_text(&format!("E{r}")))
+                .collect::<Vec<_>>(),
+        );
+    }
+    TAILED_OFF.with(|flag| flag.set(false));
+    assert_eq!(values[0], values[1]);
+}
+
+/// A one-cell reference that closes a cycle is read again by the tail: the cycle is reported as
+/// the ordinary reading reports it.
+#[test]
+fn a_cycle_through_a_scalar_operand() {
+    let mut texts = Vec::new();
+    for off in [false, true] {
+        TAILED_OFF.with(|flag| flag.set(off));
+        let mut model = new_empty_model();
+        for row in 1..=5 {
+            model._set(&format!("A{row}"), &row.to_string());
+        }
+        model._set("E1", "=SUM(IF(A:A>E2,A:A))");
+        model._set("E2", "=E1/100");
+        model._set("E3", "=SUM(E1:E2)");
+        model.evaluate();
+        texts.push(["E1", "E2", "E3"].map(|c| model._get_text(c)));
+    }
+    TAILED_OFF.with(|flag| flag.set(false));
+    assert_eq!(texts[0], texts[1]);
 }
