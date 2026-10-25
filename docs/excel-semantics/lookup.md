@@ -151,8 +151,8 @@ the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scal
 - An error range_lookup is that error per element: `NA()` gives `#N/A` and `1/0` gives `#DIV/0!` (G7, G29).
 - An error lookup_value element keeps its own error (`{1;#DIV/0!}`).
 - A range lookup_value lifts the same way, and so does HLOOKUP (`HLOOKUP({1,2},D1:E2,2,"x")`, 2 columns of `#VALUE!`).
-- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's,
-  ahead of a bad range_lookup and of the search:
+- A value index that fails (text `"a"` or `1/0`) beside a lifted lookup_value lifts too. Its error is every element's
+  (except an error lookup_value element, which keeps its own, T-2456 H2), ahead of a bad range_lookup and of the search:
   - `VLOOKUP({1;2},A1:B2,"a",NA())` is `#VALUE!` per element (G20).
   - `VLOOKUP({1;99},A1:B2,1/0,"1")` is `#DIV/0!` per element (G24).
   - Under exact match 99 is not found, and the index error still wins: `VLOOKUP({1;99},A1:B2,"a",FALSE)` is `#VALUE!` and
@@ -165,6 +165,10 @@ the scalar call's result, read through INDEX and ERROR.TYPE (probes/vlookup-scal
   Beside a bad range_lookup, every element is that range_lookup's `#VALUE!` (`VLOOKUP({1;99},A1:B2,0,"1")`, G28).
 - Text range_lookup that reads as a boolean works: `VLOOKUP({1;2},A1:B2,2,"TRUE")` is "one", "two" (G18, G19).
 - The scalar `VLOOKUP(1,A1:B2,2,"1")` stays one `#VALUE!`.
+Each element of those claims is probed (probes/vlookup-t2411-elements, excel-graph, 2026-10-25, T-2456):
+`VLOOKUP({1;#N/A},A1:B2,"a")` is `#VALUE!` in the first element and `#N/A` in the second (H1, H2: the failed index
+does not hide an error lookup_value element); `HLOOKUP({1,2},D1:E2,2,"x")` is `#VALUE!` in both columns (H3, H4); and
+`VLOOKUP({1;2},A1:B2,2,"TRUE")` is "one", "two" (H5, H6).
 Ours: matches since T-2411.
 The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
 search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is

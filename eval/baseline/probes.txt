@@ -1061,6 +1061,7 @@ C	probes/t2360-array-lambda-holidays.case.json	508
 C	probes/t2364-regex-dollar-final-cr.case.json	5
 C	probes/t2364-regex-newline-convention.case.json	25
 C	probes/t2365-wrap-expand-tocol-error-lift.case.json	13
+C	probes/t2369-workday-text-holidays.case.json	68
 C	probes/t2413-blank-in-stacked-arrays.case.json	45
 C	probes/t2414-gen-m7-unexplained.case.json	70
 C	probes/t2428-ztest-error-data.case.json	16
@@ -1358,6 +1359,7 @@ C	probes/vlookup-array-index-range-lookup.case.json	155
 C	probes/vlookup-array-lookup-value.case.json	35
 C	probes/vlookup-error-arg-lifting-range-lookup.case.json	22
 C	probes/vlookup-scalar-range-lookup-lifted.case.json	39
+C	probes/vlookup-t2411-elements.case.json	6
 C	probes/volatile-and-info-rand-true-false-sheet.case.json	108
 C	probes/volatile-invariant.case.json	60
 C	probes/volatile-now-today-shapes.case.json	48
