@@ -1173,6 +1173,7 @@ C	probes/t2656-xmatch-mode-snap-edge.case.json	128
 C	probes/t2656-xmatch-mode-snap-grid.case.json	240
 C	probes/t2656-xmatch-mode-snap.case.json	126
 C	probes/t2669-xlookup-regex-blanks.case.json	14
+C	probes/t2669-xlookup-regex-lift.case.json	12
 C	probes/t2669-xlookup-regex-mode.case.json	60
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
@@ -3257,6 +3258,8 @@ F	probes/t2625-nested-consumers.case.json	P!A28
 F	probes/t2625-nested-consumers.case.json	P!A29
 F	probes/t2625-nested-consumers.case.json	P!A30
 F	probes/t2625-nested-consumers.case.json	P!A31
+F	probes/t2669-xlookup-regex-lift.case.json	Sheet1!G1
+F	probes/t2669-xlookup-regex-lift.case.json	Sheet1!G2
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9

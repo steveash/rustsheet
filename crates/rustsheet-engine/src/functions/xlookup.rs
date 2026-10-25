@@ -1,10 +1,5 @@
 use std::cmp::Ordering;
 
-#[cfg(not(target_arch = "wasm32"))]
-use regex::Regex;
-#[cfg(target_arch = "wasm32")]
-use regex_lite::Regex;
-
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
@@ -16,7 +11,7 @@ use super::{
     lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::SearchVector,
     lookup_and_reference::xmatch::{
-        linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode,
+        linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode, Regex,
     },
     util::near_integer::near_integer_whole,
     util::{array_element_value, array_node_to_calc_result},
@@ -366,14 +361,11 @@ impl Model {
         let found = match search_mode {
             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
                 // An invalid pattern is #VALUE!, never if_not_found (t2669-xlookup-regex-mode D17).
-                let regex = if match_mode == MatchMode::RegexMatch {
-                    match regex_pattern(lookup_value, cell) {
+                let regex =
+                    match regex_pattern(lookup_value, match_mode == MatchMode::RegexMatch, cell) {
                         Ok(regex) => regex,
                         Err(error) => return error,
-                    }
-                } else {
-                    None
-                };
+                    };
                 linear_search(
                     lookup_value,
                     &table.values,

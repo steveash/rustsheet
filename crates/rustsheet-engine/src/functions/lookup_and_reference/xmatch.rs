@@ -1,7 +1,8 @@
+// The regex mode's engine, shared with XLOOKUP so the wasm choice lives here only.
 #[cfg(not(target_arch = "wasm32"))]
-use regex::Regex;
+pub(crate) use regex::Regex;
 #[cfg(target_arch = "wasm32")]
-use regex_lite::Regex;
+pub(crate) use regex_lite::Regex;
 
 use crate::cast::calc_scalar_to_string;
 use crate::expressions::types::CellReferenceIndex;
@@ -121,14 +122,19 @@ pub(crate) fn linear_scan<'a>(
     }
 }
 
-/// The regex mode's (`match_mode` 3) pattern: `lookup_value` read as text, as a number, boolean or
-/// blank reads (`12.5` is the pattern "12.5", TRUE "TRUE"), compiled once per search. An invalid
-/// pattern is `#VALUE!`; an error lookup value (handled before) or any other non-scalar has none.
-/// Shared by XMATCH and XLOOKUP (probes/t2669-xlookup-regex-mode D17, E17, D18, D19).
+/// The regex mode's (`match_mode` 3) pattern when `regex_mode`, else `None`: `lookup_value`
+/// read as text, as a number, boolean or blank reads (`12.5` is the pattern "12.5", TRUE
+/// "TRUE"), compiled once per search. An invalid pattern is `#VALUE!`; an error lookup value
+/// (handled before) or any other non-scalar has none. Shared by XMATCH and XLOOKUP
+/// (probes/t2669-xlookup-regex-mode D17, E17, D18, D19).
 pub(crate) fn regex_pattern(
     lookup_value: &CalcResult,
+    regex_mode: bool,
     cell: CellReferenceIndex,
 ) -> Result<Option<Regex>, CalcResult> {
+    if !regex_mode {
+        return Ok(None);
+    }
     let Some(pattern) = calc_scalar_to_string(lookup_value) else {
         return Ok(None);
     };
@@ -153,9 +159,9 @@ pub(crate) fn regex_scan<'a>(
 }
 
 /// Searches `array` for `lookup_value` and returns the 0-based index of the match,
-/// or `None` if not found. `regex` is the regex mode's pattern, compiled once by the caller
-/// (`None` for a lookup value that is not text, which matches nothing). Only the candidates `SearchVector` names are tested:
-/// they cover the virtual empty tail with a single cell.
+/// or `None` if not found. `regex` is the regex mode's pattern ([`regex_pattern`], compiled once
+/// by the caller). Only the candidates `SearchVector` names are tested: they cover the virtual
+/// empty tail with a single cell.
 fn linear_search(
     lookup_value: &CalcResult,
     array: &SearchVector,
@@ -167,7 +173,6 @@ fn linear_search(
 
     match match_mode {
         MatchMode::Regex => regex_scan(regex, candidates, |idx| array.get(idx)),
-        // Regex is handled above; the other modes share XLOOKUP's blank-aware scan.
         _ => linear_scan(lookup_value, candidates, |idx| array.get(idx), match_mode),
     }
 }
@@ -287,13 +292,10 @@ impl Model {
 
         match search_mode {
             SearchMode::FirstToLast | SearchMode::LastToFirst => {
-                let regex = if match_mode == MatchMode::Regex {
-                    match regex_pattern(lookup_value, cell) {
-                        Ok(regex) => regex,
-                        Err(error) => return error,
-                    }
-                } else {
-                    None
+                let regex = match regex_pattern(lookup_value, match_mode == MatchMode::Regex, cell)
+                {
+                    Ok(regex) => regex,
+                    Err(error) => return error,
                 };
                 match linear_search(
                     lookup_value,

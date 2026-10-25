@@ -1085,15 +1085,21 @@ Rule (excel-graph, 2026-10-25): `match_mode` 3 is a regular-expression match in 
 - **Text of the values:** both sides read as text the way a scalar reads as text (`calc_scalar_to_string`). A number is
   its text, so `"12"` and `"12\.5"` find 12.5, `"E"` finds 1E+20 and the lookup value `0.1+0.2` is the pattern "0.3". A
   boolean is TRUE or FALSE, so `"TRUE"` and the lookup value TRUE find TRUE but `"true"` does not. A blank cell is "", so
-  `"^$"` finds a blank as well as a `""` cell, and the empty pattern finds the first candidate.
+  `"^$"` finds a blank as well as a `""` cell, and the empty pattern finds the first candidate. A blank cell as the
+  lookup value is the empty pattern too (`XMATCH(Z99,A1:A3,3)` is 1, with search_mode -1 it is 3).
 - **No match:** an error candidate never matches (`"#N/A"` skips #N/A).
 - **Errors:** an invalid pattern (`"("`) is `#VALUE!`, never XLOOKUP's if_not_found. A binary search_mode (2 or -2) is
   `#VALUE!` in regex mode, as in wildcard mode.
-- **Search direction:** search_mode -1 finds the last match. A lifted lookup_value lifts.
-Evidence: probes/t2669-xlookup-regex-mode (60 cells: XLOOKUP in D beside XMATCH in E) and -blanks (14 cells); the regex
+- **Search direction:** search_mode -1 finds the last match.
+- **Lifting:** a lifted lookup_value lifts one search per element (`XLOOKUP({"o";"zzz";"^c"},...,"nf",3)` spills 20, "nf",
+  10).
+- **Syntax:** the pattern syntax is PCRE2's, as in the REGEX* functions. Lookbehind `(?<=D)og` and a backreference
+  `(d)\1` match in Excel. Ours compiles with the `regex` crate, which refuses both with `#VALUE!` (T-2680).
+Evidence: probes/t2669-xlookup-regex-mode (60 cells: XLOOKUP in D beside XMATCH in E), -blanks (14 cells) and -lift (12
+cells: lifting, a blank-cell pattern, PCRE2 syntax); the regex
 cells of probes/t2656-xmatch-mode-near-integer G7, G21, -rounding G15, t2656-xlookup-mode-snap-edge C8.
-Status: VERIFIED (excel-graph). Ours matches every cell. Before T-2669, XLOOKUP rejected mode 3 and XMATCH read a boolean
-as "true" and a non-text lookup value as no pattern.
+Status: VERIFIED (excel-graph). Ours matches every cell but the two PCRE2-only patterns (-lift G1, G2; T-2680). Before
+T-2669, XLOOKUP rejected mode 3, XMATCH read a boolean as "true", and a non-text lookup value gave no pattern.
 Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `regex_scan`, used by XMATCH's
 `linear_search` and XLOOKUP's (xlookup.rs).
-Tasks: T-2669
+Tasks: T-2669, T-2680

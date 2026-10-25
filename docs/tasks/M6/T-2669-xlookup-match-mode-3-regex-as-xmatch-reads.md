@@ -27,7 +27,8 @@ modes onto `XmatchMode` for `linear_scan`, so it likely needs the regex arm ther
 with regex, and XLOOKUP's regex over numbers and booleans, before implementing either.
 
 ## Acceptance criteria
-- [x] The four cells above pass; no baseline gains a line.
+- [x] The four cells above pass. No regressions. The review probe's two PCRE2-only cells are new-coverage lines, owned by
+      T-2680.
 - [x] A probe pins XLOOKUP's regex mode for text, numbers and the binary search modes, recorded in lookup.md.
 - [x] `make check` green; reviewers approve.
 
@@ -43,5 +44,10 @@ with regex, and XLOOKUP's regex over numbers and booleans, before implementing e
   They read values with `calc_scalar_to_string`, which cast.rs now exports instead of keeping it private. XMATCH's own
   regex scan was rewritten onto them, which fixed two XMATCH bugs the probe found: a boolean read as "true" (Excel
   "TRUE"), and a number or boolean lookup value matching nothing (Excel uses its text as the pattern).
-- Eval: the 4 T-2656 known failures pass (near-integer G7, G21; rounding G15; xlookup-mode-snap-edge C8), and all 74 new
-  cells pass. Unit test `regex_mode_reads_values_as_text_in_xmatch_and_xlookup`.
+- Eval: the 4 T-2656 known failures pass (near-integer G7, G21; rounding G15; xlookup-mode-snap-edge C8). So do 3 cells
+  of a regex-mode XMATCH with a number as lookup value, `XMATCH(COUNTA(..),{3;1;4;1;5},<a mode that reads 3>)`:
+  gen-m9/eccd03df42e40006 Calc!A21 and probes/t2475-stat-subexpressions P!A545, P!A549. Of the 86 new cells, all pass
+  except two PCRE2-only patterns (lookbehind, backreference: t2669-xlookup-regex-lift G1, G2). Ours compiles with the
+  `regex` crate, as XMATCH always has, which refuses them. Moving both functions onto the REGEX* engine is follow-up
+  T-2680. The third probe (-lift) was added at review.
+- Unit test `regex_mode_reads_values_as_text_in_xmatch_and_xlookup`.
