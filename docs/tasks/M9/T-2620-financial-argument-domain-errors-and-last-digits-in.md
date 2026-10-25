@@ -32,8 +32,8 @@ Owned gen-m9 cells (12; known failures in eval/baseline/gen-m9.txt, and the prob
 - gen-m9/f82473275380882e.case.json Calc!A131: probe P!A567 `ACCRINTM(32899,36547,D48!C9,2035,3)`: Excel "#3", ours "#6"
 
 ## Acceptance criteria
-- [ ] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] The owned gen-m9 cells (all but the YIELD and PMT cells, split to T-2747 and T-2748) leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
