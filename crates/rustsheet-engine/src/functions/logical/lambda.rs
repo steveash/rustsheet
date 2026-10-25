@@ -459,8 +459,9 @@ impl Model {
     }
 
     /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
-    /// are [`Binding::Omitted`]). The values are moved into the parameters, not copied, so REDUCE and
-    /// SCAN hand their accumulator (possibly a large array) to each step without a deep copy.
+    /// are [`Binding::Omitted`]). The values are moved into the parameters, not copied, so
+    /// REDUCE and SCAN hand their accumulator (possibly a large array) to each step without a
+    /// deep copy.
     pub(crate) fn call_lambda_caller(
         &mut self,
         caller: &mut LambdaCaller,
