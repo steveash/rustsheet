@@ -327,9 +327,9 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model, skip: &[&str]) -> Result<()
 }
 
 /// The locale of the workbook at `file_path`, and the clock its `NOW()`/`TODAY()` give the values
-/// Excel saved on: its METADATA time; without one, the time it was last saved
-/// (`docProps/core.xml` `dcterms:modified`), when Excel last calculated its volatile cells
-/// (templates/wordle.xlsx: `TODAY()` on its save date gives the cached word); the system clock
+/// Excel saved on: its METADATA time; without one, approximately, the time it was last saved
+/// (`docProps/core.xml` `dcterms:modified`, UTC, where Excel calculated in local time a little
+/// before; docs/excel-semantics/xlsx-storage.md "Cached volatile values"); the system clock
 /// without either.
 fn locale_and_clock(file_path: &str) -> (String, Clock) {
     let model = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
@@ -341,7 +341,8 @@ fn locale_and_clock(file_path: &str) -> (String, Clock) {
 
 /// The fixed clock at the time `model`'s file was last saved, if its properties say.
 fn saved_at(model: &Model) -> Option<Clock> {
-    let saved = chrono::DateTime::parse_from_rfc3339(&model.workbook.metadata.last_modified).ok()?;
+    let saved =
+        chrono::DateTime::parse_from_rfc3339(&model.workbook.metadata.last_modified).ok()?;
     Clock::fixed_unix_millis(saved.timestamp_millis()).ok()
 }
 
