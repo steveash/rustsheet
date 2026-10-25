@@ -1911,7 +1911,7 @@ Evidence: probes-numeric t2464-r2-bratio-x29, t2464-w2f-*, and the F, BINOM, NEG
 docs/research/t2464/cells.tsv; w5-triangulation (`f_pairs2.py`, `binom_negbinom.py`, `f_argform_closed.py`,
 `ix_evidence.tsv`), r2-bratio (`x29_test.py`, `ctl_r.py`), verify-r2-bratio/x29check.out.
 Ours: `incomplete_beta.rs` swaps at the mean for every shape, uses Cephes' fractions and 1 - v, and forms F's x as
-d1X/(d1X + d2); BETA.DIST's cdf is statrs, BINOM and NEGBINOM walk the pmf, T is `student_t.rs`.
+d1X/(d1X + d2); BETA.DIST's cdf is `beta_reg` since T-2119, BINOM and NEGBINOM walk the pmf, T is `student_t.rs`.
 Status: VERIFIED (excel-graph) for the dispatch, computed tail, complement and argument forms; each branch's
 arithmetic is in the entries below
 Tasks: T-2464, T-2504, T-2505
@@ -1958,7 +1958,7 @@ Evidence: probes-numeric t2464-r2-log1p-pilot, -runs, -grid, -hold, -hix; docs/r
 (`excel_log1p.py`, `pin.py`, `control.py`, `final_score.py`, `algdiv_try.py`); verify-r2-log1p/vscore.out.
 Ours: BINOM.DIST walks the pmf; the beta density uses powf.
 Status: VERIFIED (excel-graph) for -0.375 <= a < 0 (27 of 15,791 rows 1 ulp off); a > 0 UNVERIFIED
-Tasks: T-2633
+Tasks: T-2645
 
 
 ## BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31] (T-2464)
@@ -1966,7 +1966,7 @@ Rule: BINOM.DIST(0,n,p,FALSE) with n = 2^30 returns a number; n = 2^31, 2^32 and
 use powers of two, so the exact limit (2^31 - 1, as PERMUT's, is the natural guess) is not measured.
 Evidence: probes-numeric t2464-r2-log1p-hold (rows with n = 2^30 .. 2^33); docs/research/t2464/verify-r2-log1p/vscore.out.
 Status: UNVERIFIED (bracket only)
-Tasks: T-2464, T-2633
+Tasks: T-2464, T-2645
 
 ## BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST (T-2513)
 Rule: BINOM.DIST(k,n,p,FALSE) takes Loader's (2000) own end branches, `if (x==0) return exp(n*log(1-p)); if (x==n)
@@ -1996,7 +1996,7 @@ docs/research/t2464/cells.tsv; docs/research/t2464/r3-binom-pmf (`a1_survey.out`
 `b19_cfit_mul.out`, `c1_hold.out`), verify-r3-binom-pmf (`vscore_v.out`, `vstruct_v.out`).
 Ours: `discrete.rs` `binomial_pmf`, a double-double walk.
 Status: VERIFIED (excel-graph) for k = 0, k = n and the shared kernel; the interior pmf UNVERIFIED
-Tasks: T-2633, T-2146, T-2586
+Tasks: T-2645, T-2146, T-2586
 
 ## NEGBINOM.DIST pmf sits on the shifted binomial kernel (T-2513)
 Rule: NEGBINOM.DIST(f,r,p,FALSE) is built on dbinom_raw(r-1, f+r-1, p, q), the binomial kernel shifted by one, not R's

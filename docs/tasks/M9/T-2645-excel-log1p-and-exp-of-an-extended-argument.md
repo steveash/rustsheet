@@ -1,5 +1,5 @@
 ---
-id: T-2633
+id: T-2645
 title: "Excel log1p and EXP of an extended argument as engine primitives; BINOM.DIST(0,n,p) on them (T-2464 E0)"
 milestone: M9
 lane: functions-stat

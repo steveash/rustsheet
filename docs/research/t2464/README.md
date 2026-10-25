@@ -23,7 +23,7 @@ TOMS 708 `bratio`" and cover:
 - the Student t tails;
 - the integrated model, the open items and the rejected structures.
 
-Engine tasks: T-2633 and T-2502 to T-2511 (plan in r2-impact section 4, plus r2-tdist). Research follow-ups: T-2512 and T-2513.
+Engine tasks: T-2645 and T-2502 to T-2511 (plan in r2-impact section 4, plus r2-tdist). Research follow-ups: T-2512 and T-2513.
 
 Each worker has a `RESULTS.md` in its directory. Its `verify-*` twin holds an independent re-score. Where the two
 disagree, the verifier wins.
@@ -56,7 +56,7 @@ disagree, the verifier wins.
   - `r3-tdensity`: T.DIST(.,FALSE) is Loader's dt for df >= 3, closed forms at df 1 and 2;
   - `r3-binom-pmf`: BINOM k = 0 and k = n closed forms, one kernel with BETA.DIST, NEGBINOM on the shifted kernel;
   - `r3-fdensity`: F density negatives and its ratio switch (unsolved).
-  - Engine tasks T-2585 (T density) and amended T-2633, T-2503, T-2507; research follow-up T-2586.
+  - Engine tasks T-2585 (T density) and amended T-2645, T-2503, T-2507; research follow-up T-2586.
 - Round 3 verifier overrides:
   - r3-tdensity's per-df constant is not r3-loader-const's stirlerr table: the exact Loader constant does as well or
     better on both hold-outs.

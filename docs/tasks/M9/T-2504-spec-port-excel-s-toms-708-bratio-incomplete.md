@@ -22,7 +22,7 @@ two existing kernels.
   (w, w1, branch). r2-bpser-small `lib.py` supplies the bpser ln B, and r2-tdist `xlk.py` supplies bgrat at b = 1/2.
 - Today's engine:
   - `incomplete_beta.rs`: Cephes fractions, a switch at the mean, 1 - v;
-  - `beta.rs`: the BETA.DIST cdf on statrs (T-2119);
+  - `beta.rs`: the BETA.DIST cdf on `incomplete_beta::beta_reg` since T-2119, BETA.INV at its crossing;
   - `student_t.rs`: its own composite;
   - `binom.rs` and `discrete.rs`: a pmf walk;
   - `inverse_beta.rs` and `fisher.rs`: inverses on statrs;
@@ -33,7 +33,7 @@ two existing kernels.
   - 6 lost bit-exact: probes/stat-argument-modes F.DIST H215, F.DIST.RT H221, FDIST H226 (L140); gen-m9 F.DIST.RT
     0a614cfe A19, FDIST 05d44f6d A175 and FDIST c18dbf21 A151;
   - 2 that become visibly off: F.DIST.RT 60b0b6e6 A151 and FDIST 2801c1c1 A374;
-  - T-2119's nine chained BETA.INV cells in ironcalc-calc BETADIST_BETAINV.xlsx (ironcalc-calc was not scored there).
+  - the chained BETA.INV cells T-2119 left (decision 0111; owned by main's T-2633), which any kernel change moves.
 
 ## Acceptance criteria
 - [ ] A spec docs/specs/SPEC-NNNN-*.md (from `docs/specs/TEMPLATE.md`, next free number) covers:

@@ -17,7 +17,7 @@
 
     The next largest research directory is under 1 MB.
   - The oracle values cannot be regenerated offline: they cost oracle time, and Excel for the web changes (T-2337).
-    Without them the statistics.md entries and the engine tasks (T-2502..T-2513, T-2585, T-2633) could not be
+    Without them the statistics.md entries and the engine tasks (T-2502..T-2513, T-2585, T-2645) could not be
     re-checked. The verifiers' own hold-outs are part of the evidence (`t2513-verify-*`, `t2586-verify-*`).
   - Caches, pickles, copies of other workers' code and tables the scripts rebuild in seconds are git-ignored
     (`docs/research/t2464/.gitignore`), and so are the 87 exploratory round-1 scripts no RESULTS.md cites.

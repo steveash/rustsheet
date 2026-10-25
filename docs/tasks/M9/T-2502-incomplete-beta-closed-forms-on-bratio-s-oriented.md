@@ -33,9 +33,9 @@ pass the kernel Excel's x and y. Every closed-form cell of BETA.DIST, F, T at df
 - r2-impact's expected change: -83 visibly-off pre-T2464 cells (-39 on its hold-out) and -14 in the w2f probes, with 0
   broke and 0 bit-exact cells lost.
 - Code: `functions/statistical/incomplete_beta.rs`. Today it applies b = 1 and a = 1 before any swap, with std ln and
-  exp and 1 - v. Also `fisher.rs` (the x and y forms) and `beta.rs`. BETA.DIST's cdf is still statrs (T-2119), so this
-  task sends BETA.DIST's closed-form cells (b0 = 1, or a0 = 1 with y0 <= 0.9) to the new closed forms and leaves the
-  rest on statrs until T-2505.
+  exp and 1 - v. Also `fisher.rs` (the x and y forms) and `beta.rs`. Since T-2119 (2026-10-25) BETA.DIST's cdf is
+  `incomplete_beta::beta_reg` too, so its closed-form cells (b0 = 1, or a0 = 1 with y0 <= 0.9) move with this task;
+  the rest waits for T-2505.
 - Overlap:
   - T-2221 (F last digits: closed forms, complement and tail choice) is partly this task. Note in T-2221 what this
     task settles when it lands.

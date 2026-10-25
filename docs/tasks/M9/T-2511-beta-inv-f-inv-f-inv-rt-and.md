@@ -32,7 +32,8 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
     BETA.INV and T.INV* on the ported CDF instead of writing a second search; F.INV moves when its CDF does.
   - T-0967 (T.INV, T.INV.2T, CONFIDENCE.T) and T-1871 (statrs saturation and panics) own the remaining cells.
     Re-triage them in the Outcome and close what this settles.
-  - T-2119's chained BETA.INV cells are settled in T-2505.
+  - T-2119 (done) already refines BETA.INV to its crossing on today's kernel; its leftover chained cells are T-2633's
+    (decision 0111).
 
 ## Acceptance criteria
 - [ ] Every listed inverse calls one crossing search on the ported CDF (no statrs inversion left).

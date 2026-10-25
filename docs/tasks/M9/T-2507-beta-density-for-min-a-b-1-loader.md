@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2633]
+depends_on: [T-2645]
 ---
 
 ## Goal
@@ -26,7 +26,7 @@ BETA.DIST(x,a,b,FALSE) with both shapes > 1 follows Excel's Loader (2000) saddle
     beyond ratio 2); each bd0 probably returned as a double (M4);
   - below that cut a series with v = fl(d/(k + M)) stored and a +δ(fl(2kv)) term (r3-loader-bd0's `ph` knob); its
     arithmetic is not identified;
-  - E = LN(n + 1) + stirlerr terms - lf/2 - bd0_p - bd0_q, held extended into Excel's EXP (T-2633's EXP of an extended
+  - E = LN(n + 1) + stirlerr terms - lf/2 - bd0_p - bd0_q, held extended into Excel's EXP (T-2645's EXP of an extended
     argument), never stored; lf = ln 2π + LN(k) + LN(nk) - LN(n) with Excel's LN; stirlerr accurate (a table plus a
     Stirling series), not GAMMALN-based.
 - Models (T-2513 round 3, verifier-confirmed): `docs/research/t2464/r3-loader-const/m1_model.py` M3 (the structure

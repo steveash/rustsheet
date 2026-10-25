@@ -8,7 +8,7 @@ priority: P1
 size: S
 tier: opus
 campaign: visible
-depends_on: [T-0970, T-2505]
+depends_on: [T-0970]
 ---
 
 ## Goal
@@ -49,8 +49,6 @@ Examples:
 Cells:
 - gen-m9/899f9555e67da2d6.case.json (1): Calc!A101
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A150
-- T-2464 (2026-10-23): Excel's kernel is TOMS 708 bratio. T-2505 moves BETA.DIST's cdf onto the bratio port, which
-  replaces the Cephes kernel this task targets; re-scope or close this task once T-2505 lands.
 
 T-0974 (2026-10-23) measured the switch together with BETA.INV refined to the crossing of `beta_reg`
 (`special::refine_increasing`, the upper tail I_y(b,a) = 1 - p in y = 1 - t above p = 0.5): 45 gated lines fixed, in-scope

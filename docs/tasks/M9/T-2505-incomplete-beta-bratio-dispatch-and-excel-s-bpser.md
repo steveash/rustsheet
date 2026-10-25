@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2633, T-2502, T-2504]
+depends_on: [T-2645, T-2502, T-2504]
 ---
 
 ## Goal
@@ -22,7 +22,7 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
   (0.5 - w) + 0.5, caller arguments) and "Incomplete beta bpser".
 - The bpser itself, with x87 stored ops:
   - s = fl(1/a), with forward terms c·((0.5 - b/n) + 0.5)·x and s += c/(a+n), until s stops changing;
-  - I = fl(EXP(z)·s), with z = fl64(fl(a·LN x) - L) and EXP of the extended argument (T-2633);
+  - I = fl(EXP(z)·s), with z = fl64(fl(a·LN x) - L) and EXP of the extended argument (T-2645);
   - L is r2-bpser-small's GL53 form, fl(GL(a0) + fl(GL(b0) - GL(fl(a0+b0)))), for b0 < 8;
   - L = fl(GL(a0) + algdiv(a0, b0)) for b0 >= 8;
   - no fpser; apser falls through the dispatch.
@@ -40,10 +40,10 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
   - -632 visibly-off pre-T2464 cells (-303 hold-out; -354 outside BETA.DIST) and -5,281 in the w2f probes;
   - 22 broke;
   - 2 gated bit-exact cells lost: gen-m9 F.DIST.RT 0a614cfe A19 and FDIST 05d44f6d A175.
-- Subsumes T-2119's main change: BETA.DIST's cdf leaves statrs for the engine kernel, now the bratio port.
-  - T-2119's nine chained BETA.INV cells (BETADIST_BETAINV.xlsx) move here. Settle them under decision 0083's
-    allowance, as T-2119 says.
-  - When this task lands, mark T-2119 dropped (superseded), or narrow it to whatever is left.
+- T-2119 (done 2026-10-25) moved BETA.DIST's cdf off statrs onto `incomplete_beta::beta_reg` and refined BETA.INV to
+  its crossing; this task replaces that kernel with the bratio port.
+  - The chained BETA.INV cells T-2119 left are owned by T-2633 (decision 0111); coordinate with it, since the port
+    moves them again.
   - F.INV and F.INV.RT inverting the same cdf is T-2511.
 - Related: T-2146 (BINOM/NEGBINOM last digits) and T-2219 (F to 15 digits) own cells that this task moves. Re-triage
   them when it lands.
@@ -55,9 +55,9 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
       (1 < b0 < 8) and at least 2,861 of 2,868 (b0 >= 8).
 - [ ] r2-bratio's per-branch bit-exact counts are met or beaten: w_bpser 6,767 of 11,845, w1_bpser 1,666 of 1,845,
       bpser(a,b>1) 978 of 1,523. Both L forms are reported.
-- [ ] BETA.DIST's cdf no longer calls statrs.
-- [ ] The two gated lost cells and T-2119's chained BETA.INV cells are recorded under decision 0083 (or a decision
-      record). No other baseline line is added.
+- [ ] BETA.DIST's cdf runs on the bratio port.
+- [ ] The two gated lost cells are recorded under decision 0083 (or a decision record), and the effect on T-2633's
+      chained BETA.INV cells is stated. No other baseline line is added.
 - [ ] statistics.md's bpser and bratio entries gain "Implemented in" lines.
 - [ ] The T-2464 research harness is deleted: `functions/statistical/t2464_harness.rs` and its `mod t2464_harness;`
       line in `functions/statistical/mod.rs` (docs/research/t2464/README.md "Rebuilding the harness" then points at the
