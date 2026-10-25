@@ -76,13 +76,22 @@ Status: VERIFIED
 Implemented in: `fn_trunc` in functions/math_and_trigonometry/mathematical.rs, via `round_decimal` (T-0297)
 
 ## FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from zero (T-2652)
-Rule (hypothesis): the CEILING/FLOOR family cuts `value/significance` to 15 significant digits before rounding, and a tie at
-the 16th digit goes away from zero, as INT's cut does (below), not to even: `FLOOR.PRECISE(x)` with x = -333333333333266.5
-exactly (`AVERAGE(100,0.5,100-1E+15)`) is -333333333333267, where a tie-to-even cut gives -333333333333266. No cut at all
-(a plain floor) also gives -333333333333267, so the cell does not tell the two apart. A typed
-16-digit literal is cut on entry, so a probe builds the tie from exact arithmetic.
-Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648). The other family members are not probed.
-Status: UNVERIFIED (one generated cell); `snap_ratio` (ceiling_floor.rs) cuts through `to_excel_precision`, ties to even.
+Rule: the CEILING/FLOOR family cuts `value/significance` to 15 significant digits before rounding, and a tie at the
+16th digit goes away from zero, as INT's cut does (below), not to even. FLOOR, FLOOR.MATH, FLOOR.PRECISE, CEILING,
+CEILING.MATH, CEILING.PRECISE and ISO.CEILING all agree: with significance 1, `FLOOR(-333333333333266.5,1)` =
+-333333333333267 and `FLOOR(333333333333266.5,1)` = 333333333333267 (a tie-to-even cut gives ...266), `x.5` at ...265.5
+gives ...266 in both signs and both directions, `±999999999999999.5` gives ±1E+15, and `±100000000000000.5` gives
+±100000000000001. A typed 16-digit literal is cut on entry, so the gen-m5 cell builds the tie from exact arithmetic
+(`AVERAGE(100,0.5,100-1E+15)`) and the probe stores exact halves.
+Unlike INT, the family's cut has no 1E+15 boundary: `FLOOR(-1000000000000000.5,1)` = -1E+15 (INT gives -1000000000000001),
+`FLOOR(1000000000000002.5,1)` = `CEILING(1000000000000002.5,1)` = 1E+15, and `FLOOR(±4503599627370495.5,1)` =
+±4503599627370500 (INT gives 4503599627370495 and -4503599627370496); without the cut these would keep their integer digits
+(probe cells B7-B14). Not probed: a significance other than 1 (every probe row has significance 1, as does the gen-m5 cell),
+so "cuts the ratio" rather than "cuts the value" rests on the existing design.
+Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648); probes/t2652-floor-ceiling-ties
+(14 values x 7 functions, excel-graph, 2026-10-25, T-2652).
+Status: VERIFIED
+Implemented in: `snap_ratio` (ceiling_floor.rs) via `significant_15` and `decimal_to_f64`, ties away from zero (T-2652)
 Tasks: T-2652
 
 ## INT cuts to 15 significant digits first (T-2171)
@@ -1719,7 +1728,10 @@ gen-m5/e0087a1fb9a36188 Calc!A379, gen-m5/fc81c2f704bef138 Calc!A265, gen-m5/6b8
 gen-m5/c688ca172fe533dc Calc!A288. For a small `n` with a huge `k` the rule holds too
 (probes/t2291-combina-small-n-huge-k A1:A7, excel-graph, 2026-10-23, T-2291): `COMBINA(1,2^31-1)`, `COMBINA(1,2^31)`,
 `COMBINA(2,2^31-2)`, `COMBINA(2,2^31-1)`, `COMBINA(1,1E10)` and `COMBINA(2,1E300)` are all `#NUM!` (n+k-1 >= 2^31-1), and
-`COMBIN(2^31-2,2^31-2)` is 1. Ours matches. Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
+`COMBIN(2^31-2,2^31-2)` is 1. Ours matches. Bounded from below too (probes/t2517-combina-below-cut-small-n A1:A4,
+excel-graph, 2026-10-25, T-2517): with n+k-1 at 2^31-2 (A3: 2^31-3) the cell is a number, not `#NUM!`: `COMBINA(1,2^31-2)` is 1,
+`COMBINA(2,2^31-3)` is 2147483646, `COMBINA(1,2^31-3)` is 1 and `COMBINA(3,2^31-4)` is 2.3058430038449848E+18 (each is COMBIN(n+k-1,k)),
+so the cut is on n+k-1, not on k a little lower. Ours matches. Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
 functions/math_and_trigonometry/mathematical.rs, T-2162).
 
 ## SEQUENCE accumulates its step
