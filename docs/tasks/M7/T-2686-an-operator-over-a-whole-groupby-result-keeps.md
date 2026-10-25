@@ -34,4 +34,4 @@ Whether the operator keeps each nested cell as a nested array of differences or 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- None.
