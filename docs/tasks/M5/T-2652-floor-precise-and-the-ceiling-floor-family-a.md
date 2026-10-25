@@ -3,7 +3,7 @@ id: T-2652
 title: "FLOOR.PRECISE and the CEILING/FLOOR family: a 16th-digit tie in the ratio's 15-digit cut goes away from zero"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
