@@ -17,6 +17,25 @@ fn test_fn_f_dist_sanity() {
 }
 
 #[test]
+fn test_fn_f_dist_density_at_zero() {
+    // probes-numeric/t1049-fdist A27, A28 (T-2095).
+    let mut model = new_empty_model();
+    model._set("A1", "=F.DIST(0,1,7,FALSE)");
+    model._set("A2", "=F.DIST(0,2,7,FALSE)");
+    model._set("A3", "=F.DIST(0,2.9,7,FALSE)");
+    model._set("A4", "=F.DIST(0,3,7,FALSE)");
+    model._set("A5", "=F.DIST(0,1,7,TRUE)");
+    model._set("A6", "=F.DIST.RT(0,1,7)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1");
+    assert_eq!(model._get_text("A3"), *"1");
+    assert_eq!(model._get_text("A4"), *"0");
+    assert_eq!(model._get_text("A5"), *"0");
+    assert_eq!(model._get_text("A6"), *"1");
+}
+
+#[test]
 fn test_fn_f_dist_rt_sanity() {
     let mut model = new_empty_model();
 
