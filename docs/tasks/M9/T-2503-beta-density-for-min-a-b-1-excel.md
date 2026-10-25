@@ -3,7 +3,7 @@ id: T-2503
 title: "Beta density for min(a,b) <= 1: Excel's M2 composition (lnB from Excel's GAMMALN, a double-double exponent split) (T-2464 E2, T-2513)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
