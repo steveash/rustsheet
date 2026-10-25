@@ -968,7 +968,9 @@ C	probes/sheet-ops/sheet-ops-move-formula-sheet.case.json	4
 C	probes/sheet-ops/sheet-ops-move-into-span.case.json	4
 C	probes/sheet-ops/sheet-ops-move-out-of-span.case.json	6
 C	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	4
+C	probes/sheet-ops/sheet-ops-move-span-end-in-name.case.json	4
 C	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	4
+C	probes/sheet-ops/sheet-ops-move-two-sheet-span-end-first.case.json	4
 C	probes/sheet-ops/sheet-ops-rename-case-only.case.json	4
 C	probes/sheet-ops/sheet-ops-rename-cell-like.case.json	4
 C	probes/sheet-ops/sheet-ops-rename-cell-refs.case.json	10
@@ -2679,12 +2681,6 @@ F	probes/roman-lift-forms.case.json	Calc!G1
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
-F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
-F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
-F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2
-F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!A1
-F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!B1
-F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!B2
 F	probes/solver-iteration-traces.case.json	I!A17
 F	probes/solver-iteration-traces.case.json	I!A22
 F	probes/solver-iteration-traces.case.json	I!A24
