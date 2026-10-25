@@ -11,8 +11,9 @@ use super::{
     lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::{Indexed, SearchVector},
     lookup_and_reference::xmatch::{
-        exact_through_index, linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode, Regex,
+        exact_through_index, linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode,
     },
+    text::{LookupPattern, LookupRegexes},
     util::near_integer::near_integer_whole,
     util::{array_element_value, array_node_to_calc_result},
 };
@@ -36,14 +37,16 @@ enum MatchMode {
 
 /// The first match of `lookup_value` in `values` walking in `search_mode`'s direction. Only the
 /// candidates `SearchVector` names are tested: its virtual empty tail is one cell.
-/// `regex` is the regex mode's compiled pattern ([`regex_pattern`]).
+/// `regex` is the regex mode's compiled pattern ([`regex_pattern`]); its search may run out of
+/// work (`#ERROR!`).
 fn linear_search(
     lookup_value: &CalcResult,
     values: &SearchVector,
     search_mode: &SearchMode,
     match_mode: &MatchMode,
-    regex: Option<&Regex>,
-) -> Option<usize> {
+    regex: Option<&mut LookupPattern<'_>>,
+    cell: CellReferenceIndex,
+) -> Result<Option<usize>, CalcResult> {
     let forward = *search_mode == SearchMode::StartAtFirstItem;
     let mode = match match_mode {
         MatchMode::ExactMatch => XmatchMode::Exact,
@@ -52,14 +55,19 @@ fn linear_search(
         MatchMode::WildcardMatch => XmatchMode::Wildcard,
         MatchMode::RegexMatch => {
             let candidates = values.linear_candidates(forward);
-            return regex_scan(regex, candidates, |index| values.get(index));
+            return regex_scan(regex, candidates, |index| values.get(index), cell);
         }
     };
     if let Indexed::Searched(found) = exact_through_index(lookup_value, values, forward, mode) {
-        return found;
+        return Ok(found);
     }
     let candidates = values.linear_candidates(forward);
-    linear_scan(lookup_value, candidates, |index| values.get(index), mode)
+    Ok(linear_scan(
+        lookup_value,
+        candidates,
+        |index| values.get(index),
+        mode,
+    ))
 }
 
 /// Where a binary-search XLOOKUP lands in `values`.
@@ -351,6 +359,7 @@ impl Model {
         table: &Result<XlookupTable, CalcResult>,
         if_not_found: &CalcResult,
         pick: XlookupPick,
+        regexes: &mut LookupRegexes,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let lookup_value = &values[0];
@@ -368,18 +377,26 @@ impl Model {
         let found = match search_mode {
             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
                 // An invalid pattern is #VALUE!, never if_not_found (t2669-xlookup-regex-mode D17).
-                let regex =
-                    match regex_pattern(lookup_value, match_mode == MatchMode::RegexMatch, cell) {
-                        Ok(regex) => regex,
-                        Err(error) => return error,
-                    };
-                linear_search(
+                let mut regex = match regex_pattern(
+                    lookup_value,
+                    match_mode == MatchMode::RegexMatch,
+                    regexes,
+                    cell,
+                ) {
+                    Ok(regex) => regex,
+                    Err(error) => return error,
+                };
+                match linear_search(
                     lookup_value,
                     &table.values,
                     &search_mode,
                     &match_mode,
-                    regex.as_ref(),
-                )
+                    regex.as_mut(),
+                    cell,
+                ) {
+                    Ok(found) => found,
+                    Err(error) => return error,
+                }
             }
             SearchMode::BinarySearchAscending | SearchMode::BinarySearchDescending => {
                 match binary_hit(lookup_value, &table.values, &search_mode, &match_mode) {
@@ -489,13 +506,17 @@ impl Model {
         // Each element searches the evaluated cells of the lookup vector once, whatever the
         // three criteria are; the table is never walked again.
         let cost = table.as_ref().map_or(1, |table| table.values.scan_cells());
-        self.lift_values(
+        let mut regexes = LookupRegexes::new();
+        let result = self.lift_values(
             criteria,
             LiftCost::Cells(cost),
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
-            &mut |model, values| model.xlookup_one(values, &table, &if_not_found, pick, cell),
-        )
+            &mut |model, values| {
+                model.xlookup_one(values, &table, &if_not_found, pick, &mut regexes, cell)
+            },
+        );
+        regexes.finish(result, cell)
     }
 
     /// XLOOKUP's `if_not_found` (`#N/A` when omitted or empty). A range stays a reference in the
