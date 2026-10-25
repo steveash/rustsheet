@@ -2673,7 +2673,12 @@ has one point or the error is not the k-th value: `LARGE({1,#N/A,3},3)` and `LAR
 `CORREL({1,#N/A,3},Data!A11:C11)` `#N/A` (a54c738c697617c3 A352), `F.TEST({-1,0,1},{1,#N/A,3})` `#N/A`
 (165db58d1540f014 A337), `FTEST({1,#N/A,3},AVERAGE(0.2))` `#N/A`, not the one-point `#DIV/0!` (9cca17438a7e6f8a A43).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-2430 and T-2093.
-Ours: `#VALUE!`; T-2430 (T-2093 for F.TEST).
+Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3},(<FALSE>/"x~*"))` and `COVARIANCE.S({1,#N/A,3},RANK(<#VALUE!>))`
+are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
+(gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
+Ours: T-2430 implements it for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST and the paired functions
+(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB and FREQUENCY still map an array's error element to `#VALUE!` (T-2430 follow-up),
+F.TEST and FTEST are T-2093's.
 Status: VERIFIED (excel-graph)
 
 ## F.TEST: an error argument is that error; overflowing squares are #NUM!, KURT's #DIV/0! (T-2255)

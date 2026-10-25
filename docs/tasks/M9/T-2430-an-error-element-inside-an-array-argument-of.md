@@ -3,7 +3,7 @@ id: T-2430
 title: "An error element inside an array argument of LARGE, SMALL, QUARTILE, COVARIANCE and the paired functions is that error, not #VALUE! (gen-m9, 20 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -174,3 +174,10 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+An error element of an array argument is now the result for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST,
+COVAR, COVARIANCE.*, CORREL, PEARSON and T.TEST, and another argument's error (or one that does not coerce) still beats it, as the gen-m9
+cells show (statistics.md). gen-m9: 130 known failures fixed, 0 regressions; probes: 23 fixed. Not done: PROB and FREQUENCY (T-2636, they
+regressed when changed), F.TEST/FTEST (T-2093), and a few nested cells (FORECAST.ETS*, XNPV, one SMALL, one T.TEST): the baseline lists them.
+The acceptance criteria that every owned cell leaves the baseline is therefore met in part; T-2636 carries the rest.
