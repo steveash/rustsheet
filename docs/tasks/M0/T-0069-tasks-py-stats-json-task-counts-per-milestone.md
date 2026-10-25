@@ -3,7 +3,7 @@ id: T-0069
 title: "tasks.py stats --json: task counts per milestone, campaign stage and status for the progress dashboard"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
