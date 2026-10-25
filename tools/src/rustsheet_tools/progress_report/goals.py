@@ -427,7 +427,15 @@ def campaign_block(g: Goals, data: Parity, tasks: Tasks) -> str:
                 f"{len(lifted):,} of {len(below):,}" if stage == "semantics" else EN,
             ]
         )
-    header = ["Stage", "Fixes", "Open", "Ready", "Blocked", "Done", f"Visibly-off cells (functions under {g.rate})"]
+    header = [
+        "Stage",
+        "Fixes",
+        "Open",
+        "Ready",
+        "Blocked",
+        "Done",
+        f"Visibly-off cells (functions under {g.rate})",
+    ]
     tiers = " and ".join(TIER_LABELS[t] for t in BELOW_BAR)
     names = ", ".join(lifted) if lifted else "none"
     return f"""## Campaign stages

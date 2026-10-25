@@ -2,7 +2,7 @@
 # Every in-scope function
 
 All 506 in-scope catalog functions, from the eval run of **2026-10-25** at
-`05703c6c`. Back to the [progress page](../progress.md#parity).
+`a2d5914a`. Back to the [progress page](../progress.md#parity).
 
 - **Tier**: the function's worst counted cell (see the progress page).
 - **Placed by**: "sole call" counts the Excel cells whose formula calls it as the only function
@@ -46,17 +46,17 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-25** at
 | BESSELJ | engineering | M9 | ≥ 99% | sole call | 628 | 860 | 99.84% | no |
 | BESSELK | engineering | M9 | Exact | sole call | 601 | 768 | 100.00% | yes |
 | BESSELY | engineering | M9 | 15 digits | sole call | 896 | 1,058 | 100.00% | yes |
-| BETA.DIST | statistical | M9 | &lt; 99% | sole call | 206,912 | 207,039 | 60.04% | no |
+| BETA.DIST | statistical | M9 | &lt; 99% | sole call | 206,942 | 207,069 | 60.04% | no |
 | BETA.INV | statistical | M9 | &lt; 99% | sole call | 518 | 627 | 87.84% | no |
-| BETADIST | statistical | M9 | &lt; 99% | sole call | 95 | 619 | 98.95% | no |
+| BETADIST | statistical | M9 | &lt; 99% | sole call | 99 | 623 | 98.99% | no |
 | BETAINV | statistical | M9 | &lt; 99% | sole call | 94 | 628 | 94.68% | no |
 | BIN2DEC | engineering | M9 | Exact | sole call | 492 | 648 | 100.00% | yes |
 | BIN2HEX | engineering | M9 | Exact | sole call | 463 | 574 | 100.00% | yes |
 | BIN2OCT | engineering | M9 | Exact | sole call | 484 | 589 | 100.00% | yes |
-| BINOM.DIST | statistical | M9 | &lt; 99% | sole call | 31,349 | 31,670 | 88.97% | no |
+| BINOM.DIST | statistical | M9 | &lt; 99% | sole call | 31,359 | 31,680 | 88.98% | no |
 | BINOM.DIST.RANGE | statistical | M9 | &lt; 99% | sole call | 922 | 1,174 | 92.08% | no |
 | BINOM.INV | statistical | M9 | Exact | sole call | 196 | 626 | 100.00% | yes |
-| BINOMDIST | statistical | M9 | &lt; 99% | sole call | 170 | 622 | 97.06% | no |
+| BINOMDIST | statistical | M9 | &lt; 99% | sole call | 174 | 626 | 97.13% | no |
 | BITAND | engineering | M9 | Exact | sole call | 394 | 591 | 100.00% | yes |
 | BITLSHIFT | engineering | M9 | Exact | sole call | 457 | 658 | 100.00% | yes |
 | BITOR | engineering | M9 | Exact | sole call | 387 | 580 | 100.00% | yes |
@@ -71,7 +71,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-25** at
 | CHAR | text | M5 | ≥ 99% | sole call | 542 | 1,711 | 99.82% | no |
 | CHIDIST | statistical | M9 | &lt; 99% | sole call | 276 | 604 | 97.46% | no |
 | CHIINV | statistical | M9 | &lt; 99% | sole call | 293 | 614 | 96.25% | no |
-| CHISQ.DIST | statistical | M9 | &lt; 99% | sole call | 245 | 588 | 93.88% | no |
+| CHISQ.DIST | statistical | M9 | &lt; 99% | sole call | 253 | 596 | 94.07% | no |
 | CHISQ.DIST.RT | statistical | M9 | ≥ 99% | sole call | 1,633 | 1,725 | 99.27% | no |
 | CHISQ.INV | statistical | M9 | &lt; 99% | sole call | 354 | 673 | 93.22% | no |
 | CHISQ.INV.RT | statistical | M9 | &lt; 99% | sole call | 333 | 586 | 92.19% | no |
@@ -165,8 +165,8 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-25** at
 | EXACT | text | M5 | Exact | sole call | 221 | 1,842 | 100.00% | yes |
 | EXP | math | M5 | ≤ 4 ulp | sole call | 23,337 | 24,806 | 100.00% | yes |
 | EXPAND | lookup | M7 | Exact | sole call | 167 | 871 | 100.00% | yes |
-| EXPON.DIST | statistical | M9 | Exact | sole call | 189 | 664 | 100.00% | yes |
-| EXPONDIST | statistical | M9 | Exact | sole call | 147 | 593 | 100.00% | yes |
+| EXPON.DIST | statistical | M9 | Exact | sole call | 195 | 670 | 100.00% | yes |
+| EXPONDIST | statistical | M9 | Exact | sole call | 149 | 595 | 100.00% | yes |
 | F.DIST | statistical | M9 | &lt; 99% | sole call | 72,620 | 72,904 | 47.53% | no |
 | F.DIST.RT | statistical | M9 | &lt; 99% | sole call | 1,799 | 2,040 | 89.61% | no |
 | F.INV | statistical | M9 | &lt; 99% | sole call | 388 | 711 | 78.61% | no |
@@ -193,15 +193,15 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-25** at
 | FORECAST.ETS.SEASONALITY | statistical | M9 | &lt; 99% | sole call | 195 | 601 | 8.72% | no |
 | FORECAST.ETS.STAT | statistical | M9 | &lt; 99% | sole call | 168 | 594 | 4.17% | no |
 | FORECAST.LINEAR | statistical | M9 | Exact | sole call | 143 | 672 | 100.00% | yes |
-| FORMULATEXT | lookup | M6 | &lt; 99% | sole call | 1,827 | 1,887 | 97.10% | no |
+| FORMULATEXT | lookup | M6 | &lt; 99% | sole call | 1,853 | 1,913 | 96.06% | no |
 | FREQUENCY | statistical | M9 | &lt; 99% | sole call | 263 | 784 | 83.27% | no |
 | FTEST | statistical | M9 | ≥ 99% | sole call | 379 | 650 | 99.21% | no |
 | FV | financial | M9 | ≥ 99% | sole call | 477 | 714 | 99.58% | no |
 | FVSCHEDULE | financial | M9 | ≥ 99% | sole call | 288 | 476 | 99.65% | no |
 | GAMMA | statistical | M9 | ≤ 4 ulp | sole call | 2,158 | 2,248 | 100.00% | yes |
-| GAMMA.DIST | statistical | M9 | &lt; 99% | sole call | 329 | 635 | 87.84% | no |
+| GAMMA.DIST | statistical | M9 | &lt; 99% | sole call | 341 | 647 | 87.68% | no |
 | GAMMA.INV | statistical | M9 | &lt; 99% | sole call | 272 | 623 | 95.22% | no |
-| GAMMADIST | statistical | M9 | &lt; 99% | sole call | 92 | 602 | 97.83% | no |
+| GAMMADIST | statistical | M9 | &lt; 99% | sole call | 98 | 608 | 97.96% | no |
 | GAMMAINV | statistical | M9 | &lt; 99% | sole call | 134 | 585 | 97.01% | no |
 | GAMMALN | statistical | M9 | ≥ 99.9% | sole call | 13,358 | 13,446 | 99.99% | yes |
 | GAMMALN.PRECISE | statistical | M9 | Exact | sole call | 331 | 615 | 100.00% | yes |
@@ -324,8 +324,8 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-25** at
 | MUNIT | math | M5 | Exact | sole call | 460 | 716 | 100.00% | yes |
 | N | information | M5 | Exact | sole call | 418 | 1,033 | 100.00% | yes |
 | NA | information | M5 | Exact | sole call | 442 | 4,993 | 100.00% | yes |
-| NEGBINOM.DIST | statistical | M9 | &lt; 99% | sole call | 7,875 | 8,140 | 79.06% | no |
-| NEGBINOMDIST | statistical | M9 | &lt; 99% | sole call | 223 | 619 | 84.75% | no |
+| NEGBINOM.DIST | statistical | M9 | &lt; 99% | sole call | 7,883 | 8,148 | 79.08% | no |
+| NEGBINOMDIST | statistical | M9 | &lt; 99% | sole call | 227 | 623 | 85.02% | no |
 | NETWORKDAYS | date | M6 | Exact | sole call | 889 | 1,510 | 100.00% | yes |
 | NETWORKDAYS.INTL | date | M6 | Exact | sole call | 823 | 1,410 | 100.00% | yes |
 | NOMINAL | financial | M9 | Exact | sole call | 187 | 439 | 100.00% | yes |
@@ -339,7 +339,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-25** at
 | NORMSINV | statistical | M9 | ≤ 4 ulp | sole call | 185 | 601 | 100.00% | yes |
 | NOT | logical | M2 | Exact | sole call | 135 | 1,156 | 100.00% | yes |
 | NOW | date | M2 | Exact | every call | 7 | 29 | 100.00% | yes |
-| NPER | financial | M9 | &lt; 99% | sole call | 398 | 739 | 97.74% | no |
+| NPER | financial | M9 | &lt; 99% | sole call | 398 | 739 | 98.99% | no |
 | NPV | financial | M9 | &lt; 99% | sole call | 477 | 995 | 92.24% | no |
 | NUMBERVALUE | text | M5 | ≥ 99% | sole call | 198 | 712 | 99.49% | no |
 | OCT2BIN | engineering | M9 | Exact | sole call | 442 | 553 | 100.00% | yes |
@@ -502,8 +502,8 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-25** at
 | VSTACK | lookup | M7 | Exact | sole call | 185 | 993 | 100.00% | yes |
 | WEEKDAY | date | M6 | Exact | sole call | 770 | 1,366 | 100.00% | yes |
 | WEEKNUM | date | M6 | Exact | sole call | 1,103 | 1,652 | 100.00% | yes |
-| WEIBULL | statistical | M9 | &lt; 99% | sole call | 109 | 661 | 94.50% | no |
-| WEIBULL.DIST | statistical | M9 | &lt; 99% | sole call | 283 | 587 | 91.52% | no |
+| WEIBULL | statistical | M9 | &lt; 99% | sole call | 113 | 665 | 94.69% | no |
+| WEIBULL.DIST | statistical | M9 | &lt; 99% | sole call | 289 | 593 | 91.70% | no |
 | WORKDAY | date | M6 | Exact | sole call | 1,790 | 2,519 | 100.00% | yes |
 | WORKDAY.INTL | date | M6 | Exact | sole call | 885 | 1,752 | 100.00% | yes |
 | WRAPCOLS | lookup | M7 | Exact | sole call | 134 | 694 | 100.00% | yes |
