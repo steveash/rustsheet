@@ -3,7 +3,7 @@ id: T-2493
 title: "NPV at a rate of -1 is #DIV/0!, and NPV's error order (gen-m9, 7 cells; NPER cut to T-2698)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -61,13 +61,13 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 | gen-m9/1cd3096e3e87c965 Calc!A334 | `NPV(1E+300,Data!D5:D8,Data!D4:D5)` (numbers 7, 1E+15, 2.5; inside COUPDAYS) | #DIV/0! | 6.999999999999999E-300 |
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for NPV at -1 (NPER's are T-2698's).
-- [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for NPV at -1 (NPER's are T-2698's).
+- [x] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - NPV last digits (T-1528).
@@ -77,3 +77,14 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Done. The probes are probes/t2493-npv-rate-edges A1:A59 and probes/t2493-npv-error-order-inner-calls (excel-graph, 2026-10-25).
+- NPV is `#DIV/0!` when 1 + rate is 0, or when (1 + rate)^k overflows for some k below the flow count; the last power may
+  overflow (`npv_discount_fails`; IRR's `compute_npv` is unchanged).
+- A scalar error argument beats an error inside an array argument (`npv_cash_flows`). That is the cause of
+  0a957119475760c5 A255. A157 already passed on main (its #NUM! is WEIBULL's).
+- `make eval-baseline`: gen-m9 fixed 20 (the 11 owned cells still failing plus 9 more NPV cells) and probes fixed 48 (t2436 and t2496
+  NPV sub-expressions). REGRESSIONS 0.
+- Unit test: `npv_discount_failures_and_array_errors` in test/test_fn_financial_simple.rs. financial.md has a new section,
+  "NPV is #DIV/0! when a discount power fails, and a scalar error beats an array's".

@@ -1092,13 +1092,34 @@ Implemented in: functions/lift/kinds/financial.rs (`XNPV`, `XIRR_WEIGHT`, `XIRR`
 functions/financial/mod.rs (`fn_xnpv`, `fn_xirr`, `fn_fvschedule`, `flow_count`)
 Tasks: T-1843
 
+## NPV is #DIV/0! when a discount power fails, and a scalar error beats an array's
+Rule: NPV of n flows at `rate` is `#DIV/0!` when 1 + rate is 0, or when (1 + rate)^k overflows for some k below n. The
+last flow's power alone may overflow, and that term is then 0. So `NPV(-1,5)`, `NPV(-1,0)` and `NPV(-1+1E-200,1)` (the
+rate rounds to -1) are `#DIV/0!`, and so are `NPV(1E+200,1,1,1)`, `NPV(1E+300,0,0,0,0)`, `NPV(1E+103,1,1,1,1)` and
+`NPV(1E+300,{0,0,-100,50,60})`. But `NPV(1E+200,1,1)` is 1E-200, `NPV(1E+154,1,1,1)` is 1E-154 (1E+154^2 is finite),
+`NPV(1E+300,5,0)` is 5E-300, `NPV(1E+300,0,0)` is 0 and `NPV(-2,1,1)` is 0. The values are those of the term-by-term sum,
+so only the error is new.
+Among the flows, a scalar error argument is the result before an error inside an array argument, wherever each sits.
+`NPV(0.1,{1,2}/0,NA())` and `NPV(0.1,{1,#DIV/0!},NA())` are #N/A, `NPV(0.1,{1,2}/0,SQRT(-1))` is #NUM! and
+`NPV(0.1,NA(),{1,2}/0)` is #N/A. With no scalar error, the array's first error is the result: `NPV(0.1,{1,2}/0,5)` and
+`NPV(0.1,{#DIV/0!,#N/A})` are #DIV/0!. Two scalar errors keep their order: `NPV(0.1,1,1/0,NA())` is #DIV/0!.
+gen-m9/0a957119475760c5 A255 is one such cell. Its #N/A comes from RANK.EQ, after an array of #DIV/0! (probes/t2493-npv-error-order-inner-calls A19:A25).
+Evidence: probes/t2493-npv-rate-edges A1:A59 and probes/t2493-npv-error-order-inner-calls (excel-graph, 2026-10-25,
+T-2493).
+Status: VERIFIED (excel-graph)
+Implemented in: functions/financial/financial_util.rs (`npv_discount_fails`), functions/financial/mod.rs (`fn_npv`,
+`npv_cash_flows`). Unprobed: an error among the flows against a failing discount (`NPV(-1,1/0)` is #DIV/0! either way),
+an underflowing power (ours #DIV/0!), and an error cell inside a referenced range against a scalar error (ours keeps the
+first in order).
+
 ## NPV, IRR and MIRR error order
 Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR
 and MIRR read their flows first, so a flows error wins over a guess or rate error. This is the order the scalar calls
 had before T-1821. When the rate lifts, an error in the flows is every element's error, after that element's own
 earlier arguments. The flows are evaluated once per call, before the elements, even when NPV's rate is an error. The
-values are the same, but it is not Excel's evaluation order, which is unprobed.
-Evidence: none yet (T-2103).
+values are the same, but it is not Excel's evaluation order, which is unprobed. A rate error does beat a flow error:
+`NPV(SQRT(-1),1/0)` is #NUM! (probes/t2493-npv-rate-edges A28, T-2493).
+Evidence: that cell; the rest is T-2103's.
 Status: UNVERIFIED
 Implemented in: functions/financial/mod.rs (`fn_npv`, `fn_irr`), functions/financial/mirr.rs (`fn_mirr`)
 Tasks: T-1821, T-2103

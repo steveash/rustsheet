@@ -456,3 +456,33 @@ fn amortization_check_order_and_early_purchase() {
         );
     }
 }
+
+/// NPV is #DIV/0! when 1 + rate is 0 or a discount power below the last overflows, and a scalar
+/// error argument beats an error inside an array argument (probes/t2493-npv-rate-edges,
+/// excel-graph 2026-10-25, T-2493).
+#[test]
+fn npv_discount_failures_and_array_errors() {
+    let mut model = new_empty_model();
+    for (a1, formula) in [
+        ("A1", "=NPV(-1,5)"),
+        ("A2", "=NPV(1E+200,1,1)"),
+        ("A3", "=NPV(1E+200,1,1,1)"),
+        ("A4", "=NPV(1E+154,1,1,1)"),
+        ("A5", "=NPV(1E+300,0,0)"),
+        ("A6", "=NPV(0.1,{1,2}/0,NA())"),
+        ("A7", "=NPV(0.1,{1,2}/0,5)"),
+        ("A8", "=NPV(0.1,NA(),{1,2}/0)"),
+    ] {
+        model._set(a1, formula);
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    let number = |cell: &str| model.get_cell_value_by_ref(&format!("Sheet1!{cell}"));
+    assert_eq!(number("A2"), Ok(CellValue::Number(1e-200)));
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(number("A4"), Ok(CellValue::Number(1e-154)));
+    assert_eq!(number("A5"), Ok(CellValue::Number(0.0)));
+    assert_eq!(model._get_text("A6"), *"#N/A");
+    assert_eq!(model._get_text("A7"), *"#DIV/0!");
+    assert_eq!(model._get_text("A8"), *"#N/A");
+}
