@@ -20,6 +20,9 @@ pub(crate) mod aggregate_args;
 pub(crate) mod collation;
 mod existing_walk;
 
+pub(crate) use existing_walk::StoredWalk;
+use existing_walk::WalkBudget;
+
 use collation::cmp_text;
 
 /// The number a referenced cell gives an aggregate: numbers count, booleans, text and empty cells
@@ -675,8 +678,7 @@ impl Model {
                         sheet,
                         (left, right),
                         cell,
-                        &mut columns,
-                        true,
+                        (&mut columns, WalkBudget::Charged),
                         f,
                     )?;
                     continue;
@@ -717,8 +719,7 @@ impl Model {
                     sheet,
                     (left, &corner),
                     cell,
-                    &mut columns,
-                    false,
+                    (&mut columns, WalkBudget::Free),
                     f,
                 )?;
                 continue;

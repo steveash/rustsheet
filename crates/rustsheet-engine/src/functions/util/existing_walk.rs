@@ -1,11 +1,12 @@
-//! The walk of an area over the cells that exist only, for the areas of a union and for a
-//! single area that a far cell leaves mostly blank ([`Model::for_each_position_in_area`]):
-//! it costs the data, not the area. A union's areas draw on the formula's walk budget (T-1497,
-//! T-1502); a single area does not (T-1690).
+//! The walks of the cells that exist in a rectangle of one sheet: the union-area walk of T-1497
+//! ([`Model::for_each_existing_position`], through the column index when the cells lie in few
+//! columns), the *IF(S) criteria walks built on it ([`Model::stored_walk`], T-2711), and the
+//! walk of a single aggregate range that a far cell leaves mostly blank ([`Model::walks_sparsely`],
+//! T-1690).
 
 use crate::{
     area_budget::SLOTS_PER_WALK_STEP,
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     expressions::{token::Error, types::CellReferenceIndex},
     model::Model,
 };
@@ -21,20 +22,43 @@ const MAX_INDEXED_COLUMNS: usize = 16;
 /// ([`Model::for_each_existing_position`]): one chunk of row storage.
 const MIN_INDEXED_ROWS: i32 = 1024;
 
-/// Rows of one column an indexed walk reads from the index at a time: one search, then a step per
-/// row, so a dense column costs a read step per this many cells.
-const INDEX_BATCH_ROWS: usize = 64;
+/// Most positions per stored cell of its columns a [`Model::for_each_stored_position`] walk, or a
+/// single aggregate range ([`Model::walks_sparsely`]), may visit densely: past it the block is
+/// mostly blank, and walking the cells that exist is cheaper.
+const DENSE_WALK_FACTOR: u64 = 4;
 
 /// Fewest positions a single area clipped to the used area must hold to be walked over its
 /// existing cells instead of position by position ([`Model::walks_sparsely`]): a smaller area
 /// costs little either way, and keeps the one-by-one record of its blank cells, which spends
 /// nothing from the formula's seen-range cap (a LAMBDA may walk one small area per row).
-const MIN_SPARSE_WALK_POSITIONS: i64 = 1 << 16;
+const MIN_SPARSE_WALK_POSITIONS: u64 = 1 << 16;
 
-/// How many positions per cell its columns hold a single area must have to be walked over its
-/// existing cells: a denser one is cheaper walked position by position, which tests no row slots
-/// and searches no rows.
-const SPARSE_WALK_POSITIONS_PER_CELL: i64 = 4;
+/// Rows of one column an indexed walk reads from the index at a time: one search, then a step per
+/// row, so a dense column costs a read step per this many cells.
+const INDEX_BATCH_ROWS: usize = 64;
+
+/// Whether a walk of existing cells ([`Model::for_each_existing_position`]) draws on the formula's
+/// union walk budget ([`MAX_AREA_WALK`](crate::area_budget::MAX_AREA_WALK)).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum WalkBudget {
+    /// A union area: nothing else bounds how many a formula walks (T-1497).
+    Charged,
+    /// A single range of a caller that bounds its own walks (the *IF(S) criteria walks, priced
+    /// by the lift budget), and that must not fail where the dense walk it replaces did not; so
+    /// is a mostly blank aggregate range ([`Model::walks_sparsely`]), whose walk costs less than
+    /// the dense one, which was never charged (a LAMBDA repeating `SUM(A:Z)` over 100,000 cells).
+    Free,
+}
+
+/// How [`Model::stored_walk`] walks a range to visit the cells stored in it.
+#[derive(Clone, Copy)]
+pub(crate) enum StoredWalk {
+    /// Every position of the range's top-left cell to `(row2, column2)`, its block within the
+    /// used area (none when the corner is above or left of it).
+    Dense { row2: i32, column2: i32 },
+    /// The cells that exist only.
+    Sparse,
+}
 
 /// The rows of one column of an indexed walk that were read from the index, from `next` on not
 /// yet handed on.
@@ -58,18 +82,18 @@ impl ColumnBatch {
 impl Model {
     /// Whether the area from `left` to the corner `(row2, column2)` on `sheet`, a single area
     /// already clipped to the used area, is walked over its existing cells
-    /// ([`Self::for_each_existing_position`]) rather than position by position: it holds at least
-    /// [`MIN_SPARSE_WALK_POSITIONS`] positions, more than [`SPARSE_WALK_POSITIONS_PER_CELL`] per
-    /// cell its columns hold, and the formula can still record the area as read empty in one
-    /// rectangle.
+    /// ([`Self::for_each_existing_position`], [`WalkBudget::Free`]) rather than position by
+    /// position: it holds at least [`MIN_SPARSE_WALK_POSITIONS`] positions, more than
+    /// [`DENSE_WALK_FACTOR`] per cell its columns hold, and the formula can still record the area
+    /// as read empty in one rectangle (T-1690).
     pub(super) fn walks_sparsely(
         &self,
         sheet: u32,
         left: &CellReferenceIndex,
         (row2, column2): (i32, i32),
     ) -> bool {
-        let positions =
-            i64::from(row2 - left.row + 1).max(0) * i64::from(column2 - left.column + 1).max(0);
+        let side = |first: i32, last: i32| u64::try_from(last - first + 1).unwrap_or(0);
+        let positions = side(left.row, row2) * side(left.column, column2);
         if positions < MIN_SPARSE_WALK_POSITIONS || !self.area_budget.has_seen_ranges(1) {
             return false;
         }
@@ -77,41 +101,119 @@ impl Model {
             return false;
         };
         let cells = worksheet.sheet_data.cells_in_columns(left.column, column2);
-        let cells = i64::try_from(cells).unwrap_or(i64::MAX);
-        positions / SPARSE_WALK_POSITIONS_PER_CELL > cells
+        positions > cells.saturating_mul(DENSE_WALK_FACTOR)
     }
 
-    /// [`Self::spend_area_walk`] for a walk drawn from the formula's budget (`budgeted`): the
-    /// areas of a union. A single area walked here because it is mostly blank is not: its walk
-    /// costs less than the dense one it replaces, which was never charged, so charging it could
-    /// only turn a value into `#VALUE!` (a LAMBDA repeating `SUM(A:Z)` over 100,000 cells).
-    fn spend_walk_if(
+    /// [`Self::spend_area_walk`] for a [`WalkBudget::Charged`] walk; a free walk spends nothing.
+    fn spend_walk(
         &mut self,
-        budgeted: bool,
+        budget: WalkBudget,
         steps: u64,
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
-        if budgeted {
-            self.spend_area_walk(steps, cell)
+        match budget {
+            WalkBudget::Charged => self.spend_area_walk(steps, cell),
+            WalkBudget::Free => Ok(()),
+        }
+    }
+
+    /// How to walk `range` (one sheet) so as to visit every cell stored in it, in row-major
+    /// order, and maybe some blank positions too, for a caller that reads a blank position as
+    /// blank: when the range's block within the used area is at most [`DENSE_WALK_FACTOR`] times
+    /// the cells stored in its columns (plus [`MIN_INDEXED_ROWS`]), every position of that block
+    /// ([`StoredWalk::Dense`], the cheaper walk of well-filled data); otherwise only the cells that
+    /// exist ([`StoredWalk::Sparse`], [`Self::for_each_existing_cell`]). Either way the work is at
+    /// most a few times the cells stored in the range's columns plus the rows or chunks searched,
+    /// whatever the range's or the used area's extent (T-2711). The whole range is put on record
+    /// as read empty in one piece, so a spill into it restarts the pass.
+    pub(crate) fn stored_walk(
+        &mut self,
+        range: &Range,
+        cell: CellReferenceIndex,
+    ) -> Result<StoredWalk, CalcResult> {
+        let Range { left, right } = range;
+        let sheet = left.sheet;
+        let sheet_error = |message| CalcResult::new_error(Error::ERROR, cell, message);
+        let (row2, column2) = self
+            .clip_block_to_used_area(sheet, left.row, left.column, right.row, right.column)
+            .map_err(sheet_error)?;
+        let area = u64::try_from(row2 - left.row + 1).unwrap_or(0)
+            * u64::try_from(column2 - left.column + 1).unwrap_or(0);
+        let stored = self
+            .workbook
+            .worksheet(sheet)
+            .map_err(sheet_error)?
+            .sheet_data
+            .cells_in_columns(left.column, right.column);
+        if area <= stored.saturating_mul(DENSE_WALK_FACTOR) + MIN_INDEXED_ROWS as u64 {
+            self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
+            Ok(StoredWalk::Dense { row2, column2 })
         } else {
-            Ok(())
+            Ok(StoredWalk::Sparse)
+        }
+    }
+
+    /// The [`StoredWalk::Sparse`] walk of `range`: calls `f` with the position of every cell that
+    /// exists in it, through [`Self::for_each_existing_position`], which records the range as read
+    /// empty. It does not draw on the union walk budget ([`WalkBudget::Free`]): its callers price
+    /// their walks.
+    pub(crate) fn for_each_existing_cell<F>(
+        &mut self,
+        range: &Range,
+        cell: CellReferenceIndex,
+        f: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
+        let mut columns = Vec::new();
+        self.for_each_existing_position(
+            range.left.sheet,
+            (&range.left, &range.right),
+            cell,
+            (&mut columns, WalkBudget::Free),
+            f,
+        )
+    }
+
+    /// Calls `f`, in row-major order, with every position of the walk [`Self::stored_walk`]
+    /// chooses for `range`: every cell stored in it, and maybe some blank positions too.
+    pub(crate) fn for_each_stored_position<F>(
+        &mut self,
+        range: &Range,
+        cell: CellReferenceIndex,
+        f: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
+        match self.stored_walk(range, cell)? {
+            StoredWalk::Dense { row2, column2 } => {
+                let sheet = range.left.sheet;
+                for row in range.left.row..=row2 {
+                    for column in range.left.column..=column2 {
+                        f(self, CellReferenceIndex { sheet, row, column })?;
+                    }
+                }
+                Ok(())
+            }
+            StoredWalk::Sparse => self.for_each_existing_cell(range, cell, f),
         }
     }
 
     /// The union-area walk of [`Self::for_each_position_in_area`] on one sheet: the existing
     /// cells of the rectangle `left..=right`, in row-major order like the dense walk, so the
-    /// first error cell is the same one. When `budgeted` (a union's area), the area, every chunk
-    /// and row slot the search looks at and every cell it hands to `f` are paid for before `f`
-    /// runs ([`Self::spend_walk_if`]). An area whose cells lie in at
-    /// most [`MAX_INDEXED_COLUMNS`] columns is walked through the column index instead
-    /// ([`Self::for_each_indexed_position`]), so the rows other columns fill cost it nothing.
+    /// first error cell is the same one. A [`WalkBudget::Charged`] walk pays for the area, every
+    /// chunk and row slot the search looks at and every cell it hands to `f` before `f` runs. An
+    /// area whose cells lie in at most [`MAX_INDEXED_COLUMNS`] columns is walked through the
+    /// column index instead ([`Self::for_each_indexed_position`]), so the rows other columns fill
+    /// cost it nothing.
     pub(super) fn for_each_existing_position<F>(
         &mut self,
         sheet: u32,
         (left, right): (&CellReferenceIndex, &CellReferenceIndex),
         cell: CellReferenceIndex,
-        columns: &mut Vec<i32>,
-        budgeted: bool,
+        (columns, budget): (&mut Vec<i32>, WalkBudget),
         f: &mut F,
     ) -> Result<(), CalcResult>
     where
@@ -123,9 +225,10 @@ impl Model {
         // own spill cells stands, and those read as empty until it has run.
         // The area itself is a step: its record must be paid for even when it finds nothing, or
         // a LAMBDA repeating a union over an empty sheet would grow the record without bound. A
-        // single area is not charged: it is walked here only while the seen-range cap can pay
-        // for its record ([`Self::walks_sparsely`]), and a rectangle already on record is free.
-        self.spend_walk_if(budgeted, 1, cell)?;
+        // free single area is not charged: a mostly blank aggregate range is walked here only
+        // while the seen-range cap can pay for its record ([`Self::walks_sparsely`]), and a
+        // rectangle already on record is free.
+        self.spend_walk(budget, 1, cell)?;
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
         let data = &mut self
             .workbook
@@ -139,14 +242,13 @@ impl Model {
         if right.row.min(data.last_row()) - left.row >= MIN_INDEXED_ROWS {
             data.build_column_index();
             let few = data.columns_between(left.column, right.column, MAX_INDEXED_COLUMNS, columns);
-            self.spend_walk_if(budgeted, (columns.len() as u64).max(1), cell)?;
+            self.spend_walk(budget, (columns.len() as u64).max(1), cell)?;
             if few {
                 return self.for_each_indexed_position(
                     sheet,
                     (left, right),
                     cell,
-                    columns,
-                    budgeted,
+                    (columns, budget),
                     f,
                 );
             }
@@ -165,7 +267,7 @@ impl Model {
             let paid = slots.div_ceil(SLOTS_PER_WALK_STEP);
             slots += search.slots;
             let steps = search.absent_chunks + (slots.div_ceil(SLOTS_PER_WALK_STEP) - paid);
-            self.spend_walk_if(budgeted, steps, cell)?;
+            self.spend_walk(budget, steps, cell)?;
             let Some(row) = search.row else {
                 break;
             };
@@ -176,7 +278,7 @@ impl Model {
                 .columns_in_row_between(row, left.column, right.column, columns);
             // A row costs a step even with no cell in the area's columns: finding them is a
             // search of the row.
-            self.spend_walk_if(budgeted, (columns.len() as u64).max(1), cell)?;
+            self.spend_walk(budget, (columns.len() as u64).max(1), cell)?;
             for &column in columns.iter() {
                 f(self, CellReferenceIndex { sheet, row, column })?;
             }
@@ -200,8 +302,7 @@ impl Model {
         sheet: u32,
         (left, right): (&CellReferenceIndex, &CellReferenceIndex),
         cell: CellReferenceIndex,
-        columns: &[i32],
-        budgeted: bool,
+        (columns, budget): (&[i32], WalkBudget),
         f: &mut F,
     ) -> Result<(), CalcResult>
     where
@@ -240,7 +341,7 @@ impl Model {
                     reads += 1;
                 }
             }
-            self.spend_walk_if(budgeted, reads, cell)?;
+            self.spend_walk(budget, reads, cell)?;
             // A column with no rows left is done (a write by `f` into it is caught by the
             // area's read-empty record, as for a column that held none at the start).
             batches.retain(|batch| batch.head().is_some());
@@ -257,7 +358,7 @@ impl Model {
             // A row is a step per cell handed on, and at least a step per four columns still
             // being merged, which each row compares.
             let merge = batches.len().div_ceil(4);
-            self.spend_walk_if(budgeted, row_columns.len().max(merge) as u64, cell)?;
+            self.spend_walk(budget, row_columns.len().max(merge) as u64, cell)?;
             for &column in &row_columns {
                 f(self, CellReferenceIndex { sheet, row, column })?;
             }

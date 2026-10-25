@@ -273,16 +273,15 @@ impl SheetData {
         self.column_counts.keys().next_back().copied().unwrap_or(0)
     }
 
-    /// How many cells the columns `first..=last` hold, in O(columns used among them): an upper
-    /// bound on the cells of any area over those columns, so a walk can tell an area that is
-    /// mostly blank from one it is cheaper to walk position by position.
-    pub(crate) fn cells_in_columns(&self, first: i32, last: i32) -> usize {
-        if first > last {
+    /// The number of cells in the columns `column1..=column2`, all rows: a search of the column
+    /// counts and a step per column that holds a cell.
+    pub(crate) fn cells_in_columns(&self, column1: i32, column2: i32) -> u64 {
+        if column1 > column2 {
             return 0;
         }
         self.column_counts
-            .range(first..=last)
-            .map(|(_, count)| count)
+            .range(column1..=column2)
+            .map(|(_, &count)| count as u64)
             .sum()
     }
 
