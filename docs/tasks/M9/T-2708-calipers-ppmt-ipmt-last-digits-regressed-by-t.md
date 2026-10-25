@@ -1,5 +1,5 @@
 ---
-id: T-2691
+id: T-2708
 title: "Calipers PPMT/IPMT last digits regressed by T-2490 (35 cells in pv23_007/008/009/056), plus one CHISQ.INV cell"
 milestone: M9
 lane: functions-financial

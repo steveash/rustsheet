@@ -54,7 +54,7 @@ follow-up (decision 0114).
   cached value was IFERROR's "N/A". Both workbooks now pass, and no other calipers cell changed verdict.
 - The calipers baseline is not ratcheted in this PR. `rustsheet-eval check --suite calipers` on main reports 36
   regressions that predate this change (PPMT/IPMT last digits after T-2490, plus one CHISQ.INV cell), so
-  `update-baseline` refuses. Follow-up T-2691 owns them and then records the ratchet. Calipers is not gated in
+  `update-baseline` refuses. Follow-up T-2708 owns them and then records the ratchet. Calipers is not gated in
   `make check` or CI.
 - Unit tests: `add_in_calls_are_found_outside_string_literals` (formula_calls.rs), `add_in_calls_are_not_scored`
   (runner) and `add_in_cells_are_counted_per_suite_and_listed_out_of_scope` (report).
