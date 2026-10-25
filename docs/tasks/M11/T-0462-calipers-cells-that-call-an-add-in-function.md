@@ -3,7 +3,7 @@ id: T-0462
 title: "Calipers cells that call an add-in function (_xll.) are out of scope (decision 0027) and not scored (pv26_003, 492 cells)"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
