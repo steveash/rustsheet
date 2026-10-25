@@ -118,6 +118,7 @@ mod test_styles;
 mod test_subtotal_reference_args;
 mod test_sumsq;
 mod test_sumx_pairing;
+mod test_tailed_array;
 mod test_this_row;
 mod test_trigonometric;
 mod test_true_false;
