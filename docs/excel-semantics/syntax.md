@@ -279,9 +279,12 @@ a number literal, where it folds into the number. Typing `=+5` stores `=5`, `=+1
 plus is kept as typed: `=+"a"`, `=+TRUE`, `=+B1`, `=+B1:B2`, `=+SUM(1,2)`, `=+(1)`, `=+-5`, `=++"a"`, `=1++"2"`,
 `=+{1,2}`, `=+#N/A`, `=+"a"&"b"`, `=SUM(+"1",2)`, `=IF(TRUE,+"a")`, `=+(+"a")`, `=+ "a"` and `=+LAMBDA(x,x)(1)`. The plus
 is the identity: every value matches the operand's.
-Evidence: probes/t2723-unary-plus-formula-text A1:C26 (excel-graph `entered`, 2026-10-25, T-2723). The stored (file) form of
-these formulas is unprobed: a workbook carrying them was refused (FileCorruptTryRepair), so whether one of them breaks the
-file is unknown.
+Evidence: probes/t2723-unary-plus-formula-text A1:C26 (excel-graph `entered`, 2026-10-25, T-2723). Stored, a plus on text
+or a boolean loads and is kept too (probes/t2601-index-scalar-forms-t-n B14, B15), and so do stored `=+10^1` and `=+Z1`
+forms (gen-m1/6462bf910ef9f28f, probes/lookup-argument-edges). The full set stored in one workbook was refused
+(FileCorruptTryRepair); which formula caused it is unprobed (`=+LAMBDA(x,x)(1)` is the likely one: T-2405 records
+`=SUM(1)(2)` the same way). The same rule appears in references.md (`=@+1` prints `=@1`) and lookup.md (INDEX's
+`+"a"`).
 Ours: the parser drops every unary plus, so FORMULATEXT shows none (C1, C2, C4:C9, C11, C12, C14:C16, C18, C19, C22:C26 fail;
 T-2723).
 Status: VERIFIED (excel-graph)

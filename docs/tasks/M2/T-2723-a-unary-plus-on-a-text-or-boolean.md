@@ -35,6 +35,7 @@ gate on every `@`/legacy-marker probe.
 ## Acceptance criteria
 - [ ] probes/t2601-index-scalar-forms-t-n B14 and B15, and probes/t2723-unary-plus-formula-text's C cells, pass and leave
       eval/baseline/probes.txt.
+- [ ] A design note for keeping the plus in the AST (docs/specs/ or this task) is reviewed before the parser changes.
 - [x] syntax.md records the rule.
 - [ ] `make check` green; reviewers approve.
 
