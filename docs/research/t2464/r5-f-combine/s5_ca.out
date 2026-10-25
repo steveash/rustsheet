@@ -1,0 +1,180 @@
+(5,5) s1 x0.5023 n40 best He KHP00 30 | He-ext 30
+(5,5) s1 x0.8541 n40 best He KHP01 23 | He-ext 22
+(5,5) s2 x1.206 n40 best He KHP00 32 | He-ext 32
+(5,5) s2 x2.211 n40 best He KHP00 26 | He-ext 26
+(5,6) s1 x0.6 n40 best He KHP00 27 | He-ext 27
+(5,6) s1 x1.02 n40 best He KHP10 25 | He-ext 24
+(5,6) s2 x1.441 n40 best He KHP00 27 | He-ext 27
+(5,6) s2 x2.642 n40 best He KHP00 19 | He-ext 19
+(5,7) s1 x0.7011 n40 best He KHP00 31 | He-ext 31
+(5,7) s1 x1.192 n40 best He KHP00 29 | He-ext 29
+(5,7) s2 x1.683 n40 best He KHP00 23 | He-ext 23
+(5,7) s2 x3.087 n40 best He KHP10 15 | He-ext 11
+(6,5) s1 x0.417 n40 best Habs KHP00 21 | He-ext 16
+(6,5) s1 x0.7091 n40 best He KHP00 24 | He-ext 24
+(6,5) s2 x1.001 n40 best He KHP01 22 | He-ext 19
+(6,5) s2 x1.836 n40 best He KHP10 21 | He-ext 18
+(6,6) s1 x0.5027 n40 best He KHP00 34 | He-ext 34
+(6,6) s1 x0.8548 n40 best He KHP00 29 | He-ext 29
+(6,6) s2 x1.207 n40 best He KHP00 34 | He-ext 34
+(6,6) s2 x2.213 n40 best He KHP00 25 | He-ext 25
+(6,9) s1 x0.7523 n40 best He KHP00 31 | He-ext 31
+(6,9) s1 x1.279 n40 best He KHP00 31 | He-ext 31
+(6,9) s2 x1.806 n40 best He KHP10 16 | He-ext 14
+(6,9) s2 x3.312 n40 best Hs HPK10 14 | He-ext 9
+(7,5) s1 x0.358 n40 best He KHP10 33 | He-ext 25
+(7,5) s1 x0.6087 n40 best He KHP00 32 | He-ext 32
+(7,5) s2 x0.8595 n40 best He KHP00 27 | He-ext 27
+(7,5) s2 x1.576 n40 best He KHP00 31 | He-ext 31
+(7,7) s1 x0.5031 n40 best He KHP00 28 | He-ext 28
+(7,7) s1 x0.8554 n40 best He KHP00 30 | He-ext 30
+(7,7) s2 x1.208 n40 best He KHP00 32 | He-ext 32
+(7,7) s2 x2.215 n40 best Hs KHP00 24 | He-ext 18
+(7,12) s1 x0.8651 n40 best He KHP00 27 | He-ext 27
+(7,12) s1 x1.471 n40 best He KHP00 29 | He-ext 29
+(7,12) s2 x2.077 n40 best Hs KHP00 22 | He-ext 19
+(7,12) s2 x3.808 n40 best Hs KHP10 25 | He-ext 9
+(8,8) s1 x0.5035 n40 best He KHP00 28 | He-ext 28
+(8,8) s1 x0.8561 n40 best He KHP00 24 | He-ext 24
+(8,8) s2 x1.209 n40 best He KHP00 25 | He-ext 25
+(8,8) s2 x2.217 n40 best He KHP00 34 | He-ext 34
+(9,6) s1 x0.3346 n40 best He KHP01 16 | He-ext 13
+(9,6) s1 x0.569 n40 best He KHP01 19 | He-ext 17
+(9,6) s2 x0.8034 n40 best He KHP00 29 | He-ext 29
+(9,6) s2 x1.473 n40 best He KHP01 30 | He-ext 28
+(9,11) s1 x0.6158 n40 best He KHP00 32 | He-ext 32
+(9,11) s1 x1.047 n40 best He KHP00 29 | He-ext 29
+(9,11) s2 x1.479 n40 best He KHP00 28 | He-ext 28
+(9,11) s2 x2.711 n40 best He KHP10 26 | He-ext 17
+(11,9) s1 x0.4126 n40 best He KHP10 21 | He-ext 18
+(11,9) s1 x0.7015 n40 best He KHP00 23 | He-ext 23
+(11,9) s2 x0.9905 n40 best He KHP00 29 | He-ext 29
+(11,9) s2 x1.816 n40 best Habs KHP00 19 | He-ext 15
+(12,7) s1 x0.2946 n40 best He KHP10 21 | He-ext 12
+(12,7) s1 x0.5009 n40 best Hab KHP00 19 | He-ext 18
+(12,7) s2 x0.7073 n40 best He KHP10 24 | He-ext 21
+(12,7) s2 x1.297 n40 best He KHP00 21 | He-ext 21
+(12,12) s1 x0.5054 n40 best He KHP00 22 | He-ext 22
+(12,12) s1 x0.8593 n40 best He KHP00 24 | He-ext 24
+(12,12) s2 x1.213 n40 best He KHP00 29 | He-ext 29
+(12,12) s2 x2.225 n40 best He KHP00 14 | He-ext 14
+(14,20) s1 x0.7225 n40 best Hab KHP00 23 | He-ext 18
+(14,20) s1 x1.229 n40 best He KHP00 27 | He-ext 27
+(14,20) s2 x1.735 n40 best Hab KHP00 20 | He-ext 7
+(14,20) s2 x3.181 n40 best Hab KHP10 18 | He-ext 6
+(18,30) s1 x0.8442 n40 best He KHP00 27 | He-ext 27
+(18,30) s1 x1.435 n40 best He KHP00 23 | He-ext 23
+(18,30) s2 x2.027 n40 best He KHP00 18 | He-ext 18
+(18,30) s2 x3.717 n40 best He KHP10 19 | He-ext 11
+(20,14) s1 x0.3543 n40 best He HPK10 15 | He-ext 7
+(20,14) s1 x0.6024 n40 best He KHP10 24 | He-ext 10
+(20,14) s2 x0.8506 n40 best He KHP00 20 | He-ext 20
+(20,14) s2 x1.56 n40 best He KHP10 24 | He-ext 23
+(22,40) s1 x0.923 n40 best He KHP00 29 | He-ext 29
+(22,40) s1 x1.569 n40 best He KHP10 20 | He-ext 11
+(22,40) s2 x2.216 n40 best He KHP10 19 | He-ext 6
+(22,40) s2 x4.064 n40 best Hs KHP10 24 | He-ext 5
+(25,25) s1 x0.5073 n40 best He KHP10 27 | He-ext 10
+(25,25) s1 x0.8626 n40 best He KHP10 24 | He-ext 23
+(25,25) s2 x1.218 n40 best He KHP10 26 | He-ext 17
+(25,25) s2 x2.233 n40 best He KHP10 15 | He-ext 7
+(30,18) s1 x0.3041 n40 best He KHP10 24 | He-ext 14
+(30,18) s1 x0.5171 n40 best He HPK10 17 | He-ext 15
+(30,18) s2 x0.7302 n40 best He KHP00 23 | He-ext 23
+(30,18) s2 x1.339 n40 best He KHP00 32 | He-ext 32
+(33,33) s1 x0.5084 n40 best He KHP10 31 | He-ext 7
+(33,33) s1 x0.8645 n40 best He KHP10 23 | He-ext 19
+(33,33) s2 x1.221 n40 best He KHP10 23 | He-ext 15
+(33,33) s2 x2.238 n40 best He KHP10 24 | He-ext 10
+(36,140) s1 x2.001 n40 best Hab KHP10 22 | He-ext 12
+(36,140) s1 x3.402 n40 best He KHP10 27 | He-ext 7
+(36,140) s2 x4.804 n40 best He KHP10 29 | He-ext 5
+(36,140) s2 x8.809 n40 best Hs KHP10 16 | He-ext 3
+(40,22) s1 x0.2794 n40 best He KHP10 22 | He-ext 5
+(40,22) s1 x0.4751 n40 best He KHP10 20 | He-ext 9
+(40,22) s2 x0.6709 n40 best He KHP10 14 | He-ext 10
+(40,22) s2 x1.23 n40 best He KHP10 20 | He-ext 17
+(45,45) s1 x0.5088 n40 best He KHP10 20 | He-ext 11
+(45,45) s1 x0.8652 n40 best He KHP10 20 | He-ext 14
+(45,45) s2 x1.222 n40 best He KHP10 14 | He-ext 12
+(45,45) s2 x2.24 n40 best He KHP10 31 | He-ext 12
+(56,56) s1 x0.5092 n40 best He KHP10 19 | He-ext 11
+(56,56) s1 x0.8658 n40 best He KHP00 28 | He-ext 28
+(56,56) s2 x1.223 n40 best He KHP00 27 | He-ext 27
+(56,56) s2 x2.242 n40 best He KHP10 15 | He-ext 7
+(64,200) s1 x1.596 n40 best He KHP10 29 | He-ext 10
+(64,200) s1 x2.714 n40 best Hs KHP00 19 | He-ext 4
+(64,200) s2 x3.832 n40 best Hab KHP10 24 | He-ext 4
+(64,200) s2 x7.026 n40 best Hab KHP10 16 | He-ext 4
+(70,90) s1 x0.6552 n40 best He KHP10 24 | He-ext 11
+(70,90) s1 x1.114 n40 best He KHP00 32 | He-ext 32
+(70,90) s2 x1.573 n40 best Hab KHP00 25 | He-ext 17
+(70,90) s2 x2.884 n40 best He KHP10 26 | He-ext 9
+(80,80) s1 x0.5103 n40 best He KHP10 21 | He-ext 11
+(80,80) s1 x0.8677 n40 best He KHP00 26 | He-ext 26
+(80,80) s2 x1.225 n40 best He KHP00 25 | He-ext 25
+(80,80) s2 x2.247 n40 best He HPK10 20 | He-ext 12
+(90,70) s1 x0.3966 n40 best He KHP10 27 | He-ext 12
+(90,70) s1 x0.6744 n40 best Hab KHP00 21 | He-ext 15
+(90,70) s2 x0.9523 n40 best He KHP00 28 | He-ext 28
+(90,70) s2 x1.746 n40 best Hab KHP10 19 | He-ext 9
+(100,300) s1 x1.54 n40 best He KHP10 22 | He-ext 12
+(100,300) s1 x2.619 n40 best He KHP10 32 | He-ext 5
+(100,300) s2 x3.698 n40 best Hs KHP10 14 | He-ext 4
+(100,300) s2 x6.781 n40 best He KHP10 15 | He-ext 5
+(120,120) s1 x0.5115 n40 best He KHP10 28 | He-ext 10
+(120,120) s1 x0.8697 n40 best He KHP10 15 | He-ext 14
+(120,120) s2 x1.228 n40 best He KHP10 14 | He-ext 11
+(120,120) s2 x2.252 n40 best He KHP10 27 | He-ext 6
+(140,36) s1 x0.1324 n40 best He KHP10 20 | He-ext 6
+(140,36) s1 x0.2251 n40 best Hs KHP10 23 | He-ext 5
+(140,36) s2 x0.3179 n40 best Hs KHP00 23 | He-ext 6
+(140,36) s2 x0.5829 n40 best He KHP10 27 | He-ext 13
+(150,250) s1 x0.8531 n40 best He KHP10 21 | He-ext 12
+(150,250) s1 x1.451 n40 best He KHP10 33 | He-ext 11
+(150,250) s2 x2.048 n40 best He KHP10 27 | He-ext 4
+(150,250) s2 x3.756 n40 best He KHP10 13 | He-ext 4
+(180,180) s1 x0.5126 n40 best He KHP10 24 | He-ext 6
+(180,180) s1 x0.8716 n40 best He KHP10 23 | He-ext 9
+(180,180) s2 x1.231 n40 best He KHP10 15 | He-ext 5
+(180,180) s2 x2.257 n40 best He KHP10 32 | He-ext 4
+(200,64) s1 x0.1636 n40 best Habs KHP10 23 | He-ext 4
+(200,64) s1 x0.2781 n40 best Hab KHP10 20 | He-ext 2
+(200,64) s2 x0.3927 n40 best Hs KHP00 15 | He-ext 3
+(200,64) s2 x0.72 n40 best He KHP10 18 | He-ext 9
+(250,150) s1 x0.3074 n40 best He KHP10 14 | He-ext 7
+(250,150) s1 x0.5226 n40 best He KHP10 27 | He-ext 4
+(250,150) s2 x0.7379 n40 best He KHP10 25 | He-ext 9
+(250,150) s2 x1.353 n40 best He KHP10 30 | He-ext 10
+(260,260) s1 x0.5142 n40 best He HPK10 19 | He-ext 3
+(260,260) s1 x0.8742 n40 best He KHP10 29 | He-ext 7
+(260,260) s2 x1.234 n40 best He KHP10 23 | He-ext 6
+(260,260) s2 x2.264 n40 best He KHP10 20 | He-ext 3
+(300,100) s1 x0.171 n40 best He HPK10 26 | He-ext 5
+(300,100) s1 x0.2908 n40 best He KHP10 15 | He-ext 3
+(300,100) s2 x0.4106 n40 best He KHP10 19 | He-ext 7
+(300,100) s2 x0.7528 n40 best He KHP10 14 | He-ext 10
+(400,400) s1 x0.5138 n40 best He KHP10 28 | He-ext 9
+(400,400) s1 x0.8736 n40 best He KHP10 14 | He-ext 13
+(400,400) s2 x1.234 n40 best He KHP10 24 | He-ext 10
+(400,400) s2 x2.262 n40 best He KHP10 21 | He-ext 3
+TOTAL He    KHP10 3581/6400
+TOTAL He    HKP10 3581/6400
+TOTAL He    KHP11 3542/6400
+TOTAL He    HKP11 3542/6400
+TOTAL Hab   KHP10 2784/6400
+TOTAL Hab   HKP10 2784/6400
+TOTAL Hab   KHP11 2779/6400
+TOTAL Hab   HKP11 2779/6400
+TOTAL He    KHP01 2729/6400
+TOTAL He    KPH01 2729/6400
+TOTAL He    HKP01 2729/6400
+TOTAL He    HPK01 2729/6400
+TOTAL He    PKH01 2729/6400
+TOTAL He    PHK01 2729/6400
+TOTAL Hs    KHP10 2581/6400
+TOTAL Hs    HKP10 2581/6400
+TOTAL He    KHP00 2580/6400
+TOTAL Hs    KHP11 2576/6400
+TOTAL Hs    HKP11 2576/6400
+TOTAL Hs    KHP00 2497/6400

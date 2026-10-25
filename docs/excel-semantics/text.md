@@ -929,6 +929,15 @@ Implemented in: `fn_value` (functions/text/common.rs), through the lift driver (
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
 
+## VALUE reads a mixed fraction, a sign before a space and a one-digit-year dash date (T-2646)
+Rule: `VALUE("- 5")` is -5, `VALUE("3 1/2")` 3.5 and `VALUE("1-1-1")` 36892 (2001-01-01, month-day-year with a
+one-digit year). Readers built on VALUE's grammar follow it: `IMABS("3 1/2")` is 3.5 (engineering.md "How an inumber
+is read").
+Evidence: probes/eng-inumber-date-boundary B21:B23, A22 (excel-graph, 2026-10-25).
+Ours: `#VALUE!` for all three (`value_text_number`, functions/text/common.rs).
+Status: VERIFIED (excel-graph); not implemented (T-2646).
+Tasks: T-2646
+
 ## REGEX* POSIX classes are Unicode (T-1903)
 Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:
 `alnum` L or N (`²`, `½`, `Ⅳ`, Arabic-Indic and fullwidth digits too); `alpha` L (`ª`, CJK; not `²` or `Ⅳ`); `ascii` U+0000-U+007F;

@@ -321,6 +321,15 @@ Reopen when a new hypothesis is recorded here, for example:
 - a density kernel for df >= 3.
 A dependency landing (T-2119 included) does not reopen it.
 
+Update 2026-10-24 (T-2513): the density hypothesis is found, so the density no longer blocks this task. For df >= 3,
+T.DIST(t,n,FALSE) is Loader's `dt` in Excel's x87 pieces (log branch at x² > n, bd0 below it, E stored, the
+denominator fl(fl(EXP(E)/fl(sqrt(w)))·fl(1/sqrt(2π)))); df 1 is 1/(π(1 + t·t)) and df 2 EXP(-1.5·LN(2 + t·t))
+(statistics.md "Student t density is Loader's dt (T-2513)"). With the exact Loader constant it is within 15 digits on
+977 of the verifier's 1,000 hold-out cells (CR 787) and on 18,631 of cells.tsv's 18,699 df >= 3 cells (CR 18,472); the
+per-df constant is still ±1-2 units off (T-2586). T-2585 ships it. The tails are T-2464's kernel call (statistics.md
+"Student t tails are one kernel call", T-2509). This task stays blocked until T-2585 and T-2509 land; then rescore
+the cells above and the B prefactor ("Student t prefactor per df") against them.
+
 T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): TDIST, T.DIST.2T, TTEST and T.TEST values off Excel's (the Student t tail and T.TEST's rounded-y path this task fits), from the last digit to the 13th (`T.DIST.2T(ODD(7),1E+10)` Excel 2.5596252476292973E-12, ours 2.5596252476292783E-12; `TDIST(DCOUNTA(..),6,2)` is T-1390's). x of 1E+300 is T-2474's.
 
 Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 247 known-failure lines in eval/baseline/gen-m9.txt, 19 visibly off.

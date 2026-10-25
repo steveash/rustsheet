@@ -1,0 +1,20 @@
+parse failures 0; c0 = +2.0665
+
+== hold2: n=960 unique(|t|,n)=960 dfs=[9.0, 11.0, 14.0, 16.0, 24.0, 28.0, 41.0, 53.0]...
+  CR            266/776/839 of 960
+  LT1e          501/959/960 of 960
+  exactC        573/960/960 of 960
+  LT1-insample  573/960/960 of 960
+  constmean     527/927/920 of 960
+  etab-shift+1  522/960/960 of 960
+  etab-shift-1  603/960/960 of 960
+  etab-shift+2  530/951/960 of 960
+  etab-shift+0.5386/924/960 of 960
+   df 9: LT1e 38/120/120 of 120 | exactC 76/120/120 of 120 | CR 33/112/120 of 120 | LT1e off -1.73
+   df 11: LT1e 70/120/120 of 120 | exactC 51/120/120 of 120 | CR 37/109/103 of 120 | LT1e off -1.75
+   df 14: LT1e 78/120/120 of 120 | exactC 78/120/120 of 120 | CR 26/106/115 of 120 | LT1e off +0.03
+   df 16: LT1e 78/120/120 of 120 | exactC 87/120/120 of 120 | CR 43/106/120 of 120 | LT1e off -0.23
+   df 24: LT1e 65/120/120 of 120 | exactC 65/120/120 of 120 | CR 38/89/93 of 120 | LT1e off +0.20
+   df 28: LT1e 73/120/120 of 120 | exactC 70/120/120 of 120 | CR 37/87/106 of 120 | LT1e off +0.33
+   df 41: LT1e 77/120/120 of 120 | exactC 77/120/120 of 120 | CR 25/80/86 of 120 | LT1e off -0.08
+   df 53: LT1e 22/119/120 of 120 | exactC 69/120/120 of 120 | CR 27/87/96 of 120 | LT1e off -1.52

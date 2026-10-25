@@ -1,0 +1,13 @@
+hold#2   (17.5,33.5) ss sd(c)   4.68 sd(dk)  2.65  k: slope +1.04 rho +0.59  M: slope +0.09 rho +0.06  shuf: slope -0.18 rho -0.10
+hold#3   (17.5,33.5) ss sd(c)   5.24 sd(dk)  2.63  k: slope +1.37 rho +0.69  M: slope -0.07 rho -0.04  shuf: slope +0.22 rho +0.11
+hold#5   (9.7,21.3) ss sd(c)   1.83 sd(dk)  0.88  k: slope +1.23 rho +0.59  M: slope +0.02 rho +0.01  shuf: slope +0.20 rho +0.10
+hold#6   (9.7,21.3) ls sd(c)   4.39 sd(dk)  2.44  k: slope +1.24 rho +0.69  M: slope +0.14 rho +0.08  shuf: slope -0.01 rho -0.01
+hold#8   (45.5,30.5) ss sd(c)   6.30 sd(dk)  3.42  k: slope +0.94 rho +0.51  M: slope -0.10 rho -0.05  shuf: slope +0.11 rho +0.06
+hold#9   (45.5,30.5) sl sd(c)   7.09 sd(dk)  4.65  k: slope +0.88 rho +0.58  M: slope +0.08 rho +0.05  shuf: slope +0.14 rho +0.09
+hold#11  (4.75,11.25) ss sd(c)   1.17 sd(dk)  0.42  k: slope +0.49 rho +0.18  M: slope -0.23 rho -0.07  shuf: slope -0.06 rho -0.02
+hold#12  (4.75,11.25) ss sd(c)   1.35 sd(dk)  0.68  k: slope +0.92 rho +0.46  M: slope -0.00 rho -0.00  shuf: slope +0.05 rho +0.03
+hold#14  (70.3,50.9) ss sd(c)  10.20 sd(dk)  6.05  k: slope +0.70 rho +0.41  M: slope -0.02 rho -0.01  shuf: slope +0.07 rho +0.04
+hold#15  (70.3,50.9) ss sd(c)  15.94 sd(dk) 10.88  k: slope +0.31 rho +0.21  M: slope +0.09 rho +0.06  shuf: slope +0.17 rho +0.11
+SUMMARY k: blocks 10  median rho +0.542  rho>0 in 10
+SUMMARY M: blocks 10  median rho +0.002  rho>0 in 5
+SUMMARY shuf: blocks 10  median rho +0.048  rho>0 in 7

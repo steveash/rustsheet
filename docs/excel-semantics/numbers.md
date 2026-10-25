@@ -75,6 +75,16 @@ Evidence: probes/trunc-decimal-stages A1–A56 (excel-graph, 2026-10-11, T-0297)
 Status: VERIFIED
 Implemented in: `fn_trunc` in functions/math_and_trigonometry/mathematical.rs, via `round_decimal` (T-0297)
 
+## FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from zero (T-2652)
+Rule (hypothesis): the CEILING/FLOOR family cuts `value/significance` to 15 significant digits before rounding, and a tie at
+the 16th digit goes away from zero, as INT's cut does (below), not to even: `FLOOR.PRECISE(x)` with x = -333333333333266.5
+exactly (`AVERAGE(100,0.5,100-1E+15)`) is -333333333333267, where a tie-to-even cut gives -333333333333266. No cut at all
+(a plain floor) also gives -333333333333267, so the cell does not tell the two apart. A typed
+16-digit literal is cut on entry, so a probe builds the tie from exact arithmetic.
+Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648). The other family members are not probed.
+Status: UNVERIFIED (one generated cell); `snap_ratio` (ceiling_floor.rs) cuts through `to_excel_precision`, ties to even.
+Tasks: T-2652
+
 ## INT cuts to 15 significant digits first (T-2171)
 Rule: INT rounds down after the same 15-significant-digit cut as TRUNC and ROUNDDOWN, so binary noise just below an
 integer does not drop a unit: `INT(1-2^-53)` = 1 (0.99999999999999989 reads 1.00000000000000), so does
@@ -760,6 +770,14 @@ Evidence: ironcalc-calc MOD_QUOTIENT.xlsx (Excel Online cached) C20 `MOD(10.0000
 C21 (d=-0.1) =-0.09999999990000055, C25 `MOD(5,1E-10)`=9.999981783901343e-11, C26 (d=-1E-10)=-1.821609865774887e-16.
 Status: VERIFIED (Excel-cached)
 
+## MOD of a small number by a huge opposite-sign divisor is 0 (T-2654)
+Rule (hypothesis): when the exact remainder plus the divisor rounds to the divisor itself, Excel's MOD is 0, not `d`:
+`MOD(1.005,d)` with d about -1E+30 (`(1.005^-0.0001)-SUMSQ(-1,1E+15,100,0.2,7,1,-0.5)`) is 0, where "fmod plus d" gives
+-1E+30. Other rules (a quotient path for tiny |n/d|) fit the one cell too.
+Evidence: gen-m5/abef960804539149 Calc!A400 (excel-graph, 2026-10-25, T-2648).
+Status: UNVERIFIED (one generated cell); the engine gives d.
+Tasks: T-2654
+
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`
 (sheet `SINH_COSH_TANH`; T-0914): COSH = `(e^x + e^-x)/2` (34/34 cells; libm 33/34); SINH uses the
@@ -1155,6 +1173,25 @@ product `RN64(ln 2) * log2 x` from the nearest 53-bit midpoint, in 53-bit ulps, 
 - Consequence for T-2144: no single model can match every fill at the unstable points; fit only on points that agree
   across fills (357 of 380 here); 12 of those 357 (11 old near-ties and one new point, d 2.36e-4 to 2.71e-4) stably return the
   neighbour the model does not, so inside the window Excel can be stable and still differ from the model.
+
+T-2144 fit (docs/research/t1941/ln_guard_bits.py): a k-bit internal product, truncated (tz) or rounded (rn), before RN64
+and RN53. Matches out of the 357 fill-stable points of T-2143's case / the fixture's 4,000 sampled points / its 30 near-ties
+(one research run) / probes/ln-fyl2x-kernel's 253 cells:
+
+| model | stable | sample | near-ties | kernel probe |
+|---|---|---|---|---|
+| shipped (no k) | 345 | 4000 | 0 | 226 |
+| k=66 tz / rn | 350 / 351 | 3998 / 3999 | 10 / 18 | 232 / 242 |
+| k=67 tz / rn | 353 / 354 | 3999 / 4000 | 9 / 18 | 233 / 242 |
+| k=68 tz / rn | 354 / 352 | 4000 / 4000 | 9 / 15 | 233 / 239 |
+| k=69 tz / rn | 352 / 350 | 4000 / 4000 | 8 / 10 | 232 / 236 |
+| k=70 tz / rn | 350 / 348 | 4000 / 4000 | 5 / 5 | 231 / 231 |
+| k=72 tz / rn | 346 / 346 | 4000 / 4000 | 1 / 1 | 227 / 227 |
+
+No candidate matches every fill-stable point. k=67 rn beats the shipped model on every column and loses no
+fill-stable point; its one loss is kernel probe B231 (x = 9.612345678912595), a near-tie whose Excel bit already differs between
+this probe's fill and the research run. It is the candidate T-2651 tests on the full T-1941 near-tie set before shipping.
+The model is unchanged until then (decision 0112).
 Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
 sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
 `test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.

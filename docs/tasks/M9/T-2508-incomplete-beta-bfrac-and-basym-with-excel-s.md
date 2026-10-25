@@ -1,0 +1,43 @@
+---
+id: T-2508
+title: "Incomplete beta bfrac and basym with Excel's density times x y as prefactor (T-2464 E6)"
+milestone: M9
+lane: functions-stat
+status: todo
+priority: P2
+size: S
+tier: opus
+campaign: visible
+depends_on: [T-2505, T-2507]
+---
+
+## Goal
+bratio's b0 >= 40 branches, bfrac and basym, are ported. bfrac uses λ = fl(a - fl((a+b)·x)) and brcomp = Excel's beta
+density times x·y (T-2507).
+
+## Context
+- T-2464 research, step E6 of docs/research/t2464/r2-impact/RESULTS.md section 4.
+- The rule is docs/excel-semantics/statistics.md "Incomplete beta L140 and bfrac" (w4-fractions sections 1-2).
+  - At (100, 120) the fraction error regresses on λ's rounding with slope -0.725; bfrac's own sensitivity is -0.71.
+  - The fraction's own arithmetic is not found (white residual, sd 3.8 units).
+- Models: r2-bratio `bratio_excel.py` (`bfrac`, `basym`, `Cfg(brcomp="pdf")`), w4-fractions `c/bfrac.cpp`.
+- Scores:
+  - w4: at least 185 of 1,024 bit-exact on the (100, 120) run (CR 34);
+  - r2-bratio BEST: 146/476/685 of 1,316 bfrac cells (CR 109/466/677). Most of the w15 misses are that run, where the
+    density for a, b > 2 sets the floor.
+- r2-impact's expected change: -83 visibly-off pre-T2464 cells and -438 in the w2f probes, with 1 broke.
+
+## Acceptance criteria
+- [ ] The bfrac cells of r2-bratio's sets score at least 146 bit-exact and 685 within 15 digits of 1,316, with the
+      engine's T-2507 density.
+- [ ] The (100, 120) run (t2464-w2f-xruns-1 block 7) scores at least 185 of 1,024 bit-exact.
+- [ ] No gated known-failure line is added.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- The fraction's own arithmetic (T-2512).
+
+## Visible-parity stage
+Decision 0083: this task is done when every bfrac or basym cell it owns is within half a unit of the 15th significant
+digit of Excel's value, or the cells still off are named in the Outcome and handed to T-2512. r2-impact counts 128
+visibly off pre-T2464; the model leaves 44. Bit-level criteria move to a follow-up task without the campaign key.

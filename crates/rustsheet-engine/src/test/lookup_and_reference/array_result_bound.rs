@@ -39,6 +39,24 @@ fn expand_rows_past_the_grid_are_num_columns_are_allowed_and_a_huge_wrap_count_c
 }
 
 #[test]
+fn expand_columns_are_num_from_one_past_two_to_the_twentieth() {
+    // Excel builds 1,048,576 columns in one row and refuses 1,048,577 with #NUM!; the cap counts
+    // columns, so two rows of 524,289 are built, which is above our cell bound (#ERROR!, DEVIATION,
+    // decision 0113). probes/t2452-expand-cols-*, -2x524289; arrays.md "Stacked results past the
+    // grid" (T-2452).
+    let mut model = new_empty_model();
+    model._set("A1", "=COLUMNS(EXPAND(1,1,1048576))");
+    model._set("A2", "=COLUMNS(EXPAND(1,1,1048577))");
+    model._set("A3", "=COLUMNS(EXPAND(1,2,524289))");
+    model._set("A4", "=COLUMNS(EXPAND(1,4,1048577))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1048576");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
+#[test]
 fn mmult_product_above_the_limit_is_bounded() {
     let mut model = new_empty_model();
     // A filled 2,000-row column and a filled 1,000-column row, so the product is numeric and

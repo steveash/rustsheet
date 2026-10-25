@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2456: every element of the T-2411 claims in lookup.md, read through INDEX: an error lookup_value element beside a failed text value index (H1-H2), each column of the HLOOKUP with a bad text range_lookup (H3-H4), and each row of the \"TRUE\" text range_lookup (H5-H6). A1:B2 = 1, one; 2, two. D1:E2 = 1, 2; a, b.",
+  "tags": [
+    "M2",
+    "probe",
+    "T-2456"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": "one",
+        "A2": 2,
+        "B2": "two",
+        "D1": 1,
+        "E1": 2,
+        "D2": "a",
+        "E2": "b",
+        "H1": "=ERROR.TYPE(INDEX(VLOOKUP({1;#N/A},A1:B2,\"a\"),1))",
+        "H2": "=ERROR.TYPE(INDEX(VLOOKUP({1;#N/A},A1:B2,\"a\"),2))",
+        "H3": "=ERROR.TYPE(INDEX(HLOOKUP({1,2},D1:E2,2,\"x\"),1,1))",
+        "H4": "=ERROR.TYPE(INDEX(HLOOKUP({1,2},D1:E2,2,\"x\"),1,2))",
+        "H5": "=INDEX(VLOOKUP({1;2},A1:B2,2,\"TRUE\"),1)",
+        "H6": "=INDEX(VLOOKUP({1;2},A1:B2,2,\"TRUE\"),2)"
+      }
+    }
+  ],
+  "expected": {}
+}

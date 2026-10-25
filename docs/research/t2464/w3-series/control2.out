@@ -1,0 +1,15 @@
+== absweep:2 (rows: synthetic truth; cols: candidate)   real Excel row last
+   fwd 1/a     fwd 1/a:  512  fwd 1:  323  exact S:  208   of 512
+   fwd 1       fwd 1/a:  323  fwd 1:  512  exact S:  245   of 512
+   exact S     fwd 1/a:  208  fwd 1:  245  exact S:  512   of 512
+   REAL EXCEL  fwd 1/a:  426  fwd 1:  282  exact S:  190   of 512
+== xruns-1:6 (rows: synthetic truth; cols: candidate)   real Excel row last
+   fwd 1/a     fwd 1/a: 1024  fwd 1:  301  exact S:  165   of 1024
+   fwd 1       fwd 1/a:  301  fwd 1: 1024  exact S:  190   of 1024
+   exact S     fwd 1/a:  165  fwd 1:  190  exact S: 1024   of 1024
+   REAL EXCEL  fwd 1/a:  770  fwd 1:  283  exact S:  237   of 1024
+== xruns-1:3 (rows: synthetic truth; cols: candidate)   real Excel row last
+   fwd 1/a     fwd 1/a: 1024  fwd 1: 1024  exact S:  677   of 1024
+   fwd 1       fwd 1/a: 1024  fwd 1: 1024  exact S:  677   of 1024
+   exact S     fwd 1/a:  677  fwd 1:  677  exact S: 1024   of 1024
+   REAL EXCEL  fwd 1/a:  950  fwd 1:  950  exact S:  639   of 1024

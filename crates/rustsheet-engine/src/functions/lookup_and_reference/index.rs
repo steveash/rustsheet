@@ -1,10 +1,12 @@
 //! INDEX: one cell, row, column or area of a reference or an array, lifted element-wise over
 //! array indices (docs/excel-semantics/lookup.md).
 
+use super::drop_take::Edge;
 use crate::arithmetic::bcast_get;
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{array_element_value, near_integer_count, NEAR_INTEGER_TOLERANCE};
+use crate::functions::Function;
 use crate::limits::check_array_size;
 use crate::nested_array::NestedBudget;
 use crate::reference_operators::{three_d_needs_one_sheet, RefArg, RefElement, RefGrid};
@@ -147,6 +149,10 @@ fn index_from_array(
     if top_left || (row_eff != 0 && col_eff != 0) {
         return match arr.get(row_start - 1).and_then(|r| r.get(col_start - 1)) {
             Some(ArrayNode::Nested(nested)) if !top_left => nested.value(budget, cell),
+            // A blank element of an array value is the empty value IFERROR gives a blank cell:
+            // ISBLANK TRUE, `&` "", yet COUNT counts it (`COUNT(INDEX(HSTACK(Z1:Z2,{1;2}),1,1))`
+            // is 1; probes/t2413-blank-in-stacked-arrays A1:A6, arrays.md T-2413 paragraph).
+            Some(ArrayNode::Empty) if !top_left => CalcResult::EmptyArg,
             // A LAMBDA element is that LAMBDA: `TYPE(INDEX(SCAN(..),1,1))` is 128 and a LET name
             // bound to it calls (probes/lambda-arrays B5, B6).
             Some(node) => array_element_value(node, cell),
@@ -275,7 +281,7 @@ impl Model {
             // and-array-constant-at H1, T-1643), `INDEX(XMATCH(2,{1,2,3}),1,1)` 2 and `INDEX(5,2)`
             // `#REF!` (probes/lookup-argument-modes, m7-argument-modes, index-literal-scalar; T-1645).
             PickedReference::Node(reference) => {
-                scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell), cell)
+                scalar_as_one_element_array(self.index_source(reference, cell), cell)
             }
             PickedReference::Read(read) => scalar_as_one_element_array(read, cell),
             PickedReference::Value(value) => {
@@ -283,6 +289,28 @@ impl Model {
             }
         };
         self.index_select(&arg, numbers, two_arg, cell, form)
+    }
+
+    /// INDEX's first argument as it picks from it: TAKE and DROP over a range are the reference
+    /// they return, so the cell picked is a reference and a blank one stays blank
+    /// (`ISREF(INDEX(TAKE(Z1:Z2,2),1,1))` is TRUE and `COUNT` of it 0, where over an array value
+    /// the blank element counts: probes/t2461-blank-array-sources A10, A27, A28, A36; T-2461).
+    fn index_source(&mut self, reference: &Node, cell: CellReferenceIndex) -> RefArg {
+        let edge = match reference.ungrouped() {
+            Node::FunctionKind {
+                kind: Function::Take,
+                args,
+            } => Some((Edge::Take, args)),
+            Node::FunctionKind {
+                kind: Function::Drop,
+                args,
+            } => Some((Edge::Drop, args)),
+            _ => None,
+        };
+        match edge {
+            Some((edge, args)) => self.take_drop_reference(args, cell, edge, true),
+            None => self.evaluate_reference_arg(reference, cell),
+        }
     }
 
     /// INDEX's `row_num`, `column_num` and `area_num` (`args[1..]`), evaluated and validated, or

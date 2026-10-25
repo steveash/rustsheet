@@ -1,0 +1,14 @@
+hold   ALG=toms  ALL            M1:  2318/ 3981/ 4060 of  4096  M2:  3106/ 3991/ 4062 of  4096
+hold   ALG=toms  a1big          M1:   704/  956/  953 of   960  M2:   957/  957/  957 of   960
+hold   ALG=toms  albig          M1:   287/  851/  932 of   960  M2:   371/  858/  929 of   960
+hold   ALG=toms  blt1           M1:   180/  478/  479 of   480  M2:   256/  480/  480 of   480
+hold   ALG=toms  gl             M1:   704/  960/  960 of   960  M2:   960/  960/  960 of   960
+hold   ALG=toms  runs           M1:   333/  576/  576 of   576  M2:   403/  576/  576 of   576
+hold   ALG=toms  w4             M1:   110/  160/  160 of   160  M2:   159/  160/  160 of   160
+hold   ALG=exact ALL            M1:  2318/ 3981/ 4060 of  4096  M2:  3469/ 4051/ 4079 of  4096
+hold   ALG=exact a1big          M1:   704/  956/  953 of   960  M2:   957/  957/  957 of   960
+hold   ALG=exact albig          M1:   287/  851/  932 of   960  M2:   505/  918/  946 of   960
+hold   ALG=exact blt1           M1:   180/  478/  479 of   480  M2:   323/  480/  480 of   480
+hold   ALG=exact gl             M1:   704/  960/  960 of   960  M2:   960/  960/  960 of   960
+hold   ALG=exact runs           M1:   333/  576/  576 of   576  M2:   565/  576/  576 of   576
+hold   ALG=exact w4             M1:   110/  160/  160 of   160  M2:   159/  160/  160 of   160
