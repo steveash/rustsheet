@@ -3,7 +3,7 @@ id: T-2496
 title: "Probe the inner sub-expressions of 28 gen-m9 financial cells of the T-2257 sweep whose divergence is not traced"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
