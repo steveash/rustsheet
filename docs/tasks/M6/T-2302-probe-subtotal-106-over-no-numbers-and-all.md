@@ -3,7 +3,7 @@ id: T-2302
 title: "Probe SUBTOTAL 106 over no numbers (and all-hidden numeric rows)"
 milestone: M6
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
