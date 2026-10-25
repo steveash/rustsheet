@@ -75,7 +75,6 @@ pub(crate) fn excel_expm1(x: f64) -> f64 {
 
 /// [`excel_exp_extended`] with step 3's RN64(2^f - 1) taken from `two_to_the_minus_one`, so the
 /// tests can run the whole model on the reference series.
-#[inline]
 fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
     let (negative, a_significand, a_exponent) = a.parts();
     // A zero (no top bit) gives 1. Otherwise 2^top <= |a| < 2^(top + 1); a significand has at
@@ -574,17 +573,16 @@ mod tests {
                 assert_eq!(extended.to_bits(), excel_exp(a).to_bits(), "a = {a:e}");
             }
         }
-        for a in [
-            0.0,
-            -0.0,
-            1386.0,
-            1387.0,
-            -1386.0,
-            -1387.0,
-            2048.0,
-            f64::MAX,
-            -f64::MAX,
-        ] {
+        // Around the T_LIMIT guard (|a| log2 e = 2000 at |a| about 1386.29, inside the 2^10
+        // binade that takes the stored test) and the binade edges 1024 and 2048.
+        let guard = 2000.0 / std::f64::consts::LOG2_E;
+        let mut edges = vec![0.0, 1386.0, 1387.0, f64::MAX];
+        for centre in [guard, 1024.0, 2048.0] {
+            let bits = centre.to_bits();
+            edges.extend([f64::from_bits(bits - 1), centre, f64::from_bits(bits + 1)]);
+        }
+        let negated: Vec<f64> = edges.iter().map(|a| -a).collect();
+        for a in edges.into_iter().chain(negated) {
             assert_eq!(
                 excel_exp_extended(full_width(a)).to_bits(),
                 excel_exp(a).to_bits(),

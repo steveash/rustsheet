@@ -22,7 +22,7 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// `#NUM!` whatever the other arguments: 2^31 - 1, so 2^31 - 2 trials is the most Excel evaluates
 /// (statistics.md "BINOM.DIST is #NUM! from 2^31 - 1 trials"; probes-numeric
 /// t2645-binom-trials-limit, excel-graph: every k, both cumulative modes, p = 0 and 1 too).
-const TRIALS_LIMIT: f64 = 2_147_483_647.0;
+const TRIALS_LIMIT: f64 = crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
 impl Model {
     /// `BINOM.DIST(number_s, trials, probability_s, cumulative)`, and BINOMDIST.
@@ -44,15 +44,12 @@ impl Model {
         let trials = self.cast_number_ref(trials, cell)?.trunc();
         let p = self.cast_number_ref(p, cell)?;
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
-        if trials < 0.0
+        if !(0.0..TRIALS_LIMIT).contains(&trials)
             || number_s < 0.0
             || number_s > trials
             || p.is_nan()
             || !(0.0..=1.0).contains(&p)
         {
-            return Err(num_error(cell));
-        }
-        if trials >= TRIALS_LIMIT {
             return Err(num_error(cell));
         }
         let n = trials as u64;
@@ -124,7 +121,7 @@ impl Model {
             Some(value) => self.cast_number_ref(value, cell)?.trunc(),
             None => number_s,
         };
-        if trials < 0.0
+        if !(0.0..TRIALS_LIMIT).contains(&trials)
             || number_s < 0.0
             || number_s2 < 0.0
             || number_s > number_s2
@@ -132,9 +129,6 @@ impl Model {
             || p.is_nan()
             || !(0.0..=1.0).contains(&p)
         {
-            return Err(num_error(cell));
-        }
-        if trials >= TRIALS_LIMIT {
             return Err(num_error(cell));
         }
         let n = trials as u64;
@@ -186,6 +180,7 @@ impl Model {
         let p = self.cast_number_ref(p, cell)?;
         let alpha = self.cast_number_ref(alpha, cell)?;
         if trials < 0.0
+            // Not TRIALS_LIMIT: BINOM.INV and CRITBINOM at 2^31 - 1 trials are unprobed.
             || trials > u64::MAX as f64
             || p.is_nan()
             // Probability 0 is #NUM! too, unlike BINOMDIST (probes-numeric/m9-legacy-critbinom A23, A24).
@@ -252,7 +247,8 @@ impl Model {
         if number_f < 0.0 || number_s < 1.0 || probability_s <= 0.0 || probability_s >= 1.0 {
             return Err(num_error(cell));
         }
-        // Guard against absurdly large failures that won't fit in u64
+        // Guard against absurdly large failures that won't fit in u64. Not TRIALS_LIMIT:
+        // NEGBINOM.DIST has no 2^31 - 1 limit (probes-numeric/t2645-binom-trials-limit A34, A46).
         if number_f > (u64::MAX as f64) {
             return Err(num_error(cell));
         }
