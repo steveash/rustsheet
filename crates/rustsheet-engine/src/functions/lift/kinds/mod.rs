@@ -345,6 +345,12 @@ impl ArgKinds {
         }
     }
 
+    /// Whether `count` is between the function's least and most arguments, whole `repeat`
+    /// cycles aside (see [`ArgKinds::accepts`]).
+    pub(crate) fn takes_count(&self, count: usize) -> bool {
+        (self.required..=self.max).contains(&count)
+    }
+
     /// Whether a call with `count` arguments is valid: past `params` only whole cycles of
     /// `repeat` (`SORTBY` takes 2, 3, 5, 7, ... arguments).
     pub(crate) fn accepts(&self, count: usize) -> bool {
@@ -353,7 +359,7 @@ impl ArgKinds {
             // An empty `repeat` takes no argument past `params`.
             Some(past) => !self.repeat.is_empty() && past % self.repeat.len() == 0,
         };
-        (self.required..=self.max).contains(&count) && whole_cycles
+        self.takes_count(count) && whole_cycles
     }
 }
 

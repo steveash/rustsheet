@@ -25,8 +25,8 @@ matters and ERROR.TYPE for every error cell. Cover:
 - recursion and subroutines: `(?R)`, `(?1)`, `(?&n)`;
 - `.` over `UNICHAR(128512)`, both REGEXEXTRACT all-matches and LEN;
 - escapes and classes: `\v`, `\N`, `\x{1F600}`, `\p{Greek}`, `\p{Han}`;
-- `\Z` before a final `CHAR(10)`; `$` before a final `CHAR(13)`, CRLF and U+2028; `.` on `CHAR(13)`; `(?s)`, `(?m)`,
-  `(?n)`;
+- `(?s)`, `(?m)`, `(?n)` (`\Z` before a final LF, `$` before a final CR, CRLF and U+2028 and `.` on a CR are answered by
+  probes/t2364-regex-newline-convention, T-2364);
 - verbs and callouts: `(*SKIP)(*FAIL)`, `(*UTF)`, `(?C1)`;
 - `\G`;
 - `x*+` and `x{2,}+` possessives;
@@ -42,10 +42,15 @@ Added by T-1973 (its Excel-fidelity review): also probe the syntax the T-1973 pa
 without evidence (text.md "REGEX* character classes are Unicode"):
 - spaces in quantifier braces: `a{1, 2}`, `a{ 2}`, `a{2 }`;
 - bracket set operators: `[a--b]`, `[a~~b]`, `[a||b]`, `[[a-z]--[aeiou]]`, `[!-[]`;
-- escapes and flags: `\Z` before a final LF, `\v`, `\<`, `^*`, `(?n)`, `(?-)`, `\e`, `\cX`, `[\b]`, `\p{^Lu}`;
+- escapes and flags: `\v`, `\<`, `^*`, `(?n)`, `(?-)`, `\e`, `\cX`, `[\b]`, `\p{^Lu}`;
 - a lone `{` and `(?x)[ a]`;
 - a 33-character group name;
-- `(?m)^` after a final LF (`REGEXREPLACE("a"&CHAR(10),"(?m)^","x")`; ours gives "xa\nx").
+- `(?m)^` after a final LF (`REGEXREPLACE("a"&CHAR(10),"(?m)^","x")`; ours gives "xa\nx"), and after a final CR
+  (`REGEXREPLACE("a"&CHAR(13),"(?m)^","x")`; ours gives "xa\rx" since T-2364).
+
+Added by T-2364 (its Excel-fidelity review): PCRE2's ANYCRLF bump-along, which skips the position between a CR and its LF
+after a failed attempt at the CR unless the pattern holds a literal CR or LF: `REGEXTEST("a"&CHAR(13)&CHAR(10)&"b","\s\w")`
+(FALSE if Excel does it; ours TRUE), with `"\r\n\w"` and `"\n\w"` controls.
 
 ## Acceptance criteria
 - [ ] probes/regex-pcre2-limits has excel-graph values for every question above. Record a question excel-graph
