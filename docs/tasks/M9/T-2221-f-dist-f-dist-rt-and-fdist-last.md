@@ -101,6 +101,12 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (3): Calc!A6, A183, A366
 - gen-m9/fec39efaba9284c3.case.json (2): Calc!A184, A322
 
+T-2502 (2026-10-25) settles part of this: F.DIST, F.DIST.RT and FDIST at a df of 2 take Excel's closed forms on
+bratio's oriented arguments with w5's x = 1/(1 + d2/(d1·X)), y = 1/(1 + (d1·X)/d2), bit-exact on all 367 F closed-form
+cells of T-2464 w5-triangulation (t2220-f-dist-sweep-cdf, -rt, -d1-1, -d2-1: 70 cells fixed). The tail choice is
+bratio's dispatch, not the mean (statistics.md "Incomplete beta is TOMS 708 `bratio`"); the other shapes' last digits
+need bratio's branches (T-2505 onwards).
+
 ## Acceptance criteria
 - [ ] The F_DIST.xlsx Sheet1!F3 line disappears from eval/baseline/ironcalc-calc.txt
       (`make eval-baseline`), with no new line in any baseline.
