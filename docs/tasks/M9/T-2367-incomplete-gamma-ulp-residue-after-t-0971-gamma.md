@@ -30,6 +30,17 @@ ulp, under decision 0083's standing ulp allowance:
   `CHIDIST(LN(7),9)` (a7bf0d8d81d33ba6 A121) 0.9922943358901939 vs 0.9922943358901938 (1); the `CHISQ.INV.RT` in
   d0854366830dcdee A238 5.4441969945493144E-15 vs 5.444196994549313E-15 (2); `CHIDIST(...,10)`
   (fd9fa22d212080d6 A123) 0.9908757207816048 vs 0.9908757207816047 (1).
+Ungated probes-numeric cells newly 1 ulp off with T-0971:
+- m9-chisq-inv-rt A40, m9-chisq-inv A38;
+- m9-gamma-dist-a0p5 A22, m9-gamma-dist-a1 A24 and A26, m9-gamma-dist-a2 A2 and A12;
+- m9-gamma-inv A31, A32 and A38;
+- t1048-gammainv A1, A15, B1 and B15.
+
+Also probes-numeric/m9-chisq-dist-rt A14 `CHISQ.DIST.RT(6,3)`. It moved from 8 to 19 ulp off Excel's
+0.11161022509471255, which is 1 ulp from the 50-digit value, while ours is 18 ulp from it. That makes it the one
+cdf cell left where Excel is accurate and ours is not, at a = 1.5 (the continued fraction or prefactor). Add
+a = 1.5 to the mpmath unit-test grid.
+
 The series now runs to 2^-54 instead of statrs' 1E-15 (about 8% more terms near x = a), so an inversion's shared
 budget runs out at a smaller shape than statrs' 3.5E8 (T-1872's 3-million-sample sweep): `GAMMA.INV(1E-5,7.9E8,1E-6)`
 is now `#NUM!` (530,000 terms over its cdfs), shape 3E8 still finishes. docs/excel-semantics/statistics.md

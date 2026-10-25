@@ -196,7 +196,7 @@ CHISQ.DIST.RT, CHIDIST, CHISQ.TEST and CHITEST take Q directly. The densities of
 statistics.md "Incomplete gamma: accurate kernel (T-0971)" records both.
 
 Eval, merged with main at 8c586da (2026-10-25):
-- gen-m9 5,664 -> 5,535 known failures (142 fixed);
+- gen-m9 5,664 -> 5,531 known failures (146 fixed);
 - ironcalc-calc 737 -> 682 (57 fixed; 29 of the 43 lines listed above);
 - probes 2,570 -> 2,558 (12 fixed).
 
@@ -207,7 +207,10 @@ the owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jB
 numeric, 1-2 ulp and not visibly off:
 - `ironcalc-calc/STATISTICAL/GAMMA.xlsx` `GAMMA.DIST GAMMA.INV!F38` (Excel 1, ours 0.9999999999999999);
 - `POISSON.xlsx` `POISSON.DIST!D16` (0.9863047314016171 vs 0.986304731401617);
-- 13 gen-m9 cells: CHIINV, GAMMA.INV, POISSON, CHIDIST, CHISQ.INV and CHISQ.INV.RT. T-2367 lists them with their values.
+- 13 gen-m9 cells: CHIINV, GAMMA.INV, POISSON, CHIDIST, CHISQ.INV and CHISQ.INV.RT. They are 146b46e74f2dac3b A307,
+  2801c1c11c21e134 A332, 38e4fc309fe199ea A57, 530c636749a85209 A242, 899f9555e67da2d6 A5, 984cba67bbe6972b A216,
+  a612e89321a6df9c A273, a61e547a1cab994c A1, a7bf0d8d81d33ba6 A121, c7664e494e418395 A256, d0854366830dcdee A238,
+  f2bd5f380ec002bf A174 and fd9fa22d212080d6 A123. T-2367 gives their values.
 
 The criteria that are not met:
 - **Visible parity.** 56 of the 68 gen-m9 cells reached it. The other 12 are still visibly off. So are four ironcalc-calc
@@ -218,4 +221,10 @@ The criteria that are not met:
   ones checked against 50 digits, ours is correctly rounded and Excel 7-37 ulp off. So Excel's tail forms need
   fitting. T-2638 (campaign: visible) owns all 21 cells.
 - **Bit-exact residue.** The ulp-level cells, 1-4 ulp, are owned by T-2367, along with the cap-shape measurement.
-  Ungated probes-numeric has 14 cells newly 1 ulp off.
+  Ungated probes-numeric has 14 cells newly 1 ulp off, also owned by T-2367:
+  - m9-chisq-inv-rt A40, m9-chisq-inv A38;
+  - m9-gamma-dist-a0p5 A22, m9-gamma-dist-a1 A24 and A26, m9-gamma-dist-a2 A2 and A12;
+  - m9-gamma-inv A31, A32 and A38;
+  - t1048-gammainv A1, A15, B1 and B15.
+- The kernel lives in `incomplete_gamma.rs`, which T-0972, POISSON and CHISQ.TEST already import from, not in
+  `special.rs` as the Context proposed. It shares `rlog1` and `stirling_correction` with `incomplete_beta.rs`.

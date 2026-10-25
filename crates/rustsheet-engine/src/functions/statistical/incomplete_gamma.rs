@@ -45,6 +45,7 @@ use std::cell::RefCell;
 use statrs::distribution::{Continuous, ContinuousCDF, Gamma};
 use statrs::prec;
 
+use super::incomplete_beta::{rlog1, stirling_correction};
 use super::special::refine_increasing;
 
 /// The most series or continued-fraction terms one cdf, or one whole inversion, may take. The
@@ -114,34 +115,6 @@ fn lower_of_underflow(a: f64) -> f64 {
     }
 }
 
-/// `x - ln(1 + x)` for `x > -1`, without the cancellation of the two terms near 0 (TOMS 654's
-/// `rlog1`): its alternating series below |x| = 1/4, where it converges by a factor of 4 a
-/// term, else the subtraction itself.
-fn x_minus_ln_1p(x: f64) -> f64 {
-    if x.abs() >= 0.25 {
-        return x - x.ln_1p();
-    }
-    // x^2/2 - x^3/3 + x^4/4 - ...: 4^-60 is far below an ulp of the first term.
-    let mut power = x * x;
-    let mut sum = 0.0;
-    for n in 2..62_u32 {
-        let term = power / f64::from(n);
-        sum += if n % 2 == 0 { term } else { -term };
-        power *= x;
-        if term.abs() <= sum.abs() * f64::EPSILON * 0.25 {
-            break;
-        }
-    }
-    sum
-}
-
-/// Stirling's correction ln Gamma(a) - ((a - 1/2) ln a - a + ln sqrt(2 pi)) for a >= 20, to well
-/// under an ulp of the prefactor.
-fn stirling_correction(a: f64) -> f64 {
-    let t = 1.0 / (a * a);
-    (((((-1.0 / 1680.0) * t + 1.0 / 1260.0) * t - 1.0 / 360.0) * t) + 1.0 / 12.0) / a
-}
-
 /// x^a e^-x / Gamma(a), the factor in front of both P(a, x) and Q(a, x). For a large shape the
 /// exponent a ln x - x - ln Gamma(a) cancels to a small number and loses its digits, so it is
 /// rewritten as sqrt(a / 2 pi) exp(-a rlog1(x/a - 1) - correction(a)) (TOMS 654's
@@ -164,7 +137,7 @@ fn gamma_prefactor(a: f64, x: f64) -> f64 {
     // (x - a) / a one rounding; further out x / a is the one rounding, where (x - a) / a would lose
     // the digits of 1 + u (2.5E-12 of P(93.4, 0.18)).
     let rlog = if x >= a * 0.5 && x <= a * 2.0 {
-        x_minus_ln_1p((x - a) / a)
+        rlog1((x - a) / a)
     } else {
         let ratio = x / a;
         (ratio - 1.0) - ratio.ln()

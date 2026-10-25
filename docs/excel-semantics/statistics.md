@@ -887,7 +887,9 @@ The values past the cap were already wrong on main where it finished (statrs los
  `GAMMA.DIST(1E12,1E12,1,TRUE)` 0.49898078573633475, `POISSON(1E12,1E12,TRUE)` 0.49906665837352593), and so are
 the kept ones at df 1E10 (E16, E17: 0.4999982128217492; E20: T-0971).
 DEVIATION (decision 0014, CLAUDE.md directive 5): where statrs never finished, panicked, or needs more than 2^19
-terms, the capped incomplete gamma is `#NUM!` and Excel gives a number. statrs' series never converges once
+terms, the capped incomplete gamma is `#NUM!` and Excel gives a number. (Since T-0971 the kernel is the accurate pair, not
+statrs' series and continued fraction. `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, E4, is now 1, as Excel's is. The
+shape thresholds below were measured on statrs, and T-2367 re-measures them.) statrs' series never converges once
 `a + 1 == a` (a shape of 2^53 or more: `GAMMA.DIST(1E16,1E16,1,TRUE)`, `POISSON(1E16,1E16,TRUE)`,
 `GAMMA.DIST(1E300,1E300,1,TRUE)`, `GAMMA.INV(0.5,1E300,1E-300)`: E1-E3, E5), its continued fraction never ends once its
 terms are NaN (`GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, E4); where x / beta overflows it panicked, and Excel is
@@ -930,7 +932,7 @@ directly (TOMS 654's small-shape Q, with ln Gamma(1 + a) from its zeta series); 
 Unit tests (`incomplete_gamma.rs`): within 8 units of 2^-52 of mpmath at a in {0.001, 0.01, 0.3, 0.5, 9, 500}, P + Q = 1
 within 2 of them, the a = 1 identity, the b = 1E6 scale. The 2^19-term cap (section above) is unchanged; the series now
 runs to 2^-54 instead of 1E-15, about 8% more terms near x = a, so an inversion's budget runs out at a somewhat smaller
-shape than statrs' (`GAMMA.INV(1E-5,7.9E8,1E-6)` is now `#NUM!`; 3E8 still finishes; follow-up T-0971's Outcome).
+shape than statrs' (`GAMMA.INV(1E-5,7.9E8,1E-6)` is now `#NUM!`; 3E8 still finishes; T-2367 measures the bound).
 Where the prefactor underflows to 0 the tail it multiplies is 0 at once, as statrs' `ax < MIN_LN` shortcut had it:
 past x = 2^54 the continued fraction's `b += 2` leaves b unchanged and its delta stays an ulp below 1, so without the
 shortcut `CHISQ.DIST(1E30,10,TRUE)`, `GAMMADIST(1E300,123456789.123,1E5,TRUE)` and

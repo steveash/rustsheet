@@ -54,6 +54,16 @@ Cells (Excel vs ours):
 - ironcalc-calc/STATISTICAL/GAMMA.xlsx GAMMA.DIST GAMMA.INV!E16: 5.38226469068969e-54 vs 5.382264690689696e-54 (6 ulp)
 - new: gen-m9/f34f66fb7f81e673 Calc!A3 `CHIDIST(Data!A2,8)`: 4.26915920514494e-18 vs 4.269159205144934e-18 (7 ulp; statrs ...943)
 
+Already visibly off, and further from Excel with T-0971 (unowned until now):
+- gen-m9/73f053591a54bc43 A108 `NORMSDIST(MOD(...CHISQ.INV.RT(0.975,5)))`: 46 -> 417 ulp. MOD magnifies the
+  CHISQ.INV.RT residue.
+- probes-numeric m9-legacy-chidist A71 and A72 `CHIDIST(1000,30)`: 110 -> 410 ulp. Ours is 5 ulp from the true value
+  and Excel 405, so this is Excel's tail.
+- probes-numeric m9-gamma-dist-a500 A1, A11 and A21 `GAMMA.DIST(50,500,1,TRUE)`: 545 -> 773 ulp. At 5.4E-307 ours is
+  961 ulp from the true value and Excel 188.
+- probes-numeric m9-gamma-dist-a50 A22, A24 and A28: `#NUM!` on main, now numbers that are visibly off (67, 17 and
+  12 ulp).
+
 docs/excel-semantics/statistics.md "Incomplete gamma: accurate kernel (T-0971)".
 
 ## Acceptance criteria
