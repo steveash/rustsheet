@@ -3,11 +3,11 @@ id: T-2737
 title: "BINOM.DIST, NEGBINOM.DIST, GAMMA.DIST, EXPON.DIST cdfs and the CHISQ.DIST density flush a subnormal; the NEGBINOM.DIST pmf at f = 0 keeps it"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-2706]
 ---
 
 ## Goal
