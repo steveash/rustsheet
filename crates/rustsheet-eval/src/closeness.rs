@@ -1,5 +1,5 @@
 //! How close a function's scored cells come to Excel: the six buckets of the parity page
-//! (`tools/src/rustsheet_tools/parity_report.py`, T-2041), counted by the report (T-2036).
+//! (`tools/src/rustsheet_tools/progress_report/parity.py`, T-2041), counted by the report (T-2036).
 //!
 //! The buckets follow decision 0083's order of parity: a cell is *visibly* right when the 15
 //! significant digits Excel shows are right (`digits15` and better), and visibly off otherwise
