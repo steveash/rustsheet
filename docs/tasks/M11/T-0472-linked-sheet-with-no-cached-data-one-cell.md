@@ -24,6 +24,8 @@ rustsheet matches the three cells of fixtures/external-link-uncached-lookups tha
 - Refs!B44 `=COUNTA([1]Sort!$B:$B)`: Excel 1048576, rustsheet 0. A linked-but-uncached sheet's cells count as
   non-empty (blocked), unlike a reference with no link at all, where COUNTA is 0 (probes/external-ref-no-link-index).
   `external_non_empty_count` returns `None` for an uncached area, so the caller counts 0.
+- Route XLOOKUP's one-cell case through `evaluate_lookup_table_arg` / `external_lookup_table` rather than a second
+  helper (architecture review of T-0457).
 
 ## Acceptance criteria
 - [ ] The three cells pass; the fixtures baseline shrinks by 3 with 0 regressions.

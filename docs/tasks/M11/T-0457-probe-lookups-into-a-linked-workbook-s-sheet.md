@@ -33,7 +33,7 @@ probes/external-ref-no-link* (no link part at all).
       VLOOKUP, HLOOKUP, MATCH and XLOOKUP over one cell, a small range and a whole column of
       that sheet, found and not found.
 - [x] The quirk is recorded in docs/excel-semantics/references.md; rustsheet matches it, or a
-      DEVIATION entry explains why it cannot (directive 5).
+      DEVIATION entry explains why it cannot (directive 5). Except 3 cells (B13, B38, B44), tracked in T-0472.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -53,5 +53,5 @@ Engine: a linked sheet the cache holds no cell of is now uncached (`#BLOCKED!` o
 cached sheet to the cache's extent (whole-column VLOOKUPs over cached sheets were `#ERROR!`, past the array bound).
 
 Eval delta: fixtures 23 -> 24 cases, 48/51 new cells pass, 3 new-coverage known failures (B13 one-cell XLOOKUP, B38
-refreshError `#REF!`, B44 COUNTA), filed as **T-0472**; corpus-bench known failures 12 -> 11 (56637 now passes);
+refreshError `#REF!`, B44 COUNTA), filed as **T-0472**; the cache-scan cost reviewers noted is **T-0473**; corpus-bench known failures 12 -> 11 (56637 now passes);
 0 regressions in every suite (poi and corpus-bench fetched; calipers not fetched).
