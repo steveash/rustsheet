@@ -83,4 +83,4 @@ Excel's type and value.
 - Eval delta: probes +4 cases (3,051 cells, all passing), known failures unchanged in every gated suite, 0 regressions.
   calipers (not gated): the 8 owned cells pass. `update-baseline --suite calipers` still refuses because of 36 cells
   (pv_goldens PPMT/NPV ulps and CHISQ.INV) that fail on `main` too (checked with a build of `main`; owned by T-2708 and
-  T-0463), so calipers.txt is not ratcheted here: the eight T-2714 cells' `F` lines leave it with T-0463's ratchet.
+  T-0463), so calipers.txt is not ratcheted here: the four I88 and H89 `F` lines leave it with T-0463's ratchet.
