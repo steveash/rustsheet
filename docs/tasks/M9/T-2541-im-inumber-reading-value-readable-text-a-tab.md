@@ -36,9 +36,9 @@ Cells:
 - gen-m9/c2d778463fe008ed.case.json (1): Calc!A232
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The probe case is oracle-filled and every cell passes.
+- [x] Visible parity (gen-m9, T-2258): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`); the only new known-failure line is probes S!A5 of the new probe (T-2641).
+- [x] The probe case is oracle-filled; every cell passes but A5 (`"$1+2i"`, already failing on main, scope moved to T-2641).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -47,4 +47,4 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
 
 ## Outcome
-`complex_of` is now a `Model` method: a number argument is read at full precision, text over 255 characters is `#VALUE!`, a leading tab or U+3000 is `#NUM!`, and text `parse_complex_number` rejects falls back to VALUE's reading (`value_text_number`). gen-m9: the 8 owned lines are removed from the baseline, no regressions. New probe probes/eng-inumber-reading (19 cells, oracle-filled; 17 pass). Two cells differ and are filed as T-2641 (ISO date text, `$` before a complex number).
+`complex_of` is now a `Model` method: a number argument is read at full precision, text over 255 characters is `#VALUE!`, a leading tab or U+3000 is `#NUM!`, and text `parse_complex_number` rejects falls back to VALUE's reading (`value_text_number`). gen-m9: the 8 owned lines are removed from the baseline, no regressions. New probe probes/eng-inumber-reading (19 cells, oracle-filled; 18 pass). The date-shaped guard keeps `IMABS("2024-01-01")` `#NUM!`. The one cell that differs, `$` before a complex number, is T-2641.

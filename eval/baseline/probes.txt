@@ -1569,7 +1569,6 @@ F	probes/eng-imln-modulus-range.case.json	S!A54
 F	probes/eng-imln-modulus-range.case.json	S!A56
 F	probes/eng-imln-modulus-range.case.json	S!A79
 F	probes/eng-imln-modulus-range.case.json	S!A80
-F	probes/eng-inumber-reading.case.json	S!A4
 F	probes/eng-inumber-reading.case.json	S!A5
 F	probes/fin-amor-period-bound-b.case.json	Sheet1!B2
 F	probes/fin-amor-period-bound-c.case.json	Sheet1!A1

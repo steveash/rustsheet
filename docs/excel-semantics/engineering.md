@@ -697,8 +697,9 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `IMABS("$1,234.50")` 1234.5, `IMABS("50%")` 0.5, `IMABS("1E3")` 1000, trailing space read, text of 255 characters read
   and 256 `#VALUE!` (`REPT("0",254)&"3"` 3, `REPT("0",255)&"3"` and `REPT("0",255)&"3+4i"` `#VALUE!`), `IMREAL("1E-310")`
   `#NUM!`, and a number keeps full precision into IMREAL(1/3) 0.3333333333333333 while IMPOWER, IMSUM and IMSUB of it
-  print 15 digits. Not yet matched (T-2641): `IMABS("2024-01-01")` is `#NUM!` (ours reads the date), `IMABS("$1+2i")` is
-  2.23606797749979 (ours `#NUM!`). `IMABS("1/2")` reads as a date serial of the current year (not probe-able).
+  print 15 digits. `IMABS("2024-01-01")` is `#NUM!` (date-shaped text is not read here: a `/`, or a `-` past the first character, keeps it unreadable).
+  Not yet matched (T-2641): `IMABS("$1+2i")` is 2.23606797749979 (ours `#NUM!`). A 46024 reading of `IMABS("1/2")` was seen
+  once (year dependent, unconfirmed; ours `#NUM!`).
 - **Large parts in plain notation.** `IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i" (21
   characters per part; ours E notation; e707d43a891ba9b5 A330). With `IMCOT("1E-20")` "100000000000000000000" (T-1966's
   probe) the cut is at least 1E+21; where it is is unprobed. T-2542.

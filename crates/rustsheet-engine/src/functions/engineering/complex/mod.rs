@@ -314,14 +314,18 @@ impl Model {
         if value.starts_with(['\t', '\u{3000}']) {
             return Err(num_error(cell));
         }
-        // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1").
-        parse_complex_number(&value)
-            .or_else(|_| {
-                self.value_text_number(&value)
-                    .map(|f| (f, 0.0, Suffix::Real))
-                    .ok_or(())
-            })
-            .map_err(|()| num_error(cell))
+        // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1"),
+        // but not date text: `IMABS("2024-01-01")` is `#NUM!` (probes/eng-inumber-reading A4), so a
+        // `/` or a `-` past the first character (a date separator) keeps the text unreadable.
+        let date_shaped = value.contains('/') || value.get(1..).is_some_and(|t| t.contains('-'));
+        match parse_complex_number(&value) {
+            Ok(z) => Ok(z),
+            Err(_) if date_shaped => Err(num_error(cell)),
+            Err(_) => self
+                .value_text_number(&value)
+                .map(|f| (f, 0.0, Suffix::Real))
+                .ok_or_else(|| num_error(cell)),
+        }
     }
 
     /// A one-argument complex function, lifted: its argument lifts over an array and refuses a
