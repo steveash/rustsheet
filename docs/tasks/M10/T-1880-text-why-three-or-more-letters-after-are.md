@@ -36,8 +36,9 @@ Semantics: docs/excel-semantics/number-formats.md, TEXT format code complexity l
 ## Outcome
 `aaa` is Excel's weekday code, not a letter-run limit: three or more of one `a` (all lowercase or
 all uppercase) print the short (`aaa`) or full (`aaaa`+) weekday, localized like `ddd`/`dddd`, so
-`@` beside it is `#VALUE!` by T-1656's rule. Mixed case and one or two letters stay literal. Two
-probe rounds (probes/text-format-aaa-weekday, -b; 80 cells, excel-graph) pin it; the lexer now
+`@` beside it is `#VALUE!` by T-1656's rule. Mixed case and one or two letters stay literal; an
+adjacent other-case run of three or more joins the code. Three probe rounds
+(probes/text-format-aaa-weekday, -b, -c; 90 cells, excel-graph) pin it; the lexer now
 reads such runs as `DayNameShort`/`DayName`. Rule in docs/excel-semantics/number-formats.md,
 "`aaa` is the weekday". Eval: probes -4 known failures (text-format-length-limit-n A2, A7:A9), and
-the 80 new probe cells pass.
+the 90 new probe cells pass.

@@ -317,6 +317,10 @@ fn a_runs_are_the_weekday() {
         (1.0, "aAa", "aAa"),
         (1.0, "AAa", "AAa"),
         (1.0, "aaa\\a", "Suna"),
+        (1.0, "aaaA", "SunA"),
+        (1.0, "Aaaa", "ASun"),
+        (1.0, "aaaAAA", "Sunday"),
+        (1.0, "aaAA", "aaAA"),
         (45000.0, "aaa", "Wed"),
         (0.75, "aaa AM/PM", "Sat PM"),
     ];
