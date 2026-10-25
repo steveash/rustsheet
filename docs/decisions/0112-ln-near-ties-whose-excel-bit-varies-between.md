@@ -24,17 +24,17 @@
     varies exists only at the 23 T-2143 points, not per probe cell. Not chosen.
   - *(b) Ship k = 67 rounded now.* It beats the shipped model on every count scored here and loses no fill-stable point. Its
     only loss is B231, a fill-unstable cell, which would become a new known failure. Its risk lies in the
-    near-ties of the full T-1941 set (2.89M cells), which T-2144 did not score. Deferred to T-2641, which ships it if it
+    near-ties of the full T-1941 set (2.89M cells), which T-2144 did not score. Deferred to T-2651, which ships it if it
     loses no point there.
-  - *(c) Keep the 27 cells as named known failures of probes/ln-fyl2x-kernel until T-2641 decides.* Chosen.
+  - *(c) Keep the 27 cells as named known failures of probes/ln-fyl2x-kernel until T-2651 decides.* Chosen.
 - **Decision:**
-  1. The shipped model stays (`excel_ln`, `RN53(RN64(RN64(ln 2) * log2 x))`) until T-2641 decides on k = 67 rounded. The 27
-     cells stay F lines of eval/baseline/probes.txt and are owned by T-2641: probes/ln-fyl2x-kernel Calc!B10, B16, B26,
+  1. The shipped model stays (`excel_ln`, `RN53(RN64(RN64(ln 2) * log2 x))`) until T-2651 decides on k = 67 rounded. The 27
+     cells stay F lines of eval/baseline/probes.txt and are owned by T-2651: probes/ln-fyl2x-kernel Calc!B10, B16, B26,
      B33, B48, B67, B78, B83, B95, B99, B107, B113, B114, B117, B129, B132, B140, B163, B164, B179, B190, B197, B208, B233,
      B238, B246 and B249, each one ulp off.
   2. This decision grants no milestone-exit exemption. The cells count like any other known failure of their probe
      row. A later exemption needs its own decision, under the probes criteria of docs/milestones.md.
 - **Consequences:**
-  - No engine change now. If T-2641 ships k = 67 rounded, 17 of the 27 cells pass and B231 becomes a known failure (a net 16). A cell whose Excel bit varies between fills cannot be
-    matched by any deterministic model, so whatever T-2641 decides, some near-tie cells may remain.
-  - If T-2641 ships k = 67 rounded, it amends this record's item 1 (the model and the cells it still owns).
+  - No engine change now. If T-2651 ships k = 67 rounded, 17 of the 27 cells pass and B231 becomes a known failure (a net 16). A cell whose Excel bit varies between fills cannot be
+    matched by any deterministic model, so whatever T-2651 decides, some near-tie cells may remain.
+  - If T-2651 ships k = 67 rounded, it amends this record's item 1 (the model and the cells it still owns).

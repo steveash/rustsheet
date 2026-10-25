@@ -54,5 +54,5 @@ docs/research/t1941/ln_guard_bits.py). They were scored against the 357 points w
 `ln_kernel` fixture and probes/ln-fyl2x-kernel; numbers.md has the table. The best, k = 67 rounded, matches 354 of 357 (the shipped
 model 345), all 4,000 sampled fixture points, 18 of the 30 fixture near-ties and 242 of the probe's 253 cells (shipped 226).
 No candidate fits every stable point, so `excel_ln` is unchanged. Decision 0112 keeps the 27 probes/ln-fyl2x-kernel
-near-ties as named known failures with no exit exemption. Follow-up T-2641 tests k = 67 rounded on the full T-1941 near-tie set and
+near-ties as named known failures with no exit exemption. Follow-up T-2651 tests k = 67 rounded on the full T-1941 near-tie set and
 ships it if it loses no point. Eval: no change.
