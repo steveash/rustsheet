@@ -1,6 +1,7 @@
 //! Timings for SPEC-0009's aggregate-argument walker: SUM and AVERAGE over a numeric column of
 //! 1,000,000 cells, SUM over the same column with an error in A2 (the walk ends there), and SUM
-//! over a block three columns wide reaching past the used area (T-0405: cut at the used area).
+//! over a block three columns wide reaching past the used area (T-0405: cut at the used area),
+//! and SUM over the whole sheet with a far cell in XFD1048576 (T-1690: walked over its cells).
 //! Then criteria aggregates over shared ranges (T-0449): 2,000 SUMIFS and 2,000 COUNTIFS over
 //! 50,000 rows, with five text criteria and 100 numeric thresholds. Then aggregates over
 //! whole-column expressions (T-0469): 400 `MAX(IF(F:F=A1,G:G,""))` over 2,000 rows.
@@ -20,14 +21,18 @@ use rustsheet::{Input, Workbook};
 const ROWS: u32 = 1_000_000;
 const RUNS: usize = 5;
 
-/// A workbook with 1..=ROWS in column A (A2 an error when `error_in_a2`) and `formula` in B1.
-fn workbook(formula: &str, error_in_a2: bool) -> Result<Workbook, Box<dyn Error>> {
+/// A workbook with 1..=ROWS in column A (A2 an error when `error_in_a2`, and 1 in XFD1048576
+/// when `far_cell`) and `formula` in B1.
+fn workbook(formula: &str, error_in_a2: bool, far_cell: bool) -> Result<Workbook, Box<dyn Error>> {
     common::filled_workbook(|tx| {
         for r in 1..=ROWS {
             tx.set(format!("A{r}").as_str(), f64::from(r))?;
         }
         if error_in_a2 {
             tx.set("A2", Input::Formula("=NA()".to_string()))?;
+        }
+        if far_cell {
+            tx.set("XFD1048576", 1.0)?;
         }
         tx.set("B1", Input::Formula(formula.to_string()))?;
         Ok(())
@@ -108,13 +113,24 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
     let cases = [
-        ("SUM", "=SUM(A1:A1000000)", false),
-        ("AVERAGE", "=AVERAGE(A1:A1000000)", false),
-        ("SUM, error in A2", "=SUM(A1:A1000000)", true),
-        ("SUM, block past the used area", "=SUM(A1:C1048000)", false),
+        ("SUM", "=SUM(A1:A1000000)", false, false),
+        ("AVERAGE", "=AVERAGE(A1:A1000000)", false, false),
+        ("SUM, error in A2", "=SUM(A1:A1000000)", true, false),
+        (
+            "SUM, block past the used area",
+            "=SUM(A1:C1048000)",
+            false,
+            false,
+        ),
+        (
+            "SUM, whole sheet with a far cell",
+            "=SUM(A:XFD)",
+            false,
+            true,
+        ),
     ];
-    for (name, formula, error_in_a2) in cases {
-        let mut wb = workbook(formula, error_in_a2)?;
+    for (name, formula, error_in_a2, far_cell) in cases {
+        let mut wb = workbook(formula, error_in_a2, far_cell)?;
         let t = common::timings(RUNS, || wb.recalculate());
         writeln!(std::io::stdout(), "{name}: rows={ROWS} runs={RUNS} {t}")?;
     }
