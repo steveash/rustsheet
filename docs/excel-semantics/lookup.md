@@ -36,6 +36,30 @@ an INDIRECT argument (functions/information/mod.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1657, T-1682
 
+## INDIRECT of `Sheet!Name` text: the prefix must be spelled as a formula would spell it
+Rule: `INDIRECT("<Sheet>!<Name>")` reads a name that exists only at that sheet's scope from any
+sheet (`INDIRECT(A1&"!tn")` on Summary, A1 `CoB`, is CoB's `tn`; a range name sums, counts and
+spills; `ISREF` TRUE), sheet and name text case-insensitive. Unprefixed text reads the INDIRECT's
+own sheet scope only: `INDIRECT("tn")` is `#REF!` on a sheet with no `tn` though other sheets
+define one, and `"Summary!tn"` is `#REF!` too. The prefix follows formula quoting: unquoted, the
+sheet name may hold only letters, digits, `_` and `.`, so `"Co A!tn"`, `"P&L!tn"` and `"O'B!tn"`
+are `#REF!` (also with `a1` FALSE) while `"2024!tn"`, `"Q1!tn"` and `"x.y!tn"` resolve; quoted,
+`''` is one quote (`"'O''B'!tn"` resolves) and any sheet name may be quoted (`"'CoB'!tn"`).
+Verified for ASCII sheet names only; unquoted non-ASCII names (`"Données!tn"`) and letter-after-digit
+names (`"1Q!tn"`) are unprobed (the engine accepts them).
+Cell text follows the same quoting for `"Co A!B1"`, `"P&L!B1"` and `"O'B!B1"` (`#REF!`), and
+`"Q1!B1"`, `"x.y!B1"` resolve; `"2024!B1"` (an unquoted all-digit sheet) is `"y2024"` in Excel and
+`#REF!` in the engine (open gap: T-2678).
+Evidence: probes/indirect-sheet-scoped-name (excel-graph, 2026-10-25, T-2660).
+Calipers note: `calipers/pv_goldens/pv26_020` and `pv26_2_020` `Summary!C17:...17` are not evidence
+for this rule: the corpus anonymisation renamed the text in `Summary!B17` to `Company0691` but left
+the sheet it names as `ConAgra` (whose `TargetName`, D24, is the cached `Company2277`), so the
+workbook as shipped has no `Company0691` sheet and `#REF!` is right for it (lookup.md "INDIRECT to
+a sheet that does not exist is #REF!").
+Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2660
+
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
 Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
 `INDIRECT("H2",-1)` = 5, `"TRUE"` text = TRUE), `0` is FALSE, so `INDIRECT("H2",0)` reads "H2" as R1C1
@@ -1069,12 +1093,37 @@ The edges are bracketed to a relative 2^-14 (an absolute ~2^-36), and the engine
 A tiny negative mode reads 0 (`-1E-7`, `-1E-10`, `-1E-300`). TRUE reads 1, and the text "1" and "1.5" read 1. ±1E300 is
 `#VALUE!`, as is any value that floors outside the valid modes.
 A match_mode of 3 (or one that floors to 3) is the regex mode in both functions: `XMATCH(2.5,{1,2,3},3)` is `#N/A`, the
-XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both. Ours has no regex mode in XLOOKUP (T-2669).
+XLOOKUP twin returns its if_not_found, and the pattern "?" is `#VALUE!` in both ("XMATCH and XLOOKUP regex mode" below; T-2669).
 Evidence: probes/t2656-xmatch-mode-near-integer, -rounding, -snap, -snap-boundary, -snap-bisect, -snap-grid, -snap-edge,
 -snap-edge-fine, and probes/t2656-xlookup-mode-snap-edge (1138 cells, excel-graph, 2026-10-25);
 probes/t2496-fin-subexpressions P!A1, P!A2; gen-m9/01523d247594952e Calc!A51.
-Status: VERIFIED (excel-graph), within the brackets above. Ours matches every cell except XLOOKUP's regex mode (4 cells,
-T-2669).
+Status: VERIFIED (excel-graph), within the brackets above. Ours matches every cell (XLOOKUP's regex mode since T-2669).
 Implemented in: functions/util/near_integer.rs `near_integer_whole` (shared with DATE and TIME), read by `Model::xmatch_of`
 (lookup_and_reference/xmatch.rs) and `xlookup_modes` (xlookup.rs).
 Tasks: T-2656, T-2669
+
+## XMATCH and XLOOKUP regex mode (T-2669)
+Rule (excel-graph, 2026-10-25): `match_mode` 3 is a regular-expression match in XLOOKUP as in XMATCH.
+- **Matching:** the pattern is found anywhere in a candidate's text (`"o"` finds "Dog"; anchors work: `"^o"` finds nothing,
+  `"^c.t$"` finds "cat"), case-sensitively (`"dog"` skips "Dog"; `"(?i)dog"` finds it).
+- **Text of the values:** both sides read as text the way a scalar reads as text (`calc_scalar_to_string`). A number is
+  its text, so `"12"` and `"12\.5"` find 12.5, `"E"` finds 1E+20 and the lookup value `0.1+0.2` is the pattern "0.3". A
+  boolean is TRUE or FALSE, so `"TRUE"` and the lookup value TRUE find TRUE but `"true"` does not. A blank cell is "", so
+  `"^$"` finds a blank as well as a `""` cell, and the empty pattern finds the first candidate. A blank cell as the
+  lookup value is the empty pattern too (`XMATCH(Z99,A1:A3,3)` is 1, with search_mode -1 it is 3).
+- **No match:** an error candidate never matches (`"#N/A"` skips #N/A).
+- **Errors:** an invalid pattern (`"("`) is `#VALUE!`, never XLOOKUP's if_not_found. A binary search_mode (2 or -2) is
+  `#VALUE!` in regex mode, as in wildcard mode.
+- **Search direction:** search_mode -1 finds the last match.
+- **Lifting:** a lifted lookup_value lifts one search per element (`XLOOKUP({"o";"zzz";"^c"},...,"nf",3)` spills 20, "nf",
+  10).
+- **Syntax:** the pattern syntax is PCRE2's, as in the REGEX* functions. Lookbehind `(?<=D)og` and a backreference
+  `(d)\1` match in Excel. Ours compiles with the `regex` crate, which refuses both with `#VALUE!` (T-2680).
+Evidence: probes/t2669-xlookup-regex-mode (60 cells: XLOOKUP in D beside XMATCH in E), -blanks (14 cells) and -lift (12
+cells: lifting, a blank-cell pattern, PCRE2 syntax); the regex
+cells of probes/t2656-xmatch-mode-near-integer G7, G21, -rounding G15, t2656-xlookup-mode-snap-edge C8.
+Status: VERIFIED (excel-graph). Ours matches every cell but the two PCRE2-only patterns (-lift G1, G2; T-2680). Before
+T-2669, XLOOKUP rejected mode 3, XMATCH read a boolean as "true", and a non-text lookup value gave no pattern.
+Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `regex_scan`, used by XMATCH's
+`linear_search` and XLOOKUP's (xlookup.rs).
+Tasks: T-2669, T-2680
