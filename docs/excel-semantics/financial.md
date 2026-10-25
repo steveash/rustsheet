@@ -2091,7 +2091,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   TRUE factor from a cell without `#VALUE!` (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8); `VDB(43478,488,1E+9,3,7,0)`
   = 0.00017196 (a91bad4e84f49739 A323). Now probed and followed ("VDB, DDB and ACCRINT argument types", T-2492).
 - NPER at a rate of 1E-300 is `#DIV/0!` (`NPER(1E-300,-236,2766,945)`, 3c06f9298f65a3ba A148; five more 1E-300 cells in
-  T-2698), and at a rate of -1 it is `#NUM!` (`NPER(-1,-31,1)`, 3c06f9298f65a3ba A50, where ours is 0). NPV at a rate
+  T-2698), and at a rate of -1 it is `#NUM!` (`NPER(-1,-31,1)`, 3c06f9298f65a3ba A50; both implemented by T-2620, "Annuity and DB argument domains at their
+  limits"). NPV at a rate
   of -1 is `#DIV/0!` (`NPV(-1,GESTEP(-2.5,-100))`, 3aa168259335be54 A18), EFFECT at a huge nominal rate `#NUM!` (`EFFECT(1E+300,11)`,
   31474c20fc1dafd6 A37).
 - `IRR(CELL("row",Data!D$2),0.5)` is `#VALUE!` with the cause unprobed (5422bdbf173fc233 A63), while plain scalar flows and
@@ -2254,5 +2255,9 @@ Evidence: probes/t2475-stat-subexpressions P!A39, A92, A136, A165 (excel-graph, 
 they isolate: 11eb3ab4f4f8104c A109, 1b31092a0d79e5f1 A260, 31f09e6c48ca245c A232, 38e4fc309fe199ea A89, and
 3c06f9298f65a3ba A50, A148 (T-2698's list).
 Ours: `pv_of` and `nper_of` (functions/financial/annuity.rs), `fn_db` (functions/financial/financial_depreciation.rs), T-2620.
-Status: VERIFIED for the probed cells; DB's TRUE month is UNVERIFIED.
-Tasks: T-2620, T-2698
+Inferred from the same formulas, unprobed: PV's `#DIV/0!` covers every P that underflows to 0 (a rate in (-2,-1)
+with a large even nper too, `#NUM!` before), and NPER's LN of a non-positive ratio is `#NUM!` before the ln(1+rate)
+`#DIV/0!` (`NPER(1E-300,0,100,200)` is `#NUM!`).
+Status: VERIFIED for the probed cells; DB's boolean month beyond the FALSE pair and the inferred lines are UNVERIFIED
+(T-2749 probes them).
+Tasks: T-2620, T-2698, T-2749
