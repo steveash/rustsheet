@@ -57,7 +57,9 @@ All of this is in docs/excel-semantics/statistics.md (excel-graph oracle). The e
 evidence for each piece.
 - **Dispatch, the computed tail and the complement** ("Incomplete beta is TOMS 708 `bratio`", VERIFIED):
   - min(a, b) <= 1 swaps to (b, a, y, x) when x > 0.5;
-  - min(a, b) > 1 swaps when λ < 0, with TOMS's λ = (a + b)·y - b if a > b, else a - (a + b)·x;
+  - min(a, b) > 1 swaps when λ = a - (a + b)·x < 0 (statistics.md). TOMS, and the research model, form λ as
+    (a + b)·y - b when a > b. The two differ only by rounding at the mean, and that case is unprobed; T-2508 owns it.
+    bfrac recomputes its own λ = fl(a - fl((a + b)·x)) (statistics.md "L140 and bfrac"; a λ from y is rejected);
   - then the branches below, with x0 >= 0.3 for w1 (TOMS 1992, not R's 0.29: 284 against 87 cells of
     t2464-r2-bratio-x29);
   - the other tail is (0.5 - w) + 0.5;
@@ -89,6 +91,16 @@ evidence for each piece.
   - bfrac's iteration count at huge shapes: T-2508 measures it.
   - F's x = 1/(1 + d2/(d1·X)) and 1/(1 + (d2/d1)/X) are not separated, nor whether those divisions round twice:
     T-2506 tests this (r2-impact hypothesis 1).
+  - λ's form for a > b, at the swap and in bfrac: T-2508.
+  - Whether F.TEST, T.TEST and the inverses' crossings call this kernel at all: their rows below are UNVERIFIED.
+    T-2509 probes T.TEST; T-2511 probes F.TEST and the crossings.
+- **Relation to decision 0114** (adopted on main while this spec was in review). It tags these port tasks
+  `campaign: accuracy`, whose rule is an accurate kernel scored against a high-precision reference and not fitted to
+  Excel's last bits. This spec instead ports Excel's measured pieces, because on this family they beat the correctly
+  rounded value on visible cells: BEST is visibly off on 3,070 of 40,014 cdf cells against CR's 3,396 (r2-bratio), and
+  on T, BINOM and NEGBINOM, decision 0114 itself puts Excel among the inaccurate ones. This is open for the owner. The
+  port rules hold either way: the migration rule lets a caller take an accurate piece in place of Excel's, where it
+  scores better on visible cells. Its Outcome then names the choice and both scores.
 
 ## Design
 
@@ -101,17 +113,30 @@ T-2505 turns `functions/statistical/incomplete_beta.rs` into a directory module.
 | `incomplete_beta/mod.rs` | K: `dispatch`, `evaluate`, `bratio`, `tails_for`; `Branch`, `Caller`, the port table; the (0.5 - w) + 0.5 complement; module doc with the branch map | T-2505 |
 | `incomplete_beta/closed.rs` | `closed_form_tails` (T-2502's, moved verbatim) | T-2505 (move) |
 | `incomplete_beta/bpser.rs` | Excel's bpser | T-2505 |
-| `incomplete_beta/ln_beta.rs` | ln B forms shared by bpser's L and the density's lnB: the GL form fl(GL(p) + fl(GL(q) - GL(fl(p + q)))), with the 8 cut chosen by the caller (bpser < 8, density <= 8); TOMS algdiv in doubles with Excel's LN | whichever of T-2505 and T-2503 lands first; the other reuses it |
+| `incomplete_beta/ln_beta.rs` | the single ln B definition (below): `ln_beta_gl(p, q)`, Excel's GL form fl(GL(p) + fl(GL(q) - GL(fl(p + q)))), with the 8 cut chosen by the caller (bpser < 8, density <= 8); `algdiv`, TOMS in doubles with Excel's LN; `ln_beta_sum(a, b)`, the plain `ln_gamma` sum two callers compute inline today | the first of T-2505 and T-2503 to land creates it; the second builds on that file and adds nothing parallel |
 | `incomplete_beta/bup.rs` | bup with brcmp1 = fl(P·fl(y0·x0))/b0' and w4's term arithmetic, for every bup call (L140, bup+bgrat) | T-2506 |
 | `incomplete_beta/bgrat.rs` | bgrat with its incomplete-gamma ratio: b = 1/2 in extended precision (T-2509); other b with Excel's pieces (T-2510) | T-2509, T-2510 |
 | `incomplete_beta/bfrac.rs` | bfrac (λ = fl(a - fl((a + b)·x)), brcomp = density·x·y) and basym | T-2508 |
 | `incomplete_beta/density.rs` | `beta_density(x, a, b)`: BETA.DIST(.,FALSE) and the prefactor P. It dispatches M2 for min <= 1 (T-2503) and Loader for min > 1 (T-2507). Today's powf × tgamma form stays here, named, for F.DIST(.,FALSE) (`fisher.rs` `f_pdf`) and for any region whose Excel form has not landed | T-2505 (move); T-2503, T-2507 (bodies) |
-| `incomplete_beta/toms.rs` | TOMS 708's plain-double helpers shared outside the port: `rlog1` and `stirling_correction` (moved; `incomplete_gamma.rs` imports them) | T-2505 (move) |
+| `incomplete_beta/toms.rs` | TOMS 708's plain-double helpers shared outside the port: `rlog1` and `stirling_correction` (`incomplete_gamma.rs` imports them) and `ln_near_one` (`inverse_beta.rs`'s gamma limit and `legacy.rs` use it), all moved | T-2505 (move) |
 | `incomplete_beta/legacy.rs` | today's kernel, moved verbatim: Cephes `incbcf`/`incbd`, the mean reflection, the MAXGAM and `large_prefactor` prefactors, `unoriented_shape_one`, `A1_CLOSED_FORM_MIN_X`. It is the delegate (Migration rule) and is deleted with the last one | T-2505 (move) |
 
+- Today's test-only `beta_reg(x, a, b)` becomes a `#[cfg(test)]` helper in `mod.rs` over `bratio`.
+
+**One ln B definition.** Today ln B is formed in four places (`rg -n "ln_gamma\(.*ln_gamma|excel_gammaln\(0.5\)"`):
+- `student_t.rs:342`, `log_gamma_ratio`: exp(GL(1/2) + (GL(a) - GL(a + 1/2))), Excel's GL form for B(a, 1/2).
+  T-2505 replaces it with `ln_beta_gl(0.5, a)`, the same three GAMMALNs in the same order. If `report-diff` shows
+  any changed cell, it stays until T-2509 deletes the composite.
+- `t_dist.rs:274` (T.INV's tail start) and `fisher.rs:323` (`f_pdf`), `ln_gamma(a) + ln_gamma(b) - ln_gamma(a + b)`
+  inline. T-2505 replaces both with `ln_beta_sum`, which is value-identical.
+- `incomplete_beta.rs:329`, `large_prefactor`'s `ln_gamma(small) - gamma_ln_shift(small, large)`. This is the one
+  copy that stays: it moves into `legacy.rs` with `gamma_ln_shift`, frozen as delegate internals, and is deleted with
+  `legacy.rs`. New code never calls it.
+
 Outside the directory:
-- `loader.rs` gains Excel's x87 bd0 (T-2507), beside its accurate `bd0_dev` and `stirlerr`. The module doc then
-  covers both kinds. T-2585's T density and T-2146's pmf reuse this bd0 and the accurate `stirlerr`.
+- `loader.rs` gains Excel's x87 bd0 as `excel_bd0` (T-2507), beside its accurate `bd0`, `bd0_dev` and `stirlerr`;
+  the distinct name keeps the two apart. The module doc then covers both kinds. T-2585's T density and T-2146's pmf
+  reuse `excel_bd0` and the accurate `stirlerr`.
 - New extended-precision elementary functions go next to their double versions: in `x87_exp.rs`, `x87_log10.rs` or
   `x87_log1p.rs`. That covers bgrat's ln and exp in T-2509, for instance, as `Register` or double-double values. They
   never go in a branch file.
@@ -178,12 +203,12 @@ From statistics.md "Incomplete beta is TOMS 708 `bratio`" and "Student t tails a
 |---|---|---|---|---|
 | `BetaDist` | BETA.DIST/BETADIST cdf; BETA.INV/BETAINV's `refine_increasing` targets | t = (x - A)/(B - A), K(α, β, t, fl(1 - t)) | w (BETA.INV above p = 0.5: w1 against 1 - p) | `legacy::tails(α, β, t, 1 - t)` |
 | `F` | F.DIST(TRUE), F.DIST.RT, FDIST (`fisher.rs` `f_tail`) | d truncated; u = 1/(1 + d2/(d1·X)), v = 1/(1 + (d1·X)/d2); K(d1/2, d2/2, u, v) | w; w1 for .RT and FDIST | `legacy::tails` at d1X/(d1X + d2), d2/(d1X + d2), today's `f_tail_pre_t2502` |
-| `FQuantile` | F.INV, F.INV.RT, FINV crossings (`f_quantile`) | as `F` | as `F` | as `F` |
-| `BetaQuantile` | `inverse_beta::beta_lower_crossing` (BETA.INV at a huge shape, F's huge-df quantile) | K(α, β, x, 1 - x) | w | `legacy::tails` (today's unoriented call); the Q(b, -ν ln x) limit stays where it applies |
-| `FTest` | F.TEST/FTEST's fallback (shape 1, a + b > 200, non-half-integer shapes) in `f_test_upper_tail` | x = df_small/(df_big·f + df_small), y = 1 - x, K(df_small/2, df_big/2, x, y) | w | `legacy::tails` (unoriented). T-2361's double-double form stays the main path |
+| `FQuantile` (UNVERIFIED as a K call; T-2511 probes it) | F.INV, F.INV.RT, FINV crossings (`f_quantile`) | as `F` | as `F` | as `F` |
+| `BetaQuantile` (UNVERIFIED as a K call; T-2511 probes it) | `inverse_beta::beta_lower_crossing` (BETA.INV at a huge shape, F's huge-df quantile) | K(α, β, x, 1 - x) | w | `legacy::tails` (today's unoriented call); the Q(b, -ν ln x) limit stays where it applies |
+| `FTest` (UNVERIFIED as a K call; T-2511 probes it) | F.TEST/FTEST's fallback (shape 1, a + b > 200, non-half-integer shapes) in `f_test_upper_tail` | statistics.md "F.TEST / FTEST": x = df_small/(df_big·f + df_small), y = df_big·f/(df_big·f + df_small), each formed directly; x never exceeds the mean, so no reflection. K(df_small/2, df_big/2, x, y) | w | `legacy::tails` (unoriented). T-2361's double-double form stays the main path |
 | `Binom` | BINOM.DIST/BINOMDIST(TRUE), after the k = 0 shortcut (T-2645) | K(k + 1, n - k, p, fl(1 - p)) | w1 | the pmf walk (`discrete.rs` `binomial_cdf`), then statrs |
 | `NegBinom` | NEGBINOM.DIST/NEGBINOMDIST(TRUE) | K(r, f + 1, p, fl(1 - p)) | w | the pmf walk, then statrs |
-| `StudentT` | T.DIST(TRUE), T.DIST.RT, T.DIST.2T, TDIST, T.TEST's tail | y = fl(n/fl(n + fl(t·t))), z = fl(fl(t·t)/fl(n + fl(t·t))) (df 2: z = fl(1 - y)); K(n/2, 1/2, y, z) | I = w; L = I/2; 2T = I; the upper side fl(1 - L); y = 1 gives L = 0.5 | `student_t.rs`, including its df-2 closed form, which calls `closed::closed_form_tails` until T-2509 |
+| `StudentT` | T.DIST(TRUE), T.DIST.RT, T.DIST.2T, TDIST; T.TEST's tail (UNVERIFIED as a K call; T-2509 probes it) | y = fl(n/fl(n + fl(t·t))), z = fl(fl(t·t)/fl(n + fl(t·t))) (df 2: z = fl(1 - y)); K(n/2, 1/2, y, z) | I = w; L = I/2; 2T = I; the upper side fl(1 - L); y = 1 gives L = 0.5 | `student_t.rs`, including its df-2 closed form, which calls `closed::closed_form_tails` until T-2509 |
 
 - `Caller::takes(self, Branch) -> bool` is the port table, one `const fn` match. Each port task adds the (caller,
   branch) pairs it moves, and nothing else. The table is the single place that says what is ported.
@@ -222,9 +247,11 @@ this design they become delegates, and each is deleted by the task that removes 
     `unoriented_shape_one` and then `beta_tails`.
   - `student_t.rs`'s imports of `incbcf`, `incbd` and `beta_reg_upper` become `legacy::{incbcf, incbd, tails}`.
 - **The delegates' internals stay in `legacy.rs`:**
-  - `unoriented_shape_one` and the `A1_CLOSED_FORM_MIN_X` branch serve a0 = 1 with y0 > 0.9. After T-2505 that input
-    reaches only Bgrat and BupBgrat (x0 < 0.1 with b0·x0 > 0.7). They are deleted by T-2510, or, if T-2510 leaves
-    those branches delegated for a caller, by the task that ports them.
+  - `unoriented_shape_one` and the `A1_CLOSED_FORM_MIN_X` branch serve a0 = 1 with y0 > 0.9. That input reaches Bpser
+    (x0 < 0.1 with b0·x0 <= 0.7), Bgrat and BupBgrat (b0·x0 > 0.7). They serve any caller that has not taken the branch
+    the input reaches: after T-2505 that is Bpser for a caller that did not take it, and Bgrat and BupBgrat for all.
+    They are deleted by T-2510 if no caller then delegates any of those three branches; otherwise by the task that
+    ports the last one.
   - F's pre-T-2502 argument forms (today's `f_tail_pre_t2502`, renamed `f_tail_delegate`) are deleted when `F` and
     `FQuantile` take every branch they reach: T-2510 for `F`, T-2511 for `FQuantile`, unless a branch stays delegated.
   - `legacy.rs` as a whole goes when no `Caller` delegates to it. T-2511 states which (caller, branch) pairs, if any,
@@ -237,20 +264,35 @@ this design they become delegates, and each is deleted by the task that removes 
 - **Every loop has a named `const` cap** with a doc comment that gives the convergence bound and the largest count
   measured on the task's data. A unit test at the worst point found shows the loop ends below the cap. Reaching the
   cap returns the partial result, never a panic and never a NaN for valid input:
-  - bpser's "until s stops changing": a cap of the order of TOMS's (terms shrink by at most max(x0, b0·x0/n), with
-    x0 <= 0.7 or b0·x0 <= 0.7 in every bpser branch);
+  - bpser's "until s stops changing". The cap is derived for any shape, the largest included: BINOM passes shapes up to
+    about 2^31 (k + 1, n - k with n < 2^31 - 1), and BETA.DIST has no bound. Every bpser call has x0 <= 0.7, or
+    b0·x0 <= 0.7, or y0 <= 0.7 (W1Bpser). So from the first term on, the term ratio |(1 - b/n)·x| is at most
+    max(0.7, b0·x0/n) <= 0.7, whatever the shape. A term then falls below 2^-64 of s, which is at least the first
+    term, within 125 steps, and the factor a/(a + n) only shortens that. T-2505 sets the cap with that margin (for
+    example 256) and tests the largest shape class;
   - bup: n <= 40 terms (L140) or 20 (bup+bgrat), by construction;
   - bgrat: 30 terms. Its coefficient tables are fixed-size arrays (`[f64; 30]`), not `Vec`;
   - basym: TOMS's fixed 20;
   - bfrac: a cap that T-2508 sets from measured counts up to the largest shapes the callers accept (F's df go
     to 1E10). If the cap can bind on a valid input, T-2508 records a `DEVIATION (decision 0014)`
     entry in statistics.md, stating Excel's value and ours past it;
-  - `legacy.rs` keeps its caps (300 fraction steps, 20 `rlog1` terms).
+  - `legacy.rs` keeps its caps (300 fraction steps, 20 `rlog1` terms);
+  - the inverse searches (T-2511): one named cap on the cdf evaluations of each search. `special::refine_increasing`
+    has one today (at most 129 cdfs), and so do `nearest_crossing` and `beta_quantile_crossing` (at most 67). The
+    lifting weight charges the cap times K's per-call bound.
+- **Checked conversions.** Integer counts taken from shapes use checked conversions, for example `u32::try_from` on
+  `trunc()` with a fallback branch: bup's n = int(b0) (b0 < 40) and any loop count. An `as` cast on an unbounded f64
+  is not used.
 - **K is total and allocation-free.**
   - Inputs:
     - NaN in any argument gives NaN in both tails;
     - x <= 0 gives (0, 1), and y <= 0 gives (1, 0);
-    - a non-positive or infinite shape gives NaN.
+    - x > 1 or y > 1 gives NaN in both tails (no caller passes them);
+    - a non-positive or infinite shape gives NaN;
+    - x + y = 1 is the callers' contract, to within their own roundings (T's y and z, F's u and v, BINOM's p and
+      fl(1 - p)). K does not test it, unlike TOMS's ierr = 4: each branch reads only the arguments it is defined on,
+      as Excel's formulas do. For any (x, y) in [0, 1]^2 K still returns finite values in [0, 1] without a panic. A
+      property test feeds random pairs with |x + y - 1| up to 1E-3.
   - The callers' existing guards decide the error: `number_or_error` maps a non-finite tail to `#NUM!`. K itself never
     makes an error value.
   - No `unwrap`, `expect` or unchecked indexing, and no recursion: the swap is applied once.
@@ -303,27 +345,31 @@ are measured, so there is no umbrella record.
 ### Port rules (every port task: T-2503, T-2505 to T-2511, T-2585)
 1. **The migration rule** above. The `Caller::takes` diff is the list of what the PR moves, and the Outcome repeats
    it.
-2. **probes-numeric, cell by cell: net gain, listed losses** (the owner's ruling of 2026-10-25, decision 0115).
-   This supersedes the stricter wording first drafted here: 0 previously passing cells changed, unless Excel agrees.
+2. **probes-numeric, cell by cell: net gain, listed losses** (the owner's ruling of 2026-10-25, with its thresholds:
+   decision 0115).
    - The gated `eval-check` cannot see the ungated probes-numeric suite (`gate = false`), which holds most of this
      family's cells.
-   - Every port task runs `rustsheet-eval run` over probes-numeric on origin/main (the merge base) and on HEAD. It then
-     compares the two reports cell by cell.
-   - The task may lose previously bit-exact probes-numeric cells when it fixes far more cells than it loses and makes
-     nothing visibly worse.
+   - Every port task runs `rustsheet-eval run` over probes-numeric on origin/main (the merge base) and on HEAD, and
+     compares the two with `rustsheet-eval report-diff` (T-2679).
+   - Per function (the specialised function the report blames, which is per `Caller`), a port is allowed only if:
+     - its fixed cells are at least 2 × its lost cells. A lost cell is one that was bit-exact and is not now, or one
+       already off that moved further from Excel's value;
+     - its visibly-off count goes down, net;
+     - a function with no fixed cell has no lost cell.
    - No cell may become visibly off (beyond half a unit in the 15th significant digit), and no cell may change type or
      error, unless Excel agrees with the new value. "Excel agrees" means another oracle reading of the same formula
      gives the new value (the build-dependent bits of decision 0112, a duplicate cell in another case). Or it means the
      cell's input is a misparsed xlsx number, checked at x ± 1 ulp (numbers.md "Stored numbers in an xlsx are not
      always parsed to the nearest double"). Each such cell is named with its evidence.
-   - The Outcome lists every lost cell with its ulp distance. When there are many, they go in a committed file that the
-     Outcome cites. The Outcome also gives the counts: fixed, lost, changed and still failing (with ulp), newly
-     visibly off (0 unless Excel agrees).
-   - A task that would make a cell visibly worse narrows what it moves, per caller or per measured region of a branch.
-     Otherwise it needs a decision record naming the cell.
+   - The Outcome lists every lost cell with its ulp distance, or cites a committed file that holds the list when it
+     is long. It also gives `report-diff`'s per-function counts and ratio.
+   - A task that misses a threshold for a function narrows what it moves for that caller, by branch or by a measured
+     region of one. Otherwise it needs a decision record naming the cells.
    - Gated suites are unchanged: 0 regressions, or decision 0083's allowance, or a decision record (port rule 4).
-   - T-2505 adds the comparison as `rustsheet-eval diff <base report.json> <head report.json> [--suite S]`, and later
-     tasks reuse it, so the lists come out mechanically. It is one definition, not a script per task.
+   - `report-diff` is its own task, T-2679. It is built on `closeness.rs` (`Visible`, `within_fifteen_digits`,
+     `blamed`) and `visible_parity.rs`, and it reuses `baseline::diff` for the fixed and lost sets. One definition, so
+     each task produces the lists mechanically. Until it lands, T-2503 and T-2507, already in progress, may compare
+     the two reports by hand, with the same buckets.
    - The lost cells are bit-level debt. They go to the task's bit-level follow-up (decision 0083), or to T-2512 or
      T-2586. r2-impact's ladder estimates their size: 362 lost bit-exact cells by step S3, 514 by S7, against about
      1,450 visibly-off cells fixed.
@@ -353,36 +399,41 @@ are measured, so there is no umbrella record.
   piece is the one measured choice, and the ties are named.
 - **Keeping T on its own kernel** (r2-impact E7). r2-tdist's one-call rule, with bgrat at b = 1/2 in extended
   precision, takes the T tails from 1,286 visibly-off cells to 7. Rejected.
-- **Accurate (correctly rounded) pieces instead of Excel's.** These lose to Excel's pieces in every ablation: TOMS
-  bpser +961 against +1,395; correctly rounded densities. Rejected, except where no Excel form is known, and there
-  the delegate stays.
+- **Accurate (correctly rounded) pieces instead of Excel's, as the default.** On this family's cdf cells the
+  correctly rounded value is visibly off on 3,396 of 40,014, against BEST's 3,070 (r2-bratio). TOMS's own pieces lose
+  to Excel's in every one-piece ablation (bpser +961 against +1,395). Not adopted as the default. A caller may still
+  take an accurate piece where it scores better on visible cells (see "Relation to decision 0114").
 - **Densities in their own top-level module.** They are the bup and bfrac prefactors, so they sit with the kernel
   (`incomplete_beta/density.rs`). The Loader pieces stay in `loader.rs`, which three density tasks share. Rejected.
 
 ## Test plan
 Two kinds of evidence for each branch:
-- **Port correctness (positive control).** A fixture generated by r2-bratio's `bratio_excel.kernel` with
-  `R2_PROBED_GL=0`, so that model and port share the engine's GAMMALN model. The port equals the model bit for bit on
+- **Port correctness (positive control).** A fixture generated from the configuration that ships, not from r2-bratio's
+  BEST: BEST keeps TOMS's fpser and apser and `w3_lg="toms"`. The generator is r2-bpser-small's
+  `lib.py` `V(nofpser=True, noapser=True, lg="GL53/glalgdiv")` on r2-bratio's kernel, with the engine's GAMMALN model
+  (`R2_PROBED_GL=0`), so that model and port share every elementary function. Later branches extend the same
+  configuration with their pieces. The port equals the model bit for bit on
   every fixture row of the branches it implements. The rows include both swap states and points at each boundary:
   x = 0.5, λ = 0, x0 = 0.3, x0 = 0.1, b0·x0 = 0.7, x0 = 0.7, b0 = 15, b0 = 40, a0 = 15, integer and non-integer b0 in
   L140, and the y0 = 0.9 cut. A separate fixture checks `dispatch` against the model's branch labels on 100% of its
   rows.
 - **Excel agreement.** The floors in each task's acceptance criteria, demonstrated by the eval on the named
-  probes-numeric cases, plus port rule 2's comparison.
+  probes-numeric cases, plus port rule 2's comparison. The numbers live only in the task files; where this spec
+  and a task file differ, the task file wins.
 
-| branch | task | Excel-agreement floor (task criteria) | extra checks |
+| branch | task | Excel-agreement evidence (floors: the task file) | extra checks |
 |---|---|---|---|
-| Edge, Tiny | T-2505 | the tiny-shape probe agrees before Tiny is taken | NaN, ±0, subnormal x, 1 - 2^-53 |
-| dispatch | T-2505 | t2464-r2-bratio-x29: >= 284 of 434 on the 0.3 side | the `pow` boundary probes (Excel behavior, unknowns) |
-| Closed | T-2502 (done) | 1,286 of 1,286 kept | T-2502's cut tests move with the code |
-| Bpser, W1Bpser, BpserLarge | T-2505 | t2464-r2-bpser-small-shapes: 3,083/3,083, 4,602/4,602, >= 2,861/2,868 within 15 digits; r2-bratio's 6,767 / 1,666 / 978 bit-exact; both L forms reported | no fpser or apser: t2464-r2-bpser-small-tiny, -tiny2 |
-| L140Bpser | T-2506 | 7,505 bit-exact and 11,713 w15 of 11,742; ix L140 >= 1,011 of 1,620 | H215/H221/H226 (hypothesis 1) |
-| Bfrac, Basym | T-2508 | >= 146 bit-exact and 685 w15 of 1,316; (100, 120) run >= 185 of 1,024 | the cap at the largest shapes; the non-convergence probe |
-| Bgrat, BupBgrat for T | T-2509 | T bgrat cells >= 1,545 of 1,564; t2464-r2-tdist-p1 part C >= 4,895 of 4,915; the T family visibly off on <= 7 of 5,152 | wrapper identities bit for bit (2T = 2·RT, ...) |
-| Bgrat, BupBgrat, L140Bgrat, L140BupBgrat, other callers | T-2510 | net visible gain per function; non-T b = 1/2 >= 365 of 387 | c18dbf21 A151 |
-| density min <= 1 (prefactor P) | T-2503 | its criteria (probe1 12,796; hold-outs) | no F.DIST(.,FALSE) change |
-| density min > 1 | T-2507 | its criteria (31,385 w15 of 32,264) | the bd0 fixture shared with T-2585 |
-| inverses | T-2511 | t1745-beta-inv-roundtrip >= 155 of 188; per-function fixed and broke on 1,207 cells | bounded on T-1871's cells |
+| Edge, Tiny | T-2505 | the tiny-shape probe agrees before Tiny is taken | NaN, ±0, subnormal x, 1 - 2^-53; x, y outside [0, 1]; x + y ≠ 1 |
+| dispatch | T-2505 | t2464-r2-bratio-x29 | the `pow` boundary probes (Excel behavior, unknowns) |
+| Closed | T-2502 (done) | w5's closed-form set, kept | T-2502's cut tests move with the code |
+| Bpser, W1Bpser, BpserLarge | T-2505 | t2464-r2-bpser-small-shapes and the old sets, scored with the shipped configuration (GL53, no fpser or apser; verify-r2-bpser-small `old_sets.out`), both L forms reported | no fpser or apser: t2464-r2-bpser-small-tiny, -tiny2 |
+| L140Bpser | T-2506 | r2-bratio's L140 sets; ix L140 | H215/H221/H226 (hypothesis 1) |
+| Bfrac, Basym | T-2508 | r2-bratio's bfrac cells; the (100, 120) run | the cap at the largest shapes; the non-convergence probe; λ at a > b |
+| Bgrat, BupBgrat for T | T-2509 | T bgrat cells; t2464-r2-tdist-p1 part C; the T family on cells.tsv | wrapper identities bit for bit (2T = 2·RT, ...); T.TEST as a K call |
+| Bgrat, BupBgrat, L140Bgrat, L140BupBgrat, other callers | T-2510 | net visible gain per function; non-T b = 1/2 cells | c18dbf21 A151 |
+| density min <= 1 (prefactor P) | T-2503 | its criteria | no F.DIST(.,FALSE) change |
+| density min > 1 | T-2507 | its criteria | the `excel_bd0` fixture shared with T-2585 |
+| inverses | T-2511 | t1745-beta-inv-roundtrip; the 1,207 numeric inverse cells | bounded on T-1871's cells; the search caps; F.TEST and the crossings as K calls |
 
 - **Metamorphic properties**, as unit tests over the fixtures' points:
   - w + w1 = 1 to within the complement's rounding, and exactly (0.5 - w) + 0.5 where Excel's form says so;
@@ -395,7 +446,16 @@ Two kinds of evidence for each branch:
   slower" on the recalc benchmark.
 
 ## Rollout
-Ordered by `depends_on`. Steps on the same row can run in parallel.
+Ordered by `depends_on`. Steps with the same number can run in parallel.
+
+**T-2505's split point.** T-2505 is M at the upper end. If it outgrows M, it splits at the value-neutral refactor:
+- part 1: the directory module, `legacy.rs`, `toms.rs`, `closed.rs`, `dispatch`, `Branch`, `Caller` and the port
+  table with only `Closed` and `Edge` taken; the entry points deleted; the ln B copies replaced. `report-diff` shows
+  0 changed cells in every suite;
+- part 2: `bpser.rs` and `ln_beta.rs`'s `algdiv`, and the bpser branches taken.
+
+The worker files part 2 as a new task with T-2505's bpser criteria and moves them there, as task-format.md's "one
+task, one PR" requires.
 
 | step | task | module / branch | callers that take it | depends_on |
 |---|---|---|---|---|
@@ -403,14 +463,15 @@ Ordered by `depends_on`. Steps on the same row can run in parallel.
 | done | T-2502 | `closed_form_tails` | BetaDist, F, Binom, NegBinom; T df 2 | — |
 | 1 | **T-2504** (this spec) | — | — | — |
 | 2 | T-2503 (in progress) | `density.rs` M2 (min <= 1); `ln_beta.rs` if first | BETA.DIST(.,FALSE) | T-2645 |
-| 2 | T-2507 (in progress) | `density.rs` Loader (min > 1); Excel bd0 in `loader.rs` | BETA.DIST(.,FALSE) | T-2645 |
-| 2 | T-2505 | directory module, `dispatch`, `legacy.rs`, `bpser.rs`, `ln_beta.rs`; Edge, Bpser, W1Bpser, BpserLarge; the entry points deleted; `rustsheet-eval diff` | BetaDist, F, Binom, NegBinom, where rule 2 holds | T-2645, T-2502, T-2504 |
-| 3 | T-2585 | T density (`student_t.rs`) on `loader.rs`'s Excel bd0 and `stirlerr` | T.DIST(.,FALSE) | T-2645, T-2507 |
-| 3 | T-2506 | `bup.rs`; L140Bpser | BetaDist, F, Binom, NegBinom | T-2503, T-2505 |
-| 3 | T-2508 | `bfrac.rs`; Bfrac, Basym | BetaDist, F, Binom, NegBinom | T-2505, T-2507 |
-| 4 | T-2509 | `bgrat.rs` at b = 1/2; T becomes a K caller | StudentT (all its branches) | T-2645, T-2505, T-2506 |
-| 5 | T-2510 | `bgrat.rs` other b; Bgrat, BupBgrat, L140Bgrat, L140BupBgrat; deletes `unoriented_shape_one`, `A1_CLOSED_FORM_MIN_X` and, for `F`, `f_tail_delegate` where nothing delegates to them | BetaDist, F, Binom, NegBinom, where it gains | T-2505, T-2506, T-2509 |
-| 6 | T-2511 | inverses on K; `FQuantile`, `BetaQuantile`, `FTest` take their branches; `legacy.rs` deleted or its remaining pairs named | all inverse callers | T-2505, T-2506, T-2508, T-2509, T-2510 |
+| 2 | T-2507 (in progress) | `density.rs` Loader (min > 1); `excel_bd0` in `loader.rs` | BETA.DIST(.,FALSE) | T-2645 |
+| 2 | T-2679 | `rustsheet-eval report-diff` (harness) | — | T-2504 |
+| 3 | T-2505 | directory module, `dispatch`, `legacy.rs`, `bpser.rs`, `ln_beta.rs`; Edge, Bpser, W1Bpser, BpserLarge; the entry points deleted | BetaDist, F, Binom, NegBinom, where rule 2 holds | T-2645, T-2502, T-2504, T-2679 |
+| 3 | T-2585 | T density (`student_t.rs`) on `loader.rs`'s `excel_bd0` and `stirlerr` | T.DIST(.,FALSE) | T-2645, T-2507 |
+| 4 | T-2506 | `bup.rs`; L140Bpser | BetaDist, F, Binom, NegBinom | T-2503, T-2505 |
+| 4 | T-2508 | `bfrac.rs`; Bfrac, Basym | BetaDist, F, Binom, NegBinom | T-2505, T-2507 |
+| 5 | T-2509 | `bgrat.rs` at b = 1/2; T becomes a K caller | StudentT (all its branches) | T-2645, T-2505, T-2506 |
+| 6 | T-2510 | `bgrat.rs` other b; Bgrat, BupBgrat, L140Bgrat, L140BupBgrat; deletes `unoriented_shape_one`, `A1_CLOSED_FORM_MIN_X` and, for `F`, `f_tail_delegate` where nothing delegates to them | BetaDist, F, Binom, NegBinom, where it gains | T-2505, T-2506, T-2509 |
+| 7 | T-2511 | inverses on K; `FQuantile`, `BetaQuantile`, `FTest` take their branches; `legacy.rs` deleted or its remaining pairs named | all inverse callers | T-2505, T-2506, T-2508, T-2509, T-2510 |
 | any time | T-2512, T-2586 (research) | amend T-2505, T-2506, T-2508, T-2510 (T-2512) and T-2507, T-2585, T-2146 (T-2586) when a piece is solved | — | — |
 
 `depends_on` check (T-2504):
@@ -426,6 +487,8 @@ Ordered by `depends_on`. Steps on the same row can run in parallel.
   so they get no new edge. The layout above accommodates either landing order. Their task files get only a `spec:`
   line, so that their branches do not conflict, but the port rules bind them too. T-2503's "Bit-exact
   probes-numeric cells lost are listed in the Outcome" already matches port rule 2 (decision 0115).
+- **New: T-2679** (`rustsheet-eval report-diff`, harness lane), split out of T-2505. T-2505 now depends on it, and
+  so, through T-2505, does every later port.
 - **Changed: T-2633** (`depends_on: []` → `[T-2505]`). T-2633's goal fits BETA.DIST's last bits and the chained
   BETA.INV cells on today's Cephes kernel, which T-2505 replaces for those cells:
   - t0969-beta-prefactor D85/D86 sit in the bpser branches;

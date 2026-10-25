@@ -33,10 +33,7 @@ density times x·y (T-2507).
       engine's T-2507 density.
 - [ ] The (100, 120) run (t2464-w2f-xruns-1 block 7) scores at least 185 of 1,024 bit-exact.
 - [ ] No gated known-failure line is added.
-- [ ] SPEC-0019 port rules (decision 0115): the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`)
-      fixes far more cells than it loses. No cell becomes visibly off or changes type or error unless Excel agrees.
-      Every lost bit-exact cell is listed with its ulp in the Outcome, or in a committed file the Outcome cites.
-      Arguments taken from formula text are cut to 15 significant digits.
+- [ ] SPEC-0019's port rules hold, with decision 0115's `report-diff` check in the Outcome.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

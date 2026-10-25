@@ -66,7 +66,20 @@ two existing kernels.
     (decision 0115), 15-digit literal truncation;
   - a test and evidence plan per branch, and the Rollout ordering.
 - Task files: `spec:` line on T-2503, T-2505 to T-2511 and T-2585. Criteria amended in T-2505 (seams, harness, the
-  visible gated cell, the layout and `rustsheet-eval diff`), T-2506, T-2510 and T-2511. The port-rule criterion was
+  visible gated cell, the layout), T-2506, T-2510 and T-2511. The port-rule criterion was
   added to T-2505, T-2506, T-2508 to T-2511 and T-2585. T-2503 and T-2507 are in progress elsewhere, so they got only
   the `spec:` line.
 - depends_on: T-2633 `[]` → `[T-2505]`, since its cells move with the port. Every other port edge checked and kept.
+- Review round 1:
+  - `excel_bd0` naming;
+  - `ln_beta.rs` as the single ln B definition, with its four current copies placed;
+  - decision 0115's per-function thresholds (fixed >= 2 × lost, net visibly-off drop, no losses without fixes);
+  - F.TEST, T.TEST and the crossings marked UNVERIFIED as K calls;
+  - bpser floors re-derived for the shipped GL53 configuration;
+  - λ at a > b;
+  - K's input contract, bpser's shape-free cap, checked casts and the inverse search caps;
+  - homes for `ln_near_one` and `beta_reg`;
+  - T-2505's split point and its 22 predicted-broke cells;
+  - `report-diff` split into T-2679, which T-2505 now depends on;
+  - the floors kept in the task files only;
+  - an open note on decision 0114's `campaign: accuracy` retag of the port tasks.

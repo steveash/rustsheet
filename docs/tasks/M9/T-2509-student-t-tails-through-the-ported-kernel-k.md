@@ -59,10 +59,7 @@ fall from about 1,286 (the CR level) to about 7.
 - [ ] T.DIST.2T(t) = 2·T.DIST.RT(t), and the other wrapper identities of w5's table, hold bit for bit.
 - [ ] bgrat at b = 1/2 is shared with the non-T callers (T-2510 uses it).
 - [ ] No gated known-failure line is added.
-- [ ] SPEC-0019 port rules (decision 0115): the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`)
-      fixes far more cells than it loses. No cell becomes visibly off or changes type or error unless Excel agrees.
-      Every lost bit-exact cell is listed with its ulp in the Outcome, or in a committed file the Outcome cites.
-      Arguments taken from formula text are cut to 15 significant digits.
+- [ ] SPEC-0019's port rules hold, with decision 0115's `report-diff` check in the Outcome.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

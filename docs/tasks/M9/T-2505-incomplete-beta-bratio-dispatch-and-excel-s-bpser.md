@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: accuracy
-depends_on: [T-2645, T-2502, T-2504]
+depends_on: [T-2645, T-2502, T-2504, T-2679]
 spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
 
@@ -62,8 +62,18 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
       at least 284 are bit-exact.
 - [ ] bpser on t2464-r2-bpser-small-shapes is within 15 digits on 3,083 of 3,083 (b0 <= 1), 4,602 of 4,602
       (1 < b0 < 8) and at least 2,861 of 2,868 (b0 >= 8).
-- [ ] r2-bratio's per-branch bit-exact counts are met or beaten: w_bpser 6,767 of 11,845, w1_bpser 1,666 of 1,845,
-      bpser(a,b>1) 978 of 1,523. Both L forms are reported.
+- [ ] Scored in the shipped configuration (r2-bpser-small `lib.py` `V(nofpser=True, noapser=True,
+      lg="GL53/glalgdiv")`, SPEC-0019 Test plan):
+      - on t2464-r2-bpser-small-shapes, bit-exact at least 2,311 (b0 <= 1), 3,369 (1 < b0 < 8) and 1,489 (b0 >= 8);
+      - on r2-bratio's old sets (verify-r2-bpser-small/old_sets.out), bit-exact at least 1,670 of 2,209 (b0 <= 1),
+        3,365 of 7,455 (1 < b0 < 8) and 39 of 79 (b0 >= 8). Within 15 digits, 2,209, 6,432 and 78; the 1,023-cell
+        (7.3, 0.6) w4p1 block is the 15-digit literal artefact and is re-scored at the truncated literal.
+      These counts use Excel's measured GAMMALN. Before the port code lands, the Outcome re-scores them with the
+      engine's GAMMALN model (`R2_PROBED_GL=0`), and those engine-GL counts are the bit-exact floors. Both L forms
+      (GL53 and r2-bratio's `w3_lg="toms"`) are reported. r2-bratio's BEST counts (w_bpser 6,767 of 11,845, w1_bpser
+      1,666 of 1,845, bpser(a,b>1) 978 of 1,523) are listed beside them for comparison; they are not a floor.
+- [ ] The 22 cells r2-impact predicts this step breaks (ladder step S3; `impact.out`, `offcells_pre.tsv`) are each
+      kept within 15 digits, by narrowing the caller's branch per decision 0115, or named with Excel's agreement.
 - [ ] BETA.DIST's cdf runs on the bratio port.
 - [ ] The two gated lost cells are recorded under decision 0083 (or a decision record), and the effect on T-2633's
       chained BETA.INV cells is stated. No other baseline line is added. gen-m9/60b0b6e69ad35a45 A151 (F.DIST.RT,
@@ -79,11 +89,9 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
       line in `functions/statistical/mod.rs` (docs/research/t2464/README.md "Rebuilding the harness" then points at the
       engine's own kernel, or the research tools keep a copy outside the crate). Only if T-2512 and T-2586 are done;
       otherwise the last of them deletes it (SPEC-0019).
-- [ ] The module layout, `Branch`, `Caller` and the port table follow SPEC-0019, and `rustsheet-eval diff` exists.
-- [ ] SPEC-0019 port rules (decision 0115): the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`)
-      fixes far more cells than it loses. No cell becomes visibly off or changes type or error unless Excel agrees.
-      Every lost bit-exact cell is listed with its ulp in the Outcome, or in a committed file the Outcome cites.
-      Arguments taken from formula text are cut to 15 significant digits.
+- [ ] The module layout, `Branch`, `Caller`, the port table and the single ln B definition follow SPEC-0019. If the
+      task outgrows M, it splits at SPEC-0019's split point.
+- [ ] SPEC-0019's port rules hold, with decision 0115's `report-diff` check in the Outcome.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
