@@ -21,4 +21,4 @@ Oracle cells probes/base-zero-empty-min-length A1 and A5 fail (T-2416); a blank-
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- A blank-cell `min_length` (stays 0).
