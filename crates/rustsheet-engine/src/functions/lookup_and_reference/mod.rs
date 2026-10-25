@@ -4,7 +4,8 @@ use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::{
-    is_indirect_unquoted_sheet, is_out_of_range_r1c1_name, unquote_sheet_prefix,
+    is_indirect_unquoted_sheet, is_out_of_range_r1c1_name, quote_digit_leading_sheet,
+    unquote_sheet_prefix,
 };
 use crate::external_reference::{one_external_area, PickedReference};
 use crate::functions::logical::{if_arg_at, if_arg_dims};
@@ -18,7 +19,6 @@ use crate::{
     utils::ParsedReference,
 };
 
-use super::criteria::wildcard_text_matcher;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
@@ -31,7 +31,6 @@ pub(crate) use drop_take::Edge;
 mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
-mod eta_min_args;
 mod expand;
 mod getpivotdata;
 mod group_functions;
@@ -49,6 +48,7 @@ pub(crate) mod pivot_index;
 mod pivotby;
 mod ref_lift;
 mod relative_to;
+pub(crate) mod search_cache;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
@@ -68,10 +68,8 @@ fn lookup_index(
 ) -> Option<usize> {
     if is_sorted {
         search_vector.approximate_search(lookup_value)
-    } else if let CalcResult::String(s) = lookup_value {
-        search_vector.position(wildcard_text_matcher(s))
     } else {
-        search_vector.exact_position(lookup_value)
+        search_vector.exact_match(lookup_value)
     }
 }
 
@@ -780,6 +778,10 @@ impl Model {
         };
 
         let parsed_reference = if a1 {
+            // The lexer takes no unquoted sheet name that starts with a digit; INDIRECT text
+            // does (`INDIRECT("2024!B1")` reads sheet `2024`; probes/indirect-sheet-scoped-name
+            // Summary!D3, docs/excel-semantics/lookup.md), so quote it for the parser.
+            let ref_text = quote_digit_leading_sheet(&ref_text);
             ParsedReference::parse_reference_formula(
                 Some(cell.sheet),
                 &ref_text,
