@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-0475]
 ---
 
 ## Goal
@@ -24,7 +24,8 @@ of `evaluate()` (evaluation.rs) all call. The file's expression rules cover near
 and `apply_cf_formula` evaluates the formula once per cell of the area: about 1.6e9 array elements
 per run, all discarded (an array result counts as no match, `_ => false`).
 
-Only `get_extended_style_for_cell` (and `UserModel::get_extended_cell_style`) read `cf_cache`, and
+Design: docs/specs/SPEC-0021-conditional-formats-on-first-style-read.md (T-0475). Only
+`get_extended_style_for_cell` (and `UserModel::get_extended_cell_style`) read `cf_cache`, and
 nothing in value evaluation does. Design points to settle (a short spec first if the public receivers
 change): the getters take `&self` while CF evaluation needs `&mut self` (evaluate_outside_cell); what
 "the state of the last `evaluate()`" means when cells change between `evaluate()` and the first read
@@ -37,6 +38,11 @@ change): the getters take `&self` while CF evaluation needs `&mut self` (evaluat
 - [ ] corpus-bench 41978 loads and calculates in under 60 s through the harness; its `!Timeout`
       line leaves eval/baseline/corpus-bench.txt via `make eval-baseline`; release timings
       before/after in the Outcome.
+- [ ] The change in values read between load and the first `evaluate()` (SPEC-0021) is recorded
+      in docs/decisions/; the Python binding's `get_extended_cell_style` follows the receiver.
+- [ ] `make eval-check` shows whether any result changes now that load stores no recomputed
+      values (cycle members, iteration starts; SPEC-0021 "What `evaluate()` starts from"); any
+      change is in the Outcome and the decision record.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
