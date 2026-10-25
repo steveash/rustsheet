@@ -204,30 +204,60 @@ fn f_quantile_through_beta(df1: f64, df2: f64, p: f64) -> f64 {
 /// `(df1+df2)^(df1+df2)` finite) that the logarithmic form takes to 0 is 0 (Excel's
 /// `F.DIST(1E308,1,3,FALSE)`, probes/stat-overflow-arguments E11, -b A6); every other positive x
 /// is [`f_pdf_loader`], which a plain logarithmic form is not accurate enough to replace (T-1290:
-/// `F.DIST(1,1000,1000,FALSE)` 6.306254544584165 against the true 6.3062545445902005).
+/// `F.DIST(1,1000,1000,FALSE)` 6.306254544584165 against the true 6.3062545445902005). Excel's
+/// range steps ([`excel_density_range`]) come last.
 fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
-    // Excel's density is 0 once (df1 x)^(df1/2) underflows to 0, although the density can be far
-    // above the double range's bottom: `F.DIST(1E-300,3,1000,FALSE)` is 0 (exact 2.1E-150) while
-    // `F.DIST(1E-215,3,1000,FALSE)` (power 1.6E-322) is positive, and so is
-    // `F.DIST(1E-65,10,1000,FALSE)` (power 1E-320, where x^5 is already 0): probes-numeric
-    // t1864-f-pdf-tiny-x, t1864-f-pdf-edges A8.
-    if x > 0.0 && (df1 * x).powf(df1 / 2.0) == 0.0 {
-        return 0.0;
+    excel_density_range(f_pdf_accurate(dist, df1, df2, x), x)
+}
+
+/// Excel's last steps on an F density (docs/excel-semantics/statistics.md, "F density is not
+/// the beta density, R's df or a GAMMALN formula (T-2513)", round 5): it stores Y = density·x, so
+/// a subnormal Y keeps only its own bits, takes F = fl(Y/x), and an F below 2^-1022 is 0. Only a
+/// subnormal Y is re-formed here (a normal one would move bit-exact cells by the extra rounding).
+/// Evidence: `F.DIST(1E-300,3,1000,FALSE)` is 0 (Y = 2E-450 underflows; exact density 2.1E-150),
+/// `F.DIST(1E-215,3,1000,FALSE)` is 6.42285339593616E-108 and `F.DIST(1E-65,10,1000,FALSE)`
+/// 1.4821969375236873E-258 (Y = 13 and 3 subnormal units, to about 1E-14 relative of Excel's
+/// own; probes-numeric t1864-f-pdf-tiny-x A6, A17); and t2586-r5-f-edges-a B1285-B1303,
+/// B1350-B1360 are 0 where the density is about 1.8E-310 (their `*2^600` companions, such as
+/// C1296 and C1301, show the 0 is Excel's, not Graph's).
+fn excel_density_range(density: f64, x: f64) -> f64 {
+    if !(density > 0.0 && density.is_finite() && x > 0.0) {
+        return density;
     }
+    let stored = density * x;
+    let value = if stored < f64::MIN_POSITIVE {
+        stored / x
+    } else {
+        density
+    };
+    if value < f64::MIN_POSITIVE {
+        0.0
+    } else {
+        value
+    }
+}
+
+/// The F density before Excel's range steps ([`excel_density_range`]).
+fn f_pdf_accurate(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
     let direct = dist.pdf(x);
     // Where the direct form is finite: the beta density at y = df1 x / (df1 x + df2) times
     // dy/dx = y (1 - y) / x, while Gamma((df1 + df2)/2) is finite. `F.DIST(0.7,4,2,FALSE)` is
     // then 1 ulp from Excel's 0.40509259259259256 (`F_DIST.xlsx` F3), statrs' form 28 ulp (T-0970).
-    // A huge x where statrs' form underflows to 0 is not done: Excel gives the positive density,
-    // `F.DIST(1E100,2,3,FALSE)` 2.7556759606310174E-250 and `F.DIST(1E200,1,1,FALSE)`
-    // 3.1830988618378795E-301 (probes-numeric t1864-f-pdf-edges A6, A7), so it goes on to the
-    // log-form underflow check and Loader's form below (`F.DIST(1E300,1,1,FALSE)` stays 0, A11).
-    let huge_x_underflow = direct == 0.0 && x > 1.0;
-    if direct.is_finite() && !huge_x_underflow {
+    // The beta path is kept whenever it gives a positive value, even where statrs' own form is a
+    // finite 0 (its (df1 + df2)^(df1 + df2) overflowing): `F.DIST(1+2^-51,20,127,FALSE)` is then
+    // Excel's 1.1626735695122385 (probes-numeric t2586-r5-f-bigconst-a B889). Only a 0 from both
+    // goes on to Loader's form: Excel gives the positive density at `F.DIST(1E100,2,3,FALSE)`
+    // 2.7556759606310174E-250 and `F.DIST(1E200,1,1,FALSE)` 3.1830988618378795E-301
+    // (t1864-f-pdf-edges A6, A7), and the log-form underflow check below keeps
+    // `F.DIST(1E300,1,1,FALSE)` 0 (A11).
+    if direct.is_finite() {
         let scaled = df1 * x;
         let y = scaled / (scaled + df2);
-        return beta_density(y, df1 / 2.0, df2 / 2.0)
+        let value = beta_density(y, df1 / 2.0, df2 / 2.0)
             .map_or(direct, |density| density * y * (1.0 - y) / x);
+        if value != 0.0 || x <= 0.0 {
+            return value;
+        }
     }
     if x <= 0.0 {
         return direct;
@@ -254,7 +284,7 @@ fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
 /// q = n/(n + x m) and p = x m/(n + x m), the density is (m q / 2)
 /// `dbinom_raw((m-2)/2, (m+n-2)/2, p, q)` for m >= 2 and m^2 q / (2 p (m + n))
 /// `dbinom_raw(m/2, (m+n)/2, p, q)` for m < 2 (m = df1, n = df2). The binomial's deviation
-/// k - N p, k = (m-2)/2 or m/2, is formed without cancellation as n (2k - x m) / (2 (n + x m)),
+/// k - N p, k = (m-2)/2 or m/2, is formed without cancellation as q (2k - x m) / 2,
 /// with x m's rounding error (an fma) included, so the bd0 terms keep their digits. It is an
 /// accurate form, not Excel's (docs/excel-semantics/statistics.md, "F density at large degrees
 /// of freedom (T-1864)"): within a few ulp of the exact density on the probes-numeric cells,
@@ -270,7 +300,10 @@ fn f_pdf_loader(m: f64, n: f64, x: f64) -> f64 {
     } else {
         (m / 2.0, (m + n) / 2.0, m * m * q / (2.0 * p * (m + n)))
     };
-    let diff = n * ((2.0 * k - scaled) - scaled_err) / (2.0 * total);
+    // q (2k - x m) / 2 rather than n (2k - x m) / (2 (n + x m)): with x m near f64::MAX the
+    // latter's n (2k - x m) overflows (inf / inf, then #NUM!), where Excel's density is 0
+    // (probes-numeric t2586-r5-f-edges-a B1437, t2586-verify-r5-f-edges-hold B91, B92).
+    let diff = q * ((2.0 * k - scaled) - scaled_err) / 2.0;
     factor * dbinom_raw_dev(k, size, p, q, diff)
 }
 
@@ -361,6 +394,11 @@ impl Model {
         // The density at 0 is infinite for df1 = 1 and exactly 1 for df1 = 2; higher df1 give
         // 0 (`F.DIST(0,1,7,FALSE)` = #NUM!, `F.DIST(0,2,7,FALSE)` = 1;
         // probes-numeric/t1049-fdist A27, A28).
+        // A subnormal x is #DIV/0! for the density (round 5 of statistics.md's T-2513 F density entry:
+        // probes-numeric t2586-r5-f-edges-a B931, B932: `F.DIST(EXP(-720),3,5,FALSE)`).
+        if !cumulative && x > 0.0 && x < f64::MIN_POSITIVE {
+            return Err(div_error(cell));
+        }
         if x == 0.0 && !cumulative {
             if df1 == 1.0 {
                 return Err(num_error(cell));

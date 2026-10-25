@@ -81,9 +81,18 @@ there). Recorded in docs/excel-semantics/statistics.md, "F density at large degr
   one ulp lower because it reproduces Excel's GAMMALN (a unit test pins both).
 - Edge probes (2026-10-25, fidelity review): probes-numeric t1864-f-pdf-edges (12 cells) and t1864-f-pdf-tiny-x (20
   cells), excel-graph. Excel returns the density at a huge x with a small df, a tiny x with a large df2 and a
-  non-integer (truncated) df, as ours does. Two differences found and fixed here: Excel is 0 once (df1 x)^(df1/2)
-  underflows (`F.DIST(1E-300,3,1000,FALSE)`; ours was 2.1E-150, now 0 by a guard at the top of `f_pdf`, 8 zero cells),
-  and Excel gives the positive density at a huge x where statrs' form underflows to 0 (`F.DIST(1E100,2,3,FALSE)`
-  2.7556759606310174E-250, `F.DIST(1E200,1,1,FALSE)` 3.1830988618378795E-301; ours was 0, now Loader's form through
-  the log-form underflow check, within 15 digits of Excel). Where the power is subnormal Excel loses digits in a way
-  not yet modelled (t1864-f-pdf-tiny-x A5, A6, A10, A17): T-2647. Recorded in statistics.md.
+  non-integer (truncated) df, as ours does. Re-review against T-2586's round-5 probes (merged from main): `f_pdf` now
+  ends with Excel's range steps (`excel_density_range`: a subnormal Y = density·x re-formed as fl(Y/x), so
+  `F.DIST(1E-300,3,1000,FALSE)` is 0 and `F.DIST(1E-65,10,1000,FALSE)` carries Excel's 11.6% subnormal error; an F
+  below 2^-1022 is 0); a subnormal x is `#DIV/0!` (t2586-r5-f-edges-a B931, B932); the beta-density path is kept
+  whenever it is positive and Loader's form only takes a 0 from both (`F.DIST(1E100,2,3,FALSE)`,
+  `F.DIST(1E200,1,1,FALSE)` now Excel's positive densities, `F.DIST(1+2^-51,20,127,FALSE)` still bit-exact); and
+  Loader's deviation is q(2k - x m)/2, which no longer overflows at an x m near f64::MAX (t2586-r5-f-edges-a B1437,
+  t2586-verify-r5-f-edges-hold B91, B92: Excel 0, ours was `#NUM!`). That covers all of round 5's argument and range
+  rules, so no follow-up is needed for them. The last ~1E-14 of the subnormal-Y cells (tiny-x A5, A6, A10, A17) is
+  T-2647.
+- Main-vs-HEAD per-cell comparison over probes-numeric (every F cell: t2586-*, t2513-*, t1864-*, t2220-*, t1530-*,
+  m9-f-dist; main's run from the reviewer, HEAD after these fixes; the two new t1864 cases excluded): 0 cells that
+  pass on main fail on HEAD; 770 cells that fail on main pass on HEAD (all F.DIST); 23,355 cells fail on both with a
+  different value: 23,190 from an error to a number and 165 closer to Excel, none further. Other suites: `make
+  eval-check` 0 regressions, gen-m9 known failures unchanged.
