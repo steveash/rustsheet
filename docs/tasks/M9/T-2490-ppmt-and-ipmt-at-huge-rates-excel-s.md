@@ -70,7 +70,7 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] No PMT, IPMT or PPMT cell of probes-numeric/m9-fin-pmt or IPMT_PPMT.xlsx gets visibly off (re-check with `make eval-show`).
 - [x] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The long-term tails within a few digits (T-2242).
