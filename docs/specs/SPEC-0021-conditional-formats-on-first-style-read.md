@@ -44,14 +44,8 @@ Unchanged: every rule is evaluated by today's code. The only question is when it
   3. the end of `evaluate()` (evaluation.rs);
   4. `set_theme` (model.rs).
 
-  The invariant is that the cache is rebuilt from exactly the states it is rebuilt from today.
-  Rule, dxf and sheet edits that bypass these four sites include undo/redo and clipboard writes to
-  `Worksheet::conditional_formatting`, `create_dxf`, and row, column and sheet edits. Such an edit
-  made through `Model`, or through a paused `UserModel`, leaves the cache as stale as it does
-  today, until the next `evaluate()`. The edit sites therefore need no flag of their own.
-
   `UserModel`'s edits evaluate (`evaluate_if_not_paused`), and so do its undo and redo, so they set
-  the flag. No setter site is added, and none can be missed.
+  the flag. No setter site is added.
 - **Mutable style reads.** These public methods change from `&self` to `&mut self`:
   - `Model::get_extended_style_for_cell(&mut self, ..)`;
   - `UserModel::get_extended_cell_style(&mut self, ..)`;
@@ -86,20 +80,39 @@ decision 0014) is T-0476. Evaluating only the rules whose areas hold the queried
 option for that task.
 
 ### When the evaluation happens, and what it can see
-Today the cache is a snapshot taken at the end of `evaluate()`, or at load. The lazy evaluation
-runs at the first style read instead. The two agree whenever nothing changes in between, which
-covers the eval harness and `UserModel`, since `UserModel` evaluates after every edit, undo and
-redo (`evaluate_if_not_paused`). Two differences remain, and both are accepted:
-- **Edits made through `Model`, or through a paused `UserModel`, without `evaluate()`.** If cells are changed between `evaluate()`
-  and the first style read, the conditional formats see the changed inputs. Today they would have
-  seen the snapshot. Formula cells are not re-evaluated by this; they keep their last values, as
-  today.
+Today the cache is a snapshot taken at the end of `evaluate()`, at load, or at `set_theme`. The
+lazy evaluation runs at the first style read after one of those instead, and sees the workbook as
+it is then. The two agree whenever nothing changes in between. That covers the eval harness (which
+never reads styles) and `UserModel` while it is not paused, since `UserModel` evaluates after every
+edit, undo and redo.
+
+Once a read has cleared the flag, the cache stays as it is until the next of the four call sites,
+exactly as today's snapshot does. The differences all come from changes made through `Model`, or
+through a paused `UserModel`, after the snapshot point but before the first read. All are accepted:
+- **The read sees those edits.** It sees edited cells, and edited rules, dxfs, rows, columns and
+  sheets (`Model::add_conditional_formatting` and the other CF edits, undo/redo and clipboard
+  writes to `Worksheet::conditional_formatting`, `create_dxf`). Today the snapshot would not.
+- **The read can evaluate formula cells.** A rule reads cells through `evaluate_cell`, outside a
+  pass, so:
+  - a formula written since the last `evaluate()` at a position that pass did not evaluate (an
+    empty or constant cell then) is computed by the read and its value stored, spill included;
+  - a formula written at a position that pass did evaluate is read through `stored_value`, which
+    gives `#ERROR!` for a cell that has no value yet (cell.rs).
+
+  Today's snapshot runs right after `evaluate()`, so it meets neither case. A style read can thus
+  change a value read afterwards, in the first case, where today none can.
 - **Values read between load and the first `evaluate()`.** At load, today's evaluation evaluates
-  the formula cells the rules read (`evaluate_cell` outside a pass) and stores their values. So a
-  value read after load could be a recomputed one rather than the file's cached one. With the
-  change, values read after load are the file's cached values until `evaluate()` or a style read.
-  This is the usual behavior of a workbook opened without recalculation, though no oracle case pins
-  it. T-0468 records this change in docs/decisions/.
+  the formula cells the rules read (`evaluate_cell` outside a pass, while `evaluation.cells` is
+  still empty) and stores their values. So a value read after load could be a recomputed one rather
+  than the file's cached one. With the change, values read after load are the file's cached values
+  until `evaluate()` or a style read. That is the usual behavior of a workbook opened without
+  recalculation, though no oracle case pins it. T-0468 records this change in docs/decisions/.
+- **What `evaluate()` starts from.** Since load no longer stores those recomputed values,
+  `evaluate()` starts from the file's cached values. Some results keep the values they start from:
+  the members of a cycle (docs/excel-semantics/recalc.md, "keeps cached values") and the start of
+  iterative calculation. Those results can therefore change, presumably towards Excel's, which
+  starts from the same cached values. T-0468 checks this with `make eval-check`, the fixtures with
+  circular references (circular-keeps-cached-values) included, and records any change.
 
 The eval harness never reads styles, so 41978's "under 60 s" below holds because the
 conditional-format work is no longer done at all there. A style read of 41978 still costs about
@@ -124,8 +137,12 @@ conditional-format work is no longer done at all there. A style read of 41978 st
     counter of `evaluate_conditional_formatting` runs on `Model`);
   - the first read after `evaluate()` or `set_theme`, and after a `UserModel` conditional-format
     edit, undo or redo, sees the new state;
-  - under paused evaluation, a conditional-format edit, and its undo, leave the read styles as today's
-    eager cache leaves them (unchanged until `evaluate()`);
+  - under paused evaluation, after a style read has cleared the flag, a conditional-format edit and
+    its undo leave the read styles unchanged until `evaluate()`, as today's snapshot does;
+  - without that earlier read, the first read sees the edit (the accepted difference above);
+  - a formula written through `Model` after `evaluate()`, then a style read whose rule reads it,
+    then a value read: the value is the one the read computed (an unevaluated position), or
+    `#ERROR!` (a position the pass evaluated), as described above;
   - a second read does not re-evaluate.
 - `rustsheet-eval check`: 0 regressions in every gated suite.
 - corpus-bench 41978 runs under 60 s through the harness, and its `!Timeout` line leaves the

@@ -40,6 +40,9 @@ change): the getters take `&self` while CF evaluation needs `&mut self` (evaluat
       before/after in the Outcome.
 - [ ] The change in values read between load and the first `evaluate()` (SPEC-0021) is recorded
       in docs/decisions/; the Python binding's `get_extended_cell_style` follows the receiver.
+- [ ] `make eval-check` shows whether any result changes now that load stores no recomputed
+      values (cycle members, iteration starts; SPEC-0021 "What `evaluate()` starts from"); any
+      change is in the Outcome and the decision record.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
