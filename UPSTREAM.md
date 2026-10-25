@@ -55,4 +55,4 @@ Every port records the upstream SHA in its commit message (`Ported-From: ironcal
 
 | Last triaged upstream commit | Date |
 |---|---|
-| `7e271963ccc6e2ad0c9da18622d9ac463ac956a0` | 2026-10-22 |
+| `9cfbdfce5efcdbedd57520ad9fd797b12e6bf0ba` | 2026-10-23 |
