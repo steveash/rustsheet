@@ -3281,11 +3281,8 @@ F	probes/t2723-unary-plus-formula-text.case.json	S!C6
 F	probes/t2723-unary-plus-formula-text.case.json	S!C7
 F	probes/t2723-unary-plus-formula-text.case.json	S!C8
 F	probes/t2723-unary-plus-formula-text.case.json	S!C9
-F	probes/table-edits/table-convert-names-this-row.case.json	S!F1
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
-F	probes/table-edits/table-convert-names-this-row.case.json	S!F9
-F	probes/table-edits/table-convert-names-this-row.case.json	T!A1
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5

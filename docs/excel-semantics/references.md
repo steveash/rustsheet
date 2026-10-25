@@ -2351,7 +2351,7 @@ inside and below the table, the column inserts at D, the sheet rename and the to
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
 move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
 do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
-reference as the absolute area it lowered to (defined names too, T-2643). Known gap (T-2643): a `#This Row` reference off the data rows is lowered to the relative form (`=$C1`, value 0) where Excel keeps `Sales[@Qty]` and `#VALUE!`; the shared R1C1 formula text has no row to decide with. A deleted table or sheet matches
+reference as the absolute area it lowered to (defined names too, T-2643). Each cell with a `#This Row` reference is lowered at its own row (`Model::lower_this_row_references`, T-2643), so off the data rows it is `#VALUE!` as in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2751). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a
