@@ -151,7 +151,7 @@ impl Model {
                 };
                 for ((&position, item), &omitted) in positions.iter().zip(items).zip(&omitted) {
                     // An item is text, a label cell's value included (J6), or an omitted
-                    // argument for the blank item (pv23_041 F5:F7); a number, a date or a
+                    // argument for the blank item (pv23_041 G5:G7); a number, a date or a
                     // boolean is SPEC-0015 unknown 3, `""`, a blank cell or `"(blank)"`
                     // unprobed, an error in a pair unprobed.
                     let found = match item {

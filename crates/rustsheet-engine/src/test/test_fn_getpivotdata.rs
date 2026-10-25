@@ -385,7 +385,7 @@ fn two_fields_on_an_axis_answer_only_the_grand_total() {
 
 #[test]
 fn an_omitted_item_is_the_blank_item() {
-    // calipers pv23_041 Liability Summary F5:F7: `GETPIVOTDATA(...,"Remediation Status",)` is
+    // calipers pv23_041 Liability Summary G5:G7: `GETPIVOTDATA(...,"Remediation Status",)` is
     // the `(blank)` row. `""`, a blank cell and `"(blank)"` are unprobed, `#REF!`.
     let mut model = model();
     let mut builder = CacheBuilder::new(None, MAX_RECORD_VALUES);

@@ -42,7 +42,7 @@ follow-up (decision 0114).
 
 ## Outcome
 Both pivots import; the `#REF!`s came from GETPIVOTDATA itself.
-- pv23_041 `Liability Summary` F5:F7 (and the cells summing them): the omitted trailing item argument
+- pv23_041 `Liability Summary` G5:G7 (and the cells summing them): the omitted trailing item argument
   (`"Remediation Status",`) is Excel's way of picking the `(blank)` item (`<m/>` in the cache); ours read it as a
   non-text item. An omitted item now picks the field's one blank item. `""`, a blank cell and `"(blank)"` stay
   `#REF!` (unprobed).

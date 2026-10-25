@@ -125,7 +125,7 @@ bits: the 2021 total of the pivot at Pivot!C3 (Year columns only) is 1738748.699
 `GETPIVOTDATA("For Review",Pivot!$C$3,"Year","2021")`, while the pivot at Pivot!C9 (with Remediation Status rows) shows
 1738748.7000000002 for its 2021 grand total; folding the picked cache records in cache order gives the C3 values
 (SPEC-0015 unknown 11, one data point).
-Evidence: calipers goldens (desktop Excel cached values): pv_goldens/pv23_041 Liability Summary C5:F7 (the pivots on sheet
+Evidence: calipers goldens (desktop Excel cached values): pv_goldens/pv23_041 Liability Summary C5:G7 (the pivots on sheet
 Pivot, C3:G5, C9:G13), roundtrip/formula_stress_test Database!B16 (pivot GPD at B32:O45).
 Status: VERIFIED (desktop cached values). UNVERIFIED: whether `""`, a blank cell or `"(blank)"` also pick the blank item
 (ours `#REF!`), and any pair on a pivot with two fields on an axis (ours `#REF!`, SPEC-0015 unknown 10, T-2085).

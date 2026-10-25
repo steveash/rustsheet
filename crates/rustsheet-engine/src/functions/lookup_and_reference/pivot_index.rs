@@ -233,7 +233,7 @@ impl Model {
 
     /// The blank item (`<m/>`, shown as `(blank)`) of the field at axis position `position` of
     /// pivot `pivot`, which an omitted item argument picks (calipers `pv23_041` `Liability Summary`
-    /// F5:F7, `GETPIVOTDATA(...,"Remediation Status",)`); `None` when the field has none. Call
+    /// G5:G7, `GETPIVOTDATA(...,"Remediation Status",)`); `None` when the field has none. Call
     /// [`Model::pivot_axis`] first.
     pub(crate) fn pivot_blank_item(&self, pivot: usize, position: usize) -> Option<u32> {
         let field = *self
