@@ -9,6 +9,7 @@ size: S
 tier: opus
 campaign: visible
 depends_on: [T-2505, T-2507]
+spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
 
 ## Goal
@@ -32,6 +33,9 @@ density times x·y (T-2507).
       engine's T-2507 density.
 - [ ] The (100, 120) run (t2464-w2f-xruns-1 block 7) scores at least 185 of 1,024 bit-exact.
 - [ ] No gated known-failure line is added.
+- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
+      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
+      cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

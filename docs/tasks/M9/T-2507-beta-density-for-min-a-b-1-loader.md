@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: visible
 depends_on: [T-2645]
+spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
 
 ## Goal

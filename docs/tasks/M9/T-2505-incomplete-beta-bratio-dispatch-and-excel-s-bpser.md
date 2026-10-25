@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: visible
 depends_on: [T-2645, T-2502, T-2504]
+spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
 
 ## Goal
@@ -65,13 +66,23 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
       bpser(a,b>1) 978 of 1,523. Both L forms are reported.
 - [ ] BETA.DIST's cdf runs on the bratio port.
 - [ ] The two gated lost cells are recorded under decision 0083 (or a decision record), and the effect on T-2633's
-      chained BETA.INV cells is stated. No other baseline line is added.
-- [ ] The pre-T-2502 seams are deleted: `beta_reg_complement_unoriented`, `beta_reg_upper_unoriented`,
-      `unoriented_shape_one`, `fisher.rs` `f_tail_pre_t2502` and the `A1_CLOSED_FORM_MIN_X` branch.
+      chained BETA.INV cells is stated. No other baseline line is added. gen-m9/60b0b6e69ad35a45 A151 (F.DIST.RT,
+      bpser(a,b>1), 6 ulp at 6.6E-44 in the model) would become visibly off, which decision 0083 does not cover: it
+      stays delegated for `F`, or gets a decision record (SPEC-0019 "Gated regressions").
+- [ ] The pre-T-2502 entry points are deleted (SPEC-0019 "Deleting the T-2502 seams"): `beta_reg_complement_unoriented`,
+      `beta_reg_upper_unoriented`, `beta_reg_complement`, `beta_reg_upper` and `beta_reg_tail`'s `closed_forms` flag.
+      Every caller goes through `tails_for` and its delegate. `unoriented_shape_one`, `A1_CLOSED_FORM_MIN_X` and F's
+      pre-T-2502 argument forms (`f_tail_delegate`) live on inside the delegates in `legacy.rs` and `fisher.rs`, and
+      the spec's Rollout names the task that deletes each.
 - [ ] statistics.md's bpser and bratio entries gain "Implemented in" lines.
 - [ ] The T-2464 research harness is deleted: `functions/statistical/t2464_harness.rs` and its `mod t2464_harness;`
       line in `functions/statistical/mod.rs` (docs/research/t2464/README.md "Rebuilding the harness" then points at the
-      engine's own kernel, or the research tools keep a copy outside the crate).
+      engine's own kernel, or the research tools keep a copy outside the crate). Only if T-2512 and T-2586 are done;
+      otherwise the last of them deletes it (SPEC-0019).
+- [ ] The module layout, `Branch`, `Caller` and the port table follow SPEC-0019, and `rustsheet-eval diff` exists.
+- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
+      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
+      cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

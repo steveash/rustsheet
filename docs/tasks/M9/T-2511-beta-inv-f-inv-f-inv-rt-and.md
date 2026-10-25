@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: visible
 depends_on: [T-2505, T-2506, T-2508, T-2509, T-2510]
+spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
 
 ## Goal
@@ -42,7 +43,13 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
 - [ ] The search is bounded, with no panics, on any input (directive 5; T-1871's cells).
 - [ ] The Outcome reports fixed and broke counts per function on the 1,207 numeric inverse cells, against r2-impact's
       418 / 115.
-- [ ] No gated line is added without decision 0083's allowance.
+- [ ] No gated line is added without decision 0083's allowance. The cells T-2502's oriented forms moved (`F_DIST.xlsx`
+      J3/L3, gen-m9/68d8ffb69ff739d8 A143) are among those reported.
+- [ ] `FQuantile`, `BetaQuantile` and `FTest` take their branches (SPEC-0019), and `legacy.rs` is deleted, or the
+      Outcome names each (caller, branch) pair still delegated and its owner.
+- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
+      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
+      cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

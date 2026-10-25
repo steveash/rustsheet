@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: visible
 depends_on: [T-2645, T-2507]
+spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
 
 ## Goal
@@ -52,6 +53,9 @@ leaves.
 - [ ] df 1 and df 2: bit-exact on all 1,077 cells.tsv cells and on verify-r3-tdensity's 27 + 1,050.
 - [ ] The Outcome reports the visible change per suite against today's engine; no gated known-failure line is added.
 - [ ] statistics.md's entry gains an "Implemented in" line.
+- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
+      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
+      cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

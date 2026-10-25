@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: visible
 depends_on: [T-2503, T-2505]
+spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
 
 ## Goal
@@ -42,7 +43,12 @@ bup+bgrat (T-2509, T-2510) reuses it.
       within 15 digits of 11,742, with the engine's own density as P.
 - [ ] The ix L140 cells score at least 1,011 bit-exact of 1,620.
 - [ ] The three stat-argument-modes cells are either kept bit-exact or recorded under decision 0083's allowance, with
-      the test of r2-impact's hypothesis 1 in the Outcome.
+      the test of r2-impact's hypothesis 1 in the Outcome. gen-m9/2801c1c11c21e134 A374 (FDIST, 6 ulp in the model)
+      would become visibly off, which decision 0083 does not cover: it stays delegated for `F`, or gets a decision
+      record (SPEC-0019 "Gated regressions").
+- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
+      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
+      cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

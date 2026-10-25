@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: visible
 depends_on: [T-2505, T-2506, T-2509]
+spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 ---
 
 ## Goal
@@ -37,7 +38,13 @@ LN, EXP, log1p and GAMMALN, and brcmp1 = density·x·y), where that is a net vis
 - [ ] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
       net negative. A branch that is not stays on today's kernel, with the measurement in the Outcome.
 - [ ] Non-T bgrat cells at b = 1/2 score at least 365 bit-exact of 387.
-- [ ] The gated FDIST c18dbf21 A151 is kept or recorded under decision 0083.
+- [ ] The gated FDIST c18dbf21 A151 (7 ulp in the model, beyond decision 0083's 4) is kept, by leaving `F`'s
+      bup+bgrat delegated, or recorded in a decision record (SPEC-0019 "Gated regressions").
+- [ ] `unoriented_shape_one` and `A1_CLOSED_FORM_MIN_X` are deleted, and so is `fisher.rs` `f_tail_delegate` if `F`
+      takes every branch it reaches; otherwise the Outcome names the (caller, branch) pairs that still reach them.
+- [ ] SPEC-0019 port rules: the probes-numeric main-vs-HEAD comparison (`rustsheet-eval diff`) changes 0
+      previously bit-exact cells unless Excel agrees, and the Outcome reports it; arguments taken from formula text are
+      cut to 15 significant digits.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
