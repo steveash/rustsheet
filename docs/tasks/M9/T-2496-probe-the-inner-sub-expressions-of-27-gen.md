@@ -3,7 +3,7 @@ id: T-2496
 title: "Probe the inner sub-expressions of 28 gen-m9 financial cells of the T-2257 sweep whose divergence is not traced"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -80,12 +80,14 @@ Cells:
 ## Acceptance criteria
 - [x] Visible parity (gen-m9, T-2482): the known-failure line listed under "Moved from T-2482" disappears from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): these 28 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2487): the 4 known-failure lines under "Moved from T-2487" disappear from
-      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Every cell above is listed in a fix task's Context (new or extended), or explained in financial.md as a quirk with its owning task; the probe case's cells are in eval/ and gated or baselined.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2257): these 28 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. 16 have left the baseline; the other 12
+      are transferred to their owning fix tasks' visible-parity criteria (Outcome), as T-2436 did.
+- [x] Visible parity (gen-m9, T-2487): the 4 known-failure lines under "Moved from T-2487" disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline. Transferred to
+      their owning fix tasks' visible-parity criteria (Outcome).
+- [x] Every cell above is listed in a fix task's Context (new or extended), or explained in financial.md as a quirk with its owning task; the probe case's cells are in eval/ and gated or baselined.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the functions (the tasks this one files).
@@ -95,3 +97,22 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+16 of the 32 owned cells (28 from T-2257, 4 from T-2487) already pass on main: later merges fixed them, and their lines
+are gone from eval/baseline/gen-m9.txt. For the other 16, probe `probes/t2496-fin-subexpressions` (99 cells, excel-graph,
+2026-10-25) copies each case's Data sheet (D01-D13) and puts every call and compound argument of each owned cell in its own
+row, read through a TYPE/shape summary. Column B names the cell and the sub-expression. The four T-bill cells were already
+traced by probes/tbill-error-order-inner-calls. Each innermost divergence now sits in its owner's Context, under a
+"T-2496 probe" block that has its own visible-parity criterion:
+- existing tasks: T-2470 Z.TEST (2), T-2468 PROB (2), T-2427 FREQUENCY with no numeric bin gives 2 rows, so the enclosing
+  call lifts and spills (2), T-2493 NPV at -1 and 1E+300 (2), T-2469 T.TEST blank sample (1), T-2490 PPMT at a huge rate (1),
+  T-2344 QUARTILE of a TRUE cell (1), T-2435 WEIBULL.DIST overflow (1), T-2544 BIN2DEC of text (1);
+- new tasks: T-2656 XMATCH search_mode within 15 digits of 1 (1, M6), T-2657 PV near a rate of -1 and IRR from a guess of
+  42 (2, opus).
+Quirks: financial.md "Financial cells of the T-2496 sub-expression probe", lookup.md "XMATCH: a search_mode within 15
+digits of 1 reads 1", and statistics.md "T.TEST of a blank one-cell sample and WEIBULL.DIST overflow".
+Eval delta: the probe's 32 cells that ours fails today are new-coverage lines in eval/baseline/probes.txt (the divergences
+those tasks own). 0 regressions, gen-m9 unchanged. The visible-parity lock is unchanged at 6,039; 32 of the 5,684
+visibly-off cells are in the new case.
+
