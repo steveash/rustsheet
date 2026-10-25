@@ -3,7 +3,7 @@ id: T-2625
 title: "Nested arrays: MODE.SNGL, LARGE, SMALL, PERCENTILE.INC and SUMPRODUCT over a GROUPBY/PIVOTBY result, and COUNT over a wide PIVOTBY (SPEC-0018 rule 4)"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -30,9 +30,22 @@ and PIVOTBY cells"). These consumers read their arrays through other collectors 
   their `NestedReading` if Excel differs.
 
 ## Acceptance criteria
-- [ ] The six cells above leave eval/baseline/probes.txt and gen-m9.txt (`make eval-baseline`), no new known-failure lines.
-- [ ] Each flatten charges SPEC-0018's walk budget; arrays.md records the rules.
-- [ ] `make check` green; reviewers approve.
+- [x] The six cells above: five left the baseline. gen-m9 A35 is handed to T-2460, because its COUNT differs only in
+      blank keys. The new probe t2625-nested-consumers adds 10 baselined lines, all blank-key cells owned by T-2460 (listed there). leave eval/baseline/probes.txt and gen-m9.txt (`make eval-baseline`), no new known-failure lines.
+- [x] Each flatten charges SPEC-0018's walk budget; arrays.md records the rules.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SCAN over a GROUPBY result (T-2398).
+
+## Outcome
+- MODE.SNGL/MODE.MULT, LARGE, SMALL and the PERCENTILE/QUARTILE family give `#N/A` over a nested GROUPBY/PIVOTBY cell
+  (`nested_array_error`, nested_array.rs). SUMPRODUCT reads such a cell as 0, and AND, OR and XOR read it as `#N/A`.
+- New probe probes/t2625-nested-consumers (32 cells, excel-graph): the VARA family is `#N/A` and IMSUM/IMPRODUCT are `#VALUE!`,
+  both as already implemented. COUNT over a wide PIVOTBY is off only because of blank keys (Excel shows "", ours 0).
+  That is T-2460's rule, so gen-m9/e85daedce5c2675e A35 and the probe's ten blank-key cells are handed to T-2460.
+- Eval delta: probes t2594-nested-aggregates A15, A19:A22 fixed (5), gen-m9 3 fixed (QUARTILE, PERCENTRANK and
+  PERCENTRANK.EXC over a nested result: 46ac3ef5e61583ca A325, 2138b909d8f810ea A226, 928d08e3e1eecb5f A374). No regressions. New case: 22 of 32 cells pass, and the
+  10 blank-key cells are baselined under T-2460.
+- No new walk is added: the `#N/A` check only scans the array the consumer already holds, and the 0 is per cell, with no
+  flattening, so no budget is charged.

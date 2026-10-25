@@ -1,4 +1,5 @@
 use crate::calc_result::Range;
+use crate::nested_array::nested_array_error;
 use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{Continuous, Gamma};
 
@@ -308,6 +309,9 @@ impl Model {
                     .collect(),
             )),
             CalcResult::Array(array) => {
+                if let Some(error) = nested_array_error(&array, cell) {
+                    return Err(error);
+                }
                 self.values_from_array(array)
                     .map_err(|e| CalcResult::Error {
                         error: Error::VALUE,
