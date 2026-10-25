@@ -694,8 +694,27 @@ The flush follows each function's internal path, not the size of the result: `BI
 `NEGBINOM.DIST(999,1,p,FALSE)` differ only by a factor of p, yet Excel keeps the first and zeroes the second (I229/I238
 FALSE, J229/J238 TRUE). Implemented (T-2703): the EXPON.DIST, WEIBULL, BETA.DIST and GAMMA.DIST densities, the
 BINOM.DIST pmf off its k = 0 and k = n closed forms, and the NEGBINOM.DIST pmf pass their result through
-`arithmetic::flush_subnormal`. The closed forms and the cumulative modes are left unchanged: k = n is EXP-based like
-k = 0; k = n, the cumulative modes, the legacy names and other argument regimes are not probed (T-2706).
+`arithmetic::flush_subnormal`. The closed forms and the cumulative modes are left unchanged: k = n is EXP-based like k = 0.
+More paths (T-2706, VERIFIED at the probed arguments, probes/t2706-subnormal-density-paths, excel-graph 2026-10-25, each
+true value between 4.9E-324 and 2.2E-308, row n is the call in An and its companion in Bn). Excel KEEPS the subnormal
+(companion FALSE) of the BINOM.DIST pmf at k = n (`BINOM.DIST(1000,1000,0.49,FALSE)`, BINOMDIST, `BINOM.DIST(500,500,
+0.24,FALSE)`; rows 1-3), the BINOM.DIST cdf at k = 0 (row 4), the NEGBINOM.DIST cdf at f = 0 (row 8), the NEGBINOM.DIST
+pmf at f = 0, p^s (`NEGBINOM.DIST(0,1000,0.49,FALSE)`, NEGBINOMDIST; rows 12-13), the BETA.DIST cdf at shapes (2, 1)
+(`BETA.DIST(1E-155,2,1,TRUE)`, BETADIST; rows 14, 16) and the WEIBULL.DIST cdf (`WEIBULL.DIST(1E-155,2,1,TRUE)`, row
+34). It returns a TRUE 0 (companion TRUE) from the BINOM.DIST cdf off k = 0 (`BINOM.DIST(1,1000,0.52,TRUE)`,
+`BINOM.DIST(3,1000,0.53,TRUE)`, BINOMDIST; rows 5-7), the NEGBINOM.DIST cdf off f = 0 (row 9), the NEGBINOM.DIST pmf
+at `NEGBINOM.DIST(999,1,0.51,FALSE)` and NEGBINOMDIST (rows 10-11), the BETA.DIST cdf at shapes (10, 2)
+(`BETA.DIST(1E-31,10,2,TRUE)`, row 15), the BETA.DIST density both below and past Cephes' MAXGAM (`BETA.DIST(4E-7,50,2,
+FALSE)`, `BETA.DIST(0.00018,100,100,FALSE)`; rows 17-18), the GAMMA.DIST cdf (`GAMMA.DIST(1E-155,2,1,TRUE)`, GAMMADIST;
+rows 19-20), the GAMMA.DIST density at shapes 1 and 2 (`GAMMA.DIST(712,1,1,FALSE)`, `GAMMA.DIST(718,2,1,FALSE)`,
+GAMMADIST; rows 21-24), the EXPON.DIST density and cdf (`EXPON.DIST(712,1,FALSE)`, EXPONDIST, `EXPON.DIST(356,2,FALSE)`,
+`EXPON.DIST(1E-150,1E-160,TRUE)`; rows 26-29), the WEIBULL.DIST density at shapes 1 and 2 under both names (rows 30-33)
+and the CHISQ.DIST density (`CHISQ.DIST(1430,2,FALSE)`, row 35). So the closed forms at the ends keep it (k = n and
+k = 0, f = 0, p^s) and so do the BETA.DIST (2, 1) cdf, x^2, and the WEIBULL.DIST cdf, while the EXPON.DIST cdf of the
+same 1E-310 is 0. `GAMMA.DIST(1E-10,1,1E+307*10,FALSE)` is #NUM! (row 25; T-2738). The engine is wrong at rows 5-7, 9,
+12-13, 15, 19-20, 25, 29 and 35 (T-2737, T-2738). The scale is `1E+307*10` because a typed `1E+308` is refused (Graph
+400) and a stored one makes Excel refuse the workbook (createSession 501 FileCorruptTryRepair; both excel-graph 2026-10-25, scratch fills), as for the tiny
+literals below.
 Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
 2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
 `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
