@@ -24,6 +24,7 @@ pub(crate) fn min_args(name: &str) -> u8 {
 /// (`=IFS(TRUE,1,2)`, `=IFS(FALSE,1,TRUE,2,3)`, `=LET(x,1,y,2)`, `=LET(x,1,y,2,z,3)`: Graph PATCH
 /// 400, 2026-10-25) and takes whole pairs (`=IFS(TRUE,1)`, `=LET(x,1,y,2,x+y)`:
 /// probes/t2682-typed-max-arg-counts A4:A7). T-2682.
+/// Each entry is `(name, count % 2)` for the counts Excel takes.
 const PAIRED: [(&str, usize); 2] = [("IFS", 0), ("LET", 1)];
 
 /// Whether Excel takes a call of `name` with `count` arguments, as far as the counts (and, for

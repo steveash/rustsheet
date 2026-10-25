@@ -62,6 +62,7 @@ fn typed_calls_with_a_wrong_argument_count_are_refused() {
         ("A17", "=LET(x,1,y,2)"),
         ("A18", "=FIND(\"a\",\"abc\",1,1)"),
         ("A19", "=LENB(\"abc\",1)"),
+        ("A20", "=SWITCH(1,2)"),
     ] {
         for input in [Input::Formula(text.into()), Input::Parse(text.into())] {
             let err = wb.set(a1, input).unwrap_err();
@@ -99,6 +100,7 @@ fn typed_calls_with_a_wrong_argument_count_are_refused() {
         // Whole IFS and LET pairs (probes/t2682-typed-max-arg-counts A4:A7).
         ("C9", "=IFS(FALSE,1,TRUE,2)"),
         ("C10", "=LET(x,1,y,2,x+y)"),
+        ("C11", "=SWITCH(1,2,3,4)"),
     ] {
         wb.set(a1, Input::Formula(text.into())).unwrap();
     }

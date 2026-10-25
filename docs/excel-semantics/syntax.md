@@ -38,8 +38,8 @@ takes: `=PV(1)` (Graph PATCH 400, T-2567), and `=SUM()`, `=IF(1)`, `=ABS(1,2)` (
 the control `=ABS(1)` is accepted; refused inputs cannot be committed). A count between the least and most that ends inside a
 repeating group is refused too: `=SORTBY(C1:C2,D1:D2,1,E1:E2)` (the second pair lacks its sort order; same probe). The engine
 refuses typed by the catalog's counts for every function (`functions/kinds/arg_counts.txt`: the minimum of excel-functions.tsv; the
-maximum of Microsoft's syntax line, 255 when it repeats, widened by a non-repeating functions.yaml signature and by INDEX's
-reference form, `INDEX(reference,row,column,area_num)`, 4 (probes/index-area-num-snap); checked by tools/tests/test_catalog_arity.py) and, for lifted functions, whole
+maximum of Microsoft's syntax line, 255 when it repeats, widened by a non-repeating functions.yaml signature, or a cited
+override in place of both: INDEX's reference form, `INDEX(reference,row,column,area_num)`, 4 (probes/index-area-num-snap); checked by tools/tests/test_catalog_arity.py) and, for lifted functions, whole
 `repeat` cycles (`ArgKinds::accepts`); stored text keeps such a call (`#ERROR!`).
 Maxima and pairs, typed (T-2682, Graph PATCH 2026-10-25). Excel accepts each call at its maximum: `XLOOKUP` 6, `IF` 3,
 INDEX's reference form 4, `FIND`/`FINDB`/`SEARCHB` 3, `LEFTB`/`RIGHTB` 2, `LENB` 1, `MIDB` 3, `REPLACEB` 4, and
@@ -47,12 +47,13 @@ INDEX's reference form 4, `FIND`/`FINDB`/`SEARCHB` 3, `LEFTB`/`RIGHTB` 2, `LENB`
 `IFS(FALSE,1,TRUE,2)`, `LET(x,1,x)` and `LET(x,1,y,2,x+y)`, and `SWITCH(1,1,2)` and `SWITCH(1,2,3,4)` (a default after
 the pairs). See probes/t2682-typed-max-arg-counts A1:A17; the TRANSLATE and DETECTLANGUAGE values are not kept.
 It refuses (400 `InvalidArgument`, refused inputs cannot be committed) one argument past each of those maxima
-(`=XLOOKUP(1,{1,2},{3,4},0,0,1,1)`, `=IF(TRUE,2,3,4)`, `=INDEX((B1:C2,D1:E2),1,1,2,1)`, `=FIND("a","abc",1,1)` and the
+(`=XLOOKUP(1,{1,2},{3,4},0,0,1,1)`, `=IF(TRUE,2,3,4)`, `=INDEX((Sheet1!B1:C2,Sheet1!D1:E2),1,1,2,1)`, `=FIND("a","abc",1,1)` and the
 same for FINDB, SEARCHB, LEFTB, RIGHTB, LENB, MIDB, REPLACEB, `=DETECTLANGUAGE("hello","x")`,
 `=TRANSLATE("hello","en","es","x")`) and a count that ends inside an IFS or LET pair (`=IFS(TRUE,1,2)`,
 `=IFS(FALSE,1,TRUE,2,3)`, `=LET(x,1,y,2)`, `=LET(x,1,y,2,z,3)`) and `=SWITCH(1,2)`, below its minimum of 3. The engine's table
 takes these maxima as cited overrides (tools/tests/test_catalog_arity.py `MAX_OVERRIDES`; DETECTLANGUAGE and TRANSLATE are
-not implemented, `#NAME?`), and `arg_counts::takes_count` refuses IFS and LET off whole pairs. UNVERIFIED: the 255-argument
+not implemented, `#NAME?`), and `arg_counts::takes_count` refuses IFS and LET off whole pairs. UNVERIFIED: the pair rule above 6 arguments (probed
+IFS 2 to 5, LET 3 to 6); the 255-argument
 maxima (`SUM` 255/256, `TEXTJOIN` 254/255): the oracle cannot type a formula over 255 characters (T-2709).
 Status: VERIFIED
 

@@ -121,7 +121,8 @@ MAX_OVERRIDES = {
 def expected_arg_counts() -> dict[str, tuple[int, int]]:
     """The engine's typed-entry count table (T-2632): Excel's minimum (excel-functions.tsv) and the
     most of the syntax line's parameters (255 when it repeats or does not parse) and the
-    functions.yaml signature's (`_signature_max`), or the `MAX_OVERRIDES` maximum in place of both."""
+    functions.yaml signature's (`_signature_max`), or the `MAX_OVERRIDES` maximum in place of
+    both."""
     rows = load_excel_functions(SOURCE)
     counts = {}
     for name, row in rows.items():
