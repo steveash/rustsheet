@@ -414,16 +414,18 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
 }
 
 /// Whether `kind(args)` is INDEX of a scalar literal with a row and maybe a column: Excel adds no
-/// implicit-intersection `@` to it under N or T, whatever its indices; an array or range index keeps
-/// its own `@` (probes/t2725-index-scalar-nonzero-t-n B1:B24, T-2725). A 0 or empty index takes the whole scalar, an array, which N and T read as `#VALUE!`:
+/// implicit-intersection `@` to the INDEX call under N or T, whatever its indices. An array or range
+/// index still gets its own `@` inside the call (probes/t2725-index-scalar-nonzero-t-n B1:B24,
+/// T-2725). A 0 or empty index takes the whole scalar, an array, which N and T read as `#VALUE!`:
 /// `=N(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX(TRUE,0))`, `=T(INDEX(5,,0))`
 /// (probes/index-zero-index-scalar-shape E5, E6, F5, F6, T-2191; probes/index-zero-index-scalar-t-n
-/// A1-A14, T-2368), and so does one 0 index beside a 1 (`=N(INDEX(5,1,0))`, `=N(INDEX(5,,1))`; T-2725
-/// A11-A14) and an index cell holding 0 or blank (A17, A18, A22). Nonzero indices take the element: `=N(INDEX(5,1))` is 5, `=N(INDEX(5,2))` `#REF!`,
-/// `=N(INDEX(5,-1))` `#VALUE!` (T-2725 A1-A10, A15, A16). The scalar is a number, text or a
-/// boolean under any chain of groups and minus (`=N(INDEX(--5,0))`, `=T(INDEX((-"a"),0,0))`;
-/// probes/t2601-index-scalar-forms-t-n A1-A28, T-2601). Our parser drops a unary plus, which Excel
-/// keeps in the formula text on text and booleans (T-2723).
+/// A1-A14, T-2368). So does one 0 index beside a 1 (`=N(INDEX(5,1,0))`, `=N(INDEX(5,,1))`; T-2725
+/// A11-A14) and an index cell holding 0 or blank (A17, A18, A22). Nonzero indices take the
+/// element: `=N(INDEX(5,1))` is 5, `=N(INDEX(5,2))` `#REF!`, `=N(INDEX(5,-1))` `#VALUE!` (T-2725
+/// A1-A10, A15, A16). The scalar is a number, text or a boolean under any chain of groups and minus
+/// (`=N(INDEX(--5,0))`, `=T(INDEX((-"a"),0,0))`; probes/t2601-index-scalar-forms-t-n A1-A28,
+/// T-2601). Our parser drops a unary plus, which Excel keeps in the formula text on text and
+/// booleans (T-2723).
 fn indexes_a_scalar_literal(kind: &Function, args: &[Node]) -> bool {
     fn is_scalar(arg: &Node) -> bool {
         match arg.ungrouped() {

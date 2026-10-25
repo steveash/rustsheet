@@ -29,7 +29,8 @@ computed index. Probe those first (excel-probe skill).
 - The unary plus in formula text (T-2723).
 
 ## Outcome
-Done (probes/t2725-index-scalar-nonzero-t-n A1:B16, excel-graph 2026-10-25). Excel shows no `@` on INDEX of a scalar
+Done (probes/t2725-index-scalar-nonzero-t-n A1:B24, excel-graph 2026-10-25). Excel shows no `@` on INDEX of a scalar
 literal under a legacy N or T, whatever the indices. Nonzero indices take the element (5, "a", `#REF!` past it, `#VALUE!`
 below 1), and any 0 or empty index takes the whole scalar (`#VALUE!`). `indexes_a_scalar_literal` now depends only on the
-first argument being a scalar literal, under groups and minus; INDEX itself gives the values. probes/t2601 B28 is fixed.
+first argument being a scalar literal, under groups and minus; INDEX itself gives the values. An index cell holding 0 or blank is `#VALUE!` like a literal 0. Array, range and IF indices keep their
+own `@` and take the element (A17:A24). probes/t2601 B28 is fixed.
