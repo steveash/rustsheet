@@ -3,7 +3,7 @@ id: T-0070
 title: "Progress report MVP: rename the parity generator to make progress-report, with docs inputs, the status block and judgment-block preservation"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
