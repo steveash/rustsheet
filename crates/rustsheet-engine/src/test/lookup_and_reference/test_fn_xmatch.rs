@@ -393,3 +393,49 @@ fn linear_modes_over_blanks_match_excel() {
         );
     }
 }
+
+// ── fractional modes ──────────────────────────────────────────────────────────
+
+#[test]
+fn fractional_modes_floor_but_snap_just_below_an_integer() {
+    // probes/t2656-xmatch-mode-near-integer J2, -rounding, -snap-edge-fine and
+    // t2656-xlookup-mode-snap-edge B17, C2 (excel-graph, T-2656):
+    // a mode is floored, so -0.4 reads -1, but one within 2^-22 + 2^-33 below an integer (half
+    // that below a negative one) reads that integer.
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=XMATCH(FALSE,{1,2,3},0,0.5^1E-15)", "#N/A"),
+        ("A2", "=XMATCH(3,{3,1,2,3,0},0,1-2^-22*(1+2^-11))", "1"),
+        (
+            "A3",
+            "=XMATCH(3,{3,1,2,3,0},0,1-2^-22*(1+9*2^-14))",
+            "#VALUE!",
+        ),
+        (
+            "A4",
+            "=XMATCH(3,{3,1,2,3,0},0,-(2^-23*(1+2^-11)))",
+            "#VALUE!",
+        ),
+        ("A5", "=XMATCH(3,{3,1,2,3,0},0,-(2^-23*(1+9*2^-14)))", "4"),
+        ("A6", "=XMATCH(3,{3,1,2,3,0},0,-1.5)", "1"),
+        ("A7", "=XMATCH(2.5,{1,2,3},-0.4)", "2"),
+        ("A8", "=XMATCH(2.5,{1,2,3},1-2^-52)", "3"),
+        (
+            "A9",
+            "=XLOOKUP(3,{3,1,2,3,0},{10,20,30,40,50},\"nf\",0,-1-1E-8)",
+            "40",
+        ),
+        (
+            "A10",
+            "=XLOOKUP(2.5,{1,2,3},{10,20,30},\"nf\",1-1E-7)",
+            "30",
+        ),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
+}
