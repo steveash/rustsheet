@@ -3,7 +3,7 @@ id: T-2751
 title: "Merge main into a PR branch only under the merge lock unless it conflicts"
 milestone: M2
 lane: quality
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -30,18 +30,28 @@ lock" step 2), unless it has a real conflict or a known id collision. A branch t
   out. Decision 0053's merge-queue text stays dormant and unchanged.
 
 ## Acceptance criteria
-- [ ] A new decision record amends 0075 and 0028. Outside the lock, `origin/main` is merged into a
+- [x] A new decision record amends 0075 and 0028. Outside the lock, `origin/main` is merged into a
       PR branch only for (1) a textual conflict (`mergeable_state: dirty`, or a local test-merge
       conflicts) or (2) a known semantic collision that the up-to-date check would catch (a task or
       decision id that `main` now also uses, as found by `tasks.py validate`/`check_decisions.py` on
       a local test-merge, or by red CI under the lock). Being behind is handled once, under the lock.
-- [ ] The steward skill (check (c), merge lock, orphaned PRs, branch updates, merge conflicts), the
+- [x] The steward skill (check (c), merge lock, orphaned PRs, branch updates, merge conflicts), the
       work-loop skill (steps 5c and 6), `docs/process/agent-workflow.md` and the routine prompts in
       `docs/process/routines.md` agree with it.
-- [ ] Decision 0020 (conflicts are never "waiting on CI") and the dormant merge-queue text are kept.
+- [x] Decision 0020 (conflicts are never "waiting on CI") and the dormant merge-queue text are kept.
 - [ ] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`, `make typos` and the
       scripts unit tests pass; reviewers approve (architecture and security for the protected paths).
 
 ## Out of scope
 - Changes to `scripts/merge_lock.py` or CI.
 - Making CI skip runs on merge commits.
+
+## Outcome
+Decision 0121 amends 0075 and 0028. Outside the merge lock, a PR branch takes `origin/main` in only
+to resolve a textual conflict (`dirty`, or a local test-merge conflicts) or a known task/decision id
+collision, never only because it is behind. Being behind is handled once, under the lock (steward
+"Merge lock" step 2). The steward skill has a new "When to merge `main` in" rule, and check (c),
+merge-lock step 2, the orphaned-PR rule, "Branch updates" and "Merge conflicts" point to it. The
+work-loop's steps 5c and 6.3 and agent-workflow.md loop step 9 follow it, and 0028 and 0075 carry
+the amendment note. The routine prompts are unchanged: they already defer to the steward skill. The
+0020 conflict rule and the dormant merge-queue text are kept. No eval delta.

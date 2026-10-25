@@ -14,14 +14,23 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   --deepen=500 origin main <branch>`), never reset (decision 0055). If it fails, `main` moved since
   the last CI run, and the green CI does not cover the merged result. GitHub's `mergeable_state:
   clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
-  never conflict textually. Merge `origin/main` in, run `make check`, push, and merge only after
-  CI is green on that new head.
+  never conflict textually. Bring `main` in only while holding the merge lock (step 2 below), and
+  merge only after CI is green on that new head.
+- **When to merge `main` in** (decision 0121): outside the merge lock, merge `origin/main` into a
+  PR branch only (1) to resolve a textual conflict (`mergeable_state: dirty`, or a local test-merge
+  of `origin/main` conflicts; "Merge conflicts" below), or (2) for a known id collision: `main`
+  now holds a task id or decision number the branch also adds (`tasks.py validate` or
+  `check_decisions.py` fails on a local test-merge, or CI on the merged head failed under the
+  lock), and the PR renumbers its own file. Never merge it in only because the branch is behind:
+  `main` moves again before the lock is free, so the merge is wasted and costs a CI run. Behind is
+  handled once, under the lock.
 - **Merge lock** (decision 0075): every merge to `main` is made under the merge lock, so `main`
   cannot move between a PR's green CI and its merge. On a head that meets (a) and (b):
   1. `make merge-lock-acquire PR=<n>`. Exit 1 means another agent holds it (the output names it):
      do other work (your next task) and try again at the PR's next event or check-in, or every few
      minutes while nothing else is waiting; never merge without it.
-  2. Holding it: if the branch is behind, merge `origin/main` in and push. A clean merge needs no
+  2. Holding it: if the branch is behind, merge `origin/main` in and push (the only merge of `main`
+     a branch that does not conflict needs, decision 0121). A clean merge needs no
      local `make check` (CI runs the same gates); a conflict means release first, resolve and run
      `make check` without the lock, push, and start again at 1 once CI is green.
   3. Wait for CI on that head (subscribe or a `Monitor` until-loop, not sleeps). Green: renew
@@ -52,7 +61,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   - it is not a draft, and its task is not `status: blocked`;
   - CI is green on the latest head;
   - the branch passes the up-to-date check above (decision 0028; with the merge queue on, enqueue
-    instead, decision 0053); you may merge `main` in first;
+    instead, decision 0053); you may merge `main` in under the merge lock (step 2), or before it
+    only to fix a conflict or id collision (decision 0121);
   - you have run the `review` skill's applicable reviewers yourself on the current diff
     (`git diff origin/main...origin/<branch>` at the head you will merge) and every one says
     APPROVE. Do not rely on the PR body's table: it records no head sha and may predate later
@@ -68,7 +78,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
   `steward: <YYYY-MM-DD> health` (docs/process/routines.md).
-- **Branch updates**: merge `origin/main` into the branch (never rebase/force-push a pushed branch).
+- **Branch updates**: merge `origin/main` into the branch (never rebase/force-push a pushed branch),
+  and only when "When to merge `main` in" above allows it (decision 0121).
 - **Merge conflicts are never "waiting on CI"** (decision 0020). GitHub runs no CI on a PR that
   conflicts with `main`, so no CI event will ever arrive and waiting deadlocks the PR. Check the
   PR's `mergeable_state` (GitHub MCP `pull_request_read` method `get`; if still `unknown` after one
@@ -81,6 +92,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   If it is `dirty`: `git fetch origin main`, merge `origin/main` into the branch now, resolve
   (keep both sides' features; status-log conflicts keep both lines; regenerate baselines with
   `make eval-baseline` and take `main`'s side of generated files first), run `make check`, push.
+  This needs no lock (decision 0121). A PR that is `clean` or `behind` is left alone until it holds
+  the lock.
   Do the same for a stale open agent PR (an `agent/*` branch only, never a human's branch) from another session whose task is otherwise done
   (a merge commit only, never a rewrite), and say so on that PR. Ask only when both sides changed
   the same logic and either choice loses behavior.
