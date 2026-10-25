@@ -440,6 +440,25 @@ impl Parser {
         }
     }
 
+    /// Records the first call of `kind` with a `count` of arguments outside the function's
+    /// range, for [`Parser::typed_refusal`]: Excel refuses such a formula typed (`=PV(1)`,
+    /// T-2567) and in a file (docs/excel-semantics/syntax.md "Minimum argument counts"); stored
+    /// text keeps it, and the call evaluates to `#ERROR!`. Only the lifting table's counts are
+    /// used: they agree with Excel's documented minimums (eval/catalog/excel-functions.tsv,
+    /// `tools/tests/test_catalog_arity.py`), and a function outside the table is never refused here.
+    /// Only the least and most counts are checked, not whole `repeat` cycles
+    /// ([`ArgKinds::takes_count`], not `accepts`): Excel's syntax line lets SORTBY's last
+    /// `sort_order` be omitted (`SORTBY(a,b1,1,b2)`), and no probe shows a typed off-cycle call
+    /// refused, so refusing it could refuse a formula Excel takes.
+    fn note_argument_count(&mut self, kind: &Function, name: &str, count: usize) {
+        let refused = kind
+            .arg_kinds()
+            .is_some_and(|kinds| !kinds.takes_count(count));
+        if refused && self.wrong_count_call.is_none() {
+            self.wrong_count_call = Some(name.to_ascii_uppercase());
+        }
+    }
+
     /// A call by name, `SUM(...)` or `_xlfn.LAMBDA(...)(...)`, after its `(`.
     fn parse_named_call(&mut self, name: String) -> Node {
         // It's a function call "SUM(.."
@@ -524,6 +543,7 @@ impl Parser {
             .lookup_stored(&name)
             .filter(|_| !self.calls_bound_name(&name))
         {
+            self.note_argument_count(&function_kind, &display_name, args.len());
             let node = self.function_call(function_kind, args);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel
