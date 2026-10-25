@@ -567,11 +567,14 @@ impl Model {
         if rate == 0.0 {
             return Ok(-future_value - payment * period_count);
         }
-        if rate == -1.0 {
-            return Err(div_error(cell));
-        };
-        // PV = -(fv + pmt*(k*((P-1)/r)))/P, every operation in doubles (financial.md)
+        // PV = -(fv + pmt*(k*((P-1)/r)))/P, every operation in doubles (financial.md). P is Excel's
+        // `^`, with its errors: a rate of -1 with nper 0 is 0^0, `#NUM!` (`PV(-1,0,-713)`), and a P
+        // of 0 (a rate of -1, or one so near it that P underflows) is the division's `#DIV/0!`
+        // (`PV(-1+2^-52,165,-978,224,0)`; probes/t2475-stat-subexpressions A39, A136).
         let p = annuity_power(rate, period_count).map_err(formula_error(cell))?;
+        if p == 0.0 {
+            return Err(div_error(cell));
+        }
         let result = -(future_value + payment * annuity_factor(rate, p, period_start)) / p;
         if result.is_nan() || result.is_infinite() {
             return Err(num_error(cell));
@@ -623,7 +626,8 @@ impl Model {
             }
             return Ok(-(future_value + present_value) / payment);
         }
-        if rate < -1.0 {
+        // A rate of -1 is `#NUM!`: ln(1+rate) is LN(0) (`NPER(-1,-31,1)`, gen-m9/3c06f9298f65a3ba A50).
+        if rate <= -1.0 {
             return Err(num_error(cell));
         };
         // NPER = ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r), with plain logarithms of
@@ -635,8 +639,14 @@ impl Model {
         if ratio.is_nan() || ratio <= 0.0 || ratio.is_infinite() {
             return Err(num_error(cell));
         }
+        // A rate so small that 1+rate is 1 divides by ln 1 = 0: `#DIV/0!` (`NPER(1E-300,-236,2766,945)`,
+        // gen-m9/3c06f9298f65a3ba A148; probes/t2475-stat-subexpressions A92).
+        let growth_log = (1.0 + rate).ln();
+        if growth_log == 0.0 {
+            return Err(div_error(cell));
+        }
         // The final division is Excel's `/`, rounded twice (A9 `NPER(0.2,-1000,-1000,20000)`)
-        let result = extended_quotient(ratio.ln(), (1.0 + rate).ln());
+        let result = extended_quotient(ratio.ln(), growth_log);
         if !result.is_finite() {
             return Err(num_error(cell));
         }
