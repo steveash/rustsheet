@@ -133,7 +133,15 @@ impl Model {
                     Ok(wrap_count) => wrap_count,
                     Err(error) => return error,
                 };
-                wrap(flat.clone(), wrap_count, pad_with_of(values.get(2)), cell)
+                // A written empty pad_with is the missing one, `#N/A`
+                // (`ISNA(INDEX(WRAPCOLS({1,2,3},2,),2,2))` is TRUE), while the empty value an
+                // argument evaluates to pads blanks (`WRAPCOLS(..,IFERROR(Z1,1))`'s pad is
+                // ISBLANK TRUE; probes/t2461-blank-array-sources A34, A35, A40:A42, A45).
+                let pad = match args.get(2) {
+                    Some(Node::EmptyArgKind) => None,
+                    _ => values.get(2),
+                };
+                wrap(flat.clone(), wrap_count, pad_with_of(pad), cell)
             },
         )
     }
@@ -178,16 +186,16 @@ enum VectorError {
 /// returned (probes/wrapcols-wraprows-pad-with, `WRAPROWS({1,2,3,4},4,VALUE("x"))`). A missing
 /// one is `#N/A`; any other non-scalar value (the callers never pass one) is `#VALUE!`. A blank
 /// cell pads with blank elements, not 0: `ISBLANK` of them is TRUE for all three functions
-/// (probes/t2413-blank-in-stacked-arrays A32, t2461-blank-array-sources A20, A22; T-2461). An
-/// empty argument is the missing one, `#N/A` (`ISNA(INDEX(WRAPCOLS({1,2,3},2,),2,2))` is TRUE,
-/// A34, A35); EXPAND makes it blank itself.
+/// (probes/t2413-blank-in-stacked-arrays A32, t2461-blank-array-sources A20, A22; T-2461), and
+/// so does the empty value (`IFERROR(Z1,1)`, A40:A45). WRAPCOLS and WRAPROWS pass a written
+/// empty argument as missing.
 pub(super) fn pad_with_of(value: Option<&CalcResult>) -> ArrayNode {
     match value {
-        None | Some(CalcResult::EmptyArg) => ArrayNode::Error(Error::NA),
+        None => ArrayNode::Error(Error::NA),
         Some(CalcResult::Number(n)) => ArrayNode::Number(*n),
         Some(CalcResult::Boolean(b)) => ArrayNode::Boolean(*b),
         Some(CalcResult::String(s)) => ArrayNode::String(s.clone()),
-        Some(CalcResult::EmptyCell) => ArrayNode::Empty,
+        Some(CalcResult::EmptyCell | CalcResult::EmptyArg) => ArrayNode::Empty,
         Some(CalcResult::Error { error, .. }) => ArrayNode::Error(error.clone()),
         Some(_) => ArrayNode::Error(Error::VALUE),
     }

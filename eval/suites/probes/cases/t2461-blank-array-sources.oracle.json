@@ -139,6 +139,30 @@
     "t": "n",
     "v": 2.0
    },
+   "A40": {
+    "t": "b",
+    "v": false
+   },
+   "A41": {
+    "t": "b",
+    "v": true
+   },
+   "A42": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A43": {
+    "t": "b",
+    "v": true
+   },
+   "A44": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A45": {
+    "t": "b",
+    "v": false
+   },
    "A5": {
     "t": "s",
     "v": "0,0"
@@ -203,10 +227,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "db030645ad73fe5bbcb92653dc8925f2db53bf3e6151ed2ccece5fe4a00df26f",
+  "input_sha256": "89305f5afaa8ff2728aaac223a78aa6a92b41d29d5f61f45b828dc671acd5d6f",
   "kind": "excel-graph",
-  "produced_at": "2026-10-25T01:33:44+00:00",
+  "produced_at": "2026-10-25T02:05:00+00:00",
   "version": null,
-  "workbook_name": "ed13bc39d869cb925f3a2c0726985406193741ff5c58fdc215b70856009958a5.xlsx"
+  "workbook_name": "be1221126edbd82cab1c501022796fc3f80b1657f2df645720fb23d57e5040b7.xlsx"
  }
 }

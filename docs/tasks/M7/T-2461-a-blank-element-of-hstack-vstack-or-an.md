@@ -50,7 +50,8 @@ Cells:
 ## Outcome
 INDEX of a blank element of an array value is the empty value (`EmptyArg`); HSTACK and VSTACK read a lone blank cell as a
 blank element (`eval_to_array_keep_blank`); a blank-cell pad_with pads EXPAND, WRAPCOLS and WRAPROWS with blank elements
-(`pad_with_of`); EXPAND's empty pad_with pads blanks while WRAPCOLS/WRAPROWS's is `#N/A`; INDEX picks from TAKE and DROP over
-a range as a reference (`index_source`). New probe probes/t2461-blank-array-sources (49 cells, excel-graph) answers the
+(`pad_with_of`), and so does the empty value (`IFERROR(Z1,1)`); EXPAND's written empty pad_with pads blanks while
+WRAPCOLS/WRAPROWS's is `#N/A`; INDEX picks from TAKE and DROP over
+a range as a reference (`index_source`). New probe probes/t2461-blank-array-sources (55 cells, excel-graph) answers the
 probe criterion; arrays.md records all of it. Eval: gen-m9 5653 → 5652 (Calc!A79), probes 2566 → 2557 (t2413 ×7, t2436 ×5
 fixed; 3 new-coverage ISOMITTED cells A12:A14 → follow-up T-2645), no regressions in any suite (poi, corpus-bench included).

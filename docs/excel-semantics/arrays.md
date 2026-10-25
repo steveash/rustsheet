@@ -1558,7 +1558,9 @@ but TAKE and DROP of a range return a reference, so their blank cells stay blank
 (`ISREF(INDEX(TAKE({1;2},1),1,1))` FALSE; A5, A6, A10, A27, A28, A36:A39); TAKE of an HSTACK keeps the empty value
 (A29). The pads: a blank cell pads EXPAND, WRAPCOLS and WRAPROWS with the empty value (ISBLANK TRUE, COUNT 1; A19:A22), and an
 empty pad_with differs by function: `EXPAND(1,2,2,)` pads with the empty value (A18) but `WRAPCOLS({1,2,3},2,)` and
-`WRAPROWS(..,2,)` with `#N/A`, as if it were missing (ISNA TRUE; A30, A31, A34, A35). HSTACK and VSTACK of a lone blank cell
+`WRAPROWS(..,2,)` with `#N/A`, as if it were missing (ISNA TRUE; A30, A31, A34, A35), while the empty value an argument
+evaluates to pads all three with the empty value (`WRAPCOLS({1,2,3},2,IFERROR(Z1,1))`, the same with the INDEX element, and
+EXPAND's: ISBLANK TRUE, COUNT 1, ISNA FALSE; A40:A45). HSTACK and VSTACK of a lone blank cell
 are the empty value (`COUNT(INDEX(HSTACK(Z1),1,1))` 1, `VSTACK(Z1)&"|"` "|"; A15:A17, A25), VSTACK of a blank range keeps
 the range's cells as the empty value (`COUNT(INDEX(VSTACK(Z1:Z2),1,1))` 1, A23:A24), and a spill shows the empty value as 0
 (`MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,v))`, `HSTACK(Z1,1)`, `EXPAND(1,2,2,Z1)`; C1:D7). The empty value is not an omitted
