@@ -406,16 +406,6 @@ impl Model {
 
         let mut chi2 = 0.0;
         for (obs, exp) in &values {
-            // Excel: a negative actual value is used as is (`CHITEST(Data!D7:D9,Data!C10:E10)` with
-            // -1 against 1 is 0.1353352832366127, gen-m9/c6cfda6bd10cae93 A375); only a negative
-            // expected value is #NUM!.
-            if *exp < 0.0 {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Negative expected value in CHISQ.TEST data".to_string(),
-                );
-            }
             if *exp == 0.0 {
                 return CalcResult::new_error(
                     Error::DIV,
@@ -429,6 +419,17 @@ impl Model {
 
         if chi2 < 0.0 && chi2 > -1e-12 {
             chi2 = 0.0;
+        }
+        // Excel: there is no per-cell sign check, only a negative summed statistic is #NUM!:
+        // a negative actual (`CHITEST(Data!D7:D9,Data!C10:E10)`, c6cfda6bd10cae93 A375) and a
+        // negative expected cell with a positive total (f2bd5f380ec002bf A314, 0) are numbers,
+        // while probes-numeric/m9-legacy-chitest A21 (total below zero) is #NUM!.
+        if chi2 < 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Negative CHISQ.TEST statistic".to_string(),
+            );
         }
 
         let total = width * height;

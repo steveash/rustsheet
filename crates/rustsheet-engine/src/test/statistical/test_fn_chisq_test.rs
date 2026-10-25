@@ -147,14 +147,17 @@ fn arguments() {
     assert_eq!(model._get_text("C3"), *"0.062349477");
 }
 
-// T-2431: a negative actual value is used as is; only a negative expected value is #NUM!.
+// T-2431: a negative actual value is used as is; only a negative summed statistic is #NUM!.
 #[test]
 fn test_chisq_test_negative_actual_value() {
     let mut model = crate::test::util::new_empty_model();
     model._set("A1", "=CHISQ.TEST({-1;1;1},{1,1,1})");
     model._set("A2", "=CHISQ.TEST({1;1;1},{-1,1,1})");
+    model._set("A3", "=CHISQ.TEST({1;5;5},{-1,2,2})");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"0.135335283");
     assert_eq!(model._get_text("A2"), *"#NUM!");
+    // a negative expected cell with a positive total is a number (A314 is 0 for a huge statistic)
+    assert_eq!(model._get_text("A3"), *"0.082084999");
 }

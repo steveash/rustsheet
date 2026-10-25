@@ -110,3 +110,8 @@ Paired functions pair by cell count in reading order (`fn_get_two_matrices`); CH
 value. gen-m9 known failures 5344 -> 5342 after the rebase onto the earlier baseline (55 lines removed in total across gen-m9
 and probes); `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (0a9226016e8f5f33 A333, `#DIV/0!`) is still a known failure, filed as a
 follow-up T-2650 (needs a probe of blank-against-blank pairs). INTERCEPT A382 (a61e547a1cab994c) is `#VALUE!` as in Excel now.
+
+Owned cells still in the baseline: 0a9226016e8f5f33 A333 (T-2650); 201d67f1d59436ed A177 (`PEARSON(Data!B11:D12,{1,1,2,2,2,3})`,
+last-digit ULP only, visible parity met); ede0323c389fc703 A75 (a TTEST argument-validation cell triaged here by mistake,
+re-homed to T-2655). CHISQ.TEST has no per-cell sign check, only a negative summed statistic is `#NUM!`
+(A375 and f2bd5f380ec002bf A314 fixed).
