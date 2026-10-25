@@ -58,16 +58,18 @@ impl Model {
         // Before the limits, an error value given as a data argument is the result (x_range's
         // first), then a one-cell reference to an empty cell is `#VALUE!`
         // (statistics.md "PROB: an error data argument first", T-2468).
-        for value in [&x_value, &prob_value] {
-            if matches!(value, CalcResult::Error { .. }) {
-                return value.clone();
-            }
-        }
-        for value in [&x_value, &prob_value] {
-            if self.is_blank_one_cell(value) {
-                return CalcResult::new_error(Error::VALUE, cell, String::new());
-            }
-        }
+        // It is each lifted element's result, not the call's: with an array limit the errors
+        // spill (gen-m9/329b177b5d5165ad A144).
+        let direct = [&x_value, &prob_value]
+            .into_iter()
+            .find(|value| matches!(value, CalcResult::Error { .. }))
+            .cloned()
+            .or_else(|| {
+                [&x_value, &prob_value]
+                    .into_iter()
+                    .any(|value| self.is_blank_one_cell(value))
+                    .then(|| CalcResult::new_error(Error::VALUE, cell, String::new()))
+            });
         let data = self
             .prob_data(x_value, prob_value, cell)
             .map_err(CalcResult::without_message);
@@ -80,7 +82,10 @@ impl Model {
             // At least one unit an element, so a data error copied per element is charged too.
             LiftCost::Cells(cells.max(1)),
             cell,
-            &mut |model, values| prob_element(model, &data, values, cell),
+            &mut |model, values| match &direct {
+                Some(error) => error.clone(),
+                None => prob_element(model, &data, values, cell),
+            },
         )
     }
 
