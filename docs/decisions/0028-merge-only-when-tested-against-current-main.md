@@ -3,7 +3,8 @@
 - **Status:** accepted (2026-10-05, owner request). Amended by 0053: with the merge queue on, the
   queue gives this guarantee. Amended by 0075: merges are made under the merge lock, so the check
   passes on the first green CI after the lock is taken. Amended by 0121: "merge `main` in" below
-  happens under the lock; before it, only to fix a conflict or a known id collision. It refines 0023 (a clash caught by the
+  happens under the lock; before it, only to fix a conflict or a known id collision. It refines
+  0023 (a clash caught by the
   second PR's CI now also has to be caught at merge time) and the up-to-date clause of the steward
   merge policy, fits 0020 (merge `main` in, never rebase), and leaves 0016's allocator as best
   effort.

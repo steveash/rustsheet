@@ -14,8 +14,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   --deepen=500 origin main <branch>`), never reset (decision 0055). If it fails, `main` moved since
   the last CI run, and the green CI does not cover the merged result. GitHub's `mergeable_state:
   clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
-  never conflict textually. Bring `main` in only while holding the merge lock (step 2 below), and
-  merge only after CI is green on that new head.
+  never conflict textually. Bring `main` in while holding the merge lock (step 2 below; before
+  the lock only per "When to merge `main` in"), and merge only after CI is green on that new head.
 - **When to merge `main` in** (decision 0121): outside the merge lock, merge `origin/main` into a
   PR branch only (1) to resolve a textual conflict (`mergeable_state: dirty`, or a local test-merge
   of `origin/main` conflicts; "Merge conflicts" below), or (2) for a known id collision: `main`
@@ -29,8 +29,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   1. `make merge-lock-acquire PR=<n>`. Exit 1 means another agent holds it (the output names it):
      do other work (your next task) and try again at the PR's next event or check-in, or every few
      minutes while nothing else is waiting; never merge without it.
-  2. Holding it: if the branch is behind, merge `origin/main` in and push (the only merge of `main`
-     a branch that does not conflict needs, decision 0121). A clean merge needs no
+  2. Holding it: if the branch is behind, merge `origin/main` in and push. For a branch
+     without conflicts this is its only merge of `main` (decision 0121). A clean merge needs no
      local `make check` (CI runs the same gates); a conflict means release first, resolve and run
      `make check` without the lock, push, and start again at 1 once CI is green.
   3. Wait for CI on that head (subscribe or a `Monitor` until-loop, not sleeps). Green: renew

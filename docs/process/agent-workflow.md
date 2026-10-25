@@ -112,8 +112,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
    skill's mechanical check, decision 0028), squash-merge and release the lock. Before the lock,
    merge `origin/main` in only to resolve a conflict (`mergeable_state: dirty`, decision 0020) or a
    known task or decision id collision, never only because the branch is behind (decision 0121):
-   `main` moves again before the lock, so that merge is made twice and costs a CI run each time. Once the
-   merge queue is on, enqueue with auto-merge instead and skip the up-to-date check
+   `main` moves again before the lock, so that merge is made twice and costs a CI run each time.
+   Once the merge queue is on, enqueue with auto-merge instead and skip the up-to-date check
    (decision 0053). The squash commit title and the
    task's Outcome are the record; the steward's daily run lists merged work in `docs/status.md`
    (decision 0024), so PRs do not edit its log.
