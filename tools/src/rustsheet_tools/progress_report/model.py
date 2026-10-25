@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -118,6 +119,14 @@ class FunctionParity:
     """Of those, the visibly-off cells."""
     meets_rate: bool
     """Covered and at least 99.9% of `rate_cells` within 15 digits (decisions 0114, 0118)."""
+    evidence: int
+    """Every Excel-evidence cell that calls it, accepted deviations included
+    (`v15_checkpoint.functions[].cells`; T-0073)."""
+    covered: bool
+    """Enough Excel cells for the fifteen-digit checkpoint (decision 0094; `covered`)."""
+    prior: float | None
+    """The catalog's real-world frequency `prior` (eval/catalog/functions.yaml); None when the
+    catalog sets none or no priors were given (T-0073)."""
 
     @property
     def attributed_cells(self) -> int:
@@ -282,8 +291,16 @@ def _suite(raw: Any, i: int, baseline_dir: Path) -> Suite:
     )
 
 
-def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -> Parity:
+def compute(
+    report: dict[str, Any],
+    scope: dict[str, Any],
+    baseline_dir: Path,
+    priors: Mapping[str, float | None] | None = None,
+) -> Parity:
     """The parity section's data for every in-scope catalog function of `scope`.
+
+    `priors` is the catalog's `prior` per function (evidence.load_priors); when given, every
+    in-scope function must have an entry, so a catalog that is not scope.json's source fails.
 
     Each function's tier, attribution and cells are the report's `functions[]` entry (T-0068); a
     catalog function no cell calls has none and is `unscored`, as report.json `tiers` counts it.
@@ -321,6 +338,9 @@ def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -
             msg = f"report.json v15_checkpoint has no entry for in-scope function {name}; is scope.json the run's catalog?"
             raise ProgressReportError(msg)
         rwhere = f"report.json v15_checkpoint function {name!r}"
+        if priors is not None and name not in priors:
+            msg = f"the catalog has no function {name}; is scope.json its view?"
+            raise ProgressReportError(msg)
         rows.append(
             FunctionParity(
                 name,
@@ -333,6 +353,9 @@ def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -
                 count(rate, "rate_cells", rwhere, "T-0080"),
                 count(rate, "rate_visible", rwhere, "T-0080"),
                 flag(rate, "meets_rate", rwhere, "T-0080"),
+                evidence=count(rate, "cells", rwhere),
+                covered=flag(rate, "covered", rwhere),
+                prior=priors.get(name) if priors is not None else None,
             )
         )
     tiers = _tiers(report)

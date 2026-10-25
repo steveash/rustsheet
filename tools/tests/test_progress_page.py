@@ -68,7 +68,16 @@ def test_hostile_suite_names_are_escaped_in_the_status_block() -> None:
 def test_a_first_run_writes_every_block_in_order_with_placeholders() -> None:
     text = page.render(RUN, DATA, None)
     names = [m.group(3) for m in blocks.MARKER.finditer(text) if not m.group(1)]
-    assert names == ["status", "bottom-line", "parity", "readiness", "risks", "method"]
+    assert names == [
+        "status",
+        "bottom-line",
+        "parity",
+        "top-functions",
+        "evidence",
+        "readiness",
+        "risks",
+        "method",
+    ]
     parsed = page.parse(text)
     assert all(parsed[n].text == blocks.PLACEHOLDER for n in page.JUDGMENT_BLOCKS)
     assert "not yet updated" not in text

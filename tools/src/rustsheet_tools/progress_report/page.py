@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rustsheet_tools.progress_report import blocks, parity
+from rustsheet_tools.progress_report import blocks, evidence, parity
 from rustsheet_tools.progress_report.markdown import REGENERATE, md_text
 from rustsheet_tools.progress_report.model import Parity, ProgressReportError, Run
 
@@ -20,6 +20,8 @@ LAYOUT = (
     (blocks.GENERATED, "status", None),
     (blocks.JUDGMENT, "bottom-line", "Bottom line"),
     (blocks.GENERATED, "parity", None),
+    (blocks.GENERATED, "top-functions", None),
+    (blocks.GENERATED, "evidence", None),
     (blocks.JUDGMENT, "readiness", "Real-world readiness"),
     (blocks.JUDGMENT, "risks", "Risks"),
     (blocks.GENERATED, "method", None),
@@ -72,7 +74,7 @@ def parse(text: str) -> dict[str, blocks.Block]:
 def render(run: Run, data: Parity, previous: str | None) -> str:
     """The whole page for `run`, keeping the judgment text of `previous` (the existing page)."""
     old = parse(previous) if previous is not None else {}
-    body = {"status": status(run), "parity": parity.block(data), "method": METHOD}
+    body = {"status": status(run), "parity": parity.block(data), "method": METHOD, **evidence.blocks(data)}
     parts = [HEADER]
     for _, name, heading in LAYOUT:
         parts.append(
