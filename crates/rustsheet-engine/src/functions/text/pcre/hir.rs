@@ -27,6 +27,18 @@ pub(in crate::functions::text) enum FinalLf {
     Cr,
 }
 
+impl FinalLf {
+    /// The anchors no `Look` reads exactly on texts of this kind: `$` and `\Z` on an
+    /// [`FinalLf::InnerLf`] text (T-2355), and `(?m)$` too on a [`FinalLf::Cr`] one (T-2364).
+    pub(super) fn inexact_anchors(self) -> &'static [Anchor] {
+        match self {
+            FinalLf::End | FinalLf::EndLf => &[],
+            FinalLf::InnerLf => &[Anchor::EndOrFinalLf],
+            FinalLf::Cr => &[Anchor::EndOrFinalLf, Anchor::EndLine],
+        }
+    }
+}
+
 /// `ast` as a `Hir`, `$` and `\Z` read for `final_lf` texts ([`FinalLf::InnerLf`] and
 /// [`FinalLf::Cr`] read as `EndLf`: `translate` sends a pattern holding them to the backtracker
 /// there); `Invalid` for a construct only the backtracker runs. `.` and the `(?m)` anchors take

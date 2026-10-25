@@ -156,7 +156,7 @@ fn line_anchors_and_dot_follow_anycrlf() {
         );
     }
     // A text with a CR sends `$`, `\Z` and `(?m)$` to the backtracker, nothing else.
-    let automata = |pattern: &str| {
+    let stays_on_automata = |pattern: &str| {
         matches!(
             translate(pattern, false, super::final_lf_for("a\r\nb"), usize::MAX)
                 .unwrap()
@@ -164,8 +164,10 @@ fn line_anchors_and_dot_follow_anycrlf() {
             Form::Automata { .. }
         )
     };
-    assert!(!automata("a$") && !automata(r"a\Z") && !automata("(?m)a$"));
-    assert!(automata("(?m)^b") && automata("a.b") && automata(r"a\z"));
+    assert!(!stays_on_automata("a$") && !stays_on_automata(r"a\Z"));
+    assert!(!stays_on_automata("(?m)a$"));
+    assert!(stays_on_automata("(?m)^b") && stays_on_automata("a.b"));
+    assert!(stays_on_automata(r"a\z"));
 }
 
 /// The match of `program` in `text`, its groups' spans, and every match of its iteration with

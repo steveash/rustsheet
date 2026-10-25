@@ -16,7 +16,6 @@ mod program;
 #[cfg(test)]
 mod tests;
 
-use ast::Anchor;
 pub(in crate::functions::text) use backtrack::{BacktrackCache, Backtracker};
 pub(in crate::functions::text) use hir::FinalLf;
 pub(in crate::functions::text) use program::Program;
@@ -84,10 +83,10 @@ impl Backtrack {
 }
 
 /// `pattern` for its engine, ignoring case when `caseless` (`(?i)` and `(?-i)` override it), for
-/// texts of kind `final_lf`: a regular pattern with `$` or `\Z` goes to the memoized mode on a
-/// [`FinalLf::InnerLf`] text, and one with `$`, `\Z` or `(?m)$` on a [`FinalLf::Cr`] text (the
-/// backtracker reads them exactly on every text). Its case folding
-/// stops past `fold_budget` code points, with a `fold_cost` of `usize::MAX`.
+/// texts of kind `final_lf`: a regular pattern holding an anchor no `Look` reads exactly on such
+/// a text ([`FinalLf::inexact_anchors`]) goes to the memoized mode, since the backtracker reads
+/// them exactly on every text. Its case folding stops past `fold_budget` code points, with a
+/// `fold_cost` of `usize::MAX`.
 pub(super) fn translate(
     pattern: &str,
     caseless: bool,
@@ -100,13 +99,7 @@ pub(super) fn translate(
             ast: parsed.ast,
             memoized: false,
         })
-    } else if match final_lf {
-        FinalLf::InnerLf => parsed.ast.has_anchor(&[Anchor::EndOrFinalLf]),
-        FinalLf::Cr => parsed
-            .ast
-            .has_anchor(&[Anchor::EndOrFinalLf, Anchor::EndLine]),
-        FinalLf::End | FinalLf::EndLf => false,
-    } {
+    } else if parsed.ast.has_anchor(final_lf.inexact_anchors()) {
         Form::Backtrack(Backtrack {
             ast: parsed.ast,
             memoized: true,
