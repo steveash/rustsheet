@@ -45,7 +45,7 @@ fn unique_rule() -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model, row: i32, col: i32) -> bool {
+fn is_red(model: &mut crate::Model, row: i32, col: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, col)
         .unwrap()
@@ -70,14 +70,14 @@ fn test_duplicate_values_highlights_repeated_numbers() {
     // 10 appears in rows 1 and 3; 20 appears in rows 2 and 5
     for row in [1, 2, 3, 5] {
         assert!(
-            is_red(&model, row, 1),
+            is_red(&mut model, row, 1),
             "row {row} contains a duplicate value and should be highlighted"
         );
     }
     // 30 (row 4) and 40 (row 6) are unique
     for row in [4, 6] {
         assert!(
-            !is_red(&model, row, 1),
+            !is_red(&mut model, row, 1),
             "row {row} contains a unique value and should not be highlighted"
         );
     }
@@ -94,14 +94,14 @@ fn test_duplicate_values_highlights_repeated_strings() {
     // "rust" appears in rows 1 and 3
     for row in [1, 3] {
         assert!(
-            is_red(&model, row, 2),
+            is_red(&mut model, row, 2),
             "row {row} (\"rust\") is a duplicate string and should be highlighted"
         );
     }
     // "go" (row 2) and "python" (row 4) are unique
     for row in [2, 4] {
         assert!(
-            !is_red(&model, row, 2),
+            !is_red(&mut model, row, 2),
             "row {row} is a unique string and should not be highlighted"
         );
     }
@@ -121,7 +121,7 @@ fn test_duplicate_values_all_unique_highlights_none() {
 
     for row in 1..=3 {
         assert!(
-            !is_red(&model, row, 1),
+            !is_red(&mut model, row, 1),
             "row {row} is unique, should not be highlighted"
         );
     }
@@ -141,7 +141,7 @@ fn test_duplicate_values_all_same_highlights_all() {
 
     for row in 1..=4 {
         assert!(
-            is_red(&model, row, 1),
+            is_red(&mut model, row, 1),
             "row {row} shares value 42 with every other row and should be highlighted"
         );
     }
@@ -162,14 +162,14 @@ fn test_unique_values_highlights_non_repeated_numbers() {
     // 30 (row 4) and 40 (row 6) appear exactly once
     for row in [4, 6] {
         assert!(
-            is_red(&model, row, 1),
+            is_red(&mut model, row, 1),
             "row {row} contains a unique value and should be highlighted"
         );
     }
     // 10 and 20 are duplicated
     for row in [1, 2, 3, 5] {
         assert!(
-            !is_red(&model, row, 1),
+            !is_red(&mut model, row, 1),
             "row {row} contains a duplicate value and should not be highlighted"
         );
     }
@@ -186,14 +186,14 @@ fn test_unique_values_highlights_non_repeated_strings() {
     // "go" (row 2) and "python" (row 4) each appear once
     for row in [2, 4] {
         assert!(
-            is_red(&model, row, 2),
+            is_red(&mut model, row, 2),
             "row {row} is a unique string and should be highlighted"
         );
     }
     // "rust" (rows 1, 3) is duplicated
     for row in [1, 3] {
         assert!(
-            !is_red(&model, row, 2),
+            !is_red(&mut model, row, 2),
             "row {row} (\"rust\") is duplicated and should not be highlighted"
         );
     }
@@ -213,7 +213,7 @@ fn test_unique_values_all_same_highlights_none() {
 
     for row in 1..=4 {
         assert!(
-            !is_red(&model, row, 1),
+            !is_red(&mut model, row, 1),
             "row {row} has no unique value when all cells share 7"
         );
     }
@@ -233,7 +233,7 @@ fn test_unique_values_all_different_highlights_all() {
 
     for row in 1..=3 {
         assert!(
-            is_red(&model, row, 1),
+            is_red(&mut model, row, 1),
             "row {row} has a distinct value and should be highlighted"
         );
     }
@@ -259,8 +259,8 @@ fn test_duplicate_and_unique_are_mutually_exclusive() {
     model2.evaluate();
 
     for row in 1..=6 {
-        let is_dup = is_red(&model, row, 1);
-        let is_uniq = is_red(&model2, row, 1);
+        let is_dup = is_red(&mut model, row, 1);
+        let is_uniq = is_red(&mut model2, row, 1);
         assert!(
             is_dup ^ is_uniq,
             "row {row} should be exactly one of duplicate or unique, not both or neither"

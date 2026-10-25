@@ -1,6 +1,6 @@
 use super::annuity::{annuity_factor, annuity_power};
 use crate::{
-    arithmetic::{extended_product, extended_quotient, extended_sum},
+    arithmetic::{extended_product, extended_quotient, extended_sum, flush_subnormal},
     expressions::token::Error,
 };
 
@@ -80,7 +80,38 @@ pub(crate) fn compute_rate(
     Err(Error::NUM)
 }
 
-pub(crate) fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
+/// The worksheet NPV: the sum of `value[i]/(1+rate)^i` with Excel's range rules
+/// (financial.md "NPV's discount past the double range", probes/npv-power-edges and
+/// npv-power-edges-2). Excel divides each value by the previous period's power (kept as a
+/// double) times 1+rate, so the call is `#DIV/0!` when 1+rate is 0 (a rate of -1, also with no
+/// flow but 0s) or when a power that a later period builds on overflows or is below the
+/// smallest normal double: `NPV(1E+300,1,1)` is 1E-300 but `NPV(1E+300,0,0,0)` is `#DIV/0!`, and
+/// `NPV(1,SEQUENCE(1024))` is a number but 1025 flows are `#DIV/0!`. The last period's power
+/// may overflow: its quotient is taken in two steps (`NPV(1E+300,1,1E+300)` is 2E-300). A
+/// subnormal quotient is 0, as for `/` (`NPV(9E+307,1)` is 0).
+pub(crate) fn excel_npv(rate: f64, values: &[f64]) -> Result<f64, Error> {
+    let base = 1.0 + rate;
+    let mut npv = 0.0;
+    // base^i as a double, the power period i + 1 builds on.
+    let mut previous = 1.0_f64;
+    for (i, item) in values.iter().enumerate() {
+        if base == 0.0 || previous == 0.0 || !previous.is_finite() {
+            return Err(Error::DIV);
+        }
+        let power = base.powi(i as i32 + 1);
+        let quotient = if power.is_finite() && power.abs() >= f64::MIN_POSITIVE {
+            item / power
+        } else {
+            item / previous / base
+        };
+        npv += flush_subnormal(quotient);
+        previous = flush_subnormal(power);
+    }
+    Ok(npv)
+}
+
+/// The plain sum of `value[i]/(1+rate)^i`, for the solver IRR falls back on.
+fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
     let mut npv = 0.0;
     for (i, item) in values.iter().enumerate() {
         npv += item / (1.0 + rate).powi(i as i32 + 1);
@@ -132,6 +163,9 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
     None
 }
 
+/// The smallest guess IRR refuses as too large: 2^53.
+const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
+
 /// IRR as Excel computes it: a secant on NPV(v), v = 1/(1 + r), from v0 = 1/(1 + guess) and
 /// v1 = v0 ± 0.001 (the sign of NPV(v0)). It stops at the first iterate with |v2 - v1| < 1e-7 and
 /// |NPV(v2)| < 1e-7 and returns 1/v2 - 1; a run that fails is retried once from 0.1. This matches
@@ -142,8 +176,15 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
 /// earlier Newton/bisection solver (unverified, T-1686). The 50-step cap is a directive-5 bound
 /// (financial.md "The IRR and XIRR solver caps").
 pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
-    if guess <= -1.0 {
-        return Err((Error::VALUE, "Rate initial guess must be > -1".to_string()));
+    // Excel: a guess at or above 2^53 is #VALUE! too, before the sign-change check:
+    // `IRR({-100,60,60},2^53-1)` and `(..,9E+15)` converge, `(..,2^53)` and `(..,1E+16)` are #VALUE!,
+    // and so is `IRR(COUNTBLANK(..),1E+300)` (probes/irr-guess-edges A1-A19,
+    // irr-guess-edges-2 A1-A14; financial.md "IRR's guess range").
+    if guess <= -1.0 || guess >= IRR_GUESS_BOUND {
+        return Err((
+            Error::VALUE,
+            "Rate initial guess must be > -1 and < 2^53".to_string(),
+        ));
     }
     // The values cannot be all positive or all negative
     if values.iter().all(|&x| x >= 0.0) || values.iter().all(|&x| x <= 0.0) {
