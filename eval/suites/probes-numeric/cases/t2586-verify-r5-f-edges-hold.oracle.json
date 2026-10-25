@@ -5837,15 +5837,35 @@
    "D99": {
     "t": "n",
     "v": 4.5515992615964715e-37
+   },
+   "E55": {
+    "t": "b",
+    "v": false
+   },
+   "E59": {
+    "t": "b",
+    "v": false
+   },
+   "E63": {
+    "t": "b",
+    "v": false
+   },
+   "E67": {
+    "t": "b",
+    "v": false
+   },
+   "E71": {
+    "t": "b",
+    "v": false
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "1bcf0c284a8f74e85ae56dfed91f481d50273015c284be7b823f5225d0cd4e31",
+  "input_sha256": "76ab5d120d632256ae917b4eeba3d38b2267313f310a53b58ebe7de9db843dc1",
   "kind": "excel-graph",
-  "produced_at": "2026-10-24T16:29:48+00:00",
+  "produced_at": "2026-10-25T10:54:03+00:00",
   "version": null,
-  "workbook_name": "ff9d5d0ae56f5bf69b082abc86d12c88b02e0360664fd0b113eefb65db1f6e1d.xlsx"
+  "workbook_name": "7c859e3a2da085e87d2e7dab416810b5741f1ffe7c67a0ab0aeb363c66b46a9e.xlsx"
  }
 }
