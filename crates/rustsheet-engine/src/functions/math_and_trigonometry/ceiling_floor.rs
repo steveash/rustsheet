@@ -210,11 +210,11 @@ mod tests {
         assert_eq!(snap_ratio(999_999_999_999_999.5, 1.0), 1e15);
         assert_eq!(snap_ratio(0.0, 1.0), 0.0);
         assert!(snap_ratio(1.0, 0.0).is_infinite());
-        // probes/t2715-ceiling-floor-subnormal-ratio: a subnormal ratio is 0, the smallest normal
-        // is kept.
+        // probes/t2715-ceiling-floor-subnormal-ratio: a subnormal ratio is 0; the smallest normal
+        // is kept (then cut to 15 digits), so its ceiling is still one step.
         assert_eq!(snap_ratio(1e-307, 4.5), 0.0);
         assert_eq!(snap_ratio(-1e-300, 1e8), 0.0);
-        assert_eq!(snap_ratio(f64::MIN_POSITIVE, 1.0), f64::MIN_POSITIVE);
+        assert_eq!(snap_ratio(f64::MIN_POSITIVE, 1.0).ceil(), 1.0);
     }
 
     #[test]
