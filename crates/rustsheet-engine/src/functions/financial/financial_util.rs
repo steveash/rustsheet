@@ -132,6 +132,9 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
     None
 }
 
+/// The smallest guess IRR refuses as too large: 2^53.
+const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
+
 /// IRR as Excel computes it: a secant on NPV(v), v = 1/(1 + r), from v0 = 1/(1 + guess) and
 /// v1 = v0 ± 0.001 (the sign of NPV(v0)). It stops at the first iterate with |v2 - v1| < 1e-7 and
 /// |NPV(v2)| < 1e-7 and returns 1/v2 - 1; a run that fails is retried once from 0.1. This matches
@@ -141,9 +144,6 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
 /// and `#NUM!` for flows without a sign change. Where both runs fail, [`irr_fallback`] runs the
 /// earlier Newton/bisection solver (unverified, T-1686). The 50-step cap is a directive-5 bound
 /// (financial.md "The IRR and XIRR solver caps").
-/// The smallest guess IRR refuses as too large: 2^53.
-const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
-
 pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
     // Excel: a guess at or above 2^53 is #VALUE! too, before the flows are looked at:
     // `IRR({-100,60,60},2^53-1)` and `(..,9E+15)` converge, `(..,2^53)` and `(..,1E+16)` are #VALUE!,
