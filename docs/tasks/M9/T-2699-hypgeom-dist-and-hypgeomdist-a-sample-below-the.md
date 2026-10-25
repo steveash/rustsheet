@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: sonnet
 campaign: semantics
-depends_on: []
+depends_on: [T-2700]
 ---
 
 ## Goal
