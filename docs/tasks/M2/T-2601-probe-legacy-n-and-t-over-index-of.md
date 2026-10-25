@@ -3,7 +3,7 @@ id: T-2601
 title: "Probe legacy N and T over INDEX of a scalar with an empty column or a unary plus or parenthesised scalar"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
