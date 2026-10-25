@@ -574,15 +574,18 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - Not implemented (VERIFIED, gen-m10): zero prints all integer placeholders (`##0.0E+0` on 0
   "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
   "1.0E+02") (T-2227).
-- Not implemented (VERIFIED, gen-m10; gap triage 2026-10-25): a scientific mantissa does not round like the
-  fixed codes. On an exact tie it goes away from zero: `0E+0` and `#E+0` on 2.5 are "3E+0", and on -2.5
-  "-3E+0" (ours "2E+0", "-2E+0"). But `0.00E+00` on 12.345 is "1.23E+01" (ours "1.24E+01"), where the
-  15-digit decimal half away from zero of the fixed codes would give "1.24E+01" (`0%` on 12.345 is "1235%",
-  T-2206). Both fit rounding the double itself (12.345 is 12.3449999999999997513...) with ties away from
-  zero; that reading is an assumption until a probe separates it from others (T-2705). Cells: displayed text
-  05c1c646c95a2d60 F!I10 and F!L11, 5255389143dbcef6 F!D13 and F!G20, 5eb95c63c7d6180c F!G8 and F!G19,
-  659cd5776d423ce3 F!B10, b4f66526f822ff2c F!L18, eec351e03ccedfe0 F!Q15, fbdab487cb11409e F!Q3; TEXT
-  5eb95c63c7d6180c T!A7 `TEXT(2.5,"#E+0")` "3E+0".
+- Implemented (T-2705; VERIFIED, gen-m10 and probes/t2705-scientific-mantissa-rounding, excel-graph 2026-10-25): a
+  scientific code with one integer placeholder rounds its mantissa once, from the value, at its shown digits (one
+  plus the decimals, at most 15). The rounding is on the 15-digit decimal, half away from zero, as the fixed codes
+  and ROUND round (T-2206). `0E+0` and `#E+0` on 2.5 are "3E+0" and on -2.5 "-3E+0". `0.00E+00` on 1.005 (the double
+  1.00499999…) is "1.01E+00", and on 2.675 it is "2.68E+00". `0E+0` on 2.5-2^-51 is "3E+0", `0.0E+0` on 0.285 is "2.9E-1",
+  and on 4.35 it is "4.4E+0" (probe A1:A6, A12). `0.00E+00` on 12.345 is "1.23E+01" (12.345 is the double
+  12.34500000000000063…, no tie). Ours showed "1.24E+01" because it rounded twice: first to the integer digits plus
+  the decimals (12.35), then the mantissa 1.235 again. Engineering codes (T-2598) and zero mantissas (T-2227) are
+  separate. A `%` after the exponent does not scale (`0.00E+00%` on 2.675 is "2.68E+00%", probe A13; ours scales,
+  T-2720). Cells: displayed text 05c1c646c95a2d60 F!I10 and F!L11, 5255389143dbcef6 F!D13 and F!G20,
+  5eb95c63c7d6180c F!G8 and F!G19, 659cd5776d423ce3 F!B10, b4f66526f822ff2c F!L18, eec351e03ccedfe0 F!Q15,
+  fbdab487cb11409e F!Q3 (and F!Q20, bfbcd16cee266336 F!W12); TEXT 5eb95c63c7d6180c T!A7 `TEXT(2.5,"#E+0")` "3E+0".
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
 Implemented (T-2206): the shown place rounds the 15-digit decimal half away from zero (`0`, `#,##0`,
@@ -666,7 +669,7 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
-  (12.345 × 100 is 1234.4999999999998 in binary), while `# ?/10` on 12.345 is "12 3/10" (43980980 P16; the binary
+  (the double 12.345 is 12.34500000000000063…), while `# ?/10` on 12.345 is "12 3/10" (43980980 P16; the binary
   fraction part 0.34499999999999886 × 10 stays below the half).
 Probed (T-2061, excel-graph 2026-10-19, probes/fraction-format-features, cells named by row of column A; values
 B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
