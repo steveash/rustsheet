@@ -1714,9 +1714,27 @@ back-chained S is not an artefact of assuming an analytic derivative. Nor is S a
 model (redemption 100, compounding 1, 2, 3, 4, 6, 12 or 365 times a year, or continuous, over the basis term T) from 0, 0.01,
 0.05, 0.1, 0.5 or 1: no iterate comes within 5e-4 relative of the starts of A1, D2, E1, E4 or E5 (scratch arithmetic).
 Next (T-1592, T-2330): fit S on the T-2304 grid (it moves with term, rate and price) and re-probe the stop rule.
+T-2740 (probes/yield-start-one-input, excel-graph 2026-10-25; T-2304's A8 bond `YIELD(DATE(2096,3,1),M,R,P,100.5,F,0)`,
+M = DATE(2100,6,30), R = 0.05, P = 98 unless varied; column A frequency 2, B frequency 1; rows 1-41 P 80 to 100 by 0.5,
+42-66 R 0 to 0.12 by 0.005, 67-96 M on 30 June 2097 to 2126). The lab's `newton_back_chain` gives:
+- Step count: on every row with both twins below the root (rows 22-96 but 67) A and B step back exactly **two**
+  iterates to one S, to 1.3e-8 (the back-chain's own precision); one step back they differ by 2.2e-7 to 3.7e-4, three
+  steps back by 3.6e-5 to 2.8e-3. So S is two Newton steps before Excel's value on this bond, at frequency 2 and 1 alike.
+- At the root (|PRICE(y) - P| below 1e-11, so no S): both twins on rows 1-5 (P 80 to 82) and row 67 (maturity 2097);
+  only B on rows 6-21 (P 82.5 to 90), whose A cells alone leave the step count open.
+- Rate: S = 0.0046704412 + 1.01128042·R over rows 42-66, to 6e-9, i.e. linear in the coupon rate within the
+  back-chain's precision (row 52, R = 0.05, is 0.0552344615, the T-2187 start 0.0552344627).
+- Price: at P = 100 S is the coupon rate (row 41: 0.0499999981 and 0.0500000009). Below, S - R grows faster than
+  linearly in 100 - P: (S - R)/(100 - P) is 0.0025953 at P 99.5, 0.0026172 at 98, 0.0027328 at 90.5. No simple form
+  fitted yet (time-box).
+- Term: S falls toward the coupon rate as the maturity grows (0.0593019 for 2098, 0.0552345 for 2100, 0.0526987 for
+  2105, 0.0516858 for 2113, 0.0511796 for 2126); (S - R)·T with T the years from settlement is not constant (about 0.0232 at 2101, 0.0353 at 2125), so not
+  a plain 1/T. No form fitted yet.
+Read together: a start that equals the coupon at par and moves linearly with the coupon looks like a current-yield or
+yield-approximation formula; T-1592 is the place to fit it. Lab test: `test_yield_start_one_input_two_steps_back`.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740
 
 ## YIELD's #NUM! cells and its suspected 100-step cap
 Rule: Excel's YIELD is `#NUM!` at some inputs where PRICE has a root, and returns a number that is not a root at others;

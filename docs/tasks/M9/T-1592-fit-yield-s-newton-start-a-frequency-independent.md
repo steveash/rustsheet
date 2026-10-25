@@ -3,7 +3,7 @@ id: T-1592
 title: "Fit YIELD's Newton start: a frequency-independent first iterate"
 milestone: M9
 lane: research
-status: blocked
+status: todo
 priority: P2
 size: M
 tier: opus
@@ -133,6 +133,10 @@ model at any compounding either (financial.md "YIELD stops short of PRICE's root
 visible-parity cells stay. Unblock with evidence that separates the start from the stop rule: T-2330's re-probe of the
 stop rule, or a probe that fixes everything but one input (price alone, rate alone, term alone) on the T-2304 grid so S
 can be fitted per input.
+Evidence since (T-2740, 2026-10-25): probes/yield-start-one-input fixes all but one input. S is two Newton steps back
+on both twins, equals the coupon rate at price 100 and is linear in the coupon rate to 6e-9 (financial.md "YIELD stops
+short of PRICE's root", T-2740 paragraph). That supports a new hypothesis (a current-yield or yield-approximation
+start), so the task is back to `todo`.
 
 ## Outcome
 Blocked (2026-10-24). The lab's `yield` fit gains the "Newton, finite difference" family (six variants, best 5/178 bit-exact,
