@@ -45,6 +45,31 @@ fn huge_quotient_is_num() {
     assert_eq!(model._get_text("A8"), *"#NUM!");
 }
 
+// Excel: an opposite-sign shift that rounds back to the divisor is 0
+// (probes/mod-huge-opposite-divisor A6-A7, A47-A48, A99-A100, A113).
+#[test]
+fn shift_rounding_to_divisor_is_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MOD(1,-(2^53))");
+    model._set("A2", "=MOD(1,-(2^54))");
+    model._set("A3", "=MOD(0.5,-(2^52))");
+    model._set("A4", "=MOD(0.5,-(2^53))");
+    model._set("A5", "=MOD(1,-1E+30)");
+    model._set("A6", "=MOD(-1,1E+30)");
+    model._set("A7", "=MOD(1.005,-1E+16)");
+    model._set("A8", "=MOD(1,2^60)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"-9.0072E+15");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"-4.5036E+15");
+    assert_eq!(model._get_text("A4"), *"0");
+    assert_eq!(model._get_text("A5"), *"0");
+    assert_eq!(model._get_text("A6"), *"0");
+    assert_eq!(model._get_text("A7"), *"-1E+16");
+    assert_eq!(model._get_text("A8"), *"1");
+}
+
 // Excel: MOD lifts element-wise over arrays (probes/geomean-overflow-cut-3 E4).
 #[test]
 fn mod_lifts_over_arrays() {
