@@ -104,7 +104,7 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
 }
 
 /// The double nearest to `digits * 10^place`, where `digits <= 10^15`.
-fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
+pub(crate) fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
     // Fast path: `digits` (< 2^53) and 10^|place| (|place| <= 22) are exact doubles, so one
     // multiplication or division is correctly rounded, like the parse below.
     if let Ok(exact_power) = i32::try_from(place.unsigned_abs()) {
