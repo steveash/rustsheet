@@ -6,6 +6,7 @@ use crate::{
 };
 
 mod aggregate;
+pub(crate) mod arg_counts;
 pub(crate) mod binary_search;
 pub(crate) mod criteria;
 mod database;

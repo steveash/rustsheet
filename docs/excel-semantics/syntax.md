@@ -32,12 +32,16 @@ in-scope catalog function loaded at the count in excel-functions.tsv (probes/cat
 `=XNPV(1,A1:B2,A1:B2)` loads and gives 9.962109338017495 (probes/xnpv-argument-count D1; D3 shows
 values and dates of different lengths are `#NUM!`). RustSheet gives `#ERROR!` for a call below the
 minimum, as for every other function (`fn_xnpv`).
-Typed (API `Input::Formula`/`Parse`), Excel for the web refuses `=PV(1)` (Graph PATCH 400, T-2567), so typed entry
-refuses a call with fewer or more arguments than the function takes, for the functions in the engine's lifting table, whose
-counts match excel-functions.tsv (ACCRINTM's `par` aside, which the engine takes as optional); UNVERIFIED: that a typed call with too
-many arguments is refused is inferred from the file form (T-2568; probe in T-2632). Only the least and most counts are checked: a
-count between them that ends inside a repeating group (`SORTBY(a,b1,1,b2)`, whose last sort_order Microsoft's syntax line
-marks optional) is accepted typed, its Excel behavior unprobed (`ArgKinds::takes_count`, tools/tests/test_catalog_arity.py).
+Typed (API `Input::Formula`/`Parse`), Excel for the web refuses a call with fewer or more arguments than the function
+takes: `=PV(1)` (Graph PATCH 400, T-2567), and `=SUM()`, `=IF(1)`, `=ABS(1,2)` (too many) and
+`=ACCRINTM(DATE(2020,1,1),DATE(2021,1,1),0.1)` (`par` is required) (Graph PATCH 400 `InvalidArgument`, 2026-10-25, T-2632;
+the control `=ABS(1)` is accepted; refused inputs cannot be committed). A count between the least and most that ends inside a
+repeating group is refused too: `=SORTBY(C1:C2,D1:D2,1,E1:E2)` (the second pair lacks its sort order; same probe). The engine
+refuses typed by the catalog's counts for every function (`functions/arg_counts.txt`: the minimum of excel-functions.tsv, the
+maximum of the functions.yaml signature, checked by tools/tests/test_catalog_arity.py) and, for lifted functions, whole
+`repeat` cycles (`ArgKinds::accepts`); stored text keeps such a call (`#ERROR!`). UNVERIFIED: the maxima other than ABS's
+(from Microsoft's syntax lines and the catalog's repeat limits), and off-cycle counts of repeating functions outside the
+lifting table (`IFS(1,2,3)`, `LET(x,1,y,2)`), which typed entry still accepts.
 Status: VERIFIED
 
 ## Unary minus binds tighter than `^`

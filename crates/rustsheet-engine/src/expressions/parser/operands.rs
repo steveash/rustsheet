@@ -13,6 +13,8 @@ use super::structured_reference::{
     is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
 };
 use super::*;
+use crate::functions::arg_counts;
+use crate::language::get_default_language;
 
 impl Parser {
     /// The parse error for a token that cannot start an operand.
@@ -440,20 +442,18 @@ impl Parser {
         }
     }
 
-    /// Records the first call of `kind` with a `count` of arguments outside the function's
-    /// range, for [`Parser::typed_refusal`]: Excel refuses such a formula typed (`=PV(1)`,
-    /// T-2567) and in a file (docs/excel-semantics/syntax.md "Minimum argument counts"); stored
-    /// text keeps it, and the call evaluates to `#ERROR!`. Only the lifting table's counts are
-    /// used: they agree with Excel's documented minimums (eval/catalog/excel-functions.tsv,
-    /// `tools/tests/test_catalog_arity.py`), and a function outside the table is never refused here.
-    /// Only the least and most counts are checked, not whole `repeat` cycles
-    /// ([`ArgKinds::takes_count`], not `accepts`): Excel's syntax line lets SORTBY's last
-    /// `sort_order` be omitted (`SORTBY(a,b1,1,b2)`), and no probe shows a typed off-cycle call
-    /// refused, so refusing it could refuse a formula Excel takes.
+    /// Records the first call of `kind` with a `count` of arguments the function does not take,
+    /// for [`Parser::typed_refusal`]: Excel refuses such a formula typed (`=PV(1)`, T-2567; `=SUM()`,
+    /// `=IF(1)`, `=ABS(1,2)`, `ACCRINTM` with three arguments, T-2632) and in a file
+    /// (docs/excel-semantics/syntax.md "Minimum argument counts"); stored text keeps it, and the
+    /// call evaluates to `#ERROR!`. The counts are the catalog's for every function
+    /// ([`arg_counts::takes_count`]); a lifted function must also end on a whole `repeat` cycle
+    /// ([`ArgKinds::accepts`]: Excel refuses `=SORTBY(C1:C2,D1:D2,1,E1:E2)` typed, T-2632). A
+    /// function the catalog does not list is never refused here.
     fn note_argument_count(&mut self, kind: &Function, name: &str, count: usize) {
-        let refused = kind
-            .arg_kinds()
-            .is_some_and(|kinds| !kinds.takes_count(count));
+        let english = kind.to_localized_name(get_default_language());
+        let refused = !arg_counts::takes_count(&english, count)
+            || kind.arg_kinds().is_some_and(|kinds| !kinds.accepts(count));
         if refused && self.wrong_count_call.is_none() {
             self.wrong_count_call = Some(name.to_ascii_uppercase());
         }

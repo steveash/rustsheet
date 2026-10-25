@@ -36,7 +36,8 @@ fn typed_cell_shaped_let_and_lambda_names_are_refused() {
 /// Excel refuses a typed call with an argument count the function does not take, also where the
 /// callee is a LET name or LAMBDA parameter spelled like the function, since typed the call is
 /// the function (probes/let-function-name-typed-*, T-2567 Graph PATCH 400). Stored, the name is
-/// the variable (probes/let-name-function-spelled-call: 1, 3 and `#NAME?`). T-2568.
+/// the variable (probes/let-name-function-spelled-call: 1, 3 and `#NAME?`). T-2568; every catalogued
+/// function and whole SORTBY cycles, T-2632.
 #[test]
 fn typed_calls_with_a_wrong_argument_count_are_refused() {
     let mut wb = book();
@@ -47,6 +48,13 @@ fn typed_calls_with_a_wrong_argument_count_are_refused() {
         ("A4", "=PV(1)"),
         ("A5", "=ABS(1,2)"),
         ("A6", "=1+SUM(PV(0.1,2,3,4,0,1))"),
+        // Functions outside the lifting table, from the catalog's counts (Graph PATCH 400, T-2632).
+        ("A8", "=SUM()"),
+        ("A9", "=IF(1)"),
+        ("A10", "=XLOOKUP(1,{1},{2},0,0,1,1)"),
+        ("A11", "=ACCRINTM(DATE(2020,1,1),DATE(2021,1,1),0.1)"),
+        ("A12", "=SORTBY({1;2},{2;1},1,{1;1})"),
+        ("A13", "=PI(1)"),
     ] {
         for input in [Input::Formula(text.into()), Input::Parse(text.into())] {
             let err = wb.set(a1, input).unwrap_err();
@@ -72,13 +80,21 @@ fn typed_calls_with_a_wrong_argument_count_are_refused() {
         .set("A7", Input::Formula("=ABS(1,2)+PV(1)".into()))
         .unwrap_err();
     assert!(format!("{err:?}").contains("ABS"), "{err:?}");
-    // The counts the function takes stay accepted typed, its optional arguments included. An
-    // off-cycle count of a repeating group is not refused (its typed behavior is unprobed).
-    wb.set(
-        "C3",
-        Input::Formula("=ROWS(SORTBY({1;2},{2;1},1,{1;1}))".into()),
-    )
-    .unwrap();
+    // The counts the function takes stay accepted typed, its optional arguments included.
+    for (a1, text) in [
+        ("C3", "=ROWS(SORTBY({1;2},{2;1},1,{1;1},1))"),
+        ("C4", "=SUM(1)"),
+        ("C5", "=IF(1,2)"),
+        ("C6", "=XLOOKUP(1,{1},{2},0,0,1)"),
+        ("C7", "=PI()"),
+    ] {
+        wb.set(a1, Input::Formula(text.into())).unwrap();
+    }
+    assert_eq!(wb.value("C3").unwrap(), Value::Number(2.0));
+    assert_eq!(wb.value("C6").unwrap(), Value::Number(2.0));
+    // Stored, a wrong-count call is kept and evaluates to an error.
+    wb.set("D1", Input::StoredFormula("=SUM()".into())).unwrap();
+    assert!(matches!(wb.value("D1").unwrap(), Value::Error(_)));
     wb.set("C1", Input::Formula("=PV(0,2,-3)".into())).unwrap();
     wb.set("C2", Input::Formula("=PV(0,2,-3,0,1)".into()))
         .unwrap();
