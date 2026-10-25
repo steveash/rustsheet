@@ -35,7 +35,7 @@ of x and says how the probe scores those cells.
 ## Acceptance criteria
 - [x] numbers.md "LN is FLDLN2 then FYL2X" records the fit: each candidate's count on T-2143's case, on the 30
       near-ties and on the committed ln_kernel fixture.
-- [ ] (not met: no candidate fits) If a candidate matches every point on which all of T-2143's fills agree, and keeps every fixture point:
+- [ ] (n/a, branch not taken: no candidate fits) If a candidate matches every point on which all of T-2143's fills agree, and keeps every fixture point:
       `excel_ln` uses it. The probes/ln-fyl2x-kernel known-failure lines it fixes then disappear from
       eval/baseline/probes.txt, with no new ones in any gated suite.
 - [x] Otherwise: a decision record (`make new-decision`) says how the probe scores a near-tie whose Excel bit

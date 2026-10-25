@@ -32,4 +32,4 @@ FYL2X path (`x87_log10.rs`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- GAMMA and GAMMALN model shipping (T-2128, T-2129).

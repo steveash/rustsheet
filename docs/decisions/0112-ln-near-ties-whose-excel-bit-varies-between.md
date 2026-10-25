@@ -34,3 +34,4 @@
 - **Consequences:**
   - No engine change now. T-2641 may fix up to 16 of the 27 cells. A cell whose Excel bit varies between fills cannot be
     matched by any deterministic model, so whatever T-2641 decides, some near-tie cells may remain.
+  - If T-2641 ships k = 67 rounded, it amends this record's item 1 (the model and the cells it still owns).
