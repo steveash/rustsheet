@@ -134,6 +134,7 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] Visible parity (gen-m9, T-2256): these 115 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
+      Met except 6 cells that keep their lines (Outcome): T-2685, T-2425 and T-2707 own them.
 - [x] Unit tests: `PROB(1/0,{0.5;0.5},1)` is `#DIV/0!` and `PROB({1;2},NA(),"a")` `#N/A` (data errors before the limits);
       ~~`PROB(2,0.5,1)` and `PROB(A1,B1,1)` with numbers in A1, B1 are `#DIV/0!`~~ (contradicted by Excel: a pair of
       numbers is checked as usual, `PROB(3,0.1,-1,-1)` is `#NUM!`, 0bbab6206b5c9a07 A322; replaced by: a single text or
@@ -179,4 +180,4 @@ Every acceptance criterion is met except the visible-parity lines of these 6 cel
 inferred `#DIV/0!` in Excel; T-2685); 17c110a53924beb8 A330 (its GROUPBY), 941c409532603d32 A324 (its
 FORECAST.ETS.SEASONALITY, T-2425), d37313406b9f6e55 A142 (its inner YIELD) and 80586b859b73c87d A353 (`RANK.EQ` of a
 PROB whose upper limit is a TINV; Excel's `#N/A` may be RANK.EQ's not-found) keep their lines: each needs its inner call
-traced first.
+traced first (T-2707 owns the trace of A330, A142 and A353, and the probes of the orders still UNVERIFIED in statistics.md).
