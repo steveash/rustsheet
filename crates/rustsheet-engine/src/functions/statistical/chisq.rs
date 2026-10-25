@@ -3,6 +3,7 @@ use crate::nested_array::nested_array_error;
 use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{Continuous, Gamma};
 
+use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
 use super::incomplete_gamma::{gamma_cdf, gamma_quantile, gamma_sf, Tail};
 use crate::functions::lift::{num_error, number_or_error};
@@ -308,16 +309,14 @@ impl Model {
                     })
                     .collect(),
             )),
+            // An error element is the result, whichever element it is (statistics.md "An error
+            // element of an array argument is that error"; gen-m9, T-2255).
             CalcResult::Array(array) => {
                 if let Some(error) = nested_array_error(&array, cell) {
                     return Err(error);
                 }
                 self.values_from_array(array)
-                    .map_err(|e| CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {e}"),
-                    })
+                    .map_err(|error| array_element_error(error, cell))
             }
             CalcResult::Range { left, right } => self.values_from_range(left, right),
             CalcResult::Boolean(_)

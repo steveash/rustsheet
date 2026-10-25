@@ -17,7 +17,8 @@ pub(super) enum Ast {
     Literal { c: char, fold: bool },
     /// A character class, already folded and negated as its flags say.
     Class(ClassUnicode),
-    /// `.`: any character, `\n` too when `dot_all`.
+    /// `.`: any character, a CR or an LF too only when `dot_all` (Excel's PCRE2 has the ANYCRLF
+    /// newline convention: probes/t2364-regex-newline-convention, T-2364).
     Dot { dot_all: bool },
     /// A zero-width assertion.
     Anchor(Anchor),
@@ -63,11 +64,11 @@ pub(super) enum Ast {
 pub(super) enum Anchor {
     /// `^` without `(?m)`, `\A`.
     Start,
-    /// `^` under `(?m)`.
+    /// `^` under `(?m)`: at the start, after an LF, or after a CR not followed by an LF.
     StartLine,
-    /// `$` without `(?m)`, `\Z`: at the end or before a final `\n`.
+    /// `$` without `(?m)`, `\Z`: at the end or before a final LF, CR or CRLF.
     EndOrFinalLf,
-    /// `$` under `(?m)`.
+    /// `$` under `(?m)`: at the end or before any CR or LF, also between a CR and its LF.
     EndLine,
     /// `\z`.
     End,
@@ -152,12 +153,12 @@ impl Ast {
         true
     }
 
-    /// Whether the tree holds `$` or `\Z` (without `(?m)`), whose automata translation depends
-    /// on the text (`hir::FinalLf`).
-    pub(super) fn has_final_lf_anchor(&self) -> bool {
+    /// Whether the tree holds one of `anchors`, whose automata translation depends on the text
+    /// (`hir::FinalLf`).
+    pub(super) fn has_anchor(&self, anchors: &[Anchor]) -> bool {
         let mut stack = vec![self];
         while let Some(ast) = stack.pop() {
-            if matches!(ast, Ast::Anchor(Anchor::EndOrFinalLf)) {
+            if matches!(ast, Ast::Anchor(anchor) if anchors.contains(anchor)) {
                 return true;
             }
             ast.push_children(&mut stack);
