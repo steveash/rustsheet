@@ -1,0 +1,42 @@
+== big (2304 cells)
+  CR     all:    45/  344/  857 of  2304  big:    45/  344/  857 of  2304
+  M-sd   all:   156/ 1302/ 1700 of  2304  big:   156/ 1302/ 1700 of  2304
+  M-sdm  all:   153/ 1304/ 1698 of  2304  big:   153/ 1304/ 1698 of  2304
+  M-bc   all:   364/ 1335/ 1722 of  2304  big:   364/ 1335/ 1722 of  2304
+  M-bcm  all:   409/ 1333/ 1721 of  2304  big:   409/ 1333/ 1721 of  2304
+== hold4 (1536 cells)
+  CR     all:   111/  646/  904 of  1536  big/ru:    26/  157/  324 of   864  small/ru:    85/  489/  580 of   672
+  M-sd   all:   287/ 1048/ 1198 of  1536  big/ru:    72/  442/  574 of   864  small/ru:   215/  606/  624 of   672
+  M-sdm  all:   309/ 1048/ 1199 of  1536  big/ru:    75/  439/  576 of   864  small/ru:   234/  609/  623 of   672
+  M-bc   all:   308/ 1064/ 1199 of  1536  big/ru:    93/  458/  575 of   864  small/ru:   215/  606/  624 of   672
+  M-bcm  all:   348/ 1068/ 1196 of  1536  big/ru:   114/  459/  573 of   864  small/ru:   234/  609/  623 of   672
+== chold (1536 cells)
+  CR     all:    41/  412/  604 of  1536  big/ru:     3/   77/  218 of   960  small/ru:    38/  335/  386 of   576
+  M-sd   all:   287/ 1139/ 1280 of  1536  big/ru:    79/  580/  723 of   960  small/ru:   208/  559/  557 of   576
+  M-sdm  all:   358/ 1135/ 1275 of  1536  big/ru:    93/  576/  720 of   960  small/ru:   265/  559/  555 of   576
+  M-bc   all:   372/ 1143/ 1292 of  1536  big/ru:   164/  584/  735 of   960  small/ru:   208/  559/  557 of   576
+  M-bcm  all:   475/ 1142/ 1289 of  1536  big/ru:   210/  583/  734 of   960  small/ru:   265/  559/  555 of   576
+== ca (6400 cells)
+  CR     all:   258/ 2014/ 2950 of  6400  big/ru:    45/  368/  880 of  3680  small/ru:   213/ 1646/ 2070 of  2720
+  M-sd   all:  1281/ 4472/ 5015 of  6400  big/ru:   310/ 1814/ 2295 of  3680  small/ru:   971/ 2658/ 2720 of  2720
+  M-sdm  all:  1388/ 4472/ 5016 of  6400  big/ru:   316/ 1812/ 2296 of  3680  small/ru:  1072/ 2660/ 2720 of  2720
+  M-bc   all:  1265/ 4550/ 5053 of  6400  big/ru:   294/ 1892/ 2333 of  3680  small/ru:   971/ 2658/ 2720 of  2720
+  M-bcm  all:  1395/ 4543/ 5059 of  6400  big/ru:   323/ 1883/ 2339 of  3680  small/ru:  1072/ 2660/ 2720 of  2720
+== hold (1440 cells)
+  CR     all:   114/  733/ 1060 of  1440  big/ru:     2/   46/  100 of   360  small/ru:   112/  687/  960 of  1080
+  M-sd   all:   337/ 1119/ 1255 of  1440  big/ru:    19/  139/  228 of   360  small/ru:   318/  980/ 1027 of  1080
+  M-sdm  all:   374/ 1123/ 1253 of  1440  big/ru:    16/  142/  227 of   360  small/ru:   358/  981/ 1026 of  1080
+  M-bc   all:   337/ 1125/ 1252 of  1440  big/ru:    19/  145/  225 of   360  small/ru:   318/  980/ 1027 of  1080
+  M-bcm  all:   374/ 1129/ 1251 of  1440  big/ru:    16/  148/  225 of   360  small/ru:   358/  981/ 1026 of  1080
+== cells (1599 cells)
+  CR     all:   152/ 1077/ 1308 of  1599  big:     5/   24/   48 of    93  small:   147/ 1053/ 1260 of  1506
+  M-sd   all:   474/ 1363/ 1462 of  1599  big:     7/   43/   66 of    93  small:   467/ 1320/ 1396 of  1506
+  M-sdm  all:   523/ 1363/ 1461 of  1599  big:     8/   43/   66 of    93  small:   515/ 1320/ 1395 of  1506
+  M-bc   all:   473/ 1365/ 1462 of  1599  big:     6/   45/   66 of    93  small:   467/ 1320/ 1396 of  1506
+  M-bcm  all:   521/ 1364/ 1461 of  1599  big:     6/   44/   66 of    93  small:   515/ 1320/ 1395 of  1506
+== myhold (1344 cells)
+  CR     all:   104/  688/  882 of  1344  small/ru:   104/  688/  882 of  1344
+  M-sd   all:   314/  919/ 1029 of  1344  small/ru:   314/  919/ 1029 of  1344
+  M-sdm  all:   335/  918/ 1030 of  1344  small/ru:   335/  918/ 1030 of  1344
+  M-bc   all:   314/  919/ 1029 of  1344  small/ru:   314/  919/ 1029 of  1344
+  M-bcm  all:   335/  918/ 1030 of  1344  small/ru:   335/  918/ 1030 of  1344

@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -81,6 +81,13 @@ Cells:
 - gen-m9/a790a4d4a6a82756.case.json (1): Calc!A308
 - gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A34
 
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 2 gen-m9 financial cells moved here from T-2496. The first is a two-cell range with one number (`#DIV/0!`, like `{5}`); the second a lone empty cell (`#N/A`), both as statistics.md "Z.TEST: an error array first" says.
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/5422bdbf173fc233 Calc!A227 | `ZTEST(Data!D7:D8,Data!$A12,Data!$B10)` (D7:D8 = FALSE, 42; one number; sigma FALSE) | #DIV/0! | #NUM! |
+| gen-m9/bc04c1f478c9896c Calc!A275 | `ZTEST(Data!$A10,(1.005/2.5),100)` (A10 empty, a lone cell) | #N/A | #VALUE! |
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -91,6 +98,7 @@ Cells:
 - [ ] Unit tests: `Z.TEST(1/0,"x")` is `#DIV/0!`, `Z.TEST({5},3,-1)` `#DIV/0!`, `Z.TEST(A1,1)` with A1 = "x" `#N/A`,
       `Z.TEST(A1:A1,1)` with A1 = "x" `#DIV/0!`, and `Z.TEST(A1:A8,4,0)` stays `#NUM!`.
 - [ ] statistics.md's T-2256 Z.TEST entry gets an "Ours:" line naming this task.
+- [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

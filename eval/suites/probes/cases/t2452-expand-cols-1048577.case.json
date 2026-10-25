@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2452: whether EXPAND refuses 1048577 columns in one row with #NUM! (one cell per workbook, since sizes Excel builds hang excel-graph).",
+  "tags": [
+    "M7",
+    "probe",
+    "dynamic-arrays",
+    "T-2452"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=COLUMNS(_xlfn.EXPAND(1,1,1048577))"
+      }
+    }
+  ],
+  "expected": {}
+}

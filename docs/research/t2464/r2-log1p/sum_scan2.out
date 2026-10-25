@@ -1,0 +1,5 @@
+r * sum c_k t2^k             even 3413/3457 odd 3426/3457
+(r*t2) * sum c_k t2^(k-1)    even 3413/3457 odd 3423/3457
+r3 = (r*r)*r chain           even 3441/3457 odd 3447/3457
+2r + sum (2c_k) p_k          even 3441/3457 odd 3447/3457
+2r + sum c_k (2r t2^k)       even 3441/3457 odd 3447/3457

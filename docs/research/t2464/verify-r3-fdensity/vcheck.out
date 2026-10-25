@@ -1,0 +1,8 @@
+1. own ratio-xl-e vs c1_model.value: 0 differ of 2800
+2. r3lib LN vs harness LN: 0 differ of 3000
+   r3lib exp_v6 (double E) vs harness EXP: 0 differ of 3000
+3. x = 1 swapped pairs equal: 585 of 585
+   (no swap symmetry expected at x = 2.75; distinct pairs there: 1175 )
+4. worker hold-out x values also used in probe a (other shapes): 1440 of 1440
+   verifier hold-out x values used anywhere else: 0 of 960
+   duplicate (x, d1, d2) within hold-out cases: 4

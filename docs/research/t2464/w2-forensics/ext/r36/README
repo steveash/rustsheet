@@ -1,0 +1,4 @@
+R 3.6 nmath dbeta (Loader's dbinom_raw for a, b > 2), fetched not committed:
+ for f in dbeta.c dbinom.c stirlerr.c bd0.c lbeta.c gamma.c lgamma.c lgammacor.c chebyshev.c; do
+   curl -sS -o $f https://raw.githubusercontent.com/wch/r-source/R-3-6-branch/src/nmath/$f; done
+ gcc -O2 [-mfpmath=387] -o rdbeta_sse dbeta.c dbinom.c stirlerr.c bd0.c lbeta.c gamma.c lgamma.c lgammacor.c chebyshev.c extra.c drv.c -I. -lm

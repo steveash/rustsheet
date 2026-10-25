@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: [T-1592]
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal

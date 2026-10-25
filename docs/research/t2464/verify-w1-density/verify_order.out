@@ -1,0 +1,4 @@
+probe (3,0.5) lnB claim                                 n= 1600 exact= 1286 (80.4%) w4= 1600 w15= 1600
+probe (3,0.5) lnB argorder                              n= 1600 exact= 1286 (80.4%) w4= 1600 w15= 1600
+old max=8 claim (GAMMALN form)                          n=   14 exact=    9 (64.3%) w4=   14 w15=   14
+old max=8 algdiv (TOMS <8)                              n=   14 exact=    2 (14.3%) w4=    5 w15=   10

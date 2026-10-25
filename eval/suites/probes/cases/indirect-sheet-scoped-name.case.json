@@ -1,0 +1,118 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDIRECT of a sheet-qualified name that exists only at sheet scope, read from another sheet: quoted sheet names, range names, unprefixed text from the name's own and another sheet, a workbook name of the same name, unquoted prefixes that need quotes, doubled quotes (T-2660)",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "Co A!tn": "='Co A'!$B$1",
+    "CoB!tn": "=CoB!$B$1",
+    "CoB!rg": "=CoB!$B$1:$B$3",
+    "CoB!both": "=CoB!$B$2",
+    "both": "=CoB!$B$3",
+    "Q1!tn": "=Q1!$B$1",
+    "O'B!tn": "='O''B'!$B$1",
+    "x.y!tn": "='x.y'!$B$1",
+    "2024!tn": "='2024'!$B$1",
+    "P&L!tn": "='P&L'!$B$1"
+  },
+  "sheets": [
+    {
+      "name": "Summary",
+      "cells": {
+        "A1": "CoB",
+        "A2": "Co A",
+        "B1": "=INDIRECT(\"CoB!tn\")",
+        "B2": "=INDIRECT(A1&\"!tn\")",
+        "B3": "=INDIRECT(\"'Co A'!tn\")",
+        "B4": "=INDIRECT(\"'\"&A2&\"'!tn\")",
+        "B5": "=INDIRECT(\"'CoB'!tn\")",
+        "B6": "=INDIRECT(\"cob!TN\")",
+        "B7": "=SUM(INDIRECT(\"CoB!rg\"))",
+        "B8": "=ROWS(INDIRECT(\"CoB!rg\"))",
+        "B9": "=ISREF(INDIRECT(\"CoB!tn\"))",
+        "B10": "=INDIRECT(\"tn\")",
+        "B11": "=ISREF(INDIRECT(\"tn\"))",
+        "B12": "=INDIRECT(\"CoB!both\")",
+        "B13": "=INDIRECT(\"both\")",
+        "B14": "=INDIRECT(\"Summary!tn\")",
+        "B15": "=INDIRECT(\"Co A!tn\")",
+        "B16": "=INDIRECT(\"CoB!tn\",FALSE)",
+        "B17": "=INDIRECT(\"CoB!rg\",TRUE)",
+        "B18": "=MAX(INDIRECT(\"CoB!rg\"))",
+        "C1": "=INDIRECT(\"Co A!B1\")",
+        "C2": "=INDIRECT(\"'Co A'!B1\")",
+        "C3": "=INDIRECT(\"Q1!tn\")",
+        "C4": "=INDIRECT(\"'Q1'!tn\")",
+        "C5": "=INDIRECT(\"Q1!B1\")",
+        "C6": "=INDIRECT(\"'Q1'!B1\")",
+        "C7": "=INDIRECT(\"'O''B'!tn\")",
+        "C8": "=INDIRECT(\"'O''B'!B1\")",
+        "C9": "=INDIRECT(\"x.y!tn\")",
+        "C10": "=INDIRECT(\"x.y!B1\")",
+        "C11": "=INDIRECT(\"'CoB'!rg\",FALSE)",
+        "C12": "=INDIRECT(\"Co A!tn\",FALSE)",
+        "D1": "=INDIRECT(\"2024!tn\")",
+        "D2": "=INDIRECT(\"'2024'!tn\")",
+        "D3": "=INDIRECT(\"2024!B1\")",
+        "D4": "=INDIRECT(\"P&L!tn\")",
+        "D5": "=INDIRECT(\"'P&L'!tn\")",
+        "D6": "=INDIRECT(\"P&L!B1\")",
+        "D7": "=INDIRECT(\"O'B!tn\")",
+        "D8": "=INDIRECT(\"O'B!B1\")"
+      }
+    },
+    {
+      "name": "Co A",
+      "cells": {
+        "B1": "alpha",
+        "C1": "=INDIRECT(\"tn\")",
+        "C2": "=INDIRECT(\"CoB!tn\")"
+      }
+    },
+    {
+      "name": "CoB",
+      "cells": {
+        "B1": "beta",
+        "B2": 20,
+        "B3": 30,
+        "C1": "=INDIRECT(\"tn\")",
+        "C2": "=INDIRECT(\"both\")",
+        "C3": "=INDIRECT(\"'Co A'!tn\")"
+      }
+    },
+    {
+      "name": "Q1",
+      "cells": {
+        "B1": "q-one"
+      }
+    },
+    {
+      "name": "O'B",
+      "cells": {
+        "B1": "obee"
+      }
+    },
+    {
+      "name": "x.y",
+      "cells": {
+        "B1": "xdoty"
+      }
+    },
+    {
+      "name": "2024",
+      "cells": {
+        "B1": "y2024"
+      }
+    },
+    {
+      "name": "P&L",
+      "cells": {
+        "B1": "pnl"
+      }
+    }
+  ],
+  "expected": {}
+}

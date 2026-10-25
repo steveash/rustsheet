@@ -537,14 +537,45 @@ impl Model {
                 Ok(true) => return Picked::Node(&args[2 * case_index + 1]),
                 Ok(false) => {}
                 Err(error) if is_text => {
-                    return Picked::Value(CalcResult::Array(vec![vec![calc_result_to_array_node(
+                    return Picked::Value(self.ifs_text_condition_error(
+                        &args[2 * case_index + 1..],
                         error,
-                    )]]))
+                        cell,
+                    ))
                 }
                 Err(error) => return Picked::Value(error),
             }
         }
         Picked::Value(no_match(cell))
+    }
+
+    /// The result of an IFS text condition that does not read as a boolean: `error` as an array
+    /// of the broadcast shape of the pair's value and every later argument, at least 1x1. The
+    /// earlier arguments do not count (`IFS(FALSE,{1,2},"x",5)` is 1x1, `IFS("x",5,TRUE,{1,2})`
+    /// 1x2, `IFS("x",5,{TRUE,FALSE,TRUE},1)` 1x3; probes/t2653-ifs-text-condition-array-value
+    /// and -shape-sources, T-2653).
+    fn ifs_text_condition_error(
+        &mut self,
+        rest: &[Node],
+        error: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let lifted: Vec<CalcResult> = rest
+            .iter()
+            .map(|node| self.evaluate_node_in_context(node, cell))
+            .collect();
+        let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+        let shaped = self.lift_values(
+            lifted,
+            LiftCost::Cells(units),
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |_, _| error.clone(),
+        );
+        match shaped {
+            CalcResult::Array(_) => shaped,
+            other => CalcResult::Array(vec![vec![calc_result_to_array_node(other)]]),
+        }
     }
 
     /// IFS on one element of lifted (condition, value) pairs: the value of the first TRUE

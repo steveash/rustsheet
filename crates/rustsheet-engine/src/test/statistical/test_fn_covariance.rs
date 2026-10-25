@@ -169,3 +169,17 @@ fn test_paired_blank_one_cell_reference_is_value_error() {
     assert_eq!(model._get_text("A9"), "#VALUE!");
     assert_eq!(model._get_text("A10"), "#VALUE!");
 }
+
+// T-2431: two arrays with the same cell count pair in reading order whatever their shapes.
+#[test]
+fn test_paired_functions_pair_by_cell_count() {
+    let mut model = new_empty_model();
+    model._set("A1", "=CORREL({1,2;3,4},{1;2;3;4})");
+    model._set("A2", "=INTERCEPT({1;2;3;4},{1,2;3,5})");
+    model._set("A3", "=CORREL({1,2;3,4},{1;2;3})");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"0.457142857");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+}

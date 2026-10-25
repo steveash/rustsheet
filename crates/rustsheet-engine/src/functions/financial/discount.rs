@@ -328,28 +328,33 @@ impl Model {
     // d_e = d_m - 365/2 (183 for d_m = 366), v = p*(1 + y/2)*(1 + d_e*y/365), which with the
     // relation of p and v is a quadratic equation for y.
 
-    /// The checked `(settlement, maturity, rate or price)` of TBILLEQ, TBILLPRICE and TBILLYIELD.
+    /// The checked `(days from settlement to maturity, rate or price)` of TBILLEQ, TBILLPRICE and
+    /// TBILLYIELD.
     fn tbill_arguments(
         &self,
         values: &[CalcResult],
         cell: CellReferenceIndex,
-    ) -> Result<(f64, f64, f64), CalcResult> {
+    ) -> Result<(f64, f64), CalcResult> {
         let [settlement, maturity, rate] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // The date order and the one-year limit are checked after the discount is read.
-        let settlement = self.financial_calendar_date_of(settlement, cell)?;
-        let maturity = self.financial_calendar_date_of(maturity, cell)?;
+        // The date order and the one-year limit are checked after the discount is read. Both
+        // dates floor to whole days, so a settlement from 0 to below 1 is serial 0
+        // (`TBILLPRICE(0.5,1.9,0.1)` = `TBILLPRICE(0,1,0.1)` and `TBILLPRICE(0.5,0.9,0.1)` is
+        // #NUM!: probes/tbill-settlement-below-one A1:A5; financial.md "T-bill settlement below
+        // serial 1").
+        let settlement = self.discount_date_of(settlement, cell)?;
+        let maturity = self.discount_date_of(maturity, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let less_than_one_year = is_less_than_one_year(
-            self.financial_date(settlement),
-            self.financial_date(maturity),
+            self.financial_date(settlement as f64),
+            self.financial_date(maturity as f64),
         )
-        .map_err(|_| num_error(cell))?;
+        .ok_or_else(|| num_error(cell))?;
         if settlement >= maturity || !less_than_one_year || rate <= 0.0 {
             return Err(num_error(cell));
         }
-        Ok((settlement, maturity, rate))
+        Ok(((maturity - settlement) as f64, rate))
     }
 
     /// `TBILLEQ(settlement, maturity, discount)`.
@@ -364,8 +369,7 @@ impl Model {
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let (settlement, maturity, discount) = self.tbill_arguments(values, cell)?;
-        let d_m = maturity - settlement;
+        let (d_m, discount) = self.tbill_arguments(values, cell)?;
         let result = if d_m < 183.0 {
             // A zero denominator (price 0) is 0 and a negative one `#NUM!`, not `#DIV/0!`
             // (probes/tbilleq-zero-price A3, probes/tbilleq-nonpositive-price; financial.md
@@ -411,9 +415,7 @@ impl Model {
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let (settlement, maturity, discount) = self.tbill_arguments(values, cell)?;
-        // days to maturity
-        let d_m = maturity - settlement;
+        let (d_m, discount) = self.tbill_arguments(values, cell)?;
         let result = 100.0 * (1.0 - discount * d_m / 360.0);
         if result.is_infinite() {
             return Err(div_error(cell));
@@ -436,8 +438,7 @@ impl Model {
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let (settlement, maturity, pr) = self.tbill_arguments(values, cell)?;
-        let days = maturity - settlement;
+        let (days, pr) = self.tbill_arguments(values, cell)?;
         // Excel's order: `(100 - pr)/pr * (360/days)` (ironcalc-calc TBILLs.xlsx R6:R30, bit-exact;
         // docs/excel-semantics/financial.md "TBILLEQ and TBILLYIELD").
         Ok((100.0 - pr) / pr * (360.0 / days))

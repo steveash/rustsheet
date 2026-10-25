@@ -1,0 +1,9 @@
+L140 bup+bgrat         {'lower=ok': 21, 'both=ok': 23, 'upper=ok': 41}
+L140 bup+bpser         {'lower=ok': 63, 'both=ok': 85, 'upper=ok': 104}
+bfrac                  {'lower=ok': 21, 'both=ok': 22, 'upper=ok': 39}
+bgrat                  {'lower=ok': 17, 'both=ok': 17, 'upper=ok': 20}
+bpser                  {'lower=ok': 287, 'both=ok': 126, 'upper=ok': 328}
+bpser(a,b>1)           {'lower=ok': 59, 'both=ok': 32, 'upper=ok': 134}
+bup+bgrat              {'lower=ok': 19, 'both=ok': 46, 'upper=ok': 21}
+w1=bpser(b0,a0,y0)     {'lower=ok': 12, 'both=ok': 18, 'upper=ok': 22}
+mean-switch rule: {'lower=ok': 496, 'both=ok': 369, 'upper=BAD': 5, 'upper=ok': 704, 'lower=BAD': 3}

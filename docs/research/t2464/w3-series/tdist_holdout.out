@@ -1,0 +1,8 @@
+T.DIST.RT 0<t<=1 hold-out: 548 cells
+  inner correctly rounded                n=1: 5/6/6 of 6  3<=n<=16: 92/157/175 of 181  n>=17: 201/360/361 of 361
+  series bpser-ext, L GL<=8 else exact   n=1: 2/6/6 of 6  3<=n<=16: 96/173/180 of 181  n>=17: 228/361/361 of 361
+  P*S_exact, L GL<=8 else exact          n=1: 5/6/6 of 6  3<=n<=16: 93/173/180 of 181  n>=17: 219/361/361 of 361
+  series bpser-ext, L exact always       n=1: 2/6/6 of 6  3<=n<=16: 86/157/176 of 181  n>=17: 228/361/361 of 361
+  P*S_exact, L exact always              n=1: 5/6/6 of 6  3<=n<=16: 83/157/176 of 181  n>=17: 219/361/361 of 361
+  series bpser-ext, L GL always          n=1: 2/6/6 of 6  3<=n<=16: 96/173/180 of 181  n>=17: 4/35/67 of 361
+  P*S_exact, L GL always                 n=1: 5/6/6 of 6  3<=n<=16: 93/173/180 of 181  n>=17: 4/37/67 of 361
