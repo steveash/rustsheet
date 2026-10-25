@@ -255,6 +255,29 @@ Status: VERIFIED
 Implemented in: `fn_countifs` and `apply_ifs` (`strict_shape`) in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0209
 
+## *IF(S) criteria ranges line up position by position, whatever each sheet's used area
+Rule: COUNTIFS and the SUMIFS-shaped functions test position k of every range together, so a
+position counts only when every aligned cell meets its criterion, even when the ranges sit on
+sheets whose used areas end at different rows. With Sheet1 holding A1 = 1 and Sheet2 holding
+A100 = "x" and A200 = 5: `=COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"x")` = 1 (row 100 lies past
+Sheet1's used area), `=COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"<>x")` = 1048574,
+`=SUMIFS(Sheet2!A:A,Sheet1!A:A,"")` = 5, `=COUNTIF(Sheet2!A:B,"")` = 2097150.
+Evidence: probes/criteria-sparse-cross-sheet Calc!A1:A9 (excel-graph, 2026-10-25, T-2711).
+How the engine walks (no Excel-visible effect; directive 5): a position at which no range stores
+a cell is blank in every range, so it matches or fails as a whole and is counted without being
+read; COUNTIFS visits only the positions where some range stores a cell, and the SUMIFS family
+only the cells stored in its sum range (a matched position adds only a number or an error held by
+its sum cell; the first such error in row-major order is the result). The work is the stored
+cells plus the rows or chunks searched, not the ranges' extent: `COUNTIF(A:J,1)` beside one cell
+in J1048576 reads a few cells, `COUNTIF(A:J,"")` there is still 10,485,759. Each range is put on
+record as read empty in one piece, so a spill into it restarts the pass
+(references.md "Seen-range cap"). The engine used to treat every row past the first range's used
+area as blank in every range, which gave 0 and 1048575 for the first two calls above.
+Status: VERIFIED
+Implemented in: `count_ifs`, `run_ifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`;
+`for_each_stored_position` in `crates/rustsheet-engine/src/functions/util.rs`
+Tasks: T-2711
+
 ## SUMIF resizes sum_range from its top-left cell and never errors
 Rule: SUMIF sums the range of the criteria range's shape that starts at sum_range's top-left cell,
 whatever sum_range's own shape: `=SUMIF(Data!C2:E2,"<>1",Data!B4:B10)` sums B4:D4 (123456831.123).
