@@ -3,7 +3,7 @@ id: T-2335
 title: "IMCSC, IMSEC, IMSECH keep tiny results (1E-228..1E-246) instead of flushing to 0"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
