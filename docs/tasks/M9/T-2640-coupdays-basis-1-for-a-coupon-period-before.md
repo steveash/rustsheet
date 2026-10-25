@@ -3,7 +3,7 @@ id: T-2640
 title: "COUPDAYS basis 1 for a coupon period before 1900-01-01: Excel's irregular lengths (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
