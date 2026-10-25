@@ -36,4 +36,6 @@ SUM and TEXTJOIN 255 (crates/rustsheet-engine/src/functions/kinds/arg_counts.txt
 spec2xlsx splits a recorded JSON property over `<name>`, `<name>.2`, ... pieces of at most 255 UTF-16 units and reads
 them back joined (tools/tests/test_spec2xlsx_entered.py). Typed on excel-graph: SUM and MAX take 255 arguments and are
 refused at 256; CONCAT and TEXTJOIN take 254 and are refused at 255, so both are `MAX_OVERRIDES` at 254 and
-arg_counts.txt follows (syntax.md "Minimum argument counts").
+arg_counts.txt follows (syntax.md "Minimum argument counts"); one-character arguments show it is the count, not the
+length. A typed 8,192-character formula fills and 8,193 is refused; a typed 256-character literal is accepted (the
+literal bound is T-2739).

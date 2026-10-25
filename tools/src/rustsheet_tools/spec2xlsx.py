@@ -19,7 +19,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     web rejects a literal `A1#` in `<f>` (T-0042). The engine reads the spec text, so cases keep `A1#`.
   * Typed entry `{"entered":"(1)"}` (T-0280): the cell is left blank and the docProps custom
     properties `rustsheet.entered.<n>` (one per cell, n from 1 in spec order; Excel caps a property
-    value at 255 characters) hold it as JSON `[sheet, a1, text]`; oracle backends write
+    value at 255 characters, so a longer one continues in `.<n>.2`, `.<n>.3`, ..., T-2709) hold it
+    as JSON `[sheet, a1, text]`; oracle backends write
     the text into the cell as a user types it (Graph `values`), so Excel picks value and number
     format. The engine adapter enters the same text through its user-input parser.
   * `"sheet_ops": [{"op": "rename", "sheet": "Data", "to": "Inputs"}, {"op": "add", "sheet": "New"},

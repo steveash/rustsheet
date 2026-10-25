@@ -57,7 +57,10 @@ typed (only the refusal at 2 is logged); the pair rule above 6 arguments (probed
 IFS 2 to 5, LET 3 to 6).
 The repeating maxima, typed (T-2709, excel-graph 2026-10-25): `SUM` and `MAX` take 255 arguments (probes/t2709-typed-sum-255,
 -max-255) and are refused at 256; `CONCAT` and `TEXTJOIN` take 254 (probes/t2709-typed-concat-253, -concat-254,
--textjoin-254, which joins 252 texts) and are refused at 255 and 256 (Graph PATCH 400). So CONCAT takes 254 texts, one more than Microsoft's
+-textjoin-254, which joins 252 texts) and are refused at 255 and 256 (Graph PATCH 400 `InvalidArgument`, "The argument is
+invalid or missing or has an incorrect format", the response to any formula Excel refuses). It is the count, not the
+length: 255 one-character arguments (`=CONCAT(1,...)`, 518 characters; `=TEXTJOIN("",TRUE,1,...)`, 524) are refused while
+254 (-concat-254-short, -textjoin-254-short) and a 2,548-character CONCAT of 254 arguments (-concat-254-long) are accepted. So CONCAT takes 254 texts, one more than Microsoft's
 documented 253, and TEXTJOIN the documented 252; the engine table holds 254 for both as cited overrides.
 Status: VERIFIED
 
@@ -124,8 +127,12 @@ the body limit is one below the 8,192 of a cell formula (bodies of 255, 256, 1,0
 all load and evaluate). Non-BMP bodies count UTF-16 units the same way: probe `name-body-nonbmp-8191u` (8,191 units, emoji
 included) loads (it has the only sidecar) and a body of 8,192 units is refused (T-1397; that case was dropped). The importer refuses a name body over 8,191 units
 (`XlsxError::Workbook`, T-1397).
-Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, typed (API) formulas (the oracle builds workbooks from files; a manual Graph `range.formulas` call or desktop
-Excel is needed, deferred to M14 item 8 of T-1075, decision 0039), desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
+Typed (T-2709, Graph PATCH, excel-graph 2026-10-25): the same 8,192 limit holds, `=1+1+...+1` of 8,192 characters is
+accepted (probes/t2709-typed-sum-8192-chars, B1 `LEN(FORMULATEXT)` 8192) and one of 8,193 is refused (400
+`InvalidArgument`). A typed string literal of 256 characters is accepted (probes/t2709-typed-literal-256, value 256
+characters), so the published 255 is not the typed limit; one of 7,996 is refused (400 `InvalidArgument`); the bound
+between is unprobed (T-2739).
+Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
 writer cannot emit them raw; T-1075 item 8).
 Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; a string-literal length limit (unprobed; 255 characters is the published figure) is the likely cause for the literals, which is why the cases split them.
 Status: VERIFIED (excel-graph, file load)
