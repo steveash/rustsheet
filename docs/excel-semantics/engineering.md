@@ -712,7 +712,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   characters per part; ours E notation; e707d43a891ba9b5 A330). With `IMCOT("1E-20")` "100000000000000000000" (T-1966's
   probe) the cut is at least 1E+21; where it is is unprobed. T-2542.
 - **Base conversions.** BIN2DEC, BIN2HEX and BIN2OCT of non-binary text are `#NUM!` ("ABC", "a", " x ", "TRUE", "a*";
-  ours `#VALUE!`; OCT2*/HEX2* of such text already give `#NUM!`), T-2544. `places` is checked before the number: an invalid
+  matched since T-2544; OCT2*/HEX2* of such text already give `#NUM!`). `places` is checked before the number: an invalid
   places (0, including an empty cell and fractions that truncate to 0 such as 0.5 or 0.01005, a negative one, 11, 42) is
   `#NUM!` even when the number is an error or unreadable text (`DEC2HEX(<#VALUE!>,11)`, `HEX2BIN(<#N/A>,0)`,
   `OCT2HEX(<#DIV/0!>,-0.5)`, `DEC2OCT(" x ",-2.5)`; ours the number's error), T-2545. A boolean is `#VALUE!` in every
@@ -759,7 +759,7 @@ Rule: BESSELI(x,0) is finite up to x = 709.5 (2.02976276636543E+306) and `#NUM!`
 Not fixed here: the kernel change is T-2549; the BESSELI cut is T-2613.
 
 ## BESSELJ and BIN2* cells of the T-2436 sub-expression probe
-Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; matched since T-2547, the phase cut), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (ours `#VALUE!`, T-2544); an `IMSUM` of
+Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; matched since T-2547, the phase cut), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (matched since T-2544); an `IMSUM` of
 an empty array is `#VALUE!` (arrays.md "An empty array as a function argument").
 Status: VERIFIED (excel-graph), one cell each
 Tasks: T-2547, T-2544, T-2580
