@@ -41,6 +41,13 @@ Visibly off after T-2119 (the visible-parity stage):
   - m9-beta-inv 12, t1745-beta-inv-roundtrip 21, t0969-t-beta-link 20;
   - m9-beta-dist-a0p5, -a2, -a5, t0969-beta-prefactor and t1543-inverse-cdf-tiny-p, 1 each.
 
+- Already visibly off, and further off with T-2119:
+  - t1543-inverse-cdf-tiny-p A73 `BETA.INV(1E-300,1,1)` (144 -> 344 ulp), A74 (152 -> 196), A75 (87 -> 111) and A82 (4 -> 6);
+  - m9-beta-dist-a50 A1 (31 -> 54), m9-beta-dist-a0p0001 A3 (9 -> 11), t0969-beta-prefactor D62 (5 -> 7);
+  - BETADIST_BETAINV G5 (133 -> 150).
+- probes/stat-quantile-lift E9 `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)`: `#NUM!` on main, now
+  0.0030131411834558195. Excel gives 0.0691959487211844 (T-1871 owns the fit).
+
 These cells passed before only because statrs' cdf and its inverse were wrong in the same way (T-2119 Context). The
 H42 group follows G42 (BETA.DIST), which is still 4 ulp from Excel. So fitting G42's last bits probably moves H42-H49
 too. Code: `functions/statistical/beta.rs`, `inverse_beta.rs`, `special::refine_increasing`. See
