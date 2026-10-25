@@ -1,9 +1,9 @@
-"""Generate the per-function Excel parity page from an eval report (T-2041).
+"""The per-function Excel parity page (T-2041), now part of the progress report (SPEC-0022).
 
-Reads `eval/runs/latest/report.json` (written by `make eval`) and `eval/catalog/scope.json`, and
-writes `parity.md`, `parity/functions.md` and three SVG charts under `--out-dir` (the repository's
-docs directory; `make parity-report` passes it). The page is generated, never hand-edited:
-regenerate it with `make eval && make parity-report`.
+Writes `parity.md`, `parity/functions.md` and three SVG charts under the output directory (the
+repository's docs directory; `make progress-report` passes it). The page is generated, never
+hand-edited: regenerate it with `make eval && make progress-report`. T-0081 replaces it with the
+progress page's `parity` section.
 
 Each in-scope function's scored cells are split into six buckets: bit-exact, within 1 ulp,
 within 2-4 ulp, within half a unit in the 15th significant digit, and visibly off (a number
@@ -15,25 +15,15 @@ exit (decision 0114) reads each function's share of cells that are not visibly o
 
 from __future__ import annotations
 
-import argparse
-import json
-import re
-import subprocess
-import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
-from rustsheet_tools import repo_root
-from rustsheet_tools.parity_svg import Bar, bar_chart
+from rustsheet_tools.progress_report.markdown import pct, table
+from rustsheet_tools.progress_report.model import BUCKETS, EN, LE, PHASE1_BANDS, VISIBLE, Parity
+from rustsheet_tools.progress_report.svg import Bar, bar_chart
 
-EN = "\N{EN DASH}"
-LE = "\N{LESS-THAN OR EQUAL TO}"
-BUCKETS = ("pass", "ulp1", "ulp4", "digits15", "visible_numeric", "visible_other")
-VISIBLE = ("visible_numeric", "visible_other")
 LABELS = {
     "pass": "Bit-exact",
     "ulp1": "Within 1 ulp",
@@ -42,179 +32,6 @@ LABELS = {
     "visible_numeric": "Visibly off: number",
     "visible_other": "Visibly off: type or text",
 }
-# The visibly-off functions that still match on at least this share of their cells.
-NEAR_SHARE = 0.99
-# Phase 1 exit (decision 0114): this share of a function's cells within 15 digits.
-PHASE1_SHARE = 0.999
-# The Phase 1 bands of the parity page: (label, lowest within-15-digit share), best first.
-PHASE1_BANDS = (
-    (f"{chr(0x2265)} 99.9% (Phase 1 exit)", PHASE1_SHARE),
-    (f"99{EN}99.9%", 0.99),
-    (f"90{EN}99%", 0.90),
-    ("Below 90%", 0.0),
-)
-
-
-class ParityReportError(Exception):
-    """The report and catalog do not add up (or are not the shape this generator reads)."""
-
-
-@dataclass(frozen=True)
-class FunctionParity:
-    """One in-scope function's scored cells per bucket."""
-
-    name: str
-    category: str
-    milestone: str
-    counts: dict[str, int]
-    visible: int
-    """Visibly-off cells blamed on this function (the report's `visible`), not on glue."""
-
-    @property
-    def cells(self) -> int:
-        """The function's scored cells (unsupported cells excluded)."""
-        return sum(self.counts.values())
-
-    @property
-    def worst(self) -> str:
-        """The bucket of the function's worst scored cell."""
-        return next(b for b in reversed(BUCKETS) if self.counts[b])
-
-    @property
-    def visibly_off(self) -> bool:
-        """Whether the function's worst cell is visibly off."""
-        return self.worst in VISIBLE
-
-    @property
-    def exact_share(self) -> float:
-        """The share of the function's scored cells that are bit-exact."""
-        return self.counts["pass"] / self.cells
-
-    @property
-    def within15_share(self) -> float:
-        """The share of the function's scored cells not visibly off by its blamed count (decision
-        0114); blamed cells can come from cells it shares with others, so it never drops below 0."""
-        return max(0, self.cells - self.visible) / self.cells
-
-    @property
-    def phase1_band(self) -> str:
-        """The label of the Phase 1 band its within-15-digit share falls in."""
-        return next(label for label, low in PHASE1_BANDS if self.within15_share >= low)
-
-
-@dataclass(frozen=True)
-class Parity:
-    """The whole page's data: scored functions, in-scope functions with no scored cell, suites."""
-
-    functions: list[FunctionParity]
-    unscored: list[str]
-    in_scope: int
-    suites: list[dict[str, Any]]
-
-    def functions_per_bucket(self) -> Counter[str]:
-        """How many functions have their worst cell in each bucket."""
-        return Counter(f.worst for f in self.functions)
-
-    def cells_per_bucket(self) -> Counter[str]:
-        """Scored cells per bucket, summed over functions (a cell counts once per function)."""
-        total: Counter[str] = Counter()
-        for f in self.functions:
-            total.update(f.counts)
-        return total
-
-    def functions_per_phase1_band(self) -> Counter[str]:
-        """How many functions fall in each Phase 1 band (decision 0114)."""
-        return Counter(f.phase1_band for f in self.functions)
-
-    def near_off(self) -> int:
-        """How many visibly-off functions still match bit for bit on NEAR_SHARE of their cells."""
-        return sum(1 for f in self.functions if f.visibly_off and f.exact_share >= NEAR_SHARE)
-
-    def blamed(self) -> list[FunctionParity]:
-        """The functions with visibly-off cells blamed on them, worst first."""
-        return sorted((f for f in self.functions if f.visible), key=lambda f: (-f.visible, f.name))
-
-    def suite_visible_cells(self) -> int:
-        """In-scope visibly-off cells over all suites (what the visible-parity ratchet counts)."""
-        return sum(sum(int(s.get("closeness", {}).get(b, 0)) for b in VISIBLE) for s in self.suites)
-
-    def categories(self) -> list[tuple[str, list[FunctionParity]]]:
-        """Functions grouped by catalog category, the largest category first."""
-        groups: dict[str, list[FunctionParity]] = defaultdict(list)
-        for f in self.functions:
-            groups[f.category].append(f)
-        return sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
-
-
-def compute(report: dict[str, Any], scope: dict[str, Any]) -> Parity:
-    """Bucket every in-scope function of `report` (see the module docstring).
-
-    The buckets are the report's own per-function `closeness` counts (crates/rustsheet-eval/src/
-    closeness.rs, T-2036), so this generator never re-derives a verdict.
-    """
-    catalog = {str(f["name"]): f for f in scope["functions"]}
-    in_scope = {n for n, f in catalog.items() if f.get("scope", "in") == "in"}
-    rows: list[FunctionParity] = []
-    for entry in report["functions"]:
-        name = str(entry["name"])
-        if name not in in_scope:
-            continue
-        verdicts: dict[str, int] = entry.get("verdicts", {})
-        scored = int(entry["cells"]) - verdicts.get("unsupported", 0)
-        if scored <= 0:
-            continue
-        closeness = entry.get("closeness")
-        if not isinstance(closeness, dict):
-            msg = f"{name}: no `closeness` counts; the report predates T-2036, re-run `make eval`"
-            raise ParityReportError(msg)
-        if "digits15" not in closeness:
-            msg = f"{name}: no `digits15` bucket; the report predates T-0061, re-run `make eval`"
-            raise ParityReportError(msg)
-        counts = {b: int(closeness.get(b, 0)) for b in BUCKETS}
-        if sum(counts.values()) != scored:
-            msg = (
-                f"{name}: buckets {counts} sum to {sum(counts.values())}, but the report scores "
-                f"{scored} cells (cells {entry['cells']} minus unsupported)"
-            )
-            raise ParityReportError(msg)
-        visible = entry.get("visible", {})
-        blamed = int(visible.get("numeric", 0)) + int(visible.get("other", 0))
-        cat = catalog[name]
-        rows.append(FunctionParity(name, str(cat["category"]), str(cat["milestone"]), counts, blamed))
-    rows.sort(key=lambda f: f.name)
-    scored_names = {f.name for f in rows}
-    return Parity(rows, sorted(in_scope - scored_names), len(in_scope), list(report["suites"]))
-
-
-# ---------------------------------------------------------------- Markdown
-
-
-def pct(part: int, whole: int) -> str:
-    """`part/whole` as a percentage with two decimals that never rounds up to 100 or down to 0."""
-    if whole == 0:
-        return "\N{EN DASH}"
-    value = 100 * part / whole
-    if 0 < part < whole:
-        value = min(max(value, 0.01), 99.99)
-    return f"{value:.2f}%"
-
-
-# Markdown table cell text: a pipe would split the cell, `<`/`>` could open raw HTML, a backtick a
-# code span, and a newline would end the row.
-MD_CELL_ESCAPES = str.maketrans({"|": "\\|", "<": "&lt;", ">": "&gt;", "`": "&#96;", "\n": " ", "\r": " "})
-
-
-def md_cell(text: str) -> str:
-    """`text` made safe to put in one Markdown table cell (see MD_CELL_ESCAPES)."""
-    return text.translate(MD_CELL_ESCAPES)
-
-
-def table(header: list[str], rows: list[list[str]], right_from: int = 1) -> str:
-    """A GitHub Markdown table; columns from `right_from` on are right-aligned (numbers)."""
-    align = ["---" if i < right_from else "---:" for i in range(len(header))]
-    body = [[md_cell(c) for c in line] for line in [header, *rows]]
-    lines = [body[0], align, *body[1:]]
-    return "\n".join("| " + " | ".join(line) + " |" for line in lines)
 
 
 def bucket_header() -> list[str]:
@@ -356,13 +173,13 @@ def unscored_note(p: Parity) -> str:
     )
 
 
-REGENERATE = "make eval && make parity-report"
+REGENERATE = "make eval && make progress-report"
 
 
 def landing_page(p: Parity, run_date: str, commit: str) -> str:
     """The landing page (parity.md): the snapshot header, takeaway, summary tables, charts and how to read them."""
     charts = "\n\n".join(f"![{c.title}](parity/{c.name})" for c in CHARTS)
-    return f"""<!-- Generated by `{REGENERATE}` (tools/src/rustsheet_tools/parity_report.py). Do not edit. -->
+    return f"""<!-- Generated by `{REGENERATE}` (tools/src/rustsheet_tools/progress_report/). Do not edit. -->
 # RustSheet Excel parity
 
 Per-function parity with Microsoft 365 Excel, from the eval run of **{run_date}** on `main` at
@@ -433,14 +250,13 @@ deviations.
 {REGENERATE}
 ```
 
-`make parity-report` takes `COMMIT=` and `RUN_DATE=` to name a snapshot; they default to the
-checked-out commit and the report file's date.
+The run date and commit are the eval report's own (`run` in report.json).
 """
 
 
 def functions_page(p: Parity, run_date: str, commit: str) -> str:
     """The per-function page (parity/functions.md): the full table."""
-    return f"""<!-- Generated by `{REGENERATE}` (tools/src/rustsheet_tools/parity_report.py). Do not edit. -->
+    return f"""<!-- Generated by `{REGENERATE}` (tools/src/rustsheet_tools/progress_report/). Do not edit. -->
 # Excel parity by function
 
 Every in-scope function with checked cells, from the eval run of **{run_date}** on `main` at
@@ -506,61 +322,3 @@ def write(p: Parity, out_dir: Path, run_date: str, commit: str) -> list[Path]:
     for path, text in files.items():
         path.write_text(text, encoding="utf-8")
     return list(files)
-
-
-def git_commit(repo: Path) -> str:
-    """The short sha of `repo`'s checked-out commit."""
-    out = subprocess.run(
-        ["git", "rev-parse", "--short=8", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
-    )
-    return out.stdout.strip()
-
-
-COMMIT_SHA = re.compile(r"[0-9a-f]{4,40}")
-RUN_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-
-
-def commit_sha(text: str) -> str:
-    """argparse type: a lower-case hex commit sha, 4 to 40 digits (it is printed into the page)."""
-    if not COMMIT_SHA.fullmatch(text):
-        msg = f"not a commit sha (4-40 lower-case hex digits): {text!r}"
-        raise argparse.ArgumentTypeError(msg)
-    return text
-
-
-def run_date_arg(text: str) -> str:
-    """argparse type: a YYYY-MM-DD date (it is printed into the page)."""
-    if not RUN_DATE.fullmatch(text):
-        msg = f"not a YYYY-MM-DD date: {text!r}"
-        raise argparse.ArgumentTypeError(msg)
-    return text
-
-
-def main(argv: list[str] | None = None) -> None:
-    repo = repo_root()
-    ap = argparse.ArgumentParser(prog="rustsheet-parity-report", description=__doc__.splitlines()[0])
-    ap.add_argument("--report", type=Path, default=repo / "eval" / "runs" / "latest" / "report.json")
-    ap.add_argument("--scope", type=Path, default=repo / "eval" / "catalog" / "scope.json")
-    ap.add_argument("--out-dir", type=Path, required=True, help="the docs directory to write into")
-    ap.add_argument("--commit", type=commit_sha, help="main commit the report ran on (default: git HEAD)")
-    ap.add_argument(
-        "--run-date", type=run_date_arg, help="date of the eval run, YYYY-MM-DD (default: the report's mtime)"
-    )
-    args = ap.parse_args(argv)
-    try:
-        report = json.loads(args.report.read_text(encoding="utf-8"))
-        scope = json.loads(args.scope.read_text(encoding="utf-8"))
-        parity = compute(report, scope)
-    except (OSError, ValueError, KeyError, ParityReportError) as e:
-        sys.exit(f"rustsheet-parity-report: {e}")
-    run_date = args.run_date or datetime.fromtimestamp(args.report.stat().st_mtime, UTC).date().isoformat()
-    commit = args.commit or git_commit(repo)
-    for path in write(parity, args.out_dir, run_date, commit):
-        print(f"wrote {path}")
-    fb, cb = parity.functions_per_bucket(), parity.cells_per_bucket()
-    print(f"{len(parity.functions)} functions: " + ", ".join(f"{b} {fb[b]}" for b in BUCKETS))
-    print("cells: " + ", ".join(f"{b} {cb[b]:,}" for b in BUCKETS))
-
-
-if __name__ == "__main__":
-    main()
