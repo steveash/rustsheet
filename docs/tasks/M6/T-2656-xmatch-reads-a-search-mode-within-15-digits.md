@@ -45,10 +45,12 @@ XMATCH reads a search_mode that is within 15 significant digits of a valid mode 
 - The hypothesis (a 15-digit cut) was wrong. Eight excel-graph probes (probes/t2656-xmatch-mode-*, 1070 cells,
   2026-10-25) show that XMATCH and XLOOKUP floor both modes toward minus infinity. A value within 2^-22 + 2^-33 below an
   integer counts as that integer, or within half that for a negative value. That is the rule and the constants DATE
-  and TIME already use, so `date_time_whole` moved to functions/util.rs as `near_integer_whole` and now serves all
+  and TIME already use, so `date_time_whole` moved to functions/util/near_integer.rs (with the other near-integer
+  helpers, out of util.rs, which would have passed 1000 lines) as `near_integer_whole` and now serves all
   four functions (one definition). The acceptance points 1-2^-52, 2-2^-51, -1+2^-53, 0.9999999999999 and 1.5 read 1, 2,
   -1, 1 and 1; the rest of the grid (ties, negatives, the exact edges) is in lookup.md.
-- Eval: gen-m9/01523d247594952e Calc!A51 is fixed (its baseline line is removed by `make eval-baseline`). Of the new
+- Eval: gen-m9/01523d247594952e Calc!A51 is fixed, and so are probes/t2496-fin-subexpressions P!A1 and P!A2 (the
+  same XMATCH sub-expression; T-2496 found them). `make eval-baseline` removed all three lines. Of the new
   probe cells (nine cases, 1138 cells), all pass except 4 XLOOKUP cells whose match_mode reads 3, Excel's regex match
   mode, which our XLOOKUP lacks (follow-up T-2660). The ninth probe (t2656-xlookup-mode-snap-edge) was added at review:
   it shows that XLOOKUP snaps at the same edges as XMATCH.
