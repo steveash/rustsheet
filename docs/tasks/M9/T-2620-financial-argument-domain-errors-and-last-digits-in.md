@@ -6,7 +6,7 @@ lane: functions-financial
 status: todo
 priority: P2
 size: M
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: semantics
 ---
@@ -37,3 +37,6 @@ Owned gen-m9 cells (12; known failures in eval/baseline/gen-m9.txt, and the prob
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Handoff
+Not started in code. Escalated by a sonnet run on reading the task: ten functions (PV, NPER, PRICEDISC, DB, ACCRINT, ACCRINTM, YIELDDISC, YIELD, PMT, PPMT) each need their own argument-domain check order, and PMT/PPMT need last-digit numeric fitting (PMT -278.44797687866065 vs ours -278.4479768786607; PPMT 0.0 vs 4.768374219565885e-5, a cancellation case). Next: take the cells one function at a time (the probe's innermost sub-expressions in the list above), find the existing implementations with `rg`, and split the numeric ones (PMT, PPMT) from the error-order ones if the PR grows past size M.
