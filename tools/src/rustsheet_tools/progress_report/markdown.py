@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# The command that regenerates every generated page; printed in their headers and method notes.
+REGENERATE = "make eval && make progress-report"
+
 
 def pct(part: int, whole: int) -> str:
     """`part/whole` as a percentage with two decimals that never rounds up to 100 or down to 0."""
@@ -31,11 +34,14 @@ def table(header: list[str], rows: list[list[str]], right_from: int = 1) -> str:
     return "\n".join("| " + " | ".join(line) + " |" for line in lines)
 
 
-# Inline Markdown punctuation that could start emphasis, a link, an image or a heading.
+# Inline Markdown punctuation that could start emphasis, a link, an image or a heading, and the
+# backslash itself, so a `\` in `text` cannot escape the character after it.
 MD_INLINE = "\\*_[]()!#~"
 
 
 def md_text(text: str) -> str:
-    """`text` made safe to put in running Markdown: inline punctuation escaped, then md_cell (whose
-    entities hold a `#` that must stay unescaped)."""
-    return md_cell("".join(f"\\{c}" if c in MD_INLINE else c for c in text))
+    """`text` made safe to put in running Markdown: `&` written as an entity first (so a literal
+    `&lt;` in `text` stays text, and md_cell's own entities are not escaped twice), inline
+    punctuation and `\\` escaped, then md_cell (whose entities hold a `#` that must stay unescaped)."""
+    amp = text.replace("&", "&amp;")
+    return md_cell("".join(f"\\{c}" if c in MD_INLINE else c for c in amp))

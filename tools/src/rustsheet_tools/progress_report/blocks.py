@@ -22,12 +22,6 @@ from rustsheet_tools.progress_report.model import COMMIT_SHA, RUN_DATE, Progress
 
 GENERATED = "generated"
 JUDGMENT = "judgment"
-# The judgment blocks, in page order (SPEC-0022 "Page layout"): name -> heading.
-JUDGMENT_BLOCKS = {
-    "bottom-line": "Bottom line",
-    "readiness": "Real-world readiness",
-    "risks": "Risks",
-}
 # One HTML comment, shortest match; a comment that mentions `progress:` must be a marker.
 COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 MARKER = re.compile(r"<!-- (/?)progress:(generated|judgment)(?: ([a-z][a-z0-9-]*))? -->")
@@ -92,13 +86,14 @@ def _markers(page: str) -> list[_Marker]:
     return found
 
 
-def parse(page: str, generated: Collection[str]) -> dict[str, Block]:
-    """The blocks of an existing page by name; `generated` is the generated block names known.
+def parse(page: str, generated: Collection[str], judgment: Collection[str]) -> dict[str, Block]:
+    """The blocks of an existing page by name; `generated` and `judgment` are the block names
+    known of each kind (the page layout, page.LAYOUT).
 
     Fails (ProgressReportError) on an unknown or duplicate name, a marker inside a judgment block,
     nested or unbalanced markers, and malformed or unterminated marker comments.
     """
-    known = {GENERATED: generated, JUDGMENT: JUDGMENT_BLOCKS.keys()}
+    known = {GENERATED: generated, JUDGMENT: judgment}
     blocks: dict[str, Block] = {}
     current: _Marker | None = None
     for m in _markers(page):
@@ -159,12 +154,12 @@ def stale_line(text: str | None, run: Run) -> str | None:
     return f"_Written for the run of {written[0]}; not yet updated for this run._"
 
 
-def judgment(name: str, old: dict[str, Block], run: Run) -> str:
-    """Judgment block `name` for the new page: its heading, any stale line, and the old text
+def judgment(name: str, heading: str, old: dict[str, Block], run: Run) -> str:
+    """Judgment block `name` for the new page: its `heading`, any stale line, and the old text
     between its markers byte for byte (the placeholder when the old page has no such block)."""
     block = old.get(name)
     text = block.text if block is not None else None
-    parts = [f"## {JUDGMENT_BLOCKS[name]}"]
+    parts = [f"## {heading}"]
     if (line := stale_line(text, run)) is not None:
         parts.append(line)
     parts.append(
