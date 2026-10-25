@@ -31,6 +31,8 @@ require_excel_authored = true
 gate = false
 baseline = "cells"
 milestone = ["M11"]
+# Kept subnormals Excel saves as 0, scored against excel-graph probes (decisions 0032, 0090; T-2714).
+cached_overrides = "cached-overrides.tsv"
 
 [fetch]
 url = "https://github.com/fundamental-research-labs/calipers.git"
