@@ -3,6 +3,8 @@
 
 use super::Function;
 
+pub(crate) mod arg_counts;
+
 /// How `to_rc_format` stores the internal kinds. No other text shows them: the display, English,
 /// FORMULATEXT and xlsx texts print N and T. Each spelling is an A1 cell, so typed or imported (A1)
 /// text never holds it as a call name: there `NLG1(1)` is a call of that cell, `#REF!`. Nor can a
