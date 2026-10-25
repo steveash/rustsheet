@@ -407,6 +407,32 @@ the same way at parse time, so ISREF and a rename see them. A sheet-qualified wo
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
 Tasks: T-1382, T-1459, T-1460, T-1526, T-1550, T-1609, T-1654
 
+## Lookups into a linked sheet with no cached data are `#N/A`
+Rule: a sheet the externalLink part lists in `sheetNames` but caches no cell of (no
+`sheetData` for its `sheetId`, or an empty `<sheetData sheetId="4"/>`) reads `#BLOCKED!` as a
+reference with no link does: `=[1]Sort!$B$2` is `#BLOCKED!`, ERROR.TYPE 11, ISBLANK FALSE,
+`SUM([1]Sort!$B$2:$C$3)` and `SUMPRODUCT(…)` `#BLOCKED!`, `INDEX([1]Sort!$B$2:$C$3,1,1)+1` 1,
+`COUNTIF(…,5)` `#VALUE!`; a cell a cached sheet does not hold stays empty (`ERROR.TYPE([1]Uses!$Z$99)`
+`#N/A`). But VLOOKUP, HLOOKUP, MATCH and XLOOKUP over it are `#N/A`, found or not
+(nothing is), over one cell, a small range, whole columns (`VLOOKUP(5,[1]Sort!$B:$Z,2,FALSE)`, 1048576
+x 25 cells) and whole rows alike, exact or approximate; ERROR.TYPE of each is 7, IFERROR takes the
+fallback and XLOOKUP's if_not_found is returned (`"none"`). The `#N/A` comes before the index check:
+`VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)` is `#N/A`, not `#REF!`. The same holds for a sheet whose
+`sheetData` has `refreshError="1"` and no cells, but a direct read of that one is `#REF!`
+(`ERROR.TYPE('[1]56737'!$B$2)` is 4). Unlike a reference with no link, `COUNTA([1]Sort!$B:$B)` is
+1048576: it counts every blocked cell. Over whole columns of a cached sheet Excel gives: `VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)` is the cached "7", `VLOOKUP(6,[1]Uses!$A:$C,3,TRUE)`
+1, `VLOOKUP(5,[1]Uses!$A:$Z,26,FALSE)` 0 and `VLOOKUP(99,…)` `#N/A`.
+Evidence: fixtures/external-link-uncached-lookups Refs!B1:B51 (excel-graph, 2026-10-25, T-0457).
+Unprobed, do not extrapolate: LOOKUP, XMATCH, INDEX/MATCH and defined names (`[1]!Name`) into such a
+sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part.
+Engine: a sheet the cache holds no cell of is uncached (`cached_sheet`, external_links.rs), so it
+reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and MATCH's table
+`#N/A` on such a sheet. Not yet matched: the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)`
+(`#BLOCKED!`, not `#N/A`), the refreshError sheet's `#REF!` and COUNTA's count (T-0472), and whole
+columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
+Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
+Tasks: T-0457
+
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
 it are skipped like any range cell: `=ABS(SUM(IF(FALSE,-2.5,Data!E10),Data!D4:D7))` with E10 = "abc"
@@ -908,7 +934,13 @@ step per row found (at least one, even with no cell in the area's columns), one 
 chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
 operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
-range argument is not counted and is walked as before (every position of its used area). Over
+range argument is not counted and is walked as before (every position of its used area), unless a
+far cell stretches that used area: a single range whose clipped area holds at least 65,536
+positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
+XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area, so it costs
+the data (T-1690). It does not draw on the budget: that walk costs less than the dense one it
+replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over 100,000
+cells) gives the same value as the dense walk, and the change adds no `#VALUE!`. Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
@@ -944,8 +976,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a

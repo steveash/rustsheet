@@ -547,3 +547,31 @@ fn span_of_many_cached_sheets_is_one_walk() {
         assert_eq!(model._get_text("C1"), "#ERROR!", "{formula}");
     }
 }
+
+// A sheet `sheetNames` lists but the cache holds no cell of reads `#BLOCKED!`, yet a lookup over
+// it is `#N/A` (fixtures/external-link-uncached-lookups, excel-graph; T-0457).
+#[test]
+fn lookups_into_an_uncached_linked_sheet() {
+    let mut model = linked();
+    model.workbook.external_books[0]
+        .sheet_names
+        .push("Sort".to_string());
+    assert_eq!(eval(&mut model, "=[1]Sort!$B$2"), "#BLOCKED!");
+    assert_eq!(eval(&mut model, "=ISBLANK([1]Sort!$B$2)"), "FALSE");
+    assert_eq!(eval(&mut model, "=SUM([1]Sort!$B$2:$C$3)"), "#BLOCKED!");
+    assert_eq!(eval(&mut model, "=VLOOKUP(5,[1]Sort!$B$2,1,FALSE)"), "#N/A");
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(5,[1]Sort!$B:$Z,2,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(
+        eval(&mut model, "=HLOOKUP(5,[1]Sort!$1:$3,2,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B$2,0)"), "#N/A");
+    assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B:$B)"), "#N/A");
+}

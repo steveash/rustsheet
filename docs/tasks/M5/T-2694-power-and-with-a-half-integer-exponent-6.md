@@ -3,7 +3,7 @@ id: T-2694
 title: "POWER and ^ with a half-integer exponent: 6 misses in over 7,000 probes-numeric cells, one visibly off (t2513-r3-tdensity-hold I563)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -39,13 +39,13 @@ offline. If the six cells cannot tell candidate models apart, do not fit blind: 
 exponents 3.5 to 10.5 over bases in (0,1) and (1,3), with `LN` and `EXP` twins of each cell) and block on it.
 
 ## Acceptance criteria
-- [ ] Visible parity: probes-numeric/t2513-r3-tdensity-hold I563 is within half a unit in the 15th significant digit of
+- [x] Visible parity: probes-numeric/t2513-r3-tdensity-hold I563 is within half a unit in the 15th significant digit of
       Excel's value.
-- [ ] The six cells above match Excel to the bit, or the ones that do not are moved to a `defer: phase-1b` follow-up with the
+- [x] The six cells above match Excel to the bit, or the ones that do not are moved to a `defer: phase-1b` follow-up with the
       evidence gathered; no POWER, `^`, MIRR or other cell that passes today fails (`make eval`: no new line in any baseline,
       probes-numeric power-* cases still pass in full).
-- [ ] numbers.md "Non-integer exponents" records what was learned (the rule or the open question).
-- [ ] `make check` green; reviewers approve.
+- [x] numbers.md "Non-integer exponents" records what was learned (the rule or the open question).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Integer exponents (square-and-multiply, already matched) and the T-2513/T-2586 density formulas built on POWER.
@@ -54,3 +54,13 @@ exponents 3.5 to 10.5 over bases in (0,1) and (1,3), with `LN` and `EXP` twins o
 Decision 0083: one cell (I563) is visibly off, and Excel is not correctly rounded there (4.4 ulp below the reference), so
 this is the `visible` stage (decision 0114): reproduce Excel's algorithm, time-boxed (decision 0056). The first acceptance
 criterion is the target; the bit-level residue may move to a deferred follow-up.
+
+## Outcome
+POWER and `^` take `ln x` from LN's own x87 FYL2X kernel (`excel_ln`) instead of libm `ln`; the rest of the model
+(`excel_exp` of the twice-rounded product, one over the positive power) is unchanged. Offline replay of the six cells
+(bases through the engine's `*`, `+`, `/`) under five candidates (libm or Excel `ln`, double or 64-bit `ln`, double or
+64-bit product) left exactly one that matches all six to the bit: Excel's `ln` stored as a double. The base was the double
+the formula gives; it was not the source. MIRR's desktop root keeps libm `ln` and `exp` (`power_with_libm_exp`).
+Eval: probes-numeric passes 297,903 -> 297,909 of 611,774 cells (the six, I563 among them; no cell lost); gated suites:
+no change, no regressions. numbers.md "Non-integer exponents" records the rule; unit test
+`non_integer_powers_take_excel_ln_of_the_base`.

@@ -690,3 +690,19 @@ fn fn_accrint_freq4_nc2_basis1() {
         "freq=4 NC=2 basis=1 = {a1}, expected ~78.87363"
     );
 }
+
+/// A text `calc_method`, "TRUE" and "FALSE" too, is `#VALUE!`, before a negative rate's `#NUM!`; the
+/// boolean is taken (probes/t2492-vdb-ddb-arguments A47:A53, excel-graph 2026-10-25, T-2492).
+#[test]
+fn accrint_text_calc_method_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ACCRINT(39508,39691,39569,0.1,1000,2,0,\"FALSE\")");
+    model._set("A2", "=ACCRINT(39508,39691,39569,0.1,1000,2,0,\"TRUE\")");
+    model._set("A3", "=ACCRINT(39508,39691,39569,-1,1000,2,0,\"FALSE\")");
+    model._set("A4", "=ACCRINT(39508,39691,39569,0.1,1000,2,0,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"16.66666667");
+}
