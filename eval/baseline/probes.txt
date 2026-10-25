@@ -2895,8 +2895,6 @@ F	probes/t2436/a612e89321a6df9c.case.json	Calc!A121
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A136
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A151
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A166
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!A46
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!A61
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A76
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!A91
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!T106
@@ -2904,15 +2902,11 @@ F	probes/t2436/a612e89321a6df9c.case.json	Calc!T121
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!T136
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!T151
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!T166
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!T46
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!T61
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U106
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U121
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U136
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U151
 F	probes/t2436/a612e89321a6df9c.case.json	Calc!U166
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!U46
-F	probes/t2436/a612e89321a6df9c.case.json	Calc!U61
 F	probes/t2436/a790a4d4a6a82756.case.json	Calc!A1
 F	probes/t2436/a790a4d4a6a82756.case.json	Calc!A31
 F	probes/t2436/a790a4d4a6a82756.case.json	Calc!A46
@@ -3099,7 +3093,6 @@ F	probes/t2475-stat-subexpressions.case.json	P!A2
 F	probes/t2475-stat-subexpressions.case.json	P!A212
 F	probes/t2475-stat-subexpressions.case.json	P!A214
 F	probes/t2475-stat-subexpressions.case.json	P!A216
-F	probes/t2475-stat-subexpressions.case.json	P!A222
 F	probes/t2475-stat-subexpressions.case.json	P!A234
 F	probes/t2475-stat-subexpressions.case.json	P!A235
 F	probes/t2475-stat-subexpressions.case.json	P!A236
@@ -3161,9 +3154,7 @@ F	probes/t2475-stat-subexpressions.case.json	P!A559
 F	probes/t2475-stat-subexpressions.case.json	P!A56
 F	probes/t2475-stat-subexpressions.case.json	P!A560
 F	probes/t2475-stat-subexpressions.case.json	P!A563
-F	probes/t2475-stat-subexpressions.case.json	P!A57
 F	probes/t2475-stat-subexpressions.case.json	P!A572
-F	probes/t2475-stat-subexpressions.case.json	P!A58
 F	probes/t2475-stat-subexpressions.case.json	P!A62
 F	probes/t2475-stat-subexpressions.case.json	P!A63
 F	probes/t2475-stat-subexpressions.case.json	P!A67
@@ -3319,9 +3310,7 @@ F	probes/table-edits/table-insert-row-inside-data.case.json	F!A9
 F	probes/table-edits/table-totals-baseline.case.json	F!A10
 F	probes/table-edits/table-totals-baseline.case.json	F!A11
 F	probes/table-edits/table-totals-baseline.case.json	F!A3
-F	probes/tbill-error-order-inner-calls.case.json	Calc!A1
 F	probes/tbill-error-order-inner-calls.case.json	Calc!A3
-F	probes/tbill-error-order-inner-calls.case.json	Calc!B1
 F	probes/tbill-error-order-inner-calls.case.json	Calc!B3
 F	probes/tbill-error-order-inner-calls.case.json	Calc!C3
 F	probes/text-255-units-array-element.case.json	S!A4
