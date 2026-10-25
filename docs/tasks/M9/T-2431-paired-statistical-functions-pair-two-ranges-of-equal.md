@@ -3,7 +3,7 @@ id: T-2431
 title: "Paired statistical functions pair two ranges of equal count but different shape instead of #N/A (gen-m9, 18 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
