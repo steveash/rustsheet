@@ -11,6 +11,7 @@ use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
+use crate::out_of_scope::{self, OutOfScope};
 use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::text_expect;
@@ -137,18 +138,6 @@ pub struct FunctionEvidence {
     pub cells: usize,
     /// Suites those cells come from.
     pub suites: BTreeSet<String>,
-}
-
-/// An out-of-scope catalog function (decision 0027) and the cells the run checked for it.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct OutOfScope {
-    pub name: String,
-    /// The catalog's reason for leaving it out.
-    pub reason: String,
-    /// Cells calling the function that the run checked (passing or not).
-    pub cells: usize,
-    /// Of those, the failing ones.
-    pub failing: usize,
 }
 
 /// The report's lists that come from comparing the run with the catalog.
@@ -637,54 +626,8 @@ impl RunReport {
         }
         self.write_evidence(&mut md);
         catalog_coverage::write_markdown(&self.catalog_coverage, &mut md);
-        self.write_out_of_scope(&mut md);
+        out_of_scope::write_markdown(&self.out_of_scope, &self.suites, &mut md);
         md
-    }
-
-    fn write_out_of_scope(&self, md: &mut String) {
-        let add_in: Vec<&SuiteSummary> = self
-            .suites
-            .iter()
-            .filter(|s| s.skipped_add_in > 0)
-            .collect();
-        if self.out_of_scope.is_empty() && add_in.is_empty() {
-            return;
-        }
-        let _ = writeln!(
-            md,
-            "\n## Out of scope ({})\n\nCatalog functions whose results depend on systems outside the workbook (decision 0027). They are left out of every count above.\n",
-            self.out_of_scope.len()
-        );
-        // Add-in calls are not catalog functions: their cells are not scored at all (T-0462).
-        if !add_in.is_empty() {
-            let _ = writeln!(
-                md,
-                "Add-in calls (`_xll.`) are out of scope too, and their cells are not scored at all:\n"
-            );
-        }
-        for s in add_in {
-            let _ = writeln!(
-                md,
-                "- {}: {} cells call an add-in function (`_xll.`) and are not scored.",
-                s.name, s.skipped_add_in
-            );
-        }
-        if self.out_of_scope.is_empty() {
-            return;
-        }
-        let _ = writeln!(md);
-        let _ = writeln!(md, "| function | cells checked | failing | reason |");
-        let _ = writeln!(md, "|---|---|---|---|");
-        for f in &self.out_of_scope {
-            let _ = writeln!(
-                md,
-                "| {} | {} | {} | {} |",
-                f.name,
-                f.cells,
-                f.failing,
-                f.reason.replace('|', "\\|")
-            );
-        }
     }
 
     fn examples_for(&self, function: &str, n: usize) -> Vec<(&str, &CellResult)> {
