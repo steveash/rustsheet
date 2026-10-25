@@ -93,6 +93,9 @@ pub(crate) struct PairedValues {
 pub(crate) struct PairedSamplesError {
     pub(crate) error: CalcResult,
     pub(crate) sizes_differ: bool,
+    /// Whether an argument is itself an error value (or a blank one-cell reference), which T.TEST
+    /// returns before its tails and type, unlike an error inside a range (T-2469).
+    pub(crate) direct_error: bool,
 }
 
 /// The non-blank entries of one argument: (row-major position, value), in position order.
@@ -115,6 +118,8 @@ impl Model {
             (first.cell_count(), second.cell_count()),
             (Some(m), Some(n)) if m != n
         );
+        let direct_error =
+            matches!(first, PairedArg::Error(_)) || matches!(second, PairedArg::Error(_));
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
             CalcResult::new_error(error, cell, format!("Error in {which} array"))
@@ -122,6 +127,7 @@ impl Model {
         .map_err(|error| PairedSamplesError {
             error,
             sizes_differ,
+            direct_error,
         })
     }
 
@@ -154,7 +160,7 @@ impl Model {
         // With `typed_text_is_sample` a typed text is an array of one cell with no number, so
         // against a longer range the sizes differ and the result is `#N/A`: `COVAR(A1:A6,"a")`,
         // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
-        // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is unprobed and stays `#VALUE!`.
+        // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is a sample too (T-2469: `""` is no number, `#DIV/0!`).
         let value = self.evaluate_node_in_context(arg, cell);
         let value = self.blank_one_cell_as_error(value, cell);
         if typed_text_is_sample && matches!(value, CalcResult::String(_)) {

@@ -39,3 +39,25 @@ fn test_fn_t_test_smoke() {
     assert_eq!(model._get_text("C5"), *"0.200489197");
     assert_eq!(model._get_text("C6"), *"0.210720639");
 }
+
+// Excel (gen-m9, T-2469): an error sample, then an error tails or type, then their range check.
+#[test]
+fn test_fn_t_test_error_order() {
+    let mut model = new_empty_model();
+    for (row, v) in [1, 2, 3, 4].iter().enumerate() {
+        model._set(&format!("A{}", row + 1), &v.to_string());
+        model._set(&format!("B{}", row + 1), &(v * 2 + 1).to_string());
+    }
+    model._set("D2", "=NA()");
+    model._set("C1", "=T.TEST(1/0,A1:A3,3,2)");
+    model._set("C2", "=T.TEST(A1:A3,NA(),1,9)");
+    model._set("C3", "=T.TEST(A1:A3,B1:B3,-2.5,\"a\")");
+    model._set("C4", "=T.TEST(\"\",A1:A4,1,3)");
+    model._set("C5", "=T.TEST(D1:D3,A1:A3,3,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#DIV/0!");
+    assert_eq!(model._get_text("C2"), *"#N/A");
+    assert_eq!(model._get_text("C3"), *"#VALUE!");
+    assert_eq!(model._get_text("C4"), *"#DIV/0!");
+    assert_eq!(model._get_text("C5"), *"#NUM!");
+}

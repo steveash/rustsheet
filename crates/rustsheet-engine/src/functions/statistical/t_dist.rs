@@ -61,18 +61,32 @@ fn t_test_element(
     let [_, _, tails, test_type] = values else {
         return CalcResult::new_args_number_error(cell);
     };
-    let tails = match model.kernel_number(tails, cell).map(f64::trunc) {
-        Ok(1.0) => TTestTails::OneTailed,
-        Ok(2.0) => TTestTails::TwoTailed,
-        Ok(_) => return num_error(cell),
-        Err(error) => return error,
+    // Excel (gen-m9, T-2469): a sample that is an error value, then an error tails, then an error
+    // type, come before the tails/type range check, which comes before an error inside a range.
+    if let Err(PairedSamplesError {
+        error,
+        direct_error: true,
+        ..
+    }) = samples
+    {
+        return error.clone();
+    }
+    let tails = model.kernel_number(tails, cell).map(f64::trunc);
+    let test_type = model.kernel_number(test_type, cell).map(f64::trunc);
+    let (tails, test_type) = match (tails, test_type) {
+        (Err(error), _) | (_, Err(error)) => return error,
+        (Ok(tails), Ok(test_type)) => (tails, test_type),
     };
-    let test_type = match model.kernel_number(test_type, cell).map(f64::trunc) {
-        Ok(1.0) => TTestType::Paired,
-        Ok(2.0) => TTestType::TwoSampleEqualVar,
-        Ok(3.0) => TTestType::TwoSampleUnequalVar,
-        Ok(_) => return num_error(cell),
-        Err(error) => return error,
+    let tails = match tails {
+        1.0 => TTestTails::OneTailed,
+        2.0 => TTestTails::TwoTailed,
+        _ => return num_error(cell),
+    };
+    let test_type = match test_type {
+        1.0 => TTestType::Paired,
+        2.0 => TTestType::TwoSampleEqualVar,
+        3.0 => TTestType::TwoSampleUnequalVar,
+        _ => return num_error(cell),
     };
     match samples {
         Ok(samples) => number_or_error(t_test_p(samples, &tails, &test_type, cell)),
@@ -507,7 +521,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let samples = self
-            .paired_samples(args, cell, false)
+            .paired_samples(args, cell, true)
             .map_err(|error| PairedSamplesError {
                 error: error.error.without_message(),
                 ..error
