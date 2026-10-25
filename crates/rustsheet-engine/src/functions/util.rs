@@ -671,7 +671,14 @@ impl Model {
         for sheet in left.sheet..=right.sheet {
             let clipped = match walk {
                 AreaWalk::Existing => {
-                    self.for_each_existing_position(sheet, (left, right), cell, &mut columns, f)?;
+                    self.for_each_existing_position(
+                        sheet,
+                        (left, right),
+                        cell,
+                        &mut columns,
+                        true,
+                        f,
+                    )?;
                     continue;
                 }
                 AreaWalk::ClipBlocks => self
@@ -706,7 +713,14 @@ impl Model {
                     row: row2,
                     column: column2,
                 };
-                self.for_each_existing_position(sheet, (left, &corner), cell, &mut columns, f)?;
+                self.for_each_existing_position(
+                    sheet,
+                    (left, &corner),
+                    cell,
+                    &mut columns,
+                    false,
+                    f,
+                )?;
                 continue;
             }
             for row in left.row..=row2 {

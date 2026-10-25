@@ -40,7 +40,9 @@ Explicit near-whole ranges (`A2:XFD1048576`) are not clipped by `used_area_corne
 A single range whose used-area-clipped rectangle holds at least 65,536 positions and more than four
 per cell its columns hold (`Model::walks_sparsely`, using the new `SheetData::cells_in_columns`)
 is walked over its existing cells by the union walk (`for_each_existing_position`), recorded as
-read empty in one rectangle and charged to the formula's `MAX_AREA_WALK` budget. All callers of
+read empty in one rectangle. It is not charged to the formula's `MAX_AREA_WALK` budget (it costs
+less than the dense walk it replaces, which never was), so it adds no `#VALUE!`: a test repeats
+`SUM(A:Z)` over 100,001 cells 200 times in a BYROW (review finding). All callers of
 `ClipBlocks` (SUM/COUNT/aggregates, `values_from_range`, `paired_values`, SUBTOTAL, AGGREGATE,
 COUNTBLANK, CONCAT, MULTINOMIAL, GCD/LCM) read a blank as nothing, so values are unchanged; the
 walk keeps row-major order, so the first error is the same. `test_clipped_range_walks` checks ten

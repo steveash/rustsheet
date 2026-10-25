@@ -911,11 +911,10 @@ operand and LAMBDA call of the formula draws on the same budget, like the pair b
 range argument is not counted and is walked as before (every position of its used area), unless a
 far cell stretches that used area: a single range whose clipped area holds at least 65,536
 positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
-XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area and draws on
-the same budget (T-1690), so it costs the data, and is `#VALUE!` only past 2^24 steps of it, where
-the walk position by position would have run for hours; the cap is then met only by an area
-holding more than about 16 million cells (a step per cell, plus a step per row found and per 16
-row slots tested). Over
+XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area, so it costs
+the data (T-1690). It does not draw on the budget: that walk costs less than the dense one it
+replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over 100,000
+cells) gives the same value as the dense walk, and the change adds no `#VALUE!`. Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column

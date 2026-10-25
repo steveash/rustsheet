@@ -513,3 +513,40 @@ fn a_sparse_single_range_finds_the_first_error_in_row_major_order() {
     model.evaluate();
     assert_eq!(model._get_text("Sheet2!E1"), "#N/A");
 }
+
+// A single range walked over its existing cells does not draw on the formula's union walk budget
+// (2^24 steps): 200 walks of 100,001 cells would spend it, but the dense walk they replace never
+// did, so the value stays (T-1690 review).
+#[test]
+fn a_repeated_sparse_single_range_does_not_spend_the_union_budget() {
+    let mut model = new_empty_model();
+    for row in 1..=100_000 {
+        model._set(&format!("A{row}"), "1");
+    }
+    model._set("Z1", "1");
+    model.new_sheet();
+    model._set(
+        "Sheet2!A1",
+        "=SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(Sheet1!A:Z))))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!A1"), "20000200");
+}
+
+// Either side of the size at which a mostly blank single range is walked over its existing cells
+// (65,536 positions), the values are the same.
+#[test]
+fn single_ranges_either_side_of_the_sparse_walk_size_agree() {
+    let mut model = sample();
+    // 256 rows by 256 columns is 65,536 positions; one row fewer is 65,280.
+    model._set("IV256", "10");
+    model._set("Sheet2!E1", "=SUM(Sheet1!A1:IV256)");
+    model._set("Sheet2!E2", "=SUM(Sheet1!A1:IV255)");
+    model._set("Sheet2!E3", "=COUNTA(Sheet1!A1:IV256)");
+    model._set("Sheet2!E4", "=COUNTA(Sheet1!A1:IV255)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), "25");
+    assert_eq!(model._get_text("Sheet2!E2"), "15");
+    assert_eq!(model._get_text("Sheet2!E3"), "7");
+    assert_eq!(model._get_text("Sheet2!E4"), "6");
+}

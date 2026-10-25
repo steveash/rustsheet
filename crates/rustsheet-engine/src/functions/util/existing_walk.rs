@@ -1,7 +1,7 @@
 //! The walk of an area over the cells that exist only, for the areas of a union and for a
 //! single area that a far cell leaves mostly blank ([`Model::for_each_position_in_area`]):
-//! it costs the data, not the area, and draws on the formula's walk budget (T-1497, T-1502,
-//! T-1690).
+//! it costs the data, not the area. A union's areas draw on the formula's walk budget (T-1497,
+//! T-1502); a single area does not (T-1690).
 
 use crate::{
     area_budget::SLOTS_PER_WALK_STEP,
@@ -81,10 +81,28 @@ impl Model {
         positions / SPARSE_WALK_POSITIONS_PER_CELL > cells
     }
 
+    /// [`Self::spend_area_walk`] for a walk drawn from the formula's budget (`budgeted`): the
+    /// areas of a union. A single area walked here because it is mostly blank is not: its walk
+    /// costs less than the dense one it replaces, which was never charged, so charging it could
+    /// only turn a value into `#VALUE!` (a LAMBDA repeating `SUM(A:Z)` over 100,000 cells).
+    fn spend_walk_if(
+        &mut self,
+        budgeted: bool,
+        steps: u64,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        if budgeted {
+            self.spend_area_walk(steps, cell)
+        } else {
+            Ok(())
+        }
+    }
+
     /// The union-area walk of [`Self::for_each_position_in_area`] on one sheet: the existing
     /// cells of the rectangle `left..=right`, in row-major order like the dense walk, so the
-    /// first error cell is the same one. The area, every chunk and row slot the search looks at
-    /// and every cell it hands to `f` are paid for before `f` runs. An area whose cells lie in at
+    /// first error cell is the same one. When `budgeted` (a union's area), the area, every chunk
+    /// and row slot the search looks at and every cell it hands to `f` are paid for before `f`
+    /// runs ([`Self::spend_walk_if`]). An area whose cells lie in at
     /// most [`MAX_INDEXED_COLUMNS`] columns is walked through the column index instead
     /// ([`Self::for_each_indexed_position`]), so the rows other columns fill cost it nothing.
     pub(super) fn for_each_existing_position<F>(
@@ -93,6 +111,7 @@ impl Model {
         (left, right): (&CellReferenceIndex, &CellReferenceIndex),
         cell: CellReferenceIndex,
         columns: &mut Vec<i32>,
+        budgeted: bool,
         f: &mut F,
     ) -> Result<(), CalcResult>
     where
@@ -104,7 +123,7 @@ impl Model {
         // own spill cells stands, and those read as empty until it has run.
         // The area itself is a step: its record must be paid for even when it finds nothing, or
         // a LAMBDA repeating a union over an empty sheet would grow the record without bound.
-        self.spend_area_walk(1, cell)?;
+        self.spend_walk_if(budgeted, 1, cell)?;
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
         let data = &mut self
             .workbook
@@ -118,9 +137,16 @@ impl Model {
         if right.row.min(data.last_row()) - left.row >= MIN_INDEXED_ROWS {
             data.build_column_index();
             let few = data.columns_between(left.column, right.column, MAX_INDEXED_COLUMNS, columns);
-            self.spend_area_walk((columns.len() as u64).max(1), cell)?;
+            self.spend_walk_if(budgeted, (columns.len() as u64).max(1), cell)?;
             if few {
-                return self.for_each_indexed_position(sheet, (left, right), cell, columns, f);
+                return self.for_each_indexed_position(
+                    sheet,
+                    (left, right),
+                    cell,
+                    columns,
+                    budgeted,
+                    f,
+                );
             }
         }
         // Slots are paid for in whole steps as they add up, so a dense column costs a step per
@@ -137,7 +163,7 @@ impl Model {
             let paid = slots.div_ceil(SLOTS_PER_WALK_STEP);
             slots += search.slots;
             let steps = search.absent_chunks + (slots.div_ceil(SLOTS_PER_WALK_STEP) - paid);
-            self.spend_area_walk(steps, cell)?;
+            self.spend_walk_if(budgeted, steps, cell)?;
             let Some(row) = search.row else {
                 break;
             };
@@ -148,7 +174,7 @@ impl Model {
                 .columns_in_row_between(row, left.column, right.column, columns);
             // A row costs a step even with no cell in the area's columns: finding them is a
             // search of the row.
-            self.spend_area_walk((columns.len() as u64).max(1), cell)?;
+            self.spend_walk_if(budgeted, (columns.len() as u64).max(1), cell)?;
             for &column in columns.iter() {
                 f(self, CellReferenceIndex { sheet, row, column })?;
             }
@@ -173,6 +199,7 @@ impl Model {
         (left, right): (&CellReferenceIndex, &CellReferenceIndex),
         cell: CellReferenceIndex,
         columns: &[i32],
+        budgeted: bool,
         f: &mut F,
     ) -> Result<(), CalcResult>
     where
@@ -211,7 +238,7 @@ impl Model {
                     reads += 1;
                 }
             }
-            self.spend_area_walk(reads, cell)?;
+            self.spend_walk_if(budgeted, reads, cell)?;
             // A column with no rows left is done (a write by `f` into it is caught by the
             // area's read-empty record, as for a column that held none at the start).
             batches.retain(|batch| batch.head().is_some());
@@ -228,7 +255,7 @@ impl Model {
             // A row is a step per cell handed on, and at least a step per four columns still
             // being merged, which each row compares.
             let merge = batches.len().div_ceil(4);
-            self.spend_area_walk(row_columns.len().max(merge) as u64, cell)?;
+            self.spend_walk_if(budgeted, row_columns.len().max(merge) as u64, cell)?;
             for &column in &row_columns {
                 f(self, CellReferenceIndex { sheet, row, column })?;
             }
