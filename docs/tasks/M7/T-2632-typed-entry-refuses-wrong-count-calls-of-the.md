@@ -3,7 +3,7 @@ id: T-2632
 title: "Typed entry refuses wrong-count calls of the functions outside the lifting table (=SUM(), =IF(1))"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
