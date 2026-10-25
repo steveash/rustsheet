@@ -267,6 +267,12 @@ pub(crate) struct Evaluation {
     /// restart, the cells stay on `stack`, still `Evaluating`, to be run again
     /// from the top once the recursion has unwound.
     pub(crate) unwinding: bool,
+    /// The lookup search vectors built in this pass (`search_cache.rs`, T-0448). Dropped whenever
+    /// `cells` is cleared or loses an entry.
+    pub(crate) search_cache: crate::functions::lookup_and_reference::search_cache::SearchCache,
+    /// Reads of a formula cell that was still `Evaluating` (a cycle), or of the spill area of
+    /// a running anchor, so far: a search vector whose build made one is not cached.
+    pub(crate) evaluating_reads: u64,
     /// GETPIVOTDATA's per-pivot indices and memo, dropped at each `evaluate()` (`pivot_index.rs`).
     pub(crate) pivot_indexes: crate::functions::lookup_and_reference::pivot_index::PivotIndexes,
     /// WEEKNUM's stale `return_type` state (SPEC-0017).
@@ -336,6 +342,8 @@ impl Default for Evaluation {
             max_stack: DEFAULT_MAX_STACK,
             stack_base: 0,
             unwinding: false,
+            search_cache: Default::default(),
+            evaluating_reads: 0,
             pivot_indexes: Default::default(),
             weeknum_start: None,
             weeknum_read: false,
@@ -451,6 +459,7 @@ impl Model {
     fn run_pass(&mut self, circular_anchors: &[CellKey]) -> Option<Restart> {
         let state = &mut self.evaluation;
         state.cells.clear();
+        state.search_cache.clear();
         state.stack.clear();
         state.seen.clear();
         state.seen_ranges.clear();
@@ -560,6 +569,7 @@ impl Model {
             // counts as empty until the anchor commits. If the anchor then
             // writes this position, its inputs depended on its own output.
             (ArrayKind::Dynamic, Some(CellState::Evaluating)) => {
+                self.evaluation.evaluating_reads += 1;
                 self.record_seen(cell_reference, Seen::Empty);
                 CalcResult::EmptyCell
             }
@@ -592,9 +602,11 @@ impl Model {
         let key = key(cell_reference);
         match self.evaluation.cells.get(&key) {
             Some(CellState::Evaluating) if self.iterating() => {
+                self.evaluation.evaluating_reads += 1;
                 return self.read_into_cycle(cell_reference);
             }
             Some(CellState::Evaluating) => {
+                self.evaluation.evaluating_reads += 1;
                 self.mark_stack_circular();
                 return circular_reference();
             }
@@ -629,6 +641,7 @@ impl Model {
             self.evaluation.stack.truncate(base);
             self.evaluation.circular_below = self.evaluation.circular_below.min(base);
             self.evaluation.cells.remove(&key);
+            self.evaluation.search_cache.clear();
             return CalcResult::EmptyCell;
         }
         if self.evaluation.depth > 0 || !self.evaluation.unwinding {
