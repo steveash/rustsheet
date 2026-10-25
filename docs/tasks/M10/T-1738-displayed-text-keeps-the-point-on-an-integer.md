@@ -3,7 +3,7 @@ id: T-1738
 title: "Displayed text: ?.?? keeps the point on an integer, #% of 0.0049 is %"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
