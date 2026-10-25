@@ -3,7 +3,7 @@ id: T-2473
 title: "PERCENTRANK: a significance of 2^31 or more is #DIV/0!, and its truncation keeps Excel's digit at a cut (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
