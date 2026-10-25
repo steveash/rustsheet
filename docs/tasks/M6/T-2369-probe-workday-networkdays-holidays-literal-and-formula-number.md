@@ -3,7 +3,7 @@ id: T-2369
 title: "Probe WORKDAY/NETWORKDAYS holidays: literal and formula number text, date text, and count-vs-skip of number-text cells"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
