@@ -479,3 +479,32 @@ fn regex_mode_reads_values_as_text_in_xmatch_and_xlookup() {
         assert_eq!(model._get_text(cell), expected, "{formula}");
     }
 }
+
+#[test]
+fn regex_mode_reads_pcre2_syntax() {
+    // probes/t2680-lookup-regex-pcre2 (excel-graph, T-2680): the lookups' regex mode runs on the
+    // REGEX* engine, so lookbehind, backreferences, `\K` and possessive groups work.
+    let mut model = new_empty_model();
+    let cells = [
+        (
+            "A1",
+            "=XMATCH(\"(?<=D)og\",{\"cat\";\"Dog\";\"dog\"},3)",
+            "2",
+        ),
+        ("A2", "=XMATCH(\"(a)\\1\\1\",{\"cat\";\"aaa\"},3)", "2"),
+        (
+            "A3",
+            "=XLOOKUP(\"foo\\Kbar\",{\"x\";\"foobar\"},{1;2},\"nf\",3)",
+            "2",
+        ),
+        ("A4", "=XMATCH(\"a++a\",{\"aaa\"},3)", "#N/A"),
+        ("A5", "=XMATCH(\"\\p{Lu}\",{\"cat\";\"Dog\"},3)", "2"),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
+}

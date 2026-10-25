@@ -172,6 +172,7 @@ impl Model {
                 budget -= 1;
                 let before = self.current_value(at);
                 self.evaluation.cells.remove(&key(at));
+                self.evaluation.clear_pass_caches();
                 self.evaluate_cell(at);
                 let after = self.current_value(at);
                 largest = largest.max(change(&before, &after));
