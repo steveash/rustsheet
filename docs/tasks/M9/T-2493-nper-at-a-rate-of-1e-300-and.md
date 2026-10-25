@@ -3,7 +3,7 @@ id: T-2493
 title: "NPV at a rate of -1 is #DIV/0!, and NPV's error order (gen-m9, 7 cells; NPER cut to T-2698)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
