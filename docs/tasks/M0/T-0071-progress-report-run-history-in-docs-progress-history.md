@@ -3,7 +3,7 @@ id: T-0071
 title: "Progress report: run history in docs/progress/history.json, since-last-run deltas, trend charts and stale handling for incomplete runs"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
