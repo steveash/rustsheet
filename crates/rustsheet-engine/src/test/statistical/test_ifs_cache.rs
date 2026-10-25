@@ -198,3 +198,27 @@ fn a_spill_into_a_cached_range_restarts_with_an_empty_cache() {
         assert_eq!(model._get_text(&format!("E{row}")), "9");
     }
 }
+
+/// Directive 5: distinct text criteria are charged their text (at most 255 characters, longer is
+/// `#VALUE!`), so the match sets of a pass stay within their budget however many such calls
+/// there are; the calls past it walk.
+#[test]
+fn long_criteria_are_charged_to_the_budget() {
+    let mut model = new_empty_model();
+    for row in 1..=64 {
+        model._set(&format!("A{row}"), "x");
+    }
+    for row in 1..=9000 {
+        model._set(
+            &format!("E{row}"),
+            &format!("=COUNTIF($A$1:$A$64,REPT(\"a\",250)&{row})"),
+        );
+    }
+    model._set("F1", "=COUNTIF($A$1:$A$64,\"x\")");
+    model.evaluate();
+    let (used, budget) = model.evaluation.ifs_cache.match_bits();
+    assert!(used <= budget, "{used} > {budget}");
+    assert!(used > budget / 10 * 9, "the budget was not used: {used}");
+    assert_eq!(model._get_text("E9000"), "0");
+    assert_eq!(model._get_text("F1"), "64");
+}

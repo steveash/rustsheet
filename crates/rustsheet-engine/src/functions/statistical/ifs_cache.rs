@@ -39,10 +39,11 @@ use super::if_ifs::Criterion;
 /// Ranges with fewer cells are cheaper to walk again than to cache.
 const MIN_CACHED_CELLS: usize = 64;
 
-/// Cells all cached ranges of one pass may hold together; also the largest range cached.
+/// Cells (values, not bytes) all cached ranges of one pass may hold together; also the largest
+/// range cached.
 const MAX_CACHED_CELLS: usize = 4_000_000;
 
-/// Bits all match sets of one pass may hold together (4 MB).
+/// Bits all match sets of one pass may hold together, their keys' text included (4 MB).
 const MAX_CACHED_BITS: usize = 32_000_000;
 
 /// A block of one sheet: sheet, top row, left column, bottom row, right column.
@@ -59,6 +60,14 @@ enum CriterionKey {
 }
 
 impl CriterionKey {
+    /// What the key holds beyond its fixed size, in bits, charged to the match-set budget.
+    fn extra_bits(&self) -> usize {
+        match self {
+            CriterionKey::Text(units) => units.len().saturating_mul(16),
+            _ => 0,
+        }
+    }
+
     /// The key of `criterion`; `None` for anything else (an array element is already a scalar).
     fn of(criterion: &CalcResult) -> Option<CriterionKey> {
         Some(match criterion {
@@ -100,9 +109,26 @@ impl IfsCache {
         self.cells = 0;
         self.bits = 0;
     }
+
+    /// Match-set bits charged in this pass, for the budget test.
+    #[cfg(test)]
+    pub(crate) fn match_bits(&self) -> (usize, usize) {
+        (self.bits, MAX_CACHED_BITS)
+    }
 }
 
-/// The cells of `rect` row by row, as positions.
+/// The block `range` covers.
+fn rect_of(range: &Range) -> RectKey {
+    (
+        range.left.sheet,
+        range.left.row,
+        range.left.column,
+        range.right.row,
+        range.right.column,
+    )
+}
+
+/// The position of the `index`-th cell of `rect`, counting row by row.
 fn rect_cell(rect: RectKey, index: usize) -> CellReferenceIndex {
     let (sheet, top, left, _, right) = rect;
     let width = usize::try_from(right - left + 1).unwrap_or(1).max(1);
@@ -113,6 +139,7 @@ fn rect_cell(rect: RectKey, index: usize) -> CellReferenceIndex {
     }
 }
 
+/// How many cells `rect` holds.
 fn rect_size(rect: RectKey) -> usize {
     let (_, top, left, bottom, right) = rect;
     let rows = usize::try_from(bottom - top + 1).unwrap_or(0);
@@ -121,17 +148,6 @@ fn rect_size(rect: RectKey) -> usize {
 }
 
 impl Model {
-    /// Whether the cache may be read or filled now (`search_cache_safe`'s conditions).
-    fn ifs_cache_safe(&self) -> bool {
-        let evaluation = &self.evaluation;
-        evaluation.in_pass
-            && evaluation.restart.is_none()
-            && !evaluation.unwinding
-            && !evaluation.excel_order
-            && !evaluation.blocking
-            && !self.iterating()
-    }
-
     /// Whether reading `at` evaluates nothing and marks nothing: a constant or a blank, a formula
     /// cell already evaluated in this pass, or a spill cell whose anchor is. `None` for a
     /// circular cell, which never becomes readable this way.
@@ -160,7 +176,7 @@ impl Model {
     /// The values of `rect` row by row, when they can be read without evaluating anything (module
     /// docs); `None` when the caller must walk.
     fn ifs_range_values(&mut self, rect: RectKey) -> Option<Arc<[CalcResult]>> {
-        if !self.ifs_cache_safe() {
+        if !self.pass_cache_safe() {
             return None;
         }
         let size = rect_size(rect);
@@ -193,7 +209,7 @@ impl Model {
         let values: Arc<[CalcResult]> = (0..size)
             .map(|index| self.evaluate_cell(rect_cell(rect, index)))
             .collect();
-        if !self.ifs_cache_safe() {
+        if !self.pass_cache_safe() {
             return None;
         }
         let cache = &mut self.evaluation.ifs_cache;
@@ -227,8 +243,12 @@ impl Model {
         let bits: Arc<[u64]> = bits.into();
         let cache = &mut self.evaluation.ifs_cache;
         if let Some(key) = key {
-            if cache.bits + values.len() <= MAX_CACHED_BITS {
-                cache.bits += values.len();
+            // The set's words, the key's text and a word for the entry itself.
+            let cost = (bits.len() + 1)
+                .saturating_mul(64)
+                .saturating_add(key.1.extra_bits());
+            if cache.bits.saturating_add(cost) <= MAX_CACHED_BITS {
+                cache.bits += cost;
                 cache.matches.insert(key, bits.clone());
             }
         }
@@ -246,13 +266,7 @@ impl Model {
     ) -> Option<Vec<u64>> {
         let mut all: Option<Vec<u64>> = None;
         for ((range, criterion), matches) in rects.iter().zip(criteria).zip(matchers) {
-            let rect = (
-                range.left.sheet,
-                range.left.row,
-                range.left.column,
-                range.right.row,
-                range.right.column,
-            );
+            let rect = rect_of(range);
             let values = self.ifs_range_values(rect)?;
             let bits = self.ifs_matches(rect, &values, criterion, matches.as_ref());
             match all.as_mut() {
@@ -265,13 +279,7 @@ impl Model {
 
     /// The cached values of `range` (`ifs_range_values`) for the SUMIFS-shaped walks' value range.
     pub(super) fn ifs_values(&mut self, range: &Range) -> Option<Arc<[CalcResult]>> {
-        self.ifs_range_values((
-            range.left.sheet,
-            range.left.row,
-            range.left.column,
-            range.right.row,
-            range.right.column,
-        ))
+        self.ifs_range_values(rect_of(range))
     }
 }
 

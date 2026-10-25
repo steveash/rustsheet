@@ -533,9 +533,9 @@ impl Model {
             if let Some(matched) = self.ifs_all_matches(&rects, criteria, fn_criteria) {
                 if let Some(values) = self.ifs_values(&walked(sum_range)) {
                     for index in set_bits(&matched) {
-                        match &values[index] {
-                            CalcResult::Number(n) => apply(*n),
-                            error @ CalcResult::Error { .. } => return Err(error.clone()),
+                        match values.get(index) {
+                            Some(CalcResult::Number(n)) => apply(*n),
+                            Some(error @ CalcResult::Error { .. }) => return Err(error.clone()),
                             _ => {}
                         }
                     }

@@ -72,7 +72,8 @@ Shared constraints:
   cell); until then the walk runs and the check resumes where it stopped. As in `search_cache.rs`
   (T-0448): one pass only, cleared with every reset of the cell states, nothing under iterative
   calculation, Excel-order passes or outside a pass. Caps (directive 5): ranges of 64 to 4,000,000
-  cells, 4,000,000 cached values and 32,000,000 match bits per pass.
+  cells, 4,000,000 cached values and 32,000,000 bits of match sets and their keys per pass. The pass
+  caches share `Model::pass_cache_safe` and `Evaluation::clear_pass_caches` with T-0448's.
 - Bench `cargo bench -p rustsheet --bench aggregate -- criteria` (new case: 2,000 SUMIFS +
   2,000 COUNTIFS over 50,000 rows, five text criteria and 100 numeric thresholds), release, fastest of
   5 recalculations: 15.558 s on `main` -> 0.112 s (about 140x).
@@ -86,6 +87,7 @@ Shared constraints:
 - Tests: `test_ifs_cache.rs` (every criterion pair of a mixed-type 240-row range through COUNTIFS,
   SUMIFS, COUNTIF, SUMIF and MAXIFS equals the walks over its four 60-row blocks; a cache per pass
   with formula criteria edited between evaluations; a cycle through a criteria range; a spill into
-  a criteria range that restarts the pass). Mutation checks: keeping the cache across passes, and
+  a criteria range that restarts the pass; 9,000 distinct long text criteria stay within the
+  match-set budget, which charges each entry its key's text). Mutation checks: keeping the cache across passes, and
   treating every cell as readable, each fail a test.
 - Eval: `rustsheet-eval check` 0 regressions in every gated suite, corpus-bench included.

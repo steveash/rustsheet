@@ -89,7 +89,7 @@ impl Model {
             len,
             down,
         };
-        let cacheable = cells >= MIN_CACHED_CELLS && self.search_cache_safe();
+        let cacheable = cells >= MIN_CACHED_CELLS && self.pass_cache_safe();
         if cacheable {
             if let Some(vector) = self.evaluation.search_cache.vectors.get(&key) {
                 return vector.clone();
@@ -100,7 +100,7 @@ impl Model {
         let cache = &self.evaluation.search_cache;
         if cacheable
             && cache.cells + cells <= MAX_CACHED_CELLS
-            && self.search_cache_safe()
+            && self.pass_cache_safe()
             && self.evaluation.blocked_on.is_none()
             && self.evaluation.evaluating_reads == evaluating_reads
             && !self.any_circular(left, end)
@@ -110,17 +110,6 @@ impl Model {
             cache.vectors.insert(key, vector.clone());
         }
         vector
-    }
-
-    /// Whether a vector may be read from or stored in the cache now (module docs).
-    fn search_cache_safe(&self) -> bool {
-        let evaluation = &self.evaluation;
-        evaluation.in_pass
-            && evaluation.restart.is_none()
-            && !evaluation.unwinding
-            && !evaluation.excel_order
-            && !evaluation.blocking
-            && !self.iterating()
     }
 
     /// Whether any cell of `left:end` (one sheet) is known to be circular.
