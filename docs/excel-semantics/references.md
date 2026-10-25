@@ -2283,8 +2283,9 @@ Status: VERIFIED (excel-graph)
 Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
-move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339),
-do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured reference as the absolute area it lowered to. A deleted table or sheet matches
+move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
+do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
+reference as the absolute area it lowered to (defined names too, unprobed). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a
