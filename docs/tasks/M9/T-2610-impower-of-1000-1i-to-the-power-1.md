@@ -3,7 +3,7 @@ id: T-2610
 title: "IMPOWER of 1000+1i to the power 1: polar form must leave the imaginary part inexact (gen-m9 A379)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
