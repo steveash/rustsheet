@@ -3216,10 +3216,12 @@ and different shapes, pairing them in reading order; only a different count is `
 (7674c89c824aca43 A72). Which cell pairs with which (reading order, row by row) follows from the values only where they
 differ; UNVERIFIED beyond these cells.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 17 cells listed in T-2431.
-Ours: pairs by cell count in reading order (T-2431); CHISQ.TEST takes its degrees of freedom from the first array's shape.
+Ours: pairs by cell count in reading order (T-2431). For CHISQ.TEST and CHITEST of different shapes the degrees of freedom come from the first array's shape: UNVERIFIED, no oracle cell separates the choices (T-2650 probes `CHISQ.TEST({1;2;3;4},{2,2;2,2})` against `CHISQ.TEST({1,2;3,4},{2;2;2;2})`, df 3 against 1).
 Status: VERIFIED (excel-graph) for the cited cells
 
-CHISQ.TEST/CHITEST also take a negative actual value as is (`CHITEST(Data!D7:D9,Data!C10:E10)`, -1 against 1, 0.1353352832366127 = exp(-2), c6cfda6bd10cae93 A375); only a negative expected value is `#NUM!`. Open: `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (text and blanks only, including a blank against a blank) is `#DIV/0!` (0a9226016e8f5f33 A333) while other all-non-number pairings are 1 (8dd2312c96effb1b A343); UNVERIFIED why.
+Negative actual value (CHISQ.TEST/CHITEST): taken as is (`CHITEST(Data!D7:D9,Data!C10:E10)`, -1 against 1, 0.1353352832366127 = exp(-2), c6cfda6bd10cae93 A375); only a negative expected value is `#NUM!`.
+Evidence: one cell, excel-graph 2026-10-24 (T-2436 probe). Status: VERIFIED for that cell only; an all-numeric negative actual is unprobed.
+Open: `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (text and blanks only, including a blank against a blank) is `#DIV/0!` (0a9226016e8f5f33 A333) while other all-non-number pairings are 1 (8dd2312c96effb1b A343); UNVERIFIED why.
 
 ## An error element of an array argument is that error (T-2255)
 Rule: an error inside an array constant or array value given to LARGE, SMALL, QUARTILE.EXC, PERCENTRANK.INC,
