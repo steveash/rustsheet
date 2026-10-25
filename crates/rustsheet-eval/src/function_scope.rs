@@ -22,6 +22,7 @@ use std::fmt::Write as _;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::closeness::Visible;
 use crate::exit_exceptions::{ExitExceptions, EXCEPTIONS_PATH};
 use crate::formula_calls::functions_in;
 use crate::probe_milestones::{parse_milestone, row_of, REPORT_ROWS};
@@ -49,6 +50,10 @@ pub struct MilestoneScope {
     /// The failing cells a named exit exception leaves out of this row (decision 0087), sorted.
     #[serde(default)]
     pub excepted: Vec<String>,
+    /// The failing cells that are visibly off (decision 0083), sorted: the Phase 1 exit counts
+    /// these, the bit-level `failing` is Phase 1b's (decision 0114).
+    #[serde(default)]
+    pub visibly_off: Vec<String>,
 }
 
 /// How the [`SUITE`] cells scored, one cumulative row per function milestone.
@@ -137,7 +142,11 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
                 if c.verdict.is_pass() {
                     row.bit_exact += 1;
                 } else if c.verdict.is_failure() {
-                    row.failing.push(format!("{}!{}", r.id, c.key()));
+                    let key = format!("{}!{}", r.id, c.key());
+                    if Visible::is_off(c) {
+                        row.visibly_off.push(key.clone());
+                    }
+                    row.failing.push(key);
                 } else {
                     row.deviations += 1;
                 }
@@ -146,6 +155,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
     }
     for row in &mut scope.rows {
         row.failing.sort();
+        row.visibly_off.sort();
     }
     Some(scope)
 }

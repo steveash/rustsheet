@@ -8,6 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -34,3 +35,6 @@ replaced at 0.546 ulp (geomean-root-refinement A22). Candidates tried: every mod
 by T-0059). That is the second attempt with no rise in the bit-exact count, which is decision 0056's bar.
 Reopen when a new root hypothesis is recorded here, for example a reconstruction of Excel's own pow in
 the style of T-1524 or T-1778. A new dependency landing does not reopen it.
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

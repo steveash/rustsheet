@@ -383,3 +383,25 @@ fn oct2dec_of_eleven_digits_is_num() {
     assert_eq!(model._get_text("A4"), *"#NUM!");
     assert_eq!(model._get_text("A5"), *"-1+i");
 }
+
+#[test]
+fn bin2_of_non_numeric_text_is_num() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=BIN2DEC("abc")"#);
+    model._set("A2", r#"=BIN2HEX(" x ")"#);
+    model._set("A3", r#"=BIN2OCT("abc",4)"#);
+    model._set("A4", "=BIN2DEC(TRUE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+}
+
+#[test]
+fn dec2_of_non_numeric_text_stays_value() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=DEC2OCT("abc")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+}

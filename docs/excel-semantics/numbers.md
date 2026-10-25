@@ -75,6 +75,16 @@ Evidence: probes/trunc-decimal-stages A1–A56 (excel-graph, 2026-10-11, T-0297)
 Status: VERIFIED
 Implemented in: `fn_trunc` in functions/math_and_trigonometry/mathematical.rs, via `round_decimal` (T-0297)
 
+## FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from zero (T-2652)
+Rule (hypothesis): the CEILING/FLOOR family cuts `value/significance` to 15 significant digits before rounding, and a tie at
+the 16th digit goes away from zero, as INT's cut does (below), not to even: `FLOOR.PRECISE(x)` with x = -333333333333266.5
+exactly (`AVERAGE(100,0.5,100-1E+15)`) is -333333333333267, where a tie-to-even cut gives -333333333333266. No cut at all
+(a plain floor) also gives -333333333333267, so the cell does not tell the two apart. A typed
+16-digit literal is cut on entry, so a probe builds the tie from exact arithmetic.
+Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648). The other family members are not probed.
+Status: UNVERIFIED (one generated cell); `snap_ratio` (ceiling_floor.rs) cuts through `to_excel_precision`, ties to even.
+Tasks: T-2652
+
 ## INT cuts to 15 significant digits first (T-2171)
 Rule: INT rounds down after the same 15-significant-digit cut as TRUNC and ROUNDDOWN, so binary noise just below an
 integer does not drop a unit: `INT(1-2^-53)` = 1 (0.99999999999999989 reads 1.00000000000000), so does
@@ -759,6 +769,14 @@ Not `n - d*INT(n/d)` (which loses precision: `MOD(5,1E-10)` would give 0).
 Evidence: ironcalc-calc MOD_QUOTIENT.xlsx (Excel Online cached) C20 `MOD(10.0000000001,0.1)`=9.999945316252479e-11,
 C21 (d=-0.1) =-0.09999999990000055, C25 `MOD(5,1E-10)`=9.999981783901343e-11, C26 (d=-1E-10)=-1.821609865774887e-16.
 Status: VERIFIED (Excel-cached)
+
+## MOD of a small number by a huge opposite-sign divisor is 0 (T-2654)
+Rule (hypothesis): when the exact remainder plus the divisor rounds to the divisor itself, Excel's MOD is 0, not `d`:
+`MOD(1.005,d)` with d about -1E+30 (`(1.005^-0.0001)-SUMSQ(-1,1E+15,100,0.2,7,1,-0.5)`) is 0, where "fmod plus d" gives
+-1E+30. Other rules (a quotient path for tiny |n/d|) fit the one cell too.
+Evidence: gen-m5/abef960804539149 Calc!A400 (excel-graph, 2026-10-25, T-2648).
+Status: UNVERIFIED (one generated cell); the engine gives d.
+Tasks: T-2654
 
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`

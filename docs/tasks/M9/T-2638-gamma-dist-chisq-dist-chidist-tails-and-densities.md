@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-campaign: visible
+campaign: accuracy
 depends_on: []
 ---
 
@@ -72,3 +72,6 @@ docs/excel-semantics/statistics.md "Incomplete gamma: accurate kernel (T-0971)".
 
 ## Out of scope
 - The 1-2 ulp residue of T-2367.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

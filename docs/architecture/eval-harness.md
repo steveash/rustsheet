@@ -246,14 +246,20 @@ functions, which report.md lists apart as "Mk exempt from b". The row is at 100%
 `functions`. The table is an exit measure, not a gate; M6 inherits the rule.
 
 ## Milestone exit
-`crates/rustsheet-eval/src/milestone_exit.rs` (T-2177) adds a "Milestone exit (decision 0085)" section to
-report.md (report.json: `milestone_exit`) with one row each for M5 and M6 (M7 to M11 need their own
-decision first). It reads four rows the report already computes and scores nothing itself: catalog
-coverage (`covered == functions`), the `gen-m<k>` suite (at least 20,000 scored cells, `cells -
-deviations`, at a 0.999 pass rate; known failures print beside the allowance `floor(0.001 * scored)`),
-`ironcalc-calc` failing cells excluding exit exceptions (0), and the probe row's known failures (0). A
-missing input prints `n/a` and is never `met`; `exit` is `met` only when all four are. It is an exit
+`crates/rustsheet-eval/src/milestone_exit.rs` (T-2177) adds a "Milestone exit (decisions 0085, 0114)"
+section to report.md (report.json: `milestone_exit`) with one row each for M5 and M6 (M7 to M11 need
+their own decision first). It reads four rows the report already computes and scores nothing itself:
+catalog coverage (`covered == functions`), the `gen-m<k>` suite (at least 20,000 scored cells, `cells -
+deviations`, with at least 0.999 of them not visibly off; visibly-off cells print beside the allowance
+`floor(0.001 * scored)`), `ironcalc-calc` visibly-off cells excluding exit exceptions (0), and the
+probe row's visibly-off cells (0). Decision 0114 measures Phase 1 at visible parity; the bit-level
+counts (`gen_known_failures`, `calc_failing`, `probe_known_failures`) print in brackets for Phase 1b.
+A missing input prints `n/a` and is never `met`; `exit` is `met` only when all four are. It is an exit
 measure, not a gate.
+
+The "Fifteen-digit parity checkpoint" section (`v15_checkpoint`, decision 0094) also prints the
+Phase 1 line of decision 0114: the in-scope functions that are covered and have at most one Excel cell
+in a thousand visibly off, with each function's within-15-digit share.
 
 ## CLI
 ```
