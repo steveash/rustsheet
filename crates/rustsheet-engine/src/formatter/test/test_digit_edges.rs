@@ -1,14 +1,4 @@
-#![allow(clippy::unwrap_used)]
-
-use crate::{
-    formatter::format::{format_number, FormatContext},
-    locale::get_locale,
-};
-
-fn text(value: f64, format: &str) -> String {
-    let ctx = FormatContext::new(get_locale("en").unwrap());
-    format_number(value, format, &ctx).text
-}
+use super::text;
 
 // T-1738: `?` pads an empty decimal with spaces and keeps the point on an integer (gen-m10,
 // excel-graph 2026-10-16: 1000 is "1000.  ", 61 is "61.  ").
