@@ -1,5 +1,5 @@
 ---
-id: T-2645
+id: T-2649
 title: "ISOMITTED of an empty value (IFERROR of a blank, a blank array element) handed to a LAMBDA is FALSE"
 milestone: M7
 lane: functions-logic

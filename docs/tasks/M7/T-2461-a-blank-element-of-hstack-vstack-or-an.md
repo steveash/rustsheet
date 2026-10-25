@@ -54,4 +54,4 @@ blank element (`eval_to_array_keep_blank`); a blank-cell pad_with pads EXPAND, W
 WRAPCOLS/WRAPROWS's is `#N/A`; INDEX picks from TAKE and DROP over
 a range as a reference (`index_source`). New probe probes/t2461-blank-array-sources (55 cells, excel-graph) answers the
 probe criterion; arrays.md records all of it. Eval: gen-m9 5653 → 5652 (Calc!A79), probes 2566 → 2557 (t2413 ×7, t2436 ×5
-fixed; 3 new-coverage ISOMITTED cells A12:A14 → follow-up T-2645), no regressions in any suite (poi, corpus-bench included).
+fixed; 3 new-coverage ISOMITTED cells A12:A14 → follow-up T-2649), no regressions in any suite (poi, corpus-bench included).

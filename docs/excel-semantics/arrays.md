@@ -1567,9 +1567,9 @@ the range's cells as the empty value (`COUNT(INDEX(VSTACK(Z1:Z2),1,1))` 1, A23:A
 argument: `LAMBDA(x,ISOMITTED(x))(IFERROR(Z1,1))`, the same of the INDEX element, and ISOMITTED in MAP over the HSTACK are
 FALSE (A12:A14).
 Ours: all of the above since T-2461 (INDEX picks from TAKE and DROP as a reference, `index_source`), except ISOMITTED, which
-is TRUE for the empty value (A12:A14; T-2645).
+is TRUE for the empty value (A12:A14; T-2649).
 Status: VERIFIED (excel-graph).
-Tasks: T-2306, T-2307, T-2413, T-2461, T-2645
+Tasks: T-2306, T-2307, T-2413, T-2461, T-2649
 
 ## MAKEARRAY rows and columns must be whole numbers
 Rule: MAKEARRAY is `#VALUE!` when rows or columns is not a whole number; it does not truncate as SEQUENCE does. Evidence (gen-m7,
