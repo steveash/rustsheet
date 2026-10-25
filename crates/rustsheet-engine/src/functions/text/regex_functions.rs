@@ -191,6 +191,37 @@ impl PatternCache {
     }
 }
 
+/// The pattern of an XMATCH or XLOOKUP regex search (`match_mode` 3) on the REGEX* engine, so
+/// a lookup reads the same PCRE2 syntax as REGEXTEST: lookbehind, backreferences, `\K`,
+/// possessive and atomic groups (probes/t2680-lookup-regex-pcre2; T-2680). It is case-sensitive,
+/// and one search shares one compile and work budget as one REGEX* call does (SPEC-0013).
+pub(crate) struct LookupPattern {
+    pattern: String,
+    cache: PatternCache,
+}
+
+impl LookupPattern {
+    /// `pattern` compiled for a search: `#VALUE!` when it is invalid, `#ERROR!` when compiling
+    /// it spends the call's work.
+    pub(crate) fn new(pattern: String, cell: CellReferenceIndex) -> Result<Self, CalcResult> {
+        let mut cache = PatternCache::new();
+        cache.with(&pattern, false, "", cell, |_| Ok(()))?;
+        Ok(LookupPattern { pattern, cache })
+    }
+
+    /// Whether the pattern matches anywhere in `text`; `#ERROR!` once the search's work is
+    /// spent.
+    pub(crate) fn is_match(
+        &mut self,
+        text: &str,
+        cell: CellReferenceIndex,
+    ) -> Result<bool, CalcResult> {
+        self.cache.with(&self.pattern, false, text, cell, |search| {
+            search.is_match(text)
+        })
+    }
+}
+
 fn too_much_regex_work(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(
         Error::ERROR,

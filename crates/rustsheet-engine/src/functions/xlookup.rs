@@ -11,8 +11,9 @@ use super::{
     lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::SearchVector,
     lookup_and_reference::xmatch::{
-        linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode, Regex,
+        linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode,
     },
+    text::LookupPattern,
     util::near_integer::near_integer_whole,
     util::{array_element_value, array_node_to_calc_result},
 };
@@ -36,23 +37,32 @@ enum MatchMode {
 
 /// The first match of `lookup_value` in `values` walking in `search_mode`'s direction. Only the
 /// candidates `SearchVector` names are tested: its virtual empty tail is one cell.
-/// `regex` is the regex mode's compiled pattern ([`regex_pattern`]).
+/// `regex` is the regex mode's compiled pattern ([`regex_pattern`]); its search may run out of
+/// work (`#ERROR!`).
 fn linear_search(
     lookup_value: &CalcResult,
     values: &SearchVector,
     search_mode: &SearchMode,
     match_mode: &MatchMode,
-    regex: Option<&Regex>,
-) -> Option<usize> {
+    regex: Option<&mut LookupPattern>,
+    cell: CellReferenceIndex,
+) -> Result<Option<usize>, CalcResult> {
     let candidates = values.linear_candidates(*search_mode == SearchMode::StartAtFirstItem);
     let mode = match match_mode {
         MatchMode::ExactMatch => XmatchMode::Exact,
         MatchMode::ExactMatchSmaller => XmatchMode::ExactMatchSmaller,
         MatchMode::ExactMatchLarger => XmatchMode::ExactMatchLarger,
         MatchMode::WildcardMatch => XmatchMode::Wildcard,
-        MatchMode::RegexMatch => return regex_scan(regex, candidates, |index| values.get(index)),
+        MatchMode::RegexMatch => {
+            return regex_scan(regex, candidates, |index| values.get(index), cell)
+        }
     };
-    linear_scan(lookup_value, candidates, |index| values.get(index), mode)
+    Ok(linear_scan(
+        lookup_value,
+        candidates,
+        |index| values.get(index),
+        mode,
+    ))
 }
 
 /// Where a binary-search XLOOKUP lands in `values`.
@@ -361,18 +371,22 @@ impl Model {
         let found = match search_mode {
             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
                 // An invalid pattern is #VALUE!, never if_not_found (t2669-xlookup-regex-mode D17).
-                let regex =
+                let mut regex =
                     match regex_pattern(lookup_value, match_mode == MatchMode::RegexMatch, cell) {
                         Ok(regex) => regex,
                         Err(error) => return error,
                     };
-                linear_search(
+                match linear_search(
                     lookup_value,
                     &table.values,
                     &search_mode,
                     &match_mode,
-                    regex.as_ref(),
-                )
+                    regex.as_mut(),
+                    cell,
+                ) {
+                    Ok(found) => found,
+                    Err(error) => return error,
+                }
             }
             SearchMode::BinarySearchAscending | SearchMode::BinarySearchDescending => {
                 match binary_hit(lookup_value, &table.values, &search_mode, &match_mode) {

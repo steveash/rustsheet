@@ -1117,13 +1117,17 @@ Rule (excel-graph, 2026-10-25): `match_mode` 3 is a regular-expression match in 
 - **Search direction:** search_mode -1 finds the last match.
 - **Lifting:** a lifted lookup_value lifts one search per element (`XLOOKUP({"o";"zzz";"^c"},...,"nf",3)` spills 20, "nf",
   10).
-- **Syntax:** the pattern syntax is PCRE2's, as in the REGEX* functions. Lookbehind `(?<=D)og` and a backreference
-  `(d)\1` match in Excel. Ours compiles with the `regex` crate, which refuses both with `#VALUE!` (T-2680).
+- **Syntax:** the pattern syntax is PCRE2's, as in the REGEX* functions. In Excel, lookbehind `(?<=D)og` and `(?<!D)og`,
+  lookahead `o(?=g)` and `d(?!o)`, backreferences `(a)\1\1`, `foo\Kbar`, possessive `a++a` and atomic `(?>a+)a`
+  (both no match on "aaa"), `(?i)`, `\d{2}$`, `[[:digit:]]` and `\p{Lu}` all behave as in REGEXTEST
+  (probes/t2680-lookup-regex-pcre2). Ours runs the lookups on the REGEX* engine (`LookupPattern`) since T-2680; before
+  that, the `regex` crate refused the PCRE2-only forms with `#VALUE!`.
 Evidence: probes/t2669-xlookup-regex-mode (60 cells: XLOOKUP in D beside XMATCH in E), -blanks (14 cells) and -lift (12
-cells: lifting, a blank-cell pattern, PCRE2 syntax); the regex
+cells: lifting, a blank-cell pattern, PCRE2 syntax) and probes/t2680-lookup-regex-pcre2 (45 cells); the regex
 cells of probes/t2656-xmatch-mode-near-integer G7, G21, -rounding G15, t2656-xlookup-mode-snap-edge C8.
-Status: VERIFIED (excel-graph). Ours matches every cell but the two PCRE2-only patterns (-lift G1, G2; T-2680). Before
-T-2669, XLOOKUP rejected mode 3, XMATCH read a boolean as "true", and a non-text lookup value gave no pattern.
+Status: VERIFIED (excel-graph). Ours matches every cell. Before T-2669, XLOOKUP rejected mode 3, XMATCH read a boolean as
+"true", and a non-text lookup value gave no pattern; before T-2680, PCRE2-only syntax was `#VALUE!`.
 Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `regex_scan`, used by XMATCH's
-`linear_search` and XLOOKUP's (xlookup.rs).
+`linear_search` and XLOOKUP's (xlookup.rs). They match on functions/text/regex_functions.rs `LookupPattern`: one REGEX*
+`PatternCache` per search, so a lookup has the same compile and work budget as one REGEX* call (SPEC-0013).
 Tasks: T-2669, T-2680
