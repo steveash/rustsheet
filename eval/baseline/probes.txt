@@ -71,6 +71,7 @@ C	probes/base-number-upper-bound.case.json	50
 C	probes/bessel-asymptotic.case.json	50
 C	probes/bessel-large-x.case.json	24
 C	probes/bond-argument-check-order.case.json	298
+C	probes/bond-huge-yield-overflow.case.json	78
 C	probes/bond-one-period-bases.case.json	80
 C	probes/byrow-bycol-array-results.case.json	32
 C	probes/callee-unparenthesized-lower-row-over.case.json	2
@@ -1158,6 +1159,8 @@ C	probes/t2581-textsplit-textbefore.case.json	50
 C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
 C	probes/t2625-nested-consumers.case.json	32
+C	probes/t2653-ifs-text-condition-array-value.case.json	30
+C	probes/t2653-ifs-text-condition-shape-sources.case.json	21
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
@@ -2760,15 +2763,6 @@ F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U286
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U301
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U316
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U91
-F	probes/t2436/b4173fe25109a238.case.json	Calc!A16
-F	probes/t2436/b4173fe25109a238.case.json	Calc!A31
-F	probes/t2436/b4173fe25109a238.case.json	Calc!A46
-F	probes/t2436/b4173fe25109a238.case.json	Calc!T16
-F	probes/t2436/b4173fe25109a238.case.json	Calc!T31
-F	probes/t2436/b4173fe25109a238.case.json	Calc!T46
-F	probes/t2436/b4173fe25109a238.case.json	Calc!U16
-F	probes/t2436/b4173fe25109a238.case.json	Calc!U31
-F	probes/t2436/b4173fe25109a238.case.json	Calc!U46
 F	probes/t2436/bcb24385baafb2f0.case.json	Calc!A46
 F	probes/t2436/bcb24385baafb2f0.case.json	Calc!T46
 F	probes/t2436/bcb24385baafb2f0.case.json	Calc!U46
@@ -2796,9 +2790,6 @@ F	probes/t2436/c468f5046aadfbbc.case.json	Calc!U151
 F	probes/t2436/c468f5046aadfbbc.case.json	Calc!U16
 F	probes/t2436/c468f5046aadfbbc.case.json	Calc!U166
 F	probes/t2436/c468f5046aadfbbc.case.json	Calc!U76
-F	probes/t2436/c6cfda6bd10cae93.case.json	Calc!A1
-F	probes/t2436/c6cfda6bd10cae93.case.json	Calc!T1
-F	probes/t2436/c6cfda6bd10cae93.case.json	Calc!U1
 F	probes/t2436/computed-scalar.case.json	Calc!A17
 F	probes/t2436/computed-scalar.case.json	Calc!A20
 F	probes/t2436/computed-scalar.case.json	Calc!A24
