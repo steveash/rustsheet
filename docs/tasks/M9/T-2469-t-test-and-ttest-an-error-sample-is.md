@@ -3,7 +3,7 @@ id: T-2469
 title: "T.TEST and TTEST: an error sample is that error before tails and type, whose errors come before their range check (gen-m9, 64 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -107,3 +107,9 @@ criterion under Acceptance criteria states it.
 ## Also owns (from T-2426)
 Blank one-cell reference cells that need this function's argument order, left failing by T-2426 (which made the blank
 `#VALUE!` in the shared readers): 583ca2baea0bb30a A389, c2684066d8df263e A90, 0620505280d2ea6e A139, 91e167cd8d7eb652 A24, d8f44d556674c2fd A329.
+
+## Outcome
+`t_test_element` now answers array1's error value, an error tails, array2's error value, an error type, then the tails/type range
+check; a typed text sample is a sample with no number. Eval delta: gen-m9 known failures 4380 -> 4310 (70 fixed, 0 regressions, no
+other baseline changes). Two owned cells stay: a5342a7e24fd803e A15 (the unexplained `#NUM!`) and c2684066d8df263e A214 (a PIVOTBY
+sample, numeric mismatch), both still in eval/baseline/gen-m9.txt; they are filed in the follow-up T-2722.

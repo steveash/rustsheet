@@ -3586,7 +3586,11 @@ A32), and only then the tails/type range check (`#NUM!`). A typed empty text as 
 an error inside a range still loses to a bad tails/type (T-1813). Unexplained: `TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`
 is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve is `#DIV/0!` in ours: UNVERIFIED.
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2469.
-Ours: tails and type are checked first (`#NUM!`) and a typed text sample is `#VALUE!`; T-2469.
+Order (all 70 fixed gen-m9 cells agree, T-2469): array1's error value, then an error tails, then array2's error value, then
+an error type, then the tails/type range check (`TTEST(..,TBILLEQ(..)<#NUM!>,-47872,<#VALUE! type>)` is `#NUM!`, 9735c5ab72fa5ecf A336;
+`TTEST(..,VLOOKUP(..)<#NUM!>,HYPGEOM.DIST(..)<#VALUE!>,..)` is `#VALUE!`, 7f7ca726c3f68554 A308).
+Ours: implemented in `t_test_element` in that order; a typed text sample is a sample with no number; T-2469. `TTEST(CELL("col",..),..)`
+(A15) and c2684066d8df263e A214 (a PIVOTBY sample, numeric) stay unexplained.
 Status: VERIFIED (excel-graph) except the noted cell
 
 ## Z.TEST: an error array first; one data value is #DIV/0!; a lone non-number cell is #N/A (T-2256)
