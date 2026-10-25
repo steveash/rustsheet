@@ -24,7 +24,7 @@ whose target is an `.xla` add-in (xl/externalLinks/_rels/externalLink1.xml.rels)
   value is "#Missing" (text), ours `#NAME?`. The link target is `/Oracle/SmartView/bin/HsTbar.xla`, the
   Oracle Smart View add-in.
 - `poi/56502.xlsx` Tabelle1!A4 `=[1]!LUCANET(...)` (one text argument): Excel's cached value is "pls. update", ours
-  `#NAME?`. The link target is `/Users/fba.LNAG/LucaNet/Excel-Add-In/lucanet.xla`.
+  `#NAME?`. The link target is `.../LucaNet/Excel-Add-In/lucanet.xla`.
 No engine can compute these values: they come from the add-in's code. They count against the poi suite
 and hide real misses, as the `_xll.` cells of calipers pv26_003 do (T-0462).
 
