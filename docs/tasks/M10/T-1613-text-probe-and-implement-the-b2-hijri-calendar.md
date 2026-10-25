@@ -3,7 +3,7 @@ id: T-1613
 title: "TEXT: probe and implement the B2 (Hijri) calendar prefix with date tokens"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
