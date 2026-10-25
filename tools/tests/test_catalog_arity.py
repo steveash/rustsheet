@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -35,3 +36,21 @@ SIGNATURES = {f["name"]: f for f in yaml.safe_load(CATALOG.read_text())["functio
 def test_catalog_requires_at_least_excels_minimum(name: str) -> None:
     assert name in EXCEL_MIN_ARGS, f"{name} is not in eval/catalog/excel-functions.tsv"
     assert _required(SIGNATURES[name]) == EXCEL_MIN_ARGS[name]
+
+
+LIFT_KINDS = CATALOG.with_name("lift-kinds.json")
+# Typed entry refuses a call below the engine's lifting-table minimum (T-2568), so that minimum
+# must never be above Excel's. ACCRINTM's `par` is optional in the engine, required on
+# Microsoft's syntax line: the engine is the more permissive, so it never refuses what Excel takes.
+LIFT_MIN_BELOW_EXCEL = {"ACCRINTM": 3}
+
+
+def test_lifting_table_minimums_match_excel() -> None:
+    table = json.loads(LIFT_KINDS.read_text())
+    mismatched = {
+        e["name"]: e["required"]
+        for e in table
+        if e["name"] in EXCEL_MIN_ARGS and e["required"] != EXCEL_MIN_ARGS[e["name"]]
+    }
+    assert mismatched == LIFT_MIN_BELOW_EXCEL
+    assert all(EXCEL_MIN_ARGS[name] > count for name, count in mismatched.items())
