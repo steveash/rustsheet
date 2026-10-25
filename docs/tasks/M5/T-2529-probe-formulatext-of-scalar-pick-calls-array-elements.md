@@ -3,7 +3,7 @@ id: T-2529
 title: "Probe FORMULATEXT of scalar pick calls, array elements that are errors, array INDIRECT and XLOOKUP/TAKE/DROP/LET/SWITCH/IFS results"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2526 left these at the engine's `#ERROR!` with no evidence: `IF(TRUE,5,A1)` an
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/formulatext-pick-scalars-and-arrays (49 cells, excel-graph 2026-10-25) and recorded the findings in docs/excel-semantics/references.md. The engine passes 7 of 49; the 42 new known failures are baselined. Implementation filed as T-2726.
