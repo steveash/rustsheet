@@ -3,7 +3,7 @@ id: T-2549
 title: "BESSELK near x = 700: Excel's BESSELK(700,3) is 4.69979514014056E-306, ours 4.6998714E-306 (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
