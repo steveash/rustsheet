@@ -226,6 +226,11 @@ pub(crate) const MAX_DEPRECIATION_PERIODS: u32 = 100_000;
 /// (probes/fin-syd-db-domain A6:A7, C7:C8).
 const DB_INTEGER_MAX: f64 = 2_147_483_647.0;
 
+/// The smallest DB life whose last year, life+1, is period 0: `u32::MAX`, as if Excel held the
+/// life in an unsigned 32-bit integer that saturates and life+1 wrapped (probes/fin-syd-db-domain
+/// H3:H8, L1:L6; 4294967294 and 4E9 are `#NUM!`).
+const DB_WRAPPED_LIFE: f64 = 4_294_967_295.0;
+
 /// Whether `period` is past [`MAX_DEPRECIATION_PERIODS`].
 fn past_period_cap(period: f64) -> bool {
     period.trunc() > f64::from(MAX_DEPRECIATION_PERIODS)
@@ -237,8 +242,7 @@ fn past_period_cap(period: f64) -> bool {
 // last period charges `balance * (rate * (12 - month) / 12)`. `DB(100,10,4,1,2)` is
 // 7.299999999999999 and `DB(23,10,4,5,2)` 1.8687313963962309 (ironcalc-calc DB_DDB.xlsx G20, G42).
 fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) -> f64 {
-    // The depreciation rate, rounded to three decimal places.
-    let rate = ((1.0 - (salvage / cost).powf(1.0 / life)) * 1000.0).round() / 1000.0;
+    let rate = db_rate(cost, salvage, life);
     let int_period = period.trunc() as i64;
     let int_life = life.trunc() as i64;
 
@@ -259,6 +263,19 @@ fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) 
     } else {
         balance * rate
     }
+}
+
+/// DB's depreciation rate, rounded to three decimal places.
+fn db_rate(cost: f64, salvage: f64, life: f64) -> f64 {
+    ((1.0 - (salvage / cost).powf(1.0 / life)) * 1000.0).round() / 1000.0
+}
+
+/// DB's partial last year straight after the first: what a period below 1 is when `life` is at
+/// least [`DB_WRAPPED_LIFE`] and `month` is not 12 (`DB(100,0,4294967296,0.5,8)` is
+/// 11.111111111111114, `DB(100,0,1E+10,0.5,6)` 25; probes/fin-syd-db-domain L7, L8).
+fn db_wrapped_last_year(cost: f64, salvage: f64, life: f64, month: f64) -> f64 {
+    let rate = db_rate(cost, salvage, life);
+    (cost - cost * rate * (month / 12.0)) * (rate * (12.0 - month) / 12.0)
 }
 
 // `ddb`: double-declining-balance depreciation for a single `period`
@@ -366,13 +383,16 @@ impl Model {
                     .cast_number_no_bools_or(rest.first(), 12.0, cell)?
                     .trunc();
                 // Excel reads life and period as 32-bit integers: a period past i32::MAX is period 1
-                // (`DB(100,10,4,2147483648)` is 43.8), and a life past it is #NUM! from period 1 on
-                // (`DB(100,10,2147483648,1)`) but not below it (`DB(18057,894,FACT(13),0.5,8)` is 0,
-                // gen-m9 762cd0e4ec9a7aa9 A200); a negative salvage is #NUM! even at cost 0
-                // (probes/fin-syd-db-domain A7, D8, F1, F4; financial.md "DB and SYD argument domains").
+                // (`DB(100,10,4,2147483648)` is 43.8), and a life past it is #NUM!
+                // (`DB(100,10,2147483648,1)`, `DB(100,10,2147483648,0.5)`) except that from
+                // u32::MAX on, with a month other than 12, a period below 1 is the partial last
+                // year (`DB(18057,894,FACT(13),0.5,8)` is 0, gen-m9 762cd0e4ec9a7aa9 A200); a
+                // negative salvage is #NUM! even at cost 0 (probes/fin-syd-db-domain A7, D8, F1, F4,
+                // G4:G14, H1:L12; financial.md "DB and SYD argument domains").
                 let huge_period = period > DB_INTEGER_MAX;
-                let huge_life = life > DB_INTEGER_MAX && !huge_period && period >= 1.0;
                 let period = if huge_period { 1.0 } else { period };
+                let wrapped_last_year = life >= DB_WRAPPED_LIFE && month != 12.0 && period < 1.0;
+                let huge_life = life > DB_INTEGER_MAX && !huge_period && !wrapped_last_year;
                 if month == 12.0 && period > life
                     // The partial last year is period life+1 by its whole part
                     // (`DB(0.01,488,32,33.5,10)` is period 33's value, probes/fin-syd-db-domain C2).
@@ -388,6 +408,9 @@ impl Model {
                 }
                 if cost == 0.0 {
                     return Ok(0.0);
+                }
+                if wrapped_last_year {
+                    return Ok(db_wrapped_last_year(cost, salvage, life, month));
                 }
                 if past_period_cap(period) {
                     return Err(num_error(cell));

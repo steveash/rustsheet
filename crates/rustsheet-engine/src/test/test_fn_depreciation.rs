@@ -226,11 +226,18 @@ fn fn_syd_db_argument_domains() {
     model._set("B2", "=SYD(100,10,1.4E+154,1)");
     model._set("B3", "=SYD(100,10,1.3E+154,1)");
     model._set("B4", "=SYD(1E+300,-1E+300,10,1)");
-    // DB: a life past i32::MAX is #NUM! from period 1 on, not below it.
+    // DB: a life past i32::MAX is #NUM!, but for a period below 1 only up to u32::MAX - 1.
     model._set("C1", "=DB(6912,0,1E+300,2,6)");
     model._set("C2", "=DB(67486,100,1E15+2,6,8)");
     model._set("C3", "=DB(100,10,2147483648,1)");
     model._set("C4", "=DB(18057,894,FACT(13),0.5,8)");
+    model._set("C5", "=DB(100,10,2147483648,0.5)");
+    model._set("C6", "=DB(100,10,4294967294,0.5,8)");
+    model._set("C7", "=DB(100,10,4294967295,0.5,12)");
+    model._set("C8", "=DB(100,10,4294967296,1,8)");
+    // From u32::MAX on, with a month other than 12, a period below 1 is the last year.
+    model._set("C9", "=DB(100,0,4294967296,0.5,8)");
+    model._set("C10", "=DB(100,0,1E10,0.5,6)");
     // DB: a period past i32::MAX is period 1's value whatever the life.
     model._set("D1", "=DB(100,10,4,2147483648)");
     model._set("D2", "=DB(100,10,4,1E+200)");
@@ -239,7 +246,9 @@ fn fn_syd_db_argument_domains() {
     model.evaluate();
     let value = |c: &str| model.get_cell_value_by_ref(&format!("Sheet1!{c}")).unwrap();
 
-    for c in ["A1", "A2", "A3", "A4", "B4", "C1", "C2", "C3", "D4"] {
+    for c in [
+        "A1", "A2", "A3", "A4", "B4", "C1", "C2", "C3", "C5", "C6", "C7", "C8", "D4",
+    ] {
         assert_eq!(model._get_text(c), "#NUM!", "{c}");
     }
     assert_eq!(model._get_text("B1"), "#DIV/0!");
@@ -247,6 +256,8 @@ fn fn_syd_db_argument_domains() {
     assert_eq!(value("A5"), CellValue::Number(0.0));
     assert_eq!(value("B3"), CellValue::Number(1.384_615_384_615_384_8e-152));
     assert_eq!(value("C4"), CellValue::Number(0.0));
+    assert_eq!(value("C9"), CellValue::Number(11.111_111_111_111_114));
+    assert_eq!(value("C10"), CellValue::Number(25.0));
     assert_eq!(value("D1"), CellValue::Number(43.8));
     assert_eq!(value("D2"), CellValue::Number(43.8));
     assert_eq!(value("D3"), CellValue::Number(-0.003_341_666_666_666_667_3));

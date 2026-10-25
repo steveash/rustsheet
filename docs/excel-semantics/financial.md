@@ -196,15 +196,21 @@ Rule: SYD with a negative salvage is `#NUM!` (`SYD(100,-1E-300,10,1)`; salvage 0
 double range is `#DIV/0!` (`SYD(100,10,1.3E+154,1)` 1.3846153846153848E-152, `SYD(100,10,1.4E+154,1)` and
 `SYD(1E+300,1,1E+200,1)` `#DIV/0!`); an overflowing numerator is `#NUM!` (`SYD(1E+300,-1E+300,10,1)`, by its salvage). DB
 reads life and period as 32-bit integers: a life above 2147483647 is `#NUM!` (`DB(100,10,2147483648,1)`,
-`DB(6912,0,2147483648,2,6)`; 2147483647 is a value) from period 1 on, but a period below 1 still has its value
-(`DB(18057,894,FACT(13),0.5,8)` is 0, gen-m9 762cd0e4ec9a7aa9 A200); a period above 2147483647 is period 1's value whatever
-the life (`DB(100,10,4,2147483648)` and `DB(100,10,4,1E+200)` are 43.8, `DB(0.01,488,32,1E+200,10)` -0.0033416666666666673)
+`DB(6912,0,2147483648,2,6)`, `DB(100,10,2147483648,0.5)`; 2147483647 is a value), with one odd exception: from a life of
+4294967295 (u32::MAX) on, with a month other than 12, a period in (0, 1) is the partial last year straight after the first,
+`(cost - cost*rate*month/12) * (rate*(12-month)/12)` (`DB(100,0,4294967296,0.5,8)` 11.111111111111114,
+`DB(100,0,1E+10,0.5,6)` 25, `DB(18057,894,FACT(13),0.5,8)` 0, gen-m9 762cd0e4ec9a7aa9 A200), as if the life saturated in an
+unsigned 32-bit integer and life+1 wrapped to period 0. 4294967294 and 4E+9 are still `#NUM!` there, a month of 12 is
+`#NUM!` (`DB(100,10,4294967296,0.5,12)`), and period 1 is `#NUM!` (`DB(100,10,4294967296,1,8)`); a 64-bit-to-32-bit wrap of
+the life is ruled out (`DB(100,10,6442450944,0.5,8)` is 0). A period above 2147483647 is period 1's value whatever the life
+(`DB(100,10,4,2147483648)` and `DB(100,10,4,1E+200)` are 43.8, `DB(0.01,488,32,1E+200,10)` -0.0033416666666666673,
+`DB(1,0,1E15,1E15)` 1)
 while 2147483647 is past life+1 and `#NUM!`; the life+1 bound is on the period's whole part (`DB(0.01,488,32,33.5,10)` is
 period 33's value). A negative salvage is `#NUM!` for DB too, even at cost 0 (`DB(0,-1,4,1)`, `DB(100,-0.0001,4,1)`), while
 `DB(0,0,4,1)` is 0. So a huge period needs no schedule walk and is not under "DB and VDB period cap".
 Evidence: probes/fin-syd-db-domain (excel-graph, 2026-10-25, T-2491); gen-m9 cells of T-2491.
 Status: VERIFIED (excel-graph)
-Implemented in: `fn_db`, `fn_syd`, `DB_INTEGER_MAX` (crates/rustsheet-engine/src/functions/financial/financial_depreciation.rs, T-2491).
+Implemented in: `fn_db`, `fn_syd`, `DB_INTEGER_MAX`, `DB_WRAPPED_LIFE`, `db_wrapped_last_year` (crates/rustsheet-engine/src/functions/financial/financial_depreciation.rs, T-2491).
 Tasks: T-2491
 
 ## ISPMT's operation order
