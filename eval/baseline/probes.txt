@@ -1015,6 +1015,7 @@ C	probes/subnormal-sumsq-sumproduct-edges.case.json	24
 C	probes/subnormal-text-and-tail-companions.case.json	30
 C	probes/substitute-instance-num-bound.case.json	68
 C	probes/substitute-overlapping-instances.case.json	24
+C	probes/subtotal-106-no-numbers.case.json	16
 C	probes/subtotal-array-function-num.case.json	17
 C	probes/subtotal-hidden-filtered.case.json	150
 C	probes/subtotal-if-choose-over-xlookup-b.case.json	14
@@ -1053,6 +1054,7 @@ C	probes/t1626-regextest.case.json	31
 C	probes/t1626-replaceb.case.json	27
 C	probes/t1626-rightb.case.json	29
 C	probes/t1626-searchb.case.json	26
+C	probes/t1738-question-first-decimal.case.json	10
 C	probes/t2127-trimrange-blank-shapes.case.json	63
 C	probes/t2189-ifs-omitted-concat.case.json	1
 C	probes/t2189-ifs-omitted-isblank.case.json	1
@@ -1232,6 +1234,17 @@ C	probes/t2693-subnormal-loginv.case.json	2
 C	probes/t2693-subnormal-weibull.case.json	2
 C	probes/t2705-scientific-mantissa-rounding.case.json	14
 C	probes/t2706-subnormal-density-paths.case.json	70
+C	probes/t2709-typed-concat-253.case.json	2
+C	probes/t2709-typed-concat-254-long.case.json	2
+C	probes/t2709-typed-concat-254-short.case.json	2
+C	probes/t2709-typed-concat-254.case.json	2
+C	probes/t2709-typed-literal-255.case.json	2
+C	probes/t2709-typed-literal-256.case.json	2
+C	probes/t2709-typed-max-255.case.json	2
+C	probes/t2709-typed-sum-255.case.json	2
+C	probes/t2709-typed-sum-8192-chars.case.json	2
+C	probes/t2709-typed-textjoin-254-short.case.json	2
+C	probes/t2709-typed-textjoin-254.case.json	2
 C	probes/t2714-mod-near-smallest-normal-b.case.json	700
 C	probes/t2714-mod-near-smallest-normal-c.case.json	660
 C	probes/t2714-mod-near-smallest-normal.case.json	1331
