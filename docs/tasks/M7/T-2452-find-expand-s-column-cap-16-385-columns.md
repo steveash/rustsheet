@@ -3,7 +3,7 @@ id: T-2452
 title: "Find EXPAND's column cap: 16,385 columns are built, 123,456,789 are #NUM! (probe sizes Excel refuses without building)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -22,12 +22,21 @@ so they were dropped), so probe only sizes expected to be refused, a few per cas
 123,456,789 (e.g. 2^24, 2^22, 2^20+1 in one row), or ask desktop Excel (M14).
 
 ## Acceptance criteria
-- [ ] MAKEARRAY's column cap is probed the same way: 16,385 columns are built, `MAKEARRAY(3,1E15,..)` is `#VALUE!`
+- [x] MAKEARRAY's column cap is probed the same way: 16,385 columns are built, `MAKEARRAY(3,1E15,..)` is `#VALUE!`
   (gen-m7/b2078b5d702c691a A2553), and ours is `#VALUE!` from 2^20 cells, unverified (arrays.md "MAKEARRAY rows and columns must
   be whole numbers").
-- [ ] The cap is evidenced to one column (or to the bound below which ours is `#ERROR!` anyway); `COLUMNS_REFUSED` matches it and
+- [x] The cap is evidenced to one column (or to the bound below which ours is `#ERROR!` anyway); `COLUMNS_REFUSED` matches it and
   arrays.md "Stacked results past the grid" states it.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+EXPAND's column cap is 1,048,576 (2^20): one-cell-per-workbook probes (probes/t2452-expand-cols-<n>, excel-graph, 2026-10-25)
+build 16386..1048576 columns and refuse 1048577, 2^21, 2^22, 2^24 and 2^26 with `#NUM!`; it counts columns, not cells
+(`EXPAND(1,2,524289)` and `EXPAND(1,1048576,2)` are built). `COLUMNS_REFUSED` is now 1,048,577. MAKEARRAY has no cap there
+(`COLUMNS(MAKEARRAY(1,1048577,..))` is 1048577; 123,456,789 never opened in excel-graph), so `check_built_array_size` takes the
+columns threshold: SEQUENCE keeps one past the grid, MAKEARRAY uses 2^31, and MAKEARRAY's built shapes above the cell bound are
+`#ERROR!`. The four cells above our cell bound are accepted deviations (decision 0113). Eval: probes +18 one-cell cases, 14 bit-exact and
+4 deviations, 0 regressions; other suites unchanged.

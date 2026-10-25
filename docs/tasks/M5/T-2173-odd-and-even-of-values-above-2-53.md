@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: [T-2172]
+campaign: visible
 ---
 
 ## Goal
@@ -36,8 +37,17 @@ Excel's EVEN differs there too (the T-2172 sweep's EVEN points tell).
 |---|---|---|---|
 | gen-m5/d88d12a62b726a0a Calc!A232 | `=ODD(EVEN(9999999999999999))` | 9999999999999992.0 | 9999999999999988.0 |
 
+gen-m5 round-3 triage (T-2648, excel-graph oracle, 2026-10-25): one more ODD cell, and this one is visibly off. With Excel's
+ODD of 9999999999999992, AVERAGE gives 4999999999999996, whose 15-digit cut is 5E+15, so CEILING.PRECISE is 5E+15; ours
+averages our 9999999999999988 to 4999999999999994, which cuts to 4999999999999990. Our CEILING.PRECISE of 4999999999999996 is
+already 5E+15, so the ODD is the innermost divergence.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m5/36133d9266f8ed26 Calc!A144 | `=CEILING.PRECISE(AVERAGE(Data!E8,ODD(9999999999999999)))` (E8 = 1) | 5000000000000000.0 | 4999999999999990.0 |
+
 ## Acceptance criteria
-- [ ] These 4 known-failure lines (3 from T-2114, 1 from T-2252) disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [ ] These 5 known-failure lines (3 from T-2114, 1 from T-2252, 1 from T-2648) disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] Every ODD/EVEN cell of the T-2172 sweep passes, or the remaining ones are listed residuals in numbers.md.
 - [ ] `make check` green; reviewers approve.
 

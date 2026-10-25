@@ -138,6 +138,13 @@ Examples:
 Cells:
 - gen-m9/b5aef3645cec1b95.case.json (1): Calc!A72
 
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 2 gen-m9 financial cells moved here from T-2496.
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/b6a02893a8d6b151 Calc!A245 | `FREQUENCY(2.5,Data!E10:E11)` (bins TRUE, FALSE: no number); ODDFYIELD lifts over it | 2x1 {0;1} (cell #SPILL!) | 1x1 {1} (cell #NUM!) |
+| gen-m9/d0854366830dcdee Calc!A183 | `FREQUENCY(0.1,Data!A11:A11)` (bin "Hello World"); CUMIPMT lifts over it | 2x1 {0;1} (cell #SPILL!) | 1x1 {1} (cell #VALUE!) |
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -147,6 +154,7 @@ Cells:
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `ROWS(FREQUENCY({1;2;3},2))` is 2, `FREQUENCY(NA(),{1;2})` is `#N/A`, an error bins is its error.
 - [ ] statistics.md's entry gets an "Ours:" line naming this task.
+- [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -10,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::{check_built_array_size, check_range_size},
+    limits::{check_built_array_size, check_range_size, SIZE_LIMIT_EXCLUSIVE},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -442,8 +442,10 @@ impl Model {
 
         // Rows and columns past the grid are built: `COLUMNS(MAKEARRAY(1,16385,..))` is 16385
         // (probes/expand-makearray-past-grid D1), `ROWS(MAKEARRAY(1048577,1,..))` 1048577
-        // (probes/t2579-array-value-edges B23, above our cell bound).
-        if let Some((error, message)) = check_built_array_size(rows, cols) {
+        // (probes/t2579-array-value-edges B23, above our cell bound), and so is
+        // `COLUMNS(MAKEARRAY(1,1048577,..))`, 1048577 (probes/t2452-makearray-cols-1048577): unlike
+        // EXPAND's, MAKEARRAY's columns have no cap below 2^31 that Excel is known to check.
+        if let Some((error, message)) = check_built_array_size(rows, cols, SIZE_LIMIT_EXCLUSIVE) {
             return CalcResult::new_error(error, cell, message);
         }
 
