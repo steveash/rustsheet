@@ -3,7 +3,7 @@ id: T-2545
 title: "Base conversions check places before the number: an invalid places is #NUM! over the number's error or text (gen-m9, 15 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
