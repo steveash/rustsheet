@@ -1321,6 +1321,27 @@ Ours: matches since T-2482 (`bond_args` in financial_bonds.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2482
 
+## PRICE, DURATION and MDURATION at a huge yield or coupon
+Rule: PRICE, DURATION and MDURATION are `#NUM!` when `(1+yld/frequency)^t` overflows a double at the redemption's term
+`t = DSC/E + N - 1`, the longest one, although the overflowing flows would just discount to 0. A sum that overflows (a
+huge coupon) is `#NUM!` too. There is no separate cap on the yield or the coupon.
+- The boundary is the power's overflow: with N = 20 and settlement on a coupon date (t = 20), a yield of 5.12154E+15
+  gives `PRICE` 9.76268856632966E-16 and 5.22501E+15 `#NUM!` (the overflow is at 5.1733E+15); with settlement half a
+  period in (t = 19.5) 1.27233E+16 is a number and 1.29803E+16 `#NUM!`; with N = 40 1.00701E+08 is a number and
+  1.02735E+08 `#NUM!`. A zero coupon has the same boundary. DURATION and MDURATION switch at the same yields.
+- A single remaining coupon (t at most 1) never overflows: `PRICE(47300,47484,0.05,1E+300,100,2,0)` is 2.05E-298,
+  DURATION 0.5, MDURATION 1E-300.
+- At a 5% yield a coupon rate of 1E+300 gives a price of 7.794581142823408E+302 and DURATION 4.841148506210218; 1E+306
+  and 9.99999999999999E+307, whose coupon sums overflow, are `#NUM!` for all three.
+- `1E+308` cannot be typed into Excel (9.99999999999999E+307 is the largest literal): a workbook with it fails to load
+  in Excel for the web (`FileCorruptTryRepair`).
+Evidence: probes/bond-huge-yield-overflow (78 cells, excel-graph, 2026-10-25, T-2488); gen-m9 cells such as
+`PRICE(39050,44044,0.5,123456789.123,110,4,2)` and `MDURATION(38368,44642,1%,1E+300,4,3)`, both `#NUM!`.
+Unprobed: ODDFPRICE and ODDLPRICE at an overflowing yield; YIELD's solver near the boundary (T-2391).
+Ours: matches since T-2488 (`CouponSchedule::discount_overflows` in financial_bonds.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2488
+
 ## ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order
 Rule: the four odd-coupon functions read their arguments in order and check few of them as they read:
 1. The dates (settlement, maturity, then issue and first_coupon, or last_interest): an error or text is returned, and a
@@ -1929,7 +1950,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   -20000000000 (89f0aee953a55a45 A124).
 - YIELD is `#NUM!` at a coupon rate far above the yield (`YIELD(38829,45714,100,0.25,2,4,4)`, 31474c20fc1dafd6 A321), and PRICE,
   DURATION and MDURATION at a huge yield or coupon (`PRICE(39050,44044,0.5,123456789.123,110,4,2)`, 1dce4774f5c0e736 A8;
-  `MDURATION(38368,44642,0.01,1E+300,4,3)`, c0681a8b150ce301 A248); the boundaries are unprobed (T-2488, T-2391).
+  `MDURATION(38368,44642,0.01,1E+300,4,3)`, c0681a8b150ce301 A248). PRICE's, DURATION's and MDURATION's boundary is now
+  probed ("PRICE, DURATION and MDURATION at a huge yield or coupon", T-2488); YIELD's is unprobed (T-2391).
 - FVSCHEDULE with an empty schedule cell returns the principal (`FVSCHEDULE(6527,<empty>)` = 6527, 30e20ba3302fea8b A250).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2257); the cells and the rest of each family are listed in the owning tasks.
 Ours: see each task; the triage (T-2257 Outcome) lists every family.
