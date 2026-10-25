@@ -541,7 +541,11 @@ TEXT() with the same codes. Points the earlier probes did not show:
   under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
   Also `[m]:ss` "1440:00", `d \d\a\y\s h:mm` "1 days 0:00", `dd/mm/yy` "01/01/00" (VERIFIED, gen-m10, T-1732). Implemented in
   `DisplayClock` (formatter/elapsed.rs, rounded to whole seconds): clock fields and the day always
-  round; an elapsed count rounds only when a seconds token is in the section (`[h]`/`[m]` alone keep their truncation; unprobed).
+  round, and so does an elapsed count with or without a seconds token: `[h]` on 0.4 s short of 3 h is "3", `[h]:mm` "3:00",
+  `[m]` "180"; 0.6 s short they are "2", "2:59", "179" (VERIFIED, probes/elapsed-no-seconds-boundary A1-A29, T-2385).
+  In the same probe: `[h]:mm AM/PM` is #VALUE! (A31, T-2683), `[h]:mm.0` on 0.6 s short of 3 h is "2:59.4", the
+  tenths of the seconds after the minutes with no seconds token (A32, T-2684), and `[h]:mm` of a negative is #VALUE!
+  while `[h]` and `[m]` alone show "-2" and "-4" (A24-A26).
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".
 - The text section formats booleans as well as text: `"pre "@` on TRUE is "pre TRUE", `;;;` shows
   nothing, `0.0;[Red]-0.0;0.0;"<"@">"` on an empty string "<>".
