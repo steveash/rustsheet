@@ -1202,6 +1202,11 @@ C	probes/t2693-subnormal-expon-dist.case.json	2
 C	probes/t2693-subnormal-loginv.case.json	2
 C	probes/t2693-subnormal-weibull.case.json	2
 C	probes/t2705-scientific-mantissa-rounding.case.json	14
+C	probes/t2709-typed-concat-253.case.json	2
+C	probes/t2709-typed-concat-254.case.json	2
+C	probes/t2709-typed-max-255.case.json	2
+C	probes/t2709-typed-sum-255.case.json	2
+C	probes/t2709-typed-textjoin-254.case.json	2
 C	probes/t2714-mod-near-smallest-normal-b.case.json	700
 C	probes/t2714-mod-near-smallest-normal-c.case.json	660
 C	probes/t2714-mod-near-smallest-normal.case.json	1331
