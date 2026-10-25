@@ -3,7 +3,7 @@ id: T-2119
 title: "BETA.DIST cdf on incomplete_beta::beta_reg; decide the nine chained BETA.INV cells it moves"
 milestone: M9
 lane: functions-stat
-status: blocked
+status: done
 priority: P1
 size: S
 tier: opus
@@ -58,35 +58,13 @@ H46-H49 1, H67 2: decision 0083's allowance). Four ungated probes-numeric BETA.D
 record the regressions (`--allow-regressions` was refused to it), so it shipped only the F half. T-0974's BETAINV cells
 (gen-m9/589f42e67f4b4b8d A221, c18dbf21f11093f3 A400, eced4bb6a0234c9e A291) belong here.
 
-## Blocked because
-Blocked because: the `--allow-regressions` baseline run was refused by the session's permission policy.
-
-The code is done on branch `agent/functions-stat/T-2119-beta-dist-incomplete-beta` (2026-10-23, opus worker):
-BETA.DIST's cdf is `incomplete_beta::beta_reg_complement`, and BETA.INV refines statrs' estimate to the crossing of that
-cdf (`special::refine_increasing`, upper tail on 1 - p above p = 0.5, as `fisher.rs` `f_quantile`); the unused
-`special::bisect_unit_interval` is gone. `make eval-check` on that code:
-- fixed 26 gated lines: ironcalc-calc 18, probes 5, gen-m9 3 (including gen-m9/35e8168aae2b00f8 A159);
-- visibly off in gated suites: 7,326 (lock 7,703);
-- 9 regressions, all in `ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx`, all numeric and still equal to Excel at 15
-  significant digits: H2 2 ulp, H23 4, H42 1, H44 1, H46 1, H47 1, H48 1, H49 1, H67 2. Decision 0083's standing
-  allowance covers them (conditions 1, 3 and 4; condition 2 for gated cells).
-- Ungated probes-numeric: D85 and D86 of t0969-beta-prefactor and F6 of t0969-t-beta-link now differ from Excel in the
-  15th digit (against a 50-digit reference ours is 1.9E-15, 8.6E-16 and 8.8E-16 relative off, Excel 1.5E-15, 3.3E-15 and
-  1.9E-16, so on D85 and D86 ours is no worse). E56 stays within the 15th digit.
-- `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` is now 0.003013141..., the true quantile, instead of `#NUM!`
-  (Excel: 0.0691959487211844, probes/stat-quantile-lift E9, still a known failure). The unit test and statistics.md say so.
-`make clippy` is clean and `make test` passes on the branch.
-To finish: someone allowed to run it runs `scripts/eval_guard.sh target/release/rustsheet-eval update-baseline
---allow-regressions` then `make eval-baseline`, checks that the baseline diff adds exactly the 9 lines above, lists them in
-the Outcome with a follow-up ulp task, and continues at the review step.
-
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2255): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A decision record allows exactly the chained BETA.INV lines (or they are avoided), and the
+- [x] A decision record allows exactly the chained BETA.INV lines (or they are avoided), and the
       baseline diff adds no other line.
-- [ ] BETA.DIST's cdf is `incomplete_beta`'s; BETA.INV (and F.INV, or a filed task) inverts the same cdf.
-- [ ] `make check` green; reviewers approve.
+- [x] BETA.DIST's cdf is `incomplete_beta`'s; BETA.INV (and F.INV, or a filed task) inverts the same cdf.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - BETADIST_BETAINV G5 and G26 (Cephes' fraction 160 ulp off where Excel is correctly rounded;
@@ -102,3 +80,23 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
 
 The nine chained BETA.INV cells that move from bit-exact to 1-2 ulp are exactly the trade decision 0083 allows: record them under its allowance instead of waiting for a separate decision.
+
+## Outcome
+BETA.DIST and BETADIST's cdf is `incomplete_beta::beta_reg_complement`. BETA.INV refines statrs' estimate to the
+crossing of that cdf (`special::refine_increasing`, the upper tail on 1 - p above p = 0.5, as `fisher.rs` `f_quantile`
+does). The unused `special::bisect_unit_interval` is gone. F.INV and F.INV.RT already invert F.DIST's own tails (T-0974).
+
+Eval (merged with main at 8c586da, 2026-10-25): fixed 27 gated lines (ironcalc-calc 19, probes 5, gen-m9 3, including
+gen-m9/35e8168aae2b00f8 A159, the one visible-parity cell). In-scope cells visibly off: 5,999 (lock 8,632).
+The baseline was recorded with `update-baseline --allow-regressions` under decision 0083's standing allowance, with the
+owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. It adds exactly these 9 lines,
+all numeric, all in `ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx` `Sheet1`, none visibly off (Excel vs ours):
+- H2: 3.0 vs 3.000000000000001 (2 ulp)
+- H23: -0.23399999999999987 vs -0.23399999999999999 (4 ulp)
+- H42, H44, H46, H47, H48, H49: 0.23399999999999999 vs 0.234 (1 ulp each)
+- H67: 3.0 vs 2.999999999999999 (2 ulp)
+
+Follow-up for the nine cells: T-2633. Ungated probes-numeric cells t0969-beta-prefactor D85 and D86 and t0969-t-beta-link
+F6 now differ from Excel in the 15th digit. Against a 50-digit reference, ours is no further off than Excel on D85
+and D86. `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` is now the true quantile 0.003013141... instead of
+`#NUM!` (Excel 0.0691959487211844, probes/stat-quantile-lift E9, still a known failure).
