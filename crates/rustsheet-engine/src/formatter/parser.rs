@@ -801,8 +801,11 @@ impl Parser {
                 color,
                 condition,
                 use_thousands,
-                percent,
-                comma,
+                // A scientific code never scales: its `%` is shown as written and a trailing `,` is
+                // dropped (`0.00E+00%` on 2.675 is "2.68E+00%", `0.00%E+00` "2.68%E+00", `0.00E+00,` on
+                // 2675 "2.68E+03"; probes/t2720-scientific-percent, excel-graph 2026-10-25, T-2720).
+                percent: if is_scientific { 0 } else { percent },
+                comma: if is_scientific { 0 } else { comma },
                 tokens,
                 digit_count,
                 precision,
