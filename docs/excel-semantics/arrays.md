@@ -388,7 +388,20 @@ exactly 0, not 2.22E-16. The inverse is the MDETERM elimination above (multiplie
 with L and back substitution with U per identity column (subtract then divide by the pivot): in IEEE doubles that reproduces
 all nine 3x3 residual entries bit for bit (T-2362). Dividing each U entry by the pivot before subtracting, or multiplying by
 the pivot's reciprocal, misses some of them.
-Unprobed: an inverse element past the double range (`MINVERSE(1E-300*1E-10)`) is `#NUM!` for the whole result, as for MDETERM.
+An inverse element past the double range makes the whole result `#NUM!`, not just that element: `MINVERSE({1E-200,1;0,1E-200})`
+(back substitution overflows to -1E+400 in the corner) is `#NUM!` in every cell: `INDEX(...,1,1)` and `INDEX(...,2,2)`, which are finite on their own, are `#NUM!` too; the
+non-overflowing `MINVERSE({1E-200,0;0,1E-200})` is {1E+200,0;0,1E+200}, although both matrices have the same underflowing determinant
+(1E-400), so it is the overflowing inverse element, not determinant underflow, that gives `#NUM!`. Evidence: probes/minverse-overflow-computed-pivot Calc!I2:I8
+(excel-graph, 2026-10-24, T-2386).
+A 1x1 inverse past the double range is `#NUM!` too: A3 = `=3E-308-2.5E-308` is a kept subnormal (about 5E-309; `(3E-308-2.5E-308)=0` is FALSE,
+numbers.md "Subnormal results become 0"), `MDETERM(A3)` keeps it (`(MDETERM(A3))=0` is FALSE) and `MINVERSE(A3)` / `MINVERSE(3E-308-2.5E-308)`
+are `#NUM!`, consistent with its inverse (about 2E+308) overflowing; a kept subnormal with a finite inverse (just below 2.2E-308) was not probed (Calc!P1:P4, A3:A4; graph reports the subnormal cells as 0, decision 0042).
+`MINVERSE(A1)` with A1 = `=1E-300*1E-10` is `#NUM!` for a different reason: `*` flushes 1E-310 to a true 0 (Calc!A5 `A1=0` is TRUE;
+numbers.md "Subnormal results become 0"), so the 1x1 matrix is exactly singular (Calc!I1).
+A near-singular pivot computed from cells is inverted: B1:C2 = 1, 1, 1, `=1+2^-52` (the cell holds 1+2^-52 exactly, unlike the
+literal) gives `MDETERM` 2.220446049250313E-16 and `MINVERSE` {4503599627370497,-4503599627370496;-4503599627370496,4503599627370496}
+(Calc!I4, J1:J4). That is consistent with the 15-digit literal explanation above for `{1,1;1,1.0000000000000002}` (the cell-held value is invertible, the literal is not; the literal's stored value was not probed separately). The 3x3
+`{1,2,3;4,5,6;7,8,9}` read from cells (E1:G3) gives the same residual inverse as the array literal (Calc!K1:K9, spill L1:N3).
 MINVERSE inverts a 1x1 pivot far below 2.2E-16: `MINVERSE(1.0000000000000085E-108)` is 9.999999999999914E+107 (before T-2362 ours was `#NUM!`),
 gen-m5/9284730052aff46c Calc!A39 (excel-graph, 2026-10-20).
 `MINVERSE((Data!E1+Data!E1)/TRUNC(2^31))` = `MINVERSE(9.313225746154786E-25)` is 1.0737418239999999E+24, the IEEE reciprocal
@@ -850,8 +863,14 @@ SUMPRODUCT 0 (A22), ROWS and COLUMNS the outer shape (A23, A24). A one-cell refe
 (gen-m7/bcad709c30cfdf64 A13, gen-m9/2a18b2f5a4dc43ac A371). Range-only functions (MAXIFS, RANK.EQ, COUNTBLANK, SUBTOTAL,
 AGGREGATE 1-13) cannot take the result. Ours since T-2594: the walker's `NestedReading` (functions/util/aggregate_args.rs):
 SUM, COUNT and COUNTA flatten, charging the walk budget; the AVERAGE family, MIN, MAX, PRODUCT, SUMSQ and the A-variants give
-`#N/A` (VARA and its siblings inferred from VAR.P); AND, OR, XOR, IMSUM and IMPRODUCT keep `#VALUE!` (unprobed). MODE.SNGL, LARGE,
-SMALL, PERCENTILE.INC and SUMPRODUCT read through other collectors and are still `#VALUE!` (T-2625).
+`#N/A`. T-2625 (probes/t2625-nested-consumers, excel-graph, 2026-10-24): VARA, STDEVA, VARPA, STDEVPA, AND, OR and XOR are `#N/A`
+too (A1:A7), IMSUM and IMPRODUCT `#VALUE!` (A8, A9), MODE.MULT, QUARTILE.INC and PERCENTILE.EXC `#N/A` (A10:A12). MODE.SNGL,
+LARGE, SMALL and the PERCENTILE/QUARTILE family read their data outside the walker and give `#N/A` through `nested_array_error`
+(crates/rustsheet-engine/src/nested_array.rs); SUMPRODUCT reads a nested cell as 0. Inferred, unprobed: the `#N/A` beats an
+error element anywhere in the array (ours checks for a nested cell first), and the 0 holds for multi-argument SUMPRODUCT. COUNT over a PIVOTBY with several key and
+value columns (`COUNT(PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)))` 140, A13; gen-m9/e85daedce5c2675e A35's 142)
+differs from ours only in the blank keys, which Excel shows as true blanks in the row keys and in every column-key row
+(A28:A31; ours 0, so COUNT 165): T-2460.
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),
