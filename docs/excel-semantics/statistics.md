@@ -2178,7 +2178,22 @@ t2464-w2f-xruns-*, -absweep; docs/research/t2464/r3-loader-const (`m1_model.py`,
 `a6_struct.py`, `a10_grid.py`), r3-loader-bd0 (`final_score.py`, `phase.py`, `tie44.py`), verify-r3-loader-const
 (`vscore.out`, `vimage.out`), verify-r3-loader-bd0 (`vhold_par.out`, `vhold_ph.out`, `cut_hold.out`); r2-density-large,
 w4-fractions section 5, w6-literature H2.
-Ours: powf × tgamma below a + b = 171.6, statrs above.
+- ln 2π is the correctly rounded double 0x1.d67f1c864beb5p+0 (1.8378770664093456, R's `M_LN_2PI`). One ulp below
+  it, the engine model scores 21,203 / 85,582 / 93,782 of 101,556 probes-numeric cells against 22,049 / 82,646 / 93,642,
+  and hold1 793 against 967 exact: more cells within 4 ulp, fewer bit-exact, a sign of the constant's residual (T-2507).
+- Engine model (T-2507, the rule above with M4's stored bd0, r3-loader-bd0's knobs and E rounded once to 64 bits) on
+  every BETA.DIST(.,FALSE) cell of probes-numeric with literal a, b > 1 (101,556): 22,049 / 82,646 / 93,642, against
+  powf × tgamma's 6,783 / 43,908 / 60,316. Each of r3's knobs helps there: M - k extended 21,941 / 82,016 / 93,238,
+  v extended 21,027 / 80,759 / 92,489, no +δ(2kv) term 21,314 / 81,372 / 92,951, all three (r2's knobs, the
+  verifier's M4) 21,182 / 80,703 / 92,559 (`docs/research/t2507`).
+- The residual is real at small shapes too: `BETA.DIST(3,2,3,FALSE,1,10)` (`BETADIST_BETAINV.xlsx` G3) is Excel's
+  0.17924096936442618, 1 ulp above the correctly rounded 1176/6561; the model's E is exact to 0.1 unit there and gives
+  the correctly rounded value, with the q side in the series and the p side 1 ulp past the 0.2 cut.
+Ours: powf × tgamma below a + b = 171.6, statrs above (on main). The model is implemented on branch
+`claude/hopeful-meitner-5oxf0g-t2507` but not merged: it loses one gated cell (G3 above) and makes 677 probe cells
+visibly off (T-2507 Outcome).
+Implemented in: `excel_beta_density`, `excel_dbinom_exponent`, `excel_bd0`, `stirlerr_exact` in
+crates/rustsheet-engine/src/functions/statistical/loader.rs (branch above, not on main)
 Status: PARTIAL (excel-graph): the structure (extended E, stored k/n/nk, bd0's log form, the 0.2 cut) VERIFIED on
 hold-outs; the constant's residual and the series branch UNVERIFIED
 Tasks: T-2507, T-2585, T-2586

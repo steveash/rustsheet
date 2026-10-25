@@ -3,7 +3,7 @@ id: T-2507
 title: "Beta density for min(a,b) > 1: Loader's saddle point with Excel's bd0 (T-2464 E5)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -56,8 +56,8 @@ BETA.DIST(x,a,b,FALSE) with both shapes > 1 follows Excel's Loader (2000) saddle
 ## Acceptance criteria
 - [ ] On the 32,264 a, b > 1 density cells of r2-density-large's data, the engine is within 15 digits on at least
       31,385 and bit-exact on at least 5,765 (M3 reaches 31,461 and 6,312).
-- [ ] On t2513-r3-loader-const-hold1 it is within 15 digits on at least 3,172 of 3,296 and bit-exact on at least 952.
-- [ ] The Outcome reports, per function and suite, the visible change on pre-T2464 cells against today's engine.
+- [x] On t2513-r3-loader-const-hold1 it is within 15 digits on at least 3,172 of 3,296 and bit-exact on at least 952.
+- [x] The Outcome reports, per function and suite, the visible change on pre-T2464 cells against today's engine.
 - [ ] No gated known-failure line is added.
 - [ ] `make check` green; reviewers approve.
 
@@ -70,3 +70,52 @@ Decision 0083: this task is done when every BETA.DIST(.,FALSE) cell with min(a,b
 of the 15th significant digit of Excel's value, or the cells still off are named in the Outcome and handed to T-2586.
 r2-impact counts 261 visibly off pre-T2464 (224 at max >= 8, 37 at max < 8). Bit-level criteria move to a follow-up
 task without the campaign key.
+
+## Blocked because
+Blocked because: the model cannot meet the no-new-visibly-off and no-gated-regression rules. On the branch
+`claude/hopeful-meitner-5oxf0g-t2507` the structure is implemented and wired into BETA.DIST's pdf for min(a,b) > 1.
+It fixes 36,410 visibly-off probes-numeric cells. It also makes 677 cells visibly off, and Excel does not agree
+with them (`docs/research/t2507/newly_visibly_off.tsv`). It adds one gated known failure: `BETADIST_BETAINV.xlsx`
+G3, 1 ulp. Both come from the model's residuals (the shape constant and the series branch, T-2586). No regime split
+by branch pair or by n avoids both (every branch-pair and n bin with a visible gain has visible losses, and the one
+bin without them holds G3). As the Context section says ("Otherwise record the comparison and leave the density to
+T-2586"), the change waits until T-2586 pins the residual, or until the owner accepts the losses with a decision
+record. Unblock when either holds.
+
+## Outcome
+Not merged (see "Blocked because"); the comparison is recorded here and in statistics.md.
+
+- **Code (branch only):**
+  - `loader.rs`: `excel_beta_density`, `excel_dbinom_exponent` (exposed for T-2146), `excel_bd0` (stored x87 ops,
+    the 0.2 cut, M - k stored, the series with v stored and the +δ(fl(2kv)) term) and `stirlerr_exact` (a
+    double-double recurrence plus a 12-term Stirling series, about 1e-25 absolute).
+  - `x87_log10.rs`: `ln_double_double`, factored out of FYL2X's kernel.
+  - `x87_register.rs`: `from_double_double`, `to_double_double`, `neg`, `is_negative`, `same_value`.
+  - `beta.rs`: BETA.DIST pdf with min(a,b) > 1 takes the model; other shapes and the F density are unchanged.
+  - Every cell of a 300-cell hold1 sample matches an mpmath re-implementation of the rule.
+- **Acceptance numbers** (exact / 4 ulp / 15 digits):
+  - hold1: 967 / 3,050 / 3,193 of 3,296, against main's 105 / 931 / 1,460 and M3's 952 / 2,990 / 3,176.
+  - r2-density-large: w1's probe1 sidecar is not in the repository, so 29,088 of the 32,264 cells are scored:
+    5,904 / 23,850 / 28,779, against main's 2,808 / 16,050 / 20,480. The 5,765 bit-exact bar is met. The 31,385
+    fifteen-digit bar needs 2,606 of the 3,176 missing cells.
+  - Every probes-numeric BETA.DIST(.,FALSE) cell with literal a, b > 1 (101,556): 22,109 / 83,103 / 94,285,
+    against 6,783 / 43,908 / 60,316.
+- **Main-vs-HEAD comparison, every suite** (origin/main 77ea05010 against the branch; `probes/union-walk-repeated-in-lambda`
+  timed out on main and is excluded):
+  - fixed (now bit-exact): 20,728;
+  - lost (bit-exact before): 4,948, all numeric. By ulp: 1: 2,034, 2: 750, 3: 1,010, 4: 707, 5: 345, 6-24: 102.
+    Every cell is listed with its ulp in `docs/research/t2507/lost_cells.tsv`. One of them is gated (G3).
+  - newly visibly off: 677, median 9 ulp, max 84 (`newly_visibly_off.tsv`). Most are large shapes
+    ((100.5,157.5) 63, (60.5,67.5) 49, (40.25,89.75) 45, (25,25) 37), but small ones occur too ((2,10) 33).
+  - visibly fixed: 36,410; changed but still failing: 79,538; type or error changes: 0.
+  - gated: ironcalc-calc fixes `BETADIST_BETAINV.xlsx` G43 and G45 and regresses G3. gen-m9, probes and the other
+    gated suites are unchanged.
+- **Pre-T2464 cells, BETA.DIST only** (visibly fixed / newly visibly off):
+  - probes-numeric: m9-beta-dist-a2 1 / 0, -a2p5 2 / 0, -a5 2 / 1, -a10 2 / 1, -a50 4 / 0, -a100 4 / 1;
+    t0969-beta-density-b 132 / 0, t0969-beta-prefactor 27 / 8, t0969-beta-switch 41 / 1. In all, 215 / 12.
+  - ironcalc-calc: 0 / 0 (bit-exact +2 / -1).
+  - gen-m9 and probes: no change.
+- **Findings** (statistics.md):
+  - ln 2π must be the correctly rounded 1.8378770664093456. One ulp lower costs 174 hold1 exact cells.
+  - Each of r3's bd0 knobs helps on the full probe set.
+  - G3 is a 1-ulp residual of the constant at (2,3).

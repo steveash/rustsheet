@@ -214,7 +214,7 @@ pub(crate) fn dbinom_raw_dev(x: f64, n: f64, p: f64, q: f64, diff: f64) -> f64 {
     (lc - 0.5 * lf).exp()
 }
 
-/// The Stirling series terms after 1/(12 n) and -1/(360 n^3), B_2k / (2k (2k - 1)) for k = 3..=12,
+/// The Stirling series terms after 1/(12 n) and -1/(360 n^3), `B_2k / (2k (2k - 1))` for k = 3..=12,
 /// the first three of them [`S2`], -[`S3`] and [`S4`]. At n = 15 the next term is under 1e-26, far
 /// below the 2^-64 of the exponent [`stirlerr_exact`] goes into.
 const STIRLING_TAIL: [f64; 10] = [
@@ -262,7 +262,7 @@ fn ln_of((hi, lo): Dd) -> Dd {
     dd_add(ln_double_double(hi), (lo / hi, 0.0))
 }
 
-/// Stirling's series sum_k B_2k / (2k (2k - 1) m^(2k - 1)) for m >= 15, the two leading terms in
+/// Stirling's series `sum_k B_2k / (2k (2k - 1) m^(2k - 1))` for m >= 15, the two leading terms in
 /// double-double and the [`STIRLING_TAIL`] in double (it is under 1e-9 there).
 fn stirling_series(m: Dd) -> Dd {
     let z = dd_div((1.0, 0.0), m);
@@ -302,7 +302,7 @@ pub(crate) fn excel_bd0(k: f64, m: f64) -> f64 {
     extended_sum(t, extended_sum(m, -k))
 }
 
-/// [`excel_bd0`]'s series branch: R's loop s = d v + 2k sum_j v^(2j+1) / (2j + 1) in x87 registers
+/// [`excel_bd0`]'s series branch: R's loop `s = d v + 2k sum_j v^(2j+1) / (2j + 1)` in x87 registers
 /// with v stored, less the rounding error of fl(2 k v), stored once at the end.
 fn excel_bd0_series(k: f64, d: f64, s: f64) -> f64 {
     let v = Register::load(extended_quotient(d, s));
@@ -326,7 +326,7 @@ fn excel_bd0_series(k: f64, d: f64, s: f64) -> f64 {
 /// very sensitive to it (statistics.md "Beta density for min(a,b) > 1 ...").
 const LN_2PI: f64 = 2.0 * LN_SQRT_2PI_CORRECTLY_ROUNDED;
 
-/// The exponent of Excel's Loader binomial density dbinom_raw(k, n, p, q) = EXP(E) for
+/// The exponent of Excel's Loader binomial density `dbinom_raw(k, n, p, q) = EXP(E)` for
 /// 0 < k < n, as the exact double-double sum
 /// E = stirlerr(n) - stirlerr(k) - stirlerr(nk) - lf/2 + X, which Excel holds in an x87 register
 /// (statistics.md "Beta density for min(a,b) > 1 ...", model M4):
@@ -367,7 +367,7 @@ pub(crate) fn excel_dbinom_exponent(k: f64, n: f64, nk: f64, p: f64, q: f64) -> 
 }
 
 /// Excel's BETA.DIST(x, a, b, FALSE) for min(a, b) > 1 and 0 < x < 1: R dbeta's
-/// (a + b - 1) dbinom_raw(a - 1, a + b - 2, x, fl(1 - x)) (Loader 2000) in Excel's arithmetic,
+/// `(a + b - 1) dbinom_raw(a - 1, a + b - 2, x, fl(1 - x))` (Loader 2000) in Excel's arithmetic,
 /// EXP(LN(n + 1) + E) with E [`excel_dbinom_exponent`]'s, the sum held in an x87 register into
 /// Excel's EXP (statistics.md "Beta density for min(a,b) > 1 is Loader's saddle point", T-2464,
 /// T-2513). k = fl(a - 1), n = fl(fl(a + b) - 2) and nk = fl(n - k) are x87 stored operations. No
