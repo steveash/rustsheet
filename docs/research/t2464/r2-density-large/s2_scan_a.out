@@ -1,0 +1,15 @@
+xruns-1:0  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +2.828u  even 253/384  hold 261/416
+xruns-1:0  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=e,xar=e,comb=e] comb=e C-C0= +2.953u  even 247/384  hold 249/416
+xruns-1:0  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=x,xar=e,comb=x] comb=x C-C0= +2.875u  even 241/384  hold 255/416
+xruns-1:0  (2.5,3.5) [ar=x,addar=x,cut=0.2,sar=e,xar=x,comb=x] comb=x C-C0= +3.000u  even 234/384  hold 226/416
+xruns-1:0  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=m,xar=e,comb=x] comb=x C-C0= +2.828u  even 253/384  hold 261/416
+xruns-2:0  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +3.250u  even 326/415  hold 317/385
+xruns-2:0  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=e,xar=e,comb=e] comb=e C-C0= +3.250u  even 326/415  hold 317/385
+xruns-2:0  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=x,xar=e,comb=x] comb=x C-C0= +3.250u  even 326/415  hold 317/385
+xruns-2:0  (2.5,3.5) [ar=x,addar=x,cut=0.2,sar=e,xar=x,comb=x] comb=x C-C0= +3.250u  even 326/415  hold 317/385
+xruns-2:0  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=m,xar=e,comb=x] comb=x C-C0= +3.250u  even 326/415  hold 317/385
+xruns-1:1  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=e,xar=e,comb=x] comb=x C-C0= +3.406u  even 338/389  hold 348/411
+xruns-1:1  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=e,xar=e,comb=e] comb=e C-C0= +3.398u  even 281/389  hold 308/411
+xruns-1:1  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=x,xar=e,comb=x] comb=x C-C0= +3.391u  even 336/389  hold 348/411
+xruns-1:1  (2.5,3.5) [ar=x,addar=x,cut=0.2,sar=e,xar=x,comb=x] comb=x C-C0= +3.406u  even 337/389  hold 348/411
+xruns-1:1  (2.5,3.5) [ar=x,addar=e,cut=0.2,sar=m,xar=e,comb=x] comb=x C-C0= +3.406u  even 338/389  hold 348/411

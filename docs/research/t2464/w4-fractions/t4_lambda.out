@@ -1,0 +1,9 @@
+lam=fl(a-fl((a+b)x))         sd(dlam)  3.16 slope -0.725 corr -0.518 resid sd 3.78
+lam=a-(a+b)x ext->dbl        sd(dlam)  0.40 slope +0.333 corr +0.030 resid sd 4.41
+lam=fl(a-fl(a*x+b*x))        sd(dlam)  4.39 slope +0.013 corr +0.013 resid sd 4.42
+lam=fl(fl((a+b)y)-b)         sd(dlam)  9.16 slope +0.015 corr +0.032 resid sd 4.41
+lam=fl(a*y-b*x)              sd(dlam)  4.02 slope -0.012 corr -0.011 resid sd 4.42
+mode 0 o0l0e1.5e-14: model slope on dlam -0.718, model internal sd 3.33; corr(Excel resid, model internal) +0.100
+mode 0 o0l3e1.5e-14: model slope on dlam -0.718, model internal sd 3.33; corr(Excel resid, model internal) +0.100
+mode 1 o0l0e1.5e-14: model slope on dlam -0.717, model internal sd 3.34; corr(Excel resid, model internal) +0.100
+mode 1 o0l3e1.5e-14: model slope on dlam -0.717, model internal sd 3.34; corr(Excel resid, model internal) +0.100

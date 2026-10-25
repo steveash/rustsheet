@@ -1,0 +1,5 @@
+t2586-r5-f-edges-hold vrun d1=1: M-edge 109/258/282 of 320  CR 57/217/244 of 320  shapes [(1.0, 2.0), (1.0, 9.0), (1.0, 40.0), (1.75, 2.5)]
+t2586-r5-f-edges-hold vrun d1=2: M-edge 101/271/283 of 320  CR 75/230/259 of 320  shapes [(2.0, 1.0), (2.0, 9.0), (2.0, 40.0), (2.25, 1.5)]
+t2586-r5-f-edges-hold vrun d2=1: M-edge 44/123/133 of 192  CR 21/93/120 of 192  shapes [(9.0, 1.0), (40.0, 1.0)]
+t2586-r5-f-edges-hold vrun d2=2: M-edge 47/129/202 of 224  CR 19/117/181 of 224  shapes [(9.0, 2.0), (30.5, 2.999), (40.0, 2.0)]
+t2586-r5-f-edges-hold vrun other: M-edge 10/24/32 of 32  CR 7/24/32 of 32  shapes [(4.5, 9.75)]

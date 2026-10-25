@@ -50,14 +50,6 @@ pub(crate) fn bisect_increasing(f: impl Fn(f64) -> f64, target: f64, max_doublin
     halve_increasing(&f, target, 0.0, hi, 200)
 }
 
-/// Smallest `x` in [0, 1] with `f(x) >= target` for a non-decreasing `f` with `f(1) >= target`,
-/// halving down to the smallest subnormal (at most 1100 steps), so a quantile as small as 1E-300
-/// keeps its digits where [`bisect_increasing`]'s 200 steps stop near 1E-60. The time is bounded,
-/// unlike `statrs`' `inverse_cdf` (T-1543).
-pub(crate) fn bisect_unit_interval(f: impl Fn(f64) -> f64, target: f64) -> f64 {
-    halve_increasing(&f, target, 0.0, 1.0, 1100)
-}
-
 /// The most bracket expansions [`refine_increasing`] makes around an estimate; each multiplies the
 /// step by 4, so the last one reaches 2^98 times the first step of 2^-30 relative.
 const REFINE_MAX_EXPANSIONS: u32 = 64;

@@ -1,0 +1,27 @@
+# big: 2304 rows, 48 runs, max(d) >= 0.0
+CR                         median   31.3 mean   56.4
+xd,ext,none,ext            median    5.4 mean   18.3 |    28/  533/ 1106 of  2304
+xn,ext,none,ext            median    5.6 mean   18.2 |    23/  545/ 1105 of  2304
+xd,ext,none,st             median    5.7 mean   18.8 |    18/  531/ 1143 of  2304
+xn,ext,none,st             median    6.0 mean   18.5 |    27/  532/ 1091 of  2304
+xd,ext,kl,ext              median    6.7 mean   21.6 |    27/  477/ 1065 of  2304
+xd,ext,kl,st               median    6.7 mean   21.6 |    27/  477/ 1065 of  2304
+xn,ext,kl,ext              median    6.8 mean   21.6 |    36/  480/ 1065 of  2304
+xn,ext,kl2,ext             median    6.8 mean   21.6 |    43/  413/ 1045 of  2304
+xd,ext,kl2,ext             median    6.9 mean   21.6 |    29/  413/ 1032 of  2304
+xd,ext,kl2,st              median    6.9 mean   21.6 |    29/  413/ 1032 of  2304
+xn,ext,kl2,st              median    7.5 mean   22.3 |    27/  421/ 1050 of  2304
+xn,ext,kl,st               median    7.5 mean   22.4 |    28/  498/ 1066 of  2304
+x,ext,none,ext             median    8.5 mean   32.4 |    27/  510/ 1091 of  2304
+x,ext,none,st              median    8.5 mean   32.9 |    27/  521/ 1092 of  2304
+x,ext,kl2,ext              median    9.8 mean   35.1 |    22/  386/ 1009 of  2304
+x,ext,kl2,st               median    9.8 mean   35.1 |    22/  386/ 1009 of  2304
+x,ext,kl,ext               median   10.2 mean   34.9 |    26/  509/ 1068 of  2304
+x,ext,kl,st                median   10.2 mean   34.9 |    26/  509/ 1068 of  2304
+exact,ext,none,st          median   10.5 mean   31.3 |    30/  523/ 1052 of  2304
+exact,ext,none,ext         median   10.5 mean   31.0 |    28/  522/ 1063 of  2304
+exact,ext,kl,ext           median   11.0 mean   33.0 |    31/  509/ 1038 of  2304
+exact,ext,kl,st            median   11.3 mean   33.4 |    34/  495/ 1052 of  2304
+exact,ext,kl2,ext          median   11.3 mean   33.6 |    25/  401/ 1015 of  2304
+exact,ext,kl2,st           median   11.3 mean   34.1 |    30/  388/ 1012 of  2304
+xn,st,none,st              median   16.6 mean   29.5 |    54/  438/ 1098 of  2304

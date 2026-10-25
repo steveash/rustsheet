@@ -1,0 +1,4 @@
+alnrel = TOMS double         old     max>8, min<=1: n=606  224/606  w4  596 w15  599
+alnrel = TOMS double         probe1  max>8, min<=1: n=3200 2314/3200 w4 3199 w15 3199
+alnrel = Excel series (x87)  old     max>8, min<=1: n=606  213/606  w4  596 w15  599
+alnrel = Excel series (x87)  probe1  max>8, min<=1: n=3200 1086/3200 w4 3141 w15 3187

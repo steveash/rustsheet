@@ -1,0 +1,20 @@
+# myhold: 1344 rows
+myhold  CR     all   104/  688/  882 of  1344 | min<=2    85/  496/  603 of   768 | both<=10     5/  110/  158 of   192 | other    12/   48/   50 of    96 | max>=50     2/   34/   71 of   288
+myhold  M-xd   all   146/  828/ 1006 of  1344 | min<=2   123/  595/  671 of   768 | both<=10     0/  113/  167 of   192 | other    14/   62/   66 of    96 | max>=50     9/   58/  102 of   288
+myhold  M-sd   all   314/  919/ 1029 of  1344 | min<=2   227/  623/  677 of   768 | both<=10    57/  180/  192 of   192 | other    23/   64/   69 of    96 | max>=50     7/   52/   91 of   288
+myhold  M-sdm  all   335/  918/ 1030 of  1344 | min<=2   237/  624/  678 of   768 | both<=10    63/  178/  192 of   192 | other    28/   63/   68 of    96 | max>=50     7/   53/   92 of   288
+# hold: 1440 rows
+hold    CR     all   114/  733/ 1060 of  1440 | min<=2    67/  364/  436 of   480 | both<=10    18/  109/  113 of   120 | other    27/  214/  411 of   480 | max>=50     2/   46/  100 of   360
+hold    M-xd   all   163/  854/ 1149 of  1440 | min<=2   102/  382/  441 of   480 | both<=10    25/  119/  119 of   120 | other    29/  285/  441 of   480 | max>=50     7/   68/  148 of   360
+hold    M-sd   all   337/ 1119/ 1255 of  1440 | min<=2   195/  455/  452 of   480 | both<=10    39/  120/  120 of   120 | other    84/  405/  455 of   480 | max>=50    19/  139/  228 of   360
+hold    M-sdm  all   374/ 1123/ 1253 of  1440 | min<=2   232/  454/  451 of   480 | both<=10    46/  120/  120 of   120 | other    80/  407/  455 of   480 | max>=50    16/  142/  227 of   360
+# holdsw: 400 rows
+holdsw  CR     all    37/  311/  395 of   400 | min<=2     0/    8/    8 of     8 | both<=10     2/   25/   32 of    32 | other    14/  121/  154 of   156 | max>=50    21/  157/  201 of   204
+holdsw  M-xd   all    58/  372/  400 of   400 | min<=2     0/    8/    8 of     8 | both<=10     1/   27/   32 of    32 | other    19/  150/  156 of   156 | max>=50    38/  187/  204 of   204
+holdsw  M-sd   all   145/  400/  400 of   400 | min<=2     0/    8/    8 of     8 | both<=10    14/   32/   32 of    32 | other    53/  156/  156 of   156 | max>=50    78/  204/  204 of   204
+holdsw  M-sdm  all   192/  400/  400 of   400 | min<=2     4/    8/    8 of     8 | both<=10    22/   32/   32 of    32 | other    69/  156/  156 of   156 | max>=50    97/  204/  204 of   204
+# hold4: 1536 rows
+hold4   CR     all   111/  646/  904 of  1536 | min<=2    29/  151/  164 of   192 | both<=10    38/  173/  185 of   192 | other    18/  179/  326 of   384 | max>=50    26/  143/  229 of   768
+hold4   M-xd   all   121/  781/  945 of  1536 | min<=2    37/  165/  169 of   192 | both<=10    41/  186/  192 of   192 | other    36/  290/  347 of   384 | max>=50     7/  140/  237 of   768
+hold4   M-sd   all   287/ 1048/ 1198 of  1536 | min<=2    85/  188/  189 of   192 | both<=10    62/  187/  192 of   192 | other    76/  312/  346 of   384 | max>=50    64/  361/  471 of   768
+hold4   M-sdm  all   309/ 1048/ 1199 of  1536 | min<=2    79/  187/  188 of   192 | both<=10    75/  189/  192 of   192 | other    82/  314/  347 of   384 | max>=50    73/  358/  472 of   768

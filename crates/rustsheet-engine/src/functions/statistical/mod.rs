@@ -7,6 +7,7 @@ mod count_and_average;
 mod covariance;
 mod devsq;
 mod discrete;
+pub(super) mod element_errors;
 pub(super) mod erf;
 mod exponential;
 mod fisher;
@@ -42,6 +43,8 @@ pub(super) mod special;
 mod standard_dev;
 mod standardize;
 mod student_t;
+#[cfg(test)]
+mod t2464_harness;
 mod t_dist;
 mod trend;
 mod trimmean;

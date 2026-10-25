@@ -1,0 +1,10 @@
+dfs with >=50 cells: {3.0: 5875, 4.0: 5874, 5.0: 2802, 7.0: 1764, 10.0: 1779} other cells 605
+df 3: LT1e 2692/5875/5875 of 5875 | exactC 880/5870/5874 of 5875 | in-sample fitted yes
+df 4: LT1e 3660/5874/5874 of 5874 | exactC 2009/5585/5812 of 5874 | in-sample fitted yes
+df 5: LT1e 1616/2802/2802 of 2802 | exactC 942/2800/2801 of 2802 | in-sample fitted yes
+df 7: LT1e 839/1764/1764 of 1764 | exactC 1071/1764/1764 of 1764 | in-sample fitted yes
+df 10: LT1e 789/1779/1779 of 1779 | exactC 778/1774/1777 of 1779 | in-sample fitted yes
+small dfs: LT1e 274/589/602 of 605 | exactC 276/590/603 of 605
+LT1e miss/ref m9-t-dist-pdf A143 10.0 1000000.0 -46 exactC -46
+LT1e miss/ref m9-t-dist-pdf A150 -10.0 1000000.0 -46 exactC -46
+LT1e miss/ref t0969-t-beta-link J152 8.0 50.0 -21 exactC -1

@@ -1,0 +1,24 @@
+vhold ratio-xl-e vs CR exact  : +58 / -42  sign-test p 0.13
+vhold ratio-xl-e vs CR within4: +186 / -88  sign-test p 3.2e-09
+vhold ratio-xl-e vs CR w15    : +128 / -75  sign-test p 0.00024
+vhold ratio-xl-e vs ratio-xl-lxm exact  : +32 / -41  sign-test p 0.35
+vhold ratio-xl-e vs ratio-xl-lxm within4: +73 / -91  sign-test p 0.18
+vhold ratio-xl-e vs ratio-xl-lxm w15    : +49 / -67  sign-test p 0.11
+hold ratio-xl-e vs CR exact  : +112 / -65  sign-test p 0.00051
+hold ratio-xl-e vs CR within4: +172 / -129  sign-test p 0.015
+hold ratio-xl-e vs CR w15    : +106 / -75  sign-test p 0.025
+hold ratio-xl-e vs ratio-xl-lxm exact  : +66 / -39  sign-test p 0.011
+hold ratio-xl-e vs ratio-xl-lxm within4: +108 / -107  sign-test p 1
+hold ratio-xl-e vs ratio-xl-lxm w15    : +80 / -64  sign-test p 0.21
+holdsw ratio-xl-e vs CR exact  : +57 / -23  sign-test p 0.00018
+holdsw ratio-xl-e vs CR within4: +68 / -6  sign-test p 2.1e-14
+holdsw ratio-xl-e vs CR w15    : +5 / -0  sign-test p 0.062
+holdsw ratio-xl-e vs ratio-xl-lxm exact  : +21 / -15  sign-test p 0.41
+holdsw ratio-xl-e vs ratio-xl-lxm within4: +1 / -2  sign-test p 1
+holdsw ratio-xl-e vs ratio-xl-lxm w15    : +0 / -0  sign-test p 1
+vhold ratio-xl vs ratio-ln exact  : +14 / -16  sign-test p 0.86
+vhold ratio-xl vs ratio-ln within4: +93 / -29  sign-test p 5.2e-09
+vhold ratio-xl vs ratio-ln w15    : +60 / -18  sign-test p 2e-06
+vhold ratio-xl-e vs ratio-m exact  : +56 / -41  sign-test p 0.15
+vhold ratio-xl-e vs ratio-m within4: +180 / -91  sign-test p 6.9e-08
+vhold ratio-xl-e vs ratio-m w15    : +119 / -75  sign-test p 0.0019
