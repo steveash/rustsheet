@@ -282,8 +282,9 @@ fn binom_dist_end_closed_forms_are_excel_bits() {
     }
 }
 
-// From 2^31 - 1 trials BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE are #NUM! for every k and p
-// (probes-numeric/t2645-binom-trials-limit A7-A45); NEGBINOM.DIST is not (A46).
+// From 2^31 - 1 trials BINOM.DIST and BINOMDIST are #NUM! for every k and p, and so is
+// BINOM.DIST.RANGE at number_s = 0 (probes-numeric/t2645-binom-trials-limit A7-A45); NEGBINOM.DIST
+// is not (A46).
 #[test]
 fn binom_dist_trials_limit() {
     let mut model = new_empty_model();
@@ -299,4 +300,34 @@ fn binom_dist_trials_limit() {
         assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
     }
     assert_eq!(model._get_text("A7"), "0");
+}
+
+/// BINOM.DIST's cdf at k = n - 1 is the upper tail of `I_p(n, 1)`, Excel's closed form on bratio's
+/// oriented arguments (T-2502): probes-numeric t2145-binomial-sweep A374 and A1894, Excel's values.
+#[test]
+fn binom_dist_at_k_n_minus_one_takes_the_closed_form() {
+    crate::test::util::check_cells(
+        &[],
+        &[
+            ("A1", "=BINOM.DIST(4,5,0.9,TRUE)", "0.40950999999999993"),
+            ("A2", "=BINOM.DIST(14,15,0.125,TRUE)", "0.9999999999999716"),
+        ],
+    );
+}
+
+/// NEGBINOM.DIST's cdf is `I_p(r, f+1)`, which at r = 1 or f = 0 is Excel's closed form (T-2502):
+/// probes-numeric t2145-negbinom-sweep A34 (r = 1) and A728 (f = 0), Excel's values.
+#[test]
+fn negbinom_dist_at_one_success_or_no_failures_takes_the_closed_form() {
+    crate::test::util::check_cells(
+        &[],
+        &[
+            ("A1", "=NEGBINOM.DIST(5,1,0.25,TRUE)", "0.822021484375"),
+            (
+                "A2",
+                "=NEGBINOM.DIST(0,5,0.1,TRUE)",
+                "1.0000000000000016E-05",
+            ),
+        ],
+    );
 }

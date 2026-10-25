@@ -3,7 +3,7 @@ id: T-2645
 title: "Excel log1p and EXP of an extended argument as engine primitives; BINOM.DIST(0,n,p) on them (T-2464 E0)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -56,7 +56,7 @@ BINOM.DIST(0,n,p) uses them; BINOM.DIST(n,n,p,FALSE) takes its own closed form:
 - [x] BINOM.DIST(n,n,p,FALSE) and BINOMDIST(n,n,p,FALSE) are EXP(fl(n·LN(p))): 172 of 172 bit-exact on the cells.tsv
       rows, with no new known-failure lines.
 - [x] statistics.md's log1p and BINOM pmf entries gain an "Implemented in" line.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The positive-argument alnrel that algdiv and bcorr use. It is not this series (r2-log1p `algdiv_try.py`); see T-2512.
@@ -69,8 +69,8 @@ then move to a follow-up task without the campaign key.
 
 ## Outcome
 - Probe `probes-numeric/t2645-binom-trials-limit` (46 cells, excel-graph): the limit is 2^31 - 1 trials, not 2^31.
-  BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE are `#NUM!` from trunc(n) = 2147483647 for every k, p (0 and 1 too)
-  and cumulative flag; 2^31 - 2 evaluates; NEGBINOM.DIST has no such limit. Recorded in statistics.md "BINOM.DIST is
+  BINOM.DIST and BINOMDIST are `#NUM!` from trunc(n) = 2147483647 for every k, p (0 and 1 too) and cumulative flag,
+  and so is BINOM.DIST.RANGE (probed only at number_s = 0, p = 1E-12); 2^31 - 2 evaluates; NEGBINOM.DIST has no such limit. Recorded in statistics.md "BINOM.DIST is
   #NUM! from 2^31 - 1 trials" and implemented (`binom.rs` `TRIALS_LIMIT`).
 - `x87_log1p.rs`: `excel_log1p` (the stored 14-term atanh series) and `excel_ln_one_minus` (LN(fl(1 - x)) above
   0.375). It gives 15,764 of the 15,791 pinned rows, every miss 1 ulp off (ignored test `matches_every_pinned_row`,
@@ -87,6 +87,12 @@ then move to a follow-up task without the campaign key.
   k = n pmf rows of cells.tsv are bit-exact. One standing failure moved but still fails: gen-m9/caa1eed48b1883fe
   A384, `BINOMDIST(-0.0001,9,0.999999,..)`. Excel gives `#NUM!` because it tests k < 0 before truncating; that cell
   belongs to T-2435.
+- The ungated probes-numeric delta, from the fidelity reviewer's full comparison against main after the research PR
+  landed its probes: 17,009 cells fixed, 0 newly failing. By case: t2464-r2-log1p-grid 5,424, -hold 5,384,
+  -runs 5,306, -pilot 195, t2513-verify-r3-binom-pmf-h 360, t2145-binomial-sweep 340. 27 cells changed value and
+  still fail; they are the documented 1-ulp log1p misses.
+- Merged main's T-2502 (#1749) into `binom.rs`. Its k = n - 1 cdf and its NEGBINOM r = 1 / f = 0 closed forms
+  (`closed_form_tails`, `k >= 1`) run after this task's k = 0 and k = n pmf branches. Both tasks' tests are kept.
 - statistics.md (after merging the research PR #1741): the log1p and BINOM pmf entries now have "Implemented in"
   lines. The bracket entry "BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31]" is merged into "BINOM.DIST is
   #NUM! from 2^31 - 1 trials (T-2464, T-2645)" and superseded by it.

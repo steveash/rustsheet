@@ -1599,6 +1599,27 @@ root in the first two groups (wrong where Excel is `#NUM!`) and is `#NUM!` in th
 Status: UNVERIFIED (the algorithm); the values are excel-graph
 Tasks: T-2391, T-1592
 
+## T-bill settlement below serial 1
+Rule: TBILLEQ, TBILLPRICE and TBILLYIELD floor both dates to whole days before they count days, so a
+settlement from 0 to below 1 is serial 0 (1900-01-00), a valid date. The one-year limit compares the dates Excel
+shows, so 1900-01-00 to 1900-12-31 (366) is within it and to 1901-01-01 (367) is not. A 29 February settlement reaches its
+anniversary on 1 March: `TBILLPRICE(DATE(2024,2,29),DATE(2025,3,1),0.1)` = 89.83333333333333, and the fictitious
+1900-02-29 does the same (`TBILLPRICE(60,426,0.1)` = 89.83333333333333, `TBILLPRICE(61,427,0.1)` `#NUM!`); 1 March 2024
+to 1 March 2025 is within the limit too. `TBILLPRICE(0,1,0.1)`, `TBILLPRICE(0.5,1.9,0.1)` and `TBILLPRICE(39000.7,39001.2,0.1)` are all
+99.97222222222221 (one day), `TBILLPRICE(0.5,0.9,0.1)` and `TBILLPRICE(0,0,0.1)` are `#NUM!` (equal days);
+`TBILLPRICE(0,366,0.1)` = 89.83333333333333 and `TBILLPRICE(0,367,0.1)` is `#NUM!` (over a year), like
+`TBILLPRICE(1,367,0.1)` = 89.83333333333333 one day on. `TBILLEQ(0,366,0.1)` = 0.11013984535998977 and
+`TBILLYIELD(0,366,98)` = 0.020073603211776512; `TBILLYIELD(1E-15,100,1E+300)` = -3.6.
+Evidence: probes/tbill-settlement-below-one (34 cells, excel-graph, 2026-10-25, T-2487); gen-m9/0a957119475760c5 A309,
+gen-m9/e8d55ec393460bb7 A287.
+The gen-m9 T-bill cells whose error looked out of order follow the T-bill order; an inner call differs
+(probes/tbill-error-order-inner-calls, each case's Data sheet copied, excel-graph, 2026-10-25, T-2487): Excel's
+`T.TEST(E11,A6:C12,2,D8)` there is `#VALUE!` (ours `#NUM!`), `PPMT(2*B11,8,360,-100,926)` 0 (ours 2E17, so ours reads
+an off-calendar settlement first), `QUARTILE(C7,E9)` of a text cell `#NUM!` (ours `#VALUE!`) and `BIN2DEC` of its text
+cell `#NUM!` (ours `#VALUE!`); `TBILLYIELD(36586,1,MAP(Z1:Z3,<#REF!>,..))` is `#VALUE!` like ours. Those four cells
+moved to T-2496.
+Ours: matches since T-2487 (`tbill_arguments` in financial/discount.rs, `is_less_than_one_year` in financial/dates.rs).
+
 ## TBILLEQ and TBILLYIELD
 Rule: Excel's TBILLYIELD is `(100 - pr)/pr * (360/DSM)`, evaluated in that order; the textbook
 `(100 - pr)*360/(pr*DSM)` is 1 ulp off (`TBILLYIELD(45366,45731,2000)` is -0.9369863013698629, not
@@ -1991,3 +2012,20 @@ Evidence: probes/t2436; cells in T-2482, T-2483, T-2484, T-2428, T-2493, T-2494,
 Ours: values or the other argument's error; those tasks.
 Status: VERIFIED (excel-graph), one or two cells each
 Tasks: T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491
+
+## Financial cells of the T-2496 sub-expression probe
+Rule (excel-graph, 2026-10-25, probes/t2496-fin-subexpressions, each gen-m9 case's Data sheet copied): in the gen-m9
+financial cells whose error the outer call cannot make, an inner call differs and the outer call passes its error on.
+`PV(-1+2^-52,91,-421)` is `#DIV/0!` (ours `#NUM!`; hypothesis: (1+rate)^91 underflows to 0, T-2657 probes it); `IRR(<4x4 flows>,41.9999)` is
+`#DIV/0!` (ours converges on 4.1E+12, T-2657); `NPV(-1,1E-15,2.5)` and `NPV(1E+300,7,1E+15,2.5)` are `#DIV/0!` (T-2493, as
+in the T-2436 probe); `XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is `#N/A` (lookup.md, T-2656). The statistical inner calls
+follow statistics.md: Z.TEST's one-number `#DIV/0!` and lone-empty-cell `#N/A` (T-2470), PROB's unequal-count `#N/A` and
+one-value `#DIV/0!` (T-2468), FREQUENCY's extra row for a bins argument with no number, so the enclosing ODDFYIELD and
+CUMIPMT lift to a 2x1 array and show `#SPILL!` (T-2427), `T.TEST` of a blank one-cell sample (T-2469) and WEIBULL.DIST
+overflow (T-2435). The T-bill cells: `PPMT(2E+15,8,360,-100,926)` is 0 (T-2490), `QUARTILE` of a TRUE cell `#NUM!`
+(T-2344), `BIN2DEC("x")` `#NUM!` (T-2544).
+Evidence: probes/t2496-fin-subexpressions P!A1-A99 (column B names the gen-m9 cell and sub-expression);
+probes/tbill-error-order-inner-calls.
+Ours: the other error or a value; the tasks named.
+Status: VERIFIED (excel-graph), one or two cells each
+Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T-2490, T-2344, T-2544
