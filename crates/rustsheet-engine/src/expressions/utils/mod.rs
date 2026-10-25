@@ -392,6 +392,20 @@ pub(crate) fn is_indirect_unquoted_sheet(prefix: &str) -> bool {
         .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
 }
 
+/// INDIRECT text whose unquoted sheet prefix starts with a digit (`2024!B1`) with the prefix
+/// quoted (`'2024'!B1`), which the lexer reads; any other text is returned as it is.
+pub(crate) fn quote_digit_leading_sheet(text: &str) -> std::borrow::Cow<'_, str> {
+    match text.rsplit_once('!') {
+        Some((prefix, rest))
+            if prefix.starts_with(|c: char| c.is_ascii_digit())
+                && is_indirect_unquoted_sheet(prefix) =>
+        {
+            format!("'{prefix}'!{rest}").into()
+        }
+        _ => text.into(),
+    }
+}
+
 /// The sheet name a `Sheet!` prefix spells: `'O''B'` is `O'B`, an unquoted prefix is itself.
 /// `None` for a quoted prefix without its closing quote.
 pub(crate) fn unquote_sheet_prefix(prefix: &str) -> Option<String> {
@@ -436,6 +450,14 @@ mod tests {
         assert_eq!(unquote_sheet_prefix("'Co A'").as_deref(), Some("Co A"));
         assert_eq!(unquote_sheet_prefix("'O''B'").as_deref(), Some("O'B"));
         assert_eq!(unquote_sheet_prefix("'CoB"), None);
+    }
+
+    #[test]
+    fn digit_leading_sheet_is_quoted() {
+        assert_eq!(quote_digit_leading_sheet("2024!B1"), "'2024'!B1");
+        for same in ["Q1!B1", "'2024'!B1", "B1", "2 4!B1", "2&4!B1"] {
+            assert_eq!(quote_digit_leading_sheet(same), same);
+        }
     }
 
     #[test]
