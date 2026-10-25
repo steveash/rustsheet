@@ -3,7 +3,7 @@ use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
-    decimal_round::{decimal_to_f64, round_engineering, round_shown_place, round_significant},
+    decimal_round::{round_engineering, round_scientific, round_shown_place},
     locale::Locale,
     number_format::{cut_15_digits, to_precision},
     text::Text,
@@ -754,21 +754,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     if group > 1.0 {
                         // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
                         (value, exponent) = round_engineering(scaled, group, p.precision);
-                        value /= 10.0_f64.powf(exponent);
-                        value = to_precision(value, 15);
                     } else {
-                        // One integer digit: the mantissa rounds once, from the unrounded value, at
-                        // its shown digits (`round_significant`; `0.00E+00` on 12.345 is "1.23E+01",
-                        // where rounding to four digits first gave "1.24E+01"; T-2705).
-                        let shown = usize::try_from(p.precision).unwrap_or(0) + 1;
-                        let (digits, decimal_exponent) = round_significant(scaled.abs(), shown);
-                        exponent = decimal_exponent as f64;
-                        let mantissa =
-                            decimal_to_f64(digits, 1 - shown.min(15) as i64).unwrap_or(0.0);
-                        value = mantissa.copysign(scaled);
+                        (value, exponent) = round_scientific(scaled, p.precision);
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
+                    value /= 10.0_f64.powf(exponent);
+                    value = to_precision(value, 15);
                     value_abs = value.abs();
                 }
             }
