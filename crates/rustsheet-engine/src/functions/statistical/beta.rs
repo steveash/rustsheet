@@ -23,19 +23,16 @@ const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 
 /// The quantile of `p` in (0, 1): the crossing of BETA.DIST's cdf (`special::refine_increasing`
 /// on the T-0970 incomplete beta), from statrs' search as a start where it is reliable. Excel's
-/// BETA.INV solves its own cdf to the crossing (docs/excel-semantics/statistics.md "BETA.INV solves
-/// Excel's own CDF to the crossing (T-1745)"), so the inverse uses the same cdf as BETA.DIST (T-2119).
-/// Above p = 0.5 the target is the exact complement 1 - p on the upper tail, as for F.INV (T-0974).
-/// At most 512 Newton steps and 129 cdfs, or 65 cdfs without a start. A shape above 1E5 takes
-/// T-1538's crossing instead (above).
+/// BETA.INV solves its own cdf to the crossing (docs/excel-semantics/statistics.md "BETA.INV
+/// solves Excel's own CDF to the crossing (T-1745)"), so the inverse uses the same cdf as
+/// BETA.DIST (T-2119). Above p = 0.5 the target is the exact complement 1 - p on the upper tail,
+/// as for F.INV (T-0974). At most 512 Newton steps and 129 cdfs, or 65 cdfs without a start. A
+/// shape above 1E5 takes T-1538's crossing instead (above).
 fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
     if alpha > BETA_QUANTILE_STATRS_SHAPE_MAX || beta > BETA_QUANTILE_STATRS_SHAPE_MAX {
         return beta_quantile_crossing(alpha, beta, p);
     }
-    let estimate = if alpha <= BETA_QUANTILE_STATRS_SHAPE_MAX
-        && beta <= BETA_QUANTILE_STATRS_SHAPE_MAX
-        && p >= BETA_QUANTILE_STATRS_P_MIN
-    {
+    let estimate = if p >= BETA_QUANTILE_STATRS_P_MIN {
         beta_inverse_cdf(alpha, beta, p)
     } else {
         f64::NAN
@@ -148,8 +145,9 @@ impl Model {
 
     /// `BETA.INV(probability, alpha, beta, [A], [B])`, and BETAINV: every argument lifts over an
     /// array and a range (SPEC-0011; probes/stat-argument-modes H90-H99,
-    /// probes/stat-quantile-lift). The quantile is the crossing of BETA.DIST's cdf (`beta_quantile`), which the lifting table charges
-    /// (lift/kinds/statistical.rs `QUANTILE_WEIGHT`).
+    /// probes/stat-quantile-lift). The quantile is the crossing of BETA.DIST's cdf
+    /// (`beta_quantile`), which the lifting table charges (lift/kinds/statistical.rs
+    /// `QUANTILE_WEIGHT`).
     pub(crate) fn fn_beta_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaInv, args, cell, &mut |model, values| {
             number_or_error(model.beta_inv_of(values, cell))

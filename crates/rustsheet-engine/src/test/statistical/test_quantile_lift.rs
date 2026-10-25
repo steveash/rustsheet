@@ -141,8 +141,8 @@ fn quantile_searches_that_hung_or_panicked_are_bounded() {
     // F.INV(1E-300,5,5) and F.INV(1E-170,5,5) are Excel's 5.081599884913164E-121 and
     // 5.081599884913239E-69 to 13 digits (probes/stat-quantile-lift E1, E3), while F.INV(1E-50,6000,4)
     // is not Excel's 0.0004924127886173762 (E6). BETA.INV refines to the crossing of BETA.DIST's
-    // cdf from no start (T-2119): 0.003013141, the true quantile, where Excel's erratic search gives
-    // 0.0692... (E9; TODO(T-1871)). The longest search seen, 377 Newton steps, still finishes (E8).
+    // cdf from no start (T-2119): 0.003013141, a known mismatch (Excel 0.0692..., E9;
+    // TODO(T-1871)) kept here as a guard that the search ends. The longest search seen, 377 Newton steps, still finishes (E8).
     let mut model = new_empty_model();
     model._set("C1", "=1-2^-53");
     model._set("A1", "=F.INV(1E-300,5,5)");
