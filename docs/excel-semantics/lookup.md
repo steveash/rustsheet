@@ -1128,7 +1128,8 @@ Rule (excel-graph, 2026-10-25): `match_mode` 3 is a regular-expression match in 
   Past any of them the whole call is `#ERROR!`, as a REGEX* call is: a lookup whose backtracking pattern scans long texts,
   `XMATCH("\G(a|a)*b",REPT("a",30000)&SEQUENCE(1000),3)`, is `#ERROR!` (about 0.5 s) where Excel would give `#N/A`, as no
   text holds a "b" (unprobed). So are the REGEX* parse
-  limits (the 250-level nesting `#VALUE!`, the case-fold budget). Before T-2680 a lookup's regex had no work bound.
+  limits (the 250-level nesting `#VALUE!`, the case-fold budget). Before T-2680 a lookup's regex was bounded only by the
+  lift's cell-visit cap and the `regex` crate's size limit and linear-time search, not by a REGEX*-style budget.
 Evidence: probes/t2669-xlookup-regex-mode (60 cells: XLOOKUP in D beside XMATCH in E), -blanks (14 cells) and -lift (12
 cells: lifting, a blank-cell pattern, PCRE2 syntax) and probes/t2680-lookup-regex-pcre2 (45 cells); the regex
 cells of probes/t2656-xmatch-mode-near-integer G7, G21, -rounding G15, t2656-xlookup-mode-snap-edge C8.
