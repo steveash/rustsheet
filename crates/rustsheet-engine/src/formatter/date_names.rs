@@ -5,8 +5,9 @@
 use super::parser::TextToken;
 use crate::locale::{excel_date_names::DateNames, Locale};
 
-/// Days from 1 Muharram 1 AH to the proleptic Gregorian 1899-12-30 (serial 0 of the post-1900-03-01
-/// serials): the Hijri epoch Excel uses is 622-07-18, which replays all 103 probed dates.
+/// Days from 1 Muharram 1 AH to the proleptic Gregorian 1899-12-30, the day a serial from 61 on
+/// counts from: the Hijri epoch Excel uses is 622-07-18, which replays all 103 probed dates. Serials
+/// 1 to 59 sit one day later because Excel's serials count a fictitious 1900-02-29 (serial 60).
 const HIJRI_DAYS_TO_1899_12_30: i64 = 466_580;
 
 /// Days in a 30-year Hijri cycle: 19 years of 354 days and 11 of 355.
@@ -40,7 +41,7 @@ const HIJRI_DAYS: [&str; 7] = [
     "السبت",
 ];
 
-/// Whether year `year` (1-based) of a 30-year cycle has 355 days. Excel's leap years are 2, 5, 7,
+/// Whether year `year_in_cycle` (1-based) of a 30-year cycle has 355 days. Excel's leap years are 2, 5, 7,
 /// 10, 13, 15, 18, 21, 24, 26 and 29 (the variant with 15, not 16: it alone replays the probe).
 fn is_hijri_leap(year_in_cycle: i64) -> bool {
     (11 * year_in_cycle + 15) % 30 < 11
@@ -51,6 +52,7 @@ fn is_hijri_leap(year_in_cycle: i64) -> bool {
 /// 1900-02-29, is `None` (`#VALUE!`), as are serials outside `0..=2958465`.
 pub(crate) fn hijri_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
     let days = match serial_1900 {
+        // Serial 0 shows serial 1's date.
         0 => 1 + HIJRI_DAYS_TO_1899_12_30 + 1,
         1..=59 => serial_1900 + HIJRI_DAYS_TO_1899_12_30 + 1,
         61..=2_958_465 => serial_1900 + HIJRI_DAYS_TO_1899_12_30,

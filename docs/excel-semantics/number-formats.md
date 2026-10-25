@@ -81,9 +81,9 @@ month name is weekday number min(month, 7), Sunday being 1: `B2mmmm|dddd` of 450
 (Saturday, as for every month from 7 on), of 45148 (Muharram) "محرم|الأحد" (Sunday), of 45177 (Safar) Monday. A month
 name after a weekday prints the weekday again: `B2dddd|mmmm` is "الأربعاء|الأربعاء". Numeric tokens in between change
 nothing (`B2m|dddd`, `B2d|dddd`, `B2yyyy|dddd` show the real weekday). Gregorian sections do not do this
-(`mmmm|dddd` of 45148 is "August|Thursday"). Whether a second weekday after `dddd|mmmm` follows the same rule is unprobed.
+(`mmmm|dddd` of 45148 is "August|Thursday"). Unprobed combinations, which the engine decides by the same rule: a second weekday after `dddd|mmmm`, `dddd|mmmmm`, `mmmm|dddd|mmmm`, `mmmm|dddd|dddd`, and `mmmmm` as the first name token (T-2703).
 Evidence: probes/t1613-hijri-b2 (144 cells), probes/t1613-hijri-b2-weekday (78 cells) (excel-graph, 2026-10-25, T-1613).
-Unprobed: the 1904 date system (the engine converts through the 1900 serial); a serial-0 weekday.
+Unprobed: the 1904 date system (the engine converts through the 1900 serial); a serial-0 weekday; `B2` as a cell number format (only TEXT was probed; the same formatter serves both).
 Implemented in: formatter/date_names.rs (`hijri_ymd`, `NameTokens`), the `hijri` flag of `DatePart` (formatter/parser.rs).
 Not modelled: `B2` before a locale tag and calendar digit 6 (T-2703).
 Status: VERIFIED (excel-graph)
