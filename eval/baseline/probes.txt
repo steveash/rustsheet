@@ -2849,8 +2849,6 @@ F	probes/t2429-hypgeom-threshold.case.json	Calc!A7
 F	probes/t2429-hypgeom-threshold.case.json	Calc!A8
 F	probes/t2429-hypgeom-threshold.case.json	Calc!A9
 F	probes/t2429/11eb3ab4f4f8104c.case.json	Calc!A1
-F	probes/t2429/eced4bb6a0234c9e.case.json	Calc!A10
-F	probes/t2429/eced4bb6a0234c9e.case.json	Calc!A8
 F	probes/t2436/05d44f6dd6cfc567.case.json	Calc!A46
 F	probes/t2436/05d44f6dd6cfc567.case.json	Calc!A61
 F	probes/t2436/06b4e8f5de409d5e.case.json	Calc!A16
@@ -3150,12 +3148,8 @@ F	probes/t2475-stat-subexpressions.case.json	P!A123
 F	probes/t2475-stat-subexpressions.case.json	P!A124
 F	probes/t2475-stat-subexpressions.case.json	P!A126
 F	probes/t2475-stat-subexpressions.case.json	P!A127
-F	probes/t2475-stat-subexpressions.case.json	P!A134
-F	probes/t2475-stat-subexpressions.case.json	P!A136
 F	probes/t2475-stat-subexpressions.case.json	P!A142
 F	probes/t2475-stat-subexpressions.case.json	P!A158
-F	probes/t2475-stat-subexpressions.case.json	P!A163
-F	probes/t2475-stat-subexpressions.case.json	P!A165
 F	probes/t2475-stat-subexpressions.case.json	P!A2
 F	probes/t2475-stat-subexpressions.case.json	P!A212
 F	probes/t2475-stat-subexpressions.case.json	P!A214
@@ -3183,8 +3177,6 @@ F	probes/t2475-stat-subexpressions.case.json	P!A349
 F	probes/t2475-stat-subexpressions.case.json	P!A35
 F	probes/t2475-stat-subexpressions.case.json	P!A353
 F	probes/t2475-stat-subexpressions.case.json	P!A369
-F	probes/t2475-stat-subexpressions.case.json	P!A38
-F	probes/t2475-stat-subexpressions.case.json	P!A39
 F	probes/t2475-stat-subexpressions.case.json	P!A392
 F	probes/t2475-stat-subexpressions.case.json	P!A394
 F	probes/t2475-stat-subexpressions.case.json	P!A396
@@ -3220,8 +3212,6 @@ F	probes/t2475-stat-subexpressions.case.json	P!A70
 F	probes/t2475-stat-subexpressions.case.json	P!A73
 F	probes/t2475-stat-subexpressions.case.json	P!A75
 F	probes/t2475-stat-subexpressions.case.json	P!A78
-F	probes/t2475-stat-subexpressions.case.json	P!A89
-F	probes/t2475-stat-subexpressions.case.json	P!A92
 F	probes/t2475-stat-subexpressions.case.json	P!A93
 F	probes/t2475-stat-subexpressions.case.json	P!A95
 F	probes/t2475-stat-subexpressions.case.json	P!A96
@@ -3241,8 +3231,6 @@ F	probes/t2496-fin-subexpressions.case.json	P!A43
 F	probes/t2496-fin-subexpressions.case.json	P!A44
 F	probes/t2496-fin-subexpressions.case.json	P!A50
 F	probes/t2496-fin-subexpressions.case.json	P!A51
-F	probes/t2496-fin-subexpressions.case.json	P!A57
-F	probes/t2496-fin-subexpressions.case.json	P!A58
 F	probes/t2496-fin-subexpressions.case.json	P!A69
 F	probes/t2496-fin-subexpressions.case.json	P!A74
 F	probes/t2496-fin-subexpressions.case.json	P!A79

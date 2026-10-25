@@ -481,9 +481,6 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let lookup_value = self.evaluate_node_in_context(&args[0], cell);
-        if lookup_value.is_error() {
-            return lookup_value;
-        }
         let match_mode = match args.get(4) {
             Some(node) => self.evaluate_node_in_context(node, cell),
             None => CalcResult::Number(0.0),
@@ -492,8 +489,15 @@ impl Model {
             Some(node) => self.evaluate_node_in_context(node, cell),
             None => CalcResult::Number(1.0),
         };
-        let criteria = vec![lookup_value, match_mode, search_mode];
+        let mut criteria = vec![lookup_value, match_mode, search_mode];
         let lifts = criteria.iter().any(LiftedArg::is_grid);
+        // A scalar error lookup_value is the result unless another criterion lifts: then each
+        // element is an error (ours; which one is unverified), so a grid match_mode still gives
+        // an array and `#SPILL!` where it is blocked (gen-m6/fe0972380d030e4a Calc!A224,
+        // excel-graph).
+        if !lifts && criteria[0].is_error() {
+            return criteria.swap_remove(0);
+        }
         let if_not_found = self.xlookup_if_not_found(args.get(3), lifts, as_reference, cell);
         let table = self.xlookup_table(&args[1], &args[2], cell);
         // A lifted element is a value, never a reference, and keeps only the first cell of its

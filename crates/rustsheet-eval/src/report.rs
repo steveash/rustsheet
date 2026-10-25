@@ -14,6 +14,7 @@ use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
 use crate::out_of_scope::{self, OutOfScope};
 use crate::probe_milestones::{self, MilestoneRow};
+use crate::run_meta::{self, RunMeta};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::text_expect;
 use crate::v15_checkpoint::{self, V15Checkpoint};
@@ -214,7 +215,7 @@ impl CatalogLists {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RunReport {
     pub engine: String,
     pub suites: Vec<SuiteSummary>,
@@ -266,6 +267,12 @@ pub struct RunReport {
     /// knows which suites are generated.
     #[serde(default)]
     pub v15_checkpoint: V15Checkpoint,
+    /// In-scope catalog functions per parity tier ([`attribution::tier_counts`], T-0068).
+    #[serde(default)]
+    pub tiers: Vec<attribution::TierCount>,
+    /// Commit, date and skipped suites ([`RunMeta`], T-0080); filled by the caller.
+    #[serde(default)]
+    pub run: RunMeta,
 }
 
 impl RunReport {
@@ -383,6 +390,7 @@ impl RunReport {
         RunReport {
             engine: engine.to_string(),
             suites: suites.into_values().collect(),
+            tiers: attribution::tier_counts(catalog, &functions),
             functions,
             cases,
             slowest: slowest(results, SLOWEST_CASES),
@@ -392,12 +400,9 @@ impl RunReport {
             needs_other_evidence: lists.needs_other_evidence,
             below_floor,
             out_of_scope: lists.out_of_scope,
-            milestone_lists: Vec::new(),
-            probe_milestones: Vec::new(),
             function_scope: function_scope::summarize(catalog, results),
-            catalog_coverage: Vec::new(),
-            milestone_exit: Vec::new(),
-            v15_checkpoint: V15Checkpoint::default(),
+            // The caller fills the milestone sections, the checkpoint and `run`.
+            ..RunReport::default()
         }
     }
 
@@ -537,19 +542,6 @@ impl RunReport {
         self.suites.iter().map(|s| s.closeness.visible()).sum()
     }
 
-    fn write_timing(&self, md: &mut String) {
-        let _ = writeln!(md, "\n## Timing\n");
-        let _ = writeln!(md, "| suite | total ms |\n|---|---|");
-        for s in &self.suites {
-            let _ = writeln!(md, "| {} | {} |", s.name, s.millis);
-        }
-        let _ = writeln!(md, "\nSlowest {} cases:\n", self.slowest.len());
-        let _ = writeln!(md, "| case | ms |\n|---|---|");
-        for c in &self.slowest {
-            let _ = writeln!(md, "| {} | {} |", c.id, c.millis);
-        }
-    }
-
     /// Human/agent-readable gap report.
     #[must_use]
     pub fn to_markdown(&self, examples_per_function: usize) -> String {
@@ -559,6 +551,7 @@ impl RunReport {
             "# RustSheet compatibility report (engine: `{}`)\n",
             self.engine
         );
+        run_meta::write_markdown(&self.run, &mut md);
         self.write_suites_table(&mut md);
         crate::milestone_exit::write_markdown(&self.milestone_exit, &mut md);
         visible_parity::write_markdown(self, &mut md);
@@ -568,7 +561,7 @@ impl RunReport {
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
         function_scope::write_markdown(self.function_scope.as_ref(), &mut md);
-        self.write_timing(&mut md);
+        run_meta::write_timing(self, &mut md);
         let broken: Vec<&CaseResult> = self
             .cases
             .iter()
