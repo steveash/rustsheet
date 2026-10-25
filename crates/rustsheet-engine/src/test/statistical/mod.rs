@@ -39,3 +39,4 @@ mod test_quantile_lift;
 mod test_range_number_walk;
 mod test_rank_lift;
 mod test_sorted_data_lift;
+mod test_subnormal_results;
