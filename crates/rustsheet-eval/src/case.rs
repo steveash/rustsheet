@@ -222,9 +222,8 @@ pub struct CalculationSpec {
 /// "row":1}` (the 1-based row goes, the cells below shift up), `{"op":"insert_column","sheet":"S",
 /// "column":"B"}` and `{"op":"delete_column","sheet":"S","column":"B"}` (a column letter; the cells
 /// to the right shift), `{"op":"delete_sheet","sheet":"S"}`, `{"op":"delete_table","sheet":"S",
-/// "table":"T1"}` and `{"op":"convert_table","sheet":"S","table":"T1"}`. The engine has no convert
-/// to range yet, so the adapter refuses `convert_table` and the case scores as an adapter error
-/// until an engine task adds it.
+/// "table":"T1"}` and `{"op":"convert_table","sheet":"S","table":"T1"}`. `convert_table` converts the table
+/// to a plain range (T-2342).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum SheetOp {

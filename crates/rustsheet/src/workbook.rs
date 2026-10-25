@@ -371,6 +371,19 @@ impl Workbook {
             .map_err(crate::error::EditError::Engine)
     }
 
+    /// Converts the table `name` to a plain range, as Graph's `convertToRange` does (T-2342): the
+    /// cells stay and every structured reference to it becomes the absolute range it resolved to.
+    /// Harness only (decisions 0076, 0098). It does not recalculate.
+    ///
+    /// # Errors
+    /// [`EditError::Engine`] when there is no table with that exact name.
+    #[cfg(feature = "harness_row_insert")]
+    pub fn convert_table_to_range(&mut self, name: &str) -> Result<(), crate::error::EditError> {
+        self.model
+            .convert_table_to_range(name)
+            .map_err(crate::error::EditError::Engine)
+    }
+
     /// Serializes to xlsx bytes.
     ///
     /// # Errors
