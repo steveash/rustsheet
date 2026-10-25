@@ -527,13 +527,10 @@ impl Model {
         let [settlement, maturity, frequency, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let settlement = self.financial_date_of(settlement, cell)?;
         // Settlement 0 is a date to the COUP* functions (`COUPPCD(0,43831,2)` is 0); COUPNUM is
         // #NUM! there because its previous coupon date falls before the calendar (`coupon_count`).
-        if settlement < 0 {
-            return Err(num_error(cell));
-        }
-        let maturity = self.financial_date_of(maturity, cell)?;
+        let settlement = self.coupon_date_of(settlement, cell)?;
+        let maturity = self.coupon_date_of(maturity, cell)?;
         if settlement >= maturity {
             return Err(num_error(cell));
         }

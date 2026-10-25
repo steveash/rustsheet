@@ -61,7 +61,7 @@ impl Model {
         }
         // Excel's cdf is the upper tail of the incomplete beta I_p(k+1, n-k) at x = p, y = fl(1 - p),
         // which at k = n - 1 takes Excel's closed form (T-2464 w5-triangulation, T-2502). k = 0 is
-        // BINOM's own shortcut, not the kernel's (T-2633).
+        // BINOM's own shortcut, not the kernel's (T-2645).
         if cumulative && k >= 1 && k < n {
             let shapes = (number_s + 1.0, trials - number_s);
             if let Some((_, upper)) = closed_form_tails(p, 1.0 - p, shapes.0, shapes.1) {

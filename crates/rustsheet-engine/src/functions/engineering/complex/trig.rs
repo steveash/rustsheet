@@ -139,7 +139,9 @@ pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     reciprocal_result(x_sin * (y_cosh / t), -x_cos * (y_sinh / t), t, suffix)
 }
 
-pub(super) fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+/// csch(x+iy) is `#NUM!` when the squared modulus of sinh underflows to 0: `IMCSCH("0")` and
+/// `IMCSCH("1E-200+1E-200i")` (gen-m9/2f0d384b8ed0d392 A315, 59a16b5ab566ee5c A274), as IMCSC's `t`.
+pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let x_cosh = x.cosh();
     let x_sinh = x.sinh();
 
@@ -147,6 +149,9 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Cal
     let y_sin = y.sin();
 
     let t = x_sinh * x_sinh * y_cos * y_cos + x_cosh * x_cosh * y_sin * y_sin;
+    if t == 0.0 {
+        return num_error(cell);
+    }
     reciprocal_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, t, suffix)
 }
 

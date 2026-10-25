@@ -66,10 +66,7 @@ pub(crate) fn beta_reg(x: f64, a: f64, b: f64) -> f64 {
 /// tails pass y = df1 x / (df1 x + df2) and its complement df2 / (df1 x + df2) (`fisher.rs`), and
 /// `F.DIST.RT(1E-6,1,1)` is then Excel's correctly rounded 0.9993633804398389
 /// (probes-numeric/m9-legacy-fdist A12), where forming 1 - w from w misses by 2E-14. A shape of 1
-/// takes Excel's closed forms ([`closed_form_tails`]). The worksheet callers take
-/// [`closed_form_tails`] themselves and [`beta_reg_complement_unoriented`] elsewhere (T-2502), so
-/// this lower tail is the tests' reference.
-#[cfg(test)]
+/// takes Excel's closed forms ([`closed_form_tails`], T-2502).
 pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
     beta_reg_tail(x, y, a, b, true, false)
 }
