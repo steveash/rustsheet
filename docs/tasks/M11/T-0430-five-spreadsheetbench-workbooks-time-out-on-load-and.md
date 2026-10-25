@@ -20,7 +20,8 @@ Progress: T-0455 (the cheap number comparison) brought 524-2 under the timeout. 
 remaining cost is whole-column arrays (T-0456, SPEC-0020, T-0469). Profiled after T-0448/T-0449 (release):
 17049 is the same whole-column cost (405 `MAX(IF(F:F=A1,G:G,""))`, T-0456); 41978 is conditional
 formats over near-million-row areas evaluated at load and at every recalculation (T-0468);
-52450 is 36,600 COUNTIFS with a new criterion each (342 s, T-0465).
+52450 is 36,600 COUNTIFS (342 s): first thought a new criterion each (T-0465), it
+turned out to be its linked-workbook criteria ranges built as arrays (T-0477).
 
 ## Acceptance criteria
 - [x] The five cases no longer time out; their `!Timeout` lines leave eval/baseline/corpus-bench.txt via `make eval-baseline`; release timings before/after in the Outcome.
@@ -34,7 +35,7 @@ All five cases now calculate within the timeout; none is a `!Timeout` line in
 eval/baseline/corpus-bench.txt (release timings, load + evaluate):
 | case | cause | fix | before | after |
 |---|---|---|---|---|
-| 524-2 | number comparisons cut to 15 digits | T-0455 | over 60 s | about 50 s |
+| 524-2 | number comparisons cut to 15 digits | T-0455 | over 60 s | 44 s |
 | 17049 | 405 `MAX(IF(F:F=A1,G:G,""))`, million-row arrays | T-0469 (SPEC-0020) | over 120 s | 0.27 s |
 | 59932 | 150 `MIN/MAX(IF($D:$D=K2,$F:$F))` | T-0469 | about 55 s | 2.6 s |
 | 41978 | conditional formats over near-million-row areas, at load and at every `evaluate()` | T-0468 (SPEC-0021) | 184 s + 191 s | 5 ms + 6 ms |
