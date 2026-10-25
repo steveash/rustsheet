@@ -154,14 +154,15 @@ are the exact payment" has it. The form needs no `(1+rate)^nper`, so past its ov
 its value, about `-pv*rate` for huge rates: `IPMT(1E+300,3,2000,452017,905)` is -4.52017E+305,
 `IPMT(123456789.123,3,156,64486)` -7961234503385.777, `IPMT(2,1100,1100,1,5)` 2. PPMT past the
 overflow is the discounted form of "PPMT discounts with an atanh-series log", with a discount
-`Q(per-1-nper)` below the normal range read as 0 (so PPMT is 0): `PPMT(10,1,296,1)` is 0 though
-its value, 5.6E-308, is normal, `PPMT(42,10,303,8292,1,1)` and `PPMT(1E+300,1.5,180,194733,-1E+300)`
+`Q(per-1-nper)` below the normal range read as 0 (so PPMT is 0): `PPMT(r,1,300,1)` keeps a discount of
+2^-1022 and is 0 from 2^-1022.5 on, `PPMT(10,1,296,1)` is 0 though its value, 5.6E-308, is normal, `PPMT(42,10,303,8292,1,1)` and `PPMT(1E+300,1.5,180,194733,-1E+300)`
 0, `PPMT(10,11,304,44626,826)` -3.0768304255991313E-301, `PPMT(2,1100,1100,1,5)` -4. Neither needs
 PMT's value: `PPMT(1E+307,7,292,176644,89)` is 0 where `pv*rate` overflows, and
 `IPMT(-0.5,1,2000,1,0,1)` is 0 where PMT is `#NUM!` (PPMT of it `#NUM!`, as PMT).
 Evidence: probes/fin-ipmt-ppmt-huge-rate (excel-graph, 2026-10-25, T-2490): column A, 1152 cells
 over rates 0.5 to 1E+300, nper 10 to 2000, period 2, nper/2 and nper, pv/fv (1000,0), (0,315),
-(1000,315), (1000,-1000) and both types; column B the edges above. Fit (exact rationals, then the
+(1000,315), (1000,-1000) and both types; column B the edges above. probes/fin-ppmt-discount-underflow
+(excel-graph, 2026-10-25): `PPMT(r,1,300,1)` with `(1+r)^300 = 2^k`, k from 1021.5 to 1074, and power-of-two bases. Fit (exact rationals, then the
 rounding named): on its 595 IPMT cells the cancelling form is within 15 digits on 590, the exact
 balance on 521 (all its misses pv-0 cells); on m9-fin-pmt's 286 IPMT cells the doubles-everywhere
 form misses 38 to the bit and 2 to 15 digits (`IPMT(0.05/12,2,3,10000,0,1)`), so the switch on
@@ -170,6 +171,14 @@ form misses 38 to the bit and 2 to 15 digits (`IPMT(0.05/12,2,3,10000,0,1)`), so
 rates; `-expm1` 586. The gen-m9 cells of T-2257 that motivated it: 31474c20fc1dafd6 A235,
 6376e27be7a05871 A32, abb7d565af89b849 A112, b6a02893a8d6b151 A280, 81bcdc0bec0c8e6b A249 (rate
 50, pv 0: 0) and the rest of T-2490's list.
+- Open: a fractional nper past the range. `IPMT(1.005,7,~1.85E+7,92160,674,1)` is
+  -46194.91271820449, `-rate*(B/(1+rate))` and the FV recurrence on the rounded PMT, not the exact
+  balance's ...448, while on the integer-nper type-1 cells past the range the exact balance fits 91
+  of 118 and `-rate*(B/(1+rate))` 59; the engine keeps the FV recurrence for a fractional nper
+  there (gen-m9 0a957119475760c5 A153; T-2665).
+- Open: `PPMT(7,10,350,58827)` is -4.581304695604488E-303, its discount 8^-341 = 2^-1023 kept, where
+  `PPMT(7,1,341,1)` with the same discount is 0 (probes/fin-ppmt-discount-underflow F1, F8; gen-m9
+  a91bad4e84f49739 A158; T-2666).
 - Open: 5 pv-0 cells keep their cancellation's last bits unexplained: `IPMT(10,2,10,0,315)`
   (Excel 1.2144607808295405E-6, ours 1.214461349263729E-6), its type 1, `IPMT(10,5,10,0,315)` and
   its type 1 (one ulp of 315 in B), and `IPMT(0.1,2,360,0,1)` (Excel 0, ours 1.11E-17: Excel's Y
@@ -178,7 +187,7 @@ rates; `-expm1` 586. The gen-m9 cells of T-2257 that motivated it: 31474c20fc1da
 Status: VERIFIED to 15 digits on 590/595 (excel-graph); bits open.
 Implemented in: `balance_interest`, `accurate_discount` and `discounted_principal`'s `past_range`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2490).
-Tasks: T-2490
+Tasks: T-2490, T-2665, T-2666
 
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each

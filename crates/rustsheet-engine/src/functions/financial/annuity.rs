@@ -460,11 +460,15 @@ pub(super) fn period_payments(
             .or_else(|| {
                 discounted_principal(rate, period_count, period, values, period_start, true)
             });
+        // A fractional nper past the range keeps the FV recurrence below: it has Excel's last
+        // bit on the one such cell probed, where the exact balance is an ulp off (gen-m9
+        // 0a957119475760c5 A153, nper about 1.85E+7; TODO(T-2665)).
+        let whole_term = period_count.fract() == 0.0;
         interest = match balance_interest(rate, period_count, period, values, period_start) {
             Some((interest, true)) => Some(interest),
-            balance => split
-                .map(|(interest, _)| interest.0)
-                .or(balance.map(|(interest, _)| interest)),
+            balance => split.map(|(interest, _)| interest.0).or(balance
+                .filter(|_| whole_term)
+                .map(|(interest, _)| interest)),
         };
     }
     if let (Some(interest), Some(principal)) = (interest, principal) {
