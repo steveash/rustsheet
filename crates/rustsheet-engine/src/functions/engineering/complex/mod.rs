@@ -536,7 +536,11 @@ impl Model {
             let Ok(radius) = power(r, n) else {
                 return num_error(cell);
             };
-            let angle = f64::atan2(y, x) * n;
+            // The angle is Excel's ATAN2 kernel, `atan(y/x)` (IMARGUMENT's [`excel_atan2`]):
+            // `IMPOWER("1000+1i",1)` is "1000+1i", its imaginary part 1.0000000000000002 where
+            // libm `atan2` gives exactly 1 (gen-m9/74779cff2810ccf4 Calc!A379; T-2610). Where that
+            // kernel errs (a zero or subnormal x, an overflowing y/x) `atan2` is kept (unprobed).
+            let angle = excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x)) * n;
             // An underflowed radius of 0 is "0" without reading the angle
             // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
             if radius == 0.0 {
