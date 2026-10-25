@@ -247,10 +247,10 @@ fn no_trials_and_certain_outcomes() {
     }
 }
 
-// BINOM.DIST's closed forms (T-2633; statistics.md "BINOM.DIST pmf: closed forms at k = 0 and
+// BINOM.DIST's closed forms (T-2645; statistics.md "BINOM.DIST pmf: closed forms at k = 0 and
 // k = n"): EXP(fl(n·l)) at k = 0, cumulative or not, with l Excel's own log1p, and EXP(fl(n·LN(p)))
 // for the pmf at k = n. Excel's bits from probes-numeric/t2145-binomial-sweep (A1541, A65, A1235,
-// A22, A429, A3259, A363, A93, A2923, A139) and t2633-binom-trials-limit A6, A17.
+// A22, A429, A3259, A363, A93, A2923, A139) and t2645-binom-trials-limit A6, A17.
 #[test]
 fn binom_dist_end_closed_forms_are_excel_bits() {
     let cases: [(&str, f64); 12] = [
@@ -283,7 +283,7 @@ fn binom_dist_end_closed_forms_are_excel_bits() {
 }
 
 // From 2^31 - 1 trials BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE are #NUM! for every k and p
-// (probes-numeric/t2633-binom-trials-limit A7-A45); NEGBINOM.DIST is not (A46).
+// (probes-numeric/t2645-binom-trials-limit A7-A45); NEGBINOM.DIST is not (A46).
 #[test]
 fn binom_dist_trials_limit() {
     let mut model = new_empty_model();

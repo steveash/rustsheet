@@ -1,5 +1,5 @@
 ---
-id: T-2633
+id: T-2645
 title: "Excel log1p and EXP of an extended argument as engine primitives; BINOM.DIST(0,n,p) on them (T-2464 E0)"
 milestone: M9
 lane: functions-stat
@@ -68,7 +68,7 @@ Excel's value. It owns the BINOM.DIST(0,n,p) cells, which are 68 visibly off bef
 then move to a follow-up task without the campaign key.
 
 ## Outcome
-- Probe `probes-numeric/t2633-binom-trials-limit` (46 cells, excel-graph): the limit is 2^31 - 1 trials, not 2^31.
+- Probe `probes-numeric/t2645-binom-trials-limit` (46 cells, excel-graph): the limit is 2^31 - 1 trials, not 2^31.
   BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE are `#NUM!` from trunc(n) = 2147483647 for every k, p (0 and 1 too)
   and cumulative flag; 2^31 - 2 evaluates; NEGBINOM.DIST has no such limit. Recorded in statistics.md "BINOM.DIST is
   #NUM! from 2^31 - 1 trials" and implemented (`binom.rs` `TRIALS_LIMIT`).

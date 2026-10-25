@@ -1,4 +1,4 @@
-# T-2633 EXP-of-an-extended-argument fixture: sign+significand (64-bit, hex), exponent, model (f64 bits);
+# T-2645 EXP-of-an-extended-argument fixture: sign+significand (64-bit, hex), exponent, model (f64 bits);
 # the argument is (-1)^s * significand * 2^exponent, model = docs/research/t2464/w1-density/lib.py exp_v6
 # (mpmath, 160 bits). 5,200 random arguments: 60% |a| in [2^-8, 2^9), 30% in [2^-66, 2^-8), 10% in [2^9, 700].
 -aeddfe7a5a83f860 -67 3fed618fa4dc2eae

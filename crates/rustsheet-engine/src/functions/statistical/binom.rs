@@ -4,7 +4,7 @@
 //! K15-K16). BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST sum their pmf terms in double-double
 //! (`discrete.rs`, T-0927), and past that walk's budget fall back to statrs' incomplete beta, a
 //! continued fraction of at most 140 steps, as BINOM.INV's search does throughout. BINOM.DIST at
-//! k = 0, and its pmf at k = n, take Excel's closed forms instead (T-2633).
+//! k = 0, and its pmf at k = n, take Excel's closed forms instead (T-2645).
 
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
 
@@ -21,7 +21,7 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// The trial count (after truncation) from which BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE are
 /// `#NUM!` whatever the other arguments: 2^31 - 1, so 2^31 - 2 trials is the most Excel evaluates
 /// (statistics.md "BINOM.DIST is #NUM! from 2^31 - 1 trials"; probes-numeric
-/// t2633-binom-trials-limit, excel-graph: every k, both cumulative modes, p = 0 and 1 too).
+/// t2645-binom-trials-limit, excel-graph: every k, both cumulative modes, p = 0 and 1 too).
 const TRIALS_LIMIT: f64 = 2_147_483_647.0;
 
 impl Model {

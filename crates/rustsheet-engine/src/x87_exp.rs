@@ -51,7 +51,7 @@ pub(crate) fn excel_exp(a: f64) -> f64 {
 /// (docs/excel-semantics/statistics.md "BINOM.DIST pmf: closed forms at k = 0 and k = n, and one
 /// kernel with BETA.DIST", T-2513; the mpmath reference is `docs/research/t2464/w1-density/lib.py`
 /// `exp_v6`, which this matches on the 5,200 random extended arguments of
-/// `test/fixtures/exp_extended.fixture`, T-2633). An argument past the double range gives 0 or
+/// `test/fixtures/exp_extended.fixture`, T-2645). An argument past the double range gives 0 or
 /// infinity.
 pub(crate) fn excel_exp_extended(a: Register) -> f64 {
     exp_with(a, two_to_the_minus_one)

@@ -1,11 +1,11 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2633: where BINOM.DIST(0,n,p) turns #NUM! between 2^30 and 2^31 (statistics.md \"BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31]\"), and whether the limit covers k > 0, the cdf, BINOMDIST, BINOM.DIST.RANGE and NEGBINOM.DIST",
+ "description": "T-2645: where BINOM.DIST(0,n,p) turns #NUM! between 2^30 and 2^31 (statistics.md \"BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31]\"), and whether the limit covers k > 0, the cdf, BINOMDIST, BINOM.DIST.RANGE and NEGBINOM.DIST",
  "tags": [
   "M9",
   "probe",
   "statistics",
-  "T-2633"
+  "T-2645"
  ],
  "sheets": [
   {

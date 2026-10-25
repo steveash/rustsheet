@@ -1,4 +1,4 @@
-# T-2633 log1p fixture: x excel model (f64 bits), x = p of BINOM.DIST(0,n,p), excel = the l that r2-log1p pinned from
+# T-2645 log1p fixture: x excel model (f64 bits), x = p of BINOM.DIST(0,n,p), excel = the l that r2-log1p pinned from
 # Excel's cells (t2464-r2-log1p-pilot/-runs/-grid/-hold, and -tiny from the density), model = excel_log1p.ln1m(p).
 # 5211 rows: every row where Excel and the model differ (27), 4900 random rows x <= 0.375, 150 above, 150 tiny.
 3d7204bf9c766286 bd7204bf9c766cab bd7204bf9c766cab

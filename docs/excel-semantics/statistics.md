@@ -3110,18 +3110,18 @@ Ours: `#NUM!` (known failure, T-2628).
 Status: VERIFIED (excel-graph)
 Tasks: T-2628
 
-## BINOM.DIST is #NUM! from 2^31 - 1 trials (T-2633)
+## BINOM.DIST is #NUM! from 2^31 - 1 trials (T-2645)
 Rule: BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE are `#NUM!` when the truncated trial count is 2^31 - 1 = 2147483647
 or more, whatever k, p (0 and 1 included) and the cumulative flag; 2^31 - 2 trials still evaluates
 (`BINOM.DIST(0,2^31-2,1E-12,FALSE)` is 0.9978548205473029), while 2^31 - 0.5 truncates to 2^31 - 1 and is `#NUM!`.
 So the accepted range is n < 2^31 - 1, one short of the largest 32-bit integer. NEGBINOM.DIST has no such limit (`NEGBINOM.DIST(2^31,1,1-1E-12,FALSE)` is 0). This pins the bracket (2^30, 2^31] of the T-2464
 entry "BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31]".
-Evidence: probes-numeric/t2633-binom-trials-limit A1-A46 (excel-graph, 2026-10-25).
+Evidence: probes-numeric/t2645-binom-trials-limit A1-A46 (excel-graph, 2026-10-25).
 Unprobed: BINOM.INV and CRITBINOM at these trial counts.
-Implemented in: `TRIALS_LIMIT` in `crates/rustsheet-engine/src/functions/statistical/binom.rs` (T-2633). The same task
+Implemented in: `TRIALS_LIMIT` in `crates/rustsheet-engine/src/functions/statistical/binom.rs` (T-2645). The same task
 implements the T-2464 log1p (`x87_log1p.rs` `excel_log1p`, `excel_ln_one_minus`), EXP of an extended argument
 (`x87_exp.rs` `excel_exp_extended`) and BINOM.DIST's closed forms at k = 0 (pmf and cdf) and k = n (pmf)
 (`fn_binom_dist`), the "Implemented in" of the entries "Excel's log1p is a 14-term atanh series in alnrel's variable"
 and "BINOM.DIST pmf: closed forms at k = 0 and k = n".
 Status: VERIFIED (excel-graph)
-Tasks: T-2633
+Tasks: T-2645
