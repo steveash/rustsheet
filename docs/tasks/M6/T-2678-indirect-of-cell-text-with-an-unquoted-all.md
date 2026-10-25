@@ -3,7 +3,7 @@ id: T-2678
 title: "INDIRECT of cell text with an unquoted all-digit sheet name (INDIRECT(\"2024!B1\")) is #REF!, Excel reads the cell"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,8 @@ letters, digits, `_` and `.`; `"Co A!B1"`, `"P&L!B1"`, `"O'B!B1"` stay `#REF!`.
 
 ## Out of scope
 - Typed formulas with unquoted digit-leading sheet names.
+
+## Outcome
+`INDIRECT` text with an unquoted digit-leading sheet prefix is quoted before parsing
+(`quote_digit_leading_sheet`); typed formulas are unchanged. probes Summary!D3 now passes
+(probes known failures 2718 -> 2717, no regressions).
