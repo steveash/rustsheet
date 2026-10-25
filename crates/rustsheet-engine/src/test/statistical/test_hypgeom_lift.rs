@@ -116,8 +116,8 @@ fn each_element_is_the_scalar_call_with_its_own_error() {
 fn a_cdf_sum_is_bounded() {
     // `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` summed 25,000,001 terms on main
     // (about 4.8 s in release); it sums the 95,942 that are not 0 now, to main's value. A sum
-    // with more than 2^18 terms left is #NUM! (the widest distribution at a population of 2^32,
-    // and a population above 2^52, which skips nothing): a DEVIATION.
+    // with more than 2^18 terms left is #NUM! (the widest distribution at the largest population
+    // Excel takes, 2^31 - 2, x about 43 standard deviations above the mode): a DEVIATION.
     let mut model = new_empty_model();
     model._set(
         "A1",
@@ -125,18 +125,10 @@ fn a_cdf_sum_is_bounded() {
     );
     model._set(
         "A2",
-        "=HYPGEOM.DIST(1074741824,2147483648,2147483648,4294967296,TRUE)",
+        "=HYPGEOM.DIST(537370912,1073741823,1073741823,2147483646,TRUE)",
     );
-    model._set("A3", "=HYPGEOM.DIST(524288,1048576,2^59,2^60,TRUE)");
-    // The pmf is closed form; its binomials overflow at a large population, #NUM! as on main.
-    model._set("A4", "=HYPGEOM.DIST(524288,1048576,2^59,2^60,FALSE)");
     model.evaluate();
-    let expected = [
-        ("A1", "0.500079709"),
-        ("A2", "#NUM!"),
-        ("A3", "#NUM!"),
-        ("A4", "#NUM!"),
-    ];
+    let expected = [("A1", "0.500079709"), ("A2", "#NUM!")];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");
     }

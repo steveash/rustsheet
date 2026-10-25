@@ -4,17 +4,15 @@
 
 use crate::{
     expressions::{
-        lexer::LexerMode,
         parser::{
             parse_range,
-            stringify::{
-                to_english_string, to_rc_lowering_at, to_string_lowering, to_string_with_ref_errors,
-            },
+            stringify::{to_rc_lowering_at, to_string_lowering, to_string_with_ref_errors},
             Node,
         },
-        types::{Area, CellReferenceRC},
+        types::Area,
         utils::{is_valid_identifier, number_to_column},
     },
+    formula_rewrite::RewrittenFormula,
     model::Model,
     types::{Cell, Table, TableColumn, TableStyleInfo, Worksheet},
 };
@@ -309,105 +307,11 @@ impl Model {
         skip_sheet: Option<usize>,
         rewrite: TableRewrite,
     ) -> Vec<RewrittenFormula> {
-        let print = |node: &Node, context: Option<&CellReferenceRC>| match rewrite {
-            TableRewrite::RefError => to_string_with_ref_errors(node, context, tables),
-            TableRewrite::Lower => to_string_lowering(node, context, tables),
-        };
-        let mut rewritten = Vec::new();
-        self.parser.set_lexer_mode(LexerMode::R1C1);
-        for (index, worksheet) in self.workbook.worksheets.iter_mut().enumerate() {
-            if Some(index) == skip_sheet {
-                continue;
-            }
-            let context = CellReferenceRC {
-                sheet: worksheet.get_name(),
-                row: 1,
-                column: 1,
-            };
-            for (formula_index, formula) in worksheet.shared_formulas.iter_mut().enumerate() {
-                let node = self.parser.parse(formula, &context);
-                let text = print(&node, None);
-                if text != *formula {
-                    rewritten.push(RewrittenFormula {
-                        place: FormulaPlace::Shared {
-                            sheet_id: worksheet.sheet_id,
-                            index: formula_index,
-                        },
-                        original: std::mem::replace(formula, text.clone()),
-                        rewritten: text,
-                    });
-                }
-            }
-        }
-        self.parser.set_lexer_mode(LexerMode::A1);
-        // Defined names have no cell context; any cell of a remaining sheet does.
-        let remaining = self
-            .workbook
-            .worksheets
-            .iter()
-            .enumerate()
-            .find(|(index, _)| Some(*index) != skip_sheet)
-            .map(|(_, worksheet)| worksheet.get_name());
-        let Some(sheet) = remaining else {
-            return rewritten;
-        };
-        let context = CellReferenceRC {
-            sheet,
-            row: 1,
-            column: 1,
-        };
-        for (index, defined_name) in self.workbook.defined_names.iter_mut().enumerate() {
-            let stored = defined_name.formula.trim_start();
-            let (eq, body) = stored.strip_prefix('=').map_or(("", stored), |b| ("=", b));
-            let node = self.parser.parse(body, &context);
-            let text = print(&node, Some(&context));
-            if text != to_english_string(&node, &context) {
-                let text = format!("{eq}{text}");
-                rewritten.push(RewrittenFormula {
-                    place: FormulaPlace::DefinedName(index),
-                    original: std::mem::replace(&mut defined_name.formula, text.clone()),
-                    rewritten: text,
-                });
-            }
-        }
-        rewritten
+        self.rewrite_formulas(skip_sheet, |node, context| match rewrite {
+            TableRewrite::RefError => to_string_with_ref_errors(&node, context, tables),
+            TableRewrite::Lower => to_string_lowering(&node, context, tables),
+        })
     }
-
-    /// Puts back the formulas [`Model::take_tables_of_sheet`] rewrote, where they still hold the
-    /// rewritten text (the undo of a sheet delete). Does not reparse.
-    pub(crate) fn restore_table_references(&mut self, rewritten: Vec<RewrittenFormula>) {
-        for RewrittenFormula {
-            place,
-            original,
-            rewritten,
-        } in rewritten
-        {
-            let slot = match place {
-                FormulaPlace::Shared { sheet_id, index } => self
-                    .workbook
-                    .worksheets
-                    .iter_mut()
-                    .find(|worksheet| worksheet.sheet_id == sheet_id)
-                    .and_then(|worksheet| worksheet.shared_formulas.get_mut(index)),
-                FormulaPlace::DefinedName(index) => self
-                    .workbook
-                    .defined_names
-                    .get_mut(index)
-                    .map(|defined_name| &mut defined_name.formula),
-            };
-            if let Some(slot) = slot.filter(|slot| **slot == rewritten) {
-                *slot = original;
-            }
-        }
-    }
-}
-
-/// A formula that a table or sheet delete rewrote, kept so the undo can put it back.
-#[derive(Debug, Clone, bitcode::Encode, bitcode::Decode)]
-pub(crate) struct RewrittenFormula {
-    place: FormulaPlace,
-    original: String,
-    rewritten: String,
 }
 
 /// How [`Model::rewrite_table_references`] prints a structured reference to a removed table.
@@ -417,13 +321,4 @@ enum TableRewrite {
     RefError,
     /// The absolute area it resolved to: the table is converted to a range.
     Lower,
-}
-
-/// Where a [`RewrittenFormula`] lives.
-#[derive(Debug, Clone, Copy, bitcode::Encode, bitcode::Decode)]
-enum FormulaPlace {
-    /// A shared formula of the sheet with this id.
-    Shared { sheet_id: u32, index: usize },
-    /// A defined name, by its index in the workbook's list.
-    DefinedName(usize),
 }

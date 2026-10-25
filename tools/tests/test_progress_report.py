@@ -1,4 +1,5 @@
-"""The parity page generator's bucket logic and output (T-2041), on a small synthetic report."""
+"""The progress report generator (SPEC-0022) on a small synthetic report: the parity page's bucket
+logic and output (T-2041) and the run record (T-0070). test_progress_page.py covers the page."""
 
 from __future__ import annotations
 
@@ -8,9 +9,11 @@ from typing import Any
 
 import pytest
 
-from rustsheet_tools import parity_report
-from rustsheet_tools.parity_report import ParityReportError, compute, md_cell, table
-from rustsheet_tools.parity_svg import Bar, bar_chart, nice_step
+from rustsheet_tools import progress_report
+from rustsheet_tools.progress_report import parity
+from rustsheet_tools.progress_report.markdown import md_cell, pct, table
+from rustsheet_tools.progress_report.model import FunctionParity, ProgressReportError, compute, run_of
+from rustsheet_tools.progress_report.svg import Bar, bar_chart, nice_step
 
 SCOPE: dict[str, Any] = {
     "functions": [
@@ -61,6 +64,7 @@ def report() -> dict[str, Any]:
             fn("CALL", 2, 0, unsupported=1, visible_other=1),
         ],
         "cases": [],
+        "run": {"commit": "abc12345", "date": "2026-10-19", "skipped_suites": []},
         "suites": [
             {
                 "name": "s",
@@ -74,7 +78,7 @@ def report() -> dict[str, Any]:
     }
 
 
-def by_name(r: dict[str, Any] | None = None) -> dict[str, parity_report.FunctionParity]:
+def by_name(r: dict[str, Any] | None = None) -> dict[str, FunctionParity]:
     return {f.name: f for f in compute(r or report(), SCOPE).functions}
 
 
@@ -112,7 +116,7 @@ def test_buckets_come_from_the_report() -> None:
 def test_a_report_without_closeness_counts_fails_loudly() -> None:
     r = report()
     del r["functions"][0]["closeness"]
-    with pytest.raises(ParityReportError, match="T-2036"):
+    with pytest.raises(ProgressReportError, match="T-2036"):
         compute(r, SCOPE)
 
 
@@ -126,7 +130,7 @@ def test_only_in_scope_catalog_functions_count() -> None:
 def test_buckets_that_do_not_sum_to_the_scored_cells_fail_loudly() -> None:
     r = report()
     r["functions"][0]["cells"] = 7
-    with pytest.raises(ParityReportError, match="ABS"):
+    with pytest.raises(ProgressReportError, match="ABS"):
         compute(r, SCOPE)
 
 
@@ -147,22 +151,22 @@ def test_visibly_off_functions_are_the_blamed_ones() -> None:
     p = compute(report(), SCOPE)
     assert [(f.name, f.visible) for f in p.blamed()] == [("BETA.DIST", 2)]
     assert p.suite_visible_cells() == 3
-    assert "**1 in-scope functions are visibly off**" in parity_report.takeaway(p)
-    assert "| BETA.DIST | statistical | M9 | 2 | 6 |" in parity_report.visible_table(p)
+    assert "**1 in-scope functions are visibly off**" in parity.takeaway(p)
+    assert "| BETA.DIST | statistical | M9 | 2 | 6 |" in parity.visible_table(p)
 
 
 def test_a_report_without_the_fifteen_digit_bucket_fails_loudly() -> None:
     r = report()
     del r["functions"][0]["closeness"]["digits15"]
-    with pytest.raises(ParityReportError, match="T-0061"):
+    with pytest.raises(ProgressReportError, match="T-0061"):
         compute(r, SCOPE)
 
 
 def test_pct_never_rounds_to_the_ends() -> None:
-    assert parity_report.pct(9999, 10000) == "99.99%"
-    assert parity_report.pct(99999, 100000) == "99.99%"
-    assert parity_report.pct(1, 100000) == "0.01%"
-    assert parity_report.pct(5, 5) == "100.00%"
+    assert pct(9999, 10000) == "99.99%"
+    assert pct(99999, 100000) == "99.99%"
+    assert pct(1, 100000) == "0.01%"
+    assert pct(5, 5) == "100.00%"
 
 
 def test_main_writes_the_pages_and_charts(tmp_path: Path) -> None:
@@ -170,17 +174,12 @@ def test_main_writes_the_pages_and_charts(tmp_path: Path) -> None:
     rep.write_text(json.dumps(report()))
     scope.write_text(json.dumps(SCOPE))
     out = tmp_path / "out"
-    parity_report.main(
-        [
-            *("--report", str(rep), "--scope", str(scope), "--out-dir", str(out)),
-            *("--commit", "abc12345", "--run-date", "2026-10-19"),
-        ]
-    )
+    progress_report.main(["--report", str(rep), "--scope", str(scope), "--out-dir", str(out)])
     page = (out / "parity.md").read_text()
     assert "2026-10-19" in page
     assert "`abc12345`" in page
     assert "(parity/functions.md)" in page
-    for chart in parity_report.CHARTS:
+    for chart in parity.CHARTS:
         name = chart.name
         assert f"(parity/{name})" in page
         svg = (out / "parity" / name).read_text()
@@ -202,7 +201,7 @@ def test_phase1_bands_read_the_within_fifteen_digit_share() -> None:
     assert f["SUM"].phase1_band.endswith("(Phase 1 exit)")
     per = p.functions_per_phase1_band()
     assert (per["Below 90%"], sum(per.values())) == (1, 5)
-    assert "| Below 90% | 1 | 20.00% |" in parity_report.phase1_table(p)
+    assert "| Below 90% | 1 | 20.00% |" in parity.phase1_table(p)
 
 
 def test_nice_step_picks_1_2_5_steps() -> None:
@@ -231,9 +230,9 @@ def test_inner_label_ink_follows_the_theme() -> None:
 
 def test_chart_contents() -> None:
     p = compute(report(), SCOPE)
-    svgs = parity_report.charts(p)
+    svgs = parity.charts(p)
     stacked = svgs["functions-per-category.svg"]
-    for label in parity_report.LABELS.values():
+    for label in parity.LABELS.values():
         assert f">{label}</text>" in stacked
     assert ">math</text>" in stacked
     assert ">Within 2\N{EN DASH}4 ulp</text>" in svgs["functions-per-bucket.svg"]
@@ -251,7 +250,28 @@ def test_hostile_labels_are_escaped() -> None:
     assert md_cell("a|b") == "a\\|b"
 
 
-@pytest.mark.parametrize(("flag", "value"), [("--commit", "abc; rm -rf /"), ("--run-date", "19 Oct")])
-def test_snapshot_args_are_validated(tmp_path: Path, flag: str, value: str) -> None:
-    with pytest.raises(SystemExit):
-        parity_report.main(["--out-dir", str(tmp_path), flag, value])
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("commit", "abc; rm -rf /"),
+        ("commit", "ABC12345"),
+        ("date", "19 Oct"),
+        ("date", None),
+        ("skipped_suites", [{"name": "poi"}]),
+        ("skipped_suites", None),
+    ],
+)
+def test_the_run_record_is_validated(tmp_path: Path, field: str, value: object) -> None:
+    # The run's commit, date and skipped suites are printed into the pages.
+    r = report()
+    r["run"][field] = value
+    with pytest.raises(ProgressReportError, match=f"run.{field}"):
+        run_of(r)
+    rep, scope = tmp_path / "report.json", tmp_path / "scope.json"
+    rep.write_text(json.dumps(r))
+    scope.write_text(json.dumps(SCOPE))
+    with pytest.raises(SystemExit, match=field):
+        progress_report.main(
+            ["--report", str(rep), "--scope", str(scope), "--out-dir", str(tmp_path / "out")]
+        )
+    assert not (tmp_path / "out").exists()

@@ -1132,7 +1132,9 @@ error in argument order wins. Any flow error beats NPV's own `#DIV/0!` ("NPV's d
 `NPV(0.1,{1,#DIV/0!},{#N/A})` #DIV/0!, `NPV(0.1,Q1:Q2,{1,#N/A})` #DIV/0!, `NPV(0.1,{1,#N/A},Q1:Q2)` #N/A,
 `NPV(1E+300,1,1,{1,#N/A})` #N/A, `NPV(-1,{1,#N/A},NA())` #N/A. This explains gen-m9 0a957119475760c5 Calc!A255, whose
 third argument is a `TOROW(..)/0` array of #DIV/0! and fourth a RANK.EQ #N/A (Excel #N/A).
-Evidence: probes/npv-power-edges A35-A51, probes/npv-power-edges-2 A31-A48 (excel-graph, 2026-10-25).
+Evidence: probes/npv-power-edges A35-A51, probes/npv-power-edges-2 A31-A48 (excel-graph, 2026-10-25); also
+probes/t2493-npv-rate-edges A26:A29, A48:A59, A71:A77 (an error flow before a failing discount, `NPV(-1,NA())` #N/A; error
+cells in B3:B4 against `NA()`) and probes/t2493-npv-error-order-inner-calls (gen-m9/0a957119475760c5 A157, A255; T-2734).
 Status: VERIFIED (excel-graph)
 Implemented in: functions/financial/mod.rs (`npv_cash_flows`)
 Tasks: T-2493
@@ -1149,7 +1151,10 @@ normal double. The last period's own power may overflow, and its quotient is not
 subnormal quotient is 0 (`NPV(9E+307,1)` is 0), and an overflowing sum is #NUM! (`NPV(-0.5,9E+307,1)`). A rate below
 -1 is fine (`NPV(-2,1,1)` 0, `NPV(-3,1,1,1)` -0.375). The literal 1E+308 in a probe formula makes Excel Online
 reject the workbook ("unsupported features"), so these probes use 9E+307.
-Evidence: probes/npv-power-edges A1-A34, probes/npv-power-edges-2 A1-A30 (excel-graph, 2026-10-25); the T-2436 and
+Evidence: probes/npv-power-edges A1-A34, probes/npv-power-edges-2 A1-A30 (excel-graph, 2026-10-25); probes/t2493-npv-rate-edges
+A1:A14, A30:A47 and A60:A70 (a typed -0.9999999999999999 is cut to 15 digits, numbers.md "Formula number literals are read at
+15 significant digits"; 20 flows of 1 give 1.016120504184532E+300, 21 give #NUM!,
+22 and more #DIV/0!; T-2734); the T-2436 and
 T-2496 sub-expression probes (NPV(-1,..) and NPV(1E+300,..) cells).
 Ours: matches since T-2493. The power is Rust's `powi` (binary exponentiation), not Excel's running product, so the
 two may disagree right at an overflow or underflow edge (unprobed); the overflowing last quotient is two divisions.
@@ -2086,7 +2091,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   TRUE factor from a cell without `#VALUE!` (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8); `VDB(43478,488,1E+9,3,7,0)`
   = 0.00017196 (a91bad4e84f49739 A323). Now probed and followed ("VDB, DDB and ACCRINT argument types", T-2492).
 - NPER at a rate of 1E-300 is `#DIV/0!` (`NPER(1E-300,-236,2766,945)`, 3c06f9298f65a3ba A148; five more 1E-300 cells in
-  T-2698), and at a rate of -1 it is `#NUM!` (`NPER(-1,-31,1)`, 3c06f9298f65a3ba A50, where ours is 0). NPV at a rate
+  T-2698), and at a rate of -1 it is `#NUM!` (`NPER(-1,-31,1)`, 3c06f9298f65a3ba A50; both implemented by T-2620, "Annuity and DB argument domains at their
+  limits"). NPV at a rate
   of -1 is `#DIV/0!` (`NPV(-1,GESTEP(-2.5,-100))`, 3aa168259335be54 A18), EFFECT at a huge nominal rate `#NUM!` (`EFFECT(1E+300,11)`,
   31474c20fc1dafd6 A37).
 - `IRR(CELL("row",Data!D$2),0.5)` is `#VALUE!` with the cause unprobed (5422bdbf173fc233 A63), while plain scalar flows and
@@ -2230,3 +2236,28 @@ own rejected forms on m9-fin-nper-npv.
 Ours: the left-to-right double sum (`compute_npv`).
 Status: VERIFIED (values: the IRR.xlsx Excel Online cache, and excel-graph sidecars fin-argument-modes.oracle.json and m9-fin-nper-npv.oracle.json for H367 and A148); the formulation is open (T-2671 probes it, T-2672 fits it).
 Tasks: T-2671, T-2672, T-1528, T-2131
+
+## Annuity and DB argument domains at their limits
+Rule: PV's growth factor `P = (1+rate)^nper` is Excel's `^`, errors included, and PV then divides by P:
+- a rate of -1 with nper 0 is 0^0, which is `#NUM!` (`PV(-1,0,-713)`);
+- a P of 0 is the division's `#DIV/0!`. That covers a rate of -1 with nper > 0, and a rate so near -1 that P underflows
+  (`PV(-1+2^-52,165,-978,224,0)`, where 1+rate is 2^-52 and its 165th power is 0).
+
+NPER divides by ln(1+rate):
+- a rate so small that 1+rate is 1 is `#DIV/0!`, start-of-period type 1 too (`NPER(1E-300,-113,3037,368,1)`);
+- a rate of -1 is `#NUM!` (LN(0); `NPER(-1,-31,1)`).
+
+DB's `month` reads a boolean as 1 or 0, from a cell too, as DDB's factor does ("VDB, DDB and ACCRINT argument types").
+`DB(15779,385,37,<FALSE>,<FALSE>)`, with period and month both FALSE cells, is `#NUM!`, not `#VALUE!`. Only the FALSE
+pair is probed; TRUE as month 1 is inferred from DDB.
+
+Evidence: probes/t2475-stat-subexpressions P!A39, A92, A136, A165 (excel-graph, 2026-10-24, T-2475), and the gen-m9 cells
+they isolate: 11eb3ab4f4f8104c A109, 1b31092a0d79e5f1 A260, 31f09e6c48ca245c A232, 38e4fc309fe199ea A89, and
+3c06f9298f65a3ba A50, A148 (T-2698's list).
+Ours: `pv_of` and `nper_of` (functions/financial/annuity.rs), `fn_db` (functions/financial/financial_depreciation.rs), T-2620.
+Inferred from the same formulas, unprobed: PV's `#DIV/0!` covers every P that underflows to 0 (a rate in (-2,-1)
+with a large even nper too, `#NUM!` before), and NPER's LN of a non-positive ratio is `#NUM!` before the ln(1+rate)
+`#DIV/0!` (`NPER(1E-300,0,100,200)` is `#NUM!`).
+Status: VERIFIED for the probed cells; DB's boolean month beyond the FALSE pair and the inferred lines are UNVERIFIED
+(T-2749 probes them).
+Tasks: T-2620, T-2698, T-2749
