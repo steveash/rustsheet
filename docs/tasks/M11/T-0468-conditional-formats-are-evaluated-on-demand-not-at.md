@@ -42,4 +42,5 @@ change): the getters take `&self` while CF evaluation needs `&mut self` (evaluat
 ## Out of scope
 - Making a single conditional-format evaluation over huge areas fast (a later task if a caller
   needs it).
-- What Excel does with a rule formula that returns an array (keep today's behavior).
+- What Excel does with a rule formula that returns an array (keep today's behavior, which has no
+  oracle evidence yet: the probe is T-2716).

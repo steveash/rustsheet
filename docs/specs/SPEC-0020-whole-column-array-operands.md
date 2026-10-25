@@ -83,8 +83,15 @@ A node is tailed when all of the following hold:
 - **Leaves.** Every leaf is one of:
   - a literal;
   - a one-cell reference, as a scalar;
-  - a range reference on one sheet, with no defined name, structured or 3-D reference, INDIRECT or
-    OFFSET.
+  - a range reference on one sheet.
+
+  As node kinds, the leaves are only `Node::RangeKind` and `Node::ReferenceKind`, plus literals.
+  These are excluded: `WrongRangeKind` and `WrongReferenceKind` (external workbooks),
+  `SheetSpanKind`, `ThisRowKind`, `SpillRangeOperator`, `ImplicitIntersection`, `DefinedNameKind`,
+  and every function call except IF, which rules out INDIRECT and OFFSET.
+
+  `used_area_corner` clips only full-height (or full-width) ranges. In practice, then, only
+  whole-column leaves pass the Gain check below.
 - **Operators.** Every interior node is one of:
   - a comparison, arithmetic or concatenation operator;
   - a unary `-` or `+`, or the percent operator;
@@ -136,8 +143,15 @@ node for node.
   walked (`width * rows()`) stay within 2^20, a wide `A:XFD` leaf included.
 - **IF**, over its array condition, evaluates both branches once after the condition, and calls
   `variable_stack.copy_read_once()` first, as `if_array` does.
-- **An error that today returns the whole result** (a scalar error operand of an array operation,
-  `array_of_errors`) gives the same error array, as a `Tailed` whose tail is that error.
+- **A scalar error operand of an array operation** goes through `array_of_errors` (arithmetic.rs),
+  applied to the head and to the tail row alike. Each element goes through the same `element_error`
+  function as today: `own_error` for comparisons, the number or string cast for arithmetic and
+  concatenation. So an element that is already an error keeps its own error. In
+  `((D:D+K1)=K2)` with K1 and K2 both errors, the tail keeps K1's error.
+- **The paths that return a scalar error today** stay scalar: the `(Err, _) | (_, Err)` arm, and
+  a `check_range_size` or 3-D-range read error. They come out of `evaluate_tailed` as `Err`, and
+  the walk takes that `Err` through `walk_aggregate_read`'s scalar path, exactly as today. They
+  are never held as array errors.
 
 ### Consumer: the aggregate walk
 `walk_aggregate_arg` (aggregate_args.rs) is the single entry point. When `tailed_shape(arg)` holds,
@@ -150,21 +164,29 @@ per-element body. Otherwise it reads the argument as today.
 - This covers all nine users of `for_each_aggregate_number`: SUM, PRODUCT, MIN, MAX, AVERAGE,
   COUNT, the variance family and so on.
 
-`tail_len` repeats can be skipped at once when the tail element is ignored under the walk's rules:
-- `Empty`;
-- or text or a boolean, when `rules.array` ignores it;
+By default the walk visits the tail element `tail_len` times, exactly as it visits the
+materialized array. COUNTA counts every `ArrayElement`, `Empty` included (probes/counta-empty-value
+D18), and AND, OR, XOR and COUNT also use this walk, so no skip is assumed.
 
-and no error is pending. The skip asks the visitor itself: the walk visits the tail element once,
-and skips the remaining repeats only if that visit changed nothing. The visitor reports this from
-the same `array_item` and `aggregate_number` decision it already makes, so the ignore rules are
-not copied. Counting consumers (COUNTA, the A-variants) count it `tail_len` times. A
-numeric tail is visited `tail_len` times, so float summation is unchanged; 2^20 adds take about a
-millisecond.
+Only a consumer that owns its number rules may skip the repeats.
+- `for_each_aggregate_number` passes an optional predicate to the walk: true when
+  `aggregate_number(rules, ItemSource::ArrayElement, value)` is `Ok(None)` (the item is ignored).
+- That is the same decision it applies to every item, so the ignore rules are not copied.
+- The walk skips the remaining repeats only when the predicate holds for the tail element and no
+  error is held.
+
+Every other consumer passes no predicate. A numeric tail is always visited `tail_len` times, so
+float summation is unchanged; 2^20 adds take about a millisecond.
 
 ### Limits (directive 5)
-- `tailed_shape` and `evaluate_tailed` recurse over the same AST that today's evaluator recurses
-  over, and go no deeper. They run under the evaluator's existing depth and stack guards, and a
-  deep-nesting test is part of T-0469.
+- **Recursion.** The parser's depth cap does not count the links of a value-operator chain. Such
+  chains are left-nested (expressions/parser/chain.rs, T-0128), so `SUM(A:A+A:A+…)` with 4,000
+  links is a tree 4,000 deep.
+  - `tailed_shape` and `evaluate_tailed` therefore walk chains with chain.rs's `left_chain`, looping
+    down the left operands as today's evaluator does, and recurse only into IF arguments and
+    groups.
+  - Those recursions are bounded by the parser's depth cap.
+  - A 4,000-link chain test and a deep-nesting test are part of T-0469.
 - No new allocation beyond the head, which is at most the used area: the same bound as today's
   clipped reads.
 - The tail is one row.
@@ -190,7 +212,16 @@ millisecond.
 - **Static-check tests** for each exclusion: names, INDIRECT, mixed heights, ROW, a bare range or
   parenthesized range argument, and an IF with a scalar condition. Equivalence tests for
   `SUM(F:F)` and `MIN(IF($K$1,F:F,G:G))` show they stay on today's path.
-- **A deep-nesting test**, and a multi-column whole-column leaf over the cell limit.
+- **A deep-nesting test, a long-chain test**, and a multi-column whole-column leaf over the cell
+  limit.
+- **Equivalence for each consumer of the walk:** SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, the
+  A-variants, AND and OR, the variance family. It covers:
+  - an `Empty` tail produced through an IF branch (`COUNTA(IF(D:D="",F:F))`);
+  - the ranked-error probes (probes/aggregate-array-error-vs-ref-error-*) with a whole-column
+    operand;
+  - a leaf on another sheet whose used extent is shorter than the common head length `h`, padded
+    with `Empty`;
+  - error tails built by `array_of_errors` from scalar error operands.
 - **Eval:** `rustsheet-eval check` with 0 regressions in every gated suite.
 - **Measures:** corpus-bench 59932 and 17049 under 60 s through the harness (their `!Timeout` lines
   leave the baseline). A bench `aggregate -- whole_column`: 400 `MAX(IF(F:F=A1,G:G,""))` over a
