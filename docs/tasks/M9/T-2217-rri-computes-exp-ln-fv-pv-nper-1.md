@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: [T-2216]
-campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -84,3 +84,6 @@ to a follow-up task filed without the key.
 
 ## Note from T-2216
 The sweep (financial.md "DURATION and RRI operation order") fits `EXP(LN(fv/pv)*(1/nper))-1` on 134 of 136 numeric points; `/nper` fits only 87. Implement the `*(1/nper)` form.
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

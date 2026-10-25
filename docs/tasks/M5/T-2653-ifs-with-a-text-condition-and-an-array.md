@@ -3,12 +3,12 @@ id: T-2653
 title: "IFS with a text condition and an array value: a #VALUE! array the value's shape (spills)"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -31,11 +31,14 @@ one `#VALUE!`.
 - Recorded in logic.md "IFS: a text condition with an array value spills its shape" (UNVERIFIED until the probe).
 
 ## Acceptance criteria
-- [ ] An excel-graph probe (`excel-probe` skill) pins the result shape: `ROWS`/`COLUMNS`/`TYPE` of `IFS("x",{1,2;3,4})`,
+- [x] An excel-graph probe (`excel-probe` skill) pins the result shape: `ROWS`/`COLUMNS`/`TYPE` of `IFS("x",{1,2;3,4})`,
       `IFS("x",A1:B3)`, `IFS(FALSE,1,"x",{1,2})`, `IFS("x",5,TRUE,{1,2})` and the same with a spill footprint free.
-- [ ] The engine matches the probe; the gen-m5 line above disappears (`make eval-baseline`), with no new known failure.
-- [ ] logic.md entry updated with the evidence and `Status: VERIFIED`.
-- [ ] `make check` green; reviewers approve.
+- [x] The engine matches the probe; the gen-m5 line above disappears (`make eval-baseline`), with no new known failure.
+- [x] logic.md entry updated with the evidence and `Status: VERIFIED`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SWITCH (logic.md: it has no text-condition case).
+
+## Outcome
+Probed (2 cases, excel-graph): the #VALUE! array takes the broadcast shape of the pair's value and all later arguments. `ifs_pick` now lifts the remaining args for a text condition. gen-m5 known failures -1 (Calc!A208); no regressions; logic.md VERIFIED.
