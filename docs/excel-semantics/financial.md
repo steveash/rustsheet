@@ -191,6 +191,22 @@ Implemented in: `balance_interest`, `accurate_discount` and `discounted_principa
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2490).
 Tasks: T-2490, T-2665, T-2666, T-2667
 
+## DB and SYD argument domains
+Rule: SYD with a negative salvage is `#NUM!` (`SYD(100,-1E-300,10,1)`; salvage 0 is a value), and `life*(life+1)` past the
+double range is `#DIV/0!` (`SYD(100,10,1.3E+154,1)` 1.3846153846153848E-152, `SYD(100,10,1.4E+154,1)` and
+`SYD(1E+300,1,1E+200,1)` `#DIV/0!`); an overflowing numerator is `#NUM!` (`SYD(1E+300,-1E+300,10,1)`, by its salvage). DB
+reads life and period as 32-bit integers: a life above 2147483647 is `#NUM!` (`DB(100,10,2147483648,1)`,
+`DB(6912,0,2147483648,2,6)`; 2147483647 is a value) from period 1 on, but a period below 1 still has its value
+(`DB(18057,894,FACT(13),0.5,8)` is 0, gen-m9 762cd0e4ec9a7aa9 A200); a period above 2147483647 is period 1's value whatever
+the life (`DB(100,10,4,2147483648)` and `DB(100,10,4,1E+200)` are 43.8, `DB(0.01,488,32,1E+200,10)` -0.0033416666666666673)
+while 2147483647 is past life+1 and `#NUM!`; the life+1 bound is on the period's whole part (`DB(0.01,488,32,33.5,10)` is
+period 33's value). A negative salvage is `#NUM!` for DB too, even at cost 0 (`DB(0,-1,4,1)`, `DB(100,-0.0001,4,1)`), while
+`DB(0,0,4,1)` is 0. So a huge period needs no schedule walk and is not under "DB and VDB period cap".
+Evidence: probes/fin-syd-db-domain (excel-graph, 2026-10-25, T-2491); gen-m9 cells of T-2491.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_db`, `fn_syd`, `DB_INTEGER_MAX` (crates/rustsheet-engine/src/functions/financial/financial_depreciation.rs, T-2491).
+Tasks: T-2491
+
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
 other order tried misses cells where the orders differ in the last bit: `pv*rate*(per/nper-1)` (the old engine form)

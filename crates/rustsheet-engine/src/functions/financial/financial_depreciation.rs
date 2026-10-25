@@ -222,6 +222,10 @@ fn vdb_switching_between(
 /// its period up to it.
 pub(crate) const MAX_DEPRECIATION_PERIODS: u32 = 100_000;
 
+/// DB's largest life and period, `i32::MAX`: Excel reads both as 32-bit integers
+/// (probes/fin-syd-db-domain A6:A7, C7:C8).
+const DB_INTEGER_MAX: f64 = 2_147_483_647.0;
+
 /// Whether `period` is past [`MAX_DEPRECIATION_PERIODS`].
 fn past_period_cap(period: f64) -> bool {
     period.trunc() > f64::from(MAX_DEPRECIATION_PERIODS)
@@ -361,12 +365,24 @@ impl Model {
                 let month = model
                     .cast_number_no_bools_or(rest.first(), 12.0, cell)?
                     .trunc();
+                // Excel reads life and period as 32-bit integers: a period past i32::MAX is period 1
+                // (`DB(100,10,4,2147483648)` is 43.8), and a life past it is #NUM! from period 1 on
+                // (`DB(100,10,2147483648,1)`) but not below it (`DB(18057,894,FACT(13),0.5,8)` is 0,
+                // gen-m9 762cd0e4ec9a7aa9 A200); a negative salvage is #NUM! even at cost 0
+                // (probes/fin-syd-db-domain A7, D8, F1, F4; financial.md "DB and SYD argument domains").
+                let huge_period = period > DB_INTEGER_MAX;
+                let huge_life = life > DB_INTEGER_MAX && !huge_period && period >= 1.0;
+                let period = if huge_period { 1.0 } else { period };
                 if month == 12.0 && period > life
-                    || (period > life + 1.0)
+                    // The partial last year is period life+1 by its whole part
+                    // (`DB(0.01,488,32,33.5,10)` is period 33's value, probes/fin-syd-db-domain C2).
+                    || (period.trunc() > life + 1.0)
                     || month <= 0.0
                     || month > 12.0
                     || period <= 0.0
                     || cost < 0.0
+                    || salvage < 0.0
+                    || huge_life
                 {
                     return Err(num_error(cell));
                 }
@@ -417,10 +433,17 @@ impl Model {
                 let salvage = model.cast_number_ref(salvage, cell)?;
                 let life = model.cast_number_ref(life, cell)?;
                 let per = model.cast_number_ref(per, cell)?;
-                if life == 0.0 || per > life || per <= 0.0 {
+                if life == 0.0 || per > life || per <= 0.0 || salvage < 0.0 {
                     return Err(num_error(cell));
                 }
-                Ok(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
+                // `life*(life+1)` past the double range is #DIV/0! (`SYD(100,10,1.4E+154,1)`),
+                // a numerator past it #NUM! (`SYD(1E+300,-1E+300,10,1)` by its salvage;
+                // probes/fin-syd-db-domain F16, F20; financial.md "DB and SYD argument domains").
+                let years = life * (life + 1.0);
+                if !years.is_finite() {
+                    return Err(div_error(cell));
+                }
+                Ok(((cost - salvage) * (life - per + 1.0) * 2.0) / years)
             };
             number_or_error(read())
         })

@@ -73,3 +73,17 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Progress notes (T-2491, 2026-10-25)
+Data from the run that started this task, to check against the acceptance criteria. Pushed in flight at the session budget.
+- Probe probes/fin-syd-db-domain (filled, excel-graph) and its rules in financial.md "DB and SYD argument domains" are on
+  this branch; `fn_db` and `fn_syd` implement them. `make eval-baseline` then fixes 21 gen-m9 lines (19 of this task's 20;
+  the other two are the A377 below) and 14 probes lines; the probes baseline is recorded, gen-m9's is not yet.
+- Open regression, which blocks the gen-m9 baseline: gen-m9/2138b909d8f810ea Calc!A146
+  `=PROB(<scalar>,Data!B3:D8,SYD(85972,-439103,18,9),1)`. It is Excel `#VALUE!`; ours is now `#NUM!` (SYD is `#NUM!` as in
+  Excel). PROB checks its limits before its data (prob.rs `prob_element`, probes/stat-test-lift P14), but here a limit
+  that is an error value loses to the data's `#VALUE!`. That is PROB's error order: probe `PROB(<bad data>,...,NA())` and
+  `PROB(<bad data>,...,"a")` to split the error-value and text cases, fix `prob_element`, then `make eval-baseline`.
+- gen-m9 01523d247594952e A377 (`SYD(15023,AVEDEV(..)*F.INV.RT(1E-20,9,3),33,1)`) is not SYD: the 30-ulp gap needs a
+  salvage 30 ulp off, so it is F.INV.RT's far tail (T-2435). Leave its line, and say so in the Outcome.
+- Still to do: unit tests (acceptance), `make check`, review, PR.
