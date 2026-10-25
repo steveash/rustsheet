@@ -121,6 +121,20 @@ pub(crate) fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
     format!("{digits}e{place}").parse().ok()
 }
 
+/// `value` cut to 15 significant digits, as the double nearest that decimal: an exact tie at the
+/// 16th digit goes away from zero when `tie_away`, otherwise toward zero. A zero or non-finite
+/// `value` is itself. FLOOR's ratio snap and PERCENTRANK's truncation use it, so that a double
+/// just below a digit boundary counts as on it.
+pub(crate) fn cut_to_15_digits(value: f64, tie_away: bool) -> f64 {
+    if !value.is_finite() || value == 0.0 {
+        return value;
+    }
+    let (mantissa, exponent) = significant_15(value.abs(), tie_away);
+    // `mantissa` has 15 digits, so its last digit has place value 10^(exponent - 14).
+    decimal_to_f64(mantissa, exponent - (SIGNIFICANT_DIGITS - 1))
+        .map_or(value, |cut| cut.copysign(value))
+}
+
 /// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`: the digits kept, and whether
 /// `mode` rounds them up by one unit.
 fn round_off(mantissa: u64, dropped: i64, mode: RoundMode) -> (u64, bool) {

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
+use crate::attribution::{self, Attribution, Tier, Workbooks};
 use crate::catalog::Catalog;
 use crate::catalog_coverage::{self, MilestoneCoverage};
 use crate::closeness::{self, Closeness, Visible};
@@ -57,6 +58,9 @@ pub struct SuiteSummary {
     /// ratchet counts (T-0061, `visible_parity`).
     #[serde(default)]
     pub closeness: Closeness,
+    /// The cases with a scored cell by their worst `closeness` cell (T-0068).
+    #[serde(default)]
+    pub workbooks: Workbooks,
 }
 
 /// Number of slowest cases kept in the report.
@@ -128,6 +132,18 @@ pub struct FunctionStat {
     /// ([`closeness::blamed`], T-0061).
     #[serde(default)]
     pub visible: Visible,
+    /// The non-deviation Excel-evidence cells that call this function (decision 0118).
+    #[serde(default)]
+    pub excel: Closeness,
+    /// Of `excel`, the cells whose sole non-glue call it is ([`closeness::sole_call`]).
+    #[serde(default)]
+    pub attributed: Closeness,
+    /// The worst-cell parity tier of `attributed`, or of `excel` below the evidence floor.
+    #[serde(default)]
+    pub tier: Tier,
+    /// Which of the two placed `tier`.
+    #[serde(default)]
+    pub attribution: Attribution,
 }
 
 /// Scored cells with Excel-sourced expectations that call one function.
@@ -282,6 +298,7 @@ impl RunReport {
             s.millis += r.millis;
             s.text_cells += r.text.len();
             s.text_passed += r.text.iter().filter(|t| t.pass).count();
+            let mut book = Closeness::default();
             for c in &r.cells {
                 *s.verdicts.entry(c.verdict).or_default() += 1;
                 if c.listed_deviation && c.verdict.is_pass() {
@@ -294,6 +311,7 @@ impl RunReport {
                 let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
                 if calls_only_in_scope(catalog, &called) {
                     s.closeness.add(c);
+                    book.add(c);
                 }
                 // A by-design value says nothing about how well a function matches Excel.
                 if c.verdict == Verdict::Deviation {
@@ -309,7 +327,9 @@ impl RunReport {
                         st.visible.merge(visible);
                     }
                 }
+                let sole = closeness::sole_call(&called).cloned();
                 for f in called {
+                    let is_sole = sole.as_ref() == Some(&f);
                     if c.from_excel {
                         let ev = evidence
                             .entry(f.clone())
@@ -330,9 +350,12 @@ impl RunReport {
                     }
                     *st.verdicts.entry(c.verdict).or_default() += 1;
                     st.closeness.add(c);
+                    st.add_attributed(c, is_sole);
                 }
             }
+            s.workbooks.add(&book);
         }
+        functions.values_mut().for_each(FunctionStat::place_tier);
         let (mut functions, out): (Vec<FunctionStat>, Vec<FunctionStat>) = functions
             .into_values()
             .partition(|f| catalog.in_scope(&f.name));
@@ -540,6 +563,7 @@ impl RunReport {
         crate::milestone_exit::write_markdown(&self.milestone_exit, &mut md);
         visible_parity::write_markdown(self, &mut md);
         v15_checkpoint::write_markdown(&self.v15_checkpoint, &mut md);
+        attribution::write_markdown(self, &mut md);
         text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);

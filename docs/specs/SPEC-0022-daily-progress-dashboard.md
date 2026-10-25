@@ -247,9 +247,11 @@ they are, because the visible-parity lock reads the suite counts, and the inform
 prints:
 - `by_milestone`: milestone → status → count;
 - `by_campaign`: stage → status → count, plus `ready`;
-- `deferred`: `defer: phase-1b` tasks, open and done.
-It does not fetch. `ready` here ignores branch claims, and the page says so. The generator never
-parses task front matter itself.
+- `deferred`: `defer: phase-1b` tasks, status → count plus `ready`, the same map as a stage
+  (the parked row's open, blocked and done; decision 0119).
+It does not fetch and uses no network; its one git call is `validate`'s local `git ls-files`.
+`ready` here ignores branch claims, and the page says so. The generator never parses task front
+matter itself.
 
 ### History and deltas (T-0071)
 `docs/progress/history.json` is a JSON array, oldest first, with at most one row per date. A
