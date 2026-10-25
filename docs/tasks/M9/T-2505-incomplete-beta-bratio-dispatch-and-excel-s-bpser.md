@@ -59,6 +59,9 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
 - [ ] The two gated lost cells and T-2119's chained BETA.INV cells are recorded under decision 0083 (or a decision
       record). No other baseline line is added.
 - [ ] statistics.md's bpser and bratio entries gain "Implemented in" lines.
+- [ ] The T-2464 research harness is deleted: `functions/statistical/t2464_harness.rs` and its `mod t2464_harness;`
+      line in `functions/statistical/mod.rs` (docs/research/t2464/README.md "Rebuilding the harness" then points at the
+      engine's own kernel, or the research tools keep a copy outside the crate).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

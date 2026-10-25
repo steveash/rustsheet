@@ -67,6 +67,15 @@ disagree, the verifier wins.
     24 of 66 arguments below 1.
   - r3-fdensity: "ln x is a stored Excel LN product" is not established.
 
+## Verifier code is deliberately independent
+Each `verify-*` directory holds a verifier's own parser, scorer and model re-implementation (`vlib.py`, `vparse.py`,
+`vdata.py`, ...). They overlap in purpose by design: a verifier was required to write its own code instead of importing
+the worker's or another verifier's, so that a shared bug cannot confirm itself. Treat them as frozen evidence for the
+verdicts in RESULTS.md and statistics.md, not as a library: new work imports the worker libraries (`excelmath.py`,
+r2-bratio's `bratio_excel.py`, r3-loader-bd0's `r3lib.py`, r4-f-small-df's `sdmodel.py`, r5-f-final's
+`fdensity_excel.py`) and writes any new verifier from scratch. The repo's duplication ratchet scans these files too
+and passes (decision 0101).
+
 ## Data (this directory)
 - `cells.tsv`: 39,065 oracle-filled cells (excel-graph) whose formula is exactly one call with arguments the fit
   lab resolves: fn, case, cell, args (`|`-joined Python reprs), excel (repr). BETA.DIST 3,046, F.DIST 3,234,

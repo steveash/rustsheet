@@ -46,6 +46,9 @@ T-2585 and T-2146 then have targets for the cells they cannot reach.
   negatives (decision 0056); exact-piece literals (Excel truncates formula literals to 15 digits).
 
 ## Acceptance criteria
+- [ ] Once the engine tasks that use the T-2464/T-2513/T-2586 data have landed, prune research outputs that only
+      intermediate scripts read (`*.out`, `*.meta.json`, derived `.tsv`) per decision 0101, keeping the eval cases,
+      RESULTS.md files and the scripts that reproduce the statistics.md counts.
 - [ ] Each item above has a RESULTS.md with a model scored on a held-out probe, or the negatives tried with their
       counts.
 - [ ] New probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
