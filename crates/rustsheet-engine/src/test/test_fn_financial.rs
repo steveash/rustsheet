@@ -738,6 +738,25 @@ fn cumulative_start_period_below_one_is_num() {
     assert_ne!(model._get_text("C2"), *"#NUM!");
 }
 
+/// A guess at or above 2^53 is #VALUE!, before the flows are read (probes/irr-guess-edges,
+/// irr-guess-edges-2; T-2494).
+#[test]
+fn fn_irr_guess_at_or_above_two_to_the_53() {
+    let mut model = new_empty_model();
+    model._set("A1", "=IRR({-100,60,60},2^53-1)=IRR({-100,60,60})");
+    model._set("A2", "=IRR({-100,60,60},2^53)");
+    model._set("A3", "=IRR({-100,60,60},1E+300)");
+    model._set("A4", "=IRR(5,1E+300)");
+    model._set("A5", "=IRR(5)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+}
+
 /// NPV is #DIV/0! where 1+rate is 0 or a power a later period builds on leaves the double range;
 /// the last period's power may overflow (probes/npv-power-edges, npv-power-edges-2; T-2493).
 #[test]
