@@ -31,3 +31,12 @@ arguments). Also decide ACCRINTM's `par`: the engine takes 3 arguments, Microsof
 
 ## Out of scope
 -
+
+## Progress notes (2026-10-25)
+Claimed at the end of a session's budget and left unstarted for the next opus run (routine step 2, after 2 h idle). Starting
+points found: `Parser::note_argument_count` (parser/operands.rs) asks only `Function::arg_kinds`; the ~300 other functions
+take their signature from `fallback_signature` (parser/static_analysis.rs). A catalog-checked minimum table already exists:
+`functions/lookup_and_reference/eta_min_args.rs` + `eta_min_args.txt` (names whose minimum is not 1, checked by
+`group_functions.rs` `table_matches_catalog`); extend or move it (one definition per concept) rather than writing a second table.
+Maximums are not in the catalog's min_args column; they would come from its `syntax` column (`...` = repeating) and need care
+for engine-only extras (ACCRINTM's 3 arguments).
