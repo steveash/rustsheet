@@ -1126,6 +1126,7 @@ C	probes/t2436/fec39efaba9284c3.case.json	79
 C	probes/t2454-offset-array-height.case.json	48
 C	probes/t2454-offset-one-cell-array-args.case.json	48
 C	probes/t2455-transpose-single-value.case.json	95
+C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2475-stat-subexpressions.case.json	574
 C	probes/t2547-bessel-phase-cut.case.json	88
 C	probes/t2578-groupby-product-subtotals.case.json	6
@@ -2490,13 +2491,6 @@ F	probes/t2360-array-lambda-holidays.case.json	G!C11
 F	probes/t2360-array-lambda-holidays.case.json	G!C4
 F	probes/t2360-array-lambda-holidays.case.json	G!D12
 F	probes/t2360-array-lambda-holidays.case.json	G!D3
-F	probes/t2413-blank-in-stacked-arrays.case.json	P!A13
-F	probes/t2413-blank-in-stacked-arrays.case.json	P!A16
-F	probes/t2413-blank-in-stacked-arrays.case.json	P!A2
-F	probes/t2413-blank-in-stacked-arrays.case.json	P!A20
-F	probes/t2413-blank-in-stacked-arrays.case.json	P!A3
-F	probes/t2413-blank-in-stacked-arrays.case.json	P!A32
-F	probes/t2413-blank-in-stacked-arrays.case.json	P!A6
 F	probes/t2436/05d44f6dd6cfc567.case.json	Calc!A46
 F	probes/t2436/05d44f6dd6cfc567.case.json	Calc!A61
 F	probes/t2436/06b4e8f5de409d5e.case.json	Calc!A16
@@ -2536,11 +2530,6 @@ F	probes/t2436/2801c1c11c21e134.case.json	Calc!T31
 F	probes/t2436/2801c1c11c21e134.case.json	Calc!T46
 F	probes/t2436/2801c1c11c21e134.case.json	Calc!U31
 F	probes/t2436/2801c1c11c21e134.case.json	Calc!U46
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!A16
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!A61
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!B61
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!C61
-F	probes/t2436/2a18b2f5a4dc43ac.case.json	Calc!D61
 F	probes/t2436/320d51765af9b6b7.case.json	Calc!A16
 F	probes/t2436/320d51765af9b6b7.case.json	Calc!A76
 F	probes/t2436/320d51765af9b6b7.case.json	Calc!T16
@@ -2918,6 +2907,9 @@ F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!C5
 F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!C9
 F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!D5
 F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!D9
+F	probes/t2461-blank-array-sources.case.json	P!A12
+F	probes/t2461-blank-array-sources.case.json	P!A13
+F	probes/t2461-blank-array-sources.case.json	P!A14
 F	probes/t2475-stat-subexpressions.case.json	P!A1
 F	probes/t2475-stat-subexpressions.case.json	P!A113
 F	probes/t2475-stat-subexpressions.case.json	P!A115
