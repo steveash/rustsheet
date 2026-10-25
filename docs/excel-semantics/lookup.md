@@ -48,8 +48,8 @@ are `#REF!` (also with `a1` FALSE) while `"2024!tn"`, `"Q1!tn"` and `"x.y!tn"` r
 Verified for ASCII sheet names only; unquoted non-ASCII names (`"Données!tn"`) and letter-after-digit
 names (`"1Q!tn"`) are unprobed (the engine accepts them).
 Cell text follows the same quoting for `"Co A!B1"`, `"P&L!B1"` and `"O'B!B1"` (`#REF!`), and
-`"Q1!B1"`, `"x.y!B1"` resolve; `"2024!B1"` (an unquoted all-digit sheet) is `"y2024"` in Excel and
-`#REF!` in the engine (open gap: T-2678).
+`"Q1!B1"`, `"x.y!B1"` and `"2024!B1"` (an unquoted all-digit sheet, `"y2024"`) resolve; the engine
+quotes a digit-leading prefix for its lexer (T-2678). A typed `=2024!B1` is unprobed.
 Evidence: probes/indirect-sheet-scoped-name (excel-graph, 2026-10-25, T-2660).
 Calipers note: `calipers/pv_goldens/pv26_020` and `pv26_2_020` `Summary!C17:...17` are not evidence
 for this rule: the corpus anonymisation renamed the text in `Summary!B17` to `Company0691` but left
