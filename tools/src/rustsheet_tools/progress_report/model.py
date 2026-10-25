@@ -451,6 +451,10 @@ class Tasks:
     """Every task per status in TASK_STATUSES, summed over the milestones."""
     by_stage: dict[str, dict[str, int]]
     """Per stage of STAGES and PARKED: `open`, `blocked` and `done` tasks."""
+    ready: dict[str, int]
+    """Per stage of STAGES and PARKED: the tasks `ready()` on main, ignoring branch claims."""
+    by_milestone: dict[str, dict[str, int]]
+    """Per milestone tasks.json lists: its tasks per status in TASK_STATUSES."""
 
 
 def _stage_counts(raw: Any, where: str) -> dict[str, int]:
@@ -465,14 +469,16 @@ def _stage_counts(raw: Any, where: str) -> dict[str, int]:
 def tasks_of(raw: dict[str, Any]) -> Tasks:
     """The counts of a parsed tasks.json, checked."""
     milestones = mapping(raw, "by_milestone", "tasks.json")
-    by_status = dict.fromkeys(TASK_STATUSES, 0)
-    for name, per in sorted(milestones.items()):
-        for s in TASK_STATUSES:
-            by_status[s] += count(per, s, f"tasks.json by_milestone.{name}")
-    campaign = mapping(raw, "by_campaign", "tasks.json")
-    by_stage = {
-        s: _stage_counts(mapping(campaign, s, "tasks.json by_campaign"), f"tasks.json by_campaign.{s}")
-        for s in STAGES
+    by_milestone = {
+        name: {s: count(per, s, f"tasks.json by_milestone.{name}") for s in TASK_STATUSES}
+        for name, per in sorted(milestones.items())
     }
-    by_stage[PARKED] = _stage_counts(mapping(raw, "deferred", "tasks.json"), "tasks.json deferred")
-    return Tasks(by_status, by_stage)
+    by_status = {s: sum(per[s] for per in by_milestone.values()) for s in TASK_STATUSES}
+    campaign = mapping(raw, "by_campaign", "tasks.json")
+    stages = {
+        s: (mapping(campaign, s, "tasks.json by_campaign"), f"tasks.json by_campaign.{s}") for s in STAGES
+    }
+    stages[PARKED] = (mapping(raw, "deferred", "tasks.json"), "tasks.json deferred")
+    by_stage = {s: _stage_counts(per, where) for s, (per, where) in stages.items()}
+    ready = {s: count(per, "ready", where) for s, (per, where) in stages.items()}
+    return Tasks(by_status, by_stage, ready, by_milestone)
