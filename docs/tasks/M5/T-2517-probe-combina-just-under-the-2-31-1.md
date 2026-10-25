@@ -26,4 +26,5 @@ T-2291 probed only cells at or past the cut for small `n`. Probe `COMBINA(1,2^31
 ## Outcome
 Added probes/t2517-combina-below-cut-small-n (excel-graph filled): `COMBINA(1,2^31-2)` = 1, `COMBINA(2,2^31-3)` = 2147483646,
 `COMBINA(1,2^31-3)` = 1, `COMBINA(3,2^31-4)` = 2.3058430038449848E+18, all numbers. numbers.md COMBINA bound cites them.
-Eval delta: none (probe cases carry no expected values).
+Ours matches Excel on all four cells (the eval baseline lists no failing cell for the case), so no fix task is needed.
+Eval delta: one new probe case, 4 cells, 0 known failures.
