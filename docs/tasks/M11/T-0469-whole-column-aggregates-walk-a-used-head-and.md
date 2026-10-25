@@ -23,11 +23,12 @@ eval/baseline/corpus-bench.txt (T-0430). Code: `evaluate_range` (cast.rs), `hand
 `walk_array_items` (functions/util/aggregate_args.rs).
 
 ## Acceptance criteria
-- [ ] `functions/util/tailed.rs`: `Tailed`, `tailed_shape`, `evaluate_tailed` for literals, scalar
+- [ ] `tailed_array.rs`: `Tailed`, `tailed_shape`, `evaluate_tailed` for literals, scalar
       and range references, comparison/arithmetic/concatenation/unary/percent operators and IF; the
       element kernels shared with today's paths (not copied).
 - [ ] `walk_aggregate_arg` walks a tailed argument's elements through the shared per-element body.
-- [ ] Equivalence and static-check tests from the spec's test plan; mutation check that a wrong
+- [ ] Equivalence, static-check (bare range, scalar-condition IF) and deep-nesting tests from the
+      spec's test plan; mutation check that a wrong
       head length or tail value fails a test.
 - [ ] Bench `aggregate -- whole_column`; corpus-bench 59932 and 17049 under 60 s through the
       harness, their `!Timeout` lines leave the baseline via `make eval-baseline`; release

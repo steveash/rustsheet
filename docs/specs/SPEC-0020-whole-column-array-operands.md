@@ -56,7 +56,9 @@ oracle-backed:
 
 ## Design
 ### Representation
-A crate-private type in a new module `functions/util/tailed.rs`:
+A crate-private type in a new top-level engine module `tailed_array.rs`, next to `arithmetic.rs`
+and `cast.rs`. It holds expression evaluation (range reads, operators, IF), so it does not belong in
+`functions/util`. Only the consumer lives in `functions/util/aggregate_args.rs`:
 
 ```rust
 /// An array of `rows()` x `width` elements: `head`, then `tail_len` copies of `tail`.
@@ -90,6 +92,16 @@ A node is tailed when all of the following hold:
   - IF with 2 or 3 arguments.
 - **Row span.** Every range leaf with more than one row has the same top row and the same height,
   and at least one does. One-row leaves broadcast as today.
+- **Array-producing.** Today's evaluation must already produce an array, so the new path changes
+  only how it is held:
+  - The argument's top node is an operator or an IF, never a bare range or a parenthesized range
+    (`SUM(F:F)`, `SUM((F:F))`). Those are references, walked by `walk_areas` under the
+    referenced-cell rules.
+  - Every IF's condition contains a multi-row range leaf, so `if_pick` takes the array path
+    (`if_array`). An IF whose condition is scalar (`MIN(IF($K$1,F:F,G:G))`) picks and evaluates one
+    branch as a reference, and is rejected along with the whole argument.
+  - A bare range may still be an operand, or an IF branch, which `evaluate_if_arg` reads as an
+    array today.
 - **Gain.** At least `MIN_TAILED_ROWS` rows (4,096) of the common span lie past the used area of
   every range leaf's sheet. `used_area_corner` reads this without recording anything. Otherwise
   today's path costs no more.
@@ -105,7 +117,12 @@ node for node.
   That means the same `check_range_size`, the same per-cell `evaluate_cell` reads in the same
   row-major order, and the same seen-empty rectangle for the rest. The rows up to the common head
   length `h` are the head; `tail` is `Empty` and `tail_len = height - h`. Here `h` is the largest
-  used extent over the leaves, so every leaf is cut at the same row.
+  used extent over all the range leaves of the argument, IF branches included, so every leaf is cut
+  at the same row. Because the static check requires one common top row and height, every
+  intermediate result has the same `h` too.
+- **The head length comes from the clip at evaluation time.** `tailed_shape` reads the used area
+  only to estimate the gain. If a spill or restart changes the used area in between, the estimate
+  is stale, but the result is still right.
 - **A scalar leaf** is evaluated once, as today.
 - **Operators and IF** are applied to the head element by element, and once to the tail row. The
   per-element kernels are the existing ones:
@@ -114,8 +131,11 @@ node for node.
   - IF: `array_node_to_bool` and `if_arg_at`.
 
   They are moved into free functions that both paths call. They are not copied (directive 3).
-- **Broadcast and size checks** use the logical dimensions, through `check_array_size`, so errors
-  are unchanged. IF evaluates its branches once, after the condition, as `if_array` does.
+- **Broadcast and size checks** use the logical dimensions, through `check_range_size` and
+  `check_array_size`, before any tail is walked. Errors are therefore unchanged, and the elements
+  walked (`width * rows()`) stay within 2^20, a wide `A:XFD` leaf included.
+- **IF**, over its array condition, evaluates both branches once after the condition, and calls
+  `variable_stack.copy_read_once()` first, as `if_array` does.
 - **An error that today returns the whole result** (a scalar error operand of an array operation,
   `array_of_errors`) gives the same error array, as a `Tailed` whose tail is that error.
 
@@ -134,11 +154,17 @@ per-element body. Otherwise it reads the argument as today.
 - `Empty`;
 - or text or a boolean, when `rules.array` ignores it;
 
-and no error is pending. Counting consumers (COUNTA, the A-variants) count it `tail_len` times. A
+and no error is pending. The skip asks the visitor itself: the walk visits the tail element once,
+and skips the remaining repeats only if that visit changed nothing. The visitor reports this from
+the same `array_item` and `aggregate_number` decision it already makes, so the ignore rules are
+not copied. Counting consumers (COUNTA, the A-variants) count it `tail_len` times. A
 numeric tail is visited `tail_len` times, so float summation is unchanged; 2^20 adds take about a
 millisecond.
 
 ### Limits (directive 5)
+- `tailed_shape` and `evaluate_tailed` recurse over the same AST that today's evaluator recurses
+  over, and go no deeper. They run under the evaluator's existing depth and stack guards, and a
+  deep-nesting test is part of T-0469.
 - No new allocation beyond the head, which is at most the used area: the same bound as today's
   clipped reads.
 - The tail is one row.
@@ -154,14 +180,17 @@ millisecond.
   17049, where every scalar differs.
 
 ## Test plan
-- **Equivalence tests** in `test/util/test_tailed.rs`:
+- **Equivalence tests** in `test/test_tailed_array.rs`:
   - For every operator, IF form, leaf kind and aggregate, and with errors in the head, in a scalar
     and in a branch, the aggregate over the tailed expression equals the same aggregate over the
     expression materialized.
   - The materialized form is forced through a range that ends inside the used area, plus an explicit
     tail block.
   - The equivalence covers value, error kind and the restart on a spill into the tail.
-- **Static-check tests** for each exclusion: names, INDIRECT, mixed heights, ROW.
+- **Static-check tests** for each exclusion: names, INDIRECT, mixed heights, ROW, a bare range or
+  parenthesized range argument, and an IF with a scalar condition. Equivalence tests for
+  `SUM(F:F)` and `MIN(IF($K$1,F:F,G:G))` show they stay on today's path.
+- **A deep-nesting test**, and a multi-column whole-column leaf over the cell limit.
 - **Eval:** `rustsheet-eval check` with 0 regressions in every gated suite.
 - **Measures:** corpus-bench 59932 and 17049 under 60 s through the harness (their `!Timeout` lines
   leave the baseline). A bench `aggregate -- whole_column`: 400 `MAX(IF(F:F=A1,G:G,""))` over a
