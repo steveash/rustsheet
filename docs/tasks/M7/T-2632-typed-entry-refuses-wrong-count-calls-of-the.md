@@ -46,12 +46,14 @@ Resumed 2026-10-25 07:50 UTC by an opus run (routine step 2).
 ## Outcome
 - Probed typed (Graph PATCH, 2026-10-25): `=SUM()`, `=IF(1)`, `=ABS(1,2)`, three-argument ACCRINTM and the off-cycle
   `=SORTBY(C1:C2,D1:D2,1,E1:E2)` are all refused (400 `InvalidArgument`); `=ABS(1)` is accepted. Recorded in syntax.md.
-- `functions/lookup_and_reference/eta_min_args.{rs,txt}` became `functions/arg_counts.{rs,txt}`: one `NAME MIN MAX` line
-  per catalog function (527). MIN is excel-functions.tsv's; MAX is the functions.yaml signature's (repeat limits counted),
-  else the syntax line's parameters, else 255. `table_matches_catalog` (Rust) pins the minimums and
-  `test_engine_arg_counts_match_the_catalog` (tools/tests) pins the whole table. GROUPBY/PIVOTBY's eta arity reads it.
+- `functions/lookup_and_reference/eta_min_args.{rs,txt}` became `functions/kinds/arg_counts.{rs,txt}`: one `NAME MIN MAX`
+  line per catalog function (527). MIN is excel-functions.tsv's; MAX is Microsoft's syntax line (255 when it repeats or does
+  not parse), widened by a non-repeating functions.yaml signature and a cited override (INDEX's reference form, 4). The
+  functions.yaml repeat caps are generator bounds, so they never narrow it (review round 1: they refused 4-argument INDEX
+  and GETPIVOTDATA with three pairs). `table_matches_catalog` (Rust) pins the minimums and
+  `test_engine_arg_counts_match_the_catalog` (tools/tests) the whole table. GROUPBY/PIVOTBY's eta arity reads it.
 - `Parser::note_argument_count` refuses typed by the catalog's counts for every function, plus whole `repeat` cycles for
   lifted functions (`ArgKinds::accepts`; was `takes_count`). ACCRINTM with three arguments is now refused typed.
 - Eval: no change (no `entered` case has a wrong-count call). API test extended.
 - Left open (UNVERIFIED in syntax.md): off-cycle counts of repeating functions outside the lifting table (IFS, SWITCH, LET)
-  stay accepted typed.
+  stay accepted typed. Probing typed maxima (max and max+1) is T-2682.

@@ -13,7 +13,7 @@ use super::structured_reference::{
     is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
 };
 use super::*;
-use crate::functions::arg_counts;
+use crate::functions::kinds::arg_counts;
 use crate::language::get_default_language;
 
 impl Parser {
@@ -451,10 +451,15 @@ impl Parser {
     /// ([`ArgKinds::accepts`]: Excel refuses `=SORTBY(C1:C2,D1:D2,1,E1:E2)` typed, T-2632). A
     /// function the catalog does not list is never refused here.
     fn note_argument_count(&mut self, kind: &Function, name: &str, count: usize) {
+        // Only typed text is refused, and the count table is a linear scan: skip it for stored
+        // formulas and xlsx import.
+        if !self.typed || self.wrong_count_call.is_some() {
+            return;
+        }
         let english = kind.to_localized_name(get_default_language());
         let refused = !arg_counts::takes_count(&english, count)
             || kind.arg_kinds().is_some_and(|kinds| !kinds.accepts(count));
-        if refused && self.wrong_count_call.is_none() {
+        if refused {
             self.wrong_count_call = Some(name.to_ascii_uppercase());
         }
     }

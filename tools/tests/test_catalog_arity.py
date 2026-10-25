@@ -42,7 +42,7 @@ LIFT_KINDS = CATALOG.with_name("lift-kinds.json")
 # Typed entry refuses a call below the engine's lifting-table minimum (T-2568), so that minimum
 # must never be above Excel's. ACCRINTM's `par` is optional in the engine's evaluation and required
 # on Microsoft's syntax line; typed entry refuses three arguments by the catalog's count
-# (functions/arg_counts.txt), as Excel does (T-2632).
+# (functions/kinds/arg_counts.txt), as Excel does (T-2632).
 LIFT_MIN_BELOW_EXCEL = {"ACCRINTM": 3}
 
 
@@ -63,6 +63,7 @@ ARG_COUNTS = (
     / "rustsheet-engine"
     / "src"
     / "functions"
+    / "kinds"
     / "arg_counts.txt"
 )
 # Excel's limit on a call's arguments, the maximum of a function with no usable signature.
@@ -89,38 +90,32 @@ def _syntax_max(syntax: str) -> int | None:
 
 
 def _signature_max(fn: dict[str, Any]) -> int:
-    """Most arguments a functions.yaml signature takes: a repeated parameter or group counts its `max` cycles."""
-    total = 0
-    in_group: set[str] = set()
-    for p in fn["params"]:
-        if p["name"] in in_group:
-            continue
-        repeat = p.get("repeat")
-        if isinstance(repeat, dict):
-            group = repeat["group"]
-            in_group.update(group)
-            total += len(group) * int(repeat["max"])
-        elif repeat:
-            total += int(p["max"])
-        else:
-            total += 1
-    return min(total, MAX_ARGS)
+    """Parameters of a functions.yaml signature, 255 when one repeats: its repeat caps bound the case
+    generator, not Excel (GETPIVOTDATA's two field/item pairs)."""
+    if any(p.get("repeat") for p in fn["params"]):
+        return MAX_ARGS
+    return len(fn["params"])
+
+
+# Maxima neither source shows: INDEX's reference form takes `area_num`, a fourth argument
+# (probes/index-area-num-snap J1:J4, Excel-computed; the syntax line shows the array form).
+MAX_OVERRIDES = {"INDEX": 4}
 
 
 def expected_arg_counts() -> dict[str, tuple[int, int]]:
     """The engine's typed-entry count table (T-2632): Excel's minimum (excel-functions.tsv) and the
-    most arguments its functions.yaml signature takes, else its syntax line's parameters, else 255."""
+    most of: the syntax line's parameters (255 when it repeats or does not parse), the
+    functions.yaml signature's (`_signature_max`) and `MAX_OVERRIDES`."""
     rows = load_excel_functions(SOURCE)
     counts = {}
     for name, row in rows.items():
         least = int(row["min_args"])
+        most = _syntax_max(row["syntax"]) if row.get("syntax") else None
+        if most is None or most < least:
+            most = MAX_ARGS
         if name in SIGNATURES:
-            most = _signature_max(SIGNATURES[name])
-        else:
-            most = _syntax_max(row["syntax"]) if row.get("syntax") else None
-            if most is None or most < least:
-                most = MAX_ARGS
-        counts[name] = (least, most)
+            most = max(most, _signature_max(SIGNATURES[name]))
+        counts[name] = (least, max(most, MAX_OVERRIDES.get(name, 0)))
     return counts
 
 

@@ -87,6 +87,8 @@ fn typed_calls_with_a_wrong_argument_count_are_refused() {
         ("C5", "=IF(1,2)"),
         ("C6", "=XLOOKUP(1,{1},{2},0,0,1)"),
         ("C7", "=PI()"),
+        // INDEX's reference form takes `area_num` (probes/index-area-num-snap).
+        ("C8", "=INDEX((E1:F2,G1:H2),1,1,2)"),
     ] {
         wb.set(a1, Input::Formula(text.into())).unwrap();
     }

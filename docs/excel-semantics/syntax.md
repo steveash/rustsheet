@@ -37,8 +37,9 @@ takes: `=PV(1)` (Graph PATCH 400, T-2567), and `=SUM()`, `=IF(1)`, `=ABS(1,2)` (
 `=ACCRINTM(DATE(2020,1,1),DATE(2021,1,1),0.1)` (`par` is required) (Graph PATCH 400 `InvalidArgument`, 2026-10-25, T-2632;
 the control `=ABS(1)` is accepted; refused inputs cannot be committed). A count between the least and most that ends inside a
 repeating group is refused too: `=SORTBY(C1:C2,D1:D2,1,E1:E2)` (the second pair lacks its sort order; same probe). The engine
-refuses typed by the catalog's counts for every function (`functions/arg_counts.txt`: the minimum of excel-functions.tsv, the
-maximum of the functions.yaml signature, checked by tools/tests/test_catalog_arity.py) and, for lifted functions, whole
+refuses typed by the catalog's counts for every function (`functions/kinds/arg_counts.txt`: the minimum of excel-functions.tsv; the
+maximum of Microsoft's syntax line, 255 when it repeats, widened by a non-repeating functions.yaml signature and by INDEX's
+reference form, `INDEX(reference,row,column,area_num)`, 4 (probes/index-area-num-snap); checked by tools/tests/test_catalog_arity.py) and, for lifted functions, whole
 `repeat` cycles (`ArgKinds::accepts`); stored text keeps such a call (`#ERROR!`). UNVERIFIED: the maxima other than ABS's
 (from Microsoft's syntax lines and the catalog's repeat limits), and off-cycle counts of repeating functions outside the
 lifting table (`IFS(1,2,3)`, `LET(x,1,y,2)`), which typed entry still accepts.
