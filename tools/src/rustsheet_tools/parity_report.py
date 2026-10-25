@@ -9,7 +9,8 @@ Each in-scope function's scored cells are split into six buckets: bit-exact, wit
 within 2-4 ulp, within half a unit in the 15th significant digit, and visibly off (a number
 further than that, or a wrong type, error or text; decision 0083, T-0061). The function sits in
 the bucket of its worst cell. Its "visibly off" count is the report's blamed count: a cell is held
-against the specialised functions it calls, not the glue (IF, SUM, ...) around them.
+against the specialised functions it calls, not the glue (IF, SUM, ...) around them. The Phase 1
+exit (decision 0114) reads each function's share of cells that are not visibly off, at 99.9%.
 """
 
 from __future__ import annotations
@@ -43,6 +44,15 @@ LABELS = {
 }
 # The visibly-off functions that still match on at least this share of their cells.
 NEAR_SHARE = 0.99
+# Phase 1 exit (decision 0114): this share of a function's cells within 15 digits.
+PHASE1_SHARE = 0.999
+# The Phase 1 bands of the parity page: (label, lowest within-15-digit share), best first.
+PHASE1_BANDS = (
+    (f"{chr(0x2265)} 99.9% (Phase 1 exit)", PHASE1_SHARE),
+    (f"99{EN}99.9%", 0.99),
+    (f"90{EN}99%", 0.90),
+    ("Below 90%", 0.0),
+)
 
 
 class ParityReportError(Exception):
@@ -80,6 +90,17 @@ class FunctionParity:
         """The share of the function's scored cells that are bit-exact."""
         return self.counts["pass"] / self.cells
 
+    @property
+    def within15_share(self) -> float:
+        """The share of the function's scored cells not visibly off by its blamed count (decision
+        0114); blamed cells can come from cells it shares with others, so it never drops below 0."""
+        return max(0, self.cells - self.visible) / self.cells
+
+    @property
+    def phase1_band(self) -> str:
+        """The label of the Phase 1 band its within-15-digit share falls in."""
+        return next(label for label, low in PHASE1_BANDS if self.within15_share >= low)
+
 
 @dataclass(frozen=True)
 class Parity:
@@ -100,6 +121,10 @@ class Parity:
         for f in self.functions:
             total.update(f.counts)
         return total
+
+    def functions_per_phase1_band(self) -> Counter[str]:
+        """How many functions fall in each Phase 1 band (decision 0114)."""
+        return Counter(f.phase1_band for f in self.functions)
 
     def near_off(self) -> int:
         """How many visibly-off functions still match bit for bit on NEAR_SHARE of their cells."""
@@ -212,6 +237,13 @@ def summary_tables(p: Parity) -> str:
     return f"### Functions per bucket\n\n{funcs}\n\n### Checked cells per bucket\n\n{cells}\n"
 
 
+def phase1_table(p: Parity) -> str:
+    """Functions per Phase 1 band: the share of their cells within 15 digits (decision 0114)."""
+    per, nf = p.functions_per_phase1_band(), len(p.functions)
+    rows = [[label, f"{per[label]:,}", pct(per[label], nf)] for label, _ in PHASE1_BANDS]
+    return table(["Cells within 15 digits", "Functions", "Share"], [*rows, ["**All**", f"**{nf:,}**", ""]])
+
+
 def category_table(p: Parity) -> str:
     """Functions per catalog category and worst-cell bucket, with the category's cell totals."""
     rows = []
@@ -264,6 +296,7 @@ def function_table(p: Parity) -> str:
             pct(f.counts["pass"], f.cells),
             *(f"{f.counts[b]:,}" for b in BUCKETS),
             f"{f.visible:,}",
+            pct(f.cells - min(f.visible, f.cells), f.cells),
             LABELS[f.worst],
         ]
         for f in p.functions
@@ -279,7 +312,9 @@ def function_table(p: Parity) -> str:
         f"2{EN}4 ulp",
     ]
     return table(
-        [*header, "15 digits", "Off: number", "Off: type/text", "Visibly off", "Worst"], rows, right_from=3
+        [*header, "15 digits", "Off: number", "Off: type/text", "Visibly off", "Within 15 digits %", "Worst"],
+        rows,
+        right_from=3,
     )
 
 
@@ -340,6 +375,14 @@ Per-function parity with Microsoft 365 Excel, from the eval run of **{run_date}*
 ## Summary
 
 {summary_tables(p)}
+## Phase 1 (decision 0114)
+
+Phase 1 exits when every in-scope function has at least 99.9% of its cells within 15 significant
+digits of Excel's, with the right type, error and text. A function's share counts its cells less
+the visibly-off cells blamed on it.
+
+{phase1_table(p)}
+
 ## Charts
 
 {charts}

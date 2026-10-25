@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-campaign: visible
+campaign: accuracy
 depends_on: []
 ---
 
@@ -115,3 +115,6 @@ Cells:
 Decision 0083: this task is done when every cell it owns (the table above) is within half a unit of
 the 15th significant digit of Excel's value, with no cell newly visibly off. Bit-level matches are
 not required here: they belong to T-2221.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

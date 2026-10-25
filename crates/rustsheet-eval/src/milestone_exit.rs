@@ -1,7 +1,9 @@
 //! Milestone exit status (T-2177): the four exit measures of decision 0085, for M5 and (by its
-//! "same as M5" inheritance) M6, next to their thresholds. Every input is a row the report already
-//! computes, so nothing here scores anything; a missing input is `None`, never met. It is an exit
-//! measure, not a gate.
+//! "same as M5" inheritance) M6, next to their thresholds. Decision 0114 reads them at visible
+//! parity: the generated suite, ironcalc-calc and probes count visibly-off cells, and the bit-level
+//! counts are shown beside them for Phase 1b. Every input is a row the report already computes, so
+//! nothing here scores anything; a missing input is `None`, never met. It is an exit measure, not
+//! a gate.
 
 use std::fmt::Write as _;
 
@@ -30,21 +32,33 @@ pub struct ExitRow {
     pub coverage_met: Option<bool>,
     /// Scored cells of `gen-m<k>`: `cells - deviations`.
     pub gen_scored: Option<usize>,
-    /// Passing share of the scored cells; `None` when nothing was scored.
+    /// Bit-exact share of the scored cells (Phase 1b); `None` when nothing was scored.
     pub gen_rate: Option<f64>,
-    /// Scored cells that fail.
+    /// Scored cells that fail bit for bit (Phase 1b).
     pub gen_known_failures: Option<usize>,
-    /// Failures the 0.999 rate allows: `floor(0.001 * scored)`.
+    /// Scored cells that are visibly off (decision 0114).
+    #[serde(default)]
+    pub gen_visibly_off: Option<usize>,
+    /// Share of the scored cells that are not visibly off; `None` when nothing was scored.
+    #[serde(default)]
+    pub gen_rate15: Option<f64>,
+    /// Visibly-off cells the 0.999 rate allows: `floor(0.001 * scored)`.
     pub gen_allowance: Option<usize>,
-    /// At least [`MIN_SCORED`] scored cells at the 0.999 rate.
+    /// At least [`MIN_SCORED`] scored cells with at most the allowance visibly off.
     pub gen_met: Option<bool>,
-    /// `ironcalc-calc` failing cells less the named exit exceptions.
+    /// `ironcalc-calc` failing cells less the named exit exceptions (Phase 1b).
     pub calc_failing: Option<usize>,
-    /// No failing cell is left.
+    /// Of those, the visibly-off cells (decision 0114).
+    #[serde(default)]
+    pub calc_visibly_off: Option<usize>,
+    /// No visibly-off cell is left.
     pub calc_met: Option<bool>,
-    /// Known failures of the milestone's probe row.
+    /// Known failures of the milestone's probe row (Phase 1b).
     pub probe_known_failures: Option<usize>,
-    /// No probe failure is known.
+    /// Visibly-off cells of the milestone's probe row (decision 0114).
+    #[serde(default)]
+    pub probe_visibly_off: Option<usize>,
+    /// No probe cell is visibly off.
     pub probes_met: Option<bool>,
     /// All four measures are met.
     pub exit: bool,
@@ -69,24 +83,38 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             if let Some(s) = report.suites.iter().find(|s| s.name == suite) {
                 let scored = s.cells.saturating_sub(s.deviations);
                 let passed = s.cells_passed.min(scored);
+                let visible = (s.closeness.visible_numeric + s.closeness.visible_other).min(scored);
                 row.gen_scored = Some(scored);
                 row.gen_rate = (scored > 0).then(|| s.cell_pass_rate());
                 row.gen_known_failures = Some(scored - passed);
+                row.gen_visibly_off = Some(visible);
+                // Cell counts stay far below 2^52, so the casts are exact.
+                #[allow(clippy::cast_precision_loss)]
+                let rate15 = (scored > 0).then(|| (scored - visible) as f64 / scored as f64);
+                row.gen_rate15 = rate15;
                 row.gen_allowance = Some(scored / RATE_DEN);
                 row.gen_met = Some(
                     scored >= MIN_SCORED
-                        && passed.saturating_mul(RATE_DEN) >= scored.saturating_mul(RATE_NUM),
+                        && (scored - visible).saturating_mul(RATE_DEN)
+                            >= scored.saturating_mul(RATE_NUM),
                 );
             }
             let scope = report.function_scope.as_ref();
             if let Some(r) = scope.and_then(|s| s.rows.iter().find(|r| r.milestone == m)) {
                 let failing = r.failing.len().saturating_sub(r.excepted.len());
+                let visible = r
+                    .visibly_off
+                    .iter()
+                    .filter(|c| !r.excepted.contains(c))
+                    .count();
                 row.calc_failing = Some(failing);
-                row.calc_met = Some(failing == 0);
+                row.calc_visibly_off = Some(visible);
+                row.calc_met = Some(visible == 0);
             }
             if let Some(p) = report.probe_milestones.iter().find(|p| p.milestone == m) {
                 row.probe_known_failures = Some(p.known_failures);
-                row.probes_met = Some(p.known_failures == 0);
+                row.probe_visibly_off = Some(p.visibly_off);
+                row.probes_met = Some(p.visibly_off == 0);
             }
             row.exit = [row.coverage_met, row.gen_met, row.calc_met, row.probes_met]
                 .iter()
@@ -113,14 +141,14 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
     if rows.is_empty() {
         return;
     }
-    let _ = writeln!(md, "\n## Milestone exit (decision 0085)\n");
+    let _ = writeln!(md, "\n## Milestone exit (decisions 0085, 0114)\n");
     let _ = writeln!(
         md,
-        "Thresholds: catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) at a pass rate of 0.999 or more, with known failures at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no failing cell once exit exceptions are excluded; probes have no known failure. An exit measure, not a gate.\n"
+        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
     );
     let _ = writeln!(
         md,
-        "| milestone | coverage (covered/functions) | gen suite (scored, rate, known failures/allowance) | ironcalc-calc (failing excl. exceptions) | probes (known failures) | exit |"
+        "| milestone | coverage (covered/functions) | gen suite (scored, 15-digit rate, visibly off/allowance [bit failures]) | ironcalc-calc (visibly off [bit failures], excl. exceptions) | probes (visibly off [bit failures]) | exit |"
     );
     let _ = writeln!(md, "|---|---|---|---|---|---|");
     for r in rows {
@@ -133,20 +161,23 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
         let generated = match r.gen_scored {
             None => "n/a".to_string(),
             Some(scored) => format!(
-                "{scored}, {}, {}/{} {}",
-                r.gen_rate
+                "{scored}, {}, {}/{} [{}] {}",
+                r.gen_rate15
                     .map_or_else(|| "n/a".to_string(), |x| format!("{x:.5}")),
-                count(r.gen_known_failures),
+                count(r.gen_visibly_off),
                 count(r.gen_allowance),
+                count(r.gen_known_failures),
                 verdict(r.gen_met)
             ),
         };
         let _ = writeln!(
             md,
-            "| {} | {coverage} | {generated} | {} {} | {} {} | {} |",
+            "| {} | {coverage} | {generated} | {} [{}] {} | {} [{}] {} | {} |",
             r.milestone,
+            count(r.calc_visibly_off),
             count(r.calc_failing),
             verdict(r.calc_met),
+            count(r.probe_visibly_off),
             count(r.probe_known_failures),
             verdict(r.probes_met),
             if r.exit { "met" } else { "not met" }
@@ -159,11 +190,17 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::catalog_coverage::MilestoneCoverage;
+    use crate::closeness::Closeness;
     use crate::function_scope::{FunctionScope, MilestoneScope};
     use crate::probe_milestones::MilestoneRow;
     use crate::report::SuiteSummary;
 
     fn report(gen_cells: Option<(usize, usize)>) -> RunReport {
+        report15(gen_cells.map(|(cells, passed)| (cells, passed, cells - passed)))
+    }
+
+    /// `(cells, bit-exact, visibly off)` of the generated suite.
+    fn report15(gen_cells: Option<(usize, usize, usize)>) -> RunReport {
         let mut r = RunReport::build("t", &[], &[], &Catalog::from_functions([]));
         r.catalog_coverage = vec![MilestoneCoverage {
             milestone: "M5".into(),
@@ -172,10 +209,14 @@ mod tests {
             ..MilestoneCoverage::default()
         }];
         r.suites = gen_cells
-            .map(|(cells, passed)| SuiteSummary {
+            .map(|(cells, passed, visible)| SuiteSummary {
                 name: "gen-m5".into(),
                 cells,
                 cells_passed: passed,
+                closeness: Closeness {
+                    visible_numeric: visible,
+                    ..Closeness::default()
+                },
                 ..SuiteSummary::default()
             })
             .into_iter()
@@ -185,6 +226,7 @@ mod tests {
                 milestone: "M5".into(),
                 failing: vec!["a!S!A1".into()],
                 excepted: vec!["a!S!A1".into()],
+                visibly_off: vec!["a!S!A1".into()],
                 ..MilestoneScope::default()
             }],
             ..FunctionScope::default()
@@ -212,11 +254,13 @@ mod tests {
         let mut md = String::new();
         write_markdown(&rows, &mut md);
         assert!(
-            md.contains("| M5 | 10/10 met | 22400, 0.99911, 20/22 met | 0 met | 0 met | met |"),
+            md.contains(
+                "| M5 | 10/10 met | 22400, 0.99911, 20/22 [20] met | 0 [0] met | 0 [0] met | met |"
+            ),
             "{md}"
         );
         assert!(
-            md.contains("| M6 | n/a/n/a n/a | n/a | n/a n/a | n/a n/a | not met |"),
+            md.contains("| M6 | n/a/n/a n/a | n/a | n/a [n/a] n/a | n/a [n/a] n/a | not met |"),
             "{md}"
         );
     }
@@ -259,9 +303,35 @@ mod tests {
     fn probe_failure_fails_alone() {
         let mut r = report(Some((22_400, 22_400)));
         r.probe_milestones[0].known_failures = 1;
+        assert!(
+            m5(&r).exit,
+            "a bit-level probe failure is Phase 1b's (decision 0114)"
+        );
+        r.probe_milestones[0].visibly_off = 1;
         let row = m5(&r);
         assert_eq!(row.probes_met, Some(false));
         assert!(!row.exit);
+    }
+
+    #[test]
+    fn bit_failures_within_fifteen_digits_do_not_block_the_exit() {
+        // Decision 0114: 400 bit failures, 20 of them visibly off, is met; 23 visibly off is not.
+        let row = m5(&report15(Some((22_400, 22_000, 20))));
+        assert_eq!(row.gen_known_failures, Some(400));
+        assert_eq!(row.gen_visibly_off, Some(20));
+        assert!(row.exit, "{row:?}");
+        assert!(!m5(&report15(Some((22_400, 22_000, 23)))).exit);
+        let mut r = report(Some((22_400, 22_400)));
+        let scope = r.function_scope.as_mut().unwrap();
+        scope.rows[0].failing.push("b!S!A1".into());
+        assert!(
+            m5(&r).exit,
+            "a bit-only ironcalc-calc failure is Phase 1b's"
+        );
+        r.function_scope.as_mut().unwrap().rows[0]
+            .visibly_off
+            .push("b!S!A1".into());
+        assert_eq!(m5(&r).calc_met, Some(false));
     }
 
     #[test]

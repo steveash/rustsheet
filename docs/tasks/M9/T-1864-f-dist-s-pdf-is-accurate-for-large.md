@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: accuracy
 ---
 
 ## Goal
@@ -51,3 +51,6 @@ text, or a number further than half a unit in the 15th significant digit from Ex
 target is that every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
