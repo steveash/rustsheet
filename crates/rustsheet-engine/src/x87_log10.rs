@@ -8,8 +8,10 @@
 //! near-ties, see [`excel_ln`]). LOG10, one-argument LOG and MULTINOMIAL's `log10(k)` terms use [`excel_log10`];
 //! the worksheet LN uses [`excel_ln`].
 
-use crate::arithmetic::{round_extended_to_double, significand_and_exponent};
-use crate::x87_exp::{dd_add, dd_div, dd_mul_in_range, dd_to_extended, two_sum, LN_2_HI, LN_2_LO};
+use crate::arithmetic::significand_and_exponent;
+use crate::x87_exp::{
+    dd_add, dd_div, dd_mul_in_range, dd_rounded_twice, two_sum, LN_2_HI, LN_2_LO,
+};
 
 /// `RN64(log10 2) / ln 2` as a double-double (hi + lo), from 80-digit decimal arithmetic:
 /// `y * log2(x)` is `ln(x)` times this. RN64(log10 2) is `0x9A209A84FBCFF799 * 2^-65` (log10 2 =
@@ -204,10 +206,7 @@ fn fyl2x(x: f64, y_over_ln_2: (f64, f64)) -> f64 {
     let log = dd_mul_in_range(ln_x, y_over_ln_2);
     // FYL2X's 64-bit rounding, then the store's rounding to a double (|log| < 745, never tiny:
     // the smallest, at x = 1 ± 2^-53, is about 4.8e-17 for log10 and 1.1e-16 for ln).
-    let negative = log.0 < 0.0;
-    let magnitude = if negative { (-log.0, -log.1) } else { log };
-    let (extended, extended_exponent) = dd_to_extended(magnitude);
-    round_extended_to_double(extended, extended_exponent, negative).unwrap_or(log.0)
+    dd_rounded_twice(log)
 }
 
 /// ln f in double-double (about 2^-104 relative) for f in [√2/2, √2]: ln c + 2 atanh(s) with
@@ -266,10 +265,7 @@ mod tests {
             (2.0 * ln_f.0, 2.0 * ln_f.1),
         );
         let log = dd_mul(ln_x, y_over_ln_2);
-        let negative = log.0 < 0.0;
-        let magnitude = if negative { (-log.0, -log.1) } else { log };
-        let (extended, extended_exponent) = dd_to_extended(magnitude);
-        round_extended_to_double(extended, extended_exponent, negative).unwrap_or(log.0)
+        dd_rounded_twice(log)
     }
 
     /// The table-driven kernel returns the untabulated kernel's bits for LOG10 and LN: on random

@@ -15,6 +15,10 @@ GETPIVOTDATA on an intersection with no source records answers what Excel does f
 writes (sum, count, average, max, min), not `#REF!`.
 
 ## Context
+Also owns (T-2623): gen-m9/0620505280d2ea6e.case.json Calc!A4 `=SKEW(GETPIVOTDATA("Sales",Pivot!$H$3,"region","West","Rep","Bo"))`
+(an Average pivot, Bo has no West record: Excel #DIV/0!, as SKEW of the single 0; ours #REF!) and gen-m9/a63d1c7d6f96c56d.case.json
+Calc!A216 (`VLOOKUP(GETPIVOTDATA("UNITS",Pivot!$H$4,"Product",Pivot!$J$4,"REP","Bo"),..)` inside NORMDIST, a Count pivot, Bo has no
+B record: Excel #N/A, ours #REF!).
 Found by T-2396's generator sample (excel-graph, 2026-10-22, scratch, not committed): over an Average of Units pivot
 (rows Product, columns Region; Product A has no East record, B no South, C no West), `=GETPIVOTDATA("units",Pivot!$H$3,"Product","a","Region","East")`,
 `("Units",Pivot!$H$3,"PRODUCT",Pivot!$H$7,"Region","South")` and `("Average of Units",Pivot!$L$5,"Product","C","Region","West")`

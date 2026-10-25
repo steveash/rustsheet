@@ -3196,6 +3196,27 @@ t1049-ftest; bit-exact / within 4 ulp / visibly off):
 - the same with R correctly rounded (the model above): 90 / 170 / 6.
 Excel's residual to the model runs from -12 to +14 ulps, mostly within 2, on both sides, so
 Excel's own R is a double computation that is not identified yet (open: T-2571).
+T-2571 (committed fit `uv run rustsheet-fitlab f-test` and `f-test-structure`, tools/src/rustsheet_tools/fitlab/kernels/ftest.py,
+291 numeric cells on file with plain-range arguments, a + b <= 200; bit-exact / within 4 ulp / max ulp): the Python
+model with R correctly rounded 142 / 267 / 26 (the engine before the closed form below 150 / 267 / 26, after it 160 / 270 / 26); R as the double 2F1 series over a Gamma-ratio
+B 124 / 264 / 26, backward 115 / 270 / 27, forward over the recurrence B 104 / 262 / 27; with R correctly rounded,
+exp(a ln x + b ln y) 118 / 240 / 101, libm pow 116 / 221 / 180, x and y from the variances without f 111 / 251 / 99, VAR.S's
+one-pass variance 90 / 232. Every R variant keeps the same worst cells (26, 14, 13 and 12 ulp), so the visibly-off
+residual is probably not in R. Further scores (T-2571): ln of the larger side by log1p 140 / 271 / 24, pairwise variance
+117 / 259, ln as a difference 105 / 203; A&S 26.6.4 for an even df_big (positive series, `f-test-as`) 126 / 251 at best; the finite sums
+from the asin base (`f-test-finite`) fail in deep tails (cancellation) but get several body cells the model misses.
+One degree of freedom on each side (a = b = 1/2) is a closed form in Excel: `2*asin(sqrt(x))/pi` is bit-exact on 13 of
+the 16 such cells on file ((2/pi)*asin 11, 2/pi*atan(sqrt(x)/sqrt(y)) 10, the series model 3); the engine uses it
+since T-2571 (6 gen-m9 cells fixed, among them `F.TEST({0.02,0.027},Data!D6:D7)`, gen-m9/8f2ac25945af87da A241, and
+gen-m9/c468f5046aadfbbc A192). Whether Excel's other half-integer shapes go through A&S's theta forms is open (T-2681).
+The residual is not in the variance ratio f (T-2571): the two-pass double variances are within 3 ulp of the exact
+ones on all but 14 of the 291 cells (and on those Excel follows the double f), the tail at the exact f is further from
+Excel (42 bit-exact, up to 173 ulp), and on the worst cells the f that would give Excel's p lies 6 to 70 ulps from the
+exact f while the double f is within 3: the residual is in the tail's evaluation. Numerical
+Recipes' `betai` in doubles (exp(lnB + a ln x + b ln y) or with three separate exps, `betacf`, with or without the
+symmetry switch, ln y or ln(1 - x), libm or correctly rounded lgamma) scores at best 132 / 235 / 29, and ln y as
+log1p(-x) under the model 146 / 272 / 24: none beats the model. These last scores (NR `betai`, log1p(-x), the exact-f inversion) and the closed form's
+13 / 16 against (2/pi)*asin 11 and atan 10 were run as ad hoc scripts, not yet committed fits (T-2681).
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
@@ -3524,17 +3545,35 @@ Tasks: T-2614
 Rule: PROB checks its data in this order, each step before the next: x_range given as an error value is that error,
 then prob_range given as an error value (`PROB(2,SINH(1E+8),DAY(..)<#VALUE!>)` is `#NUM!`, d8f44d556674c2fd A40;
 `PROB(<#CALC!>,Data!A4:A7,<#VALUE!>)` `#CALC!`, eccd03df42e40006 A16); a one-cell reference to an empty cell is `#VALUE!`
-(as in the paired functions, T-2426); then a single value on both sides (two scalars or single cells) is `#DIV/0!`, before
-an error lower_limit (`PROB((ERF(1E-10)+(-0.5)),EFFECT(10,11),PV(..)<#NUM!>)` is `#DIV/0!`, 6e18550e9fc9c1b9 A394); then
-x_range and prob_range of different counts are `#N/A`, before the sum check (`PROB(Data!C2:D11,Data!C5:E8,..)`, 20 against
-12 cells, is `#N/A`, 873f30d2bf76f8db A300; `PROB((7/-(-2.5)),Data!A8:D8,1.005)`, 1 against 4, 5be29fa316931f05 A215).
-These are direct error values; an error inside a range still loses to a lower/upper error (T-1813, section "RANK,
-FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments"). Equal counts in different shapes pair (`PROB(Data!B3:E3,
-Data!E7:E10,1,Data!E7)` is the sum check's `#NUM!`, 873f30d2bf76f8db A72). Whether a lower_limit error beats unequal counts
-rests on one cell whose lower_limit is an inner YIELD (d37313406b9f6e55 A142, `#NUM!`): UNVERIFIED.
-Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256): 111 of the 118 top-level PROB cells of T-2468 and T-2426 follow these steps exactly; cells in T-2468.
-Ours: the limits first, then `#VALUE!` for a scalar data argument and `#NUM!` for unequal counts; T-2468.
-Status: VERIFIED (excel-graph) except the noted order
+(as in the paired functions, T-2426); then an error lower or upper limit (T-1813); then x_range and prob_range of
+different **cell** counts are `#N/A`, blanks, text and booleans counted (`PROB(Data!C7:D7,1E-15,2)`, a number and a
+blank against one number, is `#N/A`, 787ba8d801105a60 A108; `PROB(Data!C1:E6,"b",1.3)` 18 against a typed text,
+329b177b5d5165ad A206; `PROB(Data!C2:D11,Data!C5:E8,..)`, 20 against 12 cells, 873f30d2bf76f8db A300;
+`PROB((7/-(-2.5)),Data!A8:D8,1.005)`, 1 against 4, 5be29fa316931f05 A215). Equal counts pair cell by cell, row-major
+whatever the shapes, and a pair counts only when both cells are numbers: `PROB(Data!D3:D8,Data!C5:C10,0.3,0.3)` is 0
+because the probabilities -1 and 3.14159 sit beside a blank and a text and are dropped, leaving 0.3, 0.2 and 0.5
+(e6cf3b20a014e6a3 A229, T-2436 probe). No pair of numbers is `#DIV/0!`: a single text or boolean against a number
+(`PROB(Data!C$4,13,-2.5)` with C4 TRUE, 334f3dc9ca937f10 A82; `PROB(<"#N/A" text cell>,1.2,3.8,1)`, 583ca2baea0bb30a
+A182; a typed boolean `PROB(-5.99,TRANSPOSE(" x "<>Data!A$11),0,3.14159)`, 5cebac1f02bf30f2 A372). A pair of numbers
+then goes through the probability checks (`#NUM!` for a probability outside [0, 1] or a sum other than 1:
+`PROB(COLUMNS(Data!C5:E10),0.1,-1,-1)` is `#NUM!`, 0bbab6206b5c9a07 A322; `PROB(Data!B3:E3,Data!E7:E10,1,Data!E7)`, 4
+against 4, 873f30d2bf76f8db A72). The `#DIV/0!` of `PROB((ERF(1E-10)+(-0.5)),EFFECT(10,11),PV((-0.9999999999),161,..))`
+(6e18550e9fc9c1b9 A394) and `PROB(Data!C6:C9,..,PV((-0.9999999999),78,..))` (92d4fa29e5510f1e A70) is then the lower
+limit's: Excel's PV at a rate of -0.9999999999 over 78 or 161 periods would be `#DIV/0!` (ours `#NUM!`; inferred,
+UNVERIFIED, the PV itself is not probed). These are direct error values; an error inside a range still loses to a
+lower/upper error (T-1813, section "RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments"). Whether a
+lower_limit error beats unequal counts rests on cells whose lower_limit is an inner function ours computes differently
+(d37313406b9f6e55 A142, a YIELD, `#NUM!`): UNVERIFIED. A bare typed text or boolean (`PROB(1,"a",1)`, `PROB(-6,1=1,0,3)`)
+taken as one cell with no number, so `#DIV/0!` against a single number, is inferred from the typed text's `#N/A`
+against 18 cells (A206) and the TRANSPOSE'd boolean (A372): UNVERIFIED. A blank one-cell x_range against an error
+prob_range (ours: the error) has no cell: UNVERIFIED.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256): the top-level PROB cells of T-2468 and T-2426; probes/t2436 (T-2436).
+An earlier reading of this entry ("a single value on both sides is `#DIV/0!`") was wrong: a pair of numbers is checked
+as usual (T-2468).
+Ours: since T-2468 (`statistical/prob.rs`) an error value as x_range, then prob_range, comes before the limits, then a
+blank one-cell reference is `#VALUE!`; the data pairs by position (`paired_values`), unequal cell counts are `#N/A`, no
+pair of numbers `#DIV/0!`, each after the limits.
+Status: VERIFIED (excel-graph) except the noted UNVERIFIED parts
 
 ## T.TEST: an error sample first, then tails and type errors, then their range check (T-2256)
 Rule: T.TEST and TTEST return array1's error when array1 is an error value, then array2's (`T.TEST({1,2},-CEILING(..)

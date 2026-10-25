@@ -274,16 +274,25 @@ pub(crate) fn cmp_excel_precision(a: f64, b: f64) -> std::cmp::Ordering {
 
 /// [`cmp_excel_precision`] without its shortcuts: the order of the two 15-digit values.
 fn cmp_rounded(a: f64, b: f64) -> std::cmp::Ordering {
-    // total_cmp orders -0.0 below 0.0 and negative-sign NaN below every number, so canonicalise
-    // both first (`+ 0.0` turns -0.0 into 0.0).
-    let canon = |x: f64| {
-        if x.is_nan() {
-            f64::NAN
-        } else {
-            to_excel_precision(x, 15) + 0.0
-        }
-    };
-    canon(a).total_cmp(&canon(b))
+    excel_precision_canon(a).total_cmp(&excel_precision_canon(b))
+}
+
+/// The 15-digit value [`cmp_excel_precision`] orders by. `total_cmp` orders -0.0 below 0.0 and
+/// negative-sign NaN below every number, so both are canonicalised (`+ 0.0` turns -0.0 into 0.0).
+fn excel_precision_canon(x: f64) -> f64 {
+    if x.is_nan() {
+        f64::NAN
+    } else {
+        to_excel_precision(x, 15) + 0.0
+    }
+}
+
+/// A key for [`cmp_excel_precision`]'s equality: two numbers are equal under it exactly when
+/// their keys are. Its shortcuts only skip the cut where the cut cannot make two numbers equal,
+/// so equality is always that of the canonical 15-digit values. The exact-match lookup index of
+/// XMATCH and XLOOKUP hashes it (T-0448).
+pub(crate) fn excel_precision_key(x: f64) -> u64 {
+    excel_precision_canon(x).to_bits()
 }
 
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
@@ -722,6 +731,12 @@ mod tests {
                 assert_eq!(
                     cmp_excel_precision(a, b),
                     cmp_rounded(a, b),
+                    "{a:e} vs {b:e}"
+                );
+                // The lookup index's key has the same equality (T-0448).
+                assert_eq!(
+                    cmp_excel_precision(a, b) == std::cmp::Ordering::Equal,
+                    excel_precision_key(a) == excel_precision_key(b),
                     "{a:e} vs {b:e}"
                 );
                 checked += 1;
