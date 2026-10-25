@@ -1130,6 +1130,7 @@ C	probes/t2454-offset-one-cell-array-args.case.json	48
 C	probes/t2455-transpose-single-value.case.json	95
 C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2475-stat-subexpressions.case.json	574
+C	probes/t2498-textafter-match-end.case.json	75
 C	probes/t2547-bessel-phase-cut.case.json	88
 C	probes/t2578-groupby-product-subtotals.case.json	6
 C	probes/t2578-pivotby-hidden-total-slot.case.json	129
