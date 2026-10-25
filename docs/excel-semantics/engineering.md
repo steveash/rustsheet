@@ -461,7 +461,7 @@ angle"); cosh and sinh are libm's. Rule:
   62 finite cells (miss J34/L34, `1.34384-77.6742i`, last digit of the imaginary part, which the old
   `cosh²x cos²y + sinh²x sin²y` kernel got right; that kernel missed rows 28, 49, 79 and the IMSECH("3+4i") digit). This is why IMSEC("4+3i") and IMSECH("3+4i") differ.
   IMSEC's T-2743 form turned a quarter (`cos²y + ((cosh 2x + 1)/2 − 1)`) gets 41 of the 49 sweep rows with a
-  nonzero imaginary part; the candidates T-2743 tried for J34 are in T-2750, which owns it.
+  nonzero imaginary part (the current kernel 48 of them, missing J34; the 62 above also count the real rows); the candidates T-2743 tried for J34 are in T-2750, which owns it.
 - IMCOT: `(sin 2x, −sinh 2y) / (cosh 2y − (2cos²x − 1))`: all 63 cells with a nonzero imaginary part, including the
   tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit). Past `cosh 2y`'s range the
   value is `−i` for y > 0 and `i` for y < 0 (P27, P44, P49, P68, P69, P71; P52, P55). A real number keeps `1/tan x`.
