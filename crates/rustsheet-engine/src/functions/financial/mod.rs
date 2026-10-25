@@ -440,9 +440,10 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
-        // The first error inside an array argument: a scalar error argument, before it or after
-        // it, is the result instead (`NPV(0.1,{1,2}/0,NA())` is #N/A, `NPV(0.1,{1,2}/0,5)`
-        // #DIV/0!; probes/t2493-npv-rate-edges A48:A59, T-2493).
+        // The first error inside an array or a referenced range: a scalar error argument, before
+        // it or after it, is the result instead (`NPV(0.1,{1,2}/0,NA())` and
+        // `NPV(0.1,B3:B4,NA())` with B4 #DIV/0! are #N/A, `NPV(0.1,{1,2}/0,5)` #DIV/0!;
+        // probes/t2493-npv-rate-edges A48:A59, A74:A77, T-2493).
         let mut array_error = None;
         for arg in flows {
             // Excel: an argument read as a reference skips the text and booleans of its cells,
@@ -459,7 +460,13 @@ impl Model {
                 .evaluate_reference_arg(arg, cell)
                 .into_ranges_or_value()
             {
-                Ok(areas) => self.for_each_number_in_areas(&areas, cell, |v| values.push(v))?,
+                Ok(areas) => {
+                    if let Err(error) =
+                        self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
+                    {
+                        array_error.get_or_insert(error);
+                    }
+                }
                 Err(CalcResult::Number(value)) => values.push(value),
                 Err(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
                     values.push(self.cast_number_ref(&direct, cell)?);

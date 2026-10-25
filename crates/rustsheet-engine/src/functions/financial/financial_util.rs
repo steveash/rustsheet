@@ -88,18 +88,21 @@ pub(crate) fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, Stri
     Ok(npv)
 }
 
-/// Whether Excel's NPV of `count` flows at `rate` is `#DIV/0!`: when 1 + `rate` is 0, or when a
-/// power (1 + `rate`)^k overflows or underflows to 0 for some k below `count`, the last flow's power
-/// alone may overflow (its term is 0). `NPV(-1,5)` and `NPV(1E+200,1,1,1)` are `#DIV/0!`, while
-/// `NPV(1E+200,1,1)` is 1E-200 and `NPV(1E+154,1,1,1)` is 1E-154, since 1E+154^2 is finite
-/// (probes/t2493-npv-rate-edges, excel-graph 2026-10-25, T-2493). An error among the flows is kept
-/// before it (unprobed: `NPV(-1,1/0)`, A13, is `#DIV/0!` either way).
+/// Whether Excel's NPV of `count` flows at `rate` is `#DIV/0!`: when 1 + `rate` is 0, or when for
+/// some k below `count` the power (1 + `rate`)^k or its reciprocal overflows. The last flow's
+/// power is exempt: an overflowing power makes its term 0, and an overflowing reciprocal makes the
+/// sum non-finite, `#NUM!`. `NPV(-1,5)` and `NPV(1E+200,1,1,1)` are `#DIV/0!`, while
+/// `NPV(1E+200,1,1)` is 1E-200 and `NPV(1E+154,1,1,1)` is 1E-154, since 1E+154^2 is finite. At
+/// `rate` -0.999999999999999, 20 flows are 1.016120504184532E+300, 21 are `#NUM!` and 22 are
+/// `#DIV/0!`, since 1/(1 + `rate`)^21 overflows (probes/t2493-npv-rate-edges A1:A47, A60:A70,
+/// excel-graph 2026-10-25, T-2493). Whether a subnormal power with a finite reciprocal fails is
+/// unprobed (ours does not). An error among the flows comes first (A71:A73).
 pub(crate) fn npv_discount_fails(rate: f64, count: usize) -> bool {
     let base = 1.0 + rate;
     base == 0.0
         || (1..count).any(|k| {
             let power = base.powi(i32::try_from(k).unwrap_or(i32::MAX));
-            !power.is_finite() || power == 0.0
+            !power.is_finite() || !power.recip().is_finite()
         })
 }
 

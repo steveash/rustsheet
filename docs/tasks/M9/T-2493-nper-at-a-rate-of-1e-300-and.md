@@ -80,9 +80,11 @@ states it.
 
 ## Outcome
 Done. The probes are probes/t2493-npv-rate-edges A1:A59 and probes/t2493-npv-error-order-inner-calls (excel-graph, 2026-10-25).
-- NPV is `#DIV/0!` when 1 + rate is 0, or when (1 + rate)^k overflows for some k below the flow count; the last power may
-  overflow (`npv_discount_fails`; IRR's `compute_npv` is unchanged).
-- A scalar error argument beats an error inside an array argument (`npv_cash_flows`). That is the cause of
+- NPV is `#DIV/0!` when 1 + rate is 0, or when (1 + rate)^k or its reciprocal overflows for some k below the flow
+  count; the last power may overflow (`npv_discount_fails`). It is a separate check because IRR's search also calls
+  `compute_npv`, and must not get the error.
+- A scalar error argument beats an error inside an array argument or a referenced range (`npv_cash_flows`).
+- Probe A60 and A61 (NPV last digits at a rate near -1) are handed to T-1528. That is the cause of
   0a957119475760c5 A255. A157 already passed on main (its #NUM! is WEIBULL's).
 - `make eval-baseline`: gen-m9 fixed 20 (the 11 owned cells still failing plus 9 more NPV cells) and probes fixed 48 (t2436 and t2496
   NPV sub-expressions). REGRESSIONS 0.

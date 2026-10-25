@@ -1093,8 +1093,12 @@ functions/financial/mod.rs (`fn_xnpv`, `fn_xirr`, `fn_fvschedule`, `flow_count`)
 Tasks: T-1843
 
 ## NPV is #DIV/0! when a discount power fails, and a scalar error beats an array's
-Rule: NPV of n flows at `rate` is `#DIV/0!` when 1 + rate is 0, or when (1 + rate)^k overflows for some k below n. The
-last flow's power alone may overflow, and that term is then 0. So `NPV(-1,5)`, `NPV(-1,0)` and `NPV(-1+1E-200,1)` (the
+Rule: NPV of n flows at `rate` is `#DIV/0!` when 1 + rate is 0, or when (1 + rate)^k or its reciprocal overflows for
+some k below n. The last flow's power alone may overflow, and that term is then 0. If the last power's reciprocal
+overflows instead, the sum is not finite and the result is #NUM!. At rate -0.999999999999999 (a typed
+-0.9999999999999999 cut to 15 digits), 19 flows of 1 give 1.0153083415854513E+285 and 20 give 1.016120504184532E+300. 21
+flows give #NUM!, while 22 and 23 give #DIV/0!, also with alternating signs (A60:A64, A70). A typed -1.0000000000000002
+is -1 and gives #DIV/0! (A65:A69). So `NPV(-1,5)`, `NPV(-1,0)` and `NPV(-1+1E-200,1)` (the
 rate rounds to -1) are `#DIV/0!`, and so are `NPV(1E+200,1,1,1)`, `NPV(1E+300,0,0,0,0)`, `NPV(1E+103,1,1,1,1)` and
 `NPV(1E+300,{0,0,-100,50,60})`. But `NPV(1E+200,1,1)` is 1E-200, `NPV(1E+154,1,1,1)` is 1E-154 (1E+154^2 is finite),
 `NPV(1E+300,5,0)` is 5E-300, `NPV(1E+300,0,0)` is 0 and `NPV(-2,1,1)` is 0. The values are those of the term-by-term sum,
@@ -1102,15 +1106,17 @@ so only the error is new.
 Among the flows, a scalar error argument is the result before an error inside an array argument, wherever each sits.
 `NPV(0.1,{1,2}/0,NA())` and `NPV(0.1,{1,#DIV/0!},NA())` are #N/A, `NPV(0.1,{1,2}/0,SQRT(-1))` is #NUM! and
 `NPV(0.1,NA(),{1,2}/0)` is #N/A. With no scalar error, the array's first error is the result: `NPV(0.1,{1,2}/0,5)` and
-`NPV(0.1,{#DIV/0!,#N/A})` are #DIV/0!. Two scalar errors keep their order: `NPV(0.1,1,1/0,NA())` is #DIV/0!.
+`NPV(0.1,{#DIV/0!,#N/A})` are #DIV/0!. Two scalar errors keep their order: `NPV(0.1,1,1/0,NA())` is #DIV/0!. An error cell
+inside a referenced range behaves like an array's error: with B3:B4 = 1 and #DIV/0!, `NPV(0.1,B3:B4,NA())` and
+`NPV(0.1,NA(),B3:B4)` are #N/A, and `NPV(0.1,B3:B4,5)` is #DIV/0! (A74:A77). An error among the flows comes before a
+failing discount: `NPV(-1,NA())` and `NPV(1E+300,1,1,NA())` are #N/A (A71:A73).
 gen-m9/0a957119475760c5 A255 is one such cell. Its #N/A comes from RANK.EQ, after an array of #DIV/0! (probes/t2493-npv-error-order-inner-calls A19:A25).
-Evidence: probes/t2493-npv-rate-edges A1:A59 and probes/t2493-npv-error-order-inner-calls (excel-graph, 2026-10-25,
-T-2493).
+Evidence: probes/t2493-npv-rate-edges A1:A77 and probes/t2493-npv-error-order-inner-calls (excel-graph, 2026-10-25,
+T-2493). A60 and A61 are a unit in the last place off (T-1528).
 Status: VERIFIED (excel-graph)
 Implemented in: functions/financial/financial_util.rs (`npv_discount_fails`), functions/financial/mod.rs (`fn_npv`,
-`npv_cash_flows`). Unprobed: an error among the flows against a failing discount (`NPV(-1,1/0)` is #DIV/0! either way),
-an underflowing power (ours #DIV/0!), and an error cell inside a referenced range against a scalar error (ours keeps the
-first in order).
+`npv_cash_flows`). Unprobed: a subnormal power whose reciprocal is finite (ours does not fail).
+Tasks: T-2493, T-1528
 
 ## NPV, IRR and MIRR error order
 Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR

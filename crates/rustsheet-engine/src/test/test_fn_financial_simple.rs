@@ -463,6 +463,8 @@ fn amortization_check_order_and_early_purchase() {
 #[test]
 fn npv_discount_failures_and_array_errors() {
     let mut model = new_empty_model();
+    model._set("B3", "1");
+    model._set("B4", "=1/0");
     for (a1, formula) in [
         ("A1", "=NPV(-1,5)"),
         ("A2", "=NPV(1E+200,1,1)"),
@@ -472,6 +474,8 @@ fn npv_discount_failures_and_array_errors() {
         ("A6", "=NPV(0.1,{1,2}/0,NA())"),
         ("A7", "=NPV(0.1,{1,2}/0,5)"),
         ("A8", "=NPV(0.1,NA(),{1,2}/0)"),
+        ("A9", "=NPV(0.1,B3:B4,NA())"),
+        ("A10", "=NPV(-1,NA())"),
     ] {
         model._set(a1, formula);
     }
@@ -485,4 +489,6 @@ fn npv_discount_failures_and_array_errors() {
     assert_eq!(model._get_text("A6"), *"#N/A");
     assert_eq!(model._get_text("A7"), *"#DIV/0!");
     assert_eq!(model._get_text("A8"), *"#N/A");
+    assert_eq!(model._get_text("A9"), *"#N/A");
+    assert_eq!(model._get_text("A10"), *"#N/A");
 }
