@@ -456,17 +456,16 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     };
     let (scorable, skipped_volatile) =
         scorable_cells(&snapshot, pinned_clock_serial(&snapshot.sheets).is_some());
-    let mut skipped_add_in = 0;
-    let expectations = scorable
-        .into_iter()
-        .filter(|(sheet, _, cell)| {
-            let add_in = cell.formula.as_deref().is_some_and(calls_add_in)
+    let (add_in, scorable): (Vec<_>, Vec<_>) =
+        scorable.into_iter().partition(|(sheet, _, cell)| {
+            cell.formula.as_deref().is_some_and(calls_add_in)
                 || cell
                     .anchor_formula(&snapshot.sheets, sheet)
-                    .is_some_and(|f| calls_add_in(&f));
-            skipped_add_in += usize::from(add_in);
-            !add_in
-        })
+                    .is_some_and(|f| calls_add_in(&f))
+        });
+    let skipped_add_in = add_in.len();
+    let expectations = scorable
+        .into_iter()
         .filter_map(|(sheet, addr, cell)| {
             Some(Expectation {
                 sheet: sheet.to_string(),

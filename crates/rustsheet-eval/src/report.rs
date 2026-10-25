@@ -656,6 +656,12 @@ impl RunReport {
             self.out_of_scope.len()
         );
         // Add-in calls are not catalog functions: their cells are not scored at all (T-0462).
+        if !add_in.is_empty() {
+            let _ = writeln!(
+                md,
+                "Add-in calls (`_xll.`) are out of scope too, and their cells are not scored at all:\n"
+            );
+        }
         for s in add_in {
             let _ = writeln!(
                 md,
