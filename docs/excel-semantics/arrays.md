@@ -1574,8 +1574,10 @@ the range's cells as the empty value (`COUNT(INDEX(VSTACK(Z1:Z2),1,1))` 1, A23:A
 (`MAP(HSTACK(Z1:Z2,{1;2}),LAMBDA(v,v))`, `HSTACK(Z1,1)`, `EXPAND(1,2,2,Z1)`; C1:D7). The empty value is not an omitted
 argument: `LAMBDA(x,ISOMITTED(x))(IFERROR(Z1,1))`, the same of the INDEX element, and ISOMITTED in MAP over the HSTACK are
 FALSE (A12:A14).
-Ours: all of the above since T-2461 (INDEX picks from TAKE and DROP as a reference, `index_source`), except ISOMITTED, which
-is TRUE for the empty value (A12:A14; T-2649).
+Ours: all of the above since T-2461 (INDEX picks from TAKE and DROP as a reference, `index_source`); ISOMITTED of a
+parameter bound to the empty value is FALSE since T-2649 (A12:A14): omission is how a parameter was bound (`Binding::Omitted`
+for a missing argument or an empty slot), not its value. A LET name bound to an omitted parameter (`LAMBDA(x,[y],LET(z,y,
+ISOMITTED(z)))(1)`) hands the omission on and stays TRUE (unprobed).
 Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307, T-2413, T-2461, T-2649
 

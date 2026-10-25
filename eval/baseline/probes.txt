@@ -2926,9 +2926,6 @@ F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!C5
 F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!C9
 F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!D5
 F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!D9
-F	probes/t2461-blank-array-sources.case.json	P!A12
-F	probes/t2461-blank-array-sources.case.json	P!A13
-F	probes/t2461-blank-array-sources.case.json	P!A14
 F	probes/t2475-stat-subexpressions.case.json	P!A1
 F	probes/t2475-stat-subexpressions.case.json	P!A113
 F	probes/t2475-stat-subexpressions.case.json	P!A115

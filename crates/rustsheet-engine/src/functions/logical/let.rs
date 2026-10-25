@@ -249,6 +249,11 @@ impl Model {
     /// (probes/multiarea-let H1, multiarea-letbind H1:H3 and H7).
     pub(crate) fn bind_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> Binding {
         let node = node.ungrouped();
+        // A variable bound to an omitted parameter hands the omission on, so ISOMITTED of a LET
+        // name for it stays TRUE as before T-2649.
+        if self.is_omitted_variable(node) {
+            return Binding::Omitted;
+        }
         let is_span = matches!(node, Node::SheetSpanKind { .. });
         // XLOOKUP, TAKE, DROP and TRIMRANGE bind the reference they pick, so calling the name is
         // `#REF!` as for OFFSET (probes/let-name-call-forms H7:H9, H11; T-1232).
@@ -324,6 +329,12 @@ impl Model {
             }
         }
         RefArg::from(self.variable_value(node, cell))
+    }
+
+    /// Whether `node` is a variable bound to an omitted LAMBDA parameter ([`Binding::Omitted`]).
+    pub(crate) fn is_omitted_variable(&self, node: &Node) -> bool {
+        matches!(node, Node::NamedVariableKind { id: Some(id), .. }
+            if matches!(self.variable_stack.get(*id as usize), Some(Binding::Omitted)))
     }
 
     /// Whether `node` is a variable bound to an array of references ([`Binding::Grid`]), which

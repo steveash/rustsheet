@@ -20,6 +20,12 @@ impl Model {
                 ..
             }
         );
+        // A parameter is omitted by how it was bound, not by its value: one bound to the empty
+        // value (`LAMBDA(x,ISOMITTED(x))(IFERROR(Z1,1))`, a blank element in MAP) is FALSE
+        // (probes/t2461-blank-array-sources A12:A14, T-2649).
+        if let Node::NamedVariableKind { id: Some(_), .. } = args[0].ungrouped() {
+            return CalcResult::Boolean(self.is_omitted_variable(args[0].ungrouped()));
+        }
         let value = self.evaluate_node_in_context(&args[0], cell);
         CalcResult::Boolean(matches!(value, CalcResult::EmptyArg) && !from_lookup)
     }
