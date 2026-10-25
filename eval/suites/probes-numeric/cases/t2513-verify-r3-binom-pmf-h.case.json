@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2513 verify-r3-binom-pmf fresh hold-out: BINOM.DIST k=0 / k=n closed forms, NEGBINOM.DIST r=1, and interior BINOM/BETA/NEGBINOM runs at new shapes (docs/research/t2464/verify-r3-binom-pmf/vprobe.py) T-2693 adds `(x)=0` companions (decision 0042) in column I for the cells where excel-graph shows 0 and the engine keeps a subnormal.",
+ "description": "T-2513 verify-r3-binom-pmf fresh hold-out: BINOM.DIST k=0 / k=n closed forms, NEGBINOM.DIST r=1, and interior BINOM/BETA/NEGBINOM runs at new shapes (docs/research/t2464/verify-r3-binom-pmf/vprobe.py) T-2693 adds `(x)=0` companions (decision 0042) in columns I and J for the cells where excel-graph shows 0 and the engine keeps a subnormal.",
  "tags": [
   "M9",
   "probe",

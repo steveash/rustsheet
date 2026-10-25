@@ -667,7 +667,9 @@ A55-A71), of `BINOM.DIST(0,999,p,FALSE)` (the k = 0 pmf; t2513-verify-r3-binom-p
 (t2513-r3-binom-pmf-n B1729:B1792), `NEGBINOM.DIST(999,1,p,FALSE)` (t2513-verify-r3-binom-pmf-h B229, B238), the
 BETA.DIST density (t2513-r3-m1-residual-hold D863, D875, D957), `GAMMA.DIST(50000000,500,1000000,FALSE)`
 (m9-gamma-dist-a500 A22), an EXPON.DIST (gen-m9/165db58d1540f014 A65) and a WEIBULL (gen-m9/eccd03df42e40006 A96).
-Ours keeps every one of these, so the flushing ones fail; T-2703 flushes them.
+The flush follows each function's internal path, not the size of the result: `BINOM.DIST(0,999,p,FALSE)` and
+`NEGBINOM.DIST(999,1,p,FALSE)` differ only by a factor of p, yet Excel keeps the first and zeroes the second (I229/I238
+FALSE, J229/J238 TRUE). Ours keeps every one of these, so the flushing ones fail; T-2703 flushes them.
 Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
 2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
 `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
