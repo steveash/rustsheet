@@ -204,7 +204,7 @@ impl Engine for RustSheetEngine {
                 // any cell is set.
                 // `Sheet1!Print_Area` is a name scoped to Sheet1, as xlsxwriter (spec2xlsx)
                 // reads it.
-                for (name, formula) in &spec.names {
+                for (name, formula) in spec.names.iter().filter(|(_, f)| !f.contains('[')) {
                     match split_qualified(name) {
                         Some((sheet, local)) => {
                             let id = spec
@@ -256,6 +256,24 @@ impl Engine for RustSheetEngine {
                             }
                             tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
                         }
+                    }
+                }
+                for (name, formula) in spec.names.iter().filter(|(_, f)| f.contains('[')) {
+                    match split_qualified(name) {
+                        Some((sheet, local)) => {
+                            let id = spec
+                                .sheets
+                                .iter()
+                                .position(|s| s.name.eq_ignore_ascii_case(&sheet))
+                                .and_then(|i| ids.get(i).copied())
+                                .ok_or_else(|| {
+                                    rustsheet::EditError::Engine(format!(
+                                        "name {name}: no sheet {sheet}"
+                                    ))
+                                })?;
+                            tx.load_defined_name(Some(id), &local, formula)?;
+                        }
+                        None => tx.load_defined_name(None, name, formula)?,
                     }
                 }
                 for (sheet, &id) in spec.sheets.iter().zip(&ids) {
