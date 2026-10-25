@@ -398,7 +398,8 @@ fn linear_modes_over_blanks_match_excel() {
 
 #[test]
 fn fractional_modes_floor_but_snap_just_below_an_integer() {
-    // probes/t2656-xmatch-mode-near-integer J2, -rounding, -snap-edge-fine (excel-graph, T-2656):
+    // probes/t2656-xmatch-mode-near-integer J2, -rounding, -snap-edge-fine and
+    // t2656-xlookup-mode-snap-edge B17, C2 (excel-graph, T-2656):
     // a mode is floored, so -0.4 reads -1, but one within 2^-22 + 2^-33 below an integer (half
     // that below a negative one) reads that integer.
     let mut model = new_empty_model();

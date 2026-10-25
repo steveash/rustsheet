@@ -164,7 +164,7 @@ use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::functions::lift::{num_error, number_result, value_error};
-use crate::functions::util::near_integer_whole;
+use crate::functions::near_integer::near_integer_whole;
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;

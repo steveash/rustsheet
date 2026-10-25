@@ -12,9 +12,8 @@ use crate::{
 use super::lookup_table::SearchVector;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
-    binary_search::binary_search,
-    criteria::wildcard_text_matcher,
-    util::{compare_values, near_integer_whole},
+    binary_search::binary_search, criteria::wildcard_text_matcher,
+    near_integer::near_integer_whole, util::compare_values,
 };
 
 #[derive(PartialEq)]

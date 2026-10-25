@@ -33,7 +33,8 @@ XMATCH reads a search_mode that is within 15 significant digits of a valid mode 
       -1+2^-53, 0.9999999999999 and 1.5 pins the rule.
 - [x] The engine matches the probe.
 - [x] Visible parity (gen-m9, T-2496): the known-failure line above disappears from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
+      (`make eval-baseline`). No regressions. The new probes add 4 new-coverage known-failure lines to
+      probes.txt, all XLOOKUP's missing regex match_mode 3 (T-2660); every other new cell passes.
 - [x] lookup.md entry updated with the probe evidence and `Status: VERIFIED`.
 - [x] `make check` green; reviewers approve.
 
@@ -48,6 +49,7 @@ XMATCH reads a search_mode that is within 15 significant digits of a valid mode 
   four functions (one definition). The acceptance points 1-2^-52, 2-2^-51, -1+2^-53, 0.9999999999999 and 1.5 read 1, 2,
   -1, 1 and 1; the rest of the grid (ties, negatives, the exact edges) is in lookup.md.
 - Eval: gen-m9/01523d247594952e Calc!A51 is fixed (its baseline line is removed by `make eval-baseline`). Of the new
-  probe cells, all pass except 3 XLOOKUP cells whose mode reads 3, Excel's regex match mode, which our XLOOKUP lacks
-  (follow-up T-2660).
+  probe cells (nine cases, 1138 cells), all pass except 4 XLOOKUP cells whose match_mode reads 3, Excel's regex match
+  mode, which our XLOOKUP lacks (follow-up T-2660). The ninth probe (t2656-xlookup-mode-snap-edge) was added at review:
+  it shows that XLOOKUP snaps at the same edges as XMATCH.
 - Unit test `fractional_modes_floor_but_snap_just_below_an_integer` (test_fn_xmatch.rs).

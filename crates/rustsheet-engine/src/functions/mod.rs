@@ -18,6 +18,7 @@ pub(crate) mod lift;
 pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
 mod math_and_trigonometry;
+pub(crate) mod near_integer;
 mod spill_functions;
 mod statistical;
 mod subtotal;
