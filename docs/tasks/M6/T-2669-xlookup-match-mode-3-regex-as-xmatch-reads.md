@@ -3,7 +3,7 @@ id: T-2669
 title: "XLOOKUP match_mode 3 (regex) as XMATCH reads it"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
