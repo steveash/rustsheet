@@ -220,8 +220,9 @@ pub(crate) struct Evaluation {
     /// The cell the driver is evaluating: the root of the current recursion,
     /// on whose behalf every read of the pass is recorded.
     pub(crate) root: Option<CellReferenceIndex>,
-    /// Cells known to be circular, or to read a circular cell: each stores 0
-    /// (recalc.md "A circular reference without iteration is 0"). Marked on the
+    /// Cells known to be circular, or to read a circular cell: each keeps its
+    /// value from before the recalculation (`Model::circular_value`; recalc.md "A
+    /// circular reference without iteration keeps the cells' values"). Marked on the
     /// stack when a read closes a loop or reads a circular cell, or by the
     /// driver when an anchor's spill contradicts its own inputs; the latter
     /// survive restarts within one evaluation.
@@ -715,7 +716,7 @@ impl Model {
         }
         // The cell may have been found on a cycle while it ran.
         let result = if self.evaluation.circular.contains(&key) {
-            circular_reference()
+            self.circular_value(cell_reference)
         } else {
             result
         };
