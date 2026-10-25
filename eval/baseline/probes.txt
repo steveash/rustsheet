@@ -410,7 +410,7 @@ C	probes/fin-ppmt-discount-underflow.case.json	81
 C	probes/fin-remaining-later-argument-ranges.case.json	197
 C	probes/fin-rri-vdb-edges.case.json	24
 C	probes/fin-rri.case.json	16
-C	probes/fin-syd-db-domain.case.json	80
+C	probes/fin-syd-db-domain.case.json	143
 C	probes/fin-vdb-modes.case.json	20
 C	probes/fin-vdb-schedule.case.json	78
 C	probes/fin-yield-odd-lift.case.json	51
