@@ -314,6 +314,7 @@ C	probes/elapsed-huge-f-1900.case.json	9
 C	probes/elapsed-huge-g-1900.case.json	25
 C	probes/elapsed-huge-h-1900.case.json	21
 C	probes/elapsed-huge-i-1900.case.json	12
+C	probes/elapsed-no-seconds-boundary.case.json	32
 C	probes/elapsed-positive-large-1900.case.json	17
 C	probes/elapsed-positive-large-1904.case.json	17
 C	probes/elapsed-tiny-negatives-1900.case.json	11
@@ -1637,6 +1638,8 @@ F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
+F	probes/elapsed-no-seconds-boundary.case.json	S!A31
+F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-im-overflow-edges.case.json	S!A17
 F	probes/eng-im-overflow-edges.case.json	S!A58
 F	probes/eng-im-overflow-edges.case.json	S!A9
