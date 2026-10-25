@@ -3,7 +3,7 @@ id: T-2682
 title: "Probe typed maximum argument counts (max and max+1) of repeating and multi-form functions"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
