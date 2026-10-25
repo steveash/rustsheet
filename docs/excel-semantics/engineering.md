@@ -685,7 +685,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   "IM* results that overflow (T-1827)". T-2540.
 - **IMLN and IMLOG10 of 0 are `#NUM!`** ("0", "0i", an empty or 0 cell; ours was "-inf" until T-2389, which also made the four `1E-200+1E-200i` / `1E+300+1E+300i` IMLOG10 cells match).
 - **Tiny results.** `IMSEC`/`IMCSC("-724.227-562.884i")` keep their 1E-245 parts (as the T-2043 sweep found), while
-  `IMEXP("-724.227-562.884i")` is "0": e^-724.227 is subnormal and both parts flush: any IM* result part that is subnormal prints as 0, so both-subnormal is "0" (ours "0+0i" before T-2335; implemented in the complex number-to-text).
+  `IMEXP("-724.227-562.884i")` is "0": e^-724.227 is subnormal and both parts flush (ours "0+0i" before T-2335). RustSheet flushes every subnormal IM* result part to 0 in the complex number-to-text: VERIFIED for IMEXP and the IMSEC/IMSECH overflow edges, inferred (UNVERIFIED) for the other IM* functions from numbers.md "Subnormal results become 0".
 - **How an inumber is read.** Text that VALUE reads is a real number: `IMPOWER("$4.00",1)` "4", `IMSEC("$3.14")`
   -1.00000126827407, `IMCONJUGATE("2:24:00")` "0.1", `IMSIN("0:00")` "0" (ours `#NUM!`). A leading space is read
   (`IMSECH(" 3+4i")`), but a leading tab (`IMCOT(CHAR(9)&"123456789.123")`) or ideographic space U+3000 is `#NUM!` (ours
