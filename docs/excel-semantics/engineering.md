@@ -720,7 +720,8 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   matched since T-2544; OCT2*/HEX2* of such text already give `#NUM!`). `places` is checked before the number: an invalid
   places (0, including an empty cell and fractions that truncate to 0 such as 0.5 or 0.01005, a negative one, 11, 42) is
   `#NUM!` even when the number is an error or unreadable text (`DEC2HEX(<#VALUE!>,11)`, `HEX2BIN(<#N/A>,0)`,
-  `OCT2HEX(<#DIV/0!>,-0.5)`, `DEC2OCT(" x ",-2.5)`). Ours matches since T-2545 (`number_and_places`). A boolean is `#VALUE!` in every
+  `OCT2HEX(<#DIV/0!>,-0.5)`, `DEC2OCT(" x ",-2.5)`), and over a boolean number (`DEC2BIN(TRUE,-1)`, `HEX2BIN(TRUE,0)`;
+  `DEC2BIN(TRUE,4)` stays `#VALUE!`; probes/t2545-base-places-boolean). Ours matches since T-2545 (`number_and_places`). A boolean is `#VALUE!` in every
   OCT2*/HEX2* conversion, also OCT2HEX, as a FALSE or TRUE cell, an `IF(..)` FALSE or an `INDEX(..)` TRUE (ours `#NUM!`),
   T-2420.
 - **BESSEL.** `BESSELJ(1E+15,0)`, `BESSELJ(1E+15,5)` and `BESSELY(214285740740749.06,2)` are `#NUM!`,

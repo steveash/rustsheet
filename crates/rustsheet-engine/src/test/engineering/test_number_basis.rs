@@ -289,8 +289,8 @@ fn fn_dec2bin_misc() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"1000000001");
-    // Excel's #NUM!: the invalid places is checked before the boolean number (T-2545; this
-    // test pinned our old #VALUE! with a note that Excel differs).
+    // Excel's #NUM!: the invalid places is checked before the boolean number (T-2545,
+    // probes/t2545-base-places-boolean A1:A3; this test pinned our old #VALUE!).
     assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"#NUM!");
     assert_eq!(model._get_text("A4"), *"#NUM!");

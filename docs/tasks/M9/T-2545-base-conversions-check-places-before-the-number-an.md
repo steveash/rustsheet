@@ -60,4 +60,8 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
   "Base conversions" bullet and the T-1816 entry are updated.
 - `fn_dec2bin_misc` (an inherited IronCalc test) pinned `DEC2BIN(TRUE,-1)`, `DEC2OCT(TRUE,-1)` and `DEC2HEX(TRUE,-1)` as
   ours `#VALUE!`, with the note "Excel here return #NUM! instead". With places checked first, ours now gives Excel's
-  `#NUM!`, so the three assertions were updated to it (this is the T-2545 rule with a boolean number). DELTA and GESTEP stay unprobed, as the task said.
+  `#NUM!`, so the three assertions were updated to it. probes/t2545-base-places-boolean (excel-graph, 7 cells, all pass)
+  confirms it, and confirms a valid places keeps the boolean's `#VALUE!`.
+- `make check` found the duplication ratchet up after the nine checks were removed: the number-reading code before and
+  after each check was now identical across functions. `ten_digit_value` (the digits, `#NUM!` past ten, parsed in a
+  radix) replaces five copies, and quality/duplication.json drops 3028 -> 2951 (`--update`). DELTA and GESTEP stay unprobed, as the task said.

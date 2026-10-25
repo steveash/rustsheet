@@ -85,6 +85,21 @@ impl Model {
         })
     }
 
+    /// The [`Self::base_digits`] of a HEX2*, OCT2DEC or OCT2HEX `number` read in `radix`: more
+    /// than ten digits (probes/eng-leading-plus-oct-bool A27:A33) or a non-digit is `#NUM!`.
+    /// OCT2BIN does not check the length.
+    fn ten_digit_value(
+        value: &CalcResult,
+        radix: u32,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        let digits = Self::base_digits(value, cell)?;
+        if digits.len() > 10 {
+            return Err(num_error(cell));
+        }
+        i64::from_str_radix(&digits, radix).map_err(|_| num_error(cell))
+    }
+
     /// The `number` of a BIN2* call as a number, with a blank cell or empty text read as 0 (same
     /// probe as `base_digits`).
     fn binary_digits(
@@ -312,18 +327,9 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 16) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 16, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
@@ -363,18 +369,9 @@ impl Model {
         let [number] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 16) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 16, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
@@ -397,18 +394,9 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 16) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 16, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
@@ -492,19 +480,9 @@ impl Model {
         let [number] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A28).
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 8) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 8, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
@@ -527,19 +505,9 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        // 11 digits are `#NUM!` (probes/eng-leading-plus-oct-bool A27:A33).
-        if value.len() > 10 {
-            return num_error(cell);
-        }
-        let mut value = match i64::from_str_radix(&value, 8) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
+        let mut value = match Self::ten_digit_value(number, 8, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         if value < 0 {
             return num_error(cell);
