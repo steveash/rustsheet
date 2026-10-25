@@ -3208,14 +3208,14 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2426, T-2051
 
 ## Paired functions pair two ranges of equal count whatever their shapes (T-2255)
-Rule: CORREL, INTERCEPT, FORECAST, FORECAST.LINEAR, CHISQ.TEST and CHITEST accept two arrays with the same number of cells
+Rule: CORREL, PEARSON, RSQ, SLOPE, STEYX, INTERCEPT, FORECAST, FORECAST.LINEAR, CHISQ.TEST and CHITEST accept two arrays with the same number of cells
 and different shapes, pairing them in reading order; only a different count is `#N/A`: `CORREL(Data!B11:E12,Data!D9:E12)`
 (2x4 against 4x2) is 1 (2a18b2f5a4dc43ac A370), `CORREL(Data!B10:D12,Data!C3:C11)` (3x3 against 9x1) -0.9888852938996431
 (a54c738c697617c3 A291), `INTERCEPT(Data!E5:E8,Data!B3:C4)` -0.15000001236262528 (f2bd5f380ec002bf A94),
 `CHITEST(Data!D10:E12,Data!A9:C10)` 0 (0a9226016e8f5f33 A291), `FORECAST.LINEAR(x,Data!C8:E9,Data!C7:D9)` `#DIV/0!`
 (7674c89c824aca43 A72). Which cell pairs with which (reading order, row by row) follows from the values only where they
 differ; UNVERIFIED beyond these cells.
-Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 17 cells listed in T-2431.
+Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 17 cells listed in T-2431; T-2256: `RSQ(Data!A4:C7,Data!C2:D7)` 0.3991684810183792 (329b177b5d5165ad A104), `SLOPE(Data!A7:D9,Data!D3:E8)` 1.0000000246913243 (334f3dc9ca937f10 A63), `PEARSON({3,3,3,3},Data!B8:C9)` `#DIV/0!` (38e4fc309fe199ea A26), `STEYX(Data!C8:E10,Data!C1:C9)` `#DIV/0!` (7980ffb6095a340d A352); T-2436 probe: `FORECAST(<FALSE>,Data!C1:D3,Data!C10:E11)` (3x2 against 2x3) `#DIV/0!` (b4173fe25109a238 A78).
 Ours: pairs by cell count in reading order (T-2431). For CHISQ.TEST and CHITEST of different shapes the degrees of freedom come from the first array's shape: UNVERIFIED, no oracle cell separates the choices (T-2650 probes `CHISQ.TEST({1;2;3;4},{2,2;2,2})` against `CHISQ.TEST({1,2;3,4},{2;2;2;2})`, df 3 against 1).
 Status: VERIFIED (excel-graph) for the cited cells
 

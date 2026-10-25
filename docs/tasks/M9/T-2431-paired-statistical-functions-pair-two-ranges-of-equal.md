@@ -3,10 +3,10 @@ id: T-2431
 title: "Paired statistical functions pair two ranges of equal count but different shape instead of #N/A (gen-m9, 18 cells)"
 milestone: M9
 lane: functions-stat
-status: done
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: visible
 ---
@@ -115,3 +115,11 @@ Owned cells still in the baseline: 0a9226016e8f5f33 A333 (T-2650); 201d67f1d5943
 last-digit ULP only, visible parity met); ede0323c389fc703 A75 (a TTEST argument-validation cell triaged here by mistake,
 re-homed to T-2655). CHISQ.TEST has no per-cell sign check, only a negative summed statistic is `#NUM!`
 (A375 and f2bd5f380ec002bf A314 fixed).
+
+## Handoff
+Tried: cell-count pairing in `fn_get_two_matrices` (done, evidenced, 0 regressions); CHISQ.TEST sign rule revised twice after
+fidelity review (final: no per-cell sign check, `#NUM!` only for a negative summed statistic, fits A21/A314/A375); quirk entry
+extended. `make check` green on the branch. The fidelity reviewer requested changes in three rounds (round 3's only finding,
+naming PEARSON/RSQ/SLOPE/STEYX and the FORECAST probe in the statistics.md entry, is fixed in the last commit but not
+re-reviewed). Next: run the full review panel once on the current head, mark the PR ready, merge. Remaining baseline cells:
+A333 (T-2650), A177 (ULP), A75 (T-2655).
