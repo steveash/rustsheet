@@ -3,7 +3,7 @@ id: T-2385
 title: "Probe [h]:mm and [m] without seconds on near-midnight serials (T-1732 follow-up)"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
