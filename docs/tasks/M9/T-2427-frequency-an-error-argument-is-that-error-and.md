@@ -155,7 +155,7 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 - [x] Unit tests: `ROWS(FREQUENCY({1;2;3},2))` is 2, `FREQUENCY(NA(),{1;2})` is `#N/A`, an error bins is its error.
 - [x] statistics.md's entry gets an "Ours:" line naming this task.
 - [x] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - FREQUENCY over a union (references.md, unchanged).
