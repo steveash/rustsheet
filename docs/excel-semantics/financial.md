@@ -1728,8 +1728,8 @@ M = DATE(2100,6,30), R = 0.05, P = 98 unless varied; column A frequency 2, B fre
   linearly in 100 - P: (S - R)/(100 - P) is 0.0025953 at P 99.5, 0.0026172 at 98, 0.0027328 at 90.5. No simple form
   fitted yet (time-box).
 - Term: S falls toward the coupon rate as the maturity grows (0.0593019 for 2098, 0.0552345 for 2100, 0.0526987 for
-  2105, 0.0516858 for 2113, 0.0511796 for 2126); (S - R)·T with T the years from settlement is not constant (about 0.0232 at 2101, 0.0353 at 2125), so not
-  a plain 1/T. No form fitted yet.
+  2105, 0.0516858 for 2113, 0.0511796 for 2126); (S - R)·T, with T the years from settlement, is not constant (about
+  0.0232 at 2101, 0.0353 at 2125), so not a plain 1/T. No form fitted yet.
 Read together: a start that equals the coupon at par and moves linearly with the coupon looks like a current-yield or
 yield-approximation formula; T-1592 is the place to fit it. Lab test: `test_yield_start_one_input_two_steps_back`.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.

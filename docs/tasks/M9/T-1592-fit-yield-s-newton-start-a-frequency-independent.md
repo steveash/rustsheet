@@ -124,8 +124,8 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 
 Excel stops below the root by up to ~1e-9 relative (financial.md "YIELD stops short of PRICE's root"); 15 digits means reproducing that stop.
 
-## Blocked because
-Blocked because: no candidate fits YIELD's hidden Newton start S, and the evidence at hand cannot pin it.
+## Was blocked because
+The block is lifted by T-2740's evidence (below). Was blocked because: no candidate fits YIELD's hidden Newton start S, and the evidence at hand cannot pin it.
 Third round (2026-10-24, opus): finite-difference Newton, six variants in the lab's `yield` fit (family "Newton, finite
 difference", from a scratch grid of 560), reaches at most 5/178 bit-exact (analytic Newton from 0.1: 4/178), so the
 analytic back-chain's S is not an artefact of the derivative. S is not an iterate of Newton on the frequency-free annuity
