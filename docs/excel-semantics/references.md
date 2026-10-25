@@ -407,6 +407,31 @@ the same way at parse time, so ISREF and a rename see them. A sheet-qualified wo
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
 Tasks: T-1382, T-1459, T-1460, T-1526, T-1550, T-1609, T-1654
 
+## Lookups into a linked sheet with no cached data are `#N/A`
+Rule: a sheet the externalLink part lists in `sheetNames` but caches no cell of (no
+`sheetData` for its `sheetId`, or an empty `<sheetData sheetId="4"/>`) reads `#BLOCKED!` as a
+reference with no link does: `=[1]Sort!$B$2` is `#BLOCKED!`, ERROR.TYPE 11, ISBLANK FALSE,
+`SUM([1]Sort!$B$2:$C$3)` and `SUMPRODUCT(…)` `#BLOCKED!`, `INDEX([1]Sort!$B$2:$C$3,1,1)+1` 1,
+`COUNTIF(…,5)` `#VALUE!`; a cell a cached sheet does not hold stays empty (`ERROR.TYPE([1]Uses!$Z$99)`
+`#N/A`). But VLOOKUP, HLOOKUP, MATCH and XLOOKUP over it are `#N/A`, found or not
+(nothing is), over one cell, a small range, whole columns (`VLOOKUP(5,[1]Sort!$B:$Z,2,FALSE)`, 1048576
+x 25 cells) and whole rows alike, exact or approximate; ERROR.TYPE of each is 7, IFERROR takes the
+fallback and XLOOKUP's if_not_found is returned (`"none"`). The `#N/A` comes before the index check:
+`VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)` is `#N/A`, not `#REF!`. The same holds for a sheet whose
+`sheetData` has `refreshError="1"` and no cells, but a direct read of that one is `#REF!`
+(`ERROR.TYPE('[1]56737'!$B$2)` is 4). Unlike a reference with no link, `COUNTA([1]Sort!$B:$B)` is
+1048576: it counts every blocked cell. Whole columns of a cached sheet are looked up like a range of
+this workbook: `VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)` is the cached "7", `VLOOKUP(6,[1]Uses!$A:$C,3,TRUE)`
+1, `VLOOKUP(5,[1]Uses!$A:$Z,26,FALSE)` 0 and `VLOOKUP(99,…)` `#N/A`.
+Evidence: fixtures/external-link-uncached-lookups Refs!B1:B51 (excel-graph, 2026-10-25, T-0457).
+Engine: a sheet the cache holds no cell of is uncached (`cached_sheet`, external_links.rs), so it
+reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and MATCH's table
+`#N/A` on such a sheet and cuts whole columns or rows of a cached sheet to the cache's extent. Not
+yet matched (T-0457 follow-up): the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)` (`#BLOCKED!`, not
+`#N/A`), the refreshError sheet's `#REF!` and COUNTA's count.
+Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
+Tasks: T-0457
+
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
 it are skipped like any range cell: `=ABS(SUM(IF(FALSE,-2.5,Data!E10),Data!D4:D7))` with E10 = "abc"

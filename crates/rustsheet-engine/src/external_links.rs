@@ -116,15 +116,28 @@ impl Model {
         self.workbook.external_books.get(external_book_index(book)?)
     }
 
-    /// The cache of the sheet `[book]Sheet` names, `None` when the workbook holds none.
+    /// The cache of the sheet `[book]Sheet` names, `None` when the workbook holds none. A sheet
+    /// `sheetNames` lists but the cache holds no cell of (no `sheetData`, or an empty one) is not
+    /// cached either: `=[1]Sort!$B$2` and `SUM([1]Sort!$B$2:$C$3)` are `#BLOCKED!` and ISBLANK
+    /// FALSE (fixtures/external-link-uncached-lookups Refs!B26, B37, B40-B43, T-0457).
     fn cached_sheet(&self, sheet_name: &str) -> Option<CachedSheet> {
+        let (book_index, book, sheet) = self.linked_sheet(sheet_name)?;
+        book.cells
+            .keys()
+            .any(|&(index, ..)| index == sheet)
+            .then_some(CachedSheet {
+                book: book_index,
+                sheet,
+            })
+    }
+
+    /// The book index, book and sheet index of `[book]Sheet` when the workbook links that book
+    /// and its `sheetNames` lists the sheet, whatever the cache holds of it.
+    fn linked_sheet(&self, sheet_name: &str) -> Option<(usize, &ExternalBook, u32)> {
         let (book, sheet) = split_book_prefix(sheet_name)?;
         let book_index = external_book_index(book)?;
-        let sheet = sheet_index(self.workbook.external_books.get(book_index)?, sheet)?;
-        Some(CachedSheet {
-            book: book_index,
-            sheet,
-        })
+        let book = self.workbook.external_books.get(book_index)?;
+        Some((book_index, book, sheet_index(book, sheet)?))
     }
 
     /// A 3-D span of a linked workbook's cached sheets, `[1]Uses:Defines!$B$2`: its book, the
@@ -352,6 +365,64 @@ impl Model {
                 "Error with Implicit Intersection".to_string(),
             ),
         })
+    }
+
+    /// A VLOOKUP, HLOOKUP or MATCH table written into a linked workbook, read as the lookup
+    /// reads it; `None` for any other node, which the caller evaluates as usual.
+    /// - On a sheet `sheetNames` lists but the cache holds no cell of, the lookup is `#N/A`
+    ///   before its index is checked: over one cell, a small range and whole columns or rows
+    ///   alike, `VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)` included, though a direct read of such a cell
+    ///   is `#BLOCKED!` (fixtures/external-link-uncached-lookups Refs!B1-B12, B29-B35, B46, B51;
+    ///   T-0457).
+    /// - On a cached sheet, whole columns are cut to the rows the cache spans and whole rows to
+    ///   its columns, keeping the other side's width, as a whole column of this workbook is cut
+    ///   to its used area (engine bound, CLAUDE.md directive 5): `VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)`
+    ///   is the cached "7" and `VLOOKUP(5,[1]Uses!$A:$Z,26,FALSE)` 0 (Refs!B17, B49, B50).
+    pub(crate) fn external_lookup_table(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        let (Node::WrongReferenceKind {
+            sheet_name: Some(sheet_name),
+            ..
+        }
+        | Node::WrongRangeKind {
+            sheet_name: Some(sheet_name),
+            ..
+        }) = node.ungrouped()
+        else {
+            return None;
+        };
+        let area = self.cached_external_area(node, cell)?;
+        let Some(sheet) = area.cache else {
+            self.linked_sheet(sheet_name)?;
+            return Some(CalcResult::new_error(
+                Error::NA,
+                cell,
+                format!("No cached data for {sheet_name}"),
+            ));
+        };
+        let whole_columns = area.first_row == 1 && area.last_row == LAST_ROW;
+        let whole_rows = area.first_column == 1 && area.last_column == LAST_COLUMN;
+        if !whole_columns && !whole_rows {
+            return None;
+        }
+        let extent = self.cached_extent(sheet)?;
+        let clipped = ExternalArea {
+            last_row: if whole_columns {
+                extent.last_row.max(area.first_row)
+            } else {
+                area.last_row
+            },
+            last_column: if whole_rows {
+                extent.last_column.max(area.first_column)
+            } else {
+                area.last_column
+            },
+            ..area
+        };
+        Some(self.external_area_value(clipped, cell))
     }
 
     /// The rows and columns of `sheet` its cached cells span, `None` when it holds none.

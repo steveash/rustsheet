@@ -142,7 +142,7 @@ impl Model {
         {
             return match_type;
         }
-        let match_range = self.evaluate_single_sheet_arg(&args[1], cell);
+        let match_range = self.evaluate_lookup_table_arg(&args[1], cell);
 
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
@@ -251,7 +251,7 @@ impl Model {
         }
         // The table is read first: its error beats the index's and range_lookup's
         // (`Model::lookup_head`).
-        let range = self.evaluate_single_sheet_arg(&args[1], cell);
+        let range = self.evaluate_lookup_table_arg(&args[1], cell);
         let table = self.lookup_table(range, cell);
         let (lookup_value, row_index, is_sorted) =
             match self.lookup_head(args, table.as_ref().err().cloned(), cell) {
@@ -305,7 +305,7 @@ impl Model {
         }
         // The table is read first: its error beats the index's and range_lookup's
         // (`Model::lookup_head`).
-        let range = self.evaluate_single_sheet_arg(&args[1], cell);
+        let range = self.evaluate_lookup_table_arg(&args[1], cell);
         let table = self.lookup_table(range, cell);
         let (lookup_value, column_index, is_sorted) =
             match self.lookup_head(args, table.as_ref().err().cloned(), cell) {

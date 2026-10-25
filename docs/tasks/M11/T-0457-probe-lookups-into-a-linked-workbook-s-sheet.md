@@ -3,7 +3,7 @@ id: T-0457
 title: "Probe: lookups into a linked workbook's sheet with no cached data"
 milestone: M11
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -29,12 +29,29 @@ Existing evidence: fixtures/external-link-cached-lookups (sheets with cached dat
 probes/external-ref-no-link* (no link part at all).
 
 ## Acceptance criteria
-- [ ] A fixture whose link part lists a sheet without `sheetData`, recalculated by the oracle:
+- [x] A fixture whose link part lists a sheet without `sheetData`, recalculated by the oracle:
       VLOOKUP, HLOOKUP, MATCH and XLOOKUP over one cell, a small range and a whole column of
       that sheet, found and not found.
-- [ ] The quirk is recorded in docs/excel-semantics/references.md; rustsheet matches it, or a
+- [x] The quirk is recorded in docs/excel-semantics/references.md; rustsheet matches it, or a
       DEVIATION entry explains why it cannot (directive 5).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Sheets whose cache holds data (already covered).
+
+## Outcome
+New fixture `fixtures/external-link-uncached-lookups.xlsx` (51 legacy formulas, excel-graph filled, 0 failures):
+`external-link-cached-lookups.xlsx` with two sheets added to the link's `sheetNames`, `Sort` (no `sheetData`) and
+`Bare` (empty `sheetData`), plus the existing `refreshError` sheet. Excel's answer: lookups (VLOOKUP, HLOOKUP, MATCH,
+XLOOKUP) over such a sheet are `#N/A` over one cell, a small range and whole columns or rows, before the index check
+(`VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)` is `#N/A`); direct reads are `#BLOCKED!` (refreshError: `#REF!`), and
+`COUNTA([1]Sort!$B:$B)` is 1048576. Recorded in references.md "Lookups into a linked sheet with no cached data are
+`#N/A`".
+
+Engine: a linked sheet the cache holds no cell of is now uncached (`#BLOCKED!` on direct reads), and
+`Model::external_lookup_table` gives MATCH/VLOOKUP/HLOOKUP tables `#N/A` there and cuts whole columns or rows of a
+cached sheet to the cache's extent (whole-column VLOOKUPs over cached sheets were `#ERROR!`, past the array bound).
+
+Eval delta: fixtures 23 -> 24 cases, 48/51 new cells pass, 3 new-coverage known failures (B13 one-cell XLOOKUP, B38
+refreshError `#REF!`, B44 COUNTA), filed as **T-0472**; corpus-bench known failures 12 -> 11 (56637 now passes);
+0 regressions in every suite (poi and corpus-bench fetched; calipers not fetched).
