@@ -39,7 +39,7 @@ Design. Use the excel-probe skill; probes go in eval/suites/probes/cases, not pr
 
 ## Acceptance criteria
 - [ ] The probe case and its excel-graph sidecar are committed, and every cell the engine fails is a new line in
-      eval/baseline/probes.txt that T-2733 owns. That task's Context lists them with Excel vs ours, by function.
+      eval/baseline/probes.txt (written by `make eval-baseline`, never by hand) that T-2733 owns. That task's Context lists them with Excel vs ours, by function.
 - [ ] financial.md gains an observation paragraph under "PRICE and ODDFPRICE discount with Excel's `^`": where the
       engine leaves Excel's 15 digits, a high-precision (mpmath, 50 digits) value of each cell, and whether Excel or
       the engine is closer to it. That decides T-2733's stage: accuracy or visible.
