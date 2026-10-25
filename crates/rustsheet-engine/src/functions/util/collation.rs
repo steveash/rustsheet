@@ -61,6 +61,27 @@ pub(crate) fn cmp_text(left: &Text, right: &Text) -> Ordering {
     }
 }
 
+/// What [`cmp_text`] compares: two texts are equal under it exactly when their keys are equal.
+/// The exact-match lookup index of XMATCH and XLOOKUP hashes it (T-0448).
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct CollationKey {
+    primaries: Vec<u32>,
+    accents: Vec<u8>,
+    skipped: Vec<(usize, u8)>,
+}
+
+/// The [`CollationKey`] of `text`: its three passes, lone surrogates kept as [`cmp_text`] keeps them.
+pub(crate) fn collation_key(text: &Text) -> CollationKey {
+    let chars = || text.chars_lossless();
+    CollationKey {
+        primaries: primaries(chars()).collect(),
+        accents: accents(chars()).collect(),
+        skipped: skipped(chars())
+            .map(|(Reverse(at), weight)| (at, weight))
+            .collect(),
+    }
+}
+
 /// The three passes over two character sequences.
 fn cmp_chars<L, R>(left: L, right: R) -> Ordering
 where
