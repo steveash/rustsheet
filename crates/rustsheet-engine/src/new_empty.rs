@@ -663,13 +663,13 @@ impl Model {
         &mut self,
         sheet_index: u32,
         new_index: u32,
-        rewritten: Vec<RewrittenFormula>,
+        rewritten: &[RewrittenFormula],
     ) -> Result<(), String> {
         let sheet_count = self.workbook.worksheets.len() as u32;
         if sheet_index >= sheet_count || new_index >= sheet_count {
             return Err("Sheet index too large".to_string());
         }
-        self.restore_rewritten_formulas(rewritten);
+        self.restore_rewritten_formulas(rewritten.to_vec());
         self.reorder_sheet(new_index, sheet_index);
         Ok(())
     }

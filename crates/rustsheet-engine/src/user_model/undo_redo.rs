@@ -277,15 +277,11 @@ impl UserModel {
                     new_index,
                     rewritten,
                 } => {
-                    // Undo a move by putting back the formulas it rewrote and the sheet.
                     let selected = self.get_selected_sheet();
                     self.model
-                        .unmove_sheet(*sheet_index, *new_index, rewritten.clone())?;
-                    self.set_selected_sheet(selected_sheet_after_move(
-                        selected,
-                        *new_index,
-                        *sheet_index,
-                    ))?;
+                        .unmove_sheet(*sheet_index, *new_index, rewritten)?;
+                    let (from, to) = (*new_index, *sheet_index);
+                    self.set_selected_sheet(selected_sheet_after_move(selected, from, to))?;
                 }
                 Diff::SetSheetColor {
                     index,
