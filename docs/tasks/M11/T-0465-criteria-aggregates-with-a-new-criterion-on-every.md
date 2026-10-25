@@ -24,8 +24,8 @@ criterion per row, so each call still tests every cell once:
 - calipers pv_goldens/pv26_002 and pv26_2_002 (1.38M formulas): 272k rank COUNTIFS over I11:I1450
   plus a growing prefix I$11:I11, and 170k SUMIFS with an equality criterion per row over
   1,464 rows. Both engines take about 11 minutes (T-0446 excludes them).
-- corpus-bench 52450: 36,600 COUNTIFS with per-row and per-column date bounds on one whole column
-  of an external workbook's cached sheet (timings in T-0449's Outcome).
+- corpus-bench 52450 turned out not to be this case: its criteria ranges are a linked workbook's
+  cached columns, which were built as arrays only to become `#VALUE!` (fixed by T-0477).
 
 Candidate approach, on top of `ifs_cache.rs`'s cached range values (`RangeState::Ready`):
 - an equality index per range (value -> ascending positions) for a criterion without wildcards
@@ -41,7 +41,7 @@ Candidate approach, on top of `ifs_cache.rs`'s cached range values (`RangeState:
 ## Acceptance criteria
 - [ ] A bench reproduces the rank idiom and the per-row SUMIFS over 1,500 rows x 20,000 calls; its
       recalc is at least 10x faster than after T-0449, timings in the Outcome.
-- [ ] corpus-bench 52450 and calipers pv26_002 release calculation times in the Outcome; if they
+- [ ] calipers pv26_002 release calculation time in the Outcome; if they
       now calculate within 60 s, their timeout lines and `exclude` entries go
       (`make eval-baseline`, `rustsheet-eval update-baseline --suite calipers`).
 - [ ] Unit tests compare every new index path with the walk (equality, each comparison operator,

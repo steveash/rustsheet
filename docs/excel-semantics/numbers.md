@@ -23,6 +23,11 @@ subtracts, and with equal signs |result| is at least the smaller addend. Snapped
 addend or a relative bound (|r|/max < 2^-k) does not separate them: for b = 1 the `+` side snaps
 up to k = 7 but the `-` side, whose smaller addend 1-k·2^-52 has half the ULP, only up to k = 3.
 The earlier hypothesis (no snapping with parentheses or in SUM) was wrong for SUM; it holds for `+`/`-`.
+The 8-ULP bound is itself flushed when it is subnormal (T-2714): with addends 1.5·2^-p and -(1.5·2^-p·(1+k·2^-52)),
+k = 1 and 3 snap for p = 960 to 973 (2^(e-49) is at least 2^-1022), even where the exact total is subnormal (p = 972,
+973), and nothing snaps from p = 974 on, so a tiny total such as `1E-300-1E-300*(1+2^-52)` stays a kept subnormal
+(`(x)=0` FALSE). `+` and SUM agree on every cell. Evidence: probes/t2714-snap-tiny-addends (45 pairs) and the `A+B`
+column of probes/t2714-mod-near-smallest-normal (excel-graph, 2026-10-25).
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
@@ -30,7 +35,7 @@ Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's 
 Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through the group (`Node::ungrouped`). The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one root `Group` holding every level, T-1161, T-1341).
 
 SUM forms (T-1131, probes/near-zero-sum-forms, excel-graph 2026-10-11): a SUM call snaps its final addition **wherever it sits**, unlike `+`/`-`: `=(SUM(0.1,0.2,-0.3))`, `=SUM(A1:A3)+0` and `=SUM(A1:A3)*1` (A1:A3 = 0.1, 0.2, -0.3) all give 0, as do `=SUM({0.1,0.2,-0.3})`, `=SUM({0.1,0.2},-0.3)`, `=SUM(0.1,{0.2,-0.3})`, `=SUM(A1:A2,A3)` and a range with a blank or text between the addends. A trailing zero addend stops the snap: `=SUM(0.1,0.2,-0.3,0)` and `=SUM(A1:A3,0)` give 5.551115123125783e-17 (the last two addends are -0.3 and 0). 2-D ranges add in row-major order, so `=SUM(D1:E2)` (0.1, 0.2 / -0.3, 0) is 5.551115123125783e-17 (last addend 0) and `=SUM(J1:K2)` (0.1, -0.3 / 0.2, -0.1) is -0.09999999999999998. The engine snaps in `Model::fn_sum` for every SUM call. AGGREGATE(9, ...) and SUBTOTAL(9/109, ...) snap the same way (T-1336, probes/near-zero-aggregate-forms B1-B6, B10-B12, excel-graph 2026-10-11: `=AGGREGATE(9,4,A1:A3)`, `=AGGREGATE(9,6,A1:A3)`, `=SUBTOTAL(9,A1:A3)`, `=SUBTOTAL(109,A1:A3)` and `+0` of each give 0 over 0.1, 0.2, -0.3; `=AGGREGATE(9,4,{0.1,0.2,-0.3})` is #VALUE!); the engine snaps in `subtotal_sum` and the AGGREGATE dispatch. PERCENTOF snaps both of its sums the same way (probes/percentof-snap-overflow-union, excel-graph, 2026-10-13, T-0416; it was `#NAME?` only because the case builder stored it without `_xlfn.`): `=PERCENTOF(A1:A3,C1)` and `=PERCENTOF({0.1,0.2,-0.3},1)` are 0, and `=PERCENTOF(A1:A2,A1:A3)` and `=PERCENTOF(A1:A3,A1:A3)` are #DIV/0! (the total snaps to 0). The engine sums both arguments through `fn_sum`. 
-Tasks: T-0110 (implementation), T-1131 (SUM forms), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies)
+Tasks: T-0110 (implementation), T-1131 (SUM forms), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies), T-2714 (subnormal bound)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
@@ -426,6 +431,24 @@ Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` an
 Status: VERIFIED (excel-graph)
 Tasks: T-0221, T-1496, T-1498, T-1499, T-1500, T-1501
 
+## Desktop goldens round `*` once (calipers formulas_nested)
+Rule (desktop only, observed): the desktop Excel that saved `calipers/roundtrip/formulas_nested/golden.xlsx`
+rounds the worksheet `*` once (correctly rounded), not twice as excel-graph does ("Division rounds twice"
+above). Over all 5,518 `x*constant` cells of the workbook, simulated exactly from Excel's cached operands,
+the singly rounded product matches the cached value in 5,518 cells and the twice-rounded product in 5,514.
+The four cells that tell them apart all hold the singly rounded product:
+- `Extreme Depth!E1834` `=E1833*1.001` (E1833 49.81856401224343) is 49.86838257625566, where twice
+  rounding gives 49.86838257625567;
+- `Extreme Depth!E4446` `=E4445*1.001` (E4445 10.161093439757583) is 10.17125453319734, where twice
+  rounding gives 10.171254533197338;
+- `XSheet Chain A!E919` and `E2225` are the same two products, read across sheets.
+The sibling roundtrip goldens are Mac saves (T-2663), and a Mac build on ARM has no x87 double rounding.
+Excel for the web stays the target (decision 0039 item 4), so the engine keeps rounding twice. These four
+products, and the 296 chain cells after them, are the workbook's 300 calipers known failures.
+Evidence: calipers/roundtrip/formulas_nested/golden.xlsx cached values (desktop, gap triage 2026-10-25).
+Status: UNVERIFIED (one desktop golden; Windows desktop unprobed: T-2704)
+Tasks: T-2704
+
 ## x87 precision is per operator, not per kernel (T-1524)
 Rule: where a kernel's formulation is fitted, it is evaluated in doubles, each operation behaving
 like the Excel operator of the same name ("Division rounds twice"). The same formulation with
@@ -794,12 +817,42 @@ C21 (d=-0.1) =-0.09999999990000055, C25 `MOD(5,1E-10)`=9.999981783901343e-11, C2
 Status: VERIFIED (Excel-cached)
 
 ## MOD of a small number by a huge opposite-sign divisor is 0 (T-2654)
-Rule (hypothesis): when the exact remainder plus the divisor rounds to the divisor itself, Excel's MOD is 0, not `d`:
-`MOD(1.005,d)` with d about -1E+30 (`(1.005^-0.0001)-SUMSQ(-1,1E+15,100,0.2,7,1,-0.5)`) is 0, where "fmod plus d" gives
--1E+30. Other rules (a quotient path for tiny |n/d|) fit the one cell too.
-Evidence: gen-m5/abef960804539149 Calc!A400 (excel-graph, 2026-10-25, T-2648).
-Status: UNVERIFIED (one generated cell); the engine gives d.
+Rule: when the signs differ and the shifted result `fmod(n,d) + d` rounds (in doubles) back to `d` itself, Excel's MOD
+is 0, not `d`. The test is that one rounded sum, not a quotient or relative threshold: `MOD(1,-(2^53))` =
+-9007199254740991 but `MOD(1,-(2^54))` = 0; `MOD(0.5,-(2^52))` = -4503599627370495.5 but `MOD(0.5,-(2^53))` = 0 (the
+tie rounds to even, which is `d`) while `MOD(0.75,-(2^53))` = -9007199254740991; `MOD(1.005,-1E+16)` =
+-9999999999999998 but `MOD(1.005,-1E+17)` = 0; `MOD(0.5,-5E+15)` = 0 but `MOD(0.5,-2E+15)` = -1999999999999999.5;
+`MOD(1,-1E+30)`, `MOD(1,-9.99999999999999E+307)` and the mirrored `MOD(-1,1E+30)` are 0. Same-sign controls keep the
+remainder (`MOD(1,2^60)` = 1, `MOD(-0.5,-(2^54))` = -0.5). Over all 168 opposite-sign cells, the cells that differ from
+"fmod plus d" are exactly those where the sum equals `d`.
+In passing: `MOD(0.75,-(2^53))+2^53` is 0, not 1 (-9007199254740991 + 2^53; see "Near-zero snapping in addition and subtraction").
+Evidence: probes/mod-huge-opposite-divisor (183 cells, excel-graph, 2026-10-25); gen-m5/abef960804539149 Calc!A400
+(T-2648).
+Status: VERIFIED
+Implemented in: `excel_mod` in crates/rustsheet-engine/src/functions/util.rs
 Tasks: T-2654
+
+## MOD near the smallest normal (T-2714)
+Rule: with f = fmod(n, d) (the exact remainder) and D = 2^-1022 (the smallest normal double), a remainder that passes
+below D is `#NUM!`:
+- same signs: f subnormal is `#NUM!`, else f;
+- opposite signs, s = f + d: f or s subnormal (but not both) is `#NUM!`; both subnormal gives `d - f` when |d| is exactly D,
+  and `#NUM!` for any other d; neither subnormal keeps s (0 where s rounds to d, "MOD of a small number by a huge
+  opposite-sign divisor is 0");
+- f = 0 is 0, and the huge-quotient `#NUM!` and the `#DIV/0!` of d = 0 come first.
+For example `MOD(10^-307,-10^-307)` and `MOD(-10^-307,10^-307)` are `#NUM!` (f is 12·2^-1074 in the first, s in the
+second), as are `MOD(1E-300*(1+2^-52),1E-300)` and `MOD(1E-300,-1E-300*(1+2^-52))`, while
+`MOD(-(2^-1021*(1+2^-52)),2^-1022)` is 2^-1022 + 2^-1073 (f = -2^-1073, s = 2^-1022 - 2^-1073; the result mirrors s
+about D) and `MOD(-(2^-1022*(1+4*2^-52)),2^-1022*(1+2^-52))` is `#NUM!`. A normal shift is untouched:
+`MOD(1E-290,-1E-290*(1+2^-52))` is -2.848094538889218E-306. The `d - f` arm holds from |n| = |d|·(1+2^-52) to
+|n| = 2^22·|d| (probe -c). No mechanism is known; the rule is fitted. This settles the calipers desktop goldens
+`formulas_math_basic` and `formulas_datetime` I88 and H89 (`#NUM!`). Unprobed: a subnormal f whose shift rounds back
+to d (cell constants are flushed on load, so only a formula's subnormal can reach MOD).
+Evidence: probes/t2714-mod-near-smallest-normal (131 pairs in both argument orders), -b (70) and -c (66 pairs in both orders, the both-subnormal
+arm), excel-graph, 2026-10-25: all 464 MOD cells match the rule, with `ISERROR` and `(x)=0` companions.
+Status: VERIFIED (excel-graph) as a fitted rule
+Implemented in: `excel_mod` in crates/rustsheet-engine/src/functions/util.rs
+Tasks: T-2714
 
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`
@@ -1038,6 +1091,13 @@ Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
 - `exp` is EXP's own kernel (see "EXP is an x87 2^(a*log2 e) evaluation"), and `y·ln x` is the twice-rounded `*`: `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` =
   9.999999999999827E+99, where libm `exp` gives 9.999999999999825E+99, and `8^(1/101+28·2^-59)` = 1.0208019359564402
   (probes-numeric/power-ulp-sources A13-A18, power-odd-root-tolerance A72/A74; excel-graph, 2026-10-19, T-0959).
+- `ln x` is LN's own x87 FYL2X kernel (see `excel_ln`), not a correctly rounded libm `ln` (T-2694). Over the T-2513 and
+  T-2586 density studies (half-integer exponents -50.5 to 50.5, over 7,000 POWER cells) libm `ln` left six cells 1 to 10
+  ulp off from Excel, which is below the correctly rounded value in all six; Excel's LN matches all six to the bit and changes no other cell of
+  probes-numeric's 611,774. `POWER(12/(12+A563*A563),6.5)` with A563 = 7.71216677000003 is 9.174378504956638E-06 (libm
+  `ln` 9.174378504956655E-06; the correctly rounded value is 4.4 ulp above Excel's) (probes-numeric/t2513-r3-tdensity-hold I563,
+  I475-I477, t2513-r3-tdensity-a2 D653, t2586-r4-f-small-df-a D4143; excel-graph). MIRR's root keeps libm `ln` and
+  `exp` (`power_with_libm_exp`, decisions 0030 and 0039).
 
 An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
 
@@ -1058,9 +1118,9 @@ Evidence:
 - gen-m1/6462bf910ef9f28f Calc!A41 and A207; gen-m2/1b6ceed7489e0800 Calc!A62; gen-m7/9ff3afcacd3bd0fc Calc!A13.
 - ironcalc-calc POWER.xlsx Sheet1!D3 and F9.
 Not probed: other negative bases; exponents within 1E-15 of ±0.5.
-Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
+Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic/power.rs.
 Status: VERIFIED (excel-graph)
-Tasks: T-1319, T-1421, T-0221, T-0959
+Tasks: T-1319, T-1421, T-0221, T-0959, T-2694
 
 ## POWER and `^`: odd roots of negatives, zero and overflow
 Rule: `POWER(-8, 1/3)` is -1.9999999999999998 (an odd root of a negative number is real; see "Non-integer exponents: exp(y·ln x)"); `POWER(0,0)` is #NUM!;
@@ -1332,6 +1392,22 @@ probed cells as a fitted rule (no mechanism for the power-of-two exemption). Rus
 T-1108).
 Tasks: T-1108, T-1112, T-1113, T-1120, T-0289, T-1172
 
+## POWER when y·ln x overflows (T-2661)
+Rule: for a positive base and a huge non-integer-path exponent (|y| > 2^53 or not an integer), a product `|y|·ln x` that
+overflows the doubles counts as an overflow of the positive power, even when it overflows to -∞ (a base below 1): the
+positive power is `#NUM!` and the negative one is 0, the reverse of the underflow results. `POWER(0.1,9.99999999999999E+307)`
+is `#NUM!` and `POWER(0.1,-9.99999999999999E+307)` is 0 (|y|·ln 0.1 is about -2.3E+308), likewise for bases 1E-10, 1E-300
+and 1E-307; but `POWER(0.5,9.99999999999999E+307)` is 0 and `POWER(0.5,-9.99999999999999E+307)` `#DIV/0!` (a finite
+product, -6.9E+307, that underflows), and so are 0.9, 0.999999 and every base below 1 to `±1E+300`. Bases above 1 overflow
+as before (`#NUM!` up, 0 down), 1 to any power is 1, and 0 keeps `0` / `#DIV/0!` (ln 0 is -∞ already). `^` agrees on every
+cell. This settles the calipers desktop goldens `formulas_math_basic` / `formulas_datetime` J75 (`POWER(10^-307,
+9.99999999999999E+307)`, `#NUM!`) and K75 (the negative exponent, 0).
+Evidence: probes/power-huge-exponent (POWER) and power-op-huge-exponent (`^`), 15 bases by 20 exponents each, oracle
+excel-graph, 2026-10-25.
+Status: VERIFIED (excel-graph)
+Implemented in: `positive_power` in crates/rustsheet-engine/src/arithmetic/power.rs
+Tasks: T-2661
+
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
 0.7071067811865475 (pow: …476), `=100^100` = 1.0000000000000005E+200.
@@ -1354,7 +1430,7 @@ integer-exponent cells above: `(1E-15)^3` = 1.0000000000000001E-45, `((1E-15)^3)
 1.0000000000000002E-90, `100^100` = 1.0000000000000005E+200. `EXP(n*LN(x))` is plain libm (154/154).
 Non-integer exponents are not explained by this rule.
 Evidence: probes-numeric/m9-fin-power.case.json (oracle: excel-graph, 2026-10-06, T-0942).
-Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic.rs (T-1302), for finite integer
+Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic/power.rs (T-1302), for finite integer
 exponents with |n| <= 2^53 whose result is finite and non-zero. Overflow and underflow beyond the
 oracle's exponents 1..360 are unverified, so a zero or non-finite result falls back to the libm
 `powf` path (and its #NUM! / #DIV/0! handling) unchanged. Exponents beyond 360, subnormal results and base 10 are in the next entry (T-1311).
@@ -1407,7 +1483,7 @@ Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379
 3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
 2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
-Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs;
+Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic/power.rs;
 `square_and_multiply` rounds each product with `extended_product` (T-1495).
 Status: VERIFIED (the 2^32 - 1 threshold is bracketed by 4294967294 and 4294967295 exactly; the base-10
 rule is sampled at about 20 exponents in 23..=308 and inferred between them)
@@ -1860,9 +1936,12 @@ gives "9007199254740990" (15 significant digits, below 2^53); whether the cut ha
 Evidence (excel-graph, 2026-10-22): probes/base-number-upper-bound (T-2289); T-2252 triage: gen-m5/dde5ea295a38fb16 Calc!A254 (zero, min_length 0.3);
 gen-m5/55afc805e00a1509 Calc!A101, gen-m5/08eafc9e61602bcb Calc!A98 (past 2^53); the "0" and zero-padded cells, which pass:
 gen-m5/cd883013bea3b305 Calc!A22, gen-m5/9a7a94353845ea12 Calc!A45, gen-m5/90bf45bea539723d Calc!A251.
-Unprobed: zero with a written-empty or blank-cell `min_length` (`BASE(0,2,)`, `BASE(0,2,Z99)`, `BASE(0,2,"")`); the engine reads them as 0, so they give empty text.
-Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374).
-Tasks: T-2289, T-2373, T-2374
+A written-empty `min_length` is an omitted one, but a blank cell is 0: `BASE(0,2,)` is "0" (`LEN` 1) and `BASE(5,2,)` "101",
+while `BASE(0,2,Z99)` is "" (`LEN` 0), `BASE(5,2,Z99)` "101"; `BASE(0,2,"")` is `#VALUE!`; `BASE({0,5},2,{0,0})` is {"", "101"}.
+Ours reads the written-empty argument as 0, so `BASE(0,2,)` gives "" (follow-up T-2691).
+Evidence (excel-graph, 2026-10-25): probes/base-zero-empty-min-length (T-2416).
+Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374) except a written-empty `min_length` (T-2691).
+Tasks: T-2289, T-2373, T-2374, T-2416, T-2691
 
 ## RANDBETWEEN and RANDARRAY argument checks
 Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`, even
@@ -2078,6 +2157,17 @@ TAN misses this model by 1 ulp at arguments near 1.2E+8: `TAN(123456789.123)` is
 2026-10-20): gen-m5/d0419fa09d6a756a Calc!A311, gen-m5/f0f205865a3a4328 Calc!A227, gen-m5/c688ca172fe533dc Calc!A284. T-2172 sweep (145 arguments over 1E+6 .. 2^27, probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A1:D145): SIN and COS match the
 pi64 model on all 145 cells; TAN misses only B121, B123, B126 and B130 (+-123456788.123 and +-123456789.123, 1 ulp), its other 141 cells
 pass. So the miss is TAN-only and confined to arguments near 1.2E+8 (T-2147 fits).
+T-2147 fit: Excel's TAN is the pi64-reduced tangent rounded twice, to a 64-bit significand and then to a double, RN53(RN64(tan)),
+as an x87 tangent is stored. That model matches every one of the 311 earlier TAN cells with a constant argument (gen-m5, gen-m6,
+probes-numeric/trig-odd-even-sumxmy2-sweep, m9-trig-reduction and the others), the 5 misses above included, where the single
+rounding misses 5. probes-numeric/t2147-tan-double-rounding (excel-graph, 2026-10-25, filled twice with identical results) holds
+150 arguments picked where the tangent lies near a 64-bit tie, so the candidates disagree: RN53(RN64(tan)) matches 129, the
+correctly rounded tangent 47, and the quotient of RN64 sine and cosine rounded to 64 bits (an FPTAN-style result) 63. Guard-bit
+variants (the tangent rounded or truncated to 65..72 bits first) match 118..134, so none is better beyond noise. The 21 misses are
+not all at the tightest ties: x = 8242 lies 0.04 of a 64-bit ulp from a 64-bit value that is a 53-bit midpoint, and Excel still
+rounds it the other way. So Excel's own tangent carries an error up to about half a 64-bit ulp, and its last bit at such a near-tie
+is not predictable from the exact value. Those 21 cells stay known failures of that probe (as decision 0112 keeps LN's near-ties).
+Ours: implemented (`excel_tan` in functions/math_and_trigonometry/trig.rs, T-2147). COT, which is 1/TAN, inherits the change.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 
