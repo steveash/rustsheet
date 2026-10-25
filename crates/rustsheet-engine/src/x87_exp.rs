@@ -435,6 +435,20 @@ mod tests {
     }
 
     #[test]
+    fn dd_rounded_twice_ties_after_the_64_bit_rounding() {
+        let one_up = 1.0 + f64::EPSILON;
+        // 1 + 2^-53 + 2^-80: once rounded it is 1 + 2^-52, but RN64 drops the 2^-80 and leaves
+        // the 53-bit midpoint, which RN53 ties to the even 1.0.
+        let tail = -power_of_two(-53) + power_of_two(-80);
+        assert_eq!(one_up + tail, one_up);
+        assert_eq!(dd_rounded_twice((one_up, tail)), 1.0);
+        assert_eq!(dd_rounded_twice((-one_up, -tail)), -1.0);
+        // Away from a midpoint both roundings agree with the head.
+        assert_eq!(dd_rounded_twice((one_up, -power_of_two(-55))), one_up);
+        assert_eq!(dd_rounded_twice((0.0, 0.0)), 0.0);
+    }
+
+    #[test]
     fn exact_points() {
         assert_eq!(excel_exp(0.0), 1.0);
         assert_eq!(excel_exp(1e-30), 1.0);
