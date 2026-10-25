@@ -3,7 +3,7 @@ id: T-0080
 title: "Eval report run metadata (commit, date, skipped suites) and v15_checkpoint Phase 1 rate on the attributed count (decision 0118)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
