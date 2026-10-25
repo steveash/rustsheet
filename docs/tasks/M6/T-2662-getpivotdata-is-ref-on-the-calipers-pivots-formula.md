@@ -3,7 +3,7 @@ id: T-2662
 title: "GETPIVOTDATA is #REF! on the calipers pivots (formula_stress_test Database!B16, pv23_041 Liability Summary)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
