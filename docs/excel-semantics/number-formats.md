@@ -574,6 +574,15 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - Not implemented (VERIFIED, gen-m10): zero prints all integer placeholders (`##0.0E+0` on 0
   "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
   "1.0E+02") (T-2227).
+- Not implemented (VERIFIED, gen-m10; gap triage 2026-10-25): a scientific mantissa does not round like the
+  fixed codes. On an exact tie it goes away from zero: `0E+0` and `#E+0` on 2.5 are "3E+0", and on -2.5
+  "-3E+0" (ours "2E+0", "-2E+0"). But `0.00E+00` on 12.345 is "1.23E+01" (ours "1.24E+01"), where the
+  15-digit decimal half away from zero of the fixed codes would give "1.24E+01" (`0%` on 12.345 is "1235%",
+  T-2206). Both fit rounding the double itself (12.345 is 12.3449999999999997513...) with ties away from
+  zero; that reading is an assumption until a probe separates it from others (T-2705). Cells: displayed text
+  05c1c646c95a2d60 F!I10 and F!L11, 5255389143dbcef6 F!D13 and F!G20, 5eb95c63c7d6180c F!G8 and F!G19,
+  659cd5776d423ce3 F!B10, b4f66526f822ff2c F!L18, eec351e03ccedfe0 F!Q15, fbdab487cb11409e F!Q3; TEXT
+  5eb95c63c7d6180c T!A7 `TEXT(2.5,"#E+0")` "3E+0".
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
 Implemented (T-2206): the shown place rounds the 15-digit decimal half away from zero (`0`, `#,##0`,
