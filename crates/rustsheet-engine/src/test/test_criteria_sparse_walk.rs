@@ -112,3 +112,22 @@ fn a_spill_into_a_walked_range_is_counted_whatever_the_order() {
         assert_eq!(model._get_text("C1"), "8", "count first: {count_first}");
     }
 }
+
+#[test]
+fn a_lifted_countifs_is_priced_by_every_criteria_range_it_walks() {
+    // DEVIATION (criteria.md "*IF(S) lift array criteria"): the walk of COUNTIFS visits the
+    // stored cells of every criteria range, so the lift cap prices them all. A:A holds one cell
+    // and B:B 100,000: 1,000 elements x 2 criteria x 100,001 positions is past 2^27, 10 are not.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    for row in 1..=100_000 {
+        model._set(&format!("B{row}"), "1");
+    }
+    model._set("Z1", "=SUM(COUNTIFS(A:A,SEQUENCE(1000),B:B,\">0\"))");
+    model._set("Z2", "=SUM(COUNTIFS(A:A,SEQUENCE(10),B:B,\">0\"))");
+    model._set("Z3", "=SUM(SUMIFS(A:A,B:B,SEQUENCE(1000),A:A,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "#ERROR!");
+    assert_eq!(model._get_text("Z2"), "1");
+    assert_eq!(model._get_text("Z3"), "1");
+}

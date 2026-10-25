@@ -94,28 +94,33 @@ impl Model {
     /// broadcast against each other (a position past a shorter array uses an `#N/A`
     /// criterion). Otherwise `compute` runs once with the criteria as they are.
     ///
-    /// `walked` is the range every element walks, as written and evaluated by reference (the value
-    /// range, or COUNTIFS's first criteria range): the call is `#ERROR!` when its stored cells
-    /// ([`Model::criteria_walk_cost`], measured only when the call lifts) times the criteria count
-    /// times the elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
+    /// `walked` are the resolved ranges every element walks (the sum range, or every criteria range
+    /// of COUNTIFS; none when they did not resolve): the call is `#ERROR!` when the positions their
+    /// walks visit ([`Model::criteria_walk_cost`], measured only when the call lifts) times the
+    /// criteria count times the elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
     /// `compute` reads only its criteria and the ranges resolved before the lift, so every
     /// repeated criteria element (the blank tail of a whole-column criteria range, the
     /// occurrence-count idiom `COUNTIF(A2:A10000,A2:A10000)`) reuses its first result (T-0408).
     fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
-        walked: &CalcResult,
+        walked: &[Range],
         cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
         // An unlifted call runs once and is not charged: measuring would clip the walked range
         // to the used area on every plain SUMIFS.
         let walk_cost = if criteria.iter().any(LiftedArg::is_grid) {
-            self.criteria_walk_cost(walked)
+            walked
+                .iter()
+                .fold(0, |cost: u64, range| {
+                    cost.saturating_add(self.criteria_walk_cost(range))
+                })
+                .max(1)
         } else {
             1
         };
-        // Each element walks the range once per criterion.
+        // Each position an element visits reads a cell per criterion.
         let walks = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
         self.lift_values(
             criteria,
@@ -126,22 +131,19 @@ impl Model {
         )
     }
 
-    /// Cells stored in `walked`'s range (at least 1, and 1 for a value that is not a range): what
-    /// one criteria walk visits ([`Model::for_each_stored_position`]). A range on a sheet that
-    /// does not exist is 1: the walk is its error.
-    fn criteria_walk_cost(&mut self, walked: &CalcResult) -> u64 {
-        let CalcResult::Range { left, right } = *walked else {
-            return 1;
-        };
+    /// The positions a criteria walk of `walked` visits ([`Model::for_each_stored_position`]): its
+    /// stored cells, or its block within the used area when it is well filled. A range on a sheet
+    /// that does not exist is 0: the walk is its error.
+    fn criteria_walk_cost(&mut self, walked: &Range) -> u64 {
         let mut cells: u64 = 0;
-        let counted = self.for_each_stored_position(&Range { left, right }, left, &mut |_, _| {
+        let counted = self.for_each_stored_position(walked, walked.left, &mut |_, _| {
             cells += 1;
             Ok(())
         });
         if counted.is_err() {
-            return 1;
+            return 0;
         }
-        cells.max(1)
+        cells
     }
 
     /// Cells of `node`'s range inside the used area (at least 1): what one dense walk visits.
@@ -182,8 +184,11 @@ impl Model {
         let criteria = self.criteria_values(args, 2, cell);
         // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
         let sum_value = self.evaluate_node_with_reference(&args[0], cell);
-        let ranges = self.resolve_sum_ranges(args, sum_value.clone(), cell, shape);
-        self.lift_criteria(criteria, &sum_value, cell, |model, criteria| {
+        let ranges = self.resolve_sum_ranges(args, sum_value, cell, shape);
+        let walked = ranges
+            .as_ref()
+            .map_or(&[][..], |ranges| std::slice::from_ref(&ranges.sum_range));
+        self.lift_criteria(criteria, walked, cell, |model, criteria| {
             compute(model, &ranges, criteria)
         })
     }
@@ -232,7 +237,8 @@ impl Model {
                     Err(shape_mismatch(cell))
                 }
             });
-        self.lift_criteria(criteria, &first, cell, |model, criteria| match &ranges {
+        let walked = ranges.as_deref().unwrap_or_default();
+        self.lift_criteria(criteria, walked, cell, |model, criteria| match &ranges {
             Ok(ranges) => model.count_ifs(ranges, criteria, cell),
             Err(error) => error.clone(),
         })

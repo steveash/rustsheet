@@ -77,7 +77,8 @@ Semantics the sparse walk must keep (docs/excel-semantics/criteria.md):
   T-1497 (`for_each_existing_position`, now with a `WalkBudget::Free` mode that does not draw on
   the union budget). COUNTIFS counts the all-blank positions arithmetically; SUMIFS visits only its
   sum range's stored cells. The lift budget prices a criteria walk by the cells it visits
-  (`criteria_walk_cost`). Each walked range goes on record as read empty in one piece.
+  (`criteria_walk_cost`), summed over every range it walks (every criteria range for COUNTIFS).
+  Each walked range goes on record as read empty in one piece.
 - Fixed in passing (Excel-evidenced, probes/criteria-sparse-cross-sheet, excel-graph 2026-10-25):
   rows past the *first* range's used area were taken as blank in every range, so
   `COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"x")` with Sheet2!A100 = "x" was 0 (Excel 1). Recorded in

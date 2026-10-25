@@ -216,9 +216,13 @@ for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria po
 (`COUNTIF(NA(),{"a","b"})`, `COUNTIFS(NA(),{"a"})`, `SUMIFS(NA(),...)`) made excel-graph reject the whole workbook as unsupported,
 so those cases are unprobed.
 DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
-(used cells of the walked range x criteria count x distinct criteria elements; T-0408 counts a
+(positions the walk visits x criteria count x distinct criteria elements; T-0408 counts a
 repeated element once wherever it repeats, where it counted each run of equal consecutive elements) is
-`#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
+`#ERROR!` before any walk; Excel computes it. The positions are those of the stored-cell walks
+(T-2711, "*IF(S) criteria ranges line up position by position"): the sum range's for the SUMIFS
+family, every criteria range's for COUNTIFS, each its stored cells, or its block within the used
+area when it is well filled (unit test `a_lifted_countifs_is_priced_by_every_criteria_range_it_walks`).
+Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
 over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`). VLOOKUP/HLOOKUP over an array lookup_value
 use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
 `lifted_lookup_over_an_array_table_hits_the_visit_cap`).
