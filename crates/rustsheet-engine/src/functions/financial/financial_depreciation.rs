@@ -310,17 +310,23 @@ impl Model {
                 let start_period = model.cast_number_ref(start_period, cell)?;
                 let end_period = model.cast_number_ref(end_period, cell)?;
                 let factor = model.cast_number_or(rest.first(), 2.0, cell)?;
-                // no_switch defaults to FALSE => switch to straight line.
-                let no_switch = model.cast_number_or(rest.get(1), 0.0, cell)? != 0.0;
+                // no_switch defaults to FALSE => switch to straight line. It reads as a boolean:
+                // "TRUE" and "FALSE" in any case are taken and other text, numeric text too, is
+                // `#VALUE!`, before the range checks (probes/t2492-vdb-ddb-arguments A1:A9, A27).
+                let no_switch = rest
+                    .get(1)
+                    .map_or(Ok(false), |value| Self::cast_bool_ref(value, cell))?;
+                // A factor of 0 is taken (no declining balance: straight line, or 0 with
+                // no_switch), and so is an empty window at period 0 (probes/t2492-vdb-ddb-arguments
+                // A13:A19).
                 if cost < 0.0
                     || salvage < 0.0
                     || life <= 0.0
-                    || factor <= 0.0
+                    || factor < 0.0
                     || start_period < 0.0
                     || start_period > life
                     || end_period > life
                     || start_period > end_period
-                    || end_period <= 0.0
                 {
                     return Err(num_error(cell));
                 }
@@ -427,7 +433,9 @@ impl Model {
     }
 
     /// `DDB(cost, salvage, life, period, [factor])`; `factor` is 2 when omitted (the
-    /// double-declining balance), and a boolean factor is `#VALUE!`.
+    /// double-declining balance). A boolean factor is 1 or 0 and a numeric text its number:
+    /// `DDB(1000,100,10,1,TRUE)` is 100, with FALSE `#NUM!`, with "3" 300 (probes/t2492-vdb-ddb-
+    /// arguments A32:A38).
     pub(crate) fn fn_ddb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ddb, args, cell, &mut |model, values| {
             let [cost, salvage, life, period, rest @ ..] = values else {
@@ -438,7 +446,7 @@ impl Model {
                 let salvage = model.cast_number_ref(salvage, cell)?;
                 let life = model.cast_number_ref(life, cell)?;
                 let period = model.cast_number_ref(period, cell)?;
-                let factor = model.cast_number_no_bools_or(rest.first(), 2.0, cell)?;
+                let factor = model.cast_number_or(rest.first(), 2.0, cell)?;
                 if period > life || cost < 0.0 || salvage < 0.0 || period <= 0.0 || factor <= 0.0 {
                     return Err(num_error(cell));
                 }

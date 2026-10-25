@@ -1760,6 +1760,27 @@ Status: VERIFIED (excel-graph)
 Implemented (T-1975): `vdb_no_switch_between` and `vdb_switching_between` in functions/financial/financial_depreciation.rs.
 Tasks: T-1975, T-2185
 
+## VDB, DDB and ACCRINT argument types
+Rule: VDB's `no_switch` reads as a boolean. TRUE, FALSE and a number are taken, and so is the text "TRUE" or "FALSE"
+in any case, typed or from a cell. Any other text is `#VALUE!` before the range checks, numeric text too ("1", "0",
+"x"). The value checks then apply: `VDB(1,-0.0001,23,1,9,10,"true")` is `#NUM!`.
+VDB takes a factor of 0. With no declining balance, the switching mode is straight line and no_switch gives 0:
+`VDB(1000,100,10,0,1,0)` is 90, with TRUE it is 0, and `VDB(43478,488,1E+9,3,7,0)` is 0.00017196. A negative
+factor is `#NUM!`. VDB also takes an empty window at period 0: `VDB(1000,100,10,0,0)` and `VDB(0.01,5,25,0,0,3)` are 0.
+VDB's factor and DDB's factor read a boolean as 1 or 0 and a numeric text as its number. `DDB(1000,100,10,1,TRUE)` is
+100, also from a TRUE cell. With FALSE (factor 0) it is `#NUM!`, with "3" it is 300, and with "TRUE" it is `#VALUE!`.
+ACCRINT's `calc_method` takes a boolean but no text: "FALSE", "TRUE" and a "FALSE" cell are all `#VALUE!`, before a
+negative rate's `#NUM!`.
+The error-order cells of the T-2257 sweep come from the arguments' own errors. `VDB(-1,0,39,<ACCRINT(..,"FALSE")>,9,10,0)`
+is `#VALUE!` because that ACCRINT is `#VALUE!`, while `VDB(-1,0,39,SQRT(-1),9,10,0)` is `#NUM!` and
+`VDB(73409,713,1/0,SQRT(-1),10)` is `#DIV/0!`, the first error in argument order.
+Evidence: probes/t2492-vdb-ddb-arguments A1:A54 (excel-graph, 2026-10-25, T-2492).
+Implemented (T-2492): `fn_vdb`, `fn_ddb` (functions/financial/financial_depreciation.rs) and `accrint_of`
+(functions/financial/accrint.rs). VDB from a fractional start in the switching mode still misses by value (A1, A9:A12),
+which T-2185 owns. A218 of gen-m9/d0854366830dcdee is `#NUM!` because `PERCENTILE(<TRUE cell>,7)` is `#NUM!` (A55), and ours
+`#VALUE!` (T-2605).
+Status: VERIFIED
+
 ## DB and DDB operation order
 Rule: DB and DDB compute each period's charge in a fixed operation order, and the last bits depend on it.
 - DB: `rate = ROUND(1 - (salvage/cost)^(1/life), 3)`; the first period is `cost * rate * (month/12)` (month over 12
@@ -1981,9 +2002,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   `DB(6912,0,1E+300,2,6)` e168be7f6d3f84c2 A70); `DB(0.01,488,32,1E+200,10)` = -0.0033416666666666673 (762cd0e4ec9a7aa9 A151),
   a first Excel value past the "DB and VDB period cap".
 - VDB takes a text `no_switch`: `VDB(17334,389,36,0.2,9,3,"FALSE")` = 9114.101951893414 (762cd0e4ec9a7aa9 A379); DDB takes a
-  TRUE factor from a cell without `#VALUE!` (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8; the salvage is above
-  the cost there, so whether the boolean is read as 1 or the 0 comes before the factor is read is unprobed); `VDB(43478,488,1E+9,3,7,0)` = 0.00017196
-  (a91bad4e84f49739 A323).
+  TRUE factor from a cell without `#VALUE!` (`DDB(3.14159,866,13,7,<TRUE>)` = 0, 81bcdc0bec0c8e6b A8); `VDB(43478,488,1E+9,3,7,0)`
+  = 0.00017196 (a91bad4e84f49739 A323). Now probed and followed ("VDB, DDB and ACCRINT argument types", T-2492).
 - NPER at a rate of 1E-300 is `#DIV/0!` (`NPER(1E-300,-236,2766,945)`, 3c06f9298f65a3ba A148; five more 1E-300 cells in
   T-2698), and at a rate of -1 it is `#NUM!` (`NPER(-1,-31,1)`, 3c06f9298f65a3ba A50, where ours is 0). NPV at a rate
   of -1 is `#DIV/0!` (`NPV(-1,GESTEP(-2.5,-100))`, 3aa168259335be54 A18), EFFECT at a huge nominal rate `#NUM!` (`EFFECT(1E+300,11)`,
