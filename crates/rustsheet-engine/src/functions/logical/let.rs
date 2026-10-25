@@ -249,9 +249,10 @@ impl Model {
     /// (probes/multiarea-let H1, multiarea-letbind H1:H3 and H7).
     pub(crate) fn bind_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> Binding {
         let node = node.ungrouped();
-        // A variable bound to an omitted parameter hands the omission on, so ISOMITTED of a LET
-        // name for it stays TRUE as before T-2649.
-        if self.is_omitted_variable(node) {
+        // An empty slot, `(1,)` or `(,2)`, is omitted like a missing argument (arrays.md
+        // ISOMITTED, A24-A25 and A34), and a variable bound to an omitted parameter hands the
+        // omission on, so ISOMITTED of a LET name for it stays TRUE as before T-2649.
+        if matches!(node, Node::EmptyArgKind) || self.is_omitted_variable(node) {
             return Binding::Omitted;
         }
         let is_span = matches!(node, Node::SheetSpanKind { .. });
@@ -331,16 +332,22 @@ impl Model {
         RefArg::from(self.variable_value(node, cell))
     }
 
+    /// What `node` is bound to when it is a variable in scope.
+    fn variable_binding(&self, node: &Node) -> Option<&Binding> {
+        match node {
+            Node::NamedVariableKind { id: Some(id), .. } => self.variable_stack.get(*id as usize),
+            _ => None,
+        }
+    }
+
     /// Whether `node` is a variable bound to an omitted LAMBDA parameter ([`Binding::Omitted`]).
     pub(crate) fn is_omitted_variable(&self, node: &Node) -> bool {
-        matches!(node, Node::NamedVariableKind { id: Some(id), .. }
-            if matches!(self.variable_stack.get(*id as usize), Some(Binding::Omitted)))
+        matches!(self.variable_binding(node), Some(Binding::Omitted))
     }
 
     /// Whether `node` is a variable bound to an array of references ([`Binding::Grid`]), which
     /// [`Model::variable_reference`] hands on.
     pub(crate) fn is_grid_variable(&self, node: &Node) -> bool {
-        matches!(node, Node::NamedVariableKind { id: Some(id), .. }
-            if matches!(self.variable_stack.get(*id as usize), Some(Binding::Grid(_))))
+        matches!(self.variable_binding(node), Some(Binding::Grid(_)))
     }
 }

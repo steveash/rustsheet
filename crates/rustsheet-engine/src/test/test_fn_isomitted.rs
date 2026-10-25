@@ -97,3 +97,12 @@ fn test_isomitted_parameter_bound_to_the_empty_value_is_not_omitted() {
     assert_eq!(model._get_text("A7"), *"TRUE");
     assert_eq!(model._get_text("A8"), *"1TRUE");
 }
+
+#[test]
+fn test_isomitted_let_name_bound_to_an_empty_slot_is_omitted() {
+    // As before T-2649 (unprobed): a LET name bound to an empty slot reads as omitted.
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(z,,ISOMITTED(z))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+}

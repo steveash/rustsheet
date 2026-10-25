@@ -495,13 +495,9 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> RefArg {
-        // An empty slot, `(1,)` or `(,2)`, is omitted like a missing argument (arrays.md
-        // ISOMITTED, A24-A25 and A34).
         self.call_prepared(caller, cell, |model, i| match call_args.get(i) {
-            Some(arg) if !matches!(arg.ungrouped(), Node::EmptyArgKind) => {
-                model.bind_argument(arg, cell)
-            }
-            _ => Binding::Omitted,
+            Some(arg) => model.bind_argument(arg, cell),
+            None => Binding::Omitted,
         })
     }
 
