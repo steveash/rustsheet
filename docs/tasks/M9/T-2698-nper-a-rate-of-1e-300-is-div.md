@@ -50,9 +50,10 @@ Cells:
 - gen-m9/a91bad4e84f49739.case.json (1): Calc!A336
 - gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A43
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A41
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A390 (from T-2429: `HYPGEOMDIST(4,NPER((-1),-728,6163,(Data!D8/42),0),3,4)`, Excel #NUM!, ours 0; the inner NPER is Excel `#NUM!`, ours 0, probes/t2429/eced4bb6a0234c9e A10)
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2257): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `NPER(1E-300,-236,2766,945)` is `#DIV/0!`, `NPER(-1,-31,1)` is `#NUM!`, and `NPER(0,0,100)` stays
       `#DIV/0!`.
