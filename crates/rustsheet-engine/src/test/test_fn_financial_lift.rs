@@ -285,7 +285,8 @@ fn db_and_vdb_lift_and_bound_their_periods() {
             "=INDEX(VDB(2400,300,10,0,{1;2},2,FALSE),2)=VDB(2400,300,10,0,2,2,FALSE)",
             "TRUE",
         ),
-        ("H5", "=DB(1,0,1E15,1E15)", "#NUM!"),
+        // A period past i32::MAX is period 1 (probes/fin-syd-db-domain G1).
+        ("H5", "=DB(1,0,1E15,1E15)", "$1.00"),
         ("H6", "=VDB(1000,0,1E9,0,1E9)", "#NUM!"),
         ("H7", "=DB(1000,1,1E6,100000)>=0", "TRUE"),
         (

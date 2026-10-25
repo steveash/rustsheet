@@ -1,8 +1,8 @@
 # Argument counts of every function in eval/catalog/excel-functions.tsv, one `NAME MIN MAX` per
-# line: Excel's minimum (column 3) and the most of: the syntax line's parameters (255 when it
-# repeats or does not parse), the eval/catalog/functions.yaml signature's (255 when it repeats) and
-# a cited override (INDEX's reference form takes 4). A hand-maintained copy:
-# tools/tests/test_catalog_arity.py fails on any drift (T-2632).
+# line: Excel's minimum (column 3) and the most of the syntax line's parameters (255 when it
+# repeats or does not parse) and the eval/catalog/functions.yaml signature's (255 when it repeats),
+# or a cited override in place of both (INDEX's reference form takes 4, FIND 3). A hand-maintained
+# copy: tools/tests/test_catalog_arity.py fails on any drift (T-2632).
 ABS 1 1
 ACCRINT 6 8
 ACCRINTM 4 5
@@ -133,7 +133,7 @@ DEC2OCT 1 2
 DECIMAL 2 2
 DEGREES 1 1
 DELTA 1 2
-DETECTLANGUAGE 1 255
+DETECTLANGUAGE 1 1
 DEVSQ 1 255
 DGET 3 3
 DISC 4 5
@@ -179,8 +179,8 @@ FDIST 3 3
 FIELDVALUE 2 2
 FILTER 2 3
 FILTERXML 2 2
-FIND 2 255
-FINDB 2 255
+FIND 2 3
+FINDB 2 3
 FINV 3 3
 FISHER 1 1
 FISHERINV 1 1
@@ -285,9 +285,9 @@ LAMBDA 1 255
 LARGE 2 2
 LCM 1 255
 LEFT 1 2
-LEFTB 1 255
+LEFTB 1 2
 LEN 1 1
-LENB 1 255
+LENB 1 1
 LET 3 255
 LINEST 1 4
 LN 1 1
@@ -310,7 +310,7 @@ MDETERM 1 1
 MDURATION 5 6
 MEDIAN 1 255
 MID 3 3
-MIDB 3 255
+MIDB 3 3
 MIN 1 255
 MINA 1 255
 MINIFS 3 255
@@ -403,10 +403,10 @@ REGEXREPLACE 3 5
 REGEXTEST 2 3
 REGISTER.ID 2 3
 REPLACE 4 4
-REPLACEB 4 255
+REPLACEB 4 4
 REPT 2 2
 RIGHT 1 2
-RIGHTB 1 255
+RIGHTB 1 2
 ROMAN 1 2
 ROUND 2 2
 ROUNDDOWN 2 2
@@ -418,7 +418,7 @@ RSQ 2 2
 RTD 3 255
 SCAN 3 3
 SEARCH 2 3
-SEARCHB 2 255
+SEARCHB 2 3
 SEC 1 1
 SECH 1 1
 SECOND 1 1
@@ -484,7 +484,7 @@ TINV 2 2
 TOCOL 1 3
 TODAY 0 0
 TOROW 1 3
-TRANSLATE 1 255
+TRANSLATE 1 3
 TRANSPOSE 1 1
 TREND 1 4
 TRIM 1 1

@@ -11,7 +11,7 @@ use crate::{
     formatter::dates::{
         from_excel_date, from_excel_date_up_to, real_date_to_serial, EPOCH_1904_IN_1900_SERIALS,
     },
-    functions::lift::num_error,
+    functions::lift::{num_error, value_error},
     functions::Function,
     model::Model,
 };
@@ -180,7 +180,8 @@ impl Model {
     /// issue or rate is `#VALUE!`, also before a later argument's error (`ACCRINT(TRUE,39500,..)`,
     /// `ACCRINT(TRUE,SQRT(-1),..)`, `ACCRINT(39000,39500,0.1,TRUE,..)`: probes/t2455-transpose-
     /// single-value A52, A53, A56); the other dates and numbers take booleans (as `get_number`
-    /// did; unprobed), and `calc_method` reads as a boolean.
+    /// did; unprobed), and `calc_method` reads as a boolean but text, "TRUE" and "FALSE" too, is
+    /// `#VALUE!` before any value is checked (probes/t2492-vdb-ddb-arguments A47:A54).
     fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
             return CalcResult::new_args_number_error(cell);
@@ -194,8 +195,10 @@ impl Model {
                 self.cast_number_ref(par, cell)?,
                 self.cast_number_ref(frequency, cell)?.floor(),
                 day_count_basis(self.cast_number_or(rest.first(), 0.0, cell)?),
-                rest.get(1)
-                    .map_or(Ok(true), |value| Self::cast_bool_ref(value, cell))?,
+                rest.get(1).map_or(Ok(true), |value| match value {
+                    CalcResult::String(_) => Err(value_error(cell)),
+                    value => Self::cast_bool_ref(value, cell),
+                })?,
             ))
         };
         let (
