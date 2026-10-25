@@ -1134,7 +1134,8 @@ subnormal quotient is 0 (`NPV(9E+307,1)` is 0), and an overflowing sum is #NUM! 
 reject the workbook ("unsupported features"), so these probes use 9E+307.
 Evidence: probes/npv-power-edges A1-A34, probes/npv-power-edges-2 A1-A30 (excel-graph, 2026-10-25); the T-2436 and
 T-2496 sub-expression probes (NPV(-1,..) and NPV(1E+300,..) cells).
-Ours: matches since T-2493 (the power is libm's `powi`, the overflowing last quotient two divisions).
+Ours: matches since T-2493. The power is Rust's `powi` (binary exponentiation), not Excel's running product, so the
+two may disagree right at an overflow or underflow edge (unprobed); the overflowing last quotient is two divisions.
 Status: VERIFIED (excel-graph)
 Implemented in: functions/financial/financial_util.rs (`excel_npv`)
 Tasks: T-2493
