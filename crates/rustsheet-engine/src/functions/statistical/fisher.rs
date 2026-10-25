@@ -114,7 +114,7 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
         return beta_reg_complement_unoriented(x, y, a, b);
     }
     // Bit-exact on 13 of the 16 such cells on file against 3 for the series (T-2571,
-    // `rustsheet-fitlab f-test-finite`).
+    // statistics.md).
     if a == 0.5 && b == 0.5 {
         return 2.0 * x.sqrt().asin() / std::f64::consts::PI;
     }

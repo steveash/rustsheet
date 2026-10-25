@@ -35,12 +35,16 @@ Untried ideas: A&S 26.6.4-26.6.8 theta forms for every half-integer shape (odd/o
 even df via the finite series) used only where they do not cancel; Excel's upper tail as 1 minus the lower
 tail on the side where x > a/(a+b); a probe sheet varying one data value by 1 ulp around a visibly-off cell
 to see whether Excel's p moves smoothly (a series) or in steps (a table or a switch).
+Reproducibility debt from T-2571 (review): the scores for the a = b = 1/2 closed forms, NR `betai`, ln y as log1p(-x)
+and the exact-f inversion (statistics.md) came from ad hoc scripts: add them to ftest.py as candidates of a committed fit
+first, and point fisher.rs's comment at the fit that scores the closed form.
 Unprobed corners (T-2361 review), probe before fitting: `FTEST({1E-160,2E-160},{1E150,2E150})` in both
 orders, and df 1 against df 249 or 400 (the series hands over to `beta_reg_complement` at a + b = 200).
 
 ## Acceptance criteria
 - [ ] Visible parity: the 8 cells above have Excel's value to 15 significant digits, with no new
       known-failure lines in any baseline beyond decision 0083's allowance.
+- [ ] The T-2571 ad hoc scores are reproducible from committed fits.
 - [ ] Each candidate's score (bit-exact / within 4 ulp / visibly off) is recorded in
       docs/excel-semantics/statistics.md.
 - [ ] `make check` green; reviewers approve.
