@@ -209,3 +209,45 @@ fn fn_db_ddb_operation_order_bits() {
     assert_eq!(bits("A4"), 2_222.222_222_222_222_f64.to_bits());
     assert_eq!(bits("A5"), 338.519_004_281_445_3_f64.to_bits());
 }
+
+// SYD and DB argument domains (financial.md "DB and SYD argument domains",
+// probes/fin-syd-db-domain, T-2491).
+#[test]
+fn fn_syd_db_argument_domains() {
+    let mut model = new_empty_model();
+    // A negative salvage is #NUM!, even at cost 0; salvage 0 is a value.
+    model._set("A1", "=SYD(36746,-100,22,3)");
+    model._set("A2", "=SYD(0,-439103,37,9)");
+    model._set("A3", "=DB(0,-439103,27,10)");
+    model._set("A4", "=DB(100,-0.0001,4,1)");
+    model._set("A5", "=DB(0,0,4,1)");
+    // SYD: life*(life+1) past the double range is #DIV/0!, an overflowing numerator #NUM!.
+    model._set("B1", "=SYD(34664,230,1E+300,5)");
+    model._set("B2", "=SYD(100,10,1.4E+154,1)");
+    model._set("B3", "=SYD(100,10,1.3E+154,1)");
+    model._set("B4", "=SYD(1E+300,-1E+300,10,1)");
+    // DB: a life past i32::MAX is #NUM! from period 1 on, not below it.
+    model._set("C1", "=DB(6912,0,1E+300,2,6)");
+    model._set("C2", "=DB(67486,100,1E15+2,6,8)");
+    model._set("C3", "=DB(100,10,2147483648,1)");
+    model._set("C4", "=DB(18057,894,FACT(13),0.5,8)");
+    // DB: a period past i32::MAX is period 1's value whatever the life.
+    model._set("D1", "=DB(100,10,4,2147483648)");
+    model._set("D2", "=DB(100,10,4,1E+200)");
+    model._set("D3", "=DB(0.01,488,32,1E+200,10)");
+    model._set("D4", "=DB(100,10,4,2147483647)");
+    model.evaluate();
+    let value = |c: &str| model.get_cell_value_by_ref(&format!("Sheet1!{c}")).unwrap();
+
+    for c in ["A1", "A2", "A3", "A4", "B4", "C1", "C2", "C3", "D4"] {
+        assert_eq!(model._get_text(c), "#NUM!", "{c}");
+    }
+    assert_eq!(model._get_text("B1"), "#DIV/0!");
+    assert_eq!(model._get_text("B2"), "#DIV/0!");
+    assert_eq!(value("A5"), CellValue::Number(0.0));
+    assert_eq!(value("B3"), CellValue::Number(1.384_615_384_615_384_8e-152));
+    assert_eq!(value("C4"), CellValue::Number(0.0));
+    assert_eq!(value("D1"), CellValue::Number(43.8));
+    assert_eq!(value("D2"), CellValue::Number(43.8));
+    assert_eq!(value("D3"), CellValue::Number(-0.003_341_666_666_666_667_3));
+}
