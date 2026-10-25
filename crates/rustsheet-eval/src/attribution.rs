@@ -8,14 +8,14 @@
 //! attributed cell. It computes no verdict and gates nothing: T-0080 points `v15_checkpoint` at
 //! these counts, and the progress dashboard (T-0081) renders them.
 
-use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
 use serde::{Deserialize, Serialize};
 
+use crate::catalog::Catalog;
 use crate::closeness::Closeness;
 use crate::evidence_floor::EVIDENCE_FLOOR;
-use crate::milestone_exit::{RATE99_NUM, RATE_DEN, RATE_NUM};
+use crate::milestone_exit::{meets_rate, RATE99_NUM, RATE_NUM};
 use crate::report::{FunctionStat, RunReport};
 use crate::runner::CellResult;
 
@@ -32,9 +32,11 @@ pub enum Tier {
     Ulp4,
     /// Every cell within 15 significant digits.
     Digits15,
-    /// At least 99.9% of the cells within 15 digits ([`RATE_NUM`] / [`RATE_DEN`]).
+    /// At least 99.9% of the cells within 15 digits: [`RATE_NUM`] over
+    /// [`RATE_DEN`](crate::milestone_exit::RATE_DEN).
     Rate999,
-    /// At least 99% of the cells within 15 digits ([`RATE99_NUM`] / [`RATE_DEN`]).
+    /// At least 99% of the cells within 15 digits: [`RATE99_NUM`] over
+    /// [`RATE_DEN`](crate::milestone_exit::RATE_DEN).
     Rate99,
     /// Fewer than 99% of the cells within 15 digits.
     Below99,
@@ -60,9 +62,7 @@ impl Tier {
     pub fn of(cells: &Closeness) -> Tier {
         let scored = cells.scored();
         let visible = cells.visible();
-        let within = scored - visible;
-        let share_at_least =
-            |num: usize| within.saturating_mul(RATE_DEN) >= scored.saturating_mul(num);
+        let share_at_least = |num: usize| meets_rate(scored - visible, scored, num);
         if scored == 0 {
             Tier::Unscored
         } else if cells.pass == scored {
@@ -120,15 +120,68 @@ impl FunctionStat {
         }
     }
 
-    /// Places [`FunctionStat::tier`] by the attributed cells, or by every Excel cell below
-    /// [`EVIDENCE_FLOOR`] attributed cells.
-    pub(crate) fn place_tier(&mut self) {
-        (self.attribution, self.tier) = if self.attributed.scored() < EVIDENCE_FLOOR {
-            (Attribution::All, Tier::of(&self.excel))
+    /// The cells decision 0118 measures this function by: its attributed cells, or every Excel
+    /// cell that calls it below [`EVIDENCE_FLOOR`] attributed cells. Its [`Tier`] and its Phase 1
+    /// rate (`v15_checkpoint`) both read them.
+    #[must_use]
+    pub fn counted(&self) -> (Attribution, &Closeness) {
+        if self.attributed.scored() < EVIDENCE_FLOOR {
+            (Attribution::All, &self.excel)
         } else {
-            (Attribution::Sole, Tier::of(&self.attributed))
-        };
+            (Attribution::Sole, &self.attributed)
+        }
     }
+
+    /// Places [`FunctionStat::tier`] by [`FunctionStat::counted`].
+    pub(crate) fn place_tier(&mut self) {
+        let (attribution, cells) = self.counted();
+        (self.attribution, self.tier) = (attribution, Tier::of(cells));
+    }
+}
+
+/// How many in-scope functions one [`Tier`] holds.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TierCount {
+    /// The tier.
+    pub tier: Tier,
+    /// In-scope functions placed in it.
+    pub functions: usize,
+    /// Of those, the ones placed by every Excel cell that calls them ([`Attribution::All`]).
+    pub fallback: usize,
+}
+
+/// The in-scope catalog functions per tier, best first ([`Tier::ALL`]). They are the functions of
+/// the fifteen-digit checkpoint: names the catalog does not know (a user-defined LAMBDA name) stay
+/// out, and a catalog function no cell calls is `unscored` and counts as a fallback. With an
+/// empty catalog (a run without one) every function of `functions` counts.
+#[must_use]
+pub fn tier_counts(catalog: &Catalog, functions: &[FunctionStat]) -> Vec<TierCount> {
+    let placed: Vec<(Tier, Attribution)> = if catalog.functions().next().is_none() {
+        functions.iter().map(|f| (f.tier, f.attribution)).collect()
+    } else {
+        catalog
+            .in_scope_functions()
+            .map(|c| {
+                functions
+                    .iter()
+                    .find(|f| f.name == c.name)
+                    .map_or((Tier::Unscored, Attribution::All), |f| {
+                        (f.tier, f.attribution)
+                    })
+            })
+            .collect()
+    };
+    Tier::ALL
+        .iter()
+        .map(|&tier| {
+            let of_tier = placed.iter().filter(|(t, _)| *t == tier);
+            TierCount {
+                tier,
+                functions: of_tier.clone().count(),
+                fallback: of_tier.filter(|(_, a)| *a == Attribution::All).count(),
+            }
+        })
+        .collect()
 }
 
 /// A suite's workbooks (cases) by how close their scored cells come to Excel. A case counts once
@@ -160,23 +213,8 @@ impl Workbooks {
     }
 }
 
-/// The report section: the in-scope catalog functions per tier, and how many of them use the
-/// fallback. They are the functions of the fifteen-digit checkpoint, so names the catalog does not
-/// know (a user-defined LAMBDA name) stay out, and a catalog function no cell calls is `unscored`.
-/// Without a checkpoint (a run with no catalog) every function of the report counts.
+/// The report section: [`RunReport::tiers`], then their total.
 pub fn write_markdown(report: &RunReport, md: &mut String) {
-    let catalog: BTreeSet<&str> = report
-        .v15_checkpoint
-        .functions
-        .iter()
-        .map(|f| f.name.as_str())
-        .collect();
-    let functions: Vec<&FunctionStat> = report
-        .functions
-        .iter()
-        .filter(|f| catalog.is_empty() || catalog.contains(f.name.as_str()))
-        .collect();
-    let uncalled = catalog.len().saturating_sub(functions.len());
     let _ = writeln!(md, "\n## Parity tiers (glue-aware)\n");
     let _ = writeln!(
         md,
@@ -189,31 +227,26 @@ pub fn write_markdown(report: &RunReport, md: &mut String) {
         md,
         "| tier | functions | of which fallback |\n|---|---|---|"
     );
-    let count = |tier: Option<Tier>, fallback: bool| {
-        let stats = functions
-            .iter()
-            .filter(|f| tier.is_none_or(|t| f.tier == t))
-            .filter(|f| !fallback || f.attribution == Attribution::All)
-            .count();
-        let uncalled = if tier.is_none_or(|t| t == Tier::Unscored) {
-            uncalled
-        } else {
-            0
-        };
-        stats + uncalled
-    };
-    for tier in Tier::ALL {
-        let (n, fb) = (count(Some(tier), false), count(Some(tier), true));
-        let _ = writeln!(md, "| {} | {n} | {fb} |", tier.label());
+    for t in &report.tiers {
+        let _ = writeln!(
+            md,
+            "| {} | {} | {} |",
+            t.tier.label(),
+            t.functions,
+            t.fallback
+        );
     }
-    let (n, fb) = (count(None, false), count(None, true));
+    let (n, fb) = report
+        .tiers
+        .iter()
+        .fold((0, 0), |(n, fb), t| (n + t.functions, fb + t.fallback));
     let _ = writeln!(md, "| total | {n} | {fb} |");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
+    use crate::catalog::{CatalogFunction, Scope};
     use crate::report::tests::{case, cell};
     use crate::value::{Value, Verdict};
 
@@ -297,7 +330,7 @@ mod tests {
             excel("GAMMA(3)", Verdict::Deviation),
             cell("GAMMA(4)", Verdict::NumericMismatch),
         ];
-        let report = RunReport::build("e", &[r], &[], &Catalog::default());
+        let report = RunReport::build("e", &[r.clone()], &[], &Catalog::default());
         let stat = |name: &str| {
             let f = report.functions.iter().find(|f| f.name == name);
             f.map(|f| {
@@ -327,14 +360,23 @@ mod tests {
             "{md}"
         );
         assert!(md.contains("| total | 4 | 4 |"), "{md}");
-        // With a checkpoint, only its catalog functions count, and an uncalled one is unscored.
-        let mut report = report;
-        report.v15_checkpoint.functions = ["GAMMA", "COS"]
-            .map(|name| crate::v15_checkpoint::V15Function {
-                name: name.into(),
-                ..Default::default()
-            })
-            .to_vec();
+        // With a catalog, only its in-scope functions count, and an uncalled one is unscored.
+        let entry = |name: &str, scope: Scope| CatalogFunction {
+            name: name.into(),
+            category: "math".into(),
+            milestone: "M5".into(),
+            scope,
+            reason: None,
+            oracle: None,
+            v15: None,
+            v15_reason: None,
+        };
+        let catalog = Catalog::from_functions([
+            entry("GAMMA", Scope::In),
+            entry("COS", Scope::In),
+            entry("IF", Scope::Out),
+        ]);
+        let report = RunReport::build("e", &[r], &[], &catalog);
         let md = report.to_markdown(1);
         assert!(
             md.contains("| `below99`: < 99% within 15 digits | 1 | 1 |"),

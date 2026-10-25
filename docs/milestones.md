@@ -23,7 +23,11 @@ whose exit criteria are not met.
 (T-0040). Every in-scope function has oracle-backed cases covering each parameter mode and edge
 pool (decision 0094's coverage: 400 Excel cells, 200 of them generated), and has **≥ 99.9% of its
 Excel cells within 15 significant digits** of Excel's value with the right type, error and text
-(decision 0083's rule: not visibly off). Each remaining failure has a filed task or a `DEVIATION`
+(decision 0083's rule: not visibly off). A function's cells are counted as decision 0118 says:
+its attributed Excel cells, those whose formula calls it as the only function outside the harness
+glue list, or every Excel cell that calls it when it has fewer than 20 attributed cells. The
+stricter count over every cell that calls it is reported beside it as information and gates
+nothing. Each remaining failure, attributed to a function or not, has a filed task or a `DEVIATION`
 entry. Percentages here and in every milestone count only scored cells not listed as accepted
 deviations, which are scored in their own column (decision 0036). Accepted deviations are
 directive-5 limits only (decision 0052). The exit criteria of M1, M2, M5–M10 and M11 are met.
