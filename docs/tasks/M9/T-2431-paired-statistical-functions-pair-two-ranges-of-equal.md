@@ -3,7 +3,7 @@ id: T-2431
 title: "Paired statistical functions pair two ranges of equal count but different shape instead of #N/A (gen-m9, 18 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -116,7 +116,7 @@ last-digit ULP only, visible parity met); ede0323c389fc703 A75 (a TTEST argument
 re-homed to T-2655). CHISQ.TEST has no per-cell sign check, only a negative summed statistic is `#NUM!`
 (A375 and f2bd5f380ec002bf A314 fixed).
 
-## Handoff
+## Handoff (resumed)
 Tried: cell-count pairing in `fn_get_two_matrices` (done, evidenced, 0 regressions); CHISQ.TEST sign rule revised twice after
 fidelity review (final: no per-cell sign check, `#NUM!` only for a negative summed statistic, fits A21/A314/A375); quirk entry
 extended. `make check` green on the branch. The fidelity reviewer requested changes in three rounds (round 3's only finding,
