@@ -60,3 +60,13 @@ with this task so the scores are reproducible.
 
 ## Out of scope
 - F.DIST, F.DIST.RT and BETA.DIST, which use the shared `beta_reg_complement` kernel.
+
+## Progress (2026-10-25, opus run; work in flight)
+- Committed the extraction the Context asked for: fits `f-test` (candidate remainders R) and `f-test-structure`
+  (variance, x/y and power alternatives) in tools/src/rustsheet_tools/fitlab/kernels/ftest.py, over every F.TEST/FTEST
+  cell on file with plain-range arguments (291 numeric cells). Scores are in statistics.md under the F.TEST entry.
+- Finding: no double-sum R (forward, backward, Gamma-ratio B) beats the correctly rounded R, and every R variant keeps
+  the same worst cells, so the visibly-off cells' residual probably lies outside R.
+- Next: candidates for the powers' arguments (ln x as log1p(-y), or ln(df_small) - ln(df_big f + df_small)), the
+  variance's summation order (pairwise, column-major for 2-D ranges), and the unprobed corners listed in Context.
+

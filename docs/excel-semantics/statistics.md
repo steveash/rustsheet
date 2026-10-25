@@ -3098,6 +3098,14 @@ t1049-ftest; bit-exact / within 4 ulp / visibly off):
 - the same with R correctly rounded (the model above): 90 / 170 / 6.
 Excel's residual to the model runs from -12 to +14 ulps, mostly within 2, on both sides, so
 Excel's own R is a double computation that is not identified yet (open: T-2571).
+T-2571 (committed fit `uv run rustsheet-fitlab f-test` and `f-test-structure`, tools/src/rustsheet_tools/fitlab/kernels/ftest.py,
+291 numeric cells on file with plain-range arguments, a + b <= 200; bit-exact / within 4 ulp / max ulp): the Python
+model with R correctly rounded 142 / 267 / 26 (the engine 150 / 267 / 26); R as the double 2F1 series over a Gamma-ratio
+B 124 / 264 / 26, backward 115 / 270 / 27, forward over the recurrence B 104 / 262 / 27; with R correctly rounded,
+exp(a ln x + b ln y) 118 / 240 / 101, libm pow 116 / 221 / 180, x and y from the variances without f 111 / 251 / 99, VAR.S's
+one-pass variance 90 / 232. Every R variant keeps the same worst cells (26, 14, 13 and 12 ulp), so the visibly-off
+residual is probably not in R: the next hypotheses are the powers' arguments (a ln x with ln x from log1p(-y) or from
+ln(df_small) - ln(total)) and the two-pass variance's summation order.
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
