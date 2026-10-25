@@ -106,23 +106,21 @@ type Sparse = Vec<(u64, Option<f64>)>;
 impl Model {
     /// The two samples of COVARIANCE.P, COVARIANCE.S or T.TEST (`args[0]` and `args[1]`, which
     /// the caller checked exist), paired by position. Each must be a range or an array: anything
-    /// else is `#VALUE!` (a typed text too, unless `typed_text_is_sample`), and an array holding an
+    /// else is `#VALUE!` (a typed text is a one-cell sample with no number), and an array holding an
     /// error is `#VALUE!`, each when its turn comes.
     pub(crate) fn paired_samples(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        typed_text_is_sample: bool,
     ) -> Result<PairedValues, PairedSamplesError> {
-        let first = self.sample_arg(&args[0], "First", cell, typed_text_is_sample);
-        let second = self.sample_arg(&args[1], "Second", cell, typed_text_is_sample);
+        let first = self.sample_arg(&args[0], "First", cell);
+        let second = self.sample_arg(&args[1], "Second", cell);
         let sizes_differ = matches!(
             (first.cell_count(), second.cell_count()),
             (Some(m), Some(n)) if m != n
         );
         let first_direct = matches!(first, PairedArg::Error(_));
-        let direct_error =
-            matches!(first, PairedArg::Error(_)) || matches!(second, PairedArg::Error(_));
+        let direct_error = first_direct || matches!(second, PairedArg::Error(_));
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
             CalcResult::new_error(error, cell, format!("Error in {which} array"))
@@ -154,20 +152,14 @@ impl Model {
         value
     }
 
-    fn sample_arg(
-        &mut self,
-        arg: &Node,
-        which: &str,
-        cell: CellReferenceIndex,
-        typed_text_is_sample: bool,
-    ) -> PairedArg {
-        // With `typed_text_is_sample` a typed text is an array of one cell with no number, so
-        // against a longer range the sizes differ and the result is `#N/A`: `COVAR(A1:A6,"a")`,
-        // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
-        // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is a sample too (T-2469: `""` is no number, `#DIV/0!`).
+    fn sample_arg(&mut self, arg: &Node, which: &str, cell: CellReferenceIndex) -> PairedArg {
+        // A typed text is an array of one cell with no number, so against a longer range the sizes
+        // differ and the result is `#N/A`: `COVAR(A1:A6,"a")`, COVARIANCE.P and .S too (statistics.md
+        // "Paired regression functions", probes/covariance-pairs-skip L8, L16); T.TEST's `""` is no
+        // number, `#DIV/0!` (gen-m9 46ac3ef5e61583ca A344).
         let value = self.evaluate_node_in_context(arg, cell);
         let value = self.blank_one_cell_as_error(value, cell);
-        if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
+        if matches!(value, CalcResult::String(_)) {
             return PairedArg::Values(vec![None]);
         }
         PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {

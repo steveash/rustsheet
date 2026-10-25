@@ -54,10 +54,14 @@ fn test_fn_t_test_error_order() {
     model._set("C3", "=T.TEST(A1:A3,B1:B3,-2.5,\"a\")");
     model._set("C4", "=T.TEST(\"\",A1:A4,1,3)");
     model._set("C5", "=T.TEST(D1:D3,A1:A3,3,2)");
+    model._set("C6", "=T.TEST(A1:A3,NA(),\"a\",2)");
+    model._set("C7", "=T.TEST(A1:A3,NA(),1,\"a\")");
     model.evaluate();
     assert_eq!(model._get_text("C1"), *"#DIV/0!");
     assert_eq!(model._get_text("C2"), *"#N/A");
     assert_eq!(model._get_text("C3"), *"#VALUE!");
     assert_eq!(model._get_text("C4"), *"#DIV/0!");
     assert_eq!(model._get_text("C5"), *"#NUM!");
+    assert_eq!(model._get_text("C6"), *"#VALUE!");
+    assert_eq!(model._get_text("C7"), *"#N/A");
 }

@@ -533,7 +533,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let samples = self
-            .paired_samples(args, cell, true)
+            .paired_samples(args, cell)
             .map_err(|error| PairedSamplesError {
                 error: error.error.without_message(),
                 ..error
