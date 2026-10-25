@@ -3,7 +3,7 @@ id: T-2290
 title: "XLOOKUP lifts an array match_mode (gen-m6 fe0972380d030e4a A224 is #SPILL!)"
 milestone: M5
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
