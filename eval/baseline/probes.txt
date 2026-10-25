@@ -148,6 +148,8 @@ C	probes/chained-calls-builtin-trimrange.case.json	1
 C	probes/chained-calls-builtin-unknown-name.case.json	1
 C	probes/chained-calls-builtin-xlookup.case.json	1
 C	probes/chained-calls-lambda.case.json	9
+C	probes/chained-calls-name-curried.case.json	1
+C	probes/chained-calls-name-value.case.json	1
 C	probes/chained-calls-ref-1.case.json	1
 C	probes/chained-calls-ref-2.case.json	1
 C	probes/chained-calls-ref-3.case.json	1

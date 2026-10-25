@@ -1,0 +1,24 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Chained call after a defined-name LAMBDA (T-2501): `MYFN` = `=LAMBDA(x,x)`, `=MYFN(1)(2)` calls the returned number.",
+  "tags": [
+    "M7",
+    "lambda",
+    "probe"
+  ],
+  "names": {
+    "MYFN": "=LAMBDA(x,x)"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": "=MYFN(1)(2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!B1"
+  ]
+}
