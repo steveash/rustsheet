@@ -767,7 +767,7 @@ included (`REGEXEXTRACT("naïve","\w+")` is "naïve"; `\W` does not match `é`; 
 not match in "aé"); `\d` matches the Arabic-Indic three and the full-width digit; `\s` matches NBSP, U+2003, U+3000,
 U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]]` and `[[:word:]]` match `é`;
 `(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
-`a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF. A final CR or
+`a$`; without `(?m)`, an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF. A final CR or
 CRLF counts as a final LF does (next entry, T-2364).
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
 Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
