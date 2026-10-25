@@ -1,4 +1,5 @@
 use super::element_errors::array_element_error;
+use super::paired::PairedArg;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
@@ -7,9 +8,13 @@ use crate::{
 };
 
 impl Model {
-    /// PROB's two data arguments read once: the x values and their probabilities, paired, or
-    /// the error the data gives (unequal sizes `#N/A`, no values `#DIV/0!`, a probability out of
-    /// [0, 1] or a sum other than 1 `#NUM!`).
+    /// PROB's two data arguments read once: the numbers of `x_range` and `prob_range` paired
+    /// by position, a pair kept only when both are numbers, or the error the data gives (an
+    /// error cell, unequal cell counts `#N/A`, no pair of numbers `#DIV/0!`, a probability out of
+    /// [0, 1] or a sum other than 1 `#NUM!`). Counts are cells, not numbers: `PROB(Data!C7:D7,1E-15,2)`
+    /// with one blank is `#N/A`, a single text or boolean against a number is no pair
+    /// (`PROB(Data!C$4,13,-2.5)` with C4 TRUE is `#DIV/0!`), and a probability whose x is text
+    /// is dropped (statistics.md "PROB: an error data argument first", T-2468).
     fn prob_data(
         &mut self,
         x_value: CalcResult,
@@ -17,11 +22,25 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<(Vec<f64>, Vec<f64>), CalcResult> {
         let error = |error| CalcResult::new_error(error, cell, String::new());
-        let x_vals = self.numeric_flat_of(x_value, cell)?;
-        let prob_vals = self.numeric_flat_of(prob_value, cell)?;
-        if x_vals.len() != prob_vals.len() {
+        let as_arg = |value| match PairedArg::from_result(value) {
+            Ok(arg) => Ok(arg),
+            Err(CalcResult::String(_) | CalcResult::Boolean(_)) => {
+                Ok(PairedArg::Values(vec![None]))
+            }
+            Err(_) => Err(error(Error::VALUE)),
+        };
+        let (x_arg, prob_arg) = (as_arg(x_value)?, as_arg(prob_value)?);
+        // TODO(T-2636): PROB should propagate an array's error element too.
+        let data = self.paired_values(x_arg, prob_arg, cell, |_, _| error(Error::VALUE))?;
+        if !data.same_size {
             return Err(error(Error::NA));
         }
+        let (x_vals, prob_vals): (Vec<f64>, Vec<f64>) = data
+            .first
+            .iter()
+            .zip(&data.second)
+            .filter_map(|(x, p)| Some(((*x)?, (*p)?)))
+            .unzip();
         if x_vals.is_empty() {
             return Err(error(Error::DIV));
         }
@@ -90,7 +109,7 @@ impl Model {
         )
     }
 
-    /// The numbers of `value` as PROB reads a data argument: a range's or
+    /// The numbers of `value` as FREQUENCY reads a data argument: a range's or
     /// an array's numbers, or a number; anything else, an error value too, is `#VALUE!`.
     pub(crate) fn numeric_flat_of(
         &mut self,
@@ -102,7 +121,7 @@ impl Model {
 
     /// [`Self::numeric_flat_of`] where an error element of an array is the result, marked as
     /// [`super::element_errors::is_array_element_error`] reads it (statistics.md "An error element of an array argument
-    /// is that error"); PROB and FREQUENCY keep `#VALUE!`.
+    /// is that error"); FREQUENCY keeps `#VALUE!`.
     pub(crate) fn numeric_flat_with_element_errors(
         &mut self,
         value: CalcResult,
@@ -125,7 +144,7 @@ impl Model {
             CalcResult::Array(arr) => match self.values_from_array(arr) {
                 Ok(v) => Ok(v.into_iter().flatten().collect()),
                 Err(error) if element_errors => Err(array_element_error(error, cell)),
-                // TODO(T-2636): PROB and FREQUENCY should propagate an error element too.
+                // TODO(T-2636): FREQUENCY should propagate an error element too.
                 Err(e) => Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}"))),
             },
             CalcResult::Number(n) => Ok(vec![n]),
