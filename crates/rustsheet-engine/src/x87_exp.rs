@@ -78,11 +78,12 @@ pub(crate) fn excel_expm1(x: f64) -> f64 {
 #[inline]
 fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
     let (negative, a_significand, a_exponent) = a.parts();
-    if a_significand == 0 {
+    // A zero (no top bit) gives 1. Otherwise 2^top <= |a| < 2^(top + 1); a significand has at
+    // most 64 bits, so its bit index fits an i32.
+    let Some(top_bit) = a_significand.checked_ilog2() else {
         return 1.0;
-    }
-    // 2^top <= |a| < 2^(top + 1); a significand has at most 64 bits, so the width fits an i32.
-    let top = a_exponent + i32::try_from(127 - a_significand.leading_zeros()).unwrap_or(0);
+    };
+    let top = a_exponent + i32::try_from(top_bit).unwrap_or(0);
     // |a| < 2^-65 gives exactly 1: |u| < 2^-64 then, under half a 64-bit ulp of 1, so w = 1.
     if top < -65 {
         return 1.0;

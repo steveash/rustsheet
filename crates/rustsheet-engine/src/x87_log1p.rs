@@ -18,8 +18,9 @@
 use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
 use crate::x87_log10::excel_ln;
 
-/// The series' coefficients c_k = RN(1/(2k+1)) for k = 1..=14 (doubles: Excel's c_1 is RN(1/3)
-/// exactly, r2-log1p `coef_scan.py`; 12 terms and more give the same doubles on every pinned row).
+/// The series' coefficients, `c_k = RN(1/(2k+1))` for k = 1..=14 as doubles (Excel's first one is
+/// `RN(1/3)` exactly, r2-log1p `coef_scan.py`; 12 terms and more give the same doubles on every
+/// pinned row).
 const COEFFICIENTS: [f64; 14] = [
     1.0 / 3.0,
     1.0 / 5.0,
