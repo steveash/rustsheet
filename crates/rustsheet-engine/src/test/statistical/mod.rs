@@ -22,6 +22,7 @@ mod test_fn_log_norm;
 mod test_fn_norm_dist;
 mod test_fn_pearson;
 mod test_fn_phi;
+mod test_fn_prob_data_order;
 mod test_fn_poisson;
 mod test_fn_stdev;
 mod test_fn_t_dist;

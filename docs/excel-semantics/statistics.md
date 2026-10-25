@@ -3520,7 +3520,7 @@ FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments"). Equal counts in di
 Data!E7:E10,1,Data!E7)` is the sum check's `#NUM!`, 873f30d2bf76f8db A72). Whether a lower_limit error beats unequal counts
 rests on one cell whose lower_limit is an inner YIELD (d37313406b9f6e55 A142, `#NUM!`): UNVERIFIED.
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256): 111 of the 118 top-level PROB cells of T-2468 and T-2426 follow these steps exactly; cells in T-2468.
-Ours: the limits first, then `#VALUE!` for a scalar data argument and `#NUM!` for unequal counts; T-2468.
+Ours: since T-2468 (`statistical/prob.rs`) an error value as x_range, then prob_range, comes before the limits, then a blank one-cell reference `#VALUE!` and one value on each side `#DIV/0!`; unequal counts are `#N/A` after the limits. Not done: pairing cell by cell with text/blank cells (`PROB(Data!D3:D8,Data!C5:C10,..)` is 0 in Excel).
 Status: VERIFIED (excel-graph) except the noted order
 
 ## T.TEST: an error sample first, then tails and type errors, then their range check (T-2256)

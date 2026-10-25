@@ -12,13 +12,13 @@ impl Model {
     /// [0, 1] or a sum other than 1 `#NUM!`).
     fn prob_data(
         &mut self,
-        x_range: &Node,
-        prob_range: &Node,
+        x_value: CalcResult,
+        prob_value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<(Vec<f64>, Vec<f64>), CalcResult> {
         let error = |error| CalcResult::new_error(error, cell, String::new());
-        let x_vals = self.collect_numeric_flat(x_range, cell)?;
-        let prob_vals = self.collect_numeric_flat(prob_range, cell)?;
+        let x_vals = self.numeric_flat_of(x_value, cell)?;
+        let prob_vals = self.numeric_flat_of(prob_value, cell)?;
         if x_vals.len() != prob_vals.len() {
             return Err(error(Error::NA));
         }
@@ -53,8 +53,26 @@ impl Model {
         let [x_range, prob_range, ..] = args else {
             return CalcResult::new_args_number_error(cell);
         };
+        let x_value = self.evaluate_node_in_context(x_range, cell);
+        let prob_value = self.evaluate_node_in_context(prob_range, cell);
+        // Before the limits, an error value given as a data argument is the result (x_range's
+        // first), then a one-cell reference to an empty cell is `#VALUE!` and one value on each
+        // side is `#DIV/0!` (statistics.md "PROB: an error data argument first", T-2468).
+        for value in [&x_value, &prob_value] {
+            if matches!(value, CalcResult::Error { .. }) {
+                return value.clone();
+            }
+        }
+        for value in [&x_value, &prob_value] {
+            if self.is_blank_one_cell(value) {
+                return CalcResult::new_error(Error::VALUE, cell, String::new());
+            }
+        }
+        if is_single_value(&x_value) && is_single_value(&prob_value) {
+            return CalcResult::new_error(Error::DIV, cell, String::new());
+        }
         let data = self
-            .prob_data(x_range, prob_range, cell)
+            .prob_data(x_value, prob_value, cell)
             .map_err(CalcResult::without_message);
         let cells = data.as_ref().map_or(0, |(x_vals, _)| {
             u64::try_from(x_vals.len()).unwrap_or(u64::MAX)
@@ -69,16 +87,7 @@ impl Model {
         )
     }
 
-    pub(crate) fn collect_numeric_flat(
-        &mut self,
-        arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<Vec<f64>, CalcResult> {
-        let value = self.evaluate_node_in_context(arg, cell);
-        self.numeric_flat_of(value, cell)
-    }
-
-    /// The numbers of `value` as [`Self::collect_numeric_flat`] reads an argument: a range's or
+    /// The numbers of `value` as PROB reads a data argument: a range's or
     /// an array's numbers, or a number; anything else, an error value too, is `#VALUE!`.
     pub(crate) fn numeric_flat_of(
         &mut self,
@@ -123,6 +132,15 @@ impl Model {
                 "Expected numeric range".to_string(),
             )),
         }
+    }
+}
+
+/// A scalar or a reference to one cell.
+fn is_single_value(value: &CalcResult) -> bool {
+    match value {
+        CalcResult::Range { left, right } => left == right,
+        CalcResult::Array(_) => false,
+        _ => true,
     }
 }
 
