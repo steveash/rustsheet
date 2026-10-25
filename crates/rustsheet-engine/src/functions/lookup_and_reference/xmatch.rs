@@ -12,7 +12,9 @@ use crate::{
 use super::lookup_table::SearchVector;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
-    binary_search::binary_search, criteria::wildcard_text_matcher, util::compare_values,
+    binary_search::binary_search,
+    criteria::wildcard_text_matcher,
+    util::{compare_values, near_integer::near_integer_whole},
 };
 
 #[derive(PartialEq)]
@@ -223,8 +225,10 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value.clone();
         }
+        // A fractional mode is floored, but one just below an integer reads that integer:
+        // `XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is #N/A, not #VALUE! (probes/t2656-xmatch-mode-*).
         let match_mode = match self.cast_number_ref(match_mode, cell) {
-            Ok(n) => match n.floor() as i32 {
+            Ok(n) => match near_integer_whole(n) as i32 {
                 -1 => MatchMode::ExactMatchSmaller,
                 0 => MatchMode::Exact,
                 1 => MatchMode::ExactMatchLarger,
@@ -241,7 +245,7 @@ impl Model {
             Err(e) => return e,
         };
         let search_mode = match self.cast_number_ref(search_mode, cell) {
-            Ok(n) => match n.floor() as i32 {
+            Ok(n) => match near_integer_whole(n) as i32 {
                 1 => SearchMode::FirstToLast,
                 -1 => SearchMode::LastToFirst,
                 2 => SearchMode::BinaryAscending,
