@@ -164,19 +164,18 @@ enum Prepared {
     Spec { spec: Box<CaseSpec> },
 }
 
-#[cfg(test)]
 impl CaseResult {
-    /// A passing case `id` of `suite` that checked one passing cell and holds none, for tests to
-    /// fill in with struct-update syntax.
-    pub(crate) fn for_test(id: &str, suite: &str) -> CaseResult {
+    /// A case `id` of `suite` with `status`, nothing checked or skipped and no cells: the start
+    /// of every result, filled in with struct-update syntax.
+    fn empty(id: &str, suite: &str, status: CaseStatus) -> CaseResult {
         CaseResult {
             id: id.into(),
             suite: suite.into(),
-            status: CaseStatus::Pass,
+            status,
             message: None,
             expected_source: String::new(),
-            checked: 1,
-            passed: 1,
+            checked: 0,
+            passed: 0,
             deviations: 0,
             skipped_volatile: 0,
             skipped_add_in: 0,
@@ -185,6 +184,16 @@ impl CaseResult {
             cells: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+        }
+    }
+
+    /// A passing case that checked one passing cell and holds none, for tests.
+    #[cfg(test)]
+    pub(crate) fn for_test(id: &str, suite: &str) -> CaseResult {
+        CaseResult {
+            checked: 1,
+            passed: 1,
+            ..CaseResult::empty(id, suite, CaseStatus::Pass)
         }
     }
 }
@@ -234,21 +243,8 @@ pub fn run_suites(
 
 fn invalid(suite: &Suite, case: &CaseFile, message: String) -> CaseResult {
     CaseResult {
-        id: case.id.clone(),
-        suite: suite.manifest.name.clone(),
-        status: CaseStatus::InvalidCase,
         message: Some(message),
-        expected_source: String::new(),
-        checked: 0,
-        passed: 0,
-        deviations: 0,
-        skipped_volatile: 0,
-        skipped_add_in: 0,
-        millis: 0,
-        tags: Vec::new(),
-        cells: Vec::new(),
-        text: Vec::new(),
-        defined_names: BTreeMap::new(),
+        ..CaseResult::empty(&case.id, &suite.manifest.name, CaseStatus::InvalidCase)
     }
 }
 
@@ -265,21 +261,12 @@ pub fn run_case(
         Err(e) => return invalid(suite, case, e),
     };
     let mut result = CaseResult {
-        id: case.id.clone(),
-        suite: suite.manifest.name.clone(),
-        status: CaseStatus::Pending,
-        message: None,
         expected_source: prepared.expected_source.clone(),
-        checked: 0,
-        passed: 0,
-        deviations: 0,
         skipped_volatile: prepared.skipped_volatile,
         skipped_add_in: prepared.skipped_add_in,
-        millis: 0,
         tags: prepared.tags.clone(),
-        cells: Vec::new(),
-        text: Vec::new(),
         defined_names: prepared.defined_names.clone(),
+        ..CaseResult::empty(&case.id, &suite.manifest.name, CaseStatus::Pending)
     };
     // Cases without expectations still run: a panic, timeout or load error is a crash we can
     // catch before any oracle value exists (T-0007).
