@@ -179,15 +179,17 @@ rates; `-expm1` 586. The gen-m9 cells of T-2257 that motivated it: 31474c20fc1da
 - Open: `PPMT(7,10,350,58827)` is -4.581304695604488E-303, its discount 8^-341 = 2^-1023 kept, where
   `PPMT(7,1,341,1)` with the same discount is 0 (probes/fin-ppmt-discount-underflow F1, F8; gen-m9
   a91bad4e84f49739 A158; T-2666).
-- Open: 5 pv-0 cells keep their cancellation's last bits unexplained: `IPMT(10,2,10,0,315)`
-  (Excel 1.2144607808295405E-6, ours 1.214461349263729E-6), its type 1, `IPMT(10,5,10,0,315)` and
-  its type 1 (one ulp of 315 in B), and `IPMT(0.1,2,360,0,1)` (Excel 0, ours 1.11E-17: Excel's Y
-  rounds to 1 where the exact quotient rounds below it). Excel's own Y is a few ulp from the exact
-  one; which formulation it is was not separated.
-Status: VERIFIED to 15 digits on 590/595 (excel-graph); bits open.
+- Open: the fit's rational model is within 15 digits on 590 of 595, the engine on 588: 7 pv-0 cells keep
+  their cancellation's last bits unexplained: `IPMT(10,2,10,0,315)` (Excel 1.2144607808295405E-6, ours
+  1.214461349263729E-6), `IPMT(10,5,10,0,315)` and `IPMT(10,10,10,0,315)` (one ulp of 315 in B; Excel
+  286.3636362532304, ours 286.363636253231), each with its type 1, and `IPMT(0.1,2,360,0,1)` (Excel 0,
+  ours 1.11E-17: Excel's Y rounds to 1 where the exact quotient rounds below it). Excel's own Y is a few
+  ulp from the exact one; which formulation it is was not separated (T-2667). The `|B| < |fv|` switch is
+  a fitted boundary, not an identified formulation.
+Status: VERIFIED to 15 digits on 590/595 by the model, 588/595 by the engine (excel-graph); bits open.
 Implemented in: `balance_interest`, `accurate_discount` and `discounted_principal`'s `past_range`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2490).
-Tasks: T-2490, T-2665, T-2666
+Tasks: T-2490, T-2665, T-2666, T-2667
 
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
