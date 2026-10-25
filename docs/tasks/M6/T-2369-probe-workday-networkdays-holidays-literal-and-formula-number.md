@@ -3,7 +3,7 @@ id: T-2369
 title: "Probe WORKDAY/NETWORKDAYS holidays: literal and formula number text, date text, and count-vs-skip of number-text cells"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ T-2270 accepts a blank one-cell holidays reference and number-text cells (docs/e
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/t2369-workday-text-holidays (68 cells, excel-graph oracle). Number, date, currency, padded and formula
+text holidays skip the day; percent/time/`1E5` text are accepted but fall outside the walk. The engine already matched
+every cell, so no code change; findings are in dates.md. Eval delta: +68 passing probe cells, no regressions.
