@@ -3,7 +3,7 @@ id: T-2488
 title: "Probe and match PRICE, DURATION and MDURATION at a huge yield or coupon: #NUM!, not a number (gen-m9, 10 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
