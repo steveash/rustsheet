@@ -1,0 +1,29 @@
+groups with >=2 x: 977
+== Excel data
+exp(e(am1*LN))         exp(bm1*log1p(-x))     rms    30.31 med   1.68 |dq|<=1.5: 488/1058
+exp(a*LN)/x            exp(bm1*log1p(-x))     rms    30.43 med   2.67 |dq|<=1.5: 308/1058
+exp(a*LN)/x stored     exp(bm1*log1p(-x))     rms    30.44 med   2.74 |dq|<=1.5: 248/1058
+exp(e(am1*LN))         exact_1-x              rms    30.45 med   1.74 |dq|<=1.5: 481/1058
+exp(a*LN)/x            exact_1-x              rms    30.61 med   2.80 |dq|<=1.5: 292/1058
+exp(a*LN)/x stored     exact_1-x              rms    30.61 med   2.83 |dq|<=1.5: 236/1058
+exp(e(am1*LN))         exp(b*LN)/y            rms    30.70 med   3.87 |dq|<=1.5: 176/1058
+exp(a*LN)/x stored     exp(b*LN)/y            rms    31.11 med   5.45 |dq|<=1.5: 126/1058
+exp(a*LN)/x            exp(b*LN)/y            rms    31.12 med   5.69 |dq|<=1.5: 162/1058
+exp(e(am1*LN))         exp(e(bm1*LN))         rms    31.41 med   3.87 |dq|<=1.5: 176/1058
+exp(a*LN)/x stored     exp(e(bm1*LN))         rms    31.68 med   5.49 |dq|<=1.5: 122/1058
+exp(a*LN)/x            exp(e(bm1*LN))         rms    31.68 med   5.69 |dq|<=1.5: 166/1058
+exp(e(am1*LN))         exp(d(bm1*LN))         rms    31.84 med   3.89 |dq|<=1.5: 187/1058
+exp(e(am1*LN))         pow_cr                 rms    31.95 med   3.92 |dq|<=1.5: 183/1058
+exp(e(am1*LN))         exact_y                rms    31.98 med   3.85 |dq|<=1.5: 167/1058
+exp(a*LN)/x stored     exp(d(bm1*LN))         rms    32.05 med   5.49 |dq|<=1.5: 119/1058
+exp(a*LN)/x            exp(d(bm1*LN))         rms    32.06 med   5.70 |dq|<=1.5: 169/1058
+exp(am1*ln_exact)      exp(bm1*log1p(-x))     rms    32.10 med   1.29 |dq|<=1.5: 594/1058
+exp(a*LN)/x stored     pow_cr                 rms    32.21 med   5.47 |dq|<=1.5: 124/1058
+exp(a*LN)/x            pow_cr                 rms    32.21 med   5.71 |dq|<=1.5: 172/1058
+== control (truth exp(d(am1*LN)) exp(d(bm1*LN)))
+exp(d(am1*LN))         exp(d(bm1*LN))         rms     0.83 med   0.60 |dq|<=1.5: 988/1058
+exp(d(am1*LN))         exact_y                rms     4.08 med   0.78 |dq|<=1.5: 828/1058
+exp(d(am1*LN))         pow_cr                 rms     4.10 med   0.74 |dq|<=1.5: 861/1058
+exp(d(am1*LN))         exp(e(bm1*LN))         rms     4.50 med   0.72 |dq|<=1.5: 879/1058
+exp(d(am1*LN))         exp(bm1*log1p(-x))     rms     6.17 med   1.66 |dq|<=1.5: 490/1058
+exp(d(am1*LN))         exact_1-x              rms     6.79 med   1.66 |dq|<=1.5: 487/1058

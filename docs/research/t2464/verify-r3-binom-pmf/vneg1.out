@@ -1,0 +1,32 @@
+== old: NEG r=1, 106 rows, distinct 106
+   CR                               29/84/82 of 106
+   claim fl(p*EXP(E0))              37/106/106 of 106
+   p*EXP(E0) ext EXP                39/106/106 of 106
+   EXP(fl(E0+LN p))                 21/82/83 of 106
+   EXP(E0+LN p ext)                 35/105/105 of 106
+   EXP(fl((f*ln1m)+LNp) ext prod)   28/92/89 of 106
+   fl(p*fl(EXP(E0)))/x87 same       37/106/106 of 106
+== n: NEG r=1, 192 rows, distinct 192
+   CR                               24/191/192 of 192
+   claim fl(p*EXP(E0))              20/192/192 of 192
+   p*EXP(E0) ext EXP                20/192/192 of 192
+   EXP(fl(E0+LN p))                 37/188/192 of 192
+   EXP(E0+LN p ext)                 36/192/192 of 192
+   EXP(fl((f*ln1m)+LNp) ext prod)   28/191/192 of 192
+   fl(p*fl(EXP(E0)))/x87 same       20/192/192 of 192
+== hold: NEG r=1, 384 rows, distinct 384
+   CR                               114/384/384 of 384
+   claim fl(p*EXP(E0))              168/384/384 of 384
+   p*EXP(E0) ext EXP                172/384/384 of 384
+   EXP(fl(E0+LN p))                 56/379/384 of 384
+   EXP(E0+LN p ext)                 118/384/384 of 384
+   EXP(fl((f*ln1m)+LNp) ext prod)   121/384/384 of 384
+   fl(p*fl(EXP(E0)))/x87 same       168/384/384 of 384
+== v: NEG r=1, 240 rows, distinct 240
+   CR                               44/146/172 of 240
+   claim fl(p*EXP(E0))              74/238/238 of 240
+   p*EXP(E0) ext EXP                65/238/238 of 240
+   EXP(fl(E0+LN p))                 38/158/182 of 240
+   EXP(E0+LN p ext)                 69/237/238 of 240
+   EXP(fl((f*ln1m)+LNp) ext prod)   31/174/188 of 240
+   fl(p*fl(EXP(E0)))/x87 same       74/238/238 of 240

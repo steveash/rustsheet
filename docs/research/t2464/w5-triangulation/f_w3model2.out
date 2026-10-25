@@ -1,0 +1,36 @@
+== z64 bpser noswap: 344 cells
+  p/s | d2/s                           160/327/332 of 344
+  ext                                  164/330/332 of 344
+      on the 155 cells where the argument differs from p/s: 71/147/149 of 155 vs p/s 67/144/149 of 155
+  x/(x+r) | r/(x+r)                    164/329/332 of 344
+      on the 67 cells where the argument differs from p/s: 26/58/59 of 67 vs p/s 22/56/59 of 67
+  1/(1+q) | 1/(1+u)                    179/341/342 of 344
+      on the 163 cells where the argument differs from p/s: 85/161/161 of 163 vs p/s 66/147/151 of 163
+  u/(1+u) | q/(1+q)                    158/325/332 of 344
+      on the 166 cells where the argument differs from p/s: 78/156/161 of 166 vs p/s 80/158/161 of 166
+  1/(1+r/x) | 1/(1+x/r)                174/332/333 of 344
+      on the 166 cells where the argument differs from p/s: 82/158/158 of 166 vs p/s 68/153/157 of 166
+  1/(1+(d2/x)/d1) | 1/(1+(x/d2)*d1)    174/334/335 of 344
+      on the 163 cells where the argument differs from p/s: 80/157/157 of 163 vs p/s 66/150/154 of 163
+  x87 1/(1+q) | 1/(1+u)                164/330/332 of 344
+      on the 156 cells where the argument differs from p/s: 71/148/150 of 156 vs p/s 67/145/150 of 156
+  x87s 1/(1+q)                         179/341/342 of 344
+      on the 163 cells where the argument differs from p/s: 85/161/161 of 163 vs p/s 66/147/151 of 163
+== z64 bpser swap: 443 cells
+  p/s | d2/s                           191/431/432 of 443
+  ext                                  189/431/432 of 443
+      on the 12 cells where the argument differs from p/s: 6/12/12 of 12 vs p/s 8/12/12 of 12
+  x/(x+r) | r/(x+r)                    185/429/433 of 443
+      on the 106 cells where the argument differs from p/s: 46/102/102 of 106 vs p/s 52/104/101 of 106
+  1/(1+q) | 1/(1+u)                    197/436/436 of 443
+      on the 192 cells where the argument differs from p/s: 99/190/190 of 192 vs p/s 93/185/186 of 192
+  u/(1+u) | q/(1+q)                    179/416/425 of 443
+      on the 180 cells where the argument differs from p/s: 70/162/169 of 180 vs p/s 82/177/176 of 180
+  1/(1+r/x) | 1/(1+x/r)                196/436/436 of 443
+      on the 198 cells where the argument differs from p/s: 101/195/195 of 198 vs p/s 96/190/191 of 198
+  1/(1+(d2/x)/d1) | 1/(1+(x/d2)*d1)    197/436/436 of 443
+      on the 192 cells where the argument differs from p/s: 99/190/190 of 192 vs p/s 93/185/186 of 192
+  x87 1/(1+q) | 1/(1+u)                189/431/432 of 443
+      on the 12 cells where the argument differs from p/s: 6/12/12 of 12 vs p/s 8/12/12 of 12
+  x87s 1/(1+q)                         197/436/436 of 443
+      on the 192 cells where the argument differs from p/s: 99/190/190 of 192 vs p/s 93/185/186 of 192

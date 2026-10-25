@@ -1,0 +1,15 @@
+rows 18795
+N=   32 bins with >=2 rows    32, consistent     0 (0 rows)
+N=   64 bins with >=2 rows    64, consistent     0 (0 rows)
+N=  128 bins with >=2 rows   128, consistent     0 (0 rows)
+N=  256 bins with >=2 rows   256, consistent     1 (39 rows)
+N=  512 bins with >=2 rows   512, consistent    13 (252 rows)
+N= 1024 bins with >=2 rows  1024, consistent   208 (2103 rows)
+N= 2048 bins with >=2 rows  2015, consistent  1041 (5506 rows)
+N= 4096 bins with >=2 rows  3321, consistent  2459 (7954 rows)
+N= 8192 bins with >=2 rows  3632, consistent  3060 (7709 rows)
+null (t shuffled)
+N= 1024 bins  1024, consistent   133
+N= 2048 bins  2015, consistent   912
+N= 4096 bins  3321, consistent  2376
+N= 8192 bins  3632, consistent  2984

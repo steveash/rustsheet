@@ -1,0 +1,8 @@
+r2-bratio-x                  n=3080 eng_ex=1023 eng_vis=890 ex=2857 u4=3080 w15=3080 vis=0 fixed=890 broke=0 lost_ex=18
+r2-log1p-grid                n=5450 eng_ex=0 eng_vis=5450 ex=4044 u4=5437 w15=5437 vis=13 fixed=5437 broke=0 lost_ex=0
+r2-log1p-hix                 n=10528 eng_ex=0 eng_vis=10528 ex=146 u4=1115 w15=4417 vis=6111 fixed=4417 broke=0 lost_ex=0
+r2-log1p-hold                n=5400 eng_ex=0 eng_vis=5400 ex=4065 u4=5393 w15=5393 vis=7 fixed=5393 broke=0 lost_ex=0
+r2-log1p-pilot               n=195 eng_ex=0 eng_vis=195 ex=156 u4=195 w15=195 vis=0 fixed=195 broke=0 lost_ex=0
+r2-log1p-runs                n=5328 eng_ex=0 eng_vis=5328 ex=4035 u4=5321 w15=5321 vis=7 fixed=5321 broke=0 lost_ex=0
+r2-tdist-p                   n=12524 eng_ex=2373 eng_vis=2255 ex=4074 u4=8972 w15=10456 vis=2068 fixed=195 broke=8 lost_ex=295
+ALL r2                       n=42505 eng_ex=3396 eng_vis=30046 ex=19377 u4=29513 w15=34299 vis=8206 fixed=21848 broke=8 lost_ex=313

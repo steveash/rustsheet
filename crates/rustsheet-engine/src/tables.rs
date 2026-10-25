@@ -7,7 +7,9 @@ use crate::{
         lexer::LexerMode,
         parser::{
             parse_range,
-            stringify::{to_english_string, to_rc_lowering_at, to_string_with_ref_errors},
+            stringify::{
+                to_english_string, to_rc_lowering_at, to_string_lowering, to_string_with_ref_errors,
+            },
             Node,
         },
         types::{Area, CellReferenceRC},
@@ -204,7 +206,22 @@ impl Model {
         // Excel rewrites the references to a deleted table to `#REF!` (FORMULATEXT
         // `=SUM(#REF!)`, `ROWS(Sales)` is `#REF!`; T-2340, probes/table-edits/table-delete-table);
         // `remove_table` alone would leave them as parse errors.
-        self.rewrite_table_references(&[name.to_lowercase()], None);
+        self.rewrite_table_references(&[name.to_lowercase()], None, TableRewrite::RefError);
+        self.remove_table(name)
+    }
+
+    /// Converts the table `name` to a plain range as Graph's `convertToRange` does: the cells
+    /// stay and every structured reference to it, in any sheet's formulas and in defined names,
+    /// becomes the absolute range it resolved to (T-2342: `=SUM(Sales[Qty])` is `=SUM(S!$C$4:$C$7)`
+    /// in FORMULATEXT, `ROWS(Sales[#All])` stays 5). Does not recalculate.
+    ///
+    /// # Errors
+    /// There is no table with that exact name.
+    pub fn convert_table_to_range(&mut self, name: &str) -> Result<(), String> {
+        if !self.workbook.tables.contains_key(name) {
+            return Err(format!("No table named '{name}'"));
+        }
+        self.rewrite_table_references(&[name.to_lowercase()], None, TableRewrite::Lower);
         self.remove_table(name)
     }
 
@@ -271,7 +288,11 @@ impl Model {
         if lowercase.is_empty() {
             return (Vec::new(), Vec::new());
         }
-        let rewritten = self.rewrite_table_references(&lowercase, Some(sheet_index as usize));
+        let rewritten = self.rewrite_table_references(
+            &lowercase,
+            Some(sheet_index as usize),
+            TableRewrite::RefError,
+        );
         let (taken, kept) = std::mem::take(&mut self.workbook.tables)
             .into_iter()
             .partition(|(_, table)| table.is_on_sheet(&sheet_name));
@@ -286,7 +307,12 @@ impl Model {
         &mut self,
         tables: &[String],
         skip_sheet: Option<usize>,
+        rewrite: TableRewrite,
     ) -> Vec<RewrittenFormula> {
+        let print = |node: &Node, context: Option<&CellReferenceRC>| match rewrite {
+            TableRewrite::RefError => to_string_with_ref_errors(node, context, tables),
+            TableRewrite::Lower => to_string_lowering(node, context, tables),
+        };
         let mut rewritten = Vec::new();
         self.parser.set_lexer_mode(LexerMode::R1C1);
         for (index, worksheet) in self.workbook.worksheets.iter_mut().enumerate() {
@@ -300,7 +326,7 @@ impl Model {
             };
             for (formula_index, formula) in worksheet.shared_formulas.iter_mut().enumerate() {
                 let node = self.parser.parse(formula, &context);
-                let text = to_string_with_ref_errors(&node, None, tables);
+                let text = print(&node, None);
                 if text != *formula {
                     rewritten.push(RewrittenFormula {
                         place: FormulaPlace::Shared {
@@ -334,7 +360,7 @@ impl Model {
             let stored = defined_name.formula.trim_start();
             let (eq, body) = stored.strip_prefix('=').map_or(("", stored), |b| ("=", b));
             let node = self.parser.parse(body, &context);
-            let text = to_string_with_ref_errors(&node, Some(&context), tables);
+            let text = print(&node, Some(&context));
             if text != to_english_string(&node, &context) {
                 let text = format!("{eq}{text}");
                 rewritten.push(RewrittenFormula {
@@ -382,6 +408,15 @@ pub(crate) struct RewrittenFormula {
     place: FormulaPlace,
     original: String,
     rewritten: String,
+}
+
+/// How [`Model::rewrite_table_references`] prints a structured reference to a removed table.
+#[derive(Clone, Copy)]
+enum TableRewrite {
+    /// `#REF!`: the table is deleted.
+    RefError,
+    /// The absolute area it resolved to: the table is converted to a range.
+    Lower,
 }
 
 /// Where a [`RewrittenFormula`] lives.

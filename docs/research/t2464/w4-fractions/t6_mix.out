@@ -1,0 +1,13 @@
+xruns-1:7 1024 eps 1.5e-14 q sd 4.42
+ord0 mask 6 sd  2.25 corr +0.518 resid  3.78 meanres +1.49 exact 154 / 185
+ord1 mask 6 sd  2.25 corr +0.518 resid  3.78 meanres +1.49 exact 154 / 185
+ord0 mask 3 sd  2.25 corr +0.518 resid  3.78 meanres +1.40 exact 151 / 179
+ord1 mask 3 sd  2.25 corr +0.518 resid  3.78 meanres +1.40 exact 153 / 181
+ord1 mask35 sd  2.25 corr +0.518 resid  3.78 meanres +1.39 exact 152 / 180
+ord0 mask35 sd  2.25 corr +0.518 resid  3.78 meanres +1.39 exact 152 / 180
+ord0 mask34 sd  2.25 corr +0.518 resid  3.78 meanres +1.48 exact 150 / 183
+ord1 mask 2 sd  2.25 corr +0.518 resid  3.78 meanres +1.49 exact 152 / 185
+ord1 mask34 sd  2.25 corr +0.518 resid  3.78 meanres +1.48 exact 150 / 183
+ord0 mask 2 sd  2.25 corr +0.518 resid  3.78 meanres +1.49 exact 152 / 185
+ord0 mask38 sd  2.25 corr +0.518 resid  3.78 meanres +1.48 exact 153 / 184
+ord1 mask38 sd  2.25 corr +0.518 resid  3.78 meanres +1.48 exact 153 / 184

@@ -1,0 +1,28 @@
+cells in L140 with x0 <= 0.7: 10370 [('xruns-1:0', 1024), ('xruns-1:5', 1024), ('xruns-1:1', 1024), ('xruns-1:2', 1024), ('xruns-2:0', 1024), ('xruns-2:5', 1024), ('xruns-2:2', 1024), ('xruns-2:3', 1024), ('absweep:0', 512), ('absweep:1', 512), ('absweep:4', 512), ('absweep:5', 512)]
+CR: 3343/9181/10305 of 10370
+   3448/ 9313/10213  ('log1p(-x) cr', 'z64', 'eps', 'tail z64')
+   3448/ 9313/10213  ('log1p(-x) cr', 'z64', 'all', 'tail z64')
+   3436/ 9312/10212  ('brcomp: log1p if x<=.375', 'z64', 'eps', 'tail z64')
+   3436/ 9312/10212  ('brcomp: log1p if x<=.375', 'z64', 'all', 'tail z64')
+   3419/ 9310/10213  ('log1p(-x) cr', 'z64', 'eps', 'tail z53')
+   3419/ 9310/10213  ('log1p(-x) cr', 'z64', 'all', 'tail z53')
+   3403/ 9309/10212  ('brcomp: log1p if x<=.375', 'z64', 'eps', 'tail z53')
+   3403/ 9309/10212  ('brcomp: log1p if x<=.375', 'z64', 'all', 'tail z53')
+   xruns-1:0    n  1024  best   168  CR   260
+   xruns-1:5    n  1024  best   109  CR    96
+   xruns-1:1    n  1024  best   216  CR   293
+   xruns-1:2    n  1024  best    76  CR    85
+   xruns-2:0    n  1024  best   784  CR   712
+   xruns-2:5    n  1024  best   461  CR   335
+   xruns-2:2    n  1024  best   884  CR   775
+   xruns-2:3    n  1024  best   235  CR   360
+   absweep:0    n   512  best   118  CR   149
+   absweep:1    n   512  best    84  CR    28
+   absweep:4    n   512  best   161  CR   161
+   absweep:5    n   512  best   108  CR    39
+   be           n   130  best    44  CR    50
+   tie response xruns-1:0: Excel -3.70  model +1.12  CR +0.03
+   tie response xruns-1:1: Excel -1.36  model +1.01  CR +0.00
+   tie response xruns-1:2: Excel -8.52  model +7.62  CR -0.01
+   tie response xruns-1:5: Excel -7.17  model +1.23  CR +0.00
+   tie response xruns-2:3: Excel -1.90  model +1.96  CR +0.00

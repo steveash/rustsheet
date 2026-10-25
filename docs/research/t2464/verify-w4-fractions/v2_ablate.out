@@ -1,0 +1,37 @@
+n 5633 CR exact 1312
+  claimed                exact 3065 w4 5631 w15 5633
+  P=CR density           exact 1663 w4 4962 w15 5628
+  Q=CR bpser             exact 3079 w4 5631 w15 5633
+  P,Q both CR            exact 1674 w4 4963 w15 5628
+  exact bup + model Q    exact 1302 w4 5124 w15 5623
+probe points 5118 multi 0
+1-x cell mismatches 0
+  oracle pieces (2.5, 3.5) CR n 3071 exact 913 w4 3069 w15 3071
+  oracle pieces (2.5, 3.5) best n 3071 exact 2728 w4 3071 w15 3071
+  oracle pieces (2.5, 3.5) ext n 3071 exact 2381 w4 3071 w15 3071
+  oracle pieces (2.5, 3.5) order n 3071 exact 2013 w4 3071 w15 3071
+  oracle pieces (2.5, 3.5) stored n 3071 exact 2631 w4 3071 w15 3071
+  oracle pieces (4.0, 4.0) CR n 1024 exact 96 w4 779 w15 979
+  oracle pieces (4.0, 4.0) best n 1024 exact 843 w4 1024 w15 1024
+  oracle pieces (4.0, 4.0) ext n 1024 exact 780 w4 1024 w15 1024
+  oracle pieces (4.0, 4.0) order n 1024 exact 633 w4 1024 w15 1024
+  oracle pieces (4.0, 4.0) stored n 1024 exact 843 w4 1024 w15 1024
+  oracle pieces (7.3, 11.6) CR n 1023 exact 85 w4 605 w15 1023
+  oracle pieces (7.3, 11.6) best n 1023 exact 0 w4 0 w15 1023
+  oracle pieces (7.3, 11.6) ext n 1023 exact 0 w4 0 w15 1023
+  oracle pieces (7.3, 11.6) order n 1023 exact 0 w4 0 w15 1022
+  oracle pieces (7.3, 11.6) stored n 1023 exact 0 w4 0 w15 1023
+  oracle pieces excl (7.3,11.6): {'CR': (1009, 4095), 'best': (3571, 4095), 'ext': (3161, 4095), 'order': (2646, 4095), 'stored': (3474, 4095)}
+
+old L140 cells 82 distinct points 78 conflicting 0
+old points also in runs 0
+  CR       n 78 exact 10 w4 48 w15 58
+  claimed      n 78 exact 35 w4 78 w15 77
+    dyadic-exact-ish cells (x=0.5, integer a,b): 12 model exact 8 CR exact 3
+    rest: n 66 model exact 27 CR exact 7 model w4 66 CR w4 39
+    max(a,b)>8: 45 model exact 17 CR 1
+  lnB gl       n 78 exact 30 w4 63 w15 67
+  W stored     n 78 exact 35 w4 78 w15 75
+  W ext        n 78 exact 33 w4 78 w15 76
+  order (Py)x  n 78 exact 26 w4 78 w15 77
+  break        n 78 exact 35 w4 78 w15 77

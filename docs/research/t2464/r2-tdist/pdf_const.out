@@ -1,0 +1,26 @@
+n cnt excel_med | candidate errors (cand - exact K, units)
+1 15 +0.00 | EXP(GL-GL)/SQRT(n*PI) +0.56 EXP(ext GL-GL-LN(nPI)/2) +0.56 GAMMA/GAMMA/SQRT +0.56 GAMMA/(GAMMA*SQRT) +0.56 1/(sqrt n B), B=EXP(lnb_m1) +0.56
+2 1038 +0.00 | EXP(GL-GL)/SQRT(n*PI) +2.03 EXP(ext GL-GL-LN(nPI)/2) +0.62 GAMMA/GAMMA/SQRT +2.03 GAMMA/(GAMMA*SQRT) +2.03 1/(sqrt n B), B=EXP(lnb_m1) -0.80
+3 4328 +3.09 | EXP(GL-GL)/SQRT(n*PI) -0.30 EXP(ext GL-GL-LN(nPI)/2) -0.30 GAMMA/GAMMA/SQRT -0.30 GAMMA/(GAMMA*SQRT) -0.30 1/(sqrt n B), B=EXP(lnb_m1) +1.06
+4 4327 -1.16 | EXP(GL-GL)/SQRT(n*PI) +1.33 EXP(ext GL-GL-LN(nPI)/2) +0.00 GAMMA/GAMMA/SQRT +1.33 GAMMA/(GAMMA*SQRT) +1.33 1/(sqrt n B), B=EXP(lnb_m1) +0.00
+5 2279 +2.28 | EXP(GL-GL)/SQRT(n*PI) +0.65 EXP(ext GL-GL-LN(nPI)/2) +0.65 GAMMA/GAMMA/SQRT +0.65 GAMMA/(GAMMA*SQRT) -0.67 1/(sqrt n B), B=EXP(lnb_m1) -0.67
+6 6 -0.75 | EXP(GL-GL)/SQRT(n*PI) +1.16 EXP(ext GL-GL-LN(nPI)/2) -1.45 GAMMA/GAMMA/SQRT +1.16 GAMMA/(GAMMA*SQRT) +1.16 1/(sqrt n B), B=EXP(lnb_m1) +1.16
+7 1249 +0.00 | EXP(GL-GL)/SQRT(n*PI) -1.40 EXP(ext GL-GL-LN(nPI)/2) -0.10 GAMMA/GAMMA/SQRT -0.10 GAMMA/(GAMMA*SQRT) -0.10 1/(sqrt n B), B=EXP(lnb_m1) -0.10
+8 6 +0.50 | EXP(GL-GL)/SQRT(n*PI) +2.92 EXP(ext GL-GL-LN(nPI)/2) +1.63 GAMMA/GAMMA/SQRT +1.63 GAMMA/(GAMMA*SQRT) +1.63 1/(sqrt n B), B=EXP(lnb_m1) +0.33
+9 6 +1.48 | EXP(GL-GL)/SQRT(n*PI) +0.23 EXP(ext GL-GL-LN(nPI)/2) +0.23 GAMMA/GAMMA/SQRT +0.23 GAMMA/(GAMMA*SQRT) -1.06 1/(sqrt n B), B=EXP(lnb_m1) +0.23
+10 1256 +1.40 | EXP(GL-GL)/SQRT(n*PI) +0.92 EXP(ext GL-GL-LN(nPI)/2) +0.92 GAMMA/GAMMA/SQRT -0.36 GAMMA/(GAMMA*SQRT) -1.65 1/(sqrt n B), B=EXP(lnb_m1) +0.92
+12 6 -0.73 | EXP(GL-GL)/SQRT(n*PI) -4.87 EXP(ext GL-GL-LN(nPI)/2) -3.59 GAMMA/GAMMA/SQRT +0.25 GAMMA/(GAMMA*SQRT) +0.25 1/(sqrt n B), B=EXP(lnb_m1) -3.59
+13 6 +1.25 | EXP(GL-GL)/SQRT(n*PI) +8.22 EXP(ext GL-GL-LN(nPI)/2) +6.95 GAMMA/GAMMA/SQRT -0.72 GAMMA/(GAMMA*SQRT) -0.72 1/(sqrt n B), B=EXP(lnb_m1) +8.22
+15 6 +0.00 | EXP(GL-GL)/SQRT(n*PI) -17.64 EXP(ext GL-GL-LN(nPI)/2) -17.64 GAMMA/GAMMA/SQRT +0.20 GAMMA/(GAMMA*SQRT) +1.48 1/(sqrt n B), B=EXP(lnb_m1) -18.91
+16 6 +1.84 | EXP(GL-GL)/SQRT(n*PI) +5.09 EXP(ext GL-GL-LN(nPI)/2) +5.09 GAMMA/GAMMA/SQRT -1.27 GAMMA/(GAMMA*SQRT) -0.00 1/(sqrt n B), B=EXP(lnb_m1) +5.09
+17 6 +0.00 | EXP(GL-GL)/SQRT(n*PI) +28.94 EXP(ext GL-GL-LN(nPI)/2) +30.21 GAMMA/GAMMA/SQRT -0.31 GAMMA/(GAMMA*SQRT) -0.31 1/(sqrt n B), B=EXP(lnb_m1) -0.31
+20 6 +1.69 | EXP(GL-GL)/SQRT(n*PI) -29.50 EXP(ext GL-GL-LN(nPI)/2) -29.50 GAMMA/GAMMA/SQRT -0.31 GAMMA/(GAMMA*SQRT) -0.31 1/(sqrt n B), B=EXP(lnb_m1) -0.31
+25 6 +0.89 | EXP(GL-GL)/SQRT(n*PI) -38.29 EXP(ext GL-GL-LN(nPI)/2) -38.29 GAMMA/GAMMA/SQRT -0.32 GAMMA/(GAMMA*SQRT) -1.58 1/(sqrt n B), B=EXP(lnb_m1) +0.95
+30 12 +0.00 | EXP(GL-GL)/SQRT(n*PI) -18.15 EXP(ext GL-GL-LN(nPI)/2) -20.67 GAMMA/GAMMA/SQRT +0.81 GAMMA/(GAMMA*SQRT) +0.81 1/(sqrt n B), B=EXP(lnb_m1) -0.45
+50 6 -0.56 | EXP(GL-GL)/SQRT(n*PI) -23.10 EXP(ext GL-GL-LN(nPI)/2) -24.36 GAMMA/GAMMA/SQRT +0.83 GAMMA/(GAMMA*SQRT) -0.43 1/(sqrt n B), B=EXP(lnb_m1) +0.83
+100 12 +0.00 | EXP(GL-GL)/SQRT(n*PI) -237.95 EXP(ext GL-GL-LN(nPI)/2) -237.95 GAMMA/GAMMA/SQRT -5.50 GAMMA/(GAMMA*SQRT) -5.50 1/(sqrt n B), B=EXP(lnb_m1) +2.04
+200 6 +0.00 | EXP(GL-GL)/SQRT(n*PI) +67.67 EXP(ext GL-GL-LN(nPI)/2) +66.41 GAMMA/GAMMA/SQRT -5.12 GAMMA/(GAMMA*SQRT) -3.86 1/(sqrt n B), B=EXP(lnb_m1) +3.67
+/home/user/rustsheet/docs/research/t2464/r2-bratio/bratio_excel.py:82: RuntimeWarning: invalid value encountered in scalar divide
+  return float(p / q)
+500 6 +4.57 | EXP(GL-GL)/SQRT(n*PI) -2103.98 EXP(ext GL-GL-LN(nPI)/2) -2106.49 GAMMA/GAMMA/SQRT +nan GAMMA/(GAMMA*SQRT) +nan 1/(sqrt n B), B=EXP(lnb_m1) +0.14
+1000 12 +1.52 | EXP(GL-GL)/SQRT(n*PI) +680.56 EXP(ext GL-GL-LN(nPI)/2) +678.06 GAMMA/GAMMA/SQRT +nan GAMMA/(GAMMA*SQRT) +nan 1/(sqrt n B), B=EXP(lnb_m1) +2.35

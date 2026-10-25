@@ -55,7 +55,7 @@ BINOM.DIST(0,n,p) uses them; BINOM.DIST(n,n,p,FALSE) takes its own closed form:
       rows, and the 68 visibly-off pre-T2464 cells are fixed, with no new known-failure lines.
 - [x] BINOM.DIST(n,n,p,FALSE) and BINOMDIST(n,n,p,FALSE) are EXP(fl(n·LN(p))): 172 of 172 bit-exact on the cells.tsv
       rows, with no new known-failure lines.
-- [ ] statistics.md's log1p and BINOM pmf entries gain an "Implemented in" line.
+- [x] statistics.md's log1p and BINOM pmf entries gain an "Implemented in" line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -87,9 +87,9 @@ then move to a follow-up task without the campaign key.
   k = n pmf rows of cells.tsv are bit-exact. One standing failure moved but still fails: gen-m9/caa1eed48b1883fe
   A384, `BINOMDIST(-0.0001,9,0.999999,..)`. Excel gives `#NUM!` because it tests k < 0 before truncating; that cell
   belongs to T-2435.
-- statistics.md: the T-2464/T-2513 entries ("Excel's log1p is a 14-term atanh series", "BINOM.DIST pmf: closed forms
-  at k = 0 and k = n") are not on main yet. The new entry names the implementation for them. Their "Ours:" lines
-  should become "Implemented in" when the research PR lands, which is why that criterion is still unticked.
+- statistics.md (after merging the research PR #1741): the log1p and BINOM pmf entries now have "Implemented in"
+  lines. The bracket entry "BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31]" is merged into "BINOM.DIST is
+  #NUM! from 2^31 - 1 trials (T-2464, T-2645)" and superseded by it.
 - Renumbered from T-2633 (main took that id), with the probe renamed to t2645-binom-trials-limit. After merging main
   (T-2119's BETA.DIST/BETA.INV change does not touch this code), `make check` passes locally: fmt, clippy, tests,
   eval-check with 0 regressions, evidence floor, python, hygiene and typos.

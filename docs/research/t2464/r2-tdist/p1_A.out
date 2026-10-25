@@ -1,0 +1,11 @@
+== part A
+w1 M1 density vs Excel BETA.DIST(y,n/2,0.5,FALSE): 759/1344/1344 of 1344
+('M1P', 'Pyz stored'): 457/1343/1343 of 1344
+('M1P', 'hold'): 236/648/647 of 648
+('M1P', 'tune'): 258/696/696 of 696
+('excelP', 'Pyz stored'): 570/1344/1344 of 1344
+('excelP', 'hold'): 273/648/648 of 648
+('excelP', 'tune'): 325/696/696 of 696
+FINAL model: 356/1334/1343 of 1344
+M1P: 494/1344/1343 of 1344
+excelP: 598/1344/1344 of 1344
