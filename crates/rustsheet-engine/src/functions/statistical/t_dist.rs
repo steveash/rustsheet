@@ -65,7 +65,7 @@ fn t_test_element(
     // type, come before the tails/type range check, which comes before an error inside a range.
     if let Err(PairedSamplesError {
         error,
-        direct_error: true,
+        first_direct: true,
         ..
     }) = samples
     {
@@ -77,6 +77,15 @@ fn t_test_element(
         (Err(error), _) | (_, Err(error)) => return error,
         (Ok(tails), Ok(test_type)) => (tails, test_type),
     };
+    // array2's error value comes after an error tails or type (gen-m9/7f7ca726c3f68554 A308).
+    if let Err(PairedSamplesError {
+        error,
+        direct_error: true,
+        ..
+    }) = samples
+    {
+        return error.clone();
+    }
     let tails = match tails {
         1.0 => TTestTails::OneTailed,
         2.0 => TTestTails::TwoTailed,

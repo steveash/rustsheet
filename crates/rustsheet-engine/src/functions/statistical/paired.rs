@@ -96,6 +96,8 @@ pub(crate) struct PairedSamplesError {
     /// Whether an argument is itself an error value (or a blank one-cell reference), which T.TEST
     /// returns before its tails and type, unlike an error inside a range (T-2469).
     pub(crate) direct_error: bool,
+    /// Whether that error value is the first argument (array1).
+    pub(crate) first_direct: bool,
 }
 
 /// The non-blank entries of one argument: (row-major position, value), in position order.
@@ -118,6 +120,7 @@ impl Model {
             (first.cell_count(), second.cell_count()),
             (Some(m), Some(n)) if m != n
         );
+        let first_direct = matches!(first, PairedArg::Error(_));
         let direct_error =
             matches!(first, PairedArg::Error(_)) || matches!(second, PairedArg::Error(_));
         self.paired_values(first, second, cell, |index, error| {
@@ -128,6 +131,7 @@ impl Model {
             error,
             sizes_differ,
             direct_error,
+            first_direct,
         })
     }
 
