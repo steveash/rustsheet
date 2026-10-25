@@ -691,7 +691,7 @@ fn fn_accrint_freq4_nc2_basis1() {
     );
 }
 
-/// A text calc_method, "TRUE" and "FALSE" too, is `#VALUE!`, before a negative rate's `#NUM!`; the
+/// A text `calc_method`, "TRUE" and "FALSE" too, is `#VALUE!`, before a negative rate's `#NUM!`; the
 /// boolean is taken (probes/t2492-vdb-ddb-arguments A47:A53, excel-graph 2026-10-25, T-2492).
 #[test]
 fn accrint_text_calc_method_is_value_error() {

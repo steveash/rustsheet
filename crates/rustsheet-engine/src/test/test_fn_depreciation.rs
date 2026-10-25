@@ -58,7 +58,7 @@ fn fn_vdb_errors() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
 }
 
-/// VDB's no_switch reads as a boolean ("TRUE"/"FALSE" text in any case; other text, numeric too,
+/// VDB's `no_switch` reads as a boolean ("TRUE"/"FALSE" text in any case; other text, numeric too,
 /// is `#VALUE!` before the range checks), a factor of 0 is straight line, an empty window at 0 is 0,
 /// and DDB's factor takes a boolean and numeric text (probes/t2492-vdb-ddb-arguments, excel-graph,
 /// 2026-10-25, T-2492).
