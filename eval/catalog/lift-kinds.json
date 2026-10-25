@@ -138,6 +138,7 @@
   {"name":"FORECAST","required":3,"params":["Lift","WholeByCaller","WholeByCaller"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"FORECAST.ETS","required":3,"params":["Lift","WholeByCaller","WholeByCaller","Lift","Lift","Lift"],"repeat":[],"max":6,"work":"Constant"},
   {"name":"FORECAST.ETS.CONFINT","required":3,"params":["Lift","WholeByCaller","WholeByCaller","Lift","Lift","Lift","Lift"],"repeat":[],"max":7,"work":"Constant"},
+  {"name":"FORECAST.ETS.SEASONALITY","required":2,"params":["WholeByCaller","WholeByCaller","Lift","Lift"],"repeat":[],"max":4,"work":"Constant"},
   {"name":"FORECAST.ETS.STAT","required":3,"params":["WholeByCaller","WholeByCaller","Lift","Lift","Lift","Lift"],"repeat":[],"max":6,"work":"Constant"},
   {"name":"FORECAST.LINEAR","required":3,"params":["Lift","WholeByCaller","WholeByCaller"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"FV","required":3,"params":["Lift","Lift","Lift","Lift","Lift"],"repeat":[],"max":5,"work":"Constant"},

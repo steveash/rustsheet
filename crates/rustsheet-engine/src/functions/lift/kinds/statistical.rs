@@ -48,6 +48,9 @@ const ETS_STAT_TYPE: ArgKinds = ArgKinds::fixed(
     &[WholeByCaller, WholeByCaller, Lift, Lift, Lift, Lift],
     Constant,
 );
+/// `FORECAST.ETS.SEASONALITY(values, timeline, [data_completion], [aggregation])`.
+const ETS_SEASONALITY: ArgKinds =
+    ArgKinds::fixed(2, &[WholeByCaller, WholeByCaller, Lift, Lift], Constant);
 /// A lifted argument, a reference read by its function, then an optional lifted argument:
 /// `RANK(number, ref, [order])`.
 const ONE_THEN_REFERENCE_THEN_1: ArgKinds =
@@ -230,6 +233,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::ForecastEts => Some(&ETS_TARGET),
         Function::ForecastEtsConfint => Some(&ETS_CONFINT_TARGET),
         Function::ForecastEtsStat => Some(&ETS_STAT_TYPE),
+        Function::ForecastEtsSeasonality => Some(&ETS_SEASONALITY),
         // RANK's `number` and `order` lift likewise over a `ref` read once; a `ref` that is not a
         // reference broadcasts as its own shape of errors (probes/stat-test-lift P20-P33, P72;
         // probes/stat-argument-modes H492-H499; T-1999). A lifted call sorts the numbers once

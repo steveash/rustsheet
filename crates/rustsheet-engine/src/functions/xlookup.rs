@@ -9,9 +9,9 @@ use crate::{
 use super::{
     binary_search::{binary_search, Sequence},
     lift::{LiftCost, LiftOptions, LiftedArg},
-    lookup_and_reference::lookup_table::SearchVector,
+    lookup_and_reference::lookup_table::{Indexed, SearchVector},
     lookup_and_reference::xmatch::{
-        linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode, Regex,
+        exact_through_index, linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode, Regex,
     },
     util::near_integer::near_integer_whole,
     util::{array_element_value, array_node_to_calc_result},
@@ -44,14 +44,21 @@ fn linear_search(
     match_mode: &MatchMode,
     regex: Option<&Regex>,
 ) -> Option<usize> {
-    let candidates = values.linear_candidates(*search_mode == SearchMode::StartAtFirstItem);
+    let forward = *search_mode == SearchMode::StartAtFirstItem;
     let mode = match match_mode {
         MatchMode::ExactMatch => XmatchMode::Exact,
         MatchMode::ExactMatchSmaller => XmatchMode::ExactMatchSmaller,
         MatchMode::ExactMatchLarger => XmatchMode::ExactMatchLarger,
         MatchMode::WildcardMatch => XmatchMode::Wildcard,
-        MatchMode::RegexMatch => return regex_scan(regex, candidates, |index| values.get(index)),
+        MatchMode::RegexMatch => {
+            let candidates = values.linear_candidates(forward);
+            return regex_scan(regex, candidates, |index| values.get(index));
+        }
     };
+    if let Indexed::Searched(found) = exact_through_index(lookup_value, values, forward, mode) {
+        return found;
+    }
+    let candidates = values.linear_candidates(forward);
     linear_scan(lookup_value, candidates, |index| values.get(index), mode)
 }
 
