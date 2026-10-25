@@ -65537,15 +65537,27 @@
    "D999": {
     "t": "n",
     "v": 3.9128501977125003
+   },
+   "E863": {
+    "t": "b",
+    "v": true
+   },
+   "E875": {
+    "t": "b",
+    "v": true
+   },
+   "E957": {
+    "t": "b",
+    "v": true
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "1ad256aa39e48aceb786f60bf0a077863f2004fb1d2ff182bb3b976576283940",
+  "input_sha256": "865406aabcc2a5a61fd54ef0367342b10db439e550783ee5dd16970edac005a2",
   "kind": "excel-graph",
-  "produced_at": "2026-10-24T06:54:38+00:00",
+  "produced_at": "2026-10-25T10:53:29+00:00",
   "version": null,
-  "workbook_name": "bc28d0163057a21dcd9d051b8894e7d6479aa644dc23b08e3e775197082dcfcf.xlsx"
+  "workbook_name": "f0beb210ccbbf54ef63c4e720cfd6a0dd9ccda93d50dc3a530f0b9b218368351.xlsx"
  }
 }
