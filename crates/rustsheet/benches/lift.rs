@@ -23,9 +23,9 @@
 //!   and CHISQ.DIST at the largest chi-squared shape, over 512 elements.
 //!
 //! - HYPGEOM.DIST at its lift cap (T-1873): the cdf sum with 258,239 terms that are not known to
-//!   be 0 (just under its 2^18-term cap, the population of 1.8E8 at its widest), and the cdf at
-//!   its cap whose window is mostly exact zeros and subnormal terms (the slowest terms: `exp`'s
-//!   subnormal path and additions with a subnormal operand), over 32 elements.
+//!   be 0 (just under its 2^18-term cap, the population of 1.8E8 at its widest), over 32 elements.
+//!   The window of mostly subnormal terms T-1873 measured needs a population past 2^31 - 1, which
+//!   is `#NUM!` since T-2429, so it is no longer benched.
 //!
 //! - the financial functions' two paths (T-1823): PMT per row, unlifted, over 100,000 rows
 //!   (`=PMT(A{r}/100,10,100)` in each C{r}; C1 is read), and RATE at its work cap, a
@@ -129,7 +129,11 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             10_000,
             "=SUM(SUMIFS(B1:B10000,D1:D10000,D1:D10000))",
         ),
-        ("COUNTIFS and SUMIFS, sparse whole columns", 0, SPARSE_CRITERIA),
+        (
+            "COUNTIFS and SUMIFS, sparse whole columns",
+            0,
+            SPARSE_CRITERIA,
+        ),
         (
             "SWITCH, numeric result",
             1_000_000,
@@ -214,11 +218,6 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             "HYPGEOM.DIST, the cdf sum near its term cap, at the element cap",
             1,
             "=SUM(HYPGEOM.DIST(SEQUENCE(32)*0+45500000,90000000,90000000,180000000,TRUE))",
-        ),
-        (
-            "HYPGEOM.DIST, the cdf sum at its term cap through subnormal terms, at the element cap",
-            1,
-            "=ROWS(HYPGEOM.DIST(SEQUENCE(32)*0+99994114707,200000000000,200000000000,400000000000,TRUE))",
         ),
     ]
     .into_iter()
