@@ -275,10 +275,12 @@ impl UserModel {
                 Diff::MoveSheet {
                     sheet_index,
                     new_index,
+                    rewritten,
                 } => {
-                    // Undo a move by moving the sheet back to its original index.
+                    // Undo a move by putting back the formulas it rewrote and the sheet.
                     let selected = self.get_selected_sheet();
-                    self.model.move_sheet(*new_index, *sheet_index)?;
+                    self.model
+                        .unmove_sheet(*sheet_index, *new_index, rewritten.clone())?;
                     self.set_selected_sheet(selected_sheet_after_move(
                         selected,
                         *new_index,
@@ -381,7 +383,7 @@ impl UserModel {
                     worksheet.color = old_data.color.clone();
                     worksheet.merged_cells = old_data.merged_cells.clone();
                     worksheet.shared_formulas = old_data.shared_formulas.clone();
-                    self.model.restore_table_references(rewritten.clone());
+                    self.model.restore_rewritten_formulas(rewritten.clone());
                     self.model.restore_tables(tables.clone());
                     self.set_selected_sheet(*sheet)?;
                 }
@@ -801,6 +803,7 @@ impl UserModel {
                 Diff::MoveSheet {
                     sheet_index,
                     new_index,
+                    ..
                 } => {
                     let selected = self.get_selected_sheet();
                     self.model.move_sheet(*sheet_index, *new_index)?;

@@ -71,6 +71,7 @@ mod excel_order;
 mod external_links;
 mod external_reference;
 mod formula_cells;
+mod formula_rewrite;
 mod function_names;
 mod functions;
 mod implicit_intersection;

@@ -681,11 +681,12 @@ impl UserModel {
             return Ok(());
         }
         let selected = self.get_selected_sheet();
-        self.model.move_sheet(sheet_index, new_index)?;
+        let rewritten = self.model.move_sheet_rewriting(sheet_index, new_index)?;
         self.set_selected_sheet(selected_sheet_after_move(selected, sheet_index, new_index))?;
         self.push_diff_list(vec![Diff::MoveSheet {
             sheet_index,
             new_index,
+            rewritten,
         }]);
         Ok(())
     }

@@ -103,7 +103,11 @@ Rule (excel-graph, replayed sheet edits, T-1608):
   Excel rewrites the formula: with Calc, Jan, Feb, Mar, moving Mar to position 1 gives
   `=SUM(Jan:Feb!A1)` (30), and moving Jan to position 3 gives `=SUM(Feb:Mar!A1)` (50). The span is
   not re-resolved by name. Evidence: sheet-ops-move-span-end-first, sheet-ops-move-span-start-last.
-  The engine keeps `Jan:Mar` (40): T-1691.
+  A span left with one sheet becomes a plain reference: moving Feb before Jan turns
+  `=SUM(Jan:Feb!A1)` into `=SUM(Jan!A1)` (sheet-ops-move-two-sheet-span-end-first). Spans in
+  defined names shrink the same way (sheet-ops-move-span-end-in-name).
+  The engine rewrites them before the move (`move_sheet_in_node`, T-1691), and its undo puts the
+  written text back.
 - Moving the sheet that holds the formula changes nothing (sheet-ops-move-formula-sheet).
 Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
 cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
