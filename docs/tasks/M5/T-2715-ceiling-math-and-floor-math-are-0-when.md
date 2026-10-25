@@ -49,11 +49,12 @@ record a desktop-only rule and file an M14 follow-up instead of matching the gol
 - [x] A probes case tagged M5 (excel-graph) covers CEILING, CEILING.MATH (both modes), CEILING.PRECISE, ISO.CEILING,
       ECMA.CEILING, FLOOR, FLOOR.MATH (both modes), FLOOR.PRECISE and MROUND. Numbers are ±1E-307, ±2^-1022 and ±1E-300.
       Significances put the ratio just above, at and below 2^-1022 (for example 1, 4, 4.5, 10, 1E+10). ROUNDUP and
-      ROUNDDOWN of the same numbers are controls.
+      ROUNDDOWN of the same numbers are controls (moved to their own case, probes/t2715-roundup-near-smallest-normal,
+      owned by T-2737; see Outcome).
 - [x] The engine matches every cell of the probe. The 8 calipers cells above pass (`rustsheet-eval run --suite calipers`
       after `rustsheet-eval fetch --suite calipers`), and their lines leave eval/baseline/calipers.txt
-      (`rustsheet-eval update-baseline --suite calipers`) with no new known failure. (The calipers.txt part waits on
-      T-0463's ratchet; see Outcome.)
+      (`rustsheet-eval update-baseline --suite calipers`) with no new known failure. (The cells pass; the calipers.txt
+      lines are deferred to T-0463's ratchet, see Outcome.)
 - [x] numbers.md gets an entry for the rule, per function, with the evidence and `Status: VERIFIED`.
 - [x] `make check` green; reviewers approve.
 
