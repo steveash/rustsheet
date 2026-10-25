@@ -40,7 +40,7 @@ Cells:
 - gen-m9/85f48d5cdfb24555.case.json (1): Calc!A35
 - gen-m9/8fec7b207f4dd753.case.json (1): Calc!A125
 - gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A240
-- gen-m9/a013a45a8fbcab4f.case.json (2): Calc!A97, A206
+- gen-m9/a013a45a8fbcab4f.case.json (2): Calc!A97, A206 (A97, `LOGNORMDIST(..,MDURATION(..,1E+300,2))`, passes since T-2488: its MDURATION is `#NUM!`)
 - gen-m9/a5828d3925575713.case.json (1): Calc!A315
 - gen-m9/a61e547a1cab994c.case.json (1): Calc!A127
 - gen-m9/b6593d7dd13f2dac.case.json (1): Calc!A231
@@ -65,12 +65,19 @@ Cells:
 - gen-m9/abc2939ebd1e2365.case.json (2): Calc!A250, A11
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A23
 
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 1 gen-m9 financial cell moved here from T-2496.
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/d0854366830dcdee Calc!A298 | `WEIBULL.DIST(7,1E+8,Data!D5,"TRUE")` (beta 0.3: (x/beta)^alpha overflows) | #NUM! | 1 |
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255): these 20 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Each rule's probe cells are in eval/, and statistics.md's entry gets an "Ours:" line naming this task.
+- [ ] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
