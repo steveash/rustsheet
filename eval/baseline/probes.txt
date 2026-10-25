@@ -968,7 +968,9 @@ C	probes/sheet-ops/sheet-ops-move-formula-sheet.case.json	4
 C	probes/sheet-ops/sheet-ops-move-into-span.case.json	4
 C	probes/sheet-ops/sheet-ops-move-out-of-span.case.json	6
 C	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	4
+C	probes/sheet-ops/sheet-ops-move-span-end-in-name.case.json	4
 C	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	4
+C	probes/sheet-ops/sheet-ops-move-two-sheet-span-end-first.case.json	4
 C	probes/sheet-ops/sheet-ops-rename-case-only.case.json	4
 C	probes/sheet-ops/sheet-ops-rename-cell-like.case.json	4
 C	probes/sheet-ops/sheet-ops-rename-cell-refs.case.json	10
@@ -1188,6 +1190,7 @@ C	probes/t2454-offset-array-height.case.json	48
 C	probes/t2454-offset-one-cell-array-args.case.json	48
 C	probes/t2455-transpose-single-value.case.json	95
 C	probes/t2461-blank-array-sources.case.json	55
+C	probes/t2473-percentrank-significance.case.json	69
 C	probes/t2475-stat-subexpressions.case.json	574
 C	probes/t2492-vdb-ddb-arguments.case.json	64
 C	probes/t2493-npv-error-order-inner-calls.case.json	18
@@ -1311,6 +1314,9 @@ C	probes/text-count-argument-bounds.case.json	623
 C	probes/text-currency-locale-date.case.json	19
 C	probes/text-date-255-char-limit.case.json	43
 C	probes/text-ddd-negative-fraction.case.json	9
+C	probes/text-format-aaa-weekday-b.case.json	30
+C	probes/text-format-aaa-weekday-c.case.json	10
+C	probes/text-format-aaa-weekday.case.json	50
 C	probes/text-format-array.case.json	37
 C	probes/text-format-bare-literals.case.json	76
 C	probes/text-format-digits-date-token.case.json	132
@@ -2678,12 +2684,6 @@ F	probes/roman-lift-forms.case.json	Calc!G1
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
-F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
-F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
-F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2
-F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!A1
-F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!B1
-F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!B2
 F	probes/solver-iteration-traces.case.json	I!A17
 F	probes/solver-iteration-traces.case.json	I!A22
 F	probes/solver-iteration-traces.case.json	I!A24
@@ -3194,9 +3194,6 @@ F	probes/t2475-stat-subexpressions.case.json	P!A415
 F	probes/t2475-stat-subexpressions.case.json	P!A417
 F	probes/t2475-stat-subexpressions.case.json	P!A422
 F	probes/t2475-stat-subexpressions.case.json	P!A424
-F	probes/t2475-stat-subexpressions.case.json	P!A449
-F	probes/t2475-stat-subexpressions.case.json	P!A452
-F	probes/t2475-stat-subexpressions.case.json	P!A455
 F	probes/t2475-stat-subexpressions.case.json	P!A458
 F	probes/t2475-stat-subexpressions.case.json	P!A461
 F	probes/t2475-stat-subexpressions.case.json	P!A462
@@ -3381,10 +3378,6 @@ F	probes/text-255-units-from-cell.case.json	S!A4
 F	probes/text-255-units-rept-error-count.case.json	S!A1
 F	probes/text-255-units-rept-error-count.case.json	S!A4
 F	probes/text-format-digits-date-token.case.json	Sheet1!C25
-F	probes/text-format-length-limit-n.case.json	Sheet1!A2
-F	probes/text-format-length-limit-n.case.json	Sheet1!A7
-F	probes/text-format-length-limit-n.case.json	Sheet1!A8
-F	probes/text-format-length-limit-n.case.json	Sheet1!A9
 F	probes/text-locale-calendars-detail.case.json	S!A30
 F	probes/text-locale-calendars-detail.case.json	S!A31
 F	probes/text-locale-calendars-detail.case.json	S!A7
