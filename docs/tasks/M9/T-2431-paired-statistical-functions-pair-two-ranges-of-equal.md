@@ -3,10 +3,10 @@ id: T-2431
 title: "Paired statistical functions pair two ranges of equal count but different shape instead of #N/A (gen-m9, 18 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: semantics
 ---
@@ -104,3 +104,22 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Paired functions pair by cell count in reading order (`fn_get_two_matrices`); CHISQ.TEST/CHITEST accept a negative actual
+value. gen-m9 known failures 5344 -> 5342 after the rebase onto the earlier baseline (55 lines removed in total across gen-m9
+and probes); `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (0a9226016e8f5f33 A333, `#DIV/0!`) is still a known failure, filed as a
+follow-up T-2650 (needs a probe of blank-against-blank pairs). INTERCEPT A382 (a61e547a1cab994c) is `#VALUE!` as in Excel now.
+
+Owned cells still in the baseline: 0a9226016e8f5f33 A333 (T-2650); 201d67f1d59436ed A177 (`PEARSON(Data!B11:D12,{1,1,2,2,2,3})`,
+last-digit ULP only, visible parity met); ede0323c389fc703 A75 (a TTEST argument-validation cell triaged here by mistake,
+re-homed to T-2655). CHISQ.TEST has no per-cell sign check, only a negative summed statistic is `#NUM!`
+(A375 and f2bd5f380ec002bf A314 fixed).
+
+## Handoff (resumed)
+Tried: cell-count pairing in `fn_get_two_matrices` (done, evidenced, 0 regressions); CHISQ.TEST sign rule revised twice after
+fidelity review (final: no per-cell sign check, `#NUM!` only for a negative summed statistic, fits A21/A314/A375); quirk entry
+extended. `make check` green on the branch. The fidelity reviewer requested changes in three rounds (round 3's only finding,
+naming PEARSON/RSQ/SLOPE/STEYX and the FORECAST probe in the statistics.md entry, is fixed in the last commit but not
+re-reviewed). Next: run the full review panel once on the current head, mark the PR ready, merge. Remaining baseline cells:
+A333 (T-2650), A177 (ULP), A75 (T-2655).

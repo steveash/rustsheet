@@ -1093,13 +1093,12 @@ Ours: matches (T-1290). Before, the overflowing F.DIST and BETA.DIST calls panic
 of 2^31 - 1 and more, and TDIST checked x before reading deg_freedom (`TDIST(-1,NA(),1)` was `#NUM!`). The F pdf falls
 back to logarithms only when the overflow comes from x alone: `df1^df1`, `df2^df2` and `(df1+df2)^(df1+df2)` finite,
 and only a result that underflows to 0 is taken from it, so `F.DIST(1E308,1,3,FALSE)` and `F.DIST(8E307,2,3,FALSE)`
-are 0; a positive density there (moderate x with df1 near 30-140, `F.DIST(20,100,3,FALSE)`) keeps main's `#NUM!`,
-unprobed (T-1865). Degrees of freedom large enough to overflow those
-powers keep main's `#NUM!` (`F.DIST(3,50,100,FALSE)`; probes-numeric/t1530-f-df-cut `F.DIST(2,5,1E10,FALSE)`, where
-Excel gives 0.14167277676179968), because the logarithmic form is not accurate enough there (T-1865); no
-probes-numeric cell covers the moderate-x region, and every one is unchanged from main.
+are 0. A positive density there (moderate x with df1 near 30-140, `F.DIST(20,100,3,FALSE)`) and degrees of freedom
+large enough to overflow those powers (`F.DIST(3,50,100,FALSE)`, `F.DIST(2,5,1E10,FALSE)`) were `#NUM!` until T-1864,
+because the logarithmic form is not accurate enough there; they are now Loader's form ("F density at large degrees of
+freedom (T-1864)").
 Status: VERIFIED (excel-graph)
-Tasks: T-1290, T-1865
+Tasks: T-1290, T-1864
 
 ## RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments
 Rule: RANK `number`/`order`, FORECAST `x`, PROB `lower_limit`/`upper_limit`, Z.TEST `x`/`sigma` and T.TEST
@@ -2015,16 +2014,25 @@ Above x = 0.375 it is LN(fl(1 - x)); at 0.375 both give the same double and the 
   of 3,200), and the density's ln x at x > 0.625 (LN(x)).
 Evidence: probes-numeric t2464-r2-log1p-pilot, -runs, -grid, -hold, -hix; docs/research/t2464/r2-log1p
 (`excel_log1p.py`, `pin.py`, `control.py`, `final_score.py`, `algdiv_try.py`); verify-r2-log1p/vscore.out.
-Ours: BINOM.DIST walks the pmf; the beta density uses powf.
+Implemented in: `excel_log1p` and `excel_ln_one_minus` in `crates/rustsheet-engine/src/x87_log1p.rs` (T-2645), used by
+BINOM.DIST(0,n,p) in `functions/statistical/binom.rs`. Ours: the beta density still uses powf (T-2503).
 Status: VERIFIED (excel-graph) for -0.375 <= a < 0 (27 of 15,791 rows 1 ulp off); a > 0 UNVERIFIED
 Tasks: T-2645
 
 
-## BINOM.DIST(0,n,p) is #NUM! somewhere in (2^30, 2^31] (T-2464)
-Rule: BINOM.DIST(0,n,p,FALSE) with n = 2^30 returns a number; n = 2^31, 2^32 and 2^33 return `#NUM!`. The probes only
-use powers of two, so the exact limit (2^31 - 1, as PERMUT's, is the natural guess) is not measured.
-Evidence: probes-numeric t2464-r2-log1p-hold (rows with n = 2^30 .. 2^33); docs/research/t2464/verify-r2-log1p/vscore.out.
-Status: UNVERIFIED (bracket only)
+## BINOM.DIST is #NUM! from 2^31 - 1 trials (T-2464, T-2645)
+Rule: BINOM.DIST and BINOMDIST are `#NUM!` when the truncated trial count is 2^31 - 1 = 2147483647 or more, whatever
+k, p (0 and 1 included) and the cumulative flag. BINOM.DIST.RANGE is `#NUM!` there too, though it was probed only at
+number_s = 0 and p = 1E-12 (A33, A45). 2^31 - 2 trials still evaluates
+(`BINOM.DIST(0,2^31-2,1E-12,FALSE)` is 0.9978548205473029), while 2^31 - 0.5 truncates to 2^31 - 1 and is `#NUM!`.
+So the accepted range is n < 2^31 - 1, one short of the largest 32-bit integer. NEGBINOM.DIST has no such limit
+(`NEGBINOM.DIST(2^31,1,1-1E-12,FALSE)` is 0).
+T-2464's powers of two bracketed it first: n = 2^30 evaluates, 2^31 to 2^33 are `#NUM!`.
+Evidence: probes-numeric/t2645-binom-trials-limit A1-A46 (excel-graph, 2026-10-25); probes-numeric t2464-r2-log1p-hold
+(rows with n = 2^30 .. 2^33), docs/research/t2464/verify-r2-log1p/vscore.out.
+Unprobed: BINOM.INV and CRITBINOM at these trial counts.
+Implemented in: `TRIALS_LIMIT` in `crates/rustsheet-engine/src/functions/statistical/binom.rs` (T-2645).
+Status: VERIFIED (excel-graph)
 Tasks: T-2464, T-2645
 
 ## BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST (T-2513)
@@ -2053,7 +2061,9 @@ BETA.DIST(p,k+1,n-k+1,FALSE):
 Evidence: probes-numeric t2513-r3-binom-pmf-a, -n, -hold, t2513-verify-r3-binom-pmf-h; BINOM cells of
 docs/research/t2464/cells.tsv; docs/research/t2464/r3-binom-pmf (`a1_survey.out`, `b2_share_a.out`, `b3_reg_a.out`,
 `b19_cfit_mul.out`, `c1_hold.out`), verify-r3-binom-pmf (`vscore_v.out`, `vstruct_v.out`).
-Ours: `discrete.rs` `binomial_pmf`, a double-double walk.
+Implemented in: `binom_dist_of` in `crates/rustsheet-engine/src/functions/statistical/binom.rs` (T-2645): k = 0, pmf and
+cdf, is `excel_exp(n * excel_ln_one_minus(p))`; the pmf at k = n is `excel_exp(n * excel_ln(p))`. Ours: the interior pmf
+is `discrete.rs` `binomial_pmf`, a double-double walk.
 Status: VERIFIED (excel-graph) for k = 0, k = n and the shared kernel; the interior pmf UNVERIFIED
 Tasks: T-2645, T-2146, T-2586
 
@@ -2338,8 +2348,9 @@ docs/research/t2464/cells.tsv; docs/research/t2464/r3-fdensity (`a8_pair.out`, `
 -hold and the verifiers' t2586-verify-* cases; docs/research/t2464/r4-f-brcomp, r4-f-power, r4-f-small-df and
 verify-r4-*; round 5: probes-numeric t2586-r5-f-*, t2586-verify-r5-*; docs/research/t2464/r5-f-combine, r5-f-smallr,
 r5-f-bigconst, r5-f-edges, r5-f-final and verify-r5-*.
-Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite (statrs' NaN, `#NUM!`, where it
-overflows; T-1864).
+Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite, an accurate
+Loader form where it overflows or underflows ("F density at large degrees of freedom (T-1864)"); neither is Excel's
+formula.
 Status: PARTIAL (excel-graph): the argument and range rules (round 5), the negatives, the swap symmetry, the x = 1
 values and the ratio switch are measured; the formula for the value is unsolved
 Tasks: T-2586, T-2219, T-2095
@@ -2619,7 +2630,7 @@ Oracle sweep (excel-graph), 12 cases, 33-92 cells each. Aliases were paired with
 - BINOM.INV/CRITBINOM: alpha 0 or 1 is #NUM!, and probability 0 or 1 is #NUM!, even though BINOMDIST accepts them (`BINOMDIST(0,5,0,TRUE)` = 1).
 - BETADIST with bounds: x outside [A,B] is #NUM! (`BETADIST(0.5,2,3,2,5)`), A = B is #NUM!, but x = A gives 0 (`BETADIST(2,2,3,2,5)`); x outside [0,1] without bounds is #NUM!.
 - Coercion: text numbers (`"0.5"`) and booleans coerce in scalar arguments (`BETADIST(TRUE,2,3)` = 1, `CHIDIST(TRUE,2)` = 0.6065306597126334); an empty reference is 0 (`BETADIST($Z$1,2,3)` = 0, `EXPONDIST($Z$1,1,TRUE)` = 0, `CHIDIST($Z$1,2)` = 1) so a zero df/lambda/p is #NUM!. The `cumulative` flag takes any nonzero number as TRUE (`EXPONDIST(1,1,5)`, `BINOMDIST(2,10,0.5,5)`) and the text "TRUE".
-- CHITEST/FTEST: mismatched shapes are #N/A (`CHITEST(B1:D2,B4:D4)`); a zero expected cell is #DIV/0!; a negative expected cell is #NUM!; FTEST with a zero-variance range or fewer than 2 numbers in a range is #DIV/0!; array literals are accepted.
+- CHITEST/FTEST: different cell counts are #N/A (`CHITEST(B1:D2,B4:D4)`); a zero expected cell is #DIV/0!; a negative summed statistic is #NUM! (a negative expected cell alone is not an error, T-2431); FTEST with a zero-variance range or fewer than 2 numbers in a range is #DIV/0!; array literals are accepted.
 - CHITEST of a 1x1 range is #N/A (`CHITEST(N1:N1,G1:G1)`). A text cell in the actual range drops that pair but the degrees of freedom still come from the range shape: `CHITEST(F1:F3,G1:G3)` with F = {5,0,"x"} = 0.00012340980408667956 (= CHIDIST(18,2)).
 Evidence: probes-numeric cases `m9-legacy-betadist`, `-betainv`, `-binomdist`, `-chidist`, `-chiinv`, `-chitest`, `-confidence`, `-critbinom`, `-expondist`, `-fdist`, `-finv`, `-ftest`. Oracle: excel-graph, 2026-10-13.
 Status: VERIFIED (excel-graph)
@@ -2660,6 +2671,54 @@ Tasks: T-1530, T-1538
 - Ours: the hang is gone (the quantile is a bisection on the `statrs` cdf from df 1E5), but the cdf and quantile are off in
   about the 6th digit at df 1E10 (`F.INV(0.5,1E10,1E10)` = 1.0000025, Excel 1) and `F.DIST(...,FALSE)` at df 1E10 is
   `#NUM!` (`statrs` pdf) where Excel gives a number. 16 of 58 cells of the case fail (A1-A14, A57, A58); T-1538 closes them.
+
+## F density at large degrees of freedom (T-1864)
+Rule: F.DIST(x,d1,d2,FALSE) is an ordinary number wherever Excel's range steps leave the density positive (round 5
+of "F density is not the beta density, R's df or a GAMMALN formula (T-2513)": Y = density·x is stored, F = fl(Y/x),
+an F below 2^-1022 is 0), however large the degrees of freedom (up to the 1E10 cut, "F-distribution df limit (T-1530)"): `F.DIST(1,100,100,FALSE)` 1.9897309346794694,
+`F.DIST(3,50,100,FALSE)` 1.05292998522241E-05, `F.DIST(28.1,100,1,FALSE)` 0.0026239848297062718,
+`F.DIST(2,5,1E10,FALSE)` 0.14167277676179968, `F.DIST(2,1E10,5,FALSE)` 0.18825249234504016, and at moderate x with one
+df above about 143 (probes-numeric t1864-f-pdf-moderate-x, 10 cells, e.g. `F.DIST(20,100,3,FALSE)`
+0.0010807581083264...). Excel's value is its own formula (T-2586), not the exact density: it is up to about 6.5E-14
+relative off the exact density (mpmath), so even the exact density is within 15 digits of Excel on only 26 of the 44
+literal-argument cells of t2220-f-dist-sweep-pdf/-d2-1, m9-f-dist and t1530-f-df-cut.
+- The edges are numbers too (probes-numeric t1864-f-pdf-edges): a huge x with a small df
+  (`F.DIST(1E10,30,5,FALSE)` 8.379700461247534E-35, `F.DIST(1E20,300,1,FALSE)` 3.986099675993838E-31,
+  `F.DIST(1E50,10,10,FALSE)` 6.300000000000124E-298), a tiny x with a large df2 (`F.DIST(1E-300,1,1000,FALSE)`
+  3.9884255731385913E149, `F.DIST(1E-300,2,1000,FALSE)` 0.9999999999999979), and a huge x where the density is near the
+  bottom of the double range (`F.DIST(1E100,2,3,FALSE)` 2.7556759606310174E-250, `F.DIST(1E200,1,1,FALSE)`
+  3.1830988618378795E-301; `F.DIST(1E300,1,1,FALSE)`, whose density 3E-451 underflows, is 0). A non-integer df is
+  truncated first (`F.DIST(2,150.7,3,FALSE)` 0.17202585847929508 is the density at df 150).
+- At a tiny x the stored Y = density·x decides (t1864-f-pdf-tiny-x, 20 cells): `F.DIST(1E-300,3,1000,FALSE)` is 0
+  although the exact density is 2.1E-150 (Y = 2E-450 underflows), as are `F.DIST(1E-300,3,5,FALSE)`,
+  `F.DIST(1E-220,3,1000,FALSE)`, `F.DIST(1E-170,4,1000,FALSE)` and `F.DIST(1E-300,1000,1000,FALSE)`; a subnormal Y keeps
+  only its own bits, so `F.DIST(1E-215,3,1000,FALSE)` is 6.42285339593616E-108 (Y = 13·2^-1074, 2.1% below the exact
+  density) and `F.DIST(1E-65,10,1000,FALSE)` 1.4821969375236873E-258 (Y = 3·2^-1074, 11.6% above). Excel's value then
+  differs from fl(Y/x) by about 1E-14 relative (A5, A6, A10, A17; T-2647).
+- At a huge x an F below 2^-1022 is 0 (probes-numeric t2586-r5-f-edges-a B1285-B1303, B1350-B1360 and 38 cells of
+  t2586-r5-f-edges-hold, where the density is about 1.8E-310; their `*2^600` companions such as C1296 and C1301 show
+  the 0 is Excel's, not Graph's), and so is a df1·x near f64::MAX whose fl(df1·x) does not overflow
+  (t2586-r5-f-edges-a B1437, t2586-verify-r5-f-edges-hold B91, B92: `F.DIST(~1.8E305,1000,3,FALSE)`).
+Evidence: probes-numeric t2220-f-dist-sweep-pdf (A897, A994), t2220-f-dist-sweep-d2-1 (A710, A776), t1530-f-df-cut
+A9-A10, m9-f-dist A30, t1864-f-pdf-moderate-x, t1864-f-pdf-edges A1-A12, t1864-f-pdf-tiny-x A1-A20 (excel-graph,
+2026-10-25), t2586-r5-f-edges-a, -hold, t2586-verify-r5-f-edges-hold, t2586-r5-f-bigconst-a; gen-m9 285d87cea1aaa73c A64 (`F.DIST(0.1,123456792,1,FALSE)` 0.085003679623665).
+Ours: an accurate form, not Excel's algorithm. Where statrs' direct form overflows (a df above about 143, or a huge x
+that does not underflow), `fisher.rs` `f_pdf_loader` is Loader's saddle-point binomial form as in R's `df`: with
+q = n/(n + x m), p = x m/(n + x m), (m q/2)·dbinom_raw((m-2)/2, (m+n-2)/2, p, q) for m >= 2 and
+m² q/(2p(m+n))·dbinom_raw(m/2, (m+n)/2, p, q) for m = 1 (`loader.rs`: stirlerr, bd0, dbinom_raw_dev). Two departures
+from R keep digits: the binomial deviation k - N p is formed without cancellation as q(2k - x m)/2, with x m's
+rounding error, and passed to bd0 (whose closed form becomes x ln(x/np) - diff); and ln(2πx(1 - x/n)) is one logarithm,
+with 1 - x/n from the exact n - x past n/2 (R's log1p(-x/n) is 4E-8 relative off at `F.DIST(2,1E10,5,FALSE)`, R's bd0
+up to 9,000 ulp at `F.DIST(57400,50,1,FALSE)`). A plain log-space form misses by up to about 300 ulp (T-1290). The
+error grows with |ln density| (about 100 ulp at `F.DIST(100,50,100,FALSE)` = 2.2E-67, 171 at `F.DIST(1E200,1,1,FALSE)`).
+Written with q = n/(n + x m), no intermediate of the deviation overflows at an x m near f64::MAX. The form replaces a non-finite statrs result, and a 0 from both statrs and the beta-density path (a positive
+beta-density value is kept: `F.DIST(1+2^-51,20,127,FALSE)` 1.1626735695122385, t2586-r5-f-bigconst-a B889, where
+statrs' own form is a finite 0); the log-form underflow check still gives 0 where the density underflows; x <= 0 keeps
+its value. Then `excel_density_range` applies round 5's range steps (a subnormal Y re-formed as fl(fl(density·x)/x), an
+F below 2^-1022 flushed to 0), and `f_dist_of` makes a subnormal x `#DIV/0!` (t2586-r5-f-edges-a B931, B932). The last
+1E-14 of the subnormal-Y cells is T-2647's, the last ulp of gen-m9 285d87cea1aaa73c A64 T-2642's.
+Status: VERIFIED (excel-graph) for the values and the range rules; the form is ours
+Tasks: T-1864, T-1290, T-2586, T-2642, T-2647
 
 ## F quantile at a huge df goes through Excel's BETA.INV (T-1538)
 Rule: at a huge df Excel's F.INV and F.INV.RT are Excel's BETA.INV mapped to the F scale, and that BETA.INV
@@ -3228,16 +3287,20 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2426, T-2051
 
 ## Paired functions pair two ranges of equal count whatever their shapes (T-2255)
-Rule: CORREL, INTERCEPT, FORECAST, FORECAST.LINEAR, CHISQ.TEST and CHITEST accept two arrays with the same number of cells
+Rule: CORREL, PEARSON, RSQ, SLOPE, STEYX, INTERCEPT, FORECAST, FORECAST.LINEAR, CHISQ.TEST and CHITEST accept two arrays with the same number of cells
 and different shapes, pairing them in reading order; only a different count is `#N/A`: `CORREL(Data!B11:E12,Data!D9:E12)`
 (2x4 against 4x2) is 1 (2a18b2f5a4dc43ac A370), `CORREL(Data!B10:D12,Data!C3:C11)` (3x3 against 9x1) -0.9888852938996431
 (a54c738c697617c3 A291), `INTERCEPT(Data!E5:E8,Data!B3:C4)` -0.15000001236262528 (f2bd5f380ec002bf A94),
 `CHITEST(Data!D10:E12,Data!A9:C10)` 0 (0a9226016e8f5f33 A291), `FORECAST.LINEAR(x,Data!C8:E9,Data!C7:D9)` `#DIV/0!`
 (7674c89c824aca43 A72). Which cell pairs with which (reading order, row by row) follows from the values only where they
 differ; UNVERIFIED beyond these cells.
-Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 17 cells listed in T-2431.
-Ours: `#N/A` for any shape difference; T-2431.
+Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 17 cells listed in T-2431; T-2256: `RSQ(Data!A4:C7,Data!C2:D7)` 0.3991684810183792 (329b177b5d5165ad A104), `SLOPE(Data!A7:D9,Data!D3:E8)` 1.0000000246913243 (334f3dc9ca937f10 A63), `PEARSON({3,3,3,3},Data!B8:C9)` `#DIV/0!` (38e4fc309fe199ea A26), `STEYX(Data!C8:E10,Data!C1:C9)` `#DIV/0!` (7980ffb6095a340d A352); T-2436 probe: `FORECAST(<FALSE>,Data!C1:D3,Data!C10:E11)` (3x2 against 2x3) `#DIV/0!` (b4173fe25109a238 A78).
+Ours: pairs by cell count in reading order (T-2431). For CHISQ.TEST and CHITEST of different shapes the degrees of freedom come from the first array's shape: UNVERIFIED, no oracle cell separates the choices (T-2650 probes `CHISQ.TEST({1;2;3;4},{2,2;2,2})` against `CHISQ.TEST({1,2;3,4},{2;2;2;2})`, df 3 against 1).
 Status: VERIFIED (excel-graph) for the cited cells
+
+CHISQ.TEST/CHITEST have no per-cell sign check: a negative actual (`CHITEST(Data!D7:D9,Data!C10:E10)`, -1 against 1, 0.1353352832366127 = exp(-2), c6cfda6bd10cae93 A375) and a negative expected cell with a positive summed statistic (`CHITEST(Data!B5:E7,Data!B7:D10)` is 0, f2bd5f380ec002bf A314) are numbers; only a negative summed statistic is `#NUM!` (probes-numeric/m9-legacy-chitest A21, `CHITEST(G1:G3,M1:M3)`, G={1,2,3}, M={5,6,-1}).
+Evidence: those three cells, excel-graph. Status: VERIFIED for them; a single negative expected with a positive total and all-numeric inputs is unprobed (T-2650).
+Open: `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (text and blanks only, including a blank against a blank) is `#DIV/0!` (0a9226016e8f5f33 A333) while other all-non-number pairings are 1 (8dd2312c96effb1b A343); UNVERIFIED why.
 
 ## An error element of an array argument is that error (T-2255)
 Rule: an error inside an array constant or array value given to LARGE, SMALL, QUARTILE.EXC, PERCENTRANK.INC,
