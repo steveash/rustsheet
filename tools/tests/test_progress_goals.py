@@ -159,7 +159,7 @@ def function(
     visible = counted["visible_numeric"] + counted["visible_other"]
     return FunctionParity(
         name, "statistical", "M9", tier, "sole" if sole else "all", attributed, excel,
-        sum(counted.values()), visible, False,
+        sum(counted.values()), visible, False, sum(excel.values()), True, None,
     )  # fmt: skip
 
 

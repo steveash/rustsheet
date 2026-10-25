@@ -87,6 +87,8 @@ def test_a_first_run_writes_every_block_in_order_with_placeholders() -> None:
         "since-last-run",
         "trends",
         "parity",
+        "top-functions",
+        "evidence",
         "readiness",
         "risks",
         "method",

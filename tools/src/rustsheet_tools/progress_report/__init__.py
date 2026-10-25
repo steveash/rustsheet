@@ -5,9 +5,10 @@ eval baselines, `eval/runs/latest/tasks.json` (`scripts/tasks.py stats --json`),
 docs/milestones.md, git, and the existing page and run history under `--out-dir` (the
 repository's docs directory; `make progress-report` passes it). A complete run writes
 `progress.md`, keeping the steward's judgment blocks byte for byte, and `progress/` (the
-all-functions page, the charts and history.json). An incomplete run (no report, an older report shape, or a skipped suite) rewrites only the page's
-status block as stale, adds a `complete: false` history row and exits 0. Every input is checked
-and every file rendered before anything is written, so a failed run leaves the pages as they were.
+all-functions page, the charts and history.json). An incomplete run (no report, an older report
+shape, or a skipped suite) rewrites only the page's status block as stale, adds a
+`complete: false` history row and exits 0. Every input is checked and every file rendered before
+anything is written, so a failed run leaves the pages as they were.
 
 With `--check` it writes nothing: it checks the judgment blocks of the existing page (check.py,
 T-0074) and exits 1, listing every offender, when one fails.
@@ -24,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.progress_report import check, goals, history, page, parity
+from rustsheet_tools.progress_report import check, evidence, goals, history, page, parity
 from rustsheet_tools.progress_report.model import (
     Parity,
     ProgressReportError,
@@ -74,6 +75,7 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
     ap = argparse.ArgumentParser(prog=PROG, description=(__doc__ or "").splitlines()[0])
     ap.add_argument("--report", type=Path, default=repo / "eval" / "runs" / "latest" / "report.json")
     ap.add_argument("--scope", type=Path, default=repo / "eval" / "catalog" / "scope.json")
+    ap.add_argument("--catalog", type=Path, default=repo / "eval" / "catalog" / "functions.yaml")
     ap.add_argument("--baselines", type=Path, default=repo / "eval" / "baseline", help="eval/baseline/")
     ap.add_argument("--tasks", type=Path, default=repo / "eval" / "runs" / "latest" / "tasks.json")
     ap.add_argument("--milestones", type=Path, default=repo / goals.MILESTONES_MD)
@@ -189,7 +191,7 @@ def _complete_outcome(
         f"{len(data.functions)} functions: " + ", ".join(f"{t.tier} {t.functions}" for t in data.tiers),
         parity.phase1_lines(data).splitlines()[0],
     ]
-    files = {**parity.files(data, run), **history.charts(rows)}
+    files = {**parity.files(data, run), **evidence.files(data), **history.charts(rows)}
     return Result(page.render(run, data, previous, sections), files, rows, summary)
 
 
@@ -202,7 +204,7 @@ def _evaluate(report: dict[str, Any], args: argparse.Namespace) -> Stale | tuple
     except ReportShapeError as e:
         return Stale(f"an older report shape ({e})", None)
     try:
-        data = compute(report, load_object(args.scope), args.baselines)
+        data = compute(report, load_object(args.scope), args.baselines, evidence.load_priors(args.catalog))
         goal = goals.load(report)
     except ReportShapeError as e:
         return Stale(f"an older report shape ({e})", run)
