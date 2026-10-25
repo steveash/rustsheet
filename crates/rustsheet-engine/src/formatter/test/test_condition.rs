@@ -183,3 +183,25 @@ fn an_unmatched_single_condition_prints_general() {
     assert_eq!(text(-11.0, "[=-10]#\" Wow\""), "-11");
     assert_eq!(text(-11.0, "[<>-10]#\" Wow\""), "-11 Wow");
 }
+
+#[test]
+fn a_condition_on_the_first_section_chooses_among_the_sections() {
+    use crate::formatter::format::{format_number, FormatContext};
+    let ctx = FormatContext::new(crate::locale::get_locale("en").unwrap());
+    let text = |v: f64, f: &str| format_number(v, f, &ctx).text;
+    // gen-m10 039accabcfe1e6c7 F!Q (excel-graph): the third section takes the rest.
+    assert_eq!(text(1.0, "[<0]\"neg\";[>0]\"pos\";\"zero\""), "pos");
+    assert_eq!(text(999.9999, "[<100]0.0;[>=1000]#,##0;0"), "1000");
+    assert_eq!(
+        text(1_234_567_890.0, "[<=-1]0;[<1]0.0000;0.0"),
+        "1234567890.0"
+    );
+    // The sign goes only for a condition that holds for negatives alone.
+    assert_eq!(text(-1.5, "[<=-1]0;[<1]0.0000;0.0"), "2");
+    assert_eq!(text(-0.5, "[<=-1]0;[<1]0.0000;0.0"), "-0.5000");
+    assert_eq!(text(-0.5, "[<100]0.0;[>=1000]#,##0;0"), "-0.5");
+    assert_eq!(text(-0.5, "[>=1]0.00;0.000"), "-0.500");
+    assert_eq!(text(0.5, "[>=1]0.00;0.000"), "0.500");
+    assert_eq!(text(-123_456.789, "[=0]\"nil\";General"), "-123456.789");
+    assert_eq!(text(0.0, "[=0]\"nil\";General"), "nil");
+}
