@@ -2259,6 +2259,16 @@ Input handling seen on the way:
 - `NORM.S.INV(2.3E-308-1E-309)` is PPND16(2.3E-308): the subnormal literal 1E-309 counts as 0
   (numbers.md, "A subnormal divisor is zero"). The difference itself is normal; had it flushed,
   the result would be #NUM!.
+- It is not a bisection on Excel's own NORM.S.DIST (the engine's `normal_cdf`, bit-exact with it since T-1916),
+  checked against the 341 central cells (T-0925, 2026-10-25). Variants tried: fixed brackets from [-1, 1] to
+  [-100, 100]; brackets of 1E-12 to 1E-2 around PPND16; widths of 0 to 1E-13, absolute or relative; returning lo,
+  the midpoint or hi. None matched more than 68 cells. A Newton solve on that CDF from PPND16, stopping on |dx| or
+  on |CDF - p| at 1E-17 to 1E-10, matched at most 68 too. statrs' closed form gets 164.
+LOGNORM.INV(p, m, s) is EXP(NORM.INV(p, m, s)) on the same hybrid (T-0925). In the tails it is EXP(m + z*s), with z
+the PPND16 quantile. `LOGNORM.INV(1E-20,0,1)` = 9.493291347224372E-05 (probes-numeric/t1543-inverse-cdf-tiny-p
+A16; statrs' `LogNormal::inverse_cdf` gave ...338E-05). With it, 20 ironcalc-calc LOGNORM.xlsx lines and 17 gen-m9
+LOGNORM.INV, LOGINV, CONFIDENCE.NORM and CONFIDENCE lines pass, and no cell regresses. The central LOGNORM.INV
+cells, such as `LOGINV(0.2,250,30)` (gen-m9/8fec7b207f4dd753 A55), wait on the central fit above.
 Evidence: probes-numeric/t1746-norm-s-inv-central (341 literal p over the central region, with
 NORM.S.DIST of each result and of PPND16(p)), m9-norm-s-inv, t1048-normsinv, t1048-norminv. Run
 it with `uv run rustsheet-fitlab norm-s-inv` (`fitlab/kernels/norm_inv.py`).
