@@ -3,7 +3,7 @@ id: T-2541
 title: "IM* inumber reading: VALUE-readable text, a tab or U+3000 is #NUM!, over 255 characters #VALUE!, a number at full precision (gen-m9, 8 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
