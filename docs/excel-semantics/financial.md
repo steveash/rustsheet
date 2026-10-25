@@ -1287,8 +1287,10 @@ Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
 Unprobed: serial 2958465 alone as a T-bill date (the inclusive bound is inferred), and the range in a 1904 workbook (the
 engine checks the date after the 1904 shift).
 Ours: matches since T-1406 (`coupon_args` in financial_bonds.rs, `tbill_arguments` in discount.rs); the COUP* upper
-bound since T-2486 (`coupon_date_of` in financial/dates.rs; in a 1904 workbook it is the 1904 calendar's own last day,
-as 9999-12-31 maturities compute there: probes/date-system-1904-coupon-bound) (before it, a maturity past 9999-12-31 read on to a later error, and `COUPDAYS(39123,2958466,1,0)` was
+bound since T-2486 (`coupon_date_of` in financial/dates.rs). In a 1904 workbook the bound is the 1904 calendar's own
+last day, 2957003, though the financial reading moves it past 9999-12-31: `COUPPCD(39000,2957003,2)` = -1462,
+`COUPPCD(39000,2957004,2)` and `COUPPCD(2957004,NA(),2)` are `#NUM!`, `COUPPCD(2957003,NA(),2)` is `#N/A`
+(probes/coup-calendar-edges-1904, excel-graph, 2026-10-24) (before it, a maturity past 9999-12-31 read on to a later error, and `COUPDAYS(39123,2958466,1,0)` was
 360).
 Status: VERIFIED (web; the COUP* upper bound excel-graph)
 Tasks: T-1406, T-2486
@@ -1430,12 +1432,17 @@ end keeps that day after a short month: maturity 2027-11-29 quarterly has coupon
 (`COUPPCD(37913,46720,4)` = 37862, `COUPNCD` 37954, `COUPDAYBS(37913,46720,4,4)` and on basis 0 = 50,
 `COUPDAYSNC(..,1)` = 41), and maturity 2027-05-30 quarterly has 2019-11-30 and 2020-02-29 (`COUPPCD(DATE(2020,1,1),
 DATE(2027,5,30),4)` = 43799, `COUPNCD` 43890); maturity 2027-08-29 semiannual has 2025-02-28 (common year) but 2025-05-29
-quarterly. Only COUPDAYS on basis 1 around a 29 February walks the chained schedule, each date clamped from the one
-after it ("COUPDAYS basis 1 around 29 February").
-Evidence: probes/coup-calendar-edges B1-B14 (excel-graph, 2026-10-24, T-2486); gen-m9/7d2979fba2c95d64 Calc!A304.
-Ours: matches since T-2486 (`coupon_period` in financial_bonds/coupon_schedule.rs); before it the walk stepped from each
-date to the next, so the day drifted to the 28th after the first February (COUPDAYBS was 51). The ODD* and ACCRINT
-walks (`change_month` in financial_bonds.rs, accrint.rs) still step date to date; unprobed for this.
+quarterly. PRICE, YIELD, DURATION, MDURATION, ODDFPRICE and ODDFYIELD use the same schedule:
+`PRICE(37913,46720,0.05,0.06,100,4,0)` = 87.29595935878451, `DURATION(37913,46720,0.05,0.06,4,0)` = 13.296825458940603,
+and with maturity 2027-11-29 an ODDFPRICE or ODDFYIELD first coupon of 2003-11-29 is on the schedule (87.29680647881554)
+while 2003-11-28 is `#NUM!`. Only COUPDAYS on basis 1 around a 29 February walks the chained schedule, each date clamped
+from the one after it ("COUPDAYS basis 1 around 29 February").
+Evidence: probes/coup-calendar-edges B1-B14, J1-J14 (excel-graph, 2026-10-24, T-2486); gen-m9/7d2979fba2c95d64 Calc!A304.
+Ours: matches since T-2486 (`coupon_period` in financial_bonds/coupon_schedule.rs, which the COUP*, PRICE, YIELD,
+DURATION, MDURATION and ODDF* schedules read); before it the walk stepped from each date to the next, so the day drifted
+to the 28th after the first February (COUPDAYBS was 51, the PRICE above 87.29662784091713, and the ODDF* first coupon
+had to be the 28th). The ODDL* and ACCRINT walks (`change_month` in financial_bonds.rs, accrint.rs) still step date to
+date; unprobed for this.
 Status: VERIFIED (excel-graph)
 Tasks: T-2486
 

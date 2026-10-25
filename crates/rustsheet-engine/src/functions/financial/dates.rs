@@ -108,8 +108,8 @@ impl Model {
     /// unless it floors to a day of this workbook's calendar, checked before the next argument is
     /// read (`COUPDAYS(2958466,NA(),2)` and `COUPNUM(39000,2958466,2,NA())` are #NUM!,
     /// `COUPNCD(2958465.5,NA(),2)` #N/A; probes/coup-calendar-edges A1-A8, T-2486). In a 1904
-    /// workbook the bound is its own last day, 9999-12-31, though `financial_date` reads that past
-    /// it (probes/date-system-1904-coupon-bound, where 9999-12-31 maturities compute).
+    /// workbook the bound is its own last day, 9999-12-31 (2957003), though `financial_date` reads
+    /// that past it (`COUPPCD(39000,2957004,2)` is #NUM!; probes/coup-calendar-edges-1904).
     pub(super) fn coupon_date_of(
         &self,
         value: &CalcResult,

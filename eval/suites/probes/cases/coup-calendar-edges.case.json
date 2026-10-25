@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2486: COUP* functions. A: a settlement or maturity past 9999-12-31 (2958465) against a later error. B: maturities on the 29th or 30th that are not a month end, whose schedule walk passes a February (does the coupon day drift to the 28th?). C: settlement 0 (and 5E-05, 1) with the previous coupon date before 1900-01-01, on basis 1 (a month-end maturity whose schedule passes 1899-12-31). D-I: COUPDAYS basis 1 from settlement 0 (F: 1) to month-end (D-F, I) and mid-month (G, H) maturities of every month of 2019, frequency 2 (D, F, G), 4 (E, H) and 1 (I).",
+ "description": "T-2486: COUP* functions. A: a settlement or maturity past 9999-12-31 (2958465) against a later error. B: maturities on the 29th or 30th that are not a month end, whose schedule walk passes a February (does the coupon day drift to the 28th?). C: settlement 0 (and 5E-05, 1) with the previous coupon date before 1900-01-01, on basis 1 (a month-end maturity whose schedule passes 1899-12-31). D-I: COUPDAYS basis 1 from settlement 0 (F: 1) to month-end (D-F, I) and mid-month (G, H) maturities of every month of 2019, frequency 2 (D, F, G), 4 (E, H) and 1 (I). J: PRICE, YIELD, DURATION, MDURATION, ODDFPRICE and ODDFYIELD on those 29th/30th maturities (does their schedule drift? ODDF* first coupon on the 28th or the 29th).",
  "tags": [
   "M9",
   "probe",
@@ -126,7 +126,21 @@
     "F12": "=COUPDAYS(1,DATE(2019,13,0),2,1)",
     "G12": "=COUPDAYS(0,DATE(2019,12,15),2,1)",
     "H12": "=COUPDAYS(0,DATE(2019,12,15),4,1)",
-    "I12": "=COUPDAYS(0,DATE(2019,13,0),1,1)"
+    "I12": "=COUPDAYS(0,DATE(2019,13,0),1,1)",
+    "J1": "=PRICE(37913,46720,0.05,0.06,100,4,0)",
+    "J2": "=YIELD(37913,46720,0.05,90,100,4,0)",
+    "J3": "=DURATION(37913,46720,0.05,0.06,4,0)",
+    "J4": "=MDURATION(37913,46720,0.05,0.06,4,0)",
+    "J5": "=PRICE(37913,46720,0.05,0.06,100,4,1)",
+    "J6": "=ODDFPRICE(DATE(2003,10,20),DATE(2027,11,29),DATE(2003,9,1),DATE(2003,11,28),0.05,0.06,100,4,0)",
+    "J7": "=ODDFPRICE(DATE(2003,10,20),DATE(2027,11,29),DATE(2003,9,1),DATE(2003,11,29),0.05,0.06,100,4,0)",
+    "J8": "=ODDFYIELD(DATE(2003,10,20),DATE(2027,11,29),DATE(2003,9,1),DATE(2003,11,29),0.05,87,100,4,0)",
+    "J9": "=ODDFYIELD(DATE(2003,10,20),DATE(2027,11,29),DATE(2003,9,1),DATE(2003,11,28),0.05,87,100,4,0)",
+    "J10": "=PRICE(DATE(2020,1,1),DATE(2027,5,30),0.05,0.06,100,4,1)",
+    "J11": "=DURATION(DATE(2020,1,1),DATE(2027,5,30),0.05,0.06,4,1)",
+    "J12": "=YIELD(DATE(2020,1,1),DATE(2027,8,30),0.05,95,100,2,0)",
+    "J13": "=ODDFPRICE(DATE(2003,10,20),DATE(2027,11,29),DATE(2003,9,1),DATE(2003,11,28),0.05,0.06,100,4,1)",
+    "J14": "=ODDFPRICE(DATE(2003,10,20),DATE(2027,11,29),DATE(2003,9,1),DATE(2003,11,29),0.05,0.06,100,4,1)"
    }
   }
  ],
