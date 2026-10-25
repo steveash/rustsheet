@@ -445,9 +445,24 @@ fn non_integer_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64
         // `1/SQRT(x)` agree (probes-numeric/power-neg-half-rounding, T-1541).
         extended_quotient(1.0, extended_sqrt(x))
     } else if y > 0.0 {
-        exp_of_product(y, x.ln())
+        positive_power(x, y, exp_of_product)
     } else {
-        extended_quotient(1.0, exp_of_product(-y, x.ln()))
+        extended_quotient(1.0, positive_power(x, -y, exp_of_product))
+    }
+}
+
+/// `exp(y·ln x)` for a positive `y`, where a product `y·ln x` that overflows is an overflow even
+/// when it is -∞: `POWER(0.1,9.99999999999999E+307)` is `#NUM!` and
+/// `POWER(0.1,-9.99999999999999E+307)` is 0, while `POWER(0.5,9.99999999999999E+307)` (a finite
+/// product, -6.9E+307) is 0 (probes/power-huge-exponent A61-A62, A81; numbers.md "POWER when
+/// y·ln x overflows").
+fn positive_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64 {
+    let ln_x = x.ln();
+    // ln 0 is -∞ already: `POWER(0,9.99999999999999E+307)` stays 0 (A281).
+    if ln_x.is_finite() && (y * ln_x).is_infinite() {
+        f64::INFINITY
+    } else {
+        exp_of_product(y, ln_x)
     }
 }
 
