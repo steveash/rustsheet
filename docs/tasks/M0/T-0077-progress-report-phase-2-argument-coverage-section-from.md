@@ -3,7 +3,7 @@ id: T-0077
 title: "Progress report phase 2: argument-coverage section from a per-function argument-type census in the eval report"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
