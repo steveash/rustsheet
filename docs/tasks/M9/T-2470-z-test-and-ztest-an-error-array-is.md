@@ -3,7 +3,7 @@ id: T-2470
 title: "Z.TEST and ZTEST: an error array is that error, one data value is #DIV/0! before sigma, a lone text or boolean cell is #N/A (gen-m9, 37 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -108,3 +108,9 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 Decision 0083 (gap triage 2026-10-23, T-2256): every cell it owns has the wrong type, error or text (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Outcome
+Z.TEST/ZTEST: a one-value data argument is `#DIV/0!` before a sigma of 0 or below, and a plain single-cell
+reference holding text, a boolean or nothing is `#N/A`. Eval delta: 24 gen-m9 known-failure lines fixed, no regressions.
+Not fixed: the remaining owned cells (nested sub-expressions, A294/A324 untraced, still failing in gen-m9). Unit test
+`Z.TEST(A1:A1,1)` with text is `#N/A` (the statistics.md evidence for `C7:C7`), not the `#DIV/0!` the criterion lists.
