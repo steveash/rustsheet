@@ -84,7 +84,7 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A186, A338, A376
 
 ## Acceptance criteria
-- [x] Visible parity (gen-m9, T-2256): these 48 known-failure lines (the T-2256 cells in Context) disappear from
+- [ ] (descoped, see Outcome) Visible parity (gen-m9, T-2256): these 48 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] None of the 18 cells above is a TypeMismatch in `make eval`. Each is a number, and a unit test
       shows it is bit for bit `-1 ×` the engine's own `T.INV.2T(2 - p, df)`. Cells whose mirror is
