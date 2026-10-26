@@ -5,7 +5,8 @@
 use super::ArgKind::{
     Lift, LiftArrays, LiftArraysRangeWhole, ReferenceByCaller, Whole, WholeByCaller,
 };
-use super::KernelWork::{Constant, Weighted};
+use super::KernelWork::{ByValue, Constant, Weighted};
+use super::ValueWork::HypergeometricSum;
 use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
 use crate::functions::Function;
 
@@ -160,11 +161,38 @@ const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
 // --- End incomplete gamma (T-1872) ----------------------------------------------------------
 
 // --- Hypergeometric (T-1873) ----------------------------------------------------------------
-/// One HYPGEOM.DIST element: its capped cdf's bound, (2^18 + 131) terms at 250 ns, about 66 ms, so
-/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`). A cdf
-/// or pmf takes either the double-double walk (at most 78 us, T-0977) or that sum, never both.
+/// The most one HYPGEOM.DIST element is charged: its capped cdf's bound, (2^18 + 131) terms at
+/// 250 ns, about 66 ms, so 32 elements at the bound take about 2.1 s (a DEVIATION; measured in
+/// release: hypegeom.rs `MAX_TERMS`).
 const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
-const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_DIST_WEIGHT));
+/// The units one term of HYPGEOM.DIST's cdf sum is charged: `HYPGEOM_DIST_WEIGHT` over the
+/// (2^18 + 131) terms of its bound, rounded up, so about 250 ns a term (T-2433).
+const HYPGEOM_TERM_WEIGHT: u32 = 16;
+/// What HYPGEOM.DIST's double-double walk is charged: at most 2^12 steps (T-0977), measured in
+/// release at about 120 us an element for the cdf's 4,000-step walk (16,384 elements of
+/// `HYPGEOM.DIST(0,4000,4000,1E9,TRUE)` took 1.93 to 2.0 s in benches/lift.rs, T-2433; the pmf's
+/// walk is cheaper, 78 us), so twice HYPGEOMDIST's weight: 8,192 elements a lifted call, about 1 s.
+const HYPGEOM_WALK_WEIGHT: u32 = 1 << 14;
+/// The exponents HYPGEOM.DIST's cdf sum may evaluate beside its terms: its window's bisections
+/// (hypegeom.rs `nonzero_terms`).
+const HYPGEOM_WINDOW_EXPONENTS: u32 = 131;
+/// `HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)`. A cdf or pmf
+/// takes either the double-double walk (`HYPGEOM_WALK_WEIGHT`) or the capped sum, never both, and the sum's window is at most
+/// min(sample_s, number_sample, population_s) + 1 terms (above min(number_sample, population_s)
+/// the cdf is 1 before any sum), so each element is charged the larger of the two by its counts
+/// (T-2433; before it, every element was charged the cap's bound, and a lift of 33 small calls
+/// was `#ERROR!` where Excel spills: gen-m9/7bd219ec0c0c5e22 A159).
+const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(
+    5,
+    &[Lift; 5],
+    ByValue(HypergeometricSum {
+        counts: &[0, 1, 2],
+        walk: HYPGEOM_WALK_WEIGHT,
+        extra: HYPGEOM_WINDOW_EXPONENTS,
+        per_term: HYPGEOM_TERM_WEIGHT,
+        weight: HYPGEOM_DIST_WEIGHT,
+    }),
+);
 /// One HYPGEOMDIST element: its pmf walk (`statistical/discrete.rs`, T-0977) of at most 2^12
 /// double-double steps, 78 us in release at 4,095 steps, twice BINOM.DIST's walk, so twice its
 /// weight: 16,384 elements a lifted call, about 1.3 s. Past the walk's budget the pmf is statrs'
