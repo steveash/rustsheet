@@ -11,6 +11,7 @@ mod discrete;
 pub(super) mod element_errors;
 pub(super) mod erf;
 mod exponential;
+mod f_test_tail;
 mod fisher;
 mod forecast;
 mod frequency;

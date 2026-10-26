@@ -3,7 +3,7 @@ id: T-2681
 title: "Identify Excel's F.TEST tail for the 8 cells still visibly off after T-2571"
 milestone: M9
 lane: research
-status: in-progress
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -51,3 +51,33 @@ orders, and df 1 against df 249 or 400 (the series hands over to `beta_reg_compl
 
 ## Out of scope
 - F.DIST, F.DIST.RT and BETA.DIST, which use the shared `beta_reg_complement` kernel.
+
+## Blocked because
+Blocked because: the eval baseline needs decision 0083's standing ulp-regression allowance
+(`rustsheet-eval update-baseline --allow-regressions`), and this run's permission policy refused
+that command. Everything else is done and pushed. To finish: on this branch run
+`scripts/eval_guard.sh target/release/rustsheet-eval update-baseline --allow-regressions` and
+`target/release/rustsheet-eval evidence-floor --update` after `make eval`, check that the only
+regressions are the 12 cells listed in the Outcome (decision 0083 conditions 1-4, all hold:
+numeric, at most 3 ulp, none visibly off, 7 visibly-off cells fixed against 0 made), commit the
+baseline, set `status: done`, and run the review.
+
+## Outcome
+- Finding: with both shapes above 1, F.TEST's tail is TOMS 708 bratio with Excel's pieces (T-2464
+  r2-bratio's `BEST`): w3's `bpser` and L140's `bup` with Excel's density as prefactor
+  (docs/excel-semantics/statistics.md "F.TEST / FTEST"; docs/research/t2681/README.md). Ported as
+  `f_test_bratio_p` (crates/rustsheet-engine/src/functions/statistical/f_test_tail.rs), used by
+  fisher.rs `f_test_p` where it reaches; a shape of 1/2 keeps the remainder model, which beats
+  bratio there.
+- Fit (`uv run rustsheet-fitlab f-test`, 291 cells): engine 160 / 270 / 7 visibly off before,
+  192 / 284 / 1 after (bit-exact / within 4 ulp / visibly off).
+- The 8 cells: 7 now have Excel's 15 digits (A141, A119, A81, A36 bit-exact; A380, A4, A377 within
+  3 ulp). gen-m9/b6593d7dd13f2dac A306 is still visibly off (25 ulp): follow-up T-2829.
+- Regressed from bit-exact (decision 0083 allowance; follow-up T-2830): gen-m9/2801c1c11c21e134 A2
+  (1 ulp), 285d87cea1aaa73c A280 (3), 320d51765af9b6b7 A223 (1), 85f48d5cdfb24555 A154 (2),
+  8d3588d8df0812df A243 (1), a61e547a1cab994c A11 (1), cde551ea787f713a A199 (1),
+  fd9fa22d212080d6 A279 (1), probes/ftest-decomposition C7, C13, F7, F13 (1 each).
+- Eval delta (before the baseline record): gen-m9 known failures 3801 -> 3776 (33 fixed, 8
+  regressed), probes 2644 -> 2638 (10 fixed, 4 regressed), ironcalc-calc 638 -> 637
+  (`F_TEST.xlsx` F1 fixed).
+- The T-2571 ad hoc scores are committed fits: `f-test-half`, `f-test-nr` (ftest_adhoc.py).
