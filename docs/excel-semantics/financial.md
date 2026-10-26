@@ -1312,7 +1312,7 @@ finishes in closed form, `remain * exp(n * log1p(-rate))` ("AMORDEGRC past 2^20 
 `counted += 1.0` stopped moving past 2^53, so main never finished there; where Excel did not finish within the
 excel-graph timeout, the kernel returns the value the walk reaches (a DEVIATION: `AMORLINC(2400,39679,39813,300,1E15,
 1E-300,1)` is 2.4E-297, the charge, and `AMORDEGRC(1E300,39679,39813,300,1E15,1E-300,1)` is 3, the charge 2.5 rounded).
-AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0: unexplained, "AMORLINC and AMORDEGRC check order") and at a cost of 1E308 (-b B2) are base values, T-1895.
+AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0: a value left over from B18, "AMORDEGRC below period 1") and at a cost of 1E308 (-b B2) are base values, T-1895.
 Status: VERIFIED (excel-graph) for AMORLINC's walks and AMORDEGRC's up to 2^20 periods; DEVIATION (decision 0014) past
 2^20 AMORDEGRC periods and where Excel did not finish
 Tasks: T-1841, T-1895
@@ -1328,14 +1328,8 @@ it is valid: `AMORLINC(2400,1,1,300,1,0.15,1)` is 360). Only then the basis is r
 comes last (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is `#N/A`). A purchase date below 1 is serial 0, the day before
 serial 1: `AMORDEGRC(2400,0,366,300,1,0.15,1)` is 562 (366 days), `AMORDEGRC(2400,0,1,..)` 899, `AMORDEGRC(2400,1,366,..)` 563,
 `AMORLINC(46557,0,39881,440,0,0.1)` 46117.
-AMORDEGRC with a period strictly between 0 and 1 is UNEXPLAINED. Mostly it is the asset's period-1 charge: on the 2400 asset
-periods 0.001 to 0.9999 are 776, period 1's value (probes/amordegrc-fractional-period A1-A11, the first cells of their
-workbook; amor-argument-check-order A846-A851), and `AMORDEGRC(98882,37287,38647,1E-13,0.3,0.1,1)` is 1693, its period 1
-(A23, A27). But `AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)` and `(..,0.5,..)` are 1693 where that asset's period 1 is 2284
-(A24, A26: 1693 is the value of the cell just before each), `AMORDEGRC(2400,..,0.0001,0.15,0)` and `(..,1)` are 0
-(amor-argument-check-order A862, A863), and `AMORDEGRC(98882,37287,38647,1E-13,0.5625,0.1,1)` is 0 in that probe (A864) but
-1 inside gen-m9 d912671baa1364aa A76. One hypothesis, untested, is a value left over from an earlier evaluation, which would depend on
-the calculation order; probing each formula alone in a fresh workbook would test it (T-1895). From 1 on a fractional period
+AMORDEGRC with a period strictly between 0 and 1 returns the previous AMORDEGRC's value ("AMORDEGRC below period 1" below).
+From 1 on a fractional period
 truncates (1.5 is period 1, 2.9 period 2), and AMORLINC reads any period above 0 and up to the full periods as a full charge
 (`AMORLINC(..,0.0001,0.15,1)` is 360).
 Evidence: probes/amor-argument-check-order (866 cells: each out-of-domain argument against `NA()`, text and `TRUE` in every
@@ -1343,10 +1337,32 @@ other position, `NA()` and `1/0` in every pair, booleans and text alone, purchas
 excel-graph, 2026-10-24, T-2485) and probes/amordegrc-fractional-period (32 cells). Every order cell fits the rule.
 Dates -1, -0.5, 0, 1E-15, 0.5, 0.99, 1 and 2958466 were probed (-0.5 is `#NUM!`, A410-A412, A843-A845); 2958465.5 is
 inferred (the floor is taken from the shared reader's other functions).
-Ours: since T-2485 (`amortization_of` and `amor_date` in functions/financial/amortization.rs). AMORDEGRC below period 1
-stays 0 (known failures, T-1895).
-Status: VERIFIED (excel-graph) for the order and the purchase date below 1; UNEXPLAINED for AMORDEGRC below period 1
+Ours: since T-2485 (`amortization_of` and `amor_date` in functions/financial/amortization.rs).
+Status: VERIFIED (excel-graph)
 Tasks: T-2485, T-1895
+
+## AMORDEGRC below period 1
+Rule: AMORDEGRC with a period strictly between 0 and 1 computes no charge of its own: it returns the value the previous
+AMORDEGRC evaluation in the same calculation left behind, and 0 when no AMORDEGRC ran before it or the one before it was an
+error. Alone in a fresh workbook every such formula is 0: `AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)`,
+`AMORDEGRC(2400,39679,39813,300,0.5,0.15,1)`, `(..,0.0001,..)` and `AMORDEGRC(98882,37287,38647,1E-13,0.5625,0.1,1)`
+(probes/amordegrc-fraction-alone-a to -d). With an `AMORDEGRC(2400,39679,39813,300,2,0.15,1)` (485) in the workbook it is
+485 or 0 by position: after it in A2 (-f: A1 `AMORDEGRC(10000,..,0.3,..)` is 485, A2 the 485 charge) but 0 before it (-e: A1
+485, A2 the 0.3 cell 0; -g: A1 485, A2 0.0001 and A3 0.5 both 0). Excel for the web appears to evaluate a freshly uploaded sheet's
+cells from the last to the first here (inferred), so the value comes from the cell *below*: every earlier cell fits that reading.
+probes/amordegrc-fractional-period A1-A11 are 776, the value of A12 (period 1.0001) below them; A23-A26 are 1693, A24's
+and A26's from A25 and A27 (a different asset, whose own period 1 is 2284, A28); fin-amor-period-bound B17 (period 0.5) is
+485, B18's value; amor-argument-check-order A846-A851 are 776 from A852 (period 1.5), and A862-A864 are 0 under A865, an
+error (`#NUM!`). gen-m9 d912671baa1364aa A76 (period 0.5625) is 1 though every other AMORDEGRC there is an error, so the
+left-over value may also come from another function (unprobed).
+The value is a calculation-order artifact: it depends on which cell Excel happened to evaluate first, not on the formula.
+Evidence: probes/amordegrc-fraction-alone-a to -g (excel-graph, 2026-10-26, T-1895), with the earlier cells above.
+Ours: 0, Excel's value for the formula alone (`DegressiveWalk::charge` walks no period below 1). The cells that read a
+neighbour's value stay known failures: matching them needs Excel's calculation order and state carried between cells,
+which the engine does not model (T-2825).
+Status: VERIFIED (excel-graph) for the formula alone and the A1/A2 order cases; the last-to-first evaluation order is
+inferred (unprobed against other layouts, sheets or a recalculation after an edit) and gen-m9 A76 is UNEXPLAINED (T-2825)
+Tasks: T-1895, T-2825
 
 ## AMORDEGRC past 2^20 periods
 Rule: past 2^20 periods RustSheet computes AMORDEGRC's decay in closed form, `remain * exp(n * log1p(-rate))` from the
@@ -1365,6 +1381,14 @@ Evidence: probes/fin-amor-period-bound-c A1-A6 (excel-graph, 2026-10-18, T-1841 
 Status: DEVIATION (decision 0014)
 Implemented in: functions/financial/amortization.rs (`DEGRESSIVE_LOOP_PERIODS`, `DegressiveWalk::closed_form`)
 Tasks: T-1841, T-1895
+
+T-1895: AMORDEGRC's rounding keeps a charge past about 1.8E295 finite: `AMORDEGRC(1E308,39679,39813,300,1E5,1E-6,1)` is
+1.94700443465919E302 in Excel (probes/fin-amor-period-bound-b B2). Main's rounding scaled the value by 1E13 first and
+overflowed to 0; the engine now skips that pre-round where it overflows (1.9470044346591894E302, the same 15 digits).
+Excel does not round each period's charge before subtracting it from what is left: a walk that does gives -c A1-A4
+but probes/fin-amor-period-bound B4 and B5 become 1000 and 999 (Excel 0), B11 41042641306981 (Excel
+41042641307062) and fin-amordegrc A7 155 (Excel 154) (T-1895, a scratch run). Excel's exact per-period arithmetic at
+these sizes is open (T-2826).
 
 ## AMORLINC and AMORDEGRC work cap
 Rule: RustSheet charges each lifted AMORLINC element 2^9 units and each AMORDEGRC element 2^18 against SPEC-0011's 2^27
@@ -2326,7 +2350,7 @@ Tasks: T-2455
 Rule: ACCRINT reads its last argument, calc_method, before all the others: calc_method's own error is the result, and
 text there (`"1"`, `"TRUE"`, `""`) is `#VALUE!` ("VDB, DDB and ACCRINT argument types"), whatever the first seven
 arguments hold, an issue off the calendar included. Then it reads issue, first_interest, settlement, rate, par,
-frequency and basis in order, and a date that does not floor to a calendar serial (below 0, or past 2958465) is `#NUM!`
+frequency and basis in order, and an issue or first_interest that does not floor to a calendar serial (below 0, or past 2958465) is `#NUM!`
 as soon as it is read, before a later argument's error, text or boolean, as the COUP* readers do ("Analysis ToolPak
 securities functions check frequency and dates first"). A par read from a FALSE cell is `#VALUE!`, before frequency
 100's `#NUM!`.
@@ -2346,11 +2370,11 @@ securities functions check frequency and dates first"). A par read from a FALSE 
   of f81bd3b6dc373e5c); the tenth, f81bd3b6dc373e5c A115, is `#SPILL!` because its par is an array, which lifts first.
 - boolean par: `ACCRINT(32965,35462,36817,10,<FALSE cell>,100,1.005,FALSE)` is `#VALUE!` (932b33b1ef8b7608 A233).
 Unprobed: whether an issue after the settlement waits for the later arguments (ours checks the order after every
-read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest); a typed boolean par, and
+read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest) or below 0 read before a later error; a first_interest of 0 in a 1900 workbook (ours: `#NUM!`); a typed boolean par, and
 booleans in first_interest, settlement, frequency and basis.
 Evidence: gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c (excel-graph, T-2676 sweep, 2026-10-26); each
 cell's arguments evaluated with the engine on the case's Data sheet.
-Ours: `accrint_of` (functions/financial/accrint.rs) reads left to right and checks the dates after every read; T-2792.
+Ours: since T-2792, `accrint_of` (functions/financial/accrint.rs) reads calc_method first, then issue and first_interest, each range-checked from serial 0 as it is read (serial 0 itself still fails the later calendar check), then the other arguments in order; settlement is checked against its calendar limit only after all are read, and a boolean par, typed or from a cell, is `#VALUE!` (the engine cannot tell a typed one from a cell).
 Status: VERIFIED (excel-graph)
 Tasks: T-2792
 

@@ -32,6 +32,13 @@ C	probes/aggregate-range-args.case.json	38
 C	probes/aggregate-range-function-num-grid.case.json	22
 C	probes/aggregate-range-k-first-cell.case.json	48
 C	probes/amor-argument-check-order.case.json	866
+C	probes/amordegrc-fraction-alone-a.case.json	1
+C	probes/amordegrc-fraction-alone-b.case.json	1
+C	probes/amordegrc-fraction-alone-c.case.json	1
+C	probes/amordegrc-fraction-alone-d.case.json	1
+C	probes/amordegrc-fraction-alone-e.case.json	2
+C	probes/amordegrc-fraction-alone-f.case.json	2
+C	probes/amordegrc-fraction-alone-g.case.json	3
 C	probes/amordegrc-fractional-period.case.json	32
 C	probes/anchorarray-at-operand-kinds.case.json	16
 C	probes/anchorarray-at-operand.case.json	2
@@ -458,6 +465,7 @@ C	probes/geomean-root-refinement.case.json	48
 C	probes/geomean-same-product.case.json	23
 C	probes/geomean-single-and-copies.case.json	260
 C	probes/geomean-stored-3ulps-low.case.json	9
+C	probes/getpivotdata-empty-intersection.case.json	24
 C	probes/getpivotdata-evidence-floor.case.json	23
 C	probes/getpivotdata-real-pivot.case.json	33
 C	probes/groupby-blank-values.case.json	110
@@ -1628,6 +1636,7 @@ F	probes/amor-argument-check-order.case.json	Calc!A848
 F	probes/amor-argument-check-order.case.json	Calc!A849
 F	probes/amor-argument-check-order.case.json	Calc!A850
 F	probes/amor-argument-check-order.case.json	Calc!A851
+F	probes/amordegrc-fraction-alone-f.case.json	Sheet1!A1
 F	probes/amordegrc-fractional-period.case.json	Calc!A1
 F	probes/amordegrc-fractional-period.case.json	Calc!A10
 F	probes/amordegrc-fractional-period.case.json	Calc!A11
@@ -3410,12 +3419,6 @@ F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U1
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U16
 F	probes/t2436/e85daedce5c2675e.case.json	Calc!A31
 F	probes/t2436/e85daedce5c2675e.case.json	Calc!A46
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!A136
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!A151
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!T136
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!T151
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!U136
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!U151
 F	probes/t2454-offset-array-height.case.json	Sheet1!A12
 F	probes/t2454-offset-array-height.case.json	Sheet1!B12
 F	probes/t2454-offset-array-height.case.json	Sheet1!C12
