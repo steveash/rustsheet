@@ -483,7 +483,11 @@ fn amor_are_equal(x: f64, y: f64) -> bool {
 // `round excelComplaint`: pre-round to 13 significant digits (Excel's internal
 // precision) then round to the nearest integer, ties away from zero.
 fn amor_round(x: f64) -> f64 {
-    let k = (x * 1e13).round() / 1e13;
+    // Past about 1.8E295 the scaled value overflows; there the pre-round has no visible effect, and
+    // skipping it keeps a huge charge finite (`AMORDEGRC(1E308,..)`, probes/fin-amor-period-bound-b
+    // B2, T-1895).
+    let scaled = (x * 1e13).round();
+    let k = if scaled.is_finite() { scaled / 1e13 } else { x };
     k.round()
 }
 
@@ -641,6 +645,17 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn amor_round_keeps_a_huge_charge_finite() {
+        // `x * 1e13` overflows past about 1.8E295: the value rounds as it is (T-1895).
+        assert_eq!(
+            amor_round(1.947_004_434_659_189_4e302),
+            1.947_004_434_659_189_4e302
+        );
+        assert_eq!(amor_round(-1e300), -1e300);
+        assert_eq!(amor_round(2.5), 3.0);
     }
 
     #[test]

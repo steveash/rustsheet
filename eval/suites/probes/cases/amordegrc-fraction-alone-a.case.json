@@ -1,0 +1,18 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1895: AMORDEGRC with 0 < period < 1, alone in a fresh workbook: the 10000 asset at period 0.3 (its period 1 is 2284; 1693 in amordegrc-fractional-period A24, the previous cell's value). Tests whether the value depends on an earlier evaluation.",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)"
+      }
+    }
+  ],
+  "expected": {}
+}
