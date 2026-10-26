@@ -3,7 +3,7 @@ id: T-2404
 title: "GETPIVOTDATA on an empty intersection of an Average or Count pivot is 0, not #REF!"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
