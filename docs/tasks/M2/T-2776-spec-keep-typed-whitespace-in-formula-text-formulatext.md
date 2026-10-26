@@ -3,7 +3,7 @@ id: T-2776
 title: "Spec: keep typed whitespace in formula text (FORMULATEXT, export) as Excel does"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
