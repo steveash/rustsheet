@@ -11,7 +11,7 @@ merged since its last run.
 
 This is the scheduled run at 18:47 UTC. It follows #1896, this morning's 05:47 UTC run, and covers the 52 commits merged to `main` since then, through 96449aaf, including the two this run merged.
 
-`make eval` ran on 5dc93dd8, this branch merged with `main` at 96449aaf, so it includes everything this run merged.
+`make eval` ran on 5dc93dd8, this branch merged with `main` at 96449aaf, so it includes everything this run merged. #1953 (T-2782) merged after it and only removes known failures: 6 M0–M2 cells (t2769 S!C17; t2776-shapes C13, C19, C20, C22, E6). The lock and dashboard predate it, and the next run lowers the lock further.
 - All 17 suites were fetched and scored. On the first pass (on 7ffb09ee), calipers, corpus-bench and poi had not been fetched; I fetched them and re-ran. Timeouts: 0 in every suite.
 - `make eval-lower-visible-lock` shows 0 regressions in every gated suite and lowers the visible-parity lock from 4,448 to 3,581 (decision 0093).
 - I first lowered the lock to 3,541 on 7ffb09ee. reviewer-excel-fidelity pointed out that #1826, merged by this run, adds 43 visibly-off probe cells, so that lock would fail on the merged head. CI confirmed it. I merged `main` in under the merge lock and re-ran the eval.
@@ -21,7 +21,7 @@ This is the scheduled run at 18:47 UTC. It follows #1896, this morning's 05:47 U
 CI on `main` is green: every push run since #1896 succeeded or was cancelled by the next push, and none failed.
 
 **M2 is still current: M0–M2 probes (decision 0051) have 18 known failures, 11 of them visibly off.** Every one has an open M2 owner, checked by hand by the planner and me.
-- `probes/t2776-formula-text-whitespace-shapes` has 8 cells and `t2769-formula-text-whitespace` S!C17 has 1. Owners: T-2782 (draft #1953, handed off to opus), then T-2783 and T-2784.
+- `probes/t2776-formula-text-whitespace-shapes` has 8 cells and `t2769-formula-text-whitespace` S!C17 has 1. T-2782 (#1953, merged after the eval) fixed 6 of them; T-2783 and T-2784 own the rest.
 - `probes/t2776-ws-after-bang` S!A1 and S!C1. Owner: T-2785.
 - `probes/t2756-roundup-smallest-normal-threshold` Sheet1!A52–A58 are within 15 digits but not bit-exact. Owner: T-2771. The planner now names each cell in it, so the exit-owner rule can see them.
 - The new failures come from the SPEC-0023 whitespace probes (T-2776). T-2781 (#1925) fixed last run's two visibly-off cells, t2723 S!C24 and S!C25.
@@ -72,7 +72,7 @@ Spot-audit: the last was 2026-10-25 (#1736), so none is due. The next is on or a
 **Critical lane:** engine, research, harness
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
-- engine: T-2782 (handed off to opus, #1953), T-2783, T-2784 and T-2785 own 11 of the 18 M0–M2 known failures, all visibly off.
+- engine: T-2783, T-2784 and T-2785 own the visibly-off M0–M2 cells left after T-2782 (#1953, merged after the eval).
 - research: T-2771 owns the last 7 (A52–A58, bit-level).
 - harness: T-2822, the M2 exit row that lets `make exit-owners` check M2.
 - api and quality have no M2 work. perf stays out: Phase 2.)
