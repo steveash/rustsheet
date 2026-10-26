@@ -97,3 +97,16 @@ A window of returned values (16-24) between two `#NUM!` bands (11-15 and 25+) ru
 |f| threshold on its own. Next: trace the engine's secant for n = 11..26 (step size, |f|, iterate count) and check
 which quantity separates 16-24 from 11-15 and 25+. Hypothesis (a) of the Context (the 1+r / ^ trajectory reaches
 -1 or goes flat before the cap) fits a band structure best.
+- Trace (scratch plain-double secant, r0 = guess, r1 = r0 - 0.001·sign(f0), f = pv·(1+r)^n, stop |dr| < 1e-7 and
+  |f| < 1e-7, cap 200): n = 2-10 converge at steps 33-187 with Excel's bits. Every run with n >= 11 hits the cap.
+  The model's 200th iterate equals Excel's value **bit for bit** on every returned cell: n = 16-24, A48 (pv -1),
+  and A54 (guess 0, -0.9972854136129494). So the trajectory is right and only the cap's return rule is open.
+  It sorts by the 200th step |r200 - r199|:
+  - `#NUM!`: 1.34e-7 (n 11), 3.87e-7 (12), 9.35e-7 (13), 1.97e-6 (14), 3.72e-6 (15).
+  - returned: 6.46e-6 (16) ... 8.94e-5 (24), and 8.13e-5 (guess 0 at n 24).
+  - `#NUM!`: 1.09e-4 (25) and up; 1.22e-4 (guess 0.5 at n 24).
+  |f200| is 1e-61 to 1e-59 throughout, so an |f| test cannot separate them. rate-step-cap A31 (200th step 8e-7,
+  `#NUM!`) falls in the lower `#NUM!` band, and A30 (step < 1e-7) returned. A two-sided window on the last step
+  (between about 4e-6 and 1e-4) fits but looks unlikely as code. Check a relative test next (step / |1+r|: at
+  n 15 that is 3.7e-6 / 7.6e-5 = 0.049, at n 16 6.5e-6 / 1.4e-4 = 0.046, at n 24 0.030, at n 25 0.029), and
+  the previous step or the f ratio. Script: the model above, about 15 lines of Python.
