@@ -200,7 +200,10 @@ fn incomplete_gammas_that_hung_or_panicked_are_bounded() {
 /// `=ROWS(call)` with `#` replaced by `n`, evaluated alone.
 fn rows_of(call: &str, n: u32) -> String {
     let mut model = new_empty_model();
-    model._set("A1", &format!("=ROWS({})", call.replace('#', &n.to_string())));
+    model._set(
+        "A1",
+        &format!("=ROWS({})", call.replace('#', &n.to_string())),
+    );
     model.evaluate();
     model._get_text("A1")
 }

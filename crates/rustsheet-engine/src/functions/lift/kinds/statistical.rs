@@ -7,7 +7,9 @@ use super::ArgKind::{
 };
 use super::KernelWork::{ByValue, Constant, Weighted};
 use super::ValueWork::{HypergeometricSum, IncompleteGamma};
-use super::{ArgKinds, GammaShape, KernelWork, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use super::{
+    ArgKinds, GammaShape, KernelWork, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6,
+};
 use crate::functions::Function;
 
 /// A data argument its function reads itself, then one lifted worksheet argument:

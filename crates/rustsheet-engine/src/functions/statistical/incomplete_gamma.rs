@@ -615,9 +615,9 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::{
-        gamma_cdf, gamma_density, gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur,
-        cdf_terms_bound, continued_fraction_budget, incomplete_gamma_pair, inverse_cdf_within, Tail,
-        Terms, MAX_TERMS,
+        cdf_terms_bound, continued_fraction_budget, gamma_cdf, gamma_density, gamma_inverse_cdf,
+        gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, Tail, Terms,
+        MAX_TERMS,
     };
     use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
     use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
