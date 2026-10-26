@@ -167,9 +167,18 @@ meant is a *name* to Excel, so an undefined one evaluates to `#NAME?`, not to a 
 `IF(B2="domestic",“D”,IF(B2="international",“I”,“N/A”))` is `#NAME?`.
 Evidence: corpus-bench/48354/1_48354_input.xlsx Sheet1!D2:D6 (5 cells; the stored `<f t="array">` keeps the
 U+201C/U+201D characters and the workbook's own cached value is `#NAME?`, as is the excel-graph sidecar).
-Which other characters Excel's name lexer accepts, and whether a typed formula behaves like a stored one, is
-unprobed (T-0481 probes it). Ours: `#ERROR!` (the lexer refuses the token).
-Status: VERIFIED (stored formulas, excel-graph + Excel-cached); the character set UNVERIFIED
+The quoted token is an ordinary undefined name, not an error shape: it is `#NAME?` only when evaluated
+(`IF(FALSE,“D”,1)` is 1), `ISREF(“D”)` is FALSE, `ERROR.TYPE(“D”)` is 5, `“D”&"x"` and `SUM(“A1”)` are
+`#NAME?` (`“A1”` is a name, not a cell), `=“N/A”` is `#NAME?`, and FORMULATEXT keeps the curly quotes.
+Evidence: probes/t0481-curly-quote-names A1-A10 and -b A1-A2 (excel-graph, 2026-10-26, stored formulas).
+Unprobed: whether a *typed* formula behaves the same (the oracle cannot type one), whether a name can be
+*defined* with these characters, and other punctuation as a name character (`€`, a quote mid-name
+`a“b`, `"x"“y"`; probes/t0481-curly-quote-names-c, pending), and a quoted token as a sheet prefix (`“D”!A1`,
+which ours reads as a sheet name).
+Ours (T-0481): the lexer reads U+201C and U+201D as name characters, anywhere in a name, and a token
+holding one is a name even where it would spell a cell (`is_typographic_quote`, `is_quoted_name` in
+crates/rustsheet-engine/src/expressions/utils/mod.rs, used by the lexer); defined names still refuse them.
+Status: VERIFIED (stored formulas, excel-graph + Excel-cached); typed formulas and the wider character set UNVERIFIED
 Tasks: T-0481
 
 ## A structured reference into a linked workbook is `#REF!`

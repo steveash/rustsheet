@@ -3,7 +3,7 @@ id: T-0481
 title: "A stored formula's typographic quotes parse as an undefined name: #NAME?, not #ERROR! (corpus-bench/48354 D2:D6)"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -46,15 +46,15 @@ or only an error shape. Record the rule in references.md beside the backslash en
 accepting cases.
 
 ## Acceptance criteria
-- [ ] A probe case with excel-graph values for the forms above; docs/excel-semantics/references.md states the
+- [x] A probe case with excel-graph values for the forms above; docs/excel-semantics/references.md states the
       rule (VERIFIED) and cites corpus-bench/48354 D2:D6 with the probe cells.
-- [ ] Sheet1!D2:D6 of corpus-bench/48354 are `#NAME?`, so the `F corpus-bench/48354/1_48354_input.xlsx *` line
+- [x] Sheet1!D2:D6 of corpus-bench/48354 are `#NAME?`, so the `F corpus-bench/48354/1_48354_input.xlsx *` line
       disappears from eval/baseline/corpus-bench.txt, with no new F line in any baseline.
-- [ ] A parser/lexer unit test for a name token with U+201C/U+201D (and whatever else the probe accepts) that
+- [x] A parser/lexer unit test for a name token with U+201C/U+201D (and whatever else the probe accepts) that
       resolves to `#NAME?` when undefined, plus a test that a well-formed string literal is unaffected.
-- [ ] An xlsx round-trip test: the stored formula keeps its characters on export (the formula text is not
+- [x] An xlsx round-trip test: the stored formula keeps its characters on export (the formula text is not
       rewritten).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bare newer function names loading as `#NAME?` (T-1089).
@@ -65,3 +65,12 @@ accepting cases.
 Decision 0083: every cell this task owns has the wrong error (none is a last-digit difference), so the task is
 in the campaign at the `semantics` stage. Its target is that every cell it owns has Excel's error value; the
 second acceptance criterion states it.
+
+## Outcome
+Probes t0481-curly-quote-names A1-A10 and -b A1-A2 (excel-graph, stored formulas) show a curly-quoted token is an
+ordinary undefined name: `#NAME?` when evaluated, `IF(FALSE,“D”,1)` = 1, `ISREF` FALSE, `ERROR.TYPE` 5,
+FORMULATEXT keeps the quotes, `“A1”` is a name. The lexer now reads U+201C/U+201D as name characters
+(`is_typographic_quote`, `is_quoted_name`); references.md records the rule. Engine and xlsx round-trip tests added.
+Eval: corpus-bench known failures 6 -> 5 (48354, 5 cells), 0 regressions; 12 new probe cells pass.
+Unprobed and recorded as such: typed formulas, defined names with these characters, `€`, a quote mid-name or after
+a string (probes/t0481-curly-quote-names-c is committed pending: the oracle run timed out before answering it).
