@@ -2165,7 +2165,7 @@ Which error wins when both are bad: see the T-2423 probe below.
 ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)` is five "DLXI" (forms
 1, 2, 0.5, 3, 4; the 123456789.123 element is `#VALUE!` and the HSTACK pads `#N/A`, both dropped by ignore 2: gen-m7/f7e94a817e5385ac
 Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. The array number, a multi-cell range and an array of booleans as the form are evidenced below (T-2423). Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
-ROMAN probed (T-2423, probes/roman-lift-forms, excel-graph, 2026-10-23): `ROMAN({1;4},0)` is the 2x1 "I", "IV"; `ROMAN(4,Data!A1:A2)` (forms 0, 4) is "IV", "IV"; `ROMAN(Data!A1:A2,0)` (numbers 0, 4) is "", "IV"; `ROMAN(4,{TRUE,FALSE})` is "IV", "IV" and `ROMAN(4,TRUE)` is "IV". `ROMAN(499,{TRUE,FALSE})` is "CDXCIX", "ID" (TRUE is form 0, FALSE is form 4) and `ROMAN(499,Data!A1:A2)` (forms 0, 4) is "CDXCIX", "ID"; `ROMAN(499,{1,2,3,4})` is "LDVLIV", "XDIX", "VDIV", "ID" (the 4-based results above cannot tell the forms apart). When both are bad the form's error wins over a negative number for `ROMAN(-5,NA())` (`#N/A`; ours `#VALUE!`, T-2523), and the text form `ROMAN(-5,"x")` is `#VALUE!`; `ROMAN(4000,9)` is `#VALUE!`.
+ROMAN probed (T-2423, probes/roman-lift-forms, excel-graph, 2026-10-23): `ROMAN({1;4},0)` is the 2x1 "I", "IV"; `ROMAN(4,Data!A1:A2)` (forms 0, 4) is "IV", "IV"; `ROMAN(Data!A1:A2,0)` (numbers 0, 4) is "", "IV"; `ROMAN(4,{TRUE,FALSE})` is "IV", "IV" and `ROMAN(4,TRUE)` is "IV". `ROMAN(499,{TRUE,FALSE})` is "CDXCIX", "ID" (TRUE is form 0, FALSE is form 4) and `ROMAN(499,Data!A1:A2)` (forms 0, 4) is "CDXCIX", "ID"; `ROMAN(499,{1,2,3,4})` is "LDVLIV", "XDIX", "VDIV", "ID" (the 4-based results above cannot tell the forms apart). When both are bad the form's error wins over a negative number for `ROMAN(-5,NA())` (`#N/A`, implemented in T-2523), and the text form `ROMAN(-5,"x")` is `#VALUE!`; `ROMAN(4000,9)` is `#VALUE!`.
 COMBINA lifts over arrays (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COMBINA({7;1},4)` is the 2x1 209.99999999999997 (COMBIN(10,4), as above), 1; `COMBINA(Data!E7:E8,4)` and `COMBINA(4,{1;2})` are
 2 rows; `COMBINA(WRAPROWS(E6:E12,1,1),4)` is 7x1: #NUM! (blank is 0), 209.99999999999997, #NUM!, 5, #VALUE! ("abc"), #NUM!, #VALUE!. The gen-m7 `#VALUE!` of
 `VSTACK(COMBINA(..),CHOOSE(3,..))` (f19581ac44da1653 A3357) is the CHOOSE: a scalar-error argument makes VSTACK that error (probes/vstack-scalar-error, T-1695)
@@ -2260,6 +2260,13 @@ not all at the tightest ties: x = 8242 lies 0.04 of a 64-bit ulp from a 64-bit v
 rounds it the other way. So Excel's own tangent carries an error up to about half a 64-bit ulp, and its last bit at such a near-tie
 is not predictable from the exact value. Those 21 cells stay known failures of that probe (as decision 0112 keeps LN's near-ties).
 Ours: implemented (`excel_tan` in functions/math_and_trigonometry/trig.rs, T-2147). COT, which is 1/TAN, inherits the change.
+COT at the same 150 arguments (probes-numeric/t2664-cot-double-rounding, excel-graph, 2026-10-26, T-2664): ours, `1/` the
+double-rounded `excel_tan` (quotient rounded twice), matches 131 of 150 Excel cells, against 129 for TAN itself. 17 misses are 1 ulp and 2 are
+2 ulp (rows 49 and 106); the 19 (rows 8, 22, 49, 58, 59, 66, 73, 81, 106, 107, 111, 115, 128, 130, 132, 135, 140, 145, 149) are all rows
+where TAN also misses by 1 ulp, and dividing a small tangent into 1 can double the gap. TAN's misses at rows 25 and 123 come out right in COT.
+So COT inherits TAN's double rounding and its unpredictable near-tie noise. Simple alternatives fit far worse: on the 38 cells with |x| <= 1.5
+(where Excel's limited-precision pi does not matter yet; no COT miss lies there) ours matches all 38, while the exact cotangent rounded once, the cotangent rounded
+to 64 bits then 53, and the quotient of a 64-bit tangent each match 20 (independent fit during review, T-2664). Ours stays as is.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 
