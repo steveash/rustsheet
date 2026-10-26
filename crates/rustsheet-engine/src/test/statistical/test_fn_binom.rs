@@ -331,3 +331,21 @@ fn negbinom_dist_at_one_success_or_no_failures_takes_the_closed_form() {
         ],
     );
 }
+
+#[test]
+fn test_negative_fractional_count_is_num_before_truncation() {
+    // gen-m9 85f48d5cdfb24555 A35, d208bbafc3bc1997 A231: the sign is checked before truncation (T-2700).
+    let mut model = new_empty_model();
+    model._set("A1", "=BINOM.DIST(-0.0125, 10, 1E-16, FALSE)");
+    model._set("A2", "=NEGBINOMDIST(-0.5, 8, 0.5)");
+    model._set("A3", "=BINOM.DIST(2.9, 3.9, 0.5, FALSE)"); // a positive fraction still truncates
+    model._set("A4", "=BINOM.DIST(2, 3, 0.5, FALSE)");
+    model._set("A5", "=BINOM.DIST(-0, 3, 0.5, FALSE)"); // negative zero is no negative count
+    model._set("A6", "=BINOM.DIST(0, 3, 0.5, FALSE)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), model._get_text("A4"));
+    assert_eq!(model._get_text("A5"), model._get_text("A6"));
+}

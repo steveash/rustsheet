@@ -32,8 +32,9 @@ pub(crate) const RATE_MAX_STEPS: u32 = 200;
 /// RATE as Excel computes it: a secant on the residual [`rate_residual`] from r0 = guess and
 /// r1 = r0 - 0.001·sign(f(r0)), each step `r2 = r1 - f1·(r1-r0)/(f1-f0)` with Excel's
 /// twice-rounded `-`, `*` and `/`. It stops at the first iterate with |r2 - r1| < 1e-7 and
-/// |f(r2)| < 1e-7; the iterate of step [`RATE_MAX_STEPS`] needs only the step test (Excel returns
-/// it unconverged: probes/rate-step-cap A30 is 0.004999993194059272, the root ...3193119). An
+/// |f(r2)| < 1e-7. The iterate of step [`RATE_MAX_STEPS`] is returned unconverged when it passes
+/// a looser test: |r2 - r1|, |f(r2)| and 1 + r2 against 1e-4, all absolute
+/// (probes/rate-cap-return-rule, rate-pmt-zero-cap, rate-step-cap A30). An
 /// iterate at or below -1, a flat secant (f1 = f0), a residual Excel's `^` cannot form and a run
 /// that has not stopped by then are `#NUM!`. Microsoft documents Newton's method and 20 steps;
 /// neither fits. The fit, its scores and the rules not yet probed are in financial.md "RATE is a
@@ -48,6 +49,13 @@ pub(crate) fn compute_rate(
 ) -> Result<f64, Error> {
     const OFFSET: f64 = 0.001;
     const TOLERANCE: f64 = 1e-7;
+    // Excel's looser test at the cap (T-2689): the 200th iterate is returned when its step and
+    // |f| are below 1e-4 and it is above -1 + 1e-4. probes/rate-cap-return-rule: steps of 7.3e-5
+    // (A68) and 7.8e-5 (A72) return and 1.3e-4 (A70) is `#NUM!`, also where the step is 4e-4 of
+    // the rate (A72);
+    // |f| 7.3e-5 returns (rate-step-cap A30) and 1.06e-4 is `#NUM!` (A53); 1 + r 1.02e-4 returns (A1)
+    // and 9.4e-5 is `#NUM!` (A16).
+    const RATE_CAP_TOLERANCE: f64 = 1e-4;
     if guess <= -1.0 {
         return Err(Error::VALUE);
     }
@@ -72,7 +80,15 @@ pub(crate) fn compute_rate(
             return Err(Error::NUM);
         }
         let f2 = residual(r2)?;
-        if (r2 - r1).abs() < TOLERANCE && (f2.abs() < TOLERANCE || step == RATE_MAX_STEPS) {
+        let step_size = (r2 - r1).abs();
+        if step_size < TOLERANCE && f2.abs() < TOLERANCE {
+            return Ok(r2);
+        }
+        if step == RATE_MAX_STEPS
+            && step_size < RATE_CAP_TOLERANCE
+            && f2.abs() < RATE_CAP_TOLERANCE
+            && 1.0 + r2 > RATE_CAP_TOLERANCE
+        {
             return Ok(r2);
         }
         (r0, f0, r1, f1) = (r1, f1, r2, f2);
