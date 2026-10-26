@@ -3,6 +3,7 @@ use statrs::distribution::{Beta, Continuous};
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
+use crate::functions::statistical::beta_density::beta_density_small_shape;
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
@@ -82,7 +83,8 @@ impl Model {
     /// a range (SPEC-0011; probes/stat-argument-modes H84-H89, probes/stat-later-argument-lift
     /// H1-H5, K3-K6). The cdf is the T-0970 incomplete beta (`incomplete_beta::beta_reg_complement`,
     /// T-2119), with Excel's closed forms on bratio's oriented arguments at a shape of 1 (T-2502);
-    /// the density is `incomplete_beta::beta_density` where it applies.
+    /// the density is `beta_density::beta_density_small_shape` for min(alpha, beta) <= 1 (T-2503)
+    /// and `incomplete_beta::beta_density` where it applies above.
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaDist, args, cell, &mut |model, values| {
             let [x, alpha, beta, cumulative, bounds @ ..] = values else {
@@ -166,7 +168,10 @@ impl Model {
             // density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/t2513-r3-m1-residual-hold E863,
             // E875, E957; docs/excel-semantics/numbers.md "Distribution densities").
             flush_subnormal(
-                beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width,
+                beta_density_small_shape(t, alpha, beta_param)
+                    .or_else(|| beta_density(t, alpha, beta_param))
+                    .unwrap_or_else(|| dist.pdf(t))
+                    / width,
             )
         };
         if result.is_nan() || result.is_infinite() {
