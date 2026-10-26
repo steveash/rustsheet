@@ -329,6 +329,7 @@ C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-besselk-underflow-bit-shift.case.json	276
 C	probes/eng-complex-overflow.case.json	21
+C	probes/eng-convert-boolean-unit.case.json	34
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
 C	probes/eng-im-large-part.case.json	36
@@ -1067,6 +1068,7 @@ C	probes/t1626-replaceb.case.json	27
 C	probes/t1626-rightb.case.json	29
 C	probes/t1626-searchb.case.json	26
 C	probes/t1738-question-first-decimal.case.json	10
+C	probes/t1883-currency-locale-edges.case.json	63
 C	probes/t1923-calendar-digits.case.json	213
 C	probes/t1924-locale-tag-extended-hex.case.json	60
 C	probes/t2127-trimrange-blank-shapes.case.json	63
@@ -1276,6 +1278,9 @@ C	probes/t2715-roundup-near-smallest-normal.case.json	180
 C	probes/t2720-scientific-percent.case.json	15
 C	probes/t2723-unary-plus-formula-text.case.json	53
 C	probes/t2725-index-scalar-nonzero-t-n.case.json	48
+C	probes/t2728-irr-guess-ref-mark-2.case.json	32
+C	probes/t2728-irr-guess-ref-mark-3.case.json	4
+C	probes/t2728-irr-guess-ref-mark.case.json	43
 C	probes/t2737-subnormal-cdf-shapes.case.json	34
 C	probes/t2738-gamma-dist-tiny-ratio.case.json	40
 C	probes/t2739-stored-256.case.json	2
@@ -1718,6 +1723,9 @@ F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
 F	probes/elapsed-no-seconds-boundary.case.json	S!A32
+F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
+F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
+F	probes/eng-convert-boolean-unit.case.json	Sheet1!B8
 F	probes/eng-imln-modulus-range.case.json	S!A51
 F	probes/eng-imln-modulus-range.case.json	S!A52
 F	probes/eng-imln-modulus-range.case.json	S!A53
@@ -2347,18 +2355,11 @@ F	probes/irr-guess-edges-2.case.json	P!A20
 F	probes/irr-guess-edges-2.case.json	P!A28
 F	probes/irr-guess-edges-2.case.json	P!A29
 F	probes/irr-guess-edges-2.case.json	P!A37
-F	probes/irr-guess-edges.case.json	P!A20
-F	probes/irr-guess-edges.case.json	P!A21
-F	probes/irr-guess-edges.case.json	P!A24
 F	probes/irr-guess-edges.case.json	P!A27
 F	probes/irr-guess-edges.case.json	P!A28
 F	probes/irr-guess-edges.case.json	P!A29
 F	probes/irr-guess-edges.case.json	P!A38
 F	probes/irr-guess-edges.case.json	P!A39
-F	probes/irr-guess-edges.case.json	P!A41
-F	probes/irr-guess-edges.case.json	P!A42
-F	probes/irr-guess-edges.case.json	P!A43
-F	probes/irr-guess-edges.case.json	P!A44
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
@@ -3046,6 +3047,9 @@ F	probes/stat-test-lift.case.json	Sheet1!P66
 F	probes/stat-test-lift.case.json	Sheet1!P67
 F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
+F	probes/t1883-currency-locale-edges.case.json	S!A26
+F	probes/t1883-currency-locale-edges.case.json	S!A60
+F	probes/t1883-currency-locale-edges.case.json	S!A61
 F	probes/t1923-calendar-digits.case.json	S!A100
 F	probes/t1923-calendar-digits.case.json	S!A101
 F	probes/t1923-calendar-digits.case.json	S!A102
