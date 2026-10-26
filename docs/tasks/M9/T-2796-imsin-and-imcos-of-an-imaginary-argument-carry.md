@@ -3,7 +3,7 @@ id: T-2796
 title: "IMSIN and IMCOS of an imaginary argument carry IMSINH's digits (IMSIN('-4i') -27.2899171971278i)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
