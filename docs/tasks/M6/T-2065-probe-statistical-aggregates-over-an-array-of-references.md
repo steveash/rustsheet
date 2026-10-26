@@ -3,7 +3,7 @@ id: T-2065
 title: "Probe statistical aggregates over an array of references, one formula per workbook (SPEC-0014 open questions)"
 milestone: M6
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
