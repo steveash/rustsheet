@@ -18,7 +18,7 @@ T-2529 probed these forms; the engine misses 43 of 49 cells: 26 `#ERROR!` (scala
 
 ## Acceptance criteria
 - [x] All cells of the probe pass and its lines leave eval/baseline/probes.txt.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -30,3 +30,6 @@ cell or range is read as before, a lifted INDIRECT element by element (`formula_
 failed pick is its own error and a value is `#VALUE!` per element with error elements kept. All 49
 cells of probes/formulatext-pick-scalars-and-arrays pass (was 6), and the other FORMULATEXT probes
 still pass. docs/excel-semantics/references.md updated.
+`Function::may_be_reference` is now the one list of built-ins whose result can be a reference,
+shared with the parser's `is_reference_operand`. Follow-up: T-2831 probes the two inferred
+forms (a multi-cell lifted INDIRECT element, a multi-area pick; both `#VALUE!` here).

@@ -865,7 +865,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let reference = match args[0].ungrouped() {
-            Node::FunctionKind { kind, .. } if formulatext_reads_pick(kind) => {
+            // A call that can return a reference is read as SUBTOTAL reads it: the arm or cells it picks.
+            Node::FunctionKind { kind, .. } if kind.may_be_reference() => {
                 match self.evaluate_picked_reference_arg(&args[0], cell) {
                     RefArg::Ranges(Ranges::One(Range { left, right })) => {
                         CalcResult::Range { left, right }
@@ -996,23 +997,6 @@ impl Model {
             }
         }
     }
-}
-
-/// The calls whose argument FORMULATEXT reads as the reference they pick, as SUBTOTAL reads them
-/// ([`Model::evaluate_picked_reference_arg`]): the arm a scalar IF, CHOOSE, SWITCH or IFS takes, a
-/// LET body, and the cells INDEX, OFFSET, INDIRECT, XLOOKUP, TAKE, DROP and TRIMRANGE pick.
-fn formulatext_reads_pick(kind: &Function) -> bool {
-    matches!(
-        kind,
-        Function::If
-            | Function::Choose
-            | Function::Switch
-            | Function::Ifs
-            | Function::Let
-            | Function::Index
-            | Function::Offset
-            | Function::Indirect
-    ) || kind.picks_reference()
 }
 
 /// FORMULATEXT's `#ERROR!` for an argument that is not a reference.
