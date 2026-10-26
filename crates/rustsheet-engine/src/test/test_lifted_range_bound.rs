@@ -9,15 +9,43 @@ use crate::test::util::new_empty_model;
 fn whole_row_range_lifted_by_date_is_bounded() {
     let mut model = new_empty_model();
     // The formula_eval fuzz reproducer: 1,889 x 16,384 cells (31M).
-    // DEVIATION (decision 0014): Excel builds it (ROWS = 1889, lifted-range-rows C1) and the
-    // anchor shows #SPILL! (C3); we refuse arrays above one whole column.
-    model._set("C1", "=DATE(11:1899,12,1)");
+    // DEVIATION (decision 0014): Excel builds it (ROWS = 1889, lifted-range-rows C1); we refuse
+    // arrays above one whole column, so a value context is #ERROR!.
     model._set("C2", "=ROWS(DATE(11:1899,12,1))");
 
     model.evaluate();
 
-    assert_eq!(model._get_text("C1"), *"#ERROR!");
     assert_eq!(model._get_text("C2"), *"#ERROR!");
+}
+
+#[test]
+fn lift_above_the_bound_that_cannot_spill_is_spill() {
+    let mut model = new_empty_model();
+    // In a cell Excel answers #SPILL! for the 1,889 x 16,384 lift (probes/lifted-range-rows C3):
+    // from column C it runs past the grid. The shape of the lifted range decides it before
+    // anything is built (T-0483), as for an operator broadcast (T-0480).
+    model._set("C1", "=DATE(11:1899,12,1)");
+    // A unary operator or `%` over a 1,048,576 x 3 range from row 3, a lift inside a lift or an
+    // operator, and a lifted range beside a scalar argument (the same shape rule, unprobed).
+    model._set("C3", "=-H:J");
+    model._set("C4", "=H:J%");
+    model._set("C5", "=ABS(-H:J)");
+    model._set("C6", "=1+DATE(11:1899,12,1)");
+    model._set("C7", "=(DATE(2000,H:J,1))");
+    // Value contexts keep the decision-0014 deviation, and so does a shape that fits the grid
+    // from its anchor (row 1) and a call that does not lift its range argument (SUM).
+    model._set("D1", "=ROWS(-H:J)");
+    model._set("K1", "=-H:J");
+    model._set("L3", "=SUM(H:J)");
+
+    model.evaluate();
+
+    for cell in ["C1", "C3", "C4", "C5", "C6", "C7"] {
+        assert_eq!(model._get_text(cell), *"#SPILL!", "{cell}");
+    }
+    assert_eq!(model._get_text("D1"), *"#ERROR!");
+    assert_eq!(model._get_text("K1"), *"#ERROR!");
+    assert_eq!(model._get_text("L3"), *"0");
 }
 
 #[test]

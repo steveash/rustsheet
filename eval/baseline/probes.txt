@@ -32,6 +32,13 @@ C	probes/aggregate-range-args.case.json	38
 C	probes/aggregate-range-function-num-grid.case.json	22
 C	probes/aggregate-range-k-first-cell.case.json	48
 C	probes/amor-argument-check-order.case.json	866
+C	probes/amordegrc-fraction-alone-a.case.json	1
+C	probes/amordegrc-fraction-alone-b.case.json	1
+C	probes/amordegrc-fraction-alone-c.case.json	1
+C	probes/amordegrc-fraction-alone-d.case.json	1
+C	probes/amordegrc-fraction-alone-e.case.json	2
+C	probes/amordegrc-fraction-alone-f.case.json	2
+C	probes/amordegrc-fraction-alone-g.case.json	3
 C	probes/amordegrc-fractional-period.case.json	32
 C	probes/anchorarray-at-operand-kinds.case.json	16
 C	probes/anchorarray-at-operand.case.json	2
@@ -1629,6 +1636,7 @@ F	probes/amor-argument-check-order.case.json	Calc!A848
 F	probes/amor-argument-check-order.case.json	Calc!A849
 F	probes/amor-argument-check-order.case.json	Calc!A850
 F	probes/amor-argument-check-order.case.json	Calc!A851
+F	probes/amordegrc-fraction-alone-f.case.json	Sheet1!A1
 F	probes/amordegrc-fractional-period.case.json	Calc!A1
 F	probes/amordegrc-fractional-period.case.json	Calc!A10
 F	probes/amordegrc-fractional-period.case.json	Calc!A11
@@ -1745,8 +1753,6 @@ F	probes/eng-imln-modulus-range.case.json	S!A54
 F	probes/eng-imln-modulus-range.case.json	S!A56
 F	probes/eng-imln-modulus-range.case.json	S!A79
 F	probes/eng-imln-modulus-range.case.json	S!A80
-F	probes/eng-imtan-imcot-overflow.case.json	S!A10
-F	probes/eng-imtan-imcot-overflow.case.json	S!A11
 F	probes/eng-inumber-date-boundary.case.json	S!A22
 F	probes/eng-inumber-date-boundary.case.json	S!B21
 F	probes/eng-inumber-date-boundary.case.json	S!B22
