@@ -1211,6 +1211,7 @@ C	probes/t2545-base-places-boolean.case.json	7
 C	probes/t2546-bessel-past-cap.case.json	83
 C	probes/t2547-bessel-phase-cut.case.json	88
 C	probes/t2576-error-type-cell-paired.case.json	70
+C	probes/t2577-indirect-ref-array.case.json	171
 C	probes/t2578-groupby-product-subtotals.case.json	6
 C	probes/t2578-pivotby-hidden-total-slot.case.json	129
 C	probes/t2578-pivotby-total-error-scope.case.json	445
@@ -2873,10 +2874,6 @@ F	probes/t2429-hypgeom-threshold.case.json	Calc!A9
 F	probes/t2429/11eb3ab4f4f8104c.case.json	Calc!A1
 F	probes/t2436/05d44f6dd6cfc567.case.json	Calc!A46
 F	probes/t2436/05d44f6dd6cfc567.case.json	Calc!A61
-F	probes/t2436/06b4e8f5de409d5e.case.json	Calc!A16
-F	probes/t2436/06b4e8f5de409d5e.case.json	Calc!A31
-F	probes/t2436/06b4e8f5de409d5e.case.json	Calc!T31
-F	probes/t2436/06b4e8f5de409d5e.case.json	Calc!U31
 F	probes/t2436/0a614cfe974b59c3.case.json	Calc!A31
 F	probes/t2436/0a614cfe974b59c3.case.json	Calc!T31
 F	probes/t2436/0a614cfe974b59c3.case.json	Calc!U31
@@ -3016,8 +3013,6 @@ F	probes/t2436/bf979a17ab5aafcb.case.json	Calc!U46
 F	probes/t2436/computed-scalar.case.json	Calc!A35
 F	probes/t2436/computed-scalar.case.json	Calc!A36
 F	probes/t2436/computed-scalar.case.json	Calc!A37
-F	probes/t2436/computed-scalar.case.json	Calc!A39
-F	probes/t2436/computed-scalar.case.json	Calc!A40
 F	probes/t2436/e85daedce5c2675e.case.json	Calc!A31
 F	probes/t2436/e85daedce5c2675e.case.json	Calc!A46
 F	probes/t2436/ecc87f80077959e0.case.json	Calc!A136
@@ -3026,9 +3021,6 @@ F	probes/t2436/ecc87f80077959e0.case.json	Calc!T136
 F	probes/t2436/ecc87f80077959e0.case.json	Calc!T151
 F	probes/t2436/ecc87f80077959e0.case.json	Calc!U136
 F	probes/t2436/ecc87f80077959e0.case.json	Calc!U151
-F	probes/t2436/f2bd5f380ec002bf.case.json	Calc!A151
-F	probes/t2436/f2bd5f380ec002bf.case.json	Calc!T151
-F	probes/t2436/f2bd5f380ec002bf.case.json	Calc!U151
 F	probes/t2436/f34f66fb7f81e673.case.json	Calc!A136
 F	probes/t2436/f34f66fb7f81e673.case.json	Calc!T136
 F	probes/t2436/f34f66fb7f81e673.case.json	Calc!U136
@@ -3138,6 +3130,15 @@ F	probes/t2576-error-type-cell-paired.case.json	Calc!D5
 F	probes/t2576-error-type-cell-paired.case.json	Calc!E16
 F	probes/t2576-error-type-cell-paired.case.json	Calc!E34
 F	probes/t2576-error-type-cell-paired.case.json	Calc!F34
+F	probes/t2577-indirect-ref-array.case.json	Calc!A148
+F	probes/t2577-indirect-ref-array.case.json	Calc!A157
+F	probes/t2577-indirect-ref-array.case.json	Calc!A64
+F	probes/t2577-indirect-ref-array.case.json	Calc!T148
+F	probes/t2577-indirect-ref-array.case.json	Calc!T157
+F	probes/t2577-indirect-ref-array.case.json	Calc!T64
+F	probes/t2577-indirect-ref-array.case.json	Calc!U148
+F	probes/t2577-indirect-ref-array.case.json	Calc!U157
+F	probes/t2577-indirect-ref-array.case.json	Calc!U64
 F	probes/t2578-groupby-product-subtotals.case.json	P!A1
 F	probes/t2578-groupby-product-subtotals.case.json	P!A3
 F	probes/t2578-groupby-product-subtotals.case.json	P!A6

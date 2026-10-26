@@ -16,6 +16,10 @@ Excel's results are known for MEDIAN, STDEV.S, VAR.S, LARGE, SMALL, COUNTIFS, AV
 ## Context
 SPEC-0014 "Open": two combined probe workbooks holding these (`MEDIAN(OFFSET(A1,{0;1;2},0))`, `STDEV.S(OFFSET(A1,{0;1},0))`, `LARGE(OFFSET(A1,{0;1},0),1)`, `SMALL(OFFSET(A1,0,0,{2;3}),2)`, `COUNTIFS(OFFSET(A1,{0;1},0),">0")`, `AVERAGEIF(OFFSET(A1,0,0,{1;2}),">0")`, `MAXIFS(..)`, `SUMSQ(..)`, `AVERAGEA(..)`, `MAXA(..)`, `CONCAT(..)`, data as in probes/reference-lift-consumers-b2) failed on excel-graph twice with "retries exhausted" at createSession. Write one case per formula (or bisect) so a workbook that Excel for the web cannot open is isolated; record what opens in docs/excel-semantics/lookup.md and SPEC-0014 rules 4-6, and note any formula that never opens as desktop-only (M14, decision 0039).
 
+Evidence already in (T-2577, probes/t2577-indirect-ref-array A157, excel-graph 2026-10-26):
+`STDEV(INDIRECT("B1",{1;1}))` is 0 (the references read through, B1 = 5 twice), ours `#VALUE!`; that known
+failure is this task's to implement or hand on.
+
 ## Acceptance criteria
 - [ ] Each formula above has an oracle value or is recorded as one Excel for the web cannot open.
 - [ ] SPEC-0014's open list and T-2063/T-2064 are updated with the findings.

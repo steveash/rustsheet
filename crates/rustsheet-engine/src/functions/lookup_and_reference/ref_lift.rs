@@ -178,9 +178,9 @@ fn array_cells(rows: &[Vec<ArrayNode>]) -> u64 {
         .fold(0, u64::saturating_add)
 }
 
-/// Whether an argument's value lifts INDIRECT or TRIMRANGE: an array or a range of more than
-/// one cell. A one-cell range and a 1x1 array are their value, as before (whether Excel lifts a
-/// 1x1 array there is unprobed, TODO(T-2347); OFFSET, TAKE and DROP do, [`lifts_one_by_one`]).
+/// Whether an argument's value lifts TRIMRANGE: an array or a range of more than one cell. A
+/// one-cell range and a 1x1 array are their value, as before (whether Excel lifts a 1x1 array
+/// there is unprobed, TODO(T-2347); OFFSET, INDIRECT, TAKE and DROP do, [`lifts_one_by_one`]).
 pub(super) fn lifts(value: &CalcResult) -> bool {
     match value {
         CalcResult::Range { left, right } => left != right,
@@ -189,11 +189,12 @@ pub(super) fn lifts(value: &CalcResult) -> bool {
     }
 }
 
-/// Whether an argument's value lifts OFFSET, TAKE or DROP: what [`lifts`] accepts, and a 1x1
-/// array too, which gives one element: `TAKE(A1:B3,{2})` is one element, A1:B2, so ROWS of it
-/// is 1 and spilled directly it is `#VALUE!` (probes/m7-lift-take-drop-sortby Sheet1 F13, G13,
+/// Whether an argument's value lifts OFFSET, INDIRECT, TAKE or DROP: what [`lifts`] accepts, and
+/// a 1x1 array too, which gives one element: `TAKE(A1:B3,{2})` is one element, A1:B2, so ROWS of
+/// it is 1 and spilled directly it is `#VALUE!` (probes/m7-lift-take-drop-sortby Sheet1 F13, G13,
 /// I13:K13, W65); ROWS of `DROP(A1:B3,{1})` and of `OFFSET(A1:B2,{1},0)` is 1 too
-/// (probes/m7-one-cell-operand-lift F6, F7, F16, F17; T-2298). A one-cell range is still its
+/// (probes/m7-one-cell-operand-lift F6, F7, F16, F17; T-2298), and `INDIRECT("B1",{1})` is
+/// `#VALUE!` (probes/t2577-indirect-ref-array A1, A25; T-2577). A one-cell range is still its
 /// value.
 pub(super) fn lifts_one_by_one(value: &CalcResult) -> bool {
     lifts(value) || matches!(value, CalcResult::Array(_))
