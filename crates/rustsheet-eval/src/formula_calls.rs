@@ -65,13 +65,40 @@ pub fn outer_call(formula: &str) -> Option<String> {
                 depth -= 1;
                 if depth == 0 {
                     let rest = &stripped[open + i + 1..];
-                    return rest.trim().is_empty().then(|| call[1].to_ascii_uppercase());
+                    let name = call[1].to_ascii_uppercase();
+                    let whole = rest.trim().is_empty()
+                        || (name == "LAMBDA" && is_invocation_list(rest.trim()));
+                    return whole.then_some(name);
                 }
             }
             _ => {}
         }
     }
     None
+}
+
+/// Whether `text` is one or more `(...)` groups and nothing else: the arguments a LAMBDA is
+/// invoked with (`(1)(2)`). A generated LAMBDA cell is always invoked, since a bare one is
+/// `#CALC!` (T-2677).
+fn is_invocation_list(text: &str) -> bool {
+    let mut depth = 0usize;
+    for (i, ch) in text.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                let Some(inner) = depth.checked_sub(1) else {
+                    return false;
+                };
+                depth = inner;
+            }
+            _ if depth == 0 && !ch.is_whitespace() => return false,
+            _ => {}
+        }
+        if depth == 0 && i + ch.len_utf8() == text.len() {
+            return ch == ')';
+        }
+    }
+    false
 }
 
 /// Whether a cell calling `called` counts toward parity: it calls no out-of-scope catalog function
@@ -111,6 +138,29 @@ mod tests {
         assert_eq!(outer_call(r#"LEN(")+(")"#).as_deref(), Some("LEN"));
         assert_eq!(outer_call("SUM('a (b)'!A1:A2)").as_deref(), Some("SUM"));
         for other in ["ABS(1)+SQRT(4)", "-ABS(1)", "A1", "ABS(1", "(ABS(1))"] {
+            assert_eq!(outer_call(other), None, "{other}");
+        }
+    }
+
+    #[test]
+    fn an_invoked_lambda_is_a_lambda_outer_call() {
+        // Decision 0094; a bare LAMBDA is `#CALC!`, so generated cells invoke it (T-2677).
+        for lambda in [
+            "LAMBDA(x,x+1)(3)",
+            "=_xlfn.LAMBDA(_xlpm.x,_xlpm.x)(1)",
+            "LAMBDA(x,x)(1)(2)",
+            "LAMBDA(x,x)(SUM(1,2)) ",
+        ] {
+            assert_eq!(outer_call(lambda).as_deref(), Some("LAMBDA"), "{lambda}");
+        }
+        for other in [
+            "LAMBDA(x,x)(1)+1",
+            "-LAMBDA(x,x)(1)",
+            "LAMBDA(x,x)(1",
+            "LAMBDA(x,x)(1))",
+            "LAMBDA(x,x)(1)A1",
+            "ABS(1)(2)",
+        ] {
             assert_eq!(outer_call(other), None, "{other}");
         }
     }
