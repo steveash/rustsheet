@@ -6,8 +6,10 @@ use super::ArgKind::{
     Lift, LiftArrays, LiftArraysRangeWhole, ReferenceByCaller, Whole, WholeByCaller,
 };
 use super::KernelWork::{ByValue, Constant, Weighted};
-use super::ValueWork::HypergeometricSum;
-use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use super::ValueWork::{HypergeometricSum, IncompleteGamma};
+use super::{
+    ArgKinds, GammaShape, KernelWork, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6,
+};
 use crate::functions::Function;
 
 /// A data argument its function reads itself, then one lifted worksheet argument:
@@ -143,20 +145,64 @@ const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(
 /// at 49 ns, about 2.6 ms, so the weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.3 s
 /// at the bound (a DEVIATION, statistics.md). Measured cases cost less: 2.4 ms for the
 /// continued fraction at the cap, 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)` (481,117 terms),
-/// 1.6 us for `GAMMA.INV(0.4,2,3)`.
+/// 1.6 us for `GAMMA.INV(0.4,2,3)`. It is the most an element is charged; each is charged by
+/// its shape below it (`incomplete_gamma`, T-2795, at the 4.7 ns and 49 ns above:
+/// `INCOMPLETE_GAMMA_TERM_COST` and `INCOMPLETE_GAMMA_CDF_COST` in mod.rs).
 const INCOMPLETE_GAMMA_WEIGHT: u32 = 1 << 18;
-/// `CHISQ.DIST.RT(x, deg_freedom)`, CHIDIST, `CHISQ.INV(probability, deg_freedom)`,
-/// CHISQ.INV.RT and CHIINV.
-const CHISQ_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(INCOMPLETE_GAMMA_WEIGHT));
-/// `CHISQ.DIST(x, deg_freedom, cumulative)`, `POISSON.DIST(x, mean, cumulative)`, POISSON,
+/// An incomplete-gamma entry charged by value (T-2795): at most `INCOMPLETE_GAMMA_WEIGHT` an
+/// element, in proportion to the bound of its shape (`ValueWork::IncompleteGamma`), so a lift
+/// of small shapes runs far more than 512 elements (gen-m9/c2974c061384fdd9 A56, a CHIDIST over
+/// a 731-element PIVOTBY, was `#ERROR!` where Excel spills): `CHIDIST(x,5)` is charged 150
+/// units, a CHISQ.INV.RT of df 10 the bound unless its probability is outside (0, 1).
+const fn incomplete_gamma(
+    args: usize,
+    shape: usize,
+    shape_of: GammaShape,
+    probability: Option<usize>,
+) -> KernelWork {
+    ByValue(IncompleteGamma {
+        args,
+        shape,
+        shape_of,
+        probability,
+        weight: INCOMPLETE_GAMMA_WEIGHT,
+    })
+}
+/// `CHISQ.DIST.RT(x, deg_freedom)` and CHIDIST.
+const CHISQ_DIST_RT: ArgKinds = ArgKinds::fixed(
+    2,
+    &[Lift, Lift],
+    incomplete_gamma(2, 1, GammaShape::HalfDegrees, None),
+);
+/// `CHISQ.INV(probability, deg_freedom)`, CHISQ.INV.RT and CHIINV.
+const CHISQ_INV: ArgKinds = ArgKinds::fixed(
+    2,
+    &[Lift, Lift],
+    incomplete_gamma(2, 1, GammaShape::HalfDegrees, Some(0)),
+);
+/// `CHISQ.DIST(x, deg_freedom, cumulative)`.
+const CHISQ_DIST: ArgKinds = ArgKinds::fixed(
+    3,
+    &[Lift, Lift, Lift],
+    incomplete_gamma(3, 1, GammaShape::HalfDegrees, None),
+);
+/// `POISSON.DIST(x, mean, cumulative)` and POISSON: Q(trunc(x) + 1, mean).
+const POISSON: ArgKinds = ArgKinds::fixed(
+    3,
+    &[Lift, Lift, Lift],
+    incomplete_gamma(3, 0, GammaShape::PoissonCount, None),
+);
 /// `GAMMA.INV(probability, alpha, beta)` and GAMMAINV.
-const INCOMPLETE_GAMMA_3: ArgKinds =
-    ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(INCOMPLETE_GAMMA_WEIGHT));
+const GAMMA_INV: ArgKinds = ArgKinds::fixed(
+    3,
+    &[Lift, Lift, Lift],
+    incomplete_gamma(3, 1, GammaShape::Shape, Some(0)),
+);
 /// `GAMMA.DIST(x, alpha, beta, cumulative)` and GAMMADIST.
 const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
     4,
     &[Lift, Lift, Lift, Lift],
-    Weighted(INCOMPLETE_GAMMA_WEIGHT),
+    incomplete_gamma(4, 1, GammaShape::Shape, None),
 );
 // --- End incomplete gamma (T-1872) ----------------------------------------------------------
 
@@ -354,16 +400,11 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // incomplete gamma and its search keep a per-call cap of their own
         // (`statistical/incomplete_gamma.rs`), so the entries are weighted by its bound
         // (statistics.md "Incomplete gamma: per-call cap and lifting").
-        Function::ChisqDistRT
-        | Function::ChiDistCompat
-        | Function::ChisqInv
-        | Function::ChisqInvRT
-        | Function::ChiInvCompat => Some(&CHISQ_2),
-        Function::ChisqDist
-        | Function::PoissonDist
-        | Function::PoissonCompat
-        | Function::GammaInv
-        | Function::GammaInvCompat => Some(&INCOMPLETE_GAMMA_3),
+        Function::ChisqDistRT | Function::ChiDistCompat => Some(&CHISQ_DIST_RT),
+        Function::ChisqInv | Function::ChisqInvRT | Function::ChiInvCompat => Some(&CHISQ_INV),
+        Function::ChisqDist => Some(&CHISQ_DIST),
+        Function::PoissonDist | Function::PoissonCompat => Some(&POISSON),
+        Function::GammaInv | Function::GammaInvCompat => Some(&GAMMA_INV),
         Function::GammaDist | Function::GammaDistCompat => Some(&GAMMA_DIST),
         // --- End incomplete gamma (T-1872) ---
         // --- Hypergeometric (T-1873) ---
