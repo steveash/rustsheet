@@ -3,7 +3,7 @@ id: T-2096
 title: "T.INV.2T and TINV accept p in (1,2) and return the negative quantile"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -104,3 +104,11 @@ Decision 0083 (gap triage 2026-10-23, T-2256): it now owns 48 visibly-off gen-m9
 campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria
 still unmet then move to a follow-up task without the key.
+
+## Outcome
+`t_inv_of` accepts 1 < p < 2 for T.INV.2T and TINV and returns `-t_upper_quantile(df, (2 - p) / 2)`;
+p <= 0 and p >= 2 stay `#NUM!`, p = 1 is 0. The p = 0, df 1 `#DIV/0!` was already in place. Unit test
+shows A2/A43-style cells are bit for bit the negated mirror `T.INV.2T(2 - p, df)`. gen-m9 known
+failures 3775 -> 3770 (5 lines). The other owned cells now have Excel's type and are `NumericClose`
+(last-digit residue, e.g. gen-m9/201d67f1d59436ed A103, 5395b8a427764a3f A347), which belongs to T-1542 and
+T-0967; their case lines stay in the baseline for that reason. No gated baseline gained a line.

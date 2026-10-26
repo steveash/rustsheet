@@ -148,7 +148,7 @@ fn test_fn_t_inv_2t_smoke() {
     model._set("A5", "=T.INV.2T(0.1, 10, 1)");
 
     // Domain errors:
-    // p <= 0 or p > 1
+    // p <= 0 or p >= 2
     model._set("A6", "=T.INV.2T(0, 10)");
     // df < 1
     model._set("A8", "=T.INV.2T(0.1, 0)");
@@ -159,9 +159,8 @@ fn test_fn_t_inv_2t_smoke() {
     assert_eq!(model._get_text("A2"), *"2.228138852");
     assert_eq!(model._get_text("A3"), *"0");
 
-    // NB: Excel returns -0.699812061 for T.INV.2T(1.5, 10)
-    // which seems inconsistent with its documented behavior
-    assert_eq!(model._get_text("A7"), *"#NUM!");
+    // Excel returns the negative quantile T.INV(0.25, 10) for p in (1, 2) (m9-t-edges A43, T-2096).
+    assert_eq!(model._get_text("A7"), *"-0.699812061");
 
     assert_eq!(model._get_text("A4"), *"#ERROR!");
     assert_eq!(model._get_text("A5"), *"#ERROR!");
@@ -238,4 +237,41 @@ fn test_t_family_df_upper_limit() {
     }
     assert_eq!(model._get_text("B3"), *"0.977249868");
     assert_eq!(model._get_text("B4"), *"0.053990967");
+}
+
+#[test]
+fn t_inv_2t_above_one_is_the_negative_quantile_of_the_mirror() {
+    let mut model = new_empty_model();
+    // m9-t-edges A2 and A43: the engine's own mirror is T.INV.2T(2 - p, df), negated bit for bit.
+    let pairs = [
+        (1.5, 5.0),
+        (1.5, 10.0),
+        (1.9, 5.0),
+        (1.0001, 5.0),
+        (1.999, 5.0),
+    ];
+    for (row, (p, df)) in pairs.iter().enumerate() {
+        let row = row + 1;
+        model._set(&format!("A{row}"), &format!("=T.INV.2T({p},{df})"));
+        model._set(
+            &format!("B{row}"),
+            &format!("=-T.INV.2T({}, {df})", 2.0 - p),
+        );
+        model._set(&format!("C{row}"), &format!("=TINV({p},{df})=A{row}"));
+        model._set(&format!("D{row}"), &format!("=A{row}=B{row}"));
+    }
+    model._set("A10", "=T.INV.2T(2,5)");
+    model._set("A11", "=T.INV.2T(2.5,5)");
+    model._set("A12", "=T.INV.2T(0,5)");
+    model._set("A13", "=T.INV.2T(1,5)");
+    model.evaluate();
+    for row in 1..=pairs.len() {
+        assert_eq!(model._get_text(&format!("C{row}")), *"TRUE", "row {row}");
+        assert_eq!(model._get_text(&format!("D{row}")), *"TRUE", "row {row}");
+    }
+    assert_eq!(model._get_text("A2"), *"-0.699812061");
+    assert_eq!(model._get_text("A10"), *"#NUM!");
+    assert_eq!(model._get_text("A11"), *"#NUM!");
+    assert_eq!(model._get_text("A12"), *"#NUM!");
+    assert_eq!(model._get_text("A13"), *"0");
 }
