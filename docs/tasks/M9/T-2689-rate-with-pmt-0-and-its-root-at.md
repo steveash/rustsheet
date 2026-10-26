@@ -3,7 +3,7 @@ id: T-2689
 title: "RATE with pmt 0 and its root at -1: Excel returns the 200th secant iterate at nper 24 but #NUM! at 12 and 60 (calipers formulas_financial F141:F143)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
