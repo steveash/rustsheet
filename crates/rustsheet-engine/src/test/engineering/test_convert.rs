@@ -87,3 +87,20 @@ fn boolean_number_is_value_error() {
     assert_eq!(model._get_text("A3"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#N/A");
 }
+
+/// Excel: a boolean unit read from a cell is `#VALUE!`, not an unknown unit (T-2793;
+/// gen-m9 290180acf017709c Calc!A148, A158, f81bd3b6dc373e5c Calc!A291).
+#[test]
+fn boolean_unit_cell_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("B1", "TRUE");
+    model._set("B2", "FALSE");
+    model._set("A1", r#"=CONVERT(1,B1,"m")"#);
+    model._set("A2", r#"=CONVERT(1,B2,"mm")"#);
+    model._set("A3", r#"=CONVERT(1,"C",B1)"#);
+    model._set("A4", r#"=CONVERT(1,"C",B2)"#);
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!");
+    }
+}

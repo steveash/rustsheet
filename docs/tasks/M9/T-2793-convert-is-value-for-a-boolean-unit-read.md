@@ -3,7 +3,7 @@ id: T-2793
 title: "CONVERT is #VALUE! for a boolean unit read from a cell (3 gen-m9 cells)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -39,3 +39,6 @@ crates/rustsheet-engine/src/functions/engineering/convert.rs (how the unit argum
 
 ## Visible-parity stage
 `semantics`: the 3 cells have the wrong error; the task is done when each is `#VALUE!`.
+
+## Outcome
+A boolean from_unit or to_unit is now #VALUE!. 3 gen-m9 known failures removed from the baseline.
