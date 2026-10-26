@@ -14,11 +14,10 @@ depends_on: []
 Whitespace inside a structured reference prints as Excel normalizes it.
 
 ## Context
-T-2786 shapes: `T[ [Col] ]` prints `T[ Col ]`; `T[ [#Data] , [Col] ]` prints `T[ [#Data], [Col] ]`; `T[[#Data]  ,  [Col]]` prints `T[[#Data], [Col]]`; `T[ [Col]:[Other] ]` is kept. Refused typed: `T[ Col]`, `T[Col ]`, `T [Col]`, `T[[Col] : [Other]]`; but stored `T[ Col ]` loads. See syntax.md "Whitespace beside a missing argument is kept; a structured reference..."; probes/t2786-whitespace-structured-refs-runs F4:F15.
+T-2786 shapes: `T[ [Col] ]` prints `T[ Col ]`; `T[ [#Data] , [Col] ]` prints `T[ [#Data], [Col] ]`; `T[[#Data]  ,  [Col]]` prints `T[[#Data], [Col]]`; `T[ [Col]:[Other] ]` is kept. Refused typed: `T[ Col]`, `T[Col ]`, `T [Col]`, `T[[Col] : [Other]]`; Excel itself saves `T[ Col ]` (loading a hand-written stored one is unprobed, T-2800). See syntax.md "Whitespace beside a missing argument is kept; a structured reference..."; probes/t2786-whitespace-structured-refs-runs F4:F15.
 
 ## Acceptance criteria
 - [ ] F4:F15 of probes/t2786-whitespace-structured-refs-runs pass (formula text and values).
-- [ ] Stored `SUM(T[ Col ])` loads with value of `T[Col]`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

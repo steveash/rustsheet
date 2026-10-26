@@ -336,7 +336,7 @@ Tasks: T-2208
 ## Typed whitespace is saved in the `<f>` text; a line feed is written as raw CR LF bytes
 Rule: the `<f>` text Excel saves keeps the whitespace FORMULATEXT shows, so a typed formula round-trips with its spaces:
 `=1 + 2` is `<f>1 + 2</f>`, `=SUM( 1 )` is `<f>SUM( 1 )</f>`, `=IF(1, ,2)` is `<f>IF(1, ,2)</f>`, `=SUM(1,  )` is
-`<f>SUM(1,  )</f>`, `=NOW( )` is `<f ca="1">NOW( )</f>`, `=SUM(, 1)` is `<f>SUM(, 1)</f>`. **A typed line feed is written as the two raw bytes CR LF** (no `&#13;` reference: 9 raw CR bytes, 0 references in
+`<f>SUM(1,  )</f>`, `=NOW( )` is `<f ca="1">NOW( )</f>`, `=SUM(, 1)` is `<f>SUM(, 1)</f>`. **A typed line feed is written as the two raw bytes CR LF** (no `&#13;` reference: 8 CR LF pairs in `<f>`/`<v>` text, 0 references, in
 sheet1.xml), in the `<f>` and in FORMULATEXT's cached `<v>` alike; an XML parser's end-of-line normalization reads them
 back as one LF, which is what the oracle sidecar shows. A writer emitting LF therefore matches. A space after the line
 feed is kept. The drops FORMULATEXT shows (trailing whitespace, a run before a comma after an operand) are made before

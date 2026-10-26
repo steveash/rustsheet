@@ -36,4 +36,4 @@ Probe `probes/t2786-whitespace-structured-refs-runs` (excel-graph) answers: runs
 refuse a space in a bare specifier and normalize `T[ [Col] ]` to `T[ Col ]`; Excel saves typed whitespace in `<f>`, a
 line feed as raw CR LF bytes (read back as LF). Findings in syntax.md and xlsx-storage.md; SPEC-0023 "Unknown" answered. Filed T-2799 (missing
 arguments), T-2801 (structured-reference whitespace), T-2800 (this-row shapes, which Graph's calculated-column
-fill masked). Eval delta: none (probe cases have no expectations).
+fill masked). Eval delta: new probe case, 31 known failures recorded (no expectations), no regressions.
