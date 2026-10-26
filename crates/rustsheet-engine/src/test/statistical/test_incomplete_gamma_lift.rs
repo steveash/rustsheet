@@ -197,36 +197,52 @@ fn incomplete_gammas_that_hung_or_panicked_are_bounded() {
     }
 }
 
+/// `=ROWS(call)` with `#` replaced by `n`, evaluated alone.
+fn rows_of(call: &str, n: u32) -> String {
+    let mut model = new_empty_model();
+    model._set("A1", &format!("=ROWS({})", call.replace('#', &n.to_string())));
+    model.evaluate();
+    model._get_text("A1")
+}
+
 #[test]
 fn incomplete_gamma_kernels_are_charged_their_weight() {
-    // Each entry is charged 2^18 an element (the bound of one cdf or inversion at its cap, about
-    // 2.5 ms): 2^27 / 2^18 = 512 elements, so a lifted call of 513 is refused before it runs.
-    let mut model = new_empty_model();
-    let calls = [
+    // An inversion at a huge shape is charged the entry's whole 2^18 an element (the bound of
+    // one inversion at its cap, about 2.6 ms): 2^27 / 2^18 = 512 elements, so a lifted call of
+    // 513 is refused before it runs.
+    for call in [
+        "CHIINV(0.4,1E10+SEQUENCE(#))",
+        "GAMMA.INV(SEQUENCE(#)/(#+1),1E10,3)",
+    ] {
+        assert_eq!(rows_of(call, 512), "512", "{call}");
+        assert_eq!(rows_of(call, 513), "#ERROR!", "{call}");
+    }
+    // A cdf at a huge shape is charged its 2^19 terms and one cdf, just under 2^18 (T-2795).
+    for call in [
+        "CHISQ.DIST.RT(1.5,1E10+SEQUENCE(#))",
+        "CHISQ.DIST(1.5,1E10,SEQUENCE(#))",
+        "POISSON(1E10+SEQUENCE(#),1,TRUE)",
+        "GAMMA.DIST(1.5,1E10,SEQUENCE(#),TRUE)",
+    ] {
+        assert_eq!(rows_of(call, 512), "512", "{call}");
+        assert_eq!(rows_of(call, 600), "#ERROR!", "{call}");
+    }
+    // A small shape is charged its own bound, and an inversion whose probability is outside
+    // (0, 1), or an element with an error argument, 1 (T-2795; gen-m9/c2974c061384fdd9 A56).
+    for call in [
         "CHISQ.DIST.RT(1.5,SEQUENCE(#))",
-        "CHIINV(0.4,SEQUENCE(#))",
+        "CHIDIST(SEQUENCE(#),5)",
         "CHISQ.DIST(1.5,5,SEQUENCE(#))",
-        "POISSON(SEQUENCE(#),1,TRUE)",
-        "GAMMA.INV(SEQUENCE(#)/(#+1),2,3)",
+        "POISSON(SEQUENCE(#)/100,1,TRUE)",
         "GAMMA.DIST(1.5,2,SEQUENCE(#),TRUE)",
-    ];
-    for (row, call) in calls.iter().enumerate() {
-        let row = row + 1;
-        model._set(
-            &format!("A{row}"),
-            &format!("=ROWS({})", call.replace('#', "512")),
-        );
-        model._set(
-            &format!("B{row}"),
-            &format!("=ROWS({})", call.replace('#', "513")),
-        );
+        "CHIINV(SEQUENCE(#)+1,5)",
+        "CHISQ.INV.RT(-SEQUENCE(#),10)",
+        "GAMMA.INV(0.5,1E10,SEQUENCE(#)/0)",
+    ] {
+        assert_eq!(rows_of(call, 4096), "4096", "{call}");
     }
-    model.evaluate();
-    for (row, call) in calls.iter().enumerate() {
-        let row = row + 1;
-        assert_eq!(model._get_text(&format!("A{row}")), *"512", "{call}");
-        assert_eq!(model._get_text(&format!("B{row}")), *"#ERROR!", "{call}");
-    }
+    // A text probability may read as any number: the bound.
+    assert_eq!(rows_of("CHIINV(\"0.4\"&SEQUENCE(#),5)", 513), "#ERROR!");
 }
 
 #[test]

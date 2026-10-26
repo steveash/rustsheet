@@ -18,6 +18,7 @@ use crate::calc_result::CalcResult;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::parser::ArrayNode;
 use crate::formatter::dates::FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+use crate::functions::statistical::incomplete_gamma;
 use crate::functions::Function;
 use crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
@@ -117,7 +118,46 @@ pub(crate) enum ValueWork {
         per_term: u32,
         weight: u32,
     },
+    /// One cdf of the incomplete gamma, or one inversion of it (`probability` names its
+    /// probability argument), over the first `args` arguments, at most `weight` units (T-2795).
+    /// A cdf takes at most `incomplete_gamma::cdf_terms_bound(a)` terms for a shape of at most
+    /// `a`, which argument `shape` bounds as `shape_of` says; an inversion runs at most
+    /// [`INCOMPLETE_GAMMA_INVERSION_CDFS`] cdfs, all within one budget of `MAX_TERMS` terms. An
+    /// element is charged 1 when an argument is an error, or a probability is a number outside
+    /// (0, 1), a logical or a blank: the kernel returns before any cdf. A text shape or
+    /// probability is charged `weight`, as it may read as any number. See
+    /// [`incomplete_gamma_units`].
+    IncompleteGamma {
+        args: usize,
+        shape: usize,
+        shape_of: GammaShape,
+        probability: Option<usize>,
+        weight: u32,
+    },
 }
+
+/// How a [`ValueWork::IncompleteGamma`] element's shape follows from its shape argument's value
+/// `v`, as an upper bound (a kernel may truncate `v` first, which only lowers the shape).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GammaShape {
+    /// The shape is the argument: GAMMA.DIST's and GAMMA.INV's alpha.
+    Shape,
+    /// The shape is half the argument: the chi-squared degrees of freedom.
+    HalfDegrees,
+    /// The shape is the argument truncated plus 1: POISSON's count, Q(k + 1, mean).
+    PoissonCount,
+}
+
+/// The cdfs one incomplete-gamma inversion runs at most: statrs' search (1,075 halvings, 1,025
+/// doublings, 8 bisections, 4 Newton steps), then one check and at most 129 more of the
+/// refinement (`incomplete_gamma::gamma_quantile`, T-1634, T-1872).
+pub(crate) const INCOMPLETE_GAMMA_INVERSION_CDFS: u64 = 2_250;
+
+/// The measured cost, in tenths of a nanosecond, of one incomplete-gamma term at its slowest
+/// (4.7 ns, the continued fraction's NaN path) and of one cdf's own work beside its terms (49 ns),
+/// release build (T-1872; statistical.rs `INCOMPLETE_GAMMA_WEIGHT`).
+const INCOMPLETE_GAMMA_TERM_COST: u64 = 47;
+const INCOMPLETE_GAMMA_CDF_COST: u64 = 490;
 
 /// The widest span of days a coupon schedule walk can cross: the calendar's last serial, as the
 /// kernels read every date in the 1900 financial space from serial 0 to 9999-12-31 (a 1904
@@ -181,7 +221,8 @@ impl ValueWork {
             // A text has no fixed length.
             ValueWork::TextScan { .. } => u64::MAX,
             // The sum at its cap.
-            ValueWork::HypergeometricSum { weight, .. } => u64::from(weight),
+            ValueWork::HypergeometricSum { weight, .. }
+            | ValueWork::IncompleteGamma { weight, .. } => u64::from(weight),
         }
     }
 
@@ -291,8 +332,65 @@ impl ValueWork {
                 };
                 hypergeometric_units(terms, walk, extra, per_term, weight)
             }
+            ValueWork::IncompleteGamma {
+                args,
+                shape,
+                shape_of,
+                probability,
+                weight,
+            } => {
+                // Every argument is read before any cdf (chisq.rs, gamma.rs, poisson.rs).
+                if (0..args).any(|arg| value(arg) == Some(ArgValue::Error)) {
+                    return 1;
+                }
+                if let Some(arg) = probability {
+                    match value(arg) {
+                        // A probability of 0 or 1 is closed form, and outside them #NUM!.
+                        Some(ArgValue::Number(p)) if !(p > 0.0 && p < 1.0) => return 1,
+                        Some(ArgValue::Boolean(_) | ArgValue::Blank) | None => return 1,
+                        Some(ArgValue::Text(_)) => return u64::from(weight),
+                        Some(ArgValue::Number(_) | ArgValue::Error) => {}
+                    }
+                }
+                let v = match value(shape) {
+                    Some(ArgValue::Number(n)) => n.abs(),
+                    Some(ArgValue::Boolean(b)) => f64::from(u8::from(b)),
+                    Some(ArgValue::Blank | ArgValue::Error) | None => 0.0,
+                    Some(ArgValue::Text(_)) => return u64::from(weight),
+                };
+                let a = match shape_of {
+                    GammaShape::Shape => v,
+                    GammaShape::HalfDegrees => v / 2.0,
+                    GammaShape::PoissonCount => v + 1.0,
+                };
+                let cdfs = if probability.is_some() {
+                    INCOMPLETE_GAMMA_INVERSION_CDFS
+                } else {
+                    1
+                };
+                incomplete_gamma_units(a, cdfs, weight)
+            }
         }
     }
+}
+
+/// The units one incomplete-gamma element of shape at most `a` running at most `cdfs` cdfs is
+/// charged: `weight` in proportion of its terms and cdfs at their measured costs to the bound
+/// `weight` stands for (`MAX_TERMS` terms and [`INCOMPLETE_GAMMA_INVERSION_CDFS`] cdfs), plus 1,
+/// at most `weight`. A NaN shape is charged `weight`.
+fn incomplete_gamma_units(a: f64, cdfs: u64, weight: u32) -> u64 {
+    let max_terms = u64::from(incomplete_gamma::MAX_TERMS);
+    let per_cdf = if a.is_nan() {
+        max_terms
+    } else {
+        u64::from(incomplete_gamma::cdf_terms_bound(a))
+    };
+    let terms = per_cdf.saturating_mul(cdfs).min(max_terms);
+    let cost = terms * INCOMPLETE_GAMMA_TERM_COST + cdfs * INCOMPLETE_GAMMA_CDF_COST;
+    let bound = max_terms * INCOMPLETE_GAMMA_TERM_COST
+        + INCOMPLETE_GAMMA_INVERSION_CDFS * INCOMPLETE_GAMMA_CDF_COST;
+    let weight = u64::from(weight);
+    (1 + (weight * cost).div_ceil(bound)).min(weight)
 }
 
 /// The units one HYPGEOM.DIST element is charged when the least of its counts is `least`: the

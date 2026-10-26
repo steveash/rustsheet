@@ -45,7 +45,7 @@ Owned gen-m9 cells (from T-2433's triage list; Excel `#SPILL!` unless noted, our
 - gen-m9/e8d55ec393460bb7 Calc!A10 `=AMORDEGRC(56947,_xlfn.PIVOTBY(..),39763,716,2,PMT(100,271,417889,43,0),1.9)`
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9): the 6 known-failure lines above disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9): the 4 incomplete-gamma known-failure lines above (A56, A204, A199, A121) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Each changed charge is a bound of its element's work (proved, or enforced by the kernel's own budget), measured
       with crates/rustsheet/benches/lift.rs at its new element cap, and the DEVIATION entries (statistics.md
@@ -54,6 +54,7 @@ Owned gen-m9 cells (from T-2433's triage list; Excel `#SPILL!` unless noted, our
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
+- ODDFYIELD and AMORDEGRC (ba4ddb817a8e700e A323, e8d55ec393460bb7 A10): split to T-2815.
 - HYPGEOM.DIST (T-2433). The functions' values (their accuracy tasks).
 
 ## Visible-parity stage
