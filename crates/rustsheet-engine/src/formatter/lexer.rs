@@ -405,6 +405,21 @@ impl Lexer {
         true
     }
 
+    /// Whether the next token is a currency tag's symbol: `[$€]` or `[$€-40C]` (`Token::Currency`),
+    /// or `[$USD]` (`Token::Text`), not a `[$-409]` locale tag. The complexity limit prices it
+    /// apart from quoted text (formatter/complexity.rs, T-2812).
+    pub(crate) fn at_currency_tag(&self) -> bool {
+        self.pending_locale.is_none()
+            && self.chars.get(self.position) == Some(&'[')
+            && self.chars.get(self.position + 1) == Some(&'$')
+            && !matches!(self.chars.get(self.position + 2), Some('-' | ']') | None)
+    }
+
+    /// Whether the next token is the locale of the currency tag just read (`[$€-40C]`).
+    pub(crate) fn has_pending_locale(&self) -> bool {
+        self.pending_locale.is_some()
+    }
+
     pub fn peek_token(&mut self) -> Token {
         self.peek_token_past(|_| false)
     }
