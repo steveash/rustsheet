@@ -39,3 +39,27 @@ fn test_fn_t_test_smoke() {
     assert_eq!(model._get_text("C5"), *"0.200489197");
     assert_eq!(model._get_text("C6"), *"0.210720639");
 }
+
+#[test]
+fn test_fn_t_test_error_sample_before_tails_and_type() {
+    let mut model = new_empty_model();
+    for (i, v) in ["3", "4", "5", "6"].iter().enumerate() {
+        model._set(&format!("A{}", i + 1), v);
+        model._set(&format!("B{}", i + 1), &(i * 2 + 1).to_string());
+    }
+    model._set("B2", "#N/A");
+    model._set("D1", "=T.TEST(1/0,A1:A3,3,2)");
+    model._set("D2", "=T.TEST(A1:A3,NA(),1,9)");
+    model._set("D3", "=T.TEST(A1:A3,A1:A3,-2.5,\"a\")");
+    model._set("D4", "=T.TEST(\"\",A1:A4,1,3)");
+    // An error inside a range still loses to a bad tails (T-1813).
+    model._set("D5", "=T.TEST(B1:B3,A1:A3,3,2)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"#DIV/0!");
+    assert_eq!(model._get_text("D2"), *"#N/A");
+    assert_eq!(model._get_text("D3"), *"#VALUE!");
+    assert_eq!(model._get_text("D4"), *"#DIV/0!");
+    assert_eq!(model._get_text("D5"), *"#NUM!");
+}
