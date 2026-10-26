@@ -96,7 +96,7 @@ enum Cmd {
         #[command(flatten)]
         sel: Selection,
         /// Also judge the evidence floor (as `evidence-floor` does) from the same run: the other
-        /// vendored suites run beside the gate suites, once (T-2753). `--timeout` applies to the
+        /// vendored suites run beside the gate suites, once (T-2761). `--timeout` applies to the
         /// whole run; standalone `evidence-floor` uses the 60 s default, as `make eval-gates` does.
         #[arg(long)]
         evidence_floor: bool,
@@ -433,7 +433,7 @@ fn visible_parity_gate(
 
 /// The baseline gate (`update` `None`) or the baseline ratchet; with `floor`, also the evidence
 /// floor judged from the same run, so `check --evidence-floor` passes exactly when `check` and
-/// `evidence-floor` both pass (T-2753).
+/// `evidence-floor` both pass (T-2761).
 fn cmd_check(
     root: &Path,
     sel: &Selection,

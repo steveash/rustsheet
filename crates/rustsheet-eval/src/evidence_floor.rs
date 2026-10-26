@@ -3,7 +3,7 @@
 //! functions below it by category, and `quality/evidence-floor.json` ratchets their number down
 //! (decision 0062): `rustsheet-eval evidence-floor` fails when it rises or when the lock is stale,
 //! and `--update` records a drop. `rustsheet-eval check --evidence-floor` judges the floor from
-//! the same run as the baseline gate ([`plan_run`], [`floor_results`]; T-2753).
+//! the same run as the baseline gate ([`plan_run`], [`floor_results`]; T-2761).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -158,7 +158,7 @@ pub fn counts(suite: &Suite) -> bool {
 
 /// The suites one run needs to judge both the baseline gate on `gate` and the floor: `gate`
 /// unchanged and first, then each suite of `all` that [`counts`] and `gate` does not hold. The
-/// first `gate.len()` suites of the plan are exactly `gate` (T-2753).
+/// first `gate.len()` suites of the plan are exactly `gate` (T-2761).
 #[must_use]
 pub fn plan_run(gate: Vec<Suite>, all: Vec<Suite>) -> Vec<Suite> {
     let mut plan = gate;

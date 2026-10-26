@@ -15,7 +15,7 @@ A second `cargo build`, `cargo test` or `cargo clippy` with nothing changed reco
 so local `make` targets and any CI job that runs cargo twice stop rebuilding the whole engine.
 
 ## Context
-Found in T-2753. crates/rustsheet-engine/build.rs (inherited from IronCalc) prints
+Found in T-2761. crates/rustsheet-engine/build.rs (inherited from IronCalc) prints
 `cargo:rerun-if-changed=.git/HEAD` and `.git/refs`. Cargo resolves those against the crate
 directory, `crates/rustsheet-engine/.git/HEAD` does not exist, and a missing watched file always
 counts as changed (`cargo build -v`: "Dirty rustsheet_engine: the file

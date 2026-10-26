@@ -1,6 +1,6 @@
 # 0125 — The eval CI job judges eval-check and the evidence floor from one suite run
 
-- **Status:** accepted (2026-10-25, owner request to shorten PR CI, T-2753). It changes how two
+- **Status:** accepted (2026-10-25, owner request to shorten PR CI, T-2761). It changes how two
   gates are run, not what they judge.
 - **Context:** PR CI wall time is how long the merge lock (decision 0075) is held, so it caps how
   many PRs merge per hour. The eval job ran `make eval-check`, then `make evidence-floor`. Each
