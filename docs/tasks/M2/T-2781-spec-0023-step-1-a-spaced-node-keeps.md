@@ -3,7 +3,7 @@ id: T-2781
 title: "SPEC-0023 step 1: a Spaced node keeps typed operand whitespace in formula text"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
