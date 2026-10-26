@@ -707,9 +707,9 @@ fn accrint_text_calc_method_is_value_error() {
     assert_eq!(model._get_text("A4"), *"16.66666667");
 }
 
-/// calc_method's own error comes before every other argument, an off-calendar date is `#NUM!` as
+/// `calc_method`'s own error comes before every other argument, an off-calendar date is `#NUM!` as
 /// soon as it is read, and a boolean par cell is `#VALUE!` (financial.md "ACCRINT check order:
-/// calc_method first, dates as read"; gen-m9/290180acf017709c A32, A117, 932b33b1ef8b7608 A233, T-2792).
+/// `calc_method` first, dates as read"; gen-m9/290180acf017709c A32, A117, 932b33b1ef8b7608 A233, T-2792).
 #[test]
 fn accrint_check_order() {
     let mut model = new_empty_model();

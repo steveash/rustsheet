@@ -182,7 +182,7 @@ impl Model {
     /// as soon as it is read, before a later argument's error, text or boolean, and a boolean
     /// issue, rate or par is `#VALUE!` (`ACCRINT(TRUE,SQRT(-1),..)`: probes/t2455-transpose-
     /// single-value A52, A53, A56; gen-m9/932b33b1ef8b7608 A233 for par; financial.md "ACCRINT
-    /// check order: calc_method first, dates as read"). The other numbers take booleans (as
+    /// check order: `calc_method` first, dates as read"). The other numbers take booleans (as
     /// `get_number` did; unprobed).
     fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
