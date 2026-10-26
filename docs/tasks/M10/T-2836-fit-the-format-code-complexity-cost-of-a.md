@@ -3,7 +3,7 @@ id: T-2836
 title: "Fit the format-code complexity cost of a long $ run after a locale or currency tag"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
