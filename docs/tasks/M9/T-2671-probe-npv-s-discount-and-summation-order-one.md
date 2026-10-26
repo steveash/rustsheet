@@ -3,7 +3,7 @@ id: T-2671
 title: "Probe NPV's discount and summation order: one-term, zero-padded and two-term NPVs where the candidate orders differ"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,7 +34,7 @@ from whole sums, which T-1528's three attempts could not do.
   formula such as `1+2^-40`.
 
 ## Acceptance criteria
-- [ ] A new probes case `probes/npv-term-order` (excel-graph fill, canary-verified sidecar) holds at least 300 cells:
+- [x] A new probes case `probes/npv-term-order` (excel-graph fill, canary-verified sidecar) holds at least 300 cells:
   - one-term NPVs `NPV(r,v)`, which isolate the first division;
   - zero-padded `NPV(r,0,..,0,v)` for periods 2 to 12, which isolate each period's discount factor and show whether
     it is (1+r)^i through Excel's `^`, a running product, or something else;
@@ -44,14 +44,24 @@ from whole sums, which T-1528's three attempts could not do.
     values each rate was chosen to separate.
   Rates include IRR.xlsx's L2, L3, L8 and Three Parameters D2, and 0.05, 0.07, 0.1, 0.125 and 0.2 from
   m9-fin-nper-npv.
-- [ ] financial.md's entry "NPV's residue at IRR's root is not the double sum" is updated with what the probe shows:
+- [x] financial.md's entry "NPV's residue at IRR's root is not the double sum" is updated with what the probe shows:
   the per-period discount rule, if one fits, and the summation order. Each candidate's hit count goes in, the rejected
   ones too.
-- [ ] Newly failing cells are known failures in eval/baseline/probes.txt owned by T-2672. No other baseline gains a
+- [x] Newly failing cells are known failures in eval/baseline/probes.txt owned by T-2672. No other baseline gains a
   line.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine's NPV (T-2672).
 - NPV's error order and its #DIV/0! at rate -1 (T-2493, T-2618).
 - PMT, IPMT and PPMT (T-1528, T-2243).
+
+## Outcome
+Done (2026-10-26). probes/npv-term-order holds 382 NPV cells at 20 rates (excel-graph, canary-verified sidecar); the
+generator docs/research/t2671_npv_term_order.py records the rates and how many distinct doubles T-1528's candidates
+give on each. The probe identifies NPV's formulation: (sum of v_i/(1+r)^(i-1), a running product, left to right) /
+(1+r), all in doubles. The lab candidate "deferred" (`annuity-npv`) is bit-exact on all 470 cells (npv-term-order and
+m9-fin-nper-npv; the engine today 159, T-1528's best 27/88 on the old sweep) and on the IRR.xlsx residues, H367 and
+A148. financial.md "NPV's residue at IRR's root is not the double sum" has the rule and every candidate's count.
+Eval delta: probes +1 case, 382 cells, 138 passing, 244 new-coverage known failures owned by T-2672 (no other baseline
+changes; visible parity 3886 vs lock 4448). Follow-up: T-2672 (already filed) implements it in the engine.
