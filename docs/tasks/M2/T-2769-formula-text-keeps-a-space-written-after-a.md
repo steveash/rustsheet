@@ -40,5 +40,5 @@ Probed which whitespace Excel keeps (probes/t2769-formula-text-whitespace, 23 fo
 constant (syntax.md "Formula text keeps typed whitespace, except at the end, before a comma and in an array
 constant"). That is the general feature the Context named, so per the Context this task does not add a flag on
 `UnaryPlus`: it filed T-2776 (opus, a spec first, then the implementation tasks), which now owns C24 and C25 and the
-new probe's failing cells. No engine change; eval delta: the new probe's cells with kept whitespace are new known
-failures in eval/baseline/probes.txt, owned by T-2776; nothing else moves.
+new probe's failing cells. No engine change; eval delta: the new probe's 18 cells with kept whitespace (of 47 checked) are new
+known failures in eval/baseline/probes.txt, owned by T-2776; nothing else moves.
