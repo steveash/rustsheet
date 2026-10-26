@@ -22,6 +22,8 @@ Excel's two switch points between libm-like digits and the `1/EXP(-x)` IMSINH/IM
 - Design: IMSINH of real x on two runs, about 200 values each in (0.0095, 0.011) and (18, 101), at both signs, chosen
   where the kernel and libm differ in the 15th digit (screen candidates with Python first; the numbers.md 15-digit
   midpoint rule decides which differ). Also the form below the lower cut (libm, a Taylor series, or expm1).
+- Same probe, while at it: past |x| = 709 `hyperbolic_log_form` still takes libm `y.sin()`/`y.cos()`, where the product
+  form now takes Excel's SIN/COS (`trig_sin_cos`, T-2629); add a few 709 < |x| < 710 cells with y where the two differ.
 - engineering.md "IMSINH, IMCOSH and IMSECH take sinh and cosh as (1/u ∓ u)/2" holds the evidence so far.
 
 ## Acceptance criteria
