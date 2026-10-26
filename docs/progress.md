@@ -13,7 +13,14 @@ The eval run of **2026-10-25** at commit `a2d5914a` (report.json `run`).
 ## Bottom line
 
 <!-- progress:judgment bottom-line -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+Values match Excel closely on real workbooks; statistical numerics are the main gap, and Phase 1 has not exited.
+
+- **Phase 1 has not exited.** 324 of 506 in-scope functions meet the exit rate (decision 0118), 169 are below it, and no milestone's exit row is met yet.
+- **Real-world files are close.** On calipers, 99.85% of cells are bit-exact and 153 of its 171 workbooks have every cell within 15 digits; on poi, 112 of 115 workbooks are all exact.
+- **Function by function**, 330 of 506 (65.22%) never differ from Excel in the 15 digits Excel shows; 97 are below 99%, 69 of them statistical.
+- **The biggest gap is numeric accuracy** (judgment): 131,346 visibly-off numbers against 20,009 visibly-off type, error or text cells. Fixing only the latter would lift 69 functions to the rate, and 40 semantics tasks are ready.
+- **No trend yet.** This is the first complete run in the history, so there are no deltas to report.
 <!-- /progress:judgment -->
 
 <!-- progress:generated goals -->
@@ -36,7 +43,7 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 
 | Milestone | Phase | Exit criteria checked | Catalog coverage | Exit measures (report) | Frozen list and probes | Todo | In progress | Blocked | Done |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 5 | 0 | 1 | 72 |
+| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 4 | 1 | 1 | 72 |
 | M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 22 visibly off, 22 known failures | 4 | 1 | 2 | 391 |
 | M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 22 visibly off, 22 known failures | 6 | 0 | 0 | 372 |
 | M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
@@ -275,13 +282,24 @@ bars, or 20 cells for a function the catalog exempts). **9** have fewer than
 ## Real-world readiness
 
 <!-- progress:judgment readiness -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+Ratings are the steward's judgment, grounded in the numbers they cite. The page measures computed values only, not speed or saving.
+
+- **Read and compute: likely.** calipers matches Excel bit for bit on 99.85% of 1,353,813 cells, and 153 of its 171 workbooks have no cell off in the 15 digits Excel shows; poi has a visibly-off cell in 3 of 115 workbooks.
+- **Edit and recalc: likely.** The frozen M1 probe list for core calculation semantics has 0 known failures, with 89 of 89 cases run. The page does not measure recalculation after an edit.
+- **Large ranges: partly.** No suite timed out on this run (0 timeouts in every suite), but the page does not measure recalculation time, and the dependency graph is Phase 2 work whose milestone row shows 4 blocked tasks. Judgment: large lookup or criteria ranges may be slow.
+- **Save and round-trip: partly.** Not measured: none of the page's numbers comes from writing a file. Judgment, from open export work such as table parts (T-2196); the M8 row shows 20 tasks to do.
 <!-- /progress:judgment -->
 
 ## Risks
 
 <!-- progress:judgment risks -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+1. **Statistical numerics.** 69 of 149 statistical functions have fewer than 99% of their cells within 15 digits, and the M9 probes show 1,499 visibly-off cells. Judgment: most of the 131,346 visibly-off numbers sit here. Owner: T-2510 (incomplete beta, accuracy stage).
+2. **VLOOKUP, the fourth most-used function, is below 99%.** 45.73% of its 33,065 attributed cells are within 15 digits. Judgment: corpus-bench's 18,700 visibly-off cells in 7 workbooks suggest a few real-world files, not everyday lookups, carry most of this. Owner: no task yet.
+3. **Wrong types, errors and text.** 20,009 visibly-off cells; fixing them alone would lift 69 of the 169 functions below the rate, and 40 semantics tasks are ready. Judgment: the cheapest progress toward the exit. Owner: T-1671 (table totals rows, which in the steward's judgment are behind COUNT at 95.76% and COUNTA at 96.25%).
+4. **M6 catalog coverage.** 38/39 functions are covered, so M6's exit is not met. Owner: T-2674 (generated cells for GETPIVOTDATA, the last uncovered M6 function).
+5. **Large ranges are unmeasured.** 0 timeouts on this run, but the page has no recalculation timing, and recalculation stays full until the dependency graph lands (judgment). Owner: T-0401 (blocked: Phase 2).
 <!-- /progress:judgment -->
 
 <!-- progress:generated method -->
