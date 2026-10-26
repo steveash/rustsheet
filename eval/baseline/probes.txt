@@ -14,6 +14,7 @@ C	probes/3d-ref-one-sheet-span-lift.case.json	12
 C	probes/3d-ref-span-edges.case.json	13
 C	probes/3d-ref-span-missing-ends.case.json	12
 C	probes/3d-ref-values.case.json	10
+C	probes/accrint-calendar-start-1900.case.json	92
 C	probes/aggregate-args.case.json	53
 C	probes/aggregate-array-args.case.json	48
 C	probes/aggregate-array-error-vs-ref-error-average-family.case.json	87
