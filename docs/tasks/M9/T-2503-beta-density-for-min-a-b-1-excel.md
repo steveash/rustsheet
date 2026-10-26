@@ -91,4 +91,6 @@ campaign key.
   t2513-verify-r3-m1-residual-hold 20, t0969-beta-density-b 9, t2513-r3-tdensity-hold 9, t2464-w2f-absweep 6,
   t2513-r3-fdensity-a 5, t0969-t-beta-link 2, t0969-beta-prefactor 1. The rest are the algdiv branch (T-2512) and
   GAMMALN arguments below 2 (T-2122).
-- Visible-parity stage: 4 of the 1,107 old cells stay visibly off (M2's own 4).
+- Visible-parity stage: 4 of the 1,107 old cells stay visibly off (M2's own 4, all the algdiv branch at (0.0001, 50)
+  and (50, 0.0001): m9-beta-dist-a0p0001 A44, A46, m9-beta-dist-a50 A4, A6).
+- Follow-up: T-2821 (no campaign key; not deferred, since 8 of its cells are visibly off) owns the bit-level residue and the 8 visibly-off cells above.
