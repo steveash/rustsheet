@@ -3,7 +3,7 @@ id: T-2573
 title: "Probe SUMPRODUCT with a blank one-cell argument beside an error element"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2450 made a blank one-cell argument after an element error win (`#VALUE!`), in
 
 ## Out of scope
 None.
+
+## Outcome
+Probed A17-A20 in t2296-sumproduct-error-element with excel-graph: all `#VALUE!`, matching the T-2450 inference and the engine, so no engine change. coercion.md now cites the probe. Eval delta: +4 cells bit-exact, no new failures.
