@@ -3,7 +3,7 @@ id: T-1923
 title: "Hebrew, Saka, Arabic Gregorian and Korean native-name calendar digits in locale tags"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
