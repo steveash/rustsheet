@@ -107,19 +107,31 @@ fn xirr_with_a_nonzero_first_value_still_needs_a_later_date() {
     assert_num_errors(&["=XIRR({-1000,1100},{45365,45000})"]);
 }
 
+/// Asserts each formula's number is within `relative` of Excel's value.
+fn assert_numbers_near(cases: &[(&str, f64)], relative: f64) {
+    let formulas: Vec<&str> = cases.iter().map(|case| case.0).collect();
+    let model = evaluated(&formulas);
+    for (row, (_, want)) in (1..).zip(cases) {
+        let value = model.get_cell_value_by_ref(&format!("Sheet1!A{row}"));
+        assert!(
+            matches!(value, Ok(CellValue::Number(n)) if (n - want).abs() <= relative * want.abs()),
+            "A{row}: {value:?}, want {want}"
+        );
+    }
+}
+
 #[test]
 fn irr_is_num_at_a_far_root() {
     // probes/irr-fallback-roots A29, A39 and irr-guess-edges-2 A15, A31: 1 + r at or past 1E+7
     assert_num_errors(&["=IRR({-1,1E+7})", "=IRR({-1,1E+13})", "=IRR({-1E-15,1})"]);
-    // A28, A39: 3E+6 and 1 + r = 9999998.994 still return
-    let model = evaluated(&["=IRR({-1,3E+6})", "=IRR({-1,0,1E+14})"]);
-    for row in 1..=2 {
-        let value = model.get_cell_value_by_ref(&format!("Sheet1!A{row}"));
-        assert!(
-            matches!(value, Ok(CellValue::Number(n)) if n > 2e6),
-            "A{row}: {value:?}"
-        );
-    }
+    // A28, A39: 3E+6 and r = 9999998.994 still return (their digits are T-2131's)
+    assert_numbers_near(
+        &[
+            ("=IRR({-1,3E+6})", 2_999_998.999_580_666),
+            ("=IRR({-1,0,1E+14})", 9_999_998.994_161_328),
+        ],
+        1e-9,
+    );
 }
 
 #[test]
@@ -135,24 +147,14 @@ fn irr_where_the_secant_fails_is_num_at_a_root_near_minus_one() {
 
 #[test]
 fn irr_where_the_secant_fails_finds_the_root_nearest_v_zero() {
-    // probes/irr-fallback-roots A12, A15, A16, A22: within a few ulp of Excel's
-    let model = evaluated(&[
-        "=IRR({42,1,1,-1},0.5)",
-        "=IRR({42,1,1,-1},0)",
-        "=IRR({0.3,-2.5,1.005},0.01)",
-        "=IRR({-400,1,1,1,1,1},0.5)",
-    ]);
-    let expected = [
-        -0.746_704_476_653_737_1,
-        -0.746_704_476_653_737_1,
-        6.909_808_543_634_611,
-        -0.673_736_675_180_840_5,
-    ];
-    for (row, want) in (1..).zip(expected) {
-        let value = model.get_cell_value_by_ref(&format!("Sheet1!A{row}"));
-        assert!(
-            matches!(value, Ok(CellValue::Number(n)) if (n - want).abs() < 1e-14),
-            "A{row}: {value:?}"
-        );
-    }
+    // probes/irr-fallback-roots A12, A15, A16, A22: within 1E-14 relative of Excel's
+    assert_numbers_near(
+        &[
+            ("=IRR({42,1,1,-1},0.5)", -0.746_704_476_653_737_1),
+            ("=IRR({42,1,1,-1},0)", -0.746_704_476_653_737_1),
+            ("=IRR({0.3,-2.5,1.005},0.01)", 6.909_808_543_634_611),
+            ("=IRR({-400,1,1,1,1,1},0.5)", -0.673_736_675_180_840_5),
+        ],
+        1e-14,
+    );
 }

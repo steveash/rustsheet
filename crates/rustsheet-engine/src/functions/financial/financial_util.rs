@@ -151,6 +151,10 @@ fn irr_npv(values: &[f64], v: f64) -> Option<f64> {
 /// two-flow root are `#NUM!` (probes/irr-fallback-roots A25-A39, irr-guess-edges-2 A15-A34).
 const IRR_FAR_ROOT_BOUND: f64 = 1e7;
 
+/// The most Newton steps of [`irr_fallback`]: a run that needs 119 is `#NUM!` in Excel
+/// (gen-m9/abb7d565af89b849 A254) and the slowest probed root that returns needs 29 (`{42,1,1,-1}`).
+const IRR_FALLBACK_STEPS: usize = 50;
+
 /// The rate 1/v - 1 at a converged discount factor `v`, or `None` past [`IRR_FAR_ROOT_BOUND`].
 fn irr_from_discount(v: f64) -> Option<f64> {
     let x = extended_quotient(1.0, v);
@@ -224,7 +228,7 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
 }
 
 /// Where both secant runs fail, Excel still finds some roots and not others: it behaves as
-/// Newton's method on the NPV polynomial in v, sum c_i v^i, started at v = 0 (r = +inf), and is
+/// Newton's method on the NPV polynomial in v, `sum c_i v^i`, started at v = 0 (r = +inf), and is
 /// `#NUM!` when the root it reaches is not a positive discount factor, when a negative root lies
 /// nearer 0 (P changes sign on [-v, 0)), or when the run does not settle in
 /// [`IRR_FALLBACK_STEPS`] steps. This fits every probed
@@ -233,7 +237,7 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
 /// guess while `{1,3,-1}`, `{1,7,-1}` and `{1,20,-1}`, whose root nearest v = 0 is negative, are
 /// `#NUM!`; `{1E+15,-0.0001,1,-2.5,-0.0001}` (gen-m9/abb7d565af89b849 A254) needs 119 steps to
 /// reach its root and is `#NUM!`. The method is fitted, not Excel's code: the returned digits are
-/// within a few ulp of Excel's (T-1686, T-2131).
+/// 15 to 35 ulp from Excel's on the probed roots (T-1686, T-2131).
 fn irr_fallback(values: &[f64]) -> Option<f64> {
     // Leading zero flows make v = 0 a root of P; the search runs on P(v)/v^k instead:
     // `IRR({0,2,-1})` returns about -0.5 in Excel (gen-m9/3c06f9298f65a3ba A394).
@@ -272,10 +276,6 @@ fn irr_fallback(values: &[f64]) -> Option<f64> {
     }
     None
 }
-
-/// The most Newton steps of [`irr_fallback`]: a run that needs 119 is `#NUM!` in Excel
-/// (gen-m9/abb7d565af89b849 A254) and the slowest probed root that returns needs 29 (`{42,1,1,-1}`).
-const IRR_FALLBACK_STEPS: usize = 50;
 
 /// XNPV: the sum of `value_i / (1 + rate)^((date_i - date_0)/365)`, days counted from the first date;
 /// `#NUM!` when the sum is not finite.
