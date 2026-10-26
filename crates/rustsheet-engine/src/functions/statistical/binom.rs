@@ -42,12 +42,17 @@ impl Model {
         let [number_s, trials, p, cumulative] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let number_s = self.cast_number_ref(number_s, cell)?.trunc();
+        // A count in (-1, 0) is `#NUM!`: the sign is checked before truncation (gen-m9 85f48d5cdfb24555
+        // A35, caa1eed48b1883fe A384, 7bd219ec0c0c5e22 A320; statistics.md "Scalar distributions
+        // at extreme arguments (T-2255)").
+        let number_s = self.cast_number_ref(number_s, cell)?;
+        let negative = number_s < 0.0;
+        let number_s = number_s.trunc();
         let trials = self.cast_number_ref(trials, cell)?.trunc();
         let p = self.cast_number_ref(p, cell)?;
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
         if !(0.0..TRIALS_LIMIT).contains(&trials)
-            || number_s < 0.0
+            || negative
             || number_s > trials
             || p.is_nan()
             || !(0.0..=1.0).contains(&p)
@@ -254,14 +259,19 @@ impl Model {
         cumulative: Option<&CalcResult>,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let number_f = self.cast_number_ref(number_f, cell)?.trunc();
+        // number_f in (-1, 0) is `#NUM!` before truncation (gen-m9 d208bbafc3bc1997 A231,
+        // 3b7990bd4e3307ba A312, 1db18890916ee643 A124; statistics.md "Scalar distributions at
+        // extreme arguments, part 2 (T-2256)").
+        let number_f = self.cast_number_ref(number_f, cell)?;
+        let negative = number_f < 0.0;
+        let number_f = number_f.trunc();
         let number_s = self.cast_number_ref(number_s, cell)?.trunc();
         let probability_s = self.cast_number_ref(probability_s, cell)?;
         let cumulative = match cumulative {
             Some(value) => Self::cast_bool_ref(value, cell)?,
             None => false,
         };
-        if number_f < 0.0 || number_s < 1.0 || probability_s <= 0.0 || probability_s >= 1.0 {
+        if negative || number_s < 1.0 || probability_s <= 0.0 || probability_s >= 1.0 {
             return Err(num_error(cell));
         }
         // Guard against absurdly large failures that won't fit in u64. Not TRIALS_LIMIT:
