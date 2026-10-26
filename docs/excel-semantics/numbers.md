@@ -94,10 +94,14 @@ gives ...266 in both signs and both directions, `±999999999999999.5` gives ±1E
 Unlike INT, the family's cut has no 1E+15 boundary: `FLOOR(-1000000000000000.5,1)` = -1E+15 (INT gives -1000000000000001),
 `FLOOR(1000000000000002.5,1)` = `CEILING(1000000000000002.5,1)` = 1E+15, and `FLOOR(±4503599627370495.5,1)` =
 ±4503599627370500 (INT gives 4503599627370495 and -4503599627370496); without the cut these would keep their integer digits
-(probe cells B7-B14). Not probed: a significance other than 1 (every probe row has significance 1, as does the gen-m5 cell),
-so "cuts the ratio" rather than "cuts the value" rests on the existing design.
+(probe cells B7-B14). With a significance other than 1 the cut applies to the ratio `value/significance`, not to the value or the result: stored
+values whose ratio is an exact `.5` tie (significance 0.5, 3 and -2, both signs of value) give the away-from-zero result in
+all seven functions, e.g. `CEILING(-166666666666633.25,0.5)` = -166666666666633.5 (a plain ceiling or a cut of the value gives ...633),
+`FLOOR(-999999999999799.5,3)` = -999999999999801 and `FLOOR.MATH(666666666666533,-2)` = 666666666666534 (T-2687; the engine already matched all 84 cells). A positive value with a negative significance is #NUM!
+in FLOOR and CEILING only.
 Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648); probes/t2652-floor-ceiling-ties
-(14 values x 7 functions, excel-graph, 2026-10-25, T-2652).
+(14 values x 7 functions, excel-graph, 2026-10-25, T-2652); probes/t2687-floor-ceiling-nonunit-ties
+(12 rows x 7 functions, excel-graph, 2026-10-26, T-2687).
 Status: VERIFIED
 Implemented in: `snap_ratio` (ceiling_floor.rs) via `significant_15` and `decimal_to_f64`, ties away from zero (T-2652)
 Tasks: T-2652

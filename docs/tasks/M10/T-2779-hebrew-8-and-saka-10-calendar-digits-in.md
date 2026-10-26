@@ -31,6 +31,11 @@ calendar, convert like the lunar calendar's date tokens, and add the name tables
 Hebrew-script weekdays join with a no-break space ("יום רביעי", A211); "אדר ב" uses a plain space (A212). Also probe `yy|b|bbbb`
 under digits A, B, C and 14 (T-1923 inferred them as Gregorian). Probe first: Saka `dddd` for every weekday, Hebrew `ddd`, and the Hebrew names under 40D for all 14 month forms.
 
+Moved here from T-1924 (2026-10-26): Saka over an LCID with no locale, en-US names by Saka month number. `[$-fr_FR]` is
+0x10E00B (number-formats.md, extended hex reading), and `formatter/locale_tag.rs` `without_locale` should return the Saka
+calendar with EN_US names for digit 0x10. Cells: probes/text-locale-calendars A135, A143-A145; text-locale-name-tables
+A596; t1924-locale-tag-extended-hex A15, A19, A20. These pass with the rest of this task.
+
 ## Acceptance criteria
 - [ ] The Saka and Hebrew cells of probes/t1923-calendar-digits and probes/text-locale-calendars leave eval/baseline/probes.txt.
 - [ ] `make check` green; reviewers approve.

@@ -872,7 +872,7 @@ impl Parser {
                 use_ampm,
                 tokens,
                 names: localized.map(|l| l.names),
-                day_half: localized.map(|l| l.day_half),
+                day_half: localized.and_then(|l| l.day_half),
                 calendar: localized.map(|l| l.calendar),
                 japanese_lcid: localized.is_some_and(|l| l.japanese_lcid),
                 hijri,
