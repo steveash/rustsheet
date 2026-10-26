@@ -23,6 +23,12 @@
   unless it matches. CI's rust job is a matrix of the two shards; shard 1 also runs fmt-check
   and clippy, and each shard has its own rust-cache key. `make test` and `make check` are
   unchanged.
+- **Measured (PR #1869, four runs):** the slower shard took 4.1-4.5 min against 5.8-7.3 min for
+  the old rust job; the final split ran 4.3 and 4.0 min. Memory-bound whole-grid tests
+  (test_fn_groupby's 1M-row visit-cap tests, test_tailed_array's whole-column ones) slow each
+  other down when one shard holds both (shard 1's engine run went from 67 s to 138-142 s), so
+  `TEST_SHARD_1` keeps them apart. PR wall went from 6.2-8.0 to 4.6-5.4 min, then bounded by the
+  eval job (fixed by decision 0121) and the python job.
 - **Consequences:** every gate still runs on every PR: fmt-check, clippy and the tests of shard
   1 in `rust (fmt, clippy, test 1/2)`, the remaining tests in `rust (test 2/2)`. Each PR uses one
   more runner, and both shards compile the tests. Rebalance `TEST_SHARD_1` when one shard grows
