@@ -24,10 +24,14 @@ or tolerance may fail (financial.md "YIELD's #NUM! cells and its suspected 100-s
 side (1E6), and T-2740 sweeps the Newton start. Use the excel-probe skill to locate the cut with a sweep over rate (1 to
 100) and price (1 to 20), then match it in `fn_yield` (functions/financial/financial_bonds.rs).
 
+T-2391 (2026-10-26): YIELD's Newton lost its fallback, so an iterate off PRICE's domain is `#NUM!`; both cells
+(P!A214, gen-m9/44a8841352dc48e9 A318) left the baselines there. What is left is the probe sweep that confirms the rule
+over rate and price.
+
 ## Acceptance criteria
 - [ ] A probe case locates where Excel's YIELD turns to `#NUM!` over rate and price at this bond, and the rule is in
       docs/excel-semantics/financial.md.
-- [ ] P!A214 and gen-m9/44a8841352dc48e9 A318 leave the baselines (`make eval-baseline`), with no new known failures.
+- [x] P!A214 and gen-m9/44a8841352dc48e9 A318 leave the baselines (`make eval-baseline`), with no new known failures.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

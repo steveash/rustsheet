@@ -3,7 +3,7 @@ id: T-2391
 title: "Probe and match YIELD at a price far above par (1E6): #NUM!, not a negative yield"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -62,13 +62,13 @@ Owned gen-m9 cells (T-2482, excel-graph, 2026-10-24): 1 known-failure line in ev
 - gen-m9/320d51765af9b6b7 Calc!A329 `=CHITEST(YIELD(36563,45559,SUM(Data!B11:B12,Data!B$8),107,107,2,1),(DAY(43015)-ODDLPRICE(35397,38233,33415,1E-300,Data!B2,109,4)))`: Excel #NUM!, ours #N/A
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2482): the known-failure line listed under "Moved from T-2482" disappears from
+- [x] Visible parity (gen-m9, T-2482): the known-failure line listed under "Moved from T-2482" disappears from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2257): the 20 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+- [x] Visible parity (gen-m9, T-2257): the 20 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] A probe case sweeps the price to locate the cut, filled through excel-graph (probes/yield-newton-domain).
-- [ ] YIELD matches Excel's `#NUM!` cells; the financial.md entry states the rule (VERIFIED).
-- [ ] `make check` green; reviewers approve.
+- [x] YIELD matches Excel's `#NUM!` cells; the financial.md entry states the rule (VERIFIED).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - YIELD's last-digit misses ("YIELD stops short of PRICE's root").
@@ -79,3 +79,11 @@ type, error, text, or a value off by more than half a unit of the 15th significa
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Outcome
+Done (2026-10-26). With T-1592's fitted start in place, YIELD's Newton needs no fallback: an iterate whose step is not
+finite is `#NUM!`, and the 100th iterate is the value (`excel_yield_newton`, `compute_yield`; the old
+`compute_yield_from_price` fallback is gone, ODDFYIELD keeps `solve_yield`). financial.md "YIELD's #NUM! cells and its
+100-step cap" is VERIFIED. Eval delta: 49 known failures fixed, no regressions: gen-m9 23 (all 21 owned cells, T-2747's
+A318 and d37313406b9f6e55 A142), probes 26 (yield-newton-domain 18, t2436 6, t2475-stat-subexpressions A212 and A214).
+The 13 yield-newton-domain cells left are last-digit misses (out of scope; T-2788).
