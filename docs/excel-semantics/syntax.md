@@ -304,6 +304,9 @@ forms (gen-m1/6462bf910ef9f28f, probes/lookup-argument-edges). The full set stor
 Ours: matches since T-2723. A kept plus is a `Node::UnaryPlus`, the identity, which every analysis sees through as it
 sees through a written group. The fold is decided in `parse_power`. Two cells still fail: the tree keeps no whitespace, so
 `=+ 5` and `=+ "a"` print `=+5` and `=+"a"` (C24, C25; T-2769).
+Unprobed (T-2772): a stored `+5` loaded from a file (we fold it on load, as typing does), and the static readings
+where an analysis matches a literal under a plus (`N(IF(+TRUE,B1:B3))`, `INDIRECT(+"K1")`, legacy `ABS(+{5})`,
+`LET(+x,1,x)`).
 Status: VERIFIED (excel-graph)
 
 ## FORMULATEXT keeps every written parenthesis
