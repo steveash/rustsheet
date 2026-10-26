@@ -3,7 +3,7 @@ the stale page of an incomplete run (T-0071).
 
 The `parity` block is parity.py's (T-0081); `since-last-run` and `trends` are history.py's
 (T-0071); `goals` and `campaign` are goals.py's (T-0072); `top-functions` and `evidence` are
-evidence.py's (T-0073). Later sections are added by their own tasks as generated blocks in
+evidence.py's (T-0073); `arguments` is arguments.py's (T-0077). Later sections are added by their own tasks as generated blocks in
 `LAYOUT`, without changing the block protocol in blocks.py.
 """
 
@@ -28,6 +28,7 @@ LAYOUT = (
     (blocks.GENERATED, "parity", None),
     (blocks.GENERATED, "top-functions", None),
     (blocks.GENERATED, "evidence", None),
+    (blocks.GENERATED, "arguments", None),
     (blocks.JUDGMENT, "readiness", "Real-world readiness"),
     (blocks.JUDGMENT, "risks", "Risks"),
     (blocks.GENERATED, "method", None),
@@ -125,6 +126,10 @@ METHOD = f"""## Method
 {goals.METHOD}
 {parity.METHOD}
 {history.METHOD}
+- **Argument coverage.** Each function's share is report.json `argument_coverage[].single`
+  (crates/rustsheet-eval/src/argument_coverage.rs): of the argument classes its catalog
+  parameters' modes expect by rule, those some Excel-evidence cell passes, a literal as written
+  and a single-cell reference by the referenced cell's value. Indicative only.
 - **Regenerate** with `{REGENERATE}`. The same inputs give a byte-identical page."""
 
 
@@ -135,8 +140,8 @@ def parse(text: str) -> dict[str, blocks.Block]:
 
 def render(run: Run, data: Parity, previous: str | None, sections: dict[str, str]) -> str:
     """The whole page for a complete `run`, keeping the judgment text of `previous` (the existing
-    page). `sections` holds the goals and history blocks (`goals`, `campaign`,
-    `since-last-run`, `trends`)."""
+    page). `sections` holds the goals, history and arguments blocks (`goals`, `campaign`,
+    `since-last-run`, `trends`, `arguments`)."""
     old = parse(previous) if previous is not None else {}
     body = {
         **sections,
