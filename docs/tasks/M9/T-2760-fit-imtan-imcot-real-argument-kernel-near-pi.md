@@ -3,7 +3,7 @@ id: T-2760
 title: "Fit IMTAN/IMCOT real-argument kernel near pi/2 (probes/eng-imtan-imcot-overflow A10-A13)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
