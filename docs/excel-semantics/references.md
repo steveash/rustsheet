@@ -167,9 +167,18 @@ meant is a *name* to Excel, so an undefined one evaluates to `#NAME?`, not to a 
 `IF(B2="domestic",“D”,IF(B2="international",“I”,“N/A”))` is `#NAME?`.
 Evidence: corpus-bench/48354/1_48354_input.xlsx Sheet1!D2:D6 (5 cells; the stored `<f t="array">` keeps the
 U+201C/U+201D characters and the workbook's own cached value is `#NAME?`, as is the excel-graph sidecar).
-Which other characters Excel's name lexer accepts, and whether a typed formula behaves like a stored one, is
-unprobed (T-0481 probes it). Ours: `#ERROR!` (the lexer refuses the token).
-Status: VERIFIED (stored formulas, excel-graph + Excel-cached); the character set UNVERIFIED
+The quoted token is an ordinary undefined name, not an error shape: it is `#NAME?` only when evaluated
+(`IF(FALSE,“D”,1)` is 1), `ISREF(“D”)` is FALSE, `ERROR.TYPE(“D”)` is 5, `“D”&"x"` and `SUM(“A1”)` are
+`#NAME?` (`“A1”` is a name, not a cell), `=“N/A”` is `#NAME?`, and FORMULATEXT keeps the curly quotes.
+Evidence: probes/t0481-curly-quote-names A1-A10 and -b A1-A2 (excel-graph, 2026-10-26, stored formulas).
+Unprobed: whether a *typed* formula behaves the same (the oracle cannot type one), whether a name can be
+*defined* with these characters, and other punctuation as a name character (`€`, a quote mid-name
+`a“b`, `"x"“y"`; probes/t0481-curly-quote-names-c, pending), and a quoted token as a sheet prefix (`“D”!A1`,
+which ours reads as a sheet name).
+Ours (T-0481): the lexer reads U+201C and U+201D as name characters, anywhere in a name, and a token
+holding one is a name even where it would spell a cell (`is_typographic_quote`, `is_quoted_name` in
+crates/rustsheet-engine/src/expressions/utils/mod.rs, used by the lexer); defined names still refuse them.
+Status: VERIFIED (stored formulas, excel-graph + Excel-cached); typed formulas and the wider character set UNVERIFIED
 Tasks: T-0481
 
 ## A structured reference into a linked workbook is `#REF!`
@@ -2335,8 +2344,10 @@ and the quirk T-2321. With no table of that name (engine API `remove_table`), th
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
-canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
-table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
+canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). Since T-1671 the eval adapter
+registers a spec table with its totals row; because the table does not grow, shrink or move with an edit yet, the
+totals row's own edits (insert above it, delete it or the last data row) print the displaced plain range or `#REF!`
+where Excel keeps `Sales[[#Totals],[Qty]]` (decision 0128; T-2321, T-2338).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
 its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2297, T-2325).

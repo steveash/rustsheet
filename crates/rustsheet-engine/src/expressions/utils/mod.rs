@@ -333,6 +333,22 @@ fn is_identifier_text(name: &str) -> bool {
     true
 }
 
+/// The typographic quotes U+201C and U+201D, which Excel reads as name characters: a stored
+/// `“D”` (an app's "smart quotes" around a string) is an undefined name, so `=“D”` and
+/// `=“N/A”` are `#NAME?`, `ISREF(“D”)` is FALSE and `IF(FALSE,“D”,1)` is 1
+/// (corpus-bench/48354 D2:D6, probes/t0481-curly-quote-names; docs/excel-semantics/references.md
+/// "Undefined names may contain typographic quotes").
+pub(crate) fn is_typographic_quote(char: char) -> bool {
+    matches!(char, '\u{201C}' | '\u{201D}')
+}
+
+/// Whether `name` holds a typographic quote and is otherwise a valid name, read with each quote as
+/// a letter: never a cell or a column (`“A1”` is a name), in A1 and R1C1 mode alike.
+pub(crate) fn is_quoted_name(name: &str) -> bool {
+    name.contains(is_typographic_quote)
+        && is_valid_a1_identifier(&name.replace(is_typographic_quote, "_"))
+}
+
 /// Whether `name` is a valid defined or table name: one that Excel does not read as an R1C1
 /// reference ([`is_r1c1_shaped`]; that also refuses "R", "C", "r" and "c"). `R0C1` passes, as
 /// Excel loads it (T-1657: its uses are `#NAME?` there).
