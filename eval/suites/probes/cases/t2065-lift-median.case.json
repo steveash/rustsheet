@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "One statistical aggregate over a lifted OFFSET (an array of references), alone in its workbook so one that Excel for the web cannot open is isolated (T-2065, SPEC-0014 open list).",
+ "tags": [
+  "M6",
+  "probe",
+  "offset"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "A2": 100,
+    "A3": 10000,
+    "B1": 2,
+    "B2": 200,
+    "B3": 20000,
+    "A4": "5",
+    "A6": true,
+    "A7": 7,
+    "E1": "=MEDIAN(OFFSET(A1,{0;1;2},0))"
+   }
+  }
+ ],
+ "expected": {}
+}
