@@ -157,6 +157,8 @@ rule (probes/convert-targets, excel-graph, T-1297): `CONVERT(5,"cal","eV")` is 1
 target prefix is applied as a reciprocal multiply: `CONVERT(0.0002,"m3","Mm3")` is
 2.0000000000000003E-22 (`* 1/1E18`; dividing gives 2E-22). The lbf factor is 444822.16152605
 (`CONVERT(1,"lbf","dyn")` is exactly that).
+Open gap: `CONVERT(1,"m","ft")` is 3.2808398950131235 in Excel and one ulp low in ours (probes/scalar-lift-open-a,
+probes/eng-convert-boolean-unit A7; T-2046, T-2047).
 Overflow: `value * F_from` is not allowed to overflow when the answer is representable:
 `CONVERT(1E290,"m2","m2")` is 1E+290, `CONVERT(1E300,"ha","m2")` 1.0000000000000001E+304,
 `CONVERT(1E302,"J","J")` 1E+302. The engine divides first (`value / F_to * F_from`) when the
@@ -382,7 +384,8 @@ Order: the units are checked in turn and from_unit's error or boolean wins: `CON
 `CONVERT(1,FALSE cell,D3)` `#VALUE!` (A13, A14, A24, A25). A boolean in either unit beats an unknown or empty unit in
 the other, so both units are type-checked before either is looked up: `CONVERT(1,"xyz",TRUE)`, `CONVERT(1,TRUE,"xyz")`,
 `CONVERT(1,"",TRUE)` and `CONVERT(1,TRUE,"")` are all `#VALUE!` (A15:A20). The number argument comes first:
-`CONVERT(NA(),TRUE,"m")` is `#N/A` (A27).
+`CONVERT(NA(),TRUE,"m")` is `#N/A` (A27). Cells that cannot tell the order apart: an unknown unit against an error is `#N/A` either
+way (A21:A23), `CONVERT("x",TRUE,"m")` is `#VALUE!` (A26) and a class mismatch is `#N/A` (A30).
 Evidence: gen-m9/290180acf017709c Calc!A148, A158, gen-m9/f81bd3b6dc373e5c Calc!A291 (excel-graph, T-2676 sweep,
 2026-10-26; the units are Data!C6 = FALSE, Data!E10 = FALSE and Data!A7 = TRUE); probes/eng-convert-boolean-unit
 A1:A32 (excel-graph, 2026-10-26, T-2810; D1 TRUE, D2 FALSE, D3 `=1/0`).
