@@ -3,7 +3,7 @@ id: T-1738
 title: "Displayed text: ?.?? keeps the point on an integer, #% of 0.0049 is %"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,12 +24,17 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 Update (T-2206): `0%` and `%0` of 0.0049 are fixed by the rounding change; `?.??` and `#%` of 0.0049 remain.
 
 ## Acceptance criteria
-- [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
-- [ ] number-formats.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
+- [x] number-formats.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+A `?` padding the first decimal now prints the pending point before its space (formatter/format.rs), so `?.??` on 1000
+is "1000.  " and on 61 "61.  " (formatter/test/test_digit_edges.rs). `#%` on 0.0049 was already "%" after T-2206; the
+test pins it. `make eval-baseline`: gen-m10 text cells 394 -> 366 (28 fixed), no regressions in any suite.

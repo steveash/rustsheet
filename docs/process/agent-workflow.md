@@ -109,8 +109,10 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 9. **Merge:** once CI is green and reviews are approved, take the merge lock (`make
    merge-lock-acquire PR=<n>`; decision 0075), bring `origin/main` in if the branch is behind and
    wait for CI on that head, and when the PR head contains the current `origin/main` (the steward
-   skill's mechanical check, decision 0028), squash-merge and release the lock. Once the
-   merge queue is on, enqueue with auto-merge instead and skip the up-to-date check
+   skill's mechanical check, decision 0028), squash-merge and release the lock. Before the lock,
+   merge `origin/main` in only as the `steward` skill's "When to merge `main` in" allows
+   (decision 0121).
+   Once the merge queue is on, enqueue with auto-merge instead and skip the up-to-date check
    (decision 0053). The squash commit title and the
    task's Outcome are the record; the steward's daily run lists merged work in `docs/status.md`
    (decision 0024), so PRs do not edit its log.
