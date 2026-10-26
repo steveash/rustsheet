@@ -21,6 +21,11 @@ similar on a real table, with FORMULATEXT. For the saved text, enter `=1 + 2`, `
 through Graph and read the `<f>` of the workbook Excel saves (the oracle already downloads it; record the text
 in docs/excel-semantics/xlsx-storage.md, as SPEC-0007 did for parentheses).
 
+- From T-2781 (fidelity review): also probe whitespace around LAMBDA parameter names (`=LAMBDA( x , x)(1)`, ours
+  drops it), a second LET name (`=LET(x, 1, y, 2, x + y)`), `=( (A1) )`, `=1*2 + 3`, `=LAMBDA(x, x + 1)(2)`,
+  `=- 5 %`, and leading TAB/LF/NBSP in a file's `<f>` text (ours trims only spaces). Unit tests in
+  `parser/tests/test_spacing.rs` assume the rule's reading for these.
+
 ## Acceptance criteria
 - [ ] Probe cases with excel-graph oracle values; findings in docs/excel-semantics/ (syntax.md, xlsx-storage.md).
 - [ ] An implementation task filed with `make new-task` for each answer that differs from what SPEC-0023 step 1

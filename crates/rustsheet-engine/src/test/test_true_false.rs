@@ -20,6 +20,6 @@ fn true_false_arguments() {
 
     assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
-    assert_eq!(model._get_formula("A3"), *"=TRUE(4)");
-    assert_eq!(model._get_formula("A4"), *"=FALSE(4)");
+    assert_eq!(model._get_formula("A3"), *"=TRUE( 4 )");
+    assert_eq!(model._get_formula("A4"), *"=FALSE( 4 )");
 }

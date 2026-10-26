@@ -19,19 +19,19 @@ fn exp_order() {
     let t = parser.parse("(1 + 2)^3  + 4", &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "(1+2)^3+4"
+        "(1 + 2)^3  + 4"
     );
 
     let t = parser.parse("(C5 + 3)^R4", &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "(C5+3)^R4"
+        "(C5 + 3)^R4"
     );
 
     let t = parser.parse("(C5 + 3)^(R4*6)", &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "(C5+3)^(R4*6)"
+        "(C5 + 3)^(R4*6)"
     );
 
     // Written groups print back (SPEC-0007).
@@ -57,31 +57,43 @@ fn correct_parenthesis() {
     };
 
     let t = parser.parse("-(1 + 1)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), "-(1+1)");
+    assert_eq!(to_english_localized_string(&t, &cell_reference), "-(1 + 1)");
 
     let t = parser.parse("1 - (3 + 4)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), "1-(3+4)");
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "1 - (3 + 4)"
+    );
 
     let t = parser.parse("-(1.05*(0.0284 + 0.0046) - 0.0284)", &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "-(1.05*(0.0284+0.0046)-0.0284)"
+        "-(1.05*(0.0284 + 0.0046) - 0.0284)"
     );
 
     let t = parser.parse("1 + (3+5)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), "1+(3+5)");
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "1 + (3+5)"
+    );
 
     let t = parser.parse("1 - (3+5)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), "1-(3+5)");
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "1 - (3+5)"
+    );
 
     let t = parser.parse("(1 - 3) - (3+5)", &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "(1-3)-(3+5)"
+        "(1 - 3) - (3+5)"
     );
 
     let t = parser.parse("1 + (3<5)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), "1+(3<5)");
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "1 + (3<5)"
+    );
 }
 
 #[test]
