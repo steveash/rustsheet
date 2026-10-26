@@ -8,9 +8,7 @@ use crate::{
     calc_result::CalcResult,
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, types::CellReferenceIndex},
-    formatter::dates::{
-        from_excel_date, from_excel_date_up_to, real_date_to_serial, EPOCH_1904_IN_1900_SERIALS,
-    },
+    formatter::dates::{from_excel_date_up_to, real_date_to_serial, EPOCH_1904_IN_1900_SERIALS},
     functions::lift::{num_error, value_error},
     functions::Function,
     model::Model,
@@ -196,17 +194,10 @@ impl Model {
             // Serial 0 still reads; below it, or past the calendar's end, is `#NUM!` at once. The
             // settlement is not checked as it is read (`ACCRINT(34022,36149,0.5,NA(),..)` is `#N/A`,
             // gen-m9/932b33b1ef8b7608 A28).
-            let calendar_date = |serial: i64| -> Result<i64, CalcResult> {
-                if (0..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER)).contains(&serial) {
-                    Ok(serial)
-                } else {
-                    Err(num_error(cell))
-                }
-            };
-            let issue =
-                calendar_date(self.financial_date(self.cast_number_no_bools_ref(issue, cell)?))?;
-            let first_interest =
-                calendar_date(self.financial_date(self.cast_number_ref(first_interest, cell)?))?;
+            let issue = self.financial_date(self.financial_calendar_date_of(issue, cell)?);
+            let first_interest = self.financial_date(
+                self.financial_calendar_serial(self.cast_number_ref(first_interest, cell)?, cell)?,
+            );
             let settlement = self.financial_date(self.cast_number_ref(settlement, cell)?);
             Ok((
                 issue,
@@ -250,17 +241,16 @@ impl Model {
         if self.coupon_schedule_breaks(first_interest_serial) {
             return broken_schedule_error(cell);
         }
-        // The serials must name dates of the calendar (a settlement up to the date system's limit).
-        if from_excel_date(issue_serial).is_err()
-            || from_excel_date(first_interest_serial).is_err()
-            || from_excel_date_up_to(
-                settlement_serial,
-                self.workbook
-                    .settings
-                    .date_system
-                    .accrint_settlement_limit(calc_method),
-            )
-            .is_err()
+        // The settlement must name a date of the calendar (up to the date system's limit); issue and
+        // first_interest were checked as they were read.
+        if from_excel_date_up_to(
+            settlement_serial,
+            self.workbook
+                .settings
+                .date_system
+                .accrint_settlement_limit(calc_method),
+        )
+        .is_err()
         {
             return num_error(cell);
         }
