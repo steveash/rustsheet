@@ -11,7 +11,7 @@ merged since its last run.
 
 This is the scheduled run, at 18:47 UTC. It follows the 02:42 UTC snapshot (#1736) and covers the 81 commits since then.
 
-`make eval` on `main` (6f449eb4): fetched: poi, corpus-bench, calipers; timeouts: corpus-bench `59932` no longer times out (T-0469, T-0477).
+`make eval` on `main` (6f449eb4) fetched poi, corpus-bench and calipers. Timeouts: corpus-bench `59932` no longer times out (T-0469, T-0477).
 - `make eval-lower-visible-lock` on 66c28893 shows 0 regressions in every gated suite. It lowers the visible-parity lock from 6,039 to 4,519 (decision 0093).
 
 CI on `main` is green through 22588cfb. Of the 77 push runs between 02:40 and 18:50 UTC, 62 were green and 15 were cancelled by the next push; none failed. 22588cfb's run is green too.

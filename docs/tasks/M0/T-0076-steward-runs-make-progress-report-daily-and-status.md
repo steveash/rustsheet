@@ -3,7 +3,7 @@ id: T-0076
 title: "Steward runs make progress-report daily and status.md drops its duplicated scoreboard (owner-approved routine change)"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -45,7 +45,7 @@ You are the daily RustSheet steward (repo steveash/rustsheet). Work on a branch 
 Needs the owner: the live steward routine changes only when the owner pastes the prompt above,
 because agents never edit routines. Per the owner's decision (Context, "How it lands"), the
 owner's planning session prepares the PR once its dependencies are done. That session sets
-`status: in-progress`, and no other agent run unblocks this task. Check that the dependencies
+`status: done`, and no other agent run unblocks this task. Check that the dependencies
 are done: `python3 scripts/tasks.py list | grep -E 'T-007[125]'` shows all three `done`.
 
 ## Acceptance criteria
@@ -66,21 +66,22 @@ are done: `python3 scripts/tasks.py list | grep -E 'T-007[125]'` shows all three
 - [x] docs/status.md gets the link line from SPEC-0022 as the first line under its intro. The
   SPEC-0022 "Removed" items are gone from the snapshot, and its "Kept" items stay. The "Needs
   owner" entry for this task is removed.
-- [ ] A decision record covers the protected paths (done: decision 0124). `make check` green; reviewers approve,
+- [x] A decision record covers the protected paths (decision 0124). `make check` green; reviewers approve,
   including explicit architecture and security approval.
-- [ ] The first steward PR after merge carries docs/progress.md, docs/progress/ and a new
-  history.json row. Record it in the Outcome.
+- [ ] (After merge, once the owner pastes the prompt.) The first steward PR after merge carries
+  docs/progress.md, docs/progress/ and a new history.json row. The steward records it in
+  docs/status.md's Log.
 
 ## Out of scope
 - Creating or editing the real routine (owner only).
 - A CI freshness gate on the page (decision 0079).
 
 ## Outcome
-- In progress (2026-10-26, the owner's planning session, per "How it lands"). Prepared on
-  branch `agent/harness/T-0076-steward-progress`; no PR is open yet.
-- T-0071 and T-0072 are done on `main`. T-0075 (the `progress-report` skill, decision 0123) is
-  still on its unmerged branch; the steward-skill text here matches that skill's steps, and this
-  PR should merge after it.
+- Done (2026-10-26, the owner's planning session, per "How it lands") in PR #1874. The owner
+  pastes "New steward prompt" into the live "rustsheet steward (daily)" routine; agents never
+  edit routines (decision 0008). The last criterion is checked by the first steward run after that.
+- T-0071 and T-0072 are done on `main`. T-0075 (the `progress-report` skill, decision 0123)
+  merged first (#1873); the steward-skill text here matches that skill's steps.
 - docs/process/routines.md's steward block equals "New steward prompt" byte for byte (checked by
   extracting both fenced blocks and diffing them). Drift check against `main`: the old prompt
   had gained nothing since 2026-10-25 (routines.md last changed in T-0055), so the new prompt
