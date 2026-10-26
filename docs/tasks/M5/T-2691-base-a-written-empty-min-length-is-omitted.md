@@ -3,7 +3,7 @@ id: T-2691
 title: "BASE: a written-empty min_length is omitted (BASE(0,2,) is '0')"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
