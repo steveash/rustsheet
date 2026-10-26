@@ -76,7 +76,10 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let n = self.cast_number_ref(n, cell)?.floor();
-        let k = self.cast_number_ref(k, cell)?.floor() as i64;
+        // number_chosen truncates toward zero before its sign check, so one in (-1, 0) is 0 and
+        // the result 1 (`PERMUTATIONA(10,-0.75)`, `PERMUTATIONA(0,-0.0001)`; gen-m9 0620505280d2ea6e
+        // A280, probes/t2475-stat-subexpressions P!A28).
+        let k = self.cast_number_ref(k, cell)?.trunc() as i64;
         // Excel: a number of about 1E+15 is #NUM!, even with number_chosen 0
         // (`PERMUTATIONA(1000000000000000,0)`, `PERMUTATIONA(FACT(18),2)`; gen-m9 775d053de498b8c7
         // A152, b9a32ce9a1fd0d71 A378), while `PERMUTATIONA(123456789.123,1)` is a number

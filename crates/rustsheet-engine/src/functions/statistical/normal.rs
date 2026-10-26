@@ -126,6 +126,12 @@ impl Model {
         if std_dev <= 0.0 {
             return Err(num_error(cell));
         }
+        // The density is #NUM! where the squared z-score overflows, not its limit 0
+        // (`NORMDIST(1E+300,0.3,2.5,0)`, probes/t2475-stat-subexpressions P!A572).
+        let z = (x - mean) / std_dev;
+        if !cumulative && !(z * z).is_finite() {
+            return Err(num_error(cell));
+        }
         let result = if cumulative {
             normal_cdf(x, mean, std_dev)
         } else {

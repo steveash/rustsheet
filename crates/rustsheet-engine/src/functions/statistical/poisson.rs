@@ -33,9 +33,18 @@ impl Model {
         let lambda = self.cast_number_ref(lambda, cell)?;
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
 
-        // x < 0 is #NUM!, and so is an x past u64 (the count truncates to one).
-        if x < 0.0 || x > (u64::MAX as f64) {
+        if x < 0.0 {
             return Err(num_error(cell));
+        }
+        // An x past u64 (the count truncates to one) is a cdf of 1 for a mean of 0 or more
+        // (`POISSON.DIST(2E+29,7,-1)` is 1, probes/t2475-stat-subexpressions P!A216); the
+        // pmf there, and a negative mean, stay #NUM! (unprobed).
+        if x > (u64::MAX as f64) {
+            return if cumulative && lambda >= 0.0 {
+                Ok(1.0)
+            } else {
+                Err(num_error(cell))
+            };
         }
 
         let k = x.trunc() as u64;

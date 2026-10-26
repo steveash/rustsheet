@@ -3490,7 +3490,9 @@ FALSE)` and `GAMMADIST(2,1.85E+76,1E+10,"TRUE")` are `#NUM!` (2801c1c11c21e134 A
 8.36257629135218E-309 (165db58d1540f014 A65, numbers.md "Subnormal results become 0").
 Ours: a number for each `#NUM!` above, `#NUM!` for the GAMMA.DIST zeros, the subnormal for EXPON.DIST; T-2435. A negative
 BINOM.DIST/BINOMDIST number_s, one in (-1, 0) included (`BINOM.DIST(-0.0125,10,1E-16,FALSE)`), is `#NUM!` since T-2700 (the sign
-is checked before truncation).
+is checked before truncation). Since T-2621 a BETA.INV quantile of 0 or 1 is `#NUM!`, which settles
+`BETAINV(0.025,1E-15,2.5)`, `BETAINV(0.05,0.002,1)`, `BETAINV(1E-200,0.1,1E+5)` and `BETAINV(1-1E-16,2,0.01)`;
+`BETAINV(1E-20,1E-300,30)` stays a number (ours 3.333333333333333E-302, the search's floor rather than an underflow to 0).
 Status: VERIFIED (excel-graph), one cell each
 
 ## LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order (T-1741)
@@ -3728,7 +3730,7 @@ Rule: TINV, T.INV.2T and T.INV with p = 0 and a df that truncates to 1 are `#DIV
 (31f09e6c48ca245c A316), `T.INV.2T(0,3)` (9e2225ead8a6a07b A102), `T.INV(0,4)` (91e167cd8d7eb652 A324); the cut is between
 1.999 and 2.
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2096.
-Ours: `#NUM!`; T-2096.
+Ours: as Excel since T-2621 (`t_inv_of`).
 Status: VERIFIED (excel-graph)
 
 ## A lone text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN (T-2256)
@@ -3738,7 +3740,7 @@ QUARTILE*, PERCENTILE* and TRIMMEAN are `#NUM!` (`QUARTILE(Data!E2,3)` with E2 =
 `TRIMMEAN(Data!B7,1.005)` with TRUE, 9735c5ab72fa5ecf A264) and PERCENTRANK* `#N/A` (`PERCENTRANK(Data!C11,1.005)` with "a",
 44a8841352dc48e9 A52). This answers T-2344's single-cell question and T-2066's (`QUARTILE` of one text cell).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 72 cells in T-2344.
-Ours: since T-2429 a cell holding text or a boolean is no number in QUARTILE*, PERCENTILE* and PERCENTRANK* ("A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"); the name and INDEX forms, the empty cell and TRIMMEAN stay T-2344's.
+Ours: since T-2429 a cell holding text or a boolean is no number in QUARTILE*, PERCENTILE* and PERCENTRANK* ("A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"), and since T-2621 a cell holding nothing, text or a boolean in TRIMMEAN; the name and INDEX forms stay T-2344's.
 Status: VERIFIED (excel-graph)
 
 ## COVARIANCE: a boolean scalar is one value (T-2436)
@@ -3923,5 +3925,52 @@ Rule (excel-graph, 2026-10-25): `T.TEST(Data!E11,Data!A6:C12,2,123456789.123)` w
 type check that ours reports as `#NUM!` (T-2469). `WEIBULL.DIST(7,1E+8,0.3,"TRUE")` is `#NUM!`, where ours returns the limit 1
 (hypothesis: Excel reports the overflow of (x/beta)^alpha; T-2435).
 Evidence: probes/t2496-fin-subexpressions P!A90; probes/tbill-error-order-inner-calls (the T.TEST cell).
+Ours: both as Excel since T-2621 ("Statistical argument-domain errors and extreme values (T-2621)").
 Status: VERIFIED (excel-graph), one cell each; the boundaries are not probed.
-Tasks: T-2469, T-2435
+Tasks: T-2469, T-2435, T-2621
+
+## Statistical argument-domain errors and extreme values (T-2621)
+Rule (probes/t2475-stat-subexpressions, excel-graph, 2026-10-24; each from the probe cell named, with its gen-m9 owner):
+- PERMUTATIONA's number_chosen truncates toward zero before its sign check: `PERMUTATIONA(<blank>,-0.0001)` is 1 (P!A28,
+  097af1ca33638670 A358; also "Scalar distributions at extreme arguments, part 2"). COMBINA is not symmetric about it:
+  `COMBINA(-0.5,-0.0001)` is 1 (P!A35, 11eb3ab4f4f8104c A90), so number truncates toward zero, but with a number of 1 or
+  more a number_chosen in (-1, 0) is `#NUM!` (`COMBINA(7,1-1.005)`, gen-m5 c688ca172fe533dc A118; `COMBINA(24,-0.0001)`,
+  gen-m6 44194b2fefa30de2 A222; `COMBINA(16,SIN(..))`, `COMBINA(10,TAN(..))`, gen-m5 989a3d6036b5fef3 A210, gen-m6
+  9e6a1b733ee1e1e0 A124). Ours truncates number_chosen only when number truncates to 0 and floors it otherwise; why
+  Excel lets the n = 0 case through is UNVERIFIED (no cell has a number in (0, 1) or a number_chosen of -1 or less with
+  n = 0).
+- T.TEST and TTEST: a first sample that is itself an error value comes before a bad tails or type, and before the
+  other arguments' errors: `T.TEST(<#VALUE!>,42,1,-1)` is `#VALUE!` (P!A58, 11eb3ab4f4f8104c A169) and
+  `TTEST(<#VALUE!>,<#REF!>,2,<#REF!>)` is `#VALUE!` (P!A222, 5cebac1f02bf30f2 A311). A blank one-cell first sample does
+  the same ("T.TEST of a blank one-cell sample" above). An error inside a range still comes after tails and type
+  (`fn_t_test`, probes/stat-test-lift). UNVERIFIED: a second sample that is an error value against a bad tails/type
+  (ours: tails/type first).
+- `T.INV.2T(<FALSE cell>,1)` is `#DIV/0!` (P!A124, 2138b909d8f810ea A344), the p = 0, df 1 rule ("Student t quantile at
+  p = 0 with df below 2 is #DIV/0!").
+- WEIBULL.DIST at x = 0 is 0 cumulative too, even where beta^-alpha overflows: `WEIBULL.DIST(0,1E+8,4.6269E-09,TRUE)`
+  is 0 (P!A78, 1b31092a0d79e5f1 A179); and an overflowing (x/beta)^alpha is `#NUM!`, not the cdf's limit 1:
+  `WEIBULL(1E+15,1E+15,<TRUE cell>,1)` (P!A407, a5342a7e24fd803e A166), confirming the T-2496 hypothesis above. Which
+  form Excel overflows on ((x/beta)^alpha or x^alpha·beta^-alpha) is UNVERIFIED where the two differ, and so is the
+  density (cumulative FALSE) on that overflow: both cells are cumulative, and ours gives the density `#NUM!` too.
+  NORMDIST's cdf at that x (ours 1) is likewise unprobed.
+- `POISSON.DIST(2E+29,7,-1)` is 1 (P!A216, 5919660b7bb4d195 A88): a cumulative count past 2^64 is not rejected.
+  UNVERIFIED: the pmf there (ours `#NUM!`).
+- IFERROR's fallback that is a blank cell is the empty value, as its value argument's is (logic.md "IFERROR / IFNA of a
+  blank cell is an empty value"): STDEV.P counts it as 0, `STDEV.P(<100, 2, blank, blank>,IFERROR(1/0,<blank>),
+  {1,..,10})` is 25.559768683380703, the population deviation of 13 values (P!A158, 334f3dc9ca937f10 A226).
+- `TRIMMEAN(<blank cell>,3.14159)` is `#NUM!` (P!A353, 9bc247733a1ca9fa A360), as a lone text or boolean cell is ("A lone
+  text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN").
+- `SKEW({1E+200,1E+200,-1E+200},2.5,<FALSE cell>)` is `#DIV/0!` (P!A245, 6e18550e9fc9c1b9 A347): the squared deviations
+  overflow, and Excel answers the zero-variance error rather than the 0 that dividing by an infinite deviation gives.
+  SKEW.P and KURT are unprobed.
+- `NORMDIST(1E+300,0.3,2.5,0)` is `#NUM!` (P!A572, f82473275380882e A143): the density is `#NUM!` where the squared
+  z-score overflows, not its limit 0 (NORM.S.DIST's density is unprobed).
+- `BETA.INV(0.025,1E-15,2.5)` is `#NUM!` (P!A127, 2138b909d8f810ea A358; the true quantile is about EXP(-3.7E+15)), with
+  the T-2255 BETAINV cells above: a quantile that underflows to 0 or rounds to 1 is `#NUM!`.
+Evidence: probes/t2475-stat-subexpressions P!A28, A35, A58, A78, A124, A127, A158, A216, A222, A245, A353, A407, A572
+(excel-graph, 2026-10-24).
+Ours: as Excel since T-2621 (`permut.rs`, `fn_combina`, `t_test_element` with `PairedSamplesError::first_is_error_value`,
+`t_inv_of`, `weibull.rs`, `poisson.rs`, `if_error_like`, `trimmean.rs`, `fn_skew`, `norm_dist_of`, `beta_inv_of`). The
+three last-digit cells of the same probe (P!A317 F.INV.RT, A417 NEGBINOMDIST, A520 SKEW) are T-2791's.
+Status: VERIFIED (excel-graph), one cell each; the boundaries are not probed
+Tasks: T-2621, T-2791

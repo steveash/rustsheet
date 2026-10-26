@@ -38,10 +38,17 @@ impl Model {
         if x < 0.0 || alpha <= 0.0 || beta <= 0.0 {
             return Err(num_error(cell));
         }
-        // The density at x = 0 is 0 for every shape (t1048-weibull A16, A17; t1049-weibulldist
-        // A27, A28).
-        if x == 0.0 && !cumulative {
+        // The density and the cdf at x = 0 are 0 for every shape (t1048-weibull A16, A17;
+        // t1049-weibulldist A27, A28; `WEIBULL.DIST(0,1E+8,4.6E-09,TRUE)` is 0 where statrs'
+        // beta^-alpha overflows, probes/t2475-stat-subexpressions P!A78).
+        if x == 0.0 {
             return Ok(0.0);
+        }
+        // Excel reports the overflow of (x/beta)^alpha, though the cdf's limit is 1:
+        // `WEIBULL(1E+15,1E+15,TRUE,1)` and `WEIBULL.DIST(7,1E+8,0.3,"TRUE")` are #NUM!
+        // (probes/t2475-stat-subexpressions P!A407, probes/t2496-fin-subexpressions P!A90).
+        if !(x / beta).powf(alpha).is_finite() {
+            return Err(num_error(cell));
         }
         // statrs::Weibull: shape = k (alpha), scale = lambda (beta)
         let dist = Weibull::new(alpha, beta).map_err(|_| num_error(cell))?;

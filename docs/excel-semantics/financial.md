@@ -1765,9 +1765,27 @@ M = DATE(2100,6,30), R = 0.05, P = 98 unless varied; column A frequency 2, B fre
   0.0232 at 2101, 0.0353 at 2125), so not a plain 1/T. No form fitted yet.
 Read together: a start that equals the coupon at par and moves linearly with the coupon looks like a current-yield or
 yield-approximation formula; T-1592 is the place to fit it. Lab test: `test_yield_start_one_input_two_steps_back`.
-Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
-Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740
+T-1592 (fourth round, 2026-10-26): the start and the stop rule are fitted.
+- Start: S = (100·R + (100 - P)/T) / ((100 + P)/2 - (100 - P)/(4T)), with T the basis's settlement-to-maturity days
+  over 360 (over 365 on bases 1 and 3; basis 2 is assumed to be days over 360, with no evidence yet: gen-m9 A189 says it is off, T-2777). On yield-start-one-input
+  rows 22-96 (but 67) the two-steps-back start fits a denominator P + w(100 - P) where (1/2 - w)·T is 0.25000 on every
+  row (prices 90.5 to 99.5, rates 0 to 0.12, terms 2.3 to 30.3 years). At price 98 and T = 1559/360 that gives
+  0.0552344627, the T-2187 start. It does not use the redemption, the frequency or the coupon schedule. Rows 1-21 and 67 sit
+  at the root, so the back-chain cannot reach their start.
+- Stop: an analytic-Newton step on PRICE (the `^`-priced PRICE that PRICE itself computes) that is below 1e-10 is not
+  taken, so the value is the iterate before it. That is why the values sit short of the root. The cut lies between 9.67e-11
+  (a step yield-start-sweep C18 does not take) and 1.01e-10 (one yield-start-one-input B21 takes). This replaces the step-size
+  cuts tried in T-2187 and T-2304: their 6e-6 to 7e-6 "last steps" are the step before the one that is not taken.
+- Lab fit `yield-caret` (family "Newton, fitted start"): 240/370 bit-exact and 361/370 within 4 ulp (`yield`, libm-priced:
+  212 and 340). Cut 1e-9: 194/370; 1e-11: 145/370. The previous best was 4/178. The 9 cells left are 7 to 33 ulp off
+  (solver-iteration-traces Y!E2; yield-solver-sweep C7 and C11, where the rate is 0.4 or 0.2; yield-start-one-input B11,
+  B17, B31, B54, B62 and B69), within 15 significant digits. Lab test: `test_yield_fitted_start_and_short_stop`.
+Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`). Where an
+iterate leaves PRICE's domain or 100 steps pass, it falls back to the old solver (Newton from the coupon rate with a central
+difference, then bisection). The `#NUM!` cells and the 100-step values of "YIELD's #NUM! cells and its suspected 100-step
+cap" are not fitted yet.
+Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact); the values are excel-graph
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2777 (bases 1 and 2), T-2788 (the last ulps)
 
 ## YIELD's #NUM! cells and its suspected 100-step cap
 Rule: Excel's YIELD is `#NUM!` at some inputs where PRICE has a root, and returns a number that is not a root at others;
@@ -2260,11 +2278,29 @@ Status: VERIFIED (excel-graph), one or two cells each
 Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T-2490, T-2344, T-2544
 
 ## NPV's residue at IRR's root is not the double sum
-Rule: where NPV's terms cancel, Excel's value differs from both the exact sum and the plain double sum of
-v_i/(1+r)^i, by more than half a unit of the 15th significant digit of the result. Excel's per-period discount and
-summation order are not identified. At M2, M8 and Three Parameters!E2 below (and at H367 and A148) Excel is nearer the exact value than the double sum, at
-M3 further from it, so Excel does not compute a more accurate sum either.
-Evidence (ironcalc-calc/FINANCIAL/IRR.xlsx, saved by Excel Online; the rate cell is an IRR that ours matches to the
+Rule: NPV divides by (1+r) once, at the end: NPV(r, v1..vn) = (v1/d0 + v2/d1 + ... + vn/d(n-1)) / (1+r), where d0 = 1
+and d(i) = d(i-1)*(1+r) is a running product. All of it is in doubles: 1+r rounded, each product, each quotient and
+each partial sum (left to right) rounded to a double. Where NPV's terms cancel, this differs from both the exact sum
+and the plain double sum of v_i/(1+r)^i by more than half a unit of the 15th significant digit of the result. At M2,
+M8 and Three Parameters!E2 below (and at H367 and A148) Excel is nearer the exact value than the plain double sum, at
+M3 further from it.
+Evidence for the rule (T-2671, probes/npv-term-order, excel-graph, 382 cells at 20 rates, the rates exact doubles in
+R!A1:A20: IRR.xlsx's L2, L3, L8 and Three Parameters!D2, the m9-fin-nper-npv rates 0.05 to 0.2 and 11 rates searched
+where T-1528's candidates differ most; generator docs/research/t2671_npv_term_order.py):
+- one-term NPV(r,v) is v/(1+r) (40/40 cells);
+- zero-padded NPV(r,0,..,0,1) over k periods is (1/d(k-1))/(1+r) with d the running product (220/220, periods 2-12).
+  Not 1/(1+r)^k by any power source: 1/d(k) 141/220, libm pow(1+r,-k) 116, repeated division 108, Excel's `^` 78;
+- two- and three-term NPVs with values of opposite sign and close magnitude, and the IRR flows at L2 and D2, sum the
+  quotients left to right before the last division (122/122, P!A75 and A78 being the same formula; summed right to
+  left 116/122). NPV(r,-1,1+r) is exactly 0 in Excel (e.g. P!A55, A189): the rule gives that zero itself
+  (-1/1 + (1+r)/(1+r)), so there is no snap of near-zero sums.
+Lab: `uv run rustsheet-fitlab annuity-npv` (now also on probes/npv-term-order), candidate "double: deferred (sum
+v/(1+r)^(i-1))/(1+r)": 470/470 bit-exact over m9-fin-nper-npv and npv-term-order (`x87 op` the same). The others:
+Horner from the last value 254/470, the running factor d*=(1+r) with v/d per term 228, sum of v/P with libm pow 190
+(at 64 bits 186), with Excel's `^` (the engine today) 159, with the exact or x87-instruction power 107, correctly
+rounded 82. T-1528's best on m9-fin-nper-npv alone was 27/88. Lab test: `test_npv_deferred_division_reproduces_excel`.
+The rule also gives every residue value below to the bit (M2, M3, M8, Three Parameters!E2, H367 and A148).
+Evidence for the residues (ironcalc-calc/FINANCIAL/IRR.xlsx, saved by Excel Online; the rate cell is an IRR that ours matches to the
 bit, so NPV gets the same inputs):
 - General!M2 `NPV(L2,A2:F2)`, flows {-20,5,5,5,5,5}, L2 = 0.07930826116039724: Excel 6.4212018552224666E-12, exact at
   that rate 6.421923509333131E-12, ours (left-to-right sum of v/(1+r).powi(i), `compute_npv`; with libm `pow` M2 is 6.419753617592505E-12) 6.418865439172805E-12.
@@ -2280,12 +2316,13 @@ bit, so NPV gets the same inputs):
   302.233453999042 in Excel (exact at the double rate 302.23345399904366, ours 302.23345399904133); probes-numeric/m9-fin-nper-npv A148
   `NPV(0.1,-1E6,250000,250000,250000,250000,250000)` is -47548.46149808013 (exact -47548.46149807995, ours
   -47548.4614980802).
-Rejected (gap triage 2026-10-25, doubles, on the 9 rate-exact residues and H367): sum of v/(1+r)^i left to right or
-reversed, Horner from the last value with / or * 1/(1+r) (matches M8 only), a running factor by * or /,
+Rejected before T-2671 (gap triage 2026-10-25, doubles, on the 9 rate-exact residues and H367): sum of v/(1+r)^i left
+to right or reversed, Horner from the last value with / or * 1/(1+r) (matches M8 only), a running factor by * or /,
 v*(1+r)^-i, v/exp(i*log1p r), fsum, and the future-value Horner divided by (1+r)^n. T-1528's Blocked section lists its
 own rejected forms on m9-fin-nper-npv.
-Ours: the left-to-right double sum (`compute_npv`).
-Status: VERIFIED (values: the IRR.xlsx Excel Online cache, and excel-graph sidecars fin-argument-modes.oracle.json and m9-fin-nper-npv.oracle.json for H367 and A148); the formulation is open (T-2671 probes it, T-2672 fits it).
+Ours: the left-to-right double sum of v/(1+r)^i with Excel's `^` (`compute_npv`); T-2672 moves it to the rule.
+Status: VERIFIED (values: the IRR.xlsx Excel Online cache, excel-graph sidecars fin-argument-modes, m9-fin-nper-npv and
+npv-term-order; the rule is bit-exact on all 470 lab cells).
 Tasks: T-2671, T-2672, T-1528, T-2131
 
 ## Annuity and DB argument domains at their limits
