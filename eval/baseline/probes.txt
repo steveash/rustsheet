@@ -1259,6 +1259,14 @@ C	probes/t2723-unary-plus-formula-text.case.json	53
 C	probes/t2725-index-scalar-nonzero-t-n.case.json	48
 C	probes/t2737-subnormal-cdf-shapes.case.json	34
 C	probes/t2738-gamma-dist-tiny-ratio.case.json	40
+C	probes/t2739-stored-256.case.json	2
+C	probes/t2739-stored-4095.case.json	2
+C	probes/t2739-typed-4095.case.json	2
+C	probes/t2739-typed-dq-4094.case.json	2
+C	probes/t2739-typed-dq-4095.case.json	2
+C	probes/t2739-typed-emoji-2047.case.json	2
+C	probes/t2739-typed-len-4095.case.json	2
+C	probes/t2739-typed-two-4000.case.json	2
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
