@@ -746,7 +746,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   (EXP(x)-EXP(-x))'s cancellation error, so the kernel takes a different path near 0. Formatting is not the cause:
   rounding the double to 15 digits half-up, half-even or ties toward +infinity, from its exact value or from 16 or 17
   digits, changes no count by more than 4. Column C: `IMSIN("4i")` is 27.2899171971277i but `IMSIN("-4i")`
-  -27.2899171971278i (IMSINH(4)'s digits, so IMSINH(x) may be i·IMSIN(-ix)); `IMSIN("±12i")` ±81377.3957064298i and
+  -27.2899171971278i (IMSINH(4)'s digits, so IMSINH(x) may be i·IMSIN(-i·x)); `IMSIN("±12i")` ±81377.3957064298i and
   `IMSIN("±0.01i")` ±0.0100001666674999i; IMCOS at ±4i, ±12i, ±0.01i is 27.3082328360165, 81377.3957125741 and
   1.00005000041667.
 - **IMSQRT of a negative real is polar through COS and ATAN2 on the web (the engine keeps desktop's libm value).** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is

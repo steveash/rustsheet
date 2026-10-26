@@ -51,7 +51,7 @@ canary-verified) is on this branch with its generator and baseline. The best can
 matches 224/300 texts; libm sinh (the engine) 97; every other form tried scores lower (engineering.md, T-2778
 paragraph, has each count). Excel's IMSINH is not odd in its 15-digit text (64 of 150 arguments), and the misses of the
 best form near 0 are the size of its cancellation error, so look for a kernel that switches form at small |x| and is
-not symmetric in x. `IMSIN("-4i")` carries IMSINH(4)'s digits, which suggests IMSINH(z) = i·IMSIN(-iz) with
+not symmetric in x. `IMSIN("-4i")` carries IMSINH(4)'s digits, which suggests IMSINH(z) = i·IMSIN(-i·z) with
 IMSIN's own sinh. Next: fit IMSIN's imaginary part at real-axis-free arguments (a probe of IMSIN(yi) at the same 300 y)
 and test that identity; then try two-branch kernels (an expm1 or series form below a cut) against both probes.
 Unblock when a candidate reaches 300/300, or with the identity confirmed.
