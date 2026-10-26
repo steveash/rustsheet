@@ -3,7 +3,7 @@ id: T-2757
 title: "Score fused (fma) denominators for IMSEC, IMCSC, IMCSCH and IMCOT on the im-last-digit sweep"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
