@@ -3,7 +3,7 @@ id: T-2681
 title: "Identify Excel's F.TEST tail for the 8 cells still visibly off after T-2571"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
