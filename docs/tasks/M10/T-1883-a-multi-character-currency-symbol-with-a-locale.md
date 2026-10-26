@@ -31,4 +31,4 @@ Update (T-2157, 2026-10-21): the lexer reads a multi-character `[$...]` symbol a
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
 
 ## Outcome
-probes/t1883-currency-locale-edges (excel-graph): an empty or unresolvable locale on a currency tag counts as the section's tag (engine matches); the `[$€-40C]` length-limit ladders differ from the engine at 3 cells (A26, A60, A61), recorded in number-formats.md and filed as T-2812. Eval: +58 passing probe cells, 3 new known failures.
+probes/t1883-currency-locale-edges (excel-graph): an empty or unresolvable locale on a currency tag counts as the section's tag (engine matches); the `[$€-40C]` length-limit ladders differ from the engine at 3 cells (A26, A60, A61), recorded in number-formats.md and filed as T-2812. Eval: +60 passing probe cells (63 cells, 3 new known failures).
