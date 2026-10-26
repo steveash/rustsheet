@@ -14,6 +14,7 @@ macro_rules! one_child {
             | Node::SpillRangeOperator { child: $child }
             | Node::Group { child: $child, .. }
             | Node::UnaryPlus { child: $child }
+            | Node::Spaced { child: $child, .. }
             | Node::UnaryKind { right: $child, .. }
             | Node::LambdaDefKind { body: $child, .. }
     };
@@ -105,24 +106,54 @@ impl Node {
                 *node = area;
                 continue;
             }
-            match node {
-                Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
-                    pending.extend(args.iter_mut());
-                }
-                one_child!(child) => pending.push(child),
-                Node::OpRangeKind { left, right }
-                | Node::OpIntersectKind { left, right, .. }
-                | Node::OpUnionKind { left, right, .. } => {
-                    pending.extend([&mut **left, &mut **right]);
-                }
-                Node::LambdaCallKind { lambda, args } => {
-                    pending.push(lambda);
-                    pending.extend(args.iter_mut());
-                }
-                other => {
-                    if let Ok((left, right)) = chain::value_operands_mut(other) {
-                        pending.extend([left, right]);
-                    }
+            node.push_children_mut(&mut pending);
+        }
+    }
+
+    /// Whether the tree holds whitespace written in the formula ([`Node::Spaced`], SPEC-0023).
+    pub(crate) fn has_spaces(&self) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if matches!(node, Node::Spaced { .. }) {
+                return true;
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
+    /// The tree without the whitespace written in it: every [`Node::Spaced`] replaced by its
+    /// child. An explicit stack keeps the walk off the call stack.
+    pub(crate) fn strip_spaces(&mut self) {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            while let Node::Spaced { child, .. } = node {
+                let child = std::mem::replace(&mut **child, Node::EmptyArgKind);
+                *node = child;
+            }
+            node.push_children_mut(&mut pending);
+        }
+    }
+
+    /// [`Node::push_children`] for the walks that rewrite the tree in place.
+    fn push_children_mut<'a>(&'a mut self, pending: &mut Vec<&'a mut Node>) {
+        match self {
+            Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
+                pending.extend(args.iter_mut());
+            }
+            one_child!(child) => pending.push(child),
+            Node::OpRangeKind { left, right }
+            | Node::OpIntersectKind { left, right, .. }
+            | Node::OpUnionKind { left, right, .. } => {
+                pending.extend([&mut **left, &mut **right]);
+            }
+            Node::LambdaCallKind { lambda, args } => {
+                pending.push(lambda);
+                pending.extend(args.iter_mut());
+            }
+            other => {
+                if let Ok((left, right)) = chain::value_operands_mut(other) {
+                    pending.extend([left, right]);
                 }
             }
         }

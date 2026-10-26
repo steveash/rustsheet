@@ -179,7 +179,8 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         // operations
         Node::UnaryKind { right: child, .. }
         | Node::Group { child, .. }
-        | Node::UnaryPlus { child } => {
+        | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. } => {
             add_legacy_intersection(child, add, arrays);
         }
         Node::OpConcatenateKind { .. }
@@ -302,6 +303,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::UnaryKind { right: child, .. }
         | Node::Group { child, .. }
         | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. }
         | Node::StructuredReferenceKind { lowered: child, .. } => {
             run_static_analysis_on_node(child)
         }

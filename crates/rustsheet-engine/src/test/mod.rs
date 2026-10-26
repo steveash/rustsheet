@@ -77,6 +77,7 @@ mod test_fn_weekend_lift;
 mod test_fn_workday_lift;
 mod test_fn_yield_odd_lift;
 mod test_forecast;
+mod test_formula_whitespace;
 mod test_frozen_rows_columns;
 mod test_function_iterator;
 mod test_gcd_lcm;

@@ -50,7 +50,7 @@ impl Model {
             ),
             // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
             // `ungrouped` above sees through all three.
-            Group { .. } | UnaryPlus { .. } | StructuredReferenceKind { .. } => {
+            Group { .. } | UnaryPlus { .. } | Spaced { .. } | StructuredReferenceKind { .. } => {
                 CalcResult::new_error(
                     Error::ERROR,
                     cell,
