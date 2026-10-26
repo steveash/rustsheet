@@ -185,6 +185,27 @@ fn fn_yield_stops_short_of_the_root() {
     assert_eq!(bits("A2"), 0.056_983_625_338_011_136_f64.to_bits());
 }
 
+// YIELD's Newton has no fallback (T-2391; financial.md "YIELD's #NUM! cells and its 100-step
+// cap"): an iterate off PRICE's domain is #NUM! though PRICE has a root (probes/yield-newton-domain
+// B14 and A14), and the 100th iterate is the value though it is no root (C1).
+#[test]
+fn fn_yield_newton_domain_and_step_cap() {
+    let mut model = new_empty_model();
+    model._set("A1", "=YIELD(36665,44491,42,106,100,4,0)");
+    model._set("A2", "=YIELD(39448,43831,0.05,100000,100,2)");
+    model._set("A3", "=YIELD(39448,43831,0.05,10000,100,2)");
+    model._set("A4", "=YIELD(37341,45513,1E-9,105,1E+300,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A3"), (-0.339_824_532_737_020_73_f64).to_bits());
+    assert_eq!(bits("A4"), 78.135_510_928_029_92_f64.to_bits());
+}
+
 #[test]
 fn fn_yield_wrong_arg_count() {
     let mut model = new_empty_model();

@@ -922,7 +922,8 @@ in proportion to each element's coupon count plus one, so one call lifts at most
 (probes/fin-argument-modes, fin-yield-odd-lift: they lift over arrays; Excel's own limit is unprobed), while
 `ROWS(YIELD(SEQUENCE(9)+39000,43831,0.05,95,100,2))` is 9. YIELD's and ODDFYIELD's kernels walk the coupon schedule once
 (up to 4.4 and 6.3 ms at the calendar's longest schedule, release build), then the solver evaluates the price at most
-397 times (100 Newton steps of three prices, 97 bisection prices), each a sum over up to 32,400 quarterly coupons
+397 times (ODDFYIELD: 100 Newton steps of three prices, 97 bisection prices; YIELD's Newton, since T-2391, at most 100
+steps of a price and a slope), each a sum over up to 32,400 quarterly coupons
 (0.55 ms): about 0.23 s an element at that bound, charged 2^24 units against SPEC-0011's 2^27 visit cap (8 elements,
 about 1.8 s; the slowest inputs found, a price of 1E300 over 9990 years, take 54 ms an element). ODDFPRICE walks and sums
 its odd first period once (up to 6.3 ms, 8 walks of `COUPON_WALK_WEIGHT`: 256 elements took 1.7 s), ODDLPRICE and
@@ -1399,7 +1400,8 @@ bit-exact, as the libm-priced ones do: Newton from 0.1 to a 1e-12 step 4/178 (10
 and redemption 100 0/178 (5) against 1/178 (14). The union of both fits' candidates is 15/178, against 12/178 for `yield` alone. So the
 PRICE kernel is not what keeps the YIELD fits (T-1592, T-2007) from Excel's bits.
 Ours: `discount_growth` in functions/financial/financial_bonds.rs (`arithmetic::power`, libm where `^` is an error);
-DURATION and MDURATION use it too (T-1975). YIELD's `compute_yield_from_price` prices with `f64::powf`.
+DURATION and MDURATION use it too (T-1975), and so does YIELD's Newton (T-1592); ODDFYIELD's `solve_yield` prices with
+`f64::powf`.
 Status: VERIFIED (excel-graph)
 Tasks: T-2207
 
@@ -1783,45 +1785,39 @@ T-1592 (fourth round, 2026-10-26): the start and the stop rule are fitted.
   212 and 340). Cut 1e-9: 194/370; 1e-11: 145/370. The previous best was 4/178. The 9 cells left are 7 to 33 ulp off
   (solver-iteration-traces Y!E2; yield-solver-sweep C7 and C11, where the rate is 0.4 or 0.2; yield-start-one-input B11,
   B17, B31, B54, B62 and B69), within 15 significant digits. Lab test: `test_yield_fitted_start_and_short_stop`.
-Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`). Where an
-iterate leaves PRICE's domain or 100 steps pass, it falls back to the old solver (Newton from the coupon rate with a central
-difference, then bisection). The `#NUM!` cells and the 100-step values of "YIELD's #NUM! cells and its suspected 100-step
-cap" are not fitted yet.
+Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`). Since
+T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
+cells and its 100-step cap").
 Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2777 (bases 1 and 2), T-2788 (the last ulps)
 
-## YIELD's #NUM! cells and its suspected 100-step cap
-Rule: Excel's YIELD is `#NUM!` at some inputs where PRICE has a root, and returns a number that is not a root at others;
-neither follows from Newton on PRICE from the coupon rate alone:
+## YIELD's #NUM! cells and its 100-step cap
+Rule: with more than one coupon left, YIELD is analytic Newton on PRICE from the fitted start ("YIELD stops short of
+PRICE's root") with no fallback. An iterate where the step is not finite (PRICE or its slope leaves its domain) makes
+YIELD `#NUM!`, even where PRICE has a root; after 100 steps the 100th iterate is the value, root or not.
 - A coupon rate far above the root is `#NUM!`: `YIELD(36665,44491,42,106,100,4,0)` and the gen-m9 cells
   `YIELD(36665,44491,42,106,42,4,0)`, `YIELD(39779,45574,1E+10,86,101,1,3)`, `YIELD(38930,46538,1E+300,116,0.01,1,1)` and
-  15 more (roots 5 to 32, which our bisection finds), while `YIELD(36665,44491,R,106,100,4,0)` computes for R = 0.5 to 30
-  (roots 0.47 to 14.3).
+  15 more (roots 5 to 32), while `YIELD(36665,44491,R,106,100,4,0)` computes for R = 0.5 to 30
+  (roots 0.47 to 14.3). `YIELD(39681,45662,42,3.14159,102,4)` (a price far below par) is `#NUM!` too.
 - A price far above par computes up to 1E4 and is `#NUM!` from 1E5: `YIELD(39448,43831,0.05,P,100,2)` is -0.0222 at
-  P = 200, -0.165 at 1000, -0.220 at 2000, -0.340 at 10000, `#NUM!` at 1E5 and 1E6 (where our solver finds -0.494 and -0.633). The
-  gen-m9 cell `YIELD(39572,45740,1E-10,97,(FISHERINV(Data!$E1)+Data!A2),4.9)` (redemption 1, frequency 4.9 cut to 4;
-  ours -0.26) is `#NUM!` too.
-- With a redemption far above the price (1E+50 to 1E+300), YIELD returns a value below the root, where Newton has not
-  converged: `YIELD(37341,45513,1E-9,105,1E+300,1)` is 78.13551092802992 (the root is above 1E+13), the same bits at
-  redemptions 1E+100 and 1E+200, 78.13550467139088 at 1E+50; at a redemption of 1E+20 Excel and our solver agree (C11). The value moves
-  with the rate (78.909 at 0.01, 116.80 at 0.5) and the price (85.41 at price 1, 71.37 at 1E+10), and
-  `YIELD(43831,45412,10,999999999999998,1E+300,2)` is 88233.09573268576.
-Lab (T-2391, scratch scripts on the fitlab PRICE): the third group is what about 100 analytic-Newton steps from a start
-near the redemption-100 root give. That start is `(100/105)^(1/22.4) - 1` = -0.0021787 for C1. Stepping back 100 steps
-from Excel's values lands within 1e-6 of it. Run forward 100 steps, it is within 7.7e-7 relative of C1, C8 and C9, 2.4e-7
-of C6 (frequency 2) and 3.8e-7 of C7 (frequency 4), but 1e-5 to 1.3e-2 off at rates 0.01 to 0.5 or price 1. The same
-bits at redemptions 1E+100 to 1E+300 point to an analytic derivative: our central difference moves the last digits with
-the redemption. The first two groups rule out simpler models of the solver. Newton from the coupon rate with no
-fallback (failing where an iterate is not finite or at or below -1 or -frequency) gets every `#NUM!` cell of the first
-group, but is also `#NUM!` at prices 1500 to 10000, where Excel computes. Halving the step back into the domain fixes
-those but computes A14, A15, B14 and five gen-m9 cells. No fixed start (0, 0.05, 0.1, -0.5, 1) separates the cells
-that compute from the ones that do not. So the `#NUM!` rule likely comes from YIELD's unfitted start phase ("YIELD
-stops short of PRICE's root", T-1592).
+  P = 200, -0.165 at 1000, -0.220 at 2000, -0.340 at 10000, `#NUM!` at 1E5 and 1E6 (roots -0.494 and -0.633). The
+  gen-m9 cell `YIELD(39572,45740,1E-10,97,(FISHERINV(Data!$E1)+Data!A2),4.9)` (redemption 1, frequency 4.9 cut to 4)
+  is `#NUM!` too.
+- With a redemption far above the price (1E+50 to 1E+300), YIELD returns the 100th iterate, below the root:
+  `YIELD(37341,45513,1E-9,105,1E+300,1)` is 78.13551092802992 (the root is above 1E+13), the same bits at
+  redemptions 1E+100 and 1E+200, 78.13550467139088 at 1E+50; at a redemption of 1E+20 Newton converges (C11). The value
+  moves with the rate (78.909 at 0.01, 116.80 at 0.5) and the price (85.41 at price 1, 71.37 at 1E+10), and
+  `YIELD(43831,45412,10,999999999999998,1E+300,2)` is 88233.09573268576. The same bits at redemptions 1E+100 to 1E+300
+  come from the analytic slope.
+Verified (T-2391, 2026-10-26): with the fitted start of T-1592 this rule matches every one of the 53 cells of
+probes/yield-newton-domain in type, and every value cell within 7 ulp (the 16 C cells bit-exact); the 13 cells left are
+last-digit misses of "YIELD stops short of PRICE's root". It matches the 21 gen-m9 cells T-2391 owned and the two of
+T-2747 (probes/t2475-stat-subexpressions P!A214, gen-m9/44a8841352dc48e9 A318). The earlier attempt (Newton from the
+coupon rate with no fallback) was `#NUM!` at prices 1500 to 10000: the fitted start, not the stop rule, decides them.
 Evidence: probes/yield-newton-domain (53 cells: A price sweep, B coupon-rate sweep, C large redemptions, D low
-redemptions and negative roots; excel-graph, 2026-10-24, T-2391); the 20 gen-m9 cells listed in T-2391.
-Ours: Newton from the coupon rate with a central-difference derivative, then bisection on (-0.9999, 100), so it finds a
-root in the first two groups (wrong where Excel is `#NUM!`) and is `#NUM!` in the third.
-Status: UNVERIFIED (the algorithm); the values are excel-graph
+redemptions and negative roots; excel-graph, 2026-10-24, T-2391); the gen-m9 cells listed in T-2391.
+Ours: matches since T-2391 (`excel_yield_newton` in functions/financial/financial_bonds/yield_solver.rs).
+Status: VERIFIED
 Tasks: T-2391, T-1592
 
 ## T-bill settlement below serial 1
@@ -2067,9 +2063,9 @@ formula per pool entry:
   (`IRR({-100,#N/A,60})`; see "IRR over an error element").
 - XNPV: dates whose first is not the earliest, dates from serial 0 to 61, and fewer dates than values are `#NUM!`; equal
   dates give 0; fractional dates truncate.
-- YIELD: a price of 0 or -1 is `#NUM!`, and so are 1E+6 and 1E+300 (ours -0.6330938491144911 at 1E+6, T-2391); a price of
+- YIELD: a price of 0 or -1 is `#NUM!`, and so are 1E+6 and 1E+300 (ours matches since T-2391); a price of
   200 computes (-0.02224401627496982). The price sweep in probes/yield-newton-domain locates the cut between 1E4 and 1E5
-  ("YIELD's #NUM! cells and its suspected 100-step cap").
+  ("YIELD's #NUM! cells and its 100-step cap").
 Evidence: a scratch suite of 169 cells (one formula per entry of the pools rate, nper, period, cash_amount, price,
 annuity_type, security_date, basis, frequency, npery, cash_flows and cash_dates), filled through excel-graph on
 2026-10-22 and deleted afterwards, as the task asked; T-2390, T-2391 and T-2392 commit probes for the three mismatches.
