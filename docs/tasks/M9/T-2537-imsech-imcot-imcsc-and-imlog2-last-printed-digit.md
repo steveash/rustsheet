@@ -100,7 +100,7 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
 ## Outcome
 By this run, T-2044, T-2743, T-2750 and T-2231 had already fixed 109 of the 154 lines. The 45 left were all
 `IMCOT("-1.5+0.5i")`, whose real part Excel prints as ...5415 where ours printed ...5416. IMCOT's denominator is now
-`(cosh 2y + 1) - 2cos²x` (complex/trig.rs `imcot`). A scratch fit of 32 groupings of the same kernel over
+`(cosh 2y + 1) - 2cos²x` (complex/trig.rs `imcot`). A scratch fit of 64 variants (8 denominator groupings, two numerators, libm or exp-based cosh and sinh) over
 probes-numeric im-last-digit-sweep's 63 IMCOT cells plus this one found that only this grouping fits all 64.
 T-2044's `cosh 2y - (2cos²x - 1)` fits the 63 but not this cell, and the libm or exp-based cosh makes no
 difference (engineering.md). Unit test: `im_reciprocal_kernels_match_the_sweep`. Eval delta: gen-m9 known failures
