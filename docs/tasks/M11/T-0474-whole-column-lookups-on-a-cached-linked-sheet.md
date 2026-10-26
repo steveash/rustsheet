@@ -3,7 +3,7 @@ id: T-0474
 title: "Whole-column lookups on a cached linked sheet keep full length (virtual blank tail)"
 milestone: M11
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -34,7 +34,7 @@ values instead of the array bound's `#ERROR!`, with the same full-length search 
 ## Out of scope
 - Sheets with no cached data (T-0457 done; T-0472).
 
-## Handoff
+## Handoff (resumed)
 Claimed by an opus run that had too little session budget left to finish it; no code written. Notes from reading
 the code (data, check them):
 - The table argument reaches `Model::lookup_table` (lookup_and_reference/lookup.rs) already evaluated: an external
