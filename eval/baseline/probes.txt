@@ -2681,7 +2681,6 @@ F	probes/regression-trend.case.json	Sheet1!O4
 F	probes/regression-trend.case.json	Sheet1!O5
 F	probes/regression-trend.case.json	Sheet1!O6
 F	probes/regression-trend.case.json	Sheet1!O7
-F	probes/roman-lift-forms.case.json	Calc!G1
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9

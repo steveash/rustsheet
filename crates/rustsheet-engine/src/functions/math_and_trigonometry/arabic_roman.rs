@@ -222,9 +222,6 @@ impl Model {
                 Ok(f) => f.trunc(),
                 Err(error) => return error,
             };
-            if number != 0.0 && !(1.0..=3999.0).contains(&number) {
-                return value_error(cell);
-            }
             let form = match form {
                 // TRUE is the classic form 0, FALSE the simplified form 4.
                 Some(CalcResult::Boolean(b)) => {
@@ -240,6 +237,11 @@ impl Model {
                 },
                 None => 0,
             };
+            // A form that is itself an error wins over a number out of range: `ROMAN(-5,NA())` is `#N/A`, while
+            // `ROMAN(-5,"x")` stays `#VALUE!` (probes/roman-lift-forms Calc!G1, L1; numbers.md "ROMAN truncates before its sign check").
+            if number != 0.0 && !(1.0..=3999.0).contains(&number) {
+                return value_error(cell);
+            }
             if !(0..=4).contains(&form) {
                 return value_error(cell);
             }
