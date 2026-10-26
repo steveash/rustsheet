@@ -107,10 +107,12 @@ still unmet then move to a follow-up task without the key.
 
 ## Outcome
 `t_inv_of` accepts 1 < p < 2 for T.INV.2T and TINV and returns `-t_upper_quantile(df, (2 - p) / 2)`;
-p <= 0 and p >= 2 stay `#NUM!`, p = 1 is 0. The p = 0, df 1 `#DIV/0!` was already in place. Unit test
-shows A2/A43-style cells are bit for bit the negated mirror `T.INV.2T(2 - p, df)`. gen-m9 known
-failures 3775 -> 3770 (5 lines). The other owned cells now have Excel's type and are `NumericClose`
-(last-digit residue, e.g. gen-m9/201d67f1d59436ed A103, 5395b8a427764a3f A347), which belongs to T-1542 and
-T-0967; their case lines stay in the baseline for that reason. The first acceptance criterion is met for
-the type (every owned cell is a number); its bit-level part is descoped to the existing T-1542 and T-0967
-(Visible-parity stage), so no new follow-up is filed. No gated baseline gained a line.
+p <= 0 and p >= 2 stay `#NUM!`, p = 1 is 0. The p = 0, df 1 `#DIV/0!` was already in place. A unit test shows
+p = 1.0001 to 1.999 are bit for bit the negated mirror `T.INV.2T(2 - p, df)`. gen-m9 known failures 3775 -> 3770 (5 lines,
+3 owned); no gated baseline gained a line. Every owned cell now has Excel's type, so the `#NUM!` cells are fixed.
+
+Not met (acceptance criterion 1, descoped per the Visible-parity stage): 43 owned lines remain.
+- 18 cells are `NumericMismatch`, about 1e8 too large in magnitude near p = 1 (`TINV(1+2^-52,2)`: Excel
+  -3.14e-16, ours -1.49e-8): filed as T-2839 (opus).
+- The rest are `NumericClose`, off at the 15th digit (`T.INV.2T(1.5,1)` -1.0000000000000016 against -1):
+  T-0967 and T-1542.
