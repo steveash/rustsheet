@@ -3,7 +3,7 @@ id: T-0481
 title: "A stored formula's typographic quotes parse as an undefined name: #NAME?, not #ERROR! (corpus-bench/48354 D2:D6)"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
