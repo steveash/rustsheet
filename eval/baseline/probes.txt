@@ -331,6 +331,7 @@ C	probes/eng-besselk-underflow-bit-shift.case.json	276
 C	probes/eng-complex-overflow.case.json	21
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
+C	probes/eng-im-large-part.case.json	36
 C	probes/eng-im-overflow-edges-2.case.json	114
 C	probes/eng-im-overflow-edges.case.json	116
 C	probes/eng-im-overflow.case.json	48
