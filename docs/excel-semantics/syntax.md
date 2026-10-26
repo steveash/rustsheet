@@ -320,7 +320,8 @@ array constant (`={1, 2}` prints `={1,2}`). A plus that folds into a number lite
 `=  +5` prints `=  5`. Whitespace never changes a value (every probed value is the space-free formula's).
 Evidence: probes/t2769-formula-text-whitespace A1:C23 (excel-graph `entered`, 2026-10-26, T-2769).
 Unprobed (T-2776): whether a formula stored in a file keeps its whitespace on load, and whitespace before the `(` of a
-call, around `:` and `!`, and inside a structured reference.
+call, around `:` and `!`, inside a structured reference, extra whitespace next to an intersection (a space
+that is the operator, `=B1:B2  B2`), and a folded plus after an operator (`=1+  +5`; only `=  +5` is probed).
 Ours: the tree keeps no whitespace, so every formula prints canonical, space-free text and the cells with kept
 whitespace fail (and probes/t2723-unary-plus-formula-text C24, C25). Keeping it is a design change with a spec first
 (T-2776): `Node` must not grow, and shared formulas share one tree.

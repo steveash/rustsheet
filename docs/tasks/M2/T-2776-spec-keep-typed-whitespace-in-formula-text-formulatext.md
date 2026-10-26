@@ -29,7 +29,8 @@ Design questions for the spec: where the whitespace lives (`Node` must not grow,
 are shared R1C1 trees, so whitespace that differs per cell must not break sharing), how it survives reference
 moves, copy/fill and structural edits, whether stored xlsx `<f>` text keeps it on load and export (unprobed:
 probe it), and what Excel does with whitespace in other places (before `(` of a call, around `:` and `!`,
-inside a structured reference); unknowns become probe cases first (excel-probe skill).
+inside a structured reference, extra whitespace next to an intersection, where one space is the
+operator and the rest is cosmetic, `=B1:B2  B2`, and a folded plus after an operator, `=1+  +5`); unknowns become probe cases first (excel-probe skill).
 
 ## Acceptance criteria
 - [ ] `docs/specs/SPEC-NNNN-formula-text-whitespace.md` (from TEMPLATE.md) covers the probed rule, the open
