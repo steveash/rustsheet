@@ -161,6 +161,29 @@ as a name character when the decimal separator is `.`. That rule is an assumptio
 Status: VERIFIED (en-US); comma-decimal locales UNVERIFIED
 Tasks: T-0123
 
+## Undefined names may contain typographic quotes
+Rule: a token written with the typographic quotes `“` (U+201C) and `”` (U+201D) where a string literal was
+meant is a *name* to Excel, so an undefined one evaluates to `#NAME?`, not to a syntax error:
+`IF(B2="domestic",“D”,IF(B2="international",“I”,“N/A”))` is `#NAME?`.
+Evidence: corpus-bench/48354/1_48354_input.xlsx Sheet1!D2:D6 (5 cells; the stored `<f t="array">` keeps the
+U+201C/U+201D characters and the workbook's own cached value is `#NAME?`, as is the excel-graph sidecar).
+Which other characters Excel's name lexer accepts, and whether a typed formula behaves like a stored one, is
+unprobed (T-0481 probes it). Ours: `#ERROR!` (the lexer refuses the token).
+Status: VERIFIED (stored formulas, excel-graph + Excel-cached); the character set UNVERIFIED
+Tasks: T-0481
+
+## A structured reference into a linked workbook is `#REF!`
+Rule: a table reference qualified by an external-link index, `[1]!Table3[#Data]`, is `#REF!` — not the
+`#BLOCKED!` an uncached cell or sheet reference of the same book gives ("External reference with no cached
+data is `#BLOCKED!`" below), and not a value, whatever the link part caches:
+`VLOOKUP(E8,[1]!Table3[#Data],2,FALSE)` is `#REF!` with a link part that caches only the other book's
+`sheetNames` (empty `sheetData`, no `definedNames`).
+Evidence: corpus-bench/58994/1_58994_input.xlsx Sheet1!F8 (excel-graph sidecar, 2026-10-26, gap triage).
+Whether a link part that *does* cache the table's cells changes it is unprobed. Ours: `#ERROR!`, because the
+lexer reads `[1]!Table3` as one name identifier and the `[#Data]` after it does not parse (T-0482).
+Status: VERIFIED (excel-graph)
+Tasks: T-0482
+
 ## External reference with no cached data is `#BLOCKED!`
 Rule: `SUM('[link-external-workbook-a.xlsx]Sheet0'!A1:B1)` whose externalBook part holds no cached
 data is `#BLOCKED!`, not `#REF!`. Excel for the web writes it as a vm-coded rich-value error,
