@@ -20,7 +20,7 @@
 
 use super::parser::{Denominator, Fraction, NumberPart, TextToken};
 use crate::decimal_round::{round_decimal, RoundMode};
-use crate::number_format::to_precision;
+use crate::number_format::{group_thousands, to_precision};
 
 /// The text of `value` under the number section `part`, which holds `fraction`, or `None` when
 /// Excel cannot show it: with no integer part, a fixed denominator's numerator past 32767 and a
@@ -158,18 +158,6 @@ pub(super) fn format_fraction(
         push_denominator(&mut text, &denominator_text, blank, blank_spaces);
     }
     Some(text)
-}
-
-/// `digits` with `separator` between each group of three from the right.
-fn group_thousands(digits: &str, separator: &str) -> String {
-    let mut grouped = String::new();
-    for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            grouped.push_str(separator);
-        }
-        grouped.push(c);
-    }
-    grouped
 }
 
 /// How the separator (the literals between the integer part and the numerator) prints, given
