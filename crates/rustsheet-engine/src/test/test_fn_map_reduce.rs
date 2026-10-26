@@ -773,3 +773,30 @@ fn map_takes_a_1x1_array_step_as_its_value() {
     assert_eq!(model._get_text("A2"), "5");
     assert_eq!(model._get_text("C1"), "#CALC!");
 }
+
+// A REDUCE step that is a TRIMRANGE of a range is the trimmed reference, as a step that is the
+// range is: IMSQRT does not lift over it, while it still lifts over an array step and the
+// trimmed values still spill (probes/t2579-array-value-edges B40, B46, B49; T-2596).
+#[test]
+fn reduce_step_trimrange_of_a_range_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("Z1", "4");
+    model._set("Z2", "9");
+    model._set(
+        "A1",
+        "=ROWS(IMSQRT(REDUCE(0,1,LAMBDA(a,b,TRIMRANGE(Z1:Z3)))))",
+    );
+    model._set("A2", "=ROWS(IMSQRT(REDUCE(0,1,LAMBDA(a,b,Z1:Z2))))");
+    model._set(
+        "A3",
+        "=ROWS(IMSQRT(REDUCE(0,1,LAMBDA(a,b,TRIMRANGE({4;9})))))",
+    );
+    model._set("B1", "=REDUCE(0,1,LAMBDA(a,b,TRIMRANGE(Z1:Z3)))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "2");
+    assert_eq!(model._get_text("B1"), "4");
+    assert_eq!(model._get_text("B2"), "9");
+    assert_eq!(model._get_text("B3"), "");
+}
