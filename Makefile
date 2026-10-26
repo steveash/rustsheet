@@ -31,8 +31,8 @@ test: ## Run Rust tests
 # name contains one of these substrings (libtest filters); shard 2 runs every other test (libtest
 # `--skip` with the same substrings, which matches the same way). So the two together run exactly
 # the tests `make test` runs, each once, and a new test lands in shard 2 unless it matches. The
-# substrings pick the slowest engine modules, about half of the test CPU time.
-TEST_SHARD_1 := test::test_tailed_array test::test_fn_groupby fn_regex_backtrack test::test_nested_groupby_cells
+# substrings pick the slowest engine modules, about half of the test CPU time (balanced on PR #1869's CI run, where fmt and clippy run beside shard 1).
+TEST_SHARD_1 := test::test_tailed_array test::test_fn_groupby test::test_fn_pivotby fn_regex_backtrack test::test_nested_groupby_cells
 
 test-shard-1: ## CI: the tests matching TEST_SHARD_1 (half of make test)
 	$(CARGO) test --workspace --exclude rustsheet_python -- $(TEST_SHARD_1)
