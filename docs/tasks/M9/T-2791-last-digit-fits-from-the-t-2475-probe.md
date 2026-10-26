@@ -1,5 +1,5 @@
 ---
-id: T-2788
+id: T-2791
 title: "Last-digit fits from the T-2475 probe: F.INV.RT(1-1E-10,8,7), NEGBINOMDIST(7,9,1E-10), SKEW(1E-15,1,2) (3 cells, split from T-2621)"
 milestone: M9
 lane: functions-stat

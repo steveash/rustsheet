@@ -3971,6 +3971,6 @@ Evidence: probes/t2475-stat-subexpressions P!A28, A35, A58, A78, A124, A127, A15
 (excel-graph, 2026-10-24).
 Ours: as Excel since T-2621 (`permut.rs`, `fn_combina`, `t_test_element` with `PairedSamplesError::first_is_error_value`,
 `t_inv_of`, `weibull.rs`, `poisson.rs`, `if_error_like`, `trimmean.rs`, `fn_skew`, `norm_dist_of`, `beta_inv_of`). The
-three last-digit cells of the same probe (P!A317 F.INV.RT, A417 NEGBINOMDIST, A520 SKEW) are T-2788's.
+three last-digit cells of the same probe (P!A317 F.INV.RT, A417 NEGBINOMDIST, A520 SKEW) are T-2791's.
 Status: VERIFIED (excel-graph), one cell each; the boundaries are not probed
-Tasks: T-2621, T-2788
+Tasks: T-2621, T-2791
