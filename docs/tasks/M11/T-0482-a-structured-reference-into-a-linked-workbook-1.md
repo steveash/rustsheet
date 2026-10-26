@@ -3,7 +3,7 @@ id: T-0482
 title: "A structured reference into a linked workbook ([1]!Table3[#Data]) is #REF! (corpus-bench/58994 F8)"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -55,3 +55,9 @@ the following `[#Data]` then fails to parse: crates/rustsheet-engine/src/express
 Decision 0083: the one cell this task owns has the wrong error (not a last-digit difference), so the task is in
 the campaign at the `semantics` stage. Its target is that the cell has Excel's `#REF!`; the first acceptance
 criterion states it.
+
+## Outcome
+The lexer reads `[n]!Table[...]` / `[n]Sheet!Table[...]` as a structured reference whose table name keeps the
+prefix; a loaded workbook has no such table, so it is `#REF!`. Eval: corpus-bench/58994 now passes (one `F`
+line removed from eval/baseline/corpus-bench.txt, no new failures). Typed (non-loaded) formulas keep the parse
+error. Engine test: `structured_reference_into_a_linked_workbook_is_ref`.

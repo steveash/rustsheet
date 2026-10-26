@@ -20,7 +20,9 @@
 //!
 //! - the incomplete-gamma functions at their lift cap (T-1872): GAMMA.DIST's continued fraction at
 //!   its 2^19-term cap, on its NaN path and converging with its rescales (the bound's slower term),
-//!   and CHISQ.DIST at the largest chi-squared shape, over 512 elements.
+//!   and CHISQ.DIST at the largest chi-squared shape, over 512 elements. Since T-2795 an element is
+//!   charged by its shape: CHIDIST of df 5 (150 units) at x = 7, where its continued fraction is
+//!   slowest, over the 894,784 elements the charge lets through.
 //!
 //! - HYPGEOM.DIST at its lift cap (T-1873): the cdf sum with 258,239 terms that are not known to
 //!   be 0 (just under its 2^18-term cap, the population of 1.8E8 at its widest), over 32 elements.
@@ -215,6 +217,11 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             "CHISQ.DIST, the largest shape at the element cap",
             1,
             "=SUM(CHISQ.DIST(SEQUENCE(512)*0+1E10,1E10,TRUE))",
+        ),
+        (
+            "CHIDIST, df 5 at the continued fraction's slowest x, at its by-value element cap",
+            1,
+            "=SUM(CHIDIST(SEQUENCE(894784)*0+7,5))",
         ),
     ]
     .into_iter()
