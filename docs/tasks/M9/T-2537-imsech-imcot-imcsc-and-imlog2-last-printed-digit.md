@@ -106,3 +106,4 @@ T-2044's `cosh 2y - (2cos²x - 1)` fits the 63 but not this cell, and the libm o
 difference (engineering.md). Unit test: `im_reciprocal_kernels_match_the_sweep`. Eval delta: gen-m9 known failures
 4056 → 4011 (fixed 45), 0 regressions in any suite; none of the 154 lines remain.
 
+Follow-up: T-2787 (probe more IMCOT inputs where the two groupings differ).
