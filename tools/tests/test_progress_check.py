@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from test_progress_page import AS_OF, DATA, RUN, judgment_page
+from test_progress_page import AS_OF, DATA, RUN, SECTIONS, judgment_page
 
 from rustsheet_tools import progress_report
 from rustsheet_tools.progress_report import blocks, check, page
@@ -37,7 +37,7 @@ def offenders(text: str) -> list[str]:
 def test_a_rendered_page_with_current_as_of_lines_passes() -> None:
     # The real generator's status block: keeps STATUS_RUN in step with page.status.
     texts = dict.fromkeys(page.JUDGMENT_BLOCKS, f"\n{AS_OF}\nSee the suites run (1) above.\n")
-    rendered = page.render(RUN, DATA, judgment_page(texts))
+    rendered = page.render(RUN, DATA, judgment_page(texts), SECTIONS)
     assert check.offenders(rendered) == []
 
 
