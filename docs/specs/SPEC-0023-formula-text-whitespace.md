@@ -66,8 +66,8 @@ probes/t2776-* (excel-graph, 2026-10-26).
   `=  +5` prints `=  5`, and `=1+  +5` prints `=1+  5`.
 - **A run is a line-feed count plus a space count.** Only the line feeds and the spaces after the
   last line feed print. `=1+ ` LF ` 2` prints `=1+` LF ` 2`, and 10 spaces, 3 line feeds and 2 spaces
-  print as the 3 line feeds and the 2 spaces. The space count is one byte and wraps: 300 typed
-  spaces print as 44. This matches the BIFF `PtgAttrSpace` record, which stores one count per kind.
+  print as the 3 line feeds and the 2 spaces. Each count is one byte and wraps on its own: 300 typed
+  spaces print as 44, and so do 300 line feeds (probes/t2782-whitespace-run-wrap). This matches the BIFF `PtgAttrSpace` record, which stores one count per kind.
   The behaviour comes from the probes; the record only explains it.
 - **Stored text**: a formula read from a file's `<f>` keeps its interior whitespace (`1 + 2`,
   `SUM( 1 )`, `1+` LF `2`, `(1 )+2`) and applies the typed drops. Whitespace at the very start is
@@ -116,8 +116,8 @@ pub(crate) struct Run { pub line_feeds: u8, pub spaces: u8 }
   node exists only where whitespace was written.
 - **`Run` is Excel's shape.** Parsing a run into `Run` performs the normalisation the probes show:
   count the line feeds, keep the spaces after the last one, and wrap the space count at 256 (the
-  count mod 256, never a panic). Whether the line-feed count wraps too is unprobed: step 2 probes
-  it first and does whatever that shows. Printing a `Run` is `"\n" × line_feeds + " " × spaces`. Step 1
+  count mod 256, never a panic); the line-feed count wraps at 256 too, on its own (step 2's probe,
+  probes/t2782-whitespace-run-wrap). Printing a `Run` is `"\n" × line_feeds + " " × spaces`. Step 1
   keeps only the space count of a run without line feeds; step 2 adds the line-feed rules.
 - **Parser.** `parse_primary` reads the run before it from the lexer. The binary-operator, `%` and
   `)` sites read the run after the operand they just finished. The lexer already sees the

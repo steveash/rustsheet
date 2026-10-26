@@ -80,8 +80,14 @@ fn dropped_whitespace_prints_without_it() {
         ("  +5", "  5"),
         ("1+  +5", "1+  5"),
         ("1+ +5", "1+ 5"),
-        // Line feeds are T-2782's: a run holding one prints nothing yet.
-        ("1+\n2", "1+2"),
+        // A run keeps its line feeds and only the spaces after the last one
+        // (probes/t2776-formula-text-whitespace-shapes C13, C19:C22).
+        ("\n1+2", "\n1+2"),
+        ("1+\n2", "1+\n2"),
+        ("1+ \n 2", "1+\n 2"),
+        ("1+\n \n2", "1+\n\n2"),
+        ("1+          \n\n\n  2", "1+\n\n\n  2"),
+        ("1+2 \n ", "1+2"),
     ] {
         let node = parser.parse(formula, &context());
         assert_eq!(to_english_localized_string(&node, &context()), text);
@@ -90,13 +96,33 @@ fn dropped_whitespace_prints_without_it() {
 
 #[test]
 fn a_space_count_wraps_at_256() {
-    // `=1+` + 300 spaces + `2` prints 44 spaces (probes/t2776-formula-text-whitespace-shapes).
+    // `=1+` + 300 spaces + `2` prints 44 spaces (probes/t2776-formula-text-whitespace-shapes), and
+    // exactly 256 print none (probes/t2782-whitespace-run-wrap).
     let mut parser = parser();
     for (spaces, kept) in [(255, 255), (256, 0), (257, 1), (300, 44)] {
         let formula = format!("1+{}2", " ".repeat(spaces));
         let node = parser.parse(&formula, &context());
         let text = to_english_localized_string(&node, &context());
         assert_eq!(text, format!("1+{}2", " ".repeat(kept)), "{spaces}");
+    }
+}
+
+#[test]
+fn a_line_feed_count_wraps_at_256_on_its_own() {
+    // Each count is one byte and wraps by itself; spaces before the last line feed are dropped
+    // even when the line-feed count wraps to none (probes/t2782-whitespace-run-wrap).
+    let mut parser = parser();
+    for (run, kept) in [
+        ("\n".repeat(255), "\n".repeat(255)),
+        ("\n".repeat(256), String::new()),
+        ("\n".repeat(257), "\n".to_string()),
+        ("\n".repeat(300), "\n".repeat(44)),
+        (format!("{}   ", "\n".repeat(256)), "   ".to_string()),
+        (format!("   {}", "\n".repeat(256)), String::new()),
+    ] {
+        let node = parser.parse(&format!("1+{run}2"), &context());
+        let text = to_english_localized_string(&node, &context());
+        assert_eq!(text, format!("1+{kept}2"), "{run:?}");
     }
 }
 
