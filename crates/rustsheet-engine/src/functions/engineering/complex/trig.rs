@@ -67,6 +67,31 @@ fn exp_sinh_cosh(t: f64) -> (f64, f64) {
     ((a - b) / 2.0, (a + b) / 2.0)
 }
 
+/// `(sinh x, cosh x)` as IMSINH, IMCOSH and IMSECH build them from the real part: `u = EXP(-x)`,
+/// then `(1/u ∓ u)/2`, with Excel's EXP. The reciprocal makes the kernel lopsided: `IMSINH("4")` is
+/// 27.289917197127753, one ulp above libm sinh, while `IMSINH("-4")` is libm's (T-2778), and at
+/// x = 1.5 both parts are one ulp above libm, at -1.5 neither. It fits all 300 cells of
+/// probes/t2778-imsinh-sign-sweep (0.0105 <= |x| <= 18.2), where `(EXP(x) - EXP(-x))/2` fits 224,
+/// and all 800 IMCOSH and IMSINH cells of ±1.5+yi in probes/t2629-imcosh-imsinh-y-sweep, where
+/// sin y and cos y are SIN and COS's own (`IMSINH("-1.5+2.46454679i")` needs Excel's COS)
+/// (docs/excel-semantics/engineering.md, T-2629). Outside [`INVERSE_EXP_RANGE`] Excel's digits are
+/// libm's: `IMSINH("0.01")` 0.0100001666675 and `IMSINH("0.00012+1.23456789i")`, where the form's
+/// cancellation shows, and `IMCOSH("100+1.5i")`, where `1/u` is one ulp below `EXP(100)`
+/// (probes/t2535-imsinh-imcosh-kernel-sweep A55, A6; eng-im-overflow-edges-2 A60).
+fn inverse_exp_sinh_cosh(x: f64) -> (f64, f64) {
+    if !INVERSE_EXP_RANGE.contains(&x.abs()) {
+        return (x.sinh(), x.cosh());
+    }
+    let u = excel_exp(-x);
+    let v = 1.0 / u;
+    ((v - u) / 2.0, (v + u) / 2.0)
+}
+
+/// The |x| over which [`inverse_exp_sinh_cosh`] takes the `1/u` form. Both ends are unprobed:
+/// Excel's lower switch lies between 0.01 (libm's digits) and 0.0105 (the form's), its upper one
+/// between 18.2 and 100; 20 is where the worksheet TANH turns to ±1 (numbers.md).
+const INVERSE_EXP_RANGE: std::ops::RangeInclusive<f64> = 0.010_000_000_000_000_2..=20.0;
+
 /// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of SIN,
 /// COS and TAN's own kernels (the x87 reduction, [`excel_sin_cos`] and [`excel_tan`]), and
 /// `#NUM!` from |x| = 2^27 as SIN is, except IMCOT, which is "0" there (`past_limit`).
@@ -140,7 +165,9 @@ pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
     if let Some(result) = hyperbolic_log_form((x, y, suffix), false, cell) {
         return result;
     }
-    finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
+    let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
+    let (y_sin, y_cos) = trig_sin_cos(y);
+    finite_complex_result(x_cosh * y_cos, x_sinh * y_sin, suffix, cell)
 }
 
 /// cot(x+iy) = `(sin 2x - i·sinh 2y) / ((cosh 2y + 1) - 2cos²x)`, with SIN and COS reduced as
@@ -235,11 +262,10 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// The unfused sum (T-2044) misses only `IMSECH("1.34384-77.6742i")`, whose imaginary part Excel
 /// prints as ...306336 (J34; exact 0.37667538230633553); fusing cos²y instead also misses it.
 pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let x_cosh = x.cosh();
+    let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
     if y == 0.0 {
         return complex_result(1.0 / x_cosh, 0.0, suffix);
     }
-    let x_sinh = x.sinh();
     let (y_sin, y_cos) = trig_sin_cos(y);
 
     let t = x_sinh.mul_add(x_sinh, y_cos * y_cos);
@@ -267,7 +293,9 @@ pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
     if let Some(result) = hyperbolic_log_form((x, y, suffix), true, cell) {
         return result;
     }
-    finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
+    let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
+    let (y_sin, y_cos) = trig_sin_cos(y);
+    finite_complex_result(x_sinh * y_cos, x_cosh * y_sin, suffix, cell)
 }
 
 /// tan(x+iy) in its double-angle form, `(sin 2x + i sinh 2y) / (cos 2x + cosh 2y)`: Excel's

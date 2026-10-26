@@ -1229,6 +1229,7 @@ C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
 C	probes/t2601-index-scalar-forms-t-n.case.json	56
 C	probes/t2625-nested-consumers.case.json	32
+C	probes/t2629-imcosh-imsinh-y-sweep.case.json	800
 C	probes/t2652-floor-ceiling-ties.case.json	98
 C	probes/t2653-ifs-text-condition-array-value.case.json	30
 C	probes/t2653-ifs-text-condition-shape-sources.case.json	21
@@ -1289,6 +1290,7 @@ C	probes/t2776-ws-after-at.case.json	2
 C	probes/t2776-ws-after-bang.case.json	2
 C	probes/t2776-ws-after-colon.case.json	2
 C	probes/t2776-ws-before-colon.case.json	2
+C	probes/t2778-imsinh-sign-sweep.case.json	312
 C	probes/table-edits/table-convert-names-this-row.case.json	13
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
@@ -1712,9 +1714,6 @@ F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
 F	probes/elapsed-no-seconds-boundary.case.json	S!A31
 F	probes/elapsed-no-seconds-boundary.case.json	S!A32
-F	probes/eng-im-overflow-edges.case.json	S!A17
-F	probes/eng-im-overflow-edges.case.json	S!A58
-F	probes/eng-im-overflow-edges.case.json	S!A9
 F	probes/eng-imln-modulus-range.case.json	S!A51
 F	probes/eng-imln-modulus-range.case.json	S!A52
 F	probes/eng-imln-modulus-range.case.json	S!A53
@@ -3383,12 +3382,6 @@ F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D1
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D10
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D8
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D9
-F	probes/t2535-complex-text-tie.case.json	S!A14
-F	probes/t2535-complex-text-tie.case.json	S!A15
-F	probes/t2535-complex-text-tie.case.json	S!A16
-F	probes/t2535-complex-text-tie.case.json	S!A18
-F	probes/t2535-complex-text-tie.case.json	S!A7
-F	probes/t2535-imsinh-imcosh-kernel-sweep.case.json	S!A23
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D1
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D19
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D2
@@ -3488,6 +3481,7 @@ F	probes/t2776-formula-text-whitespace-shapes.case.json	S!F21
 F	probes/t2776-ws-after-at.case.json	S!C1
 F	probes/t2776-ws-after-bang.case.json	S!A1
 F	probes/t2776-ws-after-bang.case.json	S!C1
+F	probes/t2778-imsinh-sign-sweep.case.json	S!C2
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2

@@ -651,7 +651,9 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
 - IMTAN and IMCOT near the edge answer `i` / `-i` (`IMTAN("1.5+710.4i")`); IMLN, IMLOG10, IMLOG2
   and IMSQRT do not overflow there. Already matched.
 - Last-digit differences remain as known failures (a kernel question, not a rule; T-2231): IMCOSH/IMSINH
-  `710.4+1.5i` (several units in the 15th digit) and `1.5+710.4i`, IMSECH `1.5+711i`, IMCOT `711+1.5i`, IMLOG2 and IMLOG10 at 710-800.
+  `710.4+1.5i` (several units in the 15th digit), IMCOT `711+1.5i`, IMLOG2 and IMLOG10 at 710-800. IMCOSH/IMSINH
+  `1.5+710.4i` and IMSECH `1.5+711i` are fixed by the `1/EXP(-x)` kernel ("IMSINH, IMCOSH and IMSECH take sinh and
+  cosh as (1/u ∓ u)/2 with u = EXP(-x)", T-2629).
 
 ## Engineering edge-pool smoke check (T-2249)
 Rule: observed values at the edges of the M9 engineering generator pools (tools/src/rustsheet_tools/gen/pools.py):
@@ -732,8 +734,26 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   2026-10-26) libm sinh misses only 4; the EXP form misses 4 and 0.01; cosh − EXP(-x) misses 12 and 0.01; a correctly
   rounded sinh misses -4, ±12 (and `"12-3i"`), where the web agrees with the Mac desktop cache of COMPLEXs.xlsx P12 and
   P21. No formula symmetric in EXP(x) and EXP(-x) gives both ±4. IMCOSH matches libm cosh on all 62 inputs. The
-  engine keeps libm for IMSINH; the kernel is T-2778. Status: VERIFIED (excel-graph) for the values; the IMSINH kernel
-  is open.
+  kernel is `1/EXP(-x)` (next entry, T-2629). Status: VERIFIED (excel-graph).
+- **IMSINH, IMCOSH and IMSECH take sinh and cosh as (1/u ∓ u)/2 with u = EXP(-x) (T-2629).** The real part x
+  enters through `u = EXP(-x)` and its reciprocal: sinh x = `(1/u - u)/2`, cosh x = `(1/u + u)/2`, and the imaginary
+  part y through SIN and COS's own kernels (x87 reduction). The reciprocal makes the kernel lopsided in x: at 1.5
+  `1/EXP(-1.5)` is 4.481689070338065, one ulp above EXP(1.5), so sinh(1.5) and cosh(1.5) come out 2.1292794550948178 and
+  2.3524096152432477 (libm + 1 ulp each), while at -1.5 both are libm's. This is what makes `IMSINH("4")`
+  27.289917197127753 but `IMSINH("-4")` libm's -27.28991719712775 (above). Evidence: probes/t2629-imcosh-imsinh-y-sweep
+  (800 IMCOSH and IMSINH of ±1.5+yi for 200 y in [0.103, 2.84], excel-graph 2026-10-26): libm sinh/cosh with libm sin/cos
+  fits 1,562 of the 1,600 parts, this kernel all 1,600 (`IMSINH("-1.5+2.46454679i")`'s real part needs Excel's
+  COS(2.46454679) = -0.7794268635101594, libm ...596); probes/t2778-imsinh-sign-sweep (300 real arguments at both signs,
+  0.0105 <= |x| <= 18.2, excel-graph, T-2778): 300 of 300, where `(EXP(x) - EXP(-x))/2` fits 224 and libm 97. With
+  these values the plain reciprocal of IMSECH also gives `IMSECH("1.5+711i")` -0.371302652691887i
+  (probes/eng-im-overflow-edges A9, A17 and A58). Outside the probed band Excel's digits are libm's: `IMSINH("0.01")`
+  0.0100001666675 (the form cancels to ...6674999), `IMSINH("0.00012+1.23456789i")` and `IMCOSH` of it
+  (probes/t2535-imsinh-imcosh-kernel-sweep A55, A6, B6; COMPLEXs.xlsx P8, S8) and `IMCOSH("100+1.5i")`
+  9.50749421835286E+41+.. (eng-im-overflow-edges-2 A60), where `1/EXP(-100)` is one ulp below EXP(100). So Excel switches
+  forms below 0.0105 and above 18.2; neither cut is probed. Open: `IMSIN("-4i")` is -27.2899171971278i, IMSINH(4)'s
+  digits, though IMSIN's own sinh is the EXP pair (`IMSIN("1E-200+1E-200i")` "1E-200"); IMSIN of an imaginary argument
+  may go through IMSINH (T-2778's probe C2). Ours: `inverse_exp_sinh_cosh` in functions/engineering/complex/trig.rs
+  over 0.01 < |x| <= 20, libm outside. Status: VERIFIED (excel-graph) inside the band; the cuts are UNVERIFIED.
 - **IMSQRT of a negative real is polar through COS and ATAN2 on the web (the engine keeps desktop's libm value).** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i (516488da78a6b08c A52,

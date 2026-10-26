@@ -3,7 +3,7 @@ id: T-2778
 title: "IMSINH's sinh kernel on the web: IMSINH(4) rounds up, IMSINH(-4) does not (gen-m9, 34 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -36,10 +36,17 @@ A18 (IMSINH at 4), known failures since T-2535.
 Code: `imsinh` in functions/engineering/complex/trig.rs.
 
 ## Acceptance criteria
-- [ ] The gen-m9 `IMSINH("4")` / `IMSEC(IMSINH("4"))` known-failure lines leave eval/baseline/gen-m9.txt, with no new
+- [x] The gen-m9 `IMSINH("4")` / `IMSEC(IMSINH("4"))` known-failure lines leave eval/baseline/gen-m9.txt, with no new
       known-failure lines in any baseline (COMPLEXs.xlsx P12, P21 stay passing).
-- [ ] The kernel and its evidence are recorded in engineering.md.
-- [ ] `make check` green; reviewers approve.
+- [x] The kernel and its evidence are recorded in engineering.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMSIN and IMCOS (T-2535), the overflow edge near 710 (T-2231).
+
+## Outcome
+Resolved by T-2629 (same PR): the IMSINH kernel is `(1/u - u)/2` with `u = EXP(-x)` (engineering.md "IMSINH, IMCOSH
+and IMSECH take sinh and cosh as (1/u ∓ u)/2"). It fits all 300 cells of this task's probes/t2778-imsinh-sign-sweep,
+which T-2629 brought in from this task's branch (agent/functions-engineering/T-2778-imsinh-kernel, draft PR #1917). The 34
+gen-m9 `IMSINH("4")` / `IMSEC(IMSINH("4"))` lines left eval/baseline/gen-m9.txt with no new known failures; COMPLEXs.xlsx
+P12 and P21 still pass. The probe's C2 (`IMSIN("-4i")`) is T-2796.
