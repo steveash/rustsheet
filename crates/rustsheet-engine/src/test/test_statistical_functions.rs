@@ -671,6 +671,7 @@ fn order_statistics_report_scalar_error_before_no_number_and_bad_significance() 
     }
     model._set("A5", "=PERCENTRANK(C1:C5,1963,-2.5)");
     model._set("A6", "=PERCENTRANK(C1:C5,3,-2.5)");
+    model._set("A7", "=PERCENTRANK.EXC(C1:C5,-1,0)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#DIV/0!");
     assert_eq!(model._get_text("A2"), "#DIV/0!");
@@ -678,4 +679,5 @@ fn order_statistics_report_scalar_error_before_no_number_and_bad_significance() 
     assert_eq!(model._get_text("A4"), "#NUM!");
     assert_eq!(model._get_text("A5"), "#N/A");
     assert_eq!(model._get_text("A6"), "#NUM!");
+    assert_eq!(model._get_text("A7"), "#N/A");
 }

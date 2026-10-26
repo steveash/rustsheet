@@ -96,4 +96,4 @@ criterion under Acceptance criteria states it.
 ## Outcome
 Most of the cells had been fixed by earlier tasks (k/quart error before no-number data already in PERCENTILE*/QUARTILE*).
 Remaining: TRIMMEAN checks percent's error before the no-number `#NUM!`, and PERCENTRANK* returns `#N/A` for x outside the
-data before a significance below 1 is `#NUM!`. Eval delta: gen-m9 -18 known failures, probes -11, no new.
+data before a significance below 1 is `#NUM!`. SMALL and LARGE already report k first (checked). Eval delta: gen-m9 -18 known failures, probes -11, no new.
