@@ -3,7 +3,7 @@ id: T-0480
 title: "A bare array expression whose spill cannot fit is #SPILL! before the array-size cap's #ERROR! (corpus-bench/55049, 21 cells)"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -47,16 +47,16 @@ This is an evaluator change across the operator broadcast, the lifting driver an
 a design decision about where the shape is computed; hence opus, and a short spec if it grows past M.
 
 ## Acceptance criteria
-- [ ] `book1!B3:B23` of corpus-bench/55049 are `#SPILL!`, so the `F corpus-bench/55049/1_55049_input.xlsx *`
+- [x] `book1!B3:B23` of corpus-bench/55049 are `#SPILL!`, so the `F corpus-bench/55049/1_55049_input.xlsx *`
       line disappears from eval/baseline/corpus-bench.txt, with no new F line in any baseline
       (`make eval`, `make eval-baseline`).
-- [ ] Engine tests: a bare `=A:A*2`-shaped expression over a whole column times a 3-column range in a cell is
+- [x] Engine tests: a bare `=A:A*2`-shaped expression over a whole column times a 3-column range in a cell is
       `#SPILL!`; `=ABS(A:A)` in a cell with an occupied neighbour is `#SPILL!`; `ROWS(ABS(A:A))` and
       `SUM(ABS(A:A))` keep their current results (the decision-0014 deviation is unchanged for value contexts);
       no allocation above `limits::MAX_SIZE` happens on any of these paths.
-- [ ] docs/excel-semantics/arrays.md "Array results above 1,048,576 cells are #ERROR!" records the spill case
+- [x] docs/excel-semantics/arrays.md "Array results above 1,048,576 cells are #ERROR!" records the spill case
       with the corpus-bench/55049 cells and states what the deviation still covers.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Lifting or kernel work budgets that answer `#ERROR!` for arrays that *do* fit (T-2795, T-2607).
@@ -68,3 +68,13 @@ a design decision about where the shape is computed; hence opus, and a short spe
 Decision 0083: every cell this task owns has the wrong error (none is a last-digit difference), so the task is
 in the campaign at the `semantics` stage. Its target is that every cell it owns has Excel's error value; the
 first acceptance criterion states it.
+
+## Outcome
+The formula of a dynamic-array anchor whose root is an operator chain (operator operands down to 8 levels) is
+`#SPILL!` when a link would broadcast above 1,048,576 cells to a shape past the grid from the anchor, decided from
+the operand shapes before anything is built (`Model::evaluate_spilling_chain`, `unspillable_broadcast`). Value
+contexts and over-bound shapes that fit the grid keep the decision-0014 `#ERROR!`. Shared helpers:
+`limits::spills_past_grid`/`spill_past_grid_error` (three inline bound checks) and `CalcResult::shape` /
+`calc_result::range_dims` (replacing XLOOKUP's private copy). Eval: corpus-bench known failures 6 -> 5
+(55049, 21 cells), 0 regressions in every suite. Follow-ups: T-0483 (lifted calls, unary operators), T-0484
+(probe the extrapolated operator forms).

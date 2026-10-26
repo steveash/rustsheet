@@ -24,9 +24,12 @@ fn whole_column_against_whole_row_is_bounded() {
 
     model.evaluate();
 
-    for cell in ["C3", "G1", "G2", "G3", "G5", "G6", "G7"] {
-        assert_eq!(model._get_text(cell), *"#ERROR!", "{cell}");
+    // In a cell each broadcast runs past the grid, so its shape alone makes it #SPILL!, Excel's
+    // answer, before anything is built (T-0480; arrays.md). In a value context the bound stays.
+    for cell in ["C3", "G1", "G2", "G3", "G6", "G7"] {
+        assert_eq!(model._get_text(cell), *"#SPILL!", "{cell}");
     }
+    assert_eq!(model._get_text("G5"), *"#ERROR!");
 }
 
 #[test]
