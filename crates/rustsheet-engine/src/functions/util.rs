@@ -25,6 +25,34 @@ use existing_walk::{span, WalkBudget};
 
 use collation::cmp_text;
 
+/// Whether `value`, the value of the argument `node`, is a number that ERROR.TYPE or
+/// `CELL("col"|"row",..)` returned straight to the argument (parentheses aside): the "mark" some
+/// array-taking arguments reject where the same number from anywhere else is accepted. F.TEST
+/// and the paired functions give `#NUM!` for it (`FTEST({1;2;3},ERROR.TYPE(#REF!))`, statistics.md
+/// "ERROR.TYPE and CELL results are #NUM! in the paired functions") and IRR's flows `#VALUE!`
+/// (`IRR(CELL("row",D2))`, financial.md "IRR's error order", T-2728). `+0`, `@`, SINGLE, MAX or
+/// a cell holding the value make it a plain number. LET, IF, CHOOSE, IFERROR, a LAMBDA call and
+/// INDEX keep it in Excel and are not followed here: TODO(T-2766).
+pub(crate) fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> bool {
+    if !matches!(value, CalcResult::Number(_)) {
+        return false;
+    }
+    match &*node.ungrouped_at(row) {
+        Node::FunctionKind {
+            kind: Function::ErrorType,
+            ..
+        } => true,
+        Node::FunctionKind {
+            kind: Function::Cell,
+            args,
+        } => matches!(
+            args.first(),
+            Some(Node::StringKind(info)) if info.eq_ignore_ascii_case("col") || info.eq_ignore_ascii_case("row")
+        ),
+        _ => false,
+    }
+}
+
 /// The number a referenced cell gives an aggregate: numbers count, booleans, text and empty cells
 /// are skipped (SPEC-0009 `CellNumbers::Numbers`).
 pub(crate) fn cell_number(value: &CalcResult) -> Option<f64> {

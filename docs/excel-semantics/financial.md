@@ -415,7 +415,17 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   equal others (A13); 4.470348358154297e-09 = 0.3/2^26 at guess 0.3 (A3), 4.8828125e-09 = 1e-5/2^11 at guess 0
   (A9), 3.725290298461914e-09 = 2/2^29 at guess 2 (A10). A negative guess is `#NUM!` (A6, A7, A11), even
   where the downward chain from the guess brackets the root (A6: root -0.1, guess -0.2). So no XNPV sign is
-  read on the walk; a NaN from normalising XNPV by the first value would explain it (unconfirmed).
+  read on the walk; a NaN from normalising XNPV by the first value would explain it (unconfirmed). (A nonzero first value with XNPV(0)
+  exactly 0 does walk from a negative guess: the T-2728 bullet below.)
+- T-2728 (probes/irr-guess-edges A41-A47, probes/t2728-irr-guess-ref-mark A73-A81, excel-graph, 2026-10-25/26): when
+  XNPV(0) is exactly 0 (flows summing to 0, a root at 0), any nonzero XNPV differs from it, so the first chain point
+  brackets and the bisection halves the guess down to 0: `XIRR({-100,10,20,30,40},{0,1,59,60,61},G)` is G/2^k at the
+  first k past the step test, 2.9802322387695314E-09 (0.1/2^25) with no guess, 3.637978807091713E-09 (1000/2^38),
+  3.4266142457661796E-09 (123456789.123/2^55), 4.336808689942018E-09 (1E+10/2^61), 3.3087224502121107E-09 (1E+15/2^78),
+  2.5243548967072378E-09 (1E+20/2^95), 4.8828125e-09 at guess 0 (1E-5/2^11) and -3.725290298461914e-09 at guess -0.5
+  (-0.5/2^27, the downward chain's first point); the same flows negated give 0.1/2^25 too. At guess 1E+300 it is `#NUM!`
+  (about 1000 halvings), so Excel's bisection cap lies between 95 and about 1000 steps (ours 200). Before T-2728 the
+  engine read XNPV(0) = 0 as negative, skipped the upward chain and returned the negative mirror or `#NUM!`.
 Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
 T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells. The walk
 cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
@@ -423,7 +433,7 @@ caps" below). A trial rate where a power overflows or underflows to 0 has no XNP
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. The XNPV part of the stop test
 (T-1583's span-scaled form) fits every numeric cell probed once XNPV uses Excel's `^` (T-2328). Its form rests on the
 fit set, `xirr-oos` and A8 alone, so it is a fitted rule, not a known mechanism.
-Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728
 
 ## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of v = 1/(1 + r):
@@ -513,17 +523,49 @@ Tasks: T-0916, T-1686
 Rule: IRR's guess must be above -1 and below 2^53, else the call is `#VALUE!`, ahead of the no-sign-change `#NUM!`:
 `IRR({-100,60,60},G)` converges for G = 1E+15, 2^52, 8E+15, 9E+15 and 2^53-1, and is `#VALUE!` for 2^53, 2^60, 2^100,
 1E+16, 1E+20, 2.5E+29 and 1E+300 (as for -1, -2 and -1E+300); `IRR(COUNTBLANK(..),1E+300)` (a scalar flow, otherwise
-`#NUM!`) is `#VALUE!` too. (guess >= 2^53 and 1 + guess = guess are the same test on doubles.) Whether an error in
-the flows comes before the guess bound is unprobed (ours: the flows error, T-2728).
+`#NUM!`) is `#VALUE!` too. (guess >= 2^53 and 1 + guess = guess are the same test on doubles.) An error argument in
+the flows comes before the guess bound (`IRR(1/0,1E+300)` is `#DIV/0!`); the full order is "IRR's error order" below.
 Other findings of the same probes: `IRR({-1,X})` is `#NUM!` for X from 1E+13 to 1E+16 except `#DIV/0!` at X = 1E+15
 ("IRR's far-root bound"); `IRR(CELL("row",D2))`, `IRR(CELL("col",D2))` and
 `IRR(LET(x,CELL("row",D2),x))` are `#VALUE!` while `IRR(CELL("row",D2)+0)`, `IRR(CELL("contents",D2))` and `IRR(ROW(D2))`
-are `#NUM!`; `XIRR({-100,10,20,30,40},{0,1,59,60,61},123456789.123)` is 3.4266142457661796E-09 (ours `#NUM!`) and with
-no guess 2.9802322387695314E-09 (ours the negative) (T-2728).
+are `#NUM!` (followed since T-2728, "IRR's error order"); `XIRR({-100,10,20,30,40},{0,1,59,60,61},123456789.123)` is
+3.4266142457661796E-09 and with no guess 2.9802322387695314E-09 (followed since T-2728, "XIRR is a bracketing bisection").
 Evidence: probes/irr-guess-edges, probes/irr-guess-edges-2 (excel-graph, 2026-10-25).
 Status: VERIFIED (excel-graph)
 Implemented in: functions/financial/financial_util.rs (`compute_irr`, `IRR_GUESS_BOUND`)
 Tasks: T-2494, T-2727, T-2728
+
+## IRR's error order
+Rule: IRR reads its errors in this order: (1) an error that the flows argument itself evaluates to (not a single
+cell's), as is; (2) the guess: an error guess, as is, then the guess range (`#VALUE!`, "IRR's guess range"); (3) the
+`#VALUE!` of an error inside the flows (an array element or a referenced cell, "IRR over an error element") and the
+`#VALUE!` of a flow that is a number straight from `CELL("row"|"col",..)` or ERROR.TYPE; (4) the solver's `#NUM!`.
+- (1) before (2): `IRR(1/0,NA())`, `IRR(1/0,"x")`, `IRR(1/0,1E+300)` and `IRR(1/0,{0.1,0.2})` are `#DIV/0!` (A41, A33,
+  A29, A27).
+- (2) before (3): `IRR({1,"a"}+0,1/0)` is `#DIV/0!` (A39) where `IRR({1,"a"}+0,0.1)` is `#VALUE!` (A23);
+  `IRR(CELL("row",Data!D2),1/0)` is `#DIV/0!` and `IRR(ERROR.TYPE(#REF!),NA())` `#N/A` (-2 A1, A3). The gen-m9 cell
+  `IRR((YEAR(Data!D$11)+UNIQUE(Data!B2:E10,TRUE,TRUE)),INDEX(Data!A3:B9,2))` is `#REF!` this way: its flows hold `#VALUE!`
+  elements (A5) and its guess is INDEX's own `#REF!` for one index into a 2-D range (lookup.md "INDEX with one index into a
+  2-D range is #REF!"; `ABS(INDEX(Data!A3:B9,2))`, `PMT(..)`, `NPV(..)`, `XIRR(..)`, `MIRR(..)`, `RATE(..)` of it are
+  `#REF!` too, -2 A29-A39), not an IRR quirk: a plain 1x2 range guess lifts (`Data!A4:B4`, `(Data!A4:B4)`,
+  `OFFSET(Data!A4,0,0,1,2)`, `INDIRECT(..)`, `IF(TRUE,..)`, `CHOOSE(1,..)`, `LET`, an intersection and INDEX with an area
+  all spill two results, A9, -2 A13-A27).
+- (2) before (4): `IRR(Data!B9:B10,1E+300)` (two text cells, no number) is `#VALUE!`, `IRR(Data!B9:B10,1/0)` `#DIV/0!`
+  (A45, -2 A5).
+- The mark of (3): `IRR(CELL("row",D2))`, `IRR(CELL("col",D2))`, `IRR(ERROR.TYPE(#REF!))` and `IRR(CELL("row",D2),0.5)`
+  are `#VALUE!` where `IRR(5)`, `IRR(ROW(D2))`, `IRR(CELL("contents",D2))`, `IRR(CELL("row",D2)+0)` and
+  `IRR(@CELL("row",D2))` are `#NUM!` (irr-guess-edges A20-A26, irr-guess-edges-2 A35-A44; A51, A63). It is the mark of
+  statistics.md "ERROR.TYPE and CELL results are #NUM! in the paired functions", and it passes through the same wrappers:
+  `LET(x,..,x)`, `IF(TRUE,..)`, `CHOOSE(1,..)`, `INDEX(..,1)`, `IFERROR(..,0)` and `LAMBDA(x,x)(..)` keep the `#VALUE!`
+  (A53-A61).
+- A single error cell as the flows is (3): with A1 `=1/0`, `IRR(A1,NA())`, `IRR(A1:A1,NA())` and `IRR((A1),NA())` are `#N/A`
+  and `IRR(A1,0.1)` `#VALUE!` (probes/t2728-irr-guess-ref-mark-3 A2-A5).
+Evidence: probes/t2728-irr-guess-ref-mark (cells A1-A81, "-2" is probes/t2728-irr-guess-ref-mark-2), -3, excel-graph,
+2026-10-26; probes/irr-guess-edges, irr-guess-edges-2 (2026-10-25); gen-m9 5422bdbf173fc233 A63, 5c6a23c4f6597f1c A153.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_irr` (functions/financial/mod.rs), `is_marked_number` (functions/util.rs); the wrapped forms are
+TODO(T-2766), unscored in the probe until then.
+Tasks: T-2728, T-2766
 
 ## IRR's far-root bound
 Rule: IRR is `#NUM!` at a root with 1 + r at or above about 1E+7 (v = 1/(1 + r) at or below 1E-7), whether the
@@ -2206,7 +2248,7 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   limits"). NPV at a rate
   of -1 is `#DIV/0!` (`NPV(-1,GESTEP(-2.5,-100))`, 3aa168259335be54 A18), EFFECT at a huge nominal rate `#NUM!` (`EFFECT(1E+300,11)`,
   31474c20fc1dafd6 A37).
-- `IRR(CELL("row",Data!D$2),0.5)` is `#VALUE!` with the cause unprobed (5422bdbf173fc233 A63), while plain scalar flows and
+- `IRR(CELL("row",Data!D$2),0.5)` is `#VALUE!` (5422bdbf173fc233 A63; the CELL mark, "IRR's error order", T-2728), while plain scalar flows and
   one-cell ranges are `#NUM!` (`IRR(123456789.123)` e168be7f6d3f84c2 A297, `IRR(MROUND(2^53,2.5),0.5)` d0854366830dcdee A69,
   `IRR(Data!A8:A8)` 1cd3096e3e87c965 A130, `IRR(Data!D2,2)` 1dce4774f5c0e736 A40); a guess of 1E+300 is `#VALUE!`
   (`IRR({0,0,-100,50,60},1E+300)`, e168be7f6d3f84c2 A395), `IRR(Data!A1:D12,0.05)` over mixed flows (1E+15 and

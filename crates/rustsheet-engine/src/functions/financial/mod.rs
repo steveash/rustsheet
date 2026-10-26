@@ -27,6 +27,7 @@ mod rate_conversions;
 use financial_util::{compute_irr, compute_xirr, compute_xnpv, excel_npv};
 
 use crate::functions::lift::{num_error, number_or_error, number_result, LiftCost};
+use crate::functions::util::is_marked_number;
 use crate::functions::Function;
 
 /// The cash flows (or FVSCHEDULE's rates) a lifted NPV, IRR, MIRR, XNPV, XIRR or FVSCHEDULE
@@ -507,16 +508,21 @@ impl Model {
         // Excel: an error inside an array or a referenced range is #VALUE!, whatever its kind,
         // so the original error is dropped. An error argument that is not a single cell
         // passes through (docs/excel-semantics/financial.md, "IRR over an error element";
-        // probes/fin-irr-error-array).
-        let flows = match self.evaluate_node_in_context(values, cell) {
-            error @ CalcResult::Error { .. }
-                if !matches!(*values.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
-            {
-                Err(error)
-            }
-            result => self
-                .array_of_numbers_from(result, &cell, true, || Ok(None), || Ok(None))
-                .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new())),
+        // probes/fin-irr-error-array). That error comes before the guess's; the #VALUE! of an
+        // error element, or of a number straight from `CELL("row"|"col",..)` or ERROR.TYPE
+        // (where any other scalar flow is `#NUM!`), comes after it: `IRR(1/0,NA())` is
+        // `#DIV/0!`, and so are `IRR({1,"a"}+0,1/0)` and `IRR(CELL("row",D2),1/0)`
+        // (financial.md "IRR's error order", probes/t2728-irr-guess-ref-mark, T-2728).
+        let evaluated = self.evaluate_node_in_context(values, cell);
+        let flows_error_first = matches!(evaluated, CalcResult::Error { .. })
+            && !matches!(*values.ungrouped_at(cell.row), Node::ReferenceKind { .. });
+        let flows = if flows_error_first {
+            Err(evaluated)
+        } else if is_marked_number(values, &evaluated, cell.row) {
+            Err(CalcResult::new_error(Error::VALUE, cell, String::new()))
+        } else {
+            self.array_of_numbers_from(evaluated, &cell, true, || Ok(None), || Ok(None))
+                .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new()))
         }
         .map_err(CalcResult::without_message);
         self.lift_call_costed(
@@ -525,13 +531,16 @@ impl Model {
             LiftCost::Cells(flow_count(flows.as_deref())),
             cell,
             &mut |model, values| {
-                let flows = match &flows {
-                    Ok(flows) => flows,
-                    Err(error) => return error.clone(),
-                };
+                if let (true, Err(error)) = (flows_error_first, &flows) {
+                    return error.clone();
+                }
                 let guess = match model.cast_number_or(values.get(1), 0.1, cell) {
                     Ok(guess) => guess,
                     Err(error) => return error,
+                };
+                let flows = match &flows {
+                    Ok(flows) => flows,
+                    Err(error) => return error.clone(),
                 };
                 number_result(compute_irr(flows, guess).map_err(|error| error.0), cell)
             },
