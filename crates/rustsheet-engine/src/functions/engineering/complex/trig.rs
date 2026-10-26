@@ -57,7 +57,8 @@ fn hyperbolic_log_form(
 }
 
 /// `(sinh t, cosh t)` as IMSIN and IMCOS build them from the imaginary part: `(EXP(t) ∓ EXP(-t))/2`
-/// with Excel's EXP for every t, small t too, where the worksheet SINH switches to expm1
+/// with Excel's EXP outside [`inverse_exp_sinh_cosh`]'s band ([`trig_sinh_cosh`]), small t too, where
+/// the worksheet SINH switches to expm1
 /// (numbers.md). So the imaginary part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm
 /// sinh gives ...242709) and `IMSIN("1E-200+1E-200i")` is "1E-200": EXP(1E-200) = EXP(-1E-200),
 /// so sinh is 0 (gen-m9, T-2258 triage; engineering.md, T-2535). IMSINH, IMCOSH and IMSECH take
@@ -79,13 +80,31 @@ fn exp_sinh_cosh(t: f64) -> (f64, f64) {
 /// cancellation shows, and `IMCOSH("100+1.5i")`, where `1/u` is one ulp below `EXP(100)`
 /// (probes/t2535-imsinh-imcosh-kernel-sweep A55, A6; eng-im-overflow-edges-2 A60).
 fn inverse_exp_sinh_cosh(x: f64) -> (f64, f64) {
-    let t = x.abs();
-    if t <= INVERSE_EXP_LOW || t > INVERSE_EXP_HIGH {
+    if !in_inverse_exp_band(x) {
         return (x.sinh(), x.cosh());
     }
     let u = excel_exp(-x);
     let v = 1.0 / u;
     ((v - u) / 2.0, (v + u) / 2.0)
+}
+
+/// `(sinh y, cosh y)` for IMSIN and IMCOS: IMSINH's kernel at `-y` (sin z = -i·sinh(i·z)) inside
+/// its band, the EXP pair outside, where `IMSIN("1E-200+1E-200i")` is "1E-200" and
+/// `IMCOS("150-0.002i")` needs it (T-2535). `IMSIN("-4i")` is -27.2899171971278i, `IMSINH("4")`'s
+/// digits, where the EXP pair gives ...277i (probes/t2778-imsinh-sign-sweep C2); the 1,023
+/// IMSIN/IMCOS cells of the suites still pass (docs/excel-semantics/engineering.md, T-2796).
+fn trig_sinh_cosh(y: f64) -> (f64, f64) {
+    if !in_inverse_exp_band(y) {
+        return exp_sinh_cosh(y);
+    }
+    let (sinh, cosh) = inverse_exp_sinh_cosh(-y);
+    (-sinh, cosh)
+}
+
+/// Whether `INVERSE_EXP_LOW < |x| <= INVERSE_EXP_HIGH`, where the `1/u` form applies.
+fn in_inverse_exp_band(x: f64) -> bool {
+    let t = x.abs();
+    t > INVERSE_EXP_LOW && t <= INVERSE_EXP_HIGH
 }
 
 /// [`inverse_exp_sinh_cosh`] takes the `1/u` form for `INVERSE_EXP_LOW < |x| <= INVERSE_EXP_HIGH`.
@@ -168,7 +187,7 @@ pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if trig_exp_overflows(y) {
         return num_error(cell);
     }
-    let (y_sinh, y_cosh) = exp_sinh_cosh(y);
+    let (y_sinh, y_cosh) = trig_sinh_cosh(y);
     finite_complex_result(x.cos() * y_cosh, -x.sin() * y_sinh, suffix, cell)
 }
 
@@ -296,7 +315,7 @@ pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if trig_exp_overflows(y) {
         return num_error(cell);
     }
-    let (y_sinh, y_cosh) = exp_sinh_cosh(y);
+    let (y_sinh, y_cosh) = trig_sinh_cosh(y);
     finite_complex_result(x.sin() * y_cosh, x.cos() * y_sinh, suffix, cell)
 }
 
