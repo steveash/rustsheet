@@ -3824,7 +3824,7 @@ Rule: LINEST of a known_y range that holds empty cells beside its numbers is `#V
 `LINEST(Data!E8:E12)` with E8:E10 = 1E-15, -2.5, -0.0001 and E11:E12 empty (gen-m9 b8ee55934c5b824c A394, probed alone in
 probes/t2436/b8ee55934c5b824c). LOGEST, TREND and GROWTH with the same known_y are unprobed.
 Evidence: probes/t2436/b8ee55934c5b824c (excel-graph, 2026-10-24).
-Ours: 0.25 (the empty cells skipped); T-2584.
+Ours: `#VALUE!` (shared reader `Grid::numbers`, regression.rs; T-2584 found it already matched).
 Status: VERIFIED (excel-graph), one cell
 Tasks: T-2584
 
