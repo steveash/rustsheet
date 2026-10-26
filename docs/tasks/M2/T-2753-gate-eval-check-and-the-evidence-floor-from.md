@@ -48,7 +48,7 @@ Code: `cmd_check` and `cmd_evidence_floor` in crates/rustsheet-eval/src/main.rs.
 ## Outcome
 `rustsheet-eval check --evidence-floor` (`make eval-gates`) judges the baseline, visible-parity
 and evidence-floor gates from one run (gate suites, then the other vendored suites:
-gen-m8a, gen-m8b, probes-numeric); `make check` and the CI eval job use it, decision 0121.
+gen-m8a, gen-m8b, probes-numeric); `make check` and the CI eval job use it, decision 0125.
 On base f4d4be481 the old `check` output and the old `evidence-floor` verdict line equal the new
 combined output line for line (apart from the order of parallel stderr pivot warnings), all
 exits 0; with the lock edited to 1 (a stale lock) both the old command and the new one exit 1

@@ -1,4 +1,4 @@
-# 0121 — The eval CI job judges eval-check and the evidence floor from one suite run
+# 0125 — The eval CI job judges eval-check and the evidence floor from one suite run
 
 - **Status:** accepted (2026-10-25, owner request to shorten PR CI, T-2753). It changes how two
   gates are run, not what they judge.
