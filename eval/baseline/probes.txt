@@ -2180,6 +2180,7 @@ F	probes/formulatext-pick-scalars-and-arrays.case.json	Calc!K1
 F	probes/formulatext-pick-scalars-and-arrays.case.json	Calc!L1
 F	probes/formulatext-pick-scalars-and-arrays.case.json	Calc!M1
 F	probes/formulatext-pick-scalars-and-arrays.case.json	Calc!M2
+F	probes/formulatext-pick-scalars-and-arrays.case.json	Calc!O1
 F	probes/formulatext-pick-scalars-and-arrays.case.json	Calc!Q1
 F	probes/formulatext-pick-scalars-and-arrays.case.json	Calc!R1
 F	probes/formulatext-pick-scalars-and-arrays.case.json	Calc!S1

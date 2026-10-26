@@ -24,4 +24,4 @@ T-2526 left these at the engine's `#ERROR!` with no evidence: `IF(TRUE,5,A1)` an
 -
 
 ## Outcome
-Added probes/formulatext-pick-scalars-and-arrays (49 cells, excel-graph 2026-10-25) and recorded the findings in docs/excel-semantics/references.md. The engine passes 7 of 49; the 42 new known failures are baselined. Implementation filed as T-2726.
+Added probes/formulatext-pick-scalars-and-arrays (49 cells, excel-graph 2026-10-25) and recorded the findings in docs/excel-semantics/references.md. The engine passed 7 of 49 and the 42 new known failures were baselined; after merging main (T-2577), Calc!O1 joins them (43, owned by T-2726). Implementation filed as T-2726.
