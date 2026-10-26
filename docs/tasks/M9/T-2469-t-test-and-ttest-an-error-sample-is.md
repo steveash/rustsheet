@@ -3,7 +3,7 @@ id: T-2469
 title: "T.TEST and TTEST: an error sample is that error before tails and type, whose errors come before their range check (gen-m9, 64 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
