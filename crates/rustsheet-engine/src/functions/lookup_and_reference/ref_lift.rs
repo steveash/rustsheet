@@ -53,6 +53,8 @@ impl Function {
     /// unprobed and stay the value view.
     pub(crate) fn per_reference_element(&self, count: usize) -> Option<PerElement> {
         let first: fn(usize) -> bool = |index| index == 0;
+        // One walk per criteria pair (SUMIFS, COUNTIFS, MAXIFS).
+        let per_pair = ElementCost::Cells(u64::try_from(count / 2).unwrap_or(u64::MAX).max(1));
         let (takes_reference, cost): (fn(usize) -> bool, ElementCost) = match self {
             Function::Row
             | Function::Column
@@ -63,18 +65,12 @@ impl Function {
             Function::Cell => (|index| index == 1, ElementCost::Unit),
             Function::Countif | Function::Countblank => (first, ElementCost::Cells(1)),
             // Every criteria range.
-            Function::Countifs => (
-                |index| index % 2 == 0,
-                ElementCost::Cells(u64::try_from(count / 2).unwrap_or(u64::MAX).max(1)),
-            ),
+            Function::Countifs => (|index| index % 2 == 0, per_pair),
             Function::Subtotal => (|index| index > 0, ElementCost::Cells(1)),
             // The criteria range and the sum range.
             Function::Sumif | Function::Averageif => (|index| index != 1, ElementCost::Cells(1)),
             // The sum (max) range and every criteria range.
-            Function::Sumifs | Function::Maxifs => (
-                |index| index == 0 || index % 2 == 1,
-                ElementCost::Cells(u64::try_from(count / 2).unwrap_or(u64::MAX).max(1)),
-            ),
+            Function::Sumifs | Function::Maxifs => (|index| index == 0 || index % 2 == 1, per_pair),
             _ => return None,
         };
         Some(PerElement {

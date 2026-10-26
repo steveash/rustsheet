@@ -347,6 +347,10 @@ fn fn_offset_lifted_into_countifs_averageif_maxifs() {
         "=MAXIFS(OFFSET(A1,{0;1},0),OFFSET(A1,{0;1},0),\">0\")",
     );
     model._set("F1", "=COUNTIFS(OFFSET(A:A,0,0,,SEQUENCE(1,1000)),\">0\")");
+    model._set(
+        "G1",
+        "=MAXIFS(OFFSET(A:A,0,0,,SEQUENCE(1,1000)),A:A,\">0\")",
+    );
     model.evaluate();
     assert_eq!(model._get_text("C1"), *"1");
     assert_eq!(model._get_text("C2"), *"1");
@@ -355,6 +359,7 @@ fn fn_offset_lifted_into_countifs_averageif_maxifs() {
     assert_eq!(model._get_text("E1"), *"1");
     assert_eq!(model._get_text("E2"), *"100");
     assert_eq!(model._get_text("F1"), *"#ERROR!");
+    assert_eq!(model._get_text("G1"), *"#ERROR!");
 }
 
 // SPEC-0014 "Bounds": the elements' cells are charged before any element runs, so a SUBTOTAL

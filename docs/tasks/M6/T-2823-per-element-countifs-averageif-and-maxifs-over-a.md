@@ -3,7 +3,7 @@ id: T-2823
 title: "Per-element COUNTIFS, AVERAGEIF and MAXIFS over a lifted OFFSET (T-2065 probes)"
 milestone: M6
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,10 +28,17 @@ Owned M6 exit cells (6; known failures in eval/baseline/probes.txt):
 - probes/t2065-lift-maxifs Sheet1!E1, Sheet1!E2
 
 ## Acceptance criteria
-- [ ] The six cells leave eval/baseline/probes.txt (`make eval-baseline`), with no regressions.
-- [ ] `make exit-owners MILESTONE=M6` no longer lists them; lookup.md says the engine implements the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] The six cells leave eval/baseline/probes.txt (`make eval-baseline`), with no regressions.
+- [x] `make exit-owners MILESTONE=M6` no longer lists them; lookup.md says the engine implements the rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - STDEV.S, VAR.S, SUMSQ, AVERAGEA and MAXA over the same form: T-2824.
 - MEDIAN, LARGE and SMALL, which do not open on Excel for the web: T-1075.
+
+## Outcome
+`Function::per_reference_element` (functions/lookup_and_reference/ref_lift.rs) now lists COUNTIFS (every criteria
+range), AVERAGEIF (range and average range, as SUMIF) and MAXIFS (max range and every criteria range, as SUMIFS), each
+element charged one walk per criteria pair as SUMIFS is (the existing SPEC-0014 bound DEVIATION); their static shape
+comes from `criteria_and_grid_static_result`. AVERAGEIFS and MINIFS are unprobed and stay the value view (lookup.md).
+Eval: probes known failures 2631 -> 2625 (the six owned cells), no regressions.

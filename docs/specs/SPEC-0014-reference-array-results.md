@@ -134,7 +134,8 @@ would not move it.
     skips, COUNTA counts, SUMPRODUCT reads 0). An error element is the result. Others keep the
     value view until T-2065 answers them.
   - Per-element callers (rule 6): SUBTOTAL, COUNTIF, SUMIF, SUMIFS, COUNTBLANK, AREAS, ROW, COLUMN,
-    CELL, ISFORMULA, N, T; COUNTIFS, AVERAGEIF and MAXIFS since T-2823 (T-2065's answers). One helper, `Model::lift_over_ref_grid(grid, cell, |model, elem| ..)`,
+    CELL, ISFORMULA, N, T; COUNTIFS, AVERAGEIF and MAXIFS since T-2823 (T-2065's answers). One
+    helper, `Model::lift_over_ref_grid(grid, cell, |model, elem| ..)`,
     runs the scalar call per element and builds a `CalcResult::Array` (a SUMIF whose range and
     sum_range are both grids broadcasts them as SPEC-0011 does). Its cost is the consumer's:
     `LiftCost::Unit` for ROW, COLUMN, AREAS, CELL, ISFORMULA, N and T (O(1) per element);
