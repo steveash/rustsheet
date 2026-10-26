@@ -3,7 +3,7 @@ id: T-2803
 title: "SPEC-0024 step 1: a per-formula work budget charged per node, per array cell built and per lifted kernel unit"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
