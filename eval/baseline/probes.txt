@@ -3216,13 +3216,7 @@ F	probes/t1924-locale-tag-extended-hex.case.json	S!B29
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B3
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B4
 F	probes/t2065-lift-averagea.case.json	Sheet1!E1
-F	probes/t2065-lift-averageif.case.json	Sheet1!E1
-F	probes/t2065-lift-averageif.case.json	Sheet1!E2
-F	probes/t2065-lift-countifs.case.json	Sheet1!E1
-F	probes/t2065-lift-countifs.case.json	Sheet1!E2
 F	probes/t2065-lift-maxa.case.json	Sheet1!E1
-F	probes/t2065-lift-maxifs.case.json	Sheet1!E1
-F	probes/t2065-lift-maxifs.case.json	Sheet1!E2
 F	probes/t2065-lift-stdevs.case.json	Sheet1!E1
 F	probes/t2065-lift-sumsq.case.json	Sheet1!E1
 F	probes/t2065-lift-vars.case.json	Sheet1!E1
