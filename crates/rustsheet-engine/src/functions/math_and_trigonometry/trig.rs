@@ -362,7 +362,7 @@ pub(crate) fn excel_sin_cos(x: f64) -> (f64, f64) {
 /// is 56.41575748007382, not the correctly rounded ...815: docs/excel-semantics/numbers.md "TAN
 /// misses this model by 1 ulp", T-2147). The fast sums' error (about 2^-63) is too coarse to
 /// decide a 64-bit rounding, so the full sums always run.
-pub(super) fn excel_tan(x: f64) -> f64 {
+pub(crate) fn excel_tan(x: f64) -> f64 {
     let (sin, cos) = excel_sin_cos_exact(x);
     let tan = sin.div(cos);
     dd_rounded_twice((tan.hi, tan.lo))
