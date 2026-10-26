@@ -3524,7 +3524,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2435
 
 ## BINOM.INV and CRITBINOM take BINOM.DIST's trial limit (T-2435)
-Rule: the 2^31 - 1 trial limit of "BINOM.DIST is #NUM! from 2^31 - 1 limit" holds for the inverses
+Rule: the 2^31 - 1 trial limit of "BINOM.DIST is #NUM! from 2^31 - 1 trials" holds for the inverses
 too: `BINOM.INV(2147483647,0.5,0.5)` and `CRITBINOM(2147483647,0.5,0.5)` are `#NUM!`, as is
 `BINOM.INV(1E+10,0.5,0.5)`, while 2^31 - 2 trials give a count (1073741823), the count for
 2147483646.9 as well (the trials truncate first).

@@ -26,7 +26,8 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// probes-numeric t2645-binom-trials-limit, excel-graph: every k, both cumulative modes, p = 0 and
 /// 1 too; the same limit holds for the inverses, `BINOM.INV(2147483647,0.5,0.5)` and
 /// `CRITBINOM(2147483647,0.5,0.5)` #NUM! against a count at 2^31 - 2, probes/t2435-dist-extremes
-/// A15:A19).
+/// A16, A17, A19; the count itself at such a trial count is still ours to fix, A15 and A18,
+/// T-2809).
 const TRIALS_LIMIT: f64 = crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
 impl Model {
@@ -192,7 +193,8 @@ impl Model {
     }
 
     /// `BINOM.INV(trials, probability_s, alpha)`, and CRITBINOM. The search halves
-    /// `[0, trials]` with `trials` under [`TRIALS_LIMIT`], so it stops after at most 31 steps of one cdf each,
+    /// `[0, trials]` with `trials` under [`TRIALS_LIMIT`], so it stops after at most 31 steps of
+    /// one cdf each,
     /// its own per-call cap: up to about 65 us an element in release, which the lifting table
     /// charges as `Weighted(4096)` (SPEC-0011 security rule; lift/kinds/statistical.rs
     /// `BINOM_INV`).

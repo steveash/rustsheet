@@ -38,7 +38,8 @@ pub(crate) fn standard_normal_pdf(x: f64) -> f64 {
 /// FALSE)`, `PHI(1E+200)` and `NORM.DIST(3,1,2^-512,FALSE)` are `#NUM!`, while SQRT(f64::MAX) and
 /// every double below 2^512 are 0 (probes/t2435-dist-extremes A42:A47, A50:A57, A82:A84, A119:A125;
 /// `NORMDIST(1E+300,0.3,2.5,0)`, probes/t2475-stat-subexpressions P!A572).
-/// Excel: see docs/excel-semantics/statistics.md#normal-densities-are-num-once-the-square-overflows-t-2435
+/// Excel: see docs/excel-semantics/statistics.md, "Normal densities are #NUM! once the square
+/// overflows (T-2435)"
 pub(crate) fn normal_density_overflows(z: f64) -> bool {
     !(z * z).is_finite()
 }
