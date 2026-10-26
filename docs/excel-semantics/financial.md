@@ -1810,7 +1810,7 @@ YIELD `#NUM!`, even where PRICE has a root; after 100 steps the 100th iterate is
   `YIELD(43831,45412,10,999999999999998,1E+300,2)` is 88233.09573268576. The same bits at redemptions 1E+100 to 1E+300
   come from the analytic slope.
 Verified (T-2391, 2026-10-26): with the fitted start of T-1592 this rule matches every one of the 53 cells of
-probes/yield-newton-domain in type, and every value cell within 4 ulp (the 16 C cells bit-exact); the 13 cells left are
+probes/yield-newton-domain in type, and every value cell within 7 ulp (the 16 C cells bit-exact); the 13 cells left are
 last-digit misses of "YIELD stops short of PRICE's root". It matches the 21 gen-m9 cells T-2391 owned and the two of
 T-2747 (probes/t2475-stat-subexpressions P!A214, gen-m9/44a8841352dc48e9 A318). The earlier attempt (Newton from the
 coupon rate with no fallback) was `#NUM!` at prices 1500 to 10000: the fitted start, not the stop rule, decides them.
