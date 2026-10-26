@@ -3,7 +3,7 @@ id: T-2756
 title: "ROUNDUP of a number at the smallest normal is 0 (probes/t2715-roundup-near-smallest-normal)"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
