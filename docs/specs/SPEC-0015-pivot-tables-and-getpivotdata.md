@@ -50,7 +50,7 @@ Unknowns. Each is probed by T-2085, and until then T-2083 answers `#REF!` for it
 T-1703 behavior where one exists), never a guessed value:
 1. several data fields: the `"Values"` field, what a blank `data_field` picks, and a source name
    shared by two data fields (Sum and Count of Sales);
-2. an empty intersection of StdDev/Var (Sum, Count, Average, Max and Min are 0, T-2404);
+2. an empty intersection of CountNums, Product, Var, VarP, StdDev and StdDevP (Sum, Count, Average, Max and Min are 0, T-2404);
 3. numbers, dates and booleans as items (match by value or by text);
 4. page (filter) fields with a selected item, and hidden items on an axis;
 5. the same field twice with the same item;

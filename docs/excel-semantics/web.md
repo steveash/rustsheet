@@ -81,7 +81,7 @@ returns the value of the pivot cell the field/item pairs pick, including subtota
   aggregate (Average East/A 7, Count 2, Max 10, Min 4) and the pair order does not matter. Evidence:
   probes/getpivotdata-empty-intersection (excel-graph, 2026-10-26, T-2404), plus gen-m6 8641fa604c5b8e14 Calc!A19,
   A25 and A39 (Count of Units; A19 names the source field `"Units"` as data_field on that Count pivot and Excel
-  accepts it). StdDev/Var over an empty intersection are not probed (the case builder cannot write them): ours stay `#REF!`.
+  accepts it). CountNums, Product, Var, VarP, StdDev and StdDevP over an empty intersection are not probed (the case builder cannot write them): ours stay `#REF!`.
 - `pivot_table` may be any cell of the pivot (`$C$6`, inside the data area) or a range covering it
   (`$A$3:$E$7`); a cell outside every pivot (`$H$30`, or the source data `Data!$A$1`) is `#REF!`.
 - An array of items lifts: `"Region",{"East";"West"}` spills 22, 27 and `"Product",{"A","B","C"}` spills
