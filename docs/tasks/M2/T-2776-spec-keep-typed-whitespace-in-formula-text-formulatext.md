@@ -48,7 +48,8 @@ SPEC-0023 (docs/specs/SPEC-0023-formula-text-whitespace.md) designs typed whites
 count + space count). New probes (excel-graph, 2026-10-26) answered the open questions: probes/t2776-formula-
 text-whitespace-shapes (typed and stored), t2776-ws-after-at, -after-bang, -after-colon, -before-colon. Findings
 in syntax.md: a run keeps only its line feeds and the spaces after the last one; its space count wraps at 256;
-spaces around `:` and after `!` drop; a stored formula's leading run drops; `=SUM (1)` is refused. Ours mis-parses
-`=S! B1` (`#ERROR!`). Eval: probes +5 cases, 27 new-coverage known failures (all owned below), 0 regressions.
+spaces around `:` and after `!` drop; a stored formula's leading run drops; `=SUM (1)` is refused (observed). Ours fails to parse
+`=S! B1` (`#ERROR!`). Eval: probes +5 cases, 27 new-coverage known failures (all owned below), 0 regressions;
+`make eval-baseline` (`update-baseline`) wrote the visible-parity count 4443 -> 4448 for those new cells.
 Tasks filed: T-2781 (step 1, opus M), T-2782, T-2783, T-2784 (steps 2-4, sonnet S), T-2785 (`=S! B1`, sonnet S),
 T-2786 (structured-reference and saved-text probes, research sonnet S).

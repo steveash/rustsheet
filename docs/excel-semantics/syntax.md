@@ -334,8 +334,8 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
 - **A run's space count wraps at 256**: `=1+` + 300 spaces + `2` prints with 44 spaces (`LEN` 48). Excel stores a
   run as a line-feed count and a space count, each one byte (the BIFF `PtgAttrSpace` shape; the counts are this
   probe's evidence, not the documentation's).
-- Refused: `=SUM (1)` (a space between a function name and its `(`): Graph's PATCH of it failed, so Excel does not
-  accept it as a formula (the case was dropped; no oracle value can exist).
+- Refused (observed 2026-10-26, Graph's error text not recorded, so UNVERIFIED; T-2786 re-probes it): `=SUM (1)` (a
+  space between a function name and its `(`): Graph's PATCH of it failed and the case was dropped.
 - Stored in the file (`<f>` text, no typing): interior whitespace loads and prints as written (`1 + 2`, `SUM( 1 )`,
   `1+` LF `2`, `B1:B2  B2`, `(1 )+2`), and the typed drops apply (`SUM(1 ,2)`, `SUM({1, 2})`, a trailing space), but
   whitespace at the start of the stored text is dropped: `<f>  +5</f>` prints `=5` and `<f> 1+2</f>` prints `=1+2`,

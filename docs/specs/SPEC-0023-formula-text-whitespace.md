@@ -1,6 +1,6 @@
 # SPEC-0023 — Typed whitespace in the parsed formula
 
-- **Status:** draft (accepted on merge of T-2776)
+- **Status:** accepted (on merge of T-2776; architecture reviewer approved)
 - **Milestone / lane:** M2 / engine
 - **Tasks:** T-2776 (this spec); T-2781 (step 1), T-2782 (2), T-2783 (3), T-2784 (4); T-2785 (a parse
   bug the probes found, independent); T-2786 (probes of what is still open)
@@ -13,7 +13,7 @@ canonical, space-free text. Every value matches, but the formula text does not:
 - probes/t2769-formula-text-whitespace: 18 FORMULATEXT cells fail (C1:C5, C7, C8, C10:C15, C17:C20,
   C22). Examples: `=1 + 2`, `=SUM( 1 )` and `=- 5` print as `=1+2`, `=SUM(1)` and `=-5`.
 - probes/t2723-unary-plus-formula-text C24 and C25 fail: `=+ 5` and `=+ "a"` print as `=+5` and `=+"a"`.
-- probes/t2776-formula-text-whitespace-shapes: 26 cells fail (C1:C3, C5, C7:C13, C16:C22, E1, E2,
+- probes/t2776-formula-text-whitespace-shapes: 24 cells fail (C1:C3, C5, C7:C13, C16:C22, E1, E2,
   E6, E9, E10, F21).
 - probes/t2776-ws-after-at: C1 fails.
 - probes/t2776-ws-after-bang: A1 and C1 fail. The value cell fails too: `=S! B1` is a parse error in
@@ -72,9 +72,12 @@ probes/t2776-* (excel-graph, 2026-10-26).
 - **Stored text**: a formula read from a file's `<f>` keeps its interior whitespace (`1 + 2`,
   `SUM( 1 )`, `1+` LF `2`, `(1 )+2`) and applies the typed drops. Whitespace at the very start is
   also dropped: `<f>  +5</f>` prints `=5`, and `<f> 1+2</f>` prints `=1+2`.
-- **Refused**: `=SUM (1)`, a space between a function name and its `(`. Ours refuses it already.
+- **Refused** (observed, error text not recorded; T-2786 re-probes it): `=SUM (1)`, a space between a
+  function name and its `(`. What ours does with it is untested
+  (`operands.rs` reads a call only when no whitespace precedes the `(`); T-2786 adds the case.
 - **Values**: every probed value equals the value of the formula without spaces.
-- **Unknown** (T-2786): whitespace inside a structured reference (`T[ Col]`, `T[[#This Row], [Col]]`),
+- **Unknown** (T-2786): runs with no operand beside them (`=NOW( )`, `=IF(1, ,2)`, a run before `)`
+  after a comma); whitespace inside a structured reference (`T[ Col]`, `T[[#This Row], [Col]]`),
   and whether Excel saves kept whitespace in the `<f>` text it writes. Until T-2786 answers, export
   prints what the tree holds, because every printer shares one walker. If Excel strips whitespace
   on save, T-2786 files the export change.
@@ -112,8 +115,9 @@ pub(crate) struct Run { pub line_feeds: u8, pub spaces: u8 }
 - **Size.** Two boxes, 16 B, is smaller than the largest variant, so `NODE_SIZE` holds. A `Spaced`
   node exists only where whitespace was written.
 - **`Run` is Excel's shape.** Parsing a run into `Run` performs the normalisation the probes show:
-  count the line feeds, keep the spaces after the last one, and wrap each count at 256 (`as u8` on
-  the count mod 256, never a panic). Printing a `Run` is `"\n" × line_feeds + " " × spaces`. Step 1
+  count the line feeds, keep the spaces after the last one, and wrap the space count at 256 (the
+  count mod 256, never a panic). Whether the line-feed count wraps too is unprobed: step 2 probes
+  it first and does whatever that shows. Printing a `Run` is `"\n" × line_feeds + " " × spaces`. Step 1
   keeps only the space count of a run without line feeds; step 2 adds the line-feed rules.
 - **Parser.** `parse_primary` reads the run before it from the lexer. The binary-operator, `%` and
   `)` sites read the run after the operand they just finished. The lexer already sees the
@@ -191,7 +195,7 @@ Each step is one S/M task. Each leaves `make check` green and moves only the cel
    - t2776-ws-after-at C1.
    Runs that contain a line feed may print approximately until step 2.
 2. **T-2782 — run normalisation** (engine, sonnet, S). Line feeds, then the spaces after the last
-   one, each count wrapping at 256. Fixes t2776-shapes C19:C22 and F21, plus any t2769 line-feed
+   one, the space count wrapping at 256 (the line-feed count as step 2's probe shows). Fixes t2776-shapes C19:C22 and F21, plus any t2769 line-feed
    cell left over.
 3. **T-2783 — intersection spaces** (engine, sonnet, S). Keeps the spaces beyond the operator
    (t2776-shapes C3 and C5, and E9 together with step 4). The intersection node prints its
