@@ -306,6 +306,8 @@ fn exceeds_complexity_limit(format: &str) -> bool {
         let currency_tag = lexer.at_currency_tag();
         let currency_locale = lexer.has_pending_locale();
         let token = lexer.next_token();
+        // A malformed `[$...` tag the lexer reads as anything else is not priced as one.
+        let currency_tag = currency_tag && matches!(token, Token::Currency(_) | Token::Text(_));
         // `AM/PM` is not in the list: it may stand in a fourth section (probes/text-ap-locale-inferences
         // A11, A12, A16).
         if sections == MAX_SECTIONS && is_number_or_date(&token) {

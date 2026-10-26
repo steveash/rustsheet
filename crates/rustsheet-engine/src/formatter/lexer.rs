@@ -476,6 +476,7 @@ impl Lexer {
                             }
                         } else if c == '$' {
                             // currency: [$<symbol>] or [$<symbol>-<locale>]
+                            // (`at_currency_tag` tells this branch's symbol tags apart; keep the two in step)
                             // IronCalc ignores the currency/locale modifiers for now
                             // They are of two types:
                             //  * BCP-47 locale tag (like [$€-fr-FR])
