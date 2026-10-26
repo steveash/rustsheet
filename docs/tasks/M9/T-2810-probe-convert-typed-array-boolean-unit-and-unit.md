@@ -3,7 +3,7 @@ id: T-2810
 title: "Probe CONVERT typed/array boolean unit and unit error order"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
