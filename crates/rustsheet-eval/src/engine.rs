@@ -29,6 +29,11 @@ pub trait Evaluated {
     fn text(&self, _sheet: &str, _addr: Addr) -> Option<String> {
         None
     }
+    /// The sheet names in tab order, which the argument-coverage census parses formulas against
+    /// (T-0077); empty when the engine cannot list them.
+    fn sheet_names(&self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 pub trait Engine: Sync {
@@ -103,6 +108,10 @@ impl RustSheetEvaluated {
 }
 
 impl Evaluated for RustSheetEvaluated {
+    fn sheet_names(&self) -> Vec<String> {
+        self.workbook.sheets().into_iter().map(|s| s.name).collect()
+    }
+
     fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
         let cell = self.cell(sheet, addr)?;
         Some(match self.workbook.value(cell).ok()? {

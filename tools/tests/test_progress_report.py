@@ -153,6 +153,7 @@ def report() -> dict[str, Any]:
             fn("CALL", "below99", "all", visible_other=1),
         ],
         "tiers": [{"tier": t, "functions": tiers[t], "fallback": fallback.get(t, 0)} for t in TIERS],
+        "argument_coverage": [{"name": "ABS", "single": 0.5}, {"name": "PI", "single": None}],
         "v15_checkpoint": {
             "in_scope": 6,
             "at_rate": 4,
