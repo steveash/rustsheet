@@ -3,7 +3,7 @@ id: T-2728
 title: "IRR of CELL's row or col is #VALUE!, IRR's #REF! guess error, XIRR at a huge guess (gen-m9, 3 cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -37,13 +37,24 @@ Owned gen-m9 cells: 3 known-failure lines in eval/baseline/gen-m9.txt.
 - gen-m9/a91bad4e84f49739 Calc!A350 `=XIRR({-100,10,20,30,40},{0,1,59,60,61},MAX(Data!E4:E8))`: Excel 3.4266142457661796E-09, ours #NUM!
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with
+- [x] Visible parity (gen-m9): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with
       no new known-failure lines in any baseline.
-- [ ] Unit tests for each rule; financial.md records them with probe evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for each rule; financial.md records them with probe evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IRR's no-root cells (T-2727).
 
 ## Visible-parity stage
 Decision 0083: every cell this task owns has the wrong type, error or value, so the task is in the campaign.
+
+## Outcome
+- IRR: a flows argument that is a number straight from `CELL("row"|"col",..)` or ERROR.TYPE is `#VALUE!` (the mark of
+  T-2576; `is_marked_number` moved from statistical/paired.rs to functions/util.rs and shared). IRR now reads the guess
+  between a direct flows error and the `#VALUE!` of an error element or a marked flow, so the gen-m9 A153 cell is the
+  guess's `#REF!` (INDEX's own error for one index into a 2-D range, not an IRR quirk).
+- XIRR: an exact XNPV(0) = 0 brackets at the first chain point (the guess halved down to 0), not the negative mirror.
+- Probes: probes/t2728-irr-guess-ref-mark (43 scored cells) and -2 (46), excel-graph 2026-10-26; financial.md
+  "IRR's error order" (new) and a T-2728 bullet under "XIRR is a bracketing bisection". The wrapped-mark cells
+  (IF/CHOOSE/INDEX/IFERROR/LAMBDA, A53-A61) are left to T-2766 and unscored until then.
+- Eval delta: the 3 owned gen-m9 known failures pass; no new known-failure lines.
