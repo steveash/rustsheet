@@ -44,10 +44,10 @@ use std::sync::Arc;
 
 use crate::calc_result::CalcResult;
 use crate::circular::circular_reference;
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::date_and_time::weeknum::WeeknumStart;
+use crate::limits::{spill_past_grid_error, spills_past_grid};
 use crate::model::Model;
 use crate::restart_log::RestartLog;
 use crate::seen_ranges::SeenRange;
@@ -755,7 +755,11 @@ impl Model {
         let result = if self.evaluation.circular_anchors.contains(&key) {
             circular_reference()
         } else {
-            self.compute_formula(cell_reference, cell.f)
+            self.compute_formula(
+                cell_reference,
+                cell.f,
+                matches!(cell.array, Some((true, _))),
+            )
         };
         self.evaluation.depth -= 1;
         if self.evaluation.unwinding {
@@ -789,23 +793,27 @@ impl Model {
         self.stored_value(cell_reference)
     }
 
-    /// Runs the parsed formula and turns a reference into a value or an array.
-    fn compute_formula(&mut self, cell_reference: CellReferenceIndex, formula: i32) -> CalcResult {
+    /// Runs the parsed formula and turns a reference into a value or an array. `spills` is set
+    /// for a dynamic-array anchor ([`Model::evaluate_formula_root`]).
+    fn compute_formula(
+        &mut self,
+        cell_reference: CellReferenceIndex,
+        formula: i32,
+        spills: bool,
+    ) -> CalcResult {
         // Shares the formula, it does not copy it.
         let node =
             Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
-        match self.run_cell_formula(&node, cell_reference) {
+        match self.run_cell_formula(&node, cell_reference, spills) {
             CalcResult::Range { left, right } => {
                 if left == right {
                     self.evaluate_cell(left)
-                } else if cell_reference.row + (right.row - left.row) > LAST_ROW
-                    || cell_reference.column + (right.column - left.column) > LAST_COLUMN
-                {
-                    CalcResult::new_error(
-                        Error::SPILL,
-                        cell_reference,
-                        "Spill would exceed worksheet bounds".to_string(),
-                    )
+                } else if spills_past_grid(
+                    cell_reference,
+                    left.row.abs_diff(right.row) as usize + 1,
+                    left.column.abs_diff(right.column) as usize + 1,
+                ) {
+                    spill_past_grid_error(cell_reference)
                 } else {
                     match self.evaluate_range(left, right, cell_reference) {
                         Ok(array) => CalcResult::Array(array),

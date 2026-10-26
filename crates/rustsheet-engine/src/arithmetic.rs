@@ -5,12 +5,12 @@ use crate::{
         MAX_TEXT_UNITS,
     },
     expressions::{
-        parser::{ArrayNode, Node},
+        parser::{left_chain, value_operands, ArrayNode, Node},
         token::{Error, OpCompare, OpSum},
         types::CellReferenceIndex,
     },
     functions::util::compare_values,
-    limits::check_array_size,
+    limits::{check_array_cells, check_array_size, spill_past_grid_error, spills_past_grid},
     model::Model,
     text::Text,
 };
@@ -450,22 +450,126 @@ pub(crate) fn broadcast_arrays(
     CalcResult::Array(array)
 }
 
+/// How many operators nested in operands [`Model::evaluate_spilling_chain`] follows: enough for a
+/// written formula, and a bound on the recursion (CLAUDE.md directive 5); deeper ones evaluate as
+/// usual.
+const MAX_SPILL_CHECK_DEPTH: usize = 8;
+
+/// The rows and columns `value` has as an operand of a binary operator: a range's or an array's
+/// own, and 1 x 1 for a scalar (or a range across sheets, which is an error, not an array).
+fn operand_shape(value: &CalcResult) -> (usize, usize) {
+    match value {
+        CalcResult::Range { left, right } if left.sheet == right.sheet => (
+            left.row.abs_diff(right.row) as usize + 1,
+            left.column.abs_diff(right.column) as usize + 1,
+        ),
+        CalcResult::Array(array) => (array.len(), array.first().map_or(0, Vec::len)),
+        _ => (1, 1),
+    }
+}
+
+/// `#SPILL!` when a binary operator over `left` and `right` in the dynamic-array anchor `anchor`
+/// would broadcast ([`broadcast_arrays`]) to more cells than [`check_array_cells`] allows and to
+/// a shape that runs past the grid from `anchor`: Excel builds that array and cannot spill it,
+/// where the engine would refuse to build it (`#ERROR!`). Decided from the shapes alone, before
+/// anything is allocated. A result within the bound is left to the spill itself.
+pub(crate) fn unspillable_broadcast(
+    anchor: CellReferenceIndex,
+    left: &CalcResult,
+    right: &CalcResult,
+) -> Option<CalcResult> {
+    let (n1, m1) = operand_shape(left);
+    let (n2, m2) = operand_shape(right);
+    let (rows, columns) = (n1.max(n2), m1.max(m2));
+    if check_array_cells(rows, columns).is_none() {
+        return None;
+    }
+    spills_past_grid(anchor, rows, columns).then(|| spill_past_grid_error(anchor))
+}
+
 impl Model {
     /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
     /// outermost `+`/`-` to 0, but not for a wholly parenthesized formula, which is a
     /// root `Group` (docs/excel-semantics/numbers.md "Near-zero snapping in addition
     /// and subtraction"); every other node evaluates as usual.
+    ///
+    /// `spills` is set for the formula of a dynamic-array anchor; there an operator root is
+    /// evaluated by [`Model::evaluate_spilling_chain`].
     pub(crate) fn evaluate_formula_root(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
+        spills: bool,
     ) -> CalcResult {
+        let snaps = matches!(node, Node::OpSumKind { .. });
+        let root = node.ungrouped();
+        if spills && value_operands(root).is_some() {
+            return self
+                .evaluate_spilling_chain(root, cell, snaps, 0)
+                .unwrap_or_else(|spill| spill);
+        }
         match node {
             Node::OpSumKind { kind, left, right } => {
                 let left = self.evaluate_node_in_context(left, cell);
+                let right = self.evaluate_node_in_context(right, cell);
                 self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
             }
             _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
+    /// The operator chain `node` ([`left_chain`]) of the formula of the dynamic-array anchor
+    /// `cell`, folded as [`Model::evaluate_operator_chain`] does, but `Err(#SPILL!)` as soon as a
+    /// link would broadcast to more cells than the engine's array bound and to a shape that runs
+    /// past the grid from the anchor ([`unspillable_broadcast`]): Excel builds that array and
+    /// cannot spill it, so the shape alone gives Excel's answer and nothing is allocated, where
+    /// the broadcast would be `#ERROR!` (corpus-bench/55049 `=SUMPRODUCT(..)*book2!H:J` in B3;
+    /// docs/excel-semantics/arrays.md "Array results above 1,048,576 cells are #ERROR!"). A
+    /// broadcast never shrinks, so the whole formula's result could not spill either. Operands
+    /// that are operators themselves (`=1+H:J*2`) are checked the same way, down to
+    /// [`MAX_SPILL_CHECK_DEPTH`] nested operators. `snaps` applies the outermost `+`/`-` snap
+    /// to the last link ([`Model::evaluate_formula_root`]).
+    fn evaluate_spilling_chain(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        snaps: bool,
+        depth: usize,
+    ) -> Result<CalcResult, CalcResult> {
+        let (links, first) = left_chain(node);
+        let mut value = self.evaluate_spilling_operand(first, cell, depth)?;
+        let mut links = links.peekable();
+        while let Some(link) = links.next() {
+            let Some((_, right)) = value_operands(link) else {
+                break;
+            };
+            let right = self.evaluate_spilling_operand(right, cell, depth)?;
+            if let Some(spill) = unspillable_broadcast(cell, &value, &right) {
+                return Err(spill);
+            }
+            value = match link {
+                Node::OpSumKind { kind, .. } if snaps && links.peek().is_none() => {
+                    self.handle_outermost_sum(value, right, cell, matches!(kind, OpSum::Minus))
+                }
+                _ => self.apply_operator(value, link, right, cell),
+            };
+        }
+        Ok(value)
+    }
+
+    /// An operand of [`Model::evaluate_spilling_chain`]: an operator chain, parenthesized or
+    /// not, is checked in turn while `depth` allows; anything else evaluates as usual.
+    fn evaluate_spilling_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        depth: usize,
+    ) -> Result<CalcResult, CalcResult> {
+        let inner = node.ungrouped();
+        if depth < MAX_SPILL_CHECK_DEPTH && value_operands(inner).is_some() {
+            self.evaluate_spilling_chain(inner, cell, false, depth + 1)
+        } else {
+            Ok(self.evaluate_node_in_context(node, cell))
         }
     }
 
@@ -475,13 +579,13 @@ impl Model {
     fn handle_outermost_sum(
         &mut self,
         left: CalcResult,
-        right: &Node,
+        right: CalcResult,
         cell: CellReferenceIndex,
         subtract: bool,
     ) -> CalcResult {
         let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
         let l = self.number_or_array(left, cell);
-        let r = self.get_number_or_array(right, cell);
+        let r = self.number_or_array(right, cell);
         // The two addends of a scalar addition (a subtraction adds the negated right operand).
         let addends = match (&l, &r) {
             (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => {
@@ -497,17 +601,16 @@ impl Model {
         }
     }
 
-    /// Applies `op` element‐wise for arrays/numbers to `left`, the evaluated left
-    /// operand, and `right`.
+    /// Applies `op` element‐wise for arrays/numbers to the evaluated operands `left` and `right`.
     pub(crate) fn handle_arithmetic(
         &mut self,
         left: CalcResult,
-        right: &Node,
+        right: CalcResult,
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
         let l = self.number_or_array(left, cell);
-        let r = self.get_number_or_array(right, cell);
+        let r = self.number_or_array(right, cell);
         self.arithmetic_on_values(l, r, cell, op)
     }
 
@@ -627,15 +730,16 @@ impl Model {
 
     /// Applies the concatenation operator (`&`) element-wise.
     /// When either operand is a range or array the result is an array of strings;
-    /// when both are scalars the result is a single String. `left` is the evaluated left operand.
+    /// when both are scalars the result is a single String. `left` and `right` are the evaluated
+    /// operands.
     pub(crate) fn handle_concatenate(
         &mut self,
         left: CalcResult,
-        right: &Node,
+        right: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let l = self.string_or_array(left, cell);
-        let r = self.get_string_or_array(right, cell);
+        let r = self.string_or_array(right, cell);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),
             (Err(error), Ok(StringOrArray::Array(array))) => {
@@ -686,16 +790,17 @@ impl Model {
     /// Applies a comparison operator element-wise.
     /// When either operand is a range or array the result is an array of booleans,
     /// with an error where an element of the operands is an error;
-    /// when both are scalars the result is a single Boolean. `left` is the evaluated left operand.
+    /// when both are scalars the result is a single Boolean. `left` and `right` are the evaluated
+    /// operands.
     pub(crate) fn handle_comparison(
         &mut self,
         left: CalcResult,
-        right: &Node,
+        right: CalcResult,
         cell: CellReferenceIndex,
         kind: &OpCompare,
     ) -> CalcResult {
         let l = self.value_or_array(left, cell);
-        let r = self.get_value_or_array(right, cell);
+        let r = self.value_or_array(right, cell);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),
             (Err(error), Ok(ValueOrArray::Array(array))) => {

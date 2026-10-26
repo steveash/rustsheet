@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::arithmetic::{divide, minus, plus, power, times};
 use crate::calc_result::CalcResult;
 use crate::defined_names::ParsedDefinedName;
-use crate::expressions::parser::{left_chain, Node};
+use crate::expressions::parser::{left_chain, value_operands, Node};
 use crate::expressions::token::{Error, OpProduct, OpSum};
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
@@ -272,21 +272,34 @@ impl Model {
         link: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        // `left_chain` links are value operators only.
+        let Some((_, right)) = value_operands(link) else {
+            return value;
+        };
+        let right = self.evaluate_node_in_context(right, cell);
+        self.apply_operator(value, link, right, cell)
+    }
+
+    /// The operator of `link` over its evaluated operands `value` and `right`.
+    pub(crate) fn apply_operator(
+        &mut self,
+        value: CalcResult,
+        link: &Node,
+        right: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         match link {
-            Node::OpSumKind { kind, right, .. } => match kind {
+            Node::OpSumKind { kind, .. } => match kind {
                 OpSum::Add => self.handle_arithmetic(value, right, cell, &plus),
                 OpSum::Minus => self.handle_arithmetic(value, right, cell, &minus),
             },
-            Node::OpProductKind { kind, right, .. } => match kind {
+            Node::OpProductKind { kind, .. } => match kind {
                 OpProduct::Times => self.handle_arithmetic(value, right, cell, &times),
                 OpProduct::Divide => self.handle_arithmetic(value, right, cell, &divide),
             },
-            Node::OpPowerKind { right, .. } => self.handle_arithmetic(value, right, cell, &power),
-            Node::OpConcatenateKind { right, .. } => self.handle_concatenate(value, right, cell),
-            Node::CompareKind { kind, right, .. } => {
-                self.handle_comparison(value, right, cell, kind)
-            }
-            // `left_chain` links are value operators only.
+            Node::OpPowerKind { .. } => self.handle_arithmetic(value, right, cell, &power),
+            Node::OpConcatenateKind { .. } => self.handle_concatenate(value, right, cell),
+            Node::CompareKind { kind, .. } => self.handle_comparison(value, right, cell, kind),
             _ => value,
         }
     }
