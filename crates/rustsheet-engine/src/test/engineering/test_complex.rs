@@ -429,3 +429,14 @@ fn imabs_and_imargument_kernels() {
     assert_eq!(bits("A1"), 51.394_647_859_091_315_f64.to_bits());
     assert_eq!(bits("A2"), (-2.037_470_342_871_754_f64).to_bits());
 }
+
+// IMPOWER's angle is Excel's ATAN2 kernel `atan(y/x)`, one ulp above libm `atan2(1,1000)` here, so
+// the imaginary part is 1.0000000000000002 and keeps its "1" (gen-m9/74779cff2810ccf4 Calc!A379;
+// docs/excel-semantics/engineering.md "1i" when a part is not exactly 1; T-2610).
+#[test]
+fn impower_angle_is_excels_atan2_kernel() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMPOWER("1000+1i",1)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1000+1i");
+}
