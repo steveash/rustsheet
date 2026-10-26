@@ -3,7 +3,7 @@ id: T-0480
 title: "A bare array expression whose spill cannot fit is #SPILL! before the array-size cap's #ERROR! (corpus-bench/55049, 21 cells)"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
