@@ -344,7 +344,7 @@ fn fn_imln_imlog10_of_zero_are_num() {
     }
 }
 
-// Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044). The tiny-argument rows keep
+// Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044) and gen-m9 (T-2537). The tiny-argument rows keep
 // the digits Excel loses (D65, D70, P65, P70), IMSEC and IMSECH differ in the last digit of the
 // same real part (G23, J58), and a large real part needs SIN's own reduction (D51).
 #[test]
@@ -364,6 +364,11 @@ fn im_reciprocal_kernels_match_the_sweep() {
             "49999.9958596485-49999.9958663151i",
         ),
         (r#"=IMCOT("0.00001i")"#, "-99999.9917326303i"),
+        // gen-m9/060b18586fcff6e6 Calc!A72 (excel-graph, T-2537): `(cosh 2y + 1) - 2cos²x`.
+        (
+            r#"=IMCOT("-1.5+0.5i")"#,
+            "-0.0557109884865415-0.463942860183828i",
+        ),
         (r#"=IMCOT("219.098+3372.26i")"#, "-i"),
         (r#"=IMCOT("-724.227-562.884i")"#, "i"),
         (

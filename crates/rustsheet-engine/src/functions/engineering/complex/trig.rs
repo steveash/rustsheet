@@ -143,10 +143,11 @@ pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
     finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
 }
 
-/// cot(x+iy) = `(sin 2x - i·sinh 2y) / (cosh 2y - (2cos²x - 1))`, with SIN and COS reduced as
+/// cot(x+iy) = `(sin 2x - i·sinh 2y) / ((cosh 2y + 1) - 2cos²x)`, with SIN and COS reduced as
 /// Excel's own (`trig_sin_cos`): all 63 cells of probes-numeric im-last-digit-sweep with an
-/// imaginary part (T-2044), including the digits Excel loses for tiny arguments, where the
-/// denominator cancels (`IMCOT("1E-5+1E-5i")` real part 49999.9958596485, `IMCOT("0.00001i")`
+/// imaginary part (T-2044) and `IMCOT("-1.5+0.5i")` -0.0557109884865415-0.463942860183828i (45
+/// gen-m9 cells, T-2537), where `cosh 2y - (2cos²x - 1)` prints ...5416. That includes the digits
+/// Excel loses for tiny arguments, where the denominator cancels (`IMCOT("1E-5+1E-5i")` real part 49999.9958596485, `IMCOT("0.00001i")`
 /// -99999.9917326303i; exact 50000 and 100000). UNVERIFIED (T-2531): below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1 and
 /// the result is `#NUM!`. Past `cosh 2y`'s range the value is `∓i` by the
 /// sign of y (Q27:R27, R55). A real number is 1 over TAN's kernel ([`real_trig`]; `IMCOT("1E-20")` = 1E+20).
@@ -160,7 +161,7 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     }
     let (_, cos_x) = trig_sin_cos(x);
     let (sin_2x, _) = trig_sin_cos(2.0 * x);
-    let t = cosh_2y - (2.0 * cos_x * cos_x - 1.0);
+    let t = cosh_2y + 1.0 - 2.0 * cos_x * cos_x;
     finite_complex_result(sin_2x / t, -f64::sinh(2.0 * y) / t, suffix, cell)
 }
 
@@ -298,3 +299,4 @@ pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     let (x, y) = tan_parts(x, y);
     complex_result(x, y, suffix)
 }
+

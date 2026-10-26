@@ -3,7 +3,7 @@ id: T-2537
 title: "IMSECH, IMCOT, IMCSC and IMLOG2 last printed digit in the gen-m9 engineering sweep, after T-2044 (154 cells)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -87,12 +87,22 @@ left the baseline in T-2231, so 147 lines remain. IMLOG2 is not the ln 2 to 15 d
 is in engineering.md.
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 154 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 154 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Or each line left is listed in engineering.md with T-2044's best candidate (time-box, decision 0056).
-- [ ] `make check` green; reviewers approve.
+- [x] Or each line left is listed in engineering.md with T-2044's best candidate (time-box, decision 0056).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+By this run, T-2044, T-2743, T-2750 and T-2231 had already fixed 109 of the 154 lines. The 45 left were all
+`IMCOT("-1.5+0.5i")`, whose real part Excel prints as ...5415 where ours printed ...5416. IMCOT's denominator is now
+`(cosh 2y + 1) - 2cos²x` (complex/trig.rs `imcot`). A scratch fit of 32 groupings of the same kernel over
+probes-numeric im-last-digit-sweep's 63 IMCOT cells plus this one found that only this grouping fits all 64.
+T-2044's `cosh 2y - (2cos²x - 1)` fits the 63 but not this cell, and the libm or exp-based cosh makes no
+difference (engineering.md). Unit test: `im_reciprocal_kernels_match_the_sweep`. Eval delta: gen-m9 known failures
+4056 → 4011 (fixed 45), 0 regressions in any suite; none of the 154 lines remain.
+
