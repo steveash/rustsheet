@@ -3,7 +3,7 @@ id: T-2435
 title: "Scalar distributions at extreme arguments: BINOM.DIST, BETAINV, GAMMA.DIST, CRITBINOM, FDIST and LOGNORMDIST range checks (gen-m9, 20 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
