@@ -9,6 +9,7 @@ mod test_fn_chisq_test;
 mod test_fn_confidence;
 mod test_fn_covariance;
 mod test_fn_devsq;
+mod test_fn_domain_errors_t2621;
 mod test_fn_expon_dist;
 mod test_fn_extreme_arguments_part2;
 mod test_fn_f;
