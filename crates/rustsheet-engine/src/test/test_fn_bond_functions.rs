@@ -162,6 +162,23 @@ fn fn_yield_roundtrip() {
     assert!((yld - 0.065).abs() < 1e-5, "YIELD roundtrip = {yld}");
 }
 
+// YIELD stops one Newton step short of PRICE's root, from its fitted start (T-1592; financial.md
+// "YIELD stops short of PRICE's root"): Excel's bits on probes/yield-solver-sweep S!A1 (the root is
+// 0.0552358703070220) and probes/yield-start-sweep C18 (frequency 4, redemption 100.85).
+#[test]
+fn fn_yield_stops_short_of_the_root() {
+    let mut model = new_empty_model();
+    model._set("A1", "=YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100,2,0)");
+    model._set("A2", "=YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100.85,4,0)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 0.055_235_870_302_514_56_f64.to_bits());
+    assert_eq!(bits("A2"), 0.056_983_625_338_011_136_f64.to_bits());
+}
+
 #[test]
 fn fn_yield_wrong_arg_count() {
     let mut model = new_empty_model();

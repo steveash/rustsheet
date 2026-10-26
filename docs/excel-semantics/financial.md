@@ -1754,8 +1754,26 @@ M = DATE(2100,6,30), R = 0.05, P = 98 unless varied; column A frequency 2, B fre
   0.0232 at 2101, 0.0353 at 2125), so not a plain 1/T. No form fitted yet.
 Read together: a start that equals the coupon at par and moves linearly with the coupon looks like a current-yield or
 yield-approximation formula; T-1592 is the place to fit it. Lab test: `test_yield_start_one_input_two_steps_back`.
-Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
-Status: UNVERIFIED (the algorithm); the values are excel-graph
+T-1592 (fourth round, 2026-10-26): the start and the stop rule are fitted.
+- Start: S = (100·R + (100 - P)/T) / ((100 + P)/2 - (100 - P)/(4T)), with T the basis's settlement-to-maturity days
+  over 360 (over 365 on bases 1 and 3; basis 2 is assumed to be days over 360, with no evidence yet). On yield-start-one-input
+  rows 22-96 (but 67) the two-steps-back start fits a denominator P + w(100 - P) where (1/2 - w)·T is 0.25000 on every
+  row (prices 90.5 to 99.5, rates 0 to 0.12, terms 2.3 to 30.3 years). At price 98 and T = 1559/360 that gives
+  0.0552344627, the T-2187 start. It does not use the redemption, the frequency or the coupon schedule. Rows 1-21 and 67 sit
+  at the root, so the back-chain cannot reach their start.
+- Stop: an analytic-Newton step on PRICE (the `^`-priced PRICE that PRICE itself computes) that is below 1e-10 is not
+  taken, so the value is the iterate before it. That is why the values sit short of the root. The cut lies between 9.67e-11
+  (a step yield-start-sweep C18 does not take) and 1.01e-10 (one yield-start-one-input B21 takes). This replaces the step-size
+  cuts tried in T-2187 and T-2304: their 6e-6 to 7e-6 "last steps" are the step before the one that is not taken.
+- Lab fit `yield-caret` (family "Newton, fitted start"): 240/370 bit-exact and 361/370 within 4 ulp (`yield`, libm-priced:
+  212 and 340). Cut 1e-9: 194/370; 1e-11: 145/370. The previous best was 4/178. The 9 cells left are 7 to 33 ulp off
+  (solver-iteration-traces Y!E2; yield-solver-sweep C7 and C11, where the rate is 0.4 or 0.2; yield-start-one-input B11,
+  B17, B31, B54, B62 and B69), within 15 significant digits. Lab test: `test_yield_fitted_start_and_short_stop`.
+Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`). Where an
+iterate leaves PRICE's domain or 100 steps pass, it falls back to the old solver (Newton from the coupon rate with a central
+difference, then bisection). The `#NUM!` cells and the 100-step values of "YIELD's #NUM! cells and its suspected 100-step
+cap" are not fitted yet.
+Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740
 
 ## YIELD's #NUM! cells and its suspected 100-step cap
