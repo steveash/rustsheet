@@ -20,5 +20,7 @@ T-2470 fixed 24 of the 41 owned lines (one data value before sigma; a lone non-n
 - [ ] Each T-2470-owned cell still in eval/baseline/gen-m9.txt is fixed (`make eval-baseline`) or its remaining cause is recorded in docs/excel-semantics/statistics.md with a task for it.
 - [ ] `make check` green; reviewers approve.
 
+Also probe (excel-probe) whether a single cell reached through a defined name, INDEX or OFFSET takes the same `#N/A` as a plain cell reference (T-2470 handles only a plain reference).
+
 ## Out of scope
 -
