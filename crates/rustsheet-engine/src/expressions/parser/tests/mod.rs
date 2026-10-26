@@ -19,6 +19,7 @@ mod test_move_formula;
 mod test_nesting_depth;
 mod test_partial_parsing;
 mod test_ranges;
+mod test_spacing;
 mod test_stringify;
 mod test_tables;
 mod test_unary_plus;

@@ -3,7 +3,7 @@ id: T-2781
 title: "SPEC-0023 step 1: a Spaced node keeps typed operand whitespace in formula text"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -31,3 +31,21 @@ C7:C13, C16:C18; probes/t2776-ws-after-at C1.
 
 ## Out of scope
 - Line-feed run normalisation (T-2782), intersection spaces (T-2783), stored-text leading runs (T-2784).
+
+## Outcome
+- `Node::Spaced { space: Spacing, child }` (`expressions/parser/spacing.rs`): runs of spaces kept before an operand
+  (after `=`, an operator, a sign, `(`, a comma, `@`), after one before an operator, `%` or `)`, dropped at the end,
+  before a comma, in an array constant and around `:`; the space count wraps at 256. Printed by every printer;
+  structural edits, renames and moves keep it. `NODE_SIZE` unchanged.
+- Deviation from the spec's design, recorded in SPEC-0023 "Implementation note": a cell stores the written tree and a
+  stripped copy (`model::ParsedFormula`, `Node::strip_spaces`), and evaluation, units and static analysis read the
+  copy, because ~300 argument-shape sites match nodes without peeling; defined names, conditional formats and
+  outside-cell formulas are stripped where parsed. Every `Spaced` costs a depth level (nesting test gains `( ` and
+  `SUM( ` shapes). The xlsx export still writes the stripped tree (T-2786 decides).
+- Stored text: a file's `<f>` drops its leading whitespace (`Parser::loaded`), so t2776-shapes E7/E8 keep passing and
+  E1, E2, E10 (T-2784's) pass now; T-2784 is left with nothing in E-cells beyond E6/E9 (line feed, intersection).
+- Eval: probes known failures 2690 -> 2654 (36 fixed, 0 regressions): t2769 C1:C5, C7, C8, C10:C15, C18:C20, C22;
+  t2723 C24, C25; t2776-shapes C1, C2, C7:C12, C16:C18, C21, E1, E2, E10, F21; t2776-ws-after-at C1. Every other
+  suite unchanged.
+- Handed to T-2782 (line feeds): t2769 C17, t2776-shapes C13 (and C19, C20, C22, E6 as planned).
+- LAMBDA parameter names drop the whitespace around them (unprobed; noted in syntax.md).

@@ -343,9 +343,15 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
   where the same text typed after `=` keeps it. Every value matches the space-free formula.
 Unprobed: whitespace inside a structured reference, and whether Excel writes kept whitespace into the `<f>` text it
 saves (T-2776's spec, SPEC-0023, files both).
-Ours: the tree keeps no whitespace, so every formula prints canonical, space-free text and the cells with kept
-whitespace fail (and probes/t2723-unary-plus-formula-text C24, C25); `=S! B1` is a parse error (`#ERROR!`) where Excel
-reads `S!B1`. SPEC-0023 designs keeping whitespace: `Node` must not grow, and shared formulas share one tree.
+Ours (T-2781, SPEC-0023 step 1): the parser keeps each run of spaces as a `Node::Spaced` around the operand it
+touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the R1C1 storage text, row and column edits,
+sheet renames and moves print the spaces back. A cell stores two trees: the written one, which prints, and one with no
+whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a `Spaced`
+(`model::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the stripped tree too.
+Still open: runs holding a line feed print nothing (T-2782), the spaces beyond an intersection's one (T-2783), the
+leading run of stored text (T-2784), whitespace around LAMBDA parameter names (dropped; unprobed), and the xlsx export,
+which writes the stripped tree until T-2786 shows what Excel saves. `=S! B1` is a parse error (`#ERROR!`) where Excel
+reads `S!B1` (T-2785).
 Status: VERIFIED (excel-graph)
 Tasks: T-2769, T-2776, SPEC-0023
 

@@ -60,6 +60,9 @@ fn formulas_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
         ("SUM(", ")"),
         ("-(", ")"),
         ("1*(", ")"),
+        // Whitespace at every level is a node of its own, so it nests less deep (SPEC-0023).
+        ("( ", " )"),
+        ("SUM( ", " )"),
     ] {
         let text = evaluate_deepest_on_2_mib_stack(open, close);
         assert_eq!(text.as_deref(), Some("1"), "{open}");

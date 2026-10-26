@@ -15,6 +15,8 @@ A formula loaded from a file's `<f>` text keeps its interior whitespace and drop
 does: `<f>1 + 2</f>` prints `=1 + 2`, `<f> 1+2</f>` prints `=1+2`.
 
 ## Context
+- T-2781 already drops the leading run of a file's stored text (`Parser::loaded` trims it) and E1, E2 and E10
+  pass; what is left here is E6 (a line feed, with T-2782) and checking the rule against T-2786's findings.
 SPEC-0023 step 4 ("Stored text"). Evidence: probes/t2776-formula-text-whitespace-shapes D1:E10 (excel-graph,
 2026-10-26). Typed formulas keep the leading run (`= 1+2`), stored ones do not.
 

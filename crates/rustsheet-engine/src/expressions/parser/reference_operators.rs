@@ -7,7 +7,7 @@
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
 use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
-use crate::expressions::parser::{ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{Error, OpUnary, TokenType};
 use crate::functions::Function;
 use crate::locale::Locale;
@@ -229,6 +229,9 @@ impl Parser {
             if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
                 return self.too_deep();
             }
+            // `=@ B1:B2` keeps its space (probes/t2776-ws-after-at, SPEC-0023); a signed operand
+            // keeps it as its own (`Parser::parse_power`).
+            let gap = self.run_ahead();
             let t = if self.lexer.peek_token() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
@@ -244,7 +247,12 @@ impl Parser {
                 self.nesting += PRIMARY_DEPTH;
                 let t = self.parse_intersection();
                 self.nesting -= PRIMARY_DEPTH;
-                t
+                match t {
+                    Node::ParseErrorKind { .. } => t,
+                    t => match self.spaced_level(t, gap, Run::default()) {
+                        Ok(t) | Err(t) => t,
+                    },
+                }
             };
             if let Node::ParseErrorKind { .. } = t {
                 return t;

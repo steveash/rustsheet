@@ -48,7 +48,7 @@ pub(super) fn read_once(body: &Node, ids: &[usize]) -> Vec<bool> {
         node.push_children(&mut children);
         for (index, child) in children.drain(..).enumerate() {
             let (passes_once, branch) = match node {
-                Node::Group { .. } | Node::UnaryPlus { .. } => (true, false),
+                Node::Group { .. } | Node::UnaryPlus { .. } | Node::Spaced { .. } => (true, false),
                 Node::FunctionKind { kind, .. } => (
                     evaluates_once(kind, index),
                     *kind == Function::If && index > 0,

@@ -2,7 +2,7 @@
 //! are parsed differently and stored through the same node setter, so a legacy tree is stored as
 //! it was rewritten, its N/T markers included (SPEC-0012), not re-read from its display text.
 
-use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+use crate::expressions::parser::static_analysis::StaticResult;
 use crate::expressions::parser::stringify::{
     to_localized_string, to_localized_string_this_row_lowered,
 };
@@ -10,6 +10,7 @@ use crate::expressions::parser::Node;
 use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::language::Language;
 use crate::locale::Locale;
+use crate::model::written_formula;
 use crate::model::Model;
 
 /// A printer of a parsed formula in the active locale and language, at a cell.
@@ -30,12 +31,13 @@ impl Model {
         let Some(formula_index) = worksheet.cell(row, column).and_then(|c| c.get_formula()) else {
             return Ok(None);
         };
-        let (formula, _static_result) = &self
-            .parsed_formulas
-            .get(sheet as usize)
-            .ok_or("missing sheet")?
-            .get(formula_index as usize)
-            .ok_or("missing formula")?;
+        let formula = written_formula(
+            self.parsed_formulas
+                .get(sheet as usize)
+                .ok_or("missing sheet")?
+                .get(formula_index as usize)
+                .ok_or("missing formula")?,
+        );
         let cell_ref = CellReferenceRC {
             sheet: worksheet.get_name(),
             row,
@@ -104,9 +106,11 @@ impl Model {
         node: Node,
         style: i32,
     ) -> Result<i32, String> {
-        let static_result = run_static_analysis_on_node(&node);
-        let is_dynamic = !matches!(static_result, StaticResult::Scalar);
-        let formula_index = self.shared_formula_index(sheet, node, static_result)?;
+        let formula_index = self.shared_formula_index(sheet, node)?;
+        let is_dynamic = !matches!(
+            self.parsed_formulas[sheet as usize][formula_index as usize].1,
+            StaticResult::Scalar
+        );
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         if is_dynamic {
             worksheet.set_cell_with_dynamic_formula(row, column, formula_index, style, 1, 1)?;
@@ -128,7 +132,7 @@ impl Model {
     ) -> Result<(), String> {
         let formula_index = self.set_cell_with_formula_node(sheet, row, column, node, style)?;
         let cell = CellReferenceIndex { sheet, row, column };
-        let (parsed_formula, _static_result) =
+        let (parsed_formula, _static_result, _) =
             &self.parsed_formulas[sheet as usize][formula_index as usize];
         if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
             let style_index = self

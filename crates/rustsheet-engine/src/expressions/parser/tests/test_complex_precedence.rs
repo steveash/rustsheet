@@ -57,7 +57,8 @@ fn precedence_ast() {
 #[test]
 fn precedence() {
     let formula = r#"(A1:A3="Finance") + (B1:B3="HR")"#;
-    let expected = r#"(A1:A3="Finance")+(B1:B3="HR")"#;
+    // The spaces around `+` print back as typed (SPEC-0023).
+    let expected = r#"(A1:A3="Finance") + (B1:B3="HR")"#;
     let cell_reference = CellReferenceRC {
         sheet: "Sheet1".to_string(),
         row: 3,

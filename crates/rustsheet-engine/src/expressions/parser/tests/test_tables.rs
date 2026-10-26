@@ -90,11 +90,11 @@ fn simple_table() {
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUBTOTAL(109,tblIncome[Jan])"
+        "SUBTOTAL(109, tblIncome[Jan])"
     );
     assert_eq!(
         to_excel_string(&t, &cell_reference),
-        "SUBTOTAL(109,$A$2:$A$3)"
+        "SUBTOTAL(109, $A$2:$A$3)"
     );
 
     // Cell A3 in 'Second Sheet'
@@ -107,11 +107,11 @@ fn simple_table() {
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUBTOTAL(109,tblIncome[Jan])"
+        "SUBTOTAL(109, tblIncome[Jan])"
     );
     assert_eq!(
         to_excel_string(&t, &cell_reference),
-        "SUBTOTAL(109,'Sheet One'!$A$2:$A$3)"
+        "SUBTOTAL(109, 'Sheet One'!$A$2:$A$3)"
     );
 }
 

@@ -9,7 +9,7 @@ use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
-use crate::model::{CellStructure, Model};
+use crate::model::{written_formula, CellStructure, Model};
 use crate::pivot::PivotLines;
 use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
 
@@ -368,7 +368,7 @@ impl Model {
             .cell(row, column)
             .and_then(|c| c.get_formula())
         {
-            let node = &self.parsed_formulas[sheet as usize][f as usize].0.clone();
+            let node = &written_formula(&self.parsed_formulas[sheet as usize][f as usize]).clone();
             let cell_reference = CellReferenceRC {
                 sheet: self.workbook.worksheets[sheet as usize].get_name(),
                 row,
