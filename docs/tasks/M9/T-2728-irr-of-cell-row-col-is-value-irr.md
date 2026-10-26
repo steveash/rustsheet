@@ -3,7 +3,7 @@ id: T-2728
 title: "IRR of CELL's row or col is #VALUE!, IRR's #REF! guess error, XIRR at a huge guess (gen-m9, 3 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
