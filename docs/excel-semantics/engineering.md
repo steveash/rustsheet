@@ -494,7 +494,7 @@ angle"); cosh and sinh are libm's. Rule:
   imaginary part (row 42 excluded, the overflow path answers it): `1/IMCOSH(z)` as `(a, −b)/(a² + b²)` 58 (misses rows
   7, 49, 54), Smith's division 56, `cosh²x − sin²y` 52, the half-angle `(cosh 2x + cos 2y)/2` 55, IMSEC's T-2743 form
   turned a quarter 55, `(e^x ± e^-x)/2` for cosh and sinh 51. A fused form fitting where the plain one misses suggests
-  Excel's build contracts `a·a + b·b` to `fma(b, b, a·a)`. That does not hold for the other kernels (T-2757, scored on
+  Excel's build contracts `a·a + b·b` to `fma(b, b, a·a)`. That is refuted for IMCSC and IMCOT and undetermined for IMSEC and IMCSCH (T-2757, scored on
   every oracle cell of IMSEC, IMCSC, IMCSCH and IMCOT in gen-m9, ironcalc-calc, probes and probes-numeric `im-*`: 634,
   642, 546 and 648 cells; each kernel misses one cell there today, none of them a kernel digit): fusing IMCSC's `sin²x`
   (`fma(sin x, sin x, (cosh 2y − 1)/2)`) misses D33 (`IMCSC("956.615+0.00387493i")` real part ...189521 for Excel's
