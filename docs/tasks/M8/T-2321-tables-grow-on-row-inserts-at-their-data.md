@@ -28,9 +28,9 @@ contradict SPEC-0016's edge-case table, which T-2297 implements:
   C5:C8) and for the insert above the totals row 8 (an ordinary insert just below a range leaves it).
   Without a totals row, an insert above row 8 changes neither the table nor C4:C7
   (table-insert-row-below).
-Update SPEC-0016's edge-case table with these rows in the same PR. The totals cases also need the eval
-adapter's totals rows (T-1671): today the adapter registers the table without its totals row, so
-`Sales[#Totals]` is `#REF!` even unedited (table-totals-baseline).
+Update SPEC-0016's edge-case table with these rows in the same PR. The eval adapter loads totals rows
+since T-1671; table-insert-row-above-totals F!A12 (FORMULATEXT keeps `=Sales[[#Totals],[Qty]]`, ours
+`=S!$C$9`) was unmasked by it and is this task's (decision 0128).
 
 ## Acceptance criteria
 - [ ] Every cell of probes/table-edits/table-insert-row-* matches Excel (the T-1671 totals cells once it lands);

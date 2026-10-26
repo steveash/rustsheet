@@ -3,7 +3,7 @@ id: T-1671
 title: "Txn::add_table takes a totals row; the eval adapter loads spec totals rows"
 milestone: M8
 lane: api
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -45,14 +45,14 @@ SUM 39, MIN 39, AVERAGE 37, MAX 36, the bare reference 17, SUBTOTAL 1, INDEX 1. 
 - gen-m8b/e804cf2f8af00680.case.json (11): Calc!K68, K74, K110, K160, K217, K221, K247, K269, K276, K286, K344
 
 ## Acceptance criteria
-- [ ] Visible parity: the 107 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 107 cells of the ungated gen-m8b suite pass in `make eval`, with no new known-failure lines in any baseline.
-- [ ] Visible parity: the 170 further gen-m8b cells listed under Context (2026-10-25) pass in `make eval` too, or the ones that
+- [x] Visible parity: the 107 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 107 cells of the ungated gen-m8b suite pass in `make eval`, with no new known-failure lines in any baseline.
+- [x] Visible parity: the 170 further gen-m8b cells listed under Context (2026-10-25) pass in `make eval` too, or the ones that
       still differ once the totals row loads are filed as a follow-up with their cells.
-- [ ] `Txn::add_table` (or a sibling) can set a one-row totals row; a unit test shows `#Totals` and
+- [x] `Txn::add_table` (or a sibling) can set a one-row totals row; a unit test shows `#Totals` and
   `#All` of such a table.
-- [ ] The adapter passes `totals_row` through and the `TODO(T-1671)` is gone; gen-m8b totals cells
+- [x] The adapter passes `totals_row` through and the `TODO(T-1671)` is gone; gen-m8b totals cells
   that now pass are recorded with `make eval-baseline`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Totals-row functions metadata (`totalsRowFunction`), table resizing.
@@ -79,3 +79,15 @@ Next: make the engine's structural edits (insert/delete row, tables.rs / the mov
 `totals_row_count` right (grow/shrink the table range, keep `[#Totals]` references valid) using the oracle
 values in those probe cases, then `make eval-baseline` (must show REGRESSIONS 0), then check the gen-m8b cells in
 the acceptance criteria, then reviewers. Needs engine judgement beyond a sonnet S task.
+
+## Outcome
+`Model::add_table_with_totals` / `Txn::add_table_with_totals` register a one-row totals row
+(`add_table` delegates with none), and the eval adapter loads a spec's `"totals_row": true` with it, so
+`[#Totals]` reads the totals row and `[#All]` counts it. Eval: gen-m8b 3,368/3,368 (all 277 listed cells
+pass); probes 11 cells fixed (table-totals-baseline, table-insert-row-below-totals, and the
+`[#Totals]`/`[#All]` cells of table-insert-row-above-totals and table-delete-row-last-data-totals). Four
+probes cells that passed only because the table had no totals row now fail, because the engine does not
+yet grow, shrink or move a table on a row edit; decision 0128 records them with `--allow-regressions` and
+gives them to T-2338 (table-delete-row-totals F!A3, F!A15; table-delete-row-last-data-totals F!A15) and
+T-2321 (table-insert-row-above-totals F!A12). That is the one exception to criterion 1's "no new
+known-failure lines". All other suites unchanged.
