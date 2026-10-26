@@ -859,7 +859,8 @@ fn fn_xirr_empty_guess_is_the_default() {
     model._set("A1", &format!("=XIRR({flows},)=XIRR({flows})"));
     model._set("A2", &format!("=XIRR({flows},)=XIRR({flows},0)"));
     model._set("A3", &format!("=XIRR({flows},E1)=XIRR({flows},0)"));
-    model._set("A4", "=IRR({-70000,12000,15000,18000,21000,26000},)=IRR({-70000,12000,15000,18000,21000,26000},0)");
+    let irr_flows = "{-70000,12000,15000,18000,21000,26000}";
+    model._set("A4", &format!("=IRR({irr_flows},)=IRR({irr_flows},0)"));
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"TRUE");
