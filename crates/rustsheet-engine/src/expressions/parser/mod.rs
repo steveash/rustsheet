@@ -345,6 +345,14 @@ pub enum Node {
         kind: OpUnary,
         right: Box<Node>,
     },
+    /// A unary plus as written (`+"a"`, `+A1`, `+-5`). The identity, so transparent to evaluation
+    /// and analysis as a [`Node::Group`] is (see [`Node::ungrouped`] and [`Node::lowered`]); kept
+    /// only so formula text prints it back, as Excel's FORMULATEXT and stored formula text do. A
+    /// plus written directly before a number literal is not kept: it folds into the number
+    /// (`=+5` is `=5`; docs/excel-semantics/syntax.md, T-2723).
+    UnaryPlus {
+        child: Box<Node>,
+    },
     ErrorKind(token::Error),
     ParseErrorKind {
         formula: String,
@@ -370,20 +378,25 @@ impl Node {
         let mut node = self;
         loop {
             match node {
-                Node::Group { child, .. } => node = child,
+                Node::Group { child, .. } | Node::UnaryPlus { child } => node = child,
                 Node::StructuredReferenceKind { lowered, .. } => node = lowered,
                 _ => return node,
             }
         }
     }
 
-    /// The area a structured reference resolves to; any other node is itself. For the sites
-    /// that see a structured reference as the reference it stood for before SPEC-0016 but treat
-    /// written parentheses apart, so they do not call [`Node::ungrouped`].
+    /// The area a structured reference resolves to, under any unary plus (the identity); any
+    /// other node is itself. For the sites that see a structured reference as the reference it
+    /// stood for before SPEC-0016 but treat written parentheses apart, so they do not call
+    /// [`Node::ungrouped`].
     pub(crate) fn lowered(&self) -> &Node {
-        match self {
-            Node::StructuredReferenceKind { lowered, .. } => lowered,
-            node => node,
+        let mut node = self;
+        loop {
+            match node {
+                Node::UnaryPlus { child } => node = child,
+                Node::StructuredReferenceKind { lowered, .. } => node = lowered,
+                _ => return node,
+            }
         }
     }
 
@@ -821,11 +834,18 @@ impl Parser {
 
     pub(super) fn parse_power(&mut self) -> Node {
         let mut next_token = self.lexer.peek_token();
-        // Every minus is kept (`--x` coerces `x` to a number); a plus is a no-op.
-        let mut minus_count = 0;
+        // Every sign is kept in its written order (`--x` coerces `x` to a number, `+-5` prints
+        // back as written), but a plus written directly before a number literal folds into it:
+        // `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723).
+        let mut minus = Vec::new();
         while let TokenType::Addition(op) = next_token {
             self.lexer.advance_token();
-            minus_count += usize::from(op == token::OpSum::Minus);
+            let fold = op == token::OpSum::Add
+                && !self.lexer.whitespace_follows()
+                && matches!(self.lexer.peek_token(), TokenType::Number(_));
+            if !fold {
+                minus.push(op == token::OpSum::Minus);
+            }
             next_token = self.lexer.peek_token();
         }
 
@@ -833,14 +853,19 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        for _ in 0..minus_count {
+        for is_minus in minus.into_iter().rev() {
             if let Err(error) = self.grow(self.depth, 0) {
                 return error;
             }
-            t = Node::UnaryKind {
-                kind: token::OpUnary::Minus,
-                right: Box::new(t),
-            }
+            let right = Box::new(t);
+            t = if is_minus {
+                Node::UnaryKind {
+                    kind: token::OpUnary::Minus,
+                    right,
+                }
+            } else {
+                Node::UnaryPlus { child: right }
+            };
         }
         next_token = self.lexer.peek_token();
         while next_token == TokenType::Percent {

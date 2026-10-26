@@ -641,6 +641,7 @@ impl Model {
             | ErrorKind(_)
             | ParseErrorKind { .. }
             | Group { .. }
+            | UnaryPlus { .. }
             | StructuredReferenceKind { .. }
             | ThisRowKind { .. }
             | SpillRangeOperator { .. }
