@@ -3,7 +3,7 @@ id: T-1895
 title: "AMORDEGRC below period 1, at a cost of 1E308 and past 2^20 periods match Excel (probes fin-amor-period-bound B17, -b B2, -c A1-A5)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
