@@ -922,7 +922,8 @@ in proportion to each element's coupon count plus one, so one call lifts at most
 (probes/fin-argument-modes, fin-yield-odd-lift: they lift over arrays; Excel's own limit is unprobed), while
 `ROWS(YIELD(SEQUENCE(9)+39000,43831,0.05,95,100,2))` is 9. YIELD's and ODDFYIELD's kernels walk the coupon schedule once
 (up to 4.4 and 6.3 ms at the calendar's longest schedule, release build), then the solver evaluates the price at most
-397 times (100 Newton steps of three prices, 97 bisection prices), each a sum over up to 32,400 quarterly coupons
+397 times (ODDFYIELD: 100 Newton steps of three prices, 97 bisection prices; YIELD's Newton, since T-2391, at most 100
+steps of a price and a slope), each a sum over up to 32,400 quarterly coupons
 (0.55 ms): about 0.23 s an element at that bound, charged 2^24 units against SPEC-0011's 2^27 visit cap (8 elements,
 about 1.8 s; the slowest inputs found, a price of 1E300 over 9990 years, take 54 ms an element). ODDFPRICE walks and sums
 its odd first period once (up to 6.3 ms, 8 walks of `COUPON_WALK_WEIGHT`: 256 elements took 1.7 s), ODDLPRICE and
@@ -1399,7 +1400,8 @@ bit-exact, as the libm-priced ones do: Newton from 0.1 to a 1e-12 step 4/178 (10
 and redemption 100 0/178 (5) against 1/178 (14). The union of both fits' candidates is 15/178, against 12/178 for `yield` alone. So the
 PRICE kernel is not what keeps the YIELD fits (T-1592, T-2007) from Excel's bits.
 Ours: `discount_growth` in functions/financial/financial_bonds.rs (`arithmetic::power`, libm where `^` is an error);
-DURATION and MDURATION use it too (T-1975). YIELD's `compute_yield_from_price` prices with `f64::powf`.
+DURATION and MDURATION use it too (T-1975), and so does YIELD's Newton (T-1592); ODDFYIELD's `solve_yield` prices with
+`f64::powf`.
 Status: VERIFIED (excel-graph)
 Tasks: T-2207
 
