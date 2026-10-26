@@ -3,7 +3,7 @@ id: T-2543
 title: "IMSUB and IMDIV: an empty value from IFERROR or IFNA is #N/A in ours, not 0 (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
