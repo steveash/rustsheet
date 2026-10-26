@@ -3,7 +3,7 @@ id: T-2710
 title: "Single-range aggregate walks cost the stored cells, not the used area: COUNTA(A:CV) beside one cell in CV1048576 takes 64 s"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
