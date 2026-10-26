@@ -11,7 +11,10 @@
 //! - a zero integer part prints as its placeholders do with no digit (`#` nothing, `?` a space,
 //!   `0` a zero: `# ?/4` on 0.5 is " 2/4");
 //! - the minus leads the whole text, also when the value rounds to zero (`# ?/2` on -1/7 is
-//!   "-0    ");
+//!   "-0    "), except with no integer part, where a zero numerator takes no minus (`?/100` on
+//!   -0.001 is "0/100", probes/fraction-format-features F9, F13);
+//! - a comma between integer placeholders groups the integer digits (`#,##0 ?/4` on 1234.5 is
+//!   "1,234 2/4", probes/fraction-format-features I10);
 //! - with no integer part a numerator past Excel's bound cannot be shown ([`format_fraction`]
 //!   returns `None`).
 
@@ -29,6 +32,7 @@ pub(super) fn format_fraction(
     value: f64,
     part: &NumberPart,
     fraction: &Fraction,
+    group_separator: &str,
 ) -> Option<String> {
     let negative = value < 0.0;
     let value = value.abs() * 100.0_f64.powi(part.percent) / 1000.0_f64.powi(part.comma);
@@ -88,7 +92,14 @@ pub(super) fn format_fraction(
         (true, true) if blank || last_integer_kind != Some('#') => "0".to_owned(),
         (true, _) => String::new(),
         // Past 15 significant digits Excel prints zeros, as for any number format.
-        (false, _) => format!("{}", to_precision(integer, 15)),
+        (false, _) => {
+            let digits = format!("{}", to_precision(integer, 15));
+            if part.use_thousands {
+                group_thousands(&digits, group_separator)
+            } else {
+                digits
+            }
+        }
     };
     let numerator_digits = if numerator == 0.0 {
         "0".to_owned()
@@ -107,7 +118,7 @@ pub(super) fn format_fraction(
         numerator_kinds.first().copied(),
     );
     let mut text = String::new();
-    if negative {
+    if negative && (has_integer || numerator != 0.0) {
         text.push('-');
     }
     if let Some(c) = part.currency {
@@ -147,6 +158,18 @@ pub(super) fn format_fraction(
         push_denominator(&mut text, &denominator_text, blank, blank_spaces);
     }
     Some(text)
+}
+
+/// `digits` with `separator` between each group of three from the right.
+fn group_thousands(digits: &str, separator: &str) -> String {
+    let mut grouped = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            grouped.push_str(separator);
+        }
+        grouped.push(c);
+    }
+    grouped
 }
 
 /// How the separator (the literals between the integer part and the numerator) prints, given
