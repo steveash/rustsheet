@@ -3,7 +3,7 @@ id: T-2404
 title: "GETPIVOTDATA on an empty intersection of an Average or Count pivot is 0, not #REF!"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -42,3 +42,6 @@ copy the shape, or write it by hand like probes/getpivotdata-real-pivot.
 
 ## Out of scope
 - StdDev/Var and the other aggregates the case builder cannot write.
+
+## Outcome
+Probe probes/getpivotdata-empty-intersection (excel-graph): Average, Count, Max and Min pivots all answer 0 on an empty intersection. `aggregate` in pivot_index.rs now returns 0 for them; web.md and SPEC-0015 updated. StdDev/Var stay #REF! (unprobed).

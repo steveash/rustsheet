@@ -458,6 +458,7 @@ C	probes/geomean-root-refinement.case.json	48
 C	probes/geomean-same-product.case.json	23
 C	probes/geomean-single-and-copies.case.json	260
 C	probes/geomean-stored-3ulps-low.case.json	9
+C	probes/getpivotdata-empty-intersection.case.json	24
 C	probes/getpivotdata-evidence-floor.case.json	23
 C	probes/getpivotdata-real-pivot.case.json	33
 C	probes/groupby-blank-values.case.json	110
