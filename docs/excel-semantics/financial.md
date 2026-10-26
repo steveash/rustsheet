@@ -2196,8 +2196,7 @@ Tasks: T-2482, T-2483, T-2484, T-2428, T-2493, T-2494, T-2491
 ## Financial cells of the T-2496 sub-expression probe
 Rule (excel-graph, 2026-10-25, probes/t2496-fin-subexpressions, each gen-m9 case's Data sheet copied): in the gen-m9
 financial cells whose error the outer call cannot make, an inner call differs and the outer call passes its error on.
-`PV(-1+2^-52,91,-421)` is `#DIV/0!` (ours `#NUM!`; hypothesis: (1+rate)^91 underflows to 0, T-2657 probes it); `IRR(<4x4 flows>,41.9999)` is
-`#DIV/0!` (ours converges on 4.1E+12, T-2657); `NPV(-1,1E-15,2.5)` and `NPV(1E+300,7,1E+15,2.5)` are `#DIV/0!` (T-2493, as
+`PV(-1+2^-52,91,-421)` and `IRR(<4x4 flows>,41.9999)` are `#DIV/0!` (see "PV, PMT and IRR near a rate of -1"); `NPV(-1,1E-15,2.5)` and `NPV(1E+300,7,1E+15,2.5)` are `#DIV/0!` (T-2493, as
 in the T-2436 probe); `XMATCH(FALSE,{1,2,3},0,0.5^1E-15)` is `#N/A` (lookup.md, T-2656). The statistical inner calls
 follow statistics.md: Z.TEST's one-number `#DIV/0!` and lone-empty-cell `#N/A` (T-2470), PROB's unequal-count `#N/A` and
 one-value `#DIV/0!` (T-2468), FREQUENCY's extra row for a bins argument with no number, so the enclosing ODDFYIELD and
@@ -2209,6 +2208,30 @@ probes/tbill-error-order-inner-calls.
 Ours: the other error or a value; the tasks named.
 Status: VERIFIED (excel-graph), one or two cells each
 Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T-2490, T-2344, T-2544
+
+## PV, PMT and IRR near a rate of -1
+Rule (excel-graph, 2026-10-26, probes/t2657-pv-irr-div0): at a rate of -1+k*2^-52, PV is `#DIV/0!` and PMT `#NUM!` from
+the first n where (1+rate)^n is below the smallest normal double (2^-1022), not only where it is 0. `PV(-1+2^-52,20,-421)`
+((2^-52)^20 = 2^-1040, subnormal) is `#DIV/0!`, while `PV(-1+2*2^-52,20,-421)` (2^-1020, normal) is `#NUM!`, because the
+result overflows. `PV(-1+3*2^-52,20,-421)` is 1.422500710491959E+306 and `PV(-1+1024*2^-52,24,-421)` still a value,
+with `#DIV/0!` from n = 21 and 25 (P!A1:D29). PMT's `#NUM!` starts at the same n (P!I1:L29), and FV stays near 421
+(P!E1:H29). At rate -1, PV is `#DIV/0!`, PMT `#NUM!` and FV 421 (P!A40:A42). n = 0, 1E-300 and -1 are values
+(P!A53:A55), and 20.5 is `#DIV/0!`. `PV(-1+1E-200,5,-421)` and `PV(-1+1E-100,11,-421)` are `#DIV/0!`, and
+`PV(1E+300,2,-421)` is `#NUM!`.
+IRR over the flows {1E-15,42,3.14159,0.5,-0.5,-2.5,-2.5} (gen-m9/9d9ceba257f8001b Data!A6:D9, row by row) is `#DIV/0!`
+from every guess probed (omitted, 0.1, 1, 2, 5, 10 to 50, 100, 1000, 1E+6), except -0.5, which gives
+-0.38612871136992966 (I!A1:A21). With the first flow -1E-15 it is also `#DIV/0!`. With 1 or 1E-8 it is `#NUM!`.
+With 0, or with the first flow dropped, it is -0.38612871136908067 from every guess (I!B1:G6). The fitted secant
+("IRR is a secant in v = 1/(1 + r)") does not explain the `#DIV/0!`. From 0.1, its first step is already a negative
+v (-0.37). From 41.9999, it meets the v-stop at v = 2.4E-13 (rate 4.1E+12), where NPV is only the first flow, and
+its next step is negative. The 1 and 1E-8 runs end the same way but give `#NUM!`, so the error depends on the first
+flow's size (1E-15 against 1E-8), and the secant's stop rule is not what Excel uses near v = 0. Not identified.
+Evidence: probes/t2657-pv-irr-div0 sheets P (PV, FV, PMT) and I (IRR; the flows on sheet D).
+Ours: PV, FV and the PMT errors match. PMT's values at these rates are 1 to 30 ulp off (an existing PMT residue).
+IRR converges on the spurious root or falls back to -0.38612871137522814 (I!A1:F21), so the gen-m9 cell
+9d9ceba257f8001b Calc!A288 stays a known failure.
+Status: VERIFIED (excel-graph) for the values; the IRR rule is open
+Tasks: T-2657
 
 ## NPV's residue at IRR's root is not the double sum
 Rule: where NPV's terms cancel, Excel's value differs from both the exact sum and the plain double sum of

@@ -3,7 +3,7 @@ id: T-2657
 title: "PV at a rate of -1+2^-52 and IRR from a guess of 42 are #DIV/0! (gen-m9, 2 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: blocked
 priority: P2
 size: S
 tier: opus
@@ -41,3 +41,19 @@ PV and IRR give Excel's `#DIV/0!` where the rate makes a growth factor underflow
 
 ## Out of scope
 - NPV at a rate of -1 or 1E+300 (T-2493) and the IRR iterate's last digits (T-2131).
+
+## Blocked because
+Blocked because: the IRR rule is not identified within the session's time box.
+- The PV half is done on main: gen-m9/c0681a8b150ce301 Calc!A101 is no longer in eval/baseline/gen-m9.txt, and the
+  probe's PV, FV and PMT error cells all match (financial.md "PV, PMT and IRR near a rate of -1").
+- New probe probes/t2657-pv-irr-div0 (431 cells, excel-graph, 2026-10-26). The IRR facts are in that financial.md
+  entry. 1E-15 or -1E-15 as the first flow gives `#DIV/0!` from every guess but -0.5. A first flow of 1 or 1E-8 gives
+  `#NUM!`, and 0 or no first flow gives -0.38612871136908067.
+- Tried, with no cell flipped: a rate-space stop test (|r2 - r1| < 1e-7), `#DIV/0!` for a flat secant (f1 == f0),
+  and `#DIV/0!` for an overflowing power. A plain-double simulation of the fitted secant shows why: from 0.1 the first
+  step is a negative v, and from 41.9999 the step after the spurious v-stop is a negative v. So neither a flat secant
+  nor an overflow ends these runs, and the `#DIV/0!` comes from how Excel treats a negative or near-zero v. That
+  treatment must depend on the first flow, since 1E-8 and 1 end in `#NUM!`.
+- Next hypothesis to probe: what Excel does with a step to v <= 0. One possibility is that it evaluates NPV at the
+  rate 1/v - 1 and divides by (1+rate)^0 or by the first flow. Probe IRR with first flows from 1E-15 to 1E-8 in
+  decades, and with flows whose secant from 0.1 stays positive, to find where `#DIV/0!` turns into `#NUM!`.
