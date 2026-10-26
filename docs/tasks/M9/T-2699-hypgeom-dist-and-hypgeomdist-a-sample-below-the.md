@@ -3,7 +3,7 @@ id: T-2699
 title: "HYPGEOM.DIST and HYPGEOMDIST: a sample below the smallest possible count is 0, not #NUM! (gen-m9, 13 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
