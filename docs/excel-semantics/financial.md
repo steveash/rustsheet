@@ -2326,7 +2326,7 @@ Tasks: T-2455
 Rule: ACCRINT reads its last argument, calc_method, before all the others: calc_method's own error is the result, and
 text there (`"1"`, `"TRUE"`, `""`) is `#VALUE!` ("VDB, DDB and ACCRINT argument types"), whatever the first seven
 arguments hold, an issue off the calendar included. Then it reads issue, first_interest, settlement, rate, par,
-frequency and basis in order, and a date that does not floor to a calendar serial (below 0, or past 2958465) is `#NUM!`
+frequency and basis in order, and an issue or first_interest that does not floor to a calendar serial (below 0, or past 2958465) is `#NUM!`
 as soon as it is read, before a later argument's error, text or boolean, as the COUP* readers do ("Analysis ToolPak
 securities functions check frequency and dates first"). A par read from a FALSE cell is `#VALUE!`, before frequency
 100's `#NUM!`.
@@ -2345,13 +2345,12 @@ securities functions check frequency and dates first"). A par read from a FALSE 
   before a later bad argument, 9 are `#NUM!` (also A37, A157, A232 of 290180acf017709c, A43 of 932b33b1ef8b7608 and A255
   of f81bd3b6dc373e5c); the tenth, f81bd3b6dc373e5c A115, is `#SPILL!` because its par is an array, which lifts first.
 - boolean par: `ACCRINT(32965,35462,36817,10,<FALSE cell>,100,1.005,FALSE)` is `#VALUE!` (932b33b1ef8b7608 A233).
-Ours: since T-2792, `Model::accrint_of` reads calc_method first, then each date with its calendar check as it reads it, then a boolean par is `#VALUE!` (a typed boolean par reads the same, a deviation from the unprobed: the engine cannot tell it from a cell).
 Unprobed: whether an issue after the settlement waits for the later arguments (ours checks the order after every
-read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest); a typed boolean par, and
+read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest) or below 0 read before a later error; a first_interest of 0 in a 1900 workbook (ours: `#NUM!`); a typed boolean par, and
 booleans in first_interest, settlement, frequency and basis.
 Evidence: gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c (excel-graph, T-2676 sweep, 2026-10-26); each
 cell's arguments evaluated with the engine on the case's Data sheet.
-Ours: `accrint_of` (functions/financial/accrint.rs) reads left to right and checks the dates after every read; T-2792.
+Ours: since T-2792, `accrint_of` (functions/financial/accrint.rs) reads calc_method first, then issue and first_interest, each range-checked from serial 0 as it is read (serial 0 itself still fails the later calendar check), then the other arguments in order; settlement is checked against its calendar limit only after all are read, and a boolean par, typed or from a cell, is `#VALUE!` (the engine cannot tell a typed one from a cell).
 Status: VERIFIED (excel-graph)
 Tasks: T-2792
 
