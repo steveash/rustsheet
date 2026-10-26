@@ -535,8 +535,8 @@ Under every one of these, `e` stays the Gregorian four-digit year, and so do `b`
   (AdarII is "אדר ב" with a plain space; the weekday "יום רביעי" joins with a no-break space, A211, A212). 9999-12-31 is `#VALUE!`, and serials 0 and 1 are "5660-05-01|Shvat".
 - 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"; T-2779), probed in A85:A144. The year turns on 22 March, or 21
   March in a Gregorian leap year (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days.
-  `yy` prints two digits ("44"), `e` and `b` the Saka year. Months are Chaitra … Phalguna. `ddd` is "Ravi", "Som",
-  "Mangal", "Budh", "Guru", "Sukra", "Sani". Serial 1 is "1821-10-11|Pausa", and so is serial 0. 9999-12-31 is
+  `yy` prints two digits ("44"), `e` and `b` the Saka year. Months are Chaitra … Phalguna. `ddd` is a short
+  Sanskrit weekday, Sunday "Ravi" to Saturday "Sani" (the seven in A85:A144). Serial 1 is "1821-10-11|Pausa", and so is serial 0. 9999-12-31 is
   "9921-10-10" with `yy` "21".
 - Under both, serial 60 (the fictitious 1900-02-29) is `#VALUE!`.
 - Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).

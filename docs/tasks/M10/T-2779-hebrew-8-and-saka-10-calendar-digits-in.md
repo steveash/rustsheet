@@ -23,7 +23,7 @@ calendar, convert like the lunar calendar's date tokens, and add the name tables
 - Saka: the year turns on 22 March (21 March in a Gregorian leap year: 2024-03-21 is 1946-01-01).
   - Chaitra has 31 days in a leap year.
   - `yy` prints two digits; `e` and `b` print the Saka year.
-  - Weekdays are Ravi, Som, Mangal, Budh, Guru, Sukra and Sani for `ddd`. `dddd` is A77's "Budhavara" form, which needs its own probe.
+  - `ddd` is a short Sanskrit weekday, Sunday "Ravi" to Saturday "Sani" (the seven in A85:A144). `dddd` is A77's "Budhavara" form, which needs its own probe.
 - Hebrew: the full arithmetic calendar. Months number from Tishrei = 1, so a leap year has 13: AdarI is 6, AdarII 7, Elul 13.
   - Month names are Latin under non-Hebrew LCIDs and Hebrew script under 40D and 401 ("אדר ב").
   - Weekdays are "Yom Rishon" … "Shabat".
