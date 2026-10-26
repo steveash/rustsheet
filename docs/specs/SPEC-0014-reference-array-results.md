@@ -74,15 +74,16 @@ cell is told from its sum. Cell ids are the consumers case's unless named.
 
 T-2065 answered the open list, one formula per workbook (probes/t2065-lift-*, excel-graph 2026-10-26, data as in
 b2; E1 holds the formula):
-- Aggregates over all elements: `STDEV.S(OFFSET(A1,{0;1},0))` 70.0035713374682 and `VAR.S(..)` 4900.5 (the top-left
-  cells 1 and 100), `SUMSQ(OFFSET(A1,{0;1},0))` 10001.
+- Aggregates over all elements: `STDEV.S(OFFSET(A1,{0;1},0))` 70.0035713374682 and `VAR.S(..)` 4900.5 (the values 1 and
+  100), `SUMSQ(OFFSET(A1,{0;1},0))` 10001. Every element is one cell there, so top-left cell versus whole element
+  is unprobed for them (follow-up task).
 - Per-element callers (rule 6), each spilling one value per element: `COUNTIFS(OFFSET(A1,{0;1},0),">0")` 1, 1;
   `AVERAGEIF(OFFSET(A1,0,0,{1;2}),">0")` 1, 50.5; `MAXIFS(OFFSET(A1,{0;1},0),OFFSET(A1,{0;1},0),">0")` 1, 100.
 - `CONCAT(OFFSET(A1,{0;1},0))` is `#VALUE!` (a value view, as TEXTJOIN in rule 2).
 - `AVERAGEA(OFFSET(A4,{0;1;2},0))` and `MAXA(..)` are 0 with A4 the text "5", A5 blank and A6 TRUE: the
-  text element counts as 0 and the boolean one is not counted (a top-left cell as in rule 4).
-- Never opens on Excel for the web (createSession "retries exhausted" on both runs, alone in a workbook):
-  MEDIAN, LARGE and SMALL over a lifted OFFSET. Desktop-only questions for M14 (decision 0039); until
+  result is 0: not 5 and not 1, but which elements count is open, as the data holds no number (follow-up task).
+- Failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs, alone in a
+  workbook): MEDIAN, LARGE and SMALL over a lifted OFFSET. Desktop question T-1075 item 18 (decision 0039); until
   answered they keep today's value view.
 
 ## Design

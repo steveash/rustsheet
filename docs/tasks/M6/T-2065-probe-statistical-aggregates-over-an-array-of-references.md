@@ -29,8 +29,8 @@ failure is this task's to implement or hand on.
 -
 
 ## Outcome
-Twelve one-formula probes (probes/t2065-lift-*). Oracle values for nine (see SPEC-0014 and
-docs/excel-semantics/lookup.md); MEDIAN, LARGE and SMALL never open on Excel for the web (desktop-only, M14).
-Not implemented: ours still uses the value view for these; the per-element ones (COUNTIFS, AVERAGEIF,
-MAXIFS) belong to T-2064, the top-left ones (STDEV.S, VAR.S, SUMSQ, AVERAGEA, MAXA) to the T-2063 walker,
-CONCAT is already `#VALUE!`-like. `STDEV(INDIRECT("B1",{1;1}))` 0 (T-2577) is the same top-left rule.
+Twelve one-formula probes (probes/t2065-lift-*). Oracle values for nine (SPEC-0014, docs/excel-semantics/lookup.md);
+MEDIAN, LARGE and SMALL failed to open on Excel for the web (two runs, 2026-10-26): T-1075 item 18 (M14).
+Not implemented: per-element COUNTIFS, AVERAGEIF, MAXIFS go to T-2064; STDEV.S, VAR.S, SUMSQ to T-2063 (findings
+appended to both). CONCAT's `#VALUE!` already matches ours. The separating probes (multi-cell elements for
+STDEV.S/VAR.S/SUMSQ; a numeric element for AVERAGEA/MAXA) are a follow-up task.
