@@ -3,6 +3,7 @@
  "description": "T-2739: typed (Graph PATCH) string literal of 4,095 characters (the longest Excel takes; 4,096 is refused), and LEN of its value.",
  "tags": [
   "M7",
+  "syntax",
   "probe"
  ],
  "sheets": [

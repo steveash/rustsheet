@@ -129,19 +129,20 @@ included) loads (it has the only sidecar) and a body of 8,192 units is refused (
 (`XlsxError::Workbook`, T-1397).
 Typed (T-2709, Graph PATCH, excel-graph 2026-10-25): the same 8,192 limit holds, `=1+1+...+1` of 8,192 characters is
 accepted (probes/t2709-typed-sum-8192-chars, B1 `LEN(FORMULATEXT)` 8192) and one of 8,193 is refused (400
-`InvalidArgument`). A string literal holds at most 4,095 characters, typed or stored (T-2739, excel-graph 2026-10-25): a typed `="a...a"`
-of 4,095 is accepted (probes/t2739-typed-4095, `LEN` 4095) and 4,096 is refused (400 `InvalidArgument`), the same in a
-function argument (t2739-typed-len-4095; `LEN("<4,096>")` refused). It counts the value, not the source: a doubled
-quote is one character (t2739-typed-dq-4095, 4,094 letters and `""`, 4,096 source characters, is accepted; 4,095
-letters and `""` are refused), and the limit is per literal (t2739-typed-two-4000, two literals of 4,000, is accepted).
-Stored, 256 and 4,095 load (t2739-stored-256, -stored-4095) and 4,096 makes Excel refuse the workbook (createSession
-501), so the published 255 is no limit at all. The engine has none (T-2762).
+`InvalidArgument`). A string literal holds at most 4,095 UTF-16 units, typed or stored (T-2739, excel-graph 2026-10-26 UTC): a typed
+`="a...a"` of 4,095 is accepted (probes/t2739-typed-4095, `LEN` 4095) and 4,096 is refused (400 `InvalidArgument`),
+the same in a function argument (t2739-typed-len-4095; `LEN("<4,096>")` refused). It counts the value, not the source:
+a doubled quote is one character (t2739-typed-dq-4094 and -dq-4095, 4,093 or 4,094 letters and `""`, are accepted;
+4,095 letters and `""` are refused). It counts UTF-16 units: 2,047 emoji (4,094 units, t2739-typed-emoji-2047, `LEN`
+4094) are accepted and 2,048 (4,096 units) refused. The limit is per literal (t2739-typed-two-4000, two literals of
+4,000, is accepted). Stored, 256 and 4,095 load (t2739-stored-256, -stored-4095) and 4,096 makes Excel refuse the
+workbook (createSession 501), so the published 255 is no limit at all. The engine has none (T-2762).
 Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
 writer cannot emit them raw; T-1075 item 8).
-Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; the 4,095-character string-literal limit (see "Typed" above; the published figure is 255) is the cause for the literals, which is why the cases split them.
+Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; the 4,095-unit string-literal limit (see "Typed" above; the published figure is 255) is the cause: 4,090 emoji are 8,180 units for the literals, which is why the cases split them.
 Status: VERIFIED (excel-graph, file load)
 Implemented in: rustsheet-xlsx `import::sheet_data::check_formula_length`
-Tasks: T-1091, T-1093, T-1386, T-1397
+Tasks: T-1091, T-1093, T-1386, T-1397, T-2739, T-2762
 
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse

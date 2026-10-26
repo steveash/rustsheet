@@ -1261,6 +1261,7 @@ C	probes/t2739-stored-4095.case.json	2
 C	probes/t2739-typed-4095.case.json	2
 C	probes/t2739-typed-dq-4094.case.json	2
 C	probes/t2739-typed-dq-4095.case.json	2
+C	probes/t2739-typed-emoji-2047.case.json	2
 C	probes/t2739-typed-len-4095.case.json	2
 C	probes/t2739-typed-two-4000.case.json	2
 C	probes/table-edits/table-convert-same-sheet.case.json	7
