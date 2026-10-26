@@ -70,8 +70,9 @@ pub enum LocaleTag {
     /// `[$-F400]` or `[$-x-systime]`: the section is the system long time.
     SystemTime,
     /// A tag Excel does not resolve (`[$-zzz]`, `[$-]`, `[$-FFFF]`) or one with no table here
-    /// (TODO(T-1875)): it prints nothing and changes nothing (`TEXT(0.75,"[$-FFFF]h A/P")` keeps
-    /// "6 P").
+    /// (TODO(T-1875)), or a calendar digit over an LCID with no locale that is not modelled
+    /// (`without_locale`): it prints nothing and changes nothing (`TEXT(0.75,"[$-FFFF]h A/P")`
+    /// keeps "6 P").
     Silent,
 }
 
@@ -86,6 +87,8 @@ pub const SYSTEM_LONG_TIME: &str = "h:mm:ss AM/PM";
 /// with no table falls back to its language (`[$-80C]` is French, `[$-C]` too); 400 and 800, the
 /// user and system defaults, are en-US.
 /// A BCP-47 tag matches case-insensitively, then by its language (`[$-fr-XX]` is French).
+/// Any other tag is read as extended hex ([`extended_hex`], [`resolve_extended`]): `[$-fr_FR]` is
+/// the Saka calendar over an LCID with no locale.
 pub fn resolve(tag: &str) -> LocaleTag {
     if tag.eq_ignore_ascii_case("x-sysdate") {
         return LocaleTag::SystemDate;
