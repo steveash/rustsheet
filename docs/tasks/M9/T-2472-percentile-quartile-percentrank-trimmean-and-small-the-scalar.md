@@ -3,7 +3,7 @@ id: T-2472
 title: "PERCENTILE, QUARTILE, PERCENTRANK, TRIMMEAN and SMALL: the scalar argument's error before the no-number result, PERCENTRANK's #N/A before a bad significance (gen-m9, 62 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
