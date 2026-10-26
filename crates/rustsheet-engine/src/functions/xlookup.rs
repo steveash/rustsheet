@@ -303,7 +303,8 @@ impl Model {
         let value_error =
             |message: &str| CalcResult::new_error(Error::VALUE, cell, message.to_string());
         // A single-cell reference is a one-cell vector (probes/text-collation-longer A102).
-        let lookup = match self.evaluate_node_with_reference(lookup_node, cell) {
+        let lookup = self.evaluate_node_with_reference(lookup_node, cell);
+        let lookup = match self.uncached_cell_vector(lookup_node, lookup, cell) {
             lookup @ (CalcResult::Range { .. } | CalcResult::Array(_)) => lookup,
             error @ CalcResult::Error { .. } => return Err(error),
             _ => {
@@ -319,6 +320,7 @@ impl Model {
             return Err(value_error("Second argument must be a vector"));
         }
         let returned = self.evaluate_node_with_reference(return_node, cell);
+        let returned = self.uncached_cell_vector(return_node, returned, cell);
         let (return_rows, return_columns) = shape(&returned);
         let returns = match returned {
             CalcResult::Range { left, right } => XlookupReturns::Range(left, right),
@@ -348,6 +350,25 @@ impl Model {
             vertical,
             returns,
         })
+    }
+
+    /// `value`, the value of the XLOOKUP array argument `node`, as a one-cell vector of its
+    /// `#BLOCKED!` when `node` is one cell of a linked sheet that the cache holds nothing of
+    /// ([`Model::external_lookup_table`]). The search then finds nothing, as it does over a range
+    /// of that sheet, so `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)` is `#N/A`
+    /// (fixtures/external-link-uncached-lookups Refs!B13, T-0472). Any other value is itself.
+    fn uncached_cell_vector(
+        &self,
+        node: &Node,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match value {
+            CalcResult::Error { error, .. } if self.external_lookup_table(node, cell).is_some() => {
+                CalcResult::Array(vec![vec![ArrayNode::Error(error)]])
+            }
+            value => value,
+        }
     }
 
     /// One XLOOKUP search: `values` are the lookup value, `match_mode` and `search_mode`. A lookup

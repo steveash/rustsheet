@@ -316,7 +316,8 @@ lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser k
 name with its prefix, and `external_links.rs` reads the cache. A cell the cache does not hold reads
 as empty: `=[1]Uses!$B$3` is 0, `SUM` and `COUNTA` of `[1]Uses!$E$1:$F$2` are 0
 (fixtures/external-link-cached-ranges Refs!B24, B55, B77). A name or sheet the cache does not hold is `#BLOCKED!` (probed: fixtures/external-link-cached-lookups Refs!B18-B20, T-1609; see "a name the cache does not hold" below). Unprobed, so UNVERIFIED: a book index with no link part and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
-uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
+uncached reference is; a sheet with `refreshError="1"` that caches cells is read like any other (one
+that caches none reads `#REF!`: "Lookups into a linked sheet with no cached data are `#N/A`", T-0472); `[0]!Missing` is
 `#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
 evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
 (T-1459).
@@ -446,14 +447,18 @@ fallback and XLOOKUP's if_not_found is returned (`"none"`). The `#N/A` comes bef
 1, `VLOOKUP(5,[1]Uses!$A:$Z,26,FALSE)` 0 and `VLOOKUP(99,…)` `#N/A`.
 Evidence: fixtures/external-link-uncached-lookups Refs!B1:B51 (excel-graph, 2026-10-25, T-0457).
 Unprobed, do not extrapolate: LOOKUP, XMATCH, INDEX/MATCH and defined names (`[1]!Name`) into such a
-sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part.
+sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part. Also unprobed: a range of a
+refreshError sheet (ours keeps `#BLOCKED!`), XLOOKUP and COUNTA over a refreshError sheet (ours: as over any
+uncached sheet), and XLOOKUP that matches in a local range but returns one uncached cell (ours: `#BLOCKED!`).
 Engine: a sheet the cache holds no cell of is uncached (`cached_sheet`, external_links.rs), so it
 reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and MATCH's table
-`#N/A` on such a sheet. Not yet matched: the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)`
-(`#BLOCKED!`, not `#N/A`), the refreshError sheet's `#REF!` and COUNTA's count (T-0472), and whole
+`#N/A` on such a sheet. XLOOKUP searches one cell of it as a one-cell vector of its `#BLOCKED!`, as it
+searches a range, so it finds nothing (`uncached_cell_vector`). COUNTA counts every cell of it
+(`external_blocked_count`). The importer keeps the sheets marked `refreshError`
+(`ExternalBook::refresh_error_sheets`), and a cell of one reads `#REF!` (T-0472). Not yet matched: whole
 columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
 Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
-Tasks: T-0457
+Tasks: T-0457, T-0472
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
