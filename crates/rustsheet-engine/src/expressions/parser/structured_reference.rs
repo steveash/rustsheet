@@ -50,7 +50,7 @@ fn specifier_text(specifier: &TableSpecifier) -> &'static str {
 /// A column name between brackets, with Excel's `'` escape before each special character (the
 /// inverse of the lexer's `consume_escaped_until`; xlsx-storage.md "Structured references in the
 /// file": the quote goes before the character). `@` is special only first, where it would read as
-/// `#This Row`: Excel's own file has `Table9[Totals '[']^&*@'#$,,<>]` (calc_test_tables/tables.xlsx
+/// `#This Row`: Excel's own file has `Table9[Totals '[']^&*@'#$,,<>]` (`calc_test_tables/tables.xlsx`
 /// Escape!E6).
 fn column_text(name: &str) -> String {
     let mut text = String::with_capacity(name.len() + 2);
