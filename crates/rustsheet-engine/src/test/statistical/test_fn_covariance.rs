@@ -185,7 +185,8 @@ fn test_paired_functions_pair_by_cell_count() {
 }
 
 // A typed or computed boolean is one value, so the size check and the one-point rule apply, not
-// `#VALUE!` (T-2575; probes/t2436/computed-scalar A35:A37).
+// `#VALUE!` (T-2575; probes/t2436/computed-scalar A35:A37; A3 is the same rule for a computed boolean,
+// as gen-m9/899f9555e67da2d6 A369 and f34f66fb7f81e673 A127, no oracle of that exact formula).
 #[test]
 fn test_covariance_boolean_scalar_is_one_value() {
     let mut model = new_empty_model();
