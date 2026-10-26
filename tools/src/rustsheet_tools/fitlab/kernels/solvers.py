@@ -46,6 +46,7 @@ YIELD_CASES = [
     "probes/bond-one-period-bases",
     "probes/yield-solver-sweep",
     "probes/yield-start-sweep",
+    "probes/yield-start-one-input",
 ]
 
 
