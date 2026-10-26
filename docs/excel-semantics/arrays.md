@@ -357,7 +357,8 @@ The deviation still covers value contexts (`ROWS`, `SUM`, `INDEX` over the same 
 from its anchor (`=1*H:J` or `=-H:J` in K1: Excel spills it or answers `#SPILL!` for an occupied cell, ours is
 `#ERROR!`), and spills of other over-bound arrays (a function result that is not a lift, a lift whose range comes
 from a name or a function). Only the `*` broadcast of corpus-bench/55049 and the DATE lift of
-probes/lifted-range-rows C3 are oracle-backed; the unary operators, the other operators, an error operand
+probes/lifted-range-rows C3 are oracle-backed; the unary operators, the 2^34-cell lifts (`=LEFT(A:A,1:1)`), the
+other operators, an error operand
 (`=1/0*H:J`, expected from probes/error-operand-broadcast) and 2^34-cell broadcasts (`=D:D+4:4`) follow the same shape rule unprobed (T-0484).
 Evidence: corpus-bench/55049/1_55049_input.xlsx book1!B3:B23 (21 cells, excel-graph sidecar, 2026-10-26, gap
 triage); test_lifted_range_bound.rs `broadcast_above_the_bound_that_cannot_spill_is_spill` and

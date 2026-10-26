@@ -34,9 +34,8 @@ impl Model {
     /// A shape that the lifted result of `node` is at least as tall and as wide as, read from its
     /// references alone, with no cell read: a range is its own shape, a unary operator or `%`
     /// lifts its operand, and a call in the lifting table of one value per element broadcasts its
-    /// `Lift` arguments (a valid argument count only). Any other operand counts as one cell, and anything else is
-    /// `None`, as are nodes more than [`MAX_SPILL_CHECK_DEPTH`] levels down (CLAUDE.md
-    /// directive 5).
+    /// `Lift` arguments that have a shape (a valid argument count only). Any other node is `None`,
+    /// as are nodes more than [`MAX_SPILL_CHECK_DEPTH`] levels down (CLAUDE.md directive 5).
     fn lifted_shape_floor(
         &mut self,
         node: &Node,
