@@ -1,6 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::external_reference::ExternalArea;
 use crate::{calc_result::CalcResult, model::Model};
 
 use super::array_node_to_calc_result;
@@ -15,14 +16,17 @@ use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock};
 
 /// A two dimensional table for the LOOKUP family of functions. It abstracts over
-/// the two possible sources, a range reference or an in-formula array literal, so
-/// the lookup logic can be written once for both.
+/// its possible sources, a range reference, an in-formula array literal or a range of a
+/// linked workbook's cache, so the lookup logic can be written once for all.
 pub(super) enum LookupTable {
     Range {
         left: CellReferenceIndex,
         right: CellReferenceIndex,
     },
     Array(Vec<Vec<ArrayNode>>),
+    /// A range of a linked workbook's cached sheet, read in place: a whole column or row keeps
+    /// its full length, its cells past the cache empty (`Model::cached_external_lookup_area`).
+    External(ExternalArea),
 }
 
 impl LookupTable {
@@ -30,6 +34,7 @@ impl LookupTable {
         match self {
             LookupTable::Range { left, right } => right.row - left.row + 1,
             LookupTable::Array(array) => array.len() as i32,
+            LookupTable::External(area) => area.last_row - area.first_row + 1,
         }
     }
 
@@ -37,6 +42,7 @@ impl LookupTable {
         match self {
             LookupTable::Range { left, right } => right.column - left.column + 1,
             LookupTable::Array(array) => array.first().map_or(0, |row| row.len()) as i32,
+            LookupTable::External(area) => area.last_column - area.first_column + 1,
         }
     }
 
@@ -78,6 +84,7 @@ impl LookupTable {
             LookupTable::Array(array) => {
                 array_node_to_calc_result(&array[row as usize][column as usize], cell)
             }
+            LookupTable::External(area) => model.external_area_cell(*area, row, column, cell),
         }
     }
 
@@ -91,6 +98,7 @@ impl LookupTable {
                 };
                 model.range_search_vector(left, &end, false)
             }
+            LookupTable::External(area) => model.external_search_vector(*area, false, cell),
             LookupTable::Array(_) => SearchVector::new(
                 (0..self.columns())
                     .map(|column| self.get(model, 0, column, cell))
@@ -109,6 +117,7 @@ impl LookupTable {
                 };
                 model.range_search_vector(left, &end, true)
             }
+            LookupTable::External(area) => model.external_search_vector(*area, true, cell),
             LookupTable::Array(_) => SearchVector::new(
                 (0..self.rows())
                     .map(|row| self.get(model, row, 0, cell))

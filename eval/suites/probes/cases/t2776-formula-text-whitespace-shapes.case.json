@@ -1,0 +1,128 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2776: which whitespace Excel keeps in formula text beyond T-2769: typed (Graph PATCH) folded plus after an operator, extra spaces around an intersection, spaces inside LET/IF/text operators, line feeds after = and at the end, mixed space/line-feed runs and a 300-space run (A, FORMULATEXT in C); and whether a formula stored in the file with whitespace keeps it on load (D, FORMULATEXT in E). B1:B2 hold 1 and 2.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "B1": 1,
+    "B2": 2,
+    "A1": {
+     "entered": "=1+  +5"
+    },
+    "C1": "=FORMULATEXT(A1)",
+    "A2": {
+     "entered": "=1+ +5"
+    },
+    "C2": "=FORMULATEXT(A2)",
+    "A3": {
+     "entered": "=B1:B2  B2"
+    },
+    "C3": "=FORMULATEXT(A3)",
+    "A4": {
+     "entered": "=B1:B2 B2"
+    },
+    "C4": "=FORMULATEXT(A4)",
+    "A5": {
+     "entered": "=SUM(B1:B2   B2)"
+    },
+    "C5": "=FORMULATEXT(A5)",
+    "A6": {
+     "entered": "=(B1:B2 B2)"
+    },
+    "C6": "=FORMULATEXT(A6)",
+    "A7": {
+     "entered": "=LET(x, 1, x + 1)"
+    },
+    "C7": "=FORMULATEXT(A7)",
+    "A8": {
+     "entered": "=\"a\" & \"b\""
+    },
+    "C8": "=FORMULATEXT(A8)",
+    "A9": {
+     "entered": "=1 +  - 5"
+    },
+    "C9": "=FORMULATEXT(A9)",
+    "A10": {
+     "entered": "=-  -5"
+    },
+    "C10": "=FORMULATEXT(A10)",
+    "A11": {
+     "entered": "= -5"
+    },
+    "C11": "=FORMULATEXT(A11)",
+    "A12": {
+     "entered": "=(  1  )"
+    },
+    "C12": "=FORMULATEXT(A12)",
+    "A13": {
+     "entered": "=\n1+2"
+    },
+    "C13": "=FORMULATEXT(A13)",
+    "A14": {
+     "entered": "=1+2\n"
+    },
+    "C14": "=FORMULATEXT(A14)",
+    "A15": {
+     "entered": "=1+2 \n "
+    },
+    "C15": "=FORMULATEXT(A15)",
+    "A16": {
+     "entered": "=B1 = 1"
+    },
+    "C16": "=FORMULATEXT(A16)",
+    "A17": {
+     "entered": "=IF(TRUE, 1 , 2)"
+    },
+    "C17": "=FORMULATEXT(A17)",
+    "A18": {
+     "entered": "=SUM(B1:B2) * 2"
+    },
+    "C18": "=FORMULATEXT(A18)",
+    "D1": "=1 + 2",
+    "E1": "=FORMULATEXT(D1)",
+    "D2": "=SUM( 1 )",
+    "E2": "=FORMULATEXT(D2)",
+    "D3": "=SUM(1 ,2)",
+    "E3": "=FORMULATEXT(D3)",
+    "D4": "=SUM({1, 2})",
+    "E4": "=FORMULATEXT(D4)",
+    "D5": "=1+2 ",
+    "E5": "=FORMULATEXT(D5)",
+    "D6": "=1+\n2",
+    "E6": "=FORMULATEXT(D6)",
+    "D7": "=  +5",
+    "E7": "=FORMULATEXT(D7)",
+    "D8": "= 1+2",
+    "E8": "=FORMULATEXT(D8)",
+    "D9": "=B1:B2  B2",
+    "E9": "=FORMULATEXT(D9)",
+    "D10": "=(1 )+2",
+    "E10": "=FORMULATEXT(D10)",
+    "A19": {
+     "entered": "=1+ \n 2"
+    },
+    "C19": "=FORMULATEXT(A19)",
+    "A20": {
+     "entered": "=1+\n \n2"
+    },
+    "C20": "=FORMULATEXT(A20)",
+    "A21": {
+     "entered": "=1+                                                                                                                                                                                                                                                                                                            2"
+    },
+    "C21": "=FORMULATEXT(A21)",
+    "A22": {
+     "entered": "=1+          \n\n\n  2"
+    },
+    "C22": "=FORMULATEXT(A22)",
+    "F21": "=LEN(C21)"
+   }
+  }
+ ],
+ "expected": {}
+}
