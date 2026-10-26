@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2728 round 3: IRR over a single error cell against an error guess (which error wins).",
+  "tags": [
+    "M9",
+    "financial",
+    "irr",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "P",
+      "cells": {
+        "A1": "=1/0",
+        "A2": "=IRR(A1,NA())",
+        "A3": "=IRR(A1,0.1)",
+        "A4": "=IRR(A1:A1,NA())",
+        "A5": "=IRR((A1),NA())"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "P!A2",
+    "P!A3",
+    "P!A4",
+    "P!A5"
+  ]
+}
