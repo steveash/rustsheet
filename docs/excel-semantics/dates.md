@@ -1107,11 +1107,12 @@ from a 29 February start, `DATEDIF(1521,1887,"YD")` (1904-02-29 to 1905-03-01) =
 `DATEDIF(DATE(2023,3,31),DATE(2023,5,1),"YD")` = 31, `DATEDIF(DATE(2023,8,31),DATE(2024,3,1),"YD")` = 183
 (probes/dates-early-1900-displayed A55-A59, A74-A79, A96-A116). The rule fits all 39 YD cells; a clamped DATE misses 8.
 Status: VERIFIED for these cells.
-Also VERIFIED (T-2295, probes/datedif-feb29-negative-md, 66 excel-graph cells, all matching the rule above): a 29 February
-start in a non-leap year: `DATEDIF("2020-02-29","2021-02-28","YD")` = 365, to 2021-03-01 = 0 ("MD" 0), to 2021-03-15 = 14,
-to 2021-02-27 = 364, so the moved start is 1 March; an end of 29 February reached from a 31 January start
-(`DATEDIF(2015-01-31,2016-02-29,"YD")` = 29, "MD" 29); and a negative "MD", which stays negative:
-`DATEDIF(DATE(2015,1,31),DATE(2015,3,1),"MD")` = -2 (from 2015-01-30: -1, 2015-12-31 to 2016-03-01: -1).
+Also VERIFIED (T-2295, probes/datedif-feb29-negative-md, 66 excel-graph cells, all matching the rule above): from a 29 February
+start in a non-leap end year, `DATEDIF(DATE(2020,2,29),DATE(2021,2,28),"YD")` = 365 (A4; "MD" 30, "YM" 11: `DATE(2020,13,29)` is
+2021-01-29, 335 days on, plus 30), to 2021-03-01 = 0 ("MD" 0), to 2021-03-15 = 14, to 2021-02-27 = 364; an end of 29 February
+reached from a 31 January start, `DATEDIF(DATE(2015,1,31),DATE(2016,2,29),"YD")` = 29 ("MD" 29); and a negative "MD", which stays
+negative: `DATEDIF(DATE(2015,1,31),DATE(2015,3,1),"MD")` = -2 (from 2015-01-30: -1; 2015-12-31 to 2016-03-01: -1). A start after the
+end is `#NUM!` for every unit (A34-A39).
 Tasks: T-2264, T-2263, T-2295
 
 ## TIME: an argument past 32767 is `#NUM!`; a near-integer hour counts as that integer (T-2267)
