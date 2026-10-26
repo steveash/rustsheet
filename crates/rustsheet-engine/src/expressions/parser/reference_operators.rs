@@ -395,21 +395,7 @@ pub(super) fn is_reference_operand(node: &Node) -> bool {
         | Node::CompareKind { .. }
         | Node::UnaryKind { .. } => false,
         Node::ErrorKind(error) => *error == Error::REF,
-        Node::FunctionKind { kind, .. } => matches!(
-            kind,
-            Function::Index
-                | Function::Offset
-                | Function::If
-                | Function::Indirect
-                | Function::Choose
-                | Function::Xlookup
-                | Function::Let
-                | Function::Switch
-                | Function::Ifs
-                | Function::Take
-                | Function::Drop
-                | Function::Trimrange
-        ),
+        Node::FunctionKind { kind, .. } => kind.may_be_reference(),
         _ => true,
     }
 }
