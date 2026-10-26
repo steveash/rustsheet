@@ -1,7 +1,10 @@
 //! A structured reference as written (`Sales[[#All],[Qty]]`), kept in the parsed formula next to
 //! the area it resolves to (SPEC-0016).
 
-use super::super::token::{TableReference, TableSpecifier};
+use super::super::lexer::{Lexer, LexerMode};
+use super::super::token::{TableReference, TableSpecifier, TokenType};
+use crate::language::get_language;
+use crate::locale::get_locale;
 
 /// The source of a structured reference: what [`super::Node::StructuredReferenceKind`] prints
 /// back in the storage and in-engine printers.
@@ -119,5 +122,30 @@ impl StructuredReference {
         } else {
             self.text()
         }
+    }
+}
+
+/// The `(column1, row1, column2, row2)` of an A1 range such as a table's `ref` (`A1:D6`).
+///
+/// # Errors
+/// When `formula` is not a range.
+pub fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
+    let mut lexer = Lexer::new(
+        formula,
+        LexerMode::A1,
+        #[allow(clippy::expect_used)]
+        get_locale("en").expect(""),
+        #[allow(clippy::expect_used)]
+        get_language("en").expect(""),
+    );
+    if let TokenType::Range {
+        left,
+        right,
+        sheet: _,
+    } = lexer.next_token()
+    {
+        Ok((left.column, left.row, right.column, right.row))
+    } else {
+        Err("Not a range".to_string())
     }
 }
