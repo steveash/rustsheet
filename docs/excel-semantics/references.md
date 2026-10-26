@@ -2353,7 +2353,7 @@ move and inside classes); the edge row deletes (T-2338), the column grow and tab
 do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
 off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
-in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2751). A deleted table or sheet matches
+in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a

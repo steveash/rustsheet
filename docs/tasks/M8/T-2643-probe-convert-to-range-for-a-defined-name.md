@@ -17,7 +17,7 @@ Evidence for what convert-to-range does to a defined name that refers to the tab
 T-2342 lowers defined-name references with the delete path's rewrite (unprobed) and probed only a `#This Row` beside a data row on the table's sheet. Probe a defined name `=Sales[Qty]` read via a cell, a `#This Row` outside the data rows, and one from another sheet (excel-probe skill); fix the engine where it differs.
 
 ## Acceptance criteria
-- [x] Probes with excel-graph oracle values added, references.md updated, engine matches (values; FORMULATEXT of the off-row cells split to T-2751).
+- [x] Probes with excel-graph oracle values added, references.md updated, engine matches (values; FORMULATEXT of the off-row cells split to T-2763).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -32,4 +32,4 @@ T-2342 lowers defined-name references with the delete path's rewrite (unprobed) 
 - Convert to range now lowers each off-row `#This Row` cell at its own row (`Model::lower_this_row_references`,
   tables.rs). Data-row cells keep the shared relative form (`=$C4*2`).
 - Eval: the new case passes 10/13. The 3 FORMULATEXT cells (S!F2, S!F10, T!A2) need a form for a structured reference
-  to a table that no longer exists; that is T-2751. No regressions.
+  to a table that no longer exists; that is T-2763. No regressions.
