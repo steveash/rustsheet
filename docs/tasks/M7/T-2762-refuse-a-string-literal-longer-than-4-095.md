@@ -3,7 +3,7 @@ id: T-2762
 title: "Refuse a string literal longer than 4,095 characters, typed and stored, as Excel does"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,9 +24,14 @@ refused); two literals of 4,000 in one formula are fine (t2739-typed-two-4000). 
 t2739-typed-emoji-2047), as for the formula limit (T-1397); refuse in the lexer and the xlsx importer.
 
 ## Acceptance criteria
-- [ ] The engine refuses a literal of 4,096 UTF-16 units typed and stored and accepts 4,095 (2,047 and 2,048 emoji too).
-- [ ] syntax.md "Formula length" records the implementation.
-- [ ] `make check` green; reviewers approve.
+- [x] The engine refuses a literal of 4,096 UTF-16 units typed and stored and accepts 4,095 (2,047 and 2,048 emoji too).
+- [x] syntax.md "Formula length" records the implementation.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Text a function returns (its own 32,767 limit).
+
+## Outcome
+The lexer refuses a string literal over 4,095 UTF-16 units (doubled quote counts once, emoji twice) and the
+xlsx importer refuses the workbook (`lexer/string_literal.rs`, `check_string_literals`). The existing non-BMP
+length test now builds its text from literals under the limit. No eval delta (no oracle cases changed).
