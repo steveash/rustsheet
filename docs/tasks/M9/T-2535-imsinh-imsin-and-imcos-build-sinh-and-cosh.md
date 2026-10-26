@@ -3,7 +3,7 @@ id: T-2535
 title: "IMSINH, IMSIN and IMCOS build sinh and cosh as (EXP(y) -/+ EXP(-y))/2 (gen-m9, 38 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
