@@ -152,6 +152,25 @@ pub struct FunctionStat {
     pub real_world_calls: usize,
 }
 
+/// Counts into `functions` the formula cells of the [`REAL_WORLD_SUITES`] that call each function
+/// (T-0079); a function only such cells call gets a stat of its own.
+fn add_real_world_calls(results: &[CaseResult], functions: &mut BTreeMap<String, FunctionStat>) {
+    let corpora = results
+        .iter()
+        .filter(|r| REAL_WORLD_SUITES.contains(&r.suite.as_str()));
+    for formula in corpora.flat_map(|r| r.cells.iter().filter_map(|c| c.formula.as_deref())) {
+        for f in functions_in(formula) {
+            functions
+                .entry(f.clone())
+                .or_insert_with(|| FunctionStat {
+                    name: f,
+                    ..FunctionStat::default()
+                })
+                .real_world_calls += 1;
+        }
+    }
+}
+
 /// The suites of Excel-saved real-world workbooks whose formula cells weight functions by usage
 /// (T-0079, SPEC-0022).
 pub const REAL_WORLD_SUITES: [&str; 2] = ["calipers", "poi"];
@@ -328,17 +347,6 @@ impl RunReport {
                         .push(format!("{}\t{}", r.id, c.key()));
                 }
                 let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
-                if c.formula.is_some() && REAL_WORLD_SUITES.contains(&r.suite.as_str()) {
-                    for f in &called {
-                        functions
-                            .entry(f.clone())
-                            .or_insert_with(|| FunctionStat {
-                                name: f.clone(),
-                                ..FunctionStat::default()
-                            })
-                            .real_world_calls += 1;
-                    }
-                }
                 if calls_only_in_scope(catalog, &called) {
                     s.closeness.add(c);
                     book.add(c);
@@ -385,6 +393,7 @@ impl RunReport {
             }
             s.workbooks.add(&book);
         }
+        add_real_world_calls(results, &mut functions);
         functions.values_mut().for_each(FunctionStat::place_tier);
         let (mut functions, out): (Vec<FunctionStat>, Vec<FunctionStat>) = functions
             .into_values()
