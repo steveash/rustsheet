@@ -3,7 +3,7 @@ id: T-2782
 title: "SPEC-0023 step 2: normalise a whitespace run to its line feeds and last spaces, wrapping the space count at 256"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
