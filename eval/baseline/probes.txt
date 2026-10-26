@@ -1268,6 +1268,7 @@ C	probes/t2739-typed-dq-4095.case.json	2
 C	probes/t2739-typed-emoji-2047.case.json	2
 C	probes/t2739-typed-len-4095.case.json	2
 C	probes/t2739-typed-two-4000.case.json	2
+C	probes/table-edits/table-convert-names-this-row.case.json	13
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
 C	probes/table-edits/table-delete-column-before.case.json	12
@@ -3292,6 +3293,9 @@ F	probes/t2738-gamma-dist-tiny-ratio.case.json	S!A15
 F	probes/t2738-gamma-dist-tiny-ratio.case.json	S!A19
 F	probes/t2738-gamma-dist-tiny-ratio.case.json	S!A2
 F	probes/t2738-gamma-dist-tiny-ratio.case.json	S!A4
+F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
+F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
+F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
 F	probes/table-edits/table-delete-column-before.case.json	F!A9
