@@ -3,7 +3,7 @@ id: T-0075
 title: "progress-report skill: how the steward writes the bottom-line, readiness and risks blocks of docs/progress.md"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -48,7 +48,7 @@ number, and an incomplete run is reported honestly.
       That is a protected path too, covered by the same decision record (decision 0123).
 - [x] A dry run on the T-0081 page fills the three blocks and passes `--check`. Commit that
       text with this PR.
-- [ ] `make check` green; reviewers approve, including explicit architecture and security
+- [x] `make check` green; reviewers approve, including explicit architecture and security
       approval of the protected paths.
 
 ## Out of scope

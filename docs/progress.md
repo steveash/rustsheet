@@ -43,7 +43,7 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 
 | Milestone | Phase | Exit criteria checked | Catalog coverage | Exit measures (report) | Frozen list and probes | Todo | In progress | Blocked | Done |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 4 | 1 | 1 | 72 |
+| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 4 | 0 | 1 | 73 |
 | M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 22 visibly off, 22 known failures | 4 | 1 | 2 | 391 |
 | M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 22 visibly off, 22 known failures | 6 | 0 | 0 | 372 |
 | M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
