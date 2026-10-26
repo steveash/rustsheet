@@ -12,6 +12,7 @@ is the normative description of that loop. The executable version is the `work-l
 | **Reviewers** | subagents in `.claude/agents/reviewer-*.md` | independent verdicts on the diff (security, architecture, quality/duplication, Excel fidelity; performance is off, decision 0081) |
 | **Planner** | `.claude/agents/planner.md` | milestone → specs → small tasks with dependencies |
 | **Gap triager** | `.claude/agents/gap-triager.md` | eval report → root-cause-grouped function tasks |
+| **Steward** | the daily steward routine (`routines.md`), following the `steward` skill and, for the dashboard, the `progress-report` skill | eval and health report in `docs/status.md`; the daily progress dashboard `docs/progress.md` (`make progress-report`, its judgment blocks; SPEC-0022, decision 0123); queues, orphaned PRs, oracle fills |
 | **Oracle** | `rustsheet-oracle` + `.github/workflows/oracle.yml` | fills pending Excel expectations |
 | **Owner (human)** | — | sets direction, provides Excel access, reads `docs/status.md`; not a reviewer |
 
