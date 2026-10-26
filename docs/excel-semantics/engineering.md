@@ -375,7 +375,7 @@ a valid number in the first argument: `CONVERT(2^31-1,<FALSE cell>,"HP")`, `CONV
 units" (T-1385 above). A typed boolean unit (`CONVERT(1,TRUE,"m")`) and a boolean array element as a unit are unprobed.
 Evidence: gen-m9/290180acf017709c Calc!A148, A158, gen-m9/f81bd3b6dc373e5c Calc!A291 (excel-graph, T-2676 sweep,
 2026-10-26; the units are Data!C6 = FALSE, Data!E10 = FALSE and Data!A7 = TRUE).
-Ours: `#N/A` (the boolean is read as an unknown unit); T-2793.
+Ours: since T-2793 `#VALUE!` for a boolean unit, read in order (from_unit's error or boolean first). The kernel cannot tell a cell from a typed or array-element boolean, so those give `#VALUE!` too (unprobed).
 Status: VERIFIED (excel-graph) for boolean cells
 Tasks: T-2793
 
