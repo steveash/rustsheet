@@ -65,10 +65,11 @@ probes/t2776-* (excel-graph, 2026-10-26).
 - **Folded plus**: a plus that folds into a number literal leaves its spaces before it in place. So
   `=  +5` prints `=  5`, and `=1+  +5` prints `=1+  5`.
 - **A run is a line-feed count plus a space count.** Only the line feeds and the spaces after the
-  last line feed print. `=1+ ` LF ` 2` prints `=1+` LF ` 2`, and 10 spaces, 3 line feeds and 2 spaces
-  print as the 3 line feeds and the 2 spaces. Each count is one byte and wraps on its own: 300 typed
-  spaces print as 44, and so do 300 line feeds (probes/t2782-whitespace-run-wrap). This matches the BIFF `PtgAttrSpace` record, which stores one count per kind.
-  The behaviour comes from the probes; the record only explains it.
+  last line feed print. `=1+ ` LF ` 2` prints `=1+` LF ` 2`, and 10 spaces, 3 line feeds and 2
+  spaces print as the 3 line feeds and the 2 spaces. Each count is one byte and wraps on its own:
+  300 typed spaces print as 44, and so do 300 line feeds (probes/t2782-whitespace-run-wrap). This
+  matches the BIFF `PtgAttrSpace` record, which stores one count per kind. The behaviour comes from
+  the probes; the record only explains it.
 - **Stored text**: a formula read from a file's `<f>` keeps its interior whitespace (`1 + 2`,
   `SUM( 1 )`, `1+` LF `2`, `(1 )+2`) and applies the typed drops. Whitespace at the very start is
   also dropped: `<f>  +5</f>` prints `=5`, and `<f> 1+2</f>` prints `=1+2`.

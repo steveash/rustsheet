@@ -48,7 +48,8 @@ impl Run {
     }
 
     /// The two runs typed one after the other, as one run: the line feeds add up, and the spaces
-    /// of `self` survive only when `next` has no line feed to end them.
+    /// of `self` survive only when `next` has no line feed to end them. A `next` of exactly 256 line
+    /// feeds has wrapped to none and keeps them; Excel's join of two such runs is unprobed.
     fn then(self, next: Run) -> Run {
         let spaces = if next.line_feeds == 0 {
             self.spaces.wrapping_add(next.spaces)
