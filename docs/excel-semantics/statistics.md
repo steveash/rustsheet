@@ -3672,7 +3672,8 @@ already did (T-1403). PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC check x a
 number) before significance (`PERCENTRANK(Data!E1:E5,1963,-2.5)` is `#N/A`, 139684e68fb2fc3b A324;
 `PERCENTRANK.EXC({1,..,10},-0.0001,0)` `#N/A`, 09b47629f54b9817 A58).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 62 cells in T-2472.
-Ours: the data's `#NUM!`/`#N/A` first, and significance (`#NUM!`) before the range check; T-2472.
+Ours: matches (T-2472).
+UNVERIFIED: whether a significance that is itself an error or text (`PERCENTRANK(C1:C5,1963,"a")`) beats the out-of-range x `#N/A`; ours reports the significance's error first.
 Status: VERIFIED (excel-graph)
 
 ## PERCENTRANK: a huge significance is #DIV/0!; truncation does not lose a digit at a cut (T-2256)
