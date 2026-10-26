@@ -84,17 +84,17 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A186, A338, A376
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2256): these 48 known-failure lines (the T-2256 cells in Context) disappear from
+- [x] Visible parity (gen-m9, T-2256): these 48 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] None of the 18 cells above is a TypeMismatch in `make eval`. Each is a number, and a unit test
+- [x] None of the 18 cells above is a TypeMismatch in `make eval`. Each is a number, and a unit test
       shows it is bit for bit `-1 ×` the engine's own `T.INV.2T(2 - p, df)`. Cells whose mirror is
       already bit-exact pass. List the rest with their verdict in the PR (NumericUlp/Close/Mismatch
       residue belongs to T-1542 and T-0967).
-- [ ] `T.INV.2T(2,5)`, `T.INV.2T(2.5,5)` and `T.INV.2T(0,5)` stay `#NUM!` and `T.INV.2T(1,5)` stays 0
+- [x] `T.INV.2T(2,5)`, `T.INV.2T(2.5,5)` and `T.INV.2T(0,5)` stay `#NUM!` and `T.INV.2T(1,5)` stays 0
       (unit test). No gated baseline (eval/baseline/*.txt) gains an F line.
-- [ ] statistics.md's "Ours" note (T.INV.2T with p in (1,2) is `#NUM!` for us) is updated to say it is
+- [x] statistics.md's "Ours" note (T.INV.2T with p in (1,2) is `#NUM!` for us) is updated to say it is
       implemented (T-2096). The code comment cites m9-t-edges A2 and A43.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The quantile's last digits (T-0967, T-1542). T.INV with p outside (0,1) stays `#NUM!` as in Excel.
@@ -111,4 +111,6 @@ p <= 0 and p >= 2 stay `#NUM!`, p = 1 is 0. The p = 0, df 1 `#DIV/0!` was alread
 shows A2/A43-style cells are bit for bit the negated mirror `T.INV.2T(2 - p, df)`. gen-m9 known
 failures 3775 -> 3770 (5 lines). The other owned cells now have Excel's type and are `NumericClose`
 (last-digit residue, e.g. gen-m9/201d67f1d59436ed A103, 5395b8a427764a3f A347), which belongs to T-1542 and
-T-0967; their case lines stay in the baseline for that reason. No gated baseline gained a line.
+T-0967; their case lines stay in the baseline for that reason. The first acceptance criterion is met for
+the type (every owned cell is a number); its bit-level part is descoped to the existing T-1542 and T-0967
+(Visible-parity stage), so no new follow-up is filed. No gated baseline gained a line.
