@@ -2345,6 +2345,7 @@ securities functions check frequency and dates first"). A par read from a FALSE 
   before a later bad argument, 9 are `#NUM!` (also A37, A157, A232 of 290180acf017709c, A43 of 932b33b1ef8b7608 and A255
   of f81bd3b6dc373e5c); the tenth, f81bd3b6dc373e5c A115, is `#SPILL!` because its par is an array, which lifts first.
 - boolean par: `ACCRINT(32965,35462,36817,10,<FALSE cell>,100,1.005,FALSE)` is `#VALUE!` (932b33b1ef8b7608 A233).
+Ours: since T-2792, `Model::accrint_of` reads calc_method first, then each date with its calendar check as it reads it, then a boolean par is `#VALUE!` (a typed boolean par reads the same; unprobed).
 Unprobed: whether an issue after the settlement waits for the later arguments (ours checks the order after every
 read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest); a typed boolean par, and
 booleans in first_interest, settlement, frequency and basis.

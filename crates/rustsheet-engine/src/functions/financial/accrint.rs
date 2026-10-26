@@ -176,29 +176,50 @@ impl Model {
         })
     }
 
-    /// ACCRINT's kernel: every argument is read, in order, before any value is checked. A boolean
-    /// issue or rate is `#VALUE!`, also before a later argument's error (`ACCRINT(TRUE,39500,..)`,
-    /// `ACCRINT(TRUE,SQRT(-1),..)`, `ACCRINT(39000,39500,0.1,TRUE,..)`: probes/t2455-transpose-
-    /// single-value A52, A53, A56); the other dates and numbers take booleans (as `get_number`
-    /// did; unprobed), and `calc_method` reads as a boolean but text, "TRUE" and "FALSE" too, is
-    /// `#VALUE!` before any value is checked (probes/t2492-vdb-ddb-arguments A47:A54).
+    /// ACCRINT's kernel. Excel reads `calc_method` first: its error is the result and text, "TRUE"
+    /// and "FALSE" too, is `#VALUE!` (probes/t2492-vdb-ddb-arguments A47:A54), whatever the other
+    /// arguments hold. The other seven are then read in order: a date off the calendar is `#NUM!`
+    /// as soon as it is read, before a later argument's error, text or boolean, and a boolean
+    /// issue, rate or par is `#VALUE!` (`ACCRINT(TRUE,SQRT(-1),..)`: probes/t2455-transpose-
+    /// single-value A52, A53, A56; gen-m9/932b33b1ef8b7608 A233 for par; financial.md "ACCRINT
+    /// check order: calc_method first, dates as read"). The other numbers take booleans (as
+    /// `get_number` did; unprobed).
     fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
             return CalcResult::new_args_number_error(cell);
         };
         let read = || -> Result<_, CalcResult> {
+            let calc_method = rest.get(1).map_or(Ok(true), |value| match value {
+                CalcResult::String(_) => Err(value_error(cell)),
+                value => Self::cast_bool_ref(value, cell),
+            })?;
+            let issue = self.financial_date(self.cast_number_no_bools_ref(issue, cell)?);
+            if from_excel_date(issue).is_err() {
+                return Err(num_error(cell));
+            }
+            let first_interest = self.financial_date(self.cast_number_ref(first_interest, cell)?);
+            if from_excel_date(first_interest).is_err() {
+                return Err(num_error(cell));
+            }
+            let settlement = self.financial_date(self.cast_number_ref(settlement, cell)?);
+            // The settlement's last serial depends on the date system and `calc_method`.
+            let settlement_limit = self
+                .workbook
+                .settings
+                .date_system
+                .accrint_settlement_limit(calc_method);
+            if from_excel_date_up_to(settlement, settlement_limit).is_err() {
+                return Err(num_error(cell));
+            }
             Ok((
-                self.financial_date(self.cast_number_no_bools_ref(issue, cell)?),
-                self.financial_date(self.cast_number_ref(first_interest, cell)?),
-                self.financial_date(self.cast_number_ref(settlement, cell)?),
+                issue,
+                first_interest,
+                settlement,
                 self.cast_number_no_bools_ref(rate, cell)?,
-                self.cast_number_ref(par, cell)?,
+                self.cast_number_no_bools_ref(par, cell)?,
                 self.cast_number_ref(frequency, cell)?.floor(),
                 day_count_basis(self.cast_number_or(rest.first(), 0.0, cell)?),
-                rest.get(1).map_or(Ok(true), |value| match value {
-                    CalcResult::String(_) => Err(value_error(cell)),
-                    value => Self::cast_bool_ref(value, cell),
-                })?,
+                calc_method,
             ))
         };
         let (
@@ -232,21 +253,6 @@ impl Model {
         if self.coupon_schedule_breaks(first_interest_serial) {
             return broken_schedule_error(cell);
         }
-        // The serials must name dates of the calendar (a settlement up to the date system's limit).
-        if from_excel_date(issue_serial).is_err()
-            || from_excel_date(first_interest_serial).is_err()
-            || from_excel_date_up_to(
-                settlement_serial,
-                self.workbook
-                    .settings
-                    .date_system
-                    .accrint_settlement_limit(calc_method),
-            )
-            .is_err()
-        {
-            return num_error(cell);
-        }
-
         // Excel: a 1904 settlement read past 9999-12-31 (calc_method FALSE) has no 30/360 date;
         // bases 0 and 4 then accrue first_interest's 1904 serial plus 1462 days in the settlement
         // slice, whatever the settlement and the issue (410415.83 for first_interest 9990-06-30,
