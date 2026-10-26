@@ -931,7 +931,7 @@ is at least twice the need and changes no value (unit test `the_continued_fracti
 inversion is charged 2,250 cdfs of that bound, within its one budget of 2^19 terms. The shape comes from the shape
 argument (alpha, df / 2, or POISSON's x + 1); an element with an error argument, or an inversion whose probability is
 outside (0, 1), a logical or a blank, is charged 1, as the kernel returns before any cdf; a text shape or probability is
-charged 2^18. So `CHIDIST(x,5)` costs 152 units an element and a CHIDIST over a 731-element PIVOTBY runs (gen-m9/
+charged 2^18. So `CHIDIST(x,5)` costs 150 units an element and a CHIDIST over a 731-element PIVOTBY runs (gen-m9/
 c2974c061384fdd9 A56, Excel `#SPILL!` in its layout), while 513 inversions at a huge shape are still refused
 (`ROWS(CHIINV(0.4,1E10+SEQUENCE(513)))`, unit test `incomplete_gamma_kernels_are_charged_their_weight`), and so are
 about 535 cdfs at a huge shape. At the bound of the cap, 512 elements take about 1.3 s, within the 2 s budget of the

@@ -149,7 +149,7 @@ const INCOMPLETE_GAMMA_WEIGHT: u32 = 1 << 18;
 /// An incomplete-gamma entry charged by value (T-2795): at most `INCOMPLETE_GAMMA_WEIGHT` an
 /// element, in proportion to the bound of its shape (`ValueWork::IncompleteGamma`), so a lift
 /// of small shapes runs far more than 512 elements (gen-m9/c2974c061384fdd9 A56, a CHIDIST over
-/// a 731-element PIVOTBY, was `#ERROR!` where Excel spills): `CHIDIST(x,5)` is charged 152
+/// a 731-element PIVOTBY, was `#ERROR!` where Excel spills): `CHIDIST(x,5)` is charged 150
 /// units, a CHISQ.INV.RT of df 10 the bound unless its probability is outside (0, 1).
 const fn incomplete_gamma(
     args: usize,
