@@ -1,6 +1,7 @@
 # 0079 — make parity-report target for the generated parity page
 
-- **Status:** accepted (2026-10-19, T-2041)
+- **Status:** accepted (2026-10-19, T-2041). Amended by 0120 (`make progress-report` replaces
+  `make parity-report`; docs/milestones.md, docs/progress.md and docs/progress/ are read by code).
 - **Context:** the owner wants a page on GitHub to link people to that shows RustSheet's
   per-function Excel parity (bit-exact, within 1 ulp, within 4 ulp, within 1e-9, off). It must be
   generated from the eval report, never hand-edited, and refreshable with one command. The

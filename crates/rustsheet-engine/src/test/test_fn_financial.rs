@@ -614,6 +614,31 @@ fn fn_db_misc() {
     assert_eq!(model._get_text("B1"), "$0.00");
 }
 
+// probes/t2475-stat-subexpressions A39, A92, A136, A165 and gen-m9/3c06f9298f65a3ba A50, A148
+// (excel-graph; financial.md "Annuity and DB argument domains at their limits").
+#[test]
+fn annuity_and_db_domain_errors() {
+    check_cells(
+        &[("B1", "FALSE")],
+        &[
+            // 0^0 is #NUM!; a P of 0 (rate -1, or underflow near it) is #DIV/0!
+            ("A1", "=ERROR.TYPE(PV(-1,0,-713))", "6"),
+            ("A2", "=ERROR.TYPE(PV(-1+2^-52,165,-978,224,0))", "2"),
+            ("A3", "=ERROR.TYPE(PV(-1,12,-100))", "2"),
+            // ln(1+1E-300) is 0; ln(1-1) is LN(0)
+            ("A4", "=ERROR.TYPE(NPER(1E-300,-113,3037,368,1))", "2"),
+            ("A5", "=ERROR.TYPE(NPER(-1,-31,1))", "6"),
+            // a boolean month from a cell is 0, not #VALUE!
+            ("A6", "=ERROR.TYPE(DB(15779,385,37,B1,B1))", "6"),
+            (
+                "A7",
+                "=DB(10000,1000,6,1,TRUE)=DB(10000,1000,6,1,1)",
+                "TRUE",
+            ),
+        ],
+    );
+}
+
 // ── whole-column range and a spill beyond the used area ─────────────────────
 
 // A whole-column range is clipped to the sheet's used area before it is
@@ -809,4 +834,18 @@ fn fn_npv_defers_range_and_array_errors() {
     assert_eq!(model._get_text("A5"), *"#DIV/0!");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
     assert_eq!(model._get_text("A7"), *"#N/A");
+}
+
+#[test]
+fn fn_db_negative_salvage_is_an_error_value() {
+    // A negative salvage is #NUM! as a value, not a NaN number ISNUMBER sees (T-2551; gen-m9
+    // f066968376660329 A244).
+    let mut model = new_empty_model();
+    model._set("A1", "=ISNUMBER(DB(59341,-1,28,6,12))");
+    model._set("A2", "=ISERROR(DB(59341,-1,28,6,12))");
+    model._set("A3", "=DB(59341,-1,28,6,12)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "FALSE");
+    assert_eq!(model._get_text("A2"), "TRUE");
+    assert_eq!(model._get_text("A3"), "#NUM!");
 }

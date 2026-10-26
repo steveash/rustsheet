@@ -103,9 +103,15 @@ Rule (excel-graph, replayed sheet edits, T-1608):
   Excel rewrites the formula: with Calc, Jan, Feb, Mar, moving Mar to position 1 gives
   `=SUM(Jan:Feb!A1)` (30), and moving Jan to position 3 gives `=SUM(Feb:Mar!A1)` (50). The span is
   not re-resolved by name. Evidence: sheet-ops-move-span-end-first, sheet-ops-move-span-start-last.
-  The engine keeps `Jan:Mar` (40): T-1691.
+  A span left with one sheet becomes a plain reference: moving Feb before Jan turns
+  `=SUM(Jan:Feb!A1)` into `=SUM(Jan!A1)` (sheet-ops-move-two-sheet-span-end-first). Spans in
+  defined names shrink the same way (sheet-ops-move-span-end-in-name).
+  The engine rewrites them before the move (`move_sheet_in_node`, T-1691), and its undo puts the
+  written text back.
 - Moving the sheet that holds the formula changes nothing (sheet-ops-move-formula-sheet).
-Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
+Unprobed: moving the first sheet of a two-sheet span past the last (the engine writes the last
+sheet alone), a span written backwards (`Mar:Jan`, which the engine rewrites in tab order when it
+shrinks), deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
 cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
 that lost an end sheet `#REF!` and does not shift a span for row or column edits.
 Status: VERIFIED (Excel for the web) for renames and moves; UNVERIFIED for deletes
@@ -2321,6 +2327,12 @@ Right/Left):
   (table-convert-to-range). On the table's own sheet the range is not sheet-qualified: `=SUM($C$4:$C$7)`,
   `=COUNTA($B$4:$B$7)`, `ROWS(Sales[#All])` 5, and a `#This Row` reference beside the table prints
   `=$C4*2` (absolute column, relative row) (table-convert-same-sheet, T-2342).
+  A defined name `=Sales[Qty]` (or `=Sales[#All]`) keeps working: `SUM(QtyName)` is 15, `ROWS(QtyName)` 4,
+  `SUM(AllName)` 15, and FORMULATEXT of a cell using the name still prints `=SUM(QtyName)` (the name's own body
+  is not readable through the oracle). A `#This Row` reference off the data rows is not lowered: above the
+  header (S!F1), below the table (S!F9) and on another sheet (T!A1) it is `#VALUE!` after the convert and
+  FORMULATEXT still prints `=Sales[@Qty]`, as the structured text of a table that no longer exists
+  (table-convert-names-this-row, excel-graph 2026-10-25, T-2643).
 - Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
   `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
   cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
@@ -2339,7 +2351,9 @@ inside and below the table, the column inserts at D, the sheet rename and the to
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
 move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
 do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
-reference as the absolute area it lowered to (defined names too, unprobed). A deleted table or sheet matches
+reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
+off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
+in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a
@@ -2351,7 +2365,7 @@ xlsx export writes `S!C4:C7` where Excel stores `#REF!C4:C7`. The `#REF!` displa
 existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
-Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

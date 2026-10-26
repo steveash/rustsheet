@@ -1,17 +1,8 @@
-#![allow(clippy::unwrap_used)]
-
-use crate::{
-    formatter::{
-        format::{format_number, format_text_value, FormatContext},
-        locale_tag::{resolve, LocaleTag},
-    },
-    locale::get_locale,
+use super::text;
+use crate::formatter::{
+    format::format_text_value,
+    locale_tag::{resolve, LocaleTag},
 };
-
-fn text(value: f64, format: &str) -> String {
-    let ctx = FormatContext::new(get_locale("en").unwrap());
-    format_number(value, format, &ctx).text
-}
 
 // Values from probes/text-locale-date-names, text-locale-name-tables and text-locale-am-neutral.
 
@@ -79,8 +70,12 @@ fn tags_resolve_like_excel() {
     assert_eq!(names("fr-XX"), Some("mars"));
     assert_eq!(names("de"), Some("März"));
     assert_eq!(names("400"), Some("March"));
+    // Lunar calendar digits (probes/text-locale-lunar-edges, text-locale-lunar-tokens A61-A74).
+    assert_eq!(names("11040C"), Some("三月"));
+    assert_eq!(names("E0412"), Some("삼월"));
+    assert_eq!(names("120411"), Some("March"));
     for silent in [
-        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "11040C", "40C,1", "+40C",
+        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "6040C", "40C,1", "+40C",
     ] {
         assert_eq!(resolve(silent), LocaleTag::Silent, "{silent}");
     }

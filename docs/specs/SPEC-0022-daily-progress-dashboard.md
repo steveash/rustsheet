@@ -157,7 +157,9 @@ has no judgment blocks. Later phases add generated blocks `arguments` (T-0077), 
    - `docs/milestones.md` (exit checkbox counts per `## M<n>` heading);
    - `eval/baseline/<suite>.txt` (known failures, counted, never edited);
    - `docs/progress/history.json`;
-   - git: `HEAD`, and `git rev-list --count --first-parent <last row's commit>..HEAD`.
+   - git: `git rev-list --count --first-parent <last row's commit>..<run.commit>`, and `HEAD`
+     only for a Stale banner or a report without a commit (T-0071 review), so a complete page
+     does not depend on the checkout it is generated from.
 
 **Docs read by code.** Decision 0079 said nothing under docs/ is read by code. Decisions 0049 and
 0066 skip the rust, eval and python CI jobs for PRs that change only docs/, and
@@ -247,9 +249,11 @@ they are, because the visible-parity lock reads the suite counts, and the inform
 prints:
 - `by_milestone`: milestone → status → count;
 - `by_campaign`: stage → status → count, plus `ready`;
-- `deferred`: `defer: phase-1b` tasks, open and done.
-It does not fetch. `ready` here ignores branch claims, and the page says so. The generator never
-parses task front matter itself.
+- `deferred`: `defer: phase-1b` tasks, status → count plus `ready`, the same map as a stage
+  (the parked row's open, blocked and done; decision 0119).
+It does not fetch and uses no network; its one git call is `validate`'s local `git ls-files`.
+`ready` here ignores branch claims, and the page says so. The generator never parses task front
+matter itself.
 
 ### History and deltas (T-0071)
 `docs/progress/history.json` is a JSON array, oldest first, with at most one row per date. A
@@ -268,7 +272,8 @@ rerun on the same date replaces that date's row. Each row:
 
 The numbers above only show the shape. A row is about 1.5 KB, about 550 KB a year. The
 generator fails when the file is not valid JSON or a row lacks a key, and it never rewrites an
-older row. The first run seeds the file with today's row only. The assessment's 2026-10-25 numbers
+older row. An incomplete rerun never replaces a complete row of the same date. The first run
+seeds the file with today's row only. The assessment's 2026-10-25 numbers
 are not back-filled, because they came from a different method.
 
 ### Failure handling (T-0071)
@@ -286,8 +291,9 @@ and `run.skipped_suites` is empty. Otherwise it is incomplete:
   non-zero, and the steward fixes them;
 - timeouts and crash-only cases do not make a run stale. The suites table shows them, and the
   steward weighs them in `readiness`;
-- a report whose `run.commit` is not `HEAD` is still complete. The `status` block names both
-  commits.
+- a report whose `run.commit` is not `HEAD` is still complete. A complete page names only the
+  report's commit, so the same report regenerates it byte for byte from any checkout; a Stale
+  banner also names the generating `HEAD` (T-0071 review).
 
 ### What moves out of docs/status.md
 docs/status.md stays the operational log. Changes, made by T-0076 and then by the steward's
