@@ -3,7 +3,7 @@ id: T-2688
 title: "XIRR with an empty guess argument (XIRR(v,d,)) uses the default 0.1, not guess 0 (calipers pv23_056 Summary!F23)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
