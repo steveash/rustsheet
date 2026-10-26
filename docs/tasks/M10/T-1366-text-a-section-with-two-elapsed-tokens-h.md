@@ -3,7 +3,7 @@ id: T-1366
 title: "TEXT: a section with two elapsed tokens ([h]:[mm]) is #VALUE!"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
