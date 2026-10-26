@@ -3,7 +3,7 @@ id: T-0078
 title: "Progress report phase 2: codebase health section from the quality ratchet files"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
