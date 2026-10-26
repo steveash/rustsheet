@@ -3,7 +3,7 @@ id: T-2726
 title: "Implement FORMULATEXT of pick calls, XLOOKUP/TAKE/DROP/LET/SWITCH/IFS results and array INDIRECT (probes/formulatext-pick-scalars-and-arrays)"
 milestone: M5
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
