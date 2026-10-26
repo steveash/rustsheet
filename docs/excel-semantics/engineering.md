@@ -586,6 +586,10 @@ Evidence: probes/eng-im-overflow (excel-graph).
   A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
   `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
   formatting difference, not T-0907 precision.
+- IM* text rounds each part's double to 15 significant digits once, correctly, as `to_precision` does. It does not
+  round a decimal string again: rounding half-up from the shortest-repr string would fix probes/eng-im-overflow-edges
+  A17 but break 21 gated cells that pass today (probes 2666 -> 2686 known failures, ironcalc-calc 644 -> 662), and
+  rounding from the 17-digit string breaks 2. Status: VERIFIED against the existing oracle cells (2026-10-26, T-2629 notes).
 - IM* text writes a small part in full past 20 characters: `IMEXP("710i")` is
   `0.999999998182636+0.0000602887066915739i` (A42). Ours now writes a part with decimal exponent -5 or above in plain notation whatever its
   length (exponent -5 is plain by A42 and -16 is E notation by A9; -6 to -15 are all E notation, `IMSUM("1.23456789012345E-6","0")` is `1.23456789012345E-06`, while -1 to -5 are plain up to `0.0000123456789012345`, an imaginary part likewise: probes/eng-im-small-part A1-A16, B1-B12, excel-graph, T-2056; the 15-digit rule at negative exponents of -99 or below is also unprobed); A42 still
