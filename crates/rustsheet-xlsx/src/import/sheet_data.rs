@@ -795,9 +795,9 @@ pub(super) fn check_stored_length(
 /// Refuses the workbook, as Excel does, when `text` holds a string literal over 4,095 UTF-16 units
 /// (T-2762).
 pub(super) fn check_string_literals(text: &str, subject: &str) -> Result<(), XlsxError> {
-    let (Some(locale), Some(language)) = (get_locale("en").ok(), get_language("en").ok()) else {
-        return Ok(());
-    };
+    // The scan only measures literals, which no locale or language changes; "en" always exists.
+    let locale = get_locale("en").map_err(XlsxError::Workbook)?;
+    let language = get_language("en").map_err(XlsxError::Workbook)?;
     if has_overlong_string_literal(text, locale, language) {
         return Err(XlsxError::Workbook(format!(
             "{subject} holds a string literal longer than {MAX_STRING_LITERAL_UNITS} UTF-16 code units"

@@ -34,3 +34,13 @@ pub fn has_overlong_string_literal(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn message_names_the_limit() {
+        assert!(STRING_LITERAL_TOO_LONG_MESSAGE.contains(&MAX_STRING_LITERAL_UNITS.to_string()));
+    }
+}

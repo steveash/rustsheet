@@ -488,5 +488,14 @@ fn string_literal_longer_than_4095_units_refuses_the_workbook() -> TestResult {
     );
     assert_imports(&sheet_with_literal(&"\u{1F600}".repeat(2_047))?)?;
     assert_import_error(&sheet_with_literal(&"\u{1F600}".repeat(2_048))?, message);
+    // A defined-name body too (T-2739 notes: a single 4,090-emoji literal body was refused).
+    assert_imports(&workbook_with_name_body(&format!(
+        "\"{}\"",
+        "a".repeat(4_095)
+    ))?)?;
+    assert_import_error(
+        &workbook_with_name_body(&format!("\"{}\"", "a".repeat(4_096)))?,
+        "definedName nm body holds a string literal longer than 4095 UTF-16 code units",
+    );
     Ok(())
 }
