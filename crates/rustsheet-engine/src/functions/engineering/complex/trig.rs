@@ -5,6 +5,7 @@ use crate::calc_result::CalcResult;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::num_error;
 use crate::functions::math_and_trigonometry::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
+use crate::x87_exp::excel_exp;
 
 /// IMSIN and IMCOS are `#NUM!` once `exp(|y|)` overflows (|y| above about 709.78), whatever the
 /// real part, although `cosh y` is still finite there: `IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`
@@ -53,6 +54,17 @@ fn hyperbolic_log_form(
         (re, x.signum() * im)
     };
     Some(finite_complex_result(re, im, suffix, cell))
+}
+
+/// `(sinh t, cosh t)` as IMSIN and IMCOS build them from the imaginary part: `(EXP(t) ∓ EXP(-t))/2`
+/// with Excel's EXP for every t, small t too, where the worksheet SINH switches to expm1
+/// (numbers.md). So the imaginary part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm
+/// sinh gives ...242709) and `IMSIN("1E-200+1E-200i")` is "1E-200": EXP(1E-200) = EXP(-1E-200),
+/// so sinh is 0 (gen-m9, T-2258 triage; engineering.md, T-2535). IMSINH does not: it keeps
+/// `IMSINH("1E-200+1E-200i")`'s tiny real part, and its kernel is open (T-2778).
+fn exp_sinh_cosh(t: f64) -> (f64, f64) {
+    let (a, b) = (excel_exp(t), excel_exp(-t));
+    ((a - b) / 2.0, (a + b) / 2.0)
 }
 
 /// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of SIN,
@@ -117,7 +129,8 @@ pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if trig_exp_overflows(y) {
         return num_error(cell);
     }
-    finite_complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix, cell)
+    let (y_sinh, y_cosh) = exp_sinh_cosh(y);
+    finite_complex_result(x.cos() * y_cosh, -x.sin() * y_sinh, suffix, cell)
 }
 
 pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -241,7 +254,8 @@ pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if trig_exp_overflows(y) {
         return num_error(cell);
     }
-    finite_complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix, cell)
+    let (y_sinh, y_cosh) = exp_sinh_cosh(y);
+    finite_complex_result(x.sin() * y_cosh, x.cos() * y_sinh, suffix, cell)
 }
 
 pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
