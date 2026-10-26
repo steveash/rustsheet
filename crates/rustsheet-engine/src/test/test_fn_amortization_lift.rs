@@ -185,7 +185,7 @@ fn past_2_to_the_20_periods_the_closed_form_drifts_from_the_walk() {
     // fin-amor-period-bound-c (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION): the closed
     // form drifts from the walk by about 1e-13 relative, so a charge of 1E12 or more can be a unit
     // off. Excel is A1 18989305437102, A2 16344246350030, A3 13720292047582, A4 5154670166168, A6
-    // 151632679; main walked A1, A3, A4 to Excel's value and A2 to ...031. TODO(T-1895).
+    // 151632679; main walked A1, A3, A4 to Excel's value and A2 to ...031. TODO(T-2826).
     check(&[
         (
             "A1",
