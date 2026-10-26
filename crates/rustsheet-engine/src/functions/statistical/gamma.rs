@@ -80,9 +80,17 @@ impl Model {
         if x < 0.0 || alpha <= 0.0 || beta_scale <= 0.0 {
             return Err(num_error(cell));
         }
+        // The density of a positive x whose x / beta is subnormal is #NUM!, whatever the shape or
+        // the size of the result, while the cdf there is 0 (probes/t2738-gamma-dist-tiny-ratio:
+        // `GAMMA.DIST(4.4E-308,1,2,FALSE)` is #NUM!, 4.5E-308 is 0.4999...; T-2738).
+        if !cumulative && x > 0.0 && x / beta_scale < f64::MIN_POSITIVE {
+            return Err(num_error(cell));
+        }
         let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
         let result = if cumulative {
-            gamma_dist_cdf(&dist, x, beta_scale)
+            // A subnormal cdf is 0, as in Excel (`(x)=0` TRUE: probes/t2706-subnormal-density-paths
+            // B19:B20, probes/t2737-subnormal-cdf-shapes B13:B14).
+            flush_subnormal(gamma_dist_cdf(&dist, x, beta_scale))
         } else {
             // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/m9-gamma-dist-a500
             // B22; docs/excel-semantics/numbers.md "Distribution densities").

@@ -1,15 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
+use super::text;
 use crate::{
     formatter::format::{format_number, FormatContext},
     locale::get_locale,
 };
-
-/// `value` under `format` in the en locale.
-fn text(value: f64, format: &str) -> String {
-    let ctx = FormatContext::new(get_locale("en").unwrap());
-    format_number(value, format, &ctx).text
-}
 
 // Expected texts are Excel's displayed text in eval/suites/gen-m10 (excel-graph, T-1611), cells
 // named by case-id prefix; docs/excel-semantics/number-formats.md "Fraction formats".

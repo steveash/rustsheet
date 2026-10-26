@@ -1,6 +1,6 @@
 # 0120 — make progress-report replaces make parity-report, and the progress page's docs inputs count as code
 
-- **Status:** accepted (2026-10-25, T-0070; SPEC-0022)
+- **Status:** accepted (2026-10-25, T-0070; SPEC-0022). Items 1, 2 and 4 completed by T-0081.
 - **Amends:** decision 0079 (the `make parity-report` target and "nothing under docs/ is read by
   code"); extends decision 0066's `CODE_READ_PATHS`.
 - **Context:**
@@ -18,7 +18,8 @@
 - **Decision:**
   1. **The target.** `make progress-report` replaces `make parity-report`. It does two things:
      - it writes `eval/runs/latest/tasks.json` with `scripts/tasks.py stats --json` (decision
-       0119), through a temporary file, so a failed command leaves no partial file;
+       0119), through a temporary file, so a failed command leaves no partial file (T-0081: the
+       target also removes the temporary file when the command fails);
      - it runs the entry point `rustsheet-progress-report --out-dir ../docs`, which replaces
        `rustsheet-parity-report`.
 
@@ -28,12 +29,16 @@
      `docs/milestones.md`, `docs/progress.md` and `docs/progress/`. A PR that changes only one of
      them, such as a steward PR that changes only docs/progress/history.json, is `code=true` and
      runs the python job (scripts/test_ci_changes.py). The generator may name these paths as
-     literals.
+     literals. An entry ending in `/` is a directory and matches every path under it; any other
+     entry matches only that exact file (T-0081), so docs/progress.md does not also claim, say,
+     docs/progress.md.bak. `scripts/check_docs_readers.py` applies the same rule.
   3. **What stays from 0079.** The generated parts of the page are never hand-edited. The page
      names the run it shows, so it may lag `main`. No CI freshness gate checks docs/progress.md,
      docs/progress/ or docs/parity.md: a gate would fail every PR that moves a number.
   4. **docs/parity.md.** Until T-0081, the target still writes docs/parity.md and docs/parity/
-     as before. T-0081 then turns docs/parity.md into a pointer to the progress page.
+     as before. T-0081 then turns docs/parity.md and docs/parity/functions.md into short static
+     pointers to the progress page, deletes the three docs/parity/*.svg charts, and stops writing
+     either file: the target writes only docs/progress.md and docs/progress/.
 - **Consequences:**
   - The steward runs `make progress-report` instead of `make parity-report` (T-0076).
   - A PR that changes only docs/milestones.md, docs/progress.md or docs/progress/ now runs the

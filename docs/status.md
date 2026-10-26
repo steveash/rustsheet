@@ -5,37 +5,14 @@ still add or remove "Needs owner" entries. PRs no longer append log lines (decis
 of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
 merged since its last run.
 
+**Progress dashboard:** [docs/progress.md](progress.md), regenerated daily by the steward.
+
 ## Snapshot — 2026-10-25, second run (M2 is current)
 
 This is the scheduled run, at 18:47 UTC. It follows the 02:42 UTC snapshot (#1736) and covers the 81 commits since then.
 
-| Suite | Cases | Cells | Bit-exact | Known failures |
-|---|---|---|---|---|
-| ironcalc-calc | 219 | 72,357 | 99.11% | 644 (was 737) |
-| poi | 336 | 27,209 | 99.61% | 119 (was 120) |
-| gen-m5 | 115 | 41,640 | 99.99% | 6 (was 9) |
-| gen-m6 | 85 | 25,000 | 99.99% | 1 (was 2) |
-| gen-m7 | 52 | 31,845 | **100%** | 0 |
-| gen-m9 | 261 | 95,262 | 95.47% | 4,266 (was 5,664) |
-| gen-m2 | 39 | 15,600 | **100%** | 0 |
-| gen-m1 | 15 | 3,750 | **100%** | 0 |
-| gen-m10 | 20 | 1,690 | 99.17% | 14 (was 15); displayed text 394 (was 406) |
-| probes | 1,505 | 100,625 | 97.40% (20 accepted deviations; 3 cases pending) | 2,667 (was 2,570; 80 new cases) |
-| smoke | 6 | 46 | 100% | 0 |
-| fixtures | 24 | 325 | 97.85% | 7 (was 0; new external-link-uncached-lookups case, owned by T-0472/T-0474) |
-| corpus-bench | 912 | 205,366 | 90.89% | 9 (was 12) |
-| calipers | 454 | 1,353,813 | 99.85% | baseline 3,461; `gate = false` |
-| gen-m8a | 12 | 3,577 | 100% | not gated |
-| gen-m8b | 9 | 3,368 | 91.78% | not gated |
-| probes-numeric | 263 | 611,860 | 48.72% (99.77% within 1e-9) | not gated |
-
-- The table comes from `make eval` on `main` 6f449eb4, with poi, corpus-bench and calipers fetched.
+`make eval` on `main` (6f449eb4) fetched poi, corpus-bench and calipers. Timeouts: corpus-bench `59932` no longer times out (T-0469, T-0477).
 - `make eval-lower-visible-lock` on 66c28893 shows 0 regressions in every gated suite. It lowers the visible-parity lock from 6,039 to 4,519 (decision 0093).
-- corpus-bench has 71,000 more scored cells. `59932` no longer times out (T-0469, T-0477); it scores 14,734 of 32,948 cells and stays one known-failure line (owner T-0430, PR #1837).
-
-**Fifteen-digit parity: not met (coverage 492/506, visibly-off cells 153939)**. **Phase 1 (decision 0114): not met (77/506 functions covered with ≥ 99.9% of cells within 15 digits).**
-- The previous line (02:42 UTC) also read "not met", so the checkpoint is not reached (decision 0094).
-- The visibly-off count grew because probes-numeric now scores 611,860 cells (was 134,384).
 
 CI on `main` is green through 22588cfb. Of the 77 push runs between 02:40 and 18:50 UTC, 62 were green and 15 were cancelled by the next push; none failed. 22588cfb's run is green too.
 
@@ -43,13 +20,10 @@ CI on `main` is green through 22588cfb. Of the 77 push runs between 02:40 and 18
 - At 6f449eb4 there were 3: `probes/t2601-index-scalar-forms-t-n` S!B14, S!B15 and S!B28 (FORMULATEXT of legacy T/N over INDEX of a unary-plus scalar, or with a nonzero index).
 - T-2601 (#1815) added the case tagged `M2`. Decision 0051's exception keeps that tag, because the subject includes INDEX (M2), so no override line applies.
 - T-2725 (#1828) fixed B28 at 66c28893. B14 and B15 remain; their owner is T-2723 (engine, M2; probe PR #1833 is open).
-- The planner checked every M2 exit criterion and filed nothing:
-  - gen-m2: 15,600 cells at 100%.
-  - ironcalc-calc M1/M2 cells: 0 failing outside exceptions.
-  - Duplication: 2,951 lines (≥ 15% under 9,153).
+- The planner checked every M2 exit criterion and filed nothing.
 - `make exit-owners MILESTONE=M2` cannot run, because report.json has exit rows for M5 and M6 only. I checked the owners by hand.
 
-M5 exit: catalog 135/135, gen-m5 (2 visibly off of 41) and ironcalc-calc are met. M5 probes are not met (11 cells), all owned:
+M5 probes: 11 failing exit cells, all owned:
 - T-2627: 5 cells;
 - T-2691: base-zero-empty-min-length, 2 cells;
 - T-2441, T-2523, T-2388 and T-2720 (t2705-scientific-mantissa-rounding): 1 cell each.
@@ -96,7 +70,6 @@ Spot-audit: the last was 2026-10-25 (above, #1736), so none is due. The next is 
 
 - **Direct pushes to `main`** (2026-10-18, continuing 2026-10-19). Session `01Xbmds2…` has now pushed fifteen T-1778 commits straight to `main` with no PR (6f85cc9 … 892a53ca reported last run; fc3f993d, c00142bb, 0b5ce7a4, 36217c63, 756f849f, 37d303dd, 32ac084d and c763916b since), so the reviewer agents never saw them. CI passed on each and nothing needs reverting. New this run: **32ac084d edits a protected path, `.claude/skills/excel-probe/SKILL.md`**, without the decision record the governance gate demands of a PR. It is a two-line pointer to the new `docs/research/excel-kernel-playbook.md`, and both read as benign research guidance. Still, agent instructions changed with no review. Recommended fix: a branch ruleset on `main` that requires a pull request (the steward and workers already merge through PRs, so nothing changes for them). If these pushes were your own interactive work, remove this item. Update 2026-10-20: no direct push to `main` since the last run; all 109 commits came through PRs. Update 2026-10-25: still none; all 221 commits since 2026-10-22 came through PRs, and so did the 81 since #1736.
 - **Missed steward runs** (2026-10-25). There is no steward snapshot or PR for 2026-10-23 or 2026-10-24, so this snapshot covers three days. Please check that the daily steward routine fired on those days. Update (second 2026-10-25 run): a scheduled steward firing ran today at 18:47 UTC. SPEC-0022 notes that #1736 was probably not a scheduled run.
-- **Steward runs the daily progress dashboard** (2026-10-25, T-0076, SPEC-0022; replaces T-2037). `make progress-report` will regenerate docs/progress.md after `make eval`. Running it daily needs an owner change to the steward routine and its copy in docs/process/routines.md. T-0076 has the exact new prompt text for review.
 
 excel-desktop needs are not owner items (decision 0039): T-1016, T-1051 and the other desktop tasks wait in M14 (Phase 4), tracked by T-1074 and T-1075.
 

@@ -22,12 +22,6 @@ from rustsheet_tools.progress_report.model import COMMIT_SHA, RUN_DATE, Progress
 
 GENERATED = "generated"
 JUDGMENT = "judgment"
-# The judgment blocks, in page order (SPEC-0022 "Page layout"): name -> heading.
-JUDGMENT_BLOCKS = {
-    "bottom-line": "Bottom line",
-    "readiness": "Real-world readiness",
-    "risks": "Risks",
-}
 # One HTML comment, shortest match; a comment that mentions `progress:` must be a marker.
 COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 MARKER = re.compile(r"<!-- (/?)progress:(generated|judgment)(?: ([a-z][a-z0-9-]*))? -->")
@@ -50,11 +44,14 @@ def close_marker(kind: str) -> str:
 
 @dataclass(frozen=True)
 class Block:
-    """One block of an existing page: its kind, name and the exact text between its markers."""
+    """One block of an existing page: its kind, name and the exact text between its markers,
+    which is `page[start:end]`."""
 
     kind: str
     name: str
     text: str
+    start: int
+    end: int
 
 
 @dataclass(frozen=True)
@@ -92,13 +89,14 @@ def _markers(page: str) -> list[_Marker]:
     return found
 
 
-def parse(page: str, generated: Collection[str]) -> dict[str, Block]:
-    """The blocks of an existing page by name; `generated` is the generated block names known.
+def parse(page: str, generated: Collection[str], judgment: Collection[str]) -> dict[str, Block]:
+    """The blocks of an existing page by name; `generated` and `judgment` are the block names
+    known of each kind (the page layout, page.LAYOUT).
 
     Fails (ProgressReportError) on an unknown or duplicate name, a marker inside a judgment block,
     nested or unbalanced markers, and malformed or unterminated marker comments.
     """
-    known = {GENERATED: generated, JUDGMENT: JUDGMENT_BLOCKS.keys()}
+    known = {GENERATED: generated, JUDGMENT: judgment}
     blocks: dict[str, Block] = {}
     current: _Marker | None = None
     for m in _markers(page):
@@ -129,7 +127,9 @@ def parse(page: str, generated: Collection[str]) -> dict[str, Block]:
                 f"{current.name!r} (line {current.line}) is {current.kind}"
             )
             raise ProgressReportError(msg)
-        blocks[current.name] = Block(current.kind, current.name, page[current.end : m.start])
+        blocks[current.name] = Block(
+            current.kind, current.name, page[current.end : m.start], current.end, m.start
+        )
         current = None
     if current is not None:
         msg = f"line {current.line}: unbalanced marker: block {current.name!r} is never closed"
@@ -159,13 +159,14 @@ def stale_line(text: str | None, run: Run) -> str | None:
     return f"_Written for the run of {written[0]}; not yet updated for this run._"
 
 
-def judgment(name: str, old: dict[str, Block], run: Run) -> str:
-    """Judgment block `name` for the new page: its heading, any stale line, and the old text
-    between its markers byte for byte (the placeholder when the old page has no such block)."""
+def judgment(name: str, heading: str, old: dict[str, Block], run: Run | None) -> str:
+    """Judgment block `name` for the new page: its `heading`, any stale line, and the old text
+    between its markers byte for byte (the placeholder when the old page has no such block).
+    With no `run` (a page with no complete run yet), no stale line is written."""
     block = old.get(name)
     text = block.text if block is not None else None
-    parts = [f"## {JUDGMENT_BLOCKS[name]}"]
-    if (line := stale_line(text, run)) is not None:
+    parts = [f"## {heading}"]
+    if run is not None and (line := stale_line(text, run)) is not None:
         parts.append(line)
     parts.append(
         open_marker(JUDGMENT, name) + (PLACEHOLDER if text is None else text) + close_marker(JUDGMENT)
@@ -176,3 +177,9 @@ def judgment(name: str, old: dict[str, Block], run: Run) -> str:
 def generated(name: str, body: str) -> str:
     """Generated block `name` holding `body`, each marker on its own line."""
     return f"{open_marker(GENERATED, name)}\n{body.strip(chr(10))}\n{close_marker(GENERATED)}"
+
+
+def replace_generated(page: str, block: Block, body: str) -> str:
+    """`page` with generated `block` (from `parse(page, ...)`) holding `body` instead, laid out as
+    `generated` writes it; every byte outside the block's markers is kept."""
+    return page[: block.start] + f"\n{body.strip(chr(10))}\n" + page[block.end :]

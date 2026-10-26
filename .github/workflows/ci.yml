@@ -56,20 +56,54 @@ jobs:
           echo "changed files: $(tr -cd '\0' < "$RUNNER_TEMP/changed" | wc -c), code=$code"
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
+  # Decision 0122: `make test` runs as two shards in parallel (the engine's unit tests took about
+  # 4.5 of the job's 6-7 minutes). `make test-shard-1` and `make test-shard-2` together run exactly
+  # the tests `make test` runs (see the Makefile); fmt and clippy run beside shard 1.
   rust:
-    name: rust (fmt, clippy, test)
+    name: ${{ matrix.shard == 1 && 'rust (fmt, clippy, test 1/2)' || 'rust (test 2/2)' }}
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.run_heavy != 'false' }}
     runs-on: ubuntu-24.04
+    strategy:
+      # Each shard reports its own failures.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.97
         with:
           components: rustfmt, clippy
+      # Shard 1 also caches clippy's artifacts; one key per shard keeps either from overwriting
+      # the other's cache.
       - uses: Swatinem/rust-cache@v2
-      - run: make fmt-check
-      - run: make clippy
-      - run: make test
+        with:
+          key: test-shard-${{ matrix.shard }}
+      - if: matrix.shard == 1
+        run: make fmt-check
+      - if: matrix.shard == 1
+        run: make clippy
+      - run: make test-shard-${{ matrix.shard }}
+
+  # Decision 0122: one stable check name for both shards, so a required check (decision 0053's
+  # list) never names a matrix job. A skipped matrix job reports under its unexpanded name
+  # template, and a shard count change would rename the checks. always(), not !cancelled(): a
+  # skipped required check counts as passed, so a cancelled run must report a failure here.
+  rust-all:
+    name: rust (fmt, clippy, test)
+    needs: [changes, rust]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          RESULT: ${{ needs.rust.result }}
+          RUN_HEAVY: ${{ needs.changes.outputs.run_heavy }}
+        run: |
+          echo "rust shards: $RESULT, run_heavy=$RUN_HEAVY"
+          if [ "$RESULT" = "success" ]; then exit 0; fi
+          # A docs-only PR (decision 0049) skips the shards on purpose.
+          if [ "$RESULT" = "skipped" ] && [ "$RUN_HEAVY" = "false" ]; then exit 0; fi
+          exit 1
 
   eval:
     name: eval (Excel-compatibility gate)
@@ -80,8 +114,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.97
       - uses: Swatinem/rust-cache@v2
-      - run: make eval-check
-      - run: make evidence-floor
+      # Decision 0125: one run of the suites judges both the baseline gate (eval-check) and the
+      # evidence floor; running them as two steps rebuilt the release binary and reran the suites.
+      - run: make eval-gates
       # Decision 0054: the report reruns every suite (about 2.5 min). PRs and merge groups only need it
       # to debug a failed gate; main keeps one per merge.
       - name: Full report (informational)

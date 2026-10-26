@@ -14,14 +14,23 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   --deepen=500 origin main <branch>`), never reset (decision 0055). If it fails, `main` moved since
   the last CI run, and the green CI does not cover the merged result. GitHub's `mergeable_state:
   clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
-  never conflict textually. Merge `origin/main` in, run `make check`, push, and merge only after
-  CI is green on that new head.
+  never conflict textually. Bring `main` in while holding the merge lock (step 2 below; before
+  the lock only per "When to merge `main` in"), and merge only after CI is green on that new head.
+- **When to merge `main` in** (decision 0121): outside the merge lock, merge `origin/main` into a
+  PR branch only (1) to resolve a textual conflict (`mergeable_state: dirty`, or a local test-merge
+  of `origin/main` conflicts; "Merge conflicts" below), or (2) for a known id collision: `main`
+  now holds a task id or decision number the branch also adds (`tasks.py validate` or
+  `check_decisions.py` fails on a local test-merge, or CI on the merged head failed under the
+  lock, in which case release the lock first), and the PR renumbers its own file. Never merge it in only because the branch is behind:
+  `main` moves again before the lock is free, so the merge is wasted and costs a CI run. Behind is
+  handled once, under the lock.
 - **Merge lock** (decision 0075): every merge to `main` is made under the merge lock, so `main`
   cannot move between a PR's green CI and its merge. On a head that meets (a) and (b):
   1. `make merge-lock-acquire PR=<n>`. Exit 1 means another agent holds it (the output names it):
      do other work (your next task) and try again at the PR's next event or check-in, or every few
      minutes while nothing else is waiting; never merge without it.
-  2. Holding it: if the branch is behind, merge `origin/main` in and push. A clean merge needs no
+  2. Holding it: if the branch is behind, merge `origin/main` in and push. For a branch
+     without conflicts this is its only merge of `main` (decision 0121). A clean merge needs no
      local `make check` (CI runs the same gates); a conflict means release first, resolve and run
      `make check` without the lock, push, and start again at 1 once CI is green.
   3. Wait for CI on that head (subscribe or a `Monitor` until-loop, not sleeps). Green: renew
@@ -52,7 +61,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   - it is not a draft, and its task is not `status: blocked`;
   - CI is green on the latest head;
   - the branch passes the up-to-date check above (decision 0028; with the merge queue on, enqueue
-    instead, decision 0053); you may merge `main` in first;
+    instead, decision 0053); you may merge `main` in under the merge lock (step 2), or before it
+    only to fix a conflict or id collision (decision 0121);
   - you have run the `review` skill's applicable reviewers yourself on the current diff
     (`git diff origin/main...origin/<branch>` at the head you will merge) and every one says
     APPROVE. Do not rely on the PR body's table: it records no head sha and may predate later
@@ -68,7 +78,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
   `steward: <YYYY-MM-DD> health` (docs/process/routines.md).
-- **Branch updates**: merge `origin/main` into the branch (never rebase/force-push a pushed branch).
+- **Branch updates**: merge `origin/main` into the branch (never rebase/force-push a pushed branch),
+  and only when "When to merge `main` in" above allows it (decision 0121).
 - **Merge conflicts are never "waiting on CI"** (decision 0020). GitHub runs no CI on a PR that
   conflicts with `main`, so no CI event will ever arrive and waiting deadlocks the PR. Check the
   PR's `mergeable_state` (GitHub MCP `pull_request_read` method `get`; if still `unknown` after one
@@ -81,6 +92,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   If it is `dirty`: `git fetch origin main`, merge `origin/main` into the branch now, resolve
   (keep both sides' features; status-log conflicts keep both lines; regenerate baselines with
   `make eval-baseline` and take `main`'s side of generated files first), run `make check`, push.
+  This needs no lock (decision 0121). A PR that is `clean` or `behind` is left alone until it holds
+  the lock.
   Do the same for a stale open agent PR (an `agent/*` branch only, never a human's branch) from another session whose task is otherwise done
   (a merge commit only, never a rewrite), and say so on that PR. Ask only when both sides changed
   the same logic and either choice loses behavior.
@@ -92,8 +105,19 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   sonnet-sized tasks by the tier rubric (never relabel a task to reach the number).
 - **Visible-parity lock** (decision 0093): task PRs never lower `eval/baseline/visible-parity.json`.
   In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and commit the lower
-  lock with the snapshot. When an open PR conflicts on the lock, take `main`'s side and re-run
-  `make eval-baseline`.
+  lock with the snapshot; "Progress dashboard" below comes next. When an open PR conflicts on the
+  lock, take `main`'s side and re-run `make eval-baseline`.
+- **Progress dashboard** (SPEC-0022, decision 0124): the daily run's order is `make eval`, then
+  `make eval-lower-visible-lock`, then `make progress-report`, then the `progress-report` skill
+  (routine step 2). Run `make progress-report` even when `make eval` failed or a suite was not
+  fetched: the generator then follows SPEC-0022's "Failure handling" (a **Stale** banner in
+  `status`, the last good numbers everywhere else, a `complete: false` row in
+  docs/progress/history.json, exit 0). A non-zero exit (malformed history.json or markers, a
+  catalog mismatch) is not a stale run: fix its cause. Write the judgment blocks with the
+  `progress-report` skill until `cd tools && uv run rustsheet-progress-report --check` passes, and
+  commit docs/progress.md and docs/progress/ in the `steward: <date> health` PR. Per-suite, parity,
+  Phase 1 and milestone-exit numbers live on the dashboard, not in docs/status.md, whose snapshot
+  links it on its first line.
 - **Generated files**: never hand-edit `eval/baseline/*.txt` or `quality/*.json`; regenerate with
   `make eval-baseline` and the `scripts/check_*.py --update` commands. `docs/tasks/BOARD.md` is
   git-ignored and never committed (decision 0017).
@@ -132,13 +156,18 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
-- **Fifteen-digit parity checkpoint** (decision 0094, T-0062): after `make eval`, copy the bold
-  "Fifteen-digit parity: ..." line from the "Fifteen-digit parity checkpoint" section of
-  `eval/runs/latest/report.md` (report.json: `v15_checkpoint`) into the docs/status.md scoreboard,
-  and say whether the previous run's line also read "met". The checkpoint is reached only when two
-  consecutive runs are met. Copy the section's "Phase 1 (decision 0114): ..." line beside it: it
-  counts the in-scope functions at ≥ 99.9% within 15 digits, which is the Phase 1 exit. When you add
-  the `**Phase 1:** exited` line, remove `defer: phase-1b` from every task in the same PR.
+- **Fifteen-digit parity checkpoint** (decision 0094, T-0062): the dashboard's `goals` block shows
+  the "Fifteen-digit parity: ..." line (report.json: `v15_checkpoint`); do not copy it, or the
+  "Phase 1 (decision 0114): ..." line, into docs/status.md (decision 0118). The checkpoint is
+  reached only when two consecutive complete runs are met: read whether the previous run was also
+  met from the last complete row (`complete: true`) of docs/progress/history.json before today's,
+  its `v15.met`. The Phase 1 measure counts the in-scope functions at ≥ 99.9% of their attributed
+  Excel cells within 15 digits (decision 0118).
+- **Phase 1 exit** (decision 0114 item 3): add the line `**Phase 1:** exited <YYYY-MM-DD>` to
+  docs/status.md when `v15_checkpoint.phase1_met` in `eval/runs/latest/report.json` is true (the
+  dashboard's `goals` block shows it) and the rest of docs/milestones.md's Phase 1 exit holds; no
+  Phase 1 line in docs/status.md is read for this. In the same PR, remove `defer: phase-1b` from
+  every task.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.
 - **Review-round limit** (decision 0095): list every PR whose task is `Blocked because: review-round
