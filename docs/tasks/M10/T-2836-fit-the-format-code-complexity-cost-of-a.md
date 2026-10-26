@@ -22,7 +22,8 @@ costs 14 and a currency tag is quoted text of its symbol plus 13 (and +4 for the
 accepts each of these one `$` too long, or more for `[$-409]`. No additive `$` cost fits both: `[$-409]` needs
 f(233) >= 237, while the currency tags need f(230) <= 231. The only `$` evidence before this is `"d"&REPT("$",160)`
 works and `REPT("$",250)` fails (probes/text-format-length-limit-d, -e), so probe a bare `$` ladder (`REPT("$",n)` and
-`"d"&REPT("$",n)` near the limit) and `[$-409]` + 225..232 `$` first (excel-probe skill).
+`"d"&REPT("$",n)` near the limit) and `[$-409]` + 225..232 `$` first (excel-probe skill). Add two inferences of T-2812 to the batch: `[$USD]` + 70..80
+spaces (the +4 after a multi-character symbol) and `[$€-F800]` + quoted near 117 (a system-locale tag's locale priced at 0).
 Cells (Excel #VALUE!, ours the text):
 - probes/t2812-currency-tag-cost S!A3 `[$€-40C]` + 231 `$`, S!A11 `[$€]` + 231 `$`, S!A31 `[$USD]` + 227 `$`.
 - probes/t2812-currency-tag-cost S!A17, S!A18, S!A19, S!A20: `[$-409]` + 233 to 236 `$`.
