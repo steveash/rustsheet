@@ -3,7 +3,7 @@ id: T-2732
 title: "Oracle sweep: PRICE, DURATION and MDURATION at extreme coupon rates and yields (coupon 1E+2..1E+300, yield 1..1E+5) for T-2733"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
