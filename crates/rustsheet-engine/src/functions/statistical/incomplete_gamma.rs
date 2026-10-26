@@ -66,8 +66,9 @@ pub(crate) const MAX_TERMS: u32 = 1 << 19;
 /// The most continued-fraction terms one cdf of shape `a` may take: 256 + 32 * cbrt(a), past
 /// which the cdf is NaN, as past [`MAX_TERMS`]. The fraction is used for x >= a + 1 and needs
 /// most terms at x just above a + 1, about 10 * cbrt(a) for a above 10 and at most 110 below
-/// (T-2795 sweep: shapes 1E-3 to 1.6E15, 4,200 x each; 1,064,339 terms at 1.6E15), so the budget
-/// is at least twice what any cdf the cap keeps needs and changes no value. It gives the cdf a
+/// (T-2795 sweep, run once: shapes 1E-3 to 1.6E15, 4,200 x each; 1,064,339 terms at 1.6E15), so
+/// the budget is at least twice what any cdf the cap keeps needs and changes no value. The unit
+/// test `the_continued_fraction_stays_within_half_its_budget` keeps that for shapes up to 1E10. It gives the cdf a
 /// bound from its shape alone ([`cdf_terms_bound`]), which the lifting table charges by value.
 fn continued_fraction_budget(a: f64) -> u32 {
     let budget = 256.0 + 32.0 * a.cbrt();
@@ -102,6 +103,11 @@ pub(crate) fn cdf_terms_bound(a: f64) -> u32 {
     };
     series.max(continued_fraction_budget(a)).min(MAX_TERMS)
 }
+
+/// The cdfs one inversion ([`gamma_quantile`]) runs at most: statrs' search (1,075 halvings,
+/// 1,025 doublings, 8 bisections, 4 Newton steps), then one check and at most 129 more of the
+/// refinement (T-1634, T-1872). The lifting table charges an inversion by it (T-2795).
+pub(crate) const INVERSION_CDFS: u32 = 2_250;
 
 /// The terms a cdf or an inversion has left. Once spent, the cdf in progress is NaN.
 struct Terms(u32);
@@ -917,8 +923,9 @@ mod tests {
         let mut a: f64 = 1e-3;
         while a < 1e10 {
             let step = a.sqrt().max(1.0) * 0.05;
-            for k in 0..60 {
-                let x = a + 1.0 + f64::from(k) * step;
+            let near = (0..60).map(|k| a + 1.0 + f64::from(k) * step);
+            let far = [10.0, 1e3, 1e5].map(|k| a + 1.0 + k * a.sqrt().max(1.0));
+            for x in near.chain(far) {
                 let mut terms = Terms(MAX_TERMS);
                 let (p, _) = incomplete_gamma_pair(a, x, &mut terms);
                 assert!(!p.is_nan(), "a = {a:e}, x = {x:e}");

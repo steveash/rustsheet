@@ -1,9 +1,9 @@
 ---
 id: T-2795
-title: "Lifted incomplete-gamma, quantile and AMORDEGRC/ODDFYIELD calls charged the cap's bound: #ERROR! where Excel spills (gen-m9, 6 cells)"
+title: "Lifted incomplete-gamma calls charged the cap's bound: #ERROR! where Excel spills (gen-m9, 4 cells; ODDFYIELD and AMORDEGRC split to T-2815)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -12,7 +12,7 @@ campaign: semantics
 ---
 
 ## Goal
-A lifted CHIDIST, CHISQ.INV.RT, GAMMADIST, POISSON, ODDFYIELD or AMORDEGRC over an array of a few hundred elements (a
+A lifted CHIDIST, CHISQ.INV.RT, GAMMADIST or POISSON (ODDFYIELD and AMORDEGRC: T-2815) over an array of a few hundred elements (a
 PIVOTBY or FILTER result) returns its array, as Excel does (`#SPILL!` in these cells' layout), instead of `#ERROR!`
 from the per-call lift budget, while each lifted call keeps a provable work bound (directive 5).
 
@@ -45,13 +45,12 @@ Owned gen-m9 cells (from T-2433's triage list; Excel `#SPILL!` unless noted, our
 - gen-m9/e8d55ec393460bb7 Calc!A10 `=AMORDEGRC(56947,_xlfn.PIVOTBY(..),39763,716,2,PMT(100,271,417889,43,0),1.9)`
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9): the 4 incomplete-gamma known-failure lines above (A56, A204, A199, A121) disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9): the 4 incomplete-gamma known-failure lines above (A56, A204, A199, A121) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Each changed charge is a bound of its element's work (proved, or enforced by the kernel's own budget), measured
-      with crates/rustsheet/benches/lift.rs at its new element cap, and the DEVIATION entries (statistics.md
-      "Incomplete gamma: per-call cap and lifting", financial.md "AMORLINC and AMORDEGRC work cap") say how an element
-      is charged.
-- [ ] `make check` green; reviewers approve.
+- [x] Each changed charge is a bound of its element's work (proved, or enforced by the kernel's own budget), measured
+      with crates/rustsheet/benches/lift.rs at its new element cap, and the DEVIATION entry (statistics.md
+      "Incomplete gamma: per-call cap and lifting") says how an element is charged (financial.md: T-2815).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - ODDFYIELD and AMORDEGRC (ba4ddb817a8e700e A323, e8d55ec393460bb7 A10): split to T-2815.
@@ -59,3 +58,20 @@ Owned gen-m9 cells (from T-2433's triage list; Excel `#SPILL!` unless noted, our
 
 ## Visible-parity stage
 Decision 0083: every cell this task owns has the wrong type or error, so the task is in the campaign.
+
+## Outcome
+The incomplete-gamma entries (CHISQ.*, CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON,
+POISSON.DIST) are charged by value (`ValueWork::IncompleteGamma`) instead of the flat 2^18 an element:
+- A cdf of shape at most a takes at most `incomplete_gamma::cdf_terms_bound(a)` terms. The power series' a + 58 is
+  proved, and the small-shape Q series adds 20. The continued fraction now has a budget of 256 + 32 * cbrt(a) terms,
+  enforced by the kernel. A one-off sweep of shapes 1E-3 to 1.6E15 needed at most about 10 * cbrt(a) terms (110 below
+  a = 10), and a unit test keeps the 2x headroom for shapes up to 1E10. No value changes.
+- An element is charged in proportion to that bound at the measured 4.7 ns a term and 49 ns a cdf, at most 2^18.
+- An element with an error argument, or an inversion whose probability is outside (0, 1), a logical or a blank, is
+  charged 1, because every kernel reads its arguments first. A text shape or probability is charged 2^18.
+- An inversion is charged 2,250 cdfs within its 2^19-term budget, so in practice it keeps the full weight.
+- `CHIDIST(x,5)` costs 150 units, so a lift of it runs up to 894,784 elements. The new bench case
+  "CHIDIST, df 5 at the continued fraction's slowest x" covers it.
+Eval delta: gen-m9 -4 known failures, 0 regressions: c2974c061384fdd9 A56, 3e98b26cf6713e77 A204,
+ee2497a5e683c5d9 A199 and 589f42e67f4b4b8d A121 now match Excel.
+Follow-up: T-2815 (ODDFYIELD's off-calendar date and AMORDEGRC's text elements, 2 cells).

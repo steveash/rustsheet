@@ -146,7 +146,8 @@ const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(
 /// at the bound (a DEVIATION, statistics.md). Measured cases cost less: 2.4 ms for the
 /// continued fraction at the cap, 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)` (481,117 terms),
 /// 1.6 us for `GAMMA.INV(0.4,2,3)`. It is the most an element is charged; each is charged by
-/// its shape below it (`incomplete_gamma`, T-2795).
+/// its shape below it (`incomplete_gamma`, T-2795, at the 4.7 ns and 49 ns above:
+/// `INCOMPLETE_GAMMA_TERM_COST` and `INCOMPLETE_GAMMA_CDF_COST` in mod.rs).
 const INCOMPLETE_GAMMA_WEIGHT: u32 = 1 << 18;
 /// An incomplete-gamma entry charged by value (T-2795): at most `INCOMPLETE_GAMMA_WEIGHT` an
 /// element, in proportion to the bound of its shape (`ValueWork::IncompleteGamma`), so a lift

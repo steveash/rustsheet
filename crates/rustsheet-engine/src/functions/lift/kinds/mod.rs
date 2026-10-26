@@ -122,7 +122,7 @@ pub(crate) enum ValueWork {
     /// probability argument), over the first `args` arguments, at most `weight` units (T-2795).
     /// A cdf takes at most `incomplete_gamma::cdf_terms_bound(a)` terms for a shape of at most
     /// `a`, which argument `shape` bounds as `shape_of` says; an inversion runs at most
-    /// [`INCOMPLETE_GAMMA_INVERSION_CDFS`] cdfs, all within one budget of `MAX_TERMS` terms. An
+    /// `incomplete_gamma::INVERSION_CDFS` cdfs, all within one budget of `MAX_TERMS` terms. An
     /// element is charged 1 when an argument is an error, or a probability is a number outside
     /// (0, 1), a logical or a blank: the kernel returns before any cdf. A text shape or
     /// probability is charged `weight`, as it may read as any number. See
@@ -148,14 +148,9 @@ pub(crate) enum GammaShape {
     PoissonCount,
 }
 
-/// The cdfs one incomplete-gamma inversion runs at most: statrs' search (1,075 halvings, 1,025
-/// doublings, 8 bisections, 4 Newton steps), then one check and at most 129 more of the
-/// refinement (`incomplete_gamma::gamma_quantile`, T-1634, T-1872).
-pub(crate) const INCOMPLETE_GAMMA_INVERSION_CDFS: u64 = 2_250;
-
 /// The measured cost, in tenths of a nanosecond, of one incomplete-gamma term at its slowest
-/// (4.7 ns, the continued fraction's NaN path) and of one cdf's own work beside its terms (49 ns),
-/// release build (T-1872; statistical.rs `INCOMPLETE_GAMMA_WEIGHT`).
+/// (the continued fraction's NaN path) and of one cdf's own work beside its terms, release build:
+/// the figures statistical.rs `INCOMPLETE_GAMMA_WEIGHT` is derived from (T-1872).
 const INCOMPLETE_GAMMA_TERM_COST: u64 = 47;
 const INCOMPLETE_GAMMA_CDF_COST: u64 = 490;
 
@@ -364,7 +359,7 @@ impl ValueWork {
                     GammaShape::PoissonCount => v + 1.0,
                 };
                 let cdfs = if probability.is_some() {
-                    INCOMPLETE_GAMMA_INVERSION_CDFS
+                    u64::from(incomplete_gamma::INVERSION_CDFS)
                 } else {
                     1
                 };
@@ -376,7 +371,7 @@ impl ValueWork {
 
 /// The units one incomplete-gamma element of shape at most `a` running at most `cdfs` cdfs is
 /// charged: `weight` in proportion of its terms and cdfs at their measured costs to the bound
-/// `weight` stands for (`MAX_TERMS` terms and [`INCOMPLETE_GAMMA_INVERSION_CDFS`] cdfs), plus 1,
+/// `weight` stands for (`MAX_TERMS` terms and `incomplete_gamma::INVERSION_CDFS` cdfs), plus 1,
 /// at most `weight`. A NaN shape is charged `weight`.
 fn incomplete_gamma_units(a: f64, cdfs: u64, weight: u32) -> u64 {
     let max_terms = u64::from(incomplete_gamma::MAX_TERMS);
@@ -388,7 +383,7 @@ fn incomplete_gamma_units(a: f64, cdfs: u64, weight: u32) -> u64 {
     let terms = per_cdf.saturating_mul(cdfs).min(max_terms);
     let cost = terms * INCOMPLETE_GAMMA_TERM_COST + cdfs * INCOMPLETE_GAMMA_CDF_COST;
     let bound = max_terms * INCOMPLETE_GAMMA_TERM_COST
-        + INCOMPLETE_GAMMA_INVERSION_CDFS * INCOMPLETE_GAMMA_CDF_COST;
+        + u64::from(incomplete_gamma::INVERSION_CDFS) * INCOMPLETE_GAMMA_CDF_COST;
     let weight = u64::from(weight);
     (1 + (weight * cost).div_ceil(bound)).min(weight)
 }
