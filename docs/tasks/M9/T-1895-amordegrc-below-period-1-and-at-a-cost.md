@@ -65,3 +65,9 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (AMORDEGRC 0 or a different 13th-15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083).
+
+## Progress (in flight, 2026-10-26)
+- Done on this branch, not yet checked or reviewed: `amor_round` skips its 13-decimal pre-round when `x * 1e13`
+  overflows. fin-amor-period-bound-b B2 is now 1.9470044346591894E302, Excel 1.94700443465919E302: 15-digit
+  (visible) parity, 1 ulp off at the bit level. Still to do: a unit test, a financial.md note, `make check`.
+- Untouched: B17 (period 0.5) and fin-amor-period-bound-c A1, A3-A5 (closed-form drift, still NumericClose).
