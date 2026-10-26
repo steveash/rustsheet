@@ -96,7 +96,8 @@ enum Cmd {
         #[command(flatten)]
         sel: Selection,
         /// Also judge the evidence floor (as `evidence-floor` does) from the same run: the other
-        /// vendored suites run beside the gate suites, once (T-2753).
+        /// vendored suites run beside the gate suites, once (T-2753). `--timeout` applies to the
+        /// whole run; standalone `evidence-floor` uses the 60 s default, as `make eval-gates` does.
         #[arg(long)]
         evidence_floor: bool,
     },
