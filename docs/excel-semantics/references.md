@@ -455,10 +455,18 @@ reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and
 `#N/A` on such a sheet. XLOOKUP searches one cell of it as a one-cell vector of its `#BLOCKED!`, as it
 searches a range, so it finds nothing (`uncached_cell_vector`). COUNTA counts every cell of it
 (`external_blocked_count`). The importer keeps the sheets marked `refreshError`
-(`ExternalBook::refresh_error_sheets`), and a cell of one reads `#REF!` (T-0472). Not yet matched: whole
-columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
-Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
-Tasks: T-0457, T-0472
+(`ExternalBook::refresh_error_sheets`), and a cell of one reads `#REF!` (T-0472). VLOOKUP, HLOOKUP and
+MATCH read a range of several cells of a cached sheet in place (`LookupTable::External`,
+`Model::cached_external_lookup_area`) instead of building it as an array, so whole columns and rows
+match B17, B21, B49 and B50 (T-0474). The search vector keeps the area's full length (the cached
+cells, then an empty tail), as a whole column of this workbook does; a vector cut to the cache's
+extent would move the approximate search's midpoints (lookup.md "Approximate match"). UNVERIFIED, a hand
+expectation awaiting an oracle cell (T-0479): an approximate whole-column lookup over an unsorted cached
+column (cache 1,5,2,9,3) is the local result. `VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)` is 1 in the engine, as
+over a local whole column, and a unit test pins that in test_external_links.rs.
+Status: VERIFIED for the oracle cells above (excel-graph only; no desktop evidence, decision 0030); the
+unsorted approximate case is UNVERIFIED
+Tasks: T-0457, T-0472, T-0474, T-0479
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
