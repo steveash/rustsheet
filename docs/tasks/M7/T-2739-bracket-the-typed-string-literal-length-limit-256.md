@@ -3,7 +3,7 @@ id: T-2739
 title: "Bracket the typed string-literal length limit: 256 characters are accepted, 7,996 refused"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
