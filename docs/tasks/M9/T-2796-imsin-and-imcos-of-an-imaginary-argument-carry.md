@@ -19,7 +19,7 @@ IMSIN and IMCOS of an imaginary or near-imaginary argument print Excel's digits,
   sinh and cosh as (1/u ∓ u)/2"). Ours: "-27.2899171971277i", from `exp_sinh_cosh(-4)` = `(EXP(-4) - EXP(4))/2`.
 - IMSIN's own sinh is the EXP pair elsewhere: `IMSIN("1E-200+1E-200i")` is "1E-200" and `IMCOS("1.5E+2-2E-3i")` needs
   the EXP form (engineering.md, T-2535), so a plain switch to `inverse_exp_sinh_cosh` may regress them. Hypothesis to
-  test first: IMSIN(z) = -i·IMSINH(iz) for a zero real part only, or the `1/EXP(-y)` kernel over |y| in its band.
+  test first: IMSIN(z) = -i·IMSINH(i·z) for a zero real part only, or the `1/EXP(-y)` kernel over |y| in its band.
 - The other C/D cells of that probe (`IMSIN("4i")`, `"±12i"`, `"±0.01i"`, IMCOS) pass; probe more imaginary-axis and
   mixed arguments before refitting.
 - Code: `imsin`, `imcos`, `exp_sinh_cosh` in crates/rustsheet-engine/src/functions/engineering/complex/trig.rs.
