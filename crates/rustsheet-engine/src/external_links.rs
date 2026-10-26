@@ -57,7 +57,7 @@ pub struct ExternalBook {
 
 /// A sheet of a linked workbook that the externalLink cache holds: the index of its book in
 /// [`Workbook::external_books`](crate::types::Workbook) and its own index in that book.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct CachedSheet {
     book: usize,
     sheet: u32,
@@ -479,19 +479,48 @@ impl Model {
         }
     }
 
-    /// How many leading rows (`down`) or columns of `area` reach the cells its cache holds: every
-    /// cell after them is empty, as every cell past a sheet's last used row is
-    /// (`Model::range_search_vector`).
+    /// How many leading rows (`down`) or columns of `area` reach the cells its cache holds along
+    /// its first column (`down`) or row: every cell after them is empty, as every cell past a
+    /// sheet's last used row is (`Model::range_search_vector`). Costs the smaller of that line's
+    /// length and the book's cached cells, so neither a long line nor a large cache is walked
+    /// for a short one (CLAUDE.md directive 5).
     pub(crate) fn external_cached_len(&self, area: ExternalArea, down: bool) -> usize {
-        let Some(extent) = area.cache.and_then(|sheet| self.cached_extent(sheet)) else {
+        let Some((sheet, book)) = area
+            .cache
+            .and_then(|sheet| Some((sheet, self.workbook.external_books.get(sheet.book)?)))
+        else {
             return 0;
         };
-        let (first, last, cached) = if down {
-            (area.first_row, area.last_row, extent.last_row)
-        } else {
-            (area.first_column, area.last_column, extent.last_column)
-        };
-        usize::try_from(last.min(cached) - first + 1).unwrap_or(0)
+        let (rows, columns) = area.extent();
+        let len = if down { rows } else { columns };
+        if len <= book.cells.len() {
+            return len;
+        }
+        book.cells
+            .keys()
+            .filter_map(|&(index, row, column)| {
+                let (along, across, first, last, line) = if down {
+                    (
+                        row,
+                        column,
+                        area.first_row,
+                        area.last_row,
+                        area.first_column,
+                    )
+                } else {
+                    (
+                        column,
+                        row,
+                        area.first_column,
+                        area.last_column,
+                        area.first_row,
+                    )
+                };
+                (index == sheet.sheet && across == line && (first..=last).contains(&along))
+                    .then(|| usize::try_from(along - first + 1).unwrap_or(0))
+            })
+            .max()
+            .unwrap_or(0)
     }
 
     /// The rows and columns of `sheet` its cached cells span, `None` when it holds none.

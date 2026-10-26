@@ -715,3 +715,23 @@ fn whole_column_lookups_keep_full_length() {
     // The answer full length gives over this unsorted column, not the 2 a cut vector would.
     assert_eq!(eval(&mut model, "=VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)"), "1");
 }
+
+// Lookups of one pass into the same long cached column share one search vector (search_cache.rs):
+// each still finds its own key, exact or approximate.
+#[test]
+fn whole_column_lookups_share_the_cached_vector() {
+    let mut model = linked();
+    let book = &mut model.workbook.external_books[0];
+    book.cells.clear();
+    book.cells
+        .extend((1..=100).map(|row| ((0, row, 1), SpillValue::Number(f64::from(row) * 2.0))));
+    model._set("C1", "=MATCH(40,[1]Uses!$A:$A,0)");
+    model._set("C2", "=MATCH(41,[1]Uses!$A:$A)");
+    model._set("C3", "=VLOOKUP(200,[1]Uses!$A:$B,1,FALSE)");
+    model._set("C4", "=MATCH(1,[1]Uses!$A:$A,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "20");
+    assert_eq!(model._get_text("C2"), "20");
+    assert_eq!(model._get_text("C3"), "200");
+    assert_eq!(model._get_text("C4"), "#N/A");
+}

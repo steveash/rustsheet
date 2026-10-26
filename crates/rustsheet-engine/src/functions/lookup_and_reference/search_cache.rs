@@ -19,6 +19,9 @@
 //!   passes stop at unevaluated reads; neither caches. Outside a pass (data tables, conditional
 //!   formats) nothing is cached either.
 //!
+//! A range of a linked workbook's cache (`LookupTable::External`, T-0474) reads values that never
+//! change during a pass, so its vector is cached whenever caching is safe at all.
+//!
 //! Directive 5: the cached cells across all ranges are capped at [`MAX_CACHED_CELLS`], beyond
 //! which lookups walk as before. A vector's two exact-match indexes add at most one key per cell
 //! each (for text, its folded units or collation key), so a cached vector with both built takes
@@ -28,6 +31,8 @@ use std::collections::HashMap;
 
 use crate::evaluation::KeyBuild;
 use crate::expressions::types::CellReferenceIndex;
+use crate::external_links::CachedSheet;
+use crate::external_reference::ExternalArea;
 use crate::model::Model;
 
 use super::lookup_table::SearchVector;
@@ -49,6 +54,9 @@ struct VectorKey {
     len: usize,
     /// Down a column, else along a row.
     down: bool,
+    /// The linked workbook's cached sheet the range is on, `None` for this workbook's (`left`
+    /// and `end` then hold 0 for the sheet).
+    linked: Option<CachedSheet>,
 }
 
 /// The search vectors built in the current pass, by range.
@@ -88,6 +96,7 @@ impl Model {
             end: (end.sheet, end.row, end.column),
             len,
             down,
+            linked: None,
         };
         let cacheable = cells >= MIN_CACHED_CELLS && self.pass_cache_safe();
         if cacheable {
@@ -106,6 +115,48 @@ impl Model {
             && !self.any_circular(left, end)
         {
             let cache = &mut self.evaluation.search_cache;
+            cache.cells += cells;
+            cache.vectors.insert(key, vector.clone());
+        }
+        vector
+    }
+
+    /// The first column (`down`) or row of a linked workbook's cached `area`: its cells up to the
+    /// last one the cache holds, then an empty tail to the area's full length, so every search
+    /// probes the positions it would over a range of this workbook (T-0474). From this pass's
+    /// cache when it is there (module docs).
+    pub(super) fn external_search_vector(
+        &mut self,
+        area: ExternalArea,
+        down: bool,
+        cell: CellReferenceIndex,
+    ) -> SearchVector {
+        let (rows, columns) = area.extent();
+        let len = if down { rows } else { columns };
+        let key = VectorKey {
+            left: (0, area.first_row, area.first_column),
+            end: (0, area.first_row, area.first_column),
+            len,
+            down,
+            linked: area.cache,
+        };
+        let cacheable = self.pass_cache_safe();
+        if cacheable {
+            if let Some(vector) = self.evaluation.search_cache.vectors.get(&key) {
+                return vector.clone();
+            }
+        }
+        let cells = self.external_cached_len(area, down).min(len);
+        let values = (0..cells)
+            .map(|i| {
+                let i = i32::try_from(i).unwrap_or(i32::MAX);
+                let (row, column) = if down { (i, 0) } else { (0, i) };
+                self.external_area_cell(area, row, column, cell)
+            })
+            .collect();
+        let vector = SearchVector::with_len(values, len);
+        let cache = &mut self.evaluation.search_cache;
+        if cacheable && cells >= MIN_CACHED_CELLS && cache.cells + cells <= MAX_CACHED_CELLS {
             cache.cells += cells;
             cache.vectors.insert(key, vector.clone());
         }

@@ -98,7 +98,7 @@ impl LookupTable {
                 };
                 model.range_search_vector(left, &end, false)
             }
-            LookupTable::External(area) => external_search_vector(model, *area, false, cell),
+            LookupTable::External(area) => model.external_search_vector(*area, false, cell),
             LookupTable::Array(_) => SearchVector::new(
                 (0..self.columns())
                     .map(|column| self.get(model, 0, column, cell))
@@ -117,7 +117,7 @@ impl LookupTable {
                 };
                 model.range_search_vector(left, &end, true)
             }
-            LookupTable::External(area) => external_search_vector(model, *area, true, cell),
+            LookupTable::External(area) => model.external_search_vector(*area, true, cell),
             LookupTable::Array(_) => SearchVector::new(
                 (0..self.rows())
                     .map(|row| self.get(model, row, 0, cell))
@@ -125,28 +125,6 @@ impl LookupTable {
             ),
         }
     }
-}
-
-/// The first column (`down`) or row of a linked workbook's cached `area`: its cells up to the
-/// cache's last row or column, then an empty tail to the area's full length, so every search
-/// probes the positions it would over a range of this workbook (T-0474).
-fn external_search_vector(
-    model: &Model,
-    area: ExternalArea,
-    down: bool,
-    cell: CellReferenceIndex,
-) -> SearchVector {
-    let (rows, columns) = area.extent();
-    let len = if down { rows } else { columns };
-    let cached = model.external_cached_len(area, down).min(len);
-    let values = (0..cached)
-        .map(|i| {
-            let i = i32::try_from(i).unwrap_or(i32::MAX);
-            let (row, column) = if down { (i, 0) } else { (0, i) };
-            model.external_area_cell(area, row, column, cell)
-        })
-        .collect();
-    SearchVector::with_len(values, len)
 }
 
 /// What every cell past the used area of a sheet evaluates to.
