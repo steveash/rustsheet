@@ -940,6 +940,7 @@ C	probes/roman-lift-forms.case.json	20
 C	probes/round-concat-array-edges.case.json	25
 C	probes/round-concat-array-lift.case.json	14
 C	probes/round-family.case.json	53
+C	probes/round-float-noise-carry.case.json	2
 C	probes/round-huge-digits-carry.case.json	6
 C	probes/round-huge-digits-negative.case.json	91
 C	probes/round-huge-digits-wrap.case.json	265
