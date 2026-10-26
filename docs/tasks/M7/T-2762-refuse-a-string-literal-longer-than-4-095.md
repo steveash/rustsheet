@@ -3,7 +3,7 @@ id: T-2762
 title: "Refuse a string literal longer than 4,095 characters, typed and stored, as Excel does"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
