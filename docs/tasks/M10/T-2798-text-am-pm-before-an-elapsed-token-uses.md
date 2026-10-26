@@ -19,7 +19,4 @@ probes/text-elapsed-two-tokens.case.json S!A13 (excel-graph "PM 12", engine "PM 
 ## Acceptance criteria
 - [ ] S!A13 passes and leaves eval/baseline/probes.txt; probe other elapsed tokens (`AM/PM [mm]`, `[s]`) first.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
-## Out of scope
--

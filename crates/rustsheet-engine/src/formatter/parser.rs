@@ -370,6 +370,7 @@ impl Parser {
         // number-formats.md "Elapsed-time tokens"). `m` after `[m]` is unprobed and stays a clock
         // minute.
         let mut elapsed_hour = false;
+        // Bracketed `[h]`/`[m]`/`[s]` tokens so far (a bare `h` after `[h]` is not one).
         let mut bracketed_elapsed = 0_usize;
         let mut elapsed_second = false;
         // Whether a bare (unquoted, unescaped) digit 1-9 was read: it is a literal, but not beside
@@ -714,9 +715,7 @@ impl Parser {
                     tokens.push(TextToken::AMPM);
                 }
                 Token::AP(am, pm) => {
-                    // Excel: a bracketed elapsed token before the marker is #VALUE! (`[ss] AM/PM`,
-                    // `[h] AM/PM`, `[mm] AM/PM`, `[s] A/P`) but the marker first is valid
-                    // (`AM/PM [h]` on 1.5 is "PM 12"; probes/text-elapsed-two-tokens A1, A9-A11, A13).
+                    // As for `AM/PM` above: an elapsed token before the marker is #VALUE!.
                     if bracketed_elapsed > 0 {
                         return ParsePart::Error(ErrorPart::default());
                     }
