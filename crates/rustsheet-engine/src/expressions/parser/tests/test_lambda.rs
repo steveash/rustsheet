@@ -17,6 +17,14 @@ fn parser() -> crate::expressions::parser::Parser {
     new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new())
 }
 
+/// `formula` parsed, without the whitespace written in it: the tree evaluation reads (SPEC-0023),
+/// so the tests below compare LAMBDA shapes, whatever spacing they are typed with.
+fn parse_unspaced(p: &mut crate::expressions::parser::Parser, formula: &str) -> Node {
+    let mut node = p.parse(formula, &cell());
+    node.strip_spaces();
+    node
+}
+
 // Helper that builds the SQRT(a*a + b*b) node used in several tests.
 fn sqrt_aa_bb() -> Node {
     Node::FunctionKind {
@@ -52,7 +60,7 @@ fn sqrt_aa_bb() -> Node {
 #[test]
 fn lambda_simple() {
     let mut p = parser();
-    let t = p.parse("LAMBDA(a,b, SQRT(a*a+b*b))", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(a,b, SQRT(a*a+b*b))");
     let expected = Node::LambdaDefKind {
         parameters: vec![
             NamedVariable {
@@ -74,7 +82,7 @@ fn lambda_simple() {
 #[test]
 fn lambda_simple_optional() {
     let mut p = parser();
-    let t = p.parse("LAMBDA(a, [b], SQRT(a*a+b*b))", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(a, [b], SQRT(a*a+b*b))");
     let expected = Node::LambdaDefKind {
         parameters: vec![
             NamedVariable {
@@ -96,7 +104,7 @@ fn lambda_simple_optional() {
 #[test]
 fn lambda_called_immediately() {
     let mut p = parser();
-    let t = p.parse("LAMBDA(a,b, SQRT(a*a+b*b))(3,4)", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(a,b, SQRT(a*a+b*b))(3,4)");
     let expected = Node::LambdaCallKind {
         lambda: Box::new(Node::LambdaDefKind {
             parameters: vec![
@@ -121,7 +129,7 @@ fn lambda_called_immediately() {
 #[test]
 fn lambda_called_immediately_with_lambda_as_parameter() {
     let mut p = parser();
-    let t = p.parse("LAMBDA(f, f(3,4))(LAMBDA(a,b, SQRT(a*a+b*b)))", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(f, f(3,4))(LAMBDA(a,b, SQRT(a*a+b*b)))");
     let expected = Node::LambdaCallKind {
         lambda: Box::new(Node::LambdaDefKind {
             parameters: vec![NamedVariable {
@@ -157,7 +165,7 @@ fn lambda_called_immediately_with_lambda_as_parameter() {
 #[test]
 fn lambda_in_let() {
     let mut p = parser();
-    let t = p.parse("LET(x, LAMBDA(a, a*a), x(2))", &cell());
+    let t = parse_unspaced(&mut p, "LET(x, LAMBDA(a, a*a), x(2))");
     let expected = Node::FunctionKind {
         kind: Function::Let,
         args: vec![
@@ -197,7 +205,7 @@ fn lambda_in_let() {
 fn lambda_no_params_just_body() {
     // LAMBDA with a single argument: 0 params, the argument is the body.
     let mut p = parser();
-    let t = p.parse("LAMBDA(42)", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(42)");
     let expected = Node::LambdaDefKind {
         parameters: vec![],
         body: Box::new(Node::NumberKind(42.0)),
@@ -208,7 +216,7 @@ fn lambda_no_params_just_body() {
 #[test]
 fn lambda_empty_is_parse_error() {
     let mut p = parser();
-    let t = p.parse("LAMBDA()", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA()");
     assert!(
         matches!(t, Node::ParseErrorKind { .. }),
         "LAMBDA() should be a parse error, got {t:?}"
@@ -219,7 +227,7 @@ fn lambda_empty_is_parse_error() {
 fn lambda_non_name_parameter_is_parse_error() {
     // LAMBDA(1, 2, 1+2) — the first param is a number literal, not a name.
     let mut p = parser();
-    let t = p.parse("LAMBDA(1, 2, 1+2)", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(1, 2, 1+2)");
     assert!(
         matches!(t, Node::ParseErrorKind { .. }),
         "LAMBDA with numeric param should be a parse error, got {t:?}"
@@ -230,7 +238,7 @@ fn lambda_non_name_parameter_is_parse_error() {
 #[test]
 fn lambda_optional_called_with_one_arg() {
     let mut p = parser();
-    let t = p.parse("LAMBDA(a, [b], a+1)(12)", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(a, [b], a+1)(12)");
     let expected = Node::LambdaCallKind {
         lambda: Box::new(Node::LambdaDefKind {
             parameters: vec![
@@ -264,7 +272,7 @@ fn lambda_r_and_c_parameters() {
     // r and c must be valid LAMBDA parameter names (they are not restricted
     // to R1C1 notation in A1 mode when used as formula identifiers).
     let mut p = parser();
-    let t = p.parse("LAMBDA(r, c, r+c)", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(r, c, r+c)");
     let expected = Node::LambdaDefKind {
         parameters: vec![
             NamedVariable {
@@ -299,7 +307,7 @@ fn lambda_r_and_c_parameters() {
 #[test]
 fn sin_is_not_immediately_invocable() {
     let mut p = parser();
-    let t = p.parse("SIN(x)(3)", &cell());
+    let t = parse_unspaced(&mut p, "SIN(x)(3)");
     assert!(
         matches!(t, Node::ParseErrorKind { .. }),
         "SIN(x)(3) should be a parse error, got {t:?}"
@@ -316,7 +324,7 @@ fn lambda_single_char_rc_param_roundtrips_in_r1c1_mode() {
     use crate::expressions::lexer::LexerMode;
     let mut p = parser();
     p.set_lexer_mode(LexerMode::R1C1);
-    let t = p.parse("BYROW(R[-21]C[-1]:R[-21]C[1],LAMBDA(c,MAX(c)))", &cell());
+    let t = parse_unspaced(&mut p, "BYROW(R[-21]C[-1]:R[-21]C[1],LAMBDA(c,MAX(c)))");
     assert!(
         !matches!(t, Node::ParseErrorKind { .. }),
         "R1C1 reload should not be a parse error, got {t:?}"
@@ -333,7 +341,7 @@ fn lambda_single_char_rc_param_roundtrips_in_r1c1_mode() {
     );
 
     // Same with `r`.
-    let t = p.parse("LAMBDA(r,r+1)", &cell());
+    let t = parse_unspaced(&mut p, "LAMBDA(r,r+1)");
     assert!(
         matches!(t, Node::LambdaDefKind { .. }),
         "LAMBDA(r,...) should parse in R1C1 mode, got {t:?}"

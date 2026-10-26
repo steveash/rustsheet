@@ -153,7 +153,8 @@ one, so up to 127 nested parentheses or function calls are accepted (126 around 
 `0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
 (T-0134). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
 (T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
-a plus directly before a number literal folds into it and adds no node. Excel caps function nesting at 64
+a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no
+level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
 text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
 cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
@@ -343,9 +344,17 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
   where the same text typed after `=` keeps it. Every value matches the space-free formula.
 Unprobed: whitespace inside a structured reference, and whether Excel writes kept whitespace into the `<f>` text it
 saves (T-2776's spec, SPEC-0023, files both).
-Ours: the tree keeps no whitespace, so every formula prints canonical, space-free text and the cells with kept
-whitespace fail (and probes/t2723-unary-plus-formula-text C24, C25); `=S! B1` is a parse error (`#ERROR!`) where Excel
-reads `S!B1`. SPEC-0023 designs keeping whitespace: `Node` must not grow, and shared formulas share one tree.
+Ours (T-2781, SPEC-0023 step 1): the parser keeps each run of spaces as a `Node::Spaced` around the operand it
+touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the R1C1 storage text, row and column edits,
+sheet renames and moves print the spaces back. A cell stores two trees: the written one, which prints, and one with no
+whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a `Spaced`
+(`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the stripped tree too.
+A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass); other leading
+whitespace characters are kept as before (unprobed). Still open: runs holding a line feed print nothing (T-2782),
+the spaces beyond an intersection's one (T-2783), whitespace around LAMBDA parameter names (dropped; unprobed,
+T-2786), and the xlsx export,
+which writes the stripped tree until T-2786 shows what Excel saves. `=S! B1` is a parse error (`#ERROR!`) where Excel
+reads `S!B1` (T-2785).
 Status: VERIFIED (excel-graph)
 Tasks: T-2769, T-2776, SPEC-0023
 

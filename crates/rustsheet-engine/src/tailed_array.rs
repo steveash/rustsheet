@@ -61,7 +61,9 @@ pub(crate) struct Tailed<T> {
 /// reference stays itself, so a table column is never taken for a whole column (it keeps the
 /// ordinary reading).
 fn ungroup(mut node: &Node) -> &Node {
-    while let Node::Group { child, .. } | Node::UnaryPlus { child } = node {
+    while let Node::Group { child, .. } | Node::UnaryPlus { child } | Node::Spaced { child, .. } =
+        node
+    {
         node = child;
     }
     node

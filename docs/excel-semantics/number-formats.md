@@ -336,6 +336,7 @@ Evidence: poi/DateFormatTests.xlsx Tests!A11, A13, A16, A18, A30, A35 (desktop E
 Microsoft Macintosh Excel 16.0; the workbook uses the 1904 date system, which does not change the
 time of day).
 Status: VERIFIED
+Implemented in: `Token::AP` / `Token::AMPM` (formatter/lexer.rs), `TextToken::AP` (formatter/format.rs); tests in formatter/test/test_time.rs.
 Tasks: T-0954
 
 ## `m`/`mm` directly before `:ss` is minutes, with no hour
@@ -607,7 +608,7 @@ TEXT() with the same codes. Points the earlier probes did not show:
   `DisplayClock` (formatter/elapsed.rs, rounded to whole seconds): clock fields and the day always
   round, and so does an elapsed count with or without a seconds token: `[h]` on 0.4 s short of 3 h is "3", `[h]:mm` "3:00",
   `[m]` "180"; 0.6 s short they are "2", "2:59", "179" (VERIFIED, probes/elapsed-no-seconds-boundary A1-A29, T-2385).
-  In the same probe: `[h]:mm AM/PM` is #VALUE! (A31, T-2683), `[h]:mm.0` on 0.6 s short of 3 h is "2:59.4", the
+  In the same probe: `[h]:mm AM/PM` is #VALUE! (A31, T-2683; the general rule, an elapsed token before AM/PM or A/P, is in dates.md and implemented in the section parser, T-1366), `[h]:mm.0` on 0.6 s short of 3 h is "2:59.4", the
   tenths of the seconds after the minutes with no seconds token (A32, T-2684), and `[h]:mm` of a negative is #VALUE!
   while `[h]` and `[m]` alone show "-2" and "-4" (A24-A26).
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".

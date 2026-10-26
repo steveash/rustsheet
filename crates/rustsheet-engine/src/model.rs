@@ -1,10 +1,8 @@
 #![deny(missing_docs)]
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use crate::defined_names::ParsedDefinedName;
-use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
 use crate::{
     calc_result::{CalcResult, Range},
@@ -15,7 +13,6 @@ use crate::{
             is_limit_error,
             move_formula::{move_formula, MoveContext},
             new_parser_english,
-            static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
             ArrayNode, CallNameSpellings, CompletionContext, Node, Parser,
         },
@@ -141,7 +138,7 @@ pub struct Model {
     /// A list of parsed formulas. They are shared, not owned, so that the
     /// evaluation can hold on to the formula it is running, while the model is
     /// borrowed mutably, without copying it.
-    pub parsed_formulas: Vec<Vec<(Arc<Node>, StaticResult)>>,
+    pub parsed_formulas: Vec<Vec<crate::formula_cells::ParsedFormula>>,
     /// A list of parsed defined names
     pub(crate) parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
     /// An optimization to lookup strings faster
@@ -642,6 +639,7 @@ impl Model {
             | ParseErrorKind { .. }
             | Group { .. }
             | UnaryPlus { .. }
+            | Spaced { .. }
             | StructuredReferenceKind { .. }
             | ThisRowKind { .. }
             | SpillRangeOperator { .. }
@@ -1552,8 +1550,9 @@ impl Model {
                     self.language,
                 ),
                 Some(i) => {
-                    let (formula, _static_result) =
-                        &self.parsed_formulas[sheet as usize][i as usize];
+                    let formula = crate::formula_cells::written_formula(
+                        &self.parsed_formulas[sheet as usize][i as usize],
+                    );
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -1671,12 +1670,13 @@ impl Model {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
-                        .ok_or("missing formula")?;
+                    let formula = crate::formula_cells::written_formula(
+                        self.parsed_formulas
+                            .get(sheet as usize)
+                            .ok_or("missing sheet")?
+                            .get(formula_index as usize)
+                            .ok_or("missing formula")?,
+                    );
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
                         row,
@@ -2129,7 +2129,7 @@ impl Model {
 
                 // Update the style if needed
                 let cell = CellReferenceIndex { sheet, row, column };
-                let (parsed_formula, _static_result) =
+                let (parsed_formula, _static_result, _) =
                     &self.parsed_formulas[sheet as usize][formula_index as usize];
 
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
@@ -2201,7 +2201,6 @@ impl Model {
         &mut self,
         sheet: u32,
         mut parsed_formula: Node,
-        static_result: StaticResult,
     ) -> Result<i32, String> {
         self.call_name_spellings.apply(&mut parsed_formula);
         let text = to_rc_format(&parsed_formula);
@@ -2231,7 +2230,8 @@ impl Model {
         lookup.index.insert(text.clone(), index);
         shared_formulas.push(text);
         lookup.built_from = shared_formulas.len();
-        self.parsed_formulas[sheet_index].push((Arc::new(parsed_formula), static_result));
+        self.parsed_formulas[sheet_index]
+            .push(crate::formula_cells::stored_formula(parsed_formula));
         Ok(index)
     }
 
@@ -2277,9 +2277,7 @@ impl Model {
         height: i32,
     ) -> Result<i32, String> {
         let parsed_formula = self.parse_cell_formula(sheet, row, column, formula)?;
-        let static_result = run_static_analysis_on_node(&parsed_formula);
-
-        let formula_index = self.shared_formula_index(sheet, parsed_formula, static_result)?;
+        let formula_index = self.shared_formula_index(sheet, parsed_formula)?;
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         worksheet.set_cell_with_array_formula(row, column, formula_index, style, width, height)?;
         Ok(formula_index)
@@ -2482,7 +2480,9 @@ impl Model {
         };
         match cell.get_formula() {
             Some(formula_index) => {
-                let formula = &self.parsed_formulas[sheet as usize][formula_index as usize].0;
+                let formula = crate::formula_cells::written_formula(
+                    &self.parsed_formulas[sheet as usize][formula_index as usize],
+                );
                 let cell_ref = CellReferenceRC {
                     sheet: worksheet.get_name(),
                     row,

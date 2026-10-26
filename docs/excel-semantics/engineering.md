@@ -368,6 +368,17 @@ Evidence: probes/eng-gen-sample-edges (excel-graph, 2026-10-19, T-1385).
 Status: VERIFIED (excel-graph); implemented (T-1385)
 Tasks: T-1385
 
+## CONVERT: a boolean unit is #VALUE! (T-2676)
+Rule: a from_unit or to_unit that is a reference to a TRUE or FALSE cell is `#VALUE!`, not the unknown-unit `#N/A`, with
+a valid number in the first argument: `CONVERT(2^31-1,<FALSE cell>,"HP")`, `CONVERT(1-2^-53,<FALSE cell>,"mm")` and
+`CONVERT(1E+21,"C",<TRUE cell>)` are `#VALUE!`. It is the units' side of "CONVERT refuses a boolean before it reads the
+units" (T-1385 above). A typed boolean unit (`CONVERT(1,TRUE,"m")`) and a boolean array element as a unit are unprobed.
+Evidence: gen-m9/290180acf017709c Calc!A148, A158, gen-m9/f81bd3b6dc373e5c Calc!A291 (excel-graph, T-2676 sweep,
+2026-10-26; the units are Data!C6 = FALSE, Data!E10 = FALSE and Data!A7 = TRUE).
+Ours: `#N/A` (the boolean is read as an unknown unit); T-2793.
+Status: VERIFIED (excel-graph) for boolean cells
+Tasks: T-2793
+
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
 - The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
 - Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV.

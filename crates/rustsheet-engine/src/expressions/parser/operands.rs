@@ -386,7 +386,15 @@ impl Parser {
     /// defined name becomes the variable in any grammar mode, shadowing the defined name
     /// (probes/let-name-shadows-defined-name, T-2057). Any other plain name is recorded as bound
     /// too when declared bare, for [`Parser::calls_bound_name`] (T-2567).
+    /// The whitespace written around the name stays around the variable (`LET(x, 1, y, 2, x+y)`,
+    /// SPEC-0023).
     pub(super) fn bind_name(&mut self, token: &TokenType, text: &str, node: Node) -> Node {
+        let (space, node) = node.unspaced();
+        self.bind_bare_name(token, text, node).respaced(space)
+    }
+
+    /// [`Parser::bind_name`] of a name with no whitespace around it.
+    fn bind_bare_name(&mut self, token: &TokenType, text: &str, node: Node) -> Node {
         // A name that is also a defined name parsed as that defined name; it declares the
         // variable instead, and shadows the defined name up to the end of the scope. In any
         // grammar mode: a stored formula (R1C1 mode) prints the name without `_xlpm.`.

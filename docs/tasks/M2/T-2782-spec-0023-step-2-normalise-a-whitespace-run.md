@@ -15,6 +15,8 @@ A typed whitespace run prints as Excel stores it: only its line feeds and the sp
 one, the space count wrapping at 256 (300 spaces print as 44); the line-feed count as a probe shows.
 
 ## Context
+- From T-2781: a run holding a line feed prints nothing yet (`Run::of`); probes/t2769-formula-text-whitespace
+  C17 and t2776-formula-text-whitespace-shapes C13 (a line feed after `=`) are this task's too.
 SPEC-0023 step 2 ("A run is a line-feed count plus a space count"). Evidence:
 probes/t2776-formula-text-whitespace-shapes C19:C22, F21 (excel-graph, 2026-10-26). Exactly 256 spaces is
 unprobed: probe it first (excel-probe skill) before relying on the byte reading.

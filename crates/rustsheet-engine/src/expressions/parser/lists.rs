@@ -41,7 +41,9 @@ impl Parser {
                 _ => Err(self.invalid_array_value()),
             };
         }
-        match self.parse_enclosed_expr() {
+        // Whitespace inside an array constant is dropped: `={1, 2}` prints `={1,2}` (syntax.md,
+        // probes/t2769-formula-text-whitespace).
+        match self.parse_enclosed_expr().unspaced().1 {
             Node::BooleanKind(s) => Ok(ArrayNode::Boolean(s)),
             Node::NumberKind(s) => Ok(ArrayNode::Number(s)),
             Node::StringKind(s) => Ok(ArrayNode::String(s.into())),
