@@ -6,7 +6,7 @@ lane: functions-stat
 status: todo
 priority: P2
 size: M
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: semantics
 ---
@@ -48,3 +48,12 @@ Owned gen-m9 cells (23; known failures in eval/baseline/gen-m9.txt, and the prob
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Handoff
+Sonnet run (2026-10-26) did not start implementing. The task bundles about 20 functions in one lane, several of
+them last-digit numeric fits (F.INV.RT 0.0012599666259138292 vs ...298, NEGBINOMDIST 6.434999995495541e-87 vs ...502,
+STDEV.P 25.5597.. vs 26.3548.. with an array third argument) and extreme-argument cutoffs (BINOM.DIST, BETA.INV,
+WEIBULL.DIST). That is beyond sonnet's rubric (numeric fitting, unclear evidence). Suggested next steps: take the
+pure domain-error groups first (PERMUTATIONA/COMBINA/POISSON.DIST negative or fractional args, T.INV.2T, PERCENTRANK,
+TRIMMEAN, STEYX/SLOPE error-type inputs, MODE.MULT), then the numeric ones; consider splitting into two tasks via
+`make new-task`.
