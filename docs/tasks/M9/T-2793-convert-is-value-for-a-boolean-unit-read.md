@@ -3,7 +3,7 @@ id: T-2793
 title: "CONVERT is #VALUE! for a boolean unit read from a cell (3 gen-m9 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
