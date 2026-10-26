@@ -152,6 +152,10 @@ pub struct FunctionStat {
     pub real_world_calls: usize,
 }
 
+/// The suites of Excel-saved real-world workbooks whose formula cells weight functions by usage
+/// (T-0079, SPEC-0022).
+pub const REAL_WORLD_SUITES: [&str; 2] = ["calipers", "poi"];
+
 /// Counts into `functions` the formula cells of the [`REAL_WORLD_SUITES`] that call each function
 /// (T-0079); a function only such cells call gets a stat of its own.
 fn add_real_world_calls(results: &[CaseResult], functions: &mut BTreeMap<String, FunctionStat>) {
@@ -170,10 +174,6 @@ fn add_real_world_calls(results: &[CaseResult], functions: &mut BTreeMap<String,
         }
     }
 }
-
-/// The suites of Excel-saved real-world workbooks whose formula cells weight functions by usage
-/// (T-0079, SPEC-0022).
-pub const REAL_WORLD_SUITES: [&str; 2] = ["calipers", "poi"];
 
 /// Scored cells with Excel-sourced expectations that call one function.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -298,6 +298,9 @@ pub struct RunReport {
     /// In-scope catalog functions per parity tier ([`attribution::tier_counts`], T-0068).
     #[serde(default)]
     pub tiers: Vec<attribution::TierCount>,
+    /// [`REAL_WORLD_SUITES`], whose formula cells `functions[].real_world_calls` counts (T-0079).
+    #[serde(default)]
+    pub real_world_suites: Vec<String>,
     /// Argument classes per in-scope function and catalog parameter (T-0077).
     #[serde(default)]
     pub argument_coverage: Vec<FunctionArguments>,
@@ -435,6 +438,7 @@ impl RunReport {
             out_of_scope: lists.out_of_scope,
             function_scope: function_scope::summarize(catalog, results),
             argument_coverage: argument_coverage::summarize(catalog, results),
+            real_world_suites: REAL_WORLD_SUITES.iter().map(ToString::to_string).collect(),
             // The caller fills the milestone sections, the checkpoint and `run`.
             ..RunReport::default()
         }

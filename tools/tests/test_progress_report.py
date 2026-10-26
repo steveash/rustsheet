@@ -155,6 +155,7 @@ def report() -> dict[str, Any]:
             fn("CALL", "below99", "all", visible_other=1),
         ],
         "tiers": [{"tier": t, "functions": tiers[t], "fallback": fallback.get(t, 0)} for t in TIERS],
+        "real_world_suites": ["calipers", "poi"],
         "argument_coverage": [{"name": "ABS", "single": 0.5}, {"name": "PI", "single": None}],
         "v15_checkpoint": {
             "in_scope": 6,
@@ -576,7 +577,8 @@ def test_real_world_line_weights_attributed_shares_by_calls() -> None:
     names = {s.name for s in p.suites}
     assert "calipers" not in names
     assert parity.real_world_line(p) == "Real-world calls: not measured, calipers and poi did not run."
-    corpora = [dataclasses.replace(p.suites[0], name=n) for n in parity.REAL_WORLD_SUITES]
+    assert p.real_world_suites == ("calipers", "poi")
+    corpora = [dataclasses.replace(p.suites[0], name=n) for n in p.real_world_suites]
     calls = {"SUM": 30, "BETA.DIST": 10, "INFO": 50}
     weighted = dataclasses.replace(
         p,
@@ -589,5 +591,8 @@ def test_real_world_line_weights_attributed_shares_by_calls() -> None:
         30 * sum_.attributed_within15 / sum_.attributed_cells
         + 10 * beta.attributed_within15 / beta.attributed_cells
     ) / 40
-    assert f"**{100 * share:.2f}%** of 40 calls" in parity.real_world_line(weighted)
+    assert (
+        f"**{100 * share:.2f}%** of the 40 calls to attributed in-scope functions in the calipers and poi"
+        in (parity.real_world_line(weighted))
+    )
     assert parity.real_world_line(weighted) in parity.block(weighted)

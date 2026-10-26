@@ -221,6 +221,8 @@ class Parity:
     suites: list[Suite]
     milestones_exited: tuple[str, ...]
     """The milestones whose report.json `milestone_exit` row is met (decision 0085)."""
+    real_world_suites: tuple[str, ...] = ()
+    """The suites whose formula cells `real_world_calls` counts (report.json `real_world_suites`)."""
 
     def tier_functions(self, tier: str) -> int:
         """In-scope functions in `tier` (report.json `tiers`)."""
@@ -402,7 +404,8 @@ def compute(
         for i, row in enumerate(exits)
         if flag(row, "exit", f"report.json milestone_exit[{i}]")
     )
-    return Parity(rows, tiers, _phase1(v15), suites, exited)
+    corpora = tuple(str(s) for s in items(report, "real_world_suites", "report.json", "T-0079"))
+    return Parity(rows, tiers, _phase1(v15), suites, exited, corpora)
 
 
 def load_object(path: Path) -> dict[str, Any]:
