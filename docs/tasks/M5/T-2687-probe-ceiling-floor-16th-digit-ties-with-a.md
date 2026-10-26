@@ -3,7 +3,7 @@ id: T-2687
 title: "Probe CEILING/FLOOR 16th-digit ties with a non-unit significance (0.5, 3, -2)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
