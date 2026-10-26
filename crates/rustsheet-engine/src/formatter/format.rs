@@ -21,6 +21,7 @@ use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
     lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
+    lunar_calendar::{lunar_ymd, LAST_SERIAL as LUNAR_LAST_SERIAL},
     parser::{
         is_text_section, numeric_section_count, section_tokens, ErrorPart, GeneralPart, ParsePart,
         Parser, TextToken,
@@ -431,10 +432,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
             // `date_valid` is false.
             let serial_1900 = ctx.date_system.to_1900_serial(day_serial).unwrap_or(-1);
-            let ymd = if p.hijri {
-                hijri_ymd(serial_1900)
-            } else {
-                excel_serial_to_ymd(serial_1900)
+            let ymd = match p.calendar {
+                _ if p.hijri => hijri_ymd(serial_1900),
+                // Past the lunar tables (2100) the date is Gregorian, TODO(T-2759).
+                Some(Calendar::Lunar(table)) if serial_1900 <= LUNAR_LAST_SERIAL => {
+                    lunar_ymd(serial_1900, table)
+                }
+                _ => excel_serial_to_ymd(serial_1900),
             };
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
@@ -502,7 +506,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             return invalid_date(value);
                         }
                         let weekday = excel_weekday_index(serial_1900);
-                        names.push(token, &mut text, p.names, locale, ymd_month, weekday);
+                        // Lunar months 13 and 14 take the twelfth name (`[$-110409]mmmm` of
+                        // 2024-01-11 is "十二月"; probes/text-locale-lunar-edges A26).
+                        let month = ymd_month.min(12);
+                        names.push(token, &mut text, p.names, locale, month, weekday);
                     }
                     TextToken::YearShort
                     | TextToken::Year
