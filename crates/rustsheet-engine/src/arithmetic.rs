@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::util::compare_values,
-    limits::{check_array_cells, check_array_size, spill_past_grid_error, spills_past_grid},
+    limits::{check_array_size, unspillable_shape},
     model::Model,
     text::Text,
 };
@@ -453,10 +453,10 @@ pub(crate) fn broadcast_arrays(
 /// How many operators nested in operands [`Model::evaluate_spilling_chain`] follows: enough for a
 /// written formula, and a bound on the recursion (CLAUDE.md directive 5); deeper ones evaluate as
 /// usual.
-const MAX_SPILL_CHECK_DEPTH: usize = 8;
+pub(crate) const MAX_SPILL_CHECK_DEPTH: usize = 8;
 
 /// `#SPILL!` when a binary operator over `left` and `right` in the dynamic-array anchor `anchor`
-/// would broadcast ([`broadcast_arrays`]) to more cells than [`check_array_cells`] allows and to
+/// would broadcast ([`broadcast_arrays`]) to more cells than [`check_array_cells`](crate::limits::check_array_cells) allows and to
 /// a shape that runs past the grid from `anchor`: Excel builds that array and cannot spill it,
 /// where the engine would refuse to build it (`#ERROR!`). Decided from the shapes alone, before
 /// anything is allocated. A result within the bound is left to the spill itself.
@@ -472,10 +472,7 @@ pub(crate) fn unspillable_broadcast(
     }
     let (n1, m1) = left.shape();
     let (n2, m2) = right.shape();
-    let (rows, columns) = (n1.max(n2), m1.max(m2));
-    // Within the bound the array is built and the spill itself decides.
-    check_array_cells(rows, columns)?;
-    spills_past_grid(anchor, rows, columns).then(|| spill_past_grid_error(anchor))
+    unspillable_shape(anchor, n1.max(n2), m1.max(m2))
 }
 
 impl Model {
@@ -485,7 +482,8 @@ impl Model {
     /// and subtraction"); every other node evaluates as usual.
     ///
     /// `spills` is set for the formula of a dynamic-array anchor; there an operator root is
-    /// evaluated by [`Model::evaluate_spilling_chain`].
+    /// evaluated by [`Model::evaluate_spilling_chain`], and a lifted call or unary root that could
+    /// not spill is `#SPILL!` before it is evaluated ([`Model::unspillable_lift`]).
     pub(crate) fn evaluate_formula_root(
         &mut self,
         node: &Node,
@@ -498,6 +496,11 @@ impl Model {
             return self
                 .evaluate_spilling_chain(root, cell, snaps, 0)
                 .unwrap_or_else(|spill| spill);
+        }
+        if spills {
+            if let Some(spill) = self.unspillable_lift(root, cell) {
+                return spill;
+            }
         }
         match node {
             Node::OpSumKind { kind, left, right } => {
@@ -552,7 +555,9 @@ impl Model {
     }
 
     /// An operand of [`Model::evaluate_spilling_chain`]: an operator chain, parenthesized or
-    /// not, is checked in turn while `depth` allows; anything else evaluates as usual.
+    /// not, is checked in turn while `depth` allows, a lifted call or unary operator that could
+    /// not spill is `Err(#SPILL!)` ([`Model::unspillable_lift`]), and anything else evaluates as
+    /// usual.
     fn evaluate_spilling_operand(
         &mut self,
         node: &Node,
@@ -562,6 +567,8 @@ impl Model {
         let inner = node.ungrouped();
         if depth < MAX_SPILL_CHECK_DEPTH && value_operands(inner).is_some() {
             self.evaluate_spilling_chain(inner, cell, false, depth + 1)
+        } else if let Some(spill) = self.unspillable_lift(inner, cell) {
+            Err(spill)
         } else {
             Ok(self.evaluate_node_in_context(node, cell))
         }
