@@ -1744,8 +1744,6 @@ F	probes/eng-imln-modulus-range.case.json	S!A54
 F	probes/eng-imln-modulus-range.case.json	S!A56
 F	probes/eng-imln-modulus-range.case.json	S!A79
 F	probes/eng-imln-modulus-range.case.json	S!A80
-F	probes/eng-imtan-imcot-overflow.case.json	S!A10
-F	probes/eng-imtan-imcot-overflow.case.json	S!A11
 F	probes/eng-inumber-date-boundary.case.json	S!A22
 F	probes/eng-inumber-date-boundary.case.json	S!B21
 F	probes/eng-inumber-date-boundary.case.json	S!B22
