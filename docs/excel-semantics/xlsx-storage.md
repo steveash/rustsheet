@@ -333,6 +333,21 @@ they differ is unprobed (T-2320).
 Status: VERIFIED (web)
 Tasks: T-2208
 
+## Typed whitespace is saved in the `<f>` text, a line feed as CR LF
+Rule: the `<f>` text Excel saves keeps the whitespace FORMULATEXT shows, so a typed formula round-trips with its spaces:
+`=1 + 2` is `<f>1 + 2</f>`, `=SUM( 1 )` is `<f>SUM( 1 )</f>`, `=IF(1, ,2)` is `<f>IF(1, ,2)</f>`, `=SUM(1,  )` is
+`<f>SUM(1,  )</f>`, `=NOW( )` is `<f ca="1">NOW( )</f>`, `=SUM(, 1)` is `<f>SUM(, 1)</f>`. **A typed line feed is stored as
+CR LF** (`=1+` LF `2` is `<f>1+&#13;&#10;2</f>` as read, `1+\r\n2`; `=1+` LF ` 2` keeps the space after it), while FORMULATEXT
+prints one LF. The drops FORMULATEXT shows (trailing whitespace, a run before a comma after an operand) are made before
+the save. A structured reference is stored with its normalized spaces: typed `T[ [Col] ]` saves as `SUM(T[ Col ])`,
+`T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`.
+Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-structured-refs-runs (excel-graph, 2026-10-26,
+T-2786), sheet1.xml H1:H17 and E4:E15. Excel's whitespace semantics are in syntax.md.
+Ours: export prints from a tree that keeps no whitespace (SPEC-0023 step 1 designs keeping it), so the saved text is
+canonical; the line feed's CR LF form and the runs beside a missing argument are filed as T-2799.
+Status: VERIFIED (web)
+Tasks: T-2786, T-2799, T-2801
+
 ## Cached volatile values are those of the last calculation, near the save time
 Rule: a workbook's cached values for `TODAY()`, `NOW()` and their dependents are those of Excel's last
 calculation before the save, so without the METADATA `NOW` convention (SPEC-0008) the closest clock for them

@@ -335,19 +335,47 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
   run as a line-feed count and a space count, the space count one byte (the line-feed count's width is
   unprobed, T-2782) (the BIFF `PtgAttrSpace` shape; the counts are this
   probe's evidence, not the documentation's).
-- Refused (observed 2026-10-26, Graph's error text not recorded, so UNVERIFIED; T-2786 re-probes it): `=SUM (1)` (a
-  space between a function name and its `(`): Graph's PATCH of it failed and the case was dropped.
+- Refused: `=SUM (1)` (a space between a function name and its `(`) and `=SUM( )` (a run as the only argument):
+  Graph's PATCH answers `400 InvalidArgument` ("The argument is invalid or missing or has an incorrect format.") for
+  both (probes/t2786-whitespace-structured-refs-runs, each tried alone, 2026-10-26, T-2786); the same text for every
+  refusal below. Nothing is stored.
 - Stored in the file (`<f>` text, no typing): interior whitespace loads and prints as written (`1 + 2`, `SUM( 1 )`,
   `1+` LF `2`, `B1:B2  B2`, `(1 )+2`), and the typed drops apply (`SUM(1 ,2)`, `SUM({1, 2})`, a trailing space), but
   whitespace at the start of the stored text is dropped: `<f>  +5</f>` prints `=5` and `<f> 1+2</f>` prints `=1+2`,
   where the same text typed after `=` keeps it. Every value matches the space-free formula.
-Unprobed: whitespace inside a structured reference, and whether Excel writes kept whitespace into the `<f>` text it
-saves (T-2776's spec, SPEC-0023, files both).
+Unprobed: how many line feeds a run keeps (T-2782).
 Ours: the tree keeps no whitespace, so every formula prints canonical, space-free text and the cells with kept
 whitespace fail (and probes/t2723-unary-plus-formula-text C24, C25); `=S! B1` is a parse error (`#ERROR!`) where Excel
 reads `S!B1`. SPEC-0023 designs keeping whitespace: `Node` must not grow, and shared formulas share one tree.
 Status: VERIFIED (excel-graph)
 Tasks: T-2769, T-2776, SPEC-0023
+
+## Whitespace beside a missing argument is kept; a structured reference keeps some and normalizes the rest
+Rule: a run beside a missing operand is kept as typed, and FORMULATEXT prints it back: `=NOW( )` and `=TODAY(  )`
+(value as without the run), `=IF(1, ,2)`, `=IF(1,  ,2)`, `=IF(1,` LF `,2)`, `=SUM(1, )`, `=SUM(1,  )`, `=IF(1,2, )`,
+`=SUM(1,` LF `)`, `=SUM(, 1)` and `=SUM(,1)` all print as typed. Values match the run-free formula (`=IF(1, ,2)` is
+0, `=SUM(1, )` is 1, `=SUM(, 1)` is 1). This differs from "a run followed by `,` ... is dropped" (above): a run before a
+comma is dropped only when an operand precedes it (`=SUM(1 ,2)`), and a run between two commas, or after the last comma,
+is the missing argument's own and stays. Two shapes are refused (see "Refused" above): `=SUM (1)` and `=SUM( )`.
+Inside a structured reference (table `T`, columns `Col`, `Other`; typed through Graph, FORMULATEXT and the saved `<f>`
+agree):
+- Refused (`400 InvalidArgument`): a space inside a bare column specifier (`T[ Col]`, `T[Col ]`, `T[ Col ]`), a space
+  before a column-specifier bracket (`T [Col]`), spaces around the `:` of a column range (`T[[Col] : [Other]]`) and a
+  union of two column specifiers (`T[[Col], [Other]]`).
+- Accepted: a space inside the outer brackets around nested specifiers (`T[ [Col]:[Other] ]` prints as typed, value 77),
+  `T[ [#Data] , [Col] ]` prints `T[ [#Data], [Col] ]` (the space before the comma is dropped, as in a call),
+  `T[[#Data]  ,  [Col]]` prints `T[[#Data], [Col]]` (the run after the comma collapses to one space) and `T[[#Data],[Col]:[Other]]` prints with no space (none written).
+- **A single column in outer-padded brackets is rewritten to the bare form**: `T[ [Col] ]` prints `T[ Col ]`, a form that
+  typing `T[ Col ]` itself refuses, and whose stored `<f>` loads (value 7). Spaces around the specifier are kept as typed.
+- Whitespace around the whole reference is an ordinary operand run (`=SUM( T[Col] )` prints as typed).
+- The calculated-column fill rewrote `=T[[#This Row], [Col]]` and `=T[ [#This Row] , [Col] ]` typed into C2 and C3 to the
+  formula typed into C4 (`T[[#This Row],[Col]] + T[[#This Row],[Other]]`), so this-row shapes are unanswered
+  (the case's C2:C4); a probe needs a table without a calculated column fill (T-2800).
+Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
+(I1:I13). Each refused formula was entered alone against the same case.
+Ours: whitespace is not kept anywhere (SPEC-0023 designs keeping it); structured-reference whitespace is unimplemented.
+Status: VERIFIED (excel-graph)
+Tasks: T-2786, T-2799, T-2800, T-2801
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every

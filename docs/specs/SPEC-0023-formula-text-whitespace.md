@@ -76,11 +76,11 @@ probes/t2776-* (excel-graph, 2026-10-26).
   function name and its `(`. What ours does with it is untested
   (`operands.rs` reads a call only when no whitespace precedes the `(`); T-2786 adds the case.
 - **Values**: every probed value equals the value of the formula without spaces.
-- **Unknown** (T-2786): runs with no operand beside them (`=NOW( )`, `=IF(1, ,2)`, a run before `)`
-  after a comma); whitespace inside a structured reference (`T[ Col]`, `T[[#This Row], [Col]]`),
-  and whether Excel saves kept whitespace in the `<f>` text it writes. Until T-2786 answers, export
-  prints what the tree holds, because every printer shares one walker. If Excel strips whitespace
-  on save, T-2786 files the export change.
+- **Answered** (T-2786, syntax.md "Whitespace beside a missing argument is kept"): a run beside a missing operand is
+  kept as typed (`=NOW( )`, `=IF(1, ,2)`, `=SUM(1, )`, `=SUM(, 1)`), unlike a run before a comma that follows an
+  operand, so the rule above "a run followed by `,` ... is dropped" holds only after an operand (T-2799). `=SUM (1)` and
+  `=SUM( )` are refused. Structured references normalize their whitespace (T-2801). Excel saves kept whitespace in the
+  `<f>` text, a line feed as CR LF (xlsx-storage.md), so export prints the tree's whitespace and does not strip it.
 
 ## Design
 ### Where whitespace attaches
