@@ -28,6 +28,8 @@ IMCOS are (EXP(t) ∓ EXP(-t))/2, IMSINH's are not"):
 - No symmetric formula of EXP(x) and EXP(-x) gives both 4 and -4: look for an asymmetric x87 sequence (an unstored
   EXP in a register for one operand), probe a dense sweep around 4 and both signs first (excel-probe skill;
   docs/research/excel-kernel-playbook.md).
+- Put IMSIN and IMCOS at imaginary parts ±4, ±12 and 0.01 in the same probe: T-2535's EXP form for them rests on 4
+  gen-m9 cells and never saw the points where it and libm differ.
 Owned gen-m9 cells (T-2258 triage): the `IMSINH("4")` and `IMSEC(IMSINH("4"))` lines of T-2535's list (34 of its
 38), plus probes/t2535-imsinh-imcosh-kernel-sweep A23 (`IMSINH("4")`) and probes/t2535-complex-text-tie A7, A14:A16,
 A18 (IMSINH at 4), known failures since T-2535.
