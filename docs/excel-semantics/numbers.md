@@ -57,6 +57,9 @@ and `ROUNDDOWN(…,0)` are `#NUM!`. A result of zero has no sign (`ROUNDDOWN(-0.
 `ROUND(1.23456789012345E+300,-299)` = 1.2E+300.
 Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-rounding A6 (1.01),
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
+Also `ROUND(1.05*(0.0284+0.0046)-0.0284,4)` = 0.0063 though the sum is 0.006249999999999999:
+probes/round-float-noise-carry A1–A2 (excel-graph, 2026-10-26, T-2634; the same value Excel
+cached in upstream's old ROUND.xlsx `issues!A2`).
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/decimal_round.rs` (T-0106).
 ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
 
