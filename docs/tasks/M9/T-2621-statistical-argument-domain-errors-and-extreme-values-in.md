@@ -3,7 +3,7 @@ id: T-2621
 title: "Statistical argument-domain errors and extreme values in the T-2475 probe: PERMUTATIONA, COMBINA, T.TEST, T.INV.2T, PERCENTRANK, TRIMMEAN, MODE.MULT, STEYX, SLOPE, distributions"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
@@ -49,7 +49,7 @@ Owned gen-m9 cells (23; known failures in eval/baseline/gen-m9.txt, and the prob
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
 
-## Handoff
+## Handoff (resumed)
 Sonnet run (2026-10-26) did not start implementing. The task bundles about 20 functions in one lane, several of
 them last-digit numeric fits (F.INV.RT 0.0012599666259138292 vs ...298, NEGBINOMDIST 6.434999995495541e-87 vs ...502,
 STDEV.P 25.5597.. vs 26.3548.. with an array third argument) and extreme-argument cutoffs (BINOM.DIST, BETA.INV,
