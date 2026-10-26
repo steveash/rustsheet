@@ -368,7 +368,11 @@ impl Lexer {
                         }
                     }
                     _ => {
-                        if char.is_alphabetic() || char == '_' || char == '\\' {
+                        if char.is_alphabetic()
+                            || char == '_'
+                            || char == '\\'
+                            || is_typographic_quote(char)
+                        {
                             // At this point is one of the following:
                             //   1. A range with sheet: Sheet3!A3:D7
                             //   2. A boolean: TRUE or FALSE (dependent on the language)
@@ -406,6 +410,9 @@ impl Lexer {
                                 return TokenType::Boolean(false);
                             }
                             if self.peek_char() == Some('(') {
+                                return TokenType::Ident(name);
+                            }
+                            if is_quoted_name(&name) {
                                 return TokenType::Ident(name);
                             }
                             if self.mode == LexerMode::A1 {
@@ -713,6 +720,7 @@ impl Lexer {
                 || next_char == '_'
                 || next_char == '.'
                 || (next_char == '\\' && self.backslash_in_names())
+                || is_typographic_quote(next_char)
             {
                 position += 1;
             } else {
@@ -977,4 +985,20 @@ impl Lexer {
             Err(error) => TokenType::Illegal(error),
         }
     }
+}
+
+/// The typographic quotes U+201C and U+201D, which Excel reads as name characters: a stored
+/// `“D”` (an app's "smart quotes" around a string) is an undefined name, so `=“D”` and
+/// `=“N/A”` are `#NAME?`, `ISREF(“D”)` is FALSE and `IF(FALSE,“D”,1)` is 1
+/// (corpus-bench/48354 D2:D6, probes/t0481-curly-quote-names; docs/excel-semantics/references.md
+/// "Typographic quotes are name characters").
+fn is_typographic_quote(char: char) -> bool {
+    matches!(char, '\u{201C}' | '\u{201D}')
+}
+
+/// Whether `name` holds a typographic quote and is otherwise a valid name, read with each quote as
+/// a letter: never a cell or a column (`“A1”` is a name), in A1 and R1C1 mode alike.
+fn is_quoted_name(name: &str) -> bool {
+    name.contains(is_typographic_quote)
+        && utils::is_valid_a1_identifier(&name.replace(is_typographic_quote, "_"))
 }

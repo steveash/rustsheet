@@ -1,0 +1,24 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Typographic quotes inside other tokens (T-0481): a slash, a cell-like name, a quote mid-name and after a string",
+  "tags": [
+    "M11",
+    "parser",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=“N/A”",
+        "A2": "=SUM(“A1”)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2"
+  ]
+}
