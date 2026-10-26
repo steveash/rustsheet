@@ -142,6 +142,12 @@ impl Model {
         }
         let t = (x - a) / width;
         let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
+        // At the interval's own ends, where the density diverges, Excel gives 0 rather than the
+        // #NUM! an x of 0 or 1 takes above (`BETA.DIST(2,0.5,2,FALSE,2,5)` and
+        // `BETA.DIST(5,2,0.5,FALSE,2,5)` are 0; probes/t2435-dist-extremes A126, A127).
+        if !cumulative && ((t == 0.0 && alpha <= 1.0) || (t == 1.0 && beta_param <= 1.0)) {
+            return Ok(0.0);
+        }
         let result = if cumulative {
             // A subnormal cdf is kept only at beta = 1, the closed form t^alpha, and is 0 at any
             // other beta, 1.0000001 included (`(x)=0` FALSE at B2, B3, B6, B7, B11, B12 of
