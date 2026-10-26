@@ -3,7 +3,7 @@ id: T-2534
 title: "IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and limit (gen-m9, 62 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
