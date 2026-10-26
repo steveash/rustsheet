@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
+use crate::argument_coverage::{self, FunctionArguments};
 use crate::attribution::{self, Attribution, Tier, Workbooks};
 use crate::catalog::Catalog;
 use crate::catalog_coverage::{self, MilestoneCoverage};
@@ -270,6 +271,9 @@ pub struct RunReport {
     /// In-scope catalog functions per parity tier ([`attribution::tier_counts`], T-0068).
     #[serde(default)]
     pub tiers: Vec<attribution::TierCount>,
+    /// Argument classes per in-scope function and catalog parameter (T-0077).
+    #[serde(default)]
+    pub argument_coverage: Vec<FunctionArguments>,
     /// Commit, date and skipped suites ([`RunMeta`], T-0080); filled by the caller.
     #[serde(default)]
     pub run: RunMeta,
@@ -380,6 +384,7 @@ impl RunReport {
                 let mut r = r.clone();
                 r.cells.retain(|c| c.verdict.is_failure());
                 r.text.retain(|t| !t.pass);
+                r.arguments.clear();
                 r
             })
             .collect();
@@ -401,6 +406,7 @@ impl RunReport {
             below_floor,
             out_of_scope: lists.out_of_scope,
             function_scope: function_scope::summarize(catalog, results),
+            argument_coverage: argument_coverage::summarize(catalog, results),
             // The caller fills the milestone sections, the checkpoint and `run`.
             ..RunReport::default()
         }
@@ -689,6 +695,7 @@ pub(crate) mod tests {
             cells: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            arguments: Vec::new(),
         }
     }
 
@@ -890,6 +897,7 @@ pub(crate) mod tests {
             oracle,
             v15: None,
             v15_reason: None,
+            params: Vec::new(),
         };
         let catalog = Catalog::from_functions([
             entry("ABS", Scope::In, None, None),
