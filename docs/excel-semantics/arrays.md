@@ -348,7 +348,8 @@ chain (`+ - * / ^ & =` and the other comparisons, parenthesized or not, and oper
 `=1+H:J*2`) is `#SPILL!` when a link would broadcast to more than 1,048,576 cells and to a shape that runs past
 the grid from the anchor, decided from the operand shapes before the broadcast (`Model::evaluate_spilling_chain`,
 `unspillable_broadcast` in arithmetic.rs). Since T-0483 the same holds for a root (or operator operand) that is
-a call in the lifting table, a unary operator or `%`: `=DATE(11:1899,12,1)` in C1 or C3 and `=-H:J` or `=H:J%` in C3
+a call in the lifting table that gives one value per element (not SORTBY or UNIQUE), a unary operator or `%`:
+`=DATE(11:1899,12,1)` in C1 or C3 and `=-H:J` or `=H:J%` in C3
 are `#SPILL!`, decided from the shapes of the ranges in its `Lift` arguments, nested lifts and unary operators
 included, before anything is lifted (`Model::unspillable_lift` in spill_shape.rs; probes/lifted-range-rows C3).
 The deviation still covers value contexts (`ROWS`, `SUM`, `INDEX` over the same array:

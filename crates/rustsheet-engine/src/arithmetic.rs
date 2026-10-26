@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::util::compare_values,
-    limits::{check_array_cells, check_array_size, spill_past_grid_error, spills_past_grid},
+    limits::{check_array_size, unspillable_shape},
     model::Model,
     text::Text,
 };
@@ -456,7 +456,7 @@ pub(crate) fn broadcast_arrays(
 pub(crate) const MAX_SPILL_CHECK_DEPTH: usize = 8;
 
 /// `#SPILL!` when a binary operator over `left` and `right` in the dynamic-array anchor `anchor`
-/// would broadcast ([`broadcast_arrays`]) to more cells than [`check_array_cells`] allows and to
+/// would broadcast ([`broadcast_arrays`]) to more cells than [`check_array_cells`](crate::limits::check_array_cells) allows and to
 /// a shape that runs past the grid from `anchor`: Excel builds that array and cannot spill it,
 /// where the engine would refuse to build it (`#ERROR!`). Decided from the shapes alone, before
 /// anything is allocated. A result within the bound is left to the spill itself.
@@ -472,10 +472,7 @@ pub(crate) fn unspillable_broadcast(
     }
     let (n1, m1) = left.shape();
     let (n2, m2) = right.shape();
-    let (rows, columns) = (n1.max(n2), m1.max(m2));
-    // Within the bound the array is built and the spill itself decides.
-    check_array_cells(rows, columns)?;
-    spills_past_grid(anchor, rows, columns).then(|| spill_past_grid_error(anchor))
+    unspillable_shape(anchor, n1.max(n2), m1.max(m2))
 }
 
 impl Model {

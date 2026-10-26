@@ -8,17 +8,17 @@
 
 use crate::{
     arithmetic::MAX_SPILL_CHECK_DEPTH,
-    calc_result::CalcResult,
+    calc_result::{range_dims, CalcResult},
     expressions::{parser::Node, types::CellReferenceIndex},
-    functions::lift::ArgKind,
-    limits::{check_array_cells, spill_past_grid_error, spills_past_grid},
+    functions::lift::{ArgKind, CallResult},
+    limits::unspillable_shape,
     model::Model,
 };
 
 impl Model {
     /// `#SPILL!` when `node`, the root or an operator operand of the formula of the dynamic-array
     /// anchor `anchor`, is a lifted call or a unary operator whose result has at least the shape
-    /// [`Model::lifted_shape_floor`] reads, more cells than [`check_array_cells`] allows and a
+    /// [`Model::lifted_shape_floor`] reads, more cells than [`check_array_cells`](crate::limits::check_array_cells) allows and a
     /// shape that runs past the grid from `anchor`. A lift never shrinks its arguments' shapes,
     /// so the whole result could not spill either. Within the bound the array is built and the
     /// spill itself decides.
@@ -28,14 +28,13 @@ impl Model {
         anchor: CellReferenceIndex,
     ) -> Option<CalcResult> {
         let (rows, columns) = self.lifted_shape_floor(node, anchor, 0)?;
-        check_array_cells(rows, columns)?;
-        spills_past_grid(anchor, rows, columns).then(|| spill_past_grid_error(anchor))
+        unspillable_shape(anchor, rows, columns)
     }
 
     /// A shape that the lifted result of `node` is at least as tall and as wide as, read from its
     /// references alone, with no cell read: a range is its own shape, a unary operator or `%`
-    /// lifts its operand, and a call in the lifting table broadcasts its `Lift` arguments (a
-    /// valid argument count only). Any other operand counts as one cell, and anything else is
+    /// lifts its operand, and a call in the lifting table of one value per element broadcasts its
+    /// `Lift` arguments (a valid argument count only). Any other operand counts as one cell, and anything else is
     /// `None`, as are nodes more than [`MAX_SPILL_CHECK_DEPTH`] levels down (CLAUDE.md
     /// directive 5).
     fn lifted_shape_floor(
@@ -51,7 +50,9 @@ impl Model {
             Node::UnaryKind { right, .. } => self.lifted_shape_floor(right, cell, depth + 1),
             Node::FunctionKind { kind, args } => {
                 let kinds = kind.arg_kinds()?;
-                if !kinds.accepts(args.len()) {
+                // An array-valued entry (SORTBY, UNIQUE) may answer before its lift (SORTBY gives
+                // its array's error first), so only a call of one value per element counts.
+                if kinds.result != CallResult::Value || !kinds.accepts(args.len()) {
                     return None;
                 }
                 let mut shape = None;
@@ -69,13 +70,7 @@ impl Model {
             range @ Node::RangeKind { .. } => {
                 match self.evaluate_node_with_reference(range, cell) {
                     CalcResult::Range { left, right } if left.sheet == right.sheet => {
-                        let extent = |from: i32, to: i32| {
-                            usize::try_from(i64::from(to) - i64::from(from) + 1).ok()
-                        };
-                        Some((
-                            extent(left.row, right.row)?,
-                            extent(left.column, right.column)?,
-                        ))
+                        Some(range_dims(left, right))
                     }
                     _ => None,
                 }
