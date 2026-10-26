@@ -75,8 +75,11 @@ YIELD cells, the same below-the-root pattern, 1e-14 to 1e-9 relative:
 These are desktop values (decision 0039: excel-graph is the target), so use them as a check on a fitted rule, not to fit it.
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257; 19 of 23 at 15 digits, 4 moved to T-2777): the 23 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+- [x] Visible parity (gen-m9, T-2257): the 23 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+      Met at visible parity (decision 0083): 19 of the 23 pass or are within 4 ulp; the 4 still visibly off (A17, A189,
+      A102, A194) are cut to T-2777 with the campaign key; the 3 new probes lines are 1-ulp regressions under decision
+      0083's standing allowance, named in T-2788.
 - [x] A backward-iterate report in the lab (or a test) that reproduces the starting values above.
 - [x] Start formulas and stop rules tried, each with its bit-exact and within-4-ulp counts as lab fits
   (decision 0056); a model that raises the bit-exact count, or the task set `blocked` with the candidates
@@ -146,7 +149,8 @@ S = (100R + (100 - P)/T)/((100 + P)/2 - (100 - P)/(4T)) and does not take a step
 `update-baseline --allow-regressions` under decision 0083's standing ulp allowance; the 3 regressed cells, each 1 ulp
 low at the root: probes/yield-start-one-input S!A5, probes/yield-start-rate-term S!B34 and S!B35. Of the 23 owned gen-m9
 cells 11 now pass bit-exact and 8 are within 4 ulp (A229, A333, A376, A231, A122, A269, A23, A223); the basis-1 and basis-2 terms (A17, A189) and the 15th-digit cells
-(A102, A194) move to follow-up T-2777 (`campaign: visible`), which also names the 3 regressed cells.
+(A102, A194) are cut to T-2777 (`campaign: visible`); the ulp leftovers, including the 3 regressed cells, are
+follow-up T-2788 (no campaign key).
 
 First-round outcome: blocked (2026-10-24). The lab's `yield` fit gains the "Newton, finite difference" family (six variants, best 5/178 bit-exact,
 14/178 within 4 ulp). No model raises the bit-exact count beyond noise. The findings are in financial.md "YIELD stops short of
@@ -155,8 +159,8 @@ PRICE's root" (third-round paragraph). Eval delta: none; the 23 gen-m9 cells sta
 ## Progress (fourth round, 2026-10-26, opus)
 Fitted: the start S = (100R + (100 - P)/T)/((100 + P)/2 - (100 - P)/(4T)) and the stop (a Newton step below 1e-10 is
 not taken). Lab fit `yield-caret`, family "Newton, fitted start": 240/370 bit-exact, 361/370 within 4 ulp (the old best was 4/178).
-The engine follows (`yield_start`, `excel_yield_newton`). Eval: 391 known failures fixed (probes 372, gen-m9 13,
-ironcalc-calc 6). 3 cells regress by 1 ulp at the root (yield-start-one-input S!A5, yield-start-rate-term S!B34
-and S!B35). Those fall under decision 0083's standing allowance, and T-2777 names them. Of the 23 owned gen-m9 cells, 11 are
-bit-exact and 9 within 4 ulp. A189 (basis 2), A17 (basis 1), A102 and A194 remain (T-2777).
+The engine follows (`yield_start`, `excel_yield_newton`). Eval at the time (before merging main): 391 known failures
+fixed (probes 372, gen-m9 13, ironcalc-calc 6); the Outcome has the final count. 3 cells regress by 1 ulp at the root (yield-start-one-input S!A5, yield-start-rate-term S!B34
+and S!B35). Those fall under decision 0083's standing allowance, and T-2788 names them. Of the 23 owned gen-m9 cells, 11 are
+bit-exact and 8 within 4 ulp. A189 (basis 2), A17 (basis 1), A102 and A194 remain (T-2777).
 Resumed 2026-10-26 by an opus run (branch idle 3 h); the baseline is recorded (Outcome).

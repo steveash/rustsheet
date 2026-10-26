@@ -191,7 +191,8 @@ fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, Stri
     let settlement = from_excel_date(bond.settlement)?;
     let maturity = from_excel_date(bond.maturity)?;
     // The start's term: the basis' settlement-to-maturity days over 360, or over 365 on bases 1
-    // and 3 (yield-start-sweep D: 1581/365, not YEARFRAC's average year, on basis 1).
+    // and 3 (yield-start-sweep D: 1581/365, not YEARFRAC's average year, on basis 1). Basis 2's
+    // days/360 is unverified: no probe yet, and gen-m9 A189 says it is off (TODO(T-2777)).
     let year = if matches!(bond.basis, 1 | 3) {
         365.0
     } else {

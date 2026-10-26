@@ -1,6 +1,6 @@
 ---
 id: T-2777
-title: "YIELD after the fitted start: the last ulps, basis 1 and 2 terms"
+title: "YIELD after the fitted start: the basis 1 and 2 terms and two 15th-digit cells (gen-m9, 4 cells)"
 milestone: M9
 lane: research
 status: todo
@@ -12,19 +12,14 @@ campaign: visible
 ---
 
 ## Goal
-YIELD (more than one coupon left) matches Excel bit for bit on the cells T-1592's fitted Newton still misses: a few
-ulps at the root, and the start's term on bases 1 and 2.
+YIELD (more than one coupon left) matches Excel to 15 significant digits on the four gen-m9 cells T-1592's fitted
+Newton still leaves visibly off: the start's term on bases 1 and 2, and two 15th-digit cells. The ulp leftovers at the
+root (no campaign key, decision 0083) are T-2788.
 
 ## Context
 T-1592 fitted the start (100R + (100-P)/T)/((100+P)/2 - (100-P)/(4T)) and the stop (a step below 1e-10 is not
 taken). The engine follows it (`excel_yield_newton`, `yield_start`). financial.md "YIELD stops short of PRICE's root",
 T-1592 fourth-round paragraph.
-- Ulp regressions T-1592 took under decision 0083's allowance, at the root, 1 ulp low in the engine and the lab
-  alike (no PRICE summation order tried moves them): probes/yield-start-one-input S!A5
-  (Excel 0.10352912862429842, ours 0.1035291286242984), probes/yield-start-rate-term S!B34 (0.11099781701293797,
-  ours ...795) and S!B35 (0.153546637344011, ours 0.15354663734401097).
-- Lab cells 7 to 33 ulp off: solver-iteration-traces Y!E2; yield-solver-sweep S!C7, S!C11;
-  yield-start-one-input S!B11, B17, B31, B54, B62, B69.
 - Basis 2 term (no probe yet; the engine takes days/360): gen-m9/81bcdc0bec0c8e6b Calc!A189
   `=YIELD(38173,44696,0.05/12,110,101,2,2)` Excel -0.0008265806588318691, ours -0.0008265806323880697 (days/360);
   days/365 gives -0.0008265806589638128 and the coupon-schedule term (N - 1 + DSC/E)/f -0.0008265806607058653.
@@ -36,8 +31,16 @@ T-1592 fourth-round paragraph.
 ## Acceptance criteria
 - [ ] A probe of basis 2 (and basis 1 at frequency 4) YIELD cells with more than one coupon left fixes the start's
       term on those bases; financial.md records it.
-- [ ] The cells above pass, or the task records why each cannot with the candidates tried (lab fits).
+- [ ] Visible parity: the four cells above are within half a unit of the 15th significant digit of Excel's value (their
+      known-failure lines in eval/baseline/gen-m9.txt disappear, or turn into ulp-level misses handed to T-2788).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
+- The ulp-level cells at the root (T-2788).
 - YIELD's `#NUM!` cells and its 100-step cap (T-2391).
+
+## Owned cells
+Cut from T-1592 on 2026-10-26 (decision 0083 "Done at visible parity": the four owned cells T-1592's fit left visibly
+off move here with the campaign key; T-1592's other 19 owned gen-m9 cells pass or are within 4 ulp).
+- gen-m9/81bcdc0bec0c8e6b Calc!A189, gen-m9/ba4ddb817a8e700e Calc!A17, gen-m9/a91bad4e84f49739 Calc!A102,
+  gen-m9/e168be7f6d3f84c2 Calc!A194.
