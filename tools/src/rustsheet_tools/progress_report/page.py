@@ -2,16 +2,16 @@
 the stale page of an incomplete run (T-0071).
 
 The `parity` block is parity.py's (T-0081); `since-last-run` and `trends` are history.py's
-(T-0071); `top-functions` and `evidence` are evidence.py's (T-0073). Later sections (goals,
-campaign) are added by their own tasks as generated blocks in `LAYOUT`, without changing the
-block protocol in blocks.py.
+(T-0071); `goals` and `campaign` are goals.py's (T-0072); `top-functions` and `evidence` are
+evidence.py's (T-0073). Later sections are added by their own tasks as generated blocks in
+`LAYOUT`, without changing the block protocol in blocks.py.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from rustsheet_tools.progress_report import blocks, evidence, history, parity
+from rustsheet_tools.progress_report import blocks, evidence, goals, history, parity
 from rustsheet_tools.progress_report.markdown import REGENERATE, md_text
 from rustsheet_tools.progress_report.model import Parity, ProgressReportError, Run
 
@@ -21,6 +21,8 @@ PAGE = "progress.md"
 LAYOUT = (
     (blocks.GENERATED, "status", None),
     (blocks.JUDGMENT, "bottom-line", "Bottom line"),
+    (blocks.GENERATED, "goals", None),
+    (blocks.GENERATED, "campaign", None),
     (blocks.GENERATED, "since-last-run", None),
     (blocks.GENERATED, "trends", None),
     (blocks.GENERATED, "parity", None),
@@ -120,6 +122,7 @@ METHOD = f"""## Method
   heading says so, and the text is still shown.
 - **One definition per measure.** Every verdict, bucket and tier is computed once, in the Rust eval
   report (crates/rustsheet-eval). This page only adds up the report's counts.
+{goals.METHOD}
 {parity.METHOD}
 {history.METHOD}
 - **Regenerate** with `{REGENERATE}`. The same inputs give a byte-identical page."""
@@ -132,7 +135,8 @@ def parse(text: str) -> dict[str, blocks.Block]:
 
 def render(run: Run, data: Parity, previous: str | None, sections: dict[str, str]) -> str:
     """The whole page for a complete `run`, keeping the judgment text of `previous` (the existing
-    page). `sections` holds the history blocks (`since-last-run`, `trends`)."""
+    page). `sections` holds the goals and history blocks (`goals`, `campaign`,
+    `since-last-run`, `trends`)."""
     old = parse(previous) if previous is not None else {}
     body = {
         **sections,

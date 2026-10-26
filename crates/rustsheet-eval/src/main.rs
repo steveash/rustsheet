@@ -4,6 +4,7 @@
 //! rustsheet-eval suites                         # list suites
 //! rustsheet-eval run [--suite S] [--filter X]   # run + write eval/runs/latest/{report.json,report.md}
 //! rustsheet-eval check                          # gate: fail on any baseline or visible-parity regression
+//! rustsheet-eval check --evidence-floor         # the gate and the evidence floor from one run
 //! rustsheet-eval update-baseline                # ratchet baselines and visible parity (refuses regressions)
 //! rustsheet-eval evidence-floor [--update]      # ratchet functions below the evidence floor
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
@@ -94,6 +95,11 @@ enum Cmd {
     Check {
         #[command(flatten)]
         sel: Selection,
+        /// Also judge the evidence floor (as `evidence-floor` does) from the same run: the other
+        /// vendored suites run beside the gate suites, once (T-2761). `--timeout` applies to the
+        /// whole run; standalone `evidence-floor` uses the 60 s default, as `make eval-gates` does.
+        #[arg(long)]
+        evidence_floor: bool,
     },
     /// Rewrite baselines to the current passing set (ratchet).
     UpdateBaseline {
@@ -425,32 +431,52 @@ fn visible_parity_gate(
     })
 }
 
+/// The baseline gate (`update` `None`) or the baseline ratchet; with `floor`, also the evidence
+/// floor judged from the same run, so `check --evidence-floor` passes exactly when `check` and
+/// `evidence-floor` both pass (T-2761).
 fn cmd_check(
     root: &Path,
     sel: &Selection,
     update: Option<visible_parity::Update>,
+    floor: bool,
 ) -> Result<ExitCode> {
     if sel.filter.is_some() {
         bail!(
             "--filter is not allowed for baseline operations (partial runs look like regressions)"
         );
     }
-    let suites = select(root, sel, true)?;
-    check_deviations(root, &suites)?;
+    if floor && !sel.suites.is_empty() {
+        bail!("--evidence-floor counts every vendored suite; it cannot be combined with --suite");
+    }
+    let gate = select(root, sel, true)?;
+    check_deviations(root, &gate)?;
     let catalog = Catalog::load(root)?;
     let milestones = load_milestones(root, &catalog)?;
-    let results = execute(&suites, sel);
+    let gate_len = gate.len();
+    let run = if floor {
+        evidence_floor::plan_run(gate, Suite::load_all(&root.join("eval/suites"))?)
+    } else {
+        gate
+    };
+    // `plan_run` keeps the gate suites first, unchanged.
+    let suites = &run[..gate_len];
+    let mut results = execute(&run, sel);
+    let floor_results = floor.then(|| evidence_floor::floor_results(&run, &results));
+    if floor {
+        // The baseline gate judges the gate suites' results only, as a plain `check` does.
+        results.retain(|r| suites.iter().any(|s| s.manifest.name == r.suite));
+    }
     let mut report = RunReport::build(
         RustSheetEngine.name(),
         &results,
         &RustSheetEngine.implemented_functions(),
         &catalog,
     );
-    score_milestones(&milestones, &catalog, &suites, &results, &mut report);
+    score_milestones(&milestones, &catalog, suites, &results, &mut report);
     print_summary(&report);
     let mut failed = false;
     let mut visible = VisibleCount::default();
-    for suite in &suites {
+    for suite in suites {
         if suite.manifest.baseline == BaselineMode::None {
             continue;
         }
@@ -503,6 +529,11 @@ fn cmd_check(
     if sel.suites.is_empty() && !visible_parity_gate(root, visible, update)? {
         failed = true;
     }
+    if let Some(floor_results) = floor_results {
+        if !evidence_floor_gate(root, &catalog, &floor_results, false, false)? {
+            failed = true;
+        }
+    }
     Ok(if failed {
         ExitCode::FAILURE
     } else {
@@ -526,7 +557,7 @@ fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result
     let sel = Selection {
         suites: Suite::load_all(&root.join("eval/suites"))?
             .into_iter()
-            .filter(|s| s.manifest.fetch.is_none())
+            .filter(evidence_floor::counts)
             .map(|s| s.manifest.name)
             .collect(),
         filter: None,
@@ -535,11 +566,30 @@ fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result
     let suites = select(root, &sel, false)?;
     let catalog = Catalog::load(root)?;
     let results = execute(&suites, &sel);
+    Ok(
+        if evidence_floor_gate(root, &catalog, &results, update, allow_increase)? {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        },
+    )
+}
+
+/// Holds the number of functions below the floor in `results` (a run of the vendored suites) to
+/// [`LOCK_PATH`], recording it on `update` when [`evidence_floor::may_record`] allows; returns
+/// whether the gate passes (decision 0062).
+fn evidence_floor_gate(
+    root: &Path,
+    catalog: &Catalog,
+    results: &[CaseResult],
+    update: bool,
+    allow_increase: bool,
+) -> Result<bool> {
     let report = RunReport::build(
         RustSheetEngine.name(),
-        &results,
+        results,
         &RustSheetEngine.implemented_functions(),
-        &catalog,
+        catalog,
     );
     let count = report.below_floor.len();
     let lock = Lock::read(root)?;
@@ -576,11 +626,7 @@ fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result
             false
         }
     };
-    Ok(if ok {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
-    })
+    Ok(ok)
 }
 
 fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
@@ -706,7 +752,10 @@ fn run() -> Result<ExitCode> {
             println!("report: {}", out.join("report.md").display());
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Check { sel } => cmd_check(&root, &sel, None),
+        Cmd::Check {
+            sel,
+            evidence_floor,
+        } => cmd_check(&root, &sel, None, evidence_floor),
         Cmd::UpdateBaseline {
             sel,
             allow_regressions,
@@ -718,6 +767,7 @@ fn run() -> Result<ExitCode> {
                 allow_regressions,
                 lower: lower_visible_lock,
             }),
+            false,
         ),
         Cmd::EvidenceFloor {
             update,

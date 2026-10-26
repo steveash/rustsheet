@@ -835,3 +835,17 @@ fn fn_npv_defers_range_and_array_errors() {
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
     assert_eq!(model._get_text("A7"), *"#N/A");
 }
+
+#[test]
+fn fn_db_negative_salvage_is_an_error_value() {
+    // A negative salvage is #NUM! as a value, not a NaN number ISNUMBER sees (T-2551; gen-m9
+    // f066968376660329 A244).
+    let mut model = new_empty_model();
+    model._set("A1", "=ISNUMBER(DB(59341,-1,28,6,12))");
+    model._set("A2", "=ISERROR(DB(59341,-1,28,6,12))");
+    model._set("A3", "=DB(59341,-1,28,6,12)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "FALSE");
+    assert_eq!(model._get_text("A2"), "TRUE");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+}

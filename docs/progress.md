@@ -2,7 +2,7 @@
 # RustSheet progress
 
 <!-- progress:generated status -->
-The eval run of **2026-10-25** at commit `05703c6c` (report.json `run`).
+The eval run of **2026-10-25** at commit `a2d5914a` (report.json `run`).
 
 - **Suites run (17):** calipers, corpus-bench, fixtures, gen-m1, gen-m10, gen-m2, gen-m5, gen-m6, gen-m7, gen-m8a, gen-m8b, gen-m9, ironcalc-calc, poi, probes, probes-numeric, smoke.
 - **Suites skipped (0):** none.
@@ -13,8 +13,79 @@ The eval run of **2026-10-25** at commit `05703c6c` (report.json `run`).
 ## Bottom line
 
 <!-- progress:judgment bottom-line -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+Values match Excel closely on real workbooks; statistical numerics are the main gap, and Phase 1 has not exited.
+
+- **Phase 1 has not exited.** 324 of 506 in-scope functions meet the exit rate (decision 0118), 169 are below it, and no milestone's exit row is met yet.
+- **Real-world files are close.** On calipers, 99.85% of cells are bit-exact and 153 of its 171 workbooks have every cell within 15 digits; on poi, 112 of 115 workbooks are all exact.
+- **Function by function**, 330 of 506 (65.22%) never differ from Excel in the 15 digits Excel shows; 97 are below 99%, 69 of them statistical.
+- **The biggest gap is numeric accuracy** (judgment): 131,346 visibly-off numbers against 20,009 visibly-off type, error or text cells. Fixing only the latter would lift 69 functions to the rate, and 40 semantics tasks are ready.
+- **No trend yet.** This is the first complete run in the history, so there are no deltas to report.
 <!-- /progress:judgment -->
+
+<!-- progress:generated goals -->
+## Goals
+
+**Phase 1 \(decision 0114\): not met \(324/506 functions covered with ≥ 99.9% of their attributed cells within 15 digits, decision 0118\)**
+
+**Fifteen-digit parity: not met \(coverage 492/506, visibly-off cells 153847\)** The history has no earlier complete run, so whether the previous run met the checkpoint is not known yet.
+
+Milestones whose exit row in the report is met: none.
+
+### Milestones
+
+One row per milestone of [docs/milestones.md](milestones.md), in milestone order; the phase
+table there gives the order they are worked in. "Exit criteria checked" counts the `- [x]` items
+of the milestone's exit criteria ("prose" when they are not a checklist). Catalog coverage, the
+exit measures (decision 0085, read at visible parity by decision 0114), the frozen probe lists
+(decision 0043) and the probe milestones (decision 0051) are the eval report's rows; a probe row
+such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.py stats --json`.
+
+| Milestone | Phase | Exit criteria checked | Catalog coverage | Exit measures (report) | Frozen list and probes | Todo | In progress | Blocked | Done |
+| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
+| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 4 | 0 | 1 | 73 |
+| M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 22 visibly off, 22 known failures | 4 | 1 | 2 | 391 |
+| M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 22 visibly off, 22 known failures | 6 | 0 | 0 | 373 |
+| M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
+| M4 Storage, memory and structural edits (Phase 2) | 2 | prose | – | – | – | 0 | 0 | 0 | 0 |
+| M5 Function families I: math, logical, text, information | 1 | prose | 135/135 | **exit not met**; coverage 135/135 (met); generated suite 2 visibly off of 41,640, allowance 41 (met); ironcalc-calc 0 visibly off (met); probes 10 visibly off (not met) | probes M5: 10 visibly off, 10 known failures | 27 | 0 | 0 | 203 |
+| M6 Lookup & reference, date & time | 1 | prose | 38/39 | **exit not met**; coverage 38/39 (not met); generated suite 0 visibly off of 25,000, allowance 25 (met); ironcalc-calc 0 visibly off (met); probes 0 visibly off (met) | probes M6: 0 visibly off, 0 known failures | 15 | 0 | 0 | 94 |
+| M7 Dynamic arrays & modern Excel | 1 | prose | 32/32 | – | probes M7: 55 visibly off, 55 known failures | 37 | 0 | 0 | 152 |
+| M8 Names, tables, structured references, multi-sheet | 1 | prose | no functions | – | probes M8: 99 visibly off, 99 known failures | 20 | 0 | 0 | 33 |
+| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 1,499 visibly off, 2,385 known failures | 202 | 1 | 6 | 346 |
+| M10 Formatting & display | 1 | prose | no functions | – | probes M10: 95 visibly off, 95 known failures | 26 | 0 | 0 | 23 |
+| M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 23 | 0 | 1 | 36 |
+| M12 API v1, bindings & release | 3 | prose | – | – | – | 1 | 0 | 0 | 0 |
+| M13 Performance at scale (Phase 2) | 2 | prose | – | – | – | 1 | 0 | 1 | 0 |
+| M14 Desktop-oracle parity (Phase 4) | 4 | prose | – | – | – | 2 | 0 | 19 | 0 |
+<!-- /progress:generated -->
+
+<!-- progress:generated campaign -->
+## Campaign stages
+
+Decision 0114 works the visibly-off cells in stages, picked in this order: semantics, then
+accuracy, then visible. **169** in-scope functions are below the Phase 1 rate
+(≥ 99.9% of their counted cells within 15 digits; tiers ≥ 99% and < 99%). Their attributed Excel cells hold
+**20,009** visibly-off type, error or text cells and **131,346** visibly-off numbers.
+Fixing only the type, error and text cells would lift **69** of them to ≥ 99.9%.
+
+| Stage | Fixes | Open | Ready | Blocked | Done | Visibly-off cells (functions under 99.9%) | Functions lifted to ≥ 99.9% |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Semantics | wrong type, error or text, and semantic rules | 44 | 40 | 0 | 36 | 20,009 type, error or text | 69 of 169 |
+| Accuracy | more accurate kernels where Excel is close to correctly rounded | 13 | 9 | 0 | 1 | 131,346 numbers, accuracy and visible together | – |
+| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 37 | 22 | 4 | 218 | in the accuracy row | – |
+| Parked (defer: phase-1b) | last-digit work on cells already within 15 digits (Phase 1b) | 37 | 0 | 6 | 1 | – | – |
+
+- **Tasks** are `scripts/tasks.py stats --json`. Open is todo, in progress or blocked. Ready is
+  the tasks ready on `main`, ignoring branch claims, so a claimed task still counts. A task with a
+  stage and `defer: phase-1b` counts in its stage row and in the parked row (decision 0119), so the
+  rows do not add up to a total.
+- **Visibly-off cells** are the attributed cells of the functions below the rate. Numbers are
+  shown for the accuracy and visible stages together: telling them apart needs a high-precision
+  reference and per-family judgment, which a daily run cannot repeat (SPEC-0022, "Alternatives
+  considered").
+- **Lifted by the semantic fixes alone:** AND, AVERAGE, BASE, BESSELI, CELL, CHAR, CHISQ.TEST, COLUMN, COLUMNS, COUPNUM, COVARIANCE.P, COVARIANCE.S, CRITBINOM, DAVERAGE, DGET, DVAR, FORECAST.ETS, FORECAST.ETS.CONFINT, FORECAST.ETS.SEASONALITY, FORECAST.ETS.STAT, FORMULATEXT, FREQUENCY, FVSCHEDULE, IMABS, IMCOS, IMCOSH, IMCOT, IMCSC, IMLN, IMPOWER, IMSEC, IMSECH, IMSIN, IMSINH, IMSQRT, IMTAN, INDIRECT, INFO, ISERROR, ISREF, MATCH, MAX, MEDIAN, MIN, MODE, MODE.MULT, MODE.SNGL, NORM.S.DIST, NUMBERVALUE, PERCENTRANK, PERCENTRANK.EXC, PERMUTATIONA, PHI, RATE, REPT, ROW, SEARCH, SKEW.P, SMALL, SUM, SUMPRODUCT, T, TDIST, TEXT, TRIMMEAN, VALUE, VLOOKUP, Z.TEST, ZTEST.
+<!-- /progress:generated -->
 
 <!-- progress:generated since-last-run -->
 ## Since the last run
@@ -86,17 +157,17 @@ value is the same. Every function is listed in [docs/progress/functions.md](prog
 
 ### Attributed cells by closeness
 
-**1,433,656** attributed Excel cells: 76.41% bit-exact, 89.44% within 15 digits, **151,369** (10.56%) visibly off.
+**1,433,786** attributed Excel cells: 76.41% bit-exact, 89.44% within 15 digits, **151,386** (10.56%) visibly off.
 
 | Closeness | Attributed cells | Share |
 | --- | ---: | ---: |
-| Bit-exact | 1,095,391 | 76.41% |
+| Bit-exact | 1,095,504 | 76.41% |
 | Within 1 ulp | 59,197 | 4.13% |
 | Within 2–4 ulp | 82,715 | 5.77% |
 | Within 15 digits | 44,984 | 3.14% |
 | Visibly off: number | 131,347 | 9.16% |
-| Visibly off: type or text | 20,022 | 1.40% |
-| **All** | **1,433,656** |  |
+| Visibly off: type or text | 20,039 | 1.40% |
+| **All** | **1,433,786** |  |
 
 ![Attributed cells by closeness](progress/cells-by-closeness.svg)
 
@@ -116,14 +187,14 @@ displayed-text (`TF`) lines after "text".
 | gen-m10 | 20 | 1,690 | 99.17% | 99.17% | 14 | 20 | 9 | 9 | 11 | 0 | 14; text 366 |
 | gen-m2 | 39 | 15,600 | 100.00% | 100.00% | 0 | 39 | 39 | 39 | 0 | 0 | 0 |
 | gen-m5 | 115 | 41,640 | 99.99% | 99.99% | 2 | 115 | 109 | 113 | 2 | 0 | 6 |
-| gen-m6 | 85 | 25,000 | 99.99% | 99.99% | 1 | 85 | 84 | 84 | 1 | 0 | 0 |
+| gen-m6 | 85 | 25,000 | 100.00% | 100.00% | 0 | 85 | 85 | 85 | 0 | 0 | 0 |
 | gen-m7 | 52 | 31,845 | 100.00% | 100.00% | 0 | 52 | 52 | 52 | 0 | 0 | 0 |
 | gen-m8a | 12 | 3,577 | 100.00% | 100.00% | 0 | 12 | 12 | 12 | 0 | 0 | no baseline |
 | gen-m8b | 9 | 3,368 | 91.78% | 91.78% | 277 | 9 | 4 | 4 | 5 | 0 | no baseline |
-| gen-m9 | 261 | 95,262 | 95.55% | 97.09% | 2,519 | 261 | 30 | 30 | 231 | 0 | 4,216 |
+| gen-m9 | 261 | 95,262 | 95.57% | 97.11% | 2,499 | 261 | 31 | 31 | 230 | 0 | 4,178 |
 | ironcalc-calc | 219 | 72,357 | 99.11% | 99.71% | 165 | 218 | 186 | 203 | 15 | 0 | 644 |
 | poi | 336 | 27,209 | 99.61% | 99.64% | 95 | 115 | 112 | 112 | 3 | 0 | 119 |
-| probes | 1,539 | 101,262 | 97.40% | 98.10% | 1,770 | 1,533 | 1,366 | 1,393 | 140 | 0 | 2,666 |
+| probes | 1,542 | 101,419 | 97.40% | 98.09% | 1,780 | 1,536 | 1,368 | 1,395 | 141 | 0 | 2,655 |
 | probes-numeric | 263 | 611,860 | 48.72% | 71.46% | 129,994 | 263 | 69 | 108 | 155 | 0 | no baseline |
 | smoke | 6 | 46 | 100.00% | 100.00% | 0 | 6 | 6 | 6 | 0 | 0 | 0 |
 <!-- /progress:generated -->
@@ -211,13 +282,24 @@ bars, or 20 cells for a function the catalog exempts). **9** have fewer than
 ## Real-world readiness
 
 <!-- progress:judgment readiness -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+Ratings are the steward's judgment, grounded in the numbers they cite. The page measures computed values only, not speed or saving.
+
+- **Read and compute: likely.** calipers matches Excel bit for bit on 99.85% of 1,353,813 cells, and 153 of its 171 workbooks have no cell off in the 15 digits Excel shows; poi has a visibly-off cell in 3 of 115 workbooks.
+- **Edit and recalc: likely.** The frozen M1 probe list for core calculation semantics has 0 known failures, with 89 of 89 cases run. The page does not measure recalculation after an edit.
+- **Large ranges: partly.** No suite timed out on this run (0 timeouts in every suite), but the page does not measure recalculation time, and the dependency graph is Phase 2 work whose milestone row shows 4 blocked tasks. Judgment: large lookup or criteria ranges may be slow.
+- **Save and round-trip: partly.** Not measured: none of the page's numbers comes from writing a file. Judgment, from open export work such as table parts (T-2196); the M8 row shows 20 tasks to do.
 <!-- /progress:judgment -->
 
 ## Risks
 
 <!-- progress:judgment risks -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+1. **Statistical numerics.** 69 of 149 statistical functions have fewer than 99% of their cells within 15 digits, and the M9 probes show 1,499 visibly-off cells. Judgment: most of the 131,346 visibly-off numbers sit here. Owner: T-2510 (incomplete beta, accuracy stage).
+2. **VLOOKUP, the fourth most-used function, is below 99%.** 45.73% of its 33,065 attributed cells are within 15 digits. Judgment: corpus-bench's 18,700 visibly-off cells in 7 workbooks suggest a few real-world files, not everyday lookups, carry most of this. Owner: no task, filed T-0478.
+3. **Wrong types, errors and text.** 20,009 visibly-off cells; fixing them alone would lift 69 of the 169 functions below the rate, and 40 semantics tasks are ready. Judgment: the cheapest progress toward the exit. Owner: T-1671 (table totals rows, which in the steward's judgment are behind COUNT at 95.76% and COUNTA at 96.25%).
+4. **M6 catalog coverage.** 38/39 functions are covered, so M6's exit is not met. Owner: T-2674 (generated cells for GETPIVOTDATA, the last uncovered M6 function).
+5. **Large ranges are unmeasured.** 0 timeouts on this run, but the page has no recalculation timing, and recalculation stays full until the dependency graph lands (judgment). Owner: T-0401 (blocked: Phase 2).
 <!-- /progress:judgment -->
 
 <!-- progress:generated method -->
@@ -232,6 +314,15 @@ _Not written yet: the steward writes this block (SPEC-0022)._
   heading says so, and the text is still shown.
 - **One definition per measure.** Every verdict, bucket and tier is computed once, in the Rust eval
   report (crates/rustsheet-eval). This page only adds up the report's counts.
+- **Goals.** The Phase 1 and checkpoint lines are report.json `v15_checkpoint.phase1_line`
+  and `verdict_line`, as the eval wrote them; the previous run's checkpoint is the last complete
+  row of docs/progress/history.json. The milestone rows read docs/milestones.md for the phase table
+  and the exit checklists, report.json `catalog_coverage`, `milestone_exit`, `milestone_lists`
+  and `probe_milestones`, and tasks.json `by_milestone`.
+- **Campaign stages.** Task counts are tasks.json `by_campaign` and `deferred` (decision 0119).
+  The functions below the rate are those whose report tier is under `rate999`; a function is
+  lifted when its counted cells (`v15_checkpoint.functions[].rate_cells`) reach the report's rate
+  (`rate_num / rate_den`) once its visibly-off type, error and text cells are fixed.
 - **Parity.** Tiers, attribution and the Phase 1 line are the eval report's own (report.json
   `tiers`, `functions[].tier`, `attribution`, `attributed`, `excel`, and `v15_checkpoint`;
   crates/rustsheet-eval/src/attribution.rs and v15_checkpoint.rs, decision 0118). The glue list

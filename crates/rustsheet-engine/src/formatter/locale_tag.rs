@@ -4,7 +4,7 @@
 //! docs/excel-semantics/number-formats.md "Locale tags localize date names".
 
 pub use crate::locale::excel_date_names::DateNames;
-use crate::locale::excel_date_names::{EN_US, LOCALES};
+use crate::locale::excel_date_names::{EN_US, LOCALES, LUNAR_JA, LUNAR_KO, LUNAR_ZH};
 
 /// The calendar a locale tag selects: what `yy`, `yyyy`, `b`, `e` and `g` print.
 /// Evidence: probes/text-locale-calendars, text-locale-calendars-detail, text-locale-japanese-year
@@ -23,6 +23,21 @@ pub enum Calendar {
     Korean,
     /// Calendar digit 7: `yy`/`yyyy` and `b` count from 543 BC; `e` stays Gregorian.
     Thai,
+    /// Calendar digits E, F, 11, 12 and 13: the lunar year, month and day for every date token, `b`
+    /// and `e` included (`[$-110409]yyyy|m|d|e|bbbb` of 2024-01-09 is "2023|12|28|2023|2023";
+    /// probes/text-locale-calendars A113, text-locale-lunar-tokens A75).
+    Lunar(LunarTable),
+}
+
+/// Which month table a lunar calendar digit uses: F and 11 follow China; E, 12 and 13 one that
+/// starts some months a day later (`[$-E0409]m` of 2023-05-19 is "4", `[$-110409]m` "5";
+/// probes/text-locale-lunar-months-1900 columns A-F).
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum LunarTable {
+    /// Calendar digits F and 11.
+    Chinese,
+    /// Calendar digits E, 12 and 13.
+    Eastern,
 }
 
 /// A resolved locale tag: the names of months and days, the day-half strings and the calendar.
@@ -93,8 +108,10 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// (Japanese eras for Japanese), 1 Gregorian, 2 and D Gregorian with en-US names, 3 Japanese eras
 /// (Japanese names only for a Japanese LCID), 4 Taiwan (zh-TW names), 5 Korean (Korean names only
 /// for a Korean LCID), 7 Thai (Thai names), 9 Gregorian with French names, and 15 and above are
-/// ignored (`[$-FF040C]mmmm` is "mars"). Day halves follow the LCID throughout. Calendars 6 (Hijri,
-/// TODO(T-2729)), E-13 (lunar, TODO(T-1922)), 8 (Hebrew), A-C (Arabic Gregorian), 10 (Saka) and 14
+/// ignored (`[$-FF040C]mmmm` is "mars"). E, F, 11, 12 and 13 are lunar: E with lunar month names
+/// and Japanese weekdays (Korean names under a Korean LCID), F and 11 with zh-CN weekdays, 12 and
+/// 13 with en-US names. Day halves follow the LCID throughout. Calendars 6 (Hijri,
+/// TODO(T-2729)), 8 (Hebrew), A-C (Arabic Gregorian), 10 (Saka) and 14
 /// (Korean native names; TODO(T-1923)) are not modelled and stay [`LocaleTag::Silent`], as do
 /// numeral-system digits (bits 24-31; TODO(T-1925)).
 fn resolve_lcid(value: u32) -> LocaleTag {
@@ -138,6 +155,16 @@ fn resolve_lcid(value: u32) -> LocaleTag {
         ),
         7 => table(0x41E).map_or(LocaleTag::Silent, |n| with_names(n, Calendar::Thai)),
         9 => table(0x40C).map_or(LocaleTag::Silent, |n| with_names(n, Calendar::Gregorian)),
+        0xE => with_names(
+            if lcid & 0x3FF == 0x12 {
+                &LUNAR_KO
+            } else {
+                &LUNAR_JA
+            },
+            Calendar::Lunar(LunarTable::Eastern),
+        ),
+        0xF | 0x11 => with_names(&LUNAR_ZH, Calendar::Lunar(LunarTable::Chinese)),
+        0x12 | 0x13 => with_names(EN_US, Calendar::Lunar(LunarTable::Eastern)),
         _ => LocaleTag::Silent,
     }
 }
