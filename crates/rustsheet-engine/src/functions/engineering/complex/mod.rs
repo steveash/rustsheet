@@ -401,6 +401,15 @@ impl Model {
                 [x, y, suffix] => (x, y, Some(suffix)),
                 _ => return CalcResult::new_args_number_error(cell),
             };
+            // Excel reads the suffix before the numbers, so a bad or error suffix wins over an
+            // error in real_num or i_num (T-2532; engineering.md, gen-m9 COMPLEX cells).
+            let suffix = match suffix.map(|suffix| Self::cast_string_ref(suffix, cell)) {
+                None => Suffix::I,
+                Some(Ok(s)) if s == "i" || s.is_empty() => Suffix::I,
+                Some(Ok(s)) if s == "j" => Suffix::J,
+                Some(Ok(_)) => return value_error(cell),
+                Some(Err(s)) => return s,
+            };
             // A boolean is `#VALUE!`: `COMPLEX(TRUE,1)` (probes/eng-imsum-improduct-whole C12).
             let x = match model.cast_number_no_bools_ref(x, cell) {
                 Ok(s) => s,
@@ -409,13 +418,6 @@ impl Model {
             let y = match model.cast_number_no_bools_ref(y, cell) {
                 Ok(s) => s,
                 Err(s) => return s,
-            };
-            let suffix = match suffix.map(|suffix| Self::cast_string_ref(suffix, cell)) {
-                None => Suffix::I,
-                Some(Ok(s)) if s == "i" || s.is_empty() => Suffix::I,
-                Some(Ok(s)) if s == "j" => Suffix::J,
-                Some(Ok(_)) => return value_error(cell),
-                Some(Err(s)) => return s,
             };
             complex_result(x, y, suffix)
         })
@@ -536,7 +538,13 @@ impl Model {
             let Ok(radius) = power(r, n) else {
                 return num_error(cell);
             };
-            let angle = f64::atan2(y, x) * n;
+            // The angle is Excel's ATAN2 kernel, `atan(y/x)` (IMARGUMENT's [`excel_atan2`]):
+            // `IMPOWER("1000+1i",1)` is "1000+1i", its imaginary part 1.0000000000000002 where
+            // libm `atan2` gives exactly 1 (gen-m9/74779cff2810ccf4 Calc!A379; T-2610). Unprobed
+            // (T-2736): where that kernel errs (a zero or subnormal x, an overflowing y/x) `atan2` is
+            // kept; its subnormal angle is 0 (`IMPOWER("1E20+1E-300i",1)` is "1E+20") and a -0
+            // imaginary part with x < 0 is +π, where `atan2` gave a tiny part and -π.
+            let angle = excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x)) * n;
             // An underflowed radius of 0 is "0" without reading the angle
             // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
             if radius == 0.0 {

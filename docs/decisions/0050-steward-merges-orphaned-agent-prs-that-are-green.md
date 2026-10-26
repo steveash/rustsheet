@@ -3,7 +3,8 @@
 - **Status:** accepted (2026-10-12, owner decision). It extends the `steward` skill's merge
   policy, keeps decision 0028's up-to-date gate for every merge, and reuses decision 0020's
   "merge `main` into another session's stale agent PR" step. Amended by 0053: with the merge
-  queue on, enqueue instead of the up-to-date check.
+  queue on, enqueue instead of the up-to-date check. Amended by 0121: the steward merges `main`
+  in under the merge lock, and before it only to fix a conflict or a known id collision.
 - **Context:**
   - Worker sessions stop on a time budget (decision 0025). Some stop with a PR open that is
     finished or nearly finished.

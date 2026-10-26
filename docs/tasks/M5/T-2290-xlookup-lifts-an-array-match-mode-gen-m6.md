@@ -3,7 +3,7 @@ id: T-2290
 title: "XLOOKUP lifts an array match_mode (gen-m6 fe0972380d030e4a A224 is #SPILL!)"
 milestone: M5
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ XLOOKUP given an array `match_mode` returns an array, as Excel does, so gen-m6/f
 
 ## Out of scope
 - The lookup_value, lookup_array and return_array readers.
+
+## Outcome
+XLOOKUP no longer returns a scalar error lookup_value early when match_mode or search_mode is an array; the error lifts per element, so the blocked spill is `#SPILL!`. gen-m6/fe0972380d030e4a Calc!A224 now passes (baseline shrank by 1). lookup.md records the argument kinds.
