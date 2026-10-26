@@ -12,6 +12,8 @@
 //!   `0` a zero: `# ?/4` on 0.5 is " 2/4");
 //! - the minus leads the whole text, also when the value rounds to zero (`# ?/2` on -1/7 is
 //!   "-0    ");
+//! - a `,` after the denominator multiplies the value by 1E250 for `,,` and is #VALUE! for `,`
+//!   on a nonzero value (probes/fraction-format-features rows 5-6);
 //! - with no integer part a numerator past Excel's bound cannot be shown ([`format_fraction`]
 //!   returns `None`).
 
@@ -31,7 +33,16 @@ pub(super) fn format_fraction(
     fraction: &Fraction,
 ) -> Option<String> {
     let negative = value < 0.0;
-    let value = value.abs() * 100.0_f64.powi(part.percent) / 1000.0_f64.powi(part.comma);
+    let value = value.abs() * 100.0_f64.powi(part.percent);
+    // A `,` after the denominator scales the value up, never down by 1000 as after a plain number
+    // (probes/fraction-format-features rows 5-6): one comma is #VALUE! on any nonzero value, two
+    // multiply by 1E250. UNVERIFIED: three or more commas; we treat them as one comma's overflow.
+    let value = match part.comma {
+        0 => value,
+        _ if value == 0.0 => value,
+        2 => value * 1e250,
+        _ => return None,
+    };
     let tokens = &part.tokens;
     let has_integer = tokens[..fraction.numerator_start]
         .iter()

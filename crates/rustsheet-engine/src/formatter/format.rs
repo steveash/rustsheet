@@ -688,6 +688,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
                 return match format_fraction(value, p, fraction) {
+                    // `# ?/4,,` on 1234.5 is 258 characters, #VALUE! (probes/fraction-format-features I6).
+                    Some(text) if text.chars().count() > MAX_TEXT_FORMAT_CHARS => text_too_long(),
                     Some(text) => Formatted {
                         text,
                         color: p.color,

@@ -3,7 +3,7 @@ id: T-2072
 title: "Format a trailing comma after a fraction denominator as #VALUE!"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ Probe cells rows 5-6 of probes/fraction-format-features (docs/excel-semantics/nu
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+A `,` after a fixed denominator now scales the value up (`,,` x 1E250, `,` on a nonzero value #VALUE!) instead of dividing by 1000, and a fraction result over 255 characters is #VALUE!. Eval: probes/fraction-format-features 17 -> 3 known failures (rows 5-6 all pass); three-or-more commas stay UNVERIFIED.

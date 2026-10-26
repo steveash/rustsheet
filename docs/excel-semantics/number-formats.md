@@ -758,8 +758,8 @@ B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
   "0    " (B5:I5); `# ?/4,,` multiplies the value by 1E250 and prints the integer in full with the fraction blanked ("15" + 249
   zeros + 4 spaces on 1.5, B6; -0.001 "-1" + 247 zeros, F6; 253 to 255 characters), and is #VALUE! on 1234.5 (I6),
   whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! on the same pattern (a larger
-  factor, or the limit); the per-comma factor and the limit's role are hypotheses to probe (T-2072). Not
-  implemented: we print "0    ".
+  factor, or the limit); the per-comma factor is unprobed beyond `,` and `,,` (three or more
+  commas are UNVERIFIED, treated as `,`). Implemented in formatter/fraction.rs (T-2072).
 - **`0` numerator placeholders print**: a zero numerator is not blanked, it pads with zeros: `# 00/16` on 0 "00/16",
   on 1.99 "2 00/16" (D8, E8), and `# 0/4` on 0 "0/4", 1 "1 0/4" (D15, G15); the integer part is dropped under `#` when
   zero and the separator goes with it (`# 00/16` on 0.5 "08/16", H8; `# 0/4` on 0.5 "2/4", H15; -0.5 "-08/16", "-2/4",
