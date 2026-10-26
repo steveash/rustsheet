@@ -3,7 +3,7 @@ id: T-2792
 title: "ACCRINT reads calc_method first and range-checks each date as it reads it (21 gen-m9 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
