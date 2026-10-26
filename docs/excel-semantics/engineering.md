@@ -374,7 +374,7 @@ Tasks: T-1385
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
 - IMPOWER does not use the naive polar form: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` (the naive form gives 1.22464679914735E-16), `IMPOWER("-j",3)` real part -1.83772268236293E-16, `IMPOWER("1+i","2")` real part 1.22514845490862E-16, `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i` (naive: `-1125899906842630-0.552925707312197i`). The values differ, not only the printing; tiny parts also print in E-notation.
 - A blank cell argument is 0 in IMSUB (`IMSUB(A7,B7)` with B7 blank), unlike empty text (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet2 G7:G10).
-- Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
+- Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (the angle by Excel's ATAN2 kernel `atan(y/x)` since T-2610, "1i" below) (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
 - A blank first argument is 0 in IMDIV and IMPOWER (`IMDIV(blank,"1+i")` and `IMPOWER(blank,2)` are "0"; `IMPOWER(blank,0)` and `IMDIV(blank,blank)` are `#NUM!`). IMDIV by Smith's algorithm matches Excel to the last digit on a sweep of 13 non-trivial divisors, including `1E10+1E-10i` over `1E-5+1E5i` and `1+i` over `1E-200+1E-200i` (`1E+200`).
 - IMPOWER changes rule once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27 (a radius-1 base stops answering; others: "IMPOWER past the angle cut"): `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
 - Excel's modulus matches `hypot`, and `sqrt(x²+y²)` is ruled out: the 16-digit literal reads as the 15-digit
@@ -679,8 +679,13 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   "0.333333333333333+1i", `COMPLEX(1+2^-52,1-2^-53,"j")` "1+1j", `IMDIV("5","-1.5+0.5i")` "-3-1i",
   `IMPOWER("1000+1i",1)` "1000+1i" (493bb194c8e0b577 A331, 62c886e21a1042af A243, 7dc52cfcbc8b4448 A247, ...). Implemented
   for the text of COMPLEX and IMDIV (T-2533): the coefficient is compared unrounded.
-  After that fix `IMPOWER("1000+1i",1)` is still "1000+i": our polar form gives an imaginary part of exactly 1,
-  Excel's is not exactly 1 (gen-m9 74779cff2810ccf4 A379). T-2610.
+  IMPOWER's angle is Excel's ATAN2 kernel `atan(y/x)` (IMARGUMENT's), not libm `atan2`: for `IMPOWER("1000+1i",1)`
+  `atan(0.001)` is 0.0009999996666668668, one ulp above `atan2(1,1000)`, so the imaginary part
+  `hypot(1000,1)·sin(angle)` is 1.0000000000000002 and prints "1i" (libm's angle gives exactly 1, "1000+i"; gen-m9
+  74779cff2810ccf4 A379). Every other IMPOWER cell in the suites is unchanged by the switch. Implemented (T-2610);
+  unprobed (T-2736): where `atan(y/x)` errs (x zero or subnormal, y/x overflowing) ours keeps libm `atan2`; the
+  kernel's flush of a subnormal angle to 0 now makes `IMPOWER("1E20+1E-300i",1)` "1E+20" (libm's angle keeps the 1E-300 part),
+  and x < 0 with a -0 imaginary part takes +π where `atan2` took -π.
 - **IM* trigonometry of a real number is SIN, COS and TAN.** With a zero imaginary part, IMSIN, IMCOS, IMTAN, IMSEC,
   IMCSC and IMCOT give exactly the worksheet functions' values (x87 reduction, numbers.md "Trig of a huge angle"), as the
   engine's own SIN/COS/TAN reproduce: `IMSIN(123456789.123)` 0.99984293955201 (= SIN; libm 0.999842939552045),
