@@ -715,12 +715,21 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   Ours (T-2534): IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real take SIN, COS and TAN's kernels and the limit
   (`real_trig`); IMTAN takes the limit but keeps the double-angle form below it, so the desktop N6 still passes and the 35
   web `IMTAN("5")` cells and the other IMTAN-of-a-real cells stay known failures (T-2774).
-- **sinh and cosh inside IMSIN, IMCOS and IMSINH are (EXP(t) ∓ EXP(-t))/2, also for small t.** `IMSINH("4")` is
-  27.2899171971278 (= (EXP(4)-EXP(-4))/2 = 27.289917197127753 with Excel's EXP; libm sinh 27.28991719712775 prints
-  ...277; 33 cells), and `IMSEC(IMSINH("4"))` -1.80717748625735 follows from that text. `IMCOS("1.5E+2-2E-3i")` has
-  imaginary part -0.0014297538124271 (= -SIN(150)·(EXP(-0.002)-EXP(0.002))/2; with sinh ...242709).
-  `IMSIN("1E-200+1E-200i")` is "1E-200": the imaginary part cos(x)·sinh(1E-200) is 0 because the two EXPs are equal. IMCOSH
-  had no failing cell. T-2535.
+- **sinh and cosh inside IMSIN and IMCOS are (EXP(t) ∓ EXP(-t))/2, also for small t; IMSINH's are not.**
+  `IMCOS("1.5E+2-2E-3i")` has imaginary part -0.0014297538124271 (= -SIN(150)·(EXP(-0.002)-EXP(0.002))/2; with libm
+  sinh ...242709), and `IMSIN("1E-200+1E-200i")` is "1E-200": the imaginary part cos(x)·sinh(1E-200) is 0 because the
+  two EXPs are equal. Implemented (T-2535: `exp_sinh_cosh`, 4 gen-m9 cells). IMSINH keeps a tiny real part
+  (`IMSINH("1E-200+1E-200i")` is "1E-200+1E-200i", gen-m9/40fc68fccfaf9b76 A155), so it is not the EXP form, and
+  `IMSINH("4")` is 27.2899171971278 (33 gen-m9 cells; `IMSEC(IMSINH("4"))` -1.80717748625735 follows from that
+  text) while `IMSINH("-4")` is -27.2899171971277. The complex text is not the cause:
+  `COMPLEX((EXP(4)-EXP(-4))/2,0)` prints 27.2899171971277 and `IMREAL(IMSINH(4))` is 27.2899171971278, so IMSINH's
+  double at 4 is 27.289917197127753, one ulp above (EXP(4)-EXP(-4))/2 = libm sinh = 27.28991719712775
+  (probes/t2535-complex-text-tie). Over 43 real arguments (probes/t2535-imsinh-imcosh-kernel-sweep, excel-graph
+  2026-10-26) libm sinh misses only 4; the EXP form misses 4 and 0.01; cosh − EXP(-x) misses 12 and 0.01; a correctly
+  rounded sinh misses -4, ±12 (and `"12-3i"`), where the web agrees with the Mac desktop cache of COMPLEXs.xlsx P12 and
+  P21. No formula symmetric in EXP(x) and EXP(-x) gives both ±4. IMCOSH matches libm cosh on all 62 inputs. The
+  engine keeps libm for IMSINH; the kernel is T-2778. Status: VERIFIED (excel-graph) for the values; the IMSINH kernel
+  is open.
 - **IMSQRT of a negative real is polar through COS and ATAN2 on the web (the engine keeps desktop's libm value).** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i (516488da78a6b08c A52,
