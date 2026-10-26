@@ -411,7 +411,7 @@ impl Model {
 
         // A sum of squares that overflows is #DIV/0! too, not the 0 that dividing by an infinite
         // deviation gives (`SKEW({1E+200,1E+200,-1E+200},2.5)`, probes/t2475-stat-subexpressions
-        // P!A245; SKEW.P is unprobed).
+        // P!A245; SKEW.P and KURT alike, statistics.md "Overflowing squares (T-2432)").
         if m2 == 0.0 || m2.is_infinite() {
             return CalcResult::Error {
                 error: Error::DIV,
@@ -463,7 +463,9 @@ impl Model {
             m2 += d * d;
         }
 
-        if m2 == 0.0 {
+        // An overflowing sum of squares is #DIV/0! as in SKEW (`SKEW.P({1E+200,1E+200,-1E+200})`;
+        // statistics.md "Overflowing squares (T-2432)").
+        if m2 == 0.0 || m2.is_infinite() {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
@@ -511,7 +513,9 @@ impl Model {
             m2 += d * d;
         }
 
-        if m2 == 0.0 {
+        // An overflowing sum of squares is #DIV/0! as in SKEW (`KURT({1E+200,1E+200,-1E+200})`;
+        // statistics.md "Overflowing squares (T-2432)").
+        if m2 == 0.0 || m2.is_infinite() {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
