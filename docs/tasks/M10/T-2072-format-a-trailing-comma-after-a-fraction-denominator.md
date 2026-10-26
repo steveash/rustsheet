@@ -3,7 +3,7 @@ id: T-2072
 title: "Format a trailing comma after a fraction denominator as #VALUE!"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
