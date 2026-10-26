@@ -1206,6 +1206,7 @@ C	probes/t2493-npv-rate-edges.case.json	67
 C	probes/t2496-fin-subexpressions.case.json	99
 C	probes/t2498-textafter-match-end.case.json	75
 C	probes/t2517-combina-below-cut-small-n.case.json	4
+C	probes/t2534-im-trig-real-limit.case.json	60
 C	probes/t2545-base-places-boolean.case.json	7
 C	probes/t2546-bessel-past-cap.case.json	83
 C	probes/t2547-bessel-phase-cut.case.json	88
@@ -1731,8 +1732,6 @@ F	probes/eng-imln-modulus-range.case.json	S!A79
 F	probes/eng-imln-modulus-range.case.json	S!A80
 F	probes/eng-imtan-imcot-overflow.case.json	S!A10
 F	probes/eng-imtan-imcot-overflow.case.json	S!A11
-F	probes/eng-imtan-imcot-overflow.case.json	S!A12
-F	probes/eng-imtan-imcot-overflow.case.json	S!A13
 F	probes/eng-inumber-date-boundary.case.json	S!A22
 F	probes/eng-inumber-date-boundary.case.json	S!B21
 F	probes/eng-inumber-date-boundary.case.json	S!B22
@@ -3152,6 +3151,10 @@ F	probes/t2496-fin-subexpressions.case.json	P!A74
 F	probes/t2496-fin-subexpressions.case.json	P!A79
 F	probes/t2496-fin-subexpressions.case.json	P!A89
 F	probes/t2496-fin-subexpressions.case.json	P!A90
+F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D1
+F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D10
+F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D8
+F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D9
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D1
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D19
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D2
