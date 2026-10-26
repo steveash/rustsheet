@@ -2,7 +2,6 @@
 # case, cell, decision, accepted DEVIATION entry, RustSheet's pinned by-design value.
 lifted-range-rows.case.json	Sheet1!C1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!C2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
-lifted-range-rows.case.json	Sheet1!C3	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!E1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 textsplit-padded-size.case.json	Calc!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 textsplit-padded-size.case.json	Calc!A2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
