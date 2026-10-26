@@ -3757,11 +3757,24 @@ INTERCEPT and COVARIANCE.P `#NUM!` where the same number from anywhere else give
 `IF(TRUE,4)` and `INDIRECT("B1")` give `#DIV/0!` (probes/t2436/computed-scalar A1:A29). This explains the three F.TEST cells
 the T-2255 entry above left UNVERIFIED (`FTEST(Data!C3:C9,ERROR.TYPE(#REF!))`, 4250f880ab640c49 A325; `F.TEST(CELL("col",..),..)`,
 623663cacea53bbc A400) and `FORECAST(Data!A10,ERROR.TYPE(..),STDEV.P(..))` (bcb24385baafb2f0 A252). Why Excel does this is
-unknown (perhaps these two functions return an internal integer type the array readers reject); which other functions'
-results do the same is unprobed. The third T-2255 cell, `F.TEST(INDIRECT("Data!B3",TOCOL(2,0,Data!A5)),{-1,0,1})`
+unknown (perhaps these two functions return an internal integer type the array readers reject).
+T-2576 probe (probes/t2576-error-type-cell-paired, excel-graph, 2026-10-26; FTEST({1;2;3},x) in D, other calls in E):
+- Which values carry the mark: ERROR.TYPE (also of an array, `ERROR.TYPE({#REF!})`), `CELL("col",..)` and `CELL("row",..)`;
+  not `CELL("contents",..)` of a number, N, SHEET, SHEETS, COLUMNS, LEN, MATCH, AREAS, WEEKDAY, GESTEP or ISREF (D6:D26).
+- What keeps it: parentheses, `LET(x,ERROR.TYPE(#REF!),x)`, `IF(TRUE,..)`, `CHOOSE(1,..)`, `IFERROR(..,0)`, a LAMBDA call
+  `LAMBDA(x,x)(..)` and `INDEX(..,1)` (D1:D5, D19, D20). What drops it: `*1`, unary minus, MAX, SINGLE, `@`, and a cell
+  holding the value (`FTEST({1;2;3},Z1)` with Z1 `=ERROR.TYPE(#REF!)` is `#DIV/0!`; D9, D17, D18, D21, D25, D27, D28).
+- Which functions react, first array argument: COVARIANCE.S, COVAR, CORREL, SLOPE, RSQ, PEARSON, STEYX, SUMXMY2 (1 with 4)
+  and FORECAST.LINEAR are `#NUM!` (E1:E16, E23); so is T.TEST's second array (`T.TEST({1,2,3},ERROR.TYPE(#REF!),2,2)`,
+  E14) and both of FTEST's (E35). A second argument of COVARIANCE.P is `#DIV/0!` (`COVARIANCE.P(4,ERROR.TYPE(#REF!))`,
+  while `COVARIANCE.P(4,5)` is 0; E26), INTERCEPT's known_x and FORECAST's x read it as the number (E27, E29). CHITEST and
+  the one-list functions are unaffected: SUM, STDEV, VAR.P, KURT, PERCENTILE, LARGE, MEDIAN, DEVSQ, AVEDEV, ZTEST and
+  LINEST give what 4 gives (E18:E22, E30:E38).
+The third T-2255 cell, `F.TEST(INDIRECT("Data!B3",TOCOL(2,0,Data!A5)),{-1,0,1})`
 (06b4e8f5de409d5e A261), is `#NUM!` over an INDIRECT that is `#VALUE!` (references.md "INDIRECT: a 1x1 array a1 argument is
 #VALUE!"), as is `COVARIANCE.P(INDIRECT("Data!A1",FILTER(..)),Data!B11:D12)` (f2bd5f380ec002bf A383); that `#NUM!` is UNVERIFIED.
-Evidence: probes/t2436/computed-scalar (excel-graph, 2026-10-24); gen-m9 cells in T-2576 and T-2577.
+Evidence: probes/t2436/computed-scalar (excel-graph, 2026-10-24), probes/t2576-error-type-cell-paired (excel-graph,
+2026-10-26); gen-m9 cells in T-2576 and T-2577.
 Ours: `#DIV/0!` (0 for COVARIANCE.P); T-2576, T-2577.
 Status: VERIFIED (excel-graph) for the listed calls; mechanism UNVERIFIED
 Tasks: T-2576, T-2577
