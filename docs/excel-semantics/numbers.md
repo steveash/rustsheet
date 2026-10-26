@@ -2249,6 +2249,11 @@ not all at the tightest ties: x = 8242 lies 0.04 of a 64-bit ulp from a 64-bit v
 rounds it the other way. So Excel's own tangent carries an error up to about half a 64-bit ulp, and its last bit at such a near-tie
 is not predictable from the exact value. Those 21 cells stay known failures of that probe (as decision 0112 keeps LN's near-ties).
 Ours: implemented (`excel_tan` in functions/math_and_trigonometry/trig.rs, T-2147). COT, which is 1/TAN, inherits the change.
+COT at the same 150 arguments (probes-numeric/t2664-cot-double-rounding, excel-graph, 2026-10-26, T-2664): ours, `1/` the
+double-rounded `excel_tan` (quotient rounded twice), matches 131 of 150 Excel cells, against 129 for TAN itself, and every miss is 1 ulp
+(rows 8, 22, 49, 58, 59, 66, 73, 81, 106, 107, 111, 115, 128, 130, 132, 135, 140, 145, 149). So COT inherits TAN's double rounding
+and its unpredictable near-tie noise; no alternative COT model was fitted (no arbitrary-precision tool was at hand), and with TAN's own
+misses at this level a better fit would be noise-level. The 19 misses stay known failures of that probe.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 
