@@ -13,6 +13,8 @@ depends_on: []
 ## Goal
 ROUNDUP, ROUNDDOWN and TRUNC of a number whose 15-digit cut is subnormal return Excel's exact subnormal, so that
 probes/t2756-roundup-smallest-normal-threshold A52-A58 pass.
+Cells (exit owners, decision 0096): probes/t2756-roundup-smallest-normal-threshold Sheet1!A52, A53, A54, A55, A56,
+A57, A58.
 
 ## Context
 - T-2756 found that when the 15-digit cut of x is subnormal, ROUNDUP/ROUNDDOWN/TRUNC return that cut whatever

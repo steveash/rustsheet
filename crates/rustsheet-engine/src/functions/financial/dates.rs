@@ -93,6 +93,16 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let serial = self.cast_number_no_bools_ref(value, cell)?;
+        self.financial_calendar_serial(serial, cell)
+    }
+
+    /// The range check of [`Model::financial_calendar_date_of`] for a serial already read as a
+    /// number, for a date argument that takes booleans (ACCRINT's `first_interest`).
+    pub(super) fn financial_calendar_serial(
+        &self,
+        serial: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
         let calendar = 0..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
         if !calendar.contains(&self.financial_date(serial)) {
             return Err(num_error(cell));
