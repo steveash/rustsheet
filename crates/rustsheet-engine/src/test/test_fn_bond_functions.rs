@@ -376,6 +376,47 @@ fn fn_coupdays_ms_example_basis1() {
 }
 
 #[test]
+fn fn_coupdays_basis1_counts_from_the_chained_next_coupon() {
+    // Excel values from probes/coupdays-pre1900-control, -sweep, -period and coup-calendar-edges
+    // (excel-graph, 2026-10-25); financial.md "COUPDAYS basis 1 counts from the chained next coupon".
+    let cases = [
+        // Month-end schedules inside the calendar: not COUPNCD - COUPPCD (182, 184, 92).
+        ("=COUPDAYS(DATE(1950,1,15),DATE(2019,3,31),2,1)", 181.0),
+        ("=COUPDAYS(DATE(2018,6,15),DATE(2019,4,30),2,1)", 183.0),
+        ("=COUPDAYS(DATE(1950,1,15),DATE(2019,1,31),4,1)", 92.0),
+        ("=COUPDAYS(DATE(1950,6,15),DATE(2019,1,31),4,1)", 91.0),
+        ("=COUPDAYS(DATE(2018,6,15),DATE(2019,1,31),4,1)", 92.0),
+        ("=COUPDAYS(DATE(2018,1,15),DATE(2019,12,30),2,1)", 181.0),
+        // The next coupon is the maturity itself.
+        ("=COUPDAYS(DATE(2018,12,15),DATE(2019,3,31),2,1)", 182.0),
+        // Around 29 February.
+        ("=COUPDAYS(DATE(2023,11,15),DATE(2025,2,28),2,1)", 184.0),
+        ("=COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)", 182.0),
+        ("=COUPDAYS(59,36585,4,1)", 90.0),
+        // A period that starts before 1900-01-01.
+        ("=COUPDAYS(89,DATE(2019,3,31),2,1)", 181.0),
+        ("=COUPDAYS(90,DATE(2019,3,31),2,1)", 91.0),
+        ("=COUPDAYS(0,2958465,2,1)", 184.0),
+        ("=COUPDAYS(0.5,DATE(2019,12,30),2,1)", 184.0),
+        ("=COUPDAYS(1,2958465,2,1)", 181.0),
+        ("=COUPDAYS(0,DATE(2019,12,29),2,1)", 182.0),
+        ("=COUPDAYS(1,43830,4,1)", 90.0),
+    ];
+    let mut model = new_empty_model();
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        let v: f64 = model._get_text(&format!("A{}", i + 1)).parse().unwrap();
+        assert!(
+            (v - expected).abs() < 1e-10,
+            "{formula}: {v}, expected {expected}"
+        );
+    }
+}
+
+#[test]
 fn fn_coupdays_basis0() {
     // basis=0 (30/360): 360/2 = 180
     let mut model = new_empty_model();

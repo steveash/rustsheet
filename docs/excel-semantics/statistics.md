@@ -299,6 +299,21 @@ ERFC(x) = fl(E*R) for x > 0.5, with E = Excel's EXP(-fl(x*x)) and R = N/D a stor
 (8,9) above), bit-exact on every probed input, which rules out every family above. T-1916 implements it (next
 section) and closes T-1186.
 
+## GAMMA.DIST's density is #NUM! at a subnormal x / beta (T-2738)
+Rule: `GAMMA.DIST(x,alpha,beta,FALSE)` with x > 0 is #NUM! when x / beta is below 2.2250738585072014E-308 (subnormal),
+whatever the shape, the scale or the size of the density, while the cdf there is 0.
+Evidence: probes/t2738-gamma-dist-tiny-ratio (excel-graph 2026-10-25): #NUM! at `GAMMA.DIST(1E-10,1,1E+307,FALSE)`,
+`(1E-10,1,1E+300,FALSE)` (density 1E-300, a normal number), shapes 2 and 0.5, GAMMADIST, `(1E-300,1,1E+10,FALSE)`
+(density 1E-10), `(1E-300,1,1E+8,FALSE)`, `(3E-308,1,2,FALSE)` and `(4.4E-308,1,2,FALSE)` (ratio 2.2E-308); a number at
+`(4.5E-308,1,2,FALSE)` (ratio 2.25E-308, 0.499999999999989), `(3E-308,1,1,FALSE)` and `(1,1,1E+307,FALSE)`. The cdf is 0
+(companion TRUE) at `(1E-10,1,1E+300,TRUE)`, `(1E-300,1,1E+10,TRUE)` and `(3E-308,1,2,TRUE)`; a normal x / beta with a
+subnormal density is 0 (`(10,1,1E+307*10,FALSE)`, `(1E+300,1,1E+307*10,FALSE)`). Near the bound Excel's density is
+about 1E-14 relative off the exact value (T-2753).
+Implemented in: functions/statistical/gamma.rs `gamma_dist_of`; x = 0 keeps its own rule. Unprobed: CHISQ.DIST at x
+below 4.45E-308 (its scale is 2), an x / beta that overflows, and a computed subnormal x with a normal x / beta (a
+typed one reads as 0, numbers.md "Formula literals").
+Status: VERIFIED
+
 ## One incomplete-gamma kernel under ERF, ERFC, NORM, CHISQ, GAMMA.DIST and POISSON (T-1778)
 Rule: these functions are bit-identical compositions of one another, so their last digits come from one
 kernel: the regularized incomplete gamma P(a, z) and its upper half Q(a, z). At shape 0.5 the probes cannot
