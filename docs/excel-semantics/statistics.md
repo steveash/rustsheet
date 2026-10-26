@@ -3574,8 +3574,9 @@ decided before this rule, and excel-graph refused a workbook holding `BETA.DIST(
 Evidence: probes/t2435-dist-extremes A59:A67, A103:A107, A126:A129, A132:A140, A143:A146
 (excel-graph, 2026-10-26); gen-m9 35e8168aae2b00f8 A48 (`AVERAGEA(BETA.DIST(0,0.5,1E+5,FALSE))`).
 Ours: matches since T-2435 (functions/statistical/beta.rs `beta_dist_of`), the 0 at an interval's own
-end included (where the density diverges, which would otherwise be `#NUM!`); the last digits of the
-density at a tiny x and a huge shape (A66) are T-2811's.
+end included, at a shape of exactly 1 too; the last digits of the density at a tiny x and a huge
+shape (A66) are T-2811's. Our end test is on the scaled t, so it also fires where x differs from A
+but x - A cancels to 0 (`BETA.DIST(1E+300+1,1,2,FALSE,1E+300,1E+301)`): unprobed, T-2811.
 Status: VERIFIED (excel-graph)
 Tasks: T-2435
 

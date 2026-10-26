@@ -31,10 +31,16 @@ A72, A73, A77:A81, A108:A112, A115:A118) and T-2809 (A15, A18) take theirs:
   (the 10th digit, the beta density at a tiny x and a huge shape).
 Each group is an accuracy question about an existing kernel, so take the groups one at a time and
 read docs/research/excel-kernel-playbook.md first; splitting this task per group is fine.
+One probe also belongs here (T-2435 review round 3): BETA.DIST's end-of-interval 0 is implemented on
+the scaled t, so it fires where x differs from A but x - A cancels to 0
+(`BETA.DIST(1E+300+1,1,2,FALSE,1E+300,1E+301)`, and the upper-end analogue). Excel's value there is
+unprobed; fill it and either confirm the current 0 or key the test on x == A and x == B.
 
 ## Acceptance criteria
 - [ ] These probes/t2435-dist-extremes cells pass (A14, A20, A23, A24, A32, A35:A38, A40, A41, A66),
       or any that cannot are named with evidence in the statistics.md entry that owns the kernel.
+- [ ] The cancelling-x BETA.DIST cells above are probed and the "unprobed" clause in statistics.md
+      "BETA.DIST's density is #NUM! at an x of 0 or 1 (T-2435)" is replaced by what Excel gives.
 - [ ] No new known-failure lines in any baseline; `make check` green; reviewers approve.
 
 ## Out of scope
