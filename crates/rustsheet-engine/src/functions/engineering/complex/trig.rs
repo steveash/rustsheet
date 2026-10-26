@@ -128,6 +128,16 @@ fn trig_sin_cos(x: f64) -> (f64, f64) {
     }
 }
 
+/// The tangent of `x` as TAN computes it (the x87 reduction, [`excel_tan`]) where TAN answers,
+/// libm's beyond 2^27, unprobed: IMTAN's fallback where its double-angle denominator is 0.
+fn trig_tan(x: f64) -> f64 {
+    if x.abs() < EXCEL_TRIG_LIMIT {
+        excel_tan(x)
+    } else {
+        x.tan()
+    }
+}
+
 /// IMSEC, IMCSC and IMSECH where the denominator `t` overflows (the hyperbolic argument `v` past
 /// about 355): cosh v and |sinh v| are then both `M = e^|v|/2` and `t` is M², so the result is the
 /// trigonometric parts `(re, im)` over M, computed as `2e^-|v|` so that it stays finite. Excel
@@ -314,12 +324,7 @@ pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 fn tan_parts(x: f64, y: f64) -> (f64, f64) {
     let denominator = f64::cos(2.0 * x) + f64::cosh(2.0 * y);
     if denominator == 0.0 {
-        let tan = if x.abs() < EXCEL_TRIG_LIMIT {
-            excel_tan(x)
-        } else {
-            x.tan()
-        };
-        (tan, 0.0)
+        (trig_tan(x), 0.0)
     } else if denominator.is_finite() {
         (
             f64::sin(2.0 * x) / denominator,
