@@ -40,11 +40,8 @@ Excel lock file `~$ROUND.xlsx` (165 bytes): do not take it. Triaged by the 2026-
 Replaced `ROUND.xlsx` with upstream's Excel-authored `ROUND_ROUNDUP_ROUNDDOWN.xlsx` (9cfbdfce;
 the `~$ROUND.xlsx` lock file not taken). Checked cells 137 -> 326, all pass; no known failures
 added, 0 regressions. Re-pointed the numbers.md citation. IronCalc-authored unit tests not taken.
-Upstream's file is not a cell-for-cell superset: 126 of the old 127 formula cells reappear with the
+Upstream's file is not a cell-for-cell superset: 136 of the old 137 formula cells reappear with the
 same cached value; the dropped `issues!A2` is kept as probe `round-float-noise-carry` (excel-graph
 0.0063, passes). Decision 0126 records taking upstream renames as renames.
-
-## Handoff (resumed)
-A sonnet run handed the task to opus (hence `tier: opus`): CI `hygiene` failed because deleting
-`ROUND.xlsx` needs a decision record, a protected path. The opus run wrote decision 0126 and
-carried the one dropped cell into a probe (see Outcome).
+Tier raised sonnet -> opus by a handoff: CI `hygiene` failed on the test-file delete, which needed
+decision 0126 (a protected path).

@@ -7,8 +7,8 @@
   our `crates/rustsheet-xlsx/tests/calc_tests/MATH_AND_TRIGONOMETRY/ROUND.xlsx`, so
   `scripts/check_governance.py` fails CI `hygiene` ("test files deleted"). Comparing
   `rustsheet-eval snapshot` of both files, formula by formula with references resolved to their
-  inputs: 126 of the old file's 127 formula cells reappear in the new one with the same cached
-  value (the new file has 307). The one exception is the old `issues!A2`,
+  inputs: 136 of the old file's 137 formula cells reappear in the new one with the same cached
+  value (the new file has 326). The one exception is the old `issues!A2`,
   `=ROUND(1.05*(0.0284+0.0046)-0.0284,4)` = 0.0063, whose sheet upstream dropped.
 - **Decision:** An upstream rename or replacement of an Excel-authored calc test workbook is taken
   as a rename: the old file is deleted in the same PR that adds its successor, provided the PR
