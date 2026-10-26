@@ -3,7 +3,7 @@ id: T-2576
 title: "F.TEST, FTEST, FORECAST, INTERCEPT and COVARIANCE.P are #NUM! when a one-value argument is a number returned directly by ERROR.TYPE or CELL (gen-m9, 3 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,24 +29,27 @@ Cells:
 - gen-m9/bcb24385baafb2f0.case.json (1): Calc!A252
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
-- [ ] `make check` green; reviewers approve.
+- [x] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
 
-## Progress (2026-10-26, opus run; stopped at the session budget, branch pushed for resume)
-- Probe: probes/t2576-error-type-cell-paired (excel-graph, 2026-10-26), findings in statistics.md "ERROR.TYPE and
-  CELL results are #NUM! in the paired functions".
-- Implemented (syntactic mark, `is_marked_number` in functions/statistical/paired.rs): ERROR.TYPE or
-  `CELL("col"|"row",..)` passed straight on is `#NUM!` as F.TEST/FTEST's either sample, `fn_get_two_matrices`'s first
-  argument (SUMXMY2, CORREL, SLOPE, INTERCEPT, RSQ, PEARSON, STEYX, FORECAST's known_y) after the size check, and
-  `paired_samples`' first sample, plus T.TEST's second; COVARIANCE's second is one cell with no number.
-- `rustsheet-eval check`: gen-m9 fixed 6 (the 3 owned cells among them), probes fixed 20, 0 regressions. The new probe
-  case holds 11 known failures: LET, IF, CHOOSE, IFERROR, a LAMBDA call, INDEX and `ERROR.TYPE({#REF!})` keep the mark
-  in Excel and are not followed yet (`TODO(T-2576)` in paired.rs), and `LINEST(ERROR.TYPE(#REF!))` is `#VALUE!` (E34,
-  unexplained). File these as a follow-up task and point the TODO at it.
-- Still to do: replace `is_marked_error`'s message match in paired.rs with a typed flag from `sample_arg`; unit tests;
-  `make check`; review; PR.
+## Outcome
+- Probe probes/t2576-error-type-cell-paired (excel-graph, 2026-10-26, 68 cells), findings in statistics.md
+  "ERROR.TYPE and CELL results are #NUM! in the paired functions". Covered: which values carry the mark, what keeps or
+  drops it, and which functions react, in which argument.
+- `is_marked_number` (functions/statistical/paired.rs) marks a number that ERROR.TYPE or `CELL("col"|"row",..)` returns
+  straight to the argument, parentheses aside. Where it applies:
+  - `#NUM!` as either F.TEST/FTEST sample.
+  - `#NUM!` as `fn_get_two_matrices`' first argument, after its size check: CORREL, PEARSON, SLOPE, INTERCEPT, RSQ,
+    STEYX and FORECAST's known_y.
+  - `#NUM!` as the first sample of COVARIANCE.P, COVARIANCE.S, COVAR and T.TEST, and T.TEST's second.
+  - A cell with no number as COVARIANCE's second sample.
+- Eval delta (`rustsheet-eval check`, 0 regressions):
+  - gen-m9 fixed 6, the 3 owned cells among them.
+  - probes fixed 20 (probes/t2436/computed-scalar among them).
+  - The new probe case holds 11 known failures, owned by follow-up T-2766: the LET, IF, CHOOSE, IFERROR, LAMBDA and
+    INDEX forms, `ERROR.TYPE({#REF!})`, SUMXMY2, and LINEST with its spill.

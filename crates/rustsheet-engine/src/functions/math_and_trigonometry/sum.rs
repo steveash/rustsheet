@@ -125,7 +125,7 @@ impl Model {
         }
         let x_range = self.evaluate_node_in_context(&args[0], cell);
         // A first argument that is a number straight from ERROR.TYPE or CELL is `#NUM!` once the
-        // sizes match (`SUMXMY2(ERROR.TYPE(#REF!),5)`, `INTERCEPT(ERROR.TYPE(#REF!),5)`, while
+        // sizes match (`INTERCEPT(ERROR.TYPE(#REF!),5)`, `SLOPE(ERROR.TYPE(#REF!),5)`, while
         // `RSQ(ERROR.TYPE(#NAME?),Data!C8:C11)` is `#N/A`; T-2576). The second reads as the number
         // it is (`INTERCEPT(5,ERROR.TYPE(#REF!))` is `#DIV/0!` like (5,4)).
         let first_marked = is_marked_number(&args[0], &x_range, cell.row);

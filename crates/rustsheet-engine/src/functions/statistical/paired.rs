@@ -18,7 +18,7 @@ use crate::model::Model;
 /// the paired functions treat apart from any other number: `FTEST({1;2;3},ERROR.TYPE(#REF!))` and
 /// `COVARIANCE.P(ERROR.TYPE(#REF!),5)` are `#NUM!` where 4 gives `#DIV/0!` and 0, while `+0`,
 /// `@`, SINGLE, MAX or a cell holding the value make it a plain number. LET, IF, CHOOSE, IFERROR,
-/// a LAMBDA call and INDEX keep it in Excel and are not followed here: TODO(T-2576)
+/// a LAMBDA call and INDEX keep it in Excel and are not followed here: TODO(T-2766)
 /// (statistics.md "ERROR.TYPE and CELL results are #NUM! in the paired functions").
 pub(crate) fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> bool {
     if !matches!(value, CalcResult::Number(_)) {
@@ -40,14 +40,6 @@ pub(crate) fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> boo
     }
 }
 
-/// Whether `error` is [`marked_number_error`]'s.
-fn is_marked_error(error: &CalcResult) -> bool {
-    matches!(error, CalcResult::Error { error: Error::NUM, message, .. } if message == MARKED_NUMBER_MESSAGE)
-}
-
-/// The message of [`marked_number_error`].
-const MARKED_NUMBER_MESSAGE: &str = "A number from ERROR.TYPE or CELL is not a sample here";
-
 /// What a marked number ([`is_marked_number`]) is as a sample of [`Model::paired_samples`].
 #[derive(Clone, Copy)]
 pub(crate) enum MarkedSample {
@@ -61,7 +53,11 @@ pub(crate) enum MarkedSample {
 
 /// The `#NUM!` of a marked number ([`is_marked_number`]) as an argument that rejects it.
 pub(crate) fn marked_number_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, MARKED_NUMBER_MESSAGE.to_string())
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        "A number from ERROR.TYPE or CELL is not a sample here".to_string(),
+    )
 }
 
 /// One argument of a paired function, as evaluated and not yet flattened.
@@ -164,28 +160,19 @@ impl Model {
     ) -> Result<PairedValues, PairedSamplesError> {
         // A marked number is `#NUM!` as the first sample of every caller (statistics.md "ERROR.TYPE
         // and CELL results are #NUM! in the paired functions", T-2576).
-        let first = self.sample_arg(
+        let (first, first_count) = self.sample_arg(
             &args[0],
             "First",
             cell,
             (typed_text_is_sample, MarkedSample::NumError),
         );
-        let second = self.sample_arg(
+        let (second, second_count) = self.sample_arg(
             &args[1],
             "Second",
             cell,
             (typed_text_is_sample, marked_second),
         );
-        // A marked first sample is one cell for the size check, which comes first:
-        // `COVARIANCE.S(ERROR.TYPE(#REF!),Data!C10:D10)` is `#N/A` (gen-m9 abc2939ebd1e2365 A335).
-        let first_count = match &first {
-            PairedArg::Error(error) if is_marked_error(error) => Some(1),
-            first => first.cell_count(),
-        };
-        let sizes_differ = matches!(
-            (first_count, second.cell_count()),
-            (Some(m), Some(n)) if m != n
-        );
+        let sizes_differ = matches!((first_count, second_count), (Some(m), Some(n)) if m != n);
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
             CalcResult::new_error(error, cell, format!("Error in {which} array"))
@@ -221,29 +208,35 @@ impl Model {
         which: &str,
         cell: CellReferenceIndex,
         (typed_text_is_sample, marked): (bool, MarkedSample),
-    ) -> PairedArg {
+    ) -> (PairedArg, Option<u64>) {
         // With `typed_text_is_sample` a typed text is an array of one cell with no number, so
         // against a longer range the sizes differ and the result is `#N/A`: `COVAR(A1:A6,"a")`,
         // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
         // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is unprobed and stays `#VALUE!`.
         let value = self.evaluate_node_in_context(arg, cell);
+        // A marked number is one cell for the size check, which comes first:
+        // `COVARIANCE.S(ERROR.TYPE(#REF!),Data!C10:D10)` is `#N/A` (gen-m9 abc2939ebd1e2365 A335).
         if is_marked_number(arg, &value, cell.row) {
-            return match marked {
+            let sample = match marked {
                 MarkedSample::NumError => PairedArg::Error(marked_number_error(cell)),
                 MarkedSample::NoNumber => PairedArg::Values(vec![None]),
             };
+            return (sample, Some(1));
         }
         let value = self.blank_one_cell_as_error(value, cell);
-        if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
-            return PairedArg::Values(vec![None]);
-        }
-        PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {
-            PairedArg::Error(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("{which} argument must be a range or array"),
-            ))
-        })
+        let sample = if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
+            PairedArg::Values(vec![None])
+        } else {
+            PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {
+                PairedArg::Error(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("{which} argument must be a range or array"),
+                ))
+            })
+        };
+        let count = sample.cell_count();
+        (sample, count)
     }
 
     /// Flattens `first` and `second` for a function that pairs them by position. The first
