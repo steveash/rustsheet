@@ -181,12 +181,13 @@ fn compute_price(
 }
 
 // ============================================================
-// Yield solver (Newton-Raphson + bisection)
+// Yield solver (Newton)
 // ============================================================
 
 /// YIELD with more than one coupon left: Excel's Newton ([`excel_yield_newton`]) on PRICE as PRICE
-/// computes it, from its closed-form start over the term in years, and `compute_yield_from_price`
-/// where that Newton gives no value (an iterate off PRICE's domain, or 100 steps).
+/// computes it, from its closed-form start over the term in years. Where that Newton leaves
+/// PRICE's domain YIELD is #NUM!, with no fallback, even where PRICE has a root
+/// (`YIELD(36665,44491,42,106,100,4,0)`, `YIELD(39448,43831,0.05,1E+5,100,2)`; T-2391).
 fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
     let settlement = from_excel_date(bond.settlement)?;
     let maturity = from_excel_date(bond.maturity)?;
@@ -206,28 +207,7 @@ fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, Stri
         |y| schedule.price(rate, y, redemption, frequency, discount_growth),
         |y| schedule.dprice(rate, y, redemption, frequency),
     )
-    .map_or_else(
-        || compute_yield_from_price(bond.yld_or_pr, schedule, rate, redemption, frequency),
-        Ok,
-    )
-}
-
-/// YIELD's solver: `solve_yield` over `schedule`, which the caller walks once, so each of the
-/// at most 100 Newton steps (three prices) and 97 bisection prices is a sum over the coupons.
-fn compute_yield_from_price(
-    target: f64,
-    schedule: &CouponSchedule,
-    rate: f64,
-    redemption: f64,
-    frequency: u32,
-) -> Result<f64, String> {
-    // The solver prices with libm `powf`, not PRICE's `^`: on `^` prices it fixes 4 more YIELD
-    // cells but moves 2 that pass today, ironcalc-calc PRICE_YIELD.xlsx PRICE_YIELD!I27 by 4 ulp to
-    // a visibly different 0.0700000000000002 (decision 0083; financial.md "PRICE and ODDFPRICE
-    // discount with Excel's ^", T-2207).
-    solve_yield(target, rate, |y| {
-        Some(schedule.price(rate, y, redemption, frequency, f64::powf))
-    })
+    .ok_or_else(|| "#NUM!".to_string())
 }
 
 // ============================================================
