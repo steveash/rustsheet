@@ -680,7 +680,9 @@ VALUETOTEXT, which order their own errors, call `lift_call` directly. The elemen
 borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an unlifted call copies no text. `TextArg` and
 `broadcast_text` are deleted. Three unprobed edges now follow the driver (a LAMBDA argument, a 1x1 array, VALUETOTEXT's
 scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
-(`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
+(`lift/tests/kernel_work.rs`); T-1961 charges it. As built (T-1961): FIND and SEARCH are
+`ByValue(TextScan)`, each element charged its texts' lengths and the bytes each start position compares (`lift/kinds`
+`text_scan_units`; text.md "Lifted FIND and SEARCH calls are capped"). The final grep finds two `bcast_get` loops the table above missed or
 another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
 As built (T-1962): IMAGE's array path calls `lift_values` with one kernel, `image_element`, and `image_grid` is gone; a
 position past a shorter array is the driver's `#N/A` element in argument order, as Excel does (probes/rich-errors-image-past-end).

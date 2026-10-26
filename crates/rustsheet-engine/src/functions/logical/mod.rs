@@ -3,6 +3,7 @@ mod bycol_byrow;
 mod lambda;
 mod r#let;
 mod map_reduce;
+mod read_once;
 mod scan;
 mod switch;
 
@@ -141,7 +142,7 @@ impl Model {
     /// (T-0216, T-1026; docs/excel-semantics/references.md). In reference context a union in
     /// the chosen branch stays its areas: `SUM(IF(TRUE,(A1,B2)))` is 6 and
     /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2). The condition is evaluated
-    /// once, then the chosen branch once (`read_once` in functions/logical/lambda.rs relies on it).
+    /// once, then the chosen branch once (`read_once` in `functions/logical/read_once.rs` relies on it).
     pub(crate) fn if_impl(
         &mut self,
         args: &[Node],

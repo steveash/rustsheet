@@ -20,6 +20,7 @@ mod test_fr_examples;
 mod test_fraction;
 mod test_general;
 mod test_locale_tag;
+mod test_lunar_calendar;
 mod test_parse_formatted_number;
 mod test_scientific;
 mod test_special_dollar;

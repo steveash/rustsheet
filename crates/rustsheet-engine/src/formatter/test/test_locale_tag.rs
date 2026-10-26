@@ -70,8 +70,12 @@ fn tags_resolve_like_excel() {
     assert_eq!(names("fr-XX"), Some("mars"));
     assert_eq!(names("de"), Some("März"));
     assert_eq!(names("400"), Some("March"));
+    // Lunar calendar digits (probes/text-locale-lunar-edges, text-locale-lunar-tokens A61-A74).
+    assert_eq!(names("11040C"), Some("三月"));
+    assert_eq!(names("E0412"), Some("삼월"));
+    assert_eq!(names("120411"), Some("March"));
     for silent in [
-        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "11040C", "40C,1", "+40C",
+        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "6040C", "40C,1", "+40C",
     ] {
         assert_eq!(resolve(silent), LocaleTag::Silent, "{silent}");
     }

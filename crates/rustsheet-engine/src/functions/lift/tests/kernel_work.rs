@@ -21,11 +21,6 @@ const ENGINE_BETA_CDF: &str =
 const ERF_KERNELS: &str =
     "erf kernels: fixed-degree rationals and one fixed-length excel_exp series";
 
-/// FIND's and SEARCH's cap: each start position of `within_text` is compared with `find_text`
-/// (SEARCH's `*` segments each take their leftmost match), so one element is at most the product
-/// of its two text lengths. TODO(T-1961): charge that product per element.
-const FIND_SCAN: &str = "at most len(within_text) x len(find_text) unit comparisons";
-
 /// WORKDAY's cap: a galloping search then a bisection over the date range (`nearest_offset`), at
 /// most about 44 closed-form counts, each with 14 binary searches of the holidays, prepared once
 /// (`LiftCost::Prepared`).
@@ -76,13 +71,15 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Function::Seriessum,
         Some("one step per coefficient, charged per element as their cells (LiftCost::Cells)"),
     ),
-    // The text kernels (T-1775): linear in their texts, as `broadcast_text` was, except the
-    // searches below. A text is at most 32,767 units in a cell, and a lifted call's results are
-    // bounded by the driver's 64 MiB text budget.
-    (Function::Find, Some(FIND_SCAN)),
-    (Function::Findb, Some(FIND_SCAN)),
-    (Function::Search, Some(FIND_SCAN)),
-    (Function::Searchb, Some(FIND_SCAN)),
+    // The searches compare each start position of `within_text` with `find_text`: `ByValue`,
+    // charged by their texts' lengths (T-1961).
+    (Function::Find, None),
+    (Function::Findb, None),
+    (Function::Search, None),
+    (Function::Searchb, None),
+    // The other text kernels (T-1775): linear in their texts, as `broadcast_text` was. A text is
+    // at most 32,767 units in a cell, and a lifted call's results are bounded by the driver's
+    // 64 MiB text budget.
     (
         Function::Substitute,
         Some("one pass over the text; the result's length is checked before it is built"),
@@ -260,6 +257,62 @@ fn bessel_elements_are_charged_by_order() {
         LiftedArg::Scalar(CalcResult::Number(100_000.0)),
     ];
     assert_eq!(kernel_units(work, &scalar, 10, 1, 10), 10 << 16);
+}
+
+/// FIND's and SEARCH's `ByValue` charge (T-1961): each element is charged both texts' lengths
+/// plus, at each start position of `within_text`, 1 and the bytes compared there over the
+/// entry's `per_visit`; a number is charged as its longest text and an error as the empty text.
+#[test]
+fn text_search_elements_are_charged_by_their_texts() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::expressions::token::Error;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    for (function, per_visit) in [
+        (Function::Find, 256),
+        (Function::Findb, 256),
+        (Function::Search, 8),
+        (Function::Searchb, 8),
+    ] {
+        let work = function.arg_kinds().map(|kinds| kinds.work);
+        let Some(
+            work @ KernelWork::ByValue(ValueWork::TextScan {
+                find: 0, within: 1, ..
+            }),
+        ) = work
+        else {
+            panic!("{function:?} is not charged by its texts: {work:?}");
+        };
+        let charge = |find: CalcResult, within: ArrayNode| {
+            let args = [LiftedArg::Scalar(find), LiftedArg::Grid(vec![vec![within]])];
+            kernel_units(work, &args, 1, 1, 1)
+        };
+        let text = |len: usize| "a".repeat(len);
+        let short = charge(
+            CalcResult::String("b".into()),
+            ArrayNode::String(text(9).into()),
+        );
+        assert_eq!(short, 2 + 10, "{function:?}");
+        let long = charge(
+            CalcResult::String(text(32_767).into()),
+            ArrayNode::String(text(32_767).into()),
+        );
+        assert_eq!(
+            long,
+            32_768 + 32_768 * (1 + 32_767 / per_visit),
+            "{function:?}"
+        );
+        assert!(long * 1000 > MAX_LIFTED_CELL_VISITS, "{function:?}");
+        let number = charge(CalcResult::Number(1.5), ArrayNode::String(text(99).into()));
+        assert_eq!(number, 33 + 100 * (1 + 32 / per_visit), "{function:?}");
+        let error = charge(
+            CalcResult::String(text(10).into()),
+            ArrayNode::Error(Error::NA),
+        );
+        assert_eq!(error, 11 + 1, "{function:?}");
+    }
 }
 
 /// DB's and VDB's `ByValue` charge (T-1820): an element at the period cap costs `2^17`, so exactly

@@ -1,5 +1,5 @@
 use crate::calc_result::Range;
-use crate::functions::util::array_node_to_calc_result;
+use crate::functions::util::{array_node_to_calc_result, RangeItem};
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
@@ -360,18 +360,28 @@ impl Model {
                         // A 3-D reference is walked sheet by sheet; an error cell past the limit
                         // is dropped like a range cell's (probes/text-result-limit-errors-refs
                         // D10-D11). With ignore_empty FALSE a blank cell adds a delimiter, so
-                        // the blanks past each sheet's used area are walked too.
+                        // the blanks past each sheet's used area are walked too, a run of them
+                        // in a mostly blank area as one count (T-2710).
                         if let Err(error) = self.for_each_cell_or_error_in_whole_range(
                             &Range { left, right },
                             cell,
-                            |_, value| {
-                                size.push_cell(
+                            |_, item| match item {
+                                RangeItem::Cell(value) => size.push_cell(
                                     value,
                                     ignore_empty,
                                     &mut values,
                                     &mut over_limit,
                                     cell,
-                                )
+                                ),
+                                RangeItem::Blanks(count) => {
+                                    if !ignore_empty && !over_limit {
+                                        over_limit = size.push_empties(
+                                            &mut values,
+                                            i64::try_from(count).unwrap_or(i64::MAX),
+                                        );
+                                    }
+                                    Ok(())
+                                }
                             },
                         ) {
                             return error;
