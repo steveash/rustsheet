@@ -3,7 +3,7 @@ id: T-2471
 title: "MODE, MODE.SNGL and MODE.MULT: a one-cell range reference to an empty cell is #VALUE! (gen-m9, 36 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
