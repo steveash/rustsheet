@@ -3,7 +3,7 @@ id: T-2769
 title: "Formula text keeps a space written after a unary plus: FORMULATEXT of =+ 5 is =+ 5 (probes/t2723-unary-plus-formula-text C24, C25)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
