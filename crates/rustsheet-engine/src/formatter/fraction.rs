@@ -164,7 +164,7 @@ pub(super) fn format_fraction(
 fn group_thousands(digits: &str, separator: &str) -> String {
     let mut grouped = String::new();
     for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             grouped.push_str(separator);
         }
         grouped.push(c);
