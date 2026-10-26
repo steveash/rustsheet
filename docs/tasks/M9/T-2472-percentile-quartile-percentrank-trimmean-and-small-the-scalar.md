@@ -3,7 +3,7 @@ id: T-2472
 title: "PERCENTILE, QUARTILE, PERCENTRANK, TRIMMEAN and SMALL: the scalar argument's error before the no-number result, PERCENTRANK's #N/A before a bad significance (gen-m9, 62 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -92,3 +92,8 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2256): every cell it owns has the wrong type, error or text (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Outcome
+Most of the cells had been fixed by earlier tasks (k/quart error before no-number data already in PERCENTILE*/QUARTILE*).
+Remaining: TRIMMEAN checks percent's error before the no-number `#NUM!`, and PERCENTRANK* returns `#N/A` for x outside the
+data before a significance below 1 is `#NUM!`. Eval delta: gen-m9 -18 known failures, probes -11, no new.

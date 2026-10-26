@@ -647,3 +647,35 @@ fn quartile_reports_quart_error_before_empty_data() {
     assert_eq!(model._get_text("A1"), "#VALUE!");
     assert_eq!(model._get_text("A2"), "#NUM!");
 }
+
+// The scalar argument's error comes before the no-number result, and PERCENTRANK's `#N/A` for an x
+// outside the data before a significance below 1 (T-2472; gen-m9/3e98b26cf6713e77 A247,
+// gen-m9/097af1ca33638670 A312).
+#[test]
+fn order_statistics_report_scalar_error_before_no_number_and_bad_significance() {
+    let mut model = new_empty_model();
+    model._set("B1", "abc");
+    for (i, a) in [
+        "=QUARTILE(Z1,1/0)",
+        "=PERCENTILE.INC(B1:B2,1/0)",
+        "=TRIMMEAN(B1:B2,NA())",
+        "=TRIMMEAN(B1:B2,0.1)",
+    ]
+    .iter()
+    .enumerate()
+    {
+        model._set(&format!("A{}", i + 1), a);
+    }
+    for (i, v) in [1.0, 2.0, 3.0, 4.0, 5.0].iter().enumerate() {
+        model._set(&format!("C{}", i + 1), &v.to_string());
+    }
+    model._set("A5", "=PERCENTRANK(C1:C5,1963,-2.5)");
+    model._set("A6", "=PERCENTRANK(C1:C5,3,-2.5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#DIV/0!");
+    assert_eq!(model._get_text("A2"), "#DIV/0!");
+    assert_eq!(model._get_text("A3"), "#N/A");
+    assert_eq!(model._get_text("A4"), "#NUM!");
+    assert_eq!(model._get_text("A5"), "#N/A");
+    assert_eq!(model._get_text("A6"), "#NUM!");
+}
