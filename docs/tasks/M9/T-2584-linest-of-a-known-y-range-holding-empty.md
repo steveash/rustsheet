@@ -3,7 +3,7 @@ id: T-2584
 title: "LINEST of a known_y range holding empty cells is #VALUE!, not a fit of the numbers (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
