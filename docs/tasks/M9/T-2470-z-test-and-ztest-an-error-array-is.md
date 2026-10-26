@@ -93,10 +93,10 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 35 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] (Partly met; rest in T-2772) Visible parity (gen-m9, T-2256): these 35 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Unit tests: `Z.TEST(1/0,"x")` is `#DIV/0!`, `Z.TEST({5},3,-1)` `#DIV/0!`, `Z.TEST(A1,1)` with A1 = "x" `#N/A`,
-      `Z.TEST(A1:A1,1)` with A1 = "x" `#DIV/0!`, and `Z.TEST(A1:A8,4,0)` stays `#NUM!`.
+      `Z.TEST(A1:A1,1)` with A1 = "x" `#N/A` (amended: statistics.md evidence), and `Z.TEST(A1:A8,4,0)` stays `#NUM!`.
 - [ ] statistics.md's T-2256 Z.TEST entry gets an "Ours:" line naming this task.
 - [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
@@ -112,5 +112,7 @@ criterion under Acceptance criteria states it.
 ## Outcome
 Z.TEST/ZTEST: a one-value data argument is `#DIV/0!` before a sigma of 0 or below, and a plain single-cell
 reference holding text, a boolean or nothing is `#N/A`. Eval delta: 24 gen-m9 known-failure lines fixed, no regressions.
-Not fixed: the remaining owned cells (nested sub-expressions, A294/A324 untraced, still failing in gen-m9). Unit test
-`Z.TEST(A1:A1,1)` with text is `#N/A` (the statistics.md evidence for `C7:C7`), not the `#DIV/0!` the criterion lists.
+Not fixed: the remaining owned cells (nested sub-expressions; A294 and A324 untraced); filed as T-2772. Deviation
+from the criteria: the unit test has `Z.TEST(A1:A1,1)` with text as `#N/A`, where the criterion lists `#DIV/0!`; the
+statistics.md evidence for `C7:C7` (5919660b7bb4d195 A364) says `#N/A`. The probes.txt lines removed are probe cells
+that passed once the one-value order changed (made by `make eval-baseline`).

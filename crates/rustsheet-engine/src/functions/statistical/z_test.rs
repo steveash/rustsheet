@@ -97,7 +97,8 @@ impl Model {
         // A plain single-cell reference holding text, a boolean or nothing is data with no
         // number: `#N/A`, not `#VALUE!` (`ZTEST(Data!B11,Data!C2)` with text in B11, gen-m9/
         // c2684066d8df263e A190; docs/excel-semantics/statistics.md, T-2256 Z.TEST entry).
-        let data = match (args.first(), data) {
+        let first = args.first().map(|node| node.ungrouped_at(cell.row));
+        let data = match (first.as_deref(), data) {
             (
                 Some(Node::ReferenceKind { .. }),
                 CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell,
@@ -141,14 +142,14 @@ fn z_test_element(
         return error(Error::NA);
     }
     // One numeric value is #DIV/0!, with or without sigma (`Z.TEST(D1:D1,4,1)`,
-    // `Z.TEST(7,4,1)`: probes-numeric/t1049-ztest A40, A42; t1916-erf-wrappers column T), and it comes before a sigma of 0 or below
-    // (`ZTEST({5},x,-123456789.123)`, gen-m9/38e4fc309fe199ea A87).
+    // `Z.TEST(7,4,1)`: probes-numeric/t1049-ztest A40, A42; t1916-erf-wrappers column T), and it comes before a sigma of 0 or
+    // below (`ZTEST({5},x,-123456789.123)`, gen-m9/38e4fc309fe199ea A87).
     if data.count <= 1 {
         return error(Error::DIV);
     }
-    // With two or more values, a sigma of 0 or below is #NUM! (`Z.TEST(B1:B10,5,-1)`, probes-numeric/t1049-ztest
-    // A26, t1048-ztest A26; probes/stat-test-lift P44, P52), after the data's error:
-    // `Z.TEST(D1:D3,4,0)` with D2 = `#N/A` is `#N/A` (probes/stat-test-lift-b P93).
+    // With two or more values, a sigma of 0 or below is #NUM! (`Z.TEST(B1:B10,5,-1)`,
+    // probes-numeric/t1049-ztest A26, t1048-ztest A26; probes/stat-test-lift P44, P52), after the
+    // data's error: `Z.TEST(D1:D3,4,0)` with D2 = `#N/A` is `#N/A` (probes/stat-test-lift-b P93).
     if sigma.is_some_and(|sigma| sigma <= 0.0) {
         return error(Error::NUM);
     }
