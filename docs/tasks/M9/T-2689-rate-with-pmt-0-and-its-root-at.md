@@ -107,6 +107,8 @@ which quantity separates 16-24 from 11-15 and 25+. Hypothesis (a) of the Context
   - `#NUM!`: 1.09e-4 (25) and up; 1.22e-4 (guess 0.5 at n 24).
   |f200| is 1e-61 to 1e-59 throughout, so an |f| test cannot separate them. rate-step-cap A31 (200th step 8e-7,
   `#NUM!`) falls in the lower `#NUM!` band, and A30 (step < 1e-7) returned. A two-sided window on the last step
-  (between about 4e-6 and 1e-4) fits but looks unlikely as code. Check a relative test next (step / |1+r|: at
-  n 15 that is 3.7e-6 / 7.6e-5 = 0.049, at n 16 6.5e-6 / 1.4e-4 = 0.046, at n 24 0.030, at n 25 0.029), and
-  the previous step or the f ratio. Script: the model above, about 15 lines of Python.
+  (between about 4e-6 and 1e-4) fits but looks unlikely as code. A relative step (step / |1+r|) does not help.
+  It falls with n (0.068 at n 11, 0.049 at 15, 0.046 at 16, 0.030 at 24, 0.029 at 25), so it is a window too.
+  Most likely is hypothesis (a): Excel's `+`/`^` trajectory for n 11-15 reaches -1 or goes flat before the cap,
+  as the engine's does for every n >= 11. Trace the engine's own iterates (it uses Excel's `+` and `^`) against
+  the plain-double run, to see where they part and why the engine gives `#NUM!` at n 16-24. Script: the model above, about 15 lines of Python.
