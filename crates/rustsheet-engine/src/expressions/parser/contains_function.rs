@@ -3,6 +3,22 @@
 use super::{chain, Node};
 use crate::functions::Function;
 
+/// The pattern of the nodes with exactly one child, binding it to `$child`: one list for the
+/// shared and the mutable walks below.
+macro_rules! one_child {
+    ($child:ident) => {
+        Node::SheetSpanKind {
+            reference: $child,
+            ..
+        } | Node::ImplicitIntersection { child: $child, .. }
+            | Node::SpillRangeOperator { child: $child }
+            | Node::Group { child: $child, .. }
+            | Node::UnaryPlus { child: $child }
+            | Node::UnaryKind { right: $child, .. }
+            | Node::LambdaDefKind { body: $child, .. }
+    };
+}
+
 impl Node {
     /// Whether the tree holds a call of one of `kinds` at any depth. SUBTOTAL and AGGREGATE skip
     /// every cell whose formula does (docs/excel-semantics/numbers.md "SUBTOTAL and AGGREGATE
@@ -93,14 +109,7 @@ impl Node {
                 Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
                     pending.extend(args.iter_mut());
                 }
-                Node::SheetSpanKind {
-                    reference: child, ..
-                }
-                | Node::ImplicitIntersection { child, .. }
-                | Node::SpillRangeOperator { child }
-                | Node::Group { child, .. }
-                | Node::UnaryKind { right: child, .. }
-                | Node::LambdaDefKind { body: child, .. } => pending.push(child),
+                one_child!(child) => pending.push(child),
                 Node::OpRangeKind { left, right }
                 | Node::OpIntersectKind { left, right, .. }
                 | Node::OpUnionKind { left, right, .. } => {
@@ -126,14 +135,7 @@ impl Node {
             Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
                 pending.extend(args);
             }
-            Node::SheetSpanKind {
-                reference: child, ..
-            }
-            | Node::ImplicitIntersection { child, .. }
-            | Node::SpillRangeOperator { child }
-            | Node::Group { child, .. }
-            | Node::UnaryKind { right: child, .. }
-            | Node::LambdaDefKind { body: child, .. } => pending.push(child),
+            one_child!(child) => pending.push(child),
             Node::OpRangeKind { left, right }
             | Node::OpIntersectKind { left, right, .. }
             | Node::OpUnionKind { left, right, .. } => pending.extend([&**left, &**right]),

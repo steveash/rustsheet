@@ -49,6 +49,10 @@ pub struct ExternalBook {
     pub defined_names: Vec<DefinedName>,
     /// The cached cell values, keyed by (sheet index, row, column).
     pub cells: HashMap<(u32, i32, i32), SpillValue>,
+    /// The sheets whose `sheetData` is marked `refreshError="1"`: Excel failed to refresh them, and
+    /// a cell of one that the cache does not hold reads `#REF!`, not `#BLOCKED!`
+    /// (`ERROR.TYPE('[1]56737'!$B$2)` is 4; fixtures/external-link-uncached-lookups Refs!B38, T-0472).
+    pub refresh_error_sheets: Vec<u32>,
 }
 
 /// A sheet of a linked workbook that the externalLink cache holds: the index of its book in
@@ -129,6 +133,14 @@ impl Model {
                 book: book_index,
                 sheet,
             })
+    }
+
+    /// Whether `[book]Sheet` is a linked sheet the cache holds no cell of and whose `sheetData` is
+    /// marked `refreshError` ([`ExternalBook::refresh_error_sheets`]).
+    fn is_refresh_error_sheet(&self, sheet_name: &str) -> bool {
+        self.linked_sheet(sheet_name)
+            .is_some_and(|(_, book, sheet)| book.refresh_error_sheets.contains(&sheet))
+            && self.cached_sheet(sheet_name).is_none()
     }
 
     /// The book index, book and sheet index of `[book]Sheet` when the workbook links that book
@@ -213,6 +225,16 @@ impl Model {
                     .map(|area| self.external_area_value(area, cell)),
                 "Wrong range",
             ),
+            Node::WrongReferenceKind {
+                sheet_name: Some(name),
+                ..
+            } if self.is_refresh_error_sheet(name) => {
+                return CalcResult::new_error(
+                    Error::REF,
+                    cell,
+                    format!("{name} failed to refresh"),
+                );
+            }
             Node::WrongReferenceKind { sheet_name, .. } => (
                 sheet_name,
                 self.external_reference_value(node, cell),
@@ -529,6 +551,23 @@ impl Model {
             };
         }
         Some(count)
+    }
+
+    /// How many cells the written reference `node` covers when it is on a linked sheet the cache
+    /// holds nothing of ([`Model::external_lookup_table`]): COUNTA counts every cell of it, as each
+    /// is `#BLOCKED!`, so `COUNTA([1]Sort!$B:$B)` is 1048576, where a reference with no link at
+    /// all counts none (fixtures/external-link-uncached-lookups Refs!B44,
+    /// probes/external-ref-no-link-index; T-0472). `None` for any other node.
+    pub(crate) fn external_blocked_count(
+        &self,
+        node: &Node,
+        areas: &[ExternalArea],
+        cell: CellReferenceIndex,
+    ) -> Option<usize> {
+        self.external_lookup_table(node, cell)?;
+        Some(areas.iter().fold(0, |count: usize, &area| {
+            count.saturating_add(cell_count(area))
+        }))
     }
 
     /// `area` as an aggregate reads it, `None` when it shares no cell with what the cache of
