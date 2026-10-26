@@ -1366,6 +1366,10 @@ Status: DEVIATION (decision 0014)
 Implemented in: functions/financial/amortization.rs (`DEGRESSIVE_LOOP_PERIODS`, `DegressiveWalk::closed_form`)
 Tasks: T-1841, T-1895
 
+T-1895: AMORDEGRC's rounding keeps a charge past about 1.8E295 finite: `AMORDEGRC(1E308,39679,39813,300,1E5,1E-6,1)` is
+1.94700443465919E302 in Excel (probes/fin-amor-period-bound-b B2). Main's rounding scaled the value by 1E13 first and
+overflowed to 0; the engine now skips that pre-round where it overflows (1.9470044346591894E302, the same 15 digits).
+
 ## AMORLINC and AMORDEGRC work cap
 Rule: RustSheet charges each lifted AMORLINC element 2^9 units and each AMORDEGRC element 2^18 against SPEC-0011's 2^27
 visit cap, so one call lifts at most 262,144 AMORLINC or 512 AMORDEGRC elements:

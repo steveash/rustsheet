@@ -648,6 +648,14 @@ mod tests {
     }
 
     #[test]
+    fn amor_round_keeps_a_huge_charge_finite() {
+        // `x * 1e13` overflows past about 1.8E295: the value rounds as it is (T-1895).
+        assert_eq!(amor_round(1.947_004_434_659_189_4e302), 1.947_004_434_659_189_4e302);
+        assert_eq!(amor_round(-1e300), -1e300);
+        assert_eq!(amor_round(2.5), 3.0);
+    }
+
+    #[test]
     fn degressive_fixed_points_jump_to_the_half_period() {
         // rate 1E-300 on 1E300: the charge 2.5 never moves the remaining value.
         let walk = || DegressiveWalk {
