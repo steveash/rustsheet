@@ -216,6 +216,17 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             1,
             "=SUM(CHISQ.DIST(SEQUENCE(512)*0+1E10,1E10,TRUE))",
         ),
+    ]
+    .into_iter()
+    .chain(hypgeom_cases())
+    .chain(lambda_cases())
+    .chain(coupon_cases())
+    .collect()
+}
+
+/// The HYPGEOM.DIST cases (T-1873, T-2433), apart to keep `cases` short.
+fn hypgeom_cases() -> Vec<(&'static str, u32, &'static str)> {
+    vec![
         (
             "HYPGEOM.DIST, the cdf sum near its term cap, at the element cap",
             1,
@@ -232,10 +243,6 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             "=SUM(HYPGEOM.DIST(SEQUENCE(1634)*0+5000,10000,10000,1E9,TRUE))",
         ),
     ]
-    .into_iter()
-    .chain(lambda_cases())
-    .chain(coupon_cases())
-    .collect()
 }
 
 /// The LAMBDA call cases (T-0439), apart to keep `cases` short.
