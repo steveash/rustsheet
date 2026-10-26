@@ -3,7 +3,7 @@ id: T-2676
 title: "Sweep gen-m9 round 2: ACCRINT, CONVERT, GEOMEAN, VAR.P and VAR.S to 200 generated outer-call cells"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
