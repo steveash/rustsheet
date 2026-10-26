@@ -3,7 +3,7 @@ id: T-1922
 title: "Chinese lunar calendar digits E, F, 11, 12 and 13 in locale tags"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
