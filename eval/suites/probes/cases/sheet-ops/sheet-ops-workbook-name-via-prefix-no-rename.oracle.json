@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A3": {
+    "t": "n",
+    "v": 6.0
+   },
+   "A4": {
+    "t": "b",
+    "v": true
+   },
+   "B1": {
+    "t": "s",
+    "v": "='53aa66b6e7e7c6de5fe0294a9b6150f8d84ecd9ba454ffc32bc32a1957950f48.xlsx'!loc"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=SUM('53aa66b6e7e7c6de5fe0294a9b6150f8d84ecd9ba454ffc32bc32a1957950f48.xlsx'!loc)"
+   },
+   "B3": {
+    "t": "s",
+    "v": "='53aa66b6e7e7c6de5fe0294a9b6150f8d84ecd9ba454ffc32bc32a1957950f48.xlsx'!loc+1"
+   }
+  },
+  "Feb": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "454042176f993de656ff59dc85f2c837450f60ed3d61fd539685b25d6a1529f0",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-26T22:02:36+00:00",
+  "version": null,
+  "workbook_name": "53aa66b6e7e7c6de5fe0294a9b6150f8d84ecd9ba454ffc32bc32a1957950f48.xlsx"
+ }
+}
