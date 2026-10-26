@@ -723,10 +723,7 @@ const LUNAR_MONTHS: [&str; 12] = [
 pub(crate) static LUNAR_ZH: DateNames = DateNames {
     months_short: LUNAR_MONTHS,
     months: LUNAR_MONTHS,
-    days_short: ZH_CN.days_short,
-    days: ZH_CN.days,
-    am: ZH_CN.am,
-    pm: ZH_CN.pm,
+    ..ZH_CN
 };
 
 /// Calendar digit E under a non-Korean LCID: lunar month names and Japanese weekdays
@@ -734,10 +731,7 @@ pub(crate) static LUNAR_ZH: DateNames = DateNames {
 pub(crate) static LUNAR_JA: DateNames = DateNames {
     months_short: LUNAR_MONTHS,
     months: LUNAR_MONTHS,
-    days_short: JA.days_short,
-    days: JA.days,
-    am: JA.am,
-    pm: JA.pm,
+    ..JA
 };
 
 /// Calendar digit E under a Korean LCID: the Korean lunar month names, `mmm` too, and Korean
@@ -746,10 +740,7 @@ pub(crate) static LUNAR_JA: DateNames = DateNames {
 pub(crate) static LUNAR_KO: DateNames = DateNames {
     months_short: LUNAR_KO_MONTHS,
     months: LUNAR_KO_MONTHS,
-    days_short: KO.days_short,
-    days: KO.days,
-    am: KO.am,
-    pm: KO.pm,
+    ..KO
 };
 
 const LUNAR_KO_MONTHS: [&str; 12] = [

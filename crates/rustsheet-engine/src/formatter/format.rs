@@ -432,13 +432,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
             // `date_valid` is false.
             let serial_1900 = ctx.date_system.to_1900_serial(day_serial).unwrap_or(-1);
-            let ymd = match p.calendar {
-                _ if p.hijri => hijri_ymd(serial_1900),
-                // Past the lunar tables (2100) the date is Gregorian, TODO(T-2759).
-                Some(Calendar::Lunar(table)) if serial_1900 <= LUNAR_LAST_SERIAL => {
-                    lunar_ymd(serial_1900, table)
+            let ymd = if p.hijri {
+                hijri_ymd(serial_1900)
+            } else {
+                match p.calendar {
+                    // Past the lunar tables (2100) the date is Gregorian, TODO(T-2759).
+                    Some(Calendar::Lunar(table)) if serial_1900 <= LUNAR_LAST_SERIAL => {
+                        lunar_ymd(serial_1900, table)
+                    }
+                    _ => excel_serial_to_ymd(serial_1900),
                 }
-                _ => excel_serial_to_ymd(serial_1900),
             };
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
