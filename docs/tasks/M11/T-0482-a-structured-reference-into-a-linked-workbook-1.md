@@ -3,7 +3,7 @@ id: T-0482
 title: "A structured reference into a linked workbook ([1]!Table3[#Data]) is #REF! (corpus-bench/58994 F8)"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
