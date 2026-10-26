@@ -50,5 +50,5 @@ in different shards: together they slowed shard 1's engine run from 67 s to 138-
 CI (PR #1869; base runs from 2026-10-25): rust job 5.8-7.3 min (`make test` 4.8-6.1) before; the
 final split ran 4.3 (shard 1, with clippy) and 4.0 min (shard 2), earlier splits 4.1-4.5 for the
 slower shard. PR wall 6.2-8.0 min before; 4.6-5.4 min on this branch, where the eval job (3.5-5.0
-min without T-2753) and python (2.8-4.5) now bound it. With T-2753's eval job (2.2 min), the
+min without T-2761) and python (2.8-4.5) now bound it. With T-2761's eval job (2.2 min), the
 expected wall is about 0.4 (changes) + 4.3 (rust shard / python) min.
