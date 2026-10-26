@@ -3,7 +3,7 @@ id: T-0483
 title: "A lifted call or unary operator whose over-bound array cannot fit is #SPILL! before the array-size cap's #ERROR!"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
