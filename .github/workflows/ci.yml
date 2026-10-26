@@ -85,6 +85,26 @@ jobs:
         run: make clippy
       - run: make test-shard-${{ matrix.shard }}
 
+  # Decision 0122: one stable check name for both shards, so a required check (decision 0053's
+  # list) never names a matrix job. A skipped matrix job reports under its unexpanded name
+  # template, and a shard count change would rename the checks. always(), not !cancelled(): a
+  # skipped required check counts as passed, so a cancelled run must report a failure here.
+  rust-all:
+    name: rust (fmt, clippy, test)
+    needs: [changes, rust]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          RESULT: ${{ needs.rust.result }}
+          RUN_HEAVY: ${{ needs.changes.outputs.run_heavy }}
+        run: |
+          echo "rust shards: $RESULT, run_heavy=$RUN_HEAVY"
+          if [ "$RESULT" = "success" ]; then exit 0; fi
+          # A docs-only PR (decision 0049) skips the shards on purpose.
+          if [ "$RESULT" = "skipped" ] && [ "$RUN_HEAVY" = "false" ]; then exit 0; fi
+          exit 1
+
   eval:
     name: eval (Excel-compatibility gate)
     needs: changes
