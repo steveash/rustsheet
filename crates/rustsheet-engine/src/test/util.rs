@@ -28,8 +28,13 @@ pub fn within_fifteen_digits(expected: f64, actual: f64) -> bool {
     if expected == 0.0 || !expected.is_finite() || !actual.is_finite() {
         return expected == actual;
     }
-    let exponent = expected.abs().log10().floor();
-    (actual - expected).abs() <= 0.5 * 10f64.powf(exponent - 14.0)
+    // The decimal exponent from the shortest round-trip digits, as the harness takes it: log10
+    // can round across a power of ten.
+    let exponent: i32 = format!("{:e}", expected.abs())
+        .split_once('e')
+        .and_then(|(_, e)| e.parse().ok())
+        .unwrap_or(0);
+    (actual - expected).abs() <= 0.5 * 10f64.powi(exponent - 14)
 }
 
 /// An empty en-US model in UTC on the fixed test clock.

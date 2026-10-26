@@ -198,6 +198,13 @@ mod tests {
         }
     }
 
+    // The 15-digit test reads the exponent of 1000 as 3 (half a unit is 5E-12 there).
+    #[test]
+    fn fifteen_digits_at_a_power_of_ten() {
+        assert!(within_fifteen_digits(1000.0, 1000.0 + 4e-12));
+        assert!(!within_fifteen_digits(1000.0, 1000.0 + 6e-12));
+    }
+
     #[test]
     fn other_shapes_and_x_take_the_callers_path() {
         assert_eq!(beta_density_small_shape(0.5, 1.5, 2.0), None);
