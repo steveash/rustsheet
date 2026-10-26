@@ -141,3 +141,21 @@ fn short_am_pm_marker_keeps_its_case() {
 fn long_am_pm_marker_prints_uppercase() {
     assert_eq!(text(0.6079, "hh:mm:ss am/pm"), "02:35:23 PM");
 }
+
+// probes/negative-date-sections-1900 and -1904 A9, A21, A22: two bracketed elapsed tokens are #VALUE!.
+#[test]
+fn two_bracketed_elapsed_tokens_are_invalid() {
+    assert_eq!(text(1.5, "[h]:[mm]"), "#VALUE!");
+    assert_eq!(text(0.5, "[mm]:[ss]"), "#VALUE!");
+    // One bracketed token, with or without a bare `h` after it, stays valid (poi ElapsedFormatTests A10).
+    assert_eq!(text(1.5, "[h]:mm"), "36:00");
+}
+
+// probes/text-elapsed-two-tokens A1, A9-A11, A13 (excel-graph).
+#[test]
+fn elapsed_token_before_am_pm_marker_is_invalid() {
+    assert_eq!(text(1.5, "[ss] AM/PM"), "#VALUE!");
+    assert_eq!(text(1.5, "[h] AM/PM"), "#VALUE!");
+    assert_eq!(text(1.5, "[mm] AM/PM"), "#VALUE!");
+    assert_eq!(text(1.5, "[s] A/P"), "#VALUE!");
+}
