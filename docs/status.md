@@ -11,7 +11,7 @@ merged since its last run.
 
 This is the scheduled run at 05:47 UTC. It follows #1848 and covers the 56 commits merged to `main` since then, through e1d70c77.
 
-`make eval` ran on 00736b98, which is `main` at e0277f77 plus this PR's oversized-file ratchet.
+`make eval` ran on 00736b98 (engine code identical to `main` at e0277f77), so the dashboard and visible-parity lock predate #1738 and #1894.
 - All 17 suites were fetched and scored. The first pass skipped calipers, corpus-bench and poi because they had not been fetched; I fetched them and re-ran. Timeouts: 0 in every suite.
 - `make eval-lower-visible-lock` shows 0 regressions in every gated suite and lowers the visible-parity lock from 4,640 to 4,348 (decision 0093).
 - The dashboard has today's numbers (`make progress-report`; the judgment blocks pass `--check`).
@@ -28,7 +28,7 @@ CI on `main` is green through e0277f77. Since #1848 there were 55 push runs: 39 
 Hygiene:
 - lint-debt: 91 allow entries (= last run);
 - duplicated lines: 2,951 (= last run);
-- oversized files: 8 (was 9). financial_bonds.rs is no longer oversized, and this PR ratchets quality/oversized-files.json.
+- oversized files: 8 (was 9). financial_bonds.rs is no longer oversized. `check_file_size.py` only notes this, and I didn't commit the `--update`: quality/ is a protected path, and the governance gate wants a decision record for it.
 
 Merged since #1848: 56 commits through e1d70c77. None was reverted, and all came through PRs.
 - #1872 (T-2551) and #1876 (T-1966) were squash-merged without the `(#n)` suffix in the title.
