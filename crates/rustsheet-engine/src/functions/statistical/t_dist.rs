@@ -61,31 +61,40 @@ fn t_test_element(
     let [_, _, tails, test_type] = values else {
         return CalcResult::new_args_number_error(cell);
     };
-    // A first sample that is itself an error value, or a blank one-cell reference, comes before a
-    // bad tails or type (`T.TEST(<#VALUE!>,42,1,-1)` is `#VALUE!`, `TTEST(<#VALUE!>,<#REF!>,2,<#REF!>)`
+    // A sample that is itself an error value, or a blank one-cell reference, comes before tails
+    // and type (`T.TEST(<#VALUE!>,42,1,-1)` is `#VALUE!`, `TTEST(<#VALUE!>,<#REF!>,2,<#REF!>)`
     // too, probes/t2475-stat-subexpressions P!A58, P!A222; `T.TEST(E11,A6:C12,2,123456789.123)`
-    // with E11 blank is `#VALUE!`, probes/tbill-error-order-inner-calls), while an error inside a
-    // range comes after.
+    // with E11 blank is `#VALUE!`, probes/tbill-error-order-inner-calls; the second sample's
+    // `#VALUE!` before tails' `#N/A`, gen-m9 9e2225ead8a6a07b A59, and its `#DIV/0!` before
+    // tails' `#VALUE!`, 3b7990bd4e3307ba A100), while an error inside a range comes after.
     if let Err(PairedSamplesError {
         error,
-        first_is_error_value: true,
+        argument_is_error_value: true,
         ..
     }) = samples
     {
         return error.clone();
     }
-    let tails = match model.kernel_number(tails, cell).map(f64::trunc) {
-        Ok(1.0) => TTestTails::OneTailed,
-        Ok(2.0) => TTestTails::TwoTailed,
-        Ok(_) => return num_error(cell),
+    // Both are read before either is checked: type's `#VALUE!` beats tails 7
+    // (`T.TEST(..,{..},7,<#VALUE!>)`, gen-m9 607e85cfee83a689 A194).
+    let tails = match model.kernel_number(tails, cell) {
+        Ok(tails) => tails.trunc(),
         Err(error) => return error,
     };
-    let test_type = match model.kernel_number(test_type, cell).map(f64::trunc) {
-        Ok(1.0) => TTestType::Paired,
-        Ok(2.0) => TTestType::TwoSampleEqualVar,
-        Ok(3.0) => TTestType::TwoSampleUnequalVar,
-        Ok(_) => return num_error(cell),
+    let test_type = match model.kernel_number(test_type, cell) {
+        Ok(test_type) => test_type.trunc(),
         Err(error) => return error,
+    };
+    let tails = match tails {
+        1.0 => TTestTails::OneTailed,
+        2.0 => TTestTails::TwoTailed,
+        _ => return num_error(cell),
+    };
+    let test_type = match test_type {
+        1.0 => TTestType::Paired,
+        2.0 => TTestType::TwoSampleEqualVar,
+        3.0 => TTestType::TwoSampleUnequalVar,
+        _ => return num_error(cell),
     };
     match samples {
         Ok(samples) => number_or_error(t_test_p(samples, &tails, &test_type, cell)),
@@ -156,6 +165,12 @@ fn t_test_p(
             let nd = diffs.len();
             let md = mean(&diffs);
             let vd = sample_var(&diffs);
+            // A sample variance that overflows (data whose squares do) is #NUM!, not a p from an
+            // infinite deviation, in every test type (`T.TEST(B6:D12,{1E+200,1E+200,-1E+200},1,2)`,
+            // gen-m9 a612e89321a6df9c A375; statistics.md "Overflowing squares (T-2432)").
+            if vd.is_infinite() {
+                return error(Error::NUM);
+            }
             // Zero variance of the differences.
             if vd <= 0.0 {
                 return error(Error::DIV);
@@ -179,6 +194,9 @@ fn t_test_p(
             let m2 = mean(&values2);
             let v1 = sample_var(&values1);
             let v2 = sample_var(&values2);
+            if v1.is_infinite() || v2.is_infinite() {
+                return error(Error::NUM);
+            }
 
             let df_i = (n1 + n2 - 2) as i32;
             if df_i <= 0 {
@@ -212,6 +230,9 @@ fn t_test_p(
             let m2 = mean(&values2);
             let v1 = sample_var(&values1);
             let v2 = sample_var(&values2);
+            if v1.is_infinite() || v2.is_infinite() {
+                return error(Error::NUM);
+            }
 
             let s1n = v1 / (n1 as f64);
             let s2n = v2 / (n2 as f64);

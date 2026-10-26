@@ -181,9 +181,9 @@ pub(crate) struct PairedValues {
 pub(crate) struct PairedSamplesError {
     pub(crate) error: CalcResult,
     pub(crate) sizes_differ: bool,
-    /// Whether the first argument is itself an error value or a one-cell reference to a blank
-    /// cell (not a marked number, nor a range or array holding an error), so `error` is its error.
-    pub(crate) first_is_error_value: bool,
+    /// Whether either argument is itself an error value or a one-cell reference to a blank cell
+    /// (not a marked number, nor a range or array holding an error).
+    pub(crate) argument_is_error_value: bool,
 }
 
 /// The non-blank entries of one argument: (row-major position, value), in position order.
@@ -209,7 +209,7 @@ impl Model {
             cell,
             (typed_scalar_is_sample, MarkedSample::NumError),
         );
-        let (second, second_count, _) = self.sample_arg(
+        let (second, second_count, second_is_error_value) = self.sample_arg(
             &args[1],
             "Second",
             cell,
@@ -223,7 +223,7 @@ impl Model {
         .map_err(|error| PairedSamplesError {
             error,
             sizes_differ,
-            first_is_error_value,
+            argument_is_error_value: first_is_error_value || second_is_error_value,
         })
     }
 
