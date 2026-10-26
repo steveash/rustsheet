@@ -440,6 +440,60 @@ impl Model {
         ))
     }
 
+    /// A range of several cells written into a linked workbook whose sheet the cache holds, as
+    /// MATCH, VLOOKUP and HLOOKUP search it: read in place (`LookupTable::External`) rather than
+    /// built as an array, so a whole column or row keeps its full length without passing the
+    /// array bound (`VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)` is the cached "7";
+    /// fixtures/external-link-uncached-lookups Refs!B17, B21, B49, B50; T-0474). `None` for any
+    /// other node, which the caller evaluates as usual.
+    pub(crate) fn cached_external_lookup_area(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<ExternalArea> {
+        if !matches!(node.ungrouped(), Node::WrongRangeKind { .. }) {
+            return None;
+        }
+        let area = self.cached_external_area(node, cell)?;
+        area.cache?;
+        (area.extent() != (1, 1)).then_some(area)
+    }
+
+    /// The cached value at the 0-based (`row`, `column`) offset within `area`, a cell the cache
+    /// does not hold empty; `#BLOCKED!` when the cache does not hold the area's sheet.
+    pub(crate) fn external_area_cell(
+        &self,
+        area: ExternalArea,
+        row: i32,
+        column: i32,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match area.cache {
+            Some(sheet) => self.cached_value(
+                sheet,
+                area.first_row + row,
+                area.first_column + column,
+                cell,
+            ),
+            None => external_blocked(cell),
+        }
+    }
+
+    /// How many leading rows (`down`) or columns of `area` reach the cells its cache holds: every
+    /// cell after them is empty, as every cell past a sheet's last used row is
+    /// (`Model::range_search_vector`).
+    pub(crate) fn external_cached_len(&self, area: ExternalArea, down: bool) -> usize {
+        let Some(extent) = area.cache.and_then(|sheet| self.cached_extent(sheet)) else {
+            return 0;
+        };
+        let (first, last, cached) = if down {
+            (area.first_row, area.last_row, extent.last_row)
+        } else {
+            (area.first_column, area.last_column, extent.last_column)
+        };
+        usize::try_from(last.min(cached) - first + 1).unwrap_or(0)
+    }
+
     /// The rows and columns of `sheet` its cached cells span, `None` when it holds none.
     fn cached_extent(&self, sheet: CachedSheet) -> Option<ExternalArea> {
         let book = self.workbook.external_books.get(sheet.book)?;

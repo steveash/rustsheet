@@ -3,7 +3,7 @@ id: T-0474
 title: "Whole-column lookups on a cached linked sheet keep full length (virtual blank tail)"
 milestone: M11
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,10 +26,10 @@ values instead of the array bound's `#ERROR!`, with the same full-length search 
   (`SearchVector::with_len`), so search positions are as for a local range; picks past the cache read empty.
 
 ## Acceptance criteria
-- [ ] B17, B21, B49, B50 pass; corpus-bench/56637 passes; 0 regressions.
-- [ ] An oracle cell (added to the fixture, refilled) or a unit test pinned to local-range behaviour covers an
+- [x] B17, B21, B49, B50 pass; corpus-bench/56637 passes; 0 regressions.
+- [x] An oracle cell (added to the fixture, refilled) or a unit test pinned to local-range behaviour covers an
       approximate whole-column VLOOKUP and MATCH over an unsorted cached column.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Sheets with no cached data (T-0457 done; T-0472).
@@ -46,3 +46,15 @@ the code (data, check them):
   `cached_value` and `first_row`/`first_column` as `SearchVector::with_len(cached prefix, full length)`; the cached
   prefix ends at the cache's last used row or column. `lookup.rs` `ResultVector` and the line-67 vector builder
   match on the variants too.
+
+## Outcome
+VLOOKUP, HLOOKUP and MATCH read a range of several cells of a cached linked sheet in place
+(`LookupTable::External`, `Model::cached_external_lookup_area`) instead of building it as an array, so
+whole columns and rows no longer hit the array bound. The search vector is the cached cells
+followed by an empty tail to the area's full length (`SearchVector::with_len`), so approximate searches probe
+the same midpoints a local whole column gives. Unit test `whole_column_lookups_keep_full_length` checks 13
+lookups (VLOOKUP, HLOOKUP, MATCH 1/0/-1, over unsorted data) against the same lookups over local whole
+columns and rows. Eval: fixtures/external-link-uncached-lookups Refs!B17, B21, B49 and B50 now pass, and so does
+corpus-bench/56637 and corpus-bench/59932 (whole-column VLOOKUPs into
+`[1]<2010Price!$A:$BE`) pass, with 0 regressions (fixtures known failures 4 -> 0, corpus-bench 9 -> 7).
+
