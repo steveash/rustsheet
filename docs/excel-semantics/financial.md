@@ -948,8 +948,9 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   FALSE, and `ACCRINT(DATE(1904,1,1),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,freq,basis,TRUE)` is `#NUM!` on every basis,
   semiannual and quarterly. An issue of 1904-04-01 computes (2312.361111111111 for first_interest 1904-03-31, calc_method
   TRUE, or 1904-06-30), except with first_interest 1904-03-31 and calc_method FALSE (regular period from 1903-12-31),
-  which is `#NUM!` (probes/accrint-calendar-start-1904 A1:A40, B1:B10, excel-graph 2026-10-26). Ours applies the 1900
-  cut there (43 cells off; T-2835, after T-2337).
+  which is `#NUM!` (a 50-cell probe filled with excel-graph on 2026-10-26, kept out of the suite until T-2835 lands it
+  with its fix, since its 43 off cells would pass the visible-parity lock). Ours applies the 1900 cut there (T-2835, after
+  T-2337).
 - The day counts read the serials as Excel shows them: the actual bases count serials, so the fictitious 1900-02-29
   counts, and the 30/360 bases read serial 1 as 1900-01-01: `ACCRINT(DATE(1900,2,15),DATE(1900,5,10),DATE(1900,4,1),
   0.05,1000,4,0,TRUE)` is 6.388888888888888 (46/90) on bases 0, 1, 2 and 4, and 6.301369863013699 on basis 3;
@@ -961,7 +962,7 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   (fin-coupon-walk-bounds-b A9) on 2026-10-17 and `#NUM!` on 2026-10-24, in a re-fill of -b and in
   fin-accrint-1900-calendar D1; the oracle now records `#NUM!`.
 Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24);
-accrint-calendar-start-1900 (92 cells) and accrint-calendar-start-1904 (50 cells) (excel-graph, 2026-10-26).
+accrint-calendar-start-1900 (92 cells) (excel-graph, 2026-10-26); the 1904 probe is T-2835's.
 Status: VERIFIED (excel-graph)
 Implemented (T-2124): `compute_accrint` in functions/financial/accrint.rs.
 Tasks: T-2124, T-2562, T-2835

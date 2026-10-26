@@ -16,8 +16,14 @@ In a 1904 workbook ACCRINT is `#NUM!` where today's Excel is, for a coupon date 
 1904-01-01.
 
 ## Context
-- T-2562 probed ACCRINT at the start of a 1904 workbook's calendar: probes/accrint-calendar-start-1904 (excel-graph,
-  2026-10-26). 43 of its 50 cells are `#NUM!` in Excel and numbers in ours, for example
+- T-2562 probed ACCRINT at the start of a 1904 workbook's calendar (excel-graph, 2026-10-26) but did not commit the case:
+  its 43 off cells would exceed the visible-parity lock. Land it here as probes/accrint-calendar-start-1904 (tags M9,
+  probe, dates, financial; `date_system: 1904`; sheet `S`): A1:A40 =
+  `ACCRINT(issue,fi,st,0.05,1000,4,0,cm)` over issue in [DATE(1904,1,1), DATE(1904,1,2), DATE(1904,4,1), 0, 1], fi in
+  [DATE(1904,3,31), DATE(1904,6,30)], st in [DATE(1904,2,15), DATE(1950,6,30)], cm in [TRUE, FALSE] (nested in that
+  order); B1:B10 = `ACCRINT(DATE(1904,1,1),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,freq,basis,TRUE)` over basis 0..4,
+  freq [2, 4]. On 2026-10-26 43 of its 50 cells were `#NUM!` in Excel and numbers in ours (only A19, A23, A24 = 2312.36…
+  and the settlement-before-issue cells A17, A18, A21, A22 matched), for example
   `ACCRINT(DATE(1904,1,2),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,4,0,TRUE)` (A11, ours 2324.722222222222), the
   1904-01-01 issue on every basis (B1:B10), and issue 1904-04-01 with first_interest 1904-03-31 and calc_method FALSE
   (A20, ours 2312.361111111111). docs/excel-semantics/financial.md "ACCRINT at the calendar's start" and "COUPNUM in a
@@ -31,8 +37,8 @@ In a 1904 workbook ACCRINT is `#NUM!` where today's Excel is, for a coupon date 
   first (its values are Excel for the web's of 2026-10-26).
 
 ## Acceptance criteria
-- [ ] The 43 probes/accrint-calendar-start-1904 known-failure lines leave eval/baseline/probes.txt, with no new
-      known-failure lines in any baseline.
+- [ ] probes/accrint-calendar-start-1904 lands, re-filled, and every cell passes, with no new known-failure lines in any
+      baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

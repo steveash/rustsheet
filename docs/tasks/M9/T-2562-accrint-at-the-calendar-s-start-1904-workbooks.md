@@ -50,8 +50,9 @@ calendar's start"). Two cases have no oracle cell:
 it is `#NUM!`. The two unprobed edges keep the task's bit-level goal.
 
 ## Outcome
-- Probes (excel-graph, 2026-10-26): probes/accrint-calendar-start-1900 (92 cells) and
-  probes/accrint-calendar-start-1904 (50 cells); findings in financial.md "ACCRINT at the calendar's start".
+- Probes (excel-graph, 2026-10-26): probes/accrint-calendar-start-1900 (92 cells), committed; a 50-cell 1904 probe,
+  filled but not committed (its 43 off cells would exceed the visible-parity lock once main moved), described in T-2835,
+  which lands it with the fix. Findings in financial.md "ACCRINT at the calendar's start".
 - Third edge (basis 1): `ACCRINT(33853,FI,37554,1,9888,freq,basis)` is `#NUM!` only on basis 1, for FI 1, 1.005 and 2
   at frequencies 1, 2 and 4; FI 367 and the other bases are numbers. Basis 1 reads the length of first_interest's
   regular period, so `compute_accrint` now requires that period's start to be in the calendar on basis 1. Fixes
@@ -61,6 +62,5 @@ it is `#NUM!`. The two unprobed edges keep the task's bit-level goal.
   unprobed: follow-up T-2837 (with the basis-1 cut at serial 0).
 - 1904 workbook: the cut moves to 1904-01-01 (43 of 50 cells are `#NUM!` in Excel, numbers in ours). It is tied to
   T-2337 (the 1904 financial results Excel for the web changed after 2026-10-12), so follow-up T-2835 (after T-2337)
-  owns the 43 new known-failure lines in eval/baseline/probes.txt.
-- Eval delta: gen-m9 known failures 3775 → 3774 (fixed 1), no regressions; probes +2 cases, 49 cells pass and 43 are
-  new-coverage failures owned by T-2835.
+  owns them and lands the probe.
+- Eval delta: gen-m9 known failures 3775 → 3774 (fixed 1), no regressions; probes +1 case, all 92 cells pass.
