@@ -3278,26 +3278,27 @@ remainder model above. After bratio's swap on lambda = (a+b) y - b (a > b) or a 
   fl64(GL(a0) + fl64(GL(b0) - GL(a0+b0))) (GL Excel's GAMMALN; ln Gamma(1/2) as fl64(gamln1(1/2) - LN(1/2))) up to a
   shape of 8 and the accurate ln B above;
 - otherwise, with x0 <= 0.7 (TOMS L140): `bup` from the shape b0 - n (1/2 or 1) up by n = the integer part of b0, its
-  prefactor Excel's beta density at y0 times y0 x0 over the shape (w1's M1: EXP(fl64(tx + fl64(ty - ln B))), ln B by
-  GAMMALN, -LN(b) or TOMS betaln through `algdiv`) and its ratios stored, plus `bpser` at that shape;
+  prefactor Excel's beta density at y0 times y0 x0 over the shape (BETA.DIST's density for a shape of 1/2 or 1, T-2513's
+  model M2; with r2-bratio's w1 model M1 instead the F.TEST hybrid is 192 bit-exact, not 205) and its ratios stored, plus `bpser` at that shape;
 - p = 2 min(w, (1/2 - w) + 1/2).
 On the 291 cells of the `f-test` fit the 113 with both shapes above 1 score 68 / 110 / 1 visibly off under bratio against
 31 / 96 / 7 for the remainder model; with a shape of 1/2 bratio's `bpser` is worse (28 / 88 / 23 visibly off of 116
 against 75 / 114 / 0), so the model stays there. What decides: w3's series with the unstored EXP argument (plain TOMS
 `bpser` 38 / 76 / 24, the argument stored to a double 47 / 80 / 22) and bup's density prefactor (TOMS `brcmp1` 51 / 100 /
 8, a correctly rounded density 64 / 107 / 2); the arithmetic switches move at most one cell. The engine's port
-(below) is 192 / 284 / 1 on all 291 against 160 / 270 / 7 before: 7 of the 8 cells T-2571 left visibly off now have Excel's
-15 digits (gen-m9/58e3253bbd3a7a82 A141, 8f2ac25945af87da A119, a7bf0d8d81d33ba6 A81 and fec39efaba9284c3 A36 bit-exact;
-caa1eed48b1883fe A380, f34f66fb7f81e673 A4 and the FILTER cell bcb24385baafb2f0 A377 within 3 ulp). Still visibly off:
+(below, with M2) is 76 / 110 / 1 on those 113 and 205 / 284 / 1 on all 291 against 160 / 270 / 7 before: 7 of the 8 cells
+T-2571 left visibly off now have Excel's 15 digits (gen-m9/58e3253bbd3a7a82 A141, 8f2ac25945af87da A119 and
+a7bf0d8d81d33ba6 A81 bit-exact; fec39efaba9284c3 A36 1 ulp, caa1eed48b1883fe A380, f34f66fb7f81e673 A4 and the FILTER cell
+bcb24385baafb2f0 A377 3 ulp). Still visibly off:
 `F.TEST(Data!B6:E12,Data!A1:D10)`, gen-m9/b6593d7dd13f2dac A306 (Excel 1.23966888990022E-69, ours 25 ulp off; data with
-123456789.123 among values near 1; T-2829). 12 cells move from bit-exact to 1 to 3 ulp (T-2830). Evidence and per-branch
+123456789.123 among values near 1; T-2829). 8 cells move from bit-exact to 1 to 3 ulp (T-2830). Evidence and per-branch
 tables: docs/research/t2681/README.md, `score_bratio.py`.
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
 F.DIST (probes/ftest-decomposition A8 0.7947858780819459 against F.TEST's 0.7947858780819458).
 Engine: `f_test_p` in crates/rustsheet-engine/src/functions/statistical/fisher.rs: `f_test_bratio_p`
-(f_test_tail.rs, T-2681) for both shapes above 1 with a + b <= 200 where it reaches (not TOMS `gsumln`, `bgrat`, `bfrac`
+(f_test_tail.rs, T-2681) for both shapes above 1 with a + b <= 200 where it reaches (not TOMS `bgrat`, `bfrac`
 or `basym`), else `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
 `beta_reg_complement` above).
 Status: implemented as a fit (T-2361, T-2681); bratio for both shapes above 1 is PARTIAL (one cell visibly off, T-2829),

@@ -114,8 +114,8 @@ const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
 
 /// F.TEST's two-tailed p, `2 min(u, 1 - u)` for the upper tail u of [`f_test_upper_tail`]: with
 /// both shapes above 1 and a + b up to [`F_TEST_SERIES_SHAPE_MAX`], TOMS 708 `bratio`'s branches
-/// with Excel's pieces where [`f_test_bratio_p`] reaches (T-2681; bit-exact on 66 of its 104 cells
-/// on file against 31 for the remainder model, docs/excel-semantics/statistics.md).
+/// with Excel's pieces where [`f_test_bratio_p`] reaches (T-2681; bit-exact on 76 of the 113 such
+/// cells on file against 31 for the remainder model, docs/excel-semantics/statistics.md).
 fn f_test_p(x: f64, y: f64, a: f64, b: f64) -> f64 {
     if a + b <= F_TEST_SERIES_SHAPE_MAX {
         if let Some(p) = f_test_bratio_p(x, y, a, b) {

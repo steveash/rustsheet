@@ -1,25 +1,25 @@
 //! F.TEST's tail for both shapes above 1 as TOMS 708 `bratio` with Excel's pieces (T-2681): the
-//! branches of `bratio` for min(a, b) > 1 and a smaller-side shape below 40 (after its swap on
-//! lambda), as T-2464 r2-bratio's integrated model (`docs/research/t2464/r2-bratio/bratio_excel.py`,
-//! `Cfg()`) has them:
-//! - b0 x0 <= 0.7: `bpser` as w3 found it, a series summed in stored x87 ops times
+//! branches of `bratio` for min(a, b) > 1 and a smaller-side shape b0 below 40 (after bratio's
+//! swap on lambda), as T-2464 r2-bratio's integrated model has them (`BEST` in
+//! `docs/research/t2464/r2-bratio/bratio_excel.py`; "w3" and "w4" name that study's workers):
+//! - b0 x0 <= 0.7: w3's `bpser`, a series summed in stored x87 ops times
 //!   EXP(fl64(fl(a0 LN x0) - ln B(a0, b0))) ([`bpser`]);
-//! - otherwise, while x0 <= 0.7 (TOMS L140): `bup` from the shape b0 - n (1/2 or 1) up by n with
-//!   Excel's beta density times x0 y0 as its prefactor and w4's stored ratios ([`bup`]), plus
-//!   [`bpser`] at that shape.
+//! - otherwise, while x0 <= 0.7 (TOMS's label L140): `bup` from the shape b0 - n (1/2 or 1) up by n
+//!   with Excel's beta density times x0 y0 as its prefactor (BETA.DIST's
+//!   [`beta_density_small_shape`]) and w4's stored ratios ([`bup`]), plus [`bpser`] at that shape.
 //!
-//! Over the 291 F.TEST cells of the fit (docs/excel-semantics/statistics.md "F.TEST / FTEST: larger
-//! variance on top") the 104 such cells go from 31 to 66 bit-exact and from 7 visibly off to 1 against
-//! the remainder model of `fisher.rs` (`f_test_upper_tail`), which keeps every other shape: for
-//! min(a, b) <= 1 bratio's `bpser` there is worse than that model (28 bit-exact against 75, 23 cells
-//! visibly off against 0). The cells whose density needs TOMS `gsumln` (a shape 1 against one of
-//! at most 2) keep the model too: they are not ported.
+//! Over the 291 F.TEST cells of `uv run rustsheet-fitlab f-test` the 113 with both shapes above 1
+//! go from 31 to 76 bit-exact and from 7 visibly off to 1 against the remainder model of
+//! `fisher.rs` (`f_test_upper_tail`), which keeps every other shape: with a shape of 1/2 bratio's
+//! `bpser` is worse than that model (28 bit-exact of 116 against 75, 23 visibly off against 0;
+//! docs/research/t2681/README.md, docs/excel-semantics/statistics.md "F.TEST / FTEST").
 //!
 //! Every loop is bounded ([`SERIES_TERMS`], and `bup`'s n below 40).
 
+use super::beta_density::beta_density_small_shape;
 use super::gammaln::excel_gammaln;
 use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
-use crate::x87_exp::{dd_add, dd_to_extended, excel_exp_extended, two_sum};
+use crate::x87_exp::{dd_add, dd_to_extended, excel_exp_extended};
 use crate::x87_log10::{excel_ln, ln_double_double};
 use crate::x87_register::Register;
 
@@ -33,17 +33,9 @@ const EPS: f64 = 1e-15;
 /// a few hundred.
 const SERIES_TERMS: u32 = 100_000;
 /// TOMS `gamln1(1/2)`, ln Gamma(3/2), as TOMS's rational approximation gives it in doubles: w3's
-/// ln Gamma(1/2) is fl64(gamln1(1/2) - LN(1/2)) (`lnb_w3`, `w3_lg = "toms"`).
+/// ln Gamma(1/2) is fl64(gamln1(1/2) - LN(1/2)) (`lnb_w3`, `w3_lg = "toms"`); it enters at the
+/// L140 shape 1/2 (gen-m9/58e3253bbd3a7a82 A141 and 8f2ac25945af87da A119, bit-exact with it).
 const GAMLN1_HALF: f64 = -0.120_782_237_635_245_15;
-/// The Stirling coefficients of TOMS's `algdiv` and `bcorr` (`del`).
-const STIRLING_DEL: [f64; 6] = [
-    0.083_333_333_333_333_3,
-    -0.002_777_777_777_609_91,
-    7.936_506_668_253_9e-4,
-    -5.952_029_313_518_7e-4,
-    8.373_080_340_312_15e-4,
-    -0.001_653_229_627_807_13,
-];
 
 /// F.TEST's p, `2 min(I_x(a,b), 1 - I_x(a,b))`, for half-integer shapes a, b > 1 with y = 1 - x,
 /// or `None` where this port does not reach and the caller keeps its model.
@@ -84,7 +76,7 @@ pub(super) fn f_test_bratio_p(x: f64, y: f64, a: f64, b: f64) -> Option<f64> {
     Some(2.0 * w.min(w1))
 }
 
-/// w3's `bpser`: I_x(a, b) as s = 1/a + sum c_n/(a+n), c_n = c_(n-1) ((1/2 - b/n) + 1/2) x, every
+/// w3's `bpser`: `I_x(a, b)` as `s = 1/a + sum c_n/(a+n)`, `c_n = c_(n-1) ((1/2 - b/n) + 1/2) x`, every
 /// step a stored x87 op, summed until s stops changing, times EXP(fl64(fl(a LN x) - L)) with L
 /// [`neg_ln_beta`]'s ln B(a, b).
 fn bpser(a: f64, b: f64, x: f64) -> f64 {
@@ -128,11 +120,12 @@ fn neg_ln_beta(a: f64, b: f64) -> Register {
         .add(neg_lg(a))
 }
 
-/// TOMS `bup` for I_x(a, b) - I_x(a + n, b) as w4 found Excel's: the prefactor is Excel's beta
-/// density times x y ([`density_m1`]), over a, and each term d = d ((a+b+i)/(a+1+i)) x keeps the
-/// ratio stored and ratio times x in a register. `None` where the density is not ported.
+/// TOMS `bup` for `I_x(a, b) - I_x(a + n, b)` as w4 found Excel's: the prefactor is Excel's beta
+/// density times x y ([`beta_density_small_shape`], a of 1/2 or 1), over a, and each term
+/// d = d ((a+b+i)/(a+1+i)) x keeps the ratio stored and ratio times x in a register. `None` where
+/// that density is not finite.
 fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
-    let prefactor = density_m1(x, a, b)? * (x * y) / a;
+    let prefactor = beta_density_small_shape(x, a, b)? * (x * y) / a;
     if n <= 1.0 {
         return Some(prefactor);
     }
@@ -167,114 +160,24 @@ fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
     Some(prefactor * w)
 }
 
-/// Excel's beta density at x for a shape `a` of 1/2 or 1 and `b` > 1, as T-2464 w1's model M1:
-/// EXP(fl64(tx + fl64(ty - ln B))) with tx = fl((a-1) LN x), ty = fl((b-1) ln(1-x)), ln(1-x) the
-/// correctly rounded log1p(-x) up to x = 0.375 (w1's stand-in) and LN(fl(1-x)) above, and ln B
-/// [`density_ln_beta`]'s.
-fn density_m1(x: f64, a: f64, b: f64) -> Option<f64> {
-    let ln_beta = density_ln_beta(a, b)?;
-    let ln_y = if x <= 0.375 {
-        let (hi, lo) = two_sum(1.0, -x);
-        dd_add(ln_double_double(hi), (lo / hi, 0.0)).0
-    } else {
-        excel_ln(1.0 - x)
-    };
-    let tx = extended_product(extended_sum(a, -1.0), excel_ln(x));
-    let ty = extended_product(extended_sum(b, -1.0), ln_y);
-    let e = Register::load(ty)
-        .add(Register::load(-ln_beta))
-        .add(Register::load(tx));
-    Some(excel_exp_extended(e))
-}
-
-/// M1's ln B(a, b) for a in {1/2, 1} and b > 1: with a = 1/2 and b <= 8 the GAMMALN form
-/// fl(GL(a) + fl(GL(b) - GL(a+b))); with a = 1 and 2 < b < 8, -LN(b); otherwise TOMS `betaln`
-/// with Excel's GAMMALN and LN, gamln(a) + algdiv(a, b), which it takes for b >= 8. `None` for a = 1
-/// with b <= 2, where `betaln` takes `gsumln` (not ported).
-fn density_ln_beta(a: f64, b: f64) -> Option<f64> {
-    if a < 1.0 && b <= 8.0 {
-        let tail = extended_sum(excel_gammaln(b), -excel_gammaln(a + b));
-        return Some(extended_sum(excel_gammaln(a), tail));
-    }
-    if a == 1.0 && b > 2.0 && b < 8.0 {
-        return Some(-excel_ln(b));
-    }
-    if b >= 8.0 {
-        return Some(excel_gammaln(a) + algdiv(a, b));
-    }
-    None
-}
-
-/// TOMS `algdiv`: ln(Gamma(b)/Gamma(a+b)) for b >= 8 with Excel's LN, in doubles.
-fn algdiv(a: f64, b: f64) -> f64 {
-    let (c, x, d) = if a > b {
-        let h = b / a;
-        (1.0 / (h + 1.0), h / (h + 1.0), a + (b - 0.5))
-    } else {
-        let h = a / b;
-        (h / (h + 1.0), 1.0 / (h + 1.0), b + (a - 0.5))
-    };
-    let w = stirling_del(c, x, b);
-    let u = d * alnrel(a / b);
-    let v = a * (excel_ln(b) - 1.0);
-    if u > v {
-        w - v - u
-    } else {
-        w - u - v
-    }
-}
-
-/// TOMS's `del(b)` correction of `algdiv`: c/b times the series in t = (1/b)^2 with
-/// s_(2k+1) = 1 + x + ... + x^(2k).
-fn stirling_del(c: f64, x: f64, b: f64) -> f64 {
-    let x2 = x * x;
-    let mut s = [0.0; 5];
-    let mut acc = 1.0;
-    for slot in &mut s {
-        acc = x + x2 * acc + 1.0;
-        *slot = acc;
-    }
-    let [s3, s5, s7, s9, s11] = s;
-    let t = (1.0 / b) * (1.0 / b);
-    let [c0, c1, c2, c3, c4, c5] = STIRLING_DEL;
-    let w = ((((c5 * s11 * t + c4 * s9) * t + c3 * s7) * t + c2 * s5) * t + c1 * s3) * t + c0;
-    w * (c / b)
-}
-
-/// TOMS `alnrel`, ln(1 + a): Excel's LN above |a| = 0.375, below it TOMS's (3,3) rational in
-/// t = a/(a+2).
-fn alnrel(a: f64) -> f64 {
-    if a.abs() > 0.375 {
-        return excel_ln(1.0 + a);
-    }
-    let t = a / (a + 2.0);
-    let t2 = t * t;
-    let num = ((-0.017_887_454_601_221_4 * t2 + 0.405_303_492_862_024) * t2 - 1.294_189_230_219_93)
-        * t2
-        + 1.0;
-    let den = ((-0.084_510_421_794_556_5 * t2 + 0.747_811_014_037_616) * t2 - 1.627_522_563_553_23)
-        * t2
-        + 1.0;
-    t * 2.0 * (num / den)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::f_test_bratio_p;
+    use super::{f_test_bratio_p, neg_ln_beta};
     use crate::test::util::ulps;
 
-    // (x, y, a, b, Excel's F.TEST) at F.TEST cells the remainder model had visibly off
-    // (excel-graph; T-2681): bit-exact, and within 3 ulp (not visibly off) for the last three.
+    // (x, y, a, b, Excel's F.TEST, the port's ulps from it) at the F.TEST cells the remainder
+    // model had visibly off (excel-graph; T-2681): none is visibly off now.
     #[test]
     fn excel_cells_both_shapes_above_one() {
-        let exact = [
-            // gen-m9/58e3253bbd3a7a82 Calc!A141 (L140, the a = 1/2 GAMMALN density)
+        let cells = [
+            // gen-m9/58e3253bbd3a7a82 Calc!A141 (L140 at the shape 1/2)
             (
                 0.677_419_354_838_714_3,
                 0.322_580_645_161_285_7,
                 7.5,
                 2.5,
                 0.540_798_569_556_812_7,
+                0,
             ),
             // gen-m9/8f2ac25945af87da Calc!A119 (L140)
             (
@@ -283,28 +186,26 @@ mod tests {
                 6.0,
                 4.5,
                 0.657_910_021_992_518,
+                0,
             ),
-            // gen-m9/a7bf0d8d81d33ba6 Calc!A81 (L140, the a = 1 density, -LN(b))
+            // gen-m9/a7bf0d8d81d33ba6 Calc!A81 (L140 at the shape 1)
             (
                 0.514_705_892_361_292_6,
                 0.485_294_107_638_707_5,
                 5.0,
                 3.0,
                 0.502_782_788_443_525_9,
+                0,
             ),
-            // gen-m9/fec39efaba9284c3 Calc!A36 (L140, betaln through algdiv, accurate ln B)
+            // gen-m9/fec39efaba9284c3 Calc!A36 (L140, the accurate ln B above 8)
             (
                 0.531_249_979_746_619_9,
                 0.468_750_020_253_38,
                 8.5,
                 2.5,
                 0.080_701_192_695_023_8,
+                1,
             ),
-        ];
-        for (x, y, a, b, excel) in exact {
-            assert_eq!(f_test_bratio_p(x, y, a, b), Some(excel), "I_{x}({a}, {b})");
-        }
-        let close = [
             // gen-m9/caa1eed48b1883fe Calc!A380 (bpser)
             (
                 0.075_604_065_115_223_84,
@@ -312,14 +213,16 @@ mod tests {
                 2.5,
                 6.0,
                 0.084_052_537_265_491_03,
+                3,
             ),
-            // gen-m9/f34f66fb7f81e673 Calc!A4 (L140, swapped)
+            // gen-m9/f34f66fb7f81e673 Calc!A4 (L140)
             (
                 0.256_880_727_398_555_1,
                 0.743_119_272_601_445,
                 4.0,
                 10.0,
                 0.877_645_926_559_382_3,
+                3,
             ),
             // gen-m9/bcb24385baafb2f0 Calc!A377 (bpser deep in the tail)
             (
@@ -328,11 +231,24 @@ mod tests {
                 3.5,
                 7.5,
                 6.414_538_185_730_402_6e-93,
+                3,
             ),
         ];
-        for (x, y, a, b, excel) in close {
+        for (x, y, a, b, excel, off) in cells {
             let p = f_test_bratio_p(x, y, a, b).unwrap_or(f64::NAN);
-            assert!(ulps(p, excel) <= 3, "I_{x}({a}, {b}): {p} against {excel}");
+            assert_eq!(ulps(p, excel), off, "I_{x}({a}, {b}): {p} against {excel}");
+        }
+    }
+
+    // Above a shape of 8, -ln B is the accurate value rounded to a register: B(9, 1/2) and
+    // B(1/2, 11.5) against 50-digit mpmath (-log(beta(9, 0.5)), -log(beta(0.5, 11.5))).
+    #[test]
+    fn neg_ln_beta_above_eight_is_accurate() {
+        for (a, b, reference) in [
+            (9.0, 0.5, 0.512_365_575_127_318_2),
+            (0.5, 11.5, 0.637_942_426_381_944_4),
+        ] {
+            assert_eq!(neg_ln_beta(a, b).store(), reference, "B({a}, {b})");
         }
     }
 
@@ -343,7 +259,6 @@ mod tests {
         assert_eq!(f_test_bratio_p(0.3, 0.7, 0.5, 4.5), None);
         assert_eq!(f_test_bratio_p(0.3, 0.7, 1.0, 4.5), None);
         assert_eq!(f_test_bratio_p(0.5, 0.5, 45.0, 45.0), None);
-        // a = 1 against b = 2 in L140 needs gsumln.
-        assert_eq!(f_test_bratio_p(0.45, 0.55, 2.0, 2.0), None);
+        assert_eq!(f_test_bratio_p(0.8, 0.2, 30.0, 2.0), None);
     }
 }

@@ -20,10 +20,13 @@ the remainder model stays better.
 | closed forms, bup+bgrat | 54 | 48 / 53 / 1 | 52 / 54 / 0 |
 
 The engine (fisher.rs `f_test_p`) takes bratio where `f_test_bratio_p` reaches: both shapes above
-1, a + b <= 200, bratio's smaller-side shape below 40, and in L140 x0 <= 0.7 and a density that
-does not need TOMS `gsumln` (shape 1 against at most 2). That hybrid is 192 / 284 / 1 against the
-engine's 160 / 270 / 7; `uv run rustsheet-fitlab f-test` shows the same counts for the engine row
-after the change, so the Rust port reproduces the Python model cell for cell.
+1, a + b <= 200, bratio's smaller-side shape below 40, and in L140 x0 <= 0.7. One piece differs
+from `BEST`: bup's density prefactor is BETA.DIST's density for a shape of 1/2 or 1 as the engine
+already has it (`beta_density_small_shape`, T-2513's model M2, which replaced w1's M1 there), not
+M1. With M1 the hybrid (`score_bratio.py`, which also leaves the cells that need TOMS `gsumln` to
+the model) is 192 / 284 / 1; the engine with M2 needs no `gsumln` (M2 takes -LN(b) at a shape of 1)
+and scores 205 / 284 / 1 against 160 / 270 / 7 before (`uv run rustsheet-fitlab f-test`, engine
+row). On the 113 cells with both shapes above 1: 31 / 96 / 7 before, 76 / 110 / 1 after.
 
 Ablations over the 113 cells with both shapes above 1 (`Cfg` switches one at a time from `BEST`):
 
@@ -34,11 +37,12 @@ Ablations over the 113 cells with both shapes above 1 (`Cfg` switches one at a t
 | w3's EXP argument stored to a double (`w3_z="z53"`) | 47 / 80 / 22 |
 | TOMS brcmp1 instead of Excel's density times x y (`brcmp1="toms"`) | 51 / 100 / 8 |
 | the density correctly rounded instead of w1's M1 | 64 / 107 / 2 |
+| M2 (the engine's density) instead of M1, in the engine | 76 / 110 / 1 |
 | TOMS betaln for w3's ln B above 8 (`w3_big="toms"`) | 69 / 111 / 1 |
 | `bup_arith="double"`, `bup_break=False`, `w3_lg="gl"`, `w3_order="min"`, `elem="libm"` | 67-68 / 110 / 1 |
 
 So what decides Excel's value is w3's series with the unstored EXP argument and bup's density
-prefactor (M1 for a shape of 1/2 or 1); the other switches move at most one cell.
+prefactor (Excel's density for a shape of 1/2 or 1); the other switches move at most one cell.
 
 ## The 8 cells
 
@@ -47,7 +51,7 @@ prefactor (M1 for a shape of 1/2 or 1); the other switches move at most one cell
 | gen-m9/58e3253bbd3a7a82 A141 | 7.5, 2.5 | L140 | 12 ulp | bit-exact |
 | gen-m9/8f2ac25945af87da A119 | 6, 4.5 | L140 | 10 ulp | bit-exact |
 | gen-m9/a7bf0d8d81d33ba6 A81 | 5, 3 | L140 | 5 ulp | bit-exact |
-| gen-m9/fec39efaba9284c3 A36 | 8.5, 2.5 | L140 (betaln via algdiv) | 9 ulp | bit-exact |
+| gen-m9/fec39efaba9284c3 A36 | 8.5, 2.5 | L140 (accurate ln B above 8) | 9 ulp | 1 ulp (bit-exact with M1) |
 | gen-m9/caa1eed48b1883fe A380 | 2.5, 6 | bpser | 4 ulp | 3 ulp |
 | gen-m9/f34f66fb7f81e673 A4 | 4, 10 | L140 | 11 ulp | 3 ulp |
 | gen-m9/bcb24385baafb2f0 A377 | 3.5, 7.5 | bpser (x = 8.7E-28) | 13 ulp | 3 ulp |
@@ -60,5 +64,5 @@ would give Excel's p is 48 units (2^-53) from bratio's, about eight ulps of x. O
 
 ## Files
 - `dump_cells.py`: the sweep with the engine's value, to JSON (run from tools/).
-- `score_bratio.py`, `score_bratio.out`: the per-branch table and the hybrid.
+- `score_bratio.py`, `score_bratio.out`: the per-branch table and the M1 hybrid.
 - `filter_cell.py`: A377's arguments.
