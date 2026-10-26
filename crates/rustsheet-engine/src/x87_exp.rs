@@ -185,12 +185,7 @@ fn exp_with<const SHORTCUT: bool>(
 fn two_to_the_fraction(magnitude: u64, drop: u32, negative: bool) -> Option<f64> {
     let (high, low) = two_to_the_fraction_estimate(u128::from(magnitude), drop);
     let (head, tail) = if negative {
-        // 1 / (high + low): a quotient and one correction from its exact residual (1 - q high
-        // is exact by Sterbenz, as q high is within an ulp of 1).
-        let quotient = 1.0 / high;
-        let (product, product_error) = two_prod(quotient, high);
-        let residual = ((1.0 - product) - product_error) - quotient * low;
-        fast_two_sum(quotient, quotient * residual)
+        reciprocal_near_one(high, low)
     } else {
         (high, low)
     };
@@ -206,23 +201,29 @@ fn two_to_the_fraction(magnitude: u64, drop: u32, negative: bool) -> Option<f64>
     (half_ulp - tail.abs() > DOUBLE_MIDPOINT_MARGIN).then_some(head)
 }
 
+/// 1 / (`high` + `low`) as a double-double, for a value in [1, 1.42]: a quotient and one
+/// correction from its exact residual (1 - q high is exact by Sterbenz, as q high is within an
+/// ulp of 1).
+#[inline]
+fn reciprocal_near_one(high: f64, low: f64) -> (f64, f64) {
+    let quotient = 1.0 / high;
+    let (product, product_error) = two_prod(quotient, high);
+    let residual = ((1.0 - product) - product_error) - quotient * low;
+    fast_two_sum(quotient, quotient * residual)
+}
+
 /// How far [`two_to_the_fraction`]'s estimate must be from a double rounding midpoint: 2^-60,
 /// above the estimate's error (about 2^-67) plus w's (at most 2^-63 * 1.42).
 const DOUBLE_MIDPOINT_MARGIN: f64 = 1.0 / 1_152_921_504_606_846_976.0; // 2^-60
 
 /// 2^f for f = `magnitude` * 2^-`drop` in (0, 1/2], to about 2^-67, as a double-double: the
-/// [`two_to_the_minus_one_estimate`] scheme with fewer exact terms, as [`two_to_the_fraction`]
-/// needs only 2^-60. 2^f = 1 + E + e + E e with E = 2^(j/64) - 1 from the table and e = expm1(y),
+/// [`two_to_the_minus_one_estimate`] scheme (sharing its reduction and table term) with a plain
+/// f64 series instead of its Dekker-product terms, as [`two_to_the_fraction`] needs only 2^-60. 2^f = 1 + E + e + E e with E = 2^(j/64) - 1 from the table and e = expm1(y),
 /// y = r ln 2, |y| <= 0.0055: e = yh + yh^2 (1/2 + yh/6 + ... + yh^5/5040) + yl (1 + yh), the
 /// bracket in plain f64 (its error about 2^-69, the next term 2^-75).
 #[inline]
 fn two_to_the_fraction_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
-    // As in two_to_the_minus_one_estimate: j = nint(64 f) <= 32, r exact with |r| <= 1/128.
-    let j = (magnitude + (1 << (drop - 7))) >> (drop - 6);
-    let r = i128::try_from(magnitude).unwrap_or(0) - i128::try_from(j << (drop - 6)).unwrap_or(0);
-    let (rh, rl) = exact_double_double(r, drop);
-    let (product, product_error) = two_prod(rh, LN_2_HI);
-    let (yh, yl) = fast_two_sum(product, product_error + (rh * LN_2_LO + rl * LN_2_HI));
+    let (j, yh, yl) = reduce_fraction(magnitude, drop);
     let rest = yh
         * yh
         * (0.5
@@ -230,19 +231,10 @@ fn two_to_the_fraction_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
                 + yh * (1.0 / 24.0
                     + yh * (1.0 / 120.0 + yh * (1.0 / 720.0 + yh * (1.0 / 5040.0))))));
     let (b, b_error) = fast_two_sum(yh, rest);
-    let lo = b_error + yl * (1.0 + yh);
-    let (e_hi, e_lo) = TWO_TO_THE_J_OVER_64_MINUS_ONE[usize::try_from(j).unwrap_or(0).min(32)];
-    let (e_hi, e_lo) = (f64::from_bits(e_hi), f64::from_bits(e_lo));
-    // E e, then E + (e + E e), then 1 + that (in (0, 0.415], so 1 leads).
-    let (m, m_error) = two_prod(e_hi, b);
-    let m_error = m_error + e_hi * lo + e_lo * b;
-    let (s, s_error) = two_sum(b, m);
-    let (u, u_error) = two_sum(e_hi, s);
+    let (u, u_low) = add_table_term(j, b, b_error + yl * (1.0 + yh));
+    // 1 + u, u in (0, 0.415], so 1 leads.
     let (one_plus, one_plus_error) = fast_two_sum(1.0, u);
-    fast_two_sum(
-        one_plus,
-        one_plus_error + (u_error + s_error + lo + m_error + e_lo),
-    )
+    fast_two_sum(one_plus, one_plus_error + u_low)
 }
 
 /// `value` (at least 2^63, at most 128 bits) rounded to nearest, ties to even, to 64 bits: the
@@ -406,14 +398,7 @@ const ONE_SIXTH: (f64, f64) = (
 /// leading series terms y, y^2/2, y^3/6 and y^4/24 are kept exactly (Dekker products), and the
 /// rest, under 2^-37 of e, is summed in f64.
 fn two_to_the_minus_one_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
-    // drop >= 53 (excel_exp), so both shifts are in range; j = nint(64 f) <= 32, and r is exact
-    // with |r| <= 2^(drop - 7) and |r| <= magnitude < 2^64.
-    let j = (magnitude + (1 << (drop - 7))) >> (drop - 6);
-    let r = i128::try_from(magnitude).unwrap_or(0) - i128::try_from(j << (drop - 6)).unwrap_or(0);
-    let (rh, rl) = exact_double_double(r, drop);
-    // y = r ln 2: the head product exactly, the cross terms rounded (2^-108).
-    let (product, product_error) = two_prod(rh, LN_2_HI);
-    let (yh, yl) = fast_two_sum(product, product_error + (rh * LN_2_LO + rl * LN_2_HI));
+    let (j, yh, yl) = reduce_fraction(magnitude, drop);
     // expm1(yh) = yh + p/2 + t + v + tail with p = yh^2, t = yh^3/6, v = yh^4/24, each a
     // double-double; tail = yh^5 (1/120 + yh/720 + ...) to the 1/9! term (the next is 2^-89).
     let (p, p_error) = two_prod(yh, yh);
@@ -438,10 +423,31 @@ fn two_to_the_minus_one_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
         + a_error
         + (p_error * 0.5 + t_error + v_error + tail)
         + yl * (1.0 + yh + p * 0.5 + t);
-    let (e_hi, e_lo) = TWO_TO_THE_J_OVER_64_MINUS_ONE[usize::try_from(j).unwrap_or(0).min(32)];
+    add_table_term(j, b, lo)
+}
+
+/// f = `magnitude` * 2^-`drop` in (0, 1/2] split as j/64 + r: j = nint(64 f) <= 32 and
+/// y = r ln 2 as a double-double (yh, yl), |y| <= 0.0055. drop >= 53 ([`excel_exp`]), so both shifts
+/// are in range, and r is exact with |r| <= 2^(drop - 7) and |r| <= magnitude < 2^64. Shared by
+/// [`two_to_the_minus_one_estimate`] and [`two_to_the_fraction_estimate`].
+fn reduce_fraction(magnitude: u128, drop: u32) -> (usize, f64, f64) {
+    let j = (magnitude + (1 << (drop - 7))) >> (drop - 6);
+    let r = i128::try_from(magnitude).unwrap_or(0) - i128::try_from(j << (drop - 6)).unwrap_or(0);
+    let (rh, rl) = exact_double_double(r, drop);
+    // y = r ln 2: the head product exactly, the cross terms rounded (2^-108).
+    let (product, product_error) = two_prod(rh, LN_2_HI);
+    let (yh, yl) = fast_two_sum(product, product_error + (rh * LN_2_LO + rl * LN_2_HI));
+    (usize::try_from(j).unwrap_or(0).min(32), yh, yl)
+}
+
+/// 2^(j/64) - 1 + e = E + e + E e as a double-double, for e = `b` + `lo` = expm1(y) from
+/// [`reduce_fraction`]'s y and E = 2^(j/64) - 1 from the table. E >= 0.0109 for j >= 1 and
+/// |e| <= 0.0055, so the sum is at least 0.0032 and never cancels by more than a factor 3.4;
+/// E = 0 for j = 0.
+fn add_table_term(j: usize, b: f64, lo: f64) -> (f64, f64) {
+    let (e_hi, e_lo) = TWO_TO_THE_J_OVER_64_MINUS_ONE[j];
     let (e_hi, e_lo) = (f64::from_bits(e_hi), f64::from_bits(e_lo));
-    // E e, then E + (e + E e): E >= 0.0109 for j >= 1 and |e| <= 0.0055, so the sum is at
-    // least 0.0032 and never cancels by more than a factor 3.4; E = 0 for j = 0.
+    // E e, then E + (e + E e).
     let (m, m_error) = two_prod(e_hi, b);
     let m_error = m_error + e_hi * lo + e_lo * b;
     let (s, s_error) = two_sum(b, m);
@@ -607,7 +613,8 @@ mod tests {
     use super::*;
 
     /// The integer core before T-2102 (u128 throughout, a u128 division for the reciprocal and
-    /// the general roundings), kept as the reference [`exp_with`] is compared with.
+    /// the general roundings), kept verbatim as the reference [`exp_with`] is compared with: do
+    /// not edit or reuse it.
     fn exp_with_reference(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
         let (negative, a_significand, a_exponent) = a.parts();
         // A zero (no top bit) gives 1. Otherwise 2^top <= |a| < 2^(top + 1); a significand has at
@@ -779,6 +786,32 @@ mod tests {
                     error <= series_hi * 2.0_f64.powi(-80),
                     "m = {m:#x}, drop = {drop}"
                 );
+            }
+        }
+    }
+
+    // two_to_the_fraction's estimate of 2^f, and of 2^-f through its reciprocal, is within
+    // 2^-64 of the series (itself good to about 2^-100), well inside DOUBLE_MIDPOINT_MARGIN's
+    // 2^-60 less w's 2^-62.5.
+    #[test]
+    fn fraction_estimate_error_bound() {
+        let mut state = 0xA409_3822_299F_31D0_u64;
+        for drop in 53..=130_u32 {
+            let limit = 1_u128
+                .checked_shl(drop - 1)
+                .map_or(u128::from(u64::MAX), |l| l.min(u128::from(u64::MAX)));
+            for _ in 0..2_000 {
+                let bits = 1 + u32::try_from(next(&mut state) % 64).unwrap_or(0);
+                let m = (u128::from(next(&mut state)) >> (64 - bits)).clamp(1, limit);
+                let (series_hi, series_lo) = two_to_the_minus_one_series_sum(m, drop);
+                let exact = dd_add_one((series_hi, series_lo));
+                let (hi, lo) = two_to_the_fraction_estimate(m, drop);
+                let error = ((hi - exact.0) + (lo - exact.1)).abs();
+                assert!(error <= power_of_two(-64), "m = {m:#x}, drop = {drop}");
+                let inverse = dd_div((1.0, 0.0), exact);
+                let (head, tail) = reciprocal_near_one(hi, lo);
+                let error = ((head - inverse.0) + (tail - inverse.1)).abs();
+                assert!(error <= power_of_two(-64), "1/: m = {m:#x}, drop = {drop}");
             }
         }
     }
