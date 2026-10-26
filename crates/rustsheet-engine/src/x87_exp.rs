@@ -218,7 +218,8 @@ const DOUBLE_MIDPOINT_MARGIN: f64 = 1.0 / 1_152_921_504_606_846_976.0; // 2^-60
 
 /// 2^f for f = `magnitude` * 2^-`drop` in (0, 1/2], to about 2^-67, as a double-double: the
 /// [`two_to_the_minus_one_estimate`] scheme (sharing its reduction and table term) with a plain
-/// f64 series instead of its Dekker-product terms, as [`two_to_the_fraction`] needs only 2^-60. 2^f = 1 + E + e + E e with E = 2^(j/64) - 1 from the table and e = expm1(y),
+/// f64 series instead of its Dekker-product terms, as [`two_to_the_fraction`] needs only 2^-60.
+/// 2^f = 1 + E + e + E e with E = 2^(j/64) - 1 from the table and e = expm1(y),
 /// y = r ln 2, |y| <= 0.0055: e = yh + yh^2 (1/2 + yh/6 + ... + yh^5/5040) + yl (1 + yh), the
 /// bracket in plain f64 (its error about 2^-69, the next term 2^-75).
 #[inline]
@@ -427,9 +428,9 @@ fn two_to_the_minus_one_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
 }
 
 /// f = `magnitude` * 2^-`drop` in (0, 1/2] split as j/64 + r: j = nint(64 f) <= 32 and
-/// y = r ln 2 as a double-double (yh, yl), |y| <= 0.0055. drop >= 53 ([`excel_exp`]), so both shifts
-/// are in range, and r is exact with |r| <= 2^(drop - 7) and |r| <= magnitude < 2^64. Shared by
-/// [`two_to_the_minus_one_estimate`] and [`two_to_the_fraction_estimate`].
+/// y = r ln 2 as a double-double (yh, yl), |y| <= 0.0055. drop >= 53 ([`excel_exp`]), so both
+/// shifts are in range, and r is exact with |r| <= 2^(drop - 7) and |r| <= magnitude < 2^64.
+/// Shared by [`two_to_the_minus_one_estimate`] and [`two_to_the_fraction_estimate`].
 fn reduce_fraction(magnitude: u128, drop: u32) -> (usize, f64, f64) {
     let j = (magnitude + (1 << (drop - 7))) >> (drop - 6);
     let r = i128::try_from(magnitude).unwrap_or(0) - i128::try_from(j << (drop - 6)).unwrap_or(0);
