@@ -82,8 +82,25 @@ impl Model {
         &mut self,
         sheet: u32,
         name: &str,
+        range: (i32, i32, i32, i32),
+        has_filters: bool,
+    ) -> Result<(), String> {
+        self.add_table_with_totals(sheet, name, range, has_filters, false)
+    }
+
+    /// [`Model::add_table`] for a range whose last row is the table's totals row when
+    /// `totals_row` is set (`Table[#Totals]`, `Table[#All]`; the cells of that row keep what they
+    /// hold). Such a table needs a header row, a data row and the totals row.
+    ///
+    /// # Errors
+    /// As [`Model::add_table`], with the range one row taller for a totals row.
+    pub fn add_table_with_totals(
+        &mut self,
+        sheet: u32,
+        name: &str,
         (top, left, bottom, right): (i32, i32, i32, i32),
         has_filters: bool,
+        totals_row: bool,
     ) -> Result<(), String> {
         if !is_valid_identifier(name) {
             return Err(format!("Invalid table name '{name}'"));
@@ -106,7 +123,12 @@ impl Model {
         let (Some(first), Some(last)) = (number_to_column(left), number_to_column(right)) else {
             return Err("Table columns are outside the sheet".to_string());
         };
-        if top < 1 || top >= bottom || left > right || bottom > crate::constants::LAST_ROW {
+        let totals_rows = i32::from(totals_row);
+        if top < 1
+            || top + totals_rows >= bottom
+            || left > right
+            || bottom > crate::constants::LAST_ROW
+        {
             return Err("A table needs a header row and at least one data row".to_string());
         }
         let overlaps = self.workbook.tables.values().any(|t| {
@@ -139,7 +161,7 @@ impl Model {
             display_name: name.to_string(),
             sheet_name,
             reference: format!("{first}{top}:{last}{bottom}"),
-            totals_row_count: 0,
+            totals_row_count: u32::from(totals_row),
             header_row_count: 1,
             header_row_dxf_id: None,
             data_dxf_id: None,
