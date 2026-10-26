@@ -299,4 +299,3 @@ pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     let (x, y) = tan_parts(x, y);
     complex_result(x, y, suffix)
 }
-
