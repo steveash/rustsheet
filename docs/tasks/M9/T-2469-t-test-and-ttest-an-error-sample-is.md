@@ -92,6 +92,7 @@ lines in eval/baseline/gen-m9.txt, 4 visibly off. Each is an error sample before
 - gen-m9/607e85cfee83a689 Calc!A256 `T.TEST(DMIN(..),Data!B10:E11,..,3)`: array1 #VALUE!; Excel #VALUE!, ours #NUM!
 - gen-m9/9e2225ead8a6a07b Calc!A10 `T.TEST(Data!A6:C8,SEQUENCE(..),..,VLOOKUP(..))`: array2 #VALUE!, tails #NUM!, type #REF!; Excel #VALUE!, ours #NUM!
 - gen-m9/91e167cd8d7eb652 Calc!A148 `TTEST(Data!C7:D11,PEARSON(..),DSUM(..),NORM.S.DIST(..))`: array2 #N/A, tails and type #VALUE!; Excel #N/A, ours #VALUE!
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

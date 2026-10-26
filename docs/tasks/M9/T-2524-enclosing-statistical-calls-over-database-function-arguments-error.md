@@ -47,7 +47,7 @@ precedence (excel-probe, one question per cell) before changing it; split by fun
 bigger than M. Cells already owned elsewhere when you start move to that task.
 
 ## Acceptance criteria
-- [x] Visible parity: the 18 error or type cells above, and CHISQ.DIST A217 (off in the 14th significant digit), leave eval/baseline/gen-m9.txt (`make eval-baseline`), or
+- [x] (Already passing on main, or moved to an owning task: see Outcome.) Visible parity: the 18 error or type cells above, and CHISQ.DIST A217 (off in the 14th significant digit), leave eval/baseline/gen-m9.txt (`make eval-baseline`), or
       move to a task that owns their enclosing function, with no new known-failure lines.
 - [x] TDIST A358 (1 ulp) matches Excel or moves to the task that owns that distribution's numerics.
 - [x] Each error-precedence rule found is in docs/excel-semantics/.

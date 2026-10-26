@@ -149,6 +149,7 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 Owned gen-m9 cells (T-2524 trace, 2026-10-26; arguments evaluated by the engine, which agree with Excel): 1 known-failure
 line in eval/baseline/gen-m9.txt, 1 visibly off:
 - gen-m9/530c636749a85209 Calc!A174 `FREQUENCY((DSUM(..)/SUMIF(..)),COUPDAYS(..))`: data_array #DIV/0!, bins 180; Excel #DIV/0!, ours #VALUE!
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
