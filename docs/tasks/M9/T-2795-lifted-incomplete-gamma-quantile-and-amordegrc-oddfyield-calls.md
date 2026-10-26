@@ -71,7 +71,8 @@ POISSON.DIST) are charged by value (`ValueWork::IncompleteGamma`) instead of the
   charged 1, because every kernel reads its arguments first. A text shape or probability is charged 2^18.
 - An inversion is charged 2,250 cdfs within its 2^19-term budget, so in practice it keeps the full weight.
 - `CHIDIST(x,5)` costs 150 units, so a lift of it runs up to 894,784 elements. The new bench case
-  "CHIDIST, df 5 at the continued fraction's slowest x" covers it.
+  "CHIDIST, df 5 at the continued fraction's slowest x" covers it: 674 ms median over 11 runs (min 655 ms), under
+  the 1.3 s bound of the cap.
 Eval delta: gen-m9 -4 known failures, 0 regressions: c2974c061384fdd9 A56, 3e98b26cf6713e77 A204,
 ee2497a5e683c5d9 A199 and 589f42e67f4b4b8d A121 now match Excel.
 Follow-up: T-2815 (ODDFYIELD's off-calendar date and AMORDEGRC's text elements, 2 cells).
