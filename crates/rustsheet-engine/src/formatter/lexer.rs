@@ -343,7 +343,7 @@ impl Lexer {
 
     fn consume_color(&mut self) -> Option<i32> {
         let colors = [
-            "black", "white", "red", "green", "blue", "yellow", "magenta",
+            "black", "white", "red", "green", "blue", "yellow", "magenta", "cyan",
         ];
         let mut chars = "".to_string();
         while let Some(ch) = self.read_next_char() {
