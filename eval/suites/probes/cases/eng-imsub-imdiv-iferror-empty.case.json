@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2543: IMSUB and IMDIV over the empty value IFERROR/IFNA hand on for a blank cell.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-2543"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMSUB(\"1\",IFERROR(Q1,\"x\"))",
+    "A2": "=IMDIV(\"1\",IFERROR(Q1,\"x\"))",
+    "A3": "=IMSUB(IFERROR(Q1,\"x\"),\"1\")",
+    "A4": "=IMSUB(\"1\",IFNA(Q1,\"x\"))",
+    "A5": "=IMDIV(IFERROR(Q1,\"x\"),\"1\")",
+    "A6": "=IMSUB(\"a*abc\",IFERROR(Q1,\"x\"))",
+    "A7": "=IMSUB(\"1\",IF(TRUE,Q1))",
+    "A8": "=IMSUB(\"1\",)",
+    "A9": "=IMDIV(,\"1\")",
+    "A10": "=IMSUB(\"3+4j\",IFERROR(Q1,\"x\"))"
+   }
+  }
+ ],
+ "expected": {}
+}

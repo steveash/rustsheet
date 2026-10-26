@@ -607,6 +607,26 @@ Evidence: probes/rate-empty-arguments A1-A10 (excel-graph, T-1128)
 Status: VERIFIED
 Implemented in: `compute_rate` (empty argument reads as 0; guess 0 converges, T-2005)
 
+## XIRR (and IRR): an empty guess argument is the default 0.1 for XIRR, guess 0 for IRR
+Rule: XIRR reads a written empty guess (`XIRR(v,d,)`) as the default 0.1, the opposite of RATE
+("RATE: an empty guess is guess 0, not the default 0.1"). A reference to an empty cell is still guess 0
+(same bits as an explicit `0`), so only the empty argument itself is special. IRR reads both as guess 0,
+like RATE. So the rule is per function and neither side may be generalised from the other.
+- XIRR, Excel's doc flows -10000, 2750, 4250, 3250, 2750 on 39448, 39508, 39751, 39859, 39904: `XIRR(v,d,)`
+  = 0.3733625352382659, the same bits as no guess and as `,0.1` (A1, A2, A4), over ranges and array
+  constants (A7, A8). `XIRR(v,d,0)`, `XIRR(v,d,E1)` with E1 empty and `XIRR(v,d,0.1-0.1)` give
+  0.3733625341796877 (A3, A5, A22; A9 for constants). A `""` guess is `#VALUE!` (A6). The bisection's
+  bracket starts from the guess ("XIRR is a bracketing bisection"), so the two runs differ in the 9th digit.
+- IRR, -70000, 12000, 15000, 18000, 21000, 26000: `IRR(v,)`, `IRR(v,E1)` and `IRR(v,0)` all give
+  0.08663094803653149 (A11, A15, A13; A17, A19 for constants), and no guess or `,0.1` gives
+  0.08663094803652216 (A12, A14, A18). A `""` guess is `#VALUE!` (A16).
+- Desktop agrees: calipers pv23_056 Summary!F23 `=XIRR(...,...,)` (Microsoft Macintosh Excel 16.x) caches
+  0.11376532912254333, the fit lab's XIRR model with guess 0.1; guess 0 gives 0.11376532714843753.
+Evidence: probes/xirr-irr-empty-guess A1-A22 (excel-graph, T-2688); calipers pv23_056 Summary!F23
+Status: VERIFIED
+Implemented in: `fn_xirr` (an `EmptyArg` guess is dropped, so the default applies); `fn_irr` reads it as 0.
+Our IRR from guess 0 is a few ulps off Excel's on these flows (…3171 for …3149), a separate kernel gap.
+
 ## XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells
 (One empty values cell on its own is the exception: see "XNPV reads one empty values cell as a single 0 cash flow".)
 Rule: XIRR reads an empty value or date cell as 0. It does not skip it. A zero value adds nothing, so
@@ -1716,9 +1736,27 @@ back-chained S is not an artefact of assuming an analytic derivative. Nor is S a
 model (redemption 100, compounding 1, 2, 3, 4, 6, 12 or 365 times a year, or continuous, over the basis term T) from 0, 0.01,
 0.05, 0.1, 0.5 or 1: no iterate comes within 5e-4 relative of the starts of A1, D2, E1, E4 or E5 (scratch arithmetic).
 Next (T-1592, T-2330): fit S on the T-2304 grid (it moves with term, rate and price) and re-probe the stop rule.
+T-2740 (probes/yield-start-one-input, excel-graph 2026-10-25; T-2304's A8 bond `YIELD(DATE(2096,3,1),M,R,P,100.5,F,0)`,
+M = DATE(2100,6,30), R = 0.05, P = 98 unless varied; column A frequency 2, B frequency 1; rows 1-41 P 80 to 100 by 0.5,
+42-66 R 0 to 0.12 by 0.005, 67-96 M on 30 June 2097 to 2126). The lab's `newton_back_chain` gives:
+- Step count: on every row with both twins below the root (rows 22-96 but 67) A and B step back exactly **two**
+  iterates to one S, to 1.3e-8 (the back-chain's own precision); one step back they differ by 2.2e-7 to 3.7e-4, three
+  steps back by 3.6e-5 to 2.8e-3. So S is two Newton steps before Excel's value on this bond, at frequency 2 and 1 alike.
+- At the root (|PRICE(y) - P| below 1e-11, so no S): both twins on rows 1-5 (P 80 to 82) and row 67 (maturity 2097);
+  only B on rows 6-21 (P 82.5 to 90), whose A cells alone leave the step count open.
+- Rate: S = 0.0046704412 + 1.01128042·R over rows 42-66, to 6e-9, i.e. linear in the coupon rate within the
+  back-chain's precision (row 52, R = 0.05, is 0.0552344615, the T-2187 start 0.0552344627).
+- Price: at P = 100 S is the coupon rate (row 41: 0.0499999981 and 0.0500000009). Below, S - R grows faster than
+  linearly in 100 - P: (S - R)/(100 - P) is 0.0025953 at P 99.5, 0.0026172 at 98, 0.0027328 at 90.5. No simple form
+  fitted yet (time-box).
+- Term: S falls toward the coupon rate as the maturity grows (0.0593019 for 2098, 0.0552345 for 2100, 0.0526987 for
+  2105, 0.0516858 for 2113, 0.0511796 for 2126); (S - R)·T, with T the years from settlement, is not constant (about
+  0.0232 at 2101, 0.0353 at 2125), so not a plain 1/T. No form fitted yet.
+Read together: a start that equals the coupon at par and moves linearly with the coupon looks like a current-yield or
+yield-approximation formula; T-1592 is the place to fit it. Lab test: `test_yield_start_one_input_two_steps_back`.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740
 
 ## YIELD's #NUM! cells and its suspected 100-step cap
 Rule: Excel's YIELD is `#NUM!` at some inputs where PRICE has a root, and returns a number that is not a root at others;
