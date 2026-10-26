@@ -17,8 +17,8 @@ depends_on: []
 Oracle cells probes/base-zero-empty-min-length A1 and A5 fail (T-2416); a blank-cell `min_length` (Z99) stays 0. See docs/excel-semantics/numbers.md. Code: `fn_base` in mathematical.rs, `kernel_number_or`.
 
 ## Acceptance criteria
-- [ ] probes/base-zero-empty-min-length passes in full; baseline updated.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/base-zero-empty-min-length passes in full; baseline updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A blank-cell `min_length` (stays 0).
