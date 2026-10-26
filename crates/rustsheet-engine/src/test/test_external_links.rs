@@ -34,6 +34,7 @@ fn linked() -> Model {
             name("Span", "='Defines'!$A$1:$B$2", None),
         ],
         cells,
+        refresh_error_sheets: Vec::new(),
     });
     model
 }
@@ -274,6 +275,7 @@ fn cached_ranges_fixture() -> Model {
             sheet_id: None,
         }],
         cells,
+        refresh_error_sheets: Vec::new(),
     });
     model
 }
@@ -574,6 +576,30 @@ fn lookups_into_an_uncached_linked_sheet() {
     );
     assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B$2,0)"), "#N/A");
     assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B:$B)"), "#N/A");
+    // XLOOKUP over one cell finds nothing, as over a range; COUNTA counts every blocked cell
+    // (fixtures/external-link-uncached-lookups Refs!B13, B16, B44; T-0472).
+    assert_eq!(
+        eval(&mut model, "=XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)"),
+        "#N/A"
+    );
+    assert_eq!(
+        eval(&mut model, "=XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2,\"none\")"),
+        "none"
+    );
+    assert_eq!(eval(&mut model, "=COUNTA([1]Sort!$B:$B)"), "1048576");
+    // A sheet marked refreshError reads #REF! where it reads no cell (Refs!B38); its lookups
+    // stay #N/A (B32).
+    model.workbook.external_books[0]
+        .sheet_names
+        .push("56737".to_string());
+    model.workbook.external_books[0]
+        .refresh_error_sheets
+        .push(3);
+    assert_eq!(eval(&mut model, "=ERROR.TYPE('[1]56737'!$B$2)"), "4");
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(5,'[1]56737'!$B:$Z,2,FALSE)"),
+        "#N/A"
+    );
 }
 
 // A criteria or sum range of a cached sheet is #VALUE!, as any argument that is not a range of

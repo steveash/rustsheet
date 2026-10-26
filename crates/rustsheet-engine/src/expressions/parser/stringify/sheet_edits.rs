@@ -37,6 +37,7 @@ fn for_each_sheet_reference_mut(node: &mut Node, f: &mut impl FnMut(&mut Node)) 
         | Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
         | Node::Group { child, .. }
+        | Node::UnaryPlus { child }
         | Node::StructuredReferenceKind { lowered: child, .. }
         | Node::LambdaDefKind { body: child, .. } => for_each_sheet_reference_mut(child, f),
         Node::LambdaCallKind { lambda, args } => {

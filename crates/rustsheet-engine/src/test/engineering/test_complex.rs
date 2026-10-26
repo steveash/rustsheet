@@ -445,3 +445,40 @@ fn impower_angle_is_excels_atan2_kernel() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "1000+1i");
 }
+
+// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and are
+// `#NUM!` from 2^27, IMCOT "0"; IMTAN takes the limit only (probes/t2534-im-trig-real-limit, T-2534).
+#[test]
+fn im_trig_of_a_real_number_follows_sin_cos_tan() {
+    let cases = [
+        (r#"=IMSIN("710")"#, "0.0000602887066915739"),
+        (r#"=IMSIN("123456789.123")"#, "0.99984293955201"),
+        (r#"=IMCOS("123456789.123")"#, "0.0177227601686489"),
+        (r#"=IMSEC("123456789.123")"#, "56.424619556099"),
+        (r#"=IMCSC("710")"#, "16586.8544023646"),
+        (r#"=IMCOT("710")"#, "16586.8543722202"),
+        (r#"=IMCOT("123456789.123")"#, "0.0177255441505541"),
+        (r#"=IMSIN("134217727")"#, "-0.955993328772671"),
+        (r#"=IMSIN("134217728")"#, "#NUM!"),
+        (r#"=IMCOS("-1E+200")"#, "#NUM!"),
+        (r#"=IMTAN("1E+15")"#, "#NUM!"),
+        (r#"=IMSEC("1E+10")"#, "#NUM!"),
+        (r#"=IMCSC("1E+200")"#, "#NUM!"),
+        (r#"=IMCOT("1E+200")"#, "0"),
+        (r#"=IMCOT("-134217728")"#, "0"),
+        // The desktop cache of COMPLEXs.xlsx N6; the web gives TAN's -3.38051500624659 (T-2774).
+        (r#"=IMTAN("5")"#, "-3.38051500624658"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

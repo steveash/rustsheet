@@ -702,6 +702,7 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
+        UnaryPlus { child } => format!("+{}", wrap(sub(child), binding(child) < binding(node))),
         ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
@@ -807,7 +808,8 @@ fn binding(node: &Node) -> Binding {
         Node::UnaryKind {
             kind: OpUnary::Minus,
             ..
-        } => Binding::Minus,
+        }
+        | Node::UnaryPlus { .. } => Binding::Minus,
         _ => Binding::Operand,
     }
 }

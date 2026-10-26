@@ -49,12 +49,14 @@ impl Model {
                 format!("Error parsing {formula}: {message}"),
             ),
             // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
-            // `ungrouped` above sees through both.
-            Group { .. } | StructuredReferenceKind { .. } => CalcResult::new_error(
-                Error::ERROR,
-                cell,
-                "Unpeeled group or structured reference".to_string(),
-            ),
+            // `ungrouped` above sees through all three.
+            Group { .. } | UnaryPlus { .. } | StructuredReferenceKind { .. } => {
+                CalcResult::new_error(
+                    Error::ERROR,
+                    cell,
+                    "Unpeeled group, unary plus or structured reference".to_string(),
+                )
+            }
             // The cell, range or `#VALUE!` it is on the cell's row (SPEC-0016 step 2, T-1699).
             ThisRowKind { .. } => match node.this_row_at(cell.row) {
                 Some(area) => self.evaluate_node_in_context(&area, cell),

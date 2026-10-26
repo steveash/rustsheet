@@ -151,8 +151,9 @@ error ("Formula is nested too deeply"); typed into a cell through the API it is 
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
 one, so up to 127 nested parentheses or function calls are accepted (126 around the operator chain
 `0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
-(T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
-(`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
+(T-0134). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
+(T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
+a plus directly before a number literal folds into it and adds no node. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
 text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
 cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
@@ -300,8 +301,12 @@ forms (gen-m1/6462bf910ef9f28f, probes/lookup-argument-edges). The full set stor
 (FileCorruptTryRepair); which formula caused it is unprobed (`=+LAMBDA(x,x)(1)` is the likely one: T-2405 records
 `=SUM(1)(2)` the same way). The same rule appears in references.md (`=@+1` prints `=@1`) and lookup.md (INDEX's
 `+"a"`).
-Ours: the parser drops every unary plus, so FORMULATEXT shows none (C1, C2, C4:C9, C11, C12, C14:C16, C18, C19, C22:C26 fail;
-T-2723).
+Ours: matches since T-2723. A kept plus is a `Node::UnaryPlus`, the identity, which every analysis sees through as it
+sees through a written group. The fold is decided in `parse_power`. Two cells still fail: the tree keeps no whitespace, so
+`=+ 5` and `=+ "a"` print `=+5` and `=+"a"` (C24, C25; T-2769).
+Unprobed (T-2772): a stored `+5` loaded from a file (we fold it on load, as typing does), and the static readings
+where an analysis matches a literal under a plus (`N(IF(+TRUE,B1:B3))`, `INDIRECT(+"K1")`, legacy `ABS(+{5})`,
+`LET(+x,1,x)`).
 Status: VERIFIED (excel-graph)
 
 ## FORMULATEXT keeps every written parenthesis

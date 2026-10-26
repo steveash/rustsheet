@@ -1,7 +1,7 @@
 use super::trig::{excel_cos, excel_sin, excel_tan, EXCEL_TRIG_LIMIT};
 use crate::arithmetic::{divide, extended_quotient, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
-use crate::decimal_round::{round_decimal, RoundMode};
+use crate::decimal_round::{round_decimal, round_function, RoundMode};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
 use crate::functions::statistical::IfsShape;
@@ -304,7 +304,7 @@ impl Model {
     }
 
     /// ROUND, ROUNDUP, ROUNDDOWN and TRUNC: `(number, num_digits)`, rounded in
-    /// decimal (see [`round_decimal`]); a result beyond the double range is `#NUM!`.
+    /// decimal (see [`round_function`]); a result beyond the double range is `#NUM!`.
     /// TRUNC alone may omit `num_digits` (0). Lifts element-wise over arrays and ranges
     /// (gen-m2/893302d6c5b99e2e Calc!A313).
     fn round_family(
@@ -315,7 +315,7 @@ impl Model {
         mode: RoundMode,
     ) -> CalcResult {
         self.numbers_fn(kind, args, [0.0, 0.0], cell, |[value, digits]| {
-            round_decimal(value, digits, mode).ok_or(Error::NUM)
+            round_function(value, digits, mode).ok_or(Error::NUM)
         })
     }
 

@@ -194,6 +194,18 @@ Cells:
 - gen-m9/e707d43a891ba9b5.case.json (1): Calc!A95
 - gen-m9/fb73d8163ad87fc6.case.json (1): Calc!A394
 
+More owned gen-m9 cells (gap triage 2026-10-26, `make eval` on 1c8b3d34, excel-graph): 38 FORECAST.ETS-family cells
+with the family as the outer call that the list above does not name. 35 are Excel #N/A, ours #N/IMPL!; three are an
+argument error that Excel returns before the family's #N/A: gen-m9/fa25422d6f18c157 Calc!A75 (Excel #REF!, ours #N/IMPL!),
+A100 and A122 (Excel #VALUE!, ours #N/A). Those three are argument-order cases that T-2424 (done) did not cover; split
+them into their own task if they should be fixed before the family is implemented.
+Cells:
+- gen-m9/22656c225ff4f22a.case.json (5): Calc!A73, A136, A196, A215, A253
+- gen-m9/43a13a091907b402.case.json (4): Calc!A5, A232, A317, A387
+- gen-m9/67f5e0fe790e6bec.case.json (4): Calc!A51, A289, A291, A368
+- gen-m9/ec2a1d9194a84396.case.json (7): Calc!A18, A75, A136, A141, A259, A295, A310
+- gen-m9/fa25422d6f18c157.case.json (18): Calc!A3, A5, A17, A29, A75, A81, A100, A122, A134, A136, A181, A212, A220, A231, A263, A278, A360, A365
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 17 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

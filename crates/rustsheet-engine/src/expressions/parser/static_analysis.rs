@@ -177,7 +177,9 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         }
 
         // operations
-        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+        Node::UnaryKind { right: child, .. }
+        | Node::Group { child, .. }
+        | Node::UnaryPlus { child } => {
             add_legacy_intersection(child, add, arrays);
         }
         Node::OpConcatenateKind { .. }
@@ -299,6 +301,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::WrongRangeKind { .. } => wrong_range_shape(node), // T-1454
         Node::UnaryKind { right: child, .. }
         | Node::Group { child, .. }
+        | Node::UnaryPlus { child }
         | Node::StructuredReferenceKind { lowered: child, .. } => {
             run_static_analysis_on_node(child)
         }

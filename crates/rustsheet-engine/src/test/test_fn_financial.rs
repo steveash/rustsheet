@@ -849,3 +849,22 @@ fn fn_db_negative_salvage_is_an_error_value() {
     assert_eq!(model._get_text("A2"), "TRUE");
     assert_eq!(model._get_text("A3"), "#NUM!");
 }
+
+/// XIRR reads a written empty guess as the default 0.1 but an empty cell as guess 0; IRR reads
+/// both as 0 (probes/xirr-irr-empty-guess; T-2688).
+#[test]
+fn fn_xirr_empty_guess_is_the_default() {
+    let mut model = new_empty_model();
+    let flows = "{-10000,2750,4250,3250,2750},{39448,39508,39751,39859,39904}";
+    model._set("A1", &format!("=XIRR({flows},)=XIRR({flows})"));
+    model._set("A2", &format!("=XIRR({flows},)=XIRR({flows},0)"));
+    model._set("A3", &format!("=XIRR({flows},E1)=XIRR({flows},0)"));
+    let irr_flows = "{-70000,12000,15000,18000,21000,26000}";
+    model._set("A4", &format!("=IRR({irr_flows},)=IRR({irr_flows},0)"));
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+    assert_eq!(model._get_text("A3"), *"TRUE");
+    assert_eq!(model._get_text("A4"), *"TRUE");
+}

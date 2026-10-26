@@ -3,7 +3,7 @@ id: T-1592
 title: "Fit YIELD's Newton start: a frequency-independent first iterate"
 milestone: M9
 lane: research
-status: blocked
+status: todo
 priority: P2
 size: M
 tier: opus
@@ -124,8 +124,8 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 
 Excel stops below the root by up to ~1e-9 relative (financial.md "YIELD stops short of PRICE's root"); 15 digits means reproducing that stop.
 
-## Blocked because
-Blocked because: no candidate fits YIELD's hidden Newton start S, and the evidence at hand cannot pin it.
+## Was blocked because
+The block is lifted by T-2740's evidence (below). Was blocked because: no candidate fits YIELD's hidden Newton start S, and the evidence at hand cannot pin it.
 Third round (2026-10-24, opus): finite-difference Newton, six variants in the lab's `yield` fit (family "Newton, finite
 difference", from a scratch grid of 560), reaches at most 5/178 bit-exact (analytic Newton from 0.1: 4/178), so the
 analytic back-chain's S is not an artefact of the derivative. S is not an iterate of Newton on the frequency-free annuity
@@ -133,6 +133,10 @@ model at any compounding either (financial.md "YIELD stops short of PRICE's root
 visible-parity cells stay. Unblock with evidence that separates the start from the stop rule: T-2330's re-probe of the
 stop rule, or a probe that fixes everything but one input (price alone, rate alone, term alone) on the T-2304 grid so S
 can be fitted per input.
+Evidence since (T-2740, 2026-10-25): probes/yield-start-one-input fixes all but one input. S is two Newton steps back
+on both twins, equals the coupon rate at price 100 and is linear in the coupon rate to 6e-9 (financial.md "YIELD stops
+short of PRICE's root", T-2740 paragraph). That supports a new hypothesis (a current-yield or yield-approximation
+start), so the task is back to `todo`.
 
 ## Outcome
 Blocked (2026-10-24). The lab's `yield` fit gains the "Newton, finite difference" family (six variants, best 5/178 bit-exact,

@@ -101,7 +101,8 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         Node::UnaryKind { right, .. } => assign_variable_ids(right, target, id),
         Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
-        | Node::Group { child, .. } => {
+        | Node::Group { child, .. }
+        | Node::UnaryPlus { child } => {
             assign_variable_ids(child, target, id);
         }
         Node::OpRangeKind { left, right }
@@ -134,7 +135,7 @@ impl Model {
 
     /// LET; with `as_reference` the body is evaluated in reference context, so a union there
     /// stays its areas: `SUM(LET(x,(A1,B2),x))` is 6 (probes/multiarea-letbind H8). Each value
-    /// and the body are evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
+    /// and the body are evaluated once (`read_once` in `functions/logical/read_once.rs` relies on it).
     pub(crate) fn let_impl(
         &mut self,
         args: &[Node],

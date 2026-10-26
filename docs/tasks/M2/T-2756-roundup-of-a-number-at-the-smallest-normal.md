@@ -3,7 +3,7 @@ id: T-2756
 title: "ROUNDUP of a number at the smallest normal is 0 (probes/t2715-roundup-near-smallest-normal)"
 milestone: M2
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -28,10 +28,24 @@ mechanism (`x * 10^d` underflow, a 15-digit cut of a value below some magnitude)
 crates/rustsheet-engine/src/functions/math_and_trigonometry/ (search `fn_roundup`).
 
 ## Acceptance criteria
-- [ ] A probe case tagged M2 (excel-graph) bisects the threshold and covers positive and negative num_digits.
-- [ ] The engine matches that probe and probes/t2715-roundup-near-smallest-normal (its 10 lines leave eval/baseline/probes.txt).
-- [ ] numbers.md gets an entry with the fitted rule, the evidence and `Status: VERIFIED`.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case tagged M2 (excel-graph) bisects the threshold and covers positive and negative num_digits.
+- [x] The engine matches that probe and probes/t2715-roundup-near-smallest-normal (its 10 lines leave eval/baseline/probes.txt),
+      except the 7 read-back cells A52-A58 of the new probe (3 ulps; T-2771).
+- [x] numbers.md gets an entry with the fitted rule, the evidence and `Status: VERIFIED`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The CEILING/FLOOR family (T-2715, done).
+
+## Outcome
+- New probe probes/t2756-roundup-smallest-normal-threshold (541 cells, excel-graph, with `=(...)=0` companions,
+  decision 0042). The threshold is the 15-digit cut, rounded to nearest: for x = 2^-1022·(1+k·2^-52), k ≤ 7 (cut
+  2.22507385850720E-308, subnormal) ROUNDUP, ROUNDDOWN and TRUNC return that subnormal cut at every num_digits; from
+  k = 8 (cut 2.22507385850721E-308) ROUNDUP takes its step. ROUND's result, ROUNDDOWN's result and ROUNDUP's rounded-down
+  part and unit are each flushed when subnormal (so `ROUNDUP(x,308)` is 0 for k = 8).
+- `round_function` (new, ROUND family entry point) and the flushes in `round_decimal`, crates/rustsheet-engine/src/decimal_round.rs.
+- probes/t2715-roundup-near-smallest-normal gets E/F companions (refilled): its 10 known failures are fixed.
+- numbers.md "ROUNDUP and ROUNDDOWN of a number whose 15-digit cut is subnormal".
+- Eval delta: probes known failures 2599 → 2596 (fixed 10; new coverage 7: A52-A58 read the subnormal back through
+  `*2^100`, and Excel's is 3 ulps below the nearest double the engine returns). Regressions 0.
+- Follow-up: T-2771 (the conversion behind those 3 ulps; time-boxed here).

@@ -369,9 +369,12 @@ impl Model {
     }
 
     /// Two complex arguments of one element (IMDIV, IMSUB), read left to right; empty text and
-    /// different suffixes are `#NUM!` (engineering.md "T-1625 probes").
+    /// different suffixes are `#NUM!` (engineering.md "T-1625 probes"). `args` are the call's
+    /// argument nodes: only an argument left out of the formula is `#N/A`, not the empty value
+    /// IFERROR or IFNA hand on for a blank cell, which is 0 like the blank cell itself.
     fn complex_pair_of(
         &self,
+        args: &[Node],
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<(ComplexParts, ComplexParts), CalcResult> {
@@ -380,7 +383,7 @@ impl Model {
         };
         // Excel: an empty argument, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`):
         // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4.
-        if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
+        if args.iter().any(|arg| matches!(arg, Node::EmptyArgKind)) {
             return Err(CalcResult::new_error(Error::NA, cell, String::new()));
         }
         let first = self.complex_of(first, EmptyText::ZeroIfBlank, cell)?;
@@ -463,7 +466,7 @@ impl Model {
     /// (probes/eng-argument-modes B36:E36, probes/scalar-lift-open-a Y13).
     pub(crate) fn fn_imdiv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Imdiv, args, cell, &mut |model, values| {
-            let ((x1, y1, suffix), (x2, y2, _)) = match model.complex_pair_of(values, cell) {
+            let ((x1, y1, suffix), (x2, y2, _)) = match model.complex_pair_of(args, values, cell) {
                 Ok(pair) => pair,
                 Err(error) => return error,
             };
@@ -608,7 +611,7 @@ impl Model {
             Function::Imsub,
             args,
             cell,
-            &mut |model, values| match model.complex_pair_of(values, cell) {
+            &mut |model, values| match model.complex_pair_of(args, values, cell) {
                 Ok(((x1, y1, suffix), (x2, y2, _))) => {
                     // Excel: a part that overflows is 0 and the other part stays
                     // (`IMSUB("9E307","-9E307")` is "0", `IMSUB("9E307+1i","-9E307")` is "i";

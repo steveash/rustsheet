@@ -57,10 +57,11 @@ pub(crate) struct Tailed<T> {
     pub(crate) tail_len: usize,
 }
 
-/// The node under its parentheses. Unlike `Node::ungrouped`, a structured reference stays itself,
-/// so a table column is never taken for a whole column (it keeps the ordinary reading).
+/// The node under its parentheses and unary pluses. Unlike `Node::ungrouped`, a structured
+/// reference stays itself, so a table column is never taken for a whole column (it keeps the
+/// ordinary reading).
 fn ungroup(mut node: &Node) -> &Node {
-    while let Node::Group { child, .. } = node {
+    while let Node::Group { child, .. } | Node::UnaryPlus { child } = node {
         node = child;
     }
     node

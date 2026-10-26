@@ -207,6 +207,31 @@ fn a_formula_records_at_most_max_seen_ranges_rectangles() {
     assert!(model.evaluation.seen_ranges.len() <= 3 * MAX_SEEN_RANGES);
 }
 
+// DEVIATION (references.md "Seen-range cap", T-2710): a mostly blank single range is recorded
+// as one rectangle even once the cap is spent, rather than walked position by position (10
+// million reads, and a record per blank one): past the cap its formula is `#VALUE!`.
+#[test]
+fn a_sparse_single_range_past_the_seen_range_cap_is_value_error() {
+    use crate::area_budget::{MAX_SEEN_RANGES, TOO_MANY_SEEN_RANGES};
+    use crate::constants::LAST_ROW;
+    let rows = |n: usize| format!("MAP(SEQUENCE({n}),LAMBDA(r,SUM(OFFSET(Sheet2!1:1,r,0))))");
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set(&format!("J{LAST_ROW}"), "1");
+    model._set(
+        "Z1",
+        &format!("=SUM({})+SUM(A:J)", rows(MAX_SEEN_RANGES - 1)),
+    );
+    model._set("Z2", &format!("=SUM({})+SUM(A:J)", rows(MAX_SEEN_RANGES)));
+    let before = model.evaluation.cell_reads;
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "1");
+    assert_eq!(model._get_text("Z2"), "#VALUE!");
+    assert_eq!(model._get_error_message("Z2"), TOO_MANY_SEEN_RANGES);
+    // Two MAPs of 65,536 SUMs of an empty row, not 10 million reads of A:J.
+    assert!(model.evaluation.cell_reads - before < 1_000_000);
+}
+
 // T-1512: a spill's commit check costs about its cells plus the rectangles on record, not their
 // product. The anchors A1 and B1 each put 50,000 whole-row rectangles on record (rows 200,001 to
 // 300,000, below the used area) and spill 50,000 cells; then C2 spills 100,000 cells above the
