@@ -102,8 +102,8 @@ impl PairedArg {
 
     /// As [`Self::from_result`] for the value of `node`: a single cell holding text, a boolean
     /// or nothing is an array of one cell with no number (`CHISQ.TEST(B4,C5:D11)` with B4 text is
-    /// `#N/A`, gen-m9 a2e51f48717af2a1 A34), which a typed text or boolean is not here (the paired functions take those as a cell with no
-    /// number before calling this).
+    /// `#N/A`, gen-m9 a2e51f48717af2a1 A34), which a typed text or boolean is not here (the paired
+    /// functions take those as a cell with no number before calling this).
     /// `row` is the formula's row, which a `#This Row` area is on.
     pub(crate) fn from_node_result(
         node: &Node,
@@ -224,8 +224,8 @@ impl Model {
         // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
         // probes/covariance-pairs-skip L8, L16), and a typed or computed boolean the same way:
         // `COVARIANCE.P({1,2,3},TRUE)` is `#N/A` and `COVARIANCE.S(-2.5,FALSE)` `#DIV/0!`
-        // (probes/t2436/computed-scalar A35:A37). T.TEST's text sample is the same: `TTEST(IFERROR(#VALUE!,""),Data!B11:E11,1,3)` is
-        // `#DIV/0!` (gen-m9 46ac3ef5e61583ca A344).
+        // (probes/t2436/computed-scalar A35:A37). T.TEST's text sample is the same:
+        // `TTEST(IFERROR(#VALUE!,""),Data!B11:E11,1,3)` is `#DIV/0!` (gen-m9 46ac3ef5e61583ca A344).
         let (value, is_marked) = self.evaluate_sample_arg(arg, cell);
         // A marked value keeps its cell count for the size check, which comes first:
         // `COVARIANCE.S(ERROR.TYPE(#REF!),Data!C10:D10)` is `#N/A` (gen-m9 abc2939ebd1e2365 A335),
