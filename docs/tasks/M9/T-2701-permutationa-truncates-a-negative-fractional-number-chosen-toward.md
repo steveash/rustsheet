@@ -3,7 +3,7 @@ id: T-2701
 title: "PERMUTATIONA truncates a negative fractional number_chosen toward 0, so it is 1, not #NUM! (gen-m9, 5 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -64,3 +64,7 @@ Cells:
 Decision 0083: every cell this task owns has the wrong type (`#NUM!` for Excel's 1), so the task is in the campaign at the
 `semantics` stage. Its target is that every cell it owns has Excel's type and value; the visible-parity criterion under
 Acceptance criteria states it.
+
+## Outcome
+Closed by T-2621, which made the same change (`permutationa_of` truncates number_chosen) for its probe cell
+probes/t2475-stat-subexpressions P!A28; the five gen-m9 cells above left eval/baseline/gen-m9.txt in that PR.

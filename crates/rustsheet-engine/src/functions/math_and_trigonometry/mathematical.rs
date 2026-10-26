@@ -840,11 +840,17 @@ impl Model {
             let [n, k] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
+            // `number` truncates toward zero before its sign check, and number_chosen floors, so
+            // one in (-1, 0) is #NUM! (`COMBINA(7,1-1.005)`, `COMBINA(24,-0.0001)`; gen-m5
+            // c688ca172fe533dc A118, gen-m6 44194b2fefa30de2 A222), except with a number of 0,
+            // where it truncates too: `COMBINA(-0.5,-0.0001)` is 1 (probes/t2475-stat-subexpressions
+            // P!A35; statistics.md "Statistical argument-domain errors and extreme values (T-2621)").
             let n = match model.kernel_number(n, cell) {
-                Ok(f) => f.floor(),
+                Ok(f) => f.trunc(),
                 Err(error) => return error,
             };
             let k = match model.kernel_number(k, cell) {
+                Ok(f) if n == 0.0 => f.trunc(),
                 Ok(f) => f.floor(),
                 Err(error) => return error,
             };
@@ -852,7 +858,7 @@ impl Model {
         })
     }
 
-    /// COMBINA on a floored `n` and `k` (see `fn_combina`).
+    /// COMBINA on an integral `n` and `k` (see `fn_combina`).
     fn combina_of(n: f64, k: f64, cell: CellReferenceIndex) -> CalcResult {
         if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
             return num_error(cell);

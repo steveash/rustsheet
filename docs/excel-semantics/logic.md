@@ -54,7 +54,10 @@ count it (`COUNT(IFERROR(B1,1))` = 1, COUNTA 1); so does an omitted argument (`C
 and the cell itself shows 0 (as a consumer it reads as 0/FALSE/"": `NOT(IFERROR(B1,1))` TRUE, `IF(IFERROR(B1,1),..)` takes the false branch, `-IFERROR(B1,1)`, SUM, AVERAGE, MAX, PRODUCT and LEN of it are 0, `ISLOGICAL` FALSE, `LET(x,IFERROR(B1,1),ISBLANK(x))` TRUE; probes/counta-empty-value D9-D17, D25-D26). IFNA behaves the same (OR FALSE, `&` "", VLOOKUP 0).
 Evidence: gen-m2 7469c3e920e1ade4 Calc!A351, ef5c55a81783b7d5 Calc!A291, dd99be1f2454159f Calc!A110 (excel-graph);
 probes/iferror-blank-value D1:D23 and probes/omitted-arg-compare D1:D10 (excel-graph, 2026-10-09, T-0291).
-Ours: matches since T-0291 (`if_error_like` returns `CalcResult::EmptyArg`; `lookup_key` reads it as 0 and
+A blank cell as the fallback IFERROR takes is the same empty value: STDEV.P counts `IFERROR(1/0,<blank>)` as 0
+(probes/t2475-stat-subexpressions P!A158, excel-graph; statistics.md "Statistical argument-domain errors and extreme
+values (T-2621)").
+Ours: matches since T-0291 (`if_error_like` returns `CalcResult::EmptyArg`, for a blank fallback since T-2621; `lookup_key` reads it as 0 and
 `compare_values` reads any `EmptyArg`, an omitted argument included, as a blank cell; before T-0291 the six omitted-argument
 comparisons above were wrong). COUNTA reads its arguments in picked-reference context (TAKE, DROP, INDEX, OFFSET of a
 range stay references) and counts every element of an array value, the empty ones included (T-1395).
