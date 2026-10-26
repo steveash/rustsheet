@@ -812,6 +812,7 @@ C	probes/poisson-negative-mean.case.json	8
 C	probes/power-chain-text.case.json	16
 C	probes/power-huge-exponent.case.json	300
 C	probes/power-op-huge-exponent.case.json	300
+C	probes/power-overflow-edge.case.json	172
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
