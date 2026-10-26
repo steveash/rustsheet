@@ -466,10 +466,10 @@ engine 1.
 Ours: this secant (`irr_npv`, `irr_secant`, `compute_irr`, functions/financial/financial_util.rs, T-0916):
 189/263 bit-exact and 207 within 4 ulp on the fit set, the same cells as the lab model (the Newton code it
 replaced: 1). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
-Where both secant runs fail the engine falls back to the earlier Newton/bisection solver (not an Excel
-fact). Excel returns `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17),
+Where both secant runs fail the engine runs the fitted fallback of "IRR's fallback when the secant fails" (T-2727). Excel returns `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17),
 where the fitted secant does not stop, and raising its step cap does not explain it (1,000 steps give
--0.6737366751808431). Probing it is T-1686.
+-0.6737366751808431). T-2727 fitted that fallback ("IRR's fallback when the secant fails"); its digits and caps
+are left to T-1686.
 Open, the 2026-10-24 re-fit over every IRR cell of the eval (T-2131; 388 numeric cells with
 distinct flows and guess, gen-m9 included, of which the model matches 219): no variant of the
 arithmetic closes the gap. NPV as c_i/x^i, Horner in v or c_i*v^i, each with double or 64-bit
@@ -498,15 +498,15 @@ Tasks: T-1525, T-1533, T-0916, T-2131, T-2565
 Rule: Excel's caps on its IRR secant, XIRR's bracket walk and XIRR's bisection are unknown: no probe
 reaches them. The engine bounds each loop itself, so an untrusted workbook cannot make one cell iterate
 without end (CLAUDE.md directive 5). XIRR walks at most 100 points per chain and bisects at most 200
-steps. IRR's secant takes at most 50 steps per run, with one retry from 0.1, and then the earlier
-Newton/bisection solver at most 50 Newton steps per start and 50 bisection steps. A run that reaches its
+steps. IRR's secant takes at most 50 steps per run, with one retry from 0.1, and then the fallback's Newton search
+at most 50 steps ("IRR's fallback when the secant fails"; Excel's own cap there lies between 29 and 119). A run that reaches its
 cap gives `#NUM!` (or, for IRR, moves on to the next stage). Every oracle cell of the fit sets finishes
 well inside the caps.
 Evidence: none for Excel; this is a resource limit, not an Excel observation. Probing Excel's caps, the
 fallback path and overflowing trial rates is T-1686.
 Status: DEVIATION (decision 0014)
 Implemented in: `xirr_bracket` (`WALK_CAP`), `compute_xirr` (`BISECTION_CAP`), `irr_secant` (`MAX_STEPS`),
-`irr_fallback` and `irr_newton_raphson` (functions/financial/financial_util.rs)
+`irr_fallback` (`IRR_FALLBACK_STEPS`) (functions/financial/financial_util.rs)
 Tasks: T-0916, T-1686
 
 ## IRR's guess range
@@ -515,9 +515,8 @@ Rule: IRR's guess must be above -1 and below 2^53, else the call is `#VALUE!`, a
 1E+16, 1E+20, 2.5E+29 and 1E+300 (as for -1, -2 and -1E+300); `IRR(COUNTBLANK(..),1E+300)` (a scalar flow, otherwise
 `#NUM!`) is `#VALUE!` too. (guess >= 2^53 and 1 + guess = guess are the same test on doubles.) Whether an error in
 the flows comes before the guess bound is unprobed (ours: the flows error, T-2728).
-Other findings of the same probes, not implemented yet: `IRR({-1,X})` is `#NUM!` for X from 1E+13 to 1E+16 (ours
-converges on X-1) except `#DIV/0!` at X = 1E+15, `IRR({-1,1E+300})` is `#DIV/0!`, and over gen-m9 bc04c1f478c9896c's
-Data!A1:D12 IRR is `#DIV/0!` for guesses 0.05, 0.1 and 0.5 (T-2727); `IRR(CELL("row",D2))`, `IRR(CELL("col",D2))` and
+Other findings of the same probes: `IRR({-1,X})` is `#NUM!` for X from 1E+13 to 1E+16 except `#DIV/0!` at X = 1E+15
+("IRR's far-root bound"); `IRR(CELL("row",D2))`, `IRR(CELL("col",D2))` and
 `IRR(LET(x,CELL("row",D2),x))` are `#VALUE!` while `IRR(CELL("row",D2)+0)`, `IRR(CELL("contents",D2))` and `IRR(ROW(D2))`
 are `#NUM!`; `XIRR({-100,10,20,30,40},{0,1,59,60,61},123456789.123)` is 3.4266142457661796E-09 (ours `#NUM!`) and with
 no guess 2.9802322387695314E-09 (ours the negative) (T-2728).
@@ -525,6 +524,50 @@ Evidence: probes/irr-guess-edges, probes/irr-guess-edges-2 (excel-graph, 2026-10
 Status: VERIFIED (excel-graph)
 Implemented in: functions/financial/financial_util.rs (`compute_irr`, `IRR_GUESS_BOUND`)
 Tasks: T-2494, T-2727, T-2728
+
+## IRR's far-root bound
+Rule: IRR is `#NUM!` at a root with 1 + r at or above about 1E+7 (v = 1/(1 + r) at or below 1E-7), whether the
+secant or the fallback finds it: `IRR({-1,X})` returns for X = 1E+4, 1E+5, 1E+6 and 3E+6 and is `#NUM!` for X = 1E+7,
+3E+7, 1E+8 to 1E+14 and 2E+15 (also with guess 1E+8), and `IRR({-1,0,X})` returns for X = 1E+8 to 1E+14 (the last
+9999998.994161328, 1 + r = 9999999.994, just below 1E+7). Three-flow and longer sets agree: `IRR({-0.0001,2,42})` = 20019.98 returns, and
+the gen-m9 roots 3.16E+7 and 2E+7 (9a1fa5366bc50918 A400, abc2939ebd1e2365 A280's inner IRR), `IRR({-1E-15,1})` and
+`IRR({-1E-13,1})` are `#NUM!`. The exact threshold between 9999998.99 and 1E+7 is not pinned; the engine uses 1E+7.
+The two-flow returns are not the exact root X - 1 (`IRR({-1,1E+6})` is 999998.9999712444), so Excel's steps at
+these scales are not the fitted secant's (T-2131, T-2565).
+Not explained: `IRR({-1,1E+15})` is `#DIV/0!` from guesses 0.05, 0.1, 5E+14 and 1E+15, and so are `IRR({-1,1E+300})`
+and IRR over gen-m9 bc04c1f478c9896c's Data!A1:D12 (first flow 0) from guesses 0.05, 0.1 and 0.5; ours is `#NUM!`
+(T-2802). `IRR({0,1E+15,2,42,1E+15,-0.0001})`, also a zero first flow, is `#NUM!` as ours.
+Evidence: probes/irr-fallback-roots A25-A40, probes/irr-guess-edges-2 A15-A34, probes/irr-guess-edges A27-A39
+(excel-graph, 2026-10-25 and 2026-10-26).
+Status: VERIFIED (excel-graph) for the bound; the `#DIV/0!` cases are UNVERIFIED
+Implemented in: `IRR_FAR_ROOT_BOUND`, `irr_from_discount` (functions/financial/financial_util.rs)
+Tasks: T-2727, T-2802
+
+## IRR's fallback when the secant fails
+Rule: where both secant runs fail (an iterate at v <= 0, a flat secant, no stop in the cap), Excel finds some roots and
+not others, and the split is that of Newton's method on the NPV polynomial in v, P(v) = sum c_i v^i, started at
+v = 0 (r = +inf): it converges to the real root nearest v = 0 and the call is `#NUM!` when that root is not positive or
+the run needs more than about 50 steps. Leading zero flows are dropped first (P(v)/v^k), else v = 0 would be a root:
+`IRR({0,2,-1})` returns about -0.5 (gen-m9/3c06f9298f65a3ba A394, under COSH(100)) and
+`IRR({0,1E+15,2,42,1E+15,-0.0001})` is `#NUM!` (probes/irr-guess-edges A34, A35). The guess does not matter. Probes:
+- `IRR({42,1,1,-1},G)` = -0.7467044766537371 for G = 0, 0.01, 0.1, 0.5, 1 and `IRR({-400,1,1,1,1,1},G)` =
+  -0.6737366751808405 for G = 0.01, 0.1, 0.5, 1 (P has one real root; Newton from 0 takes 29 and 26 steps);
+- `IRR({1,3,-1})`, `IRR({1,7,-1})` (guesses 0.01 to 1) and `IRR({1,20,-1})` are `#NUM!`, though each has a root at
+  r = -0.70, -0.86 and -0.95 that a secant from a guess near it finds: their P has a negative root nearer 0;
+- `IRR({0.3,-2.5,1.005},G)` = 6.909808543634611 for G = 1E-6 to 0.01 (the root at v = 0.126, nearer 0 than v = 2.36);
+- gen-m9: 31474c20fc1dafd6 A173 returns 661.41 (v = 0.0015, a negative root at -0.005 is farther); A22 c0681a8b150ce301,
+  A104 and A349 5c6a23c4f6597f1c, A117 1b60bf99d71424e7, A277 1cd3096e3e87c965, A293 0a957119475760c5 and A251
+  3c06f9298f65a3ba are `#NUM!` (negative nearest roots); abb7d565af89b849 A254 `{1E+15,-0.0001,1,-2.5,-0.0001}` is
+  `#NUM!` although its nearest root v = 50887 is positive: Newton from 0 needs 119 steps there. In 1b60bf99d71424e7
+  A117 and 1cd3096e3e87c965 A277 Newton from 0 jumps past a nearer negative root (-4.6E-5, -4.01) to a positive one
+  (8.41, 4.06); Excel is `#NUM!`, so the engine also rejects a root when P changes sign on [-v, 0).
+Neither an XIRR-style bracket walk from the guess (it finds `{1,3,-1}`'s root) nor a secant retry from any fixed guess
+in -0.99 to 1000 (they find the `{1,k,-1}` roots) fits. The returned digits are 15 to 35 ulp from Excel's
+(`{42,1,1,-1}` -0.7467044766537408 against -0.7467044766537371), not bit-exact (`{0.3,-2.5,1.005}` with guess 0.1 is 6.909808543634389 in Excel, 6.909808543634611 from guess 0.01).
+Evidence: probes/irr-fallback-roots A1-A24 (excel-graph, 2026-10-26); the gen-m9 cells above.
+Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method and the step cap (between 29 and 119)
+Implemented in: `irr_fallback`, `IRR_FALLBACK_STEPS` (functions/financial/financial_util.rs)
+Tasks: T-2727, T-1686, T-2131
 
 ## RATE is a secant on the FV residual
 Rule: RATE is a secant, not Newton's method, on the residual f(r) = pv·P + pmt·(k·((P-1)/r)) + fv with

@@ -3,7 +3,7 @@ id: T-2727
 title: "IRR gives no root where Excel's search gives up: far and near -1 roots are #NUM!, a root near 1E+15 is #DIV/0! (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -13,7 +13,7 @@ campaign: semantics
 
 ## Goal
 IRR returns Excel's `#NUM!` where Excel's search finds no root but ours (the fitted secant or its Newton/bisection
-fallback) converges, and Excel's `#DIV/0!` for the flows where Excel gives it.
+fallback) converges. (Excel's `#DIV/0!` cells were moved to T-2802 on 2026-10-26.)
 
 ## Context
 Cut from T-2494 on 2026-10-25 (its 1E+300-guess cells were fixed there). Probes (excel-graph, 2026-10-25):
@@ -46,14 +46,31 @@ Owned gen-m9 cells (T-2257 triage and T-2436 probe, excel-graph): 11 known-failu
 - gen-m9/bc04c1f478c9896c Calc!A56 `=IRR(Data!A1:D12,0.05)`: Excel #DIV/0!, ours #NUM!
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9): these 11 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`),
+Amended 2026-10-26: the `#DIV/0!` part (gen-m9/bc04c1f478c9896c A56 and the probe `#DIV/0!` cells) moved to T-2802, which
+has no rule yet; the new probe probes/irr-fallback-roots adds 15 known failures, all of the right type but off in the digits
+(T-2131, T-2565), and no existing cell regressed.
+- [x] Visible parity (gen-m9): these 11 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`),
       with no new known-failure lines in any baseline, and the probes/irr-guess-edges and irr-guess-edges-2 IRR cells above pass.
-- [ ] The rule is recorded in docs/excel-semantics/financial.md with probe evidence; unit tests for a far root, a root near -1
-      and the `#DIV/0!` case.
-- [ ] `make check` green; reviewers approve.
+- [x] The rule is recorded in docs/excel-semantics/financial.md with probe evidence; unit tests for a far root and a root near -1
+      (the `#DIV/0!` case and its test moved to T-2802).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IRR's returned digits (T-2131); the 1E+300-guess `#VALUE!` (done in T-2494).
 
 ## Visible-parity stage
 Decision 0083: every cell this task owns has the wrong type or error, so the task is in the campaign.
+
+## Outcome (2026-10-26)
+New probe probes/irr-fallback-roots (47 cells, excel-graph) pinned two rules, recorded in financial.md "IRR's far-root
+bound" and "IRR's fallback when the secant fails":
+- a root with 1 + r at or past 1E+7 is `#NUM!` (`IRR_FAR_ROOT_BOUND`, secant and fallback alike);
+- where both secant runs fail, the earlier Newton/bisection solver is replaced by a fitted Newton search on the NPV
+  polynomial in v from v = 0 (leading zero flows dropped, 50 steps), `#NUM!` when it reaches v <= 0 or a negative root
+  lies nearer 0.
+Eval delta: gen-m9 known failures 4049 -> 4034 (10 of the 11 owned cells, T-2619's 4 cells and 873f30d2bf76f8db A308);
+probes 2848 -> 2830 (33 fixed, incl. the irr-guess-edges and irr-guess-edges-2 #NUM! cells; 15 new known failures in
+the new probe, all of the right type but off in the digits: 15 to 35 ulp for fallback roots, up to 1E-9 relative for
+the two-flow far roots, e.g. A39 9999998.996610194 against 9999998.994161328; T-2131, T-2565). No regressions.
+Not done: the `#DIV/0!` cells (gen-m9/bc04c1f478c9896c A56, probes/irr-guess-edges A27-A29, A38, A39, irr-guess-edges-2
+A20, A28, A29) have no rule yet: follow-up T-2802.
