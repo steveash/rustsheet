@@ -3,7 +3,7 @@ id: T-2746
 title: "Probe XLOOKUP error lookup_value with an unblocked array match_mode"
 milestone: M5
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
