@@ -796,6 +796,28 @@ fn filtered_table_rows_are_skipped_by_subtotal_9() {
 }
 
 #[test]
+fn table_with_totals_row_reads_totals_and_all() {
+    let mut wb = keyed_book();
+    let range = wb.range_ref("A1:B4").unwrap();
+    wb.edit(|tx| {
+        tx.add_table_with_totals(range, "Data", false, true)?;
+        tx.set("D1", Input::Formula("=ROWS(Data[#All])".into()))?;
+        tx.set("D2", Input::Formula("=ROWS(Data[#Data])".into()))?;
+        tx.set("D3", Input::Formula("=ROWS(Data[#Totals])".into()))
+    })
+    .unwrap();
+    for (cell_a1, rows) in [("D1", 4.0), ("D2", 2.0), ("D3", 1.0)] {
+        assert_eq!(wb.value(cell(&wb, cell_a1)).unwrap(), Value::Number(rows));
+    }
+    // A totals row needs a data row of its own.
+    let two_rows = wb.range_ref("F1:G2").unwrap();
+    let err = wb
+        .edit(|tx| tx.add_table_with_totals(two_rows, "Tiny", false, true))
+        .unwrap_err();
+    assert!(matches!(err, EditError::Table(_)));
+}
+
+#[test]
 fn a_failed_edit_removes_the_table() {
     let mut wb = keyed_book();
     let range = wb.range_ref("A1:B4").unwrap();

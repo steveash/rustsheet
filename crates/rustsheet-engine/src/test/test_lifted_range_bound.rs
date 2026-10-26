@@ -55,6 +55,48 @@ fn bare_range_spilled_from_a_cell_is_bounded() {
 }
 
 #[test]
+fn broadcast_above_the_bound_that_cannot_spill_is_spill() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    // corpus-bench/55049 book1!B3 (excel-graph): a scalar times a whole-column 3-column range is
+    // 1,048,576 x 3 cells; from row 3 it runs past the grid, so Excel answers #SPILL!. The shape
+    // decides it before anything is built (T-0480).
+    model._set("C3", "=SUMPRODUCT(A:A=A1)*H:J");
+    model._set("C4", "=(1+H:J*2)");
+    model._set("C5", "=H:J&\"x\"");
+    model._set("C6", "=1/0*H:J");
+    model._set("C7", "=A:A*H1:J1+1");
+    // Value contexts keep the decision-0014 deviation.
+    model._set("D1", "=ROWS(SUMPRODUCT(A:A=A1)*H:J)");
+    model._set("D2", "=SUM(H:J*2)");
+    // From row 1 the shape fits the grid: only the allocation bound stops it (DEVIATION).
+    model._set("K1", "=1*H:J");
+
+    model.evaluate();
+
+    for cell in ["C3", "C4", "C5", "C6", "C7"] {
+        assert_eq!(model._get_text(cell), *"#SPILL!", "{cell}");
+    }
+    assert_eq!(model._get_text("D1"), *"#ERROR!");
+    assert_eq!(model._get_text("D2"), *"#ERROR!");
+    assert_eq!(model._get_text("K1"), *"#ERROR!");
+}
+
+#[test]
+fn whole_column_lift_blocked_by_a_neighbour_is_spill() {
+    let mut model = new_empty_model();
+    model._set("A1", "-2");
+    model._set("C1", "=ABS(A:A)");
+    model._set("C9", "x");
+
+    model.evaluate();
+
+    // Exactly the bound: built, then refused by the occupied C9 (arrays.md).
+    assert_eq!(model._get_text("C1"), *"#SPILL!");
+}
+
+#[test]
 fn sumif_criteria_range_is_bounded() {
     let mut model = new_empty_model();
     model._set("A1", "1");
