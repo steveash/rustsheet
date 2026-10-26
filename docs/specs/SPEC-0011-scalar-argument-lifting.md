@@ -734,6 +734,12 @@ estimators exist:
   (YIELD's 397 prices, 2^24). A text date is charged as the longest schedule and a text frequency
   as 4; an error argument or an invalid frequency is 1 (refused before any walk). The calendar
   bounds each walk, so no cap constant is needed.
+- `HypergeometricSum { counts, walk, extra, per_term, weight }` (T-2433, HYPGEOM.DIST): a cdf is
+  either a walk (`walk` units) or a sum of at most min(counts) + 1 terms and `extra` exponents, so
+  an element is `min(weight, max(walk, (min(trunc(counts)) + 1 + extra) * per_term))`, `weight`
+  being the sum's per-call cap; a text count is left out of the min (it may read as any count),
+  `weight` when every count is a text, and an error, a negative count or one of
+  2^31 - 1 or more (refused before either path) 1.
 
 T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`

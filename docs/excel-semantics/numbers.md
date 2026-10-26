@@ -1706,6 +1706,17 @@ Single values (probes/geomean-single-and-copies Single!A1-A15): GEOMEAN of 3, 0.
 7, 0.3, 1.1, PI(), 2^-1022 and 1E+307, of a cell, a one-cell range and a range with text beside one
 number, is the value unchanged, where `exp(ln v)` is not (3.0000000000000004 for 3,
 1.0000000000000237E-300 for 1E-300).
+Products far from 1 (T-2676 sweep): Excel stays faithful where `r = exp(ln(P)/n)` does not. The rounding error of
+`ln(P)/n` grows with its size, so r drifts from the exact root as P leaves 1, while Excel's result stays within one ulp
+of the exact root of the double P (correctly rounded on 13 of 16 cells, at most 0.82 ulp off on the rest). Examples
+(exact root to 60 digits; Excel / r, in ulps of the result): gen-m9/290180acf017709c A371, P = 9.5476E+17, n = 3,
+Excel 984687.7727545286 (-0.45) and r 984687.7727545269 (-14.45), visibly off; f81bd3b6dc373e5c A139, P = 1.62E+11, n = 3
+(+0.02 / -5.98), visibly off; 290180acf017709c A241, P = 2.5125E+28, n = 4 (-0.41 / +11.59); A236, `GEOMEAN` of 1E+15
+and 1 (-0.43 / -5.43); A396, P = 5E-16, n = 2 (+0.12 / -2.88). The other 11 such cells are listed in T-2794. On the same
+sweep's 12 cells where r is faithful but one ulp off Excel, Excel is up to 0.94 ulp from the exact root (f81bd3b6dc373e5c
+A249) (T-1284). So in range Excel's root looks like a faithful library power, not `exp(ln(P)/n)` in doubles.
+Evidence (this paragraph): gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c GEOMEAN cells (excel-graph,
+2026-10-26, T-2676); P and n read with PRODUCT and COUNT of the same arguments in the engine.
 Evidence: probes/geomean-in-range-many (column A: 0.5+MOD(k*i,d)/d over 20-900 values; column B: n
 copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single: one value; Copies:
 n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
@@ -1714,7 +1725,7 @@ probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 a
 Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
 scored above, plus 8 in geomean-same-product and subtotal-reference-operands-d H28).
 Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108, T-1123, T-0288
+Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
