@@ -88,6 +88,7 @@ mod positions;
 mod reference_operators;
 mod restart_log;
 mod seen_ranges;
+mod spill_shape;
 mod styles;
 mod tables;
 mod tailed_array;
