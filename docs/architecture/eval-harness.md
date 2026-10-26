@@ -291,7 +291,7 @@ Phase 1 line follow them. Coverage (`covered`) still counts every Excel cell tha
 
 ## CLI
 ```
-rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]
+rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check [--evidence-floor] | update-baseline [--allow-regressions]
                | evidence-floor [--update [--allow-increase]]
                | show <case-id> [--all] | snapshot <file.xlsx>
 ```

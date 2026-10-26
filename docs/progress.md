@@ -13,7 +13,14 @@ The eval run of **2026-10-25** at commit `a2d5914a` (report.json `run`).
 ## Bottom line
 
 <!-- progress:judgment bottom-line -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+Values match Excel closely on real workbooks; statistical numerics are the main gap, and Phase 1 has not exited.
+
+- **Phase 1 has not exited.** 324 of 506 in-scope functions meet the exit rate (decision 0118), 169 are below it, and no milestone's exit row is met yet.
+- **Real-world files are close.** On calipers, 99.85% of cells are bit-exact and 153 of its 171 workbooks have every cell within 15 digits; on poi, 112 of 115 workbooks are all exact.
+- **Function by function**, 330 of 506 (65.22%) never differ from Excel in the 15 digits Excel shows; 97 are below 99%, 69 of them statistical.
+- **The biggest gap is numeric accuracy** (judgment): 131,346 visibly-off numbers against 20,009 visibly-off type, error or text cells. Fixing only the latter would lift 69 functions to the rate, and 40 semantics tasks are ready.
+- **No trend yet.** This is the first complete run in the history, so there are no deltas to report.
 <!-- /progress:judgment -->
 
 <!-- progress:generated goals -->
@@ -36,18 +43,18 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 
 | Milestone | Phase | Exit criteria checked | Catalog coverage | Exit measures (report) | Frozen list and probes | Todo | In progress | Blocked | Done |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 5 | 0 | 1 | 72 |
+| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 4 | 0 | 1 | 73 |
 | M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 22 visibly off, 22 known failures | 4 | 1 | 2 | 391 |
-| M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 22 visibly off, 22 known failures | 6 | 0 | 0 | 372 |
+| M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 22 visibly off, 22 known failures | 6 | 0 | 0 | 373 |
 | M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
 | M4 Storage, memory and structural edits (Phase 2) | 2 | prose | – | – | – | 0 | 0 | 0 | 0 |
 | M5 Function families I: math, logical, text, information | 1 | prose | 135/135 | **exit not met**; coverage 135/135 (met); generated suite 2 visibly off of 41,640, allowance 41 (met); ironcalc-calc 0 visibly off (met); probes 10 visibly off (not met) | probes M5: 10 visibly off, 10 known failures | 27 | 0 | 0 | 203 |
 | M6 Lookup & reference, date & time | 1 | prose | 38/39 | **exit not met**; coverage 38/39 (not met); generated suite 0 visibly off of 25,000, allowance 25 (met); ironcalc-calc 0 visibly off (met); probes 0 visibly off (met) | probes M6: 0 visibly off, 0 known failures | 15 | 0 | 0 | 94 |
 | M7 Dynamic arrays & modern Excel | 1 | prose | 32/32 | – | probes M7: 55 visibly off, 55 known failures | 37 | 0 | 0 | 152 |
 | M8 Names, tables, structured references, multi-sheet | 1 | prose | no functions | – | probes M8: 99 visibly off, 99 known failures | 20 | 0 | 0 | 33 |
-| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 1,499 visibly off, 2,385 known failures | 202 | 1 | 6 | 344 |
+| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 1,499 visibly off, 2,385 known failures | 202 | 1 | 6 | 346 |
 | M10 Formatting & display | 1 | prose | no functions | – | probes M10: 95 visibly off, 95 known failures | 26 | 0 | 0 | 23 |
-| M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 22 | 0 | 1 | 36 |
+| M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 23 | 0 | 1 | 36 |
 | M12 API v1, bindings & release | 3 | prose | – | – | – | 1 | 0 | 0 | 0 |
 | M13 Performance at scale (Phase 2) | 2 | prose | – | – | – | 1 | 0 | 1 | 0 |
 | M14 Desktop-oracle parity (Phase 4) | 4 | prose | – | – | – | 2 | 0 | 19 | 0 |
@@ -66,7 +73,7 @@ Fixing only the type, error and text cells would lift **69** of them to ≥ 99.9
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Semantics | wrong type, error or text, and semantic rules | 44 | 40 | 0 | 36 | 20,009 type, error or text | 69 of 169 |
 | Accuracy | more accurate kernels where Excel is close to correctly rounded | 13 | 9 | 0 | 1 | 131,346 numbers, accuracy and visible together | – |
-| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 38 | 23 | 4 | 217 | in the accuracy row | – |
+| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 37 | 22 | 4 | 218 | in the accuracy row | – |
 | Parked (defer: phase-1b) | last-digit work on cells already within 15 digits (Phase 1b) | 37 | 0 | 6 | 1 | – | – |
 
 - **Tasks** are `scripts/tasks.py stats --json`. Open is todo, in progress or blocked. Ready is
@@ -184,7 +191,7 @@ displayed-text (`TF`) lines after "text".
 | gen-m7 | 52 | 31,845 | 100.00% | 100.00% | 0 | 52 | 52 | 52 | 0 | 0 | 0 |
 | gen-m8a | 12 | 3,577 | 100.00% | 100.00% | 0 | 12 | 12 | 12 | 0 | 0 | no baseline |
 | gen-m8b | 9 | 3,368 | 91.78% | 91.78% | 277 | 9 | 4 | 4 | 5 | 0 | no baseline |
-| gen-m9 | 261 | 95,262 | 95.57% | 97.11% | 2,499 | 261 | 31 | 31 | 230 | 0 | 4,179 |
+| gen-m9 | 261 | 95,262 | 95.57% | 97.11% | 2,499 | 261 | 31 | 31 | 230 | 0 | 4,178 |
 | ironcalc-calc | 219 | 72,357 | 99.11% | 99.71% | 165 | 218 | 186 | 203 | 15 | 0 | 644 |
 | poi | 336 | 27,209 | 99.61% | 99.64% | 95 | 115 | 112 | 112 | 3 | 0 | 119 |
 | probes | 1,542 | 101,419 | 97.40% | 98.09% | 1,780 | 1,536 | 1,368 | 1,395 | 141 | 0 | 2,655 |
@@ -275,13 +282,24 @@ bars, or 20 cells for a function the catalog exempts). **9** have fewer than
 ## Real-world readiness
 
 <!-- progress:judgment readiness -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+Ratings are the steward's judgment, grounded in the numbers they cite. The page measures computed values only, not speed or saving.
+
+- **Read and compute: likely.** calipers matches Excel bit for bit on 99.85% of 1,353,813 cells, and 153 of its 171 workbooks have no cell off in the 15 digits Excel shows; poi has a visibly-off cell in 3 of 115 workbooks.
+- **Edit and recalc: likely.** The frozen M1 probe list for core calculation semantics has 0 known failures, with 89 of 89 cases run. The page does not measure recalculation after an edit.
+- **Large ranges: partly.** No suite timed out on this run (0 timeouts in every suite), but the page does not measure recalculation time, and the dependency graph is Phase 2 work whose milestone row shows 4 blocked tasks. Judgment: large lookup or criteria ranges may be slow.
+- **Save and round-trip: partly.** Not measured: none of the page's numbers comes from writing a file. Judgment, from open export work such as table parts (T-2196); the M8 row shows 20 tasks to do.
 <!-- /progress:judgment -->
 
 ## Risks
 
 <!-- progress:judgment risks -->
-_Not written yet: the steward writes this block (SPEC-0022)._
+<!-- as-of: 2026-10-25 a2d5914a -->
+1. **Statistical numerics.** 69 of 149 statistical functions have fewer than 99% of their cells within 15 digits, and the M9 probes show 1,499 visibly-off cells. Judgment: most of the 131,346 visibly-off numbers sit here. Owner: T-2510 (incomplete beta, accuracy stage).
+2. **VLOOKUP, the fourth most-used function, is below 99%.** 45.73% of its 33,065 attributed cells are within 15 digits. Judgment: corpus-bench's 18,700 visibly-off cells in 7 workbooks suggest a few real-world files, not everyday lookups, carry most of this. Owner: no task, filed T-0478.
+3. **Wrong types, errors and text.** 20,009 visibly-off cells; fixing them alone would lift 69 of the 169 functions below the rate, and 40 semantics tasks are ready. Judgment: the cheapest progress toward the exit. Owner: T-1671 (table totals rows, which in the steward's judgment are behind COUNT at 95.76% and COUNTA at 96.25%).
+4. **M6 catalog coverage.** 38/39 functions are covered, so M6's exit is not met. Owner: T-2674 (generated cells for GETPIVOTDATA, the last uncovered M6 function).
+5. **Large ranges are unmeasured.** 0 timeouts on this run, but the page has no recalculation timing, and recalculation stays full until the dependency graph lands (judgment). Owner: T-0401 (blocked: Phase 2).
 <!-- /progress:judgment -->
 
 <!-- progress:generated method -->

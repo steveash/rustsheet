@@ -520,15 +520,23 @@ and the oracle calibration found IMARGUMENT differing by ulps between Excel for 
   Calc!A24, excel-graph). Ours gives the other digit in both. The remaining cells are now T-2044 (sweep T-2043);
   IMARGUMENT H2, H3, H10 and IMCOS K25 are desktop/web differences (docs/research/oracle-calibration.md), not fitting
   targets until the desktop oracle exists.
-- UNVERIFIED: where `cosh 2y` overflows (|y| above about 355) ours gives `±0 ± i` (IMTAN("1+400i") =
-  "i", as the old tan/tanh form did), and where the denominator is 0 (a real x at the double nearest
-  π/2) `tan x`; Excel may give `#NUM!` there (T-1966).
+- Where `cosh 2y` overflows (|y| above about 355) IMTAN gives `i` (`-i` for a negative imaginary part) and
+  IMCOT `-i`, never `#NUM!`: IMTAN("1+400i") = "i", IMTAN("1-400i") = "-i", IMCOT("1+400i") = "-i",
+  IMTAN/IMCOT("1+355i") and ("1+356i") the same; at y = 354 the real part is still the tiny
+  `6.01509887059592E-308` (IMTAN("1+354i") = "6.01509887059592E-308+i"). Excel-verified
+  (probes/eng-imtan-imcot-overflow A1-A9, excel-graph), and RustSheet matches all nine.
+- For a real argument at or near the double nearest π/2 Excel gives a finite value, not `#NUM!`:
+  IMTAN("1.5707963267948966") = "148752068975966", IMTAN("1.5707963267949") = "-286413440886091",
+  IMCOT("1.5707963267948966") = "6.72259557049637E-15", IMCOT("1.5707963267949") = "-3.49145625605507E-15"
+  (probes/eng-imtan-imcot-overflow A10-A13, excel-graph). RustSheet differs from the sixth or seventh significant digit on
+  (148752623989354, -286411383293069, 6.72257048770831E-15, -3.49148133884313E-15): the real-argument
+  tangent kernel near a pole is not yet fitted (known failures in eval/baseline/probes.txt).
 Evidence: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
 T, U columns; probes/eng-argument-modes Calc!A33 `IMCOT("3+4i")` = "-0.000187587737983659-1.00064439247156i"
 and A51 `IMTAN("3+4i")` = "-0.000187346204629478+0.999355987381473i" (excel-graph), which the
 double-angle form matches too, so the digits are not Mac-only.
-Status: VERIFIED (desktop cached values and excel-graph), except the UNVERIFIED bullet (T-1966)
-Tasks: T-0907, T-1966, T-2043, T-2044
+Status: VERIFIED (desktop cached values and excel-graph); the near-π/2 real-argument digits are an open mismatch (T-1966)
+Tasks: T-0907, T-1966, T-2760, T-2043, T-2044
 
 ## Base conversions read a blank cell and empty text as 0
 Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.

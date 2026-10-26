@@ -4,12 +4,13 @@
 
 use crate::{
     expressions::{
+        lexer::LexerMode,
         parser::{
             parse_range,
             stringify::{to_rc_lowering_at, to_string_lowering, to_string_with_ref_errors},
             Node,
         },
-        types::Area,
+        types::{Area, CellReferenceRC},
         utils::{is_valid_identifier, number_to_column},
     },
     formula_rewrite::RewrittenFormula,
@@ -21,11 +22,12 @@ use crate::{
 /// formula holding a `#This Row` reference to one of `tables`) the text that formula lowers to on
 /// the cell's own row, a shared formula of its own: a duplicated sheet, which gets no table, then
 /// reads what each cell read before, `#VALUE!` off the data rows (T-1699). Rows whose text is the
-/// same share one formula.
+/// same share one formula. Cells on the rows `keep_rows` (inclusive) keep their shared formula.
 pub(crate) fn lower_this_row_cells(
     worksheet: &mut Worksheet,
     by_row: &[(usize, Node)],
     tables: &[String],
+    keep_rows: Option<(i32, i32)>,
 ) {
     if by_row.is_empty() {
         return;
@@ -33,6 +35,7 @@ pub(crate) fn lower_this_row_cells(
     let cells: Vec<(i32, i32, usize)> = worksheet
         .sheet_data
         .cells()
+        .filter(|(row, _, _)| keep_rows.is_none_or(|(top, bottom)| *row < top || *row > bottom))
         .filter_map(|(row, column, cell)| {
             let index = usize::try_from(cell.get_formula()?).ok()?;
             Some((row, column, index))
@@ -219,7 +222,15 @@ impl Model {
         if !self.workbook.tables.contains_key(name) {
             return Err(format!("No table named '{name}'"));
         }
-        self.rewrite_table_references(&[name.to_lowercase()], None, TableRewrite::Lower);
+        let tables = [name.to_lowercase()];
+        let data_rows = self.workbook.tables.get(name).and_then(|table| {
+            let (_, top, _, bottom) = parse_range(&table.reference).ok()?;
+            let header = i32::try_from(table.header_row_count).ok()?;
+            let totals = i32::try_from(table.totals_row_count).ok()?;
+            Some((top.checked_add(header)?, bottom.checked_sub(totals)?))
+        });
+        self.lower_this_row_references(&tables, data_rows);
+        self.rewrite_table_references(&tables, None, TableRewrite::Lower);
         self.remove_table(name)
     }
 
@@ -296,6 +307,34 @@ impl Model {
             .partition(|(_, table)| table.is_on_sheet(&sheet_name));
         self.workbook.tables = kept;
         (taken.into_iter().collect(), rewritten)
+    }
+
+    /// Gives every cell off the table's `data_rows` whose formula holds a `#This Row` reference
+    /// to one of `tables` the text that reference lowers to there (`lower_this_row_cells`), so it
+    /// stays `#VALUE!` after the convert as in Excel (S!F1, S!F9 and T!A1 of
+    /// probes/table-edits/table-convert-names-this-row, T-2643): a shared formula has no row.
+    /// Cells on the data rows keep the shared formula, which lowers to the relative form Excel
+    /// prints (`=$C4*2`, table-convert-same-sheet).
+    fn lower_this_row_references(&mut self, tables: &[String], data_rows: Option<(i32, i32)>) {
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        for worksheet in &mut self.workbook.worksheets {
+            let context = CellReferenceRC {
+                sheet: worksheet.get_name(),
+                row: 1,
+                column: 1,
+            };
+            let by_row: Vec<(usize, Node)> = worksheet
+                .shared_formulas
+                .iter()
+                .enumerate()
+                .filter_map(|(index, formula)| {
+                    let node = self.parser.parse(formula, &context);
+                    node.has_this_row_to(tables).then_some((index, node))
+                })
+                .collect();
+            lower_this_row_cells(worksheet, &by_row, tables, data_rows);
+        }
+        self.parser.set_lexer_mode(LexerMode::A1);
     }
 
     /// Prints `#REF!` for every structured reference to one of `tables` (lowercase names) in the
