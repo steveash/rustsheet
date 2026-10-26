@@ -3,7 +3,7 @@ id: T-2576
 title: "F.TEST, FTEST, FORECAST, INTERCEPT and COVARIANCE.P are #NUM! when a one-value argument is a number returned directly by ERROR.TYPE or CELL (gen-m9, 3 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
