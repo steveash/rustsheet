@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Typographic quotes U+201C/U+201D in a stored formula where a string was meant (corpus-bench/48354 D2:D6, T-0481): read as an undefined name?",
+  "tags": [
+    "M11",
+    "parser",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": "domestic",
+        "A1": "=“D”",
+        "A2": "=“D”&\"x\"",
+        "A3": "=IF(TRUE,“D”,“I”)",
+        "A4": "=IF(B1=\"domestic\",“D”,IF(B1=\"international\",“I”,“N/A”))",
+        "A5": "=ISREF(“D”)",
+        "A6": "=ERROR.TYPE(“D”)",
+        "A7": "=FORMULATEXT(A3)",
+        "A8": "=café",
+        "A9": "=ü1",
+        "A10": "=IF(FALSE,“D”,1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10"
+  ]
+}

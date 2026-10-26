@@ -1052,6 +1052,8 @@ C	probes/t-array-lift.case.json	22
 C	probes/t-n-range-top-left.case.json	45
 C	probes/t0445-circular-readers.case.json	16
 C	probes/t0451-circular-spill-and-ref-readers.case.json	17
+C	probes/t0481-curly-quote-names-b.case.json	2
+C	probes/t0481-curly-quote-names.case.json	10
 C	probes/t1613-hijri-b2-weekday.case.json	78
 C	probes/t1613-hijri-b2.case.json	144
 C	probes/t1626-asc.case.json	29
