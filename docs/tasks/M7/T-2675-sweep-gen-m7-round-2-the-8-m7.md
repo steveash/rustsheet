@@ -64,4 +64,3 @@ gen-m7 stays 100% bit-exact: every new cell passes, known failures 0 -> 0, 0 reg
 Visible parity: 0 visibly-off cells in the new cases; lock 4,448 unchanged. So there are no new failure families to
 triage and no quirk to record. The functions' existing visibly-off cells (LAMBDA 71, GROUPBY 23, PIVOTBY 23, HSTACK 13,
 SEQUENCE 13, REGEXTEST 3) come from formulas where they are not the outer call and belong to the existing tasks.
-Edge-pool gaps: none seen; the generated formulas do not exercise GROUPBY/PIVOTBY blank keys (T-2460).
