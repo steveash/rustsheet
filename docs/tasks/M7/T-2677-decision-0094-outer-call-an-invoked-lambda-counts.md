@@ -3,7 +3,7 @@ id: T-2677
 title: "Decision 0094 outer call: an invoked LAMBDA(..)(..) counts as a LAMBDA outer call"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
