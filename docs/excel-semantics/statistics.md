@@ -3658,8 +3658,9 @@ Rule: MODE, MODE.SNGL and MODE.MULT are `#VALUE!` for a one-cell range reference
 775d053de498b8c7 A352; `MODE.SNGL(Data!B8:B8)`, a63d1c7d6f96c56d A381; `MODE.MULT(Data!A10:A10)`, 5cebac1f02bf30f2 A183), as
 for a blank single-cell reference ("Statistical function argument modes", A23), also beside other arguments that hold a mode
 (`MODE(Data!A10:A10,Data!A9:A12,Data!E10:E10)` with E10 empty is `#VALUE!`, 329b177b5d5165ad A172).
-Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 36 cells in T-2471.
-Ours: the `Data!X:X` form is read as a range (skipped blank, `#N/A` or the mode of the rest); T-2471.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 36 cells in T-2471, plus probes/t2436/ecc87f80077959e0 (`MODE.MULT(Data!D10:D10,Data!D1:D6)`)
+and probes/t2475-stat-subexpressions P!A96. UNVERIFIED: a one-cell reference returned by INDEX, OFFSET or IF, or a defined name (ours: `#VALUE!` too).
+Ours: a one-cell range reference to an empty cell is `#VALUE!` like the plain reference, since T-2471 (`mode_functions.rs`).
 Status: VERIFIED (excel-graph)
 
 ## Order statistics: the scalar argument's error before the no-number result; PERCENTRANK's #N/A before significance (T-2256)
@@ -3780,7 +3781,8 @@ T-2576 probe (probes/t2576-error-type-cell-paired, excel-graph, 2026-10-26; FTES
   ZTEST give what 4 gives (E18:E22, E30:E33, E36:E38).
 The third T-2255 cell, `F.TEST(INDIRECT("Data!B3",TOCOL(2,0,Data!A5)),{-1,0,1})`
 (06b4e8f5de409d5e A261), is `#NUM!` over an INDIRECT that is `#VALUE!` (references.md "INDIRECT: a 1x1 array a1 argument is
-#VALUE!"), as is `COVARIANCE.P(INDIRECT("Data!A1",FILTER(..)),Data!B11:D12)` (f2bd5f380ec002bf A383); that `#NUM!` is UNVERIFIED.
+#VALUE!"), as is `COVARIANCE.P(INDIRECT("Data!A1",FILTER(..)),Data!B11:D12)` (f2bd5f380ec002bf A383); T-2577 explained
+that `#NUM!`: the INDIRECT is an array of references ("An array of references is #NUM! in the paired functions" below).
 Evidence: probes/t2436/computed-scalar (excel-graph, 2026-10-24), probes/t2576-error-type-cell-paired (excel-graph,
 2026-10-26); gen-m9 cells in T-2576 and T-2577.
 Ours: since T-2576 the same for the call itself (parentheses aside), in F.TEST/FTEST, the regression family, COVARIANCE
@@ -3788,6 +3790,32 @@ and T.TEST (`is_marked_number`, functions/statistical/paired.rs); the LET/IF/CHO
 marked numbers, SUMXMY2 and LINEST are T-2766's (still `#DIV/0!` or a value); T-2577.
 Status: VERIFIED (excel-graph) for the listed calls; mechanism UNVERIFIED
 Tasks: T-2576, T-2577, T-2766
+
+## An array of references is #NUM! in the paired functions (T-2577)
+Rule: an OFFSET or INDIRECT lifted into an array of references (lookup.md "OFFSET, INDIRECT and TRIMRANGE lift
+into arrays of references"), passed as a sample, is treated like the ERROR.TYPE/CELL mark above, not as its
+`#VALUE!` elements: `#NUM!` as either F.TEST sample (`F.TEST(INDIRECT("B1",{1}),{-1,0,1})`,
+`F.TEST({-1,0,1},INDIRECT("B1",{1}))`, `F.TEST(OFFSET(B1,{0;1},0),{-1,0,1})`, `F.TEST(INDIRECT(C1:C2),{-1,0,1})`,
+`F.TEST(INDIRECT({"B1","B2"}),{-1,0,1})`) and as the first argument of COVARIANCE.P, COVARIANCE.S, CORREL, PEARSON,
+SLOPE, INTERCEPT, FORECAST's known_y, T.TEST, SUMXMY2 and CHITEST (`COVARIANCE.P(OFFSET(B1,{0;1},0),{1;2})`,
+`CHITEST(INDIRECT("B1",{1;1}),{1;2})`), while the literal `{#VALUE!}` is `#VALUE!` (`F.TEST({#VALUE!},{-1,0,1})`,
+`COVARIANCE.P({#VALUE!;#VALUE!},{1;2})`). As COVARIANCE.P's second argument it is cells with no number:
+`COVARIANCE.P(5,INDIRECT("B1",{1}))` and `COVARIANCE.P({1;2},INDIRECT("B1",{1;1}))` are `#DIV/0!`. LINEST of one
+is `#VALUE!`. An array of references holding only error elements is those errors (`F.TEST(INDIRECT("B1",{0}),..)`
+is `#REF!`, `F.TEST(INDIRECT("B1",{"a"}),..)` `#VALUE!`), one with a reference among errors is still `#NUM!`
+(`COVARIANCE.P(INDIRECT("B1",{1;0}),{1;2})`). What drops it: `+0` (`#VALUE!`), IFERROR (its 7, `#DIV/0!`) and INDEX
+of an element (the cell, `#DIV/0!`); what keeps it: LET (`F.TEST(LET(x,INDIRECT("B1",{1}),x),{-1,0,1})` is
+`#NUM!`). The one-list functions read through the references: `STDEV(INDIRECT("B1",{1;1}))` is 0 and
+`MAX(INDIRECT("B1",{1}))` 5. This explains both gen-m9 cells: `F.TEST(INDIRECT("Data!B3",TOCOL(2,0,Data!A5)),{-1,0,1})`
+(06b4e8f5de409d5e A261) and `COVARIANCE.P(INDIRECT("Data!A1",FILTER(..)),Data!B11:D12)` (f2bd5f380ec002bf A383).
+Evidence: probes/t2577-indirect-ref-array (excel-graph, 2026-10-26).
+Ours: since T-2577 for a direct OFFSET or INDIRECT argument in F.TEST, the `fn_get_two_matrices` family (CORREL,
+PEARSON, SLOPE, INTERCEPT, RSQ, STEYX, FORECAST, CHITEST), COVARIANCE and T.TEST (`Model::evaluate_sample_arg`,
+functions/statistical/paired.rs); the LET form, SUMXMY2 and LINEST are T-2766's, STDEV T-2065's. UNVERIFIED, marked by
+analogy with the ERROR.TYPE mark: the first argument of RSQ and STEYX, T.TEST's second sample, and COVARIANCE.S's and
+COVAR's second argument (read as cells with no number); probing them is T-2766's.
+Status: VERIFIED (excel-graph) for the listed calls
+Tasks: T-2577, T-2766, T-2065
 
 ## LINEST: a known_y range with empty cells is #VALUE! (T-2436)
 Rule: LINEST of a known_y range that holds empty cells beside its numbers is `#VALUE!`, not a fit of the numbers:

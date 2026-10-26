@@ -224,14 +224,22 @@ does not decide whether the fallback is General or the section without its liter
 value prints the same either way. The engine uses General, the simpler rule. The condition compares
 the signed value, and a matched one-section format keeps the minus: `[=-10]#" Wow"` on -11 is "-11",
 `[<>-10]#" Wow"` on -11 is "-11 Wow" and on -9 "-9 Wow" (poi/FormatConditionTests A32, A35, A37).
-Only a one-section format is covered; how conditions choose among two or three sections is not
-probed here (poi/FormatConditionTests is Excel-cached; the cells this rule fixes there are
-one-section ones).
+Two or three sections with a condition on the first: the first section takes a value its condition
+holds for; otherwise a two-section format uses the second, and a three-section format tests the
+second's condition and falls to the third (`[<100]0.0;[>=1000]#,##0;0` prints 999.9999 as "1000",
+2958465.99999 as "2,958,466"; `[<=-1]0;[<1]0.0000;0.0` prints 1234567890 as "1234567890.0";
+`[>=1]0.00;0.000` prints 0.5 as "0.500"; `[<0]"neg";[>0]"pos";"zero"` prints 1 as "pos").
+The matched section keeps the minus (`[<100]0.0` on -0.5 is "-0.5", `[<1]0.0000` on -0.5 "-0.5000",
+the `else` section of `[>=1]0.00;0.000` on -0.5 "-0.500", `[=0]"nil";General` on -123456.789
+"-123456.789") except when its condition holds for negatives only: `[<=-1]0` on -1.5 is "2".
+Unprobed (T-2768): that cut for `[<=0]`, `[=-1]`, `[<0]` with digits, negatives reaching a third
+section, a three-section format whose second section has no condition (the sign rules apply), and four sections; the engine drops the sign only for `<` with a bound <= 0 and `<=` with a bound < 0.
+Evidence: gen-m10 (excel-graph, 2026-10-16) 039accabcfe1e6c7 F!Q1:Q20, 03a284c57e24ff37 and siblings (T-1734).
 Evidence: poi/FormatChoiceTests.xlsx A3:A26 (excel-graph); probes/text-format-length-limit-d
 S!A31, -f Sheet1!A41:A42, -j Sheet1!A43, -q Sheet1!A16 (excel-graph); poi/FormatConditionTests.xlsx
 A3:A50 (Excel-cached).
 Status: VERIFIED
-Tasks: T-0936 (implemented)
+Tasks: T-0936 (implemented), T-1734 (implemented)
 
 ## Scientific formats with literals after `E`
 Rule: literals may sit between `E+`/`E-` and the exponent digits; the exponent sign is printed
