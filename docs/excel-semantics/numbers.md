@@ -2307,3 +2307,7 @@ product is 0 whenever no number is included, never 1.
 Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
 Status: VERIFIED
 Tasks: T-2269, T-2302
+
+## BASE: a written-empty `min_length` is omitted (T-2691)
+`BASE(0,2,)` is "0" (probes/base-zero-empty-min-length A1, A5): an argument written empty is read as
+omitted, so `min_length` is the default 1. A blank-cell `min_length` (Z99) is read as 0 and stays 0.

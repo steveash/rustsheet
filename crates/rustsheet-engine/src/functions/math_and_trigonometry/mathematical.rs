@@ -198,6 +198,9 @@ impl Model {
                 Ok(f) => f.trunc() as i64,
                 Err(error) => return error,
             };
+            // A written-empty `BASE(0,2,)` is omitted (default 1); a blank cell reads as 0
+            // (probes/base-zero-empty-min-length A1, A2; numbers.md).
+            let min_length = min_length.filter(|value| !matches!(value, CalcResult::EmptyArg));
             let min_length = match model.kernel_number_or(min_length, 1.0, cell) {
                 Ok(f) => f,
                 Err(error) => return error,
