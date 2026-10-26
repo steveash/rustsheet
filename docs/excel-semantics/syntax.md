@@ -348,7 +348,7 @@ Ours (T-2781, SPEC-0023 step 1): the parser keeps each run of spaces as a `Node:
 touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the R1C1 storage text, row and column edits,
 sheet renames and moves print the spaces back. A cell stores two trees: the written one, which prints, and one with no
 whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a `Spaced`
-(`model::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the stripped tree too.
+(`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the stripped tree too.
 A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass); other leading
 whitespace characters are kept as before (unprobed). Still open: runs holding a line feed print nothing (T-2782),
 the spaces beyond an intersection's one (T-2783), whitespace around LAMBDA parameter names (dropped; unprobed,

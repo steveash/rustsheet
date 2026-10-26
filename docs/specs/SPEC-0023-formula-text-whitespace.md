@@ -155,7 +155,7 @@ Changes from the design above, found while implementing step 1 (decision 0127):
   shape without `ungrouped()` (`LET` name positions, `ISOMITTED`, reference-argument tests, LAMBDA bodies), which a
   rare `Group` never reached but a common `SUM(A1, B1)` would. So a cell stores the written tree for printing and
   edits, and a copy with every `Spaced` removed (`Node::strip_spaces`) for evaluation, units and static analysis
-  (`model::ParsedFormula`; the copy exists only for a formula written with whitespace). The other evaluated trees
+  (`formula_cells::ParsedFormula`; the copy exists only for a formula written with whitespace). The other evaluated trees
   (defined names, conditional formats, outside-cell formulas) are stripped where they are parsed. The peel in
   `ungrouped`/`lowered` and the walkers stays, for the printers and edits that read the written tree.
 - **`Spacing` is inline** (`Spaced { space: Spacing, child: Box<Node> }`), two bytes today, so no second box.

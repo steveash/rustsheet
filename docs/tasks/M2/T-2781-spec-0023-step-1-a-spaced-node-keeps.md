@@ -38,7 +38,7 @@ C7:C13, C16:C18; probes/t2776-ws-after-at C1.
   before a comma, in an array constant and around `:`; the space count wraps at 256. Printed by every printer;
   structural edits, renames and moves keep it. `NODE_SIZE` unchanged.
 - Deviation from the spec's design, recorded in SPEC-0023 "Implementation note": a cell stores the written tree and a
-  stripped copy (`model::ParsedFormula`, `Node::strip_spaces`), and evaluation, units and static analysis read the
+  stripped copy (`formula_cells::ParsedFormula`, `Node::strip_spaces`), and evaluation, units and static analysis read the
   copy, because ~300 argument-shape sites match nodes without peeling; defined names, conditional formats and
   outside-cell formulas are stripped where parsed. A `Spaced` costs no depth level; the
   nesting tests gain spaced shapes (`( `, `SUM( - `, `IF( TRUE, `…) printed, edited and evaluated at the limit. The xlsx export still writes the stripped tree (T-2786 decides).
