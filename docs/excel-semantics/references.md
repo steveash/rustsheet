@@ -2335,8 +2335,10 @@ and the quirk T-2321. With no table of that name (engine API `remove_table`), th
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
-canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
-table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
+canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). Since T-1671 the eval adapter
+registers a spec table with its totals row; because the table does not grow, shrink or move with an edit yet, the
+totals row's own edits (insert above it, delete it or the last data row) print the displaced plain range or `#REF!`
+where Excel keeps `Sales[[#Totals],[Qty]]` (decision 0128; T-2321, T-2338).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
 its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2297, T-2325).
