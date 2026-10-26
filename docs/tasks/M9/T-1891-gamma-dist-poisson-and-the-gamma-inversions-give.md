@@ -77,8 +77,9 @@ Cells:
 
 T-2435 split (2026-10-26): the GAMMA.DIST density and cdf at a huge shape move here, with the rule and the
 probe evidence in docs/excel-semantics/statistics.md "GAMMA.DIST at a huge shape: #NUM! for a density at a
-tiny x, for the cdf above about 1E+76 (T-2435)" (probes/t2435-dist-extremes A21, A22, A25, A26, A33, A34,
-A92:A102 — the cut on (alpha - 1)|LN(x/beta)| is bracketed, not pinned, so probe it before implementing).
+tiny x, for the cdf above about 1E+76 (T-2435)". Its known-failure cells there are A21, A22, A25, A26, A33,
+A34 (the rules) and A101, A102 (the cdf above 1E+76); the cut on (alpha - 1)|LN(x/beta)| is bracketed, not
+pinned, so probe it before implementing. The last digits of A20, A23, A24 and A32 are T-2811's.
 Owned gen-m9 cells (T-2435 split, 2026-10-26): 2 more known-failure lines in eval/baseline/gen-m9.txt.
 - gen-m9/2801c1c11c21e134 Calc!A241 `=GAMMADIST(1E-300,10000000001,3,(IMCSC("2i")<Data!E$5))`: Excel #NUM!, ours 0.0
 - gen-m9/40425341c5034eed Calc!A265 `=GAMMADIST(2,(IFS(TRUE,Data!E9,FALSE,Data!E$10)*(Data!$A4^42)),10000000000.5,"TRUE")`: Excel #NUM!, ours 0.0

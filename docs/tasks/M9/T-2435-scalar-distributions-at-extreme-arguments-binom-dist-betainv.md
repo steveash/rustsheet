@@ -89,8 +89,10 @@ about 30 ulp off: the cause is F.INV.RT's far tail (`F.INV.RT(1E-20,9,3)`). This
       T-2808's (01523d247594952e A377) and already passing (d0854366830dcdee A298).
 - [x] Each rule's probe cells are in eval/ (probes/t2435-dist-extremes, 140 formulas with a `(x)=0`
       companion each), and statistics.md gets an entry per rule with an "Ours:" line naming this task.
-- [x] No new known-failure lines in gen-m9 or any other baseline; the new lines in
-      eval/baseline/probes.txt are the probe cells of the two split tasks, named in their files.
+- [x] No new known-failure lines in gen-m9 or any other baseline; every new line in
+      eval/baseline/probes.txt is named in an owning task file: T-1891 (A21, A22, A25, A26, A33,
+      A34, A101, A102), T-2808 (A68, A69, A72, A73, A77:A81, A108:A112, A115:A118), T-2809 (A15,
+      A18) and T-2811 (the last-digit cells A14, A20, A23, A24, A32, A35:A38, A40, A41, A66).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -115,11 +117,17 @@ own statistics.md entry:
   (`special::normal_density_overflows`, now shared by the three call sites).
 - BETA.DIST's density is `#NUM!` at an x of exactly 0 with alpha <= 1 and at an x of exactly 1 with
   beta <= 1 — against the given x, not the [A, B] ends, so it fires at interior points of a shifted
-  interval and not at that interval's own ends.
+  interval, while at that interval's own ends, where the density diverges as much, Excel gives 0.
 - Every F cdf is `#NUM!` where df2/(df1 x) overflows (`fisher.rs::f_beta_ratio_overflows`), where
   the density there is 0.
-Eval delta: gen-m9 -9 known failures (the 9 cells of the acceptance criterion); no other suite moved.
+Eval delta: gen-m9 -10 known failures: the 9 cells of the acceptance criterion plus
+abc2939ebd1e2365 A187 `=GROWTH(PHI((-1E+300)),..)`, which the PHI rule fixes too. No other suite
+regressed; probes gained the new case's 40 known failures, each named in its owning task.
 Follow-ups: T-2808 (F.INV.RT saturation, BETAINV underflow and its 0.5 quirk, 4 gen-m9 cells),
-T-2809 (BINOM.INV's count at a huge trial count), and the GAMMA.DIST huge-shape cells added to
-T-1891. The probe's cells for those three stay known failures in eval/baseline/probes.txt, each
-named in the owning task.
+T-2809 (BINOM.INV's count at a huge trial count), T-2811 (the probe's last-digit cells), and the
+GAMMA.DIST huge-shape cells added to T-1891. The probe's cells for those four stay known failures
+in eval/baseline/probes.txt, each named in the owning task.
+Round 2 (excel-fidelity review): the probe found that our density errored at a shifted interval's
+own end where Excel gives 0 (A126, A127) — fixed here rather than recorded as a gap; the F cut's
+lower side now has a normal-x cell either side (A85 against A141, A142), since `FDIST(1E-308,6,1E+8)`
+is 1 only because a subnormal x reaches the kernel as 0.
