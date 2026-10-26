@@ -21,6 +21,17 @@ pub fn ulps(a: f64, b: f64) -> u64 {
     a.to_bits().abs_diff(b.to_bits())
 }
 
+/// Whether `actual` is within half a unit in the 15th significant digit of `expected`, the
+/// digits Excel shows (decision 0083's "not visibly off"; the eval harness's
+/// `closeness::within_fifteen_digits`, which the engine crate cannot depend on).
+pub fn within_fifteen_digits(expected: f64, actual: f64) -> bool {
+    if expected == 0.0 || !expected.is_finite() || !actual.is_finite() {
+        return expected == actual;
+    }
+    let exponent = expected.abs().log10().floor();
+    (actual - expected).abs() <= 0.5 * 10f64.powf(exponent - 14.0)
+}
+
 /// An empty en-US model in UTC on the fixed test clock.
 pub fn new_empty_model() -> Model {
     Model::new_empty_with_clock("model", "en", "UTC", "en", fixed_clock(TEST_CLOCK_MS)).unwrap()

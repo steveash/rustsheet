@@ -2167,7 +2167,11 @@ m9-beta-dist-a*, t0969-beta-switch, t0969-beta-density-b, t2464-w2f-xruns-2, t24
 (w1-density/probe, not in eval/suites); docs/research/t2464/r3-m1-residual (`final_score.py`, `m1score.out`,
 `hivar.out`, `lnbshape_a.out`, `lnbfit.py`), verify-r3-m1-residual (`vscore_all.out`, `vshape_vhold.out`,
 `vchecks.out`); w1-density, r2-log1p `dens_m1.py`, w6-literature `h1_lnb.py`.
-Ours: `incomplete_beta::beta_density`, powf(x,a-1)·powf(1-x,b-1)·tgamma ratio.
+Implemented in: `functions/statistical/beta_density.rs` `beta_density_small_shape` (T-2503), with the engine's GAMMALN:
+w1's probe1 12,796/12,799 (exact/15 digits) of 12,800, the old cells 806/1,103 of 1,107, the worker's hold-out 2,810/4,065
+of 4,096, the verifier's 562/846 of 864. The engine's GAMMALN(1.2) is 1 ulp above Excel's (T-2122), consistent with the
+(0.5, 0.7) block of t2464-w2f-xruns-2 losing 472 bit-exact cells, each now 1 ulp high. F.DIST's density keeps
+`incomplete_beta::beta_density` (powf·tgamma ratio).
 Status: PARTIAL (excel-graph): VERIFIED for max <= 8 and a = 1 or b = 1 with max > 1 (a < 1 with b = 1 on one shape);
 algdiv (min < 1 < 8 < max) open
 Tasks: T-2503, T-2512, T-2122, T-2513

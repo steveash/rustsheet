@@ -1,4 +1,5 @@
 mod beta;
+mod beta_density;
 mod binom;
 mod chisq;
 mod correl;
