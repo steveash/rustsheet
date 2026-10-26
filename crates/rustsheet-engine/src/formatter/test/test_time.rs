@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use super::text;
 use crate::{
     formatter::format::{format_number, FormatContext},
     locale::{get_locale, Locale},
@@ -122,4 +123,21 @@ fn elapsed_without_seconds_rounds_to_the_second() {
     ] {
         assert_eq!(format_number(value, format, &ctx).text, text, "{format}");
     }
+}
+
+// poi/DateFormatTests.xlsx Tests!A11, A16, A30, A35 (desktop Excel); noon and midnight follow `AM/PM`.
+#[test]
+fn short_am_pm_marker_keeps_its_case() {
+    assert_eq!(text(17816.607951388887, "hh:mm:ss a/p"), "02:35:27 p");
+    assert_eq!(text(17816.607951388887, "HH:MM:SS A/P"), "02:35:27 P");
+    assert_eq!(text(36191.1702084375, "hh:mm:ss a/p"), "04:05:06 a");
+    assert_eq!(text(36191.1702084375, "HH:MM:SS A/P"), "04:05:06 A");
+    assert_eq!(text(0.5, "hh:mm:ss a/p"), "12:00:00 p");
+    assert_eq!(text(0.0, "hh:mm:ss a/p"), "12:00:00 a");
+}
+
+// DateFormatTests A13 and A18: lowercase `am/pm` still prints uppercase.
+#[test]
+fn long_am_pm_marker_prints_uppercase() {
+    assert_eq!(text(0.6079, "hh:mm:ss am/pm"), "02:35:23 PM");
 }
