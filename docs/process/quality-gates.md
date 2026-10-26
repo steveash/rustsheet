@@ -12,7 +12,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Formatting | `make fmt-check`, `ruff format --check` | rustfmt / ruff formatted |
 | Rust lints | `make clippy` | workspace policy in `Cargo.toml` (`clippy::pedantic`, `unwrap_used`, `panic`, `print_*`, `unsafe_code = deny`), `-D warnings` |
 | Lint debt | `scripts/check_lint_debt.py` | per-crate `LINT-DEBT` allow-lists (inherited from the fork) may only shrink; locked in `quality/lint-debt.json` |
-| Rust tests | `make test` | all pass |
+| Rust tests | `make test` (CI: `test-shard-1` and `test-shard-2`, decision 0122) | all pass |
 | **Excel compatibility** | `make eval-check` | no regressions against `eval/baseline/*.txt` (known failures); baseline must be up to date |
 | Visible parity | `make eval-check` | in-scope cells of the vendored gated suites that are visibly off from Excel may not increase; `eval/baseline/visible-parity.json` (decisions 0088, 0093) |
 | Evidence floor | `make evidence-floor` | in-scope, oracle-evaluable functions with fewer than 20 Excel-evidence cells may not increase; `quality/evidence-floor.json` (decision 0062) |

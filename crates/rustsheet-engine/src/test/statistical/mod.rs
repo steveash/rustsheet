@@ -10,6 +10,7 @@ mod test_fn_confidence;
 mod test_fn_covariance;
 mod test_fn_devsq;
 mod test_fn_expon_dist;
+mod test_fn_extreme_arguments_part2;
 mod test_fn_f;
 mod test_fn_f_df_limit;
 mod test_fn_f_pdf_large_df;
