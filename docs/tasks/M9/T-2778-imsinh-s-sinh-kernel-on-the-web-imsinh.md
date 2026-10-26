@@ -3,7 +3,7 @@ id: T-2778
 title: "IMSINH's sinh kernel on the web: IMSINH(4) rounds up, IMSINH(-4) does not (gen-m9, 34 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
