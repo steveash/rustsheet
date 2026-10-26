@@ -26,18 +26,22 @@ whether IM* text rounds a halfway shortest-repr string up (`0.9162020794428485` 
 kernels. Code: `imcosh`, `imsinh`, `imsech` in crates/rustsheet-engine/src/functions/engineering/complex/trig.rs.
 
 Findings (2026-10-26, opus run after T-2750; data, not a fix):
-- The text hypothesis is refuted. Rounding each IM* part half-up from its shortest-repr string fixes A17 but costs 21
-  gated cells (probes 2666 -> 2686, ironcalc-calc 644 -> 662). Rounding from the 17-digit string fixes none and costs 2.
+- The text hypothesis is refuted. Rounding each IM* part half-up from its shortest-repr string fixes A17 but
+  `rustsheet-eval check` reports 21 regressions in probes and 19 in ironcalc-calc (its "known failures" 2666 -> 2686 and
+  644 -> 662). Rounding from the 17-digit string fixes none and regresses 1 in each.
   IM* text rounds the double itself, as `to_precision` does.
 - In all three cells Excel's double is one ulp above (toward +inf) the correctly rounded exact value (A9 0.8292987121934895
   → Excel's must be ≥ 0.8292987121934896; A17 0.9162020794428485 → ...486; A58 -0.3713026526918875 → -0.37130265269188745).
   Excel's SIN reduction by the 64-bit π moves the exact value the other way (A9 0.82929871219348948), so it is not the cause.
 - The products fit both A9 and A17 if Excel's sinh(1.5) and cosh(1.5) are each one ulp above libm's
-  (2.1292794550948178, 2.3524096152432477), or if sin(710.4) is 1-2 ulps above libm's 0.38947387117702714. None of
+  (2.1292794550948178, 2.3524096152432477). With those, the plain `(a, −b)/(a² + b²)` reciprocal of cosh z also gives
+  A58's -0.371302652691887, so that hypothesis fits all three cells. sin(710.4) 2 or more ulps above libm's
+  0.38947387117702714 fits A9 and A17 (1 ulp fits A17 only) but cannot explain A58, which takes 711i. None of
   `(e ± 1/e)/2`, `(e ± exp(-x))/2`, `e/2 ± 0.5/e` or the expm1 forms moves sinh or cosh. No oracle cell has
-  SINH(1.5), COSH(1.5), EXP(1.5) or SIN(710.4) (m9-hyperbolic has ACOSH(1.5) only), so next: probe
-  `=SINH(1.5)-2.1292794550948173`, `=COSH(1.5)-2.352409615243247`, `=EXP(1.5)-4.4816890703380645` and
-  `=SIN(710.4)-0.38947387117702714` (excel-probe skill) before refitting.
+  SINH(1.5), COSH(1.5), EXP(1.5) or SIN(710.4) (m9-hyperbolic has ACOSH(1.5) only), so next: probe the bare
+  `=SINH(1.5)`, `=COSH(1.5)`, `=EXP(1.5)` and `=SIN(710.4)` and read the cached doubles, or the parenthesized differences
+  `=(SINH(1.5)-2.1292794550948173)` etc. A top-level difference would be snapped to 0 at a few ulps (numbers.md
+  "Near-zero snapping in addition and subtraction"). Use the excel-probe skill, then refit.
 
 ## Acceptance criteria
 - [ ] The three lines leave eval/baseline/probes.txt (`make eval-baseline`) with no new known-failure lines,
