@@ -36,7 +36,7 @@ there. Probe (excel-probe skill, excel-graph) `IMTAN("1+400i")`, `IMTAN("1-400i"
 ## Outcome
 Probe case `probes/eng-imtan-imcot-overflow` (13 cells, excel-graph oracle). The overflow shapes
 (`IMTAN`/`IMCOT` at y = 354, 355, 356, 400, -400) match Excel exactly: `±i`, never `#NUM!`. The four
-real-argument cells at and near π/2 are finite in Excel and differ from ours from the sixth digit; they
+real-argument cells at and near π/2 are finite in Excel and differ from ours from the sixth or seventh digit; they
 are recorded in engineering.md and as 4 new-case known failures in eval/baseline/probes.txt. The
 UNVERIFIED bullet in engineering.md is resolved. Follow-up: T-2760, fitting the real-argument IMTAN/IMCOT
 kernel near π/2 (opus-sized numeric fitting).

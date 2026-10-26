@@ -528,7 +528,7 @@ and the oracle calibration found IMARGUMENT differing by ulps between Excel for 
 - For a real argument at or near the double nearest π/2 Excel gives a finite value, not `#NUM!`:
   IMTAN("1.5707963267948966") = "148752068975966", IMTAN("1.5707963267949") = "-286413440886091",
   IMCOT("1.5707963267948966") = "6.72259557049637E-15", IMCOT("1.5707963267949") = "-3.49145625605507E-15"
-  (probes/eng-imtan-imcot-overflow A10-A13). RustSheet differs from the sixth significant digit on
+  (probes/eng-imtan-imcot-overflow A10-A13, excel-graph). RustSheet differs from the sixth or seventh significant digit on
   (148752623989354, -286411383293069, 6.72257048770831E-15, -3.49148133884313E-15): the real-argument
   tangent kernel near a pole is not yet fitted (known failures in eval/baseline/probes.txt).
 Evidence: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
