@@ -189,13 +189,13 @@ type Sparse = Vec<(u64, Option<f64>)>;
 impl Model {
     /// The two samples of COVARIANCE.P, COVARIANCE.S or T.TEST (`args[0]` and `args[1]`, which
     /// the caller checked exist), paired by position. Each must be a range or an array: anything
-    /// else is `#VALUE!` (a typed text too, unless `typed_text_is_sample`), and an array holding an
+    /// else is `#VALUE!` (a typed text too, unless `typed_scalar_is_sample`), and an array holding an
     /// error is `#VALUE!`, each when its turn comes.
     pub(crate) fn paired_samples(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        typed_text_is_sample: bool,
+        typed_scalar_is_sample: bool,
         marked_second: MarkedSample,
     ) -> Result<PairedValues, PairedSamplesError> {
         // A marked number is `#NUM!` as the first sample of every caller (statistics.md "ERROR.TYPE
@@ -204,13 +204,13 @@ impl Model {
             &args[0],
             "First",
             cell,
-            (typed_text_is_sample, MarkedSample::NumError),
+            (typed_scalar_is_sample, MarkedSample::NumError),
         );
         let (second, second_count) = self.sample_arg(
             &args[1],
             "Second",
             cell,
-            (typed_text_is_sample, marked_second),
+            (typed_scalar_is_sample, marked_second),
         );
         let sizes_differ = matches!((first_count, second_count), (Some(m), Some(n)) if m != n);
         self.paired_values(first, second, cell, |index, error| {
@@ -247,12 +247,14 @@ impl Model {
         arg: &Node,
         which: &str,
         cell: CellReferenceIndex,
-        (typed_text_is_sample, marked): (bool, MarkedSample),
+        (typed_scalar_is_sample, marked): (bool, MarkedSample),
     ) -> (PairedArg, Option<u64>) {
-        // With `typed_text_is_sample` a typed text is an array of one cell with no number, so
+        // With `typed_scalar_is_sample` a typed text is an array of one cell with no number, so
         // against a longer range the sizes differ and the result is `#N/A`: `COVAR(A1:A6,"a")`,
         // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
-        // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is unprobed and stays `#VALUE!`.
+        // probes/covariance-pairs-skip L8, L16), and a typed or computed boolean the same way:
+        // `COVARIANCE.P({1,2,3},TRUE)` is `#N/A` and `COVARIANCE.S(-2.5,FALSE)` `#DIV/0!`
+        // (probes/t2436/computed-scalar A35:A37). T.TEST's typed text is unprobed and stays `#VALUE!`.
         let (value, is_marked) = self.evaluate_sample_arg(arg, cell);
         // A marked value keeps its cell count for the size check, which comes first:
         // `COVARIANCE.S(ERROR.TYPE(#REF!),Data!C10:D10)` is `#N/A` (gen-m9 abc2939ebd1e2365 A335),
@@ -270,7 +272,9 @@ impl Model {
             return (sample, u64::try_from(cells).ok());
         }
         let value = self.blank_one_cell_as_error(value, cell);
-        let sample = if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
+        let sample = if typed_scalar_is_sample
+            && matches!(value, CalcResult::String(_) | CalcResult::Boolean(_))
+        {
             PairedArg::Values(vec![None])
         } else {
             PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {
