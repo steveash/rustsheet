@@ -93,7 +93,8 @@ pub fn classify_value(value: &Value) -> ArgClass {
     }
 }
 
-/// Whether text reads as a plain decimal number. A rule of thumb for the census: Excel also
+/// Whether text reads as a plain decimal number. A rule of thumb for the census, not the
+/// engine's coercion (`parse_number_text` in crates/rustsheet-engine/src/cast.rs): Excel also
 /// reads dates, times, currency and percentages, which count as text here.
 fn reads_as_number(text: &str) -> bool {
     let t = text.trim();
@@ -113,8 +114,7 @@ pub fn observe(
 ) -> Vec<ArgumentSeen> {
     let mut seen = BTreeSet::new();
     for c in cells.iter().filter(|c| c.from_excel) {
-        let (Some(formula), Ok(addr)) = (c.formula.as_deref(), Addr::parse(&c.cell).ok_or(()))
-        else {
+        let (Some(formula), Some(addr)) = (c.formula.as_deref(), Addr::parse(&c.cell)) else {
             continue;
         };
         let (Ok(row), Ok(column)) = (i32::try_from(addr.row), i32::try_from(addr.col)) else {
@@ -176,7 +176,7 @@ pub fn param_of(params: &[CatalogParam], arity: usize, index: usize) -> Option<u
             return Some(start + group + (index - start - middle)).filter(|&p| p < params.len());
         }
     }
-    Some(start + (index - start) % group)
+    Some(start + (index - start) % group).filter(|&p| p < params.len())
 }
 
 /// The classes a parameter of `mode` is expected to see, by rule: a `range` parameter takes only
@@ -267,15 +267,6 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Vec<FunctionArgum
             }
         })
         .collect()
-}
-
-/// The mean of the functions' single-argument coverage, over those with a share.
-#[must_use]
-pub fn average_single(rows: &[FunctionArguments]) -> Option<f64> {
-    let shares: Vec<f64> = rows.iter().filter_map(|r| r.single).collect();
-    // A few hundred functions, so the cast is exact.
-    #[allow(clippy::cast_precision_loss)]
-    (!shares.is_empty()).then(|| shares.iter().sum::<f64>() / shares.len() as f64)
 }
 
 #[cfg(test)]

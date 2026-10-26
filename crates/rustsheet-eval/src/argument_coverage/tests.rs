@@ -208,6 +208,4 @@ fn summary_counts_expected_classes_per_parameter() {
     assert_eq!(rows[2].params[0].seen, vec![ArgClass::Range]);
     assert_eq!(rows[2].params[1].seen, vec![ArgClass::Number]);
     assert_eq!(rows[2].single, Some(2.0 / 12.0));
-    let average = average_single(&rows).unwrap_or_default();
-    assert!((average - f64::midpoint(2.0 / 11.0, 2.0 / 12.0)).abs() < 1e-12);
 }

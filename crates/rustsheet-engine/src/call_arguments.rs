@@ -50,8 +50,8 @@ pub struct CallArguments {
 
 /// Testing hook, not public API (no stability promise): every worksheet function call in
 /// `formula`, parsed as written in `sheet` at 1-based (`row`, `column`) of a workbook with
-/// `sheets`, each call before the calls nested in it. Names, LAMBDA calls and unknown functions are left out; a formula
-/// that does not parse has none.
+/// `sheets`, each call before the calls nested in it. Names, LAMBDA calls and unknown functions
+/// are left out; a formula that does not parse has none.
 #[doc(hidden)]
 #[must_use]
 pub fn call_arguments(
@@ -112,12 +112,12 @@ fn shape(node: &Node, context: &CellReferenceRC) -> ArgumentShape {
             row: if *absolute_row {
                 *row
             } else {
-                row + context.row
+                row.saturating_add(context.row)
             },
             column: if *absolute_column {
                 *column
             } else {
-                column + context.column
+                column.saturating_add(context.column)
             },
         },
         Node::RangeKind { .. }
