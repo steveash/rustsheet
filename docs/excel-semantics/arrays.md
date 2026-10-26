@@ -340,7 +340,15 @@ crates/rustsheet-engine/src/functions/lift/; `Model::evaluate_range` in crates/r
 crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454);
 `Model::external_area_value` and `Model::external_aggregate_value` in
 crates/rustsheet-engine/src/external_links.rs (a cached range of a linked workbook, T-1460)
-Tasks: T-0047, T-1420, T-1454, T-1460
+In a **spill** context the deviation is not needed and is a known gap, not a deviation: Excel's answer follows
+from the shape alone, so it costs no allocation. `=SUMPRODUCT(book2!A:A=book1!A3)*book2!H:J` in book1!B3 (a
+scalar against a whole-column 3-column range, 3,145,728 cells) is `#SPILL!` in Excel and `#ERROR!` in the
+engine, which hits the cap inside `broadcast_arrays` before any spill decision is made; `=ABS(A:A)` and
+`=DATE(11:1899,12,1)` in a cell are the same shape-only `#SPILL!` (above). T-0480 refuses such a spill from the
+broadcast shape; the deviation keeps covering value contexts (`ROWS`, `SUM`, `INDEX` over the same array).
+Evidence: corpus-bench/55049/1_55049_input.xlsx book1!B3:B23 (21 cells, excel-graph sidecar, 2026-10-26, gap
+triage).
+Tasks: T-0047, T-1420, T-1454, T-1460, T-0480
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
