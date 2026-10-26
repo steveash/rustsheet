@@ -217,10 +217,10 @@ fn past_2_to_the_20_periods_the_closed_form_drifts_from_the_walk() {
 
 #[test]
 fn extreme_values_from_cells_are_values_without_a_panic() {
-    // Unprobed. Where main finished (A3-A5, A7-A9) these are main's values: a cost of 1E308
-    // overflows AMORDEGRC's rounding to 0 (fin-amor-period-bound-b B2 is 1.94700443465919E302 in
-    // Excel; TODO(T-1895)), a rate of 1E300 is a life of one period, a date or basis out of range
-    // is #NUM!. Where main walked past 2^53 and never finished (A1, A2, A6), the walk's value.
+    // Unprobed except A3. Where main finished (A4, A5, A7-A9) these are main's values: a rate of
+    // 1E300 is a life of one period, a date or basis out of range is #NUM!. A3 keeps a cost of 1E308
+    // finite through AMORDEGRC's rounding (fin-amor-period-bound-b B2 is 1.94700443465919E302 in
+    // Excel, T-1895). Where main walked past 2^53 and never finished (A1, A2, A6), the walk's value.
     check(&[
         // Rate 2.5E-308: a life of 4E307 periods, the charge 6E-305 never moves 2,100.
         (
@@ -229,7 +229,11 @@ fn extreme_values_from_cells_are_values_without_a_panic() {
             "5.999999999999999E-305",
         ),
         ("A2", "=AMORDEGRC(2400,39679,39813,300,1E307,Z6,1)", "0"),
-        ("A3", "=AMORDEGRC(Z5,39679,39813,300,1E5,1E-6,1)", "0"),
+        (
+            "A3",
+            "=AMORDEGRC(Z5,39679,39813,300,1E5,1E-6,1)",
+            "1.9470044346591894e302",
+        ),
         ("A4", "=AMORLINC(Z5,39679,39813,300,1,Z4,1)", "0"),
         ("A5", "=AMORDEGRC(Z5,39679,39813,300,Z5,Z1,1)", "0"),
         ("A6", "=AMORLINC(Z5,39679,39813,0,Z3,Z1,1)", "1E8"),
