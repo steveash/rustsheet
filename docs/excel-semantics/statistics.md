@@ -1012,7 +1012,8 @@ DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted HYPGEOM.DIST whose el
 element is charged by its counts, not the cap's bound: a cdf is either the walk or the sum, and the sum's window is at
 most m + 1 terms, m = min(sample_s, number_sample, population_s) truncated (above min(number_sample, population_s) the
 cdf is 1 before any sum), so an element is charged the larger of the walk's 2^14 units and (m + 132) * 16 (its terms
-and the window's 131 exponents at about 250 ns), at most 2^22, the bound of the cap. So at most 32 elements whose m
+and the window's 131 exponents at an upper bound of about 250 ns each), at most 2^22, the bound of the cap.
+So at most 32 elements whose m
 is about 2^18 or more (`ROWS(HYPGEOM.DIST(SEQUENCE(33)*0+1000000,1000000,1000000,1,TRUE))`: the charge reads the
 counts, not that this element would be `#NUM!`), and at most 8,192 elements with m up to 892
 (`ROWS(HYPGEOM.DIST(2,3,5,10,SEQUENCE(8193)>0))`; before T-2433 33 such elements were `#ERROR!`, where Excel spills:
