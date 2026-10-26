@@ -10,6 +10,7 @@ mod fraction;
 mod general;
 pub mod lexer;
 pub mod locale_tag;
+mod lunar_calendar;
 mod parse_formatted;
 pub mod parser;
 

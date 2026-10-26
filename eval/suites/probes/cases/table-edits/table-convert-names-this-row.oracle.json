@@ -1,0 +1,69 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "E4": {
+    "t": "n",
+    "v": 15.0
+   },
+   "E5": {
+    "t": "s",
+    "v": "=SUM(QtyName)"
+   },
+   "E6": {
+    "t": "n",
+    "v": 4.0
+   },
+   "E7": {
+    "t": "n",
+    "v": 15.0
+   },
+   "E8": {
+    "t": "s",
+    "v": "=SUM(AllName)"
+   },
+   "F1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "F10": {
+    "t": "s",
+    "v": "=Sales[@Qty]"
+   },
+   "F2": {
+    "t": "s",
+    "v": "=Sales[@Qty]"
+   },
+   "F9": {
+    "t": "e",
+    "v": "#VALUE!"
+   }
+  },
+  "T": {
+   "A1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A2": {
+    "t": "s",
+    "v": "=Sales[@Qty]"
+   },
+   "B1": {
+    "t": "n",
+    "v": 15.0
+   },
+   "B2": {
+    "t": "s",
+    "v": "=SUM(QtyName)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "9098d88bb868090d77c29ecb00a9b19bf95e802ec39282656f6734136fa9a4d5",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-25T21:55:53+00:00",
+  "version": null,
+  "workbook_name": "d6c0b43acdf2ca78815dcd675df3356f6e95eef82fb47a7389ede41835b4bc22.xlsx"
+ }
+}

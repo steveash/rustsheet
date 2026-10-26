@@ -535,7 +535,9 @@ impl WildcardPattern {
     /// The pattern is split at its `*`s into fixed segments (units and `?`). The first segment is
     /// scanned for; the later ones then each take their leftmost position, which is the greedy
     /// choice. A later start can only push those positions right, so if the greedy chain fails
-    /// for the first start where the first segment fits, it fails for every later start.
+    /// for the first start where the first segment fits, it fails for every later start. So a
+    /// search compares at most the pattern's length at each start, as SEARCH's lift charge
+    /// assumes (`ValueWork::TextScan`, T-1961).
     pub(crate) fn find_from(&self, text: &[u16], from: usize) -> Option<usize> {
         let mut segments = self.tokens.split(|token| *token == WildcardToken::AnyRun);
         let first = segments.next().unwrap_or(&[]);

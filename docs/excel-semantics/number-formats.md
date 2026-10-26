@@ -519,16 +519,25 @@ Under every one of these, `e` stays the Gregorian four-digit year, and so do `b`
 - 10 is Saka ("1944-12-24", "Phalguna", "Budhavara").
 - A is Gregorian with Levant Arabic names ("آذار"); B and C give "مارس".
 - 14 is Gregorian with native Korean names ("삼월").
-- E, F, 11, 12 and 13 are the Chinese lunar date: month 2, day 24, `mmmm` "二月", the first month "正月". `yyyy` and `e` stay 2023. E gives Japanese weekdays, F and 11 Chinese ones, 12 and 13 English names (T-1922; the others are T-1923).
 - Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).
 - Underscore tags pick calendars: `[$-fr_FR]` gives the Saka date with English Gregorian month names ("December|1944-12-24"); `[$-de_DE]`, `[$-en_US]` and `[$-ja_JP]` give the lunar date in English; `[$-_]` gives Russian names (T-1924).
+
+**Lunar calendars (E, F, 11, 12, 13; T-1922).** Every date token prints the lunar date: serial 45000 (2023-03-15) is lunar 2023, month 2, day 24, and `yyyy`, `yy`, `e`, `b` and `bbbb` all print the lunar year (`[$-110409]bbbb|b|e|yyyy|yy` of 45300, 2024-01-09, is "2023|23|2023|2023|23"). `g` prints nothing.
+- Months are numbered 1 to 13 (or 14) through the year, a leap month included: 2023's leap second month (from 2023-03-22) prints `m` "3" and `mmmm` "三月", and the twelfth month of lunar 2023 (from 2024-01-11) is month 13. Months 13 and 14 take the twelfth month's name ("十二月", "December", "섣달").
+- Names: E gives the lunar months "正月", "二月" … "十二月" (`mmm` the same, `mmmmm` its first character, "正") with Japanese weekdays ("水", "水曜日"), or under a Korean LCID the Korean lunar months "정월", "이월", "삼월", "사월", "오월", "유월", "칠월", "팔월", "구월", "시월", "동짓달", "섣달" with Korean weekdays. F and 11 give the same Chinese months with zh-CN weekdays ("周三", "星期三") under every LCID, Korean included. 12 and 13 give en-US names by lunar month ("Feb", "February", "Wednesday"). Day halves follow the LCID ("6 午後", "6 下午", "6 PM").
+- Two month tables: F and 11 follow the Chinese calendar; E, 12 and 13 start some months a day later (lunar month 5 of 2023 starts on 2023-05-19 under 11, 2023-05-20 under E). Between lunar new years 1960 and 2051 every month has 29 or 30 days; outside that Excel's calendar is not the published one: 1-, 15- and 28-day months, 13- and 14-month years (`[$-110409]m|d` of 1949-02-11 is "14|1"), new years off by up to a fortnight (1901-02-18 is "1/15"), and on 1960-01-01 and 2051-01-01 the year turns a month early (1959-12-31 is "1959/12/18", 1960-01-01 "1960/12/19", 1960-01-28 "1960/1/1").
+- Serial 60 (the fictitious 1900-02-29) and negative values are `#VALUE!`; serial 0 reads as serial 1 ("1899/12/16"), its weekday aside. A lunar digit wins over `B2` before the tag (`B2[$-110409]yyyy|m` of 45300 is "2023|12"; not modelled, T-2764).
+- Under LCID 0 the calendar still applies but the names stay en-US (`[$-110000]mmmm|d` and `[$-120000]mmmm|d` are "February|24"; not modelled: the tag is unresolved, T-2764).
+- Implemented from 1900 to 2100 as tables of Excel's own output (probes/text-locale-lunar-months-1900); past 2100-12-31 RustSheet prints the Gregorian date (TODO T-2759; Excel: 2101-06-01 is "2101/4/19", 9999-12-31 "9999/11/26").
+- `[$-E0411]h AM/PM|A/P|aaa|aaaa|B1yyyy|bbbb` is `#VALUE!` though each token alone prints (probes/text-locale-lunar-edges A32, text-locale-lunar-tokens A10-A49); RustSheet gives `#VALUE!` too, but which token causes it is not isolated, so the match may be by chance.
+Evidence: probes/text-locale-lunar-months-1900 (1206 cells), text-locale-lunar-edges (61), text-locale-lunar-tokens (85) (excel-graph, 2026-10-26).
 
 **`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (not modelled, T-2729).
 
 Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20), text-locale-era-gregorian (23) (excel-graph, 2026-10-18).
-Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), format.rs (years, `e`, `g`).
+Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), formatter/lunar_calendar.rs (lunar tables), format.rs (years, `e`, `g`).
 Status: VERIFIED (excel-graph)
-Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925
+Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759
 
 ## Displayed text (`Range.text`) of a formatted cell (T-1610)
 Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not
