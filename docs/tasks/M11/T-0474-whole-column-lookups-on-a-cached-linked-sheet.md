@@ -3,7 +3,7 @@ id: T-0474
 title: "Whole-column lookups on a cached linked sheet keep full length (virtual blank tail)"
 milestone: M11
 lane: functions-lookup
-status: in-progress
+status: todo
 priority: P3
 size: S
 tier: opus
@@ -33,3 +33,16 @@ values instead of the array bound's `#ERROR!`, with the same full-length search 
 
 ## Out of scope
 - Sheets with no cached data (T-0457 done; T-0472).
+
+## Handoff
+Claimed by an opus run that had too little session budget left to finish it; no code written. Notes from reading
+the code (data, check them):
+- The table argument reaches `Model::lookup_table` (lookup_and_reference/lookup.rs) already evaluated: an external
+  range (`Node::WrongRangeKind`) is built by `Model::external_area_value` (external_links.rs) as a full array, which
+  `check_array_size` refuses for 1048576 x 3, hence `#ERROR!`.
+- So VLOOKUP/HLOOKUP/MATCH need to see the node first: `Model::cached_external_area(node, cell)` gives the
+  `ExternalArea` (first/last row and column, `cache`) without building anything; `is_external_array` shows the pattern.
+- A third `LookupTable` variant (lookup_table.rs) holding the `ExternalArea` could serve `rows`/`columns`/`get` from
+  `cached_value` and `first_row`/`first_column` as `SearchVector::with_len(cached prefix, full length)`; the cached
+  prefix ends at the cache's last used row or column. `lookup.rs` `ResultVector` and the line-67 vector builder
+  match on the variants too.
