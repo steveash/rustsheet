@@ -3,7 +3,7 @@ id: T-2432
 title: "KURT and F.TEST over data whose squares overflow (1E+200): Excel's #DIV/0! and #NUM! (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -77,12 +77,12 @@ Cells:
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A375
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 29 known-failure lines (11 from T-2255, 18 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2255 and T-2256): these 29 known-failure lines (11 from T-2255, 18 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The probe cells are in eval/ and statistics.md's entry has the rule and an "Ours:" line naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] (no new probe needed: the gen-m9 and probes/t2436 cells pin each rule) The probe cells are in eval/ and statistics.md's entry has the rule and an "Ours:" line naming this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The cancellation of finite data (T-1749).
@@ -92,3 +92,11 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+KURT and SKEW.P are `#DIV/0!` and Z.TEST and T.TEST `#NUM!` where the sum of squares overflows (F.TEST's cells already
+passed on main). The three T.TEST error-order cells (A59, A100, A194) were error order, not overflow: either sample's own
+error now comes before tails/type, and tails and type are read before either is range-checked. Fixing them surfaced
+WEIBULL's NaN cdf (gen-m9 7f7ca726c3f68554 A308), now the closed form 1 - EXP(-(x/beta)^alpha), which also fixes
+probes/t2436/abc2939ebd1e2365 A196. Rules in statistics.md "Overflowing squares (T-2432)". Eval: gen-m9 known failures
+3897 -> 3839 (58 fixed), probes 2446 -> 2410 (36 fixed), no regressions (against main plus T-2621).

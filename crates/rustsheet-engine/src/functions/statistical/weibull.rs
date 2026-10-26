@@ -47,16 +47,25 @@ impl Model {
         // Excel reports the overflow of (x/beta)^alpha, though the cdf's limit is 1:
         // `WEIBULL(1E+15,1E+15,TRUE,1)` and `WEIBULL.DIST(7,1E+8,0.3,"TRUE")` are #NUM!
         // (probes/t2475-stat-subexpressions P!A407, probes/t2496-fin-subexpressions P!A90).
-        if !(x / beta).powf(alpha).is_finite() {
+        let t = (x / beta).powf(alpha);
+        if !t.is_finite() {
             return Err(num_error(cell));
         }
         // statrs::Weibull: shape = k (alpha), scale = lambda (beta)
         let dist = Weibull::new(alpha, beta).map_err(|_| num_error(cell))?;
-        // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes/t2693-subnormal-weibull A2;
-        // docs/excel-semantics/numbers.md "Distribution densities").
+        // statrs forms x^alpha * beta^-alpha, which is inf * 0 = NaN where one power overflows
+        // and the other underflows. Excel's cdf is a number there, as 1 - EXP(-(x/beta)^alpha):
+        // `WEIBULL(0.2,1E+15,0.2,TRUE)` is 0.6321205588285577 (probes/t2436/abc2939ebd1e2365
+        // A196) and `WEIBULL(1E+15,42,10000000001,TRUE)` a number, read through
+        // `VLOOKUP(..,TAN(3.14159))`'s `#VALUE!` (gen-m9 7f7ca726c3f68554 A308). Its density
+        // there stays #NUM! (`WEIBULL(3,3.14159E+15,<about 1.5E+6>,FALSE)`, 9e2225ead8a6a07b A340).
         let result = if cumulative {
-            dist.cdf(x)
+            Some(dist.cdf(x))
+                .filter(|p| !p.is_nan())
+                .unwrap_or_else(|| -(-t).exp_m1())
         } else {
+            // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes/t2693-subnormal-weibull
+            // A2; docs/excel-semantics/numbers.md "Distribution densities").
             flush_subnormal(dist.pdf(x))
         };
         if !result.is_finite() {
