@@ -687,7 +687,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
-                return match format_fraction(value, p, fraction) {
+                return match format_fraction(value, p, fraction, &locale.numbers.symbols.group) {
                     Some(text) => Formatted {
                         text,
                         color: p.color,

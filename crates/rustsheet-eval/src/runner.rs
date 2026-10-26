@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::argument_coverage::{self, ArgumentSeen};
 use crate::case::{
     canonical_key, cell_key, is_excel_evidence, kept_nonzero_formulas, load_oracle,
     split_qualified, CaseSpec, CASE_FORMAT,
@@ -110,6 +111,10 @@ pub struct CaseResult {
     /// the milestone function scope follows the names a formula calls (T-1970).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub defined_names: BTreeMap<String, String>,
+    /// The argument classes the case's Excel-evidence cells pass each function (T-0077). Only the
+    /// run's own report reads them, so they are never serialized.
+    #[serde(skip)]
+    pub arguments: Vec<ArgumentSeen>,
 }
 
 #[derive(Debug, Clone)]
@@ -184,6 +189,7 @@ impl CaseResult {
             cells: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            arguments: Vec::new(),
         }
     }
 
@@ -292,7 +298,9 @@ pub fn run_case(
                 let extent = prepared.extent.iter();
                 cells.extend(extent.flat_map(|e| e.unexpected_cells(evaluated.as_ref())));
                 let text = text_expect::score(evaluated.as_ref(), &prepared.text);
-                Ok::<_, String>((cells, scored, text))
+                let sheets = evaluated.sheet_names();
+                let arguments = argument_coverage::observe(evaluated.as_ref(), &sheets, &cells);
+                Ok::<_, String>((cells, scored, text, arguments))
             }));
             let _ = tx.send(outcome);
         });
@@ -320,8 +328,9 @@ pub fn run_case(
             result.status = CaseStatus::EngineError;
             result.message = Some(e);
         }
-        Ok(Ok(Ok((cells, scored, text)))) => {
+        Ok(Ok(Ok((cells, scored, text, arguments)))) => {
             result.text = text;
+            result.arguments = arguments;
             // Spill-extent cells (after `scored`) all fail but stay out of `checked` (decision 0063).
             result.checked = scored;
             result.passed = cells.iter().filter(|c| c.verdict.is_pass()).count();
