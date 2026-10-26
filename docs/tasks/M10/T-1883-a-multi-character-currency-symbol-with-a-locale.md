@@ -3,7 +3,7 @@ id: T-1883
 title: "A multi-character currency symbol with a locale ([$USD-40C]) prints in date sections"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
