@@ -3,7 +3,7 @@ id: T-2524
 title: "Enclosing statistical calls over database-function arguments: error choice and last-ulp values (T-1390 follow-up)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
