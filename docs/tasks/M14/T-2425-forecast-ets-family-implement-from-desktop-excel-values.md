@@ -206,6 +206,23 @@ Cells:
 - gen-m9/ec2a1d9194a84396.case.json (7): Calc!A18, A75, A136, A141, A259, A295, A310
 - gen-m9/fa25422d6f18c157.case.json (18): Calc!A3, A5, A17, A29, A75, A81, A100, A122, A134, A136, A181, A212, A220, A231, A263, A278, A360, A365
 
+T-2676 sweep (gen-m9 round 2: ACCRINT, CONVERT, GEOMEAN, VAR.P, VAR.S outer calls; gap triage 2026-10-26, excel-graph):
+4 cells where a FORECAST.ETS-family call with no argument error of its own is nested in the outer call, which passes
+the web's `#N/A` on (ours `#N/IMPL!`). The other arguments were evaluated with the engine and none decides the result
+before it.
+- gen-m9/290180acf017709c Calc!A98 `=CONVERT((FORECAST.ETS.SEASONALITY(Data!D9:D11,Data!B$12)+((-1)/Data!C1)),INDEX(Data!C2:D5,3,WORKDAY(38128,7)),"F")`:
+  Excel #N/A, ours #N/IMPL! (CONVERT reports the number's error first; the from_unit is #REF!)
+- gen-m9/932b33b1ef8b7608 Calc!A336 `=VAR.S(LOG10(FORECAST.ETS.STAT((-2.5),Data!E5,5,4)),{100000000.1,100000000.2,100000000.3},MIN(Data!E10:E11))`:
+  Excel #N/A, ours #N/IMPL!
+- gen-m9/f81bd3b6dc373e5c Calc!A64 `=GEOMEAN((Data!$C10-FORECAST.ETS.STAT(Data!E1:E12,{1;2;...;24},Data!D2,2,0,5)),{3,3,3,3},TEXTBEFORE(..))`:
+  Excel #N/A, ours #N/IMPL!
+- gen-m9/f81bd3b6dc373e5c Calc!A331 `=CONVERT(WORKDAY(54399,-27,FORECAST.ETS.CONFINT(Data!$E2,7,Data!E4)),"dyn","yd")`:
+  Excel #N/A, ours #N/IMPL!
+Cells:
+- gen-m9/290180acf017709c.case.json (1): Calc!A98
+- gen-m9/932b33b1ef8b7608.case.json (1): Calc!A336
+- gen-m9/f81bd3b6dc373e5c.case.json (2): Calc!A64, A331
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 17 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -213,6 +230,8 @@ Cells:
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 940 known-failure lines (877 from T-2255, 63 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2676): the 4 known-failure lines listed under "T-2676 sweep" in Context disappear from
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Desktop values for these cases exist (T-1553) and the cells are scored against them; the family's algorithm is
       specified (docs/specs/) before it is implemented.
 - [ ] `make check` green; reviewers approve.
