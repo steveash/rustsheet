@@ -119,8 +119,9 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// 39).
 /// So `[$-fr_FR]` is 0x10E00B, the Saka calendar over an LCID with no locale, `[$-g]` is Italian
 /// (0x10), `[$-3gC]` French (0x40C), `[$-0_]` Macedonian (0x2F) and `[$-~]` Lithuanian (0x27)
-/// (probes/t1924-locale-tag-extended-hex, text-locale-calendars A135-A145). The sum wraps at 32
-/// bits. Tags longer than eight characters and non-ASCII tags are unprobed and resolve to nothing.
+/// (probes/t1924-locale-tag-extended-hex, text-locale-calendars A135-A145). Of the other characters
+/// below `a` only `_` is probed; `-` as -3 and the wrap at 32 bits are inferred. Tags longer than
+/// eight characters and non-ASCII tags are unprobed and resolve to nothing.
 fn extended_hex(tag: &str) -> Option<u32> {
     if tag.is_empty() || tag.len() > 8 || !tag.is_ascii() {
         return None;

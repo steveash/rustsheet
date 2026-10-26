@@ -20,7 +20,8 @@ From T-1924 (2026-10-26): tables reached by the extended hex reading of a tag. T
 Slovenian (`[$-{]`), 0x27 Lithuanian (`[$-~]`), 0x28 Tajik (`[$-28]`, `[$-428]`: "март|чоршанбе", "AM"), 0x2F Macedonian
 (`[$-0_]`, `[$-_]`) and 0x3F Kazakh (`[$-1_]`). Cells: probes/t1924-locale-tag-extended-hex A1-A4, A10, A28, A29, B1-B4,
 B10, B28, B29, and text-locale-calendars A140. Also open there: B22, where `[$-_409]` (0xF409) prints "6 PM" while
-`[$-x_y]` (0x2412) prints English, so find where Excel falls back to the language.
+`[$-x_y]` (0x2412) prints English, so find where Excel falls back to the language. Probe the plain hex tags `[$-2412]` and `[$-2F409]` too, to learn
+whether the extended path (`resolve_extended`, neutral LCIDs only) really differs from `resolve_lcid`'s fallback.
 
 ## Acceptance criteria
 - [ ] A probe case covers the variants above; its cells pass; number-formats.md records which differ from the language fallback.
