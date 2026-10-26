@@ -707,6 +707,10 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   P1) and printed under `0` (`0 ?/?` on 1/3 "0 1/3", 0e3d8eba W4). The minus leads, also on a value that
   rounds to zero: `# ?/4` on -0.5 "- 2/4" (9a8b7d68 A1), `# ?/2` on -1/7 "-0    " (bfb1a4b0 S4), `0 ?/?`
   on -1/7 "-0 1/7" (71ad5f93 G7).
+  With no integer part a numerator that rounds to zero takes no minus: `?/100` on -0.001 "0/100" and `?/00`
+  "0/01" (probes/fraction-format-features F9, F13, excel-graph, T-2074).
+- **Grouping:** a comma between integer placeholders groups the integer digits: `#,##0 ?/4` on 1234.5
+  "1,234 2/4" (probes/fraction-format-features I10, T-2074).
 - **Padding:** `?` pads the numerator on the left and the denominator on the right (`# ???/???` on 1.5
   "1   1/2  ", 05c1c646 C3; `??/??` on 0.5 " 1/2 "); `#` does not (`# #/#` on 0.5 "1/2", on 1234567890
   "1234567890", 039accab K8, K2). Under a `#` numerator the literal between the integer and the
