@@ -1932,7 +1932,7 @@ common years. Examples: 31 January 2010 to 30 January 2020 is 9 + 364/366 on bas
 not DAYS360 over the whole term (2685/360). On basis 0 this equals the old DAYS360/360 on the probed dates but for the 29 February
 settlement. Counted back from maturity instead, or with 29 February anniversaries on 28 February,
 or with the anniversary year's or the settlement year's length on basis 1, the fit is worse (lab arithmetic,
-bit-exact / within 4 ulp of 120: this rule 59/115; forward with 28 February 46/103 at best; back from maturity 48/92 at
+cells bit-exact / within 4 ulp, of 120: this rule 59/115; forward with 28 February 46/103 at best; back from maturity 48/92 at
 best; the days over a year 8/14). The 5 cells left (A9, C11, C20, A26, A38) sit at PRICE's root (next step 1e-12 to
 1e-16) and are 4e-15 to 1e-14 off, the root-level last digits of T-2788, with their twins in the other columns
 within 2 ulp. gen-m9/ba4ddb817a8e700e A17 (basis 1, 20 + 284/365) becomes bit-exact; gen-m9/81bcdc0bec0c8e6b A189
