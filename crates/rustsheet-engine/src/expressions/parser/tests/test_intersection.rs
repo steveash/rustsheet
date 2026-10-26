@@ -104,19 +104,22 @@ fn intersection_operands_may_be_parenthesized_or_calls() {
 fn whitespace_elsewhere_is_not_an_intersection() {
     let mut parser = parser();
     let cases = [
-        (" 1 + 2 ", "1+2"),
-        ("SUM( A1 , B1 )", "SUM(A1,B1)"),
-        ("SUM( A1:B2 )", "SUM(A1:B2)"),
-        ("( A1 )", "(A1)"),
+        // The spaces Excel keeps print back (SPEC-0023): not those at the end, before a comma,
+        // in an array constant or around `:`.
+        (" 1 + 2 ", " 1 + 2"),
+        ("SUM( A1 , B1 )", "SUM( A1, B1 )"),
+        ("SUM( A1:B2 )", "SUM( A1:B2 )"),
+        ("SUM( A1 : B2 )", "SUM( A1:B2 )"),
+        ("( A1 )", "( A1 )"),
         ("{ 1 , 2 ; 3 , 4 }", "{1,2;3,4}"),
-        ("A1 + B1", "A1+B1"),
-        ("A1 -B1", "A1-B1"),
-        ("A1 & B1", "A1&B1"),
-        ("A1 = B1", "A1=B1"),
-        ("A1 * B1", "A1*B1"),
-        ("A1 ^ B1", "A1^B1"),
-        ("A1 %", "A1%"),
-        ("IF( A1 , B1 , C1 )", "IF(A1,B1,C1)"),
+        ("A1 + B1", "A1 + B1"),
+        ("A1 -B1", "A1 -B1"),
+        ("A1 & B1", "A1 & B1"),
+        ("A1 = B1", "A1 = B1"),
+        ("A1 * B1", "A1 * B1"),
+        ("A1 ^ B1", "A1 ^ B1"),
+        ("A1 %", "A1 %"),
+        ("IF( A1 , B1 , C1 )", "IF( A1, B1, C1 )"),
         ("A1:B2 ", "A1:B2"),
     ];
     for (formula, expected) in cases {

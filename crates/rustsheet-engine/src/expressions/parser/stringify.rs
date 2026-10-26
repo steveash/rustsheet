@@ -703,6 +703,7 @@ fn stringify(
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
         UnaryPlus { child } => format!("+{}", wrap(sub(child), binding(child) < binding(node))),
+        Spaced { space, child } => space.around(&sub(child)),
         ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
@@ -795,6 +796,11 @@ enum Binding {
 }
 
 fn binding(node: &Node) -> Binding {
+    // Whitespace binds as the operand it is written around.
+    let mut node = node;
+    while let Node::Spaced { child, .. } = node {
+        node = child;
+    }
     match node {
         Node::CompareKind { .. } => Binding::Compare,
         Node::OpConcatenateKind { .. } => Binding::Concat,

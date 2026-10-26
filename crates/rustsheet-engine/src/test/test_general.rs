@@ -27,7 +27,7 @@ fn test_model_simple_evaluation() {
     let result = model._get_text_at(0, 1, 1);
     assert_eq!(result, *"4");
     let result = model._get_formula("A1");
-    assert_eq!(result, *"=1+3");
+    assert_eq!(result, *"= 1 + 3");
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn test_model_dependencies() {
     let result = model._get_text_at(0, 1, 2);
     assert_eq!(result, *"42");
     let result = model._get_formula("B1");
-    assert_eq!(result, *"=A1*2-4");
+    assert_eq!(result, *"= A1* 2-4");
 
     model
         .set_user_input(0, 2, 1, "=SUM(A1, B1)".to_string())
@@ -219,7 +219,7 @@ fn test_booleans() {
     assert_eq!(model._get_text_at(0, 5, 2), *"TRUE");
     assert_eq!(model._get_text_at(0, 6, 2), *"TRUE");
 
-    assert_eq!(model._get_formula("E1"), *"=IF(FALSE,TRUE,FALSE)");
+    assert_eq!(model._get_formula("E1"), *"=IF(FALSE, TRUE, FALSE)");
 }
 
 #[test]

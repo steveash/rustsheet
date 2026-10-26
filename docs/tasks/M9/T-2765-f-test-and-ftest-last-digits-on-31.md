@@ -60,8 +60,15 @@ Owned gen-m9 cells (known-failure lines in eval/baseline/gen-m9.txt), each with 
 - gen-m9/f2bd5f380ec002bf.case.json (3): Calc!A105, A243, A335
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A188
 
+T-2676 sweep (gen-m9 round 2, gap triage 2026-10-26, excel-graph): 1 more cell, an FTEST nested in ACCRINT, not
+visibly off. gen-m9/932b33b1ef8b7608 Calc!A168 `=ACCRINT(33527,35220,36906,FTEST(Data!A1:A12,Data!A5:C6),3572,2,4)`:
+Excel 6831.861360134758, ours 6831.861360134756. ACCRINT is linear in the rate here (`ACCRINT(33527,35220,36906,1,3572,2,4)`
+is 33031.07777777778 in ours) and our FTEST is 0.206831318254199; the rate two ulps up, 0.20683131825419906, gives Excel's
+value in every product order, so the innermost difference is FTEST, about 2 ulp low (the same class as the cells above).
+- gen-m9/932b33b1ef8b7608.case.json (1): Calc!A168
+
 ## Acceptance criteria
-- [ ] These 31 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`) with no new ones in any
+- [ ] These 32 known-failure lines (the 31 F.TEST and FTEST cells plus the T-2676 cell 932b33b1ef8b7608 A168) disappear from eval/baseline/gen-m9.txt (`make eval-baseline`) with no new ones in any
       baseline, or the Outcome records the candidates scored with the f-test fit and their bit-exact counts (decision
       0056 time box) and the cells still open move to a follow-up.
 - [ ] statistics.md "F.TEST / FTEST: larger variance on top" cites these cells for the model that matches them.

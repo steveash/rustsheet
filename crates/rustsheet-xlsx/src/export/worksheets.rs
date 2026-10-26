@@ -27,9 +27,7 @@ use itertools::Itertools;
 use rustsheet_engine::{
     expressions::{
         parser::{
-            static_analysis::{
-                add_implicit_intersection, remove_redundant_implicit_intersection, StaticResult,
-            },
+            static_analysis::{add_implicit_intersection, remove_redundant_implicit_intersection},
             stringify::{to_excel_array_formula_string, to_excel_string, to_rc_format},
             Node,
         },
@@ -38,6 +36,7 @@ use rustsheet_engine::{
         utils::number_to_column,
     },
     types::{ArrayKind, Cell, FormulaValue, Link, SpillValue, Worksheet},
+    ParsedFormula,
 };
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
@@ -210,7 +209,7 @@ fn legacy_reading_intersects(node: &Node) -> bool {
 
 pub(crate) fn get_worksheet_xml(
     worksheet: &Worksheet,
-    parsed_formulas: &[(std::sync::Arc<Node>, StaticResult)],
+    parsed_formulas: &[ParsedFormula],
     dimension: &str,
     is_sheet_selected: bool,
 ) -> String {
@@ -258,7 +257,7 @@ pub(crate) fn get_worksheet_xml(
     // Per shared formula, whether a legacy reading of it would add an `@` (T-1552).
     let legacy_reading: Vec<bool> = parsed_formulas
         .iter()
-        .map(|(node, _)| legacy_reading_intersects(node))
+        .map(|(node, ..)| legacy_reading_intersects(node))
         .collect();
     let table_formulas = super::data_tables::anchor_formulas(&worksheet.data_tables);
     for row_index in row_indices {

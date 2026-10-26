@@ -1479,9 +1479,15 @@ cell. This settles the calipers desktop goldens `formulas_math_basic` / `formula
 9.99999999999999E+307)`, `#NUM!`) and K75 (the negative exponent, 0).
 Evidence: probes/power-huge-exponent (POWER) and power-op-huge-exponent (`^`), 15 bases by 20 exponents each, oracle
 excel-graph, 2026-10-25.
+Edge (T-2696): the switch is consistent with the double product `|y|·ln x` overflowing (not a fixed exponent cutoff). For
+y = 9.99999999999999E+307 it lies between 0.165 (`#NUM!`; 0 for the negative exponent) and 0.166 (0; `#DIV/0!`), where
+the predicted ln x = -1.797 gives x about 0.1659. Bases 0.15 to 0.2 with y = 1.5E+308 and 1.7E+308 are all `#NUM!` (0
+negative), while 0.5 and 0.9 with the same exponents, and every base with y = 1E+307 or 5E+307, are 0 (`#DIV/0!`
+negative). `^` agrees on every cell. Evidence: probes/power-overflow-edge (172 cells, POWER and `^`), oracle
+excel-graph, 2026-10-26; the engine already matched all of them.
 Status: VERIFIED (excel-graph)
 Implemented in: `positive_power` in crates/rustsheet-engine/src/arithmetic/power.rs
-Tasks: T-2661
+Tasks: T-2661, T-2696
 
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
@@ -1700,6 +1706,17 @@ Single values (probes/geomean-single-and-copies Single!A1-A15): GEOMEAN of 3, 0.
 7, 0.3, 1.1, PI(), 2^-1022 and 1E+307, of a cell, a one-cell range and a range with text beside one
 number, is the value unchanged, where `exp(ln v)` is not (3.0000000000000004 for 3,
 1.0000000000000237E-300 for 1E-300).
+Products far from 1 (T-2676 sweep): Excel stays faithful where `r = exp(ln(P)/n)` does not. The rounding error of
+`ln(P)/n` grows with its size, so r drifts from the exact root as P leaves 1, while Excel's result stays within one ulp
+of the exact root of the double P (correctly rounded on 13 of 16 cells, at most 0.82 ulp off on the rest). Examples
+(exact root to 60 digits; Excel / r, in ulps of the result): gen-m9/290180acf017709c A371, P = 9.5476E+17, n = 3,
+Excel 984687.7727545286 (-0.45) and r 984687.7727545269 (-14.45), visibly off; f81bd3b6dc373e5c A139, P = 1.62E+11, n = 3
+(+0.02 / -5.98), visibly off; 290180acf017709c A241, P = 2.5125E+28, n = 4 (-0.41 / +11.59); A236, `GEOMEAN` of 1E+15
+and 1 (-0.43 / -5.43); A396, P = 5E-16, n = 2 (+0.12 / -2.88). The other 11 such cells are listed in T-2794. On the same
+sweep's 12 cells where r is faithful but one ulp off Excel, Excel is up to 0.94 ulp from the exact root (f81bd3b6dc373e5c
+A249) (T-1284). So in range Excel's root looks like a faithful library power, not `exp(ln(P)/n)` in doubles.
+Evidence (this paragraph): gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c GEOMEAN cells (excel-graph,
+2026-10-26, T-2676); P and n read with PRODUCT and COUNT of the same arguments in the engine.
 Evidence: probes/geomean-in-range-many (column A: 0.5+MOD(k*i,d)/d over 20-900 values; column B: n
 copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single: one value; Copies:
 n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
@@ -1708,7 +1725,7 @@ probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 a
 Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
 scored above, plus 8 in geomean-same-product and subtotal-reference-operands-d H28).
 Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108, T-1123, T-0288
+Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
@@ -2148,7 +2165,7 @@ Which error wins when both are bad: see the T-2423 probe below.
 ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)` is five "DLXI" (forms
 1, 2, 0.5, 3, 4; the 123456789.123 element is `#VALUE!` and the HSTACK pads `#N/A`, both dropped by ignore 2: gen-m7/f7e94a817e5385ac
 Calc!A1563, excel-graph, 2026-10-22). Implemented (T-2410): both parameters take the `Lift` kind (`LIFT_1_OF_2`), `fn_roman` runs per element. The array number, a multi-cell range and an array of booleans as the form are evidenced below (T-2423). Before T-2410 ours was `#N/IMPL!` (no lifting-table entry).
-ROMAN probed (T-2423, probes/roman-lift-forms, excel-graph, 2026-10-23): `ROMAN({1;4},0)` is the 2x1 "I", "IV"; `ROMAN(4,Data!A1:A2)` (forms 0, 4) is "IV", "IV"; `ROMAN(Data!A1:A2,0)` (numbers 0, 4) is "", "IV"; `ROMAN(4,{TRUE,FALSE})` is "IV", "IV" and `ROMAN(4,TRUE)` is "IV". `ROMAN(499,{TRUE,FALSE})` is "CDXCIX", "ID" (TRUE is form 0, FALSE is form 4) and `ROMAN(499,Data!A1:A2)` (forms 0, 4) is "CDXCIX", "ID"; `ROMAN(499,{1,2,3,4})` is "LDVLIV", "XDIX", "VDIV", "ID" (the 4-based results above cannot tell the forms apart). When both are bad the form's error wins over a negative number for `ROMAN(-5,NA())` (`#N/A`; ours `#VALUE!`, T-2523), and the text form `ROMAN(-5,"x")` is `#VALUE!`; `ROMAN(4000,9)` is `#VALUE!`.
+ROMAN probed (T-2423, probes/roman-lift-forms, excel-graph, 2026-10-23): `ROMAN({1;4},0)` is the 2x1 "I", "IV"; `ROMAN(4,Data!A1:A2)` (forms 0, 4) is "IV", "IV"; `ROMAN(Data!A1:A2,0)` (numbers 0, 4) is "", "IV"; `ROMAN(4,{TRUE,FALSE})` is "IV", "IV" and `ROMAN(4,TRUE)` is "IV". `ROMAN(499,{TRUE,FALSE})` is "CDXCIX", "ID" (TRUE is form 0, FALSE is form 4) and `ROMAN(499,Data!A1:A2)` (forms 0, 4) is "CDXCIX", "ID"; `ROMAN(499,{1,2,3,4})` is "LDVLIV", "XDIX", "VDIV", "ID" (the 4-based results above cannot tell the forms apart). When both are bad the form's error wins over a negative number for `ROMAN(-5,NA())` (`#N/A`, implemented in T-2523), and the text form `ROMAN(-5,"x")` is `#VALUE!`; `ROMAN(4000,9)` is `#VALUE!`.
 COMBINA lifts over arrays (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `COMBINA({7;1},4)` is the 2x1 209.99999999999997 (COMBIN(10,4), as above), 1; `COMBINA(Data!E7:E8,4)` and `COMBINA(4,{1;2})` are
 2 rows; `COMBINA(WRAPROWS(E6:E12,1,1),4)` is 7x1: #NUM! (blank is 0), 209.99999999999997, #NUM!, 5, #VALUE! ("abc"), #NUM!, #VALUE!. The gen-m7 `#VALUE!` of
 `VSTACK(COMBINA(..),CHOOSE(3,..))` (f19581ac44da1653 A3357) is the CHOOSE: a scalar-error argument makes VSTACK that error (probes/vstack-scalar-error, T-1695)
@@ -2243,6 +2260,13 @@ not all at the tightest ties: x = 8242 lies 0.04 of a 64-bit ulp from a 64-bit v
 rounds it the other way. So Excel's own tangent carries an error up to about half a 64-bit ulp, and its last bit at such a near-tie
 is not predictable from the exact value. Those 21 cells stay known failures of that probe (as decision 0112 keeps LN's near-ties).
 Ours: implemented (`excel_tan` in functions/math_and_trigonometry/trig.rs, T-2147). COT, which is 1/TAN, inherits the change.
+COT at the same 150 arguments (probes-numeric/t2664-cot-double-rounding, excel-graph, 2026-10-26, T-2664): ours, `1/` the
+double-rounded `excel_tan` (quotient rounded twice), matches 131 of 150 Excel cells, against 129 for TAN itself. 17 misses are 1 ulp and 2 are
+2 ulp (rows 49 and 106); the 19 (rows 8, 22, 49, 58, 59, 66, 73, 81, 106, 107, 111, 115, 128, 130, 132, 135, 140, 145, 149) are all rows
+where TAN also misses by 1 ulp, and dividing a small tangent into 1 can double the gap. TAN's misses at rows 25 and 123 come out right in COT.
+So COT inherits TAN's double rounding and its unpredictable near-tie noise. Simple alternatives fit far worse: on the 38 cells with |x| <= 1.5
+(where Excel's limited-precision pi does not matter yet; no COT miss lies there) ours matches all 38, while the exact cotangent rounded once, the cotangent rounded
+to 64 bits then 53, and the quotient of a 64-bit tangent each match 20 (independent fit during review, T-2664). Ours stays as is.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 
