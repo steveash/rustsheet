@@ -303,11 +303,29 @@ forms (gen-m1/6462bf910ef9f28f, probes/lookup-argument-edges). The full set stor
 `+"a"`).
 Ours: matches since T-2723. A kept plus is a `Node::UnaryPlus`, the identity, which every analysis sees through as it
 sees through a written group. The fold is decided in `parse_power`. Two cells still fail: the tree keeps no whitespace, so
-`=+ 5` and `=+ "a"` print `=+5` and `=+"a"` (C24, C25; T-2769).
+`=+ 5` and `=+ "a"` print `=+5` and `=+"a"` (C24, C25; "Formula text keeps typed whitespace" below, T-2776).
 Unprobed (T-2772): a stored `+5` loaded from a file (we fold it on load, as typing does), and the static readings
 where an analysis matches a literal under a plus (`N(IF(+TRUE,B1:B3))`, `INDIRECT(+"K1")`, legacy `ABS(+{5})`,
 `LET(+x,1,x)`).
 Status: VERIFIED (excel-graph)
+
+## Formula text keeps typed whitespace, except at the end, before a comma and in an array constant
+Rule: typed (Graph PATCH), Excel keeps the spaces and line feeds written in a formula, and FORMULATEXT prints them back:
+around a binary operator (`=1 + 2`, `=1 +2`, `=1+ 2`, `=1  +  2`, `=B1 + B2`, `=1+` line feed `2`), after `=` (`= 1+2`),
+after a unary sign (`=- 5`, `=-+ 5`, `=+  5`, and `=+ 5`, `=+ "a"` of T-2723), before `%` (`=5 %`), after `(` and
+before `)` of a call or a group (`=SUM( 1 )`, `=SUM(B1:B2 )`, `=(1 )+2`, `=( 1)+2`) and after a comma (`=SUM(1, 2)`).
+It drops three kinds: whitespace at the end of the formula (`=1+2 ` prints `=1+2`, `=1=1 ` prints `=1=1`), whitespace
+before a comma (`=SUM(1 ,2)` prints `=SUM(1,2)`, `=IF( TRUE ,1,2)` prints `=IF( TRUE,1,2)`) and whitespace inside an
+array constant (`={1, 2}` prints `={1,2}`). A plus that folds into a number literal keeps the spaces before it:
+`=  +5` prints `=  5`. Whitespace never changes a value (every probed value is the space-free formula's).
+Evidence: probes/t2769-formula-text-whitespace A1:C23 (excel-graph `entered`, 2026-10-26, T-2769).
+Unprobed (T-2776): whether a formula stored in a file keeps its whitespace on load, and whitespace before the `(` of a
+call, around `:` and `!`, and inside a structured reference.
+Ours: the tree keeps no whitespace, so every formula prints canonical, space-free text and the cells with kept
+whitespace fail (and probes/t2723-unary-plus-formula-text C24, C25). Keeping it is a design change with a spec first
+(T-2776): `Node` must not grow, and shared formulas share one tree.
+Status: VERIFIED (excel-graph)
+Tasks: T-2769, T-2776
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every
