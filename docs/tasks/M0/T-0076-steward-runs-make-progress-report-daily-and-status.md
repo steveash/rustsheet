@@ -3,7 +3,7 @@ id: T-0076
 title: "Steward runs make progress-report daily and status.md drops its duplicated scoreboard (owner-approved routine change)"
 milestone: M0
 lane: harness
-status: blocked
+status: in-progress
 priority: P1
 size: S
 tier: opus
@@ -49,9 +49,9 @@ owner's planning session prepares the PR once its dependencies are done. That se
 are done: `python3 scripts/tasks.py list | grep -E 'T-007[125]'` shows all three `done`.
 
 ## Acceptance criteria
-- [ ] The steward block of docs/process/routines.md is byte-identical to "New steward prompt"
+- [x] The steward block of docs/process/routines.md is byte-identical to "New steward prompt"
   above.
-- [ ] .claude/skills/steward/SKILL.md is updated in three places:
+- [x] .claude/skills/steward/SKILL.md is updated in three places:
   - the "Fifteen-digit parity checkpoint" rule no longer copies the two lines into docs/status.md,
     reads "was the previous run also met" from docs/progress/history.json, and cites decision 0118
     for the Phase 1 measure;
@@ -63,10 +63,10 @@ are done: `python3 scripts/tasks.py list | grep -E 'T-007[125]'` shows all three
     a Phase 1 line in docs/status.md, which leaves the snapshot;
   - the order is stated: `make eval`, then `make eval-lower-visible-lock`, then
     `make progress-report` and the `progress-report` skill, matching step (2) of the prompt.
-- [ ] docs/status.md gets the link line from SPEC-0022 as the first line under its intro. The
+- [x] docs/status.md gets the link line from SPEC-0022 as the first line under its intro. The
   SPEC-0022 "Removed" items are gone from the snapshot, and its "Kept" items stay. The "Needs
   owner" entry for this task is removed.
-- [ ] A decision record covers the protected paths. `make check` green; reviewers approve,
+- [ ] A decision record covers the protected paths (done: decision 0124). `make check` green; reviewers approve,
   including explicit architecture and security approval.
 - [ ] The first steward PR after merge carries docs/progress.md, docs/progress/ and a new
   history.json row. Record it in the Outcome.
@@ -74,3 +74,27 @@ are done: `python3 scripts/tasks.py list | grep -E 'T-007[125]'` shows all three
 ## Out of scope
 - Creating or editing the real routine (owner only).
 - A CI freshness gate on the page (decision 0079).
+
+## Outcome
+- In progress (2026-10-26, the owner's planning session, per "How it lands"). Prepared on
+  branch `agent/harness/T-0076-steward-progress`; no PR is open yet.
+- T-0071 and T-0072 are done on `main`. T-0075 (the `progress-report` skill, decision 0123) is
+  still on its unmerged branch; the steward-skill text here matches that skill's steps, and this
+  PR should merge after it.
+- docs/process/routines.md's steward block equals "New steward prompt" byte for byte (checked by
+  extracting both fenced blocks and diffing them). Drift check against `main`: the old prompt
+  had gained nothing since 2026-10-25 (routines.md last changed in T-0055), so the new prompt
+  drops only the per-suite scoreboard wording SPEC-0022 moves to the dashboard.
+- .claude/skills/steward/SKILL.md: new "Progress dashboard" rule (the order and SPEC-0022's
+  failure handling); the "Fifteen-digit parity checkpoint" rule reads history.json and cites
+  decision 0118; a separate "Phase 1 exit" rule reads `v15_checkpoint.phase1_met`.
+- docs/status.md links the dashboard and drops the suite table, the fifteen-digit and Phase 1
+  lines and the milestone-exit measure lines; the "Needs owner" entry for this task is gone.
+  docs/README.md's status.md row no longer says "scoreboard".
+- Decision 0124 records the protected-path changes (0121, 0122 and 0123 are taken on other
+  branches).
+- **Owner action:** paste "New steward prompt" above into the live "rustsheet steward (daily)"
+  routine once this PR merges. Agents never edit routines (decision 0008).
+- Still open: `make check`, the reviewers (explicit architecture and security approval), and
+  recording the first steward PR that carries docs/progress.md, docs/progress/ and a new
+  history.json row.
