@@ -3,7 +3,7 @@ id: T-0472
 title: "Linked sheet with no cached data: one-cell XLOOKUP, refreshError #REF!, COUNTA count"
 milestone: M11
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
