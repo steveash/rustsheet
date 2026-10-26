@@ -20,6 +20,20 @@ impl Model {
             // H17, H18); evaluating through `evaluate_reference_arg` would turn a single-cell
             // reference into a range and lose the blank-cell `#VALUE!` (T-0947).
             match self.evaluate_node_in_context(arg, cell) {
+                // A one-cell range (`C11:C11`) to an empty cell is `#VALUE!` like the plain
+                // reference, beside other arguments too (gen-m9/775d053de498b8c7 A352,
+                // 329b177b5d5165ad A172; docs/excel-semantics/statistics.md "MODE: a one-cell range
+                // reference to an empty cell is #VALUE!").
+                CalcResult::Range { left, right }
+                    if left == right
+                        && matches!(self.evaluate_cell(left), CalcResult::EmptyCell) =>
+                {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "MODE: blank cell reference".to_string(),
+                    ));
+                }
                 CalcResult::Range { left, right } => {
                     let v = self.values_from_range(left, right)?;
                     values.extend(v.into_iter().flatten());

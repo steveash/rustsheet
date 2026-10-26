@@ -26,3 +26,29 @@ fn union_argument_to_the_a_variance_family_and_mode() {
         assert_eq!(model._get_text(cell), expected, "{cell}: {formula}");
     }
 }
+
+/// A one-cell range reference to an empty cell is `#VALUE!` in MODE, MODE.SNGL and MODE.MULT,
+/// beside other arguments too; a one-cell range holding a number is unchanged (gen-m9, T-2471).
+#[test]
+fn mode_one_cell_range_to_an_empty_cell_is_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "2");
+    model._set("A2", "2");
+    for (cell, formula) in [
+        ("C1", "=MODE(Z1:Z1)"),
+        ("C2", "=MODE.SNGL(1,1,Z1:Z1)"),
+        ("C3", "=MODE.MULT(Z1:Z1,{5})"),
+        ("C4", "=MODE(A1:A1,A1:A2)"),
+    ] {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, want) in [
+        ("C1", "#VALUE!"),
+        ("C2", "#VALUE!"),
+        ("C3", "#VALUE!"),
+        ("C4", "2"),
+    ] {
+        assert_eq!(model._get_text(cell), *want, "{cell}");
+    }
+}
