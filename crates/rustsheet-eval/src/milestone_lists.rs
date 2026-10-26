@@ -358,6 +358,7 @@ mod tests {
             cells,
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            arguments: Vec::new(),
         }
     }
 
