@@ -3,7 +3,7 @@ id: T-2470
 title: "Z.TEST and ZTEST: an error array is that error, one data value is #DIV/0! before sigma, a lone text or boolean cell is #N/A (gen-m9, 37 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
