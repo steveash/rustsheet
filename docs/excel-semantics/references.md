@@ -175,12 +175,14 @@ Tasks: T-0481
 ## A structured reference into a linked workbook is `#REF!`
 Rule: a table reference qualified by an external-link index, `[1]!Table3[#Data]`, is `#REF!` — not the
 `#BLOCKED!` an uncached cell or sheet reference of the same book gives ("External reference with no cached
-data is `#BLOCKED!`" below), and not a value, whatever the link part caches:
+data is `#BLOCKED!`" below), and not a value, with a link part that caches no table data:
 `VLOOKUP(E8,[1]!Table3[#Data],2,FALSE)` is `#REF!` with a link part that caches only the other book's
 `sheetNames` (empty `sheetData`, no `definedNames`).
 Evidence: corpus-bench/58994/1_58994_input.xlsx Sheet1!F8 (excel-graph sidecar, 2026-10-26, gap triage).
-Whether a link part that *does* cache the table's cells changes it is unprobed. Ours: `#ERROR!`, because the
-lexer reads `[1]!Table3` as one name identifier and the `[#Data]` after it does not parse (T-0482).
+Whether a link part that *does* cache the table's cells changes it is unprobed.
+Ours: the lexer reads `[1]!Table3[#Data]` as a structured reference whose table name keeps the prefix; no such table exists, so a stored formula is `#REF!`. A typed one stays a parse error
+(`#ERROR!`), which is not evidenced against Excel. The sheet-qualified form `[1]Sheet!Table3[Col]` and
+the empty-bracket `[1]!Table3[]` are unprobed (the latter lexes as an external name; T-0482).
 Status: VERIFIED (excel-graph)
 Tasks: T-0482
 

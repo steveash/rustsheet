@@ -67,7 +67,17 @@ impl Lexer {
             self.position = start;
             return None;
         }
-        Some(TokenType::Ident(format!("{prefix}!{name}")))
+        let name = format!("{prefix}!{name}");
+        // `[1]!Table3[#Data]`: a table of the linked workbook, one structured reference whose
+        // table name keeps the prefix (the parser gives it `#REF!`; T-0482).
+        if self.peek_char() == Some('[') {
+            let table_start = self.position;
+            if let Ok(token) = self.consume_structured_reference(&name) {
+                return Some(token);
+            }
+            self.position = table_start;
+        }
+        Some(TokenType::Ident(name))
     }
 
     /// `Sheet!LocalName` after a sheet prefix whose range did not parse: a defined name scoped to
