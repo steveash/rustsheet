@@ -45,9 +45,14 @@ measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/unio
       caps) stops at the limit within 10 s. The PR records the timings and the chosen weights.
 - [ ] `spend_work` uses `checked_sub`, and every charge is computed with saturating arithmetic. A unit test checks that a
       `u64::MAX` charge fails cleanly.
+- [ ] An audit of the text and regex functions (SUBSTITUTE with many matches, TEXTSPLIT, REGEX*, FIND/SEARCH on long text)
+      for work super-linear in their input within one call. Any such function gets a per-call cap charged to the formula
+      (SPEC-0024 "Known gaps"). The Outcome lists what was checked.
 - [ ] The criterion calc bench does not slow by more than 2% (PR notes the numbers).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
+- Build-once, read-many shapes (the LET variant, whole-array readers, text elements of LET-bound arrays). They stay
+  unbounded until T-2804 and T-2805 merge; land the three tasks in order.
 - Charging array cells read by aggregates (T-2804) and by the other whole-array readers (T-2805).
 - Dense single-range walks (T-2710, T-2711, T-2713).
