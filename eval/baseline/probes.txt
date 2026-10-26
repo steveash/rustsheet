@@ -3488,7 +3488,6 @@ F	probes/t2776-formula-text-whitespace-shapes.case.json	S!C5
 F	probes/t2776-formula-text-whitespace-shapes.case.json	S!E9
 F	probes/t2776-ws-after-bang.case.json	S!A1
 F	probes/t2776-ws-after-bang.case.json	S!C1
-F	probes/t2778-imsinh-sign-sweep.case.json	S!C2
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
