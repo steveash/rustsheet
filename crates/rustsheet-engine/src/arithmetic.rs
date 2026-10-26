@@ -455,19 +455,6 @@ pub(crate) fn broadcast_arrays(
 /// usual.
 const MAX_SPILL_CHECK_DEPTH: usize = 8;
 
-/// The rows and columns `value` has as an operand of a binary operator: a range's or an array's
-/// own, and 1 x 1 for a scalar (or a range across sheets, which is an error, not an array).
-fn operand_shape(value: &CalcResult) -> (usize, usize) {
-    match value {
-        CalcResult::Range { left, right } if left.sheet == right.sheet => (
-            left.row.abs_diff(right.row) as usize + 1,
-            left.column.abs_diff(right.column) as usize + 1,
-        ),
-        CalcResult::Array(array) => (array.len(), array.first().map_or(0, Vec::len)),
-        _ => (1, 1),
-    }
-}
-
 /// `#SPILL!` when a binary operator over `left` and `right` in the dynamic-array anchor `anchor`
 /// would broadcast ([`broadcast_arrays`]) to more cells than [`check_array_cells`] allows and to
 /// a shape that runs past the grid from `anchor`: Excel builds that array and cannot spill it,
@@ -478,12 +465,16 @@ pub(crate) fn unspillable_broadcast(
     left: &CalcResult,
     right: &CalcResult,
 ) -> Option<CalcResult> {
-    let (n1, m1) = operand_shape(left);
-    let (n2, m2) = operand_shape(right);
-    let (rows, columns) = (n1.max(n2), m1.max(m2));
-    if check_array_cells(rows, columns).is_none() {
+    // A range across sheets is an error as an operand, not an array.
+    let across_sheets = |value: &CalcResult| matches!(value, CalcResult::Range { left, right } if left.sheet != right.sheet);
+    if across_sheets(left) || across_sheets(right) {
         return None;
     }
+    let (n1, m1) = left.shape();
+    let (n2, m2) = right.shape();
+    let (rows, columns) = (n1.max(n2), m1.max(m2));
+    // Within the bound the array is built and the spill itself decides.
+    check_array_cells(rows, columns)?;
     spills_past_grid(anchor, rows, columns).then(|| spill_past_grid_error(anchor))
 }
 
@@ -511,6 +502,7 @@ impl Model {
         match node {
             Node::OpSumKind { kind, left, right } => {
                 let left = self.evaluate_node_in_context(left, cell);
+                let left = self.collapse_single_cell(left);
                 let right = self.evaluate_node_in_context(right, cell);
                 self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
             }
@@ -519,7 +511,7 @@ impl Model {
     }
 
     /// The operator chain `node` ([`left_chain`]) of the formula of the dynamic-array anchor
-    /// `cell`, folded as [`Model::evaluate_operator_chain`] does, but `Err(#SPILL!)` as soon as a
+    /// `cell`, folded as [`Model::evaluate_operator_chain`] does (keep the two in step), but `Err(#SPILL!)` as soon as a
     /// link would broadcast to more cells than the engine's array bound and to a shape that runs
     /// past the grid from the anchor ([`unspillable_broadcast`]): Excel builds that array and
     /// cannot spill it, so the shape alone gives Excel's answer and nothing is allocated, where
@@ -543,6 +535,8 @@ impl Model {
             let Some((_, right)) = value_operands(link) else {
                 break;
             };
+            // A one-cell reference is read before the right operand ([`Model::evaluate_operator_chain`]).
+            value = self.collapse_single_cell(value);
             let right = self.evaluate_spilling_operand(right, cell, depth)?;
             if let Some(spill) = unspillable_broadcast(cell, &value, &right) {
                 return Err(spill);

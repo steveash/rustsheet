@@ -263,7 +263,8 @@ impl Model {
         value
     }
 
-    /// The operator of `link` (of [`left_chain`]) over `value` and its right operand. Out of
+    /// The operator of `link` (of [`left_chain`]) over `value` and its right operand; a dynamic
+    /// array's root chain folds the same way in `Model::evaluate_spilling_chain`. Out of
     /// line, so the chain's frame, held while a nested call in its first operand runs, stays small.
     #[inline(never)]
     fn apply_operator_link(
@@ -276,6 +277,8 @@ impl Model {
         let Some((_, right)) = value_operands(link) else {
             return value;
         };
+        // A one-cell reference is read before the right operand, as the operators always have.
+        let value = self.collapse_single_cell(value);
         let right = self.evaluate_node_in_context(right, cell);
         self.apply_operator(value, link, right, cell)
     }

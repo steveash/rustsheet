@@ -42,7 +42,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::calc_result::CalcResult;
+use crate::calc_result::{range_dims, CalcResult};
 use crate::circular::circular_reference;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
@@ -806,13 +806,10 @@ impl Model {
             Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
         match self.run_cell_formula(&node, cell_reference, spills) {
             CalcResult::Range { left, right } => {
+                let (rows, columns) = range_dims(left, right);
                 if left == right {
                     self.evaluate_cell(left)
-                } else if spills_past_grid(
-                    cell_reference,
-                    left.row.abs_diff(right.row) as usize + 1,
-                    left.column.abs_diff(right.column) as usize + 1,
-                ) {
+                } else if spills_past_grid(cell_reference, rows, columns) {
                     spill_past_grid_error(cell_reference)
                 } else {
                     match self.evaluate_range(left, right, cell_reference) {

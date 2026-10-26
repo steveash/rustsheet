@@ -351,10 +351,12 @@ the grid from the anchor, decided from the operand shapes before the broadcast (
 the same array: `=ROWS(SUMPRODUCT(A:A=A1)*H:J)` stays `#ERROR!`), an over-bound result whose shape fits the grid
 from its anchor (`=1*H:J` in K1: Excel spills it or answers `#SPILL!` for an occupied cell, ours is `#ERROR!`),
 and spills of over-bound arrays that are not an operator broadcast: a lifted call (`=DATE(11:1899,12,1)` in C1),
-a unary operator or `%` over a range, or a function result (T-0480 follow-up).
+a unary operator or `%` over a range, or a function result (T-0483). Only the `*` broadcast of
+corpus-bench/55049 is oracle-backed; the other operators, an error operand (`=1/0*H:J`, expected from
+probes/error-operand-broadcast) and 2^34-cell broadcasts (`=D:D+4:4`) follow the same shape rule unprobed (T-0484).
 Evidence: corpus-bench/55049/1_55049_input.xlsx book1!B3:B23 (21 cells, excel-graph sidecar, 2026-10-26, gap
 triage); test_lifted_range_bound.rs `broadcast_above_the_bound_that_cannot_spill_is_spill`.
-Tasks: T-0047, T-1420, T-1454, T-1460, T-0480
+Tasks: T-0047, T-1420, T-1454, T-1460, T-0480, T-0483, T-0484
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
