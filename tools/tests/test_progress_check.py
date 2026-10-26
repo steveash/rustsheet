@@ -165,13 +165,52 @@ def test_every_offender_is_listed_and_placeholders_fail() -> None:
     assert [f.split(":")[0] for f in found] == ["bottom-line", "risks", "risks", "risks"]
 
 
-def test_a_missing_block_fails_and_a_status_without_a_run_fails_loudly() -> None:
+def test_a_missing_block_fails() -> None:
     no_risks = a_page().replace(
         blocks.open_marker("judgment", "risks") + f"\n{AS_OF}\n" + blocks.close_marker("judgment"), ""
     )
     assert check.offenders(no_risks) == ["risks: the judgment block is missing"]
+
+
+# A stale page as the generator writes it: the complete page of the 2026-10-19 run (AS_OF), then an
+# incomplete run on 2026-10-20 generated at another HEAD. The banner also names the last complete
+# run and the HEAD; only "The run of ..." is the run the as-of lines must name.
+STALE_AS_OF = "<!-- as-of: 2026-10-20 def45678 -->"
+LAST = {"date": "2026-10-19", "commit": "abc12345"}
+
+
+def a_stale_page(as_of: str) -> str:
+    texts = dict.fromkeys(page.JUDGMENT_BLOCKS, f"\n{as_of}\nSee the suites run (1) above.\n")
+    complete = page.render(RUN, DATA, judgment_page(texts), SECTIONS)
+    banner = page.stale_status("poi not fetched", "2026-10-20", "def45678", LAST, None, head="fedcba98")
+    return page.render_stale(complete, banner)
+
+
+def test_a_stale_page_whose_as_of_lines_name_the_banners_run_passes() -> None:
+    assert check.offenders(a_stale_page(STALE_AS_OF)) == []
+
+
+def test_a_stale_page_whose_as_of_lines_name_the_last_complete_run_fails() -> None:
+    found = check.offenders(a_stale_page(AS_OF))
+    assert found == [
+        f"{name}: as-of 2026-10-19 abc12345 does not name the run in `status`, 2026-10-20 def45678"
+        for name in page.JUDGMENT_BLOCKS
+    ]
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "No run.",
+        # A stale banner with no commit names no run an as-of line could match.
+        page.stale_status("r", "2026-10-20", None, LAST, None, head=None),
+        # Fullwidth digits are not ASCII: the date must be `[0-9]`, as RUN_DATE is.
+        "The run of **\uff12\uff10\uff12\uff16-10-20** at commit `def45678`.",
+    ],
+)
+def test_a_status_without_a_run_fails_loudly(status: str) -> None:
     with pytest.raises(ProgressReportError, match="names no run"):
-        check.offenders(a_page(status="No run."))
+        check.offenders(a_page(status=status))
 
 
 def test_main_check_prints_ok_or_lists_offenders(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

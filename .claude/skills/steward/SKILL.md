@@ -105,8 +105,19 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   sonnet-sized tasks by the tier rubric (never relabel a task to reach the number).
 - **Visible-parity lock** (decision 0093): task PRs never lower `eval/baseline/visible-parity.json`.
   In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and commit the lower
-  lock with the snapshot. When an open PR conflicts on the lock, take `main`'s side and re-run
-  `make eval-baseline`.
+  lock with the snapshot; "Progress dashboard" below comes next. When an open PR conflicts on the
+  lock, take `main`'s side and re-run `make eval-baseline`.
+- **Progress dashboard** (SPEC-0022, decision 0124): the daily run's order is `make eval`, then
+  `make eval-lower-visible-lock`, then `make progress-report`, then the `progress-report` skill
+  (routine step 2). Run `make progress-report` even when `make eval` failed or a suite was not
+  fetched: the generator then follows SPEC-0022's "Failure handling" (a **Stale** banner in
+  `status`, the last good numbers everywhere else, a `complete: false` row in
+  docs/progress/history.json, exit 0). A non-zero exit (malformed history.json or markers, a
+  catalog mismatch) is not a stale run: fix its cause. Write the judgment blocks with the
+  `progress-report` skill until `cd tools && uv run rustsheet-progress-report --check` passes, and
+  commit docs/progress.md and docs/progress/ in the `steward: <date> health` PR. Per-suite, parity,
+  Phase 1 and milestone-exit numbers live on the dashboard, not in docs/status.md, whose snapshot
+  links it on its first line.
 - **Generated files**: never hand-edit `eval/baseline/*.txt` or `quality/*.json`; regenerate with
   `make eval-baseline` and the `scripts/check_*.py --update` commands. `docs/tasks/BOARD.md` is
   git-ignored and never committed (decision 0017).
@@ -145,13 +156,18 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
-- **Fifteen-digit parity checkpoint** (decision 0094, T-0062): after `make eval`, copy the bold
-  "Fifteen-digit parity: ..." line from the "Fifteen-digit parity checkpoint" section of
-  `eval/runs/latest/report.md` (report.json: `v15_checkpoint`) into the docs/status.md scoreboard,
-  and say whether the previous run's line also read "met". The checkpoint is reached only when two
-  consecutive runs are met. Copy the section's "Phase 1 (decision 0114): ..." line beside it: it
-  counts the in-scope functions at ≥ 99.9% within 15 digits, which is the Phase 1 exit. When you add
-  the `**Phase 1:** exited` line, remove `defer: phase-1b` from every task in the same PR.
+- **Fifteen-digit parity checkpoint** (decision 0094, T-0062): the dashboard's `goals` block shows
+  the "Fifteen-digit parity: ..." line (report.json: `v15_checkpoint`); do not copy it, or the
+  "Phase 1 (decision 0114): ..." line, into docs/status.md (decision 0118). The checkpoint is
+  reached only when two consecutive complete runs are met: read whether the previous run was also
+  met from the last complete row (`complete: true`) of docs/progress/history.json before today's,
+  its `v15.met`. The Phase 1 measure counts the in-scope functions at ≥ 99.9% of their attributed
+  Excel cells within 15 digits (decision 0118).
+- **Phase 1 exit** (decision 0114 item 3): add the line `**Phase 1:** exited <YYYY-MM-DD>` to
+  docs/status.md when `v15_checkpoint.phase1_met` in `eval/runs/latest/report.json` is true (the
+  dashboard's `goals` block shows it) and the rest of docs/milestones.md's Phase 1 exit holds; no
+  Phase 1 line in docs/status.md is read for this. In the same PR, remove `defer: phase-1b` from
+  every task.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.
 - **Review-round limit** (decision 0095): list every PR whose task is `Blocked because: review-round
