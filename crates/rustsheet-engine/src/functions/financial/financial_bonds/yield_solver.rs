@@ -19,7 +19,7 @@ pub(super) fn yield_start(rate: f64, pr: f64, years: f64) -> f64 {
 /// is the iterate before it, short of the root (T-1592: 240 of the lab's 370 YIELD cells
 /// bit-exact and 361 within 4 ulp on `^` prices; the cut lies between 9.67e-11, a step
 /// yield-start-sweep C18 does not take, and 1.01e-10, one yield-start-one-input B21 takes). `None`
-/// when an iterate leaves PRICE's domain (a non-finite step). After 100 steps the iterate is the
+/// when an iterate leaves PRICE's domain (a non-finite step or iterate). After 100 steps the iterate is the
 /// value, root or not: with a redemption of 1E+300 Excel returns a yield far below PRICE's root,
 /// what the 100th step reaches (`YIELD(37341,45513,1E-9,105,1E+300,1)` = 78.13551092802992,
 /// bit-exact; probes/yield-newton-domain C, T-2391).
@@ -40,7 +40,8 @@ pub(super) fn excel_yield_newton(
         }
         y -= step;
     }
-    Some(y)
+    // The 100th step can still overflow the iterate; inside the loop the next step catches that.
+    y.is_finite().then_some(y)
 }
 
 pub(super) fn solve_yield<F>(target_price: f64, rate: f64, price_fn: F) -> Result<f64, String>

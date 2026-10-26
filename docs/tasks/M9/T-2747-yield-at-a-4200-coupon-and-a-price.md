@@ -20,7 +20,7 @@ Split from T-2620 (its probe cell; the cut is unknown, so it needs evidence befo
 - gen-m9/44a8841352dc48e9 Calc!A318 isolates it: `PERCENTRANK(Data!D5:D6,YIELD(...),5)`. Excel `#NUM!`, ours `#N/A`.
 
 The price is far below par and the coupon far above any pool T-2304 or T-2187 swept, so the iteration's start, step cap
-or tolerance may fail (financial.md "YIELD's #NUM! cells and its suspected 100-step cap"). T-2391 owns the price-above-par
+or tolerance may fail (financial.md "YIELD's #NUM! cells and its 100-step cap"). T-2391 owns the price-above-par
 side (1E6), and T-2740 sweeps the Newton start. Use the excel-probe skill to locate the cut with a sweep over rate (1 to
 100) and price (1 to 20), then match it in `fn_yield` (functions/financial/financial_bonds.rs).
 
