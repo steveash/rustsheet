@@ -123,3 +123,4 @@ which quantity separates 16-24 from 11-15 and 25+. Hypothesis (a) of the Context
   and pv -1 matches pv -100 (A48 = A24). So |f| itself cannot be the test. The power P = (1+r)^n behind it might
   be, if Excel's `^` or `*` flushes or rejects a tiny P (P200 is about 1.6e-62 at n 15 and 2.5e-62 at n 16 for
   pv -100). Probe RATE(n,0,pv) with pv 1E-200 and 1E+200 at n 13 and 24 to tell P apart from f.
+- Resumed 2026-10-26 07:35 by an opus run (stale branch, step 2 of the worker routine).
