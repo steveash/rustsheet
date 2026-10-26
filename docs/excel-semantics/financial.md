@@ -793,11 +793,10 @@ from 1 March 1900 on counts Excel's fictitious 1900-02-29, and a coupon date bef
   (from 1900-02-28, the month's last day); the actual bases count serials (`COUPDAYBS(61,36585,4,1)` is 2).
 - COUPDAYSNC on basis 0 is the period's 30/360 length less COUPDAYBS (`COUPDAYSNC(1,1000,2)` is 85), on basis 1 the
   serials to the next coupon date.
-- COUPDAYS on basis 1 counts a period that starts before 1900-01-01 in the real calendar (`COUPDAYS(1,43830,4,1)` is
-  90, 1899-12-31 to 1900-03-31; `COUPDAYS(1,1000,2,1)` 181), with exceptions on semiannual month-end schedules
-  ("COUPDAYS basis 1 for a period before 1900-01-01") and one inside the calendar by serials
-  (`COUPDAYS(1,43831,2,1)` is 182). A period starting or ending on 1900-02-28 takes the 29 February rule ("COUPDAYS
-  basis 1 around 29 February"): `COUPDAYS(59,36585,4,1)` and `COUPDAYS(1,43890,4,1)` are 90 and 92.
+- COUPDAYS on basis 1 counts its own period ("COUPDAYS basis 1 counts from the chained next coupon"): one that starts
+  before 1900-01-01 in the real calendar (`COUPDAYS(1,43830,4,1)` is 90, 1899-12-30 to 1900-03-30;
+  `COUPDAYS(1,1000,2,1)` 181), one inside it by serials (`COUPDAYS(1,43831,2,1)` is 182), and 1900-02-28 is not a
+  month end there: `COUPDAYS(59,36585,4,1)` and `COUPDAYS(1,43890,4,1)` are 90 and 92.
 - A month-end schedule's February 1900 ends on the 28th (`COUPPCD(59,36585,4)` is 59).
 Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A13 (excel-graph, 2026-10-17, T-1822), fin-coupon-walk-bounds-c
 A1-L14 (excel-graph, 2026-10-20, T-1844).
@@ -1557,26 +1556,49 @@ date-system-1904-accrint-settlement-bound (the same cells, every date 2 * 1462 s
 Ours: `compute_accrint` (functions/financial/accrint.rs).
 Status: VERIFIED (excel-graph). Tasks: T-1494.
 
-## COUPDAYS basis 1 around 29 February
-Rule: COUPDAYS on basis 1 is the length of the coupon period around settlement, except that when that period (as
-COUPPCD/COUPNCD give it, with the end-of-month rule) starts or ends on a 29 February that is not the maturity, it is
-the length of the period of the schedule walked back from the maturity *without* the end-of-month rule (each date
-the one after it moved back a period, its day clamped to the month). So with maturity 2025-02-28 the dates fall on the
-28th: `COUPDAYS(DATE(2023,11,15),DATE(2025,2,28),2,1)` is 184 (2023-08-28 to 2024-02-28) while COUPPCD, COUPNCD,
-COUPDAYBS (76) and COUPDAYSNC (106) describe 2023-08-31 to 2024-02-29 (182 days); settlement 2024-03-15 gives 182
-(2024-02-28 to 2024-08-28, not 184), settlement 2024-02-28 gives 182 (2024-02-28 is then the period's start) and
-2024-02-27 gives 184. A maturity of 2025-08-31 (frequency 2) and of 2025-05-31 (frequency 4) behave the same, since
-the walk passes 2025-02-28: 184 and 92 for settlements 2023-11-15 and 2023-12-15. Frequency 1, maturity 2025-02-28,
-settlement 2023-06-15: 365, not 366. A period ending on 28 February of a common year keeps the end-of-month rule
-(2099-08-31 to 2100-02-28, 181), and so does one ending on a 29 February that is the maturity
-(`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182). 1900-02-28 takes the rule like a 29 February (Excel's
-1900 has a 29 February): `COUPDAYS(59,36585,4,1)` is 90 (probes/fin-coupon-walk-bounds-c G5). Only COUPDAYS shows it: PRICE and DURATION on basis 1 use the
-182-day period, and bases 0, 2, 3 and 4 have fixed lengths. Unprobed: a walk that lands on a 29 February itself (maturity 2028-08-31, settlement 2027-11-15; the rule predicts 184, 2027-08-29 to 2028-02-29).
-Evidence: probes/coupdays-feb-month-end (296 cells, excel-graph, 2026-10-13, T-1493) and
-probes/date-system-1900-financial-readers E15.
-Ours: `coupdays_actual` (functions/financial/financial_bonds/coupon_schedule.rs).
+## COUPDAYS basis 1 counts from the chained next coupon
+Rule: COUPDAYS on basis 1 is not COUPNCD - COUPPCD. Excel walks the schedule back from the maturity *without* the
+end-of-month rule (each date the one after it moved back a period, its day clamped to the month, so the day can drift),
+takes the first date of that walk after settlement, B, and counts from A, B moved back one period: to the last day of
+A's month when B is the last day of its month, else B's day clamped. Excel's 1900 has a 29 February, so 1900-02-28 is
+not a month end. If A is after settlement, Excel steps back once more (B := A, A from it the same way). A date before
+1900-01-01 compares one higher than its serial in that test (1899-12-31 as 1). The count is the serial difference,
+except: real-calendar days when B is before 1900-01-01, or when A is and there was no extra step; B's serial (A reads
+as serial 0) when A is before 1900-01-01 after the extra step.
+- Month-end schedules inside the calendar (maturity 2019-03-31 semiannual): 181 for settlement 1950-01-15 (1949-09-30
+  to 1950-03-30; COUPPCD and COUPNCD describe 1949-09-30 to 1950-03-31, 182), 183 for 1950-06-15 (1950-03-31 to
+  1950-09-30), and 182 for 2018-12-15 (the walk's first date is the maturity). Maturity 2019-04-30 semiannual: 183 for
+  2018-06-15 (2018-04-30 to 2018-10-30, not 184). Maturity 2019-01-31 quarterly: 92 for 1950-01-15 (1949-10-30 to
+  1950-01-30), 91 for 1950-06-15 (1950-04-30 to 1950-07-30), but 92 for 2018-06-15 (the walk is still on the 31st:
+  2018-04-30 to 2018-07-31). A maturity on the 30th that is not a month end: 2019-12-30 semiannual gives 181 for
+  2018-01-15 (B = 2018-06-30, a month end, so A = 2017-12-31), 183 for 2018-08-15.
+- Around 29 February (T-1493): maturity 2025-02-28 semiannual, settlement 2023-11-15: 184 (2023-08-28 to 2024-02-28,
+  since 2024-02-28 is not a month end), while COUPPCD, COUPNCD, COUPDAYBS (76) and COUPDAYSNC (106) describe 2023-08-31
+  to 2024-02-29; settlement 2024-03-15 gives 182 (2024-02-28 to 2024-08-28), 2024-02-28 gives 182 and 2024-02-27 184.
+  Frequency 1, maturity 2025-02-28, settlement 2023-06-15: 365. A maturity on a 29 February is a month end
+  (`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182), and so is 28 February of a common year (2099-08-31 to
+  2100-02-28, 181). `COUPDAYS(59,36585,4,1)` is 90 (1900-02-28 is not a month end). A walk that lands on a 29 February
+  counts from the month end: `COUPDAYS(DATE(2027,11,15),DATE(2028,8,31),2,1)` is 182 (2027-08-31 to 2028-02-29; T-1493
+  had predicted 184), and `COUPDAYS(DATE(2027,11,15),DATE(2028,5,31),4,1)` is 92 (2027-08-29 to 2027-11-29).
+- Before the calendar (T-2640): maturity 2019-03-31 semiannual is 181 for settlements 0 to 89 (1899-09-30 to
+  1900-03-30, real days), 91 for 90 (1900-03-30: A = 1900-03-31 is after it, so 1899-09-30 to 1900-03-31 counted as
+  serial 91 - 0) and 183 from 91; maturity 2019-05-31 is 152 at settlement 151. Maturity 2019-12-31 or 9999-12-31
+  semiannual (also 2019-12-30 and 2019-06-30): 184 for a settlement in [0, 1) (A = 1899-12-31 compares as 1, so
+  1899-06-30 to 1899-12-31) and 181 from 1 (1899-12-31 to 1900-06-30); maturity 2019-12-29 is 182. Quarterly
+  maturity 2019-01-31 is 31 at settlement 30. Annual month-end schedules are 365 throughout 1900 except the February
+  one, 366 from settlement 59.
+Only COUPDAYS shows it: COUPPCD, COUPNCD, COUPDAYBS and COUPDAYSNC keep the end-of-month schedule
+(`COUPNCD(0,2958465,2)` = 182, `COUPDAYBS(0,2958465,2,1)` = 0, `COUPDAYSNC(0,2958465,2,1)` = 182), PRICE and DURATION
+on basis 1 use COUPNCD - COUPPCD, and bases 0, 2, 3 and 4 have fixed lengths.
+Evidence: probes/coupdays-pre1900-control (1,728 cells: settlements on the 15th of every month of 1900, 1901, 1904, 1950,
+2000 and 2018 against 12 schedules), coupdays-pre1900-sweep (6,316 cells: every settlement 0 to 370 on 38 schedules),
+coupdays-pre1900-period (148 cells) (excel-graph, 2026-10-25, T-2640); coup-calendar-edges C1-C21, D1-I12 (T-2486);
+coupdays-feb-month-end (296 cells, T-1493) and date-system-1900-financial-readers E15; gen-m9/b72d952c5f52cb4d Calc!A88
+(`COUPDAYS(5E-05,2958465,2,1)` = 184). The rule reproduces all 7,422 basis-1 COUPDAYS cells of the 1900-system probes.
+Ours: `coupdays_actual` (functions/financial/financial_bonds/coupon_schedule.rs). Before T-2640 it counted
+COUPNCD - COUPPCD (the real calendar before 1900) and walked the chained schedule only around a 29 February.
 Status: VERIFIED (excel-graph)
-Tasks: T-1489, T-1493
+Tasks: T-1489, T-1493, T-2486, T-2640
 
 ## Coupon dates keep the maturity's day
 Rule: every coupon date of the COUP* schedule is the maturity moved back a whole number of periods, its day clamped to
@@ -1588,8 +1610,8 @@ DATE(2027,5,30),4)` = 43799, `COUPNCD` 43890); maturity 2027-08-29 semiannual ha
 quarterly. PRICE, YIELD, DURATION, MDURATION, ODDFPRICE and ODDFYIELD use the same schedule:
 `PRICE(37913,46720,0.05,0.06,100,4,0)` = 87.29595935878451, `DURATION(37913,46720,0.05,0.06,4,0)` = 13.296825458940603,
 and with maturity 2027-11-29 an ODDFPRICE or ODDFYIELD first coupon of 2003-11-29 is on the schedule (87.29680647881554)
-while 2003-11-28 is `#NUM!`. Only COUPDAYS on basis 1 around a 29 February walks the chained schedule, each date clamped
-from the one after it ("COUPDAYS basis 1 around 29 February").
+while 2003-11-28 is `#NUM!`. Only COUPDAYS on basis 1 walks the chained schedule, each date clamped from the one after
+it ("COUPDAYS basis 1 counts from the chained next coupon").
 Evidence: probes/coup-calendar-edges B1-B14, J1-J14 (excel-graph, 2026-10-25, T-2486); gen-m9/7d2979fba2c95d64 Calc!A304.
 Ours: matches since T-2486 (`coupon_period` in financial_bonds/coupon_schedule.rs, which the COUP*, PRICE, YIELD,
 DURATION, MDURATION and ODDF* schedules read); before it the walk stepped from each date to the next, so the day drifted
@@ -1598,26 +1620,6 @@ had to be the 28th). The ODDL* and ACCRINT walks (`change_month` in financial_bo
 date; unprobed for this (T-2639).
 Status: VERIFIED (excel-graph)
 Tasks: T-2486, T-2639
-
-## COUPDAYS basis 1 for a period before 1900-01-01
-Rule: when the coupon period around settlement starts before 1900-01-01, COUPDAYS on basis 1 is not always the period's
-real-calendar length, and settlement 0 differs from settlement 1. Probed (settlement 0 unless said, maturities in 2019):
-- frequency 2, month-end maturity in January/July: 184 (1899-07-31 to 1900-01-31, real); February/August: 184 (the
-  29 February rule, 1899-08-28 to 1900-02-28); March/September: 181 (real 1899-09-30 to 1900-03-31 is 182);
-  April/October: 181 (real); May/November: 181 (real 182); June/December: 184 at settlement 0 or 5E-05 but 181 (real) at
-  settlement 1, also for the maturity 9999-12-31 (`COUPDAYS(0,2958465,2,1)` = 184, `COUPDAYS(1,2958465,2,1)` = 181) and
-  2019-12-30 (184);
-- frequency 2, maturity on the 15th: the real length (184, 184, 181, 182, 181, 182 for January-June);
-- frequency 4: the real length (92 for a January, February or April schedule; 90 for March), month end or 15th;
-- frequency 1: 365.
-COUPPCD, COUPNCD, COUPDAYBS and COUPDAYSNC are unaffected (`COUPNCD(0,2958465,2)` = 182, `COUPDAYBS(0,2958465,2,1)` = 0,
-`COUPDAYSNC(0,2958465,2,1)` = 182). The pattern behind the March/May and settlement-0 June/December cells is unknown.
-Evidence: probes/coup-calendar-edges C1-C21, D1-I12 (excel-graph, 2026-10-25, T-2486); gen-m9/b72d952c5f52cb4d Calc!A88
-(`COUPDAYS(5E-05,2958465,2,1)` = 184).
-Ours: the real-calendar length (`coupdays_actual`), so the March/May cells give 182 and the settlement-0 June/December
-cells 181 (TODO T-2640).
-Status: VERIFIED (excel-graph; unexplained)
-Tasks: T-2486, T-2640
 
 ## YIELD stops short of PRICE's root
 Rule: YIELD's last digits are not the exact root of PRICE: Excel stops early, below the root, by up to about 1e-9
@@ -2072,8 +2074,8 @@ outer call is the function; "inferred" means the other arguments nest calls whos
   (`COUPDAYS(123456789.123,<FALSE>,4)` 89f0aee953a55a45 A363, `COUPNUM(37484,2958466,2,<#VALUE!>)` 1dce4774f5c0e736 A19), and
   `COUPDAYS(39123,2958466,1,0)` is `#NUM!` (a91bad4e84f49739 A153). `COUPDAYBS(37913,46720,4,4)` = 50 (7d2979fba2c95d64 A304) and
   `COUPDAYS(5E-05,2958465,2.5,1)` = 184 (b72d952c5f52cb4d A88). Now probed: "Analysis ToolPak securities functions check
-  frequency and dates first", "Coupon dates keep the maturity's day" and "COUPDAYS basis 1 for a period before
-  1900-01-01" (T-2486).
+  frequency and dates first", "Coupon dates keep the maturity's day" and "COUPDAYS basis 1 counts from the chained
+  next coupon" (T-2486, T-2640).
 - ODDLPRICE with the settlement before `last_interest` is `#NUM!`: `ODDLPRICE(59,38163,33447,0,10,110,1,4)` (0a957119475760c5 A351),
   `ODDLPRICE(36111,38608,36584,..)` (89f0aee953a55a45 A8); probed, with ODDLYIELD and a settlement on `last_interest`, in
   "ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order" (T-2483).
