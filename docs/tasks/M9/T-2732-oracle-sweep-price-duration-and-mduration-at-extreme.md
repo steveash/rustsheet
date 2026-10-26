@@ -3,7 +3,7 @@ id: T-2732
 title: "Oracle sweep: PRICE, DURATION and MDURATION at extreme coupon rates and yields (coupon 1E+2..1E+300, yield 1..1E+5) for T-2733"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -38,12 +38,25 @@ Design. Use the excel-probe skill; probes go in eval/suites/probes/cases, not pr
 - Keep the probe within the oracle's cell budget, about 600 cells. Fill through excel-graph and check the canary.
 
 ## Acceptance criteria
-- [ ] The probe case and its excel-graph sidecar are committed, and every cell the engine fails is a new line in
+- [x] The probe case and its excel-graph sidecar are committed, and every cell the engine fails is a new line in
       eval/baseline/probes.txt (written by `make eval-baseline`, never by hand) that T-2733 owns. That task's Context lists them with Excel vs ours, by function.
-- [ ] financial.md gains an observation paragraph under "PRICE and ODDFPRICE discount with Excel's `^`": where the
+- [x] financial.md gains an observation paragraph under "PRICE and ODDFPRICE discount with Excel's `^`": where the
       engine leaves Excel's 15 digits, a high-precision (mpmath, 50 digits) value of each cell, and whether Excel or
       the engine is closer to it. That decides T-2733's stage: accuracy or visible.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes (T-2733). YIELD and ODDFYIELD solvers (T-1592, T-2007).
+
+## Outcome
+probes/bond-extreme-coupon-yield (579 cells, excel-graph, canary-verified) crosses coupon rates 10..1E+300 with yields
+1..44270 at frequency 1, 2 and 4, basis 0 and 1, mid-period and on a coupon date, with the three gen-m9 cells' own
+arguments, two short-stub neighbourhoods and companion cells (COUP*, `(1+yld/2)^t`, the redemption and coupon terms
+alone). The engine passes 165; the 414 others are new-coverage known failures in eval/baseline/probes.txt (0
+regressions), 62 visibly off (PRICE 43, DURATION 8, MDURATION 11), all owned by T-2733, whose Context lists them.
+The mpmath (50-digit) comparison in financial.md "PRICE and ODDFPRICE discount with Excel's `^`": on short stubs
+Excel is within 3.1 ulp on DURATION and MDURATION where the engine is 5 to 30 off; on the main grid Excel's PRICE is
+up to 32 ulp off and the engine is closer in 13 of 29 visible cells, so T-2733 keeps the `visible` stage. Every
+companion piece passes; the gap is in the coupon sum.
+Eval delta: probes known failures 2588 -> 3002 (+414 new coverage, 0 fixed, 0 regressions); visible parity 3557
+in-scope cells off (62 in the new case), under the lock of 3581.

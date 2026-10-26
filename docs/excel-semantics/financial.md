@@ -1493,7 +1493,8 @@ exp(y·ln x)"), not libm `pow`. `PRICE(DATE(2020,3,1),DATE(2030,3,1),0.06,0.07,1
 gives ...889), `PRICE(1,43831,0.05,0.06,100,2)` is 83.34716628375435 (240 coupons; libm ...423) and
 `ODDFPRICE(39448,43831,39083,39630,0.08,0.09,100,2,0)` is 92.4077632093273 (libm 92.40776320932721).
 Integer exponents (settlement on a coupon date) and the fractional ones of a mid-period settlement and of
-ODDFPRICE's offsets all come out bit-exact with `^`: every PRICE and ODDFPRICE cell in eval/ now passes.
+ODDFPRICE's offsets all come out bit-exact with `^`: every PRICE and ODDFPRICE cell in eval/ then passed, except
+where both the coupon rate and the yield are far above 1 (the observation below).
 Evidence: ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!H2-H6, H8-H11, H28, ODDFPRICE_ODDFYIELD!J5, J8, J9,
 J11, J23, J25, J27, J29-J33, J44, J45 and ODDFPRICE_SHORT!J9, J10, J13 (Excel-cached); probes/fin-coupon-walk-bounds-c
 C10, C11, G10, G11, J10, J11, fin-argument-modes H189, H251, fin-bond-negative-basis E2, E9, G2, G9,
@@ -1511,8 +1512,33 @@ PRICE kernel is not what keeps the YIELD fits (T-1592, T-2007) from Excel's bits
 Ours: `discount_growth` in functions/financial/financial_bonds.rs (`arithmetic::power`, libm where `^` is an error);
 DURATION and MDURATION use it too (T-1975), and so does YIELD's Newton (T-1592); ODDFYIELD's `solve_yield` prices with
 `f64::powf`.
+Observation (T-2732): where both the coupon rate and the yield are far above 1, PRICE, DURATION and MDURATION leave
+Excel's bits, and in 62 cells its 15 digits. probes/bond-extreme-coupon-yield (579 cells, excel-graph) crosses coupon
+rates 10..1E+300 with yields 1..44270 at frequency 1, 2 and 4, basis 0 and 1, mid-period (DSC/E = 26/E) and on a
+coupon date, plus short stubs (43830-45293 at frequency 4, basis 1: DSC/E = 2/92; 39697-44449 at frequency 2,
+basis 0: 4/180). The engine passes 165 cells, 319 are within 4 ulp and 95 beyond, 62 of them visibly off: PRICE 43,
+DURATION 8, MDURATION 11. The pieces pass: COUPDAYSNC, COUPDAYS, COUPNUM (Parts!A1-A3), `(1+yld/2)^(DSC/E)` and
+`(1+yld/2)^(DSC/E+N-1)` with Excel's `^` (Parts!C1-D6), and the redemption term alone at rate 0 (Parts!B1-B6), so
+the gap is in how the coupon flows are summed and combined: the coupon term alone (redemption 1E-300, Parts!E1-J6)
+already misses, 5 cells visibly (Parts!F1, F2, F5, F6, G2), with the same digits as PRICE at redemption 100. Against
+a 50-digit mpmath value of the documented sums (DSC/E, N and A/E from the coupon dates; each cell's distance from it
+in ulps of the exact value):
+- Short stubs: Excel is close to correctly rounded and the engine is not. All 34 failing DURATION and MDURATION
+  cells are within 3.1 ulp in Excel and 5 to 30 ulp off in the engine; the 16 visibly-off PRICE cells are 0.6 to 23
+  ulp off in Excel (median 6) and 16 to 55 in the engine (median 33). All 33 visibly-off short-stub cells are closer
+  in Excel,
+  including gen-m9 a91bad4e84f49739 A142's twin `PRICE(43830,45293,100,278,50,4,1)` (Calc!A182: Excel +15.8 ulp,
+  ours -16.2) and 30e20ba3302fea8b A90's `MDURATION(39697,44449,EDATE(58318,22),44270,2,0)` (Calc!C183: Excel
+  -0.8 ulp, ours -17.8).
+- The main grid (DSC/E = 26/E): neither is correctly rounded. On the 29 visibly-off cells (27 of them PRICE, 5 of
+  those on Parts) Excel is 0 to 32 ulp off (median 5) and the engine 0.6 to 23 (median 9); Excel is closer in 16, the
+  engine in 13. Excel's own error reaches
+  32 ulp (Calc!A20 `PRICE(38136,44737,1E+10,7,100,1,0)`: Excel 55709579072.88489, -32 ulp; ours ...88501, -16).
+  gen-m9 0a957119475760c5 A279's `PRICE(38136,44737,1E+300,7,100,2)` (Calc!A181) is Excel +0.9 ulp, ours +8.9.
+So a more accurate kernel would fix the short-stub DURATION and MDURATION cells but not the grid's PRICE cells,
+where only Excel's own operation order gives its digits: T-2733 keeps the `visible` stage.
 Status: VERIFIED (excel-graph)
-Tasks: T-2207
+Tasks: T-2207, T-2732, T-2733
 
 ## PMT when (1+rate)^nper overflows or underflows
 Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient
