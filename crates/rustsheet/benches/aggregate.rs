@@ -2,6 +2,8 @@
 //! 1,000,000 cells, SUM over the same column with an error in A2 (the walk ends there), and SUM
 //! over a block three columns wide reaching past the used area (T-0405: cut at the used area),
 //! and SUM over the whole sheet with a far cell in XFD1048576 (T-1690: walked over its cells).
+//! Then a 3-D TEXTJOIN over whole columns beside a far cell, and the same SUM repeated by a
+//! LAMBDA (T-2710: blank runs counted, not read).
 //! Then criteria aggregates over shared ranges (T-0449): 2,000 SUMIFS and 2,000 COUNTIFS over
 //! 50,000 rows, with five text criteria and 100 numeric thresholds. Then aggregates over
 //! whole-column expressions (T-0469): 400 `MAX(IF(F:F=A1,G:G,""))` over 2,000 rows.
@@ -35,6 +37,18 @@ fn workbook(formula: &str, error_in_a2: bool, far_cell: bool) -> Result<Workbook
             tx.set("XFD1048576", 1.0)?;
         }
         tx.set("B1", Input::Formula(formula.to_string()))?;
+        Ok(())
+    })
+}
+
+/// Two sheets each holding only 1 in J1048576, with `formula` in Sheet1!Z1: every whole-column
+/// walk of `A:J` spans the sheet height over one stored cell.
+fn far_cell_workbook(formula: &str) -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        tx.add_sheet("Two")?;
+        tx.set("Sheet1!J1048576", 1.0)?;
+        tx.set("Two!J1048576", 1.0)?;
+        tx.set("Sheet1!Z1", Input::Formula(formula.to_string()))?;
         Ok(())
     })
 }
@@ -111,6 +125,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     if std::env::args().any(|arg| arg == "criteria") {
         return Ok(());
+    }
+    let far_cell_cases = [
+        (
+            "TEXTJOIN 3-D, whole columns beside a far cell",
+            "=LEN(TEXTJOIN(\",\",FALSE,Sheet1:Two!A:J))",
+        ),
+        (
+            "SUM(A:J) beside a far cell, 100 times in a LAMBDA",
+            "=SUM(BYROW(SEQUENCE(100),LAMBDA(r,SUM(Two!A:J))))",
+        ),
+    ];
+    for (name, formula) in far_cell_cases {
+        let mut wb = far_cell_workbook(formula)?;
+        let t = common::timings(RUNS, || wb.recalculate());
+        writeln!(std::io::stdout(), "{name}: runs={RUNS} {t}")?;
     }
     let cases = [
         ("SUM", "=SUM(A1:A1000000)", false, false),

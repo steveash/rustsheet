@@ -400,7 +400,7 @@ Cells:
 - gen-m9/d37313406b9f6e55.case.json (2): Calc!A170, A360
 - gen-m9/d5fd9e05e9e6f466.case.json (4): Calc!A77, A166, A246, A250
 - gen-m9/d8f44d556674c2fd.case.json (5): Calc!A20, A58, A139, A248, A286
-- gen-m9/d910f000b60e2eac.case.json (4): Calc!A48, A106, A217, A234
+- gen-m9/d910f000b60e2eac.case.json (5): Calc!A48, A106, A217, A234, A358 (A358 `TDIST(DCOUNTA(..),6,2)` = `TDIST(3,6,2)`, 1 ulp; moved from T-2524)
 - gen-m9/eedd629f3d69fdda.case.json (11): Calc!A23, A28, A108, A176, A193, A210, A227, A244, A278, A295, A329
 - gen-m9/f82473275380882e.case.json (8): Calc!A60, A142, A178, A199, A204, A308, A328, A390
 
