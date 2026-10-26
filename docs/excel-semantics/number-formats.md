@@ -508,7 +508,8 @@ Rule: a hex locale tag `[$-NNCCLLLL]` holds a numeral system (NN), a calendar (C
 - Calendar 1 is Gregorian even for Japanese. Under a Japanese LCID with a non-Japanese calendar, a `g` earlier in the section makes `yy` and `yyyy` print the whole Gregorian year: `[$-10411]g|e|yy` is "|2023|2023" and `[$-70411]g|yyyy` is "|2023" (Thai would otherwise print 2566). Other LCIDs are unaffected: `[$-409]g|yy` is "|23", `[$-70409]g|yy|yyyy` "|66|2566", `[$-50409]g|yy|yyyy` "|56|4356", and with no tag `g|yy` is "|23" (probes/text-locale-era-gregorian). Calendars 5 and 9 under a Japanese LCID (`[$-50411]g|yyyy`, `[$-90411]g|yy`) are inferred to follow the same rule; they are not probed.
 - Names under calendar 3 are Japanese for a Japanese LCID and en-US for any other (`[$-3040C]mmmm` is "March").
 
-**Other calendar digits.**
+**Other calendar digits.** Probed again in probes/t1923-calendar-digits (excel-graph, 2026-10-26, T-1923) for every
+month and weekday of A, B, C and 14, with day halves under 401 ("6 م") and 412 ("6 오후"):
 
 | Digit | Calendar and names | Example |
 |---|---|---|
@@ -517,16 +518,27 @@ Rule: a hex locale tag `[$-NNCCLLLL]` holds a numeral system (NN), a calendar (C
 | 5 | Korean years (Gregorian + 2333) for `yy`/`yyyy`; Korean names under a Korean LCID, en-US otherwise | "4356" |
 | 7 | Thai years (+ 543) for `yy`/`yyyy` and `b`; Thai names | "2566", "มีนาคม" |
 | 9 | Gregorian, French names | "mars", "mer." |
+| A | Gregorian, Levant Arabic months (`mmm` the same; two-word names joined by a no-break space: "كانون الثاني"), ar-SA weekdays | "آذار", "الأربعاء" |
+| B, C | Gregorian, ar-SA names (`mmm` the same) | "مارس", "الأربعاء" |
+| 14 | Gregorian, Korean native month names ("정월" … "섣달", `mmm` the same), Korean weekdays | "삼월", "수" |
 | 15 and above | ignored; the LCID's own calendar (probed 15, 1E, 1F, FF) | `[$-FF040C]mmmm` is "mars" |
+Under A, B, C and 14, `e` and `g` are probed ("2023", ""); `yy`, `b` and `bbbb` are inferred to print as under Gregorian (unprobed).
 
 Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai. Day halves follow the LCID under every calendar digit: `[$-20411]`, `[$-40411]` and `[$-50411]h AM/PM` are "6 午後", and `[$-70412]`/`[$-90412]` give "6 오후".
 
 **Not modelled** (the tag prints English and keeps `A/P`):
 - 6 is Hijri ("1444-08-23", "Sha'ban", or French "Chaaban" under 40C; T-2729).
-- 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i").
-- 10 is Saka ("1944-12-24", "Phalguna", "Budhavara").
-- A is Gregorian with Levant Arabic names ("آذار"); B and C give "مارس".
-- 14 is Gregorian with native Korean names ("삼월").
+- 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i"; T-2779), probed across 2023-2024 in probes/t1923-calendar-digits
+  A145:A213. Months number from Tishrei (1), so a leap year has 13: 5784's AdarI is month 6, AdarII 7, Elul 13
+  (2024-09-20 is "5784-13-17|Elul"). The year turns at Rosh Hashanah (2023-09-16 is "5784-01-01"). `yy` prints two
+  digits, `e` and `b` the Hebrew year. `ddd` is "Yom Rishon" … "Shabat". Under 40D and 401 the names are Hebrew script
+  (AdarII is "אדר ב" with a plain space; the weekday "יום רביעי" joins with a no-break space, A211, A212). 9999-12-31 is `#VALUE!`, and serials 0 and 1 are "5660-05-01|Shvat".
+- 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"; T-2779), probed in A85:A144. The year turns on 22 March, or 21
+  March in a Gregorian leap year (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days.
+  `yy` prints two digits ("44"), `e` and `b` the Saka year. Months are Chaitra … Phalguna. `ddd` is a short
+  Sanskrit weekday, Sunday "Ravi" to Saturday "Sani" (the seven in A85:A144). Serial 1 is "1821-10-11|Pausa", and so is serial 0. 9999-12-31 is
+  "9921-10-10" with `yy` "21".
+- Under both, serial 60 (the fictitious 1900-02-29) is `#VALUE!`.
 - Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).
 - Underscore tags pick calendars: `[$-fr_FR]` gives the Saka date with English Gregorian month names ("December|1944-12-24"); `[$-de_DE]`, `[$-en_US]` and `[$-ja_JP]` give the lunar date in English; `[$-_]` gives Russian names (T-1924).
 
