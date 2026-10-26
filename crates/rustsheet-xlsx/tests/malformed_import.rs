@@ -444,3 +444,35 @@ fn non_bmp_text_counts_two_utf16_units_toward_the_limits() -> TestResult {
     );
     Ok(())
 }
+
+/// A sheet whose A100 holds `LEN("<literal>")`.
+fn sheet_with_literal(literal: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    let cell =
+        format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>LEN(\"{literal}\")</f></c></row>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
+// Excel refuses a workbook with a string literal of 4,096 UTF-16 units and loads 4,095; a doubled
+// quote counts once and emoji twice (T-2739 probes t2739-stored-4095, t2739-typed-dq-4095,
+// t2739-typed-emoji-2047; T-2762).
+#[test]
+fn string_literal_longer_than_4095_units_refuses_the_workbook() -> TestResult {
+    let message =
+        "Formula in Sheet1!A100 holds a string literal longer than 4095 UTF-16 code units";
+    assert_imports(&sheet_with_literal(&"a".repeat(4_095))?)?;
+    assert_import_error(&sheet_with_literal(&"a".repeat(4_096))?, message);
+    assert_imports(&sheet_with_literal(&format!("{}\"\"", "a".repeat(4_094)))?)?;
+    assert_import_error(
+        &sheet_with_literal(&format!("{}\"\"", "a".repeat(4_095)))?,
+        message,
+    );
+    assert_imports(&sheet_with_literal(&"\u{1F600}".repeat(2_047))?)?;
+    assert_import_error(&sheet_with_literal(&"\u{1F600}".repeat(2_048))?, message);
+    Ok(())
+}
