@@ -336,6 +336,7 @@ Evidence: poi/DateFormatTests.xlsx Tests!A11, A13, A16, A18, A30, A35 (desktop E
 Microsoft Macintosh Excel 16.0; the workbook uses the 1904 date system, which does not change the
 time of day).
 Status: VERIFIED
+Implemented in: `Token::AP` / `Token::AMPM` (formatter/lexer.rs), `TextToken::AP` (formatter/format.rs); tests in formatter/test/test_time.rs.
 Tasks: T-0954
 
 ## `m`/`mm` directly before `:ss` is minutes, with no hour
