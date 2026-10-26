@@ -708,7 +708,13 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   -3.38051500624659 (35 cells; COMPLEXs.xlsx N6, a Mac cache, has -3.38051500624658, see "IMTAN and IMCOT use the
   double-angle form"). Past TAN's limit they are `#NUM!`: `IMSIN("1E+200")`, `IMTAN("1E+200")`, `IMSEC("1E+200")`,
   `IMCSC("1E+200")`, `IMSIN("7777777777")` (`IMSIN(HEX2OCT("FFFFFFFFFF"))`, 1068c44afcd56d53 A57), IMSEC of 1E+15 and
-  `IMTAN("1.05966105763914E+57")`; but `IMCOT("1E+200")` is "0" (060b18586fcff6e6 A119). Ours uses libm. T-2534.
+  `IMTAN("1.05966105763914E+57")`; but `IMCOT("1E+200")` is "0" (060b18586fcff6e6 A119). probes/t2534-im-trig-real-limit
+  (excel-graph, 2026-10-26) confirms the limit for all six at 2^27: at 134217727 they answer, and at ±134217728, 1E+10,
+  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". IMTAN of a real is CONFLICTING (web vs desktop): COMPLEXs.xlsx N6
+  (Mac 16.0300) caches `IMTAN(5)` as -3.38051500624658, the libm double-angle value (T-1075 item 17).
+  Ours (T-2534): IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real take SIN, COS and TAN's kernels and the limit
+  (`real_trig`); IMTAN takes the limit but keeps the double-angle form below it, so the desktop N6 still passes and the 35
+  web `IMTAN("5")` cells and the other IMTAN-of-a-real cells stay known failures (T-2774).
 - **sinh and cosh inside IMSIN, IMCOS and IMSINH are (EXP(t) ∓ EXP(-t))/2, also for small t.** `IMSINH("4")` is
   27.2899171971278 (= (EXP(4)-EXP(-4))/2 = 27.289917197127753 with Excel's EXP; libm sinh 27.28991719712775 prints
   ...277; 33 cells), and `IMSEC(IMSINH("4"))` -1.80717748625735 follows from that text. `IMCOS("1.5E+2-2E-3i")` has
