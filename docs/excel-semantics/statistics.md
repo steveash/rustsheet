@@ -3658,8 +3658,9 @@ Rule: MODE, MODE.SNGL and MODE.MULT are `#VALUE!` for a one-cell range reference
 775d053de498b8c7 A352; `MODE.SNGL(Data!B8:B8)`, a63d1c7d6f96c56d A381; `MODE.MULT(Data!A10:A10)`, 5cebac1f02bf30f2 A183), as
 for a blank single-cell reference ("Statistical function argument modes", A23), also beside other arguments that hold a mode
 (`MODE(Data!A10:A10,Data!A9:A12,Data!E10:E10)` with E10 empty is `#VALUE!`, 329b177b5d5165ad A172).
-Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 36 cells in T-2471.
-Ours: the `Data!X:X` form is read as a range (skipped blank, `#N/A` or the mode of the rest); T-2471.
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 36 cells in T-2471, plus probes/t2436/ecc87f80077959e0 (`MODE.MULT(Data!D10:D10,Data!D1:D6)`)
+and probes/t2475-stat-subexpressions P!A96. UNVERIFIED: a one-cell reference returned by INDEX, OFFSET or IF, or a defined name (ours: `#VALUE!` too).
+Ours: a one-cell range reference to an empty cell is `#VALUE!` like the plain reference, since T-2471 (`mode_functions.rs`).
 Status: VERIFIED (excel-graph)
 
 ## Order statistics: the scalar argument's error before the no-number result; PERCENTRANK's #N/A before significance (T-2256)
