@@ -933,9 +933,21 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   1899-12-31). `ACCRINT(DATE(1900,4,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 404512.3611111111.
 - A regular period that starts before 1900 does not matter when the settlement's period is later:
   `ACCRINT(33448,1,37714,1E+300,0.3,1,2,TRUE)` is a number (gen-m9 3b7990bd4e3307ba Calc!A317).
-  On basis 1 it does, or something else near serial 1 does: `ACCRINT(33853,1.005,37554,1,9888,1,1)` (annual, calc_method
-  TRUE) is `#NUM!` (gen-m9 932b33b1ef8b7608 Calc!A118, excel-graph, 2026-10-26), ours 100198.77008758142. Which bases and
-  first_interest values cut is unprobed (T-2562).
+  On basis 1 it does: basis 1 reads the length of first_interest's regular period, so that period must start on
+  1900-01-01 or later however late the settlement is. `ACCRINT(33853,FI,37554,1,9888,freq,1)` is `#NUM!` for FI 1, 1.005
+  and 2 at frequencies 1, 2 and 4, and a number for FI 367 (regular period from 1900-01-01 when annual); bases 0, 2, 3
+  and 4 give numbers for all of them (probes/accrint-calendar-start-1900 A1:A60; gen-m9 932b33b1ef8b7608 Calc!A118 is
+  FI 1.005, annual, basis 1; T-2562).
+- A first_interest of serial 59 (1900-02-28) or 60 (Excel's 1900-02-29) with an issue of 1, 30 or 45 is `#NUM!`,
+  semiannual and quarterly, on bases 0 and 1, settlement before or after it: the regular period starts in 1899
+  (probes/accrint-calendar-start-1900 B1:B32).
+- In a 1904 workbook the cut moves to 1904-01-01: with first_interest 1904-03-31 or 1904-06-30 (quarterly), an issue of
+  1904-01-01, 1904-01-02, serial 0 or serial 1 is `#NUM!` for settlements 1904-02-15 and 1950-06-30, calc_method TRUE or
+  FALSE, and `ACCRINT(DATE(1904,1,1),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,freq,basis,TRUE)` is `#NUM!` on every basis,
+  semiannual and quarterly. An issue of 1904-04-01 computes (2312.361111111111 for first_interest 1904-03-31, calc_method
+  TRUE, or 1904-06-30), except with first_interest 1904-03-31 and calc_method FALSE (regular period from 1903-12-31),
+  which is `#NUM!` (probes/accrint-calendar-start-1904 A1:A40, B1:B10, excel-graph 2026-10-26). Ours applies the 1900
+  cut there (43 cells off; T-2835, after T-2337).
 - The day counts read the serials as Excel shows them: the actual bases count serials, so the fictitious 1900-02-29
   counts, and the 30/360 bases read serial 1 as 1900-01-01: `ACCRINT(DATE(1900,2,15),DATE(1900,5,10),DATE(1900,4,1),
   0.05,1000,4,0,TRUE)` is 6.388888888888888 (46/90) on bases 0, 1, 2 and 4, and 6.301369863013699 on basis 3;
@@ -946,10 +958,11 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
 - Excel for the web returned 0 for `ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`
   (fin-coupon-walk-bounds-b A9) on 2026-10-17 and `#NUM!` on 2026-10-24, in a re-fill of -b and in
   fin-accrint-1900-calendar D1; the oracle now records `#NUM!`.
-Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24).
+Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24);
+accrint-calendar-start-1900 (92 cells) and accrint-calendar-start-1904 (50 cells) (excel-graph, 2026-10-26).
 Status: VERIFIED (excel-graph)
 Implemented (T-2124): `compute_accrint` in functions/financial/accrint.rs.
-Tasks: T-2124, T-2562
+Tasks: T-2124, T-2562, T-2835
 
 ## COUPNUM in a 1904 workbook
 Rule: in a 1904 workbook COUPNUM is `#NUM!` exactly when the previous coupon date is before 1904-01-01 (a negative

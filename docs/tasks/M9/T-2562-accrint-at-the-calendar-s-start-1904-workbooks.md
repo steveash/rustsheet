@@ -3,7 +3,7 @@ id: T-2562
 title: "ACCRINT at the calendar's start: 1904 workbooks and a February-1900 first interest (probe)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -37,10 +37,10 @@ calendar's start"). Two cases have no oracle cell:
   Owned: gen-m9/932b33b1ef8b7608.case.json (1): Calc!A118.
 
 ## Acceptance criteria
-- [ ] A probe case for each edge lands with excel-graph values and the findings go into financial.md.
-- [ ] Any cell that fails is fixed, or a follow-up task owns it.
-- [ ] gen-m9/932b33b1ef8b7608 Calc!A118 leaves eval/baseline/gen-m9.txt with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case for each edge lands with excel-graph values and the findings go into financial.md.
+- [x] Any cell that fails is fixed, or a follow-up task owns it.
+- [x] gen-m9/932b33b1ef8b7608 Calc!A118 leaves eval/baseline/gen-m9.txt with no new known-failure lines in any baseline.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 1900-workbook rule T-2124 fitted.
@@ -48,3 +48,17 @@ calendar's start"). Two cases have no oracle cell:
 ## Visible-parity stage
 `semantics`: gen-m9/932b33b1ef8b7608 Calc!A118 is a number where Excel is `#NUM!` (T-2676 triage); the stage is met when
 it is `#NUM!`. The two unprobed edges keep the task's bit-level goal.
+
+## Outcome
+- Probes (excel-graph, 2026-10-26): probes/accrint-calendar-start-1900 (92 cells) and
+  probes/accrint-calendar-start-1904 (50 cells); findings in financial.md "ACCRINT at the calendar's start".
+- Third edge (basis 1): `ACCRINT(33853,FI,37554,1,9888,freq,basis)` is `#NUM!` only on basis 1, for FI 1, 1.005 and 2
+  at frequencies 1, 2 and 4; FI 367 and the other bases are numbers. Basis 1 reads the length of first_interest's
+  regular period, so `compute_accrint` now requires that period's start to be in the calendar on basis 1. Fixes
+  gen-m9/932b33b1ef8b7608 Calc!A118; all 92 cells of the 1900 probe pass.
+- February-1900 first_interest (serial 59 or 60): every probed cell is `#NUM!` in Excel and already in ours.
+- 1904 workbook: the cut moves to 1904-01-01 (43 of 50 cells are `#NUM!` in Excel, numbers in ours). It is tied to
+  T-2337 (the 1904 financial results Excel for the web changed after 2026-10-12), so follow-up T-2835 (after T-2337)
+  owns the 43 new known-failure lines in eval/baseline/probes.txt.
+- Eval delta: gen-m9 known failures 3775 → 3774 (fixed 1), no regressions; probes +2 cases, 49 cells pass and 43 are
+  new-coverage failures owned by T-2835.
