@@ -3,7 +3,7 @@ id: T-2577
 title: "INDIRECT with a 1x1 array a1 argument is #VALUE!, and F.TEST or COVARIANCE.P over that INDIRECT's #VALUE! is #NUM! (gen-m9, 2 cells)"
 milestone: M8
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,10 +27,25 @@ Cells:
 - gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A383
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
-- [ ] `make check` green; reviewers approve.
+- [x] The rule's quirks are in docs/excel-semantics/ with the probe cells as evidence; new probe cells are gated or baselined.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
+
+## Outcome
+- Probe probes/t2577-indirect-ref-array (excel-graph, 2026-10-26, 57 questions): the `#NUM!` is the array of
+  references, not its `#VALUE!` elements. An OFFSET or INDIRECT lifted into an array of references, passed as a sample,
+  is `#NUM!` in F.TEST (either sample), and as the first argument of COVARIANCE, CORREL, PEARSON, SLOPE, INTERCEPT,
+  FORECAST, T.TEST, SUMXMY2 and CHITEST. As COVARIANCE.P's second argument it is cells with no number. Findings in
+  statistics.md "An array of references is #NUM! in the paired functions" and references.md "INDIRECT: a 1x1 array a1
+  argument is #VALUE!" (ref_text too).
+- INDIRECT now lifts over a 1x1 array (`lifts_one_by_one`, as OFFSET, TAKE and DROP do).
+- `Model::evaluate_sample_arg` (functions/statistical/paired.rs) marks a direct OFFSET or INDIRECT that gives an array
+  of references with a reference in it. F.TEST, `fn_get_two_matrices` and `paired_samples` read their samples through it.
+- INDEX with one index into a one-element array of references picks that element (A100).
+- Eval delta (`rustsheet-eval check`, 0 regressions): gen-m9 fixed 2 (both owned cells); probes fixed 9 (t2436).
+  The new probe case holds 9 known failures (3 questions): LET (A64) and SUMXMY2 (A148) are in T-2766, and
+  `STDEV(INDIRECT("B1",{1;1}))` (A157, Excel 0) is in T-2065.
