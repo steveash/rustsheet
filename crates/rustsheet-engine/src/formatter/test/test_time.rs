@@ -125,7 +125,7 @@ fn elapsed_without_seconds_rounds_to_the_second() {
     }
 }
 
-// poi/DateFormatTests.xlsx Tests!A11, A16, A30, A35 (desktop Excel); noon and midnight follow `AM/PM`.
+// poi/DateFormatTests.xlsx Tests!A11, A16, A30, A35 (desktop Excel); noon and midnight are hand expectations that follow `AM/PM` (no Excel cell).
 #[test]
 fn short_am_pm_marker_keeps_its_case() {
     assert_eq!(text(17816.607951388887, "hh:mm:ss a/p"), "02:35:27 p");
