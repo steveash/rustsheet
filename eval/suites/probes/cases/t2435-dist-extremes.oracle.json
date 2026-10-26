@@ -198,6 +198,22 @@
     "t": "e",
     "v": "#NUM!"
    },
+   "A143": {
+    "t": "n",
+    "v": 0.0
+   },
+   "A144": {
+    "t": "n",
+    "v": 0.0
+   },
+   "A145": {
+    "t": "n",
+    "v": 0.0
+   },
+   "A146": {
+    "t": "n",
+    "v": 0.6666666444444445
+   },
    "A15": {
     "t": "n",
     "v": 1073741823.0
@@ -766,6 +782,22 @@
     "t": "e",
     "v": "#NUM!"
    },
+   "B143": {
+    "t": "b",
+    "v": true
+   },
+   "B144": {
+    "t": "b",
+    "v": true
+   },
+   "B145": {
+    "t": "b",
+    "v": true
+   },
+   "B146": {
+    "t": "b",
+    "v": false
+   },
    "B15": {
     "t": "b",
     "v": false
@@ -1142,10 +1174,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "a059a6c060a33e7d16edfc6070ceb569a6fb76a8813cb0b13f30d01c23dd0c9b",
+  "input_sha256": "0e3658f18a2a37c54a326e3875562629e4e5f02da2c0cc5356b46fa5ac04d3bc",
   "kind": "excel-graph",
-  "produced_at": "2026-10-26T14:41:12+00:00",
+  "produced_at": "2026-10-26T15:01:28+00:00",
   "version": null,
-  "workbook_name": "0fe900628ad326ecf94ae3cce6184deab90b794023258955b4e2c67cb9c4700c.xlsx"
+  "workbook_name": "cebb49f8187c9fde9da8e0fba0ecc6da46f223fe8c27470e72469d5ee889c944.xlsx"
  }
 }

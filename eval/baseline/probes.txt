@@ -1124,7 +1124,7 @@ C	probes/t2429/cde551ea787f713a.case.json	5
 C	probes/t2429/eced4bb6a0234c9e.case.json	11
 C	probes/t2429/ee2497a5e683c5d9.case.json	5
 C	probes/t2429/f34f66fb7f81e673.case.json	6
-C	probes/t2435-dist-extremes.case.json	284
+C	probes/t2435-dist-extremes.case.json	292
 C	probes/t2436/05d44f6dd6cfc567.case.json	27
 C	probes/t2436/06b4e8f5de409d5e.case.json	30
 C	probes/t2436/0a614cfe974b59c3.case.json	9

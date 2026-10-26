@@ -40,9 +40,13 @@ fn f_beta_arguments(df1: f64, df2: f64, x: f64) -> (f64, f64) {
 /// [`f_beta_arguments`] divides df2 by df1 x, and once that quotient leaves the double range Excel
 /// reports `#NUM!` for either tail, where the density there is still 0. `FDIST(1E-300,6,1E+10)`,
 /// `F.DIST(1E-300,6,1E+10,TRUE)`, `F.DIST.RT(1E-300,6,1E+10)` and `FDIST(1E-300,1,1E+10)` are
-/// `#NUM!`, while `FDIST(1E-300,6,1E+9)` is 1, `FDIST(1E-290,6,1E+10)` is 1 and
-/// `F.DIST(1E-300,6,1E+10,FALSE)` is 0 (probes/t2435-dist-extremes A39, A85:A91, A130, A131;
-/// gen-m9 c6cfda6bd10cae93 A363).
+/// `#NUM!`, while `FDIST(1E-300,6,1E+9)` is 1 (quotient 1.67E+308, the largest the cut allows),
+/// `FDIST(1E-290,6,1E+10)` is 1, one power of ten the other way is `#NUM!` again
+/// (`FDIST(1E-301,6,1E+10)`) and `F.DIST(1E-300,6,1E+10,FALSE)` is 0. The `x > 0.0` guard is what
+/// keeps `FDIST(0,6,1E+10)` and a subnormal x out of the quotient: number text below the smallest
+/// normal double reads as 0, so `FDIST(1E-308,6,1E+8)` is 1 (numbers.md "Subnormal results become
+/// 0"). (probes/t2435-dist-extremes A39, A85:A91, A130, A131, A141, A142; gen-m9
+/// c6cfda6bd10cae93 A363.)
 /// Excel: see docs/excel-semantics/statistics.md, "The F cdf is #NUM! where df2/(df1 x) overflows (T-2435)"
 fn f_beta_ratio_overflows(df1: f64, df2: f64, x: f64) -> bool {
     x > 0.0 && !(df2 / (df1 * x)).is_finite()

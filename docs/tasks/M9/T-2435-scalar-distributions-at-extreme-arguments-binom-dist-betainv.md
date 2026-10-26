@@ -87,7 +87,7 @@ about 30 ulp off: the cause is F.INV.RT's far tail (`F.INV.RT(1E-20,9,3)`). This
       35e8168aae2b00f8 A48, 4ab2ba98d26c8a5e A341, 8dd2312c96effb1b A228, c6cfda6bd10cae93 A363.
       The 6 cells of the split are T-1891's and T-2808's; the T-2496 and T-2491 blocks above are
       T-2808's (01523d247594952e A377) and already passing (d0854366830dcdee A298).
-- [x] Each rule's probe cells are in eval/ (probes/t2435-dist-extremes, 140 formulas with a `(x)=0`
+- [x] Each rule's probe cells are in eval/ (probes/t2435-dist-extremes, 146 formulas with a `(x)=0`
       companion each), and statistics.md gets an entry per rule with an "Ours:" line naming this task.
 - [x] No new known-failure lines in gen-m9 or any other baseline; every new line in
       eval/baseline/probes.txt is named in an owning task file: T-1891 (A21, A22, A25, A26, A33,
@@ -106,8 +106,8 @@ or is within half a unit of the 15th significant digit of Excel's value; the vis
 states it.
 
 ## Outcome
-Probed the sweep's extremes on excel-graph (probes/t2435-dist-extremes, 140 formulas and their
-`(x)=0` companions, four fills) and implemented the five rules the evidence settles, each with its
+Probed the sweep's extremes on excel-graph (probes/t2435-dist-extremes, 146 formulas and their
+`(x)=0` companions, six fills) and implemented the five rules the evidence settles, each with its
 own statistics.md entry:
 - BINOM.DIST's and BINOMDIST's pmf at k = 0 with p = 1 is `#NUM!` from one trial on (Excel's
   k = 0 closed form takes LN(0)), while the cdf there stays 0 and 0 trials give 1.
@@ -128,6 +128,8 @@ T-2809 (BINOM.INV's count at a huge trial count), T-2811 (the probe's last-digit
 GAMMA.DIST huge-shape cells added to T-1891. The probe's cells for those four stay known failures
 in eval/baseline/probes.txt, each named in the owning task.
 Round 2 (excel-fidelity review): the probe found that our density errored at a shifted interval's
-own end where Excel gives 0 (A126, A127) — fixed here rather than recorded as a gap; the F cut's
+own end where Excel gives 0 (A126, A127) — fixed here rather than recorded as a gap, and round 3
+probed the shape of exactly 1 there (A143:A146: 0 at the end, 0.6666666444444445 one step inside, so
+Excel's step down is real rather than a rule about a diverging density); the F cut's
 lower side now has a normal-x cell either side (A85 against A141, A142), since `FDIST(1E-308,6,1E+8)`
 is 1 only because a subnormal x reaches the kernel as 0.
