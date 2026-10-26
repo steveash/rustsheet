@@ -3,7 +3,7 @@ id: T-1966
 title: "Probe IMTAN/IMCOT past the cosh overflow and near pi/2"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
