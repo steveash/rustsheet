@@ -3,7 +3,7 @@ id: T-2537
 title: "IMSECH, IMCOT, IMCSC and IMLOG2 last printed digit in the gen-m9 engineering sweep, after T-2044 (154 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
