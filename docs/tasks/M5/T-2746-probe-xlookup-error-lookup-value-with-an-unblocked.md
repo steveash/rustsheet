@@ -24,4 +24,4 @@ T-2290 lifts the error per element, evidenced only by a blocked spill (`#SPILL!`
 -
 
 ## Outcome
-Probed 16 formulas (32 cells) on excel-graph: an error lookup_value fills every element and beats an invalid mode element; if_not_found does not replace it. lookup.md updated; ours already matched, so the eval baseline is unchanged. Evidence: probes/t2746-xlookup-error-lookup-array-modes.
+Probed 15 distinct formulas (32 cells) on excel-graph: an error lookup_value fills every element and beats an invalid mode element; if_not_found does not replace it. lookup.md updated; ours already matched, so the baseline only gains the new case (no known failures). Evidence: probes/t2746-xlookup-error-lookup-array-modes.
