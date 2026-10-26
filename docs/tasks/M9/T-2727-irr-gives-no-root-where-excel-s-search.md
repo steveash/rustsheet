@@ -3,7 +3,7 @@ id: T-2727
 title: "IRR gives no root where Excel's search gives up: far and near -1 roots are #NUM!, a root near 1E+15 is #DIV/0! (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
