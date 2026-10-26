@@ -1348,8 +1348,8 @@ error. Alone in a fresh workbook every such formula is 0: `AMORDEGRC(10000,39000
 `AMORDEGRC(2400,39679,39813,300,0.5,0.15,1)`, `(..,0.0001,..)` and `AMORDEGRC(98882,37287,38647,1E-13,0.5625,0.1,1)`
 (probes/amordegrc-fraction-alone-a to -d). With an `AMORDEGRC(2400,39679,39813,300,2,0.15,1)` (485) in the workbook it is
 485 or 0 by position: after it in A2 (-f: A1 `AMORDEGRC(10000,..,0.3,..)` is 485, A2 the 485 charge) but 0 before it (-e: A1
-485, A2 the 0.3 cell 0; -g: A1 485, A2 0.0001 and A3 0.5 both 0). Excel for the web evaluates a freshly uploaded sheet's
-cells from the last to the first here, so the value comes from the cell *below*: every earlier cell fits that reading.
+485, A2 the 0.3 cell 0; -g: A1 485, A2 0.0001 and A3 0.5 both 0). Excel for the web appears to evaluate a freshly uploaded sheet's
+cells from the last to the first here (inferred), so the value comes from the cell *below*: every earlier cell fits that reading.
 probes/amordegrc-fractional-period A1-A11 are 776, the value of A12 (period 1.0001) below them; A23-A26 are 1693, A24's
 and A26's from A25 and A27 (a different asset, whose own period 1 is 2284, A28); fin-amor-period-bound B17 (period 0.5) is
 485, B18's value; amor-argument-check-order A846-A851 are 776 from A852 (period 1.5), and A862-A864 are 0 under A865, an
@@ -1360,7 +1360,8 @@ Evidence: probes/amordegrc-fraction-alone-a to -g (excel-graph, 2026-10-26, T-18
 Ours: 0, Excel's value for the formula alone (`DegressiveWalk::charge` walks no period below 1). The cells that read a
 neighbour's value stay known failures: matching them needs Excel's calculation order and state carried between cells,
 which the engine does not model (T-2825).
-Status: VERIFIED (excel-graph)
+Status: VERIFIED (excel-graph) for the formula alone and the A1/A2 order cases; the last-to-first evaluation order is
+inferred (unprobed against other layouts, sheets or a recalculation after an edit) and gen-m9 A76 is UNEXPLAINED (T-2825)
 Tasks: T-1895, T-2825
 
 ## AMORDEGRC past 2^20 periods

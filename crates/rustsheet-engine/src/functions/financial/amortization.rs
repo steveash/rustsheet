@@ -483,7 +483,7 @@ fn amor_are_equal(x: f64, y: f64) -> bool {
 // `round excelComplaint`: pre-round to 13 significant digits (Excel's internal
 // precision) then round to the nearest integer, ties away from zero.
 fn amor_round(x: f64) -> f64 {
-    // Past about 1.8E295 the scaled value overflows; there the pre-round is a no-op anyway, and
+    // Past about 1.8E295 the scaled value overflows; there the pre-round has no visible effect, and
     // skipping it keeps a huge charge finite (`AMORDEGRC(1E308,..)`, probes/fin-amor-period-bound-b
     // B2, T-1895).
     let scaled = (x * 1e13).round();
