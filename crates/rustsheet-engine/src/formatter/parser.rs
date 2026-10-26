@@ -703,11 +703,23 @@ impl Parser {
                     });
                 }
                 Token::AMPM => {
+                    // Excel: a bracketed elapsed token before the marker is #VALUE! (`[ss] AM/PM`,
+                    // `[h] AM/PM`, `[mm] AM/PM`, `[s] A/P`) but the marker first is valid
+                    // (`AM/PM [h]` on 1.5 is "PM 12"; probes/text-elapsed-two-tokens A1, A9-A11, A13).
+                    if bracketed_elapsed > 0 {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
                     use_ampm = true;
                     tokens.push(TextToken::AMPM);
                 }
                 Token::AP(am, pm) => {
+                    // Excel: a bracketed elapsed token before the marker is #VALUE! (`[ss] AM/PM`,
+                    // `[h] AM/PM`, `[mm] AM/PM`, `[s] A/P`) but the marker first is valid
+                    // (`AM/PM [h]` on 1.5 is "PM 12"; probes/text-elapsed-two-tokens A1, A9-A11, A13).
+                    if bracketed_elapsed > 0 {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
                     use_ampm = true;
                     tokens.push(TextToken::AP(am, pm));

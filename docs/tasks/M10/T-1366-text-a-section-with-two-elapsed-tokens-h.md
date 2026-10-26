@@ -3,7 +3,7 @@ id: T-1366
 title: "TEXT: a section with two elapsed tokens ([h]:[mm]) is #VALUE!"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -35,3 +35,11 @@ and must stay valid, so the check is on two bracketed elapsed tokens. Also probe
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+The section parser (formatter/parser.rs) now rejects two bracketed elapsed tokens, and a bracketed
+elapsed token before an AM/PM or A/P marker, as #VALUE!. A bare `h`/`s` after `[h]`/`[s]` is not
+bracketed and stays valid. New probe probes/text-elapsed-two-tokens (excel-graph) records the
+T-1105 extrapolations and the positive `[ss] AM/PM`; results are in dates.md. Eval delta: 5 probe
+known failures fixed (negative-date-sections-1900 A21, A22; -1904 A9, A21, A22). Follow-up: the
+marker-first form `AM/PM [h]` prints "PM 36" where Excel prints "PM 12" (A13, now a known failure).

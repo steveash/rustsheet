@@ -1367,6 +1367,7 @@ C	probes/text-count-argument-bounds.case.json	623
 C	probes/text-currency-locale-date.case.json	19
 C	probes/text-date-255-char-limit.case.json	43
 C	probes/text-ddd-negative-fraction.case.json	9
+C	probes/text-elapsed-two-tokens.case.json	14
 C	probes/text-format-aaa-weekday-b.case.json	30
 C	probes/text-format-aaa-weekday-c.case.json	10
 C	probes/text-format-aaa-weekday.case.json	50
@@ -1710,7 +1711,6 @@ F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
-F	probes/elapsed-no-seconds-boundary.case.json	S!A31
 F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-im-overflow-edges.case.json	S!A17
 F	probes/eng-im-overflow-edges.case.json	S!A58
@@ -2623,7 +2623,6 @@ F	probes/m7-lift-take-drop-sortby.case.json	Sheet1!U10
 F	probes/m7-lift-take-drop-sortby.case.json	Sheet1!U17
 F	probes/m7-lift-take-drop-sortby.case.json	Sheet1!U7
 F	probes/m7-lift-take-drop-sortby.case.json	Sheet1!U9
-F	probes/negative-date-sections-1904.case.json	S!A23
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A1
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A10
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A11
@@ -3590,6 +3589,7 @@ F	probes/text-255-units-from-cell.case.json	S!A12
 F	probes/text-255-units-from-cell.case.json	S!A4
 F	probes/text-255-units-rept-error-count.case.json	S!A1
 F	probes/text-255-units-rept-error-count.case.json	S!A4
+F	probes/text-elapsed-two-tokens.case.json	S!A13
 F	probes/text-format-digits-date-token.case.json	Sheet1!C25
 F	probes/text-locale-calendars-detail.case.json	S!A7
 F	probes/text-locale-calendars-detail.case.json	S!A8
