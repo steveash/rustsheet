@@ -42,3 +42,19 @@ fn subnormal_results_are_kept_or_flushed_as_in_excel() {
         .collect();
     check_cells(&[], &cells);
 }
+
+// T-2738: GAMMA.DIST's density is #NUM! where x / beta is subnormal; the cdf there is 0
+// (probes/t2738-gamma-dist-tiny-ratio).
+#[test]
+fn gamma_density_of_a_subnormal_ratio_is_num() {
+    check_cells(
+        &[],
+        &[
+            ("A1", "=GAMMA.DIST(4.4E-308,1,2,FALSE)", "#NUM!"),
+            ("A2", "=GAMMA.DIST(1E-10,0.5,1E+300,FALSE)", "#NUM!"),
+            ("A3", "=GAMMADIST(1E-10,1,1E+300,FALSE)", "#NUM!"),
+            ("A4", "=GAMMA.DIST(1E-300,1,1E+10,TRUE)", "0"),
+            ("A5", "=GAMMA.DIST(4.5E-308,1,2,FALSE)>0", "TRUE"),
+        ],
+    );
+}
