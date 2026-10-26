@@ -119,3 +119,7 @@ which quantity separates 16-24 from 11-15 and 25+. Hypothesis (a) of the Context
   `compute_rate` returns at the cap only when |dr| < 1e-7, so it is `#NUM!` for every n >= 11 here.
   Scratch scripts: the plain-double secant over 200 steps, printing the 200th step, the step ratio, f200/f199
   and 1+r.
+- One more data point for the lower edge. |f200| is 1.64e-60 at n 15 (`#NUM!`) and 2.48e-60 at n 16 (returned),
+  and pv -1 matches pv -100 (A48 = A24). So |f| itself cannot be the test. The power P = (1+r)^n behind it might
+  be, if Excel's `^` or `*` flushes or rejects a tiny P (P200 is about 1.6e-62 at n 15 and 2.5e-62 at n 16 for
+  pv -100). Probe RATE(n,0,pv) with pv 1E-200 and 1E+200 at n 13 and 24 to tell P apart from f.
