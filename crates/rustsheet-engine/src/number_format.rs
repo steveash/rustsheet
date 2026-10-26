@@ -419,6 +419,8 @@ pub(crate) fn number_to_text(value: f64) -> String {
 /// small part in plain notation past 20 characters (`0.0000602887066915739`), otherwise
 /// the 20-character rule holds (`1.22514845490862E-16`, probes/eng-impower A9). The exponent -5
 /// limit is evidenced exactly: probes/eng-im-small-part has -1 to -5 plain and -6 to -16 in E notation.
+/// A large part is plain up to exponent 20, padded with zeros past 15 digits
+/// (`123456789012345000000`), and E notation from 21 (probes/eng-im-large-part).
 pub(crate) fn complex_part_to_text(value: f64) -> String {
     value_to_text(value, TextRules::ComplexPart)
 }
@@ -435,6 +437,8 @@ fn value_to_text(value: f64, rules: TextRules) -> String {
     const MAX_PLAIN_LEN: usize = 20;
     /// Smallest decimal exponent an IM* part writes in plain notation whatever its length.
     const MIN_COMPLEX_PLAIN_EXPONENT: i32 = -5;
+    /// Largest decimal exponent an IM* part writes in plain notation whatever its length.
+    const MAX_COMPLEX_PLAIN_EXPONENT: i32 = 20;
     if !value.is_finite() {
         // Unreachable from formulas: Excel has no infinities or NaN (overflow is `#NUM!`).
         return format!("{value}");
@@ -464,7 +468,7 @@ fn value_to_text(value: f64, rules: TextRules) -> String {
         TextRules::Coercion => plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN,
         TextRules::ComplexPart => {
             plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN
-                || (MIN_COMPLEX_PLAIN_EXPONENT..0).contains(&exponent)
+                || (MIN_COMPLEX_PLAIN_EXPONENT..=MAX_COMPLEX_PLAIN_EXPONENT).contains(&exponent)
         }
     };
     if plain {
