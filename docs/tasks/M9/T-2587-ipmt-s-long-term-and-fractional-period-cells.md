@@ -12,7 +12,7 @@ campaign: visible
 ---
 
 ## Goal
-The nine gen-m9 IPMT cells below have Excel's value to 15 significant digits, with no PMT, IPMT or PPMT
+The ten gen-m9 IPMT cells below have Excel's value to 15 significant digits, with no PMT, IPMT or PPMT
 cell of m9-fin-pmt, IPMT_PPMT.xlsx or gen-m9 made visibly off.
 
 ## Context
@@ -42,6 +42,12 @@ Cells:
 - gen-m9/b73c6cc96e093f03.case.json (1): Calc!A268
 - gen-m9/c0681a8b150ce301.case.json (1): Calc!A104
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A385
+
+One more visibly-off gen-m9 IPMT cell (gap triage 2026-10-26, `make eval` on 1c8b3d34, excel-graph), long term at a
+negative rate with type 1; no task listed it:
+- gen-m9/b6a02893a8d6b151 Calc!A35 `=IPMT((-0.05),4,341,208149,115,1)`: Excel 9391.86032881097, ours 9391.860328810977
+Cells:
+- gen-m9/b6a02893a8d6b151.case.json (1): Calc!A35
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9): these 9 cells are within half a unit of the 15th significant digit of Excel's

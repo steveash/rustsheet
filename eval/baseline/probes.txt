@@ -331,6 +331,7 @@ C	probes/eng-besselk-underflow-bit-shift.case.json	276
 C	probes/eng-complex-overflow.case.json	21
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
+C	probes/eng-im-large-part.case.json	36
 C	probes/eng-im-overflow-edges-2.case.json	114
 C	probes/eng-im-overflow-edges.case.json	116
 C	probes/eng-im-overflow.case.json	48
@@ -1076,7 +1077,7 @@ C	probes/t2277-hyperlink-location-length.case.json	15
 C	probes/t2280-ifs-one-cell-range-condition.case.json	82
 C	probes/t2287-regex-r-x-spans.case.json	83
 C	probes/t2291-combina-small-n-huge-k.case.json	7
-C	probes/t2296-sumproduct-error-element.case.json	17
+C	probes/t2296-sumproduct-error-element.case.json	21
 C	probes/t2310-sortby-single-by-array.case.json	90
 C	probes/t2311-pivotby-value-cause.case.json	195
 C	probes/t2311-pivotby-value-columns-error.case.json	127
