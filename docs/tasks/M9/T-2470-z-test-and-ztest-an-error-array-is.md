@@ -89,17 +89,17 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 | gen-m9/bc04c1f478c9896c Calc!A275 | `ZTEST(Data!$A10,(1.005/2.5),100)` (A10 empty, a lone cell) | #N/A | #VALUE! |
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] (Partly met; rest in T-2772) Visible parity (gen-m9, T-2256): these 35 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] (Partly met; rest in T-2772) Visible parity (gen-m9, T-2256): these 35 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `Z.TEST(1/0,"x")` is `#DIV/0!`, `Z.TEST({5},3,-1)` `#DIV/0!`, `Z.TEST(A1,1)` with A1 = "x" `#N/A`,
+- [x] Unit tests: `Z.TEST(1/0,"x")` is `#DIV/0!`, `Z.TEST({5},3,-1)` `#DIV/0!`, `Z.TEST(A1,1)` with A1 = "x" `#N/A`,
       `Z.TEST(A1:A1,1)` with A1 = "x" `#N/A` (amended: statistics.md evidence), and `Z.TEST(A1:A8,4,0)` stays `#NUM!`.
-- [ ] statistics.md's T-2256 Z.TEST entry gets an "Ours:" line naming this task.
-- [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's T-2256 Z.TEST entry gets an "Ours:" line naming this task.
+- [x] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Z.TEST's tail accuracy and the sigma/sqrt(n) underflow (T-1942).

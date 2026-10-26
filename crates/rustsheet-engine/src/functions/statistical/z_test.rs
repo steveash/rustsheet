@@ -142,8 +142,9 @@ fn z_test_element(
         return error(Error::NA);
     }
     // One numeric value is #DIV/0!, with or without sigma (`Z.TEST(D1:D1,4,1)`,
-    // `Z.TEST(7,4,1)`: probes-numeric/t1049-ztest A40, A42; t1916-erf-wrappers column T), and it comes before a sigma of 0 or
-    // below (`ZTEST({5},x,-123456789.123)`, gen-m9/38e4fc309fe199ea A87).
+    // `Z.TEST(7,4,1)`: probes-numeric/t1049-ztest A40, A42; t1916-erf-wrappers column T), and it
+    // comes before a sigma of 0 or below (`ZTEST({5},x,-123456789.123)`, gen-m9/38e4fc309fe199ea
+    // A87).
     if data.count <= 1 {
         return error(Error::DIV);
     }
