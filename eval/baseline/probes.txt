@@ -329,6 +329,7 @@ C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-besselk-underflow-bit-shift.case.json	276
 C	probes/eng-complex-overflow.case.json	21
+C	probes/eng-convert-boolean-unit.case.json	34
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
 C	probes/eng-im-large-part.case.json	36
@@ -1722,6 +1723,9 @@ F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
 F	probes/elapsed-no-seconds-boundary.case.json	S!A32
+F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
+F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
+F	probes/eng-convert-boolean-unit.case.json	Sheet1!B8
 F	probes/eng-imln-modulus-range.case.json	S!A51
 F	probes/eng-imln-modulus-range.case.json	S!A52
 F	probes/eng-imln-modulus-range.case.json	S!A53
