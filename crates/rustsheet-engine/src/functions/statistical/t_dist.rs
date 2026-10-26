@@ -3,7 +3,7 @@ use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
-use crate::functions::statistical::paired::{PairedSamplesError, PairedValues};
+use crate::functions::statistical::paired::{MarkedSample, PairedSamplesError, PairedValues};
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::functions::statistical::student_t::{
     student_t_density, student_t_tail_at, student_t_tails,
@@ -515,7 +515,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let samples = self
-            .paired_samples(args, cell, false)
+            .paired_samples(args, cell, false, MarkedSample::NumError)
             .map_err(|error| PairedSamplesError {
                 error: error.error.without_message(),
                 ..error
