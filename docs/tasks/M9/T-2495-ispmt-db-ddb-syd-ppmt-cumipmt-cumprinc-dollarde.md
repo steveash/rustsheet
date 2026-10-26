@@ -3,7 +3,7 @@ id: T-2495
 title: "ISPMT, DB, DDB, SYD, PPMT, CUMIPMT, CUMPRINC, DOLLARDE, DOLLARFR and NOMINAL: argument error order (gen-m9, 13 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
