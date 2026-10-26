@@ -3,10 +3,10 @@ id: T-1671
 title: "Txn::add_table takes a totals row; the eval adapter loads spec totals rows"
 milestone: M8
 lane: api
-status: in-progress
+status: todo
 priority: P1
 size: S
-tier: sonnet
+tier: opus
 campaign: semantics
 depends_on: []
 ---
@@ -59,3 +59,23 @@ SUM 39, MIN 39, AVERAGE 37, MAX 36, the bare reference 17, SUBTOTAL 1, INDEX 1. 
 
 ## Visible-parity stage
 Decision 0083: wrong values here are visible to anyone using defined names or tables (gen-m8b `[#Totals]` cells), so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Handoff
+Done and pushed on branch `agent/api/T-1671-add-table-totals` (code committed): `Model::add_table_with_totals`
+(crates/rustsheet-engine/src/tables.rs; `add_table` delegates), `Txn::add_table_with_totals`
+(crates/rustsheet/src/edit.rs), the eval adapter passes `totals_row` through (`table_range` helper and the
+`TODO(T-1671)` removed), plus a facade test and a rewritten adapter test (both pass).
+
+Blocked: `make eval-baseline` refuses 4 regressions in suite `probes`, all structural edits on a table that now
+really has a totals row (previously the adapter left the totals row out of the table, so they passed by accident):
+- probes/table-edits/table-delete-row-totals F!A3 (`ROWS(Sales[#All])` Excel 5, ours `#ERROR!`) and F!A15
+  (`FORMULATEXT(=Sales[[#Totals],[Qty]])` Excel keeps it, ours `=#REF!`)
+- probes/table-edits/table-delete-row-last-data-totals F!A15
+- probes/table-edits/table-insert-row-above-totals F!A12 (`=S!$C$9` instead of `=Sales[[#Totals],[Qty]]`); its
+  F!A2/A7 (`ROWS(Sales)` 5, range growth) also differ.
+`make eval-baseline` also reports 11 probe cells fixed. `make check` fails only at the eval gate for this reason.
+
+Next: make the engine's structural edits (insert/delete row, tables.rs / the move-formula path) treat
+`totals_row_count` right (grow/shrink the table range, keep `[#Totals]` references valid) using the oracle
+values in those probe cases, then `make eval-baseline` (must show REGRESSIONS 0), then check the gen-m8b cells in
+the acceptance criteria, then reviewers. Needs engine judgement beyond a sonnet S task.
