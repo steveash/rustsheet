@@ -47,7 +47,7 @@ fn implicit_intersection_operator() {
     model._set("B1", "=FORMULATEXT(@A:A)");
     model.evaluate();
 
-    assert_eq!(model._get_text("B1"), *"=1+2");
+    assert_eq!(model._get_text("B1"), *"=1 +  2");
 }
 
 #[test]
@@ -69,8 +69,8 @@ fn test_language_independence() {
     model.set_language("fr").unwrap();
     model.evaluate();
 
-    assert_eq!(model._get_formula("A1"), *"=SOMME(1,2)");
-    assert_eq!(model._get_text("B1"), *"=SUM(1,2)");
+    assert_eq!(model._get_formula("A1"), *"=SOMME(1, 2)");
+    assert_eq!(model._get_text("B1"), *"=SUM(1, 2)");
 }
 
 #[test]
@@ -84,8 +84,8 @@ fn test_locale() {
     model.set_locale("fr").unwrap();
     model.evaluate();
 
-    assert_eq!(model._get_formula("A1"), *"=SOMME(1,123;2)");
-    assert_eq!(model._get_text("B1"), *"=SUM(1,123;2)");
+    assert_eq!(model._get_formula("A1"), *"=SOMME(1,123; 2)");
+    assert_eq!(model._get_text("B1"), *"=SUM(1,123; 2)");
 }
 
 #[test]

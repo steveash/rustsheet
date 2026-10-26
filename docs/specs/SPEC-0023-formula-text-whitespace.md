@@ -149,6 +149,23 @@ parse.
   for free from step 1. Step 4 drops the leading run of a stored formula and keeps the typed leading
   run (`= 1+2`), as the probe shows.
 
+### Implementation note (T-2781)
+Changes from the design above, found while implementing step 1 (decision 0127):
+- **Evaluation reads a stripped tree.** About 300 sites in the evaluator and the functions match an argument's
+  shape without `ungrouped()` (`LET` name positions, `ISOMITTED`, reference-argument tests, LAMBDA bodies), which a
+  rare `Group` never reached but a common `SUM(A1, B1)` would. So a cell stores the written tree for printing and
+  edits, and a copy with every `Spaced` removed (`Node::strip_spaces`) for evaluation, units and static analysis
+  (`formula_cells::ParsedFormula`; the copy exists only for a formula written with whitespace). The other evaluated trees
+  (defined names, conditional formats, outside-cell formulas) are stripped where they are parsed. The peel in
+  `ungrouped`/`lowered` and the walkers stays, for the printers and edits that read the written tree.
+- **`Spacing` is inline** (`Spaced { space: Spacing, child: Box<Node> }`), two bytes today, so no second box.
+  As the design says, a `Spaced` costs no level of `MAX_FORMULA_DEPTH`, so a formula nests as deep with spaces as
+  without. It wraps only a node that costs a level and never another `Spaced`, so a written tree is at most twice as
+  deep as counted, and only printers and edits walk it; the nesting tests print, edit and evaluate spaced shapes at
+  the limit on a 2 MiB stack (`spaced_shapes_nest_as_deep_as_bare_ones_on_a_2_mib_stack`).
+- The runs are attached in `Parser::parse_power` (before the operand, after each sign, before each `%`, after the
+  operand) and after `@`, which covers every primary position the probes show.
+
 ### What does not change
 Public API, the depth and operator caps, every parse error, and every value.
 

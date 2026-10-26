@@ -461,7 +461,7 @@ impl Model {
                     operand = right;
                 }
                 // The identity: `-+-B:B` is one chain too.
-                Node::UnaryPlus { child } => operand = child,
+                Node::UnaryPlus { child } | Node::Spaced { child, .. } => operand = child,
                 _ => break,
             }
         }

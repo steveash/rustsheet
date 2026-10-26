@@ -266,7 +266,7 @@ impl Model {
 /// Whether `node` is omitted, a literal or a one-cell reference, none of which lifts, under any
 /// unary plus (the identity, T-2723).
 fn is_scalar_node(mut node: &Node) -> bool {
-    while let Node::UnaryPlus { child } = node {
+    while let Node::UnaryPlus { child } | Node::Spaced { child, .. } = node {
         node = child;
     }
     matches!(

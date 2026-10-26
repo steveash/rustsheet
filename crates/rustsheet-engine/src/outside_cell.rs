@@ -42,7 +42,9 @@ impl Model {
             row: 1,
             column: 1,
         };
-        let node = self.parse_internal_formula(body, &context_rc);
+        let mut node = self.parse_internal_formula(body, &context_rc);
+        // Evaluation reads no whitespace (see `ParsedFormula`).
+        node.strip_spaces();
         let context_index = CellReferenceIndex {
             sheet,
             row: 1,
