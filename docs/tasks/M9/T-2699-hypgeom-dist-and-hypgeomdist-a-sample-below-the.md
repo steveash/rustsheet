@@ -66,6 +66,8 @@ Cells:
 - gen-m9/c468f5046aadfbbc.case.json (1): Calc!A85
 - gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A31
 
+T-2429 (2026-10-25) probes more impossible samples: probes/t2429-hypgeom-huge-count A5, A6, A11, A12, ... (`HYPGEOMDIST(1,N,3,N)` and `HYPGEOMDIST(1,3,N,N)`, Excel 0, ours `#NUM!`, for N from 202770 to 1E9) and probes/t2429-hypgeom-threshold A3, A4, A7, A8, ... (N to 2147483646.9) are known failures in eval/baseline/probes.txt that this rule fixes.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2436): these 13 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline (the probes-numeric t1048/t1049

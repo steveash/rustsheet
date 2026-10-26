@@ -3,7 +3,7 @@ id: T-2706
 title: "Probe subnormal companions for the unprobed density paths: BINOM.DIST k = n, cumulative tails, legacy names, second regimes"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,9 +28,15 @@ Write a probes case with each formula and its companion (excel-probe skill); fil
 mismatch.
 
 ## Acceptance criteria
-- [ ] A probes case holds each path above with its `(x)=0` companion, filled from excel-graph.
-- [ ] numbers.md records kept or flushed per path, citing the cells; a task is filed for each mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes case holds each path above with its `(x)=0` companion, filled from excel-graph.
+- [x] numbers.md records kept or flushed per path, citing the cells; a task is filed for each mismatch.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing engine code (the filed tasks do).
+
+## Outcome
+probes/t2706-subnormal-density-paths (35 calls with companions, excel-graph 2026-10-25) covers k = n, every cumulative
+mode, the legacy names, a second regime per function and the statrs fallbacks (BETA.DIST past MAXGAM; the GAMMA.DIST
+non-normal x / scale). Recorded in numbers.md "Distribution densities". The engine misses 12 rows: 11 for T-2737 (the flushes
+and the NEGBINOM.DIST f = 0 keep), row 25 for T-2738 (GAMMA.DIST's #NUM! at a 1E+308 scale).

@@ -1,0 +1,55 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A defined name's 3-D span shrinks when its last sheet moves before its first sheet. (T-1691)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUM(Span)",
+        "A2": "=COUNT(Span)",
+        "A3": "=SUM(Jan:Mar!A1)",
+        "B3": "=FORMULATEXT(A3)"
+      }
+    },
+    {
+      "name": "Jan",
+      "cells": {
+        "A1": 10
+      }
+    },
+    {
+      "name": "Feb",
+      "cells": {
+        "A1": 20
+      }
+    },
+    {
+      "name": "Mar",
+      "cells": {
+        "A1": 30
+      }
+    },
+    {
+      "name": "Apr",
+      "cells": {
+        "A1": 40
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "move",
+      "sheet": "Jan",
+      "to": 4
+    }
+  ],
+  "names": {
+    "Span": "=Jan:Mar!$A$1"
+  }
+}

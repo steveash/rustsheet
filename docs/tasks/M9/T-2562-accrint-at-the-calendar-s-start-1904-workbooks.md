@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -25,10 +26,25 @@ calendar's start"). Two cases have no oracle cell:
   Probe e.g. `ACCRINT(1,59,DATE(1900,2,1)+0,...)` style cells with issue/settlement around them, quarterly and
   semiannual.
 
+- A third edge, now with an Excel cell (T-2676 sweep, gen-m9 round 2, gap triage 2026-10-26, excel-graph): an issue
+  long after a first_interest at serial 1. gen-m9/932b33b1ef8b7608 Calc!A118 `=ACCRINT(33853,1.005,37554,1,9888,1,1)`
+  (annual, basis 1, calc_method TRUE by default) is `#NUM!` in Excel; ours 100198.77008758142 (bases 0, 2 and 3 give
+  100225.87, 100363.2 and 100207.43 in ours; with calc_method FALSE ours is already `#NUM!`). The nearest Excel cell,
+  `ACCRINT(33448,1,37714,1E+300,0.3,1,2,TRUE)` (gen-m9 3b7990bd4e3307ba A317, basis 2), is a number in Excel, so the
+  cut is not "first_interest's regular period starts before 1900" alone. Suspected: basis 1 needs the length of that
+  regular period (1899-01-01 to 1900-01-01), which is off the calendar. Probe the same call on bases 0 to 4, with
+  first_interest 1, 1.005, 2 and 367, and with frequencies 2 and 4, then follow the result in `compute_accrint`.
+  Owned: gen-m9/932b33b1ef8b7608.case.json (1): Calc!A118.
+
 ## Acceptance criteria
 - [ ] A probe case for each edge lands with excel-graph values and the findings go into financial.md.
 - [ ] Any cell that fails is fixed, or a follow-up task owns it.
+- [ ] gen-m9/932b33b1ef8b7608 Calc!A118 leaves eval/baseline/gen-m9.txt with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 1900-workbook rule T-2124 fitted.
+
+## Visible-parity stage
+`semantics`: gen-m9/932b33b1ef8b7608 Calc!A118 is a number where Excel is `#NUM!` (T-2676 triage); the stage is met when
+it is `#NUM!`. The two unprobed edges keep the task's bit-level goal.

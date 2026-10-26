@@ -21,11 +21,6 @@ const ENGINE_BETA_CDF: &str =
 const ERF_KERNELS: &str =
     "erf kernels: fixed-degree rationals and one fixed-length excel_exp series";
 
-/// FIND's and SEARCH's cap: each start position of `within_text` is compared with `find_text`
-/// (SEARCH's `*` segments each take their leftmost match), so one element is at most the product
-/// of its two text lengths. TODO(T-1961): charge that product per element.
-const FIND_SCAN: &str = "at most len(within_text) x len(find_text) unit comparisons";
-
 /// WORKDAY's cap: a galloping search then a bisection over the date range (`nearest_offset`), at
 /// most about 44 closed-form counts, each with 14 binary searches of the holidays, prepared once
 /// (`LiftCost::Prepared`).
@@ -76,13 +71,15 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Function::Seriessum,
         Some("one step per coefficient, charged per element as their cells (LiftCost::Cells)"),
     ),
-    // The text kernels (T-1775): linear in their texts, as `broadcast_text` was, except the
-    // searches below. A text is at most 32,767 units in a cell, and a lifted call's results are
-    // bounded by the driver's 64 MiB text budget.
-    (Function::Find, Some(FIND_SCAN)),
-    (Function::Findb, Some(FIND_SCAN)),
-    (Function::Search, Some(FIND_SCAN)),
-    (Function::Searchb, Some(FIND_SCAN)),
+    // The searches compare each start position of `within_text` with `find_text`: `ByValue`,
+    // charged by their texts' lengths (T-1961).
+    (Function::Find, None),
+    (Function::Findb, None),
+    (Function::Search, None),
+    (Function::Searchb, None),
+    // The other text kernels (T-1775): linear in their texts, as `broadcast_text` was. A text is
+    // at most 32,767 units in a cell, and a lifted call's results are bounded by the driver's
+    // 64 MiB text budget.
     (
         Function::Substitute,
         Some("one pass over the text; the result's length is checked before it is built"),
@@ -260,6 +257,62 @@ fn bessel_elements_are_charged_by_order() {
         LiftedArg::Scalar(CalcResult::Number(100_000.0)),
     ];
     assert_eq!(kernel_units(work, &scalar, 10, 1, 10), 10 << 16);
+}
+
+/// FIND's and SEARCH's `ByValue` charge (T-1961): each element is charged both texts' lengths
+/// plus, at each start position of `within_text`, 1 and the bytes compared there over the
+/// entry's `per_visit`; a number is charged as its longest text and an error as the empty text.
+#[test]
+fn text_search_elements_are_charged_by_their_texts() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::expressions::token::Error;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    for (function, per_visit) in [
+        (Function::Find, 256),
+        (Function::Findb, 256),
+        (Function::Search, 8),
+        (Function::Searchb, 8),
+    ] {
+        let work = function.arg_kinds().map(|kinds| kinds.work);
+        let Some(
+            work @ KernelWork::ByValue(ValueWork::TextScan {
+                find: 0, within: 1, ..
+            }),
+        ) = work
+        else {
+            panic!("{function:?} is not charged by its texts: {work:?}");
+        };
+        let charge = |find: CalcResult, within: ArrayNode| {
+            let args = [LiftedArg::Scalar(find), LiftedArg::Grid(vec![vec![within]])];
+            kernel_units(work, &args, 1, 1, 1)
+        };
+        let text = |len: usize| "a".repeat(len);
+        let short = charge(
+            CalcResult::String("b".into()),
+            ArrayNode::String(text(9).into()),
+        );
+        assert_eq!(short, 2 + 10, "{function:?}");
+        let long = charge(
+            CalcResult::String(text(32_767).into()),
+            ArrayNode::String(text(32_767).into()),
+        );
+        assert_eq!(
+            long,
+            32_768 + 32_768 * (1 + 32_767 / per_visit),
+            "{function:?}"
+        );
+        assert!(long * 1000 > MAX_LIFTED_CELL_VISITS, "{function:?}");
+        let number = charge(CalcResult::Number(1.5), ArrayNode::String(text(99).into()));
+        assert_eq!(number, 33 + 100 * (1 + 32 / per_visit), "{function:?}");
+        let error = charge(
+            CalcResult::String(text(10).into()),
+            ArrayNode::Error(Error::NA),
+        );
+        assert_eq!(error, 11 + 1, "{function:?}");
+    }
 }
 
 /// DB's and VDB's `ByValue` charge (T-1820): an element at the period cap costs `2^17`, so exactly
@@ -444,5 +497,88 @@ fn yield_and_odd_elements_are_charged_by_schedule_length() {
     assert_eq!(
         yield_units(-1.0, 10.0, 4.0, 1),
         yield_units(0.0, 2_935.0, 4.0, 1)
+    );
+}
+
+/// HYPGEOM.DIST's `ByValue` charge (T-2433): an element is charged the larger of its walk (2^14)
+/// and its cdf sum, 16 units a term over `min(sample_s, number_sample, population_s) + 1` terms
+/// and 131 window exponents, at most the cap's bound 2^22, so exactly 32 elements at the bound
+/// fit under `MAX_LIFTED_CELL_VISITS` (as the flat weight allowed before) and 33 do not. A text
+/// count bounds nothing, so the least of the other counts is charged, the bound when every count
+/// is a text; an error, a negative count or one of 2^31 - 1 or more,
+/// which the kernel refuses before either path, 1.
+#[test]
+fn hypgeom_dist_elements_are_charged_by_their_counts() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let work = Function::HypGeomDist.arg_kinds().map(|kinds| kinds.work);
+    let Some(work @ KernelWork::ByValue(ValueWork::HypergeometricSum { .. })) = work else {
+        panic!("HYPGEOM.DIST is not charged by its counts: {work:?}");
+    };
+    // sample_s lifted over `samples`, number_sample 1E8, population_s 1E8, number_pop 2E8.
+    let column = |samples: &[ArrayNode]| {
+        vec![
+            LiftedArg::Grid(samples.iter().map(|n| vec![n.clone()]).collect()),
+            LiftedArg::Scalar(CalcResult::Number(1E8)),
+            LiftedArg::Scalar(CalcResult::Number(1E8)),
+            LiftedArg::Scalar(CalcResult::Number(2E8)),
+            LiftedArg::Scalar(CalcResult::Boolean(true)),
+        ]
+    };
+    let one = |sample: ArrayNode| kernel_units(work, &column(&[sample]), 1, 1, 1);
+    let at_bound = |count: usize| column(&vec![ArrayNode::Number(5E7); count]);
+    let units = |args: &[LiftedArg], rows: usize| kernel_units(work, args, rows, 1, rows as u64);
+    assert_eq!(units(&at_bound(32), 32), MAX_LIFTED_CELL_VISITS);
+    assert!(units(&at_bound(33), 33) > MAX_LIFTED_CELL_VISITS);
+    // The walk's floor, then 16 units a term.
+    assert_eq!(one(ArrayNode::Number(0.0)), 1 << 14);
+    assert_eq!(one(ArrayNode::Empty), 1 << 14);
+    assert_eq!(one(ArrayNode::Boolean(true)), 1 << 14);
+    assert_eq!(one(ArrayNode::Number(892.0)), 1 << 14);
+    assert_eq!(one(ArrayNode::Number(893.0)), (893 + 1 + 131) * 16);
+    assert_eq!(one(ArrayNode::Number(1000.9)), (1000 + 1 + 131) * 16);
+    assert_eq!(one(ArrayNode::Number(262_144.0)), 1 << 22);
+    // Refused before either path, or read as any count.
+    assert_eq!(one(ArrayNode::Number(-0.5)), 1);
+    assert_eq!(one(ArrayNode::Number(2_147_483_647.0)), 1);
+    assert_eq!(one(ArrayNode::Number(2_147_483_646.9)), 1 << 22);
+    assert_eq!(
+        one(ArrayNode::Error(crate::expressions::token::Error::NA)),
+        1
+    );
+    assert_eq!(one(ArrayNode::String("7".into())), 1 << 22);
+    // A text beside a small count: that count bounds the window (gen-m9/a013a45a8fbcab4f A169,
+    // `HYPGEOM.DIST(3,PIVOTBY(..),10,3,..)` over the PIVOTBY's header texts).
+    let text_counts = |sample: f64| {
+        vec![
+            LiftedArg::Scalar(CalcResult::Number(sample)),
+            LiftedArg::Grid(vec![vec![ArrayNode::String("Total".into())]]),
+            LiftedArg::Scalar(CalcResult::String("1E8".into())),
+            LiftedArg::Scalar(CalcResult::Number(2E8)),
+            LiftedArg::Scalar(CalcResult::Boolean(true)),
+        ]
+    };
+    assert_eq!(kernel_units(work, &text_counts(3.0), 1, 1, 1), 1 << 14);
+    assert_eq!(kernel_units(work, &text_counts(1E6), 1, 1, 1), 1 << 22);
+    let all_texts = [
+        LiftedArg::Scalar(CalcResult::String("3".into())),
+        LiftedArg::Grid(vec![vec![ArrayNode::String("3".into())]]),
+        LiftedArg::Scalar(CalcResult::String("3".into())),
+    ];
+    assert_eq!(kernel_units(work, &all_texts, 1, 1, 1), 1 << 22);
+    // The least count bounds the window: a small population_s over a huge sample_s.
+    let small_successes = [
+        LiftedArg::Grid(vec![vec![ArrayNode::Number(1E8)]; 4]),
+        LiftedArg::Scalar(CalcResult::Number(1E8)),
+        LiftedArg::Scalar(CalcResult::Number(3000.0)),
+        LiftedArg::Scalar(CalcResult::Number(2E8)),
+        LiftedArg::Scalar(CalcResult::Boolean(true)),
+    ];
+    assert_eq!(
+        kernel_units(work, &small_successes, 4, 1, 4),
+        4 * (3000 + 132) * 16
     );
 }

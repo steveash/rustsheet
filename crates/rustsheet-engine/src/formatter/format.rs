@@ -19,11 +19,11 @@ pub(crate) use super::parse_formatted::{
 use super::{
     date_names::{hijri_ymd, NameTokens},
     dates::{excel_serial_to_ymd, negative_serial_allowed},
-    lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
+    lunar_calendar::{lunar_ymd, LAST_SERIAL as LUNAR_LAST_SERIAL},
     parser::{
-        is_text_section, numeric_section_count, section_tokens, ErrorPart, GeneralPart, ParsePart,
-        Parser, TextToken,
+        conditional_section, is_text_section, numeric_section_count, section_condition,
+        section_tokens, ErrorPart, GeneralPart, ParsePart, Parser, TextToken,
     },
 };
 
@@ -283,15 +283,6 @@ fn general_text(value: f64, locale: &Locale) -> String {
     }
 }
 
-/// The `[cond]` of a number or date section, if it has one.
-fn section_condition(part: &ParsePart) -> Option<(Compare, f64)> {
-    match part {
-        ParsePart::Number(p) => p.condition,
-        ParsePart::Date(p) => p.condition,
-        ParsePart::General(_) | ParsePart::Error(_) => None,
-    }
-}
-
 pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> Formatted {
     let locale = ctx.locale;
     let mut parser = Parser::new(format);
@@ -321,7 +312,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     let mut value = value_original;
     let general = ParsePart::General(GeneralPart {});
     let part;
+    let conditional = conditional_section(&parts, sections, value);
     match sections {
+        2..=4 if conditional.is_some() => {
+            let (index, drop_sign) = conditional.unwrap_or_default();
+            if drop_sign {
+                value = value.abs();
+            }
+            part = &parts[index];
+        }
         // Excel: an empty format shows nothing but a negative's minus, also for a value that
         // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
         // A32-A35).
@@ -434,7 +433,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let ymd = if p.hijri {
                 hijri_ymd(serial_1900)
             } else {
-                excel_serial_to_ymd(serial_1900)
+                match p.calendar {
+                    // Past the lunar tables (2100) the date is Gregorian, TODO(T-2759).
+                    Some(Calendar::Lunar(table)) if serial_1900 <= LUNAR_LAST_SERIAL => {
+                        lunar_ymd(serial_1900, table)
+                    }
+                    _ => excel_serial_to_ymd(serial_1900),
+                }
             };
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
@@ -502,7 +507,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             return invalid_date(value);
                         }
                         let weekday = excel_weekday_index(serial_1900);
-                        names.push(token, &mut text, p.names, locale, ymd_month, weekday);
+                        // Lunar months 13 and 14 take the twelfth name (`[$-110409]mmmm` of
+                        // 2024-01-11 is "十二月"; probes/text-locale-lunar-edges A26).
+                        let month = ymd_month.min(12);
+                        names.push(token, &mut text, p.names, locale, month, weekday);
                     }
                     TextToken::YearShort
                     | TextToken::Year
@@ -883,7 +891,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     text = format!("{text}0");
                                 }
                             } else if digit.kind == '?' {
-                                text = format!("{text} ");
+                                // A padding space, after the point when it is the first decimal:
+                                // `?.??` on 1000 is "1000.  " (gen-m10, T-1738).
+                                if needs_period {
+                                    text = format!("{text}{decimal_separator} ");
+                                } else {
+                                    text = format!("{text} ");
+                                }
                             } else if digit.kind == '#' && needs_period {
                                 // FIXME: This is what Excel does, but it transforms "3" into "3."
                                 text = format!("{text}{decimal_separator}");

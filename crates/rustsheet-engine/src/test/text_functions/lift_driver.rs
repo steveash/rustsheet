@@ -1,7 +1,7 @@
 //! The element-wise text functions on the SPEC-0011 driver (T-1775): what the driver decides for
 //! them, beyond the per-function tests next door.
 
-use crate::test::util::check_cells;
+use crate::test::util::{check_cells, new_empty_model};
 
 /// A 1x1 array lifts the call into a 1x1 array, as the other lifted families do; a one-cell
 /// range is its cell's value (UNVERIFIED for the text functions, T-1963).
@@ -95,4 +95,56 @@ fn every_text_function_broadcasts_its_arguments() {
             ),
         ],
     );
+}
+
+/// A lifted FIND or SEARCH is charged by its texts' lengths (T-1961): one over long texts is
+/// refused with the visit cap's `#ERROR!` before its first element (DEVIATION, decision 0014:
+/// Excel has no such limit), where each element would compare about 10^9 bytes; short texts and
+/// one long text against a short one are far under it.
+#[test]
+fn a_lifted_search_over_long_texts_is_refused() {
+    let mut model = new_empty_model();
+    for (cell, function) in [("B1", "FIND"), ("B2", "SEARCH"), ("B3", "FINDB")] {
+        model._set(
+            cell,
+            &format!("={function}(REPT(\"a\",32766)&\"b\",REPT(\"a\",32763)&SEQUENCE(1000))"),
+        );
+    }
+    model._set(
+        "C1",
+        "=SUM(FIND(\"b\",REPT(\"a\",32766)&\"b\"&SEQUENCE(1000)))",
+    );
+    model._set(
+        "C2",
+        "=SUM(SEARCH(\"B\",REPT(\"a\",32766)&\"b\"&SEQUENCE(1000)))",
+    );
+    model._set("C3", "=FIND(REPT(\"a\",32766)&\"b\",REPT(\"a\",32767))");
+    model.evaluate();
+    for cell in ["B1", "B2", "B3"] {
+        assert_eq!(model._get_text(cell), "#ERROR!", "{cell}");
+        assert_eq!(model._get_error_message(cell), "Too many cells to visit");
+    }
+    assert_eq!(model._get_text("C1"), "32767000");
+    assert_eq!(model._get_text("C2"), "32767000");
+    // One call is not lifted, so not charged: its one scan runs.
+    assert_eq!(model._get_text("C3"), "#VALUE!");
+}
+
+/// The charge leaves ordinary columns alone: a 100,000-row column of FINDs, one call each, and a
+/// SUM over one FIND lifted across the 100,000 texts.
+#[test]
+fn a_long_column_of_searches_runs() {
+    let mut model = new_empty_model();
+    for row in 1..=100_000 {
+        model._set(&format!("A{row}"), &format!("xab{row}"));
+        model._set(&format!("B{row}"), &format!("=FIND(\"b\",A{row})"));
+    }
+    model._set("C1", "=SUM(FIND(\"a\",A1:A100000))");
+    model._set("C2", "=SUM(B1:B100000)");
+    model._set("C3", "=SUM(SEARCH(\"B\",A1:A100000))");
+    model.evaluate();
+    assert_eq!(model._get_text("B100000"), "3");
+    assert_eq!(model._get_text("C1"), "200000");
+    assert_eq!(model._get_text("C2"), "300000");
+    assert_eq!(model._get_text("C3"), "300000");
 }

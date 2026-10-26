@@ -46,6 +46,7 @@ YIELD_CASES = [
     "probes/bond-one-period-bases",
     "probes/yield-solver-sweep",
     "probes/yield-start-sweep",
+    "probes/yield-start-one-input",
 ]
 
 
@@ -638,6 +639,32 @@ def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[
     return chain
 
 
+def fitted_yield_start(*args: Arg) -> float:
+    """T-1592's fitted start: (100 rate + (100 - pr)/T) / ((100 + pr)/2 - (100 - pr)/(4T)), T the
+    `_years_to_maturity`. On yield-start-one-input the two-steps-back starts give a denominator
+    pr + w (100 - pr) with (1/2 - w) T = 0.25000 on every row below PRICE's root."""
+    settle, maturity, rate, pr, _, _, basis = _bond(args)
+    years = _years_to_maturity(settle, maturity, basis)
+    return (100 * rate + (100 - pr) / years) / ((100 + pr) / 2 - (100 - pr) / (4 * years))
+
+
+def _newton_yield_short(start: Callable[..., float], tol: float) -> Callable[..., float]:
+    """Analytic Newton from `start(*cell_args)` that returns the iterate whose next step is below
+    `tol`, without taking that step (T-1592: Excel's values stop short of PRICE's root)."""
+
+    def call(*args: Arg) -> float:
+        price_of, bond, pr = _bond_price(args)
+        y = start(*args)
+        for _ in range(100):
+            step = (price_of(y) - pr) / dprice(y, bond)
+            if abs(step) < tol:
+                return y
+            y -= step
+        raise NoResultError("Newton did not converge")
+
+    return call
+
+
 def _fd_newton_yield(
     start: float, h: float, relative: bool, central: bool, tol: float
 ) -> Callable[..., float]:
@@ -753,6 +780,15 @@ def yield_candidates() -> list[Candidate]:
             f"Newton from {name}, |step| < 6.9e-6", _newton_yield_from(start, 6.9e-6), "Newton, model start"
         )
         for name, start in model_starts.items()
+    ]
+    # T-1592 (fourth round): the fitted start, and the step not taken once it is below the cut.
+    out += [
+        candidate(
+            f"Newton from the fitted start, returned before a step below {t:g}",
+            _newton_yield_short(fitted_yield_start, t),
+            "Newton, fitted start",
+        )
+        for t in (1e-9, 1e-10, 1e-11)
     ]
     out += [
         candidate(

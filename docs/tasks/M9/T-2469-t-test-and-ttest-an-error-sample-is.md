@@ -85,6 +85,14 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 |---|---|---|---|
 | gen-m9/3c06f9298f65a3ba Calc!A312 | `T.TEST(Data!E11,Data!A6:C12,2,Data!$D8)` (E11 blank, type 123456789.123; inside TBILLEQ) | #VALUE! | #NUM! |
 
+
+Owned gen-m9 cells (T-2524 trace, 2026-10-26; arguments evaluated by the engine, which agree with Excel): 4 known-failure
+lines in eval/baseline/gen-m9.txt, 4 visibly off. Each is an error sample before an out-of-range or error tails/type:
+- gen-m9/3b7990bd4e3307ba Calc!A286 `T.TEST(Data!B7:D10,STDEV.S(..),DVARP(..)/(-0.5),1)`: array2 #DIV/0!, tails -16928; Excel #DIV/0!, ours #NUM!
+- gen-m9/607e85cfee83a689 Calc!A256 `T.TEST(DMIN(..),Data!B10:E11,..,3)`: array1 #VALUE!; Excel #VALUE!, ours #NUM!
+- gen-m9/9e2225ead8a6a07b Calc!A10 `T.TEST(Data!A6:C8,SEQUENCE(..),..,VLOOKUP(..))`: array2 #VALUE!, tails #NUM!, type #REF!; Excel #VALUE!, ours #NUM!
+- gen-m9/91e167cd8d7eb652 Calc!A148 `TTEST(Data!C7:D11,PEARSON(..),DSUM(..),NORM.S.DIST(..))`: array2 #N/A, tails and type #VALUE!; Excel #N/A, ours #VALUE!
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

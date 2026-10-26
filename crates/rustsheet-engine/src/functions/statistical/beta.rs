@@ -131,10 +131,36 @@ impl Model {
                 _ => Err(div_error(cell)),
             };
         }
+        // The density is #NUM! at an x of exactly 0 with alpha <= 1, and at an x of exactly 1 with
+        // beta <= 1: Excel checks the given x against 0 and 1 rather than the interval's own ends,
+        // so `BETA.DIST(0,0.5,2,FALSE,-1,1)` and `BETA.DIST(1,2,0.5,FALSE,0,5)` are #NUM! at an
+        // interior point while `BETA.DIST(2,0.5,2,FALSE,2,5)` is 0 at the interval's own lower end
+        // (statistics.md "BETA.DIST's density is #NUM! at an x of 0 or 1 (T-2435)";
+        // probes/t2435-dist-extremes A59:A67, A103:A106, A126:A128, A132:A140).
+        if !cumulative && ((x == 0.0 && alpha <= 1.0) || (x == 1.0 && beta_param <= 1.0)) {
+            return Err(num_error(cell));
+        }
         let t = (x - a) / width;
         let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
+        // At the interval's own ends Excel gives 0 rather than the #NUM! an x of 0 or 1 takes
+        // above, at a shape of exactly 1 as well as a diverging one, so the density steps down to
+        // 0 at the end: `BETA.DIST(2,0.5,2,FALSE,2,5)`, `BETA.DIST(5,2,0.5,FALSE,2,5)`,
+        // `BETA.DIST(2,1,2,FALSE,2,5)` and `BETA.DIST(5,2,1,FALSE,2,5)` are 0 where
+        // `BETA.DIST(2.0000001,1,2,FALSE,2,5)` is 0.6666666444444445
+        // (probes/t2435-dist-extremes A126, A127, A143:A146).
+        if !cumulative && ((t == 0.0 && alpha <= 1.0) || (t == 1.0 && beta_param <= 1.0)) {
+            return Ok(0.0);
+        }
         let result = if cumulative {
-            beta_reg_complement(t, 1.0 - t, alpha, beta_param)
+            // A subnormal cdf is kept only at beta = 1, the closed form t^alpha, and is 0 at any
+            // other beta, 1.0000001 included (`(x)=0` FALSE at B2, B3, B6, B7, B11, B12 of
+            // probes/t2737-subnormal-cdf-shapes, TRUE at B1, B4, B5, B8:B10; T-2737).
+            let cdf = beta_reg_complement(t, 1.0 - t, alpha, beta_param);
+            if beta_param == 1.0 {
+                cdf
+            } else {
+                flush_subnormal(cdf)
+            }
         } else {
             // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A). A subnormal
             // density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/t2513-r3-m1-residual-hold E863,
@@ -178,8 +204,11 @@ impl Model {
         if alpha <= 0.0 || beta_param <= 0.0 || p <= 0.0 || p >= 1.0 || b <= a {
             return Err(num_error(cell));
         }
+        // A quantile that underflows to 0 or rounds to 1 is #NUM! (`BETAINV(0.025,1E-15,2.5)`,
+        // `BETAINV(0.05,0.002,1)`, `BETAINV(1-1E-16,2,0.01)`; statistics.md "Scalar distributions
+        // at extreme arguments (T-2255)", probes/t2475-stat-subexpressions P!A127).
         let t = beta_quantile(alpha, beta_param, p);
-        if t.is_nan() || t.is_infinite() {
+        if !(t > 0.0 && t < 1.0) {
             return Err(num_error(cell));
         }
         // Map back from [0,1] to [A,B]

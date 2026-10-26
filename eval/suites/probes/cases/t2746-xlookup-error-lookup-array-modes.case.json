@@ -1,0 +1,74 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "XLOOKUP with an error lookup_value and an unblocked array match_mode/search_mode: per-element errors and which wins against an invalid mode element (T-2746).",
+ "tags": [
+  "M6",
+  "probe",
+  "lookup",
+  "T-2746"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=XLOOKUP(1/0,Data!A1:A4,Data!B1:B4,,{0;1})",
+    "A4": "=XLOOKUP(1/0,Data!A1:A4,Data!B1:B4,,{0;9})",
+    "A7": "=XLOOKUP(1/0,Data!A1:A4,Data!B1:B4,,{9;0})",
+    "A10": "=XLOOKUP(1/0,Data!A1:A4,Data!B1:B4,,{9;8})",
+    "A13": "=XLOOKUP(NA(),Data!A1:A4,Data!B1:B4,,0,{1;9})",
+    "A16": "=XLOOKUP(NA(),Data!A1:A4,Data!B1:B4,,0,{9;1})",
+    "A19": "=XLOOKUP(NA(),Data!A1:A4,Data!B1:B4,,0,{1;-1})",
+    "A22": "=XLOOKUP(NA(),Data!A1:A4,Data!B1:B4,,{0;1},{1;-1})",
+    "A25": "=XLOOKUP(NA(),Data!A1:A4,Data!B1:B4,,{0;9},{1;-1})",
+    "A28": "=XLOOKUP(NA(),Data!A1:A4,Data!B1:B4,,{9;0},{1;-1})",
+    "A31": "=XLOOKUP(1/0,Data!A1:A4,Data!B1:B4,,0,{1;-1})",
+    "A34": "=XLOOKUP(\"x\"+1,Data!A1:A4,Data!B1:B4,,{0;1})",
+    "A37": "=XLOOKUP(NA(),Data!A1:A4,Data!B1:B4,\"nf\",{0;1})",
+    "A40": "=XLOOKUP(NA(),Data!A1:A4,Data!B1:B4,,{0;1},{1;-1})",
+    "A43": "=XLOOKUP(2,Data!A1:A4,Data!B1:B4,,{0;9})",
+    "A46": "=XLOOKUP(2,Data!A1:A4,Data!B1:B4,,0,{1;9})"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "A4": 4,
+    "B1": "one",
+    "B2": "two",
+    "B3": "three",
+    "B4": "four",
+    "C1": 11,
+    "C2": 12,
+    "C3": 13,
+    "C4": 14,
+    "D1": 3,
+    "D2": 1,
+    "D3": 7,
+    "D4": 2,
+    "E1": 10,
+    "E2": 20,
+    "E3": 30,
+    "E4": 40,
+    "F1": "a",
+    "G1": "b",
+    "H1": "c",
+    "F2": 10,
+    "G2": 20,
+    "H2": 30,
+    "F3": 100,
+    "G3": 200,
+    "H3": 300,
+    "I2": 2,
+    "J1": 5,
+    "K1": "five",
+    "K2": "blank",
+    "J3": 2,
+    "K3": "two"
+   }
+  }
+ ],
+ "expected": {}
+}

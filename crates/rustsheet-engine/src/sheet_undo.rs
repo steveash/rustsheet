@@ -1,9 +1,9 @@
 //! Taking a sheet out of a model and putting it back, so a caller can undo a delete.
 
 use crate::{
+    formula_rewrite::RewrittenFormula,
     model::Model,
     pivot::PivotTable,
-    tables::RewrittenFormula,
     types::{Table, Worksheet},
 };
 
@@ -81,7 +81,7 @@ impl Model {
             return Err("A worksheet already exists with that name".to_string());
         }
         self.workbook.worksheets.insert(sheet_index as usize, sheet);
-        self.restore_table_references(rewritten);
+        self.restore_rewritten_formulas(rewritten);
         self.restore_tables(tables);
         self.restore_pivots(pivots);
         Ok(())

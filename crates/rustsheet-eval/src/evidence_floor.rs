@@ -2,7 +2,8 @@
 //! have at least [`EVIDENCE_FLOOR`] cells with Excel-sourced expectations. The report lists the
 //! functions below it by category, and `quality/evidence-floor.json` ratchets their number down
 //! (decision 0062): `rustsheet-eval evidence-floor` fails when it rises or when the lock is stale,
-//! and `--update` records a drop.
+//! and `--update` records a drop. `rustsheet-eval check --evidence-floor` judges the floor from
+//! the same run as the baseline gate ([`plan_run`], [`floor_results`]; T-2761).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -14,6 +15,8 @@ use crate::catalog::Catalog;
 use crate::lock_file;
 pub use crate::lock_file::LockError;
 use crate::report::FunctionEvidence;
+use crate::runner::CaseResult;
+use crate::suite::Suite;
 
 /// Fewer Excel-evidence cells than this and a function's pass rate says little (T-0020); the
 /// owner set the floor at 20 (T-0056).
@@ -146,10 +149,72 @@ pub fn may_record(verdict: Verdict, allow_increase: bool) -> bool {
     }
 }
 
+/// Whether `suite` counts toward the floor: vendored suites only, so fetching an external suite
+/// cannot move the count (decision 0062).
+#[must_use]
+pub fn counts(suite: &Suite) -> bool {
+    suite.manifest.fetch.is_none()
+}
+
+/// The suites one run needs to judge both the baseline gate on `gate` and the floor: `gate`
+/// unchanged and first, then each suite of `all` that [`counts`] and `gate` does not hold. The
+/// first `gate.len()` suites of the plan are exactly `gate` (T-2761).
+#[must_use]
+pub fn plan_run(gate: Vec<Suite>, all: Vec<Suite>) -> Vec<Suite> {
+    let mut plan = gate;
+    let extra: Vec<Suite> = all
+        .into_iter()
+        .filter(|s| counts(s) && !plan.iter().any(|g| g.manifest.name == s.manifest.name))
+        .collect();
+    plan.extend(extra);
+    plan
+}
+
+/// The results of a run of `suites` that the floor counts: those of the suites that [`counts`],
+/// the same set `rustsheet-eval evidence-floor` runs on its own.
+#[must_use]
+pub fn floor_results(suites: &[Suite], results: &[CaseResult]) -> Vec<CaseResult> {
+    let counted: Vec<&str> = suites
+        .iter()
+        .filter(|s| counts(s))
+        .map(|s| s.manifest.name.as_str())
+        .collect();
+    results
+        .iter()
+        .filter(|r| counted.contains(&r.suite.as_str()))
+        .cloned()
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::catalog::{CatalogFunction, OracleSupport, Scope};
+    use crate::runner::CaseStatus;
+    use crate::suite::SuiteManifest;
+    use std::path::PathBuf;
+
+    /// A suite named `name`; `fetched` gives it a `[fetch]` table (an external suite).
+    fn suite(name: &str, gate: bool, fetched: bool) -> Suite {
+        let fetch = if fetched {
+            "[fetch]\nurl = \"https://example.com/r.git\"\nrev = \"0123456789abcdef0123456789abcdef01234567\"\n"
+        } else {
+            ""
+        };
+        let text = format!(
+            "name = \"{name}\"\nkind = \"spec\"\nlicense = \"MIT\"\ngate = {gate}\n{fetch}"
+        );
+        let manifest: SuiteManifest = toml::from_str(&text).expect("manifest parses");
+        Suite {
+            manifest,
+            dir: PathBuf::from("eval/suites").join(name),
+            cache_dir: PathBuf::from("eval/.cache/suites").join(name),
+        }
+    }
+
+    fn names(suites: &[Suite]) -> Vec<&str> {
+        suites.iter().map(|s| s.manifest.name.as_str()).collect()
+    }
 
     fn entry(
         name: &str,
@@ -250,5 +315,47 @@ mod tests {
         assert!(
             serde_json::from_str::<Lock>(r#"{"floor": 20, "below_floor": 3, "x": 1}"#).is_err()
         );
+    }
+
+    #[test]
+    fn plan_keeps_the_gate_suites_first_and_adds_the_other_vendored_ones() {
+        // gate-v: vendored gate suite; gate-f: fetched gate suite; extra-v: vendored, not gated;
+        // extra-f: fetched, not gated (never run for the floor).
+        let all = || {
+            vec![
+                suite("extra-f", false, true),
+                suite("extra-v", false, false),
+                suite("gate-f", true, true),
+                suite("gate-v", true, false),
+            ]
+        };
+        let gate: Vec<Suite> = all().into_iter().filter(|s| s.manifest.gate).collect();
+        let plan = plan_run(gate, all());
+        assert_eq!(names(&plan), ["gate-f", "gate-v", "extra-v"]);
+        // The standalone command runs exactly the suites that count; the plan holds all of them.
+        let standalone: Vec<Suite> = all().into_iter().filter(counts).collect();
+        assert_eq!(names(&standalone), ["extra-v", "gate-v"]);
+        assert!(standalone
+            .iter()
+            .all(|s| names(&plan).contains(&s.manifest.name.as_str())));
+    }
+
+    #[test]
+    fn floor_counts_only_the_vendored_suites_results() {
+        let plan = vec![
+            suite("gate-f", true, true),
+            suite("gate-v", true, false),
+            suite("extra-v", false, false),
+        ];
+        let results: Vec<CaseResult> = ["gate-f", "gate-v", "extra-v", "gate-v"]
+            .iter()
+            .enumerate()
+            .map(|(i, s)| CaseResult::empty(&format!("{s}/case{i}"), s, CaseStatus::Pass))
+            .collect();
+        let ids: Vec<String> = floor_results(&plan, &results)
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
+        assert_eq!(ids, ["gate-v/case1", "extra-v/case2", "gate-v/case3"]);
     }
 }

@@ -207,17 +207,17 @@ fn other_functions() {
     assert_eq!(model._get_text("C1"), model._get_text("C2")); // Result should be the same
 
     // INDEX
-    assert_eq!(model._get_formula("D2"), *"=INDEX(A1:A3,2)"); // Formula should not be inverted
+    assert_eq!(model._get_formula("D2"), *"=INDEX(A1:A3, 2)"); // Formula should not be inverted
     assert_eq!(model._get_text("D1"), *"2"); // Result check
     assert_eq!(model._get_text("D1"), model._get_text("D2")); // Result should be the same
 
     // MATCH
-    assert_eq!(model._get_formula("E2"), *"=MATCH(2,A1:A3)"); // Formula should not be inverted
+    assert_eq!(model._get_formula("E2"), *"=MATCH(2, A1:A3)"); // Formula should not be inverted
     assert_eq!(model._get_text("E1"), *"2"); // Result check
     assert_eq!(model._get_text("E1"), model._get_text("E2")); // Result should be the same
 
     // SUMIF
-    assert_eq!(model._get_formula("F2"), *"=SUMIF(A1:A3,\">1\")"); // Formula should not be inverted
+    assert_eq!(model._get_formula("F2"), *"=SUMIF(A1:A3, \">1\")"); // Formula should not be inverted
     assert_eq!(model._get_text("F1"), *"5"); // Result check
     assert_eq!(model._get_text("F1"), model._get_text("F2")); // Result should be the same
 
@@ -267,7 +267,7 @@ fn mixed_data_types() {
     assert_eq!(model._get_text("C1"), model._get_text("C2")); // Result should be the same
 
     // COUNTIF
-    assert_eq!(model._get_formula("D2"), *"=COUNTIF(A1:A4,\"TRUE\")"); // Formula should not be inverted
+    assert_eq!(model._get_formula("D2"), *"=COUNTIF(A1:A4, \"TRUE\")"); // Formula should not be inverted
     assert_eq!(model._get_text("D1"), *"1"); // Result check
     assert_eq!(model._get_text("D1"), model._get_text("D2")); // Result should be the same
 }

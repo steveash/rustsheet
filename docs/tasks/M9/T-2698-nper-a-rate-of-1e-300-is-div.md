@@ -3,7 +3,7 @@ id: T-2698
 title: "NPER: a rate of 1E-300 is #DIV/0! (ln(1+rate) is 0) and a rate of -1 is #NUM! (gen-m9, 7 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -50,14 +50,15 @@ Cells:
 - gen-m9/a91bad4e84f49739.case.json (1): Calc!A336
 - gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A43
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A41
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A390 (from T-2429: `HYPGEOMDIST(4,NPER((-1),-728,6163,(Data!D8/42),0),3,4)`, Excel #NUM!, ours 0; the inner NPER is Excel `#NUM!`, ours 0, probes/t2429/eced4bb6a0234c9e A10)
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): these 7 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `NPER(1E-300,-236,2766,945)` is `#DIV/0!`, `NPER(-1,-31,1)` is `#NUM!`, and `NPER(0,0,100)` stays
+- [x] Unit tests: `NPER(1E-300,-236,2766,945)` is `#DIV/0!`, `NPER(-1,-31,1)` is `#NUM!`, and `NPER(0,0,100)` stays
       `#DIV/0!`.
-- [ ] The financial.md T-2257 bullet gets an "Ours:" note naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] The financial.md T-2257 bullet gets an "Ours:" note naming this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - NPV at a rate of -1 or 1E+300 (T-2618) and NPV's error order (T-2493).
@@ -67,3 +68,9 @@ Cells:
 Decision 0083: every cell this task owns has the wrong error or a wrong type (none is a last-digit difference), so the task
 is in the campaign at the `semantics` stage. Its target is that every cell it owns has Excel's type and error; the
 visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Fixed by T-2620 (same `nper_of` change). NPER is `#DIV/0!` when ln(1+rate) is 0 and `#NUM!` at a rate of -1. All 8 cells
+left eval/baseline/gen-m9.txt.
+The unit test is T-2620's `annuity_and_db_domain_errors`: `NPER(1E-300,-113,3037,368,1)` and `NPER(-1,-31,1)`. The rate-0
+branch (`NPER(0,0,100)`) is unchanged code. The T-2257 bullet names T-2620.

@@ -1,0 +1,35 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Apr": {},
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 50.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A3": {
+    "t": "n",
+    "v": 50.0
+   },
+   "B3": {
+    "t": "s",
+    "v": "=SUM(Feb:Mar!A1)"
+   }
+  },
+  "Feb": {},
+  "Jan": {},
+  "Mar": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "f037f9b2195d5bc3bca455aceb81f9c65ee81a2cc35e5660a8d8a729e763c2cb",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-25T15:27:02+00:00",
+  "version": null,
+  "workbook_name": "bdbf3f1e5440b160cd0d248fcfd23b1256a8938241ecce5289ce451b1f51878e.xlsx"
+ }
+}

@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "CONVERT with a typed or array-element boolean unit, and which unit's error wins when one unit is boolean and the other an error, unknown or empty (T-2810). Data: D1 TRUE, D2 FALSE, D3 =1/0.",
+  "tags": [
+    "M9",
+    "engineering",
+    "convert",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "D1": true,
+        "D2": false,
+        "D3": "=1/0",
+        "A1": "=CONVERT(1,TRUE,\"m\")",
+        "A2": "=CONVERT(1,\"m\",TRUE)",
+        "A3": "=CONVERT(1,FALSE,\"ft\")",
+        "A4": "=CONVERT(1,\"ft\",FALSE)",
+        "A5": "=CONVERT(1,{TRUE},\"m\")",
+        "A6": "=CONVERT(1,\"m\",{FALSE})",
+        "A7": "=CONVERT(1,{\"m\",TRUE},\"ft\")",
+        "A8": "=CONVERT(1,\"m\",{TRUE,\"ft\"})",
+        "A9": "=CONVERT(1,NA(),D1)",
+        "A10": "=CONVERT(1,D1,NA())",
+        "A11": "=CONVERT(1,NA(),TRUE)",
+        "A12": "=CONVERT(1,TRUE,NA())",
+        "A13": "=CONVERT(1,D3,TRUE)",
+        "A14": "=CONVERT(1,TRUE,D3)",
+        "A15": "=CONVERT(1,\"xyz\",D1)",
+        "A16": "=CONVERT(1,D1,\"xyz\")",
+        "A17": "=CONVERT(1,\"xyz\",TRUE)",
+        "A18": "=CONVERT(1,TRUE,\"xyz\")",
+        "A19": "=CONVERT(1,\"\",TRUE)",
+        "A20": "=CONVERT(1,TRUE,\"\")",
+        "A21": "=CONVERT(1,\"m\",\"xyz\")",
+        "A22": "=CONVERT(1,NA(),\"xyz\")",
+        "A23": "=CONVERT(1,\"xyz\",NA())",
+        "A24": "=CONVERT(1,D2,D3)",
+        "A25": "=CONVERT(1,D3,D2)",
+        "A26": "=CONVERT(\"x\",TRUE,\"m\")",
+        "A27": "=CONVERT(NA(),TRUE,\"m\")",
+        "A28": "=CONVERT(1,{TRUE;\"m\"},\"ft\")",
+        "A30": "=CONVERT(1,\"m\",\"s\")",
+        "A32": "=CONVERT(1,\"TRUE\",\"m\")"
+      }
+    }
+  ],
+  "expected": {}
+}

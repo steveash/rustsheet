@@ -19,7 +19,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ci_changes import CODE_READ_PATHS, DOC_DIRS
+from ci_changes import DOC_DIRS, is_code_read
 
 ROOT = Path(__file__).resolve().parent.parent
 CODE_DIRS = ("crates/", "tools/", "bindings/", "fuzz/")
@@ -56,7 +56,8 @@ def violations(path: str, source: str) -> list[str]:
             doc = repo_doc_path(text)
             if doc is None or (path, text) in NOT_REPO_DOCS:
                 continue
-            if not (doc + "/").startswith(CODE_READ_PATHS):
+            # A directory literal may come without its trailing slash.
+            if not (is_code_read(doc) or is_code_read(doc + "/")):
                 found.append(f"{path}:{lineno}: {text!r}")
     return found
 

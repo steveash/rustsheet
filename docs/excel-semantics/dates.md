@@ -811,7 +811,7 @@ At the edges:
   digits. Ours reads s + 2·1462 since T-1492 (`DateSystem::financial_1900_serial`, results mapped back by
   `serial_from_financial_1900_serial`): 147 of the 165 cells pass, the other 18 fail the same way in the shifted 1900 twin
   (probes/date-system-1900-financial-readers-shifted), the 1900 gaps of the next sentence. The unshifted 1900 twin (probes/date-system-1900-financial-readers) has its own gaps: COUPDAYS
-  basis 1 around 2096-02-29 (financial.md, "COUPDAYS basis 1 around 29 February"; fixed in T-1493) and YIELD and
+  basis 1 around 2096-02-29 (financial.md, "COUPDAYS basis 1 counts from the chained next coupon"; fixed in T-1493) and YIELD and
   DURATION last digits (financial.md, "YIELD stops short of PRICE's root"; T-1374).
   A date read past 9999-12-31 is #NUM! in YEARFRAC and DISC (1904 serial 2955542, 9995-12-31, onward), but ACCRINT with
   basis 1 and calc_method FALSE takes its *settlement* up to the last 1904 date 2957003:
@@ -869,12 +869,18 @@ formats: a negative section gets the magnitude (`TEXT(-1,"d;d")` = "2", `TEXT(-1
 single section a leading minus.
 Quirk: a format with two elapsed tokens is `#VALUE!` in both systems, also for a positive value:
 `TEXT(1.5,"[h]:[mm]")`, `TEXT(0.5,"[mm]:[ss]")` and `TEXT(-1.5,"[h]:[mm]")` (A9, A21, A22). `TEXT(-1.5,"[ss] AM/PM")`
-is `#VALUE!` in both systems too (A23; the positive value is unprobed).
+is `#VALUE!` in both systems too (A23). T-1366 probed the positive value: `TEXT(1.5,"[ss] AM/PM")`, `"[h] AM/PM"`,
+`"[mm] AM/PM"` and `"[s] A/P"` are `#VALUE!` (an elapsed token before the marker invalidates the format), but the marker
+first is valid: `TEXT(1.5,"AM/PM [h]")` = "PM 12" (the 12-hour clock applies to the elapsed hour too; the engine prints
+"PM 36", a known failure). `[h]_)` and `*-[h]` are plain literals/fill, so they behave like the lone token (`TEXT(-1.5,"[h]_)")`
+= "-36 ", `TEXT(-1.5,"*-[h]")` = "-36", positive "36 " and "36"); `TEXT(-2,"[<-1]d;0")` is `#VALUE!`; `TEXT(1.5,"[h] h")`
+= "36 36", `TEXT(1.5,"[ss]")` = "129600", `TEXT(0.6,"h AM/PM")` = "2 PM"
+(probes/text-elapsed-two-tokens, excel-graph 2026-10-26).
 Evidence: probes/negative-date-sections-1900 and probes/negative-date-sections-1904 (same 23 questions, excel-graph,
 2026-10-11, T-1105).
 Ours: the sign rule is `formatter::dates::negative_serial_allowed`, applied in the `ParsePart::Date` arm of
-formatter/format.rs to the original value. Two elapsed tokens and `[ss] AM/PM` are not rejected yet (T-1366);
-the 1904 negative sections read the 1904 epoch (T-1330).
+formatter/format.rs to the original value. Two elapsed tokens, and an elapsed token before AM/PM or A/P, are rejected in the section parser (`bracketed_elapsed`,
+formatter/parser.rs; T-1366); the 1904 negative sections read the 1904 epoch (T-1330).
 Status: VERIFIED (web)
 Tasks: T-1105, T-1366, T-1330
 

@@ -167,7 +167,7 @@ enum Prepared {
 impl CaseResult {
     /// A case `id` of `suite` with `status`, nothing checked or skipped and no cells: the start
     /// of every result, filled in with struct-update syntax.
-    fn empty(id: &str, suite: &str, status: CaseStatus) -> CaseResult {
+    pub(crate) fn empty(id: &str, suite: &str, status: CaseStatus) -> CaseResult {
         CaseResult {
             id: id.into(),
             suite: suite.into(),

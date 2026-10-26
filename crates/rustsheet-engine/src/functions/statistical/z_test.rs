@@ -94,6 +94,17 @@ impl Model {
         // `Z.TEST(Data!B2:B3,1/0)` and `Z.TEST({1,2,#N/A},1/0)` are `#DIV/0!`
         // (probes/t2428-ztest-error-data).
         let data_is_error = matches!(data, CalcResult::Error { .. });
+        // A plain single-cell reference holding text, a boolean or nothing is data with no
+        // number: `#N/A`, not `#VALUE!` (`ZTEST(Data!B11,Data!C2)` with text in B11, gen-m9/
+        // c2684066d8df263e A190; docs/excel-semantics/statistics.md, T-2256 Z.TEST entry).
+        let first = args.first().map(|node| node.ungrouped_at(cell.row));
+        let data = match (first.as_deref(), data) {
+            (
+                Some(Node::ReferenceKind { .. }),
+                CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell,
+            ) => CalcResult::Array(Vec::new()),
+            (_, data) => data,
+        };
         let data = self
             .z_test_data(data, cell)
             .map_err(CalcResult::without_message);
@@ -130,21 +141,29 @@ fn z_test_element(
     if data.count == 0 {
         return error(Error::NA);
     }
-    // A sigma of 0 or below is #NUM! (`Z.TEST(B1:B10,5,-1)`, probes-numeric/t1049-ztest
-    // A26, t1048-ztest A26; probes/stat-test-lift P44, P52), after the data's error:
-    // `Z.TEST(D1:D3,4,0)` with D2 = `#N/A` is `#N/A` (probes/stat-test-lift-b P93).
-    if sigma.is_some_and(|sigma| sigma <= 0.0) {
-        return error(Error::NUM);
-    }
     // One numeric value is #DIV/0!, with or without sigma (`Z.TEST(D1:D1,4,1)`,
-    // `Z.TEST(7,4,1)`: probes-numeric/t1049-ztest A40, A42; t1916-erf-wrappers column T).
+    // `Z.TEST(7,4,1)`: probes-numeric/t1049-ztest A40, A42; t1916-erf-wrappers column T), and it
+    // comes before a sigma of 0 or below (`ZTEST({5},x,-123456789.123)`, gen-m9/38e4fc309fe199ea
+    // A87).
     if data.count <= 1 {
         return error(Error::DIV);
+    }
+    // With two or more values, a sigma of 0 or below is #NUM! (`Z.TEST(B1:B10,5,-1)`,
+    // probes-numeric/t1049-ztest A26, t1048-ztest A26; probes/stat-test-lift P44, P52), after the
+    // data's error: `Z.TEST(D1:D3,4,0)` with D2 = `#N/A` is `#N/A` (probes/stat-test-lift-b P93).
+    if sigma.is_some_and(|sigma| sigma <= 0.0) {
+        return error(Error::NUM);
     }
     // If sigma is omitted, the sample standard deviation STDEV(array).
     let Some(sigma) = sigma.or(data.stdev) else {
         return error(Error::DIV);
     };
+    // A standard deviation that overflows (data whose squares do) is #NUM!, not the p of 0.5 an
+    // infinite sigma gives (`ZTEST({1E+200,1E+200,-1E+200},x)`; statistics.md "Overflowing
+    // squares (T-2432)").
+    if sigma.is_infinite() {
+        return error(Error::NUM);
+    }
     let n = data.count as f64;
     // A sigma/sqrt(n) that underflows is #DIV/0! (not probed; kept from the fork, TODO(T-1942)).
     // The guard keeps the fork's plain-double test so it fires exactly where main's did; the

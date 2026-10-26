@@ -72,6 +72,7 @@ mod excel_order;
 mod external_links;
 mod external_reference;
 mod formula_cells;
+mod formula_rewrite;
 mod function_names;
 mod functions;
 mod implicit_intersection;
@@ -108,6 +109,7 @@ mod test;
 
 pub use arithmetic::flush_subnormal;
 pub use evaluation::{KeyBuild, KeyHasher};
+pub use formula_cells::ParsedFormula;
 pub use function_names::{implemented_function_names, lift_kinds_table, LiftKinds};
 pub use locale::get_supported_locales;
 pub use merged_cells::MergeStructure;

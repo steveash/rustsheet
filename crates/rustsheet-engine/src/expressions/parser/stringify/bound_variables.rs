@@ -94,7 +94,9 @@ where
         Node::UnaryKind { right, .. } => walk_names(right, bound, visit),
         Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
-        | Node::Group { child, .. } => walk_names(child, bound, visit),
+        | Node::Group { child, .. }
+        | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. } => walk_names(child, bound, visit),
         Node::BooleanKind(_)
         | Node::NumberKind(_)
         | Node::StringKind(_)

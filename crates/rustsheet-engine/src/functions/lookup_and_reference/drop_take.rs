@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{range_dims, CalcResult},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -360,14 +360,6 @@ impl Model {
         }
         Ok((rows, columns))
     }
-}
-
-/// Rows and columns of the range with corners `left` and `right`, in order.
-pub(crate) fn range_dims(left: CellReferenceIndex, right: CellReferenceIndex) -> (usize, usize) {
-    (
-        usize::try_from(right.row - left.row + 1).unwrap_or(0),
-        usize::try_from(right.column - left.column + 1).unwrap_or(0),
-    )
 }
 
 /// The reference to `rows` x `columns` of the area whose top left corner is `left`.

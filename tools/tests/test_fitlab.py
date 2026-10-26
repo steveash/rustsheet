@@ -282,6 +282,16 @@ def test_npv_candidates_discount_each_value() -> None:
     assert len({c.family for c in cands.values()}) == 5
 
 
+def test_npv_deferred_division_reproduces_excel() -> None:
+    deferred = _by_name(annuity.npv_candidates())["double: deferred (sum v/(1+r)^(i-1))/(1+r)"]
+    # ironcalc IRR.xlsx General!M2, NPV at IRR's root (L2): Excel 6.4212018552224666E-12, also
+    # probes/npv-term-order P!A20; the plain sum of v/(1+r)^i gives 6.418865439172805E-12.
+    flows = (-20.0, 5.0, 5.0, 5.0, 5.0, 5.0)
+    assert deferred.evaluate(_cell((0.07930826116039724, *flows))) == 6.4212018552224666e-12
+    # probes/npv-term-order P!A10, NPV(L2,0,..,0,1) over 9 periods: Excel 0.5031419041659052.
+    assert deferred.evaluate(_cell((0.07930826116039724, *([0.0] * 8), 1.0))) == 0.5031419041659052
+
+
 def test_factorial_products_and_half_integer_gamma() -> None:
     for n in (1, 2, 5, 30):
         exact = math.factorial(n - 1)

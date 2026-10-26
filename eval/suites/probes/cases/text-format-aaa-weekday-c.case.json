@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1880: the aaa weekday code in mixed-case runs of four or more letters.",
+  "tags": [
+    "M10",
+    "probe",
+    "text",
+    "T-1880"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(1,\"aaaA\")",
+        "A2": "=TEXT(1,\"AAAa\")",
+        "A3": "=TEXT(1,\"aaaaA\")",
+        "A4": "=TEXT(1,\"aaAA\")",
+        "A5": "=TEXT(1,\"AAaa\")",
+        "A6": "=TEXT(1,\"aaaAAA\")",
+        "A7": "=TEXT(1,\"Aaaa\")",
+        "A8": "=TEXT(1,\"aAAA\")",
+        "A9": "=TEXT(1,\"aaaaAAAA\")",
+        "A10": "=TEXT(\"x\",\"@_\"\"aaaA\")"
+      }
+    }
+  ]
+}

@@ -12,6 +12,6 @@ fn formulatext_english() {
 
     assert_eq!(
         model.get_formatted_cell_value(0, 1, 2),
-        Ok("=SUM(1,2,3)".to_string())
+        Ok("=SUM(1, 2, 3)".to_string())
     );
 }

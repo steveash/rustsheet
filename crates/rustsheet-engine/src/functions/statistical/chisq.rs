@@ -6,6 +6,7 @@ use statrs::distribution::{Continuous, Gamma};
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
 use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, gamma_sf, Tail};
+use crate::arithmetic::flush_subnormal;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
 
@@ -100,6 +101,9 @@ impl Model {
         } else {
             gamma_density(dist.shape(), x, 1.0 / dist.rate()).unwrap_or_else(|| dist.pdf(x))
         };
+        // A subnormal cdf or density is 0, as in Excel (`(x)=0` TRUE: probes/
+        // t2706-subnormal-density-paths B35, probes/t2737-subnormal-cdf-shapes B15:B17).
+        let result = flush_subnormal(result);
         if !result.is_finite() {
             return Err(num_error(cell));
         }

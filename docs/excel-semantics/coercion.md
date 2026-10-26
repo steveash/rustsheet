@@ -273,8 +273,8 @@ beats a shape mismatch wherever it sits: `SUMPRODUCT(X,R)` and `SUMPRODUCT(R,X)`
 anywhere is `#VALUE!` (`SUMPRODUCT(B1:C4,{1,2,3})`). A whole-argument error beats an error element: `SUMPRODUCT(R,X,NA())`
 and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Implemented in
 `fn_sumproduct` (T-2450): every argument is read, a whole-argument error returns at once, and the first element error in argument then element
-order beats a mismatch (which of several element errors wins is unprobed). A blank one-cell argument also returns at once, so it beats an earlier element error (`SUMPRODUCT(R,blank)` is `#VALUE!`): INFERRED from the blank acting as a whole-argument error in t2200 A20/A21, UNPROBED.
-Tasks: T-0944, T-2150, T-2296, T-2450
+order beats a mismatch (which of several element errors wins is unprobed). A blank one-cell argument also returns at once, so it beats an element error in any position (`SUMPRODUCT(R,blank)` is `#VALUE!`): VERIFIED (excel-graph, probes/t2296-sumproduct-error-element A17-A20): `SUMPRODUCT(R1:S2,blank)`, `SUMPRODUCT(blank,R1:S2)`, `SUMPRODUCT({#N/A},blank)` and `SUMPRODUCT({1,#N/A;2,3},X1:X2,blank)` are all `#VALUE!`, in either order.
+Tasks: T-0944, T-2150, T-2296, T-2450, T-2573
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
 Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =

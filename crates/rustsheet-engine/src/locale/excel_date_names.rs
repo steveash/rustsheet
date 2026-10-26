@@ -699,3 +699,90 @@ pub(crate) static LOCALES: [(u16, &str, &DateNames); 37] = [
 
 /// The names of en-US, the locale of the system tags.
 pub(crate) static EN_US: &DateNames = &EN;
+
+/// Calendar digits B and C under any LCID: Gregorian with the ar-SA names (`[$-B0409]mmmm|dddd` of
+/// 2023-03-15 is "مارس|الأربعاء"; probes/t1923-calendar-digits A22:A63, T-1923).
+pub(crate) static ARABIC: &DateNames = &AR;
+
+/// Calendar digit A under any LCID: Gregorian with the Levant Arabic month names, `mmm` too, and
+/// the ar-SA weekdays (`[$-A0409]mmmm` of 2023-01-15 is "كانون الثاني", of 2023-03-15 "آذار";
+/// probes/t1923-calendar-digits A1:A21, T-1923). The two-word names join with a no-break space.
+pub(crate) static ARABIC_LEVANT: DateNames = DateNames {
+    months_short: LEVANT_MONTHS,
+    months: LEVANT_MONTHS,
+    ..AR
+};
+
+const LEVANT_MONTHS: [&str; 12] = [
+    "كانون\u{a0}الثاني",
+    "شباط",
+    "آذار",
+    "نيسان",
+    "أيار",
+    "حزيران",
+    "تموز",
+    "آب",
+    "أيلول",
+    "تشرين\u{a0}الأول",
+    "تشرين\u{a0}الثاني",
+    "كانون\u{a0}الأول",
+];
+
+/// The Chinese lunar month names of calendar digits E, F and 11, first month first; `mmm` prints
+/// them too and months 13 and 14 print the twelfth (`[$-110409]mmm|mmmm` of 2023-03-15 is
+/// "二月|二月", of 2024-01-11 "十二月|十二月"; probes/text-locale-lunar-edges, T-1922).
+const LUNAR_MONTHS: [&str; 12] = [
+    "正月",
+    "二月",
+    "三月",
+    "四月",
+    "五月",
+    "六月",
+    "七月",
+    "八月",
+    "九月",
+    "十月",
+    "十一月",
+    "十二月",
+];
+
+/// Calendar digits F and 11 under any LCID: lunar month names and zh-CN weekdays
+/// (`[$-F0412]mmmm|ddd` is "二月|周三"; probes/text-locale-lunar-edges A33-A44).
+pub(crate) static LUNAR_ZH: DateNames = DateNames {
+    months_short: LUNAR_MONTHS,
+    months: LUNAR_MONTHS,
+    ..ZH_CN
+};
+
+/// Calendar digit E under a non-Korean LCID: lunar month names and Japanese weekdays
+/// (`[$-E0804]mmmm|ddd` is "二月|水"; probes/text-locale-lunar-edges A30-A33).
+pub(crate) static LUNAR_JA: DateNames = DateNames {
+    months_short: LUNAR_MONTHS,
+    months: LUNAR_MONTHS,
+    ..JA
+};
+
+/// Calendar digit E under a Korean LCID: the Korean lunar month names, `mmm` too, and Korean
+/// weekdays (`[$-E0412]mmmm|dddd` of 2023-01-22 is "정월|일요일"; probes/text-locale-lunar-tokens
+/// A59-A74). Calendar digit 14 gives the same names for the Gregorian months under any LCID
+/// (`[$-140409]mmmm|ddd` of 2023-03-15 is "삼월|수"; probes/t1923-calendar-digits A64:A84, T-1923).
+pub(crate) static LUNAR_KO: DateNames = DateNames {
+    months_short: LUNAR_KO_MONTHS,
+    months: LUNAR_KO_MONTHS,
+    ..KO
+};
+
+const LUNAR_KO_MONTHS: [&str; 12] = [
+    "정월",
+    "이월",
+    "삼월",
+    "사월",
+    "오월",
+    "유월",
+    "칠월",
+    "팔월",
+    "구월",
+    "시월",
+    "동짓달",
+    "섣달",
+];

@@ -660,15 +660,12 @@ impl UserModel {
     /// exactly `new_index`.
     ///
     /// The reorder is undoable/redoable, and the new order is preserved when the
-    /// workbook is saved. Cross-sheet formula references stay valid across the
-    /// move (sheet order is a position, not an identity — references key off the
-    /// sheet name/id). The selection follows the same sheet across the move.
+    /// workbook is saved. References key off sheet names, so they stay valid,
+    /// except that a 3-D span whose moved end crosses its other end shrinks, as in
+    /// Excel ([`Model::move_sheet`]). The selection follows the same sheet.
     ///
     /// Moving a sheet to its current position is a no-op (no history entry). Fails
     /// if either index is out of range.
-    ///
-    /// See also:
-    /// * [`Model::move_sheet`]
     pub fn move_sheet(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
         let sheet_count = self.model.workbook.worksheets.len() as u32;
         if sheet_index >= sheet_count {
@@ -681,11 +678,12 @@ impl UserModel {
             return Ok(());
         }
         let selected = self.get_selected_sheet();
-        self.model.move_sheet(sheet_index, new_index)?;
+        let rewritten = self.model.move_sheet_rewriting(sheet_index, new_index)?;
         self.set_selected_sheet(selected_sheet_after_move(selected, sheet_index, new_index))?;
         self.push_diff_list(vec![Diff::MoveSheet {
             sheet_index,
             new_index,
+            rewritten,
         }]);
         Ok(())
     }

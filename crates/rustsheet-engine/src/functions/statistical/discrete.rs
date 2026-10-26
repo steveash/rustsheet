@@ -27,8 +27,12 @@ pub(super) const MAX_STEPS: u64 = 1 << 10;
 
 /// The scale past which a walk renormalizes its terms and sum by `2^-RESCALE_BITS`. One step grows
 /// a term by at most `2^53 * 2^53` (a count below 2^53 times a ratio p/q below 2^53), so a sum
-/// below `2^RESCALE_BITS` cannot overflow before its next check.
+/// below `2^RESCALE_BITS` cannot overflow before its next check. A ratio past 2^53 (q below 2^-53,
+/// `NEGBINOMDIST(7,123456789.123,1E-200)`) renormalizes once a term passes 1 instead.
 const RESCALE_BITS: i32 = 600;
+
+/// 2^53, the largest ratio p/q for which one step stays within [`RESCALE_BITS`]' headroom.
+const RESCALE_RATIO_BOUND: f64 = 9_007_199_254_740_992.0;
 
 /// A term or sum below `2^-NEGLIGIBLE_BITS` of the running sum no longer moves its double-double.
 const NEGLIGIBLE_BITS: i32 = 110;
@@ -159,6 +163,13 @@ fn binomial_walk(n: u64, p: Dd, q: Dd, lo: u64, hi: u64) -> Option<Walk> {
         return None;
     }
     let ratio = dd_div(p, q);
+    // Past 2^53 a step can grow a term by up to 2^53 times the ratio, so the walk renormalizes as
+    // soon as a term passes 1 (the factor is a power of two, so the terms' bits do not change).
+    let rescale_limit = if ratio.0 < RESCALE_RATIO_BOUND {
+        RESCALE_LIMIT
+    } else {
+        1.0
+    };
     let start = power(q, n);
     // The walk's terms share the exponent of the start term.
     let mut exponent = start.exponent;
@@ -174,7 +185,11 @@ fn binomial_walk(n: u64, p: Dd, q: Dd, lo: u64, hi: u64) -> Option<Walk> {
         if next >= lo {
             sum = dd_add(sum, term);
         }
-        if sum.0 > RESCALE_LIMIT || term.0 > RESCALE_LIMIT {
+        // A ratio near f64::MAX can still overflow one step: give up, the caller falls back.
+        if !term.0.is_finite() {
+            return None;
+        }
+        if sum.0 > rescale_limit || term.0 > rescale_limit {
             let factor = RESCALE_FACTOR;
             term = (term.0 * factor, term.1 * factor);
             sum = (sum.0 * factor, sum.1 * factor);

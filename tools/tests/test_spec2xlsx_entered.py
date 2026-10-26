@@ -1,7 +1,9 @@
 """Typed-entry cells (T-0280)."""
 
 import io
+import re
 import zipfile
+from collections.abc import Callable
 
 import pytest
 
@@ -36,6 +38,47 @@ def test_malformed_property_is_a_value_error() -> None:
         entered_cells(out.getvalue())
 
 
+def _rewrite_custom(xlsx: bytes, edit: Callable[[bytes], bytes]) -> bytes:
+    src = zipfile.ZipFile(io.BytesIO(xlsx))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as dst:
+        for info in src.infolist():
+            data = src.read(info.filename)
+            dst.writestr(info, edit(data) if info.filename == "docProps/custom.xml" else data)
+    return out.getvalue()
+
+
+def test_long_entry_is_split_over_properties_and_read_back() -> None:
+    # T-2709: SUM of 256 arguments typed, past the 255-character custom-property limit.
+    formula = "=SUM(" + ",".join(["1"] * 256) + ")"
+    spec = {"sheets": [{"name": "S", "cells": {"A1": {"entered": formula}, "A2": {"entered": "=1"}}}]}
+    xlsx = build_xlsx(spec)
+    custom = zipfile.ZipFile(io.BytesIO(xlsx)).read("docProps/custom.xml").decode()
+    values = re.findall(r"<vt:lpwstr>(.*?)</vt:lpwstr>", custom, re.S)
+    assert len(values) == 4  # A1 in three pieces, A2 in one
+    assert all(len(v) <= 255 for v in values)
+    assert entered_cells(xlsx) == [("S", "A1", formula), ("S", "A2", "=1")]
+
+
+def test_split_never_cuts_a_surrogate_pair() -> None:
+    # The JSON `["S", "A1", "=\"` and 238 letters are 254 units: the emoji (2 units) would end at 256,
+    # so the first piece stops at 254 and the emoji opens the second.
+    formula = '="' + "a" * 238 + '\U0001f600&<>"' * 30 + '"'
+    xlsx = build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": formula}}}]})
+    custom = zipfile.ZipFile(io.BytesIO(xlsx)).read("docProps/custom.xml").decode()
+    assert re.findall(r"<vt:lpwstr>(.*?)</vt:lpwstr>", custom, re.S)[0].endswith("a" * 238)
+    assert entered_cells(xlsx) == [("S", "A1", formula)]
+
+
+def test_missing_piece_is_a_value_error() -> None:
+    xlsx = build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "=" + "1+" * 400 + "1"}}}]})
+    broken = _rewrite_custom(
+        xlsx, lambda data: data.replace(b'name="rustsheet.entered.1.2"', b'name="other"')
+    )
+    with pytest.raises(ValueError, match="missing a piece"):
+        entered_cells(broken)
+
+
 def test_overlong_entry_is_refused() -> None:
     with pytest.raises(ValueError, match="too long"):
-        build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "x" * 300}}}]})
+        build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "x" * 20_000}}}]})

@@ -382,18 +382,8 @@ impl Model {
         )
     }
 
-    /// Like `get_number_or_array` but preserves the full `CalcResult` type (no coercion to f64).
-    /// Used for element-wise comparison operators.
-    pub(crate) fn get_value_or_array(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<ValueOrArray, CalcResult> {
-        let value = self.evaluate_node_in_context(node, cell);
-        self.value_or_array(value, cell)
-    }
-
-    /// [`Model::get_value_or_array`] of an already evaluated `value`; a one-cell range is its
+    /// Like [`Model::number_or_array`] but preserves the full `CalcResult` type (no coercion to
+    /// f64), for element-wise comparison operators; a one-cell range is its
     /// cell's value ([`Model::number_or_array`]).
     pub(crate) fn value_or_array(
         &mut self,
@@ -451,12 +441,19 @@ impl Model {
         let mut negate = false;
         let mut percents = 0_usize;
         let mut operand = node;
-        while let Node::UnaryKind { kind, right } = operand {
-            match kind {
-                OpUnary::Minus => negate = !negate,
-                OpUnary::Percentage => percents += 1,
+        loop {
+            match operand {
+                Node::UnaryKind { kind, right } => {
+                    match kind {
+                        OpUnary::Minus => negate = !negate,
+                        OpUnary::Percentage => percents += 1,
+                    }
+                    operand = right;
+                }
+                // The identity: `-+-B:B` is one chain too.
+                Node::UnaryPlus { child } | Node::Spaced { child, .. } => operand = child,
+                _ => break,
             }
-            operand = right;
         }
         self.apply_number_unary(operand, cell, |mut f| {
             // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results

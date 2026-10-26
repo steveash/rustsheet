@@ -103,8 +103,13 @@ def _signature_max(fn: dict[str, Any]) -> int:
 # takes these maxima (probes/t2682-typed-max-arg-counts A8:A15) and refuses one more argument, as it
 # does DETECTLANGUAGE's second (its maximum is the catalog minimum, 1) and TRANSLATE's fourth
 # (Graph PATCH 400, 2026-10-25, T-2682;
-# docs/excel-semantics/syntax.md "Minimum argument counts").
+# docs/excel-semantics/syntax.md "Minimum argument counts"). CONCAT and TEXTJOIN repeat, but typed
+# Excel takes 254 arguments and refuses 255 (probes/t2709-typed-concat-254, -textjoin-254 and their
+# -short forms; Graph PATCH 400 at 255 and 256, short one-character arguments included, so it is the
+# count and not the length, 2026-10-25, T-2709), while SUM and MAX take 255.
 MAX_OVERRIDES = {
+    "CONCAT": 254,
+    "TEXTJOIN": 254,
     "INDEX": 4,
     "DETECTLANGUAGE": 1,
     "TRANSLATE": 3,
