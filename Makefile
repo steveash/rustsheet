@@ -13,7 +13,7 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
 # ---------------------------------------------------------------- Rust
-.PHONY: fmt fmt-check clippy test build
+.PHONY: fmt fmt-check clippy test test-shard-1 test-shard-2 build
 fmt: ## Format Rust and Python code
 	$(CARGO) fmt --all
 	cd tools && $(UV) run ruff format src tests && $(UV) run ruff check --fix src tests
@@ -26,6 +26,18 @@ clippy: ## Lint Rust with -D warnings (workspace lint policy in Cargo.toml)
 
 test: ## Run Rust tests
 	$(CARGO) test --workspace --exclude rustsheet_python
+
+# CI runs `make test` as two shards (decision 0122): shard 1 runs the tests whose names contain one
+# of these substrings, shard 2 every other test (`--skip` matches the same way), so together they
+# run exactly the tests of `make test`, each once. Keep test_fn_groupby here and test_tailed_array
+# in shard 2 (memory-bound; they slow each other down); 0122 says when to rebalance.
+TEST_SHARD_1 := test::test_fn_groupby text_functions::fn_regex test::test_multi_area_arguments dynamic_evaluation::test_range_reads functions::text::
+
+test-shard-1: ## CI: the tests matching TEST_SHARD_1 (half of make test)
+	$(CARGO) test --workspace --exclude rustsheet_python -- $(TEST_SHARD_1)
+
+test-shard-2: ## CI: every test test-shard-1 does not run (the other half of make test)
+	$(CARGO) test --workspace --exclude rustsheet_python -- $(addprefix --skip ,$(TEST_SHARD_1))
 
 build: ## Release build of the eval harness
 	$(CARGO) build --release -p rustsheet_eval
