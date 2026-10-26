@@ -3,7 +3,7 @@ id: T-2795
 title: "Lifted incomplete-gamma, quantile and AMORDEGRC/ODDFYIELD calls charged the cap's bound: #ERROR! where Excel spills (gen-m9, 6 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
