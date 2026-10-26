@@ -18,6 +18,7 @@ Today `resolve_lcid` (formatter/locale_tag.rs) returns `Silent` for LCID 0 befor
 
 ## Acceptance criteria
 - [ ] text-locale-lunar-edges A59 and text-locale-lunar-tokens A57, A58 pass.
+- [ ] text-locale-lunar-tokens A79 passes: `B2` before a lunar tag gives the lunar date (`TEXT(45300,"B2[$-110409]yyyy|m")` is "2023|12"; T-2729 leaves the lunar digits out).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
