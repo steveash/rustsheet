@@ -67,8 +67,9 @@ number, and an incomplete run is reported honestly.
   same-date row changed only in the M0 task counts (this task's claim).
 - The dry run sharpened the skill: task files are read only to name and verify owners, and
   filing a task means regenerating before the check (the counts move).
-- Found while writing the risks, with no open task (not filed here): VLOOKUP's 45.73% within
-  15 digits comes almost entirely from one corpus-bench workbook (59932, about 18,000
-  lookups into a linked workbook's sheet with no cached data, `#ERROR!` against the file's
-  cached values). T-0457 (done) settled Excel's offline answer for such lookups; these cells
-  are still scored as Excel evidence.
+- Found while writing the risks and filed as **T-0478** (M11, harness, P2), following the skill's
+  filing rule; risk 2 reads "no task, filed T-0478", and the page was regenerated after filing
+  (M11 todo 22 to 23). VLOOKUP's 45.73% within 15 digits comes almost entirely from one
+  corpus-bench workbook (59932, about 18,000 lookups into a linked workbook's sheet with no cached
+  data, `#ERROR!` against the file's cached values). T-0457 (done) settled Excel's offline answer
+  for such lookups; these cells are still scored as Excel evidence.

@@ -54,7 +54,7 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 | M8 Names, tables, structured references, multi-sheet | 1 | prose | no functions | – | probes M8: 99 visibly off, 99 known failures | 20 | 0 | 0 | 33 |
 | M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 1,499 visibly off, 2,385 known failures | 202 | 1 | 6 | 344 |
 | M10 Formatting & display | 1 | prose | no functions | – | probes M10: 95 visibly off, 95 known failures | 26 | 0 | 0 | 23 |
-| M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 22 | 0 | 1 | 36 |
+| M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 23 | 0 | 1 | 36 |
 | M12 API v1, bindings & release | 3 | prose | – | – | – | 1 | 0 | 0 | 0 |
 | M13 Performance at scale (Phase 2) | 2 | prose | – | – | – | 1 | 0 | 1 | 0 |
 | M14 Desktop-oracle parity (Phase 4) | 4 | prose | – | – | – | 2 | 0 | 19 | 0 |
@@ -296,7 +296,7 @@ Ratings are the steward's judgment, grounded in the numbers they cite. The page 
 <!-- progress:judgment risks -->
 <!-- as-of: 2026-10-25 a2d5914a -->
 1. **Statistical numerics.** 69 of 149 statistical functions have fewer than 99% of their cells within 15 digits, and the M9 probes show 1,499 visibly-off cells. Judgment: most of the 131,346 visibly-off numbers sit here. Owner: T-2510 (incomplete beta, accuracy stage).
-2. **VLOOKUP, the fourth most-used function, is below 99%.** 45.73% of its 33,065 attributed cells are within 15 digits. Judgment: corpus-bench's 18,700 visibly-off cells in 7 workbooks suggest a few real-world files, not everyday lookups, carry most of this. Owner: no task yet.
+2. **VLOOKUP, the fourth most-used function, is below 99%.** 45.73% of its 33,065 attributed cells are within 15 digits. Judgment: corpus-bench's 18,700 visibly-off cells in 7 workbooks suggest a few real-world files, not everyday lookups, carry most of this. Owner: no task, filed T-0478.
 3. **Wrong types, errors and text.** 20,009 visibly-off cells; fixing them alone would lift 69 of the 169 functions below the rate, and 40 semantics tasks are ready. Judgment: the cheapest progress toward the exit. Owner: T-1671 (table totals rows, which in the steward's judgment are behind COUNT at 95.76% and COUNTA at 96.25%).
 4. **M6 catalog coverage.** 38/39 functions are covered, so M6's exit is not met. Owner: T-2674 (generated cells for GETPIVOTDATA, the last uncovered M6 function).
 5. **Large ranges are unmeasured.** 0 timeouts on this run, but the page has no recalculation timing, and recalculation stays full until the dependency graph lands (judgment). Owner: T-0401 (blocked: Phase 2).
