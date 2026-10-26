@@ -3,7 +3,7 @@ id: T-1924
 title: "Underscore locale tags such as [$-fr_FR] select a calendar"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
