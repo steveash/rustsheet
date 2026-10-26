@@ -80,3 +80,20 @@ the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance
 
 Owned visibly-off cells (2026-10-25 eval run): calipers formulas_financial Sheet1!F142 (RATE, `#NUM!` where Excel
 has a number). Stage `semantics`: wrong type, decided by the solver's stopping rule.
+
+## Progress (in flight, 2026-10-26)
+Probe `probes/rate-pmt-zero-cap` (58 cells, excel-graph) is written and oracle-filled on this branch. It is not
+baselined yet: run `make eval-baseline` before `make check`. What it shows for `RATE(n,0,pv)` (fv 0):
+- n = 1: `#NUM!`. n = 2 to 10: values, and the engine already matches them bit for bit (A2-A10).
+- n = 11 to 15: `#NUM!` (engine matches).
+- n = 16 to 24: values, -0.9998588761377082 at n = 16 down to -0.9970141220397587 at n = 24 (= calipers F142).
+  The engine gives `#NUM!` (A16-A24, nine TypeMismatch cells).
+- n = 25 to 40, 48, 60, 120, 360: `#NUM!` (engine matches).
+- pv -1 gives the same as pv -100 (A45-A50; A48 n = 24 has the same bits as A24), so the scale of f does not matter.
+- Controls with fv != 0 (A51-A53) pass.
+- Guess at n = 24: guess 0 gives -0.9972854136129494 (A54, ours `#NUM!`), guess 0.1 gives A24's value (A56), and
+  guess 0.5 gives `#NUM!` (A55, A57, A58).
+A window of returned values (16-24) between two `#NUM!` bands (11-15 and 25+) rules out a monotone step or
+|f| threshold on its own. Next: trace the engine's secant for n = 11..26 (step size, |f|, iterate count) and check
+which quantity separates 16-24 from 11-15 and 25+. Hypothesis (a) of the Context (the 1+r / ^ trajectory reaches
+-1 or goes flat before the cap) fits a band structure best.
