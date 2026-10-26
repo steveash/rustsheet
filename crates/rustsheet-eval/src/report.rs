@@ -146,7 +146,15 @@ pub struct FunctionStat {
     /// Which of the two placed `tier`.
     #[serde(default)]
     pub attribution: Attribution,
+    /// Formula cells of the Excel-saved corpora ([`REAL_WORLD_SUITES`]) that call this function,
+    /// deviations included: how often real workbooks use it (T-0079).
+    #[serde(default)]
+    pub real_world_calls: usize,
 }
+
+/// The suites of Excel-saved real-world workbooks whose formula cells weight functions by usage
+/// (T-0079, SPEC-0022).
+pub const REAL_WORLD_SUITES: [&str; 2] = ["calipers", "poi"];
 
 /// Scored cells with Excel-sourced expectations that call one function.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -320,6 +328,17 @@ impl RunReport {
                         .push(format!("{}\t{}", r.id, c.key()));
                 }
                 let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
+                if c.formula.is_some() && REAL_WORLD_SUITES.contains(&r.suite.as_str()) {
+                    for f in &called {
+                        functions
+                            .entry(f.clone())
+                            .or_insert_with(|| FunctionStat {
+                                name: f.clone(),
+                                ..FunctionStat::default()
+                            })
+                            .real_world_calls += 1;
+                    }
+                }
                 if calls_only_in_scope(catalog, &called) {
                     s.closeness.add(c);
                     book.add(c);
@@ -709,6 +728,35 @@ pub(crate) mod tests {
         ];
         let ids: Vec<String> = slowest(&results, 3).into_iter().map(|c| c.id).collect();
         assert_eq!(ids, ["s/c", "s/a", "s/b"]);
+    }
+
+    #[test]
+    fn real_world_calls_count_formula_cells_of_the_corpora_only() {
+        let mut calipers = case("calipers/a", 1);
+        calipers.cells = vec![
+            cell("SUM(A2:A3)+ABS(1)", Verdict::Pass),
+            cell("SUM(1)", Verdict::NumericMismatch),
+            CellResult {
+                formula: None,
+                anchor_formula: Some("SUM(1)".into()),
+                ..cell("", Verdict::Pass)
+            },
+        ];
+        let mut poi = case("poi/b", 1);
+        poi.cells = vec![cell("SUM(2)", Verdict::Deviation)];
+        let mut probes = case("probes/c", 1);
+        probes.cells = vec![cell("SUM(3)", Verdict::Pass)];
+        let report = RunReport::build("e", &[calipers, poi, probes], &[], &Catalog::default());
+        let calls = |name: &str| {
+            report
+                .functions
+                .iter()
+                .find(|f| f.name == name)
+                .map(|f| f.real_world_calls)
+        };
+        // An array member without a formula of its own is not a call; a deviation still is.
+        assert_eq!(calls("SUM"), Some(3));
+        assert_eq!(calls("ABS"), Some(1));
     }
 
     /// A cell with `formula` and `verdict`, expecting and giving 1 (shared with sibling tests).

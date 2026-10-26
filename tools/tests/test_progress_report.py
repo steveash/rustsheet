@@ -5,6 +5,7 @@ blocks, test_progress_history.py the run history and stale runs (T-0071)."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 from typing import Any
@@ -51,6 +52,7 @@ def fn(name: str, tier: str, attribution: str = "sole", **attributed: int) -> di
         "attribution": attribution,
         "attributed": cells,
         "excel": {**cells, "pass": cells["pass"] + 10},
+        "real_world_calls": 0,
     }
 
 
@@ -543,11 +545,12 @@ def test_top_functions_by_prior_ties_by_name() -> None:
     assert [f.name for f in evidence.top_functions(p, 3)] == ["SUM", "ABS", "LN"]
     lines = evidence.top_table(evidence.top_functions(p)).splitlines()
     assert lines[0] == (
-        "| # | Function | Category | Tier | Prior | Attributed cells | Within 15 digits | Excel cells |"
+        "| # | Function | Category | Tier | Prior | Attributed cells | Within 15 digits | Excel cells"
+        " | Real-world calls |"
     )
-    assert lines[2] == "| 1 | SUM | math | \N{LESS-THAN OR EQUAL TO} 4 ulp | 72 | 23 | 100.00% | 23 |"
-    assert lines[6] == "| 5 | BETA.DIST | statistical | &lt; 99% | 0.5 | 5 | 93.33% | 15 |"
-    assert lines[7] == "| 6 | INFO | information | Unscored | none | 0 | \N{EN DASH} | 0 |"
+    assert lines[2] == "| 1 | SUM | math | \N{LESS-THAN OR EQUAL TO} 4 ulp | 72 | 23 | 100.00% | 23 | 0 |"
+    assert lines[6] == "| 5 | BETA.DIST | statistical | &lt; 99% | 0.5 | 5 | 93.33% | 15 | 0 |"
+    assert lines[7] == "| 6 | INFO | information | Unscored | none | 0 | \N{EN DASH} | 0 | 0 |"
     block = evidence.top_block(p)
     assert "**3 of 6** never differ" in block
     assert "**4** meet the Phase 1 rate" in block
@@ -566,3 +569,25 @@ def test_the_catalog_priors_are_checked(tmp_path: Path) -> None:
     with pytest.raises(ProgressReportError, match="the catalog has no function LN"):
         data(priors=without_ln)
     assert all(f.prior is None for f in data(priors=None).functions)
+
+
+def test_real_world_line_weights_attributed_shares_by_calls() -> None:
+    p = data()
+    names = {s.name for s in p.suites}
+    assert "calipers" not in names
+    assert parity.real_world_line(p) == "Real-world calls: not measured, calipers and poi did not run."
+    corpora = [dataclasses.replace(p.suites[0], name=n) for n in parity.REAL_WORLD_SUITES]
+    calls = {"SUM": 30, "BETA.DIST": 10, "INFO": 50}
+    weighted = dataclasses.replace(
+        p,
+        suites=[*p.suites, *corpora],
+        functions=[dataclasses.replace(f, real_world_calls=calls.get(f.name, 0)) for f in p.functions],
+    )
+    sum_, beta = (next(f for f in p.functions if f.name == n) for n in ("SUM", "BETA.DIST"))
+    # INFO has no attributed cells, so its calls carry no share and stay out of the weights.
+    share = (
+        30 * sum_.attributed_within15 / sum_.attributed_cells
+        + 10 * beta.attributed_within15 / beta.attributed_cells
+    ) / 40
+    assert f"**{100 * share:.2f}%** of 40 calls" in parity.real_world_line(weighted)
+    assert parity.real_world_line(weighted) in parity.block(weighted)

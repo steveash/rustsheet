@@ -134,6 +134,9 @@ class FunctionParity:
     prior: float | None
     """The catalog's real-world frequency `prior` (eval/catalog/functions.yaml); None when the
     catalog sets none or no priors were given (T-0073)."""
+    real_world_calls: int = 0
+    """Formula cells of the Excel-saved corpora (calipers, poi) that call it (report.json
+    `functions[].real_world_calls`, T-0079)."""
 
     @property
     def attributed_cells(self) -> int:
@@ -149,6 +152,11 @@ class FunctionParity:
     def rate_within15(self) -> int:
         """Of `rate_cells`, those within 15 digits."""
         return max(0, self.rate_cells - self.rate_visible)
+
+    @property
+    def attributed_within15(self) -> int:
+        """Of its attributed cells, those within 15 digits (not visibly off)."""
+        return self.attributed_cells - sum(self.attributed[b] for b in VISIBLE)
 
 
 @dataclass(frozen=True)
@@ -346,11 +354,13 @@ def compute(
         if stat is None:
             tier, attribution = "unscored", "all"
             attributed = excel = dict.fromkeys(BUCKETS, 0)
+            calls = 0
         else:
             tier = one_of(stat, "tier", where, TIERS, "T-0068")
             attribution = one_of(stat, "attribution", where, ATTRIBUTIONS, "T-0068")
             attributed = closeness(stat, "attributed", where, "T-0068")
             excel = closeness(stat, "excel", where, "T-0068")
+            calls = count(stat, "real_world_calls", where, "T-0079")
         rate = rates.get(name)
         if rate is None:
             msg = f"report.json v15_checkpoint has no entry for in-scope function {name}; is scope.json the run's catalog?"
@@ -374,6 +384,7 @@ def compute(
                 evidence=count(rate, "cells", rwhere),
                 covered=flag(rate, "covered", rwhere),
                 prior=priors.get(name) if priors is not None else None,
+                real_world_calls=calls,
             )
         )
     tiers = _tiers(report)
