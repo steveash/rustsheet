@@ -3,7 +3,7 @@ id: T-2739
 title: "Bracket the typed string-literal length limit: 256 characters are accepted, 7,996 refused"
 milestone: M7
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,9 +22,15 @@ length", the T-1397 note that split its literals to 255 units for this reason). 
 function argument (`LEN("…")`). If the engine's parser or importer limits literals differently, file a task.
 
 ## Acceptance criteria
-- [ ] Probes bracket the typed limit (largest accepted, smallest refused, dated) and the stored one.
-- [ ] syntax.md records both; a task is filed for any engine mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] Probes bracket the typed limit (largest accepted, smallest refused, dated) and the stored one.
+- [x] syntax.md records both; a task is filed for any engine mismatch.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Text produced by functions (REPT, CONCAT results), which has its own 32,767 limit.
+
+## Outcome
+A string literal holds at most 4,095 UTF-16 units (its value: a doubled quote counts once; 2,047 emoji pass, 2,048 fail), typed and stored, per literal
+and in function arguments; 4,096 is refused (typed Graph 400, stored createSession 501). Bisected with scratch fills
+(4,126, 4,110, 4,102, 4,098, 4,096 refused; 2,191 to 4,095 accepted); the accepted cases are probes/t2739-*. Recorded in
+syntax.md "Formula length". The engine accepts longer literals: T-2762.
