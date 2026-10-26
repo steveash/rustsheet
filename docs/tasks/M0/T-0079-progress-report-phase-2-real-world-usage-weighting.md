@@ -3,7 +3,7 @@ id: T-0079
 title: "Progress report phase 2: real-world usage weighting from calipers and poi call counts"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
