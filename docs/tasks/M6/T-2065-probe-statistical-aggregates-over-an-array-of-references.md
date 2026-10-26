@@ -3,7 +3,7 @@ id: T-2065
 title: "Probe statistical aggregates over an array of references, one formula per workbook (SPEC-0014 open questions)"
 milestone: M6
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -21,9 +21,16 @@ Evidence already in (T-2577, probes/t2577-indirect-ref-array A157, excel-graph 2
 failure is this task's to implement or hand on.
 
 ## Acceptance criteria
-- [ ] Each formula above has an oracle value or is recorded as one Excel for the web cannot open.
-- [ ] SPEC-0014's open list and T-2063/T-2064 are updated with the findings.
-- [ ] `make check` green; reviewers approve.
+- [x] Each formula above has an oracle value or is recorded as one Excel for the web cannot open.
+- [x] SPEC-0014's open list and T-2063/T-2064 are updated with the findings.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Twelve one-formula probes (probes/t2065-lift-*). Oracle values for nine (see SPEC-0014 and
+docs/excel-semantics/lookup.md); MEDIAN, LARGE and SMALL never open on Excel for the web (desktop-only, M14).
+Not implemented: ours still uses the value view for these; the per-element ones (COUNTIFS, AVERAGEIF,
+MAXIFS) belong to T-2064, the top-left ones (STDEV.S, VAR.S, SUMSQ, AVERAGEA, MAXA) to the T-2063 walker,
+CONCAT is already `#VALUE!`-like. `STDEV(INDIRECT("B1",{1;1}))` 0 (T-2577) is the same top-left rule.

@@ -1168,3 +1168,12 @@ Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `re
 `PatternCache` per XMATCH or XLOOKUP call, shared by its lifted elements (repeated patterns compile once), so a call has
 one REGEX* call's compile and work budget (SPEC-0013).
 Tasks: T-2669, T-2680
+
+### Statistical aggregates over a lifted OFFSET (an array of references)
+Evidence: probes/t2065-lift-* (one formula per workbook, excel-graph 2026-10-26; data as probes/reference-lift-consumers-b2).
+- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: each element read as its top-left cell.
+- COUNTIFS, AVERAGEIF and MAXIFS lift per element, spilling one value each (1, 1; 1, 50.5; 1, 100). CONCAT is `#VALUE!`.
+- `AVERAGEA` and `MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0 (the text element is 0; the boolean is not counted).
+- MEDIAN, LARGE and SMALL over the same never open on Excel for the web (createSession fails twice); desktop-only (M14).
+Status: VERIFIED (excel-graph) except the three that never open. Not yet implemented (SPEC-0014).
+Tasks: T-2065, T-2063, T-2064
