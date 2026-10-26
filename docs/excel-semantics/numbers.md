@@ -908,14 +908,17 @@ subnormal whatever num_digits, so `ROUNDUP(2^-1022,0)`, `ROUNDUP(-(2^-1022),-2)`
 2.2250738585072048E-308, cut 2.22507385850720E-308); from k = 8 (cut 2.22507385850721E-308, normal) ROUNDUP takes its step
 again (`ROUNDUP(x,0)` 1, `ROUNDUP(-x,-2)` -100, `ROUNDUP(x,2)` 0.01, `ROUNDUP(x,300)` 1E-300), so the threshold is the
 round-to-nearest cut, not a truncation (which would put it at k = 18). Otherwise every decimal the family converts to a
-double is flushed to 0 when subnormal: ROUND's result at any k (`ROUND(2^-1022,309)` 2.2E-308 and `ROUND(x,330)` with
-nothing dropped are 0, while `ROUND(2^-1022,310)` is 2.23E-308), ROUNDDOWN's (`ROUNDDOWN(x,308)` for k = 8, 2E-308, is 0)
+double is flushed to 0 when subnormal: ROUND's result at any k (`ROUND(2^-1022,309)` 2.2E-308 is 0, and so is `ROUND(x,330)`
+with nothing dropped for k ≤ 7, whose kept cut is subnormal, while for k = 8 it is the normal 2.22507385850721E-308 and
+`ROUND(2^-1022,310)` is 2.23E-308), ROUNDDOWN's (`ROUNDDOWN(x,308)` for k = 8, 2E-308, is 0)
 and ROUNDUP's rounded-down part and unit (`ROUNDUP(x,308)` to `ROUNDUP(x,321)` for k = 8 are 0, though the decimal
 results 3E-308 to 2.2250738585073E-308 are normal: both 2E-308 and the unit 1E-308 are flushed; `ROUNDUP(x,307)` is
 1E-307). The subnormal returned is 2.2250738585071984E-308 for every k = 0..7 and num_digits probed (read through `*2^100`:
 2.8206162122887925E-278), 3 ulps below the double nearest the cut (2.2250738585071999E-308); no product or quotient of
 the 15 digits by powers of ten (two or three exact-power factors, each order) reproduced it, so the conversion is not
-known. The engine returns the nearest double, and misses those 7 read-back cells (rows 52-58).
+known. The engine returns the nearest double, and misses those 7 read-back cells (rows 52-58). The rule is evidenced for num_digits
+from -300 to 330 only; the engine applies it at every num_digits (a huge one such as -400 or 2^31, which is `#NUM!` or
+wraps for a normal x, is not probed here; T-2771).
 Evidence: probes/t2756-roundup-smallest-normal-threshold (excel-graph, 2026-10-26): rows 1-28 bisect k = 0..20 and
 controls (2^-1021, 2^-1020, 3E-308, 9.99999999999999E-308, 1E-307) at num_digits 0, -2, 2, 300 and 330; rows 30-50 take
 k = 0, 7, 8 at num_digits 307 to 322 with `=0` companions; rows 52-60 read the subnormals back. probes/t2715-roundup-near-smallest-normal.

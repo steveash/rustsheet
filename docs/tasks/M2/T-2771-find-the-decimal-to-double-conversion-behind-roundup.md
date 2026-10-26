@@ -26,6 +26,8 @@ probes/t2756-roundup-smallest-normal-threshold A52-A58 pass.
   [2^-1022, 2.225073858507205E-308), so vary the read-back instead: `*2^k` for several k, and ROUNDDOWN of `-x`).
 
 ## Acceptance criteria
+- [ ] Probe ROUNDUP/ROUNDDOWN(2^-1022, d) at num_digits outside the evidenced -300..330 (-400, 1E10, -1E10, 2^31):
+      does the subnormal cut still win over the `#NUM!` overflow and the digit wrap? Match the engine to it.
 - [ ] A rule that reproduces the evidenced subnormal bit-exactly, recorded in numbers.md with its evidence.
 - [ ] probes/t2756-roundup-smallest-normal-threshold A52-A58 leave eval/baseline/probes.txt, or the task closes
       time-boxed (decision 0056) with the hypotheses tried.
