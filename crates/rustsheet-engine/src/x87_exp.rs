@@ -116,16 +116,15 @@ fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> 
         let mask = u64::MAX >> (64 - drop);
         let rest = t & mask;
         let half = 1_u64 << (drop - 1);
-        // Integer bit operations, not `||`: a data-dependent branch here mispredicts half the time.
-        let up = (rest > half) | ((rest == half) & (integer & 1 == 1));
+        let up = round_up(rest, half, integer);
         // Rounding up leaves f = rest - 2^drop < 0, of magnitude 2^drop - rest (rest > 0).
-        let magnitude = if up { rest.wrapping_neg() & mask } else { rest };
+        let magnitude = if up == 1 {
+            rest.wrapping_neg() & mask
+        } else {
+            rest
+        };
         // integer < 2^11, so the conversion cannot fail.
-        (
-            i32::try_from(integer + u64::from(up)).unwrap_or(0),
-            magnitude,
-            up,
-        )
+        (i32::try_from(integer + up).unwrap_or(0), magnitude, up == 1)
     };
     // f * sign(a) is the true fraction: `fraction_negative` is the magnitude-side sign of |t|.
     let negative_f = fraction_negative != negative;
@@ -143,8 +142,7 @@ fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> 
                 let kept = u.checked_shr(s).unwrap_or(0);
                 let dropped = u & (u64::MAX >> (64 - s));
                 let half = 1_u64 << (s - 1);
-                let up = (dropped > half) | ((dropped == half) & (kept & 1 == 1));
-                w = (1 << 63) + kept + u64::from(up);
+                w = (1 << 63) + kept + round_up(dropped, half, kept);
                 w_exponent = u_exponent + i32::try_from(s).unwrap_or(0);
             }
         }
@@ -164,6 +162,13 @@ fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> 
     })
 }
 
+/// 1 when `dropped` bits (half of their unit is `half`) round `kept` up to nearest, ties to even,
+/// else 0. Integer operations, not `||`: the round-up is data-dependent, and a branch on it
+/// mispredicts about half the time (T-1945, `arithmetic::round_to_bits`).
+fn round_up(dropped: u64, half: u64, kept: u64) -> u64 {
+    u64::from(dropped > half) | (u64::from(dropped == half) & (kept & 1))
+}
+
 /// RN64 of `value` * 2^(`exponent` - 64) for a `value` with its top bit set: the 64-bit
 /// significand and its exponent (a carry out of all ones is one more bit).
 fn round_top_64(value: u128, exponent: i32) -> (u64, i32) {
@@ -171,8 +176,7 @@ fn round_top_64(value: u128, exponent: i32) -> (u64, i32) {
     let high = u64::try_from(value >> 64).unwrap_or(0);
     let low = u64::try_from(value & u128::from(u64::MAX)).unwrap_or(0);
     let half = 1_u64 << 63;
-    let up = (low > half) | ((low == half) & (high & 1 == 1));
-    let (rounded, carry) = high.overflowing_add(u64::from(up));
+    let (rounded, carry) = high.overflowing_add(round_up(low, half, high));
     if carry {
         (half, exponent + 1)
     } else {
@@ -201,11 +205,9 @@ fn reciprocal(w: u64) -> (u64, i32) {
 /// past the normal range ([`round_extended_to_double`] for this width, without its u128 work).
 fn round_64_to_double(w: u64, exponent: i32) -> Option<f64> {
     let kept = w >> 11;
-    let dropped = w & 0x7FF;
-    let up = (dropped > 0x400) | ((dropped == 0x400) & (kept & 1 == 1));
-    // kept + up is in [2^52, 2^53]: added to the biased exponent less one, a carry to 2^53 moves
+    // The sum is in [2^52, 2^53]: added to the biased exponent less one, a carry to 2^53 moves
     // into the exponent field as the next binade.
-    let significand = kept + u64::from(up);
+    let significand = kept + round_up(w & 0x7FF, 0x400, kept);
     let biased = exponent + 11 + 1075 + i32::from(significand >> 53 != 0);
     if !(1..=2046).contains(&biased) {
         return None;
