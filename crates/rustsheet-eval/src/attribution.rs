@@ -370,6 +370,7 @@ mod tests {
             oracle: None,
             v15: None,
             v15_reason: None,
+            params: Vec::new(),
         };
         let catalog = Catalog::from_functions([
             entry("GAMMA", Scope::In),

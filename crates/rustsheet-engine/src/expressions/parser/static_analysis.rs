@@ -391,8 +391,8 @@ fn criteria_static_result(args: &[Node], first: usize) -> StaticResult {
     broadcast_static_result(args.iter().skip(first).step_by(2))
 }
 
-/// COUNTIF, SUMIF and SUMIFS also call themselves once per element of an array of references in
-/// a range argument (`Function::per_reference_element`; SPEC-0014 rule 6,
+/// COUNTIF, COUNTIFS, SUMIF, SUMIFS, AVERAGEIF and MAXIFS also call themselves once per element of
+/// an array of references in a range argument (`Function::per_reference_element`; SPEC-0014 rule 6,
 /// `COUNTIF(OFFSET(A1,{0;1},0),">0")` spills 1, 1, probes/reference-lift-consumers E57): a range
 /// argument that is a lifted OFFSET or INDIRECT gives the shape, the criteria
 /// (`args[first]`, `args[first + 2]`, ...) only without one. Anything else does not:
@@ -775,14 +775,14 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),
-        Function::Averageif => criteria_static_result(args, 1),
+        Function::Averageif => criteria_and_grid_static_result(kind, args, 1),
         Function::Averageifs => criteria_static_result(args, 2),
         Function::Count => not_implemented(args),
         Function::Counta => not_implemented(args),
         Function::Countblank => reference_parameter::countblank_static_result(args),
         Function::Countif => criteria_and_grid_static_result(kind, args, 1),
-        Function::Countifs => criteria_static_result(args, 1),
-        Function::Maxifs => criteria_static_result(args, 2),
+        Function::Countifs => criteria_and_grid_static_result(kind, args, 1),
+        Function::Maxifs => criteria_and_grid_static_result(kind, args, 2),
         Function::Minifs => criteria_static_result(args, 2),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),

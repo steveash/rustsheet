@@ -72,7 +72,7 @@ pub struct StrictRate {
 }
 
 /// Share of `cells` not visibly off, floored at 0; `None` without cells.
-fn share(cells: usize, visible: usize) -> Option<f64> {
+pub(crate) fn share(cells: usize, visible: usize) -> Option<f64> {
     // Cell counts stay far below 2^52, so the casts are exact.
     #[allow(clippy::cast_precision_loss)]
     let rate = (cells > 0).then(|| cells.saturating_sub(visible) as f64 / cells as f64);
@@ -349,6 +349,7 @@ mod tests {
             oracle: None,
             v15: v15_reason.map(|_| V15::Exempt),
             v15_reason: v15_reason.map(String::from),
+            params: Vec::new(),
         }
     }
 

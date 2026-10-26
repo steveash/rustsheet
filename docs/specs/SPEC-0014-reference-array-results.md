@@ -134,12 +134,13 @@ would not move it.
     skips, COUNTA counts, SUMPRODUCT reads 0). An error element is the result. Others keep the
     value view until T-2065 answers them.
   - Per-element callers (rule 6): SUBTOTAL, COUNTIF, SUMIF, SUMIFS, COUNTBLANK, AREAS, ROW, COLUMN,
-    CELL, ISFORMULA, N, T. One helper, `Model::lift_over_ref_grid(grid, cell, |model, elem| ..)`,
+    CELL, ISFORMULA, N, T; COUNTIFS, AVERAGEIF and MAXIFS since T-2823 (T-2065's answers). One
+    helper, `Model::lift_over_ref_grid(grid, cell, |model, elem| ..)`,
     runs the scalar call per element and builds a `CalcResult::Array` (a SUMIF whose range and
     sum_range are both grids broadcasts them as SPEC-0011 does). Its cost is the consumer's:
     `LiftCost::Unit` for ROW, COLUMN, AREAS, CELL, ISFORMULA, N and T (O(1) per element);
     `LiftCost::Cells` of each element's clipped cells for SUBTOTAL, COUNTIF, SUMIF and COUNTBLANK, and
-    cells times criteria pairs for SUMIFS and COUNTIFS (as lookup_each.rs charges). Past the budget
+    cells times criteria pairs for SUMIFS, COUNTIFS and MAXIFS (as lookup_each.rs charges). Past the budget
     the call is the bound's error where Excel computes a value
     (`SUBTOTAL(9,OFFSET(A:A,0,0,SEQUENCE(1000)))`): T-2064 records that DEVIATION (decision 0014)
     when it lands the charge.

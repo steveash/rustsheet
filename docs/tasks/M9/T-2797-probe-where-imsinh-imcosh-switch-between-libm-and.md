@@ -32,5 +32,9 @@ Excel's two switch points between libm-like digits and the `1/EXP(-x)` IMSINH/IM
 - [ ] If a cut differs from `INVERSE_EXP_LOW` and `INVERSE_EXP_HIGH`, a follow-up task to move it (or the fix in this PR if it is one line).
 - [ ] `make check` green; reviewers approve.
 
+## Also (T-2796 review)
+IMSIN and IMCOS share this band since T-2796 (`trig_sinh_cosh`): add IMSIN/IMCOS of mixed arguments x+yi with |y| near
+both cuts (0.0105, 18.2-100) so their switch is probed too.
+
 ## Out of scope
 - Changing IMSIN/IMCOS (T-2796).
