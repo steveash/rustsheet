@@ -3368,12 +3368,6 @@ F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U1
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U16
 F	probes/t2436/e85daedce5c2675e.case.json	Calc!A31
 F	probes/t2436/e85daedce5c2675e.case.json	Calc!A46
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!A136
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!A151
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!T136
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!T151
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!U136
-F	probes/t2436/ecc87f80077959e0.case.json	Calc!U151
 F	probes/t2454-offset-array-height.case.json	Sheet1!A12
 F	probes/t2454-offset-array-height.case.json	Sheet1!B12
 F	probes/t2454-offset-array-height.case.json	Sheet1!C12
