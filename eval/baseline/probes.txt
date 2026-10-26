@@ -1008,6 +1008,9 @@ C	probes/sheet-ops/sheet-ops-rename-span-end.case.json	4
 C	probes/sheet-ops/sheet-ops-rename-span-start.case.json	4
 C	probes/sheet-ops/sheet-ops-rename-swap.case.json	6
 C	probes/sheet-ops/sheet-ops-rename-twice.case.json	4
+C	probes/sheet-ops/sheet-ops-rename-undefined-qualified-name.case.json	4
+C	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	4
+C	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	7
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-corner-order.case.json	13
 C	probes/sheet-qualified-ref-error-forms.case.json	10
@@ -2945,6 +2948,13 @@ F	probes/regression-trend.case.json	Sheet1!O7
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
+F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!A1
+F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!A2
+F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!B1
+F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!B2
+F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B1
+F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B2
+F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B3
 F	probes/solver-iteration-traces.case.json	I!A17
 F	probes/solver-iteration-traces.case.json	I!A22
 F	probes/solver-iteration-traces.case.json	I!A24
@@ -3216,13 +3226,7 @@ F	probes/t1924-locale-tag-extended-hex.case.json	S!B29
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B3
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B4
 F	probes/t2065-lift-averagea.case.json	Sheet1!E1
-F	probes/t2065-lift-averageif.case.json	Sheet1!E1
-F	probes/t2065-lift-averageif.case.json	Sheet1!E2
-F	probes/t2065-lift-countifs.case.json	Sheet1!E1
-F	probes/t2065-lift-countifs.case.json	Sheet1!E2
 F	probes/t2065-lift-maxa.case.json	Sheet1!E1
-F	probes/t2065-lift-maxifs.case.json	Sheet1!E1
-F	probes/t2065-lift-maxifs.case.json	Sheet1!E2
 F	probes/t2065-lift-stdevs.case.json	Sheet1!E1
 F	probes/t2065-lift-sumsq.case.json	Sheet1!E1
 F	probes/t2065-lift-vars.case.json	Sheet1!E1

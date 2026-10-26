@@ -271,6 +271,7 @@ mod tests {
             oracle: None,
             v15: None,
             v15_reason: None,
+            params: Vec::new(),
         }]);
         let report = RunReport::build("e", &[r], &[], &catalog);
         let visible = |name: &str| {
