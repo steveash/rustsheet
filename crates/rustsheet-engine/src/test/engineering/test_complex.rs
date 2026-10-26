@@ -466,6 +466,8 @@ fn im_trig_of_a_real_number_follows_sin_cos_tan() {
         (r#"=IMCSC("1E+200")"#, "#NUM!"),
         (r#"=IMCOT("1E+200")"#, "0"),
         (r#"=IMCOT("-134217728")"#, "0"),
+        // The desktop cache of COMPLEXs.xlsx N6; the web gives TAN's -3.38051500624659 (T-2774).
+        (r#"=IMTAN("5")"#, "-3.38051500624658"),
     ];
     let mut model = new_empty_model();
     for (row, (formula, _)) in cases.iter().enumerate() {
