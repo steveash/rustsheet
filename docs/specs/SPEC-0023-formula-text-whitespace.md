@@ -92,7 +92,7 @@ applied to one.
 - A run after a primary's last token, followed by a binary operator, `%` or `)`, is that primary's
   `after`.
 - A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped. These are
-  exactly the places where Excel drops it.
+  exactly the places where Excel drops it (for the probed shapes; see Unknown).
 
 Attaching at the primary level, and never to a chain, leaves the value-operator chains of SPEC-0007
 untouched. Take `=1*2 + 3`. The run before `+` becomes `after` of the leaf `2`, not of the chain

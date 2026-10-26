@@ -332,7 +332,8 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
   `=1+` LF ` ` LF `2` prints `=1+` LF LF `2`, 10 spaces, 3 line feeds and 2 spaces print as the 3 line feeds and 2
   spaces.
 - **A run's space count wraps at 256**: `=1+` + 300 spaces + `2` prints with 44 spaces (`LEN` 48). Excel stores a
-  run as a line-feed count and a space count, each one byte (the BIFF `PtgAttrSpace` shape; the counts are this
+  run as a line-feed count and a space count, the space count one byte (the line-feed count's width is
+  unprobed, T-2782) (the BIFF `PtgAttrSpace` shape; the counts are this
   probe's evidence, not the documentation's).
 - Refused (observed 2026-10-26, Graph's error text not recorded, so UNVERIFIED; T-2786 re-probes it): `=SUM (1)` (a
   space between a function name and its `(`): Graph's PATCH of it failed and the case was dropped.
