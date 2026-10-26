@@ -31,8 +31,9 @@ Root cause, one rule (docs/excel-semantics/financial.md "YIELD stops short of PR
 - Excel runs Newton on PRICE from a hidden start S that moves with price, coupon rate, and term in the basis's years.
 - It returns the iterate after a step-size cut. That cut is open (T-2330).
 - So its value sits on the root or up to about 6e-9 relative below it.
-- Ours (`compute_yield_from_price`, crates/rustsheet-engine/src/functions/financial/financial_bonds.rs) runs Newton from
-  the coupon rate to 1e-8, which lands on the root.
+- Ours, when this task was cut (`compute_yield_from_price`, removed by T-2391), ran Newton from the coupon rate to 1e-8,
+  which lands on the root. Since T-1592 and T-2391 YIELD runs `excel_yield_newton` from `yield_start`
+  (crates/rustsheet-engine/src/functions/financial/financial_bonds/yield_solver.rs).
 Examples (Excel vs ours):
 - ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!I30 `YIELD(A30,B30,C30,H30,E30,F30,G30)`: 0.06499999999159671
   vs 0.06500000000000004. I4: 0.04999999999976775 vs 0.049999999999999954. I2: 0.0700000000000001 vs
@@ -65,7 +66,7 @@ Within 15 digits already (a bit-level follow-up, not this task's target): PRICE_
 Y!C1 and Y!E1, five -shifted cells (S!B8, B30, E8, E19, E30), six yield-solver-sweep cells, 11 yield-start-rate-term
 cells and five yield-start-sweep cells.
 
-Approach: take T-1592's fitted start and stop rule into `compute_yield_from_price` (decision 0056 time box). Then
+Approach: take T-1592's fitted start and stop rule into `compute_yield` (done by T-1592) (decision 0056 time box). Then
 score every cell above, along with T-1592's 23 gen-m9 cells. If the fit leaves a family of cells visibly off, find
 out why from that family, for example the -shifted twin pair or the basis-1 row 19 of the date-system cases. Do not
 loosen the rule cell by cell.
