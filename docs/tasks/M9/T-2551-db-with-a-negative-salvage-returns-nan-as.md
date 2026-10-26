@@ -40,4 +40,4 @@ Already fixed on main before this task was picked: `fn_db` returns `#NUM!` for a
 (the `salvage < 0.0` domain check), and gen-m9/f066968376660329 Calc!A244 is no longer a
 known-failure line in eval/baseline/gen-m9.txt. This PR adds the missing unit test
 (`fn_db_negative_salvage_is_an_error_value`: ISNUMBER FALSE, ISERROR TRUE, `#NUM!`). Eval delta: none.
-No non-finite Number leak was reproduced for DB; DDB and VDB were not re-audited here.
+No non-finite Number leak was reproduced for DB. DDB and VDB (financial_depreciation.rs) carry the same `salvage < 0.0` domain check before any arithmetic, so neither leaks NaN for a negative salvage (read, not probed). Whether other functions can return a non-finite Number was not audited.
