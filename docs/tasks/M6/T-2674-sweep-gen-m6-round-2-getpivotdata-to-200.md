@@ -65,5 +65,5 @@ T-2404 now lists them.
 
 Eval delta: gen-m6 scored 25,000 -> 25,240, known failures 0 -> 3 (new coverage, 0 regressions; within the exit
 allowance of 25). "Milestone exit" M6 is 39/39 coverage, met. GETPIVOTDATA has 240 generated cells in the
-"Fifteen-digit parity checkpoint" row. `make exit-owners MILESTONE=M6` lists no cell. No new quirk: the
-empty-intersection rule is already in web.md.
+"Fifteen-digit parity checkpoint" row. `make exit-owners MILESTONE=M6` lists no cell. web.md now cites the Count
+pivot's empty intersection (0) and the Count cases as committed evidence.
