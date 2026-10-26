@@ -2,7 +2,7 @@
  "format": "rustsheet-case/v1",
  "description": "XLOOKUP with an error lookup_value and an unblocked array match_mode/search_mode: per-element errors and which wins against an invalid mode element (T-2746).",
  "tags": [
-  "M1",
+  "M6",
   "probe",
   "lookup",
   "T-2746"
