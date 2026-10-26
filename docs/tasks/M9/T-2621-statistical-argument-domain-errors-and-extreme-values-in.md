@@ -3,10 +3,10 @@ id: T-2621
 title: "Statistical argument-domain errors and extreme values in the T-2475 probe: PERMUTATIONA, COMBINA, T.TEST, T.INV.2T, PERCENTRANK, TRIMMEAN, MODE.MULT, STEYX, SLOPE, distributions"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: semantics
 ---
@@ -42,9 +42,33 @@ Owned gen-m9 cells (23; known failures in eval/baseline/gen-m9.txt, and the prob
 - gen-m9/d208bbafc3bc1997.case.json Calc!A262: probe P!A520 `SKEW(D41!D11:D12,D41!D10)`: Excel 2.4980018054066022e-15, ours 2.9976021664879227e-15
 - gen-m9/f82473275380882e.case.json Calc!A143: probe P!A572 `NORMDIST(1E+300,MAX(D48!C11:C12),2.5,0)`: Excel "#6", ours 0.0
 
+Moved to T-2791 (last-digit numeric fits): P!A317 / 873f30d2bf76f8db A308, P!A417 / a63d1c7d6f96c56d A92, P!A520 /
+d208bbafc3bc1997 A262.
+
 ## Acceptance criteria
-- [ ] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Handoff (resumed)
+Sonnet run (2026-10-26) did not start implementing. The task bundles about 20 functions in one lane, several of
+them last-digit numeric fits (F.INV.RT 0.0012599666259138292 vs ...298, NEGBINOMDIST 6.434999995495541e-87 vs ...502,
+STDEV.P 25.5597.. vs 26.3548.. with an array third argument) and extreme-argument cutoffs (BINOM.DIST, BETA.INV,
+WEIBULL.DIST). That is beyond sonnet's rubric (numeric fitting, unclear evidence). Suggested next steps: take the
+pure domain-error groups first (PERMUTATIONA/COMBINA/POISSON.DIST negative or fractional args, T.INV.2T, PERCENTRANK,
+TRIMMEAN, STEYX/SLOPE error-type inputs, MODE.MULT), then the numeric ones; consider splitting into two tasks via
+`make new-task`.
+
+## Outcome
+Split: the three last-digit cells (P!A317 F.INV.RT, P!A417 NEGBINOMDIST, P!A520 SKEW; gen-m9 873f30d2bf76f8db A308,
+d208bbafc3bc1997 A262) moved to T-2791 (numeric fitting). Seven owned cells (P!A75, A96, A266, A273, A341, A396, A455)
+already passed on main from other tasks. The rest now match Excel: PERMUTATIONA truncates number_chosen (also closes
+T-2701); COMBINA truncates number, and number_chosen only when number is 0 (gen-m5/gen-m6 cells show `COMBINA(7,-0.005)` is
+`#NUM!`); a first T.TEST sample that is an error value or a blank cell beats bad tails/type; T.INV* at p = 0 with df 1 is
+`#DIV/0!`; WEIBULL at x = 0 is 0 and an overflowing (x/beta)^alpha `#NUM!`; POISSON's cdf past a u64 count is 1; IFERROR's
+blank fallback is the empty value (STDEV.P counts 0); TRIMMEAN of a lone blank/text/boolean cell is `#NUM!`; SKEW with an
+overflowing sum of squares `#DIV/0!`; NORM.DIST's density `#NUM!` where z² overflows; a BETA.INV quantile of 0 or 1 `#NUM!`.
+Rules in statistics.md "Statistical argument-domain errors and extreme values (T-2621)" and logic.md. Eval: gen-m9 known
+failures 4056 -> 3963 (93 fixed), probes 2848 -> 2816 (32 fixed), no regressions.

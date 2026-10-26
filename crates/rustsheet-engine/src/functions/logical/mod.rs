@@ -392,8 +392,13 @@ impl Model {
             CalcResult::Array(a) => a,
             CalcResult::Error { ref error, .. } if is_handled(error) => {
                 // Scalar handled error: evaluate the fallback branch directly.
-                // The branch result may itself be an array (it will spill).
-                return self.evaluate_node_in_context(&args[1], cell);
+                // The branch result may itself be an array (it will spill). A blank cell there
+                // is the empty value too, which STDEV.P counts as 0
+                // (`STDEV.P(A9:A12,IFERROR(1/0,E6),{1,..,10})` with E6 blank;
+                // probes/t2475-stat-subexpressions P!A158).
+                return self
+                    .evaluate_node_in_context(&args[1], cell)
+                    .blank_as_empty_value();
             }
             // A blank cell gives its value, not the reference: an empty value that OR reads as
             // FALSE and a lookup as 0 (T-0291; gen-m2 7469c3e920e1ade4 A351, ef5c55a81783b7d5 A291).
