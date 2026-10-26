@@ -88,6 +88,20 @@ fn inverse_exp_sinh_cosh(x: f64) -> (f64, f64) {
     ((v - u) / 2.0, (v + u) / 2.0)
 }
 
+/// `(sinh y, cosh y)` for IMSIN and IMCOS: IMSINH's kernel at `-y` (sin z = -i·sinh(iz)) inside
+/// its band, the EXP pair outside, where `IMSIN("1E-200+1E-200i")` is "1E-200" and
+/// `IMCOS("150-0.002i")` needs it (T-2535). `IMSIN("-4i")` is -27.2899171971278i, `IMSINH("4")`'s
+/// digits, where the EXP pair gives ...277i (probes/t2778-imsinh-sign-sweep C2); the 1,023
+/// IMSIN/IMCOS cells of the suites still pass (docs/excel-semantics/engineering.md, T-2796).
+fn trig_sinh_cosh(y: f64) -> (f64, f64) {
+    let t = y.abs();
+    if t <= INVERSE_EXP_LOW || t > INVERSE_EXP_HIGH {
+        return exp_sinh_cosh(y);
+    }
+    let (sinh, cosh) = inverse_exp_sinh_cosh(-y);
+    (-sinh, cosh)
+}
+
 /// [`inverse_exp_sinh_cosh`] takes the `1/u` form for `INVERSE_EXP_LOW < |x| <= INVERSE_EXP_HIGH`.
 /// Both ends are unprobed (T-2797): Excel's lower switch lies between 0.01 (libm's digits) and
 /// 0.0105 (the form's), its upper one between 18.2 and 100; 20 is where the worksheet TANH turns
@@ -168,7 +182,7 @@ pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if trig_exp_overflows(y) {
         return num_error(cell);
     }
-    let (y_sinh, y_cosh) = exp_sinh_cosh(y);
+    let (y_sinh, y_cosh) = trig_sinh_cosh(y);
     finite_complex_result(x.cos() * y_cosh, -x.sin() * y_sinh, suffix, cell)
 }
 
@@ -296,7 +310,7 @@ pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if trig_exp_overflows(y) {
         return num_error(cell);
     }
-    let (y_sinh, y_cosh) = exp_sinh_cosh(y);
+    let (y_sinh, y_cosh) = trig_sinh_cosh(y);
     finite_complex_result(x.sin() * y_cosh, x.cos() * y_sinh, suffix, cell)
 }
 

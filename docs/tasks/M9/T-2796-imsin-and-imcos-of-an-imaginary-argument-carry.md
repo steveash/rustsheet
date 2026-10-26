@@ -3,7 +3,7 @@ id: T-2796
 title: "IMSIN and IMCOS of an imaginary argument carry IMSINH's digits (IMSIN('-4i') -27.2899171971278i)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,9 +25,15 @@ IMSIN and IMCOS of an imaginary or near-imaginary argument print Excel's digits,
 - Code: `imsin`, `imcos`, `exp_sinh_cosh` in crates/rustsheet-engine/src/functions/engineering/complex/trig.rs.
 
 ## Acceptance criteria
-- [ ] probes/t2778-imsinh-sign-sweep C2 leaves eval/baseline/probes.txt with no new known-failure lines in any
+- [x] probes/t2778-imsinh-sign-sweep C2 leaves eval/baseline/probes.txt with no new known-failure lines in any
       baseline, or the candidates tried are recorded in engineering.md (time-box, decision 0056).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMSINH/IMCOSH (T-2629, done).
+
+## Outcome
+IMSIN and IMCOS take `(sinh y, cosh y)` from IMSINH's kernel at `-y` (`trig_sinh_cosh`, complex/trig.rs; sin z =
+-i·sinh(iz)) inside its band (0.01, 20], and the EXP pair outside, so `IMSIN("-4i")` is -27.2899171971278i. The first
+hypothesis tried fitted: all 1,023 IMSIN/IMCOS cells of the suites still pass. engineering.md updated.
+Eval: probes known failures 2585 -> 2584 (C2), no regressions.
