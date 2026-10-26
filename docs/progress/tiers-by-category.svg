@@ -38,12 +38,12 @@
 <text x="525.8" y="81.0" class="num in-below99" fill="#000000" text-anchor="middle" dominant-baseline="middle">54</text>
 <text x="616.9" y="81.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">149</text>
 <text x="140.0" y="111.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">math</text>
-<rect class="b-exact" fill="#2a78d6" x="150.0" y="102.0" width="189.0" height="18" rx="3"><title>math: 62</title></rect>
-<text x="244.5" y="111.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">62</text>
-<rect class="b-ulp4" fill="#1baf7a" x="341.0" y="102.0" width="25.7" height="18" rx="3"><title>math: 9</title></rect>
-<rect class="b-digits15" fill="#6250d6" x="368.7" y="102.0" width="7.2" height="18" rx="3"><title>math: 3</title></rect>
-<rect class="b-rate999" fill="#d55181" x="377.9" y="102.0" width="4.2" height="18" rx="3"><title>math: 2</title></rect>
-<rect class="b-rate99" fill="#eda100" x="384.1" y="102.0" width="16.5" height="18" rx="3"><title>math: 6</title></rect>
+<rect class="b-exact" fill="#2a78d6" x="150.0" y="102.0" width="192.0" height="18" rx="3"><title>math: 63</title></rect>
+<text x="246.0" y="111.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">63</text>
+<rect class="b-ulp4" fill="#1baf7a" x="344.0" y="102.0" width="25.7" height="18" rx="3"><title>math: 9</title></rect>
+<rect class="b-digits15" fill="#6250d6" x="371.8" y="102.0" width="7.2" height="18" rx="3"><title>math: 3</title></rect>
+<rect class="b-rate999" fill="#d55181" x="381.0" y="102.0" width="4.2" height="18" rx="3"><title>math: 2</title></rect>
+<rect class="b-rate99" fill="#eda100" x="387.2" y="102.0" width="13.4" height="18" rx="3"><title>math: 5</title></rect>
 <rect class="b-below99" fill="#e34948" x="402.6" y="102.0" width="3.1" height="18" rx="3"><title>math: 1</title></rect>
 <text x="413.6" y="111.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">83</text>
 <text x="140.0" y="141.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">financial</text>

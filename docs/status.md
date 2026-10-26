@@ -11,11 +11,12 @@ merged since its last run.
 
 This is the scheduled run at 18:47 UTC. It follows #1896, this morning's 05:47 UTC run, and covers the 52 commits merged to `main` since then, through 96449aaf, including the two this run merged.
 
-`make eval` ran on 7ffb09ee, whose engine code is identical to `main` at 7bfc015a. The dashboard and the visible-parity lock therefore predate #1947 (T-0481), #1951 (T-2691) and #1952 (T-2503).
-- All 17 suites were fetched and scored. The first pass skipped calipers, corpus-bench and poi because they had not been fetched; I fetched them and re-ran. Timeouts: 0 in every suite.
-- `make eval-lower-visible-lock` shows 0 regressions in every gated suite and lowers the visible-parity lock from 4,448 to 3,541 (decision 0093).
+`make eval` ran on 5dc93dd8, this branch merged with `main` at 96449aaf, so it includes everything this run merged.
+- All 17 suites were fetched and scored. On the first pass (on 7ffb09ee), calipers, corpus-bench and poi had not been fetched; I fetched them and re-ran. Timeouts: 0 in every suite.
+- `make eval-lower-visible-lock` shows 0 regressions in every gated suite and lowers the visible-parity lock from 4,448 to 3,581 (decision 0093).
+- I first lowered the lock to 3,541 on 7ffb09ee. reviewer-excel-fidelity pointed out that #1826, merged by this run, adds 43 visibly-off probe cells, so that lock would fail on the merged head. CI confirmed it. I merged `main` in under the merge lock and re-ran the eval.
 - The dashboard has this run's numbers (`make progress-report`; the judgment blocks pass `--check`).
-- Since the last complete run, Phase 1 functions rose from 324 to 377 of 506, and visibly-off type, error or text cells fell from 20,039 to 1,477. VLOOKUP is now Exact.
+- Since the last complete run, Phase 1 functions rose from 324 to 378 of 506. Visibly-off type, error or text cells fell from 20,039 to 1,484, and visibly-off numbers from 131,347 to 105,122. VLOOKUP is now Exact.
 
 CI on `main` is green: every push run since #1896 succeeded or was cancelled by the next push, and none failed.
 
@@ -25,7 +26,7 @@ CI on `main` is green: every push run since #1896 succeeded or was cancelled by 
 - `probes/t2756-roundup-smallest-normal-threshold` Sheet1!A52–A58 are within 15 digits but not bit-exact. Owner: T-2771. The planner now names each cell in it, so the exit-owner rule can see them.
 - The new failures come from the SPEC-0023 whitespace probes (T-2776). T-2781 (#1925) fixed last run's two visibly-off cells, t2723 S!C24 and S!C25.
 - The frozen M1 list has 0 known failures (89/89 cases).
-- `make exit-owners MILESTONE=M2` still cannot run, so the planner filed **T-2822** (harness, M2) to add an M2 exit row. `make exit-owners MILESTONE=M5` reports 0 unowned.
+- `make exit-owners MILESTONE=M2` still cannot run, so the planner filed **T-2822** (harness, M2) to add an M2 exit row. `make exit-owners MILESTONE=M5` reports 0 unowned. #1826's 43 new FORMULATEXT cells are M5 cells, owned by T-2726.
 - `make exit-owners MILESTONE=M6` reported 11 unowned cells: the probes/t2065-lift-* cells. T-2065 had handed them to T-2063 and T-2064, which were already done. I filed **T-2823** (COUNTIFS, AVERAGEIF, MAXIFS: 6 cells) and **T-2824** (STDEV.S, VAR.S, SUMSQ, AVERAGEA, MAXA: 5 cells, after T-2816). It now reports 0.
 
 Hygiene:
