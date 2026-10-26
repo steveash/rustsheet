@@ -3451,7 +3451,7 @@ and probes/t2429-hypgeom-threshold A1-A47 (excel-graph, 2026-10-25); probes/t242
 HYPGEOM call and its arguments on that case's Data sheet.
 Ours: since T-2429, `#NUM!` for a negative or huge count (`limits::COUNT_LIMIT_EXCLUSIVE`), checked on every count
 before truncation; the impossible sample is still `#NUM!` (T-2699; probes/t2429-hypgeom-huge-count A5, A6 and their
-rows, `HYPGEOMDIST(1,N,3,N)`, are its cells).
+rows, `HYPGEOMDIST(1,N,3,N)`, are its cells). T-2700 confirmed the sign-before-truncation order for the HYPGEOM counts.
 Status: VERIFIED (excel-graph)
 
 ## A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data (T-2429)
@@ -3488,7 +3488,9 @@ FALSE)` and `GAMMADIST(2,1.85E+76,1E+10,"TRUE")` are `#NUM!` (2801c1c11c21e134 A
 `BINOM.INV(1E15,5.2E-16,0.5)` are `#NUM!` (a61e547a1cab994c A127, ee2497a5e683c5d9 A345); `LOGNORMDIST(1E+300,1,
 5.277777777777777E-301)` is `#NUM!` (a013a45a8fbcab4f A97); `EXPON.DIST(7,102,FALSE)` is 0, not the subnormal
 8.36257629135218E-309 (165db58d1540f014 A65, numbers.md "Subnormal results become 0").
-Ours: a number for each `#NUM!` above, `#NUM!` for the GAMMA.DIST zeros, the subnormal for EXPON.DIST; T-2435.
+Ours: a number for each `#NUM!` above, `#NUM!` for the GAMMA.DIST zeros, the subnormal for EXPON.DIST; T-2435. A negative
+BINOM.DIST/BINOMDIST number_s, one in (-1, 0) included (`BINOM.DIST(-0.0125,10,1E-16,FALSE)`), is `#NUM!` since T-2700 (the sign
+is checked before truncation).
 Status: VERIFIED (excel-graph), one cell each
 
 ## LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order (T-1741)
@@ -3714,7 +3716,8 @@ Ours (T-2474): as Excel for every T-2474 cell. The cumulative t functions (T.DIS
 T.DIST.2T, TDIST) are `#NUM!` where `x²` overflows (|x| past about 1.34E+154; the cut, and that a negative x of that size is `#NUM!` too, are UNVERIFIED), the negative mean
 follows "POISSON at x 0 with a negative mean", the tiny-p NEGBINOM is 0 (the binomial walk renormalizes before a ratio
 p/q past 2^53 overflows it), and PERMUTATIONA takes PERMUT's limit, a number of 2^31 - 1 or more is `#NUM!` (UNVERIFIED cut).
-The number_f in (-1, 0) and PERMUTATIONA truncation cells are T-2700's and T-2701's. Probe of the cuts: T-2752.
+Since T-2700 a NEGBINOM.DIST/NEGBINOMDIST number_f in (-1, 0) is `#NUM!` as in Excel (the sign is checked before truncation; bonus cell
+b9a32ce9a1fd0d71 A195, `NEGBINOMDIST(Data!$D$6,7,..)` with D6 = -0.5). The PERMUTATIONA truncation cells are T-2701's. Probe of the cuts: T-2752.
 Status: VERIFIED (excel-graph), the cuts UNVERIFIED
 
 ## Student t quantile at p = 0 with df below 2 is #DIV/0! (T-2256)

@@ -4,6 +4,7 @@
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
 # `TC` and `TF` lines do the same for displayed text (decision 0070).
 C	gen-m6/03333cc38ec06a14.case.json	400
+C	gen-m6/036e16e18a31dd2c.case.json	40
 C	gen-m6/04fdc9a67474aab9.case.json	400
 C	gen-m6/07171fa3f7493f51.case.json	400
 C	gen-m6/0bcac2d96e96b3df.case.json	400
@@ -48,7 +49,10 @@ C	gen-m6/752959b8d3db0285.case.json	400
 C	gen-m6/7ac4ea222977f3b4.case.json	400
 C	gen-m6/7d46a40742ba8024.case.json	40
 C	gen-m6/7f3606fef4cb9df7.case.json	400
+C	gen-m6/7feb00029b1d4182.case.json	40
+C	gen-m6/8641fa604c5b8e14.case.json	40
 C	gen-m6/870c5e38f51ce5d4.case.json	400
+C	gen-m6/8c9b723baf4f22bb.case.json	40
 C	gen-m6/9130ade4b1924cc8.case.json	400
 C	gen-m6/9615a6de0f3ac417.case.json	400
 C	gen-m6/963a217976538d5d.case.json	40
@@ -64,6 +68,7 @@ C	gen-m6/abcfd9979f316267.case.json	40
 C	gen-m6/acc70339aac84a23.case.json	400
 C	gen-m6/acdfeaf6e6eadd4e.case.json	400
 C	gen-m6/afe9267df3df26a8.case.json	400
+C	gen-m6/b304d8cf05adcc5e.case.json	40
 C	gen-m6/b54448af3fde07ca.case.json	400
 C	gen-m6/b62dd1ebd266b71c.case.json	400
 C	gen-m6/be0e3a1b0fc3f7a0.case.json	400
@@ -79,6 +84,7 @@ C	gen-m6/d753a4246113f447.case.json	40
 C	gen-m6/d957e2eadb435a2f.case.json	40
 C	gen-m6/da0289bc74cdf6af.case.json	400
 C	gen-m6/de083028d8b676d2.case.json	400
+C	gen-m6/df85bc699c7e87bc.case.json	40
 C	gen-m6/e3a562557696e2fc.case.json	400
 C	gen-m6/ec7b2cc2fb9f0354.case.json	40
 C	gen-m6/ed0f4f783473cef0.case.json	40
@@ -88,3 +94,6 @@ C	gen-m6/f93597dff1cfa5b6.case.json	400
 C	gen-m6/f94b5b8236742618.case.json	40
 C	gen-m6/fde83d52a9d1fc63.case.json	400
 C	gen-m6/fe0972380d030e4a.case.json	400
+F	gen-m6/8641fa604c5b8e14.case.json	Calc!A19
+F	gen-m6/8641fa604c5b8e14.case.json	Calc!A25
+F	gen-m6/8641fa604c5b8e14.case.json	Calc!A39
