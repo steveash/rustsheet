@@ -2265,7 +2265,8 @@ securities functions check frequency and dates first"). A par read from a FALSE 
   of f81bd3b6dc373e5c); the tenth, f81bd3b6dc373e5c A115, is `#SPILL!` because its par is an array, which lifts first.
 - boolean par: `ACCRINT(32965,35462,36817,10,<FALSE cell>,100,1.005,FALSE)` is `#VALUE!` (932b33b1ef8b7608 A233).
 Unprobed: whether an issue after the settlement waits for the later arguments (ours checks the order after every
-read); a typed boolean par, and booleans in first_interest, settlement, frequency and basis.
+read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest); a typed boolean par, and
+booleans in first_interest, settlement, frequency and basis.
 Evidence: gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c (excel-graph, T-2676 sweep, 2026-10-26); each
 cell's arguments evaluated with the engine on the case's Data sheet.
 Ours: `accrint_of` (functions/financial/accrint.rs) reads left to right and checks the dates after every read; T-2792.
