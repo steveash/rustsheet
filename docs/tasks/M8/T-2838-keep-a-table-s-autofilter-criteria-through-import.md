@@ -26,7 +26,8 @@ xlsx-storage.md "Table parts in the export".
 - [ ] The import keeps each table's filter columns (values filters, custom filters, at least the kinds tables.xlsx
       uses) and the export writes them back; `has_filters` derives from them.
 - [ ] A probe (excel-probe skill) of an exported workbook with a filtered table records whether Excel opens it without
-      repair and what SUBTOTAL(109, ...) over its hidden rows gives; xlsx-storage.md is updated.
+      repair and what SUBTOTAL(109, ...) over its hidden rows gives, and whether a totals row whose cells hold
+      constants (no label or formula metadata) loads; xlsx-storage.md is updated.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

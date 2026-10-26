@@ -174,3 +174,53 @@ fn tables_on_two_sheets_get_their_own_parts() {
     reloaded.evaluate();
     assert_eq!(reloaded.get_formatted_cell_value(0, 5, 1).unwrap(), "6");
 }
+
+/// The Excel-authored tables.xlsx keeps the text of every formula through an export, and writes
+/// structured references as Excel's own file has them.
+#[test]
+fn excel_authored_tables_keep_their_formula_text() {
+    let model = load_from_xlsx("tests/calc_test_tables/tables.xlsx", "en", "UTC", "en").unwrap();
+    let temp_file_name = "temp_file_test_excel_tables.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    // Excel's forms (the original's `<f>`): `#Totals` of a table without a totals row (cached
+    // `#REF!`), a column name that ends with a space, an `@` inside a column name.
+    for (part, formula) in [
+        ("xl/worksheets/sheet2.xml", "<f>SUM(Table2[#Totals])</f>"),
+        ("xl/worksheets/sheet3.xml", "<f>SUM(Table3[[the two ]])</f>"),
+        (
+            "xl/worksheets/sheet8.xml",
+            "<f>SUM(Table9[Totals &apos;[&apos;]^&amp;*@&apos;#$,,&lt;&gt;])</f>",
+        ),
+    ] {
+        let xml = part_text(temp_file_name, part);
+        assert!(xml.contains(formula), "{formula} in {part}");
+    }
+    let reloaded = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+
+    assert_eq!(reloaded.workbook.tables.len(), model.workbook.tables.len());
+    let mut formulas = 0;
+    for (sheet, worksheet) in model.workbook.worksheets.iter().enumerate() {
+        let sheet = u32::try_from(sheet).unwrap();
+        for (row, column, cell) in worksheet.sheet_data.cells() {
+            if cell.get_formula().is_none() {
+                continue;
+            }
+            formulas += 1;
+            // The export drops the space after an argument comma (`SUBTOTAL(9, T[C])`), as it
+            // did before table parts; only that spacing is set aside.
+            let text = |m: &Model| {
+                m.get_cell_formula(sheet, row, column)
+                    .unwrap()
+                    .map(|f| f.replace(", ", ","))
+            };
+            assert_eq!(
+                text(&reloaded),
+                text(&model),
+                "{} row {row} column {column}",
+                worksheet.name
+            );
+        }
+    }
+    assert!(formulas > 100, "{formulas}");
+}

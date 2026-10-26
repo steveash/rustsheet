@@ -310,6 +310,11 @@ differs from what a user types, and Excel for the web refuses or misreads the ty
   `totalsRowFunction="custom"` and `<totalsRowFormula>` for a formula cell (written as a plain `<f>`). A table
   with `totalsRowCount="1"` whose totals cells lack it (a label and a dynamic-array SUBTOTAL) is refused as
   corrupt; with it the file loads and `Sales[[#Totals],[Val]]` reads the totals cell.
+- Excel's own file (crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx, Excel-authored) also shows: a column
+  name that ends with a space keeps its inner brackets, `SUBTOTAL(109,Table3[[the two ]])` (Hidden!B6); an `@`
+  inside a column name is not escaped, `SUM(Table9[Totals '[']^&*@'#$,,<>])` (Escape!E6); `#Totals` of a table
+  without a totals row is kept as written, `SUM(Table2[#Totals])` cached `#REF!` (Sheet2!F4). The engine's printer
+  writes these forms (T-2196); a leading `@` is still escaped, since `[@` reads as `#This Row`.
 - Table names that look like cell addresses (`T1`) are rejected by XlsxWriter; a header that is a number in
   text (`2024`) is fine.
 Evidence: the corrupt-file refusals are upload errors, not cell values (throwaway probes during T-1607, not
@@ -332,8 +337,13 @@ The import keeps only whether a table's `<autoFilter>` applies a filter (`has_fi
 the sheet's hidden rows filtered), not its criteria, so the export writes an applied filter as a
 `<filterColumn colId="0"/>` without a criterion. That is schema-valid and our own import reads it back as
 filtered; whether Excel opens it without repair, and still calls the hidden rows filtered, is unprobed (T-2838).
+A totals-row cell holding a number, boolean or error constant gets no metadata (T-1607 covered label and formula
+cells only); whether Excel loads that is unprobed too (T-2838's probe). A structured reference that lowers to an
+error because the table's metadata does not fit (an unparsable `ref`, an overflowing row count; directive 5) is
+written as that error.
 Evidence: crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx (Excel-authored, 9 tables) now round-trips
-(import, export, import) with the same values (generated test `test_tables_tables`).
+(import, export, import) with the same values (generated test `test_tables_tables`) and the same formula text
+(`excel_authored_tables_keep_their_formula_text`, export/test/test_tables.rs).
 Status: UNVERIFIED (the exported file has not been opened in Excel)
 Implemented in: crates/rustsheet-xlsx/src/export/tables.rs
 Tasks: T-2196, T-2838

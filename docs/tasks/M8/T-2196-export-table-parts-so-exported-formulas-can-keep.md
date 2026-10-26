@@ -32,9 +32,12 @@ in the sheet, the relationship after the sheet's external hyperlinks, the conten
 with the totals-row metadata (a formula cell as `totalsRowFunction="custom"` + `<totalsRowFormula>`, a text cell as
 `totalsRowLabel`) and an `<autoFilter>` over the header and data rows. `to_excel_string` now prints each resolved
 structured reference from the preserved text (`StructuredReference::file_text`: a bare name as `Table[]`, `@` as
-`[#This Row]`, the escape before the special character); an unresolved one is still `#REF!`.
+`[#This Row]`, the escape before the special character, inner brackets for a name ending with a space, `@`
+escaped only first, `#Totals` kept on a table without totals, all as Excel's own tables.xlsx has them); an
+unresolved one, or one whose table metadata does not fit, is still written as `#REF!`.
 The Excel-authored `tests/calc_test_no_export/tables.xlsx` moved to `tests/calc_test_tables/` with the save round
 trip on (`test_tables_tables`: import, export, import, same values); unit tests in `export/test/test_tables.rs` pin
-the file forms, the same tables after re-import, formula text and values. An applied filter keeps only its flag
+the file forms, the same tables after re-import, formula text and values, and the formula text of every cell of
+tables.xlsx through an export. An applied filter keeps only its flag
 (written as a `<filterColumn>` with no criterion): follow-up T-2838 keeps the criteria and probes Excel's reading.
 Eval delta: none (the export is not on the eval path).

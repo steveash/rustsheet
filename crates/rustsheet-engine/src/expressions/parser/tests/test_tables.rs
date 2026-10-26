@@ -159,12 +159,16 @@ fn huge_header_or_totals_row_counts_are_ref_error_not_an_overflow() {
         let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
         for formula in ["SUM(tblIncome[Jan])", "SUM(tblIncome[[#Totals],[Jan]])"] {
             let t = parser.parse(formula, &cell_reference);
-            assert_eq!(
-                to_excel_string(&t, &cell_reference),
-                "SUM(#REF!)",
+            assert!(
+                matches!(t.ungrouped(), Node::FunctionKind { args, .. }
+                    if matches!(args[0].ungrouped(), Node::ErrorKind(_))),
                 "{formula} with header {header}, totals {totals}"
             );
         }
+        // The export writes such a reference as its error; `#Totals` keeps its text, as Excel
+        // keeps it for a table without a totals row (T-2196).
+        let t = parser.parse("SUM(tblIncome[Jan])", &cell_reference);
+        assert_eq!(to_excel_string(&t, &cell_reference), "SUM(#REF!)");
     }
 }
 

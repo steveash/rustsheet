@@ -3,7 +3,7 @@
 use super::{stringify, DisplaceData, Rewrite, NO_REWRITE};
 use crate::expressions::parser::move_formula::ref_is_in_area;
 use crate::expressions::parser::{Node, StructuredReference};
-use crate::expressions::token;
+use crate::expressions::token::{self, TableSpecifier};
 use crate::expressions::types::CellReferenceRC;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
@@ -107,12 +107,15 @@ pub(super) fn reference_text(
         stringify(node, context, rewrite, export_to_excel, locale, language)
     };
     // The export writes every table as a table part, so the file keeps the reference, in the
-    // form Excel stores (SPEC-0016 step 3, T-2196). One that lowers to an error (`#Totals` without
-    // a totals row, table metadata that overflows) is written as that error: it has the same value,
-    // and the file then names no table whose part may not describe it.
+    // form Excel stores (SPEC-0016 step 3, T-2196), `#Totals` of a table without a totals row
+    // included (Excel keeps `SUM(Table2[#Totals])`, cached `#REF!`: calc_test_tables/tables.xlsx
+    // Sheet2!F4). Any other reference that lowers to an error comes from table metadata that does
+    // not fit (directive 5), and is written as that error, which it evaluates to.
     if export_to_excel {
         return match lowered {
-            Node::ErrorKind(_) => print(lowered, rewrite),
+            Node::ErrorKind(_) if reference.specifier != Some(TableSpecifier::Totals) => {
+                print(lowered, rewrite)
+            }
             _ => reference.file_text(),
         };
     }
