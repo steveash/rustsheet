@@ -3,7 +3,7 @@ id: T-2523
 title: "ROMAN: a bad form's error wins over a negative number (ROMAN(-5,NA()) is #N/A)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
