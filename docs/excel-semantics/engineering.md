@@ -372,12 +372,24 @@ Tasks: T-1385
 Rule: a from_unit or to_unit that is a reference to a TRUE or FALSE cell is `#VALUE!`, not the unknown-unit `#N/A`, with
 a valid number in the first argument: `CONVERT(2^31-1,<FALSE cell>,"HP")`, `CONVERT(1-2^-53,<FALSE cell>,"mm")` and
 `CONVERT(1E+21,"C",<TRUE cell>)` are `#VALUE!`. It is the units' side of "CONVERT refuses a boolean before it reads the
-units" (T-1385 above). A typed boolean unit (`CONVERT(1,TRUE,"m")`) and a boolean array element as a unit are unprobed.
+units" (T-1385 above).
+A typed boolean and a boolean array element are the same `#VALUE!`: `CONVERT(1,TRUE,"m")`, `CONVERT(1,"ft",FALSE)`,
+`CONVERT(1,{TRUE},"m")` (A1:A6). An array of units lifts element by element, so `CONVERT(1,{"m",TRUE},"ft")` spills
+{3.2808398950131235, `#VALUE!`} (A7:B7, also A8:B8 and the vertical A28:A29). The text "TRUE" is only an unknown unit,
+`#N/A` (A32).
+Order: the units are checked in turn and from_unit's error or boolean wins: `CONVERT(1,NA(),TRUE)` is `#N/A` and
+`CONVERT(1,TRUE,NA())` `#VALUE!` (A9:A12); with D3 `=1/0`, `CONVERT(1,D3,TRUE)` is `#DIV/0!`, `CONVERT(1,TRUE,D3)` and
+`CONVERT(1,FALSE cell,D3)` `#VALUE!` (A13, A14, A24, A25). A boolean in either unit beats an unknown or empty unit in
+the other, so both units are type-checked before either is looked up: `CONVERT(1,"xyz",TRUE)`, `CONVERT(1,TRUE,"xyz")`,
+`CONVERT(1,"",TRUE)` and `CONVERT(1,TRUE,"")` are all `#VALUE!` (A15:A20). The number argument comes first:
+`CONVERT(NA(),TRUE,"m")` is `#N/A` (A27).
 Evidence: gen-m9/290180acf017709c Calc!A148, A158, gen-m9/f81bd3b6dc373e5c Calc!A291 (excel-graph, T-2676 sweep,
-2026-10-26; the units are Data!C6 = FALSE, Data!E10 = FALSE and Data!A7 = TRUE).
-Ours: since T-2793 `#VALUE!` for a boolean unit, read in order (from_unit's error or boolean first). The kernel cannot tell a cell from a typed or array-element boolean, so those give `#VALUE!` too (unprobed).
-Status: VERIFIED (excel-graph) for boolean cells
-Tasks: T-2793
+2026-10-26; the units are Data!C6 = FALSE, Data!E10 = FALSE and Data!A7 = TRUE); probes/eng-convert-boolean-unit
+A1:A32 (excel-graph, 2026-10-26, T-2810; D1 TRUE, D2 FALSE, D3 `=1/0`).
+Ours: since T-2793 `#VALUE!` for a boolean unit, read in order (from_unit's error or boolean first), before the unit
+lookup; typed and array-element booleans take the same path.
+Status: VERIFIED (excel-graph)
+Tasks: T-2793, T-2810
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
 - The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
