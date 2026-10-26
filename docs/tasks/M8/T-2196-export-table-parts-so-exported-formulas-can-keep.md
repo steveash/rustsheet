@@ -3,7 +3,7 @@ id: T-2196
 title: "Export table parts so exported formulas can keep structured references (SPEC-0016 step 3)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
