@@ -2034,9 +2034,9 @@ gen-m5/55afc805e00a1509 Calc!A101, gen-m5/08eafc9e61602bcb Calc!A98 (past 2^53);
 gen-m5/cd883013bea3b305 Calc!A22, gen-m5/9a7a94353845ea12 Calc!A45, gen-m5/90bf45bea539723d Calc!A251.
 A written-empty `min_length` is an omitted one, but a blank cell is 0: `BASE(0,2,)` is "0" (`LEN` 1) and `BASE(5,2,)` "101",
 while `BASE(0,2,Z99)` is "" (`LEN` 0), `BASE(5,2,Z99)` "101"; `BASE(0,2,"")` is `#VALUE!`; `BASE({0,5},2,{0,0})` is {"", "101"}.
-Ours reads the written-empty argument as 0, so `BASE(0,2,)` gives "" (follow-up T-2691).
+Ours reads a written-empty argument as omitted and a blank cell as 0 (`fn_base`, T-2691).
 Evidence (excel-graph, 2026-10-25): probes/base-zero-empty-min-length (T-2416).
-Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374) except a written-empty `min_length` (T-2691).
+Status: VERIFIED (excel-graph) for the cells above; engine implements all of it (T-2373, T-2374, T-2691).
 Tasks: T-2289, T-2373, T-2374, T-2416, T-2691
 
 ## RANDBETWEEN and RANDARRAY argument checks
@@ -2307,7 +2307,3 @@ product is 0 whenever no number is included, never 1.
 Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
 Status: VERIFIED
 Tasks: T-2269, T-2302
-
-## BASE: a written-empty `min_length` is omitted (T-2691)
-`BASE(0,2,)` is "0" (probes/base-zero-empty-min-length A1, A5): an argument written empty is read as
-omitted, so `min_length` is the default 1. A blank-cell `min_length` (Z99) is read as 0 and stays 0.
