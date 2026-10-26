@@ -7,7 +7,8 @@ mod yield_closed;
 mod yield_solver;
 
 use super::dates::{
-    basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, BROKEN_SCHEDULE_PCD,
+    basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, days_30_360_eu_ymd,
+    days_30_360_us_ymd, BROKEN_SCHEDULE_PCD,
 };
 use coupon_schedule::{
     change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, coupon_days_nc,
@@ -22,7 +23,7 @@ use crate::{
     calc_result::CalcResult,
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
+    formatter::dates::{date_to_serial_number, excel_serial_to_ymd, from_excel_date},
     functions::date_and_time::is_leap_year,
     functions::lift::{div_error, num_error},
     functions::Function,
@@ -190,10 +191,8 @@ fn compute_price(
 /// that Newton leaves PRICE's domain YIELD is #NUM!, with no fallback, even where PRICE has a root
 /// (`YIELD(36665,44491,42,106,100,4,0)`, `YIELD(39448,43831,0.05,1E+5,100,2)`; T-2391).
 fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
-    let settlement = from_excel_date(bond.settlement)?;
-    let maturity = from_excel_date(bond.maturity)?;
-    let years =
-        yield_start_years(settlement, maturity, bond.basis).ok_or_else(|| "#NUM!".to_string())?;
+    let years = yield_start_years(bond.settlement, bond.maturity, bond.basis)
+        .ok_or_else(|| "#NUM!".to_string())?;
     let (rate, redemption, frequency) = (bond.rate, bond.redemption, bond.frequency);
     excel_yield_newton(
         bond.yld_or_pr,
@@ -204,32 +203,50 @@ fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, Stri
     .ok_or_else(|| "#NUM!".to_string())
 }
 
-/// The term [`yield_start`] takes, in years: the whole years from `settlement` to `maturity`, then
-/// the basis' days from the last anniversary of `settlement` to `maturity` over 360 (bases 0, 2
-/// and 4), 365 (basis 3) or the length of the maturity's calendar year (basis 1). A 29 February
-/// settlement has its anniversaries on 1 March in common years. Fitted on
-/// probes/yield-start-term-basis (T-2777: 115 of 120 cells within 4 ulp, the other 5 at PRICE's
-/// root, against 14 for the basis' days over its year): `YIELD(DATE(2010,1,31),DATE(2020,1,30),..,1)`
-/// starts from 9 + 364/366 (2020 is a leap year), and `YIELD(DATE(2012,2,29),DATE(2019,8,15),..,0)`
-/// from 7 + DAYS360(1 March 2019, maturity)/360, not DAYS360 over the whole term (financial.md
-/// "YIELD stops short of PRICE's root"). `None` past the calendar's end.
-fn yield_start_years(settlement: NaiveDate, maturity: NaiveDate, basis: u32) -> Option<f64> {
-    let anniversary = |year: i32| {
-        NaiveDate::from_ymd_opt(year, settlement.month(), settlement.day())
-            .or_else(|| NaiveDate::from_ymd_opt(year, 3, 1))
+/// The term [`yield_start`] takes, in years, from the `settlement` and `maturity` serials: the
+/// whole years from settlement to maturity, then the basis' days from the last anniversary of the
+/// settlement to maturity over 360 (bases 0, 2 and 4), 365 (basis 3) or the length of the
+/// maturity's calendar year (basis 1). A 29 February settlement has its anniversaries on 1 March
+/// in common years. Fitted on probes/yield-start-term-basis (T-2777: 115 of 120 cells within 4
+/// ulp, the other 5 at PRICE's root, against 14 for the basis' days over its year):
+/// `YIELD(DATE(2010,1,31),DATE(2020,1,30),..,1)` starts from 9 + 364/366 (2020 is a leap year),
+/// and `YIELD(DATE(2012,2,29),DATE(2019,8,15),..,0)` from 7 + DAYS360(1 March 2019, maturity)/360,
+/// not DAYS360 over the whole term (financial.md "YIELD stops short of PRICE's root"). The dates
+/// are the ones Excel shows, so serial 60 is 29 February 1900 (`YIELD(60,36585,0.05,90,100,4)`
+/// starts from 100 years; probes/fin-coupon-walk-bounds-c H12). `None` off the calendar.
+fn yield_start_years(settlement: i64, maturity: i64, basis: u32) -> Option<f64> {
+    let (year, month, day) = excel_serial_to_ymd(settlement)?;
+    let end = excel_serial_to_ymd(maturity)?;
+    let anniversary = |y: i32| {
+        if month == 2 && day == 29 && !(y == 1900 || is_leap_year(y)) {
+            (y, 3, 1)
+        } else {
+            (y, month, day)
+        }
     };
-    let mut whole_years = maturity.year() - settlement.year();
-    let mut last = anniversary(maturity.year())?;
-    if last > maturity {
+    let mut whole_years = end.0 - year;
+    let mut last = anniversary(end.0);
+    if last > end {
         whole_years -= 1;
-        last = anniversary(maturity.year() - 1)?;
+        last = anniversary(end.0 - 1);
     }
-    let year = match basis {
-        1 if is_leap_year(maturity.year()) => 366.0,
+    let days = match basis {
+        0 => days_30_360_us_ymd(last, end),
+        4 => days_30_360_eu_ymd(last, end),
+        _ if whole_years == 0 => (maturity - settlement) as f64,
+        // An anniversary after 1900 is a real date; counting from the month's first day keeps a
+        // serial-0 settlement's day 0 (1900-01-00).
+        _ => {
+            let first = date_to_serial_number(1, last.1, last.0).ok()?;
+            (maturity - i64::from(first) - i64::from(last.2) + 1) as f64
+        }
+    };
+    let year_days = match basis {
+        1 if is_leap_year(end.0) => 366.0,
         1 | 3 => 365.0,
         _ => 360.0,
     };
-    Some(f64::from(whole_years) + basis_days(last, maturity, basis) / year)
+    Some(f64::from(whole_years) + days / year_days)
 }
 
 // ============================================================

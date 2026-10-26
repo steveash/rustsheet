@@ -1936,7 +1936,9 @@ bit-exact / within 4 ulp of 120: this rule 59/115; forward with 28 February 46/1
 best; the days over a year 8/14). The 5 cells left (A9, C11, C20, A26, A38) sit at PRICE's root (next step 1e-12 to
 1e-16) and are 4e-15 to 1e-14 off, the root-level last digits of T-2788, with their twins in the other columns
 within 2 ulp. gen-m9/ba4ddb817a8e700e A17 (basis 1, 20 + 284/365) becomes bit-exact; gen-m9/81bcdc0bec0c8e6b A189
-(basis 2) moves from 3e-11 off to 8 ulp. Lab: `solvers.start_years`, pinned in
+(basis 2) moves from 3e-11 off to 8 ulp. The dates are the ones Excel shows: serial 60 is 29 February 1900, so
+`YIELD(60,36585,0.05,90,100,4)` (to 29 February 2000) starts from 100 years and keeps Excel's bits
+(probes/fin-coupon-walk-bounds-c H12), where 28 February 1900 would give 100 + 1/360. Lab: `solvers.start_years`, pinned in
 tools/tests/test_fitlab_solvers.py::test_yield_start_term_whole_years_then_leftover_days.
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
 T-2777's term (`yield_start_years`). Since
