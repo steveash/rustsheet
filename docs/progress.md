@@ -45,14 +45,14 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
 | M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 22 visibly off, 22 known failures | 4 | 0 | 1 | 73 |
 | M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 22 visibly off, 22 known failures | 4 | 1 | 2 | 391 |
-| M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 22 visibly off, 22 known failures | 6 | 0 | 0 | 372 |
+| M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 22 visibly off, 22 known failures | 6 | 0 | 0 | 373 |
 | M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
 | M4 Storage, memory and structural edits (Phase 2) | 2 | prose | – | – | – | 0 | 0 | 0 | 0 |
 | M5 Function families I: math, logical, text, information | 1 | prose | 135/135 | **exit not met**; coverage 135/135 (met); generated suite 2 visibly off of 41,640, allowance 41 (met); ironcalc-calc 0 visibly off (met); probes 10 visibly off (not met) | probes M5: 10 visibly off, 10 known failures | 27 | 0 | 0 | 203 |
 | M6 Lookup & reference, date & time | 1 | prose | 38/39 | **exit not met**; coverage 38/39 (not met); generated suite 0 visibly off of 25,000, allowance 25 (met); ironcalc-calc 0 visibly off (met); probes 0 visibly off (met) | probes M6: 0 visibly off, 0 known failures | 15 | 0 | 0 | 94 |
 | M7 Dynamic arrays & modern Excel | 1 | prose | 32/32 | – | probes M7: 55 visibly off, 55 known failures | 37 | 0 | 0 | 152 |
 | M8 Names, tables, structured references, multi-sheet | 1 | prose | no functions | – | probes M8: 99 visibly off, 99 known failures | 20 | 0 | 0 | 33 |
-| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 1,499 visibly off, 2,385 known failures | 202 | 1 | 6 | 344 |
+| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 1,499 visibly off, 2,385 known failures | 202 | 1 | 6 | 346 |
 | M10 Formatting & display | 1 | prose | no functions | – | probes M10: 95 visibly off, 95 known failures | 26 | 0 | 0 | 23 |
 | M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 23 | 0 | 1 | 36 |
 | M12 API v1, bindings & release | 3 | prose | – | – | – | 1 | 0 | 0 | 0 |
@@ -73,7 +73,7 @@ Fixing only the type, error and text cells would lift **69** of them to ≥ 99.9
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Semantics | wrong type, error or text, and semantic rules | 44 | 40 | 0 | 36 | 20,009 type, error or text | 69 of 169 |
 | Accuracy | more accurate kernels where Excel is close to correctly rounded | 13 | 9 | 0 | 1 | 131,346 numbers, accuracy and visible together | – |
-| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 38 | 23 | 4 | 217 | in the accuracy row | – |
+| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 37 | 22 | 4 | 218 | in the accuracy row | – |
 | Parked (defer: phase-1b) | last-digit work on cells already within 15 digits (Phase 1b) | 37 | 0 | 6 | 1 | – | – |
 
 - **Tasks** are `scripts/tasks.py stats --json`. Open is todo, in progress or blocked. Ready is
@@ -191,7 +191,7 @@ displayed-text (`TF`) lines after "text".
 | gen-m7 | 52 | 31,845 | 100.00% | 100.00% | 0 | 52 | 52 | 52 | 0 | 0 | 0 |
 | gen-m8a | 12 | 3,577 | 100.00% | 100.00% | 0 | 12 | 12 | 12 | 0 | 0 | no baseline |
 | gen-m8b | 9 | 3,368 | 91.78% | 91.78% | 277 | 9 | 4 | 4 | 5 | 0 | no baseline |
-| gen-m9 | 261 | 95,262 | 95.57% | 97.11% | 2,499 | 261 | 31 | 31 | 230 | 0 | 4,179 |
+| gen-m9 | 261 | 95,262 | 95.57% | 97.11% | 2,499 | 261 | 31 | 31 | 230 | 0 | 4,178 |
 | ironcalc-calc | 219 | 72,357 | 99.11% | 99.71% | 165 | 218 | 186 | 203 | 15 | 0 | 644 |
 | poi | 336 | 27,209 | 99.61% | 99.64% | 95 | 115 | 112 | 112 | 3 | 0 | 119 |
 | probes | 1,542 | 101,419 | 97.40% | 98.09% | 1,780 | 1,536 | 1,368 | 1,395 | 141 | 0 | 2,655 |
