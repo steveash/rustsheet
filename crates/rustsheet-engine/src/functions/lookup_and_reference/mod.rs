@@ -1,4 +1,5 @@
 use crate::arithmetic::bcast_get;
+use crate::calc_result::Range;
 use crate::cast::NumberOrArray;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
@@ -13,7 +14,10 @@ use crate::functions::text::util::within_text_budget;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::limits::{check_array_size, check_range_size};
-use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
+use crate::reference_operators::{
+    not_a_reference_array, several_areas, several_areas_ref, Picked, Ranges, RefArg, RefElement,
+    RefGrid,
+};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -860,7 +864,32 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let reference = self.evaluate_node_with_reference(&args[0], cell);
+        let reference = match args[0].ungrouped() {
+            Node::FunctionKind { kind, .. } if formulatext_reads_pick(kind) => {
+                match self.evaluate_picked_reference_arg(&args[0], cell) {
+                    RefArg::Ranges(Ranges::One(Range { left, right })) => {
+                        CalcResult::Range { left, right }
+                    }
+                    RefArg::Ranges(Ranges::Areas(_)) => return several_areas(cell),
+                    RefArg::Grid(grid) => return self.formula_texts_of_grid(&grid, cell),
+                    // A pick that fails is its own error (`SWITCH(9,1,5)`, `XLOOKUP` not found:
+                    // `#N/A`); one that gives values is `#VALUE!`, element by element over an
+                    // array, an error element kept (`IF({TRUE,FALSE},NA(),Data!A2)` spills `#N/A`,
+                    // `#VALUE!`): probes/formulatext-pick-scalars-and-arrays,
+                    // probes/formulatext-erroring-references; docs/excel-semantics/references.md.
+                    RefArg::Value(error @ CalcResult::Error { .. }) => return error,
+                    RefArg::Value(CalcResult::Array(rows)) => return not_a_reference_array(rows),
+                    RefArg::Value(_) => {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Argument must be a reference".to_string(),
+                        )
+                    }
+                }
+            }
+            _ => self.evaluate_node_with_reference(&args[0], cell),
+        };
         if let CalcResult::Range { left, right } = reference {
             if left.sheet != right.sheet {
                 return CalcResult::Error {
@@ -891,53 +920,64 @@ impl Model {
                         row,
                         column,
                     };
-                    values.push(match self.formula_text_of(at, cell) {
-                        CalcResult::String(text) => {
-                            if !within_text_budget(&mut text_bytes, text.len()) {
-                                return CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Total text result is too large".to_string(),
-                                );
-                            }
-                            ArrayNode::String(text)
-                        }
-                        _ => ArrayNode::Error(Error::NA),
-                    });
+                    match self.formula_text_element(at, cell, &mut text_bytes) {
+                        Ok(value) => values.push(value),
+                        Err(too_large) => return too_large,
+                    }
                 }
                 rows.push(values);
             }
             CalcResult::Array(rows)
-        } else if let Node::FunctionKind { kind, .. } = args[0].ungrouped() {
-            // A reference-returning call that fails is its own error, unchanged, and one that
-            // yields values rather than cells is `#VALUE!` over the shape of the result
-            // (probes/formulatext-erroring-references; docs/excel-semantics/references.md).
-            let is_pick = matches!(
-                kind,
-                Function::Index
-                    | Function::Offset
-                    | Function::Indirect
-                    | Function::Choose
-                    | Function::If
-            );
-            match reference {
-                error @ CalcResult::Error { .. } if is_pick => error,
-                CalcResult::Array(rows) if is_pick => CalcResult::Array(
-                    rows.iter()
-                        .map(|row| vec![ArrayNode::Error(Error::VALUE); row.len()])
-                        .collect(),
-                ),
-                // INDEX of an array constant picks a value, not a cell
-                // (probes/index-reference-args Calc!A4, A5; T-2137).
-                _ if matches!(kind, Function::Index) => CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Argument must be a reference".to_string(),
-                ),
-                _ => not_a_reference(cell),
-            }
         } else {
             not_a_reference(cell)
+        }
+    }
+
+    /// FORMULATEXT of each element of a lifted reference call (`INDIRECT({"Data!A1","Data!A2"})`
+    /// spills `#N/A`, `=A1+1`; probes/formulatext-pick-scalars-and-arrays K1:T1): a one-cell
+    /// element is its cell's formula text, an error element itself. A multi-cell element is
+    /// `#VALUE!` (unprobed). The total text is bounded (CLAUDE.md directive 5).
+    fn formula_texts_of_grid(&self, grid: &RefGrid, cell: CellReferenceIndex) -> CalcResult {
+        let (rows, columns) = grid.dims();
+        let mut text_bytes = 0;
+        let mut array = Vec::with_capacity(rows);
+        for row in grid.elements().chunks(columns) {
+            let mut values = Vec::with_capacity(columns);
+            for element in row {
+                values.push(match element {
+                    RefElement::Error(error) => ArrayNode::Error(error.clone()),
+                    RefElement::Reference(Range { left, right }) if left == right => {
+                        match self.formula_text_element(*left, cell, &mut text_bytes) {
+                            Ok(value) => value,
+                            Err(too_large) => return too_large,
+                        }
+                    }
+                    RefElement::Reference(_) => ArrayNode::Error(Error::VALUE),
+                });
+            }
+            array.push(values);
+        }
+        CalcResult::Array(array)
+    }
+
+    /// One element of a spilled FORMULATEXT: the formula text of `at`, `#N/A` without one, counted
+    /// against the total text budget (`Err`: `#VALUE!` once the texts pass it).
+    fn formula_text_element(
+        &self,
+        at: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        text_bytes: &mut usize,
+    ) -> Result<ArrayNode, CalcResult> {
+        match self.formula_text_of(at, cell) {
+            CalcResult::String(text) if within_text_budget(text_bytes, text.len()) => {
+                Ok(ArrayNode::String(text))
+            }
+            CalcResult::String(_) => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Total text result is too large".to_string(),
+            )),
+            _ => Ok(ArrayNode::Error(Error::NA)),
         }
     }
 
@@ -956,6 +996,23 @@ impl Model {
             }
         }
     }
+}
+
+/// The calls whose argument FORMULATEXT reads as the reference they pick, as SUBTOTAL reads them
+/// ([`Model::evaluate_picked_reference_arg`]): the arm a scalar IF, CHOOSE, SWITCH or IFS takes, a
+/// LET body, and the cells INDEX, OFFSET, INDIRECT, XLOOKUP, TAKE, DROP and TRIMRANGE pick.
+fn formulatext_reads_pick(kind: &Function) -> bool {
+    matches!(
+        kind,
+        Function::If
+            | Function::Choose
+            | Function::Switch
+            | Function::Ifs
+            | Function::Let
+            | Function::Index
+            | Function::Offset
+            | Function::Indirect
+    ) || kind.picks_reference()
 }
 
 /// FORMULATEXT's `#ERROR!` for an argument that is not a reference.
