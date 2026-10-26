@@ -141,7 +141,7 @@ pub fn observe(
                             None => continue,
                         }
                     }
-                    _ => continue,
+                    ArgumentShape::Other => continue,
                 };
                 seen.insert(ArgumentSeen {
                     function: call.name.clone(),
