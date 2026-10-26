@@ -3,7 +3,7 @@ id: T-2432
 title: "KURT and F.TEST over data whose squares overflow (1E+200): Excel's #DIV/0! and #NUM! (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
