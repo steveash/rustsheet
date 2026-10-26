@@ -1639,8 +1639,6 @@ F	probes/amordegrc-fractional-period.case.json	Calc!A6
 F	probes/amordegrc-fractional-period.case.json	Calc!A7
 F	probes/amordegrc-fractional-period.case.json	Calc!A8
 F	probes/amordegrc-fractional-period.case.json	Calc!A9
-F	probes/base-zero-empty-min-length.case.json	Sheet1!A1
-F	probes/base-zero-empty-min-length.case.json	Sheet1!A5
 F	probes/coup-calendar-edges.case.json	S!J12
 F	probes/coup-calendar-edges.case.json	S!J2
 F	probes/coup-calendar-edges.case.json	S!J8
