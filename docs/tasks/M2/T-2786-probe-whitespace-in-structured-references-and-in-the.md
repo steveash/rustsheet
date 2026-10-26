@@ -3,7 +3,7 @@ id: T-2786
 title: "Probe whitespace in structured references and in the formula text Excel saves"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
