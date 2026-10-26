@@ -35,4 +35,4 @@ Pin down the edge of numbers.md "POWER when y·ln x overflows" (T-2661): the eng
 ## Outcome
 Added probes/power-overflow-edge (172 cells, POWER and `^`, excel-graph values). The engine already matched every
 cell, so `positive_power` is unchanged; numbers.md records the edge (between 0.165 and 0.166 for y = 9.99999999999999E+307).
-Eval delta: probes +172 cells, all passing; no baseline change.
+Eval delta: probes +172 cells, all passing; baseline: new case recorded, no known failures.

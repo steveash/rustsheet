@@ -1487,7 +1487,7 @@ negative). `^` agrees on every cell. Evidence: probes/power-overflow-edge (172 c
 excel-graph, 2026-10-26; the engine already matched all of them.
 Status: VERIFIED (excel-graph)
 Implemented in: `positive_power` in crates/rustsheet-engine/src/arithmetic/power.rs
-Tasks: T-2661
+Tasks: T-2661, T-2696
 
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
