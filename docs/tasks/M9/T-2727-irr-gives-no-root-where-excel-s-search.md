@@ -51,8 +51,8 @@ has no rule yet; the new probe probes/irr-fallback-roots adds 15 known failures,
 (T-2131, T-2565), and no existing cell regressed.
 - [x] Visible parity (gen-m9): these 11 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`),
       with no new known-failure lines in any baseline, and the probes/irr-guess-edges and irr-guess-edges-2 IRR cells above pass.
-- [x] The rule is recorded in docs/excel-semantics/financial.md with probe evidence; unit tests for a far root, a root near -1
-      and the `#DIV/0!` case.
+- [x] The rule is recorded in docs/excel-semantics/financial.md with probe evidence; unit tests for a far root and a root near -1
+      (the `#DIV/0!` case and its test moved to T-2789).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
