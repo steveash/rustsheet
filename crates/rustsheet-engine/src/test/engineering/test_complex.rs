@@ -395,6 +395,11 @@ fn im_reciprocal_kernels_match_the_sweep() {
             "-2.46276584105671+258.045027895372i",
         ),
         (r#"=IMSEC("1+0.5i")"#, "1.08126832311555+0.778194035118073i"),
+        // IMSECH's t fuses sinh²x into the sum (J34; T-2750): unfused it gives ...306335i.
+        (
+            r#"=IMSECH("1.34384-77.6742i")"#,
+            "-0.367433538630135+0.376675382306336i",
+        ),
         // A real argument is 1/sin x and 1/cosh x (gen-m9/2f0d384b8ed0d392 A109, 01810fc89c5ec2c0 A318).
         (r#"=IMCSC("0.2")"#, "5.03348954767234"),
         (r#"=IMSECH("1.5")"#, "0.42509603494228"),
@@ -428,4 +433,15 @@ fn imabs_and_imargument_kernels() {
     };
     assert_eq!(bits("A1"), 51.394_647_859_091_315_f64.to_bits());
     assert_eq!(bits("A2"), (-2.037_470_342_871_754_f64).to_bits());
+}
+
+// IMPOWER's angle is Excel's ATAN2 kernel `atan(y/x)`, one ulp above libm `atan2(1,1000)` here, so
+// the imaginary part is 1.0000000000000002 and keeps its "1" (gen-m9/74779cff2810ccf4 Calc!A379;
+// docs/excel-semantics/engineering.md "1i" when a part is not exactly 1; T-2610).
+#[test]
+fn impower_angle_is_excels_atan2_kernel() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMPOWER("1000+1i",1)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1000+1i");
 }

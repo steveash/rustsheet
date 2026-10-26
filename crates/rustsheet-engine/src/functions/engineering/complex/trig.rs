@@ -192,8 +192,10 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Calc
     complex_result(x_cos * y_cosh / t, x_sin * y_sinh / t, suffix)
 }
 
-/// sech(x+iy) = `(cosh x·cos y, -sinh x·sin y) / (cos²y + sinh²x)`: 61 of the 62 finite cells of
-/// probes-numeric im-last-digit-sweep (T-2044; the miss is K34:L34, `1.34384-77.6742i`).
+/// sech(x+iy) = `(cosh x·cos y, -sinh x·sin y) / t` with `t = cos²y + sinh²x`, sinh²x fused into the
+/// sum (one rounding, `mul_add`): all 62 finite cells of probes-numeric im-last-digit-sweep (T-2750).
+/// The unfused sum (T-2044) misses only `IMSECH("1.34384-77.6742i")`, whose imaginary part Excel
+/// prints as ...306336 (J34; exact 0.37667538230633553); fusing cos²y instead also misses it.
 pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let x_cosh = x.cosh();
     if y == 0.0 {
@@ -202,7 +204,7 @@ pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Cal
     let x_sinh = x.sinh();
     let (y_sin, y_cos) = trig_sin_cos(y);
 
-    let t = y_cos * y_cos + x_sinh * x_sinh;
+    let t = x_sinh.mul_add(x_sinh, y_cos * y_cos);
     if !t.is_finite() {
         return overflowed_reciprocal(y_cos, -y_sin * x.signum(), x, suffix);
     }
