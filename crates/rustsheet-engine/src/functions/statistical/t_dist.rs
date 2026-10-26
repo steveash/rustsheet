@@ -61,6 +61,19 @@ fn t_test_element(
     let [_, _, tails, test_type] = values else {
         return CalcResult::new_args_number_error(cell);
     };
+    // A first sample that is itself an error value, or a blank one-cell reference, comes before a
+    // bad tails or type (`T.TEST(<#VALUE!>,42,1,-1)` is `#VALUE!`, `TTEST(<#VALUE!>,<#REF!>,2,<#REF!>)`
+    // too, probes/t2475-stat-subexpressions P!A58, P!A222; `T.TEST(E11,A6:C12,2,123456789.123)`
+    // with E11 blank is `#VALUE!`, probes/tbill-error-order-inner-calls), while an error inside a
+    // range comes after.
+    if let Err(PairedSamplesError {
+        error,
+        first_is_error_value: true,
+        ..
+    }) = samples
+    {
+        return error.clone();
+    }
     let tails = match model.kernel_number(tails, cell).map(f64::trunc) {
         Ok(1.0) => TTestTails::OneTailed,
         Ok(2.0) => TTestTails::TwoTailed,
@@ -477,6 +490,12 @@ impl Model {
         };
         let p = self.cast_number_ref(p, cell)?;
         let df = self.cast_number_ref(df, cell)?.trunc();
+        // p = 0 with a df that truncates to 1 is `#DIV/0!`, from df 2 up `#NUM!` (`TINV(0,1)`,
+        // `T.INV(0,1.999)`, `T.INV.2T(FALSE,1.005)` against `T.INV(0,2)`; statistics.md "Student t
+        // quantile at p = 0 with df below 2 is #DIV/0!", probes/t2475-stat-subexpressions P!A124).
+        if p == 0.0 && df == 1.0 {
+            return Err(div_error(cell));
+        }
         let p_out = if two_tailed {
             p <= 0.0 || p > 1.0
         } else {

@@ -186,8 +186,11 @@ impl Model {
         if alpha <= 0.0 || beta_param <= 0.0 || p <= 0.0 || p >= 1.0 || b <= a {
             return Err(num_error(cell));
         }
+        // A quantile that underflows to 0 or rounds to 1 is #NUM! (`BETAINV(0.025,1E-15,2.5)`,
+        // `BETAINV(0.05,0.002,1)`, `BETAINV(1-1E-16,2,0.01)`; statistics.md "Scalar distributions
+        // at extreme arguments (T-2255)", probes/t2475-stat-subexpressions P!A127).
         let t = beta_quantile(alpha, beta_param, p);
-        if t.is_nan() || t.is_infinite() {
+        if !(t > 0.0 && t < 1.0) {
             return Err(num_error(cell));
         }
         // Map back from [0,1] to [A,B]
