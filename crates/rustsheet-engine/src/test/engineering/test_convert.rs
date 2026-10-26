@@ -100,6 +100,9 @@ fn boolean_unit_cell_is_value_error() {
     model._set("A3", r#"=CONVERT(1,"C",B1)"#);
     model._set("A4", r#"=CONVERT(1,"C",B2)"#);
     model.evaluate();
+    model._set("A5", r#"=CONVERT(1,NA(),B1)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), *"#N/A");
     for cell in ["A1", "A2", "A3", "A4"] {
         assert_eq!(model._get_text(cell), *"#VALUE!");
     }
