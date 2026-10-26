@@ -3,7 +3,7 @@ id: T-0474
 title: "Whole-column lookups on a cached linked sheet keep full length (virtual blank tail)"
 milestone: M11
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
