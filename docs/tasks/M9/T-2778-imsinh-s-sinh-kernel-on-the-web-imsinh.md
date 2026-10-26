@@ -3,7 +3,7 @@ id: T-2778
 title: "IMSINH's sinh kernel on the web: IMSINH(4) rounds up, IMSINH(-4) does not (gen-m9, 34 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -43,3 +43,15 @@ Code: `imsinh` in functions/engineering/complex/trig.rs.
 
 ## Out of scope
 - IMSIN and IMCOS (T-2535), the overflow edge near 710 (T-2231).
+
+## Blocked because
+Blocked because: no candidate kernel fits the T-2778 probe (opus, 2026-10-26, session budget).
+probes/t2778-imsinh-sign-sweep (300 IMSINH cells, both signs, plus IMSIN/IMCOS at ±4i, ±12i, ±0.01i; excel-graph,
+canary-verified) is on this branch with its generator and baseline. The best candidate, (EXP(x)-EXP(-x))/2 in doubles,
+matches 224/300 texts; libm sinh (the engine) 97; every other form tried scores lower (engineering.md, T-2778
+paragraph, has each count). Excel's IMSINH is not odd in its 15-digit text (64 of 150 arguments), and the misses of the
+best form near 0 are the size of its cancellation error, so look for a kernel that switches form at small |x| and is
+not symmetric in x. `IMSIN("-4i")` carries IMSINH(4)'s digits, which suggests IMSINH(z) = i·IMSIN(-i·z) with
+IMSIN's own sinh. Next: fit IMSIN's imaginary part at real-axis-free arguments (a probe of IMSIN(yi) at the same 300 y)
+and test that identity; then try two-branch kernels (an expm1 or series form below a cut) against both probes.
+Unblock when a candidate reaches 300/300, or with the identity confirmed.

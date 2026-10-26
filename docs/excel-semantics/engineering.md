@@ -734,6 +734,21 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   P21. No formula symmetric in EXP(x) and EXP(-x) gives both ±4. IMCOSH matches libm cosh on all 62 inputs. The
   engine keeps libm for IMSINH; the kernel is T-2778. Status: VERIFIED (excel-graph) for the values; the IMSINH kernel
   is open.
+  T-2778 (2026-10-26) probe, probes/t2778-imsinh-sign-sweep (excel-graph): IMSINH of 150 15-digit real arguments in
+  0.0105 to 18.2, each at +x (A) and -x (B), chosen where the candidates below give different 15-digit texts
+  (generator docs/research/t2778_imsinh_probe.py). Excel is not odd: at 64 of the 150 arguments IMSINH(-x) is not the
+  negated text of IMSINH(x) (`IMSINH("0.0179156958217893")` 0.0179166542437586, `IMSINH("-0.0179156958217893")`
+  -0.0179166542437584). Texts matched, +x / -x out of 150: (EXP(x)-EXP(-x))/2 in doubles 118 / 106 (the same with
+  Excel's EXP, which equals libm on every argument here, and as EXP(x)/2-EXP(-x)/2 or *0.5); (e-1/e)/2 86 / 86;
+  cosh(x)-EXP(-x) 71 / 94; EXP(x)-cosh(x) 75 / 56; (e·e-1)/(2e) 90 / 46; EXP(x) at 64 bits less EXP(-x) as a double
+  66 / 90 (the reverse 90 / 31); both at 64 bits, or correctly rounded, 57 / 36; libm sinh 59 / 38 (SINH 61 / 44); glibc's
+  expm1 form 59 / 38. The misses of the best form below |x| = 0.1 are 1 to 2 units of the 15th digit, the size of
+  (EXP(x)-EXP(-x))'s cancellation error, so the kernel takes a different path near 0. Formatting is not the cause:
+  rounding the double to 15 digits half-up, half-even or ties toward +infinity, from its exact value or from 16 or 17
+  digits, changes no count by more than 4. Column C: `IMSIN("4i")` is 27.2899171971277i but `IMSIN("-4i")`
+  -27.2899171971278i (IMSINH(4)'s digits, so IMSINH(x) may be i·IMSIN(-i·x)); `IMSIN("±12i")` ±81377.3957064298i and
+  `IMSIN("±0.01i")` ±0.0100001666674999i; IMCOS at ±4i, ±12i, ±0.01i is 27.3082328360165, 81377.3957125741 and
+  1.00005000041667.
 - **IMSQRT of a negative real is polar through COS and ATAN2 on the web (the engine keeps desktop's libm value).** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i (516488da78a6b08c A52,
