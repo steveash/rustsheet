@@ -17,6 +17,8 @@ workbook cells. Excel returns an un-converged iterate, so this means stopping wh
 not converging further.
 
 ## Context
+- probes/xirr-irr-empty-guess A11, A13, A15, A17, A19, A21 (T-2688): IRR from guess 0 (`IRR(v,0)`, `IRR(v,)`)
+  on -70000, 12000, 15000, 18000, 21000, 26000. Excel 0.08663094803653149, ours 0.08663094803653171.
 - `financial/financial_util.rs` `compute_irr` runs:
   1. a secant in v = 1/(1+r) from v0 and v0 ± 1e-3, stopping when |Δv| < 1e-7 and |NPV| < 1e-7;
   2. one retry from 0.1;
