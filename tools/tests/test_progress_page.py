@@ -22,6 +22,7 @@ SECTIONS = {
     "campaign": "## Campaign stages",
     "since-last-run": "## Since the last run",
     "trends": "## Trends",
+    "arguments": "## Argument coverage",
 }
 
 
@@ -89,6 +90,7 @@ def test_a_first_run_writes_every_block_in_order_with_placeholders() -> None:
         "parity",
         "top-functions",
         "evidence",
+        "arguments",
         "readiness",
         "risks",
         "method",

@@ -57,6 +57,7 @@ pub use crate::constants::{LAST_COLUMN, LAST_ROW};
 mod actions;
 mod area_budget;
 mod arithmetic;
+mod call_arguments;
 mod cast;
 mod cf_styles;
 mod circular;
@@ -109,6 +110,7 @@ mod x87_register;
 mod test;
 
 pub use arithmetic::flush_subnormal;
+pub use call_arguments::{call_arguments, ArgumentShape, CallArguments};
 pub use evaluation::{KeyBuild, KeyHasher};
 pub use formula_cells::ParsedFormula;
 pub use function_names::{implemented_function_names, lift_kinds_table, LiftKinds};
