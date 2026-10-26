@@ -33,7 +33,7 @@ the last ulp near each crossing (excel-probe dense runs of F.DIST.RT around thes
 stopping rule (T-1745 found BETA.INV to be a crossing of Excel's cdf).
 
 More visibly-off gen-m9 cells (gap triage 2026-10-26, `make eval` on 1c8b3d34, excel-graph), the same crossing problem;
-no task listed them. Their 1-5 ulp neighbours on the sweep are T-2764's (deferred):
+no task listed them. Their 1-5 ulp neighbours on the sweep are T-2767's (deferred):
 - gen-m9/eced4bb6a0234c9e Calc!A202 `=F.INV.RT(0.5,5,7)`: Excel 0.9602597305806843, ours 0.9602597305806833 (9 ulp)
 - gen-m9/eced4bb6a0234c9e Calc!A289 `=FINV(0.975,100,DOLLARFR(3.14159,13))`: Excel 0.3077283973670394, ours 0.30772839736703883 (10 ulp)
 - gen-m9/caa1eed48b1883fe Calc!A359 `=F.INV(((0.3-Data!A9)-SORT(Data!$E1)),IF((Data!C7<=Data!B1),ISNUMBER(1/0),"1"),3)`: Excel
