@@ -60,7 +60,7 @@ SUM 39, MIN 39, AVERAGE 37, MAX 36, the bare reference 17, SUBTOTAL 1, INDEX 1. 
 ## Visible-parity stage
 Decision 0083: wrong values here are visible to anyone using defined names or tables (gen-m8b `[#Totals]` cells), so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
 
-## Handoff
+## Handoff (resumed)
 Done and pushed on branch `agent/api/T-1671-add-table-totals` (code committed): `Model::add_table_with_totals`
 (crates/rustsheet-engine/src/tables.rs; `add_table` delegates), `Txn::add_table_with_totals`
 (crates/rustsheet/src/edit.rs), the eval adapter passes `totals_row` through (`table_range` helper and the
