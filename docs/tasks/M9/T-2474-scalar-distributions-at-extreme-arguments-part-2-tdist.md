@@ -3,7 +3,7 @@ id: T-2474
 title: "Scalar distributions at extreme arguments, part 2: TDIST of 1E+300, POISSON with a negative mean, NEGBINOMDIST and PERMUTATIONA limits (gen-m9, 44 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -82,15 +82,15 @@ Cells:
 - gen-m9/165db58d1540f014.case.json (1): Calc!A105
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 34 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2256): 33 of the 34; b9a32ce9a1fd0d71 A195 (`NEGBINOMDIST(-0.5,..)`, number_f in (-1, 0)) is T-2700's rule and stays with it: these 34 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for each rule at the cited arguments.
-- [ ] statistics.md's T-2256 entry gets an "Ours:" line naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for each rule at the cited arguments.
+- [x] statistics.md's T-2256 entry gets an "Ours:" line naming this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit accuracy of these functions (T-0969, T-2055, T-2146).
@@ -99,3 +99,14 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2256): every cell it owns has the wrong type, error or text (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Outcome
+- T.DIST (cumulative), T.DIST.RT, T.DIST.2T and TDIST are `#NUM!` where `x²` overflows (cut UNVERIFIED).
+- POISSON/POISSON.DIST with a negative mean are EXP(-mean) when x truncates to 0, `#NUM!` otherwise; this also closes
+  T-2628 (probes/poisson-negative-mean A1-A7, gen-m9/23d82b62e9a85bdd A208).
+- NEGBINOM at an underflowing probability is 0: the binomial walk (discrete.rs) renormalized only past 2^600, which
+  assumes a ratio p/q below 2^53; a larger ratio now renormalizes once a term passes 1, and a step that still
+  overflows falls back instead of returning NaN.
+- PERMUTATIONA takes PERMUT's 2^31 - 1 number limit (cut UNVERIFIED).
+Eval delta: gen-m9 known failures 4216 -> 4179 (fixed 37), probes 2686 -> 2665 (fixed 21: poisson-negative-mean and
+the t2436 sub-expression cells), 0 regressions; visible parity 4430 (lock 4519). b9a32ce9a1fd0d71 A195 is T-2700's.
