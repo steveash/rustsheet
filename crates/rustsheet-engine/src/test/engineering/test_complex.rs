@@ -344,9 +344,10 @@ fn fn_imln_imlog10_of_zero_are_num() {
     }
 }
 
-// Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044) and gen-m9 (T-2537). The tiny-argument rows keep
-// the digits Excel loses (D65, D70, P65, P70), IMSEC and IMSECH differ in the last digit of the
-// same real part (G23, J58), and a large real part needs SIN's own reduction (D51).
+// Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044) and gen-m9 (T-2537). The
+// tiny-argument rows keep the digits Excel loses (D65, D70, P65, P70), IMSEC and IMSECH differ in
+// the last digit of the same real part (G23, J58), and a large real part needs SIN's own
+// reduction (D51).
 #[test]
 fn im_reciprocal_kernels_match_the_sweep() {
     let cases = [
