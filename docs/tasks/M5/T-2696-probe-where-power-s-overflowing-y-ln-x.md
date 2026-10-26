@@ -3,7 +3,7 @@ id: T-2696
 title: "Probe where POWER's overflowing y*ln x rule switches on (bases 0.15-0.2, exponents 1E+307-1.7E+308)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
