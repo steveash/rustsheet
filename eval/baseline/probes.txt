@@ -1281,6 +1281,7 @@ C	probes/t2739-typed-dq-4095.case.json	2
 C	probes/t2739-typed-emoji-2047.case.json	2
 C	probes/t2739-typed-len-4095.case.json	2
 C	probes/t2739-typed-two-4000.case.json	2
+C	probes/t2746-xlookup-error-lookup-array-modes.case.json	32
 C	probes/t2756-roundup-smallest-normal-threshold.case.json	541
 C	probes/t2769-formula-text-whitespace.case.json	47
 C	probes/t2776-formula-text-whitespace-shapes.case.json	65
