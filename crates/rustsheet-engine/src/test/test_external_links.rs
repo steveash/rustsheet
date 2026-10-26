@@ -659,3 +659,86 @@ fn only_multi_cell_external_ranges_are_external_arrays() {
     assert!(!is_array("[1]Uses!$A:$B"));
     assert!(!is_array("A1:A3"));
 }
+
+// A whole column or row of a cached linked sheet is searched at full length, as a local one is: an
+// approximate search over unsorted data probes the same midpoints, so the cache's extent never
+// moves the answer (T-0474; T-0457's review). Each lookup is checked against the same lookup over
+// the same values in this workbook (H:J and rows 10:12; the rows are cached on [1]Defines).
+#[test]
+fn whole_column_lookups_keep_full_length() {
+    let mut model = linked();
+    let keys = [1.0, 5.0, 2.0, 9.0, 3.0];
+    let book = &mut model.workbook.external_books[0];
+    book.cells.clear();
+    for (i, key) in (1..).zip(keys) {
+        book.cells.extend([
+            ((0, i, 1), SpillValue::Number(key)),
+            ((0, i, 2), SpillValue::Number(key * 10.0)),
+            ((1, 1, i), SpillValue::Number(key)),
+            ((1, 2, i), SpillValue::Number(key * 10.0)),
+        ]);
+    }
+    for (i, key) in (1..).zip(keys) {
+        model._set(&format!("H{i}"), &key.to_string());
+        model._set(&format!("I{i}"), &(key * 10.0).to_string());
+    }
+    for (column, key) in ["A", "B", "C", "D", "E"].into_iter().zip(keys) {
+        model._set(&format!("{column}10"), &key.to_string());
+        model._set(&format!("{column}11"), &(key * 10.0).to_string());
+    }
+    let pairs = [
+        ("VLOOKUP(1,{t}!$A:$C,2,TRUE)", "VLOOKUP(1,$H:$J,2,TRUE)"),
+        ("VLOOKUP(4,{t}!$A:$C,2,TRUE)", "VLOOKUP(4,$H:$J,2,TRUE)"),
+        ("VLOOKUP(9,{t}!$A:$C,2)", "VLOOKUP(9,$H:$J,2)"),
+        ("VLOOKUP(99,{t}!$A:$C,3,TRUE)", "VLOOKUP(99,$H:$J,3,TRUE)"),
+        ("VLOOKUP(2,{t}!$A:$C,2,FALSE)", "VLOOKUP(2,$H:$J,2,FALSE)"),
+        ("VLOOKUP(7,{t}!$A:$C,2,FALSE)", "VLOOKUP(7,$H:$J,2,FALSE)"),
+        ("MATCH(4,{t}!$A:$A)", "MATCH(4,$H:$H)"),
+        ("MATCH(1,{t}!$A:$A,1)", "MATCH(1,$H:$H,1)"),
+        ("MATCH(4,{t}!$A:$A,-1)", "MATCH(4,$H:$H,-1)"),
+        ("MATCH(9,{t}!$A:$A,0)", "MATCH(9,$H:$H,0)"),
+        ("HLOOKUP(4,{r}!$1:$3,2,TRUE)", "HLOOKUP(4,$10:$12,2,TRUE)"),
+        ("HLOOKUP(5,{r}!$1:$3,3,FALSE)", "HLOOKUP(5,$10:$12,3,FALSE)"),
+        ("MATCH(4,{r}!$1:$1)", "MATCH(4,$10:$10)"),
+    ];
+    for (linked, local) in pairs {
+        let linked = linked
+            .replace("{t}", "[1]Uses")
+            .replace("{r}", "[1]Defines");
+        let expected = eval(&mut model, &format!("={local}"));
+        assert_eq!(
+            eval(&mut model, &format!("={linked}")),
+            expected,
+            "{linked}"
+        );
+    }
+    // The answer full length gives over this unsorted column, not the 2 a cut vector would.
+    assert_eq!(eval(&mut model, "=VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)"), "1");
+}
+
+// Lookups of one pass into the same long cached column share one search vector, and lookups into
+// a linked sheet share one index of where its cached cells end (search_cache.rs): each still finds
+// its own key, exact or approximate, and an empty column of the sheet is all blank.
+#[test]
+fn whole_column_lookups_share_the_cached_vector() {
+    let mut model = linked();
+    let book = &mut model.workbook.external_books[0];
+    book.cells.clear();
+    book.cells
+        .extend((1..=100).map(|row| ((0, row, 1), SpillValue::Number(f64::from(row) * 2.0))));
+    model._set("C1", "=MATCH(40,[1]Uses!$A:$A,0)");
+    model._set("C2", "=MATCH(41,[1]Uses!$A:$A)");
+    model._set("C3", "=VLOOKUP(200,[1]Uses!$A:$B,1,FALSE)");
+    model._set("C4", "=MATCH(1,[1]Uses!$A:$A,0)");
+    model._set("C5", "=MATCH(1,[1]Uses!$C:$C,0)");
+    model._set("C6", "=VLOOKUP(1,[1]Uses!$C:$D,2)");
+    model._set("C7", "=MATCH(2,[1]Uses!$1:$1,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "20");
+    assert_eq!(model._get_text("C2"), "20");
+    assert_eq!(model._get_text("C3"), "200");
+    assert_eq!(model._get_text("C4"), "#N/A");
+    assert_eq!(model._get_text("C5"), "#N/A");
+    assert_eq!(model._get_text("C6"), "#N/A");
+    assert_eq!(model._get_text("C7"), "1");
+}
