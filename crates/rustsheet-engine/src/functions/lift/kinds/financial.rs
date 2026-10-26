@@ -179,7 +179,9 @@ const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
 // --- Financial ATP (T-1842) -----------------------------------------------------------------
 /// What one YIELD or ODDFYIELD element is charged at the longest schedule: its kernel walks the
 /// coupon schedule once (`CouponSchedule`, `OddFirstSchedule`; up to 4.4 and 6.3 ms), then the
-/// solver evaluates the price at most 397 times (100 Newton steps of three, 97 bisection prices),
+/// solver evaluates the price at most 397 times (ODDFYIELD: 100 Newton steps of three, 97 bisection
+/// prices; YIELD's Newton, which has no bisection since T-2391, at most 100 steps of a price and a
+/// slope, so the shared charge is an upper bound for it),
 /// each a sum over up to 32,400 quarterly coupons (0.55 ms at the calendar's longest schedule,
 /// release build). That bound is about 0.23 s an element, so a lifted call runs at most 2^27 /
 /// 2^24 = 8 such elements, about 1.8 s at the bound; the slowest inputs found take 54 ms an

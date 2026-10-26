@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Two bracketed elapsed tokens and negative-serial extrapolations from the T-1105 review (T-1366).",
+  "tags": [
+    "M10",
+    "probe",
+    "dates",
+    "T-1366"
+  ],
+  "date_system": 1900,
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=TEXT(1.5,\"[ss] AM/PM\")",
+        "A2": "=TEXT(-1.5,\"[h]_)\")",
+        "A3": "=TEXT(-1.5,\"*-[h]\")",
+        "A4": "=TEXT(-2,\"[<-1]d;0\")",
+        "A5": "=TEXT(1.5,\"[h]_)\")",
+        "A6": "=TEXT(1.5,\"*-[h]\")",
+        "A7": "=TEXT(1.5,\"[h]:mm\")",
+        "A8": "=TEXT(1.5,\"[h] h\")",
+        "A9": "=TEXT(1.5,\"[h] AM/PM\")",
+        "A10": "=TEXT(1.5,\"[mm] AM/PM\")",
+        "A11": "=TEXT(1.5,\"[s] A/P\")",
+        "A12": "=TEXT(1.5,\"[ss]\")",
+        "A13": "=TEXT(1.5,\"AM/PM [h]\")",
+        "A14": "=TEXT(0.6,\"h AM/PM\")"
+      }
+    }
+  ],
+  "expected": {}
+}

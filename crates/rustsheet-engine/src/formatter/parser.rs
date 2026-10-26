@@ -370,6 +370,8 @@ impl Parser {
         // number-formats.md "Elapsed-time tokens"). `m` after `[m]` is unprobed and stays a clock
         // minute.
         let mut elapsed_hour = false;
+        // Bracketed `[h]`/`[m]`/`[s]` tokens so far (a bare `h` after `[h]` is not one).
+        let mut bracketed_elapsed = 0_usize;
         let mut elapsed_second = false;
         // Whether a bare (unquoted, unescaped) digit 1-9 was read: it is a literal, but not beside
         // a date or time token (`is_calendar_or_clock`).
@@ -702,11 +704,21 @@ impl Parser {
                     });
                 }
                 Token::AMPM => {
+                    // Excel: a bracketed elapsed token before the marker is #VALUE! (`[ss] AM/PM`,
+                    // `[h] AM/PM`, `[mm] AM/PM`, `[s] A/P`) but the marker first is valid
+                    // (`AM/PM [h]` on 1.5 is "PM 12"; probes/text-elapsed-two-tokens A1, A9-A11, A13).
+                    if bracketed_elapsed > 0 {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
                     use_ampm = true;
                     tokens.push(TextToken::AMPM);
                 }
                 Token::AP(am, pm) => {
+                    // As for `AM/PM` above: an elapsed token before the marker is #VALUE!.
+                    if bracketed_elapsed > 0 {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
                     use_ampm = true;
                     tokens.push(TextToken::AP(am, pm));
@@ -737,34 +749,40 @@ impl Parser {
                 Token::EOF => {}
                 Token::ElapsedHour => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHour);
                 }
                 Token::ElapsedMinute => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     tokens.push(TextToken::ElapsedMinute);
                 }
                 Token::ElapsedSecond => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecond);
                 }
                 Token::ElapsedHourPadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHourPadded);
                 }
                 Token::ElapsedMinutePadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     tokens.push(TextToken::ElapsedMinutePadded);
                 }
                 Token::ElapsedSecondPadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecondPadded);
@@ -785,6 +803,12 @@ impl Parser {
         // probes/text-format-digits-date-token; number-formats.md "Bare digits beside a date token").
         if bare_digit && tokens.iter().any(is_calendar_or_clock) {
             return ParsePart::Error(ErrorPart { whole_code: true });
+        }
+        // Excel: a section with two bracketed elapsed tokens is #VALUE! for any value (`[h]:[mm]`,
+        // `[mm]:[ss]`; probes/negative-date-sections-1900 and -1904 A9, A21, A22; dates.md "Negative
+        // serials under an explicit negative section"). A bare `h` after `[h]` is not bracketed.
+        if bracketed_elapsed > 1 {
+            return ParsePart::Error(ErrorPart::default());
         }
         if repeated_locale {
             return ParsePart::Error(ErrorPart::default());
