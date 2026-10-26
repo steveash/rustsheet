@@ -607,6 +607,26 @@ Evidence: probes/rate-empty-arguments A1-A10 (excel-graph, T-1128)
 Status: VERIFIED
 Implemented in: `compute_rate` (empty argument reads as 0; guess 0 converges, T-2005)
 
+## XIRR (and IRR): an empty guess argument is the default 0.1 for XIRR, guess 0 for IRR
+Rule: XIRR reads a written empty guess (`XIRR(v,d,)`) as the default 0.1, the opposite of RATE
+("RATE: an empty guess is guess 0, not the default 0.1"). A reference to an empty cell is still guess 0
+(same bits as an explicit `0`), so only the empty argument itself is special. IRR reads both as guess 0,
+like RATE. So the rule is per function and neither side may be generalised from the other.
+- XIRR, Excel's doc flows -10000, 2750, 4250, 3250, 2750 on 39448, 39508, 39751, 39859, 39904: `XIRR(v,d,)`
+  = 0.3733625352382659, the same bits as no guess and as `,0.1` (A1, A2, A4), over ranges and array
+  constants (A7, A8). `XIRR(v,d,0)`, `XIRR(v,d,E1)` with E1 empty and `XIRR(v,d,0.1-0.1)` give
+  0.3733625341796877 (A3, A5, A22; A9 for constants). A `""` guess is `#VALUE!` (A6). The bisection's
+  bracket starts from the guess ("XIRR is a bracketing bisection"), so the two runs differ in the 9th digit.
+- IRR, -70000, 12000, 15000, 18000, 21000, 26000: `IRR(v,)`, `IRR(v,E1)` and `IRR(v,0)` all give
+  0.08663094803653149 (A11, A15, A13; A17, A19 for constants), and no guess or `,0.1` gives
+  0.08663094803652216 (A12, A14, A18). A `""` guess is `#VALUE!` (A16).
+- Desktop agrees: calipers pv23_056 Summary!F23 `=XIRR(...,...,)` (Microsoft Macintosh Excel 16.x) caches
+  0.11376532912254333, the fit lab's XIRR model with guess 0.1; guess 0 gives 0.11376532714843753.
+Evidence: probes/xirr-irr-empty-guess A1-A22 (excel-graph, T-2688); calipers pv23_056 Summary!F23
+Status: VERIFIED
+Implemented in: `fn_xirr` (an `EmptyArg` guess is dropped, so the default applies); `fn_irr` reads it as 0.
+Our IRR from guess 0 is a few ulps off Excel's on these flows (…3171 for …3149), a separate kernel gap.
+
 ## XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells
 (One empty values cell on its own is the exception: see "XNPV reads one empty values cell as a single 0 cash flow".)
 Rule: XIRR reads an empty value or date cell as 0. It does not skip it. A zero value adds nothing, so
