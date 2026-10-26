@@ -57,10 +57,10 @@ const NPV: ArgKinds = ArgKinds {
     work: Constant,
     result: CallResult::Value,
 };
-/// What one IRR element is charged per cash flow (`LiftCost::Cells` of the flows): the most NPV
-/// passes over the flows one call can make, 455 (`financial_util::compute_irr`: two secant runs
-/// of 52, then the fallback's Newton from the guess, 100 with its derivative passes, its
-/// bisection's 51 and its Newtons from 200 and -2, 200), rounded up.
+/// What one IRR element is charged per cash flow (`LiftCost::Cells` of the flows): at least the
+/// most NPV passes over the flows one call can make, 154 (`financial_util::compute_irr`: two
+/// secant runs of 52, then the fallback's 50 Newton steps of one pass each). The charge is kept
+/// from the earlier fallback, which made up to 455 passes (T-2727).
 const IRR_WEIGHT: u32 = 1 << 9;
 /// `IRR(values, [guess])`: the values are read whole by the caller (T-1821).
 const IRR: ArgKinds = ArgKinds::fixed(1, &[WholeByCaller, Lift], Weighted(IRR_WEIGHT));

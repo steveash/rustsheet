@@ -126,15 +126,6 @@ pub(crate) fn excel_npv(rate: f64, values: &[f64]) -> Result<f64, Error> {
     Ok(npv)
 }
 
-/// The plain sum of `value[i]/(1+rate)^i`, for the solver IRR falls back on.
-fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
-    let mut npv = 0.0;
-    for (i, item) in values.iter().enumerate() {
-        npv += item / (1.0 + rate).powi(i as i32 + 1);
-    }
-    Ok(npv)
-}
-
 /// NPV at the discount factor `v` = 1/(1 + r), as IRR's search evaluates it: the sum of
 /// `c_i/x^i` with `x = 1/v`, each division Excel's twice-rounded `/` and `x^i` libm's `pow`
 /// (financial.md "IRR is a secant in v = 1/(1 + r)"; fit lab `irr`, `_npv_v_over_x`).
@@ -152,6 +143,18 @@ fn irr_npv(values: &[f64], v: f64) -> Option<f64> {
         exponent += 1.0;
     }
     total.is_finite().then_some(total)
+}
+
+/// The smallest 1 + r IRR does not return: Excel's IRR is `#NUM!` at roots this far out, from
+/// the secant or the fallback alike (financial.md "IRR's far-root bound"): `IRR({-1,3E+6})` and
+/// `IRR({-1,0,1E+14})` (1 + r = 9999999.994) return, `IRR({-1,1E+7})` and every larger
+/// two-flow root are `#NUM!` (probes/irr-fallback-roots A25-A39, irr-guess-edges-2 A15-A34).
+const IRR_FAR_ROOT_BOUND: f64 = 1e7;
+
+/// The rate 1/v - 1 at a converged discount factor `v`, or `None` past [`IRR_FAR_ROOT_BOUND`].
+fn irr_from_discount(v: f64) -> Option<f64> {
+    let x = extended_quotient(1.0, v);
+    (x < IRR_FAR_ROOT_BOUND).then_some(x - 1.0)
 }
 
 /// One run of IRR's secant from `guess`, or `None` when it fails (a flat secant, an iterate that
@@ -172,7 +175,7 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
         }
         let f2 = irr_npv(values, v2)?;
         if (v2 - v1).abs() < 1e-7 && f2.abs() < 1e-7 {
-            return Some(extended_quotient(1.0, v2) - 1.0);
+            return irr_from_discount(v2);
         }
         (v0, f0, v1, f1) = (v1, f1, v2, f2);
     }
@@ -188,8 +191,9 @@ const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
 /// 189 of the 263 cells of the fit set (probes/solver-iteration-traces sheet I,
 /// probes-numeric/m9-fin-irr-rate), 207 within 4 ulp (fit lab `irr`, `irr_secant_v`, T-1533).
 /// Not Excel facts, kept from the fit: the v <= 0 guard, no retry when the guess is already 0.1,
-/// and `#NUM!` for flows without a sign change. Where both runs fail, [`irr_fallback`] runs the
-/// earlier Newton/bisection solver (unverified, T-1686). The 50-step cap is a directive-5 bound
+/// and `#NUM!` for flows without a sign change. Where both runs fail, [`irr_fallback`] runs a
+/// Newton search from v = 0 (fitted, T-2727). A root with 1 + r at or past
+/// [`IRR_FAR_ROOT_BOUND`] is `#NUM!` from either. The 50-step cap is a directive-5 bound
 /// (financial.md "The IRR and XIRR solver caps").
 pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
     // Excel: a guess at or above 2^53 is #VALUE! too, before the sign-change check:
@@ -213,87 +217,65 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
     } else {
         first.or_else(|| irr_secant(values, 0.1))
     };
-    match result.filter(|r| r.is_finite()) {
-        Some(r) => Ok(r),
-        // Not an Excel fact: Excel returns a value where the fitted secant does not stop, e.g.
-        // `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17), which
-        // no step cap explains. Until that path is probed (T-1686), the earlier Newton and
-        // bisection solver keeps a near value there instead of `#NUM!`.
-        None => irr_fallback(values, guess),
-    }
+    result
+        .or_else(|| irr_fallback(values))
+        .filter(|r| r.is_finite())
+        .ok_or_else(|| (Error::NUM, "Failed to converge".to_string()))
 }
 
-/// The solver IRR used before T-0916 (Newton's method from the guess, then a bisection on
-/// [-0.99999, 100], then Newton from 200 and from -2). It only runs where the fitted secant fails.
-fn irr_fallback(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
-    if let Ok(f) = irr_newton_raphson(values, guess) {
-        return Ok(f);
+/// Where both secant runs fail, Excel still finds some roots and not others: it behaves as
+/// Newton's method on the NPV polynomial in v, sum c_i v^i, started at v = 0 (r = +inf), and is
+/// `#NUM!` when the root it reaches is not a positive discount factor, when a negative root lies
+/// nearer 0 (P changes sign on [-v, 0)), or when the run does not settle in
+/// [`IRR_FALLBACK_STEPS`] steps. This fits every probed
+/// cell (financial.md "IRR's fallback when the secant fails", probes/irr-fallback-roots A1-A24, 15
+/// gen-m9 cells): `{42,1,1,-1}` (-0.7467) and `{-400,1,1,1,1,1}` (-0.6737) return from every
+/// guess while `{1,3,-1}`, `{1,7,-1}` and `{1,20,-1}`, whose root nearest v = 0 is negative, are
+/// `#NUM!`; `{1E+15,-0.0001,1,-2.5,-0.0001}` (gen-m9/abb7d565af89b849 A254) needs 119 steps to
+/// reach its root and is `#NUM!`. The method is fitted, not Excel's code: the returned digits are
+/// within a few ulp of Excel's (T-1686, T-2131).
+fn irr_fallback(values: &[f64]) -> Option<f64> {
+    // Leading zero flows make v = 0 a root of P; the search runs on P(v)/v^k instead:
+    // `IRR({0,2,-1})` returns about -0.5 in Excel (gen-m9/3c06f9298f65a3ba A394).
+    let values = &values[values.iter().position(|&c| c != 0.0)?..];
+    // Horner for P(v) and P'(v), highest power first
+    let polynomial = |v: f64| {
+        let (mut p, mut dp) = (0.0_f64, 0.0_f64);
+        for &c in values.iter().rev() {
+            dp = dp * v + p;
+            p = p * v + c;
+        }
+        (p, dp)
     };
-    let max_iterations = 50;
-    let eps = 1e-10;
-    let x1 = -0.99999;
-    let x2 = 100.0;
-    let f1 = compute_npv(x1, values)?;
-    let f2 = compute_npv(x2, values)?;
-    if f1 * f2 > 0.0 {
-        // The root is not within the limits or there are two roots
-        if let Ok(f) = irr_newton_raphson(values, 200.0) {
-            return Ok(f);
-        };
-        if let Ok(f) = irr_newton_raphson(values, -2.0) {
-            return Ok(f);
-        };
-        return Err((Error::NUM, "Failed to converge".to_string()));
-    }
-    let (mut rtb, mut dx) = if f1 < 0.0 {
-        (x1, x2 - x1)
-    } else {
-        (x2, x1 - x2)
-    };
-    for _ in 1..max_iterations {
-        dx *= 0.5;
-        let x_mid = rtb + dx;
-        let f_mid = compute_npv(x_mid, values)?;
-        if f_mid <= 0.0 {
-            rtb = x_mid;
+    let mut v = 0.0_f64;
+    for _ in 0..IRR_FALLBACK_STEPS {
+        let (p, dp) = polynomial(v);
+        if dp == 0.0 {
+            return None;
         }
-        if f_mid.abs() < eps || dx.abs() < eps {
-            return Ok(x_mid);
+        let next = v - p / dp;
+        if !next.is_finite() {
+            return None;
         }
+        if (next - v).abs() < 1e-7 * next.abs().max(1.0) {
+            // A sign change of P on [-next, 0) is a negative root nearer v = 0 than the one
+            // Newton reached: Excel is `#NUM!` there (gen-m9/1b60bf99d71424e7 A117, root v = 8.41
+            // past one at -4.6E-5; 1cd3096e3e87c965 A277, 4.06 past -4.01).
+            let nearer_negative_root = (polynomial(-next).0 > 0.0) != (values[0] > 0.0);
+            return if next > 0.0 && !nearer_negative_root {
+                irr_from_discount(next)
+            } else {
+                None
+            };
+        }
+        v = next;
     }
-    Err((Error::NUM, "Failed to converge".to_string()))
+    None
 }
 
-fn npv_prime(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
-    let mut npv = 0.0;
-    for (i, item) in values.iter().enumerate() {
-        npv += -item * (i as f64 + 1.0) / (1.0 + rate).powi(i as i32 + 2);
-    }
-    if npv.is_infinite() || npv.is_nan() {
-        return Err((Error::NUM, "NaN".to_string()));
-    }
-    Ok(npv)
-}
-
-fn irr_newton_raphson(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
-    let mut irr = guess;
-    let max_iterations = 50;
-    let eps = 1e-8;
-    for _ in 1..=max_iterations {
-        let f = compute_npv(irr, values)?;
-        let f_prime = npv_prime(irr, values)?;
-        let new_irr = irr - f / f_prime;
-        if (new_irr - irr).abs() < eps {
-            // A rate <= -1 is a root of the NPV polynomial but not a real IRR
-            if new_irr <= -1.0 {
-                return Err((Error::NUM, "converged to invalid rate".to_string()));
-            }
-            return Ok(new_irr);
-        }
-        irr = new_irr;
-    }
-    Err((Error::NUM, "Failed to converge".to_string()))
-}
+/// The most Newton steps of [`irr_fallback`]: a run that needs 119 is `#NUM!` in Excel
+/// (gen-m9/abb7d565af89b849 A254) and the slowest probed root that returns needs 29 (`{42,1,1,-1}`).
+const IRR_FALLBACK_STEPS: usize = 50;
 
 /// XNPV: the sum of `value_i / (1 + rate)^((date_i - date_0)/365)`, days counted from the first date;
 /// `#NUM!` when the sum is not finite.

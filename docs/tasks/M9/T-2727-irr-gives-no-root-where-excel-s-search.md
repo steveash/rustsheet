@@ -3,7 +3,7 @@ id: T-2727
 title: "IRR gives no root where Excel's search gives up: far and near -1 roots are #NUM!, a root near 1E+15 is #DIV/0! (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -57,3 +57,16 @@ Owned gen-m9 cells (T-2257 triage and T-2436 probe, excel-graph): 11 known-failu
 
 ## Visible-parity stage
 Decision 0083: every cell this task owns has the wrong type or error, so the task is in the campaign.
+
+## Outcome (2026-10-26)
+New probe probes/irr-fallback-roots (47 cells, excel-graph) pinned two rules, recorded in financial.md "IRR's far-root
+bound" and "IRR's fallback when the secant fails":
+- a root with 1 + r at or past 1E+7 is `#NUM!` (`IRR_FAR_ROOT_BOUND`, secant and fallback alike);
+- where both secant runs fail, the earlier Newton/bisection solver is replaced by a fitted Newton search on the NPV
+  polynomial in v from v = 0 (leading zero flows dropped, 50 steps), `#NUM!` when it reaches v <= 0 or a negative root
+  lies nearer 0.
+Eval delta: gen-m9 known failures 4049 -> 4034 (10 of the 11 owned cells, T-2619's 4 cells and 873f30d2bf76f8db A308);
+probes 2848 -> 2830 (33 fixed, incl. the irr-guess-edges and irr-guess-edges-2 #NUM! cells; 15 new known failures in
+the new probe, all last-digit misses of the right type, T-2131). No regressions.
+Not done: the `#DIV/0!` cells (gen-m9/bc04c1f478c9896c A56, probes/irr-guess-edges A27-A29, A38, A39, irr-guess-edges-2
+A20, A28, A29) have no rule yet: follow-up T-2789.
