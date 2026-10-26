@@ -103,9 +103,15 @@ Rule (excel-graph, replayed sheet edits, T-1608):
   Excel rewrites the formula: with Calc, Jan, Feb, Mar, moving Mar to position 1 gives
   `=SUM(Jan:Feb!A1)` (30), and moving Jan to position 3 gives `=SUM(Feb:Mar!A1)` (50). The span is
   not re-resolved by name. Evidence: sheet-ops-move-span-end-first, sheet-ops-move-span-start-last.
-  The engine keeps `Jan:Mar` (40): T-1691.
+  A span left with one sheet becomes a plain reference: moving Feb before Jan turns
+  `=SUM(Jan:Feb!A1)` into `=SUM(Jan!A1)` (sheet-ops-move-two-sheet-span-end-first). Spans in
+  defined names shrink the same way (sheet-ops-move-span-end-in-name).
+  The engine rewrites them before the move (`move_sheet_in_node`, T-1691), and its undo puts the
+  written text back.
 - Moving the sheet that holds the formula changes nothing (sheet-ops-move-formula-sheet).
-Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
+Unprobed: moving the first sheet of a two-sheet span past the last (the engine writes the last
+sheet alone), a span written backwards (`Mar:Jan`, which the engine rewrites in tab order when it
+shrinks), deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
 cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
 that lost an end sheet `#REF!` and does not shift a span for row or column edits.
 Status: VERIFIED (Excel for the web) for renames and moves; UNVERIFIED for deletes
@@ -133,6 +139,11 @@ A sheet-qualified sheet-scoped name (`=Data!Local`) also keeps working after the
 (sheet-ops-rename-sheet-scoped-name).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1693
+
+## INDIRECT of sheet-qualified name text
+`INDIRECT("<Sheet>!<Name>")` reaches a name scoped to that sheet from any sheet; its prefix follows
+formula quoting. Rule, evidence and the calipers pv26_020 anonymisation note: lookup.md "INDIRECT of
+`Sheet!Name` text" (probes/indirect-sheet-scoped-name, T-2660).
 
 ## INDIRECT does not take 3-D text
 Rule (excel-graph): INDIRECT of span text is `#REF!`. `SUM(INDIRECT("Jan:Mar!A1"))` is `#REF!`,
@@ -401,6 +412,48 @@ the same way at parse time, so ISREF and a rename see them. A sheet-qualified wo
 (`Sheet!GlobalName`), an unknown `Sheet!Nope` (engine: `#NAME?`) and a missing sheet are UNVERIFIED (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
 Tasks: T-1382, T-1459, T-1460, T-1526, T-1550, T-1609, T-1654
+
+## Criteria and sum ranges of a linked workbook are `#VALUE!`
+Rule: a criteria or sum range of COUNTIF, COUNTIFS, SUMIF, SUMIFS, AVERAGEIF, AVERAGEIFS, MAXIFS or
+MINIFS that is a range of a linked workbook is `#VALUE!` without the other file open, even though
+other functions read its cached cells (SUM, INDEX, lookups: "Cached values of a linked workbook"
+above). A whole column counts too: `COUNTIFS('[1]XA Data Pull'!$J:$J,">="&W$1,...)` is `#VALUE!`.
+Evidence: corpus-bench 52450 sheet1, all 1,830 formulas with a COUNTIFS over `'[1]XA Data Pull'!`
+ranges (W5:Y5 and the rest of their block), Excel-cached `#VALUE!` (desktop workbook; no oracle run).
+Unprobed: a range of a linked sheet the file caches nothing for, where ours is `#VALUE!` too (an
+array of `#BLOCKED!`, which is not a range).
+Ours: IMPLEMENTED: `ifs_range` (functions/statistical/if_ifs.rs) makes any argument that is not a
+range of this workbook `#VALUE!`; `ifs_range_arg` gives a linked range that error without building its
+array (`Model::is_external_array`, external_links.rs; T-0477). A single cached cell is `#VALUE!` the
+same way; a range past the array bound keeps that bound's error (arrays.md).
+Status: VERIFIED (desktop, cached values)
+Tasks: T-0477
+
+## Lookups into a linked sheet with no cached data are `#N/A`
+Rule: a sheet the externalLink part lists in `sheetNames` but caches no cell of (no
+`sheetData` for its `sheetId`, or an empty `<sheetData sheetId="4"/>`) reads `#BLOCKED!` as a
+reference with no link does: `=[1]Sort!$B$2` is `#BLOCKED!`, ERROR.TYPE 11, ISBLANK FALSE,
+`SUM([1]Sort!$B$2:$C$3)` and `SUMPRODUCT(…)` `#BLOCKED!`, `INDEX([1]Sort!$B$2:$C$3,1,1)+1` 1,
+`COUNTIF(…,5)` `#VALUE!`; a cell a cached sheet does not hold stays empty (`ERROR.TYPE([1]Uses!$Z$99)`
+`#N/A`). But VLOOKUP, HLOOKUP, MATCH and XLOOKUP over it are `#N/A`, found or not
+(nothing is), over one cell, a small range, whole columns (`VLOOKUP(5,[1]Sort!$B:$Z,2,FALSE)`, 1048576
+x 25 cells) and whole rows alike, exact or approximate; ERROR.TYPE of each is 7, IFERROR takes the
+fallback and XLOOKUP's if_not_found is returned (`"none"`). The `#N/A` comes before the index check:
+`VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)` is `#N/A`, not `#REF!`. The same holds for a sheet whose
+`sheetData` has `refreshError="1"` and no cells, but a direct read of that one is `#REF!`
+(`ERROR.TYPE('[1]56737'!$B$2)` is 4). Unlike a reference with no link, `COUNTA([1]Sort!$B:$B)` is
+1048576: it counts every blocked cell. Over whole columns of a cached sheet Excel gives: `VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)` is the cached "7", `VLOOKUP(6,[1]Uses!$A:$C,3,TRUE)`
+1, `VLOOKUP(5,[1]Uses!$A:$Z,26,FALSE)` 0 and `VLOOKUP(99,…)` `#N/A`.
+Evidence: fixtures/external-link-uncached-lookups Refs!B1:B51 (excel-graph, 2026-10-25, T-0457).
+Unprobed, do not extrapolate: LOOKUP, XMATCH, INDEX/MATCH and defined names (`[1]!Name`) into such a
+sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part.
+Engine: a sheet the cache holds no cell of is uncached (`cached_sheet`, external_links.rs), so it
+reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and MATCH's table
+`#N/A` on such a sheet. Not yet matched: the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)`
+(`#BLOCKED!`, not `#N/A`), the refreshError sheet's `#REF!` and COUNTA's count (T-0472), and whole
+columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
+Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
+Tasks: T-0457
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -690,10 +743,11 @@ passes a LAMBDA through, is not callable; the engine reads these as syntax error
 `=LAMBDA(a,LAMBDA(b,a*b))(3) (4)` is refused the same way (no intersection), and the engine reads it as a syntax error too.
 `LAMBDA(x,LAMBDA(y,x+y))(1)()` gives an error the oracle could not decode (unprobed). An unknown name's call chained,
 `=FOO(1)(2)`, is `#NAME?`, and a parenthesized value a function returned, `=(IF(TRUE,1))(2)`, is called like a LET-bound
-value, `#NAME?`. These are exactly the built-ins an intersection accepts (`is_reference_operand`). Unprobed: a chain after a
-defined-name LAMBDA (`=MYFN(1)(2)`; the engine chains any name call; T-2501).
+value, `#NAME?`. These are exactly the built-ins an intersection accepts (`is_reference_operand`). A defined-name LAMBDA's call chains
+like a LET name's: with `MYFN` = `=LAMBDA(x,LAMBDA(y,x*y))`, `=MYFN(3)(4)` is 12, and with `MYFN` = `=LAMBDA(x,x)`,
+`=MYFN(1)(2)` calls the returned number, which is `#NAME?` as for a LET-bound value (T-2501).
 Evidence: probes/lambda-escaping-closures H3, H8, H10; probes/chained-calls-lambda B1:B10; probes/chained-calls-ref-1..4, -6
-(oracle: excel-graph, 2026-10-22, T-2038); probes/chained-calls-builtin-* (excel-graph, 2026-10-23, T-2405); the refused
+(oracle: excel-graph, 2026-10-22, T-2038); probes/chained-calls-builtin-* (excel-graph, 2026-10-23, T-2405); probes/chained-calls-name-curried, -value (excel-graph, 2026-10-25, T-2501); the refused
 forms were single-formula workbooks, not kept as cases (a refused workbook gives no values).
 Status: VERIFIED (Excel for the web)
 Implemented in: expressions/parser/lambda.rs (`Parser::chain_calls`, after a call and a name call), parser/operands.rs
@@ -902,7 +956,13 @@ step per row found (at least one, even with no cell in the area's columns), one 
 chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
 operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
-range argument is not counted and is walked as before (every position of its used area). Over
+range argument is not counted and is walked as before (every position of its used area), unless a
+far cell stretches that used area: a single range whose clipped area holds at least 65,536
+positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
+XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area, so it costs
+the data (T-1690). It does not draw on the budget: that walk costs less than the dense one it
+replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over 100,000
+cells) gives the same value as the dense walk, and the change adds no `#VALUE!`. Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
@@ -938,8 +998,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
@@ -2264,7 +2324,9 @@ Right/Left):
 - Convert to Range (`tables/convertToRange`): every value is kept and each structured reference from another
   sheet is rewritten as an absolute, sheet-qualified range: `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
   `=COLUMN(S!$C$4:$C$7)`; `ROWS(Sales)` 4, `ROWS(Sales[#All])` 5 and `ROW(Sales[#Headers])` 3 keep their values
-  (table-convert-to-range).
+  (table-convert-to-range). On the table's own sheet the range is not sheet-qualified: `=SUM($C$4:$C$7)`,
+  `=COUNTA($B$4:$B$7)`, `ROWS(Sales[#All])` 5, and a `#This Row` reference beside the table prints
+  `=$C4*2` (absolute column, relative row) (table-convert-same-sheet, T-2342).
 - Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
   `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
   cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
@@ -2281,8 +2343,9 @@ Status: VERIFIED (excel-graph)
 Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
-move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339),
-and convert to range (T-2342; the adapter refuses `convert_table`) do not. A deleted table or sheet matches
+move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
+do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
+reference as the absolute area it lowered to (defined names too, unprobed). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a
@@ -2363,11 +2426,11 @@ The name is bound inside its own value expression too, so it hides the defined n
 `LET(Pv,LAMBDA(a,Pv),Pv(1))` (B2). It does without a defined name too: `LET(y,LAMBDA(a,y),y(1))` and
 `LET(Y,LAMBDA(a,y),y(1))` are `#NAME?` (probes/let-lambda-body-own-name A1:A2, excel-graph, 2026-10-24), as are
 `LET(y,y+1,y)` and a forward use, `LET(f,LAMBDA(a,g(a)),g,LAMBDA(a,a+1),f(1))`; `LET(y,LAMBDA(a,a+1),y(1))` is 2.
-A LET name or LAMBDA parameter spelled like a built-in function, called, is the variable only in the stored form, where the call is written `_xlpm.Pv(1)`; typed, the function always wins. Stored (spec2xlsx writes every same-spelled word inside the LET or LAMBDA call as `_xlpm.`), in any case and wherever the name is in scope: `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Pv,LAMBDA(a,Pv),Pv(1))` `#NAME?` (probes/let-lambda-body-own-name A6:A7); `LET(abs,LAMBDA(a,a*2),ABS(-3))` is -6, `LAMBDA(Pv,Pv(2))(LAMBDA(a,a+1))` 3, `LET(If,LAMBDA(a,a+1),If(1))` 2 and `LET(Today,LAMBDA(a,a),Today(4))` 4; the call takes the LAMBDA's arity, so `LET(Sum,LAMBDA(a,a*2),SUM(1,2))`, `PV(1,2,3)` and `Pv()` are `#VALUE!`; a bound non-LAMBDA called, `LET(Pv,2,Pv(1))`, is `#NAME?`; out of the LET's scope the function is back (`LET(x,LET(Sum,..,Sum(1)),SUM(x,1))` is 3) (probes/let-name-function-spelled-call, excel-graph, 2026-10-24). Typed through Excel's input parser, the call is the function, and FORMULATEXT shows it upper-cased: `=LET(Sum,LAMBDA(a,a*2),Sum(3))` is 3 (`SUM(3)`), `=LET(sum,SUM(1,2),sum*2)` 6, `=LET(abs,LAMBDA(a,a*2),ABS(-3))` 3, `=LAMBDA(Abs,ABS(-2))(5)` 2, `=LET(x,LET(Sum,..,Sum(1)),SUM(x,1))` 2; and `=LET(Pv,LAMBDA(a,a),Pv(1))`, `=LAMBDA(Pv,Pv(2))(LAMBDA(a,a+1))` and `=LET(Pv,2,Pv(1))` are refused (Graph PATCH 400), as `=PV(1)` is (probes/let-function-name-typed-*, excel-graph, 2026-10-24). So a real file never holds a bare call of a bound name: Excel writes `_xlpm.` on every use. Probing the stored form with a call of the function inside the name's own value or before its binding measures the case builder, not Excel: it prefixes those too (`LET(Sum,SUM(1,2),Sum)` is stored `_xlpm.SUM(1,2)` and is `#NAME?`). In the engine the parser records every LET name and LAMBDA parameter declared bare (`bound_names`) and, in A1 text that is not typed, skips the function lookup for a callee so bound (`calls_bound_name`, T-2567): that is unprefixed stored text (`Input::StoredFormula`, the harness's case formulas), which stands for the builder's `_xlpm.` file. Excel's files (xlsx import, also A1 text) declare `_xlpm.Sum`, so a bare `SUM(` there stays the function (`LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)` is 6, as typed-05), and `_xlpm.Sum(` is the variable; how Excel opens a third-party file that declares the name bare is unprobed (the engine reads it like the harness text); the engine does not refuse the typed `=LET(Pv,LAMBDA(a,a),Pv(1))` (open, T-2568). In the engine the parser binds a LET name in its own value (so the defined name stays hidden there), but the evaluator gives it no value there: `let_scope` patches ids only into the later pairs and the body (T-2558).
+A LET name or LAMBDA parameter spelled like a built-in function, called, is the variable only in the stored form, where the call is written `_xlpm.Pv(1)`; typed, the function always wins. Stored (spec2xlsx writes every same-spelled word inside the LET or LAMBDA call as `_xlpm.`), in any case and wherever the name is in scope: `LET(Pv,LAMBDA(a,a),Pv(1))` is 1 and `LET(Pv,LAMBDA(a,Pv),Pv(1))` `#NAME?` (probes/let-lambda-body-own-name A6:A7); `LET(abs,LAMBDA(a,a*2),ABS(-3))` is -6, `LAMBDA(Pv,Pv(2))(LAMBDA(a,a+1))` 3, `LET(If,LAMBDA(a,a+1),If(1))` 2 and `LET(Today,LAMBDA(a,a),Today(4))` 4; the call takes the LAMBDA's arity, so `LET(Sum,LAMBDA(a,a*2),SUM(1,2))`, `PV(1,2,3)` and `Pv()` are `#VALUE!`; a bound non-LAMBDA called, `LET(Pv,2,Pv(1))`, is `#NAME?`; out of the LET's scope the function is back (`LET(x,LET(Sum,..,Sum(1)),SUM(x,1))` is 3) (probes/let-name-function-spelled-call, excel-graph, 2026-10-24). Typed through Excel's input parser, the call is the function, and FORMULATEXT shows it upper-cased: `=LET(Sum,LAMBDA(a,a*2),Sum(3))` is 3 (`SUM(3)`), `=LET(sum,SUM(1,2),sum*2)` 6, `=LET(abs,LAMBDA(a,a*2),ABS(-3))` 3, `=LAMBDA(Abs,ABS(-2))(5)` 2, `=LET(x,LET(Sum,..,Sum(1)),SUM(x,1))` 2; and `=LET(Pv,LAMBDA(a,a),Pv(1))`, `=LAMBDA(Pv,Pv(2))(LAMBDA(a,a+1))` and `=LET(Pv,2,Pv(1))` are refused (Graph PATCH 400), as `=PV(1)` is (probes/let-function-name-typed-*, excel-graph, 2026-10-24). So a real file never holds a bare call of a bound name: Excel writes `_xlpm.` on every use. Probing the stored form with a call of the function inside the name's own value or before its binding measures the case builder, not Excel: it prefixes those too (`LET(Sum,SUM(1,2),Sum)` is stored `_xlpm.SUM(1,2)` and is `#NAME?`). In the engine the parser records every LET name and LAMBDA parameter declared bare (`bound_names`) and, in A1 text that is not typed, skips the function lookup for a callee so bound (`calls_bound_name`, T-2567): that is unprefixed stored text (`Input::StoredFormula`, the harness's case formulas), which stands for the builder's `_xlpm.` file. Excel's files (xlsx import, also A1 text) declare `_xlpm.Sum`, so a bare `SUM(` there stays the function (`LET(_xlpm.sum,SUM(1,2),_xlpm.sum*2)` is 6, as typed-05), and `_xlpm.Sum(` is the variable; how Excel opens a third-party file that declares the name bare is unprobed (the engine reads it like the harness text); typed entry refuses the three refused formulas, and any typed call of a function with fewer or more arguments than it takes (`=PV(1)`), with the lifting table's counts (`Parser::typed_refusal`, T-2568); stored text keeps the call (`#ERROR!` for a function). In the engine the parser binds a LET name in its own value (so the defined name stays hidden there), but the evaluator gives it no value there: `let_scope` patches ids only into the later pairs and the body (T-2558).
 Evidence: probes/let-name-shadows-defined-name A1-A13, B1-B3 (excel-graph, 2026-10-23 and 2026-10-24). Implemented in the parser
 (`bind_name`, which also skips the defined-name lookup for bound names).
 Status: VERIFIED (excel-graph)
-Tasks: T-2057, T-2558, T-2567
+Tasks: T-2057, T-2558, T-2567, T-2568
 
 ## INDIRECT: a 1x1 array a1 argument is #VALUE! (T-2436)
 Rule: INDIRECT's a1 argument given as a one-element array is `#VALUE!`, while a scalar boolean is read as usual and a longer

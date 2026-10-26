@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -59,6 +60,12 @@ Cells:
 - gen-m9/d910f000b60e2eac.case.json (1): Calc!A101
 - gen-m9/eedd629f3d69fdda.case.json (1): Calc!A189
 
+Calipers evidence (gap triage 2026-10-25, desktop goldens, ungated suite): `calipers/pv_goldens/pv23_049` WACC!E23 and
+Public Comps!F17, F33, and `pv23_050` WACC!E23, `MEDIAN(E16:E21)` over {522.4, 118.75, 0, 0, 43.90399999999999,
+12.302999999999999}: Excel 28.103499999999997, ours 28.103499999999993. Of the readings above, only lo + (hi - lo)/2 with
+lo the smaller middle value (12.302999999999999 + (43.90399999999999 - 12.302999999999999)/2) gives Excel's value; (a + b)/2,
+a/2 + b/2 and hi + (lo - hi)/2 give ours, in both single and double rounding. Fit it on the gen-m9 cells too.
+
 ## Acceptance criteria
 - [ ] Last digits (gen-m9, T-2256): these 29 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -67,3 +74,6 @@ Cells:
 
 ## Out of scope
 - Visibly-off cells (other tasks).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

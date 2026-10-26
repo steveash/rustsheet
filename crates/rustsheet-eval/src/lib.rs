@@ -9,6 +9,7 @@
 //!
 //! See `docs/architecture/eval-harness.md`.
 
+pub mod attribution;
 pub mod baseline;
 pub mod calibrate;
 pub mod case;
@@ -28,9 +29,11 @@ pub mod lift_kinds;
 pub mod lock_file;
 pub mod milestone_exit;
 pub mod milestone_lists;
+pub mod out_of_scope;
 pub mod overrides;
 pub mod probe_milestones;
 pub mod report;
+pub mod run_meta;
 pub mod runner;
 mod spec_pivots;
 mod spill_extent;

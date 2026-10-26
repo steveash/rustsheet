@@ -547,3 +547,89 @@ fn span_of_many_cached_sheets_is_one_walk() {
         assert_eq!(model._get_text("C1"), "#ERROR!", "{formula}");
     }
 }
+
+// A sheet `sheetNames` lists but the cache holds no cell of reads `#BLOCKED!`, yet a lookup over
+// it is `#N/A` (fixtures/external-link-uncached-lookups, excel-graph; T-0457).
+#[test]
+fn lookups_into_an_uncached_linked_sheet() {
+    let mut model = linked();
+    model.workbook.external_books[0]
+        .sheet_names
+        .push("Sort".to_string());
+    assert_eq!(eval(&mut model, "=[1]Sort!$B$2"), "#BLOCKED!");
+    assert_eq!(eval(&mut model, "=ISBLANK([1]Sort!$B$2)"), "FALSE");
+    assert_eq!(eval(&mut model, "=SUM([1]Sort!$B$2:$C$3)"), "#BLOCKED!");
+    assert_eq!(eval(&mut model, "=VLOOKUP(5,[1]Sort!$B$2,1,FALSE)"), "#N/A");
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(5,[1]Sort!$B:$Z,2,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(
+        eval(&mut model, "=HLOOKUP(5,[1]Sort!$1:$3,2,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B$2,0)"), "#N/A");
+    assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B:$B)"), "#N/A");
+}
+
+// A criteria or sum range of a cached sheet is #VALUE!, as any argument that is not a range of
+// this workbook is, cached or not; it is that error without its array being built (T-0477). One
+// too large for an array keeps its bound's error.
+#[test]
+fn criteria_ranges_of_a_cached_sheet_are_value_errors() {
+    let mut model = linked();
+    for formula in [
+        "=COUNTIF([1]Uses!$A$1:$A$3,\"Hello!\")",
+        "=COUNTIFS([1]Uses!$A:$A,\"Hello!\")",
+        "=COUNTIFS(A1:A3,1,[1]Uses!$A$1:$A$3,1)",
+        "=SUMIF([1]Uses!$A$1:$A$3,1)",
+        "=SUMIFS(A1:A3,[1]Uses!$A$1:$A$3,1)",
+        "=SUMIFS([1]Uses!$A$1:$A$3,A1:A3,1)",
+        "=AVERAGEIFS([1]Defines!$B:$B,[1]Defines!$A:$A,\"<>\")",
+        "=MAXIFS(A1:A3,[1]Uses!$A$1:$A$3,1)",
+        "=COUNTIF([1]Uses!$A$1,\"Hello!\")",
+    ] {
+        assert_eq!(eval(&mut model, formula), "#VALUE!", "{formula}");
+    }
+    assert_eq!(eval(&mut model, "=COUNTIF([1]Nope!$A$1:$A$3,1)"), "#VALUE!");
+    // Two whole columns are past the array bound (docs/excel-semantics/arrays.md).
+    assert_eq!(eval(&mut model, "=COUNTIF([1]Uses!$A:$B,1)"), "#ERROR!");
+}
+
+#[test]
+fn only_multi_cell_external_ranges_are_external_arrays() {
+    use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
+    let mut model = linked();
+    let cell = CellReferenceIndex {
+        sheet: 0,
+        row: 1,
+        column: 3,
+    };
+    let context = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 3,
+    };
+    // The predicate agrees with what evaluating the range builds.
+    let mut is_array = |range: &str| {
+        let node = model.parse_internal_formula(range, &context);
+        let predicted = model.is_external_array(&node, cell);
+        let built = matches!(
+            model.evaluate_node_in_context(&node, cell),
+            crate::calc_result::CalcResult::Array(_)
+        );
+        assert_eq!(predicted, built, "{range}");
+        predicted
+    };
+    assert!(is_array("[1]Uses!$A$1:$A$3"));
+    assert!(is_array("[1]Uses!$A:$A"));
+    assert!(!is_array("[1]Uses!$A$1"));
+    assert!(is_array("[1]Nope!$A$1:$A$3"));
+    assert!(is_array("[1]Nope!$A:$A"));
+    assert!(!is_array("[1]Uses!$A:$B"));
+    assert!(!is_array("A1:A3"));
+}

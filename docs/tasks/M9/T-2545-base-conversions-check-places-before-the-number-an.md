@@ -3,12 +3,12 @@ id: T-2545
 title: "Base conversions check places before the number: an invalid places is #NUM! over the number's error or text (gen-m9, 15 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -40,12 +40,28 @@ Cells:
 - gen-m9/fb73d8163ad87fc6.case.json (1): Calc!A109
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 15 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 15 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `DEC2BIN(NA(),0)`, `DEC2BIN("x",11)` and `HEX2OCT(NA(),0.5)` are `#NUM!`; `DEC2BIN(NA(),3)` stays `#N/A`.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests: `DEC2BIN(NA(),0)`, `DEC2BIN("x",11)` and `HEX2OCT(NA(),0.5)` are `#NUM!`; `DEC2BIN(NA(),3)` stays `#N/A`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+- `number_and_places` (number_basis.rs) now range-checks places (truncated, then 1 to 10) right after reading it, before
+  the number, so an invalid places is `#NUM!` over the number's error or unreadable text. The nine identical per-function
+  copies of the check were deleted, leaving one definition.
+- Eval: all 15 owned gen-m9 cells pass. `make eval-baseline` removed 14 lines; the 15th, e707d43a891ba9b5 Calc!A82
+  (`BIN2OCT` of text), was already fixed by T-2544 (#1756). No regressions. Unit test
+  `an_invalid_places_is_num_before_the_number_is_read`, with cells from the task's Excel list only. engineering.md: the
+  "Base conversions" bullet and the T-1816 entry are updated.
+- `fn_dec2bin_misc` (an inherited IronCalc test) pinned `DEC2BIN(TRUE,-1)`, `DEC2OCT(TRUE,-1)` and `DEC2HEX(TRUE,-1)` as
+  ours `#VALUE!`, with the note "Excel here return #NUM! instead". With places checked first, ours now gives Excel's
+  `#NUM!`, so the three assertions were updated to it. probes/t2545-base-places-boolean (excel-graph, 7 cells, all pass)
+  confirms it, and confirms a valid places keeps the boolean's `#VALUE!`.
+- `make check` found the duplication ratchet up after the nine checks were removed: the number-reading code before and
+  after each check was now identical across functions. `ten_digit_value` (the digits, `#NUM!` past ten, parsed in a
+  radix) replaces five copies, and quality/duplication.json drops 3028 -> 2951 (`--update`). DELTA and GESTEP stay unprobed, as the task said.

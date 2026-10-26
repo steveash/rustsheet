@@ -289,10 +289,11 @@ fn fn_dec2bin_misc() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"1000000001");
-    // Note Excel here return #NUM! instead
-    assert_eq!(model._get_text("A2"), *"#VALUE!");
-    assert_eq!(model._get_text("A3"), *"#VALUE!");
-    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    // Excel's #NUM!: the invalid places is checked before the boolean number (T-2545,
+    // probes/t2545-base-places-boolean A1:A3; this test pinned our old #VALUE!).
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
 }
 
 #[test]
@@ -382,4 +383,49 @@ fn oct2dec_of_eleven_digits_is_num() {
     assert_eq!(model._get_text("A3"), *"1");
     assert_eq!(model._get_text("A4"), *"#NUM!");
     assert_eq!(model._get_text("A5"), *"-1+i");
+}
+
+#[test]
+fn bin2_of_non_numeric_text_is_num() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=BIN2DEC("abc")"#);
+    model._set("A2", r#"=BIN2HEX(" x ")"#);
+    model._set("A3", r#"=BIN2OCT("abc",4)"#);
+    model._set("A4", "=BIN2DEC(TRUE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+}
+
+#[test]
+fn dec2_of_non_numeric_text_stays_value() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=DEC2OCT("abc")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+}
+
+#[test]
+fn an_invalid_places_is_num_before_the_number_is_read() {
+    // gen-m9 T-2258 triage (excel-graph; T-2545): places is range-checked before the number, so
+    // an invalid one beats the number's error or unreadable text; a valid one does not.
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=DEC2BIN(NA(),0)", "#NUM!"),
+        ("A2", "=DEC2BIN(\"x\",11)", "#NUM!"),
+        ("A3", "=HEX2OCT(NA(),0.5)", "#NUM!"),
+        ("A4", "=DEC2BIN(NA(),3)", "#N/A"),
+        ("A5", "=BIN2OCT(\"ABC\",-1)", "#NUM!"),
+        ("A6", "=OCT2HEX(1/0,-0.5)", "#NUM!"),
+        ("A7", "=DEC2OCT(NA(),Z99)", "#NUM!"),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
 }

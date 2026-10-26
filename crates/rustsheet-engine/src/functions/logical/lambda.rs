@@ -81,9 +81,11 @@ impl ScopeResult for Binding {
     fn lambdas(&self) -> Vec<usize> {
         match self.resolved() {
             Binding::Value(value) | Binding::ReadOnce(value) => value.lambdas(),
-            Binding::Areas(_) | Binding::Span(_) | Binding::Grid(_) | Binding::Shared(_) => {
-                Vec::new()
-            }
+            Binding::Omitted
+            | Binding::Areas(_)
+            | Binding::Span(_)
+            | Binding::Grid(_)
+            | Binding::Shared(_) => Vec::new(),
         }
     }
 }
@@ -382,7 +384,7 @@ impl Model {
     }
 
     /// Evaluates the body of a named lambda with the given call-site argument nodes.
-    /// Optional parameters not covered by `call_args` receive `EmptyArg`.
+    /// Optional parameters not covered by `call_args` are [`Binding::Omitted`].
     pub(crate) fn call_lambda(
         &mut self,
         lambda_result: CalcResult,
@@ -457,8 +459,9 @@ impl Model {
     }
 
     /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
-    /// receive `EmptyArg`). The values are moved into the parameters, not copied, so REDUCE and
-    /// SCAN hand their accumulator (possibly a large array) to each step without a deep copy.
+    /// are [`Binding::Omitted`]). The values are moved into the parameters, not copied, so
+    /// REDUCE and SCAN hand their accumulator (possibly a large array) to each step without a
+    /// deep copy.
     pub(crate) fn call_lambda_caller(
         &mut self,
         caller: &mut LambdaCaller,
@@ -468,7 +471,7 @@ impl Model {
         // `call_prepared` binds the parameters in order, so the i-th call takes the i-th value.
         let mut values = values.into_iter();
         self.call_prepared(caller, cell, |_, _| {
-            Binding::Value(values.next().unwrap_or(CalcResult::EmptyArg))
+            values.next().map_or(Binding::Omitted, Binding::Value)
         })
         .into_single_area(cell)
     }
@@ -495,7 +498,7 @@ impl Model {
     ) -> RefArg {
         self.call_prepared(caller, cell, |model, i| match call_args.get(i) {
             Some(arg) => model.bind_argument(arg, cell),
-            None => Binding::Value(CalcResult::EmptyArg),
+            None => Binding::Omitted,
         })
     }
 

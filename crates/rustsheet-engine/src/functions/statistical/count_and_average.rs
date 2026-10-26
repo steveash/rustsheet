@@ -3,7 +3,7 @@ use crate::functions::util::aggregate_args::{
     ErrorRule, GridReading, ItemSource, NestedReading, NumberRules,
 };
 
-use super::sorted_data::{DataArg, DataError, DataOrder, SortedNumbers};
+use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
 use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
@@ -627,11 +627,10 @@ fn ranked_numbers(
     model: &mut Model,
     node: &Node,
     cell: CellReferenceIndex,
-) -> Result<Vec<f64>, DataError> {
+) -> Result<Vec<f64>, CalcResult> {
     model
         .numbers_from_reference_arg(node, cell)
         .map(|numbers| numbers.into_iter().flatten().collect())
-        .map_err(DataError::from)
 }
 
 /// LARGE's data: its numbers largest first, sorted once, each element O(1).

@@ -1,4 +1,5 @@
-use super::bessel_excel::MAX_ORDER;
+use super::bessel_excel::{EXCEL_MAX_ORDER, MAX_ORDER};
+use crate::arithmetic::flush_subnormal;
 
 // This are somewhat lower precision than the BesselJ and BesselY
 
@@ -70,8 +71,7 @@ fn bessel_k1(x: f64) -> f64 {
 }
 
 pub(crate) fn bessel_k(n: i32, x: f64) -> f64 {
-    // The order cap bounds the upward recurrence below (n steps).
-    if x <= 0.0 || !(0..=MAX_ORDER).contains(&n) {
+    if x.is_nan() || x <= 0.0 || !(0..=EXCEL_MAX_ORDER).contains(&n) {
         return f64::NAN;
     }
 
@@ -82,12 +82,26 @@ pub(crate) fn bessel_k(n: i32, x: f64) -> f64 {
         return bessel_k1(x);
     }
 
-    // Perform upward recurrence for all x
+    let (mut bkm, mut bk) = (bessel_k0(x), bessel_k1(x));
+    // Excel's recurrence starts from K0 and K1 flushed below the normal range, so from x = 705.5
+    // on every order is 0: `BESSELK(706,100001)`, `(720,1000)`, `(25019,1E+6)`, `(800,1E+7)`
+    // (probes/t2546-bessel-past-cap; `BESSELK(705,100001)` is `#NUM!`).
+    if flush_subnormal(bkm) == 0.0 && flush_subnormal(bk) == 0.0 {
+        return 0.0;
+    }
+    // The order cap bounds the upward recurrence below (n steps). Past it a normal start always
+    // overflows, as in Excel (`BESSELK(705,100001)`, `(2.5,100001)` are `#NUM!`): K_n(x) falls with
+    // x and K_100001(705.5) is about 1E+201815.
+    if n > MAX_ORDER {
+        return f64::INFINITY;
+    }
     let tox = 2.0 / x;
-    let mut bkm = bessel_k0(x);
-    let mut bk = bessel_k1(x);
+    // Excel flushes a subnormal recurrence term `2j/x * K(j)` to 0 before adding it (the cutoff is
+    // inferred, T-2702), so at x = 702 and 705 K2 = K4 = K0 and K3 = K5 = K1, and at 700 only
+    // K2 = K0 (probes-numeric/m9-besselk-underflow; engineering.md "BESSELK near the bottom of the
+    // double range").
     for j in 1..n {
-        (bkm, bk) = (bk, bkm + (j as f64) * tox * bk);
+        (bkm, bk) = (bk, bkm + flush_subnormal((j as f64) * tox * bk));
     }
     bk
 }

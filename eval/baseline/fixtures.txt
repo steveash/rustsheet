@@ -3,11 +3,13 @@
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
 # `TC` and `TF` lines do the same for displayed text (decision 0070).
+C	fixtures/circular-keeps-cached-values.xlsx	11
 C	fixtures/external-link-cached-3d-span.xlsx	10
 C	fixtures/external-link-cached-index-array.xlsx	11
 C	fixtures/external-link-cached-lookups.xlsx	24
 C	fixtures/external-link-cached-ranges.xlsx	99
 C	fixtures/external-link-cached-text.xlsx	19
+C	fixtures/external-link-uncached-lookups.xlsx	51
 C	fixtures/ifs-legacy-range-criteria.xlsx	20
 C	fixtures/rich-error-export-formulas.xlsx	15
 C	fixtures/rich-error-export.xlsx	15
@@ -25,3 +27,10 @@ C	fixtures/t-d-pre-1900.xlsx	2
 C	fixtures/t-d-time-only.xlsx	2
 C	fixtures/t-d-z-suffix.xlsx	2
 C	fixtures/workday-intl-legacy-holidays.xlsx	6
+F	fixtures/external-link-uncached-lookups.xlsx	Refs!B13
+F	fixtures/external-link-uncached-lookups.xlsx	Refs!B17
+F	fixtures/external-link-uncached-lookups.xlsx	Refs!B21
+F	fixtures/external-link-uncached-lookups.xlsx	Refs!B38
+F	fixtures/external-link-uncached-lookups.xlsx	Refs!B44
+F	fixtures/external-link-uncached-lookups.xlsx	Refs!B49
+F	fixtures/external-link-uncached-lookups.xlsx	Refs!B50

@@ -30,7 +30,9 @@ impl Model {
 
         let mut arrays: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(args.len());
         for arg in args {
-            match self.eval_to_array(arg, cell) {
+            // A blank one-cell reference is a blank element, as for VSTACK:
+            // `SEARCH(HSTACK(Z1),"Hello World",8)` is 8 (probes/t2436, gen-m9 T-2436).
+            match self.eval_to_array_keep_blank(arg, cell) {
                 Ok(a) => arrays.push(a),
                 Err(e) => return e,
             }
@@ -131,7 +133,9 @@ impl Model {
         for (arg, result) in args.iter().zip(results) {
             let array = match result {
                 Some(result) => self.result_to_array(result, cell),
-                None => self.eval_to_array(arg, cell),
+                // A blank one-cell reference stacks as a blank element, not 0 (`ISBLANK(INDEX(
+                // VSTACK(Z1,1),1,1))` is TRUE; probes/t2413-blank-in-stacked-arrays A13:A23).
+                None => self.eval_to_array_keep_blank(arg, cell),
             };
             match array {
                 Ok(a) => arrays.push(a),

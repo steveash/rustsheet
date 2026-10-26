@@ -3,7 +3,7 @@ id: T-2037
 title: "Steward regenerates the parity page after make eval (owner-approved routine change)"
 milestone: M2
 lane: harness
-status: blocked
+status: dropped
 priority: P3
 size: S
 tier: sonnet
@@ -21,12 +21,6 @@ prompts are owner-managed: agents never create, modify or delete routines, so th
 change the routine and its copy in docs/process/routines.md. Decision 0079 says the pages are
 committed snapshots with no CI freshness gate; that stays true.
 
-## Blocked because
-Needs the owner: an owner-approved change to the steward routine (and its copy in
-docs/process/routines.md) that runs `make parity-report` after `make eval` and commits the
-regenerated pages in the steward PR. Unblock when
-`grep -n 'parity-report' docs/process/routines.md` shows that line in the steward prompt.
-
 ## Acceptance criteria
 - [ ] The steward prompt in docs/process/routines.md runs `make parity-report` after `make eval`
   (owner change, with a decision record, since docs/process/ is protected).
@@ -34,3 +28,8 @@ regenerated pages in the steward PR. Unblock when
 
 ## Out of scope
 - A CI freshness gate on the parity pages (decision 0079 rules it out).
+
+## Outcome (dropped, 2026-10-25, planner)
+Superseded by T-0076 (SPEC-0022). The parity page becomes the daily progress dashboard
+(docs/progress.md, `make progress-report`). T-0076 carries the owner-approved steward routine
+change, with its exact new prompt text, and is blocked on the owner as this task was.

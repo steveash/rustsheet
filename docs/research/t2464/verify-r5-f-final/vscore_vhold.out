@@ -1,0 +1,53 @@
+# prediction file vs live frozen model: 0 differences
+== verify hold value cells (896 cells)
+  M-final(pred file) all 236/400/459 n896 | value 60/224/283 n720 | rule 176/176/176 n176 | side1/r<=.375 17/73/91 n164 | side1/r>.375 9/42/54 n174 | side2/r<=.375 26/68/86 n200 | side2/r>.375 8/41/52 n182 | small 26/56/66 n182 | mid 22/114/143 n200 | large 12/54/74 n338 | |P|<4 37/114/122 n146 | |P|4-32 20/88/116 n172 | |P|32-256 3/14/33 n157 | |P|>=256 0/8/12 n245
+  M-final       all 236/400/459 n896 | value 60/224/283 n720 | rule 176/176/176 n176 | side1/r<=.375 17/73/91 n164 | side1/r>.375 9/42/54 n174 | side2/r<=.375 26/68/86 n200 | side2/r>.375 8/41/52 n182 | small 26/56/66 n182 | mid 22/114/143 n200 | large 12/54/74 n338 | |P|<4 37/114/122 n146 | |P|4-32 20/88/116 n172 | |P|32-256 3/14/33 n157 | |P|>=256 0/8/12 n245
+  M-final-mulr  all 243/402/458 n896 | value 67/226/282 n720 | rule 176/176/176 n176 | side1/r<=.375 20/74/91 n164 | side1/r>.375 10/42/54 n174 | side2/r<=.375 30/70/86 n200 | side2/r>.375 7/40/51 n182 | small 28/56/66 n182 | mid 27/116/142 n200 | large 12/54/74 n338 | |P|<4 43/114/122 n146 | |P|4-32 21/87/115 n172 | |P|32-256 3/17/33 n157 | |P|>=256 0/8/12 n245
+  M-sd+rules    all 237/401/461 n896 | value 61/225/285 n720 | rule 176/176/176 n176 | side1/r<=.375 18/75/91 n164 | side1/r>.375 11/42/54 n174 | side2/r<=.375 24/69/87 n200 | side2/r>.375 8/39/53 n182 | small 26/56/66 n182 | mid 22/114/143 n200 | large 13/55/76 n338 | |P|<4 39/114/122 n146 | |P|4-32 20/88/116 n172 | |P|32-256 2/14/33 n157 | |P|>=256 0/9/14 n245
+  CR+rules      all 189/299/363 n896 | value 13/123/187 n720 | rule 176/176/176 n176 | side1/r<=.375 2/52/65 n164 | side1/r>.375 2/12/22 n174 | side2/r<=.375 5/40/65 n200 | side2/r>.375 4/19/35 n182 | small 4/45/60 n182 | mid 8/62/90 n200 | large 1/16/37 n338 | |P|<4 8/69/92 n146 | |P|4-32 4/47/73 n172 | |P|32-256 1/6/15 n157 | |P|>=256 0/1/7 n245
+== verify hold literal cells (40 cells)
+  M-final(pred file) all 24/37/38 n40 | value 4/17/18 n20 | rule 20/20/20 n20 | side1/r<=.375 2/9/10 n11 | side1/r>.375 1/2/2 n2 | side2/r<=.375 1/5/5 n5 | side2/r>.375 0/1/1 n2 | small 4/12/13 n13 | mid 0/4/4 n4 | large 0/1/1 n3 | |P|<4 4/10/10 n10 | |P|4-32 0/6/6 n7 | |P|>=256 0/1/2 n3
+  M-final       all 24/37/38 n40 | value 4/17/18 n20 | rule 20/20/20 n20 | side1/r<=.375 2/9/10 n11 | side1/r>.375 1/2/2 n2 | side2/r<=.375 1/5/5 n5 | side2/r>.375 0/1/1 n2 | small 4/12/13 n13 | mid 0/4/4 n4 | large 0/1/1 n3 | |P|<4 4/10/10 n10 | |P|4-32 0/6/6 n7 | |P|>=256 0/1/2 n3
+  M-final-mulr  all 26/37/38 n40 | value 6/17/18 n20 | rule 20/20/20 n20 | side1/r<=.375 2/9/10 n11 | side1/r>.375 2/2/2 n2 | side2/r<=.375 2/5/5 n5 | side2/r>.375 0/1/1 n2 | small 5/12/13 n13 | mid 0/4/4 n4 | large 1/1/1 n3 | |P|<4 6/10/10 n10 | |P|4-32 0/6/6 n7 | |P|>=256 0/1/2 n3
+  M-sd+rules    all 24/37/38 n40 | value 4/17/18 n20 | rule 20/20/20 n20 | side1/r<=.375 2/9/10 n11 | side1/r>.375 1/2/2 n2 | side2/r<=.375 1/5/5 n5 | side2/r>.375 0/1/1 n2 | small 4/12/13 n13 | mid 0/4/4 n4 | large 0/1/1 n3 | |P|<4 4/10/10 n10 | |P|4-32 0/6/6 n7 | |P|>=256 0/1/2 n3
+  CR+rules      all 20/28/33 n40 | value 2/10/15 n20 | rule 18/18/18 n20 | side1/r<=.375 1/5/8 n11 | side1/r>.375 0/1/2 n2 | side2/r<=.375 1/3/4 n5 | side2/r>.375 0/1/1 n2 | small 1/6/10 n13 | mid 1/4/4 n4 | large 0/0/1 n3 | |P|<4 2/8/10 n10 | |P|4-32 0/2/5 n7 | |P|>=256 0/0/0 n3
+   D1   x=0.0 d=(1.5,9.0) excel='#NUM!' model='#NUM!' (True, True, True)
+   D2   x=0.0 d=(2.5,3.0) excel=1.0 model=1.0 (True, True, True)
+   D3   x=0.0 d=(2.0,10000000000.0) excel=1.0 model=1.0 (True, True, True)
+   D4   x=0.0 d=(1.0,1.0) excel='#NUM!' model='#NUM!' (True, True, True)
+   D5   x=0.0 d=(4.2,11.0) excel=0.0 model=0.0 (True, True, True)
+   D6   x=0.0 d=(2.0,5.0) excel=1.0 model=1.0 (True, True, True)
+   D7   x=0.0 d=(3.0,5.0) excel=0.0 model=0.0 (True, True, True)
+   D8   x=-1e-10 d=(4.0,4.0) excel='#NUM!' model='#NUM!' (True, True, True)
+   D9   x=-3.0 d=(2.0,2.0) excel='#NUM!' model='#NUM!' (True, True, True)
+   D10  x=1.5 d=(0.999999999,7.0) excel='#NUM!' model='#NUM!' (True, True, True)
+   D11  x=1.5 d=(7.0,0.0) excel='#NUM!' model='#NUM!' (True, True, True)
+   D12  x=2.0 d=(9999999999.9,6.0) excel=0.18826607261111775 model=0.18826607261111777 (False, True, True)
+   D13  x=0.4 d=(10000000000.0,3.0) excel=0.4817676812849946 model=0.48176768128499453 (False, True, True)
+   D14  x=0.4 d=(6.0,10000000000.9) excel=0.6505794977459705 model=0.6505794977459706 (False, True, True)
+   D15  x=0.4 d=(6.0,10000000001.0) excel='#NUM!' model='#NUM!' (True, True, True)
+   D16  x=2.2251e-308 d=(3.0,4.0) excel=0.0 model=0.0 (True, True, True)
+   D17  x=2.2251e-308 d=(3.0,4.0) excel=0.0 model=0.0 (True, True, True)
+   D18  x=2.2251e-308 d=(1.0,1.0) excel=2.1339063729124687e+153 model=2.1339063729124646e+153 (False, False, True)
+   D19  x=1e-307 d=(2.0,5.0) excel=0.9999999999999776 model=0.9999999999999771 (False, True, True)
+   D20  x=1e-307 d=(5.0,2.0) excel=0.0 model=0.0 (True, True, True)
+   D21  x=9.99999999999999e+307 d=(2.0,3.0) excel='#NUM!' model='#NUM!' (True, True, True)
+   D22  x=9.99999999999999e+307 d=(1.0,3.0) excel=0.0 model=0.0 (True, True, True)
+   D23  x=8.9e+307 d=(2.0,2.0) excel=0.0 model=0.0 (True, True, True)
+   D24  x=0.333333333333333 d=(7.0,9.0) excel=0.548883369544756 model=0.5488833695447562 (False, True, True)
+   D25  x=2.71828182845904 d=(2.5,50.5) excel=0.06831503019222192 model=0.06831503019222192 (True, True, True)
+   D26  x=123456789.123456 d=(1.0,3.0) excel=1.9533251413689524e-20 model=1.953325141368953e-20 (False, True, True)
+   D27  x=0.999999999999999 d=(40.0,40.0) excel=1.2537068761957963 model=1.2537068761957966 (False, True, True)
+   D28  x=1.0 d=(1.0,1.0) excel=0.15915494309189543 model=0.15915494309189543 (True, True, True)
+   D29  x=1.0 d=(9.0,2.0) excel=0.33164544248664773 model=0.33164544248664773 (True, True, True)
+   D30  x=1.0 d=(1.0,5.0) excel=0.2196797973509807 model=0.21967979735098067 (False, True, True)
+   D31  x=0.5 d=(3.0,8.0) excel=0.6211658603075413 model=0.6211658603075413 (True, True, True)
+   D32  x=0.001 d=(2.0,30.0) excel=0.9989339375360766 model=0.9989339375360767 (False, True, True)
+   D33  x=0.123456789012345 d=(4.0,6.0) excel=0.4433700289151704 model=0.4433700289151705 (False, True, True)
+   D34  x=2.0 d=(7.9,12.0) excel=0.1656205975020771 model=0.16562059750207717 (False, True, True)
+   D35  x=1e-12 d=(1.0,6.0) excel=382732.77230964875 model=382732.77230964863 (False, True, True)
+   D36  x=1000000000000.0 d=(6.0,1.0) excel=3.827327723096487e-19 model=3.827327723096486e-19 (False, True, True)
+   D37  x=1e-05 d=(300.0,2.0) excel=0.0 model=0.0 (True, True, True)
+   D38  x=100000.0 d=(2.0,300.0) excel=0.0 model=0.0 (True, True, True)
+   D39  x=0.05 d=(700.0,700.0) excel=3.55871422368042e-258 model=3.558714223680329e-258 (False, False, False)
+   D40  x=1.02 d=(2000.0,2000.0) excel=7.928021259207405 model=7.928021259207419 (False, False, False)

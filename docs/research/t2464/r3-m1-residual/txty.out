@@ -1,0 +1,14 @@
+probe1 ALL 12800 lnx_s,ly_s,prod_s=11437 lnx_e,ly_s,prod_s=11217 lnx_s,ly_e,prod_s=10242 lnx_e,ly_e,prod_s=10030 lnx_s,ly_s,prod_e=7786
+probe1 a<1 3200 lnx_s,ly_s,prod_s=2593 lnx_e,ly_s,prod_s=2373 lnx_s,ly_e,prod_s=2152 lnx_e,ly_e,prod_s=1940 lnx_s,ly_s,prod_e=1470
+probe1 a<1,max>8 1600 lnx_s,ly_s,prod_s=1222 lnx_e,ly_s,prod_s=1222 lnx_s,ly_e,prod_s=1040 lnx_e,ly_e,prod_s=1040 lnx_s,ly_s,prod_e=457
+probe1 a=1 1600 lnx_s,ly_s,prod_s=1506 lnx_e,ly_s,prod_s=1506 lnx_s,ly_e,prod_s=1184 lnx_e,ly_e,prod_s=1184 lnx_s,ly_s,prod_e=857
+probe1 a=1,max>8 1600 lnx_s,ly_s,prod_s=1493 lnx_e,ly_s,prod_s=1493 lnx_s,ly_e,prod_s=1243 lnx_e,ly_e,prod_s=1243 lnx_s,ly_s,prod_e=379
+probe1 b<1 1600 lnx_s,ly_s,prod_s=1439 lnx_s,ly_s,prod_e=1439 lnx_s,ly_e,prod_s=1439 lnx_e,ly_s,prod_s=1439 lnx_e,ly_e,prod_s=1439
+probe1 b=1 3200 lnx_s,ly_s,prod_s=3184 lnx_s,ly_s,prod_e=3184 lnx_s,ly_e,prod_s=3184 lnx_s,ly_e,prod_e=3184 lnx_e,ly_s,prod_s=3184
+a ALL 4096 lnx_s,ly_s,prod_s=2711 lnx_s,ly_e,prod_s=2556 lnx_e,ly_s,prod_s=2468 lnx_e,ly_e,prod_s=2322 lnx_s,ly_s,prod_e=1317
+a a1big 960 lnx_s,ly_s,prod_s=884 lnx_e,ly_s,prod_s=884 lnx_s,ly_e,prod_s=843 lnx_e,ly_e,prod_s=843 lnx_s,ly_s,prod_e=294
+a albig 960 lnx_s,ly_s,prod_s=298 lnx_s,ly_e,prod_s=283 lnx_e,ly_s,prod_s=262 lnx_e,ly_e,prod_s=247 lnx_s,ly_s,prod_e=154
+a blt1 480 lnx_s,ly_s,prod_s=274 lnx_s,ly_e,prod_s=262 lnx_e,ly_s,prod_s=220 lnx_e,ly_e,prod_s=213 lnx_s,ly_s,prod_e=106
+a gl 960 lnx_s,ly_s,prod_s=796 lnx_s,ly_e,prod_s=732 lnx_e,ly_s,prod_s=689 lnx_e,ly_e,prod_s=629 lnx_s,ly_s,prod_e=478
+a runs 576 lnx_s,ly_s,prod_s=332 lnx_s,ly_e,prod_s=318 lnx_e,ly_s,prod_s=294 lnx_e,ly_e,prod_s=280 lnx_s,ly_s,prod_e=200
+a w4 160 lnx_s,ly_s,prod_s=127 lnx_e,ly_s,prod_s=119 lnx_s,ly_e,prod_s=118 lnx_e,ly_e,prod_s=110 lnx_s,ly_e,prod_e=86

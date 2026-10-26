@@ -306,6 +306,19 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
         // T-2191: the whole of a scalar is an array too (probes/index-zero-index-scalar-shape).
         ("N(INDEX(5,0,0))", true, "N(INDEX(5,0,0))"),
         ("N(INDEX(5,0))", true, "N(INDEX(5,0))"),
+        // T-2601: empty, grouped and negated scalars and indices (probes/t2601-index-scalar-forms-t-n).
+        ("N(INDEX(5,0,))", true, "N(INDEX(5,0,))"),
+        ("N(INDEX(5,))", true, "N(INDEX(5,))"),
+        ("N(INDEX((5),0,0))", true, "N(INDEX((5),0,0))"),
+        ("T(INDEX(-\"a\",0,0))", true, "T(INDEX(-\"a\",0,0))"),
+        ("N(INDEX(-(-5),0,))", true, "N(INDEX(-(-5),0,))"),
+        ("N(INDEX(5,(0)))", true, "N(INDEX(5,(0)))"),
+        // T-2725: any indices of a scalar, no `@` (probes/t2725-index-scalar-nonzero-t-n).
+        ("N(INDEX(5,1))", true, "N(INDEX(5,1))"),
+        ("N(INDEX(5,1,0))", true, "N(INDEX(5,1,0))"),
+        ("T(INDEX(\"a\",1,1))", true, "T(INDEX(\"a\",1,1))"),
+        ("N(INDEX(5,C1))", true, "N(INDEX(5,C1))"),
+        ("N(INDEX(5,,1))", true, "N(INDEX(5,,1))"),
         ("N(IFS(1,{2;3}))", true, "N(IFS(1,{2;3}))"),
         ("ABS(N(IF(1,{2;3})))", true, "ABS(N(IF(1,{2;3})))"),
         ("N(IF(1,{2;3}))+0", true, "N(IF(1,{2;3}))+0"),

@@ -1,0 +1,21 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2517 probe: COMBINA just under the n+k-1 >= 2^31-1 cut for a small number (n+k-1 = 2^31-2), bounding T-2291 from below.",
+  "tags": [
+    "M5",
+    "probe",
+    "math"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=COMBINA(1,2^31-2)",
+        "A2": "=COMBINA(2,2^31-3)",
+        "A3": "=COMBINA(1,2^31-3)",
+        "A4": "=COMBINA(3,2^31-4)"
+      }
+    }
+  ],
+  "expected": {}
+}

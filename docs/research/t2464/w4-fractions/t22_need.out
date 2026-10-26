@@ -1,0 +1,4 @@
+S0 need sd 0.84 mean -0.13 s1: corr +0.02 brc: corr +0.02 W: corr -0.42 up: corr -0.01
+S1 need sd 0.74 mean +0.09 s1: corr +0.04 brc: corr -0.04 W: corr -0.36 up: corr -0.12
+S3 need sd 0.70 mean +0.03 s1: corr +0.00 brc: corr +0.03 W: corr -0.41 up: corr -0.07
+S4 need sd 0.90 mean +0.08 s1: corr -0.03 brc: corr +0.00 W: corr -0.37 up: corr +0.03

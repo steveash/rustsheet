@@ -3,7 +3,7 @@ id: T-1880
 title: "TEXT: why three or more letters after a quote-taking _ are #VALUE! (follow-up of T-1486)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,9 +26,19 @@ Semantics: docs/excel-semantics/number-formats.md, TEXT format code complexity l
 "Not explained or not implemented".
 
 ## Acceptance criteria
-- [ ] A probe round pins what makes the run fail; the rule and its evidence are in number-formats.md.
-- [ ] n A2 and A7:A9 leave eval/baseline/probes.txt, or the remainder is listed with evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe round pins what makes the run fail; the rule and its evidence are in number-formats.md.
+- [x] n A2 and A7:A9 leave eval/baseline/probes.txt, or the remainder is listed with evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fill characters printing a space (T-1735), conditions (T-0936).
+
+## Outcome
+`aaa` is Excel's weekday code, not a letter-run limit: three or more of one `a` (all lowercase or
+all uppercase) print the short (`aaa`) or full (`aaaa`+) weekday, localized like `ddd`/`dddd`, so
+`@` beside it is `#VALUE!` by T-1656's rule. Mixed case and one or two letters stay literal; an
+adjacent other-case run of three or more joins the code. Three probe rounds
+(probes/text-format-aaa-weekday, -b, -c; 90 cells, excel-graph) pin it; the lexer now
+reads such runs as `DayNameShort`/`DayName`. Rule in docs/excel-semantics/number-formats.md,
+"`aaa` is the weekday". Eval: probes -4 known failures (text-format-length-limit-n A2, A7:A9), and
+the 90 new probe cells pass.

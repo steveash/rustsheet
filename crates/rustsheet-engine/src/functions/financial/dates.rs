@@ -10,38 +10,34 @@ use crate::{
     calc_result::CalcResult,
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{token::Error, types::CellReferenceIndex},
-    formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
+    formatter::dates::{excel_serial_to_ymd, EPOCH_1904_IN_1900_SERIALS},
     functions::lift::num_error,
     model::Model,
 };
 
-/// Whether `end_date` is at most a year after `start_date` (1900 serials), the TBILL* limit.
-pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bool, String> {
-    let end = from_excel_date(end_date)?;
-    let start = from_excel_date(start_date)?;
+/// Whether `end_date` is at most a year after `start_date` (1900 serials), the TBILL* limit,
+/// `None` off the calendar. It compares the dates Excel shows, so serial 0 is 1900-01-00 and
+/// serial 1 1900-01-01: `TBILLPRICE(0,366,0.1)` and `TBILLPRICE(1,367,0.1)` are numbers and
+/// `TBILLPRICE(0,367,0.1)` is `#NUM!`. A 29 February settlement, the fictitious 1900-02-29
+/// (serial 60) too, reaches a year on at 1 March: `TBILLPRICE(DATE(2024,2,29),DATE(2025,3,1),0.1)`
+/// and `TBILLPRICE(60,426,0.1)` are numbers (probes/tbill-settlement-below-one B3-B18;
+/// docs/excel-semantics/financial.md "T-bill settlement below serial 1").
+pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Option<bool> {
     if end_date - start_date < 365 {
-        return Ok(true);
+        return Some(true);
     }
-    let end_year = end.year();
-    let start_year = start.year();
+    let (start_year, start_month, start_day) = excel_serial_to_ymd(start_date)?;
+    let (end_year, end_month, end_day) = excel_serial_to_ymd(end_date)?;
     if end_year == start_year {
-        return Ok(true);
+        return Some(true);
     }
-    if end_year != start_year + 1 {
-        return Ok(false);
-    }
-    let start_month = start.month();
-    let end_month = end.month();
-    if end_month < start_month {
-        return Ok(true);
-    }
-    if end_month > start_month {
-        return Ok(false);
-    }
-    // we are one year later same month
-    let start_day = start.day();
-    let end_day = end.day();
-    Ok(end_day <= start_day)
+    let anniversary = if (start_month, start_day) == (2, 29) {
+        (3, 1)
+    } else {
+        (start_month, start_day)
+    };
+    // One year later: on or before the settlement's anniversary.
+    Some(end_year == start_year + 1 && (end_month, end_day) <= anniversary)
 }
 
 impl Model {
@@ -62,17 +58,6 @@ impl Model {
             .settings
             .date_system
             .coupon_schedule_breaks(maturity)
-    }
-
-    /// A date argument of a financial function as a kernel reads it (SPEC-0011): the number of
-    /// `value` (a boolean is #VALUE!) as `financial_date` reads it.
-    pub(super) fn financial_date_of(
-        &self,
-        value: &CalcResult,
-        cell: CellReferenceIndex,
-    ) -> Result<i64, CalcResult> {
-        let serial = self.cast_number_no_bools_ref(value, cell)?;
-        Ok(self.financial_date(serial))
     }
 
     /// The settlement check of PRICE, YIELD and DURATION: #NUM! unless the settlement is a
@@ -98,10 +83,10 @@ impl Model {
     }
 
     /// A date argument of the TBILL, discount-security, AMORLINC and AMORDEGRC functions as read:
-    /// its number, #NUM! unless it floors to a serial from 0 to 9999-12-31, checked before the next
-    /// argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)` are #NUM!,
-    /// `TBILLEQ(0,39100,1/0)` #DIV/0!; probes/securities-argument-error-order C1:F16; financial.md,
-    /// T-1406).
+    /// its number, #NUM! unless it floors to a serial from 0 to 9999-12-31, checked before the
+    /// next argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)`
+    /// are #NUM!, `TBILLEQ(0,39100,1/0)` #DIV/0!; probes/securities-argument-error-order C1:F16;
+    /// financial.md, T-1406).
     pub(super) fn financial_calendar_date_of(
         &self,
         value: &CalcResult,
@@ -113,6 +98,30 @@ impl Model {
             return Err(num_error(cell));
         }
         Ok(serial)
+    }
+
+    /// A date argument of the COUP* functions as read, as `financial_date` reads it: #NUM!
+    /// unless it floors to a day of this workbook's calendar, checked before the next argument is
+    /// read (`COUPDAYS(2958466,NA(),2)` and `COUPNUM(39000,2958466,2,NA())` are #NUM!,
+    /// `COUPNCD(2958465.5,NA(),2)` #N/A; probes/coup-calendar-edges A1-A8, T-2486). In a 1904
+    /// workbook the bound is its own last day, 9999-12-31 (2957003), though `financial_date` reads
+    /// that past it (`COUPPCD(39000,2957004,2)` is #NUM!; probes/coup-calendar-edges-1904).
+    pub(super) fn coupon_date_of(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        let serial = self.cast_number_no_bools_ref(value, cell)?;
+        let calendar = 0..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        let day = self
+            .workbook
+            .settings
+            .date_system
+            .to_1900_serial(serial.floor() as i64);
+        if !day.is_some_and(|day| calendar.contains(&day)) {
+            return Err(num_error(cell));
+        }
+        Ok(self.financial_date(serial))
     }
 
     /// A day-count basis argument as read: an error, text or boolean is returned, an omitted basis

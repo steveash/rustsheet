@@ -3,12 +3,12 @@ id: T-2492
 title: "VDB and DDB: a text no_switch, a boolean factor, factor 0, and their error order (gen-m9, 10 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -48,10 +48,10 @@ Cells:
 - gen-m9/d0854366830dcdee.case.json (1): Calc!A218
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): these 10 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for a text no_switch, a boolean factor from a cell, a factor of 0 and the error order cases.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2257): 8 of these 10 known-failure lines disappear (A379 to T-2185, A218 to T-2605) from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline (the new probe case's failing cells belong to T-2185 and T-2605).
+- [x] Unit tests for a text no_switch, a boolean factor from a cell, a factor of 0 and the error order cases.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - VDB fractional-period values (T-2185) and DDB last digits (T-2033).
@@ -61,3 +61,14 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+Done (probes/t2492-vdb-ddb-arguments, excel-graph, 2026-10-25). VDB's no_switch now reads as a boolean: "TRUE"/"FALSE" text
+is taken in any case, and other text is `#VALUE!` before the range checks. VDB takes a factor of 0 and an empty window at
+period 0. DDB's factor takes a boolean and numeric text. ACCRINT's calc_method is `#VALUE!` for any text. The error-order
+cells were never VDB's: A237 is ACCRINT's text calc_method. `make eval-baseline`: gen-m9 fixed 11, probes fixed 2, 0
+regressions. That covers 8 owned cells; A238 already passed, and 5 other ACCRINT or VDB text cells (44a8841352dc48e9 A7,
+5ded7594e597e31e A196, a61e547a1cab994c A353, fec39efaba9284c3 A285, t2475-stat-subexpressions P!A197:A198) are fixed too.
+Two owned cells are handed over, both now right in type and error:
+- 762cd0e4ec9a7aa9 A379 is left with only VDB's fractional-start value, which goes to T-2185 along with probe A1 and A9:A12.
+- d0854366830dcdee A218 turns on `PERCENTILE(<TRUE cell>,7)` (A55), which goes to T-2605.

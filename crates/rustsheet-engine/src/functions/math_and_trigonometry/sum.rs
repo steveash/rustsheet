@@ -1,5 +1,6 @@
 use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::element_errors::array_element_error;
 use crate::functions::statistical::paired::PairedArg;
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
@@ -14,13 +15,6 @@ use crate::{
 };
 
 type TwoMatricesResult = (i64, i64, Vec<Option<f64>>, Vec<Option<f64>>);
-
-// Helper to check if two shapes are the same or compatible 1D shapes
-fn is_same_shape_or_1d(rows1: i64, cols1: i64, rows2: i64, cols2: i64) -> bool {
-    (rows1 == rows2 && cols1 == cols2)
-        || (rows1 == 1 && cols2 == 1 && cols1 == rows2)
-        || (rows2 == 1 && cols1 == 1 && cols2 == rows1)
-}
 
 impl Model {
     // SUMX2MY2(array_x, array_y) - Returns the sum of the difference of squares
@@ -74,8 +68,7 @@ impl Model {
                 return unequal_counts();
             }
         }
-        let array_error =
-            |_, error| CalcResult::new_error(error, cell, "Error in array".to_string());
+        let array_error = |_, error| array_element_error(error, cell);
         let paired = match self.paired_values(first, second, cell, array_error) {
             Ok(paired) => paired,
             Err(e) => return e,
@@ -155,22 +148,16 @@ impl Model {
                 "Both arguments must be ranges or arrays".to_string(),
             ));
         };
-        if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
-            // Excel: unequal sizes are #N/A, with or without text in the ranges (T-1292, T-1620).
+        if rows1 * cols1 != rows2 * cols2 {
+            // Excel: unequal cell counts are #N/A, with or without text in the ranges (T-1292, T-1620);
+            // any two shapes with the same count pair in reading order (T-2431).
             return Err(CalcResult::new_error(
                 Error::NA,
                 cell,
-                "Arguments must be of the same shape".to_string(),
+                "Arguments must have the same number of cells".to_string(),
             ));
         }
-        let array_error = |index, error| {
-            let which = if index == 0 { "first" } else { "second" };
-            CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("Error in {which} array: {error:?}"),
-            )
-        };
+        let array_error = |_, error| array_element_error(error, cell);
         let paired = self.paired_values(first, second, cell, array_error)?;
         Ok((rows1, cols1, paired.first, paired.second))
     }

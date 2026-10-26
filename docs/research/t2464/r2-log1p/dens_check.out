@@ -1,0 +1,23 @@
+n=       512 rows   170 lnB~+6.240275845170769 spread 0.00e+00 tol 7.1e-15 outliers 0
+n=      1024 rows  5516 lnB~+6.932447891572509 spread 0.00e+00 tol 1.4e-14 outliers 0
+n=      2048 rows  4378 lnB~+7.625107148238900 spread 0.00e+00 tol 2.8e-14 outliers 0
+n=      4096 rows  2284 lnB~+8.318010277546872 spread 0.00e+00 tol 5.7e-14 outliers 0
+n=      8192 rows  1261 lnB~+9.011035410141815 spread 0.00e+00 tol 1.1e-13 outliers 0
+n=     16384 rows   708 lnB~+9.704121561132915 spread 0.00e+00 tol 2.3e-13 outliers 0
+n=     32768 rows   247 lnB~+10.397238225511654 spread 0.00e+00 tol 4.5e-13 outliers 0
+n=     65536 rows   140 lnB~+11.090370147631774 spread 0.00e+00 tol 9.1e-13 outliers 0
+n=    131072 rows   339 lnB~+11.783509698884497 spread 0.00e+00 tol 1.8e-12 outliers 0
+n=    262144 rows   121 lnB~+12.476653064769005 spread 0.00e+00 tol 3.6e-12 outliers 0
+n=    524288 rows    43 lnB~+13.169798337985775 spread 0.00e+00 tol 7.3e-12 outliers 0
+n=   1048576 rows    34 lnB~+13.862944564872768 spread 0.00e+00 tol 1.5e-11 outliers 0
+n=   2097152 rows    31 lnB~+14.556091268595896 spread 0.00e+00 tol 2.9e-11 outliers 0
+n=   4194304 rows    29 lnB~+15.249238210737348 spread 0.00e+00 tol 5.8e-11 outliers 0
+n=   8388608 rows    29 lnB~+15.942385272088025 spread 0.00e+00 tol 1.2e-10 outliers 0
+n=  16777216 rows    29 lnB~+16.635532393043331 spread 0.00e+00 tol 2.3e-10 outliers 0
+n=  33554432 rows    93 lnB~+17.328679543800956 spread 0.00e+00 tol 4.7e-10 outliers 0
+n=  67108864 rows    29 lnB~+18.021826709459738 spread 0.00e+00 tol 9.3e-10 outliers 0
+n= 134217728 rows    29 lnB~+18.714973882569105 spread 0.00e+00 tol 1.9e-09 outliers 0
+n= 268435456 rows    29 lnB~+19.408121059403758 spread 0.00e+00 tol 3.7e-09 outliers 0
+n= 536870912 rows    29 lnB~+20.101268238101060 spread 0.00e+00 tol 7.5e-09 outliers 0
+n=1073741824 rows    28 lnB~+20.794415417729681 spread 0.00e+00 tol 1.5e-08 outliers 0
+outliers 0

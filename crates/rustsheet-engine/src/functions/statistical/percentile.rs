@@ -3,12 +3,13 @@
 //! `significance` lift over arrays and ranges (probes/stat-argument-modes,
 //! probes/stat-whole-lift W21-W47).
 
-use super::sorted_data::{DataArg, DataError, DataOrder, SortedNumbers};
-use crate::expressions::parser::ArrayNode;
+use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
+use crate::decimal_round::{cut_to_15_digits, decimal_to_f64};
 use crate::expressions::types::CellReferenceIndex;
 pub(super) use crate::functions::lift::num_error;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
+use crate::nested_array::nested_array_error;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -22,44 +23,29 @@ fn percentile_numbers(
     model: &mut Model,
     arg: &Node,
     cell: CellReferenceIndex,
-) -> Result<Vec<f64>, DataError> {
+) -> Result<Vec<f64>, CalcResult> {
     let typed_in_place = !matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
     match model.evaluate_node_in_context(arg, cell) {
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
-        error @ CalcResult::Error { .. } => Err(error.into()),
+        error @ CalcResult::Error { .. } => Err(error),
         // A typed boolean is a one-element array (`QUARTILE(TRUE,1)` is 1, probes-numeric/t1748-
         // typed-boolean-data A1-A8 for the whole family, probes/stat-order-floor-batch A102, A128),
-        // and typed text a number (A11). A single cell holding a boolean is unprobed and keeps the
-        // old reading below.
+        // and typed text a number (A11).
         CalcResult::Boolean(b) if typed_in_place => Ok(vec![f64::from(u8::from(b))]),
-        text @ CalcResult::String(_) if typed_in_place => model
-            .cast_number_ref(&text, cell)
-            .map(|n| vec![n])
-            .map_err(DataError::from),
-        // A single cell holding text (a cell reference, not the typed text above) is no number,
-        // like text inside a range: the data is empty and every function reports `#NUM!`, not
-        // `#VALUE!` (probes/quartile-single-text-cell B1-B11, quartile-numeric-text-cell C2-C5).
-        CalcResult::String(_) => Ok(vec![]),
-        // An error inside an array is the first one in row order, as an error cell of a range is
-        // (`PERCENTRANK({#N/A,#DIV/0!,1},1)` is `#N/A`, `{#DIV/0!,#N/A,1}` `#DIV/0!`;
-        // probes/t2622-contents-xmatch-take-lambda A89-A96, A104-A111, excel-graph, T-2622).
-        CalcResult::Array(rows) => {
-            let first_error = rows.iter().flatten().find_map(|node| match node {
-                ArrayNode::Error(error) => Some(error.clone()),
-                _ => None,
-            });
-            match first_error {
-                Some(error) => Err(DataError::AfterScalars(CalcResult::new_error(
-                    error,
-                    cell,
-                    String::new(),
-                ))),
-                None => model
-                    .numeric_flat_of(CalcResult::Array(rows), cell)
-                    .map_err(DataError::from),
-            }
+        text @ CalcResult::String(_) if typed_in_place => {
+            model.cast_number_ref(&text, cell).map(|n| vec![n])
         }
-        value => model.numeric_flat_of(value, cell).map_err(DataError::from),
+        // A single cell holding text or a boolean (a cell reference, not the typed values above)
+        // is no number, like text inside a range: the data is empty and every function reports
+        // `#NUM!`, not `#VALUE!`, after k's or quart's own error (probes/quartile-single-text-cell
+        // B1-B11, quartile-numeric-text-cell C2-C5; t2429-quartile-exc-no-number A1-A3, A9-A12,
+        // A19-A22 for a TRUE cell).
+        CalcResult::String(_) | CalcResult::Boolean(_) => Ok(vec![]),
+        CalcResult::Array(array) => match nested_array_error(&array, cell) {
+            Some(error) => Err(error),
+            None => model.numeric_flat_with_element_errors(CalcResult::Array(array), cell),
+        },
+        value => model.numeric_flat_with_element_errors(value, cell),
     }
 }
 
@@ -229,8 +215,21 @@ impl Model {
             // One value equal to x ranks 1 (EXC too, not 0.5); any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
             return CalcResult::Number(1.0);
         }
-        let factor = 10f64.powi(sig);
-        CalcResult::Number((rank_of(sorted, x) * factor).floor() / factor)
+        // A significance whose 10^sig overflows (309 or more) is `#DIV/0!` (308 still computes:
+        // probes/t2473-percentrank-significance A6-A15, B6-B15, C6-C15).
+        // 10^sig correctly rounded: `powi` drifts by ulps past 10^22 and moves the result
+        // (`PERCENTRANK({1,2,3,4},2.5,100)` is 0.5, t2473 A5). `None` is a power past the double
+        // range.
+        let factor = decimal_to_f64(1, sig.into()).unwrap_or(f64::INFINITY);
+        if !factor.is_finite() {
+            return CalcResult::new_error(Error::DIV, cell, String::new());
+        }
+        // The scaled rank is cut to 15 significant digits before the floor, so a rank within
+        // rounding below a cut keeps its digit: `PERCENTRANK.EXC({1E+15,1,-1E+15},0.3)` (the double
+        // 0.49999999999999983) is 0.5, and 2/3 at 15 digits 0.666666666666667 (t2473 D1-D4, D19-D23;
+        // statistics.md "PERCENTRANK: a huge significance is #DIV/0!").
+        let scaled = cut_to_15_digits(rank_of(sorted, x) * factor, true);
+        CalcResult::Number(scaled.floor() / factor)
     }
 }
 

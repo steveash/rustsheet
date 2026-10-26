@@ -13,7 +13,7 @@ use crate::{
         format::{format_text, format_text_value_exact, FormatContext, Formatted},
         rejects_format_code,
     },
-    functions::{text::position::find_element, util::near_integer_count, Function},
+    functions::{text::position::find_element, util::near_integer::near_integer_count, Function},
     model::Model,
     number_format::to_precision,
     text::{Char, Text},
@@ -218,7 +218,7 @@ impl Model {
     /// coercion, but only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!, and clock
     /// text and date text with a clock suffix read as in number coercion (probes/date-text-grammar
     /// C7, C30, C31, C53, C55, C63; probes/value-clock-text B14, B44, column B against C).
-    fn value_text_number(&self, text: &str) -> Option<f64> {
+    pub(crate) fn value_text_number(&self, text: &str) -> Option<f64> {
         if number_text_too_long(text) {
             return None;
         }

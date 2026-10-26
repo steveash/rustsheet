@@ -213,15 +213,18 @@ pub(crate) struct Evaluation {
     /// next evaluation needs no restart. New anchors are appended in natural
     /// `(sheet, row, column)` order.
     pub(crate) anchor_order: Vec<CellReferenceIndex>,
-    /// Formula cells touched in the current pass, and their state.
+    /// Formula cells touched in the current pass, and their state. Whatever clears this map or
+    /// removes an entry must also call `clear_pass_caches`: the caches hold values read under
+    /// these states (T-0448, T-0449).
     pub(crate) cells: HashMap<CellKey, CellState, KeyBuild>,
     /// Cells being evaluated, innermost last.
     pub(crate) stack: Vec<CellReferenceIndex>,
     /// The cell the driver is evaluating: the root of the current recursion,
     /// on whose behalf every read of the pass is recorded.
     pub(crate) root: Option<CellReferenceIndex>,
-    /// Cells known to be circular, or to read a circular cell: each stores 0
-    /// (recalc.md "A circular reference without iteration is 0"). Marked on the
+    /// Cells known to be circular, or to read a circular cell: each keeps its
+    /// value from before the recalculation (`Model::circular_value`; recalc.md "A
+    /// circular reference without iteration keeps the cells' values"). Marked on the
     /// stack when a read closes a loop or reads a circular cell, or by the
     /// driver when an anchor's spill contradicts its own inputs; the latter
     /// survive restarts within one evaluation.
@@ -250,6 +253,9 @@ pub(crate) struct Evaluation {
     pub(crate) restarts_in_last_evaluation: u32,
     /// Number of `evaluate()` calls so far.
     pub(crate) evaluations: u64,
+    /// Number of cells read through `Model::evaluate_cell` so far: the work counter of the
+    /// tests that bound how many cells a walk visits (T-2711).
+    pub(crate) cell_reads: u64,
     /// Number of formulas running right now, that is the depth of the
     /// recursion. It can be smaller than `stack.len()`: see `unwinding`.
     pub(crate) depth: usize,
@@ -267,6 +273,15 @@ pub(crate) struct Evaluation {
     /// restart, the cells stay on `stack`, still `Evaluating`, to be run again
     /// from the top once the recursion has unwound.
     pub(crate) unwinding: bool,
+    /// The lookup search vectors built in this pass (`search_cache.rs`, T-0448). Dropped by
+    /// `clear_pass_caches`.
+    pub(crate) search_cache: crate::functions::lookup_and_reference::search_cache::SearchCache,
+    /// The criteria aggregates' range values and match sets of this pass (`ifs_cache.rs`, T-0449),
+    /// dropped by `clear_pass_caches`.
+    pub(crate) ifs_cache: crate::functions::statistical::ifs_cache::IfsCache,
+    /// Reads of a formula cell that was still `Evaluating` (a cycle), or of the spill area of
+    /// a running anchor, so far: a search vector whose build made one is not cached.
+    pub(crate) evaluating_reads: u64,
     /// GETPIVOTDATA's per-pivot indices and memo, dropped at each `evaluate()` (`pivot_index.rs`).
     pub(crate) pivot_indexes: crate::functions::lookup_and_reference::pivot_index::PivotIndexes,
     /// WEEKNUM's stale `return_type` state (SPEC-0017).
@@ -315,6 +330,15 @@ fn default_max_depth() -> usize {
     DEFAULT_MAX_DEPTH
 }
 
+impl Evaluation {
+    /// Drops what the caches of this pass hold: called wherever `cells` is cleared or loses an
+    /// entry.
+    pub(crate) fn clear_pass_caches(&mut self) {
+        self.search_cache.clear();
+        self.ifs_cache.clear();
+    }
+}
+
 impl Default for Evaluation {
     fn default() -> Self {
         Evaluation {
@@ -331,11 +355,15 @@ impl Default for Evaluation {
             in_pass: false,
             restarts_in_last_evaluation: 0,
             evaluations: 0,
+            cell_reads: 0,
             depth: 0,
             max_depth: default_max_depth(),
             max_stack: DEFAULT_MAX_STACK,
             stack_base: 0,
             unwinding: false,
+            search_cache: Default::default(),
+            ifs_cache: Default::default(),
+            evaluating_reads: 0,
             pivot_indexes: Default::default(),
             weeknum_start: None,
             weeknum_read: false,
@@ -349,6 +377,19 @@ impl Default for Evaluation {
 }
 
 impl Model {
+    /// Whether the caches of this pass (`search_cache.rs`, `ifs_cache.rs`) may be read or filled
+    /// now: inside a pass that is neither abandoned, unwinding, blocked, in Excel order nor
+    /// iterating, so a value read now stays the pass's value.
+    pub(crate) fn pass_cache_safe(&self) -> bool {
+        let evaluation = &self.evaluation;
+        evaluation.in_pass
+            && evaluation.restart.is_none()
+            && !evaluation.unwinding
+            && !evaluation.excel_order
+            && !evaluation.blocking
+            && !self.iterating()
+    }
+
     /// Evaluates every formula in the workbook, then its data tables and, if there are any,
     /// everything again so that their readers see the results (`data_tables.rs`). With
     /// iterative calculation on, each round's circular references are then iterated
@@ -364,7 +405,8 @@ impl Model {
             self.iterate_cycles(false);
         }
         self.end_iteration();
-        self.evaluate_conditional_formatting();
+        // Conditional formats are evaluated on the next style read (SPEC-0021).
+        self.cf_stale = true;
     }
 
     /// Runs passes until one completes without a restart. `RestartLog` learns
@@ -451,6 +493,7 @@ impl Model {
     fn run_pass(&mut self, circular_anchors: &[CellKey]) -> Option<Restart> {
         let state = &mut self.evaluation;
         state.cells.clear();
+        state.clear_pass_caches();
         state.stack.clear();
         state.seen.clear();
         state.seen_ranges.clear();
@@ -495,6 +538,7 @@ impl Model {
     /// not been evaluated in this pass. Reads are performed on behalf of the
     /// cell on top of the stack.
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
+        self.evaluation.cell_reads += 1;
         if self.evaluation.restart.is_some() || self.evaluation.unwinding {
             // The pass is being abandoned, or the recursion is unwinding;
             // nothing computed now is kept. This comes before anything is put
@@ -560,6 +604,7 @@ impl Model {
             // counts as empty until the anchor commits. If the anchor then
             // writes this position, its inputs depended on its own output.
             (ArrayKind::Dynamic, Some(CellState::Evaluating)) => {
+                self.evaluation.evaluating_reads += 1;
                 self.record_seen(cell_reference, Seen::Empty);
                 CalcResult::EmptyCell
             }
@@ -592,9 +637,11 @@ impl Model {
         let key = key(cell_reference);
         match self.evaluation.cells.get(&key) {
             Some(CellState::Evaluating) if self.iterating() => {
+                self.evaluation.evaluating_reads += 1;
                 return self.read_into_cycle(cell_reference);
             }
             Some(CellState::Evaluating) => {
+                self.evaluation.evaluating_reads += 1;
                 self.mark_stack_circular();
                 return circular_reference();
             }
@@ -629,6 +676,7 @@ impl Model {
             self.evaluation.stack.truncate(base);
             self.evaluation.circular_below = self.evaluation.circular_below.min(base);
             self.evaluation.cells.remove(&key);
+            self.evaluation.clear_pass_caches();
             return CalcResult::EmptyCell;
         }
         if self.evaluation.depth > 0 || !self.evaluation.unwinding {
@@ -715,7 +763,7 @@ impl Model {
         }
         // The cell may have been found on a cycle while it ran.
         let result = if self.evaluation.circular.contains(&key) {
-            circular_reference()
+            self.circular_value(cell_reference)
         } else {
             result
         };

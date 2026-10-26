@@ -10,6 +10,7 @@
 
 use std::cmp::Ordering::Equal;
 
+use super::element_errors::is_array_element_error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
@@ -24,27 +25,10 @@ pub(crate) enum DataOrder {
     Descending,
 }
 
-/// Why a data argument has no numbers: its error, which is every element's result unless a
-/// scalar argument's error comes first.
-pub(crate) enum DataError {
-    /// The error comes before everything else (a scalar error, an error cell of a range).
-    First(CalcResult),
-    /// An error inside an array comes after the scalar arguments' errors:
-    /// `PERCENTILE({1,#N/A,3},<#VALUE!>)` is `#VALUE!`, not `#N/A` (gen-m9 cases off the
-    /// T-2622 probe, probes/t2622-contents-xmatch-take-lambda A112, excel-graph).
-    AfterScalars(CalcResult),
-}
-
-impl From<CalcResult> for DataError {
-    fn from(error: CalcResult) -> Self {
-        Self::First(error)
-    }
-}
-
 /// How a function reads and prices its data argument (argument 0).
 pub(crate) struct DataArg {
     /// The function's own reader of the data argument's numbers.
-    pub(crate) read: fn(&mut Model, &Node, CellReferenceIndex) -> Result<Vec<f64>, DataError>,
+    pub(crate) read: fn(&mut Model, &Node, CellReferenceIndex) -> Result<Vec<f64>, CalcResult>,
     pub(crate) order: DataOrder,
     /// What a call costs for that many numbers: `LiftCost::Prepared` when an element is O(1)
     /// once sorted, `LiftCost::Cells` when every element walks the numbers (TRIMMEAN's mean).
@@ -108,7 +92,7 @@ impl SortedNumbers {
 /// `#N/A` has 2 rows and element 2 is `#N/A`, probes/stat-whole-lift W12-W13). The error is
 /// kept with an empty message, so copying it per element allocates nothing.
 pub(crate) struct SortedData {
-    numbers: Result<SortedNumbers, DataError>,
+    numbers: Result<SortedNumbers, CalcResult>,
 }
 
 impl SortedData {
@@ -169,9 +153,13 @@ impl Model {
         // A reader's non-error `Err` (RANK's array of errors; none here) is kept as it is.
         let numbers = (data.read)(self, node, cell)
             .map(|numbers| SortedNumbers::new(numbers, data.order))
-            .map_err(|error| match error {
-                DataError::First(error) => DataError::First(error.without_message()),
-                DataError::AfterScalars(error) => DataError::AfterScalars(error.without_message()),
+            // The message tells an array element's error from the argument's own, in `lift_over_sorted`.
+            .map_err(|error| {
+                if is_array_element_error(&error) {
+                    error
+                } else {
+                    error.without_message()
+                }
             });
         Ok(SortedData { numbers })
     }
@@ -197,13 +185,18 @@ impl Model {
             cell,
             &mut |model, values| match &mut data.numbers {
                 Ok(numbers) => kernel(model, numbers, values),
-                Err(DataError::First(error)) => error.clone(),
-                Err(DataError::AfterScalars(error)) => values
+                // An error element of the data array is the result unless another argument is an
+                // error value or does not coerce to a number, which wins (`PERCENTILE({1,#N/A,3},
+                // <#VALUE!>)` and `TRIMMEAN({1,#N/A,3},{"a"})` are `#VALUE!`; statistics.md "An error
+                // element of an array argument is that error", gen-m9/31f09e6c48ca245c A14,
+                // 9735c5ab72fa5ecf A36). The data argument's own error still comes first.
+                Err(error) if is_array_element_error(error) => values
                     .iter()
                     .skip(1)
-                    .find(|value| value.is_error())
-                    .unwrap_or(error)
-                    .clone(),
+                    .filter(|value| !matches!(value, CalcResult::EmptyArg))
+                    .find_map(|value| model.cast_number_ref(value, cell).err())
+                    .unwrap_or_else(|| error.clone()),
+                Err(error) => error.clone(),
             },
         )
     }
@@ -219,7 +212,7 @@ mod tests {
 
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use super::{DataArg, DataError, DataOrder};
+    use super::{DataArg, DataOrder};
     use crate::calc_result::CalcResult;
     use crate::expressions::parser::Node;
     use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
@@ -243,12 +236,11 @@ mod tests {
         model: &mut Model,
         node: &Node,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<f64>, DataError> {
+    ) -> Result<Vec<f64>, CalcResult> {
         READS.fetch_add(1, Ordering::SeqCst);
         model
             .numbers_from_reference_arg(node, cell)
             .map(|numbers| numbers.into_iter().flatten().collect())
-            .map_err(DataError::from)
     }
 
     /// The data argument is read once and sorted once per call, however many elements run.
@@ -325,7 +317,6 @@ mod tests {
                 model
                     .numbers_from_reference_arg(node, cell)
                     .map(|numbers| numbers.into_iter().flatten().collect())
-                    .map_err(DataError::from)
             },
             order: DataOrder::Descending,
             cost: LiftCost::Prepared,
