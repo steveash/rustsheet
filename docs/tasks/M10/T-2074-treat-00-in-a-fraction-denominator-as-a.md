@@ -3,7 +3,7 @@ id: T-2074
 title: "Treat 00 in a fraction denominator as a placeholder denominator and fix the ?/100 and grouped-integer cases"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
