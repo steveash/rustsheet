@@ -168,8 +168,14 @@ fn fn_yield_roundtrip() {
 #[test]
 fn fn_yield_stops_short_of_the_root() {
     let mut model = new_empty_model();
-    model._set("A1", "=YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100,2,0)");
-    model._set("A2", "=YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100.85,4,0)");
+    model._set(
+        "A1",
+        "=YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100,2,0)",
+    );
+    model._set(
+        "A2",
+        "=YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100.85,4,0)",
+    );
     model.evaluate();
     let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
         Ok(CellValue::Number(n)) => n.to_bits(),

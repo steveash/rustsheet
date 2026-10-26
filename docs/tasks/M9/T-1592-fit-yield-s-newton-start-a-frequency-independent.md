@@ -84,7 +84,7 @@ These are desktop values (decision 0039: excel-graph is the target), so use them
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Engine changes (T-1532).
+- YIELD's `#NUM!` cells and its 100-step cap (T-2391).
 
 ## Evidence (first round, before T-2187)
 No start formula fits, so the model cannot be raised from 3/90 with the evidence at hand. The lab now has
@@ -142,3 +142,13 @@ start), so the task is back to `todo`.
 Blocked (2026-10-24). The lab's `yield` fit gains the "Newton, finite difference" family (six variants, best 5/178 bit-exact,
 14/178 within 4 ulp). No model raises the bit-exact count beyond noise. The findings are in financial.md "YIELD stops short of
 PRICE's root" (third-round paragraph). Eval delta: none; the 23 gen-m9 cells stay.
+
+## Progress (fourth round, 2026-10-26, opus)
+Fitted: the start S = (100R + (100 - P)/T)/((100 + P)/2 - (100 - P)/(4T)) and the stop (a Newton step below 1e-10 is
+not taken). Lab fit `yield-caret`, family "Newton, fitted start": 240/370 bit-exact, 361/370 within 4 ulp (the old best was 4/178).
+The engine follows (`yield_start`, `excel_yield_newton`). Eval: 391 known failures fixed (probes 372, gen-m9 13,
+ironcalc-calc 6). 3 cells regress by 1 ulp at the root (yield-start-one-input S!A5, yield-start-rate-term S!B34
+and S!B35). Those fall under decision 0083's standing allowance, and T-2777 names them. Of the 23 owned gen-m9 cells, 11 are
+bit-exact and 9 within 4 ulp. A189 (basis 2), A17 (basis 1), A102 and A194 remain (T-2777).
+Pending: recording the baseline with `update-baseline --allow-regressions` under decision 0083's allowance. The
+session's permission policy refused that command, so the run needs an explicit go-ahead.
