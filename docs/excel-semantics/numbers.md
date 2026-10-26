@@ -1479,7 +1479,7 @@ cell. This settles the calipers desktop goldens `formulas_math_basic` / `formula
 9.99999999999999E+307)`, `#NUM!`) and K75 (the negative exponent, 0).
 Evidence: probes/power-huge-exponent (POWER) and power-op-huge-exponent (`^`), 15 bases by 20 exponents each, oracle
 excel-graph, 2026-10-25.
-Edge (T-2696): the switch is exactly where the double product `|y|·ln x` overflows, not a fixed exponent cutoff. For
+Edge (T-2696): the switch is consistent with the double product `|y|·ln x` overflowing (not a fixed exponent cutoff). For
 y = 9.99999999999999E+307 it lies between 0.165 (`#NUM!`; 0 for the negative exponent) and 0.166 (0; `#DIV/0!`), where
 the predicted ln x = -1.797 gives x about 0.1659. Bases 0.15 to 0.2 with y = 1.5E+308 and 1.7E+308 are all `#NUM!` (0
 negative), while 0.5 and 0.9 with the same exponents, and every base with y = 1E+307 or 5E+307, are 0 (`#DIV/0!`
