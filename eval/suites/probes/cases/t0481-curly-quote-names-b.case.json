@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Typographic quotes inside other tokens (T-0481): a slash, a cell-like name, a quote mid-name and after a string",
+  "description": "Typographic quotes around a token with a slash and around a cell-like name (T-0481)",
   "tags": [
     "M11",
     "parser",

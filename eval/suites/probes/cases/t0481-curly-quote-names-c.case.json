@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Typographic quotes after a string literal and inside a name, and a currency symbol as a name (T-0481)",
+  "description": "A currency symbol as a name, a typographic quote mid-name, and a stray typographic quote after a string literal (T-0481)",
   "tags": [
     "M11",
     "parser",

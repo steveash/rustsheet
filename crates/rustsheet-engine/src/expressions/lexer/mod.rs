@@ -991,7 +991,7 @@ impl Lexer {
 /// `“D”` (an app's "smart quotes" around a string) is an undefined name, so `=“D”` and
 /// `=“N/A”` are `#NAME?`, `ISREF(“D”)` is FALSE and `IF(FALSE,“D”,1)` is 1
 /// (corpus-bench/48354 D2:D6, probes/t0481-curly-quote-names; docs/excel-semantics/references.md
-/// "Typographic quotes are name characters").
+/// "Undefined names may contain typographic quotes").
 fn is_typographic_quote(char: char) -> bool {
     matches!(char, '\u{201C}' | '\u{201D}')
 }

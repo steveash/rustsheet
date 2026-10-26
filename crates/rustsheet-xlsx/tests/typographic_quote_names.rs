@@ -17,10 +17,13 @@ fn typographic_quote_names_round_trip() {
         .unwrap();
     model.set_user_input(0, 1, 1, formula.to_string()).unwrap();
     model.evaluate();
-    let path = "temp_typographic_quote_names.xlsx";
+    let dir = std::env::temp_dir().join(format!("rustsheet-t0481-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("typographic_quote_names.xlsx");
+    let path = path.to_str().unwrap();
     save_to_xlsx(&model, path).unwrap();
     let mut reloaded = load_from_xlsx(path, "en", "UTC", "en").unwrap();
-    std::fs::remove_file(path).unwrap();
+    std::fs::remove_dir_all(&dir).unwrap();
     reloaded.evaluate();
     assert_eq!(
         reloaded.get_cell_formula(0, 1, 1).unwrap().as_deref(),

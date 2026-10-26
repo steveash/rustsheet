@@ -173,7 +173,8 @@ The quoted token is an ordinary undefined name, not an error shape: it is `#NAME
 Evidence: probes/t0481-curly-quote-names A1-A10 and -b A1-A2 (excel-graph, 2026-10-26, stored formulas).
 Unprobed: whether a *typed* formula behaves the same (the oracle cannot type one), whether a name can be
 *defined* with these characters, and other punctuation as a name character (`€`, a quote mid-name
-`a“b`, `"x"“y"`; probes/t0481-curly-quote-names-c, pending).
+`a“b`, `"x"“y"`; probes/t0481-curly-quote-names-c, pending), and a quoted token as a sheet prefix (`“D”!A1`,
+which ours reads as a sheet name).
 Ours (T-0481): the lexer reads U+201C and U+201D as name characters, anywhere in a name, and a token
 holding one is a name even where it would spell a cell (`is_typographic_quote`, `is_quoted_name` in
 crates/rustsheet-engine/src/expressions/lexer/mod.rs); defined names still refuse them.
