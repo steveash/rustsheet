@@ -19,10 +19,10 @@ from __future__ import annotations
 import json
 import random
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 from rustsheet_tools.fitlab.kernels.annuity import npv_candidates
+from rustsheet_tools.fitlab.sweep import Cell
 
 ROOT = Path(__file__).resolve().parents[2]
 CASE = ROOT / "eval/suites/probes/cases/npv-term-order.case.json"
@@ -38,11 +38,6 @@ SWEEP_RATES = [0.05, 0.07, 0.1, 0.125, 0.2]  # probes-numeric/m9-fin-nper-npv
 SEARCHED = 11  # rates picked by the search, to make 20
 
 
-@dataclass
-class _Cell:
-    args: tuple[float, ...]
-
-
 def shapes(r: float) -> list[tuple[float, ...]]:
     """The value lists probed at rate r (without the rate)."""
     out: list[tuple[float, ...]] = [(1.0,), (7.0,)]
@@ -52,16 +47,18 @@ def shapes(r: float) -> list[tuple[float, ...]]:
     return out
 
 
-CANDIDATES = npv_candidates()
+# T-1528's candidates, as the rates were searched: the "deferred" candidate T-2671 added is left out, so the
+# search (and the case it writes) stays reproducible.
+CANDIDATES = [c for c in npv_candidates() if "deferred" not in c.name]
 
 
 def distinct(r: float, values: tuple[float, ...]) -> set[float]:
     """The distinct doubles T-1528's candidates give for NPV(r, values)."""
-    cell = _Cell((r, *values))
+    cell = Cell("probes/npv-term-order", "P", "A1", "=NPV()", (r, *values), 0.0)
     out = set()
     for c in CANDIDATES:
         try:
-            out.add(c.evaluate(cell))  # type: ignore[arg-type]
+            out.add(c.evaluate(cell))
         except (ValueError, ZeroDivisionError, OverflowError):
             continue
     return out
@@ -130,8 +127,9 @@ def main() -> None:
         split, total = score(r)
         print(f"R!A{i}  {r!r:<24} {label:<32} cells split {split}/{len(shapes(r))}, distinct doubles {total}")
     case = build(rates)
-    cells = case["sheets"][1]["cells"]  # type: ignore[index]
-    print(f"{len(cells)} NPV cells")
+    sheets = case["sheets"]
+    assert isinstance(sheets, list)
+    print(f"{len(sheets[1]['cells'])} NPV cells")
     if "--write" in sys.argv:
         CASE.write_text(json.dumps(case, indent=2) + "\n")
         print(f"wrote {CASE}")

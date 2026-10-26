@@ -2291,7 +2291,9 @@ where T-1528's candidates differ most; generator docs/research/t2671_npv_term_or
 - zero-padded NPV(r,0,..,0,1) over k periods is (1/d(k-1))/(1+r) with d the running product (220/220, periods 2-12).
   Not 1/(1+r)^k by any power source: 1/d(k) 141/220, libm pow(1+r,-k) 116, repeated division 108, Excel's `^` 78;
 - two- and three-term NPVs with values of opposite sign and close magnitude, and the IRR flows at L2 and D2, sum the
-  quotients left to right before the last division (122/122; summed right to left 116/122).
+  quotients left to right before the last division (122/122, P!A75 and A78 being the same formula; summed right to
+  left 116/122). NPV(r,-1,1+r) is exactly 0 in Excel (e.g. P!A55, A189): the rule gives that zero itself
+  (-1/1 + (1+r)/(1+r)), so there is no snap of near-zero sums.
 Lab: `uv run rustsheet-fitlab annuity-npv` (now also on probes/npv-term-order), candidate "double: deferred (sum
 v/(1+r)^(i-1))/(1+r)": 470/470 bit-exact over m9-fin-nper-npv and npv-term-order (`x87 op` the same). The others:
 Horner from the last value 254/470, the running factor d*=(1+r) with v/d per term 228, sum of v/P with libm pow 190
