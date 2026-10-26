@@ -1,10 +1,8 @@
 #![deny(missing_docs)]
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use crate::defined_names::ParsedDefinedName;
-use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
 use crate::{
     calc_result::{CalcResult, Range},
@@ -15,7 +13,6 @@ use crate::{
             is_limit_error,
             move_formula::{move_formula, MoveContext},
             new_parser_english,
-            static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
             ArrayNode, CallNameSpellings, CompletionContext, Node, Parser,
         },
@@ -141,7 +138,7 @@ pub struct Model {
     /// A list of parsed formulas. They are shared, not owned, so that the
     /// evaluation can hold on to the formula it is running, while the model is
     /// borrowed mutably, without copying it.
-    pub parsed_formulas: Vec<Vec<ParsedFormula>>,
+    pub parsed_formulas: Vec<Vec<crate::formula_cells::ParsedFormula>>,
     /// A list of parsed defined names
     pub(crate) parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
     /// An optimization to lookup strings faster
@@ -206,28 +203,6 @@ pub struct Model {
     /// The spelling of each name called like a function that is none, given to every stored
     /// formula; kept across reparses, as Excel keeps it (a reload rebuilds it from the formulas).
     pub(crate) call_name_spellings: CallNameSpellings,
-}
-
-/// A shared formula as a sheet stores it: the tree evaluation and analysis read, with no
-/// whitespace in it, its static result and, for a formula written with whitespace, the tree as
-/// written, which the cell's formula text prints (SPEC-0023; see [`written_formula`]).
-/// Evaluation never sees a [`Node::Spaced`], so no argument-shape test has to peel one.
-pub type ParsedFormula = (Arc<Node>, StaticResult, Option<Arc<Node>>);
-
-/// `node`, a formula as parsed, stored as a [`ParsedFormula`].
-pub(crate) fn stored_formula(node: Node) -> ParsedFormula {
-    let written = node.has_spaces().then(|| Arc::new(node.clone()));
-    let mut node = node;
-    if written.is_some() {
-        node.strip_spaces();
-    }
-    let static_result = run_static_analysis_on_node(&node);
-    (Arc::new(node), static_result, written)
-}
-
-/// The tree the formula text of `formula` prints: as written, whitespace included.
-pub(crate) fn written_formula(formula: &ParsedFormula) -> &Node {
-    formula.2.as_deref().unwrap_or(&formula.0)
 }
 
 /// Formula text to index in `Worksheet::shared_formulas`, for one sheet.
@@ -1575,8 +1550,9 @@ impl Model {
                     self.language,
                 ),
                 Some(i) => {
-                    let formula =
-                        written_formula(&self.parsed_formulas[sheet as usize][i as usize]);
+                    let formula = crate::formula_cells::written_formula(
+                        &self.parsed_formulas[sheet as usize][i as usize],
+                    );
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -1694,7 +1670,7 @@ impl Model {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let formula = written_formula(
+                    let formula = crate::formula_cells::written_formula(
                         self.parsed_formulas
                             .get(sheet as usize)
                             .ok_or("missing sheet")?
@@ -2254,7 +2230,8 @@ impl Model {
         lookup.index.insert(text.clone(), index);
         shared_formulas.push(text);
         lookup.built_from = shared_formulas.len();
-        self.parsed_formulas[sheet_index].push(stored_formula(parsed_formula));
+        self.parsed_formulas[sheet_index]
+            .push(crate::formula_cells::stored_formula(parsed_formula));
         Ok(index)
     }
 
@@ -2503,8 +2480,9 @@ impl Model {
         };
         match cell.get_formula() {
             Some(formula_index) => {
-                let formula =
-                    written_formula(&self.parsed_formulas[sheet as usize][formula_index as usize]);
+                let formula = crate::formula_cells::written_formula(
+                    &self.parsed_formulas[sheet as usize][formula_index as usize],
+                );
                 let cell_ref = CellReferenceRC {
                     sheet: worksheet.get_name(),
                     row,

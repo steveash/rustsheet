@@ -150,7 +150,7 @@ parse.
   run (`= 1+2`), as the probe shows.
 
 ### Implementation note (T-2781)
-Two changes from the design above, found while implementing step 1:
+Changes from the design above, found while implementing step 1 (decision 0127):
 - **Evaluation reads a stripped tree.** About 300 sites in the evaluator and the functions match an argument's
   shape without `ungrouped()` (`LET` name positions, `ISOMITTED`, reference-argument tests, LAMBDA bodies), which a
   rare `Group` never reached but a common `SUM(A1, B1)` would. So a cell stores the written tree for printing and

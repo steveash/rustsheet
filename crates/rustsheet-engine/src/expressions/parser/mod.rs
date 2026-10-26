@@ -79,7 +79,8 @@ pub(crate) use depth::is_limit_error;
 pub use depth::{
     MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
-pub use spacing::{Run, Spacing};
+pub(crate) use spacing::Run;
+pub use spacing::Spacing;
 pub use structured_reference::StructuredReference;
 
 pub(crate) use call_names::CallNameSpellings;
@@ -398,8 +399,7 @@ impl Node {
     }
 
     /// The area a structured reference resolves to, under any unary plus (the identity) and
-    /// written whitespace; any
-    /// other node is itself. For the sites that see a structured reference as the reference it
+    /// written whitespace; any other node is itself. For the sites that see a structured reference as the reference it
     /// stood for before SPEC-0016 but treat written parentheses apart, so they do not call
     /// [`Node::ungrouped`].
     pub(crate) fn lowered(&self) -> &Node {

@@ -13,7 +13,7 @@ use super::{Node, Parser};
 /// One whitespace run between two tokens, in Excel's stored shape: a count of spaces (SPEC-0023).
 /// The line-feed count is T-2782's.
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
-pub struct Run {
+pub(crate) struct Run {
     spaces: u8,
 }
 

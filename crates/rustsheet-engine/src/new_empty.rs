@@ -141,7 +141,7 @@ impl Model {
                 if self.call_name_spellings.apply(&mut t) {
                     *formula = to_rc_format(&t);
                 }
-                parse_formula.push(crate::model::stored_formula(t));
+                parse_formula.push(crate::formula_cells::stored_formula(t));
             }
             // The lookup of the shared formulas follows the parsed formulas: both
             // are made from the lists of the sheets, here.

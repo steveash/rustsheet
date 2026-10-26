@@ -2,7 +2,9 @@
 //! are parsed differently and stored through the same node setter, so a legacy tree is stored as
 //! it was rewritten, its N/T markers included (SPEC-0012), not re-read from its display text.
 
-use crate::expressions::parser::static_analysis::StaticResult;
+use std::sync::Arc;
+
+use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
 use crate::expressions::parser::stringify::{
     to_localized_string, to_localized_string_this_row_lowered,
 };
@@ -10,11 +12,32 @@ use crate::expressions::parser::Node;
 use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::language::Language;
 use crate::locale::Locale;
-use crate::model::written_formula;
 use crate::model::Model;
 
 /// A printer of a parsed formula in the active locale and language, at a cell.
 type FormulaPrinter = fn(&Node, &CellReferenceRC, &Locale, &Language) -> String;
+
+/// A shared formula as a sheet stores it: the tree evaluation and analysis read, with no
+/// whitespace in it, its static result and, for a formula written with whitespace, the tree as
+/// written, which the cell's formula text prints (SPEC-0023; see [`written_formula`]).
+/// Evaluation never sees a [`Node::Spaced`], so no argument-shape test has to peel one.
+pub type ParsedFormula = (Arc<Node>, StaticResult, Option<Arc<Node>>);
+
+/// `node`, a formula as parsed, stored as a [`ParsedFormula`].
+pub(crate) fn stored_formula(node: Node) -> ParsedFormula {
+    let written = node.has_spaces().then(|| Arc::new(node.clone()));
+    let mut node = node;
+    if written.is_some() {
+        node.strip_spaces();
+    }
+    let static_result = run_static_analysis_on_node(&node);
+    (Arc::new(node), static_result, written)
+}
+
+/// The tree the formula text of `formula` prints: as written, whitespace included.
+pub(crate) fn written_formula(formula: &ParsedFormula) -> &Node {
+    formula.2.as_deref().unwrap_or(&formula.0)
+}
 
 impl Model {
     /// The formula in (`sheet`, `row`, `column`), `=` first, as `printer` prints it at the cell;
