@@ -107,9 +107,9 @@ pub(crate) enum ValueWork {
     /// `extra` more exponents for the window's bounds, at `per_term` units a term; never more
     /// than `weight`, the bound of the sum's own per-call cap. A text count bounds nothing (the
     /// kernel may read it as any count), so the least of the others is taken, `weight` when
-    /// every count is a text; an error, a negative count or one the kernel
-    /// refuses as too large ([`COUNT_LIMIT_EXCLUSIVE`]) 1, as the kernel returns before either
-    /// path. See [`hypergeometric_units`].
+    /// every count is a text. An element is charged 1 when a count is an error, negative or too
+    /// large ([`COUNT_LIMIT_EXCLUSIVE`]): the kernel returns before either path. See
+    /// [`hypergeometric_units`].
     HypergeometricSum {
         counts: &'static [usize],
         walk: u32,

@@ -1017,7 +1017,8 @@ is about 2^18 or more (`ROWS(HYPGEOM.DIST(SEQUENCE(33)*0+1000000,1000000,1000000
 counts, not that this element would be `#NUM!`), and at most 8,192 elements with m up to 892
 (`ROWS(HYPGEOM.DIST(2,3,5,10,SEQUENCE(8193)>0))`; before T-2433 33 such elements were `#ERROR!`, where Excel spills:
 gen-m9/7bd219ec0c0c5e22 A159 over 40 elements). A text count bounds nothing (it may read as any count), so m is the
-least of the other counts, and the bound when all three are texts; an error, a negative count or one of 2^31 - 1 or more, which the kernel refuses before either path, 1. Unit tests
+least of the other counts, and the bound when all three are texts. An element is charged 1 when a count is an error,
+negative, or 2^31 - 1 or more: the kernel refuses it before either path. Unit tests
 `hypgeom_dist_is_charged_its_weight` and `hypgeom_dist_elements_are_charged_by_their_counts`. Measured in release
 (benches/lift.rs): 32 elements at the bound take 1.35 to 1.53 s; 8,192 4,000-step walks (the cdf's walk is about
 120 us, more than the pmf's 78 us) 0.99 to 1.0 s; 1,634 cdf sums of 5,001 terms, charged 82,112 units each, 1.25 to

@@ -177,8 +177,8 @@ const HYPGEOM_WALK_WEIGHT: u32 = 1 << 14;
 /// (hypegeom.rs `nonzero_terms`).
 const HYPGEOM_WINDOW_EXPONENTS: u32 = 131;
 /// `HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)`. A cdf or pmf
-/// takes either the double-double walk (`HYPGEOM_WALK_WEIGHT`) or the capped sum, never both, and the sum's window is at most
-/// min(sample_s, number_sample, population_s) + 1 terms (above min(number_sample, population_s)
+/// takes either the double-double walk (`HYPGEOM_WALK_WEIGHT`) or the capped sum, never both,
+/// and the sum's window is at most min(sample_s, number_sample, population_s) + 1 terms (above min(number_sample, population_s)
 /// the cdf is 1 before any sum), so each element is charged the larger of the two by its counts
 /// (T-2433; before it, every element was charged the cap's bound, and a lift of 33 small calls
 /// was `#ERROR!` where Excel spills: gen-m9/7bd219ec0c0c5e22 A159).

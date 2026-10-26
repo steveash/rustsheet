@@ -1,6 +1,6 @@
 ---
 id: T-2433
-title: "Lifted statistical kernels hit the KernelWork cap at a few hundred elements: #ERROR! where Excel spills (gen-m9, 9 cells)"
+title: "Lifted HYPGEOM.DIST hits the KernelWork cap at a few dozen elements: #ERROR! where Excel spills (gen-m9, 5 cells)"
 milestone: M9
 lane: functions-stat
 status: done
@@ -12,7 +12,8 @@ campaign: semantics
 ---
 
 ## Goal
-A lifted HYPGEOM.DIST, CHIDIST, CHISQ.INV.RT, GAMMADIST, POISSON or BETAINV over an array of a few hundred elements (a
+(Rescoped to HYPGEOM.DIST, see Acceptance criteria; T-2795 owns the others.) A lifted HYPGEOM.DIST, CHIDIST,
+CHISQ.INV.RT, GAMMADIST, POISSON or BETAINV over an array of a few hundred elements (a
 PIVOTBY result, a TRANSPOSE of a range) returns its array, as Excel does (`#SPILL!` in these cells' layout), instead of
 `#ERROR!` from the per-call lift budget.
 
