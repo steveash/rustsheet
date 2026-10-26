@@ -45,10 +45,6 @@ same cached value; the dropped `issues!A2` is kept as probe `round-float-noise-c
 0.0063, passes). Decision 0126 records taking upstream renames as renames.
 
 ## Handoff (resumed)
-Work is complete and reviewed (security, architecture, quality, excel-fidelity all APPROVE; make check
-green locally; ironcalc-calc case 137 -> 326 cells, all pass, 0 regressions). CI `hygiene` fails:
-`scripts/check_governance.py` flags `ROUND.xlsx` as a deleted test file ("requires a decision record and
-reviewer sign-off", a protected path, so beyond a sonnet run). Next: `make new-decision TITLE="..."`
-recording that upstream renamed ROUND.xlsx to ROUND_ROUNDUP_ROUNDDOWN.xlsx (superset, every old cell
-retained) so the delete is a rename, commit it, push, re-run reviewers on the decision, merge the PR
-(#1899) under the merge lock, then set status: done.
+A sonnet run handed the task to opus (hence `tier: opus`): CI `hygiene` failed because deleting
+`ROUND.xlsx` needs a decision record, a protected path. The opus run wrote decision 0126 and
+carried the one dropped cell into a probe (see Outcome).
