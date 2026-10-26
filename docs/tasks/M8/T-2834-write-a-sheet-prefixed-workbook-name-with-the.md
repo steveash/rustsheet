@@ -34,4 +34,4 @@ prefix Excel cannot read (check what Excel stores, likely `[0]!loc`); an unnamed
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- A sheet-scoped name read through its own sheet's prefix (follows a rename since T-1693).
