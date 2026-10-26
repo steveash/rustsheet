@@ -28,7 +28,8 @@ calendar, convert like the lunar calendar's date tokens, and add the name tables
   - Month names are Latin under non-Hebrew LCIDs and Hebrew script under 40D and 401 ("אדר ב").
   - Weekdays are "Yom Rishon" … "Shabat".
   - 9999-12-31 is `#VALUE!`. Serials 0 and 1 are 5660-05-01 (Shvat), and serial 60 is `#VALUE!` under both calendars.
-Probe first: Saka `dddd` for every weekday, Hebrew `ddd`, and the Hebrew names under 40D for all 14 month forms.
+Hebrew-script weekdays join with a no-break space ("יום רביעי", A211); "אדר ב" uses a plain space (A212). Also probe `yy|b|bbbb`
+under digits A, B, C and 14 (T-1923 inferred them as Gregorian). Probe first: Saka `dddd` for every weekday, Hebrew `ddd`, and the Hebrew names under 40D for all 14 month forms.
 
 ## Acceptance criteria
 - [ ] The Saka and Hebrew cells of probes/t1923-calendar-digits and probes/text-locale-calendars leave eval/baseline/probes.txt.

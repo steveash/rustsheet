@@ -522,6 +522,7 @@ month and weekday of A, B, C and 14, with day halves under 401 ("6 م") and 412 
 | B, C | Gregorian, ar-SA names (`mmm` the same) | "مارس", "الأربعاء" |
 | 14 | Gregorian, Korean native month names ("정월" … "섣달", `mmm` the same), Korean weekdays | "삼월", "수" |
 | 15 and above | ignored; the LCID's own calendar (probed 15, 1E, 1F, FF) | `[$-FF040C]mmmm` is "mars" |
+Under A, B, C and 14, `e` and `g` are probed ("2023", ""); `yy`, `b` and `bbbb` are inferred to print as under Gregorian (unprobed).
 
 Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai. Day halves follow the LCID under every calendar digit: `[$-20411]`, `[$-40411]` and `[$-50411]h AM/PM` are "6 午後", and `[$-70412]`/`[$-90412]` give "6 오후".
 
@@ -531,7 +532,7 @@ Under every one of these, `e` stays the Gregorian four-digit year, and so do `b`
   A145:A213. Months number from Tishrei (1), so a leap year has 13: 5784's AdarI is month 6, AdarII 7, Elul 13
   (2024-09-20 is "5784-13-17|Elul"). The year turns at Rosh Hashanah (2023-09-16 is "5784-01-01"). `yy` prints two
   digits, `e` and `b` the Hebrew year. `ddd` is "Yom Rishon" … "Shabat". Under 40D and 401 the names are Hebrew script
-  (AdarII is "אדר ב"). 9999-12-31 is `#VALUE!`, and serials 0 and 1 are "5660-05-01|Shvat".
+  (AdarII is "אדר ב" with a plain space; the weekday "יום רביעי" joins with a no-break space, A211, A212). 9999-12-31 is `#VALUE!`, and serials 0 and 1 are "5660-05-01|Shvat".
 - 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"; T-2779), probed in A85:A144. The year turns on 22 March, or 21
   March in a Gregorian leap year (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days.
   `yy` prints two digits ("44"), `e` and `b` the Saka year. Months are Chaitra … Phalguna. `ddd` is "Ravi", "Som",

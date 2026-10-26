@@ -24,8 +24,9 @@ T-1859 probed them and left them `Silent` (probes/text-locale-calendars A53-A55,
 Hijri (6) is T-1613's. See docs/excel-semantics/number-formats.md "Calendars of a locale tag". Code: formatter/locale_tag.rs `resolve_lcid`.
 
 ## Acceptance criteria
-- [ ] Those cells pass; more dates are probed for the Hebrew and Saka year boundaries.
-- [ ] `make check` green; reviewers approve.
+- [x] The A, B, C and 14 cells pass (text-locale-calendars A59:A67, text-locale-calendars-detail A31, probes/t1923-calendar-digits
+      A1:A84); Hebrew and Saka are probed across their year boundaries and split to T-2779.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
