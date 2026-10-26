@@ -536,12 +536,12 @@ The two-flow returns are not the exact root X - 1 (`IRR({-1,1E+6})` is 999998.99
 these scales are not the fitted secant's (T-2131, T-2565).
 Not explained: `IRR({-1,1E+15})` is `#DIV/0!` from guesses 0.05, 0.1, 5E+14 and 1E+15, and so are `IRR({-1,1E+300})`
 and IRR over gen-m9 bc04c1f478c9896c's Data!A1:D12 (first flow 0) from guesses 0.05, 0.1 and 0.5; ours is `#NUM!`
-(T-2789). `IRR({0,1E+15,2,42,1E+15,-0.0001})`, also a zero first flow, is `#NUM!` as ours.
+(T-2802). `IRR({0,1E+15,2,42,1E+15,-0.0001})`, also a zero first flow, is `#NUM!` as ours.
 Evidence: probes/irr-fallback-roots A25-A40, probes/irr-guess-edges-2 A15-A34, probes/irr-guess-edges A27-A39
 (excel-graph, 2026-10-25 and 2026-10-26).
 Status: VERIFIED (excel-graph) for the bound; the `#DIV/0!` cases are UNVERIFIED
 Implemented in: `IRR_FAR_ROOT_BOUND`, `irr_from_discount` (functions/financial/financial_util.rs)
-Tasks: T-2727, T-2789
+Tasks: T-2727, T-2802
 
 ## IRR's fallback when the secant fails
 Rule: where both secant runs fail (an iterate at v <= 0, a flat secant, no stop in the cap), Excel finds some roots and
