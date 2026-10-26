@@ -112,3 +112,10 @@ which quantity separates 16-24 from 11-15 and 25+. Hypothesis (a) of the Context
   Most likely is hypothesis (a): Excel's `+`/`^` trajectory for n 11-15 reaches -1 or goes flat before the cap,
   as the engine's does for every n >= 11. Trace the engine's own iterates (it uses Excel's `+` and `^`) against
   the plain-double run, to see where they part and why the engine gives `#NUM!` at n 16-24. Script: the model above, about 15 lines of Python.
+- Scale-free tests are ruled out. At n = 24, guesses 0, 0.1 and 0.5 end with the same step ratio (0.970931), f ratio
+  (0.4926), step / (1+r) (0.02994) and n·step / (1+r) (0.7186). But 0 and 0.1 return and 0.5 is `#NUM!`. So the
+  upper edge is an absolute test on the last step, between 8.94e-5 (returned) and 1.09e-4 (`#NUM!`): 1e-4 fits.
+  The lower `#NUM!` band (n 11-15, last step 1.3e-7 to 3.7e-6) is the remaining puzzle. Note that the engine's
+  `compute_rate` returns at the cap only when |dr| < 1e-7, so it is `#NUM!` for every n >= 11 here.
+  Scratch scripts: the plain-double secant over 200 steps, printing the 200th step, the step ratio, f200/f199
+  and 1+r.
