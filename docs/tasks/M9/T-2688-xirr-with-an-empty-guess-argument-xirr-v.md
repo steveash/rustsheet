@@ -3,7 +3,7 @@ id: T-2688
 title: "XIRR with an empty guess argument (XIRR(v,d,)) uses the default 0.1, not guess 0 (calipers pv23_056 Summary!F23)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -73,3 +73,18 @@ the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance
 
 Owned visibly-off cells (2026-10-25 eval run): calipers pv23_056 Summary!F23 (XIRR, off in the 9th digit).
 Stage `semantics`: a semantic rule (how an empty argument reads) gives the wrong number.
+
+## Outcome
+- Probe `probes/xirr-irr-empty-guess` (22 cells, excel-graph) agrees with the Mac cell: `XIRR(v,d,)` is the
+  default 0.1 (same bits as no guess and `,0.1`), while an empty-cell guess and `0.1-0.1` are guess 0. IRR reads
+  `IRR(v,)` and `IRR(v,E1)` as guess 0, like RATE. A `""` guess is `#VALUE!` for both.
+- `fn_xirr` drops an `EmptyArg` guess so the default applies; IRR and RATE are unchanged
+  (probes/rate-empty-arguments still passes). New financial.md entry "XIRR (and IRR): an empty guess argument
+  is the default 0.1 for XIRR, guess 0 for IRR", cross-referencing RATE's.
+- Eval delta: probes 2599 -> 2605 known failures, all new coverage: the six IRR guess-0 cells (A11, A13, A15,
+  A17, A19, A21), where our IRR from guess 0 is a few ulps off Excel (…3171 for …3149), an existing IRR kernel
+  gap (T-2131's lane), not an empty-guess rule. The 16 XIRR cells pass. calipers pv23_056 Summary!F23 now
+  passes (0.11376532912254333).
+- Not met here: removing the `F ... pv23_056 ... Summary!F23` line. `update-baseline --suite calipers` refuses on
+  main's 36 pre-existing ulp regressions (pv23_007/008/009/056 PPMT, NPV, SUM; none XIRR), exactly the cells
+  T-0463 owns, and recording them is that task's call. The line is stale until T-0463 ratchets the suite.
