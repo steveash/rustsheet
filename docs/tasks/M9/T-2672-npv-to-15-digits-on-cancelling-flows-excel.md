@@ -55,6 +55,14 @@ tools/src/rustsheet_tools/fitlab/kernels/annuity.py (`annuity-npv`).
 The NPV cells that are #DIV/0! in Excel (rate -1 or 1E+300) are T-2493's and T-2618's. Cells where an inner
 function differs (FORECAST.ETS, VAR.S) belong to that function's task.
 
+T-2671 (2026-10-26) found the formulation: NPV = (v1/d0 + v2/d1 + ... + vn/d(n-1)) / (1+r) with d0 = 1 and
+d(i) = d(i-1)*(1+r), all in doubles, summed left to right, with one division by (1+r) at the end. It is bit-exact on
+all 382 probes/npv-term-order cells and the 88 m9-fin-nper-npv cells (lab `annuity-npv`, 470/470), and on M2, M3, M8,
+Three Parameters!E2, H367 and A148 above (financial.md "NPV's residue at IRR's root is not the double sum"). The
+fit criterion below is met by that entry; what remains is the engine. Keep T-2493's `#DIV/0!` rules at huge rates
+and flow counts (financial.md) when the power source changes from Excel's `^` to the running product: check
+probes/npv-power-edges and npv-power-edges-2 stay green. The 244 probes/npv-term-order known failures are this task's.
+
 ## Acceptance criteria
 - [ ] An NPV formulation fitted on T-2671's probe, held out on the cells above, is recorded in financial.md under
       "NPV's residue at IRR's root is not the double sum" with its hit counts (bit-exact, within 4 ulp, within 15
