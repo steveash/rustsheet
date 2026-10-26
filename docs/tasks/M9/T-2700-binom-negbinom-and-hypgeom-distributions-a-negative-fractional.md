@@ -3,7 +3,7 @@ id: T-2700
 title: "BINOM, NEGBINOM and HYPGEOM distributions: a negative fractional count is #NUM! before truncation (gen-m9, 9 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
