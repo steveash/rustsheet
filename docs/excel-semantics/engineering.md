@@ -387,7 +387,8 @@ Evidence: gen-m9/290180acf017709c Calc!A148, A158, gen-m9/f81bd3b6dc373e5c Calc!
 2026-10-26; the units are Data!C6 = FALSE, Data!E10 = FALSE and Data!A7 = TRUE); probes/eng-convert-boolean-unit
 A1:A32 (excel-graph, 2026-10-26, T-2810; D1 TRUE, D2 FALSE, D3 `=1/0`).
 Ours: since T-2793 `#VALUE!` for a boolean unit, read in order (from_unit's error or boolean first), before the unit
-lookup; typed and array-element booleans take the same path.
+lookup; typed and array-element booleans take the same path, so every error cell of the T-2810 probe matches. Its
+three numeric cells are `CONVERT(1,"m","ft")`, one ulp low in ours (3.280839895013123; T-2046, T-2047).
 Status: VERIFIED (excel-graph)
 Tasks: T-2793, T-2810
 
