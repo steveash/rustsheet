@@ -3,7 +3,7 @@ id: T-2699
 title: "HYPGEOM.DIST and HYPGEOMDIST: a sample below the smallest possible count is 0, not #NUM! (gen-m9, 13 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -91,3 +91,9 @@ T-2429 (2026-10-25) probes more impossible samples: probes/t2429-hypgeom-huge-co
 Decision 0083: every cell this task owns has the wrong type or error (none is a last-digit difference), so the task is in
 the campaign at the `semantics` stage. Its target is that every cell it owns has Excel's type and error, or a value within
 half a unit of the 15th significant digit; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`hyp_geom_dist_of` no longer folds the lower bound into the `#NUM!` check: a sample below
+number_sample + population_s - number_pop is 0 for the pmf and the cdf. gen-m9 known failures
+-13, probes -42 lines (T-2436 and t2429 cells); no new known failures. statistics.md T-2255 "Ours:"
+updated. The existing lift test A9 (`HYPGEOM.DIST(0,6,5,10,TRUE)`) is now 0 under the same rule.
