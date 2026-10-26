@@ -3,12 +3,12 @@ id: T-2473
 title: "PERCENTRANK: a significance of 2^31 or more is #DIV/0!, and its truncation keeps Excel's digit at a cut (gen-m9, 11 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -44,10 +44,10 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (2): Calc!A43, A157
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2256): these 11 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2256): these 11 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `PERCENTRANK.EXC({1E+15,1,-1E+15},0.3)` is 0.5, `PERCENTRANK.INC(A1:A3,1,2147483648)` `#DIV/0!`.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests: `PERCENTRANK.EXC({1E+15,1,-1E+15},0.3)` is 0.5, `PERCENTRANK.INC(A1:A3,1,2147483648)` `#DIV/0!`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The argument order (T-2472).
@@ -56,3 +56,11 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2256): nine of its eleven cells are visibly off (0.5 against 0.499, `#DIV/0!` against `#NUM!`), so the task is in the campaign. Its target is that every cell it owns
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Outcome
+- Probed (probes/t2473-percentrank-significance, excel-graph 2026-10-25): a significance of 309 or more (10^sig overflows)
+  is `#DIV/0!`, 308 computes; the truncation is floor(cut15(rank * 10^sig)) / 10^sig with 10^sig correctly rounded.
+- `percentrank_of` does that, with FLOOR's 15-digit cut moved into `decimal_round::cut_to_15_digits` (shared with
+  ceiling_floor.rs `snap_ratio`).
+- Eval delta: gen-m9 known failures -12 (the 11 owned cells and bbab6562e88b70e8 A290), probes -3 (t2475-stat-subexpressions
+  P!A449, A452, A455); the new probe case passes 69/69; no regressions.

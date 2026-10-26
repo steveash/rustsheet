@@ -1,0 +1,44 @@
+== old: 2278 rows, 2242 distinct (kernel,k,n,p)
+-- BIN interior (1306)
+   CR           180/757/986 of 1306
+   L-lcx/LF1    391/1076/1156 of 1306
+   L-lcxx/LF0   288/1104/1181 of 1306
+   L-ext/LF0    190/929/1081 of 1306
+-- BIN k=0 (173)
+   CR           54/117/141 of 173
+   L-lcx/LF1    173/173/173 of 173
+   L-lcxx/LF0   173/173/173 of 173
+   L-ext/LF0    173/173/173 of 173
+   EDGE         173/173/173 of 173
+-- BIN k=n (172)
+   CR           70/132/143 of 172
+   L-lcx/LF1    172/172/172 of 172
+   L-lcxx/LF0   172/172/172 of 172
+   L-ext/LF0    172/172/172 of 172
+   EDGE         172/172/172 of 172
+-- NEG (508)
+   CR           110/351/409 of 508
+   L-lcx/LF1    122/428/448 of 508
+   L-lcxx/LF0   116/450/463 of 508
+   L-ext/LF0    125/407/443 of 508
+-- NEG r=1 (119)
+   CR           39/96/94 of 119
+   L-lcx/LF1    47/118/118 of 119
+   L-lcxx/LF0   47/118/118 of 119
+   L-ext/LF0    47/118/118 of 119
+-- all (2278)
+   CR           453/1453/1773 of 2278
+   L-lcx/LF1    905/1967/2067 of 2278
+   L-lcxx/LF0   796/2017/2107 of 2278
+   L-ext/LF0    707/1799/1987 of 2278
+-- all, distinct cells only
+   CR           440/1426/1743 of 2242
+   L-lcx/LF1    890/1935/2035 of 2242
+   L-lcxx/LF0   784/1983/2073 of 2242
+   L-ext/LF0    693/1770/1955 of 2242
+-- edge cells where R's dbinom_raw uses bd0 (51; distinct 51)
+   EDGE (claim) 51/51/51 of 51
+   R-bd0 rival  43/50/51 of 51
+   CR           43/50/51 of 51
+   claim == rival value on 43
+   distinct (n, p): 51; p values [0.9, 0.99, 0.999]

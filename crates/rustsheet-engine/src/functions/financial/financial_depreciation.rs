@@ -222,6 +222,15 @@ fn vdb_switching_between(
 /// its period up to it.
 pub(crate) const MAX_DEPRECIATION_PERIODS: u32 = 100_000;
 
+/// DB's largest life and period, `i32::MAX`: Excel reads both as 32-bit integers
+/// (probes/fin-syd-db-domain A6:A7, C7:C8).
+const DB_INTEGER_MAX: f64 = 2_147_483_647.0;
+
+/// The smallest DB life whose last year, life+1, is period 0: `u32::MAX`, as if Excel held the
+/// life in an unsigned 32-bit integer that saturates and life+1 wrapped (probes/fin-syd-db-domain
+/// H3:H8, L1:L6; 4294967294 and 4E9 are `#NUM!`).
+const DB_WRAPPED_LIFE: f64 = 4_294_967_295.0;
+
 /// Whether `period` is past [`MAX_DEPRECIATION_PERIODS`].
 fn past_period_cap(period: f64) -> bool {
     period.trunc() > f64::from(MAX_DEPRECIATION_PERIODS)
@@ -233,8 +242,7 @@ fn past_period_cap(period: f64) -> bool {
 // last period charges `balance * (rate * (12 - month) / 12)`. `DB(100,10,4,1,2)` is
 // 7.299999999999999 and `DB(23,10,4,5,2)` 1.8687313963962309 (ironcalc-calc DB_DDB.xlsx G20, G42).
 fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) -> f64 {
-    // The depreciation rate, rounded to three decimal places.
-    let rate = ((1.0 - (salvage / cost).powf(1.0 / life)) * 1000.0).round() / 1000.0;
+    let rate = db_rate(cost, salvage, life);
     let int_period = period.trunc() as i64;
     let int_life = life.trunc() as i64;
 
@@ -255,6 +263,19 @@ fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) 
     } else {
         balance * rate
     }
+}
+
+/// DB's depreciation rate, rounded to three decimal places.
+fn db_rate(cost: f64, salvage: f64, life: f64) -> f64 {
+    ((1.0 - (salvage / cost).powf(1.0 / life)) * 1000.0).round() / 1000.0
+}
+
+/// DB's partial last year straight after the first: what a period below 1 is when `life` is at
+/// least [`DB_WRAPPED_LIFE`] and `month` is not 12 (`DB(100,0,4294967296,0.5,8)` is
+/// 11.111111111111114, `DB(100,0,1E+10,0.5,6)` 25; probes/fin-syd-db-domain L7, L8).
+fn db_wrapped_last_year(cost: f64, salvage: f64, life: f64, month: f64) -> f64 {
+    let rate = db_rate(cost, salvage, life);
+    (cost - cost * rate * (month / 12.0)) * (rate * (12.0 - month) / 12.0)
 }
 
 // `ddb`: double-declining-balance depreciation for a single `period`
@@ -310,17 +331,23 @@ impl Model {
                 let start_period = model.cast_number_ref(start_period, cell)?;
                 let end_period = model.cast_number_ref(end_period, cell)?;
                 let factor = model.cast_number_or(rest.first(), 2.0, cell)?;
-                // no_switch defaults to FALSE => switch to straight line.
-                let no_switch = model.cast_number_or(rest.get(1), 0.0, cell)? != 0.0;
+                // no_switch defaults to FALSE => switch to straight line. It reads as a boolean:
+                // "TRUE" and "FALSE" in any case are taken and other text, numeric text too, is
+                // `#VALUE!`, before the range checks (probes/t2492-vdb-ddb-arguments A1:A9, A27).
+                let no_switch = rest
+                    .get(1)
+                    .map_or(Ok(false), |value| Self::cast_bool_ref(value, cell))?;
+                // A factor of 0 is taken (no declining balance: straight line, or 0 with
+                // no_switch), and so is an empty window at period 0 (probes/t2492-vdb-ddb-arguments
+                // A13:A19).
                 if cost < 0.0
                     || salvage < 0.0
                     || life <= 0.0
-                    || factor <= 0.0
+                    || factor < 0.0
                     || start_period < 0.0
                     || start_period > life
                     || end_period > life
                     || start_period > end_period
-                    || end_period <= 0.0
                 {
                     return Err(num_error(cell));
                 }
@@ -358,20 +385,35 @@ impl Model {
                 let salvage = model.cast_number_ref(salvage, cell)?;
                 let life = model.cast_number_ref(life, cell)?;
                 let period = model.cast_number_ref(period, cell)?;
-                let month = model
-                    .cast_number_no_bools_or(rest.first(), 12.0, cell)?
-                    .trunc();
+                // A boolean month reads as 1 or 0, from a cell too (`DB(15779,385,37,<FALSE>,<FALSE>)`
+                // is `#NUM!`, probes/t2475-stat-subexpressions A165), as DDB's factor does.
+                let month = model.cast_number_or(rest.first(), 12.0, cell)?.trunc();
+                // Excel reads life and period as 32-bit integers: a period past i32::MAX is period 1
+                // (month 12 too, probe E8), a life past it is #NUM! except the u32::MAX "wrapped
+                // last year", and a negative salvage is #NUM! even at cost 0 (financial.md "DB and
+                // SYD argument domains", probes/fin-syd-db-domain).
+                let huge_period = period > DB_INTEGER_MAX;
+                let period = if huge_period { 1.0 } else { period };
+                let wrapped_last_year = life >= DB_WRAPPED_LIFE && month != 12.0 && period < 1.0;
+                let huge_life = life > DB_INTEGER_MAX && !huge_period && !wrapped_last_year;
                 if month == 12.0 && period > life
-                    || (period > life + 1.0)
+                    // The partial last year is period life+1 by its whole part
+                    // (`DB(0.01,488,32,33.5,10)` is period 33's value, probes/fin-syd-db-domain C2).
+                    || (period.trunc() > life + 1.0)
                     || month <= 0.0
                     || month > 12.0
                     || period <= 0.0
                     || cost < 0.0
+                    || salvage < 0.0
+                    || huge_life
                 {
                     return Err(num_error(cell));
                 }
                 if cost == 0.0 {
                     return Ok(0.0);
+                }
+                if wrapped_last_year {
+                    return Ok(db_wrapped_last_year(cost, salvage, life, month));
                 }
                 if past_period_cap(period) {
                     return Err(num_error(cell));
@@ -417,17 +459,26 @@ impl Model {
                 let salvage = model.cast_number_ref(salvage, cell)?;
                 let life = model.cast_number_ref(life, cell)?;
                 let per = model.cast_number_ref(per, cell)?;
-                if life == 0.0 || per > life || per <= 0.0 {
+                if life == 0.0 || per > life || per <= 0.0 || salvage < 0.0 {
                     return Err(num_error(cell));
                 }
-                Ok(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
+                // `life*(life+1)` past the double range is #DIV/0! (`SYD(100,10,1.4E+154,1)`),
+                // a numerator past it #NUM! (`SYD(1E+300,-1E+300,10,1)` by its salvage;
+                // probes/fin-syd-db-domain F16, F20; financial.md "DB and SYD argument domains").
+                let years = life * (life + 1.0);
+                if !years.is_finite() {
+                    return Err(div_error(cell));
+                }
+                Ok(((cost - salvage) * (life - per + 1.0) * 2.0) / years)
             };
             number_or_error(read())
         })
     }
 
     /// `DDB(cost, salvage, life, period, [factor])`; `factor` is 2 when omitted (the
-    /// double-declining balance), and a boolean factor is `#VALUE!`.
+    /// double-declining balance). A boolean factor is 1 or 0 and a numeric text its number:
+    /// `DDB(1000,100,10,1,TRUE)` is 100, with FALSE `#NUM!`, with "3" 300 (probes/t2492-vdb-ddb-
+    /// arguments A32:A38).
     pub(crate) fn fn_ddb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ddb, args, cell, &mut |model, values| {
             let [cost, salvage, life, period, rest @ ..] = values else {
@@ -438,7 +489,7 @@ impl Model {
                 let salvage = model.cast_number_ref(salvage, cell)?;
                 let life = model.cast_number_ref(life, cell)?;
                 let period = model.cast_number_ref(period, cell)?;
-                let factor = model.cast_number_no_bools_or(rest.first(), 2.0, cell)?;
+                let factor = model.cast_number_or(rest.first(), 2.0, cell)?;
                 if period > life || cost < 0.0 || salvage < 0.0 || period <= 0.0 || factor <= 0.0 {
                     return Err(num_error(cell));
                 }

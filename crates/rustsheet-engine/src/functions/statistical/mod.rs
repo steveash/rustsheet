@@ -21,10 +21,12 @@ mod gauss;
 mod geomean;
 mod hypegeom;
 mod if_ifs;
+pub(crate) mod ifs_cache;
 mod incomplete_beta;
 mod incomplete_gamma;
 mod inverse_beta;
 mod linest;
+mod loader;
 mod log_normal;
 mod mode_functions;
 mod normal;
@@ -43,6 +45,8 @@ pub(super) mod special;
 mod standard_dev;
 mod standardize;
 mod student_t;
+#[cfg(test)]
+mod t2464_harness;
 mod t_dist;
 mod trend;
 mod trimmean;
@@ -51,3 +55,4 @@ mod weibull;
 mod z_test;
 
 pub(crate) use if_ifs::IfsShape;
+pub(crate) use special::ln_gamma;

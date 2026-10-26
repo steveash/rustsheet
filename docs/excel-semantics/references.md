@@ -103,9 +103,15 @@ Rule (excel-graph, replayed sheet edits, T-1608):
   Excel rewrites the formula: with Calc, Jan, Feb, Mar, moving Mar to position 1 gives
   `=SUM(Jan:Feb!A1)` (30), and moving Jan to position 3 gives `=SUM(Feb:Mar!A1)` (50). The span is
   not re-resolved by name. Evidence: sheet-ops-move-span-end-first, sheet-ops-move-span-start-last.
-  The engine keeps `Jan:Mar` (40): T-1691.
+  A span left with one sheet becomes a plain reference: moving Feb before Jan turns
+  `=SUM(Jan:Feb!A1)` into `=SUM(Jan!A1)` (sheet-ops-move-two-sheet-span-end-first). Spans in
+  defined names shrink the same way (sheet-ops-move-span-end-in-name).
+  The engine rewrites them before the move (`move_sheet_in_node`, T-1691), and its undo puts the
+  written text back.
 - Moving the sheet that holds the formula changes nothing (sheet-ops-move-formula-sheet).
-Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
+Unprobed: moving the first sheet of a two-sheet span past the last (the engine writes the last
+sheet alone), a span written backwards (`Mar:Jan`, which the engine rewrites in tab order when it
+shrinks), deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
 cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
 that lost an end sheet `#REF!` and does not shift a span for row or column edits.
 Status: VERIFIED (Excel for the web) for renames and moves; UNVERIFIED for deletes
@@ -133,6 +139,11 @@ A sheet-qualified sheet-scoped name (`=Data!Local`) also keeps working after the
 (sheet-ops-rename-sheet-scoped-name).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1693
+
+## INDIRECT of sheet-qualified name text
+`INDIRECT("<Sheet>!<Name>")` reaches a name scoped to that sheet from any sheet; its prefix follows
+formula quoting. Rule, evidence and the calipers pv26_020 anonymisation note: lookup.md "INDIRECT of
+`Sheet!Name` text" (probes/indirect-sheet-scoped-name, T-2660).
 
 ## INDIRECT does not take 3-D text
 Rule (excel-graph): INDIRECT of span text is `#REF!`. `SUM(INDIRECT("Jan:Mar!A1"))` is `#REF!`,
@@ -401,6 +412,48 @@ the same way at parse time, so ISREF and a rename see them. A sheet-qualified wo
 (`Sheet!GlobalName`), an unknown `Sheet!Nope` (engine: `#NAME?`) and a missing sheet are UNVERIFIED (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
 Tasks: T-1382, T-1459, T-1460, T-1526, T-1550, T-1609, T-1654
+
+## Criteria and sum ranges of a linked workbook are `#VALUE!`
+Rule: a criteria or sum range of COUNTIF, COUNTIFS, SUMIF, SUMIFS, AVERAGEIF, AVERAGEIFS, MAXIFS or
+MINIFS that is a range of a linked workbook is `#VALUE!` without the other file open, even though
+other functions read its cached cells (SUM, INDEX, lookups: "Cached values of a linked workbook"
+above). A whole column counts too: `COUNTIFS('[1]XA Data Pull'!$J:$J,">="&W$1,...)` is `#VALUE!`.
+Evidence: corpus-bench 52450 sheet1, all 1,830 formulas with a COUNTIFS over `'[1]XA Data Pull'!`
+ranges (W5:Y5 and the rest of their block), Excel-cached `#VALUE!` (desktop workbook; no oracle run).
+Unprobed: a range of a linked sheet the file caches nothing for, where ours is `#VALUE!` too (an
+array of `#BLOCKED!`, which is not a range).
+Ours: IMPLEMENTED: `ifs_range` (functions/statistical/if_ifs.rs) makes any argument that is not a
+range of this workbook `#VALUE!`; `ifs_range_arg` gives a linked range that error without building its
+array (`Model::is_external_array`, external_links.rs; T-0477). A single cached cell is `#VALUE!` the
+same way; a range past the array bound keeps that bound's error (arrays.md).
+Status: VERIFIED (desktop, cached values)
+Tasks: T-0477
+
+## Lookups into a linked sheet with no cached data are `#N/A`
+Rule: a sheet the externalLink part lists in `sheetNames` but caches no cell of (no
+`sheetData` for its `sheetId`, or an empty `<sheetData sheetId="4"/>`) reads `#BLOCKED!` as a
+reference with no link does: `=[1]Sort!$B$2` is `#BLOCKED!`, ERROR.TYPE 11, ISBLANK FALSE,
+`SUM([1]Sort!$B$2:$C$3)` and `SUMPRODUCT(…)` `#BLOCKED!`, `INDEX([1]Sort!$B$2:$C$3,1,1)+1` 1,
+`COUNTIF(…,5)` `#VALUE!`; a cell a cached sheet does not hold stays empty (`ERROR.TYPE([1]Uses!$Z$99)`
+`#N/A`). But VLOOKUP, HLOOKUP, MATCH and XLOOKUP over it are `#N/A`, found or not
+(nothing is), over one cell, a small range, whole columns (`VLOOKUP(5,[1]Sort!$B:$Z,2,FALSE)`, 1048576
+x 25 cells) and whole rows alike, exact or approximate; ERROR.TYPE of each is 7, IFERROR takes the
+fallback and XLOOKUP's if_not_found is returned (`"none"`). The `#N/A` comes before the index check:
+`VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)` is `#N/A`, not `#REF!`. The same holds for a sheet whose
+`sheetData` has `refreshError="1"` and no cells, but a direct read of that one is `#REF!`
+(`ERROR.TYPE('[1]56737'!$B$2)` is 4). Unlike a reference with no link, `COUNTA([1]Sort!$B:$B)` is
+1048576: it counts every blocked cell. Over whole columns of a cached sheet Excel gives: `VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)` is the cached "7", `VLOOKUP(6,[1]Uses!$A:$C,3,TRUE)`
+1, `VLOOKUP(5,[1]Uses!$A:$Z,26,FALSE)` 0 and `VLOOKUP(99,…)` `#N/A`.
+Evidence: fixtures/external-link-uncached-lookups Refs!B1:B51 (excel-graph, 2026-10-25, T-0457).
+Unprobed, do not extrapolate: LOOKUP, XMATCH, INDEX/MATCH and defined names (`[1]!Name`) into such a
+sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part.
+Engine: a sheet the cache holds no cell of is uncached (`cached_sheet`, external_links.rs), so it
+reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and MATCH's table
+`#N/A` on such a sheet. Not yet matched: the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)`
+(`#BLOCKED!`, not `#N/A`), the refreshError sheet's `#REF!` and COUNTA's count (T-0472), and whole
+columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
+Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
+Tasks: T-0457
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -690,10 +743,11 @@ passes a LAMBDA through, is not callable; the engine reads these as syntax error
 `=LAMBDA(a,LAMBDA(b,a*b))(3) (4)` is refused the same way (no intersection), and the engine reads it as a syntax error too.
 `LAMBDA(x,LAMBDA(y,x+y))(1)()` gives an error the oracle could not decode (unprobed). An unknown name's call chained,
 `=FOO(1)(2)`, is `#NAME?`, and a parenthesized value a function returned, `=(IF(TRUE,1))(2)`, is called like a LET-bound
-value, `#NAME?`. These are exactly the built-ins an intersection accepts (`is_reference_operand`). Unprobed: a chain after a
-defined-name LAMBDA (`=MYFN(1)(2)`; the engine chains any name call; T-2501).
+value, `#NAME?`. These are exactly the built-ins an intersection accepts (`is_reference_operand`). A defined-name LAMBDA's call chains
+like a LET name's: with `MYFN` = `=LAMBDA(x,LAMBDA(y,x*y))`, `=MYFN(3)(4)` is 12, and with `MYFN` = `=LAMBDA(x,x)`,
+`=MYFN(1)(2)` calls the returned number, which is `#NAME?` as for a LET-bound value (T-2501).
 Evidence: probes/lambda-escaping-closures H3, H8, H10; probes/chained-calls-lambda B1:B10; probes/chained-calls-ref-1..4, -6
-(oracle: excel-graph, 2026-10-22, T-2038); probes/chained-calls-builtin-* (excel-graph, 2026-10-23, T-2405); the refused
+(oracle: excel-graph, 2026-10-22, T-2038); probes/chained-calls-builtin-* (excel-graph, 2026-10-23, T-2405); probes/chained-calls-name-curried, -value (excel-graph, 2026-10-25, T-2501); the refused
 forms were single-formula workbooks, not kept as cases (a refused workbook gives no values).
 Status: VERIFIED (Excel for the web)
 Implemented in: expressions/parser/lambda.rs (`Parser::chain_calls`, after a call and a name call), parser/operands.rs
@@ -902,7 +956,13 @@ step per row found (at least one, even with no cell in the area's columns), one 
 chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
 operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
-range argument is not counted and is walked as before (every position of its used area). Over
+range argument is not counted and is walked as before (every position of its used area), unless a
+far cell stretches that used area: a single range whose clipped area holds at least 65,536
+positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
+XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area, so it costs
+the data (T-1690). It does not draw on the budget: that walk costs less than the dense one it
+replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over 100,000
+cells) gives the same value as the dense walk, and the change adds no `#VALUE!`. Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
@@ -938,8 +998,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
@@ -2264,7 +2324,15 @@ Right/Left):
 - Convert to Range (`tables/convertToRange`): every value is kept and each structured reference from another
   sheet is rewritten as an absolute, sheet-qualified range: `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
   `=COLUMN(S!$C$4:$C$7)`; `ROWS(Sales)` 4, `ROWS(Sales[#All])` 5 and `ROW(Sales[#Headers])` 3 keep their values
-  (table-convert-to-range).
+  (table-convert-to-range). On the table's own sheet the range is not sheet-qualified: `=SUM($C$4:$C$7)`,
+  `=COUNTA($B$4:$B$7)`, `ROWS(Sales[#All])` 5, and a `#This Row` reference beside the table prints
+  `=$C4*2` (absolute column, relative row) (table-convert-same-sheet, T-2342).
+  A defined name `=Sales[Qty]` (or `=Sales[#All]`) keeps working: `SUM(QtyName)` is 15, `ROWS(QtyName)` 4,
+  `SUM(AllName)` 15, and FORMULATEXT of a cell using the name still prints `=SUM(QtyName)` (the name's own body
+  is not readable through the oracle). A `#This Row` reference off the data rows is not lowered: above the
+  header (S!F1), below the table (S!F9) and on another sheet (T!A1) it is `#VALUE!` after the convert and
+  FORMULATEXT still prints `=Sales[@Qty]`, as the structured text of a table that no longer exists
+  (table-convert-names-this-row, excel-graph 2026-10-25, T-2643).
 - Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
   `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
   cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
@@ -2281,8 +2349,11 @@ Status: VERIFIED (excel-graph)
 Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
-move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339),
-and convert to range (T-2342; the adapter refuses `convert_table`) do not. A deleted table or sheet matches
+move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
+do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
+reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
+off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
+in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a
@@ -2294,7 +2365,7 @@ xlsx export writes `S!C4:C7` where Excel stores `#REF!C4:C7`. The `#REF!` displa
 existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
-Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

@@ -204,24 +204,7 @@ impl Engine for RustSheetEngine {
                 // any cell is set.
                 // `Sheet1!Print_Area` is a name scoped to Sheet1, as xlsxwriter (spec2xlsx)
                 // reads it.
-                for (name, formula) in &spec.names {
-                    match split_qualified(name) {
-                        Some((sheet, local)) => {
-                            let id = spec
-                                .sheets
-                                .iter()
-                                .position(|s| s.name.eq_ignore_ascii_case(&sheet))
-                                .and_then(|i| ids.get(i).copied())
-                                .ok_or_else(|| {
-                                    rustsheet::EditError::Engine(format!(
-                                        "name {name}: no sheet {sheet}"
-                                    ))
-                                })?;
-                            tx.load_defined_name(Some(id), &local, formula)?;
-                        }
-                        None => tx.load_defined_name(None, name, formula)?,
-                    }
-                }
+                define_names(tx, spec, &ids, false)?;
                 // Values first, then tables (they read their headers), then formulas (a
                 // structured reference parses only once its table exists).
                 for formulas in [false, true] {
@@ -258,6 +241,8 @@ impl Engine for RustSheetEngine {
                         }
                     }
                 }
+                // A name with a structured reference parses only once its table exists.
+                define_names(tx, spec, &ids, true)?;
                 for (sheet, &id) in spec.sheets.iter().zip(&ids) {
                     for table in &sheet.data_tables {
                         let input = |a1: &Option<String>| -> Result<_, rustsheet::EditError> {
@@ -343,15 +328,12 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
                 let id = sheet_id_of(workbook, sheet)?;
                 workbook.edit(|tx| tx.delete_sheet(id)).map(drop)
             }
-            // The engine has no convert to range yet: the case scores as an adapter error.
-            SheetOp::ConvertTable { .. } => {
-                return Err(format!(
-                    "sheet op {op:?}: the engine cannot convert a table to a range"
-                ));
-            }
             // Not `Txn` edits: the facade has no structural edits yet, so the harness uses its
             // feature-gated ones (decisions 0076, 0098). Rows and columns are 1-based in the case
             // file. A `Txn` edit recalculates on commit; these do not.
+            SheetOp::ConvertTable { table, .. } => workbook
+                .convert_table_to_range(table)
+                .map(|()| workbook.recalculate()),
             SheetOp::DeleteTable { table, .. } => workbook
                 .delete_table(table)
                 .map(|()| workbook.recalculate()),
@@ -401,6 +383,38 @@ fn calculations(spec: &CaseSpec) -> usize {
     } else {
         1
     }
+}
+
+/// Defines the workbook and sheet-scoped names of `spec` whose formula has a structured
+/// reference (`structured`) or has none. A `[` anywhere in the formula counts, an approximation:
+/// a name whose `[` is in a string is only defined later, after the tables, which is harmless.
+fn define_names(
+    tx: &mut rustsheet::Txn<'_>,
+    spec: &CaseSpec,
+    ids: &[SheetId],
+    structured: bool,
+) -> Result<(), rustsheet::EditError> {
+    for (name, formula) in spec
+        .names
+        .iter()
+        .filter(|(_, f)| f.contains('[') == structured)
+    {
+        match split_qualified(name) {
+            Some((sheet, local)) => {
+                let id = spec
+                    .sheets
+                    .iter()
+                    .position(|s| s.name.eq_ignore_ascii_case(&sheet))
+                    .and_then(|i| ids.get(i).copied())
+                    .ok_or_else(|| {
+                        rustsheet::EditError::Engine(format!("name {name}: no sheet {sheet}"))
+                    })?;
+                tx.load_defined_name(Some(id), &local, formula)?;
+            }
+            None => tx.load_defined_name(None, name, formula)?,
+        }
+    }
+    Ok(())
 }
 
 /// A spec table's `A1:B9` range on sheet `id`, without its last row when that is a totals row
@@ -581,9 +595,9 @@ mod tests {
     }
 
     #[test]
-    fn convert_table_and_bad_structural_ops_are_adapter_errors() {
+    fn bad_structural_ops_are_adapter_errors() {
         for op in [
-            r#"{"op":"convert_table","sheet":"Calc","table":"Sales"}"#,
+            r#"{"op":"convert_table","sheet":"Calc","table":"Nope"}"#,
             r#"{"op":"delete_table","sheet":"Calc","table":"Nope"}"#,
             r#"{"op":"delete_row","sheet":"Calc","row":0}"#,
             r#"{"op":"delete_row","sheet":"Nope","row":1}"#,

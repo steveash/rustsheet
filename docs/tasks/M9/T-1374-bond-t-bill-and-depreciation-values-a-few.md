@@ -8,7 +8,7 @@ priority: P3
 size: M
 tier: opus
 depends_on: []
-campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -102,6 +102,13 @@ Cells:
 - gen-m9/d912671baa1364aa.case.json (1): Calc!A104
 - gen-m9/e168be7f6d3f84c2.case.json (2): Calc!A23, A317
 
+Moved from T-2487 (2026-10-25): a last-digit T-bill cell, visibly right; whether TBILLYIELD's order or its inner F.INV
+gives the ulp is unprobed.
+Owned gen-m9 cells (T-2487, excel-graph, 2026-10-25): 1 known-failure line in eval/baseline/gen-m9.txt, 1 last-digit (not visibly off).
+- gen-m9/e8d55ec393460bb7 Calc!A91 `=TBILLYIELD(COS(KURT(Data!B1:B9,Data!A9:A11,Data!D11:D11)),(Data!E3*SORT("1.5")),F.INV(ABS(Data!E5),4,3))`: Excel 150510.9757994007, ours 150510.97579940068
+Cells:
+- gen-m9/e8d55ec393460bb7.case.json (1): Calc!A91
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 6 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -119,3 +126,6 @@ type, error, text, or a value off by more than half a unit of the 15th significa
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

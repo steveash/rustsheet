@@ -97,6 +97,9 @@ impl Model {
                     CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
                     other => other.clone(),
                 });
+                // A written empty pad_with pads with blank elements too, where WRAPCOLS's is
+                // `#N/A`: `ISBLANK(INDEX(EXPAND(1,2,2,),2,2))` is TRUE, `WRAPCOLS({1,2,3},2,)`'s
+                // FALSE (probes/t2461-blank-array-sources A18, A30).
                 expand_kernel(
                     data,
                     target_rows,
@@ -109,9 +112,9 @@ impl Model {
     }
 }
 
-/// The least columns Excel is known to refuse with `#NUM!` (probes/expand-makearray-past-grid-big
-/// A1); its exact cap lies between 16,386 and this (T-2452).
-const COLUMNS_REFUSED: usize = 123_456_789;
+/// The least columns Excel refuses with `#NUM!`, one past 2^20: `COLUMNS(EXPAND(1,1,1048576))` is
+/// 1048576 and `(1,1,1048577)` is `#NUM!` (probes/t2452-expand-cols-1048576, -1048577; T-2452).
+const COLUMNS_REFUSED: usize = 1_048_577;
 
 /// One EXPAND call: `data` padded with `pad` to `target_rows` x `target_cols`.
 fn expand_kernel(
@@ -138,10 +141,11 @@ fn expand_kernel(
         );
     }
 
-    // Excel refuses columns past a cap of its own after the sizes above (16,385 are built,
-    // 123,456,789 are `#NUM!` even in one row: probes/expand-makearray-past-grid-big A1, B3; a
-    // negative rows is `#VALUE!` first: gen-m7/bc4a69b0b512bc04 A1430); ours refuses from the
-    // smallest refused size probed, and builds below it up to the cell bound.
+    // Excel refuses columns past a cap of its own after the sizes above: 1,048,576 are built and
+    // 1,048,577 are `#NUM!` in one row (probes/t2452-expand-cols-*), and the cap counts columns,
+    // not cells (`COLUMNS(EXPAND(1,2,524289))` is 524289, probes/t2452-expand-2x524289); a
+    // negative rows is `#VALUE!` first (gen-m7/bc4a69b0b512bc04 A1430). Below it ours builds up
+    // to the cell bound.
     if target_cols >= COLUMNS_REFUSED {
         return CalcResult::new_error(
             Error::NUM,

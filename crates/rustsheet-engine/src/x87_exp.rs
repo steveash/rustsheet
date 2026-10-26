@@ -17,27 +17,44 @@ use crate::arithmetic::{
     round_extended_to_double, round_extended_to_subnormal, round_to_bits, significand_and_exponent,
 };
 use crate::x87_log10::excel_ln;
+use crate::x87_register::Register;
 
 /// RN64(log2 e), the 64-bit significand FLDL2E loads, with the value `LOG2_E_64 * 2^-63`
 /// (`round8/exp_v6.py` `_L2E64`; log2 e = 1.442695040888963407359924681001892137..., whose
 /// significand `0xB8AA3B295C17F0BB_BE87`... rounds up).
-const LOG2_E_64: u128 = 0xB8AA_3B29_5C17_F0BC;
+const LOG2_E_64: u64 = 0xB8AA_3B29_5C17_F0BC;
 
 /// ln 2 as a double-double (hi + lo, |lo| <= ulp(hi)/2), from 300-bit mpmath.
 pub(crate) const LN_2_HI: f64 = f64::from_bits(0x3FE6_2E42_FEFA_39EF); // 0x1.62e42fefa39efp-1
 pub(crate) const LN_2_LO: f64 = f64::from_bits(0x3C7A_BC9E_3B39_803F); // 0x1.abc9e3b39803fp-56
 
-/// |a| below this gives exactly 1: |u| < 2^-64 then, under half a 64-bit ulp of 1, so w = 1.
-const TINY_ARGUMENT: f64 = 1.0 / 36_893_488_147_419_103_232.0; // 2^-65
-
 /// |t| beyond this is far outside the double range either way (|t| > 1075 is 0 or infinite), and
 /// keeps every shift below in range.
 const T_LIMIT: f64 = 2000.0;
 
-/// Excel's EXP(a) under model V6 (module docs). `a` is finite; a NaN gives NaN, and an argument
-/// past the double range gives 0 or infinity.
+/// Excel's EXP(a) under model V6 (module docs). A NaN gives NaN, and an argument past the
+/// double range (an infinity included) gives 0 or infinity. It is [`excel_exp_extended`] of the
+/// double loaded into a register, so the two agree on every double.
 pub(crate) fn excel_exp(a: f64) -> f64 {
-    exp_with(a, two_to_the_minus_one)
+    if a.is_nan() {
+        return f64::NAN;
+    }
+    if a.is_infinite() {
+        return if a > 0.0 { f64::INFINITY } else { 0.0 };
+    }
+    excel_exp_extended(Register::load(a))
+}
+
+/// Excel's EXP of an argument held in an x87 register (a 64-bit significand, never stored to a
+/// double), under model V6 (module docs): step 1 multiplies the register's own significand by
+/// RN64(log2 e). Excel applies EXP to an unstored exponent in its Loader pmf and its beta density
+/// (docs/excel-semantics/statistics.md "BINOM.DIST pmf: closed forms at k = 0 and k = n, and one
+/// kernel with BETA.DIST", T-2513; the mpmath reference is `docs/research/t2464/w1-density/lib.py`
+/// `exp_v6`, which this matches on the 5,200 random extended arguments of
+/// `test/fixtures/exp_extended.fixture`, T-2645). An argument past the double range gives 0 or
+/// infinity.
+pub(crate) fn excel_exp_extended(a: Register) -> f64 {
+    exp_with::<true>(a, two_to_the_minus_one)
 }
 
 /// Excel's expm1, under SINH, TANH and PPMT: Kahan's `(u - 1) * x / ln(u)` with `u` Excel's own
@@ -56,64 +73,98 @@ pub(crate) fn excel_expm1(x: f64) -> f64 {
     u_minus_1 * x / excel_ln(u)
 }
 
-/// [`excel_exp`] with step 3's RN64(2^f - 1) taken from `two_to_the_minus_one`, so the tests can
-/// run the whole model on the reference series.
-fn exp_with(a: f64, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
-    if a.is_nan() {
+/// [`excel_exp_extended`] with step 3's RN64(2^f - 1) taken from `two_to_the_minus_one`, so the
+/// tests can run the whole model on the reference series. Generic, not a function pointer, so the
+/// fast path's estimate is a direct (inlinable) call. With `SHORTCUT`, steps 3 and 4 first try
+/// [`two_to_the_fraction`], which skips them when their roundings cannot change the double.
+///
+/// The widths are fixed by the model, so the integer work is mostly 64-bit (T-2102): the argument's
+/// significand and RN64(log2 e) are 64-bit, so step 1 is one 64 x 64 multiply; t, the fraction
+/// and w all fit 64 bits. The reciprocal for f < 0 and step 4 use the floating-point unit where it
+/// is exact (an estimate corrected by an exact remainder, and a correctly rounded u64 to f64
+/// conversion), instead of a u128 division and a general rounding. `tests::exp_with_reference`
+/// keeps the earlier u128 core, and `integer_core_matches_reference` checks they agree.
+fn exp_with<const SHORTCUT: bool>(
+    a: Register,
+    two_to_the_minus_one: impl Fn(u128, u32) -> (u128, i32),
+) -> f64 {
+    let (negative, a_significand, a_exponent) = a.parts();
+    // A register's significand has at most 64 bits; a zero (no top bit) gives 1.
+    let Ok(a_significand) = u64::try_from(a_significand) else {
         return f64::NAN;
-    }
-    if a.abs() < TINY_ARGUMENT {
+    };
+    let Some(top_bit) = a_significand.checked_ilog2() else {
+        return 1.0;
+    };
+    // 2^top <= |a| < 2^(top + 1); a bit index of a u64 fits an i32.
+    let top = a_exponent + i32::try_from(top_bit).unwrap_or(0);
+    // |a| < 2^-65 gives exactly 1: |u| < 2^-64 then, under half a 64-bit ulp of 1, so w = 1.
+    if top < -65 {
         return 1.0;
     }
-    if a.abs() * std::f64::consts::LOG2_E > T_LIMIT {
-        return if a > 0.0 { f64::INFINITY } else { 0.0 };
+    // |a| * log2 e beyond T_LIMIT: certain from the exponent outside [1024, 2048), and for a
+    // double the same f64 test as before on the stored value (exact for a loaded double).
+    if top >= 11 || (top == 10 && a.store().abs() * std::f64::consts::LOG2_E > T_LIMIT) {
+        return if negative { 0.0 } else { f64::INFINITY };
     }
-    // Step 1: t = T * 2^t_exponent, T a 64-bit integer (a is normal here, |a| >= 2^-65).
-    let (a_significand, a_exponent) = significand_and_exponent(a);
-    let (t, shift) = round_to_bits(u128::from(a_significand) * LOG2_E_64, 64, false);
+    // Step 1: t = T * 2^t_exponent, T a 64-bit integer. The product of two 64-bit integers, the
+    // constant at least 2^63, has 64 to 128 bits.
+    let (t, shift) = round_to_64_bits(u128::from(a_significand) * u128::from(LOG2_E_64));
     let t_exponent = a_exponent - 63 + shift;
-    // Step 2: |t| <= T_LIMIT < 2^11 and |t| >= 2^-66, so `drop` is in 53..=130. The guards above
-    // make every `try_from` fallback below unreachable: t < 2^64, n <= 2^11 and |f| < 2^64.
+    // Step 2: |t| <= T_LIMIT < 2^11 and |t| >= 2^-66, so `drop` is in 53..=130. f is held as its
+    // magnitude and whether it is below n, so it stays a u64: |f| <= 2^(drop - 1) <= 2^63.
     let Ok(drop) = u32::try_from(-t_exponent) else {
         return f64::NAN;
     };
-    let (n, fraction) = if drop >= 65 {
+    let (n, fraction, below_n) = if drop >= 65 {
         // |t| < 2^(64 - drop) <= 1/2: n = 0 and f = t.
-        (0_i32, i128::try_from(t).unwrap_or(0))
+        (0_i32, t, false)
     } else {
+        // drop <= 64: shift in u128 so drop = 64 needs no special case.
+        let t = u128::from(t);
         let integer = t >> drop;
         let rest = t & ((1 << drop) - 1);
         let half = 1 << (drop - 1);
         // Integer bit operations, not `||`: a data-dependent branch here mispredicts half the time.
-        let n = integer + (u128::from(rest > half) | (u128::from(rest == half) & (integer & 1)));
-        let f = i128::try_from(t).unwrap_or(0) - i128::try_from(n << drop).unwrap_or(0);
-        (i32::try_from(n).unwrap_or(0), f)
+        let up = u128::from(rest > half) | (u128::from(rest == half) & (integer & 1));
+        // Rounding up leaves f = rest - 2^drop, negative, of magnitude 2^drop - rest.
+        let magnitude = if up == 1 { (1 << drop) - rest } else { rest };
+        let n = i32::try_from(integer + up).unwrap_or(0);
+        (n, u64::try_from(magnitude).unwrap_or(0), up == 1)
     };
     // f * sign(a) is the true fraction: `fraction` is the magnitude-side remainder of |t|.
-    let negative_f = (fraction < 0) != (a < 0.0);
-    let n = if a < 0.0 { -n } else { n };
+    let negative_f = below_n != negative;
+    let n = if negative { -n } else { n };
+    // 2^f * 2^n with 2^f in [0.7, 1.42] is a normal double for -1021 <= n <= 1023.
+    if SHORTCUT && fraction != 0 && (-1021..=1023).contains(&n) {
+        if let Some(power) = two_to_the_fraction(fraction, drop, negative_f) {
+            return power * power_of_two(n);
+        }
+    }
     // Step 3: w = W * 2^w_exponent, W a 64-bit integer.
-    let (mut w, mut w_exponent) = (1_u128 << 63, -63);
+    let (mut w, mut w_exponent) = (1_u64 << 63, -63);
     if fraction != 0 {
-        let (u, u_exponent) = two_to_the_minus_one(fraction.unsigned_abs(), drop);
-        // u < 0.415, so u_exponent <= -65 and 1 = 2^gap units of u.
+        let (u, u_exponent) = two_to_the_minus_one(u128::from(fraction), drop);
+        // u < 0.415 is 64-bit with u_exponent <= -65; 1 + u in [1, 2) is 2^63 + u / 2^(gap - 63)
+        // units of 2^-63, rounded (a carry to 2 cannot happen). gap >= 128 leaves w = 1.
         let gap = u32::try_from(-u_exponent).unwrap_or(128);
         if gap < 128 {
-            let (sum, sum_shift) = round_to_bits((1 << gap) + u, 64, false);
-            (w, w_exponent) = (sum, u_exponent + sum_shift);
+            w = (1 << 63) + round_shifted(u, gap - 63);
         }
         if negative_f {
-            // w is in [1, 2), so 2^127 / W is in (2^63, 2^64]: the integer quotient already has
-            // the 64 bits, and the remainder rounds it (a tie needs W = 2^63, an exact quotient).
-            let numerator = 1_u128 << 127;
-            let (quotient, remainder) = (numerator / w, numerator % w);
-            let rounded = quotient + u128::from(2 * remainder > w);
-            let (q, q_shift) = round_to_bits(rounded, 64, false);
-            (w, w_exponent) = (q, -127 - w_exponent + q_shift);
+            (w, w_exponent) = reciprocal(w);
         }
     }
     // Step 4: one rounding of the 64-bit w * 2^n to a double, or to the subnormal grid.
     let exponent = w_exponent + n;
+    if (-1085..=960).contains(&exponent) {
+        // w * 2^exponent is at least 2^-1022, so the double is normal (or infinite): the u64 to
+        // f64 conversion is the one rounding (Rust rounds it to nearest, ties to even), and the
+        // scalings by powers of two are exact. A rounding up to 2^64 at the top overflows to
+        // infinity, as the rounding to a double does.
+        return w as f64 * power_of_two(-63) * power_of_two(exponent + 63);
+    }
+    let w = u128::from(w);
     round_extended_to_double(w, exponent, false).unwrap_or_else(|| {
         if exponent > 0 {
             f64::INFINITY
@@ -121,6 +172,148 @@ fn exp_with(a: f64, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
             round_extended_to_subnormal(w, exponent, false).unwrap_or(0.0)
         }
     })
+}
+
+/// Steps 3 and 4's double, RN53(w), for f = ±`magnitude` * 2^-`drop` in [-1/2, 1/2] \ {0}
+/// (`negative` gives the sign), when it is certain without w (T-2102). w is 2^f after
+/// three RN64 roundings (2^|f| - 1, 1 + u and, for f < 0, the reciprocal), so |w - 2^f| <= 2^-63
+/// 2^f; a 2^f more than that from every double rounding midpoint rounds to the same double as w.
+/// A double-double estimate of 2^f, good to about 2^-67, decides that unless it lies within
+/// [`DOUBLE_MIDPOINT_MARGIN`] of a midpoint, or its head is 1 (a power of two, with the finer
+/// midpoints below it); then `None`, and the exact chain runs (about 1 call in 30).
+#[inline]
+fn two_to_the_fraction(magnitude: u64, drop: u32, negative: bool) -> Option<f64> {
+    let (high, low) = two_to_the_fraction_estimate(u128::from(magnitude), drop);
+    let (head, tail) = if negative {
+        reciprocal_near_one(high, low)
+    } else {
+        (high, low)
+    };
+    if head == 1.0 {
+        return None;
+    }
+    // Half an ulp of the head, which is in [0.7, 1.42]; |tail| is at most that.
+    let half_ulp = if head > 1.0 {
+        power_of_two(-53)
+    } else {
+        power_of_two(-54)
+    };
+    (half_ulp - tail.abs() > DOUBLE_MIDPOINT_MARGIN).then_some(head)
+}
+
+/// 1 / (`high` + `low`) as a double-double, for a value in [1, 1.42]: a quotient and one
+/// correction from its exact residual (1 - q high is exact by Sterbenz, as q high is within an
+/// ulp of 1).
+#[inline]
+fn reciprocal_near_one(high: f64, low: f64) -> (f64, f64) {
+    let quotient = 1.0 / high;
+    let (product, product_error) = two_prod(quotient, high);
+    let residual = ((1.0 - product) - product_error) - quotient * low;
+    fast_two_sum(quotient, quotient * residual)
+}
+
+/// How far [`two_to_the_fraction`]'s estimate must be from a double rounding midpoint: 2^-60,
+/// above the estimate's error (about 2^-67) plus w's (at most 2^-63 * 1.42).
+const DOUBLE_MIDPOINT_MARGIN: f64 = 1.0 / 1_152_921_504_606_846_976.0; // 2^-60
+
+/// 2^f for f = `magnitude` * 2^-`drop` in (0, 1/2], to about 2^-67, as a double-double: the
+/// [`two_to_the_minus_one_estimate`] scheme (sharing its reduction and table term) with a plain
+/// f64 series instead of its Dekker-product terms, as [`two_to_the_fraction`] needs only 2^-60.
+/// 2^f = 1 + E + e + E e with E = 2^(j/64) - 1 from the table and e = expm1(y),
+/// y = r ln 2, |y| <= 0.0055: e = yh + yh^2 (1/2 + yh/6 + ... + yh^5/5040) + yl (1 + yh), the
+/// bracket in plain f64 (its error about 2^-69, the next term 2^-75).
+#[inline]
+fn two_to_the_fraction_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
+    let (j, yh, yl) = reduce_fraction(magnitude, drop);
+    let rest = yh
+        * yh
+        * (0.5
+            + yh * (1.0 / 6.0
+                + yh * (1.0 / 24.0
+                    + yh * (1.0 / 120.0 + yh * (1.0 / 720.0 + yh * (1.0 / 5040.0))))));
+    let (b, b_error) = fast_two_sum(yh, rest);
+    let (u, u_low) = add_table_term(j, b, b_error + yl * (1.0 + yh));
+    // 1 + u, u in (0, 0.415], so 1 leads.
+    let (one_plus, one_plus_error) = fast_two_sum(1.0, u);
+    fast_two_sum(one_plus, one_plus_error + u_low)
+}
+
+/// `value` (at least 2^63, at most 128 bits) rounded to nearest, ties to even, to 64 bits: the
+/// significand and the number of low bits dropped ([`round_to_bits`] specialized to a 64-bit
+/// result, inlined on the hot path).
+#[inline]
+fn round_to_64_bits(value: u128) -> (u64, i32) {
+    // 0..=64 low bits to drop.
+    let shift = 64 - value.leading_zeros();
+    let kept = u64::try_from(value >> shift).unwrap_or(u64::MAX);
+    let (rounded, carry) = kept.overflowing_add(round_up(value, shift, kept));
+    // A carry out of the top bit (all ones rounded up) leaves 2^64 = 2^63 * 2.
+    let shift = i32::try_from(shift).unwrap_or(0);
+    if carry {
+        (1 << 63, shift + 1)
+    } else {
+        (rounded, shift)
+    }
+}
+
+/// `value` (below 2^64) / 2^`shift` rounded to nearest, ties to even, for 2 <= `shift` < 65: at
+/// most 62 bits.
+#[inline]
+fn round_shifted(value: u128, shift: u32) -> u64 {
+    let kept = u64::try_from(value >> shift).unwrap_or(0);
+    kept + round_up(value, shift, kept)
+}
+
+/// 1 if `value` / 2^`shift`, truncated to `kept`, rounds up to nearest, ties to even, else 0
+/// (`shift` <= 64; 0 drops nothing). Integer bit operations, not `||`: the round-up is
+/// data-dependent, and a branch on it mispredicts about half the time.
+#[inline]
+fn round_up(value: u128, shift: u32, kept: u64) -> u64 {
+    if shift == 0 {
+        return 0;
+    }
+    let dropped = value & ((1 << shift) - 1);
+    let half = 1 << (shift - 1);
+    u64::from(dropped > half) | (u64::from(dropped == half) & kept & 1)
+}
+
+/// RN64(1 / w) for w = `significand` * 2^-63 in [1, 2) with a 64-bit significand: the 64-bit
+/// significand and its exponent. 1 / w = 2^127 / W * 2^-64 with the integer quotient in
+/// (2^63, 2^64), so it already has the 64 bits and the remainder rounds it (a tie needs W = 2^63,
+/// an exact quotient). The quotient comes from an f64 estimate, good to about 2^12 units,
+/// refined by one more f64 step from its exact remainder and then made exact by at most one unit
+/// either way; this replaces a u128 division, a runtime call.
+#[inline]
+fn reciprocal(significand: u64) -> (u64, i32) {
+    const TWO_TO_THE_127: u128 = 1 << 127;
+    if significand == 1 << 63 {
+        return (1 << 63, -63);
+    }
+    let divisor = significand as f64;
+    // In (2^63, 2^64): the saturating conversion keeps it a u64.
+    let estimate = (TWO_TO_THE_127 as f64 / divisor) as u64;
+    // |remainder| < 2^78, exact in i128 (the product is below 2^128).
+    let wide = i128::from(significand);
+    let remainder = TWO_TO_THE_127
+        .wrapping_sub(u128::from(estimate) * u128::from(significand))
+        .cast_signed();
+    // The remainder as a double from its two halves (no runtime i128 conversion); the correction
+    // is under 2^13 units and its floor is off by at most one.
+    let high = i64::try_from(remainder >> 64).unwrap_or(0) as f64;
+    let low = (remainder as u64) as f64;
+    let correction = ((high * power_of_two(64) + low) / divisor).floor() as i64;
+    let mut quotient = i128::from(estimate) + i128::from(correction);
+    let mut remainder = remainder - i128::from(correction) * wide;
+    if remainder < 0 {
+        quotient -= 1;
+        remainder += wide;
+    } else if remainder >= wide {
+        quotient += 1;
+        remainder -= wide;
+    }
+    // A significand above 2^63 has a quotient at most 2^64 - 2, so the rounded one is a u64.
+    let quotient = u64::try_from(quotient).unwrap_or(u64::MAX);
+    (quotient + u64::from(2 * remainder > wide), -64)
 }
 
 /// RN64(2^f - 1) for f = `magnitude` * 2^-`drop` in (0, 1/2]: the 64-bit significand and its
@@ -206,14 +399,7 @@ const ONE_SIXTH: (f64, f64) = (
 /// leading series terms y, y^2/2, y^3/6 and y^4/24 are kept exactly (Dekker products), and the
 /// rest, under 2^-37 of e, is summed in f64.
 fn two_to_the_minus_one_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
-    // drop >= 53 (excel_exp), so both shifts are in range; j = nint(64 f) <= 32, and r is exact
-    // with |r| <= 2^(drop - 7) and |r| <= magnitude < 2^64.
-    let j = (magnitude + (1 << (drop - 7))) >> (drop - 6);
-    let r = i128::try_from(magnitude).unwrap_or(0) - i128::try_from(j << (drop - 6)).unwrap_or(0);
-    let (rh, rl) = exact_double_double(r, drop);
-    // y = r ln 2: the head product exactly, the cross terms rounded (2^-108).
-    let (product, product_error) = two_prod(rh, LN_2_HI);
-    let (yh, yl) = fast_two_sum(product, product_error + (rh * LN_2_LO + rl * LN_2_HI));
+    let (j, yh, yl) = reduce_fraction(magnitude, drop);
     // expm1(yh) = yh + p/2 + t + v + tail with p = yh^2, t = yh^3/6, v = yh^4/24, each a
     // double-double; tail = yh^5 (1/120 + yh/720 + ...) to the 1/9! term (the next is 2^-89).
     let (p, p_error) = two_prod(yh, yh);
@@ -238,10 +424,31 @@ fn two_to_the_minus_one_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
         + a_error
         + (p_error * 0.5 + t_error + v_error + tail)
         + yl * (1.0 + yh + p * 0.5 + t);
-    let (e_hi, e_lo) = TWO_TO_THE_J_OVER_64_MINUS_ONE[usize::try_from(j).unwrap_or(0).min(32)];
+    add_table_term(j, b, lo)
+}
+
+/// f = `magnitude` * 2^-`drop` in (0, 1/2] split as j/64 + r: j = nint(64 f) <= 32 and
+/// y = r ln 2 as a double-double (yh, yl), |y| <= 0.0055. drop >= 53 ([`excel_exp`]), so both
+/// shifts are in range, and r is exact with |r| <= 2^(drop - 7) and |r| <= magnitude < 2^64.
+/// Shared by [`two_to_the_minus_one_estimate`] and [`two_to_the_fraction_estimate`].
+fn reduce_fraction(magnitude: u128, drop: u32) -> (usize, f64, f64) {
+    let j = (magnitude + (1 << (drop - 7))) >> (drop - 6);
+    let r = i128::try_from(magnitude).unwrap_or(0) - i128::try_from(j << (drop - 6)).unwrap_or(0);
+    let (rh, rl) = exact_double_double(r, drop);
+    // y = r ln 2: the head product exactly, the cross terms rounded (2^-108).
+    let (product, product_error) = two_prod(rh, LN_2_HI);
+    let (yh, yl) = fast_two_sum(product, product_error + (rh * LN_2_LO + rl * LN_2_HI));
+    (usize::try_from(j).unwrap_or(0).min(32), yh, yl)
+}
+
+/// 2^(j/64) - 1 + e = E + e + E e as a double-double, for e = `b` + `lo` = expm1(y) from
+/// [`reduce_fraction`]'s y and E = 2^(j/64) - 1 from the table. E >= 0.0109 for j >= 1 and
+/// |e| <= 0.0055, so the sum is at least 0.0032 and never cancels by more than a factor 3.4;
+/// E = 0 for j = 0.
+fn add_table_term(j: usize, b: f64, lo: f64) -> (f64, f64) {
+    let (e_hi, e_lo) = TWO_TO_THE_J_OVER_64_MINUS_ONE[j];
     let (e_hi, e_lo) = (f64::from_bits(e_hi), f64::from_bits(e_lo));
-    // E e, then E + (e + E e): E >= 0.0109 for j >= 1 and |e| <= 0.0055, so the sum is at
-    // least 0.0032 and never cancels by more than a factor 3.4; E = 0 for j = 0.
+    // E e, then E + (e + E e).
     let (m, m_error) = two_prod(e_hi, b);
     let m_error = m_error + e_hi * lo + e_lo * b;
     let (s, s_error) = two_sum(b, m);
@@ -388,156 +595,19 @@ pub(crate) fn dd_to_extended((hi, lo): (f64, f64)) -> (u128, i32) {
     (rounded, exponent - 24 + shift)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn excel_exp_series(a: f64) -> f64 {
-        exp_with(a, two_to_the_minus_one_series)
+/// The double-double `(hi, lo)` rounded to a 64-bit significand and then to a double,
+/// RN53(RN64(v)), as an x87 result is stored. Zero, and a result past the normal range, keep the
+/// single rounding `hi`.
+pub(crate) fn dd_rounded_twice((hi, lo): (f64, f64)) -> f64 {
+    if hi == 0.0 {
+        return hi;
     }
-
-    #[test]
-    fn exact_points() {
-        assert_eq!(excel_exp(0.0), 1.0);
-        assert_eq!(excel_exp(1e-30), 1.0);
-        assert_eq!(excel_exp(-1e-30), 1.0);
-        assert_eq!(excel_exp(-1000.0), 0.0);
-        assert_eq!(excel_exp(1000.0), f64::INFINITY);
-        assert!(excel_exp(f64::NAN).is_nan());
-    }
-
-    /// A deterministic xorshift64* stream, so the sweep is reproducible.
-    fn next(state: &mut u64) -> u64 {
-        *state ^= *state >> 12;
-        *state ^= *state << 25;
-        *state ^= *state >> 27;
-        state.wrapping_mul(0x2545_F491_4F6C_DD1D)
-    }
-
-    // The fast path returns the series' bits for every f = m * 2^-drop excel_exp can produce:
-    // drop in 53..=130, m up to 64 bits and at most 2^(drop - 1), plus each table node j/64 and
-    // its neighbours, where r is 0 or one unit.
-    #[test]
-    fn fast_path_matches_series() {
-        let mut state = 0x9E37_79B9_7F4A_7C15_u64;
-        let mut checked = 0;
-        for drop in 53..=130_u32 {
-            let limit = 1_u128
-                .checked_shl(drop - 1)
-                .map_or(u128::from(u64::MAX), |l| l.min(u128::from(u64::MAX)));
-            let mut magnitudes: Vec<u128> = (0..4_000)
-                .map(|i| {
-                    // Random bit lengths, so tiny f (j = 0, r tiny) is as common as large f.
-                    let bits = 1 + u32::try_from(next(&mut state) % 64).unwrap_or(0);
-                    let m = u128::from(next(&mut state)) >> (64 - bits.min(64));
-                    if i % 2 == 0 {
-                        m.min(limit)
-                    } else {
-                        u128::from(next(&mut state)) % limit + 1
-                    }
-                })
-                .collect();
-            for j in 0..=32_u128 {
-                let node = j << (drop - 6);
-                magnitudes.extend(
-                    [node.saturating_sub(1), node, node + 1]
-                        .into_iter()
-                        .filter(|&m| m <= limit),
-                );
-            }
-            for m in magnitudes.into_iter().filter(|&m| m > 0) {
-                assert_eq!(
-                    two_to_the_minus_one(m, drop),
-                    two_to_the_minus_one_series(m, drop),
-                    "m = {m:#x}, drop = {drop}"
-                );
-                checked += 1;
-            }
-        }
-        assert!(checked > 300_000);
-    }
-
-    // The estimate is within 2^-80 of the series sum (itself good to about 2^-100), far inside
-    // the 2^-74 that MIDPOINT_MARGIN allows for.
-    #[test]
-    fn estimate_error_bound() {
-        let mut state = 0x6A09_E667_F3BC_C908_u64;
-        for drop in 53..=130_u32 {
-            let limit = 1_u128
-                .checked_shl(drop - 1)
-                .map_or(u128::from(u64::MAX), |l| l.min(u128::from(u64::MAX)));
-            for _ in 0..2_000 {
-                let bits = 1 + u32::try_from(next(&mut state) % 64).unwrap_or(0);
-                let m = (u128::from(next(&mut state)) >> (64 - bits)).clamp(1, limit);
-                let (hi, lo) = two_to_the_minus_one_estimate(m, drop);
-                let (series_hi, series_lo) = two_to_the_minus_one_series_sum(m, drop);
-                let error = ((hi - series_hi) + (lo - series_lo)).abs();
-                assert!(
-                    error <= series_hi * 2.0_f64.powi(-80),
-                    "m = {m:#x}, drop = {drop}"
-                );
-            }
-        }
-    }
-
-    // The same through excel_exp over a wide range of a: random doubles in [-750, 750] and
-    // random significands at every binade from 2^-65 up.
-    #[test]
-    fn excel_exp_fast_path_matches_series() {
-        let mut state = 0xD1B5_4A32_D192_ED03_u64;
-        for _ in 0..200_000 {
-            let unit = (next(&mut state) >> 11) as f64 / 9_007_199_254_740_992.0;
-            let wide = (unit - 0.5) * 1500.0;
-            let binade =
-                f64::from_bits(((next(&mut state) % 75 + 958) << 52) | (next(&mut state) >> 12));
-            for a in [wide, binade, -binade] {
-                assert_eq!(
-                    excel_exp(a).to_bits(),
-                    excel_exp_series(a).to_bits(),
-                    "a = {a:e}"
-                );
-            }
-        }
-    }
-
-    // Excel's own EXP cells (kmyst-erfc-r5expmap1!B1, B21, B61, B25061 and B10288, excel-graph).
-    #[test]
-    fn excel_cells() {
-        assert_eq!(
-            excel_exp(-693.144_335_489_521_8),
-            9.359_225_999_226_452e-302
-        );
-        assert_eq!(excel_exp(-17.325_834_443_610_21), 2.988_723_282_343_492e-8);
-        assert_eq!(
-            excel_exp(693.150_025_630_557_6),
-            1.074_561_465_574_963_2e301
-        );
-        assert_eq!(excel_exp(2.000_755_701_729_514_3), 7.394_642_131_825_609);
-        // f < 0 takes the rounded reciprocal: its 64-bit value sits just above a double midpoint.
-        assert_eq!(excel_exp(-0.345_024_546_371_140_6), 0.708_202_969_441_512_7);
-    }
-
-    /// The per-call microbenchmark of T-1945's Outcome (not a check; run it with
-    /// `cargo test --release -p rustsheet_engine --lib x87_exp::tests::per_call_cost -- --ignored
-    /// --nocapture`): 200,000 arguments in [-30, 30], the model against the series path and libm.
-    #[test]
-    #[ignore = "a timing, not a check"]
-    fn per_call_cost() {
-        let arguments: Vec<f64> = (0..200_000)
-            .map(|i| (f64::from(i) * 0.000_731_7).sin() * 30.0)
-            .collect();
-        let time = |exp: &dyn Fn(f64) -> f64| {
-            let start = std::time::Instant::now();
-            let sum: f64 = arguments
-                .iter()
-                .map(|&a| exp(std::hint::black_box(a)))
-                .sum();
-            (start.elapsed() / 200_000, sum)
-        };
-        let (fast, fast_sum) = time(&excel_exp);
-        let (series, series_sum) = time(&excel_exp_series);
-        let (libm, _) = time(&f64::exp);
-        assert_eq!(fast_sum.to_bits(), series_sum.to_bits());
-        println!("excel_exp {fast:?}, series path {series:?}, libm {libm:?} per call");
-    }
+    // `dd_to_extended` adds the tail to the head's magnitude, so it takes |v|.
+    let negative = hi < 0.0;
+    let magnitude = if negative { (-hi, -lo) } else { (hi, lo) };
+    let (extended, exponent) = dd_to_extended(magnitude);
+    round_extended_to_double(extended, exponent, negative).unwrap_or(hi)
 }
+
+#[cfg(test)]
+mod tests;

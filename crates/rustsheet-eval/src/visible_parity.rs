@@ -71,7 +71,7 @@ impl VisibleCount {
         let n = case
             .cells
             .iter()
-            .filter(|c| Visible::of(c).total() > 0)
+            .filter(|c| Visible::is_off(c))
             .filter(|c| {
                 let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
                 calls_only_in_scope(catalog, &called)

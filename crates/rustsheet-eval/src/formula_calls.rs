@@ -24,6 +24,20 @@ static STRING_LITERAL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#""(?:[^"]|"")*""#).unwrap_or_else(|e| unreachable!("static regex: {e}"))
 });
 
+/// An add-in function call (`_xll.` prefix), case-insensitive.
+static ADD_IN_CALL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b_xll\.").unwrap_or_else(|e| unreachable!("static regex: {e}"))
+});
+
+/// Whether a formula calls an add-in function (`_xll.`), outside string literals. Decision 0027
+/// puts add-in functions out of scope: no engine can compute them (Excel's cached value came from
+/// the add-in), so such a cell is not scored (T-0462). Only the calling cell is left out; its
+/// dependents are scored, so a miss they show stays visible.
+#[must_use]
+pub fn calls_add_in(formula: &str) -> bool {
+    ADD_IN_CALL.is_match(&STRING_LITERAL.replace_all(formula, "\"\""))
+}
+
 /// Upper-cased function names called by a formula (string literals ignored).
 #[must_use]
 pub fn functions_in(formula: &str) -> BTreeSet<String> {
@@ -70,6 +84,18 @@ pub fn calls_only_in_scope(catalog: &Catalog, called: &BTreeSet<String>) -> bool
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn add_in_calls_are_found_outside_string_literals() {
+        // calipers pv26_003 Model!C875 (T-0462).
+        assert!(calls_add_in(
+            r#"=IFERROR(_xll.ciqfunctions.udf.CIQHI(MO.Ticker.CapIQ,"IQ_LASTSALEPRICE"),"N/A")"#
+        ));
+        assert!(calls_add_in("=_XLL.FOO(1)+1"));
+        assert!(!calls_add_in(r#"=CONCAT("_xll.FOO(",A1)"#));
+        assert!(!calls_add_in("=SUM(my_xll.range)"));
+        assert!(!calls_add_in("=_xlfn.XLOOKUP(1,A:A,B:B)"));
+    }
 
     #[test]
     fn extracts_function_names() {

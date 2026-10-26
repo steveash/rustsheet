@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
+use crate::attribution::{self, Attribution, Tier, Workbooks};
 use crate::catalog::Catalog;
 use crate::catalog_coverage::{self, MilestoneCoverage};
 use crate::closeness::{self, Closeness, Visible};
@@ -11,7 +12,9 @@ use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
+use crate::out_of_scope::{self, OutOfScope};
 use crate::probe_milestones::{self, MilestoneRow};
+use crate::run_meta::{self, RunMeta};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::text_expect;
 use crate::v15_checkpoint::{self, V15Checkpoint};
@@ -47,11 +50,18 @@ pub struct SuiteSummary {
     /// Scored text cells whose text matched Excel's.
     #[serde(default)]
     pub text_passed: usize,
+    /// Formula cells left unscored because they call an add-in function (`_xll.`, decision 0027;
+    /// T-0462): they are in none of the counts above.
+    #[serde(default)]
+    pub skipped_add_in: usize,
     /// The suite's in-scope scored cells per closeness bucket: cells that call no out-of-scope
     /// catalog function (decision 0027). Its visibly-off cells are what the visible-parity
     /// ratchet counts (T-0061, `visible_parity`).
     #[serde(default)]
     pub closeness: Closeness,
+    /// The cases with a scored cell by their worst `closeness` cell (T-0068).
+    #[serde(default)]
+    pub workbooks: Workbooks,
 }
 
 /// Number of slowest cases kept in the report.
@@ -98,7 +108,7 @@ impl SuiteSummary {
     }
 
     /// `count` over the scored cells (all but accepted deviations), at most 1.
-    fn rate(&self, count: usize) -> f64 {
+    pub(crate) fn rate(&self, count: usize) -> f64 {
         let scored = self.cells.saturating_sub(self.deviations);
         if scored == 0 {
             return 0.0;
@@ -123,6 +133,18 @@ pub struct FunctionStat {
     /// ([`closeness::blamed`], T-0061).
     #[serde(default)]
     pub visible: Visible,
+    /// The non-deviation Excel-evidence cells that call this function (decision 0118).
+    #[serde(default)]
+    pub excel: Closeness,
+    /// Of `excel`, the cells whose sole non-glue call it is ([`closeness::sole_call`]).
+    #[serde(default)]
+    pub attributed: Closeness,
+    /// The worst-cell parity tier of `attributed`, or of `excel` below the evidence floor.
+    #[serde(default)]
+    pub tier: Tier,
+    /// Which of the two placed `tier`.
+    #[serde(default)]
+    pub attribution: Attribution,
 }
 
 /// Scored cells with Excel-sourced expectations that call one function.
@@ -133,18 +155,6 @@ pub struct FunctionEvidence {
     pub cells: usize,
     /// Suites those cells come from.
     pub suites: BTreeSet<String>,
-}
-
-/// An out-of-scope catalog function (decision 0027) and the cells the run checked for it.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct OutOfScope {
-    pub name: String,
-    /// The catalog's reason for leaving it out.
-    pub reason: String,
-    /// Cells calling the function that the run checked (passing or not).
-    pub cells: usize,
-    /// Of those, the failing ones.
-    pub failing: usize,
 }
 
 /// The report's lists that come from comparing the run with the catalog.
@@ -205,7 +215,7 @@ impl CatalogLists {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RunReport {
     pub engine: String,
     pub suites: Vec<SuiteSummary>,
@@ -257,6 +267,12 @@ pub struct RunReport {
     /// knows which suites are generated.
     #[serde(default)]
     pub v15_checkpoint: V15Checkpoint,
+    /// In-scope catalog functions per parity tier ([`attribution::tier_counts`], T-0068).
+    #[serde(default)]
+    pub tiers: Vec<attribution::TierCount>,
+    /// Commit, date and skipped suites ([`RunMeta`], T-0080); filled by the caller.
+    #[serde(default)]
+    pub run: RunMeta,
 }
 
 impl RunReport {
@@ -284,10 +300,12 @@ impl RunReport {
             *s.statuses.entry(r.status).or_default() += 1;
             s.cells += r.checked;
             s.cells_passed += r.passed;
+            s.skipped_add_in += r.skipped_add_in;
             s.deviations += r.deviations;
             s.millis += r.millis;
             s.text_cells += r.text.len();
             s.text_passed += r.text.iter().filter(|t| t.pass).count();
+            let mut book = Closeness::default();
             for c in &r.cells {
                 *s.verdicts.entry(c.verdict).or_default() += 1;
                 if c.listed_deviation && c.verdict.is_pass() {
@@ -300,6 +318,7 @@ impl RunReport {
                 let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
                 if calls_only_in_scope(catalog, &called) {
                     s.closeness.add(c);
+                    book.add(c);
                 }
                 // A by-design value says nothing about how well a function matches Excel.
                 if c.verdict == Verdict::Deviation {
@@ -315,7 +334,9 @@ impl RunReport {
                         st.visible.merge(visible);
                     }
                 }
+                let sole = closeness::sole_call(&called).cloned();
                 for f in called {
+                    let is_sole = sole.as_ref() == Some(&f);
                     if c.from_excel {
                         let ev = evidence
                             .entry(f.clone())
@@ -336,9 +357,12 @@ impl RunReport {
                     }
                     *st.verdicts.entry(c.verdict).or_default() += 1;
                     st.closeness.add(c);
+                    st.add_attributed(c, is_sole);
                 }
             }
+            s.workbooks.add(&book);
         }
+        functions.values_mut().for_each(FunctionStat::place_tier);
         let (mut functions, out): (Vec<FunctionStat>, Vec<FunctionStat>) = functions
             .into_values()
             .partition(|f| catalog.in_scope(&f.name));
@@ -366,6 +390,7 @@ impl RunReport {
         RunReport {
             engine: engine.to_string(),
             suites: suites.into_values().collect(),
+            tiers: attribution::tier_counts(catalog, &functions),
             functions,
             cases,
             slowest: slowest(results, SLOWEST_CASES),
@@ -375,12 +400,9 @@ impl RunReport {
             needs_other_evidence: lists.needs_other_evidence,
             below_floor,
             out_of_scope: lists.out_of_scope,
-            milestone_lists: Vec::new(),
-            probe_milestones: Vec::new(),
             function_scope: function_scope::summarize(catalog, results),
-            catalog_coverage: Vec::new(),
-            milestone_exit: Vec::new(),
-            v15_checkpoint: V15Checkpoint::default(),
+            // The caller fills the milestone sections, the checkpoint and `run`.
+            ..RunReport::default()
         }
     }
 
@@ -520,19 +542,6 @@ impl RunReport {
         self.suites.iter().map(|s| s.closeness.visible()).sum()
     }
 
-    fn write_timing(&self, md: &mut String) {
-        let _ = writeln!(md, "\n## Timing\n");
-        let _ = writeln!(md, "| suite | total ms |\n|---|---|");
-        for s in &self.suites {
-            let _ = writeln!(md, "| {} | {} |", s.name, s.millis);
-        }
-        let _ = writeln!(md, "\nSlowest {} cases:\n", self.slowest.len());
-        let _ = writeln!(md, "| case | ms |\n|---|---|");
-        for c in &self.slowest {
-            let _ = writeln!(md, "| {} | {} |", c.id, c.millis);
-        }
-    }
-
     /// Human/agent-readable gap report.
     #[must_use]
     pub fn to_markdown(&self, examples_per_function: usize) -> String {
@@ -542,15 +551,17 @@ impl RunReport {
             "# RustSheet compatibility report (engine: `{}`)\n",
             self.engine
         );
+        run_meta::write_markdown(&self.run, &mut md);
         self.write_suites_table(&mut md);
         crate::milestone_exit::write_markdown(&self.milestone_exit, &mut md);
         visible_parity::write_markdown(self, &mut md);
         v15_checkpoint::write_markdown(&self.v15_checkpoint, &mut md);
+        attribution::write_markdown(self, &mut md);
         text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
         function_scope::write_markdown(self.function_scope.as_ref(), &mut md);
-        self.write_timing(&mut md);
+        run_meta::write_timing(self, &mut md);
         let broken: Vec<&CaseResult> = self
             .cases
             .iter()
@@ -632,31 +643,8 @@ impl RunReport {
         }
         self.write_evidence(&mut md);
         catalog_coverage::write_markdown(&self.catalog_coverage, &mut md);
-        self.write_out_of_scope(&mut md);
+        out_of_scope::write_markdown(&self.out_of_scope, &self.suites, &mut md);
         md
-    }
-
-    fn write_out_of_scope(&self, md: &mut String) {
-        if self.out_of_scope.is_empty() {
-            return;
-        }
-        let _ = writeln!(
-            md,
-            "\n## Out of scope ({})\n\nCatalog functions whose results depend on systems outside the workbook (decision 0027). They are left out of every count above.\n",
-            self.out_of_scope.len()
-        );
-        let _ = writeln!(md, "| function | cells checked | failing | reason |");
-        let _ = writeln!(md, "|---|---|---|---|");
-        for f in &self.out_of_scope {
-            let _ = writeln!(
-                md,
-                "| {} | {} | {} | {} |",
-                f.name,
-                f.cells,
-                f.failing,
-                f.reason.replace('|', "\\|")
-            );
-        }
     }
 
     fn examples_for(&self, function: &str, n: usize) -> Vec<(&str, &CellResult)> {
@@ -695,6 +683,7 @@ pub(crate) mod tests {
             passed: 1,
             deviations: 0,
             skipped_volatile: 0,
+            skipped_add_in: 0,
             millis,
             tags: Vec::new(),
             cells: Vec::new(),
@@ -940,6 +929,26 @@ pub(crate) mod tests {
             "{md}"
         );
         assert!(!md.contains("### WEBSERVICE"));
+    }
+
+    #[test]
+    fn add_in_cells_are_counted_per_suite_and_listed_out_of_scope() {
+        // T-0462: cells calling `_xll.` are not scored; the out-of-scope section counts them.
+        let mut a = case("calipers/a", 1);
+        a.skipped_add_in = 246;
+        let mut b = case("calipers/b", 1);
+        b.skipped_add_in = 246;
+        let report = RunReport::build("e", &[a, b, case("probes/c", 1)], &[], &Catalog::default());
+        let calipers = report.suites.iter().find(|s| s.name == "calipers");
+        assert_eq!(calipers.map(|s| s.skipped_add_in), Some(492));
+        let md = report.to_markdown(1);
+        assert!(
+            md.contains(
+                "- calipers: 492 cells call an add-in function (`_xll.`) and are not scored."
+            ),
+            "{md}"
+        );
+        assert!(!md.contains("- probes:"), "{md}");
     }
 
     #[test]

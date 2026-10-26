@@ -1,0 +1,97 @@
+measured GAMMALN from t2513-r3-m1-residual-gl: 569 cells
+measured GAMMALN from t2513-verify-r3-m1-residual-hold: 54 cells
+[old] rows 1107, shapes 502, echo mismatches 0, tsv-arg disagreements 0, duplicate (x,a,b) 22
+[probe1] rows 12800, shapes 8, echo mismatches 0, tsv-arg disagreements 0, duplicate (x,a,b) 0
+[a] rows 4096, shapes 90, echo mismatches 0, tsv-arg disagreements 0, duplicate (x,a,b) 0
+[hold] rows 4096, shapes 90, echo mismatches 0, tsv-arg disagreements 0, duplicate (x,a,b) 0
+[vhold] rows 864, shapes 32, echo mismatches 0, tsv-arg disagreements 0, duplicate (x,a,b) 0
+overlap old/probe1: cells 0, shapes 4
+overlap old/a: cells 0, shapes 2
+overlap old/hold: cells 0, shapes 1
+overlap old/vhold: cells 0, shapes 0
+overlap probe1/a: cells 0, shapes 1
+overlap probe1/hold: cells 0, shapes 0
+overlap probe1/vhold: cells 0, shapes 0
+overlap a/hold: cells 0, shapes 2
+overlap a/vhold: cells 0, shapes 0
+overlap hold/vhold: cells 0, shapes 0
+  old     M2 TOMS-d, Excel GL    ALL       815 /  1101 /  1103 of  1107
+  old     M2 TOMS-d, Excel GL    min1       41 /    41 /    41 of    41
+  old     M2 TOMS-d, Excel GL    gl        478 /   478 /   478 of   478
+  old     M2 TOMS-d, Excel GL    algdiv    296 /   582 /   584 of   588
+  old       same, x87 stored ops ALL       815 /  1101 /  1103 of  1107
+  old       same, x87 stored ops min1       41 /    41 /    41 of    41
+  old       same, x87 stored ops gl        478 /   478 /   478 of   478
+  old       same, x87 stored ops algdiv    296 /   582 /   584 of   588
+  old     M2 TOMS-d, engine GL   ALL       806 /  1101 /  1103 of  1107
+  old     M2 TOMS-d, engine GL   min1       41 /    41 /    41 of    41
+  old     M2 TOMS-d, engine GL   gl        473 /   478 /   478 of   478
+  old     M2 TOMS-d, engine GL   algdiv    292 /   582 /   584 of   588
+  old     M2 accurate algdiv     ALL       859 /  1101 /  1103 of  1107
+  old     M2 accurate algdiv     min1       41 /    41 /    41 of    41
+  old     M2 accurate algdiv     gl        478 /   478 /   478 of   478
+  old     M2 accurate algdiv     algdiv    340 /   582 /   584 of   588
+  probe1  M2 TOMS-d, Excel GL    ALL     12796 / 12799 / 12799 of 12800
+  probe1  M2 TOMS-d, Excel GL    min1     4799 /  4799 /  4799 of  4800
+  probe1  M2 TOMS-d, Excel GL    gl       6398 /  6400 /  6400 of  6400
+  probe1  M2 TOMS-d, Excel GL    algdiv   1599 /  1600 /  1600 of  1600
+  probe1    same, x87 stored ops ALL     12796 / 12799 / 12799 of 12800
+  probe1    same, x87 stored ops min1     4799 /  4799 /  4799 of  4800
+  probe1    same, x87 stored ops gl       6398 /  6400 /  6400 of  6400
+  probe1    same, x87 stored ops algdiv   1599 /  1600 /  1600 of  1600
+  probe1  M2 TOMS-d, engine GL   ALL     12796 / 12799 / 12799 of 12800
+  probe1  M2 TOMS-d, engine GL   min1     4799 /  4799 /  4799 of  4800
+  probe1  M2 TOMS-d, engine GL   gl       6398 /  6400 /  6400 of  6400
+  probe1  M2 TOMS-d, engine GL   algdiv   1599 /  1600 /  1600 of  1600
+  probe1  M2 accurate algdiv     ALL     11879 / 12799 / 12799 of 12800
+  probe1  M2 accurate algdiv     min1     4799 /  4799 /  4799 of  4800
+  probe1  M2 accurate algdiv     gl       6398 /  6400 /  6400 of  6400
+  probe1  M2 accurate algdiv     algdiv    682 /  1600 /  1600 of  1600
+  a       M2 TOMS-d, Excel GL    ALL      3173 /  3917 /  3964 of  4096
+  a       M2 TOMS-d, Excel GL    min1     1055 /  1055 /  1055 of  1056
+  a       M2 TOMS-d, Excel GL    gl       1648 /  1648 /  1648 of  1648
+  a       M2 TOMS-d, Excel GL    algdiv    470 /  1214 /  1261 of  1392
+  a         same, x87 stored ops ALL      3173 /  3917 /  3964 of  4096
+  a         same, x87 stored ops min1     1055 /  1055 /  1055 of  1056
+  a         same, x87 stored ops gl       1648 /  1648 /  1648 of  1648
+  a         same, x87 stored ops algdiv    470 /  1214 /  1261 of  1392
+  a       M2 TOMS-d, engine GL   ALL      2935 /  3916 /  3963 of  4096
+  a       M2 TOMS-d, engine GL   min1     1055 /  1055 /  1055 of  1056
+  a       M2 TOMS-d, engine GL   gl       1410 /  1647 /  1647 of  1648
+  a       M2 TOMS-d, engine GL   algdiv    470 /  1214 /  1261 of  1392
+  a       M2 accurate algdiv     ALL      3302 /  3956 /  3970 of  4096
+  a       M2 accurate algdiv     min1     1055 /  1055 /  1055 of  1056
+  a       M2 accurate algdiv     gl       1648 /  1648 /  1648 of  1648
+  a       M2 accurate algdiv     algdiv    599 /  1253 /  1267 of  1392
+  hold    M2 TOMS-d, Excel GL    ALL      3103 /  3988 /  4060 of  4096
+  hold    M2 TOMS-d, Excel GL    min1     1052 /  1052 /  1052 of  1056
+  hold    M2 TOMS-d, Excel GL    gl       1551 /  1552 /  1552 of  1552
+  hold    M2 TOMS-d, Excel GL    algdiv    500 /  1384 /  1456 of  1488
+  hold      same, x87 stored ops ALL      3106 /  3991 /  4062 of  4096
+  hold      same, x87 stored ops min1     1053 /  1053 /  1053 of  1056
+  hold      same, x87 stored ops gl       1551 /  1552 /  1552 of  1552
+  hold      same, x87 stored ops algdiv    502 /  1386 /  1457 of  1488
+  hold    M2 TOMS-d, engine GL   ALL      2804 /  3988 /  4060 of  4096
+  hold    M2 TOMS-d, engine GL   min1     1052 /  1052 /  1052 of  1056
+  hold    M2 TOMS-d, engine GL   gl       1252 /  1552 /  1552 of  1552
+  hold    M2 TOMS-d, engine GL   algdiv    500 /  1384 /  1456 of  1488
+  hold    M2 accurate algdiv     ALL      3466 /  4048 /  4077 of  4096
+  hold    M2 accurate algdiv     min1     1052 /  1052 /  1052 of  1056
+  hold    M2 accurate algdiv     gl       1551 /  1552 /  1552 of  1552
+  hold    M2 accurate algdiv     algdiv    863 /  1444 /  1473 of  1488
+  vhold   M2 TOMS-d, Excel GL    ALL       649 /   816 /   846 of   864
+  vhold   M2 TOMS-d, Excel GL    min1      189 /   189 /   189 of   189
+  vhold   M2 TOMS-d, Excel GL    gl        394 /   405 /   405 of   405
+  vhold   M2 TOMS-d, Excel GL    algdiv     66 /   222 /   252 of   270
+  vhold     same, x87 stored ops ALL       649 /   816 /   846 of   864
+  vhold     same, x87 stored ops min1      189 /   189 /   189 of   189
+  vhold     same, x87 stored ops gl        394 /   405 /   405 of   405
+  vhold     same, x87 stored ops algdiv     66 /   222 /   252 of   270
+  vhold   M2 TOMS-d, engine GL   ALL       562 /   816 /   846 of   864
+  vhold   M2 TOMS-d, engine GL   min1      189 /   189 /   189 of   189
+  vhold   M2 TOMS-d, engine GL   gl        307 /   405 /   405 of   405
+  vhold   M2 TOMS-d, engine GL   algdiv     66 /   222 /   252 of   270
+  vhold   M2 accurate algdiv     ALL       724 /   838 /   857 of   864
+  vhold   M2 accurate algdiv     min1      189 /   189 /   189 of   189
+  vhold   M2 accurate algdiv     gl        394 /   405 /   405 of   405
+  vhold   M2 accurate algdiv     algdiv    141 /   244 /   263 of   270

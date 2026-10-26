@@ -203,9 +203,10 @@ fn makearray_invalid_cols() {
 fn makearray_past_the_grid() {
     // Excel builds MAKEARRAY results past the grid, and lifts a function over them: a cell of one
     // is #SPILL! (probes/t2579-array-value-edges B20, B23, B26; T-2600). Rows past the grid are
-    // above our cell bound, #ERROR! (DEVIATION, decision 0014), before any LAMBDA runs; columns
-    // past the grid above it are #VALUE! (gen-m7/b2078b5d702c691a A2553), and so are rows of
-    // 2^31 or more (gen-m7/8c4570978f18f4c2 A2736).
+    // above our cell bound, #ERROR! (DEVIATION, decision 0014), before any LAMBDA runs, and so are
+    // columns, which Excel builds past 2^20 (probes/t2452-makearray-cols-1048577, -2x524289;
+    // decision 0113); columns or rows of 2^31 or more are #VALUE! (gen-m7/b2078b5d702c691a A2553,
+    // gen-m7/8c4570978f18f4c2 A2736).
     let mut model = new_empty_model();
     model._set("A1", "=COLUMNS(MAKEARRAY(1,20000,LAMBDA(r,c,c)))");
     model._set("A2", "=ROWS(MAKEARRAY(1048577,1,LAMBDA(r,c,1)))");
@@ -216,16 +217,22 @@ fn makearray_past_the_grid() {
     model._set("A7", "=MAKEARRAY(1E15,4,LAMBDA(r,c,1))");
     model._set("A8", "=MAKEARRAY(2^31,1,LAMBDA(r,c,1))");
     model._set("A9", "=MAKEARRAY(2^31-1,1,LAMBDA(r,c,1))");
+    model._set("A10", "=COLUMNS(MAKEARRAY(1,1048577,LAMBDA(r,c,1)))");
+    model._set("A11", "=MAKEARRAY(1,2^31-1,LAMBDA(r,c,1))");
+    model._set("A12", "=MAKEARRAY(1,2^31,LAMBDA(r,c,1))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "20000");
     assert_eq!(model._get_text("A2"), "#ERROR!");
     assert_eq!(model._get_text("A3"), "#SPILL!");
     assert_eq!(model._get_text("A4"), "16385");
     assert_eq!(model._get_text("A5"), "#VALUE!");
-    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#ERROR!");
     assert_eq!(model._get_text("A7"), "#VALUE!");
     assert_eq!(model._get_text("A8"), "#VALUE!");
     assert_eq!(model._get_text("A9"), "#ERROR!");
+    assert_eq!(model._get_text("A10"), "#ERROR!");
+    assert_eq!(model._get_text("A11"), "#ERROR!");
+    assert_eq!(model._get_text("A12"), "#VALUE!");
 }
 
 #[test]

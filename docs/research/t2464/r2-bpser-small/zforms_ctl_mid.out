@@ -1,0 +1,11 @@
+POSITIVE CONTROL: planted g = g1ln53
+bpser:1<b0<8 6999 cells 910 shapes
+cells: tune 4315, hold-out 2684, runs 3584, shapes 3415
+tune  4315 hold  2684 | runs 3584 shapes 3415 | g=g1ln53 G=- tree=(alx (-g (-G +GL))) round(preorder)=(64, 53, 53)
+tune  4272 hold  2656 | runs 3584 shapes 3344 | g=g1ln53 G=- tree=(alx (-g (-G +GL))) round(preorder)=(64, 53, 64)
+tune  4272 hold  2656 | runs 3584 shapes 3344 | g=g1ln53 G=- tree=(alx ((-g -G) +GL)) round(preorder)=(64, 53, 64)
+tune  4272 hold  2656 | runs 3584 shapes 3344 | g=g1ln53 G=- tree=(alx ((-g +GL) -G)) round(preorder)=(64, 53, 64)
+tune  4094 hold  2510 | runs 3584 shapes 3020 | g=g1ln64 G=- tree=(alx (-g (-G +GL))) round(preorder)=(64, 53, 53)
+tune  4067 hold  2477 | runs 3584 shapes 2960 | g=g1ln64 G=- tree=(alx (-g (-G +GL))) round(preorder)=(64, 53, 64)
+tune  4067 hold  2477 | runs 3584 shapes 2960 | g=g1ln64 G=- tree=(alx ((-g -G) +GL)) round(preorder)=(64, 53, 64)
+tune  4067 hold  2477 | runs 3584 shapes 2960 | g=g1ln64 G=- tree=(alx ((-g +GL) -G)) round(preorder)=(64, 53, 64)

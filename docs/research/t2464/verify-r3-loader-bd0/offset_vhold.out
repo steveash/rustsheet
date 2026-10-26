@@ -1,0 +1,15 @@
+hold#1   (17.5,33.5) ll  C - median(exact lnpdf - X)   -10.28 units
+hold#2   (17.5,33.5) ss  C - median(exact lnpdf - X)    -2.06 units
+hold#3   (17.5,33.5) ss  C - median(exact lnpdf - X)    -3.41 units
+hold#4   (9.7,21.3) ll  C - median(exact lnpdf - X)    +5.00 units
+hold#5   (9.7,21.3) ss  C - median(exact lnpdf - X)    +2.41 units
+hold#6   (9.7,21.3) ls  C - median(exact lnpdf - X)    -0.68 units
+hold#7   (45.5,30.5) ll  C - median(exact lnpdf - X)    -2.63 units
+hold#8   (45.5,30.5) ss  C - median(exact lnpdf - X)    -4.15 units
+hold#9   (45.5,30.5) sl  C - median(exact lnpdf - X)    -3.90 units
+hold#10  (4.75,11.25) ll  C - median(exact lnpdf - X)    -2.54 units
+hold#11  (4.75,11.25) ss  C - median(exact lnpdf - X)    -1.11 units
+hold#12  (4.75,11.25) ss  C - median(exact lnpdf - X)    -1.08 units
+hold#13  (70.3,50.9) ll  C - median(exact lnpdf - X)   -52.75 units
+hold#14  (70.3,50.9) ss  C - median(exact lnpdf - X)   -18.82 units
+hold#15  (70.3,50.9) ss  C - median(exact lnpdf - X)   -13.65 units

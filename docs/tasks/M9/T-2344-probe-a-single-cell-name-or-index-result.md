@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -18,6 +18,8 @@ The data argument of QUARTILE*, PERCENTILE* and PERCENTRANK* has Excel-evidenced
 T-1748 made a typed boolean or text a one-element array in `percentile_numbers` (percentile.rs) only when the node is not a `ReferenceKind`. Unprobed: `QUARTILE(B1,1)` with B1 = TRUE, "1", "abc"; a name pointing at such a cell; `QUARTILE(INDEX(C1:C3,2),1)`; `QUARTILE("abc",1)` (unit test only). SMALL/LARGE treat a cell holding a scalar as #NUM! (chisq.rs `numbers_from_ranked_arg`).
 
 T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): gen-m9 evidence answers the single-cell question: statistics.md "A lone text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN (T-2256)": a single-cell reference holding text or a boolean is data with no number, `#NUM!` for QUARTILE*, PERCENTILE* and TRIMMEAN (also for an empty cell) and `#N/A` for PERCENTRANK*; ours `#VALUE!`. The name and INDEX forms stay to probe. This also settles T-2066's QUARTILE cell.
+
+T-2429 (2026-10-25) probed and implemented the single cell holding a boolean (probes/t2429-quartile-exc-no-number A1-A24: no number, `#NUM!`, PERCENTRANK `#N/A`; statistics.md "A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"): 24 of the cells below now pass, and `make eval-baseline` dropped them. The rest, and the name and INDEX forms, stay here.
 
 Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 72 known-failure lines in eval/baseline/gen-m9.txt, 72 visibly off.
 Examples:
@@ -104,6 +106,12 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A131
 - gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A253
 
+T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as Dnn, every call and compound argument read through a TYPE/shape summary, excel-graph, 2026-10-25; probes/tbill-error-order-inner-calls for the T-bill cells): the innermost diverging sub-expression of 1 gen-m9 financial cell moved here from T-2496.
+
+| gen-m9 cell | innermost sub-expression | Excel | ours |
+|---|---|---|---|
+| gen-m9/b72d952c5f52cb4d Calc!A241 | `QUARTILE(Data!C7,Data!$E9)` (C7 = TRUE, quart -2.5; inside STDEV.S and TBILLYIELD) | #NUM! | #VALUE! |
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -114,6 +122,7 @@ Cells:
 - [ ] A probes-numeric case with an oracle sidecar covers those forms; the engine matches, and the hand-written expectations in test_sorted_data_lift.rs (`typed_scalar_data_...`) cite it.
 - [ ] statistics.md drops UNVERIFIED for the single-cell reading.
 - [ ] `make check` green; reviewers approve.
+- [ ] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -13,17 +13,22 @@
   scripts/tasks.py validate              # schema + dependency checks, and every TODO(T-XXXX) in
                                          # code names an open task (CI)
   scripts/tasks.py board                 # write docs/tasks/BOARD.md (local view, git-ignored)
+  scripts/tasks.py stats --json          # task counts per milestone, campaign stage and status,
+                                         # and deferred tasks, for the progress dashboard
+                                         # (SPEC-0022); fails like `validate`; no fetch, no
+                                         # network: one local, read-only `git ls-files`
   scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S]
                        [--tier sonnet|opus] [--no-fetch]
                                          # write a task file with the next free id (decision 0016)
 
 Front matter keys: id, title, milestone, lane, status, priority, size, tier, depends_on, spec,
-campaign (optional; decision 0083).
+campaign and defer (optional; decisions 0083, 0114).
 See docs/process/task-format.md.
 """
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -53,8 +58,12 @@ BUSY_SECONDS = 2 * 3600  # a lane whose pushed agent branch moved this recently 
 PRIORITIES = ["P0", "P1", "P2", "P3"]
 SIZES = ["S", "M", "L"]
 TIERS = ["sonnet", "opus"]  # model tier that works the task (decision 0018)
-# Campaigns whose tasks `next` picks before the milestone order (decision 0083).
-CAMPAIGNS = ["visible"]
+# Campaigns whose tasks `next` picks before the milestone order (decision 0083), in the stage
+# order `next` picks them (decision 0114): semantic fixes, then accurate kernels, then the rest.
+CAMPAIGNS = ["semantics", "accuracy", "visible"]
+# `defer:` values: a deferred task is never ready (decision 0114 parks bit-level work until
+# Phase 1 exits).
+DEFERRALS = ["phase-1b"]
 OPEN = ("todo", "in-progress", "blocked")  # not done or dropped
 ACTIVE = ("todo", "in-progress")
 MILESTONE = re.compile(r"^M\d+$")
@@ -115,6 +124,8 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
                 errors.append(f"{where}: {key}={t.get(key)!r} not in {allowed}")
         if "campaign" in t and t.get("campaign") not in CAMPAIGNS:
             errors.append(f"{where}: campaign={t.get('campaign')!r} not in {CAMPAIGNS}")
+        if "defer" in t and t.get("defer") not in DEFERRALS:
+            errors.append(f"{where}: defer={t.get('defer')!r} not in {DEFERRALS}")
         if not MILESTONE.match(str(t.get("milestone", ""))):
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
@@ -135,6 +146,11 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             if dep not in ids:
                 errors.append(f"{t['id']}: unknown dependency {dep}")
     return errors
+
+
+def check(tasks: list[dict[str, object]]) -> list[str]:
+    """Every error `validate` reports: the task schema and dependencies, then stale TODOs."""
+    return validate(tasks) + stale_todos(tasks, code_files())
 
 
 def stale_todos(tasks: list[dict[str, object]], files: dict[str, str]) -> list[str]:
@@ -176,7 +192,46 @@ def deps_of(t: dict[str, object]) -> list[str]:
 
 
 def ready(t: dict[str, object], by_id: dict[str, dict[str, object]]) -> bool:
-    return t.get("status") == "todo" and all(by_id.get(d, {}).get("status") == "done" for d in deps_of(t))
+    """A todo task, not deferred (decision 0114), whose dependencies are all done."""
+    return (
+        t.get("status") == "todo"
+        and "defer" not in t
+        and all(by_id.get(d, {}).get("status") == "done" for d in deps_of(t))
+    )
+
+
+def stats(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -> dict[str, object]:
+    """Task counts for the progress dashboard (SPEC-0022, "Task counts"), so its generator never
+    parses front matter itself.
+
+    `by_milestone`: milestone -> status -> count. `by_campaign`: stage (a `campaign:` tag) ->
+    status -> count, plus `ready`, the stage's tasks that `ready` accepts; branch claims are not
+    checked, because that would fetch (`available` does). `deferred`: the same map for deferred
+    tasks (decision 0114), whose `ready` is always 0. A task with both a `campaign:` and a
+    `defer:` counts in its stage and in `deferred`, so the two must not be summed. Every status
+    and stage is present, zero or not.
+
+    Callers run `check` first: the counts index the status maps directly, so an unknown status
+    (which `validate` rejects) would raise KeyError here.
+    """
+
+    def zero() -> dict[str, int]:
+        return dict.fromkeys(STATUSES, 0)
+
+    by_milestone: dict[str, dict[str, int]] = {}
+    by_campaign: dict[str, dict[str, int]] = {stage: {**zero(), "ready": 0} for stage in CAMPAIGNS}
+    deferred = {**zero(), "ready": 0}
+    for t in tasks:
+        status = str(t.get("status"))
+        by_milestone.setdefault(str(t.get("milestone")), zero())[status] += 1
+        stage = by_campaign.get(str(t.get("campaign")))
+        if stage is not None:  # no `campaign:` tag, or an unknown one (`validate` rejects it)
+            stage[status] += 1
+            stage["ready"] += int(ready(t, by_id))
+        if "defer" in t:
+            deferred[status] += 1
+            deferred["ready"] += int(ready(t, by_id))  # 0: `ready` excludes deferred tasks
+    return {"by_milestone": by_milestone, "by_campaign": by_campaign, "deferred": deferred}
 
 
 def git_branch_names(directory: str, pattern: re.Pattern[str], fetch: bool = True) -> set[str]:
@@ -378,21 +433,28 @@ def in_lane(t: dict[str, object], lane: str | None) -> bool:
     return t.get("lane") == lane
 
 
-def in_campaign(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -> set[str]:
-    """Ids `next` orders as campaign tasks: those with a known `campaign:` and every open task an
-    open campaign task depends on, directly or not (decision 0094). A probe or sweep a campaign
-    fix waits on would otherwise wait behind the milestone order and stall the fix."""
-    tagged = [t for t in tasks if t.get("campaign") in CAMPAIGNS and t.get("status") in OPEN]
-    ids = {str(t["id"]) for t in tagged}
-    stack = [d for t in tagged for d in deps_of(t)]
-    while stack:
-        tid = stack.pop()
-        dep = by_id.get(tid)
-        if dep is None or tid in ids or dep.get("status") not in OPEN:
-            continue
-        ids.add(tid)
-        stack.extend(deps_of(dep))
-    return ids
+def in_campaign(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -> dict[str, int]:
+    """Campaign stage per id `next` orders as a campaign task (its index in CAMPAIGNS): those with a
+    known `campaign:` and every open task an open campaign task depends on, directly or not
+    (decision 0094). A probe or sweep a campaign fix waits on would otherwise wait behind the
+    milestone order and stall the fix. A dependency takes the earliest stage of the campaign tasks
+    that need it (decision 0114)."""
+    stage: dict[str, int] = {}
+    tagged = sorted(
+        (t for t in tasks if t.get("campaign") in CAMPAIGNS and t.get("status") in OPEN),
+        key=lambda t: CAMPAIGNS.index(str(t.get("campaign"))),
+    )
+    for t in tagged:
+        s = CAMPAIGNS.index(str(t.get("campaign")))
+        stack = [str(t["id"])]
+        while stack:
+            tid = stack.pop()
+            task = by_id.get(tid)
+            if task is None or tid in stage or task.get("status") not in OPEN:
+                continue
+            stage[tid] = s
+            stack.extend(deps_of(task))
+    return stage
 
 
 def available(
@@ -404,7 +466,7 @@ def available(
 ) -> tuple[list[dict[str, object]], dict[str, str]]:
     """(ready tasks a worker of `tier` may start in `lane`, branches to resume): best first: P0, then handoffs, then
     tasks to re-review after the review-round limit (decision 0095), then campaign tasks and their
-    open dependencies (decisions 0083, 0094), then milestone and priority (a P0 never waits behind
+    open dependencies by stage (decisions 0083, 0094, 0114), then milestone and priority (a P0 never waits behind
     an escalated lower-priority task; decision 0023). The map gives the branch of each re-review."""
     claimed, on_branches, active, limited = branch_claims(fetch=fetch)
 
@@ -438,7 +500,7 @@ def available(
             str(t.get("priority")) != "P0",
             not handed_off(t, on_branches),
             str(t["id"]) not in limited,
-            str(t["id"]) not in campaign,
+            campaign.get(str(t["id"]), len(CAMPAIGNS)),
             str(t.get("milestone"))[1:].zfill(3),
             str(t.get("priority")),
             str(t["id"]),
@@ -462,11 +524,32 @@ def main() -> int:
     tasks = load()
     by_id = {str(t["id"]): t for t in tasks}
     if cmd == "validate":
-        errors = validate(tasks) + stale_todos(tasks, code_files())
+        errors = check(tasks)
         for e in errors:
             print(f"FAIL {e}")
         print(f"{len(tasks)} tasks, {len(errors)} errors")
         return 1 if errors else 0
+    if cmd == "stats":
+        if "--json" not in sys.argv:
+            print("usage: tasks.py stats --json", file=sys.stderr)
+            return 2
+        # Counts over an invalid task set would mislead the dashboard; fail like `validate`. Its
+        # stale-TODO scan is the one git call: a local, read-only `git ls-files`.
+        try:
+            errors = check(tasks)
+        except (OSError, subprocess.CalledProcessError) as e:
+            print(f"FAIL could not list tracked files with `git ls-files` ({e})", file=sys.stderr)
+            return 1
+        for e in errors:
+            print(f"FAIL {e}", file=sys.stderr)
+        if errors:
+            print(
+                f"{len(tasks)} tasks, {len(errors)} errors; see `scripts/tasks.py validate`",
+                file=sys.stderr,
+            )
+            return 1
+        print(json.dumps(stats(tasks, by_id), indent=2, sort_keys=True))
+        return 0
     if cmd == "new":
         return new_task(tasks, fetch="--no-fetch" not in sys.argv)
     if cmd in ("next", "ready"):

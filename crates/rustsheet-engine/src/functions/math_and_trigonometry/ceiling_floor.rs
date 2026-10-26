@@ -1,18 +1,22 @@
 //! The CEILING/FLOOR family on the SPEC-0011 driver (T-1773): CEILING, ECMA.CEILING, FLOOR,
 //! CEILING.MATH, CEILING.PRECISE, ISO.CEILING, FLOOR.MATH and FLOOR.PRECISE.
 
-use crate::constants::EXCEL_PRECISION;
+use crate::arithmetic::flush_subnormal;
+use crate::decimal_round::cut_to_15_digits;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
-use crate::number_format::to_excel_precision;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-/// `value / significance` with Excel's precision applied, so floating-point noise does not
-/// push an exact multiple over a step boundary.
+/// `value / significance` cut to 15 significant digits, so floating-point noise does not push an
+/// exact multiple over a step boundary. An exact tie at the 16th digit goes away from zero, as
+/// INT's cut does (numbers.md "FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from
+/// zero", probes/t2652-floor-ceiling-ties). A subnormal ratio is 0, as `/` flushes it, so the
+/// call is 0 (numbers.md "CEILING and FLOOR of a subnormal ratio are 0",
+/// probes/t2715-ceiling-floor-subnormal-ratio).
 fn snap_ratio(value: f64, significance: f64) -> f64 {
-    to_excel_precision(value / significance, EXCEL_PRECISION)
+    cut_to_15_digits(flush_subnormal(value / significance), true)
 }
 
 /// MROUND of two non-zero, same-signed numbers. Excel rounds the double quotient `|n / m|` up
@@ -179,7 +183,33 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::mround_value;
+    use super::{mround_value, snap_ratio};
+
+    #[test]
+    fn snap_ratio_tie_goes_away_from_zero() {
+        // probes/t2652-floor-ceiling-ties: a 16th-digit tie is not cut to even.
+        assert_eq!(
+            snap_ratio(-333_333_333_333_266.5, 1.0),
+            -333_333_333_333_267.0
+        );
+        assert_eq!(
+            snap_ratio(333_333_333_333_266.5, 1.0),
+            333_333_333_333_267.0
+        );
+        assert_eq!(
+            snap_ratio(333_333_333_333_265.5, 1.0),
+            333_333_333_333_266.0
+        );
+        assert_eq!(snap_ratio(999_999_999_999_999.5, 1.0), 1e15);
+        assert_eq!(snap_ratio(0.0, 1.0), 0.0);
+        assert!(snap_ratio(1.0, 0.0).is_infinite());
+        // probes/t2715-ceiling-floor-subnormal-ratio: a subnormal ratio is 0; the smallest normal
+        // is kept (then cut to 15 digits), so its ceiling is still one step.
+        assert_eq!(snap_ratio(1e-307, 4.5), 0.0);
+        assert_eq!(snap_ratio(-1e-300, 1e8), 0.0);
+        assert_eq!(snap_ratio(f64::MIN_POSITIVE, 1.0).ceil(), 1.0);
+        assert_eq!(snap_ratio(-f64::MIN_POSITIVE, 1.0).floor(), -1.0);
+    }
 
     #[test]
     fn mround_quotient_tolerance() {

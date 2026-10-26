@@ -1,6 +1,7 @@
 use std::fmt;
 
 use crate::arithmetic::power;
+use crate::cast::number_text_too_long;
 use crate::functions::lift::{num_error, value_error};
 use crate::functions::math_and_trigonometry::{
     excel_atan2, excel_quarter_turn_remainder, excel_sin_cos, EXCEL_INNER_TRIG_LIMIT,
@@ -72,7 +73,11 @@ impl fmt::Display for Complex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // 15-digit rounding of a part near DBL_MAX overflows to infinity; Excel writes
         // `1.79769313486232E+308` (probes/eng-imexp-overflow-imag A22), so keep the unrounded part.
+        // A subnormal part is 0, as a subnormal number prints `0` (numbers.md "Subnormal results
+        // become 0"): `IMEXP("-724.227-562.884i")` is "0", not "0+0i" (gen-m9/b5aef3645cec1b95
+        // A154), and `IMSEC("1.5+711i")` "0".
         let round15 = |v: f64| {
+            let v = if v.is_subnormal() { 0.0 } else { v };
             Some(to_precision(v, 15))
                 .filter(|r| r.is_finite())
                 .unwrap_or(v)
@@ -221,6 +226,21 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     }
 }
 
+/// Whether `text`, past its leading spaces, has a `-` that is neither its first character nor an
+/// exponent's sign (`1E-3`, an `E` after a digit or a `.`): Excel's complex reader does not hand
+/// such text to VALUE.
+fn has_inner_minus(text: &str) -> bool {
+    let bytes = text.trim_start_matches(' ').as_bytes();
+    (1..bytes.len()).any(|i| {
+        let exponent_sign = matches!(bytes.get(i - 1), Some(b'E' | b'e'))
+            && matches!(
+                i.checked_sub(2).and_then(|j| bytes.get(j)),
+                Some(b'0'..=b'9' | b'.')
+            );
+        bytes.get(i) == Some(&b'-') && !exponent_sign
+    })
+}
+
 /// A parsed complex number: the real part, the imaginary part and the suffix.
 type ComplexParts = (f64, f64, Suffix);
 
@@ -284,12 +304,18 @@ impl Model {
     /// and a boolean, typed or in a cell, is `#VALUE!` (`IMABS(TRUE)`, `IMSUB(M4,"1")`:
     /// probes/eng-argument-modes A89, probes/eng-imsum-improduct-whole C1:C15).
     fn complex_of(
+        &self,
         value: &CalcResult,
         empty: EmptyText,
         cell: CellReferenceIndex,
     ) -> Result<ComplexParts, CalcResult> {
         if matches!(value, CalcResult::Boolean(_)) {
             return Err(value_error(cell));
+        }
+        // A number keeps its full precision, not its 15-digit text: `IMPOWER(1.6564497455696935E-10,3)`
+        // is 4.54500948137352E-30 (gen-m9/756a9f7bc3a06bcc A345).
+        if let CalcResult::Number(f) = value {
+            return Ok((*f, 0.0, Suffix::Real));
         }
         let blank = matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg);
         let value = Self::cast_string_ref(value, cell)?;
@@ -298,7 +324,28 @@ impl Model {
             // (`IMSUB("3+4j",Q1)` is "3+4j"): probes/eng-imsub-imdiv-blank-j A1:A6, B1, B5.
             return Ok((0.0, 0.0, Suffix::Real));
         }
-        parse_complex_number(&value).map_err(|_| num_error(cell))
+        // Excel: text over 255 characters is `#VALUE!` (`IMSECH("TRUE"&REPT("AB",300))`, gen-m9
+        // b5aef3645cec1b95 A101), and a leading tab or U+3000 is `#NUM!` where a leading space is
+        // read (`IMCOT(CHAR(9)&"123456789.123")`, gen-m9/12e4aa13a20cc1f8 A224, 8fa8b572ebc1f001 A377).
+        if number_text_too_long(&value) {
+            return Err(value_error(cell));
+        }
+        if value.starts_with(['\t', '\u{3000}']) {
+            return Err(num_error(cell));
+        }
+        // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",
+        // `IMABS("1/2/2020")` 43832), except text with an inner minus sign that is not an exponent's:
+        // `IMABS` of "2024-01-01", "1-2-2020", "1-Jan-2020" and "$-5" is `#NUM!` where VALUE reads them,
+        // while " -5", "- 5", "1E-3%" and "1,000E-2" are read (probes/eng-inumber-reading A4,
+        // probes/eng-inumber-date-boundary column A).
+        match parse_complex_number(&value) {
+            Ok(z) => Ok(z),
+            Err(_) if has_inner_minus(&value) => Err(num_error(cell)),
+            Err(_) => self
+                .value_text_number(&value)
+                .map(|f| (f, 0.0, Suffix::Real))
+                .ok_or_else(|| num_error(cell)),
+        }
     }
 
     /// A one-argument complex function, lifted: its argument lifts over an array and refuses a
@@ -310,11 +357,11 @@ impl Model {
         op: ComplexFn,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.lift_call(kind, args, cell, &mut |_, values| {
+        self.lift_call(kind, args, cell, &mut |model, values| {
             let [value] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
-            match Self::complex_of(value, EmptyText::ZeroIfBlank, cell) {
+            match model.complex_of(value, EmptyText::ZeroIfBlank, cell) {
                 Ok(z) => op(z, cell),
                 Err(error) => error,
             }
@@ -324,6 +371,7 @@ impl Model {
     /// Two complex arguments of one element (IMDIV, IMSUB), read left to right; empty text and
     /// different suffixes are `#NUM!` (engineering.md "T-1625 probes").
     fn complex_pair_of(
+        &self,
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<(ComplexParts, ComplexParts), CalcResult> {
@@ -335,8 +383,8 @@ impl Model {
         if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
             return Err(CalcResult::new_error(Error::NA, cell, String::new()));
         }
-        let first = Self::complex_of(first, EmptyText::ZeroIfBlank, cell)?;
-        let second = Self::complex_of(second, EmptyText::ZeroIfBlank, cell)?;
+        let first = self.complex_of(first, EmptyText::ZeroIfBlank, cell)?;
+        let second = self.complex_of(second, EmptyText::ZeroIfBlank, cell)?;
         let Some(suffix) = first.2.join(second.2) else {
             return Err(num_error(cell));
         };
@@ -353,6 +401,15 @@ impl Model {
                 [x, y, suffix] => (x, y, Some(suffix)),
                 _ => return CalcResult::new_args_number_error(cell),
             };
+            // Excel reads the suffix before the numbers, so a bad or error suffix wins over an
+            // error in real_num or i_num (T-2532; engineering.md, gen-m9 COMPLEX cells).
+            let suffix = match suffix.map(|suffix| Self::cast_string_ref(suffix, cell)) {
+                None => Suffix::I,
+                Some(Ok(s)) if s == "i" || s.is_empty() => Suffix::I,
+                Some(Ok(s)) if s == "j" => Suffix::J,
+                Some(Ok(_)) => return value_error(cell),
+                Some(Err(s)) => return s,
+            };
             // A boolean is `#VALUE!`: `COMPLEX(TRUE,1)` (probes/eng-imsum-improduct-whole C12).
             let x = match model.cast_number_no_bools_ref(x, cell) {
                 Ok(s) => s,
@@ -361,13 +418,6 @@ impl Model {
             let y = match model.cast_number_no_bools_ref(y, cell) {
                 Ok(s) => s,
                 Err(s) => return s,
-            };
-            let suffix = match suffix.map(|suffix| Self::cast_string_ref(suffix, cell)) {
-                None => Suffix::I,
-                Some(Ok(s)) if s == "i" || s.is_empty() => Suffix::I,
-                Some(Ok(s)) if s == "j" => Suffix::J,
-                Some(Ok(_)) => return value_error(cell),
-                Some(Err(s)) => return s,
             };
             complex_result(x, y, suffix)
         })
@@ -412,8 +462,8 @@ impl Model {
     /// `IMDIV(inumber1, inumber2)`: both lift over an array and refuse a multi-cell range
     /// (probes/eng-argument-modes B36:E36, probes/scalar-lift-open-a Y13).
     pub(crate) fn fn_imdiv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_call(Function::Imdiv, args, cell, &mut |_, values| {
-            let ((x1, y1, suffix), (x2, y2, _)) = match Self::complex_pair_of(values, cell) {
+        self.lift_call(Function::Imdiv, args, cell, &mut |model, values| {
+            let ((x1, y1, suffix), (x2, y2, _)) = match model.complex_pair_of(values, cell) {
                 Ok(pair) => pair,
                 Err(error) => return error,
             };
@@ -463,7 +513,7 @@ impl Model {
             let [number, n] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
-            let (x, y, suffix) = match Self::complex_of(number, EmptyText::ZeroIfBlank, cell) {
+            let (x, y, suffix) = match model.complex_of(number, EmptyText::ZeroIfBlank, cell) {
                 Ok(s) => s,
                 Err(error) => return error,
             };
@@ -488,7 +538,13 @@ impl Model {
             let Ok(radius) = power(r, n) else {
                 return num_error(cell);
             };
-            let angle = f64::atan2(y, x) * n;
+            // The angle is Excel's ATAN2 kernel, `atan(y/x)` (IMARGUMENT's [`excel_atan2`]):
+            // `IMPOWER("1000+1i",1)` is "1000+1i", its imaginary part 1.0000000000000002 where
+            // libm `atan2` gives exactly 1 (gen-m9/74779cff2810ccf4 Calc!A379; T-2610). Unprobed
+            // (T-2736): where that kernel errs (a zero or subnormal x, an overflowing y/x) `atan2` is
+            // kept; its subnormal angle is 0 (`IMPOWER("1E20+1E-300i",1)` is "1E+20") and a -0
+            // imaginary part with x < 0 is +π, where `atan2` gave a tiny part and -π.
+            let angle = excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x)) * n;
             // An underflowed radius of 0 is "0" without reading the angle
             // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
             if radius == 0.0 {
@@ -552,7 +608,7 @@ impl Model {
             Function::Imsub,
             args,
             cell,
-            &mut |_, values| match Self::complex_pair_of(values, cell) {
+            &mut |model, values| match model.complex_pair_of(values, cell) {
                 Ok(((x1, y1, suffix), (x2, y2, _))) => {
                     // Excel: a part that overflows is 0 and the other part stays
                     // (`IMSUB("9E307","-9E307")` is "0", `IMSUB("9E307+1i","-9E307")` is "i";
@@ -676,7 +732,7 @@ impl Model {
                 is_reference,
                 cell,
                 &mut walk,
-                &mut |_, source, value| {
+                &mut |model, source, value| {
                     if source == ItemSource::ReferencedCell {
                         referenced += 1;
                     }
@@ -686,7 +742,7 @@ impl Model {
                             has_blank = true;
                             return Ok(());
                         }
-                        value => Self::complex_of(&value, EmptyText::Parse, cell)?,
+                        value => model.complex_of(&value, EmptyText::Parse, cell)?,
                     };
                     let next = match total {
                         None => z,
@@ -901,48 +957,4 @@ fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::functions::engineering::complex::Suffix;
-
-    use super::parse_complex_number as parse;
-
-    #[test]
-    fn coefficient_one_written_unless_exactly_one() {
-        let text = |x: f64, y: f64| {
-            super::Complex {
-                x,
-                y,
-                suffix: Suffix::I,
-            }
-            .to_string()
-        };
-        assert_eq!(text(0.1, 1.0 + 2f64.powi(-52)), "0.1+1i");
-        assert_eq!(text(0.5, 1.0 - 2f64.powi(-53)), "0.5+1i");
-        assert_eq!(text(0.5, -1.0 - 2f64.powi(-52)), "0.5-1i");
-        assert_eq!(text(0.5, 1.0), "0.5+i");
-        assert_eq!(text(0.5, -1.0), "0.5-i");
-        assert_eq!(text(0.0, 1.0), "i");
-    }
-
-    #[test]
-    fn suffix_join() {
-        assert_eq!(Suffix::I.join(Suffix::J), None);
-        assert_eq!(Suffix::Real.join(Suffix::J), Some(Suffix::J));
-        assert_eq!(Suffix::I.join(Suffix::Real), Some(Suffix::I));
-        assert_eq!(Suffix::Real.join(Suffix::Real), Some(Suffix::Real));
-    }
-
-    #[test]
-    fn test_parse_complex() {
-        assert_eq!(parse("1+2i"), Ok((1.0, 2.0, Suffix::I)));
-        assert_eq!(parse("2i"), Ok((0.0, 2.0, Suffix::I)));
-        assert_eq!(parse("7.5"), Ok((7.5, 0.0, Suffix::Real)));
-        assert_eq!(parse("-7.5"), Ok((-7.5, 0.0, Suffix::Real)));
-        assert_eq!(parse("7-5i"), Ok((7.0, -5.0, Suffix::I)));
-        assert_eq!(parse("i"), Ok((0.0, 1.0, Suffix::I)));
-        assert_eq!(parse("7+i"), Ok((7.0, 1.0, Suffix::I)));
-        assert_eq!(parse("7-i"), Ok((7.0, -1.0, Suffix::I)));
-        assert_eq!(parse("-i"), Ok((0.0, -1.0, Suffix::I)));
-        assert_eq!(parse("0"), Ok((0.0, 0.0, Suffix::Real)));
-    }
-}
+mod tests;

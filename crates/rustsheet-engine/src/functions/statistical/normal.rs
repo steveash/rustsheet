@@ -84,7 +84,7 @@ fn ppnd16_tail(p: f64) -> Option<f64> {
 
 /// The quantile of `p` in (0, 1) of the normal distribution with `mean` and `std_dev`, O(1): the
 /// PPND16 tail as `mean + z*std_dev`, else statrs' closed form (`erfc_inv`).
-fn normal_quantile(
+pub(crate) fn normal_quantile(
     p: f64,
     mean: f64,
     std_dev: f64,

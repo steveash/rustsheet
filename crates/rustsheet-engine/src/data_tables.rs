@@ -123,6 +123,7 @@ impl Model {
     fn reset_on_demand_evaluation(&mut self) {
         let state = &mut self.evaluation;
         state.cells.clear();
+        state.clear_pass_caches();
         state.stack.clear();
         state.seen.clear();
         state.seen_ranges.clear();

@@ -107,6 +107,8 @@ pub struct DatePart {
     pub calendar: Option<Calendar>,
     /// Whether the section's locale tag names a Japanese LCID (`Localized::japanese_lcid`).
     pub japanese_lcid: bool,
+    /// Whether a `B2` prefix puts the section in the Hijri calendar (`date_names::hijri_ymd`).
+    pub hijri: bool,
 }
 
 #[derive(Default)]
@@ -657,8 +659,8 @@ impl Parser {
                 Token::Calendar('1') => {
                     is_date = true;
                 }
-                // TODO(T-1613): `B2` (Hijri) is not implemented: the section is an error once a date or time
-                // token would print a Hijri date (`TEXT(100,"B2")` alone is "").
+                // `B2` selects the Hijri calendar (`TEXT(45000,"B2yyyy-mm-dd")` is "1444-08-23";
+                // probes/t1613-hijri-b2). After a locale tag it changes nothing.
                 Token::Calendar(_) => {
                     is_date = true;
                     hijri |= locale.is_none();
@@ -797,6 +799,7 @@ impl Parser {
                 return self.system_part(system_format, color);
             }
         }
+        let tagged = locale.is_some();
         let localized = match locale {
             Some(LocaleTag::Names(localized)) => Some(localized),
             _ => None,
@@ -830,7 +833,8 @@ impl Parser {
                         | TextToken::Spacer(_)
                 )
             });
-            if is_number || (hijri && prints_date) {
+            // TODO(T-2729): `B2` before a locale tag (`B2[$-40C]mmmm` is "Chaaban") is not modelled.
+            if is_number || (hijri && prints_date && tagged) {
                 return ParsePart::Error(ErrorPart::default());
             }
             // Excel prints a currency symbol in a date section where it is written
@@ -847,14 +851,18 @@ impl Parser {
                 day_half: localized.map(|l| l.day_half),
                 calendar: localized.map(|l| l.calendar),
                 japanese_lcid: localized.is_some_and(|l| l.japanese_lcid),
+                hijri,
             })
         } else {
             ParsePart::Number(NumberPart {
                 color,
                 condition,
                 use_thousands,
-                percent,
-                comma,
+                // A scientific code never scales: its `%` is shown as written and a trailing `,` is
+                // dropped (`0.00E+00%` on 2.675 is "2.68E+00%", `0.00%E+00` "2.68%E+00", `0.00E+00,` on
+                // 2675 "2.68E+03"; probes/t2720-scientific-percent, excel-graph 2026-10-25, T-2720).
+                percent: if is_scientific { 0 } else { percent },
+                comma: if is_scientific { 0 } else { comma },
                 tokens,
                 digit_count,
                 precision,

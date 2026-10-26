@@ -18,6 +18,7 @@ use crate::case_log;
 use crate::cellref::Addr;
 use crate::deviations::{self, Outcome};
 use crate::engine::{Engine, Evaluated};
+use crate::formula_calls::calls_add_in;
 use crate::overrides;
 use crate::spill_extent::SpillExtent;
 use crate::suite::{CaseFile, Suite, SuiteKind};
@@ -91,6 +92,10 @@ pub struct CaseResult {
     #[serde(default)]
     pub deviations: usize,
     pub skipped_volatile: usize,
+    /// Formula cells left unscored because they call an add-in function (`_xll.`, decision 0027;
+    /// T-0462).
+    #[serde(default)]
+    pub skipped_add_in: usize,
     pub millis: u64,
     /// The spec case's `tags` (none for xlsx cases or unreadable ones); the probe milestone
     /// report reads a case's milestone tag from them (decision 0051).
@@ -159,6 +164,40 @@ enum Prepared {
     Spec { spec: Box<CaseSpec> },
 }
 
+impl CaseResult {
+    /// A case `id` of `suite` with `status`, nothing checked or skipped and no cells: the start
+    /// of every result, filled in with struct-update syntax.
+    pub(crate) fn empty(id: &str, suite: &str, status: CaseStatus) -> CaseResult {
+        CaseResult {
+            id: id.into(),
+            suite: suite.into(),
+            status,
+            message: None,
+            expected_source: String::new(),
+            checked: 0,
+            passed: 0,
+            deviations: 0,
+            skipped_volatile: 0,
+            skipped_add_in: 0,
+            millis: 0,
+            tags: Vec::new(),
+            cells: Vec::new(),
+            text: Vec::new(),
+            defined_names: BTreeMap::new(),
+        }
+    }
+
+    /// A passing case that checked one passing cell and holds none, for tests.
+    #[cfg(test)]
+    pub(crate) fn for_test(id: &str, suite: &str) -> CaseResult {
+        CaseResult {
+            checked: 1,
+            passed: 1,
+            ..CaseResult::empty(id, suite, CaseStatus::Pass)
+        }
+    }
+}
+
 struct PreparedCase {
     input: Prepared,
     /// The workbook's file name in the oracle (sidecar `source.workbook_name`; T-2042).
@@ -167,6 +206,7 @@ struct PreparedCase {
     extent: Option<SpillExtent>,
     expected_source: String,
     skipped_volatile: usize,
+    skipped_add_in: usize,
     tags: Vec<String>,
     text: Vec<TextExpectation>,
     defined_names: BTreeMap<String, String>,
@@ -203,20 +243,8 @@ pub fn run_suites(
 
 fn invalid(suite: &Suite, case: &CaseFile, message: String) -> CaseResult {
     CaseResult {
-        id: case.id.clone(),
-        suite: suite.manifest.name.clone(),
-        status: CaseStatus::InvalidCase,
         message: Some(message),
-        expected_source: String::new(),
-        checked: 0,
-        passed: 0,
-        deviations: 0,
-        skipped_volatile: 0,
-        millis: 0,
-        tags: Vec::new(),
-        cells: Vec::new(),
-        text: Vec::new(),
-        defined_names: BTreeMap::new(),
+        ..CaseResult::empty(&case.id, &suite.manifest.name, CaseStatus::InvalidCase)
     }
 }
 
@@ -233,20 +261,12 @@ pub fn run_case(
         Err(e) => return invalid(suite, case, e),
     };
     let mut result = CaseResult {
-        id: case.id.clone(),
-        suite: suite.manifest.name.clone(),
-        status: CaseStatus::Pending,
-        message: None,
         expected_source: prepared.expected_source.clone(),
-        checked: 0,
-        passed: 0,
-        deviations: 0,
         skipped_volatile: prepared.skipped_volatile,
-        millis: 0,
+        skipped_add_in: prepared.skipped_add_in,
         tags: prepared.tags.clone(),
-        cells: Vec::new(),
-        text: Vec::new(),
         defined_names: prepared.defined_names.clone(),
+        ..CaseResult::empty(&case.id, &suite.manifest.name, CaseStatus::Pending)
     };
     // Cases without expectations still run: a panic, timeout or load error is a crash we can
     // catch before any oracle value exists (T-0007).
@@ -440,6 +460,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             extent: None,
             expected_source: "none".into(),
             skipped_volatile: 0,
+            skipped_add_in: 0,
             tags: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
@@ -447,6 +468,14 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     };
     let (scorable, skipped_volatile) =
         scorable_cells(&snapshot, pinned_clock_serial(&snapshot.sheets).is_some());
+    let (add_in, scorable): (Vec<_>, Vec<_>) =
+        scorable.into_iter().partition(|(sheet, _, cell)| {
+            cell.formula.as_deref().is_some_and(calls_add_in)
+                || cell
+                    .anchor_formula(&snapshot.sheets, sheet)
+                    .is_some_and(|f| calls_add_in(&f))
+        });
+    let skipped_add_in = add_in.len();
     let expectations = scorable
         .into_iter()
         .filter_map(|(sheet, addr, cell)| {
@@ -476,6 +505,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         extent: None,
         expected_source: source,
         skipped_volatile,
+        skipped_add_in,
         tags: Vec::new(),
         text: Vec::new(),
         defined_names,
@@ -579,6 +609,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     };
     let mut expectations = Vec::new();
     let mut skipped_volatile = 0;
+    let mut skipped_add_in = 0;
     for q in wanted {
         let (sheet, a1) = split_qualified(&q).ok_or_else(|| format!("bad cell key {q}"))?;
         let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
@@ -590,6 +621,10 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         let from_graph = formula.as_deref().is_some_and(|f| kept_nonzero.contains(f));
         if volatile.contains(&(sheet.clone(), addr)) {
             skipped_volatile += 1;
+            continue;
+        }
+        if formula.as_deref().is_some_and(calls_add_in) {
+            skipped_add_in += 1;
             continue;
         }
         expectations.push(Expectation {
@@ -616,6 +651,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         expectations,
         expected_source: source,
         skipped_volatile,
+        skipped_add_in,
     })
 }
 

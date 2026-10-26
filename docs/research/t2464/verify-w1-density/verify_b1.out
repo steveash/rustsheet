@@ -1,0 +1,4 @@
+probe b=1 stored E                                      n= 3200 exact= 3184 (99.5%) w4= 3200 w15= 3200
+probe b=1 extended E                                    n= 3200 exact= 2904 (90.8%) w4= 3200 w15= 3200
+old b=1,a<8 stored E                                    n=   22 exact=   17 (77.3%) w4=   21 w15=   22
+old b=1,a<8 extended E                                  n=   22 exact=   18 (81.8%) w4=   22 w15=   22

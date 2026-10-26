@@ -434,6 +434,18 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
     criterion.slice_utf16(prefix.len(), criterion.len_utf16())
 }
 
+/// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run lower-cased,
+/// then read as UTF-16 units (for ASCII text, each byte lower-cased).
+pub(crate) fn folded_units(text: &Text) -> Vec<u16> {
+    match text {
+        Text::Utf8(s) if s.is_ascii() => s
+            .bytes()
+            .map(|byte| u16::from(byte.to_ascii_lowercase()))
+            .collect(),
+        _ => text.map_runs(str::to_lowercase).units().collect(),
+    }
+}
+
 /// One element of a [`WildcardPattern`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum WildcardToken {
@@ -500,11 +512,21 @@ impl WildcardPattern {
             Text::Utf8(s) if s.is_ascii() => {
                 self.matches_units(s.as_bytes(), |byte| u16::from(byte.to_ascii_lowercase()))
             }
-            _ => {
-                let units: Vec<u16> = text.map_runs(str::to_lowercase).units().collect();
-                self.matches_units(&units, |unit| unit)
-            }
+            _ => self.matches_units(&folded_units(text), |unit| unit),
         }
+    }
+
+    /// The units a text must fold to for the pattern to match it, when the pattern has no `*` or
+    /// `?`: then it matches exactly the texts whose [`folded_units`] are these (an exact-match
+    /// lookup index looks them up, T-0448). `None` for a pattern with a wildcard.
+    pub(crate) fn literal_units(&self) -> Option<Vec<u16>> {
+        self.tokens
+            .iter()
+            .map(|token| match token {
+                WildcardToken::Unit(unit) => Some(*unit),
+                WildcardToken::AnyUnit | WildcardToken::AnyRun => None,
+            })
+            .collect()
     }
 
     /// The first unit index at or after `from` where the pattern matches a prefix of `text[index..]`
@@ -513,7 +535,9 @@ impl WildcardPattern {
     /// The pattern is split at its `*`s into fixed segments (units and `?`). The first segment is
     /// scanned for; the later ones then each take their leftmost position, which is the greedy
     /// choice. A later start can only push those positions right, so if the greedy chain fails
-    /// for the first start where the first segment fits, it fails for every later start.
+    /// for the first start where the first segment fits, it fails for every later start. So a
+    /// search compares at most the pattern's length at each start, as SEARCH's lift charge
+    /// assumes (`ValueWork::TextScan`, T-1961).
     pub(crate) fn find_from(&self, text: &[u16], from: usize) -> Option<usize> {
         let mut segments = self.tokens.split(|token| *token == WildcardToken::AnyRun);
         let first = segments.next().unwrap_or(&[]);
