@@ -11,4 +11,4 @@
   evaluated trees (defined names, conditional formats, outside-cell formulas) are stripped where they are parsed.
 - **Consequences:** new evaluation code never needs to peel `Spaced`; new printing or edit code must read
   `written_formula`, or the formula loses its spaces. A whitespace-written formula costs a second tree. The xlsx
-  export reads the stripped tree until T-2786 decides what Excel saves. T-2795 names the tuple's fields.
+  export reads the stripped tree until T-2786 decides what Excel saves. T-2799 names the tuple's fields.
