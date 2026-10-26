@@ -177,7 +177,7 @@ Unprobed: whether a *typed* formula behaves the same (the oracle cannot type one
 which ours reads as a sheet name).
 Ours (T-0481): the lexer reads U+201C and U+201D as name characters, anywhere in a name, and a token
 holding one is a name even where it would spell a cell (`is_typographic_quote`, `is_quoted_name` in
-crates/rustsheet-engine/src/expressions/lexer/mod.rs); defined names still refuse them.
+crates/rustsheet-engine/src/expressions/utils/mod.rs, used by the lexer); defined names still refuse them.
 Status: VERIFIED (stored formulas, excel-graph + Excel-cached); typed formulas and the wider character set UNVERIFIED
 Tasks: T-0481
 
