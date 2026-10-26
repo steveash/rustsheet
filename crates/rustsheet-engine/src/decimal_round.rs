@@ -75,7 +75,7 @@ pub(crate) fn round_function(value: f64, num_digits: f64, mode: RoundMode) -> Op
         let cut = cut_to_15_digits(value, true);
         // The value Excel returns is 3 ulps below this nearest double (rows 52-58 of the probe);
         // the conversion that gives it was not found (numbers.md, same entry).
-        if cut != 0.0 && cut.abs() < f64::MIN_POSITIVE {
+        if cut.is_subnormal() {
             return Some(cut);
         }
     }
@@ -378,7 +378,7 @@ mod tests {
     /// normal and ROUNDUP takes its step.
     #[test]
     fn subnormal_cut_is_returned_by_roundup_and_rounddown() {
-        let cut: f64 = "2.2250738585072e-308".parse().unwrap_or_default();
+        let cut = 2.225_073_858_507_2e-308_f64;
         for k in [0, 7] {
             let x = above_smallest_normal(k);
             for digits in [0.0, -2.0, 2.0, 300.0, 307.0, 330.0] {
