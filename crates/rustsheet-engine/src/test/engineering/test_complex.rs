@@ -305,18 +305,7 @@ fn im_reciprocal_overflow_keeps_normal_tiny_parts() {
         (r#"=IMSEC("1.5+711i")"#, "0"),
         (r#"=IMEXP("-724.227-562.884i")"#, "0"),
     ];
-    let mut model = new_empty_model();
-    for (row, (formula, _)) in cases.iter().enumerate() {
-        model._set(&format!("A{}", row + 1), formula);
-    }
-    model.evaluate();
-    for (row, (formula, expected)) in cases.iter().enumerate() {
-        assert_eq!(
-            model._get_text(&format!("A{}", row + 1)),
-            *expected,
-            "{formula}"
-        );
-    }
+    assert_texts(&cases);
 }
 
 // Excel: probes-numeric/im-last-digit-sweep D21, M21, P21 (T-2334).
@@ -404,18 +393,7 @@ fn im_reciprocal_kernels_match_the_sweep() {
         (r#"=IMCSC("0.2")"#, "5.03348954767234"),
         (r#"=IMSECH("1.5")"#, "0.42509603494228"),
     ];
-    let mut model = new_empty_model();
-    for (row, (formula, _)) in cases.iter().enumerate() {
-        model._set(&format!("A{}", row + 1), formula);
-    }
-    model.evaluate();
-    for (row, (formula, expected)) in cases.iter().enumerate() {
-        assert_eq!(
-            model._get_text(&format!("A{}", row + 1)),
-            *expected,
-            "{formula}"
-        );
-    }
+    assert_texts(&cases);
 }
 
 // Excel: probes-numeric/im-last-digit-sweep B22, C22 (T-2044): IMABS scales by the larger part
@@ -469,6 +447,26 @@ fn im_trig_of_a_real_number_follows_sin_cos_tan() {
         // The desktop cache of COMPLEXs.xlsx N6; the web gives TAN's -3.38051500624659 (T-2774).
         (r#"=IMTAN("5")"#, "-3.38051500624658"),
     ];
+    assert_texts(&cases);
+}
+
+// IMSIN and IMCOS build sinh and cosh of the imaginary part as (EXP(t) -/+ EXP(-t))/2 for every
+// t; IMSINH keeps a tiny real part (gen-m9, T-2258 triage; T-2535).
+#[test]
+fn im_sin_cos_take_sinh_and_cosh_from_exp() {
+    let cases = [
+        (r#"=IMSINH("1E-200+1E-200i")"#, "1E-200+1E-200i"),
+        (
+            r#"=IMCOS("150-0.002i")"#,
+            "0.699252204980454-0.0014297538124271i",
+        ),
+        (r#"=IMSIN("1E-200+1E-200i")"#, "1E-200"),
+    ];
+    assert_texts(&cases);
+}
+
+/// Each `(formula, text)` in its own cell of column A: the formula prints that text.
+fn assert_texts(cases: &[(&str, &str)]) {
     let mut model = new_empty_model();
     for (row, (formula, _)) in cases.iter().enumerate() {
         model._set(&format!("A{}", row + 1), formula);

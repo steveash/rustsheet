@@ -168,8 +168,8 @@ impl Model {
     }
 
     /// PERCENTRANK.INC or .EXC (`rank_of`) of one element: an error x, then an empty array `#N/A`,
-    /// then the significance (3 digits when omitted; below 1 `#NUM!` unless the data is one
-    /// value), then an x outside the data is `#N/A`.
+    /// then an x outside the data `#N/A`, then the significance (3 digits when omitted; below 1
+    /// `#NUM!` unless the data is one value).
     fn percentrank_of(
         &self,
         data: &mut SortedNumbers,
@@ -192,13 +192,7 @@ impl Model {
         }
         let sig = match values.get(2) {
             Some(significance) => match self.cast_number_ref(significance, cell) {
-                Ok(v) => {
-                    let s = v.floor() as i32;
-                    if s < 1 && data.len() > 1 {
-                        return num_error(cell);
-                    }
-                    s
-                }
+                Ok(v) => v.floor() as i32,
                 Err(e) => return e,
             },
             None => 3,
@@ -207,9 +201,15 @@ impl Model {
         let (Some(first), Some(last)) = (sorted.first(), sorted.last()) else {
             return CalcResult::new_error(Error::NA, cell, String::new());
         };
-        // Unlike the documentation, x at either end of the array is in range (EXC too).
+        // Unlike the documentation, x at either end of the array is in range (EXC too). An x
+        // outside the data is `#N/A` before a significance below 1 is `#NUM!`
+        // (`PERCENTRANK.EXC(C4:C10,-1,0)`, gen-m9/097af1ca33638670 A312; statistics.md "Order
+        // statistics: the scalar argument's error before the no-number result").
         if x < *first || x > *last {
             return CalcResult::new_error(Error::NA, cell, String::new());
+        }
+        if sig < 1 && sorted.len() > 1 {
+            return num_error(cell);
         }
         if sorted.len() == 1 {
             // One value equal to x ranks 1 (EXC too, not 0.5); any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
