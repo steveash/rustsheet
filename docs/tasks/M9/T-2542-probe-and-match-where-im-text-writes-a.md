@@ -3,7 +3,7 @@ id: T-2542
 title: "Probe and match where IM* text writes a large part in plain notation (IMPOWER('1-2i',59), gen-m9, 1 cell)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
