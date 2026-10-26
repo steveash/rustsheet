@@ -3,7 +3,7 @@ id: T-2584
 title: "LINEST of a known_y range holding empty cells is #VALUE!, not a fit of the numbers (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,10 @@ Cells:
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
+
+## Outcome
+Already fixed on `origin/main` before this task was worked: `probes/t2436/b8ee55934c5b824c` passes 15/15
+and gen-m9 `b8ee55934c5b824c` Calc!A394 is not a known failure (it is absent from
+`eval/baseline/gen-m9.txt`). `read_regression_inputs`' successor (`Grid::numbers` in
+`functions/statistical/regression.rs`) already makes a blank in known_y `#VALUE!`. No code or baseline change;
+eval delta 0. LOGEST, TREND and GROWTH share that reader and stay unprobed on Excel.
