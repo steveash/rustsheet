@@ -69,7 +69,8 @@ pub(crate) enum KernelWork {
 
 /// How a [`KernelWork::ByValue`] kernel's work follows from one element's argument values. Every
 /// estimate is at least 1 and at most [`ValueWork::most`], so a lift charged by value never costs
-/// more than the flat worst case it replaces.
+/// more than the flat worst case it replaces; a text search has no such case, as its texts have no
+/// fixed length.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ValueWork {
     /// A loop whose length is the value of argument `arg`: the Bessel recurrences run about once
@@ -91,6 +92,15 @@ pub(crate) enum ValueWork {
         walks: u32,
         weight: u32,
     },
+    /// A search for argument `find`'s text in argument `within`'s (FIND and SEARCH, T-1961):
+    /// both texts are read once, and each start position of `within` compares at most the
+    /// shorter text's length with `find`, `per_visit` compared bytes costing one visit beside the
+    /// position's own; see [`text_scan_units`].
+    TextScan {
+        find: usize,
+        within: usize,
+        per_visit: u32,
+    },
 }
 
 /// The widest span of days a coupon schedule walk can cross: the calendar's last serial, as the
@@ -103,7 +113,8 @@ pub(crate) const COUPON_SPAN_DAYS: u64 = MAXIMUM_DATE_SERIAL_NUMBER.unsigned_abs
 pub(crate) enum ArgValue {
     Number(f64),
     Boolean(bool),
-    Text,
+    /// A text of this many UTF-8 bytes, at least its UTF-16 units.
+    Text(usize),
     /// A blank cell or an omitted argument: the kernels read it as 0.
     Blank,
     Error,
@@ -114,7 +125,7 @@ impl ArgValue {
         match value {
             CalcResult::Number(n) => ArgValue::Number(*n),
             CalcResult::Boolean(b) => ArgValue::Boolean(*b),
-            CalcResult::String(_) => ArgValue::Text,
+            CalcResult::String(s) => ArgValue::Text(s.len()),
             CalcResult::EmptyCell | CalcResult::EmptyArg => ArgValue::Blank,
             _ => ArgValue::Error,
         }
@@ -126,7 +137,7 @@ impl ArgValue {
         match self {
             ArgValue::Number(n) => Some(n.floor()),
             ArgValue::Boolean(b) => Some(f64::from(u8::from(b))),
-            ArgValue::Text | ArgValue::Blank | ArgValue::Error => None,
+            ArgValue::Text(_) | ArgValue::Blank | ArgValue::Error => None,
         }
     }
 
@@ -134,7 +145,7 @@ impl ArgValue {
         match node {
             ArrayNode::Number(n) => ArgValue::Number(*n),
             ArrayNode::Boolean(b) => ArgValue::Boolean(*b),
-            ArrayNode::String(_) => ArgValue::Text,
+            ArrayNode::String(s) => ArgValue::Text(s.len()),
             ArrayNode::Empty => ArgValue::Blank,
             ArrayNode::Error(_) | ArrayNode::Lambda(_) | ArrayNode::Nested(_) => ArgValue::Error,
         }
@@ -151,6 +162,8 @@ impl ValueWork {
             ValueWork::CouponWalks { walks, weight, .. } => {
                 u64::from(walks).saturating_mul(u64::from(weight)).max(1)
             }
+            // A text has no fixed length.
+            ValueWork::TextScan { .. } => u64::MAX,
         }
     }
 
@@ -164,7 +177,7 @@ impl ValueWork {
                     Some(ArgValue::Number(n)) if (0.0..=f64::from(cap)).contains(&n.trunc()) => {
                         n.trunc()
                     }
-                    Some(ArgValue::Text) => f64::from(cap),
+                    Some(ArgValue::Text(_)) => f64::from(cap),
                     _ => 0.0,
                 };
                 // `order` is a whole number in [0, cap], so the cast is exact.
@@ -182,7 +195,7 @@ impl ValueWork {
                 // is charged as its number: ACCRINT reads it as one.
                 let per_year = match value(frequency) {
                     // A text may read as any frequency.
-                    Some(ArgValue::Text) => 4.0,
+                    Some(ArgValue::Text(_)) => 4.0,
                     Some(arg) => match arg.whole_number() {
                         Some(n) => n,
                         None => return 1,
@@ -198,7 +211,7 @@ impl ValueWork {
                     let date = match value(arg) {
                         Some(ArgValue::Blank) | None => 0.0,
                         // A text may read as any date.
-                        Some(ArgValue::Text) => return self.most(),
+                        Some(ArgValue::Text(_)) => return self.most(),
                         Some(ArgValue::Error) => return 1,
                         Some(arg) => arg.whole_number().unwrap_or(0.0),
                     };
@@ -218,8 +231,47 @@ impl ValueWork {
                 let walk = coupon_walk_units(span as u64, per_year as u64, weight);
                 u64::from(walks).saturating_mul(walk).max(1)
             }
+            ValueWork::TextScan {
+                find,
+                within,
+                per_visit,
+            } => text_scan_units(
+                text_scan_length(value(find)),
+                text_scan_length(value(within)),
+                per_visit,
+            ),
         }
     }
+}
+
+/// The most UTF-8 bytes a number or a logical reads as when a text function takes it as text:
+/// the General form of a number is at most 15 digits with a sign, a point and a 4-character
+/// exponent, `FALSE` is 5.
+const NUMBER_TEXT_BYTES: u64 = 32;
+
+/// The length a [`ValueWork::TextScan`] charges for an argument: a text's bytes, a number's or a
+/// logical's longest text, 0 for a blank (the empty text) and for an error, which the kernel
+/// returns before it scans.
+fn text_scan_length(value: Option<ArgValue>) -> u64 {
+    match value {
+        Some(ArgValue::Text(bytes)) => u64::try_from(bytes).unwrap_or(u64::MAX),
+        Some(ArgValue::Number(_) | ArgValue::Boolean(_)) => NUMBER_TEXT_BYTES,
+        Some(ArgValue::Blank | ArgValue::Error) | None => 0,
+    }
+}
+
+/// The units one search for a `find`-byte text in a `within`-byte one is charged: each text's
+/// length plus 1 for reading it, and at each of `within + 1` start positions 1 plus the bytes
+/// compared there (at most the shorter length) over `per_visit`. Saturating.
+/// TEXTSPLIT, TEXTBEFORE and TEXTAFTER charge a whole call by the same shape (`ScanCost` in
+/// functions/text/lifted.rs), but over a delimiter list read whole; this one is per element.
+fn text_scan_units(find: u64, within: u64, per_visit: u32) -> u64 {
+    let compared = find.min(within) / u64::from(per_visit.max(1));
+    find.saturating_add(1).saturating_add(
+        within
+            .saturating_add(1)
+            .saturating_mul(compared.saturating_add(1)),
+    )
 }
 
 /// The units one coupon schedule walk across `span` days at `per_year` (1, 2 or 4) periods a
@@ -236,7 +288,8 @@ pub(crate) fn coupon_walk_units(span: u64, per_year: u64, weight: u32) -> u64 {
 }
 
 impl KernelWork {
-    /// The units one kernel call is charged before it runs (for `ByValue`, the most it can be).
+    /// The units one kernel call is charged before it runs (for `ByValue`, the most it can be:
+    /// `u64::MAX` for a `TextScan`, which `kernel_units` charges by value instead).
     pub(crate) fn weight(self) -> u64 {
         match self {
             KernelWork::Constant | KernelWork::Output { .. } => 1,
@@ -398,7 +451,7 @@ const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.
 const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
-/// `DAYS360(start_date, end_date, [method])`, FIND and SEARCH.
+/// `DAYS360(start_date, end_date, [method])` and BASE.
 const LIFT_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift], Constant);
 /// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])` and SUBSTITUTE.
 const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);

@@ -118,7 +118,9 @@ impl Model {
             (data.at(0, 0), 1)
         };
 
-        let mut caller = self.lambda_caller(&lambda_result, 2);
+        let mut caller = self
+            .lambda_caller(&lambda_result, 2)
+            .keeping_trimrange_references();
         for index in start..count {
             accumulator = self.call_lambda_caller(
                 &mut caller,
