@@ -2,25 +2,11 @@
 //! folds into the number (probes/t2723-unary-plus-formula-text, excel-graph; T-2723;
 //! docs/excel-semantics/syntax.md "A typed unary plus stays in the formula text").
 
-use std::collections::HashMap;
-
-use crate::expressions::lexer::LexerMode;
-use crate::expressions::parser::stringify::{to_excel_string, to_rc_format};
-use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
-use crate::expressions::parser::{Node, Parser};
-use crate::expressions::types::CellReferenceRC;
-
-fn context() -> CellReferenceRC {
-    CellReferenceRC {
-        sheet: "Sheet1".to_string(),
-        row: 1,
-        column: 1,
-    }
-}
-
-fn parser() -> Parser {
-    new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new())
-}
+use crate::expressions::parser::tests::test_group::{
+    assert_prints_back_and_round_trips, context, parser,
+};
+use crate::expressions::parser::tests::utils::to_english_localized_string;
+use crate::expressions::parser::Node;
 
 #[test]
 fn a_plus_off_a_number_prints_back_and_round_trips() {
@@ -48,14 +34,7 @@ fn a_plus_off_a_number_prints_back_and_round_trips() {
         "2^+B1",
         "-+B1",
     ] {
-        let node = parser.parse(formula, &context());
-        assert_eq!(to_english_localized_string(&node, &context()), formula);
-        assert_eq!(to_excel_string(&node, &context()), formula);
-        let rc = to_rc_format(&node);
-        parser.set_lexer_mode(LexerMode::R1C1);
-        let reparsed = parser.parse(&rc, &context());
-        parser.set_lexer_mode(LexerMode::A1);
-        assert_eq!(reparsed, node, "{formula}");
+        assert_prints_back_and_round_trips(&mut parser, formula);
     }
 }
 
