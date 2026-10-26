@@ -27,7 +27,7 @@ pub(super) const COLUMN_NOT_FOUND: &str = "Expecting column: ";
 /// Whether a parse error with `message` comes from a structured reference that did not
 /// resolve. The xlsx export writes such a formula as `#REF!`, so a file never holds a structured
 /// reference without the table parts it needs (xlsx-storage.md "Structured references in the
-/// file"; the engine writes no table parts before T-2196).
+/// file"): only the tables the workbook has are exported, as table parts (T-2196).
 pub(crate) fn is_unresolved_structured_reference(message: &str) -> bool {
     [TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND, COLUMN_NOT_FOUND]
         .iter()
@@ -101,6 +101,17 @@ impl StructuredReference {
                 specifier_text(specifier),
                 table_reference_text(reference)
             ),
+        }
+    }
+
+    /// The form the xlsx file stores: [`Self::text`], with a bare table name written as `T[]`,
+    /// since Excel refuses a file holding a bare `T` as corrupt (xlsx-storage.md "Structured
+    /// references in the file").
+    pub(crate) fn file_text(&self) -> String {
+        if self.bare {
+            format!("{}[]", self.table_name)
+        } else {
+            self.text()
         }
     }
 }

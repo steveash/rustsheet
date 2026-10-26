@@ -88,7 +88,11 @@ pub(crate) use call_names::CallNameSpellings;
 #[cfg(test)]
 mod tests;
 
-pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
+/// The `(column1, row1, column2, row2)` of an A1 range such as a table's `ref` (`A1:D6`).
+///
+/// # Errors
+/// When `formula` is not a range.
+pub fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
     let mut lexer = lexer::Lexer::new(
         formula,
         lexer::LexerMode::A1,

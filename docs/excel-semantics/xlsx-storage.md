@@ -318,8 +318,25 @@ kept; to re-run one, a sheet with table `Sales` at A1:D4 or A1:B4 and one formul
 pins each written form.
 Status: VERIFIED (web)
 Implemented in: tools/src/rustsheet_tools/spec2xlsx.py (`table_refs_to_file_form`, `_totals_column`); the engine
-reads `[#This Row]`; `Table[]` is T-1674.
+reads `[#This Row]`; `Table[]` is T-1674; the xlsx export writes these forms (T-2196, "Table parts in the export").
 Tasks: T-1607
+
+## Table parts in the export
+Rule (ours, T-2196): the export writes each table as `xl/tables/tableN.xml` with the forms of "Structured
+references in the file" above: a totals-row formula cell as `totalsRowFunction="custom"` plus `<totalsRowFormula>`,
+a totals-row text cell as `totalsRowLabel`, and formulas keep their structured references (`Sales[]` for a bare
+name, `[#This Row]` for `@`). Excel itself writes `totalsRowFunction="sum"` (and the other named functions) for a
+totals cell it built, with the cell formula `SUBTOTAL(109,Table1[Feb])` (calc_test_tables/tables.xlsx
+`xl/tables/table1.xml`); `custom` with that formula is the form the T-1607 uploads showed Excel loads.
+The import keeps only whether a table's `<autoFilter>` applies a filter (`has_filters`, which makes SUBTOTAL call
+the sheet's hidden rows filtered), not its criteria, so the export writes an applied filter as a
+`<filterColumn colId="0"/>` without a criterion. That is schema-valid and our own import reads it back as
+filtered; whether Excel opens it without repair, and still calls the hidden rows filtered, is unprobed (T-2838).
+Evidence: crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx (Excel-authored, 9 tables) now round-trips
+(import, export, import) with the same values (generated test `test_tables_tables`).
+Status: UNVERIFIED (the exported file has not been opened in Excel)
+Implemented in: crates/rustsheet-xlsx/src/export/tables.rs
+Tasks: T-2196, T-2838
 
 ## A table part without a name attribute is named by its displayName
 Rule: Excel opens a workbook whose `xl/tables/tableN.xml` has `displayName` but no `name` attribute (as
