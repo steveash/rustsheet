@@ -10,7 +10,55 @@ use crate::calc_result::{CalcResult, Range};
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::Function;
 use crate::model::Model;
+
+/// Whether `value`, the value of the argument `node`, is a number that ERROR.TYPE or
+/// `CELL("col"|"row",..)` returned straight to the argument (parentheses aside), which F.TEST and
+/// the paired functions treat apart from any other number: `FTEST({1;2;3},ERROR.TYPE(#REF!))` and
+/// `COVARIANCE.P(ERROR.TYPE(#REF!),5)` are `#NUM!` where 4 gives `#DIV/0!` and 0, while `+0`,
+/// `@`, SINGLE, MAX or a cell holding the value make it a plain number. LET, IF, CHOOSE, IFERROR,
+/// a LAMBDA call and INDEX keep it in Excel and are not followed here: TODO(T-2766)
+/// (statistics.md "ERROR.TYPE and CELL results are #NUM! in the paired functions").
+pub(crate) fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> bool {
+    if !matches!(value, CalcResult::Number(_)) {
+        return false;
+    }
+    match &*node.ungrouped_at(row) {
+        Node::FunctionKind {
+            kind: Function::ErrorType,
+            ..
+        } => true,
+        Node::FunctionKind {
+            kind: Function::Cell,
+            args,
+        } => matches!(
+            args.first(),
+            Some(Node::StringKind(info)) if info.eq_ignore_ascii_case("col") || info.eq_ignore_ascii_case("row")
+        ),
+        _ => false,
+    }
+}
+
+/// What a marked number ([`is_marked_number`]) is as a sample of [`Model::paired_samples`].
+#[derive(Clone, Copy)]
+pub(crate) enum MarkedSample {
+    /// `#NUM!` when its turn comes: any first sample, T.TEST's second
+    /// (`T.TEST({1,2,3},ERROR.TYPE(#REF!),2,2)`).
+    NumError,
+    /// One cell with no number: COVARIANCE's second, so `COVARIANCE.P(4,ERROR.TYPE(#REF!))` has no
+    /// pair and is `#DIV/0!`, where `COVARIANCE.P(4,5)` is 0.
+    NoNumber,
+}
+
+/// The `#NUM!` of a marked number ([`is_marked_number`]) as an argument that rejects it.
+pub(crate) fn marked_number_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        "A number from ERROR.TYPE or CELL is not a sample here".to_string(),
+    )
+}
 
 /// One argument of a paired function, as evaluated and not yet flattened.
 pub(crate) enum PairedArg {
@@ -108,13 +156,23 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
         typed_text_is_sample: bool,
+        marked_second: MarkedSample,
     ) -> Result<PairedValues, PairedSamplesError> {
-        let first = self.sample_arg(&args[0], "First", cell, typed_text_is_sample);
-        let second = self.sample_arg(&args[1], "Second", cell, typed_text_is_sample);
-        let sizes_differ = matches!(
-            (first.cell_count(), second.cell_count()),
-            (Some(m), Some(n)) if m != n
+        // A marked number is `#NUM!` as the first sample of every caller (statistics.md "ERROR.TYPE
+        // and CELL results are #NUM! in the paired functions", T-2576).
+        let (first, first_count) = self.sample_arg(
+            &args[0],
+            "First",
+            cell,
+            (typed_text_is_sample, MarkedSample::NumError),
         );
+        let (second, second_count) = self.sample_arg(
+            &args[1],
+            "Second",
+            cell,
+            (typed_text_is_sample, marked_second),
+        );
+        let sizes_differ = matches!((first_count, second_count), (Some(m), Some(n)) if m != n);
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
             CalcResult::new_error(error, cell, format!("Error in {which} array"))
@@ -149,24 +207,36 @@ impl Model {
         arg: &Node,
         which: &str,
         cell: CellReferenceIndex,
-        typed_text_is_sample: bool,
-    ) -> PairedArg {
+        (typed_text_is_sample, marked): (bool, MarkedSample),
+    ) -> (PairedArg, Option<u64>) {
         // With `typed_text_is_sample` a typed text is an array of one cell with no number, so
         // against a longer range the sizes differ and the result is `#N/A`: `COVAR(A1:A6,"a")`,
         // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
         // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is unprobed and stays `#VALUE!`.
         let value = self.evaluate_node_in_context(arg, cell);
-        let value = self.blank_one_cell_as_error(value, cell);
-        if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
-            return PairedArg::Values(vec![None]);
+        // A marked number is one cell for the size check, which comes first:
+        // `COVARIANCE.S(ERROR.TYPE(#REF!),Data!C10:D10)` is `#N/A` (gen-m9 abc2939ebd1e2365 A335).
+        if is_marked_number(arg, &value, cell.row) {
+            let sample = match marked {
+                MarkedSample::NumError => PairedArg::Error(marked_number_error(cell)),
+                MarkedSample::NoNumber => PairedArg::Values(vec![None]),
+            };
+            return (sample, Some(1));
         }
-        PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {
-            PairedArg::Error(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("{which} argument must be a range or array"),
-            ))
-        })
+        let value = self.blank_one_cell_as_error(value, cell);
+        let sample = if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
+            PairedArg::Values(vec![None])
+        } else {
+            PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {
+                PairedArg::Error(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("{which} argument must be a range or array"),
+                ))
+            })
+        };
+        let count = sample.cell_count();
+        (sample, count)
     }
 
     /// Flattens `first` and `second` for a function that pairs them by position. The first
