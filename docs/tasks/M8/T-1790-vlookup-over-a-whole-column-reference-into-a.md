@@ -3,7 +3,7 @@ id: T-1790
 title: "VLOOKUP over a whole-column reference into a cached external workbook reads the cache, not #ERROR!"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,9 +27,17 @@ Inspect: `./target/release/rustsheet-eval show corpus-bench/56637/1_56637_input.
 Related: T-1654 (3-D spans into a cached external workbook), T-0423 (cache indexing).
 
 ## Acceptance criteria
-- [ ] corpus-bench/56637's `F` line leaves eval/baseline/corpus-bench.txt with no new ones (or, if a residue remains, it is filed as a task with its cells).
-- [ ] A unit or eval test with a whole-column external VLOOKUP covers the fix.
-- [ ] `make check` green; reviewers approve.
+- [x] corpus-bench/56637's `F` line leaves eval/baseline/corpus-bench.txt with no new ones (or, if a residue remains, it is filed as a task with its cells).
+- [x] A unit or eval test with a whole-column external VLOOKUP covers the fix.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Live links to other files (never: no I/O from evaluation).
+
+## Outcome
+Already fixed on main before this run picked it up; no code change. `rustsheet-eval show corpus-bench/56637/1_56637_input.xlsx`
+on origin/main (5f9cac4 and later) is Pass, 144/144 checked, and eval/baseline/corpus-bench.txt holds only its `C` line
+(no `F` line). The unit test `whole_column_lookups_keep_full_length` (crates/rustsheet-engine/src/test/test_external_links.rs)
+covers VLOOKUP, MATCH and HLOOKUP over whole-column and whole-row references into a cached external sheet, exact and
+approximate, against the same lookups over local columns. Eval delta: none.
+
