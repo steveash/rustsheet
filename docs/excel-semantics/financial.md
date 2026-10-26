@@ -533,8 +533,8 @@ parenthesization (FV's `annuity_factor`), and f(0) = pv + pmt·n + fv. It starts
 r1 = r0 - 0.001·sign(f(r0)), steps r2 = r1 - f1·(r1-r0)/(f1-f0) with Excel's twice-rounded `-`, `*` and `/`,
 and stops at the first iterate with |r2 - r1| < 1e-7 and |f(r2)| < 1e-7, returning r2. The cap is 200
 steps, not the documented 20: guesses whose run needs 172 to 200 steps converge, those needing 201 to 216 are
-`#NUM!`, and the 200th iterate is returned on the step test alone (probes/rate-step-cap A30 is
-0.004999993194059272, the root 0.0049999931931192...; A31, whose 200th step is 8E-7, is `#NUM!`). An
+`#NUM!`. The 200th iterate, unconverged, is returned when it passes a looser test: |r200 - r199| < 1e-4,
+|f(r200)| < 1e-4 and 1 + r200 > 1e-4, all three absolute (T-2689, below). Otherwise the run is `#NUM!`. An
 iterate at or below -1 is `#NUM!` (m9-fin-irr-rate A236, A352, A371-A378: the secant's root is
 below -1 there). Guess 0 therefore converges (rate-empty-arguments A1, A3, A8), and Excel's guess-sweep
 errors on R!C1:C31 are the secant's last step, whose sign and size depend on where the run lands.
@@ -555,16 +555,27 @@ The 181 numeric cells still off are mostly a few ulps (the last secant step ampl
 which operation differs is open (follow-up in T-2005's Outcome). One cell disagrees on the value type:
 m9-fin-irr-rate A583 `RATE(10,-1E6,1E7)`, root exactly 0, is `#NUM!` in Excel; near 0 the residual is
 rounding noise (|f| about 0.1 to 0.4 against the 1E-7 test), the run wanders until the cap and the
-model returns its 200th iterate, -2.6E-9. Whether Excel's run goes flat or rejects earlier there, or
-its cap rule also tests |f| (A30's 200th residual is 7E-5), is unprobed.
+model returned its 200th iterate, -2.6E-9, before the cap's |f| test below (now `#NUM!`, as in Excel).
+The cap's return test (T-2689; probes/rate-cap-return-rule, rate-pmt-zero-cap, rate-step-cap, excel-graph):
+- Step, absolute: the 200th steps 7.3e-5 and 7.8e-5 return (rate-cap-return-rule A68 at r 0.05, A72 at r 0.2, where it is 4e-4
+  of the rate, so the test is not relative) and 1.09e-4 to 1.3e-4 is `#NUM!` (A70; rate-pmt-zero-cap A25, A55).
+- |f|, absolute: the same loan run returns at |f| 7.3e-5 (rate-step-cap A30) and is `#NUM!` at 1.06e-4 to 6e-3
+  (rate-cap-return-rule A53-A64, A20-A30, steps below 1e-7 included: A31 of rate-step-cap is this, not its step).
+  Scaling pmt and pv by 2^-10 to 2^-40 keeps the trajectory and shrinks f, and those runs return (A65-A74).
+- 1 + r: `RATE(n,0,pv)` creeps to its root -1, and returns at 1 + r200 = 1.02e-4 (rate-cap-return-rule A1, A7)
+  but not at 9.4e-5 (A16) or below (A5, A6, A8, A10, A11, A13, A15; rate-pmt-zero-cap n 11-15). The guesses
+  move 1 + r200 while the last step's ratio to 1 + r stays a function of n alone, so the edge is on 1 + r. With
+  pmt 0 and fv 0 the bands follow: n 2-10 converge, n 11-15 end below 1 + r = 1e-4, n 16-24 return (calipers
+  formulas_financial F142 = rate-pmt-zero-cap A24, -0.9970141220397587), n 25 and up have a step over 1e-4.
+Whether a test is `<` or `<=` and whether the last one is 1 + r or r + 1 are not separated by any cell.
 Not probed, kept from the model: `#NUM!` for a flat secant (f1 = f0) and for a residual whose `^` overflows; only the
 iterates r2 are tested against -1 (not r1 = guess - 0.001); a guess whose residual is exactly 0 runs the secant
 (the zero's sign picks r1) rather than returning the guess; f(0) is pv + pmt·n + fv in plain doubles (the three
 guess-0 cells are bit-exact, but no cell separates the order); the cap probe's guesses were chosen by the model's own
 step count, so the cap's position is measured in model steps (A30's exact unconverged bits confirm it).
 Ours: `compute_rate` (functions/financial/financial_util.rs), this model.
-Status: VERIFIED (method, stop rule, cap; excel-graph) / UNVERIFIED (f's last-ulp evaluation, the rules above)
-Tasks: T-1525, T-0916, T-1533, T-2005
+Status: VERIFIED (method, stop rule, cap and its return test; excel-graph) / UNVERIFIED (f's last-ulp evaluation, the rules above)
+Tasks: T-1525, T-0916, T-1533, T-2005, T-2689
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula

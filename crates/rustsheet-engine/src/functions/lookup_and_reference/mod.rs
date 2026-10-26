@@ -142,12 +142,12 @@ impl Model {
         {
             return match_type;
         }
-        let match_range = self.evaluate_lookup_table_arg(&args[1], cell);
-
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = self.as_vector(match_range, cell);
+        let values = self
+            .lookup_table_arg(&args[1], cell)
+            .and_then(|table| self.as_vector(table, cell));
 
         // lookup_value lifts over an array or a multi-cell range, one search per element. An
         // element that is an error is the result before an invalid match_type is checked:
@@ -251,8 +251,7 @@ impl Model {
         }
         // The table is read first: its error beats the index's and range_lookup's
         // (`Model::lookup_head`).
-        let range = self.evaluate_lookup_table_arg(&args[1], cell);
-        let table = self.lookup_table(range, cell);
+        let table = self.lookup_table_arg(&args[1], cell);
         let (lookup_value, row_index, is_sorted) =
             match self.lookup_head(args, table.as_ref().err().cloned(), cell) {
                 Ok(head) => head,
@@ -305,8 +304,7 @@ impl Model {
         }
         // The table is read first: its error beats the index's and range_lookup's
         // (`Model::lookup_head`).
-        let range = self.evaluate_lookup_table_arg(&args[1], cell);
-        let table = self.lookup_table(range, cell);
+        let table = self.lookup_table_arg(&args[1], cell);
         let (lookup_value, column_index, is_sorted) =
             match self.lookup_head(args, table.as_ref().err().cloned(), cell) {
                 Ok(head) => head,
