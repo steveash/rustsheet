@@ -3,7 +3,7 @@ id: T-2803
 title: "SPEC-0024 step 1: a per-formula work budget charged per node, per array cell built and per lifted kernel unit"
 milestone: M7
 lane: engine
-status: in-progress
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -56,3 +56,37 @@ measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/unio
   unbounded until T-2804 and T-2805 merge; land the three tasks in order.
 - Charging array cells read by aggregates (T-2804) and by the other whole-array readers (T-2805).
 - Dense single-range walks (T-2710, T-2711, T-2713).
+
+## Blocked because
+Blocked because: SPEC-0024 section 4's calibration rule — the heaviest eval formula spends more than 2^26 units, and no
+weight for the per-call caps' charges meets both constraints. Resolve via T-2813 (spec amendment), then resume this branch.
+
+What is on the branch (implementation of Design sections 1-5; fmt, clippy, engine tests, hygiene and eval check pass locally; no review yet):
+- `AreaBudget` gains `work`/`work_exceeded`; `Model::spend_work` (`checked_sub`, `#[cold]` error), `spend_value`,
+  `spend_cells`, `spend_visits`, `work_exceeded`; `with_area_budget` makes the formula `#VALUE!` (`TOO_MUCH_WORK`)
+  whenever the budget was exceeded, so `IFERROR` cannot catch it; test-only `formula_work_limit`/`formula_work_spent`.
+- Charges: `NODE_UNITS` (2) per node in `evaluate_node_in_context`, per operator-chain link and for the root `+`; a node's
+  text value (1 unit per 4 bytes) and array value (`CELL_UNITS`, 2 per cell) at the same chokepoint (one definition
+  instead of a charge at each `check_array_*` site, which also covers every array builder); `evaluate_range` per cell;
+  the lift driver's up-front visits and output charges, `lift_text_call`, `lift_references`, ref_lift, GROUPBY/PIVOTBY
+  visits (`VISIT_UNITS`, 1); lifted text results' bytes; REGEX* and regex XLOOKUP/XMATCH compile and search work.
+- `call_prepared` refuses every LAMBDA call once the budget is exceeded, so the helpers' loops do no more work
+  (counter test: a MAKEARRAY makes fewer than 1,000 cell reads at a 1,000-unit limit).
+- Tests: src/test/test_formula_work.rs (units per node/cell/text and chain link, at-limit vs over, uncatchable,
+  dependency budget, early stop, `u64::MAX` charge). The full engine suite passes at the committed weights;
+  `rustsheet-eval check` has 0 regressions at them.
+- DEVIATION entry in arrays.md with the measurements.
+
+Measurements (release build, local instrumentation of `with_area_budget`, not committed):
+- Eval (`rustsheet-eval check`): VISIT_UNITS 6 → 13 gen-m9 regressions; VISIT_UNITS 1 → 0 regressions, max 124,806,376
+  units (gen-m9/0a614cfe974b59c3 Calc!A117; 984cba67bbe6972b Calc!A14 124,783,848; both one lifted call near the 2^27
+  per-call cap); VISIT_UNITS 0 → 0 regressions, max 8,388,620.
+- Time to the limit at the committed weights: SPEC-0024's three formulas 7.0 / 7.0 / 5.9 s; REDUCE 3000 9.5 s; nested
+  MAKEARRAY of scalar bodies 6.2 s; text kinds 0.6-4.2 s; REGEXTEST 0.1 s; MAKEARRAY of lifted RATE about 50 s at
+  VISIT_UNITS 1 (8.5 s at 6), because one RATE element is about 190 ns per kernel unit (T-2814).
+- Text audit: SUBSTITUTE (`str::replace`, KMP on the UTF-16 path), FIND/SEARCH (greedy wildcard matcher, linear), TEXTSPLIT
+  and REGEX* (per-call search budget) are linear in their input within one call; none needs a new per-call cap.
+- Overhead: the repo has no criterion calc bench. Against an origin/main release build, alternating runs of
+  `=SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z)))))` took 4.38/4.55/3.70 s on main and
+  4.06/4.55/3.74 s on the branch (noise; the test suite ran alongside), and a MAKEARRAY of an IF body 0.20-0.21 s on both.
+- Not done: review, PR checks.

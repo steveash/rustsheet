@@ -1,11 +1,13 @@
-//! The budgets of one formula evaluation for multi-area references: how many pairs of areas its
-//! intersections may compare and how many steps the walks of its union areas may take, in all
-//! (DEVIATION, decision 0014: docs/excel-semantics/references.md "Union area cap"), and how many
-//! rectangles it may put on record as read empty (references.md "Seen-range cap").
+//! The budgets of one formula evaluation: how many pairs of areas its intersections may compare
+//! and how many steps the walks of its union areas may take, in all (DEVIATION, decision 0014:
+//! docs/excel-semantics/references.md "Union area cap"), how many rectangles it may put on record
+//! as read empty (references.md "Seen-range cap"), and how many work units it may spend in all
+//! (SPEC-0024; arrays.md "One formula evaluation does at most 268,435,456 work units").
 
 use crate::{
     calc_result::CalcResult,
     expressions::{token::Error, types::CellReferenceIndex},
+    limits::too_many_visits,
     model::Model,
 };
 
@@ -51,8 +53,43 @@ pub(crate) const MAX_SEEN_RANGES: usize = 1 << 16;
 /// Message of the `#VALUE!` for a formula past [`MAX_SEEN_RANGES`].
 pub(crate) const TOO_MANY_SEEN_RANGES: &str = "Too many distinct ranges read";
 
+/// Most work units one formula evaluation may spend (SPEC-0024): [`NODE_UNITS`] per node
+/// evaluated, [`CELL_UNITS`] per array cell built, one per [`TEXT_BYTES_PER_UNIT`] bytes of each
+/// text value, plus the per-call caps' own charges ([`VISIT_UNITS`] per visit). Each LAMBDA call draws on it again, so it bounds the product of a helper's
+/// iterations and the work of each call, which no per-call cap does. Past it the formula is
+/// `#VALUE!` ([`TOO_MUCH_WORK`]), which cannot be caught (DEVIATION, decision 0014: arrays.md
+/// "One formula evaluation does at most 268,435,456 work units").
+pub(crate) const MAX_FORMULA_WORK: u64 = 1 << 28;
+
+// The weights below are fitted so that each kind's worst case reaches [`MAX_FORMULA_WORK`] in
+// under 10 s of a release build (SPEC-0024 section 4, T-2803; the timings are in arrays.md "One
+// formula evaluation does at most 268,435,456 work units"): a node or a built cell costs about
+// 50 ns and a byte a text scanner reads (FIND, SUBSTITUTE over 32,767 bytes) about 5 ns. A lifted
+// kernel unit costs up to 190 ns (RATE), which [`VISIT_UNITS`] does not cover: no weight meets
+// both calibration constraints for it (T-2813).
+
+/// Work units of one node evaluated ([`MAX_FORMULA_WORK`]).
+pub(crate) const NODE_UNITS: u64 = 2;
+
+/// Work units of one array cell built ([`MAX_FORMULA_WORK`]).
+pub(crate) const CELL_UNITS: u64 = 2;
+
+/// Bytes of a text value charged as one work unit ([`MAX_FORMULA_WORK`]).
+pub(crate) const TEXT_BYTES_PER_UNIT: u64 = 4;
+
+/// Work units of one visit of a per-call cap (`limits::MAX_LIFTED_CELL_VISITS`: a lifted call's
+/// cell visits and kernel units, GROUPBY and PIVOTBY's) ([`MAX_FORMULA_WORK`]). One, the cap's own
+/// number: eval cells spend up to 124,806,376 units on one lifted call near the cap, so a higher
+/// weight turns them into `#VALUE!` (6 does for 13 gen-m9 cells), while a MAKEARRAY of lifted RATE
+/// needs 5 or more to stop within 10 s; the rule is open (TODO(T-2813)).
+pub(crate) const VISIT_UNITS: u64 = 1;
+
+/// Message of the formula's error once it spent [`MAX_FORMULA_WORK`].
+pub(crate) const TOO_MUCH_WORK: &str = "Formula needs too much work to calculate";
+
 /// What is left of one formula evaluation's budgets of area pairs ([`MAX_AREA_PAIRS`]), of union
-/// walk steps ([`MAX_AREA_WALK`]) and of seen-empty rectangles ([`MAX_SEEN_RANGES`]).
+/// walk steps ([`MAX_AREA_WALK`]), of seen-empty rectangles ([`MAX_SEEN_RANGES`]) and of work units
+/// ([`MAX_FORMULA_WORK`]).
 /// [`Model::with_area_budget`] gives each formula run a fresh one, so every argument and operand of
 /// the formula draws on the same budget, and its worst-case work does not grow with the number of
 /// arguments. Only that call refills it, so every entry point that starts a formula evaluation
@@ -66,6 +103,18 @@ pub(crate) struct AreaBudget {
     /// Whether a rectangle went unrecorded for want of [`MAX_SEEN_RANGES`]: the formula's value
     /// may then depend on a read the pass does not know of, so it is not used.
     seen_ranges_exceeded: bool,
+    /// Work units left ([`MAX_FORMULA_WORK`]).
+    work: u64,
+    /// Set once a charge did not fit; every later charge then fails at once, so the formula
+    /// unwinds without doing more work.
+    work_exceeded: bool,
+    /// The work each formula run started from this one gets, [`MAX_FORMULA_WORK`] unless a test
+    /// lowers it on the model's own budget (SPEC-0024 section 2: a security bound, not an API option).
+    #[cfg(test)]
+    pub(crate) limit: u64,
+    /// The work units the last formula run started from this one spent, for the tests of SPEC-0024.
+    #[cfg(test)]
+    pub(crate) last_spent: u64,
 }
 
 impl AreaBudget {
@@ -94,13 +143,54 @@ impl AreaBudget {
 
 impl Default for AreaBudget {
     fn default() -> AreaBudget {
+        AreaBudget::with_work(MAX_FORMULA_WORK)
+    }
+}
+
+impl AreaBudget {
+    /// A fresh budget that may spend `work` units: [`MAX_FORMULA_WORK`], or a test's lower limit.
+    fn with_work(work: u64) -> AreaBudget {
         AreaBudget {
             pairs: MAX_AREA_PAIRS,
             walk: MAX_AREA_WALK,
             seen_ranges: MAX_SEEN_RANGES,
             seen_ranges_exceeded: false,
+            work,
+            work_exceeded: false,
+            #[cfg(test)]
+            limit: work,
+            #[cfg(test)]
+            last_spent: 0,
         }
     }
+}
+
+/// The error of a formula past [`MAX_FORMULA_WORK`]. Out of line, so the inlined charges stay a
+/// subtraction and a branch, and the evaluator's frames do not grow (T-0444).
+#[cold]
+#[inline(never)]
+pub(crate) fn too_much_work(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, TOO_MUCH_WORK.to_string())
+}
+
+/// The units of a text value of `bytes` UTF-8 bytes: one per [`TEXT_BYTES_PER_UNIT`], rounded up.
+pub(crate) fn text_units(bytes: usize) -> u64 {
+    u64::try_from(bytes)
+        .unwrap_or(u64::MAX)
+        .div_ceil(TEXT_BYTES_PER_UNIT)
+}
+
+/// The units of building a `rows` x `columns` array: [`CELL_UNITS`] per cell, saturating, so an
+/// oversized shape fails its charge instead of wrapping into a small one.
+pub(crate) fn cell_units(rows: usize, columns: usize) -> u64 {
+    u64::try_from(rows.saturating_mul(columns))
+        .unwrap_or(u64::MAX)
+        .saturating_mul(CELL_UNITS)
+}
+
+/// The units of `visits` visits of a per-call cap: [`VISIT_UNITS`] each, saturating.
+pub(crate) fn visit_units(visits: u64) -> u64 {
+    visits.saturating_mul(VISIT_UNITS)
 }
 
 impl Model {
@@ -116,14 +206,110 @@ impl Model {
         cell: CellReferenceIndex,
         f: impl FnOnce(&mut Self) -> CalcResult,
     ) -> CalcResult {
-        let outer = std::mem::take(&mut self.area_budget);
+        #[cfg(not(test))]
+        let fresh = AreaBudget::default();
+        #[cfg(test)]
+        let fresh = AreaBudget::with_work(self.area_budget.limit);
+        let outer = std::mem::replace(&mut self.area_budget, fresh);
         let result = f(self);
-        let exceeded = self.area_budget.seen_ranges_exceeded;
-        self.area_budget = outer;
-        if exceeded {
+        let inner = std::mem::replace(&mut self.area_budget, outer);
+        #[cfg(test)]
+        {
+            self.area_budget.last_spent = inner.limit.saturating_sub(inner.work);
+        }
+        // Past the work budget, the run was cut short wherever the charge failed, and `f` may have
+        // turned that into a value (`IFERROR`), so the formula's value is the error (SPEC-0024).
+        if inner.work_exceeded {
+            return too_much_work(cell);
+        }
+        if inner.seen_ranges_exceeded {
             return CalcResult::new_error(Error::VALUE, cell, TOO_MANY_SEEN_RANGES.to_string());
         }
         result
+    }
+
+    /// Takes `units` from the formula's budget of [`MAX_FORMULA_WORK`], or, past it, marks the run
+    /// as exceeded and gives its `#VALUE!` (and so does every later charge of the run). `units` is
+    /// computed with saturating arithmetic ([`cell_units`], [`text_units`]), so an oversized charge
+    /// fails and never wraps.
+    #[inline]
+    pub(crate) fn spend_work(
+        &mut self,
+        units: u64,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        let budget = &mut self.area_budget;
+        match budget.work.checked_sub(units) {
+            Some(left) if !budget.work_exceeded => {
+                budget.work = left;
+                Ok(())
+            }
+            _ => {
+                budget.work_exceeded = true;
+                Err(too_much_work(cell))
+            }
+        }
+    }
+
+    /// The per-call cap of `visits` cells (`limits::too_many_visits`), then the same visits charged
+    /// to the formula's work budget, so a call within its cap cannot be multiplied by a LAMBDA
+    /// helper past the formula's (SPEC-0024 section 1, "per-call capped work").
+    pub(crate) fn spend_visits(
+        &mut self,
+        visits: u64,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        too_many_visits(visits, cell).or_else(|| self.spend_work(visit_units(visits), cell).err())
+    }
+
+    /// Charges one node evaluated ([`NODE_UNITS`]), the charge that bounds a LAMBDA body run again
+    /// and again (SPEC-0024 section 1).
+    #[inline]
+    pub(crate) fn spend_node(&mut self, cell: CellReferenceIndex) -> Result<(), CalcResult> {
+        self.spend_work(NODE_UNITS, cell)
+    }
+
+    /// `value`, a node's, once charged ([`Model::spend_value`]), or the budget's error.
+    #[inline]
+    pub(crate) fn charged(&mut self, value: CalcResult, cell: CellReferenceIndex) -> CalcResult {
+        match self.spend_value(&value, cell) {
+            Ok(()) => value,
+            Err(error) => error,
+        }
+    }
+
+    /// Charges a node's value: a text by its length ([`text_units`]) and an array by its cells
+    /// ([`cell_units`]), wherever it enters the evaluator, so producers (REPT, `&`, SEQUENCE,
+    /// MAKEARRAY, a broadcast) and the scanners reading their results pay for what was built
+    /// (SPEC-0024 section 1). Any other value costs nothing more than its node.
+    #[inline]
+    pub(crate) fn spend_value(
+        &mut self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        let units = match value {
+            CalcResult::String(text) => text_units(text.len()),
+            CalcResult::Array(array) => cell_units(array.len(), array.first().map_or(0, Vec::len)),
+            _ => return Ok(()),
+        };
+        self.spend_work(units, cell)
+    }
+
+    /// [`Model::spend_work`] for building a `rows` x `columns` array ([`cell_units`]).
+    pub(crate) fn spend_cells(
+        &mut self,
+        rows: usize,
+        columns: usize,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        self.spend_work(cell_units(rows, columns), cell)
+    }
+
+    /// Whether the formula has spent its work budget ([`MAX_FORMULA_WORK`]): the LAMBDA helpers
+    /// stop their loops on it, so a run past the budget costs at most one more call per helper.
+    pub(crate) fn work_exceeded(&self) -> bool {
+        self.area_budget.work_exceeded
     }
 
     /// Takes `steps` from what is left of the formula's budget of [`MAX_AREA_WALK`], or gives

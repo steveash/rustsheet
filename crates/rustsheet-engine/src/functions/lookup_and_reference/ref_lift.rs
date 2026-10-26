@@ -14,7 +14,7 @@ use crate::functions::aggregate::value_node;
 use crate::functions::lift::{ArgBuf, LiftedArg};
 use crate::functions::util::top_left_of_array;
 use crate::functions::Function;
-use crate::limits::{check_array_size, too_many_visits};
+use crate::limits::check_array_size;
 use crate::model::Model;
 use crate::reference_operators::{Picked, Ranges, RefArg, RefElement, RefGrid};
 
@@ -342,7 +342,7 @@ impl Model {
                 visits = visits.saturating_add(element_cost);
             }
         }
-        if let Some(error) = too_many_visits(visits, cell) {
+        if let Some(error) = self.spend_visits(visits, cell) {
             return error;
         }
         let mut output = Vec::with_capacity(rows);

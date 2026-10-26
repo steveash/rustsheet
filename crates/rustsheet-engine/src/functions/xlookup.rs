@@ -541,7 +541,7 @@ impl Model {
                 model.xlookup_one(values, &table, &if_not_found, pick, &mut regexes, cell)
             },
         );
-        regexes.finish(result, cell)
+        regexes.finish(self, result, cell)
     }
 
     /// XLOOKUP's `if_not_found` (`#N/A` when omitted or empty). A range stays a reference in the

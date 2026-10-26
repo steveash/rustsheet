@@ -1,4 +1,5 @@
 use crate::{
+    area_budget::NODE_UNITS,
     calc_result::CalcResult,
     cast::{
         array_node_to_string, array_node_to_text, NumberOrArray, StringOrArray, ValueOrArray,
@@ -462,6 +463,10 @@ impl Model {
     ) -> CalcResult {
         match node {
             Node::OpSumKind { kind, left, right } => {
+                // The root `+` is a node, charged as `evaluate_node_in_context` charges one.
+                if let Err(error) = self.spend_work(NODE_UNITS, cell) {
+                    return error;
+                }
                 let left = self.evaluate_node_in_context(left, cell);
                 self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
             }

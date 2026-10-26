@@ -1,4 +1,5 @@
 use crate::{
+    area_budget::too_much_work,
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     expressions::{
@@ -435,6 +436,12 @@ impl Model {
         cell: CellReferenceIndex,
         bind: impl FnMut(&mut Self, usize) -> Binding,
     ) -> RefArg {
+        // Past the formula's work budget no LAMBDA runs, so a helper's loop over its remaining
+        // elements does no work and the run ends at once; the formula's value is the budget's
+        // error whatever the helper returns (SPEC-0024 section 3, `with_area_budget`).
+        if self.work_exceeded() {
+            return RefArg::Value(too_much_work(cell));
+        }
         let Some(stack_base) = self.lambda_stack_base() else {
             return RefArg::Value(CalcResult::new_error(
                 Error::NUM,

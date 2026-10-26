@@ -1348,6 +1348,32 @@ Implemented in: crates/rustsheet-engine/src/functions/logical/lambda.rs (`LAMBDA
 crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`), crates/rustsheet-engine/src/node_frames.rs.
 Tasks: T-0439, T-0444
 
+## One formula evaluation does at most 268,435,456 work units
+Rule: Excel has no known per-formula work limit; a formula whose LAMBDA helpers multiply work
+(`REDUCE(0,SEQUENCE(1E5),LAMBDA(a,b,a+SUM(SEQUENCE(1E5))))`) runs until done, and Excel's result for it cannot be probed
+(the session times out, as the deep LAMBDA workbooks of "How deep LAMBDA calls nest" did).
+Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024).
+Ours: each formula evaluation (a cell formula, a defined name, a conditional format, `evaluate_formula`) may spend 2^28 work
+units: 2 per node evaluated (each link of an operator chain is one), 2 per cell of each array value a node gives or a range
+is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results), plus the per-call
+caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
+visits, and a REGEX* or regex XLOOKUP/XMATCH call's compile budget (4 bytes a unit) and search work (32 units a unit). Past it the formula is
+`#VALUE!` ("Formula needs too much work to calculate"), which `IFERROR` cannot catch (the formula's value is the error,
+whatever the formula made of it); a dependency cell has its own budget, so its `#VALUE!` is an ordinary value to its readers.
+Once a charge fails no further LAMBDA call runs, so the run ends at once. Calibration (release build, 2026-10-26, T-2803):
+the heaviest eval formula spends 124,806,376 units (gen-m9/0a614cfe974b59c3 Calc!A117, one lifted call near its per-call
+cap); without the per-call caps' charges the heaviest spends 8,388,620. Time to the limit: the three REDUCE/MAP/MAKEARRAY
+formulas of SPEC-0024 7.0, 7.0 and 5.9 s, `REDUCE(0,SEQUENCE(3000),..SUM(SEQUENCE(100000)))` 9.5 s, a nested MAKEARRAY of
+scalar bodies 6.2 s, MAPs of `LEN(REPT("a",32767))` 0.9 s, of `FIND("b",s&"b")` and `LEN(SUBSTITUTE(s,"a","b"))` over a
+32,767-byte `s` 2.6 and 4.2 s, of TEXTSPLIT 1.1 s, of REGEXTEST 0.1 s; a MAKEARRAY of lifted RATE about 50 s at 1 unit a visit, as one lifted RATE
+call at its own cap takes about 25 s (T-2814). How the per-call caps are charged is open (T-2813). Array cells read by
+aggregates and other whole-array readers are not charged yet (T-2804, T-2805).
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/area_budget.rs (`MAX_FORMULA_WORK`, `Model::spend_work`, `Model::with_area_budget`),
+crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`), crates/rustsheet-engine/src/functions/logical/lambda.rs
+(`call_prepared`).
+Tasks: T-2712 (SPEC-0024), T-2803
+
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a
 reference and MAP, SCAN and REDUCE each cell as a reference. With A1 x, A3 z, B3 y (A2:B2, B1 blank):
