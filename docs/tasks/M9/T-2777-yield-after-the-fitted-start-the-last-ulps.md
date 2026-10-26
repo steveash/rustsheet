@@ -3,7 +3,7 @@ id: T-2777
 title: "YIELD after the fitted start: the basis 1 and 2 terms and two 15th-digit cells (gen-m9, 4 cells)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
