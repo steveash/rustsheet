@@ -13,7 +13,7 @@ campaign: semantics
 
 ## Goal
 IRR returns Excel's `#NUM!` where Excel's search finds no root but ours (the fitted secant or its Newton/bisection
-fallback) converges, and Excel's `#DIV/0!` for the flows where Excel gives it.
+fallback) converges. (Excel's `#DIV/0!` cells were moved to T-2789 on 2026-10-26.)
 
 ## Context
 Cut from T-2494 on 2026-10-25 (its 1E+300-guess cells were fixed there). Probes (excel-graph, 2026-10-25):
