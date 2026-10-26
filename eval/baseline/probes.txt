@@ -274,6 +274,7 @@ C	probes/date-text-yearless-2.case.json	64
 C	probes/date-text-yearless-3.case.json	45
 C	probes/date-text-yearless.case.json	48
 C	probes/datedif-days360-error-order.case.json	41
+C	probes/datedif-feb29-negative-md.case.json	66
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-displayed.case.json	116
 C	probes/dates-early-1900-edges.case.json	132
