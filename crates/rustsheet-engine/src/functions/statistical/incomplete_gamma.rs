@@ -68,8 +68,9 @@ pub(crate) const MAX_TERMS: u32 = 1 << 19;
 /// most terms at x just above a + 1, about 10 * cbrt(a) for a above 10 and at most 110 below
 /// (T-2795 sweep, run once: shapes 1E-3 to 1.6E15, 4,200 x each; 1,064,339 terms at 1.6E15), so
 /// the budget is at least twice what any cdf the cap keeps needs and changes no value. The unit
-/// test `the_continued_fraction_stays_within_half_its_budget` keeps that for shapes up to 1E10. It gives the cdf a
-/// bound from its shape alone ([`cdf_terms_bound`]), which the lifting table charges by value.
+/// test `the_continued_fraction_stays_within_half_its_budget` keeps that for shapes up to 1E10.
+/// It gives the cdf a bound from its shape alone ([`cdf_terms_bound`]), which the lifting table
+/// charges by value.
 fn continued_fraction_budget(a: f64) -> u32 {
     let budget = 256.0 + 32.0 * a.cbrt();
     if budget < f64::from(MAX_TERMS) {
@@ -938,7 +939,8 @@ mod tests {
             }
             a *= 3.1;
         }
-        // The budget's own branch: one term short of a slow fraction is NaN.
+        // A slow fraction (`terms_needed` checks its NaN one term short of the shared budget)
+        // stays within its own; the budget saturates at the cap for a huge shape.
         let used = terms_needed(1e8, 1.0001e8);
         assert!(used < continued_fraction_budget(1e8));
         assert_eq!(continued_fraction_budget(1e30), MAX_TERMS);
