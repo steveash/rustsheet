@@ -12,7 +12,7 @@ campaign: visible
 ---
 
 ## Goal
-The 30 gen-m9 cells left visibly off by T-1634 reach visible parity: `CHISQ.INV`, `CHISQ.INV.RT`,
+The 30 gen-m9 cells left visibly off by T-1634 (and the one added by the 2026-10-26 triage) reach visible parity: `CHISQ.INV`, `CHISQ.INV.RT`,
 `CHIINV`, `GAMMA.INV` and `GAMMAINV` agree with Excel to 15 significant digits in the deep tails.
 
 ## Context
@@ -62,6 +62,12 @@ Cells:
 - gen-m9/ecc87f80077959e0.case.json (2): Calc!A77, A301
 - gen-m9/eced4bb6a0234c9e.case.json (2): Calc!A123, A173
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A56
+
+One more visibly-off deep-tail cell (gap triage 2026-10-26, `make eval` on 1c8b3d34, excel-graph); no task listed it:
+- gen-m9/a5828d3925575713 Calc!A338 `=GAMMAINV(1E-16,Data!E9,Data!$A1)`: Excel 6.436215297435573E-07, ours
+  6.436215297435568E-07 (5 ulp)
+Cells:
+- gen-m9/a5828d3925575713.case.json (1): Calc!A338
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-1634 residue): these 30 known-failure lines disappear from

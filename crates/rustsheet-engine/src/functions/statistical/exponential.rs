@@ -29,8 +29,10 @@ impl Model {
             return Err(num_error(cell));
         }
         let result = if cumulative {
-            // CDF: expm1 avoids 1 - exp(-t) cancellation for tiny lambda*x (EXPONDIST.xlsx D15/D16)
-            -(-lambda * x).exp_m1()
+            // CDF: expm1 avoids 1 - exp(-t) cancellation for tiny lambda*x (EXPONDIST.xlsx D15/D16).
+            // A subnormal cdf is 0, as in Excel (`(x)=0` TRUE: probes/t2706-subnormal-density-paths
+            // B29), though WEIBULL.DIST keeps the same 1E-310 (B34).
+            flush_subnormal(-(-lambda * x).exp_m1())
         } else {
             // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes/t2693-subnormal-expon-dist
             // A2; docs/excel-semantics/numbers.md "Distribution densities").

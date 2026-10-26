@@ -1,0 +1,9 @@
+# Cached values replaced by golden oracle cells of the same formula on the same inputs (decision 0032).
+# Kept subnormals that Excel saves as 0 (decision 0090): C10 is =10^(-307) and C11 is =-10^(-307) in both
+# workbooks, so C10+C11 is 6E-323, which Excel keeps (no near-zero snap: the 8-ULP bound is subnormal,
+# numbers.md "Near-zero snapping in addition and subtraction") and writes as <v>0</v>. The probe rows hold
+# the same formulas, with FALSE (x)=0 companions (K130, K131; J130 and J131 read the cells themselves). T-2714.
+roundtrip/formulas_math_basic/golden.xlsx	Math Tests!I23	probes/cases/t2714-mod-near-smallest-normal.oracle.json	Sheet1!I130
+roundtrip/formulas_math_basic/golden.xlsx	Math Tests!H24	probes/cases/t2714-mod-near-smallest-normal.oracle.json	Sheet1!I131
+roundtrip/formulas_datetime/golden.xlsx	Sheet2!I23	probes/cases/t2714-mod-near-smallest-normal.oracle.json	Sheet1!I130
+roundtrip/formulas_datetime/golden.xlsx	Sheet2!H24	probes/cases/t2714-mod-near-smallest-normal.oracle.json	Sheet1!I131

@@ -573,6 +573,16 @@ array literal whole: `LOOKUP(2,{1,2,3},{4,5,6})` = 5, `LOOKUP(2,{1,2,3})` = 2, `
 XLOOKUP's if_not_found, ADDRESS's sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols; which problem wins inside a
 CHOOSECOLS/CHOOSEROWS index list between uncoercible text and a later error, or between two errors (an error beats an
 out-of-range index: VERIFIED, see the T-2273 entry; ours returns uncoercible text's `#VALUE!` or the first error found at once).
+XLOOKUP's match_mode and search_mode both lift (probes/lookup-argument-modes; probes/xlookup-array-lookup-value-args;
+probes/xlookup-array-search-mode-indirect). An error lookup_value does not stop the lift when match_mode is an array: the
+result is still an array, so a blocked spill is `#SPILL!`. Real oracle cell (gen-m6/fe0972380d030e4a Calc!A224,
+excel-graph, T-2290): `=XLOOKUP(VALUE((Data!$E$1&Data!D6)),Data!A5:A10,Data!C1:D9,ISERR(FIND(" x ","ü",1)),DECIMAL(OFFSET(Data!B10:E11,5,3,3,2),21),0)`
+is `#SPILL!`; its lookup_value is `#VALUE!` and its scalar search_mode `0` is invalid. VERIFIED (T-2746, excel-graph, 2026-10-26,
+probes/t2746-xlookup-error-lookup-array-modes, 32 cells): with an unblocked spill every element holds the lookup_value's
+own error (`#DIV/0!` for `1/0`, `#N/A` for `NA()`, `#VALUE!` for `"x"+1`), and an error lookup_value beats an invalid
+match_mode or search_mode element (`{0;9}`, `{9;0}`, `{9;8}`, `{1;9}`), also when both modes are arrays; a non-error
+lookup_value with `{0;9}` gives the match then `#VALUE!`. if_not_found does not replace an error lookup_value
+(`XLOOKUP(NA(),..,"nf",{0;1})` is `#N/A`). With only scalar criteria the error is returned as is. Ours matches (no code change).
 Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238); ADDRESS's a1 and HYPERLINK's
 friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
 Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
@@ -718,7 +728,7 @@ Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); 
 probes/index-zero-index-scalar-shape (excel-graph, 2026-10-20, T-1943).
 Status: VERIFIED (excel-graph)
 Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs); a legacy N over `INDEX(5,0,0)` or
-`INDEX(5,0)` (a scalar first argument) is `#VALUE!` with no `@` (T-2191, `indexes_a_scalar_whole` in static_analysis/legacy.rs).
+`INDEX(5,0)` (a scalar first argument) is `#VALUE!` with no `@` (T-2191, `indexes_a_scalar_literal` in static_analysis/legacy.rs).
 The same holds for T and for every scalar literal: a legacy `=T(INDEX(5,0,0))`, `=T(INDEX("a",0,0))`, `=N(INDEX("a",0,0))`,
 `=N(INDEX(TRUE,0))`, `=N(INDEX(-5,0,0))` (a negated number), `=N(INDEX(5,,0))` (an empty row reads as 0) and the one-index
 forms are all `#VALUE!`, and `FORMULATEXT` shows them with no `@`.
@@ -728,10 +738,19 @@ parenthesised scalar, a unary plus, or a negated text or boolean: `=N(INDEX((5),
 `=N(INDEX(-TRUE,0,0))`, `=T(INDEX(-"a",0,0))`, `=T(INDEX(("a"),0))` and `=N(INDEX((-5),0))` are all `#VALUE!`, and so is
 any chain of groups and minus around the literal (`--5`, `-(5)`, `-("a")`, `((5))`, `(TRUE)`, `(-"a")`, `-(-5)`) and a
 grouped 0 index (`INDEX(5,(0))`); `FORMULATEXT` shows them all with no `@`. FORMULATEXT drops a unary plus on a number (`+5` prints `5`) but keeps one on text
-or a boolean (`+"a"`, `+TRUE`). Ours drops both (T-2723).
-A nonzero index takes the element: `=N(INDEX(5,1))` is 5, and FORMULATEXT shows no `@` (ours shows one, T-2725).
+or a boolean (`+"a"`, `+TRUE`). Ours matches since T-2723.
+Excel shows no `@` on INDEX of a scalar literal under N or T, whatever the indices. When every index is nonzero it takes
+the element: `=N(INDEX(5,1))` and `=N(INDEX(5,1,1))` are 5, `=T(INDEX("a",1))` is "a", `=N(INDEX(TRUE,1))` is 1,
+`=T(INDEX(5,1))` is "". A computed index (`INDEX(5,C1)` with C1 1, `INDEX(5,0+1)`, `INDEX(5,IF(TRUE,1))`) and a negated or
+grouped scalar take the element too (`=N(INDEX(-5,1))` is -5). An array or range index keeps its own `@`
+(`=N(INDEX(5,@{1,1}))` is 5).
+`=N(INDEX(5,2))` is `#REF!` and `=N(INDEX(5,-1))` is `#VALUE!`. One 0 or empty index beside a 1 takes the whole scalar:
+`=N(INDEX(5,1,0))`, `=N(INDEX(5,0,1))`, `=N(INDEX(5,1,))` and `=N(INDEX(5,,1))` are `#VALUE!`, and so is an index cell
+holding 0 or blank (`INDEX(5,C2)` with C2 0)
+(probes/t2725-index-scalar-nonzero-t-n A1:B24, excel-graph 2026-10-25, T-2725). Ours: implemented (T-2725,
+`indexes_a_scalar_literal`).
 Evidence: probes/t2601-index-scalar-forms-t-n A1:B28 (excel-graph, 2026-10-25, T-2601). Ours: implemented (T-2601,
-`indexes_a_scalar_whole`), except the kept unary plus (B14, B15; T-2723).
+`indexes_a_scalar_literal`); the kept unary plus (B14, B15) since T-2723.
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
@@ -1149,3 +1168,15 @@ Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `re
 `PatternCache` per XMATCH or XLOOKUP call, shared by its lifted elements (repeated patterns compile once), so a call has
 one REGEX* call's compile and work budget (SPEC-0013).
 Tasks: T-2669, T-2680
+
+### Statistical aggregates over a lifted OFFSET (an array of references)
+Evidence: probes/t2065-lift-* (one formula per workbook, excel-graph 2026-10-26; data as probes/reference-lift-consumers-b2).
+- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: single-cell elements read as their values (multi-cell elements unprobed).
+- COUNTIFS, AVERAGEIF and MAXIFS lift per element, spilling one value each (1, 1; 1, 50.5; 1, 100). CONCAT is `#VALUE!`.
+- `AVERAGEA` and `MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0: the text is not read as 5 and TRUE not as 1; which elements count is open (the data holds no number).
+Status: VERIFIED (excel-graph) for the values above. Not yet implemented (SPEC-0014).
+
+### MEDIAN, LARGE and SMALL over a lifted OFFSET
+probes/t2065-lift-median, -large, -small failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs).
+Status: UNVERIFIED (desktop question, M14 T-1075 item 18, decision 0039).
+Tasks: T-2065, T-2063, T-2064

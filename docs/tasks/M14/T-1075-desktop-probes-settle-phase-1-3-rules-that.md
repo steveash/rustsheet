@@ -80,6 +80,14 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    libm-like 6.12323399573677E-17 and 2.12115047744981E-16. The web gives 6.1257422745431E-17 for `IMSQRT("-1")` (Excel's
    COS(ATAN2(-1,0)/2); gen-m9/59a16b5ab566ee5c A6 and 4 more cells). Does Windows desktop give the Mac values? The engine
    follows the desktop cache (decision 0030 rule 4), and the 5 gen-m9 cells stay known failures.
+17. **IMTAN of a real number** (T-2534, T-2774; engineering.md "IM* trigonometry of a real number is SIN, COS and TAN").
+   ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!N6 `IMREAL(IMTAN(D6))` (D6 = 5) caches Mac 16.0300's -3.38051500624658,
+   the libm double-angle value; the web gives TAN's kernel, -3.38051500624659 (35 gen-m9 cells, probes/t2534-im-trig-real-limit).
+   Does Windows desktop give the web value? The engine keeps the desktop cache, and the web cells stay known failures (T-2774).
+18. **MEDIAN, LARGE and SMALL over a lifted OFFSET** (T-2065; lookup.md "Statistical aggregates over a lifted OFFSET").
+   probes/t2065-lift-median, -large and -small failed to open on Excel for the web on 2026-10-26 (createSession "retries
+   exhausted", two runs each). What does Windows desktop give for `MEDIAN(OFFSET(A1,{0;1;2},0))`, `LARGE(OFFSET(A1,{0;1},0),1)`
+   and `SMALL(OFFSET(A1,0,0,{2;3}),2)`? Until answered they keep the engine's value view.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

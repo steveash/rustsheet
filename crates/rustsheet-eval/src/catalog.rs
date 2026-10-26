@@ -141,6 +141,12 @@ impl Catalog {
         self.functions.values()
     }
 
+    /// The entries that count towards parity, by name: the in-scope set every per-function
+    /// section of the report (the fifteen-digit checkpoint, the parity tiers) lists.
+    pub fn in_scope_functions(&self) -> impl Iterator<Item = &CatalogFunction> {
+        self.functions.values().filter(|f| f.scope == Scope::In)
+    }
+
     /// Whether `name` counts towards parity. Names the catalog does not list (user-defined or
     /// misparsed calls) count, so nothing drops out of the report silently.
     #[must_use]

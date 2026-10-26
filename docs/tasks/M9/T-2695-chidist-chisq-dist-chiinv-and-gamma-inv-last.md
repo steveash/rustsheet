@@ -82,6 +82,27 @@ Cells:
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A49
 - gen-m9/fec39efaba9284c3.case.json (1): Calc!A236
 
+More last-digit cells of the same kernels (gap triage 2026-10-26, `make eval` on 1c8b3d34, excel-graph), none visibly
+off, that no task listed: CHISQ.INV 5, CHISQ.INV.RT 4, CHIDIST 2, CHISQ.DIST 2, GAMMAINV 1 and GAMMADIST 1, each the
+outer call (1 to 13 ulp; e.g. gen-m9/8dd2312c96effb1b Calc!A368 `=CHISQ.INV.RT(1-1E-10,4)`: Excel 2.8284405751796042E-05,
+ours 2.8284405751796036E-05; gen-m9/85f48d5cdfb24555 Calc!A23 `=CHIDIST(Data!$B$9,MIRR(..))`: Excel 1.5541594313896074E-21,
+ours 1.554159431389605E-21). The CHISQ.INV and CHISQ.INV.RT cells are the same gamma inversion as the CHIINV and GAMMA.INV
+cells above (T-0972 owns the quantile parity).
+Cells:
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A86
+- gen-m9/530c636749a85209.case.json (1): Calc!A372
+- gen-m9/68d8ffb69ff739d8.case.json (1): Calc!A65
+- gen-m9/85f48d5cdfb24555.case.json (1): Calc!A23
+- gen-m9/8dd2312c96effb1b.case.json (1): Calc!A368
+- gen-m9/a5828d3925575713.case.json (1): Calc!A372
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A348
+- gen-m9/caa1eed48b1883fe.case.json (2): Calc!A151, A261
+- gen-m9/ecc87f80077959e0.case.json (2): Calc!A2, A119
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A150
+- gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A136
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A304
+- gen-m9/fec39efaba9284c3.case.json (1): Calc!A104
+
 ## Acceptance criteria
 - [ ] The 86 owned cells listed under Context match Excel to the bit, so these 86 known-failure lines leave
       eval/baseline/gen-m9.txt, with no new line in any baseline; cells that a model cannot reach move to a follow-up with

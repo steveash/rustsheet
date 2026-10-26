@@ -25,7 +25,7 @@ fn simple_cases() {
     assert_eq!(model._get_text("H1"), *"Brian");
     assert_eq!(model._get_text("H2"), *"Jeden");
     assert_eq!(model._get_text("I2"), *"Jeden,dwa");
-    assert_eq!(model._get_formula("I2"), *"=TEXTBEFORE(A2,\",\",2)");
+    assert_eq!(model._get_formula("I2"), *"=TEXTBEFORE(A2, \",\", 2)");
 }
 
 // T-1796: match_mode 1 once located the delimiter in `to_lowercase()` of the text and sliced the

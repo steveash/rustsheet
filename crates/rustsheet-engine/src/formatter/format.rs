@@ -17,12 +17,13 @@ pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
 use super::{
+    date_names::{hijri_ymd, NameTokens},
     dates::{excel_serial_to_ymd, negative_serial_allowed},
-    lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
+    lunar_calendar::{lunar_ymd, LAST_SERIAL as LUNAR_LAST_SERIAL},
     parser::{
-        is_text_section, numeric_section_count, section_tokens, ErrorPart, GeneralPart, ParsePart,
-        Parser, TextToken,
+        conditional_section, is_text_section, numeric_section_count, section_condition,
+        section_tokens, ErrorPart, GeneralPart, ParsePart, Parser, TextToken,
     },
 };
 
@@ -282,15 +283,6 @@ fn general_text(value: f64, locale: &Locale) -> String {
     }
 }
 
-/// The `[cond]` of a number or date section, if it has one.
-fn section_condition(part: &ParsePart) -> Option<(Compare, f64)> {
-    match part {
-        ParsePart::Number(p) => p.condition,
-        ParsePart::Date(p) => p.condition,
-        ParsePart::General(_) | ParsePart::Error(_) => None,
-    }
-}
-
 pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> Formatted {
     let locale = ctx.locale;
     let mut parser = Parser::new(format);
@@ -320,7 +312,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     let mut value = value_original;
     let general = ParsePart::General(GeneralPart {});
     let part;
+    let conditional = conditional_section(&parts, sections, value);
     match sections {
+        2..=4 if conditional.is_some() => {
+            let (index, drop_sign) = conditional.unwrap_or_default();
+            if drop_sign {
+                value = value.abs();
+            }
+            part = &parts[index];
+        }
         // Excel: an empty format shows nothing but a negative's minus, also for a value that
         // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
         // A32-A35).
@@ -430,13 +430,24 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
             // `date_valid` is false.
             let serial_1900 = ctx.date_system.to_1900_serial(day_serial).unwrap_or(-1);
-            let ymd = excel_serial_to_ymd(serial_1900);
+            let ymd = if p.hijri {
+                hijri_ymd(serial_1900)
+            } else {
+                match p.calendar {
+                    // Past the lunar tables (2100) the date is Gregorian, TODO(T-2759).
+                    Some(Calendar::Lunar(table)) if serial_1900 <= LUNAR_LAST_SERIAL => {
+                        lunar_ymd(serial_1900, table)
+                    }
+                    _ => excel_serial_to_ymd(serial_1900),
+                }
+            };
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
             // Under a Japanese locale tag `yy` and `yyyy` after a `g` print the era year: the
             // Japanese one in its own calendar (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian
             // year in the others (probes/text-locale-japanese-year A1-A13).
             let mut seen_era = false;
+            let mut names = NameTokens::new(p.hijri);
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -473,26 +484,6 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         let day = ymd_day as usize;
                         text = format!("{text}{day:02}");
                     }
-                    TextToken::DayNameShort => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let day = excel_weekday_index(serial_1900);
-                        text.push_str(
-                            p.names
-                                .map_or(&locale.dates.day_names_short[day], |n| n.days_short[day]),
-                        );
-                    }
-                    TextToken::DayName => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let day = excel_weekday_index(serial_1900);
-                        text.push_str(
-                            p.names
-                                .map_or(&locale.dates.day_names[day], |n| n.days[day]),
-                        );
-                    }
                     TextToken::Month => {
                         if !date_valid {
                             return invalid_date(value);
@@ -507,36 +498,19 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         let month = ymd_month as usize;
                         text = format!("{text}{month:02}");
                     }
-                    TextToken::MonthNameShort => {
+                    TextToken::DayNameShort
+                    | TextToken::DayName
+                    | TextToken::MonthNameShort
+                    | TextToken::MonthName
+                    | TextToken::MonthLetter => {
                         if !date_valid {
                             return invalid_date(value);
                         }
-                        let month = ymd_month as usize;
-                        text.push_str(p.names.map_or(&locale.dates.months_short[month - 1], |n| {
-                            n.months_short[month - 1]
-                        }));
-                    }
-                    TextToken::MonthName => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let month = ymd_month as usize;
-                        text.push_str(
-                            p.names
-                                .map_or(&locale.dates.months[month - 1], |n| n.months[month - 1]),
-                        );
-                    }
-                    TextToken::MonthLetter => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let month = ymd_month as usize;
-                        // Under a locale tag `mmmmm` is the first character of the month name
-                        // (`[$-804]mmmmm` of December is "十"; probes/text-locale-am-neutral A28).
-                        match p.names.and_then(|n| n.months[month - 1].chars().next()) {
-                            Some(letter) => text.push(letter),
-                            None => text.push_str(&locale.dates.months_letter[month - 1]),
-                        }
+                        let weekday = excel_weekday_index(serial_1900);
+                        // Lunar months 13 and 14 take the twelfth name (`[$-110409]mmmm` of
+                        // 2024-01-11 is "十二月"; probes/text-locale-lunar-edges A26).
+                        let month = ymd_month.min(12);
+                        names.push(token, &mut text, p.names, locale, month, weekday);
                     }
                     TextToken::YearShort
                     | TextToken::Year
@@ -917,7 +891,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     text = format!("{text}0");
                                 }
                             } else if digit.kind == '?' {
-                                text = format!("{text} ");
+                                // A padding space, after the point when it is the first decimal:
+                                // `?.??` on 1000 is "1000.  " (gen-m10, T-1738).
+                                if needs_period {
+                                    text = format!("{text}{decimal_separator} ");
+                                } else {
+                                    text = format!("{text} ");
+                                }
                             } else if digit.kind == '#' && needs_period {
                                 // FIXME: This is what Excel does, but it transforms "3" into "3."
                                 text = format!("{text}{decimal_separator}");

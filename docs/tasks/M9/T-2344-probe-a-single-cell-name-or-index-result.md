@@ -19,6 +19,8 @@ T-1748 made a typed boolean or text a one-element array in `percentile_numbers` 
 
 T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): gen-m9 evidence answers the single-cell question: statistics.md "A lone text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN (T-2256)": a single-cell reference holding text or a boolean is data with no number, `#NUM!` for QUARTILE*, PERCENTILE* and TRIMMEAN (also for an empty cell) and `#N/A` for PERCENTRANK*; ours `#VALUE!`. The name and INDEX forms stay to probe. This also settles T-2066's QUARTILE cell.
 
+T-2429 (2026-10-25) probed and implemented the single cell holding a boolean (probes/t2429-quartile-exc-no-number A1-A24: no number, `#NUM!`, PERCENTRANK `#N/A`; statistics.md "A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"): 24 of the cells below now pass, and `make eval-baseline` dropped them. The rest, and the name and INDEX forms, stay here.
+
 Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 72 known-failure lines in eval/baseline/gen-m9.txt, 72 visibly off.
 Examples:
 - gen-m9/139684e68fb2fc3b Calc!A360 `=QUARTILE.INC(Data!C5,2)`: Excel #NUM!, ours #VALUE!

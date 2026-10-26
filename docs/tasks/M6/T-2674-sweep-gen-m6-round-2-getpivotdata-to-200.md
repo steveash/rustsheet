@@ -3,7 +3,7 @@ id: T-2674
 title: "Sweep gen-m6 round 2: GETPIVOTDATA to 200 generated outer-call cells, the last uncovered M6 function"
 milestone: M6
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -34,17 +34,17 @@ coverage is met (39/39) and M6's exit row in "Milestone exit (decisions 0085, 01
   `uv run rustsheet-oracle fill -b excel-graph --suite gen-m6` and `make eval-baseline`.
 
 ## Acceptance criteria
-- [ ] In `make eval`, "Milestone exit" shows M6 coverage 39/39 met, and the "Fifteen-digit parity checkpoint" row for
+- [x] In `make eval`, "Milestone exit" shows M6 coverage 39/39 met, and the "Fifteen-digit parity checkpoint" row for
       GETPIVOTDATA shows at least 200 generated cells and covered.
-- [ ] Every new cell is Excel-backed (excel-graph sidecars, canary-verified). The fill reports 0 failures, or the
+- [x] Every new cell is Excel-backed (excel-graph sidecars, canary-verified). The fill reports 0 failures, or the
       Outcome explains each refused case. The suite stays gated.
-- [ ] `make eval-baseline` reports 0 regressions. The gen-m6 exit row stays met: known failures within
+- [x] `make eval-baseline` reports 0 regressions. The gen-m6 exit row stays met: known failures within
       `floor(0.001 * scored)`.
-- [ ] Every new gen-m6 known failure is traced and owned: the empty-intersection cells go to T-2404 (extend its cell
+- [x] Every new gen-m6 known failure is traced and owned: the empty-intersection cells go to T-2404 (extend its cell
       list), and any other family gets a new task (`campaign: visible` if visibly off, milestone M6).
       `make exit-owners MILESTONE=M6` lists no GETPIVOTDATA cell.
-- [ ] Quirks found are recorded in docs/excel-semantics/ (lookup.md or web.md) in this PR.
-- [ ] `make check` green; reviewers approve.
+- [x] Quirks found are recorded in docs/excel-semantics/ (lookup.md or web.md) in this PR.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing GETPIVOTDATA (T-2404, T-2403, T-2662).
@@ -55,3 +55,15 @@ coverage is met (39/39) and M6's exit row in "Milestone exit (decisions 0085, 01
 ## Visible-parity stage
 The coverage half of decision 0094's checkpoint for M6's last function. The task is done when GETPIVOTDATA meets the
 200 outer-call-cell bar and every new visibly-off family has a task.
+
+## Outcome
+`rustsheet-gen --milestone M6 --focus --functions GETPIVOTDATA --count 6 --formulas 40 --seed 2674` wrote six gen-m6
+cases, 240 GETPIVOTDATA outer-call formulas. `rustsheet-oracle fill -b excel-graph --suite gen-m6` filled all six (0
+failures, 0 refused). Ours matches 237 of 240. The 3 misses are empty intersections of a Count of Units pivot
+(gen-m6 8641fa604c5b8e14 Calc!A19, A25, A39: Excel 0, ours `#REF!`). They are the known family that T-2404 owns, and
+T-2404 now lists them.
+
+Eval delta: gen-m6 scored 25,000 -> 25,240, known failures 0 -> 3 (new coverage, 0 regressions; within the exit
+allowance of 25). "Milestone exit" M6 is 39/39 coverage, met. GETPIVOTDATA has 240 generated cells in the
+"Fifteen-digit parity checkpoint" row. `make exit-owners MILESTONE=M6` lists no cell. web.md now cites the Count
+pivot's empty intersection (0) and the Count cases as committed evidence.

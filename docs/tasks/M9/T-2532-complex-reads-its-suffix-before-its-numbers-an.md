@@ -3,7 +3,7 @@ id: T-2532
 title: "COMPLEX reads its suffix before its numbers: an invalid or error suffix wins (gen-m9, 17 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -55,3 +55,6 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+COMPLEX now reads the suffix before real_num and i_num. 18 gen-m9 known failures removed from the baseline (the 17 owned plus gen-m9/df083d85b436b49a Calc!A120, which also passes now); unit test `complex_suffix_error_wins_over_number_errors`; quirk recorded in engineering.md.

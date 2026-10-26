@@ -1,0 +1,80 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2429: the HYPGEOM.DIST/HYPGEOMDIST calls of gen-m9/1db18890916ee643 (A23) and each of their arguments, on that case's Data sheet.",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=HYPGEOM.DIST((Data!E2+(-1)),5,2,2^31,(\"\u00fc\">Data!C$6))",
+        "A2": "=(Data!E2+(-1))",
+        "A3": "=5",
+        "A4": "=2",
+        "A5": "=2^31",
+        "A6": "=(\"\u00fc\">Data!C$6)"
+      }
+    },
+    {
+      "cells": {
+        "A1": 0.2,
+        "A10": 0.2,
+        "A12": 1.005,
+        "A2": "#N/A",
+        "A3": 1000000000000000.0,
+        "A4": 0.5,
+        "A5": 0.1,
+        "A6": -1,
+        "A7": 0.1,
+        "A8": 0.2,
+        "B1": false,
+        "B10": 1.005,
+        "B11": 0.1,
+        "B12": "?b",
+        "B2": 2.5,
+        "B3": 3.14159,
+        "B4": false,
+        "B6": 0.1,
+        "B7": 0.1,
+        "B8": 42,
+        "C1": true,
+        "C10": 1,
+        "C11": 42,
+        "C12": " x ",
+        "C2": 2,
+        "C3": 2,
+        "C4": false,
+        "C6": 42,
+        "C7": true,
+        "C8": -0.0001,
+        "C9": false,
+        "D1": false,
+        "D12": 1000000000000000.0,
+        "D2": "\u00fc",
+        "D3": 42,
+        "D4": "TRUE",
+        "D5": "1.5",
+        "D6": "abc",
+        "D7": -0.0001,
+        "D8": true,
+        "D9": "1",
+        "E1": 2,
+        "E10": "abc",
+        "E11": 7,
+        "E12": "abc",
+        "E2": true,
+        "E3": 7,
+        "E4": -1,
+        "E5": -0.5,
+        "E6": "1.5",
+        "E7": -2.5,
+        "E8": false,
+        "E9": "x~*"
+      },
+      "name": "Data"
+    }
+  ],
+  "expected": {}
+}

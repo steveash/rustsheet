@@ -7,14 +7,13 @@ use crate::{
         lexer::LexerMode,
         parser::{
             parse_range,
-            stringify::{
-                to_english_string, to_rc_lowering_at, to_string_lowering, to_string_with_ref_errors,
-            },
+            stringify::{to_rc_lowering_at, to_string_lowering, to_string_with_ref_errors},
             Node,
         },
         types::{Area, CellReferenceRC},
         utils::{is_valid_identifier, number_to_column},
     },
+    formula_rewrite::RewrittenFormula,
     model::Model,
     types::{Cell, Table, TableColumn, TableStyleInfo, Worksheet},
 };
@@ -23,11 +22,12 @@ use crate::{
 /// formula holding a `#This Row` reference to one of `tables`) the text that formula lowers to on
 /// the cell's own row, a shared formula of its own: a duplicated sheet, which gets no table, then
 /// reads what each cell read before, `#VALUE!` off the data rows (T-1699). Rows whose text is the
-/// same share one formula.
+/// same share one formula. Cells on the rows `keep_rows` (inclusive) keep their shared formula.
 pub(crate) fn lower_this_row_cells(
     worksheet: &mut Worksheet,
     by_row: &[(usize, Node)],
     tables: &[String],
+    keep_rows: Option<(i32, i32)>,
 ) {
     if by_row.is_empty() {
         return;
@@ -35,6 +35,7 @@ pub(crate) fn lower_this_row_cells(
     let cells: Vec<(i32, i32, usize)> = worksheet
         .sheet_data
         .cells()
+        .filter(|(row, _, _)| keep_rows.is_none_or(|(top, bottom)| *row < top || *row > bottom))
         .filter_map(|(row, column, cell)| {
             let index = usize::try_from(cell.get_formula()?).ok()?;
             Some((row, column, index))
@@ -81,8 +82,25 @@ impl Model {
         &mut self,
         sheet: u32,
         name: &str,
+        range: (i32, i32, i32, i32),
+        has_filters: bool,
+    ) -> Result<(), String> {
+        self.add_table_with_totals(sheet, name, range, has_filters, false)
+    }
+
+    /// [`Model::add_table`] for a range whose last row is the table's totals row when
+    /// `totals_row` is set (`Table[#Totals]`, `Table[#All]`; the cells of that row keep what they
+    /// hold). Such a table needs a header row, a data row and the totals row.
+    ///
+    /// # Errors
+    /// As [`Model::add_table`], with the range one row taller for a totals row.
+    pub fn add_table_with_totals(
+        &mut self,
+        sheet: u32,
+        name: &str,
         (top, left, bottom, right): (i32, i32, i32, i32),
         has_filters: bool,
+        totals_row: bool,
     ) -> Result<(), String> {
         if !is_valid_identifier(name) {
             return Err(format!("Invalid table name '{name}'"));
@@ -105,7 +123,12 @@ impl Model {
         let (Some(first), Some(last)) = (number_to_column(left), number_to_column(right)) else {
             return Err("Table columns are outside the sheet".to_string());
         };
-        if top < 1 || top >= bottom || left > right || bottom > crate::constants::LAST_ROW {
+        let totals_rows = i32::from(totals_row);
+        if top < 1
+            || top.saturating_add(totals_rows) >= bottom
+            || left > right
+            || bottom > crate::constants::LAST_ROW
+        {
             return Err("A table needs a header row and at least one data row".to_string());
         }
         let overlaps = self.workbook.tables.values().any(|t| {
@@ -138,7 +161,7 @@ impl Model {
             display_name: name.to_string(),
             sheet_name,
             reference: format!("{first}{top}:{last}{bottom}"),
-            totals_row_count: 0,
+            totals_row_count: u32::from(totals_row),
             header_row_count: 1,
             header_row_dxf_id: None,
             data_dxf_id: None,
@@ -221,7 +244,15 @@ impl Model {
         if !self.workbook.tables.contains_key(name) {
             return Err(format!("No table named '{name}'"));
         }
-        self.rewrite_table_references(&[name.to_lowercase()], None, TableRewrite::Lower);
+        let tables = [name.to_lowercase()];
+        let data_rows = self.workbook.tables.get(name).and_then(|table| {
+            let (_, top, _, bottom) = parse_range(&table.reference).ok()?;
+            let header = i32::try_from(table.header_row_count).ok()?;
+            let totals = i32::try_from(table.totals_row_count).ok()?;
+            Some((top.checked_add(header)?, bottom.checked_sub(totals)?))
+        });
+        self.lower_this_row_references(&tables, data_rows);
+        self.rewrite_table_references(&tables, None, TableRewrite::Lower);
         self.remove_table(name)
     }
 
@@ -300,6 +331,34 @@ impl Model {
         (taken.into_iter().collect(), rewritten)
     }
 
+    /// Gives every cell off the table's `data_rows` whose formula holds a `#This Row` reference
+    /// to one of `tables` the text that reference lowers to there (`lower_this_row_cells`), so it
+    /// stays `#VALUE!` after the convert as in Excel (S!F1, S!F9 and T!A1 of
+    /// probes/table-edits/table-convert-names-this-row, T-2643): a shared formula has no row.
+    /// Cells on the data rows keep the shared formula, which lowers to the relative form Excel
+    /// prints (`=$C4*2`, table-convert-same-sheet).
+    fn lower_this_row_references(&mut self, tables: &[String], data_rows: Option<(i32, i32)>) {
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        for worksheet in &mut self.workbook.worksheets {
+            let context = CellReferenceRC {
+                sheet: worksheet.get_name(),
+                row: 1,
+                column: 1,
+            };
+            let by_row: Vec<(usize, Node)> = worksheet
+                .shared_formulas
+                .iter()
+                .enumerate()
+                .filter_map(|(index, formula)| {
+                    let node = self.parser.parse(formula, &context);
+                    node.has_this_row_to(tables).then_some((index, node))
+                })
+                .collect();
+            lower_this_row_cells(worksheet, &by_row, tables, data_rows);
+        }
+        self.parser.set_lexer_mode(LexerMode::A1);
+    }
+
     /// Prints `#REF!` for every structured reference to one of `tables` (lowercase names) in the
     /// formulas of every sheet but `skip_sheet` and in the defined names, and returns what it
     /// changed. Does not reparse.
@@ -309,105 +368,11 @@ impl Model {
         skip_sheet: Option<usize>,
         rewrite: TableRewrite,
     ) -> Vec<RewrittenFormula> {
-        let print = |node: &Node, context: Option<&CellReferenceRC>| match rewrite {
-            TableRewrite::RefError => to_string_with_ref_errors(node, context, tables),
-            TableRewrite::Lower => to_string_lowering(node, context, tables),
-        };
-        let mut rewritten = Vec::new();
-        self.parser.set_lexer_mode(LexerMode::R1C1);
-        for (index, worksheet) in self.workbook.worksheets.iter_mut().enumerate() {
-            if Some(index) == skip_sheet {
-                continue;
-            }
-            let context = CellReferenceRC {
-                sheet: worksheet.get_name(),
-                row: 1,
-                column: 1,
-            };
-            for (formula_index, formula) in worksheet.shared_formulas.iter_mut().enumerate() {
-                let node = self.parser.parse(formula, &context);
-                let text = print(&node, None);
-                if text != *formula {
-                    rewritten.push(RewrittenFormula {
-                        place: FormulaPlace::Shared {
-                            sheet_id: worksheet.sheet_id,
-                            index: formula_index,
-                        },
-                        original: std::mem::replace(formula, text.clone()),
-                        rewritten: text,
-                    });
-                }
-            }
-        }
-        self.parser.set_lexer_mode(LexerMode::A1);
-        // Defined names have no cell context; any cell of a remaining sheet does.
-        let remaining = self
-            .workbook
-            .worksheets
-            .iter()
-            .enumerate()
-            .find(|(index, _)| Some(*index) != skip_sheet)
-            .map(|(_, worksheet)| worksheet.get_name());
-        let Some(sheet) = remaining else {
-            return rewritten;
-        };
-        let context = CellReferenceRC {
-            sheet,
-            row: 1,
-            column: 1,
-        };
-        for (index, defined_name) in self.workbook.defined_names.iter_mut().enumerate() {
-            let stored = defined_name.formula.trim_start();
-            let (eq, body) = stored.strip_prefix('=').map_or(("", stored), |b| ("=", b));
-            let node = self.parser.parse(body, &context);
-            let text = print(&node, Some(&context));
-            if text != to_english_string(&node, &context) {
-                let text = format!("{eq}{text}");
-                rewritten.push(RewrittenFormula {
-                    place: FormulaPlace::DefinedName(index),
-                    original: std::mem::replace(&mut defined_name.formula, text.clone()),
-                    rewritten: text,
-                });
-            }
-        }
-        rewritten
+        self.rewrite_formulas(skip_sheet, |node, context| match rewrite {
+            TableRewrite::RefError => to_string_with_ref_errors(&node, context, tables),
+            TableRewrite::Lower => to_string_lowering(&node, context, tables),
+        })
     }
-
-    /// Puts back the formulas [`Model::take_tables_of_sheet`] rewrote, where they still hold the
-    /// rewritten text (the undo of a sheet delete). Does not reparse.
-    pub(crate) fn restore_table_references(&mut self, rewritten: Vec<RewrittenFormula>) {
-        for RewrittenFormula {
-            place,
-            original,
-            rewritten,
-        } in rewritten
-        {
-            let slot = match place {
-                FormulaPlace::Shared { sheet_id, index } => self
-                    .workbook
-                    .worksheets
-                    .iter_mut()
-                    .find(|worksheet| worksheet.sheet_id == sheet_id)
-                    .and_then(|worksheet| worksheet.shared_formulas.get_mut(index)),
-                FormulaPlace::DefinedName(index) => self
-                    .workbook
-                    .defined_names
-                    .get_mut(index)
-                    .map(|defined_name| &mut defined_name.formula),
-            };
-            if let Some(slot) = slot.filter(|slot| **slot == rewritten) {
-                *slot = original;
-            }
-        }
-    }
-}
-
-/// A formula that a table or sheet delete rewrote, kept so the undo can put it back.
-#[derive(Debug, Clone, bitcode::Encode, bitcode::Decode)]
-pub(crate) struct RewrittenFormula {
-    place: FormulaPlace,
-    original: String,
-    rewritten: String,
 }
 
 /// How [`Model::rewrite_table_references`] prints a structured reference to a removed table.
@@ -417,13 +382,4 @@ enum TableRewrite {
     RefError,
     /// The absolute area it resolved to: the table is converted to a range.
     Lower,
-}
-
-/// Where a [`RewrittenFormula`] lives.
-#[derive(Debug, Clone, Copy, bitcode::Encode, bitcode::Decode)]
-enum FormulaPlace {
-    /// A shared formula of the sheet with this id.
-    Shared { sheet_id: u32, index: usize },
-    /// A defined name, by its index in the workbook's list.
-    DefinedName(usize),
 }

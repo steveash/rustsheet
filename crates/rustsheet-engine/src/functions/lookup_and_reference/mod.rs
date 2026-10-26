@@ -23,8 +23,8 @@ use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::SearchVector;
-use ref_lift::lifts;
 pub(crate) use ref_lift::lifts_into_references;
+use ref_lift::lifts_one_by_one;
 
 pub(crate) use drop_take::Edge;
 
@@ -142,12 +142,12 @@ impl Model {
         {
             return match_type;
         }
-        let match_range = self.evaluate_lookup_table_arg(&args[1], cell);
-
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = self.as_vector(match_range, cell);
+        let values = self
+            .lookup_table_arg(&args[1], cell)
+            .and_then(|table| self.as_vector(table, cell));
 
         // lookup_value lifts over an array or a multi-cell range, one search per element. An
         // element that is an error is the result before an invalid match_type is checked:
@@ -251,8 +251,7 @@ impl Model {
         }
         // The table is read first: its error beats the index's and range_lookup's
         // (`Model::lookup_head`).
-        let range = self.evaluate_lookup_table_arg(&args[1], cell);
-        let table = self.lookup_table(range, cell);
+        let table = self.lookup_table_arg(&args[1], cell);
         let (lookup_value, row_index, is_sorted) =
             match self.lookup_head(args, table.as_ref().err().cloned(), cell) {
                 Ok(head) => head,
@@ -305,8 +304,7 @@ impl Model {
         }
         // The table is read first: its error beats the index's and range_lookup's
         // (`Model::lookup_head`).
-        let range = self.evaluate_lookup_table_arg(&args[1], cell);
-        let table = self.lookup_table(range, cell);
+        let table = self.lookup_table_arg(&args[1], cell);
         let (lookup_value, column_index, is_sorted) =
             match self.lookup_head(args, table.as_ref().err().cloned(), cell) {
                 Ok(head) => head,
@@ -732,16 +730,18 @@ impl Model {
     /// INDIRECT in reference context: one reference, or, when `ref_text` or a1 is an array or a
     /// multi-cell range, an array of references in their broadcast shape, each element the scalar
     /// INDIRECT of its values or that call's error (SPEC-0014; docs/excel-semantics/lookup.md
-    /// "OFFSET, INDIRECT and TRIMRANGE lift into arrays of references").
+    /// "OFFSET, INDIRECT and TRIMRANGE lift into arrays of references"). A 1x1 array lifts too:
+    /// `INDIRECT("B1",{1})` and `INDIRECT({"B1"})` are `#VALUE!` with ROWS 1 (references.md
+    /// "INDIRECT: a 1x1 array a1 argument is #VALUE!"; probes/t2577-indirect-ref-array A1, A25).
     pub(crate) fn indirect_reference(&mut self, args: &[Node], cell: CellReferenceIndex) -> RefArg {
         if args.len() > 2 || args.is_empty() {
             return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
         let values = self.reference_lift_values(args, cell);
-        if !values.as_slice().iter().any(lifts) {
+        if !values.as_slice().iter().any(lifts_one_by_one) {
             return RefArg::from(self.indirect_of(values.as_slice(), cell));
         }
-        match self.reference_lift_args(values, lifts, cell) {
+        match self.reference_lift_args(values, lifts_one_by_one, cell) {
             Ok(lifted) => self.lift_references(lifted, cell, &mut |model, values| {
                 model.indirect_of(values, cell)
             }),
@@ -757,7 +757,7 @@ impl Model {
                 .reference_lift_values(args, cell)
                 .as_slice()
                 .iter()
-                .any(lifts)
+                .any(lifts_one_by_one)
     }
 
     /// The scalar INDIRECT of the values of `ref_text` and the optional a1 (TRUE when missing).

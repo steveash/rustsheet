@@ -1,0 +1,65 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "SUBTOTAL 106 (and 6, AGGREGATE 6 controls) over ranges holding no numbers: text only, blanks only, and ranges whose only numbers sit in manually hidden rows (Hide: rows 5 and 6 hidden) or in rows a table filter hides (Filter: table A1:A6 filters out rows 2 and 3) (T-2302).",
+ "tags": [
+  "M5",
+  "math",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Hide",
+   "cells": {
+    "A1": "a",
+    "A2": "b",
+    "A3": "c",
+    "A5": 3,
+    "A6": 5,
+    "A7": "x",
+    "C1": "=SUBTOTAL(106,A1:A3)",
+    "C2": "=SUBTOTAL(106,B1:B3)",
+    "C3": "=SUBTOTAL(6,B1:B3)",
+    "C4": "=SUBTOTAL(106,A5:A7)",
+    "C5": "=SUBTOTAL(6,A5:A7)",
+    "C6": "=SUBTOTAL(106,A5:A6)",
+    "C7": "=SUBTOTAL(106,A1:A3,B1:B3)",
+    "C8": "=SUBTOTAL(106,A1:A3,A5:A6)",
+    "C9": "=SUBTOTAL(106,A1:A7)",
+    "C10": "=AGGREGATE(6,5,A5:A6)",
+    "C11": "=AGGREGATE(6,6,A1:A3)",
+    "C12": "=AGGREGATE(6,4,B1:B3)"
+   },
+   "hidden_rows": [
+    5,
+    6
+   ]
+  },
+  {
+   "name": "Filter",
+   "cells": {
+    "A1": "H",
+    "A2": 2,
+    "A3": 7,
+    "A4": "t",
+    "A5": "u",
+    "A6": "v",
+    "C1": "=SUBTOTAL(6,A2:A6)",
+    "C2": "=SUBTOTAL(106,A2:A6)",
+    "C3": "=SUBTOTAL(106,A2:A3)",
+    "C4": "=AGGREGATE(6,1,A2:A6)"
+   },
+   "hidden_rows": [
+    2,
+    3
+   ],
+   "tables": [
+    {
+     "name": "Data",
+     "ref": "A1:A6",
+     "filter": true
+    }
+   ]
+  }
+ ],
+ "expected": {}
+}

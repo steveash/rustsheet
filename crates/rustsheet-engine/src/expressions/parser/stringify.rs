@@ -1,5 +1,6 @@
 pub(super) mod bound_variables;
 mod rename_defined_name;
+mod sheet_edits;
 mod structured;
 mod wrong_reference;
 use super::reference_operators::{
@@ -8,8 +9,8 @@ use super::reference_operators::{
 };
 use super::structured_reference::is_unresolved_structured_reference;
 use super::{
-    super::utils::{name_needs_quoting, quote_name, rename_defined_name_sheet},
-    for_each_chain_operand_mut, left_chain,
+    super::utils::{name_needs_quoting, quote_name},
+    left_chain,
     move_formula::{moved_reference_text, MoveContext},
     value_operands, ArrayNode, Node, Reference,
 };
@@ -21,6 +22,7 @@ use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
+pub(crate) use sheet_edits::{move_sheet_in_node, rename_sheet_in_node};
 pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
     to_string_with_ref_errors,
@@ -700,6 +702,8 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
+        UnaryPlus { child } => format!("+{}", wrap(sub(child), binding(child) < binding(node))),
+        Spaced { space, child } => space.around(&sub(child)),
         ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
@@ -792,6 +796,11 @@ enum Binding {
 }
 
 fn binding(node: &Node) -> Binding {
+    // Whitespace binds as the operand it is written around.
+    let mut node = node;
+    while let Node::Spaced { child, .. } = node {
+        node = child;
+    }
     match node {
         Node::CompareKind { .. } => Binding::Compare,
         Node::OpConcatenateKind { .. } => Binding::Concat,
@@ -805,7 +814,8 @@ fn binding(node: &Node) -> Binding {
         Node::UnaryKind {
             kind: OpUnary::Minus,
             ..
-        } => Binding::Minus,
+        }
+        | Node::UnaryPlus { .. } => Binding::Minus,
         _ => Binding::Operand,
     }
 }
@@ -845,105 +855,4 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
         wrap(left_text, binding(left) < level),
         wrap(sub(right), binding(right) <= level)
     )
-}
-
-pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: &str) {
-    match node {
-        // Rename
-        Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::ThisRowKind { .. } => {
-            node.rename_reference_sheet(sheet_index, new_name);
-        }
-        Node::SheetSpanKind {
-            first_sheet,
-            last_sheet,
-            first_index,
-            last_index,
-            ..
-        } => {
-            if *first_index == sheet_index {
-                new_name.clone_into(first_sheet);
-            }
-            if *last_index == sheet_index {
-                new_name.clone_into(last_sheet);
-            }
-        }
-        Node::WrongReferenceKind { sheet_name, .. } => {
-            if let Some(name) = sheet_name {
-                if name.to_uppercase() == new_name.to_uppercase() {
-                    *sheet_name = Some(name.to_owned());
-                }
-            }
-        }
-        Node::WrongRangeKind { sheet_name, .. } => {
-            if sheet_name.is_some() {
-                *sheet_name = Some(new_name.to_owned());
-            }
-        }
-
-        // Go next level
-        Node::OpRangeKind { left, right }
-        | Node::OpIntersectKind { left, right, .. }
-        | Node::OpUnionKind { left, right, .. } => {
-            rename_sheet_in_node(left, sheet_index, new_name);
-            rename_sheet_in_node(right, sheet_index, new_name);
-        }
-        Node::OpConcatenateKind { .. }
-        | Node::OpSumKind { .. }
-        | Node::OpProductKind { .. }
-        | Node::OpPowerKind { .. }
-        | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| {
-                rename_sheet_in_node(operand, sheet_index, new_name);
-            });
-        }
-        Node::FunctionKind { kind: _, args } => {
-            for arg in args {
-                rename_sheet_in_node(arg, sheet_index, new_name);
-            }
-        }
-        Node::NamedFunctionKind {
-            name: _,
-            args,
-            id: _,
-        } => {
-            for arg in args {
-                rename_sheet_in_node(arg, sheet_index, new_name);
-            }
-        }
-        Node::UnaryKind { kind: _, right } => {
-            rename_sheet_in_node(right, sheet_index, new_name);
-        }
-        Node::ImplicitIntersection { child, .. } => {
-            rename_sheet_in_node(child, sheet_index, new_name);
-        }
-        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
-            rename_sheet_in_node(child, sheet_index, new_name);
-        }
-        Node::StructuredReferenceKind { lowered, .. } => {
-            rename_sheet_in_node(lowered, sheet_index, new_name);
-        }
-
-        // Do nothing
-        Node::BooleanKind(_)
-        | Node::NumberKind(_)
-        | Node::StringKind(_)
-        | Node::ErrorKind(_)
-        | Node::ParseErrorKind { .. }
-        | Node::ArrayKind(_)
-        | Node::NamedVariableKind { .. }
-        | Node::EmptyArgKind => {}
-        Node::DefinedNameKind((n, s, _)) => rename_defined_name_sheet(n, *s, sheet_index, new_name),
-        Node::LambdaDefKind {
-            parameters: _,
-            body,
-        } => {
-            rename_sheet_in_node(body, sheet_index, new_name);
-        }
-        Node::LambdaCallKind { lambda, args } => {
-            rename_sheet_in_node(lambda, sheet_index, new_name);
-            for arg in args {
-                rename_sheet_in_node(arg, sheet_index, new_name);
-            }
-        }
-    }
 }

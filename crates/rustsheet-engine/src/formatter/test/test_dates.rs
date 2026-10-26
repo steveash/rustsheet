@@ -303,3 +303,32 @@ fn fraction_digits_round_into_the_next_day() {
         "1900-01-01 00:00:00.000"
     );
 }
+
+// probes/text-format-aaa-weekday and -b (T-1880): three or more of one `a` are the weekday.
+#[test]
+fn a_runs_are_the_weekday() {
+    let cases = [
+        (1.0, "aaa", "Sun"),
+        (1.0, "aaaa", "Sunday"),
+        (1.0, "aaaaaaaaaa", "Sunday"),
+        (1.0, "AAA", "Sun"),
+        (1.0, "AAAA", "Sunday"),
+        (1.0, "aa", "aa"),
+        (1.0, "aAa", "aAa"),
+        (1.0, "AAa", "AAa"),
+        (1.0, "aaa\\a", "Suna"),
+        (1.0, "aaaA", "SunA"),
+        (1.0, "Aaaa", "ASun"),
+        (1.0, "aaaAAA", "Sunday"),
+        (1.0, "aaAA", "aaAA"),
+        (45000.0, "aaa", "Wed"),
+        (0.75, "aaa AM/PM", "Sat PM"),
+    ];
+    for (value, format, expected) in cases {
+        assert_eq!(
+            format_in(value, format, DateSystem::Excel1900),
+            expected,
+            "{format}"
+        );
+    }
+}

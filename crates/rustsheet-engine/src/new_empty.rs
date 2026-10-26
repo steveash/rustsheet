@@ -9,15 +9,15 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
-            static_analysis::run_static_analysis_on_node,
             stringify::{
-                rename_sheet_in_node, to_english_string, to_localized_string, to_rc_format,
-                to_string_lowering,
+                move_sheet_in_node, rename_sheet_in_node, to_english_string, to_localized_string,
+                to_rc_format, to_string_lowering,
             },
             CallNameSpellings, Node, Parser,
         },
         types::CellReferenceRC,
     },
+    formula_rewrite::RewrittenFormula,
     functions::logical::NamedLambdas,
     language::{get_default_language, get_language, Language},
     locale::{get_default_locale, get_locale, Locale},
@@ -141,8 +141,7 @@ impl Model {
                 if self.call_name_spellings.apply(&mut t) {
                     *formula = to_rc_format(&t);
                 }
-                let static_result = run_static_analysis_on_node(&t);
-                parse_formula.push((std::sync::Arc::new(t), static_result));
+                parse_formula.push(crate::formula_cells::stored_formula(t));
             }
             // The lookup of the shared formulas follows the parsed formulas: both
             // are made from the lists of the sheets, here.
@@ -209,6 +208,8 @@ impl Model {
                 // A name has no cell: its `#This Row` areas are resolved at the row it is parsed
                 // at, as before SPEC-0016 step 2. Excel's rule is unprobed (T-1699, T-2595).
                 body.lower_this_rows_at(dummy_ref.row);
+                // Evaluation reads no whitespace (see `ParsedFormula`); the name keeps its text.
+                body.strip_spaces();
                 match body {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(Arc::new((parameters, *body)))
@@ -438,7 +439,7 @@ impl Model {
             }
         }
         new_worksheet.shared_formulas = shared_formulas;
-        lower_this_row_cells(&mut new_worksheet, &by_row, &source_tables);
+        lower_this_row_cells(&mut new_worksheet, &by_row, &source_tables, None);
         self.parser.set_lexer_mode(LexerMode::A1);
 
         // Insert the copy right after the source sheet.
@@ -616,11 +617,23 @@ impl Model {
     /// Sheet order is only a position in the worksheet vector; formulas key off
     /// the sheet name (and defined names off the sheet id), so cross-sheet
     /// references stay valid across a move — `reset_parsed_structures` re-resolves
-    /// every reference by name against the reordered vector.
+    /// every reference by name against the reordered vector. A 3-D span whose moved
+    /// end lands past its other end is rewritten first, as Excel does
+    /// (`move_sheet_in_node`).
     ///
     /// Fails if either index is out of range. Moving a sheet to its current
     /// position is a no-op.
     pub fn move_sheet(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
+        self.move_sheet_rewriting(sheet_index, new_index).map(drop)
+    }
+
+    /// [`Model::move_sheet`], handing back the formulas it rewrote so an undo can put them back
+    /// ([`Model::unmove_sheet`]).
+    pub(crate) fn move_sheet_rewriting(
+        &mut self,
+        sheet_index: u32,
+        new_index: u32,
+    ) -> Result<Vec<RewrittenFormula>, String> {
         let sheet_count = self.workbook.worksheets.len() as u32;
         if sheet_index >= sheet_count {
             return Err("Sheet index too large".to_string());
@@ -629,14 +642,44 @@ impl Model {
             return Err("Target sheet index too large".to_string());
         }
         if sheet_index == new_index {
-            return Ok(());
+            return Ok(Vec::new());
         }
-        let worksheet = self.workbook.worksheets.remove(sheet_index as usize);
-        self.workbook
-            .worksheets
-            .insert(new_index as usize, worksheet);
-        self.reset_parsed_structures();
+        let sheet_names = self.workbook.get_worksheet_names();
+        let rewritten = self.rewrite_formulas(None, |mut node, context| {
+            move_sheet_in_node(&mut node, sheet_index, new_index, &sheet_names);
+            match context {
+                Some(context) => to_english_string(&node, context),
+                None => to_rc_format(&node),
+            }
+        });
+        self.reorder_sheet(sheet_index, new_index);
+        Ok(rewritten)
+    }
+
+    /// Undoes [`Model::move_sheet_rewriting`] from `sheet_index` to `new_index`: puts back the
+    /// `rewritten` formulas and the sheet. Moving it back with [`Model::move_sheet`] would not
+    /// do, as that move can rewrite spans of its own.
+    pub(crate) fn unmove_sheet(
+        &mut self,
+        sheet_index: u32,
+        new_index: u32,
+        rewritten: &[RewrittenFormula],
+    ) -> Result<(), String> {
+        let sheet_count = self.workbook.worksheets.len() as u32;
+        if sheet_index >= sheet_count || new_index >= sheet_count {
+            return Err("Sheet index too large".to_string());
+        }
+        self.restore_rewritten_formulas(rewritten.to_vec());
+        self.reorder_sheet(new_index, sheet_index);
         Ok(())
+    }
+
+    /// Moves the worksheet at `from` (in range) to `to` without touching any formula text, then
+    /// reparses.
+    fn reorder_sheet(&mut self, from: u32, to: u32) {
+        let worksheet = self.workbook.worksheets.remove(from as usize);
+        self.workbook.worksheets.insert(to as usize, worksheet);
+        self.reset_parsed_structures();
     }
 
     /// Deletes a sheet by name. Fails if:
@@ -765,7 +808,7 @@ impl Model {
             clock,
         );
         model.parse_formulas();
-        model.evaluate_conditional_formatting();
+        model.cf_stale = true;
         Ok(model)
     }
 
@@ -809,6 +852,9 @@ impl Model {
             area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
+            cf_stale: true,
+            #[cfg(test)]
+            cf_runs: 0,
             links: HashMap::new(),
         }
     }

@@ -4,6 +4,7 @@ mod average;
 mod cell_is;
 mod duplicates;
 mod formula;
+mod on_first_read;
 mod priority;
 mod stop_if_true;
 mod text;
@@ -955,7 +956,7 @@ fn test_icon_rating_count() {
         .unwrap();
     model.evaluate();
 
-    let rating = |row: i32| {
+    let mut rating = |row: i32| {
         model
             .get_extended_style_for_cell(0, row, 1)
             .unwrap()

@@ -26,7 +26,7 @@ fn red_fill() -> Dxf {
     }
 }
 
-fn is_red(model: &Model, row: i32, col: i32) -> bool {
+fn is_red(model: &mut Model, row: i32, col: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, col)
         .unwrap()
@@ -88,7 +88,10 @@ fn cf_formula_entered_in_english_survives_switch_to_spanish() {
     // Displayed in English (the active language).
     assert_eq!(displayed_cf_formula(&model), "=IF($A1>5,TRUE,FALSE)");
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "row {row} should be red in English");
+        assert!(
+            is_red(&mut model, row, 1),
+            "row {row} should be red in English"
+        );
     }
 
     // Switch to Spanish.
@@ -101,10 +104,13 @@ fn cf_formula_entered_in_english_survives_switch_to_spanish() {
     // And the rule keeps highlighting the same rows.
     model.evaluate();
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "row {row} should be red in Spanish");
+        assert!(
+            is_red(&mut model, row, 1),
+            "row {row} should be red in Spanish"
+        );
     }
     for row in 1..=5 {
-        assert!(!is_red(&model, row, 1), "row {row} should not be red");
+        assert!(!is_red(&mut model, row, 1), "row {row} should not be red");
     }
 }
 
@@ -133,7 +139,7 @@ fn cf_formula_entered_in_spanish_is_stored_in_english() {
     // Displayed back in Spanish.
     assert_eq!(displayed_cf_formula(&model), "=SI($A1>5,VERDADERO,FALSO)");
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "row {row} should be red");
+        assert!(is_red(&mut model, row, 1), "row {row} should be red");
     }
 
     // Switching back to English shows the English form.
@@ -141,7 +147,7 @@ fn cf_formula_entered_in_spanish_is_stored_in_english() {
     assert_eq!(displayed_cf_formula(&model), "=IF($A1>5,TRUE,FALSE)");
     model.evaluate();
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "row {row} should still be red");
+        assert!(is_red(&mut model, row, 1), "row {row} should still be red");
     }
 }
 
@@ -195,7 +201,7 @@ fn defined_name_lambda_entered_in_english_survives_switch_to_spanish() {
     // Stored internally in English.
     assert_eq!(
         model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
+        "=LAMBDA(x, IF(x>0, 1, 2))"
     );
 
     model.set_language("es").unwrap();
@@ -203,10 +209,10 @@ fn defined_name_lambda_entered_in_english_survives_switch_to_spanish() {
     // Still stored in English, displayed in Spanish.
     assert_eq!(
         model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
+        "=LAMBDA(x, IF(x>0, 1, 2))"
     );
     let names = model.get_defined_name_list();
-    assert_eq!(names[0].2, "=LAMBDA(x,SI(x>0,1,2))");
+    assert_eq!(names[0].2, "=LAMBDA(x, SI(x>0, 1, 2))");
 
     // An edit reparses the defined names; the English form must still parse.
     model
@@ -235,11 +241,17 @@ fn defined_name_lambda_entered_in_spanish_is_stored_in_english() {
     // Stored in English even though it was entered in Spanish.
     assert_eq!(
         model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
+        "=LAMBDA(x, IF(x>0, 1, 2))"
     );
 
     // Displayed in Spanish, and in English after switching.
-    assert_eq!(model.get_defined_name_list()[0].2, "=LAMBDA(x,SI(x>0,1,2))");
+    assert_eq!(
+        model.get_defined_name_list()[0].2,
+        "=LAMBDA(x, SI(x>0, 1, 2))"
+    );
     model.set_language("en").unwrap();
-    assert_eq!(model.get_defined_name_list()[0].2, "=LAMBDA(x,IF(x>0,1,2))");
+    assert_eq!(
+        model.get_defined_name_list()[0].2,
+        "=LAMBDA(x, IF(x>0, 1, 2))"
+    );
 }

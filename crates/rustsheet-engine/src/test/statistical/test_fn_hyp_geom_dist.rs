@@ -70,3 +70,39 @@ fn hyp_geom_dist_domain_edges_and_boolean_sample() {
         assert_eq!(model._get_text(cell), *value, "{cell}");
     }
 }
+
+#[test]
+fn a_negative_or_huge_count_is_num() {
+    let mut model = new_empty_model();
+    // probes/t2429-hypgeom-huge-count and t2429-hypgeom-threshold: a count of 2^31 - 1 or more is
+    // #NUM! in any argument, even a sample_s above the possible range (gen-m9 a612e89321a6df9c
+    // A395), and a negative fraction in any count is #NUM! before truncation; a text cumulative is
+    // read first.
+    let cells = [
+        ("=HYPGEOMDIST(1E15,2,2,17)", "#NUM!"),
+        ("=HYPGEOMDIST(2147483646.9,2,2,17)", "0"),
+        ("=HYPGEOMDIST(2147483647,2,2,17)", "#NUM!"),
+        ("=HYPGEOM.DIST(2147483647,2,2,17,TRUE)", "#NUM!"),
+        ("=HYPGEOMDIST(1,2,3,2147483646)", "2.79397E-09"),
+        ("=HYPGEOMDIST(1,2,3,2147483647)", "#NUM!"),
+        ("=HYPGEOMDIST(1,2147483647,3,2147483647)", "#NUM!"),
+        ("=HYPGEOMDIST(1,3,2147483647,2147483647)", "#NUM!"),
+        ("=HYPGEOM.DIST(1,2,-0.5,10,TRUE)", "#NUM!"),
+        ("=HYPGEOM.DIST(1,-0.5,3,10,TRUE)", "#NUM!"),
+        ("=HYPGEOMDIST(1,2,3,-0.5)", "#NUM!"),
+        ("=HYPGEOM.DIST(1E15,2,3,10,\"abc\")", "#VALUE!"),
+        ("=HYPGEOM.DIST(1,-0.5,3,10,\"abc\")", "#VALUE!"),
+        ("=HYPGEOM.DIST(1,2,3,10,\"true\")", "0.933333333"),
+    ];
+    for (row, (formula, _)) in cells.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, value)) in cells.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *value,
+            "{formula}"
+        );
+    }
+}

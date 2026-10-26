@@ -696,7 +696,7 @@ impl PyUserModel {
     /// Returns the style of a cell together with the name of the named style
     /// it is based on, if any
     pub fn get_extended_cell_style<'py>(
-        &self,
+        &mut self,
         py: Python<'py>,
         sheet: u32,
         row: i32,

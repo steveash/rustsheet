@@ -20,7 +20,7 @@ fn simple_cases() {
     assert_eq!(model._get_text("B2"), *"Monday and Tuesday and Wednesday");
     assert_eq!(model._get_text("B3"), *"Monday or Tuesday or Wednesday");
     // Our text version removes the prefix, of course (and some white spaces)
-    assert_eq!(model._get_formula("B3"), *"=TEXTJOIN(\" or \",,A1:A3)");
+    assert_eq!(model._get_formula("B3"), *"=TEXTJOIN(\" or \",, A1:A3)");
 }
 
 #[test]

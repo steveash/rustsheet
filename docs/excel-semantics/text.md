@@ -391,6 +391,23 @@ Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, 
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
 Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355, T-2680
 
+## Lifted FIND and SEARCH calls are capped
+Rule: Excel computes a lifted FIND, FINDB, SEARCH or SEARCHB whatever its texts' lengths.
+Ours: a lifted call is `#ERROR!` ("Too many cells to visit") before its first element when its work passes
+`limits::MAX_LIFTED_CELL_VISITS` (2^27). Each element is charged both texts' UTF-8 lengths plus 1 and, at each of the
+`within_text` length plus 1 start positions, 1 plus the bytes compared there (at most the shorter text's length) over
+256 for FIND (a `memcmp`) and over 8 for SEARCH (its wildcard segments compare unit by unit); a number or a logical
+counts as 32 bytes, an error or a blank as none. `FIND(REPT("a",32766)&"b",REPT("a",32763)&SEQUENCE(1000))`, about
+10^9 compared bytes per element, is `#ERROR!`; `SUM(FIND("a",A1:A100000))` over short texts runs, and a call that does
+not lift is not charged (`FIND(REPT("a",32766)&"b",REPT("a",32767))` is `#VALUE!`, after one scan).
+Even a one-character search is charged each start position, as TEXTBEFORE reads each position: a lift whose
+`within_text`s add up past about 2^27 bytes is `#ERROR!` (`SUM(--ISNUMBER(SEARCH("x",A1:A5000)))` over 32,767-character
+cells), where 100,000 texts of 1,000 bytes run.
+Status: DEVIATION (decision 0014)
+Implemented in: `ValueWork::TextScan` and `text_scan_units` (functions/lift/kinds/mod.rs), the FIND and SEARCH entries
+(functions/lift/kinds/text.rs)
+Tasks: T-1775, T-1961
+
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
 function argument modes"). Each element is read as text: a number as its text (`1E+15` as `1000000000000000`, the

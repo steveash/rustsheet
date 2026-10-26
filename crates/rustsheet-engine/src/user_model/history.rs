@@ -4,7 +4,7 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
-    tables::RewrittenFormula,
+    formula_rewrite::RewrittenFormula,
     types::{
         Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Table, Theme,
         Worksheet,
@@ -211,6 +211,8 @@ pub(crate) enum Diff {
         sheet_index: u32,
         /// Index the worksheet was moved to.
         new_index: u32,
+        /// The formulas whose 3-D spans the move rewrote (T-1691).
+        rewritten: Vec<RewrittenFormula>,
     },
     SetSheetColor {
         index: u32,

@@ -3,6 +3,7 @@ mod bycol_byrow;
 mod lambda;
 mod r#let;
 mod map_reduce;
+mod read_once;
 mod scan;
 mod switch;
 
@@ -141,7 +142,7 @@ impl Model {
     /// (T-0216, T-1026; docs/excel-semantics/references.md). In reference context a union in
     /// the chosen branch stays its areas: `SUM(IF(TRUE,(A1,B2)))` is 6 and
     /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2). The condition is evaluated
-    /// once, then the chosen branch once (`read_once` in functions/logical/lambda.rs relies on it).
+    /// once, then the chosen branch once (`read_once` in `functions/logical/read_once.rs` relies on it).
     pub(crate) fn if_impl(
         &mut self,
         args: &[Node],
@@ -391,8 +392,13 @@ impl Model {
             CalcResult::Array(a) => a,
             CalcResult::Error { ref error, .. } if is_handled(error) => {
                 // Scalar handled error: evaluate the fallback branch directly.
-                // The branch result may itself be an array (it will spill).
-                return self.evaluate_node_in_context(&args[1], cell);
+                // The branch result may itself be an array (it will spill). A blank cell there
+                // is the empty value too, which STDEV.P counts as 0
+                // (`STDEV.P(A9:A12,IFERROR(1/0,E6),{1,..,10})` with E6 blank;
+                // probes/t2475-stat-subexpressions P!A158).
+                return self
+                    .evaluate_node_in_context(&args[1], cell)
+                    .blank_as_empty_value();
             }
             // A blank cell gives its value, not the reference: an empty value that OR reads as
             // FALSE and a lookup as 0 (T-0291; gen-m2 7469c3e920e1ade4 A351, ef5c55a81783b7d5 A291).

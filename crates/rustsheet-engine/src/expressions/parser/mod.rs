@@ -66,6 +66,7 @@ pub mod move_formula;
 mod operands;
 mod reference_operators;
 mod sheet_span;
+mod spacing;
 pub mod static_analysis;
 pub mod stringify;
 mod structured_reference;
@@ -78,6 +79,8 @@ pub(crate) use depth::is_limit_error;
 pub use depth::{
     MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
+pub(crate) use spacing::Run;
+pub use spacing::Spacing;
 pub use structured_reference::StructuredReference;
 
 pub(crate) use call_names::CallNameSpellings;
@@ -345,6 +348,22 @@ pub enum Node {
         kind: OpUnary,
         right: Box<Node>,
     },
+    /// A unary plus as written (`+"a"`, `+A1`, `+-5`). The identity, so transparent to evaluation
+    /// and analysis as a [`Node::Group`] is (see [`Node::ungrouped`] and [`Node::lowered`]); kept
+    /// only so formula text prints it back, as Excel's FORMULATEXT and stored formula text do. A
+    /// plus written directly before a number literal is not kept: it folds into the number
+    /// (`=+5` is `=5`; docs/excel-semantics/syntax.md, T-2723).
+    UnaryPlus {
+        child: Box<Node>,
+    },
+    /// Whitespace written around `child`, printed back as typed: `space`'s runs ahead of its
+    /// first token and behind its last (docs/excel-semantics/syntax.md "Formula text keeps typed
+    /// whitespace…", SPEC-0023). Transparent to evaluation and analysis, as a [`Node::Group`] is
+    /// (see [`Node::ungrouped`] and [`Node::lowered`]); only built where whitespace was written.
+    Spaced {
+        space: Spacing,
+        child: Box<Node>,
+    },
     ErrorKind(token::Error),
     ParseErrorKind {
         formula: String,
@@ -370,20 +389,27 @@ impl Node {
         let mut node = self;
         loop {
             match node {
-                Node::Group { child, .. } => node = child,
+                Node::Group { child, .. }
+                | Node::UnaryPlus { child }
+                | Node::Spaced { child, .. } => node = child,
                 Node::StructuredReferenceKind { lowered, .. } => node = lowered,
                 _ => return node,
             }
         }
     }
 
-    /// The area a structured reference resolves to; any other node is itself. For the sites
-    /// that see a structured reference as the reference it stood for before SPEC-0016 but treat
-    /// written parentheses apart, so they do not call [`Node::ungrouped`].
+    /// The area a structured reference resolves to, under any unary plus (the identity) and
+    /// written whitespace; any other node is itself. For the sites that see a structured reference as the reference it
+    /// stood for before SPEC-0016 but treat written parentheses apart, so they do not call
+    /// [`Node::ungrouped`].
     pub(crate) fn lowered(&self) -> &Node {
-        match self {
-            Node::StructuredReferenceKind { lowered, .. } => lowered,
-            node => node,
+        let mut node = self;
+        loop {
+            match node {
+                Node::UnaryPlus { child } | Node::Spaced { child, .. } => node = child,
+                Node::StructuredReferenceKind { lowered, .. } => node = lowered,
+                _ => return node,
+            }
         }
     }
 
@@ -707,6 +733,14 @@ impl Parser {
                 return stored;
             }
         }
+        // A file's stored text drops the whitespace it starts with, where the same text typed
+        // after `=` keeps it: `<f> 1+2</f>` prints `=1+2` (probes/t2776-formula-text-whitespace-shapes
+        // E7, E8; syntax.md "Formula text keeps typed whitespace…", T-2784).
+        let formula = if self.loaded {
+            formula.trim_start_matches(' ')
+        } else {
+            formula
+        };
         self.lexer.set_formula(formula);
         self.context = context.clone();
         // At the top level a formula may start with an expression or a range.
@@ -819,42 +853,76 @@ impl Parser {
         t
     }
 
+    /// `power => (unaryOp)* union '%'*`. The whitespace typed before the operand, after each of
+    /// its signs, before each `%` and after it is kept as [`Node::Spaced`] (`=- 5`, `=5 %`,
+    /// `=1 + 2`; SPEC-0023). Every nesting level of a formula passes through here, so the work
+    /// before and after the operand is in helpers of their own, to keep this frame small in
+    /// unoptimized builds (T-1110).
     pub(super) fn parse_power(&mut self) -> Node {
-        let mut next_token = self.lexer.peek_token();
-        // Every minus is kept (`--x` coerces `x` to a number); a plus is a no-op.
-        let mut minus_count = 0;
-        while let TokenType::Addition(op) = next_token {
-            self.lexer.advance_token();
-            minus_count += usize::from(op == token::OpSum::Minus);
-            next_token = self.lexer.peek_token();
-        }
-
-        let mut t = self.parse_bare_union();
+        let before = self.run_ahead();
+        let signs = self.parse_signs();
+        let t = self.parse_bare_union();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        for _ in 0..minus_count {
-            if let Err(error) = self.grow(self.depth, 0) {
-                return error;
-            }
-            t = Node::UnaryKind {
-                kind: token::OpUnary::Minus,
-                right: Box::new(t),
+        match self.finish_power(t, before, signs) {
+            Ok(node) | Err(node) => node,
+        }
+    }
+
+    /// The unary signs before an operand, in written order: whether each is a minus, and the
+    /// run after it. Every sign is kept in its written order (`--x` coerces `x` to a number,
+    /// `+-5` prints back as written), but a plus written directly before a number literal folds
+    /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
+    /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776).
+    #[inline(never)]
+    fn parse_signs(&mut self) -> Vec<(bool, Run)> {
+        let mut signs = Vec::new();
+        while let TokenType::Addition(op) = self.lexer.peek_token() {
+            self.lexer.advance_token();
+            let fold = op == token::OpSum::Add
+                && !self.lexer.whitespace_follows()
+                && matches!(self.lexer.peek_token(), TokenType::Number(_));
+            if !fold {
+                signs.push((op == token::OpSum::Minus, self.run_ahead()));
             }
         }
-        next_token = self.lexer.peek_token();
-        while next_token == TokenType::Percent {
+        signs
+    }
+
+    /// Operand `t` of [`Parser::parse_power`] under its `signs`, then its `%`s, with the runs
+    /// around it.
+    #[inline(never)]
+    fn finish_power(
+        &mut self,
+        mut t: Node,
+        before: Run,
+        signs: Vec<(bool, Run)>,
+    ) -> Result<Node, Node> {
+        for (is_minus, after_sign) in signs.into_iter().rev() {
+            t = t.spaced(after_sign, Run::default());
+            self.grow(self.depth, 0)?;
+            let right = Box::new(t);
+            t = if is_minus {
+                Node::UnaryKind {
+                    kind: token::OpUnary::Minus,
+                    right,
+                }
+            } else {
+                Node::UnaryPlus { child: right }
+            };
+        }
+        while self.lexer.peek_token() == TokenType::Percent {
+            t = t.spaced(Run::default(), self.run_ahead());
             self.lexer.advance_token();
-            if let Err(error) = self.grow(self.depth, 0) {
-                return error;
-            }
+            self.grow(self.depth, 0)?;
             t = Node::UnaryKind {
                 kind: token::OpUnary::Percentage,
                 right: Box::new(t),
             };
-            next_token = self.lexer.peek_token();
         }
-        t
+        let after = self.run_after_operand();
+        Ok(t.spaced(before, after))
     }
 
     fn parse_operand(&mut self) -> Node {

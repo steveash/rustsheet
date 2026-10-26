@@ -103,9 +103,15 @@ Rule (excel-graph, replayed sheet edits, T-1608):
   Excel rewrites the formula: with Calc, Jan, Feb, Mar, moving Mar to position 1 gives
   `=SUM(Jan:Feb!A1)` (30), and moving Jan to position 3 gives `=SUM(Feb:Mar!A1)` (50). The span is
   not re-resolved by name. Evidence: sheet-ops-move-span-end-first, sheet-ops-move-span-start-last.
-  The engine keeps `Jan:Mar` (40): T-1691.
+  A span left with one sheet becomes a plain reference: moving Feb before Jan turns
+  `=SUM(Jan:Feb!A1)` into `=SUM(Jan!A1)` (sheet-ops-move-two-sheet-span-end-first). Spans in
+  defined names shrink the same way (sheet-ops-move-span-end-in-name).
+  The engine rewrites them before the move (`move_sheet_in_node`, T-1691), and its undo puts the
+  written text back.
 - Moving the sheet that holds the formula changes nothing (sheet-ops-move-formula-sheet).
-Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
+Unprobed: moving the first sheet of a two-sheet span past the last (the engine writes the last
+sheet alone), a span written backwards (`Mar:Jan`, which the engine rewrites in tab order when it
+shrinks), deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
 cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
 that lost an end sheet `#REF!` and does not shift a span for row or column edits.
 Status: VERIFIED (Excel for the web) for renames and moves; UNVERIFIED for deletes
@@ -154,6 +160,40 @@ Deviation note: in comma-decimal locales `\` is the array column separator, so t
 as a name character when the decimal separator is `.`. That rule is an assumption, not probed.
 Status: VERIFIED (en-US); comma-decimal locales UNVERIFIED
 Tasks: T-0123
+
+## Undefined names may contain typographic quotes
+Rule: a token written with the typographic quotes `“` (U+201C) and `”` (U+201D) where a string literal was
+meant is a *name* to Excel, so an undefined one evaluates to `#NAME?`, not to a syntax error:
+`IF(B2="domestic",“D”,IF(B2="international",“I”,“N/A”))` is `#NAME?`.
+Evidence: corpus-bench/48354/1_48354_input.xlsx Sheet1!D2:D6 (5 cells; the stored `<f t="array">` keeps the
+U+201C/U+201D characters and the workbook's own cached value is `#NAME?`, as is the excel-graph sidecar).
+The quoted token is an ordinary undefined name, not an error shape: it is `#NAME?` only when evaluated
+(`IF(FALSE,“D”,1)` is 1), `ISREF(“D”)` is FALSE, `ERROR.TYPE(“D”)` is 5, `“D”&"x"` and `SUM(“A1”)` are
+`#NAME?` (`“A1”` is a name, not a cell), `=“N/A”` is `#NAME?`, and FORMULATEXT keeps the curly quotes.
+Evidence: probes/t0481-curly-quote-names A1-A10 and -b A1-A2 (excel-graph, 2026-10-26, stored formulas).
+Unprobed: whether a *typed* formula behaves the same (the oracle cannot type one), whether a name can be
+*defined* with these characters, and other punctuation as a name character (`€`, a quote mid-name
+`a“b`, `"x"“y"`; probes/t0481-curly-quote-names-c, pending), and a quoted token as a sheet prefix (`“D”!A1`,
+which ours reads as a sheet name).
+Ours (T-0481): the lexer reads U+201C and U+201D as name characters, anywhere in a name, and a token
+holding one is a name even where it would spell a cell (`is_typographic_quote`, `is_quoted_name` in
+crates/rustsheet-engine/src/expressions/utils/mod.rs, used by the lexer); defined names still refuse them.
+Status: VERIFIED (stored formulas, excel-graph + Excel-cached); typed formulas and the wider character set UNVERIFIED
+Tasks: T-0481
+
+## A structured reference into a linked workbook is `#REF!`
+Rule: a table reference qualified by an external-link index, `[1]!Table3[#Data]`, is `#REF!` — not the
+`#BLOCKED!` an uncached cell or sheet reference of the same book gives ("External reference with no cached
+data is `#BLOCKED!`" below), and not a value, with a link part that caches no table data:
+`VLOOKUP(E8,[1]!Table3[#Data],2,FALSE)` is `#REF!` with a link part that caches only the other book's
+`sheetNames` (empty `sheetData`, no `definedNames`).
+Evidence: corpus-bench/58994/1_58994_input.xlsx Sheet1!F8 (excel-graph sidecar, 2026-10-26, gap triage).
+Whether a link part that *does* cache the table's cells changes it is unprobed.
+Ours: the lexer reads `[1]!Table3[#Data]` as a structured reference whose table name keeps the prefix; no such table exists, so a stored formula is `#REF!`. A typed one stays a parse error
+(`#ERROR!`), which is not evidenced against Excel. The sheet-qualified form `[1]Sheet!Table3[Col]` and
+the empty-bracket `[1]!Table3[]` are unprobed (the latter lexes as an external name; T-0482).
+Status: VERIFIED (excel-graph)
+Tasks: T-0482
 
 ## External reference with no cached data is `#BLOCKED!`
 Rule: `SUM('[link-external-workbook-a.xlsx]Sheet0'!A1:B1)` whose externalBook part holds no cached
@@ -310,7 +350,8 @@ lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser k
 name with its prefix, and `external_links.rs` reads the cache. A cell the cache does not hold reads
 as empty: `=[1]Uses!$B$3` is 0, `SUM` and `COUNTA` of `[1]Uses!$E$1:$F$2` are 0
 (fixtures/external-link-cached-ranges Refs!B24, B55, B77). A name or sheet the cache does not hold is `#BLOCKED!` (probed: fixtures/external-link-cached-lookups Refs!B18-B20, T-1609; see "a name the cache does not hold" below). Unprobed, so UNVERIFIED: a book index with no link part and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
-uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
+uncached reference is; a sheet with `refreshError="1"` that caches cells is read like any other (one
+that caches none reads `#REF!`: "Lookups into a linked sheet with no cached data are `#N/A`", T-0472); `[0]!Missing` is
 `#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
 evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
 (T-1459).
@@ -407,6 +448,22 @@ the same way at parse time, so ISREF and a rename see them. A sheet-qualified wo
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
 Tasks: T-1382, T-1459, T-1460, T-1526, T-1550, T-1609, T-1654
 
+## Criteria and sum ranges of a linked workbook are `#VALUE!`
+Rule: a criteria or sum range of COUNTIF, COUNTIFS, SUMIF, SUMIFS, AVERAGEIF, AVERAGEIFS, MAXIFS or
+MINIFS that is a range of a linked workbook is `#VALUE!` without the other file open, even though
+other functions read its cached cells (SUM, INDEX, lookups: "Cached values of a linked workbook"
+above). A whole column counts too: `COUNTIFS('[1]XA Data Pull'!$J:$J,">="&W$1,...)` is `#VALUE!`.
+Evidence: corpus-bench 52450 sheet1, all 1,830 formulas with a COUNTIFS over `'[1]XA Data Pull'!`
+ranges (W5:Y5 and the rest of their block), Excel-cached `#VALUE!` (desktop workbook; no oracle run).
+Unprobed: a range of a linked sheet the file caches nothing for, where ours is `#VALUE!` too (an
+array of `#BLOCKED!`, which is not a range).
+Ours: IMPLEMENTED: `ifs_range` (functions/statistical/if_ifs.rs) makes any argument that is not a
+range of this workbook `#VALUE!`; `ifs_range_arg` gives a linked range that error without building its
+array (`Model::is_external_array`, external_links.rs; T-0477). A single cached cell is `#VALUE!` the
+same way; a range past the array bound keeps that bound's error (arrays.md).
+Status: VERIFIED (desktop, cached values)
+Tasks: T-0477
+
 ## Lookups into a linked sheet with no cached data are `#N/A`
 Rule: a sheet the externalLink part lists in `sheetNames` but caches no cell of (no
 `sheetData` for its `sheetId`, or an empty `<sheetData sheetId="4"/>`) reads `#BLOCKED!` as a
@@ -424,14 +481,26 @@ fallback and XLOOKUP's if_not_found is returned (`"none"`). The `#N/A` comes bef
 1, `VLOOKUP(5,[1]Uses!$A:$Z,26,FALSE)` 0 and `VLOOKUP(99,…)` `#N/A`.
 Evidence: fixtures/external-link-uncached-lookups Refs!B1:B51 (excel-graph, 2026-10-25, T-0457).
 Unprobed, do not extrapolate: LOOKUP, XMATCH, INDEX/MATCH and defined names (`[1]!Name`) into such a
-sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part.
+sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part. Also unprobed: a range of a
+refreshError sheet (ours keeps `#BLOCKED!`), XLOOKUP and COUNTA over a refreshError sheet (ours: as over any
+uncached sheet), and XLOOKUP that matches in a local range but returns one uncached cell (ours: `#BLOCKED!`).
 Engine: a sheet the cache holds no cell of is uncached (`cached_sheet`, external_links.rs), so it
 reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and MATCH's table
-`#N/A` on such a sheet. Not yet matched: the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)`
-(`#BLOCKED!`, not `#N/A`), the refreshError sheet's `#REF!` and COUNTA's count (T-0472), and whole
-columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
-Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
-Tasks: T-0457
+`#N/A` on such a sheet. XLOOKUP searches one cell of it as a one-cell vector of its `#BLOCKED!`, as it
+searches a range, so it finds nothing (`uncached_cell_vector`). COUNTA counts every cell of it
+(`external_blocked_count`). The importer keeps the sheets marked `refreshError`
+(`ExternalBook::refresh_error_sheets`), and a cell of one reads `#REF!` (T-0472). VLOOKUP, HLOOKUP and
+MATCH read a range of several cells of a cached sheet in place (`LookupTable::External`,
+`Model::cached_external_lookup_area`) instead of building it as an array, so whole columns and rows
+match B17, B21, B49 and B50 (T-0474). The search vector keeps the area's full length (the cached
+cells, then an empty tail), as a whole column of this workbook does; a vector cut to the cache's
+extent would move the approximate search's midpoints (lookup.md "Approximate match"). UNVERIFIED, a hand
+expectation awaiting an oracle cell (T-0479): an approximate whole-column lookup over an unsorted cached
+column (cache 1,5,2,9,3) is the local result. `VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)` is 1 in the engine, as
+over a local whole column, and a unit test pins that in test_external_links.rs.
+Status: VERIFIED for the oracle cells above (excel-graph only; no desktop evidence, decision 0030); the
+unsorted approximate case is UNVERIFIED
+Tasks: T-0457, T-0472, T-0474, T-0479
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -933,14 +1002,24 @@ at its start; a spill into another column of the area is caught by the area's re
 step per row found (at least one, even with no cell in the area's columns), one per unallocated
 chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
-operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
-range argument is not counted and is walked as before (every position of its used area), unless a
-far cell stretches that used area: a single range whose clipped area holds at least 65,536
-positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
-XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area, so it costs
-the data (T-1690). It does not draw on the budget: that walk costs less than the dense one it
-replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over 100,000
-cells) gives the same value as the dense walk, and the change adds no `#VALUE!`. Over
+operand and LAMBDA call of the formula draws on the same budget, like the pair budget. A single
+range argument is not counted. It is walked over every position of its used area while that is
+the cheaper walk, and over its existing cells like a union's area once a far cell stretches the
+used area: a single range whose clipped area holds at least 65,536 positions and more than four
+per cell of its columns (`SUM(A:XFD)` with data in A1 and XFD1048576, 1.7e10 positions;
+`COUNTA(A:CV)` beside one cell in CV1048576) costs the data, never its positions (T-1690,
+T-2710). Below 65,536 positions the dense walk is used, so one walk visits at most 65,536 blank
+positions, plus at most four per cell of its columns above that. Every single-range walk of an
+aggregate argument takes this path: the dense `ClipBlocks` walk (SUM, COUNT, COUNTA, COUNTBLANK,
+which counts the cells that are not blank and takes them from the area's size, LARGE, GCD and
+LCM, which read any number of blanks as one 0, SUBTOTAL, AGGREGATE, ...) and the `ClipWholeLines`
+walk of TEXTJOIN's 3-D path, which reads blanks as empty values: it hands each run of blank
+positions between two existing cells on as a count, in row-major order, so the delimiters they
+add are counted, not read. It does not draw on the budget: that walk costs less than the dense
+one it replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over
+100,000 cells) gives the same value as the dense walk, and the change adds no `#VALUE!` of the
+walk budget. A budget would not do: over filled cells a step is a cell, so it would make a
+filled `SUM(A:Z)` `#VALUE!` where Excel computes it. Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
@@ -976,8 +1055,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::walk_area`, `Model::for_each_cell_or_error_in_whole_range`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690, T-2710
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
@@ -986,7 +1065,14 @@ A function walking a whole column or row (and a lookup down a column, or a SUMIF
 range) visits only the used area and records the rest as one rectangle read empty, as does an
 aggregate walking an explicit block that reaches at least 1,024 cells past the used area, while the
 budget has room (a shorter block, or one met once the budget is short, is walked and recorded cell by
-cell, which is uncapped, so blocks alone never make a formula `#VALUE!`; T-0405), and every area of
+cell, which is uncapped; T-0405), and a single range of at least 65,536 positions that a far cell
+leaves mostly blank (more than four per cell of its columns) is walked over its existing cells and
+recorded as one rectangle, whether or not the budget has room ("Union area cap", T-1690, T-2710):
+its dense walk would read every position and record each blank one, unbounded in time and memory
+(`SUM(A:XFD)` beside one far cell is 1.7e10 positions), so past the cap such a formula is
+`#VALUE!` (DEVIATION; `=SUM(MAP(SEQUENCE(65536),LAMBDA(r,SUM(OFFSET(Sheet2!1:1,r,0)))))+SUM(A:J)`
+beside 1 in J1048576 is `#VALUE!`, one row fewer is 1). Smaller blocks alone never make a formula
+`#VALUE!`. Every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
 for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
 arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked
@@ -1012,8 +1098,9 @@ anchors.
 Status: DEVIATION (decision 0014)
 Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `AreaBudget::spend_seen_range`,
 `Model::with_area_budget`); seen_ranges.rs (`SeenRanges::push`); evaluation.rs
-(`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`)
-Tasks: T-1463, T-1769
+(`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`);
+functions/util/existing_walk.rs (`Model::walks_sparsely`)
+Tasks: T-1463, T-1769, T-2710
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
@@ -2257,8 +2344,10 @@ and the quirk T-2321. With no table of that name (engine API `remove_table`), th
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
-canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
-table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
+canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). Since T-1671 the eval adapter
+registers a spec table with its totals row; because the table does not grow, shrink or move with an edit yet, the
+totals row's own edits (insert above it, delete it or the last data row) print the displaced plain range or `#REF!`
+where Excel keeps `Sales[[#Totals],[Qty]]` (decision 0128; T-2321, T-2338).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
 its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2297, T-2325).
@@ -2305,6 +2394,12 @@ Right/Left):
   (table-convert-to-range). On the table's own sheet the range is not sheet-qualified: `=SUM($C$4:$C$7)`,
   `=COUNTA($B$4:$B$7)`, `ROWS(Sales[#All])` 5, and a `#This Row` reference beside the table prints
   `=$C4*2` (absolute column, relative row) (table-convert-same-sheet, T-2342).
+  A defined name `=Sales[Qty]` (or `=Sales[#All]`) keeps working: `SUM(QtyName)` is 15, `ROWS(QtyName)` 4,
+  `SUM(AllName)` 15, and FORMULATEXT of a cell using the name still prints `=SUM(QtyName)` (the name's own body
+  is not readable through the oracle). A `#This Row` reference off the data rows is not lowered: above the
+  header (S!F1), below the table (S!F9) and on another sheet (T!A1) it is `#VALUE!` after the convert and
+  FORMULATEXT still prints `=Sales[@Qty]`, as the structured text of a table that no longer exists
+  (table-convert-names-this-row, excel-graph 2026-10-25, T-2643).
 - Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
   `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
   cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
@@ -2323,7 +2418,9 @@ inside and below the table, the column inserts at D, the sheet rename and the to
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
 move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
 do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
-reference as the absolute area it lowered to (defined names too, unprobed). A deleted table or sheet matches
+reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
+off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
+in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a
@@ -2335,7 +2432,7 @@ xlsx export writes `S!C4:C7` where Excel stores `#REF!C4:C7`. The `#REF!` displa
 existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
-Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
@@ -2415,8 +2512,15 @@ Rule: INDIRECT's a1 argument given as a one-element array is `#VALUE!`, while a 
 array lifts: `INDIRECT("B1",{1})` and `INDIRECT("B1",{TRUE})` are `#VALUE!`, `INDIRECT("B1",TRUE)` is B1's 5 and
 `ROWS(INDIRECT("B1",{1;1}))` 2 (probes/t2436/computed-scalar A39:A42); in the sweep `INDIRECT("Data!B3",TOCOL(2,0,Data!A5))`
 is `#VALUE!` (06b4e8f5de409d5e A261) and `INDIRECT("Data!A1",FILTER(..)<6 numbers>)` six `#VALUE!` elements
-(f2bd5f380ec002bf A383). This answers T-2347's question for INDIRECT's a1 argument (ref_text is still unprobed).
-Evidence: probes/t2436/computed-scalar, probes/t2436/06b4e8f5de409d5e, probes/t2436/f2bd5f380ec002bf (excel-graph, 2026-10-24).
-Ours: the 1x1 array read as its element (5); T-2577.
+(f2bd5f380ec002bf A383). This answers T-2347's question for INDIRECT (a1 by T-2436, ref_text by T-2577).
+T-2577 probe: a 1x1 array lifts INDIRECT into a one-element array of references, ref_text too:
+`INDIRECT({"B1"})` and `INDIRECT({"B1"},TRUE)` are `#VALUE!`, `ROWS(INDIRECT("B1",{0}))` 1, `ISREF(INDIRECT("B1",{1}))`
+FALSE, `ISERROR(..)` TRUE, `ERROR.TYPE(..)` 3, `SUM(..)` and `MAX(..)` 5, `COUNT(..)` 0 (probes/t2577-indirect-ref-array
+A1:A28). One index into it picks the element: `F.TEST(INDEX(INDIRECT("B1",{1}),1),{-1,0,1})` is B1's one-value `#DIV/0!`
+(A100), where `INDEX(OFFSET(A1,{0;1},0),2)` is `#VALUE!` (lookup.md); INDEX of it read directly and of a 1xN grid with one
+index are unprobed. The paired functions over it are statistics.md "An array of references is #NUM! in the paired functions".
+Evidence: probes/t2436/computed-scalar, probes/t2436/06b4e8f5de409d5e, probes/t2436/f2bd5f380ec002bf (excel-graph,
+2026-10-24), probes/t2577-indirect-ref-array (excel-graph, 2026-10-26).
+Ours: since T-2577 (`lifts_one_by_one` for INDIRECT, as for OFFSET, TAKE and DROP).
 Status: VERIFIED (excel-graph)
 Tasks: T-2577, T-2347

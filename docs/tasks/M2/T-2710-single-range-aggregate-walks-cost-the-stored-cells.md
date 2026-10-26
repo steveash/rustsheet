@@ -3,7 +3,7 @@ id: T-2710
 title: "Single-range aggregate walks cost the stored cells, not the used area: COUNTA(A:CV) beside one cell in CV1048576 takes 64 s"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -65,21 +65,42 @@ one far cell is bounded. Still open here: `ClipWholeLines`, COUNTBLANK's count w
 blank, the work-counter test, and the probe timing.
 
 ## Acceptance criteria
-- [ ] Every single-range mode of `walk_area` visits stored cells only (or an equivalent bounded walk):
+- [x] Every single-range mode of `walk_area` visits stored cells only (or an equivalent bounded walk):
       the work of one walk is O(stored cells in the range + rows or chunks searched), whatever the used
       area's extent.
-- [ ] A test shows the bound with a work counter (positions or cells visited, or walk steps), not a
+- [x] A test shows the bound with a work counter (positions or cells visited, or walk steps), not a
       wall-clock limit (T-2282). Example: `SUM(A:Z)` and `COUNTA(A:CV)` beside one cell in the last row
       visit at most a few cells, and `COUNTBLANK(A:J)` still counts 10,485,759 there.
-- [ ] `probes/union-walk-repeated-in-lambda` drops from about 25 s to under 1 s in `make eval`'s
+- [x] `probes/union-walk-repeated-in-lambda` drops from about 25 s to under 1 s in `make eval`'s
       Timing section (release), all its cells still passing.
-- [ ] No baseline gains a line (`make eval-baseline` refuses regressions). The edit and math-lift
+- [x] No baseline gains a line (`make eval-baseline` refuses regressions). The edit and math-lift
       benchmarks are not more than 50% slower (decision 0081), and a sparse whole-column bench case is
       added to show the gain.
-- [ ] references.md "Union area cap" and "Seen-range cap" describe the single-range walk as implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] references.md "Union area cap" and "Seen-range cap" describe the single-range walk as implemented.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The criteria functions' own walks (T-2711) and TEXTJOIN's own loop (T-2713).
 - Array operands of whole columns (`D:D=K2`, `IF(D:D=x,F:F)`, `Model::evaluate_range` in cast.rs): T-0456.
 - Per-formula CPU bounds for repeated LAMBDA work (T-2712).
+
+## Outcome
+- Both single-range modes of `Model::walk_area` now take the sparse walk when a far cell leaves the
+  area mostly blank (`Model::walks_sparsely`, T-1690's rule). `ClipWholeLines`, which only TEXTJOIN's
+  3-D path uses, hands on each run of blank positions as a count (`RangeItem::Blanks`), in row-major
+  order between the cells it visits, so the delimiters are counted by `JoinSize::push_empties` and the
+  blanks are never read. COUNTBLANK already counted the non-blank cells and took them from the area's
+  size, so it needed no change of its own.
+- The sparse walk no longer falls back to the dense one when the seen-range cap is spent, since that
+  walk reads every position and records each blank one. Past the cap such a formula is now `#VALUE!`
+  (DEVIATION, references.md "Seen-range cap"). A dense walk is still used below 65,536 positions,
+  so one walk visits at most 65,536 blank positions plus four per stored cell of its columns.
+- Work-counter tests (`Evaluation::cell_reads`) in test/test_aggregate_sparse_walk.rs cover 22
+  aggregates beside one cell in the last row, `COUNTBLANK(A:J)` = 10485759 included, plus 3-D
+  TEXTJOIN and the blank-run order. test_range_reads.rs covers the cap.
+- `probes/union-walk-repeated-in-lambda` already took 0.3 s for the whole probes suite after T-1690
+  (release, `rustsheet-eval run --suite probes --filter union-walk-repeated`). The bench `aggregate`
+  gains two far-cell cases: a 3-D `TEXTJOIN(",",FALSE,Sheet1:Two!A:J)`, which was a dense walk of
+  2 x 10,485,760 positions, now takes 0.21 ms, and a LAMBDA repeating `SUM(Two!A:J)` 100 times
+  takes 0.19 ms.
+- Eval delta: none. No cell changes and the baseline is unchanged.
