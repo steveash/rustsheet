@@ -69,7 +69,10 @@ fn read_external_book(book: &XmlNode) -> ExternalBook {
         else {
             continue;
         };
-        if matches!(sheet_data.attribute("refreshError"), Some("1" | "true")) {
+        // The fixture shows "1"; "true" is the other xsd:boolean spelling of it.
+        if matches!(sheet_data.attribute("refreshError"), Some("1" | "true"))
+            && !refresh_error_sheets.contains(&sheet)
+        {
             refresh_error_sheets.push(sheet);
         }
         for cell in sheet_data.descendants().filter(|n| n.has_tag_name("cell")) {
