@@ -126,6 +126,10 @@ METHOD = f"""## Method
 {goals.METHOD}
 {parity.METHOD}
 {history.METHOD}
+- **Real-world calls.** report.json `functions[].real_world_calls` counts the formula cells of the
+  Excel-saved corpora calipers and poi that call each function (`REAL_WORLD_SUITES` in
+  crates/rustsheet-eval/src/report.rs). The parity line weights each function's attributed
+  within-15-digit share by those calls; when either suite did not run it says so instead.
 - **Argument coverage.** Each function's share is report.json `argument_coverage[].single`
   (crates/rustsheet-eval/src/argument_coverage.rs): of the argument classes its catalog
   parameters' modes expect by rule, those some Excel-evidence cell passes, a literal as written
