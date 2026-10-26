@@ -3,7 +3,7 @@ id: T-2634
 title: "Port ironcalc f04cbbed/9cfbdfce: take the Excel-authored ROUND_ROUNDUP_ROUNDDOWN.xlsx calc test workbook"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -41,7 +41,7 @@ Replaced `ROUND.xlsx` with upstream's Excel-authored `ROUND_ROUNDUP_ROUNDDOWN.xl
 the `~$ROUND.xlsx` lock file not taken). Checked cells 137 -> 326, all pass; no known failures
 added, 0 regressions. Re-pointed the numbers.md citation. IronCalc-authored unit tests not taken.
 
-## Handoff
+## Handoff (resumed)
 Work is complete and reviewed (security, architecture, quality, excel-fidelity all APPROVE; make check
 green locally; ironcalc-calc case 137 -> 326 cells, all pass, 0 regressions). CI `hygiene` fails:
 `scripts/check_governance.py` flags `ROUND.xlsx` as a deleted test file ("requires a decision record and
