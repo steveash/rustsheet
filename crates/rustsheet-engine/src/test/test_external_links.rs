@@ -34,6 +34,7 @@ fn linked() -> Model {
             name("Span", "='Defines'!$A$1:$B$2", None),
         ],
         cells,
+        refresh_error_sheets: Vec::new(),
     });
     model
 }
@@ -274,6 +275,7 @@ fn cached_ranges_fixture() -> Model {
             sheet_id: None,
         }],
         cells,
+        refresh_error_sheets: Vec::new(),
     });
     model
 }

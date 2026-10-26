@@ -449,11 +449,13 @@ Unprobed, do not extrapolate: LOOKUP, XMATCH, INDEX/MATCH and defined names (`[1
 sheet, a sheet `sheetNames` does not list, and `[other.xlsx]` with no link part.
 Engine: a sheet the cache holds no cell of is uncached (`cached_sheet`, external_links.rs), so it
 reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and MATCH's table
-`#N/A` on such a sheet. Not yet matched: the one-cell `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)`
-(`#BLOCKED!`, not `#N/A`), the refreshError sheet's `#REF!` and COUNTA's count (T-0472), and whole
+`#N/A` on such a sheet. XLOOKUP searches one cell of it as a one-cell vector of its `#BLOCKED!`, as it
+searches a range, so it finds nothing (`uncached_cell_vector`). COUNTA counts every cell of it
+(`external_blocked_count`). The importer keeps the sheets marked `refreshError`
+(`ExternalBook::refresh_error_sheets`), and a cell of one reads `#REF!` (T-0472). Not yet matched: whole
 columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
 Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
-Tasks: T-0457
+Tasks: T-0457, T-0472
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
