@@ -52,9 +52,13 @@ VLOOKUP, HLOOKUP and MATCH read a range of several cells of a cached linked shee
 (`LookupTable::External`, `Model::cached_external_lookup_area`) instead of building it as an array, so
 whole columns and rows no longer hit the array bound. The search vector is the cached cells
 followed by an empty tail to the area's full length (`SearchVector::with_len`), so approximate searches probe
-the same midpoints a local whole column gives. Unit test `whole_column_lookups_keep_full_length` checks 13
+the same midpoints a local whole column gives. Directive 5 (security review): the vector is built
+up to the last cached cell of the searched line, found in an index built once per linked sheet
+(`CachedLineEnds`). Within a pass the vector is shared through the search cache (search_cache.rs), so
+many lookups into a large cache never walk it again. Unit test `whole_column_lookups_keep_full_length` checks 13
 lookups (VLOOKUP, HLOOKUP, MATCH 1/0/-1, over unsorted data) against the same lookups over local whole
 columns and rows. Eval: fixtures/external-link-uncached-lookups Refs!B17, B21, B49 and B50 now pass, and so does
 corpus-bench/56637 and corpus-bench/59932 (whole-column VLOOKUPs into
 `[1]<2010Price!$A:$BE`) pass, with 0 regressions (fixtures known failures 4 -> 0, corpus-bench 9 -> 7).
 
+Follow-up: T-0479 (oracle probe of the unsorted approximate case).

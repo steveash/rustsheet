@@ -63,6 +63,41 @@ pub(crate) struct CachedSheet {
     sheet: u32,
 }
 
+/// Where the cached cells of one sheet of a linked workbook end along each column and row
+/// ([`Model::cached_line_ends`]), so a lookup finds how much of a whole column holds cached cells
+/// without walking the cache (CLAUDE.md directive 5; T-0474).
+#[derive(Debug, Default)]
+pub(crate) struct CachedLineEnds {
+    /// The last cached row of each column.
+    column_last_row: HashMap<i32, i32>,
+    /// The last cached column of each row.
+    row_last_column: HashMap<i32, i32>,
+}
+
+impl CachedLineEnds {
+    /// How many leading rows (`down`) or columns of `area` reach the cells the cache holds along
+    /// its first column (`down`) or row: every cell after them is empty, as every cell past a
+    /// sheet's last used row is (`Model::range_search_vector`).
+    pub(crate) fn leading_len(&self, area: ExternalArea, down: bool) -> usize {
+        let (end, first, last) = if down {
+            (
+                self.column_last_row.get(&area.first_column),
+                area.first_row,
+                area.last_row,
+            )
+        } else {
+            (
+                self.row_last_column.get(&area.first_row),
+                area.first_column,
+                area.last_column,
+            )
+        };
+        end.map_or(0, |&end| {
+            usize::try_from(end.min(last) - first + 1).unwrap_or(0)
+        })
+    }
+}
+
 /// The book index and sheet name of an external sheet prefix, `[1]Sheet` → (`1`, `Sheet`).
 fn split_book_prefix(sheet_name: &str) -> Option<(&str, &str)> {
     sheet_name.strip_prefix('[')?.split_once(']')
@@ -479,48 +514,21 @@ impl Model {
         }
     }
 
-    /// How many leading rows (`down`) or columns of `area` reach the cells its cache holds along
-    /// its first column (`down`) or row: every cell after them is empty, as every cell past a
-    /// sheet's last used row is (`Model::range_search_vector`). Costs the smaller of that line's
-    /// length and the book's cached cells, so neither a long line nor a large cache is walked
-    /// for a short one (CLAUDE.md directive 5).
-    pub(crate) fn external_cached_len(&self, area: ExternalArea, down: bool) -> usize {
-        let Some((sheet, book)) = area
-            .cache
-            .and_then(|sheet| Some((sheet, self.workbook.external_books.get(sheet.book)?)))
-        else {
-            return 0;
+    /// The last cached cell of each column and row of `sheet`, in one walk of its book's cache.
+    pub(crate) fn cached_line_ends(&self, sheet: CachedSheet) -> CachedLineEnds {
+        let mut ends = CachedLineEnds::default();
+        let Some(book) = self.workbook.external_books.get(sheet.book) else {
+            return ends;
         };
-        let (rows, columns) = area.extent();
-        let len = if down { rows } else { columns };
-        if len <= book.cells.len() {
-            return len;
+        for &(index, row, column) in book.cells.keys() {
+            if index == sheet.sheet {
+                let last_row = ends.column_last_row.entry(column).or_insert(row);
+                *last_row = (*last_row).max(row);
+                let last_column = ends.row_last_column.entry(row).or_insert(column);
+                *last_column = (*last_column).max(column);
+            }
         }
-        book.cells
-            .keys()
-            .filter_map(|&(index, row, column)| {
-                let (along, across, first, last, line) = if down {
-                    (
-                        row,
-                        column,
-                        area.first_row,
-                        area.last_row,
-                        area.first_column,
-                    )
-                } else {
-                    (
-                        column,
-                        row,
-                        area.first_column,
-                        area.last_column,
-                        area.first_row,
-                    )
-                };
-                (index == sheet.sheet && across == line && (first..=last).contains(&along))
-                    .then(|| usize::try_from(along - first + 1).unwrap_or(0))
-            })
-            .max()
-            .unwrap_or(0)
+        ends
     }
 
     /// The rows and columns of `sheet` its cached cells span, `None` when it holds none.

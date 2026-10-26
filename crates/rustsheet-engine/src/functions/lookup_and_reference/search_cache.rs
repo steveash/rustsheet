@@ -28,10 +28,11 @@
 //! about three times the memory of its values: still proportional to the capped cells.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::evaluation::KeyBuild;
 use crate::expressions::types::CellReferenceIndex;
-use crate::external_links::CachedSheet;
+use crate::external_links::{CachedLineEnds, CachedSheet};
 use crate::external_reference::ExternalArea;
 use crate::model::Model;
 
@@ -64,6 +65,9 @@ struct VectorKey {
 pub(crate) struct SearchCache {
     vectors: HashMap<VectorKey, SearchVector, KeyBuild>,
     cells: usize,
+    /// Where each linked sheet's cached cells end, built on the first lookup into it: its size is
+    /// bounded by the cache it indexes, so it is kept whatever `cells` says.
+    line_ends: HashMap<CachedSheet, Arc<CachedLineEnds>, KeyBuild>,
 }
 
 impl SearchCache {
@@ -71,6 +75,7 @@ impl SearchCache {
     pub(crate) fn clear(&mut self) {
         self.vectors.clear();
         self.cells = 0;
+        self.line_ends.clear();
     }
 }
 
@@ -146,7 +151,10 @@ impl Model {
                 return vector.clone();
             }
         }
-        let cells = self.external_cached_len(area, down).min(len);
+        let cells = area
+            .cache
+            .map_or(0, |sheet| self.line_ends(sheet).leading_len(area, down))
+            .min(len);
         let values = (0..cells)
             .map(|i| {
                 let i = i32::try_from(i).unwrap_or(i32::MAX);
@@ -161,6 +169,22 @@ impl Model {
             cache.vectors.insert(key, vector.clone());
         }
         vector
+    }
+
+    /// [`Model::cached_line_ends`] of `sheet`, built once and then shared by every lookup into it,
+    /// so a lookup over a sparse or empty column of a large cache costs no walk of it (CLAUDE.md
+    /// directive 5). Kept outside a pass too (data tables, conditional formats): the linked cache
+    /// is only written by import, before any evaluation, and each pass starts from an empty cache.
+    fn line_ends(&mut self, sheet: CachedSheet) -> Arc<CachedLineEnds> {
+        if let Some(ends) = self.evaluation.search_cache.line_ends.get(&sheet) {
+            return Arc::clone(ends);
+        }
+        let ends = Arc::new(self.cached_line_ends(sheet));
+        self.evaluation
+            .search_cache
+            .line_ends
+            .insert(sheet, Arc::clone(&ends));
+        ends
     }
 
     /// Whether any cell of `left:end` (one sheet) is known to be circular.

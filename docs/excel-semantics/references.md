@@ -460,12 +460,13 @@ MATCH read a range of several cells of a cached sheet in place (`LookupTable::Ex
 `Model::cached_external_lookup_area`) instead of building it as an array, so whole columns and rows
 match B17, B21, B49 and B50 (T-0474). The search vector keeps the area's full length (the cached
 cells, then an empty tail), as a whole column of this workbook does; a vector cut to the cache's
-extent would move the approximate search's midpoints (lookup.md "Approximate match"). Unprobed: an
-approximate whole-column lookup over an unsorted cached column (cache 1,5,2,9,3:
-`VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)` is 1 in the engine, as over a local whole column; a unit test pins
-it to the local result, test_external_links.rs).
-Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
-Tasks: T-0457, T-0472, T-0474
+extent would move the approximate search's midpoints (lookup.md "Approximate match"). UNVERIFIED, a hand
+expectation awaiting an oracle cell (T-0479): an approximate whole-column lookup over an unsorted cached
+column (cache 1,5,2,9,3) is the local result. `VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)` is 1 in the engine, as
+over a local whole column, and a unit test pins that in test_external_links.rs.
+Status: VERIFIED for the oracle cells above (excel-graph only; no desktop evidence, decision 0030); the
+unsorted approximate case is UNVERIFIED
+Tasks: T-0457, T-0472, T-0474, T-0479
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in

@@ -716,8 +716,9 @@ fn whole_column_lookups_keep_full_length() {
     assert_eq!(eval(&mut model, "=VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)"), "1");
 }
 
-// Lookups of one pass into the same long cached column share one search vector (search_cache.rs):
-// each still finds its own key, exact or approximate.
+// Lookups of one pass into the same long cached column share one search vector, and lookups into
+// a linked sheet share one index of where its cached cells end (search_cache.rs): each still finds
+// its own key, exact or approximate, and an empty column of the sheet is all blank.
 #[test]
 fn whole_column_lookups_share_the_cached_vector() {
     let mut model = linked();
@@ -729,9 +730,15 @@ fn whole_column_lookups_share_the_cached_vector() {
     model._set("C2", "=MATCH(41,[1]Uses!$A:$A)");
     model._set("C3", "=VLOOKUP(200,[1]Uses!$A:$B,1,FALSE)");
     model._set("C4", "=MATCH(1,[1]Uses!$A:$A,0)");
+    model._set("C5", "=MATCH(1,[1]Uses!$C:$C,0)");
+    model._set("C6", "=VLOOKUP(1,[1]Uses!$C:$D,2)");
+    model._set("C7", "=MATCH(2,[1]Uses!$1:$1,0)");
     model.evaluate();
     assert_eq!(model._get_text("C1"), "20");
     assert_eq!(model._get_text("C2"), "20");
     assert_eq!(model._get_text("C3"), "200");
     assert_eq!(model._get_text("C4"), "#N/A");
+    assert_eq!(model._get_text("C5"), "#N/A");
+    assert_eq!(model._get_text("C6"), "#N/A");
+    assert_eq!(model._get_text("C7"), "1");
 }
