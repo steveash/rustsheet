@@ -54,7 +54,7 @@ impl Model {
                 CalcResult::new_error(
                     Error::ERROR,
                     cell,
-                    "Unpeeled group or structured reference".to_string(),
+                    "Unpeeled group, unary plus or structured reference".to_string(),
                 )
             }
             // The cell, range or `#VALUE!` it is on the cell's row (SPEC-0016 step 2, T-1699).

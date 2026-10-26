@@ -3,7 +3,7 @@ id: T-2723
 title: "A unary plus on a text or boolean literal is kept in formula text: FORMULATEXT shows +'a' and +TRUE, drops it on a number"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -51,11 +51,24 @@ Rejected: `OpUnary::Plus` inside `UnaryKind`. Every `UnaryKind` match assumes a 
 excluded at each site, and a missed site turns `+A1` into a value.
 
 ## Acceptance criteria
-- [ ] probes/t2601-index-scalar-forms-t-n B14 and B15, and probes/t2723-unary-plus-formula-text's C cells, pass and leave
-      eval/baseline/probes.txt.
-- [ ] A design note for keeping the plus in the AST (docs/specs/ or this task) is reviewed before the parser changes.
+- [x] probes/t2601-index-scalar-forms-t-n B14 and B15, and probes/t2723-unary-plus-formula-text's C cells, pass and leave
+      eval/baseline/probes.txt. C24 and C25 are the exception: they need the space after the plus kept, which is split
+      to T-2769.
+- [x] A design note for keeping the plus in the AST (docs/specs/ or this task) is reviewed before the parser changes.
 - [x] syntax.md records the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Evaluation of a unary plus (the identity).
+
+## Outcome
+- A kept unary plus is `Node::UnaryPlus`, as the Design section describes. `parse_power` keeps the signs in written
+  order, and folds a plus only when a number literal follows it directly. The printer writes the plus, which binds
+  like a minus. `ungrouped`, `lowered`, the tree walkers and the literal checks of the legacy `@` analysis
+  (`IF(+TRUE,…)`, `CHOOSE(+1,…)`) and the lift check (`is_scalar_node`) all see through it. The one-child nodes now
+  share one pattern (`one_child!`, contains_function.rs).
+- Eval delta: probes known failures 2599 → 2579, so 20 fixed and 0 regressions. The fixed cells are t2723 C1, C2,
+  C4:C9, C11, C12, C14:C16, C18, C19, C22, C23 and C26, and t2601 B14 and B15. Every other suite is unchanged.
+- Each kept plus costs a depth level, as a minus does, so a run of more than about 250 pluses is now a parse error
+  (syntax.md "Formula nesting depth cap").
+- Follow-up: T-2769 (keep the space in `=+ 5` and `=+ "a"`, C24 and C25).

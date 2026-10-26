@@ -502,7 +502,7 @@ fn chooses_between_references_and_array_constants(kind: &Function, args: &[Node]
         return false;
     };
     matches!(kind, Function::Choose)
-        && matches!(index, Node::NumberKind(_) | Node::BooleanKind(_))
+        && matches!(index.lowered(), Node::NumberKind(_) | Node::BooleanKind(_))
         && arms
             .iter()
             .any(|arm| matches!(arm, Node::ArrayKind(_)) && !is_one_element_array(arm))
@@ -683,7 +683,9 @@ pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
 /// docs/excel-semantics/references.md "Legacy N and T over a reference-returning call"). An
 /// explicit stack keeps the walk off the call stack: a formula's tree is untrusted input.
 fn is_plain_reference(node: &Node) -> bool {
-    let is_literal = |node: &Node| matches!(node, Node::NumberKind(_) | Node::BooleanKind(_));
+    // `lowered` sees through a unary plus (`IF(+TRUE,…)`, T-2723), never parentheses.
+    let is_literal =
+        |node: &Node| matches!(node.lowered(), Node::NumberKind(_) | Node::BooleanKind(_));
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
         if matches!(node.lowered(), Node::ThisRowKind { .. }) {
