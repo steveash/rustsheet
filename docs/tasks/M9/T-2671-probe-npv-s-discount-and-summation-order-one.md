@@ -3,7 +3,7 @@ id: T-2671
 title: "Probe NPV's discount and summation order: one-term, zero-padded and two-term NPVs where the candidate orders differ"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
