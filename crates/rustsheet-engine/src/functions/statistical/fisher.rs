@@ -36,6 +36,22 @@ fn f_beta_arguments(df1: f64, df2: f64, x: f64) -> (f64, f64) {
     (1.0 / (1.0 + df2 / scaled), 1.0 / (1.0 + scaled / df2))
 }
 
+/// Whether the F cdf at `x` is `#NUM!` because the incomplete beta's argument cannot be formed:
+/// [`f_beta_arguments`] divides df2 by df1 x, and once that quotient leaves the double range Excel
+/// reports `#NUM!` for either tail, where the density there is still 0. `FDIST(1E-300,6,1E+10)`,
+/// `F.DIST(1E-300,6,1E+10,TRUE)`, `F.DIST.RT(1E-300,6,1E+10)` and `FDIST(1E-300,1,1E+10)` are
+/// `#NUM!`, while `FDIST(1E-300,6,1E+9)` is 1 (quotient 1.67E+308, the largest the cut allows),
+/// `FDIST(1E-290,6,1E+10)` is 1, one power of ten the other way is `#NUM!` again
+/// (`FDIST(1E-301,6,1E+10)`) and `F.DIST(1E-300,6,1E+10,FALSE)` is 0. The `x > 0.0` guard is what
+/// keeps `FDIST(0,6,1E+10)` and a subnormal x out of the quotient: number text below the smallest
+/// normal double reads as 0, so `FDIST(1E-308,6,1E+8)` is 1 (numbers.md "Subnormal results become
+/// 0"). (probes/t2435-dist-extremes A39, A85:A91, A130, A131, A141, A142; gen-m9
+/// c6cfda6bd10cae93 A363.)
+/// Excel: see docs/excel-semantics/statistics.md, "The F cdf is #NUM! where df2/(df1 x) overflows (T-2435)"
+fn f_beta_ratio_overflows(df1: f64, df2: f64, x: f64) -> bool {
+    x > 0.0 && !(df2 / (df1 * x)).is_finite()
+}
+
 /// One F tail (`upper`: P(F > x)): Excel's closed forms on [`f_beta_arguments`] where they apply
 /// ([`closed_form_tails`], a df of 2), else [`f_tail_pre_t2502`].
 fn f_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
@@ -451,6 +467,11 @@ impl Model {
                 num_error(cell)
             });
         }
+        // A tiny x whose df2/(df1 x) overflows is #NUM! for the cdf, 0 for the density
+        // ([`f_beta_ratio_overflows`]).
+        if cumulative && f_beta_ratio_overflows(df1, df2, x) {
+            return Err(num_error(cell));
+        }
         // The density at 0 is infinite for df1 = 1 and exactly 1 for df1 = 2; higher df1 give
         // 0 (`F.DIST(0,1,7,FALSE)` = #NUM!, `F.DIST(0,2,7,FALSE)` = 1;
         // probes-numeric/t1049-fdist A27, A28).
@@ -507,6 +528,11 @@ impl Model {
         // `FDIST(1E308,2,3)`; probes/stat-overflow-arguments A3, A4).
         if !(df1 * x).is_finite() {
             return Err(div_error(cell));
+        }
+        // A tiny x whose df2/(df1 x) overflows is #NUM!, as for F.DIST's cdf
+        // ([`f_beta_ratio_overflows`]).
+        if f_beta_ratio_overflows(df1, df2, x) {
+            return Err(num_error(cell));
         }
         let result = f_sf(df1, df2, x);
         if result.is_nan() || result.is_infinite() || result < 0.0 {
