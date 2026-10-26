@@ -3,7 +3,7 @@ id: T-2776
 title: "Spec: keep typed whitespace in formula text (FORMULATEXT, export) as Excel does"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -41,3 +41,14 @@ operator and the rest is cosmetic, `=B1:B2  B2`, and a folded plus after an oper
 
 ## Out of scope
 - The implementation itself.
+
+## Outcome
+SPEC-0023 (docs/specs/SPEC-0023-formula-text-whitespace.md) designs typed whitespace as a transparent
+`Node::Spaced` wrapper attached at the primary level, peeled with `Group`, holding Excel's run shape (line-feed
+count + space count). New probes (excel-graph, 2026-10-26) answered the open questions: probes/t2776-formula-
+text-whitespace-shapes (typed and stored), t2776-ws-after-at, -after-bang, -after-colon, -before-colon. Findings
+in syntax.md: a run keeps only its line feeds and the spaces after the last one; its space count wraps at 256;
+spaces around `:` and after `!` drop; a stored formula's leading run drops; `=SUM (1)` is refused. Ours mis-parses
+`=S! B1` (`#ERROR!`). Eval: probes +5 cases, 27 new-coverage known failures (all owned below), 0 regressions.
+Tasks filed: T-2781 (step 1, opus M), T-2782, T-2783, T-2784 (steps 2-4, sonnet S), T-2785 (`=S! B1`, sonnet S),
+T-2786 (structured-reference and saved-text probes, research sonnet S).

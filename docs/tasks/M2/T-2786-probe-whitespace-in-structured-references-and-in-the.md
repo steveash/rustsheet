@@ -11,14 +11,20 @@ depends_on: []
 ---
 
 ## Goal
-TODO(fill): the outcome, not the implementation.
+Excel evidence for the two whitespace questions SPEC-0023 leaves open: whitespace inside a structured
+reference, and whether the `<f>` text Excel saves keeps typed whitespace.
 
 ## Context
-TODO(fill): why; failing case ids; semantics notes; code paths.
+SPEC-0023 "Unknown". Probe typed `=SUM(T[ Col])`, `=SUM(T[[#This Row], [Col]])`, `=SUM(T[ [Col] ])` and
+similar on a real table, with FORMULATEXT. For the saved text, enter `=1 + 2`, `=SUM( 1 )` and a line-feed formula
+through Graph and read the `<f>` of the workbook Excel saves (the oracle already downloads it; record the text
+in docs/excel-semantics/xlsx-storage.md, as SPEC-0007 did for parentheses).
 
 ## Acceptance criteria
-- [ ] TODO(fill): verifiable statements.
+- [ ] Probe cases with excel-graph oracle values; findings in docs/excel-semantics/ (syntax.md, xlsx-storage.md).
+- [ ] An implementation task filed with `make new-task` for each answer that differs from what SPEC-0023 step 1
+      prints, and SPEC-0023's "Unknown" updated.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Implementing the findings.

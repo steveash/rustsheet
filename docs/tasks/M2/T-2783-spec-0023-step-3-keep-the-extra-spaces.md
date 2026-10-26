@@ -7,18 +7,20 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-2781]
 ---
 
 ## Goal
-TODO(fill): the outcome, not the implementation.
+An intersection written with more than one space prints them all, as Excel does: `=B1:B2  B2`.
 
 ## Context
-TODO(fill): why; failing case ids; semantics notes; code paths.
+SPEC-0023 step 3. The first space is the operator; Excel keeps the rest. The parser already reads the
+separator run (`Lexer::separator`, reference_operators.rs). Evidence: probes/t2776-formula-text-whitespace-shapes
+C3, C5 (typed) and E9 (stored).
 
 ## Acceptance criteria
-- [ ] TODO(fill): verifiable statements.
+- [ ] t2776-formula-text-whitespace-shapes C3, C5, E9 pass; 0 regressions.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Line feeds as an intersection separator beyond what references.md records.
